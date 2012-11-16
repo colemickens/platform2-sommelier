@@ -4,6 +4,10 @@
 
 #include "shill/mock_cellular.h"
 
+#include <gmock/gmock.h>
+
+#include "shill/error.h"
+
 namespace shill {
 
 // TODO(rochberg): The cellular constructor does work.  Ought to fix

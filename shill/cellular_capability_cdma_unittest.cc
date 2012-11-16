@@ -14,10 +14,12 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_cellular.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
+#include "shill/mock_modem_proxy.h"
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
@@ -25,6 +27,7 @@ using base::Bind;
 using base::Unretained;
 using std::string;
 using testing::_;
+using testing::InSequence;
 using testing::Invoke;
 using testing::Return;
 
@@ -34,20 +37,21 @@ class CellularCapabilityCDMATest : public testing::Test {
  public:
   CellularCapabilityCDMATest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        cellular_(new Cellular(&control_,
-                               &dispatcher_,
-                               &metrics_,
-                               &manager_,
-                               "",
-                               "",
-                               0,
-                               Cellular::kTypeCDMA,
-                               "",
-                               "",
-                               "",
-                               NULL,
-                               NULL,
-                               ProxyFactory::GetInstance())),
+        cellular_(new MockCellular(&control_,
+                                   &dispatcher_,
+                                   &metrics_,
+                                   &manager_,
+                                   "",
+                                   "",
+                                   0,
+                                   Cellular::kTypeCDMA,
+                                   "",
+                                   "",
+                                   "",
+                                   NULL,
+                                   NULL,
+                                   ProxyFactory::GetInstance())),
+        classic_proxy_(new MockModemProxy()),
         proxy_(new MockModemCDMAProxy()),
         capability_(NULL) {}
 
@@ -70,6 +74,17 @@ class CellularCapabilityCDMATest : public testing::Test {
                            const ActivationResultCallback &callback,
                            int timeout) {
     callback.Run(MM_MODEM_CDMA_ACTIVATION_ERROR_NO_SIGNAL, Error());
+  }
+  void InvokeDisconnect(Error *error,
+                        const ResultCallback &callback,
+                        int timeout) {
+    callback.Run(Error());
+  }
+  void InvokeDisconnectError(Error *error,
+                             const ResultCallback &callback,
+                             int timeout) {
+    Error err(Error::kOperationFailed);
+    callback.Run(err);
   }
   void InvokeGetSignalQuality(Error *error,
                               const SignalQualityCallback &callback,
@@ -101,6 +116,8 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   void SetProxy() {
     capability_->proxy_.reset(proxy_.release());
+    capability_->CellularCapabilityClassic::proxy_.reset(
+        classic_proxy_.release());
   }
 
   void SetService() {
@@ -117,7 +134,8 @@ class CellularCapabilityCDMATest : public testing::Test {
   MockGLib glib_;
   MockManager manager_;
   MockMetrics metrics_;
-  CellularRefPtr cellular_;
+  scoped_refptr<MockCellular> cellular_;
+  scoped_ptr<MockModemProxy> classic_proxy_;
   scoped_ptr<MockModemCDMAProxy> proxy_;
   CellularCapabilityCDMA *capability_;  // Owned by |cellular_|.
 };
@@ -146,6 +164,65 @@ TEST_F(CellularCapabilityCDMATest, Activate) {
   EXPECT_EQ(flimflam::kActivationStateActivating,
             cellular_->service()->activation_state());
   EXPECT_EQ("", cellular_->service()->error());
+}
+
+TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
+  SetDeviceState(Cellular::kStateConnected);
+  {
+    InSequence dummy;
+
+    EXPECT_CALL(*cellular_, DisconnectWithCallback(_,_))
+        .WillOnce(Invoke(cellular_.get(),
+                         &MockCellular::RealDisconnectWithCallback));
+    EXPECT_CALL(*classic_proxy_,
+                Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+        .WillOnce(Invoke(this,
+                         &CellularCapabilityCDMATest::InvokeDisconnect));
+    EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
+                                  CellularCapability::kTimeoutActivate))
+        .WillOnce(Invoke(this,
+                         &CellularCapabilityCDMATest::InvokeActivate));
+    EXPECT_CALL(*this, TestCallback(_));
+  }
+  SetProxy();
+  SetService();
+  Error error;
+  capability_->Activate(kTestCarrier, &error,
+      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
+            capability_->activation_state());
+  EXPECT_EQ(flimflam::kActivationStateActivating,
+            cellular_->service()->activation_state());
+  EXPECT_EQ("", cellular_->service()->error());
+}
+
+TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
+  SetDeviceState(Cellular::kStateConnected);
+  {
+    InSequence dummy;
+
+    EXPECT_CALL(*cellular_, DisconnectWithCallback(_,_))
+        .WillOnce(Invoke(cellular_.get(),
+                         &MockCellular::RealDisconnectWithCallback));
+    EXPECT_CALL(*classic_proxy_,
+                Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+        .WillOnce(Invoke(this,
+                         &CellularCapabilityCDMATest::InvokeDisconnectError));
+    EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
+                                  CellularCapability::kTimeoutActivate))
+        .Times(0);
+  }
+  SetProxy();
+  SetService();
+  Error error;
+  capability_->Activate(kTestCarrier, &error,
+      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            capability_->activation_state());
+  EXPECT_EQ(flimflam::kActivationStateNotActivated,
+            cellular_->service()->activation_state());
+  EXPECT_EQ(flimflam::kErrorActivationFailed,
+            cellular_->service()->error());
 }
 
 TEST_F(CellularCapabilityCDMATest, ActivateError) {

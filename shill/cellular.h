@@ -125,9 +125,13 @@ class Cellular : public Device {
   // failure, leaves it unchanged otherwise.
   void Connect(Error *error);
 
-  // Asynchronously disconnects the modem from the network. Populates |error| on
-  // failure, leaves it unchanged otherwise.
-  void Disconnect(Error *error);
+  // Asynchronously disconnects the modem from the network. Populates |error|
+  // on failure, leaves it unchanged otherwise.  Calls |callback| on completion
+  // of the disconnect with the error indicated success or failure.
+  virtual void DisconnectWithCallback(const ResultCallback &callback,
+                                      Error *error);
+  // Similar to above but without the callback.
+  virtual void Disconnect(Error *error);
 
   // Asynchronously activates the modem. Returns an error on failure.
   void Activate(const std::string &carrier, Error *error,
@@ -246,6 +250,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
+  FRIEND_TEST(CellularTest, DisconnectWithCallback);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
@@ -291,7 +296,7 @@ class Cellular : public Device {
       void(Cellular::*set)(const std::string &value, Error *error));
 
   void OnConnectReply(const Error &error);
-  void OnDisconnectReply(const Error &error);
+  void OnDisconnectReply(const ResultCallback &callback, const Error &error);
 
   // DBUS accessors to read/modify the allow roaming property
   bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }

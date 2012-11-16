@@ -32,11 +32,20 @@ class MockCellular : public Cellular {
                ProxyFactory *proxy_factory);
   virtual ~MockCellular();
 
-  MOCK_METHOD3(OnDBusPropertiesChanged, void(const std::string &,
-                                             const DBusPropertiesMap &,
-                                             const std::vector<std::string> &));
-  MOCK_METHOD1(set_modem_state, void(ModemState));
+  MOCK_METHOD1(Disconnect, void(Error *error));
+  MOCK_METHOD2(DisconnectWithCallback, void(const ResultCallback &callback,
+                                            Error *error));
+  MOCK_METHOD3(OnDBusPropertiesChanged, void(
+      const std::string &interface,
+      const DBusPropertiesMap &changed_properties,
+      const std::vector<std::string> &invalidated_properties));
+  MOCK_METHOD1(set_modem_state, void(ModemState state));
   MOCK_METHOD0(DestroyService, void());
+
+  void RealDisconnectWithCallback(const ResultCallback &callback,
+                                  Error *error) {
+    Cellular::DisconnectWithCallback(callback, error);
+  }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCellular);

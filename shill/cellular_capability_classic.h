@@ -144,6 +144,7 @@ class CellularCapabilityClassic : public CellularCapability {
 
  private:
   friend class CellularTest;
+  friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityGSMTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetProxy);
@@ -167,6 +168,7 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
+  FRIEND_TEST(CellularTest, DisconnectWithCallback);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 

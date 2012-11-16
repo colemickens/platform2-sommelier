@@ -86,6 +86,10 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void OnActivateReply(const ResultCallback &callback,
                        uint32 status, const Error &error);
 
+  void OnDisconnectBeforeActivate(const std::string &carrier,
+                                  const ResultCallback &callback,
+                                  const Error &error);
+
   void OnGetRegistrationStateReply(uint32 state_1x, uint32 state_evdo,
                                    const Error &error);
   void OnGetSignalQualityReply(uint32 strength, const Error &error);

@@ -467,7 +467,8 @@ void Cellular::OnConnectFailed(const Error &error) {
     service_->SetFailure(Service::kFailureUnknown);
 }
 
-void Cellular::Disconnect(Error *error) {
+void Cellular::DisconnectWithCallback(const ResultCallback &callback,
+                                      Error *error) {
   SLOG(Cellular, 2) << __func__;
   if (state_ != kStateConnected && state_ != kStateLinked) {
     Error::PopulateAndLog(
@@ -475,13 +476,17 @@ void Cellular::Disconnect(Error *error) {
     return;
   }
   ResultCallback cb = Bind(&Cellular::OnDisconnectReply,
-                           weak_ptr_factory_.GetWeakPtr());
+                           weak_ptr_factory_.GetWeakPtr(),
+                           callback);
   capability_->Disconnect(error, cb);
 }
 
-// Note that there's no ResultCallback argument to this,
-// since Disconnect() isn't yet passed one.
-void Cellular::OnDisconnectReply(const Error &error) {
+void Cellular::Disconnect(Error *error) {
+  DisconnectWithCallback(ResultCallback(), error);
+}
+
+void Cellular::OnDisconnectReply(const ResultCallback &callback,
+                                 const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess())
     OnDisconnected();
@@ -489,6 +494,9 @@ void Cellular::OnDisconnectReply(const Error &error) {
     OnDisconnectFailed();
   manager()->TerminationActionComplete(FriendlyName());
   manager()->RemoveTerminationAction(FriendlyName());
+  if (!callback.is_null()) {
+    callback.Run(error);
+  }
 }
 
 void Cellular::OnDisconnected() {

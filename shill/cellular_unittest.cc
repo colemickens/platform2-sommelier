@@ -651,6 +651,27 @@ TEST_F(CellularTest, DisconnectFailure) {
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
+TEST_F(CellularTest, DisconnectWithCallback) {
+  ResultCallback callback = Bind(&CellularTest::TestCallback, Unretained(this));
+  Error error;
+  device_->state_ = Cellular::kStateRegistered;
+  device_->DisconnectWithCallback(callback, &error);
+  EXPECT_EQ(Error::kNotConnected, error.type());
+  error.Reset();
+
+  device_->state_ = Cellular::kStateConnected;
+  EXPECT_CALL(*proxy_,
+              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
+  GetCapabilityClassic()->proxy_.reset(proxy_.release());
+  // Disconnect should trigger our callback once the proxy finishes the
+  // disconnect.
+  EXPECT_CALL(*this, TestCallback(_));
+  device_->DisconnectWithCallback(callback, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
+}
+
 TEST_F(CellularTest, ConnectFailure) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->state_ = Cellular::kStateRegistered;

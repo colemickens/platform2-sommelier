@@ -135,20 +135,31 @@ void CellularCapabilityCDMA::Activate(const string &carrier,
                                       Error *error,
                                       const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__ << "(" << carrier << ")";
-  if (cellular()->state() != Cellular::kStateEnabled &&
-      cellular()->state() != Cellular::kStateRegistered) {
+  if (cellular()->state() == Cellular::kStateEnabled ||
+      cellular()->state() == Cellular::kStateRegistered) {
+    ActivationResultCallback cb =
+        Bind(&CellularCapabilityCDMA::OnActivateReply,
+             weak_ptr_factory_.GetWeakPtr(),
+             callback);
+    proxy_->Activate(carrier, error, cb, kTimeoutActivate);
+  } else if (cellular()->state() == Cellular::kStateConnected ||
+             cellular()->state() == Cellular::kStateLinked) {
+    ResultCallback continue_activation_callback =
+        Bind(&CellularCapabilityCDMA::OnDisconnectBeforeActivate,
+             weak_ptr_factory_.GetWeakPtr(),
+             carrier,
+             callback);
+    cellular()->DisconnectWithCallback(continue_activation_callback, error);
+  } else {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           "Unable to activate in " +
                           Cellular::GetStateString(cellular()->state()));
-    return;
   }
-  ActivationResultCallback cb = Bind(&CellularCapabilityCDMA::OnActivateReply,
-                                     weak_ptr_factory_.GetWeakPtr(), callback);
-  proxy_->Activate(carrier, error, cb, kTimeoutActivate);
 }
 
 void CellularCapabilityCDMA::HandleNewActivationState(uint32 error) {
   if (!cellular()->service().get()) {
+    LOG(ERROR) << "In " << __func__ << "(): service is null.";
     return;
   }
   cellular()->service()->SetActivationState(
@@ -282,10 +293,28 @@ void CellularCapabilityCDMA::OnActivateReply(
   if (error.IsSuccess()) {
     if (status == MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR) {
       activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+    } else {
+      LOG(WARNING) << "Modem activation failed with status: "
+                   << GetActivationErrorString(status) << " (" << status << ")";
     }
     HandleNewActivationState(status);
+  } else {
+    LOG(ERROR) << "Activate() failed with error: " << error;
   }
   callback.Run(error);
+}
+
+void CellularCapabilityCDMA::OnDisconnectBeforeActivate(
+    const string &carrier, const ResultCallback &callback, const Error &error) {
+  SLOG(Cellular, 2) << __func__;
+  if (error.IsSuccess()) {
+    Error ignored_error;
+    Activate(carrier, &ignored_error, callback);
+  } else {
+    LOG(WARNING) << "Tried to disconnect before activating cellular service"
+                 << " and failed.";
+    HandleNewActivationState(MM_MODEM_CDMA_ACTIVATION_ERROR_UNKNOWN);
+  }
 }
 
 void CellularCapabilityCDMA::OnGetRegistrationStateReply(

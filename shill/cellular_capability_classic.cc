@@ -240,6 +240,8 @@ void CellularCapabilityClassic::Disconnect(Error *error,
   SLOG(Cellular, 2) << __func__;
   if (proxy_.get())
     proxy_->Disconnect(error, callback, kTimeoutDisconnect);
+  else
+    LOG(ERROR) << "No proxy found in disconnect.";
 }
 
 void CellularCapabilityClassic::Activate(const string &/*carrier*/,
