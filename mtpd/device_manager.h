@@ -45,7 +45,7 @@ class DeviceManager {
   void ProcessDeviceEvents();
 
   // Returns a vector of attached MTP storages.
-  std::vector<std::string> EnumerateStorage();
+  std::vector<std::string> EnumerateStorages();
 
   // Returns true if |storage_name| is attached.
   bool HasStorage(const std::string& storage_name);
@@ -106,22 +106,6 @@ class DeviceManager {
   bool ReadDirectoryById(const std::string& storage_name,
                          uint32_t file_id,
                          std::vector<FileEntry>* out);
-
-  // Reads the contents of |file_path| on |storage_name|.
-  // On success, returns true and writes the file contents of |file_path| into
-  // |out|. Otherwise returns false.
-  bool ReadFileByPath(const std::string& storage_name,
-                         const std::string& file_path,
-                         std::vector<uint8_t>* out);
-
-  // Reads the contents of |file_id| on |storage_name|.
-  // |file_id| is the unique identifier for a directory on |storage_name|.
-  // |file_id| should never refer to the root node.
-  // On success, returns true and writes the file contents of |file_id| into
-  // |out|. Otherwise returns false.
-  bool ReadFileById(const std::string& storage_name,
-                         uint32_t file_id,
-                         std::vector<uint8_t>* out);
 
   // Reads the contents of |file_path| on |storage_name|.
   // Reads |count| bytes starting at |offset|.
@@ -200,15 +184,6 @@ class DeviceManager {
                      uint32_t storage_id,
                      uint32_t file_id,
                      std::vector<FileEntry>* out);
-
-  // Reads the contents of |file_id| from |device|.
-  // |file_id| is the unique identifier for a file on the given storage.
-  // |file_id| should never refer to the root node.
-  // On success, returns true and writes the file contents of |file_id| into
-  // |out|. Otherwise returns false.
-  bool ReadFile(LIBMTP_mtpdevice_t* device,
-                uint32_t file_id,
-                std::vector<uint8_t>* out);
 
   // Reads the contents of |file_id| from |device|.
   // Reads |count| bytes starting at |offset|.

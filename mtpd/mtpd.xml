@@ -2,7 +2,17 @@
 
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Mtpd">
+    <!-- TODO(thestig) Remove this //-->
     <method name="EnumerateStorage">
+      <arg name="storageList" type="as" direction="out">
+      <tp:docstring>
+        List of storages. Storages are described as Bus:Location:StorageId.
+        E.g. usb:2,4:1234.
+      </tp:docstring>
+      </arg>
+    </method>
+
+    <method name="EnumerateStorages">
       <arg name="storageList" type="as" direction="out">
       <tp:docstring>
         List of storages. Storages are described as Bus:Location:StorageId.
@@ -72,35 +82,6 @@
       <arg name="fileId" type="u" direction="in">
       </arg>
       <arg name="results" type="ay" direction="out">
-      </arg>
-    </method>
-
-    <!-- TODO(thestig) Remove this //-->
-    <method name="ReadFileByPath">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="filePath" type="s" direction="in">
-      <tp:docstring>
-        Absolute path with root as the root of the storage.
-      </tp:docstring>
-      </arg>
-      <arg name="data" type="ay" direction="out">
-      </arg>
-    </method>
-
-    <!-- TODO(thestig) Remove this //-->
-    <method name="ReadFileById">
-      <arg name="handle" type="s" direction="in">
-      <tp:docstring>
-        Handle to the storage from OpenStorage.
-      </tp:docstring>
-      </arg>
-      <arg name="fileId" type="u" direction="in">
-      </arg>
-      <arg name="data" type="ay" direction="out">
       </arg>
     </method>
 

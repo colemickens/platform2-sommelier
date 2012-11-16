@@ -45,7 +45,11 @@ MtpdServer::~MtpdServer() {
 }
 
 std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error& error) {
-  return device_manager_.EnumerateStorage();
+  return device_manager_.EnumerateStorages();
+}
+
+std::vector<std::string> MtpdServer::EnumerateStorages(DBus::Error& error) {
+  return device_manager_.EnumerateStorages();
 }
 
 std::vector<uint8_t> MtpdServer::GetStorageInfo(const std::string& storageName,
@@ -125,43 +129,13 @@ std::vector<uint8_t> MtpdServer::ReadDirectoryById(const std::string& handle,
   return FileEntry::FileEntriesToDBusFormat(directory_listing);
 }
 
-std::vector<uint8_t> MtpdServer::ReadFileByPath(const std::string& handle,
-                                                const std::string& filePath,
-                                                DBus::Error& error) {
-  std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty())
-    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
-
-  std::vector<uint8_t> file_contents;
-  if (!device_manager_.ReadFileByPath(storage_name, filePath, &file_contents)) {
-    error.set(kMtpdServiceError, "ReadFileByPath failed");
-    return std::vector<uint8_t>();
-  }
-  return file_contents;
-}
-
-std::vector<uint8_t> MtpdServer::ReadFileById(const std::string& handle,
-                                              const uint32_t& fileId,
-                                              DBus::Error& error) {
-  std::string storage_name = LookupHandle(handle);
-  if (storage_name.empty())
-    return InvalidHandle<std::vector<uint8_t> >(handle, &error);
-
-  std::vector<uint8_t> file_contents;
-  if (!device_manager_.ReadFileById(storage_name, fileId, &file_contents)) {
-    error.set(kMtpdServiceError, "ReadFileById failed");
-    return std::vector<uint8_t>();
-  }
-  return file_contents;
-}
-
 std::vector<uint8_t> MtpdServer::ReadFileChunkByPath(
     const std::string& handle,
     const std::string& filePath,
     const uint32_t& offset,
     const uint32_t& count,
     DBus::Error& error) {
-  if (count > kMaxReadCount) {
+  if (count > kMaxReadCount || count == 0) {
     error.set(kMtpdServiceError, "Invalid count for ReadFileChunkByPath");
     return std::vector<uint8_t>();
   }
@@ -183,7 +157,7 @@ std::vector<uint8_t> MtpdServer::ReadFileChunkById(const std::string& handle,
                                                    const uint32_t& offset,
                                                    const uint32_t& count,
                                                    DBus::Error& error) {
-  if (count > kMaxReadCount) {
+  if (count > kMaxReadCount || count == 0) {
     error.set(kMtpdServiceError, "Invalid count for ReadFileChunkById");
     return std::vector<uint8_t>();
   }

@@ -233,7 +233,8 @@ TEST(DeviceManager, ReadFileFromSynthesizedRootNodeFails) {
   EXPECT_TRUE(ret);
 
   std::vector<uint8_t> data;
-  ret = device_manager.ReadFileById(kDummyStorageName, 0, &data);
+  ret = device_manager.ReadFileChunkById(kDummyStorageName, 0 /* node id */,
+                                         0 /* offset */, 1 /* byte */, &data);
   EXPECT_FALSE(ret);
   EXPECT_TRUE(data.empty());
 }

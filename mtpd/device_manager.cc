@@ -9,7 +9,7 @@
 #include <set>
 
 #include <base/bind.h>
-#include <base/file_util.h>
+#include <base/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
@@ -169,7 +169,7 @@ void DeviceManager::ProcessDeviceEvents() {
   udev_device_unref(dev);
 }
 
-std::vector<std::string> DeviceManager::EnumerateStorage() {
+std::vector<std::string> DeviceManager::EnumerateStorages() {
   std::vector<std::string> ret;
   for (MtpDeviceMap::const_iterator device_it = device_map_.begin();
        device_it != device_map_.end();
@@ -180,7 +180,7 @@ std::vector<std::string> DeviceManager::EnumerateStorage() {
          storage_it != storage_map.end();
          ++storage_it) {
       ret.push_back(StorageToString(usb_bus_str, storage_it->first));
-      LOG(INFO) << "EnumerateStorage "
+      LOG(INFO) << "Found storage: "
                 << StorageToString(usb_bus_str, storage_it->first);
     }
   }
@@ -231,32 +231,6 @@ bool DeviceManager::ReadDirectoryById(const std::string& storage_name,
   if (file_id == kRootFileId)
     file_id = kPtpGohRootParent;
   return ReadDirectory(mtp_device, storage_id, file_id, out);
-}
-
-bool DeviceManager::ReadFileByPath(const std::string& storage_name,
-                                   const std::string& file_path,
-                                   std::vector<uint8_t>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-
-  uint32_t file_id = 0;
-  if (!PathToFileId(mtp_device, storage_id, file_path,
-                    IsValidComponentInFilePath, &file_id)) {
-    return false;
-  }
-  return ReadFile(mtp_device, file_id, out);
-}
-
-bool DeviceManager::ReadFileById(const std::string& storage_name,
-                                 uint32_t file_id,
-                                 std::vector<uint8_t>* out) {
-  LIBMTP_mtpdevice_t* mtp_device = NULL;
-  uint32_t storage_id = 0;
-  if (!GetDeviceAndStorageId(storage_name, &mtp_device, &storage_id))
-    return false;
-  return ReadFile(mtp_device, file_id, out);
 }
 
 bool DeviceManager::ReadFileChunkByPath(const std::string& storage_name,
@@ -398,34 +372,6 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
   for (const LIBMTP_file_t* file = files; file != NULL; file = file->next)
     out->push_back(FileEntry(*file));
   return true;
-}
-
-bool DeviceManager::ReadFile(LIBMTP_mtpdevice_t* device,
-                             uint32_t file_id,
-                             std::vector<uint8_t>* out) {
-  // The root node is a virtual node and cannot be read from.
-  if (file_id == kRootFileId)
-    return false;
-
-  FilePath path;
-  if (!file_util::CreateTemporaryFile(&path))
-    return false;
-
-  bool ret = false;
-  int transfer_status = LIBMTP_Get_File_To_File(device,
-                                                file_id,
-                                                path.value().c_str(),
-                                                NULL,
-                                                NULL);
-  if (transfer_status == 0) {
-    std::string data;
-    if (file_util::ReadFileToString(path, &data)) {
-      out->insert(out->begin(), data.begin(), data.end());
-      ret = true;
-    }
-  }
-  file_util::Delete(path, false);
-  return ret;
 }
 
 bool DeviceManager::ReadFileChunk(LIBMTP_mtpdevice_t* device,
