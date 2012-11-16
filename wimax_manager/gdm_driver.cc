@@ -348,6 +348,12 @@ bool GdmDriver::PowerOffDeviceRF(GdmDevice *device) {
   return ret == GCT_API_RET_SUCCESS;
 }
 
+bool GdmDriver::SetScanInterval(GdmDevice *device, uint32 interval) {
+  GDEV_ID device_id = GetDeviceId(device);
+  GCT_API_RET ret = GAPI_SetScanInterval(&device_id, interval);
+  return ret == GCT_API_RET_SUCCESS;
+}
+
 bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
                                      vector<NetworkRefPtr> *networks) {
   CHECK(networks);
@@ -381,7 +387,7 @@ bool GdmDriver::GetNetworksForDevice(GdmDevice *device,
     }
   }
 
-  LOG(INFO) << "Number of networks: " << num_networks;
+  VLOG(1) << "Number of networks: " << num_networks;
   for (size_t i = 0; i < num_networks; ++i) {
     uint32 network_id = network_list[i].NSPid;
     string network_name;

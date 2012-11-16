@@ -41,6 +41,7 @@ class GdmDriver : public Driver,
   bool AutoSelectProfileForDevice(GdmDevice *device);
   bool PowerOnDeviceRF(GdmDevice *device);
   bool PowerOffDeviceRF(GdmDevice *device);
+  bool SetScanInterval(GdmDevice *device, uint32 interval);
   bool GetNetworksForDevice(GdmDevice *device,
                             std::vector<NetworkRefPtr> *networks);
   bool ConnectDeviceToNetwork(GdmDevice *device, const Network &network);

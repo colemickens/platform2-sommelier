@@ -182,6 +182,12 @@ bool GdmDevice::Enable() {
     return false;
   }
 
+  // Disable internal network scan done by the GCT SDK as GdmDevice already
+  // scans the list of available networks periodically.
+  if (!driver_->SetScanInterval(this, 0)) {
+    LOG(WARNING) << "Failed to disable internal network scan by SDK.";
+  }
+
   // Set OnNetworkScan() to be called repeatedly at |network_scan_interval_|
   // intervals to scan and update the list of networks via ScanNetworks().
   //
