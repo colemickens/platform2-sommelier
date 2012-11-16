@@ -25,7 +25,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   GError *err = 0;
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-    LOG(FATAL) << "Unexpected GLib error condition " << cond << " on poll("
+    LOG(WARNING) << "Unexpected GLib error condition " << cond << " on poll("
                << fd << "): " << strerror(errno);
 
   GIOStatus status = g_io_channel_read_chars(

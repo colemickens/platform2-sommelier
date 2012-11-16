@@ -23,7 +23,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   gint fd = g_io_channel_unix_get_fd(chan);
 
   if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-    LOG(FATAL) << "Unexpected GLib error condition " << cond << " on poll("
+    LOG(WARNING) << "Unexpected GLib error condition " << cond << " on poll("
                << fd << "): " << strerror(errno);
 
   handler->callback().Run(fd);
