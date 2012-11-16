@@ -203,6 +203,7 @@ void CellularCapabilityUniversal::InitProxies() {
   modem_simple_proxy_.reset(
       proxy_factory()->CreateMM1ModemSimpleProxy(cellular()->dbus_path(),
                                                  cellular()->dbus_owner()));
+
   modem_proxy_->set_state_changed_callback(
       Bind(&CellularCapabilityUniversal::OnModemStateChangedSignal,
            weak_ptr_factory_.GetWeakPtr()));
@@ -623,6 +624,46 @@ void CellularCapabilityUniversal::UpdateServingOperator() {
   SLOG(Cellular, 2) << __func__;
   if (cellular()->service().get()) {
     cellular()->service()->SetServingOperator(serving_operator_);
+  }
+}
+
+void CellularCapabilityUniversal::UpdateBearerPath() {
+  SLOG(Cellular, 2) << __func__;
+  DBusPathsCallback cb = Bind(&CellularCapabilityUniversal::OnListBearersReply,
+                              weak_ptr_factory_.GetWeakPtr());
+  Error error;
+  modem_proxy_->ListBearers(&error, cb, kTimeoutDefault);
+}
+
+void CellularCapabilityUniversal::OnListBearersReply(
+    const std::vector<DBus::Path> &paths,
+    const Error &error) {
+  SLOG(Cellular, 2) << __func__ << "(" << error << ")";
+  if (error.IsFailure()) {
+    SLOG(Cellular, 2) << "ListBearers failed with error: " << error;
+    return;
+  }
+  // Look for the first active bearer and use its path as the connected
+  // one. Right now, we don't allow more than one active bearer.
+  bool found_active = false;
+  for (size_t i = 0; i < paths.size(); ++i) {
+    const DBus::Path &path = paths[i];
+    scoped_ptr<mm1::BearerProxyInterface> bearer_proxy(
+        proxy_factory()->CreateBearerProxy(path, cellular()->dbus_owner()));
+    bool is_active = bearer_proxy->Connected();
+    if (is_active) {
+      if (!found_active) {
+        SLOG(Cellular, 2) << "Found active bearer \"" << path << "\".";
+        bearer_path_ = path;
+        found_active = true;
+      } else {
+        LOG(FATAL) << "Found more than one active bearer.";
+      }
+    }
+  }
+  if (!found_active) {
+    SLOG(Cellular, 2) << "No active bearer found, clearing bearer_path_.";
+    bearer_path_.clear();
   }
 }
 
@@ -1294,6 +1335,9 @@ void CellularCapabilityUniversal::OnModemStateChangedSignal(
     SLOG(Cellular, 2) << "Enabling modem after deferring";
     deferred_enable_modem_callback_.Run();
     deferred_enable_modem_callback_.Reset();
+  } else if (new_state == Cellular::kModemStateConnected) {
+    SLOG(Cellular, 2) << "Updating bearer path to reflect the active bearer.";
+    UpdateBearerPath();
   }
 }
 

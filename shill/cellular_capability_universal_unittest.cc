@@ -26,6 +26,7 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_mm1_bearer_proxy.h"
 #include "shill/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/mock_mm1_modem_proxy.h"
@@ -86,6 +87,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
  public:
   CellularCapabilityUniversalTest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        bearer_proxy_(new mm1::MockBearerProxy()),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -188,7 +190,9 @@ class CellularCapabilityUniversalTest : public testing::Test {
   MOCK_METHOD1(TestCallback, void(const Error &error));
 
  protected:
+  static const char kActiveBearerPathPrefix[];
   static const char kImei[];
+  static const char kInactiveBearerPathPrefix[];
   static const char kSimPath[];
   static const uint32 kAccessTechnologies;
 
@@ -197,38 +201,50 @@ class CellularCapabilityUniversalTest : public testing::Test {
     explicit TestProxyFactory(CellularCapabilityUniversalTest *test) :
         test_(test) {}
 
+    virtual mm1::BearerProxyInterface *CreateBearerProxy(
+        const std::string &path,
+        const std::string &/*service*/) {
+      mm1::MockBearerProxy *bearer_proxy = test_->bearer_proxy_.release();
+      if (path.find(kActiveBearerPathPrefix) != std::string::npos)
+        ON_CALL(*bearer_proxy, Connected()).WillByDefault(Return(true));
+      else
+        ON_CALL(*bearer_proxy, Connected()).WillByDefault(Return(false));
+      test_->bearer_proxy_.reset(new mm1::MockBearerProxy());
+      return bearer_proxy;
+    }
+
     virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
-        const std::string &/* path */,
-        const std::string &/* service */) {
+        const std::string &/*path*/,
+        const std::string &/*service*/) {
       return test_->modem_3gpp_proxy_.release();
     }
 
     virtual mm1::ModemModemCdmaProxyInterface *CreateMM1ModemModemCdmaProxy(
-        const std::string &/* path */,
-        const std::string &/* service */) {
+        const std::string &/*path*/,
+        const std::string &/*service*/) {
       return test_->modem_cdma_proxy_.release();
     }
 
     virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
-        const std::string &/* path */,
-        const std::string &/* service */) {
+        const std::string &/*path*/,
+        const std::string &/*service*/) {
       return test_->modem_proxy_.release();
     }
 
     virtual mm1::ModemSimpleProxyInterface *CreateMM1ModemSimpleProxy(
-        const std::string &/* path */,
-        const std::string &/* service */) {
+        const std::string &/*path*/,
+        const std::string &/*service*/) {
       return test_->modem_simple_proxy_.release();
     }
 
     virtual mm1::SimProxyInterface *CreateSimProxy(
-        const std::string &/* path */,
-        const std::string &/* service */) {
+        const std::string &/*path*/,
+        const std::string &/*service*/) {
       return test_->sim_proxy_.release();
     }
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const std::string &/* path */,
-        const std::string &/* service */) {
+        const std::string &/*path*/,
+        const std::string &/*service*/) {
       return test_->properties_proxy_.release();
     }
 
@@ -241,6 +257,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
+  scoped_ptr<mm1::MockBearerProxy> bearer_proxy_;
   scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
   scoped_ptr<mm1::MockModemProxy> modem_proxy_;
@@ -258,7 +275,11 @@ class CellularCapabilityUniversalTest : public testing::Test {
   DBusPathCallback connect_callback_;  // saved for testing connect operations
 };
 
+const char CellularCapabilityUniversalTest::kActiveBearerPathPrefix[] =
+    "/bearer/active";
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
+const char CellularCapabilityUniversalTest::kInactiveBearerPathPrefix[] =
+    "/bearer/inactive";
 const char CellularCapabilityUniversalTest::kSimPath[] = "/foo/sim";
 const uint32 CellularCapabilityUniversalTest::kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE |
@@ -313,13 +334,13 @@ TEST_F(CellularCapabilityUniversalTest, StartModem) {
       Bind(&CellularCapabilityUniversalTest::TestCallback, Unretained(this));
   capability_->StartModem(&error, callback);
 
-  // Verify that the modem has not been eabled.
+  // Verify that the modem has not been enabled.
   EXPECT_TRUE(capability_->imei_.empty());
   EXPECT_EQ(0, capability_->access_technologies_);
   Mock::VerifyAndClearExpectations(this);
 
   // Change the state to kModemStateDisabling and verify that it still has not
-  // been eabled.
+  // been enabled.
   EXPECT_CALL(*this, TestCallback(_)).Times(0);
   capability_->OnModemStateChangedSignal(Cellular::kModemStateInitializing,
                                          Cellular::kModemStateDisabling, 0);
@@ -730,6 +751,52 @@ TEST_F(CellularCapabilityUniversalTest, ScanFailure) {
   vector<DBusPropertiesMap> results;
   scan_callback_.Run(results, Error(Error::kOperationFailed));
   EXPECT_FALSE(capability_->scanning_);
+}
+
+// Validates expected behavior of OnListBearersReply function
+TEST_F(CellularCapabilityUniversalTest, OnListBearersReply) {
+  // Check that bearer_path_ is set correctly when an active bearer
+  // is returned.
+  const size_t kPathCount = 3;
+  DBus::Path active_paths[kPathCount], inactive_paths[kPathCount];
+  for (size_t i = 0; i < kPathCount; ++i) {
+    active_paths[i] =
+        DBus::Path(base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i));
+    inactive_paths[i] =
+        DBus::Path(base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i));
+  }
+
+  std::vector<DBus::Path> paths;
+  paths.push_back(inactive_paths[0]);
+  paths.push_back(inactive_paths[1]);
+  paths.push_back(active_paths[2]);
+  paths.push_back(inactive_paths[1]);
+  paths.push_back(inactive_paths[2]);
+
+  Error error;
+  capability_->OnListBearersReply(paths, error);
+  EXPECT_STREQ(capability_->bearer_path_.c_str(), active_paths[2].c_str());
+
+  paths.clear();
+
+  // Check that bearer_path_ is empty if no active bearers are returned.
+  paths.push_back(inactive_paths[0]);
+  paths.push_back(inactive_paths[1]);
+  paths.push_back(inactive_paths[2]);
+  paths.push_back(inactive_paths[1]);
+
+  capability_->OnListBearersReply(paths, error);
+  EXPECT_TRUE(capability_->bearer_path_.empty());
+
+  // Check that returning multiple bearers causes death.
+  paths.push_back(active_paths[0]);
+  paths.push_back(inactive_paths[1]);
+  paths.push_back(inactive_paths[2]);
+  paths.push_back(active_paths[1]);
+  paths.push_back(inactive_paths[1]);
+
+  EXPECT_DEATH(capability_->OnListBearersReply(paths, error),
+      "Found more than one active bearer.");
 }
 
 // Validates expected behavior of Connect function

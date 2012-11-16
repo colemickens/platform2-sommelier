@@ -18,6 +18,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/cellular.h"
 #include "shill/cellular_capability.h"
+#include "shill/mm1_bearer_proxy_interface.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/mm1_modem_modemcdma_proxy_interface.h"
 #include "shill/mm1_modem_proxy_interface.h"
@@ -131,6 +132,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapabilityUniversalTest, OnListBearersReply);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
@@ -172,6 +174,9 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
+
+  // Updates |bearer_path_| to match the currently active bearer.
+  void UpdateBearerPath();
 
   // Initializes the |apn_list_| property based on the current |home_provider_|.
   void InitAPNList();
@@ -253,6 +258,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnConnectReply(const ResultCallback &callback,
                       const DBus::Path &bearer,
                       const Error &error);
+  void OnListBearersReply(const std::vector<DBus::Path> &paths,
+                          const Error &error);
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;

@@ -9,6 +9,7 @@
 #include "shill/dbus_service_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
+#include "shill/mm1_bearer_proxy.h"
 #include "shill/mm1_modem_modem3gpp_proxy.h"
 #include "shill/mm1_modem_modemcdma_proxy.h"
 #include "shill/mm1_modem_proxy.h"
@@ -139,6 +140,12 @@ mm1::SimProxyInterface *ProxyFactory::CreateSimProxy(
       const string &path,
       const string &service) {
   return new mm1::SimProxy(connection(), path, service);
+}
+
+mm1::BearerProxyInterface *ProxyFactory::CreateBearerProxy(
+      const string &path,
+      const string &service) {
+  return new mm1::BearerProxy(connection(), path, service);
 }
 
 WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
