@@ -72,6 +72,7 @@ class DHCPConfig : public IPConfig {
   friend class DHCPConfigTest;
   FRIEND_TEST(DHCPConfigTest, GetIPv4AddressString);
   FRIEND_TEST(DHCPConfigTest, InitProxy);
+  FRIEND_TEST(DHCPConfigTest, ParseClasslessStaticRoutes);
   FRIEND_TEST(DHCPConfigTest, ParseConfiguration);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalFail);
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalSuccess);
@@ -94,6 +95,7 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
 
   static const char kConfigurationKeyBroadcastAddress[];
+  static const char kConfigurationKeyClasslessStaticRoutes[];
   static const char kConfigurationKeyDNS[];
   static const char kConfigurationKeyDomainName[];
   static const char kConfigurationKeyDomainSearch[];
@@ -129,9 +131,17 @@ class DHCPConfig : public IPConfig {
   // and false otherwise.
   bool Restart();
 
+  // Parses |classless_routes| into |properties|.  Sets the default gateway
+  // if one is supplied and |properties| does not already contain one.  It
+  // also sets the "routes" parameter of the IPConfig properties for all
+  // routes not converted into the default gateway.  Returns true on
+  // success, and false otherwise.
+  static bool ParseClasslessStaticRoutes(const std::string &classless_routes,
+                                         IPConfig::Properties *properties);
+
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  bool ParseConfiguration(const Configuration& configuration,
+  bool ParseConfiguration(const Configuration &configuration,
                           IPConfig::Properties *properties);
 
   // Returns the string representation of the IP address |address|, or an

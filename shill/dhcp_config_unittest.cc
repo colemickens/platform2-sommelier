@@ -183,6 +183,60 @@ TEST_F(DHCPConfigTest, InitProxy) {
   config_->InitProxy(kService);
 }
 
+TEST_F(DHCPConfigTest, ParseClasslessStaticRoutes) {
+  const string kDefaultAddress = "0.0.0.0";
+  const string kDefaultDestination = kDefaultAddress + "/0";
+  const string kRouter0 = "10.0.0.254";
+  const string kAddress1 = "192.168.1.0";
+  const string kDestination1 = kAddress1 + "/24";
+  // Last gateway missing, leaving an odd number of parameters.
+  const string kBrokenClasslessRoutes0 = kDefaultDestination + " " + kRouter0 +
+      " " + kDestination1;
+  IPConfig::Properties properties;
+  EXPECT_FALSE(DHCPConfig::ParseClasslessStaticRoutes(kBrokenClasslessRoutes0,
+                                                      &properties));
+  EXPECT_TRUE(properties.routes.empty());
+  EXPECT_TRUE(properties.gateway.empty());
+
+  // Gateway argument for the second route is malformed, but we were able
+  // to salvage a default gateway.
+  const string kBrokenRouter1 = "10.0.0";
+  const string kBrokenClasslessRoutes1 = kBrokenClasslessRoutes0 + " " +
+      kBrokenRouter1;
+  EXPECT_FALSE(DHCPConfig::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
+                                                      &properties));
+  EXPECT_TRUE(properties.routes.empty());
+  EXPECT_EQ(kRouter0, properties.gateway);
+
+  const string kRouter1 = "10.0.0.253";
+  const string kRouter2 = "10.0.0.252";
+  const string kClasslessRoutes0 = kDefaultDestination + " " + kRouter2 + " " +
+      kDestination1 + " " + kRouter1;
+  EXPECT_TRUE(DHCPConfig::ParseClasslessStaticRoutes(kClasslessRoutes0,
+                                                      &properties));
+  // The old default route is preserved.
+  EXPECT_EQ(kRouter0, properties.gateway);
+
+  // The two routes (including the one which would have otherwise been
+  // classified as a default route) are added to the routing table.
+  EXPECT_EQ(2, properties.routes.size());
+  const IPConfig::Route &route0 = properties.routes[0];
+  EXPECT_EQ(kDefaultAddress, route0.host);
+  EXPECT_EQ("0.0.0.0", route0.netmask);
+  EXPECT_EQ(kRouter2, route0.gateway);
+
+  const IPConfig::Route &route1 = properties.routes[1];
+  EXPECT_EQ(kAddress1, route1.host);
+  EXPECT_EQ("255.255.255.0", route1.netmask);
+  EXPECT_EQ(kRouter1, route1.gateway);
+
+  // A malformed routing table should not affect the current table.
+  EXPECT_FALSE(DHCPConfig::ParseClasslessStaticRoutes(kBrokenClasslessRoutes1,
+                                                      &properties));
+  EXPECT_EQ(2, properties.routes.size());
+  EXPECT_EQ(kRouter0, properties.gateway);
+}
+
 TEST_F(DHCPConfigTest, ParseConfiguration) {
   DHCPConfig::Configuration conf;
   conf[DHCPConfig::kConfigurationKeyIPAddress].writer().append_uint32(
