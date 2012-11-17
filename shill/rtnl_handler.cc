@@ -234,24 +234,6 @@ void RTNLHandler::ParseRTNL(InputData *data) {
 
   while (buf < end) {
     struct nlmsghdr *hdr = reinterpret_cast<struct nlmsghdr *>(buf);
-
-    // temporary debug output
-    // TODO(jwerner@chromium.org): Remove after gathering data (crosbug 35479)
-    if (static_cast<unsigned int>(end - buf) >= sizeof(struct nlmsghdr) &&
-        hdr->nlmsg_type == RTM_NEWLINK) {
-      if (NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)) &&
-          hdr->nlmsg_len <= static_cast<unsigned int>(end - buf) &&
-          hdr->nlmsg_len >= NLMSG_LENGTH(sizeof(struct ifinfomsg))) {
-        struct ifinfomsg *info =
-            reinterpret_cast<struct ifinfomsg *>(NLMSG_DATA(hdr));
-        LOG(INFO) << "RTM_NEWLINK(idx=" << info->ifi_index << ", sender=" <<
-            hdr->nlmsg_pid << ", flags=" << std::hex << info->ifi_flags << ")";
-      } else {
-        LOG(INFO) << "Broken RTM_NEWLINK packet: " <<
-            ByteString(buf, end - buf).HexEncode();
-      }
-    }
-
     if (!NLMSG_OK(hdr, static_cast<unsigned int>(end - buf)))
       break;
 

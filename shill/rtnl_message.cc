@@ -122,12 +122,6 @@ bool RTNLMessage::DecodeInternal(const ByteString &msg) {
   }
 
   if (attr_length) {
-    // temporary debug output
-    // TODO(jwerner@chromium.org): Remove after gathering data (crosbug 35479)
-    if (hdr->hdr.nlmsg_type == RTM_NEWLINK)
-      LOG(INFO) << "Broken RTM_NEWLINK attributes: " << ByteString((char *)
-          IFLA_RTA(NLMSG_DATA(&hdr->hdr)), IFLA_PAYLOAD(&hdr->hdr)).HexEncode();
-
     // We hit a parse error while going through the attributes
     attributes_.clear();
     return false;
