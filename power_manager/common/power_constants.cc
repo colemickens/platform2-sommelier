@@ -75,7 +75,6 @@ const char kBacklightGetMethod[] = "BacklightGet";
 const char kBacklightSetMethod[] = "BacklightSet";
 
 // powerm -> powerd messages.
-const char kInputEventSignal[] = "InputEvent";
 const char kExternalBacklightUpdateSignal[] = "ExternalBacklightUpdate";
 
 // Broadcast signals.

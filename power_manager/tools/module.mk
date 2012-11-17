@@ -53,7 +53,7 @@ clean: CXX_BINARY(tools/backlight_dbus_tool)
 all: CXX_BINARY(tools/backlight_dbus_tool)
 
 SUSPENDDELAYSAMPLE_FLAGS = $(LIBPOWERMAN_FLAGS)
-SUSPENDDELAYSAMPLE_LIBS = $(LIBPOWERMAN_LIBS) -lgflags
+SUSPENDDELAYSAMPLE_LIBS = $(LIBPOWERMAN_LIBS) -lgflags -lprotobuf-lite
 SUSPENDDELAYSAMPLE_OBJS = tools/suspend_delay_sample.o \
                           common/power_constants.o common/util_dbus.o \
                           common/util_dbus_handler.o

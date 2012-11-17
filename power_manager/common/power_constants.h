@@ -68,7 +68,6 @@ extern const char kBacklightGetMethod[];
 extern const char kBacklightSetMethod[];
 
 // powerm -> powerd constants.
-extern const char kInputEventSignal[];
 extern const char kExternalBacklightUpdateSignal[];
 
 // Broadcast signals.

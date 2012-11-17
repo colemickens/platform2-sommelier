@@ -15,6 +15,12 @@ struct _DBusGProxy;
 typedef struct _DBusGProxy DBusGProxy;
 typedef char gchar;
 
+namespace google {
+namespace protobuf {
+class MessageLite;
+}  // namespace protobuf
+}  // namespace google
+
 namespace power_manager {
 namespace util {
 
@@ -28,6 +34,12 @@ bool IsSessionStarted();
 // Gets session state info.  Returns true if call to session manager was
 // successful.  |state| and |user| are both optional args and can be NULL.
 bool GetSessionState(std::string* state, std::string* user);
+
+// Emits a signal containing a serialized protocol buffer.  This should be used
+// to broadcast signals from powerm to notify arbitrary outside processes when
+// things have happened.
+void EmitPowerMSignal(const std::string& signal_name,
+                      const google::protobuf::MessageLite& protobuf);
 
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);

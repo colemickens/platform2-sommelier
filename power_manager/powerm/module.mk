@@ -20,12 +20,14 @@ CXX_STATIC_LIBRARY(powerm/libinternal_backlight.pie.a): \
 	LDLIBS += $(GLIB_LIBS)
 clean: CLEAN(powerm/libinternal_backlight.pie.a)
 
+powerm/powerman.o.depends: power_manager/input_event.pb.h
 LIBPOWERMAN_DEPS = libchromeos-$(BASE_VER)
 LIBPOWERMAN_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
                     $(shell $(PKG_CONFIG) --cflags $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
                    $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = common/power_constants.o \
+                   power_manager/input_event.pb.o \
                    powerm/input.o \
                    powerm/powerman.o \
                    powerm/powerman_metrics.o
@@ -35,7 +37,7 @@ CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a): LDLIBS += $(LIBPOWERMAN_LIBS)
 clean: CLEAN(powerm/libpowerman.pie.a)
 
 POWERMAN_FLAGS = $(LIBPOWERMAN_FLAGS)
-POWERMAN_LIBS = $(LIBPOWERMAN_LIBS)
+POWERMAN_LIBS = $(LIBPOWERMAN_LIBS) -lprotobuf-lite
 POWERMAN_OBJS = powerm/powerman_main.o
 CXX_BINARY(powerm/powerm): $(POWERMAN_OBJS) \
 	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \

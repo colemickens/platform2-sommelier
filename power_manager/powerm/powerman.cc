@@ -23,6 +23,7 @@
 #include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
+#include "power_manager/input_event.pb.h"
 #include "power_manager/powerm/powerman.h"
 
 using base::TimeDelta;
@@ -472,8 +473,26 @@ void PowerManDaemon::SendInputEventSignal(InputType type, ButtonState state) {
   LOG(INFO) << "Sending input event signal: " << util::InputTypeToString(type)
             << " is " << (state == BUTTON_UP ? "up" : "down");
 
-  // This signal is used by both Chrome and powerd.
-  // Both must be updated if it is changed.
+  InputEvent proto;
+  switch (type) {
+    case INPUT_LID:
+      proto.set_type(state == BUTTON_DOWN ?
+                     InputEvent_Type_LID_CLOSED :
+                     InputEvent_Type_LID_OPEN);
+      break;
+    case INPUT_POWER_BUTTON:
+      proto.set_type(state == BUTTON_DOWN ?
+                     InputEvent_Type_POWER_BUTTON_DOWN :
+                     InputEvent_Type_POWER_BUTTON_UP);
+      break;
+    default:
+      NOTREACHED() << "Unhandled input event type " << type;
+  }
+  proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
+  util::EmitPowerMSignal(kInputEventSignal, proto);
+
+  // TODO(derat): Remove this after Chrome is using the protocol-buffer-based
+  // signal above.
   dbus_int32_t type_param = type;
   dbus_bool_t down_param = (state == BUTTON_DOWN) ? TRUE : FALSE;
   dbus_int64_t timestamp_param = base::TimeTicks::Now().ToInternalValue();
