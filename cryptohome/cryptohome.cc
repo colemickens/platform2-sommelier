@@ -245,6 +245,18 @@ class ClientLoop {
     dbus_g_proxy_connect_signal(proxy->gproxy(), "AsyncCallStatus",
                                 G_CALLBACK(ClientLoop::CallbackThunk),
                                 this, NULL);
+    dbus_g_object_register_marshaller(cryptohome_VOID__INT_BOOLEAN_POINTER,
+                                      G_TYPE_NONE,
+                                      G_TYPE_INT,
+                                      G_TYPE_BOOLEAN,
+                                      DBUS_TYPE_G_UCHAR_ARRAY,
+                                      G_TYPE_INVALID);
+    dbus_g_proxy_add_signal(proxy->gproxy(), "AsyncCallStatusWithData",
+                            G_TYPE_INT, G_TYPE_BOOLEAN, DBUS_TYPE_G_UCHAR_ARRAY,
+                            G_TYPE_INVALID);
+    dbus_g_proxy_connect_signal(proxy->gproxy(), "AsyncCallStatusWithData",
+                                G_CALLBACK(ClientLoop::CallbackDataThunk),
+                                this, NULL);
     loop_ = g_main_loop_new(NULL, TRUE);
   }
 
@@ -261,11 +273,23 @@ class ClientLoop {
     return return_code_;
   }
 
+  string get_return_data() {
+    return return_data_;
+  }
+
  private:
   void Callback(int async_call_id, bool return_status, int return_code) {
     if (async_call_id == async_call_id_) {
       return_status_ = return_status;
       return_code_ = return_code;
+      g_main_loop_quit(loop_);
+    }
+  }
+
+  void CallbackWithData(int async_call_id, bool return_status, GArray* data) {
+    if (async_call_id == async_call_id_) {
+      return_status_ = return_status;
+      return_data_ = string(static_cast<char*>(data->data), data->len);
       g_main_loop_quit(loop_);
     }
   }
@@ -278,10 +302,21 @@ class ClientLoop {
                                                       return_code);
   }
 
+  static void CallbackDataThunk(DBusGProxy* proxy,
+                                int async_call_id,
+                                bool return_status,
+                                GArray* data,
+                                gpointer userdata) {
+    reinterpret_cast<ClientLoop*>(userdata)->CallbackWithData(async_call_id,
+                                                              return_status,
+                                                              data);
+  }
+
   GMainLoop *loop_;
   int async_call_id_;
   bool return_status_;
   int return_code_;
+  string return_data_;
 };
 
 class TpmWaitLoop {
@@ -952,16 +987,41 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_TPM_ATTESTATION_START_ENROLL],
       action.c_str())) {
     chromeos::glib::ScopedError error;
-    chromeos::glib::ScopedArray data;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(
-        proxy.gproxy(),
-        &chromeos::Resetter(&data).lvalue(),
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
-             error->message);
-      return 1;
+    string response_data;
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      chromeos::glib::ScopedArray data;
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_enroll_request(
+          proxy.gproxy(),
+          &chromeos::Resetter(&data).lvalue(),
+          &chromeos::Resetter(&error).lvalue())) {
+        printf("TpmAttestationCreateEnrollRequest call failed: %s.\n",
+               error->message);
+        return 1;
+      }
+      response_data = string(static_cast<char*>(data->data), data->len);
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(&proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_enroll_request(
+              proxy.gproxy(),
+              &async_id,
+              &chromeos::Resetter(&error).lvalue())) {
+        printf("AsyncTpmAttestationCreateEnrollRequest call failed: %s.\n",
+               error->message);
+        return 1;
+      } else {
+        client_loop.Run(async_id);
+        if (!client_loop.get_return_status()) {
+          printf("Attestation enrollment request failed.\n");
+          return 1;
+        }
+        response_data = client_loop.get_return_data();
+      }
     }
-    file_util::WriteFile(GetFile(cl), data->data, data->len);
+    file_util::WriteFile(GetFile(cl),
+                         response_data.data(),
+                         response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_ENROLL],
       action.c_str())) {
@@ -974,11 +1034,26 @@ int main(int argc, char **argv) {
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
     chromeos::glib::ScopedError error;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
-        proxy.gproxy(), data.get(), &success,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("TpmAttestationEnroll call failed: %s.\n", error->message);
-      return 1;
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_enroll(
+          proxy.gproxy(), data.get(), &success,
+          &chromeos::Resetter(&error).lvalue())) {
+        printf("TpmAttestationEnroll call failed: %s.\n", error->message);
+        return 1;
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(&proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_enroll(
+          proxy.gproxy(), data.get(), &async_id,
+          &chromeos::Resetter(&error).lvalue())) {
+        printf("AsyncTpmAttestationEnroll call failed: %s.\n", error->message);
+        return 1;
+      } else {
+        client_loop.Run(async_id);
+        success = client_loop.get_return_status();
+      }
     }
     if (!success) {
       printf("Attestation enrollment failed.\n");
@@ -988,17 +1063,43 @@ int main(int argc, char **argv) {
       switches::kActions[switches::ACTION_TPM_ATTESTATION_START_CERTREQ],
       action.c_str())) {
     chromeos::glib::ScopedError error;
-    chromeos::glib::ScopedArray data;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
-        proxy.gproxy(),
-        TRUE,
-        &chromeos::Resetter(&data).lvalue(),
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("TpmAttestationCreateCertRequest call failed: %s.\n",
-             error->message);
-      return 1;
+    string response_data;
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      chromeos::glib::ScopedArray data;
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
+          proxy.gproxy(),
+          TRUE,
+          &chromeos::Resetter(&data).lvalue(),
+          &chromeos::Resetter(&error).lvalue())) {
+        printf("TpmAttestationCreateCertRequest call failed: %s.\n",
+               error->message);
+        return 1;
+      }
+      response_data = string(static_cast<char*>(data->data), data->len);
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(&proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(
+              proxy.gproxy(),
+              TRUE,
+              &async_id,
+              &chromeos::Resetter(&error).lvalue())) {
+        printf("AsyncTpmAttestationCreateCertRequest call failed: %s.\n",
+               error->message);
+        return 1;
+      } else {
+        client_loop.Run(async_id);
+        if (!client_loop.get_return_status()) {
+          printf("Attestation certificate request failed.\n");
+          return 1;
+        }
+        response_data = client_loop.get_return_data();
+      }
     }
-    file_util::WriteFile(GetFile(cl), data->data, data->len);
+    file_util::WriteFile(GetFile(cl),
+                         response_data.data(),
+                         response_data.length());
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
@@ -1011,22 +1112,43 @@ int main(int argc, char **argv) {
     g_array_append_vals(data.get(), contents.data(), contents.length());
     gboolean success = FALSE;
     chromeos::glib::ScopedError error;
-    chromeos::glib::ScopedArray cert;
-    if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
-        proxy.gproxy(),
-        data.get(),
-        &chromeos::Resetter(&cert).lvalue(),
-        &success,
-        &chromeos::Resetter(&error).lvalue())) {
-      printf("TpmAttestationFinishCertRequest call failed: %s.\n",
-             error->message);
-      return 1;
+    string cert_data;
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      chromeos::glib::ScopedArray cert;
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
+          proxy.gproxy(),
+          data.get(),
+          &chromeos::Resetter(&cert).lvalue(),
+          &success,
+          &chromeos::Resetter(&error).lvalue())) {
+        printf("TpmAttestationFinishCertRequest call failed: %s.\n",
+               error->message);
+        return 1;
+      }
+      cert_data = string(static_cast<char*>(cert->data), cert->len);
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(&proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_finish_cert_request(
+              proxy.gproxy(),
+              data.get(),
+              &async_id,
+              &chromeos::Resetter(&error).lvalue())) {
+        printf("AsyncTpmAttestationFinishCertRequest call failed: %s.\n",
+               error->message);
+        return 1;
+      } else {
+        client_loop.Run(async_id);
+        success = client_loop.get_return_status();
+        cert_data = client_loop.get_return_data();
+      }
     }
     if (!success) {
       printf("Attestation certificate request failed.\n");
       return 1;
     }
-    file_util::WriteFile(GetFile(cl), cert->data, cert->len);
+    file_util::WriteFile(GetFile(cl), cert_data.data(), cert_data.length());
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

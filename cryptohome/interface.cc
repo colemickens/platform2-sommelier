@@ -231,11 +231,23 @@ gboolean cryptohome_tpm_attestation_create_enroll_request(
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateEnrollRequest, OUT_pca_request);
 }
+gboolean cryptohome_async_tpm_attestation_create_enroll_request(
+    Cryptohome *self,
+    gint *OUT_async_id,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateEnrollRequest, OUT_async_id);
+}
 gboolean cryptohome_tpm_attestation_enroll(Cryptohome *self,
                                            GArray* pca_response,
                                            gboolean* OUT_success,
                                            GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationEnroll, pca_response, OUT_success);
+}
+gboolean cryptohome_async_tpm_attestation_enroll(Cryptohome *self,
+                                                 GArray* pca_response,
+                                                 gint* OUT_async_id,
+                                                 GError** error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationEnroll, pca_response, OUT_async_id);
 }
 gboolean cryptohome_tpm_attestation_create_cert_request(
     Cryptohome *self,
@@ -246,6 +258,15 @@ gboolean cryptohome_tpm_attestation_create_cert_request(
                          is_cert_for_owner,
                          OUT_pca_request);
 }
+gboolean cryptohome_async_tpm_attestation_create_cert_request(
+    Cryptohome *self,
+    gboolean is_cert_for_owner,
+    gint *OUT_async_id,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
+                         is_cert_for_owner,
+                         OUT_async_id);
+}
 gboolean cryptohome_tpm_attestation_finish_cert_request(Cryptohome *self,
                                                         GArray* pca_response,
                                                         GArray** OUT_cert,
@@ -255,6 +276,15 @@ gboolean cryptohome_tpm_attestation_finish_cert_request(Cryptohome *self,
                          pca_response,
                          OUT_cert,
                          OUT_success);
+}
+gboolean cryptohome_async_tpm_attestation_finish_cert_request(
+    Cryptohome *self,
+    GArray* pca_response,
+    gint *OUT_async_id,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationFinishCertRequest,
+                         pca_response,
+                         OUT_async_id);
 }
 gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,
                                                 gboolean *OUT_is_enrolled,

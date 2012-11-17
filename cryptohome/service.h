@@ -180,16 +180,29 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean TpmVerifyEK(gboolean* OUT_verified, GError** error);
   virtual gboolean TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
                                                      GError** error);
+  virtual gboolean AsyncTpmAttestationCreateEnrollRequest(
+      gint* OUT_async_id,
+      GError** error);
   virtual gboolean TpmAttestationEnroll(GArray* pca_response,
                                         gboolean* OUT_success,
                                         GError** error);
+  virtual gboolean AsyncTpmAttestationEnroll(GArray* pca_response,
+                                             gint* OUT_async_id,
+                                             GError** error);
   virtual gboolean TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
                                                    GArray** OUT_pca_request,
                                                    GError** error);
+  virtual gboolean AsyncTpmAttestationCreateCertRequest(
+      gboolean is_cert_for_owner,
+      gint* OUT_async_id,
+      GError** error);
   virtual gboolean TpmAttestationFinishCertRequest(GArray* pca_response,
                                                    GArray** OUT_cert,
                                                    gboolean* OUT_success,
                                                    GError** error);
+  virtual gboolean AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
+                                                        gint* OUT_async_id,
+                                                        GError** error);
   virtual gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
                                             GError** error);
 
@@ -269,6 +282,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   bool initialize_tpm_;
   base::Thread mount_thread_;
   guint async_complete_signal_;
+  // A completion signal for async calls that return data.
+  guint async_data_complete_signal_;
   guint tpm_init_signal_;
   CryptohomeEventSource event_source_;
   int auto_cleanup_period_;

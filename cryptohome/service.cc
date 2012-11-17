@@ -218,6 +218,7 @@ Service::Service()
       initialize_tpm_(true),
       mount_thread_(kMountThreadName),
       async_complete_signal_(-1),
+      async_data_complete_signal_(-1),
       tpm_init_signal_(-1),
       event_source_(),
       auto_cleanup_period_(kAutoCleanupPeriodMS),
@@ -292,6 +293,20 @@ bool Service::Initialize() {
                                         G_TYPE_INT,
                                         G_TYPE_BOOLEAN,
                                         G_TYPE_INT);
+
+  async_data_complete_signal_ = g_signal_new(
+      "async_call_status_with_data",
+      gobject::cryptohome_get_type(),
+      G_SIGNAL_RUN_LAST,
+      0,
+      NULL,
+      NULL,
+      cryptohome_VOID__INT_BOOLEAN_POINTER,
+      G_TYPE_NONE,
+      3,
+      G_TYPE_INT,
+      G_TYPE_BOOLEAN,
+      DBUS_TYPE_G_UCHAR_ARRAY);
 
   tpm_init_signal_ = g_signal_new("tpm_init_status",
                                   gobject::cryptohome_get_type(),
@@ -1008,6 +1023,13 @@ gboolean Service::TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
   return TRUE;
 }
 
+gboolean Service::AsyncTpmAttestationCreateEnrollRequest(gint* OUT_async_id,
+                                                         GError** error) {
+  // TODO(dkrahn): Implement.
+  g_set_error(error, 0, 0, "Not implemented");
+  return FALSE;
+}
+
 gboolean Service::TpmAttestationEnroll(GArray* pca_response,
                                        gboolean* OUT_success,
                                        GError** error) {
@@ -1020,6 +1042,14 @@ gboolean Service::TpmAttestationEnroll(GArray* pca_response,
   chromeos::SecureBlob blob(pca_response->data, pca_response->len);
   *OUT_success = attestation->Enroll(blob);
   return TRUE;
+}
+
+gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
+                                            gint* OUT_async_id,
+                                            GError** error) {
+  // TODO(dkrahn): Implement.
+  g_set_error(error, 0, 0, "Not implemented");
+  return FALSE;
 }
 
 gboolean Service::TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
@@ -1035,6 +1065,15 @@ gboolean Service::TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
   if (attestation->CreateCertRequest(is_cert_for_owner, &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
   return TRUE;
+}
+
+gboolean Service::AsyncTpmAttestationCreateCertRequest(
+    gboolean is_cert_for_owner,
+    gint* OUT_async_id,
+    GError** error) {
+  // TODO(dkrahn): Implement.
+  g_set_error(error, 0, 0, "Not implemented");
+  return FALSE;
 }
 
 gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
@@ -1054,6 +1093,14 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
   if (*OUT_success)
     g_array_append_vals(*OUT_cert, &cert_blob.front(), cert_blob.size());
   return TRUE;
+}
+
+gboolean Service::AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
+                                                       gint* OUT_async_id,
+                                                       GError** error) {
+  // TODO(dkrahn): Implement.
+  g_set_error(error, 0, 0, "Not implemented");
+  return FALSE;
 }
 
 gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
