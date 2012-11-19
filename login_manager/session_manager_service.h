@@ -256,8 +256,6 @@ class SessionManagerService
                                gchar** OUT_filepath,
                                GError** error);
 
-  gboolean DeprecatedError(const char* msg, GError** error);
-
   // In addition to emitting "start-user-session" upstart signal and
   // "SessionStateChanged:started" D-Bus signal, this function will
   // also call browser_.job->StartSession(email_address).
@@ -355,11 +353,6 @@ class SessionManagerService
 
   // Sets the device up to "Powerwash" on reboot, and then triggers a reboot.
   gboolean StartDeviceWipe(gboolean *OUT_done, GError** error);
-
-  // Manage per-session services, which die when the session ends.
-  gboolean StartSessionService(gchar *name, gboolean *OUT_done, GError **error);
-  gboolean StopSessionService(gchar *name, gboolean *OUT_done, GError **error);
-  static bool IsValidSessionService(const gchar *name);
 
   // |data| is a SessionManagerService*.
   static void HandleKeygenExit(GPid pid, gint status, gpointer data);
@@ -517,7 +510,6 @@ class SessionManagerService
   static const char kLoginUserTypeMetric[];
   // The name of the pref that Chrome sets to track who the owner is.
   static const char kDeviceOwnerPref[];
-  static const char *kValidSessionServices[];
 
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];

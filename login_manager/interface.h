@@ -90,14 +90,6 @@ gboolean session_manager_restart_job_with_auth(SessionManager *self,
                                                gchar *arguments,
                                                gboolean *OUT_done,
                                                GError **error);
-gboolean session_manager_start_session_service(SessionManager *self,
-                                               gchar *name,
-                                               gboolean *OUT_done,
-                                               GError **error);
-gboolean session_manager_stop_session_service(SessionManager *self,
-                                              gchar *name,
-                                              gboolean *OUT_done,
-                                              GError **error);
 gboolean session_manager_start_device_wipe(SessionManager *self,
                                            gboolean *OUT_done,
                                            GError **error);
