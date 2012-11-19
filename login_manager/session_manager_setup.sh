@@ -270,6 +270,13 @@ else
   ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
+# On boards with ARM NEON support, force libvpx to use the NEON-optimized
+# code paths. Remove once http://crbug.com/161834 is fixed.
+# This is needed because libvpx cannot check cpuinfo within the sandbox.
+if is_board daisy; then
+  export VPX_SIMD_CAPS=0xf
+fi
+
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="--allow-webui-compositing"
