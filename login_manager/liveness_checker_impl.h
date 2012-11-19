@@ -9,6 +9,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
+#include <base/time.h>
 #include <gtest/gtest.h>
 
 #include "login_manager/liveness_checker.h"
@@ -31,7 +32,8 @@ class LivenessCheckerImpl : public LivenessChecker {
   LivenessCheckerImpl(SessionManagerService* manager,
                       SystemUtils* utils,
                       const scoped_refptr<base::MessageLoopProxy>& loop,
-                      bool enable_aborting);
+                      bool enable_aborting,
+                      base::TimeDelta interval);
   virtual ~LivenessCheckerImpl();
 
   // Implementation of LivenessChecker.
@@ -43,15 +45,16 @@ class LivenessCheckerImpl : public LivenessChecker {
   // If a liveness check is outstanding, kills the browser and clears liveness
   // tracking state.  This instance will be stopped at that point in time.
   // If no ping is outstanding, sends a liveness check to the browser over DBus,
-  // then reschedules itself after interval_seconds.
-  void CheckAndSendLivenessPing(uint32 interval_seconds);
+  // then reschedules itself after interval.
+  void CheckAndSendLivenessPing(base::TimeDelta interval);
 
  private:
   SessionManagerService* manager_;
   SystemUtils* system_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 
-  bool enable_aborting_;
+  const bool enable_aborting_;
+  const base::TimeDelta interval_;
   bool outstanding_liveness_ping_;
   base::CancelableClosure liveness_check_;
   base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_;

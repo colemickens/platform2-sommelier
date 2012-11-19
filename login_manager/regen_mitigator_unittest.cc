@@ -9,6 +9,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/time.h>
 #include <gtest/gtest.h>
 
 #include "chromeos/dbus/service_constants.h"
@@ -30,7 +31,11 @@ class RegenMitigatorTest : public ::testing::Test {
 
   virtual void SetUp() {
     scoped_ptr<ChildJobInterface> job(new MockChildJob());
-    manager_ = new SessionManagerService(job.Pass(), 3, false, &utils_);
+    manager_ = new SessionManagerService(job.Pass(),
+                                         3,
+                                         false,
+                                         base::TimeDelta(),
+                                         &utils_);
   }
 
   virtual void TearDown() {

@@ -9,6 +9,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
+#include <base/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -16,6 +17,7 @@
 #include "login_manager/mock_session_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 
+using ::base::TimeDelta;
 using ::testing::AtLeast;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
@@ -35,7 +37,8 @@ class LivenessCheckerImplTest : public ::testing::Test {
     checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                            &system_,
                                            loop_proxy_,
-                                           true));
+                                           true,
+                                           TimeDelta::FromSeconds(0)));
   }
 
   void ScheduleQuit() {
@@ -89,14 +92,14 @@ class LivenessCheckerImplTest : public ::testing::Test {
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
-  checker_->CheckAndSendLivenessPing(0);
+  checker_->CheckAndSendLivenessPing(TimeDelta());
   MessageLoop::current()->RunAllPending();
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
   EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
-  checker_->CheckAndSendLivenessPing(0);
+  checker_->CheckAndSendLivenessPing(TimeDelta());
   MessageLoop::current()->RunAllPending();
 }
 
@@ -104,10 +107,11 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                          &system_,
                                          loop_proxy_,
-                                         false));
+                                         false  /* Disable aborting */,
+                                         TimeDelta()));
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!
-  checker_->CheckAndSendLivenessPing(0);
+  checker_->CheckAndSendLivenessPing(TimeDelta());
   MessageLoop::current()->RunAllPending();
 }
 

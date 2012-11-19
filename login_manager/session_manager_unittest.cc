@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
+#include <base/time.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
@@ -88,7 +89,11 @@ void SessionManagerTest::InitManager(MockChildJob* job) {
   scoped_ptr<ChildJobInterface> job_ptr(job);
 
   ASSERT_TRUE(MessageLoop::current() == NULL);
-  manager_ = new SessionManagerService(job_ptr.Pass(), 3, false, &real_utils_);
+  manager_ = new SessionManagerService(job_ptr.Pass(),
+                                       3,
+                                       false,
+                                       base::TimeDelta(),
+                                       &real_utils_);
   manager_->Reset();
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);

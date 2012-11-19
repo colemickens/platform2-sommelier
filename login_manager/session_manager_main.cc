@@ -18,6 +18,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
+#include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/glib/object.h>
 #include <chromeos/syslog_logging.h>
@@ -59,7 +60,8 @@ static const int kKillTimeoutDefault = 3;
 
 // Name of the flag specifying whether we should kill and restart chrome
 // if we detect that it has hung.
-static const char kEnableLivenessDetection[] = "enable-liveness-detection";
+static const char kEnableHangDetection[] = "enable-hang-detection";
+static const uint kHangDetectionIntervalDefaultSeconds = 60;
 
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
@@ -73,8 +75,9 @@ static const char kHelpMessage[] = "\nAvailable Switches: \n"
 "  --kill-timeout=[number in seconds]\n"
 "    Number of seconds to wait for children to exit gracefully before\n"
 "    killing them with a SIGABRT.\n"
-"  --enable-liveness-detection\n"
+"  --enable-hang-detection[=number in seconds]\n"
 "    Ping the browser over DBus periodically to determine if it's alive.\n"
+"    Optionally accepts a period value in seconds.  Default is 60.\n"
 "    If it fails to respond, SIGABRT and restart it."
 "  -- /path/to/program [arg1 [arg2 [ . . . ] ] ]\n"
     "    Supplies the required program to execute and its arguments.\n";
@@ -122,7 +125,21 @@ int main(int argc, char* argv[]) {
     if (base::StringToInt(timeout_flag, &from_flag)) {
       kill_timeout = from_flag;
     } else {
-      DLOG(WARNING) << "Failed to parse uid, defaulting to " << kill_timeout;
+      DLOG(WARNING) << "Failed to parse kill timeout, defaulting to "
+                    << kill_timeout;
+    }
+  }
+
+  // Parse hang detection interval if it's present.
+  uint hang_detection_interval = switches::kHangDetectionIntervalDefaultSeconds;
+  if (cl->HasSwitch(switches::kEnableHangDetection)) {
+    string flag = cl->GetSwitchValueASCII(switches::kEnableHangDetection);
+    uint from_flag = 0;
+    if (base::StringToUint(flag, &from_flag)) {
+      hang_detection_interval = from_flag;
+    } else {
+      DLOG(WARNING) << "Failed to parse hang detection interval, defaulting to "
+                    << hang_detection_interval;
     }
   }
 
@@ -139,7 +156,8 @@ int main(int argc, char* argv[]) {
       new SessionManagerService(
           browser_job.Pass(),
           kill_timeout,
-          cl->HasSwitch(switches::kEnableLivenessDetection),
+          cl->HasSwitch(switches::kEnableHangDetection),
+          base::TimeDelta::FromSeconds(hang_detection_interval),
           &system);
 
   string magic_chrome_file =

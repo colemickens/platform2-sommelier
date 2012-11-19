@@ -30,9 +30,11 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
+#include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
@@ -226,7 +228,8 @@ void SessionManagerService::TestApi::ScheduleChildExit(pid_t pid, int status) {
 SessionManagerService::SessionManagerService(
     scoped_ptr<ChildJobInterface> child_job,
     int kill_timeout,
-    bool enable_liveness_checking,
+    bool enable_browser_abort_on_hang,
+    base::TimeDelta hang_detection_interval,
     SystemUtils* utils)
     : browser_(child_job.Pass()),
       exit_on_child_done_(false),
@@ -241,7 +244,8 @@ SessionManagerService::SessionManagerService(
       login_metrics_(NULL),
       upstart_signal_emitter_(new UpstartSignalEmitter),
       liveness_checker_(NULL),
-      liveness_checking_enabled_(enable_liveness_checking),
+      enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
+      liveness_checking_interval_(hang_detection_interval),
       session_started_(false),
       session_stopping_(false),
       current_user_is_incognito_(false),
@@ -351,10 +355,12 @@ bool SessionManagerService::Initialize() {
                                           owner_key_.get(),
                                           loop_proxy_));
 
-  liveness_checker_.reset(new LivenessCheckerImpl(this,
-                                                  system_,
-                                                  loop_proxy_,
-                                                  liveness_checking_enabled_));
+  liveness_checker_.reset(
+      new LivenessCheckerImpl(this,
+                              system_,
+                              loop_proxy_,
+                              enable_browser_abort_on_hang_,
+                              liveness_checking_interval_));
   return true;
 }
 

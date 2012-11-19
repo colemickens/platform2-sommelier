@@ -20,7 +20,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/threading/thread.h>
+#include <base/time.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -36,6 +36,8 @@
 #include "login_manager/policy_key.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
+
+class MessageLoop;
 
 namespace base {
 class MessageLoopProxy;
@@ -72,7 +74,8 @@ class SessionManagerService
 
   SessionManagerService(scoped_ptr<ChildJobInterface> child_job,
                         int kill_timeout,
-                        bool enable_liveness_checking,
+                        bool enable_browser_abort_on_hang,
+                        base::TimeDelta hang_detection_interval,
                         SystemUtils* system);
   virtual ~SessionManagerService();
 
@@ -566,7 +569,8 @@ class SessionManagerService
   scoped_ptr<LoginMetrics> login_metrics_;
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
-  const bool liveness_checking_enabled_;
+  const bool enable_browser_abort_on_hang_;
+  const base::TimeDelta liveness_checking_interval_;
 
   bool session_started_;
   bool session_stopping_;

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/message_loop_proxy.h>
+#include <base/time.h>
 
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_device_policy_service.h"
@@ -73,7 +74,11 @@ MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}
 
 MockSessionManagerService::MockSessionManagerService()
-    : SessionManagerService(scoped_ptr<ChildJobInterface>(), 0, false, NULL) {}
+    : SessionManagerService(scoped_ptr<ChildJobInterface>(),
+                            0,
+                            false,
+                            base::TimeDelta(),
+                            NULL) {}
 MockSessionManagerService::~MockSessionManagerService() {}
 
 MockSystemUtils::MockSystemUtils() {}
