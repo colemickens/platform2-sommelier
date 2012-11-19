@@ -41,8 +41,8 @@ class GdmDevice : public Device {
   void RestoreStatusUpdateInterval();
 
  protected:
-  virtual void UpdateNetworkScanInterval();
-  virtual void UpdateStatusUpdateInterval();
+  virtual void UpdateNetworkScanInterval(uint32 network_scan_interval);
+  virtual void UpdateStatusUpdateInterval(uint32 status_update_interval);
 
  private:
   friend class GdmDriver;
@@ -73,7 +73,7 @@ class GdmDevice : public Device {
   guint network_scan_timeout_id_;
   guint status_update_timeout_id_;
   guint restore_status_update_interval_timeout_id_;
-  uint32 saved_status_update_interval_;
+  bool restore_status_update_interval_;
   Network::Identifier current_network_identifier_;
   std::string current_user_identity_;
 

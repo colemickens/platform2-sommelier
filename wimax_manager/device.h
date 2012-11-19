@@ -57,8 +57,8 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   }
 
  protected:
-  virtual void UpdateNetworkScanInterval() = 0;
-  virtual void UpdateStatusUpdateInterval() = 0;
+  virtual void UpdateNetworkScanInterval(uint32 network_scan_interval) = 0;
+  virtual void UpdateStatusUpdateInterval(uint32 status_update_interval) = 0;
 
   void UpdateNetworks();
   void UpdateRFInfo();

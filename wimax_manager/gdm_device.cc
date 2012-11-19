@@ -132,7 +132,7 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       network_scan_timeout_id_(0),
       status_update_timeout_id_(0),
       restore_status_update_interval_timeout_id_(0),
-      saved_status_update_interval_(0),
+      restore_status_update_interval_(false),
       current_network_identifier_(Network::kInvalidIdentifier) {
 }
 
@@ -212,15 +212,17 @@ bool GdmDevice::Enable() {
   //
   // TODO(benchan): Refactor common functionalities like periodic network scan
   // to the Device base class.
-  if (network_scan_timeout_id_ == 0) {
-    network_scan_timeout_id_ =
-        g_timeout_add_seconds(network_scan_interval(), OnNetworkScan, this);
+  if (network_scan_timeout_id_ != 0) {
+    g_source_remove(network_scan_timeout_id_);
   }
+  network_scan_timeout_id_ =
+      g_timeout_add_seconds(network_scan_interval(), OnNetworkScan, this);
 
-  if (status_update_timeout_id_ == 0) {
-    status_update_timeout_id_ = g_timeout_add_seconds(
-        status_update_interval(), OnStatusUpdate, this);
+  if (status_update_timeout_id_ != 0) {
+    g_source_remove(status_update_timeout_id_);
   }
+  status_update_timeout_id_ =
+      g_timeout_add_seconds(status_update_interval(), OnStatusUpdate, this);
 
   if (!driver_->GetDeviceStatus(this)) {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
@@ -236,6 +238,7 @@ bool GdmDevice::Disable() {
   ClearCurrentConnectionProfile();
 
   CancelRestoreStatusUpdateIntervalTimeout();
+  RestoreStatusUpdateInterval();
 
   // Cancel any pending connect timeout.
   if (connect_timeout_id_ != 0) {
@@ -330,24 +333,20 @@ bool GdmDevice::ScanNetworks() {
 }
 
 bool GdmDevice::UpdateStatus() {
-  DeviceStatus old_status = status();
   if (!driver_->GetDeviceStatus(this)) {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";
     return false;
   }
 
-  // Cancel the timeout for connect if the device is no longer in the
-  // 'connecting' state.
+  // Cancel the timeout for connect and restore status update interval
+  // if the device is no longer in the 'connecting' state.
   if (connect_timeout_id_ != 0 && status() != kDeviceStatusConnecting) {
+    LOG(INFO) << "Disable connect timeout.";
     g_source_remove(connect_timeout_id_);
     connect_timeout_id_ = 0;
-  }
 
-  DeviceStatus new_status = status();
-  if (old_status == kDeviceStatusConnecting &&
-      new_status != kDeviceStatusConnecting) {
     CancelRestoreStatusUpdateIntervalTimeout();
-    if (saved_status_update_interval_ != 0) {
+    if (restore_status_update_interval_) {
       restore_status_update_interval_timeout_id_ =
           g_timeout_add_seconds(1, OnDeferredRestoreStatusUpdateInterval, this);
     }
@@ -360,35 +359,38 @@ bool GdmDevice::UpdateStatus() {
   return true;
 }
 
-void GdmDevice::UpdateNetworkScanInterval() {
+void GdmDevice::UpdateNetworkScanInterval(uint32 network_scan_interval) {
   if (network_scan_timeout_id_ != 0) {
-    LOG(INFO) << "Update network scan interval to " << network_scan_interval()
+    LOG(INFO) << "Update network scan interval to " << network_scan_interval
               << "s.";
     g_source_remove(network_scan_timeout_id_);
     network_scan_timeout_id_ =
-        g_timeout_add_seconds(network_scan_interval(), OnNetworkScan, this);
+        g_timeout_add_seconds(network_scan_interval, OnNetworkScan, this);
   }
 }
 
-void GdmDevice::UpdateStatusUpdateInterval() {
+void GdmDevice::UpdateStatusUpdateInterval(uint32 status_update_interval) {
   if (status_update_timeout_id_ != 0) {
-    LOG(INFO) << "Update status update interval to " << status_update_interval()
+    LOG(INFO) << "Update status update interval to " << status_update_interval
               << "s.";
     g_source_remove(status_update_timeout_id_);
-    status_update_timeout_id_ = g_timeout_add_seconds(
-        status_update_interval(), OnStatusUpdate, this);
+    status_update_timeout_id_ =
+        g_timeout_add_seconds(status_update_interval, OnStatusUpdate, this);
   }
 }
 
 void GdmDevice::RestoreStatusUpdateInterval() {
-  SetStatusUpdateInterval(saved_status_update_interval_);
-  saved_status_update_interval_ = 0;
+  if (!restore_status_update_interval_)
+    return;
+
+  UpdateStatusUpdateInterval(status_update_interval());
+  restore_status_update_interval_ = false;
   restore_status_update_interval_timeout_id_ = 0;
 
   // Restarts the network scan timeout source to be aligned with the status
   // update timeout source, which helps increase the idle time of the device
   // when both sources are fired and served by the device around the same time.
-  UpdateNetworkScanInterval();
+  UpdateNetworkScanInterval(network_scan_interval());
 }
 
 bool GdmDevice::Connect(const Network &network,
@@ -437,16 +439,16 @@ bool GdmDevice::Connect(const Network &network,
     return false;
   }
 
-  saved_status_update_interval_ = status_update_interval();
-  CancelRestoreStatusUpdateIntervalTimeout();
-  SetStatusUpdateInterval(kStatusUpdateIntervalDuringConnectInSeconds);
-
   if (!driver_->ConnectDeviceToNetwork(this, network)) {
     LOG(ERROR) << "Failed to connect device '" << name()
                << "' to network '" << network.name() << "' ("
                << network.identifier() << ")";
     return false;
   }
+
+  CancelRestoreStatusUpdateIntervalTimeout();
+  UpdateStatusUpdateInterval(kStatusUpdateIntervalDuringConnectInSeconds);
+  restore_status_update_interval_ = true;
 
   current_network_identifier_ = network.identifier();
   current_user_identity_ = user_identity;
@@ -455,6 +457,11 @@ bool GdmDevice::Connect(const Network &network,
   // is stuck at the 'connecting' state.
   connect_timeout_id_ =
       g_timeout_add_seconds(kConnectTimeoutInSeconds, OnConnectTimeout, this);
+
+  if (!driver_->GetDeviceStatus(this)) {
+    LOG(ERROR) << "Failed to get status of device '" << name() << "'";
+    return false;
+  }
   return true;
 }
 
@@ -468,6 +475,9 @@ bool GdmDevice::Disconnect() {
   }
 
   ClearCurrentConnectionProfile();
+
+  CancelRestoreStatusUpdateIntervalTimeout();
+  RestoreStatusUpdateInterval();
 
   if (!driver_->GetDeviceStatus(this)) {
     LOG(ERROR) << "Failed to get status of device '" << name() << "'";

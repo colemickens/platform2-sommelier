@@ -69,14 +69,14 @@ void Device::UpdateRFInfo() {
 void Device::SetNetworkScanInterval(uint32 network_scan_interval) {
   if (network_scan_interval_ != network_scan_interval) {
     network_scan_interval_ = network_scan_interval;
-    UpdateNetworkScanInterval();
+    UpdateNetworkScanInterval(network_scan_interval);
   }
 }
 
 void Device::SetStatusUpdateInterval(uint32 status_update_interval) {
   if (status_update_interval_ != status_update_interval) {
     status_update_interval_ = status_update_interval;
-    UpdateStatusUpdateInterval();
+    UpdateStatusUpdateInterval(status_update_interval);
   }
 }
 
