@@ -92,6 +92,7 @@ static const Log common_logs[] = {
   { "lsusb", "lsusb" },
   { "meminfo", "cat /proc/meminfo" },
   { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
+  { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
   { "power-supply-info", "/usr/bin/power-supply-info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
   { "powerd.out", "/bin/cat /var/log/power_manager/powerd.out" },
