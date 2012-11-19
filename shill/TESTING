@@ -34,7 +34,7 @@ Running unit tests
   - full workflow:
     (chroot)$ GTEST_ARGS="--v=1000 --gtest_filter=WiFiPropertyTest.*" \
       FEATURES="test" emerge-x86-generic shill
-  - incremenetal workflow:
+  - incremental workflow:
     (chroot)$ GTEST_ARGS="--v=1000 --gtest_filter=WiFiPropertyTest.*" \
       CXXFLAGS=-g cros_workon_make --board x86-generic --reconf --test shill
 
@@ -47,28 +47,21 @@ Running integration tests
   (chroot) src/scripts$ ./image_to_vm.sh --board=x86-generic --test_image
 
 - start the VM
-  (host)$ sudo kvm -m 1024 -vga std -pidfile /tmp/kvm.pid \
+  (host)$ sudo kvm -m 2048 -vga std -pidfile /tmp/kvm.pid \
               -net nic,model=virtio -net user,hostfwd=tcp::9222-:22 \
               -hda <path to chroot>/src/build/images/x86-generic/latest/chromiumos_qemu_image.bin
 
-- open a root shell on the VM console
-  - in VM console, log in with any legal account (but not Guest)
-  - hit C-A-t to open a shell (use right control and alt, to avoid escaping
-    out of VM's mouse capture)
+- DO NOT log in on the console.
+  (doing so will load a user profile onto shill's profile stack; this
+  interferes with the test profile that we use in the autotests)
 
-  crosh> shell
-  chronos@localhost / $ sudo bash
-
-- if you've modified the source after building the image, load shill onto VM image:
+- if you've modified the source after building the image, update shill on
+  the image, and then restart shill:
   (chroot) src/scripts$ ./start_devserver
+  (chroot) src/scripts$ ssh-keygen -R '[127.0.0.1]:9222'
+  (chroot) src/scripts$ ssh -p 9222 root@127.0.0.1
   localhost / # FEATURES="nostrip" gmerge shill
-
-- stop flimflam, and start shill
-  localhost / # stop flimflam
-  localhost / # shill --foreground --v=1000 \
-            --device-black-list=managed0,managed1
-  (the black list keep shill from configuring the devices used by the hostapd
-  processes.)
+  localhost / # restart shill
 
 - run the tests
   (chroot) src/scripts$ ./run_remote_tests.sh --board=x86-generic \
