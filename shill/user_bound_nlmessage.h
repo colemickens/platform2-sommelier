@@ -17,6 +17,8 @@
 
 #include <linux/nl80211.h>
 
+#include "shill/nl80211_attribute.h"
+
 struct nlattr;
 struct nlmsghdr;
 
@@ -25,20 +27,6 @@ namespace shill {
 // Class for messages received from libnl.
 class UserBoundNlMessage {
  public:
-  enum Type {
-    kTypeUnspecified,
-    kTypeU8,
-    kTypeU16,
-    kTypeU32,
-    kTypeU64,
-    kTypeString,
-    kTypeFlag,
-    kTypeMsecs,
-    kTypeNested,
-    kTypeOther,  // Specified in the message but not listed, here.
-    kTypeError
-  };
-
   // TODO(wdg): break 'Attribute' into its own class to handle
   // nested attributes better.
 
@@ -98,7 +86,7 @@ class UserBoundNlMessage {
   uint32_t GetId() const;
 
   // Returns the data type of a given attribute.
-  Type GetAttributeType(nl80211_attrs name) const;
+  Nl80211Attribute::Type GetAttributeType(nl80211_attrs name) const;
 
   // Returns a string describing the data type of a given attribute.
   std::string GetAttributeTypeString(nl80211_attrs name) const;

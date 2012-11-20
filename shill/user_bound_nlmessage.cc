@@ -343,42 +343,40 @@ uint32_t UserBoundNlMessage::GetId() const {
   return message_->nlmsg_seq;
 }
 
-enum UserBoundNlMessage::Type
+enum Nl80211Attribute::Type
     UserBoundNlMessage::GetAttributeType(enum nl80211_attrs name) const {
   const nlattr *attr = GetAttribute(name);
   if (!attr) {
-    return kTypeError;
+    return Nl80211Attribute::kTypeError;
   }
 
   switch (nla_type(attr)) {
-    case NLA_UNSPEC: return kTypeUnspecified;
-    case NLA_U8: return kTypeU8;
-    case NLA_U16: return kTypeU16;
-    case NLA_U32: return kTypeU32;
-    case NLA_U64: return kTypeU64;
-    case NLA_STRING: return kTypeString;
-    case NLA_FLAG: return kTypeFlag;
-    case NLA_MSECS: return kTypeMsecs;
-    case NLA_NESTED: return kTypeNested;
-    default: return kTypeError;
+    case NLA_U8: return Nl80211Attribute::kTypeU8;
+    case NLA_U16: return Nl80211Attribute::kTypeU16;
+    case NLA_U32: return Nl80211Attribute::kTypeU32;
+    case NLA_U64: return Nl80211Attribute::kTypeU64;
+    case NLA_STRING: return Nl80211Attribute::kTypeString;
+    case NLA_FLAG: return Nl80211Attribute::kTypeFlag;
+    case NLA_MSECS: return Nl80211Attribute::kTypeMsecs;
+    case NLA_NESTED: return Nl80211Attribute::kTypeNested;
+    default: return Nl80211Attribute::kTypeError;
   }
 
-  return kTypeError;
+  return Nl80211Attribute::kTypeError;
 }
 
 string UserBoundNlMessage::GetAttributeTypeString(enum nl80211_attrs name)
     const {
   switch (GetAttributeType(name)) {
-    case kTypeUnspecified: return "Unspecified Type"; break;
-    case kTypeU8: return "uint8_t"; break;
-    case kTypeU16: return "uint16_t"; break;
-    case kTypeU32: return "uint32_t"; break;
-    case kTypeU64: return "uint64_t"; break;
-    case kTypeString: return "String"; break;
-    case kTypeFlag: return "Flag"; break;
-    case kTypeMsecs: return "MSec Type"; break;
-    case kTypeNested: return "Nested Type"; break;
-    case kTypeError: return "ERROR TYPE"; break;
+    case Nl80211Attribute::kTypeU8: return "uint8_t"; break;
+    case Nl80211Attribute::kTypeU16: return "uint16_t"; break;
+    case Nl80211Attribute::kTypeU32: return "uint32_t"; break;
+    case Nl80211Attribute::kTypeU64: return "uint64_t"; break;
+    case Nl80211Attribute::kTypeString: return "String"; break;
+    case Nl80211Attribute::kTypeFlag: return "Flag"; break;
+    case Nl80211Attribute::kTypeMsecs: return "MSec Type"; break;
+    case Nl80211Attribute::kTypeNested: return "Nested Type"; break;
+    case Nl80211Attribute::kTypeError: return "ERROR TYPE"; break;
     default: return "Funky Type"; break;
   }
 }
@@ -567,35 +565,35 @@ bool UserBoundNlMessage::GetAttributeString(nl80211_attrs name,
   }
 
   switch (GetAttributeType(name)) {
-    case kTypeU8: {
+    case Nl80211Attribute::kTypeU8: {
       uint8_t value;
       if (!GetU8Attribute(name, &value))
         return false;
       *param = StringPrintf("%u", value);
       break;
     }
-    case kTypeU16: {
+    case Nl80211Attribute::kTypeU16: {
       uint16_t value;
       if (!GetU16Attribute(name, &value))
         return false;
       *param = StringPrintf("%u", value);
       break;
     }
-    case kTypeU32: {
+    case Nl80211Attribute::kTypeU32: {
       uint32_t value;
       if (!GetU32Attribute(name, &value))
         return false;
       *param = StringPrintf("%" PRIu32, value);
       break;
     }
-    case kTypeU64: {
+    case Nl80211Attribute::kTypeU64: {
       uint64_t value;
       if (!GetU64Attribute(name, &value))
         return false;
       *param = StringPrintf("%" PRIu64, value);
       break;
     }
-    case kTypeString:
+    case Nl80211Attribute::kTypeString:
       if (!GetStringAttribute(name, param))
         return false;
       break;

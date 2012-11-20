@@ -229,6 +229,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_proxy.o \
 	modem_simple_proxy.o \
 	netlink_socket.o \
+	nl80211_attribute.o \
 	nl80211_socket.o \
 	nss.o \
 	openvpn_driver.o \
