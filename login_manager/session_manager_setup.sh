@@ -326,10 +326,6 @@ elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
   HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
 fi
 
-# TODO(gauravsh): Remove this once we a have mechanism to dynamically
-# enable logging for network state related changes.
-add_vmodule_pattern "network_change_notifier*=1"
-
 # TODO(derat): We're currently (2012Q4) swamped with locking-related bug
 # reports; remove this after they've been sorted out.
 add_vmodule_pattern "screen_locker=1,webui_screen_locker=1"
