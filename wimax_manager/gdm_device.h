@@ -31,6 +31,7 @@ class GdmDevice : public Device {
 
   virtual bool Enable();
   virtual bool Disable();
+  bool InitialScanNetworks();
   virtual bool ScanNetworks();
   virtual bool UpdateStatus();
   virtual bool Connect(const Network &network,
@@ -68,6 +69,7 @@ class GdmDevice : public Device {
   bool open_;
   WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress_;
   guint connect_timeout_id_;
+  guint initial_network_scan_timeout_id_;
   guint network_scan_timeout_id_;
   guint status_update_timeout_id_;
   guint restore_status_update_interval_timeout_id_;

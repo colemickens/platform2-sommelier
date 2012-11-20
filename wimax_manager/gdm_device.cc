@@ -29,6 +29,8 @@ namespace {
 
 // Timeout for connecting to a network.
 const int kConnectTimeoutInSeconds = 60;
+// Initial network scan interval, in seconds, after the device is enabled.
+const int kInitialNetworkScanIntervalInSeconds = 1;
 // Default time interval, in seconds, between status updates when the device
 // is connecting to a network.
 const int kStatusUpdateIntervalDuringConnectInSeconds = 1;
@@ -61,6 +63,15 @@ bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
   value.copy(char_array, value_length);
   char_array[value_length] = '\0';
   return true;
+}
+
+gboolean OnInitialNetworkScan(gpointer data) {
+  CHECK(data);
+
+  reinterpret_cast<GdmDevice *>(data)->InitialScanNetworks();
+
+  // Return FALSE as this is a one-shot update.
+  return FALSE;
 }
 
 gboolean OnNetworkScan(gpointer data) {
@@ -117,6 +128,7 @@ GdmDevice::GdmDevice(uint8 index, const string &name,
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),
       connect_timeout_id_(0),
+      initial_network_scan_timeout_id_(0),
       network_scan_timeout_id_(0),
       status_update_timeout_id_(0),
       restore_status_update_interval_timeout_id_(0),
@@ -188,6 +200,13 @@ bool GdmDevice::Enable() {
     LOG(WARNING) << "Failed to disable internal network scan by SDK.";
   }
 
+  // Schedule an initial network scan shortly after the device is enabled.
+  if (initial_network_scan_timeout_id_ != 0) {
+    g_source_remove(initial_network_scan_timeout_id_);
+  }
+  initial_network_scan_timeout_id_ = g_timeout_add_seconds(
+      kInitialNetworkScanIntervalInSeconds, OnInitialNetworkScan, this);
+
   // Set OnNetworkScan() to be called repeatedly at |network_scan_interval_|
   // intervals to scan and update the list of networks via ScanNetworks().
   //
@@ -225,6 +244,10 @@ bool GdmDevice::Disable() {
   }
 
   // Cancel the periodic calls to OnNetworkScan().
+  if (initial_network_scan_timeout_id_ != 0) {
+    g_source_remove(initial_network_scan_timeout_id_);
+    initial_network_scan_timeout_id_ = 0;
+  }
   if (network_scan_timeout_id_ != 0) {
     g_source_remove(network_scan_timeout_id_);
     network_scan_timeout_id_ = 0;
@@ -257,6 +280,11 @@ bool GdmDevice::Disable() {
     return false;
   }
   return true;
+}
+
+bool GdmDevice::InitialScanNetworks() {
+  initial_network_scan_timeout_id_ = 0;
+  return ScanNetworks();
 }
 
 bool GdmDevice::ScanNetworks() {
