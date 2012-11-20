@@ -320,6 +320,18 @@ if use_flag_is_set has_hdd; then
   KILL_TIMEOUT_FLAG="--kill-timeout=12"
 fi
 
+# The session_manager supports pinging the browser periodically to
+# check that it is still alive.  On developer systems, this would be a
+# problem, as debugging the browser would cause it to be aborted.
+# Override via a flag-file is allowed to enable integration testing.
+HANG_DETECTION_FLAG_FILE=/var/run/session_manager/enable_hang_detection
+HANG_DETECTION_FLAG=
+if ! is_developer_end_user; then
+  HANG_DETECTION_FLAG="--enable-hang-detection"
+elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
+  HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
+fi
+
 # TODO(gauravsh): Remove this once we a have mechanism to dynamically
 # enable logging for network state related changes.
 add_vmodule_pattern "network_change_notifier*=1"
@@ -359,7 +371,8 @@ ply-image --clear 0x000000 --no-set-monitors &
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
 
-exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} -- \
+exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
+    ${HANG_DETECTION_FLAG} -- \
     $CHROME --apps-gallery-url="https://chrome.google.com/webstore/" \
             --compress-sys-feedback \
             --device-management-url="$DMSERVER" \
