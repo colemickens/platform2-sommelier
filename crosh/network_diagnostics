@@ -758,17 +758,23 @@ diag_flimflam () {
   diag_flimflam_dbus
 }
 
-# Try to connect to a host
+run_webget () {
+  local url=${1}
+  local timeout_secs=10
+  echo "Trying to contact ${url} ... (waiting up to ${timeout_secs} seconds)"
+  curl -s "${url}" --max-time ${timeout_secs} > /dev/null
+}
+
+# Try to connect to a host via SSL, diagnose failures
 diag_webget () {
   local host=${1}
-  local timeout_secs=10
-  echo "Trying to contact ${host} ... (waiting up to ${timeout_secs} seconds)"
-  curl -s https://${host}/ --max-time ${timeout_secs} > /dev/null
+  local url="https://${host}"
+  run_webget ${url}
   local err=$?
 
   case ${err} in
     0)
-      pass "We can get to https://www.google.com/ just fine"
+      pass "We can get to ${url} just fine"
       ;;
 
     6)
@@ -799,7 +805,7 @@ diag_webget () {
 
     60)
       # Peer certificate cannot be authenticated with known CA certificates
-      fail "Peer cert not authenticated -- probably a hotspot!"
+      fail "Peer cert not authenticated -- probably a captive portal!"
       ;;
 
     *)
@@ -816,7 +822,13 @@ diag_webget () {
 # Do standard run of tests
 diag_run () {
   local host=$1
-  diag_webget ${host}
+  if run_webget "https://${host}"; then
+    pass "Loaded $host via HTTPS"
+  elif run_webget "http://${host}"; then
+    pass "Loaded $host via HTTP (ignore any tlsdate failure below)"
+  else
+    diag_webget "${host}"
+  fi
   diag_date ${host}
   diag_gateway_latency ${host}
 }
@@ -973,6 +985,7 @@ usage () {
   echo "Usage: $0 [--date|--flimflam|--link|--show-macs|--wifi|--help|"
   echo "           --wifi-monitor] <host>"
   echo "    --date:      Diagnose time-of-day"
+  echo "                 (<host> must support SSL)"
   echo "    --flimflam:  Diagnose flimflam status"
   echo "    --interface: Diagnose interface status"
   echo "    --latency:   Diagnose link-latency to default gateway"
