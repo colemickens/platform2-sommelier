@@ -673,6 +673,7 @@ Tpm::TpmRetryAction Tpm::HandleError(TSS_RESULT result) {
     case ERROR_CODE(TPM_E_FAIL):
       status = Tpm::RetryReboot;
       metrics_->SendEnumToUMA("Cryptohome.Errors", 1, 10);
+      LOG(ERROR) << "The TPM returned TPM_E_FAIL.  A reboot is required.";
       break;
     default:
       break;
