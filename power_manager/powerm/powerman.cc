@@ -288,10 +288,10 @@ bool PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
       UnlockVTSwitch();     // Allow virtual terminal switching again.
 #endif
       SendSuspendStateChangedSignal(
-          SuspendState_Type_RESUME, base::TimeTicks::Now());
+          SuspendState_Type_RESUME, base::Time::Now());
     } else if (strcmp(state, "mem") == 0) {
       SendSuspendStateChangedSignal(
-          SuspendState_Type_SUSPEND_TO_MEMORY, last_suspend_timestamp_);
+          SuspendState_Type_SUSPEND_TO_MEMORY, last_suspend_wall_time_);
     } else {
       DLOG(INFO) << "Saw arg:" << state << " for " << kPowerStateChanged;
     }
@@ -519,10 +519,10 @@ void PowerManDaemon::SendInputEventSignal(InputType type, ButtonState state) {
 
 void PowerManDaemon::SendSuspendStateChangedSignal(
     SuspendState_Type type,
-    const base::TimeTicks& timestamp) {
+    const base::Time& wall_time) {
   SuspendState proto;
   proto.set_type(type);
-  proto.set_timestamp(timestamp.ToInternalValue());
+  proto.set_wall_time(wall_time.ToInternalValue());
   util::EmitPowerMSignal(kSuspendStateChangedSignal, proto);
 }
 
@@ -566,7 +566,7 @@ void PowerManDaemon::Suspend(unsigned int wakeup_count,
   // Cache the current time so we can include it in the SuspendStateChanged
   // signal that we emit from HandlePowerStateChangedSignal() -- we might not
   // send it until after the system has already resumed.
-  last_suspend_timestamp_ = base::TimeTicks::Now();
+  last_suspend_wall_time_ = base::Time::Now();
 
   // Remove lid opened flag, so suspend will occur providing the lid isn't
   // re-opened prior to completing powerd_suspend

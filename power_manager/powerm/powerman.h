@@ -126,9 +126,9 @@ class PowerManDaemon {
   void SendInputEventSignal(InputType type, ButtonState state);
 
   // Emits a D-Bus signal informing other processes that we've suspended or
-  // resumed at |timestamp|.
+  // resumed at |wall_time|.
   void SendSuspendStateChangedSignal(SuspendState_Type type,
-                                     const base::TimeTicks& timestamp);
+                                     const base::Time& wall_time);
 
   // Generate UMA metrics on lid opening.
   void GenerateMetricsOnResumeEvent();
@@ -192,8 +192,10 @@ class PowerManDaemon {
   // SendSuspendStateChangedSignal(): it's possible that the system will go to
   // sleep before HandlePowerStateChangedSignal() gets called in response to the
   // D-Bus signal that powerd_suspend emits before suspending, so we can't just
-  // get the current time from there -- it may actually run post-resuming.
-  base::TimeTicks last_suspend_timestamp_;
+  // get the current time from there -- it may actually run post-resuming.  This
+  // is a base::Time rather than base::TimeTicks since the monotonic clock
+  // doesn't increase while we're suspended.
+  base::Time last_suspend_wall_time_;
 };
 
 }  // namespace power_manager
