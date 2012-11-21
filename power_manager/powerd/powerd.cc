@@ -561,6 +561,14 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
   daemon->GenerateMetricsOnPowerEvent(info);
   // Do not emergency suspend if no battery exists.
   if (info.battery_is_present) {
+    if (info.battery_percentage < 0) {
+      LOG(WARNING) << "Negative battery percent: " << info.battery_percentage
+                   << "%";
+    }
+    if (info.battery_time_to_empty < 0 && !info.line_power_on) {
+      LOG(WARNING) << "Negative battery time remaining: "
+                   << info.battery_time_to_empty << " seconds";
+    }
     daemon->OnLowBattery(info.battery_time_to_empty,
                          info.battery_time_to_full,
                          info.battery_percentage);
@@ -1512,8 +1520,9 @@ void Daemon::OnLowBattery(int64 time_remaining_s,
   }
   if (PLUGGED_STATE_DISCONNECTED == plugged_state_ && !low_battery_ &&
       ((time_remaining_s <= low_battery_shutdown_time_s_ &&
-        time_remaining_s) ||
-       (battery_percentage <= low_battery_shutdown_percent_))) {
+        time_remaining_s > 0) ||
+       (battery_percentage <= low_battery_shutdown_percent_ &&
+        battery_percentage >= 0))) {
     // Shut the system down when low battery condition is encountered.
     LOG(INFO) << "Time remaining: " << time_remaining_s << " seconds.";
     LOG(INFO) << "Percent remaining: " << battery_percentage << "%.";
