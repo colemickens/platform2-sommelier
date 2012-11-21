@@ -311,6 +311,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void FireScanTimer() {
     wifi_->ScanTimerHandler();
   }
+  void TriggerScan() {
+    wifi_->Scan(NULL);
+  }
   const WiFiServiceRefPtr &GetCurrentService() {
     return wifi_->current_service_;
   }
@@ -844,6 +847,38 @@ TEST_F(WiFiMainTest, StartClearsState) {
   StartWiFi();
 }
 
+TEST_F(WiFiMainTest, NoScansWhileConnecting) {
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  StartWiFi();
+  SetPendingService(service);
+  // If we're connecting, we ignore scan requests to stay on channel.
+  service->state_ = Service::kStateConfiguring;
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  TriggerScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  // But otherwise we'll honor the request.
+  service->state_ = Service::kStateConnected;
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
+  TriggerScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  // Similarly, ignore scans when our connected service is reconnecting.
+  SetPendingService(NULL);
+  SetCurrentService(service);
+  service->state_ = Service::kStateAssociating;
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  TriggerScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  // But otherwise we'll honor the request.
+  service->state_ = Service::kStateIdle;
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
+  TriggerScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+}
+
 TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
   EXPECT_CALL(*supplicant_interface_proxy_, Scan(_));
   StartWiFi();
@@ -877,6 +912,7 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
   ScopedMockLog log;
   service->AddEndpoint(ap);
   service->AutoConnect();
+  service->SetState(Service::kStateOnline);
   EXPECT_FALSE(wifi()->IsIdle());
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&supplicant_interface_proxy_);

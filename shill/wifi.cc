@@ -1113,6 +1113,11 @@ void WiFi::ScanTask() {
     SLOG(WiFi, 2) << "Ignoring scan request while supplicant is not present.";
     return;
   }
+  if ((pending_service_.get() && pending_service_->IsConnecting()) ||
+      (current_service_.get() && current_service_->IsConnecting())) {
+    SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
+    return;
+  }
   map<string, DBus::Variant> scan_args;
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
