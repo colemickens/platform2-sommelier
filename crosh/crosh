@@ -448,6 +448,9 @@ cmd_swap() {
       echo "$2" >$swap_enable_file
     fi
     echo "Swap will be ON at next reboot."
+    echo "You are turning on compressed swap, which is an experimental feature"
+    echo "of Chrome OS.  System instability may result.  To turn it off, use"
+    echo "the command \"swap disable\"."
     ;;
   "disable")
     rm -f $swap_enable_file
