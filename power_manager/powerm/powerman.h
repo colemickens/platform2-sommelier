@@ -16,6 +16,7 @@
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerm/input.h"
+#include "power_manager/suspend.pb.h"
 
 namespace power_manager {
 
@@ -124,6 +125,11 @@ class PowerManDaemon {
   // Sends a message to powerd informing it that |type| is in state |state|.
   void SendInputEventSignal(InputType type, ButtonState state);
 
+  // Emits a D-Bus signal informing other processes that we've suspended or
+  // resumed at |timestamp|.
+  void SendSuspendStateChangedSignal(SuspendState_Type type,
+                                     const base::TimeTicks& timestamp);
+
   // Generate UMA metrics on lid opening.
   void GenerateMetricsOnResumeEvent();
 
@@ -180,6 +186,14 @@ class PowerManDaemon {
 
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;
+
+  // Time at which the powerd_suspend script was last invoked to suspend the
+  // system.  We cache this so it can be passed to
+  // SendSuspendStateChangedSignal(): it's possible that the system will go to
+  // sleep before HandlePowerStateChangedSignal() gets called in response to the
+  // D-Bus signal that powerd_suspend emits before suspending, so we can't just
+  // get the current time from there -- it may actually run post-resuming.
+  base::TimeTicks last_suspend_timestamp_;
 };
 
 }  // namespace power_manager

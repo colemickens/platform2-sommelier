@@ -276,7 +276,7 @@ bool PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
                             DBUS_TYPE_INT32, &power_rc,
                             DBUS_TYPE_INVALID)) {
     // on == resume via powerd_suspend
-    if (g_str_equal(state, "on") == TRUE) {
+    if (strcmp(state, "on") == 0) {
       LOG(INFO) << "Resuming has commenced";
       if (power_rc == 0) {
         GenerateMetricsOnResumeEvent();
@@ -287,6 +287,11 @@ bool PowerManDaemon::HandlePowerStateChangedSignal(DBusMessage* message) {
 #ifdef SUSPEND_LOCK_VT
       UnlockVTSwitch();     // Allow virtual terminal switching again.
 #endif
+      SendSuspendStateChangedSignal(
+          SuspendState_Type_RESUME, base::TimeTicks::Now());
+    } else if (strcmp(state, "mem") == 0) {
+      SendSuspendStateChangedSignal(
+          SuspendState_Type_SUSPEND_TO_MEMORY, last_suspend_timestamp_);
     } else {
       DLOG(INFO) << "Saw arg:" << state << " for " << kPowerStateChanged;
     }
@@ -512,6 +517,15 @@ void PowerManDaemon::SendInputEventSignal(InputType type, ButtonState state) {
   dbus_message_unref(signal);
 }
 
+void PowerManDaemon::SendSuspendStateChangedSignal(
+    SuspendState_Type type,
+    const base::TimeTicks& timestamp) {
+  SuspendState proto;
+  proto.set_type(type);
+  proto.set_timestamp(timestamp.ToInternalValue());
+  util::EmitPowerMSignal(kSuspendStateChangedSignal, proto);
+}
+
 void PowerManDaemon::Shutdown(const std::string& reason) {
   std::string command = "initctl emit --no-wait runlevel RUNLEVEL=0";
   if (!reason.empty())
@@ -548,6 +562,11 @@ void PowerManDaemon::Suspend(unsigned int wakeup_count,
 #ifdef SUSPEND_LOCK_VT
   LockVTSwitch();     // Do not let suspend change the console terminal.
 #endif
+
+  // Cache the current time so we can include it in the SuspendStateChanged
+  // signal that we emit from HandlePowerStateChangedSignal() -- we might not
+  // send it until after the system has already resumed.
+  last_suspend_timestamp_ = base::TimeTicks::Now();
 
   // Remove lid opened flag, so suspend will occur providing the lid isn't
   // re-opened prior to completing powerd_suspend

@@ -28,6 +28,7 @@ LIBPOWERMAN_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
                    $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = common/power_constants.o \
                    power_manager/input_event.pb.o \
+                   power_manager/suspend.pb.o \
                    powerm/input.o \
                    powerm/powerman.o \
                    powerm/powerman_metrics.o
