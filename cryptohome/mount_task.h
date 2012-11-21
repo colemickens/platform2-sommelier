@@ -37,6 +37,8 @@
 #include "pkcs11_init.h"
 #include "username_passkey.h"
 
+using chromeos::SecureBlob;
+
 namespace cryptohome {
 
 extern const char* kMountTaskResultEventType;
@@ -72,6 +74,7 @@ class MountTaskResult : public CryptohomeEventBase {
       : sequence_id_(rhs.sequence_id_),
         return_status_(rhs.return_status_),
         return_code_(rhs.return_code_),
+        return_data_(rhs.return_data_),
         event_name_(rhs.event_name_),
         mount_(rhs.mount_),
         pkcs11_init_(rhs.pkcs11_init_),
@@ -133,10 +136,21 @@ class MountTaskResult : public CryptohomeEventBase {
     guest_ = value;
   }
 
+  SecureBlob return_data() const {
+    return return_data_;
+  }
+
+  void set_return_data(const SecureBlob& data) {
+    return_data_.clear_contents();
+    return_data_ = data;
+  }
+
   MountTaskResult& operator=(const MountTaskResult& rhs) {
     sequence_id_ = rhs.sequence_id_;
     return_status_ = rhs.return_status_;
     return_code_ = rhs.return_code_;
+    return_data_.clear_contents();
+    return_data_ = rhs.return_data_;
     event_name_ = rhs.event_name_;
     mount_ = rhs.mount_;
     pkcs11_init_ = rhs.pkcs11_init_;
@@ -152,6 +166,7 @@ class MountTaskResult : public CryptohomeEventBase {
   int sequence_id_;
   bool return_status_;
   MountError return_code_;
+  SecureBlob return_data_;
   const char* event_name_;
   Mount* mount_;
   bool pkcs11_init_;

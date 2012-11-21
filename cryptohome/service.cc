@@ -26,6 +26,7 @@
 #include <string>
 #include <vector>
 
+#include "attestation_task.h"
 #include "cryptohome_event_source.h"
 #include "crypto.h"
 #include "install_attributes.h"
@@ -430,8 +431,26 @@ bool Service::Reset() {
 void Service::NotifyEvent(CryptohomeEventBase* event) {
   if (!strcmp(event->GetEventName(), kMountTaskResultEventType)) {
     MountTaskResult* result = static_cast<MountTaskResult*>(event);
-    g_signal_emit(cryptohome_, async_complete_signal_, 0, result->sequence_id(),
-                  result->return_status(), result->return_code());
+    if (result->return_data().size() == 0) {
+      g_signal_emit(cryptohome_,
+                    async_complete_signal_,
+                    0,
+                    result->sequence_id(),
+                    result->return_status(),
+                    result->return_code());
+    } else {
+      chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
+      g_array_append_vals(tmp_array.get(),
+                          result->return_data().data(),
+                          result->return_data().size());
+      g_signal_emit(cryptohome_,
+                    async_data_complete_signal_,
+                    0,
+                    result->sequence_id(),
+                    result->return_status(),
+                    tmp_array.get());
+      chromeos::SecureMemset(tmp_array.get()->data, 0, tmp_array.get()->len);
+    }
     if (result->pkcs11_init()) {
       LOG(INFO) << "An asynchronous mount request with sequence id: "
                 << result->sequence_id()
@@ -1036,9 +1055,15 @@ gboolean Service::TpmAttestationCreateEnrollRequest(GArray** OUT_pca_request,
 
 gboolean Service::AsyncTpmAttestationCreateEnrollRequest(gint* OUT_async_id,
                                                          GError** error) {
-  // TODO(dkrahn): Implement.
-  g_set_error(error, 0, 0, "Not implemented");
-  return FALSE;
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<CreateEnrollRequestTask> task =
+      new CreateEnrollRequestTask(observer, tpm_init_->get_attestation());
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&CreateEnrollRequestTask::Run, task.get()));
+  return TRUE;
 }
 
 gboolean Service::TpmAttestationEnroll(GArray* pca_response,
@@ -1058,9 +1083,16 @@ gboolean Service::TpmAttestationEnroll(GArray* pca_response,
 gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
                                             gint* OUT_async_id,
                                             GError** error) {
-  // TODO(dkrahn): Implement.
-  g_set_error(error, 0, 0, "Not implemented");
-  return FALSE;
+  chromeos::SecureBlob blob(pca_response->data, pca_response->len);
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<EnrollTask> task =
+      new EnrollTask(observer, tpm_init_->get_attestation(), blob);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&EnrollTask::Run, task.get()));
+  return TRUE;
 }
 
 gboolean Service::TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
@@ -1082,9 +1114,17 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
     gboolean is_cert_for_owner,
     gint* OUT_async_id,
     GError** error) {
-  // TODO(dkrahn): Implement.
-  g_set_error(error, 0, 0, "Not implemented");
-  return FALSE;
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<CreateCertRequestTask> task =
+      new CreateCertRequestTask(observer,
+                                tpm_init_->get_attestation(),
+                                is_cert_for_owner);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&CreateCertRequestTask::Run, task.get()));
+  return TRUE;
 }
 
 gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
@@ -1109,9 +1149,16 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
 gboolean Service::AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
                                                        gint* OUT_async_id,
                                                        GError** error) {
-  // TODO(dkrahn): Implement.
-  g_set_error(error, 0, 0, "Not implemented");
-  return FALSE;
+  chromeos::SecureBlob blob(pca_response->data, pca_response->len);
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<FinishCertRequestTask> task =
+      new FinishCertRequestTask(observer, tpm_init_->get_attestation(), blob);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&FinishCertRequestTask::Run, task.get()));
+  return TRUE;
 }
 
 gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
