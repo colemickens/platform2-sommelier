@@ -510,8 +510,6 @@ class SessionManagerService
   // to the signal indicating the status of |succeeded|.
   void SendSignal(const char signal_name[], bool succeeded);
 
-  void SendBooleanReply(DBusGMethodInvocation* context, bool succeeded);
-
   bool ShouldRunBrowser();
   // Returns true if |child_job| believes it should be stopped.
   // If the child believes it should be stopped (as opposed to not run anymore)

@@ -749,12 +749,6 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   return *OUT_done = TRUE;
 }
 
-void SessionManagerService::SendBooleanReply(DBusGMethodInvocation* context,
-                                             bool succeeded) {
-  if (context)
-    dbus_g_method_return(context, succeeded);
-}
-
 gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
                                             DBusGMethodInvocation* context) {
   int flags = PolicyService::KEY_ROTATE;
