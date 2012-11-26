@@ -38,9 +38,6 @@ class MtpdServer : public org::chromium::Mtpd_adaptor,
   virtual ~MtpdServer();
 
   // org::chromium::Mtpd_adaptor implementation.
-  // TODO(thestig) Remove EnumerateStorage.
-  virtual std::vector<std::string> EnumerateStorage(
-      DBus::Error& error) OVERRIDE;
   virtual std::vector<std::string> EnumerateStorages(
       DBus::Error& error) OVERRIDE;
   virtual std::vector<uint8_t> GetStorageInfo(const std::string& storageName,

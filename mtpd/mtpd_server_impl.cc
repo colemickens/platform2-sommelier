@@ -44,10 +44,6 @@ MtpdServer::MtpdServer(DBus::Connection& connection)
 MtpdServer::~MtpdServer() {
 }
 
-std::vector<std::string> MtpdServer::EnumerateStorage(DBus::Error& error) {
-  return device_manager_.EnumerateStorages();
-}
-
 std::vector<std::string> MtpdServer::EnumerateStorages(DBus::Error& error) {
   return device_manager_.EnumerateStorages();
 }

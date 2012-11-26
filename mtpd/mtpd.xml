@@ -2,16 +2,6 @@
 
 <node xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.Mtpd">
-    <!-- TODO(thestig) Remove this //-->
-    <method name="EnumerateStorage">
-      <arg name="storageList" type="as" direction="out">
-      <tp:docstring>
-        List of storages. Storages are described as Bus:Location:StorageId.
-        E.g. usb:2,4:1234.
-      </tp:docstring>
-      </arg>
-    </method>
-
     <method name="EnumerateStorages">
       <arg name="storageList" type="as" direction="out">
       <tp:docstring>
@@ -24,7 +14,7 @@
     <method name="GetStorageInfo">
       <arg name="storageName" type="s" direction="in">
       <tp:docstring>
-        Storage name is in the same format as EnumerateStorage.
+        Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
       <arg name="storageInfo" type="ay" direction="out">
@@ -34,7 +24,7 @@
     <method name="OpenStorage">
       <arg name="storageName" type="s" direction="in">
       <tp:docstring>
-        Storage name is in the same format as EnumerateStorage.
+        Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
       <arg name="mode" type="s" direction="in">
@@ -173,14 +163,14 @@
     <signal name="MTPStorageAttached">
       <arg name="storageName" type="s" direction="out">
       <tp:docstring>
-        Storage name is in the same format as EnumerateStorage.
+        Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
     </signal>
     <signal name="MTPStorageDetached">
       <arg name="storageName" type="s" direction="out">
       <tp:docstring>
-        Storage name is in the same format as EnumerateStorage.
+        Storage name is in the same format as EnumerateStorages.
       </tp:docstring>
       </arg>
     </signal>
