@@ -147,6 +147,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
+  FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
 
   // Methods used in starting a modem
   void EnableModem(Error *error, const ResultCallback &callback);

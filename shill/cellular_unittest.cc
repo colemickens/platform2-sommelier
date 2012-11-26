@@ -799,6 +799,17 @@ TEST_F(CellularTest, ModemStateChangeValidConnected) {
   EXPECT_EQ(Cellular::kStateConnected, device_->state());
 }
 
+TEST_F(CellularTest, ModemStateChangeLostRegistration) {
+  SetCellularType(Cellular::kTypeUniversal);
+  CellularCapabilityUniversal *capability = GetCapabilityUniversal();
+  capability->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  EXPECT_TRUE(capability->IsRegistered());
+  device_->OnModemStateChanged(Cellular::kModemStateRegistered,
+                               Cellular::kModemStateEnabled,
+                               0);
+  EXPECT_FALSE(capability->IsRegistered());
+}
+
 TEST_F(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);

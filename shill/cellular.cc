@@ -590,22 +590,21 @@ void Cellular::OnModemStateChanged(ModemState old_state,
     return;
   }
   set_modem_state(new_state);
+  if (old_state >= kModemStateRegistered &&
+      new_state < kModemStateRegistered) {
+    capability_->SetUnregistered(new_state == kModemStateSearching);
+    HandleNewRegistrationState();
+  }
   switch (new_state) {
     case kModemStateDisabled:
       SetEnabled(false);
       break;
     case kModemStateEnabled:
-    case kModemStateSearching:
-      // Note: we only handle changes to Enabled from the Registered
-      // state here. Changes from Disabled to Enabled are handled in
-      // the DBusPropertiesChanged handler.
-      if (old_state == kModemStateRegistered) {
-        capability_->SetUnregistered(new_state == kModemStateSearching);
-        HandleNewRegistrationState();
-      } else {
-        SLOG(Cellular, 2) << __func__ << ": Ignoring state change to Enabled";
-      }
+      // Transition from Disabled to Enabled is handled in the
+      // DBusPropertiesChanged handler.
+      SLOG(Cellular, 2) << __func__ << ": Ignoring state change to Enabled";
       // Intentionally falls through.
+    case kModemStateSearching:
     case kModemStateRegistered:
       // If the modem state changes from Connecting/Connected/Disconnecting
       // to Registered/Enabled/Searching, then it's an indication that the
