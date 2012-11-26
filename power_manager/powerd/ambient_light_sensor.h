@@ -9,6 +9,7 @@
 #include <list>
 #include <string>
 
+#include "base/file_path.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
@@ -27,6 +28,17 @@ class AmbientLightSensor {
  public:
   AmbientLightSensor();
   virtual ~AmbientLightSensor();
+
+  void set_device_list_path_for_testing(const FilePath& path) {
+    device_list_path_ = path;
+  }
+  void set_poll_interval_ms_for_testing(int interval_ms) {
+    poll_interval_ms_ = interval_ms;
+  }
+
+  // Starts polling.  This is separate from c'tor so that tests can call
+  // set_*_for_testing() first.
+  virtual void Init();
 
   // Adds or removes observers for sensor readings.
   virtual void AddObserver(AmbientLightSensorObserver* observer);
@@ -63,6 +75,13 @@ class AmbientLightSensor {
   // Return a luma level normalized to 100 based on the tsl2563 lux value.
   // The luma level will modify the controller's brightness calculation.
   double Tsl2563LuxToPercent(int luxval) const;
+
+  // Path containing backlight devices.  Typically under /sys, but can be
+  // overridden by tests.
+  FilePath device_list_path_;
+
+  // Time between polls of the sensor file, in milliseconds.
+  int poll_interval_ms_;
 
   // List of backlight controllers that are currently interested in updates from
   // this sensor.

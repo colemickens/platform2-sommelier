@@ -13,6 +13,7 @@
 #undef LOG_WARNING
 
 #include "base/command_line.h"
+#include "base/file_path.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/string_util.h"
@@ -167,6 +168,7 @@ int main(int argc, char* argv[]) {
   scoped_ptr<power_manager::AmbientLightSensor> light_sensor;
 #ifndef IS_DESKTOP
   light_sensor.reset(new power_manager::AmbientLightSensor());
+  light_sensor->Init();
 #endif
 
   power_manager::BacklightClient display_backlight(

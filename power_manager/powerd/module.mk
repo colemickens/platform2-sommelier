@@ -96,7 +96,8 @@ tests: TEST(CXX_BINARY(powerd/file_tagger_unittest))
 
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
-POWERD_UNITTEST_OBJS = powerd/metrics_store_unittest.o \
+POWERD_UNITTEST_OBJS = powerd/ambient_light_sensor_unittest.o \
+                       powerd/metrics_store_unittest.o \
                        powerd/monitor_reconfigure.o \
                        powerd/powerd_unittest.o \
                        powerd/rolling_average_unittest.o \

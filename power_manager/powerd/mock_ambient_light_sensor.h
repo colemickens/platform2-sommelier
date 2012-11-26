@@ -18,10 +18,10 @@ namespace power_manager {
 
 class MockAmbientLightSensor : public AmbientLightSensor {
  public:
-  MOCK_METHOD1(Init, bool(PowerPrefs* prefs));
-  void ExpectInit(PowerPrefs* prefs, bool ret_val) {
-    EXPECT_CALL(*this, Init(prefs))
-        .WillOnce(Return(ret_val))
+  MOCK_METHOD0(Init, void());
+  void ExpectInit() {
+    EXPECT_CALL(*this, Init())
+        .Times(1)
         .RetiresOnSaturation();
   }
 
@@ -58,7 +58,8 @@ class MockAmbientLightSensor : public AmbientLightSensor {
         .WillOnce(Return(ret_val))
         .RetiresOnSaturation();
   }
-};  // class AmbientLightSensor
+};
 
 }  // namespace power_manager
+
 #endif  // POWER_MANAGER_POWERD_MOCK_AMBIENT_LIGHT_SENSOR_H_

@@ -20,24 +20,34 @@
 
 namespace power_manager {
 
-// Period in which to poll the ambient light sensor.
-static const int kSensorPollPeriodMs = 1000;
+namespace {
+
+// Default path examined for backlight device directories.
+const FilePath::CharType kDefaultDeviceListPath[] =
+    FILE_PATH_LITERAL("/sys/bus/iio/devices");
+
+// Default interval for polling the ambient light sensor.
+const int kDefaultPollIntervalMs = 1000;
 
 // Lux level <= kLuxLo should return 0% response.
-static const int kLuxLo = 12;
+const int kLuxLo = 12;
 
 // Lux level >= kLuxHi should return 100% response.
-static const int kLuxHi = 1000;
+const int kLuxHi = 1000;
 
 // A positive kLuxOffset gives us a flatter curve, particularly at lower lux.
 // Alternatively, we could use a higher kLuxLo.
-static const int kLuxOffset = 4;
+const int kLuxOffset = 4;
 
 // Max number of entries to have in the value histories.
-static size_t kHistorySizeMax = 10;
+size_t kHistorySizeMax = 10;
+
+}  // namespace
 
 AmbientLightSensor::AmbientLightSensor()
-    : still_deferring_(false),
+    : device_list_path_(kDefaultDeviceListPath),
+      poll_interval_ms_(kDefaultPollIntervalMs),
+      still_deferring_(false),
       als_found_(false),
       read_cb_(base::Bind(&AmbientLightSensor::ReadCallback,
                           base::Unretained(this))),
@@ -50,18 +60,20 @@ AmbientLightSensor::AmbientLightSensor()
   log_multiply_factor_ = 100 / log(hi / lo);
   log_subtract_factor_ = log(lo) * log_multiply_factor_;
 
-  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
 }
 
 AmbientLightSensor::~AmbientLightSensor() {}
+
+void AmbientLightSensor::Init() {
+  g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+}
 
 bool AmbientLightSensor::DeferredInit() {
   CHECK(!als_file_.HasOpenedFile());
   // Search the iio/devices directory for a subdirectory (eg "device0" or
   // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
   file_util::FileEnumerator dir_enumerator(
-      FilePath("/sys/bus/iio/devices"), false,
-      file_util::FileEnumerator::DIRECTORIES);
+      device_list_path_, false, file_util::FileEnumerator::DIRECTORIES);
   const char* input_names[] = {
       "in_illuminance0_input",
       "in_illuminance0_raw",
@@ -140,6 +152,8 @@ gboolean AmbientLightSensor::ReadAls() {
 }
 
 void AmbientLightSensor::ReadCallback(const std::string& data) {
+  int previous_lux_value = lux_value_;
+
   std::string trimmed_data;
   TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
   lux_value_ = -1;
@@ -151,19 +165,21 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
     if (lux_history_.size() >= kHistorySizeMax)
       lux_history_.pop_front();
     lux_history_.push_back(lux_value_);
-    FOR_EACH_OBSERVER(AmbientLightSensorObserver, observer_list_,
-                      OnAmbientLightChanged(this));
-  } else{
+    if (lux_value_ != previous_lux_value) {
+      FOR_EACH_OBSERVER(AmbientLightSensorObserver, observer_list_,
+                        OnAmbientLightChanged(this));
+    }
+  } else {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";
   }
   // Schedule next poll.
-  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
+  g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
 void AmbientLightSensor::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file.";
-  g_timeout_add(kSensorPollPeriodMs, ReadAlsThunk, this);
+  g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
 double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) const {
