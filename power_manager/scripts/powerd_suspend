@@ -6,10 +6,12 @@
 
 . /usr/share/misc/shflags
 
-DEFINE_boolean test $FLAGS_FALSE "support power_Resume test" t
 DEFINE_boolean cancel $FLAGS_FALSE "cancel suspend, but send resume signal" c
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
+
+# For testing: write RTC resume timestamp to this file if it exists
+timestamp_file=/var/run/power_manager/hwclock-on-resume
 
 log_msg() {
     logger -t "powerd_suspend[${PPID}]" $@
@@ -141,9 +143,6 @@ fi
 # (by not waiting for USB devices to reset and resume)
 for i in /sys/bus/usb/devices/*/power/persist; do echo 0 > $i; done
 
-# - deletes hwclock snapshot from previous resumes
-rm -f /var/run/power_manager/hwclock-on-resume
-
 # - suspends the cryptohome device
 #CRYPTOHOME=/dev/mapper/cryptohome
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup suspend $CRYPTOHOME
@@ -172,7 +171,7 @@ else
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
     # wait for io and get a more accurate time for wakeup
-    if [ $FLAGS_test -eq $FLAGS_TRUE ]; then
+    if [ -f "${timestamp_file}" ]; then
         /sbin/hwclock > /dev/null
     fi
     # - suspends to ram
@@ -189,10 +188,10 @@ fi
 
 if [ $cancel -eq 0 ]; then
     # On resume:
-    if [ $FLAGS_test -eq $FLAGS_TRUE ]; then
+    if [ -f "${timestamp_file}" ]; then
         # - records the hwclock time at resume. It is read by power_Resume test.
         TIME=$(/sbin/hwclock --utc --debug)
-        echo ${TIME} > /var/run/power_manager/hwclock-on-resume &
+        echo ${TIME} > "${timestamp_file}" &
         log_msg "Recorded hwclock time for test"
     fi
 
