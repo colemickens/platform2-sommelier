@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/interface.h"
+#include "login_manager/dbus_glib_shim.h"
+
+#include "login_manager/session_manager_interface.h"
 
 namespace login_manager {
 namespace gobject {

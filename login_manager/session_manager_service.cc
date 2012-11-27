@@ -41,9 +41,9 @@
 #include <chromeos/utility.h>
 
 #include "login_manager/child_job.h"
+#include "login_manager/dbus_glib_shim.h"
 #include "login_manager/device_local_account_policy_service.h"
 #include "login_manager/device_management_backend.pb.h"
-#include "login_manager/interface.h"
 #include "login_manager/key_generator.h"
 #include "login_manager/liveness_checker_impl.h"
 #include "login_manager/login_metrics.h"
@@ -734,7 +734,7 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
                                             GError** error) {
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
-  // likely a DBUS message. See interface.cc for that call.
+  // likely a DBUS message. See dbus_glib_shim.cc for that call.
   LOG(INFO) << "SessionManagerService StopSession";
   g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
                   ServiceShutdown,

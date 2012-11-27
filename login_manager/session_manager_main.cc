@@ -36,7 +36,7 @@ using std::wstring;
 // Watches a Chrome binary and restarts it when it crashes. Also watches
 // window manager binary as well. Actually supports watching several
 // processes specified as command line arguments separated with --.
-// Also listens over DBus for the commands specified in interface.h.
+// Also listens over DBus for the commands specified in dbus_glib_shim.h.
 // Usage:
 //   session_manager --uid=1000 -- /path/to/command1 [arg1 [arg2 [ . . . ] ] ]
 

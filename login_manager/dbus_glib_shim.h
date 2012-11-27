@@ -1,8 +1,8 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-#ifndef LOGIN_MANAGER_INTERFACE_H_
-#define LOGIN_MANAGER_INTERFACE_H_
+#ifndef LOGIN_MANAGER_DBUS_GLIB_SHIM_H_
+#define LOGIN_MANAGER_DBUS_GLIB_SHIM_H_
 
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib.h>
@@ -13,22 +13,22 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/glib/object.h>
 
-#include "login_manager/session_manager_service.h"
-
 // Helpers for using GObjects until we can get a C++ wrapper going.
 namespace login_manager {
+class SessionManagerInterface;
+
 namespace gobject {  // Namespace hiding the GObject type data.
 
 struct SessionManager {
   GObject parent_instance;
-  SessionManagerService *service;  // pointer to implementing service.
+  SessionManagerInterface *service;  // pointer to implementing service.
 };
 struct SessionManagerClass { GObjectClass parent_class; };
 
-// session_manager_get_type() is defined in interface.cc by the
+// session_manager_get_type() is defined in dbus_glib_shim.cc by the
 // G_DEFINE_TYPE() macro.  This macro defines a number of other GLib
 // class system specific functions and variables discussed in
-// interface.cc.
+// dbus_glib_shim.cc.
 GType session_manager_get_type();  // defined by G_DEFINE_TYPE
 struct dbus_glib_session_manager_object_info;  // defined by G_DEFINE_TYPE
 
@@ -105,4 +105,4 @@ gboolean session_manager_start_device_wipe(SessionManager *self,
                                            GError **error);
 }  // namespace gobject
 }  // namespace login_manager
-#endif  // LOGIN_MANAGER_INTERFACE_H_
+#endif  // LOGIN_MANAGER_DBUS_GLIB_SHIM_H_
