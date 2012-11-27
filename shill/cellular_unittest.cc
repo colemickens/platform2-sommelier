@@ -705,6 +705,18 @@ TEST_F(CellularTest, ConnectFailureNoService) {
   device_->Connect(&error);
 }
 
+TEST_F(CellularTest, LinkEventWontDestroyService) {
+  // If the network interface goes down, Cellular::LinkEvent should
+  // drop the connection but the service object should persist.
+  device_->state_ = Cellular::kStateLinked;
+  CellularService *service = new CellularService(
+      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  device_->service_ = service;
+  device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
+  EXPECT_EQ(device_->state_, Cellular::kStateConnected);
+  EXPECT_EQ(device_->service_, service);
+}
+
 TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   SetCellularType(Cellular::kTypeUniversal);
 

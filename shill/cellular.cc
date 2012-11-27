@@ -546,6 +546,9 @@ void Cellular::EstablishLink() {
   }
   // TODO(petkov): Provide a timeout for a failed link-up request.
   rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
+
+  // Set state to associating.
+  OnConnecting();
 }
 
 void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
@@ -560,8 +563,9 @@ void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
       LOG(ERROR) << "Unable to acquire DHCP config.";
     }
   } else if ((flags & IFF_UP) == 0 && state_ == kStateLinked) {
+    LOG(INFO) << link_name() << " is down.";
     SetState(kStateConnected);
-    DestroyService();
+    DropConnection();
   }
 }
 
@@ -663,7 +667,6 @@ bool Cellular::DisconnectCleanup() {
     SetState(kStateRegistered);
     SetServiceFailureSilent(Service::kFailureUnknown);
     DestroyIPConfig();
-    rtnl_handler()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
     return true;
   }
   return false;

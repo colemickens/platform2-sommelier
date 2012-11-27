@@ -542,6 +542,7 @@ ServiceRefPtr Manager::GetServiceWithGUID(
 }
 
 ServiceRefPtr Manager::GetDefaultService() const {
+  SLOG(Manager, 2) << __func__;
   if (services_.empty() || !services_[0]->connection().get()) {
     SLOG(Manager, 2) << "In " << __func__ << ": No default connection exists.";
     return NULL;

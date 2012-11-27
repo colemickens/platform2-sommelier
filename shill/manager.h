@@ -269,6 +269,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class WiMaxProviderTest;
 
   FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
+  FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, CalculateStateOffline);
   FRIEND_TEST(ManagerTest, CalculateStateOnline);
