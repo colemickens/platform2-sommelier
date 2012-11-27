@@ -92,12 +92,12 @@ class SystemUtils {
   //
   // Sends |signal_name| to Chromium browser, optionally adding |payload|
   // as an arg if it is not NULL.
-  virtual void SendSignalToChromium(const char* signal_name,
+  virtual void EmitSignalWithPayload(const char* signal_name,
                                     const char* payload);
 
   // Same as above, but accepts a boolean status that'll be encoded as
   // |kSignalSuccess| and |kSignalFailure| respectively.
-  virtual void SendStatusSignalToChromium(const char* signal_name, bool status);
+  virtual void EmitStatusSignal(const char* signal_name, bool status);
 
   // Calls |method_name| on power manager.
   virtual void CallMethodOnPowerManager(const char* method_name);
@@ -143,11 +143,11 @@ class SystemUtils {
   static const char kSignalSuccess[];
   static const char kSignalFailure[];
 
-  // Sends |signal_name| to |interface, optionally adding |payload|
+  // Emits |signal_name| from |interface|, optionally adding |payload|
   // as an arg if it is not NULL.
-  static void SendSignalTo(const char* interface,
-                           const char* signal_name,
-                           const char* payload);
+  static void EmitSignalFrom(const char* interface,
+                             const char* signal_name,
+                             const char* payload);
 
   // Call |interface|.|method_name| on object |path| provided by service
   // |destination| with no arguments. Blocks until the called method returns.

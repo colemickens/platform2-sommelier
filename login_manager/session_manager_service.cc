@@ -415,14 +415,14 @@ bool SessionManagerService::Reset() {
 }
 
 void SessionManagerService::OnPolicyPersisted(bool success) {
-  system_->SendStatusSignalToChromium(chromium::kPropertyChangeCompleteSignal,
+  system_->EmitStatusSignal(login_manager::kPropertyChangeCompleteSignal,
                                       success);
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
 }
 
 void SessionManagerService::OnKeyPersisted(bool success) {
-  system_->SendStatusSignalToChromium(chromium::kOwnerKeySetSignal, success);
+  system_->EmitStatusSignal(login_manager::kOwnerKeySetSignal, success);
 }
 
 int SessionManagerService::GetKillTimeout() {
@@ -842,7 +842,7 @@ gboolean SessionManagerService::LockScreen(GError** error) {
     LOG(WARNING) << "Attempt to lock screen during Guest session.";
     return FALSE;
   }
-  system_->SendSignalToChromium(chromium::kLockScreenSignal, NULL);
+  system_->EmitSignalWithPayload(chromium::kLockScreenSignal, NULL);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
@@ -856,7 +856,7 @@ gboolean SessionManagerService::HandleLockScreenShown(GError** error) {
 }
 
 gboolean SessionManagerService::UnlockScreen(GError** error) {
-  system_->SendSignalToChromium(chromium::kUnlockScreenSignal, NULL);
+  system_->EmitSignalWithPayload(chromium::kUnlockScreenSignal, NULL);
   LOG(INFO) << "UnlockScreen";
   return TRUE;
 }
@@ -1171,7 +1171,7 @@ void SessionManagerService::DeregisterChildWatchers() {
 
 void SessionManagerService::SendSignal(const char signal_name[],
                                        bool succeeded) {
-  system_->SendStatusSignalToChromium(signal_name, succeeded);
+  system_->EmitStatusSignal(signal_name, succeeded);
 }
 
 // static

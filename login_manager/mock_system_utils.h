@@ -41,8 +41,8 @@ class MockSystemUtils : public SystemUtils {
                                      guint,
                                      const char*,
                                      const char*));
-  MOCK_METHOD2(SendSignalToChromium, void(const char*, const char*));
-  MOCK_METHOD2(SendStatusSignalToChromium, void(const char*, bool));
+  MOCK_METHOD2(EmitSignalWithPayload, void(const char*, const char*));
+  MOCK_METHOD2(EmitStatusSignal, void(const char*, bool));
   MOCK_METHOD1(CallMethodOnPowerManager, void(const char*));
 
   // gmock can't handle methods that return scoped_ptrs.

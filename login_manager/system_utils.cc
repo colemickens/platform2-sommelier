@@ -177,15 +177,14 @@ void SystemUtils::BroadcastSignalNoArgs(gobject::SessionManager* origin,
   g_signal_emit(origin, signal, 0);
 }
 
-void SystemUtils::SendSignalToChromium(const char* signal_name,
-                                       const char* payload) {
-  SendSignalTo(chromium::kChromiumInterface, signal_name, payload);
+void SystemUtils::EmitSignalWithPayload(const char* signal_name,
+                                        const char* payload) {
+  EmitSignalFrom(chromium::kChromiumInterface, signal_name, payload);
 }
 
-void SystemUtils::SendStatusSignalToChromium(const char* signal_name,
-                                             bool status) {
-  SendSignalTo(chromium::kChromiumInterface, signal_name,
-               status ? kSignalSuccess : kSignalFailure);
+void SystemUtils::EmitStatusSignal(const char* signal_name, bool status) {
+  EmitSignalFrom(chromium::kChromiumInterface, signal_name,
+                 status ? kSignalSuccess : kSignalFailure);
 }
 
 void SystemUtils::CallMethodOnPowerManager(const char* method_name) {
@@ -240,9 +239,9 @@ void SystemUtils::CancelAsyncMethodCall(DBusPendingCall* pending_call) {
   dbus_pending_call_cancel(pending_call);
 }
 
-void SystemUtils::SendSignalTo(const char* interface,
-                               const char* signal_name,
-                               const char* payload) {
+void SystemUtils::EmitSignalFrom(const char* interface,
+                                 const char* signal_name,
+                                 const char* payload) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               login_manager::kSessionManagerServicePath,
                               interface);

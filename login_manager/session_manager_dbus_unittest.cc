@@ -588,7 +588,8 @@ TEST_F(SessionManagerDBusTest, RestartJobWithAuthBadCookie) {
 TEST_F(SessionManagerDBusTest, LockScreen) {
   TrivialInitManager();
   EXPECT_CALL(utils_,
-              SendSignalToChromium(StrEq(chromium::kLockScreenSignal), NULL))
+              EmitSignalWithPayload(
+                  StrEq(chromium::kLockScreenSignal), NULL))
       .Times(1);
   MockUtils();
 
@@ -599,7 +600,8 @@ TEST_F(SessionManagerDBusTest, LockScreen) {
 TEST_F(SessionManagerDBusTest, LockScreenGuest) {
   TrivialInitManager();
   EXPECT_CALL(utils_,
-              SendSignalToChromium(StrEq(chromium::kLockScreenSignal), NULL))
+              EmitSignalWithPayload(
+                  StrEq(chromium::kLockScreenSignal), NULL))
       .Times(0);
   MockUtils();
 
