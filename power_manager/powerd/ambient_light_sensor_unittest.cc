@@ -11,6 +11,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
+#include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 
 namespace power_manager {
@@ -21,7 +22,7 @@ namespace {
 // many milliseconds.
 const guint kChangeTimeoutMs = 5000;
 
-// Frequently with which the ambient light sensor file is polled.
+// Frequency with which the ambient light sensor file is polled.
 const int kPollIntervalMs = 100;
 
 // Simple AmbientLightSensorObserver implementation that runs the event loop
@@ -29,56 +30,25 @@ const int kPollIntervalMs = 100;
 class TestObserver : public AmbientLightSensorObserver {
  public:
   TestObserver()
-      : loop_(g_main_loop_new(NULL, FALSE)),
-        timeout_id_(0),
-        saw_change_(false) {
+      : loop_runner_(base::TimeDelta::FromMilliseconds(kChangeTimeoutMs)) {
   }
-
-  virtual ~TestObserver() {
-    if (timeout_id_)
-      g_source_remove(timeout_id_);
-    g_main_loop_unref(loop_);
-    loop_ = NULL;
-  }
+  virtual ~TestObserver() {}
 
   // Runs |loop_| until OnAmbientLightChanged() is called.
   bool RunUntilAmbientLightChanged() {
-    timeout_id_ = g_timeout_add(kChangeTimeoutMs, OnTimeoutThunk, this);
-    g_main_loop_run(loop_);
-    return saw_change_;
+    return loop_runner_.StartLoop();
   }
-
-  // Stops |loop_| and sets |timed_out_|.
-  SIGNAL_CALLBACK_0(TestObserver, gboolean, OnTimeout);
 
   // AmbientLightSensorObserver implementation:
   virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE {
-    if (timeout_id_) {
-      g_source_remove(timeout_id_);
-      timeout_id_ = 0;
-    }
-    g_main_loop_quit(loop_);
-    saw_change_ = true;
+    loop_runner_.StopLoop();
   }
 
  private:
-  GMainLoop* loop_;  // not owned
-
-  // ID of the timeout that was installed to run OnTimeout().  0 if not present.
-  guint timeout_id_;
-
-  // Was OnAmbientLightChanged() called the last time we were waiting for it?
-  bool saw_change_;
+  TestMainLoopRunner loop_runner_;
 
   DISALLOW_COPY_AND_ASSIGN(TestObserver);
 };
-
-gboolean TestObserver::OnTimeout() {
-  timeout_id_ = 0;
-  g_main_loop_quit(loop_);
-  saw_change_ = false;
-  return FALSE;
-}
 
 }  // namespace
 

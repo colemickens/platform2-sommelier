@@ -12,6 +12,7 @@
 #include "base/string_number_conversions.h"
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/common/test_main_loop_runner.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -44,19 +45,15 @@ namespace power_manager {
 // update a pref file, and then call RunUntilPrefChanged().
 class TestPrefObserver {
  public:
-  TestPrefObserver() : loop_(g_main_loop_new(NULL, FALSE)), timeout_id_(0) {}
-  ~TestPrefObserver() {
-    if (timeout_id_)
-      g_source_remove(timeout_id_);
-    g_main_loop_unref(loop_);
-    loop_ = NULL;
+  TestPrefObserver()
+      : loop_runner_(base::TimeDelta::FromMilliseconds(kPrefChangeTimeoutMs)) {
   }
+  ~TestPrefObserver() {}
 
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
   std::string RunUntilPrefChanged() {
-    timeout_id_ = g_timeout_add(kPrefChangeTimeoutMs, OnTimeoutThunk, this);
-    g_main_loop_run(loop_);
+    CHECK(loop_runner_.StartLoop()) << "Pref change not received";
     return pref_name_;
   }
 
@@ -69,19 +66,11 @@ class TestPrefObserver {
                     int,
                     unsigned int);
 
-  // Triggers a crash.
-  SIGNAL_CALLBACK_0(TestPrefObserver,
-                    gboolean,
-                    OnTimeout);
-
  private:
-  GMainLoop* loop_;  // not owned
+  TestMainLoopRunner loop_runner_;
 
   // Name of the last pref that was changed.
   std::string pref_name_;
-
-  // ID of the timeout that was installed to run OnTimeout().  0 if not present.
-  guint timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(TestPrefObserver);
 };
@@ -89,22 +78,9 @@ class TestPrefObserver {
 gboolean TestPrefObserver::OnPrefChanged(const char* name,
                                          int handle,
                                          unsigned int mask) {
-  // OnPrefChanged() can be called multiple times for a single update.  For
-  // example, when a file is first written, we'll get notified both about it
-  // being created and about it being modified.
-  if (timeout_id_) {
-    g_source_remove(timeout_id_);
-    timeout_id_ = 0;
-  }
-  g_main_loop_quit(loop_);
+  loop_runner_.StopLoop();
   pref_name_ = name;
   return TRUE;
-}
-
-gboolean TestPrefObserver::OnTimeout() {
-  timeout_id_ = 0;
-  CHECK(false) << "Timeout exceeded; pref change notification not received";
-  return FALSE;
 }
 
 class PowerPrefsTest : public Test {
