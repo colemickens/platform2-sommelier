@@ -28,7 +28,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
-#include "power_manager/powerd/activity_detector_interface.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/power_supply.h"

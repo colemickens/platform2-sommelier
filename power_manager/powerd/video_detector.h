@@ -10,7 +10,6 @@
 #include <set>
 
 #include "base/time.h"
-#include "power_manager/powerd/activity_detector_interface.h"
 
 namespace power_manager {
 
@@ -30,10 +29,11 @@ class VideoDetectorObserver {
 
 typedef std::set<VideoDetectorObserver*> VideoDetectorObservers;
 
-class VideoDetector : public ActivityDetectorInterface {
+class VideoDetector {
  public:
   VideoDetector();
   virtual ~VideoDetector() {}
+
   void Init();
 
   // Register/unregister an VideoDetectorObserver. Return true when action
@@ -41,23 +41,21 @@ class VideoDetector : public ActivityDetectorInterface {
   bool AddObserver(VideoDetectorObserver* observer);
   bool RemoveObserver(VideoDetectorObserver* observer);
 
+  // Sets |is_active| to true if activity has been detected, otherwise sets
+  // |is_active| to false.  This is based on whether there has been any
+  // activity detected within the last |activity_threshold_ms| ms.
+  //
   // GetActivity should be called from OnIdleEvent when a transition to idle
   // state is imminent.
-  // Sets |is_active| to true if video activity has been detected, otherwise
-  // sets |is_active| to false.
   //
   // On success, returns true; otherwise return false.
-  virtual bool GetActivity(int64 activity_threshold_ms,
-                           int64* time_since_activity_ms,
-                           bool* is_active);
-
-  // These are not used by the video detector, which is not poll-driven.
-  virtual void Enable() {}
-  virtual void Disable() {}
+  bool GetActivity(int64 activity_threshold_ms,
+                   int64* time_since_activity_ms,
+                   bool* is_active);
 
   // Call this to notify detector of video activity updates.  Stores the last
   // video activity time in |last_video_time_|.
-  virtual void HandleActivity(const base::TimeTicks& last_activity_time);
+  void HandleActivity(const base::TimeTicks& last_activity_time);
 
   // Call to notify the detector of the current fullscreeniness of any video
   // playing. This should be called before HandleActivity.

@@ -44,7 +44,6 @@ struct cras_client;
 
 namespace power_manager {
 
-class ActivityDetectorInterface;
 class PowerButtonHandler;
 class StateControl;
 

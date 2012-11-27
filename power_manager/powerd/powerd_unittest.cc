@@ -17,7 +17,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/metrics_constants.h"
-#include "power_manager/powerd/mock_activity_detector.h"
 #include "power_manager/powerd/mock_metrics_store.h"
 #include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/mock_video_detector.h"
