@@ -10,7 +10,6 @@
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time.h>
-#include <gtest/gtest.h>
 
 #include "login_manager/liveness_checker.h"
 
@@ -19,6 +18,7 @@ class MessageLoopProxy;
 }  // namespace base
 
 namespace login_manager {
+class ScopedDBusPendingCall;
 class SessionManagerService;
 class SystemUtils;
 
@@ -38,7 +38,6 @@ class LivenessCheckerImpl : public LivenessChecker {
 
   // Implementation of LivenessChecker.
   void Start();
-  void HandleLivenessConfirmed();
   void Stop();
   bool IsRunning();
 
@@ -55,7 +54,7 @@ class LivenessCheckerImpl : public LivenessChecker {
 
   const bool enable_aborting_;
   const base::TimeDelta interval_;
-  bool outstanding_liveness_ping_;
+  scoped_ptr<ScopedDBusPendingCall> outstanding_liveness_ping_;
   base::CancelableClosure liveness_check_;
   base::WeakPtrFactory<LivenessCheckerImpl> weak_ptr_factory_;
 

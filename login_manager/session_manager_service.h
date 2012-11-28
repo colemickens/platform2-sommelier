@@ -292,8 +292,6 @@ class SessionManagerService
   virtual gboolean UnlockScreen(GError** error) OVERRIDE;
   virtual gboolean HandleLockScreenDismissed(GError** error) OVERRIDE;
 
-  virtual gboolean HandleLivenessConfirmed(GError** error) OVERRIDE;
-
   virtual gboolean RestartJob(gint pid,
                               gchar* arguments,
                               gboolean* OUT_done,

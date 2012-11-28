@@ -11,19 +11,22 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus-glib.h>
-#include <dbus/dbus.h>
 #include <glib.h>
 
 class FilePath;
+struct DBusPendingCall;
 
 namespace login_manager {
 namespace gobject {
 struct SessionManager;
 }
+
+class ScopedDBusPendingCall;
 
 class SystemUtils {
  public:
@@ -96,12 +99,27 @@ class SystemUtils {
   // |kSignalSuccess| and |kSignalFailure| respectively.
   virtual void SendStatusSignalToChromium(const char* signal_name, bool status);
 
-  // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
-  //                API out of the session_manager.
-  // http://code.google.com/p/chromium-os/issues/detail?id=5929
-  //
-  // Sends |signal_name| to power manager.
+  // Calls |method_name| on power manager.
   virtual void CallMethodOnPowerManager(const char* method_name);
+
+  // Initiates an async call of |method_name| on Chromium.  Returns opaque
+  // pointer that can be used to retrieve the response at a later time.
+  //
+  // This can't return scoped_ptr<ScopedDBusPendingCall> because gmock can't
+  // handle a scoped_ptr return type.
+  virtual scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
+      const char* method_name);
+
+  // Expects |pending_call| to have succeeded by now.  Returns true if
+  // so, false if not, and ensures that |pending_call| is never going
+  // to return after now.  If |pending_call| returned an error, it is
+  // logged before returning.
+  //
+  // |pending_call| will no longer be usable; the caller should destroy.
+  virtual bool CheckAsyncMethodSuccess(DBusPendingCall* pending_call);
+
+  // |pending_call| will no longer be usable; the caller should destroy.
+  virtual void CancelAsyncMethodCall(DBusPendingCall* pending_call);
 
   // Makes a best-effort attempt to append |msg| to the system log that is
   // persisted across stateful partition wipes.

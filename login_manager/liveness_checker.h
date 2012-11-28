@@ -22,9 +22,6 @@ class LivenessChecker {
   // Begin sending periodic liveness pings to the browser.
   virtual void Start() = 0;
 
-  // Handle browser ACK of liveness ping.
-  virtual void HandleLivenessConfirmed() = 0;
-
   // Stop sending periodic liveness pings to the browser.
   // Must be idempotent.
   virtual void Stop() = 0;

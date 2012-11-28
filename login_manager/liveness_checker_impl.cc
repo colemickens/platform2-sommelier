@@ -15,7 +15,9 @@
 #include <base/message_loop_proxy.h>
 #include <base/time.h>
 #include <chromeos/dbus/service_constants.h>
+#include <dbus/dbus.h>
 
+#include "login_manager/scoped_dbus_pending_call.h"
 #include "login_manager/session_manager_service.h"
 #include "login_manager/system_utils.h"
 
@@ -32,7 +34,6 @@ LivenessCheckerImpl::LivenessCheckerImpl(
       loop_proxy_(loop),
       enable_aborting_(enable_aborting),
       interval_(interval),
-      outstanding_liveness_ping_(false),
       ALLOW_THIS_IN_INITIALIZER_LIST(weak_ptr_factory_(this)) {
 }
 
@@ -42,7 +43,7 @@ LivenessCheckerImpl::~LivenessCheckerImpl() {
 
 void LivenessCheckerImpl::Start() {
   Stop();  // To be certain.
-  outstanding_liveness_ping_ = false;
+  outstanding_liveness_ping_.reset();
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,
                  weak_ptr_factory_.GetWeakPtr(),
@@ -53,14 +54,13 @@ void LivenessCheckerImpl::Start() {
       interval_);
 }
 
-void LivenessCheckerImpl::HandleLivenessConfirmed() {
-  LOG(INFO) << "Browser liveness confirmed.";
-  outstanding_liveness_ping_ = false;
-}
-
 void LivenessCheckerImpl::Stop() {
   weak_ptr_factory_.InvalidateWeakPtrs();
   liveness_check_.Cancel();
+  if (outstanding_liveness_ping_.get()) {
+    system_->CancelAsyncMethodCall(outstanding_liveness_ping_->Get());
+    outstanding_liveness_ping_.reset();
+  }
 }
 
 bool LivenessCheckerImpl::IsRunning() {
@@ -69,7 +69,8 @@ bool LivenessCheckerImpl::IsRunning() {
 
 void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   // If there's an un-acked ping, the browser needs to be taken down.
-  if (outstanding_liveness_ping_) {
+  if (outstanding_liveness_ping_.get() &&
+      !system_->CheckAsyncMethodSuccess(outstanding_liveness_ping_->Get())) {
     LOG(WARNING) << "Browser hang detected!";
     if (enable_aborting_) {
       LOG(WARNING) << "Aborting browser process.";
@@ -81,8 +82,8 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
   }
 
   DLOG(INFO) << "Sending a liveness ping to the browser.";
-  outstanding_liveness_ping_ = true;
-  system_->SendSignalToChromium(chromium::kLivenessRequestedSignal, NULL);
+  outstanding_liveness_ping_ =
+      system_->CallAsyncMethodOnChromium(chromeos::kCheckLiveness);
   DLOG(INFO) << "Scheduling liveness check in " << interval.InSeconds() << "s.";
   liveness_check_.Reset(
       base::Bind(&LivenessCheckerImpl::CheckAndSendLivenessPing,

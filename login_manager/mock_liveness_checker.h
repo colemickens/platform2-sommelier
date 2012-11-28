@@ -18,7 +18,6 @@ class MockLivenessChecker : public LivenessChecker {
   virtual ~MockLivenessChecker();
 
   MOCK_METHOD0(Start, void());
-  MOCK_METHOD0(HandleLivenessConfirmed, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(IsRunning, bool());
 

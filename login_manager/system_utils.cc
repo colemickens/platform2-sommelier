@@ -4,9 +4,7 @@
 
 #include "login_manager/system_utils.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
 #include <errno.h>
-#include <glib.h>
 #include <signal.h>
 #include <sys/wait.h>
 #include <time.h>
@@ -23,6 +21,12 @@
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/process.h>
+#include <dbus/dbus-glib-lowlevel.h>
+#include <dbus/dbus-glib.h>
+#include <dbus/dbus.h>
+#include <glib.h>
+
+#include "login_manager/scoped_dbus_pending_call.h"
 
 namespace login_manager {
 namespace gobject {
@@ -189,6 +193,51 @@ void SystemUtils::CallMethodOnPowerManager(const char* method_name) {
                power_manager::kPowerManagerServicePath,
                power_manager::kPowerManagerInterface,
                method_name);
+}
+
+scoped_ptr<ScopedDBusPendingCall> SystemUtils::CallAsyncMethodOnChromium(
+    const char* method_name) {
+  DBusMessage* method = dbus_message_new_method_call(
+      chromeos::kLibCrosServiceName,
+      chromeos::kLibCrosServicePath,
+      chromeos::kLibCrosServiceInterface,
+      method_name);
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  DBusPendingCall* to_return = NULL;
+  // Only fails on OOM conditions.
+  CHECK(dbus_connection_send_with_reply(connection, method, &to_return, -1));
+  dbus_message_unref(method);
+  return ScopedDBusPendingCall::Create(to_return);
+}
+
+bool SystemUtils::CheckAsyncMethodSuccess(DBusPendingCall* pending_call) {
+  DCHECK(pending_call);
+  // This returns NULL if |pending_call| hasn't completed yet.
+  DBusMessage* reply = dbus_pending_call_steal_reply(pending_call);
+  if (!reply) {
+    CancelAsyncMethodCall(pending_call);
+    return false;
+  }
+
+  DBusError error;
+  dbus_error_init(&error);
+  // By definition, getting a method_return message means the async
+  // method completed successfully.
+  bool to_return =
+      dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_METHOD_RETURN;
+  if (dbus_set_error_from_message(&error, reply))
+    LOG(ERROR) << "Liveness ping resulted in an error: " << error.message;
+
+  if (dbus_error_is_set(&error))
+    dbus_error_free(&error);
+  dbus_message_unref(reply);
+  return to_return;
+}
+
+void SystemUtils::CancelAsyncMethodCall(DBusPendingCall* pending_call) {
+  DCHECK(pending_call);
+  dbus_pending_call_cancel(pending_call);
 }
 
 void SystemUtils::SendSignalTo(const char* interface,

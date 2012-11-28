@@ -869,11 +869,6 @@ gboolean SessionManagerService::HandleLockScreenDismissed(GError** error) {
   return TRUE;
 }
 
-gboolean SessionManagerService::HandleLivenessConfirmed(GError** error) {
-  liveness_checker_->HandleLivenessConfirmed();
-  return TRUE;
-}
-
 gboolean SessionManagerService::RestartJob(gint pid,
                                            gchar* arguments,
                                            gboolean* OUT_done,

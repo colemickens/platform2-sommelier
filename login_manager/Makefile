@@ -42,7 +42,8 @@ $(eval $(call add_object_rules,$(PROTO_OBJS),CXX,cc))
 
 # The binaries we build and the objects they depend on
 KEYGEN_BIN = keygen
-KEYGEN_OBJS = keygen.o keygen_worker.o nss_util.o policy_key.o system_utils.o
+KEYGEN_OBJS = keygen.o keygen_worker.o nss_util.o policy_key.o \
+	scoped_dbus_pending_call.o system_utils.o
 SESSION_BIN = session_manager
 SESSION_OBJS = $(PROTO_OBJS) \
   $(filter-out keygen%.o mock_%.o %_testrunner.o %_unittest.o,$(CXX_OBJECTS))

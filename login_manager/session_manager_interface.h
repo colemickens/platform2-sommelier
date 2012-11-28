@@ -142,9 +142,6 @@ class SessionManagerInterface {
   // and broadcasts ScreenIsUnlocked signal over DBus.
   virtual gboolean HandleLockScreenDismissed(GError** error) = 0;
 
-  // Intended to be called by Chromium, to ack a liveness request signal.
-  virtual gboolean HandleLivenessConfirmed(GError** error) = 0;
-
   // Restarts job with specified pid replacing its command line arguments
   // with provided.
   virtual gboolean RestartJob(gint pid,
