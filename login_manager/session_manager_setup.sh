@@ -6,16 +6,12 @@
 
 # Set up to start the X server ASAP, then let the startup run in the
 # background while we set up other stuff.
+XUSER=root
+XTTY=1
 XAUTH_FILE="/var/run/chromelogin.auth"
-MCOOKIE=$(mcookie)
-xauth -q -f ${XAUTH_FILE} add :0 . ${MCOOKIE}
+xstart.sh ${XUSER} ${XTTY} ${XAUTH_FILE} &
 
-# The X server sends SIGUSR1 to its parent once it's ready to accept
-# connections.  The subshell here starts X, waits for the signal, then
-# terminates once X is ready.
-( trap 'exit 0' USR1 ; xstart.sh ${XAUTH_FILE} & wait ) &
-
-USE_FLAGS=$(cat /etc/session_manager_use_flags.txt)
+USE_FLAGS="$(cat /etc/session_manager_use_flags.txt)"
 
 # Returns success if the USE flag passed as its sole parameter was defined.
 # New flags must be first be added to the ebuild file.
@@ -56,6 +52,7 @@ export LOGNAME=${USER}
 export SHELL=/bin/sh
 export HOME=${DATA_DIR}/user
 export DISPLAY=:0.0
+export XAUTHORITY=${DATA_DIR}/.Xauthority
 
 # If used with Address Sanitizer, set the following flags to alter memory
 # allocations by glibc. Hopefully later, when ASAN matures, we will not need
@@ -114,12 +111,8 @@ if [ -f /mnt/stateful_partition/etc/enable_chromium_minidumps ] ; then
   fi
 fi
 
-export XAUTHORITY=${DATA_DIR}/.Xauthority
-
 mkdir -p ${DATA_DIR} && chown ${USER}:${USER} ${DATA_DIR}
 mkdir -p ${HOME} && chown ${USER}:${USER} ${HOME}
-xauth -q -f ${XAUTHORITY} add :0 . ${MCOOKIE} &&
-  chown ${USER}:${USER} ${XAUTHORITY}
 
 # Old builds will have a ${LOGIN_PROFILE_DIR} that's owned by root; newer ones
 # won't have this directory at all.
@@ -355,6 +348,11 @@ add_vmodule_pattern "network_portal_detector=1"
 # for correctness.
 
 wait
+
+# Create the XAUTHORITY file so ${USER} can access the X server.
+# This must happen after xstart.sh has finished (and created ${XAUTH_FILE}),
+# hence after the wait.
+cp -f ${XAUTH_FILE} ${XAUTHORITY} && chown ${USER}:${USER} ${XAUTHORITY}
 
 initctl emit x-started
 bootstat x-started
