@@ -806,6 +806,12 @@ TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsNetworkUnknown) {
   EXPECT_TRUE(RemoveNetwork(network));
 }
 
+TEST_F(WiFiMainTest, UseArpGateway) {
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kDeviceName, _, _, true))
+      .WillOnce(Return(dhcp_config_));
+  const_cast<WiFi *>(wifi().get())->AcquireIPConfig();
+}
+
 TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsInvalidArgs) {
   DBus::Path network = "/test/path";
   EXPECT_CALL(*supplicant_interface_proxy_, RemoveNetwork(network))

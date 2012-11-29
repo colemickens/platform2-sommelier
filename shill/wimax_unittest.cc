@@ -11,6 +11,8 @@
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
+#include "shill/mock_dhcp_config.h"
+#include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_wimax_device_proxy.h"
@@ -43,6 +45,8 @@ class WiMaxTest : public testing::Test {
       : proxy_(new MockWiMaxDeviceProxy()),
         proxy_factory_(this),
         manager_(&control_, &dispatcher_, &metrics_, NULL),
+        dhcp_config_(new MockDHCPConfig(&control_,
+                                        kTestLinkName)),
         device_(new WiMax(&control_, &dispatcher_, &metrics_, &manager_,
                           kTestLinkName, kTestAddress, kTestInterfaceIndex,
                           kTestPath)) {}
@@ -74,6 +78,7 @@ class WiMaxTest : public testing::Test {
 
   virtual void SetUp() {
     device_->proxy_factory_ = &proxy_factory_;
+    device_->set_dhcp_provider(&dhcp_provider_);
   }
 
   virtual void TearDown() {
@@ -88,6 +93,8 @@ class WiMaxTest : public testing::Test {
   EventDispatcher dispatcher_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
+  MockDHCPProvider dhcp_provider_;
+  scoped_refptr<MockDHCPConfig> dhcp_config_;
   WiMaxRefPtr device_;
 };
 
@@ -208,6 +215,12 @@ TEST_F(WiMaxTest, OnStatusChanged) {
 
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   device_->SelectService(NULL);
+}
+
+TEST_F(WiMaxTest, UseNoArpGateway) {
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestLinkName, _, _, false))
+      .WillOnce(Return(dhcp_config_));
+  device_->AcquireIPConfig();
 }
 
 TEST_F(WiMaxTest, DropService) {

@@ -165,8 +165,11 @@ class WiFi : public Device {
     return service.get() == current_service_.get();
   }
 
-  // Overriden from Device superclass
+  // Overridden from Device superclass
   virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
+
+  // Overridden from Device superclass
+  virtual bool ShouldUseArpGateway() const;
 
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_

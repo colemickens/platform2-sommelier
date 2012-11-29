@@ -1350,6 +1350,10 @@ void WiFi::OnLinkMonitorFailure() {
   }
 }
 
+bool WiFi::ShouldUseArpGateway() const {
+  return true;
+}
+
 vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
   vector<GeolocationInfo> objects;
   for (EndpointMap::const_iterator it = endpoint_by_rpcid_.begin();

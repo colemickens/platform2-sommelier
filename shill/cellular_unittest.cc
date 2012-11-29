@@ -717,6 +717,12 @@ TEST_F(CellularTest, LinkEventWontDestroyService) {
   EXPECT_EQ(device_->service_, service);
 }
 
+TEST_F(CellularTest, UseNoArpGateway) {
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, false))
+      .WillOnce(Return(dhcp_config_));
+  device_->AcquireIPConfig();
+}
+
 TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   SetCellularType(Cellular::kTypeUniversal);
 

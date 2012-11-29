@@ -187,6 +187,7 @@ class Device : public base::RefCounted<Device> {
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
+  FRIEND_TEST(CellularTest, UseNoArpGateway);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
@@ -205,7 +206,9 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, DisableTechnology);
   FRIEND_TEST(WiFiMainTest, Connect);
+  FRIEND_TEST(WiFiMainTest, UseArpGateway);
   FRIEND_TEST(WiMaxTest, ConnectTimeout);
+  FRIEND_TEST(WiMaxTest, UseNoArpGateway);
 
   virtual ~Device();
 
@@ -319,6 +322,10 @@ class Device : public base::RefCounted<Device> {
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
   void SetServiceConnectedState(Service::ConnectState state);
+
+  // Specifies whether an ARP gateway should be used for the
+  // device technology.
+  virtual bool ShouldUseArpGateway() const;
 
   const ServiceRefPtr &selected_service() const { return selected_service_; }
 

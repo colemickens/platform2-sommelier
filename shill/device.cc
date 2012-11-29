@@ -359,6 +359,10 @@ void Device::DestroyIPConfig() {
   DestroyConnection();
 }
 
+bool Device::ShouldUseArpGateway() const {
+  return false;
+}
+
 bool Device::AcquireIPConfig() {
   return AcquireIPConfigWithLeaseName(string());
 }
@@ -366,10 +370,11 @@ bool Device::AcquireIPConfig() {
 bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
   DestroyIPConfig();
   EnableIPv6();
+  bool arp_gateway = manager_->GetArpGateway() && ShouldUseArpGateway();
   ipconfig_ = dhcp_provider_->CreateConfig(link_name_,
                                            manager_->GetHostName(),
                                            lease_name,
-                                           manager_->GetArpGateway());
+                                           arp_gateway);
   ipconfig_->RegisterUpdateCallback(Bind(&Device::OnIPConfigUpdated,
                                          weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
