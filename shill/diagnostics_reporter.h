@@ -6,11 +6,10 @@
 #define SHILL_DIAGNOSTICS_REPORTER_H_
 
 #include <base/lazy_instance.h>
-#include <base/memory/weak_ptr.h>
 
 namespace shill {
 
-class EventDispatcher;
+class GLib;
 
 class DiagnosticsReporter {
  public:
@@ -19,7 +18,7 @@ class DiagnosticsReporter {
   // This is a singleton -- use DiagnosticsReporter::GetInstance()->Foo()
   static DiagnosticsReporter *GetInstance();
 
-  void Init(EventDispatcher *dispatcher);
+  void Init(GLib *glib);
 
   void Report();
 
@@ -32,10 +31,7 @@ class DiagnosticsReporter {
   friend struct base::DefaultLazyInstanceTraits<DiagnosticsReporter>;
   friend class DiagnosticsReporterTest;
 
-  void TriggerCrash();
-
-  EventDispatcher *dispatcher_;
-  base::WeakPtrFactory<DiagnosticsReporter> weak_ptr_factory_;
+  GLib *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsReporter);
 };

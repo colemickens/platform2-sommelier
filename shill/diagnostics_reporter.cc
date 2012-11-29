@@ -4,27 +4,18 @@
 
 #include "shill/diagnostics_reporter.h"
 
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
-
-#include <base/bind.h>
-
-#include "shill/event_dispatcher.h"
-
-using base::Bind;
+#include "shill/glib.h"
 
 namespace shill {
 
 namespace {
 
 base::LazyInstance<DiagnosticsReporter> g_reporter = LAZY_INSTANCE_INITIALIZER;
+const char kNetDiagsUpload[] = SHIMDIR "/net-diags-upload";
 
 }  // namespace
 
-DiagnosticsReporter::DiagnosticsReporter()
-    : dispatcher_(NULL),
-      weak_ptr_factory_(this) {}
+DiagnosticsReporter::DiagnosticsReporter() : glib_(NULL) {}
 
 DiagnosticsReporter::~DiagnosticsReporter() {}
 
@@ -33,41 +24,39 @@ DiagnosticsReporter *DiagnosticsReporter::GetInstance() {
   return g_reporter.Pointer();
 }
 
-void DiagnosticsReporter::Init(EventDispatcher *dispatcher) {
-  dispatcher_ = dispatcher;
+void DiagnosticsReporter::Init(GLib *glib) {
+  glib_ = glib;
 }
 
 void DiagnosticsReporter::Report() {
-  // Trigger the crash from the main event loop to try to ensure minimal and
-  // consistent stack trace. TODO(petkov): Look into invoking crash_reporter
-  // directly without actually triggering a crash.
-  dispatcher_->PostTask(Bind(&DiagnosticsReporter::TriggerCrash,
-                             weak_ptr_factory_.GetWeakPtr()));
+  if (!IsReportingEnabled()) {
+    return;
+  }
+  LOG(INFO) << "Spawning " << kNetDiagsUpload;
+  CHECK(glib_);
+  char *argv[] = { const_cast<char *>(kNetDiagsUpload), NULL };
+  char *envp[] = { NULL };
+  int status = 0;
+  GError *error = NULL;
+  if (!glib_->SpawnSync(NULL,
+                        argv,
+                        envp,
+                        static_cast<GSpawnFlags>(0),
+                        NULL,
+                        NULL,
+                        NULL,
+                        NULL,
+                        &status,
+                        &error)) {
+    LOG(ERROR) << "net-diags-upload failed: "
+               << glib_->ConvertErrorToMessage(error);
+  }
 }
 
 bool DiagnosticsReporter::IsReportingEnabled() {
   // TODO(petkov): Implement this when there's a way to control reporting
   // through policy. crosbug.com/35946.
   return false;
-}
-
-void DiagnosticsReporter::TriggerCrash() {
-  if (!IsReportingEnabled()) {
-    return;
-  }
-  pid_t pid = fork();
-  if (pid < 0) {
-    PLOG(ERROR) << "fork() failed.";
-    NOTREACHED();
-    return;
-  }
-  if (pid == 0) {
-    // Crash the child.
-    abort();
-  }
-  // The parent waits for the child to terminate.
-  pid_t result = waitpid(pid, NULL, 0);
-  PLOG_IF(ERROR, result < 0) << "waitpid() failed.";
 }
 
 }  // namespace shill

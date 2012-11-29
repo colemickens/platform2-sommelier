@@ -100,7 +100,7 @@ void Daemon::Start() {
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
   dhcp_provider_->Init(control_, &dispatcher_, &glib_);
-  DiagnosticsReporter::GetInstance()->Init(&dispatcher_);
+  DiagnosticsReporter::GetInstance()->Init(&glib_);
 
   if (config80211_) {
     config80211_->Init(&dispatcher_);

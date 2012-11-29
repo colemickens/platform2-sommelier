@@ -4,12 +4,12 @@
 
 #include "shill/diagnostics_reporter.h"
 
-#include <base/message_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/event_dispatcher.h"
+#include "shill/mock_glib.h"
 
+using testing::_;
 using testing::Return;
 
 namespace shill {
@@ -22,6 +22,8 @@ class DiagnosticsReporterTest : public testing::Test {
   bool IsReportingEnabled() {
     return DiagnosticsReporter::GetInstance()->IsReportingEnabled();
   }
+
+  MockGLib glib_;
 };
 
 namespace {
@@ -38,19 +40,20 @@ class ReporterUnderTest : public DiagnosticsReporter {
 
 }  // namespace
 
-TEST_F(DiagnosticsReporterTest, Report) {
-  // The test is pretty basic but covers the main flow and ensures that the main
-  // process doesn't crash.
+TEST_F(DiagnosticsReporterTest, ReportEnabled) {
   ReporterUnderTest reporter;
-  EXPECT_CALL(reporter, IsReportingEnabled())
-      .WillOnce(Return(false))
-      .WillOnce(Return(true));
-  EventDispatcher dispatcher;
-  reporter.Init(&dispatcher);
+  EXPECT_CALL(reporter, IsReportingEnabled()).WillOnce(Return(true));
+  EXPECT_CALL(glib_, SpawnSync(_, _, _, _, _, _, _, _, _, _)).Times(1);
+  reporter.Init(&glib_);
   reporter.Report();
+}
+
+TEST_F(DiagnosticsReporterTest, ReportDisabled) {
+  ReporterUnderTest reporter;
+  EXPECT_CALL(reporter, IsReportingEnabled()).WillOnce(Return(false));
+  EXPECT_CALL(glib_, SpawnSync(_, _, _, _, _, _, _, _, _, _)).Times(0);
+  reporter.Init(&glib_);
   reporter.Report();
-  dispatcher.PostTask(MessageLoop::QuitClosure());
-  dispatcher.DispatchForever();
 }
 
 TEST_F(DiagnosticsReporterTest, IsReportingEnabled) {
