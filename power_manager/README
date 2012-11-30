@@ -4,7 +4,7 @@ in userspace.  This repository contains the following directories:
   common:  C++ code shared between powerd and powerm.
   config:  Configuration files installed to /usr/share/power_manager.
   dbus:    D-Bus policy configuration files.
-  powerd:  "Upper" power manager daemon running as the chronos user.
+  powerd:  "Upper" power manager daemon running as the "power" user.
   powerm:  "Lower" power manager daemon running as the root user.
   scripts: Assorted shell scripts.
   tools:   C++ utility programs; may depend on powerd and powerm code.

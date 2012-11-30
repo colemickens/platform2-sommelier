@@ -83,7 +83,7 @@ suspend_pm_wakeup_cancel() {
 suspend_cancel() {
     if [ $FLAGS_cancel -eq $FLAGS_TRUE ] ||
        [ -e "/var/run/power_manager/lid_opened" ] ||
-       [ -e "/var/run/power_manager/chronos/user_active" ] ||
+       [ -e "/var/run/power_manager/power/user_active" ] ||
        suspend_pm_wakeup_cancel; then
         cancel=1
         return 0
@@ -104,7 +104,7 @@ send_uma_status() {
 
 cleanup_for_resume() {
     rm -f "/var/run/power_manager/lid_opened"
-    rm -f "/var/run/power_manager/chronos/user_active"
+    rm -f "/var/run/power_manager/power/user_active"
 }
 
 log_msg "Going to suspend-to-RAM state : args=$@"
