@@ -25,7 +25,6 @@ namespace shill {
 
 const char WiMaxService::kStorageNetworkId[] = "NetworkId";
 const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
-const char WiMaxService::kAutoConnBusy[] = "busy";
 
 
 WiMaxService::WiMaxService(ControlInterface *control,

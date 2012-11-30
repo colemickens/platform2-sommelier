@@ -36,7 +36,6 @@ using std::vector;
 
 namespace shill {
 
-const char WiFiService::kAutoConnBusy[] = "busy";
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";

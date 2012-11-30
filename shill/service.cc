@@ -37,6 +37,7 @@ using std::vector;
 
 namespace shill {
 
+const char Service::kAutoConnBusy[] = "busy";
 const char Service::kAutoConnConnected[] = "connected";
 const char Service::kAutoConnConnecting[] = "connecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
@@ -252,8 +253,14 @@ void Service::AutoConnect() {
     Error error;
     Connect(&error);
   } else {
-    LOG(INFO) << "Suppressed autoconnect to " << friendly_name_ << " "
-              << "(" << reason << ")";
+    if (reason == kAutoConnConnected || reason == kAutoConnBusy) {
+      SLOG(Service, 1)
+          << "Suppressed autoconnect to " << friendly_name_ << " "
+          << "(" << reason << ")";
+    } else {
+      LOG(INFO) << "Suppressed autoconnect to " << friendly_name_ << " "
+                << "(" << reason << ")";
+    }
   }
 }
 

@@ -480,6 +480,26 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
 }
 
+TEST_F(ServiceTest, AutoConnectLogging) {
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _));
+  service_->set_connectable(true);
+
+  ScopeLogger::GetInstance()->EnableScopesByName("+service");
+  ScopeLogger::GetInstance()->set_verbose_level(1);
+  service_->SetState(Service::kStateConnected);
+  EXPECT_CALL(log, Log(-1, _, HasSubstr(Service::kAutoConnConnected)));
+  service_->AutoConnect();
+
+  ScopeLogger::GetInstance()->EnableScopesByName("-service");
+  ScopeLogger::GetInstance()->set_verbose_level(0);
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       HasSubstr(Service::kAutoConnNotConnectable)));
+  service_->set_connectable(false);
+  service_->AutoConnect();
+}
+
+
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   const char *reason;
   service_->set_connectable(true);

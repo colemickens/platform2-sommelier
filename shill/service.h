@@ -417,6 +417,8 @@ class Service : public base::RefCounted<Service> {
  protected:
   friend class base::RefCounted<Service>;
 
+  static const char kAutoConnBusy[];
+
   virtual ~Service();
 
   // Returns true if a character is allowed to be in a service storage id.
@@ -520,6 +522,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
+  FRIEND_TEST(ServiceTest, AutoConnectLogging);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);

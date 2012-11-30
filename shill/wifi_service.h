@@ -122,7 +122,6 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
 
-  static const char kAutoConnBusy[];
   static const char kAutoConnNoEndpoint[];
 
   // Override the base clase implementation, because we need to allow
