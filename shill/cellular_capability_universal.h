@@ -68,6 +68,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,
                        const ResultCallback &callback);
   virtual void Disconnect(Error *error, const ResultCallback &callback);
+  virtual void DisconnectCleanup();
   virtual void Activate(const std::string &carrier,
                         Error *error, const ResultCallback &callback);
 

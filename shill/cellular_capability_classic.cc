@@ -244,6 +244,10 @@ void CellularCapabilityClassic::Disconnect(Error *error,
     LOG(ERROR) << "No proxy found in disconnect.";
 }
 
+void CellularCapabilityClassic::DisconnectCleanup() {
+  SLOG(Cellular, 2) << __func__;
+}
+
 void CellularCapabilityClassic::Activate(const string &/*carrier*/,
                                   Error *error,
                                   const ResultCallback &/*callback*/) {

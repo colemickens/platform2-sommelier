@@ -348,6 +348,10 @@ void CellularCapabilityUniversal::Disconnect(Error *error,
   }
 }
 
+void CellularCapabilityUniversal::DisconnectCleanup() {
+  SLOG(Cellular, 2) << __func__;
+}
+
 void CellularCapabilityUniversal::Activate(const string &carrier,
                                            Error *error,
                                            const ResultCallback &callback) {

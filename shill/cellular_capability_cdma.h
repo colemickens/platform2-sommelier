@@ -30,6 +30,7 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void Activate(const std::string &carrier, Error *error,
                         const ResultCallback &callback);
+  virtual void DisconnectCleanup();
   virtual bool IsActivating() const;
   virtual bool IsRegistered();
   virtual void SetUnregistered(bool searching);
@@ -88,10 +89,6 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   void OnActivateReply(const ResultCallback &callback,
                        uint32 status, const Error &error);
 
-  void OnDisconnectBeforeActivate(const std::string &carrier,
-                                  const ResultCallback &callback,
-                                  const Error &error);
-
   void OnGetRegistrationStateReply(uint32 state_1x, uint32 state_evdo,
                                    const Error &error);
   void OnGetSignalQualityReply(uint32 strength, const Error &error);
@@ -100,6 +97,8 @@ class CellularCapabilityCDMA : public CellularCapabilityClassic {
   base::WeakPtrFactory<CellularCapabilityCDMA> weak_ptr_factory_;
 
   bool activation_starting_;
+  ResultCallback pending_activation_callback_;
+  std::string pending_activation_carrier_;
   uint32 activation_state_;
   uint32 registration_state_evdo_;
   uint32 registration_state_1x_;

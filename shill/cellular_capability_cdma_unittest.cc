@@ -175,13 +175,7 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   {
     InSequence dummy;
 
-    EXPECT_CALL(*cellular_, DisconnectWithCallback(_,_))
-        .WillOnce(Invoke(cellular_.get(),
-                         &MockCellular::RealDisconnectWithCallback));
-    EXPECT_CALL(*classic_proxy_,
-                Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
-        .WillOnce(Invoke(this,
-                         &CellularCapabilityCDMATest::InvokeDisconnect));
+    EXPECT_CALL(*cellular_, Disconnect(_));
     EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                   CellularCapability::kTimeoutActivate))
         .WillOnce(Invoke(this,
@@ -193,6 +187,15 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   Error error;
   capability_->Activate(kTestCarrier, &error,
       Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+  // So now we should be "activating" while we wait for a disconnect.
+  EXPECT_TRUE(IsActivationStarting());
+  EXPECT_TRUE(capability_->IsActivating());
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            capability_->activation_state());
+  // Simulate a disconnect.
+  SetDeviceState(Cellular::kStateRegistered);
+  capability_->DisconnectCleanup();
+  // Now the modem is actually activating.
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING,
             capability_->activation_state());
   EXPECT_EQ(flimflam::kActivationStateActivating,
@@ -202,40 +205,12 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnected) {
   EXPECT_TRUE(capability_->IsActivating());
 }
 
-TEST_F(CellularCapabilityCDMATest, MidActivateWhileConnected) {
-  SetDeviceState(Cellular::kStateConnected);
-  {
-    InSequence dummy;
-
-    EXPECT_CALL(*cellular_, DisconnectWithCallback(_,_))
-        .WillOnce(Invoke(cellular_.get(),
-                         &MockCellular::RealDisconnectWithCallback));
-    EXPECT_CALL(*classic_proxy_,
-                Disconnect(_, _, CellularCapability::kTimeoutDisconnect));
-  }
-  SetProxy();
-  SetService();
-  Error error;
-  capability_->Activate(kTestCarrier, &error,
-      Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
-  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
-            capability_->activation_state());
-  EXPECT_TRUE(IsActivationStarting());
-  EXPECT_TRUE(capability_->IsActivating());
-}
-
 TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
   SetDeviceState(Cellular::kStateConnected);
   {
     InSequence dummy;
 
-    EXPECT_CALL(*cellular_, DisconnectWithCallback(_,_))
-        .WillOnce(Invoke(cellular_.get(),
-                         &MockCellular::RealDisconnectWithCallback));
-    EXPECT_CALL(*classic_proxy_,
-                Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
-        .WillOnce(Invoke(this,
-                         &CellularCapabilityCDMATest::InvokeDisconnectError));
+    EXPECT_CALL(*cellular_, Disconnect(_));
     EXPECT_CALL(*proxy_, Activate(kTestCarrier, _, _,
                                   CellularCapability::kTimeoutActivate))
         .Times(0);
@@ -245,6 +220,13 @@ TEST_F(CellularCapabilityCDMATest, ActivateWhileConnectedButFail) {
   Error error;
   capability_->Activate(kTestCarrier, &error,
       Bind(&CellularCapabilityCDMATest::TestCallback, Unretained(this)));
+  // So now we should be "activating" while we wait for a disconnect.
+  EXPECT_TRUE(IsActivationStarting());
+  EXPECT_TRUE(capability_->IsActivating());
+  EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
+            capability_->activation_state());
+  // Similulate a failed disconnect (the modem is still connected!).
+  capability_->DisconnectCleanup();
   EXPECT_EQ(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED,
             capability_->activation_state());
   EXPECT_EQ(flimflam::kActivationStateNotActivated,

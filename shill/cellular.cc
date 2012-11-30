@@ -468,8 +468,7 @@ void Cellular::OnConnectFailed(const Error &error) {
     service_->SetFailure(Service::kFailureUnknown);
 }
 
-void Cellular::DisconnectWithCallback(const ResultCallback &callback,
-                                      Error *error) {
+void Cellular::Disconnect(Error *error) {
   SLOG(Cellular, 2) << __func__;
   if (state_ != kStateConnected && state_ != kStateLinked) {
     Error::PopulateAndLog(
@@ -477,17 +476,11 @@ void Cellular::DisconnectWithCallback(const ResultCallback &callback,
     return;
   }
   ResultCallback cb = Bind(&Cellular::OnDisconnectReply,
-                           weak_ptr_factory_.GetWeakPtr(),
-                           callback);
+                           weak_ptr_factory_.GetWeakPtr());
   capability_->Disconnect(error, cb);
 }
 
-void Cellular::Disconnect(Error *error) {
-  DisconnectWithCallback(ResultCallback(), error);
-}
-
-void Cellular::OnDisconnectReply(const ResultCallback &callback,
-                                 const Error &error) {
+void Cellular::OnDisconnectReply(const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   if (error.IsSuccess())
     OnDisconnected();
@@ -495,9 +488,6 @@ void Cellular::OnDisconnectReply(const ResultCallback &callback,
     OnDisconnectFailed();
   manager()->TerminationActionComplete(FriendlyName());
   manager()->RemoveTerminationAction(FriendlyName());
-  if (!callback.is_null()) {
-    callback.Run(error);
-  }
 }
 
 void Cellular::OnDisconnected() {
@@ -664,13 +654,15 @@ void Cellular::StartTermination() {
 }
 
 bool Cellular::DisconnectCleanup() {
+  bool succeeded = false;
   if (state_ == kStateConnected || state_ == kStateLinked) {
     SetState(kStateRegistered);
     SetServiceFailureSilent(Service::kFailureUnknown);
     DestroyIPConfig();
-    return true;
+    succeeded = true;
   }
-  return false;
+  capability_->DisconnectCleanup();
+  return succeeded;
 }
 
 }  // namespace shill

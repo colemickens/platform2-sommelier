@@ -99,6 +99,8 @@ class CellularCapability {
   virtual void Connect(const DBusPropertiesMap &properties, Error *error,
                        const ResultCallback &callback) = 0;
   virtual void Disconnect(Error *error, const ResultCallback &callback) = 0;
+  // Called when a disconnect completes, successful or not.
+  virtual void DisconnectCleanup() = 0;
 
   // Activates the modem. Returns an Error on failure.
   // The default implementation fails by returning a kNotSupported error
