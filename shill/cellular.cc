@@ -375,6 +375,7 @@ void Cellular::HandleNewRegistrationState() {
     OnConnected();
   service_->SetNetworkTechnology(capability_->GetNetworkTechnologyString());
   service_->SetRoamingState(capability_->GetRoamingStateString());
+  manager()->UpdateService(service_);
 }
 
 void Cellular::HandleNewSignalQuality(uint32 strength) {

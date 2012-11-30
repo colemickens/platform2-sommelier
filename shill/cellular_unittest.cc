@@ -534,7 +534,7 @@ TEST_F(CellularTest, StartLinked) {
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
-  EXPECT_CALL(manager_, UpdateService(_)).Times(2);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(3);
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
