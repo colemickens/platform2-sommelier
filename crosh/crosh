@@ -805,6 +805,79 @@ cmd_tpcontrol() {
   /opt/google/touchpad/tpcontrol "$@"
 }
 
+cmd_try_touch_experiment() {
+  # Test out a new set of Touch parameters briefly, then revert them.
+  # This takes in a single string of hex digits ie ([a-fA-F0-9]*) that
+  # correspond to an ascii string of the form
+  # PARAMETER1 NAME:PARAMETER1 VALUE,PARAMETER2 NAME:PARAMETER2 VALUE,...
+  # The input is encoded as hex to a) eliminate escaping issues for spaces
+  # and b) obfuscate which properties are being changed from the user so they
+  # don't see what they're changing, and have it influence their decision.
+
+  # First, check and make sure only hex digit characters have been passed in
+  if [ -n "`echo \"$@\" | sed 's/[0-9a-fA-F]//g'`" ]; then
+    return 1
+  fi
+
+  # Converting the input from hex to ascii
+  treatment="`echo \"$@\" | sed 's/\(..\)/\\\\u\1/g'`"
+  treatment=`printf "${treatment}\n"`
+  if [ -n "`echo \"${treatment}\" | sed 's/[0-9a-zA-Z :,\.\-]//g'`" ]; then
+    return 1;
+  fi
+
+  # Get the current system setup and old values so we can restore them
+  device=`/opt/google/touchpad/tpcontrol listdev`
+  old_values="`xinput list-props ${device}`"
+
+  # Splitting the treatment into property name/value pairs
+  treatment_commands=""
+  reset_commands=""
+  IFS=,
+  for pair in ${treatment}; do
+    name="`echo "${pair}" | cut -d ":" -f1`"
+    new_value="`echo "${pair}" | cut -d ":" -f2`"
+
+    property_entry=`echo "${old_values}" | grep "${name}" | tr -d "\t"`
+    property_number=`echo "${property_entry}" | sed "s/^.*(\([0-9]*\)).*$/\1/"`
+    old_value=`echo "${property_entry}" | sed "s/^[^:]*:\(.*\)$/\1/"`
+
+    change_cmd="${property_number}:${new_value}"
+    reset_cmd="${property_number}:${old_value}"
+
+    treatment_commands="${change_cmd},${treatment_commands}"
+    reset_commands="${reset_cmd},${reset_commands}"
+  done
+
+  echo "Applying Changes now..."
+  change_properties "${treatment_commands}", "${device}"
+
+  echo "Press Ctrl+C to return to your original settings."
+  cat
+
+  echo "Reverting Changes now..."
+  change_properties "${reset_commands}", "${device}"
+
+  # Checking to make sure everything is back to normal
+  restored_values="`xinput list-props ${device}`"
+  if [ "${old_values}" != "${restored_values}" ]; then
+    echo "ERROR: Some properties may not have been reset correctly!"
+    echo "If your touchpad is misbehaving, you can restore it by logging out"
+    echo "and back in again."
+  fi
+}
+
+change_properties() {
+  # change format: PROPERTY_NUMBER:PROPERTY_VALUE,...
+  cleaned="`echo "$1" | sed "s/,*$//g"`"
+  IFS=,
+  for cmd in ${cleaned}; do
+    property_number="`echo "${cmd}" | cut -d ":" -f1`"
+    property_value="`echo "${cmd}" | cut -d ":" -f2`"
+    xinput set-prop "$2" "${property_number}" "${property_value}"
+  done
+}
+
 cmd_syslog() {
   logger -t crosh -- "$*"
 }
