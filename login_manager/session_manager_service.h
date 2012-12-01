@@ -328,7 +328,7 @@ class SessionManagerService
   // Not passed when Chrome is started after signout.
   static const char kFirstBootFlag[];
 
-  // Payloads for signals_[kSignakSessionStateChanged];
+  // Payloads for SessionStateChanged DBus signal.
   static const char kStarted[];
   static const char kStopping[];
   static const char kStopped[];
@@ -346,16 +346,6 @@ class SessionManagerService
   virtual GMainLoop* main_loop() { return main_loop_; }
 
  private:
-  // D-Bus signals.
-  // TODO(cmasone): Fix naming convention.
-  enum Signals {
-    kSignalSessionStateChanged,
-    kSignalLoginPromptVisible,
-    kSignalScreenIsLocked,
-    kSignalScreenIsUnlocked,
-    kNumSignals
-  };
-
   static void do_nothing(int sig) {}
 
   // Common code between SIG{HUP, INT, TERM}Handler.
@@ -491,9 +481,6 @@ class SessionManagerService
 
   FilePath chrome_testing_path_;
   FilePath machine_info_file_;
-
-  // D-Bus GLib signal ids.
-  guint signals_[kNumSignals];
 
   scoped_ptr<PolicyKey> owner_key_;
   scoped_refptr<DevicePolicyService> device_policy_;

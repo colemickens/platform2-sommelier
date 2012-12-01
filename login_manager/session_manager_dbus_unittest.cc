@@ -10,6 +10,8 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/command_line.h>
@@ -36,6 +38,7 @@
 
 using ::testing::AnyNumber;
 using ::testing::DoAll;
+using ::testing::ElementsAre;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
@@ -43,6 +46,9 @@ using ::testing::_;
 
 using chromeos::Resetter;
 using chromeos::glib::ScopedError;
+
+using std::string;
+using std::vector;
 
 namespace {
 
@@ -84,7 +90,9 @@ class SessionManagerDBusTest : public SessionManagerTest {
         .Times(1);
 
     EXPECT_CALL(utils_,
-                BroadcastSignal(_, _, SessionManagerService::kStarted, _))
+                EmitSignalWithStringArgs(
+                    StrEq(login_manager::kSessionStateChangedSignal),
+                    ElementsAre(SessionManagerService::kStarted, _)))
         .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
@@ -133,7 +141,9 @@ class SessionManagerDBusTest : public SessionManagerTest {
     ExpectUserPolicySetup();
 
     EXPECT_CALL(utils_,
-                BroadcastSignal(_, _, SessionManagerService::kStarted, _))
+                EmitSignalWithStringArgs(
+                    StrEq(login_manager::kSessionStateChangedSignal),
+                    ElementsAre(SessionManagerService::kStarted, _)))
         .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
@@ -227,10 +237,14 @@ TEST_F(SessionManagerDBusTest, SessionStartedCleanup) {
   EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
       .WillOnce(Return(true));
   EXPECT_CALL(utils_,
-              BroadcastSignal(_, _, SessionManagerService::kStopping, _))
+              EmitSignalWithStringArgs(
+                  StrEq(login_manager::kSessionStateChangedSignal),
+                  ElementsAre(SessionManagerService::kStopping, _)))
       .Times(1);
   EXPECT_CALL(utils_,
-              BroadcastSignal(_, _, SessionManagerService::kStopped, _))
+              EmitSignalWithStringArgs(
+                  StrEq(login_manager::kSessionStateChangedSignal),
+                  ElementsAre(SessionManagerService::kStopped, _)))
       .Times(1);
 
   ExpectPolicySetup();
@@ -257,10 +271,14 @@ TEST_F(SessionManagerDBusTest, SessionStartedSlowKillCleanup) {
   EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT))
       .WillOnce(Return(0));
   EXPECT_CALL(utils_,
-              BroadcastSignal(_, _, SessionManagerService::kStopping, _))
+              EmitSignalWithStringArgs(
+                  StrEq(login_manager::kSessionStateChangedSignal),
+                  ElementsAre(SessionManagerService::kStopping, _)))
       .Times(1);
   EXPECT_CALL(utils_,
-              BroadcastSignal(_, _, SessionManagerService::kStopped, _))
+              EmitSignalWithStringArgs(
+                  StrEq(login_manager::kSessionStateChangedSignal),
+                  ElementsAre(SessionManagerService::kStopped, _)))
       .Times(1);
 
   ExpectPolicySetup();
@@ -588,8 +606,8 @@ TEST_F(SessionManagerDBusTest, RestartJobWithAuthBadCookie) {
 TEST_F(SessionManagerDBusTest, LockScreen) {
   TrivialInitManager();
   EXPECT_CALL(utils_,
-              EmitSignalWithPayload(
-                  StrEq(chromium::kLockScreenSignal), NULL))
+              EmitSignalWithStringArgs(
+                  StrEq(chromium::kLockScreenSignal), vector<string>()))
       .Times(1);
   MockUtils();
 
@@ -600,8 +618,8 @@ TEST_F(SessionManagerDBusTest, LockScreen) {
 TEST_F(SessionManagerDBusTest, LockScreenGuest) {
   TrivialInitManager();
   EXPECT_CALL(utils_,
-              EmitSignalWithPayload(
-                  StrEq(chromium::kLockScreenSignal), NULL))
+              EmitSignalWithStringArgs(
+                  StrEq(chromium::kLockScreenSignal),  vector<string>()))
       .Times(0);
   MockUtils();
 

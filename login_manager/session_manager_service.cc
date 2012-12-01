@@ -260,7 +260,6 @@ SessionManagerService::SessionManagerService(
   g_shutdown_pipe_read_fd = pipefd[0];
   g_shutdown_pipe_write_fd = pipefd[1];
 
-  memset(signals_, 0, sizeof(signals_));
   if (!chromeos::SecureRandomString(kCookieEntropyBytes, &cookie_))
     LOG(FATAL) << "Can't generate auth cookie.";
 
@@ -283,51 +282,51 @@ bool SessionManagerService::Initialize() {
   dbus_g_object_type_install_info(
       gobject::session_manager_get_type(),
       &gobject::dbus_glib_session_manager_object_info);
-
-  // Creates D-Bus GLib signal ids.
-  signals_[kSignalSessionStateChanged] =
-      g_signal_new("session_state_changed",
-                   gobject::session_manager_get_type(),
-                   G_SIGNAL_RUN_LAST,
-                   0,               // class offset
-                   NULL, NULL,      // accumulator and data
-                   // TODO: This is wrong.  If you need to use it at some point
-                   // (probably only if you need to listen to this GLib signal
-                   // instead of to the D-Bus signal), you should generate an
-                   // appropriate marshaller that takes two string arguments.
-                   // See e.g. http://goo.gl/vEGT4.
-                   g_cclosure_marshal_VOID__STRING,
-                   G_TYPE_NONE,     // return type
-                   2,               // num params
-                   G_TYPE_STRING,   // "started", "stopping", or "stopped"
-                   G_TYPE_STRING);  // current user
-  signals_[kSignalLoginPromptVisible] =
-      g_signal_new("login_prompt_visible",
-                   gobject::session_manager_get_type(),
-                   G_SIGNAL_RUN_LAST,
-                   0,               // class offset
-                   NULL, NULL,      // accumulator and data
-                   NULL,            // Use default marshaller.
-                   G_TYPE_NONE,     // return type
-                   0);              // num params
-  signals_[kSignalScreenIsLocked] =
-      g_signal_new("screen_is_locked",
-                   gobject::session_manager_get_type(),
-                   G_SIGNAL_RUN_LAST,
-                   0,               // class offset
-                   NULL, NULL,      // accumulator and data
-                   NULL,            // Use default marshaller.
-                   G_TYPE_NONE,     // return type
-                   0);              // num params
-  signals_[kSignalScreenIsUnlocked] =
-      g_signal_new("screen_is_unlocked",
-                   gobject::session_manager_get_type(),
-                   G_SIGNAL_RUN_LAST,
-                   0,               // class offset
-                   NULL, NULL,      // accumulator and data
-                   NULL,            // Use default marshaller.
-                   G_TYPE_NONE,     // return type
-                   0);              // num params
+  dbus_glib_global_set_disable_legacy_property_access();
+  // Register DBus signals with glib.
+  // The gobject system seems to need to have glib signals hanging off
+  // the SessionManager gtype that correspond with the DBus signals we
+  // wish to emit.  These calls create and register them.
+  // TODO(cmasone): remove these when we migrate away from dbus-glib.
+  g_signal_new("session_state_changed",
+               gobject::session_manager_get_type(),
+               G_SIGNAL_RUN_LAST,
+               0,               // class offset
+               NULL, NULL,      // accumulator and data
+               // TODO: This is wrong.  If you need to use it at some point
+               // (probably only if you need to listen to this GLib signal
+               // instead of to the D-Bus signal), you should generate an
+               // appropriate marshaller that takes two string arguments.
+               // See e.g. http://goo.gl/vEGT4.
+               g_cclosure_marshal_VOID__STRING,
+               G_TYPE_NONE,     // return type
+               2,               // num params
+               G_TYPE_STRING,   // "started", "stopping", or "stopped"
+               G_TYPE_STRING);  // current user
+  g_signal_new("login_prompt_visible",
+               gobject::session_manager_get_type(),
+               G_SIGNAL_RUN_LAST,
+               0,               // class offset
+               NULL, NULL,      // accumulator and data
+               NULL,            // Use default marshaller.
+               G_TYPE_NONE,     // return type
+               0);              // num params
+  g_signal_new("screen_is_locked",
+               gobject::session_manager_get_type(),
+               G_SIGNAL_RUN_LAST,
+               0,               // class offset
+               NULL, NULL,      // accumulator and data
+               NULL,            // Use default marshaller.
+               G_TYPE_NONE,     // return type
+               0);              // num params
+  g_signal_new("screen_is_unlocked",
+               gobject::session_manager_get_type(),
+               G_SIGNAL_RUN_LAST,
+               0,               // class offset
+               NULL, NULL,      // accumulator and data
+               NULL,            // Use default marshaller.
+               G_TYPE_NONE,     // return type
+               0);              // num params
 
   LOG(INFO) << "SessionManagerService starting";
   if (!Reset())
@@ -416,7 +415,7 @@ bool SessionManagerService::Reset() {
 
 void SessionManagerService::OnPolicyPersisted(bool success) {
   system_->EmitStatusSignal(login_manager::kPropertyChangeCompleteSignal,
-                                      success);
+                            success);
   device_local_account_policy_->UpdateDeviceSettings(
       device_policy_->GetSettings());
 }
@@ -461,9 +460,11 @@ bool SessionManagerService::Run() {
   MessageLoop::current()->Run();
   CleanupChildren(GetKillTimeout());
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
-  system_->BroadcastSignal(session_manager_,
-                           signals_[kSignalSessionStateChanged],
-                           kStopped, current_user_.c_str());
+  vector<string> args;
+  args.push_back(kStopped);
+  args.push_back(current_user_);
+  system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
+                                 args);
   return true;
 }
 
@@ -481,9 +482,11 @@ bool SessionManagerService::Shutdown() {
   if (session_started_) {
     session_stopping_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
-    system_->BroadcastSignal(session_manager_,
-                             signals_[kSignalSessionStateChanged],
-                             kStopping, current_user_.c_str());
+    vector<string> args;
+    args.push_back(kStopping);
+    args.push_back(current_user_);
+    system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
+                                   args);
   }
 
   device_policy_->PersistPolicySync();
@@ -587,8 +590,7 @@ gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
 
 gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
   login_metrics_->RecordStats("login-prompt-visible");
-  system_->BroadcastSignalNoArgs(session_manager_,
-                                 signals_[kSignalLoginPromptVisible]);
+  system_->EmitSignal(login_manager::kLoginPromptVisibleSignal);
   return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
 }
 
@@ -688,9 +690,11 @@ gboolean SessionManagerService::StartSession(gchar* email_address,
     browser_.job->StartSession(current_user_);
     session_started_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
-    system_->BroadcastSignal(session_manager_,
-                             signals_[kSignalSessionStateChanged],
-                             kStarted, current_user_.c_str());
+    vector<string> args;
+    args.push_back(kStarted);
+    args.push_back(current_user_);
+    system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
+                                      args);
     if (device_policy_->KeyMissing() &&
         !mitigator_->Mitigating() &&
         !current_user_is_incognito_) {
@@ -842,7 +846,7 @@ gboolean SessionManagerService::LockScreen(GError** error) {
     LOG(WARNING) << "Attempt to lock screen during Guest session.";
     return FALSE;
   }
-  system_->EmitSignalWithPayload(chromium::kLockScreenSignal, NULL);
+  system_->EmitSignal(chromium::kLockScreenSignal);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
@@ -850,13 +854,12 @@ gboolean SessionManagerService::LockScreen(GError** error) {
 gboolean SessionManagerService::HandleLockScreenShown(GError** error) {
   screen_locked_ = true;
   LOG(INFO) << "HandleLockScreenShown";
-  system_->BroadcastSignalNoArgs(session_manager_,
-                                 signals_[kSignalScreenIsLocked]);
+  system_->EmitSignal(login_manager::kScreenIsLockedSignal);
   return TRUE;
 }
 
 gboolean SessionManagerService::UnlockScreen(GError** error) {
-  system_->EmitSignalWithPayload(chromium::kUnlockScreenSignal, NULL);
+  system_->EmitSignal(chromium::kUnlockScreenSignal);
   LOG(INFO) << "UnlockScreen";
   return TRUE;
 }
@@ -864,8 +867,7 @@ gboolean SessionManagerService::UnlockScreen(GError** error) {
 gboolean SessionManagerService::HandleLockScreenDismissed(GError** error) {
   screen_locked_ = false;
   LOG(INFO) << "HandleLockScreenDismissed";
-  system_->BroadcastSignalNoArgs(session_manager_,
-                                 signals_[kSignalScreenIsUnlocked]);
+  system_->EmitSignal(login_manager::kScreenIsUnlockedSignal);
   return TRUE;
 }
 

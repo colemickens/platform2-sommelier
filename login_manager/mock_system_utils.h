@@ -9,6 +9,9 @@
 
 #include <unistd.h>
 
+#include <string>
+#include <vector>
+
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
@@ -37,11 +40,8 @@ class MockSystemUtils : public SystemUtils {
                bool(const FilePath& file, int32* file_size_32));
   MOCK_METHOD2(EnsureAndReturnSafeSize,
                bool(int64 size_64, int32* size_32));
-  MOCK_METHOD4(BroadcastSignal, void(gobject::SessionManager*,
-                                     guint,
-                                     const char*,
-                                     const char*));
-  MOCK_METHOD2(EmitSignalWithPayload, void(const char*, const char*));
+  MOCK_METHOD2(EmitSignalWithStringArgs, void(const char*,
+                                              const std::vector<std::string>&));
   MOCK_METHOD2(EmitStatusSignal, void(const char*, bool));
   MOCK_METHOD1(CallMethodOnPowerManager, void(const char*));
 

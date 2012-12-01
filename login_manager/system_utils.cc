@@ -11,6 +11,8 @@
 #include <unistd.h>
 
 #include <limits>
+#include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
@@ -27,6 +29,9 @@
 #include <glib.h>
 
 #include "login_manager/scoped_dbus_pending_call.h"
+
+using std::string;
+using std::vector;
 
 namespace login_manager {
 namespace gobject {
@@ -163,28 +168,21 @@ bool SystemUtils::AtomicFileWrite(const FilePath& filename,
           chmod(filename.value().c_str(), (S_IRUSR | S_IWUSR | S_IROTH)) == 0);
 }
 
-void SystemUtils::BroadcastSignal(gobject::SessionManager* origin,
-                                  guint signal,
-                                  const char* payload,
-                                  const char* user) {
-  CHECK(origin && payload && user);
-  g_signal_emit(origin, signal, 0, payload, user);
+void SystemUtils::EmitSignal(const char* signal_name) {
+  EmitSignalWithStringArgs(signal_name, vector<string>());
 }
 
-void SystemUtils::BroadcastSignalNoArgs(gobject::SessionManager* origin,
-                                        guint signal) {
-  CHECK(origin);
-  g_signal_emit(origin, signal, 0);
-}
-
-void SystemUtils::EmitSignalWithPayload(const char* signal_name,
-                                        const char* payload) {
+void SystemUtils::EmitSignalWithStringArgs(const char* signal_name,
+                                           const vector<string>& payload) {
   EmitSignalFrom(chromium::kChromiumInterface, signal_name, payload);
+  EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name, payload);
 }
 
 void SystemUtils::EmitStatusSignal(const char* signal_name, bool status) {
   EmitSignalFrom(chromium::kChromiumInterface, signal_name,
-                 status ? kSignalSuccess : kSignalFailure);
+                 vector<string>(1, status ? kSignalSuccess : kSignalFailure));
+  EmitSignalFrom(login_manager::kSessionManagerInterface, signal_name,
+                 vector<string>(1, status ? kSignalSuccess : kSignalFailure));
 }
 
 void SystemUtils::CallMethodOnPowerManager(const char* method_name) {
@@ -241,7 +239,7 @@ void SystemUtils::CancelAsyncMethodCall(DBusPendingCall* pending_call) {
 
 void SystemUtils::EmitSignalFrom(const char* interface,
                                  const char* signal_name,
-                                 const char* payload) {
+                                 const vector<string>& payload) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               login_manager::kSessionManagerServicePath,
                               interface);
@@ -251,10 +249,16 @@ void SystemUtils::EmitSignalFrom(const char* interface,
   }
   DBusMessage* signal = ::dbus_message_new_signal(
       login_manager::kSessionManagerServicePath, interface, signal_name);
-  if (payload) {
-    dbus_message_append_args(signal,
-                             DBUS_TYPE_STRING, &payload,
-                             DBUS_TYPE_INVALID);
+  if (!payload.empty()) {
+    for (vector<string>::const_iterator it = payload.begin();
+         it != payload.end();
+         ++it) {
+      // Need to be able to take the address of the value to append.
+      const char* string_arg = it->c_str();
+      dbus_message_append_args(signal,
+                               DBUS_TYPE_STRING, &string_arg,
+                               DBUS_TYPE_INVALID);
+    }
   }
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);

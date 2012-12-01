@@ -28,10 +28,12 @@
 #include "login_manager/mock_user_policy_service_factory.h"
 
 using ::testing::AtMost;
+using ::testing::ElementsAre;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::StrEq;
 using ::testing::WithArgs;
 using ::testing::_;
 
@@ -114,7 +116,9 @@ PolicyService* SessionManagerTest::CreateUserPolicyService() {
 void SessionManagerTest::SimpleRunManager() {
   ExpectPolicySetup();
   EXPECT_CALL(utils_,
-              BroadcastSignal(_, _, SessionManagerService::kStopped, _))
+              EmitSignalWithStringArgs(
+                  StrEq(login_manager::kSessionStateChangedSignal),
+                  ElementsAre(SessionManagerService::kStopped, _)))
       .Times(1);
   EXPECT_CALL(utils_, kill(_, _, _))
       .Times(AtMost(1))

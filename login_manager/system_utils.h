@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
@@ -73,27 +74,14 @@ class SystemUtils {
                                const char* data,
                                int size);
 
-  // Broadcasts |signal| over DBus, originating from |origin|, adding
-  // |payload| and |user| as args.  It is an error to pass NULL for
-  // |payload|, |origin| or |user|.
-  virtual void BroadcastSignal(gobject::SessionManager* origin,
-                               guint signal,
-                               const char* payload,
-                               const char* user);
+  // Broadcasts |signal_name| from the session manager DBus interface.
+  virtual void EmitSignal(const char* signal_name);
 
-  // Broadcasts |signal| over DBus, originating from |origin|.  It is
-  // an error to pass NULL for |origin|.
-  virtual void BroadcastSignalNoArgs(gobject::SessionManager* origin,
-                                     guint signal);
-
-  // TODO(cmasone): Move this to libchromeos as a part of factoring ownership
-  //                API out of the session_manager.
-  // http://code.google.com/p/chromium-os/issues/detail?id=5929
-  //
-  // Sends |signal_name| to Chromium browser, optionally adding |payload|
-  // as an arg if it is not NULL.
-  virtual void EmitSignalWithPayload(const char* signal_name,
-                                    const char* payload);
+  // Broadcasts |signal_name| from the session manager DBus interface,
+  // optionally adding |payload| as args if it is not empty.
+  virtual void EmitSignalWithStringArgs(
+      const char* signal_name,
+      const std::vector<std::string>& payload);
 
   // Same as above, but accepts a boolean status that'll be encoded as
   // |kSignalSuccess| and |kSignalFailure| respectively.
@@ -143,11 +131,11 @@ class SystemUtils {
   static const char kSignalSuccess[];
   static const char kSignalFailure[];
 
-  // Emits |signal_name| from |interface|, optionally adding |payload|
-  // as an arg if it is not NULL.
+  // Emits |signal_name| from |interface|, optionally adding contents
+  // of |payload| as args if it is not empty.
   static void EmitSignalFrom(const char* interface,
                              const char* signal_name,
-                             const char* payload);
+                             const std::vector<std::string>& payload);
 
   // Call |interface|.|method_name| on object |path| provided by service
   // |destination| with no arguments. Blocks until the called method returns.
