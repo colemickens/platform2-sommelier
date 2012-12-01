@@ -559,6 +559,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->CertificationTask(properties);
   }
 
+  void ReportEAPEvent(const string &status, const string &parameter) {
+    wifi_->EAPEventTask(status, parameter);
+  }
+
   void RestartFastScanAttempts() {
     wifi_->RestartFastScanAttempts();
   }
@@ -2508,6 +2512,66 @@ TEST_F(WiFiMainTest, EAPCertification) {
       .append_string(kSubject.c_str());
   EXPECT_CALL(*service, AddEAPCertification(kSubject, kDepth)).Times(1);
   ReportCertification(args);
+}
+
+TEST_F(WiFiMainTest, EAPEvent) {
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no current service.")));
+  ReportEAPEvent(string(), string());
+  Mock::VerifyAndClearExpectations(&log);
+
+  SetCurrentService(service);
+  const string kEAPMethod("EAP-ROCHAMBEAU");
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       EndsWith("accepted EAP method " + kEAPMethod)));
+  ReportEAPEvent(wpa_supplicant::kEAPStatusAcceptProposedMethod, kEAPMethod);
+
+  EXPECT_CALL(log, Log(_, _, EndsWith("Completed authentication."))).Times(1);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
+                 wpa_supplicant::kEAPParameterSuccess);
+
+  Mock::VerifyAndClearExpectations(&log);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+
+  // An EAP failure without a previous TLS indication yields a generic failure.
+  Mock::VerifyAndClearExpectations(service.get());
+  EXPECT_CALL(*service,
+              SetFailure(Service::kFailureEAPAuthentication)).Times(1);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
+                 wpa_supplicant::kEAPParameterFailure);
+  Mock::VerifyAndClearExpectations(service.get());
+
+  // An EAP failure with a previous TLS indication yields a specific failure.
+  SetCurrentService(service);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusLocalTLSAlert, string());
+  Mock::VerifyAndClearExpectations(service.get());
+  EXPECT_CALL(*service, SetFailure(Service::kFailureEAPLocalTLS)).Times(1);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
+                 wpa_supplicant::kEAPParameterFailure);
+  Mock::VerifyAndClearExpectations(service.get());
+
+  SetCurrentService(service);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusRemoteTLSAlert, string());
+  Mock::VerifyAndClearExpectations(service.get());
+  EXPECT_CALL(*service, SetFailure(Service::kFailureEAPRemoteTLS)).Times(1);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
+                 wpa_supplicant::kEAPParameterFailure);
+  Mock::VerifyAndClearExpectations(service.get());
+
+  SetCurrentService(service);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  const string kStrangeParameter("ennui");
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,EndsWith(
+      string("Unexpected ") +
+      wpa_supplicant::kEAPStatusRemoteCertificateVerification +
+      " parameter: " + kStrangeParameter)));
+  ReportEAPEvent(wpa_supplicant::kEAPStatusRemoteCertificateVerification,
+                 kStrangeParameter);
 }
 
 TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {

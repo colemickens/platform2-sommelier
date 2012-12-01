@@ -263,6 +263,13 @@ void WiFi::Certification(const map<string, ::DBus::Variant> &properties) {
                               weak_ptr_factory_.GetWeakPtr(), properties));
 }
 
+void WiFi::EAPEvent(const string &status, const string &parameter) {
+  dispatcher()->PostTask(Bind(&WiFi::EAPEventTask,
+                              weak_ptr_factory_.GetWeakPtr(),
+                              status,
+                              parameter));
+}
+
 void WiFi::PropertiesChanged(const map<string, ::DBus::Variant> &properties) {
   SLOG(WiFi, 2) << __func__;
   // Called from D-Bus signal handler, but may need to send a D-Bus
@@ -556,6 +563,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   SLOG(WiFi, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
+  supplicant_tls_error_ = "";
   has_already_completed_ = false;
 
   // Any change in CurrentBSS means supplicant is actively changing our
@@ -1065,6 +1073,56 @@ void WiFi::CertificationTask(
   current_service_->AddEAPCertification(subject, depth);
 }
 
+void WiFi::EAPEventTask(const string &status, const string &parameter) {
+  Service::ConnectFailure failure = Service::kFailureUnknown;
+
+  if (!current_service_) {
+    LOG(ERROR) << "WiFi " << link_name() << " " << __func__
+               << " with no current service.";
+    return;
+  }
+
+  if (status == wpa_supplicant::kEAPStatusAcceptProposedMethod) {
+    LOG(INFO) << link_name() << ": accepted EAP method " << parameter;
+  } else if (status == wpa_supplicant::kEAPStatusCompletion) {
+    if (parameter == wpa_supplicant::kEAPParameterSuccess) {
+      SLOG(WiFi, 2) << link_name() << ": EAP: "
+                    << "Completed authentication.";
+    } else if (parameter == wpa_supplicant::kEAPParameterFailure) {
+      // If there was a TLS error, use this instead of the generic failure.
+      if (supplicant_tls_error_ == wpa_supplicant::kEAPStatusLocalTLSAlert) {
+        failure = Service::kFailureEAPLocalTLS;
+      } else if (supplicant_tls_error_ ==
+                 wpa_supplicant::kEAPStatusRemoteTLSAlert) {
+        failure = Service::kFailureEAPRemoteTLS;
+      } else {
+        failure = Service::kFailureEAPAuthentication;
+      }
+    } else {
+      LOG(ERROR) << link_name() << ": EAP: "
+                 << "Unexpected " << status << " parameter: " << parameter;
+    }
+  } else if (status == wpa_supplicant::kEAPStatusLocalTLSAlert ||
+             status == wpa_supplicant::kEAPStatusRemoteTLSAlert) {
+    supplicant_tls_error_ = status;
+  } else if (status ==
+             wpa_supplicant::kEAPStatusRemoteCertificateVerification) {
+    if (parameter == wpa_supplicant::kEAPParameterSuccess) {
+      SLOG(WiFi, 2) << link_name() << ": EAP: "
+                    << "Completed remote certificate verification.";
+    } else {
+      // wpa_supplicant doesn't currently have a verification failure
+      // message.  We will instead get a RemoteTLSAlert above.
+      LOG(ERROR) << link_name() << ": EAP: "
+                 << "Unexpected " << status << " parameter: " << parameter;
+    }
+  }
+
+  if (failure != Service::kFailureUnknown) {
+    current_service_->DisconnectWithFailure(failure, NULL);
+  }
+}
+
 void WiFi::PropertiesChangedTask(
     const map<string, ::DBus::Variant> &properties) {
   // TODO(quiche): Handle changes in other properties (e.g. signal
@@ -1480,10 +1538,7 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
 void WiFi::PendingTimeoutHandler() {
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   CHECK(pending_service_);
-  // Take a reference since pending_service_ will reset below.
-  ServiceRefPtr service = pending_service_;
-  DisconnectFrom(pending_service_);
-  service->SetFailure(Service::kFailureOutOfRange);
+  pending_service_->DisconnectWithFailure(Service::kFailureOutOfRange, NULL);
 }
 
 void WiFi::StartReconnectTimer() {

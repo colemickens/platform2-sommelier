@@ -173,6 +173,13 @@ void SupplicantInterfaceProxy::Proxy::Certification(
   wifi_->Certification(properties);
 }
 
+void SupplicantInterfaceProxy::Proxy::EAP(
+    const string &status, const string &parameter) {
+  SLOG(DBus, 2) << __func__ << ": status " << status
+                << ", parameter " << parameter;
+  wifi_->EAPEvent(status, parameter);
+}
+
 void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
   SLOG(DBus, 2) << __func__;
   wifi_->BSSRemoved(BSS);

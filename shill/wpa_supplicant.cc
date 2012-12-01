@@ -21,6 +21,15 @@ const char kCurrentBSSNull[] = "/";
 const char kDBusAddr[]              = "fi.w1.wpa_supplicant1";
 const char kDBusPath[]              = "/fi/w1/wpa_supplicant1";
 const char kDriverNL80211[]         = "nl80211";
+const char kEAPParameterAlertUnknownCA[] = "unknown CA";
+const char kEAPParameterFailure[] = "failure";
+const char kEAPParameterSuccess[] = "success";
+const char kEAPStatusAcceptProposedMethod[] = "accept proposed method";
+const char kEAPStatusCompletion[] = "completion";
+const char kEAPStatusLocalTLSAlert[] = "local TLS alert";
+const char kEAPStatusRemoteCertificateVerification[] =
+    "remote certificate verification";
+const char kEAPStatusRemoteTLSAlert[] = "remote TLS alert";
 const char kEnginePKCS11[]          = "pkcs11";
 const char kErrorNetworkUnknown[]   = "fi.w1.wpa_supplicant1.NetworkUnknown";
 const char kErrorInterfaceExists[]  = "fi.w1.wpa_supplicant1.InterfaceExists";

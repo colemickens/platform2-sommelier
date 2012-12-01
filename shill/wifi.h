@@ -135,6 +135,7 @@ class WiFi : public Device {
                 const std::map<std::string, ::DBus::Variant> &properties);
   void BSSRemoved(const ::DBus::Path &BSS);
   void Certification(const std::map<std::string, ::DBus::Variant> &properties);
+  void EAPEvent(const std::string &status, const std::string &parameter);
   void PropertiesChanged(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDone();
@@ -249,6 +250,7 @@ class WiFi : public Device {
   void ClearCachedCredentialsTask();
   void CertificationTask(
       const std::map<std::string, ::DBus::Variant> &properties);
+  void EAPEventTask(const std::string &status, const std::string &parameter);
   void PropertiesChangedTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
@@ -335,6 +337,7 @@ class WiFi : public Device {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
+  std::string supplicant_tls_error_;
   // Signifies that ClearCachedCredentialsTask() is pending.
   bool clear_cached_credentials_pending_;
   // Indicates that we should flush supplicant's BSS cache after the

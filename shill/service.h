@@ -106,6 +106,9 @@ class Service : public base::RefCounted<Service> {
     kFailureDNSLookup,
     kFailureHTTPGet,
     kFailurePPPAuth,
+    kFailureEAPAuthentication,
+    kFailureEAPLocalTLS,
+    kFailureEAPRemoteTLS,
     kFailureMax
   };
   enum ConnectState {

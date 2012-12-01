@@ -62,6 +62,7 @@ class SupplicantInterfaceProxy
     virtual void BSSRemoved(const ::DBus::Path &BSS);
     virtual void Certification(const std::map<std::string, ::DBus::Variant>
                                &properties);
+    virtual void EAP(const std::string &status, const std::string &parameter);
     virtual void NetworkAdded(const ::DBus::Path &network,
                               const std::map<std::string, ::DBus::Variant>
                               &properties);

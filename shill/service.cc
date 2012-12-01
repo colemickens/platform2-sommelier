@@ -676,6 +676,12 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
       return flimflam::kErrorPinMissing;
     case kFailurePPPAuth:
       return flimflam::kErrorPppAuthFailed;
+    case kFailureEAPAuthentication:
+      return shill::kErrorEapAuthenticationFailed;
+    case kFailureEAPLocalTLS:
+      return shill::kErrorEapLocalTlsFailed;
+    case kFailureEAPRemoteTLS:
+      return shill::kErrorEapRemoteTlsFailed;
     case kFailureMax:
       return "Max failure error code";
   }
