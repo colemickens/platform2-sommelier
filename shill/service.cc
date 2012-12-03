@@ -18,6 +18,7 @@
 
 #include "shill/connection.h"
 #include "shill/control_interface.h"
+#include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/http_proxy.h"
 #include "shill/logging.h"
@@ -27,10 +28,12 @@
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/service_dbus_adaptor.h"
+#include "shill/shill_time.h"
 #include "shill/sockets.h"
 #include "shill/store_interface.h"
 
 using base::Bind;
+using std::deque;
 using std::map;
 using std::string;
 using std::vector;
@@ -101,6 +104,12 @@ const uint64 Service::kMaxAutoConnectCooldownTimeMilliseconds = 30 * 60 * 1000;
 const uint64 Service::kMinAutoConnectCooldownTimeMilliseconds = 1000;
 const uint64 Service::kAutoConnectCooldownBackoffFactor = 2;
 
+const int Service::kDisconnectsMonitorSeconds = 5 * 60;
+const int Service::kMisconnectsMonitorSeconds = 5 * 60;
+const int Service::kReportDisconnectsThreshold = 2;
+const int Service::kReportMisconnectsThreshold = 3;
+const int Service::kMaxDisconnectEventHistory = 20;
+
 // static
 unsigned int Service::serial_number_ = 0;
 
@@ -132,7 +141,9 @@ Service::Service(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager),
       sockets_(new Sockets()),
-      weak_ptr_factory_(this) {
+      weak_ptr_factory_(this),
+      time_(Time::GetInstance()),
+      diagnostics_reporter_(DiagnosticsReporter::GetInstance()) {
   HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
                           &Service::GetAutoConnect,
                           &Service::SetAutoConnect);
@@ -304,6 +315,10 @@ void Service::SetState(ConnectState state) {
 
   if (state == state_) {
     return;
+  }
+
+  if (state == kStateIdle || state == kStateFailure) {
+    NoteDisconnectEvent();
   }
 
   state_ = state;
@@ -719,6 +734,44 @@ string Service::GetTechnologyString() const {
 
 string Service::CalculateTechnology(Error */*error*/) {
   return GetTechnologyString();
+}
+
+void Service::NoteDisconnectEvent() {
+  SLOG(Service, 2) << __func__;
+  if (explicitly_disconnected_) {
+    return;
+  }
+  struct timeval period = (const struct timeval){ 0 };
+  size_t threshold = 0;
+  deque<struct timeval> *events = NULL;
+  if (IsConnected()) {
+    period.tv_sec = kDisconnectsMonitorSeconds;
+    threshold = kReportDisconnectsThreshold;
+    events = &disconnects_;
+  } else if (IsConnecting()) {
+    period.tv_sec = kMisconnectsMonitorSeconds;
+    threshold = kReportMisconnectsThreshold;
+    events = &misconnects_;
+  } else {
+    return;
+  }
+  // Discard old events first.
+  struct timeval now = (const struct timeval){ 0 };
+  time_->GetTimeMonotonic(&now);
+  while (!events->empty()) {
+    if (events->size() < static_cast<size_t>(kMaxDisconnectEventHistory)) {
+      struct timeval elapsed = (const struct timeval){ 0 };
+      timersub(&now, &events->front(), &elapsed);
+      if (timercmp(&elapsed, &period, <)) {
+        break;
+      }
+    }
+    events->pop_front();
+  }
+  events->push_back(now);
+  if (events->size() >= threshold) {
+    diagnostics_reporter_->OnConnectivityEvent();
+  }
 }
 
 // static

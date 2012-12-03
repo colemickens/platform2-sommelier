@@ -34,6 +34,8 @@ class ReporterUnderTest : public DiagnosticsReporter {
 
   MOCK_METHOD0(IsReportingEnabled, bool());
 
+  void Report() { DiagnosticsReporter::Report(); }
+
  private:
   DISALLOW_COPY_AND_ASSIGN(ReporterUnderTest);
 };

@@ -22,17 +22,20 @@
 #include "shill/mock_control.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_diagnostics_reporter.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
+#include "shill/mock_time.h"
 #include "shill/property_store_inspector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 
 using base::Bind;
 using base::Unretained;
+using std::deque;
 using std::map;
 using std::string;
 using std::vector;
@@ -61,6 +64,8 @@ class ServiceTest : public PropertyStoreTest {
                                       metrics(),
                                       &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId) {
+    service_->time_ = &time_;
+    service_->diagnostics_reporter_ = &diagnostics_reporter_;
   }
 
   virtual ~ServiceTest() {}
@@ -70,7 +75,42 @@ class ServiceTest : public PropertyStoreTest {
  protected:
   typedef scoped_refptr<MockProfile> MockProfileRefPtr;
 
+  void SetExplicitlyDisconnected(bool explicitly) {
+    service_->explicitly_disconnected_ = explicitly;
+  }
+
+  void SetStateField(Service::ConnectState state) { service_->state_ = state; }
+
+  void NoteDisconnectEvent() {
+    service_->NoteDisconnectEvent();
+  }
+
+  deque<struct timeval> *GetDisconnects() { return &service_->disconnects_; }
+  deque<struct timeval> *GetMisconnects() { return &service_->misconnects_; }
+
+  int GetDisconnectsMonitorSeconds() {
+    return Service::kDisconnectsMonitorSeconds;
+  }
+
+  int GetMisconnectsMonitorSeconds() {
+    return Service::kMisconnectsMonitorSeconds;
+  }
+
+  int GetReportDisconnectsThreshold() {
+    return Service::kReportDisconnectsThreshold;
+  }
+
+  int GetReportMisconnectsThreshold() {
+    return Service::kReportMisconnectsThreshold;
+  }
+
+  int GetMaxDisconnectEventHistory() {
+    return Service::kMaxDisconnectEventHistory;
+  }
+
   MockManager mock_manager_;
+  MockDiagnosticsReporter diagnostics_reporter_;
+  MockTime time_;
   scoped_refptr<ServiceUnderTest> service_;
   string storage_id_;
 };
@@ -950,6 +990,127 @@ TEST_F(ServiceTest, Certification) {
       .Times(1);
   EXPECT_TRUE(service_->AddEAPCertification(
       kSubject + "x", Service::kEAPMaxCertificationElements - 1));
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventInvoked) {
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>((const struct timeval){ 0 }),
+                      Return(0)));
+  SetStateField(Service::kStateOnline);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_FALSE(GetDisconnects()->empty());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
+  EXPECT_CALL(time_, GetTimeMonotonic(_)).Times(0);
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
+
+  // Explicit disconnect is a non-event.
+  SetStateField(Service::kStateOnline);
+  SetExplicitlyDisconnected(true);
+  NoteDisconnectEvent();
+  EXPECT_TRUE(GetDisconnects()->empty());
+  EXPECT_TRUE(GetMisconnects()->empty());
+
+  // Failure to idle transition is a non-event.
+  SetStateField(Service::kStateFailure);
+  SetExplicitlyDisconnected(false);
+  NoteDisconnectEvent();
+  EXPECT_TRUE(GetDisconnects()->empty());
+  EXPECT_TRUE(GetMisconnects()->empty());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventDisconnectOnce) {
+  EXPECT_FALSE(service_->explicitly_disconnected());
+  SetStateField(Service::kStateOnline);
+  static const struct timeval now = { .tv_sec = 5, .tv_usec = 0 };
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
+  NoteDisconnectEvent();
+  ASSERT_EQ(1, GetDisconnects()->size());
+  EXPECT_EQ(now.tv_sec, GetDisconnects()->front().tv_sec);
+  EXPECT_TRUE(GetMisconnects()->empty());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventDisconnectThreshold) {
+  EXPECT_FALSE(service_->explicitly_disconnected());
+  SetStateField(Service::kStateOnline);
+  static const struct timeval now = { .tv_sec = 5, .tv_usec = 0 };
+  for (int i = 0; i < GetReportDisconnectsThreshold() - 1; i++) {
+    GetDisconnects()->push_back(now);
+  }
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(1);
+  NoteDisconnectEvent();
+  EXPECT_EQ(GetReportDisconnectsThreshold(), GetDisconnects()->size());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventMisconnectOnce) {
+  EXPECT_FALSE(service_->explicitly_disconnected());
+  SetStateField(Service::kStateConfiguring);
+  static const struct timeval now = { .tv_sec = 7, .tv_usec = 0 };
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
+  NoteDisconnectEvent();
+  EXPECT_TRUE(GetDisconnects()->empty());
+  ASSERT_EQ(1, GetMisconnects()->size());
+  EXPECT_EQ(now.tv_sec, GetMisconnects()->front().tv_sec);
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventMisconnectThreshold) {
+  EXPECT_FALSE(service_->explicitly_disconnected());
+  SetStateField(Service::kStateConfiguring);
+  static const struct timeval now = { .tv_sec = 7, .tv_usec = 0 };
+  for (int i = 0; i < GetReportMisconnectsThreshold() - 1; i++) {
+    GetMisconnects()->push_back(now);
+  }
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(1);
+  NoteDisconnectEvent();
+  EXPECT_EQ(GetReportMisconnectsThreshold(), GetMisconnects()->size());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventDiscardOld) {
+  EXPECT_FALSE(service_->explicitly_disconnected());
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
+  for (int i = 0; i < 2; i++) {
+    struct timeval now = (const struct timeval){ 0 };
+    deque<struct timeval> *events = NULL;
+    if (i == 0) {
+      SetStateField(Service::kStateConnected);
+      now.tv_sec = GetDisconnectsMonitorSeconds() + 1;
+      events = GetDisconnects();
+    } else {
+      SetStateField(Service::kStateAssociating);
+      now.tv_sec = GetMisconnectsMonitorSeconds() + 1;
+      events = GetMisconnects();
+    }
+    events->push_back((const struct timeval){ 0 });
+    events->push_back((const struct timeval){ 0 });
+    EXPECT_CALL(time_, GetTimeMonotonic(_))
+        .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+    NoteDisconnectEvent();
+    ASSERT_EQ(1, events->size());
+    EXPECT_EQ(now.tv_sec, events->front().tv_sec);
+  }
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventDiscardExcessive) {
+  EXPECT_FALSE(service_->explicitly_disconnected());
+  SetStateField(Service::kStateOnline);
+  static const struct timeval now = (const struct timeval){ 0 };
+  for (int i = 0; i < 2 * GetMaxDisconnectEventHistory(); i++) {
+    GetDisconnects()->push_back(now);
+  }
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(1);
+  NoteDisconnectEvent();
+  EXPECT_EQ(GetMaxDisconnectEventHistory(), GetDisconnects()->size());
 }
 
 }  // namespace shill

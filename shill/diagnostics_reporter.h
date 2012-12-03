@@ -20,12 +20,17 @@ class DiagnosticsReporter {
 
   void Init(GLib *glib);
 
-  void Report();
+  // Handle a connectivity event -- collect and stash diagnostics data, possibly
+  // uploading it for analysis.
+  virtual void OnConnectivityEvent();
 
  protected:
   DiagnosticsReporter();
 
   virtual bool IsReportingEnabled();
+
+  // Uploads diagnostics data for analysis.
+  void Report();
 
  private:
   friend struct base::DefaultLazyInstanceTraits<DiagnosticsReporter>;

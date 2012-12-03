@@ -5,11 +5,13 @@
 #ifndef SHILL_SERVICE_H_
 #define SHILL_SERVICE_H_
 
+#include <sys/time.h>
 #include <time.h>
 
-#include <string>
+#include <deque>
 #include <map>
 #include <set>
+#include <string>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -33,6 +35,7 @@ class Timer;
 namespace shill {
 
 class ControlInterface;
+class DiagnosticsReporter;
 class Endpoint;
 class Error;
 class EventDispatcher;
@@ -43,6 +46,7 @@ class Metrics;
 class ServiceAdaptorInterface;
 class Sockets;
 class StoreInterface;
+class Time;
 
 // A Service is a uniquely named entity, which the system can
 // connect in order to begin sending and receiving network traffic.
@@ -519,6 +523,7 @@ class Service : public base::RefCounted<Service> {
   friend class EthernetServiceTest;
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
+  friend class ServiceTest;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
   friend class WiMaxServiceTest;
@@ -576,6 +581,12 @@ class Service : public base::RefCounted<Service> {
   static const uint64 kMinAutoConnectCooldownTimeMilliseconds;
   static const uint64 kAutoConnectCooldownBackoffFactor;
 
+  static const int kDisconnectsMonitorSeconds;
+  static const int kMisconnectsMonitorSeconds;
+  static const int kReportDisconnectsThreshold;
+  static const int kReportMisconnectsThreshold;
+  static const int kMaxDisconnectEventHistory;
+
   bool GetAutoConnect(Error *error);
 
   std::string GetCheckPortal(Error *error);
@@ -607,6 +618,8 @@ class Service : public base::RefCounted<Service> {
   // into a profile.
   void SaveToProfile();
 
+  void NoteDisconnectEvent();
+
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
@@ -634,6 +647,11 @@ class Service : public base::RefCounted<Service> {
   // Whether or not this service has ever reached kStateConnected.
   bool has_ever_connected_;
 
+  // TODO(petkov): Expose these as read-only service properties
+  // (crosbug.com/36924).
+  std::deque<struct timeval> disconnects_;  // Connection drops.
+  std::deque<struct timeval> misconnects_;  // Failures to connect.
+
   base::CancelableClosure reenable_auto_connect_task_;
   uint64 auto_connect_cooldown_milliseconds_ ;
 
@@ -653,6 +671,8 @@ class Service : public base::RefCounted<Service> {
   Manager *manager_;
   scoped_ptr<Sockets> sockets_;
   base::WeakPtrFactory<Service> weak_ptr_factory_;
+  Time *time_;
+  DiagnosticsReporter *diagnostics_reporter_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

@@ -347,6 +347,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_dhcp_config.o \
 	mock_dhcp_provider.o \
 	mock_dhcp_proxy.o \
+	mock_diagnostics_reporter.o \
 	mock_dns_client.o \
 	mock_ethernet.o \
 	mock_event_dispatcher.o \

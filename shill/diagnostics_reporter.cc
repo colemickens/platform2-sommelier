@@ -53,6 +53,15 @@ void DiagnosticsReporter::Report() {
   }
 }
 
+void DiagnosticsReporter::OnConnectivityEvent() {
+  LOG(INFO) << "Diagnostics event triggered.";
+
+  // TODO(petkov): Throttle log stashing (crosbug.com/36775).
+
+  // TODO(petkov): Stash away logs for potential inclusion in feedback
+  // (crosbug.com/36923).
+}
+
 bool DiagnosticsReporter::IsReportingEnabled() {
   // TODO(petkov): Implement this when there's a way to control reporting
   // through policy. crosbug.com/35946.
