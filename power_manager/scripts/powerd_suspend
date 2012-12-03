@@ -118,6 +118,9 @@ send_uma_status 3
 cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
   2> /dev/null || true
 
+# - Remove last_resume_timings to ensure the file is fresh on resume
+rm -f /var/run/power_manager/last_resume_timings
+
 # - announces the event
 /usr/bin/dbus-send --type=signal --system /org/chromium/PowerManager \
   org.chromium.PowerManager.PowerStateChanged string:mem int32:0

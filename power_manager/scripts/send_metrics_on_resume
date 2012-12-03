@@ -19,20 +19,49 @@ log_msg() {
     logger -t "send_metrics_on_resume[${PPID}]" $@
 }
 
+LAST_RESUME_TIMINGS_FILE=/var/run/power_manager/last_resume_timings
+# Save a message to /var/run/power_manager/last_resume_timings which
+# can be parsed by autotests to determine resume timings.
+# Messages are being saved here so that we only parse the log file
+# in one location.
+# Arguments:
+#  $1 - metric name
+#  $2 - metric value (typically time in ms)
+log_metric() {
+    echo "${1}=${2}" >> "${LAST_RESUME_TIMINGS_FILE}"
+}
+
 # Creates a file based on /var/log/messages containing messages from the most
 # recent resume onwards.  This speeds up greps and also makes it possible
 # to extract counts (like bitfix) from the most recent resume.
+# To protect against race conditions, loop and make sure a line
+# indicating resume has completed is present.
 #
 # Prints the name of the temp file created.
 split_recent_messages() {
   local suspend_start="Going to suspend-to-RAM state"
-  local count=$(grep -c "$suspend_start" /var/log/messages)
   local tempdir=$(mktemp --tmpdir -d send_metrics_on_resume.XXXXXXXXXX)
+  local retries=25
 
-  csplit -s -f $tempdir/recent_messages /var/log/messages \
-    "%$suspend_start%" {$((count-1))}
+  while true; do
+    # count can change if the log gets rotated mid run
+    local count=$(grep -c "${suspend_start}" /var/log/messages)
 
-  echo "$tempdir/recent_messages00"
+    csplit -s -f "${tempdir}/recent_messages" /var/log/messages \
+      "%${suspend_start}%" {$((count-1))}
+    # Resume finished is logged by powerd_suspend when it is done
+    if grep -q "Resume finished" "${tempdir}/recent_messages00"; then
+      break;
+    fi
+    retries=$(($retries-1))
+    if [ $retries -eq 0 ]; then
+      log_msg "Could not find end of resume indicator splitting messages"
+      break # Skip cleanup and sleep steps and exit loop
+    fi
+    rm "${tempdir}/recent_messages00"
+    sleep 0.2
+  done
+  echo "${tempdir}/recent_messages00"
 }
 
 # Cleanup files created by split_recent_messages
@@ -95,9 +124,28 @@ calculate_firmware_resume_time() {
 #   $2 - Path to messages for most recent resume onward.
 get_last_message_timestamp() {
   [ -n "$1" -a -n "$2" ] || return
-  /bin/grep -F "$1" "$2" \
+  /bin/grep -E "$1" "$2" \
     | /usr/bin/tail -n1 \
     | /bin/sed 's/.*\[\s*\([0-9.]*\)].*/\1/'
+}
+
+# Find a message timestamp based on passed in patterns.  Return the latest
+# timestamp found or nothing.  If an earlier pattern matches, later patterns
+# are not checked.
+# Arguments:
+#   $1 - Path to messages for most recent resume onward
+#   $@ - Collection of patterns to search for
+get_timestamp() {
+  local filename="${1}"
+  shift 1
+  [ -n "${filename}" -a -n "${1}" ] || return
+  for pattern in "${@}"; do
+    local timestamp=$(get_last_message_timestamp "${pattern}" "${filename}")
+    if [ -n "${timestamp}" ]; then
+      echo "${timestamp}"
+      return
+    fi
+  done
 }
 
 # Find a message related to the start of suspend and parse out its timestamp. It
@@ -105,10 +153,8 @@ get_last_message_timestamp() {
 # Arguments:
 #   $1 - Path to messages for most recent resume onward.
 get_start_suspend_time() {
-  [ -n "$1" ] || return
-
-  timestamp=$(get_last_message_timestamp "Freezing user space" "$1")
-  [ -n "$timestamp" ] && echo "$timestamp"
+  [ -n "${1}" ] || return
+  get_timestamp "${1}" "Freezing user space"
 }
 
 # Find a message related to the end of suspend and parse out its
@@ -118,25 +164,44 @@ get_start_suspend_time() {
 # Arguments:
 #   $1 - Path to messages for most recent resume onward.
 get_end_suspend_time() {
-  [ -n "$1" ] || return
-
-  local timestamp=$(get_last_message_timestamp "Back to C!" "$1")
-  [ -z "$timestamp" ] &&
-    timestamp=$(get_last_message_timestamp "Low-level resume complete" "$1")
-  [ -z "$timestamp" ] &&
-    timestamp=$(get_last_message_timestamp "Entering suspend state" "$1")
-  echo "$timestamp"
+  [ -n "${1}" ] || return
+  get_timestamp "${1}" \
+    "Back to C!" \
+    "Low-level resume complete" \
+    "Entering suspend state" \
+    "sleep: irq wakeup masks:"
 }
 
-# Find a message related to the end of resume and parse out its timestamp. Since
-# there are multiple possible messages, this function searches for each one in
-# order.
+# Find a message related to the start of resume and parse out its timestamp. It
+# returns the time stamp of the message it found or nothing.
+# Arguments:
+#   $1 - Path to messages for most recent resume onward.
+get_start_resume_time() {
+  [ -n "${1}" ] || return
+  get_timestamp "${1}" \
+    "Back to C!" \
+    "Low-level resume complete" \
+    "Suspended for", \
+    "Resume caused by" \
+    "post sleep, preparing to return"
+}
+
+# Find a message related to the end of resume and parse out its timestamp. It
+# returns the time stamp of the message it found or nothing.
 # Arguments:
 #   $1 - Path to messages for most recent resume onward.
 get_end_resume_time() {
-  [ -n "$1" ] || return
-  timestamp=$(get_last_message_timestamp "Restarting tasks" "$1")
-  echo "$timestamp"
+  [ -n "${1}" ] || return
+  get_timestamp "${1}" "Restarting tasks"
+}
+
+# Find a message related to when all CPUs are ready and parse out its timestamp.
+# It returns the time stamp of the message it found or nothing.
+# Arguments:
+#   $1 - Path to messages for most recent resume onward.
+get_cpu_ready_time() {
+  [ -n "${1}" ] || return
+  get_timestamp "${1}" 'CPU[0-9]+ is up'
 }
 
 # Sends to UMA the time it took to suspend and resume:
@@ -159,7 +224,14 @@ send_suspend_resume_time() {
   # Greps the timestamps.
   local start_suspend_time=$(get_start_suspend_time "$recent_messages")
   local end_suspend_time=$(get_end_suspend_time "$recent_messages")
+  local start_resume_time=$(get_start_resume_time "$recent_messages")
   local end_resume_time=$(get_end_resume_time "$recent_messages")
+  local cpu_ready_time=$(get_cpu_ready_time "$recent_messages")
+  log_metric start_suspend_time $start_suspend_time
+  log_metric end_suspend_time $end_suspend_time
+  log_metric start_resume_time $start_resume_time
+  log_metric end_resume_time $end_resume_time
+  log_metric cpu_ready_time $cpu_ready_time
 
   [ -z "$start_suspend_time" ] && log_msg "Unable to get start_suspend_time"
   [ -z "$end_suspend_time" ] && log_msg "Unable to get end_suspend_time"
@@ -229,10 +301,10 @@ send_bitfix_metrics() {
 main() {
   local event="Resume"
   [ "$1" = "-b" ] && event="Boot"
+  rm -f "${LAST_RESUME_TIMINGS_FILE}"
   send_time_in_suspend $event
   if [ $event = "Resume" ]; then
     local recent_messages=$(split_recent_messages)
-
     send_suspend_resume_time "$recent_messages"
     send_bitfix_metrics "$recent_messages"
 
