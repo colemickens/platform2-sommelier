@@ -5,6 +5,7 @@
 #include "shill/diagnostics_reporter.h"
 
 #include "shill/glib.h"
+#include "shill/shill_time.h"
 
 namespace shill {
 
@@ -15,7 +16,13 @@ const char kNetDiagsUpload[] = SHIMDIR "/net-diags-upload";
 
 }  // namespace
 
-DiagnosticsReporter::DiagnosticsReporter() : glib_(NULL) {}
+// static
+const int DiagnosticsReporter::kLogStashThrottleSeconds = 30 * 60;
+
+DiagnosticsReporter::DiagnosticsReporter()
+    : glib_(NULL),
+      time_(Time::GetInstance()),
+      last_log_stash_(0) {}
 
 DiagnosticsReporter::~DiagnosticsReporter() {}
 
@@ -56,7 +63,15 @@ void DiagnosticsReporter::Report() {
 void DiagnosticsReporter::OnConnectivityEvent() {
   LOG(INFO) << "Diagnostics event triggered.";
 
-  // TODO(petkov): Throttle log stashing (crosbug.com/36775).
+  struct timeval now = (const struct timeval){ 0 };
+  time_->GetTimeMonotonic(&now);
+  if (last_log_stash_ + kLogStashThrottleSeconds >
+      static_cast<uint64>(now.tv_sec)) {
+    LOG(INFO) << "Diagnostics throttled.";
+    return;
+  }
+
+  last_log_stash_ = now.tv_sec;
 
   // TODO(petkov): Stash away logs for potential inclusion in feedback
   // (crosbug.com/36923).

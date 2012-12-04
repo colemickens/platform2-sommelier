@@ -10,6 +10,7 @@
 namespace shill {
 
 class GLib;
+class Time;
 
 class DiagnosticsReporter {
  public:
@@ -36,7 +37,11 @@ class DiagnosticsReporter {
   friend struct base::DefaultLazyInstanceTraits<DiagnosticsReporter>;
   friend class DiagnosticsReporterTest;
 
+  static const int kLogStashThrottleSeconds;
+
   GLib *glib_;
+  Time *time_;
+  uint64 last_log_stash_;  // Monotonic time seconds.
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsReporter);
 };

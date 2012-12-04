@@ -8,23 +8,13 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_glib.h"
+#include "shill/mock_time.h"
 
 using testing::_;
 using testing::Return;
+using testing::SetArgumentPointee;
 
 namespace shill {
-
-class DiagnosticsReporterTest : public testing::Test {
- public:
-  DiagnosticsReporterTest() {}
-
- protected:
-  bool IsReportingEnabled() {
-    return DiagnosticsReporter::GetInstance()->IsReportingEnabled();
-  }
-
-  MockGLib glib_;
-};
 
 namespace {
 
@@ -42,24 +32,71 @@ class ReporterUnderTest : public DiagnosticsReporter {
 
 }  // namespace
 
+class DiagnosticsReporterTest : public testing::Test {
+ public:
+  DiagnosticsReporterTest() {
+    reporter_.time_ = &time_;
+    reporter_.Init(&glib_);
+  }
+
+ protected:
+  bool IsReportingEnabled() {
+    return DiagnosticsReporter::GetInstance()->IsReportingEnabled();
+  }
+
+  void SetLastLogStash(uint64 time) { reporter_.last_log_stash_ = time; }
+  uint64 GetLastLogStash() { return reporter_.last_log_stash_; }
+  uint64 GetLogStashThrottleSeconds() {
+    return DiagnosticsReporter::kLogStashThrottleSeconds;
+  }
+
+  MockGLib glib_;
+  MockTime time_;
+  ReporterUnderTest reporter_;
+};
+
 TEST_F(DiagnosticsReporterTest, ReportEnabled) {
-  ReporterUnderTest reporter;
-  EXPECT_CALL(reporter, IsReportingEnabled()).WillOnce(Return(true));
+  EXPECT_CALL(reporter_, IsReportingEnabled()).WillOnce(Return(true));
   EXPECT_CALL(glib_, SpawnSync(_, _, _, _, _, _, _, _, _, _)).Times(1);
-  reporter.Init(&glib_);
-  reporter.Report();
+  reporter_.Report();
 }
 
 TEST_F(DiagnosticsReporterTest, ReportDisabled) {
-  ReporterUnderTest reporter;
-  EXPECT_CALL(reporter, IsReportingEnabled()).WillOnce(Return(false));
+  EXPECT_CALL(reporter_, IsReportingEnabled()).WillOnce(Return(false));
   EXPECT_CALL(glib_, SpawnSync(_, _, _, _, _, _, _, _, _, _)).Times(0);
-  reporter.Init(&glib_);
-  reporter.Report();
+  reporter_.Report();
 }
 
 TEST_F(DiagnosticsReporterTest, IsReportingEnabled) {
   EXPECT_FALSE(IsReportingEnabled());
+}
+
+TEST_F(DiagnosticsReporterTest, OnConnectivityEventThrottle) {
+  const uint64 kLastStash = 50;
+  const uint64 kNow = kLastStash + GetLogStashThrottleSeconds() - 1;
+  SetLastLogStash(kLastStash);
+  const struct timeval now = {
+    .tv_sec = static_cast<long int>(kNow),
+    .tv_usec = 0
+  };
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  reporter_.OnConnectivityEvent();
+  EXPECT_EQ(kLastStash, GetLastLogStash());
+}
+
+TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
+  const uint64 kLastStash = 50;
+  const uint64 kNow = kLastStash + GetLogStashThrottleSeconds() + 1;
+  SetLastLogStash(kLastStash);
+  const struct timeval now = {
+    .tv_sec = static_cast<long int>(kNow),
+    .tv_usec = 0
+  };
+  EXPECT_CALL(time_, GetTimeMonotonic(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  reporter_.OnConnectivityEvent();
+  EXPECT_EQ(kNow, GetLastLogStash());
 }
 
 }  // namespace shill
