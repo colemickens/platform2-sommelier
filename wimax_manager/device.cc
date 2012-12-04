@@ -51,8 +51,7 @@ Device::Device(uint8 index, const string &name)
       frequency_(0),
       network_scan_interval_(kDefaultNetworkScanIntervalInSeconds),
       status_update_interval_(kDefaultStatusUpdateIntervalInSeconds),
-      status_(kDeviceStatusUninitialized),
-      entering_suspend_mode_(false) {
+      status_(kDeviceStatusUninitialized) {
 }
 
 Device::~Device() {

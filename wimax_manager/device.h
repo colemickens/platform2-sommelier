@@ -50,12 +50,6 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   int status_update_interval() const { return status_update_interval_; }
   void SetStatusUpdateInterval(uint32 status_update_interval);
 
-  // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
-  bool entering_suspend_mode() const { return entering_suspend_mode_; }
-  void set_entering_suspend_mode(bool entering_suspend_mode) {
-    entering_suspend_mode_ = entering_suspend_mode;
-  }
-
  protected:
   virtual void UpdateNetworkScanInterval(uint32 network_scan_interval) = 0;
   virtual void UpdateStatusUpdateInterval(uint32 status_update_interval) = 0;
@@ -83,9 +77,6 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   uint32 network_scan_interval_;
   uint32 status_update_interval_;
   DeviceStatus status_;
-
-  // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
-  bool entering_suspend_mode_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

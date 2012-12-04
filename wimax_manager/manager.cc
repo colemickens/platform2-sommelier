@@ -124,11 +124,6 @@ void Manager::CancelDeviceScan() {
 
 void Manager::Suspend() {
   CancelDeviceScan();
-
-  // TODO(benchan): Temporarily workaround for crosbug.com/p/10150.
-  for (size_t i = 0; i < devices_.size(); ++i)
-    devices_[i]->set_entering_suspend_mode(true);
-
   devices_.reset();
   dbus_adaptor()->UpdateDevices();
 }

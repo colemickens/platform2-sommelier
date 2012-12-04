@@ -266,11 +266,6 @@ bool GdmDevice::Disable() {
     UpdateNetworks();
   }
 
-  // TODO(benchan): Temporarily skip powering off the RF explicitly due to
-  // crosbug.com/p/10150.
-  if (entering_suspend_mode())
-    return true;
-
   if (!driver_->PowerOffDeviceRF(this)) {
     LOG(ERROR) << "Failed to power off RF of device '" << name() << "'";
     return false;
