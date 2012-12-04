@@ -379,7 +379,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --disable-seccomp-sandbox \
             --enable-encrypted-media \
             --enable-gpu-sandbox \
-            --enable-gview \
             --enable-logging \
             --enable-partial-swap \
             --enable-smooth-scrolling \
