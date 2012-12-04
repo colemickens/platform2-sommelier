@@ -38,12 +38,81 @@ Nl80211Attribute *Nl80211Attribute::NewFromNlAttr(nl80211_attrs name,
                                                   const nlattr *data) {
   scoped_ptr<Nl80211Attribute> attr;
   switch (name) {
+    case NL80211_ATTR_COOKIE:
+      attr.reset(new Nl80211AttributeCookie());
+      break;
+    case NL80211_ATTR_CQM:
+      attr.reset(new Nl80211AttributeCqm());
+      break;
+    case NL80211_ATTR_DISCONNECTED_BY_AP:
+      attr.reset(new Nl80211AttributeDisconnectedByAp());
+      break;
     case NL80211_ATTR_DURATION:
       attr.reset(new Nl80211AttributeDuration());
       break;
-
-    // TODO(wdg): Add more attributes.
-
+    case NL80211_ATTR_FRAME:
+      attr.reset(new Nl80211AttributeFrame());
+      break;
+    case NL80211_ATTR_GENERATION:
+      attr.reset(new Nl80211AttributeGeneration());
+      break;
+    case NL80211_ATTR_IFINDEX:
+      attr.reset(new Nl80211AttributeIfindex());
+      break;
+    case NL80211_ATTR_KEY_IDX:
+      attr.reset(new Nl80211AttributeKeyIdx());
+      break;
+    case NL80211_ATTR_KEY_SEQ:
+      attr.reset(new Nl80211AttributeKeySeq());
+      break;
+    case NL80211_ATTR_KEY_TYPE:
+      attr.reset(new Nl80211AttributeKeyType());
+      break;
+    case NL80211_ATTR_MAC:
+      attr.reset(new Nl80211AttributeMac());
+      break;
+    case NL80211_ATTR_REASON_CODE:
+      attr.reset(new Nl80211AttributeReasonCode());
+      break;
+    case NL80211_ATTR_REG_ALPHA2:
+      attr.reset(new Nl80211AttributeRegAlpha2());
+      break;
+    case NL80211_ATTR_REG_INITIATOR:
+      attr.reset(new Nl80211AttributeRegInitiator());
+      break;
+    case NL80211_ATTR_REG_TYPE:
+      attr.reset(new Nl80211AttributeRegType());
+      break;
+    case NL80211_ATTR_RESP_IE:
+      attr.reset(new Nl80211AttributeRespIe());
+      break;
+    case NL80211_ATTR_SCAN_FREQUENCIES:
+      attr.reset(new Nl80211AttributeScanFrequencies());
+      break;
+    case NL80211_ATTR_SCAN_SSIDS:
+      attr.reset(new Nl80211AttributeScanSsids());
+      break;
+    case NL80211_ATTR_STA_INFO:
+      attr.reset(new Nl80211AttributeStaInfo());
+      break;
+    case NL80211_ATTR_STATUS_CODE:
+      attr.reset(new Nl80211AttributeStatusCode());
+      break;
+    case NL80211_ATTR_SUPPORT_MESH_AUTH:
+      attr.reset(new Nl80211AttributeSupportMeshAuth());
+      break;
+    case NL80211_ATTR_TIMED_OUT:
+      attr.reset(new Nl80211AttributeTimedOut());
+      break;
+    case NL80211_ATTR_WIPHY_FREQ:
+      attr.reset(new Nl80211AttributeWiphyFreq());
+      break;
+    case NL80211_ATTR_WIPHY:
+      attr.reset(new Nl80211AttributeWiphy());
+      break;
+    case NL80211_ATTR_WIPHY_NAME:
+      attr.reset(new Nl80211AttributeWiphyName());
+      break;
     default:
       attr.reset(new Nl80211AttributeGeneric(name));
       break;
@@ -363,12 +432,12 @@ bool Nl80211RawAttribute::InitFromNlAttr(const nlattr *input) {
   return Nl80211Attribute::InitFromNlAttr(input);
 }
 
-bool Nl80211RawAttribute::GetRawValue(const ByteString **output) const {
+bool Nl80211RawAttribute::GetRawValue(ByteString *output) const {
   if (!output) {
     LOG(ERROR) << "NULL |output|";
     return false;
   }
-  *output = &data_;
+  *output = data_;
   return true;
 }
 
@@ -389,8 +458,94 @@ bool Nl80211RawAttribute::AsString(string *output) const {
 
 // Specific Attributes.
 
+
+const nl80211_attrs Nl80211AttributeCookie::kName = NL80211_ATTR_COOKIE;
+const char Nl80211AttributeCookie::kNameString[] = "NL80211_ATTR_COOKIE";
+
+const nl80211_attrs Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
+const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
+
+const nl80211_attrs Nl80211AttributeDisconnectedByAp::kName
+    = NL80211_ATTR_DISCONNECTED_BY_AP;
+const char Nl80211AttributeDisconnectedByAp::kNameString[]
+    = "NL80211_ATTR_DISCONNECTED_BY_AP";
+
 const nl80211_attrs Nl80211AttributeDuration::kName = NL80211_ATTR_DURATION;
 const char Nl80211AttributeDuration::kNameString[] = "NL80211_ATTR_DURATION";
+
+const nl80211_attrs Nl80211AttributeFrame::kName = NL80211_ATTR_FRAME;
+const char Nl80211AttributeFrame::kNameString[] = "NL80211_ATTR_FRAME";
+
+const nl80211_attrs Nl80211AttributeGeneration::kName = NL80211_ATTR_GENERATION;
+const char Nl80211AttributeGeneration::kNameString[]
+    = "NL80211_ATTR_GENERATION";
+
+const nl80211_attrs Nl80211AttributeIfindex::kName = NL80211_ATTR_IFINDEX;
+const char Nl80211AttributeIfindex::kNameString[] = "NL80211_ATTR_IFINDEX";
+
+const nl80211_attrs Nl80211AttributeKeyIdx::kName = NL80211_ATTR_KEY_IDX;
+const char Nl80211AttributeKeyIdx::kNameString[] = "NL80211_ATTR_KEY_IDX";
+
+const nl80211_attrs Nl80211AttributeKeySeq::kName = NL80211_ATTR_KEY_SEQ;
+const char Nl80211AttributeKeySeq::kNameString[] = "NL80211_ATTR_KEY_SEQ";
+
+const nl80211_attrs Nl80211AttributeKeyType::kName = NL80211_ATTR_KEY_TYPE;
+const char Nl80211AttributeKeyType::kNameString[] = "NL80211_ATTR_KEY_TYPE";
+
+const nl80211_attrs Nl80211AttributeMac::kName = NL80211_ATTR_MAC;
+const char Nl80211AttributeMac::kNameString[] = "NL80211_ATTR_MAC";
+
+const nl80211_attrs Nl80211AttributeReasonCode::kName
+    = NL80211_ATTR_REASON_CODE;
+const char Nl80211AttributeReasonCode::kNameString[]
+    = "NL80211_ATTR_REASON_CODE";
+
+const nl80211_attrs Nl80211AttributeRegAlpha2::kName = NL80211_ATTR_REG_ALPHA2;
+const char Nl80211AttributeRegAlpha2::kNameString[] = "NL80211_ATTR_REG_ALPHA2";
+
+const nl80211_attrs Nl80211AttributeRegInitiator::kName
+    = NL80211_ATTR_REG_INITIATOR;
+const char Nl80211AttributeRegInitiator::kNameString[]
+    = "NL80211_ATTR_REG_INITIATOR";
+
+const nl80211_attrs Nl80211AttributeRegType::kName = NL80211_ATTR_REG_TYPE;
+const char Nl80211AttributeRegType::kNameString[] = "NL80211_ATTR_REG_TYPE";
+
+const nl80211_attrs Nl80211AttributeRespIe::kName = NL80211_ATTR_RESP_IE;
+const char Nl80211AttributeRespIe::kNameString[] = "NL80211_ATTR_RESP_IE";
+
+const nl80211_attrs Nl80211AttributeScanFrequencies::kName
+    = NL80211_ATTR_SCAN_FREQUENCIES;
+const char Nl80211AttributeScanFrequencies::kNameString[]
+    = "NL80211_ATTR_SCAN_FREQUENCIES";
+
+const nl80211_attrs Nl80211AttributeScanSsids::kName = NL80211_ATTR_SCAN_SSIDS;
+const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
+
+const nl80211_attrs Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
+const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
+
+const nl80211_attrs Nl80211AttributeStatusCode::kName
+    = NL80211_ATTR_STATUS_CODE;
+const char Nl80211AttributeStatusCode::kNameString[]
+    = "NL80211_ATTR_STATUS_CODE";
+
+const nl80211_attrs Nl80211AttributeSupportMeshAuth::kName
+    = NL80211_ATTR_SUPPORT_MESH_AUTH;
+const char Nl80211AttributeSupportMeshAuth::kNameString[]
+    = "NL80211_ATTR_SUPPORT_MESH_AUTH";
+
+const nl80211_attrs Nl80211AttributeTimedOut::kName = NL80211_ATTR_TIMED_OUT;
+const char Nl80211AttributeTimedOut::kNameString[] = "NL80211_ATTR_TIMED_OUT";
+
+const nl80211_attrs Nl80211AttributeWiphyFreq::kName = NL80211_ATTR_WIPHY_FREQ;
+const char Nl80211AttributeWiphyFreq::kNameString[] = "NL80211_ATTR_WIPHY_FREQ";
+
+const nl80211_attrs Nl80211AttributeWiphy::kName = NL80211_ATTR_WIPHY;
+const char Nl80211AttributeWiphy::kNameString[] = "NL80211_ATTR_WIPHY";
+
+const nl80211_attrs Nl80211AttributeWiphyName::kName = NL80211_ATTR_WIPHY_NAME;
+const char Nl80211AttributeWiphyName::kNameString[] = "NL80211_ATTR_WIPHY_NAME";
 
 Nl80211AttributeGeneric::Nl80211AttributeGeneric(nl80211_attrs name)
     : Nl80211RawAttribute(name, "unused-string") {

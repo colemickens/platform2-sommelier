@@ -27,7 +27,6 @@
 #include <ctype.h>
 #include <endian.h>
 #include <errno.h>
-
 #include <linux/nl80211.h>
 #include <net/if.h>
 #include <netinet/in.h>

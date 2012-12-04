@@ -120,8 +120,7 @@ class Nl80211Attribute {
   const char *type_string_;
 };
 
-// Type-specific sub-classes.  These provide their own type-specific data get
-// and set functions.
+// U8.
 
 class Nl80211U8Attribute : public Nl80211Attribute {
  public:
@@ -138,6 +137,22 @@ class Nl80211U8Attribute : public Nl80211Attribute {
   uint8_t value_;
 };
 
+class Nl80211AttributeKeyIdx : public Nl80211U8Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeKeyIdx() : Nl80211U8Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeRegType : public Nl80211U8Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeRegType() : Nl80211U8Attribute(kName, kNameString) {}
+};
+
+// U16.
+
 class Nl80211U16Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
@@ -152,6 +167,22 @@ class Nl80211U16Attribute : public Nl80211Attribute {
  private:
   uint16_t value_;
 };
+
+class Nl80211AttributeReasonCode : public Nl80211U16Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeReasonCode() : Nl80211U16Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeStatusCode : public Nl80211U16Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeStatusCode() : Nl80211U16Attribute(kName, kNameString) {}
+};
+
+// U32.
 
 class Nl80211U32Attribute : public Nl80211Attribute {
  public:
@@ -168,6 +199,57 @@ class Nl80211U32Attribute : public Nl80211Attribute {
   uint32_t value_;
 };
 
+class Nl80211AttributeDuration : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeDuration() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeGeneration : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeGeneration() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeIfindex : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeIfindex() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeKeyType : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeKeyType() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeRegInitiator : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeRegInitiator() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeWiphy : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphy() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeWiphyFreq : public Nl80211U32Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyFreq() : Nl80211U32Attribute(kName, kNameString) {}
+};
+
+// U64.
+
 class Nl80211U64Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
@@ -182,6 +264,15 @@ class Nl80211U64Attribute : public Nl80211Attribute {
  private:
   uint64_t value_;
 };
+
+class Nl80211AttributeCookie : public Nl80211U64Attribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeCookie() : Nl80211U64Attribute(kName, kNameString) {}
+};
+
+// Flag.
 
 class Nl80211FlagAttribute : public Nl80211Attribute {
  public:
@@ -198,6 +289,31 @@ class Nl80211FlagAttribute : public Nl80211Attribute {
   bool value_;
 };
 
+class Nl80211AttributeDisconnectedByAp : public Nl80211FlagAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeDisconnectedByAp() :
+    Nl80211FlagAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeSupportMeshAuth : public Nl80211FlagAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeSupportMeshAuth() :
+    Nl80211FlagAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeTimedOut : public Nl80211FlagAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeTimedOut() : Nl80211FlagAttribute(kName, kNameString) {}
+};
+
+// String.
+
 class Nl80211StringAttribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
@@ -213,6 +329,22 @@ class Nl80211StringAttribute : public Nl80211Attribute {
   std::string value_;
 };
 
+class Nl80211AttributeRegAlpha2 : public Nl80211StringAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeRegAlpha2() : Nl80211StringAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeWiphyName : public Nl80211StringAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyName() : Nl80211StringAttribute(kName, kNameString) {}
+};
+
+// Raw.
+
 class Nl80211RawAttribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
@@ -220,7 +352,7 @@ class Nl80211RawAttribute : public Nl80211Attribute {
   Nl80211RawAttribute(nl80211_attrs name, const char *name_string)
       : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
-  bool GetRawValue(const ByteString **value) const;
+  bool GetRawValue(ByteString *value) const;
   // Not supporting 'set' for raw data.  This type is a "don't know" type to
   // be used for user-bound massages (via InitFromNlAttr).  The 'set' method
   // is intended for building kernel-bound messages and shouldn't be used with
@@ -228,14 +360,20 @@ class Nl80211RawAttribute : public Nl80211Attribute {
   bool AsString(std::string *value) const;
 };
 
-// Attribute-specific sub-classes.
-
-class Nl80211AttributeDuration : public Nl80211U32Attribute {
+// TODO(wdg): This should inherit from Nl80211NestedAttribute when that class
+// exists.
+class Nl80211AttributeCqm : public Nl80211RawAttribute {
  public:
   static const nl80211_attrs kName;
   static const char kNameString[];
-  explicit Nl80211AttributeDuration()
-      : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeCqm() : Nl80211RawAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeFrame : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeFrame() : Nl80211RawAttribute(kName, kNameString) {}
 };
 
 class Nl80211AttributeGeneric : public Nl80211RawAttribute {
@@ -245,6 +383,48 @@ class Nl80211AttributeGeneric : public Nl80211RawAttribute {
 
  private:
   std::string name_string_;
+};
+
+class Nl80211AttributeKeySeq : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeKeySeq() : Nl80211RawAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeMac : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeMac() : Nl80211RawAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeRespIe : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeRespIe() : Nl80211RawAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeScanFrequencies : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeScanFrequencies() : Nl80211RawAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeScanSsids : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeScanSsids() : Nl80211RawAttribute(kName, kNameString) {}
+};
+
+class Nl80211AttributeStaInfo : public Nl80211RawAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeStaInfo() : Nl80211RawAttribute(kName, kNameString) {}
 };
 
 }  // namespace shill
