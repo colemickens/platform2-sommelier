@@ -29,12 +29,9 @@ void Callback80211Metrics::Config80211MessageCallback(
                     Metrics::kDisconnectedByAp : Metrics::kDisconnectedNotByAp;
     uint16_t reason = static_cast<uint16_t>(
         IEEE_80211::kReasonCodeInvalid);
-    void *rawdata = NULL;
-    int frame_byte_count = 0;
-    if (message.GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata,
-                                    &frame_byte_count)) {
-      const uint8_t *frame_data = reinterpret_cast<const uint8_t *>(rawdata);
-      Nl80211Frame frame(frame_data, frame_byte_count);
+    ByteString rawdata;
+    if (message.GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata)) {
+      Nl80211Frame frame(rawdata);
       reason = frame.reason();
     }
     IEEE_80211::WiFiReasonCode reason_enum =

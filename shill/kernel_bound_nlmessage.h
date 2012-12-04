@@ -41,7 +41,7 @@ class KernelBoundNlMessage {
   // CTRL_CMD_GETFAMILY.
   explicit KernelBoundNlMessage(uint8 command)
       : command_(command),
-        message_(NULL) {};
+        message_(NULL) {}
   virtual ~KernelBoundNlMessage();
 
   // Non-trivial initialization.

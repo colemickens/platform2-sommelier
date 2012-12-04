@@ -64,7 +64,7 @@ bool Nl80211Attribute::InitFromNlAttr(const nlattr *other) {
   return true;
 }
 
-// Retrieves a pointer to the raw attribute data but not the header.
+// Copies raw attribute data but not the header.
 bool Nl80211Attribute::GetRawData(ByteString *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
@@ -92,21 +92,108 @@ string Nl80211Attribute::RawToString() const {
   return output;
 }
 
+// Nl80211U8Attribute
+
+const char Nl80211U8Attribute::kMyTypeString[] = "uint8_t";
+const Nl80211Attribute::Type Nl80211U8Attribute::kType =
+    Nl80211Attribute::kTypeU8;
+
+bool Nl80211U8Attribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
+    return false;
+  }
+
+  uint8_t data = NlaGetU8(input);
+  SetU8Value(data);
+  return Nl80211Attribute::InitFromNlAttr(input);
+}
+
+bool Nl80211U8Attribute::GetU8Value(uint8_t *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  *output = value_;
+  return true;
+}
+
+bool Nl80211U8Attribute::SetU8Value(uint8_t new_value) {
+  value_ = new_value;
+  return true;
+}
+
+bool Nl80211U8Attribute::AsString(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  uint8_t value;
+  if (!GetU8Value(&value))
+    return false;
+  *output = StringPrintf("%u", value);
+  return true;
+}
+
+
+// Nl80211U16Attribute
+
+const char Nl80211U16Attribute::kMyTypeString[] = "uint16_t";
+const Nl80211Attribute::Type Nl80211U16Attribute::kType =
+    Nl80211Attribute::kTypeU16;
+
+bool Nl80211U16Attribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
+    return false;
+  }
+
+  uint16_t data = NlaGetU16(input);
+  SetU16Value(data);
+  return Nl80211Attribute::InitFromNlAttr(input);
+}
+
+bool Nl80211U16Attribute::GetU16Value(uint16_t *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  *output = value_;
+  return true;
+}
+
+bool Nl80211U16Attribute::SetU16Value(uint16_t new_value) {
+  value_ = new_value;
+  return true;
+}
+
+bool Nl80211U16Attribute::AsString(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  uint16_t value;
+  if (!GetU16Value(&value))
+    return false;
+  *output = StringPrintf("%u", value);
+  return true;
+}
+
 // Nl80211U32Attribute::
 
 const char Nl80211U32Attribute::kMyTypeString[] = "uint32_t";
 const Nl80211Attribute::Type Nl80211U32Attribute::kType =
     Nl80211Attribute::kTypeU32;
 
-bool Nl80211U32Attribute::InitFromNlAttr(const nlattr *param) {
-  if (!param) {
-    LOG(ERROR) << "Null |param| parameter";
+bool Nl80211U32Attribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
     return false;
   }
 
-  uint32_t data = nla_get_u32(const_cast<nlattr *>(param));
+  uint32_t data = NlaGetU32(input);
   SetU32Value(data);
-  return Nl80211Attribute::InitFromNlAttr(param);
+  return Nl80211Attribute::InitFromNlAttr(input);
 }
 
 bool Nl80211U32Attribute::GetU32Value(uint32_t *output) const {
@@ -135,19 +222,145 @@ bool Nl80211U32Attribute::AsString(string *output) const {
   return true;
 }
 
+// Nl80211U64Attribute
+
+const char Nl80211U64Attribute::kMyTypeString[] = "uint64_t";
+const Nl80211Attribute::Type Nl80211U64Attribute::kType =
+    Nl80211Attribute::kTypeU64;
+
+bool Nl80211U64Attribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
+    return false;
+  }
+
+  uint64_t data = NlaGetU64(input);
+  SetU64Value(data);
+  return Nl80211Attribute::InitFromNlAttr(input);
+}
+
+bool Nl80211U64Attribute::GetU64Value(uint64_t *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  *output = value_;
+  return true;
+}
+
+bool Nl80211U64Attribute::SetU64Value(uint64_t new_value) {
+  value_ = new_value;
+  return true;
+}
+
+bool Nl80211U64Attribute::AsString(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  uint64_t value;
+  if (!GetU64Value(&value))
+    return false;
+  *output = StringPrintf("%" PRIu64, value);
+  return true;
+}
+
+// Nl80211FlagAttribute
+
+const char Nl80211FlagAttribute::kMyTypeString[] = "flag";
+const Nl80211Attribute::Type Nl80211FlagAttribute::kType =
+    Nl80211Attribute::kTypeFlag;
+
+bool Nl80211FlagAttribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
+    return false;
+  }
+
+  // The existence of the parameter means it's true
+  SetFlagValue(true);
+  return Nl80211Attribute::InitFromNlAttr(input);
+}
+
+
+bool Nl80211FlagAttribute::GetFlagValue(bool *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  *output = value_;
+  return true;
+}
+
+bool Nl80211FlagAttribute::SetFlagValue(bool new_value) {
+  value_ = new_value;
+  return true;
+}
+
+bool Nl80211FlagAttribute::AsString(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  bool value;
+  if (!GetFlagValue(&value))
+    return false;
+  *output = StringPrintf("%s", value ? "true" : "false");
+  return true;
+}
+
+// Nl80211StringAttribute
+
+const char Nl80211StringAttribute::kMyTypeString[] = "string";
+const Nl80211Attribute::Type Nl80211StringAttribute::kType =
+    Nl80211Attribute::kTypeString;
+
+bool Nl80211StringAttribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
+    return false;
+  }
+
+  SetStringValue(NlaGetString(input));
+  return Nl80211Attribute::InitFromNlAttr(input);
+}
+
+bool Nl80211StringAttribute::GetStringValue(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  *output = value_;
+  return true;
+}
+
+bool Nl80211StringAttribute::SetStringValue(const string new_value) {
+  value_ = new_value;
+  return true;
+}
+
+bool Nl80211StringAttribute::AsString(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  return GetStringValue(output);
+}
+
+
 // Nl80211RawAttribute
 
 const char Nl80211RawAttribute::kMyTypeString[] = "<raw>";
 const Nl80211Attribute::Type Nl80211RawAttribute::kType =
     Nl80211Attribute::kTypeRaw;
 
-bool Nl80211RawAttribute::InitFromNlAttr(const nlattr *param) {
-  if (!param) {
-    LOG(ERROR) << "Null |param| parameter";
+bool Nl80211RawAttribute::InitFromNlAttr(const nlattr *input) {
+  if (!input) {
+    LOG(ERROR) << "Null |input| parameter";
     return false;
   }
 
-  return Nl80211Attribute::InitFromNlAttr(param);
+  return Nl80211Attribute::InitFromNlAttr(input);
 }
 
 bool Nl80211RawAttribute::GetRawValue(const ByteString **output) const {
@@ -164,6 +377,7 @@ bool Nl80211RawAttribute::AsString(string *output) const {
     LOG(ERROR) << "Null |output| parameter";
     return false;
   }
+  // TODO(wdg): Make sure that 'data' is valid.
   const uint8_t *raw_data = reinterpret_cast<const uint8_t *>(data());
   int total_bytes = nla_len(data());
   *output = StringPrintf("%d bytes:", total_bytes);

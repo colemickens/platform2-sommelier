@@ -28,9 +28,9 @@
 #include <endian.h>
 #include <errno.h>
 
-#include <netinet/in.h>
 #include <linux/nl80211.h>
 #include <net/if.h>
+#include <netinet/in.h>
 #include <netlink/attr.h>
 #include <netlink/genl/ctrl.h>
 #include <netlink/genl/family.h>
@@ -47,6 +47,7 @@
 
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
+#include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 
 using base::LazyInstance;
@@ -69,7 +70,7 @@ const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
 const uint32_t UserBoundNlMessage::kIllegalMessage = 0xFFFFFFFF;
-const int UserBoundNlMessage::kEthernetAddressBytes = 6;
+const unsigned int UserBoundNlMessage::kEthernetAddressBytes = 6;
 map<uint16_t, string> *UserBoundNlMessage::reason_code_string_ = NULL;
 map<uint16_t, string> *UserBoundNlMessage::status_code_string_ = NULL;
 
@@ -383,23 +384,18 @@ string UserBoundNlMessage::GetAttributeTypeString(enum nl80211_attrs name)
 
 // Returns the raw attribute data but not the header.
 bool UserBoundNlMessage::GetRawAttributeData(enum nl80211_attrs name,
-                                             void **value,
-                                             int *length) const {
+                                             ByteString *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
   }
-
   const nlattr *attr = GetAttribute(name);
   if (!attr) {
-    *value = NULL;
+    value->Clear();
     return false;
   }
-
-  if (length) {
-    *length = nla_len(attr);
-  }
-  *value = nla_data(attr);
+  *value = ByteString(reinterpret_cast<unsigned char *>(nla_data(attr)),
+                      nla_len(attr));
   return true;
 }
 
@@ -415,7 +411,7 @@ bool UserBoundNlMessage::GetStringAttribute(enum nl80211_attrs name,
     return false;
   }
 
-  value->assign(nla_get_string(const_cast<nlattr *>(attr)));
+  value->assign(Nl80211Attribute::NlaGetString(attr));
   return true;
 }
 
@@ -431,7 +427,7 @@ bool UserBoundNlMessage::GetU8Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  *value = nla_get_u8(const_cast<nlattr *>(attr));
+  *value = Nl80211Attribute::NlaGetU8(attr);
   return true;
 }
 
@@ -447,7 +443,7 @@ bool UserBoundNlMessage::GetU16Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  *value = nla_get_u16(const_cast<nlattr *>(attr));
+  *value = Nl80211Attribute::NlaGetU16(attr);
   return true;
 }
 
@@ -463,7 +459,7 @@ bool UserBoundNlMessage::GetU32Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  *value = nla_get_u32(const_cast<nlattr *>(attr));
+  *value = Nl80211Attribute::NlaGetU32(attr);
   return true;
 }
 
@@ -479,7 +475,7 @@ bool UserBoundNlMessage::GetU64Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  *value = nla_get_u64(const_cast<nlattr *>(attr));
+  *value = Nl80211Attribute::NlaGetU64(attr);
   return true;
 }
 
@@ -491,13 +487,12 @@ bool UserBoundNlMessage::GetMacAttributeString(enum nl80211_attrs name,
     return false;
   }
 
-  void *rawdata_void = NULL;
-  if (!GetRawAttributeData(name, &rawdata_void, NULL)) {
+  ByteString data;
+  if (!GetRawAttributeData(name, &data)) {
     value->assign(kBogusMacAddress);
     return false;
   }
-  const uint8_t *rawdata = reinterpret_cast<const uint8_t *>(rawdata_void);
-  value->assign(StringFromMacAddress(rawdata));
+  value->assign(StringFromMacAddress(data.GetConstData()));
 
   return true;
 }
@@ -512,20 +507,21 @@ bool UserBoundNlMessage::GetScanFrequenciesAttribute(
 
   value->clear();
   if (AttributeExists(name)) {
-    void *rawdata = NULL;
-    int len = 0;
-    if (GetRawAttributeData(name, &rawdata, &len) && rawdata) {
+    ByteString rawdata;
+    if (GetRawAttributeData(name, &rawdata) && !rawdata.IsEmpty()) {
       nlattr *nst = NULL;
-      nlattr *attr_data = reinterpret_cast<nlattr *>(rawdata);
+      // |nla_for_each_attr| requires a non-const parameter even though it
+      // doesn't change the data.
+      nlattr *attr_data = reinterpret_cast<nlattr *>(rawdata.GetData());
       int rem_nst;
+      int len = rawdata.GetLength();
 
       nla_for_each_attr(nst, attr_data, len, rem_nst) {
-        value->push_back(nla_get_u32(nst));
+        value->push_back(Nl80211Attribute::NlaGetU32(nst));
       }
     }
     return true;
   }
-
   return false;
 }
 
@@ -538,12 +534,14 @@ bool UserBoundNlMessage::GetScanSsidsAttribute(
   }
 
   if (AttributeExists(name)) {
-    void *rawdata = NULL;
-    int len = 0;
-    if (GetRawAttributeData(name, &rawdata, &len) && rawdata) {
+    ByteString rawdata;
+    if (GetRawAttributeData(name, &rawdata) && !rawdata.IsEmpty()) {
       nlattr *nst = NULL;
-      nlattr *data = reinterpret_cast<nlattr *>(rawdata);
+      // |nla_for_each_attr| requires a non-const parameter even though it
+      // doesn't change the data.
+      nlattr *data = reinterpret_cast<nlattr *>(rawdata.GetData());
       int rem_nst;
+      int len = rawdata.GetLength();
 
       nla_for_each_attr(nst, data, len, rem_nst) {
         value->push_back(StringFromSsid(nla_len(nst),
@@ -553,7 +551,6 @@ bool UserBoundNlMessage::GetScanSsidsAttribute(
     }
     return true;
   }
-
   return false;
 }
 
@@ -980,7 +977,7 @@ bool UserBoundNlMessage::AddAttribute(enum nl80211_attrs name,
 
 const nlattr *UserBoundNlMessage::GetAttribute(enum nl80211_attrs name)
     const {
-  map<enum nl80211_attrs, nlattr *>::const_iterator match;
+  map<nl80211_attrs, nlattr *>::const_iterator match;
   match = attributes_.find(name);
   // This method may be called to explore the existence of the attribute so
   // we'll not emit an error if it's not found.
@@ -1015,13 +1012,9 @@ string UserBoundNlMessage::GetHeaderString() const {
 
 string UserBoundNlMessage::StringFromFrame(enum nl80211_attrs attr_name) const {
   string output;
-
-  void *rawdata = NULL;
-  int frame_byte_count = 0;
-  if (GetRawAttributeData(attr_name, &rawdata, &frame_byte_count) && rawdata) {
-    const uint8_t *frame_data = reinterpret_cast<const uint8_t *>(rawdata);
-
-    Nl80211Frame frame(frame_data, frame_byte_count);
+  ByteString frame_data;
+  if (GetRawAttributeData(attr_name, &frame_data) && !frame_data.IsEmpty()) {
+    Nl80211Frame frame(frame_data);
     frame.ToString(&output);
   } else {
     output.append(" [no frame]");
@@ -1054,7 +1047,7 @@ string UserBoundNlMessage::StringFromMacAddress(const uint8_t *arg) {
   } else {
     StringAppendF(&output, "%02x", arg[0]);
 
-    for (int i = 1; i < kEthernetAddressBytes ; ++i) {
+    for (unsigned int i = 1; i < kEthernetAddressBytes ; ++i) {
       StringAppendF(&output, ":%02x", arg[i]);
     }
   }
@@ -1131,20 +1124,15 @@ string UserBoundNlMessage::StringFromStatus(uint16_t status) {
   return match->second;
 }
 
-Nl80211Frame::Nl80211Frame(const uint8_t *raw_frame, int frame_byte_count)
+Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
   : frame_type_(kIllegalFrameType), reason_(UINT16_MAX), status_(UINT16_MAX),
-    frame_(0), byte_count_(0) {
-  if (raw_frame == NULL)
-    return;
-
-  frame_ = new uint8_t[frame_byte_count];
-  memcpy(frame_, raw_frame, frame_byte_count);
-  byte_count_ = frame_byte_count;
+    frame_(raw_frame) {
   const IEEE_80211::ieee80211_frame *frame =
-      reinterpret_cast<const IEEE_80211::ieee80211_frame *>(frame_);
+      reinterpret_cast<const IEEE_80211::ieee80211_frame *>(
+          frame_.GetConstData());
 
   // Now, let's populate the other stuff.
-  if (frame_byte_count >= kMinimumFrameByteCount) {
+  if (frame_.GetLength() >= kMinimumFrameByteCount) {
     mac_from_ =
         UserBoundNlMessage::StringFromMacAddress(&frame->destination_mac[0]);
     mac_to_ = UserBoundNlMessage::StringFromMacAddress(&frame->source_mac[0]);
@@ -1171,28 +1159,23 @@ Nl80211Frame::Nl80211Frame(const uint8_t *raw_frame, int frame_byte_count)
   }
 }
 
-Nl80211Frame::~Nl80211Frame() {
-  delete [] frame_;
-  frame_ = NULL;
-}
-
 bool Nl80211Frame::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "NULL |output|";
     return false;
   }
 
-  if ((byte_count_ == 0) || (frame_ == reinterpret_cast<uint8_t *>(NULL))) {
+  if (frame_.IsEmpty()) {
     output->append(" [no frame]");
     return true;
   }
 
-  if (byte_count_ < kMinimumFrameByteCount) {
+  if (frame_.GetLength() < kMinimumFrameByteCount) {
     output->append(" [invalid frame: ");
   } else {
     StringAppendF(output, " %s -> %s", mac_from_.c_str(), mac_to_.c_str());
 
-    switch (frame_[0] & kFrameTypeMask) {
+    switch (frame_.GetConstData()[0] & kFrameTypeMask) {
     case kAssocResponseFrameType:
       StringAppendF(output, "; AssocResponse status: %u: %s",
                     status_,
@@ -1226,8 +1209,9 @@ bool Nl80211Frame::ToString(string *output) const {
     output->append(" [frame: ");
   }
 
-  for (int i = 0; i < byte_count_; ++i) {
-    StringAppendF(output, "%02x, ", frame_[i]);
+  const unsigned char *frame = frame_.GetConstData();
+  for (size_t i = 0; i < frame_.GetLength(); ++i) {
+    StringAppendF(output, "%02x, ", frame[i]);
   }
   output->append("]");
 
@@ -1235,17 +1219,7 @@ bool Nl80211Frame::ToString(string *output) const {
 }
 
 bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
-  if (byte_count_ != other.byte_count_) {
-    return false;
-  }
-
-  for (int i = 0; i < byte_count_; ++i) {
-    if (frame_[i] != other.frame_[i]) {
-      return false;
-    }
-  }
-
-  return true;
+  return frame_.Equals(other.frame_);
 }
 
 
@@ -1418,12 +1392,10 @@ string MichaelMicFailureMessage::ToString() const {
   }
 
   if (AttributeExists(NL80211_ATTR_KEY_SEQ)) {
-    void *rawdata = NULL;
-    int length = 0;
-    if (GetRawAttributeData(NL80211_ATTR_KEY_SEQ, &rawdata, &length) &&
-        rawdata && length == 6) {
-      const unsigned char *seq = reinterpret_cast<const unsigned char *>(
-          rawdata);
+    ByteString rawdata;
+    if (GetRawAttributeData(NL80211_ATTR_KEY_SEQ, &rawdata) &&
+        rawdata.GetLength() == UserBoundNlMessage::kEthernetAddressBytes) {
+      const unsigned char *seq = rawdata.GetConstData();
       StringAppendF(&output, " seq=%02x%02x%02x%02x%02x%02x",
                     seq[0], seq[1], seq[2], seq[3], seq[4], seq[5]);
     }
@@ -1518,6 +1490,8 @@ string NotifyCqmMessage::ToString() const {
   output.append("connection quality monitor event: ");
 
   const nlattr *const_data = GetAttribute(NL80211_ATTR_CQM);
+  // Note that |nla_parse_nested| doesn't change |const_data| but doesn't
+  // declare itself as 'const', either.  Hence the cast.
   nlattr *cqm_attr = const_cast<nlattr *>(const_data);
 
   nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
@@ -1530,7 +1504,8 @@ string NotifyCqmMessage::ToString() const {
   if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
     enum nl80211_cqm_rssi_threshold_event rssi_event =
         static_cast<enum nl80211_cqm_rssi_threshold_event>(
-          nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
+          Nl80211Attribute::NlaGetU32(
+              cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
     if (rssi_event == NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH)
       output.append("RSSI went above threshold");
     else
@@ -1541,11 +1516,11 @@ string NotifyCqmMessage::ToString() const {
     GetMacAttributeString(NL80211_ATTR_MAC, &mac);
     StringAppendF(&output, "peer %s didn't ACK %" PRIu32 " packets",
                   mac.c_str(),
-                  nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
+                  Nl80211Attribute::NlaGetU32(
+                      cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
   } else {
     output.append("unknown event");
   }
-
   return output;
 }
 
@@ -1620,13 +1595,16 @@ int RegBeaconHintMessage::ParseBeaconHintChan(const nlattr *tb,
 
   nlattr *tb_freq[NL80211_FREQUENCY_ATTR_MAX + 1];
 
+  // Note that |nla_parse_nested| doesn't change its parameters but doesn't
+  // declare itself as 'const', either.  Hence the cast.
   if (nla_parse_nested(tb_freq,
                        NL80211_FREQUENCY_ATTR_MAX,
                        const_cast<nlattr *>(tb),
                        const_cast<nla_policy *>(kBeaconFreqPolicy)))
     return -EINVAL;
 
-  chan->center_freq = nla_get_u32(tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
+  chan->center_freq = Nl80211Attribute::NlaGetU32(
+      tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
 
   if (tb_freq[NL80211_FREQUENCY_ATTR_PASSIVE_SCAN])
     chan->passive_scan = true;
@@ -1922,7 +1900,7 @@ UserBoundNlMessage *UserBoundNlMessageFactory::CreateMessage(nlmsghdr *msg) {
   // Parse the attributes from the nl message payload (which starts at the
   // header) into the 'tb' array.
   nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-    genlmsg_attrlen(gnlh, 0), NULL);
+            genlmsg_attrlen(gnlh, 0), NULL);
 
   if (!message->Init(tb, msg)) {
     LOG(ERROR) << "Message did not initialize properly";

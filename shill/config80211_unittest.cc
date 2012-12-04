@@ -11,6 +11,12 @@
 
 #include "shill/config80211.h"
 
+#include <net/if.h>
+#include <netlink/attr.h>
+#include <netlink/genl/genl.h>
+#include <netlink/msg.h>
+#include <netlink/netlink.h>
+
 #include <list>
 #include <string>
 #include <vector>
@@ -18,15 +24,11 @@
 #include <base/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <net/if.h>
-#include <netlink/attr.h>
-#include <netlink/genl/genl.h>
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
 
 #include "shill/kernel_bound_nlmessage.h"
 #include "shill/mock_callback80211_object.h"
 #include "shill/mock_nl80211_socket.h"
+#include "shill/nl80211_attribute.h"
 #include "shill/nl80211_socket.h"
 #include "shill/user_bound_nlmessage.h"
 
@@ -706,16 +708,12 @@ TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
   }
 
   {
-    void *rawdata = NULL;
-    int frame_byte_count = 0;
-    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata,
-                                             &frame_byte_count));
-    EXPECT_NE(rawdata, reinterpret_cast<void *>(NULL));
-    const uint8_t *frame_data = reinterpret_cast<const uint8_t *>(rawdata);
-
-    Nl80211Frame frame(frame_data, frame_byte_count);
-    Nl80211Frame expected_frame(kAuthenticateFrame, sizeof(kAuthenticateFrame));
-
+    ByteString rawdata;
+    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata));
+    EXPECT_FALSE(rawdata.IsEmpty());
+    Nl80211Frame frame(rawdata);
+    Nl80211Frame expected_frame(ByteString(kAuthenticateFrame,
+                                           sizeof(kAuthenticateFrame)));
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }
@@ -741,16 +739,12 @@ TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
   }
 
   {
-    void *rawdata = NULL;
-    int frame_byte_count = 0;
-    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata,
-                                             &frame_byte_count));
-    EXPECT_NE(rawdata, reinterpret_cast<void *>(NULL));
-    const uint8_t *frame_data = reinterpret_cast<const uint8_t *>(rawdata);
-
-    Nl80211Frame frame(frame_data, frame_byte_count);
-    Nl80211Frame expected_frame(kAssociateFrame, sizeof(kAssociateFrame));
-
+    ByteString rawdata;
+    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata));
+    EXPECT_FALSE(rawdata.IsEmpty());
+    Nl80211Frame frame(rawdata);
+    Nl80211Frame expected_frame(ByteString(kAssociateFrame,
+                                           sizeof(kAssociateFrame)));
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }
@@ -812,17 +806,12 @@ TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
   }
 
   {
-    void *rawdata = NULL;
-    int frame_byte_count = 0;
-    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata,
-                                             &frame_byte_count));
-    EXPECT_NE(rawdata, reinterpret_cast<void *>(NULL));
-    const uint8_t *frame_data = reinterpret_cast<const uint8_t *>(rawdata);
-
-    Nl80211Frame frame(frame_data, frame_byte_count);
-    Nl80211Frame expected_frame(kDeauthenticateFrame,
-                                sizeof(kDeauthenticateFrame));
-
+    ByteString rawdata;
+    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata));
+    EXPECT_FALSE(rawdata.IsEmpty());
+    Nl80211Frame frame(rawdata);
+    Nl80211Frame expected_frame(ByteString(kDeauthenticateFrame,
+                                           sizeof(kDeauthenticateFrame)));
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }
@@ -905,7 +894,7 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
 
     EXPECT_FALSE(cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]);
     EXPECT_TRUE(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]);
-    EXPECT_EQ(nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]),
+    EXPECT_EQ(Nl80211Attribute::NlaGetU32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]),
               kExpectedCqmNotAcked);
   }
 }
@@ -932,16 +921,12 @@ TEST_F(Config80211Test, NL80211_CMD_DISASSOCIATE) {
   }
 
   {
-    void *rawdata = NULL;
-    int frame_byte_count = 0;
-    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata,
-                                             &frame_byte_count));
-    EXPECT_NE(rawdata, reinterpret_cast<void *>(NULL));
-    const uint8_t *frame_data = reinterpret_cast<const uint8_t *>(rawdata);
-
-    Nl80211Frame frame(frame_data, frame_byte_count);
-    Nl80211Frame expected_frame(kDisassociateFrame, sizeof(kDisassociateFrame));
-
+    ByteString rawdata;
+    EXPECT_TRUE(message->GetRawAttributeData(NL80211_ATTR_FRAME, &rawdata));
+    EXPECT_FALSE(rawdata.IsEmpty());
+    Nl80211Frame frame(rawdata);
+    Nl80211Frame expected_frame(ByteString(kDisassociateFrame,
+                                           sizeof(kDisassociateFrame)));
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
 }

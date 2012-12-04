@@ -5,17 +5,17 @@
 #ifndef SHILL_USER_BOUND_NLMESSAGE_H_
 #define SHILL_USER_BOUND_NLMESSAGE_H_
 
+#include <linux/nl80211.h>
+
 #include <iomanip>
 #include <map>
-#include <vector>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 #include <gtest/gtest.h>
-
-#include <linux/nl80211.h>
 
 #include "shill/nl80211_attribute.h"
 
@@ -27,8 +27,7 @@ namespace shill {
 // Class for messages received from libnl.
 class UserBoundNlMessage {
  public:
-  // TODO(wdg): break 'Attribute' into its own class to handle
-  // nested attributes better.
+  static const unsigned int kEthernetAddressBytes;
 
   // A const iterator to the attribute names in the attributes_ map of a
   // UserBoundNlMessage.  The purpose, here, is to hide the way that the
@@ -73,8 +72,6 @@ class UserBoundNlMessage {
   // attributes inside a message object.
 
   AttributeNameIterator *GetAttributeNameIterator() const;
-  bool HasAttributes() const { return !attributes_.empty(); }
-  uint32_t GetAttributeCount() const { return attributes_.size(); }
 
   // Other ways to see the internals of the object.
 
@@ -91,13 +88,11 @@ class UserBoundNlMessage {
   // Returns a string describing the data type of a given attribute.
   std::string GetAttributeTypeString(nl80211_attrs name) const;
 
-  // If successful, returns 'true' and sets *|value| to the raw attribute data
-  // (after the header) for this attribute and, if |length| is not
-  // null, *|length| to the number of bytes of data available.  If no
-  // attribute by this name exists in this message, sets *|value| to NULL and
-  // returns 'false'.  If otherwise unsuccessful, returns 'false' and leaves
-  // |value| and |length| unchanged.
-  bool GetRawAttributeData(nl80211_attrs name, void **value, int *length) const;
+  // If successful, returns 'true' and the raw attribute data (after the
+  // header) into |value| for this attribute.  If no attribute by this name
+  // exists in this message, clears |value| and returns 'false'.  If otherwise
+  // unsuccessful, returns 'false' and leaves |value| unchanged.
+  bool GetRawAttributeData(nl80211_attrs name, ByteString *value) const;
 
   // Each of these methods set |value| with the value of the specified
   // attribute (if the attribute is not found, |value| remains unchanged).
@@ -182,7 +177,6 @@ class UserBoundNlMessage {
   FRIEND_TEST(Config80211Test, NL80211_CMD_NOTIFY_CQM);
 
   static const uint32_t kIllegalMessage;
-  static const int kEthernetAddressBytes;
 
   nlmsghdr *message_;
   const uint8 message_type_;
@@ -207,8 +201,7 @@ class Nl80211Frame {
     kIllegalFrameType = 0xff
   };
 
-  Nl80211Frame(const uint8_t *frame, int frame_byte_count);
-  ~Nl80211Frame();
+  Nl80211Frame(const ByteString &init);
   bool ToString(std::string *output) const;
   bool IsEqual(const Nl80211Frame &other) const;
   uint16_t reason() const { return reason_; }
@@ -223,8 +216,7 @@ class Nl80211Frame {
   uint8_t frame_type_;
   uint16_t reason_;
   uint16_t status_;
-  uint8_t *frame_;
-  int byte_count_;
+  ByteString frame_;
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211Frame);
 };

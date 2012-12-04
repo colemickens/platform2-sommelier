@@ -6,6 +6,7 @@
 #define SHILL_NLATTRIBUTE_H_
 
 #include <linux/nl80211.h>
+#include <netlink/attr.h>
 #include <netlink/netlink.h>
 
 #include <map>
@@ -78,7 +79,7 @@ class Nl80211Attribute {
   // If successful, returns 'true' and sets *|value| to the raw attribute data
   // (after the header) for this attribute.  Otherwise, returns 'false' and
   // leaves |value| unchanged.
-  bool GetRawData(ByteString *value) const;
+  bool GetRawData(ByteString *output) const;
 
   // Fill a string with characters that represents the value of the attribute.
   // If no attribute is found or if the type isn't trivially stringizable,
@@ -87,6 +88,24 @@ class Nl80211Attribute {
 
   // Writes the raw attribute data to a string.  For debug.
   std::string RawToString() const;
+
+  // Note that |nla_get_*| don't change their arguments but don't declare
+  // themselves as 'const', either.  These methods wrap the const castness.
+  static char *NlaGetString(const nlattr *input) {
+    return nla_get_string(const_cast<nlattr *>(input));
+  }
+  static uint8_t NlaGetU8(const nlattr *input) {
+    return nla_get_u8(const_cast<nlattr *>(input));
+  }
+  static uint16_t NlaGetU16(const nlattr *input) {
+    return nla_get_u16(const_cast<nlattr *>(input));
+  }
+  static uint32_t NlaGetU32(const nlattr *input) {
+    return nla_get_u32(const_cast<nlattr *>(input));
+  }
+  static uint64_t NlaGetU64(const nlattr *input) {
+    return nla_get_u64(const_cast<nlattr *>(input));
+  }
 
  protected:
   // Raw data corresponding to the value in any of the child classes.
@@ -104,6 +123,36 @@ class Nl80211Attribute {
 // Type-specific sub-classes.  These provide their own type-specific data get
 // and set functions.
 
+class Nl80211U8Attribute : public Nl80211Attribute {
+ public:
+  static const char kMyTypeString[];
+  static const Type kType;
+  Nl80211U8Attribute(nl80211_attrs name, const char *name_string)
+      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  bool InitFromNlAttr(const nlattr *data);
+  bool GetU8Value(uint8_t *value) const;
+  bool SetU8Value(uint8_t new_value);
+  bool AsString(std::string *value) const;
+
+ private:
+  uint8_t value_;
+};
+
+class Nl80211U16Attribute : public Nl80211Attribute {
+ public:
+  static const char kMyTypeString[];
+  static const Type kType;
+  Nl80211U16Attribute(nl80211_attrs name, const char *name_string)
+      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  bool InitFromNlAttr(const nlattr *data);
+  bool GetU16Value(uint16_t *value) const;
+  bool SetU16Value(uint16_t new_value);
+  bool AsString(std::string *value) const;
+
+ private:
+  uint16_t value_;
+};
+
 class Nl80211U32Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
@@ -119,7 +168,50 @@ class Nl80211U32Attribute : public Nl80211Attribute {
   uint32_t value_;
 };
 
-// TODO(wdg): Add more data types.
+class Nl80211U64Attribute : public Nl80211Attribute {
+ public:
+  static const char kMyTypeString[];
+  static const Type kType;
+  Nl80211U64Attribute(nl80211_attrs name, const char *name_string)
+      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  bool InitFromNlAttr(const nlattr *data);
+  bool GetU64Value(uint64_t *value) const;
+  bool SetU64Value(uint64_t new_value);
+  bool AsString(std::string *value) const;
+
+ private:
+  uint64_t value_;
+};
+
+class Nl80211FlagAttribute : public Nl80211Attribute {
+ public:
+  static const char kMyTypeString[];
+  static const Type kType;
+  Nl80211FlagAttribute(nl80211_attrs name, const char *name_string)
+      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  bool InitFromNlAttr(const nlattr *data);
+  bool GetFlagValue(bool *value) const;
+  bool SetFlagValue(bool new_value);
+  bool AsString(std::string *value) const;
+
+ private:
+  bool value_;
+};
+
+class Nl80211StringAttribute : public Nl80211Attribute {
+ public:
+  static const char kMyTypeString[];
+  static const Type kType;
+  Nl80211StringAttribute(nl80211_attrs name, const char *name_string)
+      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  bool InitFromNlAttr(const nlattr *data);
+  bool GetStringValue(std::string *value) const;
+  bool SetStringValue(const std::string new_value);
+  bool AsString(std::string *value) const;
+
+ private:
+  std::string value_;
+};
 
 class Nl80211RawAttribute : public Nl80211Attribute {
  public:

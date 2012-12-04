@@ -8,12 +8,7 @@
 #ifndef SHILL_CALLBACK80211_OBJECT_H
 #define SHILL_CALLBACK80211_OBJECT_H
 
-#include <iomanip>
-#include <map>
-#include <string>
-
 #include <base/basictypes.h>
-#include <base/bind.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/config80211.h"
