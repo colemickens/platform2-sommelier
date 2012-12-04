@@ -2374,9 +2374,10 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
                        chromeos::SecureBlob* endorsement_credential,
                        chromeos::SecureBlob* platform_credential,
                        chromeos::SecureBlob* conformance_credential) {
-  CHECK(identity_public_key && identity_key_blob && identity_binding &&
-        identity_label && pca_public_key && endorsement_credential &&
-        platform_credential && conformance_credential);
+  CHECK(identity_public_key_der && identity_public_key && identity_key_blob &&
+        identity_binding && identity_label && pca_public_key &&
+        endorsement_credential && platform_credential &&
+        conformance_credential);
   // Connect to the TPM as the owner.
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -2462,6 +2463,10 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
   unsigned int label_size = strlen(label_text);
   scoped_ptr_malloc<BYTE> label(
       Trspi_Native_To_UNICODE(label_ascii, &label_size));
+  if (!label.get()) {
+    LOG(ERROR) << "MakeIdentity: Failed to create AIK label.";
+    return false;
+  }
   identity_label->assign(&label.get()[0],
                          &label.get()[label_size]);
 
