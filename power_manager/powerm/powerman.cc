@@ -77,8 +77,8 @@ void PowerManDaemon::Init() {
   CHECK(prefs_->GetInt64(kRetrySuspendMsPref, &retry_suspend_ms_));
   CHECK(prefs_->GetInt64(kRetrySuspendAttemptsPref, &retry_suspend_attempts_));
   CHECK(prefs_->GetInt64(kUseLidPref, &use_input_for_lid));
-  // Retrys will occur no more than once a minute.
-  CHECK_GE(retry_suspend_ms_, 60000);
+  // Retrys will occur no more than once per 10 seconds.
+  CHECK_GE(retry_suspend_ms_, 10000);
   // Only 1-10 retries prior to just shutting down.
   CHECK_GT(retry_suspend_attempts_, 0);
   CHECK_LE(retry_suspend_attempts_, 10);
