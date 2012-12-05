@@ -1437,6 +1437,48 @@ void GobiModem::InjectFault(const std::string& name,
   }
 }
 
+void GobiModem::SetNetworkPreference(const int32_t &value,
+                                     DBus::Error& error) {
+  LOG(INFO) << __func__ << ": " << value;
+
+  DBus::Error api_connect_error;
+  ScopedApiConnection connection(*this);
+  connection.ApiConnect(api_connect_error);
+
+  ULONG preference;
+  switch (value) {
+    case kNetworkPreferenceAutomatic:
+      preference = gobi::kRegistrationTechnologyAutomatic;
+      break;
+    case kNetworkPreferenceCdma1xRtt:
+      preference = gobi::kRegistrationTechnologyCdma |
+                   (gobi::kRegistrationTechnologyPreferenceCdma1xRtt << 2);
+      break;
+    case kNetworkPreferenceCdmaEvdo:
+      preference = gobi::kRegistrationTechnologyCdma |
+                   (gobi::kRegistrationTechnologyPreferenceCdmaEvdo << 2);
+      break;
+    case kNetworkPreferenceGsm:
+      preference = gobi::kRegistrationTechnologyUmts |
+                   (gobi::kRegistrationTechnologyPreferenceUmtsGsm << 2);
+      break;
+    case kNetworkPreferenceWcdma:
+      preference = gobi::kRegistrationTechnologyUmts |
+                   (gobi::kRegistrationTechnologyPreferenceUmtsWcdma << 2);
+      break;
+    default:
+      LOG(ERROR) << __func__ << ": Invalid technology " << value;
+      error.set(kSdkError, "SetNetworkPreference");
+      return;
+  }
+  ULONG rc = sdk_->SetNetworkPreference(
+                 preference, gobi::kRegistrationPreferencePersistent);
+  if (rc != 0 && rc != gobi::kOperationHasNoEffect) {
+    LOG(ERROR) << "Failed to set network registration preference: " << rc;
+    error.set(kSdkError, "SetNetworkPreference");
+  }
+}
+
 void GobiModem::ClearIdleCallbacks() {
   for (std::set<guint>::iterator it = idle_callback_ids_.begin();
        it != idle_callback_ids_.end();
@@ -1540,7 +1582,6 @@ void GobiModem::PowerModeHandler() {
   if (pending_enable_ != NULL) {
     FinishEnable(error);
     LOG(INFO) << "PowerModeHandler: finishing deferred call";
-
   }
 }
 

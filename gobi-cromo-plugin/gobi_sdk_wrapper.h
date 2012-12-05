@@ -305,6 +305,27 @@ enum PinStatus {
   kPinStatusPermanentlyBlocked = 5
 };
 
+enum RegistrationTechnologyPreference {
+  kRegistrationTechnologyAutomatic = 0,
+  kRegistrationTechnologyCdma = 1,
+  kRegistrationTechnologyUmts = 2
+};
+
+enum RegistrationTechnologyPreferenceCdma {
+  kRegistrationTechnologyPreferenceCdma1xRtt = 2,
+  kRegistrationTechnologyPreferenceCdmaEvdo = 4
+};
+
+enum RegistrationTechnologyPreferenceUmts {
+  kRegistrationTechnologyPreferenceUmtsGsm = 1,
+  kRegistrationTechnologyPreferenceUmtsWcdma = 2
+};
+
+enum RegistrationPreferencePersistence {
+  kRegistrationPreferencePersistent = 0,
+  kRegistrationPreferencePowerCycleOnly = 1
+};
+
 typedef struct {
   ULONG radioInterface;
   ULONG activeBandClass;

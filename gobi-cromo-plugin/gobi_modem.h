@@ -130,6 +130,14 @@ class GobiModem
       public DBus::PropertiesAdaptor,
       public DBus::ObjectAdaptor {
  public:
+  enum NetworkPreference {
+    kNetworkPreferenceAutomatic = 0,
+    kNetworkPreferenceCdma1xRtt = 1,
+    kNetworkPreferenceCdmaEvdo = 2,
+    kNetworkPreferenceGsm = 3,
+    kNetworkPreferenceWcdma = 4
+  };
+
   typedef std::map<ULONG, int> StrengthMap;
 
   GobiModem(DBus::Connection& connection,
@@ -206,6 +214,8 @@ class GobiModem
   virtual void InjectFault(const std::string& name,
                            const int32_t &value,
                            DBus::Error& error);
+  virtual void SetNetworkPreference(const int32_t &value,
+                                    DBus::Error& error);
 
   void ClearIdleCallbacks();
 

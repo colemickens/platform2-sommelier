@@ -79,6 +79,22 @@
       </arg>
     </method>
 
+    <method name="SetNetworkPreference">
+      <tp:docstring>
+        Sets the network registration preference.
+      </tp:docstring>
+      <arg name="protocol" type="i" direction="in">
+        <tp:docstring>
+          Indicate which protocol to register with:
+            0: Automatic
+            1: CDMA 1xRTT
+            2: CDMA 1xEV-DO
+            3: GSM
+            4: WCDMA
+        </tp:docstring>
+      </arg>
+    </method>
+
     <signal name="DormancyStatus">
       <tp:docstring>
         Indicates that the dormancy status of the modem changed.
