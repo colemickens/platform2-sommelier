@@ -316,6 +316,15 @@ Properties	boolean AutoConnect [readwrite]
 			This value may be used to retrieve and manipulate
 			Layer 3 configuration state.
 
+		array{string} Diagnostics.Disconnects [readonly]
+
+			History (wall-clock timestamps) of connection drops.
+
+		array{string} Diagnostics.Misconnects [readonly]
+
+			History (wall-clock timestamps) of failed connection
+			attempts.
+
 		string EAP.Identity [readwrite]
 
 			The client identity string used in setting up

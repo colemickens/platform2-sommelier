@@ -19,6 +19,7 @@ class MockTime : public Time {
 
   MOCK_METHOD1(GetTimeMonotonic, int(struct timeval *tv));
   MOCK_METHOD2(GetTimeOfDay, int(struct timeval *tv, struct timezone *tz));
+  MOCK_METHOD0(GetNow, Timestamp());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTime);

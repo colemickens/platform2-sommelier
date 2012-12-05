@@ -44,6 +44,7 @@ using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::AtLeast;
+using testing::DefaultValue;
 using testing::DoAll;
 using testing::HasSubstr;
 using testing::Mock;
@@ -68,6 +69,7 @@ class ServiceTest : public PropertyStoreTest {
         storage_id_(ServiceUnderTest::kStorageId),
         power_manager_(new MockPowerManager(NULL, &proxy_factory_)) {
     service_->time_ = &time_;
+    DefaultValue<Timestamp>::Set(Timestamp());
     service_->diagnostics_reporter_ = &diagnostics_reporter_;
     mock_manager_.running_ = true;
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
@@ -109,8 +111,23 @@ class ServiceTest : public PropertyStoreTest {
     service_->NoteDisconnectEvent();
   }
 
-  deque<struct timeval> *GetDisconnects() { return &service_->disconnects_; }
-  deque<struct timeval> *GetMisconnects() { return &service_->misconnects_; }
+  deque<Timestamp> *GetDisconnects() {
+    return &service_->disconnects_;
+  }
+  deque<Timestamp> *GetMisconnects() {
+    return &service_->misconnects_;
+  }
+
+  Timestamp GetTimestamp(int monotonic_seconds, const string &wall_clock) {
+    struct timeval monotonic = { .tv_sec = monotonic_seconds, .tv_usec = 0 };
+    return Timestamp(monotonic, wall_clock);
+  }
+
+  void PushTimestamp(deque<Timestamp> *timestamps,
+                     int monotonic_seconds,
+                     const string &wall_clock) {
+    timestamps->push_back(GetTimestamp(monotonic_seconds, wall_clock));
+  }
 
   int GetDisconnectsMonitorSeconds() {
     return Service::kDisconnectsMonitorSeconds;
@@ -130,6 +147,10 @@ class ServiceTest : public PropertyStoreTest {
 
   int GetMaxDisconnectEventHistory() {
     return Service::kMaxDisconnectEventHistory;
+  }
+
+  static Strings ExtractWallClockToStrings(const deque<Timestamp> &timestamps) {
+    return Service::ExtractWallClockToStrings(timestamps);
   }
 
   MockManager mock_manager_;
@@ -1019,16 +1040,14 @@ TEST_F(ServiceTest, Certification) {
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventInvoked) {
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>((const struct timeval){ 0 }),
-                      Return(0)));
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(Timestamp()));
   SetStateField(Service::kStateOnline);
   service_->SetState(Service::kStateIdle);
   EXPECT_FALSE(GetDisconnects()->empty());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
-  EXPECT_CALL(time_, GetTimeMonotonic(_)).Times(0);
+  EXPECT_CALL(time_, GetNow()).Times(0);
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
 
   // Explicit disconnect is a non-event.
@@ -1061,54 +1080,50 @@ TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventDisconnectOnce) {
+  const int kNow = 5;
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateOnline);
-  static const struct timeval now = { .tv_sec = 5, .tv_usec = 0 };
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(kNow, "")));
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
   NoteDisconnectEvent();
   ASSERT_EQ(1, GetDisconnects()->size());
-  EXPECT_EQ(now.tv_sec, GetDisconnects()->front().tv_sec);
+  EXPECT_EQ(kNow, GetDisconnects()->front().monotonic.tv_sec);
   EXPECT_TRUE(GetMisconnects()->empty());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventDisconnectThreshold) {
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateOnline);
-  static const struct timeval now = { .tv_sec = 5, .tv_usec = 0 };
+  const int kNow = 6;
   for (int i = 0; i < GetReportDisconnectsThreshold() - 1; i++) {
-    GetDisconnects()->push_back(now);
+    PushTimestamp(GetDisconnects(), kNow, "");
   }
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(kNow, "")));
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(1);
   NoteDisconnectEvent();
   EXPECT_EQ(GetReportDisconnectsThreshold(), GetDisconnects()->size());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventMisconnectOnce) {
+  const int kNow = 7;
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateConfiguring);
-  static const struct timeval now = { .tv_sec = 7, .tv_usec = 0 };
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(kNow, "")));
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
   NoteDisconnectEvent();
   EXPECT_TRUE(GetDisconnects()->empty());
   ASSERT_EQ(1, GetMisconnects()->size());
-  EXPECT_EQ(now.tv_sec, GetMisconnects()->front().tv_sec);
+  EXPECT_EQ(kNow, GetMisconnects()->front().monotonic.tv_sec);
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventMisconnectThreshold) {
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateConfiguring);
-  static const struct timeval now = { .tv_sec = 7, .tv_usec = 0 };
+  const int kNow = 8;
   for (int i = 0; i < GetReportMisconnectsThreshold() - 1; i++) {
-    GetMisconnects()->push_back(now);
+    PushTimestamp(GetMisconnects(), kNow, "");
   }
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(kNow, "")));
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(1);
   NoteDisconnectEvent();
   EXPECT_EQ(GetReportMisconnectsThreshold(), GetMisconnects()->size());
@@ -1118,39 +1133,72 @@ TEST_F(ServiceTest, NoteDisconnectEventDiscardOld) {
   EXPECT_FALSE(service_->explicitly_disconnected());
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(0);
   for (int i = 0; i < 2; i++) {
-    struct timeval now = (const struct timeval){ 0 };
-    deque<struct timeval> *events = NULL;
+    int now = 0;
+    deque<Timestamp> *events = NULL;
     if (i == 0) {
       SetStateField(Service::kStateConnected);
-      now.tv_sec = GetDisconnectsMonitorSeconds() + 1;
+      now = GetDisconnectsMonitorSeconds() + 1;
       events = GetDisconnects();
     } else {
       SetStateField(Service::kStateAssociating);
-      now.tv_sec = GetMisconnectsMonitorSeconds() + 1;
+      now = GetMisconnectsMonitorSeconds() + 1;
       events = GetMisconnects();
     }
-    events->push_back((const struct timeval){ 0 });
-    events->push_back((const struct timeval){ 0 });
-    EXPECT_CALL(time_, GetTimeMonotonic(_))
-        .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+    PushTimestamp(events, 0, "");
+    PushTimestamp(events, 0, "");
+    EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(now, "")));
     NoteDisconnectEvent();
     ASSERT_EQ(1, events->size());
-    EXPECT_EQ(now.tv_sec, events->front().tv_sec);
+    EXPECT_EQ(now, events->front().monotonic.tv_sec);
   }
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventDiscardExcessive) {
   EXPECT_FALSE(service_->explicitly_disconnected());
   SetStateField(Service::kStateOnline);
-  static const struct timeval now = (const struct timeval){ 0 };
   for (int i = 0; i < 2 * GetMaxDisconnectEventHistory(); i++) {
-    GetDisconnects()->push_back(now);
+    PushTimestamp(GetDisconnects(), 0, "");
   }
-  EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(Timestamp()));
   EXPECT_CALL(diagnostics_reporter_, OnConnectivityEvent()).Times(1);
   NoteDisconnectEvent();
   EXPECT_EQ(GetMaxDisconnectEventHistory(), GetDisconnects()->size());
+}
+
+TEST_F(ServiceTest, ConvertTimestampsToStrings) {
+  EXPECT_TRUE(ExtractWallClockToStrings(deque<Timestamp>()).empty());
+
+  const Timestamp kValues[] = {
+    GetTimestamp(123, "2012-12-09T12:41:22"),
+    GetTimestamp(234, "2012-12-31T23:59:59")
+  };
+  Strings strings =
+      ExtractWallClockToStrings(
+          deque<Timestamp>(kValues, kValues + arraysize(kValues)));
+  EXPECT_GT(arraysize(kValues), 0);
+  ASSERT_EQ(arraysize(kValues), strings.size());
+  for (size_t i = 0; i < arraysize(kValues); i++) {
+    EXPECT_EQ(kValues[i].wall_clock, strings[i]);
+  }
+}
+
+TEST_F(ServiceTest, DiagnosticsProperties) {
+  const string kWallClock0 = "2012-12-09T12:41:22";
+  const string kWallClock1 = "2012-12-31T23:59:59";
+  PropertyStoreInspector inspector(&service_->store());
+  Strings values;
+
+  PushTimestamp(GetDisconnects(), 0, kWallClock0);
+  ASSERT_TRUE(
+      inspector.GetStringsProperty(kDiagnosticsDisconnectsProperty, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_EQ(kWallClock0, values[0]);
+
+  PushTimestamp(GetMisconnects(), 0, kWallClock1);
+  ASSERT_TRUE(
+      inspector.GetStringsProperty(kDiagnosticsMisconnectsProperty, &values));
+  ASSERT_EQ(1, values.size());
+  EXPECT_EQ(kWallClock1, values[0]);
 }
 
 }  // namespace shill

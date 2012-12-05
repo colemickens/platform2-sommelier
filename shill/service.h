@@ -5,7 +5,6 @@
 #ifndef SHILL_SERVICE_H_
 #define SHILL_SERVICE_H_
 
-#include <sys/time.h>
 #include <time.h>
 
 #include <deque>
@@ -25,6 +24,7 @@
 #include "shill/callbacks.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
+#include "shill/shill_time.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
 
@@ -46,7 +46,6 @@ class Metrics;
 class ServiceAdaptorInterface;
 class Sockets;
 class StoreInterface;
-class Time;
 
 // A Service is a uniquely named entity, which the system can
 // connect in order to begin sending and receiving network traffic.
@@ -467,6 +466,8 @@ class Service : public base::RefCounted<Service> {
       const std::string &name,
       std::string(Service::*get)(Error *),
       void(Service::*set)(const RpcIdentifier&, Error *));
+  void HelpRegisterConstDerivedStrings(
+      const std::string &name, Strings(Service::*get)(Error *error));
   // Expose a property over RPC, with the name |name|.
   //
   // Reads of the property will be handled by invoking |get|.
@@ -608,6 +609,11 @@ class Service : public base::RefCounted<Service> {
   std::string GetProxyConfig(Error *error);
   void SetProxyConfig(const std::string &proxy_config, Error *error);
 
+  static Strings ExtractWallClockToStrings(
+      const std::deque<Timestamp> &timestamps);
+  Strings GetDisconnectsProperty(Error *error);
+  Strings GetMisconnectsProperty(Error *error);
+
   void ReEnableAutoConnectTask();
   // Disables autoconnect and posts a task to re-enable it after a cooldown.
   // Note that autoconnect could be disabled for other reasons as well.
@@ -647,10 +653,8 @@ class Service : public base::RefCounted<Service> {
   // Whether or not this service has ever reached kStateConnected.
   bool has_ever_connected_;
 
-  // TODO(petkov): Expose these as read-only service properties
-  // (crosbug.com/36924).
-  std::deque<struct timeval> disconnects_;  // Connection drops.
-  std::deque<struct timeval> misconnects_;  // Failures to connect.
+  std::deque<Timestamp> disconnects_;  // Connection drops.
+  std::deque<Timestamp> misconnects_;  // Failures to connect.
 
   base::CancelableClosure reenable_auto_connect_task_;
   uint64 auto_connect_cooldown_milliseconds_ ;

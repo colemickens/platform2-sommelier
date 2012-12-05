@@ -28,7 +28,6 @@
 #include "shill/property_accessor.h"
 #include "shill/refptr_types.h"
 #include "shill/service_dbus_adaptor.h"
-#include "shill/shill_time.h"
 #include "shill/sockets.h"
 #include "shill/store_interface.h"
 
@@ -235,12 +234,10 @@ Service::Service(ControlInterface *control_interface,
                             NULL);
   store_.RegisterConstUint8(flimflam::kSignalStrengthProperty, &strength_);
   store_.RegisterString(flimflam::kUIDataProperty, &ui_data_);
-  // flimflam::kWifiAuthMode: Registered in WiFiService
-  // flimflam::kWifiHiddenSsid: Registered in WiFiService
-  // flimflam::kWifiFrequency: Registered in WiFiService
-  // flimflam::kWifiPhyMode: Registered in WiFiService
-  // flimflam::kWifiHexSsid: Registered in WiFiService
-
+  HelpRegisterConstDerivedStrings(shill::kDiagnosticsDisconnectsProperty,
+                                  &Service::GetDisconnectsProperty);
+  HelpRegisterConstDerivedStrings(shill::kDiagnosticsMisconnectsProperty,
+                                  &Service::GetMisconnectsProperty);
   metrics_->RegisterService(this);
 
   static_ip_parameters_.PlumbPropertyStore(&store_);
@@ -759,7 +756,7 @@ void Service::NoteDisconnectEvent() {
   }
   struct timeval period = (const struct timeval){ 0 };
   size_t threshold = 0;
-  deque<struct timeval> *events = NULL;
+  deque<Timestamp> *events = NULL;
   if (IsConnected()) {
     LOG(INFO) << "Noting an unexpected connection drop.";
     period.tv_sec = kDisconnectsMonitorSeconds;
@@ -776,12 +773,11 @@ void Service::NoteDisconnectEvent() {
     return;
   }
   // Discard old events first.
-  struct timeval now = (const struct timeval){ 0 };
-  time_->GetTimeMonotonic(&now);
+  Timestamp now = time_->GetNow();
   while (!events->empty()) {
     if (events->size() < static_cast<size_t>(kMaxDisconnectEventHistory)) {
       struct timeval elapsed = (const struct timeval){ 0 };
-      timersub(&now, &events->front(), &elapsed);
+      timersub(&now.monotonic, &events->front().monotonic, &elapsed);
       if (timercmp(&elapsed, &period, <)) {
         break;
       }
@@ -1068,6 +1064,13 @@ void Service::HelpRegisterDerivedUint16(
       Uint16Accessor(new CustomAccessor<Service, uint16>(this, get, set)));
 }
 
+void Service::HelpRegisterConstDerivedStrings(
+    const string &name, Strings(Service::*get)(Error *error)) {
+  store_.RegisterDerivedStrings(
+      name,
+      StringsAccessor(new CustomAccessor<Service, Strings>(this, get, NULL)));
+}
+
 void Service::HelpRegisterWriteOnlyDerivedString(
     const string &name,
     void(Service::*set)(const string &, Error *),
@@ -1264,6 +1267,25 @@ string Service::GetProxyConfig(Error *error) {
 void Service::SetProxyConfig(const string &proxy_config, Error *error) {
   proxy_config_ = proxy_config;
   adaptor_->EmitStringChanged(flimflam::kProxyConfigProperty, proxy_config_);
+}
+
+// static
+Strings Service::ExtractWallClockToStrings(
+    const deque<Timestamp> &timestamps) {
+  Strings strings;
+  for (deque<Timestamp>::const_iterator it = timestamps.begin();
+       it != timestamps.end(); ++it) {
+    strings.push_back(it->wall_clock);
+  }
+  return strings;
+}
+
+Strings Service::GetDisconnectsProperty(Error */*error*/) {
+  return ExtractWallClockToStrings(disconnects_);
+}
+
+Strings Service::GetMisconnectsProperty(Error */*error*/) {
+  return ExtractWallClockToStrings(misconnects_);
 }
 
 void Service::SaveToProfile() {
