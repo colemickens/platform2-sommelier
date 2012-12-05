@@ -113,6 +113,11 @@ message AttestationCertificateRequest {
   optional bytes certified_key_info = 4;
   // The signature of the TPM_CERTIFY_INFO by the AIK.
   optional bytes certified_key_proof = 5;
+  // An opaque blob to be included if is_cert_for_owner is true.
+  optional bytes owner_opaque_blob = 6;
+  // Domain information to be included if is_cert_for_owner is true.
+  // e.g. "google.com"
+  optional string owner_domain = 7;
 }
 
 // The response from the attestation server for the certificate request.
@@ -122,6 +127,11 @@ message AttestationCertificateResponse {
   optional string detail = 2;
   // The credential of the ceritified key in X.509 format.
   optional bytes certified_key_credential = 3;
+  // A second credential with reduced information.  Typically this is sent only
+  // when the request had is_cert_for_owner set to true.
+  optional bytes certified_key_credential2 = 4;
+  // The issuer intermediate CA certificate in X.509 format.
+  optional bytes intermediate_ca_cert = 5;
 }
 
 // Holds all information that a client stores locally.
