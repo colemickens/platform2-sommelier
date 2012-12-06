@@ -127,7 +127,7 @@ rm -f /var/run/power_manager/last_resume_timings
 
 # - stores the current power status
 power_status_on_suspend=/var/log/metrics/power-status-on-suspend
-power-supply-info \
+power-supply-info 2> /dev/null \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
     echo OnBattery > $power_status_on_suspend
