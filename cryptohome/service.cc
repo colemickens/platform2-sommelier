@@ -696,13 +696,20 @@ gboolean Service::IsMountedForUser(gchar *userid,
 gboolean Service::Mount(const gchar *userid,
                         const gchar *key,
                         gboolean create_if_missing,
+                        gboolean ensure_ephemeral,
                         gint *OUT_error_code,
                         gboolean *OUT_result,
                         GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
 
   if (mount_->IsCryptohomeMounted()) {
-    if (mount_->IsCryptohomeMountedForUser(credentials)) {
+    // If a cryptohome is mounted for the user already, reuse that mount unless
+    // the |ensure_ephemeral| flag prevents it: When |ensure_ephemeral| is
+    // |true|, a cryptohome backed by tmpfs is required. If the currently
+    // mounted cryptohome is backed by a vault, it must be unmounted and
+    // remounted with a tmpfs backend.
+    if (mount_->IsCryptohomeMountedForUser(credentials) &&
+        !(ensure_ephemeral && mount_->IsVaultMountedForUser(credentials))) {
       LOG(INFO) << "Cryptohome already mounted for this user";
       // This is the case where there were 2 mount requests for a given user
       // without any intervening unmount requests. This can happen, for example,
@@ -736,6 +743,7 @@ gboolean Service::Mount(const gchar *userid,
   base::WaitableEvent event(true, false);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
+  mount_args.ensure_ephemeral = ensure_ephemeral;
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(NULL,
                                                                 mount_,
                                                                 credentials,
@@ -760,12 +768,14 @@ gboolean Service::Mount(const gchar *userid,
 gboolean Service::AsyncMount(const gchar *userid,
                              const gchar *key,
                              gboolean create_if_missing,
+                             gboolean ensure_ephemeral,
                              gint *OUT_async_id,
                              GError **error) {
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
 
   if (mount_->IsCryptohomeMounted()) {
-    if (mount_->IsCryptohomeMountedForUser(credentials)) {
+    if (mount_->IsCryptohomeMountedForUser(credentials) &&
+        !(ensure_ephemeral && mount_->IsVaultMountedForUser(credentials))) {
       LOG(INFO) << "Cryptohome already mounted for this user";
       MountTaskObserverBridge* bridge =
           new MountTaskObserverBridge(mount_, &event_source_);
@@ -806,6 +816,7 @@ gboolean Service::AsyncMount(const gchar *userid,
   timer_collection_->UpdateTimer(TimerCollection::kAsyncMountTimer, true);
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = create_if_missing;
+  mount_args.ensure_ephemeral = ensure_ephemeral;
   MountTaskObserverBridge *bridge =
       new MountTaskObserverBridge(mount_, &event_source_);
   scoped_refptr<MountTaskMount> mount_task = new MountTaskMount(bridge,

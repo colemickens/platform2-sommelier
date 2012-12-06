@@ -1274,6 +1274,50 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   EXPECT_FALSE(file_util::PathExists(image_path_[0]));
 }
 
+TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
+  // Checks that when a device is not enterprise enrolled and does not have a
+  // known owner, a mount request with the |ensure_ephemeral| flag set fails.
+  set_policy(&mount_, false, "", false);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  mount_args.ensure_ephemeral = true;
+  MountError error;
+  ASSERT_FALSE(mount_.MountCryptohome(username_passkey_[0],
+                                      mount_args,
+                                      &error));
+  ASSERT_EQ(MOUNT_ERROR_FATAL, error);
+}
+
+TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
+  // Checks that when a device is enterprise enrolled, a mount request with the
+  // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted and no
+  // regular vault to be created.
+  set_policy(&mount_, true, "", false);
+  mount_.set_enterprise_owned(true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  mount_args.ensure_ephemeral = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+}
+
 class EphemeralOwnerOnlySystemTest : public EphemeralTest {
  public:
   EphemeralOwnerOnlySystemTest() { }
@@ -1308,6 +1352,49 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   EXPECT_TRUE(file_util::PathExists(user_path_[0]));
   EXPECT_TRUE(file_util::PathExists(root_path_[0]));
   EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+}
+
+TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
+  // Checks that when a device is not enterprise enrolled and has a known owner,
+  // a mount request for a non-owner user with the |ensure_ephemeral| flag set
+  // causes a tmpfs cryptohome to be mounted and no regular vault to be created.
+  set_policy(&mount_, true, "owner@invalid.domain", false);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  mount_args.ensure_ephemeral = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+  EXPECT_FALSE(file_util::PathExists(image_path_[0]));
+}
+
+TEST_F(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
+  // Checks that when a device is not enterprise enrolled and has a known owner,
+  // a mount request for the owner with the |ensure_ephemeral| flag set fails.
+  set_policy(&mount_, true, "owner@invalid.domain", false);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  mount_args.ensure_ephemeral = true;
+  MountError error;
+  ASSERT_FALSE(mount_.MountCryptohome(username_passkey_[3],
+                                      mount_args,
+                                      &error));
+  ASSERT_EQ(MOUNT_ERROR_FATAL, error);
 }
 
 class EphemeralExistingUserSystemTest : public EphemeralTest {
@@ -1463,6 +1550,58 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
       EXPECT_FALSE(file_util::PathExists(image_path_[user]));
     }
   }
+}
+
+TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
+  // Checks that when a device is not enterprise enrolled and has a known owner,
+  // a mount request for a non-owner user with the |ensure_ephemeral| flag set
+  // causes a tmpfs cryptohome to be mounted, even if a regular vault exists for
+  // the user.
+  set_policy(&mount_, true, "owner@invalid.domain", false);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  mount_args.ensure_ephemeral = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
+}
+
+TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
+  // Checks that when a device is enterprise enrolled, a mount request with the
+  // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted, even
+  // if a regular vault exists for the user.
+  set_policy(&mount_, true, "", false);
+  mount_.set_enterprise_owned(true);
+
+  EXPECT_CALL(platform_, Mount(_, _, _, _))
+      .Times(0);
+  EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Bind(_, _))
+      .WillRepeatedly(Return(true));
+
+  Mount::MountArgs mount_args;
+  mount_args.create_if_missing = true;
+  mount_args.ensure_ephemeral = true;
+  MountError error;
+  ASSERT_TRUE(mount_.MountCryptohome(username_passkey_[0],
+                                     mount_args,
+                                     &error));
+
+  EXPECT_TRUE(file_util::PathExists(user_path_[0]));
+  EXPECT_TRUE(file_util::PathExists(root_path_[0]));
 }
 
 }  // namespace cryptohome

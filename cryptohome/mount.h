@@ -67,12 +67,14 @@ class Mount {
  public:
   struct MountArgs {
     bool create_if_missing;
+    bool ensure_ephemeral;
 
-    MountArgs() : create_if_missing(false) {
+    MountArgs() : create_if_missing(false), ensure_ephemeral(false) {
     }
 
     void CopyFrom(const MountArgs& rhs) {
       this->create_if_missing = rhs.create_if_missing;
+      this->ensure_ephemeral = rhs.ensure_ephemeral;
     }
   };
 
@@ -88,9 +90,9 @@ class Mount {
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  //   mount_args - The options for the call to mount: whether to create the
-  //                cryptohome if it doesn't exist and any tracked directories
-  //                to create
+  //   mount_args - The options for the call to mount:
+  //                * Whether to create the cryptohome if it doesn't exist.
+  //                * Whether to ensure that the mount is ephemeral.
   //   error - The specific error condition on failure
   virtual bool MountCryptohome(const Credentials& credentials,
                                const MountArgs& mount_args,

@@ -109,6 +109,7 @@ namespace switches {
   static const char kAttrNameSwitch[] = "name";
   static const char kAttrValueSwitch[] = "value";
   static const char kFileSwitch[] = "file";
+  static const char kEnsureEphemeralSwitch[] = "ensure_ephemeral";
 }  // namespace switches
 
 chromeos::Blob GetSystemSalt(const chromeos::dbus::Proxy& proxy) {
@@ -420,7 +421,7 @@ int main(int argc, char **argv) {
                user.c_str(),
                password.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
-               false,
+               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                NULL,
                &mount_error,
                &done,
@@ -436,7 +437,7 @@ int main(int argc, char **argv) {
                user.c_str(),
                password.c_str(),
                cl->HasSwitch(switches::kCreateSwitch),
-               false,
+               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                NULL,
                &async_id,
                &chromeos::Resetter(&error).lvalue())) {

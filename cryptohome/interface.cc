@@ -118,24 +118,24 @@ gboolean cryptohome_mount(Cryptohome *self,
                           gchar *userid,
                           gchar *key,
                           gboolean create_if_missing,
-                          gboolean replace_tracked_directories,
+                          gboolean ensure_ephemeral,
                           gchar **tracked_directories,
                           gint *OUT_error_code,
                           gboolean *OUT_result,
                           GError **error) {
   CRYPTOHOME_WRAP_METHOD(Mount, userid, key, create_if_missing,
-                         OUT_error_code, OUT_result);
+                         ensure_ephemeral, OUT_error_code, OUT_result);
 }
 gboolean cryptohome_async_mount(Cryptohome *self,
                                 gchar *userid,
                                 gchar *key,
                                 gboolean create_if_missing,
-                                gboolean replace_tracked_directories,
+                                gboolean ensure_ephemeral,
                                 gchar **tracked_directories,
                                 gint *OUT_async_id,
                                 GError **error) {
   CRYPTOHOME_WRAP_METHOD(AsyncMount, userid, key, create_if_missing,
-                         OUT_async_id);
+                         ensure_ephemeral, OUT_async_id);
 }
 gboolean cryptohome_mount_guest(Cryptohome *self,
                                 gint *OUT_error_code,
