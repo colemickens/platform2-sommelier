@@ -5,6 +5,7 @@
 #include "shill/dhcp_config.h"
 
 #include <arpa/inet.h>
+#include <stdlib.h>
 #include <sys/wait.h>
 
 #include <base/file_util.h>
@@ -407,7 +408,11 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
 }
 
 void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
-  SLOG(DHCP, 2) << "pid " << pid << " exit status " << status;
+  if (status == EXIT_SUCCESS) {
+    SLOG(DHCP, 2) << "pid " << pid << " exit status " << status;
+  } else {
+    LOG(WARNING) << "pid " << pid << " exit status " << status;
+  }
   DHCPConfig *config = reinterpret_cast<DHCPConfig *>(data);
   config->child_watch_tag_ = 0;
   CHECK_EQ(pid, config->pid_);

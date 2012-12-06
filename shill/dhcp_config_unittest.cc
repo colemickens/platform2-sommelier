@@ -17,6 +17,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_dhcp_proxy.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_log.h"
 #include "shill/mock_minijail.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
@@ -159,7 +160,10 @@ DHCPConfigRefPtr DHCPConfigTest::CreateRunningConfig(const string &hostname,
 
 void DHCPConfigTest::StopRunningConfigAndExpect(DHCPConfigRefPtr config,
                                                 bool lease_file_exists) {
-  DHCPConfig::ChildWatchCallback(kPID, 0, config.get());
+  ScopedMockLog log;
+  // We use a non-zero exit status so that we get the log message.
+  EXPECT_CALL(log, Log(_, _, ::testing::EndsWith("status 10")));
+  DHCPConfig::ChildWatchCallback(kPID, 10, config.get());
   EXPECT_EQ(NULL, DHCPProvider::GetInstance()->GetConfig(kPID).get());
 
   EXPECT_FALSE(file_util::PathExists(pid_file_));
