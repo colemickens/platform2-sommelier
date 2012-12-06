@@ -36,6 +36,14 @@ ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallReadFileToString) { return Platform().ReadFileToString(arg0, arg1); }
 ACTION(CallCopy) { return Platform().Copy(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
+ACTION(CallReportBlockUsage) { return Platform().ReportBlockUsage(arg0, arg1); }
+ACTION(CallReportInodeUsage) { return Platform().ReportInodeUsage(arg0, arg1); }
+ACTION(CallReportFilesystemDetails) {
+  return Platform().ReportFilesystemDetails(arg0, arg1);
+}
+ACTION(CallFindFilesystemDevice) {
+  return Platform().FindFilesystemDevice(arg0, arg1);
+}
 
 class MockPlatform : public Platform {
  public:
@@ -58,6 +66,14 @@ class MockPlatform : public Platform {
         .WillByDefault(Return(base::Time::NowFromSystemTime()));
     ON_CALL(*this, Copy(_, _))
         .WillByDefault(CallCopy());
+    ON_CALL(*this, ReportBlockUsage(_, _))
+        .WillByDefault(CallReportBlockUsage());
+    ON_CALL(*this, ReportInodeUsage(_, _))
+        .WillByDefault(CallReportInodeUsage());
+    ON_CALL(*this, ReportFilesystemDetails(_, _))
+        .WillByDefault(CallReportFilesystemDetails());
+    ON_CALL(*this, FindFilesystemDevice(_, _))
+        .WillByDefault(CallFindFilesystemDevice());
     ON_CALL(*this, DeleteFile(_, _))
         .WillByDefault(CallDeleteFile());
     ON_CALL(*this, EnumerateDirectoryEntries(_, _, _))
@@ -102,6 +118,12 @@ class MockPlatform : public Platform {
   MOCK_METHOD2(WriteFile, bool(const std::string&, const chromeos::Blob&));
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
   MOCK_METHOD2(Copy, bool(const std::string&, const std::string&));
+  MOCK_METHOD2(ReportBlockUsage, bool(const std::string&, const std::string&));
+  MOCK_METHOD2(ReportInodeUsage, bool(const std::string&, const std::string&));
+  MOCK_METHOD2(ReportFilesystemDetails, bool(const std::string&,
+                                             const std::string&));
+  MOCK_METHOD2(FindFilesystemDevice, bool(const std::string&,
+                                          std::string*));
   MOCK_METHOD3(EnumerateDirectoryEntries, bool(const std::string&, bool,
                                                std::vector<std::string>*));
   MOCK_METHOD2(DeleteFile, bool(const std::string&, bool));

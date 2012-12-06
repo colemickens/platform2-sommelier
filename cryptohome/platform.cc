@@ -9,9 +9,11 @@
 #include <errno.h>
 #include <grp.h>
 #include <limits.h>
+#include <mntent.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -25,6 +27,7 @@
 #include <base/stringprintf.h>
 #include <base/sys_info.h>
 #include <base/time.h>
+#include <chromeos/process.h>
 #include <chromeos/utility.h>
 
 using base::SplitString;
@@ -54,8 +57,12 @@ const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
 const std::string kMtab = "/etc/mtab";
 const std::string kProcDir = "/proc";
+const std::string kPathDf = "/bin/df";
+const std::string kPathTune2fs = "/sbin/tune2fs";
 
-Platform::Platform() { }
+Platform::Platform()
+  : mtab_path_(kMtab) {
+}
 
 Platform::~Platform() {
 }
@@ -65,7 +72,7 @@ bool Platform::IsDirectoryMounted(const std::string& directory) {
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   string contents;
-  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
+  if (file_util::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if (contents.find(StringPrintf(" %s ", directory.c_str()))
         != string::npos) {
       return true;
@@ -80,7 +87,7 @@ bool Platform::IsDirectoryMountedWith(const std::string& directory,
   // and the user's vault path are present.  Assumes this user is mounted if it
   // finds both.  This will need to change if simultaneous login is implemented.
   string contents;
-  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
+  if (file_util::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if ((contents.find(StringPrintf(" %s ", directory.c_str()))
          != string::npos)
         && (contents.find(StringPrintf("%s ",
@@ -476,6 +483,93 @@ bool Platform::Copy(const std::string& from, const std::string& to) {
   FilePath from_path(from);
   FilePath to_path(to);
   return file_util::CopyDirectory(from_path, to_path, true);
+}
+
+bool Platform::ReportInodeUsage(const std::string &filesystem,
+                                const std::string &logfile) {
+  chromeos::ProcessImpl process;
+  int rc;
+
+  process.RedirectOutput(logfile);
+  process.AddArg(kPathDf);
+  process.AddArg("-Pi");
+  process.AddArg(filesystem);
+  rc = process.Run();
+  if (rc == 0)
+    return true;
+  LOG(ERROR) << "Failed to run df -Pi on " << filesystem
+             << " (exit " << rc << ")";
+  return false;
+}
+
+bool Platform::ReportBlockUsage(const std::string &filesystem,
+                                const std::string &logfile) {
+  chromeos::ProcessImpl process;
+  int rc;
+
+  process.RedirectOutput(logfile);
+  process.AddArg(kPathDf);
+  process.AddArg("-Pk");
+  process.AddArg(filesystem);
+  rc = process.Run();
+  if (rc == 0)
+    return true;
+  LOG(ERROR) << "Failed to run df -Pk on " << filesystem
+             << " (exit " << rc << ")";
+  return false;
+}
+
+bool Platform::FindFilesystemDevice(const std::string &filesystem_in,
+                                    std::string *device)
+{
+  /* Clear device to indicate failure case. */
+  device->clear();
+
+  /* Removing trailing slashes. */
+  std::string filesystem = filesystem_in;
+  size_t offset = filesystem.find_last_not_of('/');
+  if (offset != std::string::npos)
+    filesystem.erase(offset+1);
+
+  /* If we fail to open mtab, abort immediately. */
+  FILE *mtab_file = setmntent(mtab_path_.c_str(), "r");
+  if (!mtab_file)
+    return false;
+
+  /* Copy device of first matching filesystem location. */
+  struct mntent *entry;
+  while ((entry = getmntent(mtab_file)) != NULL) {
+    if (filesystem.compare(entry->mnt_dir) == 0) {
+      *device = entry->mnt_fsname;
+      break;
+    }
+  }
+  endmntent(mtab_file);
+
+  return (device->length() > 0);
+}
+
+bool Platform::ReportFilesystemDetails(const std::string &filesystem,
+                                       const std::string &logfile) {
+  chromeos::ProcessImpl process;
+  int rc;
+  std::string device;
+  if (!FindFilesystemDevice(filesystem, &device)) {
+    LOG(ERROR) << "Failed to find device for " << filesystem;
+    return false;
+  }
+
+  process.RedirectOutput(logfile);
+  process.AddArg(kPathTune2fs);
+  process.AddArg("-l");
+  process.AddArg(device);
+
+  rc = process.Run();
+  if (rc == 0)
+    return true;
+  LOG(ERROR) << "Failed to run tune2fs on " << device
+             << " (" << filesystem << ", exit " << rc << ")";
+  return false;
 }
 
 }  // namespace cryptohome

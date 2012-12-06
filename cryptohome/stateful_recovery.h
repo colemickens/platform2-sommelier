@@ -31,11 +31,20 @@ class StatefulRecovery {
 
   static const char *kRecoverSource;
   static const char *kRecoverDestination;
+  static const char *kRecoverBlockUsage;
+  static const char *kRecoverInodeUsage;
+  static const char *kRecoverFilesystemDetails;
   static const char *kFlagFile;
  private:
   // Returns true if a flag file indicating a recovery request exists and
   // contains the expected content.
   bool ParseFlagFile();
+
+  // Copies encrypted partition details to recovery directory.
+  bool CopyPartitionInfo();
+
+  // Copies encrypted partition contents to recovery directory.
+  bool CopyPartitionContents();
 
   bool requested_;
   Platform* platform_;

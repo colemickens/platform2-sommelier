@@ -219,6 +219,43 @@ class Platform {
   // Copies from to to.
   virtual bool Copy(const std::string& from, const std::string& to);
 
+  // Runs "df -Pk" with redirected output.
+  //
+  // Parameters
+  //  filesystem - the filesystem to examine
+  //  lgofile - the path written with output
+  virtual bool ReportBlockUsage(const std::string &filesystem,
+                                const std::string &logfile);
+
+  // Runs "df -Pi" with redirected output.
+  //
+  // Parameters
+  //  filesystem - the filesystem to examine
+  //  logfile - the path written with output
+  virtual bool ReportInodeUsage(const std::string &filesystem,
+                                const std::string &logfile);
+
+  // Find the device for a given filesystem.
+  //
+  // Parameters
+  //   filesystem - the filesystem to examine
+  //   device - output: the device name that "filesystem" in mounted on
+  virtual bool FindFilesystemDevice(const std::string &filesystem,
+                                    std::string *device);
+
+  // Runs "tune2fs -l" with redirected output.
+  //
+  // Parameters
+  //  filesystem - the filesystem to examine
+  //  lgofile - the path written with output
+  virtual bool ReportFilesystemDetails(const std::string &filesystem,
+                                       const std::string &logfile);
+
+  // Override the location of the mtab file used. Default is kMtab.
+  virtual void set_mtab_path(const std::string &mtab_path) {
+    mtab_path_ = mtab_path;
+  }
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path
@@ -250,6 +287,8 @@ class Platform {
   // Parameters
   //   link_path - The link to check
   std::string ReadLink(const std::string& link_path);
+
+  std::string mtab_path_;
 
   DISALLOW_COPY_AND_ASSIGN(Platform);
 };

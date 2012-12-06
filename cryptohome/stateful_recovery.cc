@@ -19,12 +19,20 @@ using std::string;
 
 namespace cryptohome {
 
+#define MNT_STATEFUL_PARTITION "/mnt/stateful_partition/"
+
 const char *StatefulRecovery::kFlagFile =
-    "/mnt/stateful_partition/decrypt_stateful";
+    MNT_STATEFUL_PARTITION "decrypt_stateful";
 const char *StatefulRecovery::kRecoverSource =
-    "/mnt/stateful_partition/encrypted";
+    MNT_STATEFUL_PARTITION "encrypted";
 const char *StatefulRecovery::kRecoverDestination =
-    "/mnt/stateful_partition/decrypted";
+    MNT_STATEFUL_PARTITION "decrypted";
+const char *StatefulRecovery::kRecoverBlockUsage =
+    MNT_STATEFUL_PARTITION "decrypted/block-usage.txt";
+const char *StatefulRecovery::kRecoverInodeUsage =
+    MNT_STATEFUL_PARTITION "decrypted/inode-usage.txt";
+const char *StatefulRecovery::kRecoverFilesystemDetails =
+    MNT_STATEFUL_PARTITION "decrypted/filesystem-details.txt";
 
 StatefulRecovery::StatefulRecovery(Platform* platform)
     : requested_(false), platform_(platform) { }
@@ -35,10 +43,42 @@ bool StatefulRecovery::Requested() {
   return requested_;
 }
 
+bool StatefulRecovery::CopyPartitionInfo() {
+  if (!platform_->ReportBlockUsage(kRecoverSource, kRecoverBlockUsage))
+    return false;
+
+  if (!platform_->ReportInodeUsage(kRecoverSource, kRecoverInodeUsage))
+    return false;
+
+  if (!platform_->ReportFilesystemDetails(kRecoverSource,
+                                          kRecoverFilesystemDetails))
+    return false;
+
+  return true;
+}
+
+bool StatefulRecovery::CopyPartitionContents() {
+  int rc;
+
+  rc = platform_->Copy(kRecoverSource, kRecoverDestination);
+  if (rc)
+    return true;
+  LOG(ERROR) << "Failed to copy " << kRecoverSource;
+  return false;
+}
+
 bool StatefulRecovery::Recover() {
   if (!requested_)
     return false;
-  return platform_->Copy(kRecoverSource, kRecoverDestination);
+  if (!platform_->CreateDirectory(kRecoverDestination)) {
+    LOG(ERROR) << "Failed to mkdir " << kRecoverDestination;
+    return false;
+  }
+  if (!CopyPartitionContents())
+    return false;
+  if (!CopyPartitionInfo())
+    return false;
+  return true;
 }
 
 void StatefulRecovery::PerformReboot() {
