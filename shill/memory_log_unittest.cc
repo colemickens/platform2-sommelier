@@ -144,11 +144,12 @@ TEST_F(MemoryLogTest, MemoryLogFlushToFileWorks) {
 
 TEST_F(MemoryLogTest, MemoryLogFlushToDiskCannotCreateFile) {
   ScopedMockLog log;
+  FilePath tmp_path;
+  EXPECT_CALL(log, Log(_, _, ::testing::EndsWith(tmp_path.AsUTF8Unsafe())));
   EXPECT_CALL(log, Log(_,
                        _,
                        "Failed to open file for dumping memory log to disk."));
   EXPECT_CALL(log, Log(_, _, "Failed to flush memory log to disk"));
-  FilePath tmp_path;
   file_util::CreateTemporaryFile(&tmp_path);
   // Flushing fails because a directory already exists with the same name as
   // our log file.
@@ -184,11 +185,14 @@ TEST_F(MemoryLogTest, MemoryLogFlushToDiskRotateWorks) {
 }
 
 TEST_F(MemoryLogTest, MemoryLogFlushToDiskWorks) {
+  ScopedMockLog log;
   FilePath tmp_path;
   file_util::CreateTemporaryFile(&tmp_path);
   LOG(INFO) << kTestStr1;
   LOG(INFO) << kTestStr2;
   LOG(INFO) << kTestStr3;
+  EXPECT_CALL(log, Log(_, _, _));
+  EXPECT_CALL(log, Log(_, _, ::testing::EndsWith(tmp_path.AsUTF8Unsafe())));
   MemoryLog::GetInstance()->FlushToDiskImpl(tmp_path);
   // No rotation should have happened.
   EXPECT_FALSE(file_util::PathExists(tmp_path.Append(".bak")));

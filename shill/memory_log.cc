@@ -78,6 +78,7 @@ void MemoryLog::FlushToDisk() {
 }
 
 void MemoryLog::FlushToDiskImpl(const FilePath &file_path) {
+  LOG(INFO) << "Saving memory log to " << file_path.AsUTF8Unsafe();
   do {
     // If the file exists, lets make sure it is of reasonable size before
     // writing to it, and roll it over if it's too big.
