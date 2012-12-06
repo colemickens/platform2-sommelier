@@ -11,6 +11,7 @@
 #include "shill/mock_time.h"
 
 using testing::_;
+using testing::InSequence;
 using testing::Return;
 using testing::SetArgumentPointee;
 
@@ -23,8 +24,6 @@ class ReporterUnderTest : public DiagnosticsReporter {
   ReporterUnderTest() {}
 
   MOCK_METHOD0(IsReportingEnabled, bool());
-
-  void Report() { DiagnosticsReporter::Report(); }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ReporterUnderTest);
@@ -55,18 +54,6 @@ class DiagnosticsReporterTest : public testing::Test {
   ReporterUnderTest reporter_;
 };
 
-TEST_F(DiagnosticsReporterTest, ReportEnabled) {
-  EXPECT_CALL(reporter_, IsReportingEnabled()).WillOnce(Return(true));
-  EXPECT_CALL(glib_, SpawnSync(_, _, _, _, _, _, _, _, _, _)).Times(1);
-  reporter_.Report();
-}
-
-TEST_F(DiagnosticsReporterTest, ReportDisabled) {
-  EXPECT_CALL(reporter_, IsReportingEnabled()).WillOnce(Return(false));
-  EXPECT_CALL(glib_, SpawnSync(_, _, _, _, _, _, _, _, _, _)).Times(0);
-  reporter_.Report();
-}
-
 TEST_F(DiagnosticsReporterTest, IsReportingEnabled) {
   EXPECT_FALSE(IsReportingEnabled());
 }
@@ -85,18 +72,46 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEventThrottle) {
   EXPECT_EQ(kLastStash, GetLastLogStash());
 }
 
+namespace {
+
+MATCHER(NoUpload, "") {
+  return arg && arg[0] && !arg[1];
+}
+
+MATCHER(DoUpload, "") {
+  return arg && arg[0] && arg[1] && !strcmp(arg[1], "--upload");
+}
+
+}  // namespace
+
 TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
   const uint64 kLastStash = 50;
-  const uint64 kNow = kLastStash + GetLogStashThrottleSeconds() + 1;
   SetLastLogStash(kLastStash);
-  const struct timeval now = {
-    .tv_sec = static_cast<long int>(kNow),
+  const uint64 kNow0 = kLastStash + GetLogStashThrottleSeconds() + 1;
+  const struct timeval now0 = {
+    .tv_sec = static_cast<long int>(kNow0),
+    .tv_usec = 0
+  };
+  const uint64 kNow1 = kNow0 + GetLogStashThrottleSeconds() + 1;
+  const struct timeval now1 = {
+    .tv_sec = static_cast<long int>(kNow1),
     .tv_usec = 0
   };
   EXPECT_CALL(time_, GetTimeMonotonic(_))
-      .WillOnce(DoAll(SetArgumentPointee<0>(now), Return(0)));
+      .WillOnce(DoAll(SetArgumentPointee<0>(now0), Return(0)))
+      .WillOnce(DoAll(SetArgumentPointee<0>(now1), Return(0)));
+  EXPECT_CALL(reporter_, IsReportingEnabled())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  InSequence s;
+  EXPECT_CALL(glib_, SpawnAsync(_, NoUpload(), _, _, _, _, _, _))
+      .WillOnce(Return(true));
+  EXPECT_CALL(glib_, SpawnAsync(_, DoUpload(), _, _, _, _, _, _))
+      .WillOnce(Return(true));
   reporter_.OnConnectivityEvent();
-  EXPECT_EQ(kNow, GetLastLogStash());
+  EXPECT_EQ(kNow0, GetLastLogStash());
+  reporter_.OnConnectivityEvent();
+  EXPECT_EQ(kNow1, GetLastLogStash());
 }
 
 }  // namespace shill

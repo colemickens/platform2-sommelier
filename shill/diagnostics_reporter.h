@@ -30,9 +30,6 @@ class DiagnosticsReporter {
 
   virtual bool IsReportingEnabled();
 
-  // Uploads diagnostics data for analysis.
-  void Report();
-
  private:
   friend struct base::DefaultLazyInstanceTraits<DiagnosticsReporter>;
   friend class DiagnosticsReporterTest;

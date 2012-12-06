@@ -35,31 +35,6 @@ void DiagnosticsReporter::Init(GLib *glib) {
   glib_ = glib;
 }
 
-void DiagnosticsReporter::Report() {
-  if (!IsReportingEnabled()) {
-    return;
-  }
-  LOG(INFO) << "Spawning " << kNetDiagsUpload;
-  CHECK(glib_);
-  char *argv[] = { const_cast<char *>(kNetDiagsUpload), NULL };
-  char *envp[] = { NULL };
-  int status = 0;
-  GError *error = NULL;
-  if (!glib_->SpawnSync(NULL,
-                        argv,
-                        envp,
-                        static_cast<GSpawnFlags>(0),
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        &status,
-                        &error)) {
-    LOG(ERROR) << "net-diags-upload failed: "
-               << glib_->ConvertErrorToMessage(error);
-  }
-}
-
 void DiagnosticsReporter::OnConnectivityEvent() {
   LOG(INFO) << "Diagnostics event triggered.";
 
@@ -73,8 +48,26 @@ void DiagnosticsReporter::OnConnectivityEvent() {
 
   last_log_stash_ = now.tv_sec;
 
-  // TODO(petkov): Stash away logs for potential inclusion in feedback
-  // (crosbug.com/36923).
+  LOG(INFO) << "Spawning " << kNetDiagsUpload << " @ " << last_log_stash_;
+  CHECK(glib_);
+  char *argv[] = {
+    const_cast<char *>(kNetDiagsUpload),
+    IsReportingEnabled() ? const_cast<char *>("--upload") : NULL,
+    NULL
+  };
+  char *envp[] = { NULL };
+  GError *error = NULL;
+  // TODO(petkov): Run the subprocess through minijail (crosbug.com/37099).
+  if (!glib_->SpawnAsync(NULL,
+                         argv,
+                         envp,
+                         static_cast<GSpawnFlags>(0),
+                         NULL,
+                         NULL,
+                         NULL,
+                         &error)) {
+    LOG(ERROR) << "Spawn failed: " << glib_->ConvertErrorToMessage(error);
+  }
 }
 
 bool DiagnosticsReporter::IsReportingEnabled() {
