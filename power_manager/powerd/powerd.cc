@@ -25,6 +25,7 @@
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
@@ -100,6 +101,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       video_detector_(video_detector),
       idle_(idle),
       keyboard_controller_(keyboard_controller),
+      dbus_sender_(new DBusSender(kPowerManagerServicePath,
+                                  kPowerManagerInterface)),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -116,7 +119,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
-      suspender_(&locker_, &file_tagger_),
+      suspender_(&locker_, &file_tagger_, dbus_sender_.get()),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
       power_state_(BACKLIGHT_UNINITIALIZED),
@@ -928,13 +931,18 @@ void Daemon::RegisterDBusMessageHandler() {
       base::Bind(&Daemon::HandleSetIsProjectingMethod, base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
-      kRegisterSuspendDelay,
+      kRegisterSuspendDelayMethod,
       base::Bind(&Suspender::RegisterSuspendDelay,
                  base::Unretained(&suspender_)));
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
-      kUnregisterSuspendDelay,
+      kUnregisterSuspendDelayMethod,
       base::Bind(&Suspender::UnregisterSuspendDelay,
+                 base::Unretained(&suspender_)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kHandleSuspendReadinessMethod,
+      base::Bind(&Suspender::HandleSuspendReadiness,
                  base::Unretained(&suspender_)));
 
   dbus_handler_.Start();

@@ -11,18 +11,26 @@
 #include <map>
 #include <string>
 
+#include "base/compiler_specific.h"
 #include "base/file_path.h"
+#include "base/memory/scoped_ptr.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/screen_locker.h"
+#include "power_manager/powerd/suspend_delay_observer.h"
 
 namespace power_manager {
 
 class Daemon;
+class DBusSenderInterface;
 class FileTagger;
+class SuspendDelayController;
 
-class Suspender {
+class Suspender : public SuspendDelayObserver {
  public:
-  Suspender(ScreenLocker* locker, FileTagger* file_tagger);
+  Suspender(ScreenLocker* locker,
+            FileTagger* file_tagger,
+            DBusSenderInterface* dbus_sender);
+  ~Suspender();
 
   static void NameOwnerChangedHandler(DBusGProxy* proxy,
                                       const gchar* name,
@@ -32,57 +40,75 @@ class Suspender {
 
   void Init(const FilePath& run_dir, Daemon* daemon);
 
-  // Suspend the computer, locking the screen first.
+  // Starts the suspend process.  Notifies clients that have registered delays
+  // that the system is about to suspend, starts |check_suspend_timeout_id_|,
+  // and requests that the screen be locked if needed.  Note that suspending
+  // happens asynchronously.
   void RequestSuspend();
 
-  // Check whether the computer should be suspended. Before calling this
-  // method, the screen should be locked.
+  // Calls Suspend() if |suspend_requested_| is true and if it's now safe to do
+  // so (i.e. there are no outstanding delays and the screen is locked if
+  // |wait_for_screen_lock_| is set).
   void CheckSuspend();
 
-  // Cancel Suspend in progress.
+  // Cancels an outstanding suspend request.
   void CancelSuspend();
 
-  // Handles a RegisterSuspendDelay request.  The caller is responsible for
-  // sending the returned reply and freeing it with dbus_message_unref().
+  // Handles a RegisterSuspendDelay call and returns a reply that should be sent
+  // (or NULL if an empty reply should be sent).
   DBusMessage* RegisterSuspendDelay(DBusMessage* message);
 
-  // Handles an UnregisterSuspendDelay request.  The caller is responsible for
-  // sending the returned reply and freeing it with dbus_message_unref().
+  // Handles an UnregisterSuspendDelay call and returns a reply that should be
+  // sent (or NULL if an empty reply should be sent).
   DBusMessage* UnregisterSuspendDelay(DBusMessage* message);
+
+  // Handles HandleSuspendReadiness call and returns a reply that should be sent
+  // (or NULL if an empty reply should be sent).
+  DBusMessage* HandleSuspendReadiness(DBusMessage* message);
 
   // Handle SuspendReady D-Bus signals.
   bool SuspendReady(DBusMessage* message);
 
+  // SuspendDelayObserver override:
+  virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;
+
  private:
-  // Suspend the computer. Before calling this method, the screen should
-  // be locked.
+  // Suspends the computer. Before this method is called, the system should be
+  // in a state where it's truly ready to suspend (e.g. no outstanding delays,
+  // screen locked if needed, etc.).
   void Suspend();
 
   // Timeout callback in case suspend clients do not respond in time.
   // Always returns false.
-  SIGNAL_CALLBACK_PACKED_1(Suspender, gboolean, CheckSuspendTimeout,
-                           unsigned int);
+  SIGNAL_CALLBACK_0(Suspender, gboolean, CheckSuspendTimeout);
 
   // Clean up suspend delay upon unregister or dbus name change.
   // Remove |client_name| from list of suspend delay callback clients.
   bool CleanUpSuspendDelay(const char* client_name);
 
-  void BroadcastSignalToClients(const char* signal_name,
-                                const unsigned int sequence_num);
+  void BroadcastSignalToClients(const char* signal_name, int sequence_num);
 
-  // Reference to ScreenLocker object.
+  // If |check_suspend_timeout_id_| is set, cancels it and resets it to 0.
+  void CancelCheckSuspendTimeout();
+
   ScreenLocker* locker_;
-
-  // Reference to FileTagger object.
   FileTagger* file_tagger_;
 
-  DBusConnection* connection_;
+  scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
   // Whether the computer should be suspended soon.
   unsigned int suspend_delay_timeout_ms_;
-  unsigned int suspend_delays_outstanding_;
+  int suspend_delays_outstanding_;
   bool suspend_requested_;
-  unsigned int suspend_sequence_number_;
+  int suspend_sequence_number_;
+
+  // ID of GLib source that will run CheckSuspendTimeout(), or 0 if unset.
+  unsigned int check_suspend_timeout_id_;
+
+  // True if CheckSuspend() should wait for |locker_| to report that the screen
+  // is locked before suspending.  CheckSuspendTimeout() sets this back to false
+  // once the timeout has been hit.
+  bool wait_for_screen_lock_;
 
   // Identify user activity to cancel suspend in progress.
   FilePath user_active_file_;
