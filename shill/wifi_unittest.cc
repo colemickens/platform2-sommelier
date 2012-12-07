@@ -48,6 +48,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_supplicant_bss_proxy.h"
 #include "shill/mock_supplicant_interface_proxy.h"
+#include "shill/mock_supplicant_network_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/mock_time.h"
 #include "shill/mock_wifi_service.h"
@@ -214,6 +215,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         WillByDefault(Return(dhcp_config_));
     ON_CALL(*dhcp_config_.get(), RequestIP()).
         WillByDefault(Return(true));
+    ON_CALL(proxy_factory_, CreateSupplicantNetworkProxy(_, _)).
+        WillByDefault(InvokeWithoutArgs(
+            this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
 
     manager_.dbus_manager_.reset(dbus_manager_);  // Transfers ownership.
 
@@ -290,6 +294,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                      const DBus::Path &object_path,
                      const char *dbus_addr));
 
+    MOCK_METHOD2(CreateSupplicantNetworkProxy,
+                 SupplicantNetworkProxyInterface *(
+                     const DBus::Path &object_path,
+                     const char *dbus_addr));
+
    private:
     SupplicantBSSProxyInterface *CreateSupplicantBSSProxyInternal(
         WiFiEndpoint */*wifi_endpoint*/,
@@ -351,6 +360,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     return dynamic_cast<MockSupplicantInterfaceProxy *>(
         wifi_->supplicant_interface_proxy_.get());
   }
+  MockSupplicantNetworkProxy *CreateSupplicantNetworkProxy() {
+    return new NiceMock<MockSupplicantNetworkProxy>();
+  }
   const string &GetSupplicantState() {
     return wifi_->supplicant_state_;
   }
@@ -378,6 +390,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         security,
         false);
   }
+  void ClearCachedCredentials(const WiFiService *service) {
+    return wifi_->ClearCachedCredentials(service);
+  }
   bool RemoveNetwork(const ::DBus::Path &network) {
     return wifi_->RemoveNetwork(network);
   }
@@ -388,9 +403,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                  int16_t signal_strength,
                  uint16 frequency,
                  const char *mode);
-  void ClearCachedCredentials() {
-    wifi_->ClearCachedCredentials();
-  }
   void ReportIPConfigComplete() {
     wifi_->OnIPConfigUpdated(dhcp_config_, true);
   }
@@ -641,7 +653,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   NiceMock<MockDBusManager> *dbus_manager_;
 
  private:
-  TestProxyFactory proxy_factory_;
+  NiceMock<TestProxyFactory> proxy_factory_;
 };
 
 const char WiFiObjectTest::kDeviceName[] = "wlan0";
@@ -794,6 +806,15 @@ TEST_F(WiFiMainTest, CleanStart) {
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, ClearCachedCredentials) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+  DBus::Path network = "/test/path";
+  WiFiService *service(SetupConnectedService(network));
+  EXPECT_CALL(supplicant_interface_proxy, RemoveNetwork(network));
+  ClearCachedCredentials(service);
 }
 
 TEST_F(WiFiMainTest, RemoveNetwork) {
@@ -1172,6 +1193,34 @@ TEST_F(WiFiMainTest, Connect) {
   }
 }
 
+TEST_F(WiFiMainTest, ReconnectPreservesDBusPath) {
+  EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
+
+  StartWiFi();
+  ReportBSS("bss0", "ssid0", "00:00:00:00:00:00", 0, 0, kNetworkModeAdHoc);
+  ReportScanDone();
+
+  DBus::Path fake_path("/fake/path");
+  WiFiService *service(GetServices().begin()->get());
+  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_))
+      .WillOnce(Return(fake_path));
+  EXPECT_CALL(supplicant_interface_proxy, SelectNetwork(fake_path));
+  InitiateConnect(service);
+
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
+
+  // Return the service to a connectable state.
+  InitiateDisconnect(service);
+
+  // A second connection attempt should remember the DBus path associated
+  // with this service.
+  EXPECT_CALL(supplicant_interface_proxy, AddNetwork(_)).Times(0);
+  EXPECT_CALL(supplicant_interface_proxy, SelectNetwork(fake_path));
+  InitiateConnect(service);
+}
+
 TEST_F(WiFiMainTest, DisconnectPendingService) {
   EXPECT_CALL(*manager(), RegisterService(_)).Times(AnyNumber());
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
@@ -1226,21 +1275,34 @@ TEST_F(WiFiMainTest, DisconnectPendingServiceWithCurrent) {
 TEST_F(WiFiMainTest, DisconnectCurrentService) {
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
-  WiFiService *service(SetupConnectedService(DBus::Path()));
+  DBus::Path fake_path("/fake/path");
+  WiFiService *service(SetupConnectedService(fake_path));
   EXPECT_CALL(supplicant_interface_proxy, Disconnect());
   InitiateDisconnect(service);
 
   // |current_service_| should not change until supplicant reports
   // a BSS change.
   EXPECT_EQ(service, GetCurrentService());
+
+  // Expect that the entry associated with this network will be disabled.
+  MockSupplicantNetworkProxy *network_proxy = CreateSupplicantNetworkProxy();
+  EXPECT_CALL(*proxy_factory(), CreateSupplicantNetworkProxy(
+      fake_path, wpa_supplicant::kDBusAddr))
+      .WillOnce(Return(network_proxy));
+  EXPECT_CALL(*network_proxy, SetEnabled(false));
+  EXPECT_CALL(supplicant_interface_proxy, RemoveNetwork(fake_path)).Times(0);
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+  EXPECT_TRUE(GetCurrentService() == NULL);
 }
 
 TEST_F(WiFiMainTest, DisconnectCurrentServiceWithErrors) {
   MockSupplicantInterfaceProxy &supplicant_interface_proxy =
       *supplicant_interface_proxy_;
-  WiFiService *service(SetupConnectedService(DBus::Path()));
+  DBus::Path fake_path("/fake/path");
+  WiFiService *service(SetupConnectedService(fake_path));
   EXPECT_CALL(supplicant_interface_proxy, Disconnect())
       .WillOnce(InvokeWithoutArgs(this, (&WiFiMainTest::ThrowDBusError)));
+  EXPECT_CALL(supplicant_interface_proxy, RemoveNetwork(fake_path)).Times(1);
   InitiateDisconnect(service);
 
   // We may sometimes fail to disconnect via supplicant, and we patch up some
@@ -2138,47 +2200,6 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // Similarly, rekeying events after we have an IP don't trigger L3
   // configuration.
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
-}
-
-TEST_F(WiFiMainTest, ClearCachedCredentials) {
-  {
-    ClearCachedCredentials();
-    ScopedMockLog log;
-    EXPECT_CALL(log, Log(_, _, EndsWith("supplicant proxy is NULL.")));
-    // Also expect no crash due to supplicant interface proxy being NULL.
-    dispatcher_.DispatchPendingEvents();
-  }
-
-  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
-      *supplicant_interface_proxy_;
-
-  StartWiFi();
-
-  // Ensure call to the proxy is deferred.
-  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
-      .Times(0);
-  ClearCachedCredentials();
-
-  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
-
-  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
-      .Times(1);
-  dispatcher_.DispatchPendingEvents();
-
-  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
-
-  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
-      .Times(0);
-  ClearCachedCredentials();
-  ClearCachedCredentials();
-
-  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
-
-  // Ensure multiple calls to ClearCachedCredentials() results in only
-  // one call to the proxy.
-  EXPECT_CALL(supplicant_interface_proxy, ClearCachedCredentials())
-      .Times(1);
-  dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(WiFiMainTest, BSSAddedCreatesBSSProxy) {

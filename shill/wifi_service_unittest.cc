@@ -611,6 +611,74 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   wifi_service->Connect(NULL);
 }
 
+TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
+  vector<uint8_t> ssid(5);
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityRsn,
+                                                   false);
+
+  const string kPassphrase = "abcdefgh";
+
+  {
+    Error error;
+    // A changed passphrase should trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    wifi_service->SetPassphrase(kPassphrase, &error);
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  {
+    Error error;
+    // An unchanged passphrase should not trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
+    wifi_service->SetPassphrase(kPassphrase, &error);
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  {
+    Error error;
+    // A modified passphrase should trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    wifi_service->SetPassphrase(kPassphrase + "X", &error);
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  {
+    Error error;
+    // A cleared passphrase should also trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    wifi_service->ClearPassphrase(&error);
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  {
+    Error error;
+    // An invalid passphrase should not trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
+    wifi_service->SetPassphrase("", &error);
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_FALSE(error.IsSuccess());
+  }
+
+  {
+    // Any change to EAP parameters (including a null one) will trigger cache
+    // removal.  This is a lot less granular than the passphrase checks above.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    wifi_service->set_eap(Service::EapCredentials());
+    Mock::VerifyAndClearExpectations(wifi());
+  }
+}
+
 TEST_F(WiFiServiceTest, LoadHidden) {
   vector<uint8_t> ssid(5);
   ssid.push_back(0xff);
@@ -749,7 +817,7 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   EXPECT_TRUE(service->connectable());
 }
 
-TEST_F(WiFiServiceTest, UnloadAndClearCacheWep) {
+TEST_F(WiFiServiceTest, UnloadAndClearCacheWEP) {
   vector<uint8_t> ssid(1, 'a');
   WiFiServiceRefPtr service = new WiFiService(control_interface(),
                                               dispatcher(),
@@ -760,8 +828,8 @@ TEST_F(WiFiServiceTest, UnloadAndClearCacheWep) {
                                               flimflam::kModeManaged,
                                               flimflam::kSecurityWep,
                                               false);
-  // A WEP network does not incur cached credentials.
-  EXPECT_CALL(*wifi(), ClearCachedCredentials()).Times(0);
+  EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
+  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
   service->Unload();
 }
 
@@ -776,8 +844,8 @@ TEST_F(WiFiServiceTest, UnloadAndClearCache8021x) {
                                               flimflam::kModeManaged,
                                               flimflam::kSecurity8021x,
                                               false);
-  // An 802.1x network should clear its cached credentials.
-  EXPECT_CALL(*wifi(), ClearCachedCredentials()).Times(1);
+  EXPECT_CALL(*wifi(), ClearCachedCredentials(service.get())).Times(1);
+  EXPECT_CALL(*wifi(), DisconnectFrom(service.get())).Times(1);
   service->Unload();
 }
 

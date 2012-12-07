@@ -270,6 +270,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	static_ip_parameters.o \
 	supplicant_bss_proxy.o \
 	supplicant_interface_proxy.o \
+	supplicant_network_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
 	user_bound_nlmessage.o \
@@ -404,6 +405,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_store.o \
 	mock_supplicant_bss_proxy.o \
 	mock_supplicant_interface_proxy.o \
+	mock_supplicant_network_proxy.o \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
 	mock_vpn.o \

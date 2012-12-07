@@ -38,16 +38,6 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
   }
 }
 
-void SupplicantInterfaceProxy::ClearCachedCredentials() {
-  SLOG(DBus, 2) << __func__;
-  try {
-    return proxy_.ClearCachedCredentials();
-  } catch (const DBus::Error &e) {
-    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
-    throw;  // Re-throw the exception.
-  }
-}
-
 void SupplicantInterfaceProxy::Disconnect() {
   SLOG(DBus, 2) << __func__;
   try {

@@ -88,6 +88,10 @@ class WiFiService : public Service {
   virtual void SendPostReadyStateMetrics(
       int64 time_resume_to_ready_milliseconds) const;
 
+  // Clear any cached credentials stored in wpa_supplicant related to |this|.
+  // This will disconnect this service if it is currently connected.
+  void ClearCachedCredentials();
+
   // Override from parent Service class to correctly update connectability
   // when the EAP credentials change for 802.1x networks.
   void set_eap(const EapCredentials& eap);
@@ -120,6 +124,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, Populate8021xNoSystemCAs);
   FRIEND_TEST(WiFiServiceTest, Populate8021xUsingHardwareAuth);
   FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
+  FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
 
   static const char kAutoConnNoEndpoint[];

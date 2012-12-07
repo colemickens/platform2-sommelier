@@ -144,9 +144,15 @@ class WiFi : public Device {
   virtual void ConnectTo(
       WiFiService *service,
       std::map<std::string, ::DBus::Variant> service_params);
+  // If |service| is connected, initiate the process of disconnecting it.
+  // Otherwise, if it a pending or current service, discontinue the process
+  // of connecting and return |service| to the idle state.
   virtual void DisconnectFrom(WiFiService *service);
   virtual bool IsIdle() const;
-  virtual void ClearCachedCredentials();
+  // Clear any cached credentials wpa_supplicant may be holding for
+  // |service|.  This has a side-effect of disconnecting the service
+  // if it is connected.
+  virtual void ClearCachedCredentials(const WiFiService *service);
 
   // Called by WiFiEndpoint.
   virtual void NotifyEndpointChanged(const WiFiEndpoint &endpoint);
@@ -191,7 +197,7 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
 
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
-  typedef std::map<WiFiService *, std::string> ReverseServiceMap;
+  typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
 
   static const char kSupplicantConfPath[];
   static const char *kDefaultBgscanMethod;
@@ -238,6 +244,11 @@ class WiFi : public Device {
                                 const std::string &mode,
                                 const std::string &security) const;
   WiFiServiceRefPtr FindServiceForEndpoint(const WiFiEndpoint &endpoint);
+  // Return the RPC identifier associated with the wpa_supplicant network
+  // entry created for |service|.  If one does not exist, an empty string
+  // is returned, and |error| is populated.
+  std::string FindNetworkRpcidForService(const WiFiService *service,
+                                         Error *error);
   ByteArrays GetHiddenSSIDList();
   void HandleDisconnect();
   void HandleRoam(const ::DBus::Path &new_bssid);
@@ -247,7 +258,6 @@ class WiFi : public Device {
   void BSSAddedTask(const ::DBus::Path &BSS,
                     const std::map<std::string, ::DBus::Variant> &properties);
   void BSSRemovedTask(const ::DBus::Path &BSS);
-  void ClearCachedCredentialsTask();
   void CertificationTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void EAPEventTask(const std::string &status, const std::string &parameter);
@@ -269,9 +279,28 @@ class WiFi : public Device {
       uint16(WiFi::*get)(Error *error),
       void(WiFi::*set)(const uint16 &value, Error *error));
 
+  // Disable a network entry in wpa_supplicant, and catch any exception
+  // that occurs.  Returns false if an exception occurred, true otherwise.
+  bool DisableNetwork(const ::DBus::Path &network);
+  // Disable the wpa_supplicant network entry associated with |service|.
+  // Any cached credentials stored in wpa_supplicant related to this
+  // network entry will be preserved.  This will have the side-effect of
+  // disconnecting this service if it is currently connected.  Returns
+  // true if successful, otherwise returns false and populates |error|
+  // with the reason for failure.
+  virtual bool DisableNetworkForService(
+      const WiFiService *service, Error *error);
   // Remove a network entry from wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
   bool RemoveNetwork(const ::DBus::Path &network);
+  // Remove the wpa_supplicant network entry associated with |service|.
+  // Any cached credentials stored in wpa_supplicant related to this
+  // network entry will be removed.  This will have the side-effect of
+  // disconnecting this service if it is currently connected.  Returns
+  // true if successful, otherwise returns false and populates |error|
+  // with the reason for failure.
+  virtual bool RemoveNetworkForService(
+      const WiFiService *service, Error *error);
   // Restart fast scanning after disconnection.
   void RestartFastScanAttempts();
   // Schedules a scan attempt at time |scan_interval_seconds_| in the
@@ -338,8 +367,6 @@ class WiFi : public Device {
   std::string supplicant_state_;
   std::string supplicant_bss_;
   std::string supplicant_tls_error_;
-  // Signifies that ClearCachedCredentialsTask() is pending.
-  bool clear_cached_credentials_pending_;
   // Indicates that we should flush supplicant's BSS cache after the
   // next scan completes.
   bool need_bss_flush_;

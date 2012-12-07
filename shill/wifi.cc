@@ -42,6 +42,7 @@
 #include "shill/shill_time.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
+#include "shill/supplicant_network_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
 #include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
@@ -107,7 +108,6 @@ WiFi::WiFi(ControlInterface *control_interface,
       supplicant_present_(false),
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
-      clear_cached_credentials_pending_(false),
       need_bss_flush_(false),
       resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
@@ -307,16 +307,21 @@ void WiFi::ConnectTo(WiFiService *service,
     DisconnectFrom(pending_service_);
   }
 
-  try {
-    const uint32_t scan_ssid = 1;  // "True": Use directed probe.
-    service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
-        append_uint32(scan_ssid);
-    AppendBgscan(service, &service_params);
-    network_path = supplicant_interface_proxy_->AddNetwork(service_params);
-    rpcid_by_service_[service] = network_path;
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(ERROR) << "exception while adding network: " << e.what();
-    return;
+  Error unused_error;
+  network_path = FindNetworkRpcidForService(service, &unused_error);
+  if (network_path.empty()) {
+    try {
+      const uint32_t scan_ssid = 1;  // "True": Use directed probe.
+      service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
+          append_uint32(scan_ssid);
+      AppendBgscan(service, &service_params);
+      network_path = supplicant_interface_proxy_->AddNetwork(service_params);
+      CHECK(!network_path.empty());  // No DBus path should be empty.
+      rpcid_by_service_[service] = network_path;
+    } catch (const DBus::Error &e) {  // NOLINT
+      LOG(ERROR) << "exception while adding network: " << e.what();
+      return;
+    }
   }
 
   supplicant_interface_proxy_->SelectNetwork(network_path);
@@ -391,16 +396,8 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     // Can't depend on getting a notification of CurrentBSS change.
     // So effect changes immediately.  For instance, this can happen when
     // a disconnect is triggered by a BSS going away.
-    ReverseServiceMap::const_iterator rpcid_it =
-        rpcid_by_service_.find(service);
-    DCHECK(rpcid_it != rpcid_by_service_.end());
-    if (rpcid_it == rpcid_by_service_.end()) {
-      LOG(WARNING) << "WiFi " << link_name() << " can not disconnect from "
-                   << service->friendly_name() << ": "
-                   << "could not find supplicant network to disable.";
-    } else {
-      RemoveNetwork(rpcid_it->second);
-    }
+    Error unused_error;
+    RemoveNetworkForService(service, &unused_error);
     if (service == selected_service()) {
       DropConnection();
     }
@@ -409,6 +406,19 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 
   CHECK(current_service_ == NULL ||
         current_service_.get() != pending_service_.get());
+}
+
+bool WiFi::DisableNetwork(const ::DBus::Path &network) {
+  scoped_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
+      proxy_factory_->CreateSupplicantNetworkProxy(
+          network, wpa_supplicant::kDBusAddr));
+  try {
+    supplicant_network_proxy->SetEnabled(false);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "DisableNetwork for " << network << " failed.";
+    return false;
+  }
+  return true;
 }
 
 bool WiFi::RemoveNetwork(const ::DBus::Path &network) {
@@ -436,17 +446,9 @@ bool WiFi::IsIdle() const {
   return !current_service_ && !pending_service_;
 }
 
-void WiFi::ClearCachedCredentials() {
-  LOG(INFO) << __func__;
-
-  // Needs to send a D-Bus message, but may be called from D-Bus
-  // caller context (via Manager::PopProfile). So defer work
-  // to event loop.
-  if (!clear_cached_credentials_pending_) {
-    clear_cached_credentials_pending_ = true;
-    dispatcher()->PostTask(Bind(&WiFi::ClearCachedCredentialsTask,
-                                weak_ptr_factory_.GetWeakPtr()));
-  }
+void WiFi::ClearCachedCredentials(const WiFiService *service) {
+  Error unused_error;
+  RemoveNetworkForService(service, &unused_error);
 }
 
 void WiFi::NotifyEndpointChanged(const WiFiEndpoint &endpoint) {
@@ -627,18 +629,15 @@ void WiFi::HandleDisconnect() {
     DropConnection();
   }
 
-  ReverseServiceMap::const_iterator rpcid_it =
-      rpcid_by_service_.find(affected_service);
-  if (rpcid_it == rpcid_by_service_.end()) {
-    SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
-                  << " (or failed to connect to) "
-                  << affected_service->friendly_name() << ", "
-                  << "but could not find supplicant network to disable.";
-  } else {
-    // TODO(quiche): Reconsider giving up immediately. Maybe give
-    // wpa_supplicant some time to retry, first.
-    if (!RemoveNetwork(rpcid_it->second)) {
-      LOG(FATAL) << "RemoveNetwork for " << rpcid_it->second << " failed.";
+  Error error;
+  if (!DisableNetworkForService(affected_service, &error)) {
+    if (error.type() == Error::kNotFound) {
+      SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
+                    << " (or failed to connect to) "
+                    << affected_service->friendly_name() << ", "
+                    << "but could not find supplicant network to disable.";
+    } else {
+      LOG(FATAL) << "DisableNetwork failed.";
     }
   }
 
@@ -810,6 +809,78 @@ WiFiServiceRefPtr WiFi::FindServiceForEndpoint(const WiFiEndpoint &endpoint) {
                      endpoint.security_mode());
 }
 
+string WiFi::FindNetworkRpcidForService(
+    const WiFiService *service, Error *error) {
+  ReverseServiceMap::const_iterator rpcid_it =
+      rpcid_by_service_.find(service);
+  if (rpcid_it == rpcid_by_service_.end()) {
+    const string error_message =
+        StringPrintf("WiFi %s cannot find supplicant network rpcid for %s",
+                     link_name().c_str(), service->friendly_name().c_str());
+    // There are contexts where this is not an error, such as when a service
+    // is clearing whatever cached credentials may not exist.
+    SLOG(WiFi, 2) << error_message;
+    if (error) {
+      error->Populate(Error::kNotFound, error_message);
+    }
+    return "";
+  }
+
+  return rpcid_it->second;
+}
+
+bool WiFi::DisableNetworkForService(const WiFiService *service, Error *error) {
+  string rpcid = FindNetworkRpcidForService(service, error);
+  if (rpcid.empty()) {
+      // Error is already populated.
+      return false;
+  }
+
+  if (!DisableNetwork(rpcid)) {
+    const string error_message =
+        StringPrintf("WiFi %s cannot disable network for %s: "
+                     "DBus operation failed for rpcid %s.",
+                     link_name().c_str(), service->friendly_name().c_str(),
+                     rpcid.c_str());
+    Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
+
+    // Make sure that such errored networks are removed, so problems do not
+    // propogate to future connection attempts.
+    RemoveNetwork(rpcid);
+    rpcid_by_service_.erase(service);
+
+    return false;
+  }
+
+  return true;
+}
+
+bool WiFi::RemoveNetworkForService(const WiFiService *service, Error *error) {
+  string rpcid = FindNetworkRpcidForService(service, error);
+  if (rpcid.empty()) {
+      // Error is already populated.
+      return false;
+  }
+
+  // Erase the rpcid from our tables regardless of failure below, since even
+  // if in failure, we never want to use this network again.
+  rpcid_by_service_.erase(service);
+
+  // TODO(quiche): Reconsider giving up immediately. Maybe give
+  // wpa_supplicant some time to retry, first.
+  if (!RemoveNetwork(rpcid)) {
+    const string error_message =
+        StringPrintf("WiFi %s cannot remove network for %s: "
+                     "DBus operation failed for rpcid %s.",
+                     link_name().c_str(), service->friendly_name().c_str(),
+                     rpcid.c_str());
+    Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
+    return false;
+  }
+
+  return true;
+}
+
 ByteArrays WiFi::GetHiddenSSIDList() {
   // Create a unique set of hidden SSIDs.
   set<ByteArray> hidden_ssids_set;
@@ -921,20 +992,6 @@ bool WiFi::LoadHiddenServices(StoreInterface *storage) {
   return created_hidden_service;
 }
 
-void WiFi::ClearCachedCredentialsTask() {
-  try {
-    // Supplicant may have disappeared by the time this task gets to run.
-    if (supplicant_interface_proxy_.get()) {
-      supplicant_interface_proxy_->ClearCachedCredentials();
-    } else {
-      SLOG(WiFi, 1) << "In " << __func__ << ": supplicant proxy is NULL.";
-    }
-  } catch (const DBus::Error &e) {  // NOLINT
-    LOG(WARNING) << "Clear of cached credentials failed.";
-  }
-  clear_cached_credentials_pending_ = false;
-}
-
 void WiFi::BSSAddedTask(
     const ::DBus::Path &path,
     const map<string, ::DBus::Variant> &properties) {
@@ -1041,6 +1098,8 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
   }
 
   if (forget_service) {
+    Error unused_error;
+    RemoveNetworkForService(service, &unused_error);
     vector<WiFiServiceRefPtr>::iterator it;
     it = std::find(services_.begin(), services_.end(), service);
     if (it != services_.end()) {

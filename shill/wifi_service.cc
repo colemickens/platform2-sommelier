@@ -194,10 +194,12 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
     error->Populate(Error::kNotSupported);
   }
 
-  if (error->IsSuccess()) {
-    passphrase_ = passphrase;
+  if (!error->IsSuccess() || passphrase == passphrase_) {
+    return;
   }
 
+  passphrase_ = passphrase;
+  ClearCachedCredentials();
   UpdateConnectable();
 }
 
@@ -205,6 +207,7 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
 // value for |passphrase_| would not pass validation.
 void WiFiService::ClearPassphrase(Error */*error*/) {
   passphrase_.clear();
+  ClearCachedCredentials();
   UpdateConnectable();
 }
 
@@ -282,17 +285,6 @@ bool WiFiService::Unload() {
   hidden_ssid_ = false;
   Error unused_error;
   ClearPassphrase(&unused_error);
-  if (security_ == flimflam::kSecurity8021x) {
-    // TODO(pstew): 802.1x/RSN networks (as opposed to 802.1x/WPA or
-    // 802.1x/WEP) have the ability to cache WPA PMK credentials.
-    // Make sure that these are cleared when credentials for networks
-    // of this type goes away.
-    //
-    // When wpa_supplicant gains the ability, do this credential
-    // clearing on a per-service basis.  Also do this whenever the credentials
-    // for a service changes.  crosbug.com/25670
-    wifi_->ClearCachedCredentials();
-  }
   return !IsVisible();
 }
 
@@ -743,6 +735,10 @@ string WiFiService::GetStorageIdentifierForSecurity(
                                                security.c_str()));
 }
 
+void WiFiService::ClearCachedCredentials() {
+  wifi_->ClearCachedCredentials(this);
+}
+
 void WiFiService::set_eap(const EapCredentials &new_eap) {
   EapCredentials modified_eap = new_eap;
 
@@ -751,6 +747,7 @@ void WiFiService::set_eap(const EapCredentials &new_eap) {
     modified_eap.key_management = eap().key_management;
   }
   Service::set_eap(modified_eap);
+  ClearCachedCredentials();
   UpdateConnectable();
 }
 

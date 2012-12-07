@@ -27,6 +27,7 @@
 #include "shill/power_manager_proxy.h"
 #include "shill/supplicant_bss_proxy.h"
 #include "shill/supplicant_interface_proxy.h"
+#include "shill/supplicant_network_proxy.h"
 #include "shill/supplicant_process_proxy.h"
 #include "shill/wimax_device_proxy.h"
 #include "shill/wimax_manager_proxy.h"
@@ -195,6 +196,14 @@ SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
                                       connection(),
                                       object_path,
                                       dbus_addr);
+}
+
+SupplicantNetworkProxyInterface *ProxyFactory::CreateSupplicantNetworkProxy(
+    const DBus::Path &object_path,
+    const char *dbus_addr) {
+  return new SupplicantNetworkProxy(connection(),
+                                    object_path,
+                                    dbus_addr);
 }
 
 SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(

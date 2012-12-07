@@ -1,0 +1,52 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "shill/supplicant_network_proxy.h"
+
+#include <map>
+#include <string>
+
+#include <dbus-c++/dbus.h>
+
+#include "shill/logging.h"
+
+using std::map;
+using std::string;
+
+namespace shill {
+
+SupplicantNetworkProxy::SupplicantNetworkProxy(
+    DBus::Connection *bus,
+    const ::DBus::Path &object_path,
+    const char *dbus_addr)
+    : proxy_(bus, object_path, dbus_addr) {}
+
+SupplicantNetworkProxy::~SupplicantNetworkProxy() {}
+
+void SupplicantNetworkProxy::SetEnabled(bool enabled) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.Enabled(enabled);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
+               << "enabled: " << enabled;
+    throw;  // Re-throw the exception.
+  }
+}
+
+// definitions for private class SupplicantNetworkProxy::Proxy
+
+SupplicantNetworkProxy::Proxy::Proxy(
+    DBus::Connection *bus, const DBus::Path &dbus_path, const char *dbus_addr)
+    : DBus::ObjectProxy(*bus, dbus_path, dbus_addr) {}
+
+SupplicantNetworkProxy::Proxy::~Proxy() {}
+
+void SupplicantNetworkProxy::Proxy::PropertiesChanged(
+    const map<string, ::DBus::Variant> &properties) {
+  SLOG(DBus, 2) << __func__;
+  // TODO(pstew): Some day we could notify someone about this state change.
+}
+
+}  // namespace shill

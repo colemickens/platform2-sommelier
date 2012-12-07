@@ -32,6 +32,7 @@ class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
 class SupplicantBSSProxyInterface;
 class SupplicantInterfaceProxyInterface;
+class SupplicantNetworkProxyInterface;
 class SupplicantProcessProxyInterface;
 class WiMaxDeviceProxyInterface;
 class WiMaxManagerProxyInterface;
@@ -148,6 +149,10 @@ class ProxyFactory {
 
   virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
       const WiFiRefPtr &wifi,
+      const DBus::Path &object_path,
+      const char *dbus_addr);
+
+  virtual SupplicantNetworkProxyInterface *CreateSupplicantNetworkProxy(
       const DBus::Path &object_path,
       const char *dbus_addr);
 
