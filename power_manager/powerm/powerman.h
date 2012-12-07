@@ -9,6 +9,7 @@
 #include <sys/types.h>
 
 #include "base/file_path.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/power_constants.h"
@@ -21,6 +22,7 @@
 namespace power_manager {
 
 class BacklightInterface;
+class DBusSenderInterface;
 
 class PowerManDaemon {
  public:
@@ -186,6 +188,8 @@ class PowerManDaemon {
 
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;
+
+  scoped_ptr<DBusSenderInterface> dbus_sender_;
 
   // Time at which the powerd_suspend script was last invoked to suspend the
   // system.  We cache this so it can be passed to

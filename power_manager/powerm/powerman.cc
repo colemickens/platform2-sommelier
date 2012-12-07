@@ -21,6 +21,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/backlight_interface.h"
+#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/input_event.pb.h"
@@ -58,7 +59,9 @@ PowerManDaemon::PowerManDaemon(PowerPrefs* prefs,
       session_state_(SESSION_MANAGER_STOPPED),
       powerd_state_(POWER_MANAGER_UNKNOWN),
       run_dir_(run_dir),
-      console_fd_(-1) {}
+      console_fd_(-1),
+      dbus_sender_(new DBusSender(kRootPowerManagerServicePath,
+                                  kRootPowerManagerInterface)) {}
 
 PowerManDaemon::~PowerManDaemon() {
   if (console_fd_ >= 0) {
@@ -494,7 +497,7 @@ void PowerManDaemon::SendInputEventSignal(InputType type, ButtonState state) {
       NOTREACHED() << "Unhandled input event type " << type;
   }
   proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
-  util::EmitPowerMSignal(kInputEventSignal, proto);
+  dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
 
   // TODO(derat): Remove this after Chrome is using the protocol-buffer-based
   // signal above.
@@ -523,7 +526,7 @@ void PowerManDaemon::SendSuspendStateChangedSignal(
   SuspendState proto;
   proto.set_type(type);
   proto.set_wall_time(wall_time.ToInternalValue());
-  util::EmitPowerMSignal(kSuspendStateChangedSignal, proto);
+  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendStateChangedSignal, proto);
 }
 
 void PowerManDaemon::Shutdown(const std::string& reason) {

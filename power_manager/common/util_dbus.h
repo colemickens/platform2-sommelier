@@ -35,12 +35,6 @@ bool IsSessionStarted();
 // successful.  |state| and |user| are both optional args and can be NULL.
 bool GetSessionState(std::string* state, std::string* user);
 
-// Emits a signal containing a serialized protocol buffer.  This should be used
-// to broadcast signals from powerm to notify arbitrary outside processes when
-// things have happened.
-void EmitPowerMSignal(const std::string& signal_name,
-                      const google::protobuf::MessageLite& protobuf);
-
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
 
