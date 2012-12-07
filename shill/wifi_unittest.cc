@@ -482,7 +482,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     Error e;
     KeyValueStore args_kv;
     DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &e);
-    return wifi_->GetService(args_kv, result);
+    WiFiServiceRefPtr service = wifi_->GetService(args_kv, result);
+    if (service) {
+      service->Configure(args_kv, result);
+    }
+    return service;
   }
 
   WiFiServiceRefPtr GetServiceWithKeyValues(const KeyValueStore &args,
@@ -1627,7 +1631,7 @@ TEST_F(WiFiMainTest, FindServiceWPA) {
 }
 
 TEST_F(WiFiMainTest, GetServiceWithGUID) {
-  // Perform a GetService that also configures properties in the base Service
+  // Perform a GetService and also configure properties in the base Service
   // class using Service::Configure().
   KeyValueStore args;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
@@ -1635,8 +1639,15 @@ TEST_F(WiFiMainTest, GetServiceWithGUID) {
   args.SetString(flimflam::kSecurityProperty, flimflam::kSecurityNone);
   const string kGUID = "aguid";  // Stored as a registered Service property.
   args.SetString(flimflam::kGuidProperty, kGUID);
+
   Error e;
   WiFiServiceRefPtr service = GetServiceWithKeyValues(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
+  // Assert that before Configure is called on the service, the GUID property
+  // is not set.
+  EXPECT_EQ("", service->guid());
+
+  service->Configure(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_EQ(kGUID, service->guid());
 }

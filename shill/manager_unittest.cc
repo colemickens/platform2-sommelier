@@ -1419,6 +1419,8 @@ TEST_F(ManagerTest, GetServiceVPN) {
   EXPECT_CALL(*profile, UpdateService(_))
       .WillOnce(DoAll(SaveArg<0>(&updated_service), Return(true)));
   ServiceRefPtr configured_service;
+  EXPECT_CALL(*profile, LoadService(_))
+      .WillOnce(Return(false));
   EXPECT_CALL(*profile, ConfigureService(_))
       .WillOnce(DoAll(SaveArg<0>(&configured_service), Return(true)));
   ServiceRefPtr service = manager()->GetService(args, &e);
@@ -1524,7 +1526,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
-// If were configure a service that was already registered and explicitly
+// If we configure a service that was already registered and explicitly
 // specify a profile, it should be moved from the profile it was previously
 // in to the specified profile if one was requested.
 TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
@@ -1571,12 +1573,71 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   manager()->RegisterDevice(wifi);
   EXPECT_CALL(*wifi, GetService(_, _))
       .WillOnce(Return(service));
+  EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
   EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
   EXPECT_CALL(*profile0, AdoptService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
   EXPECT_CALL(*profile1, AbandonService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kProfileProperty, kProfileName0);
+  Error error;
+  manager()->ConfigureService(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  service->set_profile(NULL);  // Breaks refcounting loop.
+}
+
+// If we configure a service that is already a member of the specified
+// profile, the Manager should not call LoadService or AdoptService again
+// on this service.
+TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
+  scoped_refptr<MockProfile> profile0(
+      new NiceMock<MockProfile>(control_interface(), manager(), ""));
+
+  const string kProfileName0 = "profile0";
+
+  EXPECT_CALL(*profile0, GetRpcIdentifier())
+      .WillRepeatedly(Return(kProfileName0));
+
+  AdoptProfile(manager(), profile0);  // profile0 is now the ActiveProfile.
+
+  const std::vector<uint8_t> ssid;
+  scoped_refptr<MockWiFiService> service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    mock_wifi_,
+                                    ssid,
+                                    "",
+                                    "",
+                                    false));
+
+  manager()->RegisterService(service);
+  service->set_profile(profile0);
+
+  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
+  // the same device as that used above causes a refcounting loop.
+  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
+                                                      dispatcher(),
+                                                      metrics(),
+                                                      manager(),
+                                                      "wifi1",
+                                                      "addr5",
+                                                      5));
+  manager()->RegisterDevice(wifi);
+  EXPECT_CALL(*wifi, GetService(_, _))
+      .WillOnce(Return(service));
+  EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get())))
+      .Times(0);
+  EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*profile0, AdoptService(ServiceRefPtr(service.get())))
+      .Times(0);
 
   KeyValueStore args;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);

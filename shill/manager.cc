@@ -1289,7 +1289,14 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
      // instead, when we no longer need to support flimflam.  crosbug.com/31523
      return ConfigureService(args, error);
   }
-  return GetServiceInner(args, error);
+
+  ServiceRefPtr service = GetServiceInner(args, error);
+  if (service) {
+    // Configures the service using the rest of the passed-in arguments.
+    service->Configure(args, error);
+  }
+
+  return service;
 }
 
 ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
@@ -1299,7 +1306,6 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
     ServiceRefPtr service =
         GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
     if (service) {
-      service->Configure(args, error);
       return service;
     }
   }
@@ -1361,6 +1367,27 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
     LOG(ERROR) << "GetService failed; returning upstream error.";
     return NULL;
   }
+
+  // First pull in any stored configuration associated with the service.
+  if (service->profile() == profile) {
+    SLOG(Manager, 2) << __func__ << ": service " << service->friendly_name()
+                     << " is already a member of profile "
+                     << profile->GetFriendlyName()
+                     << " so a load is not necessary.";
+  } else if (profile->LoadService(service)) {
+    SLOG(Manager, 2) << __func__ << ": applied stored information from profile "
+                     << profile->GetFriendlyName()
+                     << " into service "
+                     << service->friendly_name();
+  } else {
+    SLOG(Manager, 2) << __func__ << ": no previous information in profile "
+                     << profile->GetFriendlyName()
+                     << " exists for service "
+                     << service->friendly_name();
+  }
+
+  // Overlay this with the passed-in configuration parameters.
+  service->Configure(args, error);
 
   // Overwrite the profile data with the resulting configured service.
   if (!profile->UpdateService(service)) {

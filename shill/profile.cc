@@ -165,11 +165,17 @@ bool Profile::UpdateService(const ServiceRefPtr &service) {
   return service->Save(storage_.get()) && storage_->Flush();
 }
 
-bool Profile::ConfigureService(const ServiceRefPtr &service) {
+bool Profile::LoadService(const ServiceRefPtr &service) {
   if (!ContainsService(service))
     return false;
-  service->SetProfile(this);
   return service->Load(storage_.get());
+}
+
+bool Profile::ConfigureService(const ServiceRefPtr &service) {
+  if (!LoadService(service))
+    return false;
+  service->SetProfile(this);
+  return true;
 }
 
 bool Profile::ConfigureDevice(const DeviceRefPtr &device) {

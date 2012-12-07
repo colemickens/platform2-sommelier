@@ -165,8 +165,6 @@ WiMaxServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
   }
   WiMaxServiceRefPtr service = GetUniqueService(id, name);
   CHECK(service);
-  // Configures the service using the rest of the passed-in arguments.
-  service->Configure(args, error);
   // Starts the service if there's a matching live network.
   StartLiveServices();
   return service;

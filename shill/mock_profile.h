@@ -23,6 +23,7 @@ class MockProfile : public Profile {
 
   MOCK_METHOD1(AdoptService, bool(const ServiceRefPtr &service));
   MOCK_METHOD1(AbandonService, bool(const ServiceRefPtr &service));
+  MOCK_METHOD1(LoadService,  bool(const ServiceRefPtr &service));
   MOCK_METHOD1(ConfigureService,  bool(const ServiceRefPtr &service));
   MOCK_METHOD1(ConfigureDevice, bool(const DeviceRefPtr &device));
   MOCK_METHOD0(GetRpcIdentifier, std::string());

@@ -66,11 +66,6 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     service = CreateService(type, name, storage_id, error);
   }
 
-  if (service != NULL) {
-    // Configure the service using the the rest of the passed-in arguments.
-    service->Configure(args, error);
-  }
-
   return service;
 }
 

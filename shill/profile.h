@@ -89,8 +89,13 @@ class Profile : public base::RefCounted<Profile> {
   virtual bool UpdateService(const ServiceRefPtr &service);
 
   // Ask |service| if it can configure itself from the profile.  If it can,
-  // change the service to point at this profile, ask |service| to perform
-  // the configuration and return true.  If not, return false.
+  // ask |service| to perform the configuration and return true.  If not,
+  // return false.
+  virtual bool LoadService(const ServiceRefPtr &service);
+
+  // Perform LoadService() on |service|.  If this succeeds, change
+  // the service to point at this profile and return true.  If not, return
+  // false.
   virtual bool ConfigureService(const ServiceRefPtr &service);
 
   // Allow the device to configure itself from this profile.  Returns

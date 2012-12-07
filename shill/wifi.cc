@@ -1353,8 +1353,6 @@ WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
     // The Service will be registered if/when we find Endpoints for it.
   }
 
-  service->Configure(args, error);
-
   // TODO(pstew): Schedule a task to forget up all non-hidden services that
   // have no endpoints like the one we may have just created.  crosbug.com/28224
 

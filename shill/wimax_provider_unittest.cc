@@ -505,6 +505,14 @@ TEST_F(WiMaxProviderTest, GetService) {
   service = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   ASSERT_TRUE(service);
+
+  // GetService should create a service with only identifying parameters set.
+  EXPECT_EQ(kName, service->friendly_name());
+  EXPECT_EQ("", service->eap().identity);
+
+  // After configuring the service, other parameters should be set.
+  service->Configure(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
   EXPECT_EQ(kIdentity, service->eap().identity);
 }
 
