@@ -32,6 +32,7 @@
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/state_control.h"
+#include "power_state_control.pb.h"
 #include "power_supply_properties.pb.h"
 #include "video_activity_update.pb.h"
 
@@ -1108,8 +1109,7 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
     LOG(WARNING) << kSetScreenBrightnessPercent
                 << ": Error reading args: " << error.message;
     dbus_error_free(&error);
-    return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                      "Invalid arguments passed to method");
+    return util::CreateDBusInvalidArgsErrorReply(message);
   }
   TransitionStyle style = TRANSITION_FAST;
   switch (dbus_style) {
@@ -1134,8 +1134,8 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
 DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
   double percent;
   if (!backlight_controller_->GetCurrentBrightnessPercent(&percent)) {
-    return util::CreateDBusErrorReply(message, DBUS_ERROR_FAILED,
-                                      "Could not fetch Screen Brightness");
+    return util::CreateDBusErrorReply(
+        message, "Could not fetch Screen Brightness");
   }
   DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
@@ -1218,48 +1218,21 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   protobuf.set_averaged_battery_time_to_full(
       status->averaged_battery_time_to_full);
 
-  DBusMessage* reply = util::CreateEmptyDBusReply(message);
-  CHECK(reply);
-  std::string serialized_proto;
-  CHECK(protobuf.SerializeToString(&serialized_proto));
-  // For array arguments, D-Bus wants the array typecode, the element
-  // typecode, the array address, and the number of elements (as opposed to
-  // the usual typecode-followed-by-address ordering).
-  const char* serial_data = serialized_proto.data();
-  dbus_message_append_args(reply,
-                           DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-                           &serial_data, serialized_proto.size(),
-                           DBUS_TYPE_INVALID);
-  return reply;
+  return util::CreateDBusProtocolBufferReply(message, protobuf);
 }
 
 DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  char* data;
-  int size;
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-                            &data, &size,
-                            DBUS_TYPE_INVALID)) {
-    int return_value;
-    bool success = state_control_->StateOverrideRequest(
-         data, size, &return_value);
-    if (success) {
-      DBusMessage* reply = util::CreateEmptyDBusReply(message);
-      CHECK(reply);
-      dbus_message_append_args(reply,
-                               DBUS_TYPE_INT32, &return_value,
-                               DBUS_TYPE_INVALID);
-      return reply;
-    }
-    return util::CreateDBusErrorReply(message, DBUS_ERROR_FAILED,
-                                      "Failed processing request");
+  PowerStateControl protobuf;
+  int return_value = 0;
+  if (util::ParseProtocolBufferFromDBusMessage(message, &protobuf) &&
+      state_control_->StateOverrideRequest(protobuf, &return_value)) {
+    DBusMessage* reply = util::CreateEmptyDBusReply(message);
+    dbus_message_append_args(reply,
+                             DBUS_TYPE_INT32, &return_value,
+                             DBUS_TYPE_INVALID);
+    return reply;
   }
-  LOG(WARNING) << kStateOverrideRequest << ": Error reading args: " <<
-    error.message;
-  return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                    "Invalid arguments passed to method");
+  return util::CreateDBusErrorReply(message, "Failed processing request");
 }
 
 DBusMessage* Daemon::HandleStateOverrideCancelMethod(DBusMessage* message) {
@@ -1274,43 +1247,19 @@ DBusMessage* Daemon::HandleStateOverrideCancelMethod(DBusMessage* message) {
     LOG(WARNING) << kStateOverrideCancel << ": Error reading args: "
                  << error.message;
     dbus_error_free(&error);
-    return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                      "Invalid arguments passed to method");
+    return util::CreateDBusInvalidArgsErrorReply(message);
   }
   return NULL;
 }
 
 DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
-  DBusMessage* ret_val = NULL;
-  DBusError error;
-  dbus_error_init(&error);
-
-  char* serialized_buf = NULL;
-  int buf_size = 0;
   VideoActivityUpdate protobuf;
-  if (dbus_message_get_args(message, &error,
-                             DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-                             &serialized_buf, &buf_size,
-                             DBUS_TYPE_INVALID)) {
-    if (serialized_buf == NULL) {
-      LOG(ERROR) << "Received array is NULL!";
-      return NULL;
-    }
-    if (!protobuf.ParseFromArray(serialized_buf, buf_size)) {
-      LOG(ERROR) << "Failed to parse protocol buffer from array";
-      return ret_val;
-    }
-    video_detector_->HandleFullscreenChange(protobuf.is_fullscreen());
-    video_detector_->HandleActivity(
-        base::TimeTicks::FromInternalValue(protobuf.last_activity_time()));
-  } else {
-    LOG(WARNING) << kHandleVideoActivityMethod
-                 << ": Error reading args: " << error.message;
-    dbus_error_free(&error);
-    ret_val = util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                         "Invalid arguments passed to method");
-  }
-  return ret_val;
+  if (!util::ParseProtocolBufferFromDBusMessage(message, &protobuf))
+    return util::CreateDBusInvalidArgsErrorReply(message);
+  video_detector_->HandleFullscreenChange(protobuf.is_fullscreen());
+  video_detector_->HandleActivity(
+      base::TimeTicks::FromInternalValue(protobuf.last_activity_time()));
+  return NULL;
 }
 
 DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
@@ -1323,8 +1272,7 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
     LOG(WARNING) << kHandleUserActivityMethod
                 << ": Error reading args: " << error.message;
     dbus_error_free(&error);
-    return util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                      "Invalid arguments passed to method");
+    return util::CreateDBusInvalidArgsErrorReply(message);
   }
   idle_->HandleUserActivity(
       base::TimeTicks::FromInternalValue(last_activity_time_internal));
@@ -1349,8 +1297,7 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
                  << error.message;
-    reply = util::CreateDBusErrorReply(message, DBUS_ERROR_INVALID_ARGS,
-                                       "Invalid arguments passed to method");
+    reply = util::CreateDBusInvalidArgsErrorReply(message);
   }
   return reply;
 }

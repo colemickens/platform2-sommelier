@@ -59,6 +59,45 @@ bool GetSessionState(std::string* state, std::string* user) {
   return false;
 }
 
+bool ParseProtocolBufferFromDBusMessage(
+    DBusMessage* message,
+    google::protobuf::MessageLite* protobuf_out) {
+  DCHECK(message);
+  DCHECK(protobuf_out);
+
+  char* data = NULL;
+  int size = 0;
+  if (!dbus_message_get_args(message, NULL,
+                             DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
+                             &data, &size,
+                             DBUS_TYPE_INVALID)) {
+    return false;
+  }
+  return protobuf_out->ParseFromArray(data, size);
+}
+
+void AppendProtocolBufferToDBusMessage(
+    const google::protobuf::MessageLite& protobuf,
+    DBusMessage* message_out) {
+  DCHECK(message_out);
+
+  std::string serialized_protobuf;
+  CHECK(protobuf.SerializeToString(&serialized_protobuf))
+      << "Unable to serialize " << protobuf.GetTypeName() << " protocol buffer";
+  const uint8* data =
+      reinterpret_cast<const uint8*>(serialized_protobuf.data());
+  CHECK(serialized_protobuf.size() <= static_cast<size_t>(INT32_MAX))
+      << protobuf.GetTypeName() << " protocol buffer is "
+      << serialized_protobuf.size() << " bytes";
+  // Per D-Bus documentation: "To append an array of fixed-length basic types
+  // (except Unix file descriptors), pass in the DBUS_TYPE_ARRAY typecode, the
+  // element typecode, the address of the array pointer, and a 32-bit integer
+  // giving the number of elements in the array."
+  dbus_message_append_args(message_out, DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE, &data,
+                           static_cast<int32_t>(serialized_protobuf.size()),
+                           DBUS_TYPE_INVALID);
+}
+
 void SendSignalToSessionManager(const char* signal) {
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               login_manager::kSessionManagerServiceName,
@@ -126,8 +165,7 @@ void SendSignalWithIntToPowerD(const char* signal_name, int value) {
 }
 
 bool CallMethodInPowerD(const char* method_name,
-                        const char* data,
-                        uint32 size,
+                        const google::protobuf::MessageLite& protobuf,
                         int* return_value) {
   LOG(INFO) << "Calling method '" << method_name << "' in PowerManager";
   DBusConnection* connection = dbus_g_connection_get_connection(
@@ -138,10 +176,7 @@ bool CallMethodInPowerD(const char* method_name,
                                                       kPowerManagerInterface,
                                                       method_name);
   CHECK(message);
-  dbus_message_append_args(message,
-                           DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-                           &data, size,
-                           DBUS_TYPE_INVALID);
+  AppendProtocolBufferToDBusMessage(protobuf, message);
   DBusError error;
   dbus_error_init(&error);
   DBusMessage* response =
@@ -173,13 +208,35 @@ bool CallMethodInPowerD(const char* method_name,
 }
 
 DBusMessage* CreateEmptyDBusReply(DBusMessage* message) {
-  return dbus_message_new_method_return(message);
+  DCHECK(message);
+  DBusMessage* reply = dbus_message_new_method_return(message);
+  CHECK(reply);
+  return reply;
+}
+
+DBusMessage* CreateDBusProtocolBufferReply(
+    DBusMessage* message,
+    const google::protobuf::MessageLite& protobuf) {
+  DBusMessage* reply = CreateEmptyDBusReply(message);
+  AppendProtocolBufferToDBusMessage(protobuf, reply);
+  return reply;
+}
+
+DBusMessage* CreateDBusInvalidArgsErrorReply(DBusMessage* message) {
+  DCHECK(message);
+  DBusMessage* reply = dbus_message_new_error(
+      message, DBUS_ERROR_INVALID_ARGS, "Invalid arguments passed to method");
+  CHECK(reply);
+  return reply;
 }
 
 DBusMessage* CreateDBusErrorReply(DBusMessage* message,
-                                  const char* error_name,
-                                  const char* error_message) {
-  return dbus_message_new_error(message, error_name, error_message);
+                                  const std::string& details) {
+  DCHECK(message);
+  DBusMessage* reply = dbus_message_new_error(
+      message, DBUS_ERROR_FAILED, details.c_str());
+  CHECK(reply);
+  return reply;
 }
 
 void LogDBusError(DBusMessage* message) {

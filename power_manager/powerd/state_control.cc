@@ -137,17 +137,9 @@ gboolean StateControl::RecordExpired() {
   return false;
 }
 
-bool StateControl::StateOverrideRequest(const char* data, const int size,
+bool StateControl::StateOverrideRequest(const PowerStateControl& protobuf,
                                         int* return_value) {
-  // first decode the protobuff
-  PowerStateControl protobuf;
   StateControlInfo info;
-
-  if (!protobuf.ParseFromArray(data, size)) {
-    LOG(ERROR) << "Failed to parse protobuf";
-    return false;
-  }
-
   info.request_id = protobuf.request_id();
   info.duration = protobuf.duration();
   info.disable_idle_dim = protobuf.disable_idle_dim();

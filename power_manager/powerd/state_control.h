@@ -12,6 +12,8 @@
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/common/signal_callback.h"
 
+class PowerStateControl;
+
 namespace power_manager {
 
 class Daemon;
@@ -50,7 +52,7 @@ class StateControl {
 
   void RemoveOverride(int request_id);
   void RemoveOverrideAndUpdate(int request_id);
-  bool StateOverrideRequest(const char* data, const int size,
+  bool StateOverrideRequest(const PowerStateControl& protobuf,
                             int* return_value);
   bool StateOverrideRequestStruct(const StateControlInfo* request,
                                   int* return_value);

@@ -12,6 +12,7 @@
 
 #include "base/logging.h"
 #include "chromeos/dbus/dbus.h"
+#include "power_manager/common/util_dbus.h"
 
 namespace power_manager {
 
@@ -29,20 +30,8 @@ void DBusSender::EmitSignalWithProtocolBuffer(
   DBusMessage* signal = dbus_message_new_signal(path_.c_str(),
                                                 interface_.c_str(),
                                                 signal_name.c_str());
-
-  std::string serialized_protobuf;
-  CHECK(protobuf.SerializeToString(&serialized_protobuf))
-      << "Unable to serialize " << signal_name << " protocol buffer";
-  const uint8* data =
-      reinterpret_cast<const uint8*>(serialized_protobuf.data());
-  CHECK(serialized_protobuf.size() <= static_cast<size_t>(INT_MAX))
-      << "Protocol buffer for " << signal_name << " is "
-      << serialized_protobuf.size() << " bytes";
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_ARRAY, DBUS_TYPE_BYTE,
-                           &data, static_cast<int>(serialized_protobuf.size()),
-                           DBUS_TYPE_INVALID);
-
+  CHECK(signal);
+  util::AppendProtocolBufferToDBusMessage(protobuf, signal);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(dbus_connection_send(connection, signal, NULL));

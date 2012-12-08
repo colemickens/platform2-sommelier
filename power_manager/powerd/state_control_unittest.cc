@@ -291,7 +291,6 @@ TEST_F(StateControlTest, InvalidRequests) {
 
 TEST_F(StateControlTest, Protobuf) {
   PowerStateControl protobuf;
-  std::string serialized_proto;
   int value;
 
   protobuf.set_request_id(0);
@@ -300,10 +299,7 @@ TEST_F(StateControlTest, Protobuf) {
   protobuf.set_disable_idle_blank(false);
   protobuf.set_disable_idle_suspend(false);
   protobuf.set_disable_lid_suspend(true);
-  ASSERT_NE(protobuf.SerializeToString(&serialized_proto), NULL);
-  state_control_.StateOverrideRequest(serialized_proto.data(),
-                                      serialized_proto.size(),
-                                      &value);
+  state_control_.StateOverrideRequest(protobuf, &value);
   {
     SCOPED_TRACE("protobuf test");
     CheckDisabled(false, false, false, true);

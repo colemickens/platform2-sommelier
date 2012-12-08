@@ -27,8 +27,6 @@ DEFINE_bool(cancel, false, "Cancel an existing request");
 bool SendStateOverrideRequest(const power_manager::StateControlInfo* info,
                               int* return_value) {
   PowerStateControl protobuf;
-  std::string serialized_proto;
-
   protobuf.set_request_id(info->request_id);
   protobuf.set_duration(info->duration);
   protobuf.set_disable_idle_dim(info->disable_idle_dim);
@@ -36,11 +34,8 @@ bool SendStateOverrideRequest(const power_manager::StateControlInfo* info,
   protobuf.set_disable_idle_suspend(info->disable_idle_suspend);
   protobuf.set_disable_lid_suspend(info->disable_lid_suspend);
 
-  CHECK(protobuf.SerializeToString(&serialized_proto));
-  const char* protobuf_data = serialized_proto.data();
   return power_manager::util::CallMethodInPowerD(
-             power_manager::kStateOverrideRequest, protobuf_data,
-             serialized_proto.size(), return_value);
+             power_manager::kStateOverrideRequest, protobuf, return_value);
 }
 
 

@@ -35,6 +35,18 @@ bool IsSessionStarted();
 // successful.  |state| and |user| are both optional args and can be NULL.
 bool GetSessionState(std::string* state, std::string* user);
 
+// Parses a single byte array argument from |message| into |protobuf_out|.
+// Returns false if the message lacks the argument or if parsing failed.
+bool ParseProtocolBufferFromDBusMessage(
+    DBusMessage* message,
+    google::protobuf::MessageLite* protobuf_out);
+
+// Appends a serialized copy of |protobuf| to |message_out| as a byte array
+// argument.
+void AppendProtocolBufferToDBusMessage(
+    const google::protobuf::MessageLite& protobuf,
+    DBusMessage* message_out);
+
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
 
@@ -50,21 +62,28 @@ void SendSignalWithStringToPowerM(const char* signal_name, const char* string);
 // Sends a message |signal| and int32 to the unprivileged power daemon.
 void SendSignalWithIntToPowerD(const char* signal, int value);
 
-// Calls a method |method_name| in powerd that takes an arbitrary
-// array of bytes and returns an integer.
-// This is a blocking operation.
+// Calls a method |method_name| in powerd that takes a protocol buffer and
+// returns an integer.  This is a blocking operation.
 bool CallMethodInPowerD(const char* method_name,
-                        const char* data,
-                        uint32 size,
+                        const google::protobuf::MessageLite& protobuf,
                         int* return_value);
 
 // Creates an empty reply to a D-Bus message.
 DBusMessage* CreateEmptyDBusReply(DBusMessage* message);
 
-// Creates an error reply to a D-Bus message
+// Creates a reply to |message| containing |protobuf| as an argument.
+// This is just a wrapper around CreateEmptyDBusReply() and
+// AppendProtocolBufferToDBusMessage().
+DBusMessage* CreateDBusProtocolBufferReply(
+    DBusMessage* message,
+    const google::protobuf::MessageLite& protobuf);
+
+// Creates an INVALID_ARGS error reply to |message|.
+DBusMessage* CreateDBusInvalidArgsErrorReply(DBusMessage* message);
+
+// Creates a generic FAILED error reply to |message|.
 DBusMessage* CreateDBusErrorReply(DBusMessage* message,
-                                  const char* error_name,
-                                  const char* error_message);
+                                  const std::string& details);
 
 // Parse out the error message and log it for debugging.
 void LogDBusError(DBusMessage* message);
