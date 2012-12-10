@@ -154,6 +154,12 @@ Properties	boolean AutoConnect [readwrite]
 			connection attempts. For non-favorite services, setting
 			AutoConnect to TRUE causes favorite to be set to TRUE.
 
+		boolean Cellular.ActivateOverNonCellularNetwork [readonly]
+
+			(Cellular only) If set to true, this service must be
+			activated over a non-cellular network instead of the
+			same cellular network.
+
 		string Cellular.ActivationState [readonly]
 
 			(Cellular only) The activate state of the device

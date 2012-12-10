@@ -556,6 +556,7 @@ TEST_F(CellularTest, CreateService) {
   EXPECT_EQ(kPaymentURL, device_->service_->olp().GetURL());
   EXPECT_EQ(kUsageURL, device_->service_->usage_url());
   EXPECT_EQ(kTestCarrier, device_->service_->serving_operator().GetName());
+  ASSERT_FALSE(device_->service_->activate_over_non_cellular_network());
 }
 
 namespace {
@@ -718,6 +719,7 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   device_->state_ = Cellular::kStateEnabled;
   device_->HandleNewRegistrationState();
   EXPECT_TRUE(device_->service_.get());
+  EXPECT_TRUE(device_->service_->activate_over_non_cellular_network());
 }
 
 TEST_F(CellularTest, ModemStateChangeEnable) {

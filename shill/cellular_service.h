@@ -70,6 +70,11 @@ class CellularService : public Service {
   virtual std::string GetStorageIdentifier() const;
   void SetStorageIdentifier(const std::string &identifier);
 
+  void SetActivateOverNonCellularNetwork(bool state);
+  bool activate_over_non_cellular_network() const {
+    return activate_over_non_cellular_network_;
+  }
+
   void SetActivationState(const std::string &state);
   const std::string &activation_state() const { return activation_state_; }
 
@@ -146,6 +151,7 @@ class CellularService : public Service {
                            Stringmap *apn_info);
 
   // Properties
+  bool activate_over_non_cellular_network_;
   std::string activation_state_;
   Cellular::Operator serving_operator_;
   std::string network_technology_;

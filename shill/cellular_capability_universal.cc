@@ -374,10 +374,17 @@ void CellularCapabilityUniversal::OnServiceCreated() {
         string(flimflam::kTypeCellular) + "_" +
         cellular()->address() + "_" + imsi_);
   }
+  bool activation_required = IsServiceActivationRequired();
   cellular()->service()->SetActivationState(
-      IsServiceActivationRequired() ?
+      activation_required ?
       flimflam::kActivationStateNotActivated :
       flimflam::kActivationStateActivated);
+  // TODO(benchan): For now, assume the cellular service is activated over
+  // a non-cellular network if service activation is required (i.e. a
+  // corresponding entry is found in the cellular operator info file).
+  // We will need to generalize this logic when migrating CDMA support from
+  // cromo to ModemManager.
+  cellular()->service()->SetActivateOverNonCellularNetwork(activation_required);
   UpdateServingOperator();
   UpdateOLP();
 }

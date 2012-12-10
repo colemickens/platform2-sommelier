@@ -92,9 +92,12 @@ CellularService::CellularService(ControlInterface *control_interface,
                                  const CellularRefPtr &device)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kCellular),
+      activate_over_non_cellular_network_(false),
       cellular_(device) {
   set_connectable(true);
   PropertyStore *store = this->mutable_store();
+  store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
+                           &activate_over_non_cellular_network_);
   store->RegisterConstString(flimflam::kActivationStateProperty,
                              &activation_state_);
   HelpRegisterDerivedStringmap(flimflam::kCellularApnProperty,
@@ -300,6 +303,14 @@ string CellularService::GetStorageIdentifier() const {
 
 string CellularService::GetDeviceRpcId(Error */*error*/) {
   return cellular_->GetRpcIdentifier();
+}
+
+void CellularService::SetActivateOverNonCellularNetwork(bool state) {
+  if (state == activate_over_non_cellular_network_) {
+    return;
+  }
+  activate_over_non_cellular_network_ = state;
+  adaptor()->EmitBoolChanged(kActivateOverNonCellularNetworkProperty, state);
 }
 
 void CellularService::SetActivationState(const string &state) {
