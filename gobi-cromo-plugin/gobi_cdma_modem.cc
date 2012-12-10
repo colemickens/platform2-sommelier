@@ -26,7 +26,8 @@ GobiCdmaModem::GobiCdmaModem(DBus::Connection& connection,
                              GobiModemHelper *modem_helper)
     : GobiModem(connection, path, device, sdk, modem_helper),
       activation_time_(METRIC_BASE_NAME "Activation", 0, 150000, 20),
-      activation_in_progress_(false) {
+      activation_in_progress_(false),
+      force_activated_status_(false) {
 }
 
 GobiCdmaModem::~GobiCdmaModem() {
@@ -76,6 +77,13 @@ int GobiCdmaModem::GetMmActivationState() {
   }
   LOG(INFO) << "device activation state: " << device_activation_state;
   if (device_activation_state == 1) {
+    return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  }
+
+  if (force_activated_status_) {
+    // |force_activated_status_| is set to true for testing purposes via
+    // org.chromium.ModemManager.Modem.Gobi.ForceModemActivatedStatus.
+    LOG(INFO) << __func__ << "Forcing modem activation status to activated";
     return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   }
 
@@ -291,6 +299,12 @@ void GobiCdmaModem::GetTechnologySpecificStatus(DBusPropertyMap* properties) {
   if (activation_state >= 0) {
     (*properties)["activation_state"].writer().append_uint32(activation_state);
   }
+}
+
+//======================================================================
+// DBUS Methods: ModemGobi
+void GobiCdmaModem::ForceModemActivatedStatus(DBus::Error& error) {
+  force_activated_status_ = true;
 }
 
 //======================================================================

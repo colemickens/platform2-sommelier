@@ -1479,6 +1479,9 @@ void GobiModem::SetNetworkPreference(const int32_t &value,
   }
 }
 
+void GobiModem::ForceModemActivatedStatus(DBus::Error& error) {
+}
+
 void GobiModem::ClearIdleCallbacks() {
   for (std::set<guint>::iterator it = idle_callback_ids_.begin();
        it != idle_callback_ids_.end();

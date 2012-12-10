@@ -47,6 +47,9 @@ class GobiCdmaModem
   virtual void Connect(const utilities::DBusPropertyMap& properties,
                        DBus::Error& error);
 
+  // DBUS Methods: ModemGobi
+  virtual void ForceModemActivatedStatus(DBus::Error& error);
+
  protected:
   void GetCdmaRegistrationState(ULONG* cdma_1x_state, ULONG* cdma_evdo_state,
                                 ULONG* roaming_state, DBus::Error& error);
@@ -110,6 +113,7 @@ class GobiCdmaModem
 
   MetricsStopwatch activation_time_;
   bool activation_in_progress_;
+  bool force_activated_status_;
 
   // Returns a enum value from MM_MODEM_CDMA_ACTIVATION_ERROR
   uint32_t ActivateOmadm();

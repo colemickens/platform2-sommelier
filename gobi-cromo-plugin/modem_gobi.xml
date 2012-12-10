@@ -95,6 +95,12 @@
       </arg>
     </method>
 
+    <method name="ForceModemActivatedStatus">
+      <tp:docstring>
+        Forces the modem to indicate that it has been activated.
+      </tp:docstring>
+    </method>
+
     <signal name="DormancyStatus">
       <tp:docstring>
         Indicates that the dormancy status of the modem changed.

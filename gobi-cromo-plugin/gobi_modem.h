@@ -216,6 +216,7 @@ class GobiModem
                            DBus::Error& error);
   virtual void SetNetworkPreference(const int32_t &value,
                                     DBus::Error& error);
+  virtual void ForceModemActivatedStatus(DBus::Error& error);
 
   void ClearIdleCallbacks();
 
