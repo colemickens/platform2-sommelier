@@ -810,8 +810,9 @@ void Daemon::RegisterUdevEventHandler() {
 
 void Daemon::RegisterDBusMessageHandler() {
   util::RequestDBusServiceName(kPowerManagerServiceName);
-  util::SetNameOwnerChangedHandler(&Suspender::NameOwnerChangedHandler,
-                                   &suspender_);
+
+  dbus_handler_.SetNameOwnerChangedHandler(&Suspender::NameOwnerChangedHandler,
+                                           &suspender_);
 
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,

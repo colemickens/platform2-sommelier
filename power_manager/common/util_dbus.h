@@ -24,9 +24,6 @@ class MessageLite;
 namespace power_manager {
 namespace util {
 
-typedef void (*NameOwnerChangedHandler)(DBusGProxy*, const gchar*, const gchar*,
-                                        const gchar*, void*);
-
 // Queries session manager to see if any user (including guest) has started a
 // session by logging into Chrome.
 bool IsSessionStarted();
@@ -88,11 +85,16 @@ DBusMessage* CreateDBusErrorReply(DBusMessage* message,
 // Parse out the error message and log it for debugging.
 void LogDBusError(DBusMessage* message);
 
-// Provide a callback for handling NamedOwnerChanged signal.
-void SetNameOwnerChangedHandler(NameOwnerChangedHandler callback, void* data);
-
 // Register the current process with dbus under the service name |name|.
 void RequestDBusServiceName(const char* name);
+
+// Returns true if the specified service is connected to D-Bus and false
+// otherwise.  If |connection_name_out| is non-NULL, the connection name will be
+// assigned to it.
+bool IsDBusServiceConnected(const std::string& service_name,
+                            const std::string& service_path,
+                            const std::string& interface,
+                            std::string* connection_name_out);
 
 }  // namespace util
 }  // namespace power_manager

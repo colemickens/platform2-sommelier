@@ -264,17 +264,6 @@ void LogDBusError(DBusMessage* message) {
             << error_string;
 }
 
-void SetNameOwnerChangedHandler(NameOwnerChangedHandler callback, void* data) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              DBUS_SERVICE_DBUS,
-                              DBUS_PATH_DBUS,
-                              DBUS_INTERFACE_DBUS);
-  dbus_g_proxy_add_signal(proxy.gproxy(), "NameOwnerChanged", G_TYPE_STRING,
-                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal(proxy.gproxy(), "NameOwnerChanged",
-                              G_CALLBACK(callback), data, NULL);
-}
-
 void RequestDBusServiceName(const char* name) {
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
@@ -285,6 +274,29 @@ void RequestDBusServiceName(const char* name) {
     LOG(FATAL) << "Failed to register name \"" << name << "\": "
                << (dbus_error_is_set(&error) ? error.message : "Unknown error");
   }
+}
+
+bool IsDBusServiceConnected(const std::string& service_name,
+                            const std::string& service_path,
+                            const std::string& interface,
+                            std::string* connection_name_out) {
+  // dbus_g_proxy_new_for_name_owner() is documented as returning NULL if the
+  // passed-in name has no owner.
+  GError* error = NULL;
+  DBusGProxy* proxy = dbus_g_proxy_new_for_name_owner(
+      chromeos::dbus::GetSystemBusConnection().g_connection(),
+      service_name.c_str(), service_path.c_str(), interface.c_str(), &error);
+  if (!proxy) {
+    g_error_free(error);
+    if (connection_name_out)
+      connection_name_out->clear();
+    return false;
+  }
+
+  if (connection_name_out)
+    *connection_name_out = dbus_g_proxy_get_bus_name(proxy);
+  g_object_unref(proxy);
+  return true;
 }
 
 }  // namespace util

@@ -100,13 +100,13 @@ void OnNameOwnerChanged(DBusGProxy*, const gchar* name, const gchar* old_owner,
 }
 
 void RegisterDBusMessageHandler() {
+  dbus_handler.SetNameOwnerChangedHandler(OnNameOwnerChanged, NULL);
   dbus_handler.AddDBusSignalHandler(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendDelay,
       base::Bind(&SuspendDelaySignaled));
   dbus_handler.Start();
 
-  power_manager::util::SetNameOwnerChangedHandler(OnNameOwnerChanged, NULL);
 }
 
 int main(int argc, char* argv[]) {

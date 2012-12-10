@@ -21,6 +21,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/backlight_client.h"
 #include "power_manager/powerd/idle_detector.h"
@@ -99,25 +100,16 @@ void WaitForPowerM() {
                               G_CALLBACK(HandleDBusNameOwnerChanged),
                               loop, NULL);
 
-  // Create a proxy to test if powerm is running.
-  // dbus_g_proxy_new_for_name_owner() is documented as returning NULL if the
-  // passed-in name has no owner.
-  GError* error = NULL;
-  DBusGProxy* powerm_proxy = dbus_g_proxy_new_for_name_owner(
-      chromeos::dbus::GetSystemBusConnection().g_connection(),
-      power_manager::kRootPowerManagerServiceName,
-      power_manager::kPowerManagerServicePath,
-      power_manager::kRootPowerManagerInterface,
-      &error);
-
-  if (powerm_proxy) {
-    LOG(ERROR) << "powerm is already running at \""
-               << dbus_g_proxy_get_bus_name(powerm_proxy) << "\"";
-    g_object_unref(powerm_proxy);
+  std::string connection_name;
+  if (power_manager::util::IsDBusServiceConnected(
+          power_manager::kRootPowerManagerServiceName,
+          power_manager::kPowerManagerServicePath,
+          power_manager::kRootPowerManagerInterface,
+          &connection_name)) {
+    LOG(INFO) << "powerm is already running at " << connection_name;
   } else {
     // If powerm isn't running yet, spin up an event loop that will run until we
     // get notification that its name has been claimed.
-    g_error_free(error);
     LOG(INFO) << "Waiting for " << kNameOwnerChangedSignal
               << " signal indicating that powerm has started";
     g_main_loop_run(loop);

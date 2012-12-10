@@ -11,19 +11,32 @@
 #include <string>
 
 #include "base/callback.h"
+#include "base/memory/scoped_ptr.h"
 
 struct DBusMessage;
 struct DBusConnection;
+
+namespace chromeos {
+namespace dbus {
+class Proxy;
+}  // namespace dbus
+}  // namespace chromeos
 
 namespace power_manager {
 namespace util {
 
 class DBusHandler {
  public:
-  DBusHandler();
-
   typedef base::Callback<bool(DBusMessage*)> DBusSignalHandler;
   typedef base::Callback<DBusMessage*(DBusMessage*)> DBusMethodHandler;
+  typedef void (*NameOwnerChangedHandler)(DBusGProxy* proxy,
+                                          const gchar* name,
+                                          const gchar* old_owner,
+                                          const gchar* new_owner,
+                                          void* data);
+
+  DBusHandler();
+  ~DBusHandler();
 
   void AddDBusSignalHandler(const std::string& interface,
                             const std::string& member,
@@ -31,6 +44,10 @@ class DBusHandler {
   void AddDBusMethodHandler(const std::string& interface,
                             const std::string& member,
                             const DBusMethodHandler& handler);
+
+  // Sets a callback for handling NamedOwnerChanged signals (emitted when a
+  // D-Bus client connects or disconnects from the bus).
+  void SetNameOwnerChangedHandler(NameOwnerChangedHandler callback, void* data);
 
   void Start();
 
@@ -50,6 +67,9 @@ class DBusHandler {
   void AddDBusSignalMatch(DBusConnection* connection,
                           const std::string& interface,
                           const std::string& member);
+
+  // Used to listen for NameOwnerChanged signals.
+  scoped_ptr<chromeos::dbus::Proxy> proxy_;
 
   // These are lookup tables that map dbus message interface/names to handlers.
   DBusSignalHandlerTable dbus_signal_handler_table_;

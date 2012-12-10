@@ -17,6 +17,8 @@ namespace util {
 
 DBusHandler::DBusHandler() {}
 
+DBusHandler::~DBusHandler() {}
+
 void DBusHandler::AddDBusSignalHandler(const std::string& interface,
                                        const std::string& member,
                                        const DBusSignalHandler& handler) {
@@ -34,6 +36,26 @@ void DBusHandler::AddDBusMethodHandler(const std::string& interface,
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(connection);
   dbus_method_handler_table_[std::make_pair(interface, member)] = handler;
+}
+
+void DBusHandler::SetNameOwnerChangedHandler(NameOwnerChangedHandler callback,
+                                             void* data) {
+  // Defer creating the proxy until this method is called; a bunch of testing
+  // code creates DBusHandler objects.
+  // TODO(derat): Clean up said testing code.  There should be a stub
+  // DBusHandler implementation that doesn't actually talk to D-Bus.
+  if (!proxy_.get()) {
+    proxy_.reset(new chromeos::dbus::Proxy(
+        chromeos::dbus::GetSystemBusConnection(),
+        DBUS_SERVICE_DBUS, DBUS_PATH_DBUS, DBUS_INTERFACE_DBUS));
+  }
+
+  const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
+  dbus_g_proxy_add_signal(proxy_->gproxy(), kNameOwnerChangedSignal,
+                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
+                          G_TYPE_INVALID);
+  dbus_g_proxy_connect_signal(proxy_->gproxy(), kNameOwnerChangedSignal,
+                              G_CALLBACK(callback), data, NULL);
 }
 
 void DBusHandler::Start() {

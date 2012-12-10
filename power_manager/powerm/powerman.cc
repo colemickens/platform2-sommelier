@@ -425,6 +425,19 @@ void PowerManDaemon::DBusNameOwnerChangedHandler(
 void PowerManDaemon::RegisterDBusMessageHandler() {
   util::RequestDBusServiceName(kRootPowerManagerServiceName);
 
+  dbus_handler_.SetNameOwnerChangedHandler(DBusNameOwnerChangedHandler, this);
+
+  // If powerd is already up, we won't see a signal about its name's owner
+  // changing.  Check whether this is the case.
+  std::string powerd_connection_name;
+  if (util::IsDBusServiceConnected(kPowerManagerServiceName,
+                                   kPowerManagerServicePath,
+                                   kPowerManagerInterface,
+                                   &powerd_connection_name)) {
+    LOG(INFO) << "powerd is already running at " << powerd_connection_name;
+    powerd_state_ = POWER_MANAGER_ALIVE;
+  }
+
   dbus_handler_.AddDBusSignalHandler(
       kRootPowerManagerInterface,
       kCheckLidStateSignal,
@@ -471,8 +484,6 @@ void PowerManDaemon::RegisterDBusMessageHandler() {
                  base::Unretained(this)));
 
   dbus_handler_.Start();
-
-  util::SetNameOwnerChangedHandler(DBusNameOwnerChangedHandler, this);
 }
 
 void PowerManDaemon::SendInputEventSignal(InputType type, ButtonState state) {

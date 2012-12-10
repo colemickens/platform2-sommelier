@@ -46,7 +46,7 @@ Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
 
 void Suspender::NameOwnerChangedHandler(DBusGProxy*,
                                         const gchar* name,
-                                        const gchar*,
+                                        const gchar* /*old_owner*/,
                                         const gchar* new_owner,
                                         gpointer data) {
   Suspender* suspender = static_cast<Suspender*>(data);
