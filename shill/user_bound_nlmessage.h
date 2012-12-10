@@ -32,13 +32,13 @@ class UserBoundNlMessage {
   // A const iterator to the attribute names in the attributes_ map of a
   // UserBoundNlMessage.  The purpose, here, is to hide the way that the
   // attribute is stored.
-  class AttributeNameIterator {
+  class AttributeIterator {
    public:
-    explicit AttributeNameIterator(const std::map<nl80211_attrs,
-                                                  nlattr *> &map_param)
-        : map_(map_param) {
-      iter_ = map_.begin();
-    }
+    explicit AttributeIterator(const std::map<nl80211_attrs,
+                                              Nl80211Attribute *> &map_param)
+        : map_(map_param), iter_(map_.begin()) {}
+    AttributeIterator(const AttributeIterator &other)
+        : map_(other.map_), iter_(other.iter_) {}
 
     // Causes the iterator to point to the next attribute in the list.
     void Advance() { ++iter_; }
@@ -47,14 +47,14 @@ class UserBoundNlMessage {
     // list; returns 'false' otherwise.
     bool AtEnd() const { return iter_ == map_.end(); }
 
-    // Returns the attribute name (which is actually an 'enum' value).
-    nl80211_attrs GetName() const { return iter_->first; }
+    const Nl80211Attribute *GetAttribute() const { return iter_->second; }
 
    private:
-    const std::map<nl80211_attrs, nlattr *> &map_;
-    std::map<nl80211_attrs, nlattr *>::const_iterator iter_;
+    // DISALLOW_ASSIGN_BUT_ALLOW_COPY:
+    AttributeIterator &operator=(const AttributeIterator &other);
 
-    DISALLOW_COPY_AND_ASSIGN(AttributeNameIterator);
+    const std::map<nl80211_attrs, Nl80211Attribute *> &map_;
+    std::map<nl80211_attrs, Nl80211Attribute *>::const_iterator iter_;
   };
 
   static const char kBogusMacAddress[];
@@ -68,10 +68,8 @@ class UserBoundNlMessage {
   // Non-trivial initialization.
   virtual bool Init(nlattr *tb[NL80211_ATTR_MAX + 1], nlmsghdr *msg);
 
-  // Provide a suite of methods to allow (const) iteration over the names of the
-  // attributes inside a message object.
-
-  AttributeNameIterator *GetAttributeNameIterator() const;
+  // Allow (const) iteration over the attributes inside a message object.
+  AttributeIterator GetAttributeIterator() const;
 
   // Other ways to see the internals of the object.
 
@@ -82,9 +80,12 @@ class UserBoundNlMessage {
   // Message ID is equivalent to the message's sequence number.
   uint32_t GetId() const;
 
-  // Returns the data type of a given attribute.
-  Nl80211Attribute::Type GetAttributeType(nl80211_attrs name) const;
+  const Nl80211Attribute *GetAttribute(nl80211_attrs name) const;
 
+  // TODO(wdg): GetRawAttributeData is only used for NL80211_ATTR_FRAME and
+  // NL80211_ATTR_KEY_SEQ.  Remove this method once those classes are
+  // fleshed-out.
+  //
   // Returns a string describing the data type of a given attribute.
   std::string GetAttributeTypeString(nl80211_attrs name) const;
 
@@ -94,6 +95,9 @@ class UserBoundNlMessage {
   // unsuccessful, returns 'false' and leaves |value| unchanged.
   bool GetRawAttributeData(nl80211_attrs name, ByteString *value) const;
 
+  // TODO(wdg): Replace all message->GetXxxAttribute with
+  // attribute->GetXxxAttribute; remove message methods.
+
   // Each of these methods set |value| with the value of the specified
   // attribute (if the attribute is not found, |value| remains unchanged).
 
@@ -102,11 +106,6 @@ class UserBoundNlMessage {
   bool GetU16Attribute(nl80211_attrs name, uint16_t *value) const;
   bool GetU32Attribute(nl80211_attrs name, uint32_t *value) const;
   bool GetU64Attribute(nl80211_attrs name, uint64_t *value) const;
-
-  // Fill a string with characters that represents the value of the attribute.
-  // If no attribute is found or if the type isn't trivially stringizable,
-  // this method returns 'false' and |value| remains unchanged.
-  bool GetAttributeString(nl80211_attrs name, std::string *value) const;
 
   // Helper function to provide a string for a MAC address.  If no attribute
   // is found, this method returns 'false'.  On any error with a non-NULL
@@ -122,12 +121,6 @@ class UserBoundNlMessage {
   // them (such as NL80211_ATTR_SCAN_SSIDS).
   bool GetScanSsidsAttribute(enum nl80211_attrs name,
                              std::vector<std::string> *value) const;
-
-  // Writes the raw attribute data to a string.  For debug.
-  virtual std::string RawToString(nl80211_attrs name) const;
-
-  // Returns a string describing a given attribute name.
-  static std::string StringFromAttributeName(nl80211_attrs name);
 
   // Stringizes the MAC address found in 'arg'.  If there are problems (such
   // as a NULL |arg|), |value| is set to a bogus MAC address.
@@ -146,12 +139,8 @@ class UserBoundNlMessage {
   const char *message_type_string() const { return message_type_string_; }
 
  protected:
-  // Duplicate attribute data, store in map indexed on 'name'.
-  bool AddAttribute(nl80211_attrs name, nlattr *data);
-
-  // Returns the raw nlattr for a given attribute (NULL if attribute doesn't
-  // exist).
-  const nlattr *GetAttribute(nl80211_attrs name) const;
+  // Take ownership of attribute, store in map indexed on |attr->name()|.
+  bool AddAttribute(Nl80211Attribute *attr);
 
   // Returns a string that should precede all user-bound message strings.
   virtual std::string GetHeaderString() const;
@@ -172,7 +161,7 @@ class UserBoundNlMessage {
   static std::string StringFromSsid(const uint8_t len, const uint8_t *data);
 
  private:
-  friend class AttributeNameIterator;
+  friend class AttributeIterator;
   friend class Config80211Test;
   FRIEND_TEST(Config80211Test, NL80211_CMD_NOTIFY_CQM);
 
@@ -183,7 +172,7 @@ class UserBoundNlMessage {
   const char *message_type_string_;
   static std::map<uint16_t, std::string> *reason_code_string_;
   static std::map<uint16_t, std::string> *status_code_string_;
-  std::map<nl80211_attrs, nlattr *> attributes_;
+  std::map<nl80211_attrs, Nl80211Attribute *> attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(UserBoundNlMessage);
 };
@@ -201,7 +190,7 @@ class Nl80211Frame {
     kIllegalFrameType = 0xff
   };
 
-  Nl80211Frame(const ByteString &init);
+  explicit Nl80211Frame(const ByteString &init);
   bool ToString(std::string *output) const;
   bool IsEqual(const Nl80211Frame &other) const;
   uint16_t reason() const { return reason_; }

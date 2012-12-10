@@ -576,8 +576,8 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_TRIGGER_SCAN);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -623,8 +623,8 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_SCAN_RESULTS);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -702,8 +702,8 @@ TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_AUTHENTICATE);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -733,8 +733,8 @@ TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_ASSOCIATE);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -764,8 +764,8 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_CONNECT);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -800,8 +800,8 @@ TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_DEAUTHENTICATE);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -831,8 +831,8 @@ TEST_F(Config80211Test, NL80211_CMD_DISCONNECT) {
   EXPECT_EQ(message->message_type(), NL80211_CMD_DISCONNECT);
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -862,8 +862,8 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
 
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
@@ -889,8 +889,9 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
       { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]
     };
 
-    EXPECT_TRUE(message->AttributeExists(NL80211_ATTR_CQM));
-    const nlattr *const_data = message->GetAttribute(NL80211_ATTR_CQM);
+    const Nl80211Attribute *attribute = message->GetAttribute(NL80211_ATTR_CQM);
+    EXPECT_NE(attribute, reinterpret_cast<const Nl80211Attribute *>(NULL));
+    const nlattr *const_data = attribute->data();
     nlattr *cqm_attr = const_cast<nlattr *>(const_data);
     EXPECT_NE(cqm_attr, reinterpret_cast<nlattr *>(NULL));
 
@@ -915,8 +916,8 @@ TEST_F(Config80211Test, NL80211_CMD_DISASSOCIATE) {
 
 
   {
-    uint8_t value;
-    EXPECT_TRUE(message->GetU8Attribute(NL80211_ATTR_WIPHY, &value));
+    uint32_t value;
+    EXPECT_TRUE(message->GetU32Attribute(NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 

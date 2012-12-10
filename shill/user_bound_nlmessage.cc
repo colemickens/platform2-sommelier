@@ -102,9 +102,9 @@ map<uint16_t, string> *UserBoundNlMessage::status_code_string_ = NULL;
 //
 
 UserBoundNlMessage::~UserBoundNlMessage() {
-  map<enum nl80211_attrs, nlattr *>::iterator i;
+  map<nl80211_attrs, Nl80211Attribute *>::iterator i;
   for (i = attributes_.begin(); i != attributes_.end(); ++i) {
-    delete [] reinterpret_cast<uint8_t *>(i->second);
+    delete i->second;
   }
 }
 
@@ -121,7 +121,10 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
-      AddAttribute(static_cast<enum nl80211_attrs>(i), tb[i]);
+      Nl80211Attribute *attribute =
+          Nl80211Attribute::NewFromNlAttr(static_cast<enum nl80211_attrs>(i),
+                                          tb[i]);
+      AddAttribute(attribute);
     }
   }
 
@@ -323,11 +326,9 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
   return true;
 }
 
-UserBoundNlMessage::AttributeNameIterator*
-    UserBoundNlMessage::GetAttributeNameIterator() const {
-  UserBoundNlMessage::AttributeNameIterator *iter =
-      new UserBoundNlMessage::AttributeNameIterator(attributes_);
-  return iter;
+UserBoundNlMessage::AttributeIterator
+    UserBoundNlMessage::GetAttributeIterator() const {
+  return UserBoundNlMessage::AttributeIterator(attributes_);
 }
 
 // Return true if the attribute is in our map, regardless of the value of
@@ -343,44 +344,6 @@ uint32_t UserBoundNlMessage::GetId() const {
   return message_->nlmsg_seq;
 }
 
-enum Nl80211Attribute::Type
-    UserBoundNlMessage::GetAttributeType(enum nl80211_attrs name) const {
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
-    return Nl80211Attribute::kTypeError;
-  }
-
-  switch (nla_type(attr)) {
-    case NLA_U8: return Nl80211Attribute::kTypeU8;
-    case NLA_U16: return Nl80211Attribute::kTypeU16;
-    case NLA_U32: return Nl80211Attribute::kTypeU32;
-    case NLA_U64: return Nl80211Attribute::kTypeU64;
-    case NLA_STRING: return Nl80211Attribute::kTypeString;
-    case NLA_FLAG: return Nl80211Attribute::kTypeFlag;
-    case NLA_MSECS: return Nl80211Attribute::kTypeMsecs;
-    case NLA_NESTED: return Nl80211Attribute::kTypeNested;
-    default: return Nl80211Attribute::kTypeError;
-  }
-
-  return Nl80211Attribute::kTypeError;
-}
-
-string UserBoundNlMessage::GetAttributeTypeString(enum nl80211_attrs name)
-    const {
-  switch (GetAttributeType(name)) {
-    case Nl80211Attribute::kTypeU8: return "uint8_t"; break;
-    case Nl80211Attribute::kTypeU16: return "uint16_t"; break;
-    case Nl80211Attribute::kTypeU32: return "uint32_t"; break;
-    case Nl80211Attribute::kTypeU64: return "uint64_t"; break;
-    case Nl80211Attribute::kTypeString: return "String"; break;
-    case Nl80211Attribute::kTypeFlag: return "Flag"; break;
-    case Nl80211Attribute::kTypeMsecs: return "MSec Type"; break;
-    case Nl80211Attribute::kTypeNested: return "Nested Type"; break;
-    case Nl80211Attribute::kTypeError: return "ERROR TYPE"; break;
-    default: return "Funky Type"; break;
-  }
-}
-
 // Returns the raw attribute data but not the header.
 bool UserBoundNlMessage::GetRawAttributeData(enum nl80211_attrs name,
                                              ByteString *value) const {
@@ -388,13 +351,32 @@ bool UserBoundNlMessage::GetRawAttributeData(enum nl80211_attrs name,
     LOG(ERROR) << "Null |value| parameter";
     return false;
   }
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
-    value->Clear();
+  const Nl80211Attribute *raw_attr = GetAttribute(name);
+  if (!raw_attr) {
+    LOG(ERROR) << "No attribute - returning FALSE";
     return false;
   }
-  *value = ByteString(reinterpret_cast<unsigned char *>(nla_data(attr)),
-                      nla_len(attr));
+  if (raw_attr->type() != Nl80211Attribute::kTypeRaw) {
+    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
+               << " has type " << raw_attr->type_string()
+               << " rather than RAW";
+    return false;
+  }
+  const Nl80211RawAttribute *attr
+      = reinterpret_cast<const Nl80211RawAttribute *>(raw_attr);
+
+  ByteString raw_data;
+  if (!attr->GetRawValue(&raw_data))
+    return false;
+
+  const nlattr *const_data =
+      reinterpret_cast<const nlattr *>(raw_data.GetConstData());
+  // nla_data and nla_len don't change their parameters but don't declare
+  // them to be const.  Hence the cast.
+  nlattr *data_nlattr = const_cast<nlattr *>(const_data);
+  *value = ByteString(
+      reinterpret_cast<unsigned char *>(nla_data(data_nlattr)),
+      nla_len(data_nlattr));
   return true;
 }
 
@@ -405,13 +387,19 @@ bool UserBoundNlMessage::GetStringAttribute(enum nl80211_attrs name,
     return false;
   }
 
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
+  const Nl80211Attribute *raw_attr = GetAttribute(name);
+  if (!raw_attr) {
     return false;
   }
-
-  value->assign(Nl80211Attribute::NlaGetString(attr));
-  return true;
+  if (raw_attr->type() != Nl80211Attribute::kTypeString) {
+    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
+               << " has type " << raw_attr->type_string()
+               << " rather than STRING";
+    return false;
+  }
+  const Nl80211StringAttribute *attr
+      = reinterpret_cast<const Nl80211StringAttribute *>(raw_attr);
+  return attr->GetStringValue(value);
 }
 
 bool UserBoundNlMessage::GetU8Attribute(enum nl80211_attrs name,
@@ -421,13 +409,20 @@ bool UserBoundNlMessage::GetU8Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
+  const Nl80211Attribute *raw_attr = GetAttribute(name);
+  if (!raw_attr) {
+    LOG(ERROR) << "No attribute - returning FALSE";
     return false;
   }
-
-  *value = Nl80211Attribute::NlaGetU8(attr);
-  return true;
+  if (raw_attr->type() != Nl80211Attribute::kTypeU8) {
+    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
+               << " has type " << raw_attr->type_string()
+               << " rather than U8";
+    return false;
+  }
+  const Nl80211U8Attribute *attr
+      = reinterpret_cast<const Nl80211U8Attribute *>(raw_attr);
+  return attr->GetU8Value(value);
 }
 
 bool UserBoundNlMessage::GetU16Attribute(enum nl80211_attrs name,
@@ -437,13 +432,20 @@ bool UserBoundNlMessage::GetU16Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
+  const Nl80211Attribute *raw_attr = GetAttribute(name);
+  if (!raw_attr) {
+    LOG(ERROR) << "No attribute - returning FALSE";
     return false;
   }
-
-  *value = Nl80211Attribute::NlaGetU16(attr);
-  return true;
+  if (raw_attr->type() != Nl80211Attribute::kTypeU16) {
+    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
+               << " has type " << raw_attr->type_string()
+               << " rather than U16";
+    return false;
+  }
+  const Nl80211U16Attribute *attr
+      = reinterpret_cast<const Nl80211U16Attribute *>(raw_attr);
+  return attr->GetU16Value(value);
 }
 
 bool UserBoundNlMessage::GetU32Attribute(enum nl80211_attrs name,
@@ -453,13 +455,20 @@ bool UserBoundNlMessage::GetU32Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
+  const Nl80211Attribute *raw_attr = GetAttribute(name);
+  if (!raw_attr) {
+    LOG(ERROR) << "No attribute - returning FALSE";
     return false;
   }
-
-  *value = Nl80211Attribute::NlaGetU32(attr);
-  return true;
+  if (raw_attr->type() != Nl80211Attribute::kTypeU32) {
+    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
+               << " has type " << raw_attr->type_string()
+               << " rather than U32";
+    return false;
+  }
+  const Nl80211U32Attribute *attr
+      = reinterpret_cast<const Nl80211U32Attribute *>(raw_attr);
+  return attr->GetU32Value(value);
 }
 
 bool UserBoundNlMessage::GetU64Attribute(enum nl80211_attrs name,
@@ -469,13 +478,20 @@ bool UserBoundNlMessage::GetU64Attribute(enum nl80211_attrs name,
     return false;
   }
 
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
+  const Nl80211Attribute *raw_attr = GetAttribute(name);
+  if (!raw_attr) {
+    LOG(ERROR) << "No attribute - returning FALSE";
     return false;
   }
-
-  *value = Nl80211Attribute::NlaGetU64(attr);
-  return true;
+  if (raw_attr->type() != Nl80211Attribute::kTypeU64) {
+    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
+               << " has type " << raw_attr->type_string()
+               << " rather than U64";
+    return false;
+  }
+  const Nl80211U64Attribute *attr
+      = reinterpret_cast<const Nl80211U64Attribute *>(raw_attr);
+  return attr->GetU64Value(value);
 }
 
 // Helper function to provide a string for a MAC address.
@@ -505,23 +521,21 @@ bool UserBoundNlMessage::GetScanFrequenciesAttribute(
   }
 
   value->clear();
-  if (AttributeExists(name)) {
-    ByteString rawdata;
-    if (GetRawAttributeData(name, &rawdata) && !rawdata.IsEmpty()) {
-      nlattr *nst = NULL;
-      // |nla_for_each_attr| requires a non-const parameter even though it
-      // doesn't change the data.
-      nlattr *attr_data = reinterpret_cast<nlattr *>(rawdata.GetData());
-      int rem_nst;
-      int len = rawdata.GetLength();
+  ByteString rawdata;
+  if (!GetRawAttributeData(name, &rawdata) && !rawdata.IsEmpty())
+    return false;
 
-      nla_for_each_attr(nst, attr_data, len, rem_nst) {
-        value->push_back(Nl80211Attribute::NlaGetU32(nst));
-      }
-    }
-    return true;
+  nlattr *nst = NULL;
+  // |nla_for_each_attr| requires a non-const parameter even though it
+  // doesn't change the data.
+  nlattr *attr_data = reinterpret_cast<nlattr *>(rawdata.GetData());
+  int rem_nst;
+  int len = rawdata.GetLength();
+
+  nla_for_each_attr(nst, attr_data, len, rem_nst) {
+    value->push_back(Nl80211Attribute::NlaGetU32(nst));
   }
-  return false;
+  return true;
 }
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_SSIDS.
@@ -553,430 +567,24 @@ bool UserBoundNlMessage::GetScanSsidsAttribute(
   return false;
 }
 
-bool UserBoundNlMessage::GetAttributeString(nl80211_attrs name,
-                                            string *param) const {
-  if (!param) {
-    LOG(ERROR) << "Null |param| parameter";
-    return false;
-  }
-
-  switch (GetAttributeType(name)) {
-    case Nl80211Attribute::kTypeU8: {
-      uint8_t value;
-      if (!GetU8Attribute(name, &value))
-        return false;
-      *param = StringPrintf("%u", value);
-      break;
-    }
-    case Nl80211Attribute::kTypeU16: {
-      uint16_t value;
-      if (!GetU16Attribute(name, &value))
-        return false;
-      *param = StringPrintf("%u", value);
-      break;
-    }
-    case Nl80211Attribute::kTypeU32: {
-      uint32_t value;
-      if (!GetU32Attribute(name, &value))
-        return false;
-      *param = StringPrintf("%" PRIu32, value);
-      break;
-    }
-    case Nl80211Attribute::kTypeU64: {
-      uint64_t value;
-      if (!GetU64Attribute(name, &value))
-        return false;
-      *param = StringPrintf("%" PRIu64, value);
-      break;
-    }
-    case Nl80211Attribute::kTypeString:
-      if (!GetStringAttribute(name, param))
-        return false;
-      break;
-
-    default:
-      return false;
-  }
-  return true;
-}
-
-string UserBoundNlMessage::RawToString(enum nl80211_attrs name) const {
-  string output = " === RAW: ";
-
-  const nlattr *attr = GetAttribute(name);
-  if (!attr) {
-    output.append("<NULL> ===");
-    return output;
-  }
-
-  const char *typestring = NULL;
-  switch (nla_type(attr)) {
-    case NLA_UNSPEC: typestring = "NLA_UNSPEC"; break;
-    case NLA_U8: typestring = "NLA_U8"; break;
-    case NLA_U16: typestring = "NLA_U16"; break;
-    case NLA_U32: typestring = "NLA_U32"; break;
-    case NLA_U64: typestring = "NLA_U64"; break;
-    case NLA_STRING: typestring = "NLA_STRING"; break;
-    case NLA_FLAG: typestring = "NLA_FLAG"; break;
-    case NLA_MSECS: typestring = "NLA_MSECS"; break;
-    case NLA_NESTED: typestring = "NLA_NESTED"; break;
-    default: typestring = "<UNKNOWN>"; break;
-  }
-
-  uint16_t length = nla_len(attr);
-  uint16_t type = nla_type(attr);
-  StringAppendF(&output, "len=%u type=(%u)=%s", length, type, typestring);
-
-  const uint8_t *const_data
-      = reinterpret_cast<const uint8_t *>(nla_data(attr));
-
-  output.append(" DATA: ");
-  for (int i =0 ; i < length; ++i) {
-    StringAppendF(&output, "[%d]=%02x ",
-                  i, *(reinterpret_cast<const uint8_t *>(const_data)+i));
-  }
-  output.append(" ==== ");
-  return output;
-}
-
-// static
-string UserBoundNlMessage::StringFromAttributeName(enum nl80211_attrs name) {
-  switch (name) {
-    case NL80211_ATTR_UNSPEC:
-      return "NL80211_ATTR_UNSPEC"; break;
-    case NL80211_ATTR_WIPHY:
-      return "NL80211_ATTR_WIPHY"; break;
-    case NL80211_ATTR_WIPHY_NAME:
-      return "NL80211_ATTR_WIPHY_NAME"; break;
-    case NL80211_ATTR_IFINDEX:
-      return "NL80211_ATTR_IFINDEX"; break;
-    case NL80211_ATTR_IFNAME:
-      return "NL80211_ATTR_IFNAME"; break;
-    case NL80211_ATTR_IFTYPE:
-      return "NL80211_ATTR_IFTYPE"; break;
-    case NL80211_ATTR_MAC:
-      return "NL80211_ATTR_MAC"; break;
-    case NL80211_ATTR_KEY_DATA:
-      return "NL80211_ATTR_KEY_DATA"; break;
-    case NL80211_ATTR_KEY_IDX:
-      return "NL80211_ATTR_KEY_IDX"; break;
-    case NL80211_ATTR_KEY_CIPHER:
-      return "NL80211_ATTR_KEY_CIPHER"; break;
-    case NL80211_ATTR_KEY_SEQ:
-      return "NL80211_ATTR_KEY_SEQ"; break;
-    case NL80211_ATTR_KEY_DEFAULT:
-      return "NL80211_ATTR_KEY_DEFAULT"; break;
-    case NL80211_ATTR_BEACON_INTERVAL:
-      return "NL80211_ATTR_BEACON_INTERVAL"; break;
-    case NL80211_ATTR_DTIM_PERIOD:
-      return "NL80211_ATTR_DTIM_PERIOD"; break;
-    case NL80211_ATTR_BEACON_HEAD:
-      return "NL80211_ATTR_BEACON_HEAD"; break;
-    case NL80211_ATTR_BEACON_TAIL:
-      return "NL80211_ATTR_BEACON_TAIL"; break;
-    case NL80211_ATTR_STA_AID:
-      return "NL80211_ATTR_STA_AID"; break;
-    case NL80211_ATTR_STA_FLAGS:
-      return "NL80211_ATTR_STA_FLAGS"; break;
-    case NL80211_ATTR_STA_LISTEN_INTERVAL:
-      return "NL80211_ATTR_STA_LISTEN_INTERVAL"; break;
-    case NL80211_ATTR_STA_SUPPORTED_RATES:
-      return "NL80211_ATTR_STA_SUPPORTED_RATES"; break;
-    case NL80211_ATTR_STA_VLAN:
-      return "NL80211_ATTR_STA_VLAN"; break;
-    case NL80211_ATTR_STA_INFO:
-      return "NL80211_ATTR_STA_INFO"; break;
-    case NL80211_ATTR_WIPHY_BANDS:
-      return "NL80211_ATTR_WIPHY_BANDS"; break;
-    case NL80211_ATTR_MNTR_FLAGS:
-      return "NL80211_ATTR_MNTR_FLAGS"; break;
-    case NL80211_ATTR_MESH_ID:
-      return "NL80211_ATTR_MESH_ID"; break;
-    case NL80211_ATTR_STA_PLINK_ACTION:
-      return "NL80211_ATTR_STA_PLINK_ACTION"; break;
-    case NL80211_ATTR_MPATH_NEXT_HOP:
-      return "NL80211_ATTR_MPATH_NEXT_HOP"; break;
-    case NL80211_ATTR_MPATH_INFO:
-      return "NL80211_ATTR_MPATH_INFO"; break;
-    case NL80211_ATTR_BSS_CTS_PROT:
-      return "NL80211_ATTR_BSS_CTS_PROT"; break;
-    case NL80211_ATTR_BSS_SHORT_PREAMBLE:
-      return "NL80211_ATTR_BSS_SHORT_PREAMBLE"; break;
-    case NL80211_ATTR_BSS_SHORT_SLOT_TIME:
-      return "NL80211_ATTR_BSS_SHORT_SLOT_TIME"; break;
-    case NL80211_ATTR_HT_CAPABILITY:
-      return "NL80211_ATTR_HT_CAPABILITY"; break;
-    case NL80211_ATTR_SUPPORTED_IFTYPES:
-      return "NL80211_ATTR_SUPPORTED_IFTYPES"; break;
-    case NL80211_ATTR_REG_ALPHA2:
-      return "NL80211_ATTR_REG_ALPHA2"; break;
-    case NL80211_ATTR_REG_RULES:
-      return "NL80211_ATTR_REG_RULES"; break;
-    case NL80211_ATTR_MESH_CONFIG:
-      return "NL80211_ATTR_MESH_CONFIG"; break;
-    case NL80211_ATTR_BSS_BASIC_RATES:
-      return "NL80211_ATTR_BSS_BASIC_RATES"; break;
-    case NL80211_ATTR_WIPHY_TXQ_PARAMS:
-      return "NL80211_ATTR_WIPHY_TXQ_PARAMS"; break;
-    case NL80211_ATTR_WIPHY_FREQ:
-      return "NL80211_ATTR_WIPHY_FREQ"; break;
-    case NL80211_ATTR_WIPHY_CHANNEL_TYPE:
-      return "NL80211_ATTR_WIPHY_CHANNEL_TYPE"; break;
-    case NL80211_ATTR_KEY_DEFAULT_MGMT:
-      return "NL80211_ATTR_KEY_DEFAULT_MGMT"; break;
-    case NL80211_ATTR_MGMT_SUBTYPE:
-      return "NL80211_ATTR_MGMT_SUBTYPE"; break;
-    case NL80211_ATTR_IE:
-      return "NL80211_ATTR_IE"; break;
-    case NL80211_ATTR_MAX_NUM_SCAN_SSIDS:
-      return "NL80211_ATTR_MAX_NUM_SCAN_SSIDS"; break;
-    case NL80211_ATTR_SCAN_FREQUENCIES:
-      return "NL80211_ATTR_SCAN_FREQUENCIES"; break;
-    case NL80211_ATTR_SCAN_SSIDS:
-      return "NL80211_ATTR_SCAN_SSIDS"; break;
-    case NL80211_ATTR_GENERATION:
-      return "NL80211_ATTR_GENERATION"; break;
-    case NL80211_ATTR_BSS:
-      return "NL80211_ATTR_BSS"; break;
-    case NL80211_ATTR_REG_INITIATOR:
-      return "NL80211_ATTR_REG_INITIATOR"; break;
-    case NL80211_ATTR_REG_TYPE:
-      return "NL80211_ATTR_REG_TYPE"; break;
-    case NL80211_ATTR_SUPPORTED_COMMANDS:
-      return "NL80211_ATTR_SUPPORTED_COMMANDS"; break;
-    case NL80211_ATTR_FRAME:
-      return "NL80211_ATTR_FRAME"; break;
-    case NL80211_ATTR_SSID:
-      return "NL80211_ATTR_SSID"; break;
-    case NL80211_ATTR_AUTH_TYPE:
-      return "NL80211_ATTR_AUTH_TYPE"; break;
-    case NL80211_ATTR_REASON_CODE:
-      return "NL80211_ATTR_REASON_CODE"; break;
-    case NL80211_ATTR_KEY_TYPE:
-      return "NL80211_ATTR_KEY_TYPE"; break;
-    case NL80211_ATTR_MAX_SCAN_IE_LEN:
-      return "NL80211_ATTR_MAX_SCAN_IE_LEN"; break;
-    case NL80211_ATTR_CIPHER_SUITES:
-      return "NL80211_ATTR_CIPHER_SUITES"; break;
-    case NL80211_ATTR_FREQ_BEFORE:
-      return "NL80211_ATTR_FREQ_BEFORE"; break;
-    case NL80211_ATTR_FREQ_AFTER:
-      return "NL80211_ATTR_FREQ_AFTER"; break;
-    case NL80211_ATTR_FREQ_FIXED:
-      return "NL80211_ATTR_FREQ_FIXED"; break;
-    case NL80211_ATTR_WIPHY_RETRY_SHORT:
-      return "NL80211_ATTR_WIPHY_RETRY_SHORT"; break;
-    case NL80211_ATTR_WIPHY_RETRY_LONG:
-      return "NL80211_ATTR_WIPHY_RETRY_LONG"; break;
-    case NL80211_ATTR_WIPHY_FRAG_THRESHOLD:
-      return "NL80211_ATTR_WIPHY_FRAG_THRESHOLD"; break;
-    case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
-      return "NL80211_ATTR_WIPHY_RTS_THRESHOLD"; break;
-    case NL80211_ATTR_TIMED_OUT:
-      return "NL80211_ATTR_TIMED_OUT"; break;
-    case NL80211_ATTR_USE_MFP:
-      return "NL80211_ATTR_USE_MFP"; break;
-    case NL80211_ATTR_STA_FLAGS2:
-      return "NL80211_ATTR_STA_FLAGS2"; break;
-    case NL80211_ATTR_CONTROL_PORT:
-      return "NL80211_ATTR_CONTROL_PORT"; break;
-    case NL80211_ATTR_TESTDATA:
-      return "NL80211_ATTR_TESTDATA"; break;
-    case NL80211_ATTR_PRIVACY:
-      return "NL80211_ATTR_PRIVACY"; break;
-    case NL80211_ATTR_DISCONNECTED_BY_AP:
-      return "NL80211_ATTR_DISCONNECTED_BY_AP"; break;
-    case NL80211_ATTR_STATUS_CODE:
-      return "NL80211_ATTR_STATUS_CODE"; break;
-    case NL80211_ATTR_CIPHER_SUITES_PAIRWISE:
-      return "NL80211_ATTR_CIPHER_SUITES_PAIRWISE"; break;
-    case NL80211_ATTR_CIPHER_SUITE_GROUP:
-      return "NL80211_ATTR_CIPHER_SUITE_GROUP"; break;
-    case NL80211_ATTR_WPA_VERSIONS:
-      return "NL80211_ATTR_WPA_VERSIONS"; break;
-    case NL80211_ATTR_AKM_SUITES:
-      return "NL80211_ATTR_AKM_SUITES"; break;
-    case NL80211_ATTR_REQ_IE:
-      return "NL80211_ATTR_REQ_IE"; break;
-    case NL80211_ATTR_RESP_IE:
-      return "NL80211_ATTR_RESP_IE"; break;
-    case NL80211_ATTR_PREV_BSSID:
-      return "NL80211_ATTR_PREV_BSSID"; break;
-    case NL80211_ATTR_KEY:
-      return "NL80211_ATTR_KEY"; break;
-    case NL80211_ATTR_KEYS:
-      return "NL80211_ATTR_KEYS"; break;
-    case NL80211_ATTR_PID:
-      return "NL80211_ATTR_PID"; break;
-    case NL80211_ATTR_4ADDR:
-      return "NL80211_ATTR_4ADDR"; break;
-    case NL80211_ATTR_SURVEY_INFO:
-      return "NL80211_ATTR_SURVEY_INFO"; break;
-    case NL80211_ATTR_PMKID:
-      return "NL80211_ATTR_PMKID"; break;
-    case NL80211_ATTR_MAX_NUM_PMKIDS:
-      return "NL80211_ATTR_MAX_NUM_PMKIDS"; break;
-    case NL80211_ATTR_DURATION:
-      return "NL80211_ATTR_DURATION"; break;
-    case NL80211_ATTR_COOKIE:
-      return "NL80211_ATTR_COOKIE"; break;
-    case NL80211_ATTR_WIPHY_COVERAGE_CLASS:
-      return "NL80211_ATTR_WIPHY_COVERAGE_CLASS"; break;
-    case NL80211_ATTR_TX_RATES:
-      return "NL80211_ATTR_TX_RATES"; break;
-    case NL80211_ATTR_FRAME_MATCH:
-      return "NL80211_ATTR_FRAME_MATCH"; break;
-    case NL80211_ATTR_ACK:
-      return "NL80211_ATTR_ACK"; break;
-    case NL80211_ATTR_PS_STATE:
-      return "NL80211_ATTR_PS_STATE"; break;
-    case NL80211_ATTR_CQM:
-      return "NL80211_ATTR_CQM"; break;
-    case NL80211_ATTR_LOCAL_STATE_CHANGE:
-      return "NL80211_ATTR_LOCAL_STATE_CHANGE"; break;
-    case NL80211_ATTR_AP_ISOLATE:
-      return "NL80211_ATTR_AP_ISOLATE"; break;
-    case NL80211_ATTR_WIPHY_TX_POWER_SETTING:
-      return "NL80211_ATTR_WIPHY_TX_POWER_SETTING"; break;
-    case NL80211_ATTR_WIPHY_TX_POWER_LEVEL:
-      return "NL80211_ATTR_WIPHY_TX_POWER_LEVEL"; break;
-    case NL80211_ATTR_TX_FRAME_TYPES:
-      return "NL80211_ATTR_TX_FRAME_TYPES"; break;
-    case NL80211_ATTR_RX_FRAME_TYPES:
-      return "NL80211_ATTR_RX_FRAME_TYPES"; break;
-    case NL80211_ATTR_FRAME_TYPE:
-      return "NL80211_ATTR_FRAME_TYPE"; break;
-    case NL80211_ATTR_CONTROL_PORT_ETHERTYPE:
-      return "NL80211_ATTR_CONTROL_PORT_ETHERTYPE"; break;
-    case NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT:
-      return "NL80211_ATTR_CONTROL_PORT_NO_ENCRYPT"; break;
-    case NL80211_ATTR_SUPPORT_IBSS_RSN:
-      return "NL80211_ATTR_SUPPORT_IBSS_RSN"; break;
-    case NL80211_ATTR_WIPHY_ANTENNA_TX:
-      return "NL80211_ATTR_WIPHY_ANTENNA_TX"; break;
-    case NL80211_ATTR_WIPHY_ANTENNA_RX:
-      return "NL80211_ATTR_WIPHY_ANTENNA_RX"; break;
-    case NL80211_ATTR_MCAST_RATE:
-      return "NL80211_ATTR_MCAST_RATE"; break;
-    case NL80211_ATTR_OFFCHANNEL_TX_OK:
-      return "NL80211_ATTR_OFFCHANNEL_TX_OK"; break;
-    case NL80211_ATTR_BSS_HT_OPMODE:
-      return "NL80211_ATTR_BSS_HT_OPMODE"; break;
-    case NL80211_ATTR_KEY_DEFAULT_TYPES:
-      return "NL80211_ATTR_KEY_DEFAULT_TYPES"; break;
-    case NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION:
-      return "NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION"; break;
-    case NL80211_ATTR_MESH_SETUP:
-      return "NL80211_ATTR_MESH_SETUP"; break;
-    case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX:
-      return "NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX"; break;
-    case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX:
-      return "NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX"; break;
-    case NL80211_ATTR_SUPPORT_MESH_AUTH:
-      return "NL80211_ATTR_SUPPORT_MESH_AUTH"; break;
-    case NL80211_ATTR_STA_PLINK_STATE:
-      return "NL80211_ATTR_STA_PLINK_STATE"; break;
-    case NL80211_ATTR_WOWLAN_TRIGGERS:
-      return "NL80211_ATTR_WOWLAN_TRIGGERS"; break;
-    case NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED:
-      return "NL80211_ATTR_WOWLAN_TRIGGERS_SUPPORTED"; break;
-    case NL80211_ATTR_SCHED_SCAN_INTERVAL:
-      return "NL80211_ATTR_SCHED_SCAN_INTERVAL"; break;
-    case NL80211_ATTR_INTERFACE_COMBINATIONS:
-      return "NL80211_ATTR_INTERFACE_COMBINATIONS"; break;
-    case NL80211_ATTR_SOFTWARE_IFTYPES:
-      return "NL80211_ATTR_SOFTWARE_IFTYPES"; break;
-    case NL80211_ATTR_REKEY_DATA:
-      return "NL80211_ATTR_REKEY_DATA"; break;
-    case NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS:
-      return "NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS"; break;
-    case NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN:
-      return "NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN"; break;
-    case NL80211_ATTR_SCAN_SUPP_RATES:
-      return "NL80211_ATTR_SCAN_SUPP_RATES"; break;
-    case NL80211_ATTR_HIDDEN_SSID:
-      return "NL80211_ATTR_HIDDEN_SSID"; break;
-    case NL80211_ATTR_IE_PROBE_RESP:
-      return "NL80211_ATTR_IE_PROBE_RESP"; break;
-    case NL80211_ATTR_IE_ASSOC_RESP:
-      return "NL80211_ATTR_IE_ASSOC_RESP"; break;
-    case NL80211_ATTR_STA_WME:
-      return "NL80211_ATTR_STA_WME"; break;
-    case NL80211_ATTR_SUPPORT_AP_UAPSD:
-      return "NL80211_ATTR_SUPPORT_AP_UAPSD"; break;
-    case NL80211_ATTR_ROAM_SUPPORT:
-      return "NL80211_ATTR_ROAM_SUPPORT"; break;
-    case NL80211_ATTR_SCHED_SCAN_MATCH:
-      return "NL80211_ATTR_SCHED_SCAN_MATCH"; break;
-    case NL80211_ATTR_MAX_MATCH_SETS:
-      return "NL80211_ATTR_MAX_MATCH_SETS"; break;
-    case NL80211_ATTR_PMKSA_CANDIDATE:
-      return "NL80211_ATTR_PMKSA_CANDIDATE"; break;
-    case NL80211_ATTR_TX_NO_CCK_RATE:
-      return "NL80211_ATTR_TX_NO_CCK_RATE"; break;
-    case NL80211_ATTR_TDLS_ACTION:
-      return "NL80211_ATTR_TDLS_ACTION"; break;
-    case NL80211_ATTR_TDLS_DIALOG_TOKEN:
-      return "NL80211_ATTR_TDLS_DIALOG_TOKEN"; break;
-    case NL80211_ATTR_TDLS_OPERATION:
-      return "NL80211_ATTR_TDLS_OPERATION"; break;
-    case NL80211_ATTR_TDLS_SUPPORT:
-      return "NL80211_ATTR_TDLS_SUPPORT"; break;
-    case NL80211_ATTR_TDLS_EXTERNAL_SETUP:
-      return "NL80211_ATTR_TDLS_EXTERNAL_SETUP"; break;
-    case NL80211_ATTR_DEVICE_AP_SME:
-      return "NL80211_ATTR_DEVICE_AP_SME"; break;
-    case NL80211_ATTR_DONT_WAIT_FOR_ACK:
-      return "NL80211_ATTR_DONT_WAIT_FOR_ACK"; break;
-    case NL80211_ATTR_FEATURE_FLAGS:
-      return "NL80211_ATTR_FEATURE_FLAGS"; break;
-    case NL80211_ATTR_PROBE_RESP_OFFLOAD:
-      return "NL80211_ATTR_PROBE_RESP_OFFLOAD"; break;
-    case NL80211_ATTR_PROBE_RESP:
-      return "NL80211_ATTR_PROBE_RESP"; break;
-    case NL80211_ATTR_DFS_REGION:
-      return "NL80211_ATTR_DFS_REGION"; break;
-    case NL80211_ATTR_DISABLE_HT:
-      return "NL80211_ATTR_DISABLE_HT"; break;
-    case NL80211_ATTR_HT_CAPABILITY_MASK:
-      return "NL80211_ATTR_HT_CAPABILITY_MASK"; break;
-    case NL80211_ATTR_NOACK_MAP:
-      return "NL80211_ATTR_NOACK_MAP"; break;
-    case NL80211_ATTR_INACTIVITY_TIMEOUT:
-      return "NL80211_ATTR_INACTIVITY_TIMEOUT"; break;
-    case NL80211_ATTR_RX_SIGNAL_DBM:
-      return "NL80211_ATTR_RX_SIGNAL_DBM"; break;
-    case NL80211_ATTR_BG_SCAN_PERIOD:
-      return "NL80211_ATTR_BG_SCAN_PERIOD"; break;
-    default:
-      return "<UNKNOWN>"; break;
-  }
-}
-
 // Protected members.
 
-// Duplicate attribute data, store in map indexed on |name|.
-bool UserBoundNlMessage::AddAttribute(enum nl80211_attrs name,
-                                      nlattr *data) {
-  if (ContainsKey(attributes_, name)) {
-    LOG(ERROR) << "Already have attribute name " << name;
+bool UserBoundNlMessage::AddAttribute(Nl80211Attribute *attr) {
+  if (!attr) {
+    LOG(ERROR) << "Not adding NULL attribute";
     return false;
   }
-
-  if ((!data) || (nla_total_size(nla_len(data)) == 0)) {
-    attributes_[name] = NULL;
-  } else {
-    nlattr *newdata = reinterpret_cast<nlattr *>(
-        new uint8_t[nla_total_size(nla_len(data))]);
-    memcpy(newdata, data, nla_total_size(nla_len(data)));
-    attributes_[name] = newdata;
+  if (ContainsKey(attributes_, attr->name())) {
+    LOG(ERROR) << "Already have attribute name " << attr->name_string();
+    return false;
   }
+  attributes_[attr->name()] = attr;
   return true;
 }
 
-const nlattr *UserBoundNlMessage::GetAttribute(enum nl80211_attrs name)
+const Nl80211Attribute *UserBoundNlMessage::GetAttribute(nl80211_attrs name)
     const {
-  map<nl80211_attrs, nlattr *>::const_iterator match;
+  map<nl80211_attrs, Nl80211Attribute *>::const_iterator match;
   match = attributes_.find(name);
   // This method may be called to explore the existence of the attribute so
   // we'll not emit an error if it's not found.
@@ -1488,15 +1096,20 @@ string NotifyCqmMessage::ToString() const {
   string output(GetHeaderString());
   output.append("connection quality monitor event: ");
 
-  const nlattr *const_data = GetAttribute(NL80211_ATTR_CQM);
+  const Nl80211Attribute *attribute = GetAttribute(NL80211_ATTR_CQM);
+  if (!attribute) {
+    output.append("missing data!");
+    return output;
+  }
+
+  const nlattr *const_data = attribute->data();
   // Note that |nla_parse_nested| doesn't change |const_data| but doesn't
   // declare itself as 'const', either.  Hence the cast.
   nlattr *cqm_attr = const_cast<nlattr *>(const_data);
 
   nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
-  if (!AttributeExists(NL80211_ATTR_CQM) || !cqm_attr ||
-      nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
-                       const_cast<nla_policy *>(kCqmPolicy))) {
+  if (!cqm_attr || nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
+                                    const_cast<nla_policy *>(kCqmPolicy))) {
     output.append("missing data!");
     return output;
   }
@@ -1542,13 +1155,20 @@ string RegBeaconHintMessage::ToString() const {
   uint32_t wiphy_idx = UINT32_MAX;
   GetU32Attribute(NL80211_ATTR_WIPHY, &wiphy_idx);
 
-  const nlattr *const_before = GetAttribute(NL80211_ATTR_FREQ_BEFORE);
+  const Nl80211Attribute *freq_before = GetAttribute(NL80211_ATTR_FREQ_BEFORE);
+  if (!freq_before)
+    return "";
+  const nlattr *const_before = freq_before->data();
   ieee80211_beacon_channel chan_before_beacon;
   memset(&chan_before_beacon, 0, sizeof(chan_before_beacon));
   if (ParseBeaconHintChan(const_before, &chan_before_beacon))
     return "";
 
-  const nlattr *const_after = GetAttribute(NL80211_ATTR_FREQ_AFTER);
+  const Nl80211Attribute *freq_after = GetAttribute(NL80211_ATTR_FREQ_AFTER);
+  if (!freq_after)
+    return "";
+
+  const nlattr *const_after = freq_after->data();
   ieee80211_beacon_channel chan_after_beacon;
   memset(&chan_after_beacon, 0, sizeof(chan_after_beacon));
   if (ParseBeaconHintChan(const_after, &chan_after_beacon))

@@ -13,6 +13,7 @@
 #include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
+#include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 #include "shill/user_bound_nlmessage.h"
 
@@ -43,13 +44,14 @@ void Callback80211Object::Config80211MessageCallback(
   SLOG(WiFi, 3) << "Received " << message.message_type_string()
                 << " (" << + message.message_type() << ")";
 
-  scoped_ptr<UserBoundNlMessage::AttributeNameIterator> i;
-  for (i.reset(message.GetAttributeNameIterator()); !i->AtEnd(); i->Advance()) {
-    string value = "<unknown>";
-    message.GetAttributeString(i->GetName(), &value);
-    SLOG(WiFi, 3) << "   Attr:" << message.StringFromAttributeName(i->GetName())
-                  << "=" << value
-                  << " Type:" << message.GetAttributeTypeString(i->GetName());
+  for (UserBoundNlMessage::AttributeIterator i(message.GetAttributeIterator());
+       !i.AtEnd(); i.Advance()) {
+    const Nl80211Attribute *attribute = i.GetAttribute();
+    string attribute_string;
+    attribute->AsString(&attribute_string);
+    SLOG(WiFi, 3) << "   Attr:" << attribute->name_string()
+                  << "=" << attribute_string
+                  << " Type:" << attribute->type_string();
   }
 }
 
