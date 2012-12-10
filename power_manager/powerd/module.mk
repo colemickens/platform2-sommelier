@@ -39,7 +39,8 @@ LIBPOWERD_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
 LIBPOWERD_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
                  -lprotobuf-lite \
                  $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
-LIBPOWERD_OBJS = power_state_control.pb.o \
+LIBPOWERD_OBJS = power_manager/suspend.pb.o \
+                 power_state_control.pb.o \
                  power_supply_properties.pb.o \
                  powerd/ambient_light_sensor.o \
                  powerd/async_file_reader.o \
@@ -56,6 +57,7 @@ LIBPOWERD_OBJS = power_state_control.pb.o \
                  powerd/rolling_average.o \
                  powerd/screen_locker.o \
                  powerd/state_control.o \
+                 powerd/suspend_delay_controller.o \
                  powerd/suspender.o \
                  video_activity_update.pb.o \
                  powerd/video_detector.o
@@ -101,6 +103,7 @@ POWERD_UNITTEST_OBJS = powerd/ambient_light_sensor_unittest.o \
                        powerd/monitor_reconfigure.o \
                        powerd/powerd_unittest.o \
                        powerd/rolling_average_unittest.o \
+                       powerd/suspend_delay_controller_unittest.o \
                        powerd/video_detector_unittest.o
 ifeq ($(USE_IS_DESKTOP),)
 POWERD_UNITTEST_OBJS += powerd/internal_backlight_controller_unittest.o \
