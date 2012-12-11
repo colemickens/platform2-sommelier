@@ -81,6 +81,9 @@ HELP_ADVANCED='
   A function that performs a suite of network diagnostics.  Saves a copy
   of the output to your download directory.
 
+ rlz < status | enable | disable >
+  Enable or disable RLZ.
+
  route [-n] [-6]
   Display the routing tables.
 
@@ -876,6 +879,49 @@ change_properties() {
     property_value="`echo "${cmd}" | cut -d ":" -f2`"
     xinput set-prop "$2" "${property_number}" "${property_value}"
   done
+}
+
+cmd_rlz() {
+  local flag_file="$HOME/.rlz_disabled"
+  local enabled=1
+  local changed=0
+  if [ -r "${flag_file}" ]; then
+    enabled=0
+  fi
+  case "$1" in
+    "status")
+      if [ $enabled -eq 1 ]; then
+        echo "Currently enabled"
+      else
+        echo "Currently disabled"
+      fi
+      return
+      ;;
+
+    "enable")
+      if [ $enabled -eq 0 ]; then
+        changed=1
+      fi
+      rm -f "${flag_file}"
+      ;;
+
+    "disable")
+      if [ $enabled -eq 1 ]; then
+        changed=1
+      fi
+      touch "${flag_file}"
+      ;;
+
+    *)
+      echo "Usage: rlz < status | enable | disable >"
+      return 1
+      ;;
+  esac
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot for this to take effect."
+  else
+    echo "No change."
+  fi
 }
 
 cmd_syslog() {
