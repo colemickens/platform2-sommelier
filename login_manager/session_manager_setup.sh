@@ -307,7 +307,7 @@ echo "10" > /tmp/cgroup/cpu/chrome_renderers/background/cpu.shares
 chown -R chronos /tmp/cgroup/cpu/chrome_renderers
 
 # For i18n keyboard support (crbug.com/116999)
-export LC_CTYPE=en_US.utf8
+export LC_ALL=en_US.utf8
 
 # On platforms with rotational disks, Chrome takes longer to shut down.
 # As such, we need to change our baseline assumption about what "taking too long
