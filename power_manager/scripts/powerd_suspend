@@ -174,8 +174,12 @@ else
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
     # wait for io and get a more accurate time for wakeup
+    # -V prints a little version information and exits, loading .so but not
+    # making actual RTC accesses. Do *NOT* change this to a normal execution...
+    # it will trigger an RTC interrupt that may count as a wakeup reason, abort
+    # your suspend and cause you hours of pain and confusion!
     if [ -f "${timestamp_file}" ]; then
-        /sbin/hwclock > /dev/null
+        /sbin/hwclock -V > /dev/null
     fi
     # - suspends to ram
     echo -n mem > /sys/power/state
