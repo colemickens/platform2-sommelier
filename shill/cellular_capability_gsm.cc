@@ -46,8 +46,8 @@ const char CellularCapabilityGSM::kPropertyEnabledFacilityLocks[] =
 const char CellularCapabilityGSM::kPropertyUnlockRequired[] = "UnlockRequired";
 const char CellularCapabilityGSM::kPropertyUnlockRetries[] = "UnlockRetries";
 
-const int CellularCapabilityGSM::kGetIMSIRetryLimit = 10;
-const int64 CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 200;
+const int CellularCapabilityGSM::kGetIMSIRetryLimit = 40;
+const int64 CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
