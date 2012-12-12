@@ -10,6 +10,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/time.h>
 
 #include "wimax_manager/dbus_proxiable.h"
 
@@ -27,16 +28,37 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   void Finalize();
 
   void ResumeOnSuspendTimedOut();
-  void RegisterSuspendDelay(uint32 delay_ms);
+
+  // Synchronously registers a suspend delay with the power manager, assigning
+  // the delay's ID to |suspend_delay_id_| and setting
+  // |suspend_delay_registered_| to true on success.  |timeout| is the maximum
+  // amount of time the power manager will wait for the WiMAX manager to
+  // announce its readiness before suspending the system.
+  void RegisterSuspendDelay(base::TimeDelta timeout);
+
+  // Unregisters |suspend_delay_id_|.
   void UnregisterSuspendDelay();
-  void OnSuspendDelay(uint32 sequence_number);
+
+  // Invoked when the power manager is about to suspend the system.  Prepares
+  // the manager for suspend and calls SendHandleSuspendReadiness().
+  void OnSuspendImminent(const std::vector<uint8> &serialized_proto);
+
   void OnPowerStateChanged(const std::string &new_power_state);
 
  private:
   void CancelSuspendTimeout();
-  void SuspendReady(uint32 sequence_number);
 
+  // Calls the power manager's HandleSuspendReadiness method to report readiness
+  // for suspend attempt |suspend_id|.
+  void SendHandleSuspendReadiness(int suspend_id);
+
+  // Is a suspend delay currently registered?
   bool suspend_delay_registered_;
+
+  // Power-manager-assigned ID representing the delay registered by
+  // RegisterSuspendDelay().
+  int suspend_delay_id_;
+
   bool suspended_;
   guint suspend_timeout_id_;
   Manager *wimax_manager_;

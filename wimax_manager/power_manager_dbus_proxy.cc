@@ -6,10 +6,13 @@
 
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
+#include <google/protobuf/message_lite.h>
 
+#include "power_manager/suspend.pb.h"
 #include "wimax_manager/power_manager.h"
 
 using std::string;
+using std::vector;
 
 namespace wimax_manager {
 
@@ -25,8 +28,9 @@ PowerManagerDBusProxy::PowerManagerDBusProxy(DBus::Connection *connection,
 PowerManagerDBusProxy::~PowerManagerDBusProxy() {
 }
 
-void PowerManagerDBusProxy::SuspendDelay(const uint32_t &sequence_number) {
-  power_manager_->OnSuspendDelay(sequence_number);
+void PowerManagerDBusProxy::SuspendImminent(
+    const vector<uint8> &serialized_proto) {
+  power_manager_->OnSuspendImminent(serialized_proto);
 }
 
 void PowerManagerDBusProxy::PowerStateChanged(const string &new_power_state) {

@@ -5,8 +5,11 @@
 #ifndef WIMAX_MANAGER_POWER_MANAGER_DBUS_PROXY_H_
 #define WIMAX_MANAGER_POWER_MANAGER_DBUS_PROXY_H_
 
-#include <string>
 
+#include <string>
+#include <vector>
+
+#include "base/basictypes.h"
 #include "wimax_manager/dbus_bindings/power_manager.h"
 #include "wimax_manager/dbus_proxy.h"
 
@@ -20,7 +23,7 @@ class PowerManagerDBusProxy : public org::chromium::PowerManager_proxy,
   PowerManagerDBusProxy(DBus::Connection *connection, PowerManager *manager);
   virtual ~PowerManagerDBusProxy();
 
-  virtual void SuspendDelay(const uint32_t &sequence_number);
+  virtual void SuspendImminent(const std::vector<uint8> &serialized_proto);
   virtual void PowerStateChanged(const std::string &new_power_state);
 
  private:
