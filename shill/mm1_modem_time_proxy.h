@@ -1,0 +1,71 @@
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SHILL_MM1_MODEM_TIME_PROXY_H_
+#define SHILL_MM1_MODEM_TIME_PROXY_H_
+
+#include <string>
+
+#include "shill/dbus_bindings/mm1-modem-time.h"
+#include "shill/dbus_properties.h"
+#include "shill/mm1_modem_time_proxy_interface.h"
+
+namespace shill {
+namespace mm1 {
+
+class ModemTimeProxy : public ModemTimeProxyInterface {
+ public:
+  ModemTimeProxy(DBus::Connection *connection,
+                 const std::string &path,
+                 const std::string &service);
+  virtual ~ModemTimeProxy();
+
+  // Inherited methods from ModemTimeProxyInterface.
+  virtual void GetNetworkTime(Error *error,
+                              const StringCallback &callback,
+                              int timeout);
+
+  virtual void set_network_time_changed_callback(
+      const NetworkTimeChangedSignalCallback &callback);
+
+  // Inherited properties from ModemTimeProxyInterface.
+  virtual const DBusPropertiesMap NetworkTimezone();
+
+ private:
+  class Proxy : public org::freedesktop::ModemManager1::Modem::Time_proxy,
+                public DBus::ObjectProxy {
+   public:
+    Proxy(DBus::Connection *connection,
+          const std::string &path,
+          const std::string &service);
+    virtual ~Proxy();
+
+    void set_network_time_changed_callback(
+        const NetworkTimeChangedSignalCallback &callback);
+
+   private:
+    // Signal callbacks inherited from Proxy
+    // handle signals.
+    void NetworkTimeChanged(const std::string &time);
+
+    // Method callbacks inherited from
+    // org::freedesktop::ModemManager1::Modem::Time_proxy.
+    virtual void GetNetworkTimeCallback(const std::string &time,
+                                        const ::DBus::Error &dberror,
+                                        void *data);
+
+    NetworkTimeChangedSignalCallback network_time_changed_callback_;
+
+    DISALLOW_COPY_AND_ASSIGN(Proxy);
+  };
+
+  Proxy proxy_;
+
+  DISALLOW_COPY_AND_ASSIGN(ModemTimeProxy);
+};
+
+}  // namespace mm1
+}  // namespace shill
+
+#endif  // SHILL_MM1_MODEM_TIME_PROXY_H_

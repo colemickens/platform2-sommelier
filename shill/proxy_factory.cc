@@ -14,6 +14,7 @@
 #include "shill/mm1_modem_modemcdma_proxy.h"
 #include "shill/mm1_modem_proxy.h"
 #include "shill/mm1_modem_simple_proxy.h"
+#include "shill/mm1_modem_time_proxy.h"
 #include "shill/mm1_sim_proxy.h"
 #include "shill/modem_cdma_proxy.h"
 #include "shill/modem_gobi_proxy.h"
@@ -134,6 +135,12 @@ mm1::ModemSimpleProxyInterface *ProxyFactory::CreateMM1ModemSimpleProxy(
       const string &path,
       const string &service) {
   return new mm1::ModemSimpleProxy(connection(), path, service);
+}
+
+mm1::ModemTimeProxyInterface *ProxyFactory::CreateMM1ModemTimeProxy(
+      const string &path,
+      const string &service) {
+  return new mm1::ModemTimeProxy(connection(), path, service);
 }
 
 mm1::SimProxyInterface *ProxyFactory::CreateSimProxy(

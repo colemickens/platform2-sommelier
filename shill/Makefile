@@ -110,6 +110,7 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager1.Modem.Modem3gpp>mm1-modem-modem3gpp \
 	org.freedesktop.ModemManager1.Modem.ModemCdma>mm1-modem-modemcdma \
 	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple \
+	org.freedesktop.ModemManager1.Modem.Time>mm1-modem-time \
 	org.freedesktop.ModemManager1.Sim>mm1-sim
 
 # Rename local XML files with the names required by DBus to XML files with the
@@ -218,6 +219,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	mm1_modem_modemcdma_proxy.o \
 	mm1_modem_proxy.o \
 	mm1_modem_simple_proxy.o \
+	mm1_modem_time_proxy.o \
 	mm1_sim_proxy.o \
 	modem.o \
 	modem_1.o \
@@ -370,6 +372,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_mm1_modem_modem3gpp_proxy.o \
 	mock_mm1_modem_proxy.o \
 	mock_mm1_modem_simple_proxy.o \
+	mock_mm1_modem_time_proxy.o \
 	mock_mm1_sim_proxy.o \
 	mock_modem.o \
 	mock_modem_cdma_proxy.o \
