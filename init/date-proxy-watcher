@@ -73,7 +73,7 @@ NET_PID="$!"
 
 trap "kill -TERM $MON_PID $NET_PID" EXIT INT QUIT TERM
 
-while read PROXY_SETTINGS < "$WORK_DIR/proxy-fifo" ; do
+(while read PROXY_SETTINGS < "$WORK_DIR/proxy-fifo" ; do
   case "${PROXY_SETTINGS}" in
     DIRECT )
       $LOG "direct connection"
@@ -86,7 +86,7 @@ while read PROXY_SETTINGS < "$WORK_DIR/proxy-fifo" ; do
   esac
   if [ "${proxy}" != "${proxy_current}" ]; then
     $LOG "proxy changing to '${proxy}'"
-    echo "${proxy}" >"$WORK_DIR/fifo"
+    echo "${proxy}"
     proxy_current=${proxy}
   fi
-  done
+  done) >"$WORK_DIR/fifo"
