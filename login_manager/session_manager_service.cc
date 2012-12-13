@@ -175,7 +175,7 @@ const char SessionManagerService::kLegalCharacters[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
     ".@1234567890-+_";
 const char SessionManagerService::kIncognitoUser[] = "";
-const char SessionManagerService::kDemoUser[] = "demouser";
+const char SessionManagerService::kDemoUser[] = "demouser@";
 const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 const char SessionManagerService::kFirstBootFlag[] = "--first-boot";
 const char SessionManagerService::kTestingChannelFlag[] =
