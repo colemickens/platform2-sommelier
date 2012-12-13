@@ -164,6 +164,13 @@ TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
   ExpectStringProperty(WiFiService::kStorageMode, mode);
   const string security("unbreakablecrypto");
   ExpectStringProperty(WiFiService::kStorageSecurity, security);
+  const string ca_cert_id("ca-cert-id");
+  ExpectStringProperty(WiFiService::kStorageEapCACertID, ca_cert_id);
+  const string cert_id("cert-id");
+  ExpectStringProperty(WiFiService::kStorageEapCertID, cert_id);
+  const string key_id("key-id");
+  ExpectStringProperty(WiFiService::kStorageEapKeyID, key_id);
+
 
   ProfileDBusPropertyExporter::PropertyList props;
   Error e;
@@ -171,6 +178,10 @@ TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
   EXPECT_EQ(hidden_ssid, GetBoolProperty(&props, flimflam::kWifiHiddenSsid));
   EXPECT_EQ(mode, GetStringProperty(&props, flimflam::kModeProperty));
   EXPECT_EQ(security, GetStringProperty(&props, flimflam::kSecurityProperty));
+  EXPECT_EQ(ca_cert_id,
+            GetStringProperty(&props, flimflam::kEapCaCertIDProperty));
+  EXPECT_EQ(cert_id, GetStringProperty(&props, flimflam::kEAPCertIDProperty));
+  EXPECT_EQ(key_id, GetStringProperty(&props, flimflam::kEAPKeyIDProperty));
 }
 
 }  // namespace shill

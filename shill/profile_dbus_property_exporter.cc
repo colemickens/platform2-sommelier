@@ -63,6 +63,18 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
   return true;
 }
 
+bool ProfileDBusPropertyExporter::LoadEapServiceProperties(
+    PropertyList *properties,
+    Error */*error*/) {
+  LoadString(properties, WiFiService::kStorageEapCACertID,
+             flimflam::kEapCaCertIDProperty);
+  LoadString(properties, WiFiService::kStorageEapCertID,
+             flimflam::kEAPCertIDProperty);
+  LoadString(properties, WiFiService::kStorageEapKeyID,
+             flimflam::kEAPKeyIDProperty);
+  return true;
+}
+
 bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
@@ -86,6 +98,9 @@ bool ProfileDBusPropertyExporter::LoadWiFiServiceProperties(
                   flimflam::kSecurityProperty) && parsed_identifier) {
     SetString(properties, flimflam::kSecurityProperty, security);
   }
+
+  LoadEapServiceProperties(properties, NULL);
+
   return true;
 }
 

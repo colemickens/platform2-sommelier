@@ -36,6 +36,8 @@ class ProfileDBusPropertyExporter {
                              Error *error);
 
  private:
+  bool LoadEapServiceProperties(PropertyList *properties,
+                                Error *error);
   bool LoadWiFiServiceProperties(PropertyList *properties,
                                  Error *error);
 
