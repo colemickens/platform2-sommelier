@@ -738,21 +738,41 @@ string Service::CalculateTechnology(Error */*error*/) {
 
 void Service::NoteDisconnectEvent() {
   SLOG(Service, 2) << __func__;
+  // Ignore the event if it's user-initiated explicit disconnect.
   if (explicitly_disconnected_) {
+    SLOG(Service, 2) << "Explicit disconnect ignored.";
+    return;
+  }
+  // Ignore the event if manager is not running (e.g., service disconnects on
+  // shutdown).
+  if (!manager_->running()) {
+    SLOG(Service, 2) << "Disconnect while manager stopped ignored.";
+    return;
+  }
+  // Ignore the event if the power state is not on (e.g., when suspending).
+  PowerManager *power_manager = manager_->power_manager();
+  if (!power_manager ||
+      (power_manager->power_state() != PowerManager::kOn &&
+       power_manager->power_state() != PowerManager::kUnknown)) {
+    SLOG(Service, 2) << "Disconnect in transitional power state ignored.";
     return;
   }
   struct timeval period = (const struct timeval){ 0 };
   size_t threshold = 0;
   deque<struct timeval> *events = NULL;
   if (IsConnected()) {
+    LOG(INFO) << "Noting an unexpected connection drop.";
     period.tv_sec = kDisconnectsMonitorSeconds;
     threshold = kReportDisconnectsThreshold;
     events = &disconnects_;
   } else if (IsConnecting()) {
+    LOG(INFO) << "Noting an unexpected failure to connect.";
     period.tv_sec = kMisconnectsMonitorSeconds;
     threshold = kReportMisconnectsThreshold;
     events = &misconnects_;
   } else {
+    SLOG(Service, 2)
+        << "Not connected or connecting, state transition ignored.";
     return;
   }
   // Discard old events first.

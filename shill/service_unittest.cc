@@ -26,7 +26,9 @@
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_power_manager.h"
 #include "shill/mock_profile.h"
+#include "shill/mock_proxy_factory.h"
 #include "shill/mock_store.h"
 #include "shill/mock_time.h"
 #include "shill/property_store_inspector.h"
@@ -63,9 +65,12 @@ class ServiceTest : public PropertyStoreTest {
                                       dispatcher(),
                                       metrics(),
                                       &mock_manager_)),
-        storage_id_(ServiceUnderTest::kStorageId) {
+        storage_id_(ServiceUnderTest::kStorageId),
+        power_manager_(new MockPowerManager(NULL, &proxy_factory_)) {
     service_->time_ = &time_;
     service_->diagnostics_reporter_ = &diagnostics_reporter_;
+    mock_manager_.running_ = true;
+    mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
 
   virtual ~ServiceTest() {}
@@ -74,6 +79,25 @@ class ServiceTest : public PropertyStoreTest {
 
  protected:
   typedef scoped_refptr<MockProfile> MockProfileRefPtr;
+
+  class TestProxyFactory : public ProxyFactory {
+   public:
+    TestProxyFactory() {}
+
+    virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
+        PowerManagerProxyDelegate *delegate) {
+      return NULL;
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
+  };
+
+  void SetManagerRunning(bool running) { mock_manager_.running_ = running; }
+
+  void SetPowerState(PowerManager::SuspendState state) {
+    power_manager_->power_state_ = state;
+  }
 
   void SetExplicitlyDisconnected(bool explicitly) {
     service_->explicitly_disconnected_ = explicitly;
@@ -113,6 +137,8 @@ class ServiceTest : public PropertyStoreTest {
   MockTime time_;
   scoped_refptr<ServiceUnderTest> service_;
   string storage_id_;
+  TestProxyFactory proxy_factory_;
+  MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
 };
 
 class AllMockServiceTest : public testing::Test {
@@ -1015,6 +1041,20 @@ TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
   // Failure to idle transition is a non-event.
   SetStateField(Service::kStateFailure);
   SetExplicitlyDisconnected(false);
+  NoteDisconnectEvent();
+  EXPECT_TRUE(GetDisconnects()->empty());
+  EXPECT_TRUE(GetMisconnects()->empty());
+
+  // Disconnect while manager is stopped is a non-event.
+  SetStateField(Service::kStateOnline);
+  SetManagerRunning(false);
+  NoteDisconnectEvent();
+  EXPECT_TRUE(GetDisconnects()->empty());
+  EXPECT_TRUE(GetMisconnects()->empty());
+
+  // Disconnect while suspending is a non-event.
+  SetManagerRunning(true);
+  SetPowerState(PowerManager::kSuspending);
   NoteDisconnectEvent();
   EXPECT_TRUE(GetDisconnects()->empty());
   EXPECT_TRUE(GetMisconnects()->empty());

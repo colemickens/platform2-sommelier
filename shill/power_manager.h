@@ -102,6 +102,7 @@ class PowerManager : public PowerManagerProxyDelegate {
  private:
   friend class ManagerTest;
   friend class PowerManagerTest;
+  friend class ServiceTest;
 
   typedef std::map<const std::string, PowerStateCallback>
     StateChangeCallbackMap;

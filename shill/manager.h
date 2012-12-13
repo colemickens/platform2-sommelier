@@ -83,6 +83,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   virtual void Start();
   void Stop();
+  bool running() const { return running_; }
 
   const ProfileRefPtr &ActiveProfile() const;
   bool IsActiveProfile(const ProfileRefPtr &profile) const;
@@ -206,6 +207,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   DBusManager *dbus_manager() const { return dbus_manager_.get(); }
   virtual DeviceInfo *device_info() { return &device_info_; }
   virtual ModemInfo *modem_info() { return &modem_info_; }
+  PowerManager *power_manager() const { return power_manager_.get(); }
   virtual VPNProvider *vpn_provider() { return &vpn_provider_; }
   virtual WiMaxProvider *wimax_provider() { return &wimax_provider_; }
   PropertyStore *mutable_store() { return &store_; }
@@ -265,6 +267,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class CellularTest;
   friend class ManagerAdaptorInterface;
   friend class ManagerTest;
+  friend class ServiceTest;
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
 
