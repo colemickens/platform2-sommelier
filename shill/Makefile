@@ -107,6 +107,7 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager.Modem.Simple>modem-simple \
 	org.freedesktop.ModemManager1.Bearer>mm1-bearer \
 	org.freedesktop.ModemManager1.Modem>mm1-modem \
+	org.freedesktop.ModemManager1.Modem.Location>mm1-modem-location \
 	org.freedesktop.ModemManager1.Modem.Modem3gpp>mm1-modem-modem3gpp \
 	org.freedesktop.ModemManager1.Modem.ModemCdma>mm1-modem-modemcdma \
 	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple \
@@ -215,6 +216,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	metrics.o \
 	minijail.o \
 	mm1_bearer_proxy.o \
+	mm1_modem_location_proxy.o \
 	mm1_modem_modem3gpp_proxy.o \
 	mm1_modem_modemcdma_proxy.o \
 	mm1_modem_proxy.o \
@@ -368,6 +370,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_metrics.o \
 	mock_minijail.o \
 	mock_mm1_bearer_proxy.o \
+	mock_mm1_modem_location_proxy.o \
 	mock_mm1_modem_modemcdma_proxy.o \
 	mock_mm1_modem_modem3gpp_proxy.o \
 	mock_mm1_modem_proxy.o \

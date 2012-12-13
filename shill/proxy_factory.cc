@@ -10,6 +10,7 @@
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
 #include "shill/mm1_bearer_proxy.h"
+#include "shill/mm1_modem_location_proxy.h"
 #include "shill/mm1_modem_modem3gpp_proxy.h"
 #include "shill/mm1_modem_modemcdma_proxy.h"
 #include "shill/mm1_modem_proxy.h"
@@ -141,6 +142,12 @@ mm1::ModemTimeProxyInterface *ProxyFactory::CreateMM1ModemTimeProxy(
       const string &path,
       const string &service) {
   return new mm1::ModemTimeProxy(connection(), path, service);
+}
+
+mm1::ModemLocationProxyInterface *ProxyFactory::CreateMM1ModemLocationProxy(
+      const string &path,
+      const string &service) {
+  return new mm1::ModemLocationProxy(connection(), path, service);
 }
 
 mm1::SimProxyInterface *ProxyFactory::CreateSimProxy(

@@ -40,6 +40,7 @@ class WiMaxNetworkProxyInterface;
 namespace mm1 {
 
 class BearerProxyInterface;
+class ModemLocationProxyInterface;
 class ModemModem3gppProxyInterface;
 class ModemModemCdmaProxyInterface;
 class ModemProxyInterface;
@@ -107,6 +108,10 @@ class ProxyFactory {
       const std::string &service);
 
   virtual mm1::ModemProxyInterface *CreateMM1ModemProxy(
+      const std::string &path,
+      const std::string &service);
+
+  virtual mm1::ModemLocationProxyInterface *CreateMM1ModemLocationProxy(
       const std::string &path,
       const std::string &service);
 

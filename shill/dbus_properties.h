@@ -17,6 +17,7 @@
 namespace shill {
 
 typedef std::map<std::string, DBus::Variant> DBusPropertiesMap;
+typedef std::map<uint32_t, DBus::Variant> DBusEnumValueMap;
 
 class DBusProperties {
  public:

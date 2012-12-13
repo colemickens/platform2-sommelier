@@ -19,6 +19,8 @@ typedef base::Callback<void(const DBusPropertiesMap &,
                             const Error &)> DBusPropertyMapCallback;
 typedef base::Callback<void(const std::vector<DBusPropertiesMap> &,
                             const Error &)> DBusPropertyMapsCallback;
+typedef base::Callback<void(const DBusEnumValueMap &,
+                            const Error &)> DBusEnumValueMapCallback;
 typedef base::Callback<void(const DBus::Path &,
                             const Error &)> DBusPathCallback;
 typedef base::Callback<void(
