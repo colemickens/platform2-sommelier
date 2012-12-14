@@ -52,6 +52,14 @@ CXX_BINARY(tools/backlight_dbus_tool): LDLIBS += $(BACKLIGHTDBUSTOOL_LIBS)
 clean: CXX_BINARY(tools/backlight_dbus_tool)
 all: CXX_BINARY(tools/backlight_dbus_tool)
 
+CXX_BINARY(tools/powerd_dbus_suspend): tools/powerd_dbus_suspend.o
+CXX_BINARY(tools/powerd_dbus_suspend): CPPFLAGS += $(DBUS_FLAGS) \
+	$(shell $(PKG_CONFIG) --cflags libchrome-$(BASE_VER))
+CXX_BINARY(tools/powerd_dbus_suspend): LDLIBS += $(DBUS_LIBS) -lgflags \
+	$(shell $(PKG_CONFIG) --libs libchrome-$(BASE_VER))
+clean: CXX_BINARY(tools/powerd_dbus_suspend)
+all: CXX_BINARY(tools/powerd_dbus_suspend)
+
 SUSPENDDELAYSAMPLE_FLAGS = $(LIBPOWERMAN_FLAGS)
 SUSPENDDELAYSAMPLE_LIBS = $(LIBPOWERMAN_LIBS) -lgflags -lprotobuf-lite
 SUSPENDDELAYSAMPLE_OBJS = tools/suspend_delay_sample.o \
