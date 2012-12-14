@@ -27,9 +27,6 @@
 #define VCSID "<not set>"
 #endif
 
-static const char *kDBusInterface = "org.freedesktop.DBus";
-static const char *kDBusNameOwnerChanged = "NameOwnerChanged";
-
 DBus::Glib::BusDispatcher dispatcher;
 GMainLoop *main_loop;
 static CromoServer *server;
@@ -118,71 +115,6 @@ static void block_signals(void) {
   pthread_sigmask(SIG_BLOCK, &sigs, NULL);
 }
 
-class MessageHandler : public DBus::Callback_Base<bool, const DBus::Message&> {
-  public:
-    MessageHandler(CromoServer *srv) : srv_(srv) { }
-
-    bool NameOwnerChanged(const DBus::Message& param) const {
-      DBus::MessageIter iter;
-      const char *name;
-      const char *oldowner;
-      const char *newowner;
-      iter = param.reader();
-      name = iter.get_string();
-      iter++;
-      oldowner = iter.get_string();
-      iter++;
-      newowner = iter.get_string();
-      if (name && strcmp(name, power_manager::kPowerManagerInterface) == 0) {
-        if (strlen(oldowner) && !strlen(newowner)) {
-          srv_->PowerDaemonDown();
-        } else if (!strlen(oldowner) && strlen(newowner)) {
-          srv_->PowerDaemonUp();
-        }
-      }
-      return true;
-    }
-
-    bool PowerStateChanged(const DBus::Message& param) const {
-      DBus::MessageIter iter;
-      const char *new_power_state;
-      iter = param.reader();
-      new_power_state = iter.get_string();
-      srv_->PowerStateChanged(new_power_state ? new_power_state : "");
-      return true;
-    }
-
-    bool SuspendDelay(const DBus::Message& param) const {
-      unsigned int seqnum;
-      DBus::MessageIter iter;
-      iter = param.reader();
-      seqnum = iter.get_uint32();
-      srv_->SuspendDelay(seqnum);
-      return true;
-    }
-
-    bool call(const DBus::Message& param) const {
-      if (param.is_signal(kDBusInterface, kDBusNameOwnerChanged)) {
-        return NameOwnerChanged(param);
-      }
-      if (param.is_signal(power_manager::kPowerManagerInterface,
-                          power_manager::kPowerStateChangedSignal)) {
-        return PowerStateChanged(param);
-      }
-
-      // shill now handles disconnect on suspend, so skip the suspend delay
-      // handling in cromo. See crosbug.com/30587 for details.
-      //
-      // if (param.is_signal(power_manager::kPowerManagerInterface,
-      //                     power_manager::kSuspendDelay)) {
-      //   return SuspendDelay(param);
-      // }
-      return false;
-    }
-  private:
-    CromoServer *srv_;
-};
-
 // Always logs to the syslog and stderr.
 void SetupLogging(void) {
   int log_flags = 0;
@@ -219,25 +151,6 @@ int main(int argc, char* argv[]) {
   conn.request_name(CromoServer::kServiceName);
 
   server = new CromoServer(conn);
-  std::string match =
-      base::StringPrintf("type='signal',interface='%s',member='%s'",
-                         kDBusInterface, kDBusNameOwnerChanged);
-  conn.add_match(match.c_str());
-  match = base::StringPrintf("type='signal',interface='%s',member='%s'",
-                             power_manager::kPowerManagerInterface,
-                             power_manager::kPowerStateChangedSignal);
-  conn.add_match(match.c_str());
-  match = base::StringPrintf("type='signal',interface='%s',member='%s'",
-                             power_manager::kPowerManagerInterface,
-                             power_manager::kSuspendDelay);
-  conn.add_match(match.c_str());
-  DBus::MessageSlot mslot;
-  mslot = new MessageHandler(server);
-  if (!conn.add_filter(mslot)) {
-    LOG(ERROR) << "Can't add filter";
-  } else {
-    LOG(INFO) << "Registered filter.";
-  }
 
   // Add carriers before plugins so that they can be overidden
   AddBaselineCarriers(server);
@@ -245,8 +158,6 @@ int main(int argc, char* argv[]) {
   // Instantiate modem handlers for each type of hardware supported
   std::string plugins = cl->GetSwitchValueASCII(switches::kPlugins);
   PluginManager::LoadPlugins(server, plugins);
-
-  server->CheckForPowerDaemon();
 
   dispatcher.enter();
   g_thread_init(NULL);
