@@ -9,7 +9,9 @@
 #include <grp.h>
 #include <libudev.h>
 
+#include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -29,6 +31,11 @@ class PermissionBroker {
   // Initializes the broker and loops waiting for requests on the DBus
   // interface. Never returns.
   void Run();
+
+  // Adds an exception to the rule processor that forces devices identified by
+  // |vendor_id| and |product_id| to be ignored by the broker, but to claim that
+  // they were successfully opened when requested.
+  void AddUsbException(const uint16_t vendor_id, const uint16_t product_id);
 
   // Adds |rule| to the end of the existing rule chain. Takes ownership of
   // |rule|.
@@ -76,6 +83,7 @@ class PermissionBroker {
   struct udev *udev_;
   gid_t access_group_;
   std::vector<Rule *> rules_;
+  std::set<std::pair<uint16_t, uint16_t> > usb_exceptions_;
 
   DISALLOW_COPY_AND_ASSIGN(PermissionBroker);
 };

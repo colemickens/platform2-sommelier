@@ -83,6 +83,11 @@ void PermissionBroker::Run() {
   g_main_loop_run(loop);
 }
 
+void PermissionBroker::AddUsbException(const uint16_t vendor_id,
+                                       const uint16_t product_id) {
+  usb_exceptions_.insert(std::make_pair(vendor_id, product_id));
+}
+
 void PermissionBroker::AddRule(Rule *rule) {
   CHECK(rule) << "Cannot add NULL as a rule.";
   rules_.push_back(rule);
@@ -254,14 +259,18 @@ DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
     return reply;
   }
 
-  vector<string> paths;
-  if (ExpandUsbIdentifiersToPaths(vendor_id, product_id, &paths)) {
+  if (ContainsKey(usb_exceptions_, std::make_pair(vendor_id, product_id))) {
     success = true;
-    for (unsigned int i = 0; i < paths.size(); ++i)
-      success &= ProcessPath(paths[i]);
   } else {
-    LOG(INFO) << "Could not expand (" << vendor_id << ", " << product_id
-              << ") to a list of device nodes.";
+    vector<string> paths;
+    if (ExpandUsbIdentifiersToPaths(vendor_id, product_id, &paths)) {
+      success = true;
+      for (unsigned int i = 0; i < paths.size(); ++i)
+        success &= ProcessPath(paths[i]);
+    } else {
+      LOG(INFO) << "Could not expand (" << vendor_id << ", " << product_id
+                << ") to a list of device nodes.";
+    }
   }
 
   dbus_message_append_args(reply,
