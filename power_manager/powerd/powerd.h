@@ -44,7 +44,6 @@ struct cras_client;
 
 namespace power_manager {
 
-class DBusSenderInterface;
 class PowerButtonHandler;
 class StateControl;
 
@@ -514,9 +513,6 @@ class Daemon : public BacklightControllerObserver,
   VideoDetector* video_detector_;
   IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
-
-  scoped_ptr<DBusSenderInterface> dbus_sender_;
-
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;
   int64 sample_window_max_;

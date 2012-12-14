@@ -96,10 +96,6 @@ bool IsDBusServiceConnected(const std::string& service_name,
                             const std::string& interface,
                             std::string* connection_name_out);
 
-// Returns the name of the connection from which |message| originated.
-// Logs an error and returns an empty string if the name wasn't available.
-std::string GetDBusSender(DBusMessage* message);
-
 }  // namespace util
 }  // namespace power_manager
 

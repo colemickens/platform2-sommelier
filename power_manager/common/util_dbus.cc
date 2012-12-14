@@ -299,14 +299,5 @@ bool IsDBusServiceConnected(const std::string& service_name,
   return true;
 }
 
-std::string GetDBusSender(DBusMessage* message) {
-  const char* client_name = dbus_message_get_sender(message);
-  if (client_name)
-    return std::string(client_name);
-
-  LOG(ERROR) << "dbus_message_get_sender() returned NULL";
-  return std::string();
-}
-
 }  // namespace util
 }  // namespace power_manager

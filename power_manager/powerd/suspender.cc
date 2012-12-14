@@ -19,8 +19,6 @@
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/powerd.h"
-#include "power_manager/powerd/suspend_delay_controller.h"
-#include "power_manager/suspend.pb.h"
 
 using base::TimeTicks;
 using std::max;
@@ -37,26 +35,14 @@ const char kError[] = ".Error";
 
 namespace power_manager {
 
-Suspender::Suspender(ScreenLocker* locker,
-                     FileTagger* file_tagger,
-                     DBusSenderInterface* dbus_sender)
+Suspender::Suspender(ScreenLocker* locker, FileTagger* file_tagger)
     : locker_(locker),
       file_tagger_(file_tagger),
-      suspend_delay_controller_(new SuspendDelayController(dbus_sender)),
       suspend_delay_timeout_ms_(0),
       suspend_delays_outstanding_(0),
       suspend_requested_(false),
       suspend_sequence_number_(0),
-      check_suspend_timeout_id_(0),
-      wait_for_screen_lock_(false),
-      wakeup_count_valid_(false) {
-  suspend_delay_controller_->AddObserver(this);
-}
-
-Suspender::~Suspender() {
-  suspend_delay_controller_->RemoveObserver(this);
-  CancelCheckSuspendTimeout();
-}
+      wakeup_count_valid_(false) {}
 
 void Suspender::NameOwnerChangedHandler(DBusGProxy*,
                                         const gchar* name,
@@ -68,11 +54,8 @@ void Suspender::NameOwnerChangedHandler(DBusGProxy*,
     LOG(ERROR) << "NameOwnerChanged with Null name or new owner.";
     return;
   }
-  if (strlen(new_owner) == 0) {
-    suspender->suspend_delay_controller_->HandleDBusClientDisconnected(name);
-    if (suspender->CleanUpSuspendDelay(name))
+  if (0 == strlen(new_owner) && suspender->CleanUpSuspendDelay(name))
       LOG(INFO) << name << " deleted for dbus name change.";
-  }
 }
 
 void Suspender::Init(const FilePath& run_dir, Daemon* daemon) {
@@ -81,7 +64,7 @@ void Suspender::Init(const FilePath& run_dir, Daemon* daemon) {
 }
 
 void Suspender::RequestSuspend() {
-  unsigned int timeout_ms = 0;
+  unsigned int timeout_ms;
   suspend_requested_ = true;
   suspend_delays_outstanding_ = suspend_delays_.size();
   wakeup_count_ = 0;
@@ -92,38 +75,30 @@ void Suspender::RequestSuspend() {
     LOG(ERROR) << "Could not get wakeup_count prior to suspend.";
     wakeup_count_valid_ = false;
   }
-
-  suspend_sequence_number_++;
-  suspend_delay_controller_->PrepareForSuspend(suspend_sequence_number_);
+  // Use current time for sequence number.
+  suspend_sequence_number_ = TimeTicks::Now().ToInternalValue() / 1000;
   BroadcastSignalToClients(kSuspendDelay, suspend_sequence_number_);
-
-  // TODO(derat): Make Chrome just register a suspend delay and lock the screen
-  // itself if lock-on-suspend is enabled instead of setting a powerd pref.
-  wait_for_screen_lock_ = locker_->lock_on_suspend_enabled();
-  if (wait_for_screen_lock_) {
+  // TODO(bleung) : change locker to use the new delayed suspend method
+  if (locker_->lock_on_suspend_enabled()) {
     locker_->LockScreen();
+    suspend_delays_outstanding_++;  // one for the locker. TODO : remove this.
     timeout_ms = max(kScreenLockerTimeoutMS, suspend_delay_timeout_ms_);
   } else {
     timeout_ms = suspend_delay_timeout_ms_;
   }
-
   timeout_ms = min(kMaximumDelayTimeoutMS, timeout_ms);
   LOG(INFO) << "Request Suspend #" << suspend_sequence_number_
             << " Delay Timeout = " << timeout_ms;
-
-  CancelCheckSuspendTimeout();
-  if (timeout_ms > 0) {
-    check_suspend_timeout_id_ = g_timeout_add(
-        timeout_ms, CheckSuspendTimeoutThunk, this);
-  }
+  g_timeout_add(timeout_ms, CheckSuspendTimeoutThunk,
+                CreateCheckSuspendTimeoutArgs(this, suspend_sequence_number_));
 }
 
 void Suspender::CheckSuspend() {
-  if (suspend_requested_ &&
-      suspend_delays_outstanding_ == 0 &&
-      suspend_delay_controller_->ready_for_suspend() &&
-      (!wait_for_screen_lock_ || locker_->is_locked())) {
-    CancelCheckSuspendTimeout();
+  if (0 < suspend_delays_outstanding_) {
+    suspend_delays_outstanding_--;
+    LOG(INFO) << "suspend delays outstanding = " << suspend_delays_outstanding_;
+  }
+  if (suspend_requested_ && 0 == suspend_delays_outstanding_) {
     suspend_requested_ = false;
     LOG(INFO) << "All suspend delays accounted for. Suspending.";
     Suspend();
@@ -156,20 +131,9 @@ void Suspender::CancelSuspend() {
 
   suspend_requested_ = false;
   suspend_delays_outstanding_ = 0;
-  CancelCheckSuspendTimeout();
 }
 
 DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
-  RegisterSuspendDelayRequest request;
-  if (util::ParseProtocolBufferFromDBusMessage(message, &request)) {
-    RegisterSuspendDelayReply reply_proto;
-    suspend_delay_controller_->RegisterSuspendDelay(
-        request, util::GetDBusSender(message), &reply_proto);
-    return util::CreateDBusProtocolBufferReply(message, reply_proto);
-  }
-
-  // TODO(derat); Remove everything after this after clients are updated to use
-  // the protocol-buffer-based version above: http://crosbug.com/36980
   DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
 
@@ -205,15 +169,6 @@ DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
 }
 
 DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
-  UnregisterSuspendDelayRequest request;
-  if (util::ParseProtocolBufferFromDBusMessage(message, &request)) {
-    suspend_delay_controller_->UnregisterSuspendDelay(
-        request, util::GetDBusSender(message));
-    return NULL;
-  }
-
-  // TODO(derat): Remove everything after this after clients are updated to use
-  // the protocol-buffer-based version above: http://crosbug.com/36980
   DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
 
@@ -230,17 +185,6 @@ DBusMessage* Suspender::UnregisterSuspendDelay(DBusMessage* message) {
     dbus_message_set_error_name(reply, errmsg.c_str());
   }
   return reply;
-}
-
-DBusMessage* Suspender::HandleSuspendReadiness(DBusMessage* message) {
-  SuspendReadinessInfo info;
-  if (!util::ParseProtocolBufferFromDBusMessage(message, &info)) {
-    LOG(ERROR) << "Unable to parse HandleSuspendReadiness request";
-    return util::CreateDBusInvalidArgsErrorReply(message);
-  }
-  suspend_delay_controller_->HandleSuspendReadiness(
-      info, util::GetDBusSender(message));
-  return NULL;
 }
 
 bool Suspender::SuspendReady(DBusMessage* message) {
@@ -265,21 +209,14 @@ bool Suspender::SuspendReady(DBusMessage* message) {
       dbus_error_free(&error);
     return true;
   }
-  if (static_cast<int>(sequence_num) == suspend_sequence_number_) {
+  if (sequence_num == suspend_sequence_number_) {
     LOG(INFO) << "Suspend sequence number match! " << sequence_num;
-    suspend_delays_outstanding_--;
-    LOG(INFO) << "suspend delays outstanding = " << suspend_delays_outstanding_;
     CheckSuspend();
   } else {
     LOG(INFO) << "Out of sequence SuspendReady ack!";
   }
 
   return true;
-}
-
-void Suspender::OnReadyForSuspend(int suspend_id) {
-  if (suspend_id == suspend_sequence_number_)
-    CheckSuspend();
 }
 
 void Suspender::Suspend() {
@@ -294,15 +231,14 @@ void Suspender::Suspend() {
   }
 }
 
-gboolean Suspender::CheckSuspendTimeout() {
-  LOG(ERROR) << "Suspend delay timed out. Seq num = "
-             << suspend_sequence_number_;
-  check_suspend_timeout_id_ = 0;
-  suspend_delays_outstanding_ = 0;
-  // Give up on waiting for the screen to be locked if it isn't already.
-  wait_for_screen_lock_ = false;
-  CheckSuspend();
-  return FALSE;
+gboolean Suspender::CheckSuspendTimeout(unsigned int sequence_num) {
+  if (suspend_requested_ && suspend_sequence_number_ == sequence_num) {
+    LOG(ERROR) << "Suspend delay timed out. Seq num = " << sequence_num;
+    suspend_delays_outstanding_ = 0;
+    CheckSuspend();
+  }
+  // We don't want this callback to be repeated, so we return false.
+  return false;
 }
 
 // Remove |client_name| from list of suspend delay callback clients.
@@ -336,8 +272,8 @@ bool Suspender::CleanUpSuspendDelay(const char* client_name) {
 
 // Broadcast signal, with sequence number payload
 void Suspender::BroadcastSignalToClients(const char* signal_name,
-                                         int sequence_num) {
-  dbus_uint32_t payload = static_cast<dbus_uint32_t>(sequence_num);
+                                         const unsigned int sequence_num) {
+  dbus_uint32_t payload = sequence_num;
   if (!signal_name) {
     LOG(ERROR) << "signal_name NULL pointer!";
     return;
@@ -356,13 +292,6 @@ void Suspender::BroadcastSignalToClients(const char* signal_name,
                            DBUS_TYPE_INVALID);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
-}
-
-void Suspender::CancelCheckSuspendTimeout() {
-  if (check_suspend_timeout_id_) {
-    g_source_remove(check_suspend_timeout_id_);
-    check_suspend_timeout_id_ = 0;
-  }
 }
 
 }  // namespace power_manager
