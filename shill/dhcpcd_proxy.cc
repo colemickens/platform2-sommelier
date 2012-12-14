@@ -4,6 +4,9 @@
 
 #include "shill/dhcpcd_proxy.h"
 
+#include <dbus/dbus.h>
+#include <string.h>
+
 #include <limits>
 
 #include "shill/dhcp_provider.h"
@@ -114,8 +117,12 @@ void DHCPCDProxy::Release(const string &interface) {
   try {
     proxy_.Release(interface);
   } catch (const DBus::Error &e) {
-    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
-               << " interface: " << interface;
+    if (!strcmp(e.name(), DBUS_ERROR_SERVICE_UNKNOWN)) {
+      LOG(ERROR) << "dhcpcd daemon appears to have already exited.";
+    } else {
+      LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what()
+                 << " interface: " << interface;
+    }
   }
 }
 
