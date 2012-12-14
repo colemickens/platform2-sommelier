@@ -56,9 +56,9 @@ class PowerManager : public PowerManagerProxyDelegate {
   typedef base::Callback<void(SuspendState)> PowerStateCallback;
 
   // This callback is called prior to a suspend event.  When it is OK for the
-  // system to suspend, this callback should call SuspendActionComplete(),
-  // passing it the sequence number passed to this callback.
-  typedef base::Callback<void(uint32)> SuspendDelayCallback;
+  // system to suspend, this callback should call ReportSuspendReadiness(),
+  // passing it the suspend ID passed to this callback.
+  typedef base::Callback<void(int)> SuspendDelayCallback;
 
   static const int kSuspendTimeoutMilliseconds;
 
@@ -71,13 +71,13 @@ class PowerManager : public PowerManagerProxyDelegate {
   SuspendState power_state() const { return power_state_; }
 
   // Methods inherited from PowerManagerProxyDelegate.
-  virtual void OnSuspendDelay(uint32 sequence_number);
+  virtual void OnSuspendImminent(int suspend_id);
   virtual void OnPowerStateChanged(SuspendState new_power_state);
 
   // See corresponding methods in PowerManagerProxyInterface.
-  virtual void RegisterSuspendDelay(uint32 delay_ms);
-  virtual void UnregisterSuspendDelay();
-  virtual void SuspendReady(uint32 suspend_ready);
+  virtual bool RegisterSuspendDelay(base::TimeDelta timeout, int *delay_id_out);
+  virtual bool UnregisterSuspendDelay(int delay_id);
+  virtual bool ReportSuspendReadiness(int delay_id, int suspend_id);
 
   // Registers a power state change callback with the power manager.  When a
   // power state change occurs, this callback will be called with the new power

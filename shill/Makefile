@@ -19,8 +19,10 @@ CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
+PROTOC ?= protoc
 
 BUILDDIR = build
+VPATH = $(BUILDDIR)
 
 LIBDIR = /usr/lib
 SHIMDIR = $(LIBDIR)/shill/shims
@@ -57,6 +59,7 @@ SHILL_LIBS = \
 	-lmobile-provider \
 	-lmetrics \
 	-lminijail \
+	-lprotobuf-lite \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
 NET_DIAGS_UPLOAD_LIBS = \
 	$(shell $(PKG_CONFIG) --libs $(NET_DIAGS_UPLOAD_PC_DEPS))
@@ -70,12 +73,15 @@ DBUS_BINDINGS_DIR = dbus_bindings
 BUILD_DBUS_BINDINGS_DIR = $(BUILDDIR)/shill/$(DBUS_BINDINGS_DIR)
 BUILD_DBUS_BINDINGS_SHIMS_DIR = $(BUILD_DBUS_BINDINGS_DIR)/shims
 
+BUILD_PROTO_BINDINGS_DIR = $(BUILDDIR)/shill/proto_bindings
+
 BUILD_SHIMS_DIR = $(BUILDDIR)/shims
 
 _CREATE_BUILDDIR := $(shell mkdir -p \
 	$(BUILDDIR) \
 	$(BUILD_DBUS_BINDINGS_DIR) \
 	$(BUILD_DBUS_BINDINGS_SHIMS_DIR) \
+	$(BUILD_PROTO_BINDINGS_DIR)/power_manager \
 	$(BUILD_SHIMS_DIR))
 
 DBUS_ADAPTOR_HEADERS :=
@@ -149,6 +155,13 @@ DBUS_ADAPTOR_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_ADAPTOR_HEADERS))
 DBUS_PROXY_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
+
+SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus
+PROTO_BINDINGS_OBJS = $(addprefix $(BUILD_PROTO_BINDINGS_DIR)/, \
+	power_manager/suspend.pb.o \
+	)
+PROTO_BINDINGS_H = $(PROTO_BINDINGS_OBJS:.o=.h)
+PROTO_BINDINGS_CC = $(PROTO_BINDINGS_OBJS:.o=.cc)
 
 SHILL_LIB = $(BUILDDIR)/shill.a
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
@@ -290,7 +303,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_provider.o \
 	wimax_service.o \
 	wpa_supplicant.o \
-	)
+	) \
+	$(PROTO_BINDINGS_OBJS)
 
 SHILL_BIN = shill
 # Broken out separately, because (unlike other SHILL_OBJS), it
@@ -529,8 +543,17 @@ $(DBUS_PROXY_BINDINGS): %.h: %.xml
 $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
+$(PROTO_BINDINGS_H): %.h: %.cc ;
+
+$(PROTO_BINDINGS_CC): \
+	$(BUILD_PROTO_BINDINGS_DIR)/%.pb.cc: $(SYSTEM_API_PROTO_PATH)/%.proto
+	$(PROTOC) --proto_path=$(SYSTEM_API_PROTO_PATH) \
+		--cpp_out=$(BUILD_PROTO_BINDINGS_DIR) $<
+
 $(BUILDDIR)/%.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
+
+$(PROTO_BINDINGS_OBJS): INCLUDE_DIRS += -iquote $(BUILD_PROTO_BINDINGS_DIR)
 
 $(BUILDDIR)/%.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
@@ -541,7 +564,10 @@ $(BUILDDIR)/%.pic.o: %.c
 $(BUILDDIR)/%.pic.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC $(INCLUDE_DIRS) -MMD -c $< -o $@
 
-$(SHILL_OBJS): $(DBUS_ADAPTOR_BINDINGS) $(DBUS_PROXY_BINDINGS)
+$(SHILL_OBJS): \
+	$(DBUS_ADAPTOR_BINDINGS) \
+	$(DBUS_PROXY_BINDINGS) \
+	$(PROTO_BINDINGS_H)
 
 $(SHILL_LIB): $(SHILL_OBJS)
 	$(AR) rcs $@ $^

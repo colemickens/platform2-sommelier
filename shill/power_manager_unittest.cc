@@ -21,6 +21,7 @@ using base::Unretained;
 using std::map;
 using std::string;
 using testing::_;
+using testing::Return;
 using testing::Test;
 
 namespace shill {
@@ -52,8 +53,8 @@ class PowerManagerTest : public Test {
  public:
   static const char kKey1[];
   static const char kKey2[];
-  static const uint32 kSequence1 = 123;
-  static const uint32 kSequence2 = 456;
+  static const int kSuspendId1 = 123;
+  static const int kSuspendId2 = 456;
 
   PowerManagerTest()
       : power_manager_(&dispatcher_, &factory_),
@@ -70,14 +71,14 @@ class PowerManagerTest : public Test {
 
   MOCK_METHOD1(StateChangeAction1, void(PowerManager::SuspendState));
   MOCK_METHOD1(StateChangeAction2, void(PowerManager::SuspendState));
-  MOCK_METHOD1(SuspendDelayAction1, void(uint32));
-  MOCK_METHOD1(SuspendDelayAction2, void(uint32));
+  MOCK_METHOD1(SuspendDelayAction1, void(int));
+  MOCK_METHOD1(SuspendDelayAction2, void(int));
 
  protected:
-  void OnSuspendDelay(uint32 sequence_number) {
+  void OnSuspendImminent(int suspend_id) {
     EXPECT_CALL(dispatcher_,
                 PostDelayedTask(_, PowerManager::kSuspendTimeoutMilliseconds));
-    factory_.delegate()->OnSuspendDelay(sequence_number);
+    factory_.delegate()->OnSuspendImminent(suspend_id);
     EXPECT_EQ(PowerManagerProxyDelegate::kSuspending,
               power_manager_.power_state());
   }
@@ -113,10 +114,10 @@ TEST_F(PowerManagerTest, AddStateChangeCallback) {
 }
 
 TEST_F(PowerManagerTest, AddSuspendDelayCallback) {
-  EXPECT_CALL(*this, SuspendDelayAction1(kSequence1));
+  EXPECT_CALL(*this, SuspendDelayAction1(kSuspendId1));
   power_manager_.AddSuspendDelayCallback(kKey1, suspend_delay_callback1_);
   EXPECT_EQ(PowerManagerProxyDelegate::kUnknown, power_manager_.power_state());
-  OnSuspendDelay(kSequence1);
+  OnSuspendImminent(kSuspendId1);
   power_manager_.RemoveSuspendDelayCallback(kKey1);
 }
 
@@ -134,16 +135,16 @@ TEST_F(PowerManagerTest, AddMultipleStateChangeRunMultiple) {
 }
 
 TEST_F(PowerManagerTest, AddMultipleSuspendDelayRunMultiple) {
-  EXPECT_CALL(*this, SuspendDelayAction1(kSequence1));
-  EXPECT_CALL(*this, SuspendDelayAction1(kSequence2));
+  EXPECT_CALL(*this, SuspendDelayAction1(kSuspendId1));
+  EXPECT_CALL(*this, SuspendDelayAction1(kSuspendId2));
   power_manager_.AddSuspendDelayCallback(kKey1, suspend_delay_callback1_);
 
-  EXPECT_CALL(*this, SuspendDelayAction2(kSequence1));
-  EXPECT_CALL(*this, SuspendDelayAction2(kSequence2));
+  EXPECT_CALL(*this, SuspendDelayAction2(kSuspendId1));
+  EXPECT_CALL(*this, SuspendDelayAction2(kSuspendId2));
   power_manager_.AddSuspendDelayCallback(kKey2, suspend_delay_callback2_);
 
-  OnSuspendDelay(kSequence1);
-  OnSuspendDelay(kSequence2);
+  OnSuspendImminent(kSuspendId1);
+  OnSuspendImminent(kSuspendId2);
 }
 
 TEST_F(PowerManagerTest, RemoveStateChangeCallback) {
@@ -166,21 +167,21 @@ TEST_F(PowerManagerTest, RemoveStateChangeCallback) {
 }
 
 TEST_F(PowerManagerTest, RemoveSuspendDelayCallback) {
-  EXPECT_CALL(*this, SuspendDelayAction1(kSequence1));
-  EXPECT_CALL(*this, SuspendDelayAction1(kSequence2));
+  EXPECT_CALL(*this, SuspendDelayAction1(kSuspendId1));
+  EXPECT_CALL(*this, SuspendDelayAction1(kSuspendId2));
   power_manager_.AddSuspendDelayCallback(kKey1, suspend_delay_callback1_);
 
-  EXPECT_CALL(*this, SuspendDelayAction2(kSequence1));
-  EXPECT_CALL(*this, SuspendDelayAction2(kSequence2)).Times(0);
+  EXPECT_CALL(*this, SuspendDelayAction2(kSuspendId1));
+  EXPECT_CALL(*this, SuspendDelayAction2(kSuspendId2)).Times(0);
   power_manager_.AddSuspendDelayCallback(kKey2, suspend_delay_callback2_);
 
-  OnSuspendDelay(kSequence1);
+  OnSuspendImminent(kSuspendId1);
 
   power_manager_.RemoveSuspendDelayCallback(kKey2);
-  OnSuspendDelay(kSequence2);
+  OnSuspendImminent(kSuspendId2);
 
   power_manager_.RemoveSuspendDelayCallback(kKey1);
-  OnSuspendDelay(kSequence1);
+  OnSuspendImminent(kSuspendId1);
 }
 
 typedef PowerManagerTest PowerManagerDeathTest;
@@ -222,20 +223,26 @@ TEST_F(PowerManagerDeathTest, RemoveStateChangeCallbackUnknownKey) {
 }
 
 TEST_F(PowerManagerTest, RegisterSuspendDelay) {
-  const int kDelay = 100;
-  EXPECT_CALL(*factory_.proxy(), RegisterSuspendDelay(kDelay));
-  power_manager_.RegisterSuspendDelay(kDelay);
+  const base::TimeDelta kTimeout = base::TimeDelta::FromMilliseconds(100);
+  int delay_id = 0;
+  EXPECT_CALL(*factory_.proxy(), RegisterSuspendDelay(kTimeout, &delay_id))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(power_manager_.RegisterSuspendDelay(kTimeout, &delay_id));
 }
 
 TEST_F(PowerManagerTest, UnregisterSuspendDelay) {
-  EXPECT_CALL(*factory_.proxy(), UnregisterSuspendDelay());
-  power_manager_.UnregisterSuspendDelay();
+  const int kDelayId = 123;
+  EXPECT_CALL(*factory_.proxy(), UnregisterSuspendDelay(kDelayId))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(power_manager_.UnregisterSuspendDelay(kDelayId));
 }
 
-TEST_F(PowerManagerTest, SuspendReady) {
-  const uint32 kSeqNumber = 12345;
-  EXPECT_CALL(*factory_.proxy(), SuspendReady(kSeqNumber));
-  power_manager_.SuspendReady(kSeqNumber);
+TEST_F(PowerManagerTest, ReportSuspendReadiness) {
+  const int kDelayId = 678;
+  const int kSuspendId = 12345;
+  EXPECT_CALL(*factory_.proxy(), ReportSuspendReadiness(kDelayId, kSuspendId))
+      .WillOnce(Return(true));
+  EXPECT_TRUE(power_manager_.ReportSuspendReadiness(kDelayId, kSuspendId));
 }
 
 TEST_F(PowerManagerTest, OnSuspendTimeout) {

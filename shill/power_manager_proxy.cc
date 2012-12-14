@@ -5,12 +5,42 @@
 #include "shill/power_manager_proxy.h"
 
 #include <chromeos/dbus/service_constants.h>
+#include <google/protobuf/message_lite.h>
 
 #include "shill/logging.h"
+#include "shill/proto_bindings/power_manager/suspend.pb.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
+
+namespace {
+
+// Serializes |protobuf| to |out| and returns true on success.
+bool SerializeProtocolBuffer(const google::protobuf::MessageLite &protobuf,
+                             vector<uint8_t> *out) {
+  CHECK(out);
+  out->clear();
+  string serialized_protobuf;
+  if (!protobuf.SerializeToString(&serialized_protobuf))
+    return false;
+  out->assign(serialized_protobuf.begin(), serialized_protobuf.end());
+  return true;
+}
+
+// Deserializes |serialized_protobuf| to |protobuf_out| and returns true on
+// success.
+bool DeserializeProtocolBuffer(const vector<uint8_t> &serialized_protobuf,
+                               google::protobuf::MessageLite *protobuf_out) {
+  CHECK(protobuf_out);
+  if (serialized_protobuf.empty())
+    return false;
+  return protobuf_out->ParseFromArray(&serialized_protobuf.front(),
+                                      serialized_protobuf.size());
+}
+
+}  // namespace
 
 PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
                                      DBus::Connection *connection)
@@ -18,36 +48,64 @@ PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
 
 PowerManagerProxy::~PowerManagerProxy() {}
 
-void PowerManagerProxy::RegisterSuspendDelay(uint32 delay_ms) {
-  LOG(INFO) << __func__ << "(" << delay_ms << ")";
-  try {
-    proxy_.RegisterSuspendDelay(delay_ms);
-  } catch (const DBus::Error &e) {
-    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
-               << "delay ms: " << delay_ms;
-  }
-}
+bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
+                                             int *delay_id_out) {
+  LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ")";
 
-void PowerManagerProxy::UnregisterSuspendDelay() {
-  LOG(INFO) << __func__;
+  power_manager::RegisterSuspendDelayRequest request_proto;
+  request_proto.set_timeout(timeout.ToInternalValue());
+  vector<uint8_t> serialized_request;
+  CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
+
+  vector<uint8_t> serialized_reply;
   try {
-    proxy_.UnregisterSuspendDelay();
+    serialized_reply = proxy_.RegisterSuspendDelay(serialized_request);
   } catch (const DBus::Error &e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;
+  }
+
+  power_manager::RegisterSuspendDelayReply reply_proto;
+  if (!DeserializeProtocolBuffer(serialized_reply, &reply_proto)) {
+    LOG(ERROR) << "Failed to register suspend delay.  Couldn't parse response.";
+    return false;
+  }
+  *delay_id_out = reply_proto.delay_id();
+  return true;
+}
+
+bool PowerManagerProxy::UnregisterSuspendDelay(int delay_id) {
+  LOG(INFO) << __func__ << "(" << delay_id << ")";
+
+  power_manager::UnregisterSuspendDelayRequest request_proto;
+  request_proto.set_delay_id(delay_id);
+  vector<uint8_t> serialized_request;
+  CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
+
+  try {
+    proxy_.UnregisterSuspendDelay(serialized_request);
+    return true;
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;
   }
 }
 
-void PowerManagerProxy::SuspendReady(uint32 sequence_number) {
-  // TODO(petkov): Fix this code after SuspendReady is converted to a method
-  // call on the PowerManager DBus interface.
-  LOG(INFO) << __func__  << "(" << sequence_number << ")";
-  DBus::SignalMessage signal(power_manager::kPowerManagerServicePath,
-                             power_manager::kPowerManagerInterface,
-                             power_manager::kSuspendReady);
-  DBus::MessageIter message = signal.writer();
-  message << sequence_number;
-  if (!proxy_.conn().send(signal)) {
-    LOG(ERROR) << "Failed to signal suspend ready (" << sequence_number << ").";
+bool PowerManagerProxy::ReportSuspendReadiness(int delay_id, int suspend_id) {
+  LOG(INFO) << __func__  << "(" << delay_id << ", " << suspend_id << ")";
+
+  power_manager::SuspendReadinessInfo proto;
+  proto.set_delay_id(delay_id);
+  proto.set_suspend_id(suspend_id);
+  vector<uint8_t> serialized_proto;
+  CHECK(SerializeProtocolBuffer(proto, &serialized_proto));
+
+  try {
+    proxy_.HandleSuspendReadiness(serialized_proto);
+    return true;
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    return false;
   }
 }
 
@@ -60,9 +118,16 @@ PowerManagerProxy::Proxy::Proxy(PowerManagerProxyDelegate *delegate,
 
 PowerManagerProxy::Proxy::~Proxy() {}
 
-void PowerManagerProxy::Proxy::SuspendDelay(const uint32_t &sequence_number) {
-  LOG(INFO) << __func__ << "(" << sequence_number << ")";
-  delegate_->OnSuspendDelay(sequence_number);
+void PowerManagerProxy::Proxy::SuspendImminent(
+    const vector<uint8_t> &serialized_proto) {
+  LOG(INFO) << __func__;
+
+  power_manager::SuspendImminent proto;
+  if (!DeserializeProtocolBuffer(serialized_proto, &proto)) {
+    LOG(ERROR) << "Failed to parse SuspendImminent signal.";
+    return;
+  }
+  delegate_->OnSuspendImminent(proto.suspend_id());
 }
 
 void PowerManagerProxy::Proxy::PowerStateChanged(

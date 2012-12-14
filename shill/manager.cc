@@ -91,6 +91,8 @@ Manager::Manager(ControlInterface *control_interface,
       glib_(glib),
       use_startup_portal_list_(false),
       termination_actions_(dispatcher),
+      suspend_delay_registered_(false),
+      suspend_delay_id_(0),
       default_service_callback_tag_(0) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
@@ -886,9 +888,12 @@ void Manager::AddTerminationAction(const string &name,
   if (termination_actions_.IsEmpty() && power_manager_.get()) {
     power_manager_->AddSuspendDelayCallback(
         kPowerManagerKey,
-        Bind(&Manager::OnSuspendDelay, AsWeakPtr()));
-    power_manager_->RegisterSuspendDelay(
-        kTerminationActionsTimeoutMilliseconds);
+        Bind(&Manager::OnSuspendImminent, AsWeakPtr()));
+    CHECK(!suspend_delay_registered_);
+    suspend_delay_registered_ = power_manager_->RegisterSuspendDelay(
+        base::TimeDelta::FromMilliseconds(
+            kTerminationActionsTimeoutMilliseconds),
+        &suspend_delay_id_);
   }
   termination_actions_.Add(name, start);
 }
@@ -903,7 +908,11 @@ void Manager::RemoveTerminationAction(const string &name) {
   }
   termination_actions_.Remove(name);
   if (termination_actions_.IsEmpty() && power_manager_.get()) {
-    power_manager_->UnregisterSuspendDelay();
+    if (suspend_delay_registered_) {
+      power_manager_->UnregisterSuspendDelay(suspend_delay_id_);
+      suspend_delay_registered_ = false;
+      suspend_delay_id_ = 0;
+    }
     power_manager_->RemoveSuspendDelayCallback(kPowerManagerKey);
   }
 }
@@ -973,21 +982,20 @@ void Manager::OnPowerStateChanged(
   }
 }
 
-void Manager::OnSuspendDelay(uint32 sequence_number) {
+void Manager::OnSuspendImminent(int suspend_id) {
   if (!RunTerminationActionsAndNotifyMetrics(
-       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), sequence_number),
+       Bind(&Manager::OnSuspendActionsComplete, AsWeakPtr(), suspend_id),
        Metrics::kTerminationActionReasonSuspend)) {
     LOG(INFO) << "No suspend actions were run.";
-    power_manager_->SuspendReady(sequence_number);
+    power_manager_->ReportSuspendReadiness(suspend_delay_id_, suspend_id);
   }
 }
 
-void Manager::OnSuspendActionsComplete(uint32 sequence_number,
-                                       const Error &error) {
+void Manager::OnSuspendActionsComplete(int suspend_id, const Error &error) {
   LOG(INFO) << "Finished suspend actions.  Result: " << error;
   metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonSuspend, error.IsSuccess());
-  power_manager_->SuspendReady(sequence_number);
+  power_manager_->ReportSuspendReadiness(suspend_delay_id_, suspend_id);
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,

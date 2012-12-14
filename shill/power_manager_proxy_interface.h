@@ -6,6 +6,7 @@
 #define SHILL_POWER_MANAGER_PROXY_INTERFACE_H_
 
 #include <base/basictypes.h>
+#include <base/time.h>
 
 namespace shill {
 
@@ -16,20 +17,24 @@ namespace shill {
 // the power manager is received, your delegate's member function will be
 // called. You retain ownership of the delegate and must ensure that the proxy
 // is deleted before the delegate.
-
 class PowerManagerProxyInterface {
  public:
   virtual ~PowerManagerProxyInterface() {}
 
-  // Sends a request to PowerManager to wait for this RPC client for up to
-  // |delay_ms| before suspending the system. When initiating suspend,
-  // PowerManager broadcasts a SuspendDelay signal and suspends the system after
-  // the maximal registered timeout expires or all registered clients are ready
-  // to suspend. Clients tell PowerManager that they are ready through the
-  // SuspendReady interface.
-  virtual void RegisterSuspendDelay(uint32 delay_ms) = 0;
-  virtual void UnregisterSuspendDelay() = 0;
-  virtual void SuspendReady(uint32 sequence_number) = 0;
+  // Sends a request to the power manager to wait for this client for up to
+  // |timeout| before suspending the system.  Assigns an ID corresponding to the
+  // registered delay to |delay_id_out| and returns true on success.
+  virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
+                                    int *delay_id_out) = 0;
+
+  // Unregisters a previously-registered suspend delay.  Returns true on
+  // success.
+  virtual bool UnregisterSuspendDelay(int delay_id) = 0;
+
+  // Calls the power manager's HandleSuspendReadiness method.  |delay_id| should
+  // contain the ID returned via RegisterSuspendDelay() and |suspend_id| should
+  // contain the ID from OnSuspendImminent().  Returns true on success.
+  virtual bool ReportSuspendReadiness(int delay_id, int suspend_id) = 0;
 };
 
 // PowerManager signal delegate to be associated with the proxy.
@@ -48,11 +53,11 @@ class PowerManagerProxyDelegate {
 
   virtual ~PowerManagerProxyDelegate() {}
 
-  // Broadcasted by PowerManager when it initiates suspend. RPC clients that
-  // have registered through RegisterSuspendDelay tell PowerManager that they're
-  // ready to suspend by sending a SuspendReady signal with the same
-  // |sequence_number|.
-  virtual void OnSuspendDelay(uint32 sequence_number) = 0;
+  // Broadcasted by the power manager when it's about to suspend. RPC clients
+  // that have registered through RegisterSuspendDelay() should tell the power
+  // manager that they're ready to suspend by calling ReportSuspendReadiness()
+  // with the delay ID returned by RegisterSuspendDelay() and |suspend_id|.
+  virtual void OnSuspendImminent(int suspend_id) = 0;
 
   // This method will be called when suspending or resuming.  |new_power_state|
   // will be "kMem" when suspending (to memory), or "kOn" when resuming.

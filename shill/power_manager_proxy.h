@@ -12,6 +12,13 @@
 // Do not instantiate this class directly.  use
 // ProxyFactory::CreatePowerManagerProxy instead.
 
+#include <stdint.h>
+
+#include <string>
+#include <vector>
+
+#include <base/compiler_specific.h>
+
 #include "shill/dbus_bindings/power_manager.h"
 #include "shill/power_manager_proxy_interface.h"
 #include "shill/proxy_factory.h"
@@ -23,9 +30,10 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
   virtual ~PowerManagerProxy();
 
   // Inherited from PowerManagerProxyInterface.
-  virtual void RegisterSuspendDelay(uint32 delay_ms);
-  virtual void UnregisterSuspendDelay();
-  virtual void SuspendReady(uint32 sequence_number);
+  virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
+                                    int *delay_id_out) OVERRIDE;
+  virtual bool UnregisterSuspendDelay(int delay_id) OVERRIDE;
+  virtual bool ReportSuspendReadiness(int delay_id, int suspend_id) OVERRIDE;
 
  private:
   // Only this factory method can create a PowerManagerProxy.
@@ -41,7 +49,7 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
    private:
     // Signal callbacks inherited from org::chromium::PowerManager_proxy.
-    virtual void SuspendDelay(const uint32_t &sequence_number);
+    virtual void SuspendImminent(const std::vector<uint8_t> &serialized_proto);
     virtual void PowerStateChanged(const std::string &new_power_state);
 
     PowerManagerProxyDelegate *const delegate_;

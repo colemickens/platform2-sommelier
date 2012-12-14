@@ -5,12 +5,17 @@
 <node name="/org/chromium/PowerManager">
   <interface name="org.chromium.PowerManager">
     <method name="RegisterSuspendDelay">
-      <arg name="delay_ms" direction="in" type="u"/>
+      <arg name="serialized_request_proto" direction="in" type="ay"/>
+      <arg name="serialized_reply_proto" direction="out" type="ay"/>
     </method>
     <method name="UnregisterSuspendDelay">
+      <arg name="serialized_proto" direction="in" type="ay"/>
     </method>
-    <signal name="SuspendDelay">
-      <arg name="sequence_number" type="u"/>
+    <method name="HandleSuspendReadiness">
+      <arg name="serialized_proto" direction="in" type="ay"/>
+    </method>
+    <signal name="SuspendImminent">
+      <arg name="serialized_proto" type="ay"/>
     </signal>
     <signal name="PowerStateChanged">
       <arg name="new_power_state" type="s"/>

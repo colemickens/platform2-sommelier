@@ -221,6 +221,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   bool GetArpGateway() const { return props_.arp_gateway; }
   const std::string &GetHostName() const { return props_.host_name; }
 
+  int suspend_delay_id_for_testing() const { return suspend_delay_id_; }
+
   virtual void UpdateEnabledTechnologies();
 
   // Writes the service |to_update| to persistant storage.  If the service's is
@@ -360,9 +362,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void RunTerminationActions(const base::Callback<void(const Error &)> &done);
 
   void OnPowerStateChanged(PowerManagerProxyDelegate::SuspendState power_state);
-  void OnSuspendDelay(uint32 sequence_number);
+  void OnSuspendImminent(int suspend_id);
 
-  void OnSuspendActionsComplete(uint32 sequence_number, const Error &error);
+  void OnSuspendActionsComplete(int suspend_id, const Error &error);
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
@@ -425,6 +427,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // TODO(petkov): Currently this handles both terminate and suspend
   // actions. Rename all relevant identifiers to capture this.
   HookTable termination_actions_;
+
+  // Is a suspend delay currently registered with the power manager?
+  bool suspend_delay_registered_;
+
+  // If |suspend_delay_registered_| is true, contains the unique ID
+  // corresponding to the suspend delay.
+  int suspend_delay_id_;
 
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;

@@ -52,8 +52,8 @@ void PowerManager::RemoveSuspendDelayCallback(const string &key) {
   RemoveCallback(key, &suspend_delay_callbacks_);
 }
 
-void PowerManager::OnSuspendDelay(uint32 sequence_number) {
-  LOG(INFO) << __func__ << "(" << sequence_number << ")";
+void PowerManager::OnSuspendImminent(int suspend_id) {
+  LOG(INFO) << __func__ << "(" << suspend_id << ")";
   // Change the power state to suspending as soon as this signal is received so
   // that the manager can suppress auto-connect, for example. Schedules a
   // suspend timeout in case the suspend attempt failed or got interrupted, and
@@ -63,7 +63,7 @@ void PowerManager::OnSuspendDelay(uint32 sequence_number) {
       base::Bind(&PowerManager::OnSuspendTimeout, base::Unretained(this)));
   dispatcher_->PostDelayedTask(suspend_timeout_.callback(),
                                kSuspendTimeoutMilliseconds);
-  OnEvent(sequence_number, &suspend_delay_callbacks_);
+  OnEvent(suspend_id, &suspend_delay_callbacks_);
 }
 
 void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
@@ -74,16 +74,17 @@ void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
   OnEvent(new_power_state, &state_change_callbacks_);
 }
 
-void PowerManager::RegisterSuspendDelay(uint32 delay_ms) {
-  power_manager_proxy_->RegisterSuspendDelay(delay_ms);
+bool PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
+                                        int *delay_id_out) {
+  return power_manager_proxy_->RegisterSuspendDelay(timeout, delay_id_out);
 }
 
-void PowerManager::UnregisterSuspendDelay() {
-  power_manager_proxy_->UnregisterSuspendDelay();
+bool PowerManager::UnregisterSuspendDelay(int delay_id) {
+  return power_manager_proxy_->UnregisterSuspendDelay(delay_id);
 }
 
-void PowerManager::SuspendReady(uint32 sequence_number) {
-  power_manager_proxy_->SuspendReady(sequence_number);
+bool PowerManager::ReportSuspendReadiness(int delay_id, int suspend_id) {
+  return power_manager_proxy_->ReportSuspendReadiness(delay_id, suspend_id);
 }
 
 void PowerManager::OnSuspendTimeout() {

@@ -61,6 +61,7 @@ using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
+using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
@@ -287,12 +288,12 @@ class ManagerTest : public PropertyStoreTest {
     manager()->OnPowerStateChanged(state);
   }
 
-  void OnSuspendDelay(uint32 sequence_number) {
-    manager()->OnSuspendDelay(sequence_number);
+  void OnSuspendImminent(int suspend_id) {
+    manager()->OnSuspendImminent(suspend_id);
   }
 
-  void OnSuspendActionsComplete(uint32 sequence_number, const Error &error) {
-    manager()->OnSuspendActionsComplete(sequence_number, error);
+  void OnSuspendActionsComplete(int suspend_id, const Error &error) {
+    manager()->OnSuspendActionsComplete(suspend_id, error);
   }
 
   vector<string> EnumerateAvailableServices() {
@@ -2363,7 +2364,7 @@ TEST_F(ManagerTest, OnPowerStateChanged) {
 
 TEST_F(ManagerTest, AddTerminationAction) {
   EXPECT_CALL(*power_manager_, AddSuspendDelayCallback(_, _));
-  EXPECT_CALL(*power_manager_, RegisterSuspendDelay(_));
+  EXPECT_CALL(*power_manager_, RegisterSuspendDelay(_, _));
   SetPowerManager();
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction("action1", base::Closure());
@@ -2372,27 +2373,31 @@ TEST_F(ManagerTest, AddTerminationAction) {
 }
 
 TEST_F(ManagerTest, RemoveTerminationAction) {
-  static const char kKey1[] = "action1";
-  static const char kKey2[] = "action2";
+  const char kKey1[] = "action1";
+  const char kKey2[] = "action2";
+  const int kSuspendDelayId = 123;
 
   MockPowerManager &power_manager = *power_manager_;
   SetPowerManager();
 
   // Removing an action when the hook table is empty should not result in any
   // calls to the power manager.
-  EXPECT_CALL(power_manager, UnregisterSuspendDelay()).Times(0);
+  EXPECT_CALL(power_manager, UnregisterSuspendDelay(_)).Times(0);
   EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_)).Times(0);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->RemoveTerminationAction("unknown");
   Mock::VerifyAndClearExpectations(&power_manager);
 
+  EXPECT_CALL(power_manager, RegisterSuspendDelay(_, _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(kSuspendDelayId), Return(true)));
+  EXPECT_CALL(power_manager, AddSuspendDelayCallback(_, _)).Times(1);
   manager()->AddTerminationAction(kKey1, base::Closure());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction(kKey2, base::Closure());
 
   // Removing an action that ends up with a non-empty hook table should not
   // result in any calls to the power manager.
-  EXPECT_CALL(power_manager, UnregisterSuspendDelay()).Times(0);
+  EXPECT_CALL(power_manager, UnregisterSuspendDelay(_)).Times(0);
   EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_)).Times(0);
   manager()->RemoveTerminationAction(kKey1);
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
@@ -2400,7 +2405,8 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
 
   // Removing the last action should trigger unregistering from the power
   // manager.
-  EXPECT_CALL(power_manager, UnregisterSuspendDelay());
+  EXPECT_CALL(power_manager, UnregisterSuspendDelay(kSuspendDelayId))
+      .WillOnce(Return(true));
   EXPECT_CALL(power_manager, RemoveSuspendDelayCallback(_));
   manager()->RemoveTerminationAction(kKey2);
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
@@ -2423,20 +2429,24 @@ TEST_F(ManagerTest, RunTerminationActions) {
                                         test_action.AsWeakPtr()));
 }
 
-TEST_F(ManagerTest, OnSuspendDelay) {
-  const uint32 kSeqNumber = 123;
+TEST_F(ManagerTest, OnSuspendImminent) {
+  const int kSuspendId = 123;
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
-  EXPECT_CALL(*power_manager_, SuspendReady(kSeqNumber));
+  EXPECT_CALL(*power_manager_,
+              ReportSuspendReadiness(
+                  manager()->suspend_delay_id_for_testing(), kSuspendId));
   SetPowerManager();
-  OnSuspendDelay(kSeqNumber);
+  OnSuspendImminent(kSuspendId);
 }
 
 TEST_F(ManagerTest, OnSuspendActionsComplete) {
-  const uint32 kSeqNumber = 54321;
+  const int kSuspendId = 54321;
   Error error;
-  EXPECT_CALL(*power_manager_, SuspendReady(kSeqNumber));
+  EXPECT_CALL(*power_manager_,
+              ReportSuspendReadiness(
+                  manager()->suspend_delay_id_for_testing(), kSuspendId));
   SetPowerManager();
-  OnSuspendActionsComplete(kSeqNumber, error);
+  OnSuspendActionsComplete(kSuspendId, error);
 }
 
 TEST_F(ManagerTest, RecheckPortal) {

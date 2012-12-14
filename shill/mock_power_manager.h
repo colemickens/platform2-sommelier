@@ -27,9 +27,10 @@ class MockPowerManager : public PowerManager {
                     const SuspendDelayCallback &callback));
   MOCK_METHOD1(RemoveStateChangeCallback, void(const std::string &key));
   MOCK_METHOD1(RemoveSuspendDelayCallback, void(const std::string &key));
-  MOCK_METHOD1(RegisterSuspendDelay, void(uint32 delay_ms));
-  MOCK_METHOD0(UnregisterSuspendDelay, void());
-  MOCK_METHOD1(SuspendReady, void(uint32 suspend_ready));
+  MOCK_METHOD2(RegisterSuspendDelay,
+               bool(base::TimeDelta timeout, int *delay_id_out));
+  MOCK_METHOD1(UnregisterSuspendDelay, bool(int delay_id));
+  MOCK_METHOD2(ReportSuspendReadiness, bool(int delay_id, int suspend_id));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockPowerManager);
