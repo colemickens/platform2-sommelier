@@ -39,7 +39,8 @@ is_lumpy() {
 }
 
 has_gobi_modem() {
-    lsusb -d 1410:a021
+    # Check if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
+    lsusb -d 1410:a021 || lsusb -d 1410:a023
 }
 
 do_lumpy_gobi_modem_revive() {
