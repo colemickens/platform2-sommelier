@@ -4,8 +4,15 @@
 
 #include "shill/diagnostics_reporter.h"
 
-#include "shill/glib.h"
+#include <base/file_util.h>
+
+#include "shill/minijail.h"
+#include "shill/process_killer.h"
 #include "shill/shill_time.h"
+#include "shill/shims/net_diags_upload.h"
+
+using base::Closure;
+using std::vector;
 
 namespace shill {
 
@@ -13,6 +20,7 @@ namespace {
 
 base::LazyInstance<DiagnosticsReporter> g_reporter = LAZY_INSTANCE_INITIALIZER;
 const char kNetDiagsUpload[] = SHIMDIR "/net-diags-upload";
+const char kNetDiagsUploadUser[] = "syslog";
 
 }  // namespace
 
@@ -20,19 +28,17 @@ const char kNetDiagsUpload[] = SHIMDIR "/net-diags-upload";
 const int DiagnosticsReporter::kLogStashThrottleSeconds = 30 * 60;
 
 DiagnosticsReporter::DiagnosticsReporter()
-    : glib_(NULL),
+    : minijail_(Minijail::GetInstance()),
+      process_killer_(ProcessKiller::GetInstance()),
       time_(Time::GetInstance()),
-      last_log_stash_(0) {}
+      last_log_stash_(0),
+      stashed_net_log_(shims::kStashedNetLog) {}
 
 DiagnosticsReporter::~DiagnosticsReporter() {}
 
 // static
 DiagnosticsReporter *DiagnosticsReporter::GetInstance() {
   return g_reporter.Pointer();
-}
-
-void DiagnosticsReporter::Init(GLib *glib) {
-  glib_ = glib;
 }
 
 void DiagnosticsReporter::OnConnectivityEvent() {
@@ -48,26 +54,23 @@ void DiagnosticsReporter::OnConnectivityEvent() {
   }
 
   last_log_stash_ = now.tv_sec;
+  // Delete logs possibly stashed by a different user.
+  file_util::Delete(stashed_net_log_, false);
 
   LOG(INFO) << "Spawning " << kNetDiagsUpload << " @ " << last_log_stash_;
-  CHECK(glib_);
-  char *argv[] = {
-    const_cast<char *>(kNetDiagsUpload),
-    IsReportingEnabled() ? const_cast<char *>("--upload") : NULL,
-    NULL
-  };
-  char *envp[] = { NULL };
-  GError *error = NULL;
-  // TODO(petkov): Run the subprocess through minijail (crosbug.com/37099).
-  if (!glib_->SpawnAsync(NULL,
-                         argv,
-                         envp,
-                         static_cast<GSpawnFlags>(0),
-                         NULL,
-                         NULL,
-                         NULL,
-                         &error)) {
-    LOG(ERROR) << "Spawn failed: " << glib_->ConvertErrorToMessage(error);
+  vector<char *> args;
+  args.push_back(const_cast<char *>(kNetDiagsUpload));
+  if (IsReportingEnabled()) {
+    args.push_back(const_cast<char *>("--upload"));
+  }
+  args.push_back(NULL);
+  pid_t pid = 0;
+  struct minijail *jail = minijail_->New();
+  minijail_->DropRoot(jail, kNetDiagsUploadUser);
+  if (minijail_->RunAndDestroy(jail, args, &pid)) {
+    process_killer_->Wait(pid, Closure());
+  } else {
+    LOG(ERROR) << "Unable to spawn " << kNetDiagsUpload;
   }
 }
 

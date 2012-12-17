@@ -2,12 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/shims/net_diags_upload.h"
+
 #include <stdlib.h>
+
+#include <string>
 
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/syslog_logging.h>
+
+using std::string;
 
 namespace switches {
 
@@ -26,17 +33,23 @@ static const char kHelpMessage[] = "\n"
 
 namespace shill {
 
+namespace shims {
+
 void StashLogs() {
   // Captures the last 10000 lines in the log regardless of log rotation. I.e.,
   // prints the log files in timestamp sorted order and gets the tail of the
   // output.
-  if (system("/bin/cat $(/bin/ls -rt /var/log/net.*log) | /bin/tail -10000 > "
-             "/var/log/net-diags.net.log")) {
+  string cmdline =
+      base::StringPrintf("/bin/cat $(/bin/ls -rt /var/log/net.*log) | "
+                         "/bin/tail -10000 > %s", kStashedNetLog);
+  if (system(cmdline.c_str())) {
     LOG(ERROR) << "Unable to stash net.log.";
   } else {
     LOG(INFO) << "net.log stashed.";
   }
 }
+
+}  // namespace shims
 
 }  // namespace shill
 
@@ -52,7 +65,7 @@ int main(int argc, char **argv) {
 
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
 
-  shill::StashLogs();
+  shill::shims::StashLogs();
 
   if (cl->HasSwitch(switches::kUpload)) {
     // Crash so that crash_reporter can upload the logs.

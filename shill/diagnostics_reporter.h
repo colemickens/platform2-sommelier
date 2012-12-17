@@ -5,11 +5,13 @@
 #ifndef SHILL_DIAGNOSTICS_REPORTER_H_
 #define SHILL_DIAGNOSTICS_REPORTER_H_
 
+#include <base/file_path.h>
 #include <base/lazy_instance.h>
 
 namespace shill {
 
-class GLib;
+class Minijail;
+class ProcessKiller;
 class Time;
 
 class DiagnosticsReporter {
@@ -18,8 +20,6 @@ class DiagnosticsReporter {
 
   // This is a singleton -- use DiagnosticsReporter::GetInstance()->Foo()
   static DiagnosticsReporter *GetInstance();
-
-  void Init(GLib *glib);
 
   // Handle a connectivity event -- collect and stash diagnostics data, possibly
   // uploading it for analysis.
@@ -36,9 +36,11 @@ class DiagnosticsReporter {
 
   static const int kLogStashThrottleSeconds;
 
-  GLib *glib_;
+  Minijail *minijail_;
+  ProcessKiller *process_killer_;
   Time *time_;
   uint64 last_log_stash_;  // Monotonic time seconds.
+  FilePath stashed_net_log_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsReporter);
 };

@@ -28,12 +28,17 @@ ProcessKiller *ProcessKiller::GetInstance() {
   return g_process_killer.Pointer();
 }
 
-void ProcessKiller::Kill(int pid, const Closure &callback) {
-  LOG(INFO) << "Killing pid " << pid;
+void ProcessKiller::Wait(int pid, const Closure &callback) {
+  LOG(INFO) << "Waiting for pid " << pid;
   if (!callback.is_null()) {
     callbacks_[pid] = callback;
   }
   g_child_watch_add(pid, OnProcessDied, this);
+}
+
+void ProcessKiller::Kill(int pid, const Closure &callback) {
+  Wait(pid, callback);
+  LOG(INFO) << "Killing pid " << pid;
   // TODO(petkov): Consider sending subsequent periodic signals and raising the
   // signal to SIGKILL if the process keeps running.
   kill(pid, SIGTERM);
