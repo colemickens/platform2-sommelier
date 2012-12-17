@@ -62,10 +62,6 @@ TEST_F(DenyClaimedUsbDeviceRuleTest, IgnoreNonUsbDevice) {
   ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/tty0"));
 }
 
-TEST_F(DenyClaimedUsbDeviceRuleTest, IgnoreUnclaimedUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/bus/usb/001/001"));
-}
-
 TEST_F(DenyClaimedUsbDeviceRuleTest, DenyClaimedUsbDevice) {
   set<string> claimed_usb_devices;
   FindClaimedDevices(&claimed_usb_devices);
