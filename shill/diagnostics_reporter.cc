@@ -40,7 +40,8 @@ void DiagnosticsReporter::OnConnectivityEvent() {
 
   struct timeval now = (const struct timeval){ 0 };
   time_->GetTimeMonotonic(&now);
-  if (last_log_stash_ + kLogStashThrottleSeconds >
+  if (last_log_stash_ &&
+      last_log_stash_ + kLogStashThrottleSeconds >
       static_cast<uint64>(now.tv_sec)) {
     LOG(INFO) << "Diagnostics throttled.";
     return;

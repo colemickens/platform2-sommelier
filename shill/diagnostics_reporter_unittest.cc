@@ -85,9 +85,10 @@ MATCHER(DoUpload, "") {
 }  // namespace
 
 TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
-  const uint64 kLastStash = 50;
-  SetLastLogStash(kLastStash);
-  const uint64 kNow0 = kLastStash + GetLogStashThrottleSeconds() + 1;
+  const uint64 kInitStash = 0;
+  SetLastLogStash(kInitStash);
+  // Test that the initial call is not throttled.
+  const uint64 kNow0 = kInitStash + 1;
   const struct timeval now0 = {
     .tv_sec = static_cast<long int>(kNow0),
     .tv_usec = 0
