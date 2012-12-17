@@ -276,6 +276,7 @@ fi
 
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
+  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-accelerated-overflow-scroll"
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
 fi
 
