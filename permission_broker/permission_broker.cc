@@ -13,6 +13,7 @@
 #include <poll.h>
 #include <sys/inotify.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <string>
 #include <vector>
