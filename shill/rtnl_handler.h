@@ -105,6 +105,7 @@ class RTNLHandler {
   friend class DeviceInfoTest;
   friend class ModemTest;
   friend class RTNLHandlerTest;
+  friend class RTNLListenerTest;
   friend class RoutingTableTest;
 
   FRIEND_TEST(RTNLListenerTest, NoRun);

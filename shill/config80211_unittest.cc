@@ -360,6 +360,12 @@ uint32 MockNl80211Socket::Send(KernelBoundNlMessage *message) {
 class Config80211Test : public Test {
  public:
   Config80211Test() : config80211_(Config80211::GetInstance()) {}
+  ~Config80211Test() {
+    // Config80211 is a singleton, the sock_ field *MUST* be cleared
+    // before "Config80211Test::socket_" gets invalidated, otherwise
+    // later tests will refer to a corrupted memory.
+    config80211_->sock_ = NULL;
+  }
   void SetupConfig80211Object() {
     EXPECT_NE(config80211_, reinterpret_cast<Config80211 *>(NULL));
     config80211_->sock_ = &socket_;

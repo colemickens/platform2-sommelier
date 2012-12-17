@@ -24,6 +24,10 @@ class DHCPProviderTest : public Test {
   DHCPProviderTest() : provider_(DHCPProvider::GetInstance()) {
     provider_->glib_ = &glib_;
     provider_->control_interface_ = &control_;
+    // DHCPProvider is a singleton, there is no guarentee that it is
+    // not setup/used elsewhere, so reset its state before running our
+    // tests.
+    provider_->configs_.clear();
   }
 
  protected:
