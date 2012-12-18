@@ -44,15 +44,7 @@ void Callback80211Object::Config80211MessageCallback(
   SLOG(WiFi, 3) << "Received " << message.message_type_string()
                 << " (" << + message.message_type() << ")";
 
-  for (UserBoundNlMessage::AttributeIterator i(message.GetAttributeIterator());
-       !i.AtEnd(); i.Advance()) {
-    const Nl80211Attribute *attribute = i.GetAttribute();
-    string attribute_string;
-    attribute->AsString(&attribute_string);
-    SLOG(WiFi, 3) << "   Attr:" << attribute->name_string()
-                  << "=" << attribute_string
-                  << " Type:" << attribute->type_string();
-  }
+  // TODO(wdg): Make a message->AsString() method.
 }
 
 bool Callback80211Object::InstallAsBroadcastCallback() {

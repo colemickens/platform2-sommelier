@@ -44,9 +44,9 @@
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 
+#include "shill/attribute_list.h"
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
-#include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 
 using base::LazyInstance;
@@ -101,13 +101,6 @@ map<uint16_t, string> *UserBoundNlMessage::status_code_string_ = NULL;
 // UserBoundNlMessage
 //
 
-UserBoundNlMessage::~UserBoundNlMessage() {
-  map<nl80211_attrs, Nl80211Attribute *>::iterator i;
-  for (i = attributes_.begin(); i != attributes_.end(); ++i) {
-    delete i->second;
-  }
-}
-
 bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
                               nlmsghdr *msg) {
   if (!tb) {
@@ -121,10 +114,8 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
-      Nl80211Attribute *attribute =
-          Nl80211Attribute::NewFromNlAttr(static_cast<enum nl80211_attrs>(i),
+      attributes_.CreateAndInitFromNlAttr(static_cast<enum nl80211_attrs>(i),
                                           tb[i]);
-      AddAttribute(attribute);
     }
   }
 
@@ -326,17 +317,6 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
   return true;
 }
 
-UserBoundNlMessage::AttributeIterator
-    UserBoundNlMessage::GetAttributeIterator() const {
-  return UserBoundNlMessage::AttributeIterator(attributes_);
-}
-
-// Return true if the attribute is in our map, regardless of the value of
-// the attribute, itself.
-bool UserBoundNlMessage::AttributeExists(enum nl80211_attrs name) const {
-  return ContainsKey(attributes_, name);
-}
-
 uint32_t UserBoundNlMessage::GetId() const {
   if (!message_) {
     return kIllegalMessage;
@@ -344,155 +324,6 @@ uint32_t UserBoundNlMessage::GetId() const {
   return message_->nlmsg_seq;
 }
 
-// Returns the raw attribute data but not the header.
-bool UserBoundNlMessage::GetRawAttributeData(enum nl80211_attrs name,
-                                             ByteString *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-  const Nl80211Attribute *raw_attr = GetAttribute(name);
-  if (!raw_attr) {
-    LOG(ERROR) << "No attribute - returning FALSE";
-    return false;
-  }
-  if (raw_attr->type() != Nl80211Attribute::kTypeRaw) {
-    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
-               << " has type " << raw_attr->type_string()
-               << " rather than RAW";
-    return false;
-  }
-  const Nl80211RawAttribute *attr
-      = reinterpret_cast<const Nl80211RawAttribute *>(raw_attr);
-
-  ByteString raw_data;
-  if (!attr->GetRawValue(&raw_data))
-    return false;
-
-  const nlattr *const_data =
-      reinterpret_cast<const nlattr *>(raw_data.GetConstData());
-  // nla_data and nla_len don't change their parameters but don't declare
-  // them to be const.  Hence the cast.
-  nlattr *data_nlattr = const_cast<nlattr *>(const_data);
-  *value = ByteString(
-      reinterpret_cast<unsigned char *>(nla_data(data_nlattr)),
-      nla_len(data_nlattr));
-  return true;
-}
-
-bool UserBoundNlMessage::GetStringAttribute(enum nl80211_attrs name,
-                                            string *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  const Nl80211Attribute *raw_attr = GetAttribute(name);
-  if (!raw_attr) {
-    return false;
-  }
-  if (raw_attr->type() != Nl80211Attribute::kTypeString) {
-    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
-               << " has type " << raw_attr->type_string()
-               << " rather than STRING";
-    return false;
-  }
-  const Nl80211StringAttribute *attr
-      = reinterpret_cast<const Nl80211StringAttribute *>(raw_attr);
-  return attr->GetStringValue(value);
-}
-
-bool UserBoundNlMessage::GetU8Attribute(enum nl80211_attrs name,
-                                        uint8_t *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  const Nl80211Attribute *raw_attr = GetAttribute(name);
-  if (!raw_attr) {
-    LOG(ERROR) << "No attribute - returning FALSE";
-    return false;
-  }
-  if (raw_attr->type() != Nl80211Attribute::kTypeU8) {
-    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
-               << " has type " << raw_attr->type_string()
-               << " rather than U8";
-    return false;
-  }
-  const Nl80211U8Attribute *attr
-      = reinterpret_cast<const Nl80211U8Attribute *>(raw_attr);
-  return attr->GetU8Value(value);
-}
-
-bool UserBoundNlMessage::GetU16Attribute(enum nl80211_attrs name,
-                                         uint16_t *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  const Nl80211Attribute *raw_attr = GetAttribute(name);
-  if (!raw_attr) {
-    LOG(ERROR) << "No attribute - returning FALSE";
-    return false;
-  }
-  if (raw_attr->type() != Nl80211Attribute::kTypeU16) {
-    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
-               << " has type " << raw_attr->type_string()
-               << " rather than U16";
-    return false;
-  }
-  const Nl80211U16Attribute *attr
-      = reinterpret_cast<const Nl80211U16Attribute *>(raw_attr);
-  return attr->GetU16Value(value);
-}
-
-bool UserBoundNlMessage::GetU32Attribute(enum nl80211_attrs name,
-                                         uint32_t *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  const Nl80211Attribute *raw_attr = GetAttribute(name);
-  if (!raw_attr) {
-    LOG(ERROR) << "No attribute - returning FALSE";
-    return false;
-  }
-  if (raw_attr->type() != Nl80211Attribute::kTypeU32) {
-    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
-               << " has type " << raw_attr->type_string()
-               << " rather than U32";
-    return false;
-  }
-  const Nl80211U32Attribute *attr
-      = reinterpret_cast<const Nl80211U32Attribute *>(raw_attr);
-  return attr->GetU32Value(value);
-}
-
-bool UserBoundNlMessage::GetU64Attribute(enum nl80211_attrs name,
-                                         uint64_t *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  const Nl80211Attribute *raw_attr = GetAttribute(name);
-  if (!raw_attr) {
-    LOG(ERROR) << "No attribute - returning FALSE";
-    return false;
-  }
-  if (raw_attr->type() != Nl80211Attribute::kTypeU64) {
-    LOG(ERROR) << "Attribute with name " << raw_attr->name_string()
-               << " has type " << raw_attr->type_string()
-               << " rather than U64";
-    return false;
-  }
-  const Nl80211U64Attribute *attr
-      = reinterpret_cast<const Nl80211U64Attribute *>(raw_attr);
-  return attr->GetU64Value(value);
-}
 
 // Helper function to provide a string for a MAC address.
 bool UserBoundNlMessage::GetMacAttributeString(enum nl80211_attrs name,
@@ -503,7 +334,7 @@ bool UserBoundNlMessage::GetMacAttributeString(enum nl80211_attrs name,
   }
 
   ByteString data;
-  if (!GetRawAttributeData(name, &data)) {
+  if (!attributes().GetRawAttributeValue(name, &data)) {
     value->assign(kBogusMacAddress);
     return false;
   }
@@ -522,7 +353,7 @@ bool UserBoundNlMessage::GetScanFrequenciesAttribute(
 
   value->clear();
   ByteString rawdata;
-  if (!GetRawAttributeData(name, &rawdata) && !rawdata.IsEmpty())
+  if (!attributes().GetRawAttributeValue(name, &rawdata) && !rawdata.IsEmpty())
     return false;
 
   nlattr *nst = NULL;
@@ -546,61 +377,36 @@ bool UserBoundNlMessage::GetScanSsidsAttribute(
     return false;
   }
 
-  if (AttributeExists(name)) {
-    ByteString rawdata;
-    if (GetRawAttributeData(name, &rawdata) && !rawdata.IsEmpty()) {
-      nlattr *nst = NULL;
-      // |nla_for_each_attr| requires a non-const parameter even though it
-      // doesn't change the data.
-      nlattr *data = reinterpret_cast<nlattr *>(rawdata.GetData());
-      int rem_nst;
-      int len = rawdata.GetLength();
+  ByteString rawdata;
+  if (!attributes().GetRawAttributeValue(name, &rawdata) || rawdata.IsEmpty())
+    return false;
 
-      nla_for_each_attr(nst, data, len, rem_nst) {
-        value->push_back(StringFromSsid(nla_len(nst),
-                                        reinterpret_cast<const uint8_t *>(
-                                          nla_data(nst))).c_str());
-      }
-    }
-    return true;
+  nlattr *nst = NULL;
+  // |nla_for_each_attr| requires a non-const parameter even though it
+  // doesn't change the data.
+  nlattr *data = reinterpret_cast<nlattr *>(rawdata.GetData());
+  int rem_nst;
+  int len = rawdata.GetLength();
+
+  nla_for_each_attr(nst, data, len, rem_nst) {
+    value->push_back(StringFromSsid(nla_len(nst),
+                                    reinterpret_cast<const uint8_t *>(
+                                      nla_data(nst))).c_str());
   }
-  return false;
+  return true;
 }
 
 // Protected members.
 
-bool UserBoundNlMessage::AddAttribute(Nl80211Attribute *attr) {
-  if (!attr) {
-    LOG(ERROR) << "Not adding NULL attribute";
-    return false;
-  }
-  if (ContainsKey(attributes_, attr->name())) {
-    LOG(ERROR) << "Already have attribute name " << attr->name_string();
-    return false;
-  }
-  attributes_[attr->name()] = attr;
-  return true;
-}
-
-const Nl80211Attribute *UserBoundNlMessage::GetAttribute(nl80211_attrs name)
-    const {
-  map<nl80211_attrs, Nl80211Attribute *>::const_iterator match;
-  match = attributes_.find(name);
-  // This method may be called to explore the existence of the attribute so
-  // we'll not emit an error if it's not found.
-  if (match == attributes_.end()) {
-    return NULL;
-  }
-  return match->second;
-}
-
 string UserBoundNlMessage::GetHeaderString() const {
   char ifname[IF_NAMESIZE] = "";
   uint32_t ifindex = UINT32_MAX;
-  bool ifindex_exists = GetU32Attribute(NL80211_ATTR_IFINDEX, &ifindex);
+  bool ifindex_exists = attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                                          &ifindex);
 
   uint32_t wifi = UINT32_MAX;
-  bool wifi_exists = GetU32Attribute(NL80211_ATTR_WIPHY, &wifi);
+  bool wifi_exists = attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
+                                                       &wifi);
 
   string output;
   if (ifindex_exists && wifi_exists) {
@@ -620,7 +426,8 @@ string UserBoundNlMessage::GetHeaderString() const {
 string UserBoundNlMessage::StringFromFrame(enum nl80211_attrs attr_name) const {
   string output;
   ByteString frame_data;
-  if (GetRawAttributeData(attr_name, &frame_data) && !frame_data.IsEmpty()) {
+  if (attributes().GetRawAttributeValue(attr_name,
+                                        &frame_data) && !frame_data.IsEmpty()) {
     Nl80211Frame frame(frame_data);
     frame.ToString(&output);
   } else {
@@ -840,9 +647,9 @@ const char AssociateMessage::kCommandString[] = "NL80211_CMD_ASSOCIATE";
 string AssociateMessage::ToString() const {
   string output(GetHeaderString());
   output.append("assoc");
-  if (AttributeExists(NL80211_ATTR_FRAME))
+  if (attributes().GetRawAttributeValue(NL80211_ATTR_FRAME, NULL))
     output.append(StringFromFrame(NL80211_ATTR_FRAME));
-  else if (AttributeExists(NL80211_ATTR_TIMED_OUT))
+  else if (attributes().IsFlagAttributeTrue(NL80211_ATTR_TIMED_OUT))
     output.append(": timed out");
   else
     output.append(": unknown event");
@@ -855,10 +662,10 @@ const char AuthenticateMessage::kCommandString[] = "NL80211_CMD_AUTHENTICATE";
 string AuthenticateMessage::ToString() const {
   string output(GetHeaderString());
   output.append("auth");
-  if (AttributeExists(NL80211_ATTR_FRAME)) {
+  if (attributes().GetRawAttributeValue(NL80211_ATTR_FRAME, NULL)) {
     output.append(StringFromFrame(NL80211_ATTR_FRAME));
   } else {
-    output.append(AttributeExists(NL80211_ATTR_TIMED_OUT) ?
+    output.append(attributes().IsFlagAttributeTrue(NL80211_ATTR_TIMED_OUT) ?
                   ": timed out" : ": unknown event");
   }
   return output;
@@ -875,8 +682,10 @@ string CancelRemainOnChannelMessage::ToString() const {
   uint64_t cookie;
   StringAppendF(&output,
                 "done with remain on freq %" PRIu32 " (cookie %" PRIx64 ")",
-                (GetU32Attribute(NL80211_ATTR_WIPHY_FREQ, &freq) ? 0 : freq),
-                (GetU64Attribute(NL80211_ATTR_COOKIE, &cookie) ? 0 : cookie));
+                (attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY_FREQ,
+                                                   &freq) ?  0 : freq),
+                (attributes().GetU64AttributeValue(NL80211_ATTR_COOKIE,
+                                                   &cookie) ?  0 : cookie));
   return output;
 }
 
@@ -888,7 +697,7 @@ string ConnectMessage::ToString() const {
 
   uint16_t status = UINT16_MAX;
 
-  if (!GetU16Attribute(NL80211_ATTR_STATUS_CODE, &status)) {
+  if (!attributes().GetU16AttributeValue(NL80211_ATTR_STATUS_CODE, &status)) {
     output.append("unknown connect status");
   } else if (status == 0) {
     output.append("connected");
@@ -896,7 +705,7 @@ string ConnectMessage::ToString() const {
     output.append("failed to connect");
   }
 
-  if (AttributeExists(NL80211_ATTR_MAC)) {
+  if (attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
     string mac;
     GetMacAttributeString(NL80211_ATTR_MAC, &mac);
     StringAppendF(&output, " to %s", mac.c_str());
@@ -945,11 +754,12 @@ const char DisconnectMessage::kCommandString[] = "NL80211_CMD_DISCONNECT";
 string DisconnectMessage::ToString() const {
   string output(GetHeaderString());
   StringAppendF(&output, "disconnected %s",
-                ((AttributeExists(NL80211_ATTR_DISCONNECTED_BY_AP)) ?
-                  "(by AP)" : "(local request)"));
+                ((attributes().IsFlagAttributeTrue(
+                    NL80211_ATTR_DISCONNECTED_BY_AP)) ?
+                 "(by AP)" : "(local request)"));
 
   uint16_t reason = UINT16_MAX;
-  if (GetU16Attribute(NL80211_ATTR_REASON_CODE, &reason)) {
+  if (attributes().GetU16AttributeValue(NL80211_ATTR_REASON_CODE, &reason)) {
     StringAppendF(&output, " reason: %u: %s",
                   reason, StringFromReason(reason).c_str());
   }
@@ -963,11 +773,11 @@ const char FrameTxStatusMessage::kCommandString[] =
 string FrameTxStatusMessage::ToString() const {
   string output(GetHeaderString());
   uint64_t cookie = UINT64_MAX;
-  GetU64Attribute(NL80211_ATTR_COOKIE, &cookie);
+  attributes().GetU64AttributeValue(NL80211_ATTR_COOKIE, &cookie);
 
-  StringAppendF(&output, "mgmt TX status (cookie %" PRIx64 "): %s",
-                cookie,
-                (AttributeExists(NL80211_ATTR_ACK) ? "acked" : "no ack"));
+  StringAppendF(&output, "mgmt TX status (cookie %" PRIx64 "): %s", cookie,
+                (attributes().IsFlagAttributeTrue(NL80211_ATTR_ACK) ?
+                 "acked" : "no ack"));
   return output;
 }
 
@@ -992,15 +802,16 @@ string MichaelMicFailureMessage::ToString() const {
 
   output.append("Michael MIC failure event:");
 
-  if (AttributeExists(NL80211_ATTR_MAC)) {
+  if (attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
     string mac;
     GetMacAttributeString(NL80211_ATTR_MAC, &mac);
     StringAppendF(&output, " source MAC address %s", mac.c_str());
   }
 
-  if (AttributeExists(NL80211_ATTR_KEY_SEQ)) {
+  {
     ByteString rawdata;
-    if (GetRawAttributeData(NL80211_ATTR_KEY_SEQ, &rawdata) &&
+    if (attributes().GetRawAttributeValue(NL80211_ATTR_KEY_SEQ,
+                                          &rawdata) &&
         rawdata.GetLength() == UserBoundNlMessage::kEthernetAddressBytes) {
       const unsigned char *seq = rawdata.GetConstData();
       StringAppendF(&output, " seq=%02x%02x%02x%02x%02x%02x",
@@ -1008,14 +819,14 @@ string MichaelMicFailureMessage::ToString() const {
     }
   }
   uint32_t key_type_val = UINT32_MAX;
-  if (GetU32Attribute(NL80211_ATTR_KEY_TYPE, &key_type_val)) {
+  if (attributes().GetU32AttributeValue(NL80211_ATTR_KEY_TYPE, &key_type_val)) {
     enum nl80211_key_type key_type =
         static_cast<enum nl80211_key_type >(key_type_val);
     StringAppendF(&output, " Key Type %s", StringFromKeyType(key_type).c_str());
   }
 
   uint8_t key_index = UINT8_MAX;
-  if (GetU8Attribute(NL80211_ATTR_KEY_IDX, &key_index)) {
+  if (attributes().GetU8AttributeValue(NL80211_ATTR_KEY_IDX, &key_index)) {
     StringAppendF(&output, " Key Id %u", key_index);
   }
 
@@ -1077,7 +888,7 @@ const char NewWifiMessage::kCommandString[] = "NL80211_CMD_NEW_WIPHY";
 string NewWifiMessage::ToString() const {
   string output(GetHeaderString());
   string wifi_name = "None";
-  GetStringAttribute(NL80211_ATTR_WIPHY_NAME, &wifi_name);
+  attributes().GetStringAttributeValue(NL80211_ATTR_WIPHY_NAME, &wifi_name);
   StringAppendF(&output, "renamed to %s", wifi_name.c_str());
   return output;
 }
@@ -1086,6 +897,7 @@ const uint8_t NotifyCqmMessage::kCommand = NL80211_CMD_NOTIFY_CQM;
 const char NotifyCqmMessage::kCommandString[] = "NL80211_CMD_NOTIFY_CQM";
 
 string NotifyCqmMessage::ToString() const {
+  // TODO(wdg): use attributes().GetNestedAttributeValue()...
   static const nla_policy kCqmPolicy[NL80211_ATTR_CQM_MAX + 1] = {
     { NLA_U32, 0, 0 },  // Who Knows?
     { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THOLD]
@@ -1096,7 +908,8 @@ string NotifyCqmMessage::ToString() const {
   string output(GetHeaderString());
   output.append("connection quality monitor event: ");
 
-  const Nl80211Attribute *attribute = GetAttribute(NL80211_ATTR_CQM);
+  const Nl80211RawAttribute *attribute =
+      attributes().GetRawAttribute(NL80211_ATTR_CQM);
   if (!attribute) {
     output.append("missing data!");
     return output;
@@ -1123,7 +936,7 @@ string NotifyCqmMessage::ToString() const {
     else
       output.append("RSSI went below threshold");
   } else if (cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT] &&
-       AttributeExists(NL80211_ATTR_MAC)) {
+       attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
     string mac;
     GetMacAttributeString(NL80211_ATTR_MAC, &mac);
     StringAppendF(&output, "peer %s didn't ACK %" PRIu32 " packets",
@@ -1153,9 +966,10 @@ const char RegBeaconHintMessage::kCommandString[] =
 string RegBeaconHintMessage::ToString() const {
   string output(GetHeaderString());
   uint32_t wiphy_idx = UINT32_MAX;
-  GetU32Attribute(NL80211_ATTR_WIPHY, &wiphy_idx);
+  attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY, &wiphy_idx);
 
-  const Nl80211Attribute *freq_before = GetAttribute(NL80211_ATTR_FREQ_BEFORE);
+  const Nl80211RawAttribute *freq_before =
+      attributes().GetRawAttribute(NL80211_ATTR_FREQ_BEFORE);
   if (!freq_before)
     return "";
   const nlattr *const_before = freq_before->data();
@@ -1164,7 +978,8 @@ string RegBeaconHintMessage::ToString() const {
   if (ParseBeaconHintChan(const_before, &chan_before_beacon))
     return "";
 
-  const Nl80211Attribute *freq_after = GetAttribute(NL80211_ATTR_FREQ_AFTER);
+  const Nl80211RawAttribute *freq_after =
+      attributes().GetRawAttribute(NL80211_ATTR_FREQ_AFTER);
   if (!freq_after)
     return "";
 
@@ -1253,16 +1068,17 @@ string RegChangeMessage::ToString() const {
   output.append("regulatory domain change: ");
 
   uint8_t reg_type = UINT8_MAX;
-  GetU8Attribute(NL80211_ATTR_REG_TYPE, &reg_type);
+  attributes().GetU8AttributeValue(NL80211_ATTR_REG_TYPE, &reg_type);
 
   uint32_t initiator = UINT32_MAX;
-  GetU32Attribute(NL80211_ATTR_REG_INITIATOR, &initiator);
+  attributes().GetU32AttributeValue(NL80211_ATTR_REG_INITIATOR, &initiator);
 
   uint32_t wifi = UINT32_MAX;
-  bool wifi_exists = GetU32Attribute(NL80211_ATTR_WIPHY, &wifi);
+  bool wifi_exists = attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
+                                                       &wifi);
 
   string alpha2 = "<None>";
-  GetStringAttribute(NL80211_ATTR_REG_ALPHA2, &alpha2);
+  attributes().GetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, &alpha2);
 
   switch (reg_type) {
   case NL80211_REGDOM_TYPE_COUNTRY:
@@ -1306,13 +1122,13 @@ string RemainOnChannelMessage::ToString() const {
   string output(GetHeaderString());
 
   uint32_t wifi_freq = UINT32_MAX;
-  GetU32Attribute(NL80211_ATTR_WIPHY_FREQ, &wifi_freq);
+  attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY_FREQ, &wifi_freq);
 
   uint32_t duration = UINT32_MAX;
-  GetU32Attribute(NL80211_ATTR_DURATION, &duration);
+  attributes().GetU32AttributeValue(NL80211_ATTR_DURATION, &duration);
 
   uint64_t cookie = UINT64_MAX;
-  GetU64Attribute(NL80211_ATTR_COOKIE, &cookie);
+  attributes().GetU64AttributeValue(NL80211_ATTR_COOKIE, &cookie);
 
   StringAppendF(&output, "remain on freq %" PRIu32 " (%" PRIu32 "ms, cookie %"
                 PRIx64 ")",
@@ -1327,7 +1143,7 @@ string RoamMessage::ToString() const {
   string output(GetHeaderString());
   output.append("roamed");
 
-  if (AttributeExists(NL80211_ATTR_MAC)) {
+  if (attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
     string mac;
     GetMacAttributeString(NL80211_ATTR_MAC, &mac);
     StringAppendF(&output, " to %s", mac.c_str());

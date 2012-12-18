@@ -155,6 +155,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	arp_client.o \
 	arp_packet.o \
 	async_connection.o \
+	attribute_list.o \
 	byte_string.o \
 	callback80211_metrics.o \
 	callback80211_object.o \

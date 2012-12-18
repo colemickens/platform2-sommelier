@@ -17,7 +17,7 @@
 #include <base/lazy_instance.h>
 #include <gtest/gtest.h>
 
-#include "shill/nl80211_attribute.h"
+#include "shill/attribute_list.h"
 
 struct nlattr;
 struct nlmsghdr;
@@ -28,100 +28,41 @@ namespace shill {
 class UserBoundNlMessage {
  public:
   static const unsigned int kEthernetAddressBytes;
-
-  // A const iterator to the attribute names in the attributes_ map of a
-  // UserBoundNlMessage.  The purpose, here, is to hide the way that the
-  // attribute is stored.
-  class AttributeIterator {
-   public:
-    explicit AttributeIterator(const std::map<nl80211_attrs,
-                                              Nl80211Attribute *> &map_param)
-        : map_(map_param), iter_(map_.begin()) {}
-    AttributeIterator(const AttributeIterator &other)
-        : map_(other.map_), iter_(other.iter_) {}
-
-    // Causes the iterator to point to the next attribute in the list.
-    void Advance() { ++iter_; }
-
-    // Returns 'true' if the iterator points beyond the last attribute in the
-    // list; returns 'false' otherwise.
-    bool AtEnd() const { return iter_ == map_.end(); }
-
-    const Nl80211Attribute *GetAttribute() const { return iter_->second; }
-
-   private:
-    // DISALLOW_ASSIGN_BUT_ALLOW_COPY:
-    AttributeIterator &operator=(const AttributeIterator &other);
-
-    const std::map<nl80211_attrs, Nl80211Attribute *> &map_;
-    std::map<nl80211_attrs, Nl80211Attribute *>::const_iterator iter_;
-  };
-
   static const char kBogusMacAddress[];
 
   UserBoundNlMessage(uint8 message_type, const char *message_type_string)
       : message_(NULL),
         message_type_(message_type),
-        message_type_string_(message_type_string) { }
-  virtual ~UserBoundNlMessage();
+        message_type_string_(message_type_string) {}
+  virtual ~UserBoundNlMessage() {}
 
   // Non-trivial initialization.
   virtual bool Init(nlattr *tb[NL80211_ATTR_MAX + 1], nlmsghdr *msg);
 
-  // Allow (const) iteration over the attributes inside a message object.
-  AttributeIterator GetAttributeIterator() const;
-
-  // Other ways to see the internals of the object.
-
-  // Return true if the attribute is in our map, regardless of the value of
-  // the attribute, itself.
-  bool AttributeExists(nl80211_attrs name) const;
-
   // Message ID is equivalent to the message's sequence number.
   uint32_t GetId() const;
 
-  const Nl80211Attribute *GetAttribute(nl80211_attrs name) const;
+  const AttributeList &attributes() const { return attributes_; }
 
-  // TODO(wdg): GetRawAttributeData is only used for NL80211_ATTR_FRAME and
-  // NL80211_ATTR_KEY_SEQ.  Remove this method once those classes are
-  // fleshed-out.
-  //
-  // Returns a string describing the data type of a given attribute.
-  std::string GetAttributeTypeString(nl80211_attrs name) const;
-
-  // If successful, returns 'true' and the raw attribute data (after the
-  // header) into |value| for this attribute.  If no attribute by this name
-  // exists in this message, clears |value| and returns 'false'.  If otherwise
-  // unsuccessful, returns 'false' and leaves |value| unchanged.
-  bool GetRawAttributeData(nl80211_attrs name, ByteString *value) const;
-
-  // TODO(wdg): Replace all message->GetXxxAttribute with
-  // attribute->GetXxxAttribute; remove message methods.
-
-  // Each of these methods set |value| with the value of the specified
-  // attribute (if the attribute is not found, |value| remains unchanged).
-
-  bool GetStringAttribute(nl80211_attrs name, std::string *value) const;
-  bool GetU8Attribute(nl80211_attrs name, uint8_t *value) const;
-  bool GetU16Attribute(nl80211_attrs name, uint16_t *value) const;
-  bool GetU32Attribute(nl80211_attrs name, uint32_t *value) const;
-  bool GetU64Attribute(nl80211_attrs name, uint64_t *value) const;
-
+  // TODO(wdg): This needs to be moved to AttributeMac.
   // Helper function to provide a string for a MAC address.  If no attribute
   // is found, this method returns 'false'.  On any error with a non-NULL
   // |value|, this method sets |value| to a bogus MAC address.
   bool GetMacAttributeString(nl80211_attrs name, std::string *value) const;
 
+  // TODO(wdg): This needs to be moved to AttributeScanFrequencies.
   // Helper function to provide a vector of scan frequencies for attributes
   // that contain them (such as NL80211_ATTR_SCAN_FREQUENCIES).
   bool GetScanFrequenciesAttribute(enum nl80211_attrs name,
                                    std::vector<uint32_t> *value) const;
 
+  // TODO(wdg): This needs to be moved to AttributeScanSSids.
   // Helper function to provide a vector of SSIDs for attributes that contain
   // them (such as NL80211_ATTR_SCAN_SSIDS).
   bool GetScanSsidsAttribute(enum nl80211_attrs name,
                              std::vector<std::string> *value) const;
 
+  // TODO(wdg): This needs to be moved to AttributeMac.
   // Stringizes the MAC address found in 'arg'.  If there are problems (such
   // as a NULL |arg|), |value| is set to a bogus MAC address.
   static std::string StringFromMacAddress(const uint8_t *arg);
@@ -139,9 +80,6 @@ class UserBoundNlMessage {
   const char *message_type_string() const { return message_type_string_; }
 
  protected:
-  // Take ownership of attribute, store in map indexed on |attr->name()|.
-  bool AddAttribute(Nl80211Attribute *attr);
-
   // Returns a string that should precede all user-bound message strings.
   virtual std::string GetHeaderString() const;
 
@@ -161,7 +99,6 @@ class UserBoundNlMessage {
   static std::string StringFromSsid(const uint8_t len, const uint8_t *data);
 
  private:
-  friend class AttributeIterator;
   friend class Config80211Test;
   FRIEND_TEST(Config80211Test, NL80211_CMD_NOTIFY_CQM);
 
@@ -172,7 +109,8 @@ class UserBoundNlMessage {
   const char *message_type_string_;
   static std::map<uint16_t, std::string> *reason_code_string_;
   static std::map<uint16_t, std::string> *status_code_string_;
-  std::map<nl80211_attrs, Nl80211Attribute *> attributes_;
+
+  AttributeList attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(UserBoundNlMessage);
 };

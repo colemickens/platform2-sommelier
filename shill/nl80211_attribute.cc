@@ -16,6 +16,7 @@
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 
+#include "shill/attribute_list.h"
 #include "shill/logging.h"
 #include "shill/scope_logger.h"
 
@@ -34,8 +35,7 @@ Nl80211Attribute::Nl80211Attribute(enum nl80211_attrs name,
       type_string_(type_string) {}
 
 // static
-Nl80211Attribute *Nl80211Attribute::NewFromNlAttr(nl80211_attrs name,
-                                                  const nlattr *data) {
+Nl80211Attribute *Nl80211Attribute::NewFromName(nl80211_attrs name) {
   scoped_ptr<Nl80211Attribute> attr;
   switch (name) {
     case NL80211_ATTR_COOKIE:
@@ -117,7 +117,6 @@ Nl80211Attribute *Nl80211Attribute::NewFromNlAttr(nl80211_attrs name,
       attr.reset(new Nl80211AttributeGeneric(name));
       break;
   }
-  attr->InitFromNlAttr(data);
   return attr.release();
 }
 
@@ -130,17 +129,6 @@ bool Nl80211Attribute::InitFromNlAttr(const nlattr *other) {
 
   data_ = ByteString(reinterpret_cast<const unsigned char *>(other),
                      nla_total_size(nla_len(const_cast<nlattr *>(other))));
-  return true;
-}
-
-// Copies raw attribute data but not the header.
-bool Nl80211Attribute::GetRawData(ByteString *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
-  }
-
-  *output = data_;
   return true;
 }
 
@@ -179,11 +167,9 @@ bool Nl80211U8Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U8Attribute::GetU8Value(uint8_t *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
+  if (output) {
+    *output = value_;
   }
-  *output = value_;
   return true;
 }
 
@@ -223,11 +209,9 @@ bool Nl80211U16Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U16Attribute::GetU16Value(uint16_t *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
+  if (output) {
+    *output = value_;
   }
-  *output = value_;
   return true;
 }
 
@@ -266,11 +250,9 @@ bool Nl80211U32Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U32Attribute::GetU32Value(uint32_t *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
+  if (output) {
+    *output = value_;
   }
-  *output = value_;
   return true;
 }
 
@@ -309,11 +291,9 @@ bool Nl80211U64Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U64Attribute::GetU64Value(uint64_t *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
+  if (output) {
+    *output = value_;
   }
-  *output = value_;
   return true;
 }
 
@@ -353,11 +333,9 @@ bool Nl80211FlagAttribute::InitFromNlAttr(const nlattr *input) {
 
 
 bool Nl80211FlagAttribute::GetFlagValue(bool *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
+  if (output) {
+    *output = value_;
   }
-  *output = value_;
   return true;
 }
 
@@ -395,11 +373,9 @@ bool Nl80211StringAttribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211StringAttribute::GetStringValue(string *output) const {
-  if (!output) {
-    LOG(ERROR) << "Null |output| parameter";
-    return false;
+  if (output) {
+    *output = value_;
   }
-  *output = value_;
   return true;
 }
 
@@ -433,11 +409,9 @@ bool Nl80211RawAttribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211RawAttribute::GetRawValue(ByteString *output) const {
-  if (!output) {
-    LOG(ERROR) << "NULL |output|";
-    return false;
+  if (output) {
+    *output = data_;
   }
-  *output = data_;
   return true;
 }
 

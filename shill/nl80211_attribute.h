@@ -20,6 +20,8 @@ struct nlattr;
 
 namespace shill {
 
+class AttributeList;
+
 // Nl80211Attribute is an abstract base class that describes an attribute in a
 // netlink-80211 message.  Child classes are type-specific and will define
 // Get*Value and Set*Value methods (where * is the type).  A second-level of
@@ -36,9 +38,8 @@ class Nl80211Attribute {
     kTypeU16,
     kTypeU32,
     kTypeU64,
-    kTypeString,
     kTypeFlag,
-    kTypeMsecs,
+    kTypeString,
     kTypeNested,
     kTypeRaw,
     kTypeError
@@ -52,8 +53,7 @@ class Nl80211Attribute {
 
   // Static factory generates the appropriate Nl80211Attribute object from the
   // raw nlattr data.
-  static Nl80211Attribute *NewFromNlAttr(nl80211_attrs name,
-                                         const nlattr *data);
+  static Nl80211Attribute *NewFromName(nl80211_attrs name);
 
   // Accessors for the attribute's name and type information.
   nl80211_attrs name() const { return name_; }
@@ -70,16 +70,6 @@ class Nl80211Attribute {
   const nlattr *data() const {
     return reinterpret_cast<const nlattr *>(data_.GetConstData());
   }
-
-  // TODO(wdg): GetRawData is used to support
-  // UserBoundNlMessage::GetRawAttributeData which, in turn, is used to support
-  // NL80211_ATTR_FRAME and NL80211_ATTR_KEY_SEQ.  Remove this method (and that
-  // one) once those classes are fleshed-out.
-  //
-  // If successful, returns 'true' and sets *|value| to the raw attribute data
-  // (after the header) for this attribute.  Otherwise, returns 'false' and
-  // leaves |value| unchanged.
-  bool GetRawData(ByteString *output) const;
 
   // Fill a string with characters that represents the value of the attribute.
   // If no attribute is found or if the type isn't trivially stringizable,
