@@ -294,6 +294,9 @@ class Service : public base::RefCounted<Service> {
   // Returns true if there is a proxy configuration set on this service.
   virtual bool HasProxyConfig() const { return !proxy_config_.empty(); }
 
+  // Returns whether this service has had recent connection issues.
+  virtual bool HasRecentConnectionIssues();
+
   virtual void MakeFavorite();
 
   // Set the connection for this service.  If the connection is non-NULL, create
@@ -323,9 +326,6 @@ class Service : public base::RefCounted<Service> {
   // to the connected state after a resume.
   virtual void SendPostReadyStateMetrics(
       int64 /*time_resume_to_ready_milliseconds*/) const {}
-
-  // Returns whether this service has had recent connection issues.
-  bool HasRecentConnectionIssues();
 
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }

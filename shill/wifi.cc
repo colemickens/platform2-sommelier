@@ -113,6 +113,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       resumed_at_((struct timeval){0}),
       fast_scans_remaining_(kNumFastScanAttempts),
       has_already_completed_(false),
+      is_debugging_connection_(false),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
@@ -209,6 +210,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   supplicant_process_proxy_.reset();
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
+  is_debugging_connection_ = false;
   scan_pending_ = false;
   StopPendingTimer();
   StopReconnectTimer();
@@ -328,6 +330,9 @@ void WiFi::ConnectTo(WiFiService *service,
     }
   }
 
+  if (service->HasRecentConnectionIssues()) {
+    SetConnectionDebugging(true);
+  }
   supplicant_interface_proxy_->SelectNetwork(network_path);
   SetPendingService(service);
   CHECK(current_service_.get() != pending_service_.get());
@@ -612,6 +617,13 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   // not both.
   CHECK(current_service_.get() != pending_service_.get() ||
         current_service_.get() == NULL);
+
+  // If we are no longer debugging a problematic WiFi connection, return
+  // to the debugging level indicated by the WiFi debugging scope.
+  if ((!current_service_ || !current_service_->HasRecentConnectionIssues()) &&
+      (!pending_service_ || !pending_service_->HasRecentConnectionIssues())) {
+    SetConnectionDebugging(false);
+  }
 }
 
 void WiFi::HandleDisconnect() {
@@ -1690,6 +1702,16 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << __func__ << ": Failed to set wpa_supplicant debug level.";
   }
+}
+
+void WiFi::SetConnectionDebugging(bool enabled) {
+  if (is_debugging_connection_ == enabled) {
+    return;
+  }
+  OnWiFiDebugScopeChanged(
+      enabled ||
+      ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
+  is_debugging_connection_ = enabled;
 }
 
 void WiFi::ConnectToSupplicant() {

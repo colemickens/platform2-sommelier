@@ -32,6 +32,7 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD1(SetState, void(ConnectState state));
   MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
                                          size_t depth));
+  MOCK_METHOD0(HasRecentConnectionIssues, bool());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFiService);

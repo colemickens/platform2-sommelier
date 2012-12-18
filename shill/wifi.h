@@ -334,6 +334,8 @@ class WiFi : public Device {
   void OnSupplicantVanish();
   // Called by ScopeLogger when WiFi debug scope is enabled/disabled.
   void OnWiFiDebugScopeChanged(bool enabled);
+  // Enable or disable debugging for the current connection attempt.
+  void SetConnectionDebugging(bool enabled);
 
   void ConnectToSupplicant();
 
@@ -386,6 +388,8 @@ class WiFi : public Device {
   // Indicates that the current BSS has reached the completed state according
   // to supplicant.
   bool has_already_completed_;
+  // Indicates that we are debugging a problematic connection.
+  bool is_debugging_connection_;
 
   // Properties
   std::string bgscan_method_;

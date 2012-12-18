@@ -1838,6 +1838,48 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   EXPECT_CALL(*service.get(), SetState(_)).Times(AnyNumber());
 }
 
+TEST_F(WiFiMainTest, ConnectToServiceWithoutRecentIssues) {
+  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  EXPECT_CALL(*process_proxy, GetDebugLevel()).Times(0);
+  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
+  EXPECT_CALL(*service.get(), HasRecentConnectionIssues())
+      .WillOnce(Return(false));
+  InitiateConnect(service);
+}
+
+TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
+  // Turn of WiFi debugging, so the only reason we will turn on supplicant
+  // debugging will be to debug a problematic connection.
+  ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+
+  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelInfo));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(wpa_supplicant::kDebugLevelDebug))
+      .Times(1);
+  EXPECT_CALL(*service.get(), HasRecentConnectionIssues())
+      .WillOnce(Return(true));
+  InitiateConnect(service);
+  Mock::VerifyAndClearExpectations(process_proxy);
+
+  SetPendingService(NULL);
+  SetCurrentService(service);
+
+  // When we disconnect from the troubled service, we should reduce the
+  // level of supplciant debugging.
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelDebug));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(wpa_supplicant::kDebugLevelInfo))
+      .Times(1);
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+}
+
 TEST_F(WiFiMainTest, LoadHiddenServicesFailWithNoGroups) {
   StrictMock<MockStore> storage;
   EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kWifiHiddenSsid))
