@@ -87,7 +87,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  g_main_gl_interface->InitContext();
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
   unsigned char* bitmap = CreateBitmap(g_height, g_width);
@@ -163,6 +162,6 @@ int main(int argc, char* argv[]) {
   } while (state != kStateExit);
 
   glDeleteTextures(1, &texture);
-  g_main_gl_interface->DestroyContext();
+  g_main_gl_interface->Cleanup();
   return 0;
 }

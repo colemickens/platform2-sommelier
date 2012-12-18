@@ -19,7 +19,23 @@ bool EGLInterface::Init() {
       static_cast<EGLNativeWindowType>(g_xlib_window);
   surface_ = eglCreateWindowSurface(display_, config_, native_window, NULL);
   CheckError();
+
+  context_ = CreateContext();
+  CheckError();
+
+  eglMakeCurrent(display_, surface_, surface_, context_);
+  CheckError();
+
+  eglQuerySurface(display_, surface_, EGL_WIDTH, &g_width);
+  eglQuerySurface(display_, surface_, EGL_HEIGHT, &g_height);
+
   return true;
+}
+
+void EGLInterface::Cleanup() {
+  eglMakeCurrent(display_, NULL, NULL, NULL);
+  DeleteContext(context_);
+  eglDestroySurface(display_, surface_);
 }
 
 XVisualInfo* EGLInterface::GetXVisual() {
@@ -74,30 +90,26 @@ XVisualInfo* EGLInterface::GetXVisual() {
   return ret;
 }
 
-bool EGLInterface::InitContext() {
+void EGLInterface::SwapBuffers() {
+  eglSwapBuffers(display_, surface_);
+}
+
+bool EGLInterface::SwapInterval(int interval) {
+  return (eglSwapInterval(display_, interval) == EGL_TRUE);
+}
+
+bool EGLInterface::MakeCurrent(const GLContext& context) {
+  return eglMakeCurrent(display_, surface_, surface_, context);
+}
+
+const GLContext EGLInterface::CreateContext() {
   EGLint attribs[] = {
     EGL_CONTEXT_CLIENT_VERSION, 2,
     EGL_NONE
   };
-  context_ = eglCreateContext(display_, config_, NULL, attribs);
-  CheckError();
-
-  eglMakeCurrent(display_, surface_, surface_, context_);
-  CheckError();
-
-  eglQuerySurface(display_, surface_, EGL_WIDTH, &g_width);
-  eglQuerySurface(display_, surface_, EGL_HEIGHT, &g_height);
-
-  return true;
-}
-
-void EGLInterface::DestroyContext() {
-  eglMakeCurrent(display_, NULL, NULL, NULL);
-  eglDestroyContext(display_, context_);
-}
-
-void EGLInterface::SwapBuffers() {
-  eglSwapBuffers(display_, surface_);
+  CHECK(display_ != EGL_NO_DISPLAY);
+  CHECK(config_);
+  return eglCreateContext(display_, config_, NULL, attribs);
 }
 
 void EGLInterface::CheckError() {
@@ -105,8 +117,8 @@ void EGLInterface::CheckError() {
   CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 }
 
-bool EGLInterface::SwapInterval(int interval) {
-  return (eglSwapInterval(display_, interval) == EGL_TRUE);
+void EGLInterface::DeleteContext(const GLContext& context) {
+  eglDestroyContext(display_, context);
 }
 
 void EGLInterface::TerminateGL() {

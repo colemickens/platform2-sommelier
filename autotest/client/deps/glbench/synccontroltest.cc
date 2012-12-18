@@ -65,7 +65,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  g_main_gl_interface->InitContext();
   SyncControlTest* test_controller = SyncControlTest::Create();
 
   // Resizing the window to be fullscreen, since swapbuffers of non-fullscreen
@@ -90,7 +89,7 @@ int main(int argc, char* argv[]) {
   XMoveResizeWindow(g_xlib_display, g_xlib_window,
                     saved_attr.x, saved_attr.y,
                     saved_attr.width, saved_attr.height);
-  g_main_gl_interface->DestroyContext();
+  g_main_gl_interface->Cleanup();
 
   return ret_val ? 0 : 1;
 };

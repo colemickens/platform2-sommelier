@@ -6,6 +6,7 @@ namespace glbench {
 class TestBase;
 
 TestBase* GetSwapTest();
+TestBase* GetContextTest();
 TestBase* GetClearTest();
 TestBase* GetFillRateTest();
 TestBase* GetYuvToRgbTest();

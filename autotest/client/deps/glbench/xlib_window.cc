@@ -21,6 +21,10 @@ DEFINE_bool(override_redirect, true, "Use an override redirect window");
 
 
 bool XlibInit() {
+  // Prevent multiple initializations.
+  if (g_xlib_window)
+    return true;
+
   g_xlib_display = XOpenDisplay(0);
   if (!g_xlib_display) {
     printf("# Error: in xlib_window.cc::XlibInit() could not open "

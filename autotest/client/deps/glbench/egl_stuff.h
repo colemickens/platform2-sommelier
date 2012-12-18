@@ -19,14 +19,20 @@ class EGLInterface : public GLInterface {
   virtual ~EGLInterface() {}
 
   virtual bool Init();
+  virtual void Cleanup();
   virtual XVisualInfo* GetXVisual();
 
-  virtual bool InitContext();
-  virtual void DestroyContext();
   virtual void SwapBuffers();
   virtual bool SwapInterval(int interval);
 
   virtual void CheckError();
+
+  virtual bool MakeCurrent(const GLContext& context);
+  virtual const GLContext CreateContext();
+  virtual void DeleteContext(const GLContext& context);
+  virtual const GLContext& GetMainContext() {
+    return context_;
+  }
 
   void TerminateGL();
 

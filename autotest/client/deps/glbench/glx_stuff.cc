@@ -30,7 +30,37 @@ GLInterface* GLInterface::Create() {
 }
 
 bool GLXInterface::Init() {
-  return XlibInit();
+  if (!XlibInit())
+    return false;
+
+  context_ = CreateContext();
+  if (!context_)
+    return false;
+
+  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, context_)) {
+    glXDestroyContext(g_xlib_display, context_);
+    return false;
+  }
+
+  const GLubyte *str = glGetString(GL_EXTENSIONS);
+  if (!str || !strstr(reinterpret_cast<const char *>(str),
+                      "GL_ARB_vertex_buffer_object"))
+    return false;
+
+#define F(fun, type) fun = reinterpret_cast<type>( \
+    glXGetProcAddress(reinterpret_cast<const GLubyte *>(#fun)));
+  LIST_PROC_FUNCTIONS(F)
+#undef F
+  _glXSwapIntervalMESA = reinterpret_cast<PFNGLXSWAPINTERVALMESAPROC>(
+    glXGetProcAddress(reinterpret_cast<const GLubyte *>(
+        "glXSwapIntervalMESA")));
+
+  return true;
+}
+
+void GLXInterface::Cleanup() {
+  glXMakeCurrent(g_xlib_display, 0, NULL);
+  DeleteContext(context_);
 }
 
 XVisualInfo* GLXInterface::GetXVisual() {
@@ -57,36 +87,19 @@ XVisualInfo* GLXInterface::GetXVisual() {
   return glXGetVisualFromFBConfig(g_xlib_display, fb_config_);
 }
 
-bool GLXInterface::InitContext() {
-  context_ = glXCreateNewContext(g_xlib_display, fb_config_,
-                                    GLX_RGBA_TYPE, 0, True);
-  if (!context_)
-    return false;
-
-  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, context_)) {
-    glXDestroyContext(g_xlib_display, context_);
-    return false;
-  }
-
-  const GLubyte *str = glGetString(GL_EXTENSIONS);
-  if (!str || !strstr(reinterpret_cast<const char *>(str),
-                      "GL_ARB_vertex_buffer_object"))
-    return false;
-
-#define F(fun, type) fun = reinterpret_cast<type>( \
-    glXGetProcAddress(reinterpret_cast<const GLubyte *>(#fun)));
-  LIST_PROC_FUNCTIONS(F)
-#undef F
-  _glXSwapIntervalMESA = reinterpret_cast<PFNGLXSWAPINTERVALMESAPROC>(
-    glXGetProcAddress(reinterpret_cast<const GLubyte *>(
-        "glXSwapIntervalMESA")));
-
-  return true;
+bool GLXInterface::MakeCurrent(const GLContext& context) {
+  return glXMakeCurrent(g_xlib_display, g_xlib_window, context);
 }
 
-void GLXInterface::DestroyContext() {
-  glXMakeCurrent(g_xlib_display, 0, NULL);
-  glXDestroyContext(g_xlib_display, context_);
+const GLContext GLXInterface::CreateContext() {
+  CHECK(g_xlib_display);
+  CHECK(fb_config_);
+  return glXCreateNewContext(g_xlib_display, fb_config_, GLX_RGBA_TYPE, 0,
+                             True);
+}
+
+void GLXInterface::DeleteContext(const GLContext& context) {
+  glXDestroyContext(g_xlib_display, context);
 }
 
 void GLXInterface::SwapBuffers() {

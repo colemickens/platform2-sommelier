@@ -62,10 +62,9 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  g_main_gl_interface->InitContext();
   printf("# board_id: %s - %s\n",
          glGetString(GL_VENDOR), glGetString(GL_RENDERER));
-  g_main_gl_interface->DestroyContext();
+  g_main_gl_interface->Cleanup();
 
   if (argc == 1) {
     printf("# Usage: %s [-save [-outdir=<directory>]] to save images\n", argv[0]);
@@ -80,6 +79,7 @@ int main(int argc, char *argv[]) {
   base::SplitString(FLAGS_tests, ':', &enabled_tests);
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
+    glbench::GetContextTest(),
     glbench::GetClearTest(),
     glbench::GetFillRateTest(),
     glbench::GetWindowManagerCompositingTest(false),
@@ -99,13 +99,13 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < arraysize(tests); i++) {
       if (!test_is_enabled(tests[i], enabled_tests))
         continue;
-      if (!g_main_gl_interface->InitContext()) {
-        printf("InitContext failed\n");
+      if (!g_main_gl_interface->Init()) {
+        printf("Initialize failed\n");
         return 1;
       }
       glbench::ClearBuffers();
       tests[i]->Run();
-      g_main_gl_interface->DestroyContext();
+      g_main_gl_interface->Cleanup();
     }
   } while (GetUTime() < done);
 

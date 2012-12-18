@@ -183,7 +183,6 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  g_main_gl_interface->InitContext();
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
   GLuint texture = GenerateAndBindTexture();
@@ -259,6 +258,6 @@ int main(int argc, char* argv[]) {
   // TODO: cleaner teardown.
 
   glDeleteTextures(1, &texture);
-  g_main_gl_interface->DestroyContext();
+  g_main_gl_interface->Cleanup();
   return return_code;
 }
