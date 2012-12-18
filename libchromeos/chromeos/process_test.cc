@@ -22,6 +22,7 @@ static const char kBinTrue[] = "/bin/true";
 
 using chromeos::Process;
 using chromeos::ProcessImpl;
+using chromeos::ClearLog;
 using chromeos::FindLog;
 using chromeos::GetLog;
 
@@ -32,6 +33,8 @@ struct CompileMocks {
 };
 
 TEST(SimpleProcess, Basic) {
+  // Log must be cleared before running this test, just as ProcessTest::SetUp.
+  ClearLog();
   ProcessImpl process;
   process.AddArg(kBinEcho);
   EXPECT_EQ(0, process.Run());
