@@ -1040,10 +1040,14 @@ TEST_F(ServiceTest, Certification) {
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventInvoked) {
-  EXPECT_CALL(time_, GetNow()).WillOnce(Return(Timestamp()));
+  EXPECT_TRUE(GetDisconnects()->empty());
+  Timestamp timestamp;
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(timestamp));
   SetStateField(Service::kStateOnline);
   service_->SetState(Service::kStateIdle);
   EXPECT_FALSE(GetDisconnects()->empty());
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(timestamp));
+  EXPECT_TRUE(service_->HasRecentConnectionIssues());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventNonEvent) {
@@ -1089,6 +1093,18 @@ TEST_F(ServiceTest, NoteDisconnectEventDisconnectOnce) {
   ASSERT_EQ(1, GetDisconnects()->size());
   EXPECT_EQ(kNow, GetDisconnects()->front().monotonic.tv_sec);
   EXPECT_TRUE(GetMisconnects()->empty());
+
+  Mock::VerifyAndClearExpectations(&time_);
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(
+      kNow  + GetDisconnectsMonitorSeconds() - 1, "")));
+  EXPECT_TRUE(service_->HasRecentConnectionIssues());
+  ASSERT_EQ(1, GetDisconnects()->size());
+
+  Mock::VerifyAndClearExpectations(&time_);
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(
+      kNow + GetDisconnectsMonitorSeconds(), "")));
+  EXPECT_FALSE(service_->HasRecentConnectionIssues());
+  ASSERT_TRUE(GetDisconnects()->empty());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventDisconnectThreshold) {
@@ -1114,6 +1130,18 @@ TEST_F(ServiceTest, NoteDisconnectEventMisconnectOnce) {
   EXPECT_TRUE(GetDisconnects()->empty());
   ASSERT_EQ(1, GetMisconnects()->size());
   EXPECT_EQ(kNow, GetMisconnects()->front().monotonic.tv_sec);
+
+  Mock::VerifyAndClearExpectations(&time_);
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(
+      kNow + GetMisconnectsMonitorSeconds() - 1, "")));
+  EXPECT_TRUE(service_->HasRecentConnectionIssues());
+  ASSERT_EQ(1, GetMisconnects()->size());
+
+  Mock::VerifyAndClearExpectations(&time_);
+  EXPECT_CALL(time_, GetNow()).WillOnce(Return(GetTimestamp(
+      kNow + GetMisconnectsMonitorSeconds(), "")));
+  EXPECT_FALSE(service_->HasRecentConnectionIssues());
+  ASSERT_TRUE(GetMisconnects()->empty());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventMisconnectThreshold) {

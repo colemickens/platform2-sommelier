@@ -733,6 +733,22 @@ string Service::CalculateTechnology(Error */*error*/) {
   return GetTechnologyString();
 }
 
+// static
+void Service::ExpireEventsBefore(
+  int seconds_ago, const Timestamp &now, std::deque<Timestamp> *events) {
+  struct timeval period = (const struct timeval){ seconds_ago };
+  while (!events->empty()) {
+    if (events->size() < static_cast<size_t>(kMaxDisconnectEventHistory)) {
+      struct timeval elapsed = (const struct timeval){ 0 };
+      timersub(&now.monotonic, &events->front().monotonic, &elapsed);
+      if (timercmp(&elapsed, &period, <)) {
+        break;
+      }
+    }
+    events->pop_front();
+  }
+}
+
 void Service::NoteDisconnectEvent() {
   SLOG(Service, 2) << __func__;
   // Ignore the event if it's user-initiated explicit disconnect.
@@ -754,17 +770,17 @@ void Service::NoteDisconnectEvent() {
     SLOG(Service, 2) << "Disconnect in transitional power state ignored.";
     return;
   }
-  struct timeval period = (const struct timeval){ 0 };
+  int period = 0;
   size_t threshold = 0;
   deque<Timestamp> *events = NULL;
   if (IsConnected()) {
     LOG(INFO) << "Noting an unexpected connection drop.";
-    period.tv_sec = kDisconnectsMonitorSeconds;
+    period = kDisconnectsMonitorSeconds;
     threshold = kReportDisconnectsThreshold;
     events = &disconnects_;
   } else if (IsConnecting()) {
     LOG(INFO) << "Noting an unexpected failure to connect.";
-    period.tv_sec = kMisconnectsMonitorSeconds;
+    period = kMisconnectsMonitorSeconds;
     threshold = kReportMisconnectsThreshold;
     events = &misconnects_;
   } else {
@@ -772,22 +788,20 @@ void Service::NoteDisconnectEvent() {
         << "Not connected or connecting, state transition ignored.";
     return;
   }
-  // Discard old events first.
   Timestamp now = time_->GetNow();
-  while (!events->empty()) {
-    if (events->size() < static_cast<size_t>(kMaxDisconnectEventHistory)) {
-      struct timeval elapsed = (const struct timeval){ 0 };
-      timersub(&now.monotonic, &events->front().monotonic, &elapsed);
-      if (timercmp(&elapsed, &period, <)) {
-        break;
-      }
-    }
-    events->pop_front();
-  }
+  // Discard old events first.
+  ExpireEventsBefore(period, now, events);
   events->push_back(now);
   if (events->size() >= threshold) {
     diagnostics_reporter_->OnConnectivityEvent();
   }
+}
+
+bool Service::HasRecentConnectionIssues() {
+  Timestamp now = time_->GetNow();
+  ExpireEventsBefore(kDisconnectsMonitorSeconds, now, &disconnects_);
+  ExpireEventsBefore(kMisconnectsMonitorSeconds, now, &misconnects_);
+  return !disconnects_.empty() || !misconnects_.empty();
 }
 
 // static

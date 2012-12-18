@@ -324,6 +324,9 @@ class Service : public base::RefCounted<Service> {
   virtual void SendPostReadyStateMetrics(
       int64 /*time_resume_to_ready_milliseconds*/) const {}
 
+  // Returns whether this service has had recent connection issues.
+  bool HasRecentConnectionIssues();
+
   bool auto_connect() const { return auto_connect_; }
   void set_auto_connect(bool connect) { auto_connect_ = connect; }
 
@@ -624,6 +627,16 @@ class Service : public base::RefCounted<Service> {
   // into a profile.
   void SaveToProfile();
 
+  // Start at the head of |events| and remove all entries that occurred
+  // more than |seconds_ago| prior to |now|.  Also, the size of |events|
+  // is unconditionally trimmed below kMaxDisconnectEventHistory.
+  static void ExpireEventsBefore(
+      int seconds_ago, const Timestamp &now, std::deque<Timestamp> *events);
+
+  // Qualify the conditions under which the most recent disconnect occurred.
+  // Make note ot the fact that there was a problem connecting / staying
+  // connected if the disconnection did not occur as a clear result of user
+  // action.
   void NoteDisconnectEvent();
 
   // Utility function that returns true if a is different from b.  When they
