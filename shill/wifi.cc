@@ -39,6 +39,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 #include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
@@ -147,6 +148,9 @@ WiFi::WiFi(ControlInterface *control_interface,
                             flimflam::kScanIntervalProperty,
                             &WiFi::GetScanInterval,
                             &WiFi::SetScanInterval);
+  ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
+      ScopeLogger::kWiFi,
+      Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -1651,6 +1655,43 @@ void WiFi::OnSupplicantVanish() {
   }
 }
 
+void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
+  SLOG(WiFi, 2) << "WiFi debug scope changed; enable is now " << enabled;
+  if (!supplicant_process_proxy_.get()) {
+    SLOG(WiFi, 2) << "Suplicant process proxy not present.";
+    return;
+  }
+  string current_level;
+  try {
+    current_level = supplicant_process_proxy_->GetDebugLevel();
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << __func__ << ": Failed to get wpa_supplicant debug level.";
+    return;
+  }
+
+  if (current_level != wpa_supplicant::kDebugLevelInfo &&
+      current_level != wpa_supplicant::kDebugLevelDebug) {
+    SLOG(WiFi, 2) << "WiFi debug level is currently "
+                  << current_level
+                  << "; assuming that it is being controlled elsewhere.";
+    return;
+  }
+  string new_level = enabled ? wpa_supplicant::kDebugLevelDebug :
+      wpa_supplicant::kDebugLevelInfo;
+
+  if (new_level == current_level) {
+    SLOG(WiFi, 2) << "WiFi debug level is already the desired level "
+                  << current_level;
+    return;
+  }
+
+  try {
+    supplicant_process_proxy_->SetDebugLevel(new_level);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << __func__ << ": Failed to set wpa_supplicant debug level.";
+  }
+}
+
 void WiFi::ConnectToSupplicant() {
   LOG(INFO) << link_name() << ": " << (enabled() ? "enabled" : "disabled")
             << " supplicant: "
@@ -1663,6 +1704,8 @@ void WiFi::ConnectToSupplicant() {
   supplicant_process_proxy_.reset(
       proxy_factory_->CreateSupplicantProcessProxy(
           wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
+  OnWiFiDebugScopeChanged(
+      ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
   ::DBus::Path interface_path;
   try {
     map<string, DBus::Variant> create_interface_args;

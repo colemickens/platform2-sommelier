@@ -6,11 +6,14 @@
 #define SHILL_SCOPE_LOGGER_H_
 
 #include <bitset>
+#include <vector>
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/lazy_instance.h>
 #include <gtest/gtest_prod.h>
+
+#include "shill/callbacks.h"
 
 namespace shill {
 
@@ -55,6 +58,9 @@ class ScopeLogger {
     kNumScopes
   };
 
+  typedef base::Callback<void(bool)> ScopeEnableChangedCallback;
+  typedef std::vector<ScopeEnableChangedCallback>ScopeEnableChangedCallbacks;
+
   // Returns a singleton of this class.
   static ScopeLogger *GetInstance();
 
@@ -63,6 +69,9 @@ class ScopeLogger {
   // Returns true if logging is enabled for |scope| and |verbose_level|, i.e.
   // scope_enable_[|scope|] is true and |verbose_level| <= |verbose_level_|
   bool IsLogEnabled(Scope scope, int verbose_level) const;
+
+  // Returns true if logging is enabled for |scope| at any verbosity level.
+  bool IsScopeEnabled(Scope scope) const;
 
   // Returns a string comprising the names, separated by commas, of all scopes.
   std::string GetAllScopeNames() const;
@@ -89,6 +98,10 @@ class ScopeLogger {
   // scope name found in |expression| is ignored.
   void EnableScopesByName(const std::string &expression);
 
+  // Register for log scope enable/disable state changes for |scope|.
+  void RegisterScopeEnableChangedCallback(
+      Scope scope, ScopeEnableChangedCallback callback);
+
   // Sets the verbose level for all scopes to |verbose_level|.
   void set_verbose_level(int verbose_level) { verbose_level_ = verbose_level; }
 
@@ -111,6 +124,9 @@ class ScopeLogger {
 
   // Verbose level that is applied to all scopes.
   int verbose_level_;
+
+  // Hooks to notify interested parties of changes to log scopes.
+  ScopeEnableChangedCallbacks log_scope_callbacks_[kNumScopes];
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(ScopeLogger);
 };

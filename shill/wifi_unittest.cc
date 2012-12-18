@@ -418,6 +418,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportStateChanged(const string &new_state) {
     wifi_->StateChanged(new_state);
   }
+  void ReportWiFiDebugScopeChanged(bool enabled) {
+    wifi_->OnWiFiDebugScopeChanged(enabled);
+  }
   void SetPendingService(const WiFiServiceRefPtr &service) {
     wifi_->pending_service_ = service;
   }
@@ -2662,5 +2665,79 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
     EXPECT_TRUE(objects[i].Equals(expected_info));
   };
 };
+
+TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
+  MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+
+  // With WiFi not yet started, nothing interesting (including a crash) should
+  // happen.
+  EXPECT_CALL(*process_proxy, GetDebugLevel()).Times(0);
+  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
+  ReportWiFiDebugScopeChanged(true);
+
+  // This unit test turns on WiFi debugging, so when we start WiFi, we should
+  // check but not set the debug level if we return the "debug" level.
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelDebug));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
+  StartWiFi();
+  Mock::VerifyAndClearExpectations(process_proxy);
+
+  // If WiFi debugging is toggled and wpa_supplicant reports debugging
+  // is set to some unmanaged level, WiFi should leave it alone.
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelError))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelError))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelExcessive))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelExcessive))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelMsgDump))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelMsgDump))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelWarning))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelWarning));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+  Mock::VerifyAndClearExpectations(process_proxy);
+
+  // If WiFi debugging is turned off and wpa_supplicant reports debugging
+  // is turned on, WiFi should turn supplicant debugging off.
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelDebug));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(wpa_supplicant::kDebugLevelInfo))
+      .Times(1);
+  ReportWiFiDebugScopeChanged(false);
+  Mock::VerifyAndClearExpectations(process_proxy);
+
+  // If WiFi debugging is turned on and wpa_supplicant reports debugging
+  // is turned off, WiFi should turn supplicant debugging on.
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelInfo));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(wpa_supplicant::kDebugLevelDebug))
+      .Times(1);
+  ReportWiFiDebugScopeChanged(true);
+  Mock::VerifyAndClearExpectations(process_proxy);
+
+  // If WiFi debugging is already in the correct state, it should not be
+  // changed.
+  EXPECT_CALL(*process_proxy, GetDebugLevel())
+      .WillOnce(Return(wpa_supplicant::kDebugLevelDebug))
+      .WillOnce(Return(wpa_supplicant::kDebugLevelInfo));
+  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+
+  // After WiFi is stopped, we shouldn't be calling the proxy.
+  EXPECT_CALL(*process_proxy, GetDebugLevel()).Times(0);
+  EXPECT_CALL(*process_proxy, SetDebugLevel(_)).Times(0);
+  StopWiFi();
+  ReportWiFiDebugScopeChanged(true);
+  ReportWiFiDebugScopeChanged(false);
+}
 
 }  // namespace shill

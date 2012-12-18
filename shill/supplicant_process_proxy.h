@@ -26,6 +26,8 @@ class SupplicantProcessProxy : public SupplicantProcessProxyInterface {
       const std::map<std::string, ::DBus::Variant> &args);
   virtual void RemoveInterface(const ::DBus::Path &path);
   virtual ::DBus::Path GetInterface(const std::string &ifname);
+  virtual void SetDebugLevel(const std::string &level);
+  virtual std::string GetDebugLevel();
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1_proxy,

@@ -56,6 +56,23 @@ void SupplicantProcessProxy::RemoveInterface(const ::DBus::Path &path) {
   }
 }
 
+string SupplicantProcessProxy::GetDebugLevel() {
+  try {
+    return proxy_.DebugLevel();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return "";  // Make the compiler happy.
+  }
+}
+
+void SupplicantProcessProxy::SetDebugLevel(const string &level) {
+  try {
+    proxy_.DebugLevel(level);
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+  }
+}
+
 // definitions for private class SupplicantProcessProxy::Proxy
 
 SupplicantProcessProxy::Proxy::Proxy(

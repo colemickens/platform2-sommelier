@@ -2,11 +2,16 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/bind.h>
+#include <base/memory/weak_ptr.h>
+
 #include "shill/logging.h"
 #include "shill/scope_logger.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+
+using ::testing::_;
 
 namespace shill {
 
@@ -158,6 +163,52 @@ TEST_F(ScopeLoggerTest, SetVerboseLevel) {
 
   logger->set_verbose_level(0);
   logger->SetScopeEnabled(ScopeLogger::kService, false);
+}
+
+class ScopeChangeTarget {
+ public:
+  ScopeChangeTarget() : weak_ptr_factory_(this) {}
+  virtual ~ScopeChangeTarget() {}
+  MOCK_METHOD1(Callback, void(bool enabled));
+  ScopeLogger::ScopeEnableChangedCallback GetCallback() {
+    return base::Bind(
+        &ScopeChangeTarget::Callback, weak_ptr_factory_.GetWeakPtr());
+  }
+
+ private:
+  base::WeakPtrFactory<ScopeChangeTarget> weak_ptr_factory_;
+};
+
+TEST_F(ScopeLoggerTest, LogScopeCallback) {
+  ScopeChangeTarget target0;
+  logger_.RegisterScopeEnableChangedCallback(
+      ScopeLogger::kWiFi, target0.GetCallback());
+  EXPECT_CALL(target0, Callback(_)).Times(0);
+  // Call for a scope other than registered-for.
+  logger_.EnableScopesByName("+vpn");
+  // Change to the same value as default.
+  logger_.EnableScopesByName("-wifi");
+  testing::Mock::VerifyAndClearExpectations(&target0);
+
+  EXPECT_CALL(target0, Callback(true)).Times(1);
+  logger_.EnableScopesByName("+wifi");
+  testing::Mock::VerifyAndClearExpectations(&target0);
+
+  EXPECT_CALL(target0, Callback(false)).Times(1);
+  logger_.EnableScopesByName("");
+  testing::Mock::VerifyAndClearExpectations(&target0);
+
+  // Change to the same value as last set.
+  EXPECT_CALL(target0, Callback(_)).Times(0);
+  logger_.EnableScopesByName("-wifi");
+  testing::Mock::VerifyAndClearExpectations(&target0);
+
+  ScopeChangeTarget target1;
+  logger_.RegisterScopeEnableChangedCallback(
+      ScopeLogger::kWiFi, target1.GetCallback());
+  EXPECT_CALL(target0, Callback(true)).Times(1);
+  EXPECT_CALL(target1, Callback(true)).Times(1);
+  logger_.EnableScopesByName("+wifi");
 }
 
 }  // namespace shill

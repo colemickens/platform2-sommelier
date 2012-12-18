@@ -332,6 +332,8 @@ class WiFi : public Device {
 
   void OnSupplicantAppear(const std::string &owner);
   void OnSupplicantVanish();
+  // Called by ScopeLogger when WiFi debug scope is enabled/disabled.
+  void OnWiFiDebugScopeChanged(bool enabled);
 
   void ConnectToSupplicant();
 

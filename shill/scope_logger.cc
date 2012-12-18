@@ -76,10 +76,14 @@ ScopeLogger::~ScopeLogger() {
 }
 
 bool ScopeLogger::IsLogEnabled(Scope scope, int verbose_level) const {
+  return IsScopeEnabled(scope) && verbose_level <= verbose_level_;
+}
+
+bool ScopeLogger::IsScopeEnabled(Scope scope) const {
   CHECK_GE(scope, 0);
   CHECK_LT(scope, kNumScopes);
 
-  return scope_enabled_[scope] && verbose_level <= verbose_level_;
+  return scope_enabled_[scope];
 }
 
 string ScopeLogger::GetAllScopeNames() const {
@@ -133,13 +137,31 @@ void ScopeLogger::EnableScopesByName(const string &expression) {
   }
 }
 
+void ScopeLogger::RegisterScopeEnableChangedCallback(
+    Scope scope, ScopeEnableChangedCallback callback) {
+  CHECK_GE(scope, 0);
+  CHECK_LT(scope, kNumScopes);
+  log_scope_callbacks_[scope].push_back(callback);
+}
+
 void ScopeLogger::DisableAllScopes() {
-  scope_enabled_.reset();
+  // Iterate over all scopes so the notification side-effect occurs.
+  for (size_t i = 0; i < arraysize(kScopeNames); ++i) {
+    SetScopeEnabled(static_cast<Scope>(i), false);
+  }
 }
 
 void ScopeLogger::SetScopeEnabled(Scope scope, bool enabled) {
   CHECK_GE(scope, 0);
   CHECK_LT(scope, kNumScopes);
+
+  if (scope_enabled_[scope] != enabled) {
+    ScopeEnableChangedCallbacks &callbacks = log_scope_callbacks_[scope];
+    ScopeEnableChangedCallbacks::iterator it;
+    for (it = callbacks.begin(); it != callbacks.end(); ++it) {
+      (*it).Run(enabled);
+    }
+  }
 
   scope_enabled_[scope] = enabled;
 }
