@@ -70,6 +70,10 @@ PowerManDaemon::~PowerManDaemon() {
 }
 
 void PowerManDaemon::Init() {
+  // Register for D-Bus signals before emitting the lid-closed signal: if powerd
+  // wants the system to shut down, powerm needs to hear about it.
+  RegisterDBusMessageHandler();
+
   int input_lidstate = 0;
   int64 use_input_for_lid;
   string wakeup_inputs_str;
@@ -108,7 +112,6 @@ void PowerManDaemon::Init() {
       input_.EnableWakeInputs();
     }
   }
-  RegisterDBusMessageHandler();
 }
 
 void PowerManDaemon::Run() {
