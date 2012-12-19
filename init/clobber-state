@@ -28,12 +28,22 @@ FACTORY_WIPE_FIRMWARE_PID=""
 # List of files to preserve relative to /mnt/stateful_partition/
 PRESERVED_FILES="
   unencrypted/preserve/attestation.epb
+  unencrypted/preserve/powerwash_count
   home/.shadow/install_attributes.pb
 "
 PRESERVED_TAR="/tmp/preserve.tar"
 STATE_PATH="/mnt/stateful_partition"
 PRESERVED_LIST=""
+POWERWASH_COUNT="/mnt/stateful_partition/unencrypted/preserve/powerwash_count"
 if [ "$SAFE_WIPE" = "safe" ]; then
+  COUNT=1
+  if [ -f $POWERWASH_COUNT ]; then
+    COUNT_UNSANITIZED=$(head -1 $POWERWASH_COUNT | cut -c1-4)
+    if [ $(expr "$COUNT_UNSANITIZED" : "^[0-9][0-9]*$") -ne 0 ]; then
+      COUNT=$(( COUNT_UNSANITIZED + 1 ))
+    fi
+  fi
+  echo $COUNT > $POWERWASH_COUNT
   # We want to preserve permissions and recreate the directory structure
   # for all of the files in the PRESERVED_FILES variable. In order to do
   # so we run tar --no-recurison and specify the names of each of the
@@ -221,6 +231,7 @@ mount -n -t ext4 "${STATE_DEV}" "${STATE_PATH}"
 # If /tmp/preserve.tar exists copy over its contents to the proper location.
 if [ "$SAFE_WIPE" = "safe" ]; then
   tar xfp $PRESERVED_TAR -C $STATE_PATH
+  touch /mnt/stateful_partition/unencrypted/.powerwash_completed
 fi
 
 # Restore the log file
