@@ -359,11 +359,6 @@ wait
 initctl emit x-started
 bootstat x-started
 
-# When X starts, it copies the contents of the framebuffer to the root
-# window.  We clear the framebuffer here to make sure that it doesn't flash
-# back onscreen when X exits later.
-ply-image --clear 0x000000 --no-set-monitors &
-
 # This is a bad place to add your code.  See "RED ALERT", above.
 # Regrettably, this comment is not redundant.  :-(
 
