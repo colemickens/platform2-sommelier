@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
-#ifndef POWER_MANAGER_COMMON_MOCK_BACKLIGHT_H_
-#define POWER_MANAGER_COMMON_MOCK_BACKLIGHT_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_MOCK_BACKLIGHT_H_
+#define POWER_MANAGER_POWERD_SYSTEM_MOCK_BACKLIGHT_H_
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "power_manager/common/backlight_interface.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -17,6 +17,7 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 
 namespace power_manager {
+namespace system {
 
 class MockBacklight : public BacklightInterface {
  public:
@@ -59,6 +60,7 @@ class MockBacklight : public BacklightInterface {
   }
 };  // class MockBacklight
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_COMMON_MOCK_BACKLIGHT_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_MOCK_BACKLIGHT_H_

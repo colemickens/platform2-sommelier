@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerm/internal_backlight.h"
+#include "power_manager/powerd/system/internal_backlight.h"
 
 #include <glib.h>
 
@@ -15,6 +15,7 @@
 #include "base/string_util.h"
 
 namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -235,4 +236,5 @@ void InternalBacklight::CancelTransition() {
   transition_end_level_ = current_brightness_level_;
 }
 
+}  // namespace system
 }  // namespace power_manager

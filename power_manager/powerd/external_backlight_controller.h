@@ -11,13 +11,15 @@
 
 namespace power_manager {
 
+namespace system {
 class BacklightInterface;
+}  // namespace system
 
 // Controls the brightness of an external display on machines that lack internal
 // displays.
 class ExternalBacklightController : public BacklightController {
  public:
-  explicit ExternalBacklightController(BacklightInterface* backlight);
+  explicit ExternalBacklightController(system::BacklightInterface* backlight);
   virtual ~ExternalBacklightController();
 
   bool currently_dimming() const { return currently_dimming_; }
@@ -68,7 +70,7 @@ class ExternalBacklightController : public BacklightController {
   // chromeos/dbus/service_constants.h.
   void SendSoftwareDimmingSignal(int state);
 
-  BacklightInterface* backlight_;  // not owned
+  system::BacklightInterface* backlight_;  // not owned
   MonitorReconfigureInterface* monitor_reconfigure_;  // not owned
   BacklightControllerObserver* observer_;  // not owned
 

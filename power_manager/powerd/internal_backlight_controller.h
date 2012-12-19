@@ -20,6 +20,10 @@ typedef unsigned int guint;
 
 namespace power_manager {
 
+namespace system {
+class BacklightInterface;
+}  // namespace system
+
 // Controls the internal backlight on devices with built-in displays.
 //
 // In the context of this class, "percent" refers to a double-precision
@@ -33,7 +37,7 @@ class InternalBacklightController : public BacklightController {
   // tests.
   static const double kMinVisiblePercent;
 
-  InternalBacklightController(BacklightInterface* backlight,
+  InternalBacklightController(system::BacklightInterface* backlight,
                               PowerPrefs* prefs,
                               AmbientLightSensor* sensor);
   virtual ~InternalBacklightController();
@@ -130,7 +134,7 @@ class InternalBacklightController : public BacklightController {
   void CancelSetScreenPowerStateTimeout();
 
   // Backlight used for dimming. Non-owned.
-  BacklightInterface* backlight_;
+  system::BacklightInterface* backlight_;
 
   // Interface for saving preferences. Non-owned.
   PowerPrefs* prefs_;

@@ -13,11 +13,12 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
-#include "power_manager/powerm/internal_backlight.h"
+#include "power_manager/powerd/system/internal_backlight.h"
 
 using ::testing::Test;
 
 namespace power_manager {
+namespace system {
 
 class InternalBacklightTest : public Test {
  public:
@@ -242,4 +243,5 @@ TEST_F(InternalBacklightTest, Transitions) {
   EXPECT_EQ(kHalfBrightness, GetCurrentBrightness(&backlight));
 }
 
+}  // namespace system
 }  // namespace power_manager

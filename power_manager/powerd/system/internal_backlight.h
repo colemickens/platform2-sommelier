@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERM_INTERNAL_BACKLIGHT_H_
-#define POWER_MANAGER_POWERM_INTERNAL_BACKLIGHT_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_
+#define POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
-#include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 typedef int gboolean;
 typedef unsigned int guint;
 
 namespace power_manager {
+namespace system {
 
 // Controls an LCD or keyboard backlight via sysfs.
 class InternalBacklight : public BacklightInterface {
@@ -108,6 +109,7 @@ class InternalBacklight : public BacklightInterface {
   DISALLOW_COPY_AND_ASSIGN(InternalBacklight);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERM_INTERNAL_BACKLIGHT_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_INTERNAL_BACKLIGHT_H_

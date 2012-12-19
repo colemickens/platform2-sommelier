@@ -23,17 +23,14 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
-#include "power_manager/powerd/backlight_client.h"
+#include "power_manager/powerd/external_backlight_controller.h"
 #include "power_manager/powerd/idle_detector.h"
+#include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/system/external_backlight.h"
+#include "power_manager/powerd/system/internal_backlight.h"
 #include "power_manager/powerd/video_detector.h"
-
-#ifdef IS_DESKTOP
-#include "power_manager/powerd/external_backlight_controller.h"
-#else
-#include "power_manager/powerd/internal_backlight_controller.h"
-#endif
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -163,36 +160,34 @@ int main(int argc, char* argv[]) {
   light_sensor->Init();
 #endif
 
-  power_manager::BacklightClient display_backlight(
-      power_manager::BACKLIGHT_TYPE_DISPLAY);
+  power_manager::MonitorReconfigure monitor_reconfigure;
+
+#ifdef IS_DESKTOP
+  power_manager::system::ExternalBacklight display_backlight;
   if (!display_backlight.Init())
     LOG(WARNING) << "Cannot initialize display backlight";
-
-  power_manager::MonitorReconfigure monitor_reconfigure;
-#ifdef IS_DESKTOP
   power_manager::ExternalBacklightController display_backlight_controller(
       &display_backlight);
 #else
+  power_manager::system::InternalBacklight display_backlight;
+  if (!display_backlight.Init(FilePath(power_manager::kInternalBacklightPath),
+                              power_manager::kInternalBacklightPattern))
+    LOG(WARNING) << "Cannot initialize display backlight";
   power_manager::InternalBacklightController display_backlight_controller(
       &display_backlight, &prefs, light_sensor.get());
 #endif
+
   display_backlight_controller.SetMonitorReconfigure(&monitor_reconfigure);
   if (!display_backlight_controller.Init())
     LOG(WARNING) << "Cannot initialize display backlight controller";
 
-#ifdef HAS_KEYBOARD_BACKLIGHT
-  scoped_ptr<power_manager::BacklightClient> keyboard_backlight(
-      new power_manager::BacklightClient(
-          power_manager::BACKLIGHT_TYPE_KEYBOARD));
-  if (!keyboard_backlight->Init()) {
-    LOG(WARNING) << "Cannot initialize keyboard backlight!";
-    keyboard_backlight.reset();
-  }
-#endif
   scoped_ptr<power_manager::KeyboardBacklightController>
       keyboard_backlight_controller;
 #ifdef HAS_KEYBOARD_BACKLIGHT
-  if (keyboard_backlight.get()) {
+  scoped_ptr<power_manager::system::InternalBacklight> keyboard_backlight(
+      new power_manager::system::InternalBacklight);
+  if (keyboard_backlight->Init(FilePath(power_manager::kKeyboardBacklightPath),
+                               power_manager::kKeyboardBacklightPattern)) {
     keyboard_backlight_controller.reset(
         new power_manager::KeyboardBacklightController(
             keyboard_backlight.get(), &prefs, light_sensor.get()));
@@ -200,6 +195,9 @@ int main(int argc, char* argv[]) {
       LOG(WARNING) << "Cannot initialize keyboard backlight controller!";
       keyboard_backlight_controller.reset();
     }
+  } else {
+    LOG(WARNING) << "Cannot initialize keyboard backlight!";
+    keyboard_backlight.reset();
   }
 #endif
 

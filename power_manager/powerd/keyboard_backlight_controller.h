@@ -17,15 +17,18 @@
 
 namespace power_manager {
 
-class BacklightInterface;
 class KeyboardBacklightControllerTest;
 class PowerPrefs;
+
+namespace system {
+class BacklightInterface;
+}  // namespace system
 
 // Controls the keyboard backlight for devices with such a backlight.
 class KeyboardBacklightController : public BacklightController,
                                     public VideoDetectorObserver {
  public:
-  KeyboardBacklightController(BacklightInterface* backlight,
+  KeyboardBacklightController(system::BacklightInterface* backlight,
                               PowerPrefs* prefs,
                               AmbientLightSensor* sensor);
   virtual ~KeyboardBacklightController();
@@ -164,7 +167,7 @@ class KeyboardBacklightController : public BacklightController,
   bool is_initialized_;
 
   // Backlight used for dimming. Non-owned.
-  BacklightInterface* backlight_;
+  system::BacklightInterface* backlight_;
 
   // Interface for saving preferences. Non-owned.
   PowerPrefs* prefs_;

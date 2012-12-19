@@ -11,8 +11,8 @@
 
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/common/backlight_interface.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 namespace {
 
@@ -25,7 +25,7 @@ double kBrightnessAdjustmentPercent = 10.0;
 namespace power_manager {
 
 ExternalBacklightController::ExternalBacklightController(
-    BacklightInterface* backlight)
+    system::BacklightInterface* backlight)
     : backlight_(backlight),
       monitor_reconfigure_(NULL),
       observer_(NULL),

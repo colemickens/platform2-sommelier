@@ -8,13 +8,13 @@
 #include <string>
 
 #include "base/memory/scoped_ptr.h"
-#include "power_manager/common/mock_backlight.h"
 #include "power_manager/common/mock_power_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/system/mock_backlight.h"
 
 using ::testing::Mock;
 using ::testing::StrictMock;
@@ -135,7 +135,7 @@ class KeyboardBacklightControllerTest : public Test {
 
  protected:
   StrictMock<MockAmbientLightSensor> light_sensor_;
-  StrictMock<MockBacklight> backlight_;
+  StrictMock<system::MockBacklight> backlight_;
   StrictMock<MockPowerPrefs> power_prefs_;
   scoped_ptr<KeyboardBacklightController> controller_;
 };  // class KeyboardBacklightControllerTest

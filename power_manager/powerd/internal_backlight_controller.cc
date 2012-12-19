@@ -73,7 +73,7 @@ const double InternalBacklightController::kMinVisiblePercent =
     kMaxPercent / kMaxBrightnessSteps;
 
 InternalBacklightController::InternalBacklightController(
-    BacklightInterface* backlight,
+    system::BacklightInterface* backlight,
     PowerPrefs* prefs,
     AmbientLightSensor* sensor)
     : backlight_(backlight),

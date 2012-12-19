@@ -7,10 +7,10 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
-#include "power_manager/common/mock_backlight.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
+#include "power_manager/powerd/system/mock_backlight.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -61,7 +61,7 @@ class IdleDimmerTest : public Test {
   }
 
  protected:
-  MockBacklight backlight_;
+  system::MockBacklight backlight_;
   PowerPrefs prefs_;
   InternalBacklightController backlight_ctl_;
 

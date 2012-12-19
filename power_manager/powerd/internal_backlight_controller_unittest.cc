@@ -9,13 +9,13 @@
 #include <vector>
 
 #include "base/logging.h"
-#include "power_manager/common/mock_backlight.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/mock_monitor_reconfigure.h"
+#include "power_manager/powerd/system/mock_backlight.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -73,7 +73,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
   }
 
  protected:
-  ::testing::StrictMock<MockBacklight> backlight_;
+  ::testing::StrictMock<system::MockBacklight> backlight_;
   ::testing::StrictMock<MockAmbientLightSensor> light_sensor_;
   PowerPrefs prefs_;
   InternalBacklightController controller_;

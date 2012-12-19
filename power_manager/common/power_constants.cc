@@ -69,11 +69,6 @@ const char kRestartSignal[] = "RestartSignal";
 const char kRequestCleanShutdown[] = "RequestCleanShutdown";
 const char kSuspendSignal[] = "SuspendSignal";
 const char kShutdownSignal[] = "ShutdownSignal";
-const char kBacklightGetMethod[] = "BacklightGet";
-const char kBacklightSetMethod[] = "BacklightSet";
-
-// powerm -> powerd messages.
-const char kExternalBacklightUpdateSignal[] = "ExternalBacklightUpdate";
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";

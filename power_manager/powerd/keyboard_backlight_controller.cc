@@ -10,11 +10,11 @@
 
 #include "base/string_number_conversions.h"
 #include "base/string_split.h"
-#include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 namespace {
 
@@ -49,7 +49,7 @@ const int64 KeyboardBacklightController::kFastTransitionMs = 200;
 const int64 KeyboardBacklightController::kSlowTransitionMs = 2000;
 
 KeyboardBacklightController::KeyboardBacklightController(
-    BacklightInterface* backlight,
+    system::BacklightInterface* backlight,
     PowerPrefs* prefs,
     AmbientLightSensor* sensor)
     : is_initialized_ (false),

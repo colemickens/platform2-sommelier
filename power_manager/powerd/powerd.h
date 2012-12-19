@@ -21,7 +21,6 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
-#include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/inotify.h"
 #include "power_manager/common/power_prefs.h"
 #include "power_manager/common/signal_callback.h"

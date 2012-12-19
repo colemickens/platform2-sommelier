@@ -7,8 +7,8 @@
 #include <gtest/gtest.h>
 
 #include "base/compiler_specific.h"
-#include "power_manager/common/backlight_interface.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
 
@@ -22,7 +22,7 @@ const int64 kDefaultStartingBacklightLevel = 100;
 
 // Fake BacklightInterface implementation.
 // TODO(derat): Replace MockBacklight with this class.
-class TestBacklight : public BacklightInterface {
+class TestBacklight : public system::BacklightInterface {
  public:
   TestBacklight()
       : max_level_(kDefaultMaxBacklightLevel),

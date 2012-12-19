@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_COMMON_BACKLIGHT_INTERFACE_H_
-#define POWER_MANAGER_COMMON_BACKLIGHT_INTERFACE_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_
+#define POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_
 
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "base/time.h"
 
 namespace power_manager {
+namespace system {
 
 // Interface for classes that want to watch for changes to the backlight device
 // (typically caused by a monitor getting plugged or unplugged).
@@ -61,6 +62,7 @@ class BacklightInterface {
   DISALLOW_COPY_AND_ASSIGN(BacklightInterface);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_COMMON_BACKLIGHT_INTERFACE_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_INTERFACE_H_

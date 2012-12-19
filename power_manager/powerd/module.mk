@@ -16,12 +16,9 @@ CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): \
 CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): LDLIBS += $(POWERSUPPLY_LIBS)
 clean: CLEAN(powerd/libpower_supply.pie.a)
 
-LIBBACKLIGHTCTRL_OBJS = powerd/backlight_controller.o
-ifeq ($(USE_IS_DESKTOP),)
-LIBBACKLIGHTCTRL_OBJS += powerd/internal_backlight_controller.o
-else
-LIBBACKLIGHTCTRL_OBJS += powerd/external_backlight_controller.o
-endif
+LIBBACKLIGHTCTRL_OBJS = powerd/backlight_controller.o \
+                        powerd/internal_backlight_controller.o \
+                        powerd/external_backlight_controller.o
 CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \
 	$(LIBBACKLIGHTCTRL_OBJS)
 CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \
@@ -44,7 +41,6 @@ LIBPOWERD_OBJS = power_manager/suspend.pb.o \
                  power_supply_properties.pb.o \
                  powerd/ambient_light_sensor.o \
                  powerd/async_file_reader.o \
-                 powerd/backlight_client.o \
                  powerd/file_tagger.o \
                  powerd/idle_detector.o \
                  powerd/keyboard_backlight_controller.o \
@@ -73,6 +69,7 @@ CXX_BINARY(powerd/powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
 CXX_BINARY(powerd/powerd): CPPFLAGS += $(POWERD_FLAGS)
@@ -104,18 +101,12 @@ POWERD_UNITTEST_OBJS = powerd/ambient_light_sensor_unittest.o \
                        powerd/powerd_unittest.o \
                        powerd/rolling_average_unittest.o \
                        powerd/suspend_delay_controller_unittest.o \
-                       powerd/video_detector_unittest.o
-ifeq ($(USE_IS_DESKTOP),)
-POWERD_UNITTEST_OBJS += powerd/internal_backlight_controller_unittest.o \
-                        powerd/idle_dimmer_unittest.o \
-                        powerd/plug_dimmer_unittest.o
-else
-POWERD_UNITTEST_OBJS += powerd/external_backlight_controller_unittest.o
-endif
-
-ifneq ($(USE_HAS_KEYBOARD_BACKLIGHT),)
-POWERD_UNITTEST_OBJS += powerd/keyboard_backlight_controller_unittest.o
-endif
+                       powerd/video_detector_unittest.o \
+                       powerd/internal_backlight_controller_unittest.o \
+                       powerd/idle_dimmer_unittest.o \
+                       powerd/plug_dimmer_unittest.o \
+                       powerd/external_backlight_controller_unittest.o \
+                       powerd/keyboard_backlight_controller_unittest.o
 
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \

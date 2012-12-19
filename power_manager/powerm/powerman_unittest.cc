@@ -9,7 +9,6 @@
 
 #include "base/logging.h"
 #include "metrics/metrics_library_mock.h"
-#include "power_manager/common/mock_backlight.h"
 #include "power_manager/powerm/powerman.h"
 
 namespace power_manager {
@@ -29,7 +28,7 @@ class PowerManDaemonTest : public Test {
  public:
   PowerManDaemonTest()
       : prefs_(FilePath("config")),
-        daemon_(&prefs_, &metrics_lib_, &backlight_, NULL, FilePath(".")) {
+        daemon_(&prefs_, &metrics_lib_, FilePath(".")) {
   }
 
   virtual void SetUp() {
@@ -54,7 +53,6 @@ class PowerManDaemonTest : public Test {
   PowerPrefs prefs_;
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
-  StrictMock<MockBacklight> backlight_;
   PowerManDaemon daemon_;
 };
 

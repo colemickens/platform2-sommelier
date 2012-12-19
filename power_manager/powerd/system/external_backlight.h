@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERM_EXTERNAL_BACKLIGHT_H_
-#define POWER_MANAGER_POWERM_EXTERNAL_BACKLIGHT_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_EXTERNAL_BACKLIGHT_H_
+#define POWER_MANAGER_POWERD_SYSTEM_EXTERNAL_BACKLIGHT_H_
 
 #include <glib.h>
 #include <map>
@@ -11,8 +11,8 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
-#include "power_manager/common/backlight_interface.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 typedef int gboolean;  // Forward declaration of bool type used by glib.
 
@@ -21,6 +21,7 @@ struct udev;
 struct udev_monitor;
 
 namespace power_manager {
+namespace system {
 
 class ExternalBacklight : public BacklightInterface {
  public:
@@ -51,13 +52,6 @@ class ExternalBacklight : public BacklightInterface {
   // Looks for available display devices.
   SIGNAL_CALLBACK_0(ExternalBacklight, gboolean, ScanForDisplays);
 
-  // Indicates to other processes that the display device has changed.
-  // Returns true if the signal was sent successfully.
-  bool SendDisplayChangedSignal();
-
-  // GLib wrapper timeout for retrying SendDisplayChangedSignal().
-  SIGNAL_CALLBACK_0(ExternalBacklight, gboolean, RetrySendDisplayChangedSignal);
-
   // Indicates that there is a valid display device handle.
   bool HasValidHandle() const { return !primary_device_.empty(); }
 
@@ -75,14 +69,13 @@ class ExternalBacklight : public BacklightInterface {
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
 
-  bool is_scan_scheduled_;  // Flag to prevent redundant device scans.
-
-  // Timeout ID for retrying a brightness read.
-  guint retry_send_display_changed_source_id_;
+  // GLib source ID for ScanForDisplays() timeout, or 0 if unscheduled.
+  guint scan_for_displays_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklight);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERM_EXTERNAL_BACKLIGHT_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_EXTERNAL_BACKLIGHT_H_

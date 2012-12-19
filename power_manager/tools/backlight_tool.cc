@@ -13,9 +13,9 @@
 #include "power_manager/common/power_constants.h"
 
 #ifdef IS_DESKTOP
-#include "power_manager/powerm/external_backlight.h"
+#include "power_manager/powerd/system/external_backlight.h"
 #else
-#include "power_manager/powerm/internal_backlight.h"
+#include "power_manager/powerd/system/internal_backlight.h"
 #endif
 
 DEFINE_bool(get_brightness, false, "Get current brightness level.");
@@ -37,10 +37,10 @@ int main(int argc, char* argv[]) {
       << "-set_brightness and -set_brightness_percent are mutually exclusive";
 
 #ifdef IS_DESKTOP
-  power_manager::ExternalBacklight backlight;
+  power_manager::system::ExternalBacklight backlight;
   CHECK(backlight.Init());
 #else
-  power_manager::InternalBacklight backlight;
+  power_manager::system::InternalBacklight backlight;
   CHECK(backlight.Init(FilePath(power_manager::kInternalBacklightPath),
                        power_manager::kInternalBacklightPattern));
 #endif

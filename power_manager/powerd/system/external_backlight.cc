@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerm/external_backlight.h"
+#include "power_manager/powerd/system/external_backlight.h"
 
-#include <dbus/dbus.h>
-#include <dbus/dbus-glib-lowlevel.h>
 #include <dirent.h>
 #include <fcntl.h>
 #include <glib.h>
@@ -23,9 +21,10 @@
 #include "base/file_util.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
-#include "chromeos/dbus/dbus.h"
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
+
+namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -38,8 +37,6 @@ const char kDRMUdevSubsystem[] = "drm";
 
 const int kBufSize = 1000;  // Buffer size for reading from an input stream.
 const int kScanForDisplaysDelayMs = 2000;
-// Time in ms to wait before retrying SendDisplayChangedSignal().
-const int kRetrySendDisplayChangedSignalDelayMs = 100;
 
 const int kDDCAddress = 0x37;
 const int kDDCWriteAddress = kDDCAddress << 1;
@@ -156,17 +153,14 @@ bool DDCRead(int handle, uint8 index, uint8* value, uint8* max_value) {
 
 }  // namespace
 
-namespace power_manager {
-
 ExternalBacklight::ExternalBacklight()
     : udev_(NULL),
-      is_scan_scheduled_(false),
-      retry_send_display_changed_source_id_(0) {}
+      scan_for_displays_timeout_id_(0) {}
 
 ExternalBacklight::~ExternalBacklight() {
-  if (retry_send_display_changed_source_id_) {
-    g_source_remove(retry_send_display_changed_source_id_);
-    retry_send_display_changed_source_id_ = 0;
+  if (scan_for_displays_timeout_id_) {
+    g_source_remove(scan_for_displays_timeout_id_);
+    scan_for_displays_timeout_id_ = 0;
   }
   for (I2CDeviceList::iterator iter = display_devices_.begin();
        iter != display_devices_.end();
@@ -182,8 +176,8 @@ bool ExternalBacklight::Init() {
   ScanForDisplays();
   // Schedule a backup call to ScanForDisplays() in case the system was slow in
   // picking up some displays.
-  is_scan_scheduled_ = true;
-  g_timeout_add(kScanForDisplaysDelayMs, ScanForDisplaysThunk, this);
+  scan_for_displays_timeout_id_ =
+      g_timeout_add(kScanForDisplaysDelayMs, ScanForDisplaysThunk, this);
   return true;
 }
 
@@ -233,9 +227,9 @@ gboolean ExternalBacklight::UdevEventHandler(GIOChannel* /* source */,
           std::string(udev_device_get_subsystem(dev)) == kDRMUdevSubsystem);
     udev_device_unref(dev);
 
-    if (!backlight->is_scan_scheduled_) {
-      backlight->is_scan_scheduled_ = true;
-      g_timeout_add(kScanForDisplaysDelayMs, ScanForDisplaysThunk, backlight);
+    if (!backlight->scan_for_displays_timeout_id_) {
+      backlight->scan_for_displays_timeout_id_ = g_timeout_add(
+          kScanForDisplaysDelayMs, ScanForDisplaysThunk, backlight);
     }
   } else {
     LOG(ERROR) << "Can't get receive_device()";
@@ -274,9 +268,10 @@ void ExternalBacklight::RegisterUdevEventHandler() {
 }
 
 gboolean ExternalBacklight::ScanForDisplays() {
+  scan_for_displays_timeout_id_ = 0;
+
   // Query for display devices using ddc control.
   FILE* fp = popen("ddccontrol -p | grep Device: | cut -f3 -d:", "r");
-  is_scan_scheduled_ = false;
   if (!fp) {
     LOG(ERROR) << "Unable to call ddccontrol.";
     return false;
@@ -319,16 +314,11 @@ gboolean ExternalBacklight::ScanForDisplays() {
     display_devices_.erase(iter++);
   }
 
-  // Stop any existing pending SendDisplayChangedSignal events, as this function
-  // will issue a new one.
-  if (retry_send_display_changed_source_id_) {
-    g_source_remove(retry_send_display_changed_source_id_);
-    retry_send_display_changed_source_id_ = 0;
-  }
-
-  // If no devices remain, signal a display device change and quit.
+  // If no devices remain, notify the observer and quit.
   if (display_devices_.empty()) {
-    SendDisplayChangedSignal();
+    if (observer_)
+      observer_->OnBacklightDeviceChanged();
+    primary_device_.clear();
     return false;
   }
 
@@ -341,46 +331,10 @@ gboolean ExternalBacklight::ScanForDisplays() {
   if (!HasValidHandle())
     LOG(WARNING) << "Invalid handle for device " << primary_device_;
 
-  // Finally, send signal to indicate the display was updated.
-  if (!SendDisplayChangedSignal()) {
-    retry_send_display_changed_source_id_ =
-        g_timeout_add(kRetrySendDisplayChangedSignalDelayMs,
-                      RetrySendDisplayChangedSignalThunk, this);
-  }
+  if (observer_)
+    observer_->OnBacklightDeviceChanged();
+
   return false;
-}
-
-bool ExternalBacklight::SendDisplayChangedSignal() {
-  int64 current_level = 0, max_level = 0;
-  if (!ReadBrightnessLevels(&current_level, &max_level))
-    return false;
-
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-
-  DBusError error;
-  dbus_error_init(&error);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                kExternalBacklightUpdateSignal);
-  CHECK(signal);
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_INT64, &current_level,
-                           DBUS_TYPE_INT64, &max_level,
-                           DBUS_TYPE_INVALID);
-  if (!dbus_connection_send(connection, signal, NULL))
-    LOG(ERROR) << "Failed to send signal.";
-  return true;
-}
-
-gboolean ExternalBacklight::RetrySendDisplayChangedSignal() {
-  LOG(INFO) << "Retrying SendDisplayChangedSignal().";
-  if (SendDisplayChangedSignal()) {
-    retry_send_display_changed_source_id_ = 0;
-    return FALSE;  // If successfully sent signal, do not retry.
-  }
-  return TRUE;
 }
 
 bool ExternalBacklight::ReadBrightnessLevels(int64* current_level,
@@ -419,4 +373,5 @@ bool ExternalBacklight::ReadBrightnessLevels(int64* current_level,
   return true;
 }
 
+}  // namespace system
 }  // namespace power_manager

@@ -13,7 +13,6 @@
 #include "base/scoped_temp_dir.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
-#include "power_manager/common/mock_backlight.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/metrics_constants.h"
@@ -21,6 +20,7 @@
 #include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/mock_video_detector.h"
 #include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/system/mock_backlight.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/powerd/external_backlight_controller.h"
@@ -287,7 +287,7 @@ class DaemonTest : public Test {
                      BATTERY_INFO_MAX);
   }
 
-  StrictMock<MockBacklight> backlight_;
+  StrictMock<system::MockBacklight> backlight_;
   StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;

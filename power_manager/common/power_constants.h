@@ -64,11 +64,6 @@ extern const char kRestartSignal[];
 extern const char kRequestCleanShutdown[];
 extern const char kSuspendSignal[];
 extern const char kShutdownSignal[];
-extern const char kBacklightGetMethod[];
-extern const char kBacklightSetMethod[];
-
-// powerm -> powerd constants.
-extern const char kExternalBacklightUpdateSignal[];
 
 // Broadcast signals.
 extern const char kPowerStateChanged[];
@@ -90,12 +85,6 @@ enum InputType {
   INPUT_LID,
   INPUT_POWER_BUTTON,
   INPUT_UNHANDLED,
-};
-
-// Classes of backlights managed by powerm.
-enum BacklightType {
-  BACKLIGHT_TYPE_DISPLAY = 1,
-  BACKLIGHT_TYPE_KEYBOARD = 2,
 };
 
 }  // namespace power_manager
