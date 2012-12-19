@@ -2,37 +2,33 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <EGL/egl.h>
-
 #include "base/logging.h"
+
+#include "egl_stuff.h"
 #include "main.h"
 #include "xlib_window.h"
 
+#define CHECK_EGL() CHECK_EQ(eglGetError(), EGL_SUCCESS)
 
-EGLDisplay g_egl_display = EGL_NO_DISPLAY;
-static EGLConfig g_egl_config = NULL;
-static EGLSurface g_egl_surface = NULL;
-static EGLContext g_egl_context = NULL;
+scoped_ptr<GLInterface> g_main_gl_interface;
 
-// TODO(ihf): This is a f'ugly macro. Rework this one day.
-#define CHECK_EGL() do { \
-  if (eglGetError() != EGL_SUCCESS) return 0; \
-} while (0)
+GLInterface* GLInterface::Create() {
+  return new EGLInterface;
+}
 
-bool Init() {
+bool EGLInterface::Init() {
   if (!XlibInit())
     return false;
 
   EGLNativeWindowType native_window =
       static_cast<EGLNativeWindowType>(g_xlib_window);
-  g_egl_surface = eglCreateWindowSurface(g_egl_display, g_egl_config,
-                                       native_window, NULL);
+  surface_ = eglCreateWindowSurface(display_, config_, native_window, NULL);
   CHECK_EGL();
   return true;
 }
 
-XVisualInfo* GetXVisual() {
-  if (!g_egl_config) {
+XVisualInfo* EGLInterface::GetXVisual() {
+  if (!config_) {
     EGLint attribs[] = {
       EGL_RED_SIZE, 1,
       EGL_GREEN_SIZE, 1,
@@ -47,17 +43,17 @@ XVisualInfo* GetXVisual() {
     EGLNativeDisplayType native_display =
       static_cast<EGLNativeDisplayType>(g_xlib_display);
 
-    g_egl_display = eglGetDisplay(native_display);
+    display_ = eglGetDisplay(native_display);
     CHECK_EGL();
 
-    eglInitialize(g_egl_display, NULL, NULL);
+    eglInitialize(display_, NULL, NULL);
     CHECK_EGL();
 
     EGLint num_configs = -1;
-    eglGetConfigs(g_egl_display, NULL, 0, &num_configs);
+    eglGetConfigs(display_, NULL, 0, &num_configs);
     CHECK_EGL();
 
-    eglChooseConfig(g_egl_display, attribs, &g_egl_config, 1, &num_configs);
+    eglChooseConfig(display_, attribs, &config_, 1, &num_configs);
     CHECK_EGL();
   }
 
@@ -66,8 +62,7 @@ XVisualInfo* GetXVisual() {
   // resolved.
 #if 0
   EGLint visual_id;
-  eglGetConfigAttrib(g_egl_display, g_egl_config, EGL_NATIVE_VISUAL_ID,
-                     &visual_id);
+  eglGetConfigAttrib(display_, config_, EGL_NATIVE_VISUAL_ID, &visual_id);
   CHECK_EGL();
   XVisualInfo vinfo_template;
   vinfo_template.visualid = static_cast<VisualID>(visual_id);
@@ -84,38 +79,37 @@ XVisualInfo* GetXVisual() {
   return ret;
 }
 
-bool InitContext() {
+bool EGLInterface::InitContext() {
   EGLint attribs[] = {
     EGL_CONTEXT_CLIENT_VERSION, 2,
     EGL_NONE
   };
-  g_egl_context = eglCreateContext(g_egl_display, g_egl_config,
-                                            NULL, attribs);
+  context_ = eglCreateContext(display_, config_, NULL, attribs);
   CHECK_EGL();
 
-  eglMakeCurrent(g_egl_display, g_egl_surface, g_egl_surface, g_egl_context);
+  eglMakeCurrent(display_, surface_, surface_, context_);
   CHECK_EGL();
 
-  eglQuerySurface(g_egl_display, g_egl_surface, EGL_WIDTH, &g_width);
-  eglQuerySurface(g_egl_display, g_egl_surface, EGL_HEIGHT, &g_height);
+  eglQuerySurface(display_, surface_, EGL_WIDTH, &g_width);
+  eglQuerySurface(display_, surface_, EGL_HEIGHT, &g_height);
 
   return true;
 }
 
-void DestroyContext() {
-  eglMakeCurrent(g_egl_display, NULL, NULL, NULL);
-  eglDestroyContext(g_egl_display, g_egl_context);
+void EGLInterface::DestroyContext() {
+  eglMakeCurrent(display_, NULL, NULL, NULL);
+  eglDestroyContext(display_, context_);
 }
 
-void TerminateGL() {
-  eglDestroySurface(g_egl_display, g_egl_surface);
-  eglTerminate(g_egl_display);
+void EGLInterface::SwapBuffers() {
+  eglSwapBuffers(display_, surface_);
 }
 
-void SwapBuffers() {
-  eglSwapBuffers(g_egl_display, g_egl_surface);
+bool EGLInterface::SwapInterval(int interval) {
+  return (eglSwapInterval(display_, interval) == EGL_TRUE);
 }
 
-bool SwapInterval(int interval) {
-  return eglSwapInterval(g_egl_display, interval) == EGL_TRUE;
+void EGLInterface::TerminateGL() {
+  eglDestroySurface(display_, surface_);
+  eglTerminate(display_);
 }

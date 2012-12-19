@@ -24,6 +24,8 @@ class PixmapToTextureTest : public Test {
   GLXPixmap glxpixmap_;
   Pixmap pixmap_;
   bool init_succeeded;
+
+  GLXInterface* interface_;
 };
 
 Test* GetPixmapToTextureTest() {
@@ -34,7 +36,8 @@ Test* GetPixmapToTextureTest() {
 PixmapToTextureTest::PixmapToTextureTest() :
   glxpixmap_(0),
   pixmap_(0),
-  init_succeeded(false) {}
+  init_succeeded(false),
+  interface_(static_cast<GLXInterface*>(g_main_gl_interface.get())) {}
 
 
 bool PixmapToTextureTest::InitNative() {
@@ -54,9 +57,9 @@ bool PixmapToTextureTest::InitNative() {
   pixmap_ = AllocatePixmap();
 
   int rgba, rgb;
-  glXGetFBConfigAttrib(g_xlib_display, g_glx_fbconfig,
+  glXGetFBConfigAttrib(g_xlib_display, interface_->fb_config(),
                        GLX_BIND_TO_TEXTURE_RGBA_EXT, &rgba);
-  glXGetFBConfigAttrib(g_xlib_display, g_glx_fbconfig,
+  glXGetFBConfigAttrib(g_xlib_display, interface_->fb_config(),
                        GLX_BIND_TO_TEXTURE_RGB_EXT, &rgb);
   CHECK(rgba || rgb);
   const int pixmapAttribs[] = {
@@ -66,7 +69,7 @@ bool PixmapToTextureTest::InitNative() {
     None
   };
 
-  glxpixmap_ = glXCreatePixmap(g_xlib_display, g_glx_fbconfig,
+  glxpixmap_ = glXCreatePixmap(g_xlib_display, interface_->fb_config(),
                               pixmap_, pixmapAttribs);
   return true;
 }

@@ -9,8 +9,9 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/file_util.h"
 
-#include "png_helper.h"
+#include "glinterface.h"
 #include "md5.h"
+#include "png_helper.h"
 #include "testbase.h"
 #include "utils.h"
 
@@ -20,7 +21,7 @@ DEFINE_string(outdir, "", "directory to save images");
 namespace glbench {
 
 uint64_t TimeTest(TestBase* test, int iter) {
-    SwapBuffers();
+    g_main_gl_interface->SwapBuffers();
     glFinish();
     uint64_t time1 = GetUTime();
     if (!test->TestFunc(iter))

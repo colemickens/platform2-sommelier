@@ -6,7 +6,35 @@
 #define BENCH_GL_EGL_STUFF_H_
 
 #include <EGL/egl.h>
+#include "glinterface.h"
 
-extern EGLDisplay g_egl_display;
+class EGLInterface : public GLInterface {
+ public:
+  EGLInterface() : display_(EGL_NO_DISPLAY),
+                   config_(NULL),
+                   surface_(NULL),
+                   context_(NULL) {}
+  virtual ~EGLInterface() {}
+
+  virtual bool Init();
+  virtual XVisualInfo* GetXVisual();
+
+  virtual bool InitContext();
+  virtual void DestroyContext();
+  virtual void SwapBuffers();
+  virtual bool SwapInterval(int interval);
+
+  void TerminateGL();
+
+  const EGLDisplay display() const {
+    return display_;
+  }
+
+ private:
+  EGLDisplay display_;
+  EGLConfig config_;
+  EGLSurface surface_;
+  EGLContext context_;
+};
 
 #endif  // BENCH_GL_EGL_STUFF_H_

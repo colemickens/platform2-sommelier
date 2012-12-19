@@ -100,12 +100,6 @@ extern GLint g_width;
 extern GLint g_height;
 DECLARE_bool(override_redirect);
 
-bool Init();
-bool InitContext();
-void DestroyContext();
-void SwapBuffers();
-bool SwapInterval(int interval);
-
 // This size is for a window that is very large but will fit on all
 // the displays we care about.
 #define WINDOW_WIDTH 512

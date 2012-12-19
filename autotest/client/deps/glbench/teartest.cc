@@ -13,6 +13,7 @@
 #include "base/string_util.h"
 #include "base/string_split.h"
 
+#include "glinterface.h"
 #include "main.h"
 #include "utils.h"
 #include "xlib_window.h"
@@ -170,18 +171,19 @@ int main(int argc, char* argv[]) {
   g_height = -1;
   TestMap test_map;
 
+  g_main_gl_interface.reset(GLInterface::Create());
   google::ParseCommandLineFlags(&argc, &argv, true);
   if (FLAGS_refresh >= 1) {
     sleep_duration = new struct timespec;
     sleep_duration->tv_sec = 0;
     sleep_duration->tv_nsec = static_cast<long>(1.e9 / FLAGS_refresh);
   }
-  if (!Init()) {
+  if (!g_main_gl_interface->Init()) {
     printf("# Error: Failed to initialize.\n");
     return 1;
   }
 
-  InitContext();
+  g_main_gl_interface->InitContext();
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
   GLuint texture = GenerateAndBindTexture();
@@ -212,7 +214,7 @@ int main(int argc, char* argv[]) {
   test_map["pixmap_to_texture"] = GetPixmapToTextureTest();
 #endif
 
-  SwapInterval(sleep_duration ? 0 : 1);
+  g_main_gl_interface->SwapInterval(sleep_duration ? 0 : 1);
 
   std::vector<std::string> tests;
   base::SplitString(FLAGS_tests, ',', &tests);
@@ -244,7 +246,7 @@ int main(int argc, char* argv[]) {
       if (sleep_duration)
         nanosleep(sleep_duration, NULL);
 
-      SwapBuffers();
+      g_main_gl_interface->SwapBuffers();
 
       XEvent event;
       got_event = XCheckWindowEvent(g_xlib_display, g_xlib_window,
@@ -257,6 +259,6 @@ int main(int argc, char* argv[]) {
   // TODO: cleaner teardown.
 
   glDeleteTextures(1, &texture);
-  DestroyContext();
+  g_main_gl_interface->DestroyContext();
   return return_code;
 }

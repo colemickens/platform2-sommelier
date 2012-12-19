@@ -7,7 +7,29 @@
 
 #include <GL/glx.h>
 
-extern GLXContext g_glx_context;
-extern GLXFBConfig g_glx_fbconfig;
+#include "glinterface.h"
+
+class GLXInterface : public GLInterface {
+ public:
+  GLXInterface() : context_(NULL),
+                   fb_config_(NULL) {}
+  virtual ~GLXInterface() {}
+
+  virtual bool Init();
+  virtual XVisualInfo* GetXVisual();
+
+  virtual bool InitContext();
+  virtual void DestroyContext();
+  virtual void SwapBuffers();
+  virtual bool SwapInterval(int interval);
+
+  const GLXFBConfig fb_config() const {
+    return fb_config_;
+  }
+
+ private:
+  GLXContext context_;
+  GLXFBConfig fb_config_;
+};
 
 #endif // BENCH_GL_GLX_STUFF_H_

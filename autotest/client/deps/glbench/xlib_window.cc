@@ -6,6 +6,8 @@
 #include <stdio.h>
 
 #include "base/logging.h"
+
+#include "glinterface.h"
 #include "main.h"
 #include "xlib_window.h"
 
@@ -34,7 +36,7 @@ bool XlibInit() {
 
   g_width = g_width == -1 ? attributes.width : g_width;
   g_height = g_height == -1 ? attributes.height : g_height;
-  XVisualInfo* xlib_visinfo = GetXVisual();
+  XVisualInfo* xlib_visinfo = g_main_gl_interface->GetXVisual();
 
   unsigned long mask = CWBackPixel | CWBorderPixel | CWColormap | CWEventMask |
     CWOverrideRedirect;

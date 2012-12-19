@@ -12,6 +12,7 @@
 #include "base/string_util.h"
 #include "base/string_split.h"
 
+#include "glinterface.h"
 #include "main.h"
 #include "utils.h"
 
@@ -24,7 +25,6 @@ using std::vector;
 DEFINE_int32(duration, 0, "run tests in a loop for at least this many seconds");
 DEFINE_string(tests, "", "colon-separated list of tests to run; "
               "all tests if omitted");
-
 
 bool test_is_enabled(glbench::TestBase* test,
                      const vector<string>& enabled_tests) {
@@ -55,15 +55,17 @@ void printDateTime(void) {
 int main(int argc, char *argv[]) {
   SetBasePathFromArgv0(argv[0], "src");
   google::ParseCommandLineFlags(&argc, &argv, false);
-  if (!Init()) {
+
+  g_main_gl_interface.reset(GLInterface::Create());
+  if (!g_main_gl_interface->Init()) {
     printf("# Error: Failed to initialize %s.\n", argv[0]);
     return 1;
   }
 
-  InitContext();
+  g_main_gl_interface->InitContext();
   printf("# board_id: %s - %s\n",
          glGetString(GL_VENDOR), glGetString(GL_RENDERER));
-  DestroyContext();
+  g_main_gl_interface->DestroyContext();
 
   if (argc == 1) {
     printf("# Usage: %s [-save [-outdir=<directory>]] to save images\n", argv[0]);
@@ -95,13 +97,13 @@ int main(int argc, char *argv[]) {
     for (unsigned int i = 0; i < arraysize(tests); i++) {
       if (!test_is_enabled(tests[i], enabled_tests))
         continue;
-      if (!InitContext()) {
+      if (!g_main_gl_interface->InitContext()) {
         printf("InitContext failed\n");
         return 1;
       }
       glbench::ClearBuffers();
       tests[i]->Run();
-      DestroyContext();
+      g_main_gl_interface->DestroyContext();
     }
   } while (GetUTime() < done);
 

@@ -5,7 +5,7 @@
 #include "base/bind.h"
 #include "base/callback.h"
 
-#include "main.h"
+#include "glinterface.h"
 #include "testbase.h"
 #include "utils.h"
 
@@ -75,7 +75,7 @@ bool SwapTest::TestFunc(int iter) {
   for (int i = 0 ; i < iter; ++i) {
     if (!render_func_.is_null())
       render_func_.Run();
-    SwapBuffers();
+    g_main_gl_interface->SwapBuffers();
   }
   return true;
 }

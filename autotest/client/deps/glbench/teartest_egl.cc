@@ -27,10 +27,12 @@ class PixmapToTextureTestEGL : public Test {
   PFNEGLDESTROYIMAGEKHRPROC egl_destroy_image_khr_;
   PFNGLEGLIMAGETARGETTEXTURE2DOESPROC gl_egl_image_target_texture_2d_oes_;
   EGLImageKHR egl_image_;
+  EGLInterface* interface_;
 };
 
 PixmapToTextureTestEGL::PixmapToTextureTestEGL()
-    : egl_image_(EGL_NO_IMAGE_KHR) {
+    : egl_image_(EGL_NO_IMAGE_KHR),
+      interface_(static_cast<EGLInterface*>(g_main_gl_interface.get())) {
 }
 
 bool PixmapToTextureTestEGL::Start() {
@@ -60,7 +62,7 @@ bool PixmapToTextureTestEGL::Start() {
   };
 
   egl_image_ = egl_create_image_khr_(
-      g_egl_display, EGL_NO_CONTEXT, EGL_NATIVE_PIXMAP_KHR,
+      interface_->display(), EGL_NO_CONTEXT, EGL_NATIVE_PIXMAP_KHR,
       reinterpret_cast<EGLClientBuffer>(pixmap_), egl_image_attributes);
   if (egl_image_ == EGL_NO_IMAGE_KHR)
     return false;
@@ -76,7 +78,7 @@ bool PixmapToTextureTestEGL::Loop(int shift) {
 }
 
 void PixmapToTextureTestEGL::Stop() {
-  egl_destroy_image_khr_(g_egl_display, egl_image_);
+  egl_destroy_image_khr_(interface_->display(), egl_image_);
 }
 
 Test* GetPixmapToTextureTestEGL() {

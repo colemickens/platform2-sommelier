@@ -11,6 +11,5 @@ extern Display *g_xlib_display;
 extern Window g_xlib_window;
 
 bool XlibInit();
-XVisualInfo* GetXVisual();
 
 #endif // BENCH_GL_XLIB_H_

@@ -13,6 +13,7 @@
 
 #include <cmath>
 
+#include "glinterface.h"
 #include "main.h"
 #include "utils.h"
 
@@ -80,12 +81,13 @@ int main(int argc, char* argv[]) {
 
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  if (!Init()) {
+  g_main_gl_interface.reset(GLInterface::Create());
+  if (!g_main_gl_interface->Init()) {
     printf("# Error: Failed to initialize %s.\n", argv[0]);
     return 1;
   }
 
-  InitContext();
+  g_main_gl_interface->InitContext();
   glViewport(-g_width, -g_height, g_width*2, g_height*2);
 
   unsigned char* bitmap = CreateBitmap(g_height, g_width);
@@ -134,7 +136,7 @@ int main(int argc, char* argv[]) {
     else
       glUniform4fv(display_color, 1, blue);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-    SwapBuffers();
+    g_main_gl_interface->SwapBuffers();
 
     // Loop until next event
     float seconds_since_last_event =
@@ -161,6 +163,6 @@ int main(int argc, char* argv[]) {
   } while (state != kStateExit);
 
   glDeleteTextures(1, &texture);
-  DestroyContext();
+  g_main_gl_interface->DestroyContext();
   return 0;
 }

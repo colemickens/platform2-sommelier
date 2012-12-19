@@ -10,6 +10,8 @@
 #include <unistd.h>
 
 #include "base/logging.h"
+
+#include "glinterface.h"
 #include "main.h"
 #include "utils.h"
 
@@ -225,10 +227,10 @@ GLuint InitShaderProgramWithHeaders(const char** headers,
 void ClearBuffers() {
   glClearColor(1.f, 0, 0, 1.f);
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-  SwapBuffers();
+  g_main_gl_interface->SwapBuffers();
   glClearColor(0, 1.f, 0, 1.f);
   glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-  SwapBuffers();
+  g_main_gl_interface->SwapBuffers();
   glClearColor(0, 0, 0.f, 0.f);
 }
 

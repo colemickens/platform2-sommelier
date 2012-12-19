@@ -3,14 +3,12 @@
 // found in the LICENSE file.
 
 #include <string.h>
-#include <GL/glx.h>
 
 #include "base/logging.h"
+
+#include "glx_stuff.h"
 #include "main.h"
 #include "xlib_window.h"
-
-GLXContext g_glx_context = NULL;
-GLXFBConfig g_glx_fbconfig = NULL;
 
 namespace gl {
 #define F(fun, type) type fun = NULL;
@@ -24,12 +22,18 @@ typedef GLint (* PFNGLXGETSWAPINTERVALMESAPROC) (void);
 #endif
 PFNGLXSWAPINTERVALMESAPROC _glXSwapIntervalMESA = NULL;
 
-bool Init() {
+scoped_ptr<GLInterface> g_main_gl_interface;
+
+GLInterface* GLInterface::Create() {
+  return new GLXInterface;
+}
+
+bool GLXInterface::Init() {
   return XlibInit();
 }
 
-XVisualInfo* GetXVisual() {
-  if (!g_glx_fbconfig) {
+XVisualInfo* GLXInterface::GetXVisual() {
+  if (!fb_config_) {
     int screen = DefaultScreen(g_xlib_display);
     int attrib[] = {
       GLX_DOUBLEBUFFER, True,
@@ -42,24 +46,24 @@ XVisualInfo* GetXVisual() {
       None
     };
     int nelements;
-    GLXFBConfig *fbconfigs = glXChooseFBConfig(g_xlib_display, screen,
-                                               attrib, &nelements);
+    GLXFBConfig *fb_configs = glXChooseFBConfig(g_xlib_display, screen,
+                                                attrib, &nelements);
     CHECK(nelements >= 1);
-    g_glx_fbconfig = fbconfigs[0];
-    XFree(fbconfigs);
+    fb_config_ = fb_configs[0];
+    XFree(fb_configs);
   }
 
-  return glXGetVisualFromFBConfig(g_xlib_display, g_glx_fbconfig);
+  return glXGetVisualFromFBConfig(g_xlib_display, fb_config_);
 }
 
-bool InitContext() {
-  g_glx_context = glXCreateNewContext(g_xlib_display, g_glx_fbconfig,
+bool GLXInterface::InitContext() {
+  context_ = glXCreateNewContext(g_xlib_display, fb_config_,
                                     GLX_RGBA_TYPE, 0, True);
-  if (!g_glx_context)
+  if (!context_)
     return false;
 
-  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, g_glx_context)) {
-    glXDestroyContext(g_xlib_display, g_glx_context);
+  if (!glXMakeCurrent(g_xlib_display, g_xlib_window, context_)) {
+    glXDestroyContext(g_xlib_display, context_);
     return false;
   }
 
@@ -79,16 +83,16 @@ bool InitContext() {
   return true;
 }
 
-void DestroyContext() {
+void GLXInterface::DestroyContext() {
   glXMakeCurrent(g_xlib_display, 0, NULL);
-  glXDestroyContext(g_xlib_display, g_glx_context);
+  glXDestroyContext(g_xlib_display, context_);
 }
 
-void SwapBuffers() {
+void GLXInterface::SwapBuffers() {
   glXSwapBuffers(g_xlib_display, g_xlib_window);
 }
 
-bool SwapInterval(int interval) {
+bool GLXInterface::SwapInterval(int interval) {
   // Strictly, glXSwapIntervalSGI only allows interval > 0, whereas
   // glXSwapIntervalMESA allow 0 with the same semantics as eglSwapInterval.
   if (_glXSwapIntervalMESA) {
