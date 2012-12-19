@@ -30,7 +30,8 @@ AsyncFileReader::AsyncFileReader()
       aio_buffer_(NULL),
       initial_read_size_(kInitialFileReadSize),
       read_cb_(NULL),
-      error_cb_(NULL) {}
+      error_cb_(NULL),
+      update_state_timeout_id_(0) {}
 
 AsyncFileReader::~AsyncFileReader() {
   Reset();
@@ -79,10 +80,17 @@ gboolean AsyncFileReader::UpdateState() {
   if (!read_in_progress_)
     return FALSE;
 
-  int status;
-  switch (status = aio_error(&aio_control_)) {
-    case EINPROGRESS:
-      return TRUE;
+  int status = aio_error(&aio_control_);
+
+  // If the read is still in-progress, keep the timeout alive.
+  if (status == EINPROGRESS)
+    return TRUE;
+
+  // Otherwise, we'll return false later to cancel the timeout.  Reset its
+  // ID first to make sure that none of the calls to Reset() delete it.
+  update_state_timeout_id_ = 0;
+
+  switch (status) {
     case ECANCELED:
       Reset();
       break;
@@ -113,12 +121,15 @@ gboolean AsyncFileReader::UpdateState() {
       break;
     }
   }
+
   return FALSE;
 }
 
 void AsyncFileReader::Reset() {
   if (!read_in_progress_)
     return;
+
+  CancelUpdateStateTimeout();
   aio_cancel(fd_, &aio_control_);
   delete [] aio_buffer_;
   aio_buffer_ = NULL;
@@ -144,8 +155,16 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
     return false;
   }
 
-  g_timeout_add(kPollMs, UpdateStateThunk, this);
+  DCHECK_EQ(update_state_timeout_id_, static_cast<guint>(0));
+  update_state_timeout_id_ = g_timeout_add(kPollMs, UpdateStateThunk, this);
   return true;
+}
+
+void AsyncFileReader::CancelUpdateStateTimeout() {
+  if (update_state_timeout_id_) {
+    g_source_remove(update_state_timeout_id_);
+    update_state_timeout_id_ = 0;
+  }
 }
 
 }  // namespace power_manager

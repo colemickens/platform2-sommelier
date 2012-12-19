@@ -14,6 +14,7 @@
 #include "power_manager/common/signal_callback.h"
 
 typedef int gboolean;
+typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -51,6 +52,9 @@ class AsyncFileReader {
   // StartRead().  Returns true if the AIO read was successfully enqueued.
   bool AsyncRead(int size, int offset);
 
+  // Deletes |update_state_timeout_id_|'s timeout and resets it to 0 if set.
+  void CancelUpdateStateTimeout();
+
   // Flag indicating whether there is an active AIO read.
   bool read_in_progress_;
 
@@ -76,6 +80,9 @@ class AsyncFileReader {
   // Callbacks invoked when the read completes or encounters an error.
   base::Callback<void(const std::string&)>* read_cb_;
   base::Callback<void()>* error_cb_;
+
+  // GLib source ID used to run UpdateState(), or 0 if unset.
+  guint update_state_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFileReader);
 };
