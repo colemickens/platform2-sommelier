@@ -447,6 +447,63 @@ TEST_F(CellularCapabilityUniversalTest, DisconnectNoProxy) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
+TEST_F(CellularCapabilityUniversalTest, SimLockStatusChanged) {
+  // Set up mock SIM properties
+  const char kImsi[] = "310100000001";
+  const char kSimIdentifier[] = "9999888";
+  const char kOperatorIdentifier[] = "310240";
+  const char kOperatorName[] = "Custom SPN";
+  DBusPropertiesMap sim_properties;
+  sim_properties[MM_SIM_PROPERTY_IMSI].writer().append_string(kImsi);
+  sim_properties[MM_SIM_PROPERTY_SIMIDENTIFIER].writer()
+      .append_string(kSimIdentifier);
+  sim_properties[MM_SIM_PROPERTY_OPERATORIDENTIFIER].writer()
+      .append_string(kOperatorIdentifier);
+  sim_properties[MM_SIM_PROPERTY_OPERATORNAME].writer()
+      .append_string(kOperatorName);
+
+  EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
+      .WillOnce(Return(sim_properties));
+
+  SetUp();
+  InitProviderDB();
+
+  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+
+  capability_->OnSimPathChanged(kSimPath);
+  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_EQ(kSimPath, capability_->sim_path_);
+
+  capability_->imsi_ = "";
+  capability_->sim_identifier_ = "";
+  capability_->operator_id_ = "";
+  capability_->spn_ = "";
+
+  // SIM is locked.
+  capability_->sim_lock_status_.lock_type = "sim-pin";
+  capability_->OnSimLockStatusChanged();
+
+  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
+
+  // SIM is unlocked.
+  properties_proxy_.reset(new MockDBusPropertiesProxy());
+  EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
+      .WillOnce(Return(sim_properties));
+
+  capability_->sim_lock_status_.lock_type = "";
+  capability_->OnSimLockStatusChanged();
+
+  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
+  EXPECT_EQ(kOperatorName, capability_->spn_);
+}
+
 TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;

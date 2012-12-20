@@ -1274,6 +1274,18 @@ void CellularCapabilityUniversal::OnLockRetriesChanged(
 void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   cellular()->adaptor()->EmitKeyValueStoreChanged(
       flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
+
+  // If the SIM is currently unlocked, assume that we need to refresh
+  // carrier information, since a locked SIM prevents shill from obtaining
+  // the necessary data to establish a connection later (e.g. IMSI).
+  if (!sim_path_.empty() && sim_lock_status_.lock_type.empty()) {
+    scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+        proxy_factory()->CreateDBusPropertiesProxy(sim_path_,
+                                                   cellular()->dbus_owner()));
+    DBusPropertiesMap properties(
+        properties_proxy->GetAll(MM_DBUS_INTERFACE_SIM));
+    OnSimPropertiesChanged(properties, vector<string>());
+  }
 }
 
 void CellularCapabilityUniversal::OnModem3GPPPropertiesChanged(
