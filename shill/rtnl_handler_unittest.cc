@@ -50,7 +50,8 @@ class TestEventDispatcher : public EventDispatcher {
  public:
   virtual IOHandler *CreateInputHandler(
       int /*fd*/,
-      const Callback<void(InputData*)> &/*callback*/) {
+      const IOHandler::InputCallback &/*input_callback*/,
+      const IOHandler::ErrorCallback &/*error_callback*/) {
     return NULL;
   }
 };

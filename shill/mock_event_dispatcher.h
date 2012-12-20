@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -22,9 +22,10 @@ class MockEventDispatcher : public EventDispatcher {
   MOCK_METHOD1(PostTask, bool(const base::Closure &task));
   MOCK_METHOD2(PostDelayedTask, bool(const base::Closure &task,
                                      int64 delay_ms));
-  MOCK_METHOD2(CreateInputHandler,
-               IOHandler *(int fd,
-                           const base::Callback<void(InputData *)> &callback));
+  MOCK_METHOD3(CreateInputHandler, IOHandler *(
+      int fd,
+      const IOHandler::InputCallback &input_callback,
+      const IOHandler::ErrorCallback &error_callback));
 
   MOCK_METHOD3(CreateReadyHandler,
                IOHandler *(int fd,

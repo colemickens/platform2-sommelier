@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -6,6 +6,8 @@
 #define SHILL_IO_HANDLER_
 
 namespace shill {
+
+class Error;
 
 struct InputData {
   InputData() : buf(NULL), len(0) {}
@@ -21,6 +23,10 @@ class IOHandler {
     kModeInput,
     kModeOutput
   };
+
+  typedef base::Callback<void(const Error &)> ErrorCallback;
+  typedef base::Callback<void(InputData *)> InputCallback;
+  typedef base::Callback<void(int)> ReadyCallback;
 
   IOHandler() {}
   virtual ~IOHandler() {}

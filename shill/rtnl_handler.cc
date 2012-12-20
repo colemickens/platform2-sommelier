@@ -18,6 +18,7 @@
 
 #include <base/bind.h>
 
+#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/io_handler.h"
 #include "shill/ip_address.h"
@@ -85,8 +86,10 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
     return;
   }
 
-  rtnl_handler_.reset(dispatcher->CreateInputHandler(rtnl_socket_,
-                                                     rtnl_callback_));
+  rtnl_handler_.reset(dispatcher->CreateInputHandler(
+      rtnl_socket_,
+      rtnl_callback_,
+      Bind(&RTNLHandler::OnReadError, Unretained(this))));
   sockets_ = sockets;
 
   NextRequest(last_dump_sequence_);
@@ -411,6 +414,11 @@ bool RTNLHandler::SendMessage(RTNLMessage *message) {
   }
 
   return true;
+}
+
+void RTNLHandler::OnReadError(const Error &error) {
+  LOG(FATAL) << "RTNL Socket read returns error: "
+             << error.message();
 }
 
 }  // namespace shill

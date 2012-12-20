@@ -9,9 +9,19 @@
 #include <string.h>
 #include <glib.h>
 
+#include <string>
+#include <vector>
+
+#include <base/string_util.h>
+#include <base/stringprintf.h>
+
+#include "shill/error.h"
 #include "shill/logging.h"
 
 using base::Callback;
+using base::StringPrintf;
+using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -23,34 +33,51 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   gsize len = 0;
   gint fd = g_io_channel_unix_get_fd(chan);
   GError *err = 0;
+  vector<string> error_conditions;
 
-  if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-    LOG(WARNING) << "Unexpected GLib error condition " << cond << " on poll("
-               << fd << "): " << strerror(errno);
+  if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
+    string condition = base::StringPrintf(
+        "Unexpected GLib error condition %#x on poll(%d): %s",
+        cond, fd, strerror(errno));
+    LOG(WARNING) << condition;
+    error_conditions.push_back(condition);
+  }
 
   GIOStatus status = g_io_channel_read_chars(
       chan, reinterpret_cast<gchar *>(buf), sizeof(buf), &len, &err);
   if (err) {
-    LOG(WARNING) << "GLib error code " << err->domain << "/" << err->code
-                 << " (" << err->message << ") on read(" << fd << "):"
-                 << strerror(errno);
+    string condition = base::StringPrintf(
+        "GLib error code %d/%d (%s) on read(%d): %s",
+        err->domain, err->code, err->message, fd, strerror(errno));
+    LOG(WARNING) << condition;
+    error_conditions.push_back(condition);
     g_error_free(err);
   }
   if (status == G_IO_STATUS_AGAIN)
     return TRUE;
-  if (status != G_IO_STATUS_NORMAL)
-    LOG(FATAL) << "Unexpected GLib return status " << status;
+  if (status != G_IO_STATUS_NORMAL) {
+    string condition = base::StringPrintf(
+        "Unexpected GLib return status: %d", status);
+    LOG(ERROR) << condition;
+    error_conditions.push_back(condition);
+    Error error(Error::kOperationFailed, JoinString(error_conditions, ';'));
+    handler->error_callback().Run(error);
+    return FALSE;
+  }
 
   InputData input_data(buf, len);
-  handler->callback().Run(&input_data);
+  handler->input_callback().Run(&input_data);
 
   return TRUE;
 }
 
 GlibIOInputHandler::GlibIOInputHandler(
-    int fd, const Callback<void(InputData *)> &callback)
+    int fd,
+    const InputCallback &input_callback,
+    const ErrorCallback &error_callback)
     : channel_(g_io_channel_unix_new(fd)),
-      callback_(callback),
+      input_callback_(input_callback),
+      error_callback_(error_callback),
       source_id_(G_MAXUINT) {
   // To avoid blocking in g_io_channel_read_chars() due to its internal buffer,
   // set the channel to unbuffered, which in turns requires encoding to be NULL.

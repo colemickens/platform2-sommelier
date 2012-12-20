@@ -102,8 +102,8 @@ class MockEventDispatchTester {
   void ListenIO(int fd) {
     data_callback_ = Bind(&MockEventDispatchTester::HandleData,
                           tester_factory_.GetWeakPtr());
-    input_handler_.reset(
-        dispatcher_->CreateInputHandler(fd, data_callback_));
+    input_handler_.reset(dispatcher_->CreateInputHandler(
+        fd, data_callback_, IOHandler::ErrorCallback()));
   }
 
   void StopListenIO() {

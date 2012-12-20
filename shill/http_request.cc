@@ -198,6 +198,10 @@ void HTTPRequest::OnConnectCompletion(bool success, int fd) {
   StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);
 }
 
+void HTTPRequest::OnServerReadError(const Error &/*error*/) {
+  SendStatus(kResultResponseFailure);
+}
+
 // IOInputHandler callback which fires when data has been read from the
 // server.
 void HTTPRequest::ReadFromServer(InputData *data) {
@@ -266,8 +270,10 @@ void HTTPRequest::WriteToServer(int fd) {
 
   if (request_data_.IsEmpty()) {
     write_server_handler_->Stop();
-    read_server_handler_.reset(
-        dispatcher_->CreateInputHandler(server_socket_, read_server_callback_));
+    read_server_handler_.reset(dispatcher_->CreateInputHandler(
+        server_socket_,
+        read_server_callback_,
+        Bind(&HTTPRequest::OnServerReadError, weak_ptr_factory_.GetWeakPtr())));
     StartIdleTimeout(kInputTimeoutSeconds, kResultResponseTimeout);
   } else {
     StartIdleTimeout(kInputTimeoutSeconds, kResultRequestTimeout);

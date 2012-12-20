@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -40,12 +40,13 @@ class EventDispatcher {
 
   virtual IOHandler *CreateInputHandler(
       int fd,
-      const base::Callback<void(InputData *)> &callback);
+      const IOHandler::InputCallback &input_callback,
+      const IOHandler::ErrorCallback &error_callback);
 
   virtual IOHandler *CreateReadyHandler(
       int fd,
       IOHandler::ReadyMode mode,
-      const base::Callback<void(int)> &callback);
+      const IOHandler::ReadyCallback &ready_callback);
 
  private:
   scoped_ptr<MessageLoop> dont_use_directly_;

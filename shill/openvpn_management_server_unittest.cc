@@ -185,7 +185,7 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
   server_.ready_handler_.reset(new IOHandler());
   EXPECT_CALL(dispatcher_,
               CreateInputHandler(kConnectedSocket,
-                                 CallbackEq(server_.input_callback_)))
+                                 CallbackEq(server_.input_callback_), _))
       .WillOnce(ReturnNew<IOHandler>());
   ExpectSend("state on\n");
   server_.OnReady(kSocket);

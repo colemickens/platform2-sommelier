@@ -98,6 +98,7 @@ class HTTPRequest {
   bool ConnectServer(const IPAddress &address, int port);
   void GetDNSResult(const Error &error, const IPAddress &address);
   void OnConnectCompletion(bool success, int fd);
+  void OnServerReadError(const Error &error);
   void ReadFromServer(InputData *data);
   void SendStatus(Result result);
   void StartIdleTimeout(int timeout_seconds, Result timeout_result);

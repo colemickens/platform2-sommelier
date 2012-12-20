@@ -229,7 +229,7 @@ class HTTPProxyTest : public Test {
         .WillOnce(Return(0));
     EXPECT_CALL(dispatcher(),
                 CreateInputHandler(fd,
-                                   CallbackEq(proxy_.read_client_callback_)))
+                                   CallbackEq(proxy_.read_client_callback_), _))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectTransactionTimeout();
     ExpectClientHeaderTimeout();
@@ -306,7 +306,7 @@ class HTTPProxyTest : public Test {
   void ExpectServerInput() {
     EXPECT_CALL(dispatcher(),
                 CreateInputHandler(kServerFD,
-                                   CallbackEq(proxy_.read_server_callback_)))
+                                   CallbackEq(proxy_.read_server_callback_), _))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectInputTimeout();
   }
@@ -434,6 +434,9 @@ class HTTPProxyTest : public Test {
     ExpectServerOutput();
     OnConnectCompletion(true, kServerFD);
     EXPECT_EQ(HTTPProxy::kStateTunnelData, GetProxyState());
+  }
+  void CauseReadError() {
+    proxy_.OnReadError(Error());
   }
 
  private:
@@ -606,6 +609,15 @@ TEST_F(HTTPProxyTest, TooManyColonsInHost) {
   ExpectClientError(400, "Too many colons in hostname");
 }
 
+TEST_F(HTTPProxyTest, ClientReadError) {
+  SetupClient();
+  EXPECT_CALL(sockets(), Close(kClientFD))
+      .WillOnce(Return(0));
+  ExpectStop();
+  CauseReadError();
+  ExpectClientReset();
+}
+
 TEST_F(HTTPProxyTest, DNSRequestFailure) {
   SetupClient();
   ExpectRouteRequest();
@@ -776,6 +788,18 @@ TEST_F(HTTPProxyTest, TunnelDataFailWriteServer) {
       .WillOnce(Return(-1));
   ExpectTunnelClose();
   WriteToServer(kServerFD);
+  ExpectClientReset();
+  EXPECT_EQ(HTTPProxy::kStateWaitConnection, GetProxyState());
+}
+
+TEST_F(HTTPProxyTest, TunnelDataFailReadServer) {
+  SetupConnectComplete();
+  EXPECT_CALL(sockets(), Send(kServerFD, _, _, 0))
+      .WillOnce(Return(10));
+  ExpectServerInput();
+  WriteToServer(kServerFD);
+  ExpectTunnelClose();
+  CauseReadError();
   ExpectClientReset();
   EXPECT_EQ(HTTPProxy::kStateWaitConnection, GetProxyState());
 }

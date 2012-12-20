@@ -95,6 +95,7 @@ class HTTPProxy {
   void AcceptClient(int fd);
   bool ConnectServer(const IPAddress &address, int port);
   void GetDNSResult(const Error &error, const IPAddress &address);
+  void OnReadError(const Error &error);
   void OnConnectCompletion(bool success, int fd);
   bool ParseClientRequest();
   bool ProcessLastHeaderLine();

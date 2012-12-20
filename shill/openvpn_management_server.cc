@@ -148,8 +148,9 @@ void OpenVPNManagementServer::OnReady(int fd) {
     return;
   }
   ready_handler_.reset();
-  input_handler_.reset(
-      dispatcher_->CreateInputHandler(connected_socket_, input_callback_));
+  // TODO(petkov): Create an error callback.  crosbug.com/37427
+  input_handler_.reset(dispatcher_->CreateInputHandler(
+      connected_socket_, input_callback_, IOHandler::ErrorCallback()));
   SendState("on");
 }
 

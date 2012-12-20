@@ -227,7 +227,8 @@ class HTTPRequestTest : public Test {
   void ExpectMonitorServerInput() {
     EXPECT_CALL(dispatcher_,
                 CreateInputHandler(kServerFD,
-                                   CallbackEq(request_->read_server_callback_)))
+                                   CallbackEq(request_->read_server_callback_),
+                                   _))
         .WillOnce(ReturnNew<IOHandler>());
     ExpectSetInputTimeout();
   }
@@ -313,6 +314,9 @@ class HTTPRequestTest : public Test {
   }
   void CallTimeoutTask() {
     request_->TimeoutTask();
+  }
+  void CallServerErrorCallback() {
+    request_->OnServerReadError(Error());
   }
 
  private:
@@ -446,6 +450,18 @@ TEST_F(HTTPRequestTest, ResponseTimeout) {
   ExpectResultCallback(HTTPRequest::kResultResponseTimeout);
   ExpectStop();
   CallTimeoutTask();
+}
+
+TEST_F(HTTPRequestTest, ResponseInputError) {
+  SetupConnectComplete();
+  ByteString request_data = GetRequestData();
+  EXPECT_CALL(sockets(), Send(kServerFD, _, request_data.GetLength(), 0))
+      .WillOnce(Return(request_data.GetLength()));
+  ExpectMonitorServerInput();
+  WriteToServer(kServerFD);
+  ExpectResultCallback(HTTPRequest::kResultResponseFailure);
+  ExpectStop();
+  CallServerErrorCallback();
 }
 
 TEST_F(HTTPRequestTest, ResponseData) {

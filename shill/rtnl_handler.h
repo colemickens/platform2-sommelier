@@ -26,6 +26,7 @@ struct nlmsghdr;
 
 namespace shill {
 
+class Error;
 class IPConfig;
 class Sockets;
 
@@ -130,6 +131,10 @@ class RTNLHandler {
                       const IPAddress &local,
                       const IPAddress &gateway,
                       const IPAddress &peer);
+
+  // Called by the RTNL read handler on exceptional events.
+  void OnReadError(const Error &error);
+
   Sockets *sockets_;
   bool in_request_;
 

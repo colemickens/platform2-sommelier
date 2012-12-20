@@ -174,9 +174,10 @@ void HTTPProxy::AcceptClient(int fd) {
   client_socket_ = client_fd;
 
   sockets_->SetNonBlocking(client_socket_);
-  read_client_handler_.reset(
-      dispatcher_->CreateInputHandler(client_socket_,
-                                      read_client_callback_));
+  read_client_handler_.reset(dispatcher_->CreateInputHandler(
+      client_socket_,
+      read_client_callback_,
+      Bind(&HTTPProxy::OnReadError, weak_ptr_factory_.GetWeakPtr())));
   // Overall transaction timeout.
   transaction_timeout_.Reset(Bind(&HTTPProxy::StopClient,
                                   weak_ptr_factory_.GetWeakPtr()));
@@ -226,6 +227,10 @@ void HTTPProxy::OnConnectCompletion(bool success, int fd) {
   }
 
   StartTransmit();
+}
+
+void HTTPProxy::OnReadError(const Error &error) {
+  StopClient();
 }
 
 // Read through the header lines from the client, modifying or adding
@@ -576,9 +581,10 @@ void HTTPProxy::StartReceive() {
       if (read_server_handler_.get()) {
         read_server_handler_->Start();
       } else {
-        read_server_handler_.reset(
-            dispatcher_->CreateInputHandler(server_socket_,
-                                            read_server_callback_));
+        read_server_handler_.reset(dispatcher_->CreateInputHandler(
+            server_socket_,
+            read_server_callback_,
+            Bind(&HTTPProxy::OnReadError, weak_ptr_factory_.GetWeakPtr())));
       }
     } else if (state_ == kStateFlushResponse) {
       StopClient();

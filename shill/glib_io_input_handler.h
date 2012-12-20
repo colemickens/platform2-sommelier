@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,17 +16,21 @@ namespace shill {
 
 class GlibIOInputHandler : public IOHandler {
  public:
-  GlibIOInputHandler(int fd, const base::Callback<void(InputData *)> &callback);
+  GlibIOInputHandler(int fd,
+                     const InputCallback &input_callback,
+                     const ErrorCallback &error_callback);
   ~GlibIOInputHandler();
 
   virtual void Start();
   virtual void Stop();
 
-  const base::Callback<void(InputData *)> &callback() { return callback_; }
+  const InputCallback &input_callback() { return input_callback_; }
+  const ErrorCallback &error_callback() { return error_callback_; }
 
  private:
   GIOChannel *channel_;
-  base::Callback<void(InputData *)> callback_;
+  InputCallback input_callback_;
+  ErrorCallback error_callback_;
   guint source_id_;
 };
 

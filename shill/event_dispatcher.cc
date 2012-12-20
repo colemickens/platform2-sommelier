@@ -1,4 +1,4 @@
-// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -44,8 +44,10 @@ bool EventDispatcher::PostDelayedTask(const Closure &task, int64 delay_ms) {
 
 IOHandler *EventDispatcher::CreateInputHandler(
     int fd,
-    const Callback<void(InputData *)> &callback) {
-  IOHandler *handler = new GlibIOInputHandler(fd, callback);
+    const IOHandler::InputCallback &input_callback,
+    const IOHandler::ErrorCallback &error_callback) {
+  IOHandler *handler = new GlibIOInputHandler(
+      fd, input_callback, error_callback);
   handler->Start();
   return handler;
 }
@@ -53,8 +55,8 @@ IOHandler *EventDispatcher::CreateInputHandler(
 IOHandler *EventDispatcher::CreateReadyHandler(
     int fd,
     IOHandler::ReadyMode mode,
-    const Callback<void(int)> &callback) {
-  IOHandler *handler = new GlibIOReadyHandler(fd, mode, callback);
+    const Callback<void(int)> &ready_callback) {
+  IOHandler *handler = new GlibIOReadyHandler(fd, mode, ready_callback);
   handler->Start();
   return handler;
 }
