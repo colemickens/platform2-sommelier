@@ -8,8 +8,8 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 
-#include "shill/glib.h"
 #include "shill/logging.h"
+#include "shill/minijail.h"
 
 using base::HexEncode;
 using base::StringPrintf;
@@ -19,13 +19,16 @@ using std::vector;
 namespace shill {
 
 namespace {
+
 base::LazyInstance<NSS> g_nss = LAZY_INSTANCE_INITIALIZER;
 const char kCertfileBasename[] = "/tmp/nss-cert.";
-const char kNSSGetCertScript[] = SHIMDIR "/nss-get-cert";
+const char kNSSGetCert[] = SHIMDIR "/nss-get-cert";
+const char kNSSGetCertUser[] = "chronos";
+
 }  // namespace
 
 NSS::NSS()
-    : glib_(NULL) {
+    : minijail_(Minijail::GetInstance()) {
   SLOG(Crypto, 2) << __func__;
 }
 
@@ -38,10 +41,6 @@ NSS *NSS::GetInstance() {
   return g_nss.Pointer();
 }
 
-void NSS::Init(GLib *glib) {
-  glib_ = glib;
-}
-
 FilePath NSS::GetPEMCertfile(const string &nickname, const vector<char> &id) {
   return GetCertfile(nickname, id, "pem");
 }
@@ -52,37 +51,29 @@ FilePath NSS::GetDERCertfile(const string &nickname, const vector<char> &id) {
 
 FilePath NSS::GetCertfile(
     const string &nickname, const vector<char> &id, const string &type) {
-  CHECK(glib_);
   string filename =
       kCertfileBasename + StringToLowerASCII(HexEncode(&id[0], id.size()));
-  char *argv[] = {
-    const_cast<char *>(kNSSGetCertScript),
-    const_cast<char *>(nickname.c_str()),
-    const_cast<char *>(type.c_str()),
-    const_cast<char *>(filename.c_str()),
-    NULL
-  };
-  char *envp[1] = { NULL };
-  int status = 0;
-  GError *error = NULL;
-  if (!glib_->SpawnSync(NULL,
-                        argv,
-                        envp,
-                        static_cast<GSpawnFlags>(0),
-                        NULL,
-                        NULL,
-                        NULL,
-                        NULL,
-                        &status,
-                        &error)) {
-    LOG(ERROR) << "nss-get-cert failed: "
-               << glib_->ConvertErrorToMessage(error);
+  vector<char *> args;
+  args.push_back(const_cast<char *>(kNSSGetCert));
+  args.push_back(const_cast<char *>(nickname.c_str()));
+  args.push_back(const_cast<char *>(type.c_str()));
+  args.push_back(const_cast<char *>(filename.c_str()));
+  args.push_back(NULL);
+
+  struct minijail *jail = minijail_->New();
+  minijail_->DropRoot(jail, kNSSGetCertUser);
+
+  int status;
+  if (!minijail_->RunSyncAndDestroy(jail, args, &status)) {
+    LOG(ERROR) << "Unable to spawn " << kNSSGetCert << " in a jail.";
     return FilePath();
   }
+
   if (!WIFEXITED(status) || WEXITSTATUS(status)) {
-    LOG(ERROR) << "nss-get-cert failed, status=" << status;
+    LOG(ERROR) << kNSSGetCert << " failed with status " << status;
     return FilePath();
   }
+
   return FilePath(filename);
 }
 

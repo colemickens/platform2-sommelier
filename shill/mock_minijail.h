@@ -24,8 +24,12 @@ class MockMinijail : public Minijail {
   MOCK_METHOD2(UseCapabilities, void(struct minijail *jail, uint64_t capmask));
   MOCK_METHOD3(Run, bool(struct minijail *jail,
                          std::vector<char *> args, pid_t *pid));
+  MOCK_METHOD3(RunSync, bool(struct minijail *jail,
+                             std::vector<char *> args, int *status));
   MOCK_METHOD3(RunAndDestroy, bool(struct minijail *jail,
                                    std::vector<char *> args, pid_t *pid));
+  MOCK_METHOD3(RunSyncAndDestroy, bool(struct minijail *jail,
+                                       std::vector<char *> args, int *status));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMinijail);

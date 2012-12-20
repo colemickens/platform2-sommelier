@@ -95,7 +95,6 @@ void Daemon::TerminationActionsCompleted(const Error &error) {
 
 void Daemon::Start() {
   glib_.TypeInit();
-  nss_->Init(&glib_);
   proxy_factory_->Init();
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();

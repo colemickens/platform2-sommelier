@@ -14,7 +14,7 @@
 
 namespace shill {
 
-class GLib;
+class Minijail;
 
 class NSS {
  public:
@@ -22,8 +22,6 @@ class NSS {
 
   // This is a singleton -- use NSS::GetInstance()->Foo()
   static NSS *GetInstance();
-
-  void Init(GLib *glib);
 
   // Returns an empty path on failure.
   virtual FilePath GetPEMCertfile(const std::string &nickname,
@@ -45,7 +43,7 @@ class NSS {
                        const std::vector<char> &id,
                        const std::string &type);
 
-  GLib *glib_;
+  Minijail *minijail_;
 
   DISALLOW_COPY_AND_ASSIGN(NSS);
 };

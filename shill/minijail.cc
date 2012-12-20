@@ -4,6 +4,9 @@
 
 #include "shill/minijail.h"
 
+#include <sys/types.h>
+#include <sys/wait.h>
+
 using std::vector;
 
 namespace shill {
@@ -43,6 +46,16 @@ bool Minijail::Run(struct minijail *jail,
   return minijail_run_pid(jail, args[0], args.data(), pid) == 0;
 }
 
+bool Minijail::RunSync(struct minijail *jail,
+                       vector<char *> args, int *status) {
+  pid_t pid;
+  if (Run(jail, args, &pid) && waitpid(pid, status, 0) == pid) {
+    return true;
+  }
+
+  return false;
+}
+
 bool Minijail::RunPipe(struct minijail *jail,
                        vector<char *> args, pid_t *pid, int *stdin) {
   return minijail_run_pid_pipe(jail, args[0], args.data(), pid, stdin) == 0;
@@ -51,6 +64,13 @@ bool Minijail::RunPipe(struct minijail *jail,
 bool Minijail::RunAndDestroy(struct minijail *jail,
                              vector<char *> args, pid_t *pid) {
   bool res = Run(jail, args, pid);
+  Destroy(jail);
+  return res;
+}
+
+bool Minijail::RunSyncAndDestroy(struct minijail *jail,
+                                 vector<char *> args, int *status) {
+  bool res = RunSync(jail, args, status);
   Destroy(jail);
   return res;
 }
