@@ -35,16 +35,13 @@ Callback80211Object::~Callback80211Object() {
 
 void Callback80211Object::Config80211MessageCallback(
     const UserBoundNlMessage &message) {
-  // Show the simplified version of the message.
+  // Show the message-type-specific version of the message.
   string output("@");
   StringAppendF(&output, "%s", message.ToString().c_str());
   SLOG(WiFi, 2) << output;
 
-  // Show the more complicated version of the message.
-  SLOG(WiFi, 3) << "Received " << message.message_type_string()
-                << " (" << + message.message_type() << ")";
-
-  // TODO(wdg): Make a message->AsString() method.
+  // Show the generic, detailed, version of the message.
+  SLOG(WiFi, 3) << message.GenericToString();
 }
 
 bool Callback80211Object::InstallAsBroadcastCallback() {

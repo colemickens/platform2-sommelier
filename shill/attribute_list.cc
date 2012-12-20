@@ -14,30 +14,25 @@
 #include <string>
 
 #include <base/stl_util.h>
+#include <base/stringprintf.h>
 
 #include "shill/logging.h"
 #include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 
+using base::StringAppendF;
 using base::WeakPtr;
 using std::map;
 using std::string;
 
 namespace shill {
 
-AttributeList::~AttributeList() {
-  map<int, Nl80211Attribute *>::iterator i;
-  for (i = attributes_.begin(); i != attributes_.end(); ++i) {
-    delete i->second;
-  }
-}
-
 bool AttributeList::CreateAttribute(nl80211_attrs id) {
   if (ContainsKey(attributes_, id)) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = Nl80211Attribute::NewFromName(id);
+  attributes_[id] = AttributePointer(Nl80211Attribute::NewFromName(id));
   return true;
 }
 
@@ -49,16 +44,29 @@ bool AttributeList::CreateAndInitFromNlAttr(nl80211_attrs id,
   return attributes_[id]->InitFromNlAttr(data);
 }
 
+string AttributeList::ToString() const {
+  string output;
+  map<int, AttributePointer>::const_iterator i;
+
+  for (i = attributes_.begin(); i != attributes_.end(); ++i) {
+    string attribute_string;
+    i->second->ToString(&attribute_string);
+    StringAppendF(&output, "   Attr: %s(%d)=%s, Type: %s\n",
+                  i->second->id_string(),
+                  i->second->id(),
+                  attribute_string.c_str(),
+                  i->second->datatype_string());
+  }
+  return output;
+}
+
 // U8 Attribute.
 
 bool AttributeList::GetU8AttributeValue(int id, uint8_t *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU8)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU8 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211U8Attribute *attr =
-      reinterpret_cast<const Nl80211U8Attribute *>(GetAttribute(id));
-  return attr->GetU8Value(value);
+  return attribute->GetU8Value(value);
 }
 
 bool AttributeList::CreateU8Attribute(int id, const char *id_string) {
@@ -66,31 +74,26 @@ bool AttributeList::CreateU8Attribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211U8Attribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211U8Attribute(id, id_string));
   return true;
 }
 
 bool AttributeList::SetU8AttributeValue(int id, uint8_t value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU8)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU8 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211U8Attribute *attr =
-      reinterpret_cast<Nl80211U8Attribute *>(GetAttribute(id));
-  return attr->SetU8Value(value);
+  return attribute->SetU8Value(value);
 }
 
 
 // U16 Attribute.
 
 bool AttributeList::GetU16AttributeValue(int id, uint16_t *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU16)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU16 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211U16Attribute *attr =
-      reinterpret_cast<const Nl80211U16Attribute *>(GetAttribute(id));
-  return attr->GetU16Value(value);
+  return attribute->GetU16Value(value);
 }
 
 bool AttributeList::CreateU16Attribute(int id, const char *id_string) {
@@ -98,30 +101,25 @@ bool AttributeList::CreateU16Attribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211U16Attribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211U16Attribute(id, id_string));
   return true;
 }
 
 bool AttributeList::SetU16AttributeValue(int id, uint16_t value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU16)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU16 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211U16Attribute *attr =
-      reinterpret_cast<Nl80211U16Attribute *>(GetAttribute(id));
-  return attr->SetU16Value(value);
+  return attribute->SetU16Value(value);
 }
 
 // U32 Attribute.
 
 bool AttributeList::GetU32AttributeValue(int id, uint32_t *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU32)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU32 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211U32Attribute *attr =
-      reinterpret_cast<const Nl80211U32Attribute *>(GetAttribute(id));
-  return attr->GetU32Value(value);
+  return attribute->GetU32Value(value);
 }
 
 bool AttributeList::CreateU32Attribute(int id, const char *id_string) {
@@ -129,30 +127,25 @@ bool AttributeList::CreateU32Attribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211U32Attribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211U32Attribute(id, id_string));
   return true;
 }
 
 bool AttributeList::SetU32AttributeValue(int id, uint32_t value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU32)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU32 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211U32Attribute *attr =
-      reinterpret_cast<Nl80211U32Attribute *>(GetAttribute(id));
-  return attr->SetU32Value(value);
+  return attribute->SetU32Value(value);
 }
 
 // U64 Attribute.
 
 bool AttributeList::GetU64AttributeValue(int id, uint64_t *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU64)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU64 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211U64Attribute *attr =
-      reinterpret_cast<const Nl80211U64Attribute *>(GetAttribute(id));
-  return attr->GetU64Value(value);
+  return attribute->GetU64Value(value);
 }
 
 bool AttributeList::CreateU64Attribute(int id, const char *id_string) {
@@ -160,30 +153,25 @@ bool AttributeList::CreateU64Attribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211U64Attribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211U64Attribute(id, id_string));
   return true;
 }
 
 bool AttributeList::SetU64AttributeValue(int id, uint64_t value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeU64)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeU64 exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211U64Attribute *attr =
-      reinterpret_cast<Nl80211U64Attribute *>(GetAttribute(id));
-  return attr->SetU64Value(value);
+  return attribute->SetU64Value(value);
 }
 
 // Flag Attribute.
 
 bool AttributeList::GetFlagAttributeValue(int id, bool *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeFlag)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeFlag exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211FlagAttribute *attr =
-      reinterpret_cast<const Nl80211FlagAttribute *>(GetAttribute(id));
-  return attr->GetFlagValue(value);
+  return attribute->GetFlagValue(value);
 }
 
 bool AttributeList::CreateFlagAttribute(int id, const char *id_string) {
@@ -191,27 +179,19 @@ bool AttributeList::CreateFlagAttribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211FlagAttribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211FlagAttribute(id, id_string));
   return true;
 }
 
 bool AttributeList::SetFlagAttributeValue(int id, bool value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeFlag)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeFlag exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211FlagAttribute *attr =
-      reinterpret_cast<Nl80211FlagAttribute *>(GetAttribute(id));
-  return attr->SetFlagValue(value);
+  return attribute->SetFlagValue(value);
 }
 
 bool AttributeList::IsFlagAttributeTrue(int id) const {
-  // TODO(wdg): After message constructors add attributes, remove the following
-  // lines.
-  if (!HasAttribute(id, Nl80211Attribute::kTypeFlag)) {
-    return false;
-  }
-
   bool flag;
   if (!GetFlagAttributeValue(id, &flag)) {
     return false;
@@ -222,13 +202,10 @@ bool AttributeList::IsFlagAttributeTrue(int id) const {
 // String Attribute.
 
 bool AttributeList::GetStringAttributeValue(int id, string *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeString)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeString exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211StringAttribute *attr =
-      reinterpret_cast<const Nl80211StringAttribute *>(GetAttribute(id));
-  return attr->GetStringValue(value);
+  return attribute->GetStringValue(value);
 }
 
 bool AttributeList::CreateStringAttribute(int id, const char *id_string) {
@@ -236,31 +213,26 @@ bool AttributeList::CreateStringAttribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211StringAttribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211StringAttribute(id, id_string));
   return true;
 }
 
 bool AttributeList::SetStringAttributeValue(int id, string value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeString)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeString exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211StringAttribute *attr =
-      reinterpret_cast<Nl80211StringAttribute *>(GetAttribute(id));
-  return attr->SetStringValue(value);
+  return attribute->SetStringValue(value);
 }
 
 // Nested Attribute.
 
 bool AttributeList::GetNestedAttributeValue(
     int id, WeakPtr<AttributeList> *value) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeNested)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeNested exists.";
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  Nl80211NestedAttribute *attr =
-      reinterpret_cast<Nl80211NestedAttribute *>(GetAttribute(id));
-  return attr->GetNestedValue(value);
+  return attribute->GetNestedValue(value);
 }
 
 bool AttributeList::CreateNestedAttribute(int id, const char *id_string) {
@@ -268,23 +240,22 @@ bool AttributeList::CreateNestedAttribute(int id, const char *id_string) {
     LOG(ERROR) << "Trying to re-add attribute: " << id;
     return false;
   }
-  attributes_[id] = new Nl80211NestedAttribute(id, id_string);
+  attributes_[id] = AttributePointer(
+      new Nl80211NestedAttribute(id, id_string));
   return true;
 }
 
 // Raw Attribute.
 
-bool AttributeList::GetRawAttributeValue(int id, ByteString *output) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeRaw)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeRaw exists.";
+bool AttributeList::GetRawAttributeValue(int id,
+                                         ByteString *output) const {
+  Nl80211Attribute *attribute = GetAttribute(id);
+  if (!attribute)
     return false;
-  }
-  const Nl80211RawAttribute *attr =
-      reinterpret_cast<const Nl80211RawAttribute *>(GetAttribute(id));
 
   ByteString raw_value;
 
-  if (!attr->GetRawValue(&raw_value))
+  if (!attribute->GetRawValue(&raw_value))
     return false;
 
   if (output) {
@@ -300,8 +271,9 @@ bool AttributeList::GetRawAttributeValue(int id, ByteString *output) const {
   return true;
 }
 
-const Nl80211RawAttribute *AttributeList::GetRawAttribute(int id) const {
-  if (!HasAttribute(id, Nl80211Attribute::kTypeRaw)) {
+const Nl80211RawAttribute *AttributeList::GetRawAttribute(
+    int id) const {
+  if (!HasRawAttribute(id)) {
     LOG(ERROR) << "No attribute " << id << " of type kTypeRaw exists.";
     return NULL;
   }
@@ -311,23 +283,22 @@ const Nl80211RawAttribute *AttributeList::GetRawAttribute(int id) const {
 }
 
 Nl80211Attribute *AttributeList::GetAttribute(int id) const {
-  map<int, Nl80211Attribute *>::const_iterator i;
+  map<int, AttributePointer>::const_iterator i;
   i = attributes_.find(id);
   if (i == attributes_.end()) {
     return NULL;
   }
-  return i->second;
+  return i->second.get();
 }
 
-bool AttributeList::HasAttribute(int id,
-                                 Nl80211Attribute::Type datatype) const {
-  map<int, Nl80211Attribute *>::const_iterator i;
+bool AttributeList::HasRawAttribute(int id) const {
+  map<int, AttributePointer>::const_iterator i;
   i = attributes_.find(id);
   if (i == attributes_.end()) {
     LOG(ERROR) << "FALSE - Didn't find id " << id;
     return false;
   }
-  return (i->second->datatype() == datatype) ? true : false;
+  return (i->second->datatype() == Nl80211Attribute::kTypeRaw) ? true : false;
 }
 
 

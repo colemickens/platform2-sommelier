@@ -56,7 +56,7 @@ namespace {
 // These constants are consistent throughout the packets, below.
 
 const uint32_t kExpectedIfIndex = 4;
-const uint8_t kExpectedWifi = 0;
+const uint32_t kExpectedWifi = 0;
 const char kExpectedMacAddress[] = "c0:3f:0e:77:e8:7f";
 
 

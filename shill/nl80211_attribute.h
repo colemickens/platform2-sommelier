@@ -12,9 +12,9 @@
 #include <map>
 #include <string>
 
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
+#include "shill/attribute_list.h"
 #include "shill/byte_string.h"
 #include "shill/logging.h"
 
@@ -61,7 +61,7 @@ class Nl80211Attribute {
   int id() const { return id_; }
   virtual const char *id_string() const { return id_string_; }
   Type datatype() const { return datatype_; }
-  std::string datatype_string() const { return datatype_string_; }
+  const char *datatype_string() const { return datatype_string_; }
 
   // TODO(wdg): Since |data| is used, externally, to support |nla_parse_nested|,
   // make it protected once all functionality has been brought inside the
@@ -73,10 +73,32 @@ class Nl80211Attribute {
     return reinterpret_cast<const nlattr *>(data_.GetConstData());
   }
 
+  virtual bool GetU8Value(uint8_t *value) const;
+  virtual bool SetU8Value(uint8_t new_value);
+
+  virtual bool GetU16Value(uint16_t *value) const;
+  virtual bool SetU16Value(uint16_t value);
+
+  virtual bool GetU32Value(uint32_t *value) const;
+  virtual bool SetU32Value(uint32_t value);
+
+  virtual bool GetU64Value(uint64_t *value) const;
+  virtual bool SetU64Value(uint64_t value);
+
+  virtual bool GetFlagValue(bool *value) const;
+  virtual bool SetFlagValue(bool value);
+
+  virtual bool GetStringValue(std::string *value) const;
+  virtual bool SetStringValue(const std::string value);
+
+  virtual bool GetNestedValue(base::WeakPtr<AttributeList> *value);
+
+  virtual bool GetRawValue(ByteString *value) const;
+
   // Fill a string with characters that represents the value of the attribute.
   // If no attribute is found or if the type isn't trivially stringizable,
   // this method returns 'false' and |value| remains unchanged.
-  virtual bool AsString(std::string *value) const = 0;
+  virtual bool ToString(std::string *value) const = 0;
 
   // Writes the raw attribute data to a string.  For debug.
   std::string RawToString() const;
@@ -123,7 +145,7 @@ class Nl80211U8Attribute : public Nl80211Attribute {
   bool InitFromNlAttr(const nlattr *data);
   bool GetU8Value(uint8_t *value) const;
   bool SetU8Value(uint8_t new_value);
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 
  private:
   uint8_t value_;
@@ -154,7 +176,7 @@ class Nl80211U16Attribute : public Nl80211Attribute {
   bool InitFromNlAttr(const nlattr *data);
   bool GetU16Value(uint16_t *value) const;
   bool SetU16Value(uint16_t new_value);
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 
  private:
   uint16_t value_;
@@ -185,7 +207,7 @@ class Nl80211U32Attribute : public Nl80211Attribute {
   bool InitFromNlAttr(const nlattr *data);
   bool GetU32Value(uint32_t *value) const;
   bool SetU32Value(uint32_t new_value);
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 
  private:
   uint32_t value_;
@@ -251,7 +273,7 @@ class Nl80211U64Attribute : public Nl80211Attribute {
   bool InitFromNlAttr(const nlattr *data);
   bool GetU64Value(uint64_t *value) const;
   bool SetU64Value(uint64_t new_value);
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 
  private:
   uint64_t value_;
@@ -275,7 +297,7 @@ class Nl80211FlagAttribute : public Nl80211Attribute {
   bool InitFromNlAttr(const nlattr *data);
   bool GetFlagValue(bool *value) const;
   bool SetFlagValue(bool new_value);
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 
  private:
   bool value_;
@@ -315,7 +337,7 @@ class Nl80211StringAttribute : public Nl80211Attribute {
   bool InitFromNlAttr(const nlattr *data);
   bool GetStringValue(std::string *value) const;
   bool SetStringValue(const std::string new_value);
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 
  private:
   std::string value_;
@@ -347,13 +369,13 @@ class Nl80211NestedAttribute : public Nl80211Attribute {
     LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
     return false;
   }
-  bool GetNestedValue(base::WeakPtr<AttributeList> *value) const;
-  bool AsString(std::string *value) const {
+  bool GetNestedValue(base::WeakPtr<AttributeList> *value);
+  bool ToString(std::string *value) const {
     return false;  // TODO(wdg):
   }
 
  protected:
-  scoped_ptr<AttributeList> value_;
+  AttributeList value_;
 };
 
 class Nl80211AttributeCqm : public Nl80211NestedAttribute {
@@ -362,8 +384,8 @@ class Nl80211AttributeCqm : public Nl80211NestedAttribute {
   static const char kNameString[];
   Nl80211AttributeCqm();
   bool InitFromNlAttr(const nlattr *data);
-  bool AsString(std::string *value) const {
-    return true; // TODO(wdg): Need |AsString|.
+  bool ToString(std::string *value) const {
+    return true; // TODO(wdg): Need |ToString|.
   }
 };
 
@@ -393,7 +415,7 @@ class Nl80211RawAttribute : public Nl80211Attribute {
   // be used for user-bound massages (via InitFromNlAttr).  The 'set' method
   // is intended for building kernel-bound messages and shouldn't be used with
   // raw data.
-  bool AsString(std::string *value) const;
+  bool ToString(std::string *value) const;
 };
 
 class Nl80211AttributeFrame : public Nl80211RawAttribute {

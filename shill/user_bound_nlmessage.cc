@@ -47,6 +47,7 @@
 #include "shill/attribute_list.h"
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
+#include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 
 using base::LazyInstance;
@@ -535,6 +536,14 @@ string UserBoundNlMessage::StringFromStatus(uint16_t status) {
     return output;
   }
   return match->second;
+}
+
+string UserBoundNlMessage::GenericToString() const {
+  string output;
+  StringAppendF(&output, "Received %s (%d)\n",
+                message_type_string(), message_type());
+  StringAppendF(&output, "%s", attributes_.ToString().c_str());
+  return output;
 }
 
 Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)

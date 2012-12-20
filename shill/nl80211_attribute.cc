@@ -133,6 +133,76 @@ bool Nl80211Attribute::InitFromNlAttr(const nlattr *other) {
   return true;
 }
 
+bool Nl80211Attribute::GetU8Value(uint8_t *value) const {
+  LOG(ERROR) << "Attribute is not of type 'U8'";
+  return false;
+}
+
+bool Nl80211Attribute::SetU8Value(uint8_t value) {
+  LOG(ERROR) << "Attribute is not of type 'U8'";
+  return false;
+}
+
+bool Nl80211Attribute::GetU16Value(uint16_t *value) const {
+  LOG(ERROR) << "Attribute is not of type 'U16'";
+  return false;
+}
+
+bool Nl80211Attribute::SetU16Value(uint16_t value) {
+  LOG(ERROR) << "Attribute is not of type 'U16'";
+  return false;
+}
+
+bool Nl80211Attribute::GetU32Value(uint32_t *value) const {
+  LOG(ERROR) << "Attribute is not of type 'U32'";
+  return false;
+}
+
+bool Nl80211Attribute::SetU32Value(uint32_t value) {
+  LOG(ERROR) << "Attribute is not of type 'U32'";
+  return false;
+}
+
+bool Nl80211Attribute::GetU64Value(uint64_t *value) const {
+  LOG(ERROR) << "Attribute is not of type 'U64'";
+  return false;
+}
+
+bool Nl80211Attribute::SetU64Value(uint64_t value) {
+  LOG(ERROR) << "Attribute is not of type 'U64'";
+  return false;
+}
+
+bool Nl80211Attribute::GetFlagValue(bool *value) const {
+  LOG(ERROR) << "Attribute is not of type 'Flag'";
+  return false;
+}
+
+bool Nl80211Attribute::SetFlagValue(bool value) {
+  LOG(ERROR) << "Attribute is not of type 'Flag'";
+  return false;
+}
+
+bool Nl80211Attribute::GetStringValue(string *value) const {
+  LOG(ERROR) << "Attribute is not of type 'String'";
+  return false;
+}
+
+bool Nl80211Attribute::SetStringValue(string value) {
+  LOG(ERROR) << "Attribute is not of type 'String'";
+  return false;
+}
+
+bool Nl80211Attribute::GetNestedValue(WeakPtr<AttributeList> *value) {
+  LOG(ERROR) << "Attribute is not of type 'Nested'";
+  return false;
+}
+
+bool Nl80211Attribute::GetRawValue(ByteString *value) const {
+  LOG(ERROR) << "Attribute is not of type 'Raw'";
+  return false;
+}
+
 string Nl80211Attribute::RawToString() const {
   string output = " === RAW: ";
 
@@ -179,7 +249,7 @@ bool Nl80211U8Attribute::SetU8Value(uint8_t new_value) {
   return true;
 }
 
-bool Nl80211U8Attribute::AsString(string *output) const {
+bool Nl80211U8Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -221,7 +291,7 @@ bool Nl80211U16Attribute::SetU16Value(uint16_t new_value) {
   return true;
 }
 
-bool Nl80211U16Attribute::AsString(string *output) const {
+bool Nl80211U16Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -262,7 +332,7 @@ bool Nl80211U32Attribute::SetU32Value(uint32_t new_value) {
   return true;
 }
 
-bool Nl80211U32Attribute::AsString(string *output) const {
+bool Nl80211U32Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -303,7 +373,7 @@ bool Nl80211U64Attribute::SetU64Value(uint64_t new_value) {
   return true;
 }
 
-bool Nl80211U64Attribute::AsString(string *output) const {
+bool Nl80211U64Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -345,7 +415,7 @@ bool Nl80211FlagAttribute::SetFlagValue(bool new_value) {
   return true;
 }
 
-bool Nl80211FlagAttribute::AsString(string *output) const {
+bool Nl80211FlagAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -385,12 +455,17 @@ bool Nl80211StringAttribute::SetStringValue(const string new_value) {
   return true;
 }
 
-bool Nl80211StringAttribute::AsString(string *output) const {
+bool Nl80211StringAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
   }
-  return GetStringValue(output);
+  string value;
+  if (!GetStringValue(&value))
+    return false;
+
+  *output = StringPrintf("'%s'", value.c_str());
+  return true;
 }
 
 // Nl80211NestedAttribute
@@ -400,14 +475,11 @@ const Nl80211Attribute::Type Nl80211NestedAttribute::kType =
 
 Nl80211NestedAttribute::Nl80211NestedAttribute(int id,
                                                const char *id_string) :
-    Nl80211Attribute(id, id_string, kType, kMyTypeString),
-    value_(new AttributeList()) {
-}
+    Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
 
-bool Nl80211NestedAttribute::GetNestedValue(
-    WeakPtr<AttributeList> *output) const {
+bool Nl80211NestedAttribute::GetNestedValue(WeakPtr<AttributeList> *output) {
   if (output) {
-    *output = value_->AsWeakPtr();
+    *output = value_.AsWeakPtr();
   }
   return true;
 }
@@ -434,7 +506,7 @@ bool Nl80211RawAttribute::GetRawValue(ByteString *output) const {
   return true;
 }
 
-bool Nl80211RawAttribute::AsString(string *output) const {
+bool Nl80211RawAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -460,14 +532,14 @@ const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
 
 Nl80211AttributeCqm::Nl80211AttributeCqm()
       : Nl80211NestedAttribute(kName, kNameString) {
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
-                             "NL80211_ATTR_CQM_RSSI_THOLD");
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
-                             "NL80211_ATTR_CQM_RSSI_HYST");
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
-                             "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT");
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
-                             "NL80211_ATTR_CQM_PKT_LOSS_EVENT");
+  value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
+                            "NL80211_ATTR_CQM_RSSI_THOLD");
+  value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
+                            "NL80211_ATTR_CQM_RSSI_HYST");
+  value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
+                            "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT");
+  value_.CreateU32Attribute(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
+                            "NL80211_ATTR_CQM_PKT_LOSS_EVENT");
 }
 
 bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
@@ -493,22 +565,22 @@ bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
   }
 
   if (cqm[NL80211_ATTR_CQM_RSSI_THOLD]) {
-    value_->SetU32AttributeValue(
+    value_.SetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_THOLD,
         nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THOLD]));
   }
   if (cqm[NL80211_ATTR_CQM_RSSI_HYST]) {
-    value_->SetU32AttributeValue(
+    value_.SetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_HYST,
         nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_HYST]));
   }
   if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
-    value_->SetU32AttributeValue(
+    value_.SetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
         nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
   }
   if (cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]) {
-    value_->SetU32AttributeValue(
+    value_.SetU32AttributeValue(
         NL80211_ATTR_CQM_PKT_LOSS_EVENT,
         nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
   }

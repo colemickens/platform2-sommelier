@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/attribute_list.h"
+#include "shill/byte_string.h"
 
 struct nlattr;
 struct nlmsghdr;
@@ -72,6 +73,8 @@ class UserBoundNlMessage {
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute).
   static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);
+
+  std::string GenericToString() const;
 
   // Returns a string that describes this message.
   virtual std::string ToString() const { return GetHeaderString(); }

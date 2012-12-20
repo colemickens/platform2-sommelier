@@ -10,9 +10,9 @@
 
 #include <map>
 #include <string>
+#include <tr1/memory>
 
 #include <base/memory/weak_ptr.h>
-#include "shill/nl80211_attribute.h"
 
 struct nlattr;
 namespace shill {
@@ -23,7 +23,7 @@ class Nl80211RawAttribute;
 
 class AttributeList : public base::SupportsWeakPtr<AttributeList> {
  public:
-  virtual ~AttributeList();
+  typedef std::tr1::shared_ptr<Nl80211Attribute> AttributePointer;
 
   // Instantiates an Nl80211Attribute of the appropriate type from |id|,
   // and adds it to |attributes_|.
@@ -34,6 +34,8 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // TODO(wdg): This is a stop-gap for use before message constructors add
   // their attributes as message templates.
   bool CreateAndInitFromNlAttr(nl80211_attrs id, const nlattr *data);
+
+  std::string ToString() const;
 
   bool GetU8AttributeValue(int id, uint8_t *value) const;
   bool GetU16AttributeValue(int id, uint16_t *value) const;
@@ -88,9 +90,11 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // Using this to get around issues with const and operator[].
   Nl80211Attribute *GetAttribute(int id) const;
 
-  bool HasAttribute(int name, Nl80211Attribute::Type type) const;
+  // TODO(wdg): This is only used to support |GetRawAttribute|.  Delete this
+  // when that goes away.
+  bool HasRawAttribute(int id) const;
 
-  std::map<int, Nl80211Attribute *> attributes_;
+  std::map<int, AttributePointer> attributes_;
 };
 
 }  // namespace shill
