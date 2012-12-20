@@ -48,18 +48,18 @@ class UserBoundNlMessage {
   // Helper function to provide a string for a MAC address.  If no attribute
   // is found, this method returns 'false'.  On any error with a non-NULL
   // |value|, this method sets |value| to a bogus MAC address.
-  bool GetMacAttributeString(nl80211_attrs name, std::string *value) const;
+  bool GetMacAttributeString(nl80211_attrs id, std::string *value) const;
 
   // TODO(wdg): This needs to be moved to AttributeScanFrequencies.
   // Helper function to provide a vector of scan frequencies for attributes
   // that contain them (such as NL80211_ATTR_SCAN_FREQUENCIES).
-  bool GetScanFrequenciesAttribute(enum nl80211_attrs name,
+  bool GetScanFrequenciesAttribute(nl80211_attrs id,
                                    std::vector<uint32_t> *value) const;
 
   // TODO(wdg): This needs to be moved to AttributeScanSSids.
   // Helper function to provide a vector of SSIDs for attributes that contain
   // them (such as NL80211_ATTR_SCAN_SSIDS).
-  bool GetScanSsidsAttribute(enum nl80211_attrs name,
+  bool GetScanSsidsAttribute(nl80211_attrs id,
                              std::vector<std::string> *value) const;
 
   // TODO(wdg): This needs to be moved to AttributeMac.

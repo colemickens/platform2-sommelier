@@ -13,8 +13,10 @@
 #include <string>
 
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 
 #include "shill/byte_string.h"
+#include "shill/logging.h"
 
 struct nlattr;
 
@@ -27,7 +29,7 @@ class AttributeList;
 // Get*Value and Set*Value methods (where * is the type).  A second-level of
 // child classes exist for each individual attribute type.
 //
-// An attribute has a name (which is really an enumerated value), a data type,
+// An attribute has an id (which is really an enumerated value), a data type,
 // and a value.  In an nlattr (the underlying format for an attribute in a
 // message), the data is stored as a blob without type information; the writer
 // and reader of the attribute must agree on the data type.
@@ -45,21 +47,21 @@ class Nl80211Attribute {
     kTypeError
   };
 
-  Nl80211Attribute(nl80211_attrs name, const char *name_string,
-                   Type type, const char *type_string);
+  Nl80211Attribute(int id, const char *id_string,
+                   Type datatype, const char *datatype_string);
   virtual ~Nl80211Attribute() {}
 
   virtual bool InitFromNlAttr(const nlattr *data);
 
   // Static factory generates the appropriate Nl80211Attribute object from the
   // raw nlattr data.
-  static Nl80211Attribute *NewFromName(nl80211_attrs name);
+  static Nl80211Attribute *NewFromName(nl80211_attrs id);
 
-  // Accessors for the attribute's name and type information.
-  nl80211_attrs name() const { return name_; }
-  virtual const char *name_string() const { return name_string_; }
-  Type type() const { return type_; }
-  std::string type_string() const { return type_string_; }
+  // Accessors for the attribute's id and type information.
+  int id() const { return id_; }
+  virtual const char *id_string() const { return id_string_; }
+  Type datatype() const { return datatype_; }
+  std::string datatype_string() const { return datatype_string_; }
 
   // TODO(wdg): Since |data| is used, externally, to support |nla_parse_nested|,
   // make it protected once all functionality has been brought inside the
@@ -104,10 +106,10 @@ class Nl80211Attribute {
   ByteString data_;
 
  private:
-  nl80211_attrs name_;
-  const char *name_string_;
-  Type type_;
-  const char *type_string_;
+  int id_;  // In the non-nested case, this is really type nl80211_attrs.
+  const char *id_string_;
+  Type datatype_;
+  const char *datatype_string_;
 };
 
 // U8.
@@ -116,8 +118,8 @@ class Nl80211U8Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U8Attribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211U8Attribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU8Value(uint8_t *value) const;
   bool SetU8Value(uint8_t new_value);
@@ -147,8 +149,8 @@ class Nl80211U16Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U16Attribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211U16Attribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU16Value(uint16_t *value) const;
   bool SetU16Value(uint16_t new_value);
@@ -178,8 +180,8 @@ class Nl80211U32Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U32Attribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211U32Attribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU32Value(uint32_t *value) const;
   bool SetU32Value(uint32_t new_value);
@@ -244,8 +246,8 @@ class Nl80211U64Attribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U64Attribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211U64Attribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU64Value(uint64_t *value) const;
   bool SetU64Value(uint64_t new_value);
@@ -268,8 +270,8 @@ class Nl80211FlagAttribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211FlagAttribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211FlagAttribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetFlagValue(bool *value) const;
   bool SetFlagValue(bool new_value);
@@ -308,8 +310,8 @@ class Nl80211StringAttribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211StringAttribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211StringAttribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetStringValue(std::string *value) const;
   bool SetStringValue(const std::string new_value);
@@ -333,14 +335,58 @@ class Nl80211AttributeWiphyName : public Nl80211StringAttribute {
   Nl80211AttributeWiphyName() : Nl80211StringAttribute(kName, kNameString) {}
 };
 
+// Nested.
+
+class Nl80211NestedAttribute : public Nl80211Attribute {
+ public:
+  static const char kMyTypeString[];
+  static const Type kType;
+  Nl80211NestedAttribute(int id, const char *id_string);
+  virtual ~Nl80211NestedAttribute() {}
+  bool InitFromNlAttr(const nlattr *data) {
+    LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
+    return false;
+  }
+  bool GetNestedValue(base::WeakPtr<AttributeList> *value) const;
+  bool AsString(std::string *value) const {
+    return false;  // TODO(wdg):
+  }
+
+ protected:
+  scoped_ptr<AttributeList> value_;
+};
+
+class Nl80211AttributeCqm : public Nl80211NestedAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  Nl80211AttributeCqm();
+  bool InitFromNlAttr(const nlattr *data);
+  bool AsString(std::string *value) const {
+    return true; // TODO(wdg): Need |AsString|.
+  }
+};
+
+class Nl80211AttributeStaInfo : public Nl80211NestedAttribute {
+ public:
+  static const nl80211_attrs kName;
+  static const char kNameString[];
+  explicit Nl80211AttributeStaInfo() :
+    Nl80211NestedAttribute(kName, kNameString) {}
+  bool InitFromNlAttr(const nlattr *const_data);
+  bool AsString(std::string *value) const {
+    return true; // TODO(wdg): Need |AsString|.
+  }
+};
+
 // Raw.
 
 class Nl80211RawAttribute : public Nl80211Attribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211RawAttribute(nl80211_attrs name, const char *name_string)
-      : Nl80211Attribute(name, name_string, kType, kMyTypeString) {}
+  Nl80211RawAttribute(int id, const char *id_string)
+      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetRawValue(ByteString *value) const;
   // Not supporting 'set' for raw data.  This type is a "don't know" type to
@@ -348,15 +394,6 @@ class Nl80211RawAttribute : public Nl80211Attribute {
   // is intended for building kernel-bound messages and shouldn't be used with
   // raw data.
   bool AsString(std::string *value) const;
-};
-
-// TODO(wdg): This should inherit from Nl80211NestedAttribute when that class
-// exists.
-class Nl80211AttributeCqm : public Nl80211RawAttribute {
- public:
-  static const nl80211_attrs kName;
-  static const char kNameString[];
-  Nl80211AttributeCqm() : Nl80211RawAttribute(kName, kNameString) {}
 };
 
 class Nl80211AttributeFrame : public Nl80211RawAttribute {
@@ -368,11 +405,11 @@ class Nl80211AttributeFrame : public Nl80211RawAttribute {
 
 class Nl80211AttributeGeneric : public Nl80211RawAttribute {
  public:
-  explicit Nl80211AttributeGeneric(nl80211_attrs name);
-  const char *name_string() const;
+  explicit Nl80211AttributeGeneric(nl80211_attrs id);
+  const char *id_string() const;
 
  private:
-  std::string name_string_;
+  std::string id_string_;
 };
 
 class Nl80211AttributeKeySeq : public Nl80211RawAttribute {
@@ -410,12 +447,6 @@ class Nl80211AttributeScanSsids : public Nl80211RawAttribute {
   Nl80211AttributeScanSsids() : Nl80211RawAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeStaInfo : public Nl80211RawAttribute {
- public:
-  static const nl80211_attrs kName;
-  static const char kNameString[];
-  Nl80211AttributeStaInfo() : Nl80211RawAttribute(kName, kNameString) {}
-};
 
 }  // namespace shill
 

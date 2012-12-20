@@ -114,8 +114,7 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
-      attributes_.CreateAndInitFromNlAttr(static_cast<enum nl80211_attrs>(i),
-                                          tb[i]);
+      attributes_.CreateAndInitFromNlAttr(static_cast<nl80211_attrs>(i), tb[i]);
     }
   }
 
@@ -326,7 +325,7 @@ uint32_t UserBoundNlMessage::GetId() const {
 
 
 // Helper function to provide a string for a MAC address.
-bool UserBoundNlMessage::GetMacAttributeString(enum nl80211_attrs name,
+bool UserBoundNlMessage::GetMacAttributeString(nl80211_attrs id,
                                                string *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
@@ -334,7 +333,7 @@ bool UserBoundNlMessage::GetMacAttributeString(enum nl80211_attrs name,
   }
 
   ByteString data;
-  if (!attributes().GetRawAttributeValue(name, &data)) {
+  if (!attributes().GetRawAttributeValue(id, &data)) {
     value->assign(kBogusMacAddress);
     return false;
   }
@@ -345,7 +344,7 @@ bool UserBoundNlMessage::GetMacAttributeString(enum nl80211_attrs name,
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_FREQUENCIES.
 bool UserBoundNlMessage::GetScanFrequenciesAttribute(
-    enum nl80211_attrs name, vector<uint32_t> *value) const {
+    nl80211_attrs id, vector<uint32_t> *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -353,7 +352,7 @@ bool UserBoundNlMessage::GetScanFrequenciesAttribute(
 
   value->clear();
   ByteString rawdata;
-  if (!attributes().GetRawAttributeValue(name, &rawdata) && !rawdata.IsEmpty())
+  if (!attributes().GetRawAttributeValue(id, &rawdata) && !rawdata.IsEmpty())
     return false;
 
   nlattr *nst = NULL;
@@ -370,15 +369,15 @@ bool UserBoundNlMessage::GetScanFrequenciesAttribute(
 }
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_SSIDS.
-bool UserBoundNlMessage::GetScanSsidsAttribute(
-    enum nl80211_attrs name, vector<string> *value) const {
+bool UserBoundNlMessage::GetScanSsidsAttribute(nl80211_attrs id,
+                                               vector<string> *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
   }
 
   ByteString rawdata;
-  if (!attributes().GetRawAttributeValue(name, &rawdata) || rawdata.IsEmpty())
+  if (!attributes().GetRawAttributeValue(id, &rawdata) || rawdata.IsEmpty())
     return false;
 
   nlattr *nst = NULL;
@@ -423,7 +422,7 @@ string UserBoundNlMessage::GetHeaderString() const {
   return output;
 }
 
-string UserBoundNlMessage::StringFromFrame(enum nl80211_attrs attr_name) const {
+string UserBoundNlMessage::StringFromFrame(nl80211_attrs attr_name) const {
   string output;
   ByteString frame_data;
   if (attributes().GetRawAttributeValue(attr_name,
@@ -820,8 +819,7 @@ string MichaelMicFailureMessage::ToString() const {
   }
   uint32_t key_type_val = UINT32_MAX;
   if (attributes().GetU32AttributeValue(NL80211_ATTR_KEY_TYPE, &key_type_val)) {
-    enum nl80211_key_type key_type =
-        static_cast<enum nl80211_key_type >(key_type_val);
+    nl80211_key_type key_type = static_cast<nl80211_key_type >(key_type_val);
     StringAppendF(&output, " Key Type %s", StringFromKeyType(key_type).c_str());
   }
 
@@ -898,7 +896,7 @@ const char NotifyCqmMessage::kCommandString[] = "NL80211_CMD_NOTIFY_CQM";
 
 string NotifyCqmMessage::ToString() const {
   // TODO(wdg): use attributes().GetNestedAttributeValue()...
-  static const nla_policy kCqmPolicy[NL80211_ATTR_CQM_MAX + 1] = {
+  static const nla_policy kCqmValidationPolicy[NL80211_ATTR_CQM_MAX + 1] = {
     { NLA_U32, 0, 0 },  // Who Knows?
     { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THOLD]
     { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_HYST]
@@ -921,14 +919,15 @@ string NotifyCqmMessage::ToString() const {
   nlattr *cqm_attr = const_cast<nlattr *>(const_data);
 
   nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
-  if (!cqm_attr || nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
-                                    const_cast<nla_policy *>(kCqmPolicy))) {
+  if (!cqm_attr ||
+      nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
+                       const_cast<nla_policy *>(kCqmValidationPolicy))) {
     output.append("missing data!");
     return output;
   }
   if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
-    enum nl80211_cqm_rssi_threshold_event rssi_event =
-        static_cast<enum nl80211_cqm_rssi_threshold_event>(
+    nl80211_cqm_rssi_threshold_event rssi_event =
+        static_cast<nl80211_cqm_rssi_threshold_event>(
           Nl80211Attribute::NlaGetU32(
               cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
     if (rssi_event == NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH)

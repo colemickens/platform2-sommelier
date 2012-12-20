@@ -34,6 +34,7 @@
 
 using base::Bind;
 using base::Unretained;
+using base::WeakPtr;
 using std::list;
 using std::string;
 using std::vector;
@@ -688,8 +689,8 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
 
   // TODO(wdg): Look at nested values of NL80211_ATTR_STA_INFO.
   {
-    ByteString nested;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(
+    WeakPtr<AttributeList> nested;
+    EXPECT_TRUE(message->attributes().GetNestedAttributeValue(
         NL80211_ATTR_STA_INFO, &nested));
   }
 
@@ -908,13 +909,19 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
     EXPECT_EQ(strncmp(value.c_str(), kExpectedMacAddress, value.length()), 0);
   }
 
-  // TODO(wdg): The next check-in contains a perfectly fine test for
-  // NL80211_ATTR_CQM so it seems silly to pound one out, using completely
-  // different semantics, for this check-in.
   {
-    ByteString nested;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(
-        NL80211_ATTR_CQM, &nested));
+    WeakPtr<AttributeList> nested;
+    EXPECT_TRUE(message->attributes().GetNestedAttributeValue(NL80211_ATTR_CQM,
+                                                              &nested));
+    // TODO(wdg): Enable the following when attributes get the 'is_valid'
+    // property.
+    //uint32_t threshold_event;
+    //EXPECT_FALSE(nested->GetU32AttributeValue(
+    //    NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT, &threshold_event));
+    uint32_t pkt_loss_event;
+    EXPECT_TRUE(nested->GetU32AttributeValue(
+        NL80211_ATTR_CQM_PKT_LOSS_EVENT, &pkt_loss_event));
+    EXPECT_EQ(pkt_loss_event, kExpectedCqmNotAcked);
   }
 }
 

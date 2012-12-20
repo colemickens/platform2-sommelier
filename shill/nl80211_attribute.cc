@@ -24,20 +24,21 @@ using std::string;
 
 using base::StringAppendF;
 using base::StringPrintf;
+using base::WeakPtr;
 
 namespace shill {
 
-Nl80211Attribute::Nl80211Attribute(enum nl80211_attrs name,
-                                   const char *name_string,
-                                   Type type,
-                                   const char *type_string)
-    : name_(name), name_string_(name_string), type_(type),
-      type_string_(type_string) {}
+Nl80211Attribute::Nl80211Attribute(int id,
+                                   const char *id_string,
+                                   Type datatype,
+                                   const char *datatype_string)
+    : id_(id), id_string_(id_string), datatype_(datatype),
+      datatype_string_(datatype_string) {}
 
 // static
-Nl80211Attribute *Nl80211Attribute::NewFromName(nl80211_attrs name) {
+Nl80211Attribute *Nl80211Attribute::NewFromName(nl80211_attrs id) {
   scoped_ptr<Nl80211Attribute> attr;
-  switch (name) {
+  switch (id) {
     case NL80211_ATTR_COOKIE:
       attr.reset(new Nl80211AttributeCookie());
       break;
@@ -114,13 +115,13 @@ Nl80211Attribute *Nl80211Attribute::NewFromName(nl80211_attrs name) {
       attr.reset(new Nl80211AttributeWiphyName());
       break;
     default:
-      attr.reset(new Nl80211AttributeGeneric(name));
+      attr.reset(new Nl80211AttributeGeneric(id));
       break;
   }
   return attr.release();
 }
 
-// Duplicate attribute data, store in map indexed on |name|.
+// Duplicate attribute data, store in map indexed on |id|.
 bool Nl80211Attribute::InitFromNlAttr(const nlattr *other) {
   if (!other) {
     LOG(ERROR) << "NULL data";
@@ -392,6 +393,24 @@ bool Nl80211StringAttribute::AsString(string *output) const {
   return GetStringValue(output);
 }
 
+// Nl80211NestedAttribute
+const char Nl80211NestedAttribute::kMyTypeString[] = "nested";
+const Nl80211Attribute::Type Nl80211NestedAttribute::kType =
+    Nl80211Attribute::kTypeNested;
+
+Nl80211NestedAttribute::Nl80211NestedAttribute(int id,
+                                               const char *id_string) :
+    Nl80211Attribute(id, id_string, kType, kMyTypeString),
+    value_(new AttributeList()) {
+}
+
+bool Nl80211NestedAttribute::GetNestedValue(
+    WeakPtr<AttributeList> *output) const {
+  if (output) {
+    *output = value_->AsWeakPtr();
+  }
+  return true;
+}
 
 // Nl80211RawAttribute
 
@@ -438,6 +457,63 @@ const char Nl80211AttributeCookie::kNameString[] = "NL80211_ATTR_COOKIE";
 
 const nl80211_attrs Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
 const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
+
+Nl80211AttributeCqm::Nl80211AttributeCqm()
+      : Nl80211NestedAttribute(kName, kNameString) {
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
+                             "NL80211_ATTR_CQM_RSSI_THOLD");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
+                             "NL80211_ATTR_CQM_RSSI_HYST");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
+                             "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
+                             "NL80211_ATTR_CQM_PKT_LOSS_EVENT");
+}
+
+bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
+  if (!const_data) {
+    LOG(ERROR) << "Null |const_data| parameter";
+    return false;
+  }
+  nlattr *cqm_attr = const_cast<nlattr *>(const_data);
+
+  static const nla_policy kCqmValidationPolicy[NL80211_ATTR_CQM_MAX + 1] = {
+    { NLA_U32, 0, 0 },  // Who Knows?
+    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THOLD]
+    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_HYST]
+    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]
+    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_PKT_LOSS_EVENT]
+  };
+
+  nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
+  if (nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
+                       const_cast<nla_policy *>(kCqmValidationPolicy))) {
+    LOG(ERROR) << "nla_parse_nested failed";
+    return false;
+  }
+
+  if (cqm[NL80211_ATTR_CQM_RSSI_THOLD]) {
+    value_->SetU32AttributeValue(
+        NL80211_ATTR_CQM_RSSI_THOLD,
+        nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THOLD]));
+  }
+  if (cqm[NL80211_ATTR_CQM_RSSI_HYST]) {
+    value_->SetU32AttributeValue(
+        NL80211_ATTR_CQM_RSSI_HYST,
+        nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_HYST]));
+  }
+  if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
+    value_->SetU32AttributeValue(
+        NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
+        nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
+  }
+  if (cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]) {
+    value_->SetU32AttributeValue(
+        NL80211_ATTR_CQM_PKT_LOSS_EVENT,
+        nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
+  }
+  return true;
+}
 
 const nl80211_attrs Nl80211AttributeDisconnectedByAp::kName
     = NL80211_ATTR_DISCONNECTED_BY_AP;
@@ -499,6 +575,15 @@ const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
 const nl80211_attrs Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
 const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 
+bool Nl80211AttributeStaInfo::InitFromNlAttr(const nlattr *const_data) {
+  if (!const_data) {
+    LOG(ERROR) << "Null |const_data| parameter";
+    return false;
+  }
+  // TODO(wdg): Add code, here.
+  return true;
+}
+
 const nl80211_attrs Nl80211AttributeStatusCode::kName
     = NL80211_ATTR_STATUS_CODE;
 const char Nl80211AttributeStatusCode::kNameString[]
@@ -521,13 +606,13 @@ const char Nl80211AttributeWiphy::kNameString[] = "NL80211_ATTR_WIPHY";
 const nl80211_attrs Nl80211AttributeWiphyName::kName = NL80211_ATTR_WIPHY_NAME;
 const char Nl80211AttributeWiphyName::kNameString[] = "NL80211_ATTR_WIPHY_NAME";
 
-Nl80211AttributeGeneric::Nl80211AttributeGeneric(nl80211_attrs name)
-    : Nl80211RawAttribute(name, "unused-string") {
-  StringAppendF(&name_string_, "<UNKNOWN ATTRIBUTE %d>", name);
+Nl80211AttributeGeneric::Nl80211AttributeGeneric(nl80211_attrs id)
+    : Nl80211RawAttribute(id, "unused-string") {
+  StringAppendF(&id_string_, "<UNKNOWN ATTRIBUTE %d>", id);
 }
 
-const char *Nl80211AttributeGeneric::name_string() const {
-  return name_string_.c_str();
+const char *Nl80211AttributeGeneric::id_string() const {
+  return id_string_.c_str();
 }
 
 }  // namespace shill
