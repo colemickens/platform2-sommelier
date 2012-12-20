@@ -35,6 +35,9 @@ using std::string;
 
 namespace shill {
 
+// Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
+const int RTNLHandler::kReceiveBufferSize = 256 * 1024;
+
 namespace {
 base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
@@ -70,6 +73,10 @@ void RTNLHandler::Start(EventDispatcher *dispatcher, Sockets *sockets) {
   if (rtnl_socket_ < 0) {
     LOG(ERROR) << "Failed to open rtnl socket";
     return;
+  }
+
+  if (sockets->SetReceiveBuffer(rtnl_socket_, kReceiveBufferSize)) {
+    LOG(ERROR) << "Failed to increase receive buffer size";
   }
 
   memset(&addr, 0, sizeof(addr));

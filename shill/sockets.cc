@@ -108,6 +108,11 @@ int Sockets::SetNonBlocking(int sockfd) {
       fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK));
 }
 
+int Sockets::SetReceiveBuffer(int sockfd, int size) {
+  // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead
+  return setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &size, sizeof(size));
+}
+
 int Sockets::Socket(int domain, int type, int protocol) {
   return socket(domain, type, protocol);
 }

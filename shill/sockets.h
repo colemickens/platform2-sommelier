@@ -72,6 +72,9 @@ class Sockets {
   // fcntl(sk, F_SETFL, fcntl(sk, F_GETFL) | O_NONBLOCK)
   virtual int SetNonBlocking(int sockfd);
 
+  // setsockopt(SO_RCVBUFFORCE)
+  virtual int SetReceiveBuffer(int sockfd, int size);
+
   // socket
   virtual int Socket(int domain, int type, int protocol);
 };

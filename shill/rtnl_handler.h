@@ -113,6 +113,8 @@ class RTNLHandler {
   FRIEND_TEST(RTNLListenerTest, Run);
   FRIEND_TEST(RoutingTableTest, RouteDeleteForeign);
 
+  static const int kReceiveBufferSize;
+
   // This stops the event-monitoring function of the RTNL handler -- it is
   // private since it will never happen in normal running, but is useful for
   // tests.

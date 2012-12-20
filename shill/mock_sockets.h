@@ -47,6 +47,7 @@ class MockSockets : public Sockets {
                                const struct sockaddr *dest_addr,
                                socklen_t addrlen));
   MOCK_METHOD1(SetNonBlocking, int(int sockfd));
+  MOCK_METHOD2(SetReceiveBuffer, int(int sockfd, int size));
   MOCK_METHOD3(Socket, int(int domain, int type, int protocol));
 
  private:

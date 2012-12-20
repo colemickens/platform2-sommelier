@@ -103,6 +103,7 @@ void RTNLHandlerTest::StartRTNLHandler() {
       .WillOnce(Return(kTestSocket));
   EXPECT_CALL(sockets_, Bind(kTestSocket, _, sizeof(sockaddr_nl)))
       .WillOnce(Return(0));
+  EXPECT_CALL(sockets_, SetReceiveBuffer(kTestSocket, _)).WillOnce(Return(0));
   RTNLHandler::GetInstance()->Start(&dispatcher_, &sockets_);
 }
 
