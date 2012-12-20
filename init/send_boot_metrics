@@ -4,7 +4,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-AWK_PROG='
+GET_FIRMWARE_TIME='
   /Initial usec timer/ {
     sub(".*Initial usec timer ", "")
     initial_usec = $0
@@ -14,10 +14,10 @@ AWK_PROG='
     printf "%.2f", initial_usec / 1000000
   }
 '
-FIRMWARE_TIME=$(dmesg | awk "$AWK_PROG")
+FIRMWARE_TIME=$(dmesg | awk "$GET_FIRMWARE_TIME")
 
 # TODO(jrbarnette): This is a concession to existing chrome code
-# that uses the value for reporting metrics to UMA. We'd like to
+# that uses the value for reporting metrics to UMA.  We'd like to
 # move that reporting here, to reduce coupling with chrome.  Once
 # we've moved the metrics reporting here, the code to create this
 # file can be removed.
@@ -36,14 +36,18 @@ report_disk_metrics $(
 send_metrics_on_resume -b
 
 # Report disk health from SMART (S.M.A.R.T.) parameters.
-# The first printf avoids a newline in $smart.
-smart="$(/usr/sbin/smartctl -A $(/usr/bin/rootdev -d) | \
-  awk '
-/^187/ { printf "%d ", $10; }
-/^199/ { print $10; }
-')"
-# smart now contains two numbers, for instance "10 20".  Extract each number
-# using prefix and suffix substitutions.  This would less cryptic if dash had
-# arrays.
-metrics_client Platform.SmartUncorrectableErrors ${smart% *} 1 1000000 20
-metrics_client Platform.SmartTransferErrors      ${smart#* } 1 1000000 20
+# usage:
+#   report_smart_metrics <uncorrectable-errors> <transfer-errors>
+report_smart_metrics() {
+  metrics_client Platform.SmartUncorrectableErrors $1 1 1000000 20
+  metrics_client Platform.SmartTransferErrors      $2 1 1000000 20
+}
+
+GET_SMART_ERRORS='
+  BEGIN { uncorr = 0; txfer = 0 }
+  $2 == "Reported_Uncorrect" { uncorr = $10 }
+  $2 == "UDMA_CRC_Error_Count" { txfer = $10 }
+  END { print uncorr, txfer }
+'
+report_smart_metrics $(
+  smartctl -A $(rootdev -s -d) | awk "$GET_SMART_ERRORS")
