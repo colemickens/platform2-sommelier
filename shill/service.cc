@@ -314,7 +314,7 @@ void Service::SetState(ConnectState state) {
     return;
   }
 
-  if (state == kStateIdle || state == kStateFailure) {
+  if (state == kStateFailure) {
     NoteDisconnectEvent();
   }
 
@@ -369,6 +369,7 @@ void Service::SetFailure(ConnectFailure failure) {
 }
 
 void Service::SetFailureSilent(ConnectFailure failure) {
+  NoteDisconnectEvent();
   // Note that order matters here, since SetState modifies |failure_| and
   // |failed_time_|.
   SetState(kStateIdle);

@@ -1039,14 +1039,30 @@ TEST_F(ServiceTest, Certification) {
       kSubject + "x", Service::kEAPMaxCertificationElements - 1));
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventInvoked) {
-  EXPECT_TRUE(GetDisconnects()->empty());
+TEST_F(ServiceTest, NoteDisconnectEventOnSetStateIdle) {
   Timestamp timestamp;
-  EXPECT_CALL(time_, GetNow()).WillOnce(Return(timestamp));
+  EXPECT_CALL(time_, GetNow()).Times(2).WillRepeatedly((Return(timestamp)));
   SetStateField(Service::kStateOnline);
+  EXPECT_FALSE(service_->HasRecentConnectionIssues());
   service_->SetState(Service::kStateIdle);
-  EXPECT_FALSE(GetDisconnects()->empty());
-  EXPECT_CALL(time_, GetNow()).WillOnce(Return(timestamp));
+  EXPECT_FALSE(service_->HasRecentConnectionIssues());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventOnSetStateFailure) {
+  Timestamp timestamp;
+  EXPECT_CALL(time_, GetNow()).Times(3).WillRepeatedly((Return(timestamp)));
+  SetStateField(Service::kStateOnline);
+  EXPECT_FALSE(service_->HasRecentConnectionIssues());
+  service_->SetState(Service::kStateFailure);
+  EXPECT_TRUE(service_->HasRecentConnectionIssues());
+}
+
+TEST_F(ServiceTest, NoteDisconnectEventOnSetFailureSilent) {
+  Timestamp timestamp;
+  EXPECT_CALL(time_, GetNow()).Times(3).WillRepeatedly((Return(timestamp)));
+  SetStateField(Service::kStateConfiguring);
+  EXPECT_FALSE(service_->HasRecentConnectionIssues());
+  service_->SetFailureSilent(Service::kFailureEAPAuthentication);
   EXPECT_TRUE(service_->HasRecentConnectionIssues());
 }
 
@@ -1197,8 +1213,8 @@ TEST_F(ServiceTest, ConvertTimestampsToStrings) {
   EXPECT_TRUE(ExtractWallClockToStrings(deque<Timestamp>()).empty());
 
   const Timestamp kValues[] = {
-    GetTimestamp(123, "2012-12-09T12:41:22"),
-    GetTimestamp(234, "2012-12-31T23:59:59")
+    GetTimestamp(123, "2012-12-09T12:41:22.123456+0100"),
+    GetTimestamp(234, "2012-12-31T23:59:59.012345+0100")
   };
   Strings strings =
       ExtractWallClockToStrings(
@@ -1211,8 +1227,8 @@ TEST_F(ServiceTest, ConvertTimestampsToStrings) {
 }
 
 TEST_F(ServiceTest, DiagnosticsProperties) {
-  const string kWallClock0 = "2012-12-09T12:41:22";
-  const string kWallClock1 = "2012-12-31T23:59:59";
+  const string kWallClock0 = "2012-12-09T12:41:22.234567-0800";
+  const string kWallClock1 = "2012-12-31T23:59:59.345678-0800";
   PropertyStoreInspector inspector(&service_->store());
   Strings values;
 
