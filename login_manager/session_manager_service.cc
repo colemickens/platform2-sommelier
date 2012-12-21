@@ -442,10 +442,8 @@ bool SessionManagerService::Run() {
                       HandleKill,
                       this,
                       NULL);
-  if (ShouldRunBrowser())
+  if (ShouldRunBrowser())  // Allows devs to start/stop browser manually.
     RunBrowser();
-  else
-    AllowGracefulExit();  // Schedules a Shutdown() on current MessageLoop.
 
   // A corrupted owner key means that the device needs to undergo
   // 'Powerwash', which reboots and then wipes most of the stateful partition.
@@ -477,6 +475,7 @@ bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
 }
 
 bool SessionManagerService::Shutdown() {
+  LOG(INFO) << "SessionManagerService exiting";
   DeregisterChildWatchers();
   liveness_checker_->Stop();
   if (session_started_) {
@@ -565,8 +564,8 @@ bool SessionManagerService::IsKnownChild(pid_t pid) {
 }
 
 void SessionManagerService::AllowGracefulExit() {
-  shutting_down_ = true;
   if (exit_on_child_done_) {
+    shutting_down_ = true;
     LOG(INFO) << "SessionManagerService set to exit on child done";
     loop_proxy_->PostTask(
         FROM_HERE,
@@ -740,10 +739,9 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   // If you don't see a log message saying the reason for the call, it is
   // likely a DBUS message. See dbus_glib_shim.cc for that call.
   LOG(INFO) << "SessionManagerService StopSession";
-  g_idle_add_full(G_PRIORITY_DEFAULT_IDLE,
-                  ServiceShutdown,
-                  this,
-                  NULL);
+  loop_proxy_->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
   DeregisterChildWatchers();
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
@@ -982,19 +980,14 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
   // We only get called if there's data on the pipe.  If there's data, we're
   // supposed to exit.  So, don't even bother to read it.
   LOG(INFO) << "SessionManagerService - data on pipe, so exiting";
-  return ServiceShutdown(data);
+  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
+  manager->Shutdown();
+  return FALSE;  // So that the event source that called this gets removed.
 }
 
 void SessionManagerService::SetExitAndServiceShutdown(ExitCode code) {
   exit_code_ = code;
-  ServiceShutdown(this);
-}
-
-gboolean SessionManagerService::ServiceShutdown(gpointer data) {
-  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  manager->Shutdown();
-  LOG(INFO) << "SessionManagerService exiting";
-  return FALSE;  // So that the event source that called this gets removed.
+  Shutdown();
 }
 
 ///////////////////////////////////////////////////////////////////////////////

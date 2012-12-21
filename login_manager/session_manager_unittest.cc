@@ -99,7 +99,6 @@ void SessionManagerTest::InitManager(MockChildJob* job) {
   manager_->Reset();
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
-  manager_->test_api().set_exit_on_child_done(true);
   manager_->test_api().set_liveness_checker(liveness_checker_);
   manager_->test_api().set_upstart_signal_emitter(upstart_);
   manager_->test_api().set_device_policy_service(device_policy_service_);
@@ -114,6 +113,7 @@ PolicyService* SessionManagerTest::CreateUserPolicyService() {
 }
 
 void SessionManagerTest::SimpleRunManager() {
+  manager_->test_api().set_exit_on_child_done(true);
   ExpectPolicySetup();
   EXPECT_CALL(utils_,
               EmitSignalWithStringArgs(

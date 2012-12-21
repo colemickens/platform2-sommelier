@@ -363,16 +363,11 @@ class SessionManagerService
   static void HandleBrowserExit(GPid pid, gint status, gpointer data);
 
   // |data| is a SessionManagerService*.  This is a wrapper around
-  // ServiceShutdown() so that we can register it as the callback for
+  // Shutdown() so that we can register it as the callback for
   // when |source| has data to read.
   static gboolean HandleKill(GIOChannel* source,
                              GIOCondition condition,
                              gpointer data);
-
-  // So that we can post a QuitClosure to the main event loop, causing its
-  // eventual termination.
-  // |data| is a SessionManagerService*
-  static gboolean ServiceShutdown(gpointer data);
 
   // Sets the proccess' exit code immediately and posts a QuitClosure to the
   // main event loop.

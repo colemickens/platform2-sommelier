@@ -17,6 +17,8 @@
 #include <base/command_line.h>
 #include <base/file_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/message_loop.h>
+#include <base/message_loop_proxy.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
@@ -225,6 +227,8 @@ TEST_F(SessionManagerDBusTest, SessionNotStartedSlowKillCleanup) {
 }
 
 TEST_F(SessionManagerDBusTest, SessionStartedCleanup) {
+  // Ensure that Shutdown() cleans up appropriately if an exit is triggered
+  // during an active user session.
   MockChildJob* job = CreateTrivialMockJob();
   manager_->test_api().set_browser_pid(kDummyPid);
 
@@ -253,6 +257,10 @@ TEST_F(SessionManagerDBusTest, SessionStartedCleanup) {
 
   ScopedError error;
   manager_->StartSession(email, nothing, &out, &Resetter(&error).lvalue());
+  base::MessageLoopProxy::current()->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown),
+                 manager_.get()));
   manager_->Run();
 }
 
@@ -287,6 +295,10 @@ TEST_F(SessionManagerDBusTest, SessionStartedSlowKillCleanup) {
 
   ScopedError error;
   manager_->StartSession(email, nothing, &out, &Resetter(&error).lvalue());
+  base::MessageLoopProxy::current()->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown),
+                 manager_.get()));
   manager_->Run();
 }
 
@@ -419,6 +431,8 @@ TEST_F(SessionManagerDBusTest, StopSession) {
   gboolean out;
   gchar nothing[] = "";
   manager_->StopSession(nothing, &out, NULL);
+
+  MessageLoop::current()->Run();
 }
 
 TEST_F(SessionManagerDBusTest, StorePolicyNoSession) {

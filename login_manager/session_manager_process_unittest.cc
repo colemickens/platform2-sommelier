@@ -121,11 +121,6 @@ const char SessionManagerProcessTest::kDiskFile[] = "/tmp/disk-chrome-exec";
 const int SessionManagerProcessTest::kExit = 1;
 const int SessionManagerProcessTest::kDummyPid2 = kDummyPid + 1;
 
-TEST_F(SessionManagerProcessTest, NoLoopTest) {
-  InitManagerWithRestartPolicy(NEVER);
-  SimpleRunManager();
-}
-
 TEST_F(SessionManagerProcessTest, BadExitChildFlagFileStop) {
   MockChildJob* job = new MockChildJob();
   EXPECT_CALL(*job, RecordTime()).Times(1);
