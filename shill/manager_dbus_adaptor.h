@@ -72,8 +72,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   ::DBus::Path GetWifiService(
       const std::map<std::string, ::DBus::Variant> &args,
       ::DBus::Error &error);
-  void ConfigureService(const std::map<std::string, ::DBus::Variant> &args,
-                        ::DBus::Error &error);
+  ::DBus::Path ConfigureService(
+      const std::map<std::string, ::DBus::Variant> &args,
+      ::DBus::Error &error);
   ::DBus::Path FindMatchingService(
       const std::map<std::string, ::DBus::Variant> &args,
       ::DBus::Error &error);

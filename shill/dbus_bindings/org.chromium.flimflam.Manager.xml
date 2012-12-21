@@ -54,6 +54,7 @@
 		</method>
 		<method name="ConfigureService">
 			<arg type="a{sv}" direction="in"/>
+			<arg type="o" direction="out"/>
 		</method>
 		<method name="FindMatchingService">
 			<arg type="a{sv}" direction="in"/>

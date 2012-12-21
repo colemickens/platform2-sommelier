@@ -124,13 +124,13 @@ Methods		dict GetProperties()
 					 [service].Error.InProgress
 					 [service].Error.AlreadyDisabled
 
-		void ConfigureService(dict properties)
+		object ConfigureService(dict properties)
 
 			Update the configuration of a service in memory
 			and in the profile.  If no service exists in
 			memory it is temporarily created to carry out
-			this work and then removed after saving its
-			configuration to the profle.
+			this work and may be removed later.  The object
+                        path of the created service is returned.
 
 			If a GUID property is specified in properties
 			it is used to find the service; otherwise Type,

@@ -233,17 +233,23 @@ void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
 }
 
 
-void ManagerDBusAdaptor::ConfigureService(
+::DBus::Path ManagerDBusAdaptor::ConfigureService(
     const map<string, ::DBus::Variant> &args,
     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
+  ServiceRefPtr service;
   KeyValueStore args_store;
-  Error e;
-  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &e);
-  if (e.IsSuccess()) {
-    manager_->ConfigureService(args_store, &e);
+  Error key_value_store_error;
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &key_value_store_error);
+  if (key_value_store_error.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid.
   }
-  e.ToDBusError(&error);
+  Error configure_error;
+  service = manager_->ConfigureService(args_store, &configure_error);
+  if (configure_error.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid.
+  }
+  return service->GetRpcIdentifier();
 }
 
 ::DBus::Path ManagerDBusAdaptor::FindMatchingService(
