@@ -34,6 +34,7 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
+#include "login_manager/process_manager_service_interface.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -65,6 +66,7 @@ class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public chromeos::dbus::AbstractDbusService,
       public login_manager::PolicyService::Delegate,
+      public login_manager::ProcessManagerServiceInterface,
       public login_manager::SessionManagerInterface {
  public:
   enum ExitCode {
@@ -171,9 +173,9 @@ class SessionManagerService
 
   ////////////////////////////////////////////////////////////////////////////
   // Implementing chromeos::dbus::AbstractDbusService
-  virtual bool Initialize();
-  virtual bool Register(const chromeos::dbus::BusConnection &conn);
-  virtual bool Reset();
+  virtual bool Initialize() OVERRIDE;
+  virtual bool Register(const chromeos::dbus::BusConnection &conn) OVERRIDE;
+  virtual bool Reset() OVERRIDE;
 
   // login_manager::PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success);
@@ -206,7 +208,7 @@ class SessionManagerService
   // 2) |magic_chrome_file| exists AND the specified command exits for any
   //     reason
   // 3) We can't fork/exec/setuid to |desired_uid_|
-  virtual bool Run();
+  virtual bool Run() OVERRIDE;
 
   virtual const char* service_name() const {
     return kSessionManagerServiceName;
@@ -223,18 +225,17 @@ class SessionManagerService
 
   // Emits "SessionStateChanged:stopped" D-Bus signal if applicable
   // before invoking the inherited method.
-  virtual bool Shutdown();
+  virtual bool Shutdown() OVERRIDE;
 
-  // Fork, then call browser_.job->Run() in the child and set a
-  // babysitter in the parent's glib default context that calls
-  // HandleBrowserExit when the child is done.
-  void RunBrowser();
-
-  // Abort the browser process.
-  virtual void AbortBrowser();
-
-  // Check if |pid| is the currently-managed browser process.
-  bool IsKnownChild(pid_t pid);
+  // Implementing ProcessManagerServiceInterface
+  virtual void ScheduleShutdown() OVERRIDE;
+  virtual void RunBrowser() OVERRIDE;
+  virtual void AbortBrowser() OVERRIDE;
+  virtual bool IsBrowser(pid_t pid) OVERRIDE;
+  virtual void RestartBrowserWithArgs(
+      const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;
+  virtual void SetBrowserSessionForUser(const std::string& user) OVERRIDE;
+  virtual void RunKeyGenerator() OVERRIDE;
 
   // Start tracking a new, potentially running key generation job.
   void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,

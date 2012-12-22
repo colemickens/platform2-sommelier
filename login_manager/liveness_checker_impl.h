@@ -19,7 +19,7 @@ class MessageLoopProxy;
 
 namespace login_manager {
 class ScopedDBusPendingCall;
-class SessionManagerService;
+class ProcessManagerServiceInterface;
 class SystemUtils;
 
 // An implementation of LivenessChecker that pings the browser over DBus,
@@ -29,7 +29,7 @@ class SystemUtils;
 // Actual aborting behavior is controlled by the enable_aborting flag.
 class LivenessCheckerImpl : public LivenessChecker {
  public:
-  LivenessCheckerImpl(SessionManagerService* manager,
+  LivenessCheckerImpl(ProcessManagerServiceInterface* manager,
                       SystemUtils* utils,
                       const scoped_refptr<base::MessageLoopProxy>& loop,
                       bool enable_aborting,
@@ -48,7 +48,7 @@ class LivenessCheckerImpl : public LivenessChecker {
   void CheckAndSendLivenessPing(base::TimeDelta interval);
 
  private:
-  SessionManagerService* manager_;
+  ProcessManagerServiceInterface* manager_;
   SystemUtils* system_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
 

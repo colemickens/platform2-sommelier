@@ -18,13 +18,13 @@
 #include <dbus/dbus.h>
 
 #include "login_manager/scoped_dbus_pending_call.h"
-#include "login_manager/session_manager_service.h"
+#include "login_manager/process_manager_service_interface.h"
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
 
 LivenessCheckerImpl::LivenessCheckerImpl(
-    SessionManagerService* manager,
+    ProcessManagerServiceInterface* manager,
     SystemUtils* utils,
     const scoped_refptr<base::MessageLoopProxy>& loop,
     bool enable_aborting,

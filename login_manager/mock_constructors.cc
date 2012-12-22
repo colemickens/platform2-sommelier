@@ -15,7 +15,7 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
-#include "login_manager/mock_session_manager_service.h"
+#include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 
@@ -73,13 +73,9 @@ MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}
 
-MockSessionManagerService::MockSessionManagerService()
-    : SessionManagerService(scoped_ptr<ChildJobInterface>(),
-                            0,
-                            false,
-                            base::TimeDelta(),
-                            NULL) {}
-MockSessionManagerService::~MockSessionManagerService() {}
+MockProcessManagerService::MockProcessManagerService()
+    : ProcessManagerServiceInterface() {}
+MockProcessManagerService::~MockProcessManagerService() {}
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
   : UserPolicyServiceFactory(0, NULL) {}

@@ -15,7 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "login_manager/mock_session_manager_service.h"
+#include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/scoped_dbus_pending_call.h"
 
@@ -37,7 +37,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   }
 
   virtual void SetUp() {
-    manager_ = new StrictMock<MockSessionManagerService>();
+    manager_.reset(new StrictMock<MockProcessManagerService>);
     loop_proxy_ = base::MessageLoopProxy::current();
     checker_.reset(new LivenessCheckerImpl(manager_.get(),
                                            &system_,
@@ -102,7 +102,7 @@ class LivenessCheckerImplTest : public ::testing::Test {
   MessageLoop loop_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
   StrictMock<MockSystemUtils> system_;
-  scoped_refptr<StrictMock<MockSessionManagerService> > manager_;
+  scoped_ptr<StrictMock<MockProcessManagerService> > manager_;
 
   scoped_ptr<LivenessCheckerImpl> checker_;
 

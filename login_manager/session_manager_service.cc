@@ -496,6 +496,13 @@ bool SessionManagerService::Shutdown() {
   return true;
 }
 
+void SessionManagerService::ScheduleShutdown() {
+  loop_proxy_->PostTask(
+      FROM_HERE,
+      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
+  DeregisterChildWatchers();
+}
+
 void SessionManagerService::RunBrowser() {
   bool first_boot = !login_metrics_->HasRecordedChromeExec();
 
@@ -531,6 +538,28 @@ void SessionManagerService::AbortBrowser() {
   KillChild(browser_.job.get(), browser_.pid, SIGABRT);
 }
 
+void SessionManagerService::RestartBrowserWithArgs(
+    const vector<string>& args, bool args_are_extra) {
+  // Waiting for Chrome to shutdown takes too much time.
+  // We're killing it immediately hoping that data Chrome uses before
+  // logging in is not corrupted.
+  // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
+  KillChild(browser_.job.get(), browser_.pid, SIGKILL);
+  if (args_are_extra)
+    browser_.job->SetExtraArguments(args);
+  else
+    browser_.job->SetArguments(args);
+  RunBrowser();
+}
+
+void SessionManagerService::SetBrowserSessionForUser(const std::string& user) {
+  browser_.job->StartSession(user);
+}
+
+void SessionManagerService::RunKeyGenerator() {
+  key_gen_->Start(set_uid_ ? uid_ : 0, this);
+}
+
 void SessionManagerService::KillChild(const ChildJobInterface* child_job,
                                       int child_pid,
                                       int signal) {
@@ -559,7 +588,7 @@ void SessionManagerService::AbandonKeyGeneratorJob() {
   generator_.pid = -1;
 }
 
-bool SessionManagerService::IsKnownChild(pid_t pid) {
+bool SessionManagerService::IsBrowser(pid_t pid) {
   return pid == browser_.pid;
 }
 
@@ -615,9 +644,6 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   // Delete testing channel file if it already exists.
   system_->RemoveFile(chrome_testing_path_);
 
-  // Kill Chrome.
-  KillChild(browser_.job.get(), browser_.pid, SIGKILL);
-
   vector<string> extra_argument_vector;
   // Create extra argument vector.
   while (*extra_args != NULL) {
@@ -628,11 +654,8 @@ gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
   string testing_argument = kTestingChannelFlag;
   testing_argument.append(chrome_testing_path_.value());
   extra_argument_vector.push_back(testing_argument);
-  // Add extra arguments to Chrome.
-  browser_.job->SetExtraArguments(extra_argument_vector);
 
-  // Run Chrome.
-  RunBrowser();
+  RestartBrowserWithArgs(extra_argument_vector, true);
   return TRUE;
 }
 
@@ -739,10 +762,7 @@ gboolean SessionManagerService::StopSession(gchar* unique_identifier,
   // If you don't see a log message saying the reason for the call, it is
   // likely a DBUS message. See dbus_glib_shim.cc for that call.
   LOG(INFO) << "SessionManagerService StopSession";
-  loop_proxy_->PostTask(
-      FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
-  DeregisterChildWatchers();
+  ScheduleShutdown();
   // TODO(cmasone): re-enable these when we try to enable logout without exiting
   //                the session manager
   // browser_.job->StopSession();
@@ -873,19 +893,13 @@ gboolean SessionManagerService::RestartJob(gint pid,
                                            gchar* arguments,
                                            gboolean* OUT_done,
                                            GError** error) {
-  if (browser_.pid != static_cast<pid_t>(pid)) {
+  if (!IsBrowser(static_cast<pid_t>(pid))) {
     *OUT_done = FALSE;
     const char msg[] = "Provided pid is unknown.";
     LOG(ERROR) << msg;
     system_->SetGError(error, CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, msg);
     return FALSE;
   }
-
-  // Waiting for Chrome to shutdown takes too much time.
-  // We're killing it immediately hoping that data Chrome uses before
-  // logging in is not corrupted.
-  // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
-  KillChild(browser_.job.get(), browser_.pid, SIGKILL);
 
   // To ensure no overflow.
   gchar arguments_buffer[kMaxArgumentsSize + 1];
@@ -902,8 +916,7 @@ gboolean SessionManagerService::RestartJob(gint pid,
   CommandLine new_command_line(argc, argv);
   g_strfreev(argv);
 
-  browser_.job->SetArguments(new_command_line.argv());
-  RunBrowser();
+  RestartBrowserWithArgs(new_command_line.argv(), false);
 
   // To set "logged-in" state for BWSI mode.
   return StartSession(const_cast<gchar*>(kIncognitoUser), NULL,
@@ -954,7 +967,7 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
     return;
 
   ChildJobInterface* child_job = NULL;
-  if (manager->IsKnownChild(pid))
+  if (manager->IsBrowser(pid))
     child_job = manager->browser_.job.get();
 
   LOG(ERROR) << StringPrintf("Process %s(%d) exited.",
@@ -1067,7 +1080,7 @@ DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
       return DBUS_HANDLER_RESULT_HANDLED;
     }
     ::dbus_message_unref(got_pid);
-    if (!service->IsKnownChild(pid)) {
+    if (!service->IsBrowser(pid)) {
       LOG(WARNING) << "Sender of RestartJob is no child of mine!";
       return DBUS_HANDLER_RESULT_HANDLED;
     }
