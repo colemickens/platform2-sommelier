@@ -87,6 +87,7 @@ static const Log common_logs[] = {
   { "hw_platform", "/usr/bin/uname -i" },
   { "i915_gem_gtt", "/bin/cat /sys/kernel/debug/dri/0/i915_gem_gtt" },
   { "i915_gem_objects", "/bin/cat /sys/kernel/debug/dri/0/i915_gem_objects" },
+  { "i915_error_state", "/bin/cat /sys/kernel/debug/dri/0/i915_error_state" },
   { "ifconfig", "/sbin/ifconfig -a" },
   { "kernel-crashes", "/bin/cat /var/spool/crash/kernel.*.kcrash" },
   { "lsmod", "lsmod" },
