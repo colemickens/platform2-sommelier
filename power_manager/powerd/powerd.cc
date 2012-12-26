@@ -22,6 +22,7 @@
 #include "base/bind.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/string_split.h"
 #include "base/string_util.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
@@ -33,6 +34,7 @@
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/state_control.h"
+#include "power_manager/powerd/system/input.h"
 #include "power_state_control.pb.h"
 #include "power_supply_properties.pb.h"
 #include "video_activity_update.pb.h"
@@ -66,11 +68,6 @@ const int64 kMinTimeForIdle = 10;
 // Delay before retrying connecting to ChromeOS audio server.
 const int64 kCrasRetryConnectMs = 1000;
 
-const char kSysClassInputPath[] = "/sys/class/input";
-const char kInputMatchPattern[] = "input*";
-const char kUsbMatchString[] = "usb";
-const char kBluetoothMatchString[] = "bluetooth";
-
 // Upper limit to accept for raw battery times, in seconds. If the time of
 // interest is above this level assume something is wrong.
 const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
@@ -101,8 +98,12 @@ Daemon::Daemon(BacklightController* backlight_controller,
       video_detector_(video_detector),
       idle_(idle),
       keyboard_controller_(keyboard_controller),
-      dbus_sender_(new DBusSender(kPowerManagerServicePath,
-                                  kPowerManagerInterface)),
+      dbus_sender_(
+          new DBusSender(kPowerManagerServicePath, kPowerManagerInterface)),
+      input_(new system::Input),
+      input_controller_(
+          new policy::InputController(input_.get(), this, dbus_sender_.get(),
+                                      run_dir)),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -182,6 +183,14 @@ void Daemon::Init() {
                       &time_to_full_average_);
   file_tagger_.Init();
   backlight_controller_->SetObserver(this);
+
+  std::string wakeup_inputs_str;
+  std::vector<std::string> wakeup_inputs;
+  if (prefs_->GetString(kWakeupInputPref, &wakeup_inputs_str))
+    base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
+  CHECK(input_->Init(wakeup_inputs));
+
+  input_controller_->Init(prefs_);
 
   // Create a client and connect it to the CRAS server.
   if (cras_client_create(&cras_client_)) {
@@ -652,7 +661,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
           (audio_is_playing ? "audio is playing." : "headphones are attached.");
       delay_suspend = true;
     } else if (require_usb_input_device_to_suspend_ &&
-               !USBInputDeviceConnected()) {
+               !input_->IsUSBInputDeviceConnected()) {
       LOG(INFO) << "Delaying suspend because no USB input device is connected.";
       delay_suspend = true;
     }
@@ -768,6 +777,54 @@ void Daemon::MarkPowerStatusStale() {
   is_power_status_stale_ = true;
 }
 
+void Daemon::StartSuspendForLidClose() {
+  SetActive();
+  Suspend();
+}
+
+void Daemon::CancelSuspendForLidOpen() {
+  SetActive();
+  suspender_.CancelSuspend();
+}
+
+void Daemon::EnsureBacklightIsOn() {
+  // If the user manually set the brightness to 0, increase it a bit:
+  // http://crosbug.com/32570
+  if (backlight_controller_->IsBacklightActiveOff()) {
+    backlight_controller_->IncreaseBrightness(
+        BRIGHTNESS_CHANGE_USER_INITIATED);
+  }
+}
+
+void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
+  // Just keep track of the time when the button was pressed.
+  if (down) {
+    if (!last_power_button_down_timestamp_.is_null())
+      LOG(ERROR) << "Got power-button-down event while button was already down";
+    last_power_button_down_timestamp_ = timestamp;
+    return;
+  }
+
+  // Metrics are sent after the button is released.
+  if (last_power_button_down_timestamp_.is_null()) {
+    LOG(ERROR) << "Got power-button-up event while button was already up";
+    return;
+  }
+  base::TimeDelta delta = timestamp - last_power_button_down_timestamp_;
+  if (delta.InMilliseconds() < 0) {
+    LOG(ERROR) << "Negative duration between power button events";
+    return;
+  }
+  last_power_button_down_timestamp_ = base::TimeTicks();
+  if (!SendMetric(kMetricPowerButtonDownTimeName,
+                  delta.InMilliseconds(),
+                  kMetricPowerButtonDownTimeMin,
+                  kMetricPowerButtonDownTimeMax,
+                  kMetricPowerButtonDownTimeBuckets)) {
+    LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
+  }
+}
+
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
                                   GIOCondition /* condition */,
                                   gpointer data) {
@@ -829,10 +886,6 @@ void Daemon::RegisterDBusMessageHandler() {
       kPowerManagerInterface,
       kRequestSuspendSignal,
       base::Bind(&Daemon::HandleRequestSuspendSignal, base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
-      kPowerManagerInterface,
-      kInputEventSignal,
-      base::Bind(&Daemon::HandleInputEventSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,
       kCleanShutdown,
@@ -958,45 +1011,6 @@ void Daemon::RegisterDBusMessageHandler() {
 
 bool Daemon::HandleRequestSuspendSignal(DBusMessage*) {  // NOLINT
   Suspend();
-  return true;
-}
-
-bool Daemon::HandleInputEventSignal(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  dbus_int32_t type_param = 0;
-  dbus_bool_t down = FALSE;
-  dbus_int64_t timestamp_internal = 0;
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_INT32, &type_param,
-                             DBUS_TYPE_BOOLEAN, &down,
-                             DBUS_TYPE_INT64, &timestamp_internal,
-                             DBUS_TYPE_INVALID)) {
-    LOG(ERROR) << "Unable to process input event: "
-               << error.name << " (" << error.message << ")";
-    dbus_error_free(&error);
-    return true;
-  }
-  InputType type = static_cast<InputType>(type_param);
-  base::TimeTicks timestamp =
-      base::TimeTicks::FromInternalValue(timestamp_internal);
-
-  switch (type) {
-    case INPUT_LID:
-      if (down) {
-        SetActive();
-        Suspend();
-      } else {
-        SetActive();
-        suspender_.CancelSuspend();
-      }
-      break;
-    case INPUT_POWER_BUTTON:
-      OnPowerButtonEvent(down, timestamp);
-      break;
-    default:
-      LOG(ERROR) << "Unhandled input event of type " << type;
-  }
   return true;
 }
 
@@ -1600,74 +1614,6 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
   current_session_state_ = state;
 }
 
-void Daemon::OnPowerButtonEvent(bool down, const base::TimeTicks& timestamp) {
-  SendButtonEventSignal(kPowerButtonName, down, timestamp);
-
-  // If the user manually set the brightness to 0, increase it a bit:
-  // http://crosbug.com/32570
-  if (backlight_controller_->IsBacklightActiveOff()) {
-    backlight_controller_->IncreaseBrightness(
-        BRIGHTNESS_CHANGE_USER_INITIATED);
-  }
-
-  SendPowerButtonMetric(down, timestamp);
-  if (down) {
-    LOG(INFO) << "Syncing state due to power button down event";
-    util::Launch("sync");
-  }
-}
-
-void Daemon::SendButtonEventSignal(const std::string& button_name,
-                                   bool down,
-                                   base::TimeTicks timestamp) {
-  if (disable_dbus_for_testing_)
-    return;
-
-  const gchar* button_name_param = button_name.c_str();
-  dbus_bool_t down_param = down;
-  dbus_int64_t timestamp_param = timestamp.ToInternalValue();
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kPowerManagerInterface,
-                                                kButtonEventSignal);
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_STRING, &button_name_param,
-                           DBUS_TYPE_BOOLEAN, &down_param,
-                           DBUS_TYPE_INT64, &timestamp_param,
-                           DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
-}
-
-void Daemon::SendPowerButtonMetric(bool down,
-                                   const base::TimeTicks& timestamp) {
-  if (down) {
-    if (!last_power_button_down_timestamp_.is_null())
-      LOG(ERROR) << "Got power-button-down event while button was already down";
-    last_power_button_down_timestamp_ = timestamp;
-  } else {
-    if (last_power_button_down_timestamp_.is_null()) {
-      LOG(ERROR) << "Got power-button-up event while button was already up";
-      return;
-    }
-    base::TimeDelta delta = timestamp - last_power_button_down_timestamp_;
-    if (delta.InMilliseconds() < 0) {
-      LOG(ERROR) << "Negative duration between power button events";
-      return;
-    }
-    last_power_button_down_timestamp_ = base::TimeTicks();
-    if (!SendMetric(kMetricPowerButtonDownTimeName,
-                    delta.InMilliseconds(),
-                    kMetricPowerButtonDownTimeMin,
-                    kMetricPowerButtonDownTimeMax,
-                    kMetricPowerButtonDownTimeBuckets)) {
-      LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
-    }
-  }
-}
-
 void Daemon::Shutdown() {
   if (shutdown_state_ == SHUTDOWN_STATE_POWER_OFF) {
     LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
@@ -1688,7 +1634,12 @@ void Daemon::Suspend() {
   }
   if (util::IsSessionStarted()) {
     power_supply_.SetSuspendState(true);
-    suspender_.RequestSuspend();
+
+    // If the lid is currently closed, abort if the lid is opened midway through
+    // the suspend attempt.
+    bool cancel_if_lid_open = !input_controller_->lid_is_open();
+    suspender_.RequestSuspend(cancel_if_lid_open);
+
     // When going to suspend, notify the backlight controller so it will know to
     // set the backlight correctly upon resume.
     SetPowerState(BACKLIGHT_SUSPENDED);
@@ -1809,42 +1760,6 @@ bool Daemon::IsAudioPlaying() {
       base::TimeDelta::FromMicroseconds(
           delta_ns / base::Time::kNanosecondsPerMicrosecond);
   return last_audio_time_delta.InMilliseconds() < kAudioActivityThresholdMs;
-}
-
-bool Daemon::USBInputDeviceConnected() const {
-  file_util::FileEnumerator enumerator(
-      FilePath(sysfs_input_path_for_testing_.empty() ?
-               kSysClassInputPath : sysfs_input_path_for_testing_),
-      false,
-      static_cast<file_util::FileEnumerator::FileType>(
-          file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS),
-      kInputMatchPattern);
-  for (FilePath path = enumerator.Next();
-       !path.empty();
-       path = enumerator.Next()) {
-    FilePath symlink_path;
-    if (!file_util::ReadSymbolicLink(path, &symlink_path))
-      continue;
-    const std::string& path_string = symlink_path.value();
-    // Skip bluetooth devices, which may be identified as USB devices.
-    if (path_string.find(kBluetoothMatchString) != std::string::npos)
-      continue;
-    // Now look for the USB devices that are not bluetooth.
-    size_t position = path_string.find(kUsbMatchString);
-    if (position == std::string::npos)
-      continue;
-    // Now that the string "usb" has been found, make sure it is a whole word
-    // and not just part of another word like "busbreaker".
-    bool usb_at_word_head =
-        position == 0 || !IsAsciiAlpha(path_string.at(position - 1));
-    bool usb_at_word_tail =
-        position + strlen(kUsbMatchString) == path_string.size() ||
-        !IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
-    if (usb_at_word_head && usb_at_word_tail)
-      return true;
-  }
-  return false;
 }
 
 void Daemon::UpdateBatteryReportState() {

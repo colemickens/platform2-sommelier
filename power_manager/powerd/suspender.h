@@ -44,7 +44,7 @@ class Suspender : public SuspendDelayObserver {
   // that the system is about to suspend, starts |check_suspend_timeout_id_|,
   // and requests that the screen be locked if needed.  Note that suspending
   // happens asynchronously.
-  void RequestSuspend();
+  void RequestSuspend(bool cancel_if_lid_open);
 
   // Calls Suspend() if |suspend_requested_| is true and if it's now safe to do
   // so (i.e. there are no outstanding delays and the screen is locked if
@@ -101,6 +101,11 @@ class Suspender : public SuspendDelayObserver {
 
   // ID of GLib source that will run CheckSuspendTimeout(), or 0 if unset.
   unsigned int check_suspend_timeout_id_;
+
+  // Should the suspend be canceled if the lid is opened midway through the
+  // process?  This is generally true if the lid was already closed when
+  // RequestSuspend() was called.
+  bool cancel_suspend_if_lid_open_;
 
   // True if CheckSuspend() should wait for |locker_| to report that the screen
   // is locked before suspending.  CheckSuspendTimeout() sets this back to false

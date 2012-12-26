@@ -59,7 +59,6 @@ extern const int64 kBatteryPercentPinMs;
 extern const int64 kBatteryPercentTaperMs;
 
 // powerd -> powerm constants.
-extern const char kCheckLidStateSignal[];
 extern const char kRestartSignal[];
 extern const char kRequestCleanShutdown[];
 extern const char kSuspendSignal[];

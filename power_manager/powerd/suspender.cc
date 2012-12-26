@@ -48,6 +48,7 @@ Suspender::Suspender(ScreenLocker* locker,
       suspend_requested_(false),
       suspend_sequence_number_(0),
       check_suspend_timeout_id_(0),
+      cancel_suspend_if_lid_open_(true),
       wait_for_screen_lock_(false),
       wakeup_count_valid_(false) {
   suspend_delay_controller_->AddObserver(this);
@@ -80,10 +81,11 @@ void Suspender::Init(const FilePath& run_dir, Daemon* daemon) {
   user_active_file_ = run_dir.Append(kUserActiveFile);
 }
 
-void Suspender::RequestSuspend() {
+void Suspender::RequestSuspend(bool cancel_if_lid_open) {
   unsigned int timeout_ms = 0;
   suspend_requested_ = true;
   suspend_delays_outstanding_ = suspend_delays_.size();
+  cancel_suspend_if_lid_open_ = cancel_if_lid_open;
   wakeup_count_ = 0;
   wakeup_count_valid_ = false;
   if (util::GetWakeupCount(&wakeup_count_)) {
@@ -287,11 +289,23 @@ void Suspender::Suspend() {
   daemon_->MarkPowerStatusStale();
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
-  if (wakeup_count_valid_) {
-    util::SendSignalWithUintToPowerM(kSuspendSignal, wakeup_count_);
-  } else {
-    util::SendSignalToPowerM(kSuspendSignal);
-  }
+
+  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                              kPowerManagerServicePath,
+                              kRootPowerManagerInterface);
+  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                kRootPowerManagerInterface,
+                                                kSuspendSignal);
+  CHECK(signal);
+  dbus_bool_t wakeup_count_valid_arg = wakeup_count_valid_;
+  dbus_bool_t cancel_suspend_if_lid_open_arg = cancel_suspend_if_lid_open_;
+  dbus_message_append_args(signal,
+                           DBUS_TYPE_UINT32, &wakeup_count_,
+                           DBUS_TYPE_BOOLEAN, &wakeup_count_valid_arg,
+                           DBUS_TYPE_BOOLEAN, &cancel_suspend_if_lid_open_arg,
+                           DBUS_TYPE_INVALID);
+  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+  dbus_message_unref(signal);
 }
 
 gboolean Suspender::CheckSuspendTimeout() {

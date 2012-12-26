@@ -73,6 +73,7 @@ CXX_BINARY(powerd/powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
@@ -107,7 +108,9 @@ CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil_test.pie.a)
+	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a)
 CXX_BINARY(powerd/powerd_unittest): CPPFLAGS += $(POWERD_UNITTEST_FLAGS)
 CXX_BINARY(powerd/powerd_unittest): LDLIBS += $(POWERD_UNITTEST_LIBS)
 clean: CXX_BINARY(powerd/powerd_unittest)

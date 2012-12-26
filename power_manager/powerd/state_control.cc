@@ -122,7 +122,6 @@ void StateControl::RemoveOverrideAndUpdate(int request_id) {
   bool old_idle_dim = disable_idle_dim_;
   bool old_idle_blank = disable_idle_blank_;
   bool old_idle_suspend = disable_idle_suspend_;
-  bool old_lid_suspend = disable_lid_suspend_;
 
   RemoveOverride(request_id);
   CHECK(daemon_);
@@ -131,8 +130,6 @@ void StateControl::RemoveOverrideAndUpdate(int request_id) {
       (old_idle_suspend && !disable_idle_suspend_)) {
     daemon_->UpdateIdleStates();
   }
-  if (old_lid_suspend && !disable_lid_suspend_)
-    util::SendSignalToPowerM(kCheckLidStateSignal);
 }
 
 gboolean StateControl::RecordExpired() {

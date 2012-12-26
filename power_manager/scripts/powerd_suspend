@@ -7,11 +7,18 @@
 . /usr/share/misc/shflags
 
 DEFINE_boolean cancel $FLAGS_FALSE "cancel suspend, but send resume signal" c
+DEFINE_boolean cancel_if_lid_open $FLAGS_FALSE "cancel suspend if lid is open" l
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
 
 # For testing: write RTC resume timestamp to this file if it exists
 timestamp_file=/var/run/power_manager/hwclock-on-resume
+
+# File touched by powerd when the lid is opened and removed when it's closed.
+lid_open_file=/var/run/power_manager/power/lid_opened
+
+# File touched by powerd when user activity occurs.
+user_active_file=/var/run/power_manager/power/user_active
 
 log_msg() {
     logger -t "powerd_suspend[${PPID}]" $@
@@ -83,8 +90,8 @@ suspend_pm_wakeup_cancel() {
 # event has occurred which should cancel suspend
 suspend_cancel() {
     if [ $FLAGS_cancel -eq $FLAGS_TRUE ] ||
-       [ -e "/var/run/power_manager/lid_opened" ] ||
-       [ -e "/var/run/power_manager/power/user_active" ] ||
+       [ $FLAGS_cancel_if_lid_open -eq $FLAGS_TRUE -a -e "$lid_open_file" ] ||
+       [ -e "$user_active_file" ] ||
        suspend_pm_wakeup_cancel; then
         cancel=1
         return 0
@@ -104,8 +111,7 @@ send_uma_status() {
 }
 
 cleanup_for_resume() {
-    rm -f "/var/run/power_manager/lid_opened"
-    rm -f "/var/run/power_manager/power/user_active"
+    rm -f "$user_active_file"
 }
 
 log_msg "Going to suspend-to-RAM state : args=$@"

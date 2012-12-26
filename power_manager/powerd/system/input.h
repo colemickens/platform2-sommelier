@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERM_INPUT_H_
-#define POWER_MANAGER_POWERM_INPUT_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_H_
+#define POWER_MANAGER_POWERD_SYSTEM_INPUT_H_
 
 #include <glib.h>
 
@@ -12,6 +12,8 @@
 #include <vector>
 
 #include "base/basictypes.h"
+#include "base/callback.h"
+#include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 
 // Forward declarations of structs from libudev.h.
@@ -19,11 +21,18 @@ struct udev;
 struct udev_monitor;
 
 namespace power_manager {
+namespace system {
+
+class InputObserver;
 
 class Input {
  public:
   Input();
   ~Input();
+
+  void set_sysfs_input_path_for_testing(const std::string& path) {
+    sysfs_input_path_for_testing_ = path;
+  }
 
   // Initialize the input object.
   // |wakeup_inputs_names| is a vector of strings of input device names that may
@@ -31,19 +40,22 @@ class Input {
   // On success, return true; otherwise return false.
   bool Init(const std::vector<std::string>& wakeup_inputs_names);
 
-  // Input handler function type. |data| is object passed to RegisterHandler.
-  // |type| is InputType of this event. |value| is the new state of this input
-  // device.
-  typedef void (*InputHandler)(void* data, InputType type, int value);
-  void RegisterHandler(InputHandler handler,
-                       void* data);
+  // Adds or removes an observer.
+  void AddObserver(InputObserver* observer);
+  void RemoveObserver(InputObserver* observer);
 
   // |lid_state| is 1 for closed lid. 0 for opened lid.
   bool QueryLidState(int* lid_state);
 
-  // Disable and Enable special wakeup input devices.
-  bool DisableWakeInputs();
-  bool EnableWakeInputs();
+  // Checks if any USB input devices are connected, by scanning sysfs for input
+  // devices whose paths contain "usb".
+  bool IsUSBInputDeviceConnected() const;
+
+  // Enable or disable special wakeup input devices.
+  bool SetWakeInputsState(bool enable);
+
+  // Enable or disable touch devices.
+  void SetTouchDevicesState(bool enable);
 
   int num_lid_events() const {
     return num_lid_events_;
@@ -101,9 +113,6 @@ class Input {
                                GIOCondition condition,
                                gpointer data);
 
-  // Daemon's handler, and data
-  InputHandler handler_;
-  void* handler_data_;
   int lid_fd_;
   int num_power_key_events_;
   int num_lid_events_;
@@ -119,9 +128,16 @@ class Input {
   typedef std::map<std::string, int> WakeupMap;
   WakeupMap wakeup_inputs_map_;
 
+  ObserverList<InputObserver> observers_;
+
+  // Used by IsUSBInputDeviceConnected() instead of the default input path, if
+  // this string is non-empty.  Used for testing purposes.
+  std::string sysfs_input_path_for_testing_;
+
   DISALLOW_COPY_AND_ASSIGN(Input);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERM_INPUT_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_INPUT_H_

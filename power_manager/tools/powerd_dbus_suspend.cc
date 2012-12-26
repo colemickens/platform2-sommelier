@@ -46,7 +46,16 @@ int main(int argc, char* argv[]) {
   DBusMessage* message = dbus_message_new_signal("/",
       power_manager::kPowerManagerInterface,
       power_manager::kRequestSuspendSignal);
-  CHECK(message && dbus_connection_send(connection, message, NULL));
+  CHECK(message);
+  dbus_uint32_t wakeup_count = 0;
+  dbus_bool_t wakeup_count_valid = false;
+  dbus_bool_t cancel_suspend_if_lid_open = false;
+  dbus_message_append_args(message,
+                           DBUS_TYPE_UINT32, &wakeup_count,
+                           DBUS_TYPE_BOOLEAN, &wakeup_count_valid,
+                           DBUS_TYPE_BOOLEAN, &cancel_suspend_if_lid_open,
+                           DBUS_TYPE_INVALID);
+  CHECK(dbus_connection_send(connection, message, NULL));
   dbus_message_unref(message);
 
   // Process queued up operations and wait for signal

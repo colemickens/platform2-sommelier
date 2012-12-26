@@ -33,10 +33,7 @@ class PowerManDaemonTest : public Test {
 
   virtual void SetUp() {
     // Tests initialization done by the daemon's constructor.
-    EXPECT_EQ(1, daemon_.lidstate_);
     EXPECT_EQ(0, daemon_.retry_suspend_count_);
-    EXPECT_EQ(0, daemon_.lid_id_);
-    EXPECT_EQ(0, daemon_.suspend_pid_);
   }
 
  protected:
@@ -62,10 +59,9 @@ TEST_F(PowerManDaemonTest, SendMetric) {
 }
 
 TEST_F(PowerManDaemonTest, GenerateRetrySuspendCountMetric) {
-  // lid open, retries = 0
-  daemon_.lidstate_ = PowerManDaemon::LID_STATE_OPENED;
+  // retries = 0
   daemon_.GenerateMetricsOnResumeEvent();
-  // lid open, retries > 0
+  // retries > 0
   daemon_.retry_suspend_count_ = 3;
   daemon_.retry_suspend_attempts_ = kRetrySuspendAttempts;
   ExpectMetric(PowerManDaemon::kMetricRetrySuspendCountName, 3,

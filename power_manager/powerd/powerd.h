@@ -17,6 +17,7 @@
 
 #include <ctime>
 
+#include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
@@ -30,6 +31,7 @@
 #include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/metrics_store.h"
+#include "power_manager/powerd/policy/input_controller.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/rolling_average.h"
 #include "power_manager/powerd/screen_locker.h"
@@ -44,8 +46,11 @@ struct cras_client;
 namespace power_manager {
 
 class DBusSenderInterface;
-class PowerButtonHandler;
 class StateControl;
+
+namespace system {
+class Input;
+}  // namespace system
 
 typedef std::vector<int64> IdleThresholds;
 
@@ -78,7 +83,8 @@ enum BatteryReportState {
 };
 
 class Daemon : public BacklightControllerObserver,
-               public IdleObserver {
+               public IdleObserver,
+               public policy::InputController::Delegate {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
@@ -141,6 +147,13 @@ class Daemon : public BacklightControllerObserver,
   // Chrome there is new information before suspending and Chrome requests it on
   // resume before we have updated.
   void MarkPowerStatusStale();
+
+  // Overridden from policy::InputController::Delegate:
+  virtual void StartSuspendForLidClose() OVERRIDE;
+  virtual void CancelSuspendForLidOpen() OVERRIDE;
+  virtual void EnsureBacklightIsOn() OVERRIDE;
+  virtual void SendPowerButtonMetric(bool down, base::TimeTicks timestamp)
+      OVERRIDE;
 
  private:
   friend class DaemonTest;
@@ -246,7 +259,6 @@ class Daemon : public BacklightControllerObserver,
 
   // Callbacks for handling dbus messages.
   bool HandleRequestSuspendSignal(DBusMessage* message);
-  bool HandleInputEventSignal(DBusMessage* message);
   bool HandleCleanShutdownSignal(DBusMessage* message);
   bool HandlePowerStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
@@ -330,19 +342,6 @@ class Daemon : public BacklightControllerObserver,
   // Invoked by RetrieveSessionState() and also in response to
   // SessionStateChanged D-Bus signals.
   void OnSessionStateChange(const char* state, const char* user);
-
-  // Handles notification from powerm that the power button has been pressed or
-  // released.
-  void OnPowerButtonEvent(bool down, const base::TimeTicks& timestamp);
-
-  // Emits a signal to tell Chrome that a button has been pressed or released.
-  void SendButtonEventSignal(const std::string& button_name,
-                             bool down,
-                             base::TimeTicks timestamp);
-
-  // Sends metrics in response to the power button being pressed or released.
-  // Called by HandleButtonEventSignal().
-  void SendPowerButtonMetric(bool down, const base::TimeTicks& timestamp);
 
   void StartCleanShutdown();
   void Shutdown();
@@ -487,10 +486,6 @@ class Daemon : public BacklightControllerObserver,
   // "Recently" is defined by |kAudioActivityThresholdMs| in powerd.cc.
   bool IsAudioPlaying();
 
-  // Checks if any USB input devices are connected, by scanning sysfs for input
-  // devices whose paths contain "usb".
-  bool USBInputDeviceConnected() const;
-
   // Updates |battery_report_state_| to account for changes in the power state
   // of the device and passage of time. This value is used to control the value
   // we display to the user for battery time, so this should be called before
@@ -515,6 +510,8 @@ class Daemon : public BacklightControllerObserver,
   KeyboardBacklightController* keyboard_controller_;  // non-owned
 
   scoped_ptr<DBusSenderInterface> dbus_sender_;
+  scoped_ptr<system::Input> input_;
+  scoped_ptr<policy::InputController> input_controller_;
 
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;
@@ -640,10 +637,6 @@ class Daemon : public BacklightControllerObserver,
   // Flag indicating that this system needs a USB input device connected before
   // suspending, otherwise it cannot wake up from suspend.
   bool require_usb_input_device_to_suspend_;
-
-  // Used by USBInputDeviceConnected() instead of the default input path, if
-  // this string is non-empty.  Used for testing purposes.
-  std::string sysfs_input_path_for_testing_;
 
   // Variables used for pinning and tapering the battery after we have adjusted
   // it to account for being near full but not charging. The state value tells

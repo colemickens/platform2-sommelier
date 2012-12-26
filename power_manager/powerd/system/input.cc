@@ -2,25 +2,27 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerm/input.h"
+#include "power_manager/powerd/system/input.h"
 
 #include <dirent.h>
 #include <fcntl.h>
 #include <libudev.h>
 #include <linux/input.h>
 
-#include "base/file_util.h"
 #include "base/file_path.h"
+#include "base/file_util.h"
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "power_manager/common/util.h"
+#include "power_manager/powerd/system/input_observer.h"
 
 using std::map;
 using std::string;
 using std::vector;
 
 namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -32,6 +34,10 @@ const char kInputBaseName[] = "input";
 
 const char kWakeupDisabled[] = "disabled";
 const char kWakeupEnabled[] = "enabled";
+
+const char kInputMatchPattern[] = "input*";
+const char kUsbMatchString[] = "usb";
+const char kBluetoothMatchString[] = "bluetooth";
 
 InputType GetInputType(const struct input_event& event) {
   if (event.type == EV_KEY) {
@@ -59,9 +65,7 @@ bool GetSuffixNumber(const char* name, const char* base_name, int* suffix) {
 }  // namespace
 
 Input::Input()
-    : handler_(NULL),
-      handler_data_(NULL),
-      lid_fd_(-1),
+    : lid_fd_(-1),
       num_power_key_events_(0),
       num_lid_events_(0),
       wakeups_enabled_(true) {}
@@ -87,9 +91,23 @@ bool Input::Init(const vector<string>& wakeup_input_names) {
       wakeup_inputs_map_[*names_iter] = -1;
   }
 
+  // Don't bother doing anything if we're running under a test.
+  if (!sysfs_input_path_for_testing_.empty())
+    return true;
+
   RegisterUdevEventHandler();
   RegisterInputWakeSources();
   return RegisterInputDevices();
+}
+
+void Input::AddObserver(InputObserver* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void Input::RemoveObserver(InputObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
 }
 
 #define BITS_PER_LONG (sizeof(long) * 8)
@@ -119,14 +137,55 @@ bool Input::QueryLidState(int* lid_state) {
   }
 }
 
-bool Input::DisableWakeInputs() {
-  wakeups_enabled_ = false;
+bool Input::IsUSBInputDeviceConnected() const {
+  file_util::FileEnumerator enumerator(
+      FilePath(sysfs_input_path_for_testing_.empty() ?
+               kSysClassInputPath : sysfs_input_path_for_testing_),
+      false,
+      static_cast<file_util::FileEnumerator::FileType>(
+          file_util::FileEnumerator::FILES |
+          file_util::FileEnumerator::SHOW_SYM_LINKS),
+      kInputMatchPattern);
+  for (FilePath path = enumerator.Next();
+       !path.empty();
+       path = enumerator.Next()) {
+    FilePath symlink_path;
+    if (!file_util::ReadSymbolicLink(path, &symlink_path))
+      continue;
+    const std::string& path_string = symlink_path.value();
+    // Skip bluetooth devices, which may be identified as USB devices.
+    if (path_string.find(kBluetoothMatchString) != std::string::npos)
+      continue;
+    // Now look for the USB devices that are not bluetooth.
+    size_t position = path_string.find(kUsbMatchString);
+    if (position == std::string::npos)
+      continue;
+    // Now that the string "usb" has been found, make sure it is a whole word
+    // and not just part of another word like "busbreaker".
+    bool usb_at_word_head =
+        position == 0 || !IsAsciiAlpha(path_string.at(position - 1));
+    bool usb_at_word_tail =
+        position + strlen(kUsbMatchString) == path_string.size() ||
+        !IsAsciiAlpha(path_string.at(position + strlen(kUsbMatchString)));
+    if (usb_at_word_head && usb_at_word_tail)
+      return true;
+  }
+  return false;
+}
+
+bool Input::SetWakeInputsState(bool enable) {
+  wakeups_enabled_ = enable;
   return SetInputWakeupStates();
 }
 
-bool Input::EnableWakeInputs() {
-  wakeups_enabled_ = true;
-  return SetInputWakeupStates();
+void Input::SetTouchDevicesState(bool enable) {
+#ifdef TOUCH_DEVICE
+  if (enable) {
+    util::Launch("/opt/google/touch/touch-control.sh --enable");
+  } else {
+    util::Run("/opt/google/touch/touch-control.sh --disable");
+  }
+#endif // TOUCH_DEVICE
 }
 
 bool Input::RegisterInputDevices() {
@@ -520,22 +579,17 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
                  << "Input::EventHandler";
   }
 
-  if (!input->handler_)
-    return true;
   for (ssize_t i = 0; i < num_events; i++) {
     InputType input_type = GetInputType(events[i]);
     if (input_type == INPUT_UNHANDLED)
       continue;
     LOG(INFO) << "Handling event: " << util::InputTypeToString(input_type);
-    (*input->handler_)(input->handler_data_, input_type, events[i].value);
+    FOR_EACH_OBSERVER(InputObserver, input->observers_,
+                      OnInputEvent(input_type, events[i].value));
     LOG(INFO) << "Input event handled: " << util::InputTypeToString(input_type);
   }
   return true;
 }
 
-void Input::RegisterHandler(InputHandler handler, void* data) {
-  handler_ = handler;
-  handler_data_ = data;
-}
-
+}  // namespace system
 }  // namespace power_manager

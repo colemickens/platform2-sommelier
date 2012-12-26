@@ -64,7 +64,6 @@ const int64 kBatteryPercentPinMs = 3 * 60 * 1000;
 const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 
 // powerd -> powerm messages.
-const char kCheckLidStateSignal[] = "CheckLidStateSignal";
 const char kRestartSignal[] = "RestartSignal";
 const char kRequestCleanShutdown[] = "RequestCleanShutdown";
 const char kSuspendSignal[] = "SuspendSignal";

@@ -11,9 +11,7 @@ LIBPOWERMAN_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
 LIBPOWERMAN_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
                    $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = common/power_constants.o \
-                   power_manager/input_event.pb.o \
                    power_manager/suspend.pb.o \
-                   powerm/input.o \
                    powerm/powerman.o \
                    powerm/powerman_metrics.o
 CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a): $(LIBPOWERMAN_OBJS)
