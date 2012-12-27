@@ -19,6 +19,7 @@
 #endif
 
 DEFINE_bool(get_brightness, false, "Get current brightness level.");
+DEFINE_bool(get_brightness_percent, false, "Get current brightness percent.");
 DEFINE_bool(get_max_brightness, false, "Get max brightness level.");
 DEFINE_int64(set_brightness, -1, "Set brightness level.");
 DEFINE_double(set_brightness_percent, -1.0,
@@ -28,8 +29,10 @@ DEFINE_double(set_brightness_percent, -1.0,
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
-  CHECK(!FLAGS_get_brightness || !FLAGS_get_max_brightness)
-      << "-get_brightness and -get_max_brightness are mutually exclusive";
+  CHECK((FLAGS_get_brightness + FLAGS_get_max_brightness +
+         FLAGS_get_brightness_percent) < 2)
+      << "-get_brightness and -get_brightness_percent and -get_max_brightness "
+      << "are mutually exclusive";
   CHECK(FLAGS_set_brightness < 0 || FLAGS_set_brightness_percent < 0)
       << "-set_brightness and -set_brightness_percent are mutually exclusive";
 
@@ -50,6 +53,14 @@ int main(int argc, char* argv[]) {
     int64 max_level = 0;
     CHECK(backlight.GetMaxBrightnessLevel(&max_level));
     printf("%" PRIi64 "\n", max_level);
+  }
+  if (FLAGS_get_brightness_percent) {
+    int64 level = 0;
+    CHECK(backlight.GetCurrentBrightnessLevel(&level));
+    int64 max_level = 0;
+    CHECK(backlight.GetMaxBrightnessLevel(&max_level));
+    printf("%" PRIi64 "\n", static_cast<int64>((level + 0.5) * 100 /
+                                               max_level));
   }
   if (FLAGS_set_brightness >= 0) {
     CHECK(backlight.SetBrightnessLevel(FLAGS_set_brightness,
