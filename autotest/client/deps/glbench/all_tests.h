@@ -15,6 +15,7 @@ TestBase* GetAttributeFetchShaderTest();
 TestBase* GetVaryingsAndDdxyShaderTest();
 TestBase* GetWindowManagerCompositingTest(bool scissor);
 TestBase* GetTextureUpdateTest();
+TestBase* GetTextureUploadTest();
 
 } // namespace glbench
 

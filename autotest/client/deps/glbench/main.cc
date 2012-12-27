@@ -90,6 +90,7 @@ int main(int argc, char *argv[]) {
     glbench::GetAttributeFetchShaderTest(),
     glbench::GetVaryingsAndDdxyShaderTest(),
     glbench::GetTextureUpdateTest(),
+    glbench::GetTextureUploadTest(),
   };
 
   uint64_t done = GetUTime() + 1000000ULL * FLAGS_duration;
