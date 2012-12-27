@@ -55,7 +55,7 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   }
   if (status == G_IO_STATUS_AGAIN)
     return TRUE;
-  if (status != G_IO_STATUS_NORMAL) {
+  if (status == G_IO_STATUS_ERROR) {
     string condition = base::StringPrintf(
         "Unexpected GLib return status: %d", status);
     LOG(ERROR) << condition;
@@ -68,6 +68,11 @@ static gboolean DispatchIOHandler(GIOChannel *chan,
   InputData input_data(buf, len);
   handler->input_callback().Run(&input_data);
 
+  if (status == G_IO_STATUS_EOF) {
+    LOG(INFO) << "InputHandler on fd " << fd << " closing due to EOF.";
+    CHECK(len == 0);
+    return FALSE;
+  }
   return TRUE;
 }
 
