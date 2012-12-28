@@ -100,9 +100,14 @@ int main(int argc, char** argv) {
   daemon.Initialize();
 
   // Set up a monitor for handling device events.
-  g_io_add_watch_full(g_io_channel_unix_new(daemon.GetDeviceEventDescriptor()),
+  GIOChannel* device_event_channel =
+      g_io_channel_unix_new(daemon.GetDeviceEventDescriptor());
+  g_io_channel_set_close_on_unref(device_event_channel, TRUE);
+  CHECK_EQ(G_IO_STATUS_NORMAL,
+           g_io_channel_set_encoding(device_event_channel, NULL, NULL));
+  g_io_add_watch_full(device_event_channel,
                       G_PRIORITY_HIGH_IDLE,
-                      GIOCondition(G_IO_IN | G_IO_PRI | G_IO_HUP | G_IO_NVAL),
+                      GIOCondition(G_IO_IN | G_IO_PRI),  // Ignore errors.
                       DeviceEventCallback,
                       &daemon,
                       NULL);
