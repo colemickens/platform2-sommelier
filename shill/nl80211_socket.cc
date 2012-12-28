@@ -39,10 +39,9 @@
 #include <sstream>
 #include <string>
 
-#include "shill/kernel_bound_nlmessage.h"
 #include "shill/logging.h"
 #include "shill/netlink_socket.h"
-#include "shill/user_bound_nlmessage.h"
+#include "shill/nl80211_message.h"
 
 using std::string;
 
@@ -56,9 +55,9 @@ bool Nl80211Socket::Init() {
     return false;
   }
 
-  nl80211_id_ = genl_ctrl_resolve(GetNlSock(), "nlctrl");
-  if (nl80211_id_ < 0) {
-    LOG(ERROR) << "nl80211 not found.";
+  family_id_ = genl_ctrl_resolve(GetNlSock(), kSocketFamilyName);
+  if (family_id_ < 0) {
+    LOG(ERROR) << kSocketFamilyName << " not found.";
     return false;
   }
 
@@ -81,13 +80,6 @@ bool Nl80211Socket::AddGroupMembership(const string &group_name) {
   }
   LOG(INFO) << " Group " << group_name << " added successfully";
   return true;
-}
-
-uint32 Nl80211Socket::Send(KernelBoundNlMessage *message) {
-  CHECK(message);
-  return NetlinkSocket::Send(message->message(),
-                             message->command(),
-                             GetFamilyId());
 }
 
 }  // namespace shill

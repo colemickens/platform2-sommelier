@@ -14,8 +14,8 @@
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/nl80211_attribute.h"
+#include "shill/nl80211_message.h"
 #include "shill/scope_logger.h"
-#include "shill/user_bound_nlmessage.h"
 
 using base::Bind;
 using base::StringAppendF;
@@ -34,7 +34,7 @@ Callback80211Object::~Callback80211Object() {
 }
 
 void Callback80211Object::Config80211MessageCallback(
-    const UserBoundNlMessage &message) {
+    const Nl80211Message &message) {
   // Show the message-type-specific version of the message.
   string output("@");
   StringAppendF(&output, "%s", message.ToString().c_str());
@@ -52,8 +52,7 @@ bool Callback80211Object::DeinstallAsCallback() {
   return Config80211::GetInstance()->RemoveBroadcastCallback(callback_);
 }
 
-void Callback80211Object::ReceiveConfig80211Message(
-    const UserBoundNlMessage &msg) {
+void Callback80211Object::ReceiveConfig80211Message(const Nl80211Message &msg) {
   Config80211MessageCallback(msg);
 }
 

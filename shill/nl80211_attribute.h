@@ -22,8 +22,6 @@ struct nlattr;
 
 namespace shill {
 
-class AttributeList;
-
 // Nl80211Attribute is an abstract base class that describes an attribute in a
 // netlink-80211 message.  Child classes are type-specific and will define
 // Get*Value and Set*Value methods (where * is the type).  A second-level of
@@ -57,7 +55,7 @@ class Nl80211Attribute {
   // raw nlattr data.
   static Nl80211Attribute *NewFromName(nl80211_attrs id);
 
-  // Accessors for the attribute's id and type information.
+  // Accessors for the attribute's id and datatype information.
   int id() const { return id_; }
   virtual const char *id_string() const { return id_string_; }
   Type datatype() const { return datatype_; }
@@ -96,12 +94,17 @@ class Nl80211Attribute {
   virtual bool GetRawValue(ByteString *value) const;
 
   // Fill a string with characters that represents the value of the attribute.
-  // If no attribute is found or if the type isn't trivially stringizable,
+  // If no attribute is found or if the datatype isn't trivially stringizable,
   // this method returns 'false' and |value| remains unchanged.
   virtual bool ToString(std::string *value) const = 0;
 
   // Writes the raw attribute data to a string.  For debug.
   std::string RawToString() const;
+
+  // Encodes the attribute suitably for the attributes in the payload portion
+  // of a netlink message suitable for Sockets::Send.  Return value is empty on
+  // failure.
+  virtual ByteString Encode() const = 0;
 
   // Note that |nla_get_*| don't change their arguments but don't declare
   // themselves as 'const', either.  These methods wrap the const castness.
@@ -122,6 +125,11 @@ class Nl80211Attribute {
   }
 
  protected:
+  // Encodes the attribute suitably for the attributes in the payload portion
+  // of a netlink message suitable for Sockets::Send.  Return value is empty on
+  // failure.
+  virtual ByteString EncodeGeneric(const unsigned char *data, int bytes) const;
+
   // Raw data corresponding to the value in any of the child classes.
   // TODO(wdg): When 'data()' is removed, move this to the Nl80211RawAttribute
   // class.
@@ -146,6 +154,7 @@ class Nl80211U8Attribute : public Nl80211Attribute {
   bool GetU8Value(uint8_t *value) const;
   bool SetU8Value(uint8_t new_value);
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  private:
   uint8_t value_;
@@ -177,6 +186,7 @@ class Nl80211U16Attribute : public Nl80211Attribute {
   bool GetU16Value(uint16_t *value) const;
   bool SetU16Value(uint16_t new_value);
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  private:
   uint16_t value_;
@@ -208,6 +218,7 @@ class Nl80211U32Attribute : public Nl80211Attribute {
   bool GetU32Value(uint32_t *value) const;
   bool SetU32Value(uint32_t new_value);
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  private:
   uint32_t value_;
@@ -274,6 +285,7 @@ class Nl80211U64Attribute : public Nl80211Attribute {
   bool GetU64Value(uint64_t *value) const;
   bool SetU64Value(uint64_t new_value);
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  private:
   uint64_t value_;
@@ -298,6 +310,7 @@ class Nl80211FlagAttribute : public Nl80211Attribute {
   bool GetFlagValue(bool *value) const;
   bool SetFlagValue(bool new_value);
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  private:
   bool value_;
@@ -338,6 +351,7 @@ class Nl80211StringAttribute : public Nl80211Attribute {
   bool GetStringValue(std::string *value) const;
   bool SetStringValue(const std::string new_value);
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  private:
   std::string value_;
@@ -364,7 +378,6 @@ class Nl80211NestedAttribute : public Nl80211Attribute {
   static const char kMyTypeString[];
   static const Type kType;
   Nl80211NestedAttribute(int id, const char *id_string);
-  virtual ~Nl80211NestedAttribute() {}
   bool InitFromNlAttr(const nlattr *data) {
     LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
     return false;
@@ -372,6 +385,9 @@ class Nl80211NestedAttribute : public Nl80211Attribute {
   bool GetNestedValue(base::WeakPtr<AttributeList> *value);
   bool ToString(std::string *value) const {
     return false;  // TODO(wdg):
+  }
+  virtual ByteString Encode() const {
+    return ByteString();  // TODO(wdg): Actually encode the attribute.
   }
 
  protected:
@@ -416,6 +432,9 @@ class Nl80211RawAttribute : public Nl80211Attribute {
   // is intended for building kernel-bound messages and shouldn't be used with
   // raw data.
   bool ToString(std::string *value) const;
+  virtual ByteString Encode() const {
+    return ByteString();  // TODO(wdg): Actually encode the attribute.
+  }
 };
 
 class Nl80211AttributeFrame : public Nl80211RawAttribute {

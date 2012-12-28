@@ -25,16 +25,13 @@
 #ifndef SHILL_NL80211_SOCKET_H_
 #define SHILL_NL80211_SOCKET_H_
 
-#include <iomanip>
 #include <string>
 
 #include <linux/nl80211.h>
 
 #include <base/basictypes.h>
-#include <base/bind.h>
 
 #include "shill/netlink_socket.h"
-#include "shill/kernel_bound_nlmessage.h"
 
 struct nl_msg;
 struct sockaddr_nl;
@@ -46,7 +43,7 @@ namespace shill {
 // utilizing a netlink socket.
 class Nl80211Socket : public NetlinkSocket {
  public:
-  Nl80211Socket() : nl80211_id_(-1) {}
+  Nl80211Socket() : family_id_(-1) {}
   virtual ~Nl80211Socket() {}
 
   // Perform non-trivial initialization.
@@ -59,21 +56,19 @@ class Nl80211Socket : public NetlinkSocket {
   virtual bool AddGroupMembership(const std::string &group_name);
 
   // Returns the value returned by the 'genl_ctrl_resolve' call.
-  int GetFamilyId() const { return nl80211_id_; }
+  int family_id() const { return family_id_; }
 
   // Gets the name of the socket family.
   std::string GetSocketFamilyName() const {
     return Nl80211Socket::kSocketFamilyName;
   }
 
-  virtual uint32 Send(KernelBoundNlMessage *message);
-
  private:
   // The family name of this particular netlink socket.
   static const char kSocketFamilyName[];
 
   // The id returned by a call to 'genl_ctrl_resolve'.
-  int nl80211_id_;
+  int family_id_;
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211Socket);
 };

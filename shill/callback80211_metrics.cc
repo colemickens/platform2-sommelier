@@ -9,7 +9,7 @@
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
-#include "shill/user_bound_nlmessage.h"
+#include "shill/nl80211_message.h"
 
 namespace shill {
 
@@ -19,7 +19,7 @@ Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
 }
 
 void Callback80211Metrics::Config80211MessageCallback(
-    const UserBoundNlMessage &message) {
+    const Nl80211Message &message) {
   SLOG(WiFi, 3) << "Received " << message.message_type_string()
                 << " (" << + message.message_type() << ")";
   if (metrics_ &&

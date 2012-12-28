@@ -60,6 +60,16 @@ string AttributeList::ToString() const {
   return output;
 }
 
+ByteString AttributeList::Encode() const {
+  ByteString result;
+  map<int, AttributePointer>::const_iterator i;
+
+  for (i = attributes_.begin(); i != attributes_.end(); ++i) {
+    result.Append(i->second->Encode());
+  }
+  return result;
+}
+
 // U8 Attribute.
 
 bool AttributeList::GetU8AttributeValue(int id, uint8_t *value) const {

@@ -15,7 +15,7 @@
 
 namespace shill {
 
-class UserBoundNlMessage;
+class Nl80211Message;
 
 // Example Config80211 callback object; the callback prints a description of
 // each message with its attributes.
@@ -31,10 +31,10 @@ class Callback80211Object {
  protected:
   // When installed, this is the method Config80211 will call when it gets a
   // message from the mac80211 drivers.
-  virtual void Config80211MessageCallback(const UserBoundNlMessage &msg);
+  virtual void Config80211MessageCallback(const Nl80211Message &msg);
 
  private:
-  void ReceiveConfig80211Message(const UserBoundNlMessage &msg);
+  void ReceiveConfig80211Message(const Nl80211Message &msg);
 
   base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
   Config80211::Callback callback_;

@@ -15,11 +15,10 @@
 #include <base/stl_util.h>
 
 #include "shill/io_handler.h"
-#include "shill/kernel_bound_nlmessage.h"
 #include "shill/logging.h"
+#include "shill/nl80211_message.h"
 #include "shill/nl80211_socket.h"
 #include "shill/scope_logger.h"
-#include "shill/user_bound_nlmessage.h"
 
 using base::Bind;
 using base::LazyInstance;
@@ -146,14 +145,18 @@ void Config80211::ClearBroadcastCallbacks() {
   broadcast_callbacks_.clear();
 }
 
-bool Config80211::SendMessage(KernelBoundNlMessage *message,
+bool Config80211::SendMessage(Nl80211Message *message,
                               const Callback &callback) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;
   }
-  uint32 sequence_number = sock_->Send(message);
+  uint32 sequence_number = message->sequence_number();
   if (!sequence_number) {
+    sequence_number = sock_->GetSequenceNumber();
+    message->set_sequence_number(sequence_number);
+  }
+  if (!sock_->SendMessage(message)) {
     LOG(ERROR) << "Failed to send nl80211 message.";
     return false;
   }
@@ -170,7 +173,7 @@ bool Config80211::SendMessage(KernelBoundNlMessage *message,
   return true;
 }
 
-bool Config80211::RemoveMessageCallback(const KernelBoundNlMessage &message) {
+bool Config80211::RemoveMessageCallback(const Nl80211Message &message) {
   if (!ContainsKey(message_callbacks_, message.sequence_number())) {
     return false;
   }
@@ -281,8 +284,7 @@ int Config80211::OnNlMessageReceived(nlmsghdr *msg) {
   const uint32 sequence_number = msg->nlmsg_seq;
   SLOG(WiFi, 3) << "\t  Entering " << __func__
                 << "( msg:" << sequence_number << ")";
-  scoped_ptr<UserBoundNlMessage> message(
-      UserBoundNlMessageFactory::CreateMessage(msg));
+  scoped_ptr<Nl80211Message> message(Nl80211MessageFactory::CreateMessage(msg));
   if (message == NULL) {
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
     return NL_SKIP;  // Skip current message, continue parsing buffer.

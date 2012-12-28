@@ -37,8 +37,17 @@
 #include <netlink/netlink.h>
 
 #include <iomanip>
+#include <string>
+
+#include <base/eintr_wrapper.h>
+#include <base/logging.h>
+#include <base/stringprintf.h>
 
 #include "shill/logging.h"
+#include "shill/nl80211_message.h"
+
+using base::StringAppendF;
+using std::string;
 
 namespace shill {
 
@@ -111,46 +120,40 @@ bool NetlinkSocket::Init() {
   return true;
 }
 
-uint32 NetlinkSocket::Send(struct nl_msg *message,
-                           uint8 command,
-                           int32 family_id) {
+bool NetlinkSocket::SendMessage(Nl80211Message *message) {
   if (!message) {
     LOG(ERROR) << "NULL |message|.";
-    return 0;
+    return false;
   }
 
   if (!nl_sock_) {
     LOG(ERROR) << "Need to initialize the socket first.";
-    return 0;
+    return false;
   }
 
-  // Parameters to genlmsg_put:
-  //  @message: a pointer to a struct nl_msg *message.
-  //  @pid: netlink pid the message is addressed to.
-  //  @seq: sequence number.
-  //  @family: netlink socket family (NETLINK_GENERIC for us)
-  //  @flags netlink message flags.
-  //  @hdrlen: Length of a user header (which we don't use)
-  //  @cmd: netlink command.
-  //  @version: version of communication protocol.
-  // genlmsg_put returns a void * pointing to the user header but we don't
-  // want to encourage its use outside of this object.
+  ByteString out_msg = message->Encode(family_id());
 
-  uint32 sequence_number = GetSequenceNumber();
-  if (genlmsg_put(message, NL_AUTO_PID, sequence_number, family_id,
-                  0, 0, command, 0) == NULL) {
-    LOG(ERROR) << "genlmsg_put returned a NULL pointer.";
-    return 0;
+  if (SLOG_IS_ON(WiFi, 6)) {
+    SLOG(WiFi, 6) << "NL Message " << message->sequence_number() << " ===>";
+    SLOG(WiFi, 6) << "  Sending (" << out_msg.GetLength() << " bytes) : "
+              << message->GenericToString();
+
+    const unsigned char *out_data = out_msg.GetConstData();
+    string output;
+    for (size_t i = 0; i < out_msg.GetLength(); ++i) {
+      StringAppendF(&output, " %02x", out_data[i]);
+    }
+    SLOG(WiFi, 6) << output;
   }
 
-  SLOG(WiFi, 6) << "NL Message " << sequence_number << " ===>";
-
-  int result = nl_send_auto_complete(nl_sock_, message);
-  if (result < 0) {
-    LOG(ERROR) << "Failed call to 'nl_send_auto_complete': " << result;
-    return 0;
+  int result = HANDLE_EINTR(send(GetFd(), out_msg.GetConstData(),
+                                 out_msg.GetLength(), 0));
+  if (!result) {
+    PLOG(ERROR) << "Send failed.";
+    return false;
   }
-  return sequence_number;
+
+  return true;
 }
 
 

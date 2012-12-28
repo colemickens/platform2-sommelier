@@ -43,6 +43,8 @@ struct nl_msg;
 
 namespace shill {
 
+class Nl80211Message;
+
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/ for documentation on how netlink
 // sockets work.
@@ -102,21 +104,24 @@ class NetlinkSocket {
 
   // Get the next message sequence number for this socket.  Disallow zero so
   // that we can use that as the 'broadcast' sequence number.
-  virtual unsigned int GetSequenceNumber();
+  virtual uint32_t GetSequenceNumber();
 
   // This method is called |callback_function| to differentiate it from the
-  // 'callback' method in KernelBoundNlMessage since they return different
+  // 'callback' method in Nl80211Message since they return different
   // types.
   virtual bool SetNetlinkCallback(nl_recvmsg_msg_cb_t on_netlink_data,
                                   void *callback_parameter);
 
+  // Returns the value returned by the 'genl_ctrl_resolve' call.
+  virtual int family_id() const = 0;
+
   // Returns the family name of the socket created by this type of object.
   virtual std::string GetSocketFamilyName() const = 0;
 
- protected:
-  // Send a message, returns 0 on error, or the sequence number (> 0).
-  uint32 Send(struct nl_msg *message, uint8 command, int32 family_id);
+  // Sends a message, returns true if successful.
+  virtual bool SendMessage(Nl80211Message *message);
 
+ protected:
   struct nl_sock *GetNlSock() { return nl_sock_; }
 
  private:

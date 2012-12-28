@@ -220,6 +220,17 @@ string Nl80211Attribute::RawToString() const {
   return output;
 }
 
+ByteString Nl80211Attribute::EncodeGeneric(const unsigned char *data,
+                                           int bytes) const {
+  nlattr header;
+  header.nla_type = id();
+  header.nla_len = nla_attr_size(bytes);
+  ByteString result(reinterpret_cast<unsigned char *>(&header), sizeof(header));
+  result.Append(ByteString(data, bytes));
+  result.Resize(nla_total_size(bytes));  // Add padding.
+  return result;
+}
+
 // Nl80211U8Attribute
 
 const char Nl80211U8Attribute::kMyTypeString[] = "uint8_t";
@@ -259,6 +270,11 @@ bool Nl80211U8Attribute::ToString(string *output) const {
     return false;
   *output = StringPrintf("%u", value);
   return true;
+}
+
+ByteString Nl80211U8Attribute::Encode() const {
+  return Nl80211Attribute::EncodeGeneric(
+      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
 
@@ -303,6 +319,11 @@ bool Nl80211U16Attribute::ToString(string *output) const {
   return true;
 }
 
+ByteString Nl80211U16Attribute::Encode() const {
+  return Nl80211Attribute::EncodeGeneric(
+      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+}
+
 // Nl80211U32Attribute::
 
 const char Nl80211U32Attribute::kMyTypeString[] = "uint32_t";
@@ -344,6 +365,11 @@ bool Nl80211U32Attribute::ToString(string *output) const {
   return true;
 }
 
+ByteString Nl80211U32Attribute::Encode() const {
+  return Nl80211Attribute::EncodeGeneric(
+      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+}
+
 // Nl80211U64Attribute
 
 const char Nl80211U64Attribute::kMyTypeString[] = "uint64_t";
@@ -383,6 +409,11 @@ bool Nl80211U64Attribute::ToString(string *output) const {
     return false;
   *output = StringPrintf("%" PRIu64, value);
   return true;
+}
+
+ByteString Nl80211U64Attribute::Encode() const {
+  return Nl80211Attribute::EncodeGeneric(
+      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
 // Nl80211FlagAttribute
@@ -427,6 +458,11 @@ bool Nl80211FlagAttribute::ToString(string *output) const {
   return true;
 }
 
+ByteString Nl80211FlagAttribute::Encode() const {
+  return Nl80211Attribute::EncodeGeneric(
+      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+}
+
 // Nl80211StringAttribute
 
 const char Nl80211StringAttribute::kMyTypeString[] = "string";
@@ -466,6 +502,11 @@ bool Nl80211StringAttribute::ToString(string *output) const {
 
   *output = StringPrintf("'%s'", value.c_str());
   return true;
+}
+
+ByteString Nl80211StringAttribute::Encode() const {
+  return Nl80211Attribute::EncodeGeneric(
+      reinterpret_cast<const unsigned char *>(value_.c_str()), value_.size());
 }
 
 // Nl80211NestedAttribute

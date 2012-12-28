@@ -30,7 +30,7 @@
 //    user calls Config80211::SubscribeToEvents, Config80211 installs
 //    OnRawNlMessageReceived as a netlink callback function (described below).
 //    OnRawNlMessageReceived, in turn, parses the message from cfg80211 and
-//    calls Config80211::Callback with the resultant UserBoundNlMessage.
+//    calls Config80211::Callback with the resultant Nl80211Message.
 //
 // Netlink Callback -
 //    Netlink callbacks are mechanisms installed by the user (well, by
@@ -79,8 +79,7 @@
 
 namespace shill {
 
-class KernelBoundNlMessage;
-class UserBoundNlMessage;
+class Nl80211Message;
 
 // Provides a transport-independent ability to receive status from the wifi
 // configuration.  In its current implementation, it uses the netlink socket
@@ -89,7 +88,7 @@ class UserBoundNlMessage;
 // Config80211 is a singleton and, as such, coordinates access to libnl.
 class Config80211 {
  public:
-  typedef base::Callback<void(const UserBoundNlMessage &)> Callback;
+  typedef base::Callback<void(const Nl80211Message &)> Callback;
 
   // The different kinds of events to which we can subscribe (and receive)
   // from cfg80211.
@@ -138,10 +137,10 @@ class Config80211 {
   // installing a callback to handle it.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
-  bool SendMessage(KernelBoundNlMessage *message, const Callback &callback);
+  bool SendMessage(Nl80211Message *message, const Callback &callback);
 
   // Uninstall a Config80211 Callback for a specific message.
-  bool RemoveMessageCallback(const KernelBoundNlMessage &message);
+  bool RemoveMessageCallback(const Nl80211Message &message);
 
   // Return a string corresponding to the passed-in EventType.
   static bool GetEventTypeString(EventType type, std::string *value);

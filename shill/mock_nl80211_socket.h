@@ -27,10 +27,9 @@ class MockNl80211Socket : public Nl80211Socket {
   using Nl80211Socket::SetNetlinkCallback;
   MOCK_METHOD2(SetNetlinkCallback, bool(nl_recvmsg_msg_cb_t on_netlink_data,
                                         void *callback_parameter));
-  MOCK_METHOD0(GetSequenceNumber, unsigned int());
 
-  virtual uint32 Send(KernelBoundNlMessage *message);
-
+  virtual uint32_t GetSequenceNumber();
+  virtual bool SendMessage(Nl80211Message *message);
   uint32 GetLastSequenceNumber() const { return sequence_number_; }
 
  private:

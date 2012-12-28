@@ -219,7 +219,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ip_address.o \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \
-	kernel_bound_nlmessage.o \
 	key_file_store.o \
 	key_value_store.o \
 	link_monitor.o \
@@ -252,6 +251,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_simple_proxy.o \
 	netlink_socket.o \
 	nl80211_attribute.o \
+	nl80211_message.o \
 	nl80211_socket.o \
 	nss.o \
 	openvpn_driver.o \
@@ -287,7 +287,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_network_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
-	user_bound_nlmessage.o \
 	virtio_ethernet.o \
 	vpn.o \
 	vpn_driver.o \

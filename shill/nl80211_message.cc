@@ -22,7 +22,7 @@
 // ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 // OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
-#include "shill/user_bound_nlmessage.h"
+#include "shill/nl80211_message.h"
 
 #include <ctype.h>
 #include <endian.h>
@@ -47,6 +47,7 @@
 #include "shill/attribute_list.h"
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
+#include "shill/netlink_socket.h"
 #include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 
@@ -60,19 +61,19 @@ using std::vector;
 namespace shill {
 
 namespace {
-LazyInstance<UserBoundNlMessageDataCollector> g_datacollector =
+LazyInstance<Nl80211MessageDataCollector> g_datacollector =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const char UserBoundNlMessage::kBogusMacAddress[]="XX:XX:XX:XX:XX:XX";
+const char Nl80211Message::kBogusMacAddress[]="XX:XX:XX:XX:XX:XX";
 
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
-const uint32_t UserBoundNlMessage::kIllegalMessage = 0xFFFFFFFF;
-const unsigned int UserBoundNlMessage::kEthernetAddressBytes = 6;
-map<uint16_t, string> *UserBoundNlMessage::reason_code_string_ = NULL;
-map<uint16_t, string> *UserBoundNlMessage::status_code_string_ = NULL;
+const uint32_t Nl80211Message::kIllegalMessage = 0;
+const unsigned int Nl80211Message::kEthernetAddressBytes = 6;
+map<uint16_t, string> *Nl80211Message::reason_code_string_ = NULL;
+map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 
 // The nl messages look like this:
 //
@@ -99,11 +100,12 @@ map<uint16_t, string> *UserBoundNlMessage::status_code_string_ = NULL;
 //       +-- msg = nlmsg_hdr(raw_message)
 
 //
-// UserBoundNlMessage
+// Nl80211Message
 //
 
-bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
-                              nlmsghdr *msg) {
+// TODO(wdg): do the nlattr parsing inside here.
+bool Nl80211Message::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
+                          nlmsghdr *msg) {
   if (!tb) {
     LOG(ERROR) << "Null |tb| parameter";
     return false;
@@ -111,7 +113,7 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
 
   message_ = msg;
 
-  SLOG(WiFi, 6) << "NL Message " << GetId() << " <===";
+  SLOG(WiFi, 6) << "NL Message " << sequence_number() << " <===";
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
@@ -317,17 +319,9 @@ bool UserBoundNlMessage::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
   return true;
 }
 
-uint32_t UserBoundNlMessage::GetId() const {
-  if (!message_) {
-    return kIllegalMessage;
-  }
-  return message_->nlmsg_seq;
-}
-
-
 // Helper function to provide a string for a MAC address.
-bool UserBoundNlMessage::GetMacAttributeString(nl80211_attrs id,
-                                               string *value) const {
+bool Nl80211Message::GetMacAttributeString(nl80211_attrs id,
+                                           string *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -344,7 +338,7 @@ bool UserBoundNlMessage::GetMacAttributeString(nl80211_attrs id,
 }
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_FREQUENCIES.
-bool UserBoundNlMessage::GetScanFrequenciesAttribute(
+bool Nl80211Message::GetScanFrequenciesAttribute(
     nl80211_attrs id, vector<uint32_t> *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
@@ -370,8 +364,8 @@ bool UserBoundNlMessage::GetScanFrequenciesAttribute(
 }
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_SSIDS.
-bool UserBoundNlMessage::GetScanSsidsAttribute(nl80211_attrs id,
-                                               vector<string> *value) const {
+bool Nl80211Message::GetScanSsidsAttribute(
+    nl80211_attrs id, vector<string> *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -398,7 +392,7 @@ bool UserBoundNlMessage::GetScanSsidsAttribute(nl80211_attrs id,
 
 // Protected members.
 
-string UserBoundNlMessage::GetHeaderString() const {
+string Nl80211Message::GetHeaderString() const {
   char ifname[IF_NAMESIZE] = "";
   uint32_t ifindex = UINT32_MAX;
   bool ifindex_exists = attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
@@ -423,7 +417,7 @@ string UserBoundNlMessage::GetHeaderString() const {
   return output;
 }
 
-string UserBoundNlMessage::StringFromFrame(nl80211_attrs attr_name) const {
+string Nl80211Message::StringFromFrame(nl80211_attrs attr_name) const {
   string output;
   ByteString frame_data;
   if (attributes().GetRawAttributeValue(attr_name,
@@ -438,7 +432,7 @@ string UserBoundNlMessage::StringFromFrame(nl80211_attrs attr_name) const {
 }
 
 // static
-string UserBoundNlMessage::StringFromKeyType(nl80211_key_type key_type) {
+string Nl80211Message::StringFromKeyType(nl80211_key_type key_type) {
   switch (key_type) {
   case NL80211_KEYTYPE_GROUP:
     return "Group";
@@ -452,7 +446,7 @@ string UserBoundNlMessage::StringFromKeyType(nl80211_key_type key_type) {
 }
 
 // static
-string UserBoundNlMessage::StringFromMacAddress(const uint8_t *arg) {
+string Nl80211Message::StringFromMacAddress(const uint8_t *arg) {
   string output;
 
   if (!arg) {
@@ -469,7 +463,7 @@ string UserBoundNlMessage::StringFromMacAddress(const uint8_t *arg) {
 }
 
 // static
-string UserBoundNlMessage::StringFromRegInitiator(__u8 initiator) {
+string Nl80211Message::StringFromRegInitiator(__u8 initiator) {
   switch (initiator) {
   case NL80211_REGDOM_SET_BY_CORE:
     return "the wireless core upon initialization";
@@ -485,7 +479,7 @@ string UserBoundNlMessage::StringFromRegInitiator(__u8 initiator) {
 }
 
 // static
-string UserBoundNlMessage::StringFromSsid(const uint8_t len,
+string Nl80211Message::StringFromSsid(const uint8_t len,
                                           const uint8_t *data) {
   string output;
   if (!data) {
@@ -507,7 +501,7 @@ string UserBoundNlMessage::StringFromSsid(const uint8_t len,
 }
 
 // static
-string UserBoundNlMessage::StringFromReason(uint16_t status) {
+string Nl80211Message::StringFromReason(uint16_t status) {
   map<uint16_t, string>::const_iterator match;
   match = reason_code_string_->find(status);
   if (match == reason_code_string_->end()) {
@@ -523,7 +517,7 @@ string UserBoundNlMessage::StringFromReason(uint16_t status) {
 }
 
 // static
-string UserBoundNlMessage::StringFromStatus(uint16_t status) {
+string Nl80211Message::StringFromStatus(uint16_t status) {
   map<uint16_t, string>::const_iterator match;
   match = status_code_string_->find(status);
   if (match == status_code_string_->end()) {
@@ -538,12 +532,53 @@ string UserBoundNlMessage::StringFromStatus(uint16_t status) {
   return match->second;
 }
 
-string UserBoundNlMessage::GenericToString() const {
+string Nl80211Message::GenericToString() const {
   string output;
-  StringAppendF(&output, "Received %s (%d)\n",
+  StringAppendF(&output, "Message %s (%d)\n",
                 message_type_string(), message_type());
   StringAppendF(&output, "%s", attributes_.ToString().c_str());
   return output;
+}
+
+ByteString Nl80211Message::Encode(uint16_t nlmsg_type) const {
+  // Build netlink header.
+  nlmsghdr header;
+  size_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
+  header.nlmsg_len = nlmsghdr_with_pad;
+  header.nlmsg_type = nlmsg_type;
+  header.nlmsg_flags = NLM_F_REQUEST;
+  header.nlmsg_seq = sequence_number();
+  header.nlmsg_pid = getpid();
+
+  // Build genl message header.
+  genlmsghdr genl_header;
+  size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
+  header.nlmsg_len += genlmsghdr_with_pad;
+  genl_header.cmd = message_type();
+  genl_header.version = 1;
+  genl_header.reserved = 0;
+
+  // Assemble attributes (padding is included by AttributeList::Encode).
+  ByteString attributes = attributes_.Encode();
+  header.nlmsg_len += attributes.GetLength();
+
+  // Now that we know the total message size, build the output ByteString.
+  ByteString result;
+
+  // Netlink header + pad.
+  result.Append(ByteString(reinterpret_cast<unsigned char *>(&header),
+                           sizeof(header)));
+  result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
+
+  // Genl message header + pad.
+  result.Append(ByteString(reinterpret_cast<unsigned char *>(&genl_header),
+                           sizeof(genl_header)));
+  result.Resize(nlmsghdr_with_pad + genlmsghdr_with_pad);  // Zero-fill.
+
+  // Attributes including pad.
+  result.Append(attributes);
+
+  return result;
 }
 
 Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
@@ -556,8 +591,8 @@ Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
   // Now, let's populate the other stuff.
   if (frame_.GetLength() >= kMinimumFrameByteCount) {
     mac_from_ =
-        UserBoundNlMessage::StringFromMacAddress(&frame->destination_mac[0]);
-    mac_to_ = UserBoundNlMessage::StringFromMacAddress(&frame->source_mac[0]);
+        Nl80211Message::StringFromMacAddress(&frame->destination_mac[0]);
+    mac_to_ = Nl80211Message::StringFromMacAddress(&frame->source_mac[0]);
     frame_type_ = frame->frame_control & kFrameTypeMask;
 
     switch (frame_type_) {
@@ -601,28 +636,28 @@ bool Nl80211Frame::ToString(string *output) const {
     case kAssocResponseFrameType:
       StringAppendF(output, "; AssocResponse status: %u: %s",
                     status_,
-                    UserBoundNlMessage::StringFromStatus(status_).c_str());
+                    Nl80211Message::StringFromStatus(status_).c_str());
       break;
     case kReassocResponseFrameType:
       StringAppendF(output, "; ReassocResponse status: %u: %s",
                     status_,
-                    UserBoundNlMessage::StringFromStatus(status_).c_str());
+                    Nl80211Message::StringFromStatus(status_).c_str());
       break;
     case kAuthFrameType:
       StringAppendF(output, "; Auth status: %u: %s",
                     status_,
-                    UserBoundNlMessage::StringFromStatus(status_).c_str());
+                    Nl80211Message::StringFromStatus(status_).c_str());
       break;
 
     case kDisassocFrameType:
       StringAppendF(output, "; Disassoc reason %u: %s",
                     reason_,
-                    UserBoundNlMessage::StringFromReason(reason_).c_str());
+                    Nl80211Message::StringFromReason(reason_).c_str());
       break;
     case kDeauthFrameType:
       StringAppendF(output, "; Deauth reason %u: %s",
                     reason_,
-                    UserBoundNlMessage::StringFromReason(reason_).c_str());
+                    Nl80211Message::StringFromReason(reason_).c_str());
       break;
 
     default:
@@ -646,7 +681,7 @@ bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
 
 
 //
-// Specific UserBoundNlMessage types.
+// Specific Nl80211Message types.
 //
 
 const uint8_t AssociateMessage::kCommand = NL80211_CMD_ASSOCIATE;
@@ -820,7 +855,7 @@ string MichaelMicFailureMessage::ToString() const {
     ByteString rawdata;
     if (attributes().GetRawAttributeValue(NL80211_ATTR_KEY_SEQ,
                                           &rawdata) &&
-        rawdata.GetLength() == UserBoundNlMessage::kEthernetAddressBytes) {
+        rawdata.GetLength() == Nl80211Message::kEthernetAddressBytes) {
       const unsigned char *seq = rawdata.GetConstData();
       StringAppendF(&output, " seq=%02x%02x%02x%02x%02x%02x",
                     seq[0], seq[1], seq[2], seq[3], seq[4], seq[5]);
@@ -1268,13 +1303,14 @@ string UnprotDisassociateMessage::ToString() const {
 // Factory class.
 //
 
-UserBoundNlMessage *UserBoundNlMessageFactory::CreateMessage(nlmsghdr *msg) {
+Nl80211Message *Nl80211MessageFactory::CreateMessage(nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << "NULL |msg| parameter";
     return NULL;
   }
 
-  scoped_ptr<UserBoundNlMessage> message;
+  scoped_ptr<Nl80211Message> message;
+
   genlmsghdr *gnlh =
       reinterpret_cast<genlmsghdr *>(nlmsg_data(msg));
 
@@ -1353,12 +1389,12 @@ UserBoundNlMessage *UserBoundNlMessageFactory::CreateMessage(nlmsghdr *msg) {
   return message.release();
 }
 
-UserBoundNlMessageDataCollector *
-    UserBoundNlMessageDataCollector::GetInstance() {
+Nl80211MessageDataCollector *
+    Nl80211MessageDataCollector::GetInstance() {
   return g_datacollector.Pointer();
 }
 
-UserBoundNlMessageDataCollector::UserBoundNlMessageDataCollector() {
+Nl80211MessageDataCollector::Nl80211MessageDataCollector() {
   need_to_print[NL80211_ATTR_PMKSA_CANDIDATE] = true;
   need_to_print[NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL] = true;
   need_to_print[NL80211_CMD_DEL_STATION] = true;
@@ -1375,8 +1411,8 @@ UserBoundNlMessageDataCollector::UserBoundNlMessageDataCollector() {
   need_to_print[NL80211_CMD_UNPROT_DISASSOCIATE] = true;
 }
 
-void UserBoundNlMessageDataCollector::CollectDebugData(
-    const UserBoundNlMessage &message, nlmsghdr *msg) {
+void Nl80211MessageDataCollector::CollectDebugData(
+    const Nl80211Message &message, nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << "NULL |msg| parameter";
     return;

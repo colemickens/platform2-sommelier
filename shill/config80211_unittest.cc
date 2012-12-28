@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 // This file provides tests for individual messages.  It tests
-// UserBoundNlMessageFactory's ability to create specific message types and it
-// tests the various UserBoundNlMessage types' ability to parse those
+// Nl80211MessageFactory's ability to create specific message types and it
+// tests the various Nl80211Message types' ability to parse those
 // messages.
 
 // This file tests the public interface to Config80211.
@@ -25,12 +25,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/kernel_bound_nlmessage.h"
 #include "shill/mock_callback80211_object.h"
 #include "shill/mock_nl80211_socket.h"
 #include "shill/nl80211_attribute.h"
+#include "shill/nl80211_message.h"
 #include "shill/nl80211_socket.h"
-#include "shill/user_bound_nlmessage.h"
 
 using base::Bind;
 using base::Unretained;
@@ -345,17 +344,23 @@ const unsigned char kNL80211_CMD_DISASSOCIATE[] = {
   0x03, 0x00, 0x00, 0x00,
 };
 
+const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
+
 }  // namespace
-uint32 MockNl80211Socket::Send(KernelBoundNlMessage *message) {
-  // Don't need a real family id; this is never sent.
-  const uint32 family_id = 0;
-  uint32 sequence_number = ++sequence_number_;
-  if (genlmsg_put(message->message(), NL_AUTO_PID, sequence_number, family_id,
-                  0, 0, message->command(), 0) == NULL) {
-    LOG(ERROR) << "genlmsg_put returned a NULL pointer.";
-    return 0;
+
+bool MockNl80211Socket::SendMessage(Nl80211Message *message) {
+  if (!message) {
+    LOG(ERROR) << "Null |message|";
+    return false;
   }
-  return sequence_number;
+  return true;
+}
+
+uint32_t MockNl80211Socket::GetSequenceNumber() {
+  // Sequence number 0 is reserved for broadcast messages from the kernel.
+  if (++sequence_number_ == 0)
+    ++sequence_number_;
+  return sequence_number_;
 }
 
 class Config80211Test : public Test {
@@ -382,7 +387,7 @@ class TestCallbackObject {
  public:
   TestCallbackObject() : callback_(Bind(&TestCallbackObject::MessageHandler,
                                         Unretained(this))) { }
-  void MessageHandler(const UserBoundNlMessage &msg) {
+  void MessageHandler(const Nl80211Message &msg) {
   }
   const Config80211::Callback &GetCallback() const { return callback_; }
 
@@ -509,13 +514,11 @@ TEST_F(Config80211Test, MessageCallbackTest) {
   MockCallback80211 callback_broadcast;
   EXPECT_TRUE(callback_broadcast.InstallAsBroadcastCallback());
 
-  KernelBoundNlMessage sent_message_1(CTRL_CMD_GETFAMILY);
+  Nl80211Message sent_message_1(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
   MockCallback80211 callback_sent_1;
-  EXPECT_TRUE(sent_message_1.Init());
 
-  KernelBoundNlMessage sent_message_2(CTRL_CMD_GETFAMILY);
+  Nl80211Message sent_message_2(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
   MockCallback80211 callback_sent_2;
-  EXPECT_TRUE(sent_message_2.Init());
 
   // Set up the received message as a response to sent_message_1.
   scoped_array<unsigned char> message_memory(
@@ -569,11 +572,11 @@ TEST_F(Config80211Test, MessageCallbackTest) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_TRIGGER_SCAN)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_TRIGGER_SCAN);
 
   {
@@ -618,11 +621,11 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_SCAN_RESULTS)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_SCAN_RESULTS);
 
   {
@@ -667,11 +670,11 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_STATION)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_STATION);
 
   {
@@ -703,11 +706,11 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_AUTHENTICATE)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_AUTHENTICATE);
 
   {
@@ -737,11 +740,11 @@ TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_ASSOCIATE)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_ASSOCIATE);
 
   {
@@ -771,11 +774,11 @@ TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_CONNECT)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_CONNECT);
 
   {
@@ -814,11 +817,11 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DEAUTHENTICATE)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_DEAUTHENTICATE);
 
   {
@@ -848,11 +851,11 @@ TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_DISCONNECT) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_DISCONNECT);
 
   {
@@ -881,11 +884,11 @@ TEST_F(Config80211Test, NL80211_CMD_DISCONNECT) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NOTIFY_CQM)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_NOTIFY_CQM);
 
 
@@ -926,11 +929,11 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
 }
 
 TEST_F(Config80211Test, NL80211_CMD_DISASSOCIATE) {
-  UserBoundNlMessage *message = UserBoundNlMessageFactory::CreateMessage(
+  Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISASSOCIATE)));
 
-  EXPECT_NE(message, reinterpret_cast<UserBoundNlMessage *>(NULL));
+  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
   EXPECT_EQ(message->message_type(), NL80211_CMD_DISASSOCIATE);
 
 

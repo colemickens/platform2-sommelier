@@ -15,7 +15,7 @@
 namespace shill {
 
 class Metrics;
-class UserBoundNlMessage;
+class Nl80211Message;
 
 // Config80211 callback object that sends stuff to UMA metrics.
 class Callback80211Metrics : public Callback80211Object {
@@ -23,7 +23,7 @@ class Callback80211Metrics : public Callback80211Object {
   explicit Callback80211Metrics(Metrics *metrics);
 
  protected:
-  virtual void Config80211MessageCallback(const UserBoundNlMessage &msg);
+  virtual void Config80211MessageCallback(const Nl80211Message &msg);
 
  private:
   static const char kMetricLinkDisconnectCount[];

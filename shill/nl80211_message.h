@@ -26,22 +26,25 @@ struct nlmsghdr;
 namespace shill {
 
 // Class for messages received from libnl.
-class UserBoundNlMessage {
+class Nl80211Message {
  public:
   static const unsigned int kEthernetAddressBytes;
   static const char kBogusMacAddress[];
 
-  UserBoundNlMessage(uint8 message_type, const char *message_type_string)
+  Nl80211Message(uint8 message_type, const char *message_type_string)
       : message_(NULL),
         message_type_(message_type),
-        message_type_string_(message_type_string) {}
-  virtual ~UserBoundNlMessage() {}
+        message_type_string_(message_type_string),
+        sequence_number_(kIllegalMessage) {}
+  virtual ~Nl80211Message() {}
 
-  // Non-trivial initialization.
+  // TODO(wdg): Change to |InitFromNlmsg|.
+  // Initializes the message with bytes from the kernel.
   virtual bool Init(nlattr *tb[NL80211_ATTR_MAX + 1], nlmsghdr *msg);
 
-  // Message ID is equivalent to the message's sequence number.
-  uint32_t GetId() const;
+  uint32_t sequence_number() const { return sequence_number_; }
+
+  void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
   const AttributeList &attributes() const { return attributes_; }
 
@@ -74,13 +77,26 @@ class UserBoundNlMessage {
   static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);
 
+  // Returns a string that describes the message in terms of its attributes.
+  // For example, a trigger scan message might look like:
+  // Received _NL80211_CMD_TRIGGER_SCAN (33)
+  //    Attr:NL80211_ATTR_WIPHY=0 Type:uint32_t
+  //    Attr:NL80211_ATTR_IFINDEX=2 Type:uint32_t
+  //    Attr:NL80211_ATTR_SCAN_FREQUENCIES=296 bytes: 0x2c [...]
   std::string GenericToString() const;
 
-  // Returns a string that describes this message.
+  // Returns a string that describes this message in a message-type-specific
+  // way.  For example, a trigger scan message might look like:
+  // @wlan0 (phy #0): scan started; frequencies: 2412, [...] 5825, ; SSIDs: "",
   virtual std::string ToString() const { return GetHeaderString(); }
 
   uint8 message_type() const { return message_type_; }
   const char *message_type_string() const { return message_type_string_; }
+
+  // Returns a netlink message suitable for Sockets::Send.  Return value is
+  // empty on failure.  |nlmsg_type| needs to be the family id returned by
+  // |genl_ctrl_resolve|.
+  ByteString Encode(uint16_t nlmsg_type) const;
 
  protected:
   // Returns a string that should precede all user-bound message strings.
@@ -112,10 +128,11 @@ class UserBoundNlMessage {
   const char *message_type_string_;
   static std::map<uint16_t, std::string> *reason_code_string_;
   static std::map<uint16_t, std::string> *status_code_string_;
+  uint32_t sequence_number_;
 
   AttributeList attributes_;
 
-  DISALLOW_COPY_AND_ASSIGN(UserBoundNlMessage);
+  DISALLOW_COPY_AND_ASSIGN(Nl80211Message);
 };
 
 class Nl80211Frame {
@@ -152,15 +169,15 @@ class Nl80211Frame {
 };
 
 //
-// Specific UserBoundNlMessage types.
+// Specific Nl80211Message types.
 //
 
-class AssociateMessage : public UserBoundNlMessage {
+class AssociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  AssociateMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  AssociateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -169,12 +186,12 @@ class AssociateMessage : public UserBoundNlMessage {
 };
 
 
-class AuthenticateMessage : public UserBoundNlMessage {
+class AuthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  AuthenticateMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  AuthenticateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -183,13 +200,13 @@ class AuthenticateMessage : public UserBoundNlMessage {
 };
 
 
-class CancelRemainOnChannelMessage : public UserBoundNlMessage {
+class CancelRemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
   CancelRemainOnChannelMessage()
-      : UserBoundNlMessage(kCommand, kCommandString) {}
+      : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -198,12 +215,12 @@ class CancelRemainOnChannelMessage : public UserBoundNlMessage {
 };
 
 
-class ConnectMessage : public UserBoundNlMessage {
+class ConnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  ConnectMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  ConnectMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -212,12 +229,12 @@ class ConnectMessage : public UserBoundNlMessage {
 };
 
 
-class DeauthenticateMessage : public UserBoundNlMessage {
+class DeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  DeauthenticateMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  DeauthenticateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -226,12 +243,12 @@ class DeauthenticateMessage : public UserBoundNlMessage {
 };
 
 
-class DeleteStationMessage : public UserBoundNlMessage {
+class DeleteStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  DeleteStationMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  DeleteStationMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -240,12 +257,12 @@ class DeleteStationMessage : public UserBoundNlMessage {
 };
 
 
-class DisassociateMessage : public UserBoundNlMessage {
+class DisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  DisassociateMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  DisassociateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -254,12 +271,12 @@ class DisassociateMessage : public UserBoundNlMessage {
 };
 
 
-class DisconnectMessage : public UserBoundNlMessage {
+class DisconnectMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  DisconnectMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  DisconnectMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -268,12 +285,12 @@ class DisconnectMessage : public UserBoundNlMessage {
 };
 
 
-class FrameTxStatusMessage : public UserBoundNlMessage {
+class FrameTxStatusMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  FrameTxStatusMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  FrameTxStatusMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -282,12 +299,12 @@ class FrameTxStatusMessage : public UserBoundNlMessage {
 };
 
 
-class JoinIbssMessage : public UserBoundNlMessage {
+class JoinIbssMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  JoinIbssMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  JoinIbssMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -296,12 +313,12 @@ class JoinIbssMessage : public UserBoundNlMessage {
 };
 
 
-class MichaelMicFailureMessage : public UserBoundNlMessage {
+class MichaelMicFailureMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  MichaelMicFailureMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  MichaelMicFailureMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -310,12 +327,12 @@ class MichaelMicFailureMessage : public UserBoundNlMessage {
 };
 
 
-class NewScanResultsMessage : public UserBoundNlMessage {
+class NewScanResultsMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  NewScanResultsMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  NewScanResultsMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -324,12 +341,12 @@ class NewScanResultsMessage : public UserBoundNlMessage {
 };
 
 
-class NewStationMessage : public UserBoundNlMessage {
+class NewStationMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  NewStationMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  NewStationMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -338,12 +355,12 @@ class NewStationMessage : public UserBoundNlMessage {
 };
 
 
-class NewWifiMessage : public UserBoundNlMessage {
+class NewWifiMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  NewWifiMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  NewWifiMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -352,12 +369,12 @@ class NewWifiMessage : public UserBoundNlMessage {
 };
 
 
-class NotifyCqmMessage : public UserBoundNlMessage {
+class NotifyCqmMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  NotifyCqmMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  NotifyCqmMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -366,12 +383,12 @@ class NotifyCqmMessage : public UserBoundNlMessage {
 };
 
 
-class PmksaCandidateMessage : public UserBoundNlMessage {
+class PmksaCandidateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  PmksaCandidateMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  PmksaCandidateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -380,12 +397,12 @@ class PmksaCandidateMessage : public UserBoundNlMessage {
 };
 
 
-class RegBeaconHintMessage : public UserBoundNlMessage {
+class RegBeaconHintMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  RegBeaconHintMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  RegBeaconHintMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -408,12 +425,12 @@ class RegBeaconHintMessage : public UserBoundNlMessage {
 };
 
 
-class RegChangeMessage : public UserBoundNlMessage {
+class RegChangeMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  RegChangeMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  RegChangeMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -422,12 +439,12 @@ class RegChangeMessage : public UserBoundNlMessage {
 };
 
 
-class RemainOnChannelMessage : public UserBoundNlMessage {
+class RemainOnChannelMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  RemainOnChannelMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  RemainOnChannelMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -436,12 +453,12 @@ class RemainOnChannelMessage : public UserBoundNlMessage {
 };
 
 
-class RoamMessage : public UserBoundNlMessage {
+class RoamMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  RoamMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  RoamMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -450,12 +467,12 @@ class RoamMessage : public UserBoundNlMessage {
 };
 
 
-class ScanAbortedMessage : public UserBoundNlMessage {
+class ScanAbortedMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  ScanAbortedMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  ScanAbortedMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -464,12 +481,12 @@ class ScanAbortedMessage : public UserBoundNlMessage {
 };
 
 
-class TriggerScanMessage : public UserBoundNlMessage {
+class TriggerScanMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  TriggerScanMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  TriggerScanMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -478,10 +495,10 @@ class TriggerScanMessage : public UserBoundNlMessage {
 };
 
 
-class UnknownMessage : public UserBoundNlMessage {
+class UnknownMessage : public Nl80211Message {
  public:
   explicit UnknownMessage(uint8_t command)
-      : UserBoundNlMessage(command, kCommandString),
+      : Nl80211Message(command, kCommandString),
         command_(command) {}
 
   static const uint8_t kCommand;
@@ -496,13 +513,13 @@ class UnknownMessage : public UserBoundNlMessage {
 };
 
 
-class UnprotDeauthenticateMessage : public UserBoundNlMessage {
+class UnprotDeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
   UnprotDeauthenticateMessage()
-      : UserBoundNlMessage(kCommand, kCommandString) {}
+      : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -511,12 +528,12 @@ class UnprotDeauthenticateMessage : public UserBoundNlMessage {
 };
 
 
-class UnprotDisassociateMessage : public UserBoundNlMessage {
+class UnprotDisassociateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  UnprotDisassociateMessage() : UserBoundNlMessage(kCommand, kCommandString) {}
+  UnprotDisassociateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
   virtual std::string ToString() const;
 
@@ -529,37 +546,38 @@ class UnprotDisassociateMessage : public UserBoundNlMessage {
 // Factory class.
 //
 
-class UserBoundNlMessageFactory {
+class Nl80211MessageFactory {
  public:
   // Ownership of the message is passed to the caller and, as such, he should
   // delete it.
-  static UserBoundNlMessage *CreateMessage(nlmsghdr *msg);
+  static Nl80211Message *CreateMessage(nlmsghdr *msg);
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(UserBoundNlMessageFactory);
+  DISALLOW_COPY_AND_ASSIGN(Nl80211MessageFactory);
 };
 
 
-// UserBoundNlMessageDataCollector - this class is used to collect data to be
+// Nl80211MessageDataCollector - this class is used to collect data to be
 // used for unit tests.  It is only invoked in this case.
 
-class UserBoundNlMessageDataCollector {
+class Nl80211MessageDataCollector {
  public:
-  // This is a singleton -- use Config80211::GetInstance()->Foo()
-  static UserBoundNlMessageDataCollector *GetInstance();
+  static Nl80211MessageDataCollector *GetInstance();
 
-  void CollectDebugData(const UserBoundNlMessage &message, nlmsghdr *msg);
+  void CollectDebugData(const Nl80211Message &message, nlmsghdr *msg);
 
  protected:
   friend struct
-      base::DefaultLazyInstanceTraits<UserBoundNlMessageDataCollector>;
+      base::DefaultLazyInstanceTraits<Nl80211MessageDataCollector>;
 
-  explicit UserBoundNlMessageDataCollector();
+  explicit Nl80211MessageDataCollector();
 
  private:
   // In order to limit the output from this class, I keep track of types I
   // haven't yet printed.
   std::map<uint8_t, bool> need_to_print;
+
+  DISALLOW_COPY_AND_ASSIGN(Nl80211MessageDataCollector);
 };
 
 }  // namespace shill

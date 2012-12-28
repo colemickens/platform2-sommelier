@@ -37,6 +37,11 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
 
   std::string ToString() const;
 
+  // Returns the attributes as the payload portion of a netlink message
+  // suitable for Sockets::Send.  Return value is empty on failure (or if no
+  // attributes exist).
+  ByteString Encode() const;
+
   bool GetU8AttributeValue(int id, uint8_t *value) const;
   bool GetU16AttributeValue(int id, uint16_t *value) const;
   bool GetU32AttributeValue(int id, uint32_t *value) const;
@@ -55,7 +60,7 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // them.
   bool GetRawAttributeValue(int id, ByteString *output) const;
   // TODO(wdg): |GetRawAttribute| is a stopgap to support various
-  // UserBoundNlMessage::ToString methods and must, once those are re-written,
+  // Nl80211Message::ToString methods and must, once those are re-written,
   // be destroyed.
   const Nl80211RawAttribute *GetRawAttribute(int id) const;
 
