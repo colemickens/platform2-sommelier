@@ -103,21 +103,35 @@ map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 // Nl80211Message
 //
 
-// TODO(wdg): do the nlattr parsing inside here.
-bool Nl80211Message::Init(nlattr *tb[NL80211_ATTR_MAX + 1],
-                          nlmsghdr *msg) {
-  if (!tb) {
-    LOG(ERROR) << "Null |tb| parameter";
+bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
+  if (!const_msg) {
+    LOG(ERROR) << "Null |msg| parameter";
     return false;
   }
 
-  message_ = msg;
-
+  // Netlink header.
+  sequence_number_ = const_msg->nlmsg_seq;
   SLOG(WiFi, 6) << "NL Message " << sequence_number() << " <===";
+
+  // Casting away constness, here, since the libnl code doesn't properly label
+  // their stuff as const (even though it is).
+  nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
+
+  // Genl message header.
+  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(nlmsg_data(msg));
+
+  // Attributes.
+  // Parse the attributes from the nl message payload into the 'tb' array.
+  nlattr *tb[NL80211_ATTR_MAX + 1];
+  nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+            genlmsg_attrlen(gnlh, 0), NULL);
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
-      attributes_.CreateAndInitFromNlAttr(static_cast<nl80211_attrs>(i), tb[i]);
+      // TODO(wdg): When Nl80211Messages instantiate their own attributes,
+      // this call should, instead, call |SetAttributeFromNlAttr|.
+      attributes_.CreateAndInitFromNlAttr(static_cast<enum nl80211_attrs>(i),
+                                          tb[i]);
     }
   }
 
@@ -684,6 +698,14 @@ bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
 // Specific Nl80211Message types.
 //
 
+// An Ack is not a GENL message and, as such, has no command.
+const uint8_t AckMessage::kCommand = NL80211_CMD_UNSPEC;
+const char AckMessage::kCommandString[] = "NL80211_ACK";
+
+string AckMessage::ToString() const {
+  return "NL80211_ACK";
+}
+
 const uint8_t AssociateMessage::kCommand = NL80211_CMD_ASSOCIATE;
 const char AssociateMessage::kCommandString[] = "NL80211_CMD_ASSOCIATE";
 
@@ -809,6 +831,20 @@ string DisconnectMessage::ToString() const {
   return output;
 }
 
+// An Error is not a GENL message and, as such, has no command.
+const uint8_t ErrorMessage::kCommand = NL80211_CMD_UNSPEC;
+const char ErrorMessage::kCommandString[] = "NL80211_ERROR";
+
+ErrorMessage::ErrorMessage(uint32_t error)
+  : Nl80211Message(kCommand, kCommandString), error_(error) {}
+
+string ErrorMessage::ToString() const {
+  string output;
+  StringAppendF(&output, "NL80211_ERROR %" PRIx32 ": %s",
+                error_, strerror(error_));
+  return output;
+}
+
 const uint8_t FrameTxStatusMessage::kCommand = NL80211_CMD_FRAME_TX_STATUS;
 const char FrameTxStatusMessage::kCommandString[] =
     "NL80211_CMD_FRAME_TX_STATUS";
@@ -823,6 +859,10 @@ string FrameTxStatusMessage::ToString() const {
                  "acked" : "no ack"));
   return output;
 }
+
+const uint8_t GetRegMessage::kCommand = NL80211_CMD_GET_REG;
+const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
+
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
 const char JoinIbssMessage::kCommandString[] = "NL80211_CMD_JOIN_IBSS";
@@ -863,7 +903,7 @@ string MichaelMicFailureMessage::ToString() const {
   }
   uint32_t key_type_val = UINT32_MAX;
   if (attributes().GetU32AttributeValue(NL80211_ATTR_KEY_TYPE, &key_type_val)) {
-    nl80211_key_type key_type = static_cast<nl80211_key_type >(key_type_val);
+    nl80211_key_type key_type = static_cast<nl80211_key_type>(key_type_val);
     StringAppendF(&output, " Key Type %s", StringFromKeyType(key_type).c_str());
   }
 
@@ -933,6 +973,14 @@ string NewWifiMessage::ToString() const {
   attributes().GetStringAttributeValue(NL80211_ATTR_WIPHY_NAME, &wifi_name);
   StringAppendF(&output, "renamed to %s", wifi_name.c_str());
   return output;
+}
+
+// A NOOP is not a GENL message and, as such, has no command.
+const uint8_t NoopMessage::kCommand = NL80211_CMD_UNSPEC;
+const char NoopMessage::kCommandString[] = "NL80211_NOOP";
+
+string NoopMessage::ToString() const {
+  return "NL80211_NOOP";
 }
 
 const uint8_t NotifyCqmMessage::kCommand = NL80211_CMD_NOTIFY_CQM;
@@ -1310,80 +1358,84 @@ Nl80211Message *Nl80211MessageFactory::CreateMessage(nlmsghdr *msg) {
   }
 
   scoped_ptr<Nl80211Message> message;
+  void *payload = nlmsg_data(msg);
 
-  genlmsghdr *gnlh =
-      reinterpret_cast<genlmsghdr *>(nlmsg_data(msg));
+  if (msg->nlmsg_type == NLMSG_NOOP) {
+    SLOG(WiFi, 6) << "Creating a NOP message";
+    message.reset(new NoopMessage());
+  } else if (msg->nlmsg_type == NLMSG_ERROR) {
+    uint32_t error_code = *(reinterpret_cast<uint32_t *>(payload));
+    if (error_code) {
+      SLOG(WiFi, 6) << "Creating an ERROR message:" << error_code;
+      message.reset(new ErrorMessage(error_code));
+    } else {
+      SLOG(WiFi, 6) << "Creating an ACK message";
+      message.reset(new AckMessage());
+    }
+  } else {
+    SLOG(WiFi, 6) << "Creating a Regular message";
+    genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
 
-  if (!gnlh) {
-    LOG(ERROR) << "NULL gnlh";
-    return NULL;
-  }
+    switch (gnlh->cmd) {
+      case AssociateMessage::kCommand:
+        message.reset(new AssociateMessage()); break;
+      case AuthenticateMessage::kCommand:
+        message.reset(new AuthenticateMessage()); break;
+      case CancelRemainOnChannelMessage::kCommand:
+        message.reset(new CancelRemainOnChannelMessage()); break;
+      case ConnectMessage::kCommand:
+        message.reset(new ConnectMessage()); break;
+      case DeauthenticateMessage::kCommand:
+        message.reset(new DeauthenticateMessage()); break;
+      case DeleteStationMessage::kCommand:
+        message.reset(new DeleteStationMessage()); break;
+      case DisassociateMessage::kCommand:
+        message.reset(new DisassociateMessage()); break;
+      case DisconnectMessage::kCommand:
+        message.reset(new DisconnectMessage()); break;
+      case FrameTxStatusMessage::kCommand:
+        message.reset(new FrameTxStatusMessage()); break;
+      case GetRegMessage::kCommand:
+        message.reset(new GetRegMessage()); break;
+      case JoinIbssMessage::kCommand:
+        message.reset(new JoinIbssMessage()); break;
+      case MichaelMicFailureMessage::kCommand:
+        message.reset(new MichaelMicFailureMessage()); break;
+      case NewScanResultsMessage::kCommand:
+        message.reset(new NewScanResultsMessage()); break;
+      case NewStationMessage::kCommand:
+        message.reset(new NewStationMessage()); break;
+      case NewWifiMessage::kCommand:
+        message.reset(new NewWifiMessage()); break;
+      case NotifyCqmMessage::kCommand:
+        message.reset(new NotifyCqmMessage()); break;
+      case PmksaCandidateMessage::kCommand:
+        message.reset(new PmksaCandidateMessage()); break;
+      case RegBeaconHintMessage::kCommand:
+        message.reset(new RegBeaconHintMessage()); break;
+      case RegChangeMessage::kCommand:
+        message.reset(new RegChangeMessage()); break;
+      case RemainOnChannelMessage::kCommand:
+        message.reset(new RemainOnChannelMessage()); break;
+      case RoamMessage::kCommand:
+        message.reset(new RoamMessage()); break;
+      case ScanAbortedMessage::kCommand:
+        message.reset(new ScanAbortedMessage()); break;
+      case TriggerScanMessage::kCommand:
+        message.reset(new TriggerScanMessage()); break;
+      case UnprotDeauthenticateMessage::kCommand:
+        message.reset(new UnprotDeauthenticateMessage()); break;
+      case UnprotDisassociateMessage::kCommand:
+        message.reset(new UnprotDisassociateMessage()); break;
 
-  switch (gnlh->cmd) {
-    case AssociateMessage::kCommand:
-      message.reset(new AssociateMessage()); break;
-    case AuthenticateMessage::kCommand:
-      message.reset(new AuthenticateMessage()); break;
-    case CancelRemainOnChannelMessage::kCommand:
-      message.reset(new CancelRemainOnChannelMessage()); break;
-    case ConnectMessage::kCommand:
-      message.reset(new ConnectMessage()); break;
-    case DeauthenticateMessage::kCommand:
-      message.reset(new DeauthenticateMessage()); break;
-    case DeleteStationMessage::kCommand:
-      message.reset(new DeleteStationMessage()); break;
-    case DisassociateMessage::kCommand:
-      message.reset(new DisassociateMessage()); break;
-    case DisconnectMessage::kCommand:
-      message.reset(new DisconnectMessage()); break;
-    case FrameTxStatusMessage::kCommand:
-      message.reset(new FrameTxStatusMessage()); break;
-    case JoinIbssMessage::kCommand:
-      message.reset(new JoinIbssMessage()); break;
-    case MichaelMicFailureMessage::kCommand:
-      message.reset(new MichaelMicFailureMessage()); break;
-    case NewScanResultsMessage::kCommand:
-      message.reset(new NewScanResultsMessage()); break;
-    case NewStationMessage::kCommand:
-      message.reset(new NewStationMessage()); break;
-    case NewWifiMessage::kCommand:
-      message.reset(new NewWifiMessage()); break;
-    case NotifyCqmMessage::kCommand:
-      message.reset(new NotifyCqmMessage()); break;
-    case PmksaCandidateMessage::kCommand:
-      message.reset(new PmksaCandidateMessage()); break;
-    case RegBeaconHintMessage::kCommand:
-      message.reset(new RegBeaconHintMessage()); break;
-    case RegChangeMessage::kCommand:
-      message.reset(new RegChangeMessage()); break;
-    case RemainOnChannelMessage::kCommand:
-      message.reset(new RemainOnChannelMessage()); break;
-    case RoamMessage::kCommand:
-      message.reset(new RoamMessage()); break;
-    case ScanAbortedMessage::kCommand:
-      message.reset(new ScanAbortedMessage()); break;
-    case TriggerScanMessage::kCommand:
-      message.reset(new TriggerScanMessage()); break;
-    case UnprotDeauthenticateMessage::kCommand:
-      message.reset(new UnprotDeauthenticateMessage()); break;
-    case UnprotDisassociateMessage::kCommand:
-      message.reset(new UnprotDisassociateMessage()); break;
+      default:
+        message.reset(new UnknownMessage(gnlh->cmd)); break;
+    }
 
-    default:
-      message.reset(new UnknownMessage(gnlh->cmd)); break;
-      break;
-  }
-
-  nlattr *tb[NL80211_ATTR_MAX + 1];
-
-  // Parse the attributes from the nl message payload (which starts at the
-  // header) into the 'tb' array.
-  nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-            genlmsg_attrlen(gnlh, 0), NULL);
-
-  if (!message->Init(tb, msg)) {
-    LOG(ERROR) << "Message did not initialize properly";
-    return NULL;
+    if (!message->InitFromNlmsg(msg)) {
+      LOG(ERROR) << "Message did not initialize properly";
+      return NULL;
+    }
   }
 
   return message.release();

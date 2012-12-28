@@ -32,15 +32,13 @@ class Nl80211Message {
   static const char kBogusMacAddress[];
 
   Nl80211Message(uint8 message_type, const char *message_type_string)
-      : message_(NULL),
-        message_type_(message_type),
+      : message_type_(message_type),
         message_type_string_(message_type_string),
         sequence_number_(kIllegalMessage) {}
   virtual ~Nl80211Message() {}
 
-  // TODO(wdg): Change to |InitFromNlmsg|.
   // Initializes the message with bytes from the kernel.
-  virtual bool Init(nlattr *tb[NL80211_ATTR_MAX + 1], nlmsghdr *msg);
+  virtual bool InitFromNlmsg(const nlmsghdr *msg);
 
   uint32_t sequence_number() const { return sequence_number_; }
 
@@ -123,7 +121,6 @@ class Nl80211Message {
 
   static const uint32_t kIllegalMessage;
 
-  nlmsghdr *message_;
   const uint8 message_type_;
   const char *message_type_string_;
   static std::map<uint16_t, std::string> *reason_code_string_;
@@ -171,6 +168,19 @@ class Nl80211Frame {
 //
 // Specific Nl80211Message types.
 //
+
+class AckMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  AckMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+  virtual std::string ToString() const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AckMessage);
+};
 
 class AssociateMessage : public Nl80211Message {
  public:
@@ -285,6 +295,22 @@ class DisconnectMessage : public Nl80211Message {
 };
 
 
+class ErrorMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  ErrorMessage(uint32_t error);
+
+  virtual std::string ToString() const;
+
+ private:
+  uint32_t error_;
+
+  DISALLOW_COPY_AND_ASSIGN(ErrorMessage);
+};
+
+
 class FrameTxStatusMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -296,6 +322,17 @@ class FrameTxStatusMessage : public Nl80211Message {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FrameTxStatusMessage);
+};
+
+class GetRegMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetRegMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetRegMessage);
 };
 
 
@@ -366,6 +403,20 @@ class NewWifiMessage : public Nl80211Message {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewWifiMessage);
+};
+
+
+class NoopMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  NoopMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+  virtual std::string ToString() const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NoopMessage);
 };
 
 
