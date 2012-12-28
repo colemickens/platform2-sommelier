@@ -89,6 +89,7 @@ int main(int argc, char *argv[]) {
     glbench::GetReadPixelTest(),
     glbench::GetAttributeFetchShaderTest(),
     glbench::GetVaryingsAndDdxyShaderTest(),
+    glbench::GetTextureReuseTest(),
     glbench::GetTextureUpdateTest(),
     glbench::GetTextureUploadTest(),
   };

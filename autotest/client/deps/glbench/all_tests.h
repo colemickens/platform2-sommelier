@@ -14,6 +14,7 @@ TestBase* GetTriangleSetupTest();
 TestBase* GetAttributeFetchShaderTest();
 TestBase* GetVaryingsAndDdxyShaderTest();
 TestBase* GetWindowManagerCompositingTest(bool scissor);
+TestBase* GetTextureReuseTest();
 TestBase* GetTextureUpdateTest();
 TestBase* GetTextureUploadTest();
 
