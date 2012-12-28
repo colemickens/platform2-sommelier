@@ -517,10 +517,7 @@ void KeyboardBacklightController::UpdateBacklightEnabled() {
 }
 
 void KeyboardBacklightController::HaltVideoTimeout() {
-  if (video_timeout_timer_id_ == 0)
-    return;
-  g_source_remove(video_timeout_timer_id_);
-  video_timeout_timer_id_ = 0;
+  util::RemoveTimeout(&video_timeout_timer_id_ );
 }
 
 gboolean KeyboardBacklightController::VideoTimeout() {

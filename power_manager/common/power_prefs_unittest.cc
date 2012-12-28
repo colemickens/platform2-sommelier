@@ -45,15 +45,15 @@ namespace power_manager {
 // update a pref file, and then call RunUntilPrefChanged().
 class TestPrefObserver {
  public:
-  TestPrefObserver()
-      : loop_runner_(base::TimeDelta::FromMilliseconds(kPrefChangeTimeoutMs)) {
-  }
+  TestPrefObserver() {}
   ~TestPrefObserver() {}
 
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
   std::string RunUntilPrefChanged() {
-    CHECK(loop_runner_.StartLoop()) << "Pref change not received";
+    CHECK(loop_runner_.StartLoop(
+              base::TimeDelta::FromMilliseconds(kPrefChangeTimeoutMs)))
+        << "Pref change not received";
     return pref_name_;
   }
 

@@ -25,12 +25,14 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
 }
 
 void Daemon::MetricInit() {
-  g_timeout_add(kMetricBacklightLevelIntervalMs,
-                &Daemon::GenerateBacklightLevelMetricThunk, this);
+  generate_backlight_metrics_timeout_id_ =
+      g_timeout_add(kMetricBacklightLevelIntervalMs,
+                    &Daemon::GenerateBacklightLevelMetricThunk, this);
   // Run GenerateThermalMetrics once now as its a long interval
   GenerateThermalMetrics();
-  g_timeout_add(kMetricThermalIntervalMs,
-                &Daemon::GenerateThermalMetricsThunk, this);
+  generate_thermal_metrics_timeout_id_ =
+      g_timeout_add(kMetricThermalIntervalMs,
+                    &Daemon::GenerateThermalMetricsThunk, this);
 }
 
 void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
@@ -69,7 +71,8 @@ void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
 }
 
 gboolean Daemon::GenerateBacklightLevelMetric() {
-  double percent;
+  generate_backlight_metrics_timeout_id_  = 0;
+  double percent = 0.0;
   if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
       backlight_controller_->GetCurrentBrightnessPercent(&percent)) {
     SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(percent),
@@ -354,8 +357,9 @@ void Daemon::SendThermalMetrics(unsigned int aborted, unsigned int turned_on,
 }
 
 gboolean Daemon::GenerateThermalMetrics() {
-  unsigned int aborted, turned_on, multiple;
+  generate_thermal_metrics_timeout_id_ = 0;
 
+  unsigned int aborted = 0, turned_on = 0, multiple = 0;
   if (!util::GetUintFromFile(kMetricThermalAbortedFanFilename, &aborted) ||
       !util::GetUintFromFile(kMetricThermalTurnedOnFanFilename, &turned_on) ||
       !util::GetUintFromFile(kMetricThermalMultipleFanFilename, &multiple)) {

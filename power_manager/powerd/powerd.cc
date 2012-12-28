@@ -113,6 +113,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       taper_time_diff_s_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
+      clean_shutdown_timeout_id_(0),
       battery_poll_interval_ms_(0),
       battery_poll_short_interval_ms_(0),
       enforce_lock_(false),
@@ -123,6 +124,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
       is_power_status_stale_(true),
+      generate_backlight_metrics_timeout_id_(0),
+      generate_thermal_metrics_timeout_id_(0),
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
       udev_(NULL),
@@ -131,6 +134,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       is_projecting_(false),
       cras_client_(NULL),
       connected_to_cras_(false),
+      cras_retry_connect_timeout_id_(0),
       shutdown_reason_(kShutdownReasonUnknown),
       require_usb_input_device_to_suspend_(false),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
@@ -140,6 +144,11 @@ Daemon::Daemon(BacklightController* backlight_controller,
 }
 
 Daemon::~Daemon() {
+  util::RemoveTimeout(&cras_retry_connect_timeout_id_);
+  util::RemoveTimeout(&clean_shutdown_timeout_id_);
+  util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
+  util::RemoveTimeout(&generate_thermal_metrics_timeout_id_);
+
   if (udev_)
     udev_unref(udev_);
   idle_->RemoveObserver(this);
@@ -182,7 +191,8 @@ void Daemon::Init() {
   if (cras_client_connect(cras_client_) ||
       cras_client_run_thread(cras_client_)) {
     LOG(WARNING) << "Couldn't connect CRAS client, trying again later.";
-    g_timeout_add(kCrasRetryConnectMs, ConnectToCrasThunk, this);
+    cras_retry_connect_timeout_id_ =
+        g_timeout_add(kCrasRetryConnectMs, ConnectToCrasThunk, this);
   } else {
     connected_to_cras_ = true;
   }
@@ -426,7 +436,8 @@ void Daemon::StartCleanShutdown() {
   // Cancel any outstanding suspend in flight.
   suspender_.CancelSuspend();
   util::SendSignalToPowerM(kRequestCleanShutdown);
-  g_timeout_add(clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
+  clean_shutdown_timeout_id_ = g_timeout_add(
+      clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
 }
 
 void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
@@ -745,8 +756,7 @@ void Daemon::OnBrightnessChanged(double brightness_percent,
 }
 
 void Daemon::HaltPollPowerSupply() {
-  if (poll_power_supply_timer_id_ > 0)
-    g_source_remove(poll_power_supply_timer_id_);
+  util::RemoveTimeout(&poll_power_supply_timer_id_);
 }
 
 void Daemon::ResumePollPowerSupply() {
@@ -1522,6 +1532,7 @@ gboolean Daemon::CleanShutdownTimedOut() {
   } else {
     LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
   }
+  clean_shutdown_timeout_id_ = 0;
   return FALSE;
 }
 
@@ -1767,6 +1778,7 @@ gboolean Daemon::ConnectToCras() {
   }
   LOG(INFO) << "CRAS client successfully connected to CRAS server.";
   connected_to_cras_ = true;
+  cras_retry_connect_timeout_id_ = 0;
   return FALSE;
 }
 

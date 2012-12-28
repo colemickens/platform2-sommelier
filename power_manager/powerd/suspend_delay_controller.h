@@ -89,9 +89,6 @@ class SuspendDelayController {
   // to suspend.
   SIGNAL_CALLBACK_0(SuspendDelayController, gboolean, OnDelayExpiration);
 
-  // Cancels |delay_expiration_timeout_id_| if set and resets it to 0.
-  void CancelDelayExpirationTimeout();
-
   // Posts a NotifyObservers() call to the message loop.
   void PostNotifyObserversTask(int suspend_id);
 

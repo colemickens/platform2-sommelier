@@ -55,7 +55,7 @@ Suspender::Suspender(ScreenLocker* locker,
 
 Suspender::~Suspender() {
   suspend_delay_controller_->RemoveObserver(this);
-  CancelCheckSuspendTimeout();
+  util::RemoveTimeout(&check_suspend_timeout_id_);
 }
 
 void Suspender::NameOwnerChangedHandler(DBusGProxy*,
@@ -111,7 +111,7 @@ void Suspender::RequestSuspend() {
   LOG(INFO) << "Request Suspend #" << suspend_sequence_number_
             << " Delay Timeout = " << timeout_ms;
 
-  CancelCheckSuspendTimeout();
+  util::RemoveTimeout(&check_suspend_timeout_id_);
   if (timeout_ms > 0) {
     check_suspend_timeout_id_ = g_timeout_add(
         timeout_ms, CheckSuspendTimeoutThunk, this);
@@ -123,7 +123,7 @@ void Suspender::CheckSuspend() {
       suspend_delays_outstanding_ == 0 &&
       suspend_delay_controller_->ready_for_suspend() &&
       (!wait_for_screen_lock_ || locker_->is_locked())) {
-    CancelCheckSuspendTimeout();
+    util::RemoveTimeout(&check_suspend_timeout_id_);
     suspend_requested_ = false;
     LOG(INFO) << "All suspend delays accounted for. Suspending.";
     Suspend();
@@ -156,7 +156,7 @@ void Suspender::CancelSuspend() {
 
   suspend_requested_ = false;
   suspend_delays_outstanding_ = 0;
-  CancelCheckSuspendTimeout();
+  util::RemoveTimeout(&check_suspend_timeout_id_);
 }
 
 DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
@@ -356,13 +356,6 @@ void Suspender::BroadcastSignalToClients(const char* signal_name,
                            DBUS_TYPE_INVALID);
   ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   ::dbus_message_unref(signal);
-}
-
-void Suspender::CancelCheckSuspendTimeout() {
-  if (check_suspend_timeout_id_) {
-    g_source_remove(check_suspend_timeout_id_);
-    check_suspend_timeout_id_ = 0;
-  }
 }
 
 }  // namespace power_manager

@@ -9,6 +9,8 @@
 
 class FilePath;
 
+typedef unsigned int guint;
+
 namespace power_manager {
 namespace util {
 
@@ -35,6 +37,10 @@ bool GetUintFromFile(const char* filename, unsigned int* value);
 
 // Returns a string describing |type|.
 const char* InputTypeToString(InputType type);
+
+// Deletes a GLib timeout ID via g_source_remove() and resets the variable
+// containing it to 0.  Does nothing if |timeout_id| points at a non-zero ID.
+void RemoveTimeout(guint* timeout_id);
 
 }  // namespace util
 }  // namespace power_manager

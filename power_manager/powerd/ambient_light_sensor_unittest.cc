@@ -22,6 +22,10 @@ namespace {
 // many milliseconds.
 const guint kChangeTimeoutMs = 5000;
 
+// Shorter version of kChangeTimeoutMs for tests that expect a timeout and don't
+// want to slow things down.
+const guint kChangeShortTimeoutMs = 500;
+
 // Frequency with which the ambient light sensor file is polled.
 const int kPollIntervalMs = 100;
 
@@ -29,14 +33,19 @@ const int kPollIntervalMs = 100;
 // until it receives notification that the ambient light level has changed.
 class TestObserver : public AmbientLightSensorObserver {
  public:
-  TestObserver()
-      : loop_runner_(base::TimeDelta::FromMilliseconds(kChangeTimeoutMs)) {
-  }
+  TestObserver() {}
   virtual ~TestObserver() {}
 
   // Runs |loop_| until OnAmbientLightChanged() is called.
   bool RunUntilAmbientLightChanged() {
-    return loop_runner_.StartLoop();
+    return loop_runner_.StartLoop(
+        base::TimeDelta::FromMilliseconds(kChangeTimeoutMs));
+  }
+
+  // Alternate version of RunUntilAmbientLightChanged() with a shorter timeout.
+  bool RunShortUntilAmbientLightChanged() {
+    return loop_runner_.StartLoop(
+        base::TimeDelta::FromMilliseconds(kChangeShortTimeoutMs));
   }
 
   // AmbientLightSensorObserver implementation:
@@ -114,7 +123,7 @@ TEST_F(AmbientLightSensorTest, Basic) {
 
   // When the lux value doesn't change, we shouldn't be called.
   WriteLux(200);
-  EXPECT_FALSE(observer_.RunUntilAmbientLightChanged());
+  EXPECT_FALSE(observer_.RunShortUntilAmbientLightChanged());
   EXPECT_EQ(200, sensor_->GetAmbientLightLux());
 }
 

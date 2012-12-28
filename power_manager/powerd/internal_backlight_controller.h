@@ -130,9 +130,6 @@ class InternalBacklightController : public BacklightController {
                            ScreenPowerOutputSelection,
                            ScreenPowerState);
 
-  // Cancels |set_screen_power_state_timeout_id_| if set.
-  void CancelSetScreenPowerStateTimeout();
-
   // Backlight used for dimming. Non-owned.
   system::BacklightInterface* backlight_;
 

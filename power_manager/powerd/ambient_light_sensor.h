@@ -80,6 +80,9 @@ class AmbientLightSensor {
   // overridden by tests.
   FilePath device_list_path_;
 
+  // GLib timeout ID for running ReadAls(), or 0 if unset.
+  guint poll_timeout_id_;
+
   // Time between polls of the sensor file, in milliseconds.
   int poll_interval_ms_;
 

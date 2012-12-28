@@ -24,14 +24,13 @@ const guint kSuspendTimeoutMs = 5000;
 
 class TestObserver : public SuspendDelayObserver {
  public:
-  TestObserver()
-      : loop_runner_(base::TimeDelta::FromMilliseconds(kSuspendTimeoutMs)) {
-  }
+  TestObserver() {}
   virtual ~TestObserver() {}
 
   // Runs |loop_| until OnReadyForSuspend() is called.
   bool RunUntilReadyForSuspend() {
-    return loop_runner_.StartLoop();
+    return loop_runner_.StartLoop(
+        base::TimeDelta::FromMilliseconds(kSuspendTimeoutMs));
   }
 
   // SuspendDelayObserver implementation:

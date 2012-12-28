@@ -61,7 +61,8 @@ POWER_PREFS_UNITTEST_OBJS = common/inotify.o \
                             common/power_prefs.o
 CXX_BINARY(common/power_prefs_unittest): $(POWER_PREFS_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil_test.pie.a)
+	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil.pie.a)
 CXX_BINARY(common/power_prefs_unittest): \
 	CPPFLAGS +=$(POWER_PREFS_UNITTEST_FLAGS)
 CXX_BINARY(common/power_prefs_unittest): LDLIBS += $(POWER_PREFS_UNITTEST_LIBS)

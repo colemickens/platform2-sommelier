@@ -10,6 +10,7 @@
 #include "base/string_number_conversions.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
@@ -33,9 +34,8 @@ SuspendDelayController::SuspendDelayController(DBusSenderInterface* dbus_sender)
 }
 
 SuspendDelayController::~SuspendDelayController() {
-  if (notify_observers_timeout_id_)
-    g_source_remove(notify_observers_timeout_id_);
-  CancelDelayExpirationTimeout();
+  util::RemoveTimeout(&notify_observers_timeout_id_);
+  util::RemoveTimeout(&delay_expiration_timeout_id_);
   dbus_sender_ = NULL;
 }
 
@@ -134,7 +134,7 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   if (delay_ids_being_waited_on_.empty()) {
     PostNotifyObserversTask(current_suspend_id_);
   } else {
-    CancelDelayExpirationTimeout();
+    util::RemoveTimeout(&delay_expiration_timeout_id_);
     base::TimeDelta max_timeout;
     for (DelayInfoMap::const_iterator it = registered_delays_.begin();
          it != registered_delays_.end(); ++it) {
@@ -149,13 +149,6 @@ void SuspendDelayController::PrepareForSuspend(int suspend_id) {
   SuspendImminent proto;
   proto.set_suspend_id(current_suspend_id_);
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendImminentSignal, proto);
-}
-
-void SuspendDelayController::CancelDelayExpirationTimeout() {
-  if (delay_expiration_timeout_id_) {
-    g_source_remove(delay_expiration_timeout_id_);
-    delay_expiration_timeout_id_ = 0;
-  }
 }
 
 void SuspendDelayController::UnregisterDelayInternal(int delay_id) {
@@ -174,7 +167,7 @@ void SuspendDelayController::RemoveDelayFromWaitList(int delay_id) {
 
   delay_ids_being_waited_on_.erase(delay_id);
   if (delay_ids_being_waited_on_.empty()) {
-    CancelDelayExpirationTimeout();
+    util::RemoveTimeout(&delay_expiration_timeout_id_);
     PostNotifyObserversTask(current_suspend_id_);
   }
 }
@@ -200,8 +193,7 @@ gboolean SuspendDelayController::OnDelayExpiration() {
 }
 
 void SuspendDelayController::PostNotifyObserversTask(int suspend_id) {
-  if (notify_observers_timeout_id_)
-    g_source_remove(notify_observers_timeout_id_);
+  util::RemoveTimeout(&notify_observers_timeout_id_);
   notify_observers_timeout_id_ = g_timeout_add(
       0, NotifyObserversThunk, CreateNotifyObserversArgs(this, suspend_id));
 }

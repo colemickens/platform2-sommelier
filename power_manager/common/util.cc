@@ -4,6 +4,7 @@
 
 #include "power_manager/common/util.h"
 
+#include <glib.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -108,6 +109,13 @@ const char* InputTypeToString(InputType type) {
     default:
       NOTREACHED();
       return "";
+  }
+}
+
+void RemoveTimeout(guint* timeout_id) {
+  if (*timeout_id) {
+    g_source_remove(*timeout_id);
+    *timeout_id = 0;
   }
 }
 

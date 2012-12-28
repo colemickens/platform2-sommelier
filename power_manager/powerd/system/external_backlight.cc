@@ -22,6 +22,7 @@
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 namespace system {
@@ -158,10 +159,7 @@ ExternalBacklight::ExternalBacklight()
       scan_for_displays_timeout_id_(0) {}
 
 ExternalBacklight::~ExternalBacklight() {
-  if (scan_for_displays_timeout_id_) {
-    g_source_remove(scan_for_displays_timeout_id_);
-    scan_for_displays_timeout_id_ = 0;
-  }
+  util::RemoveTimeout(&scan_for_displays_timeout_id_);
   for (I2CDeviceList::iterator iter = display_devices_.begin();
        iter != display_devices_.end();
        ++iter) {

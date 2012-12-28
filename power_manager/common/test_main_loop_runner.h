@@ -23,13 +23,13 @@ namespace power_manager {
 // 4. Test that the asynchronous event included the expected data.
 class TestMainLoopRunner {
  public:
-  explicit TestMainLoopRunner(const base::TimeDelta& timeout_delay);
+  TestMainLoopRunner();
   ~TestMainLoopRunner();
 
-  // Runs |loop_| until StopLoop() is called or |timeout_delay_| has elapsed.
+  // Runs |loop_| until StopLoop() is called or |timeout_delay| has elapsed.
   // Returns true if the loop was stopped via StopLoop() or false if the timeout
   // was hit.
-  bool StartLoop();
+  bool StartLoop(base::TimeDelta timeout_delay);
 
   // Stops |loop_|, resulting in control returning to StartLoop() (which will
   // return true).
@@ -42,9 +42,6 @@ class TestMainLoopRunner {
                     OnTimeout);
 
   GMainLoop* loop_;
-
-  // Delay after which OnTimeout() will be called.
-  base::TimeDelta timeout_delay_;
 
   // GLib event source ID for running OnTimeout().  0 if not running.
   guint timeout_id_;

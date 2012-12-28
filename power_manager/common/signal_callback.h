@@ -27,7 +27,7 @@
 //   }
 //   bool MyClass::Run() {
 //     // Will result in this->CallbackFunc() being invoked.
-//     g_timeout_add(0, MyClass::CallbackFuncThunk, this);
+//     guint timeout_id = g_timeout_add(0, MyClass::CallbackFuncThunk, this);
 //   }
 
 #define SIGNAL_CALLBACK_0(CLASS, RETURN, METHOD)                               \
@@ -76,8 +76,8 @@
 //     int value;
 //     char* string;
 //     // Will result in this->CallbackFunc(value, string) being invoked.
-//     g_timeout_add(0, MyClass::CallbackFuncThunk,
-//                   CreateCallbackFuncArgs(this, value, string));
+//     guint timeout_id = g_timeout_add(0, MyClass::CallbackFuncThunk,
+//        CreateCallbackFuncArgs(this, value, string));
 //   }
 
 #define SIGNAL_CALLBACK_PACKED_1(CLASS, RETURN, METHOD, TYPE0)                 \

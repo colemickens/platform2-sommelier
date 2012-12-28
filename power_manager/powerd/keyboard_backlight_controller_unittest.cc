@@ -10,6 +10,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/common/mock_power_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
@@ -306,7 +307,7 @@ TEST_F(KeyboardBacklightControllerTest, OnVideoDetectorEvent) {
   EXPECT_EQ(0, controller_->current_level_);
   EXPECT_EQ(kTestCurrentPercent, controller_->als_target_percent_);
   ASSERT_GT(controller_->video_timeout_timer_id_, 0);
-  g_source_remove(controller_->video_timeout_timer_id_);
+  util::RemoveTimeout(&controller_->video_timeout_timer_id_);
 }
 
 TEST_F(KeyboardBacklightControllerTest, UpdateBacklightEnabled) {

@@ -15,6 +15,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/power_prefs.h"
+#include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/powerd.h"
@@ -40,9 +41,11 @@ StateControl::StateControl(Daemon* daemon)
       disable_idle_blank_(false),
       disable_idle_suspend_(false),
       disable_lid_suspend_(false),
+      record_expired_timeout_id_(0),
       daemon_(daemon) {}
 
 StateControl::~StateControl() {
+  util::RemoveTimeout(&record_expired_timeout_id_);
   StateControlList::iterator iter = state_override_list_.begin();
   while (state_override_list_.end() != iter) {
     delete iter->second;
@@ -97,8 +100,11 @@ void StateControl::RescanState(time_t cur_time) {
             << " disable_idle_blank = "   << disable_idle_blank_
             << " disable_idle_suspend = " << disable_idle_suspend_
             << " disable_lid_suspend = "  << disable_lid_suspend_;
-  if (next_check_  > 0)
-    g_timeout_add_seconds(next_check_ - time(NULL), RecordExpiredThunk, this);
+  if (next_check_ > 0) {
+    util::RemoveTimeout(&record_expired_timeout_id_);
+    record_expired_timeout_id_ = g_timeout_add_seconds(
+        next_check_ - time(NULL), RecordExpiredThunk, this);
+  }
 }
 
 void StateControl::RemoveOverride(int request_id) {
@@ -131,6 +137,7 @@ void StateControl::RemoveOverrideAndUpdate(int request_id) {
 
 gboolean StateControl::RecordExpired() {
   LOG(INFO) << "Expiring StateControl entries";
+  record_expired_timeout_id_ = 0;
   RescanState();
   CHECK(daemon_);
   daemon_->UpdateIdleStates();
@@ -234,7 +241,9 @@ bool StateControl::StateOverrideRequestStruct(const StateControlInfo* request,
 
   if (next_check_ == 0 || new_entry->expires < next_check_) {
     next_check_ = new_entry->expires;
-    g_timeout_add_seconds(next_check_ - time(NULL), RecordExpiredThunk, this);
+    util::RemoveTimeout(&record_expired_timeout_id_);
+    record_expired_timeout_id_ = g_timeout_add_seconds(
+        next_check_ - time(NULL), RecordExpiredThunk, this);
   }
 
   *return_value = new_entry->request_id;

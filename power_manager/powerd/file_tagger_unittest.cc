@@ -7,6 +7,7 @@
 #include "base/file_util.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/scoped_temp_dir.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/file_tagger.h"
 
 namespace power_manager {
@@ -33,22 +34,31 @@ class FileTaggerTest : public ::testing::Test {
 struct CheckFileTaggerData {
   GMainLoop* loop;
   FileTagger* file_tagger;
+
+  // GLib timeout ID for running CheckFileTagger() and QuitLoop(), or 0 after
+  // the timeouts have been removed.
+  guint check_timeout_id;
+  guint quit_timeout_id;
 };
 
 static gboolean CheckFileTagger(gpointer data) {
   CHECK(data);
   CheckFileTaggerData* ft_data = static_cast<CheckFileTaggerData*>(data);
   CHECK(ft_data->file_tagger);
-  if (ft_data->file_tagger->can_tag_files())
+  if (ft_data->file_tagger->can_tag_files()) {
     g_main_loop_quit(ft_data->loop);
-  return false;
+    ft_data->check_timeout_id = 0;
+    return FALSE;
+  }
+  return TRUE;
 }
 
 static gboolean QuitLoop(gpointer data) {
-  GMainLoop* loop = static_cast<GMainLoop*>(data);
   LOG(INFO) << "Timed out waiting for inotify to call TraceFileChangeHandler.";
-  g_main_loop_quit(loop);
-  return false;
+  CheckFileTaggerData* ft_data = static_cast<CheckFileTaggerData*>(data);
+  g_main_loop_quit(ft_data->loop);
+  ft_data->quit_timeout_id = 0;
+  return FALSE;
 }
 
 TEST_F(FileTaggerTest, SuspendFile) {
@@ -125,10 +135,11 @@ TEST_F(FileTaggerTest, FileCache) {
   // Allow 60 seconds for the system to notify file tagger after a file
   // has been deleted.
   const int timeout = 60;
-  for (int t = 0; t < timeout && !file_tagger_->can_tag_files_; t += 1)
-    g_timeout_add(t * 1000, CheckFileTagger, &data);
-  g_timeout_add(timeout * 1000, QuitLoop, loop);
+  data.check_timeout_id = g_timeout_add(10, CheckFileTagger, &data);
+  data.quit_timeout_id = g_timeout_add(timeout * 1000, QuitLoop, &data);
   g_main_loop_run(loop);
+  util::RemoveTimeout(&data.check_timeout_id);
+  util::RemoveTimeout(&data.quit_timeout_id);
 
   EXPECT_TRUE(file_tagger_->can_tag_files_);
   // Now both files should exist, after cache has written them.

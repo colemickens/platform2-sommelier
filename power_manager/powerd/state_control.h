@@ -14,6 +14,8 @@
 
 class PowerStateControl;
 
+typedef unsigned int guint;
+
 namespace power_manager {
 
 class Daemon;
@@ -81,6 +83,9 @@ class StateControl {
   bool disable_idle_blank_;
   bool disable_idle_suspend_;
   bool disable_lid_suspend_;
+
+  // GLib source ID for timeout for running RecordExpired(), or 0 if unset.
+  guint record_expired_timeout_id_;
 
   Daemon* daemon_;  // The powerd daemon.  Pointer owned by powerd.
 };

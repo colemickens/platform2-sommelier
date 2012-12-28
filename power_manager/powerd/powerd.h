@@ -527,6 +527,7 @@ class Daemon : public BacklightControllerObserver,
   bool clean_shutdown_initiated_;
   bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
+  guint clean_shutdown_timeout_id_;
   int64 plugged_dim_ms_;
   int64 plugged_off_ms_;
   int64 plugged_suspend_ms_;
@@ -554,6 +555,11 @@ class Daemon : public BacklightControllerObserver,
   PowerSupply power_supply_;
   base::TimeTicks session_start_;
   bool is_power_status_stale_;
+
+  // GLib timeouts for running GenerateBacklightLevelMetric() and
+  // GenerateThermalMetricsThunk(), or 0 if unset.
+  guint generate_backlight_metrics_timeout_id_;
+  guint generate_thermal_metrics_timeout_id_;
 
   // Timestamp the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;
@@ -623,6 +629,9 @@ class Daemon : public BacklightControllerObserver,
   // Indicates whether the cras client has connected to cras server and is up
   // and running.
   bool connected_to_cras_;
+
+  // GLib timeout ID for running ConnectToCras(), or 0 if unset.
+  guint cras_retry_connect_timeout_id_;
 
   // String that indicates reason for shutting down.  See power_constants.cc for
   // valid values.

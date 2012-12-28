@@ -16,7 +16,8 @@ clean: CLEAN(powerd/libsystem.pie.a)
 CXX_BINARY(powerd/system_unittest): \
 	powerd/system/internal_backlight_unittest.o \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
-	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a)
+	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil.pie.a)
 CXX_BINARY(powerd/system_unittest): \
 	CPPFLAGS += $(GLIB_FLAGS)
 CXX_BINARY(powerd/system_unittest): \

@@ -109,7 +109,7 @@ InternalBacklightController::InternalBacklightController(
 }
 
 InternalBacklightController::~InternalBacklightController() {
-  CancelSetScreenPowerStateTimeout();
+  util::RemoveTimeout(&set_screen_power_state_timeout_id_);
   backlight_->set_observer(NULL);
   if (light_sensor_) {
     light_sensor_->RemoveObserver(this);
@@ -689,7 +689,7 @@ void InternalBacklightController::SetScreenPowerState(
   if (!monitor_reconfigure_)
     return;
 
-  CancelSetScreenPowerStateTimeout();
+  util::RemoveTimeout(&set_screen_power_state_timeout_id_);
   if (delay.InMilliseconds() == 0) {
     monitor_reconfigure_->SetScreenPowerState(selection, state);
   } else {
@@ -707,13 +707,6 @@ gboolean InternalBacklightController::HandleSetScreenPowerStateTimeout(
   monitor_reconfigure_->SetScreenPowerState(selection, state);
   set_screen_power_state_timeout_id_ = 0;
   return FALSE;
-}
-
-void InternalBacklightController::CancelSetScreenPowerStateTimeout() {
-  if (set_screen_power_state_timeout_id_) {
-    g_source_remove(set_screen_power_state_timeout_id_);
-    set_screen_power_state_timeout_id_ = 0;
-  }
 }
 
 }  // namespace power_manager

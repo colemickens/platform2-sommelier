@@ -7,7 +7,8 @@ include common.mk
 CXX_BINARY(tools/backlight-tool): \
 	common/power_constants.o \
 	tools/backlight_tool.o \
-	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a)
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil.pie.a)
 CXX_BINARY(tools/backlight-tool): \
 	CPPFLAGS += $(GLIB_FLAGS) $(DBUS_FLAGS)
 CXX_BINARY(tools/backlight-tool): \

@@ -8,6 +8,7 @@
 #include <inttypes.h>
 
 #include "base/logging.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 
@@ -76,8 +77,7 @@ void IdleDetector::CreateAlarm(int64 idle_timeout_ms) {
 }
 
 void IdleDetector::DeleteAlarm(Alarm* alarm) {
-  if (alarm->source_id > 0)
-    g_source_remove(alarm->source_id);
+  util::RemoveTimeout(&alarm->source_id);
   CHECK(alarms_.find(alarm) != alarms_.end());
   alarms_.erase(alarm);
   delete alarm;
@@ -87,8 +87,7 @@ void IdleDetector::ResetAlarms() {
   std::set<Alarm*>::iterator iter;
   for (iter = alarms_.begin(); iter != alarms_.end(); ++iter) {
     Alarm* alarm = *iter;
-    if (alarm->source_id)
-      g_source_remove(alarm->source_id);
+    util::RemoveTimeout(&alarm->source_id);
     alarm->source_id = g_timeout_add(alarm->timeout_ms, HandleAlarmThunk,
                                      CreateHandleAlarmArgs(this, alarm));
   }

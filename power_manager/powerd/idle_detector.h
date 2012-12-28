@@ -11,8 +11,8 @@
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 
-typedef int gint;
-typedef gint gboolean;
+typedef unsigned int guint;
+typedef int gboolean;
 
 namespace power_manager {
 
@@ -56,7 +56,7 @@ class IdleDetector {
  private:
   struct Alarm {
     int64 timeout_ms;
-    gint source_id;
+    guint source_id;
   };
 
   // Create an alarm with the given timeout value.

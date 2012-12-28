@@ -13,6 +13,7 @@
 #include "base/file_util.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 namespace system {
@@ -225,11 +226,7 @@ gboolean InternalBacklight::HandleTransitionTimeout() {
 }
 
 void InternalBacklight::CancelTransition() {
-  if (!transition_timeout_id_)
-    return;
-
-  g_source_remove(transition_timeout_id_);
-  transition_timeout_id_ = 0;
+  util::RemoveTimeout(&transition_timeout_id_);
   transition_start_time_ = base::TimeTicks();
   transition_end_time_ = base::TimeTicks();
   transition_start_level_ = current_brightness_level_;

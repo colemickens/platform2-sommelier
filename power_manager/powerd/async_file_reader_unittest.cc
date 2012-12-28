@@ -11,6 +11,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/scoped_temp_dir.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/common/util.h"
 #include "power_manager/powerd/async_file_reader.h"
 
 namespace {
@@ -66,7 +67,10 @@ namespace power_manager {
 
 class AsyncFileReaderTest : public ::testing::Test {
  public:
-  AsyncFileReaderTest() {}
+  AsyncFileReaderTest() : check_timeout_id_(0) {}
+  ~AsyncFileReaderTest() {
+    util::RemoveTimeout(&check_timeout_id_);
+  }
 
   virtual void SetUp() {
     // Create a temporary directory for the file to read.
@@ -103,7 +107,8 @@ class AsyncFileReaderTest : public ::testing::Test {
     start_time_ = base::TimeTicks::Now();
 
     loop_ = g_main_loop_new(NULL, false);
-    g_timeout_add(kWaitPollMs, CheckForReadCompletionThunk, this);
+    check_timeout_id_ =
+        g_timeout_add(kWaitPollMs, CheckForReadCompletionThunk, this);
     g_main_loop_run(loop_);
 
     ASSERT_LE((base::TimeTicks::Now() - start_time_).InMilliseconds(),
@@ -138,6 +143,9 @@ class AsyncFileReaderTest : public ::testing::Test {
 
   // Main loop for glib.
   GMainLoop* loop_;
+
+  // GLib timeout ID for running CheckForReadCompletion(), or 0 if unset.
+  guint check_timeout_id_;
 };
 
 
@@ -160,6 +168,7 @@ gboolean AsyncFileReaderTest::CheckForReadCompletion() {
   if (!done_reading_ && duration_ms <= kMaxFileReadTimeMs)
     return TRUE;
   g_main_loop_quit(loop_);
+  check_timeout_id_ = 0;
   return FALSE;
 }
 

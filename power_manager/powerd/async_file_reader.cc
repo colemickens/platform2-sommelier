@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 
 #include "base/logging.h"
+#include "power_manager/common/util.h"
 
 namespace {
 
@@ -129,7 +130,7 @@ void AsyncFileReader::Reset() {
   if (!read_in_progress_)
     return;
 
-  CancelUpdateStateTimeout();
+  util::RemoveTimeout(&update_state_timeout_id_);
   aio_cancel(fd_, &aio_control_);
   delete [] aio_buffer_;
   aio_buffer_ = NULL;
@@ -158,13 +159,6 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
   DCHECK_EQ(update_state_timeout_id_, static_cast<guint>(0));
   update_state_timeout_id_ = g_timeout_add(kPollMs, UpdateStateThunk, this);
   return true;
-}
-
-void AsyncFileReader::CancelUpdateStateTimeout() {
-  if (update_state_timeout_id_) {
-    g_source_remove(update_state_timeout_id_);
-    update_state_timeout_id_ = 0;
-  }
 }
 
 }  // namespace power_manager

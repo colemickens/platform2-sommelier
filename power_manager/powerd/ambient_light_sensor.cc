@@ -17,6 +17,7 @@
 #include "base/string_number_conversions.h"
 #include "base/stringprintf.h"
 #include "base/string_util.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 
@@ -46,6 +47,7 @@ size_t kHistorySizeMax = 10;
 
 AmbientLightSensor::AmbientLightSensor()
     : device_list_path_(kDefaultDeviceListPath),
+      poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs),
       still_deferring_(false),
       als_found_(false),
@@ -62,10 +64,12 @@ AmbientLightSensor::AmbientLightSensor()
 
 }
 
-AmbientLightSensor::~AmbientLightSensor() {}
+AmbientLightSensor::~AmbientLightSensor() {
+  util::RemoveTimeout(&poll_timeout_id_);
+}
 
 void AmbientLightSensor::Init() {
-  g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
 bool AmbientLightSensor::DeferredInit() {
@@ -148,6 +152,7 @@ gboolean AmbientLightSensor::ReadAls() {
     return true;  // Return true to try again later.
 
   als_file_.StartRead(&read_cb_, &error_cb_);
+  poll_timeout_id_ = 0;
   return FALSE;
 }
 
@@ -174,12 +179,12 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
                << trimmed_data << "]";
   }
   // Schedule next poll.
-  g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
 void AmbientLightSensor::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file.";
-  g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+  poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
 double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) const {

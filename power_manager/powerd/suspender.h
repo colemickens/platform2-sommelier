@@ -88,9 +88,6 @@ class Suspender : public SuspendDelayObserver {
 
   void BroadcastSignalToClients(const char* signal_name, int sequence_num);
 
-  // If |check_suspend_timeout_id_| is set, cancels it and resets it to 0.
-  void CancelCheckSuspendTimeout();
-
   ScreenLocker* locker_;
   FileTagger* file_tagger_;
 
