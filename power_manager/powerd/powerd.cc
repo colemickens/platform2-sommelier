@@ -122,7 +122,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       suspender_(&locker_, &file_tagger_, dbus_sender_.get()),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
-      power_state_(BACKLIGHT_UNINITIALIZED),
       is_power_status_stale_(true),
       battery_discharge_rate_metric_last_(0),
       current_session_state_("stopped"),
@@ -538,14 +537,13 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
-      if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED) {
+      if (old_state == BACKLIGHT_SUSPENDED) {
         util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
         suspender_.CancelSuspend();
       }
     }
     if (keyboard_controller_)
       keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
-    power_state_ = BACKLIGHT_ACTIVE;
   } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
     BrightenScreenIfOff();
   }
@@ -1776,8 +1774,6 @@ void Daemon::SetPowerState(PowerState state) {
   backlight_controller_->SetPowerState(state);
   if (keyboard_controller_)
     keyboard_controller_->SetPowerState(state);
-
-  power_state_ = state;
 }
 
 bool Daemon::IsAudioPlaying() {

@@ -552,7 +552,6 @@ class Daemon : public BacklightControllerObserver,
   Suspender suspender_;
   FilePath run_dir_;
   PowerSupply power_supply_;
-  PowerState power_state_;
   base::TimeTicks session_start_;
   bool is_power_status_stale_;
 
