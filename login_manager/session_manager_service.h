@@ -50,7 +50,6 @@ struct SessionManager;
 }  // namespace gobject
 
 class ChildJobInterface;
-class CommandLine;
 class NssUtil;
 class PolicyService;
 class SystemUtils;

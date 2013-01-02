@@ -20,7 +20,6 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/command_line.h>
 #include <base/file_path.h>
 #include <base/logging.h>
 
@@ -128,28 +127,13 @@ const std::string ChildJob::GetName() const {
   return exec_file.BaseName().value();
 }
 
-void ChildJob::SetArguments(const std::string& arguments) {
+void ChildJob::SetArguments(const std::vector<std::string>& arguments) {
+  // Ensure we preserve the program name to be executed, if we have one.
   std::string argv0;
   if (!arguments_.empty())
     argv0 = arguments_[0];
 
-  arguments_.clear();
-
-  GError *error = NULL;
-  gchar **argv = NULL;
-  gint argc = 0;
-  if (!g_shell_parse_argv(arguments.c_str(), &argc, &argv, &error)) {
-    LOG(ERROR) << "Could not parse command: " << error->message;
-    g_error_free(error);
-    g_strfreev(argv);
-    if (!argv0.empty())
-      arguments_.push_back(argv0);
-    return;
-  }
-  CommandLine new_command_line(argc, argv);
-  arguments_.assign(new_command_line.argv().begin(),
-                    new_command_line.argv().end());
-  g_strfreev(argv);
+  arguments_ = arguments;
 
   if (!argv0.empty()) {
     if (arguments_.size())
@@ -160,7 +144,7 @@ void ChildJob::SetArguments(const std::string& arguments) {
 }
 
 void ChildJob::SetExtraArguments(const std::vector<std::string>& arguments) {
-  extra_arguments_.assign(arguments.begin(), arguments.end());
+  extra_arguments_ = arguments;
 }
 
 void ChildJob::AddOneTimeArgument(const std::string& argument) {

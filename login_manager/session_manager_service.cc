@@ -887,12 +887,22 @@ gboolean SessionManagerService::RestartJob(gint pid,
   // TODO(avayvod): Remove RestartJob when crosbug.com/6924 is fixed.
   KillChild(browser_.job.get(), browser_.pid, SIGKILL);
 
-  char arguments_buffer[kMaxArgumentsSize + 1];
+  // To ensure no overflow.
+  gchar arguments_buffer[kMaxArgumentsSize + 1];
   snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
   arguments_buffer[kMaxArgumentsSize] = '\0';
-  string arguments_string(arguments_buffer);
 
-  browser_.job->SetArguments(arguments_string);
+  gchar **argv = NULL;
+  gint argc = 0;
+  if (!g_shell_parse_argv(arguments, &argc, &argv, error)) {
+    LOG(ERROR) << "Could not parse command: " << (*error)->message;
+    g_strfreev(argv);
+    return false;
+  }
+  CommandLine new_command_line(argc, argv);
+  g_strfreev(argv);
+
+  browser_.job->SetArguments(new_command_line.argv());
   RunBrowser();
 
   // To set "logged-in" state for BWSI mode.

@@ -143,18 +143,18 @@ TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
 }
 
 TEST_F(ChildJobTest, SetArguments) {
-  const char kNewArgsString[] = "--ichi \"--ni dfs\" --san";
-  const char* kNewArgsArray[] = {
+  const char* kNewArgs[] = {
     "--ichi",
     "--ni dfs",
     "--san"
   };
-  job_->SetArguments(kNewArgsString);
+  vector<string> new_args(kNewArgs, kNewArgs + arraysize(kNewArgs));
+  job_->SetArguments(new_args);
 
-  ASSERT_EQ(arraysize(kNewArgsArray), job_->arguments_.size());
+  ASSERT_EQ(arraysize(kNewArgs), job_->arguments_.size());
   EXPECT_EQ(kArgv[0], job_->arguments_[0]);
-  for (size_t i = 1; i < arraysize(kNewArgsArray); ++i) {
-    EXPECT_EQ(kNewArgsArray[i], job_->arguments_[i]);
+  for (size_t i = 1; i < arraysize(kNewArgs); ++i) {
+    EXPECT_EQ(kNewArgs[i], job_->arguments_[i]);
   }
 }
 

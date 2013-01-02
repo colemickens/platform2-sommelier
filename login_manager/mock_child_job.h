@@ -25,7 +25,7 @@ class MockChildJob : public ChildJobInterface {
   MOCK_METHOD1(SetDesiredUid, void(uid_t));
   MOCK_CONST_METHOD0(IsDesiredUidSet, bool());
   MOCK_CONST_METHOD0(GetName, const std::string());
-  MOCK_METHOD1(SetArguments, void(const std::string&));
+  MOCK_METHOD1(SetArguments, void(const std::vector<std::string>&));
   MOCK_METHOD1(SetExtraArguments, void(const std::vector<std::string>&));
   MOCK_METHOD1(AddOneTimeArgument, void(const std::string&));
   MOCK_METHOD0(ClearOneTimeArgument, void());

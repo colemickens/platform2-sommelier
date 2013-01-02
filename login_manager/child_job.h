@@ -16,8 +16,6 @@
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 
-class CommandLine;
-
 namespace login_manager {
 
 class SystemUtils;
@@ -58,8 +56,8 @@ class ChildJobInterface {
   // Returns the name of the job.
   virtual const std::string GetName() const = 0;
 
-  // Sets command line arguments for the job from string.
-  virtual void SetArguments(const std::string& arguments) = 0;
+  // Sets command line arguments for the job from string vector.
+  virtual void SetArguments(const std::vector<std::string>& arguments) = 0;
 
   // Sets extra command line arguments for the job from a string vector.
   virtual void SetExtraArguments(const std::vector<std::string>& arguments) = 0;
@@ -107,7 +105,7 @@ class ChildJob : public ChildJobInterface {
   virtual void SetDesiredUid(uid_t uid);
   virtual bool IsDesiredUidSet() const;
   virtual const std::string GetName() const;
-  virtual void SetArguments(const std::string& arguments);
+  virtual void SetArguments(const std::vector<std::string>& arguments);
   virtual void SetExtraArguments(const std::vector<std::string>& arguments);
   virtual void AddOneTimeArgument(const std::string& argument);
   virtual void ClearOneTimeArgument();

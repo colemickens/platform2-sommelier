@@ -571,7 +571,7 @@ TEST_F(SessionManagerDBusTest, RestartJob) {
 
   EXPECT_CALL(*job, GetName())
       .WillRepeatedly(Return(std::string("chrome")));
-  EXPECT_CALL(*job, SetArguments("dummy"))
+  EXPECT_CALL(*job, SetArguments(ElementsAre("dummy")))
       .Times(1);
   EXPECT_CALL(*job, RecordTime())
       .Times(1);
