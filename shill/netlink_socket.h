@@ -50,36 +50,6 @@ class Nl80211Message;
 // sockets work.
 class NetlinkSocket {
  public:
-  // Provides a wrapper around the netlink callback.
-  class Callback {
-   public:
-    Callback() : cb_(NULL) {}
-    virtual ~Callback();
-
-    // Non-trivial initialization.
-    bool Init();
-
-    // Very thin abstraction of nl_cb_err.  Takes the same parameters used by
-    // 'nl_cb_err' except for the first parameter of 'nl_cb_err' (which is
-    // filled in using the member variable |cb_|).
-    bool ErrHandler(nl_cb_kind kind, nl_recvmsg_err_cb_t func, void *arg);
-
-    // Very thin abstraction of nl_cb_set.  Takes the same parameters used by
-    // 'nl_cb_set' except for the first parameter of 'nl_cb_set' (which is
-    // filled in using the member variable |cb_|).
-    bool SetHandler(nl_cb_type type, nl_cb_kind kind, nl_recvmsg_msg_cb_t func,
-                    void *arg);
-
-   private:
-    friend class NetlinkSocket;  // Because GetMessagesUsingCallback needs cb().
-
-    const struct nl_cb *cb() const { return cb_; }
-
-    struct nl_cb *cb_;
-
-    DISALLOW_COPY_AND_ASSIGN(Callback);
-  };
-
   NetlinkSocket() : nl_sock_(NULL) {}
   virtual ~NetlinkSocket();
 
@@ -92,25 +62,9 @@ class NetlinkSocket {
   // Returns the file descriptor used by the socket.
   virtual int GetFd() const;
 
-  // Receives one or more messages (perhaps a response to a previously sent
-  // message) over the netlink socket.  The message(s) are handled with the
-  // default callback (configured with 'SetNetlinkCallback').
-  virtual bool GetMessages();
-
-  // Receives one or more messages over the netlink socket.  The message(s)
-  // are handled with the supplied callback (uses socket's default callback
-  // function if NULL).
-  virtual bool GetMessagesUsingCallback(NetlinkSocket::Callback *callback);
-
   // Get the next message sequence number for this socket.  Disallow zero so
   // that we can use that as the 'broadcast' sequence number.
   virtual uint32_t GetSequenceNumber();
-
-  // This method is called |callback_function| to differentiate it from the
-  // 'callback' method in Nl80211Message since they return different
-  // types.
-  virtual bool SetNetlinkCallback(nl_recvmsg_msg_cb_t on_netlink_data,
-                                  void *callback_parameter);
 
   // Returns the value returned by the 'genl_ctrl_resolve' call.
   virtual int family_id() const = 0;

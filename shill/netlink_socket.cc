@@ -51,53 +51,6 @@ using std::string;
 
 namespace shill {
 
-//
-// NetlinkSocket::Callback.
-//
-
-NetlinkSocket::Callback::~Callback() {
-  if (cb_) {
-    nl_cb_put(cb_);
-    cb_ = NULL;
-  }
-}
-
-bool NetlinkSocket::Callback::Init() {
-  cb_ = nl_cb_alloc(NL_CB_DEFAULT);
-  if (!cb_) {
-    LOG(ERROR) << "NULL cb_";
-    return false;
-  }
-  return true;
-}
-
-bool NetlinkSocket::Callback::ErrHandler(enum nl_cb_kind kind,
-                                         nl_recvmsg_err_cb_t func,
-                                         void *arg) {
-  int result = nl_cb_err(cb_, kind, func, arg);
-  if (result) {
-    LOG(ERROR) << "nl_cb_err returned " << result;
-    return false;
-  }
-  return true;
-}
-
-bool NetlinkSocket::Callback::SetHandler(enum nl_cb_type type,
-                                         enum nl_cb_kind kind,
-                                         nl_recvmsg_msg_cb_t func,
-                                         void *arg) {
-  int result = nl_cb_set(cb_, type, kind, func, arg);
-  if (result) {
-    LOG(ERROR) << "nl_cb_set returned " << result;
-    return false;
-  }
-  return true;
-}
-
-//
-// NetlinkSocket.
-//
-
 NetlinkSocket::~NetlinkSocket() {
   if (nl_sock_) {
     nl_socket_free(nl_sock_);
@@ -183,34 +136,6 @@ int NetlinkSocket::GetFd() const {
   return nl_socket_get_fd(nl_sock_);
 }
 
-bool NetlinkSocket::GetMessages() {
-  // TODO(wdg): make this non-blocking.
-  // Blocks until a message is available.  When that happens, the message is
-  // read and passed to the default callback (i.e., the one set with
-  // NetlinkSocket::SetNetlinkCallback).
-  int result = nl_recvmsgs_default(nl_sock_);
-  if (result < 0) {
-    LOG(ERROR) << "Failed call to nl_recvmsgs_default: " << strerror(-result)
-               << " (" << result << ")";
-    return false;
-  }
-  return true;
-}
-
-bool NetlinkSocket::GetMessagesUsingCallback(
-    NetlinkSocket::Callback *on_netlink_data) {
-  if (!on_netlink_data || !on_netlink_data->cb_)
-    return GetMessages();  // Default to generic callback.
-
-  int result = nl_recvmsgs(nl_sock_, on_netlink_data->cb_);
-  if (result < 0) {
-    LOG(ERROR) << "Failed call to nl_recvmsgs: " << strerror(-result)
-               << " (" << result << ")";
-    return false;
-  }
-  return true;
-}
-
 unsigned int NetlinkSocket::GetSequenceNumber() {
   unsigned int number = nl_socket_use_seq(nl_sock_);
   if (number == 0) {
@@ -221,23 +146,6 @@ unsigned int NetlinkSocket::GetSequenceNumber() {
     number = 1;
   }
   return number;
-}
-
-bool NetlinkSocket::SetNetlinkCallback(nl_recvmsg_msg_cb_t on_netlink_data,
-                                       void *callback_parameter) {
-  if (!nl_sock_) {
-    LOG(ERROR) << "NULL socket";
-    return false;
-  }
-
-  int result = nl_socket_modify_cb(nl_sock_, NL_CB_VALID, NL_CB_CUSTOM,
-                                   on_netlink_data, callback_parameter);
-  if (result) {
-    LOG(ERROR) << "nl_socket_modify_cb returned " << strerror(-result)
-               << " (" << result << ")";
-    return false;
-  }
-  return true;
 }
 
 int NetlinkSocket::IgnoreSequenceCheck(struct nl_msg *ignored_msg,

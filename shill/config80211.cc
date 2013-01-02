@@ -14,6 +14,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 
+#include "shill/error.h"
 #include "shill/io_handler.h"
 #include "shill/logging.h"
 #include "shill/nl80211_message.h"
@@ -37,8 +38,8 @@ Config80211::Config80211()
     : wifi_state_(kWifiDown),
       dispatcher_(NULL),
       weak_ptr_factory_(this),
-      dispatcher_callback_(Bind(&Config80211::HandleIncomingEvents,
-                              weak_ptr_factory_.GetWeakPtr())),
+      dispatcher_callback_(Bind(&Config80211::OnRawNlMessageReceived,
+                                weak_ptr_factory_.GetWeakPtr())),
       sock_(NULL) {
 }
 
@@ -70,11 +71,6 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
     if (!sock_->Init()) {
       return false;
     }
-
-    // Install the global NetLink Callback.
-    sock_->SetNetlinkCallback(OnRawNlMessageReceived,
-                              static_cast<void *>(this));
-
     // Don't make libnl do the sequence checking (because it'll not like
     // the broadcast messages for which we'll eventually ask).  We'll do all the
     // sequence checking we need.
@@ -89,15 +85,7 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
     (*event_types_)[Config80211::kEventTypeMlme] = "mlme";
   }
 
-  // Install ourselves in the shill mainloop so we receive messages on the
-  // nl80211 socket.
   dispatcher_ = dispatcher;
-  if (dispatcher_) {
-    dispatcher_handler_.reset(
-      dispatcher_->CreateReadyHandler(GetFd(),
-                                      IOHandler::kModeInput,
-                                      dispatcher_callback_));
-  }
   return true;
 }
 
@@ -211,12 +199,18 @@ void Config80211::SetWifiState(WifiState new_state) {
     return;
   }
 
-  // If we're newly-up, subscribe to all the event types that have been
-  // requested.
   if (new_state == kWifiUp) {
-    // Install the global NetLink Callback.
-    sock_->SetNetlinkCallback(OnRawNlMessageReceived,
-                              static_cast<void *>(this));
+    // Install ourselves in the shill mainloop so we receive messages on the
+    // nl80211 socket.
+    if (dispatcher_) {
+      dispatcher_handler_.reset(dispatcher_->CreateInputHandler(
+          GetFd(),
+          dispatcher_callback_,
+          Bind(&Config80211::OnReadError, weak_ptr_factory_.GetWeakPtr())));
+    }
+
+    // If we're newly-up, subscribe to all the event types that have been
+    // requested.
     SubscribedEvents::const_iterator i;
     for (i = subscribed_events_.begin(); i != subscribed_events_.end(); ++i) {
       ActuallySubscribeToEvents(*i);
@@ -251,45 +245,48 @@ bool Config80211::ActuallySubscribeToEvents(EventType type) {
   return true;
 }
 
-void Config80211::HandleIncomingEvents(int unused_fd) {
-  sock_->GetMessages();
-}
-
-// NOTE: the "struct nl_msg" declaration, below, is a complete fabrication
-// (but one consistent with the nl_socket_modify_cb call to which
-// |OnRawNlMessageReceived| is a parameter).  |raw_message| is actually a
-// "struct sk_buff" but that data type is only visible in the kernel.  We'll
-// scrub this erroneous datatype with the "nlmsg_hdr" call, below, which
-// extracts an nlmsghdr pointer from |raw_message|.  We'll, then, pass this to
-// a separate method, |OnNlMessageReceived|, to make testing easier.
-
-// static
-int Config80211::OnRawNlMessageReceived(struct nl_msg *raw_message,
-                                        void *void_config80211) {
-  if (!void_config80211) {
-    LOG(WARNING) << "NULL config80211 parameter";
-    return NL_SKIP;  // Skip current message, continue parsing buffer.
+void Config80211::OnRawNlMessageReceived(InputData *data) {
+  if (!data) {
+    LOG(ERROR) << __func__ << "() called with null header.";
+    return;
   }
-
-  Config80211 *config80211 = static_cast<Config80211 *>(void_config80211);
-  SLOG(WiFi, 3) << "  " << __func__ << " calling OnNlMessageReceived";
-  return config80211->OnNlMessageReceived(nlmsg_hdr(raw_message));
+  unsigned char *buf = data->buf;
+  unsigned char *end = buf + data->len;
+  while (buf < end) {
+    nlmsghdr *msg = reinterpret_cast<nlmsghdr *>(buf);
+    // Discard the message if there're not enough bytes to a) tell the code how
+    // much space is in the message (i.e., to access nlmsg_len) or b) to hold
+    // the entire message.  The odd calculation is there to keep the code from
+    // potentially calculating an illegal address (causes a segfault on some
+    // architectures).
+    size_t bytes_left = end - buf;
+    if (((bytes_left < (offsetof(nlmsghdr, nlmsg_len) +
+                        sizeof(nlmsghdr::nlmsg_len))) ||
+         (bytes_left < msg->nlmsg_len))) {
+      LOG(ERROR) << "Discarding incomplete message.";
+      return;
+    }
+    OnNlMessageReceived(msg);
+    buf += msg->nlmsg_len;
+  }
 }
 
-int Config80211::OnNlMessageReceived(nlmsghdr *msg) {
+void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << __func__ << "() called with null header.";
-    return NL_SKIP;
+    return;
   }
   const uint32 sequence_number = msg->nlmsg_seq;
   SLOG(WiFi, 3) << "\t  Entering " << __func__
-                << "( msg:" << sequence_number << ")";
+                << " (msg:" << sequence_number << ")";
   scoped_ptr<Nl80211Message> message(Nl80211MessageFactory::CreateMessage(msg));
   if (message == NULL) {
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
-    return NL_SKIP;  // Skip current message, continue parsing buffer.
+    return;  // Skip current message, continue parsing buffer.
   }
   // Call (then erase) any message-specific callback.
+  // TODO(wdg): Support multi-part messages; don't delete callback until last
+  // part appears.
   if (ContainsKey(message_callbacks_, sequence_number)) {
     SLOG(WiFi, 3) << "found message-specific callback";
     if (message_callbacks_[sequence_number].is_null()) {
@@ -299,20 +296,22 @@ int Config80211::OnNlMessageReceived(nlmsghdr *msg) {
     }
     message_callbacks_.erase(sequence_number);
   } else {
-    list<Callback>::iterator i = broadcast_callbacks_.begin();
+    list<Callback>::const_iterator i = broadcast_callbacks_.begin();
     while (i != broadcast_callbacks_.end()) {
-      SLOG(WiFi, 3) << "found a broadcast callback";
-      if (i->is_null()) {
-        i = broadcast_callbacks_.erase(i);
-      } else {
-        SLOG(WiFi, 3) << "      " << __func__ << " - calling callback";
-        i->Run(*message);
-        ++i;
-      }
+      SLOG(WiFi, 3) << "      " << __func__ << " - calling callback";
+      i->Run(*message);
+      ++i;
     }
   }
-
-  return NL_SKIP;  // Skip current message, continue parsing buffer.
 }
+
+void Config80211::OnReadError(const Error &error) {
+  // TODO(wdg): When config80211 is used for scan, et al., this should either be
+  // LOG(FATAL) or the code should properly deal with errors, e.g., dropped
+  // messages due to the socket buffer being full.
+  LOG(ERROR) << "Config80211's netlink Socket read returns error: "
+             << error.message();
+}
+
 
 }  // namespace shill.

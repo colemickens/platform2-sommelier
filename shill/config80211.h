@@ -6,20 +6,13 @@
 // and mac80211 drivers.  These are accessed via a netlink socket using the
 // following software stack:
 //
-//    [shill]
-//       |
-// [nl80211 library]
-//       |
-// [libnl_genl/libnl libraries]
-//       |
-//   (netlink socket)
-//       |
+//         [shill]--[nl80211 library, libnl_genl/libnl libraries]
+//            |
+//     (netlink socket)
+//            |
 // [cfg80211 kernel module]
-//       |
-// [mac80211 drivers]
-//
-// Messages go from user-space to kernel-space (i.e., Kernel-Bound) or in the
-// other direction (i.e., User-Bound).
+//            |
+//    [mac80211 drivers]
 //
 // For the love of Pete, there are a lot of different types of callbacks,
 // here.  I'll try to differentiate:
@@ -31,24 +24,6 @@
 //    OnRawNlMessageReceived as a netlink callback function (described below).
 //    OnRawNlMessageReceived, in turn, parses the message from cfg80211 and
 //    calls Config80211::Callback with the resultant Nl80211Message.
-//
-// Netlink Callback -
-//    Netlink callbacks are mechanisms installed by the user (well, by
-//    Config80211 -- none of these are intended for use by users of
-//    Config80211) for the libnl layer to communicate back to the user.  Some
-//    callbacks are installed for global use (i.e., the default callback used
-//    for all messages) or as an override for a specific message.  Netlink
-//    callbacks come in three levels.
-//
-//    The lowest level (nl_recvmsg_msg_cb_t) is a function installed by
-//    Config80211.  These are called by libnl when messages are received from
-//    the kernel.
-//
-//    The medium level (nl_cb) is also used by Config80211.  This, the 'netlink
-//    callback structure', encapsualtes a number of netlink callback functions
-//    (nl_recvmsg_msg_cb_t, one each for different types of messages).
-//
-//    The highest level is the NetlinkSocket::Callback object.
 //
 // Dispatcher Callback -
 //    This base::Callback is a private method of Config80211 created and
@@ -79,6 +54,8 @@
 
 namespace shill {
 
+class Error;
+class InputData;
 class Nl80211Message;
 
 // Provides a transport-independent ability to receive status from the wifi
@@ -171,21 +148,18 @@ class Config80211 {
   bool ActuallySubscribeToEvents(EventType type);
 
   // EventDispatcher calls this when data is available on our socket.  This
-  // callback reads data from the driver, parses that data, and logs it.
-  void HandleIncomingEvents(int fd);
-
-  // This is a Netlink Callback.  libnl-80211 calls this method when it
-  // receives data from cfg80211.  This method converts the 'struct nl_msg'
-  // which is passed to it (and is a complete fiction -- it's actually struct
-  // sk_buff, a data type to which we don't have access) to an nlmsghdr, a
-  // type that we _can_ examine, and passes it to |OnNlMessageReceived|.
-  static int OnRawNlMessageReceived(struct nl_msg *msg, void *arg);
+  // method passes each, individual, message in the input to
+  // |OnNlMessageReceived|.
+  void OnRawNlMessageReceived(InputData *data);
 
   // This method processes a message from |OnRawNlMessageReceived| by passing
   // the message to either the Config80211 callback that matches the sequence
   // number of the message or, if there isn't one, to all of the default
   // Config80211 callbacks in |broadcast_callbacks_|.
-  int OnNlMessageReceived(nlmsghdr *msg);
+  void OnNlMessageReceived(nlmsghdr *msg);
+
+  // Called by InputHandler on exceptional events.
+  void OnReadError(const Error &error);
 
   // Just for tests, this method turns off WiFi and clears the subscribed
   // events list.
@@ -207,7 +181,7 @@ class Config80211 {
   // Hooks needed to be called by shill's EventDispatcher.
   EventDispatcher *dispatcher_;
   base::WeakPtrFactory<Config80211> weak_ptr_factory_;
-  base::Callback<void(int)> dispatcher_callback_;
+  base::Callback<void(InputData *)> dispatcher_callback_;
   scoped_ptr<IOHandler> dispatcher_handler_;
 
   Nl80211Socket *sock_;

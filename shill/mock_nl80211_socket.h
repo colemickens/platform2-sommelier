@@ -22,11 +22,6 @@ class MockNl80211Socket : public Nl80211Socket {
   MockNl80211Socket() : sequence_number_(1) {}
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD1(AddGroupMembership, bool(const std::string &group_name));
-  using Nl80211Socket::GetMessages;
-  MOCK_METHOD0(GetMessages, bool());
-  using Nl80211Socket::SetNetlinkCallback;
-  MOCK_METHOD2(SetNetlinkCallback, bool(nl_recvmsg_msg_cb_t on_netlink_data,
-                                        void *callback_parameter));
 
   virtual uint32_t GetSequenceNumber();
   virtual bool SendMessage(Nl80211Message *message);

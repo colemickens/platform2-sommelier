@@ -418,7 +418,6 @@ TEST_F(Config80211Test, AddLinkTest) {
   // Install the callback and subscribe to events using it, wifi down
   // (shouldn't actually send the subscription request until wifi comes up).
   EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
-  EXPECT_CALL(socket_, SetNetlinkCallback(_, _)).Times(0);
 
   EXPECT_TRUE(config80211_->AddBroadcastCallback(
       callback_object.GetCallback()));
@@ -430,14 +429,10 @@ TEST_F(Config80211Test, AddLinkTest) {
   // Wifi up, should subscribe to events.
   EXPECT_CALL(socket_, AddGroupMembership(scan_event_string))
       .WillOnce(Return(true));
-  EXPECT_CALL(socket_, SetNetlinkCallback(
-      _, ContainsCallback(callback_object.GetCallback())))
-      .WillOnce(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
 
   // Second subscribe, same event (should do nothing).
   EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
-  EXPECT_CALL(socket_, SetNetlinkCallback(_, _)).Times(0);
   EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
 
   // Bring the wifi back down.
@@ -455,10 +450,6 @@ TEST_F(Config80211Test, AddLinkTest) {
       .WillOnce(Return(true));
   EXPECT_CALL(socket_, AddGroupMembership(mlme_event_string))
       .WillOnce(Return(true));
-  EXPECT_CALL(socket_, SetNetlinkCallback(
-       _, ContainsCallback(callback_object.GetCallback())))
-      .Times(1)
-      .WillRepeatedly(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
 }
 
