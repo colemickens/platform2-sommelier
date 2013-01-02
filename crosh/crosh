@@ -119,7 +119,7 @@ HELP_ADVANCED='
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
 . "/usr/sbin/chromeos-common.sh" || exit 1
 SRC=$(get_block_dev_from_partition_dev $(rootdev -s))
-if [ "$(cat /sys/block/${SRC#/dev/}/removable)" == "1" ]; then
+if [ "$(cat /sys/block/${SRC#/dev/}/removable)" = "1" ]; then
   REMOVABLE=1
 fi
 
