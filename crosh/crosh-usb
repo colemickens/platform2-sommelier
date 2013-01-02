@@ -14,12 +14,12 @@ USB_HELP='
  install [<dev>]
   Install ChromeOS to the target device, clearing out all existing data.
 
- upgrade [<dev>]
-  Upgrade an existing ChromeOS installation, saving existing user data.
-
  update_firmware [--factory]
   Update system firmware, if applicable. This command will update only the RW
   region by default. To rewrite RO and everything, add option --factory.
+
+ upgrade [<dev>]
+  Upgrade an existing ChromeOS installation, saving existing user data.
 '
 
 HELP="$HELP$USB_HELP"

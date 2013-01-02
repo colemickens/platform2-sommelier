@@ -57,6 +57,9 @@ HELP='
 '
 
 HELP_ADVANCED='
+ chaps_debug [start|stop|<log_level>]
+  Sets the chapsd logging level.  No arguments will start verbose logging.
+
  connectivity
   Shows connectivity status.  "connectivity help" for more details
 
@@ -72,14 +75,14 @@ HELP_ADVANCED='
  modem_set_carrier carrier-name
   Configures the modem for the specified carrier.
 
- network_logging <wifi | cellular | ethernet>
-  A function that enables a predefined set of tags useful for
-  debugging the specified device.
-
  network_diag [--date] [--flimflam] [--link] [--show-macs] [--wifi] [--help]
    [--wifi-monitor] <host>
   A function that performs a suite of network diagnostics.  Saves a copy
   of the output to your download directory.
+
+ network_logging <wifi | cellular | ethernet>
+  A function that enables a predefined set of tags useful for
+  debugging the specified device.
 
  rlz < status | enable | disable >
   Enable or disable RLZ.
@@ -99,6 +102,9 @@ HELP_ADVANCED='
   Turn on extra network state checking to make sure the default gateway
   is reachable.
 
+ syslog <message>
+  Logs a message to syslog.
+
  tpcontrol {status|taptoclick [on|off]|sensitivity [1-5]|set <property> <value>}
  tpcontrol {syntp [on|off]}
   Manually adjust advanced touchpad settings.
@@ -108,12 +114,6 @@ HELP_ADVANCED='
 
  wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
   Set wpa_supplicant debugging level.
-
- syslog <message>
-  Logs a message to syslog.
-
- chaps_debug [start|stop|<log_level>]
-  Sets the chapsd logging level. No arguments will start verbose logging.
 '
 
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
