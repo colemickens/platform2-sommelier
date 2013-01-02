@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_PREFS_OBSERVER_H_
 #define POWER_MANAGER_COMMON_PREFS_OBSERVER_H_
 
+#include <string>
+
 namespace power_manager {
 
 // Interface for classes that want to be notified when preferences changed.
