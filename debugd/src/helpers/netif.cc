@@ -258,19 +258,23 @@ void AddSignalStrengths(std::map<std::string, NetInterface*> *interfaces) {
   ManagerProxy manager(conn, kFlimflamPath, kFlimflamService);
 
   std::map<std::string, DBus::Variant> props = manager.GetProperties();
-  assert(props.count("Services") == 1);
+  if (props.count("Services") != 1)
+    return;
   DBus::Variant& devices = props["Services"];
-  assert(!strcmp(devices.signature().c_str(), "ao"));
+  if (strcmp(devices.signature().c_str(), "ao"))
+    return;
   std::vector<DBus::Path> paths = devices;
   for (std::vector<DBus::Path>::iterator it = paths.begin();
        it != paths.end(); ++it) {
     ServiceProxy service = ServiceProxy(conn, it->c_str(), kFlimflamService);
     std::map<std::string, DBus::Variant> props = service.GetProperties();
-    // So can this :(
+    if (   props.count("Strength") != 1
+        || props.count("Name") != 1
+        || props.count("Device") != 1)
+      continue;
     uint8_t strength = props["Strength"];
     std::string name = props["Name"];
     DBus::Variant& varpath = props["Device"];
-    assert(!strcmp(varpath.signature().c_str(), "o"));
     DBus::Path devpath = varpath;
     std::string devname = DevicePathToName(devpath);
     if (interfaces->count(devname)) {
