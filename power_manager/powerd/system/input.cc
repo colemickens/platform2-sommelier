@@ -8,6 +8,8 @@
 #include <fcntl.h>
 #include <libudev.h>
 #include <linux/input.h>
+#include <linux/vt.h>
+#include <sys/ioctl.h>
 
 #include "base/file_path.h"
 #include "base/file_util.h"
@@ -39,6 +41,8 @@ const char kInputMatchPattern[] = "input*";
 const char kUsbMatchString[] = "usb";
 const char kBluetoothMatchString[] = "bluetooth";
 
+const char kConsolePath[] = "/dev/tty0";
+
 InputType GetInputType(const struct input_event& event) {
   if (event.type == EV_KEY) {
     // For key events, only handle the keys listed below.
@@ -66,6 +70,7 @@ bool GetSuffixNumber(const char* name, const char* base_name, int* suffix) {
 
 Input::Input()
     : lid_fd_(-1),
+      console_fd_(-1),
       num_power_key_events_(0),
       num_lid_events_(0),
       wakeups_enabled_(true) {}
@@ -78,6 +83,8 @@ Input::~Input() {
   }
   if (lid_fd_ >= 0)
     close(lid_fd_);
+  if (console_fd_ >= 0)
+    close(console_fd_);
 }
 
 bool Input::Init(const vector<string>& wakeup_input_names) {
@@ -94,6 +101,9 @@ bool Input::Init(const vector<string>& wakeup_input_names) {
   // Don't bother doing anything if we're running under a test.
   if (!sysfs_input_path_for_testing_.empty())
     return true;
+
+  console_fd_ = open(kConsolePath, O_WRONLY);
+  PCHECK(console_fd_ >= 0) << "Couldn't open " << kConsolePath;
 
   RegisterUdevEventHandler();
   RegisterInputWakeSources();
@@ -186,6 +196,12 @@ void Input::SetTouchDevicesState(bool enable) {
     util::Run("/opt/google/touch/touch-control.sh --disable");
   }
 #endif // TOUCH_DEVICE
+}
+
+void Input::SetVTSwitchingState(bool enable) {
+  LOG(INFO) << (enable ? "Unlocking" : "Locking") << " VT switching";
+  if (ioctl(console_fd_, enable ? VT_UNLOCKSWITCH : VT_LOCKSWITCH))
+    PLOG(ERROR) << "ioctl() failed";
 }
 
 bool Input::RegisterInputDevices() {

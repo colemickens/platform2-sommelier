@@ -121,7 +121,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
-      suspender_(&locker_, &file_tagger_, dbus_sender_.get()),
+      suspender_(this, &locker_, &file_tagger_, dbus_sender_.get(),
+                 input_.get(), run_dir),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
       is_power_status_stale_(true),
@@ -173,7 +174,7 @@ void Daemon::Init() {
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
   RetrieveSessionState();
-  suspender_.Init(run_dir_, this);
+  suspender_.Init(prefs_);
   time_to_empty_average_.Init(sample_window_max_);
   time_to_full_average_.Init(sample_window_max_);
   power_supply_.Init();
@@ -438,6 +439,12 @@ void Daemon::OnRequestShutdown() {
     shutdown_state_ = SHUTDOWN_STATE_POWER_OFF;
     StartCleanShutdown();
   }
+}
+
+void Daemon::ShutdownForFailedSuspend() {
+  shutdown_reason_ = kShutdownReasonSuspendFailed;
+  shutdown_state_ = SHUTDOWN_STATE_POWER_OFF;
+  StartCleanShutdown();
 }
 
 void Daemon::StartCleanShutdown() {
@@ -1029,14 +1036,21 @@ bool Daemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   int32 power_rc = -1;
   DBusError error;
   dbus_error_init(&error);
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_STRING, &state,
-                            DBUS_TYPE_INT32, &power_rc,
-                            DBUS_TYPE_INVALID)) {
-    OnPowerStateChange(state);
-  } else {
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_STRING, &state,
+                             DBUS_TYPE_INT32, &power_rc,
+                             DBUS_TYPE_INVALID)) {
     LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
     dbus_error_free(&error);
+    return false;
+  }
+
+  suspender_.HandlePowerStateChanged(state, power_rc);
+  if (g_str_equal(state, "on") == TRUE) {
+    HandleResume();
+    SetActive();
+  } else {
+    DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
   }
   return false;
 }
@@ -1548,17 +1562,6 @@ gboolean Daemon::CleanShutdownTimedOut() {
   }
   clean_shutdown_timeout_id_ = 0;
   return FALSE;
-}
-
-void Daemon::OnPowerStateChange(const char* state) {
-  // on == resume via powerd_suspend
-  if (g_str_equal(state, "on") == TRUE) {
-    LOG(INFO) << "Resuming has commenced";
-    HandleResume();
-    SetActive();
-  } else {
-    DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
-  }
 }
 
 void Daemon::OnSessionStateChange(const char* state, const char* user) {

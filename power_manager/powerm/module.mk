@@ -4,16 +4,13 @@
 
 include common.mk
 
-powerm/powerman.o.depends: power_manager/input_event.pb.h
 LIBPOWERMAN_DEPS = libchromeos-$(BASE_VER)
 LIBPOWERMAN_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
                     $(shell $(PKG_CONFIG) --cflags $(LIBPOWERMAN_DEPS))
-LIBPOWERMAN_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev \
+LIBPOWERMAN_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags \
                    $(shell $(PKG_CONFIG) --libs $(LIBPOWERMAN_DEPS))
 LIBPOWERMAN_OBJS = common/power_constants.o \
-                   power_manager/suspend.pb.o \
-                   powerm/powerman.o \
-                   powerm/powerman_metrics.o
+                   powerm/powerman.o
 CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a): $(LIBPOWERMAN_OBJS)
 CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a): CPPFLAGS += $(LIBPOWERMAN_FLAGS)
 CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a): LDLIBS += $(LIBPOWERMAN_LIBS)
@@ -31,17 +28,3 @@ CXX_BINARY(powerm/powerm): CPPFLAGS += $(POWERMAN_FLAGS)
 CXX_BINARY(powerm/powerm): LDLIBS += $(POWERMAN_LIBS)
 clean: CXX_BINARY(powerm/powerm)
 all: CXX_BINARY(powerm/powerm)
-
-POWERMAN_UNITTEST_FLAGS = $(POWERMAN_FLAGS)
-POWERMAN_UNITTEST_LIBS = $(POWERMAN_LIBS) -lgtest -lgmock
-POWERMAN_UNITTEST_OBJS = powerm/powerman_unittest.o
-CXX_BINARY(powerm/powerman_unittest): $(POWERMAN_UNITTEST_OBJS) \
-	CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a) \
-	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
-	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
-	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
-CXX_BINARY(powerm/powerman_unittest): CPPFLAGS += $(POWERMAN_UNITTEST_FLAGS)
-CXX_BINARY(powerm/powerman_unittest): LDLIBS += $(POWERMAN_UNITTEST_LIBS)
-clean: CXX_BINARY(powerm/powerman_unittest)
-tests: TEST(CXX_BINARY(powerm/powerman_unittest))
