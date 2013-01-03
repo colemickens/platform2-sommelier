@@ -207,8 +207,11 @@ ATTRS{idVendor}=="0af0", ATTRS{idProduct}=="8120", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Sony Gobi 3000 Modem device
 ATTRS{idVendor}=="12D1", ATTRS{idProduct}=="14F1", ENV{ID_MM_DEVICE_IGNORE}="1"
 
-# Novatel Gobi 3000 Modem device
+# Novatel Gobi 3000 (E396) Modem device
 ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a021", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Novatel Gobi 3000 (E396U) Modem device
+ATTRS{idVendor}=="1410", ATTRS{idProduct}=="a023", ENV{ID_MM_DEVICE_IGNORE}="1"
 
 # Dell Gobi 3000 Modem device
 ATTRS{idVendor}=="413c", ATTRS{idProduct}=="8194", ENV{ID_MM_DEVICE_IGNORE}="1"
