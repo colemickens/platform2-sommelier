@@ -16,6 +16,7 @@
 
 #include "login_manager/child_job.h"
 #include "login_manager/file_checker.h"
+#include "login_manager/matchers.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
@@ -36,14 +37,6 @@ using ::testing::ReturnRef;
 using ::testing::StrEq;
 using ::testing::WithArgs;
 using ::testing::_;
-
-namespace {
-
-MATCHER_P(CastEq, str, "") {
-  return std::equal(str.begin(), str.end(), reinterpret_cast<const char*>(arg));
-}
-
-}  // namespace
 
 namespace login_manager {
 

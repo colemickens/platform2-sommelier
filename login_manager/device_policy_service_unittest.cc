@@ -20,6 +20,7 @@
 
 #include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/device_management_backend.pb.h"
+#include "login_manager/matchers.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_nss_util.h"
@@ -47,16 +48,6 @@ namespace {
 
 ACTION_P(AssignVector, str) {
   arg0->assign(str.begin(), str.end());
-}
-
-MATCHER_P(StatusEq, status, "") {
-  return (arg.owner_key_file_state == status.owner_key_file_state &&
-          arg.policy_file_state == status.policy_file_state &&
-          arg.defunct_prefs_file_state == status.defunct_prefs_file_state);
-}
-
-MATCHER_P(PolicyEq, policy, "") {
-  return arg.SerializeAsString() == policy.SerializeAsString();
 }
 
 }  // namespace

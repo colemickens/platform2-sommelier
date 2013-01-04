@@ -28,6 +28,7 @@
 #include "login_manager/child_job.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/file_checker.h"
+#include "login_manager/matchers.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_child_process.h"
 #include "login_manager/mock_device_policy_service.h"
@@ -51,14 +52,6 @@ using chromeos::glib::ScopedError;
 
 using std::string;
 using std::vector;
-
-namespace {
-
-MATCHER_P(CastEq, str, "") {
-  return std::equal(str.begin(), str.end(), reinterpret_cast<const char*>(arg));
-}
-
-}  // namespace
 
 namespace login_manager {
 

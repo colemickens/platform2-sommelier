@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 
 #include "login_manager/device_management_backend.pb.h"
+#include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
@@ -31,24 +32,6 @@ using ::testing::Sequence;
 using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
 using ::testing::_;
-
-namespace {
-
-MATCHER_P(CastEq, str, "") {
-  return std::equal(str.begin(), str.end(), reinterpret_cast<const char*>(arg));
-}
-
-MATCHER_P(VectorEq, str, "") {
-  return str.size() == arg.size() &&
-      std::equal(str.begin(), str.end(), arg.begin());
-}
-
-MATCHER_P(PolicyEq, str, "") {
-  std::string arg_policy;
-  return arg.SerializeToString(&arg_policy) && arg_policy == str;
-}
-
-}  // namespace
 
 namespace login_manager {
 
@@ -95,7 +78,7 @@ class PolicyServiceTest : public testing::Test {
                               CastEq(fake_sig_), fake_sig_.size()))
         .InSequence(sequence)
         .WillOnce(Return(true));
-    EXPECT_CALL(*store_, Set(PolicyEq(policy_str_))).Times(1)
+    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_))).Times(1)
         .InSequence(sequence);
   }
 

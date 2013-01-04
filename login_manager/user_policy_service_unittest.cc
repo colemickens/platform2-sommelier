@@ -11,6 +11,7 @@
 #include <gtest/gtest.h>
 
 #include "login_manager/device_management_backend.pb.h"
+#include "login_manager/matchers.h"
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
@@ -23,10 +24,6 @@ using ::testing::Return;
 using ::testing::Sequence;
 using ::testing::StrictMock;
 using ::testing::_;
-
-MATCHER_P(PolicyEq, str, "") {
-  return arg.SerializeAsString() == str;
-}
 
 namespace login_manager {
 
@@ -65,7 +62,7 @@ class UserPolicyServiceTest : public ::testing::Test {
   }
 
   void ExpectStorePolicy(const Sequence& sequence) {
-    EXPECT_CALL(*store_, Set(PolicyEq(policy_str_)))
+    EXPECT_CALL(*store_, Set(PolicyStrEq(policy_str_)))
         .InSequence(sequence);
     EXPECT_CALL(*store_, Persist())
         .InSequence(sequence)
