@@ -15,19 +15,17 @@
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
 
+DEFINE_bool(use_dbus, false, "Use DBus RequestSuspend (must be logged in)");
 DEFINE_int64(size, 1024*1024*1024, "Amount of memory to allocate");
 
 void PrintAddrMap(void *vaddr) {
-  char filename[32];
   int fd;
   uintptr_t page = reinterpret_cast<uintptr_t>(vaddr) / getpagesize();
   uint64 page_data;
 
-  CHECK_LT(snprintf(filename, sizeof(filename), "/proc/%d/pagemap", getpid()),
-           static_cast<int>(sizeof(filename)));
-  fd = open(filename, O_RDONLY);
-  CHECK(fd);
-  CHECK_EQ(static_cast<uintptr_t>(lseek(fd, page * 8, SEEK_SET)), page * 8);
+  fd = open("/proc/self/pagemap", O_RDONLY);
+  CHECK_GE(fd, 0);
+  CHECK_EQ(static_cast<uintptr_t>(lseek64(fd, page * 8, SEEK_SET)), page * 8);
   CHECK_EQ(read(fd, &page_data, 8), 8);
   printf("Vaddr: 0x%p   PFN=0x%llx  shift=0x%llx  present=%lld\n", vaddr,
          page_data & ((1LL << 55) - 1), (page_data & ((0x3fLL << 55))) >> 55,
@@ -35,8 +33,10 @@ void PrintAddrMap(void *vaddr) {
 }
 
 int Suspend(void) {
-  // TODO(crosbug.com/36995): Add dbus suspend ability
-  return system("powerd_suspend");
+  if (FLAGS_use_dbus)
+    return system("powerd_dbus_suspend");
+  else
+    return system("powerd_suspend");
 }
 
 uint32* Allocate(size_t size) {

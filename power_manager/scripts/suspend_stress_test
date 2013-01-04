@@ -52,14 +52,17 @@ if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
   FLAGS_backup_rtc=${FLAGS_FALSE}
 fi
 
-if [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
-  suspend_cmd=powerd_dbus_suspend
-elif [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
+if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
   free_kb=$(grep MemFree: /proc/meminfo | awk '{ print $2}')
   inactive_kb=$(grep Inactive: /proc/meminfo | awk '{ print $2}')
   slack_kb=100000
   bytes=$(((free_kb + inactive_kb - slack_kb) * 1024))
   suspend_cmd="memory_suspend_test --size ${bytes}"
+  if [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
+    suspend_cmd="${suspend_cmd} --use_dbus"
+  fi
+elif [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
+  suspend_cmd=powerd_dbus_suspend
 else
   suspend_cmd=powerd_suspend
 fi
