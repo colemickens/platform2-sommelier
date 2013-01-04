@@ -8,27 +8,6 @@
 
 namespace login_manager {
 
-TEST(SessionManagerTestStatic, EmailAddressTest) {
-  const char valid[] = "user_who+we.like@some-where.com";
-  EXPECT_TRUE(SessionManagerService::ValidateEmail(valid));
-}
-
-TEST(SessionManagerTestStatic, EmailAddressNonAsciiTest) {
-  char invalid[4] = "a@m";
-  invalid[2] = 254;
-  EXPECT_FALSE(SessionManagerService::ValidateEmail(invalid));
-}
-
-TEST(SessionManagerTestStatic, EmailAddressNoAtTest) {
-  const char no_at[] = "user";
-  EXPECT_FALSE(SessionManagerService::ValidateEmail(no_at));
-}
-
-TEST(SessionManagerTestStatic, EmailAddressTooMuchAtTest) {
-  const char extra_at[] = "user@what@where";
-  EXPECT_FALSE(SessionManagerService::ValidateEmail(extra_at));
-}
-
 TEST(SessionManagerTestStatic, GetArgLists0) {
   std::vector<std::string> args;
   std::vector<std::string> arg_list = SessionManagerService::GetArgList(args);

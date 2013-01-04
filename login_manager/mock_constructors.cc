@@ -16,6 +16,7 @@
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
 #include "login_manager/mock_process_manager_service.h"
+#include "login_manager/mock_session_manager.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_user_policy_service_factory.h"
 
@@ -38,7 +39,9 @@ MockChildJob::~MockChildJob() {}
 MockDevicePolicyService::MockDevicePolicyService()
     : DevicePolicyService(FilePath(""), FilePath(""),
                           scoped_ptr<PolicyStore>(),
-                          NULL, NULL, NULL, NULL, NULL) {}
+                          NULL, NULL, NULL,
+                          scoped_ptr<OwnerKeyLossMitigator>(),
+                          NULL) {}
 MockDevicePolicyService::~MockDevicePolicyService() {}
 
 MockFileChecker::MockFileChecker(std::string filename)
@@ -76,6 +79,9 @@ MockPolicyStore::~MockPolicyStore() {}
 MockProcessManagerService::MockProcessManagerService()
     : ProcessManagerServiceInterface() {}
 MockProcessManagerService::~MockProcessManagerService() {}
+
+MockSessionManager::MockSessionManager() {}
+MockSessionManager::~MockSessionManager() {}
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
   : UserPolicyServiceFactory(0, NULL) {}

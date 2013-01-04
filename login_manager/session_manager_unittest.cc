@@ -18,12 +18,12 @@
 #include "login_manager/file_checker.h"
 #include "login_manager/matchers.h"
 #include "login_manager/mock_child_job.h"
-#include "login_manager/mock_device_policy_service.h"
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
 #include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_policy_service.h"
+#include "login_manager/mock_session_manager.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/mock_upstart_signal_emitter.h"
 #include "login_manager/mock_user_policy_service_factory.h"
@@ -51,9 +51,7 @@ SessionManagerTest::SessionManagerTest()
       liveness_checker_(new MockLivenessChecker),
       metrics_(new MockMetrics),
       mitigator_(new MockMitigator),
-      upstart_(new MockUpstartSignalEmitter),
-      device_policy_service_(new MockDevicePolicyService),
-      user_policy_service_(NULL),
+      session_manager_impl_(new MockSessionManager),
       must_destroy_mocks_(true) {
 }
 
@@ -63,7 +61,6 @@ SessionManagerTest::~SessionManagerTest() {
     delete liveness_checker_;
     delete metrics_;
     delete mitigator_;
-    delete upstart_;
   }
 }
 
@@ -93,37 +90,25 @@ void SessionManagerTest::InitManager(MockChildJob* job) {
   manager_->set_file_checker(file_checker_);
   manager_->set_mitigator(mitigator_);
   manager_->test_api().set_liveness_checker(liveness_checker_);
-  manager_->test_api().set_upstart_signal_emitter(upstart_);
-  manager_->test_api().set_device_policy_service(device_policy_service_);
-  manager_->test_api().set_device_local_account_policy_service(
-      new DeviceLocalAccountPolicyService(tmpdir_.path(), NULL, NULL));
   manager_->test_api().set_login_metrics(metrics_);
-}
-
-PolicyService* SessionManagerTest::CreateUserPolicyService() {
-  user_policy_service_ = new MockPolicyService();
-  return user_policy_service_;
+  manager_->test_api().set_session_manager(session_manager_impl_);
 }
 
 void SessionManagerTest::SimpleRunManager() {
   manager_->test_api().set_exit_on_child_done(true);
-  ExpectPolicySetup();
-  EXPECT_CALL(utils_,
-              EmitSignalWithStringArgs(
-                  StrEq(login_manager::kSessionStateChangedSignal),
-                  ElementsAre(SessionManagerService::kStopped, _)))
-      .Times(1);
+
+  ExpectSuccessfulInitialization();
+  ExpectShutdown();
+
+  // Expect and mimic successful cleanup of children.
   EXPECT_CALL(utils_, kill(_, _, _))
       .Times(AtMost(1))
       .WillRepeatedly(WithArgs<0,2>(Invoke(::kill)));
   EXPECT_CALL(utils_, ChildIsGone(_, _))
       .Times(AtMost(1))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(utils_, IsDevMode())
-      .Times(AtMost(1))
-      .WillRepeatedly(Return(false));
-  MockUtils();
 
+  MockUtils();
   manager_->Run();
 }
 
@@ -131,28 +116,19 @@ void SessionManagerTest::MockUtils() {
   manager_->test_api().set_systemutils(&utils_);
 }
 
-void SessionManagerTest::ExpectPolicySetup() {
-  EXPECT_CALL(*device_policy_service_, Initialize())
+void SessionManagerTest::ExpectSuccessfulInitialization() {
+  // Happy signal needed during Run().
+  EXPECT_CALL(*session_manager_impl_, Initialize())
       .WillOnce(Return(true));
-  EXPECT_CALL(*device_policy_service_, PersistPolicySync())
-      .WillOnce(Return(true));
-  EXPECT_CALL(*device_policy_service_, GetSettings())
-      .WillRepeatedly(ReturnRef(device_settings_));
-  if (user_policy_service_) {
-    EXPECT_CALL(*user_policy_service_, PersistPolicySync())
-        .WillOnce(Return(true));
-  }
 }
 
-void SessionManagerTest::ExpectUserPolicySetup() {
-  // Pretend user policy initializes successfully.
-  MockUserPolicyServiceFactory* factory = new MockUserPolicyServiceFactory;
-  EXPECT_CALL(*factory, Create(_))
-      .Times(AtMost(1))
-      .WillRepeatedly(
-          InvokeWithoutArgs(this,
-                            &SessionManagerTest::CreateUserPolicyService));
-  manager_->test_api().set_user_policy_service_factory(factory);
+void SessionManagerTest::ExpectShutdown() {
+  EXPECT_CALL(*session_manager_impl_, Finalize())
+      .Times(1);
+  EXPECT_CALL(*session_manager_impl_, AnnounceSessionStoppingIfNeeded())
+      .Times(1);
+  EXPECT_CALL(*session_manager_impl_, AnnounceSessionStopped())
+      .Times(1);
 }
 
 }  // namespace login_manager

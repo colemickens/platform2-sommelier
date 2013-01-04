@@ -21,7 +21,7 @@ namespace gobject {  // Namespace hiding the GObject type data.
 
 struct SessionManager {
   GObject parent_instance;
-  SessionManagerInterface *service;  // pointer to implementing service.
+  SessionManagerInterface *impl;  // pointer to SessionManager API implemention.
 };
 struct SessionManagerClass { GObjectClass parent_class; };
 
@@ -32,7 +32,7 @@ struct SessionManagerClass { GObjectClass parent_class; };
 GType session_manager_get_type();  // defined by G_DEFINE_TYPE
 struct dbus_glib_session_manager_object_info;  // defined by G_DEFINE_TYPE
 
-// Interface function prototypes which wrap service.
+// Interface function prototypes which wrap impl.
 gboolean session_manager_emit_login_prompt_ready(SessionManager *self,
                                                  gboolean *OUT_emitted,
                                                  GError **error);

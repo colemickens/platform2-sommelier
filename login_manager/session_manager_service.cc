@@ -49,6 +49,7 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 
 // Forcibly namespace the dbus-bindings generated server bindings instead of
@@ -78,49 +79,6 @@ using std::vector;
 
 int g_shutdown_pipe_write_fd = -1;
 int g_shutdown_pipe_read_fd = -1;
-
-// PolicyService::Completion implementation that forwards the result to a DBus
-// invocation context.
-class DBusGMethodCompletion : public PolicyService::Completion {
- public:
-  // Takes ownership of |context|.
-  DBusGMethodCompletion(DBusGMethodInvocation* context);
-  virtual ~DBusGMethodCompletion();
-
-  virtual void Success();
-  virtual void Failure(const PolicyService::Error& error);
-
- private:
-  DBusGMethodInvocation* context_;
-
-  DISALLOW_COPY_AND_ASSIGN(DBusGMethodCompletion);
-};
-
-DBusGMethodCompletion::DBusGMethodCompletion(DBusGMethodInvocation* context)
-    : context_(context) {
-}
-
-DBusGMethodCompletion::~DBusGMethodCompletion() {
-  if (context_) {
-    NOTREACHED() << "Unfinished DBUS call!";
-    dbus_g_method_return(context_, false);
-  }
-}
-
-void DBusGMethodCompletion::Success() {
-  dbus_g_method_return(context_, true);
-  context_ = NULL;
-  delete this;
-}
-
-void DBusGMethodCompletion::Failure(const PolicyService::Error& error) {
-  SystemUtils system;
-  system.SetAndSendGError(error.code(), context_, error.message().c_str());
-  context_ = NULL;
-  delete this;
-}
-
-size_t SessionManagerService::kCookieEntropyBytes = 16;
 
 // static
 // Common code between SIG{HUP, INT, TERM}Handler.
@@ -168,27 +126,9 @@ void SessionManagerService::SIGTERMHandler(int signal) {
   GracefulShutdownHandler(signal);
 }
 
-const uint32 SessionManagerService::kMaxGCharBufferSize = 200;
-const char SessionManagerService::kEmailSeparator = '@';
-const char SessionManagerService::kLegalCharacters[] =
-    "abcdefghijklmnopqrstuvwxyz"
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    ".@1234567890-+_";
-const char SessionManagerService::kIncognitoUser[] = "";
-const char SessionManagerService::kDemoUser[] = "demouser@";
-const char SessionManagerService::kDeviceOwnerPref[] = "cros.device.owner";
 const char SessionManagerService::kFirstBootFlag[] = "--first-boot";
-const char SessionManagerService::kTestingChannelFlag[] =
-    "--testing-channel=NamedTestingInterface:";
-const char SessionManagerService::kStarted[] = "started";
-const char SessionManagerService::kStopping[] = "stopping";
-const char SessionManagerService::kStopped[] = "stopped";
-const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
 
-const char SessionManagerService::kLoggedInFlag[] =
-    "/var/run/session_manager/logged_in";
-const char SessionManagerService::kResetFile[] =
-    "/mnt/stateful_partition/factory_install_reset";
+const char SessionManagerService::kFlagFileDir[] = "/var/run/session_manager";
 
 // TODO(mkrebs): Remove CollectChrome timeout and file when
 // crosbug.com/5872 is fixed.
@@ -201,14 +141,6 @@ const char SessionManagerService::kCollectChromeFile[] =
     "/mnt/stateful_partition/etc/collect_chrome_crashes";
 
 namespace {
-
-// A buffer of this size is used to parse the command line to restart a
-// process like restarting Chrome for the guest mode.
-const int kMaxArgumentsSize = 1024 * 8;
-
-// File that contains world-readable machine statistics. Should be removed once
-// the user session starts.
-const char kMachineInfoFile[] = "/tmp/machine-info";
 
 // Device-local account state directory.
 const FilePath::CharType kDeviceLocalAccountStateDir[] =
@@ -242,16 +174,10 @@ SessionManagerService::SessionManagerService(
       nss_(NssUtil::Create()),
       key_gen_(new KeyGenerator(utils)),
       login_metrics_(NULL),
-      upstart_signal_emitter_(new UpstartSignalEmitter),
       liveness_checker_(NULL),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
       liveness_checking_interval_(hang_detection_interval),
-      session_started_(false),
-      session_stopping_(false),
-      current_user_is_incognito_(false),
-      screen_locked_(false),
       set_uid_(false),
-      machine_info_file_(kMachineInfoFile),
       shutting_down_(false),
       shutdown_already_(false),
       exit_code_(SUCCESS) {
@@ -259,9 +185,6 @@ SessionManagerService::SessionManagerService(
   PLOG_IF(DFATAL, pipe2(pipefd, O_CLOEXEC) < 0) << "Failed to create pipe";
   g_shutdown_pipe_read_fd = pipefd[0];
   g_shutdown_pipe_write_fd = pipefd[1];
-
-  if (!chromeos::SecureRandomString(kCookieEntropyBytes, &cookie_))
-    LOG(FATAL) << "Can't generate auth cookie.";
 
   SetupHandlers();
 }
@@ -329,6 +252,7 @@ bool SessionManagerService::Initialize() {
                0);              // num params
 
   LOG(INFO) << "SessionManagerService starting";
+
   if (!Reset())
     return false;
 
@@ -338,28 +262,50 @@ bool SessionManagerService::Initialize() {
     return false;
   }
   login_metrics_.reset(new LoginMetrics(flag_file_dir));
-  owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath()));
-  device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
-                                               owner_key_.get(),
-                                               mitigator_.get(),
-                                               nss_.get(),
-                                               loop_proxy_);
-  device_policy_->set_delegate(this);
-  user_policy_factory_.reset(
-      new UserPolicyServiceFactory(
-          getuid(),
-          loop_proxy_));
-  device_local_account_policy_.reset(
-      new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
-                                          owner_key_.get(),
-                                          loop_proxy_));
 
+  // Initially store in derived-type pointer, so that we can initialize
+  // appropriately below, and also use as delegate for device_policy_.
+  SessionManagerImpl* impl =
+      new SessionManagerImpl(
+          scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
+          this, login_metrics_.get(), system_);
+
+  // The below require loop_proxy_, created in Reset(), to be set already.
   liveness_checker_.reset(
       new LivenessCheckerImpl(this,
                               system_,
                               loop_proxy_,
                               enable_browser_abort_on_hang_,
                               liveness_checking_interval_));
+
+  owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath()));
+  scoped_refptr<DevicePolicyService> device_policy(
+      DevicePolicyService::Create(login_metrics_.get(),
+                                  owner_key_.get(),
+                                  mitigator_.Pass(),
+                                  nss_.get(),
+                                  loop_proxy_));
+  device_policy->set_delegate(impl);
+
+  scoped_ptr<UserPolicyServiceFactory> user_policy_factory(
+      new UserPolicyServiceFactory(getuid(), loop_proxy_));
+  scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
+      new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
+                                          owner_key_.get(),
+                                          loop_proxy_));
+  impl->InjectPolicyServices(device_policy,
+                             user_policy_factory.Pass(),
+                             device_local_account_policy.Pass());
+  impl_.reset(impl);
+
+  // Wire impl to dbus-glib glue.
+  if (session_manager_)
+    g_object_unref(session_manager_);
+  session_manager_ =
+      reinterpret_cast<gobject::SessionManager*>(
+          g_object_new(gobject::session_manager_get_type(), NULL));
+  session_manager_->impl = impl_.get();
+
   return true;
 }
 
@@ -391,15 +337,6 @@ bool SessionManagerService::Register(
 }
 
 bool SessionManagerService::Reset() {
-  if (session_manager_)
-    g_object_unref(session_manager_);
-  session_manager_ =
-      reinterpret_cast<gobject::SessionManager*>(
-          g_object_new(gobject::session_manager_get_type(), NULL));
-
-  // Allow references to this instance.
-  session_manager_->service = this;
-
   if (main_loop_)
     g_main_loop_unref(main_loop_);
   main_loop_ = g_main_loop_new(NULL, false);
@@ -411,17 +348,6 @@ bool SessionManagerService::Reset() {
   dont_use_directly_.reset(new MessageLoopForUI);
   loop_proxy_ = base::MessageLoopProxy::current();
   return true;
-}
-
-void SessionManagerService::OnPolicyPersisted(bool success) {
-  system_->EmitStatusSignal(login_manager::kPropertyChangeCompleteSignal,
-                            success);
-  device_local_account_policy_->UpdateDeviceSettings(
-      device_policy_->GetSettings());
-}
-
-void SessionManagerService::OnKeyPersisted(bool success) {
-  system_->EmitStatusSignal(login_manager::kOwnerKeySetSignal, success);
 }
 
 int SessionManagerService::GetKillTimeout() {
@@ -445,24 +371,19 @@ bool SessionManagerService::Run() {
   if (ShouldRunBrowser())  // Allows devs to start/stop browser manually.
     RunBrowser();
 
-  // A corrupted owner key means that the device needs to undergo
+  // Initializes policy subsystems which, among other things, finds and
+  // validates the stored policy signing key if one is present.
+  // A corrupted policy key means that the device needs to undergo
   // 'Powerwash', which reboots and then wipes most of the stateful partition.
-  if (!device_policy_->Initialize()) {
-    InitiateDeviceWipe();
+  if (!impl_->Initialize()) {
+    impl_->StartDeviceWipe(NULL, NULL);
     Shutdown();
     return false;
   }
-  device_local_account_policy_->UpdateDeviceSettings(
-      device_policy_->GetSettings());
 
   MessageLoop::current()->Run();
   CleanupChildren(GetKillTimeout());
-  DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopped;
-  vector<string> args;
-  args.push_back(kStopped);
-  args.push_back(current_user_);
-  system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
-                                 args);
+  impl_->AnnounceSessionStopped();
   return true;
 }
 
@@ -478,19 +399,9 @@ bool SessionManagerService::Shutdown() {
   LOG(INFO) << "SessionManagerService exiting";
   DeregisterChildWatchers();
   liveness_checker_->Stop();
-  if (session_started_) {
-    session_stopping_ = true;
-    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStopping;
-    vector<string> args;
-    args.push_back(kStopping);
-    args.push_back(current_user_);
-    system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
-                                   args);
-  }
+  impl_->AnnounceSessionStoppingIfNeeded();
 
-  device_policy_->PersistPolicySync();
-  if (user_policy_.get())
-    user_policy_->PersistPolicySync();
+  impl_->Finalize();
   loop_proxy_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
   LOG(INFO) << "SessionManagerService quitting run loop";
   return true;
@@ -518,8 +429,6 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   child_job->RecordTime();
   pid_t pid = system_->fork();
   if (pid == 0) {
-    if (setenv("CROS_SESSION_MANAGER_COOKIE", cookie_.c_str(), 1))
-      exit(1);
     RevertHandlers();
     child_job->Run();
     exit(ChildJobInterface::kCantExec);  // Run() is not supposed to return.
@@ -603,343 +512,6 @@ void SessionManagerService::AllowGracefulExit() {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// SessionManagerService commands
-
-gboolean SessionManagerService::EmitLoginPromptReady(gboolean* OUT_emitted,
-                                                     GError** error) {
-  login_metrics_->RecordStats("login-prompt-ready");
-  // TODO(derat): Stop emitting this signal once no one's listening for it.
-  // Jobs that want to run after we're done booting should wait for
-  // login-prompt-visible or boot-complete.
-  *OUT_emitted =
-      upstart_signal_emitter_->EmitSignal("login-prompt-ready", "", error);
-  return *OUT_emitted;
-}
-
-gboolean SessionManagerService::EmitLoginPromptVisible(GError** error) {
-  login_metrics_->RecordStats("login-prompt-visible");
-  system_->EmitSignal(login_manager::kLoginPromptVisibleSignal);
-  return upstart_signal_emitter_->EmitSignal("login-prompt-visible", "", error);
-}
-
-gboolean SessionManagerService::EnableChromeTesting(gboolean force_relaunch,
-                                                    const gchar** extra_args,
-                                                    gchar** OUT_filepath,
-                                                    GError** error) {
-  // Check to see if we already have Chrome testing enabled.
-  bool already_enabled = !chrome_testing_path_.empty();
-
-  if (!already_enabled) {
-    FilePath temp_file_path;  // So we don't clobber chrome_testing_path_;
-    if (!system_->GetUniqueFilenameInWriteOnlyTempDir(&temp_file_path))
-      return FALSE;
-    chrome_testing_path_ = temp_file_path;
-  }
-
-  *OUT_filepath = g_strdup(chrome_testing_path_.value().c_str());
-
-  if (already_enabled && !force_relaunch)
-    return TRUE;
-
-  // Delete testing channel file if it already exists.
-  system_->RemoveFile(chrome_testing_path_);
-
-  vector<string> extra_argument_vector;
-  // Create extra argument vector.
-  while (*extra_args != NULL) {
-    extra_argument_vector.push_back(*extra_args);
-    ++extra_args;
-  }
-  // Add testing channel argument to extra arguments.
-  string testing_argument = kTestingChannelFlag;
-  testing_argument.append(chrome_testing_path_.value());
-  extra_argument_vector.push_back(testing_argument);
-
-  RestartBrowserWithArgs(extra_argument_vector, true);
-  return TRUE;
-}
-
-gboolean SessionManagerService::StartSession(gchar* email_address,
-                                             gchar* unique_identifier,
-                                             gboolean* OUT_done,
-                                             GError** error) {
-  if (session_started_) {
-    const char msg[] = "Can't start session while session is already active.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
-    return *OUT_done = FALSE;
-  }
-  if (!ValidateAndCacheUserEmail(email_address, error)) {
-    *OUT_done = FALSE;
-    return FALSE;
-  }
-
-  // Check whether the current user is the owner, and if so make sure she is
-  // whitelisted and has an owner key.
-  bool user_is_owner = false;
-  PolicyService::Error policy_error;
-  if (!device_policy_->CheckAndHandleOwnerLogin(current_user_,
-                                                &user_is_owner,
-                                                &policy_error)) {
-    system_->SetGError(error,
-                       policy_error.code(),
-                       policy_error.message().c_str());
-    return *OUT_done = FALSE;
-  }
-
-  // Initialize user policy.
-  user_policy_ = user_policy_factory_->Create(current_user_);
-  if (!user_policy_.get()) {
-    LOG(ERROR) << "User policy failed to initialize.";
-    return *OUT_done = FALSE;
-  }
-
-  // Send each user login event to UMA (right before we start session
-  // since the metrics library does not log events in guest mode).
-  int dev_mode = system_->IsDevMode();
-  if (dev_mode > -1) {
-    login_metrics_->SendLoginUserType(dev_mode,
-                                      current_user_is_incognito_,
-                                      user_is_owner);
-  }
-  *OUT_done =
-      upstart_signal_emitter_->EmitSignal(
-          "start-user-session",
-          StringPrintf("CHROMEOS_USER=%s", current_user_.c_str()),
-          error);
-
-  if (*OUT_done) {
-    browser_.job->StartSession(current_user_);
-    session_started_ = true;
-    DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
-    vector<string> args;
-    args.push_back(kStarted);
-    args.push_back(current_user_);
-    system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
-                                      args);
-    if (device_policy_->KeyMissing() &&
-        !mitigator_->Mitigating() &&
-        !current_user_is_incognito_) {
-      key_gen_->Start(set_uid_ ? uid_ : 0, this);
-    }
-    // Delete the machine-info file. It contains device-identifiable data such
-    // as the serial number and shouldn't be around during a user session.
-    if (!file_util::Delete(FilePath(machine_info_file_), false))
-      PLOG(WARNING) << "Failed to delete " << machine_info_file_.value();
-  }
-
-  system_->AtomicFileWrite(FilePath(kLoggedInFlag), "1", 1);
-
-  return *OUT_done;
-}
-
-void SessionManagerService::HandleKeygenExit(GPid pid,
-                                             gint status,
-                                             gpointer data) {
-  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  manager->AbandonKeyGeneratorJob();
-
-  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-    string key;
-    FilePath key_file(manager->key_gen_->temporary_key_filename());
-    file_util::ReadFileToString(key_file, &key);
-    PLOG_IF(WARNING, !file_util::Delete(key_file, false)) << "Can't delete "
-                                                          << key_file.value();
-    manager->device_policy_->ValidateAndStoreOwnerKey(manager->current_user_,
-                                                      key);
-  } else {
-    if (WIFSIGNALED(status))
-      LOG(ERROR) << "keygen exited on signal " << WTERMSIG(status);
-    else
-      LOG(ERROR) << "keygen exited with exit code " << WEXITSTATUS(status);
-  }
-}
-
-gboolean SessionManagerService::StopSession(gchar* unique_identifier,
-                                            gboolean* OUT_done,
-                                            GError** error) {
-  // Most calls to StopSession() will log the reason for the call.
-  // If you don't see a log message saying the reason for the call, it is
-  // likely a DBUS message. See dbus_glib_shim.cc for that call.
-  LOG(INFO) << "SessionManagerService StopSession";
-  ScheduleShutdown();
-  // TODO(cmasone): re-enable these when we try to enable logout without exiting
-  //                the session manager
-  // browser_.job->StopSession();
-  // user_policy_.reset();
-  // session_started_ = false;
-  return *OUT_done = TRUE;
-}
-
-gboolean SessionManagerService::StorePolicy(GArray* policy_blob,
-                                            DBusGMethodInvocation* context) {
-  int flags = PolicyService::KEY_ROTATE;
-  if (!session_started_)
-    flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
-  return device_policy_->Store(reinterpret_cast<uint8*>(policy_blob->data),
-                               policy_blob->len,
-                               new DBusGMethodCompletion(context),
-                               flags) ? TRUE : FALSE;
-}
-
-gboolean SessionManagerService::RetrievePolicy(GArray** OUT_policy_blob,
-                                               GError** error) {
-  std::vector<uint8> policy_data;
-  return EncodeRetrievedPolicy(device_policy_->Retrieve(&policy_data),
-                               policy_data,
-                               OUT_policy_blob,
-                               error);
-}
-
-gboolean SessionManagerService::StoreUserPolicy(
-    GArray* policy_blob,
-    DBusGMethodInvocation* context) {
-  if (session_started_ && user_policy_.get()) {
-    return user_policy_->Store(reinterpret_cast<uint8*>(policy_blob->data),
-                               policy_blob->len,
-                               new DBusGMethodCompletion(context),
-                               PolicyService::KEY_INSTALL_NEW |
-                               PolicyService::KEY_ROTATE) ? TRUE : FALSE;
-  }
-
-  const char msg[] = "Cannot store user policy before session is started.";
-  LOG(ERROR) << msg;
-  system_->SetAndSendGError(CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, context, msg);
-  return FALSE;
-}
-
-gboolean SessionManagerService::RetrieveUserPolicy(GArray** OUT_policy_blob,
-                                                   GError** error) {
-  if (session_started_ && user_policy_.get()) {
-    std::vector<uint8> policy_data;
-    return EncodeRetrievedPolicy(user_policy_->Retrieve(&policy_data),
-                                 policy_data,
-                                 OUT_policy_blob,
-                                 error);
-  }
-
-  const char msg[] = "Cannot retrieve user policy before session is started.";
-  LOG(ERROR) << msg;
-  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
-  return FALSE;
-}
-
-gboolean SessionManagerService::StoreDeviceLocalAccountPolicy(
-    gchar* account_id,
-    GArray* policy_blob,
-    DBusGMethodInvocation* context) {
-  return device_local_account_policy_->Store(
-      GCharToString(account_id),
-      reinterpret_cast<uint8*>(policy_blob->data),
-      policy_blob->len,
-      new DBusGMethodCompletion(context));
-}
-
-gboolean SessionManagerService::RetrieveDeviceLocalAccountPolicy(
-    gchar* account_id,
-    GArray** OUT_policy_blob,
-    GError** error) {
-  std::vector<uint8> policy_data;
-  return EncodeRetrievedPolicy(
-      device_local_account_policy_->Retrieve(GCharToString(account_id),
-                                             &policy_data),
-      policy_data,
-      OUT_policy_blob,
-      error);
-}
-
-gboolean SessionManagerService::RetrieveSessionState(gchar** OUT_state,
-                                                     gchar** OUT_user) {
-  if (!session_started_)
-    *OUT_state = g_strdup(kStopped);
-  else
-    *OUT_state = g_strdup(session_stopping_ ? kStopping : kStarted);
-  *OUT_user = g_strdup(session_started_ && !current_user_.empty() ?
-                       current_user_.c_str() : "");
-  return TRUE;
-}
-
-gboolean SessionManagerService::LockScreen(GError** error) {
-  if (current_user_is_incognito_) {
-    LOG(WARNING) << "Attempt to lock screen during Guest session.";
-    return FALSE;
-  }
-  system_->EmitSignal(chromium::kLockScreenSignal);
-  LOG(INFO) << "LockScreen";
-  return TRUE;
-}
-
-gboolean SessionManagerService::HandleLockScreenShown(GError** error) {
-  screen_locked_ = true;
-  LOG(INFO) << "HandleLockScreenShown";
-  system_->EmitSignal(login_manager::kScreenIsLockedSignal);
-  return TRUE;
-}
-
-gboolean SessionManagerService::UnlockScreen(GError** error) {
-  system_->EmitSignal(chromium::kUnlockScreenSignal);
-  LOG(INFO) << "UnlockScreen";
-  return TRUE;
-}
-
-gboolean SessionManagerService::HandleLockScreenDismissed(GError** error) {
-  screen_locked_ = false;
-  LOG(INFO) << "HandleLockScreenDismissed";
-  system_->EmitSignal(login_manager::kScreenIsUnlockedSignal);
-  return TRUE;
-}
-
-gboolean SessionManagerService::RestartJob(gint pid,
-                                           gchar* arguments,
-                                           gboolean* OUT_done,
-                                           GError** error) {
-  if (!IsBrowser(static_cast<pid_t>(pid))) {
-    *OUT_done = FALSE;
-    const char msg[] = "Provided pid is unknown.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_UNKNOWN_PID, msg);
-    return FALSE;
-  }
-
-  // To ensure no overflow.
-  gchar arguments_buffer[kMaxArgumentsSize + 1];
-  snprintf(arguments_buffer, sizeof(arguments_buffer), "%s", arguments);
-  arguments_buffer[kMaxArgumentsSize] = '\0';
-
-  gchar **argv = NULL;
-  gint argc = 0;
-  if (!g_shell_parse_argv(arguments, &argc, &argv, error)) {
-    LOG(ERROR) << "Could not parse command: " << (*error)->message;
-    g_strfreev(argv);
-    return false;
-  }
-  CommandLine new_command_line(argc, argv);
-  g_strfreev(argv);
-
-  RestartBrowserWithArgs(new_command_line.argv(), false);
-
-  // To set "logged-in" state for BWSI mode.
-  return StartSession(const_cast<gchar*>(kIncognitoUser), NULL,
-                      OUT_done, error);
-}
-
-gboolean SessionManagerService::RestartJobWithAuth(gint pid,
-                                                   gchar* cookie,
-                                                   gchar* arguments,
-                                                   gboolean* OUT_done,
-                                                   GError** error) {
-  // This method isn't filtered - instead, we check for cookie validity.
-  if (!IsValidCookie(cookie)) {
-    *OUT_done = FALSE;
-    const char msg[] = "Invalid auth cookie.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ILLEGAL_SERVICE, msg);
-    return FALSE;
-  }
-  return RestartJob(pid, arguments, OUT_done, error);
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // glib event handlers
 
 void SessionManagerService::HandleBrowserExit(GPid pid,
@@ -973,7 +545,7 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
   LOG(ERROR) << StringPrintf("Process %s(%d) exited.",
                              child_job ? child_job->GetName().c_str() : "",
                              pid);
-  if (manager->screen_locked_) {
+  if (manager->impl_->ScreenIsLocked()) {
     LOG(ERROR) << "Screen locked, shutting down";
     manager->SetExitAndServiceShutdown(CRASH_WHILE_SCREEN_LOCKED);
     return;
@@ -997,6 +569,23 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
   }
 }
 
+void SessionManagerService::HandleKeygenExit(GPid pid,
+                                             gint status,
+                                             gpointer data) {
+  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
+  manager->AbandonKeyGeneratorJob();
+
+  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+    FilePath key_file(manager->key_gen_->temporary_key_filename());
+    manager->impl_->ImportValidateAndStoreGeneratedKey(key_file);
+  } else {
+    if (WIFSIGNALED(status))
+      LOG(ERROR) << "keygen exited on signal " << WTERMSIG(status);
+    else
+      LOG(ERROR) << "keygen exited with exit code " << WEXITSTATUS(status);
+  }
+}
+
 gboolean SessionManagerService::HandleKill(GIOChannel* source,
                                            GIOCondition condition,
                                            gpointer data) {
@@ -1015,31 +604,6 @@ void SessionManagerService::SetExitAndServiceShutdown(ExitCode code) {
 
 ///////////////////////////////////////////////////////////////////////////////
 // Utility Methods
-
-// This can probably be more efficient, if it needs to be.
-// static
-bool SessionManagerService::ValidateEmail(const string& email_address) {
-  if (email_address.find_first_not_of(kLegalCharacters) != string::npos)
-    return false;
-
-  size_t at = email_address.find(kEmailSeparator);
-  // it has NO @.
-  if (at == string::npos)
-    return false;
-
-  // it has more than one @.
-  if (email_address.find(kEmailSeparator, at+1) != string::npos)
-    return false;
-
-  return true;
-}
-
-// static
-std::string SessionManagerService::GCharToString(const gchar* str) {
-  char buffer[kMaxGCharBufferSize + 1];
-  int len = snprintf(buffer, sizeof(buffer), "%s", str);
-  return std::string(buffer, len);
-}
 
 // static
 DBusHandlerResult SessionManagerService::FilterMessage(DBusConnection* conn,
@@ -1124,25 +688,6 @@ void SessionManagerService::RevertHandlers() {
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
-gboolean SessionManagerService::ValidateAndCacheUserEmail(
-    const gchar* email_address,
-    GError** error) {
-  // basic validity checking; avoid buffer overflows here, and
-  // canonicalize the email address a little.
-  string email_string(GCharToString(email_address));
-  bool user_is_incognito = ((email_string == kIncognitoUser) ||
-      (email_string == kDemoUser));
-  if (!user_is_incognito && !ValidateEmail(email_string)) {
-    const char msg[] = "Provided email address is not valid.  ASCII only.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, msg);
-    return FALSE;
-  }
-  current_user_is_incognito_ = user_is_incognito;
-  current_user_ = StringToLowerASCII(email_string);
-  return TRUE;
-}
-
 void SessionManagerService::KillAndRemember(
     const ChildJob::Spec& spec,
     vector<std::pair<pid_t, uid_t> >* to_remember) {
@@ -1187,70 +732,12 @@ void SessionManagerService::DeregisterChildWatchers() {
   }
 }
 
-void SessionManagerService::SendSignal(const char signal_name[],
-                                       bool succeeded) {
-  system_->EmitStatusSignal(signal_name, succeeded);
-}
-
 // static
 vector<string> SessionManagerService::GetArgList(const vector<string>& args) {
   vector<string>::const_iterator start_arg = args.begin();
   if (!args.empty() && *start_arg == "--")
     ++start_arg;
   return vector<string>(start_arg, args.end());
-}
-
-gboolean SessionManagerService::EncodeRetrievedPolicy(
-    bool success,
-    const vector<uint8>& policy_data,
-    GArray** policy_blob,
-    GError** error) {
-  if (success) {
-    *policy_blob = g_array_sized_new(FALSE, FALSE, sizeof(uint8),
-                                     policy_data.size());
-    if (!*policy_blob) {
-      const char msg[] = "Unable to allocate memory for response.";
-      LOG(ERROR) << msg;
-      system_->SetGError(error, CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
-      return FALSE;
-    }
-    g_array_append_vals(*policy_blob,
-                        vector_as_array(&policy_data), policy_data.size());
-    return TRUE;
-  }
-
-  const char msg[] = "Failed to retrieve policy data.";
-  LOG(ERROR) << msg;
-  system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
-  return FALSE;
-}
-
-bool SessionManagerService::IsValidCookie(const char *cookie) {
-  size_t len = strlen(cookie) < cookie_.size()
-             ? strlen(cookie)
-             : cookie_.size();
-  return chromeos::SafeMemcmp(cookie, cookie_.data(), len) == 0;
-}
-
-gboolean SessionManagerService::StartDeviceWipe(gboolean* OUT_done,
-                                                GError** error) {
-  const FilePath session_path(kLoggedInFlag);
-  if (system_->Exists(session_path)) {
-    const char msg[] = "A user has already logged in this boot.";
-    LOG(ERROR) << msg;
-    system_->SetGError(error, CHROMEOS_LOGIN_ERROR_ALREADY_SESSION, msg);
-    return FALSE;
-  }
-  InitiateDeviceWipe();
-  *OUT_done = TRUE;
-  return TRUE;
-}
-
-void SessionManagerService::InitiateDeviceWipe() {
-  const char *contents = "fast safe";
-  const FilePath reset_path(kResetFile);
-  system_->AtomicFileWrite(reset_path, contents, strlen(contents));
-  system_->CallMethodOnPowerManager(power_manager::kRequestRestartSignal);
 }
 
 }  // namespace login_manager

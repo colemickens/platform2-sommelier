@@ -24,6 +24,7 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD2(ValidateAndStoreOwnerKey, bool(const std::string&,
                                               const std::string&));
   MOCK_METHOD0(KeyMissing, bool(void));
+  MOCK_METHOD0(Mitigating, bool(void));
   MOCK_METHOD0(Initialize, bool(void));
   MOCK_METHOD2(ReportPolicyFileMetrics, void(bool, bool));
   MOCK_METHOD0(GetSettings,

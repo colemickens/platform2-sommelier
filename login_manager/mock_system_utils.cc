@@ -20,6 +20,18 @@ MockSystemUtils::~MockSystemUtils() {
                                    << " more times.";
 }
 
+bool MockSystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
+    FilePath* temp_file_path) {
+  if (!tmpdir_.IsValid())
+    EXPECT_TRUE(tmpdir_.CreateUniqueTempDir());
+  *temp_file_path = tmpdir_.path().AppendASCII(unique_file_name_);
+  return true;
+}
+
+void MockSystemUtils::SetUniqueFilename(const std::string& name) {
+  unique_file_name_ = name;
+}
+
 scoped_ptr<ScopedDBusPendingCall> MockSystemUtils::CallAsyncMethodOnChromium(
     const char* method_name) {
   if (fake_calls_.empty()) {

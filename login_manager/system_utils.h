@@ -113,12 +113,7 @@ class SystemUtils {
   // persisted across stateful partition wipes.
   virtual void AppendToClobberLog(const char* msg) const;
 
-  // Initializes |error| with |code| and |message|.
-  virtual void SetGError(GError** error,
-                         ChromeOSLoginError code,
-                         const char* message);
-
-  // Initializes |error| with |code| and |message|.
+  // Initializes |error| with |code| and |message|; returns it via |context|.
   virtual void SetAndSendGError(ChromeOSLoginError code,
                                 DBusGMethodInvocation* context,
                                 const char* message);

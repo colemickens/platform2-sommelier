@@ -15,6 +15,7 @@
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
+#include <base/scoped_temp_dir.h>
 #include <dbus/dbus.h>
 #include <gmock/gmock.h>
 
@@ -40,6 +41,13 @@ class MockSystemUtils : public SystemUtils {
                bool(const FilePath& file, int32* file_size_32));
   MOCK_METHOD2(EnsureAndReturnSafeSize,
                bool(int64 size_64, int32* size_32));
+
+  // Make a fake that returns a filename in a temp dir owned by this class.
+  bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path);
+  // Set filename to be returned by the above.
+  void SetUniqueFilename(const std::string& name);
+
+  MOCK_METHOD1(EmitSignal, void(const char*));
   MOCK_METHOD2(EmitSignalWithStringArgs, void(const char*,
                                               const std::vector<std::string>&));
   MOCK_METHOD2(EmitStatusSignal, void(const char*, bool));
@@ -53,6 +61,7 @@ class MockSystemUtils : public SystemUtils {
   // failures will be added.
   scoped_ptr<ScopedDBusPendingCall> CallAsyncMethodOnChromium(
       const char* method_name) OVERRIDE;
+
   MOCK_METHOD1(CheckAsyncMethodSuccess, bool(DBusPendingCall*));
 
   MOCK_METHOD1(CancelAsyncMethodCall, void(DBusPendingCall*));
@@ -67,6 +76,8 @@ class MockSystemUtils : public SystemUtils {
   void EnqueueFakePendingCall(scoped_ptr<ScopedDBusPendingCall> fake_call);
 
  private:
+  ScopedTempDir tmpdir_;
+  std::string unique_file_name_;
   ScopedVector<ScopedDBusPendingCall> fake_calls_;
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);
 };

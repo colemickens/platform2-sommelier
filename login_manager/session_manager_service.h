@@ -35,6 +35,7 @@
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/process_manager_service_interface.h"
+#include "login_manager/session_manager_impl.h"
 #include "login_manager/session_manager_interface.h"
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
@@ -65,9 +66,7 @@ class SystemUtils;
 class SessionManagerService
     : public base::RefCountedThreadSafe<SessionManagerService>,
       public chromeos::dbus::AbstractDbusService,
-      public login_manager::PolicyService::Delegate,
-      public login_manager::ProcessManagerServiceInterface,
-      public login_manager::SessionManagerInterface {
+      public login_manager::ProcessManagerServiceInterface {
  public:
   enum ExitCode {
     SUCCESS = 0,
@@ -94,20 +93,6 @@ class SessionManagerService
     void set_systemutils(SystemUtils* utils) {
       session_manager_service_->system_ = utils;
     }
-    void set_device_policy_service(DevicePolicyService* device_policy) {
-      session_manager_service_->device_policy_ = device_policy;
-    }
-    void set_user_policy_service_factory(UserPolicyServiceFactory* factory) {
-      session_manager_service_->user_policy_factory_.reset(factory);
-    }
-    void set_device_local_account_policy_service(
-        DeviceLocalAccountPolicyService* device_local_account_policy) {
-      session_manager_service_->device_local_account_policy_.reset(
-          device_local_account_policy);
-    }
-    void set_upstart_signal_emitter(UpstartSignalEmitter* emitter) {
-      session_manager_service_->upstart_signal_emitter_.reset(emitter);
-    }
     void set_keygen(KeyGenerator* gen) {
       session_manager_service_->key_gen_.reset(gen);
     }
@@ -117,6 +102,9 @@ class SessionManagerService
     void set_liveness_checker(LivenessChecker* checker) {
       session_manager_service_->liveness_checker_.reset(checker);
     }
+    void set_session_manager(SessionManagerInterface* impl) {
+      session_manager_service_->impl_.reset(impl);
+    }
     // Sets whether the the manager exits when a child finishes.
     void set_exit_on_child_done(bool do_exit) {
       session_manager_service_->exit_on_child_done_ = do_exit;
@@ -125,37 +113,6 @@ class SessionManagerService
     // Executes the CleanupChildren() method on the manager.
     void CleanupChildren(int timeout) {
       session_manager_service_->CleanupChildren(timeout);
-    }
-
-    // Set whether a session has been started.
-    void set_session_started(bool started, const std::string& email) {
-      session_manager_service_->session_started_ = started;
-      session_manager_service_->current_user_is_incognito_ = false;
-      if (started)
-        session_manager_service_->current_user_ = email;
-      else
-        session_manager_service_->current_user_.clear();
-    }
-
-    // Set whether a Guest session has been started.
-    void set_guest_session_started(bool started) {
-      session_manager_service_->session_started_ = started;
-      if (started) {
-        session_manager_service_->current_user_ = kIncognitoUser;
-        session_manager_service_->current_user_is_incognito_ = true;
-      } else {
-        session_manager_service_->current_user_.clear();
-        session_manager_service_->current_user_is_incognito_ = false;
-      }
-    }
-
-    void set_machine_info_file(const FilePath& file) {
-      session_manager_service_->machine_info_file_ = file;
-    }
-
-    // Sets whether the screen is locked.
-    void set_screen_locked(bool screen_locked) {
-      session_manager_service_->screen_locked_ = screen_locked;
     }
 
     // Cause handling of faked-out exit of a child process.
@@ -176,10 +133,6 @@ class SessionManagerService
   virtual bool Initialize() OVERRIDE;
   virtual bool Register(const chromeos::dbus::BusConnection &conn) OVERRIDE;
   virtual bool Reset() OVERRIDE;
-
-  // login_manager::PolicyService::Delegate implementation:
-  virtual void OnPolicyPersisted(bool success);
-  virtual void OnKeyPersisted(bool success);
 
   // Takes ownership of |file_checker|.
   void set_file_checker(FileChecker* file_checker) {
@@ -248,67 +201,8 @@ class SessionManagerService
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
 
-  // SessionManagerInterface implementation.
-  virtual gboolean EmitLoginPromptReady(gboolean* OUT_emitted,
-                                        GError** error) OVERRIDE;
-  virtual gboolean EmitLoginPromptVisible(GError** error) OVERRIDE;
-
-  virtual gboolean EnableChromeTesting(gboolean force_relaunch,
-                                       const gchar** extra_args,
-                                       gchar** OUT_filepath,
-                                       GError** error) OVERRIDE;
-
-  virtual gboolean StartSession(gchar* email_address,
-                                gchar* unique_identifier,
-                                gboolean* OUT_done,
-                                GError** error) OVERRIDE;
-  virtual gboolean StopSession(gchar* unique_identifier,
-                               gboolean* OUT_done,
-                               GError** error) OVERRIDE;
-
-  virtual gboolean StorePolicy(GArray* policy_blob,
-                               DBusGMethodInvocation* context) OVERRIDE;
-  virtual gboolean RetrievePolicy(GArray** OUT_policy_blob,
-                                  GError** error) OVERRIDE;
-
-  virtual gboolean StoreUserPolicy(GArray* policy_blob,
-                                   DBusGMethodInvocation* context) OVERRIDE;
-  virtual gboolean RetrieveUserPolicy(GArray** OUT_policy_blob,
-                                      GError** error) OVERRIDE;
-
-  virtual gboolean StoreDeviceLocalAccountPolicy(
-      gchar* account_id,
-      GArray* policy_blob,
-      DBusGMethodInvocation* context) OVERRIDE;
-  virtual gboolean RetrieveDeviceLocalAccountPolicy(gchar* account_id,
-                                                    GArray** OUT_policy_blob,
-                                                    GError** error) OVERRIDE;
-
-  virtual gboolean RetrieveSessionState(gchar** OUT_state,
-                                        gchar** OUT_user) OVERRIDE;
-
-  virtual gboolean LockScreen(GError** error) OVERRIDE;
-  virtual gboolean HandleLockScreenShown(GError** error) OVERRIDE;
-  virtual gboolean UnlockScreen(GError** error) OVERRIDE;
-  virtual gboolean HandleLockScreenDismissed(GError** error) OVERRIDE;
-
-  virtual gboolean RestartJob(gint pid,
-                              gchar* arguments,
-                              gboolean* OUT_done,
-                              GError** error) OVERRIDE;
-  virtual gboolean RestartJobWithAuth(gint pid,
-                                      gchar* cookie,
-                                      gchar* arguments,
-                                      gboolean* OUT_done,
-                                      GError** error) OVERRIDE;
-
-  virtual gboolean StartDeviceWipe(gboolean *OUT_done, GError** error) OVERRIDE;
-
   // |data| is a SessionManagerService*.
   static void HandleKeygenExit(GPid pid, gint status, gpointer data);
-
-  // Perform very, very basic validation of |email_address|.
-  static bool ValidateEmail(const std::string& email_address);
 
   // Ensures |args| is in the correct format, stripping "--" if needed.
   // No initial "--" is needed, but is allowed.
@@ -318,20 +212,9 @@ class SessionManagerService
   static std::vector<std::string> GetArgList(
       const std::vector<std::string>& args);
 
-  // Safely converts a gchar* parameter from DBUS to a std::string.
-  static std::string GCharToString(const gchar* str);
-
-  // The flag to pass to chrome to open a named socket for testing.
-  static const char kTestingChannelFlag[];
-
   // The flag to pass to chrome on a first boot.
   // Not passed when Chrome is started after signout.
   static const char kFirstBootFlag[];
-
-  // Payloads for SessionStateChanged DBus signal.
-  static const char kStarted[];
-  static const char kStopping[];
-  static const char kStopped[];
 
   // Directory in which per-boot metrics flag files will be stored.
   static const char kFlagFileDir[];
@@ -379,11 +262,6 @@ class SessionManagerService
   // Set all changed signal handlers back to the default behavior.
   void RevertHandlers();
 
-  // Cache |email_address| in |current_user_| and return true, if the address
-  // passes validation.  Otherwise, set |error| appropriately and return false.
-  gboolean ValidateAndCacheUserEmail(const gchar* email_address,
-                                     GError** error);
-
   // Try to terminate the job represented by |spec|, but also remember it for
   // later.
   void KillAndRemember(const ChildJob::Spec& spec,
@@ -398,14 +276,6 @@ class SessionManagerService
   // De-register all child-exit handlers.
   void DeregisterChildWatchers();
 
-  // |policy_| is persisted to disk, then |event| is signaled when
-  // done.  This is used to provide synchronous, threadsafe persisting.
-  void PersistPolicySync(base::WaitableEvent* event);
-
-  // Uses |system_| to send |signal_name| to Chromium.  Attaches a payload
-  // to the signal indicating the status of |succeeded|.
-  void SendSignal(const char signal_name[], bool succeeded);
-
   bool ShouldRunBrowser();
   // Returns true if |child_job| believes it should be stopped.
   // If the child believes it should be stopped (as opposed to not run anymore)
@@ -417,31 +287,6 @@ class SessionManagerService
 
   // Kill one of the children using provided signal.
   void KillChild(const ChildJobInterface* child_job, int child_pid, int signal);
-
-  // Encodes the result of a policy retrieve operation as specified in |success|
-  // and |policy_data| into |policy_blob| and |error|. Returns TRUE if
-  // successful, FALSE otherwise.
-  gboolean EncodeRetrievedPolicy(bool success,
-                                 const std::vector<uint8>& policy_data,
-                                 GArray** policy_blob,
-                                 GError** error);
-
-  // Starts a 'Powerwash' of the device by touching a flag file, then
-  // rebooting to allow early-boot code to wipe parts of stateful we
-  // need wiped. Have a look at /src/platform/init/chromeos_startup
-  // for the gory details.
-  void InitiateDeviceWipe();
-
-  bool IsValidCookie(const char *cookie);
-
-  static const uint32 kMaxGCharBufferSize;
-  static const char kEmailSeparator;
-  static const char kLegalCharacters[];
-  static const char kIncognitoUser[];
-  static const char kDemoUser[];
-  static const char kLoginUserTypeMetric[];
-  // The name of the pref that Chrome sets to track who the owner is.
-  static const char kDeviceOwnerPref[];
 
   static const int kKillTimeoutCollectChrome;
   static const char kCollectChromeFile[];
@@ -461,37 +306,23 @@ class SessionManagerService
   scoped_ptr<NssUtil> nss_;
   scoped_ptr<KeyGenerator> key_gen_;
   scoped_ptr<LoginMetrics> login_metrics_;
-  scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
   scoped_ptr<LivenessChecker> liveness_checker_;
   const bool enable_browser_abort_on_hang_;
   const base::TimeDelta liveness_checking_interval_;
 
-  bool session_started_;
-  bool session_stopping_;
-  bool current_user_is_incognito_;
-  std::string current_user_;
-  bool screen_locked_;
   uid_t uid_;
   bool set_uid_;
 
-  FilePath chrome_testing_path_;
-  FilePath machine_info_file_;
-
   scoped_ptr<PolicyKey> owner_key_;
-  scoped_refptr<DevicePolicyService> device_policy_;
-  scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
-  scoped_refptr<PolicyService> user_policy_;
-  scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
 
   scoped_ptr<FileChecker> file_checker_;
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
 
+  scoped_ptr<SessionManagerInterface> impl_;
+
   bool shutting_down_;
   bool shutdown_already_;
   ExitCode exit_code_;
-
-  static size_t kCookieEntropyBytes;
-  std::string cookie_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerService);
 };

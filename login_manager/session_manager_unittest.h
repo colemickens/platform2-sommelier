@@ -28,6 +28,7 @@ class MockLivenessChecker;
 class MockMetrics;
 class MockMitigator;
 class MockPolicyService;
+class MockSessionManager;
 class MockUpstartSignalEmitter;
 
 // Used as a base class for other SessionManagerService unittests.
@@ -51,10 +52,6 @@ class SessionManagerTest : public ::testing::Test {
   // the device policy service.
   void InitManager(MockChildJob* job);
 
-  // Creates a user policy service. This function handles calls to the mocked
-  // user policy factory.
-  PolicyService* CreateUserPolicyService();
-
   // Sets up expectations for common things that happen during startup and
   // shutdown of SessionManagerService and calls manager_->Run().
   void SimpleRunManager();
@@ -63,10 +60,10 @@ class SessionManagerTest : public ::testing::Test {
   void MockUtils();
 
   // Sets up expectations for policy stuff we do at startup.
-  void ExpectPolicySetup();
+  void ExpectSuccessfulInitialization();
 
-  // Sets up expecations for creating the user policy service.
-  void ExpectUserPolicySetup();
+  // Sets up expectations for Shutdown().
+  void ExpectShutdown();
 
   enterprise_management::ChromeDeviceSettingsProto device_settings_;
   scoped_refptr<SessionManagerService> manager_;
@@ -80,9 +77,7 @@ class SessionManagerTest : public ::testing::Test {
   MockLivenessChecker* liveness_checker_;
   MockMetrics* metrics_;
   MockMitigator* mitigator_;
-  MockUpstartSignalEmitter* upstart_;
-  MockDevicePolicyService* device_policy_service_;
-  MockPolicyService* user_policy_service_;
+  MockSessionManager* session_manager_impl_;
 
   bool must_destroy_mocks_;
   ScopedTempDir tmpdir_;

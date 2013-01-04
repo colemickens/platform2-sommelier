@@ -39,7 +39,7 @@ DevicePolicyService::~DevicePolicyService() {
 DevicePolicyService* DevicePolicyService::Create(
     LoginMetrics* metrics,
     PolicyKey* owner_key,
-    OwnerKeyLossMitigator* mitigator,
+    scoped_ptr<OwnerKeyLossMitigator> mitigator,
     NssUtil* nss,
     const scoped_refptr<base::MessageLoopProxy>& main_loop) {
   return new DevicePolicyService(FilePath(kSerialRecoveryFlagFile),
@@ -49,7 +49,7 @@ DevicePolicyService* DevicePolicyService::Create(
                                  owner_key,
                                  main_loop,
                                  metrics,
-                                 mitigator,
+                                 mitigator.Pass(),
                                  nss);
 }
 
@@ -117,18 +117,22 @@ DevicePolicyService::DevicePolicyService(
     PolicyKey* policy_key,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
     LoginMetrics* metrics,
-    OwnerKeyLossMitigator* mitigator,
+    scoped_ptr<OwnerKeyLossMitigator> mitigator,
     NssUtil* nss)
     : PolicyService(policy_store.Pass(), policy_key, main_loop),
       serial_recovery_flag_file_(serial_recovery_flag_file),
       policy_file_(policy_file),
       metrics_(metrics),
-      mitigator_(mitigator),
+      mitigator_(mitigator.Pass()),
       nss_(nss) {
 }
 
 bool DevicePolicyService::KeyMissing() {
   return key()->HaveCheckedDisk() && !key()->IsPopulated();
+}
+
+bool DevicePolicyService::Mitigating() {
+  return mitigator_->Mitigating();
 }
 
 bool DevicePolicyService::Initialize() {

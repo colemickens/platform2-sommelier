@@ -109,17 +109,18 @@ class DevicePolicyServiceTest : public ::testing::Test {
   void InitService(NssUtil* nss) {
     store_ = new StrictMock<MockPolicyStore>;
     metrics_.reset(new MockMetrics);
-    mitigator_.reset(new MockMitigator);
+    mitigator_ = new StrictMock<MockMitigator>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
-    service_ = new DevicePolicyService(serial_recovery_flag_file_,
-                                       policy_file_,
-                                       scoped_ptr<PolicyStore>(store_),
-                                       &key_,
-                                       message_loop,
-                                       metrics_.get(),
-                                       mitigator_.get(),
-                                       nss);
+    service_ = new DevicePolicyService(
+        serial_recovery_flag_file_,
+        policy_file_,
+        scoped_ptr<PolicyStore>(store_),
+        &key_,
+        message_loop,
+        metrics_.get(),
+        scoped_ptr<OwnerKeyLossMitigator>(mitigator_),
+        nss);
 
     // Allow the key to be read any time.
     EXPECT_CALL(key_, public_key_der())
@@ -310,7 +311,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockPolicyKey> key_;
   StrictMock<MockPolicyStore>* store_;
   scoped_ptr<MockMetrics> metrics_;
-  scoped_ptr<MockMitigator> mitigator_;
+  StrictMock<MockMitigator>* mitigator_;
   MockPolicyServiceCompletion completion_;
 
   scoped_ptr<NssUtil> nss_;

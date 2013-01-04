@@ -37,7 +37,7 @@ class DevicePolicyService : public PolicyService {
   static DevicePolicyService* Create(
       LoginMetrics* metrics,
       PolicyKey* owner_key,
-      OwnerKeyLossMitigator* mitigator,
+      scoped_ptr<OwnerKeyLossMitigator> mitigator,
       NssUtil* nss,
       const scoped_refptr<base::MessageLoopProxy>& main_loop);
 
@@ -61,6 +61,9 @@ class DevicePolicyService : public PolicyService {
 
   // Checks whether the key is missing.
   virtual bool KeyMissing();
+
+  // Checks whether key loss is being mitigated.
+  virtual bool Mitigating();
 
   // Loads policy key and policy blob from disk. Returns true if at least the
   // key can be loaded (policy may not be present yet, which is OK).
@@ -90,14 +93,14 @@ class DevicePolicyService : public PolicyService {
   friend class DevicePolicyServiceTest;
   friend class MockDevicePolicyService;
 
-  // Takes ownership of |policy_store|, |policy_key|, |system_utils|, and |nss|.
+  // Takes ownership of |policy_store| and |mitigator|.
   DevicePolicyService(const FilePath& serial_recovery_flag_file,
                       const FilePath& policy_file,
                       scoped_ptr<PolicyStore> policy_store,
                       PolicyKey* owner_key,
                       const scoped_refptr<base::MessageLoopProxy>& main_loop,
                       LoginMetrics* metrics,
-                      OwnerKeyLossMitigator* mitigator,
+                      scoped_ptr<OwnerKeyLossMitigator> mitigator,
                       NssUtil* nss);
 
   // Assuming the current user has access to the owner private key (read: is the
@@ -122,7 +125,7 @@ class DevicePolicyService : public PolicyService {
   const FilePath serial_recovery_flag_file_;
   const FilePath policy_file_;
   LoginMetrics* metrics_;
-  OwnerKeyLossMitigator* mitigator_;
+  scoped_ptr<OwnerKeyLossMitigator> mitigator_;
   NssUtil* nss_;
 
   // Cached copy of the decoded device settings. Decoding happens on first

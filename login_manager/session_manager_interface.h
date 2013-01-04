@@ -5,13 +5,16 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_INTERFACE_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_INTERFACE_H_
 
+#include <stdlib.h>
+
+#include <string>
+
+#include <base/file_path.h>
+#include <chromeos/dbus/dbus.h>
+#include <chromeos/glib/object.h>
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
-#include <stdlib.h>
-
-#include <chromeos/dbus/dbus.h>
-#include <chromeos/glib/object.h>
 
 namespace login_manager {
 
@@ -19,6 +22,24 @@ class SessionManagerInterface {
  public:
   SessionManagerInterface() {}
   virtual ~SessionManagerInterface() {}
+
+  // Intializes policy subsystems.  Failure to initialize must be fatal.
+  virtual bool Initialize() = 0;
+  virtual void Finalize() = 0;
+
+  // Emits state change signals.
+  virtual void AnnounceSessionStoppingIfNeeded() = 0;
+  virtual void AnnounceSessionStopped() = 0;
+
+  // Given a policy key stored at temp_key_file, pulls it off disk,
+  // validate that it is a correctly formed key pair, and ensure it is
+  // stored for the future.
+  virtual void ImportValidateAndStoreGeneratedKey(
+      const FilePath& temp_key_file) = 0;
+  virtual bool ScreenIsLocked() = 0;
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Methods exposed via RPC are defined below.
 
   // Emits the "login-prompt-ready" and "login-prompt-visible" upstart signals.
   virtual gboolean EmitLoginPromptReady(gboolean* OUT_emitted,

@@ -33,7 +33,7 @@ GObject* session_manager_constructor(GType gtype,
   obj = parent_class->constructor(gtype, n_properties, properties);
 
   SessionManager* session_manager = reinterpret_cast<SessionManager*>(obj);
-  session_manager->service = NULL;
+  session_manager->impl = NULL;
 
   // We don't have any thing we care to expose to the glib class system.
   return obj;
@@ -49,10 +49,10 @@ void session_manager_init(SessionManager *self) { }
 
 // TODO(wad) add error messaging
 #define SESSION_MANAGER_WRAP_METHOD(_NAME, args...) \
-  if (!self->service) { \
+  if (!self->impl) { \
     return FALSE; \
   } \
-  return self->service->_NAME(args);
+  return self->impl->_NAME(args);
 
 gboolean session_manager_emit_login_prompt_ready(SessionManager* self,
                                                  gboolean* OUT_emitted,
