@@ -10,7 +10,7 @@ LSPCI=/usr/sbin/lspci
 IW=/usr/sbin/iw
 ARP=/sbin/arp
 ARPING=/sbin/arping
-TLSDATE=/usr/sbin/tlsdate
+TLSDATE=/usr/bin/tlsdate
 anonymize_macs=${ANONYMIZE_MACS-yes}
 default_run=yes
 
