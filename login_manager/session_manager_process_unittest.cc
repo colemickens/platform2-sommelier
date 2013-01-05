@@ -79,6 +79,19 @@ class SessionManagerProcessTest : public SessionManagerTest {
     ExpectLivenessChecking();
   }
 
+  void ExpectPidKill(pid_t pid, bool success) {
+    EXPECT_CALL(utils_, kill(pid, getuid(), SIGTERM)).WillOnce(Return(0));
+    EXPECT_CALL(utils_, ChildIsGone(pid, _)).WillOnce(Return(success));
+  }
+
+  void ExpectSuccessfulPidKill(pid_t pid) {
+    ExpectPidKill(pid, true);
+  }
+
+  void ExpectFailedPidKill(pid_t pid) {
+    ExpectPidKill(pid, false);
+  }
+
   // Configures |file_checker_| to allow child restarting according to
   // |child_runs|.
   void SetFileCheckerPolicy(RestartPolicy child_runs) {
@@ -129,30 +142,39 @@ TEST_F(SessionManagerProcessTest, CleanupChildren) {
   InitManager(new MockChildJob);
   manager_->test_api().set_browser_pid(kDummyPid);
 
-  int timeout = 3;
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
-      .WillOnce(Return(0));
-  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
-      .WillOnce(Return(true));
+  ExpectSuccessfulPidKill(kDummyPid);
   MockUtils();
 
-  manager_->test_api().CleanupChildren(timeout);
+  manager_->test_api().CleanupChildren(3);
+}
+
+TEST_F(SessionManagerProcessTest, CleanupSeveralChildren) {
+  InitManager(new MockChildJob);
+  manager_->test_api().set_browser_pid(kDummyPid);
+
+  pid_t generator_pid = kDummyPid + 1;
+  MockChildJob* generator = new MockChildJob;
+  EXPECT_CALL(*generator, IsDesiredUidSet()).WillRepeatedly(Return(false));
+  manager_->AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface>(generator),
+                                 generator_pid,
+                                 -1);
+
+  ExpectSuccessfulPidKill(kDummyPid);
+  ExpectSuccessfulPidKill(generator_pid);
+  MockUtils();
+
+  manager_->test_api().CleanupChildren(3);
 }
 
 TEST_F(SessionManagerProcessTest, SlowKillCleanupChildren) {
   InitManager(new MockChildJob);
   manager_->test_api().set_browser_pid(kDummyPid);
 
-  int timeout = 3;
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGTERM))
-      .WillOnce(Return(0));
-  EXPECT_CALL(utils_, ChildIsGone(kDummyPid, timeout))
-      .WillOnce(Return(false));
-  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT))
-      .WillOnce(Return(0));
+  ExpectFailedPidKill(kDummyPid);
+  EXPECT_CALL(utils_, kill(kDummyPid, getuid(), SIGABRT)).WillOnce(Return(0));
   MockUtils();
 
-  manager_->test_api().CleanupChildren(timeout);
+  manager_->test_api().CleanupChildren(3);
 }
 
 TEST_F(SessionManagerProcessTest, SessionStartedCleanup) {
