@@ -94,6 +94,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
+  virtual void Reset(Error *error, const ResultCallback &callback);
 
   virtual void Scan(Error *error, const ResultCallback &callback);
   virtual std::string GetNetworkTechnologyString() const;
@@ -135,6 +136,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalTest, OnListBearersReply);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalTest, Reset);
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalTest, SetHomeProvider);
@@ -255,6 +257,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Method callbacks
   void OnRegisterReply(const ResultCallback &callback,
                        const Error &error);
+  void OnResetReply(const ResultCallback &callback, const Error &error);
   void OnScanReply(const ResultCallback &callback,
                    const ScanResults &results,
                    const Error &error);
@@ -306,6 +309,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string selected_network_;
   Stringmaps found_networks_;
   std::deque<Stringmap> apn_try_list_;
+  bool resetting_;
   bool scanning_supported_;
   bool scanning_;
   uint16 scan_interval_;

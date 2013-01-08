@@ -26,6 +26,7 @@ const int CellularCapability::kTimeoutDefault = 5000;
 const int CellularCapability::kTimeoutDisconnect = 45000;
 const int CellularCapability::kTimeoutEnable = 45000;
 const int CellularCapability::kTimeoutRegister = 90000;
+const int CellularCapability::kTimeoutReset = 90000;
 const int CellularCapability::kTimeoutScan = 120000;
 
 CellularCapability::CellularCapability(Cellular *cellular,
@@ -83,6 +84,11 @@ void CellularCapability::ChangePIN(const string &/*old_pin*/,
 
 void CellularCapability::Scan(Error *error,
                               const ResultCallback &callback) {
+  OnUnsupportedOperation(__func__, error);
+}
+
+void CellularCapability::Reset(Error *error,
+                               const ResultCallback &/*callback*/) {
   OnUnsupportedOperation(__func__, error);
 }
 

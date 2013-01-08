@@ -128,6 +128,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       preferred_mode_(MM_MODEM_MODE_NONE),
       home_provider_(NULL),
       provider_requires_roaming_(false),
+      resetting_(false),
       scanning_supported_(true),
       scanning_(false),
       scan_interval_(0),
@@ -838,6 +839,30 @@ void CellularCapabilityUniversal::ChangePIN(
     Error *error, const ResultCallback &callback) {
   CHECK(error);
   sim_proxy_->ChangePin(old_pin, new_pin, error, callback, kTimeoutDefault);
+}
+
+void CellularCapabilityUniversal::Reset(Error *error,
+                                        const ResultCallback &callback) {
+  SLOG(Cellular, 2) << __func__;
+  CHECK(error);
+  if (resetting_) {
+    Error::PopulateAndLog(error, Error::kInProgress, "Already resetting");
+    return;
+  }
+  ResultCallback cb = Bind(&CellularCapabilityUniversal::OnResetReply,
+                           weak_ptr_factory_.GetWeakPtr(), callback);
+  modem_proxy_->Reset(error, cb, kTimeoutReset);
+  if (!error->IsFailure()) {
+    resetting_ = true;
+  }
+}
+
+void CellularCapabilityUniversal::OnResetReply(const ResultCallback &callback,
+                                               const Error &error) {
+  SLOG(Cellular, 2) << __func__;
+  resetting_ = false;
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
 void CellularCapabilityUniversal::Scan(Error *error,

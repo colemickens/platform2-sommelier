@@ -65,6 +65,7 @@ class CellularCapability {
   static const int kTimeoutDisconnect;
   static const int kTimeoutEnable;
   static const int kTimeoutRegister;
+  static const int kTimeoutReset;
   static const int kTimeoutScan;
 
   static const char kModemPropertyIMSI[];
@@ -137,6 +138,7 @@ class CellularCapability {
                          Error *error, const ResultCallback &callback);
 
   // The default implementation fails by returning an error.
+  virtual void Reset(Error *error, const ResultCallback &callback);
   virtual void SetCarrier(const std::string &carrier,
                           Error *error, const ResultCallback &callback);
 

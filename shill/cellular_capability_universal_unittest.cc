@@ -708,6 +708,25 @@ MATCHER_P(SizeIs, value, "") {
   return static_cast<size_t>(value) == arg.size();
 }
 
+TEST_F(CellularCapabilityUniversalTest, Reset) {
+  // Save pointers to proxies before they are lost by the call to InitProxies
+  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  SetUp();
+  EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  capability_->InitProxies();
+
+  Error error;
+  ResultCallback reset_callback;
+
+  EXPECT_CALL(*modem_proxy, Reset(_, _, CellularCapability::kTimeoutReset))
+      .WillOnce(SaveArg<1>(&reset_callback));
+
+  capability_->Reset(&error, ResultCallback());
+  EXPECT_TRUE(capability_->resetting_);
+  reset_callback.Run(error);
+  EXPECT_FALSE(capability_->resetting_);
+}
+
 // Validates that OnScanReply does not crash with a null callback.
 TEST_F(CellularCapabilityUniversalTest, ScanWithNullCallback) {
   Error error;

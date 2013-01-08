@@ -330,6 +330,11 @@ void Cellular::ChangePIN(const string &old_pin, const string &new_pin,
   capability_->ChangePIN(old_pin, new_pin, error, callback);
 }
 
+void Cellular::Reset(Error *error, const ResultCallback &callback) {
+  SLOG(Cellular, 2) << __func__;
+  capability_->Reset(error, callback);
+}
+
 void Cellular::SetCarrier(const string &carrier,
                           Error *error, const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__ << "(" << carrier << ")";
