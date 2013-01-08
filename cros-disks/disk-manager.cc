@@ -15,6 +15,7 @@
 #include <base/stringprintf.h>
 
 #include "cros-disks/disk.h"
+#include "cros-disks/exfat-mounter.h"
 #include "cros-disks/external-mounter.h"
 #include "cros-disks/filesystem.h"
 #include "cros-disks/metrics.h"
@@ -303,6 +304,11 @@ void DiskManager::RegisterDefaultFilesystems() {
   vfat_fs.AddExtraMountOption("utf8");
   RegisterFilesystem(vfat_fs);
 
+  Filesystem exfat_fs("exfat");
+  exfat_fs.set_mounter_type(ExFATMounter::kMounterType);
+  exfat_fs.set_accepts_user_and_group_id(true);
+  RegisterFilesystem(exfat_fs);
+
   Filesystem ntfs_fs("ntfs");
   ntfs_fs.set_mounter_type(NTFSMounter::kMounterType);
   ntfs_fs.set_accepts_user_and_group_id(true);
@@ -375,6 +381,11 @@ Mounter* DiskManager::CreateMounter(const Disk& disk,
     return new(std::nothrow) ExternalMounter(disk.device_file(), target_path,
                                              filesystem.mount_type(),
                                              mount_options);
+
+  if (mounter_type == ExFATMounter::kMounterType)
+    return new(std::nothrow) ExFATMounter(disk.device_file(), target_path,
+                                          filesystem.mount_type(),
+                                          mount_options, platform());
 
   if (mounter_type == NTFSMounter::kMounterType)
     return new(std::nothrow) NTFSMounter(disk.device_file(), target_path,

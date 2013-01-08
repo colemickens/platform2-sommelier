@@ -165,6 +165,7 @@ class DiskManager : public MountManager,
   // A set of supported filesystems indexed by filesystem type.
   std::map<std::string, Filesystem> filesystems_;
 
+  FRIEND_TEST(DiskManagerTest, CreateExFATMounter);
   FRIEND_TEST(DiskManagerTest, CreateExternalMounter);
   FRIEND_TEST(DiskManagerTest, CreateNTFSMounter);
   FRIEND_TEST(DiskManagerTest, CreateSystemMounter);
