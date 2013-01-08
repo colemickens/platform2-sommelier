@@ -19,8 +19,8 @@
 		<method name="ClearProperty">
 			<arg type="s" direction="in"/>
 		</method>
-                <method name="Enable"/>
-                <method name="Disable"/>
+		<method name="Enable"/>
+		<method name="Disable"/>
 		<method name="ProposeScan"/>
 		<method name="AddIPConfig">
 			<arg type="s" direction="in"/>
@@ -44,6 +44,7 @@
 			<arg type="s" direction="in"/>
 			<arg type="s" direction="in"/>
 		</method>
+		<method name="Reset"/>
 		<method name="ResetByteCounters"/>
 		<method name="SetCarrier">
 			<arg type="s" direction="in"/>

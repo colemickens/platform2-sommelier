@@ -217,6 +217,12 @@ void Device::ChangePIN(const string &/*old_pin*/,
                         "Device doesn't support ChangePIN.");
 }
 
+void Device::Reset(Error *error, const ResultCallback &/*callback*/) {
+  SLOG(Device, 2) << __func__;
+  Error::PopulateAndLog(error, Error::kNotSupported,
+                        "Device doesn't support Reset.");
+}
+
 void Device::SetCarrier(const string &/*carrier*/,
                         Error *error, const ResultCallback &/*callback*/) {
   SLOG(Device, 2) << __func__;

@@ -416,6 +416,13 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_FALSE(device_->selected_service_.get());
 }
 
+TEST_F(DeviceTest, Reset) {
+  Error e;
+  device_->Reset(&e, ResultCallback());
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_EQ("Device doesn't support Reset.", e.message());
+}
+
 TEST_F(DeviceTest, ResumeWithIPConfig) {
   scoped_refptr<MockIPConfig> ipconfig =
       new MockIPConfig(control_interface(), kDeviceName);

@@ -85,6 +85,8 @@ class Device : public base::RefCounted<Device> {
   virtual void ChangePIN(const std::string &old_pin,
                          const std::string &new_pin,
                          Error *error, const ResultCallback &callback);
+  virtual void Reset(Error *error, const ResultCallback &callback);
+
   virtual void SetCarrier(const std::string &carrier,
                           Error *error, const ResultCallback &callback);
   virtual void DisableIPv6();
@@ -291,7 +293,6 @@ class Device : public base::RefCounted<Device> {
 
   // Set the failure of the selected service (implicitly sets the state to
   // "failure")
-
   void SetServiceFailure(Service::ConnectFailure failure_state);
 
   // Records the failure mode and time of the selected service, and

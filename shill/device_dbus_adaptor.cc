@@ -170,6 +170,14 @@ void DeviceDBusAdaptor::ChangePin(
   ReturnResultOrDefer(tag, e, &error);
 }
 
+void DeviceDBusAdaptor::Reset(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  device_->Reset(&e, GetMethodReplyCallback(tag));
+  ReturnResultOrDefer(tag, e, &error);
+}
+
 void DeviceDBusAdaptor::ResetByteCounters(DBus::Error &error) {
   device_->ResetByteCounters();
 }
