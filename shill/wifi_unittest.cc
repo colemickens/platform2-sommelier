@@ -2207,9 +2207,12 @@ TEST_F(WiFiMainTest, StateAndIPIgnoreLinkEvent) {
 }
 
 TEST_F(WiFiMainTest, SupplicantCompleted) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
   EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
   EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
+  EXPECT_CALL(supplicant_interface_proxy, EnableHighBitrates()).Times(0);
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
@@ -2225,6 +2228,8 @@ TEST_F(WiFiMainTest, SupplicantCompleted) {
 }
 
 TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
+  MockSupplicantInterfaceProxy &supplicant_interface_proxy =
+      *supplicant_interface_proxy_;
   EXPECT_CALL(*dhcp_config_.get(), RequestIP());
   EXPECT_CALL(*manager(), UpdateService(_)).Times(AnyNumber());
   EXPECT_CALL(*device_info(), FlushAddresses(_)).Times(AnyNumber());
@@ -2232,6 +2237,7 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
   EXPECT_CALL(*manager(), HasService(_)).Times(AnyNumber());
   EXPECT_CALL(*manager(), IsPortalDetectionEnabled(_)).Times(AnyNumber());
+  EXPECT_CALL(supplicant_interface_proxy, EnableHighBitrates()).Times(0);
   WiFiEndpointRefPtr ap = MakeEndpoint("an_ssid", "00:01:02:03:04:05");
   WiFiServiceRefPtr service = CreateServiceForEndpoint(*ap);
 
@@ -2246,9 +2252,15 @@ TEST_F(WiFiMainTest, SupplicantCompletedAlreadyConnected) {
   // Simulate a rekeying event from the AP.  These show as transitions from
   // completed->completed from wpa_supplicant.
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
+  // When we get an IP, WiFi should enable high bitrates on the interface again.
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
+  EXPECT_CALL(supplicant_interface_proxy, EnableHighBitrates()).Times(1);
   ReportIPConfigComplete();
   // Similarly, rekeying events after we have an IP don't trigger L3
-  // configuration.
+  // configuration.  However, we treat all transitions to completed as potential
+  // reassociations, so we will reenable high rates again here.
+  Mock::VerifyAndClearExpectations(&supplicant_interface_proxy);
+  EXPECT_CALL(supplicant_interface_proxy, EnableHighBitrates()).Times(1);
   ReportStateChanged(wpa_supplicant::kInterfaceStateCompleted);
 }
 

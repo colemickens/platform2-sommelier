@@ -15,6 +15,8 @@
       <arg name="args" type="a{sv}" direction="in"/>
       <arg name="network" type="o" direction="out"/>
     </method>
+    <method name="EnableHighBitrates">
+    </method>
     <method name="Reassociate">
     </method>
     <method name="RemoveNetwork">
@@ -53,6 +55,7 @@
     <property name="Networks" type="ao" access="read"/>
     <property name="FastReauth" type="b" access="readwrite"/>
     <property name="ScanInterval" type="i" access="readwrite"/>
+    <property name="DisableHighBitrates" type="b" access="readwrite"/>
     <signal name="ScanDone">
       <arg name="success" type="b"/>
     </signal>

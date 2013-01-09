@@ -29,6 +29,7 @@ class SupplicantInterfaceProxy
 
   virtual ::DBus::Path AddNetwork(
       const std::map<std::string, ::DBus::Variant> &args);
+  virtual void EnableHighBitrates();
   virtual void Disconnect();
   virtual void FlushBSS(const uint32_t &age);
   virtual void Reassociate();
@@ -39,6 +40,7 @@ class SupplicantInterfaceProxy
   virtual void SelectNetwork(const ::DBus::Path &network);
   virtual void SetFastReauth(bool enabled);
   virtual void SetScanInterval(int seconds);
+  virtual void SetDisableHighBitrates(bool disable_high_bitrates);
 
  private:
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,

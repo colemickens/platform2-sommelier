@@ -1316,6 +1316,7 @@ void WiFi::StateChanged(const string &new_state) {
   if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
     if (affected_service->IsConnected()) {
       StopReconnectTimer();
+      EnableHighBitrates();
     } else if (has_already_completed_) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else if (AcquireIPConfigWithLeaseName(
@@ -1579,6 +1580,11 @@ void WiFi::OnAfterResume() {
   }
 }
 
+void WiFi::OnConnected() {
+  Device::OnConnected();
+  EnableHighBitrates();
+}
+
 void WiFi::RestartFastScanAttempts() {
   fast_scans_remaining_ = kNumFastScanAttempts;
   StartScanTimer();
@@ -1801,20 +1807,36 @@ void WiFi::ConnectToSupplicant() {
     // crosbug.com/25630
     supplicant_interface_proxy_->SetFastReauth(false);
   } catch (const DBus::Error &e) {  // NOLINT
-    LOG(INFO) << "Failed to disable fast_reauth."
-              << "May be running an older version of wpa_supplicant.";
+    LOG(ERROR) << "Failed to disable fast_reauth. "
+               << "May be running an older version of wpa_supplicant.";
   }
 
   try {
     // Helps with passing WiFiRomaing.001SSIDSwitchBack.
     supplicant_interface_proxy_->SetScanInterval(kRescanIntervalSeconds);
   } catch (const DBus::Error &e) {  // NOLINT
-    LOG(INFO) << "Failed to set scan_interval. "
-              << "May be running an older version of wpa_supplicant.";
+    LOG(ERROR) << "Failed to set scan_interval. "
+               << "May be running an older version of wpa_supplicant.";
+  }
+
+  try {
+    supplicant_interface_proxy_->SetDisableHighBitrates(true);
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "Failed to disable high bitrates. "
+               << "May be running an older version of wpa_supplicant.";
   }
 
   Scan(NULL);
   StartScanTimer();
+}
+
+void WiFi::EnableHighBitrates() {
+  LOG(INFO) << "Enabling high bitrates.";
+  try {
+    supplicant_interface_proxy_->EnableHighBitrates();
+  } catch (const DBus::Error &e) {  // NOLINT
+    LOG(ERROR) << "exception while enabling high rates: " << e.what();
+  }
 }
 
 void WiFi::Restart() {

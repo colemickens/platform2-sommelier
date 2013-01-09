@@ -38,6 +38,16 @@ SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
   }
 }
 
+void SupplicantInterfaceProxy::EnableHighBitrates() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.EnableHighBitrates();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::Disconnect() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -126,6 +136,18 @@ void SupplicantInterfaceProxy::SetScanInterval(int32 scan_interval) {
   } catch (const DBus::Error &e) {
     LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
                << " scan interval: " << scan_interval;
+    throw;  // Re-throw the exception.
+  }
+}
+
+void SupplicantInterfaceProxy::SetDisableHighBitrates(
+    bool disable_high_bitrates) {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.DisableHighBitrates(disable_high_bitrates);
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what()
+               << "disable_high_bitrates: " << disable_high_bitrates;
     throw;  // Re-throw the exception.
   }
 }

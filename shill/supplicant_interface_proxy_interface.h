@@ -20,6 +20,7 @@ class SupplicantInterfaceProxyInterface {
 
   virtual ::DBus::Path AddNetwork(
       const std::map<std::string, ::DBus::Variant> &args) = 0;
+  virtual void EnableHighBitrates() = 0;
   virtual void Disconnect() = 0;
   virtual void FlushBSS(const uint32_t &age) = 0;
   virtual void Reassociate() = 0;
@@ -30,6 +31,7 @@ class SupplicantInterfaceProxyInterface {
   virtual void SelectNetwork(const ::DBus::Path &network) = 0;
   virtual void SetFastReauth(bool enabled) = 0;
   virtual void SetScanInterval(int seconds) = 0;
+  virtual void SetDisableHighBitrates(bool disable_high_bitrates) = 0;
 };
 
 }  // namespace shill

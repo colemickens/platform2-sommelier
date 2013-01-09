@@ -463,6 +463,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     // time we report the state change to the manager, the service
     // has its connection.
     SetServiceState(Service::kStateConnected);
+    OnConnected();
     portal_attempts_to_online_ = 0;
     // Subtle: Start portal detection after transitioning the service
     // to the Connected state because this call may immediately transition
@@ -509,6 +510,8 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     DestroyConnection();
   }
 }
+
+void Device::OnConnected() {}
 
 void Device::CreateConnection() {
   SLOG(Device, 2) << __func__;

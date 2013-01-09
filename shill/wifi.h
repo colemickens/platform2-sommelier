@@ -128,7 +128,9 @@ class WiFi : public Device {
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.
-  void OnAfterResume();
+  virtual void OnAfterResume();
+  // Callback for when a service is configured with an IP.
+  virtual void OnConnected();
 
   // Called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
@@ -337,6 +339,9 @@ class WiFi : public Device {
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
   void SetConnectionDebugging(bool enabled);
+  // Enable high bitrates for the current network.  High rates are disabled
+  // on the initial association and every reassociation afterward.
+  void EnableHighBitrates();
 
   void ConnectToSupplicant();
 

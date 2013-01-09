@@ -106,6 +106,10 @@ class Device : public base::RefCounted<Device> {
   // is not connected.
   bool IsConnected() const;
 
+  // Called by Device so that subclasses can run hooks on the selected service
+  // getting an IP.  Subclasses should call up to the parent first.
+  virtual void OnConnected();
+
   // Returns true if the selected service on the device (if any) is connected
   // and matches the passed-in argument |service|.  Returns false if there is
   // no connected service, or if it does not match |service|.
