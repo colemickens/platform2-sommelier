@@ -322,23 +322,6 @@ bool ExitOkTrampoline(void *arg) {
   return !modem->is_connecting_or_connected();
 }
 
-bool SuspendOkTrampoline(void *arg) {
-  GobiModem *modem = static_cast<GobiModem*>(arg);
-  return !modem->is_connecting_or_connected();
-}
-
-bool OnSuspendedTrampoline(void *arg) {
-  GobiModem *modem = static_cast<GobiModem*>(arg);
-  modem->OnSuspended();
-  return true;
-}
-
-bool OnResumedTrampoline(void *arg) {
-  GobiModem *modem = static_cast<GobiModem*>(arg);
-  modem->OnResumed();
-  return true;
-}
-
 GobiModem::GobiModem(DBus::Connection& connection,
                      const DBus::Path& path,
                      const gobi::DeviceElement& device,
@@ -351,7 +334,6 @@ GobiModem::GobiModem(DBus::Connection& connection,
       mm_state_(MM_MODEM_STATE_UNKNOWN),
       session_id_(0),
       signal_available_(false),
-      suspending_(false),
       exiting_(false),
       device_resetting_(false),
       getting_deallocated_(false),
@@ -385,14 +367,6 @@ void GobiModem::Init() {
   handler_->server().start_exit_hooks().Add(hooks_name_, StartExitTrampoline,
                                             this);
   handler_->server().exit_ok_hooks().Add(hooks_name_, ExitOkTrampoline, this);
-  RegisterStartSuspend(hooks_name_);
-  handler_->server().suspend_ok_hooks().Add(hooks_name_, SuspendOkTrampoline,
-                                            this);
-  handler_->server().on_suspended_hooks().Add(hooks_name_,
-                                              OnSuspendedTrampoline,
-                                              this);
-  handler_->server().on_resumed_hooks().Add(hooks_name_, OnResumedTrampoline,
-                                            this);
 }
 
 GobiModem::~GobiModem() {
@@ -407,10 +381,6 @@ GobiModem::~GobiModem() {
   }
   handler_->server().start_exit_hooks().Del(hooks_name_);
   handler_->server().exit_ok_hooks().Del(hooks_name_);
-  handler_->server().UnregisterStartSuspend(hooks_name_);
-  handler_->server().suspend_ok_hooks().Del(hooks_name_);
-  handler_->server().on_suspended_hooks().Del(hooks_name_);
-  handler_->server().on_resumed_hooks().Del(hooks_name_);
 
   ApiDisconnect();
 }
@@ -688,11 +658,6 @@ void GobiModem::Connect(const DBusPropertyMap& properties, DBus::Error& error) {
   if (exiting_) {
     LOG(WARNING) << "Connect when exiting";
     error.set(kConnectError, "Cromo is exiting");
-    return;
-  }
-  if (suspending_) {
-    LOG(WARNING) << "Connect operation is ignored when suspending";
-    error.set(kConnectError, "Connect operation is ignored when suspending");
     return;
   }
   if (session_starter_in_flight_) {
@@ -1603,8 +1568,6 @@ void GobiModem::SessionStateHandler(ULONG state, ULONG session_end_reason) {
     disconnect_time_.Stop();
     session_id_ = 0;
     unsigned int reason = QMIReasonToMMReason(session_end_reason);
-    if (reason == MM_MODEM_STATE_CHANGED_REASON_USER_REQUESTED && suspending_)
-      reason = MM_MODEM_STATE_CHANGED_REASON_SUSPEND;
     if (pending_enable_ != NULL)
       PerformDeferredDisable();
     else
@@ -1764,35 +1727,6 @@ ULONG GobiModem::ForceDisconnect() {
   return rc;
 }
 
-bool GobiModem::StartSuspend() {
-  LOG(INFO) << "StartSuspend";
-  suspending_ = true;
-  return (ForceDisconnect() == 0);
-}
-
-bool StartSuspendTrampoline(void *arg) {
-  GobiModem *modem = static_cast<GobiModem*>(arg);
-  return modem->StartSuspend();
-}
-
-void GobiModem::OnSuspended() {
-  LOG(INFO) << "OnSuspended";
-}
-
-void GobiModem::OnResumed() {
-  // cromo always call this method after OnSuspended either due to a resume
-  // event or due to a suspend completion timeout.
-  LOG(INFO) << "OnResumed";
-  suspending_ = false;
-}
-
-void GobiModem::RegisterStartSuspend(const std::string &name) {
-  // TODO(ellyjones): Get maxdelay_ms from the carrier plugin
-  static const int maxdelay_ms = 10000;
-  handler_->server().RegisterStartSuspend(name, StartSuspendTrampoline, this,
-                                          maxdelay_ms);
-}
-
 // Tokenizes a string of the form (<[+-]ident>)* into a list of strings of the
 // form [+-]ident.
 static std::vector<std::string> TokenizeRequest(const std::string& req) {
@@ -1868,10 +1802,6 @@ void GobiModem::RecordResetReason(ULONG reason) {
 
 void GobiModem::ExitAndResetDevice(ULONG reason) {
   ApiDisconnect();
-  if (suspending_) {
-    LOG(ERROR) << "Already suspending " << static_cast<std::string>(path());
-    return;
-  }
   if (reason)
     RecordResetReason(reason);
 
