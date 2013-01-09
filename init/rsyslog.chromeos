@@ -13,8 +13,8 @@ $PrivDropToGroup syslog
 $SystemLogRateLimitInterval 0
 
 # Keep network stuff in /var/log/net.log; throw away warnings, etc (see RFC 3164).
-if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 'wpa_supplicant')) then -/var/log/net.log
-if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 'wpa_supplicant')) and $syslogseverity >= '4' then ~
+if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 'wpa_supplicant') or ($programname == 'cromo') or ($programname == 'ModemManager')) then -/var/log/net.log
+if (($programname == 'shill') or ($programname == 'dhcpcd') or ($programname == 'wpa_supplicant') or ($programname == 'cromo') or ($programname == 'ModemManager')) and $syslogseverity >= '4' then ~
 
 # Log all kernel messages to the console.
 # Logging much else clutters up the screen.
