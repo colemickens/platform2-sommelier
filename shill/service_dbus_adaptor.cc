@@ -21,7 +21,7 @@ namespace shill {
 const char ServiceDBusAdaptor::kPath[] = "/service/";
 
 ServiceDBusAdaptor::ServiceDBusAdaptor(DBus::Connection* conn, Service *service)
-    : DBusAdaptor(conn, kPath + service->UniqueName()),
+    : DBusAdaptor(conn, kPath + service->unique_name()),
       service_(service) {}
 
 ServiceDBusAdaptor::~ServiceDBusAdaptor() {

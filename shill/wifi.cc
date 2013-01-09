@@ -200,7 +200,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
        it != services_.end();
        ++it) {
     SLOG(WiFi, 3) << "WiFi " << link_name() << " deregistering service "
-                  << (*it)->friendly_name();
+                  << (*it)->unique_name();
     manager()->DeregisterService(*it);
   }
   rpcid_by_service_.clear();
@@ -303,8 +303,8 @@ void WiFi::ConnectTo(WiFiService *service,
   // TODO(quiche): Handle cases where already connected.
   if (pending_service_ && pending_service_ == service) {
     // TODO(quiche): Return an error to the caller. crosbug.com/23832
-    LOG(INFO) << "WiFi " << link_name() << " ignoring ConnectTo "
-              << service->friendly_name()
+    LOG(INFO) << "WiFi " << link_name() << " ignoring ConnectTo service "
+              << service->unique_name()
               << ", which is already pending.";
     return;
   }
@@ -352,7 +352,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     // generate a D-Bus error here. (crosbug.com/23832)
     LOG(WARNING) << "In " << __func__ << "(): "
                  << " ignoring request to disconnect from service "
-                 << service->friendly_name()
+                 << service->unique_name()
                  << " which is neither current nor pending";
     return;
   }
@@ -362,7 +362,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     // generate a D-Bus error here. (crosbug.com/23832)
     LOG(WARNING) << "In " << __func__ << "(): "
                  << " ignoring request to disconnect from service "
-                 << service->friendly_name()
+                 << service->unique_name()
                  << " which is not the pending service.";
     return;
   }
@@ -372,7 +372,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
     // generate a D-Bus error here. (crosbug.com/23832)
     LOG(WARNING) << "In " << __func__ << "(): "
                  << " ignoring request to disconnect from service "
-                 << service->friendly_name()
+                 << service->unique_name()
                  << " which is not the current service.";
     return;
   }
@@ -649,8 +649,8 @@ void WiFi::HandleDisconnect() {
   if (!DisableNetworkForService(affected_service, &error)) {
     if (error.type() == Error::kNotFound) {
       SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
-                    << " (or failed to connect to) "
-                    << affected_service->friendly_name() << ", "
+                    << " (or failed to connect to) service "
+                    << affected_service->unique_name() << ", "
                     << "but could not find supplicant network to disable.";
     } else {
       LOG(FATAL) << "DisableNetwork failed.";
@@ -658,8 +658,8 @@ void WiFi::HandleDisconnect() {
   }
 
   SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
-                << " (or failed to connect to) "
-                << affected_service->friendly_name();
+                << " (or failed to connect to) service "
+                << affected_service->unique_name();
   if (SuspectCredentials(*affected_service)) {
     // If we suspect bad credentials, set failure, to trigger an error
     // mole in Chrome.
@@ -688,8 +688,8 @@ void WiFi::HandleDisconnect() {
     //
     // Log this fact, to help us debug (in case our assumptions are
     // wrong).
-    SLOG(WiFi, 2) << "WiFi " << link_name() << " pending connection to "
-                  << pending_service_->friendly_name()
+    SLOG(WiFi, 2) << "WiFi " << link_name() << " pending connection to service "
+                  << pending_service_->unique_name()
                   << " after disconnect";
   }
 
@@ -740,7 +740,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
                   << " new current Endpoint "
                   << endpoint.bssid_string()
                   << " is not part of pending service "
-                  << pending_service_->friendly_name();
+                  << pending_service_->unique_name();
 
     // Sanity check: if we didn't roam onto |pending_service_|, we
     // should still be on |current_service_|.
@@ -749,10 +749,10 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
                    << " new current Endpoint "
                    << endpoint.bssid_string()
                    << " is neither part of pending service "
-                   << pending_service_->friendly_name()
+                   << pending_service_->unique_name()
                    << " nor part of current service "
-                   << (current_service_.get() ?
-                       current_service_->friendly_name() :
+                   << (current_service_ ?
+                       current_service_->unique_name() :
                        "(NULL)");
       // Although we didn't expect to get here, we should keep
       // |current_service_| in sync with what supplicant has done.
@@ -782,7 +782,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
         << endpoint.bssid_string()
         << (current_service_.get() ?
             StringPrintf(" is not part of current service %s",
-                         current_service_->friendly_name().c_str()) :
+                         current_service_->unique_name().c_str()) :
             " with no current service");
     // We didn't expect to be here, but let's cope as well as we
     // can. Update |current_service_| to keep it in sync with
@@ -831,8 +831,9 @@ string WiFi::FindNetworkRpcidForService(
       rpcid_by_service_.find(service);
   if (rpcid_it == rpcid_by_service_.end()) {
     const string error_message =
-        StringPrintf("WiFi %s cannot find supplicant network rpcid for %s",
-                     link_name().c_str(), service->friendly_name().c_str());
+        StringPrintf(
+            "WiFi %s cannot find supplicant network rpcid for service %s",
+            link_name().c_str(), service->unique_name().c_str());
     // There are contexts where this is not an error, such as when a service
     // is clearing whatever cached credentials may not exist.
     SLOG(WiFi, 2) << error_message;
@@ -854,9 +855,9 @@ bool WiFi::DisableNetworkForService(const WiFiService *service, Error *error) {
 
   if (!DisableNetwork(rpcid)) {
     const string error_message =
-        StringPrintf("WiFi %s cannot disable network for %s: "
+        StringPrintf("WiFi %s cannot disable network for service %s: "
                      "DBus operation failed for rpcid %s.",
-                     link_name().c_str(), service->friendly_name().c_str(),
+                     link_name().c_str(), service->unique_name().c_str(),
                      rpcid.c_str());
     Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
 
@@ -886,9 +887,9 @@ bool WiFi::RemoveNetworkForService(const WiFiService *service, Error *error) {
   // wpa_supplicant some time to retry, first.
   if (!RemoveNetwork(rpcid)) {
     const string error_message =
-        StringPrintf("WiFi %s cannot remove network for %s: "
+        StringPrintf("WiFi %s cannot remove network for service %s: "
                      "DBus operation failed for rpcid %s.",
-                     link_name().c_str(), service->friendly_name().c_str(),
+                     link_name().c_str(), service->unique_name().c_str(),
                      rpcid.c_str());
     Error::PopulateAndLog(error, Error::kOperationFailed, error_message);
     return false;
@@ -1039,7 +1040,7 @@ void WiFi::BSSAddedTask(
   WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
   if (service) {
     SLOG(WiFi, 1) << "Assigned endpoint " << endpoint->bssid_string()
-                  << " to service " << service->friendly_name() << ".";
+                  << " to service " << service->unique_name() << ".";
     service->AddEndpoint(endpoint);
 
     if (manager()->HasService(service)) {
@@ -1052,8 +1053,6 @@ void WiFi::BSSAddedTask(
   } else {
     const bool hidden_ssid = false;
     service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
-    LOG(INFO) << "New service " << service->GetRpcIdentifier()
-              << " (" << service->friendly_name() << ")";
     service->AddEndpoint(endpoint);
     manager()->RegisterService(service);
   }
@@ -1087,7 +1086,7 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
                  << path << " "
                  << "(with BSSID " << endpoint->bssid_string() << ").";
   SLOG(WiFi, 2) << "Removing Endpoint " << endpoint->bssid_string()
-                << " from Service " << service->friendly_name();
+                << " from Service " << service->unique_name();
   service->RemoveEndpoint(endpoint);
 
   bool disconnect_service = !service->HasEndpoints() &&
@@ -1598,7 +1597,7 @@ void WiFi::StopPendingTimer() {
 
 void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " setting pending service to "
-                << (service ? service->friendly_name(): "NULL");
+                << (service ? service->unique_name(): "NULL");
   if (service) {
     service->SetState(Service::kStateAssociating);
     StartPendingTimer();

@@ -38,7 +38,7 @@ VPNService::VPNService(ControlInterface *control,
 VPNService::~VPNService() {}
 
 void VPNService::Connect(Error *error) {
-  SLOG(VPN, 2) << __func__ << " @ " << friendly_name();
+  LOG(INFO) << "Connect to service " << unique_name();
   if (IsConnected() || IsConnecting()) {
     Error::PopulateAndLog(
         error, Error::kAlreadyConnected, "VPN service already connected.");
@@ -49,7 +49,7 @@ void VPNService::Connect(Error *error) {
 }
 
 void VPNService::Disconnect(Error *error) {
-  SLOG(VPN, 2) << __func__ << " @ " << friendly_name();
+  LOG(INFO) << "Disconnect from service " << unique_name();
   Service::Disconnect(error);
   driver_->Disconnect();
 }
@@ -121,14 +121,13 @@ void VPNService::MakeFavorite() {
 
 void VPNService::SetConnection(const ConnectionRefPtr &connection) {
   // Construct the connection binder here rather than in the constructor because
-  // this service's |friendly_name_| (which will be used for binder logging) may
-  // be initialized late. Also, there's really no reason to construct a binder
-  // if we never connect to this service. It's safe to use an unretained
-  // callback to driver's method because both the binder and the driver will be
-  // destroyed when this service is destructed.
+  // there's really no reason to construct a binder if we never connect to this
+  // service. It's safe to use an unretained callback to driver's method because
+  // both the binder and the driver will be destroyed when this service is
+  // destructed.
   if (!connection_binder_.get()) {
     connection_binder_.reset(
-        new Connection::Binder(friendly_name(),
+        new Connection::Binder(unique_name(),
                                Bind(&VPNDriver::OnConnectionDisconnected,
                                     Unretained(driver_.get()))));
   }

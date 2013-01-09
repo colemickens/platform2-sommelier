@@ -64,6 +64,8 @@ class CellularServiceTest : public testing::Test {
  protected:
   static const char kAddress[];
 
+  string GetFriendlyName() const { return service_->friendly_name(); }
+
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
@@ -155,12 +157,12 @@ TEST_F(CellularServiceTest, FriendlyName) {
   static const char kCarrier[] = "Cellular Carrier";
   GetCapabilityCDMA()->carrier_ = kCarrier;
   service_ = new CellularService(&control_, NULL, &metrics_, NULL, device_);
-  EXPECT_EQ(kCarrier, service_->friendly_name());
+  EXPECT_EQ(kCarrier, GetFriendlyName());
 }
 
 TEST_F(CellularServiceTest, SetStorageIdentifier) {
   EXPECT_EQ(string(flimflam::kTypeCellular) + "_" +
-            kAddress + "_" + service_->friendly_name(),
+            kAddress + "_" + GetFriendlyName(),
             service_->GetStorageIdentifier());
   service_->SetStorageIdentifier("a b c");
   EXPECT_EQ("a_b_c", service_->GetStorageIdentifier());

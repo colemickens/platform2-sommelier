@@ -66,6 +66,7 @@ class MockService : public Service {
   void set_mock_connection(const ConnectionRefPtr &connection) {
     mock_connection_ = connection;
   }
+  const std::string &friendly_name() const { return Service::friendly_name(); }
 
  private:
   ConnectionRefPtr mock_connection_;

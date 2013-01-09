@@ -242,7 +242,7 @@ class Service : public base::RefCounted<Service> {
 
   // Returns a string that is guaranteed to uniquely identify this Service
   // instance.
-  const std::string &UniqueName() const { return unique_name_; }
+  const std::string &unique_name() const { return unique_name_; }
 
   virtual std::string GetRpcIdentifier() const;
 
@@ -344,7 +344,6 @@ class Service : public base::RefCounted<Service> {
   bool favorite() const { return favorite_; }
   // Setter is deliberately omitted; use MakeFavorite.
 
-  const std::string &friendly_name() const { return friendly_name_; }
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   const std::string &guid() const { return guid_; }
@@ -429,6 +428,8 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnBusy[];
 
   virtual ~Service();
+
+  const std::string &friendly_name() const { return friendly_name_; }
 
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
@@ -528,10 +529,13 @@ class Service : public base::RefCounted<Service> {
   friend class MetricsTest;
   friend class ServiceAdaptorInterface;
   friend class ServiceTest;
+  friend class VPNProviderTest;
   friend class VPNServiceTest;
   friend class WiFiServiceTest;
+  friend class WiMaxProviderTest;
   friend class WiMaxServiceTest;
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
+  FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   FRIEND_TEST(ServiceTest, AutoConnectLogging);
@@ -679,7 +683,13 @@ class Service : public base::RefCounted<Service> {
   EventDispatcher *dispatcher_;
   static unsigned int serial_number_;
   std::string unique_name_;  // MUST be unique amongst service instances
-  std::string friendly_name_;  // MAY be same as |unique_name_|
+
+  // Service's friendly name is presented through the UI. By default it's the
+  // same as |unique_name_| but normally Service subclasses override
+  // it. WARNING: Don't log the friendly name at the default logging level due
+  // to PII concerns.
+  std::string friendly_name_;
+
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;
   ConnectionRefPtr connection_;

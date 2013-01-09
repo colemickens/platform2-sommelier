@@ -403,7 +403,7 @@ void Cellular::CreateService() {
 void Cellular::DestroyService() {
   DropConnection();
   if (service_) {
-    LOG(INFO) << "Deregistering cellular service " << service_->friendly_name()
+    LOG(INFO) << "Deregistering cellular service " << service_->unique_name()
               << " for device " << link_name();
     manager()->DeregisterService(service_);
     service_ = NULL;

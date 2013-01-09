@@ -605,13 +605,12 @@ bool Manager::MoveServiceToProfile(const ServiceRefPtr &to_move,
                                    const ProfileRefPtr &destination) {
   const ProfileRefPtr from = to_move->profile();
   SLOG(Manager, 2) << "Moving service "
-                   << to_move->UniqueName()
+                   << to_move->unique_name()
                    << " to profile "
                    << destination->GetFriendlyName()
                    << " from "
                    << from->GetFriendlyName();
-  return destination->AdoptService(to_move) &&
-      from->AbandonService(to_move);
+  return destination->AdoptService(to_move) && from->AbandonService(to_move);
 }
 
 ProfileRefPtr Manager::LookupProfileByRpcIdentifier(
@@ -786,22 +785,21 @@ void Manager::EmitDeviceProperties() {
 bool Manager::HasService(const ServiceRefPtr &service) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if ((*it)->UniqueName() == service->UniqueName())
+    if ((*it)->unique_name() == service->unique_name())
       return true;
   }
   return false;
 }
 
 void Manager::RegisterService(const ServiceRefPtr &to_manage) {
-  SLOG(Manager, 2) << "In " << __func__ << "(): Registering service "
-                   << to_manage->UniqueName();
+  SLOG(Manager, 2) << "Registering service " << to_manage->unique_name();
 
   MatchProfileWithService(to_manage);
 
   // Now add to OUR list.
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    CHECK(to_manage->UniqueName() != (*it)->UniqueName());
+    CHECK(to_manage->unique_name() != (*it)->unique_name());
   }
   services_.push_back(to_manage);
   SortServices();
@@ -810,7 +808,7 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
 void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (to_forget->UniqueName() == (*it)->UniqueName()) {
+    if (to_forget->unique_name() == (*it)->unique_name()) {
       DCHECK(!(*it)->connection());
       (*it)->Unload();
       (*it)->SetProfile(NULL);
@@ -835,7 +833,7 @@ bool Manager::UnloadService(vector<ServiceRefPtr>::iterator *service_iterator) {
 
 void Manager::UpdateService(const ServiceRefPtr &to_update) {
   CHECK(to_update);
-  LOG(INFO) << "Service " << to_update->UniqueName() << " updated;"
+  LOG(INFO) << "Service " << to_update->unique_name() << " updated;"
             << " state: " << Service::ConnectStateToString(to_update->state())
             << " failure: "
             << Service::ConnectFailureToString(to_update->failure());
@@ -1008,10 +1006,10 @@ void Manager::FilterByTechnology(Technology::Identifier tech,
   }
 }
 
-ServiceRefPtr Manager::FindService(const string& name) {
+ServiceRefPtr Manager::FindService(const string &name) {
   vector<ServiceRefPtr>::iterator it;
   for (it = services_.begin(); it != services_.end(); ++it) {
-    if (name == (*it)->UniqueName())
+    if (name == (*it)->unique_name())
       return *it;
   }
   return NULL;
@@ -1146,7 +1144,7 @@ void Manager::AutoConnect() {
       } else {
         compare_reason = "last";
       }
-      SLOG(Manager, 4) << "Service " << service->friendly_name()
+      SLOG(Manager, 4) << "Service " << service->unique_name()
                        << " IsConnected: " << service->IsConnected()
                        << " IsConnecting: " << service->IsConnecting()
                        << " IsFailed: " << service->IsFailed()
@@ -1156,7 +1154,6 @@ void Manager::AutoConnect() {
                        << " priority: " << service->priority()
                        << " security_level: " << service->security_level()
                        << " strength: " << service->strength()
-                       << " UniqueName: " << service->UniqueName()
                        << " sorted: " << compare_reason;
     }
   }
@@ -1378,7 +1375,7 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 
   // First pull in any stored configuration associated with the service.
   if (service->profile() == profile) {
-    SLOG(Manager, 2) << __func__ << ": service " << service->friendly_name()
+    SLOG(Manager, 2) << __func__ << ": service " << service->unique_name()
                      << " is already a member of profile "
                      << profile->GetFriendlyName()
                      << " so a load is not necessary.";
@@ -1386,12 +1383,12 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
     SLOG(Manager, 2) << __func__ << ": applied stored information from profile "
                      << profile->GetFriendlyName()
                      << " into service "
-                     << service->friendly_name();
+                     << service->unique_name();
   } else {
     SLOG(Manager, 2) << __func__ << ": no previous information in profile "
                      << profile->GetFriendlyName()
                      << " exists for service "
-                     << service->friendly_name();
+                     << service->unique_name();
   }
 
   // Overlay this with the passed-in configuration parameters.

@@ -93,6 +93,10 @@ class WiMaxProviderTest : public testing::Test {
     provider_.proxy_factory_ = NULL;
   }
 
+  string GetServiceFriendlyName(const ServiceRefPtr &service) {
+    return service->friendly_name();
+  }
+
   scoped_ptr<MockWiMaxManagerProxy> wimax_manager_proxy_;
   scoped_ptr<MockWiMaxNetworkProxy> network_proxy_;
   TestProxyFactory proxy_factory_;
@@ -507,7 +511,7 @@ TEST_F(WiMaxProviderTest, GetService) {
   ASSERT_TRUE(service);
 
   // GetService should create a service with only identifying parameters set.
-  EXPECT_EQ(kName, service->friendly_name());
+  EXPECT_EQ(kName, GetServiceFriendlyName(service));
   EXPECT_EQ("", service->eap().identity);
 
   // After configuring the service, other parameters should be set.

@@ -245,28 +245,28 @@ Service::Service(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kTypeProperty);
   IgnoreParameterForConfigure(flimflam::kProfileProperty);
 
-  SLOG(Service, 2) << "Service initialized.";
+  LOG(INFO) << "Service " << unique_name_ << " constructed.";
 }
 
 Service::~Service() {
-  LOG(INFO) << "Service destroyed: " << friendly_name_;
+  LOG(INFO) << "Service " << unique_name_ << " destroyed.";
   metrics_->DeregisterService(this);
 }
 
 void Service::AutoConnect() {
   const char *reason = NULL;
   if (IsAutoConnectable(&reason)) {
-    LOG(INFO) << "Auto-connecting to " << friendly_name_;
+    LOG(INFO) << "Auto-connecting to service " << unique_name_;
     ThrottleFutureAutoConnects();
     Error error;
     Connect(&error);
   } else {
     if (reason == kAutoConnConnected || reason == kAutoConnBusy) {
       SLOG(Service, 1)
-          << "Suppressed autoconnect to " << friendly_name_ << " "
+          << "Suppressed autoconnect to service " << unique_name_ << " "
           << "(" << reason << ")";
     } else {
-      LOG(INFO) << "Suppressed autoconnect to " << friendly_name_ << " "
+      LOG(INFO) << "Suppressed autoconnect to service " << unique_name_ << " "
                 << "(" << reason << ")";
     }
   }
@@ -306,13 +306,13 @@ bool Service::IsActive(Error */*error*/) {
 }
 
 void Service::SetState(ConnectState state) {
-  LOG(INFO) << "In " << __func__ << "(): Service " << friendly_name_
-            << " state " << ConnectStateToString(state_) << " -> "
-            << ConnectStateToString(state);
-
   if (state == state_) {
     return;
   }
+
+  LOG(INFO) << "Service " << unique_name_ << ": state "
+            << ConnectStateToString(state_) << " -> "
+            << ConnectStateToString(state);
 
   if (state == kStateFailure) {
     NoteDisconnectEvent();
@@ -347,7 +347,7 @@ void Service::ReEnableAutoConnectTask() {
 
 void Service::ThrottleFutureAutoConnects() {
   if (auto_connect_cooldown_milliseconds_ > 0) {
-    LOG(INFO) << "Throttling autoconnect to " << friendly_name_ << " for "
+    LOG(INFO) << "Throttling autoconnect to service " << unique_name_ << " for "
               << auto_connect_cooldown_milliseconds_ << " milliseconds.";
     reenable_auto_connect_task_.Reset(Bind(&Service::ReEnableAutoConnectTask,
                                            weak_ptr_factory_.GetWeakPtr()));
@@ -892,7 +892,7 @@ bool Service::Compare(ServiceRefPtr a,
   }
 
   *reason = kServiceSortUniqueName;
-  return a->UniqueName() < b->UniqueName();
+  return a->unique_name() < b->unique_name();
 }
 
 const ProfileRefPtr &Service::profile() const { return profile_; }
@@ -1249,9 +1249,8 @@ void Service::AssertTrivialSetNameProperty(const string &name, Error *error) {
   if (name != friendly_name_) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           base::StringPrintf(
-                              "Service Name property cannot be modified "
-                              "(%s to %s)", friendly_name_.c_str(),
-                              name.c_str()));
+                              "Service %s Name property cannot be modified.",
+                              unique_name_.c_str()));
   }
 }
 

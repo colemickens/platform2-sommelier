@@ -95,6 +95,8 @@ class ServiceTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
   };
 
+  string GetFriendlyName() { return service_->friendly_name(); }
+
   void SetManagerRunning(bool running) { mock_manager_.running_ = running; }
 
   void SetPowerState(PowerManager::SuspendState state) {
@@ -309,7 +311,7 @@ TEST_F(ServiceTest, SetProperty) {
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                          flimflam::kNameProperty,
                                          DBusAdaptor::StringToVariant(
-                                             service_->friendly_name()),
+                                             GetFriendlyName()),
                                          &error));
   }
   {

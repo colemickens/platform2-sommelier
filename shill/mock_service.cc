@@ -31,7 +31,7 @@ MockService::MockService(ControlInterface *control_interface,
                          Manager *manager)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kUnknown) {
-  const string &id = UniqueName();
+  const string &id = unique_name();
   EXPECT_CALL(*this, GetRpcIdentifier()).WillRepeatedly(Return(id));
   EXPECT_CALL(*this, GetStorageIdentifier()).WillRepeatedly(Return(id));
   ON_CALL(*this, IsVisible()).WillByDefault(Return(true));

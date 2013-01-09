@@ -428,8 +428,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
                                 metrics(),
                                 &manager));
 
-  string service1_name(mock_service->UniqueName());
-  string service2_name(mock_service2->UniqueName());
+  string service1_name(mock_service->unique_name());
+  string service2_name(mock_service2->unique_name());
 
   EXPECT_CALL(*mock_service.get(), GetRpcIdentifier())
       .WillRepeatedly(Return(service1_name));
@@ -513,7 +513,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
                                 metrics(),
                                 &manager));
   EXPECT_CALL(*mock_service2.get(), GetStorageIdentifier())
-      .WillRepeatedly(Return(mock_service2->UniqueName()));
+      .WillRepeatedly(Return(mock_service2->unique_name()));
   manager.RegisterService(mock_service2);
   EXPECT_NE(mock_service2->profile().get(), profile.get());
   manager.Stop();
@@ -1746,7 +1746,7 @@ TEST_F(ManagerTest, SortServices) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
-  // Services should already be sorted by UniqueName
+  // Services should already be sorted by |unique_name_|
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Asking explictly to sort services should not change anything

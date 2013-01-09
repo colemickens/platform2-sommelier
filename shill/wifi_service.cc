@@ -119,6 +119,11 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kModeProperty);
   IgnoreParameterForConfigure(flimflam::kSSIDProperty);
   IgnoreParameterForConfigure(flimflam::kSecurityProperty);
+
+  // Log the |unique_name| to |friendly_name| mapping for debugging purposes at
+  // non-default log level.
+  SLOG(WiFi, 1) << "Constructed WiFi service " << unique_name()
+                << " name: " << friendly_name();
 }
 
 WiFiService::~WiFiService() {}
@@ -157,7 +162,7 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
   DCHECK(i != endpoints_.end());
   if (i == endpoints_.end()) {
     LOG(WARNING) << "In " << __func__ << "(): "
-                 << "ignorning non-existent endpoint "
+                 << "ignoring non-existent endpoint "
                  << endpoint->bssid_string();
     return;
   }
@@ -362,20 +367,20 @@ void WiFiService::HelpRegisterWriteOnlyDerivedString(
 }
 
 void WiFiService::Connect(Error *error) {
-  LOG(INFO) << "In " << __func__ << "(): Service " << friendly_name();
+  LOG(INFO) << "Connect to service " << unique_name();
   std::map<string, DBus::Variant> params;
   DBus::MessageIter writer;
 
   if (!connectable()) {
-    LOG(ERROR) << "Can't connect. Service " << friendly_name()
-               << " is not connectable";
+    LOG(ERROR) << "Can't connect. Service " << unique_name()
+               << " is not connectable.";
     Error::PopulateAndLog(error,
                           Error::kOperationFailed,
                           Error::GetDefaultMessage(Error::kOperationFailed));
     return;
   }
   if (IsConnecting() || IsConnected()) {
-    LOG(WARNING) << "Can't connect.  Service " << friendly_name()
+    LOG(WARNING) << "Can't connect.  Service " << unique_name()
                  << " is already connecting or connected.";
     Error::PopulateAndLog(error,
                           Error::kAlreadyConnected,
@@ -383,7 +388,7 @@ void WiFiService::Connect(Error *error) {
     return;
   }
   if (wifi_->IsCurrentService(this)) {
-    LOG(WARNING) << "Can't connect.  Service " << friendly_name()
+    LOG(WARNING) << "Can't connect.  Service " << unique_name()
                  << " is the current service (but, in " << GetStateString()
                  << " state, not connected.";
     Error::PopulateAndLog(error,

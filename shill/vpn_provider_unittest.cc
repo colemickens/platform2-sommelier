@@ -40,6 +40,10 @@ class VPNProviderTest : public testing::Test {
   static const char kHost[];
   static const char kName[];
 
+  string GetServiceFriendlyName(const ServiceRefPtr &service) {
+    return service->friendly_name();
+  }
+
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
@@ -84,7 +88,7 @@ TEST_F(VPNProviderTest, GetService) {
   EXPECT_TRUE(e.IsSuccess());
   ASSERT_TRUE(service0);
   EXPECT_EQ("vpn_10_8_0_1_vpn_name", service0->GetStorageIdentifier());
-  EXPECT_EQ(kName, service0->friendly_name());
+  EXPECT_EQ(kName, GetServiceFriendlyName(service0));
 
   // A second call should return the same service.
   VPNServiceRefPtr service1 = provider_.GetService(args, &e);
@@ -227,7 +231,7 @@ TEST_F(VPNProviderTest, CreateService) {
     ASSERT_TRUE(service) << kTypes[i];
     ASSERT_TRUE(service->driver()) << kTypes[i];
     EXPECT_EQ(kTypes[i], service->driver()->GetProviderType());
-    EXPECT_EQ(kName, service->friendly_name()) << kTypes[i];
+    EXPECT_EQ(kName, GetServiceFriendlyName(service)) << kTypes[i];
     EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << kTypes[i];
     EXPECT_TRUE(error.IsSuccess()) << kTypes[i];
   }

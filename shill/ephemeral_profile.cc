@@ -4,18 +4,12 @@
 
 #include "shill/ephemeral_profile.h"
 
-#include <string>
-#include <map>
-
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-
-using std::map;
-using std::string;
 
 namespace shill {
 
@@ -27,7 +21,7 @@ EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
 EphemeralProfile::~EphemeralProfile() {}
 
 bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
-  SLOG(Profile, 2) << "Adding " << service->UniqueName()
+  SLOG(Profile, 2) << "Adding service " << service->unique_name()
                    << " to ephemeral profile.";
   service->SetProfile(this);
   return true;
@@ -36,7 +30,7 @@ bool EphemeralProfile::AdoptService(const ServiceRefPtr &service) {
 bool EphemeralProfile::AbandonService(const ServiceRefPtr &service) {
   if (service->profile() == this)
     service->SetProfile(NULL);
-  SLOG(Profile, 2) << "Removing " << service->UniqueName()
+  SLOG(Profile, 2) << "Removing service " << service->unique_name()
                    << " from ephemeral profile.";
   return true;
 }

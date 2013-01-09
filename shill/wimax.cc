@@ -107,8 +107,8 @@ void WiMax::ConnectTo(const WiMaxServiceRefPtr &service, Error *error) {
     Error::PopulateAndLog(
         error, Error::kInProgress,
         base::StringPrintf(
-            "Pending connect to %s, ignoring connect request to %s.",
-            pending_service_->friendly_name().c_str(),
+            "Pending connect to service %s, ignoring connect request to %s.",
+            pending_service_->unique_name().c_str(),
             service->GetStorageIdentifier().c_str()));
     return;
   }
@@ -141,8 +141,9 @@ void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
     Error::PopulateAndLog(
         error, Error::kInProgress,
         base::StringPrintf(
-            "Pending connect to %s, ignoring disconnect request from %s.",
-            pending_service_->friendly_name().c_str(),
+            "Pending connect to service %s, "
+            "ignoring disconnect request from %s.",
+            pending_service_->unique_name().c_str(),
             service->GetStorageIdentifier().c_str()));
     return;
   }
@@ -150,8 +151,8 @@ void WiMax::DisconnectFrom(const ServiceRefPtr &service, Error *error) {
     Error::PopulateAndLog(
         error, Error::kNotConnected,
         base::StringPrintf(
-            "Curent service is %s, ignoring disconnect request from %s.",
-            selected_service()->friendly_name().c_str(),
+            "Current service is %s, ignoring disconnect request from %s.",
+            selected_service()->unique_name().c_str(),
             service->GetStorageIdentifier().c_str()));
     return;
   }

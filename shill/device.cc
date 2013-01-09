@@ -533,12 +533,8 @@ void Device::DestroyConnection() {
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {
-  SLOG(Device, 2) << __func__ << ": "
-                  << (service.get() ?
-                      StringPrintf("%s (%s)",
-                                   service->UniqueName().c_str(),
-                                   service->friendly_name().c_str()) :
-                      "*reset*");
+  SLOG(Device, 2) << __func__ << ": service "
+                  << (service ? service->unique_name() : "*reset*");
 
   if (selected_service_.get() == service.get()) {
     // No change to |selected_service_|. Return early to avoid
@@ -649,9 +645,9 @@ bool Device::RequestPortalDetection() {
 }
 
 bool Device::StartPortalDetection() {
-  DCHECK(selected_service_.get());
+  DCHECK(selected_service_);
   if (selected_service_->IsPortalDetectionDisabled()) {
-    SLOG(Device, 2) << "Service " << selected_service_->friendly_name()
+    SLOG(Device, 2) << "Service " << selected_service_->unique_name()
                     << ": Portal detection is disabled; "
                     << "marking service online.";
     SetServiceConnectedState(Service::kStateOnline);
@@ -747,7 +743,7 @@ void Device::SetServiceConnectedState(Service::ConnectState state) {
   if (!selected_service_->IsConnected()) {
     LOG(ERROR) << FriendlyName() << ": "
                << "Portal detection completed but selected service "
-               << selected_service_->UniqueName()
+               << selected_service_->unique_name()
                << " is in non-connected state.";
     return;
   }

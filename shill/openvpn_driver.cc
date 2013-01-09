@@ -811,7 +811,7 @@ void OpenVPNDriver::InitEnvironment(vector<string> *environment) {
 
 void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr &service) {
   SLOG(VPN, 2) << __func__
-               << "(" << (service ? service->friendly_name() : "-") << ")";
+               << "(" << (service ? service->unique_name() : "-") << ")";
   // Allow the openvpn client to connect/reconnect only over a connected
   // underlying default service. If there's no default connected service, hold
   // the openvpn client until an underlying connection is established. If the

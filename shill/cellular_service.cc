@@ -114,9 +114,10 @@ CellularService::CellularService(ControlInterface *control_interface,
                                 &serving_operator_.ToDict());
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
 
-  set_friendly_name(device->CreateFriendlyServiceName());
+  string name = device->CreateFriendlyServiceName();
+  set_friendly_name(name);
   SetStorageIdentifier(string(flimflam::kTypeCellular) + "_" +
-                       device->address() + "_" + friendly_name());
+                       device->address() + "_" + name);
 }
 
 CellularService::~CellularService() { }
