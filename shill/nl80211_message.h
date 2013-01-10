@@ -300,7 +300,7 @@ class ErrorMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  ErrorMessage(uint32_t error);
+  explicit ErrorMessage(uint32_t error);
 
   virtual std::string ToString() const;
 

@@ -50,12 +50,14 @@ string AttributeList::ToString() const {
 
   for (i = attributes_.begin(); i != attributes_.end(); ++i) {
     string attribute_string;
-    i->second->ToString(&attribute_string);
-    StringAppendF(&output, "   Attr: %s(%d)=%s, Type: %s\n",
-                  i->second->id_string(),
-                  i->second->id(),
-                  attribute_string.c_str(),
-                  i->second->datatype_string());
+    if (i->second->has_a_value()) {
+      i->second->ToString(&attribute_string);
+      StringAppendF(&output, "   Attr: %s(%d) Type: %s = %s\n",
+                    i->second->id_string(),
+                    i->second->id(),
+                    i->second->datatype_string(),
+                    attribute_string.c_str());
+    }
   }
   return output;
 }

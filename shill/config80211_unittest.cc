@@ -907,11 +907,9 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
     WeakPtr<AttributeList> nested;
     EXPECT_TRUE(message->attributes().GetNestedAttributeValue(NL80211_ATTR_CQM,
                                                               &nested));
-    // TODO(wdg): Enable the following when attributes get the 'is_valid'
-    // property.
-    //uint32_t threshold_event;
-    //EXPECT_FALSE(nested->GetU32AttributeValue(
-    //    NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT, &threshold_event));
+    uint32_t threshold_event;
+    EXPECT_FALSE(nested->GetU32AttributeValue(
+        NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT, &threshold_event));
     uint32_t pkt_loss_event;
     EXPECT_TRUE(nested->GetU32AttributeValue(
         NL80211_ATTR_CQM_PKT_LOSS_EVENT, &pkt_loss_event));

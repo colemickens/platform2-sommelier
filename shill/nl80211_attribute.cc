@@ -32,7 +32,7 @@ Nl80211Attribute::Nl80211Attribute(int id,
                                    const char *id_string,
                                    Type datatype,
                                    const char *datatype_string)
-    : id_(id), id_string_(id_string), datatype_(datatype),
+    : has_a_value_(false), id_(id), id_string_(id_string), datatype_(datatype),
       datatype_string_(datatype_string) {}
 
 // static
@@ -206,6 +206,11 @@ bool Nl80211Attribute::GetRawValue(ByteString *value) const {
 string Nl80211Attribute::RawToString() const {
   string output = " === RAW: ";
 
+  if (!has_a_value_) {
+    StringAppendF(&output, "(empty)");
+    return output;
+  }
+
   nlattr *data_nlattr = const_cast<nlattr *>(data());
   uint16_t length = nla_len(data_nlattr);
   StringAppendF(&output, "len=%u", length);
@@ -249,6 +254,11 @@ bool Nl80211U8Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U8Attribute::GetU8Value(uint8_t *output) const {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7) << "U8 attribute " << id_string()
+                  << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = value_;
   }
@@ -257,6 +267,7 @@ bool Nl80211U8Attribute::GetU8Value(uint8_t *output) const {
 
 bool Nl80211U8Attribute::SetU8Value(uint8_t new_value) {
   value_ = new_value;
+  has_a_value_ = true;
   return true;
 }
 
@@ -296,6 +307,11 @@ bool Nl80211U16Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U16Attribute::GetU16Value(uint16_t *output) const {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "U16 attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = value_;
   }
@@ -304,6 +320,7 @@ bool Nl80211U16Attribute::GetU16Value(uint16_t *output) const {
 
 bool Nl80211U16Attribute::SetU16Value(uint16_t new_value) {
   value_ = new_value;
+  has_a_value_ = true;
   return true;
 }
 
@@ -342,6 +359,11 @@ bool Nl80211U32Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U32Attribute::GetU32Value(uint32_t *output) const {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "U32 attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = value_;
   }
@@ -350,6 +372,7 @@ bool Nl80211U32Attribute::GetU32Value(uint32_t *output) const {
 
 bool Nl80211U32Attribute::SetU32Value(uint32_t new_value) {
   value_ = new_value;
+  has_a_value_ = true;
   return true;
 }
 
@@ -388,6 +411,11 @@ bool Nl80211U64Attribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211U64Attribute::GetU64Value(uint64_t *output) const {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "U64 attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = value_;
   }
@@ -396,6 +424,7 @@ bool Nl80211U64Attribute::GetU64Value(uint64_t *output) const {
 
 bool Nl80211U64Attribute::SetU64Value(uint64_t new_value) {
   value_ = new_value;
+  has_a_value_ = true;
   return true;
 }
 
@@ -436,13 +465,15 @@ bool Nl80211FlagAttribute::InitFromNlAttr(const nlattr *input) {
 
 bool Nl80211FlagAttribute::GetFlagValue(bool *output) const {
   if (output) {
-    *output = value_;
+    // The lack of the existence of the attribute implies 'false'.
+    *output = (has_a_value_) ? value_ : false;
   }
   return true;
 }
 
 bool Nl80211FlagAttribute::SetFlagValue(bool new_value) {
   value_ = new_value;
+  has_a_value_ = true;
   return true;
 }
 
@@ -480,6 +511,11 @@ bool Nl80211StringAttribute::InitFromNlAttr(const nlattr *input) {
 }
 
 bool Nl80211StringAttribute::GetStringValue(string *output) const {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "String attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = value_;
   }
@@ -488,6 +524,7 @@ bool Nl80211StringAttribute::GetStringValue(string *output) const {
 
 bool Nl80211StringAttribute::SetStringValue(const string new_value) {
   value_ = new_value;
+  has_a_value_ = true;
   return true;
 }
 
@@ -519,6 +556,11 @@ Nl80211NestedAttribute::Nl80211NestedAttribute(int id,
     Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
 
 bool Nl80211NestedAttribute::GetNestedValue(WeakPtr<AttributeList> *output) {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "Nested attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = value_.AsWeakPtr();
   }
@@ -537,10 +579,19 @@ bool Nl80211RawAttribute::InitFromNlAttr(const nlattr *input) {
     return false;
   }
 
-  return Nl80211Attribute::InitFromNlAttr(input);
+  if (!Nl80211Attribute::InitFromNlAttr(input)) {
+    return false;
+  }
+  has_a_value_ = true;
+  return true;
 }
 
 bool Nl80211RawAttribute::GetRawValue(ByteString *output) const {
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "Raw attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   if (output) {
     *output = data_;
   }
@@ -552,7 +603,11 @@ bool Nl80211RawAttribute::ToString(string *output) const {
     LOG(ERROR) << "Null |output| parameter";
     return false;
   }
-  // TODO(wdg): Make sure that 'data' is valid.
+  if (!has_a_value_) {
+    SLOG(WiFi, 7)  << "Raw attribute " << id_string()
+                   << " hasn't been set to any value.";
+    return false;
+  }
   const uint8_t *raw_data = reinterpret_cast<const uint8_t *>(data());
   int total_bytes = nla_len(data());
   *output = StringPrintf("%d bytes:", total_bytes);
@@ -625,6 +680,7 @@ bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
         NL80211_ATTR_CQM_PKT_LOSS_EVENT,
         nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
   }
+  has_a_value_ = true;
   return true;
 }
 
@@ -694,6 +750,7 @@ bool Nl80211AttributeStaInfo::InitFromNlAttr(const nlattr *const_data) {
     return false;
   }
   // TODO(wdg): Add code, here.
+  has_a_value_ = true;
   return true;
 }
 

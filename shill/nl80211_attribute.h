@@ -106,6 +106,8 @@ class Nl80211Attribute {
   // failure.
   virtual ByteString Encode() const = 0;
 
+  bool has_a_value() const { return has_a_value_; }
+
   // Note that |nla_get_*| don't change their arguments but don't declare
   // themselves as 'const', either.  These methods wrap the const castness.
   static char *NlaGetString(const nlattr *input) {
@@ -134,6 +136,9 @@ class Nl80211Attribute {
   // TODO(wdg): When 'data()' is removed, move this to the Nl80211RawAttribute
   // class.
   ByteString data_;
+
+  // True if a value has been assigned to the attribute; false, otherwise.
+  bool has_a_value_;
 
  private:
   int id_;  // In the non-nested case, this is really type nl80211_attrs.
@@ -384,7 +389,7 @@ class Nl80211NestedAttribute : public Nl80211Attribute {
   }
   bool GetNestedValue(base::WeakPtr<AttributeList> *value);
   bool ToString(std::string *value) const {
-    return false;  // TODO(wdg):
+    return false;  // TODO(wdg): Actually generate a string, here.
   }
   virtual ByteString Encode() const {
     return ByteString();  // TODO(wdg): Actually encode the attribute.
@@ -401,7 +406,7 @@ class Nl80211AttributeCqm : public Nl80211NestedAttribute {
   Nl80211AttributeCqm();
   bool InitFromNlAttr(const nlattr *data);
   bool ToString(std::string *value) const {
-    return true; // TODO(wdg): Need |ToString|.
+    return false;  // TODO(wdg): Need |ToString|.
   }
 };
 
@@ -412,8 +417,8 @@ class Nl80211AttributeStaInfo : public Nl80211NestedAttribute {
   explicit Nl80211AttributeStaInfo() :
     Nl80211NestedAttribute(kName, kNameString) {}
   bool InitFromNlAttr(const nlattr *const_data);
-  bool AsString(std::string *value) const {
-    return true; // TODO(wdg): Need |AsString|.
+  bool ToString(std::string *value) const {
+    return false;  // TODO(wdg): Need |ToString|.
   }
 };
 
