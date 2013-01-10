@@ -245,7 +245,8 @@ Service::Service(ControlInterface *control_interface,
   IgnoreParameterForConfigure(flimflam::kTypeProperty);
   IgnoreParameterForConfigure(flimflam::kProfileProperty);
 
-  LOG(INFO) << "Service " << unique_name_ << " constructed.";
+  LOG(INFO) << Technology::NameFromIdentifier(technology) << " service "
+            << unique_name_ << " constructed.";
 }
 
 Service::~Service() {
