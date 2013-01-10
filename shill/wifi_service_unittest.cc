@@ -327,6 +327,12 @@ MATCHER(WPASecurityArgs, "") {
       ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey);
 }
 
+MATCHER(WPA80211wSecurityArgs, "") {
+  return ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol) &&
+      ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey) &&
+      ContainsKey(arg, wpa_supplicant::kNetworkPropertyIeee80211w);
+}
+
 MATCHER(EAPSecurityArgs, "") {
   return ContainsKey(arg, wpa_supplicant::kNetworkPropertyEapIdentity) &&
       ContainsKey(arg, wpa_supplicant::kNetworkPropertyCaPath);
@@ -508,6 +514,27 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   wifi_service->AddEndpoint(endpoint_freq);
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), FrequencyArg(true)));
+  wifi_service->Connect(NULL);
+}
+
+TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr wifi_service = new WiFiService(control_interface(),
+                                                   dispatcher(),
+                                                   metrics(),
+                                                   manager(),
+                                                   wifi(),
+                                                   ssid,
+                                                   flimflam::kModeManaged,
+                                                   flimflam::kSecurityPsk,
+                                                   false);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  endpoint->ieee80211w_required_ = true;
+  wifi_service->AddEndpoint(endpoint);
+  Error error;
+  wifi_service->SetPassphrase("0:mumblemumblem", &error);
+  EXPECT_CALL(*wifi(),
+              ConnectTo(wifi_service.get(), WPA80211wSecurityArgs()));
   wifi_service->Connect(NULL);
 }
 
@@ -1342,6 +1369,20 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   ok_endpoint->signal_strength_ = kGoodEndpointSignal + 2;
   service->NotifyEndpointUpdated(*ok_endpoint);
   Mock::VerifyAndClearExpectations(&adaptor);
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, Ieee80211w) {
+  EXPECT_CALL(adaptor, EmitUint16Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitStringChanged(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitUint8Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
+  service->AddEndpoint(ok_endpoint);
+  EXPECT_FALSE(service->ieee80211w_required());
+  good_endpoint->ieee80211w_required_ = true;
+  service->AddEndpoint(good_endpoint);
+  EXPECT_TRUE(service->ieee80211w_required());
+  service->RemoveEndpoint(good_endpoint);
+  EXPECT_TRUE(service->ieee80211w_required());
 }
 
 }  // namespace shill

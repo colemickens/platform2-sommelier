@@ -88,6 +88,7 @@ extern const char kNetworkPropertyEapSubjectMatch[];
 extern const char kNetworkPropertyEngine[];
 extern const char kNetworkPropertyEngineId[];
 extern const char kNetworkPropertyFrequency[];
+extern const char kNetworkPropertyIeee80211w[];
 extern const char kNetworkPropertyMode[];
 extern const char kNetworkPropertySSID[];
 extern const char kNetworkPropertyScanSSID[];
@@ -113,6 +114,9 @@ extern const char kSecurityModeRSN[];
 extern const char kSecurityModeWPA[];
 
 extern const uint32_t kDefaultEngine;
+extern const uint32_t kNetworkIeee80211wDisabled;
+extern const uint32_t kNetworkIeee80211wEnabled;
+extern const uint32_t kNetworkIeee80211wRequired;
 extern const uint32_t kNetworkModeInfrastructureInt;
 extern const uint32_t kNetworkModeAdHocInt;
 extern const uint32_t kNetworkModeAccessPointInt;

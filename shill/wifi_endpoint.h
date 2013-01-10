@@ -67,7 +67,7 @@ class WiFiEndpoint : public Endpoint {
   uint16 physical_mode() const;
   const std::string &network_mode() const;
   const std::string &security_mode() const;
-  const VendorInformation &vendor_information() const;
+  bool ieee80211w_required() const;
 
  private:
   friend class WiFiEndpointTest;
@@ -80,7 +80,10 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseVendorIEs);
+  FRIEND_TEST(WiFiEndpointTest, ParseWPACapabilities);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
+  FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);
 
   enum KeyManagement {
     kKeyManagement802_1x,
@@ -112,16 +115,25 @@ class WiFiEndpoint : public Endpoint {
   static Metrics::WiFiNetworkPhyMode DeterminePhyModeFromFrequency(
       const std::map<std::string, ::DBus::Variant> &properties,
       uint16 frequency);
-  // Parse information elements to determine the physical mode and vendor
-  // information associated with the AP.  Returns true if a physical mode
-  // was determined from the IE elements, false otherwise.
+  // Parse information elements to determine the physical mode, vendor
+  // information and IEEE 802.11w requirement information associated
+  // with the AP.  Returns true if a physical mode was determined from
+  // the IE elements, false otherwise.
   static bool ParseIEs(const std::map<std::string, ::DBus::Variant> &properties,
                        Metrics::WiFiNetworkPhyMode *phy_mode,
-                       VendorInformation *vendor_information);
-  // Parse a single vendor information element.
+                       VendorInformation *vendor_information,
+                       bool *ieee80211w_required);
+  // Parse a WPA information element and set *|ieee80211w_required| to true
+  // if IEEE 802.11w is required by this AP.
+  static void ParseWPACapabilities(std::vector<uint8_t>::const_iterator ie,
+                                   std::vector<uint8_t>::const_iterator end,
+                                   bool *ieee80211w_required);
+  // Parse a single vendor information element.  If this is a WPA vendor
+  // element, call ParseWPACapabilites with |ieee80211w_required|.
   static void ParseVendorIE(std::vector<uint8_t>::const_iterator ie,
                             std::vector<uint8_t>::const_iterator end,
-                            VendorInformation *vendor_information);
+                            VendorInformation *vendor_information,
+                            bool *ieee80211w_required);
 
   // TODO(quiche): make const?
   std::vector<uint8_t> ssid_;
@@ -138,6 +150,7 @@ class WiFiEndpoint : public Endpoint {
   std::string network_mode_;
   std::string security_mode_;
   VendorInformation vendor_information_;
+  bool ieee80211w_required_;
 
   ProxyFactory *proxy_factory_;
   WiFiRefPtr device_;

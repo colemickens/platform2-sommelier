@@ -65,6 +65,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       raw_signal_strength_(0),
       wifi_(device),
       ssid_(ssid),
+      ieee80211w_required_(false),
       nss_(NSS::GetInstance()) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
@@ -82,6 +83,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
   store->RegisterConstStringmap(kWifiVendorInformationProperty,
                                 &vendor_information_);
+  store->RegisterConstBool(kWifiProtectedManagementFrameRequiredProperty,
+                           &ieee80211w_required_);
 
   hex_ssid_ = base::HexEncode(ssid_.data(), ssid_.size());
   string ssid_string(
@@ -453,6 +456,14 @@ void WiFiService::Connect(Error *error) {
   params[wpa_supplicant::kNetworkPropertyEapKeyManagement].writer().
       append_string(key_management().c_str());
 
+  if (ieee80211w_required_) {
+    // TODO(pstew): We should also enable IEEE 802.11w if the user
+    // explicitly enables support for this through a service / device
+    // property.  crosbug.com/37800
+    params[wpa_supplicant::kNetworkPropertyIeee80211w].writer().
+        append_uint32(wpa_supplicant::kNetworkIeee80211wEnabled);
+  }
+
   // See note in dbus_adaptor.cc on why we need to use a local.
   writer = params[wpa_supplicant::kNetworkPropertySSID].writer();
   writer << ssid_;
@@ -501,6 +512,15 @@ void WiFiService::UpdateFromEndpoints() {
         best_signal = (*i)->signal_strength();
         representative_endpoint = *i;
       }
+    }
+  }
+
+  for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.begin();
+       i != endpoints_.end(); ++i) {
+    if ((*i)->ieee80211w_required()) {
+      // Never reset ieee80211w_required_ to false, so we track whether we have
+      // ever seen an AP that requires 802.11w.
+      ieee80211w_required_ = true;
     }
   }
 

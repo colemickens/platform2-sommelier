@@ -32,6 +32,7 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
                            const string &rpc_id,
                            const map<string, ::DBus::Variant> &properties)
     : frequency_(0),
+      ieee80211w_required_(false),
       proxy_factory_(proxy_factory),
       device_(device),
       rpc_id_(rpc_id) {
@@ -51,7 +52,8 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
     frequency_ = it->second.reader().get_uint16();
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
-  if (!ParseIEs(properties, &phy_mode, &vendor_information_)) {
+  if (!ParseIEs(properties, &phy_mode, &vendor_information_,
+                &ieee80211w_required_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
@@ -179,6 +181,10 @@ const string &WiFiEndpoint::network_mode() const {
 
 const string &WiFiEndpoint::security_mode() const {
   return security_mode_;
+}
+
+bool WiFiEndpoint::ieee80211w_required() const {
+  return ieee80211w_required_;
 }
 
 // static
@@ -324,7 +330,8 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
 bool WiFiEndpoint::ParseIEs(
     const map<string, ::DBus::Variant> &properties,
     Metrics::WiFiNetworkPhyMode *phy_mode,
-    VendorInformation *vendor_information) {
+    VendorInformation *vendor_information,
+    bool *ieee80211w_required) {
 
   map<string, ::DBus::Variant>::const_iterator ies_property =
       properties.find(wpa_supplicant::kBSSPropertyIEs);
@@ -366,8 +373,12 @@ bool WiFiEndpoint::ParseIEs(
         *phy_mode = Metrics::kWiFiNetworkPhyMode11n;
         found_ht = true;
         break;
+      case IEEE_80211::kElemIdRSN:
+        ParseWPACapabilities(it + 2, it + ie_len, ieee80211w_required);
+        break;
       case IEEE_80211::kElemIdVendor:
-        ParseVendorIE(it + 2, it + ie_len, vendor_information);
+        ParseVendorIE(it + 2, it + ie_len, vendor_information,
+                      ieee80211w_required);
         break;
     }
   }
@@ -375,9 +386,79 @@ bool WiFiEndpoint::ParseIEs(
 }
 
 // static
+void WiFiEndpoint::ParseWPACapabilities(
+    vector<uint8_t>::const_iterator ie,
+    vector<uint8_t>::const_iterator end,
+    bool *ieee80211w_required) {
+  // Format of an RSN Information Element:
+  //    2             4
+  // +------+--------------------+
+  // | Type | Group Cipher Suite |
+  // +------+--------------------+
+  //             2             4 * pairwise count
+  // +-----------------------+---------------------+
+  // | Pairwise Cipher Count | Pairwise Ciphers... |
+  // +-----------------------+---------------------+
+  //             2             4 * authkey count
+  // +-----------------------+---------------------+
+  // | AuthKey Suite Count   | AuthKey Suites...   |
+  // +-----------------------+---------------------+
+  //          2
+  // +------------------+
+  // | RSN Capabilities |
+  // +------------------+
+  //          2            16 * pmkid count
+  // +------------------+-------------------+
+  // |   PMKID Count    |      PMKIDs...    |
+  // +------------------+-------------------+
+  //          4
+  // +-------------------------------+
+  // | Group Management Cipher Suite |
+  // +-------------------------------+
+  if (std::distance(ie, end) < IEEE_80211::kRSNIECipherCountOffset) {
+    return;
+  }
+  ie += IEEE_80211::kRSNIECipherCountOffset;
+
+  // Advance past the pairwise and authkey ciphers.  Each is a little-endian
+  // cipher count followed by n * cipher_selector.
+  for (int i = 0; i < IEEE_80211::kRSNIENumCiphers; ++i) {
+    // Retrieve a little-endian cipher count.
+    if (std::distance(ie, end) < IEEE_80211::kRSNIECipherCountLen) {
+      return;
+    }
+    uint16 cipher_count = *ie | (*(ie + 1) << 8);
+
+    // Skip over the cipher selectors.
+    int skip_length = IEEE_80211::kRSNIECipherCountLen +
+      cipher_count * IEEE_80211::kRSNIESelectorLen;
+    if (std::distance(ie, end) < skip_length) {
+      return;
+    }
+    ie += skip_length;
+  }
+
+  if (std::distance(ie, end) < IEEE_80211::kRSNIECapabilitiesLen) {
+    return;
+  }
+
+  // Retrieve a little-endian capabilities bitfield.
+  uint16 capabilities = *ie | (*(ie + 1) << 8);
+
+  if (capabilities & IEEE_80211::kRSNCapabilityFrameProtectionRequired &&
+      ieee80211w_required) {
+    // Never set this value to false, since there may be multiple RSN
+    // information elements.
+    *ieee80211w_required = true;
+  }
+}
+
+
+// static
 void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
                                  vector<uint8_t>::const_iterator end,
-                                 VendorInformation *vendor_information) {
+                                 VendorInformation *vendor_information,
+                                 bool *ieee80211w_required) {
   // Format of an vendor-specific information element (with type
   // and length field for the IE removed by the caller):
   //        3           1       1 - 248
@@ -427,6 +508,9 @@ void WiFiEndpoint::ParseVendorIE(vector<uint8_t>::const_iterator ie,
       }
       ie += element_length;
     }
+  } else if (oui == IEEE_80211::kOUIVendorMicrosoft &&
+             oui_type == IEEE_80211::kOUIMicrosoftWPA) {
+    ParseWPACapabilities(ie, end, ieee80211w_required);
   } else if (oui != IEEE_80211::kOUIVendorEpigram &&
              oui != IEEE_80211::kOUIVendorMicrosoft) {
     vendor_information->oui_list.insert(oui);

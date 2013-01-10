@@ -11,6 +11,7 @@ namespace IEEE_80211 {
 const uint8_t kElemIdErp = 42;
 const uint8_t kElemIdHTCap = 45;
 const uint8_t kElemIdHTInfo = 61;
+const uint8_t kElemIdRSN = 48;
 const uint8_t kElemIdVendor = 221;
 
 const unsigned int kMaxSSIDLen = 32;
@@ -27,11 +28,26 @@ const unsigned int kWPAHexLen = 64;
 const uint32_t kOUIVendorEpigram = 0x00904c;
 const uint32_t kOUIVendorMicrosoft = 0x0050f2;
 
+const uint8_t kOUIMicrosoftWPA = 1;
 const uint8_t kOUIMicrosoftWPS = 4;
 const uint16_t kWPSElementManufacturer = 0x1021;
 const uint16_t kWPSElementModelName = 0x1023;
 const uint16_t kWPSElementModelNumber = 0x1024;
 const uint16_t kWPSElementDeviceName = 0x1011;
+
+const int kRSNIEVersionLen = 2;
+const int kRSNIESelectorLen = 4;
+const int kRSNIECipherCountOffset = kRSNIEVersionLen + kRSNIESelectorLen;
+const int kRSNIECipherCountLen = 2;
+const int kRSNIENumCiphers = 2;
+const int kRSNIECapabilitiesLen = 2;
+const uint16_t kRSNCapabilityPreAuth = 0x0001;
+const uint16_t kRSNCapabilityPairwise = 0x0002;
+const uint16_t kRSNCapabilityPTKSA = 0x000c;
+const uint16_t kRSNCapabilityGTKSA = 0x0030;
+const uint16_t kRSNCapabilityFrameProtectionRequired = 0x0040;
+const uint16_t kRSNCapabilityFrameProtectionCapable = 0x0080;
+const uint16_t kRSNCapabilityPeerKey = 0x0200;
 
 // This structure is incomplete.  Fields will be added as necessary.
 //

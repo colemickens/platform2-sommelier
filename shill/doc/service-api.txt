@@ -926,10 +926,18 @@ Properties	boolean AutoConnect [readwrite]
 			no SSID property.)
 
 		string WiFi.SSID [readonly]
+
 			(WiFi only) The service's SSID. Must have a non-zero
 			length less than or equal to 32.
 
+		bool WiFi.ProtectedManagementFrameRequired [readonly]
+
+			(WiFi only) This property indicates whether an AP for
+			this service has been seen that requires 802.11w
+			(Protected Management Frame) support.
+
 		dict WiFi.VendorInformation [readonly]
+
 			(WiFi only) Information about the vendor of the
 			AP, gleaned from WPS and vendor-specific information
 			elements in the beacon and probe respondss.

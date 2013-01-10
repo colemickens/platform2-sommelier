@@ -83,6 +83,7 @@ class WiFiService : public Service {
   virtual bool IsVisible() const;
   bool IsSecurityMatch(const std::string &security) const;
   bool hidden_ssid() const { return hidden_ssid_; }
+  bool ieee80211w_required() const { return ieee80211w_required_; }
 
   virtual void InitializeCustomMetrics() const;
   virtual void SendPostReadyStateMetrics(
@@ -117,6 +118,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskRSN);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA);
+  FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
@@ -204,6 +206,9 @@ class WiFiService : public Service {
   std::set<WiFiEndpointConstRefPtr> endpoints_;
   WiFiEndpointConstRefPtr current_endpoint_;
   const std::vector<uint8_t> ssid_;
+  // Track whether IEEE 802.11w (Protected Management Frame) support is
+  // mandated by one or more endpoints we have seen that provide this service.
+  bool ieee80211w_required_;
   NSS *nss_;
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };

@@ -88,6 +88,7 @@ const char kNetworkPropertyEapSubjectMatch[] = "subject_match";
 const char kNetworkPropertyEngine[] = "engine";
 const char kNetworkPropertyEngineId[] = "engine_id";
 const char kNetworkPropertyFrequency[] = "frequency";
+const char kNetworkPropertyIeee80211w[] = "ieee80211w";
 const char kNetworkPropertyMode[]   = "mode";
 const char kNetworkPropertyScanSSID[] = "scan_ssid";
 const char kNetworkPropertySSID[]   = "ssid";
@@ -108,6 +109,9 @@ const char kSecurityModeRSN[]       = "RSN";
 const char kSecurityModeWPA[]       = "WPA";
 
 const uint32_t kDefaultEngine = 1;
+const uint32_t kNetworkIeee80211wDisabled = 0;
+const uint32_t kNetworkIeee80211wEnabled = 1;
+const uint32_t kNetworkIeee80211wRequired = 2;
 const uint32_t kNetworkModeInfrastructureInt = 0;
 const uint32_t kNetworkModeAdHocInt          = 1;
 const uint32_t kNetworkModeAccessPointInt    = 2;
