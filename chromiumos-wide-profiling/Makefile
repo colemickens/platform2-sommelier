@@ -11,10 +11,8 @@ LDFLAGS += $(shell pkg-config --libs protobuf) \
 	   $(shell pkg-config --libs openssl)
 TEST_LDFLAGS = $(LDFLAGS) -lgtest
 
-PROGRAM_SUFFIX = exe
-TEST_SUFFIX = test
-
 MAIN_SOURCES = quipper.cc
+PROGRAMS = $(MAIN_SOURCES:.cc=)
 TEST_SOURCES = perf_reader_test.cc perf_serializer_test.cc \
 	       perf_recorder_test.cc utils_test.cc
 GENERATED_SOURCES = perf_data.pb.cc
@@ -24,8 +22,7 @@ COMMON_SOURCES = utils.cc perf_protobuf_io.cc perf_reader.cc perf_recorder.cc \
 		 perf_serializer.cc $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
 
-PROGRAMS = $(MAIN_SOURCES:.cc=.$(PROGRAM_SUFFIX))
-TESTS = $(TEST_SOURCES:.cc=.$(TEST_SUFFIX))
+TESTS = $(TEST_SOURCES:.cc=)
 
 ALL_SOURCES = $(MAIN_SOURCES) $(COMMON_SOURCES) $(TEST_SOURCES)
 
@@ -48,10 +45,10 @@ endif
 %.pb.h %.pb.cc: %.proto
 	protoc --cpp_out=. $^
 
-%.exe: %.o $(COMMON_OBJECTS)
+$(PROGRAMS): %: %.o $(COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
 
-%.test: %.o $(COMMON_OBJECTS)
+$(TESTS): %: %.o $(COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(TEST_LDFLAGS)
 
 check: $(TESTS)
