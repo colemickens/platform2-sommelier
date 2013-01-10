@@ -231,7 +231,10 @@ ByteString Nl80211Attribute::EncodeGeneric(const unsigned char *data,
   header.nla_type = id();
   header.nla_len = nla_attr_size(bytes);
   ByteString result(reinterpret_cast<unsigned char *>(&header), sizeof(header));
-  result.Append(ByteString(data, bytes));
+  result.Resize(NLA_HDRLEN);  // Add padding after the header.
+  if (data && (bytes != 0)) {
+    result.Append(ByteString(data, bytes));
+  }
   result.Resize(nla_total_size(bytes));  // Add padding.
   return result;
 }
@@ -490,8 +493,10 @@ bool Nl80211FlagAttribute::ToString(string *output) const {
 }
 
 ByteString Nl80211FlagAttribute::Encode() const {
-  return Nl80211Attribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
+  if (has_a_value_ && value_) {
+    return Nl80211Attribute::EncodeGeneric(NULL, 0);
+  }
+  return ByteString();  // Encoding of nothing implies 'false'.
 }
 
 // Nl80211StringAttribute

@@ -681,7 +681,6 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
     EXPECT_EQ(strncmp(value.c_str(), kExpectedMacAddress, value.length()), 0);
   }
 
-  // TODO(wdg): Look at nested values of NL80211_ATTR_STA_INFO.
   {
     WeakPtr<AttributeList> nested;
     EXPECT_TRUE(message->attributes().GetNestedAttributeValue(
