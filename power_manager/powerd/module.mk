@@ -82,6 +82,14 @@ CXX_BINARY(powerd/powerd): LDLIBS += $(POWERD_LIBS)
 clean: CXX_BINARY(powerd/powerd)
 all: CXX_BINARY(powerd/powerd)
 
+CXX_BINARY(powerd/powerd_setuid_helper): powerd/powerd_setuid_helper.o
+CXX_BINARY(powerd/powerd_setuid_helper): CPPFLAGS += \
+	$(shell $(PKG_CONFIG) --cflags libchrome-$(BASE_VER))
+CXX_BINARY(powerd/powerd_setuid_helper): LDLIBS += \
+	-lgflags $(shell $(PKG_CONFIG) --libs libchrome-$(BASE_VER))
+clean: CLEAN(powerd/powerd_setuid_helper)
+all: CXX_BINARY(powerd/powerd_setuid_helper)
+
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
 POWERD_UNITTEST_OBJS = \
