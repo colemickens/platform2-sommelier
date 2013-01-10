@@ -24,7 +24,12 @@ class LogTool {
   LogMap GetAllLogs(DBus::Error& error); // NOLINT
   LogMap GetFeedbackLogs(DBus::Error& error); // NOLINT
   LogMap GetUserLogFiles(DBus::Error& error);  // NOLINT
+
  private:
+  friend class LogToolTest;
+
+  void AnonymizeLogMap(LogMap* log_map);
+
   DISALLOW_COPY_AND_ASSIGN(LogTool);
 };
 

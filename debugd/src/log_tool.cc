@@ -12,6 +12,7 @@
 #include <base/string_split.h>
 #include <base/string_util.h>
 
+#include "anonymizer_tool.h"
 #include "process_with_output.h"
 
 namespace debugd {
@@ -193,6 +194,7 @@ LogTool::LogMap LogTool::GetFeedbackLogs(DBus::Error& error) { // NOLINT
   LogMap result;
   GetLogsFrom(common_logs, &result);
   GetLogsFrom(feedback_logs, &result);
+  AnonymizeLogMap(&result);
   return result;
 }
 
@@ -201,6 +203,14 @@ LogTool::LogMap LogTool::GetUserLogFiles(DBus::Error& error) {  // NOLINT
   for (size_t i = 0; user_logs[i].name; ++i)
     result[user_logs[i].name] = user_logs[i].command;
   return result;
+}
+
+void LogTool::AnonymizeLogMap(LogMap* log_map) {
+  AnonymizerTool anonymizer;
+  for (LogMap::iterator it = log_map->begin();
+       it != log_map->end(); ++it) {
+    it->second = anonymizer.Anonymize(it->second);
+  }
 }
 
 };  // namespace debugd

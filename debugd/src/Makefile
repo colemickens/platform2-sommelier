@@ -6,7 +6,7 @@ BASE_VER = 85268
 
 DBUSXX_XML2CPP ?= dbusxx-xml2cpp
 PKG_CONFIG ?= pkg-config
-PC_DEPS = dbus-1 dbus-c++-1 glib-2.0 libchrome-$(BASE_VER) \
+PC_DEPS = dbus-1 dbus-c++-1 glib-2.0 libpcrecpp libchrome-$(BASE_VER) \
 	libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
@@ -24,11 +24,11 @@ all: CXX_BINARY(debugd)
 tests: override NEEDS_MOUNTS = 1
 tests: TEST(CXX_BINARY(testrunner))
 
-TOOLS := $(patsubst %,%_tool.o,debug_logs debug_mode example icmp log \
-           modem_status netif network_status ping route subprocess systrace \
-           tracepath)
+TOOLS := $(patsubst %,%_tool.o,anonymizer debug_logs debug_mode example icmp \
+           log modem_status netif network_status ping route subprocess \
+           systrace tracepath)
 OBJS := debug_daemon.o process_with_id.o process_with_output.o $(TOOLS)
-TESTOBJS := process_with_id_test.o
+TESTOBJS := anonymizer_tool_test.o log_tool_test.o process_with_id_test.o
 
 CXX_BINARY(debugd): main.o $(OBJS)
 	$(call cxx_binary,-lminijail $(PC_LIBS))
