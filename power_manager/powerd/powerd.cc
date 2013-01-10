@@ -1640,14 +1640,16 @@ void Daemon::Suspend() {
   if (util::IsSessionStarted()) {
     power_supply_.SetSuspendState(true);
 
+    // When going to suspend, notify the backlight controller so it will turn
+    // the backlight off and set the backlight correctly upon resume. We do
+    // this before turning the panel back on (which happens in RequestSuspend).
+    SetPowerState(BACKLIGHT_SUSPENDED);
+
     // If the lid is currently closed, abort if the lid is opened midway through
     // the suspend attempt.
     bool cancel_if_lid_open = !input_controller_->lid_is_open();
     suspender_.RequestSuspend(cancel_if_lid_open);
 
-    // When going to suspend, notify the backlight controller so it will know to
-    // set the backlight correctly upon resume.
-    SetPowerState(BACKLIGHT_SUSPENDED);
   } else {
     if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
       shutdown_reason_ = kShutdownReasonIdle;

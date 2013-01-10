@@ -611,10 +611,16 @@ bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
   } else if (state_ == BACKLIGHT_IDLE_OFF) {
     target_percent_ = 0;
   } else if (state_ == BACKLIGHT_SUSPENDED) {
-    // If we're about to suspend, restore the active backlight level so that the
+    // If we're about to suspend, set the resume backlight level so that the
     // backlight driver will use it when it turns the display back on after
-    // resume.
+    // resume, then turn the backlight off.
+    als_hysteresis_percent_ = als_offset_percent_;
     target_percent_ = last_active_offset_percent_;
+    int64 level = PercentToLevel(target_percent_);
+    LOG(INFO) << "Set resume brightness: " << target_percent_ << "%";
+    backlight_->SetResumeBrightnessLevel(level);
+    SetBrightness(PercentToLevel(0), TRANSITION_INSTANT);
+    return true;
   }
 
   als_hysteresis_percent_ = als_offset_percent_;

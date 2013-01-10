@@ -207,6 +207,11 @@ bool ExternalBacklight::SetBrightnessLevel(int64 level,
   return true;
 }
 
+bool ExternalBacklight::SetResumeBrightnessLevel(int64 level) {
+  NOTIMPLEMENTED();
+  return false;
+}
+
 gboolean ExternalBacklight::UdevEventHandler(GIOChannel* /* source */,
                                              GIOCondition /* condition */,
                                              gpointer data) {

@@ -23,6 +23,7 @@ class InternalBacklight : public BacklightInterface {
   static const char kBrightnessFilename[];
   static const char kMaxBrightnessFilename[];
   static const char kActualBrightnessFilename[];
+  static const char kResumeBrightnessFilename[];
 
   InternalBacklight();
   virtual ~InternalBacklight();
@@ -51,6 +52,7 @@ class InternalBacklight : public BacklightInterface {
   virtual bool GetMaxBrightnessLevel(int64* max_level);
   virtual bool GetCurrentBrightnessLevel(int64* current_level);
   virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval);
+  virtual bool SetResumeBrightnessLevel(int64 level);
 
  private:
   // Generate FilePaths within |dir_path| for reading and writing brightness
@@ -58,7 +60,8 @@ class InternalBacklight : public BacklightInterface {
   static void GetBacklightFilePaths(const FilePath& dir_path,
                                     FilePath* actual_brightness_path,
                                     FilePath* brightness_path,
-                                    FilePath* max_brightness_path);
+                                    FilePath* max_brightness_path,
+                                    FilePath* resume_brightness_path);
 
   // Look for the existence of required files and return the max brightness.
   // Returns 0 if necessary files are missing.
@@ -81,11 +84,12 @@ class InternalBacklight : public BacklightInterface {
   // Cancels |transition_timeout_id_| if set.
   void CancelTransition();
 
-  // Paths to the actual_brightness, brightness, and max_brightness files
-  // under /sys/class/backlight.
+  // Paths to the actual_brightness, brightness, max_brightness and
+  // resume_brightness files under /sys/class/backlight.
   FilePath actual_brightness_path_;
   FilePath brightness_path_;
   FilePath max_brightness_path_;
+  FilePath resume_brightness_path_;
 
   // Cached maximum and last-set brightness levels.
   int64 max_brightness_level_;

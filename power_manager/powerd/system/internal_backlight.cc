@@ -29,6 +29,7 @@ const guint kTransitionIntervalMs = 30;
 const char InternalBacklight::kBrightnessFilename[] = "brightness";
 const char InternalBacklight::kMaxBrightnessFilename[] = "max_brightness";
 const char InternalBacklight::kActualBrightnessFilename[] = "actual_brightness";
+const char InternalBacklight::kResumeBrightnessFilename[] = "resume_brightness";
 
 InternalBacklight::InternalBacklight()
     : max_brightness_level_(0),
@@ -64,7 +65,8 @@ bool InternalBacklight::Init(const FilePath& base_path,
     GetBacklightFilePaths(check_path,
                           &actual_brightness_path_,
                           &brightness_path_,
-                          &max_brightness_path_);
+                          &max_brightness_path_,
+                          &resume_brightness_path_);
 
     // Technically all screen backlights should implement actual_brightness,
     // but we'll handle ones that don't.  This allows us to work with keyboard
@@ -99,6 +101,15 @@ bool InternalBacklight::GetCurrentBrightnessLevel(int64* current_level) {
   return true;
 }
 
+bool InternalBacklight::SetResumeBrightnessLevel(int64 level) {
+  if (resume_brightness_path_.empty()) {
+    LOG(ERROR) << "Cannot find backlight resume brightness file.";
+    return false;
+  }
+
+  return WriteBrightnessLevelToFile(resume_brightness_path_, level);
+}
+
 bool InternalBacklight::SetBrightnessLevel(int64 level,
                                            base::TimeDelta interval) {
   if (brightness_path_.empty()) {
@@ -131,22 +142,27 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
 void InternalBacklight::GetBacklightFilePaths(const FilePath& dir_path,
                                               FilePath* actual_brightness_path,
                                               FilePath* brightness_path,
-                                              FilePath* max_brightness_path) {
+                                              FilePath* max_brightness_path,
+                                              FilePath* resume_brightness_path) {
   if (actual_brightness_path)
     *actual_brightness_path = dir_path.Append(kActualBrightnessFilename);
   if (brightness_path)
     *brightness_path = dir_path.Append(kBrightnessFilename);
   if (max_brightness_path)
     *max_brightness_path = dir_path.Append(kMaxBrightnessFilename);
+  if (resume_brightness_path)
+    *resume_brightness_path = dir_path.Append(kResumeBrightnessFilename);
 }
 
 // static
 int64 InternalBacklight::CheckBacklightFiles(const FilePath& dir_path) {
-  FilePath actual_brightness_path, brightness_path, max_brightness_path;
+  FilePath actual_brightness_path, brightness_path, max_brightness_path,
+           resume_brightness_path;
   GetBacklightFilePaths(dir_path,
                         &actual_brightness_path,
                         &brightness_path,
-                        &max_brightness_path);
+                        &max_brightness_path,
+                        &resume_brightness_path);
 
   if (!file_util::PathExists(max_brightness_path)) {
     LOG(WARNING) << "Can't find " << max_brightness_path.value();

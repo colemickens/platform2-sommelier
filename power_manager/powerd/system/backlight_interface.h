@@ -53,6 +53,9 @@ class BacklightInterface {
   virtual bool SetBrightnessLevel(int64 level,
                                   base::TimeDelta interval) = 0;
 
+  // Set the resume backlight to |level|.  Returns false on failure.
+  virtual bool SetResumeBrightnessLevel(int64 level) = 0;
+
  protected:
   virtual ~BacklightInterface() {}
 

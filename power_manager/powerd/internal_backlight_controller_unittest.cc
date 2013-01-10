@@ -59,6 +59,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
                               Return(true)));
     EXPECT_CALL(backlight_, SetBrightnessLevel(_, _))
         .WillRepeatedly(Return(false));
+    EXPECT_CALL(backlight_, SetResumeBrightnessLevel(_))
+        .WillRepeatedly(Return(false));
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
                      kUnpluggedBrightnessPercent);
@@ -361,6 +363,9 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
                    controller_.GetTargetBrightnessPercent());
   Mock::VerifyAndClearExpectations(&monitor);
 
+  // We expect to turn the internal panel on before suspend.
+  // This lets us do a faster resume.
+  monitor.ExpectRequest(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
@@ -385,6 +390,7 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   Mock::VerifyAndClearExpectations(&monitor);
 
   // Test resume.
+  monitor.ExpectRequest(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON);
   monitor.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
