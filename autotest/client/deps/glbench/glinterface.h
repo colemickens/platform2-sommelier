@@ -21,6 +21,8 @@ class GLInterface {
   virtual void SwapBuffers() = 0;
   virtual bool SwapInterval(int interval) = 0;
 
+  virtual void CheckError() = 0;
+
   static GLInterface* Create();
 };
 

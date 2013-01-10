@@ -23,6 +23,8 @@ class GLXInterface : public GLInterface {
   virtual void SwapBuffers();
   virtual bool SwapInterval(int interval);
 
+  virtual void CheckError();
+
   const GLXFBConfig fb_config() const {
     return fb_config_;
   }

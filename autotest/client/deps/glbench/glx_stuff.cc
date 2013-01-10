@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <GL/gl.h>
 #include <string.h>
 
 #include "base/logging.h"
@@ -101,3 +102,7 @@ bool GLXInterface::SwapInterval(int interval) {
     return glXSwapIntervalSGI(interval) == 0;
   }
 }
+
+void GLXInterface::CheckError() {
+  CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
+};

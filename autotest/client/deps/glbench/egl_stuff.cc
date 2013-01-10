@@ -1,14 +1,9 @@
 // Copyright (c) 2010 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-
-#include "base/logging.h"
-
 #include "egl_stuff.h"
 #include "main.h"
 #include "xlib_window.h"
-
-#define CHECK_EGL() CHECK_EQ(eglGetError(), EGL_SUCCESS)
 
 scoped_ptr<GLInterface> g_main_gl_interface;
 
@@ -23,7 +18,7 @@ bool EGLInterface::Init() {
   EGLNativeWindowType native_window =
       static_cast<EGLNativeWindowType>(g_xlib_window);
   surface_ = eglCreateWindowSurface(display_, config_, native_window, NULL);
-  CHECK_EGL();
+  CheckError();
   return true;
 }
 
@@ -44,17 +39,17 @@ XVisualInfo* EGLInterface::GetXVisual() {
       static_cast<EGLNativeDisplayType>(g_xlib_display);
 
     display_ = eglGetDisplay(native_display);
-    CHECK_EGL();
+    CheckError();
 
     eglInitialize(display_, NULL, NULL);
-    CHECK_EGL();
+    CheckError();
 
     EGLint num_configs = -1;
     eglGetConfigs(display_, NULL, 0, &num_configs);
-    CHECK_EGL();
+    CheckError();
 
     eglChooseConfig(display_, attribs, &config_, 1, &num_configs);
-    CHECK_EGL();
+    CheckError();
   }
 
   // TODO: for some reason on some systems EGL_NATIVE_VISUAL_ID returns an ID
@@ -63,7 +58,7 @@ XVisualInfo* EGLInterface::GetXVisual() {
 #if 0
   EGLint visual_id;
   eglGetConfigAttrib(display_, config_, EGL_NATIVE_VISUAL_ID, &visual_id);
-  CHECK_EGL();
+  CheckError();
   XVisualInfo vinfo_template;
   vinfo_template.visualid = static_cast<VisualID>(visual_id);
 #else
@@ -85,10 +80,10 @@ bool EGLInterface::InitContext() {
     EGL_NONE
   };
   context_ = eglCreateContext(display_, config_, NULL, attribs);
-  CHECK_EGL();
+  CheckError();
 
   eglMakeCurrent(display_, surface_, surface_, context_);
-  CHECK_EGL();
+  CheckError();
 
   eglQuerySurface(display_, surface_, EGL_WIDTH, &g_width);
   eglQuerySurface(display_, surface_, EGL_HEIGHT, &g_height);
@@ -103,6 +98,11 @@ void EGLInterface::DestroyContext() {
 
 void EGLInterface::SwapBuffers() {
   eglSwapBuffers(display_, surface_);
+}
+
+void EGLInterface::CheckError() {
+  CHECK_EQ(eglGetError(), EGL_SUCCESS);
+  CHECK_EQ(glGetError(), static_cast<GLenum>(GL_NO_ERROR));
 }
 
 bool EGLInterface::SwapInterval(int interval) {
