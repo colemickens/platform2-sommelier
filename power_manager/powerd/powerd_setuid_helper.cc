@@ -15,19 +15,24 @@
 #include <gflags/gflags.h>
 
 #include "base/logging.h"
+#include "base/string_number_conversions.h"
 
 DEFINE_string(action, "", "Action to perform.  Must be one of "
-              "\"announce_resume\", \"clean_shutdown\", \"reboot\", and "
-              "\"shutdown\".");
+              "\"clean_shutdown\", \"reboot\", \"shutdown\", and \"suspend\".");
 DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
               "lowercase letter and consisting only of lowercase letters and "
               "dashes.");
+DEFINE_bool(suspend_cancel_if_lid_open, false, "Pass --cancel_if_lid_open to "
+            "powerd_suspend for the \"suspend\" action.");
+DEFINE_int32(suspend_wakeup_count, -1, "Pass --wakeup_count <INT> to "
+            "powerd_suspend for the \"suspend\" action.");
 
 // Maximum number of arguments supported for internally-defined commands.
 const size_t kMaxArgs = 64;
 
 // Paths to various binaries that are executed.
 const char kInitctlPath[] = "/sbin/initctl";
+const char kPowerdSuspendPath[] = "/usr/bin/powerd_suspend";
 const char kShutdownPath[] = "/sbin/shutdown";
 
 // Runs a command with the supplied arguments.  The argument list must be
@@ -58,9 +63,7 @@ void RunCommand(const char* path, const char* arg, ...) {
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  if (FLAGS_action == "announce_resume") {
-    RunCommand(kInitctlPath, "emit", "system-resumed", NULL);
-  } else if (FLAGS_action == "clean_shutdown") {
+  if (FLAGS_action == "clean_shutdown") {
     RunCommand(kInitctlPath, "emit", "power-manager-clean-shutdown", NULL);
   } else if (FLAGS_action == "reboot") {
     RunCommand(kShutdownPath, "-r", "now", NULL);
@@ -76,6 +79,13 @@ int main(int argc, char* argv[]) {
     }
     RunCommand(kInitctlPath, "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
                (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
+  } else if (FLAGS_action == "suspend") {
+    std::string cancel_flag = FLAGS_suspend_cancel_if_lid_open ?
+        "--cancel_if_lid_open" : "--nocancel_if_lid_open";
+    std::string wakeup_flag = "--wakeup_count=" +
+        base::IntToString(FLAGS_suspend_wakeup_count);
+    RunCommand(kPowerdSuspendPath, cancel_flag.c_str(), wakeup_flag.c_str(),
+               NULL);
   } else {
     LOG(ERROR) << "Unknown action \"" << FLAGS_action << "\"";
     return 1;
