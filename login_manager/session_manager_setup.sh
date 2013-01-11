@@ -245,6 +245,10 @@ if use_flag_is_set chromeos_keyboard; then
   KEYBOARD_FLAGS="--has-chromeos-keyboard"
 fi
 
+if use_flag_is_set has_diamond_key; then
+  KEYBOARD_FLAGS="$KEYBOARD_FLAGS --has-chromeos-diamond-key"
+fi
+
 AURA_FLAGS=
 if ! use_flag_is_set new_power_button; then
   AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
