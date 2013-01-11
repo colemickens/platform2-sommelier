@@ -31,17 +31,16 @@ int generate(const std::string& filename) {
     LOG(FATAL) << "Corrupted key on disk at " << filename;
   if (key->IsPopulated())
     LOG(FATAL) << "Existing owner key at " << filename;
-  if (!nss->OpenUserDB())
-    PLOG(FATAL) << "Could not open/create user NSS DB";
   FilePath nssdb = key_file.DirName().Append(nss->GetNssdbSubpath());
-  LOG(INFO) << "Checking if " << nssdb.value() << " is controlled by the user.";
+  PLOG_IF(FATAL, !file_util::PathExists(nssdb)) << nssdb.value()
+                                                << " does not exist!";
   if (!file_util::VerifyPathControlledByUser(key_file.DirName(),
                                              nssdb,
                                              getuid(),
                                              std::set<gid_t>())) {
-    LOG(FATAL) << "nssdb cannot be used by the user!";
+    PLOG(FATAL) << nssdb.value() << " cannot be used by the user!";
   }
-
+  PLOG_IF(FATAL,!nss->OpenUserDB()) << "Could not open/create user NSS DB";
   LOG(INFO) << "Generating Owner key.";
 
   scoped_ptr<crypto::RSAPrivateKey> pair(nss->GenerateKeyPair());
