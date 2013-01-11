@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -709,8 +709,9 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   // Service activation is needed
   GetCapabilityUniversal()->mdn_ = "0000000000";
   device_->cellular_operator_info_ = &cellular_operator_info_;
-  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
-      .WillRepeatedly(Return(true));
+  CellularService::OLP olp;
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillRepeatedly(Return(&olp));
 
   device_->state_ = Cellular::kStateDisabled;
   device_->HandleNewRegistrationState();

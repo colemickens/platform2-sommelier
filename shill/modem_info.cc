@@ -52,7 +52,7 @@ ModemInfo::~ModemInfo() {
 }
 
 void ModemInfo::Start() {
-  cellular_operator_info_.reset(new CellularOperatorInfo(glib_));
+  cellular_operator_info_.reset(new CellularOperatorInfo());
   cellular_operator_info_->Load(FilePath(kCellularOperatorInfoPath));
 
   // TODO(petkov): Consider initializing the mobile provider database lazily

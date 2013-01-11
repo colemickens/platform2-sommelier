@@ -578,10 +578,13 @@ void CellularCapabilityUniversal::UpdateOLP() {
   if (!cellular()->cellular_operator_info())
     return;
 
-  CellularService::OLP olp;
-  if (!cellular()->cellular_operator_info()->GetOLP(operator_id_, &olp))
+  const CellularService::OLP *result =
+      cellular()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
+  if (!result)
     return;
 
+  CellularService::OLP olp;
+  olp.CopyFrom(*result);
   string post_data = olp.GetPostData();
   ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", esn_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}", sim_identifier_);
@@ -732,8 +735,9 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   if (!cellular()->cellular_operator_info())
     return false;
 
-  CellularService::OLP olp;
-  if (!cellular()->cellular_operator_info()->GetOLP(operator_id_, &olp))
+  const CellularService::OLP *olp =
+      cellular()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
+  if (!olp)
     return false;
 
   // To avoid false positives, it's safer to assume the service does not

@@ -26,7 +26,7 @@ bool FileReader::Open(const FilePath &file_path) {
 bool FileReader::ReadLine(string *line) {
   CHECK(line) << "Invalid argument";
 
-  FILE* fp = file_.get();
+  FILE *fp = file_.get();
   if (fp == NULL)
     return false;
 

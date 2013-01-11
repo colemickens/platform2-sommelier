@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -65,23 +65,6 @@ MATCHER_P(HasApn, expected_apn, "") {
                                     &apn) &&
           apn == expected_apn);
 }
-
-class MockCellularOperatorInfoGetOLPHelper {
- public:
-  MockCellularOperatorInfoGetOLPHelper(const CellularService::OLP &olp) {
-    olp_.CopyFrom(olp);
-  }
-
-  ~MockCellularOperatorInfoGetOLPHelper() {}
-
-  bool GetOLP(const std::string &operator_id, CellularService::OLP *olp) {
-    olp->CopyFrom(olp_);
-    return true;
-  }
-
- private:
-  CellularService::OLP olp_;
-};
 
 class CellularCapabilityUniversalTest : public testing::Test {
  public:
@@ -1062,8 +1045,6 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
   test_olp.SetPostData("esn=${esn}&imei=${imei}&imsi=${imsi}&mdn=${mdn}&"
                        "meid=${meid}&min=${min}&iccid=${iccid}");
 
-  MockCellularOperatorInfoGetOLPHelper get_olp_helper(test_olp);
-
   capability_->esn_ = "0";
   capability_->imei_ = "1";
   capability_->imsi_ = "2";
@@ -1074,9 +1055,9 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
   capability_->operator_id_ = "123456";
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
 
-  EXPECT_CALL(cellular_operator_info_, GetOLP(capability_->operator_id_, _))
-      .WillRepeatedly(Invoke(&get_olp_helper,
-                             &MockCellularOperatorInfoGetOLPHelper::GetOLP));
+  EXPECT_CALL(cellular_operator_info_,
+      GetOLPByMCCMNC(capability_->operator_id_))
+      .WillRepeatedly(Return(&test_olp));
 
   SetService();
   capability_->UpdateOLP();
@@ -1121,8 +1102,8 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId) {
 
   // Service activation is not needed
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
-  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
-      .WillOnce(Return(false));
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillOnce(Return((const CellularService::OLP *)NULL));
   capability_->UpdateOperatorInfo();
   EXPECT_EQ("", capability_->serving_operator_.GetName());
   EXPECT_EQ("", capability_->serving_operator_.GetCountry());
@@ -1131,8 +1112,9 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId) {
   // Service activation is needed
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
-  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
-      .WillOnce(Return(true));
+  CellularService::OLP olp;
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillOnce(Return(&olp));
 
   capability_->UpdateOperatorInfo();
   EXPECT_EQ(kOperatorId, capability_->serving_operator_.GetCode());
@@ -1153,8 +1135,9 @@ TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
   // Service activation is needed
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
-  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
-      .WillOnce(Return(true));
+  CellularService::OLP olp;
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillOnce(Return(&olp));
   EXPECT_EQ("cellular_0123", capability_->CreateFriendlyServiceName());
   EXPECT_EQ("0123", capability_->serving_operator_.GetCode());
 
@@ -1182,9 +1165,10 @@ TEST_F(CellularCapabilityUniversalTest, IsServiceActivationRequired) {
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
-  EXPECT_CALL(cellular_operator_info_, GetOLP(_, _))
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
+  CellularService::OLP olp;
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillOnce(Return((const CellularService::OLP *)NULL))
+      .WillRepeatedly(Return(&olp));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   capability_->mdn_ = "";
