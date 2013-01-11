@@ -52,7 +52,7 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 
 // How long after last known audio activity to consider audio not to be playing,
 // in milliseconds.
-const int64 kAudioActivityThresholdMs = 5000;
+const int64 kAudioActivityThresholdMs = 60 * 1000;
 
 // Valid string values for the state value of Session Manager
 const std::string kValidStateStrings[] = { "started", "stopping", "stopped" };
