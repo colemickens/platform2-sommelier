@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -79,11 +79,27 @@ bool Modem1::GetLinkName(const DBusPropertiesMap &modem_props,
 
 void Modem1::CreateDeviceMM1(const DBusInterfaceToProperties &properties) {
   Init();
-  if (!ContainsKey(properties, MM_DBUS_INTERFACE_MODEM)) {
+  uint32 capabilities = kuint32max;
+  DBusInterfaceToProperties::const_iterator it =
+      properties.find(MM_DBUS_INTERFACE_MODEM);
+  if (it == properties.end()) {
     LOG(ERROR) << "Cellular device with no modem properties";
     return;
   }
-  set_type(Cellular::kTypeUniversal);
+  const DBusPropertiesMap &modem_props = it->second;
+  DBusProperties::GetUint32(modem_props,
+                            MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
+                            &capabilities);
+
+  if ((capabilities & MM_MODEM_CAPABILITY_LTE) ||
+      (capabilities & MM_MODEM_CAPABILITY_GSM_UMTS)) {
+    set_type(Cellular::kTypeUniversal);
+  } else if (capabilities & MM_MODEM_CAPABILITY_CDMA_EVDO) {
+    set_type(Cellular::kTypeUniversalCDMA);
+  } else {
+    LOG(ERROR) << "Unsupported capabilities: " << capabilities;
+    return;
+  }
 
   // We cannot check the IP method to make sure it's not PPP. The IP
   // method will be checked later when the bearer object is fetched.

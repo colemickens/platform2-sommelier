@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -132,7 +132,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
     : CellularCapability(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
-      cdma_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
       capabilities_(MM_MODEM_CAPABILITY_NONE),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
@@ -214,9 +213,6 @@ void CellularCapabilityUniversal::HelpRegisterDerivedKeyValueStore(
 void CellularCapabilityUniversal::InitProxies() {
   modem_3gpp_proxy_.reset(
       proxy_factory()->CreateMM1ModemModem3gppProxy(cellular()->dbus_path(),
-                                                    cellular()->dbus_owner()));
-  modem_cdma_proxy_.reset(
-      proxy_factory()->CreateMM1ModemModemCdmaProxy(cellular()->dbus_path(),
                                                     cellular()->dbus_owner()));
   modem_proxy_.reset(
       proxy_factory()->CreateMM1ModemProxy(cellular()->dbus_path(),
@@ -608,7 +604,6 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
 void CellularCapabilityUniversal::ReleaseProxies() {
   SLOG(Cellular, 2) << __func__;
   modem_3gpp_proxy_.reset();
-  modem_cdma_proxy_.reset();
   modem_proxy_.reset();
   modem_simple_proxy_.reset();
   sim_proxy_.reset();
@@ -943,12 +938,10 @@ void CellularCapabilityUniversal::UpdateOLP() {
   CellularService::OLP olp;
   olp.CopyFrom(*result);
   string post_data = olp.GetPostData();
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", esn_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}", sim_identifier_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", imei_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", imsi_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}", mdn_);
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", meid_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", min_);
   olp.SetPostData(post_data);
   cellular()->service()->SetOLP(olp);

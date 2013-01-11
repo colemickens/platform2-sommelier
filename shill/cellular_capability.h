@@ -31,17 +31,19 @@ class ProxyFactory;
 // The CellularCapability is directly subclassed by:
 // *  CelllularCapabilityUniversal which handles all modems managed by
 //    a modem manager using the the org.chromium.ModemManager1 DBUS
-//    interface
+//    interface.
 // *  CellularCapabilityClassic which handles all modems managed by a
 //    modem manager using the older org.chromium.ModemManager DBUS
 //    interface.  This class is further subclassed to represent CDMA
-//    and GSM modems
+//    and GSM modems.
 //
 // Pictorially:
 //
 // CellularCapability
 //       |
 //       |-- CellularCapabilityUniversal
+//       |            |
+//       |            |-- CellularCapabilityUniversalCDMA
 //       |
 //       |-- CellularCapabilityClassic
 //                    |
@@ -49,6 +51,10 @@ class ProxyFactory;
 //                    |
 //                    |-- CellularCapabilityCDMA
 //
+// TODO(armansito): Currently, 3GPP logic is handled by
+// CellularCapabilityUniversal. Eventually CellularCapabilityUniversal will
+// only serve as the abstract base class for ModemManager1 3GPP and CDMA
+// capabilities.
 class CellularCapability {
  public:
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
@@ -219,6 +225,7 @@ class CellularCapability {
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
+  friend class CellularCapabilityUniversalCDMATest;
   friend class CellularTest;
   FRIEND_TEST(CellularCapabilityTest, AllowRoaming);
   FRIEND_TEST(CellularTest, Connect);

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,7 +20,6 @@
 #include "shill/cellular_capability.h"
 #include "shill/mm1_bearer_proxy_interface.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
-#include "shill/mm1_modem_modemcdma_proxy_interface.h"
 #include "shill/mm1_modem_proxy_interface.h"
 #include "shill/mm1_modem_simple_proxy_interface.h"
 #include "shill/mm1_sim_proxy_interface.h"
@@ -80,13 +79,13 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void OnServiceCreated();
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
   virtual void GetProperties();
+  virtual bool IsRegistered();
   virtual bool IsServiceActivationRequired() const;
   virtual void Register(const ResultCallback &callback);
 
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
                                  const ResultCallback &callback);
-  virtual bool IsRegistered();
   virtual void SetUnregistered(bool searching);
   virtual std::string CreateFriendlyServiceName();
   virtual void RequirePIN(const std::string &pin, bool require,
@@ -117,6 +116,23 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void InitProxies();
   virtual void ReleaseProxies();
 
+  // Updates the |sim_path_| variable and creates a new proxy to the
+  // DBUS ModemManager1.Sim interface.
+  // TODO(armansito): Put this method in a 3GPP-only subclass.
+  virtual void OnSimPathChanged(const std::string &sim_path);
+
+  // Updates the online payment portal information, if any, for the cellular
+  // provider.
+  virtual void UpdateOLP();
+
+  const std::string &mdn() const { return mdn_; };
+
+  const std::string &meid() const { return meid_; }
+  void set_meid(const std::string &meid) { meid_ = meid; }
+
+  const std::string &esn() const { return esn_; }
+  void set_esn(const std::string &esn) { esn_ = esn; }
+
  private:
   // Constants used in scan results.  Make available to unit tests.
   // TODO(jglasgow): Generate from modem manager into ModemManager-names.h.
@@ -146,6 +162,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
+  friend class CellularCapabilityUniversalCDMATest;
+  FRIEND_TEST(CellularCapabilityUniversalCDMATest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               ActivationWaitForRegisterTimeout);
@@ -217,10 +236,6 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Methods used in acquiring information related to the carrier;
 
-  // Updates the online payment portal information, if any, for the cellular
-  // provider.
-  void UpdateOLP();
-
   // Updates the Universal operator name and country based on a newly
   // obtained network id.
   void UpdateOperatorInfo();
@@ -273,9 +288,6 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   void OnSignalQualityChanged(uint32 quality);
 
-  // Updates the sim_path_ variable and creates a new proxy to the
-  // DBUS ModemManager1.Sim interface
-  void OnSimPathChanged(const std::string &sim_path);
   void OnModemCapabilitesChanged(uint32 capabilities);
   void OnModemCurrentCapabilitiesChanged(uint32 current_capabilities);
   void OnMdnChanged(const std::string &mdn);
@@ -305,6 +317,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnFacilityLocksChanged(uint32 locks);
 
   // SIM property change handlers
+  // TODO(armansito): Put these methods in a 3GPP-only subclass.
   void OnSimPropertiesChanged(
       const DBusPropertiesMap &props,
       const std::vector<std::string> &invalidated_properties);
@@ -353,7 +366,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnResetAfterActivationReply(const Error &error);
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
-  scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
   scoped_ptr<mm1::ModemProxyInterface> modem_proxy_;
   scoped_ptr<mm1::ModemSimpleProxyInterface> modem_simple_proxy_;
   scoped_ptr<mm1::SimProxyInterface> sim_proxy_;
@@ -361,7 +373,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   base::WeakPtrFactory<CellularCapabilityUniversal> weak_ptr_factory_;
 
   MMModem3gppRegistrationState registration_state_;
-  MMModemCdmaRegistrationState cdma_registration_state_;
 
   // Bits based on MMModemCapabilities
   uint32 capabilities_;          // technologies supported, may require reload

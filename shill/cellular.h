@@ -35,6 +35,7 @@ class Cellular : public Device {
     kTypeGSM,
     kTypeCDMA,
     kTypeUniversal,  // ModemManager1
+    kTypeUniversalCDMA,
     kTypeInvalid,
   };
 
@@ -221,6 +222,7 @@ class Cellular : public Device {
   friend class CellularCapabilityCDMATest;
   friend class CellularCapabilityGSMTest;
   friend class CellularCapabilityUniversalTest;
+  friend class CellularCapabilityUniversalCDMATest;
   friend class CellularServiceTest;
   friend class ModemTest;
   FRIEND_TEST(CellularCapabilityCDMATest, CreateFriendlyServiceName);
@@ -233,6 +235,10 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityTest, FinishEnable);
   FRIEND_TEST(CellularCapabilityTest, GetModemInfo);
   FRIEND_TEST(CellularCapabilityTest, GetModemStatus);
+  FRIEND_TEST(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
+  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOLP);
+  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);

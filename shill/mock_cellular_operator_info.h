@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -23,6 +23,10 @@ class MockCellularOperatorInfo : public CellularOperatorInfo {
                      const CellularService::OLP *(const std::string &mccmnc));
   MOCK_CONST_METHOD1(GetCellularOperatorByMCCMNC,
                      const CellularOperator *(const std::string &mccmnc));
+  MOCK_CONST_METHOD1(GetOLPBySID,
+                     const CellularService::OLP *(const std::string &sid));
+  MOCK_CONST_METHOD1(GetCellularOperatorBySID,
+                     const CellularOperator *(const std::string &sid));
 };
 
 }  // namespace shill

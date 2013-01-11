@@ -334,6 +334,14 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	arp_packet_unittest.o \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
+	cellular_capability_cdma_unittest.o \
+	cellular_capability_classic_unittest.o \
+	cellular_capability_gsm_unittest.o \
+	cellular_capability_universal_unittest.o \
+	cellular_capability_universal_cdma_unittest.o \
+	cellular_operator_info_unittest.o \
+	cellular_service_unittest.o \
+	cellular_unittest.o \
 	certificate_file_unittest.o \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
@@ -532,6 +540,7 @@ SHILL_OBJS += $(addprefix $(BUILDDIR)/, \
 	cellular_capability_classic.o \
 	cellular_capability_gsm.o \
 	cellular_capability_universal.o \
+	cellular_capability_universal_cdma.o \
 	cellular_error.o \
 	cellular_operator_info.o \
 	cellular_service.o \
@@ -562,6 +571,7 @@ TEST_OBJS += $(addprefix $(BUILDDIR)/, \
 	cellular_capability_cdma_unittest.o \
 	cellular_capability_classic_unittest.o \
 	cellular_capability_gsm_unittest.o \
+	cellular_capability_universal_cdma_unittest.o \
 	cellular_capability_universal_unittest.o \
 	cellular_operator_info_unittest.o \
 	cellular_service_unittest.o \

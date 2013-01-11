@@ -1420,14 +1420,12 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
   CellularService::OLP test_olp;
   test_olp.SetURL("http://testurl");
   test_olp.SetMethod("POST");
-  test_olp.SetPostData("esn=${esn}&imei=${imei}&imsi=${imsi}&mdn=${mdn}&"
-                       "meid=${meid}&min=${min}&iccid=${iccid}");
+  test_olp.SetPostData("imei=${imei}&imsi=${imsi}&mdn=${mdn}&"
+                       "min=${min}&iccid=${iccid}");
 
-  capability_->esn_ = "0";
   capability_->imei_ = "1";
   capability_->imsi_ = "2";
   capability_->mdn_ = "3";
-  capability_->meid_= "4";
   capability_->min_ = "5";
   capability_->sim_identifier_ = "6";
   capability_->operator_id_ = "123456";
@@ -1441,7 +1439,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
   const CellularService::OLP &olp = cellular_->service()->olp();
   EXPECT_EQ("http://testurl", olp.GetURL());
   EXPECT_EQ("POST", olp.GetMethod());
-  EXPECT_EQ("esn=0&imei=1&imsi=2&mdn=3&meid=4&min=5&iccid=6",
+  EXPECT_EQ("imei=1&imsi=2&mdn=3&min=5&iccid=6",
             olp.GetPostData());
 }
 

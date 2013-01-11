@@ -524,6 +524,12 @@ class CellularOperatorInfoImpl {
   DISALLOW_COPY_AND_ASSIGN(CellularOperatorInfoImpl);
 };
 
+COI::LocalizedName::LocalizedName() {}
+COI::LocalizedName::LocalizedName(string name,
+                                  string language)
+    : name(name),
+      language(language) {}
+
 CellularOperatorInfo::CellularOperator::CellularOperator()
     : is_primary_(false),
       requires_roaming_(false) {}

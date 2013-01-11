@@ -36,6 +36,9 @@ class CellularOperatorInfo {
   // The name can be a carrier name, or the name that a cellular carrier
   // prefers to show for a certain access point.
   struct LocalizedName {
+    LocalizedName();
+    LocalizedName(std::string name, std::string language);
+
     // The name as it appears in the corresponding language.
     std::string name;
 
@@ -124,7 +127,11 @@ class CellularOperatorInfo {
    private:
     friend class CellularOperatorInfo;
     friend class CellularOperatorInfoImpl;
+    friend class CellularCapabilityUniversalCDMATest;
     FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
+    FRIEND_TEST(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName);
+    FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
+    FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo);
 
     std::string country_;
     std::string identifier_;

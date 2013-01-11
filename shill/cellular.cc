@@ -21,6 +21,7 @@
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_gsm.h"
 #include "shill/cellular_capability_universal.h"
+#include "shill/cellular_capability_universal_cdma.h"
 #include "shill/cellular_service.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
@@ -294,6 +295,12 @@ void Cellular::InitCapability(Type type) {
       break;
     case kTypeUniversal:
       capability_.reset(new CellularCapabilityUniversal(
+          this,
+          proxy_factory_,
+          modem_info_));
+      break;
+    case kTypeUniversalCDMA:
+      capability_.reset(new CellularCapabilityUniversalCDMA(
           this,
           proxy_factory_,
           modem_info_));
