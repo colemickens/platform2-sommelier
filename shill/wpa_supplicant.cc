@@ -33,9 +33,11 @@ const char kEAPParameterSuccess[] = "success";
 const char kEAPStatusAcceptProposedMethod[] = "accept proposed method";
 const char kEAPStatusCompletion[] = "completion";
 const char kEAPStatusLocalTLSAlert[] = "local TLS alert";
+const char kEAPStatusParameterNeeded[] = "eap parameter needed";
 const char kEAPStatusRemoteCertificateVerification[] =
     "remote certificate verification";
 const char kEAPStatusRemoteTLSAlert[] = "remote TLS alert";
+const char kEAPStatusStarted[] = "started";
 const char kEnginePKCS11[]          = "pkcs11";
 const char kErrorNetworkUnknown[]   = "fi.w1.wpa_supplicant1.NetworkUnknown";
 const char kErrorInterfaceExists[]  = "fi.w1.wpa_supplicant1.InterfaceExists";

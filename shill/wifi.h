@@ -97,6 +97,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
+#include "shill/service.h"
 
 namespace shill {
 
@@ -189,9 +190,6 @@ class WiFi : public Device {
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsOpen);  // SuspectCredentials
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPANeverConnected);  // as above
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);  // ""
   FRIEND_TEST(WiFiMainTest, VerifyPaths);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
@@ -267,7 +265,10 @@ class WiFi : public Device {
   void ScanTask();
   void StateChanged(const std::string &new_state);
   // Heuristic check if a connection failure was due to bad credentials.
-  bool SuspectCredentials(const WiFiService &service) const;
+  // Returns true and puts type of failure in |failure| if a credential
+  // problem is detected.
+  bool SuspectCredentials(const WiFiService &service,
+                          Service::ConnectFailure *failure) const;
   void HelpRegisterDerivedInt32(
       PropertyStore *store,
       const std::string &name,
@@ -390,6 +391,8 @@ class WiFi : public Device {
   bool has_already_completed_;
   // Indicates that we are debugging a problematic connection.
   bool is_debugging_connection_;
+  // Indicates that we are in the middle of EAP authentication.
+  bool is_eap_in_progress_;
 
   // Properties
   std::string bgscan_method_;

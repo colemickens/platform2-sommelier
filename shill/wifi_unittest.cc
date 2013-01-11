@@ -598,6 +598,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->set_link_monitor(link_monitor);
   }
 
+  bool SuspectCredentials(const WiFiService &service,
+                          Service::ConnectFailure *failure) {
+    return wifi_->SuspectCredentials(service, failure);
+  }
+
   void OnLinkMonitorFailure() {
     wifi_->OnLinkMonitorFailure();
   }
@@ -2430,7 +2435,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
       flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged, &e);
   ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
   EXPECT_FALSE(service->has_ever_connected());
-  EXPECT_FALSE(wifi()->SuspectCredentials(*service));
+  EXPECT_FALSE(SuspectCredentials(*service, NULL));
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsWPANeverConnected) {
@@ -2440,7 +2445,9 @@ TEST_F(WiFiMainTest, SuspectCredentialsWPANeverConnected) {
                  flimflam::kSecurityWpa, "abcdefgh", &e);
   ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
   EXPECT_FALSE(service->has_ever_connected());
-  EXPECT_TRUE(wifi()->SuspectCredentials(*service));
+  Service::ConnectFailure failure;
+  EXPECT_TRUE(SuspectCredentials(*service, &failure));
+  EXPECT_EQ(Service::kFailureBadPassphrase, failure);
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected) {
@@ -2450,12 +2457,31 @@ TEST_F(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected) {
                  flimflam::kSecurityWpa, "abcdefgh", &e);
   ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
   service->has_ever_connected_ = true;
-  EXPECT_FALSE(wifi()->SuspectCredentials(*service));
+  EXPECT_FALSE(SuspectCredentials(*service, NULL));
 }
 
-TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
-  ScopedMockLog log;
+TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
   Error e;
+  WiFiServiceRefPtr service =
+      GetService(flimflam::kTypeWifi, "an_ssid", flimflam::kModeManaged,
+                 flimflam::kSecurity8021x, "abcdefgh", &e);
+  SetCurrentService(service);
+  service->has_ever_connected_ = false;
+  EXPECT_FALSE(SuspectCredentials(*service, NULL));
+  ReportEAPEvent(wpa_supplicant::kEAPStatusStarted, "");
+  service->has_ever_connected_ = true;
+  EXPECT_FALSE(SuspectCredentials(*service, NULL));
+  service->has_ever_connected_ = false;
+  Service::ConnectFailure failure;
+  EXPECT_TRUE(SuspectCredentials(*service, &failure));
+  EXPECT_EQ(Service::kFailureEAPAuthentication, failure);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
+                 wpa_supplicant::kEAPParameterSuccess);
+  EXPECT_FALSE(SuspectCredentials(*service, NULL));
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureWPA) {
+  ScopedMockLog log;
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWpa);
   SetPendingService(service);
   ReportStateChanged(wpa_supplicant::kInterfaceState4WayHandshake);
@@ -2465,7 +2491,24 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailure) {
   EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("Bad passphrase?")));
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       EndsWith(flimflam::kErrorBadPassphrase)));
+  ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
+  ScopedMockLog log;
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
+  SetCurrentService(service);
+  ReportEAPEvent(wpa_supplicant::kEAPStatusStarted, "");
+  EXPECT_FALSE(service->has_ever_connected());
+
+  EXPECT_CALL(*service, SetFailure(Service::kFailureEAPAuthentication));
+  EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       EndsWith(shill::kErrorEapAuthenticationFailed)));
   ReportCurrentBSSChanged(wpa_supplicant::kCurrentBSSNull);
 }
 

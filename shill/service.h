@@ -561,6 +561,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);
+  FRIEND_TEST(WiFiMainTest, SuspectCredentialsEAPInProgress);
   FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
 

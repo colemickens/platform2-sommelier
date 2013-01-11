@@ -114,6 +114,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       fast_scans_remaining_(kNumFastScanAttempts),
       has_already_completed_(false),
       is_debugging_connection_(false),
+      is_eap_in_progress_(false),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
@@ -605,6 +606,10 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
     HandleRoam(new_bss);
   }
 
+  // Reset eap_in_progress_ after calling HandleDisconnect() so it can
+  // be used to detect disconnects during EAP authentication.
+  is_eap_in_progress_ = false;
+
   // If we are selecting a new service, or if we're clearing selection
   // of a something other than the pending service, call SelectService.
   // Otherwise skip SelectService, since this will cause the pending
@@ -660,11 +665,13 @@ void WiFi::HandleDisconnect() {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " disconnected from "
                 << " (or failed to connect to) service "
                 << affected_service->unique_name();
-  if (SuspectCredentials(*affected_service)) {
+  Service::ConnectFailure failure;
+  if (SuspectCredentials(*affected_service, &failure)) {
     // If we suspect bad credentials, set failure, to trigger an error
     // mole in Chrome.
-    affected_service->SetFailure(Service::kFailureBadPassphrase);
-    LOG(ERROR) << "Connection failure during 4-Way Handshake. Bad passphrase?";
+    affected_service->SetFailure(failure);
+    LOG(ERROR) << "Connection failure is due to suspect credentials: returning "
+               << Service::ConnectFailureToString(failure);
   } else {
     affected_service->SetFailureSilent(Service::kFailureUnknown);
   }
@@ -1162,6 +1169,7 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
     if (parameter == wpa_supplicant::kEAPParameterSuccess) {
       SLOG(WiFi, 2) << link_name() << ": EAP: "
                     << "Completed authentication.";
+      is_eap_in_progress_ = false;
     } else if (parameter == wpa_supplicant::kEAPParameterFailure) {
       // If there was a TLS error, use this instead of the generic failure.
       if (supplicant_tls_error_ == wpa_supplicant::kEAPStatusLocalTLSAlert) {
@@ -1190,9 +1198,19 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
       LOG(ERROR) << link_name() << ": EAP: "
                  << "Unexpected " << status << " parameter: " << parameter;
     }
+  } else if (status == wpa_supplicant::kEAPStatusParameterNeeded) {
+    LOG(ERROR) << link_name() << ": EAP: "
+               << "Authentication due to missing authentication parameter: "
+               << parameter;
+    failure = Service::kFailureEAPAuthentication;
+  } else if (status == wpa_supplicant::kEAPStatusStarted) {
+    SLOG(WiFi, 2) << link_name() << ": EAP authentication starting.";
+    is_eap_in_progress_ = true;
   }
 
   if (failure != Service::kFailureUnknown) {
+    // Avoid a reporting failure twice by clearing eap_in_progress_ early.
+    is_eap_in_progress_ = false;
     current_service_->DisconnectWithFailure(failure, NULL);
   }
 }
@@ -1340,15 +1358,30 @@ void WiFi::StateChanged(const string &new_state) {
   }
 }
 
-bool WiFi::SuspectCredentials(const WiFiService &service) const {
-  if (!service.IsSecurityMatch(flimflam::kSecurityPsk)) {
-    // We can only diagnose credentials for WPA/RSN networks. For
-    // others, assume the failure was not credential related.
-    return false;
+bool WiFi::SuspectCredentials(
+    const WiFiService &service, Service::ConnectFailure *failure) const {
+  LOG(ERROR) << "In " << __func__ << ": "
+             << service.IsSecurityMatch(flimflam::kSecurity8021x) << " :: "
+             << is_eap_in_progress_ << " :: "
+             << !service.has_ever_connected();
+  if (service.IsSecurityMatch(flimflam::kSecurityPsk)) {
+    if (supplicant_state_ == wpa_supplicant::kInterfaceState4WayHandshake &&
+        !service.has_ever_connected()) {
+      if (failure) {
+        *failure = Service::kFailureBadPassphrase;
+      }
+      return true;
+    }
+  } else if (service.IsSecurityMatch(flimflam::kSecurity8021x)) {
+    if (is_eap_in_progress_ && !service.has_ever_connected()) {
+      if (failure) {
+        *failure = Service::kFailureEAPAuthentication;
+      }
+      return true;
+    }
   }
 
-  return supplicant_state_ == wpa_supplicant::kInterfaceState4WayHandshake &&
-      !service.has_ever_connected();
+  return false;
 }
 
 // Used by Manager.
