@@ -26,17 +26,11 @@ DEV_HELP='
 HELP="$HELP$DEV_HELP"
 
 cmd_shell() {
-  # Use a subshell so we can change the environment without
-  # affecting our caller
-  (
-  PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin
-  if [ -x /bin/bash ] ; then
-    SHELL=/bin/bash
-  else
-    SHELL=/bin/sh
-  fi
-  exec $SHELL
-  )
+ local shell="/bin/sh"
+ if [ -x /bin/bash ]; then
+   shell="/bin/bash"
+ fi
+ SHELL=${shell} ${shell} -l
 }
 
 cmd_systrace() {
