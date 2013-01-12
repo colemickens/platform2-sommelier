@@ -32,7 +32,6 @@ class DNSClient {
  public:
   typedef base::Callback<void(const Error &, const IPAddress &)> ClientCallback;
 
-  static const int kDefaultTimeoutMS;
   static const char kErrorNoData[];
   static const char kErrorFormErr[];
   static const char kErrorServerFail[];

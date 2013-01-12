@@ -33,7 +33,6 @@ using std::vector;
 
 namespace shill {
 
-const int DNSClient::kDefaultTimeoutMS = 2000;
 const char DNSClient::kErrorNoData[] = "The query response contains no answers";
 const char DNSClient::kErrorFormErr[] = "The server says the query is bad";
 const char DNSClient::kErrorServerFail[] = "The server says it had a failure";
