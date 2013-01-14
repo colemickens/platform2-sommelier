@@ -178,8 +178,11 @@ bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
     battery_charge = battery_info_->ReadScaledDouble("charge_now");
   } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
     // Valid |battery_voltage| is required to determine the charge so return
-    // early if it is not present.
+    // early if it is not present. In this case, we know nothing about
+    // battery state or remaining percentage, so set proper status.
     if (battery_voltage <= 0) {
+      status->battery_state = BATTERY_STATE_UNKNOWN;
+      status->battery_percentage = -1;
       LOG(WARNING) << "Invalid voltage_now reading for energy-to-charge"
                    << " conversion: " << battery_voltage;
       return false;
