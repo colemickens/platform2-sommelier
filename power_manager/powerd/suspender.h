@@ -14,22 +14,32 @@
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
+#include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/screen_locker.h"
 #include "power_manager/powerd/suspend_delay_observer.h"
+#include "power_manager/suspend.pb.h"
 
 namespace power_manager {
 
 class Daemon;
 class DBusSenderInterface;
 class FileTagger;
+class PowerPrefs;
 class SuspendDelayController;
+
+namespace system {
+class Input;
+}  // namespace system
 
 class Suspender : public SuspendDelayObserver {
  public:
-  Suspender(ScreenLocker* locker,
+  Suspender(Daemon* daemon,
+            ScreenLocker* locker,
             FileTagger* file_tagger,
-            DBusSenderInterface* dbus_sender);
+            DBusSenderInterface* dbus_sender,
+            system::Input* input,
+            const FilePath& run_dir);
   ~Suspender();
 
   static void NameOwnerChangedHandler(DBusGProxy* proxy,
@@ -38,7 +48,7 @@ class Suspender : public SuspendDelayObserver {
                                       const gchar* new_owner,
                                       gpointer data);
 
-  void Init(const FilePath& run_dir, Daemon* daemon);
+  void Init(PowerPrefs* prefs);
 
   // Starts the suspend process.  Notifies clients that have registered delays
   // that the system is about to suspend, starts |check_suspend_timeout_id_|,
@@ -62,12 +72,15 @@ class Suspender : public SuspendDelayObserver {
   // sent (or NULL if an empty reply should be sent).
   DBusMessage* UnregisterSuspendDelay(DBusMessage* message);
 
-  // Handles HandleSuspendReadiness call and returns a reply that should be sent
-  // (or NULL if an empty reply should be sent).
+  // Handles a HandleSuspendReadiness call and returns a reply that should be
+  // sent (or NULL if an empty reply should be sent).
   DBusMessage* HandleSuspendReadiness(DBusMessage* message);
 
   // Handle SuspendReady D-Bus signals.
   bool SuspendReady(DBusMessage* message);
+
+  // Handles a PowerStateChanged signal emitted by the powerd_suspend script.
+  void HandlePowerStateChanged(const char* state, int power_rc);
 
   // SuspendDelayObserver override:
   virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;
@@ -77,6 +90,14 @@ class Suspender : public SuspendDelayObserver {
   // in a state where it's truly ready to suspend (e.g. no outstanding delays,
   // screen locked if needed, etc.).
   void Suspend();
+
+  // Callback for |retry_suspend_timeout_id_|.
+  SIGNAL_CALLBACK_0(Suspender, gboolean, RetrySuspend);
+
+  // Emits a D-Bus signal informing other processes that we've suspended or
+  // resumed at |wall_time|.
+  void SendSuspendStateChangedSignal(SuspendState_Type type,
+                                     const base::Time& wall_time);
 
   // Timeout callback in case suspend clients do not respond in time.
   // Always returns false.
@@ -88,8 +109,11 @@ class Suspender : public SuspendDelayObserver {
 
   void BroadcastSignalToClients(const char* signal_name, int sequence_num);
 
+  Daemon* daemon_;
   ScreenLocker* locker_;
   FileTagger* file_tagger_;
+  DBusSenderInterface* dbus_sender_;
+  system::Input* input_;
 
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
@@ -123,8 +147,31 @@ class Suspender : public SuspendDelayObserver {
   unsigned int wakeup_count_;
   bool wakeup_count_valid_;
 
-  // Reference to the owning daemon, so that this class can callback to it
-  Daemon* daemon_;
+  // Time to wait before retrying a failed suspend attempt.
+  base::TimeDelta retry_delay_;
+
+  // Maximum number of times to retry a failed suspend attempt before giving up
+  // and shutting down the system.
+  int64 max_retries_;
+
+  // Number of failed retries since RequestSuspend() was called.
+  int num_retries_;
+
+  // PID of powerd_suspend script.
+  pid_t suspend_pid_;
+
+  // ID of GLib timeout that will run RetrySuspend() or 0 if unset.
+  guint retry_suspend_timeout_id_;
+
+  // Time at which the powerd_suspend script was last invoked to suspend the
+  // system.  We cache this so it can be passed to
+  // SendSuspendStateChangedSignal(): it's possible that the system will go to
+  // sleep before HandlePowerStateChangedSignal() gets called in response to the
+  // D-Bus signal that powerd_suspend emits before suspending, so we can't just
+  // get the current time from there -- it may actually run post-resuming.  This
+  // is a base::Time rather than base::TimeTicks since the monotonic clock
+  // doesn't increase while we're suspended.
+  base::Time last_suspend_wall_time_;
 
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };

@@ -24,6 +24,15 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval) {
   return now < last || now - last >= interval;
 }
 
+void Daemon::GenerateRetrySuspendMetric(int num_retries, int max_retries) {
+  if (num_retries == 0)
+    return;
+
+  SendMetric(kMetricRetrySuspendCountName, num_retries,
+             kMetricRetrySuspendCountMin, max_retries,
+             kMetricRetrySuspendCountBuckets);
+}
+
 void Daemon::MetricInit() {
   generate_backlight_metrics_timeout_id_ =
       g_timeout_add(kMetricBacklightLevelIntervalMs,

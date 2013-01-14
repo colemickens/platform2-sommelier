@@ -4,24 +4,46 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# This script is responsible for suspending and resuming the system.  It is run
+# as root by powerd_setuid_helper, which is run by powerd.
+
 . /usr/share/misc/shflags
 
-DEFINE_boolean cancel $FLAGS_FALSE "cancel suspend, but send resume signal" c
 DEFINE_boolean cancel_if_lid_open $FLAGS_FALSE "cancel suspend if lid is open" l
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
 
+# Directory where this script and send_metrics_on_resume (running as root) write
+# temporary state files.
+root_run_dir=/var/run/power_manager/root
+
 # For testing: write RTC resume timestamp to this file if it exists
-timestamp_file=/var/run/power_manager/hwclock-on-resume
+timestamp_file=${root_run_dir}/hwclock-on-resume
+
+# File used to record the power status (AC vs. battery) before suspending.  Read
+# by send_metrics_on_resume.
+power_status_on_suspend_file=${root_run_dir}/power-status-on-suspend
+
+# File containing the time at which we started suspending.  Read by
+# send_metrics_on_resume.
+suspend_to_ram_time_file=${root_run_dir}/suspend-to-ram-time
+
+# File containing resume-related timing information.  Written by
+# send_metrics_on_resume.
+last_resume_timings_file=${root_run_dir}/last_resume_timings
+
+# Directory where the powerd process (running as the "power" user) writes
+# temporary state files.
+power_run_dir=/var/run/power_manager/power
 
 # File touched by powerd when the lid is opened and removed when it's closed.
-lid_open_file=/var/run/power_manager/power/lid_opened
+lid_open_file=${power_run_dir}/lid_opened
 
 # File touched by powerd when user activity occurs.
-user_active_file=/var/run/power_manager/power/user_active
+user_active_file=${power_run_dir}/user_active
 
 log_msg() {
-    logger -t "powerd_suspend[${PPID}]" $@
+    logger -t "powerd_suspend[${PPID}]" -- $@
 }
 
 enable_debug() {
@@ -89,8 +111,7 @@ suspend_pm_wakeup_cancel() {
 # these files are created by powerm | powerd and their existence means
 # event has occurred which should cancel suspend
 suspend_cancel() {
-    if [ $FLAGS_cancel -eq $FLAGS_TRUE ] ||
-       [ $FLAGS_cancel_if_lid_open -eq $FLAGS_TRUE -a -e "$lid_open_file" ] ||
+    if [ $FLAGS_cancel_if_lid_open -eq $FLAGS_TRUE -a -e "$lid_open_file" ] ||
        [ -e "$user_active_file" ] ||
        suspend_pm_wakeup_cancel; then
         cancel=1
@@ -107,14 +128,17 @@ suspend_cancel() {
 #   2 - cancelled
 #   3 - attempted
 send_uma_status() {
-  /usr/bin/metrics_client -e Power.SuspendStatus $1 4 &
+  metrics_client -e Power.SuspendStatus $1 4 &
 }
 
 cleanup_for_resume() {
-    rm -f "$user_active_file"
+  rm -f "$user_active_file"
 }
 
+# Note: Don't change or remove this line without also updating
+# send_metrics_on_resume.
 log_msg "Going to suspend-to-RAM state : args=$@"
+
 # Parse command line
 FLAGS "$@" || exit 1
 eval set -- "$FLAGS_ARGV"
@@ -122,24 +146,23 @@ eval set -- "$FLAGS_ARGV"
 send_uma_status 3
 
 # - logs the time going to suspend (no-op if no RTC).
-cp /sys/class/rtc/rtc0/since_epoch /var/log/metrics/suspend-to-ram-time \
+cp /sys/class/rtc/rtc0/since_epoch $suspend_to_ram_time_file \
   2> /dev/null || true
 
 # - Remove last_resume_timings to ensure the file is fresh on resume
-rm -f /var/run/power_manager/last_resume_timings
+rm -f $last_resume_timings_file
 
 # - announces the event
-/usr/bin/dbus-send --type=signal --system /org/chromium/PowerManager \
+dbus-send --type=signal --system /org/chromium/PowerManager \
   org.chromium.PowerManager.PowerStateChanged string:mem int32:0
 
 # - stores the current power status
-power_status_on_suspend=/var/log/metrics/power-status-on-suspend
 power-supply-info 2> /dev/null \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
-    echo OnBattery > $power_status_on_suspend
+    echo OnBattery > $power_status_on_suspend_file
 else
-    echo OnAC > $power_status_on_suspend
+    echo OnAC > $power_status_on_suspend_file
 fi
 
 # Is this a Lumpy system with Gobi modem?
@@ -174,7 +197,10 @@ sync
 suspend_rc=-1
 if suspend_cancel; then
     log_msg "Cancel suspend at kernel"
-    rm -f /var/log/metrics/suspend-to-ram-time
+
+    # This file is usually removed by send_metrics_on_resume, but that script
+    # isn't run if the suspend attempt is unsuccessful.
+    rm -f $suspend_to_ram_time_file
 
     # Send suspend status: 2 (cancel)
     send_uma_status 2
@@ -220,7 +246,7 @@ if [ $cancel -eq 0 ]; then
     fi
 
     # - sends UMA metrics on resume
-    /usr/bin/send_metrics_on_resume &
+    send_metrics_on_resume &
 
     # Revive the modem if it was present prior to suspending but is absent now.
     if [ $lumpy_with_gobi_modem -eq 1 ]; then
@@ -232,16 +258,13 @@ if [ $cancel -eq 0 ]; then
 fi
 
 # - announces the event
-/usr/bin/dbus-send --type=signal --system /org/chromium/PowerManager \
+dbus-send --type=signal --system /org/chromium/PowerManager \
     org.chromium.PowerManager.PowerStateChanged string:on \
     "int32:${suspend_rc}" &
 
 cleanup_for_resume
 
-#  - re-kicks laptop mode since AC<->Battery transition might've happened
-#    while the system was suspended. Sleep a bit, though, to take care of
-#    racing with USB stack coming up.
-(sleep 10 && /usr/sbin/laptop_mode auto) > /dev/null &
+initctl emit system-resumed &
 
 # - unmute audio (if we muted it before suspend)
 if [ $PLAYBACK_WAS_ON -eq 1 ]; then

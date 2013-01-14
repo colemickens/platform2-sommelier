@@ -4,11 +4,15 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# This script collects UMA metrics when the device is coming out of
-# suspend or, if the machine shut down while in suspend, at boot time.
+# This script collects power-management-related UMA metrics when the device is
+# coming out of suspend or, if the machine shut down while in suspend, at boot
+# time.  It is run as root by Upstart and by powerd_suspend.
 #
 # Usage:
 #   -b -- indicates that this script is invoked at boot time.
+
+# Directory where temporary state files are written by the root user.
+root_run_dir=/var/run/power_manager/root
 
 # Send a message to /var/log/messages.
 # Arguments:
@@ -19,11 +23,10 @@ log_msg() {
     logger -t "send_metrics_on_resume[${PPID}]" $@
 }
 
-LAST_RESUME_TIMINGS_FILE=/var/run/power_manager/last_resume_timings
-# Save a message to /var/run/power_manager/last_resume_timings which
-# can be parsed by autotests to determine resume timings.
-# Messages are being saved here so that we only parse the log file
-# in one location.
+LAST_RESUME_TIMINGS_FILE=${root_run_dir}/last_resume_timings
+# Save a message which can be parsed by autotests to determine resume timings.
+# Messages are being saved here so that we only parse the log file in one
+# location.
 # Arguments:
 #  $1 - metric name
 #  $2 - metric value (typically time in ms)
@@ -85,7 +88,7 @@ send_time_in_suspend() {
   local time_in_suspend_name=Power.TimeInSuspendAt$1
 
   # On suspend, powerd_suspend stores the current RTC value to a file.
-  local f_suspend_at=/var/log/metrics/suspend-to-ram-time
+  local f_suspend_at=${root_run_dir}/suspend-to-ram-time
   [ -r $f_suspend_at ] || return
 
   local resume_at=$(/bin/cat /sys/class/rtc/rtc0/since_epoch)
@@ -218,7 +221,7 @@ send_suspend_resume_time() {
   local recent_messages="$1"
 
   # On suspend, powerd_suspend stores the power status to a file.
-  local power_status_on_suspend=/var/log/metrics/power-status-on-suspend
+  local power_status_on_suspend=${root_run_dir}/power-status-on-suspend
   [ -r $power_status_on_suspend ] || return
 
   # Greps the timestamps.

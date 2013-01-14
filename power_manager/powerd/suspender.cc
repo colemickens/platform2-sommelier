@@ -4,6 +4,9 @@
 
 #include "power_manager/powerd/suspender.h"
 
+#include <stdlib.h>
+#include <sys/wait.h>
+
 #include <algorithm>
 
 #include "base/bind.h"
@@ -14,12 +17,15 @@
 #include "base/time.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/power_prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/suspend_delay_controller.h"
+#include "power_manager/powerd/system/input.h"
 #include "power_manager/suspend.pb.h"
 
 using base::TimeTicks;
@@ -37,11 +43,17 @@ const char kError[] = ".Error";
 
 namespace power_manager {
 
-Suspender::Suspender(ScreenLocker* locker,
+Suspender::Suspender(Daemon* daemon,
+                     ScreenLocker* locker,
                      FileTagger* file_tagger,
-                     DBusSenderInterface* dbus_sender)
-    : locker_(locker),
+                     DBusSenderInterface* dbus_sender,
+                     system::Input* input,
+                     const FilePath& run_dir)
+    : daemon_(daemon),
+      locker_(locker),
       file_tagger_(file_tagger),
+      dbus_sender_(dbus_sender),
+      input_(input),
       suspend_delay_controller_(new SuspendDelayController(dbus_sender)),
       suspend_delay_timeout_ms_(0),
       suspend_delays_outstanding_(0),
@@ -50,13 +62,18 @@ Suspender::Suspender(ScreenLocker* locker,
       check_suspend_timeout_id_(0),
       cancel_suspend_if_lid_open_(true),
       wait_for_screen_lock_(false),
-      wakeup_count_valid_(false) {
+      user_active_file_(run_dir.Append(kUserActiveFile)),
+      wakeup_count_valid_(false),
+      num_retries_(0),
+      suspend_pid_(0),
+      retry_suspend_timeout_id_(0) {
   suspend_delay_controller_->AddObserver(this);
 }
 
 Suspender::~Suspender() {
   suspend_delay_controller_->RemoveObserver(this);
   util::RemoveTimeout(&check_suspend_timeout_id_);
+  util::RemoveTimeout(&retry_suspend_timeout_id_);
 }
 
 void Suspender::NameOwnerChangedHandler(DBusGProxy*,
@@ -76,9 +93,12 @@ void Suspender::NameOwnerChangedHandler(DBusGProxy*,
   }
 }
 
-void Suspender::Init(const FilePath& run_dir, Daemon* daemon) {
-  daemon_ = daemon;
-  user_active_file_ = run_dir.Append(kUserActiveFile);
+void Suspender::Init(PowerPrefs* prefs) {
+  int64 retry_delay_ms = 0;
+  CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
+  retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);
+
+  CHECK(prefs->GetInt64(kRetrySuspendAttemptsPref, &max_retries_));
 }
 
 void Suspender::RequestSuspend(bool cancel_if_lid_open) {
@@ -279,33 +299,111 @@ bool Suspender::SuspendReady(DBusMessage* message) {
   return true;
 }
 
+void Suspender::HandlePowerStateChanged(const char* state, int power_rc) {
+  // on == resume via powerd_suspend
+  if (strcmp(state, "on") == 0) {
+    LOG(INFO) << "Resuming has commenced";
+    if (power_rc == 0) {
+      util::RemoveTimeout(&retry_suspend_timeout_id_);
+      daemon_->GenerateRetrySuspendMetric(num_retries_, max_retries_);
+      num_retries_ = 0;
+    } else {
+      LOG(INFO) << "Suspend attempt failed";
+    }
+#ifdef SUSPEND_LOCK_VT
+    // Allow virtual terminal switching again.
+    input_->SetVTSwitchingState(true);
+#endif
+    SendSuspendStateChangedSignal(
+        SuspendState_Type_RESUME, base::Time::Now());
+  } else if (strcmp(state, "mem") == 0) {
+    SendSuspendStateChangedSignal(
+        SuspendState_Type_SUSPEND_TO_MEMORY, last_suspend_wall_time_);
+  } else {
+    DLOG(INFO) << "Saw arg:" << state << " for " << kPowerStateChanged;
+  }
+}
+
 void Suspender::OnReadyForSuspend(int suspend_id) {
   if (suspend_id == suspend_sequence_number_)
     CheckSuspend();
 }
 
 void Suspender::Suspend() {
+  LOG(INFO) << "Launching Suspend";
+  if ((suspend_pid_ > 0) && !kill(-suspend_pid_, 0)) {
+    LOG(ERROR) << "Previous retry suspend pid:"
+               << suspend_pid_ << " is still running";
+  }
+
   daemon_->HaltPollPowerSupply();
   daemon_->MarkPowerStatusStale();
   util::RemoveStatusFile(user_active_file_);
   file_tagger_->HandleSuspendEvent();
 
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
-                                                kSuspendSignal);
-  CHECK(signal);
-  dbus_bool_t wakeup_count_valid_arg = wakeup_count_valid_;
-  dbus_bool_t cancel_suspend_if_lid_open_arg = cancel_suspend_if_lid_open_;
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_UINT32, &wakeup_count_,
-                           DBUS_TYPE_BOOLEAN, &wakeup_count_valid_arg,
-                           DBUS_TYPE_BOOLEAN, &cancel_suspend_if_lid_open_arg,
-                           DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
+  util::RemoveTimeout(&retry_suspend_timeout_id_);
+  retry_suspend_timeout_id_ =
+      g_timeout_add(retry_delay_.InMilliseconds(), RetrySuspendThunk, this);
+
+#ifdef SUSPEND_LOCK_VT
+  // Do not let suspend change the console terminal.
+  input_->SetVTSwitchingState(false);
+#endif
+
+  // Cache the current time so we can include it in the SuspendStateChanged
+  // signal that we emit from HandlePowerStateChangedSignal() -- we might not
+  // send it until after the system has already resumed.
+  last_suspend_wall_time_ = base::Time::Now();
+
+  std::string suspend_command = "powerd_setuid_helper --action=suspend";
+  if (wakeup_count_valid_) {
+    suspend_command +=
+        StringPrintf(" --suspend_wakeup_count %d", wakeup_count_);
+  }
+  if (cancel_suspend_if_lid_open_)
+    suspend_command += " --suspend_cancel_if_lid_open";
+  LOG(INFO) << "Running \"" << suspend_command << "\"";
+
+  // Detach to allow suspend to be retried and metrics gathered
+  pid_t pid = fork();
+  if (pid == 0) {
+    setsid();
+    if (fork() == 0) {
+      wait(NULL);
+      exit(::system(suspend_command.c_str()));
+    } else {
+      exit(0);
+    }
+  } else if (pid > 0) {
+    suspend_pid_ = pid;
+    waitpid(pid, NULL, 0);
+  } else {
+    LOG(ERROR) << "Fork for suspend failed";
+  }
+}
+
+gboolean Suspender::RetrySuspend() {
+  retry_suspend_timeout_id_ = 0;
+
+  if (num_retries_ >= max_retries_) {
+    LOG(ERROR) << "Retried suspend " << num_retries_ << " times; shutting down";
+    daemon_->ShutdownForFailedSuspend();
+    return FALSE;
+  }
+
+  num_retries_++;
+  LOG(WARNING) << "Retry suspend attempt #" << num_retries_;
+  wakeup_count_valid_ = util::GetWakeupCount(&wakeup_count_);
+  Suspend();
+  return FALSE;
+}
+
+void Suspender::SendSuspendStateChangedSignal(SuspendState_Type type,
+                                              const base::Time& wall_time) {
+  SuspendState proto;
+  proto.set_type(type);
+  proto.set_wall_time(wall_time.ToInternalValue());
+  dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendStateChangedSignal, proto);
 }
 
 gboolean Suspender::CheckSuspendTimeout() {
