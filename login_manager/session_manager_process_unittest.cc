@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "login_manager/session_manager_unittest.h"
-
 #include <errno.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -13,6 +11,8 @@
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 #include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/message_loop.h>
 #include <base/scoped_temp_dir.h>
 #include <base/string_util.h>
 
@@ -24,6 +24,7 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_session_manager.h"
 #include "login_manager/mock_system_utils.h"
 
@@ -45,13 +46,42 @@ namespace login_manager {
 
 // Used as a fixture for the tests in this file.
 // Gives useful shared functionality.
-class SessionManagerProcessTest : public SessionManagerTest {
+class SessionManagerProcessTest : public ::testing::Test {
  public:
-  SessionManagerProcessTest() {}
+  SessionManagerProcessTest()
+      : manager_(NULL),
+        file_checker_(new MockFileChecker(kCheckedFile)),
+        liveness_checker_(new MockLivenessChecker),
+        metrics_(new MockMetrics),
+        mitigator_(new MockMitigator),
+        session_manager_impl_(new MockSessionManager),
+        must_destroy_mocks_(true) {
+  }
 
-  virtual ~SessionManagerProcessTest() {}
+  virtual ~SessionManagerProcessTest() {
+    if (must_destroy_mocks_) {
+      delete file_checker_;
+      delete liveness_checker_;
+      delete metrics_;
+      delete mitigator_;
+    }
+  }
+
+  virtual void SetUp() {
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+  }
+
+  virtual void TearDown() {
+    must_destroy_mocks_ = !manager_.get();
+    manager_ = NULL;
+  }
 
  protected:
+  // kFakeEmail is NOT const so that it can be passed to methods that
+  // implement dbus calls, which (of necessity) take bare gchar*.
+  static char kFakeEmail[];
+  static const char kCheckedFile[];
+  static const pid_t kDummyPid;
   static const char kUptimeFile[];
   static const char kDiskFile[];
   static const int kExit;
@@ -59,6 +89,24 @@ class SessionManagerProcessTest : public SessionManagerTest {
   enum RestartPolicy {
     ALWAYS, NEVER
   };
+
+  void MockUtils() {
+    manager_->test_api().set_systemutils(&utils_);
+  }
+
+  void ExpectSuccessfulInitialization() {
+    // Happy signal needed during Run().
+    EXPECT_CALL(*session_manager_impl_, Initialize()).WillOnce(Return(true));
+  }
+
+  void ExpectShutdown() {
+    EXPECT_CALL(*session_manager_impl_, Finalize())
+        .Times(1);
+    EXPECT_CALL(*session_manager_impl_, AnnounceSessionStoppingIfNeeded())
+        .Times(1);
+    EXPECT_CALL(*session_manager_impl_, AnnounceSessionStopped())
+        .Times(AtMost(1));
+  }
 
   void ExpectLivenessChecking() {
     EXPECT_CALL(*liveness_checker_, Start()).Times(AtLeast(1));
@@ -111,6 +159,43 @@ class SessionManagerProcessTest : public SessionManagerTest {
     }
   }
 
+  void InitManager(MockChildJob* job) {
+    EXPECT_CALL(*job, GetName())
+        .WillRepeatedly(Return(std::string("job")));
+    EXPECT_CALL(*job, IsDesiredUidSet())
+        .WillRepeatedly(Return(false));
+
+    ASSERT_TRUE(MessageLoop::current() == NULL);
+    manager_ = new SessionManagerService(scoped_ptr<ChildJobInterface>(job),
+                                         3,
+                                         false,
+                                         base::TimeDelta(),
+                                         &real_utils_);
+    manager_->Reset();
+    manager_->set_file_checker(file_checker_);
+    manager_->set_mitigator(mitigator_);
+    manager_->test_api().set_liveness_checker(liveness_checker_);
+    manager_->test_api().set_login_metrics(metrics_);
+    manager_->test_api().set_session_manager(session_manager_impl_);
+  }
+
+  void SimpleRunManager() {
+    manager_->test_api().set_exit_on_child_done(true);
+    ExpectSuccessfulInitialization();
+    ExpectShutdown();
+
+    // Expect and mimic successful cleanup of children.
+    EXPECT_CALL(utils_, kill(_, _, _))
+        .Times(AtMost(1))
+        .WillRepeatedly(WithArgs<0,2>(Invoke(::kill)));
+    EXPECT_CALL(utils_, ChildIsGone(_, _))
+        .Times(AtMost(1))
+        .WillRepeatedly(Return(true));
+
+    MockUtils();
+    manager_->Run();
+  }
+
   // Creates one job and a manager for it, running it |child_runs| times.
   // Returns the job for further mocking.
   MockChildJob* CreateMockJobWithRestartPolicy(RestartPolicy child_runs) {
@@ -129,11 +214,30 @@ class SessionManagerProcessTest : public SessionManagerTest {
   int PackStatus(int status) { return __W_EXITCODE(status, 0); }
   int PackSignal(int signal) { return __W_EXITCODE(0, signal); }
 
+  scoped_refptr<SessionManagerService> manager_;
+  SystemUtils real_utils_;
+  MockSystemUtils utils_;
+
+  // These are bare pointers, not scoped_ptrs, because we need to give them
+  // to a SessionManagerService instance, but also be able to set expectations
+  // on them after we hand them off.
+  MockFileChecker* file_checker_;
+  MockLivenessChecker* liveness_checker_;
+  MockMetrics* metrics_;
+  MockMitigator* mitigator_;
+  MockSessionManager* session_manager_impl_;
+
  private:
+  bool must_destroy_mocks_;
+  ScopedTempDir tmpdir_;
+
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);
 };
 
 // static
+char SessionManagerProcessTest::kFakeEmail[] = "cmasone@whaaat.org";
+const char SessionManagerProcessTest::kCheckedFile[] = "/tmp/checked_file";
+const pid_t SessionManagerProcessTest::kDummyPid = 4;
 const char SessionManagerProcessTest::kUptimeFile[] = "/tmp/uptime-chrome-exec";
 const char SessionManagerProcessTest::kDiskFile[] = "/tmp/disk-chrome-exec";
 const int SessionManagerProcessTest::kExit = 1;
@@ -445,6 +549,7 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   // Expect Powerwash to be triggered.
   EXPECT_CALL(*session_manager_impl_, StartDeviceWipe(_, _))
     .WillOnce(Return(true));
+  ExpectShutdown();
   MockUtils();
 
   ASSERT_FALSE(manager_->Run());

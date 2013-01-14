@@ -316,9 +316,10 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
     // as the serial number and shouldn't be around during a user session.
     if (!file_util::Delete(FilePath(machine_info_file_), false))
       PLOG(WARNING) << "Failed to delete " << machine_info_file_.value();
-  }
 
-  system_->AtomicFileWrite(FilePath(kLoggedInFlag), "1", 1);
+    // Record that a login has successfully completed on this boot.
+    system_->AtomicFileWrite(FilePath(kLoggedInFlag), "1", 1);
+  }
 
   return *OUT_done;
 }
