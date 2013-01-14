@@ -10,9 +10,6 @@
 
 namespace power_manager {
 
-extern const char kMetricRetrySuspendCountName[];
-extern const int kMetricRetrySuspendCountMin;
-extern const int kMetricRetrySuspendCountBuckets;
 extern const char kMetricBacklightLevelName[];
 extern const int kMetricBacklightLevelMax;
 extern const time_t kMetricBacklightLevelIntervalMs;

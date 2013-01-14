@@ -4,7 +4,6 @@
 
 #include <gflags/gflags.h>
 #include <time.h>
-#include <unistd.h>
 
 #include <string>
 
@@ -48,6 +47,7 @@ int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
+  CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
   CommandLine::Init(argc, argv);
 
@@ -62,8 +62,20 @@ int main(int argc, char* argv[]) {
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  FilePath prefs_dir(FLAGS_prefs_dir);
+  FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
+                             "/usr/share/power_manager" :
+                             FLAGS_default_prefs_dir);
+  std::vector<FilePath> pref_paths;
+  pref_paths.push_back(prefs_dir);
+  pref_paths.push_back(default_prefs_dir.Append("board_specific"));
+  pref_paths.push_back(default_prefs_dir);
+  power_manager::PowerPrefs prefs(pref_paths);
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
 
-  power_manager::PowerManDaemon daemon;
+  FilePath run_dir(FLAGS_run_dir);
+  power_manager::PowerManDaemon daemon(&prefs, &metrics_lib, run_dir);
   daemon.Init();
   daemon.Run();
   return 0;

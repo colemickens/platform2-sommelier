@@ -6,10 +6,6 @@
 
 namespace power_manager {
 
-const char kMetricRetrySuspendCountName[] = "Power.RetrySuspendCount";
-const int kMetricRetrySuspendCountMin = 1;
-const int kMetricRetrySuspendCountBuckets = 10;
-
 const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
 const int kMetricBacklightLevelMax = 100;
 const time_t kMetricBacklightLevelIntervalMs = 30000;

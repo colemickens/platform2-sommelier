@@ -115,9 +115,6 @@ class Daemon : public BacklightControllerObserver,
   void OnRequestRestart();
   void OnRequestShutdown();
 
-  // Shuts the system down in response to a failed suspend attempt.
-  void ShutdownForFailedSuspend();
-
   // Add an idle threshold to notify on.
   void AddIdleThreshold(int64 threshold);
 
@@ -150,10 +147,6 @@ class Daemon : public BacklightControllerObserver,
   // Chrome there is new information before suspending and Chrome requests it on
   // resume before we have updated.
   void MarkPowerStatusStale();
-
-  // Sends a metric describing a suspend attempt that didn't succeed on its
-  // first attempt.  Doesn't send anything if |num_retries| is 0.
-  void GenerateRetrySuspendMetric(int num_retries, int max_retries);
 
   // Overridden from policy::InputController::Delegate:
   virtual void StartSuspendForLidClose() OVERRIDE;
@@ -340,6 +333,10 @@ class Daemon : public BacklightControllerObserver,
   // clean shutdown because the stopping is taking too long or hung,
   // go through with the shutdown now.
   SIGNAL_CALLBACK_0(Daemon, gboolean, CleanShutdownTimedOut);
+
+  // Handles power state changes from powerd_suspend.
+  // |state| is "on" when resuming from suspend.
+  void OnPowerStateChange(const char* state);
 
   // Handles information from the session manager about the session state.
   // Invoked by RetrieveSessionState() and also in response to
