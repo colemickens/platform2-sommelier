@@ -23,6 +23,9 @@ namespace {
 
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
+// Path to program used to run code as root.
+const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
+
 }  // namespace
 
 namespace power_manager {
@@ -33,7 +36,7 @@ bool OOBECompleted() {
 }
 
 void Launch(const char* command) {
-  LOG(INFO) << "Launching " << command;
+  LOG(INFO) << "Launching \"" << command << "\"";
   pid_t pid = fork();
   if (pid == 0) {
     // Detach from parent so that powerd doesn't need to wait around for us
@@ -45,9 +48,22 @@ void Launch(const char* command) {
 }
 
 void Run(const char* command) {
-  LOG(INFO) << "Run " << command;
-  if (system(command) != 0)
-    LOG(ERROR) << "Run " << command << " failed.";
+  LOG(INFO) << "Running \"" << command << "\"";
+  int return_value = system(command);
+  if (return_value)
+    LOG(ERROR) << "Command failed with " << return_value;
+}
+
+void RunSetuidHelper(const std::string& action,
+                     const std::string& additional_args,
+                     bool wait_for_completion) {
+  std::string command = kSetuidHelperPath + std::string(" --action=" + action);
+  if (!additional_args.empty())
+    command += " " + additional_args;
+  if (wait_for_completion)
+    Run(command.c_str());
+  else
+    Launch(command.c_str());
 }
 
 void CreateStatusFile(const FilePath& file) {

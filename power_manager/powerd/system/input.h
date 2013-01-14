@@ -57,9 +57,6 @@ class Input {
   // Enable or disable touch devices.
   void SetTouchDevicesState(bool enable);
 
-  // Enables or disables VT switching.
-  void SetVTSwitchingState(bool enable);
-
   int num_lid_events() const {
     return num_lid_events_;
   }
@@ -117,7 +114,6 @@ class Input {
                                gpointer data);
 
   int lid_fd_;
-  int console_fd_;
   int num_power_key_events_;
   int num_lid_events_;
   struct udev_monitor* udev_monitor_;

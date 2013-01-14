@@ -312,7 +312,7 @@ void Suspender::HandlePowerStateChanged(const char* state, int power_rc) {
     }
 #ifdef SUSPEND_LOCK_VT
     // Allow virtual terminal switching again.
-    input_->SetVTSwitchingState(true);
+    util::RunSetuidHelper("unlock_vt", "", true);
 #endif
     SendSuspendStateChangedSignal(
         SuspendState_Type_RESUME, base::Time::Now());
@@ -347,7 +347,7 @@ void Suspender::Suspend() {
 
 #ifdef SUSPEND_LOCK_VT
   // Do not let suspend change the console terminal.
-  input_->SetVTSwitchingState(false);
+  util::RunSetuidHelper("lock_vt", "", true);
 #endif
 
   // Cache the current time so we can include it in the SuspendStateChanged
@@ -355,31 +355,12 @@ void Suspender::Suspend() {
   // send it until after the system has already resumed.
   last_suspend_wall_time_ = base::Time::Now();
 
-  std::string suspend_command = "powerd_setuid_helper --action=suspend";
-  if (wakeup_count_valid_) {
-    suspend_command +=
-        StringPrintf(" --suspend_wakeup_count %d", wakeup_count_);
-  }
+  std::string args;
+  if (wakeup_count_valid_)
+    args += StringPrintf(" --suspend_wakeup_count %d", wakeup_count_);
   if (cancel_suspend_if_lid_open_)
-    suspend_command += " --suspend_cancel_if_lid_open";
-  LOG(INFO) << "Running \"" << suspend_command << "\"";
-
-  // Detach to allow suspend to be retried and metrics gathered
-  pid_t pid = fork();
-  if (pid == 0) {
-    setsid();
-    if (fork() == 0) {
-      wait(NULL);
-      exit(::system(suspend_command.c_str()));
-    } else {
-      exit(0);
-    }
-  } else if (pid > 0) {
-    suspend_pid_ = pid;
-    waitpid(pid, NULL, 0);
-  } else {
-    LOG(ERROR) << "Fork for suspend failed";
-  }
+    args += " --suspend_cancel_if_lid_open";
+  util::RunSetuidHelper("suspend", args, false);
 }
 
 gboolean Suspender::RetrySuspend() {

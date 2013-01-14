@@ -20,8 +20,6 @@
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/common/power_constants.h"
-#include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/external_backlight_controller.h"
 #include "power_manager/powerd/idle_detector.h"
@@ -68,52 +66,6 @@ string GetTimeAsString(time_t utime) {
   return string(str);
 }
 
-// Helper function for WaitForPowerM().  Inspects D-Bus NameOwnerChanged signals
-// and quits |data|, a GMainLoop*, when it sees one about powerm.
-void HandleDBusNameOwnerChanged(DBusGProxy* proxy,
-                                const gchar* name,
-                                const gchar* old_owner,
-                                const gchar* new_owner,
-                                void* data) {
-  LOG(INFO) << "Got signal about " << name << " ownership change "
-            << "(\"" << old_owner << "\" -> \"" << new_owner << "\")";
-  if (strcmp(name, power_manager::kRootPowerManagerServiceName) == 0)
-    g_main_loop_quit(static_cast<GMainLoop*>(data));
-}
-
-// Blocks until powerm has registered with D-Bus.
-void WaitForPowerM() {
-  // Listen for a D-Bus ownership change on powerm's name.
-  const char kNameOwnerChangedSignal[] = "NameOwnerChanged";
-  GMainLoop* loop = g_main_loop_new(NULL, false);
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              DBUS_SERVICE_DBUS,
-                              DBUS_PATH_DBUS,
-                              DBUS_INTERFACE_DBUS);
-  dbus_g_proxy_add_signal(proxy.gproxy(), kNameOwnerChangedSignal,
-                          G_TYPE_STRING, G_TYPE_STRING, G_TYPE_STRING,
-                          G_TYPE_INVALID);
-  dbus_g_proxy_connect_signal(proxy.gproxy(), kNameOwnerChangedSignal,
-                              G_CALLBACK(HandleDBusNameOwnerChanged),
-                              loop, NULL);
-
-  std::string connection_name;
-  if (power_manager::util::IsDBusServiceConnected(
-          power_manager::kRootPowerManagerServiceName,
-          power_manager::kPowerManagerServicePath,
-          power_manager::kRootPowerManagerInterface,
-          &connection_name)) {
-    LOG(INFO) << "powerm is already running at " << connection_name;
-  } else {
-    // If powerm isn't running yet, spin up an event loop that will run until we
-    // get notification that its name has been claimed.
-    LOG(INFO) << "Waiting for " << kNameOwnerChangedSignal
-              << " signal indicating that powerm has started";
-    g_main_loop_run(loop);
-  }
-  g_main_loop_unref(loop);
-}
-
 }  // namespace
 
 int main(int argc, char* argv[]) {
@@ -151,8 +103,6 @@ int main(int argc, char* argv[]) {
   pref_paths.push_back(default_prefs_dir);
   power_manager::PowerPrefs prefs(pref_paths);
   g_type_init();
-
-  WaitForPowerM();
 
   scoped_ptr<power_manager::AmbientLightSensor> light_sensor;
 #ifndef IS_DESKTOP

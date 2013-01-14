@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gflags/gflags.h>
+#include <glib-object.h>
 #include <time.h>
 #include <unistd.h>
 

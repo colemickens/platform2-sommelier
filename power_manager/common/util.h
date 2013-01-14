@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_COMMON_UTIL_H_
 #define POWER_MANAGER_COMMON_UTIL_H_
 
+#include <string>
+
 #include "power_manager/common/power_constants.h"
 
 class FilePath;
@@ -21,6 +23,14 @@ void Launch(const char* command);
 
 // Issue command synchronously.
 void Run(const char* command);
+
+// Runs powerd_setuid_helper.  |action| is passed via --action.  If
+// |additional_args| is non-empty, it will be appended to the command.
+// If |wait_for_completion| is true, this function will block until the helper
+// finishes; otherwise it will return immediately.
+void RunSetuidHelper(const std::string& action,
+                     const std::string& additional_args,
+                     bool wait_for_completion);
 
 // Status file creation and removal.
 void CreateStatusFile(const FilePath& file);

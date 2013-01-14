@@ -451,7 +451,7 @@ void Daemon::StartCleanShutdown() {
   clean_shutdown_initiated_ = true;
   // Cancel any outstanding suspend in flight.
   suspender_.CancelSuspend();
-  util::SendSignalToPowerM(kRequestCleanShutdown);
+  util::RunSetuidHelper("clean_shutdown", "", false);
   clean_shutdown_timeout_id_ = g_timeout_add(
       clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
 }
@@ -1620,11 +1620,11 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
 void Daemon::Shutdown() {
   if (shutdown_state_ == SHUTDOWN_STATE_POWER_OFF) {
     LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
-    util::SendSignalWithStringToPowerM(kShutdownSignal,
-                                       shutdown_reason_.c_str());
+    util::RunSetuidHelper(
+        "shutdown", "--shutdown_reason=" + shutdown_reason_, false);
   } else if (shutdown_state_ == SHUTDOWN_STATE_RESTARTING) {
     LOG(INFO) << "Restarting";
-    util::SendSignalToPowerM(kRestartSignal);
+    util::RunSetuidHelper("reboot", "", false);
   } else {
     LOG(ERROR) << "Shutdown : Improper System State!";
   }
