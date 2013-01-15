@@ -379,6 +379,10 @@ bool RunPostInstall(const string& install_dir,
   printf("Syncing filesystem at end of postinst...\n");
   sync();
 
+  // Sync doesn't appear to sync out cgpt changes, so
+  // let them flush themselves. (chromium-os:35992)
+  sleep(5);
+
   // If we are installing to a ChromeOS Bios, we are done.
   if (install_config.bios_type == kBiosTypeSecure)
     return true;
