@@ -461,6 +461,11 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
   routing_table_->FlushRoutes(interface_index);
   FlushAddresses(interface_index);
 
+  infos_[interface_index].technology = technology;
+  if (IsDevicePreEnabledForTechnology(technology)) {
+    manager_->UpdateEnabledTechnologies();
+  }
+
   return device;
 }
 
@@ -544,6 +549,23 @@ DeviceRefPtr DeviceInfo::GetDevice(int interface_index) const {
 int DeviceInfo::GetIndex(const string &interface_name) const {
   map<string, int>::const_iterator it = indices_.find(interface_name);
   return it == indices_.end() ? -1 : it->second;
+}
+
+bool DeviceInfo::IsDevicePreEnabledForTechnology(
+    Technology::Identifier technology) const {
+  return (technology == Technology::kCellular ||
+          technology == Technology::kWiMax);
+}
+
+set<string> DeviceInfo::GetPreEnabledTechnologies() const {
+  set<string> technologies;
+  for (map<int, Info>::const_iterator it = infos_.begin(); it != infos_.end();
+       ++it) {
+    Technology::Identifier technology = it->second.technology;
+    if (IsDevicePreEnabledForTechnology(technology))
+      technologies.insert(Technology::NameFromIdentifier(technology));
+  }
+  return technologies;
 }
 
 bool DeviceInfo::GetMACAddress(int interface_index, ByteString *address) const {
@@ -709,12 +731,16 @@ void DeviceInfo::RemoveInfo(int interface_index) {
   map<int, Info>::iterator iter = infos_.find(interface_index);
   if (iter != infos_.end()) {
     SLOG(Device, 2) << "Removing info for device index: " << interface_index;
+    Technology::Identifier technology = iter->second.technology;
     if (iter->second.device.get()) {
       manager_->DeregisterDevice(iter->second.device);
     }
     indices_.erase(iter->second.name);
     infos_.erase(iter);
     delayed_devices_.erase(interface_index);
+    if (IsDevicePreEnabledForTechnology(technology)) {
+      manager_->UpdateEnabledTechnologies();
+    }
   } else {
     SLOG(Device, 2) << __func__ << ": Unknown device index: "
                     << interface_index;

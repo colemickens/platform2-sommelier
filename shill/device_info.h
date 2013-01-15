@@ -97,6 +97,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Returns the interface index for |interface_name| or -1 if unknown.
   virtual int GetIndex(const std::string &interface_name) const;
 
+  bool IsDevicePreEnabledForTechnology(Technology::Identifier technology) const;
+  std::set<std::string> GetPreEnabledTechnologies() const;
+
  private:
   friend class DeviceInfoDelayedCreationTest;
   friend class DeviceInfoTechnologyTest;
@@ -108,7 +111,13 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   FRIEND_TEST(DeviceInfoTest, StartStop);
 
   struct Info {
-    Info() : flags(0), rx_bytes(0), tx_bytes(0), has_addresses_only(false) {}
+    Info()
+        : flags(0),
+          rx_bytes(0),
+          tx_bytes(0),
+          has_addresses_only(false),
+          technology(Technology::kUnknown)
+    {}
 
     DeviceRefPtr device;
     std::string name;
@@ -121,6 +130,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     // This flag indicates that link information has not been retrieved yet;
     // only the ip_addresses field is valid.
     bool has_addresses_only;
+
+    Technology::Identifier technology;
   };
 
   // Root of the kernel sysfs directory holding network device info.
