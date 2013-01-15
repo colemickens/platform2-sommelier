@@ -24,6 +24,21 @@ DEFINE_bool(get_max_brightness, false, "Get max brightness level.");
 DEFINE_int64(set_brightness, -1, "Set brightness level.");
 DEFINE_double(set_brightness_percent, -1.0,
               "Set brightness as a percent in [0.0, 100.0].");
+DEFINE_int64(set_resume_brightness, -1, "Set brightness level on resume.");
+DEFINE_double(set_resume_brightness_percent, -1.0,
+              "Set resume brightness as a percent in [0.0, 100.0].");
+
+namespace {
+
+int64 PercentToLevel(power_manager::system::BacklightInterface& backlight,
+                     double percent) {
+  percent = std::min(percent, 100.0);
+  int64 max_level = 0;
+  CHECK(backlight.GetMaxBrightnessLevel(&max_level));
+  return static_cast<int64>(roundl(percent * max_level / 100.0));
+}
+
+}  // namespace
 
 // A simple tool to get and set the brightness level of the display backlight.
 int main(int argc, char* argv[]) {
@@ -67,13 +82,16 @@ int main(int argc, char* argv[]) {
                                        base::TimeDelta()));
   }
   if (FLAGS_set_brightness_percent >= 0.0) {
-    FLAGS_set_brightness_percent =
-        std::min(FLAGS_set_brightness_percent, 100.0);
-    int64 max_level = 0;
-    CHECK(backlight.GetMaxBrightnessLevel(&max_level));
-    int64 new_level = static_cast<int64>(
-        roundl(FLAGS_set_brightness_percent * max_level / 100.0));
+    int64 new_level = PercentToLevel(backlight, FLAGS_set_brightness_percent);
     CHECK(backlight.SetBrightnessLevel(new_level, base::TimeDelta()));
+  }
+  if (FLAGS_set_resume_brightness >= 0 || FLAGS_set_resume_brightness == -1) {
+    CHECK(backlight.SetResumeBrightnessLevel(FLAGS_set_resume_brightness));
+  }
+  if (FLAGS_set_resume_brightness_percent >= 0.0) {
+    int64 new_level = PercentToLevel(backlight,
+                                     FLAGS_set_resume_brightness_percent);
+    CHECK(backlight.SetResumeBrightnessLevel(new_level));
   }
   return 0;
 }
