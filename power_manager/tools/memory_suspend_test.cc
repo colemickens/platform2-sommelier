@@ -12,11 +12,13 @@
 
 #include "base/basictypes.h"
 #include "base/logging.h"
+#include "base/stringprintf.h"
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
 
 DEFINE_bool(use_dbus, false, "Use DBus RequestSuspend (must be logged in)");
 DEFINE_int64(size, 1024*1024*1024, "Amount of memory to allocate");
+DEFINE_int32(wakeup_count, -1, "Value read from /sys/power/wakeup_count");
 
 void PrintAddrMap(void *vaddr) {
   int fd;
@@ -27,16 +29,18 @@ void PrintAddrMap(void *vaddr) {
   CHECK_GE(fd, 0);
   CHECK_EQ(static_cast<uintptr_t>(lseek64(fd, page * 8, SEEK_SET)), page * 8);
   CHECK_EQ(read(fd, &page_data, 8), 8);
-  printf("Vaddr: 0x%p   PFN=0x%llx  shift=0x%llx  present=%lld\n", vaddr,
+  printf("Vaddr: 0x%p   PFN=0x%llx  shift=%llu  present=%lld\n", vaddr,
          page_data & ((1LL << 55) - 1), (page_data & ((0x3fLL << 55))) >> 55,
          (page_data & (1LL << 63)) >> 63);
 }
 
 int Suspend(void) {
-  if (FLAGS_use_dbus)
+  if (FLAGS_use_dbus) {
     return system("powerd_dbus_suspend");
-  else
-    return system("powerd_suspend");
+  } else {
+    return system(StringPrintf("powerd_suspend -w %d",
+                               FLAGS_wakeup_count).c_str());
+  }
 }
 
 uint32* Allocate(size_t size) {
@@ -70,6 +74,10 @@ bool Check(uint32 *ptr, size_t size) {
 int main(int argc, char* argv[]) {
   uint32 *ptr;
 
+  google::SetUsageMessage("\n"
+      "  Fills memory with 0x55/0xAA patterns, performs a suspend, and checks\n"
+      "  those patterns after resume. Will return 0 on success, 1 when the\n"
+      "  suspend operation fails, and 2 when memory errors were detected.");
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
 
@@ -81,5 +89,6 @@ int main(int argc, char* argv[]) {
   }
   if (Check(ptr, FLAGS_size))
     return 0;
-  return 1;
+  // The power_MemorySuspend Autotest depends on this value.
+  return 2;
 }
