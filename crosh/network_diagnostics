@@ -737,7 +737,7 @@ diag_dhcp_lease () {
   local lease_dir=/var/lib/dhcpcd
   for file in ${lease_dir}/*.lease; do
     echo "DHCP Lease file ${file}"
-    read_dhcp_lease ${file}
+    read_dhcp_lease ${file} | mac_anonymize
   done
 }
 
@@ -1000,7 +1000,21 @@ usage () {
 main () {
   if [ $# -gt 0 ]; then
     default_run=yes
+    declare -a rest
     for param in $@; do
+      # Arguments that modify the behavior of diagnostic modules
+      # should be placed here. This ensures that they are processed
+      # before running the diagnostics.
+      case $param in
+        --show-macs)
+          anonymize_macs=no
+          ;;
+        *)
+          rest+=$param
+          ;;
+      esac
+    done
+    for param in ${rest[@]}; do
       case $param in
         --date)
           default_run=no
@@ -1032,9 +1046,6 @@ main () {
           ;;
         --no-log)
           : # Handled below before starting main
-          ;;
-        --show-macs)
-          anonymize_macs=no
           ;;
         --wifi)
           default_run=no
