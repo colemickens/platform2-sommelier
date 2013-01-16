@@ -21,6 +21,8 @@ class AmbientLightSensor;
 
 class AmbientLightSensorObserver {
  public:
+  virtual ~AmbientLightSensorObserver() {}
+
   virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) = 0;
 };
 
