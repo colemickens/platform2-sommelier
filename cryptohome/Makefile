@@ -36,7 +36,8 @@ BINDING_HDRS := bindings/client.h bindings/server.h
 GEN_HDRS := $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS)
 
 SHARED_OBJS := $(filter-out cryptohomed.o cryptohome.o cryptohome-path.o \
-                  %_tests.o %_unittest.o cryptohome_testrunner.o, $(CXX_OBJECTS))
+                            lockbox-cache-main.o %_tests.o %_unittest.o \
+                            cryptohome_testrunner.o, $(CXX_OBJECTS))
 TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o, $(CXX_OBJECTS))
 
 # Used to cause an object to depend on all the generated headers. Since the
@@ -58,6 +59,7 @@ $(eval $(call add_object_rules,$(PB_OBJS),CXX,cc))
 SHARED_OBJS += $(MARSHAL_OBJS) $(PB_OBJS)
 
 all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
+all: CXX_BINARY(lockbox-cache)
 tests: TEST(CXX_BINARY(cryptohome_testrunner))
 
 %.pb.cc: $(SRC)/%.proto
@@ -83,5 +85,9 @@ CXX_BINARY(cryptohome-path): $(SHARED_OBJS) cryptohome-path.o
 CXX_BINARY(cryptohome_testrunner): LDLIBS += -lgtest -lgmock
 CXX_BINARY(cryptohome_testrunner): $(SHARED_OBJS) $(TEST_OBJS)
 
-clean: CLEAN(*.pb.cc) CLEAN(*.pb.h) CLEAN(cryptohomed)
+CXX_BINARY(lockbox-cache): tpm_status.pb.o cryptolib.o platform.o tpm.o \
+                           lockbox.o lockbox-cache.o lockbox-cache-tpm.o \
+                           lockbox-cache-main.o
+
+clean: CLEAN(*.pb.cc) CLEAN(*.pb.h) CLEAN(cryptohomed) CLEAN(lockbox-cache)
 clean: CLEAN(cryptohome) CLEAN(cryptohome-path) CLEAN(cryptohome_testrunner)
