@@ -903,11 +903,6 @@ void Daemon::RegisterDBusMessageHandler() {
       base::Bind(&Daemon::HandlePowerStateChangedSignal,
                  base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
-      kPowerManagerInterface,
-      kSuspendReady,
-      base::Bind(&Suspender::SuspendReady,
-                 base::Unretained(&suspender_)));
-  dbus_handler_.AddDBusSignalHandler(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerSessionStateChanged,
       base::Bind(&Daemon::HandleSessionManagerSessionStateChangedSignal,
@@ -1079,7 +1074,7 @@ bool Daemon::HandleSessionManagerScreenIsLockedSignal(
     DBusMessage* message) {
   LOG(INFO) << "HandleSessionManagerScreenIsLockedSignal";
   locker_.set_locked(true);
-  suspender_.CheckSuspend();
+  suspender_.SuspendIfReady();
   return true;
 }
 

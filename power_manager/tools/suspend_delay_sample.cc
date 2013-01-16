@@ -4,25 +4,16 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 #include <gflags/gflags.h>
-#include <time.h>
-
-#include <iostream>
 
 #include "base/bind.h"
-#include "base/command_line.h"
 #include "base/logging.h"
 #include "base/string_util.h"
-#include "base/stringprintf.h"
 #include "base/time.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/suspend.pb.h"
-
-// TODO(derat): Remove this and the code that it enables after
-// http://crosbug.com/36980 is fixed.
-DEFINE_bool(old, false, "Use deprecated non-protocol-buffer methods");
 
 DEFINE_int32(delay_ms, 5000,
              "Milliseconds to wait before reporting suspend readiness");
@@ -32,8 +23,7 @@ DEFINE_int32(timeout_ms, 7000, "Suspend timeout in milliseconds");
 namespace {
 
 // ID corresponding to the current suspend attempt.
-// TODO(derat): Change this to an int when --old is gone.
-unsigned int suspend_id = 0;
+int suspend_id = 0;
 
 // ID corresponding to the registered suspend delay.
 int delay_id = 0;
@@ -79,74 +69,30 @@ bool CallMethod(const std::string& method_name,
 }
 
 void RegisterSuspendDelay() {
-  if (FLAGS_old) {
-    GError* error = NULL;
-    unsigned int delay_ms = FLAGS_timeout_ms;
-    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                                power_manager::kPowerManagerServiceName,
-                                power_manager::kPowerManagerServicePath,
-                                power_manager::kPowerManagerInterface);
-    error = NULL;
-    if (!dbus_g_proxy_call(proxy.gproxy(), "RegisterSuspendDelay",
-                           &error, G_TYPE_UINT,
-                           delay_ms, G_TYPE_INVALID, G_TYPE_INVALID)) {
-      LOG(ERROR) << "Error Registering: " << error->message;
-    }
-  } else {
-    power_manager::RegisterSuspendDelayRequest request;
-    request.set_timeout(
-        base::TimeDelta::FromMilliseconds(FLAGS_timeout_ms).ToInternalValue());
-    power_manager::RegisterSuspendDelayReply reply;
-    CHECK(CallMethod(power_manager::kRegisterSuspendDelayMethod,
-                     request, &reply));
-    delay_id = reply.delay_id();
-    LOG(INFO) << "Registered delay with ID " << delay_id;
-  }
+  power_manager::RegisterSuspendDelayRequest request;
+  request.set_timeout(
+      base::TimeDelta::FromMilliseconds(FLAGS_timeout_ms).ToInternalValue());
+  power_manager::RegisterSuspendDelayReply reply;
+  CHECK(CallMethod(power_manager::kRegisterSuspendDelayMethod,
+                   request, &reply));
+  delay_id = reply.delay_id();
+  LOG(INFO) << "Registered delay with ID " << delay_id;
 }
 
 gboolean SendSuspendReady(gpointer) {
-  if (FLAGS_old) {
-    const char* signal_name = "SuspendReady";
-    dbus_uint32_t payload = suspend_id;
-    LOG(INFO) << "Sending Broadcast '" << signal_name << "' to PowerManager";
-    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                                power_manager::kPowerManagerServicePath,
-                                power_manager::kPowerManagerInterface);
-    DBusMessage* signal = ::dbus_message_new_signal(
-        power_manager::kPowerManagerServicePath,
-        power_manager::kPowerManagerInterface,
-        signal_name);
-    CHECK(signal);
-    dbus_message_append_args(signal, DBUS_TYPE_UINT32, &payload,
-                             DBUS_TYPE_INVALID);
-    ::dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-    ::dbus_message_unref(signal);
-  } else {
-    power_manager::SuspendReadinessInfo request;
-    request.set_delay_id(delay_id);
-    request.set_suspend_id(suspend_id);
-    CallMethod(power_manager::kHandleSuspendReadinessMethod, request, NULL);
-  }
-  return false;
+  LOG(INFO) << "Calling " << power_manager::kHandleSuspendReadinessMethod;
+  power_manager::SuspendReadinessInfo request;
+  request.set_delay_id(delay_id);
+  request.set_suspend_id(suspend_id);
+  CallMethod(power_manager::kHandleSuspendReadinessMethod, request, NULL);
+  return FALSE;
 }
 
 bool SuspendDelaySignaled(DBusMessage* message) {
-  if (FLAGS_old) {
-    DBusError error;
-    dbus_error_init(&error);
-    if (!dbus_message_get_args(message, &error, DBUS_TYPE_UINT32, &suspend_id,
-                               DBUS_TYPE_INVALID)) {
-      LOG(ERROR) << "Could not get args from SuspendDelay signal!";
-      if (dbus_error_is_set(&error))
-        dbus_error_free(&error);
-      return true;
-    }
-  } else {
-    power_manager::SuspendImminent info;
-    CHECK(power_manager::util::ParseProtocolBufferFromDBusMessage(message,
-                                                                  &info));
-    suspend_id = info.suspend_id();
-  }
+  power_manager::SuspendImminent info;
+  CHECK(power_manager::util::ParseProtocolBufferFromDBusMessage(message,
+                                                                &info));
+  suspend_id = info.suspend_id();
 
   LOG(INFO) << "Got notification about suspend with ID " << suspend_id;
   LOG(INFO) << "Sleeping " << FLAGS_delay_ms << " ms before responding";
@@ -157,9 +103,7 @@ bool SuspendDelaySignaled(DBusMessage* message) {
 void RegisterDBusMessageHandler() {
   dbus_handler.AddDBusSignalHandler(
       power_manager::kPowerManagerInterface,
-      FLAGS_old ?
-          power_manager::kSuspendDelay :
-          power_manager::kSuspendImminentSignal,
+      power_manager::kSuspendImminentSignal,
       base::Bind(&SuspendDelaySignaled));
   dbus_handler.Start();
 

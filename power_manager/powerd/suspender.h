@@ -8,9 +8,6 @@
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include <map>
-#include <string>
-
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
@@ -59,7 +56,7 @@ class Suspender : public SuspendDelayObserver {
   // Calls Suspend() if |suspend_requested_| is true and if it's now safe to do
   // so (i.e. there are no outstanding delays and the screen is locked if
   // |wait_for_screen_lock_| is set).
-  void CheckSuspend();
+  void SuspendIfReady();
 
   // Cancels an outstanding suspend request.
   void CancelSuspend();
@@ -99,15 +96,14 @@ class Suspender : public SuspendDelayObserver {
   void SendSuspendStateChangedSignal(SuspendState_Type type,
                                      const base::Time& wall_time);
 
-  // Timeout callback in case suspend clients do not respond in time.
-  // Always returns false.
-  SIGNAL_CALLBACK_0(Suspender, gboolean, CheckSuspendTimeout);
+  // Callback for |screen_lock_timeout_id_|.  Invoked if screen lock is
+  // taking too long; sets |wait_for_screen_lock_| to false and calls
+  // SuspendIfReady().
+  SIGNAL_CALLBACK_0(Suspender, gboolean, HandleScreenLockTimeout);
 
   // Clean up suspend delay upon unregister or dbus name change.
   // Remove |client_name| from list of suspend delay callback clients.
   bool CleanUpSuspendDelay(const char* client_name);
-
-  void BroadcastSignalToClients(const char* signal_name, int sequence_num);
 
   Daemon* daemon_;
   ScreenLocker* locker_;
@@ -117,33 +113,29 @@ class Suspender : public SuspendDelayObserver {
 
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
-  // Whether the computer should be suspended soon.
-  unsigned int suspend_delay_timeout_ms_;
-  int suspend_delays_outstanding_;
+  // Whether the computer will be suspended soon.
   bool suspend_requested_;
-  int suspend_sequence_number_;
 
-  // ID of GLib source that will run CheckSuspendTimeout(), or 0 if unset.
-  unsigned int check_suspend_timeout_id_;
+  // Unique ID associated with the current suspend attempt.
+  int suspend_id_;
 
   // Should the suspend be canceled if the lid is opened midway through the
   // process?  This is generally true if the lid was already closed when
   // RequestSuspend() was called.
   bool cancel_suspend_if_lid_open_;
 
-  // True if CheckSuspend() should wait for |locker_| to report that the screen
-  // is locked before suspending.  CheckSuspendTimeout() sets this back to false
-  // once the timeout has been hit.
+  // True if SuspendIfReady() should wait for |locker_| to report that the
+  // screen is locked before suspending.  HandleScreenLockTimeout() sets
+  // this back to false once the timeout has been hit.
   bool wait_for_screen_lock_;
+
+  // ID of GLib source that will run HandleScreenLockTimeout(), or 0 if unset.
+  guint screen_lock_timeout_id_;
 
   // Identify user activity to cancel suspend in progress.
   FilePath user_active_file_;
 
-  // suspend_delays_ : map from dbus unique identifiers to expected ms delays.
-  typedef std::map<std::string, uint32> SuspendList;
-  SuspendList suspend_delays_;
-
-  // Number of wake events received at start of current suspend operation
+  // Number of wake events received at start of current suspend operation.
   unsigned int wakeup_count_;
   bool wakeup_count_valid_;
 
@@ -156,9 +148,6 @@ class Suspender : public SuspendDelayObserver {
 
   // Number of failed retries since RequestSuspend() was called.
   int num_retries_;
-
-  // PID of powerd_suspend script.
-  pid_t suspend_pid_;
 
   // ID of GLib timeout that will run RetrySuspend() or 0 if unset.
   guint retry_suspend_timeout_id_;
