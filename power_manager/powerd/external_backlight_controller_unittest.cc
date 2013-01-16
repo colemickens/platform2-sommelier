@@ -294,4 +294,9 @@ TEST_F(ExternalBacklightControllerTest, NotifyObserver) {
   EXPECT_EQ(BRIGHTNESS_CHANGE_USER_INITIATED, observer.changes()[0].cause);
 }
 
+TEST_F(ExternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
+  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_SHUTTING_DOWN));
+  EXPECT_TRUE(controller_.currently_off());
+}
+
 }  // namespace power_manager

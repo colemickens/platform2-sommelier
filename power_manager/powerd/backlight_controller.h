@@ -24,6 +24,8 @@ enum PowerState {
   BACKLIGHT_IDLE_OFF,
   // Machine is suspended.
   BACKLIGHT_SUSPENDED,
+  // Machine is shutting down.
+  BACKLIGHT_SHUTTING_DOWN,
   // State has not yet been set.
   BACKLIGHT_UNINITIALIZED
 };

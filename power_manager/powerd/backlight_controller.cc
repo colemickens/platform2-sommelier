@@ -11,17 +11,19 @@ namespace power_manager {
 const char* BacklightController::PowerStateToString(PowerState state) {
   switch (state) {
     case BACKLIGHT_ACTIVE:
-      return "state(ACTIVE)";
+      return "ACTIVE";
     case BACKLIGHT_DIM:
-      return "state(DIM)";
+      return "DIM";
     case BACKLIGHT_ALREADY_DIMMED:
-      return "state(ALREADY_DIMMED)";
+      return "ALREADY_DIMMED";
     case BACKLIGHT_IDLE_OFF:
-      return "state(IDLE_OFF)";
+      return "IDLE_OFF";
     case BACKLIGHT_SUSPENDED:
-      return "state(SUSPENDED)";
+      return "SUSPENDED";
+    case BACKLIGHT_SHUTTING_DOWN:
+      return "SHUTTING_DOWN";
     case BACKLIGHT_UNINITIALIZED:
-      return "state(UNINITIALIZED)";
+      return "UNINITIALIZED";
     default:
       NOTREACHED();
       return "";
@@ -32,11 +34,11 @@ const char* BacklightController::TransitionStyleToString(
     TransitionStyle style) {
   switch (style) {
     case TRANSITION_INSTANT:
-      return "transition(INSTANT)";
+      return "INSTANT";
     case TRANSITION_FAST:
-      return "transition(FAST)";
+      return "FAST";
     case TRANSITION_SLOW:
-      return "transition(SLOW)";
+      return "SLOW";
     default:
       NOTREACHED();
       return "";

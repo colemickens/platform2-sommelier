@@ -133,8 +133,9 @@ bool ExternalBacklightController::SetPowerState(PowerState state) {
     currently_dimming_ = should_dim;
   }
 
-  bool should_turn_off =
-      state == BACKLIGHT_IDLE_OFF || state == BACKLIGHT_SUSPENDED;
+  bool should_turn_off = state == BACKLIGHT_IDLE_OFF ||
+                         state == BACKLIGHT_SUSPENDED ||
+                         state == BACKLIGHT_SHUTTING_DOWN;
   if (should_turn_off != currently_off_) {
     if (monitor_reconfigure_) {
       monitor_reconfigure_->SetScreenPowerState(

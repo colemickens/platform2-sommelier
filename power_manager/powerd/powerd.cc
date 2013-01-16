@@ -449,11 +449,18 @@ void Daemon::ShutdownForFailedSuspend() {
 
 void Daemon::StartCleanShutdown() {
   clean_shutdown_initiated_ = true;
-  // Cancel any outstanding suspend in flight.
   suspender_.CancelSuspend();
   util::RunSetuidHelper("clean_shutdown", "", false);
   clean_shutdown_timeout_id_ = g_timeout_add(
       clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
+
+  // If we want to display a low-battery alert while shutting down, don't turn
+  // the screen off immediately.
+  if (shutdown_reason_ != kShutdownReasonLowBattery) {
+    backlight_controller_->SetPowerState(BACKLIGHT_SHUTTING_DOWN);
+    if (keyboard_controller_)
+      keyboard_controller_->SetPowerState(BACKLIGHT_SHUTTING_DOWN);
+  }
 }
 
 void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {

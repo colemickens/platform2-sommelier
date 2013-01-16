@@ -525,4 +525,23 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
 }
 #endif
 
+TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
+  ::testing::StrictMock<MockMonitorReconfigure> monitor;
+  controller_.SetMonitorReconfigure(&monitor);
+
+  // When the backlight controller is told that the system is shutting down, it
+  // should turn off all displays.
+  monitor.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF);
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SHUTTING_DOWN));
+  Mock::VerifyAndClearExpectations(&monitor);
+
+  // This isn't expected, but if the state changes after we start shutting down,
+  // the displays should be turned back on.
+  monitor.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
+  ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
+  Mock::VerifyAndClearExpectations(&monitor);
+
+  controller_.SetMonitorReconfigure(NULL);
+}
+
 }  // namespace power_manager

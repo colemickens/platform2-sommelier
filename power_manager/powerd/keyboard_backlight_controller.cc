@@ -225,10 +225,17 @@ bool KeyboardBacklightController::DecreaseBrightness(
 bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
   if (new_state == state_ || !is_initialized_)
     return false;
+
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
-  LOG(INFO) << PowerStateToString(state_) << " -> "
+  LOG(INFO) << "Changing state: " << PowerStateToString(state_) << " -> "
             << PowerStateToString(new_state);
   state_ = new_state;
+
+  if (state_ == BACKLIGHT_SHUTTING_DOWN) {
+    backlight_->SetBrightnessLevel(0, base::TimeDelta());
+    return true;
+  }
+
   SetCurrentBrightnessPercent(PercentToLevel(GetNewLevel()),
                               user_step_index_ != -1 ?
                               BRIGHTNESS_CHANGE_USER_INITIATED :

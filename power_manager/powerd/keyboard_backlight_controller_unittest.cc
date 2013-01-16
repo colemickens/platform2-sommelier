@@ -838,4 +838,10 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
             controller_->current_level_);
 }
 
+TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
+  backlight_.ExpectSetBrightnessLevelWithInterval(0, base::TimeDelta(), true);
+  controller_->SetPowerState(BACKLIGHT_SHUTTING_DOWN);
+  Mock::VerifyAndClearExpectations(&backlight_);
+}
+
 }  // namespace power_manager

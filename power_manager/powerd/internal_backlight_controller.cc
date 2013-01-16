@@ -281,7 +281,23 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
                                  new_state == BACKLIGHT_ALREADY_DIMMED))
     return false;
 
+  LOG(INFO) << "Changing state: " << PowerStateToString(old_state) << " -> "
+            << PowerStateToString(new_state);
   state_ = new_state;
+
+  if (new_state == BACKLIGHT_SHUTTING_DOWN) {
+    if (monitor_reconfigure_) {
+      monitor_reconfigure_->SetScreenPowerState(
+          OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF);
+    }
+    return true;
+  }
+
+  if (old_state == BACKLIGHT_SHUTTING_DOWN) {
+    LOG(WARNING) << "Unexpectedly transitioning out of shutting-down state";
+    monitor_reconfigure_->SetScreenPowerState(
+        OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
+  }
 
   TransitionStyle style = TRANSITION_FAST;
   // Save the active backlight level if transitioning away from it.
@@ -350,8 +366,6 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
 
   als_temporal_state_ = ALS_HYST_IMMEDIATE;
 
-  LOG(INFO) << PowerStateToString(old_state) << " -> "
-            << PowerStateToString(new_state);
   return true;
 }
 
