@@ -90,7 +90,7 @@ DHCPConfig::~DHCPConfig() {
   SLOG(DHCP, 2) << __func__ << ": " << device_name();
 
   // Don't leave behind dhcpcd running.
-  Stop();
+  Stop(__func__);
 
   // Make sure we don't get any callbacks to the destroyed instance.
   CleanupClientState();
@@ -132,7 +132,7 @@ bool DHCPConfig::ReleaseIP() {
   if (!arp_gateway_ && proxy_.get()) {
     proxy_->Release(device_name());
   }
-  Stop();
+  Stop(__func__);
   return true;
 }
 
@@ -222,9 +222,9 @@ bool DHCPConfig::Start() {
   return true;
 }
 
-void DHCPConfig::Stop() {
+void DHCPConfig::Stop(const char *reason) {
   if (pid_) {
-    SLOG(DHCP, 2) << "Terminating " << pid_;
+    LOG(INFO) << "Terminating " << pid_ << " (" << reason << ")";
     if (kill(pid_, SIGTERM) < 0) {
       PLOG(ERROR);
       return;
@@ -237,8 +237,12 @@ void DHCPConfig::Stop() {
       if (ret == pid_ || ret == -1)
         break;
       usleep(kDHCPCDExitPollMilliseconds * 1000);
-      if (count == num_iterations / 2)  // Make one last attempt to kill dhcpcd.
+      if (count == num_iterations / 2) {
+        // Make one last attempt to kill dhcpcd.
+        LOG(WARNING) << "Terminating " << pid_ << " with SIGKILL "
+                     << "(" << reason << ")";
         kill(pid_, SIGKILL);
+      }
     }
     if (ret != pid_)
       PLOG(ERROR);
@@ -253,7 +257,7 @@ bool DHCPConfig::Restart() {
   // the Provider. Since the Provider doesn't invoke Restart, this would mean
   // that Restart was erroneously executed through a bare reference.
   CHECK(!pid_ || !HasOneRef());
-  Stop();
+  Stop(__func__);
   if (pid_) {
     provider_->UnbindPID(pid_);
   }

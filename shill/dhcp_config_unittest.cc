@@ -27,6 +27,8 @@ using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::AnyNumber;
+using testing::ContainsRegex;
 using testing::Return;
 using testing::SetArgumentPointee;
 using testing::Test;
@@ -553,8 +555,12 @@ TEST_F(DHCPConfigTest, StartTimeout) {
 TEST_F(DHCPConfigTest, Stop) {
   // Ensure no crashes.
   const int kPID = 1 << 17;  // Ensure unknown positive PID.
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, ContainsRegex(
+      base::StringPrintf("Terminating.+%s", __func__))));
   config_->pid_ = kPID;
-  config_->Stop();
+  config_->Stop(__func__);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 
@@ -565,7 +571,7 @@ TEST_F(DHCPConfigTest, StopDuringRequestIP) {
   EXPECT_TRUE(config_->RenewIP());
   EXPECT_FALSE(config_->lease_acquisition_timeout_callback_.IsCancelled());
   config_->pid_ = 0;  // Keep Stop from killing a real process.
-  config_->Stop();
+  config_->Stop(__func__);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
 }
 

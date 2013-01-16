@@ -125,7 +125,7 @@ class DHCPConfig : public IPConfig {
   bool Start();
 
   // Stops dhcpcd if running.
-  void Stop();
+  void Stop(const char *reason);
 
   // Stops dhcpcd if already running and then starts it. Returns true on success
   // and false otherwise.
