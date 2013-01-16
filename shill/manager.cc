@@ -1210,15 +1210,6 @@ vector<string> Manager::EnabledTechnologies(Error */*error*/) {
       unique_technologies.insert(
           Technology::NameFromIdentifier((*it)->technology()));
   }
-
-  // TODO(benchan): Probably use a different property to track pre-enabled
-  // technologies instead of overloading the EnabledTechnologies property.
-  set<string> pre_enabled_technologies =
-      device_info_.GetPreEnabledTechnologies();
-  for (set<string>::const_iterator it = pre_enabled_technologies.begin();
-       it != pre_enabled_technologies.end(); ++it) {
-    unique_technologies.insert(*it);
-  }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 

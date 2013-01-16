@@ -329,7 +329,6 @@ TEST_F(DeviceInfoTest, CreateDeviceCellular) {
   // A cellular device should be offered to ModemInfo.
   StrictMock<MockModemInfo> modem_info;
   EXPECT_CALL(manager_, modem_info()).WillOnce(Return(&modem_info));
-  EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
   EXPECT_CALL(modem_info, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
@@ -344,7 +343,6 @@ TEST_F(DeviceInfoTest, CreateDeviceWiMax) {
   // A WiMax device should be offered to WiMaxProvider.
   StrictMock<MockWiMaxProvider> wimax_provider;
   EXPECT_CALL(manager_, wimax_provider()).WillOnce(Return(&wimax_provider));
-  EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(1);
   EXPECT_CALL(wimax_provider, OnDeviceInfoAvailable(kTestDeviceName)).Times(1);
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
