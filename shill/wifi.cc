@@ -1360,10 +1360,6 @@ void WiFi::StateChanged(const string &new_state) {
 
 bool WiFi::SuspectCredentials(
     const WiFiService &service, Service::ConnectFailure *failure) const {
-  LOG(ERROR) << "In " << __func__ << ": "
-             << service.IsSecurityMatch(flimflam::kSecurity8021x) << " :: "
-             << is_eap_in_progress_ << " :: "
-             << !service.has_ever_connected();
   if (service.IsSecurityMatch(flimflam::kSecurityPsk)) {
     if (supplicant_state_ == wpa_supplicant::kInterfaceState4WayHandshake &&
         !service.has_ever_connected()) {
