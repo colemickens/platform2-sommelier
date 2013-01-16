@@ -46,6 +46,10 @@ log_msg() {
     logger -t "powerd_suspend[${PPID}]" -- $@
 }
 
+log_msg_from_file() {
+    logger -t "powerd_suspend[${PPID}]" -f $1
+}
+
 enable_debug() {
     # On some systems (snow), disabling console_suspend does bad things if
     # serial console is enabled. Check if console is non-null and bail out
@@ -220,7 +224,7 @@ else
     suspend_rc=$?
     if [ "${suspend_rc}" != 0 ]; then
         log_msg "Error writing to /sys/power/state"
-        log_msg -f /sys/kernel/debug/suspend_stats
+        log_msg_from_file /sys/kernel/debug/suspend_stats
     fi
 
     # Send suspend status: 0 (success) or 1 (failure)
