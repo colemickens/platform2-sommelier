@@ -63,6 +63,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void Start();
   void Stop();
 
+  std::vector<std::string> GetUninitializedTechnologies() const;
+
   // Adds |device| to this DeviceInfo instance so that we can handle its link
   // messages, and registers it with the manager.
   virtual void RegisterDevice(const DeviceRefPtr &device);
@@ -103,12 +105,19 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   friend class DeviceInfoTest;
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(DeviceInfoTest, CreateDeviceWiMax);
+  FRIEND_TEST(DeviceInfoTest, GetUninitializedTechnologies);
   FRIEND_TEST(DeviceInfoTest, HasSubdir);  // For HasSubdir.
   FRIEND_TEST(DeviceInfoTest, RequestLinkStatistics);
   FRIEND_TEST(DeviceInfoTest, StartStop);
 
   struct Info {
-    Info() : flags(0), rx_bytes(0), tx_bytes(0), has_addresses_only(false) {}
+    Info()
+        : flags(0),
+          rx_bytes(0),
+          tx_bytes(0),
+          has_addresses_only(false),
+          technology(Technology::kUnknown)
+    {}
 
     DeviceRefPtr device;
     std::string name;
@@ -121,6 +130,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
     // This flag indicates that link information has not been retrieved yet;
     // only the ip_addresses field is valid.
     bool has_addresses_only;
+
+    Technology::Identifier technology;
   };
 
   // Root of the kernel sysfs directory holding network device info.

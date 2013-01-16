@@ -140,6 +140,9 @@ Manager::Manager(ControlInterface *control_interface,
                                          &Manager::EnumerateWatchedServices);
   store_.RegisterString(shill::kShortDNSTimeoutTechnologiesProperty,
                         &props_.short_dns_timeout_technologies);
+  HelpRegisterDerivedStrings(kUninitializedTechnologiesProperty,
+                             &Manager::UninitializedTechnologies,
+                             NULL);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
@@ -717,6 +720,12 @@ void Manager::UpdateEnabledTechnologies() {
                                EnabledTechnologies(&error));
 }
 
+void Manager::UpdateUninitializedTechnologies() {
+  Error error;
+  adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
+                               UninitializedTechnologies(&error));
+}
+
 void Manager::RegisterDevice(const DeviceRefPtr &to_manage) {
   LOG(INFO) << "Device " << to_manage->FriendlyName() << " registered.";
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
@@ -780,6 +789,8 @@ void Manager::EmitDeviceProperties() {
                                AvailableTechnologies(&error));
   adaptor_->EmitStringsChanged(flimflam::kEnabledTechnologiesProperty,
                                EnabledTechnologies(&error));
+  adaptor_->EmitStringsChanged(kUninitializedTechnologiesProperty,
+                               UninitializedTechnologies(&error));
 }
 
 bool Manager::HasService(const ServiceRefPtr &service) {
@@ -1211,6 +1222,10 @@ vector<string> Manager::EnabledTechnologies(Error */*error*/) {
           Technology::NameFromIdentifier((*it)->technology()));
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
+}
+
+vector<string> Manager::UninitializedTechnologies(Error */*error*/) {
+  return device_info_.GetUninitializedTechnologies();
 }
 
 RpcIdentifiers Manager::EnumerateDevices(Error */*error*/) {

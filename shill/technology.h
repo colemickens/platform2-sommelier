@@ -57,6 +57,10 @@ class Technology {
       std::vector<Identifier> *technologies_vector,
       Error *error);
 
+  // Returns true if |technology| is a primary connectivity technology, i.e.
+  // Ethernet, Cellular, WiFi, or WiMAX.
+  static bool IsPrimaryConnectivityTechnology(Identifier technology);
+
  private:
   static const char kLoopbackName[];
   static const char kTunnelName[];

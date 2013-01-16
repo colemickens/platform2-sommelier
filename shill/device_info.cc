@@ -126,16 +126,27 @@ void DeviceInfo::Stop() {
   delayed_devices_.clear();
 }
 
+vector<string> DeviceInfo::GetUninitializedTechnologies() const {
+  set<string> unique_technologies;
+  for (map<int, Info>::const_iterator it = infos_.begin(); it != infos_.end();
+       ++it) {
+    if (it->second.device)
+      continue;
+
+    Technology::Identifier technology = it->second.technology;
+    if (Technology::IsPrimaryConnectivityTechnology(technology))
+      unique_technologies.insert(Technology::NameFromIdentifier(technology));
+  }
+  return vector<string>(unique_technologies.begin(), unique_technologies.end());
+}
+
 void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   SLOG(Device, 2) << __func__ << "(" << device->link_name() << ", "
                   << device->interface_index() << ")";
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
-  if ((device->technology() == Technology::kCellular) ||
-      (device->technology() == Technology::kEthernet) ||
-      (device->technology() == Technology::kWifi) ||
-      (device->technology() == Technology::kWiMax)) {
+  if (Technology::IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
   }
 }
@@ -367,6 +378,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
                                       Technology::Identifier technology) {
   DeviceRefPtr device;
   delayed_devices_.erase(interface_index);
+  infos_[interface_index].technology = technology;
 
   switch (technology) {
     case Technology::kCellular:
@@ -460,6 +472,8 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
   // Reset the routing table and addresses.
   routing_table_->FlushRoutes(interface_index);
   FlushAddresses(interface_index);
+
+  manager_->UpdateUninitializedTechnologies();
 
   return device;
 }

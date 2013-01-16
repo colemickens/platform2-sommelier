@@ -123,4 +123,12 @@ bool Technology::GetTechnologyVectorFromString(
   return true;
 }
 
+// static
+bool Technology::IsPrimaryConnectivityTechnology(Identifier technology) {
+  return (technology == kCellular ||
+          technology == kEthernet ||
+          technology == kWifi ||
+          technology == kWiMax);
+}
+
 }  // namespace shill

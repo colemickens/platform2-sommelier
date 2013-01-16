@@ -224,6 +224,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   int suspend_delay_id_for_testing() const { return suspend_delay_id_; }
 
   virtual void UpdateEnabledTechnologies();
+  virtual void UpdateUninitializedTechnologies();
 
   // Writes the service |to_update| to persistant storage.  If the service's is
   // ephemeral, it is moved to the current profile.
@@ -309,6 +310,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> ConnectedTechnologies(Error *error);
   std::string DefaultTechnology(Error *error);
   std::vector<std::string> EnabledTechnologies(Error *error);
+  std::vector<std::string> UninitializedTechnologies(Error *error);
   RpcIdentifiers EnumerateDevices(Error *error);
   RpcIdentifiers EnumerateProfiles(Error *error);
   // TODO(cmasone): This should be implemented by filtering |services_|.

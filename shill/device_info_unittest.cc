@@ -19,13 +19,14 @@
 #include <base/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "shill/ip_address.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_control.h"
+#include "shill/mock_device.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -40,9 +41,11 @@
 
 using base::Callback;
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::ContainerEq;
 using testing::DoAll;
 using testing::ElementsAreArray;
 using testing::Mock;
@@ -281,6 +284,49 @@ TEST_F(DeviceInfoTest, DeviceEnumeration) {
   EXPECT_FALSE(device_info_.GetDevice(kTestDeviceIndex).get());
   EXPECT_FALSE(device_info_.GetFlags(kTestDeviceIndex, NULL));
   EXPECT_EQ(-1, device_info_.GetIndex(kTestDeviceName));
+}
+
+TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
+  vector<string> technologies = device_info_.GetUninitializedTechnologies();
+  set<string> expected_technologies;
+
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+
+  device_info_.infos_[0].technology = Technology::kUnknown;
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+
+  device_info_.infos_[1].technology = Technology::kCellular;
+  technologies = device_info_.GetUninitializedTechnologies();
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kCellular));
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+
+  device_info_.infos_[2].technology = Technology::kWiMax;
+  technologies = device_info_.GetUninitializedTechnologies();
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kWiMax));
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+
+  scoped_refptr<MockDevice> device(new MockDevice(
+      &control_interface_, &dispatcher_, &metrics_, &manager_,
+      "null0", "addr0", 1));
+  device_info_.infos_[1].device = device;
+  technologies = device_info_.GetUninitializedTechnologies();
+  expected_technologies.erase(Technology::NameFromIdentifier(
+      Technology::kCellular));
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+
+  device_info_.infos_[3].technology = Technology::kCellular;
+  technologies = device_info_.GetUninitializedTechnologies();
+  expected_technologies.insert(Technology::NameFromIdentifier(
+      Technology::kCellular));
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
 }
 
 TEST_F(DeviceInfoTest, GetByteCounts) {

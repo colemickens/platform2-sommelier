@@ -439,3 +439,11 @@ Properties 	object ActiveProfile [readwrite]
 			The global connection state of a system. Possible
 			values are "online" if at least one connection exists
 			and "offline" if no device is connected.
+
+		array{string} UninitializedTechnologies [readonly]
+
+			The list of uninitialized technologies. An
+			uninitialized technology is a technology that has at
+			least one device that is not initialized yet (i.e.
+			the Device object is not created yet). The strings
+			are the same as the ones from the service types.
