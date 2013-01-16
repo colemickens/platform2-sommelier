@@ -25,7 +25,7 @@ class AsyncFileReader {
 
   // Read file asynchronously, passing its contents to |read_cb| when done.
   // Invokes |error_cb| on failure. If a read is already in progress, abort it
-  // first.
+  // first.  Note that |error_cb| may be invoked synchronously.
   void StartRead(base::Callback<void(const std::string&)>* read_cb,
                  base::Callback<void()>* error_cb);
 

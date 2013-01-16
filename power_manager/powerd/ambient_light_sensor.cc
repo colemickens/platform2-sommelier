@@ -151,8 +151,10 @@ gboolean AmbientLightSensor::ReadAls() {
   if (!als_file_.HasOpenedFile() && !DeferredInit())
     return true;  // Return true to try again later.
 
-  als_file_.StartRead(&read_cb_, &error_cb_);
+  // StartRead() can call |error_cb_| synchronously, so clear |poll_timeout_id_|
+  // first to make sure that we don't leak a newer timeout set by the callback.
   poll_timeout_id_ = 0;
+  als_file_.StartRead(&read_cb_, &error_cb_);
   return FALSE;
 }
 
