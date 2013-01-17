@@ -247,6 +247,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetBoolProperty(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    bool test_value;
+    EXPECT_TRUE(store.GetBoolProperty(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"int16p1", "int16p2"};
@@ -260,6 +268,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetInt16Property(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    int16 test_value;
+    EXPECT_TRUE(store.GetInt16Property(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"int32p1", "int32p2"};
@@ -273,6 +289,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetInt32Property(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    int32 test_value;
+    EXPECT_TRUE(store.GetInt32Property(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"stringp1", "stringp2"};
@@ -286,6 +310,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetStringProperty(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    string test_value;
+    EXPECT_TRUE(store.GetStringProperty(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"stringmapp1", "stringmapp2"};
@@ -302,6 +334,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetStringmapProperty(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    Stringmap test_value;
+    EXPECT_TRUE(store.GetStringmapProperty(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_TRUE(values[1] == test_value);
   }
   {
     const string keys[] = {"stringmapsp1", "stringmapsp2"};
@@ -322,6 +362,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetStringmapsProperty(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    Stringmaps test_value;
+    EXPECT_TRUE(store.GetStringmapsProperty(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_TRUE(values[1] == test_value);
   }
   {
     const string keys[] = {"stringsp1", "stringsp2"};
@@ -341,6 +389,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_TRUE(values[1] == it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetStringsProperty(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    Strings test_value;
+    EXPECT_TRUE(store.GetStringsProperty(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_TRUE(values[1] == test_value);
   }
   {
     const string keys[] = {"uint8p1", "uint8p2"};
@@ -354,6 +410,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetUint8Property(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    uint8 test_value;
+    EXPECT_TRUE(store.GetUint8Property(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_EQ(values[1], test_value);
   }
   {
     const string keys[] = {"uint16p", "uint16p1"};
@@ -367,6 +431,14 @@ TEST_F(PropertyStoreTest, WriteOnlyProperties) {
     EXPECT_EQ(values[1], it.value());
     it.Advance();
     EXPECT_TRUE(it.AtEnd());
+
+    Error errors[2];
+    EXPECT_FALSE(store.GetUint16Property(keys[0], NULL, &errors[0]));
+    EXPECT_EQ(Error::kPermissionDenied, errors[0].type());
+    uint16 test_value;
+    EXPECT_TRUE(store.GetUint16Property(keys[1], &test_value, &errors[1]));
+    EXPECT_TRUE(errors[1].IsSuccess());
+    EXPECT_EQ(values[1], test_value);
   }
 }
 

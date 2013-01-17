@@ -42,6 +42,88 @@ bool PropertyStore::Contains(const string &prop) const {
           ContainsKey(rpc_identifiers_properties_, prop));
 }
 
+bool PropertyStore::GetBoolProperty(const string &name,
+                                    bool *value,
+                                    Error *error) const {
+  return GetProperty(name, value, error, bool_properties_, "a bool");
+}
+
+bool PropertyStore::GetInt16Property(const string &name,
+                                     int16 *value,
+                                     Error *error) const {
+  return GetProperty(name, value, error, int16_properties_, "an int16");
+}
+
+bool PropertyStore::GetInt32Property(const string &name,
+                                     int32 *value,
+                                     Error *error) const {
+  return GetProperty(name, value, error, int32_properties_, "an int32");
+}
+
+bool PropertyStore::GetKeyValueStoreProperty(const string &name,
+                                             KeyValueStore *value,
+                                             Error *error) const {
+  return GetProperty(name, value, error, key_value_store_properties_,
+                     "a key value store");
+}
+
+bool PropertyStore::GetRpcIdentifierProperty(const string &name,
+                                             RpcIdentifier *value,
+                                             Error *error) const {
+  return GetProperty(name, value, error, rpc_identifier_properties_,
+                     "an rpc_identifier");
+}
+
+bool PropertyStore::GetStringProperty(const string &name,
+                                      string *value,
+                                      Error *error) const {
+  return GetProperty(name, value, error, string_properties_, "a string");
+}
+
+bool PropertyStore::GetStringmapProperty(const string &name,
+                                         Stringmap *values,
+                                         Error *error) const {
+  return GetProperty(name, values, error, stringmap_properties_,
+                     "a string map");
+}
+
+bool PropertyStore::GetStringmapsProperty(const string &name,
+                                          Stringmaps *values,
+                                          Error *error) const {
+  return GetProperty(name, values, error, stringmaps_properties_,
+                     "a string map list");
+}
+
+bool PropertyStore::GetStringsProperty(const string &name,
+                                       Strings *values,
+                                       Error *error) const {
+  return GetProperty(name, values, error, strings_properties_, "a string list");
+}
+
+bool PropertyStore::GetUint8Property(const string &name,
+                                     uint8 *value,
+                                     Error *error) const {
+  return GetProperty(name, value, error, uint8_properties_, "a uint8");
+}
+
+bool PropertyStore::GetUint16Property(const string &name,
+                                      uint16 *value,
+                                      Error *error) const {
+  return GetProperty(name, value, error, uint16_properties_, "a uint16");
+}
+
+bool PropertyStore::GetUint32Property(const string &name,
+                                      uint32 *value,
+                                      Error *error) const {
+  return GetProperty(name, value, error, uint32_properties_, "a uint32");
+}
+
+bool PropertyStore::GetUint64Property(const string &name,
+                                      uint64 *value,
+                                      Error *error) const {
+  return GetProperty(name, value, error, uint64_properties_, "a uint64");
+}
+
 bool PropertyStore::SetBoolProperty(const string &name,
                                     bool value,
                                     Error *error) {
@@ -498,6 +580,36 @@ void PropertyStore::RegisterDerivedUint64(const string &name,
 }
 
 // private methods
+
+template <class V>
+bool PropertyStore::GetProperty(
+    const string &name,
+    V *value,
+    Error *error,
+    const map< string, std::tr1::shared_ptr<
+        AccessorInterface<V> > >&collection,
+    const string &value_type_english) const {
+  SLOG(Property, 2) << "Getting " << name << " as " << value_type_english
+                    << ".";
+  typename map< string, std::tr1::shared_ptr<
+      AccessorInterface<V> > >::const_iterator it = collection.find(name);
+  if (it != collection.end()) {
+    V val = it->second->Get(error);
+    if (error->IsSuccess()) {
+      *value = val;
+    }
+  } else {
+    if (Contains(name)) {
+      error->Populate(
+          Error::kInvalidArguments,
+          "Property " + name + " is not " + value_type_english + ".");
+    } else {
+      error->Populate(
+          Error::kInvalidProperty, "Property " + name + " does not exist.");
+    }
+  }
+  return error->IsSuccess();
+};
 
 template <class V>
 bool PropertyStore::SetProperty(

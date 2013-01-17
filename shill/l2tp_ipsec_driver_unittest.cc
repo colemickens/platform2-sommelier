@@ -20,7 +20,6 @@
 #include "shill/mock_process_killer.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
-#include "shill/property_store_inspector.h"
 #include "shill/vpn.h"
 
 using std::find;
@@ -474,12 +473,12 @@ TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {
 TEST_F(L2TPIPSecDriverTest, GetProvider) {
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  PropertyStoreInspector inspector(&store);
   {
     KeyValueStore props;
+    Error error;
     EXPECT_TRUE(
-        inspector.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props));
+        store.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props, &error));
     EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
     EXPECT_TRUE(
         props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, false));
@@ -488,9 +487,10 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
     KeyValueStore props;
     SetArg(flimflam::kL2tpIpsecPasswordProperty, "random-password");
     SetArg(flimflam::kL2tpIpsecPskProperty, "random-psk");
+    Error error;
     EXPECT_TRUE(
-        inspector.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props));
+        store.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props, &error));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
     EXPECT_FALSE(
         props.LookupBool(flimflam::kL2tpIpsecPskRequiredProperty, true));

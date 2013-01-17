@@ -53,7 +53,6 @@
 #include "shill/mock_time.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/nice_mock_control.h"
-#include "shill/property_store_inspector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 #include "shill/wifi_endpoint.h"
@@ -155,9 +154,9 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_TRUE(device_->bgscan_method_.empty());
 
   string method;
-  PropertyStoreInspector inspector(&device_->store());
-  EXPECT_TRUE(inspector.GetStringProperty(flimflam::kBgscanMethodProperty,
-                                          &method));
+  Error unused_error;
+  EXPECT_TRUE(device_->store().GetStringProperty(
+      flimflam::kBgscanMethodProperty, &method, &unused_error));
   EXPECT_EQ(WiFi::kDefaultBgscanMethod, method);
   EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodSimple, method);
 
@@ -169,14 +168,14 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
           wpa_supplicant::kNetworkBgscanMethodLearn),
       &error));
   EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodLearn, device_->bgscan_method_);
-  EXPECT_TRUE(inspector.GetStringProperty(flimflam::kBgscanMethodProperty,
-                                          &method));
+  EXPECT_TRUE(device_->store().GetStringProperty(
+      flimflam::kBgscanMethodProperty, &method, &unused_error));
   EXPECT_EQ(wpa_supplicant::kNetworkBgscanMethodLearn, method);
 
   EXPECT_TRUE(DBusAdaptor::ClearProperty(
       device_->mutable_store(), flimflam::kBgscanMethodProperty, &error));
-  EXPECT_TRUE(inspector.GetStringProperty(flimflam::kBgscanMethodProperty,
-                                          &method));
+  EXPECT_TRUE(device_->store().GetStringProperty(
+      flimflam::kBgscanMethodProperty, &method, &unused_error));
   EXPECT_EQ(WiFi::kDefaultBgscanMethod, method);
   EXPECT_TRUE(device_->bgscan_method_.empty());
 }

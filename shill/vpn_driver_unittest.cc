@@ -21,7 +21,6 @@
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/property_store.h"
-#include "shill/property_store_inspector.h"
 
 using std::string;
 using testing::_;
@@ -116,10 +115,10 @@ class VPNDriverTest : public Test {
 bool VPNDriverTest::GetProviderProperty(const PropertyStore &store,
                                         const string &key,
                                         string *value) {
-  PropertyStoreInspector inspector(&store);
   KeyValueStore provider_properties;
-  EXPECT_TRUE(inspector.GetKeyValueStoreProperty(
-      flimflam::kProviderProperty, &provider_properties));
+  Error error;
+  EXPECT_TRUE(store.GetKeyValueStoreProperty(
+      flimflam::kProviderProperty, &provider_properties, &error));
   if (!provider_properties.ContainsString(key)) {
     return false;
   }
@@ -208,10 +207,13 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // KeyValueStore.
   PropertyStore store;
   driver_.InitPropertyStore(&store);
-  PropertyStoreInspector inspector(&store);
 
   // An un-set property should not be readable.
-  EXPECT_FALSE(inspector.GetStringProperty(kPortProperty, NULL));
+  {
+    Error error;
+    EXPECT_FALSE(store.GetStringProperty(kPortProperty, NULL, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
   EXPECT_FALSE(GetProviderProperty(store, kPortProperty, NULL));
 
   const string kProviderName = "boo";
@@ -222,12 +224,18 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
 
   // We should not be able to read a property out of the driver args using the
   // key to the args directly.
-  EXPECT_FALSE(inspector.GetStringProperty(kPortProperty, NULL));
+  {
+    Error error;
+    EXPECT_FALSE(store.GetStringProperty(kPortProperty, NULL, &error));
+    EXPECT_EQ(Error::kInvalidArguments, error.type());
+  }
 
   // We should instead be able to find it within the "Provider" stringmap.
-  string value;
-  EXPECT_TRUE(GetProviderProperty(store, kPortProperty, &value));
-  EXPECT_EQ(kPort, value);
+  {
+    string value;
+    EXPECT_TRUE(GetProviderProperty(store, kPortProperty, &value));
+    EXPECT_EQ(kPort, value);
+  }
 
   // We should be able to read empty properties from the "Provider" stringmap.
   {
@@ -238,8 +246,11 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
 
   // Properties that start with the prefix "Provider." should be mapped to the
   // name in the Properties dict with the prefix removed.
-  EXPECT_TRUE(GetProviderProperty(store, flimflam::kNameProperty, &value));
-  EXPECT_EQ(kProviderName, value);
+  {
+    string value;
+    EXPECT_TRUE(GetProviderProperty(store, flimflam::kNameProperty, &value));
+    EXPECT_EQ(kProviderName, value);
+  }
 
   // If we clear a property, we should no longer be able to find it.
   {

@@ -25,6 +25,37 @@ class PropertyStore {
 
   virtual bool Contains(const std::string& property) const;
 
+  // Methods to allow the getting of properties stored in the referenced
+  // |store_| by name. Upon success, these methods return true and return the
+  // property value in |value|. Upon failure, they return false and
+  // leave |value| untouched.
+  bool GetBoolProperty(const std::string &name, bool *value,
+                       Error *error) const;
+  bool GetInt16Property(const std::string &name, int16 *value,
+                        Error *error) const;
+  bool GetInt32Property(const std::string &name, int32 *value,
+                        Error *error) const;
+  bool GetKeyValueStoreProperty(const std::string &name, KeyValueStore *value,
+                                Error *error) const;
+  bool GetStringProperty(const std::string &name, std::string *value,
+                         Error *error) const;
+  bool GetStringmapProperty(const std::string &name, Stringmap *values,
+                            Error *error) const;
+  bool GetStringmapsProperty(const std::string &name, Stringmaps *values,
+                             Error *error) const;
+  bool GetStringsProperty(const std::string &name, Strings *values,
+                          Error *error) const;
+  bool GetUint8Property(const std::string &name, uint8 *value,
+                        Error *error) const;
+  bool GetUint16Property(const std::string &name, uint16 *value,
+                         Error *error) const;
+  bool GetUint32Property(const std::string &name, uint32 *value,
+                         Error *error) const;
+  bool GetUint64Property(const std::string &name, uint64 *value,
+                         Error *error) const;
+  bool GetRpcIdentifierProperty(const std::string &name, RpcIdentifier *value,
+                                Error *error) const;
+
   // Methods to allow the setting, by name, of properties stored in this object.
   // The property names are declared in chromeos/dbus/service_constants.h,
   // so that they may be shared with libcros.
@@ -89,11 +120,6 @@ class PropertyStore {
   // cannot be cleared, |error| is set, and the method returns false.
   // Otherwrise, |error| is unchanged, and the method returns true.
   virtual bool ClearProperty(const std::string &name, Error *error);
-
-  // We do not provide methods for reading individual properties,
-  // because we don't need them to implement the flimflam API. (The flimflam
-  // API only allows fetching all properties at once -- not individual
-  // properties.)
 
   // Accessors for iterators over property maps. Useful for dumping all
   // properties.
@@ -181,6 +207,15 @@ class PropertyStore {
                              const Uint64Accessor &accessor);
 
  private:
+  template <class V>
+  bool GetProperty(
+      const std::string &name,
+      V *value,
+      Error *error,
+      const std::map< std::string, std::tr1::shared_ptr<
+          AccessorInterface<V> > > &collection,
+      const std::string &value_type_english) const;
+
   template <class V>
   bool SetProperty(
       const std::string &name,

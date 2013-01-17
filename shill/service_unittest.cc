@@ -31,7 +31,6 @@
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_store.h"
 #include "shill/mock_time.h"
-#include "shill/property_store_inspector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 
@@ -878,8 +877,9 @@ TEST_F(ServiceTest, SetConnectable) {
 class ReadOnlyServicePropertyTest : public ServiceTest {};
 TEST_P(ReadOnlyServicePropertyTest, PropertyWriteOnly) {
   string property(GetParam().reader().get_string());
-  PropertyStoreInspector inspector(&service_->store());
-  EXPECT_FALSE(inspector.GetStringProperty(property, NULL));
+  Error error;
+  EXPECT_FALSE(service_->store().GetStringProperty(property, NULL, &error));
+  EXPECT_EQ(Error::kPermissionDenied, error.type());
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -1231,18 +1231,18 @@ TEST_F(ServiceTest, ConvertTimestampsToStrings) {
 TEST_F(ServiceTest, DiagnosticsProperties) {
   const string kWallClock0 = "2012-12-09T12:41:22.234567-0800";
   const string kWallClock1 = "2012-12-31T23:59:59.345678-0800";
-  PropertyStoreInspector inspector(&service_->store());
   Strings values;
 
   PushTimestamp(GetDisconnects(), 0, kWallClock0);
-  ASSERT_TRUE(
-      inspector.GetStringsProperty(kDiagnosticsDisconnectsProperty, &values));
+  Error unused_error;
+  ASSERT_TRUE(service_->store().GetStringsProperty(
+     kDiagnosticsDisconnectsProperty, &values, &unused_error));
   ASSERT_EQ(1, values.size());
   EXPECT_EQ(kWallClock0, values[0]);
 
   PushTimestamp(GetMisconnects(), 0, kWallClock1);
-  ASSERT_TRUE(
-      inspector.GetStringsProperty(kDiagnosticsMisconnectsProperty, &values));
+  ASSERT_TRUE(service_->store().GetStringsProperty(
+      kDiagnosticsMisconnectsProperty, &values, &unused_error));
   ASSERT_EQ(1, values.size());
   EXPECT_EQ(kWallClock1, values[0]);
 }

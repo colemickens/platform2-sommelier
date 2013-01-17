@@ -10,7 +10,6 @@
 #include "shill/ipconfig.h"
 #include "shill/mock_store.h"
 #include "shill/property_store.h"
-#include "shill/property_store_inspector.h"
 
 using std::string;
 using std::vector;
@@ -116,21 +115,30 @@ TEST_F(StaticIpParametersTest, ControlInterface) {
   EXPECT_EQ(kTestAddress, props.address);
   EXPECT_EQ(kTestMtu, props.mtu);
 
-  PropertyStoreInspector inspector(&store);
-  EXPECT_FALSE(inspector.GetStringProperty("StaticIP.Address", NULL));
+  {
+    Error error;
+    EXPECT_FALSE(store.GetStringProperty("StaticIP.Address", NULL, &error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
   string string_value;
-  EXPECT_TRUE(inspector.GetStringProperty("StaticIP.Gateway", &string_value));
+  Error unused_error;
+  EXPECT_TRUE(store.GetStringProperty("StaticIP.Gateway", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kGateway, string_value);
-  EXPECT_FALSE(inspector.GetInt32Property("StaticIP.Mtu", NULL));
-  EXPECT_TRUE(inspector.GetStringProperty("StaticIP.NameServers",
-                                          &string_value));
+  {
+    Error error;
+    EXPECT_FALSE(store.GetInt32Property("StaticIP.Mtu", NULL, &error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+  EXPECT_TRUE(store.GetStringProperty("StaticIP.NameServers", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kNameServers, string_value);
-  EXPECT_TRUE(inspector.GetStringProperty("StaticIP.PeerAddress",
-                                          &string_value));
+  EXPECT_TRUE(store.GetStringProperty("StaticIP.PeerAddress", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kPeerAddress, string_value);
   int32 int_value;
-  EXPECT_TRUE(inspector.GetInt32Property("StaticIP.Prefixlen",
-                                         &int_value));
+  EXPECT_TRUE(store.GetInt32Property("StaticIP.Prefixlen", &int_value,
+                                     &unused_error));
   EXPECT_EQ(kPrefixLen, int_value);
 }
 
@@ -187,23 +195,26 @@ TEST_F(StaticIpParametersTest, SavedParameters) {
   Populate();
   static_params_.ApplyTo(&props_);
 
-  PropertyStoreInspector inspector(&store);
   string string_value;
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Address", &string_value));
+  Error unused_error;
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.Address", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kAddress, string_value);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Gateway", &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.Gateway", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kGateway, string_value);
   int32 int_value;
-  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Mtu", &int_value));
+  EXPECT_TRUE(store.GetInt32Property("SavedIP.Mtu", &int_value,
+                                     &unused_error));
   EXPECT_EQ(kMtu, int_value);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.NameServers",
-                                          &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.NameServers", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kNameServers, string_value);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.PeerAddress",
-                                          &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.PeerAddress", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kPeerAddress, string_value);
-  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Prefixlen",
-                                         &int_value));
+  EXPECT_TRUE(store.GetInt32Property("SavedIP.Prefixlen", &int_value,
+                                     &unused_error));
   EXPECT_EQ(kPrefixLen, int_value);
 
   store.ClearProperty("StaticIP.Address", &error);
@@ -214,20 +225,23 @@ TEST_F(StaticIpParametersTest, SavedParameters) {
   store.ClearProperty("StaticIP.Prefixlen", &error);
 
   static_params_.ApplyTo(&props_);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Address", &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.Address", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kPrefix + kAddress, string_value);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.Gateway", &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.Gateway", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kPrefix + kGateway, string_value);
-  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Mtu", &int_value));
+  EXPECT_TRUE(store.GetInt32Property("SavedIP.Mtu", &int_value,
+                                     &unused_error));
   EXPECT_EQ(kOffset + kMtu, int_value);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.NameServers",
-                                          &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.NameServers", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kPrefix + kNameServers, string_value);
-  EXPECT_TRUE(inspector.GetStringProperty("SavedIP.PeerAddress",
-                                          &string_value));
+  EXPECT_TRUE(store.GetStringProperty("SavedIP.PeerAddress", &string_value,
+                                      &unused_error));
   EXPECT_EQ(kPrefix + kPeerAddress, string_value);
-  EXPECT_TRUE(inspector.GetInt32Property("SavedIP.Prefixlen",
-                                         &int_value));
+  EXPECT_TRUE(store.GetInt32Property("SavedIP.Prefixlen", &int_value,
+                                     &unused_error));
   EXPECT_EQ(kOffset + kPrefixLen, int_value);
 }
 

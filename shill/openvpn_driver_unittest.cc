@@ -29,7 +29,6 @@
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/nice_mock_control.h"
-#include "shill/property_store_inspector.h"
 #include "shill/rpc_task.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
@@ -915,20 +914,21 @@ TEST_F(OpenVPNDriverTest, InitPropertyStore) {
 TEST_F(OpenVPNDriverTest, GetProvider) {
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  PropertyStoreInspector inspector(&store);
   {
     KeyValueStore props;
+    Error error;
     EXPECT_TRUE(
-        inspector.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props));
+        store.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props, &error));
     EXPECT_TRUE(props.LookupBool(flimflam::kPassphraseRequiredProperty, false));
   }
   {
     KeyValueStore props;
     SetArg(flimflam::kOpenVPNPasswordProperty, "random-password");
+    Error error;
     EXPECT_TRUE(
-        inspector.GetKeyValueStoreProperty(
-            flimflam::kProviderProperty, &props));
+        store.GetKeyValueStoreProperty(
+            flimflam::kProviderProperty, &props, &error));
     EXPECT_FALSE(props.LookupBool(flimflam::kPassphraseRequiredProperty, true));
     EXPECT_FALSE(props.ContainsString(flimflam::kOpenVPNPasswordProperty));
   }
