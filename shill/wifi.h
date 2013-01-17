@@ -265,6 +265,7 @@ class WiFi : public Device {
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
   void ScanTask();
+  void SetScanPending(bool pending);
   void StateChanged(const std::string &new_state);
   // Heuristic check if a connection failure was due to bad credentials.
   // Returns true and puts type of failure in |failure| if a credential

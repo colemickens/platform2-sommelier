@@ -212,7 +212,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
   is_debugging_connection_ = false;
-  scan_pending_ = false;
+  SetScanPending(false);
   StopPendingTimer();
   StopReconnectTimer();
 
@@ -1249,7 +1249,7 @@ void WiFi::ScanDoneTask() {
     supplicant_interface_proxy_->FlushBSS(max_age);
     need_bss_flush_ = false;
   }
-  scan_pending_ = false;
+  SetScanPending(false);
   StartScanTimer();
 }
 
@@ -1281,11 +1281,18 @@ void WiFi::ScanTask() {
   // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
   try {
     supplicant_interface_proxy_->Scan(scan_args);
-    scan_pending_ = true;
+    SetScanPending(true);
   } catch (const DBus::Error &e) {  // NOLINT
     // A scan may fail if, for example, the wpa_supplicant vanishing
     // notification is posted after this task has already started running.
     LOG(WARNING) << "Scan failed: " << e.what();
+  }
+}
+
+void WiFi::SetScanPending(bool pending) {
+  if (scan_pending_ != pending) {
+    scan_pending_ = pending;
+    adaptor()->EmitBoolChanged(flimflam::kScanningProperty, pending);
   }
 }
 
