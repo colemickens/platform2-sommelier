@@ -104,8 +104,6 @@ static const Log common_logs[] = {
   { "power-supply-info", "/usr/bin/power-supply-info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
-  { "powerm.LATEST", "/bin/cat /var/log/power_manager/powerm.LATEST" },
-  { "powerm.out", "/bin/cat /var/log/powerm.out" },
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
   { "ps", "/bin/ps aux" },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
