@@ -19,6 +19,7 @@
 #include "modem_status_tool.h"
 #include "netif_tool.h"
 #include "network_status_tool.h"
+#include "perf_tool.h"
 #include "ping_tool.h"
 #include "route_tool.h"
 #include "systrace_tool.h"
@@ -89,6 +90,8 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                              DBus::Error& error);
   virtual std::string GetModemStatus(DBus::Error& error); // NOLINT
   virtual std::string GetNetworkStatus(DBus::Error& error); // NOLINT
+  virtual std::vector<uint8> GetPerfData(const uint32_t& duration,
+                                                 DBus::Error& error); // NOLINT
   virtual void GetDebugLogs(const DBus::FileDescriptor& fd,
                             DBus::Error& error);
   virtual void SetDebugMode(const std::string& subsystem, DBus::Error& error);
@@ -116,6 +119,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   ModemStatusTool* modem_status_tool_;
   NetifTool* netif_tool_;
   NetworkStatusTool* network_status_tool_;
+  PerfTool* perf_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;
   SystraceTool* systrace_tool_;

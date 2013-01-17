@@ -30,6 +30,7 @@ bool DebugDaemon::Init() {
   systrace_tool_ = new SystraceTool();
   tracepath_tool_ = new TracePathTool();
   log_tool_ = new LogTool();
+  perf_tool_ = new PerfTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -102,6 +103,11 @@ std::string DebugDaemon::GetModemStatus(DBus::Error& error) { // NOLINT dbuscxx
 
 std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
   return network_status_tool_->GetNetworkStatus(error);
+}
+
+std::vector<uint8> DebugDaemon::GetPerfData(const uint32_t& duration,
+                                                    DBus::Error& error) {
+  return perf_tool_->GetPerfData(duration, error);
 }
 
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
