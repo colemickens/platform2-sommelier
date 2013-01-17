@@ -282,11 +282,8 @@ if use_flag_is_set highdpi; then
 fi
 
 TOUCHUI_FLAGS=
-if use_flag_is_set touchui; then
-  TOUCHUI_FLAGS="--enable-gesture-tap-highlight"
-  if is_board link; then
-    TOUCHUI_FLAGS="${TOUCHUI_FLAGS} --touch-calibration=0,0,0,30"
-  fi
+if use_flag_is_set touchui && is_board link; then
+  TOUCHUI_FLAGS="--touch-calibration=0,0,0,30"
 fi
 
 # Device Manager Server used to fetch the enterprise policy, if applicable.
