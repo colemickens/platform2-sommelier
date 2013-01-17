@@ -7,14 +7,12 @@
 
 #include <string>
 
-#include "cros-disks/mounter.h"
+#include "cros-disks/fuse-mounter.h"
 
 namespace cros_disks {
 
-class Platform;
-
 // A class for mounting a device file using ntfs-3g.
-class NTFSMounter : public Mounter {
+class NTFSMounter : public FUSEMounter {
  public:
   // A unique type identifier of this derived mounter class.
   static const char kMounterType[];
@@ -24,13 +22,6 @@ class NTFSMounter : public Mounter {
               const std::string& filesystem_type,
               const MountOptions& mount_options,
               const Platform* platform);
-
- protected:
-  // Mounts a device file using ntfs-3g.
-  virtual MountErrorType MountImpl();
-
-  // An object that provides platform service.
-  const Platform* platform_;
 };
 
 }  // namespace cros_disks
