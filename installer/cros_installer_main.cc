@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
       case 'b':
         // Bios type has been explicitly given, don't autodetect
         if (!StrToBiosType(optarg, &bios_type))
-          exit(1);
+          return 1;
         break;
 
       case 'd':
@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
         // This is an outdated argument. When we receive it, we just
         // exit with success right away.
         printf("Received --postcommit. This is a successful no-op.\n");
-        exit(0);
+        return 0;
 
       default:
         printf("Unknown argument %d - switch and struct out of sync\n\n", c);
@@ -96,8 +96,13 @@ int main(int argc, char** argv) {
     string install_dir = argv[optind++];
     string install_dev = argv[optind++];
 
-    // ! converts bool to 0 / non-zero exit code
-    return !RunPostInstall(install_dev, install_dir, bios_type);
+    int exit_code = 0;
+    if (!RunPostInstall(install_dev, install_dir, bios_type, exit_code)) {
+      if (!exit_code)
+        exit_code = 1;
+    }
+
+    return exit_code;
   }
 
   printf("Unknown command: '%s'\n\n", command.c_str());

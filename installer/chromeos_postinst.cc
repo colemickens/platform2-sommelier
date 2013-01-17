@@ -105,7 +105,8 @@ bool KernelConfigToBiosType(const string& kernel_config, BiosType* type) {
 // actived (installed and made bootable), otherwise new firmware with all old
 // kernels may lead to recovery screen (due to new key).
 // TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
-bool FirmwareUpdate(const string &install_dir, bool is_update) {
+// Note that this returns an exit code, not bool success/failure.
+int FirmwareUpdate(const string &install_dir, bool is_update) {
   int result;
   const char *mode;
   string command = install_dir + "/usr/sbin/chromeos-firmwareupdate";
@@ -135,13 +136,14 @@ bool FirmwareUpdate(const string &install_dir, bool is_update) {
   if (result == 0) {
     printf("Firmware update completed.\n");
   } else if (result == 3) {
-    printf("Firmware can't be updated because booted from B (error code: %d)\n",
+    printf("Firmware can't be updated. Booted from RW Firmware B"
+           " (error code: %d)\n",
            result);
   } else {
     printf("Firmware update failed (error code: %d).\n", result);
   }
 
-  return result == 0;
+  return result;
 }
 
 // Matches commandline arguments of chrome-chroot-postinst
@@ -150,7 +152,8 @@ bool FirmwareUpdate(const string &install_dir, bool is_update) {
 // install_dev of the form "/dev/sda3"
 //
 bool ChromeosChrootPostinst(const InstallConfig& install_config,
-                            string src_version) {
+                            string src_version,
+                            int& exit_code) {
 
   printf("ChromeosChrootPostinst(%s)\n",
          src_version.c_str());
@@ -279,7 +282,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   // In factory process, firmware is either pre-flashed or assigned by
   // mini-omaha server, and we don't want to try updates inside postinst.
   if (attempt_firmware_update) {
-    if (!FirmwareUpdate(install_config.root.mount(), is_update)) {
+    exit_code = FirmwareUpdate(install_config.root.mount(), is_update);
+    if (exit_code != 0) {
       // Note: This will only rollback the ChromeOS verified boot target.
       // The assumption is that systems running firmware autoupdate
       // are not running legacy (non-ChromeOS) firmware. If the firmware
@@ -334,7 +338,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
 bool RunPostInstall(const string& install_dir,
                     const string& install_dev,
-                    BiosType bios_type) {
+                    BiosType bios_type,
+                    int& exit_code) {
   InstallConfig install_config;
 
   if (!ConfigureInstall(install_dir,
@@ -380,7 +385,7 @@ bool RunPostInstall(const string& install_dir,
     return false;
   }
 
-  if (!ChromeosChrootPostinst(install_config, src_version)) {
+  if (!ChromeosChrootPostinst(install_config, src_version, exit_code)) {
     printf("PostInstall Failed\n");
     return false;
   }

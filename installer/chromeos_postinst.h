@@ -30,6 +30,7 @@ bool KernelConfigToBiosType(const std::string& kernel_config, BiosType* type);
 // up for the next boot.
 bool RunPostInstall(const std::string& install_dir,
                     const std::string& install_dev,
-                    BiosType bios_type);
+                    BiosType bios_type,
+                    int& exit_code);
 
 #endif // CHROMEOS_POSTINST_H_
