@@ -1709,6 +1709,49 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
+TEST_F(ManagerTest, FindMatchingService) {
+  KeyValueStore args;
+  {
+    Error error;
+    ServiceRefPtr service = manager()->FindMatchingService(args, &error);
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+
+  scoped_refptr<MockService> mock_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  scoped_refptr<MockService> mock_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+  EXPECT_CALL(*mock_service0, DoPropertiesMatch(_))
+      .WillOnce(Return(true))
+      .WillRepeatedly(Return(false));
+  {
+    Error error;
+    EXPECT_EQ(mock_service0, manager()->FindMatchingService(args, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  EXPECT_CALL(*mock_service1, DoPropertiesMatch(_))
+      .WillOnce(Return(true))
+      .WillRepeatedly(Return(false));
+  {
+    Error error;
+    EXPECT_EQ(mock_service1, manager()->FindMatchingService(args, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    EXPECT_FALSE(manager()->FindMatchingService(args, &error));
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+}
+
 TEST_F(ManagerTest, TechnologyOrder) {
   Error error;
   manager()->SetTechnologyOrder(string(flimflam::kTypeEthernet) + "," +

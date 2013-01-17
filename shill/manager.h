@@ -120,6 +120,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
   ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
+  ServiceRefPtr FindMatchingService(const KeyValueStore &args, Error *error);
   std::map<std::string, GeolocationInfos> GetNetworksForGeolocation();
 
   // Request portal detection checks on each registered device until a portal

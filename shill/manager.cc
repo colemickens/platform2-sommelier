@@ -1437,6 +1437,18 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
   return service;
 }
 
+ServiceRefPtr Manager::FindMatchingService(const KeyValueStore &args,
+                                           Error *error) {
+  for (vector<ServiceRefPtr>::iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->DoPropertiesMatch(args)) {
+      return *it;
+    }
+  }
+  error->Populate(Error::kNotFound, "Matching service was not found");
+  return NULL;
+}
+
 map<string, GeolocationInfos> Manager::GetNetworksForGeolocation() {
   map<string, GeolocationInfos> networks;
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();

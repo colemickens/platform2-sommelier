@@ -703,6 +703,19 @@ TEST_F(ServiceTest, ConfigureStringProperty) {
   EXPECT_EQ(kEAPManagement1, service_->GetEAPKeyManagement());
 }
 
+TEST_F(ServiceTest, ConfigureIntProperty) {
+  const int kPriority0 = 100;
+  const int kPriority1 = 200;
+  service_->set_priority(kPriority0);
+  ASSERT_EQ(kPriority0, service_->priority());
+  KeyValueStore args;
+  args.SetInt(flimflam::kPriorityProperty, kPriority1);
+  Error error;
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kPriority1, service_->priority());
+}
+
 TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   service_->MakeFavorite();
   service_->set_auto_connect(false);
@@ -714,6 +727,45 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
+}
+
+TEST_F(ServiceTest, DoPropertiesMatch) {
+  service_->set_auto_connect(false);
+  const string kGUID0 = "guid_zero";
+  const string kGUID1 = "guid_one";
+  service_->set_guid(kGUID0);
+  const uint32 kPriority0 = 100;
+  const uint32 kPriority1 = 200;
+  service_->set_priority(kPriority0);
+
+  {
+    KeyValueStore args;
+    args.SetString(flimflam::kGuidProperty, kGUID0);
+    args.SetBool(flimflam::kAutoConnectProperty, false);
+    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    EXPECT_TRUE(service_->DoPropertiesMatch(args));
+  }
+  {
+    KeyValueStore args;
+    args.SetString(flimflam::kGuidProperty, kGUID1);
+    args.SetBool(flimflam::kAutoConnectProperty, false);
+    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    EXPECT_FALSE(service_->DoPropertiesMatch(args));
+  }
+  {
+    KeyValueStore args;
+    args.SetString(flimflam::kGuidProperty, kGUID0);
+    args.SetBool(flimflam::kAutoConnectProperty, true);
+    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    EXPECT_FALSE(service_->DoPropertiesMatch(args));
+  }
+  {
+    KeyValueStore args;
+    args.SetString(flimflam::kGuidProperty, kGUID0);
+    args.SetBool(flimflam::kAutoConnectProperty, false);
+    args.SetInt(flimflam::kPriorityProperty, kPriority1);
+    EXPECT_FALSE(service_->DoPropertiesMatch(args));
+  }
 }
 
 TEST_F(ServiceTest, IsRemembered) {

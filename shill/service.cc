@@ -517,22 +517,65 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
       error->CopyFrom(set_error);
     }
   }
-  SLOG(Service, 5) << "Configuring uint32 properties:";
-  map<string, uint32>::const_iterator int_it;
-  for (int_it = args.uint_properties().begin();
-       int_it != args.uint_properties().end();
+  SLOG(Service, 5) << "Configuring int32 properties:";
+  map<string, int32>::const_iterator int_it;
+  for (int_it = args.int_properties().begin();
+       int_it != args.int_properties().end();
        ++int_it) {
     if (ContainsKey(parameters_ignored_for_configure_, int_it->first)) {
       continue;
     }
     SLOG(Service, 5) << "   " << int_it->first;
     Error set_error;
-    store_.SetUint32Property(int_it->first, int_it->second, &set_error);
+    store_.SetInt32Property(int_it->first, int_it->second, &set_error);
     OnPropertyChanged(int_it->first);
     if (error->IsSuccess() && set_error.IsFailure()) {
       error->CopyFrom(set_error);
     }
   }
+}
+
+bool Service::DoPropertiesMatch(const KeyValueStore &args) const {
+  map<string, bool>::const_iterator bool_it;
+  SLOG(Service, 5) << "Checking bool properties:";
+  for (bool_it = args.bool_properties().begin();
+       bool_it != args.bool_properties().end();
+       ++bool_it) {
+    SLOG(Service, 5) << "   " << bool_it->first;
+    Error get_error;
+    bool value;
+    if (!store_.GetBoolProperty(bool_it->first, &value, &get_error) ||
+        value != bool_it->second) {
+      return false;
+    }
+  }
+  SLOG(Service, 5) << "Checking string properties:";
+  map<string, string>::const_iterator string_it;
+  for (string_it = args.string_properties().begin();
+       string_it != args.string_properties().end();
+       ++string_it) {
+    SLOG(Service, 5) << "   " << string_it->first;
+    Error get_error;
+    string value;
+    if (!store_.GetStringProperty(string_it->first, &value, &get_error) ||
+        value != string_it->second) {
+      return false;
+    }
+  }
+  SLOG(Service, 5) << "Checking int32 properties:";
+  map<string, int32>::const_iterator int_it;
+  for (int_it = args.int_properties().begin();
+       int_it != args.int_properties().end();
+       ++int_it) {
+    SLOG(Service, 5) << "   " << int_it->first;
+    Error get_error;
+    int32 value;
+    if (!store_.GetInt32Property(int_it->first, &value, &get_error) ||
+        value != int_it->second) {
+      return false;
+    }
+  }
+  return true;
 }
 
 bool Service::IsRemembered() const {

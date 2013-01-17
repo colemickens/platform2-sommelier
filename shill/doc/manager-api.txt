@@ -154,6 +154,17 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotSupported
 
+		void FindMatchingService(dict properties)
+
+			Find a service that matches all the properties
+			and returns the object identifier associated
+			with it.  If no service exists in memory that
+			matches these arguments, an error is returned.
+
+			See also GetService and ConfgiureService.
+
+			Possible Errors: [service].Error.NotFound
+
 		object GetService(dict properties)
 
 			Return the object path of a service after

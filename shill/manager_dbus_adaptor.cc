@@ -246,6 +246,27 @@ void ManagerDBusAdaptor::ConfigureService(
   e.ToDBusError(&error);
 }
 
+::DBus::Path ManagerDBusAdaptor::FindMatchingService(
+    const map<string, ::DBus::Variant> &args,
+    ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  KeyValueStore args_store;
+  Error value_error;
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &value_error);
+  if (value_error.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid
+  }
+
+  Error find_error;
+  ServiceRefPtr service =
+      manager_->FindMatchingService(args_store, &find_error);
+  if (find_error.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid
+  }
+
+  return service->GetRpcIdentifier();
+}
+
 int32_t ManagerDBusAdaptor::GetDebugLevel(::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__;
   return logging::GetMinLogLevel();

@@ -276,6 +276,11 @@ class Service : public base::RefCounted<Service> {
   // fails, but will only return the first error.
   virtual void Configure(const KeyValueStore &args, Error *error);
 
+  // Iterate over all the properties in |args| and test for an identical
+  // value in this service object's store.  Returns false if one or more
+  // keys in |args| do not exist or have different values, true otherwise.
+  virtual bool DoPropertiesMatch(const KeyValueStore &args) const;
+
   // Returns whether portal detection is explicitly disabled on this service
   // via a property set on it.
   virtual bool IsPortalDetectionDisabled() const;

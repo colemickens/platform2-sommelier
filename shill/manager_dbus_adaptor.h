@@ -74,6 +74,9 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
       ::DBus::Error &error);
   void ConfigureService(const std::map<std::string, ::DBus::Variant> &args,
                         ::DBus::Error &error);
+  ::DBus::Path FindMatchingService(
+      const std::map<std::string, ::DBus::Variant> &args,
+      ::DBus::Error &error);
 
   int32_t GetDebugLevel(::DBus::Error &error);
   void SetDebugLevel(const int32_t &level, ::DBus::Error &error);
