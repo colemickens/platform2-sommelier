@@ -23,9 +23,6 @@ class FilePath;
 struct DBusPendingCall;
 
 namespace login_manager {
-namespace gobject {
-struct SessionManager;
-}
 
 class ScopedDBusPendingCall;
 

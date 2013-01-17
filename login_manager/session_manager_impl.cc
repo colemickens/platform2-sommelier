@@ -71,10 +71,6 @@ const char kDeviceOwnerPref[] = "cros.device.owner";
 // the user session starts.
 const char kMachineInfoFile[] = "/tmp/machine-info";
 
-// Device-local account state directory.
-const FilePath::CharType kDeviceLocalAccountStateDir[] =
-    FILE_PATH_LITERAL("/var/lib/device_local_accounts");
-
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 

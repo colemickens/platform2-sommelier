@@ -4,9 +4,13 @@
 
 #include "user_policy_service.h"
 
+#include <vector>
+
 #include <base/basictypes.h>
+#include <base/file_util.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
+#include <base/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -15,12 +19,14 @@
 #include "login_manager/mock_policy_key.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_policy_store.h"
+#include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
 
 using ::testing::ElementsAre;
 using ::testing::InSequence;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::Sequence;
 using ::testing::StrictMock;
 using ::testing::_;
@@ -36,13 +42,18 @@ class UserPolicyServiceTest : public ::testing::Test {
   }
 
   virtual void SetUp() {
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    key_copy_file_ = tmpdir_.path().Append("key_copy.pub");
+
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;
     scoped_refptr<base::MessageLoopProxy> message_loop(
         base::MessageLoopProxy::current());
     service_ = new UserPolicyService(scoped_ptr<PolicyStore>(store_),
                                      scoped_ptr<PolicyKey>(key_),
-                                     message_loop);
+                                     key_copy_file_,
+                                     message_loop,
+                                     &system_utils_);
   }
 
   void InitPolicy(em::PolicyData::AssociationState state,
@@ -72,6 +83,10 @@ class UserPolicyServiceTest : public ::testing::Test {
   }
 
  protected:
+  SystemUtils system_utils_;
+  ScopedTempDir tmpdir_;
+  FilePath key_copy_file_;
+
   const std::string fake_signature_;
 
   // Various representations of the policy protobuf.
@@ -125,9 +140,13 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
 
   Sequence s1;
   ExpectStorePolicy(s1);
+  std::vector<uint8> key_value;
+  key_value.push_back(0x12);
 
   EXPECT_CALL(*key_, IsPopulated())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*key_, public_key_der())
+      .WillRepeatedly(ReturnRef(key_value));
 
   Sequence s2;
   EXPECT_CALL(*key_, ClobberCompromisedKey(ElementsAre()))
@@ -136,8 +155,15 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
       .InSequence(s2)
       .WillOnce(Return(true));
 
+  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
   loop_.RunAllPending();
+
+  EXPECT_TRUE(file_util::PathExists(key_copy_file_));
+  std::string content;
+  EXPECT_TRUE(file_util::ReadFileToString(key_copy_file_, &content));
+  ASSERT_EQ(1u, content.size());
+  EXPECT_EQ(key_value[0], content[0]);
 }
 
 TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
@@ -151,6 +177,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
   loop_.RunAllPending();
+  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
 }
 
 TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
@@ -159,9 +186,33 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   InSequence s;
   EXPECT_CALL(*key_, Verify(_, _, _, _))
       .WillOnce(Return(false));
+  EXPECT_CALL(completion_, Failure(_));
 
   EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_, 0));
   loop_.RunAllPending();
+}
+
+TEST_F(UserPolicyServiceTest, PersistKeyCopy) {
+  std::vector<uint8> key_value;
+  key_value.push_back(0x12);
+  EXPECT_CALL(*key_, IsPopulated())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*key_, public_key_der())
+      .WillOnce(ReturnRef(key_value));
+  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
+
+  service_->PersistKeyCopy();
+  EXPECT_TRUE(file_util::PathExists(key_copy_file_));
+  std::string content;
+  EXPECT_TRUE(file_util::ReadFileToString(key_copy_file_, &content));
+  ASSERT_EQ(1u, content.size());
+  EXPECT_EQ(key_value[0], content[0]);
+
+  // Now persist an empty key, and verify that the copy is removed.
+  EXPECT_CALL(*key_, IsPopulated())
+      .WillRepeatedly(Return(false));
+  service_->PersistKeyCopy();
+  EXPECT_FALSE(file_util::PathExists(key_copy_file_));
 }
 
 }  // namespace login_manager

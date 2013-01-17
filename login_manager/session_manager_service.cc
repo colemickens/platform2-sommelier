@@ -288,7 +288,7 @@ bool SessionManagerService::Initialize() {
   device_policy->set_delegate(impl);
 
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory(
-      new UserPolicyServiceFactory(getuid(), loop_proxy_));
+      new UserPolicyServiceFactory(getuid(), loop_proxy_, system_));
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
       new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
                                           owner_key_.get(),

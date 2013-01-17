@@ -20,9 +20,6 @@
 #include <gmock/gmock.h>
 
 namespace login_manager {
-namespace gobject {
-struct SessionManager;
-}
 
 class ScopedDBusPendingCall;
 
@@ -41,6 +38,7 @@ class MockSystemUtils : public SystemUtils {
                bool(const FilePath& file, int32* file_size_32));
   MOCK_METHOD2(EnsureAndReturnSafeSize,
                bool(int64 size_64, int32* size_32));
+  MOCK_METHOD1(RemoveFile, bool(const FilePath& filename));
 
   // Make a fake that returns a filename in a temp dir owned by this class.
   bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path);

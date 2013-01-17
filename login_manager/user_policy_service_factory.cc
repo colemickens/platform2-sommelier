@@ -13,12 +13,14 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
+#include <base/stringprintf.h>
 
 #include "chromeos/cryptohome.h"
 
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/user_policy_service.h"
+#include "login_manager/system_utils.h"
 
 namespace em = enterprise_management;
 
@@ -35,13 +37,24 @@ const FilePath::CharType kPolicyDataFile[] = FILE_PATH_LITERAL("policy");
 // Holds the public key for policy signing.
 const FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
 
+// Directory that contains the public keys for user policy verification.
+// These keys are duplicates from the key contained in the vault, so that the
+// chrome process can read them; the authoritative version of the key is still
+// the vault's.
+const FilePath::CharType kPolicyKeyCopyDir[] =
+    FILE_PATH_LITERAL("/var/run/user_policy/");
+// Suffix of the policy key files.
+const FilePath::CharType kPolicyKeyCopyFileSuffix[] = FILE_PATH_LITERAL(".pub");
+
 }  // namespace
 
 UserPolicyServiceFactory::UserPolicyServiceFactory(
     uid_t uid,
-    const scoped_refptr<base::MessageLoopProxy>& main_loop)
+    const scoped_refptr<base::MessageLoopProxy>& main_loop,
+    SystemUtils* system_utils)
     : uid_(uid),
-      main_loop_(main_loop) {
+      main_loop_(main_loop),
+      system_utils_(system_utils) {
 }
 
 UserPolicyServiceFactory::~UserPolicyServiceFactory() {
@@ -69,7 +82,17 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
   if (!policy_success)  // Non-fatal, so log, and keep going.
     LOG(WARNING) << "Failed to load user policy data, continuing anyway.";
 
-  return new UserPolicyService(store.Pass(), key.Pass(), main_loop_);
+  using chromeos::cryptohome::home::SanitizeUserName;
+  const std::string sanitized(SanitizeUserName(username));
+  const FilePath key_copy_file(base::StringPrintf("%s%s%s",
+                                                  kPolicyKeyCopyDir,
+                                                  sanitized.c_str(),
+                                                  kPolicyKeyCopyFileSuffix));
+
+  UserPolicyService* service = new UserPolicyService(
+      store.Pass(), key.Pass(), key_copy_file, main_loop_, system_utils_);
+  service->PersistKeyCopy();
+  return service;
 }
 
 }  // namespace login_manager

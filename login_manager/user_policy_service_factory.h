@@ -18,6 +18,7 @@ class MessageLoopProxy;
 
 namespace login_manager {
 class PolicyService;
+class SystemUtils;
 
 // Factory for creating user policy service instances. User policies are stored
 // in the root-owned part of the user's cryptohome.
@@ -25,7 +26,8 @@ class UserPolicyServiceFactory {
  public:
   UserPolicyServiceFactory(
       uid_t uid,
-      const scoped_refptr<base::MessageLoopProxy>& main_loop);
+      const scoped_refptr<base::MessageLoopProxy>& main_loop,
+      SystemUtils* system_utils);
   virtual ~UserPolicyServiceFactory();
 
   // Creates a new user policy service instance.
@@ -36,6 +38,7 @@ class UserPolicyServiceFactory {
   uid_t uid_;
 
   scoped_refptr<base::MessageLoopProxy> main_loop_;
+  SystemUtils* system_utils_;
 
   DISALLOW_COPY_AND_ASSIGN(UserPolicyServiceFactory);
 };

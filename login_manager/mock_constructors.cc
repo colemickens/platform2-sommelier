@@ -84,7 +84,7 @@ MockSessionManager::MockSessionManager() {}
 MockSessionManager::~MockSessionManager() {}
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
-  : UserPolicyServiceFactory(0, NULL) {}
+  : UserPolicyServiceFactory(0, NULL, NULL) {}
 MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() {}
 
 }  // namespace login_manager

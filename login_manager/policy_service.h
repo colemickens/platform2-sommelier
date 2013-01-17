@@ -132,6 +132,10 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
                    Completion* completion,
                    int flags);
 
+  // Completes a key storage operation on the UI thread, reporting the result to
+  // the delegate.
+  virtual void OnKeyPersisted(bool status);
+
  private:
   // Takes care of persisting the policy key to disk.
   void PersistKeyOnLoop();
@@ -139,10 +143,6 @@ class PolicyService : public base::RefCountedThreadSafe<PolicyService> {
   // Persists policy to disk on the main thread. If |completion| is non-NULL
   // it will be signaled when done.
   void PersistPolicyOnLoop(Completion* completion);
-
-  // Completes a key storage operation on the UI thread, reporting the result to
-  // the delegate.
-  void OnKeyPersisted(bool status);
 
   // Finishes persisting policy with |status|, notifying the delegate and
   // reporting the status through |completion|.

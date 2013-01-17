@@ -166,6 +166,15 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
   return true;
 }
 
+void PolicyService::OnKeyPersisted(bool status) {
+  if (status)
+    LOG(INFO) << "Persisted policy key to disk.";
+  else
+    LOG(ERROR) << "Failed to persist policy key to disk.";
+  if (delegate_)
+    delegate_->OnKeyPersisted(status);
+}
+
 void PolicyService::PersistKeyOnLoop() {
   DCHECK(main_loop_->BelongsToCurrentThread());
   OnKeyPersisted(key()->Persist());
@@ -174,15 +183,6 @@ void PolicyService::PersistKeyOnLoop() {
 void PolicyService::PersistPolicyOnLoop(Completion* completion) {
   DCHECK(main_loop_->BelongsToCurrentThread());
   OnPolicyPersisted(completion, store()->Persist());
-}
-
-void PolicyService::OnKeyPersisted(bool status) {
-  if (status)
-    LOG(INFO) << "Persisted policy key to disk.";
-  else
-    LOG(ERROR) << "Failed to persist policy key to disk.";
-  if (delegate_)
-    delegate_->OnKeyPersisted(status);
 }
 
 void PolicyService::OnPolicyPersisted(Completion* completion, bool status) {
