@@ -9,7 +9,7 @@
 
 #include <map>
 
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/signal_callback.h"
 
 class PowerStateControl;
@@ -45,7 +45,7 @@ enum StateControlStates {
 // StateControl::IsStateDisabled()
 // Requests to disable the state machine will either time out after their
 // duration has passed (default value of 30 minutes, controllable via
-// power prefs file state_max_disabled_duration_sec) or a request is
+// prefs file state_max_disabled_duration_sec) or a request is
 // explicitly canceled through StateControl::RemoveOverride()
 class StateControl {
  public:
@@ -59,7 +59,7 @@ class StateControl {
   bool StateOverrideRequestStruct(const StateControlInfo* request,
                                   int* return_value);
   bool IsStateDisabled(StateControlStates state);
-  void ReadSettings(PowerPrefs* prefs);
+  void ReadSettings(PrefsInterface* prefs);
 
  private:
   friend class StateControlTest;

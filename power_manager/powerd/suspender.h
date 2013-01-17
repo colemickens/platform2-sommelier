@@ -22,7 +22,7 @@ namespace power_manager {
 class Daemon;
 class DBusSenderInterface;
 class FileTagger;
-class PowerPrefs;
+class PrefsInterface;
 class SuspendDelayController;
 
 namespace system {
@@ -45,7 +45,7 @@ class Suspender : public SuspendDelayObserver {
                                       const gchar* new_owner,
                                       gpointer data);
 
-  void Init(PowerPrefs* prefs);
+  void Init(PrefsInterface* prefs);
 
   // Starts the suspend process.  Notifies clients that have registered delays
   // that the system is about to suspend, starts |check_suspend_timeout_id_|,

@@ -28,6 +28,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/backlight_controller.h"
@@ -86,7 +87,7 @@ static const int64 kProjectionTimeoutFactor = 2;
 //         capability of shutting the system down.
 
 Daemon::Daemon(BacklightController* backlight_controller,
-               PowerPrefs* prefs,
+               PrefsInterface* prefs,
                MetricsLibraryInterface* metrics_lib,
                VideoDetector* video_detector,
                IdleDetector* idle,
@@ -142,10 +143,14 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false),
       keep_backlight_on_for_audio_(false) {
+  prefs_->AddObserver(this);
   idle_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
+  idle_->RemoveObserver(this);
+  prefs_->RemoveObserver(this);
+
   util::RemoveTimeout(&cras_retry_connect_timeout_id_);
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
@@ -153,7 +158,6 @@ Daemon::~Daemon() {
 
   if (udev_)
     udev_unref(udev_);
-  idle_->RemoveObserver(this);
 
   if (cras_client_) {
     if (connected_to_cras_)
@@ -164,7 +168,6 @@ Daemon::~Daemon() {
 
 void Daemon::Init() {
   ReadSettings();
-  prefs_->StartPrefWatching(&(PrefChangeHandler), this);
   MetricInit();
   LOG_IF(ERROR, (!metrics_store_.Init()))
       << "Unable to initialize metrics store, so we are going to drop number of"
@@ -761,6 +764,17 @@ void Daemon::SendBrightnessChangedSignal(double brightness_percent,
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
+}
+
+void Daemon::OnPrefChanged(const std::string& pref_name) {
+  if (pref_name == kLockOnIdleSuspendPref) {
+    ReadLockScreenSettings();
+    locker_.Init(lock_on_idle_suspend_);
+    SetIdleOffset(0, IDLE_STATE_NORMAL);
+  } else if (pref_name == kDisableIdleSuspendPref) {
+    ReadSuspendSettings();
+    SetIdleOffset(0, IDLE_STATE_NORMAL);
+  }
 }
 
 void Daemon::OnBrightnessChanged(double brightness_percent,
@@ -1658,23 +1672,6 @@ void Daemon::Suspend() {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
     OnRequestShutdown();
   }
-}
-
-gboolean Daemon::PrefChangeHandler(const char* name,
-                                   int,               // watch handle
-                                   unsigned int,      // mask
-                                   gpointer data) {
-  Daemon* daemon = static_cast<Daemon*>(data);
-  if (!strcmp(name, kLockOnIdleSuspendPref)) {
-    daemon->ReadLockScreenSettings();
-    daemon->locker_.Init(daemon->lock_on_idle_suspend_);
-    daemon->SetIdleOffset(0, IDLE_STATE_NORMAL);
-  }
-  if (!strcmp(name, kDisableIdleSuspendPref)) {
-    daemon->ReadSuspendSettings();
-    daemon->SetIdleOffset(0, IDLE_STATE_NORMAL);
-  }
-  return TRUE;
 }
 
 void Daemon::HandleResume() {

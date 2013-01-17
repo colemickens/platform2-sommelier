@@ -10,7 +10,8 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs.h"
+#include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/test_main_loop_runner.h"
 
@@ -41,12 +42,15 @@ const guint kPrefChangeTimeoutMs = 60 * 1000;
 namespace power_manager {
 
 // Simple class that runs a GLib main loop until it sees a pref get changed.
-// Tests should pass &OnPrefChangedThunk to PowerPrefs::StartPrefWatching(),
-// update a pref file, and then call RunUntilPrefChanged().
-class TestPrefObserver {
+// Tests should update a pref file and then call RunUntilPrefChanged().
+class TestPrefsObserver : public PrefsObserver {
  public:
-  TestPrefObserver() {}
-  ~TestPrefObserver() {}
+  explicit TestPrefsObserver(Prefs* prefs) : prefs_(prefs) {
+    prefs_->AddObserver(this);
+  }
+  ~TestPrefsObserver() {
+    prefs_->RemoveObserver(this);
+  }
 
   // Runs |loop_| until OnPrefChanged() is called, then quits the loop
   // and returns a string containing the name of the pref that was changed.
@@ -57,35 +61,26 @@ class TestPrefObserver {
     return pref_name_;
   }
 
-  // Listens for preference change notifications.  Cancels |timeout_id_|, quits
-  // the main loop, and updates |pref_name_|.
-  SIGNAL_CALLBACK_3(TestPrefObserver,
-                    gboolean,
-                    OnPrefChanged,
-                    const char*,
-                    int,
-                    unsigned int);
+  // PrefsObserver implementation:
+  void OnPrefChanged(const std::string& pref_name) OVERRIDE {
+    loop_runner_.StopLoop();
+    pref_name_ = pref_name;
+  }
 
  private:
+  Prefs* prefs_;  // not owned
+
   TestMainLoopRunner loop_runner_;
 
   // Name of the last pref that was changed.
   std::string pref_name_;
 
-  DISALLOW_COPY_AND_ASSIGN(TestPrefObserver);
+  DISALLOW_COPY_AND_ASSIGN(TestPrefsObserver);
 };
 
-gboolean TestPrefObserver::OnPrefChanged(const char* name,
-                                         int handle,
-                                         unsigned int mask) {
-  loop_runner_.StopLoop();
-  pref_name_ = name;
-  return TRUE;
-}
-
-class PowerPrefsTest : public Test {
+class PrefsTest : public Test {
  public:
-  PowerPrefsTest() {}
+  PrefsTest() {}
 
   virtual void SetUp() {
     paths_.clear();
@@ -104,8 +99,9 @@ class PowerPrefsTest : public Test {
 };
 
 // Test read/write with only one directory.
-TEST_F(PowerPrefsTest, TestOneDirectory) {
-  PowerPrefs prefs(paths_[0]);
+TEST_F(PrefsTest, TestOneDirectory) {
+  Prefs prefs;
+  ASSERT_TRUE(prefs.Init(std::vector<FilePath>(1, paths_[0])));
 
   // Make sure the pref files don't already exist.
   EXPECT_FALSE(file_util::PathExists(paths_[0].Append(kIntTestFileName)));
@@ -136,8 +132,9 @@ TEST_F(PowerPrefsTest, TestOneDirectory) {
 }
 
 // Test read/write with three directories.
-TEST_F(PowerPrefsTest, TestThreeDirectories) {
-  PowerPrefs prefs(paths_);
+TEST_F(PrefsTest, TestThreeDirectories) {
+  Prefs prefs;
+  ASSERT_TRUE(prefs.Init(paths_));
 
   // Make sure the files don't already exist.
   for (int i = 0; i < kNumPrefDirectories; ++i) {
@@ -169,7 +166,7 @@ TEST_F(PowerPrefsTest, TestThreeDirectories) {
 // Test read from three directories, checking for precedence of directories.
 // Prefs in |paths_[i]| take precedence over the same prefs in |paths_[j]|, for
 // i < j.
-TEST_F(PowerPrefsTest, TestThreeDirectoriesStacked) {
+TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
   // Run cycles from 1 to |(1 << kNumPrefDirectories) - 1|.  Each cycle number's
   // bits will represent the paths to populate with pref files.  e.g...
   // cycle 2 = 010b  =>  write prefs to |paths_[1]|
@@ -180,7 +177,8 @@ TEST_F(PowerPrefsTest, TestThreeDirectoriesStacked) {
   for (int cycle = 1; cycle < (1 << kNumPrefDirectories); ++cycle) {
     LOG(INFO) << "Testing stacked directories, cycle #" << cycle;
     SetUp();
-    PowerPrefs prefs(paths_);
+    Prefs prefs;
+    ASSERT_TRUE(prefs.Init(paths_));
 
     // Write values to the pref directories as appropriate for this cycle.
     int i;
@@ -242,8 +240,9 @@ TEST_F(PowerPrefsTest, TestThreeDirectoriesStacked) {
 
 // Test read from three directories, with the higher precedence directories
 // containing garbage.
-TEST_F(PowerPrefsTest, TestThreeDirectoriesGarbage) {
-  PowerPrefs prefs(paths_);
+TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
+  Prefs prefs;
+  ASSERT_TRUE(prefs.Init(paths_));
 
   for (int i = 0; i < kNumPrefDirectories; ++i) {
     const FilePath& path = paths_[i];
@@ -283,16 +282,16 @@ TEST_F(PowerPrefsTest, TestThreeDirectoriesGarbage) {
   EXPECT_EQ(kDoubleTestValue, double_value);
 }
 
-// Make sure that PowerPrefs correctly notifies about changes to pref files.
-TEST_F(PowerPrefsTest, WatchPrefs) {
+// Make sure that Prefs correctly notifies about changes to pref files.
+TEST_F(PrefsTest, WatchPrefs) {
   const char kPrefName[] = "foo";
   const char kPrefValue[] = "1";
   const FilePath kFilePath = paths_[0].Append(kPrefName);
 
-  // Create a pref file.
-  PowerPrefs prefs(paths_);
-  TestPrefObserver observer;
-  prefs.StartPrefWatching(&TestPrefObserver::OnPrefChangedThunk, &observer);
+  // Create a Prefs object.
+  Prefs prefs;
+  TestPrefsObserver observer(&prefs);
+  ASSERT_TRUE(prefs.Init(paths_));
   EXPECT_EQ(strlen(kPrefValue),
             file_util::WriteFile(kFilePath, kPrefValue, strlen(kPrefValue)));
   EXPECT_EQ(kPrefName, observer.RunUntilPrefChanged());

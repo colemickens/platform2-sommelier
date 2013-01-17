@@ -20,7 +20,6 @@ POWERMAN_FLAGS = $(LIBPOWERMAN_FLAGS)
 POWERMAN_LIBS = $(LIBPOWERMAN_LIBS) -lprotobuf-lite
 POWERMAN_OBJS = powerm/powerman_main.o
 CXX_BINARY(powerm/powerm): $(POWERMAN_OBJS) \
-	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
 	CXX_STATIC_LIBRARY(powerm/libpowerman.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)

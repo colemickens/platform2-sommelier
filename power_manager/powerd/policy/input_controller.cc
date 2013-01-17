@@ -6,7 +6,7 @@
 
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/input_event.pb.h"
 #include "power_manager/powerd/system/input.h"
@@ -32,7 +32,7 @@ InputController::~InputController() {
   input_->RemoveObserver(this);
 }
 
-void InputController::Init(PowerPrefs* prefs) {
+void InputController::Init(PrefsInterface* prefs) {
   CHECK(prefs->GetBool(kUseLidPref, &use_input_for_lid_));
   int lid_state_value = 0;
   if (use_input_for_lid_ && input_->QueryLidState(&lid_state_value))

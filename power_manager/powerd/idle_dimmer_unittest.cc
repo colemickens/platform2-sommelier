@@ -7,8 +7,8 @@
 
 #include "base/command_line.h"
 #include "base/logging.h"
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/system/mock_backlight.h"
 
@@ -35,8 +35,7 @@ static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 100 /
 class IdleDimmerTest : public Test {
  public:
   IdleDimmerTest()
-      : prefs_(FilePath("/tmp")),
-        backlight_ctl_(&backlight_, &prefs_, NULL),
+      : backlight_ctl_(&backlight_, &prefs_, NULL),
         current_brightness_(0),
         target_brightness_(0) {
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
@@ -49,8 +48,8 @@ class IdleDimmerTest : public Test {
         .WillRepeatedly(DoAll(SaveArg<0>(&current_brightness_),
                               Return(true)));
 
-    prefs_.SetInt64(kPluggedBrightnessOffsetPref, kPluggedBrightnessP);
-    prefs_.SetInt64(kUnpluggedBrightnessOffsetPref, kUnpluggedBrightnessP);
+    prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessP);
+    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref, kUnpluggedBrightnessP);
 
     CHECK(backlight_ctl_.Init());
   }
@@ -62,7 +61,7 @@ class IdleDimmerTest : public Test {
 
  protected:
   system::MockBacklight backlight_;
-  PowerPrefs prefs_;
+  FakePrefs prefs_;
   InternalBacklightController backlight_ctl_;
 
   int64 current_brightness_;

@@ -38,7 +38,7 @@ class InternalBacklightController : public BacklightController {
   static const double kMinVisiblePercent;
 
   InternalBacklightController(system::BacklightInterface* backlight,
-                              PowerPrefs* prefs,
+                              PrefsInterface* prefs,
                               AmbientLightSensor* sensor);
   virtual ~InternalBacklightController();
 
@@ -134,7 +134,7 @@ class InternalBacklightController : public BacklightController {
   system::BacklightInterface* backlight_;
 
   // Interface for saving preferences. Non-owned.
-  PowerPrefs* prefs_;
+  PrefsInterface* prefs_;
 
   // Light sensor we need to register for updates from.  Non-owned.
   AmbientLightSensor* light_sensor_;

@@ -8,7 +8,7 @@
 #include <string>
 
 #include "base/memory/scoped_ptr.h"
-#include "power_manager/common/mock_power_prefs.h"
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/backlight_controller.h"
@@ -72,7 +72,7 @@ class KeyboardBacklightControllerTest : public Test {
   virtual void SetUp() {
     light_sensor_.ExpectAddObserver();
     controller_.reset(new KeyboardBacklightController(&backlight_,
-                                                      &power_prefs_,
+                                                      &prefs_,
                                                       &light_sensor_));
     controller_->state_ = BACKLIGHT_ACTIVE;
     controller_->max_level_ = kTestBrightnessMaxLevel;
@@ -80,15 +80,11 @@ class KeyboardBacklightControllerTest : public Test {
     controller_->als_target_percent_ = 0.0;
     backlight_.ExpectGetMaxBrightnessLevel(kTestBrightnessMaxLevel, true);
     backlight_.ExpectGetCurrentBrightnessLevel(kTestCurrentLevel, true);
-    power_prefs_.ExpectGetString(kKeyboardBacklightAlsLimitsPref,
-                                 kTestAlsLimitsString, true);
-    power_prefs_.ExpectGetString(kKeyboardBacklightAlsStepsPref,
-                                 kTestAlsStepsString, true);
-    power_prefs_.ExpectGetString(kKeyboardBacklightUserLimitsPref,
-                                 kTestUserLimitsString, true);
-    power_prefs_.ExpectGetString(kKeyboardBacklightUserStepsPref,
-                                 kTestUserStepsString, true);
-    power_prefs_.ExpectGetBool(kDisableALSPref, false, true);
+    prefs_.SetString(kKeyboardBacklightAlsLimitsPref, kTestAlsLimitsString);
+    prefs_.SetString(kKeyboardBacklightAlsStepsPref, kTestAlsStepsString);
+    prefs_.SetString(kKeyboardBacklightUserLimitsPref, kTestUserLimitsString);
+    prefs_.SetString(kKeyboardBacklightUserStepsPref, kTestUserStepsString);
+    prefs_.SetInt64(kDisableALSPref, 0);
     ASSERT_TRUE(controller_->Init());
   }
 
@@ -137,7 +133,7 @@ class KeyboardBacklightControllerTest : public Test {
  protected:
   StrictMock<MockAmbientLightSensor> light_sensor_;
   StrictMock<system::MockBacklight> backlight_;
-  StrictMock<MockPowerPrefs> power_prefs_;
+  FakePrefs prefs_;
   scoped_ptr<KeyboardBacklightController> controller_;
 };  // class KeyboardBacklightControllerTest
 
@@ -152,7 +148,7 @@ TEST_F(KeyboardBacklightControllerTest, Init) {
 
   light_sensor_.ExpectAddObserver();
   controller_.reset(new KeyboardBacklightController(&backlight_,
-                                                    &power_prefs_,
+                                                    &prefs_,
                                                     &light_sensor_));
 
 
@@ -175,14 +171,6 @@ TEST_F(KeyboardBacklightControllerTest, Init) {
   controller_->als_target_percent_ = 0.0;
   backlight_.ExpectGetMaxBrightnessLevel(kTestBrightnessMaxLevel, true);
   backlight_.ExpectGetCurrentBrightnessLevel(kTestCurrentLevel, true);
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsLimitsPref,
-                              kTestAlsLimitsString, true);
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsStepsPref,
-                               kTestAlsStepsString, true);
-  power_prefs_.ExpectGetString(kKeyboardBacklightUserLimitsPref,
-                               kTestUserLimitsString, true);
-  power_prefs_.ExpectGetString(kKeyboardBacklightUserStepsPref,
-                                 kTestUserStepsString, true);
   EXPECT_TRUE(controller_->Init());
   CheckAlsStep(kTestStepIndex, kTestSyntheticLux);
   for(unsigned int i = 0; i < controller_->als_steps_.size(); i++) {
@@ -530,47 +518,38 @@ TEST_F(KeyboardBacklightControllerTest, ReadLimitsPrefs) {
   double test_dim = -1.0;
   double test_max= -1.0;
   // Success case.
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsLimitsPref,
-                               kTestAlsLimitsString, true);
   controller_->ReadLimitsPrefs(kKeyboardBacklightAlsLimitsPref,
                                &test_min, &test_dim, &test_max);
   EXPECT_EQ(kTestAlsPercentMin, test_min);
   EXPECT_EQ(kTestAlsPercentDim, test_dim);
   EXPECT_EQ(kTestAlsPercentMax, test_max);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 
   test_min = -1.0;
   test_dim = -1.0;
   test_max= -1.0;
   // Failure to read file case.
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsLimitsPref,
-                               kTestAlsLimitsString, false);
+  prefs_.Unset(kKeyboardBacklightAlsLimitsPref);
   controller_->ReadLimitsPrefs(kKeyboardBacklightAlsLimitsPref,
                                &test_min, &test_dim, &test_max);
   EXPECT_EQ(-1.0, test_min);
   EXPECT_EQ(-1.0, test_dim);
   EXPECT_EQ(-1.0, test_max);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 
   test_min = -1.0;
   test_dim = -1.0;
   test_max= -1.0;
   // Failure to parse input strings.
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsLimitsPref,
-                               "", true);
+  prefs_.SetString(kKeyboardBacklightAlsLimitsPref, "");
   controller_->ReadLimitsPrefs(kKeyboardBacklightAlsLimitsPref,
                                &test_min, &test_dim, &test_max);
   EXPECT_EQ(-1.0, test_min);
   EXPECT_EQ(-1.0, test_dim);
   EXPECT_EQ(-1.0, test_max);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 }
 
 TEST_F(KeyboardBacklightControllerTest, ReadAlsStepsPref) {
   controller_->als_steps_.clear();
   // Success case.
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsStepsPref,
-                               kTestAlsStepsString, true);
   controller_->ReadAlsStepsPref(kKeyboardBacklightAlsStepsPref);
   EXPECT_EQ(kTestNumAlsSteps, controller_->als_steps_.size());
   for (size_t i = 0; i < controller_->als_steps_.size(); i++) {
@@ -580,12 +559,10 @@ TEST_F(KeyboardBacklightControllerTest, ReadAlsStepsPref) {
     EXPECT_EQ(kTestAlsIncreaseThresholds[i],
               controller_->als_steps_[i].increase_threshold);
   }
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 
   controller_->als_steps_.clear();
   // Failure to read file case.
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsStepsPref,
-                               kTestAlsStepsString, false);
+  prefs_.Unset(kKeyboardBacklightAlsStepsPref);
   controller_->ReadAlsStepsPref(kKeyboardBacklightAlsStepsPref);
   EXPECT_EQ(kDefaultNumAlsSteps, controller_->als_steps_.size());
   EXPECT_EQ(kDefaultAlsPercent, controller_->als_steps_[0].target_percent);
@@ -593,14 +570,11 @@ TEST_F(KeyboardBacklightControllerTest, ReadAlsStepsPref) {
             controller_->als_steps_[0].decrease_threshold);
   EXPECT_EQ(kDefaultAlsIncreaseThreshold,
             controller_->als_steps_[0].increase_threshold);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 
   controller_->als_steps_.clear();
   // Bad lines in input.
-  power_prefs_.ExpectGetString(kKeyboardBacklightAlsStepsPref,
-                               kTestAlsStepsString + "\n" + "\n0.1" +
-                               "\nNot a number",
-                               true);
+  prefs_.SetString(kKeyboardBacklightAlsStepsPref,
+                   kTestAlsStepsString + "\n" + "\n0.1" + "\nNot a number");
   controller_->ReadAlsStepsPref(kKeyboardBacklightAlsStepsPref);
   EXPECT_EQ(kTestNumAlsSteps, controller_->als_steps_.size());
   for (size_t i = 0; i < controller_->als_steps_.size(); i++) {
@@ -610,40 +584,32 @@ TEST_F(KeyboardBacklightControllerTest, ReadAlsStepsPref) {
     EXPECT_EQ(kTestAlsIncreaseThresholds[i],
               controller_->als_steps_[i].increase_threshold);
   }
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 }
 
 TEST_F(KeyboardBacklightControllerTest, ReadUserStepsPref) {
   controller_->user_steps_.clear();
   // Success case.
-  power_prefs_.ExpectGetString(kKeyboardBacklightUserStepsPref,
-                               kTestUserStepsString, true);
   controller_->ReadUserStepsPref(kKeyboardBacklightUserStepsPref);
   EXPECT_EQ(kTestNumUserSteps, controller_->user_steps_.size());
   for (size_t i = 0; i < controller_->user_steps_.size(); i++)
     EXPECT_EQ(kTestUserPercents[i], controller_->user_steps_[i]);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 
   controller_->user_steps_.clear();
   // Failure to read file case.
-  power_prefs_.ExpectGetString(kKeyboardBacklightUserStepsPref,
-                               kTestUserStepsString, false);
+  prefs_.Unset(kKeyboardBacklightUserStepsPref);
   controller_->ReadUserStepsPref(kKeyboardBacklightUserStepsPref);
   EXPECT_EQ(kDefaultNumUserSteps, controller_->user_steps_.size());
   for (size_t i = 0; i < controller_->user_steps_.size(); i++)
     EXPECT_EQ(kDefaultUserPercents[i], controller_->user_steps_[i]);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 
   controller_->user_steps_.clear();
   // Bad lines in input.
-  power_prefs_.ExpectGetString(kKeyboardBacklightUserStepsPref,
-                               kTestUserStepsString + "\nNot a number",
-                               true);
+  prefs_.SetString(kKeyboardBacklightUserStepsPref,
+                   kTestUserStepsString + "\nNot a number");
   controller_->ReadUserStepsPref(kKeyboardBacklightUserStepsPref);
   EXPECT_EQ(kTestNumUserSteps, controller_->user_steps_.size());
   for (size_t i = 0; i < controller_->user_steps_.size(); i++)
     EXPECT_EQ(kTestUserPercents[i], controller_->user_steps_[i]);
-  Mock::VerifyAndClearExpectations(&power_prefs_);
 }
 
 TEST_F(KeyboardBacklightControllerTest, InitializeUserStepIndex) {

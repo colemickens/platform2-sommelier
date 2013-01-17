@@ -11,6 +11,7 @@
 #include "base/logging.h"
 #include "chromeos/dbus/service_constants.h"
 #include "metrics/metrics_library_mock.h"
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/metrics_constants.h"
@@ -77,7 +78,7 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 class DaemonTest : public Test {
  public:
   DaemonTest()
-      : prefs_(FilePath(".")),
+      :
 #ifdef IS_DESKTOP
         backlight_ctl_(&backlight_),
 #else
@@ -289,7 +290,7 @@ class DaemonTest : public Test {
   StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
-  PowerPrefs prefs_;
+  FakePrefs prefs_;
 #ifdef IS_DESKTOP
   ExternalBacklightController backlight_ctl_;
 #else

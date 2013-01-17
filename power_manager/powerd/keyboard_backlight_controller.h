@@ -18,7 +18,7 @@
 namespace power_manager {
 
 class KeyboardBacklightControllerTest;
-class PowerPrefs;
+class PrefsInterface;
 
 namespace system {
 class BacklightInterface;
@@ -29,7 +29,7 @@ class KeyboardBacklightController : public BacklightController,
                                     public VideoDetectorObserver {
  public:
   KeyboardBacklightController(system::BacklightInterface* backlight,
-                              PowerPrefs* prefs,
+                              PrefsInterface* prefs,
                               AmbientLightSensor* sensor);
   virtual ~KeyboardBacklightController();
 
@@ -170,7 +170,7 @@ class KeyboardBacklightController : public BacklightController,
   system::BacklightInterface* backlight_;
 
   // Interface for saving preferences. Non-owned.
-  PowerPrefs* prefs_;
+  PrefsInterface* prefs_;
 
   // Light sensor we need to register for updates from.  Non-owned.
   AmbientLightSensor* light_sensor_;

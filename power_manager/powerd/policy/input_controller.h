@@ -16,7 +16,7 @@
 namespace power_manager {
 
 class DBusSenderInterface;
-class PowerPrefs;
+class PrefsInterface;
 
 namespace system {
 class Input;
@@ -57,7 +57,7 @@ class InputController : public system::InputObserver {
 
   bool lid_is_open() const { return lid_state_ == LID_STATE_OPENED; }
 
-  void Init(PowerPrefs* prefs);
+  void Init(PrefsInterface* prefs);
 
   // system::InputObserver implementation:
   virtual void OnInputEvent(InputType type, int value) OVERRIDE;

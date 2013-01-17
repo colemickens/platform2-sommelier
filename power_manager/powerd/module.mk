@@ -9,7 +9,7 @@ POWERSUPPLY_LIBS = $(GLIB_LIBS) -lgflags
 LIBPOWER_SUPPLY_OBJS = \
 	common/inotify.o \
 	common/power_constants.o \
-	common/power_prefs.o \
+	common/prefs.o \
 	powerd/power_supply.o
 CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): $(LIBPOWER_SUPPLY_OBJS)
 CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): \
@@ -71,7 +71,7 @@ POWERD_LIBS = $(LIBPOWERD_LIBS)
 POWERD_OBJS = powerd/powerd_main.o
 CXX_BINARY(powerd/powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
-	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
+	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
@@ -113,7 +113,7 @@ CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a) \
-	CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a) \
+	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \

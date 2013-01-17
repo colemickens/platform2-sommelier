@@ -16,7 +16,7 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/file_tagger.h"
@@ -77,7 +77,7 @@ void Suspender::NameOwnerChangedHandler(DBusGProxy*,
     suspender->suspend_delay_controller_->HandleDBusClientDisconnected(name);
 }
 
-void Suspender::Init(PowerPrefs* prefs) {
+void Suspender::Init(PrefsInterface* prefs) {
   int64 retry_delay_ms = 0;
   CHECK(prefs->GetInt64(kRetrySuspendMsPref, &retry_delay_ms));
   retry_delay_ = base::TimeDelta::FromMilliseconds(retry_delay_ms);

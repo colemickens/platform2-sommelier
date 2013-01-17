@@ -20,6 +20,7 @@
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/external_backlight_controller.h"
 #include "power_manager/powerd/idle_detector.h"
@@ -101,7 +102,8 @@ int main(int argc, char* argv[]) {
   pref_paths.push_back(prefs_dir);
   pref_paths.push_back(default_prefs_dir.Append("board_specific"));
   pref_paths.push_back(default_prefs_dir);
-  power_manager::PowerPrefs prefs(pref_paths);
+  power_manager::Prefs prefs;
+  CHECK(prefs.Init(pref_paths));
   g_type_init();
 
   scoped_ptr<power_manager::AmbientLightSensor> light_sensor;

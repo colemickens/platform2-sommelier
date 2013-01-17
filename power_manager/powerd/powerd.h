@@ -23,7 +23,7 @@
 #include "base/time.h"
 #include "metrics/metrics_library.h"
 #include "power_manager/common/inotify.h"
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerd/backlight_controller.h"
@@ -46,6 +46,7 @@ struct cras_client;
 namespace power_manager {
 
 class DBusSenderInterface;
+class Prefs;
 class StateControl;
 
 namespace system {
@@ -84,12 +85,13 @@ enum BatteryReportState {
 
 class Daemon : public BacklightControllerObserver,
                public IdleObserver,
+               public PrefsObserver,
                public policy::InputController::Delegate {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
   Daemon(BacklightController* ctl,
-         PowerPrefs* prefs,
+         PrefsInterface* prefs,
          MetricsLibraryInterface* metrics_lib,
          VideoDetector* video_detector,
          IdleDetector* idle,
@@ -129,12 +131,15 @@ class Daemon : public BacklightControllerObserver,
   void BrightenScreenIfOff();
 
   // Overridden from IdleObserver:
-  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms);
+  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) OVERRIDE;
+
+  // Overridden from PrefsObserver:
+  virtual void OnPrefChanged(const std::string& pref_name) OVERRIDE;
 
   // Overridden from BacklightControllerObserver:
   virtual void OnBrightnessChanged(double brightness_percent,
                                    BrightnessChangeCause cause,
-                                   BacklightController* source);
+                                   BacklightController* source) OVERRIDE;
 
   // Removes the current power supply polling timer.
   void HaltPollPowerSupply();
@@ -352,10 +357,6 @@ class Daemon : public BacklightControllerObserver,
   void SuspendDisable();
   void SuspendEnable();
 
-  // Callback for Inotify of Preference directory changes.
-  static gboolean PrefChangeHandler(const char* name, int watch_handle,
-                                    unsigned int mask, gpointer data);
-
   // Generates UMA metrics on every idle event.
   void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
 
@@ -506,7 +507,7 @@ class Daemon : public BacklightControllerObserver,
   double GetUsableBatteryPercent() const;
 
   BacklightController* backlight_controller_;
-  PowerPrefs* prefs_;
+  PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   VideoDetector* video_detector_;
   IdleDetector* idle_;

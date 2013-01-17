@@ -15,7 +15,7 @@
 #include "base/stringprintf.h"
 
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
@@ -74,7 +74,7 @@ const double InternalBacklightController::kMinVisiblePercent =
 
 InternalBacklightController::InternalBacklightController(
     system::BacklightInterface* backlight,
-    PowerPrefs* prefs,
+    PrefsInterface* prefs,
     AmbientLightSensor* sensor)
     : backlight_(backlight),
       prefs_(prefs),

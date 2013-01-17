@@ -4,14 +4,14 @@
 
 include common.mk
 
-LIBPOWERPREFS_FLAGS = $(GLIB_FLAGS)
-LIBPOWERPREFS_LIBS = $(GLIB_LIBS)
-LIBPOWERPREFS_OBJS = common/power_prefs.o common/power_constants.o
-CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a): $(LIBPOWERPREFS_OBJS)
-CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a): \
-	CPPFLAGS += $(LIBPOWERPREFS_FLAGS)
-CXX_STATIC_LIBRARY(common/libpower_prefs.pie.a): LDLIBS += $(LIBPOWERPREFS_LIBS)
-clean: CLEAN(common/libpower_prefs.pie.a)
+LIBPREFS_FLAGS = $(GLIB_FLAGS)
+LIBPREFS_LIBS = $(GLIB_LIBS)
+LIBPREFS_OBJS = common/prefs.o common/power_constants.o
+CXX_STATIC_LIBRARY(common/libprefs.pie.a): $(LIBPREFS_OBJS)
+CXX_STATIC_LIBRARY(common/libprefs.pie.a): \
+	CPPFLAGS += $(LIBPREFS_FLAGS)
+CXX_STATIC_LIBRARY(common/libprefs.pie.a): LDLIBS += $(LIBPREFS_LIBS)
+clean: CLEAN(common/libprefs.pie.a)
 
 LIBUTIL_OBJS = common/util.o common/inotify.o
 LIBUTIL_FLAGS = $(GLIB_FLAGS)
@@ -36,6 +36,7 @@ CXX_STATIC_LIBRARY(common/libtestrunner.pie.a): $(LIBTESTRUNNER_OBJS)
 clean: CLEAN(common/libtestrunner.pie.a)
 
 LIBUTIL_TEST_OBJS = common/dbus_sender_stub.o \
+                    common/fake_prefs.o \
                     common/test_main_loop_runner.o
 LIBUTIL_TEST_FLAGS = $(GLIB_FLAGS)
 LIBUTIL_TEST_LIBS = $(GLIB_LIBS)
@@ -54,17 +55,17 @@ CXX_BINARY(common/util_unittest): LDLIBS += $(UTIL_UNITTEST_LIBS)
 clean: CXX_BINARY(common/util_unittest)
 tests: TEST(CXX_BINARY(common/util_unittest))
 
-POWER_PREFS_UNITTEST_FLAGS = $(GLIB_FLAGS)
-POWER_PREFS_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
-POWER_PREFS_UNITTEST_OBJS = common/inotify.o \
-                            common/power_prefs_unittest.o \
-                            common/power_prefs.o
-CXX_BINARY(common/power_prefs_unittest): $(POWER_PREFS_UNITTEST_OBJS) \
+PREFS_UNITTEST_FLAGS = $(GLIB_FLAGS)
+PREFS_UNITTEST_LIBS = $(GLIB_LIBS) -lgtest -lgmock
+PREFS_UNITTEST_OBJS = common/inotify.o \
+                      common/prefs_unittest.o \
+                      common/prefs.o
+CXX_BINARY(common/prefs_unittest): $(PREFS_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a)
-CXX_BINARY(common/power_prefs_unittest): \
-	CPPFLAGS +=$(POWER_PREFS_UNITTEST_FLAGS)
-CXX_BINARY(common/power_prefs_unittest): LDLIBS += $(POWER_PREFS_UNITTEST_LIBS)
-clean: CXX_BINARY(common/power_prefs_unittest)
-tests: TEST(CXX_BINARY(common/power_prefs_unittest))
+CXX_BINARY(common/prefs_unittest): \
+	CPPFLAGS +=$(PREFS_UNITTEST_FLAGS)
+CXX_BINARY(common/prefs_unittest): LDLIBS += $(PREFS_UNITTEST_LIBS)
+clean: CXX_BINARY(common/prefs_unittest)
+tests: TEST(CXX_BINARY(common/prefs_unittest))

@@ -14,7 +14,7 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/file_tagger.h"
@@ -274,7 +274,7 @@ bool StateControl::IsStateDisabled(StateControlStates state) {
   }
 }
 
-void StateControl::ReadSettings(PowerPrefs* prefs) {
+void StateControl::ReadSettings(PrefsInterface* prefs) {
   int64 value;
 
   if (prefs->GetInt64(kStateMaxDisabledDurationSecPref, &value)) {

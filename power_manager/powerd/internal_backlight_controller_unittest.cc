@@ -9,8 +9,8 @@
 #include <vector>
 
 #include "base/logging.h"
+#include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/common/power_prefs.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
@@ -46,8 +46,7 @@ const int kAlsSamplesToTriggerAdjustment = 5;
 class InternalBacklightControllerTest : public ::testing::Test {
  public:
   InternalBacklightControllerTest()
-      : prefs_(FilePath(".")),
-        controller_(&backlight_, &prefs_, &light_sensor_) {
+      : controller_(&backlight_, &prefs_, &light_sensor_) {
   }
 
   virtual void SetUp() {
@@ -77,7 +76,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
  protected:
   ::testing::StrictMock<system::MockBacklight> backlight_;
   ::testing::StrictMock<MockAmbientLightSensor> light_sensor_;
-  PowerPrefs prefs_;
+  FakePrefs prefs_;
   InternalBacklightController controller_;
 };
 

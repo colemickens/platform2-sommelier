@@ -12,9 +12,10 @@
 #include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/time.h"
-#include "power_manager/common/power_prefs.h"
 
 namespace power_manager {
+
+class PrefsInterface;
 
 enum BatteryState {
   BATTERY_STATE_UNKNOWN,
@@ -99,7 +100,8 @@ struct PowerInformation {
 // charge and voltage level, current, etc.
 class PowerSupply {
  public:
-  explicit PowerSupply(const FilePath& power_supply_path, PowerPrefs *prefs);
+  explicit PowerSupply(const FilePath& power_supply_path,
+                       PrefsInterface *prefs);
   ~PowerSupply();
 
   void Init();
@@ -121,15 +123,6 @@ class PowerSupply {
   FRIEND_TEST(PowerSupplyTest, TestDischargingWithHysteresis);
   FRIEND_TEST(PowerSupplyTest, TestDischargingWithSuspendResume);
 
-  // Use the PowerPrefs functions to read info from sysfs.
-  // Make this public for unit testing purposes, but keep objects private.
-  class PowerInfoReader : public PowerPrefs {
-   public:
-    explicit PowerInfoReader(const FilePath& path) : PowerPrefs(path) {}
-
-    double ReadScaledDouble(const char* name);
-  };
-
   // Find sysfs directories to read from.
   void GetPowerSupplyPaths();
 
@@ -145,11 +138,7 @@ class PowerSupply {
   void AdjustHysteresisTimes(const base::TimeDelta& offset);
 
   // Used to read power supply-related prefs.
-  PowerPrefs* prefs_;
-
-  // Used for reading line power and battery status from sysfs.
-  PowerInfoReader* line_power_info_;
-  PowerInfoReader* battery_info_;
+  PrefsInterface* prefs_;
 
   // Paths to power supply base sysfs directory and battery and line power
   // subdirectories.
