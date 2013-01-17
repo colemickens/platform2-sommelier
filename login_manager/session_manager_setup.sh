@@ -383,7 +383,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --enable-partial-swap \
             --enable-smooth-scrolling \
             --enable-threaded-compositing \
-            --enable-ui-release-front-surface \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --force-compositing-mode \
