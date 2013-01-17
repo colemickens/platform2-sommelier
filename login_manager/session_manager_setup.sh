@@ -266,10 +266,12 @@ else
   ACCELERATED_FLAGS="--ui-prioritize-in-gpu-process"
 fi
 
-# On boards with ARM NEON support, force libvpx to use the NEON-optimized
-# code paths. Remove once http://crbug.com/161834 is fixed.
-# This is needed because libvpx cannot check cpuinfo within the sandbox.
+EVDA_FLAGS=
 if is_board daisy; then
+  EVDA_FLAGS="--use-exynos-vda"
+  # On boards with ARM NEON support, force libvpx to use the NEON-optimized
+  # code paths. Remove once http://crbug.com/161834 is fixed.
+  # This is needed because libvpx cannot check cpuinfo within the sandbox.
   export VPX_SIMD_CAPS=0xf
 fi
 
@@ -408,4 +410,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
+            ${EVDA_FLAGS} \
             ${VMODULE_FLAG}
