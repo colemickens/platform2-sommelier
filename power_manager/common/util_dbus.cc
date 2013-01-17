@@ -111,45 +111,6 @@ void SendSignalToSessionManager(const char* signal) {
   }
 }
 
-void SendSignalToPowerM(const char* signal_name) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
-                                                signal_name);
-  CHECK(signal);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
-}
-
-void SendSignalWithUintToPowerM(const char* signal_name, uint32 value) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
-                                                signal_name);
-  CHECK(signal);
-  dbus_message_append_args(signal, DBUS_TYPE_UINT32, &value, DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
-}
-
-void SendSignalWithStringToPowerM(const char* signal_name, const char* string) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kRootPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                kRootPowerManagerInterface,
-                                                signal_name);
-  CHECK(signal);
-  dbus_message_append_args(signal, DBUS_TYPE_STRING, &string,
-                           DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
-}
-
 void SendSignalWithIntToPowerD(const char* signal_name, int value) {
   LOG(INFO) << "Sending signal '" << signal_name << "' to PowerManager";
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),

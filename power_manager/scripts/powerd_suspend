@@ -112,8 +112,8 @@ suspend_pm_wakeup_cancel() {
     fi
 }
 
-# these files are created by powerm | powerd and their existence means
-# event has occurred which should cancel suspend
+# These files are created by powerd.  Their existence means an event has
+# occurred that should cancel suspend.
 suspend_cancel() {
     if [ $FLAGS_cancel_if_lid_open -eq $FLAGS_TRUE -a -e "$lid_open_file" ] ||
        [ -e "$user_active_file" ] ||

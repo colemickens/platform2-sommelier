@@ -58,11 +58,6 @@ extern const char kKeyboardBacklightPattern[];
 extern const int64 kBatteryPercentPinMs;
 extern const int64 kBatteryPercentTaperMs;
 
-// powerd -> powerm constants.
-extern const char kRestartSignal[];
-extern const char kRequestCleanShutdown[];
-extern const char kShutdownSignal[];
-
 // Broadcast signals.
 extern const char kPowerStateChanged[];
 

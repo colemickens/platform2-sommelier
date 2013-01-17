@@ -47,15 +47,6 @@ void AppendProtocolBufferToDBusMessage(
 // Sends a message |signal| to the session manager.
 void SendSignalToSessionManager(const char* signal);
 
-// Sends a message |signal| to the privileged power daemon.
-void SendSignalToPowerM(const char* signal);
-
-// Sends a message |signal| with |value| to the privileged power daemon.
-void SendSignalWithUintToPowerM(const char* signal, uint32 value);
-
-// Sends a message |signal| and |string| to the privileged power daemon.
-void SendSignalWithStringToPowerM(const char* signal_name, const char* string);
-
 // Sends a message |signal| and int32 to the unprivileged power daemon.
 void SendSignalWithIntToPowerD(const char* signal, int value);
 

@@ -1,13 +1,12 @@
 The power manager makes power-related policy decisions via C++ code running
 in userspace.  This repository contains the following directories:
 
-  common:  C++ code shared between powerd and powerm.
+  common:  C++ code shared between powerd and tools.
   config:  Configuration files installed to /usr/share/power_manager.
   dbus:    D-Bus policy configuration files.
-  powerd:  "Upper" power manager daemon running as the "power" user.
-  powerm:  "Lower" power manager daemon running as the root user.
+  powerd:  Power manager daemon running as the "power" user.
   scripts: Assorted shell scripts.
-  tools:   C++ utility programs; may depend on powerd and powerm code.
+  tools:   C++ utility programs; may depend on powerd code.
   udev:    udev configuration files and scripts.
 
 Configs:

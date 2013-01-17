@@ -63,12 +63,6 @@ const int64 kBatteryPercentPinMs = 3 * 60 * 1000;
 // Time taken to taper from pinned percentage to actual percentage.
 const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 
-// powerd -> powerm messages.
-const char kRestartSignal[] = "RestartSignal";
-const char kRequestCleanShutdown[] = "RequestCleanShutdown";
-const char kSuspendSignal[] = "SuspendSignal";
-const char kShutdownSignal[] = "ShutdownSignal";
-
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";
 

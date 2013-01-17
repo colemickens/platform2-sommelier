@@ -428,7 +428,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
 #else
   // Skip input events that are on the built in keyboard.
   // Many of these devices advertise a power key but do not physically have one.
-  // Skipping will reduce the wasteful waking of powerm due to keyboard events.
+  // Skipping will reduce the wasteful waking of powerd due to keyboard events.
   if (0 == strncmp("isa", phys, 3)) {
     LOG(INFO) << "Skipping interface : " << phys;
     return false;
@@ -438,7 +438,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   unsigned long events[NUM_BITS(EV_MAX)];
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
-    LOG(ERROR) << "Error in powerm ioctl - event list";
+    LOG(ERROR) << "Error in ioctl - event list";
     return false;
   }
 
@@ -449,7 +449,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     unsigned long keys[NUM_BITS(KEY_MAX)];
     memset(keys, 0, sizeof(keys));
     if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
-      LOG(ERROR) << "Error in powerm ioctl - key";
+      LOG(ERROR) << "Error in ioctl - key";
     }
     if (IS_BIT_SET(KEY_POWER, keys)) {
       LOG(INFO) << "Watching this event for power button!";
@@ -463,7 +463,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     unsigned long switch_events[NUM_BITS(SW_LID + 1)];
     memset(switch_events, 0, sizeof(switch_events));
     if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
-      LOG(ERROR) << "Error in powerm ioctl - switch_events";
+      LOG(ERROR) << "Error in ioctl - switch_events";
     }
     // An input event may have more than one kind of key or switch.
     // For example, if both the power button and the lid switch are handled
