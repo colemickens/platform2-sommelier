@@ -36,7 +36,7 @@
 #include "shill/mock_resolver.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
-#include "shill/mock_wifi.h"
+#include "shill/mock_wifi_provider.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
@@ -70,19 +70,13 @@ class ManagerTest : public PropertyStoreTest {
  public:
   ManagerTest()
       : power_manager_(new MockPowerManager(NULL, &proxy_factory_)),
-        mock_wifi_(new NiceMock<MockWiFi>(control_interface(),
-                                          dispatcher(),
-                                          metrics(),
-                                          manager(),
-                                          "wifi0",
-                                          "addr4",
-                                          4)),
         device_info_(new NiceMock<MockDeviceInfo>(
             control_interface(),
             reinterpret_cast<EventDispatcher*>(NULL),
             reinterpret_cast<Metrics*>(NULL),
             reinterpret_cast<Manager*>(NULL))),
-        manager_adaptor_(new NiceMock<ManagerMockAdaptor>()) {
+        manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
+        wifi_provider_(new NiceMock<MockWiFiProvider>()) {
     mock_devices_.push_back(new NiceMock<MockDevice>(control_interface(),
                                                      dispatcher(),
                                                      metrics(),
@@ -117,6 +111,10 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's adaptor with a quieter one, and one
     // we can do EXPECT*() against.  Passes ownership.
     manager()->adaptor_.reset(manager_adaptor_);
+
+    // Replace the manager's WiFi provider with our mock.  Passes
+    // ownership.
+    manager()->wifi_provider_.reset(wifi_provider_);
   }
   virtual ~ManagerTest() {}
 
@@ -320,12 +318,13 @@ class ManagerTest : public PropertyStoreTest {
 
   TestProxyFactory proxy_factory_;
   scoped_ptr<MockPowerManager> power_manager_;
-  scoped_refptr<MockWiFi> mock_wifi_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
   scoped_ptr<MockDeviceInfo> device_info_;
 
-  // This pointer is owned by the manager, and only tracked here for EXPECT*()
+  // These pointers are owned by the manager, and only tracked here for
+  // EXPECT*()
   ManagerMockAdaptor *manager_adaptor_;
+  MockWiFiProvider *wifi_provider_;
 };
 
 const char ManagerTest::TerminationActionTest::kActionName[] = "action";
@@ -1377,22 +1376,12 @@ TEST_F(ManagerTest, GetServiceUnknownType) {
   EXPECT_EQ("service type is unsupported", e.message());
 }
 
-TEST_F(ManagerTest, GetServiceNoWifiDevice) {
-  KeyValueStore args;
-  Error e;
-  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  manager()->GetService(args, &e);
-  EXPECT_EQ(Error::kInvalidArguments, e.type());
-  EXPECT_EQ("no wifi devices available", e.message());
-}
-
 TEST_F(ManagerTest, GetServiceWifi) {
   KeyValueStore args;
   Error e;
   WiFiServiceRefPtr wifi_service;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-  manager()->RegisterDevice(mock_wifi_);
-  EXPECT_CALL(*mock_wifi_, GetService(_, _))
+  EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillRepeatedly(Return(wifi_service));
   manager()->GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
@@ -1498,7 +1487,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
                                     dispatcher(),
                                     metrics(),
                                     manager(),
-                                    mock_wifi_,
+                                    wifi_provider_,
                                     ssid,
                                     "",
                                     "",
@@ -1507,17 +1496,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
   manager()->RegisterService(service);
   service->set_profile(GetEphemeralProfile(manager()));
 
-  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
-  // the same device as that used above causes a refcounting loop.
-  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
-                                                      dispatcher(),
-                                                      metrics(),
-                                                      manager(),
-                                                      "wifi1",
-                                                      "addr5",
-                                                      5));
-  manager()->RegisterDevice(wifi);
-  EXPECT_CALL(*wifi, GetService(_, _))
+  EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillOnce(Return(service));
   EXPECT_CALL(*profile, UpdateService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
@@ -1557,7 +1536,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
                                     dispatcher(),
                                     metrics(),
                                     manager(),
-                                    mock_wifi_,
+                                    wifi_provider_,
                                     ssid,
                                     "",
                                     "",
@@ -1566,17 +1545,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   manager()->RegisterService(service);
   service->set_profile(profile1);
 
-  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
-  // the same device as that used above causes a refcounting loop.
-  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
-                                                      dispatcher(),
-                                                      metrics(),
-                                                      manager(),
-                                                      "wifi1",
-                                                      "addr5",
-                                                      5));
-  manager()->RegisterDevice(wifi);
-  EXPECT_CALL(*wifi, GetService(_, _))
+  EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillOnce(Return(service));
   EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
@@ -1616,7 +1585,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
                                     dispatcher(),
                                     metrics(),
                                     manager(),
-                                    mock_wifi_,
+                                    wifi_provider_,
                                     ssid,
                                     "",
                                     "",
@@ -1625,17 +1594,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
   manager()->RegisterService(service);
   service->set_profile(profile0);
 
-  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
-  // the same device as that used above causes a refcounting loop.
-  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
-                                                      dispatcher(),
-                                                      metrics(),
-                                                      manager(),
-                                                      "wifi1",
-                                                      "addr5",
-                                                      5));
-  manager()->RegisterDevice(wifi);
-  EXPECT_CALL(*wifi, GetService(_, _))
+  EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillOnce(Return(service));
   EXPECT_CALL(*profile0, LoadService(ServiceRefPtr(service.get())))
       .Times(0);
@@ -1678,7 +1637,7 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
                                     dispatcher(),
                                     metrics(),
                                     manager(),
-                                    mock_wifi_,
+                                    wifi_provider_,
                                     ssid,
                                     "",
                                     "",
@@ -1686,17 +1645,7 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
 
   service->set_profile(profile1);
 
-  // A separate MockWiFi from mock_wifi_ is used in the Manager since using
-  // the same device as that used above causes a refcounting loop.
-  scoped_refptr<MockWiFi> wifi(new NiceMock<MockWiFi>(control_interface(),
-                                                      dispatcher(),
-                                                      metrics(),
-                                                      manager(),
-                                                      "wifi1",
-                                                      "addr5",
-                                                      5));
-  manager()->RegisterDevice(wifi);
-  EXPECT_CALL(*wifi, GetService(_, _))
+  EXPECT_CALL(*wifi_provider_, GetService(_, _))
       .WillOnce(Return(service));
   EXPECT_CALL(*profile0, UpdateService(ServiceRefPtr(service.get())))
       .WillOnce(Return(true));
@@ -2739,9 +2688,9 @@ TEST_F(ManagerTest, LinkMonitorEnabled) {
 }
 
 TEST_F(ManagerTest, IsDefaultProfile) {
-  EXPECT_FALSE(manager()->IsDefaultProfile(NULL));
+  EXPECT_TRUE(manager()->IsDefaultProfile(NULL));
   scoped_ptr<MockStore> store0(new MockStore);
-  EXPECT_FALSE(manager()->IsDefaultProfile(store0.get()));
+  EXPECT_TRUE(manager()->IsDefaultProfile(store0.get()));
   scoped_refptr<MockProfile> profile(
       new MockProfile(control_interface(), manager(), ""));
   EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(store0.get()));

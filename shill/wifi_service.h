@@ -23,6 +23,7 @@ class Error;
 class Manager;
 class Metrics;
 class NSS;
+class WiFiProvider;
 
 class WiFiService : public Service {
  public:
@@ -39,7 +40,7 @@ class WiFiService : public Service {
               EventDispatcher *dispatcher,
               Metrics *metrics,
               Manager *manager,
-              const WiFiRefPtr &device,
+              WiFiProvider *provider,
               const std::vector<uint8_t> &ssid,
               const std::string &mode,
               const std::string &security,
@@ -51,17 +52,17 @@ class WiFiService : public Service {
   virtual void Disconnect(Error *error);
   virtual bool Is8021x() const;
 
-  void AddEndpoint(const WiFiEndpointConstRefPtr &endpoint);
-  void RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint);
-  int GetEndpointCount() const { return endpoints_.size(); }
+  virtual void AddEndpoint(const WiFiEndpointConstRefPtr &endpoint);
+  virtual void RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint);
+  virtual int GetEndpointCount() const { return endpoints_.size(); }
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with
   // |endpoint| set to NULL.
-  void NotifyCurrentEndpoint(const WiFiEndpoint *endpoint);
+  virtual void NotifyCurrentEndpoint(const WiFiEndpointConstRefPtr &endpoint);
   // Called to inform of changes in the properties of an endpoint.
   // (Not necessarily the currently connected endpoint.)
-  void NotifyEndpointUpdated(const WiFiEndpoint &endpoint);
+  virtual void NotifyEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint);
 
   // wifi_<MAC>_<BSSID>_<mode_string>_<security_string>
   std::string GetStorageIdentifier() const;
@@ -74,6 +75,9 @@ class WiFiService : public Service {
   // properties that don't include explicit type/mode/security, and add
   // these properties.  Returns true if any entries were fixed.
   static bool FixupServiceEntries(StoreInterface *storage);
+
+  // Validate |method| against all valid and supported security methods.
+  static bool IsValidSecurityMethod(const std::string &method);
 
   const std::string &mode() const { return mode_; }
   const std::string &key_management() const { return GetEAPKeyManagement(); }
@@ -108,6 +112,9 @@ class WiFiService : public Service {
   // have been configured.
   virtual void OnProfileConfigured();
 
+  // Called by WiFiProvider to reset the WiFi device reference on shutdown.
+  virtual void ResetWiFi();
+
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
 
@@ -137,6 +144,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
 
   static const char kAutoConnNoEndpoint[];
+  static const char kAnyDeviceAddress[];
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
@@ -186,6 +194,12 @@ class WiFiService : public Service {
   // Populate the |params| map with available 802.1x EAP properties.
   void Populate8021xProperties(std::map<std::string, DBus::Variant> *params);
 
+  // Select a WiFi device (e.g, for connecting a hidden service with no
+  // endpoints).
+  WiFiRefPtr ChooseDevice();
+
+  void SetWiFi(const WiFiRefPtr &wifi);
+
   // Properties
   std::string passphrase_;
   bool need_passphrase_;
@@ -217,6 +231,11 @@ class WiFiService : public Service {
   // mandated by one or more endpoints we have seen that provide this service.
   bool ieee80211w_required_;
   NSS *nss_;
+  // Bare pointer is safe because WiFi service instances are owned by
+  // the WiFiProvider and are guaranteed to be deallocated by the time
+  // the WiFiProvider is.
+  WiFiProvider *provider_;
+
   DISALLOW_COPY_AND_ASSIGN(WiFiService);
 };
 

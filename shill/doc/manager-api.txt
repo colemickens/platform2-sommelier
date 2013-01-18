@@ -408,10 +408,10 @@ Properties 	object ActiveProfile [readwrite]
 
 		array{object} Services [readonly]
 
-			List of service object paths. The list is sorted
-			internally to have the service with the default
-			route always first and then the favorite services
-			followed by scan results.
+			List of service object paths that are visible. The
+			list is sorted internally to have the service with
+			the default route always first and then the favorite
+			services followed by scan results.
 
 			This list represents the available services for the
 			current selected profile. If the profile gets changed
@@ -421,6 +421,18 @@ Properties 	object ActiveProfile [readwrite]
 			itself. It is just provided here for convenience of
 			applications only dealing with the current active
 			profile.
+
+		array{object} ServiceCompleteList [readonly]
+
+			Complete list of service object paths, including those
+			that are not currently visible.  For example, WiFi
+			services that are stored in a loaded profile but
+			cannot currently be connected are presented in this
+			list.
+
+			The services are listed in the same service sorting
+			order as the "Services" property above.  Change
+			events for this property are not emitted.
 
 		array{object} ServiceWatchList [readonly]
 
@@ -434,7 +446,7 @@ Properties 	object ActiveProfile [readwrite]
 
 			The services are listed in the same service sorting
 			order as the "Services" property above, and a change
-			event for this service is emitted every time the
+			event for this property is emitted every time the
 			Service list is reordered, even if this list has not
 			changed.
 

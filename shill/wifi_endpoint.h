@@ -62,6 +62,7 @@ class WiFiEndpoint : public Endpoint {
   const std::string &ssid_hex() const;
   const std::string &bssid_string() const;
   const std::string &bssid_hex() const;
+  const WiFiRefPtr &device() const;
   int16_t signal_strength() const;
   uint16 frequency() const;
   uint16 physical_mode() const;
@@ -72,6 +73,7 @@ class WiFiEndpoint : public Endpoint {
  private:
   friend class WiFiEndpointTest;
   friend class WiFiObjectTest;  // for MakeOpenEndpoint
+  friend class WiFiProviderTest;  // for MakeOpenEndpoint
   friend class WiFiServiceTest;  // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
   FRIEND_TEST(WiFiEndpointTest, DeterminePhyModeFromFrequency);
@@ -95,6 +97,7 @@ class WiFiEndpoint : public Endpoint {
                                         const WiFiRefPtr &wifi,
                                         const std::string &ssid,
                                         const std::string &bssid,
+                                        const std::string &network_mode,
                                         uint16 frequency,
                                         int16 signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined

@@ -22,13 +22,6 @@
 // the value is a pointer to a WiFiEndpoint object.  When a WiFiEndpoint is
 // added, it is associated with a WiFiService.
 //
-// A WiFi device becomes aware of a WiFiService in three different ways.  1)
-// When a WiFiEndpoint is added through the BSSAdded signal, the WiFiEndpoint is
-// providing a service, and if that service is unknown to the WiFi device, it is
-// added at that point.  2) The Manager can add a WiFiService by calling
-// WiFi::GetService().  3) Services are loaded from the profile through a call
-// to WiFi::Load().
-//
 // The WiFi device connects to a WiFiService, not a WiFiEndpoint, through WPA
 // Supplicant. It is the job of WPA Supplicant to select a BSS (aka
 // WiFiEndpoint) to connect to.  The protocol for establishing a connection is
@@ -107,6 +100,7 @@ class KeyValueStore;
 class ProxyFactory;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
+class WiFiProvider;
 class WiFiService;
 
 // WiFi class. Specialization of Device for WiFi.
@@ -123,7 +117,6 @@ class WiFi : public Device {
 
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual bool Load(StoreInterface *storage);
   virtual void Scan(Error *error);
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
@@ -158,10 +151,7 @@ class WiFi : public Device {
   virtual void ClearCachedCredentials(const WiFiService *service);
 
   // Called by WiFiEndpoint.
-  virtual void NotifyEndpointChanged(const WiFiEndpoint &endpoint);
-
-  // Called by Manager.
-  virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+  virtual void NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint);
 
   // Utility, used by WiFiService and WiFiEndpoint.
   // Replace non-ASCII characters with '?'. Return true if one or more
@@ -183,6 +173,9 @@ class WiFi : public Device {
 
   // Overridden from Device superclass
   virtual bool ShouldUseArpGateway() const;
+
+  // Called by a WiFiService when it disassociates itself from this Device.
+  virtual void DisassociateFromService(const WiFiServiceRefPtr &service);
 
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
@@ -208,11 +201,6 @@ class WiFi : public Device {
   static const int32 kDefaultBgscanSignalThresholdDbm;
   static const uint16 kDefaultScanIntervalSeconds;
   static const uint16 kBackgroundScanIntervalSeconds;
-  static const char kManagerErrorSSIDTooLong[];
-  static const char kManagerErrorSSIDTooShort[];
-  static const char kManagerErrorSSIDRequired[];
-  static const char kManagerErrorUnsupportedSecurityMode[];
-  static const char kManagerErrorUnsupportedServiceMode[];
   static const time_t kMaxBSSResumeAgeSeconds;
   static const char kInterfaceStateUnknown[];
   // Delay between scans when supplicant finds "No suitable network".
@@ -240,24 +228,14 @@ class WiFi : public Device {
   void SetScanInterval(const uint16 &seconds, Error *error);
   void ClearBgscanMethod(const int &argument, Error *error);
 
-  WiFiServiceRefPtr CreateServiceForEndpoint(
-      const WiFiEndpoint &endpoint, bool hidden_ssid);
   void CurrentBSSChanged(const ::DBus::Path &new_bss);
-  WiFiServiceRefPtr FindService(const std::vector<uint8_t> &ssid,
-                                const std::string &mode,
-                                const std::string &security) const;
-  WiFiServiceRefPtr FindServiceForEndpoint(const WiFiEndpoint &endpoint);
   // Return the RPC identifier associated with the wpa_supplicant network
   // entry created for |service|.  If one does not exist, an empty string
   // is returned, and |error| is populated.
   std::string FindNetworkRpcidForService(const WiFiService *service,
                                          Error *error);
-  ByteArrays GetHiddenSSIDList();
   void HandleDisconnect();
   void HandleRoam(const ::DBus::Path &new_bssid);
-  // Create services for hidden networks stored in |storage|.  Returns true
-  // if any were found, otherwise returns false.
-  bool LoadHiddenServices(StoreInterface *storage);
   void BSSAddedTask(const ::DBus::Path &BSS,
                     const std::map<std::string, ::DBus::Variant> &properties);
   void BSSRemovedTask(const ::DBus::Path &BSS);
@@ -351,6 +329,9 @@ class WiFi : public Device {
 
   void Restart();
 
+  // Pointer to the provider object that maintains WiFiService objects.
+  WiFiProvider *provider_;
+
   base::WeakPtrFactory<WiFi> weak_ptr_factory_;
 
   // Store cached copies of singletons for speed/ease of testing.
@@ -369,7 +350,6 @@ class WiFi : public Device {
   // Map from Services to the D-Bus path for the corresponding wpa_supplicant
   // Network.
   ReverseServiceMap rpcid_by_service_;
-  std::vector<WiFiServiceRefPtr> services_;
   // The Service we are presently connected to. May be NULL is we're not
   // not connected to any Service.
   WiFiServiceRefPtr current_service_;

@@ -41,6 +41,7 @@ class EventDispatcher;
 class ManagerAdaptorInterface;
 class Resolver;
 class StoreInterface;
+class WiFiProvider;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
@@ -113,10 +114,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual void UpdateDevice(const DeviceRefPtr &to_update);
 
   void FilterByTechnology(Technology::Identifier tech,
-                          std::vector<DeviceRefPtr> *found);
+                          std::vector<DeviceRefPtr> *found) const;
 
   ServiceRefPtr FindService(const std::string& name);
   std::vector<std::string> EnumerateAvailableServices(Error *error);
+
+  // Return the complete list of services, including those that are not visible.
+  std::vector<std::string> EnumerateCompleteServices(Error *error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
@@ -131,7 +135,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // |service|.
   virtual void RecheckPortalOnService(const ServiceRefPtr &service);
 
-  void RequestScan(const std::string &technology, Error *error);
+  virtual void RequestScan(const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
   // Set up the profile list starting with a default profile along with
@@ -190,6 +194,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether a service belongs to the ephemeral profile.
   virtual bool IsServiceEphemeral(const ServiceConstRefPtr &service) const;
 
+  // Return whether a Technology has any connected Services.
+  virtual bool IsTechnologyConnected(Technology::Identifier technology) const;
+
   // Return whether a technology is enabled for using short DNS timeouts.
   bool IsTechnologyShortDNSTimeoutEnabled(Technology::Identifier tech) const;
 
@@ -197,8 +204,12 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual bool IsTechnologyLinkMonitorEnabled(
       Technology::Identifier technology) const;
 
-  // Return whether |storage| is for the default profile.
-  virtual bool IsDefaultProfile(const StoreInterface *storage) const;
+  // Called by Profile when a |storage| completes initialization.
+  void OnProfileStorageInitialized(StoreInterface *storage);
+
+  // Return a Device with technology |technology| in the enabled state.
+  DeviceRefPtr GetEnabledDeviceWithTechnology(
+      Technology::Identifier technology) const;
 
   // Returns true if at least one connection exists, and false if there's no
   // connected service.
@@ -217,6 +228,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual ModemInfo *modem_info() { return &modem_info_; }
   PowerManager *power_manager() const { return power_manager_.get(); }
   virtual VPNProvider *vpn_provider() { return &vpn_provider_; }
+  virtual WiFiProvider *wifi_provider() { return wifi_provider_.get(); }
   virtual WiMaxProvider *wimax_provider() { return &wimax_provider_; }
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
@@ -237,9 +249,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Writes the service |to_update| to persistant storage.  If the service's is
   // ephemeral, it is moved to the current profile.
   void SaveServiceToProfile(const ServiceRefPtr &to_update);
-
-  // Configure the device with profile data from all current profiles.
-  virtual void LoadDeviceFromProfiles(const DeviceRefPtr &device);
 
   // Adds a closure to be executed when ChromeOS suspends or shill terminates.
   // |name| should be unique; otherwise, a previous closure by the same name
@@ -292,6 +301,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
+  FRIEND_TEST(ManagerTest, IsDefaultProfile);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
   FRIEND_TEST(ManagerTest, PopProfileWithUnload);
@@ -308,8 +318,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   static const int kTerminationActionsTimeoutMilliseconds;
 
   static const char kPowerManagerKey[];
-
-  WiFiServiceRefPtr GetWifiService(const KeyValueStore &args, Error *error);
 
   void AutoConnect();
   std::vector<std::string> AvailableTechnologies(Error *error);
@@ -331,6 +339,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void EmitDefaultService();
   bool IsTechnologyInList(const std::string &technology_list,
                           Technology::Identifier tech) const;
+  bool IsDefaultProfile(StoreInterface *storage);
   void EmitDeviceProperties();
 
   // Unload a service while iterating through |services_|.  Returns true if
@@ -341,6 +350,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Load Manager default properties from |profile|.
   bool LoadProperties(const scoped_refptr<DefaultProfile> &profile);
+
+  // Configure the device with profile data from all current profiles.
+  void LoadDeviceFromProfiles(const DeviceRefPtr &device);
 
   void HelpRegisterConstDerivedRpcIdentifier(
       const std::string &name,
@@ -392,6 +404,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   DeviceInfo device_info_;
   ModemInfo modem_info_;
   VPNProvider vpn_provider_;
+  scoped_ptr<WiFiProvider> wifi_provider_;
   WiMaxProvider wimax_provider_;
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver *resolver_;

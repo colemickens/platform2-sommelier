@@ -11,13 +11,11 @@
 
 #include <algorithm>
 #include <map>
-#include <set>
 #include <string>
 #include <vector>
 
 #include <base/bind.h>
 #include <base/stringprintf.h>
-#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <glib.h>
@@ -27,33 +25,29 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/error.h"
-#include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
-#include "shill/key_value_store.h"
 #include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
-#include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
-#include "shill/store_interface.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant_network_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
 #include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
+#include "shill/wifi_provider.h"
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
 
 using base::Bind;
 using base::StringPrintf;
 using std::map;
-using std::set;
 using std::string;
 using std::vector;
 
@@ -68,16 +62,6 @@ const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
 const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
 // Scan interval while connected.
 const uint16 WiFi::kBackgroundScanIntervalSeconds = 3601;
-// Note that WiFi generates some manager-level errors, because it implements
-// the Manager.GetWiFiService flimflam API. The API is implemented here,
-// rather than in manager, to keep WiFi-specific logic in the right place.
-const char WiFi::kManagerErrorSSIDRequired[] = "must specify SSID";
-const char WiFi::kManagerErrorSSIDTooLong[]  = "SSID is too long";
-const char WiFi::kManagerErrorSSIDTooShort[] = "SSID is too short";
-const char WiFi::kManagerErrorUnsupportedSecurityMode[] =
-    "security mode is unsupported";
-const char WiFi::kManagerErrorUnsupportedServiceMode[] =
-    "service mode is unsupported";
 // Age (in seconds) beyond which a BSS cache entry will not be preserved,
 // across a suspend/resume.
 const time_t WiFi::kMaxBSSResumeAgeSeconds = 10;
@@ -103,6 +87,7 @@ WiFi::WiFi(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kWifi),
+      provider_(manager->wifi_provider()),
       weak_ptr_factory_(this),
       proxy_factory_(ProxyFactory::GetInstance()),
       time_(Time::GetInstance()),
@@ -185,27 +170,22 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   if (config80211) {
     config80211->SetWifiState(Config80211::kWifiUp);
   }
-
-  // Ensure that hidden services are loaded from profiles.  The may have been
-  // removed with a previous call to Stop().
-  manager()->LoadDeviceFromProfiles(this);
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
   DropConnection();
   StopScanTimer();
+  for (EndpointMap::iterator it = endpoint_by_rpcid_.begin();
+       it != endpoint_by_rpcid_.end(); ++it) {
+    provider_->OnEndpointRemoved(it->second);
+  }
   endpoint_by_rpcid_.clear();
-
-  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    SLOG(WiFi, 3) << "WiFi " << link_name() << " deregistering service "
-                  << (*it)->unique_name();
-    manager()->DeregisterService(*it);
+  for (ReverseServiceMap::const_iterator it = rpcid_by_service_.begin();
+       it != rpcid_by_service_.end(); ++it) {
+    RemoveNetwork(it->second);
   }
   rpcid_by_service_.clear();
-  services_.clear();                  // breaks reference cycles
   supplicant_interface_proxy_.reset();  // breaks a reference cycle
   // TODO(quiche): Remove interface from supplicant.
   supplicant_process_proxy_.reset();
@@ -231,13 +211,6 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
                 << (pending_service_.get() ? "is set." : "is not set.");
   SLOG(WiFi, 3) << "WiFi " << link_name() << " has "
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
-  SLOG(WiFi, 3) << "WiFi " << link_name() << " has " << services_.size()
-                << " Services.";
-}
-
-bool WiFi::Load(StoreInterface *storage) {
-  LoadHiddenServices(storage);
-  return Device::Load(storage);
 }
 
 void WiFi::Scan(Error */*error*/) {
@@ -461,8 +434,8 @@ void WiFi::ClearCachedCredentials(const WiFiService *service) {
   RemoveNetworkForService(service, &unused_error);
 }
 
-void WiFi::NotifyEndpointChanged(const WiFiEndpoint &endpoint) {
-  WiFiService *service = FindServiceForEndpoint(endpoint);
+void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint) {
+  WiFiService *service = provider_->FindServiceForEndpoint(endpoint);
   DCHECK(service);
   if (service) {
     service->NotifyEndpointUpdated(endpoint);
@@ -553,24 +526,6 @@ void WiFi::ClearBgscanMethod(const int &/*argument*/, Error */*error*/) {
   bgscan_method_.clear();
 }
 
-// To avoid creating duplicate services, call FindServiceForEndpoint
-// before calling this method.
-WiFiServiceRefPtr WiFi::CreateServiceForEndpoint(const WiFiEndpoint &endpoint,
-                                                 bool hidden_ssid) {
-  WiFiServiceRefPtr service =
-      new WiFiService(control_interface(),
-                      dispatcher(),
-                      metrics(),
-                      manager(),
-                      this,
-                      endpoint.ssid(),
-                      endpoint.network_mode(),
-                      endpoint.security_mode(),
-                      hidden_ssid);
-  services_.push_back(service);
-  return service;
-}
-
 void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   SLOG(WiFi, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
@@ -585,7 +540,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
 
   if (new_bss == wpa_supplicant::kCurrentBSSNull) {
     HandleDisconnect();
-    if (!GetHiddenSSIDList().empty()) {
+    if (!provider_->GetHiddenSSIDList().empty()) {
       // Before disconnecting, wpa_supplicant probably scanned for
       // APs. So, in the normal case, we defer to the timer for the next scan.
       //
@@ -715,21 +670,21 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     return;
   }
 
-  const WiFiEndpoint &endpoint(*endpoint_it->second);
-  WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
+  const WiFiEndpointConstRefPtr endpoint(endpoint_it->second);
+  WiFiServiceRefPtr service = provider_->FindServiceForEndpoint(endpoint);
   if (!service.get()) {
       LOG(WARNING) << "WiFi " << link_name()
                    << " could not find Service for Endpoint "
-                   << endpoint.bssid_string()
+                   << endpoint->bssid_string()
                    << " (service will be unchanged)";
       return;
   }
 
   SLOG(WiFi, 2) << "WiFi " << link_name()
-                << " roamed to Endpoint " << endpoint.bssid_string()
-                << " " << LogSSID(endpoint.ssid_string());
+                << " roamed to Endpoint " << endpoint->bssid_string()
+                << " " << LogSSID(endpoint->ssid_string());
 
-  service->NotifyCurrentEndpoint(&endpoint);
+  service->NotifyCurrentEndpoint(endpoint);
 
   if (pending_service_.get() &&
       service.get() != pending_service_.get()) {
@@ -745,7 +700,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // So we leave |pending_service_| untouched.
     SLOG(WiFi, 2) << "WiFi " << link_name()
                   << " new current Endpoint "
-                  << endpoint.bssid_string()
+                  << endpoint->bssid_string()
                   << " is not part of pending service "
                   << pending_service_->unique_name();
 
@@ -754,7 +709,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     if (service.get() != current_service_.get()) {
       LOG(WARNING) << "WiFi " << link_name()
                    << " new current Endpoint "
-                   << endpoint.bssid_string()
+                   << endpoint->bssid_string()
                    << " is neither part of pending service "
                    << pending_service_->unique_name()
                    << " nor part of current service "
@@ -786,7 +741,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     LOG(WARNING)
         << "WiFi " << link_name()
         << " new current Endpoint "
-        << endpoint.bssid_string()
+        << endpoint->bssid_string()
         << (current_service_.get() ?
             StringPrintf(" is not part of current service %s",
                          current_service_->unique_name().c_str()) :
@@ -810,26 +765,6 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
   // we're still on |current_service_|. This is the most boring case
   // of all, because there's no state to update here.
   return;
-}
-
-WiFiServiceRefPtr WiFi::FindService(const vector<uint8_t> &ssid,
-                                    const string &mode,
-                                    const string &security) const {
-  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if ((*it)->ssid() == ssid && (*it)->mode() == mode &&
-        (*it)->IsSecurityMatch(security)) {
-      return *it;
-    }
-  }
-  return NULL;
-}
-
-WiFiServiceRefPtr WiFi::FindServiceForEndpoint(const WiFiEndpoint &endpoint) {
-  return FindService(endpoint.ssid(),
-                     endpoint.network_mode(),
-                     endpoint.security_mode());
 }
 
 string WiFi::FindNetworkRpcidForService(
@@ -905,135 +840,6 @@ bool WiFi::RemoveNetworkForService(const WiFiService *service, Error *error) {
   return true;
 }
 
-ByteArrays WiFi::GetHiddenSSIDList() {
-  // Create a unique set of hidden SSIDs.
-  set<ByteArray> hidden_ssids_set;
-  for (vector<WiFiServiceRefPtr>::const_iterator it = services_.begin();
-       it != services_.end();
-       ++it) {
-    if ((*it)->hidden_ssid() && (*it)->IsRemembered()) {
-      hidden_ssids_set.insert((*it)->ssid());
-    }
-  }
-  SLOG(WiFi, 2) << "Found " << hidden_ssids_set.size() << " hidden services";
-  ByteArrays hidden_ssids(hidden_ssids_set.begin(), hidden_ssids_set.end());
-  if (!hidden_ssids.empty()) {
-    // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
-    // not fit in.
-    if (hidden_ssids.size() >= wpa_supplicant::kScanMaxSSIDsPerScan) {
-      hidden_ssids.erase(
-          hidden_ssids.begin() + wpa_supplicant::kScanMaxSSIDsPerScan - 1,
-          hidden_ssids.end());
-    }
-    // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
-    // SSIDs to wpa_supplicant, we need to explicitly specify the default
-    // behavior of doing a broadcast probe.
-    hidden_ssids.push_back(ByteArray());
-  }
-  return hidden_ssids;
-}
-
-bool WiFi::LoadHiddenServices(StoreInterface *storage) {
-  // TODO(pstew): This retrofits old (flimflam-based) profile entries for
-  // WiFi Services so they contain the properties that are required to
-  // be searched for by property instead of by group name.  I can imagine
-  // a day where we believe that enough users have upgraded so that this
-  // code is no longer necessary.  The UMA metric below should help us
-  // understand when this point might be.
-  if (WiFiService::FixupServiceEntries(storage)) {
-    storage->Flush();
-    Metrics::ServiceFixupProfileType profile_type =
-        manager()->IsDefaultProfile(storage) ?
-            Metrics::kMetricServiceFixupDefaultProfile :
-            Metrics::kMetricServiceFixupUserProfile;
-    metrics()->SendEnumToUMA(
-        metrics()->GetFullMetricName(Metrics::kMetricServiceFixupEntries,
-                                     technology()),
-        profile_type,
-        Metrics::kMetricServiceFixupMax);
-  }
-  bool created_hidden_service = false;
-  set<string> groups = storage->GetGroupsWithKey(flimflam::kWifiHiddenSsid);
-  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
-    bool is_hidden = false;
-    if (!storage->GetBool(*it, flimflam::kWifiHiddenSsid, &is_hidden)) {
-      SLOG(WiFi, 2) << "Storage group " << *it << " returned by "
-                    << "GetGroupsWithKey failed for GetBool("
-                    << flimflam::kWifiHiddenSsid
-                    << ") -- possible non-bool key";
-      continue;
-    }
-    if (!is_hidden) {
-      continue;
-    }
-    string ssid_hex;
-    vector<uint8_t> ssid_bytes;
-    if (!storage->GetString(*it, flimflam::kSSIDProperty, &ssid_hex) ||
-        !base::HexStringToBytes(ssid_hex, &ssid_bytes)) {
-      SLOG(WiFi, 2) << "Hidden network is missing/invalid \""
-                    << flimflam::kSSIDProperty << "\" property";
-      continue;
-    }
-    string device_address;
-    string network_mode;
-    string security;
-    // It is gross that we have to do this, but the only place we can
-    // get information about the service is from its storage name.
-    if (!WiFiService::ParseStorageIdentifier(*it, &device_address,
-                                             &network_mode, &security) ||
-        device_address != address()) {
-      SLOG(WiFi, 2) << "Hidden network has unparsable storage identifier \""
-                    << *it << "\"";
-      continue;
-    }
-    if (FindService(ssid_bytes, network_mode, security).get()) {
-      // If service already exists, we have nothing to do, since the
-      // service has already loaded its configuration from storage.
-      // This is guaranteed to happen in both cases where Load() is
-      // called on a device (via a ConfigureDevice() call on the
-      // profile):
-      //  - In RegisterDevice() the Device hasn't been started yet,
-      //    so it has no services registered, except for those
-      //    created by previous iterations of LoadHiddenService().
-      //    The latter can happen if another profile in the Manager's
-      //    stack defines the same ssid/mode/security.  Even this
-      //    case is okay, since even if the profiles differ
-      //    materially on configuration and credentials, the "right"
-      //    one will be configured in the course of the
-      //    RegisterService() call below.
-      // - In PushProfile(), all registered services have been
-      //   introduced to the profile via ConfigureService() prior
-      //   to calling ConfigureDevice() on the profile.
-      continue;
-    }
-    WiFiServiceRefPtr service(new WiFiService(control_interface(),
-                                              dispatcher(),
-                                              metrics(),
-                                              manager(),
-                                              this,
-                                              ssid_bytes,
-                                              network_mode,
-                                              security,
-                                              true));
-    services_.push_back(service);
-
-    // By registering the service, the rest of the configuration
-    // will be loaded from the profile into the service via ConfigureService().
-    manager()->RegisterService(service);
-
-    created_hidden_service = true;
-  }
-
-  // If we are idle and we created a service as a result of opening the
-  // profile, we should initiate a scan for our new hidden SSID.
-  if (running() && created_hidden_service &&
-      supplicant_state_ == wpa_supplicant::kInterfaceStateInactive) {
-    Scan(NULL);
-  }
-
-  return created_hidden_service;
-}
-
 void WiFi::BSSAddedTask(
     const ::DBus::Path &path,
     const map<string, ::DBus::Variant> &properties) {
@@ -1062,25 +868,7 @@ void WiFi::BSSAddedTask(
     return;
   }
 
-  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
-  if (service) {
-    SLOG(WiFi, 1) << "Assigned endpoint " << endpoint->bssid_string()
-                  << " to service " << service->unique_name() << ".";
-    service->AddEndpoint(endpoint);
-
-    if (manager()->HasService(service)) {
-      manager()->UpdateService(service);
-    } else {
-      // Expect registered by now if >1.
-      DCHECK_EQ(1, service->GetEndpointCount());
-      manager()->RegisterService(service);
-    }
-  } else {
-    const bool hidden_ssid = false;
-    service = CreateServiceForEndpoint(*endpoint, hidden_ssid);
-    service->AddEndpoint(endpoint);
-    manager()->RegisterService(service);
-  }
+  provider_->OnEndpointAdded(endpoint);
 
   // Do this last, to maintain the invariant that any Endpoint we
   // know about has a corresponding Service.
@@ -1106,45 +894,18 @@ void WiFi::BSSRemovedTask(const ::DBus::Path &path) {
   CHECK(endpoint);
   endpoint_by_rpcid_.erase(i);
 
-  WiFiServiceRefPtr service = FindServiceForEndpoint(*endpoint);
-  CHECK(service) << "Can't find Service for Endpoint "
-                 << path << " "
-                 << "(with BSSID " << endpoint->bssid_string() << ").";
-  SLOG(WiFi, 2) << "Removing Endpoint " << endpoint->bssid_string()
-                << " from Service " << service->unique_name();
-  service->RemoveEndpoint(endpoint);
+  WiFiServiceRefPtr service = provider_->OnEndpointRemoved(endpoint);
+  if (!service) {
+    return;
+  }
+  Error unused_error;
+  RemoveNetworkForService(service, &unused_error);
 
   bool disconnect_service = !service->HasEndpoints() &&
       (service->IsConnecting() || service->IsConnected());
-  bool forget_service =
-      // Forget Services without Endpoints, except that we always keep
-      // hidden services around. (We need them around to populate the
-      // hidden SSIDs list.)
-      !service->HasEndpoints() && !service->hidden_ssid();
-  bool deregister_service =
-      // Only deregister a Service if we're forgetting it. Otherwise,
-      // Manager can't keep our configuration up-to-date (as Profiles
-      // change).
-      forget_service;
 
   if (disconnect_service) {
     DisconnectFrom(service);
-  }
-
-  if (deregister_service) {
-    manager()->DeregisterService(service);
-  } else {
-    manager()->UpdateService(service);
-  }
-
-  if (forget_service) {
-    Error unused_error;
-    RemoveNetworkForService(service, &unused_error);
-    vector<WiFiServiceRefPtr>::iterator it;
-    it = std::find(services_.begin(), services_.end(), service);
-    if (it != services_.end()) {
-      services_.erase(it);
-    }
   }
 }
 
@@ -1290,13 +1051,24 @@ void WiFi::ScanTask() {
   scan_args[wpa_supplicant::kPropertyScanType].writer().
       append_string(wpa_supplicant::kScanTypeActive);
 
-  ByteArrays hidden_ssids = GetHiddenSSIDList();
+  ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
   if (!hidden_ssids.empty()) {
+    // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
+    // not fit in.
+    if (hidden_ssids.size() >= wpa_supplicant::kScanMaxSSIDsPerScan) {
+      hidden_ssids.erase(
+          hidden_ssids.begin() + wpa_supplicant::kScanMaxSSIDsPerScan - 1,
+          hidden_ssids.end());
+    }
+    // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
+    // SSIDs to wpa_supplicant, we need to explicitly specify the default
+    // behavior of doing a broadcast probe.
+    hidden_ssids.push_back(ByteArray());
+
     scan_args[wpa_supplicant::kPropertyScanSSIDs] =
         DBusAdaptor::ByteArraysToVariant(hidden_ssids);
   }
 
-  // TODO(quiche): Indicate scanning in UI. crosbug.com/14887
   try {
     supplicant_interface_proxy_->Scan(scan_args);
     SetScanPending(true);
@@ -1406,88 +1178,6 @@ bool WiFi::SuspectCredentials(
   return false;
 }
 
-// Used by Manager.
-WiFiServiceRefPtr WiFi::GetService(const KeyValueStore &args, Error *error) {
-  CHECK_EQ(args.GetString(flimflam::kTypeProperty), flimflam::kTypeWifi);
-
-  if (args.ContainsString(flimflam::kModeProperty) &&
-      args.GetString(flimflam::kModeProperty) !=
-      flimflam::kModeManaged) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          kManagerErrorUnsupportedServiceMode);
-    return NULL;
-  }
-
-  if (!args.ContainsString(flimflam::kSSIDProperty)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          kManagerErrorSSIDRequired);
-    return NULL;
-  }
-
-  string ssid = args.GetString(flimflam::kSSIDProperty);
-  if (ssid.length() < 1) {
-    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
-                          kManagerErrorSSIDTooShort);
-    return NULL;
-  }
-
-  if (ssid.length() > IEEE_80211::kMaxSSIDLen) {
-    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
-                          kManagerErrorSSIDTooLong);
-    return NULL;
-  }
-
-  string security_method;
-  if (args.ContainsString(flimflam::kSecurityProperty)) {
-    security_method = args.GetString(flimflam::kSecurityProperty);
-  } else {
-    security_method = flimflam::kSecurityNone;
-  }
-
-  if (security_method != flimflam::kSecurityNone &&
-      security_method != flimflam::kSecurityWep &&
-      security_method != flimflam::kSecurityPsk &&
-      security_method != flimflam::kSecurityWpa &&
-      security_method != flimflam::kSecurityRsn &&
-      security_method != flimflam::kSecurity8021x) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          kManagerErrorUnsupportedSecurityMode);
-    return NULL;
-  }
-
-  bool hidden_ssid;
-  if (args.ContainsBool(flimflam::kWifiHiddenSsid)) {
-    hidden_ssid = args.GetBool(flimflam::kWifiHiddenSsid);
-  } else {
-    // If the service is not found, and the caller hasn't specified otherwise,
-    // we assume this is is a hidden network.
-    hidden_ssid = true;
-  }
-
-  vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
-  WiFiServiceRefPtr service(FindService(ssid_bytes, flimflam::kModeManaged,
-                                        security_method));
-  if (!service.get()) {
-    service = new WiFiService(control_interface(),
-                              dispatcher(),
-                              metrics(),
-                              manager(),
-                              this,
-                              ssid_bytes,
-                              flimflam::kModeManaged,
-                              security_method,
-                              hidden_ssid);
-    services_.push_back(service);
-    // NB: We do not register the newly created Service with the Manager.
-    // The Service will be registered if/when we find Endpoints for it.
-  }
-
-  // TODO(pstew): Schedule a task to forget up all non-hidden services that
-  // have no endpoints like the one we may have just created.  crosbug.com/28224
-
-  return service;
-}
-
 // static
 bool WiFi::SanitizeSSID(string *ssid) {
   CHECK(ssid);
@@ -1552,6 +1242,15 @@ void WiFi::OnLinkMonitorFailure() {
 
 bool WiFi::ShouldUseArpGateway() const {
   return true;
+}
+
+void WiFi::DisassociateFromService(const WiFiServiceRefPtr &service) {
+  DisconnectFrom(service);
+  if (service == selected_service()) {
+    DropConnection();
+  }
+  Error unused_error;
+  RemoveNetworkForService(service, &unused_error);
 }
 
 vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {

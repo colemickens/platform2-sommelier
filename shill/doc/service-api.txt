@@ -86,6 +86,7 @@ Methods		dict GetProperties()
 			connection attempt via the Connect method.
 
 			Possible Errors: [service].Error.InvalidArguments
+			                 [service].Error.OperationFailed
 
 		void Remove()
 

@@ -92,7 +92,7 @@ void WiFiEndpoint::PropertiesChanged(
     signal_strength_ = properties_it->second.reader().get_int16();
     SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
                   << signal_strength_;
-    device_->NotifyEndpointChanged(*this);
+    device_->NotifyEndpointChanged(this);
   }
 }
 
@@ -163,6 +163,10 @@ const string &WiFiEndpoint::bssid_hex() const {
   return bssid_hex_;
 }
 
+const WiFiRefPtr &WiFiEndpoint::device() const {
+  return device_;
+}
+
 int16_t WiFiEndpoint::signal_strength() const {
   return signal_strength_;
 }
@@ -192,6 +196,7 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                              const WiFiRefPtr &wifi,
                                              const string &ssid,
                                              const string &bssid,
+                                             const string &network_mode,
                                              uint16 frequency,
                                              int16 signal_dbm) {
   map <string, ::DBus::Variant> args;
@@ -210,7 +215,7 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
   args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(signal_dbm);
   args[wpa_supplicant::kBSSPropertyFrequency].writer().append_uint16(frequency);
   args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
-      wpa_supplicant::kNetworkModeInfrastructure);
+      network_mode.c_str());
   // We indicate this is an open BSS by leaving out all security properties.
 
   return new WiFiEndpoint(

@@ -104,6 +104,7 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
                            name_.identifier.c_str()));
   }
   set_storage(storage.release());
+  manager_->OnProfileStorageInitialized(storage_.get());
   return true;
 }
 

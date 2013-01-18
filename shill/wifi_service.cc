@@ -28,6 +28,7 @@
 #include "shill/store_interface.h"
 #include "shill/wifi.h"
 #include "shill/wifi_endpoint.h"
+#include "shill/wifi_provider.h"
 #include "shill/wpa_supplicant.h"
 
 using std::set;
@@ -37,6 +38,7 @@ using std::vector;
 namespace shill {
 
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
+const char WiFiService::kAnyDeviceAddress[] = "any";
 
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
@@ -50,7 +52,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                          EventDispatcher *dispatcher,
                          Metrics *metrics,
                          Manager *manager,
-                         const WiFiRefPtr &device,
+                         WiFiProvider *provider,
                          const vector<uint8_t> &ssid,
                          const string &mode,
                          const string &security,
@@ -64,10 +66,10 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       frequency_(0),
       physical_mode_(0),
       raw_signal_strength_(0),
-      wifi_(device),
       ssid_(ssid),
       ieee80211w_required_(false),
-      nss_(NSS::GetInstance()) {
+      nss_(NSS::GetInstance()),
+      provider_(provider) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
   HelpRegisterWriteOnlyDerivedString(flimflam::kPassphraseProperty,
@@ -145,6 +147,8 @@ bool WiFiService::IsAutoConnectable(const char **reason) const {
     return false;
   }
 
+  CHECK(wifi_) << "We have endpoints but no WiFi device is selected?";
+
   // Do not preempt an existing connection (whether pending, or
   // connected, and whether to this service, or another).
   if (!wifi_->IsIdle()) {
@@ -177,14 +181,16 @@ void WiFiService::RemoveEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
   UpdateFromEndpoints();
 }
 
-void WiFiService::NotifyCurrentEndpoint(const WiFiEndpoint *endpoint) {
+void WiFiService::NotifyCurrentEndpoint(
+    const WiFiEndpointConstRefPtr &endpoint) {
   DCHECK(!endpoint || (endpoints_.find(endpoint) != endpoints_.end()));
   current_endpoint_ = endpoint;
   UpdateFromEndpoints();
 }
 
-void WiFiService::NotifyEndpointUpdated(const WiFiEndpoint &endpoint) {
-  DCHECK(endpoints_.find(&endpoint) != endpoints_.end());
+void WiFiService::NotifyEndpointUpdated(
+    const WiFiEndpointConstRefPtr &endpoint) {
+  DCHECK(endpoints_.find(endpoint) != endpoints_.end());
   UpdateFromEndpoints();
 }
 
@@ -298,7 +304,7 @@ bool WiFiService::Unload() {
   hidden_ssid_ = false;
   Error unused_error;
   ClearPassphrase(&unused_error);
-  return !IsVisible();
+  return provider_->OnServiceUnloaded(this);
 }
 
 bool WiFiService::IsSecurityMatch(const string &security) const {
@@ -395,10 +401,29 @@ void WiFiService::Connect(Error *error) {
                           Error::GetDefaultMessage(Error::kAlreadyConnected));
     return;
   }
-  if (wifi_->IsCurrentService(this)) {
+
+  WiFiRefPtr wifi = wifi_;
+  if (!wifi) {
+    // If this is a hidden service before it has been found in a scan, we
+    // may need to late-bind to any available WiFi Device.  We don't actually
+    // set |wifi_| in this case snce we do not yet see any endpoints.  This
+    // will mean this service is not disconnectable until an endpoint is
+    // found.
+    wifi = ChooseDevice();
+    if (!wifi) {
+      LOG(ERROR) << "Can't connect. Service " << unique_name()
+                 << " cannot find a WiFi device.";
+      Error::PopulateAndLog(error,
+                            Error::kOperationFailed,
+                            Error::GetDefaultMessage(Error::kOperationFailed));
+      return;
+    }
+  }
+
+  if (wifi->IsCurrentService(this)) {
     LOG(WARNING) << "Can't connect.  Service " << unique_name()
                  << " is the current service (but, in " << GetStateString()
-                 << " state, not connected.";
+                 << " state, not connected).";
     Error::PopulateAndLog(error,
                           Error::kInProgress,
                           Error::GetDefaultMessage(Error::kInProgress));
@@ -473,16 +498,33 @@ void WiFiService::Connect(Error *error) {
   writer = params[wpa_supplicant::kNetworkPropertySSID].writer();
   writer << ssid_;
 
-  wifi_->ConnectTo(this, params);
+  wifi->ConnectTo(this, params);
 }
 
 void WiFiService::Disconnect(Error *error) {
   LOG(INFO) << __func__;
   Service::Disconnect(error);
+  if (!wifi_) {
+    // If we are connecting to a hidden service, but have not yet found
+    // any endpoints, we could end up with a disconnect request without
+    // a wifi_ reference.  This is not a fatal error.
+    LOG_IF(ERROR, IsConnecting())
+         << "WiFi endpoints do not (yet) exist.  Cannot disconnect service "
+         << unique_name();
+    LOG_IF(FATAL, IsConnected())
+         << "WiFi device does not exist.  Cannot disconnect service "
+         << unique_name();
+    error->Populate(Error::kOperationFailed);
+    return;
+  }
   wifi_->DisconnectFrom(this);
 }
 
-string WiFiService::GetDeviceRpcId(Error */*error*/) {
+string WiFiService::GetDeviceRpcId(Error *error) {
+  if (!wifi_) {
+    error->Populate(Error::kNotFound, "Not associated with a device");
+    return "/";
+  }
   return wifi_->GetRpcIdentifier();
 }
 
@@ -519,6 +561,13 @@ void WiFiService::UpdateFromEndpoints() {
       }
     }
   }
+
+  WiFiRefPtr wifi;
+  if (representative_endpoint) {
+    wifi = representative_endpoint->device();
+  }
+
+  SetWiFi(wifi);
 
   for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints_.begin();
        i != endpoints_.end(); ++i) {
@@ -758,6 +807,16 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
 }
 
 // static
+bool WiFiService::IsValidSecurityMethod(const string &method) {
+  return method == flimflam::kSecurityNone ||
+      method == flimflam::kSecurityWep ||
+      method == flimflam::kSecurityPsk ||
+      method == flimflam::kSecurityWpa ||
+      method == flimflam::kSecurityRsn ||
+      method == flimflam::kSecurity8021x;
+}
+
+// static
 uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
   int16 strength;
   if (signal_dbm > 0) {
@@ -792,14 +851,16 @@ string WiFiService::GetDefaultStorageIdentifier() const {
   string security = GetSecurityClass(security_);
   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
                                                flimflam::kTypeWifi,
-                                               wifi_->address().c_str(),
+                                               kAnyDeviceAddress,
                                                hex_ssid_.c_str(),
                                                mode_.c_str(),
                                                security.c_str()));
 }
 
 void WiFiService::ClearCachedCredentials() {
-  wifi_->ClearCachedCredentials(this);
+  if (wifi_) {
+    wifi_->ClearCachedCredentials(this);
+  }
 }
 
 void WiFiService::set_eap(const EapCredentials &new_eap) {
@@ -906,6 +967,28 @@ void WiFiService::Populate8021xProperties(
       (*params)[(*it).first].writer().append_string((*it).second);
     }
   }
+}
+
+WiFiRefPtr WiFiService::ChooseDevice() {
+  // TODO(pstew): Style frowns on dynamic_cast.  crosbug.com/38237
+  DeviceRefPtr device =
+      manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
+  return dynamic_cast<WiFi *>(device.get());
+}
+
+void WiFiService::ResetWiFi() {
+  SetWiFi(NULL);
+}
+
+void WiFiService::SetWiFi(const WiFiRefPtr &wifi) {
+  if (wifi_ == wifi) {
+    return;
+  }
+  ClearCachedCredentials();
+  if (wifi_) {
+    wifi_->DisassociateFromService(this);
+  }
+  wifi_ = wifi;
 }
 
 }  // namespace shill

@@ -43,6 +43,7 @@
 #include "shill/service_sorter.h"
 #include "shill/vpn_service.h"
 #include "shill/wifi.h"
+#include "shill/wifi_provider.h"
 #include "shill/wifi_service.h"
 #include "shill/wimax_service.h"
 
@@ -89,6 +90,8 @@ Manager::Manager(ControlInterface *control_interface,
       device_info_(control_interface, dispatcher, metrics, this),
       modem_info_(control_interface, dispatcher, metrics, this, glib),
       vpn_provider_(control_interface, dispatcher, metrics, this),
+      wifi_provider_(
+          new WiFiProvider(control_interface, dispatcher, metrics, this)),
       wimax_provider_(control_interface, dispatcher, metrics, this),
       resolver_(Resolver::GetInstance()),
       running_(false),
@@ -144,6 +147,8 @@ Manager::Manager(ControlInterface *control_interface,
                             NULL);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServicesProperty,
                                          &Manager::EnumerateAvailableServices);
+  HelpRegisterConstDerivedRpcIdentifiers(shill::kServiceCompleteListProperty,
+                                         &Manager::EnumerateCompleteServices);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServiceWatchListProperty,
                                          &Manager::EnumerateWatchedServices);
   store_.RegisterString(shill::kShortDNSTimeoutTechnologiesProperty,
@@ -199,6 +204,7 @@ void Manager::Start() {
   device_info_.Start();
   modem_info_.Start();
   vpn_provider_.Start();
+  wifi_provider_->Start();
   wimax_provider_.Start();
 }
 
@@ -230,6 +236,7 @@ void Manager::Stop() {
 
   adaptor_->UpdateRunning();
   wimax_provider_.Stop();
+  wifi_provider_->Stop();
   vpn_provider_.Stop();
   modem_info_.Stop();
   device_info_.Stop();
@@ -378,8 +385,8 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     profile->ConfigureService(*it);
   }
 
-  // Shop the Profile contents around to Devices which can create
-  // non-visible services.
+  // Shop the Profile contents around to Devices which may have configuration
+  // stored in these profiles.
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
     profile->ConfigureDevice(*it);
@@ -388,6 +395,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
   // Offer the Profile contents to the service/device providers which will
   // create new services if necessary.
   vpn_provider_.CreateServicesFromProfile(profile);
+  wifi_provider_->CreateServicesFromProfile(profile);
   wimax_provider_.CreateServicesFromProfile(profile);
 
   *path = profile->GetRpcIdentifier();
@@ -602,11 +610,25 @@ bool Manager::IsTechnologyLinkMonitorEnabled(
   return IsTechnologyInList(props_.link_monitor_technologies, technology);
 }
 
-bool Manager::IsDefaultProfile(const StoreInterface *storage) const {
-  if (profiles_.empty()) {
-    return false;
+bool Manager::IsDefaultProfile(StoreInterface *storage) {
+  return profiles_.empty() || storage == profiles_.front()->GetConstStorage();
+}
+
+void Manager::OnProfileStorageInitialized(StoreInterface *storage) {
+  wifi_provider_->FixupServiceEntries(storage, IsDefaultProfile(storage));
+}
+
+DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
+    Technology::Identifier technology) const {
+  vector<DeviceRefPtr> devices;
+  FilterByTechnology(technology, &devices);
+  for (vector<DeviceRefPtr>::const_iterator it = devices.begin();
+       it != devices.end(); ++it) {
+    if ((*it)->enabled()) {
+      return *it;
+    }
   }
-  return storage == profiles_.front()->GetConstStorage();
+  return NULL;
 }
 
 const ProfileRefPtr &Manager::ActiveProfile() const {
@@ -1024,9 +1046,9 @@ void Manager::OnSuspendActionsComplete(int suspend_id, const Error &error) {
 }
 
 void Manager::FilterByTechnology(Technology::Identifier tech,
-                                 vector<DeviceRefPtr> *found) {
+                                 vector<DeviceRefPtr> *found) const {
   CHECK(found);
-  vector<DeviceRefPtr>::iterator it;
+  vector<DeviceRefPtr>::const_iterator it;
   for (it = devices_.begin(); it != devices_.end(); ++it) {
     if ((*it)->technology() == tech)
       found->push_back(*it);
@@ -1224,6 +1246,15 @@ vector<string> Manager::ConnectedTechnologies(Error */*error*/) {
   return vector<string>(unique_technologies.begin(), unique_technologies.end());
 }
 
+bool Manager::IsTechnologyConnected(Technology::Identifier technology) const {
+  for (vector<DeviceRefPtr>::const_iterator it = devices_.begin();
+       it != devices_.end(); ++it) {
+    if ((*it)->technology() == technology && (*it)->IsConnected())
+      return true;
+  }
+  return false;
+}
+
 string Manager::DefaultTechnology(Error */*error*/) {
   return (!services_.empty() && services_[0]->IsConnected()) ?
       services_[0]->GetTechnologyString() : "";
@@ -1272,6 +1303,16 @@ vector<string> Manager::EnumerateAvailableServices(Error */*error*/) {
     if ((*it)->IsVisible()) {
       service_rpc_ids.push_back((*it)->GetRpcIdentifier());
     }
+  }
+  return service_rpc_ids;
+}
+
+RpcIdentifiers Manager::EnumerateCompleteServices(Error */*error*/) {
+  vector<string> service_rpc_ids;
+  for (vector<ServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end();
+       ++it) {
+    service_rpc_ids.push_back((*it)->GetRpcIdentifier());
   }
   return service_rpc_ids;
 }
@@ -1358,7 +1399,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   }
   if (type == flimflam::kTypeWifi) {
     SLOG(Manager, 2) << __func__ << ": getting WiFi Service";
-    return GetWifiService(args, error);
+    return wifi_provider_->GetService(args, error);
   }
   if (type == flimflam::kTypeWimax) {
     SLOG(Manager, 2) << __func__ << ": getting WiMAX Service";
@@ -1367,20 +1408,6 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   Error::PopulateAndLog(error, Error::kNotSupported,
                         kErrorUnsupportedServiceType);
   return NULL;
-}
-
-WiFiServiceRefPtr Manager::GetWifiService(const KeyValueStore &args,
-                                          Error *error) {
-  vector<DeviceRefPtr> wifi_devices;
-  FilterByTechnology(Technology::kWifi, &wifi_devices);
-  if (wifi_devices.empty()) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorNoDevice);
-    return NULL;
-  } else {
-    WiFi *wifi = dynamic_cast<WiFi *>(wifi_devices.front().get());
-    CHECK(wifi);
-    return wifi->GetService(args, error);
-  }
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

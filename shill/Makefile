@@ -430,6 +430,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_vpn_provider.o \
 	mock_vpn_service.o \
 	mock_wifi.o \
+	mock_wifi_provider.o \
 	mock_wifi_service.o \
 	mock_wimax.o \
 	mock_wimax_device_proxy.o \

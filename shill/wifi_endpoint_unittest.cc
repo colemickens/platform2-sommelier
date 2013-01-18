@@ -158,7 +158,8 @@ class WiFiEndpointTest : public PropertyStoreTest {
                                  const std::string &ssid,
                                  const std::string &bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        proxy_factory, wifi, ssid, bssid, 0, 0);
+        proxy_factory, wifi, ssid, bssid,
+        wpa_supplicant::kNetworkModeInfrastructure, 0, 0);
   }
 
   scoped_refptr<MockWiFi> wifi() { return wifi_; }

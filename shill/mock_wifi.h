@@ -40,14 +40,13 @@ class MockWiFi : public WiFi {
                           const EnabledStateChangedCallback &callback));
   MOCK_METHOD1(Scan, void(Error *error));
   MOCK_METHOD1(DisconnectFrom, void(WiFiService *service));
-  MOCK_METHOD2(GetService,
-               WiFiServiceRefPtr(const KeyValueStore &args, Error *error));
   MOCK_METHOD1(ClearCachedCredentials, void(const WiFiService *service));
   MOCK_METHOD2(ConnectTo,
                void(WiFiService *service,
                     std::map<std::string, ::DBus::Variant> service_params));
   MOCK_CONST_METHOD0(IsIdle, bool());
-  MOCK_METHOD1(NotifyEndpointChanged, void(const WiFiEndpoint &endpoint));
+  MOCK_METHOD1(NotifyEndpointChanged,
+               void(const WiFiEndpointConstRefPtr &endpoint));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFi);

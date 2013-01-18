@@ -20,7 +20,7 @@ class MockWiFiService : public WiFiService {
                   EventDispatcher *dispatcher,
                   Metrics *metrics,
                   Manager *manager,
-                  const WiFiRefPtr &device,
+                  WiFiProvider *provider,
                   const std::vector<uint8_t> &ssid,
                   const std::string &mode,
                   const std::string &security,
@@ -33,6 +33,22 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
                                          size_t depth));
   MOCK_METHOD0(HasRecentConnectionIssues, bool());
+  MOCK_METHOD1(AddEndpoint,
+               void(const WiFiEndpointConstRefPtr &endpoint));
+  MOCK_METHOD1(RemoveEndpoint,
+               void(const WiFiEndpointConstRefPtr &endpoint));
+  MOCK_METHOD1(NotifyCurrentEndpoint,
+               void(const WiFiEndpointConstRefPtr &endpoint));
+  MOCK_METHOD1(NotifyEndpointUpdated,
+               void(const WiFiEndpointConstRefPtr &endpoint));
+  MOCK_METHOD2(DisconnectWithFailure,
+               void(ConnectFailure failure, Error *error));
+  MOCK_CONST_METHOD0(IsConnected, bool());
+  MOCK_CONST_METHOD0(IsConnecting, bool());
+  MOCK_CONST_METHOD0(GetEndpointCount, int());
+  MOCK_CONST_METHOD0(HasEndpoints, bool());
+  MOCK_CONST_METHOD0(IsRemembered, bool());
+  MOCK_METHOD0(ResetWiFi, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFiService);

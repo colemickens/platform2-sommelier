@@ -41,18 +41,11 @@ class MetricsTest : public Test {
                                  &dispatcher_,
                                  &metrics_,
                                  &manager_)),
-        wifi_(new WiFi(&control_interface_,
-                       &dispatcher_,
-                       &metrics_,
-                       &manager_,
-                       "wlan0",
-                       "000102030405",
-                       0)),
         wifi_service_(new MockWiFiService(&control_interface_,
                                           &dispatcher_,
                                           &metrics_,
                                           &manager_,
-                                          wifi_,
+                                          manager_.wifi_provider(),
                                           ssid_,
                                           flimflam::kModeManaged,
                                           flimflam::kSecurityNone,
@@ -95,7 +88,6 @@ class MetricsTest : public Test {
   Metrics metrics_;  // This must be destroyed after service_ and wifi_service_
   MetricsLibraryMock library_;
   scoped_refptr<MockService> service_;
-  WiFiRefPtr wifi_;
   const std::vector<uint8_t> ssid_;
   scoped_refptr<MockWiFiService> wifi_service_;
 };
