@@ -296,6 +296,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	vpn_service.o \
 	wifi.o \
 	wifi_endpoint.o \
+	wifi_provider.o \
 	wifi_service.o \
 	wimax.o \
 	wimax_device_proxy.o \
@@ -471,6 +472,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	vpn_service_unittest.o \
 	vpn_unittest.o \
 	wifi_endpoint_unittest.o \
+	wifi_provider_unittest.o \
 	wifi_service_unittest.o \
 	wifi_unittest.o \
 	wimax_provider_unittest.o \
