@@ -246,7 +246,8 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateOperatorInfoViaOperatorId);

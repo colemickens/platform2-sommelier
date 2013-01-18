@@ -9,6 +9,8 @@
 #include "shill/cellular.h"
 #include "shill/mm1_modem_modemcdma_proxy_interface.h"
 
+#include <base/memory/weak_ptr.h>
+
 #include <string>
 #include <vector>
 
@@ -23,15 +25,19 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
       ProxyFactory *proxy_factory,
       ModemInfo *modem_info);
 
+  // Returns true if the service is activated.
+  bool IsActivated() const;
+
   // Inherited from CellularCapability.
   virtual void Activate(const std::string &carrier,
                         Error *error, const ResultCallback &callback);
   virtual void CompleteActivation(Error *error);
   virtual std::string CreateFriendlyServiceName();
-  virtual void DisconnectCleanup();
   virtual void GetProperties();
   virtual std::string GetRoamingStateString() const;
+  virtual bool IsActivating() const;
   virtual bool IsRegistered();
+  virtual bool IsServiceActivationRequired() const;
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
       const DBusPropertiesMap &changed_properties,
@@ -63,27 +69,62 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
 
   virtual void UpdateOLP();
 
+  // Post-payment activation handlers.
+  virtual void UpdatePendingActivationState();
+
  private:
   friend class CellularCapabilityUniversalCDMATest;
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOLP);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo);
+  FRIEND_TEST(CellularCapabilityUniversalCDMADispatcherTest,
+              UpdatePendingActivationState);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+              CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, IsActivating);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+              IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+              OnCDMARegistrationChanged);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOLP);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+              UpdateServiceActivationStateProperty);
 
   // CDMA property change handlers
   virtual void OnModemCDMAPropertiesChanged(
       const DBusPropertiesMap &properties,
       const std::vector<std::string> &invalidated_properties);
-  void OnCDMARegistrationChanged(
-      MMModemCdmaRegistrationState state_1x,
-      MMModemCdmaRegistrationState state_evdo,
-      uint32_t sid, uint32_t nid);
+  void OnCDMARegistrationChanged(MMModemCdmaRegistrationState state_1x,
+                                 MMModemCdmaRegistrationState state_evdo,
+                                 uint32_t sid, uint32_t nid);
+
+  // CDMA activation handlers
+  void ActivateAutomatic();
+  void OnActivationStateChangedSignal(uint32 activation_state,
+                                      uint32 activation_error,
+                                      const DBusPropertiesMap &status_changes);
+  void OnActivateReply(const ResultCallback &callback,
+                       const Error &error);
+  void HandleNewActivationStatus(uint32 error);
+
+  void UpdateServiceActivationStateProperty();
+
+  static std::string GetActivationStateString(uint32 state);
+  static std::string GetActivationErrorString(uint32 error);
 
   void UpdateOperatorInfo();
   void UpdateServingOperator();
 
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
+  // TODO(armansito): Should probably call this |weak_ptr_factory_| after
+  // 3gpp refactor
+  base::WeakPtrFactory<CellularCapabilityUniversalCDMA> weak_cdma_ptr_factory_;
+
+  // CDMA ActivationState property.
+  MMModemCdmaActivationState activation_state_;
+
+  // The activation code needed for OTASP activation.
+  std::string activation_code_;
 
   MMModemCdmaRegistrationState cdma_1x_registration_state_;
   MMModemCdmaRegistrationState cdma_evdo_registration_state_;

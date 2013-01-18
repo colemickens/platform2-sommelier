@@ -196,7 +196,10 @@ TEST_F(PendingActivationStoreTest, GetActivationState) {
   // File contains invalid entry
   EXPECT_CALL(*mock_store,
               GetInt(PendingActivationStore::kMeidGroupId, kEntry, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(4), Return(true)));
+      .WillOnce(DoAll(
+          SetArgumentPointee<2>(
+              static_cast<int>(PendingActivationStore::kStateMax)),
+          Return(true)));
   EXPECT_EQ(PendingActivationStore::kStateUnknown,
             store_.GetActivationState(PendingActivationStore::kIdentifierMEID,
                                       kEntry));
@@ -255,7 +258,7 @@ TEST_F(PendingActivationStoreTest, SetActivationState) {
       kEntry, static_cast<PendingActivationStore::State>(-1)));
   EXPECT_FALSE(store_.SetActivationState(
       PendingActivationStore::kIdentifierICCID,
-      kEntry, static_cast<PendingActivationStore::State>(4)));
+      kEntry, PendingActivationStore::kStateMax));
   EXPECT_FALSE(store_.SetActivationState(
       PendingActivationStore::kIdentifierICCID,
       kEntry, PendingActivationStore::kStateUnknown));

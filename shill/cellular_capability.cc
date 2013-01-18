@@ -20,7 +20,7 @@ namespace shill {
 const char CellularCapability::kModemPropertyIMSI[] = "imsi";
 const char CellularCapability::kModemPropertyState[] = "State";
 // All timeout values are in milliseconds
-const int CellularCapability::kTimeoutActivate = 120000;
+const int CellularCapability::kTimeoutActivate = 300000;
 const int CellularCapability::kTimeoutConnect = 45000;
 const int CellularCapability::kTimeoutDefault = 5000;
 const int CellularCapability::kTimeoutDisconnect = 45000;

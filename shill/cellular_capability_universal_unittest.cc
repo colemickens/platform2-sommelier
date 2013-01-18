@@ -1610,7 +1610,7 @@ TEST_F(CellularCapabilityUniversalMainTest, ActivationWaitForRegisterTimeout) {
   capability_->OnActivationWaitForRegisterTimeout();
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdatePendingActivationState) {
   const char kIccid[] = "1234567";
 
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
@@ -1624,7 +1624,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(0);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // ICCID known.
@@ -1641,7 +1641,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
                                  kIccid,
                                  PendingActivationStore::kStateActivated))
       .Times(1);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Before reset, not registered.
@@ -1654,14 +1654,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
               SetActivationState(flimflam::kActivationStateActivating))
      .Times(2);
   EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(0);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_proxy);
 
   // Before reset, registered.
   capability_->registration_state_ =
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(1);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
   // Not registered.
@@ -1672,14 +1672,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
                                  kIccid))
       .Times(2).WillRepeatedly(Return(PendingActivationStore::kStateActivated));
   EXPECT_CALL(*service_, AutoConnect()).Times(0);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(service_);
 
   // Service, registered.
   capability_->registration_state_ =
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_CALL(*service_, AutoConnect()).Times(1);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
 
   cellular_->service_->activation_state_ =
       flimflam::kActivationStateNotActivated;
@@ -1691,11 +1691,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   EXPECT_CALL(*service_,
               SetActivationState(flimflam::kActivationStateActivated))
       .Times(3);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
 
   // Device is linked.
   cellular_->state_ = Cellular::kStateLinked;
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
 
   // Got valid MDN.
   cellular_->state_ = Cellular::kStateRegistered;
@@ -1703,7 +1703,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid))
       .Times(1);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
 
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
@@ -1721,7 +1721,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
               SetActivationState(_, _, _))
     .Times(0);
   EXPECT_CALL(*service_, SetActivationState(_)).Times(0);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
@@ -1741,7 +1741,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   EXPECT_CALL(*service_,
               SetActivationState(flimflam::kActivationStateActivated))
     .Times(1);
-  capability_->UpdateIccidActivationState();
+  capability_->UpdatePendingActivationState();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 }

@@ -41,6 +41,9 @@ class PendingActivationStore {
     // This state indicates that a timeout has expired in which the modem
     // failed to register to a network.
     kStatePendingTimeout,
+    // This state is used in CDMA activation to indicate that OTA activation
+    // failed and was scheduled for a retry.
+    kStateFailureRetry,
     kStateMax,
   };
 

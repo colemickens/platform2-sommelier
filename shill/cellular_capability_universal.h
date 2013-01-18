@@ -125,7 +125,14 @@ class CellularCapabilityUniversal : public CellularCapability {
   // provider.
   virtual void UpdateOLP();
 
-  const std::string &mdn() const { return mdn_; };
+  // Post-payment activation handlers.
+  virtual void UpdatePendingActivationState();
+
+  const std::string &mdn() const { return mdn_; }
+  void set_mdn(const std::string &mdn) { mdn_ = mdn; }
+
+  const std::string &min() const { return min_; }
+  void set_min(const std::string &min) { min_ = min; }
 
   const std::string &meid() const { return meid_; }
   void set_meid(const std::string &meid) { meid_ = meid; }
@@ -163,8 +170,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
   friend class CellularCapabilityUniversalCDMATest;
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOLP);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               ActivationWaitForRegisterTimeout);
@@ -195,7 +202,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
@@ -358,7 +366,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   static std::string GenerateNewGenericServiceName();
 
   // Post-payment activation handlers.
-  void UpdateIccidActivationState();
   void ResetAfterActivation();
   void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error &error);

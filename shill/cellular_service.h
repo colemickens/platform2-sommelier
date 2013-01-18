@@ -127,7 +127,8 @@ class CellularService : public Service {
   friend class CellularServiceTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdatePendingActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);

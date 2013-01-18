@@ -132,9 +132,11 @@ class CellularOperatorInfo {
     friend class CellularOperatorInfoImpl;
     friend class CellularCapabilityUniversalCDMATest;
     FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
-    FRIEND_TEST(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName);
-    FRIEND_TEST(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged);
-    FRIEND_TEST(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo);
+    FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+                CreateFriendlyServiceName);
+    FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest,
+                OnCDMARegistrationChanged);
+    FRIEND_TEST(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo);
 
     std::string country_;
     std::string identifier_;

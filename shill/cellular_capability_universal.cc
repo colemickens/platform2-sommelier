@@ -518,10 +518,10 @@ void CellularCapabilityUniversal::OnResetAfterActivationReply(
   }
   reset_done_ = true;
   activation_wait_for_registration_callback_.Cancel();
-  UpdateIccidActivationState();
+  UpdatePendingActivationState();
 }
 
-void CellularCapabilityUniversal::UpdateIccidActivationState() {
+void CellularCapabilityUniversal::UpdatePendingActivationState() {
   SLOG(Cellular, 2) << __func__;
 
   bool registered =
@@ -775,7 +775,7 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
   if (!callback.is_null())
     callback.Run(error);
 
-  UpdateIccidActivationState();
+  UpdatePendingActivationState();
 }
 
 bool CellularCapabilityUniversal::AllowRoaming() {
@@ -1614,7 +1614,7 @@ void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
 void CellularCapabilityUniversal::OnMdnChanged(
     const string &mdn) {
   mdn_ = NormalizeMdn(mdn);
-  UpdateIccidActivationState();
+  UpdatePendingActivationState();
 }
 
 void CellularCapabilityUniversal::OnModemManufacturerChanged(
@@ -1791,7 +1791,7 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
 
   // If the modem registered with the network and the current ICCID is pending
   // activation, then reset the modem.
-  UpdateIccidActivationState();
+  UpdatePendingActivationState();
 }
 
 void CellularCapabilityUniversal::OnModemStateChangedSignal(
@@ -1853,7 +1853,7 @@ void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
   sim_identifier_ = id;
-  UpdateIccidActivationState();
+  UpdatePendingActivationState();
 }
 
 void CellularCapabilityUniversal::OnOperatorIdChanged(

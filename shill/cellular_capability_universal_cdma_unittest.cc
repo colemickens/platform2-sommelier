@@ -29,6 +29,7 @@
 #include "shill/mock_mm1_modem_simple_proxy.h"
 #include "shill/mock_mm1_sim_proxy.h"
 #include "shill/mock_modem_info.h"
+#include "shill/mock_pending_activation_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
@@ -46,10 +47,10 @@ namespace shill {
 
 class CellularCapabilityUniversalCDMATest : public testing::Test {
  public:
-  CellularCapabilityUniversalCDMATest()
+  CellularCapabilityUniversalCDMATest(EventDispatcher *dispatcher)
       : capability_(NULL),
         device_adaptor_(NULL),
-        modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+        modem_info_(NULL, dispatcher, NULL, NULL, NULL),
         bearer_proxy_(new mm1::MockBearerProxy()),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
@@ -165,7 +166,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
   CellularCapabilityUniversalCDMA *capability_;
   NiceMock<DeviceMockAdaptor> *device_adaptor_;
-  EventDispatcher dispatcher_;
   MockModemInfo modem_info_;
   MockGLib glib_;
   scoped_ptr<mm1::MockBearerProxy> bearer_proxy_;
@@ -189,7 +189,24 @@ const char CellularCapabilityUniversalCDMATest::kMachineAddress[] =
 // static
 const char CellularCapabilityUniversalCDMATest::kMeid[] = "11111111111111";
 
-TEST_F(CellularCapabilityUniversalCDMATest, PropertiesChanged) {
+class CellularCapabilityUniversalCDMAMainTest
+    : public CellularCapabilityUniversalCDMATest {
+ public:
+  CellularCapabilityUniversalCDMAMainTest()
+      : CellularCapabilityUniversalCDMATest(&dispatcher_) {}
+
+ private:
+  EventDispatcher dispatcher_;
+};
+
+class CellularCapabilityUniversalCDMADispatcherTest
+    : public CellularCapabilityUniversalCDMATest {
+ public:
+  CellularCapabilityUniversalCDMADispatcherTest()
+      : CellularCapabilityUniversalCDMATest(NULL) {}
+};
+
+TEST_F(CellularCapabilityUniversalCDMAMainTest, PropertiesChanged) {
   // Set up mock modem CDMA properties.
   DBusPropertiesMap modem_cdma_properties;
   modem_cdma_properties[MM_MODEM_MODEMCDMA_PROPERTY_MEID].
@@ -218,7 +235,7 @@ TEST_F(CellularCapabilityUniversalCDMATest, PropertiesChanged) {
   EXPECT_EQ(kEsn, capability_->esn());
 }
 
-TEST_F(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged) {
+TEST_F(CellularCapabilityUniversalCDMAMainTest, OnCDMARegistrationChanged) {
   EXPECT_EQ(0, capability_->sid_);
   EXPECT_EQ(0, capability_->nid_);
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN,
@@ -262,21 +279,24 @@ TEST_F(CellularCapabilityUniversalCDMATest, OnCDMARegistrationChanged) {
   EXPECT_EQ("us", capability_->provider_.GetCountry());
 }
 
-TEST_F(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo) {
+TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOperatorInfo) {
   EXPECT_EQ("", capability_->provider_.GetCode());
   EXPECT_EQ("", capability_->provider_.GetName());
   EXPECT_EQ("", capability_->provider_.GetCountry());
+  EXPECT_TRUE(capability_->activation_code_.empty());
 
   capability_->UpdateOperatorInfo();
   EXPECT_EQ("", capability_->provider_.GetCode());
   EXPECT_EQ("", capability_->provider_.GetName());
   EXPECT_EQ("", capability_->provider_.GetCountry());
+  EXPECT_TRUE(capability_->activation_code_.empty());
 
 
   capability_->UpdateOperatorInfo();
   EXPECT_EQ("", capability_->provider_.GetCode());
   EXPECT_EQ("", capability_->provider_.GetName());
   EXPECT_EQ("", capability_->provider_.GetCountry());
+  EXPECT_TRUE(capability_->activation_code_.empty());
 
   capability_->sid_ = 1;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
@@ -287,12 +307,14 @@ TEST_F(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo) {
   EXPECT_EQ("", capability_->provider_.GetCode());
   EXPECT_EQ("", capability_->provider_.GetName());
   EXPECT_EQ("", capability_->provider_.GetCountry());
+  EXPECT_TRUE(capability_->activation_code_.empty());
 
   CellularOperatorInfo::CellularOperator *provider =
       new CellularOperatorInfo::CellularOperator();
 
   provider->country_ = "us";
   provider->is_primary_ = true;
+  provider->activation_code_ = "1234";
   provider->name_list_.push_back(
       CellularOperatorInfo::LocalizedName("Test", ""));
 
@@ -307,9 +329,10 @@ TEST_F(CellularCapabilityUniversalCDMATest, UpdateOperatorInfo) {
   EXPECT_EQ("1", capability_->provider_.GetCode());
   EXPECT_EQ("Test", capability_->provider_.GetName());
   EXPECT_EQ("us", capability_->provider_.GetCountry());
+  EXPECT_EQ("1234", capability_->activation_code_);
 }
 
-TEST_F(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName) {
+TEST_F(CellularCapabilityUniversalCDMAMainTest, CreateFriendlyServiceName) {
   CellularCapabilityUniversalCDMA::friendly_service_name_id_cdma_ = 0;
   EXPECT_EQ(0, capability_->sid_);
   EXPECT_EQ("CDMANetwork0", capability_->CreateFriendlyServiceName());
@@ -334,7 +357,7 @@ TEST_F(CellularCapabilityUniversalCDMATest, CreateFriendlyServiceName) {
   EXPECT_EQ("Test", capability_->CreateFriendlyServiceName());
 }
 
-TEST_F(CellularCapabilityUniversalCDMATest, UpdateOLP) {
+TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOLP) {
   CellularService::OLP test_olp;
   test_olp.SetURL("http://testurl");
   test_olp.SetMethod("POST");
@@ -355,6 +378,196 @@ TEST_F(CellularCapabilityUniversalCDMATest, UpdateOLP) {
   EXPECT_EQ("http://testurl", olp.GetURL());
   EXPECT_EQ("POST", olp.GetMethod());
   EXPECT_EQ("esn=0&mdn=3&meid=4", olp.GetPostData());
+}
+
+TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {
+  mm1::MockModemModemCdmaProxy *cdma_proxy = modem_cdma_proxy_.get();
+  SetUp();
+  capability_->InitProxies();
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .Times(0);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              SetActivationState(_,_,_))
+      .Times(0);
+  EXPECT_CALL(*cdma_proxy, Activate(_,_,_,_)).Times(0);
+  capability_->ActivateAutomatic();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
+
+  capability_->activation_code_ = "1234";
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(PendingActivationStore::kIdentifierMEID, _))
+      .WillOnce(Return(PendingActivationStore::kStatePending))
+      .WillOnce(Return(PendingActivationStore::kStateActivated));
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              SetActivationState(_,_,_))
+      .Times(0);
+  EXPECT_CALL(*cdma_proxy, Activate(_,_,_,_)).Times(0);
+  capability_->ActivateAutomatic();
+  capability_->ActivateAutomatic();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(PendingActivationStore::kIdentifierMEID, _))
+      .WillOnce(Return(PendingActivationStore::kStateUnknown))
+      .WillOnce(Return(PendingActivationStore::kStateFailureRetry));
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              SetActivationState(_,_, PendingActivationStore::kStatePending))
+      .Times(2);
+  EXPECT_CALL(*cdma_proxy, Activate(_,_,_,_)).Times(2);
+  capability_->ActivateAutomatic();
+  capability_->ActivateAutomatic();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_cdma_proxy_.get());
+}
+
+TEST_F(CellularCapabilityUniversalCDMAMainTest, IsServiceActivationRequired) {
+  CellularService::OLP olp;
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
+      .WillOnce(Return((const CellularService::OLP *)NULL))
+      .WillRepeatedly(Return(&olp));
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  EXPECT_TRUE(capability_->IsServiceActivationRequired());
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+}
+
+TEST_F(CellularCapabilityUniversalCDMAMainTest,
+       UpdateServiceActivationStateProperty) {
+  CellularService::OLP olp;
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPBySID(_))
+      .WillRepeatedly(Return(&olp));
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .WillOnce(Return(PendingActivationStore::kStatePending))
+      .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
+
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+      .Times(1);
+  capability_->UpdateServiceActivationStateProperty();
+  Mock::VerifyAndClearExpectations(service_);
+
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateNotActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationStateProperty();
+  Mock::VerifyAndClearExpectations(service_);
+
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+      .Times(1);
+  capability_->UpdateServiceActivationStateProperty();
+  Mock::VerifyAndClearExpectations(service_);
+
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationStateProperty();
+  Mock::VerifyAndClearExpectations(service_);
+  Mock::VerifyAndClearExpectations(modem_info_.mock_cellular_operator_info());
+  Mock::VerifyAndClearExpectations(
+      modem_info_.mock_pending_activation_store());
+}
+
+TEST_F(CellularCapabilityUniversalCDMAMainTest, IsActivating) {
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .WillOnce(Return(PendingActivationStore::kStatePending))
+      .WillOnce(Return(PendingActivationStore::kStatePending))
+      .WillOnce(Return(PendingActivationStore::kStateFailureRetry))
+      .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
+
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_TRUE(capability_->IsActivating());
+  EXPECT_TRUE(capability_->IsActivating());
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  EXPECT_TRUE(capability_->IsActivating());
+  EXPECT_TRUE(capability_->IsActivating());
+  capability_->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_FALSE(capability_->IsActivating());
+}
+
+TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
+       UpdatePendingActivationState) {
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(), RemoveEntry(_,_))
+      .Times(1);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .Times(0);
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  capability_->UpdatePendingActivationState();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
+
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(), RemoveEntry(_,_))
+      .Times(0);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .Times(2)
+      .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  capability_->UpdatePendingActivationState();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
+
+  capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED;
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(), RemoveEntry(_,_))
+      .Times(0);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .Times(2)
+      .WillRepeatedly(Return(PendingActivationStore::kStatePending));
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  capability_->UpdatePendingActivationState();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(), RemoveEntry(_,_))
+      .Times(0);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .Times(2)
+      .WillRepeatedly(Return(PendingActivationStore::kStateFailureRetry));
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(1);
+  capability_->UpdatePendingActivationState();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(), RemoveEntry(_,_))
+      .Times(0);
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .Times(4)
+      .WillOnce(Return(PendingActivationStore::kStateActivated))
+      .WillOnce(Return(PendingActivationStore::kStateActivated))
+      .WillOnce(Return(PendingActivationStore::kStateUnknown))
+      .WillOnce(Return(PendingActivationStore::kStateUnknown));
+  EXPECT_CALL(*modem_info_.mock_dispatcher(), PostTask(_)).Times(0);
+  capability_->UpdatePendingActivationState();
+  capability_->UpdatePendingActivationState();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  Mock::VerifyAndClearExpectations(modem_info_.mock_dispatcher());
 }
 
 }  // namespace shill
