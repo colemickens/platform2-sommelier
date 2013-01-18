@@ -4,14 +4,18 @@
 
 #include "shill/key_file_store.h"
 
+#include <map>
+
 #include <base/file_util.h>
 #include <base/string_number_conversions.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
+#include "shill/key_value_store.h"
 #include "shill/logging.h"
 
+using std::map;
 using std::set;
 using std::string;
 using std::vector;
@@ -145,6 +149,18 @@ set<string> KeyFileStore::GetGroupsWithKey(const string &key) const {
     }
   }
   return groups_with_key;
+}
+
+set<string> KeyFileStore::GetGroupsWithProperties(
+     const KeyValueStore &properties) const {
+  set<string> groups = GetGroups();
+  set<string> groups_with_properties;
+  for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {
+    if (DoesGroupMatchProperties(*it, properties)) {
+      groups_with_properties.insert(*it);
+    }
+  }
+  return groups_with_properties;
 }
 
 bool KeyFileStore::ContainsGroup(const string &group) const {
@@ -356,6 +372,41 @@ bool KeyFileStore::SetCryptedString(const string &group,
                                     const string &key,
                                     const string &value) {
   return SetString(group, key, crypto_.Encrypt(value));
+}
+
+bool KeyFileStore::DoesGroupMatchProperties(
+    const string &group, const KeyValueStore &properties) const {
+  map<string, bool>::const_iterator bool_it;
+  for (bool_it = properties.bool_properties().begin();
+       bool_it != properties.bool_properties().end();
+       ++bool_it) {
+    bool value;
+    if (!GetBool(group, bool_it->first, &value) ||
+        value != bool_it->second) {
+      return false;
+    }
+  }
+  map<string, int32>::const_iterator int_it;
+  for (int_it = properties.int_properties().begin();
+       int_it != properties.int_properties().end();
+       ++int_it) {
+    int value;
+    if (!GetInt(group, int_it->first, &value) ||
+        value != int_it->second) {
+      return false;
+    }
+  }
+  map<string, string>::const_iterator string_it;
+  for (string_it = properties.string_properties().begin();
+       string_it != properties.string_properties().end();
+       ++string_it) {
+    string value;
+    if (!GetString(group, string_it->first, &value) ||
+        value != string_it->second) {
+      return false;
+    }
+  }
+  return true;
 }
 
 }  // namespace shill

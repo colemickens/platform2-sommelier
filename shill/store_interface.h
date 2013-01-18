@@ -11,6 +11,8 @@
 
 namespace shill {
 
+class KeyValueStore;
+
 // An interface to a persistent store implementation.
 class StoreInterface {
  public:
@@ -25,6 +27,11 @@ class StoreInterface {
   // Returns the names of all groups that contain the named |key|.
   virtual std::set<std::string> GetGroupsWithKey(
       const std::string &key) const = 0;
+
+  // Returns the names of all groups that contain the named |properties|.
+  // Only the Bool, Int and String properties are checked.
+  virtual std::set<std::string> GetGroupsWithProperties(
+      const KeyValueStore &properties) const = 0;
 
   // Returns true if the store contains |group|, false otherwise.
   virtual bool ContainsGroup(const std::string &group) const = 0;

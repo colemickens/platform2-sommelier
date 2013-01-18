@@ -11,6 +11,8 @@
 #include <base/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "shill/key_value_store.h"
+
 using file_util::FileEnumerator;
 using std::set;
 using std::string;
@@ -184,6 +186,89 @@ TEST_F(KeyFileStoreTest, ContainsGroup) {
   EXPECT_TRUE(store_.ContainsGroup(kGroupB));
   EXPECT_TRUE(store_.ContainsGroup(kGroupC));
   EXPECT_FALSE(store_.ContainsGroup("group-d"));
+  ASSERT_TRUE(store_.Close());
+}
+
+TEST_F(KeyFileStoreTest, GetGroupsWithProperties) {
+  static const char kGroupA[] = "group-a";
+  static const char kGroupB[] = "group-b";
+  static const char kGroupC[] = "group-c";
+  static const char kAttributeA[] = "attr-a";
+  static const char kAttributeB[] = "attr-b";
+  static const char kAttributeC[] = "attr-c";
+  static const char kValueA_0[] = "val-a";
+  static const char kValueA_1[] = "val-b";
+  static const int kValueB_0 = 1;
+  static const int kValueB_1 = 2;
+  static const bool kValueC_0 = true;
+  static const char kValueC_0_string[] = "true";
+  static const bool kValueC_1 = false;
+  static const char kValueC_1_string[] = "false";
+  WriteKeyFile(base::StringPrintf("[%s]\n"
+                                  "%s=%s\n"
+                                  "%s=%d\n"
+                                  "%s=%s\n"
+                                  "[%s]\n"
+                                  "%s=%s\n"
+                                  "%s=%d\n"
+                                  "%s=%s\n"
+                                  "[%s]\n"
+                                  "%s=%s\n"
+                                  "%s=%d\n"
+                                  "%s=%s\n",
+                                  kGroupA,
+                                  kAttributeA, kValueA_0,
+                                  kAttributeB, kValueB_0,
+                                  kAttributeC, kValueC_0_string,
+                                  kGroupB,
+                                  kAttributeA, kValueA_0,
+                                  kAttributeB, kValueB_1,
+                                  kAttributeC, kValueC_0_string,
+                                  kGroupC,
+                                  kAttributeA, kValueA_0,
+                                  kAttributeB, kValueB_0,
+                                  kAttributeC, kValueC_1_string));
+  ASSERT_TRUE(store_.Open());
+  {
+    KeyValueStore args;
+    args.SetString(kAttributeA, kValueA_0);
+    args.SetInt(kAttributeB, kValueB_0);
+    set<string> results = store_.GetGroupsWithProperties(args);
+    EXPECT_EQ(2, results.size());
+    EXPECT_TRUE(results.find(kGroupA) != results.end());
+    EXPECT_TRUE(results.find(kGroupC) != results.end());
+  }
+  {
+    KeyValueStore args;
+    args.SetString(kAttributeA, kValueA_0);
+    args.SetBool(kAttributeC, kValueC_0);
+    set<string> results = store_.GetGroupsWithProperties(args);
+    EXPECT_EQ(2, results.size());
+    EXPECT_TRUE(results.find(kGroupA) != results.end());
+    EXPECT_TRUE(results.find(kGroupB) != results.end());
+  }
+  {
+    KeyValueStore args;
+    args.SetBool(kAttributeC, kValueC_1);
+    set<string> results = store_.GetGroupsWithProperties(args);
+    EXPECT_EQ(1, results.size());
+    EXPECT_TRUE(results.find(kGroupC) != results.end());
+  }
+  {
+    KeyValueStore args;
+    args.SetString(kAttributeA, kValueA_0);
+    set<string> results = store_.GetGroupsWithProperties(args);
+    EXPECT_EQ(3, results.size());
+    EXPECT_TRUE(results.find(kGroupA) != results.end());
+    EXPECT_TRUE(results.find(kGroupB) != results.end());
+    EXPECT_TRUE(results.find(kGroupC) != results.end());
+  }
+  {
+    KeyValueStore args;
+    args.SetString(kAttributeA, kValueA_1);
+    set<string> results = store_.GetGroupsWithProperties(args);
+    EXPECT_EQ(0, results.size());
+  }
   ASSERT_TRUE(store_.Close());
 }
 

@@ -12,6 +12,7 @@
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
+#include "shill/key_value_store.h"
 #include "shill/store_interface.h"
 
 namespace shill {
@@ -25,6 +26,8 @@ class MockStore : public StoreInterface {
   MOCK_CONST_METHOD0(GetGroups, std::set<std::string>());
   MOCK_CONST_METHOD1(GetGroupsWithKey,
                      std::set<std::string>(const std::string &key));
+  MOCK_CONST_METHOD1(GetGroupsWithProperties,
+                     std::set<std::string>(const KeyValueStore &properties));
   MOCK_CONST_METHOD1(ContainsGroup, bool(const std::string &group));
   MOCK_METHOD2(DeleteKey, bool(const std::string &group,
                                const std::string &key));

@@ -50,6 +50,8 @@ class KeyFileStore : public StoreInterface {
   virtual bool Flush();
   virtual std::set<std::string> GetGroups() const;
   virtual std::set<std::string> GetGroupsWithKey(const std::string &key) const;
+  virtual std::set<std::string> GetGroupsWithProperties(
+      const KeyValueStore &properties) const;
   virtual bool ContainsGroup(const std::string &group) const;
   virtual bool DeleteKey(const std::string &group, const std::string &key);
   virtual bool DeleteGroup(const std::string &group);
@@ -97,6 +99,8 @@ class KeyFileStore : public StoreInterface {
   static const char kCorruptSuffix[];
 
   void ReleaseKeyFile();
+  bool DoesGroupMatchProperties(const std::string &group,
+                                const KeyValueStore &properties) const;
 
   GLib *glib_;
   CryptoProvider crypto_;
