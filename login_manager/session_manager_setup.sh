@@ -374,18 +374,15 @@ export PATH=/bin:/usr/bin:/usr/bin/X11
 exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
     ${HANG_DETECTION_FLAG} -- \
     $CHROME --allow-webui-compositing \
-            --apps-gallery-url="https://chrome.google.com/webstore/" \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
+            --enable-autologin \
             --enable-encrypted-media \
             --enable-gpu-sandbox \
             --enable-logging \
             --enable-partial-swap \
-            --enable-smooth-scrolling \
-            --enable-threaded-compositing \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
-            --force-compositing-mode \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
