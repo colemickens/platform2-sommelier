@@ -11,6 +11,7 @@
 
 #include "shill/dbus_bindings/supplicant-interface.h"
 #include "shill/event_dispatcher.h"
+#include "shill/key_value_store.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 
@@ -31,6 +32,7 @@ class WiFiService : public Service {
   static const char kStorageMode[];
   static const char kStoragePassphrase[];
   static const char kStorageSecurity[];
+  static const char kStorageSecurityClass[];
   static const char kStorageSSID[];
 
   WiFiService(ControlInterface *control_interface,
@@ -169,14 +171,14 @@ class WiFiService : public Service {
   // This function maps them all into "psk".
   static std::string GetSecurityClass(const std::string &security);
 
+  // Create a default group name for this WiFi service.
+  std::string GetDefaultStorageIdentifier() const;
+
   // Profile data for a WPA/RSN service can be stored under a number of
-  // different names.  These functions create different storage identifiers
-  // based on whether they are referred to by their generic "psk" name or
-  // if they use the (legacy) specific "wpa" or "rsn" names.
-  std::string GetGenericStorageIdentifier() const;
-  std::string GetSpecificStorageIdentifier() const;
-  std::string GetStorageIdentifierForSecurity(
-      const std::string &security) const;
+  // different security types.  These functions create different storage
+  // property lists based on whether they are saved with their generic
+  // "psk" name or if they use the (legacy) specific "wpa" or "rsn" names.
+  KeyValueStore GetStorageProperties() const;
 
   // Validate then apply a passphrase for this service.
   void SetPassphrase(const std::string &passphrase, Error *error);

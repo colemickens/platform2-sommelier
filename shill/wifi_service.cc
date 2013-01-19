@@ -42,6 +42,7 @@ const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
 const char WiFiService::kStoragePassphrase[] = "Passphrase";
 const char WiFiService::kStorageSecurity[] = "WiFi.Security";
+const char WiFiService::kStorageSecurityClass[] = "WiFi.SecurityClass";
 const char WiFiService::kStorageSSID[] = "SSID";
 bool WiFiService::logged_signal_warning = false;
 
@@ -116,7 +117,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   }
 
   // Until we know better (at Profile load time), use the generic name.
-  storage_identifier_ = GetGenericStorageIdentifier();
+  storage_identifier_ = GetDefaultStorageIdentifier();
   UpdateConnectable();
 
   IgnoreParameterForConfigure(flimflam::kModeProperty);
@@ -220,8 +221,7 @@ void WiFiService::ClearPassphrase(Error */*error*/) {
 }
 
 bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
-  return storage->ContainsGroup(GetGenericStorageIdentifier()) ||
-      storage->ContainsGroup(GetSpecificStorageIdentifier());
+  return !storage->GetGroupsWithProperties(GetStorageProperties()).empty();
 }
 
 bool WiFiService::IsVisible() const {
@@ -234,15 +234,19 @@ bool WiFiService::IsVisible() const {
 bool WiFiService::Load(StoreInterface *storage) {
   // First find out which storage identifier is available in priority order
   // of specific, generic.
-  string id = GetSpecificStorageIdentifier();
-  if (!storage->ContainsGroup(id)) {
-    id = GetGenericStorageIdentifier();
-    if (!storage->ContainsGroup(id)) {
-      LOG(WARNING) << "Service is not available in the persistent store: "
-                   << id;
-      return false;
-    }
+  set<string> groups = storage->GetGroupsWithProperties(GetStorageProperties());
+  if (groups.empty()) {
+    LOG(WARNING) << "Configuration for service "
+                 << unique_name()
+                 << " is not available in the persistent store";
+    return false;
   }
+  if (groups.size() > 0) {
+    LOG(WARNING) << "More than one configuration for service "
+                 << unique_name()
+                 << " is available; choosing the first.";
+  }
+  string id = *groups.begin();
 
   // Set our storage identifier to match the storage name in the Profile.
   storage_identifier_ = id;
@@ -283,6 +287,7 @@ bool WiFiService::Save(StoreInterface *storage) {
   storage->SetString(id, kStorageMode, mode_);
   storage->SetCryptedString(id, kStoragePassphrase, passphrase_);
   storage->SetString(id, kStorageSecurity, security_);
+  storage->SetString(id, kStorageSecurityClass, GetSecurityClass(security_));
   storage->SetString(id, kStorageSSID, hex_ssid_);
 
   return true;
@@ -744,6 +749,10 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
       storage->SetString(id, kStorageSecurity, security);
       fixed_entry = true;
     }
+    if (!storage->GetString(id, kStorageSecurityClass, NULL)) {
+      storage->SetString(id, kStorageSecurityClass, GetSecurityClass(security));
+      fixed_entry = true;
+    }
   }
   return fixed_entry;
 }
@@ -770,17 +779,18 @@ uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
   return strength;
 }
 
-string WiFiService::GetGenericStorageIdentifier() const {
-  return GetStorageIdentifierForSecurity(GetSecurityClass(security_));
+KeyValueStore WiFiService::GetStorageProperties() const {
+  KeyValueStore args;
+  args.SetString(kStorageType, flimflam::kTypeWifi);
+  args.SetString(kStorageSSID, hex_ssid_);
+  args.SetString(kStorageMode, mode_);
+  args.SetString(kStorageSecurityClass, GetSecurityClass(security_));
+  return args;
 }
 
-string WiFiService::GetSpecificStorageIdentifier() const {
-  return GetStorageIdentifierForSecurity(security_);
-}
-
-string WiFiService::GetStorageIdentifierForSecurity(
-    const string &security) const {
-   return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
+string WiFiService::GetDefaultStorageIdentifier() const {
+  string security = GetSecurityClass(security_);
+  return StringToLowerASCII(base::StringPrintf("%s_%s_%s_%s_%s",
                                                flimflam::kTypeWifi,
                                                wifi_->address().c_str(),
                                                hex_ssid_.c_str(),

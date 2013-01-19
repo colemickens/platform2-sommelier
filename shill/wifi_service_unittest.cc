@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/stringprintf.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -19,6 +20,7 @@
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
+#include "shill/mock_log.h"
 #include "shill/mock_nss.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
@@ -36,6 +38,7 @@ using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::DoAll;
+using ::testing::EndsWith;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -110,6 +113,19 @@ class WiFiServiceTest : public PropertyStoreTest {
 // static
 const char WiFiServiceTest::fake_mac[] = "AaBBcCDDeeFF";
 
+MATCHER_P3(ContainsWiFiProperties, ssid, mode, security, "") {
+  string hex_ssid = base::HexEncode(ssid.data(), ssid.size());
+  return
+      arg.ContainsString(WiFiService::kStorageType) &&
+      arg.GetString(WiFiService::kStorageType) == flimflam::kTypeWifi &&
+      arg.ContainsString(WiFiService::kStorageSSID) &&
+      arg.GetString(WiFiService::kStorageSSID) == hex_ssid &&
+      arg.ContainsString(WiFiService::kStorageMode) &&
+      arg.GetString(WiFiService::kStorageMode) == mode &&
+      arg.ContainsString(WiFiService::kStorageSecurityClass) &&
+      arg.GetString(WiFiService::kStorageSecurityClass) == security;
+}
+
 class WiFiServiceSecurityTest : public WiFiServiceTest {
  public:
   WiFiServiceRefPtr CreateServiceWithSecurity(const string &security) {
@@ -139,10 +155,20 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
 
   // Test that a service that is created with security |from_security|
   // gets by default a storage identifier with |to_security| as its
-  // security component.
+  // security component, and that when saved, it sets the Security
+  // property in to |to_security| as well.
   bool TestStorageMapping(const string &from_security,
                           const string &to_security) {
     WiFiServiceRefPtr wifi_service = CreateServiceWithSecurity(from_security);
+    NiceMock<MockStore> mock_store;
+    EXPECT_CALL(mock_store, SetString(_, _, _)).WillRepeatedly(Return(true));
+    EXPECT_CALL(mock_store,
+                SetString(_, WiFiService::kStorageSecurity, from_security))
+        .Times(1);
+    EXPECT_CALL(mock_store,
+                SetString(_, WiFiService::kStorageSecurityClass, to_security))
+        .Times(1);
+    wifi_service->Save(&mock_store);
     return TestStorageSecurityIs(wifi_service, to_security);
   }
 
@@ -157,12 +183,18 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     WiFiServiceRefPtr wifi_service =
         CreateServiceWithSecurity(service_security);
     NiceMock<MockStore> mock_store;
-    const string storage_id =
-        wifi_service->GetStorageIdentifierForSecurity(storage_security);
-    EXPECT_CALL(mock_store, ContainsGroup(_))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
+    EXPECT_CALL(mock_store, GetGroupsWithProperties(_))
+        .WillRepeatedly(Return(set<string>()));
+    const string kStorageId = "storage_id";
+    EXPECT_CALL(mock_store, ContainsGroup(kStorageId))
         .WillRepeatedly(Return(true));
+    set<string> groups;
+    groups.insert(kStorageId);
+    EXPECT_CALL(mock_store, GetGroupsWithProperties(
+        ContainsWiFiProperties(wifi_service->ssid(),
+                               flimflam::kModeManaged,
+                               storage_security)))
+        .WillRepeatedly(Return(groups));
     bool is_loadable = wifi_service->IsLoadableFrom(&mock_store);
     EXPECT_EQ(expectation, is_loadable);
     bool is_loaded = wifi_service->Load(&mock_store);
@@ -173,7 +205,7 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
     } else if (!expectation) {
       return true;
     } else {
-      return TestStorageSecurityIs(wifi_service, storage_security);
+      return wifi_service->GetStorageIdentifier() == kStorageId;
     }
   }
 };
@@ -230,11 +262,12 @@ class WiFiServiceFixupStorageTest : public WiFiServiceTest {
     groups_.insert(group_name);
   }
 
-  void AddServiceEntry(bool has_type, bool has_mode, bool has_security) {
+  void AddServiceEntry(bool has_type, bool has_mode, bool has_security,
+                       bool has_security_class) {
     int index = groups_.size();
     string id = base::StringPrintf("%s_%d_%d_%s_%s", flimflam::kTypeWifi,
                                    index, index, flimflam::kModeManaged,
-                                   flimflam::kSecurityNone);
+                                   flimflam::kSecurityWpa);
     AddGroup(id);
     EXPECT_CALL(store_, GetString(id, WiFiService::kStorageType, _))
         .WillOnce(Return(has_type));
@@ -252,7 +285,13 @@ class WiFiServiceFixupStorageTest : public WiFiServiceTest {
         .WillOnce(Return(has_security));
     if (!has_security) {
       EXPECT_CALL(store_, SetString(id, WiFiService::kStorageSecurity,
-                                    flimflam::kSecurityNone));
+                                    flimflam::kSecurityWpa));
+    }
+    EXPECT_CALL(store_, GetString(id, WiFiService::kStorageSecurityClass, _))
+        .WillOnce(Return(has_security_class));
+    if (!has_security_class) {
+      EXPECT_CALL(store_, SetString(id, WiFiService::kStorageSecurityClass,
+                                    flimflam::kSecurityPsk));
     }
   }
 
@@ -768,8 +807,14 @@ TEST_F(WiFiServiceTest, LoadHidden) {
   ASSERT_FALSE(service->hidden_ssid_);
   NiceMock<MockStore> mock_store;
   const string storage_id = service->GetStorageIdentifier();
+  set<string> groups;
+  groups.insert(storage_id);
   EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_store, GetGroupsWithProperties(
+      ContainsWiFiProperties(
+          ssid, flimflam::kModeManaged, flimflam::kSecurityNone)))
+      .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store, GetBool(_, _, _))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(mock_store,
@@ -777,6 +822,42 @@ TEST_F(WiFiServiceTest, LoadHidden) {
       .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
   EXPECT_TRUE(service->Load(&mock_store));
   EXPECT_TRUE(service->hidden_ssid_);
+}
+
+TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
+  vector<uint8_t> ssid(1, 'a');
+  WiFiServiceRefPtr service = new WiFiService(control_interface(),
+                                              dispatcher(),
+                                              metrics(),
+                                              manager(),
+                                              wifi(),
+                                              ssid,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityNone,
+                                              false);
+  set<string> groups;
+  groups.insert("id0");
+  groups.insert("id1");
+  // Make sure we retain the first matched group in the same way that
+  // WiFiService::Load() will.
+  string first_group = *groups.begin();
+
+  NiceMock<MockStore> mock_store;
+  EXPECT_CALL(mock_store, GetGroupsWithProperties(
+      ContainsWiFiProperties(
+          ssid, flimflam::kModeManaged, flimflam::kSecurityNone)))
+      .WillRepeatedly(Return(groups));
+  EXPECT_CALL(mock_store, ContainsGroup(first_group))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_store, ContainsGroup(StrNe(first_group))).Times(0);
+  EXPECT_CALL(mock_store, GetBool(first_group, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_store, GetBool(StrNe(first_group), _, _)).Times(0);
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
+                       EndsWith("choosing the first.")));
+  EXPECT_TRUE(service->Load(&mock_store));
 }
 
 TEST_F(WiFiServiceSecurityTest, WPAMapping) {
@@ -800,7 +881,7 @@ TEST_F(WiFiServiceSecurityTest, LoadMapping) {
                               true));
   EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityRsn,
                               flimflam::kSecurityRsn,
-                              true));
+                              false));
   EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityRsn,
                               flimflam::kSecurityWpa,
                               false));
@@ -809,7 +890,7 @@ TEST_F(WiFiServiceSecurityTest, LoadMapping) {
                               true));
   EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWpa,
                               flimflam::kSecurityWpa,
-                              true));
+                              false));
   EXPECT_TRUE(TestLoadMapping(flimflam::kSecurityWpa,
                               flimflam::kSecurityRsn,
                               false));
@@ -838,6 +919,12 @@ TEST_F(WiFiServiceTest, LoadAndUnloadPassphrase) {
   const string storage_id = service->GetStorageIdentifier();
   EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
       .WillRepeatedly(Return(true));
+  set<string> groups;
+  groups.insert(storage_id);
+  EXPECT_CALL(mock_store, GetGroupsWithProperties(
+      ContainsWiFiProperties(
+          ssid, flimflam::kModeManaged, flimflam::kSecurityPsk)))
+      .WillRepeatedly(Return(groups));
   EXPECT_CALL(mock_store, GetBool(_, _, _))
       .WillRepeatedly(Return(false));
   const string passphrase = "passphrase";
@@ -978,10 +1065,10 @@ TEST_F(WiFiServiceFixupStorageTest, FixedEntries) {
 
   AddGroup(kNonWiFiId);
   AddGroup(kUnparsableWiFiId);
-  AddServiceEntry(true, true, true);
-  AddServiceEntry(false, false, false);
-  AddServiceEntry(true, true, true);
-  AddServiceEntry(false, false, false);
+  AddServiceEntry(true, true, true, true);
+  AddServiceEntry(false, false, false, false);
+  AddServiceEntry(true, true, true, true);
+  AddServiceEntry(false, false, false, false);
   EXPECT_TRUE(FixupServiceEntries());
 }
 
@@ -991,25 +1078,29 @@ TEST_F(WiFiServiceFixupStorageTest, NoFixedEntries) {
 
   AddGroup(kNonWiFiId);
   AddGroup(kUnparsableWiFiId);
-  AddServiceEntry(true, true, true);
+  AddServiceEntry(true, true, true, true);
   EXPECT_FALSE(FixupServiceEntries());
 }
 
 TEST_F(WiFiServiceFixupStorageTest, MissingTypeProperty) {
-  AddServiceEntry(false, true, true);
+  AddServiceEntry(false, true, true, true);
   EXPECT_TRUE(FixupServiceEntries());
 }
 
 TEST_F(WiFiServiceFixupStorageTest, MissingModeProperty) {
-  AddServiceEntry(true, false, true);
+  AddServiceEntry(true, false, true, true);
   EXPECT_TRUE(FixupServiceEntries());
 }
 
 TEST_F(WiFiServiceFixupStorageTest, MissingSecurityProperty) {
-  AddServiceEntry(true, true, false);
+  AddServiceEntry(true, true, false, true);
   EXPECT_TRUE(FixupServiceEntries());
 }
 
+TEST_F(WiFiServiceFixupStorageTest, MissingSecurityClassProperty) {
+  AddServiceEntry(true, true, true, false);
+  EXPECT_TRUE(FixupServiceEntries());
+}
 
 TEST_F(WiFiServiceTest, Connectable) {
   // Open network should be connectable.
