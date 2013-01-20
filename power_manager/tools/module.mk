@@ -61,16 +61,16 @@ CXX_BINARY(tools/powerd_dbus_suspend): LDLIBS += $(DBUS_LIBS) -lgflags \
 clean: CXX_BINARY(tools/powerd_dbus_suspend)
 all: CXX_BINARY(tools/powerd_dbus_suspend)
 
-SUSPENDDELAYSAMPLE_FLAGS = $(LIBPOWERMAN_FLAGS)
-SUSPENDDELAYSAMPLE_LIBS = $(LIBPOWERMAN_LIBS) -lgflags -lprotobuf-lite
-SUSPENDDELAYSAMPLE_OBJS = tools/suspend_delay_sample.o \
-                          common/power_constants.o \
-                          common/util_dbus.o \
-                          common/util_dbus_handler.o \
-                          power_manager/suspend.pb.o
-CXX_BINARY(tools/suspend_delay_sample): $(SUSPENDDELAYSAMPLE_OBJS)
-CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(SUSPENDDELAYSAMPLE_FLAGS)
-CXX_BINARY(tools/suspend_delay_sample): LDLIBS += $(SUSPENDDELAYSAMPLE_LIBS)
+CXX_BINARY(tools/suspend_delay_sample): \
+	tools/suspend_delay_sample.o \
+	common/power_constants.o \
+	common/util_dbus.o \
+	common/util_dbus_handler.o \
+	power_manager/suspend.pb.o
+CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(LIBPOWERMAN_FLAGS) \
+	$(DBUS_FLAGS) $(GLIB_FLAGS)
+CXX_BINARY(tools/suspend_delay_sample): LDLIBS += $(LIBPOWERMAN_LIBS) \
+	$(DBUS_LIBS) $(GLIB_LIBS) -lgflags -lprotobuf-lite
 clean: CXX_BINARY(tools/suspend_delay_sample)
 all: CXX_BINARY(tools/suspend_delay_sample)
 
