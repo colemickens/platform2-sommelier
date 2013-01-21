@@ -6,6 +6,7 @@
 
 #include "anonymizer_tool.h"
 
+using std::map;
 using std::string;
 
 namespace debugd {
@@ -20,9 +21,9 @@ class AnonymizerToolTest : public testing::Test {
     return anonymizer_.AnonymizeCustomPatterns(input);
   }
 
-  string AnonymizeCustomPattern(
-      const string& input, const string& tag, const string& pattern) {
-    return anonymizer_.AnonymizeCustomPattern(input, tag, pattern);
+  static string AnonymizeCustomPattern(
+      const string& input, const string& pattern, map<string, string>* space) {
+    return AnonymizerTool::AnonymizeCustomPattern(input, pattern, space);
   }
 
   AnonymizerTool anonymizer_;
@@ -37,7 +38,7 @@ TEST_F(AnonymizerToolTest, Anonymize) {
   EXPECT_EQ("02:46:8a:00:00:01", anonymizer_.Anonymize("02:46:8a:ce:13:57"));
 
   // Make sure custom pattern anonymization is invoked.
-  EXPECT_EQ("cell-id-1", AnonymizeCustomPatterns("Cell ID: 'A1B2'"));
+  EXPECT_EQ("Cell ID: '1'", AnonymizeCustomPatterns("Cell ID: 'A1B2'"));
 }
 
 TEST_F(AnonymizerToolTest, AnonymizeMACAddresses) {
@@ -64,26 +65,33 @@ TEST_F(AnonymizerToolTest, AnonymizeMACAddresses) {
 TEST_F(AnonymizerToolTest, AnonymizeCustomPatterns) {
   EXPECT_EQ("", AnonymizeCustomPatterns(""));
 
-  EXPECT_EQ("cell-id-1", AnonymizeCustomPatterns("Cell ID: 'A1B2'"));
-  EXPECT_EQ("cell-id-2", AnonymizeCustomPatterns("Cell ID: 'C1D2'"));
-  EXPECT_EQ("foo cell-id-1 bar",
+  EXPECT_EQ("Cell ID: '1'", AnonymizeCustomPatterns("Cell ID: 'A1B2'"));
+  EXPECT_EQ("Cell ID: '2'", AnonymizeCustomPatterns("Cell ID: 'C1D2'"));
+  EXPECT_EQ("foo Cell ID: '1' bar",
             AnonymizeCustomPatterns("foo Cell ID: 'A1B2' bar"));
 
-  EXPECT_EQ("foo loc-area-code-1 bar",
+  EXPECT_EQ("foo Location area code: '1' bar",
             AnonymizeCustomPatterns("foo Location area code: 'A1B2' bar"));
 }
 
 TEST_F(AnonymizerToolTest, AnonymizeCustomPattern) {
-  const char kPattern[] = "\\b\\d+\\b";
-  EXPECT_EQ("", AnonymizeCustomPattern("", "tag", kPattern));
+  static const char kPattern[] = "(\\b(?i)id:? ')(\\d+)(')";
+  map<string, string> space;
+  EXPECT_EQ("", AnonymizeCustomPattern("", kPattern, &space));
   EXPECT_EQ("foo\nbar\n",
-            AnonymizeCustomPattern("foo\nbar\n", "tag", kPattern));
-  EXPECT_EQ("tag-1", AnonymizeCustomPattern("2345", "tag", kPattern));
-  EXPECT_EQ("tag-2", AnonymizeCustomPattern("1234", "tag", kPattern));
-  EXPECT_EQ("tag-1", AnonymizeCustomPattern("2345", "tag", kPattern));
-  EXPECT_EQ("x1 tag-1 1x tag-2\ntag-1\n",
-            AnonymizeCustomPattern("x1 2345 1x 1234\n2345\n", "tag", kPattern));
-  EXPECT_EQ("foo-1", AnonymizeCustomPattern("1234", "foo", kPattern));
+            AnonymizeCustomPattern("foo\nbar\n", kPattern, &space));
+  EXPECT_EQ("id '1'", AnonymizeCustomPattern("id '2345'", kPattern, &space));
+  EXPECT_EQ("id '2'", AnonymizeCustomPattern("id '1234'", kPattern, &space));
+  EXPECT_EQ("id: '2'", AnonymizeCustomPattern("id: '1234'", kPattern, &space));
+  EXPECT_EQ("ID: '1'", AnonymizeCustomPattern("ID: '2345'", kPattern, &space));
+  EXPECT_EQ("x1 id '1' 1x id '2'\nid '1'\n",
+            AnonymizeCustomPattern("x1 id '2345' 1x id '1234'\nid '2345'\n",
+                                   kPattern, &space));
+  space.clear();
+  EXPECT_EQ("id '1'", AnonymizeCustomPattern("id '1234'", kPattern, &space));
+
+  space.clear();
+  EXPECT_EQ("x1z", AnonymizeCustomPattern("xyz", "()(y+)()", &space));
 }
 
 }  // namespace debugd

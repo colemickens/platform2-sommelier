@@ -7,32 +7,38 @@
 #include <pcrecpp.h>
 
 #include <base/string_util.h>
+#include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 
+using base::IntToString;
 using base::StringPrintf;
+using std::map;
 using std::string;
 
 namespace debugd {
 
 namespace {
 
-struct CustomPatternInfo {
-  const char* const tag;
-  const char* const pattern;
-};
-
-// This array defines custom patterns to match and anonymize. Every match of
-// |pattern| will be replaced by a "|tag|-|id|" string, where |id| is the
-// incremental instance identifier of the matched substring. Every different
-// |tag| defines a separate instance identifier space.
-const CustomPatternInfo kCustomPatterns[] = {
-  { "cell-id", "\\bCell ID: '[0-9a-fA-F]+'" },
-  { "loc-area-code", "\\bLocation area code: '[0-9a-fA-F]+'" },
+// The |kCustomPatterns| array defines patterns to match and anonymize. Each
+// pattern needs to define three capturing parentheses groups:
+//
+// - a group for the pattern before the identifier to be anonymized;
+// - a group for the identifier to be anonymized;
+// - a group for the pattern after the identifier to be anonymized.
+//
+// Every matched identifier (in the context of the whole pattern) is anonymized
+// by replacing it with an incremental instance identifier. Every different
+// pattern defines a separate instance identifier space. See the unit test for
+// AnonymizerTool::AnonymizeCustomPattern for pattern anonymization examples.
+const char *kCustomPatterns[] = {
+  "(\\bCell ID: ')([0-9a-fA-F]+)(')",  // ModemManager
+  "(\\bLocation area code: ')([0-9a-fA-F]+)(')",  // ModemManager
 };
 
 }  // namespace
 
-AnonymizerTool::AnonymizerTool() {}
+AnonymizerTool::AnonymizerTool()
+    : custom_patterns_(arraysize(kCustomPatterns)) {}
 
 AnonymizerTool::~AnonymizerTool() {}
 
@@ -92,38 +98,44 @@ string AnonymizerTool::AnonymizeCustomPatterns(const string& input) {
   string anonymized = input;
   for (size_t i = 0; i < arraysize(kCustomPatterns); i++) {
     anonymized = AnonymizeCustomPattern(anonymized,
-                                        kCustomPatterns[i].tag,
-                                        kCustomPatterns[i].pattern);
+                                        kCustomPatterns[i],
+                                        &custom_patterns_[i]);
   }
   return anonymized;
 }
 
+// static
 string AnonymizerTool::AnonymizeCustomPattern(
-    const string& input, const string& tag, const string& pattern) {
-  pcrecpp::RE re("(.*?)(" + pattern + ")",
+    const string& input,
+    const string& pattern,
+    map<string, string>* identifier_space) {
+  pcrecpp::RE re("(.*?)" + pattern,
                  pcrecpp::RE_Options()
                  .set_multiline(true)
                  .set_dotall(true));
+  DCHECK_EQ(4, re.NumberOfCapturingGroups());
 
   string result;
   result.reserve(input.size());
 
   // Keep consuming, building up a result string as we go.
   pcrecpp::StringPiece text(input);
-  string pre_match, match;
-  while (re.Consume(&text, &pre_match, &match)) {
-    string replacement = custom_patterns_[tag][match];
-    if (replacement.empty()) {
-      int id = custom_patterns_[tag].size();
-      replacement = StringPrintf("%s-%d", tag.c_str(), id);
-      custom_patterns_[tag][match] = replacement;
+  string pre_match, pre_matched_id, matched_id, post_matched_id;
+  while (re.Consume(&text, &pre_match,
+                    &pre_matched_id, &matched_id, &post_matched_id)) {
+    string replacement_id = (*identifier_space)[matched_id];
+    if (replacement_id.empty()) {
+      replacement_id = IntToString(identifier_space->size());
+      (*identifier_space)[matched_id] = replacement_id;
     }
 
     result += pre_match;
-    result += replacement;
+    result += pre_matched_id;
+    result += replacement_id;
+    result += post_matched_id;
   }
-
-  return result + text.as_string();
+  result += text.as_string();
+  return result;
 }
 
 };  // namespace debugd
