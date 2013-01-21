@@ -118,6 +118,7 @@ Service::Service(ControlInterface *control_interface,
                  Manager *manager,
                  Technology::Identifier technology)
     : state_(kStateIdle),
+      previous_state_(kStateIdle),
       failure_(kFailureUnknown),
       auto_connect_(false),
       check_portal_(kCheckPortalAuto),
@@ -306,6 +307,27 @@ bool Service::IsActive(Error */*error*/) {
     state() != kStateFailure;
 }
 
+// static
+bool Service::IsConnectedState(ConnectState state) {
+  return (state == kStateConnected ||
+          state == kStatePortal ||
+          state == kStateOnline);
+}
+
+// static
+bool Service::IsConnectingState(ConnectState state) {
+  return (state == kStateAssociating ||
+          state == kStateConfiguring);
+}
+
+bool Service::IsConnected() const {
+  return IsConnectedState(state());
+}
+
+bool Service::IsConnecting() const {
+  return IsConnectingState(state());
+}
+
 void Service::SetState(ConnectState state) {
   if (state == state_) {
     return;
@@ -319,6 +341,7 @@ void Service::SetState(ConnectState state) {
     NoteDisconnectEvent();
   }
 
+  previous_state_ = state_;
   state_ = state;
   if (state != kStateFailure) {
     failure_ = kFailureUnknown;
@@ -799,12 +822,15 @@ void Service::NoteDisconnectEvent() {
   int period = 0;
   size_t threshold = 0;
   deque<Timestamp> *events = NULL;
-  if (IsConnected()) {
+  // Sometimes services transition to Idle before going into a failed state so
+  // take into account the last non-idle state.
+  ConnectState state = state_ == kStateIdle ? previous_state_ : state_;
+  if (IsConnectedState(state)) {
     LOG(INFO) << "Noting an unexpected connection drop.";
     period = kDisconnectsMonitorSeconds;
     threshold = kReportDisconnectsThreshold;
     events = &disconnects_;
-  } else if (IsConnecting()) {
+  } else if (IsConnectingState(state)) {
     LOG(INFO) << "Noting an unexpected failure to connect.";
     period = kMisconnectsMonitorSeconds;
     threshold = kReportMisconnectsThreshold;

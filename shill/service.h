@@ -212,13 +212,11 @@ class Service : public base::RefCounted<Service> {
   std::string GetStateString() const;
 
   // State utility functions
-  virtual bool IsConnected() const {
-    return state() == kStateConnected || state() == kStatePortal ||
-        state() == kStateOnline;
-  }
-  virtual bool IsConnecting() const {
-    return state() == kStateAssociating || state() == kStateConfiguring;
-  }
+  static bool IsConnectedState(ConnectState state);
+  static bool IsConnectingState(ConnectState state);
+
+  virtual bool IsConnected() const;
+  virtual bool IsConnecting() const;
   virtual bool IsFailed() const {
     // We sometimes lie about the failure state, to keep Chrome happy
     // (see comment in WiFi::HandleDisconnect). Hence, we check both
@@ -654,6 +652,7 @@ class Service : public base::RefCounted<Service> {
   static bool DecideBetween(int a, int b, bool *decision);
 
   ConnectState state_;
+  ConnectState previous_state_;
   ConnectFailure failure_;
   bool auto_connect_;
   std::string check_portal_;

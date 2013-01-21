@@ -108,6 +108,10 @@ class ServiceTest : public PropertyStoreTest {
 
   void SetStateField(Service::ConnectState state) { service_->state_ = state; }
 
+  Service::ConnectState GetPreviousState() const {
+    return service_->previous_state_;
+  }
+
   void NoteDisconnectEvent() {
     service_->NoteDisconnectEvent();
   }
@@ -425,6 +429,7 @@ TEST_F(ServiceTest, Unload) {
 
 TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, service_->state());
+  EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
   const string unknown_error(
       Service::ConnectFailureToString(Service::kFailureUnknown));
@@ -438,14 +443,17 @@ TEST_F(ServiceTest, State) {
               EmitStringChanged(flimflam::kErrorProperty, _)).Times(4);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
+  EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   // A second state change shouldn't cause another update
   service_->SetState(Service::kStateConnected);
   EXPECT_EQ(Service::kStateConnected, service_->state());
+  EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
   EXPECT_TRUE(service_->has_ever_connected_);
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateDisconnected);
+  EXPECT_EQ(Service::kStateConnected, GetPreviousState());
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetFailure(Service::kFailureOutOfRange);
@@ -1101,13 +1109,17 @@ TEST_F(ServiceTest, Certification) {
       kSubject + "x", Service::kEAPMaxCertificationElements - 1));
 }
 
-TEST_F(ServiceTest, NoteDisconnectEventOnSetStateIdle) {
+TEST_F(ServiceTest, NoteDisconnectEventIdle) {
   Timestamp timestamp;
-  EXPECT_CALL(time_, GetNow()).Times(2).WillRepeatedly((Return(timestamp)));
+  EXPECT_CALL(time_, GetNow()).Times(4).WillRepeatedly((Return(timestamp)));
   SetStateField(Service::kStateOnline);
   EXPECT_FALSE(service_->HasRecentConnectionIssues());
   service_->SetState(Service::kStateIdle);
+  // The transition Online->Idle is not an event.
   EXPECT_FALSE(service_->HasRecentConnectionIssues());
+  service_->SetState(Service::kStateFailure);
+  // The transition Online->Idle->Failure is a connection drop.
+  EXPECT_TRUE(service_->HasRecentConnectionIssues());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventOnSetStateFailure) {
