@@ -20,6 +20,7 @@ bool SandboxedProcess::Init() {
     AddArg(user_);
     AddArg("-g");
     AddArg(group_);
+    AddArg("--");
   }
   return true;
 }
