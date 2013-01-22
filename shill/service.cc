@@ -402,14 +402,8 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetString(id, kStorageProxyConfig, &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   storage->GetString(id, kStorageUIData, &ui_data_);
-
   LoadEapCredentials(storage, id);
   static_ip_parameters_.Load(storage, id);
-  // TODO(petkov): Load these:
-
-  // "Failure"
-  // "Modified"
-  // "LastAttempt"
 
   explicitly_disconnected_ = false;
   favorite_ = true;
@@ -440,8 +434,6 @@ bool Service::Save(StoreInterface *storage) {
 
   storage->SetString(id, kStorageType, GetTechnologyString());
 
-  // TODO(petkov): We could choose to simplify the saving code by removing most
-  // conditionals thus saving even default values.
   storage->SetBool(id, kStorageAutoConnect, auto_connect_);
   if (check_portal_ == kCheckPortalAuto) {
     storage->DeleteKey(id, kStorageCheckPortal);
@@ -458,22 +450,11 @@ bool Service::Save(StoreInterface *storage) {
     storage->DeleteKey(id, kStoragePriority);
   }
   SaveString(storage, id, kStorageProxyConfig, proxy_config_, false, true);
-  if (save_credentials_) {
-    storage->DeleteKey(id, kStorageSaveCredentials);
-  } else {
-    storage->SetBool(id, kStorageSaveCredentials, false);
-  }
+  storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
   SaveString(storage, id, kStorageUIData, ui_data_, false, true);
 
   SaveEapCredentials(storage, id);
   static_ip_parameters_.Save(storage, id);
-
-  // TODO(petkov): Save these:
-
-  // "Failure"
-  // "Modified"
-  // "LastAttempt"
-
   return true;
 }
 

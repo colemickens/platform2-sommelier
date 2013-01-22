@@ -329,6 +329,9 @@ TEST_F(ServiceTest, Load) {
   EXPECT_CALL(storage, GetString(storage_id_, _, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, GetBool(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(storage,
+              GetBool(storage_id_, Service::kStorageSaveCredentials, _));
   EXPECT_TRUE(service_->Load(&storage));
 }
 
@@ -380,6 +383,11 @@ TEST_F(ServiceTest, Save) {
   EXPECT_CALL(storage, DeleteKey(storage_id_, _))
       .Times(AtLeast(1))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(storage, SetBool(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(storage,
+              SetBool(storage_id_,
+                      Service::kStorageSaveCredentials,
+                      service_->save_credentials()));
   EXPECT_TRUE(service_->Save(&storage));
 }
 
