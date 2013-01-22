@@ -135,6 +135,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalTest, OnListBearersReply);
+  FRIEND_TEST(CellularCapabilityUniversalTest,
+              OnModemCurrentCapabilitiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalTest, Reset);
   FRIEND_TEST(CellularCapabilityUniversalTest, Scan);

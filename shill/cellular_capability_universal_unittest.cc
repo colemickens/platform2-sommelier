@@ -1185,4 +1185,17 @@ TEST_F(CellularCapabilityUniversalTest, IsServiceActivationRequired) {
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 }
 
+TEST_F(CellularCapabilityUniversalTest, OnModemCurrentCapabilitiesChanged) {
+  EXPECT_FALSE(capability_->scanning_supported_);
+  capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_LTE);
+  EXPECT_FALSE(capability_->scanning_supported_);
+  capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_CDMA_EVDO);
+  EXPECT_FALSE(capability_->scanning_supported_);
+  capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_GSM_UMTS);
+  EXPECT_TRUE(capability_->scanning_supported_);
+  capability_->OnModemCurrentCapabilitiesChanged(
+      MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_CDMA_EVDO);
+  EXPECT_TRUE(capability_->scanning_supported_);
+}
+
 }  // namespace shill

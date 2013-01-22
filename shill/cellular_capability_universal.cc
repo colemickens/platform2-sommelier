@@ -129,7 +129,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       home_provider_(NULL),
       provider_requires_roaming_(false),
       resetting_(false),
-      scanning_supported_(true),
+      scanning_supported_(false),
       scanning_(false),
       scan_interval_(0),
       sim_present_(false) {
@@ -1202,6 +1202,18 @@ void CellularCapabilityUniversal::OnModemCapabilitesChanged(
 void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
     uint32 current_capabilities) {
   current_capabilities_ = current_capabilities;
+
+  // Only allow network scan when the modem's current capabilities support
+  // GSM/UMTS.
+  //
+  // TODO(benchan): We should consider having the modem plugins in ModemManager
+  // reporting whether network scan is supported.
+  scanning_supported_ =
+      (current_capabilities & MM_MODEM_CAPABILITY_GSM_UMTS) != 0;
+  if (cellular()->adaptor()) {
+    cellular()->adaptor()->EmitBoolChanged(
+        flimflam::kSupportNetworkScanProperty, scanning_supported_);
+  }
 }
 
 void CellularCapabilityUniversal::OnMdnChanged(
