@@ -934,6 +934,24 @@ ByteArrays WiFi::GetHiddenSSIDList() {
 }
 
 bool WiFi::LoadHiddenServices(StoreInterface *storage) {
+  // TODO(pstew): This retrofits old (flimflam-based) profile entries for
+  // WiFi Services so they contain the properties that are required to
+  // be searched for by property instead of by group name.  I can imagine
+  // a day where we believe that enough users have upgraded so that this
+  // code is no longer necessary.  The UMA metric below should help us
+  // understand when this point might be.
+  if (WiFiService::FixupServiceEntries(storage)) {
+    storage->Flush();
+    Metrics::ServiceFixupProfileType profile_type =
+        manager()->IsDefaultProfile(storage) ?
+            Metrics::kMetricServiceFixupDefaultProfile :
+            Metrics::kMetricServiceFixupUserProfile;
+    metrics()->SendEnumToUMA(
+        metrics()->GetFullMetricName(Metrics::kMetricServiceFixupEntries,
+                                     technology()),
+        profile_type,
+        Metrics::kMetricServiceFixupMax);
+  }
   bool created_hidden_service = false;
   set<string> groups = storage->GetGroupsWithKey(flimflam::kWifiHiddenSsid);
   for (set<string>::iterator it = groups.begin(); it != groups.end(); ++it) {

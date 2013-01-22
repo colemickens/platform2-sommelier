@@ -40,6 +40,7 @@ class Error;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 class Resolver;
+class StoreInterface;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
@@ -195,6 +196,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether a technology is enabled for link monitoring.
   virtual bool IsTechnologyLinkMonitorEnabled(
       Technology::Identifier technology) const;
+
+  // Return whether |storage| is for the default profile.
+  virtual bool IsDefaultProfile(const StoreInterface *storage) const;
 
   std::string CalculateState(Error *error);
 

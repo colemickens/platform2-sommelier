@@ -721,6 +721,34 @@ bool WiFiService::ParseStorageIdentifier(const string &storage_name,
 }
 
 // static
+bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
+  bool fixed_entry = false;
+  set<string> groups = storage->GetGroups();
+  for (set<string>::const_iterator it = groups.begin(); it != groups.end();
+       ++it) {
+    const string &id = *it;
+    string device_address, network_mode, security;
+    if (!ParseStorageIdentifier(id, &device_address,
+                                &network_mode, &security)) {
+      continue;
+    }
+    if (!storage->GetString(id, kStorageType, NULL)) {
+      storage->SetString(id, kStorageType, flimflam::kTypeWifi);
+      fixed_entry = true;
+    }
+    if (!storage->GetString(id, kStorageMode, NULL)) {
+      storage->SetString(id, kStorageMode, network_mode);
+      fixed_entry = true;
+    }
+    if (!storage->GetString(id, kStorageSecurity, NULL)) {
+      storage->SetString(id, kStorageSecurity, security);
+      fixed_entry = true;
+    }
+  }
+  return fixed_entry;
+}
+
+// static
 uint8 WiFiService::SignalToStrength(int16 signal_dbm) {
   int16 strength;
   if (signal_dbm > 0) {

@@ -68,6 +68,11 @@ class WiFiService : public Service {
                                      std::string *mode,
                                      std::string *security);
 
+  // Iterate over |storage| looking for WiFi servces with "old-style"
+  // properties that don't include explicit type/mode/security, and add
+  // these properties.  Returns true if any entries were fixed.
+  static bool FixupServiceEntries(StoreInterface *storage);
+
   const std::string &mode() const { return mode_; }
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }

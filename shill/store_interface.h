@@ -47,7 +47,8 @@ class StoreInterface {
 
   // Gets a string |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
-  // in the store).
+  // in the store).  It is not an error to pass NULL as |value| to simply
+  // test for the presence of this value.
   virtual bool GetString(const std::string &group,
                          const std::string &key,
                          std::string *value) const = 0;
@@ -60,7 +61,9 @@ class StoreInterface {
 
   // Gets a boolean |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when the |group|:|key| is not
-  // present in the store).
+  // present in the store).  It is not an error to pass NULL as |value| to
+  // simply test for the presence of this value.
+
   virtual bool GetBool(const std::string &group,
                        const std::string &key,
                        bool *value) const = 0;
@@ -73,7 +76,8 @@ class StoreInterface {
 
   // Gets a integer |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when the |group|:|key| is not
-  // present in the store).
+  // present in the store).  It is not an error to pass NULL as |value| to
+  // simply test for the presence of this value.
   virtual bool GetInt(const std::string &group,
                       const std::string &key,
                       int *value) const = 0;
@@ -86,7 +90,8 @@ class StoreInterface {
 
   // Gets a 64-bit unsigned integer |value| associated with |group|:|key|.
   // Returns true on success and false on failure (including when the
-  // |group|:|key| is not present in the store).
+  // |group|:|key| is not present in the store).  It is not an error to
+  // pass NULL as |value| to simply test for the presence of this value.
   virtual bool GetUint64(const std::string &group,
                          const std::string &key,
                          uint64 *value) const = 0;
@@ -99,7 +104,8 @@ class StoreInterface {
 
   // Gets a string list |value| associated with |group|:|key|. Returns true on
   // success and false on failure (including when |group|:|key| is not present
-  // in the store).
+  // in the store).  It is not an error to pass NULL as |value| to simply test
+  // for the presence of this value.
   virtual bool GetStringList(const std::string &group,
                              const std::string &key,
                              std::vector<std::string> *value) const = 0;
@@ -112,7 +118,8 @@ class StoreInterface {
 
   // Gets and decrypts string |value| associated with |group|:|key|. Returns
   // true on success and false on failure (including when |group|:|key| is not
-  // present in the store).
+  // present in the store).  It is not an error to pass NULL as |value| to
+  // simply test for the presence of this value.
   virtual bool GetCryptedString(const std::string &group,
                                 const std::string &key,
                                 std::string *value) = 0;

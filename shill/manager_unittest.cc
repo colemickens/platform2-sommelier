@@ -2729,6 +2729,20 @@ TEST_F(ManagerTest, LinkMonitorEnabled) {
       manager()->IsTechnologyLinkMonitorEnabled(Technology::kCellular));
 }
 
+TEST_F(ManagerTest, IsDefaultProfile) {
+  EXPECT_FALSE(manager()->IsDefaultProfile(NULL));
+  scoped_ptr<MockStore> store0(new MockStore);
+  EXPECT_FALSE(manager()->IsDefaultProfile(store0.get()));
+  scoped_refptr<MockProfile> profile(
+      new MockProfile(control_interface(), manager(), ""));
+  EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(store0.get()));
+  AdoptProfile(manager(), profile);
+  EXPECT_TRUE(manager()->IsDefaultProfile(store0.get()));
+  EXPECT_FALSE(manager()->IsDefaultProfile(NULL));
+  scoped_ptr<MockStore> store1(new MockStore);
+  EXPECT_FALSE(manager()->IsDefaultProfile(store1.get()));
+}
+
 TEST_F(ManagerTest, EnableTechnology) {
   Error error(Error::kOperationInitiated);
   ResultCallback callback;

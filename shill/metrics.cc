@@ -120,6 +120,10 @@ const int Metrics::kMetricTerminationActionTimeMillisecondsMax = 10000;
 const int Metrics::kMetricTerminationActionTimeMillisecondsMin = 1;
 
 // static
+const char Metrics::kMetricServiceFixupEntries[] =
+    "Network.Shill.%s.ServiceFixupEntries";
+
+// static
 const uint16 Metrics::kWiFiBandwidth5MHz = 5;
 const uint16 Metrics::kWiFiBandwidth20MHz = 20;
 const uint16 Metrics::kWiFiFrequency2412 = 2412;

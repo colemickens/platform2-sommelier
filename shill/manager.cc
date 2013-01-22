@@ -594,6 +594,13 @@ bool Manager::IsTechnologyLinkMonitorEnabled(
   return IsTechnologyInList(props_.link_monitor_technologies, technology);
 }
 
+bool Manager::IsDefaultProfile(const StoreInterface *storage) const {
+  if (profiles_.empty()) {
+    return false;
+  }
+  return storage == profiles_.front()->GetConstStorage();
+}
+
 const ProfileRefPtr &Manager::ActiveProfile() const {
   DCHECK_NE(profiles_.size(), 0U);
   return profiles_.back();

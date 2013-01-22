@@ -55,6 +55,7 @@
 #include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 #include "shill/wpa_supplicant.h"
@@ -531,6 +532,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(true), Return(true)));
     EXPECT_CALL(*storage, GetString(StrEq(*id), flimflam::kSSIDProperty, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<2>(hex_ssid), Return(true)));
+
+    // For embedded WiFiService::FixupServiceEntries call.
+    EXPECT_CALL(*storage, GetGroups()).WillOnce(Return(set<string>()));
+
   }
 
   WiFiService *SetupConnectedService(const DBus::Path &network_path) {
@@ -608,6 +613,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   NiceMockControl *control_interface() {
     return &control_interface_;
+  }
+
+  MockMetrics *metrics() {
+    return &metrics_;
   }
 
   MockManager *manager() {
@@ -1886,8 +1895,45 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
 
 TEST_F(WiFiMainTest, LoadHiddenServicesFailWithNoGroups) {
   StrictMock<MockStore> storage;
+  EXPECT_CALL(storage, GetGroups()).WillOnce(Return(set<string>()));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(_, _, _)).Times(0);
   EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kWifiHiddenSsid))
       .WillOnce(Return(set<string>()));
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+}
+
+TEST_F(WiFiMainTest, LoadHiddenServicesWithFixedUpServices) {
+  StrictMock<MockStore> storage;
+  EXPECT_CALL(*manager(), IsDefaultProfile(&storage))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(
+      "Network.Shill.Wifi.ServiceFixupEntries",
+      Metrics::kMetricServiceFixupDefaultProfile,
+      Metrics::kMetricServiceFixupMax)).Times(1);
+  EXPECT_CALL(storage, Flush()).Times(1);
+  const string kGroupId =
+      StringPrintf("%s_%s_0_%s_%s",
+                   flimflam::kTypeWifi,
+                   kDeviceAddress,
+                   flimflam::kModeManaged,
+                   flimflam::kSecurityNone);
+  EXPECT_CALL(storage, GetString(kGroupId, _, _)).WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, SetString(kGroupId, _, _)).WillRepeatedly(Return(true));
+  set<string> groups;
+  groups.insert(kGroupId);
+  EXPECT_CALL(storage, GetGroups()).WillRepeatedly(Return(groups));
+  EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kWifiHiddenSsid))
+      .WillRepeatedly(Return(set<string>()));
+  EXPECT_FALSE(LoadHiddenServices(&storage));
+  Mock::VerifyAndClearExpectations(metrics());
+
+  EXPECT_CALL(*manager(), IsDefaultProfile(&storage))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*metrics(), SendEnumToUMA(
+      "Network.Shill.Wifi.ServiceFixupEntries",
+      Metrics::kMetricServiceFixupUserProfile,
+      Metrics::kMetricServiceFixupMax)).Times(1);
+  EXPECT_CALL(storage, Flush()).Times(1);
   EXPECT_FALSE(LoadHiddenServices(&storage));
 }
 

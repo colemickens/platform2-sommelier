@@ -5,9 +5,11 @@
 #include "shill/wifi_service.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
+#include <base/stringprintf.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
@@ -28,6 +30,7 @@
 #include "shill/wpa_supplicant.h"
 
 using std::map;
+using std::set;
 using std::string;
 using std::vector;
 using ::testing::_;
@@ -39,6 +42,7 @@ using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrNe;
+using ::testing::StrictMock;
 
 namespace shill {
 
@@ -219,6 +223,48 @@ const char *WiFiServiceUpdateFromEndpointsTest::kGoodEndpointBssId =
     "00:00:00:00:00:02";
 const char *WiFiServiceUpdateFromEndpointsTest::kBadEndpointBssId =
     "00:00:00:00:00:03";
+
+class WiFiServiceFixupStorageTest : public WiFiServiceTest {
+ protected:
+  void AddGroup(string group_name) {
+    groups_.insert(group_name);
+  }
+
+  void AddServiceEntry(bool has_type, bool has_mode, bool has_security) {
+    int index = groups_.size();
+    string id = base::StringPrintf("%s_%d_%d_%s_%s", flimflam::kTypeWifi,
+                                   index, index, flimflam::kModeManaged,
+                                   flimflam::kSecurityNone);
+    AddGroup(id);
+    EXPECT_CALL(store_, GetString(id, WiFiService::kStorageType, _))
+        .WillOnce(Return(has_type));
+    if (!has_type) {
+      EXPECT_CALL(store_, SetString(id, WiFiService::kStorageType,
+                                    flimflam::kTypeWifi));
+    }
+    EXPECT_CALL(store_, GetString(id, WiFiService::kStorageMode, _))
+        .WillOnce(Return(has_mode));
+    if (!has_mode) {
+      EXPECT_CALL(store_, SetString(id, WiFiService::kStorageMode,
+                                    flimflam::kModeManaged));
+    }
+    EXPECT_CALL(store_, GetString(id, WiFiService::kStorageSecurity, _))
+        .WillOnce(Return(has_security));
+    if (!has_security) {
+      EXPECT_CALL(store_, SetString(id, WiFiService::kStorageSecurity,
+                                    flimflam::kSecurityNone));
+    }
+  }
+
+  bool FixupServiceEntries() {
+    EXPECT_CALL(store_, GetGroups()).WillOnce(Return(groups_));
+    return WiFiService::FixupServiceEntries(&store_);
+  }
+
+ private:
+  StrictMock<MockStore> store_;
+  set<string> groups_;
+};
 
 TEST_F(WiFiServiceTest, StorageId) {
   vector<uint8_t> ssid(5);
@@ -925,6 +971,45 @@ TEST_F(WiFiServiceTest, ParseStorageIdentifier8021x) {
   EXPECT_EQ(flimflam::kModeManaged, mode);
   EXPECT_EQ(flimflam::kSecurity8021x, security);
 }
+
+TEST_F(WiFiServiceFixupStorageTest, FixedEntries) {
+  const string kNonWiFiId = "vpn_foo";
+  const string kUnparsableWiFiId = "wifi_foo";
+
+  AddGroup(kNonWiFiId);
+  AddGroup(kUnparsableWiFiId);
+  AddServiceEntry(true, true, true);
+  AddServiceEntry(false, false, false);
+  AddServiceEntry(true, true, true);
+  AddServiceEntry(false, false, false);
+  EXPECT_TRUE(FixupServiceEntries());
+}
+
+TEST_F(WiFiServiceFixupStorageTest, NoFixedEntries) {
+  const string kNonWiFiId = "vpn_foo";
+  const string kUnparsableWiFiId = "wifi_foo";
+
+  AddGroup(kNonWiFiId);
+  AddGroup(kUnparsableWiFiId);
+  AddServiceEntry(true, true, true);
+  EXPECT_FALSE(FixupServiceEntries());
+}
+
+TEST_F(WiFiServiceFixupStorageTest, MissingTypeProperty) {
+  AddServiceEntry(false, true, true);
+  EXPECT_TRUE(FixupServiceEntries());
+}
+
+TEST_F(WiFiServiceFixupStorageTest, MissingModeProperty) {
+  AddServiceEntry(true, false, true);
+  EXPECT_TRUE(FixupServiceEntries());
+}
+
+TEST_F(WiFiServiceFixupStorageTest, MissingSecurityProperty) {
+  AddServiceEntry(true, true, false);
+  EXPECT_TRUE(FixupServiceEntries());
+}
+
 
 TEST_F(WiFiServiceTest, Connectable) {
   // Open network should be connectable.

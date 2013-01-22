@@ -140,6 +140,12 @@ class Metrics {
     kDisconnectedNotByAp
   };
 
+  enum ServiceFixupProfileType {
+    kMetricServiceFixupDefaultProfile,
+    kMetricServiceFixupUserProfile,
+    kMetricServiceFixupMax
+  };
+
   enum TerminationActionResult {
     kTerminationActionResultSuccess,
     kTerminationActionResultFailure,
@@ -244,6 +250,9 @@ class Metrics {
   static const char kMetricTerminationActionResultOnSuspend[];
   static const int kMetricTerminationActionTimeMillisecondsMax;
   static const int kMetricTerminationActionTimeMillisecondsMin;
+
+  // WiFiService Entry Fixup.
+  static const char kMetricServiceFixupEntries[];
 
   Metrics();
   virtual ~Metrics();
