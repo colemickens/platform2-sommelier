@@ -229,7 +229,12 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
   CHECK(new_state != BACKLIGHT_UNINITIALIZED);
   LOG(INFO) << "Changing state: " << PowerStateToString(state_) << " -> "
             << PowerStateToString(new_state);
+  PowerState old_state = state_;
   state_ = new_state;
+
+  // Early return, let the EC deal with the backlight.
+  if (old_state == BACKLIGHT_SUSPENDED || state_ == BACKLIGHT_SUSPENDED)
+    return true;
 
   if (state_ == BACKLIGHT_SHUTTING_DOWN) {
     backlight_->SetBrightnessLevel(0, base::TimeDelta());
