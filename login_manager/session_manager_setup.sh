@@ -288,8 +288,6 @@ fi
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
-  # TODO(reveman): Only with highdpi until LCD text works (crbug.com/165775)
-  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-impl-side-painting"
 fi
 
 TOUCHUI_FLAGS=
@@ -382,6 +380,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --enable-gpu-sandbox \
             --enable-logging \
             --enable-partial-swap \
+            --enable-impl-side-painting \
             --enterprise-enrollment-initial-modulus=5 \
             --enterprise-enrollment-modulus-limit=12 \
             --log-level=1 \
