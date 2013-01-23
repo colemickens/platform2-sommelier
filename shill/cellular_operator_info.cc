@@ -53,7 +53,7 @@ string CellularOperatorInfo::FormattedSID(const string &sid) {
 
 const CellularOperatorInfo::CellularOperator *
 CellularOperatorInfo::GetCellularOperatorByMCCMNC(const string &mccmnc) {
-  LOG(INFO) << __func__ << "(" << FormattedMCCMNC(mccmnc) << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << FormattedMCCMNC(mccmnc) << ")";
 
   map<string, CellularOperator *>::const_iterator it =
       mccmnc_to_operator_.find(mccmnc);
@@ -68,7 +68,7 @@ CellularOperatorInfo::GetCellularOperatorByMCCMNC(const string &mccmnc) {
 
 const CellularOperatorInfo::CellularOperator *
 CellularOperatorInfo::GetCellularOperatorBySID(const string &sid) {
-  LOG(INFO) << __func__ << "(" << FormattedSID(sid) << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << FormattedSID(sid) << ")";
 
   map<string, CellularOperator *>::const_iterator it =
       sid_to_operator_.find(sid);
@@ -82,7 +82,7 @@ CellularOperatorInfo::GetCellularOperatorBySID(const string &sid) {
 
 const vector<const CellularOperatorInfo::CellularOperator *> *
 CellularOperatorInfo::GetCellularOperatorsByName(const string &name) {
-  LOG(INFO) << __func__ << "(" << name << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << name << ")";
 
   map<string, vector<const CellularOperator *> >::const_iterator it =
       name_to_operators_.find(name);
@@ -96,7 +96,7 @@ CellularOperatorInfo::GetCellularOperatorsByName(const string &name) {
 
 const CellularService::OLP *
 CellularOperatorInfo::GetOLPByMCCMNC(const string &mccmnc) {
-  LOG(INFO) << __func__ << "(" << FormattedMCCMNC(mccmnc) << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << FormattedMCCMNC(mccmnc) << ")";
 
   const CellularOperator *provider = GetCellularOperatorByMCCMNC(mccmnc);
   if (!provider)
@@ -120,7 +120,7 @@ CellularOperatorInfo::GetOLPByMCCMNC(const string &mccmnc) {
 
 const CellularService::OLP *
 CellularOperatorInfo::GetOLPBySID(const string &sid) {
-  LOG(INFO) << __func__ << "(" << FormattedSID(sid) << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << FormattedSID(sid) << ")";
 
   const CellularOperator *provider = GetCellularOperatorBySID(sid);
   if (!provider)
@@ -165,7 +165,7 @@ bool CellularOperatorInfo::ParseKeyValue(const string &line,
 }
 
 bool CellularOperatorInfo::Load(const FilePath &info_file_path) {
-  LOG(INFO) << __func__ << "(" << info_file_path.value() << ")";
+  SLOG(Cellular, 2) << __func__ << "(" << info_file_path.value() << ")";
 
   // Clear any previus operators.
   ClearOperators();
