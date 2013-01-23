@@ -1038,6 +1038,54 @@ TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
   EXPECT_TRUE(capability_->provider_requires_roaming_);
 }
 
+TEST_F(CellularCapabilityUniversalTest, UpdateScanningProperty) {
+  // Save pointers to proxies before they are lost by the call to InitProxies
+  // mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  SetUp();
+  //EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
+  capability_->InitProxies();
+
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+
+  capability_->scanning_ = true;
+  capability_->UpdateScanningProperty();
+  EXPECT_TRUE(capability_->scanning_or_searching_);
+
+  capability_->scanning_ = false;
+  capability_->cellular()->modem_state_ = Cellular::kModemStateInitializing;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateLocked;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateDisabled;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateEnabling;
+  capability_->UpdateScanningProperty();
+  EXPECT_TRUE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateEnabled;
+  capability_->UpdateScanningProperty();
+  EXPECT_TRUE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateSearching;
+  capability_->UpdateScanningProperty();
+  EXPECT_TRUE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateRegistered;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateConnecting;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  capability_->cellular()->modem_state_ = Cellular::kModemStateDisconnecting;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+}
+
 TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
   CellularService::OLP test_olp;
   test_olp.SetURL("http://testurl");

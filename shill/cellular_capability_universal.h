@@ -151,6 +151,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateScanningProperty);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
@@ -170,6 +171,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Sets the upper level information about the home cellular provider from the
   // modem's IMSI and SPN.
   void SetHomeProvider();
+
+  void UpdateScanningProperty();
 
   // Updates the online payment portal information, if any, for the cellular
   // provider.
@@ -314,6 +317,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   bool resetting_;
   bool scanning_supported_;
   bool scanning_;
+  bool scanning_or_searching_;
   uint16 scan_interval_;
   SimLockStatus sim_lock_status_;
   Stringmaps apn_list_;

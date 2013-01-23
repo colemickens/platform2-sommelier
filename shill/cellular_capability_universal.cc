@@ -131,6 +131,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       resetting_(false),
       scanning_supported_(false),
       scanning_(false),
+      scanning_or_searching_(false),
       scan_interval_(0),
       sim_present_(false) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
@@ -158,7 +159,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
                                  &found_networks_);
   store->RegisterConstBool(shill::kProviderRequiresRoamingProperty,
                            &provider_requires_roaming_);
-  store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
+  store->RegisterConstBool(flimflam::kScanningProperty,
+                           &scanning_or_searching_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
   HelpRegisterDerivedKeyValueStore(
       flimflam::kSIMLockStatusProperty,
@@ -574,6 +576,29 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   InitAPNList();
 }
 
+void CellularCapabilityUniversal::UpdateScanningProperty() {
+  // Set the Scanning property to true if there is a ongoing network scan
+  // (i.e. |scanning_| is true) or the modem is enabled but not yet registered
+  // to a network.
+  //
+  // TODO(benchan): As the Device DBus interface currently does not have a
+  // State property to indicate whether the device is being enabled, set the
+  // Scanning property to true when the modem is being enabled such that
+  // the network UI can start showing the initializing/scanning animation as
+  // soon as the modem is being enabled.
+  Cellular::ModemState modem_state = cellular()->modem_state();
+  bool new_scanning_or_searching =
+      (modem_state == Cellular::kModemStateEnabling ||
+       modem_state == Cellular::kModemStateEnabled ||
+       modem_state == Cellular::kModemStateSearching) ||
+      scanning_;
+  if (new_scanning_or_searching != scanning_or_searching_) {
+    scanning_or_searching_ = new_scanning_or_searching;
+    cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
+                                           new_scanning_or_searching);
+  }
+}
+
 void CellularCapabilityUniversal::UpdateOLP() {
   if (!cellular()->cellular_operator_info())
     return;
@@ -882,8 +907,7 @@ void CellularCapabilityUniversal::Scan(Error *error,
   modem_3gpp_proxy_->Scan(error, cb, kTimeoutScan);
   if (!error->IsFailure()) {
     scanning_ = true;
-    cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
-                                           scanning_);
+    UpdateScanningProperty();
   }
 }
 
@@ -898,8 +922,7 @@ void CellularCapabilityUniversal::OnScanReply(const ResultCallback &callback,
   //
   // TODO(jglasgow): fix error handling
   scanning_ = false;
-  cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
-                                         scanning_);
+  UpdateScanningProperty();
   found_networks_.clear();
   if (!error.IsFailure()) {
     for (ScanResults::const_iterator it = results.begin();
@@ -1253,6 +1276,7 @@ void CellularCapabilityUniversal::OnModemStateChanged(
       cellular()->IsUnderlyingDeviceEnabled()) {
     cellular()->SetEnabled(true);
   }
+  UpdateScanningProperty();
 }
 
 void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
