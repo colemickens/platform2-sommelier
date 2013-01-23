@@ -110,9 +110,11 @@ class CellularService : public Service {
   virtual bool IsAutoConnectable(const char **reason) const;
 
  private:
+  friend class CellularCapabilityUniversalTest;
   friend class CellularServiceTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);

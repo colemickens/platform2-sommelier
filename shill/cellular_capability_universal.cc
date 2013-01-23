@@ -376,13 +376,33 @@ void CellularCapabilityUniversal::ReleaseProxies() {
   sim_proxy_.reset();
 }
 
-void CellularCapabilityUniversal::OnServiceCreated() {
-  // If IMSI is available, base the service's storage identifier on it.
-  if (!imsi_.empty()) {
-    cellular()->service()->SetStorageIdentifier(
-        string(flimflam::kTypeCellular) + "_" +
-        cellular()->address() + "_" + imsi_);
+void CellularCapabilityUniversal::UpdateStorageIdentifier() {
+  if (!cellular()->service().get())
+    return;
+
+  // Lookup the unique identifier assigned to the current network and base the
+  // service's storage identifier on it.
+  const string prefix = "cellular_" + cellular()->address() + "_";
+  string storage_id;
+  if (!operator_id_.empty()) {
+    const CellularOperatorInfo::CellularOperator *provider =
+      cellular()->cellular_operator_info()->
+          GetCellularOperatorByMCCMNC(operator_id_);
+    if (provider && !provider->identifier().empty()) {
+      storage_id = prefix + provider->identifier();
+    }
   }
+  // If the above didn't work, append IMSI, if available.
+  if (storage_id.empty() && !imsi_.empty()) {
+    storage_id = prefix + imsi_;
+  }
+  if (!storage_id.empty()) {
+    cellular()->service()->SetStorageIdentifier(storage_id);
+  }
+}
+
+void CellularCapabilityUniversal::OnServiceCreated() {
+  UpdateStorageIdentifier();
   bool activation_required = IsServiceActivationRequired();
   cellular()->service()->SetActivationState(
       activation_required ?

@@ -20,7 +20,9 @@ class MockCellularOperatorInfo : public CellularOperatorInfo {
 
   MOCK_METHOD1(Load, bool(const FilePath &info_file_path));
   MOCK_METHOD1(GetOLPByMCCMNC,
-               const CellularService::OLP *(const std::string &operator_id));
+               const CellularService::OLP *(const std::string &mccmnc));
+  MOCK_METHOD1(GetCellularOperatorByMCCMNC,
+               const CellularOperator *(const std::string &mccmnc));
 };
 
 }  // namespace shill

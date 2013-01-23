@@ -189,6 +189,7 @@ bool CellularOperatorInfo::Load(const FilePath &info_file_path) {
   key_handler_map["apn"] = &CellularOperatorInfo::HandleAPN;
   key_handler_map["sid"] = &CellularOperatorInfo::HandleSID;
   key_handler_map["olp"] = &CellularOperatorInfo::HandleOLP;
+  key_handler_map["identifier"] = &CellularOperatorInfo::HandleIdentifier;
   key_handler_map["country"] = &CellularOperatorInfo::HandleCountry;
 
   string line;
@@ -309,6 +310,16 @@ bool CellularOperatorInfo::HandleMCCMNC(ParserState *state,
         state->provider->mccmnc_to_olp_idx_[mccmnc] = index;
     }
   }
+  return true;
+}
+
+bool CellularOperatorInfo::HandleIdentifier(ParserState *state,
+                                            const string &value) {
+  if (!state->provider) {
+    LOG(ERROR) << "Found \"identifier\" entry without \"provider\".";
+    return false;
+  }
+  state->provider->identifier_ = value;
   return true;
 }
 

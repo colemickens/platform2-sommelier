@@ -150,6 +150,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId);
@@ -189,6 +190,9 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Updates |bearer_path_| to match the currently active bearer.
   void UpdateBearerPath();
+
+  // Updates the storage identifier used for the current cellular service.
+  void UpdateStorageIdentifier();
 
   // Initializes the |apn_list_| property based on the current |home_provider_|.
   void InitAPNList();

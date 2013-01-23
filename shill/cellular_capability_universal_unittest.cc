@@ -9,6 +9,7 @@
 
 #include <base/bind.h>
 #include <base/stringprintf.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 #include <mobile_provider.h>
@@ -86,7 +87,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                &metrics_,
                                &manager_,
                                "",
-                               "",
+                               kMachineAddress,
                                0,
                                Cellular::kTypeUniversal,
                                "",
@@ -179,6 +180,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   static const char kActiveBearerPathPrefix[];
   static const char kImei[];
   static const char kInactiveBearerPathPrefix[];
+  static const char kMachineAddress[];
   static const char kSimPath[];
   static const uint32 kAccessTechnologies;
 
@@ -266,6 +268,8 @@ const char CellularCapabilityUniversalTest::kActiveBearerPathPrefix[] =
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
 const char CellularCapabilityUniversalTest::kInactiveBearerPathPrefix[] =
     "/bearer/inactive";
+const char CellularCapabilityUniversalTest::kMachineAddress[] =
+    "TestMachineAddress";
 const char CellularCapabilityUniversalTest::kSimPath[] = "/foo/sim";
 const uint32 CellularCapabilityUniversalTest::kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE |
@@ -1087,6 +1091,57 @@ TEST_F(CellularCapabilityUniversalTest, UpdateScanningProperty) {
   capability_->cellular()->modem_state_ = Cellular::kModemStateDisconnecting;
   capability_->UpdateScanningProperty();
   EXPECT_FALSE(capability_->scanning_or_searching_);
+}
+
+TEST_F(CellularCapabilityUniversalTest, UpdateStorageIdentifier) {
+  CellularOperatorInfo::CellularOperator provider;
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+
+  SetService();
+
+  const string prefix = "cellular_" + string(kMachineAddress) + "_";
+  const string default_identifier_pattern = prefix + "GSMNetwork*";
+
+  // |capability_->operator_id_| is "".
+  capability_->UpdateStorageIdentifier();
+  EXPECT_TRUE(::MatchPattern(cellular_->service()->storage_identifier_,
+                             default_identifier_pattern));
+
+  // GetCellularOperatorByMCCMNC returns NULL.
+  capability_->operator_id_ = "1";
+  EXPECT_CALL(cellular_operator_info_,
+      GetCellularOperatorByMCCMNC(capability_->operator_id_))
+      .WillOnce(
+          Return((const CellularOperatorInfo::CellularOperator *)NULL));
+
+  capability_->UpdateStorageIdentifier();
+  EXPECT_TRUE(::MatchPattern(cellular_->service()->storage_identifier_,
+                             default_identifier_pattern));
+
+  // |capability_->imsi_| is not ""
+  capability_->imsi_ = "TESTIMSI";
+  EXPECT_CALL(cellular_operator_info_,
+      GetCellularOperatorByMCCMNC(capability_->operator_id_))
+      .WillOnce(
+          Return((const CellularOperatorInfo::CellularOperator *)NULL));
+
+  capability_->UpdateStorageIdentifier();
+  EXPECT_EQ(prefix + "TESTIMSI", cellular_->service()->storage_identifier_);
+
+  EXPECT_CALL(cellular_operator_info_,
+      GetCellularOperatorByMCCMNC(capability_->operator_id_))
+      .Times(2)
+      .WillRepeatedly(Return(&provider));
+
+  // |provider.identifier_| is "".
+  capability_->UpdateStorageIdentifier();
+  EXPECT_EQ(prefix + "TESTIMSI", cellular_->service()->storage_identifier_);
+
+  // Success.
+  provider.identifier_ = "testidentifier";
+  capability_->UpdateStorageIdentifier();
+  EXPECT_EQ(prefix + "testidentifier",
+            cellular_->service()->storage_identifier_);
 }
 
 TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {

@@ -57,6 +57,7 @@ class CellularOperatorInfo {
     virtual ~CellularOperator();
 
     const std::string &country() const { return country_; }
+    const std::string &identifier() const { return identifier_; }
     const std::vector<std::string> &mccmnc_list() const {
         return mccmnc_list_;
     }
@@ -70,12 +71,15 @@ class CellularOperatorInfo {
     bool requires_roaming() const { return requires_roaming_; }
 
    private:
+    friend class CellularCapabilityUniversalTest;
     friend class CellularOperatorInfo;
     friend class CellularOperatorInfoTest;
+    FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
     FRIEND_TEST(CellularOperatorInfoTest, HandleMCCMNC);
     FRIEND_TEST(CellularOperatorInfoTest, HandleSID);
 
     std::string country_;
+    std::string identifier_;
     std::vector<std::string> mccmnc_list_;
     std::vector<std::string> sid_list_;
     std::vector<LocalizedName> name_list_;
@@ -130,6 +134,7 @@ class CellularOperatorInfo {
   FRIEND_TEST(CellularOperatorInfoTest, HandleOLP);
   FRIEND_TEST(CellularOperatorInfoTest, HandleProvider);
   FRIEND_TEST(CellularOperatorInfoTest, HandleSID);
+  FRIEND_TEST(CellularOperatorInfoTest, HandleIdentifier);
   FRIEND_TEST(CellularOperatorInfoTest, ParseKeyValue);
   FRIEND_TEST(CellularOperatorInfoTest, ParseNameLine);
   FRIEND_TEST(CellularOperatorInfoTest, ParseSuccess);
@@ -164,6 +169,8 @@ class CellularOperatorInfo {
                  const std::string &value);
   bool HandleCountry(ParserState *state,
                      const std::string &value);
+  bool HandleIdentifier(ParserState *state,
+                        const std::string &value);
   bool ParseNameLine(const std::string &value,
                      LocalizedName *name);
 

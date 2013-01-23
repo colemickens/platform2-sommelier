@@ -24,6 +24,7 @@ const char kTestInfoFileContent[] =
     "\n"
     "# TestProvider1\n"
     "provider:1,1,0,1\n"
+    "identifier:provider1identifier\n"
     "name:,TestProvider1\n"
     "mccmnc:000001,0,000002,0\n"
     "sid:1,0,2,0,3,0\n"
@@ -34,6 +35,7 @@ const char kTestInfoFileContent[] =
     "\n"
     "# TestProvider2\n"
     "provider:1,2,1,0\n"
+    "identifier:provider2identifier\n"
     "name:,TestProviderTwo\n"
     "name:,TestProvider2\n"
     "mccmnc:100001,1,100002,0\n"
@@ -76,6 +78,7 @@ TEST_F(CellularOperatorInfoTest, ParseSuccess) {
   EXPECT_FALSE(provider->is_primary());
   EXPECT_TRUE(provider->requires_roaming());
   EXPECT_EQ(provider->country(), "us");
+  EXPECT_EQ(provider->identifier(), "provider1identifier");
   EXPECT_EQ(provider->name_list().size(), 1);
   EXPECT_EQ(provider->name_list()[0].language, "");
   EXPECT_EQ(provider->name_list()[0].name, "TestProvider1");
@@ -107,6 +110,7 @@ TEST_F(CellularOperatorInfoTest, ParseSuccess) {
   EXPECT_TRUE(provider2->is_primary());
   EXPECT_FALSE(provider2->requires_roaming());
   EXPECT_EQ(provider2->country(), "us");
+  EXPECT_EQ(provider2->identifier(), "provider2identifier");
   EXPECT_EQ(provider2->name_list().size(), 2);
   EXPECT_EQ(provider2->name_list()[0].language, "");
   EXPECT_EQ(provider2->name_list()[0].name, "TestProviderTwo");
@@ -419,6 +423,22 @@ TEST_F(CellularOperatorInfoTest, HandleSID) {
  EXPECT_EQ(state.provider->sid_to_olp_idx_["1"], 5);
  EXPECT_EQ(state.provider->sid_to_olp_idx_["2"], 3);
  EXPECT_EQ(state.provider->sid_to_olp_idx_["3"], 0);
+}
+
+TEST_F(CellularOperatorInfoTest, HandleIdentifier) {
+  CellularOperatorInfo::ParserState state;
+  EXPECT_FALSE(info_.HandleIdentifier(&state, "testidentifier"));
+
+  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
+  EXPECT_TRUE(state.provider);
+  EXPECT_EQ("", state.provider->identifier());
+
+  EXPECT_TRUE(info_.HandleIdentifier(&state, "testidentifier0"));
+  EXPECT_EQ("testidentifier0", state.provider->identifier());
+  EXPECT_TRUE(info_.HandleIdentifier(&state, "testidentifier1"));
+  EXPECT_EQ("testidentifier1", state.provider->identifier());
+  EXPECT_TRUE(info_.HandleIdentifier(&state, "testidentifier2"));
+  EXPECT_EQ("testidentifier2", state.provider->identifier());
 }
 
 TEST_F(CellularOperatorInfoTest, HandleOLP) {

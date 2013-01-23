@@ -1234,6 +1234,7 @@ bool Service::GetAutoConnect(Error */*error*/) {
 }
 
 void Service::SetAutoConnect(const bool &connect, Error *error) {
+  LOG(INFO) << __func__ << "(" << connect << ")";
   set_auto_connect(connect);
 }
 
