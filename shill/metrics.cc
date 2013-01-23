@@ -57,6 +57,12 @@ const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
 
+const char Metrics::kMetricTimeToInitializeMilliseconds[] =
+    "Network.Shill.%s.TimeToInitialize";
+const int Metrics::kMetricTimeToInitializeMillisecondsMin = 1;
+const int Metrics::kMetricTimeToInitializeMillisecondsMax = 20 * 1000;
+const int Metrics::kMetricTimeToInitializeMillisecondsNumBuckets = 20;
+
 const char Metrics::kMetricTimeResumeToReadyMilliseconds[] =
     "Network.Shill.%s.TimeResumeToReady";
 const char Metrics::kMetricTimeToConfigMilliseconds[] =
@@ -552,6 +558,37 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
   SendEnumToUMA(metric_disconnect_reason, reason,
                 IEEE_80211::kStatusCodeMax);
   SendEnumToUMA(metric_disconnect_type, type, kStatusCodeTypeMax);
+}
+
+void Metrics::RegisterDevice(int interface_index,
+                             Technology::Identifier technology) {
+  shared_ptr<DeviceMetrics> device_metrics(new DeviceMetrics);
+  devices_metrics_[interface_index] = device_metrics;
+  string histogram = GetFullMetricName(kMetricTimeToInitializeMilliseconds,
+                                       technology);
+  device_metrics->initialization_timer.reset(
+      new chromeos_metrics::TimerReporter(
+          histogram,
+          kMetricTimeToInitializeMillisecondsMin,
+          kMetricTimeToInitializeMillisecondsMax,
+          kMetricTimeToInitializeMillisecondsNumBuckets));
+  device_metrics->initialization_timer->Start();
+}
+
+void Metrics::DeregisterDevice(int interface_index) {
+  devices_metrics_.erase(interface_index);
+}
+
+void Metrics::NotifyDeviceInitialized(int interface_index) {
+  DeviceMetricsLookupMap::iterator it = devices_metrics_.find(interface_index);
+  if (it == devices_metrics_.end()) {
+    SLOG(Metrics, 1) << "device " << interface_index << " not found";
+    DCHECK(false);
+    return;
+  }
+  DeviceMetrics *device_metrics = it->second.get();
+  device_metrics->initialization_timer->Stop();
+  device_metrics->initialization_timer->ReportMilliseconds();
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

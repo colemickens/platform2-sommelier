@@ -149,6 +149,7 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   if (Technology::IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
   }
+  metrics_->NotifyDeviceInitialized(device->interface_index());
 }
 
 void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
@@ -169,6 +170,7 @@ void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
     // for the index.  That will be cleaned up by an RTNL message.
     iter->second.device = NULL;
   }
+  metrics_->DeregisterDevice(device->interface_index());
 }
 
 FilePath DeviceInfo::GetDeviceInfoPath(const string &iface_name,
@@ -528,6 +530,7 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
       LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
       return;
     }
+    metrics_->RegisterDevice(dev_index, technology);
     device = CreateDevice(link_name, address, dev_index, technology);
     if (device) {
       RegisterDevice(device);

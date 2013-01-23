@@ -176,6 +176,10 @@ class Metrics {
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
+  static const char kMetricTimeToInitializeMilliseconds[];
+  static const int kMetricTimeToInitializeMillisecondsMin;
+  static const int kMetricTimeToInitializeMillisecondsMax;
+  static const int kMetricTimeToInitializeMillisecondsNumBuckets;
   static const char kMetricTimeToJoinMilliseconds[];
   static const char kMetricTimeToOnlineMilliseconds[];
   static const char kMetricTimeToPortalMilliseconds[];
@@ -305,6 +309,18 @@ class Metrics {
   void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
                              IEEE_80211::WiFiReasonCode reason);
 
+  // Registers a device with this object so the device can use the timers to
+  // track state transition metrics.
+  void RegisterDevice(int interface_index,
+                      Technology::Identifier technology);
+
+  // Deregisters the device from this class.  All state transition timers
+  // will be removed.
+  void DeregisterDevice(int interface_index);
+
+  // Notifies this object that a device has been initialized.
+  void NotifyDeviceInitialized(int interface_index);
+
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);
 
@@ -342,6 +358,13 @@ class Metrics {
   };
   typedef std::map<const Service *, std::tr1::shared_ptr<ServiceMetrics> >
       ServiceMetricsLookupMap;
+
+  struct DeviceMetrics {
+    DeviceMetrics() {}
+    scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
+  };
+  typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
+      DeviceMetricsLookupMap;
 
   static const uint16 kWiFiBandwidth5MHz;
   static const uint16 kWiFiBandwidth20MHz;
@@ -392,6 +415,7 @@ class Metrics {
   scoped_ptr<chromeos_metrics::Timer> time_resume_to_ready_timer_;
   scoped_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   bool collect_bootstats_;
+  DeviceMetricsLookupMap devices_metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };
