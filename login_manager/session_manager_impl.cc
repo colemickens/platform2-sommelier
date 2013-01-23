@@ -543,7 +543,7 @@ void SessionManagerImpl::InitiateDeviceWipe() {
   const char *contents = "fast safe";
   const FilePath reset_path(kResetFile);
   system_->AtomicFileWrite(reset_path, contents, strlen(contents));
-  system_->CallMethodOnPowerManager(power_manager::kRequestRestartSignal);
+  system_->CallMethodOnPowerManager(power_manager::kRequestRestartMethod);
 }
 
 gboolean SessionManagerImpl::ValidateAndCacheUserEmail(
