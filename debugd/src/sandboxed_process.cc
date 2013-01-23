@@ -16,10 +16,14 @@ bool SandboxedProcess::Init() {
     if (user_.empty() || group_.empty())
       return false;
     AddArg(kMiniJail);
-    AddArg("-u");
-    AddArg(user_);
-    AddArg("-g");
-    AddArg(group_);
+    if (user_ != "root") {
+      AddArg("-u");
+      AddArg(user_);
+    }
+    if (group_ != "root") {
+      AddArg("-g");
+      AddArg(group_);
+    }
     AddArg("--");
   }
   return true;
