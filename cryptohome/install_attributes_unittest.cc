@@ -6,6 +6,7 @@
 
 #include "install_attributes.h"
 
+#include <algorithm>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <chromeos/utility.h>
@@ -91,11 +92,19 @@ class InstallAttributesTest : public ::testing::Test {
         .Times(1)
         .WillOnce(Return(true));
     }
-    EXPECT_CALL(platform_, WriteFile(_, _))
+    EXPECT_CALL(platform_, WriteFile(InstallAttributes::kDefaultDataFile, _))
       .Times(1)
       .WillOnce(DoAll(SaveArg<1>(serialized_data), Return(true)));
+    chromeos::Blob cached_data;
+    EXPECT_CALL(platform_, WriteFile(InstallAttributes::kDefaultCacheFile, _))
+      .Times(1)
+      .WillOnce(DoAll(SaveArg<1>(&cached_data), Return(true)));
+
     EXPECT_TRUE(install_attrs->Finalize());
     EXPECT_NE(0, serialized_data->size());
+    ASSERT_EQ(serialized_data->size(), cached_data.size());
+    EXPECT_TRUE(std::equal(cached_data.begin(), cached_data.end(),
+                           serialized_data->begin()));
     Mock::VerifyAndClearExpectations(&lockbox_);
     Mock::VerifyAndClearExpectations(&platform_);
   }

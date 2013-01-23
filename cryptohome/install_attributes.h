@@ -128,6 +128,12 @@ class InstallAttributes {
     data_file_.assign(data_file);
   }
 
+  // Returns the path of the world-readable cache file.
+  virtual const char* cache_file() { return cache_file_.c_str(); }
+  virtual void set_cache_file(const char* cache_file) {
+    cache_file_.assign(cache_file);
+  }
+
   // Allows replacement of the underlying lockbox.
   // This does NOT take ownership of the pointer.
   virtual void set_lockbox(Lockbox* lockbox) { lockbox_ = lockbox; }
@@ -156,6 +162,8 @@ class InstallAttributes {
   static const uint32_t kLockboxIndex;
   // Provides the default location for the attributes data file.
   static const char* kDefaultDataFile;
+  // Provides the default location for the cache file.
+  static const char* kDefaultCacheFile;
 
  protected:
   // Helper to find a given entry index using its name.
@@ -170,6 +178,7 @@ class InstallAttributes {
   bool is_invalid_;  // Indicates tampered/corrupted data.
   bool is_initialized_;  // Indicates a successful, valid instance.
   std::string data_file_;  // Location data is persisted to.
+  std::string cache_file_;  // World-readable data cache file.
   uint64_t version_;  // Default implementation version.
   // Default implementations of dependencies
   scoped_ptr<SerializedInstallAttributes> default_attributes_;

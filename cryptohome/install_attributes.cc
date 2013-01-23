@@ -19,12 +19,16 @@ const uint32_t InstallAttributes::kLockboxIndex = 0x20000004;
 // By default, we store this with other cryptohome state.
 const char* InstallAttributes::kDefaultDataFile =
   "/home/.shadow/install_attributes.pb";
+// This is the default location for the cache file.
+const char* InstallAttributes::kDefaultCacheFile =
+  "/var/run/lockbox/install_attributes.pb";
 
 InstallAttributes::InstallAttributes(Tpm* tpm)
   : is_first_install_(false),
     is_invalid_(false),
     is_initialized_(false),
     data_file_(kDefaultDataFile),
+    cache_file_(kDefaultCacheFile),
     default_attributes_(new SerializedInstallAttributes()),
     default_lockbox_(new Lockbox(tpm, kLockboxIndex)),
     default_platform_(new Platform()),
@@ -272,6 +276,12 @@ bool InstallAttributes::Finalize() {
     LOG(ERROR) << "Finalize() write failed after locking the Lockbox.";
     SetIsInvalid(true);
     return false;
+  }
+
+  mode_t mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+  if (!platform_->WriteFile(cache_file_, attr_bytes) ||
+      !platform_->SetPermissions(cache_file_, mode)) {
+    LOG(WARNING) << "Finalize() failed to create cache file.";
   }
 
   LOG(INFO) << "InstallAttributes have been finalized.";
