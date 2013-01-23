@@ -176,9 +176,13 @@ class Metrics {
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
+  static const char kMetricTimeToEnableMilliseconds[];
+  static const int kMetricTimeToEnableMillisecondsMax;
+  static const int kMetricTimeToEnableMillisecondsMin;
+  static const int kMetricTimeToEnableMillisecondsNumBuckets;
   static const char kMetricTimeToInitializeMilliseconds[];
-  static const int kMetricTimeToInitializeMillisecondsMin;
   static const int kMetricTimeToInitializeMillisecondsMax;
+  static const int kMetricTimeToInitializeMillisecondsMin;
   static const int kMetricTimeToInitializeMillisecondsNumBuckets;
   static const char kMetricTimeToJoinMilliseconds[];
   static const char kMetricTimeToOnlineMilliseconds[];
@@ -321,6 +325,12 @@ class Metrics {
   // Notifies this object that a device has been initialized.
   void NotifyDeviceInitialized(int interface_index);
 
+  // Notifies this object that a device has started the enable process.
+  void NotifyDeviceEnableStarted(int interface_index);
+
+  // Notifies this object that a device has completed the enable process.
+  void NotifyDeviceEnableFinished(int interface_index);
+
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);
 
@@ -362,6 +372,7 @@ class Metrics {
   struct DeviceMetrics {
     DeviceMetrics() {}
     scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
+    scoped_ptr<chromeos_metrics::TimerReporter> enable_timer;
   };
   typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;
@@ -385,6 +396,8 @@ class Metrics {
   void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,
                                            Service::ConnectState new_state);
   void SendServiceFailure(const Service *service);
+
+  DeviceMetrics *GetDeviceMetrics(int interface_index);
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);

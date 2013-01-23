@@ -56,7 +56,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kConnectAllowRoaming[];
   static const char kConnectRMProtocol[];
 
-  CellularCapabilityUniversal(Cellular *cellular, ProxyFactory *proxy_factory);
+  CellularCapabilityUniversal(Cellular *cellular,
+                              ProxyFactory *proxy_factory,
+                              Metrics *metrics);
 
   // Inherited from CellularCapability.
   // Checks the modem state.  If the state is kModemStateDisabled, then the

@@ -62,8 +62,9 @@ static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
 
 CellularCapabilityClassic::CellularCapabilityClassic(
     Cellular *cellular,
-    ProxyFactory *proxy_factory)
-    : CellularCapability(cellular, proxy_factory),
+    ProxyFactory *proxy_factory,
+    Metrics *metrics)
+    : CellularCapability(cellular, proxy_factory, metrics),
       scanning_supported_(false),
       weak_ptr_factory_(this) {
   PropertyStore *store = cellular->mutable_store();
@@ -120,6 +121,7 @@ void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
   callback.Run(Error());
   GetRegistrationState();
   GetSignalQuality();
+  metrics()->NotifyDeviceEnableFinished(cellular()->interface_index());
 }
 
 void CellularCapabilityClassic::FinishDisable(const ResultCallback &callback) {
@@ -162,6 +164,7 @@ void CellularCapabilityClassic::EnableModem(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
+  metrics()->NotifyDeviceEnableStarted(cellular()->interface_index());
   proxy_->Enable(true, &error, callback, kTimeoutEnable);
   if (error.IsFailure())
     callback.Run(error);

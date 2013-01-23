@@ -54,7 +54,9 @@ class CellularCapabilityClassic : public CellularCapability {
   static const int kTimeoutSetCarrierMilliseconds;
 
   // |cellular| is the parent Cellular device.
-  CellularCapabilityClassic(Cellular *cellular, ProxyFactory *proxy_factory);
+  CellularCapabilityClassic(Cellular *cellular,
+                            ProxyFactory *proxy_factory,
+                            Metrics *metrics);
   virtual ~CellularCapabilityClassic();
 
   virtual void StopModem(Error *error, const ResultCallback &callback);

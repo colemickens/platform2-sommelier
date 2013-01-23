@@ -282,13 +282,19 @@ void Cellular::InitCapability(Type type) {
   SLOG(Cellular, 2) << __func__ << "(" << type << ")";
   switch (type) {
     case kTypeGSM:
-      capability_.reset(new CellularCapabilityGSM(this, proxy_factory_));
+      capability_.reset(new CellularCapabilityGSM(this,
+                                                  proxy_factory_,
+                                                  metrics()));
       break;
     case kTypeCDMA:
-      capability_.reset(new CellularCapabilityCDMA(this, proxy_factory_));
+      capability_.reset(new CellularCapabilityCDMA(this,
+                                                   proxy_factory_,
+                                                   metrics()));
       break;
     case kTypeUniversal:
-      capability_.reset(new CellularCapabilityUniversal(this, proxy_factory_));
+      capability_.reset(new CellularCapabilityUniversal(this,
+                                                        proxy_factory_,
+                                                        metrics()));
       break;
     default: NOTREACHED();
   }

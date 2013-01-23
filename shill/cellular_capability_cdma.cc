@@ -29,8 +29,9 @@ unsigned int CellularCapabilityCDMA::friendly_service_name_id_ = 0;
 const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
-                                               ProxyFactory *proxy_factory)
-    : CellularCapabilityClassic(cellular, proxy_factory),
+                                               ProxyFactory *proxy_factory,
+                                               Metrics *metrics)
+    : CellularCapabilityClassic(cellular, proxy_factory, metrics),
       weak_ptr_factory_(this),
       activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),

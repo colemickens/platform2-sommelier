@@ -57,10 +57,17 @@ const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
 
+const char Metrics::kMetricTimeToEnableMilliseconds[] =
+    "Network.Shill.%s.TimeToEnable";
+const int Metrics::kMetricTimeToEnableMillisecondsMax =
+    60 * 1000;  // 60 seconds
+const int Metrics::kMetricTimeToEnableMillisecondsMin = 1;
+const int Metrics::kMetricTimeToEnableMillisecondsNumBuckets = 60;
+
 const char Metrics::kMetricTimeToInitializeMilliseconds[] =
     "Network.Shill.%s.TimeToInitialize";
-const int Metrics::kMetricTimeToInitializeMillisecondsMin = 1;
 const int Metrics::kMetricTimeToInitializeMillisecondsMax = 20 * 1000;
+const int Metrics::kMetricTimeToInitializeMillisecondsMin = 1;
 const int Metrics::kMetricTimeToInitializeMillisecondsNumBuckets = 20;
 
 const char Metrics::kMetricTimeResumeToReadyMilliseconds[] =
@@ -573,6 +580,14 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToInitializeMillisecondsMax,
           kMetricTimeToInitializeMillisecondsNumBuckets));
   device_metrics->initialization_timer->Start();
+  histogram = GetFullMetricName(kMetricTimeToEnableMilliseconds,
+                                technology);
+  device_metrics->enable_timer.reset(
+      new chromeos_metrics::TimerReporter(
+          histogram,
+          kMetricTimeToEnableMillisecondsMin,
+          kMetricTimeToEnableMillisecondsMax,
+          kMetricTimeToEnableMillisecondsNumBuckets));
 }
 
 void Metrics::DeregisterDevice(int interface_index) {
@@ -580,15 +595,26 @@ void Metrics::DeregisterDevice(int interface_index) {
 }
 
 void Metrics::NotifyDeviceInitialized(int interface_index) {
-  DeviceMetricsLookupMap::iterator it = devices_metrics_.find(interface_index);
-  if (it == devices_metrics_.end()) {
-    SLOG(Metrics, 1) << "device " << interface_index << " not found";
-    DCHECK(false);
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
     return;
-  }
-  DeviceMetrics *device_metrics = it->second.get();
   device_metrics->initialization_timer->Stop();
   device_metrics->initialization_timer->ReportMilliseconds();
+}
+
+void Metrics::NotifyDeviceEnableStarted(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->enable_timer->Start();
+}
+
+void Metrics::NotifyDeviceEnableFinished(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->enable_timer->Stop();
+  device_metrics->enable_timer->ReportMilliseconds();
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
@@ -642,6 +668,16 @@ void Metrics::SendServiceFailure(const Service *service) {
   library_->SendEnumToUMA(kMetricNetworkServiceErrors,
                           service->failure(),
                           kMetricNetworkServiceErrorsMax);
+}
+
+Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) {
+  DeviceMetricsLookupMap::iterator it = devices_metrics_.find(interface_index);
+  if (it == devices_metrics_.end()) {
+    SLOG(Metrics, 1) << "device " << interface_index << " not found";
+    DCHECK(false);
+    return NULL;
+  }
+  return it->second.get();
 }
 
 void Metrics::set_library(MetricsLibraryInterface *library) {

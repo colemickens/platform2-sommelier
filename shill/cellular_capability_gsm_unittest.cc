@@ -77,7 +77,10 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                NULL,
                                NULL,
-                               &proxy_factory_)) {}
+                               &proxy_factory_)) {
+    metrics_.RegisterDevice(cellular_->interface_index(),
+                            Technology::kCellular);
+  }
 
   virtual ~CellularCapabilityGSMTest() {
     cellular_->service_ = NULL;

@@ -83,7 +83,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
         provider_db_(NULL),
         cellular_(new Cellular(&control_,
                                &dispatcher_,
-                               NULL,
+                               &metrics_,
                                &manager_,
                                "",
                                "",
@@ -99,7 +99,10 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                          &dispatcher_,
                                          &metrics_,
                                          &manager_,
-                                         cellular_)) {}
+                                         cellular_)) {
+    metrics_.RegisterDevice(cellular_->interface_index(),
+                            Technology::kCellular);
+  }
 
   virtual ~CellularCapabilityUniversalTest() {
     cellular_->service_ = NULL;

@@ -16,6 +16,7 @@
 #include "shill/callbacks.h"
 #include "shill/cellular.h"
 #include "shill/dbus_properties.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -72,11 +73,14 @@ class CellularCapability {
   static const char kModemPropertyState[];
 
   // |cellular| is the parent Cellular device.
-  CellularCapability(Cellular *cellular, ProxyFactory *proxy_factory);
+  CellularCapability(Cellular *cellular,
+                     ProxyFactory *proxy_factory,
+                     Metrics *metrics);
   virtual ~CellularCapability();
 
   Cellular *cellular() const { return cellular_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
+  Metrics *metrics() const { return metrics_; }
 
   // Invoked by the parent Cellular device when a new service is created.
   virtual void OnServiceCreated() = 0;
@@ -212,6 +216,7 @@ class CellularCapability {
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
+  Metrics *metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);
 };

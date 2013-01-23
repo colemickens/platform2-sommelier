@@ -22,7 +22,9 @@ namespace shill {
 
 class CellularCapabilityCDMA : public CellularCapabilityClassic {
  public:
-  CellularCapabilityCDMA(Cellular *cellular, ProxyFactory *proxy_factory);
+  CellularCapabilityCDMA(Cellular *cellular,
+                         ProxyFactory *proxy_factory,
+                         Metrics *metrics);
 
   // Inherited from CellularCapability.
   virtual void StartModem(Error *error, const ResultCallback &callback);

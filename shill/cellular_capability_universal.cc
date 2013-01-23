@@ -115,8 +115,9 @@ static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
 
 CellularCapabilityUniversal::CellularCapabilityUniversal(
     Cellular *cellular,
-    ProxyFactory *proxy_factory)
-    : CellularCapability(cellular, proxy_factory),
+    ProxyFactory *proxy_factory,
+    Metrics *metrics)
+    : CellularCapability(cellular, proxy_factory, metrics),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       cdma_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -244,6 +245,7 @@ void CellularCapabilityUniversal::EnableModem(Error *error,
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error local_error(Error::kOperationInitiated);
+  metrics()->NotifyDeviceEnableStarted(cellular()->interface_index());
   modem_proxy_->Enable(
       true,
       &local_error,
@@ -271,6 +273,7 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
   // TODO(jglasgow): handle errors from GetProperties
   GetProperties();
   callback.Run(error);
+  metrics()->NotifyDeviceEnableFinished(cellular()->interface_index());
 }
 
 void CellularCapabilityUniversal::StopModem(Error *error,

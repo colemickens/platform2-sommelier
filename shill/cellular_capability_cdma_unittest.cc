@@ -53,7 +53,10 @@ class CellularCapabilityCDMATest : public testing::Test {
                                    ProxyFactory::GetInstance())),
         classic_proxy_(new MockModemProxy()),
         proxy_(new MockModemCDMAProxy()),
-        capability_(NULL) {}
+        capability_(NULL) {
+    metrics_.RegisterDevice(cellular_->interface_index(),
+                            Technology::kCellular);
+  }
 
   virtual ~CellularCapabilityCDMATest() {
     cellular_->service_ = NULL;

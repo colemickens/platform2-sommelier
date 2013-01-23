@@ -51,8 +51,9 @@ const int64 CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
-                                             ProxyFactory *proxy_factory)
-    : CellularCapabilityClassic(cellular, proxy_factory),
+                                             ProxyFactory *proxy_factory,
+                                             Metrics *metrics)
+    : CellularCapabilityClassic(cellular, proxy_factory, metrics),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),

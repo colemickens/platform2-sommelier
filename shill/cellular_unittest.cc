@@ -147,7 +147,9 @@ class CellularTest : public testing::Test {
                              kDBusPath,
                              NULL,
                              NULL,
-                             &proxy_factory_)) {}
+                             &proxy_factory_)) {
+    metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
+  }
 
   virtual ~CellularTest() {
     mobile_provider_close_db(provider_db_);
