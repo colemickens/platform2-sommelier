@@ -1444,6 +1444,7 @@ void CellularCapabilityUniversal::OnModemStateChangedSignal(
   cellular()->OnModemStateChanged(static_cast<Cellular::ModemState>(old_state),
                                   static_cast<Cellular::ModemState>(new_state),
                                   reason);
+  UpdateScanningProperty();
   if (!deferred_enable_modem_callback_.is_null() &&
       (new_state == Cellular::kModemStateDisabled)) {
     SLOG(Cellular, 2) << "Enabling modem after deferring";
