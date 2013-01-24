@@ -75,8 +75,10 @@ void PowerManager::OnPowerStateChanged(SuspendState new_power_state) {
 }
 
 bool PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
+                                        const string &description,
                                         int *delay_id_out) {
-  return power_manager_proxy_->RegisterSuspendDelay(timeout, delay_id_out);
+  return power_manager_proxy_->RegisterSuspendDelay(timeout, description,
+                                                    delay_id_out);
 }
 
 bool PowerManager::UnregisterSuspendDelay(int delay_id) {
@@ -110,8 +112,7 @@ void PowerManager::RemoveCallback(const string &key,
                                   map<const string, Callback> *callback_map) {
   CHECK(callback_map != NULL);
   DCHECK(ContainsKey(*callback_map, key)) << "Removing unknown key " << key;
-  typename map<const std::string, Callback>::iterator it =
-      callback_map->find(key);
+  typename map<const string, Callback>::iterator it = callback_map->find(key);
   if (it != callback_map->end()) {
     callback_map->erase(it);
   }

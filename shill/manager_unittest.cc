@@ -2407,7 +2407,7 @@ TEST_F(ManagerTest, OnPowerStateChanged) {
 
 TEST_F(ManagerTest, AddTerminationAction) {
   EXPECT_CALL(*power_manager_, AddSuspendDelayCallback(_, _));
-  EXPECT_CALL(*power_manager_, RegisterSuspendDelay(_, _));
+  EXPECT_CALL(*power_manager_, RegisterSuspendDelay(_, _, _));
   SetPowerManager();
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
   manager()->AddTerminationAction("action1", base::Closure());
@@ -2431,8 +2431,8 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
   manager()->RemoveTerminationAction("unknown");
   Mock::VerifyAndClearExpectations(&power_manager);
 
-  EXPECT_CALL(power_manager, RegisterSuspendDelay(_, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(kSuspendDelayId), Return(true)));
+  EXPECT_CALL(power_manager, RegisterSuspendDelay(_, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(kSuspendDelayId), Return(true)));
   EXPECT_CALL(power_manager, AddSuspendDelayCallback(_, _)).Times(1);
   manager()->AddTerminationAction(kKey1, base::Closure());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());

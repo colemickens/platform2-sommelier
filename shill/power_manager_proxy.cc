@@ -49,11 +49,13 @@ PowerManagerProxy::PowerManagerProxy(PowerManagerProxyDelegate *delegate,
 PowerManagerProxy::~PowerManagerProxy() {}
 
 bool PowerManagerProxy::RegisterSuspendDelay(base::TimeDelta timeout,
+                                             const string &description,
                                              int *delay_id_out) {
   LOG(INFO) << __func__ << "(" << timeout.InMilliseconds() << ")";
 
   power_manager::RegisterSuspendDelayRequest request_proto;
   request_proto.set_timeout(timeout.ToInternalValue());
+  request_proto.set_description(description);
   vector<uint8_t> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 

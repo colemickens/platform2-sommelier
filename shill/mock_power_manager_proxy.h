@@ -17,8 +17,10 @@ class MockPowerManagerProxy : public PowerManagerProxyInterface {
   MockPowerManagerProxy();
   virtual ~MockPowerManagerProxy();
 
-  MOCK_METHOD2(RegisterSuspendDelay,
-               bool(base::TimeDelta timeout, int *delay_id_out));
+  MOCK_METHOD3(RegisterSuspendDelay,
+               bool(base::TimeDelta timeout,
+                    const std::string &description,
+                    int *delay_id_out));
   MOCK_METHOD1(UnregisterSuspendDelay, bool(int delay_id));
   MOCK_METHOD2(ReportSuspendReadiness, bool(int delay_id, int suspend_id));
 

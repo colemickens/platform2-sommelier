@@ -75,7 +75,9 @@ class PowerManager : public PowerManagerProxyDelegate {
   virtual void OnPowerStateChanged(SuspendState new_power_state);
 
   // See corresponding methods in PowerManagerProxyInterface.
-  virtual bool RegisterSuspendDelay(base::TimeDelta timeout, int *delay_id_out);
+  virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
+                                    const std::string &description,
+                                    int *delay_id_out);
   virtual bool UnregisterSuspendDelay(int delay_id);
   virtual bool ReportSuspendReadiness(int delay_id, int suspend_id);
 

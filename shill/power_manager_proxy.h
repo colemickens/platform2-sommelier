@@ -31,6 +31,7 @@ class PowerManagerProxy : public PowerManagerProxyInterface {
 
   // Inherited from PowerManagerProxyInterface.
   virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
+                                    const std::string &description,
                                     int *delay_id_out) OVERRIDE;
   virtual bool UnregisterSuspendDelay(int delay_id) OVERRIDE;
   virtual bool ReportSuspendReadiness(int delay_id, int suspend_id) OVERRIDE;

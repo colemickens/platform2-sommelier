@@ -5,6 +5,8 @@
 #ifndef SHILL_POWER_MANAGER_PROXY_INTERFACE_H_
 #define SHILL_POWER_MANAGER_PROXY_INTERFACE_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/time.h>
 
@@ -22,9 +24,12 @@ class PowerManagerProxyInterface {
   virtual ~PowerManagerProxyInterface() {}
 
   // Sends a request to the power manager to wait for this client for up to
-  // |timeout| before suspending the system.  Assigns an ID corresponding to the
-  // registered delay to |delay_id_out| and returns true on success.
+  // |timeout| before suspending the system.  |description| is a
+  // human-readable string describing the delay's purpose.  Assigns an ID
+  // corresponding to the registered delay to |delay_id_out| and returns
+  // true on success.
   virtual bool RegisterSuspendDelay(base::TimeDelta timeout,
+                                    const std::string &description,
                                     int *delay_id_out) = 0;
 
   // Unregisters a previously-registered suspend delay.  Returns true on

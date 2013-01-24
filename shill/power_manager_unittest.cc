@@ -224,10 +224,13 @@ TEST_F(PowerManagerDeathTest, RemoveStateChangeCallbackUnknownKey) {
 
 TEST_F(PowerManagerTest, RegisterSuspendDelay) {
   const base::TimeDelta kTimeout = base::TimeDelta::FromMilliseconds(100);
+  const char kDescription[] = "description";
   int delay_id = 0;
-  EXPECT_CALL(*factory_.proxy(), RegisterSuspendDelay(kTimeout, &delay_id))
+  EXPECT_CALL(*factory_.proxy(), RegisterSuspendDelay(kTimeout, kDescription,
+                                                      &delay_id))
       .WillOnce(Return(true));
-  EXPECT_TRUE(power_manager_.RegisterSuspendDelay(kTimeout, &delay_id));
+  EXPECT_TRUE(power_manager_.RegisterSuspendDelay(kTimeout, kDescription,
+                                                  &delay_id));
 }
 
 TEST_F(PowerManagerTest, UnregisterSuspendDelay) {

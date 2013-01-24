@@ -56,6 +56,14 @@ using std::vector;
 
 namespace shill {
 
+namespace {
+
+// Human-readable string describing the suspend delay that is registered
+// with the power manager.
+const char kSuspendDelayDescription[] = "shill";
+
+}  // namespace
+
 // statics
 const char Manager::kErrorNoDevice[] = "no wifi devices available";
 const char Manager::kErrorTypeRequired[] = "must specify service type";
@@ -909,6 +917,7 @@ void Manager::AddTerminationAction(const string &name,
     suspend_delay_registered_ = power_manager_->RegisterSuspendDelay(
         base::TimeDelta::FromMilliseconds(
             kTerminationActionsTimeoutMilliseconds),
+        kSuspendDelayDescription,
         &suspend_delay_id_);
   }
   termination_actions_.Add(name, start);
