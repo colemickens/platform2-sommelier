@@ -33,8 +33,10 @@ class PowerManager : public DBusProxiable<PowerManager, PowerManagerDBusProxy> {
   // the delay's ID to |suspend_delay_id_| and setting
   // |suspend_delay_registered_| to true on success.  |timeout| is the maximum
   // amount of time the power manager will wait for the WiMAX manager to
-  // announce its readiness before suspending the system.
-  void RegisterSuspendDelay(base::TimeDelta timeout);
+  // announce its readiness before suspending the system.  |description| is
+  // a human-readable string describing the delay's purpose.
+  void RegisterSuspendDelay(base::TimeDelta timeout,
+                            const std::string &description);
 
   // Unregisters |suspend_delay_id_|.
   void UnregisterSuspendDelay();

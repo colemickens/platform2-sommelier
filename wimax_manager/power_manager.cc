@@ -23,6 +23,7 @@ const uint32 kDefaultSuspendDelayInMilliSeconds = 5000;  // 5s
 const uint32 kSuspendTimeoutInSeconds = 15;  // 15s
 const char kPowerStateMem[] = "mem";
 const char kPowerStateOn[] = "on";
+const char kSuspendDelayDescription[] = "wimax-manager";
 
 gboolean OnSuspendTimedOut(gpointer data) {
   CHECK(data);
@@ -78,7 +79,8 @@ void PowerManager::Initialize() {
   // TODO(benchan): May need to check if power manager is running and defer
   // the invocation of RegisterSuspendDelay when necessary.
   RegisterSuspendDelay(
-      base::TimeDelta::FromMilliseconds(kDefaultSuspendDelayInMilliSeconds));
+      base::TimeDelta::FromMilliseconds(kDefaultSuspendDelayInMilliSeconds),
+      kSuspendDelayDescription);
 }
 
 void PowerManager::Finalize() {
@@ -93,7 +95,8 @@ void PowerManager::ResumeOnSuspendTimedOut() {
   OnPowerStateChanged(kPowerStateOn);
 }
 
-void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout) {
+void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout,
+                                        const string &description) {
   if (!dbus_proxy())
     return;
 
@@ -101,6 +104,7 @@ void PowerManager::RegisterSuspendDelay(base::TimeDelta timeout) {
             << " ms.";
   power_manager::RegisterSuspendDelayRequest request_proto;
   request_proto.set_timeout(timeout.ToInternalValue());
+  request_proto.set_description(description);
   vector<uint8> serialized_request;
   CHECK(SerializeProtocolBuffer(request_proto, &serialized_request));
 
