@@ -51,7 +51,7 @@ void SuspendDelayController::RemoveObserver(SuspendDelayObserver* observer) {
 
 void SuspendDelayController::RegisterSuspendDelay(
     const RegisterSuspendDelayRequest& request,
-    const std::string& dbus_sender,
+    const std::string& dbus_client,
     RegisterSuspendDelayReply* reply) {
   DCHECK(reply);
 
@@ -59,10 +59,11 @@ void SuspendDelayController::RegisterSuspendDelay(
 
   DelayInfo info;
   info.timeout = base::TimeDelta::FromInternalValue(request.timeout());
-  info.dbus_sender = dbus_sender;
+  info.dbus_client = dbus_client;
+  info.description = request.description();
   LOG(INFO) << "Registering suspend delay " << delay_id
             << " of " << info.timeout.InMilliseconds() << " ms on behalf of "
-            << dbus_sender;
+            << dbus_client << " (" << info.description << ")";
   registered_delays_.insert(std::make_pair(delay_id, info));
 
   reply->Clear();
@@ -71,20 +72,20 @@ void SuspendDelayController::RegisterSuspendDelay(
 
 void SuspendDelayController::UnregisterSuspendDelay(
     const UnregisterSuspendDelayRequest& request,
-    const std::string& dbus_sender) {
+    const std::string& dbus_client) {
   LOG(INFO) << "Unregistering suspend delay " << request.delay_id()
-            << " on behalf of " << dbus_sender;
+            << " on behalf of " << dbus_client;
   UnregisterDelayInternal(request.delay_id());
 }
 
 void SuspendDelayController::HandleSuspendReadiness(
     const SuspendReadinessInfo& info,
-    const std::string& dbus_sender) {
+    const std::string& dbus_client) {
   int delay_id = info.delay_id();
   int suspend_id = info.suspend_id();
   LOG(INFO) << "Got notification that client with delay " << delay_id
             << " is ready for suspend attempt " << suspend_id << " from "
-            << dbus_sender;
+            << dbus_client;
 
   if (suspend_id != current_suspend_id_) {
     LOG(WARNING) << "Ignoring readiness notification for wrong suspend attempt "
@@ -106,7 +107,7 @@ void SuspendDelayController::HandleDBusClientDisconnected(
   std::vector<int> delay_ids_to_remove;
   for (DelayInfoMap::const_iterator it = registered_delays_.begin();
        it != registered_delays_.end(); ++it) {
-    if (it->second.dbus_sender == client)
+    if (it->second.dbus_client == client)
       delay_ids_to_remove.push_back(it->first);
   }
 
@@ -181,7 +182,8 @@ gboolean SuspendDelayController::OnDelayExpiration() {
     const DelayInfo& delay = registered_delays_[*it];
     if (!tardy_delays.empty())
       tardy_delays += ", ";
-    tardy_delays += base::IntToString(*it) + " (" + delay.dbus_sender + ")";
+    tardy_delays += base::IntToString(*it) + " (" + delay.dbus_client + ": " +
+        delay.description + ")";
   }
   LOG(WARNING) << "Timed out while waiting for suspend readiness confirmations "
                << "for " << delay_ids_being_waited_on_.size() << " delay(s): "

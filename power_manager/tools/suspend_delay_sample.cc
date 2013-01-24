@@ -22,6 +22,9 @@ DEFINE_int32(timeout_ms, 7000, "Suspend timeout in milliseconds");
 
 namespace {
 
+// Human-readable description of the delay's purpose.
+const char kSuspendDelayDescription[] = "suspend_delay_sample";
+
 // ID corresponding to the current suspend attempt.
 int suspend_id = 0;
 
@@ -72,6 +75,7 @@ void RegisterSuspendDelay() {
   power_manager::RegisterSuspendDelayRequest request;
   request.set_timeout(
       base::TimeDelta::FromMilliseconds(FLAGS_timeout_ms).ToInternalValue());
+  request.set_description(kSuspendDelayDescription);
   power_manager::RegisterSuspendDelayReply reply;
   CHECK(CallMethod(power_manager::kRegisterSuspendDelayMethod,
                    request, &reply));

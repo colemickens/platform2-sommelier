@@ -41,19 +41,19 @@ class SuspendDelayController {
   void AddObserver(SuspendDelayObserver* observer);
   void RemoveObserver(SuspendDelayObserver* observer);
 
-  // Registers a new suspend delay on behalf of |dbus_sender| and fills |reply|
+  // Registers a new suspend delay on behalf of |dbus_client| and fills |reply|
   // with the message that should be returned.
   void RegisterSuspendDelay(const RegisterSuspendDelayRequest& request,
-                            const std::string& dbus_sender,
+                            const std::string& dbus_client,
                             RegisterSuspendDelayReply* reply);
 
   // Unregisters a previously-registered suspend delay.
   void UnregisterSuspendDelay(const UnregisterSuspendDelayRequest& request,
-                              const std::string& dbus_sender);
+                              const std::string& dbus_client);
 
   // Handles notification that a client has reported readiness for suspend.
   void HandleSuspendReadiness(const SuspendReadinessInfo& info,
-                              const std::string& dbus_sender);
+                              const std::string& dbus_client);
 
   // Called when |client| has gone away (i.e. a NameOwnerChanged signal was
   // received with |client| in its |name| field and an empty |new_owner| field.
@@ -71,7 +71,10 @@ class SuspendDelayController {
     base::TimeDelta timeout;
 
     // Name of the D-Bus connection that registered the delay.
-    std::string dbus_sender;
+    std::string dbus_client;
+
+    // Human-readable description supplied with the registration request.
+    std::string description;
   };
 
   // Removes |delay_id| from |registered_delays_| and calls
