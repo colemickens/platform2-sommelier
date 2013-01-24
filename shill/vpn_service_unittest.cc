@@ -59,6 +59,14 @@ class VPNServiceTest : public testing::Test {
     service_->state_ = state;
   }
 
+  void SetHasEverConnected(bool connected) {
+    service_->has_ever_connected_ = connected;
+  }
+
+  void SetConnectable(bool connectable) {
+    service_->connectable_ = connectable;
+  }
+
   std::string interface_name_;
   std::string ipconfig_rpc_identifier_;
   MockVPNDriver *driver_;  // Owned by |service_|.
@@ -209,6 +217,23 @@ TEST_F(VPNServiceTest, OnConnectionDisconnected) {
   service_->SetConnection(connection_);
   EXPECT_CALL(*driver_, OnConnectionDisconnected()).Times(1);
   connection_->OnLowerDisconnect();
+}
+
+TEST_F(VPNServiceTest, IsAutoConnectable) {
+  EXPECT_TRUE(service_->connectable());
+  EXPECT_FALSE(service_->has_ever_connected());
+
+  const char *reason = NULL;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(VPNService::kAutoConnNeverConnected, reason);
+
+  SetHasEverConnected(true);
+  reason = NULL;
+  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
+  EXPECT_FALSE(reason);
+
+  SetConnectable(false);
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
 }
 
 }  // namespace shill

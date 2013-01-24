@@ -43,9 +43,16 @@ class VPNService : public Service {
                                              Error *error);
   void set_storage_id(const std::string &id) { storage_id_ = id; }
 
+ protected:
+  // Inherited from Service.
+  virtual bool IsAutoConnectable(const char **reason) const;
+
  private:
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
+  FRIEND_TEST(VPNServiceTest, IsAutoConnectable);
   FRIEND_TEST(VPNServiceTest, SetConnection);
+
+  static const char kAutoConnNeverConnected[];
 
   virtual std::string GetDeviceRpcId(Error *error);
 

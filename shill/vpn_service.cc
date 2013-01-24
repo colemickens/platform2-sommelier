@@ -23,6 +23,8 @@ using std::string;
 
 namespace shill {
 
+const char VPNService::kAutoConnNeverConnected[] = "never connected";
+
 VPNService::VPNService(ControlInterface *control,
                        EventDispatcher *dispatcher,
                        Metrics *metrics,
@@ -139,6 +141,19 @@ void VPNService::SetConnection(const ConnectionRefPtr &connection) {
   // (e.g., because an underlying connection is destructed).
   connection_binder_->Attach(connection);
   Service::SetConnection(connection);
+}
+
+bool VPNService::IsAutoConnectable(const char **reason) const {
+  if (!Service::IsAutoConnectable(reason)) {
+    return false;
+  }
+  // Don't auto-connect VPN services that have never connected. This improves
+  // the chances that the VPN service is connectable and avoids dialog popups.
+  if (!has_ever_connected()) {
+    *reason = kAutoConnNeverConnected;
+    return false;
+  }
+  return true;
 }
 
 }  // namespace shill
