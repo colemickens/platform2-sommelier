@@ -11,6 +11,7 @@
 #include <base/bind.h>
 #include <base/file_path.h>
 #include <base/logging.h>
+#include <base/memory/scoped_generic_obj.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
@@ -59,6 +60,17 @@ std::string StorageToString(const std::string& usb_bus_str,
                             uint32_t storage_id) {
   return base::StringPrintf("%s:%u", usb_bus_str.c_str(), storage_id);
 }
+
+// TODO(thestig) Convert this to struct LibmtpFileDeleter when CrOS's base
+// package has an updated base/memory/scoped_ptr.h that supports
+// scoped_ptr<MyType, MyDeleter>.
+// Also replace scoped_ptr_malloc<Foo> with scoped_ptr<Foo, base::FreeDeleter>.
+class ScopedDestroyLibmtpFile {
+ public:
+  void operator()(LIBMTP_file_t* file) const {
+    LIBMTP_destroy_file_t(file);
+  }
+};
 
 }  // namespace
 
@@ -339,17 +351,23 @@ bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
     if (path_components[i] == "/")
       continue;
 
-    const LIBMTP_file_t* files =
+    LIBMTP_file_t* files =
         LIBMTP_Get_Files_And_Folders(device, storage_id, current_file_id);
     // Iterate through all files.
     const uint32_t old_file_id = current_file_id;
-    for (const LIBMTP_file_t* file = files; file != NULL; file = file->next) {
-      if (file->filename != path_components[i])
+    LIBMTP_file_t* file = files;
+    while (file != NULL) {
+      ScopedGenericObj<LIBMTP_file_t*,
+                       ScopedDestroyLibmtpFile> current_file(file);
+      file = file->next;
+      if (current_file.get()->filename != path_components[i])
         continue;
 
       // Found matching file name. See if it is valid.
-      if (!process_func(file, i, num_path_components, &current_file_id))
+      if (!process_func(current_file.get(), i, num_path_components,
+                        &current_file_id)) {
         return false;
+      }
     }
     // If no matching component was found.
     if (old_file_id == current_file_id)
@@ -364,13 +382,18 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
                                   uint32_t storage_id,
                                   uint32_t file_id,
                                   std::vector<FileEntry>* out) {
-  const LIBMTP_file_t* files =
+  LIBMTP_file_t* files =
       LIBMTP_Get_Files_And_Folders(device, storage_id, file_id);
   if (!files)
     return false;
 
-  for (const LIBMTP_file_t* file = files; file != NULL; file = file->next)
-    out->push_back(FileEntry(*file));
+  LIBMTP_file_t* file = files;
+  while (file != NULL) {
+    ScopedGenericObj<LIBMTP_file_t*,
+                     ScopedDestroyLibmtpFile> current_file(file);
+    file = file->next;
+    out->push_back(FileEntry(*current_file));
+  }
   return true;
 }
 
