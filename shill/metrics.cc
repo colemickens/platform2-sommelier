@@ -73,9 +73,10 @@ const int Metrics::kMetricTimeToEnableMillisecondsNumBuckets = 60;
 
 const char Metrics::kMetricTimeToInitializeMilliseconds[] =
     "Network.Shill.%s.TimeToInitialize";
-const int Metrics::kMetricTimeToInitializeMillisecondsMax = 20 * 1000;
+const int Metrics::kMetricTimeToInitializeMillisecondsMax =
+    30 * 1000;  // 30 seconds
 const int Metrics::kMetricTimeToInitializeMillisecondsMin = 1;
-const int Metrics::kMetricTimeToInitializeMillisecondsNumBuckets = 20;
+const int Metrics::kMetricTimeToInitializeMillisecondsNumBuckets = 30;
 
 const char Metrics::kMetricTimeResumeToReadyMilliseconds[] =
     "Network.Shill.%s.TimeResumeToReady";
