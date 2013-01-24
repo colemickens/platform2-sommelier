@@ -219,6 +219,7 @@ else
     if [ -f "${timestamp_file}" ]; then
         /sbin/hwclock -V > /dev/null
     fi
+
     # - suspends to ram
     echo -n mem > /sys/power/state
     suspend_rc=$?
@@ -236,7 +237,7 @@ if [ $cancel -eq 0 ]; then
     if [ -f "${timestamp_file}" ]; then
         # - records the hwclock time at resume. It is read by power_Resume test.
         TIME=$(/sbin/hwclock --utc --debug)
-        echo ${TIME} > "${timestamp_file}" &
+        echo ${TIME} > "${timestamp_file}"
         log_msg "Recorded hwclock time for test"
     fi
 
