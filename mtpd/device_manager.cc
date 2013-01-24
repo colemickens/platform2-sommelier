@@ -524,8 +524,12 @@ void DeviceManager::AddDevices(GSource* source) {
 
   // Iterate through raw devices.
   for (int i = 0; i < raw_devices_count; ++i) {
-    // Open the mtp device.
     const std::string usb_bus_str = RawDeviceToString(raw_devices[i]);
+    // Skip devices that have already been opened.
+    if (ContainsKey(device_map_, usb_bus_str))
+      continue;
+
+    // Open the mtp device.
     LIBMTP_mtpdevice_t* mtp_device =
         LIBMTP_Open_Raw_Device_Uncached(&raw_devices[i]);
     if (!mtp_device) {
@@ -558,12 +562,16 @@ void DeviceManager::AddDevices(GSource* source) {
                        *storage,
                        fallback_vendor,
                        fallback_product);
-      storage_map.insert(std::make_pair(storage->id, info));
+      bool storage_added =
+          storage_map.insert(std::make_pair(storage->id, info)).second;
+      CHECK(storage_added);
       delegate_->StorageAttached(storage_name);
       LOG(INFO) << "Added storage " << storage_name;
     }
-    device_map_.insert(
-        std::make_pair(usb_bus_str, std::make_pair(mtp_device, storage_map)));
+    bool device_added = device_map_.insert(
+        std::make_pair(usb_bus_str,
+                       std::make_pair(mtp_device, storage_map))).second;
+    CHECK(device_added);
     LOG(INFO) << "Added device " << usb_bus_str << " with "
               << storage_map.size() << " storages";
   }
