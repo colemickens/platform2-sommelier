@@ -104,8 +104,9 @@ int main(int argc, char** argv) {
   //
   // Set up a signal socket and monitor it.
   sigset_t signal_set;
-  CHECK_EQ(sigaddset(&signal_set, SIGINT), 0);
-  CHECK_EQ(sigaddset(&signal_set, SIGTERM), 0);
+  CHECK_EQ(0, sigemptyset(&signal_set));
+  CHECK_EQ(0, sigaddset(&signal_set, SIGINT));
+  CHECK_EQ(0, sigaddset(&signal_set, SIGTERM));
   int signal_fd = signalfd(-1, &signal_set, 0);
   PCHECK(signal_fd >= 0);
 
