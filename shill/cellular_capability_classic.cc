@@ -125,6 +125,7 @@ void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
 }
 
 void CellularCapabilityClassic::FinishDisable(const ResultCallback &callback) {
+  metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
   ReleaseProxies();
   callback.Run(Error());
 }
@@ -175,6 +176,7 @@ void CellularCapabilityClassic::DisableModem(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
+  metrics()->NotifyDeviceDisableStarted(cellular()->interface_index());
   proxy_->Enable(false, &error, callback, kTimeoutEnable);
   if (error.IsFailure())
       callback.Run(error);

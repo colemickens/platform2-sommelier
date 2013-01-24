@@ -312,6 +312,7 @@ void CellularCapabilityUniversal::Stop_DisconnectCompleted(
 
 void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {
   Error error;
+  metrics()->NotifyDeviceDisableStarted(cellular()->interface_index());
   modem_proxy_->Enable(
       false, &error,
       Bind(&CellularCapabilityUniversal::Stop_DisableCompleted,
@@ -325,8 +326,10 @@ void CellularCapabilityUniversal::Stop_DisableCompleted(
     const ResultCallback &callback, const Error &error) {
   SLOG(Cellular, 2) << __func__;
 
-  if (error.IsSuccess())
+  if (error.IsSuccess()) {
+    metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
     ReleaseProxies();
+  }
   callback.Run(error);
 }
 

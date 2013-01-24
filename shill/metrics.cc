@@ -57,6 +57,13 @@ const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
 
+const char Metrics::kMetricTimeToDisableMilliseconds[] =
+    "Network.Shill.%s.TimeToDisable";
+const int Metrics::kMetricTimeToDisableMillisecondsMax =
+    60 * 1000;  // 60 seconds
+const int Metrics::kMetricTimeToDisableMillisecondsMin = 1;
+const int Metrics::kMetricTimeToDisableMillisecondsNumBuckets = 60;
+
 const char Metrics::kMetricTimeToEnableMilliseconds[] =
     "Network.Shill.%s.TimeToEnable";
 const int Metrics::kMetricTimeToEnableMillisecondsMax =
@@ -588,6 +595,14 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToEnableMillisecondsMin,
           kMetricTimeToEnableMillisecondsMax,
           kMetricTimeToEnableMillisecondsNumBuckets));
+  histogram = GetFullMetricName(kMetricTimeToDisableMilliseconds,
+                                technology);
+  device_metrics->disable_timer.reset(
+      new chromeos_metrics::TimerReporter(
+          histogram,
+          kMetricTimeToDisableMillisecondsMin,
+          kMetricTimeToDisableMillisecondsMax,
+          kMetricTimeToDisableMillisecondsNumBuckets));
 }
 
 void Metrics::DeregisterDevice(int interface_index) {
@@ -615,6 +630,21 @@ void Metrics::NotifyDeviceEnableFinished(int interface_index) {
     return;
   device_metrics->enable_timer->Stop();
   device_metrics->enable_timer->ReportMilliseconds();
+}
+
+void Metrics::NotifyDeviceDisableStarted(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->disable_timer->Start();
+}
+
+void Metrics::NotifyDeviceDisableFinished(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->disable_timer->Stop();
+  device_metrics->disable_timer->ReportMilliseconds();
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
