@@ -331,6 +331,10 @@ class Metrics {
   void RegisterDevice(int interface_index,
                       Technology::Identifier technology);
 
+  // Checks to see if the device has already been registered.
+  bool IsDeviceRegistered(int interface_index,
+                          Technology::Identifier technology);
+
   // Deregisters the device from this class.  All state transition timers
   // will be removed.
   void DeregisterDevice(int interface_index);
@@ -390,6 +394,7 @@ class Metrics {
 
   struct DeviceMetrics {
     DeviceMetrics() {}
+    Technology::Identifier technology;
     scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> enable_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> disable_timer;
@@ -417,7 +422,7 @@ class Metrics {
                                            Service::ConnectState new_state);
   void SendServiceFailure(const Service *service);
 
-  DeviceMetrics *GetDeviceMetrics(int interface_index);
+  DeviceMetrics *GetDeviceMetrics (int interface_index) const;
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);

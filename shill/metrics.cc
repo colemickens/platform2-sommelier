@@ -581,8 +581,10 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
 
 void Metrics::RegisterDevice(int interface_index,
                              Technology::Identifier technology) {
+  SLOG(Metrics, 2) << __func__ << ": " << interface_index;
   shared_ptr<DeviceMetrics> device_metrics(new DeviceMetrics);
   devices_metrics_[interface_index] = device_metrics;
+  device_metrics->technology = technology;
   string histogram = GetFullMetricName(kMetricTimeToInitializeMilliseconds,
                                        technology);
   device_metrics->initialization_timer.reset(
@@ -610,7 +612,19 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToDisableMillisecondsNumBuckets));
 }
 
+bool Metrics::IsDeviceRegistered(int interface_index,
+                                 Technology::Identifier technology) {
+  SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index
+                               << ", technology: " << technology;
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return false;
+  // Make sure the device technologies match.
+  return (technology == device_metrics->technology);
+}
+
 void Metrics::DeregisterDevice(int interface_index) {
+  SLOG(Metrics, 2) << __func__ << ": interface index: " << interface_index;
   devices_metrics_.erase(interface_index);
 }
 
@@ -705,11 +719,12 @@ void Metrics::SendServiceFailure(const Service *service) {
                           kMetricNetworkServiceErrorsMax);
 }
 
-Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) {
-  DeviceMetricsLookupMap::iterator it = devices_metrics_.find(interface_index);
+Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {
+  DeviceMetricsLookupMap::const_iterator it =
+      devices_metrics_.find(interface_index);
   if (it == devices_metrics_.end()) {
-    SLOG(Metrics, 1) << "device " << interface_index << " not found";
-    DCHECK(false);
+    SLOG(Metrics, 2) << __func__ << ": device " << interface_index
+                     << " not found";
     return NULL;
   }
   return it->second.get();

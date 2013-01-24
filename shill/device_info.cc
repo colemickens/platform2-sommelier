@@ -146,10 +146,15 @@ void DeviceInfo::RegisterDevice(const DeviceRefPtr &device) {
   delayed_devices_.erase(device->interface_index());
   CHECK(!GetDevice(device->interface_index()).get());
   infos_[device->interface_index()].device = device;
+  if (metrics_->IsDeviceRegistered(device->interface_index(),
+                                   device->technology())) {
+    metrics_->NotifyDeviceInitialized(device->interface_index());
+  } else {
+    metrics_->RegisterDevice(device->interface_index(), device->technology());
+  }
   if (Technology::IsPrimaryConnectivityTechnology(device->technology())) {
     manager_->RegisterDevice(device);
   }
-  metrics_->NotifyDeviceInitialized(device->interface_index());
 }
 
 void DeviceInfo::DeregisterDevice(const DeviceRefPtr &device) {
