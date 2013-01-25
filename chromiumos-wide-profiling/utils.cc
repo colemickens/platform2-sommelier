@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <cstdio>
 #include <istream>
 #include <iomanip>
@@ -79,4 +81,14 @@ bool CompareFileContents(const std::string & a, const std::string & b) {
   }
 
   return file_infos[0].contents == file_infos[1].contents;
+}
+
+bool CreateNamedTempFile(std::string * name) {
+  char filename[] = "/tmp/XXXXXX";
+  int fd = mkstemp(filename);
+  if (fd == -1)
+    return false;
+  close(fd);
+  *name = filename;
+  return true;
 }

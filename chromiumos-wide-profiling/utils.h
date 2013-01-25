@@ -17,6 +17,7 @@ bool BufferToFile(const std::string & filename,
 std::ifstream::pos_type GetFileSize(const std::string & filename);
 bool CompareFileContents(const std::string & a, const std::string & b);
 uint64 Md5Prefix(const std::string input);
+bool CreateNamedTempFile(std::string * name);
 
 
 #endif /*UTILS_H_*/

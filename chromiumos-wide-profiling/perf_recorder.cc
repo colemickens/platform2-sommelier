@@ -7,6 +7,7 @@
 
 #include "perf_recorder.h"
 #include "perf_serializer.h"
+#include "utils.h"
 
 std::string PerfRecorder::GetSleepCommand(const int time) {
   std::stringstream ss;
@@ -21,8 +22,8 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
   FILE * fp;
   int ret;
 
-  char temp_file[L_tmpnam];
-  if (tmpnam(temp_file) == NULL)
+  std::string temp_file;
+  if (!CreateNamedTempFile(&temp_file))
     return false;
   // Add -o - to the command line.
   perf_command += std::string(" -o ") +
@@ -39,7 +40,7 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
   PerfReader perf_reader;
   perf_reader.ReadFile(temp_file);
 
-  ret = remove(temp_file);
+  ret = remove(temp_file.c_str());
   if (ret != 0)
     return false;
 
