@@ -287,21 +287,6 @@ fi
 # Device Manager Server used to fetch the enterprise policy, if applicable.
 DMSERVER="https://m.google.com/devicemanagement/data/api"
 
-# Set up cgroups for chrome. We create two task groups, one for at most one
-# foreground renderer and one for all the background renderers and set the
-# background group to a very low priority. We specifically do not set it to the
-# lowest "2" such that other processes like the update-engine can be even lower.
-# The default value is 1024.
-mkdir -p /tmp/cgroup/cpu
-if ! grep -q '^cgroup /tmp/cgroup/cpu cgroup' /proc/mounts; then
-  mount -t cgroup cgroup /tmp/cgroup/cpu -o cpu
-fi
-mkdir -p /tmp/cgroup/cpu/chrome_renderers
-mkdir -p /tmp/cgroup/cpu/chrome_renderers/foreground
-mkdir -p /tmp/cgroup/cpu/chrome_renderers/background
-echo "10" > /tmp/cgroup/cpu/chrome_renderers/background/cpu.shares
-chown -R chronos /tmp/cgroup/cpu/chrome_renderers
-
 # For i18n keyboard support (crbug.com/116999)
 export LC_ALL=en_US.utf8
 
