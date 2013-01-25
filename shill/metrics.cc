@@ -53,6 +53,13 @@ const char Metrics::kMetricTimeOnlineSeconds[] = "Network.Shill.%s.TimeOnline";
 const int Metrics::kMetricTimeOnlineSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeOnlineSecondsMin = 1;
 
+const char Metrics::kMetricTimeToConnectMilliseconds[] =
+    "Network.Shill.%s.TimeToConnect";
+const int Metrics::kMetricTimeToConnectMillisecondsMax =
+    60 * 1000;  // 60 seconds
+const int Metrics::kMetricTimeToConnectMillisecondsMin = 1;
+const int Metrics::kMetricTimeToConnectMillisecondsNumBuckets = 60;
+
 const char Metrics::kMetricTimeToDropSeconds[] = "Network.Shill.TimeToDrop";;
 const int Metrics::kMetricTimeToDropSecondsMax = 8 * 60 * 60;  // 8 hours
 const int Metrics::kMetricTimeToDropSecondsMin = 1;
@@ -610,6 +617,14 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToDisableMillisecondsMin,
           kMetricTimeToDisableMillisecondsMax,
           kMetricTimeToDisableMillisecondsNumBuckets));
+  histogram = GetFullMetricName(kMetricTimeToConnectMilliseconds,
+                                technology);
+  device_metrics->connect_timer.reset(
+      new chromeos_metrics::TimerReporter(
+          histogram,
+          kMetricTimeToConnectMillisecondsMin,
+          kMetricTimeToConnectMillisecondsMax,
+          kMetricTimeToConnectMillisecondsNumBuckets));
 }
 
 bool Metrics::IsDeviceRegistered(int interface_index,
@@ -664,6 +679,21 @@ void Metrics::NotifyDeviceDisableFinished(int interface_index) {
     return;
   device_metrics->disable_timer->Stop();
   device_metrics->disable_timer->ReportMilliseconds();
+}
+
+void Metrics::NotifyDeviceConnectStarted(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->connect_timer->Start();
+}
+
+void Metrics::NotifyDeviceConnectFinished(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->connect_timer->Stop();
+  device_metrics->connect_timer->ReportMilliseconds();
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

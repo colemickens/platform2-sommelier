@@ -330,6 +330,19 @@ TEST_F(MetricsTest, PortalDetectionResultToEnum) {
             Metrics::PortalDetectionResultToEnum(result));
 }
 
+TEST_F(MetricsTest, TimeToConnect) {
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Cellular.TimeToConnect",
+                Ge(0),
+                Metrics::kMetricTimeToConnectMillisecondsMin,
+                Metrics::kMetricTimeToConnectMillisecondsMax,
+                Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
+  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex);
+  metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
+}
+
 TEST_F(MetricsTest, TimeToDisable) {
   EXPECT_CALL(library_,
       SendToUMA("Network.Shill.Cellular.TimeToDisable",

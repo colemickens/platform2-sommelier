@@ -179,6 +179,10 @@ class Metrics {
   static const int kMetricTimeOnlineSecondsNumBuckets;
   static const char kMetricTimeResumeToReadyMilliseconds[];
   static const char kMetricTimeToConfigMilliseconds[];
+  static const char kMetricTimeToConnectMilliseconds[];
+  static const int kMetricTimeToConnectMillisecondsMax;
+  static const int kMetricTimeToConnectMillisecondsMin;
+  static const int kMetricTimeToConnectMillisecondsNumBuckets;
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
@@ -354,6 +358,12 @@ class Metrics {
   // Notifies this object that a device has completed the disable process.
   void NotifyDeviceDisableFinished(int interface_index);
 
+  // Notifies this object that a device has started the connect process.
+  void NotifyDeviceConnectStarted(int interface_index);
+
+  // Notifies this object that a device has completed the connect process.
+  void NotifyDeviceConnectFinished(int interface_index);
+
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);
 
@@ -398,6 +408,7 @@ class Metrics {
     scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> enable_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> disable_timer;
+    scoped_ptr<chromeos_metrics::TimerReporter> connect_timer;
   };
   typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;

@@ -438,16 +438,20 @@ void Cellular::Connect(Error *error) {
                            weak_ptr_factory_.GetWeakPtr());
   OnConnecting();
   capability_->Connect(properties, error, cb);
+  if (error->IsSuccess())
+    metrics()->NotifyDeviceConnectStarted(interface_index());
 }
 
 // Note that there's no ResultCallback argument to this,
 // since Connect() isn't yet passed one.
 void Cellular::OnConnectReply(const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
-  if (error.IsSuccess())
+  if (error.IsSuccess()) {
+    metrics()->NotifyDeviceConnectFinished(interface_index());
     OnConnected();
-  else
+  } else {
     OnConnectFailed(error);
+  }
 }
 
 void Cellular::OnConnecting() {
