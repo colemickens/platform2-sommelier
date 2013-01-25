@@ -36,7 +36,7 @@ using std::string;
 namespace shill {
 
 // Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
-const int RTNLHandler::kReceiveBufferSize = 256 * 1024;
+const int RTNLHandler::kReceiveBufferSize = 512 * 1024;
 
 namespace {
 base::LazyInstance<RTNLHandler> g_rtnl_handler = LAZY_INSTANCE_INITIALIZER;
