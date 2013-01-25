@@ -262,8 +262,6 @@ fi
 # Setup GPU & acceleration flags which differ between x86/ARM SoC
 if [ "$(uname -m)" = "armv7l" ] ; then
   ACCELERATED_FLAGS="--use-gl=egl"
-else
-  ACCELERATED_FLAGS="--ui-prioritize-in-gpu-process"
 fi
 
 EVDA_FLAGS=
@@ -390,6 +388,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
             --ui-enable-threaded-compositing \
+            --ui-prioritize-in-gpu-process \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
