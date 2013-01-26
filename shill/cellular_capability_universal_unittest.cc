@@ -1091,6 +1091,16 @@ TEST_F(CellularCapabilityUniversalTest, UpdateScanningProperty) {
   capability_->cellular()->modem_state_ = Cellular::kModemStateDisconnecting;
   capability_->UpdateScanningProperty();
   EXPECT_FALSE(capability_->scanning_or_searching_);
+
+  // Modem with an unactivated service in the 'searching' state
+  capability_->cellular()->modem_state_ = Cellular::kModemStateSearching;
+  capability_->mdn_ = "0000000000";
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+  CellularService::OLP olp;
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillOnce(Return(&olp));
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
 }
 
 TEST_F(CellularCapabilityUniversalTest, UpdateStorageIdentifier) {
