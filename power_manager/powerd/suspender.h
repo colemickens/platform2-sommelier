@@ -13,7 +13,6 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/screen_locker.h"
 #include "power_manager/powerd/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
@@ -32,7 +31,6 @@ class Input;
 class Suspender : public SuspendDelayObserver {
  public:
   Suspender(Daemon* daemon,
-            ScreenLocker* locker,
             FileTagger* file_tagger,
             DBusSenderInterface* dbus_sender,
             system::Input* input,
@@ -47,15 +45,13 @@ class Suspender : public SuspendDelayObserver {
 
   void Init(PrefsInterface* prefs);
 
-  // Starts the suspend process.  Notifies clients that have registered delays
-  // that the system is about to suspend, starts |check_suspend_timeout_id_|,
-  // and requests that the screen be locked if needed.  Note that suspending
+  // Starts the suspend process.  Notifies clients that have registered
+  // delays that the system is about to suspend.  Note that suspending
   // happens asynchronously.
   void RequestSuspend(bool cancel_if_lid_open);
 
   // Calls Suspend() if |suspend_requested_| is true and if it's now safe to do
-  // so (i.e. there are no outstanding delays and the screen is locked if
-  // |wait_for_screen_lock_| is set).
+  // so (i.e. there are no outstanding delays).
   void SuspendIfReady();
 
   // Cancels an outstanding suspend request.
@@ -84,8 +80,7 @@ class Suspender : public SuspendDelayObserver {
 
  private:
   // Suspends the computer. Before this method is called, the system should be
-  // in a state where it's truly ready to suspend (e.g. no outstanding delays,
-  // screen locked if needed, etc.).
+  // in a state where it's truly ready to suspend (i.e. no outstanding delays).
   void Suspend();
 
   // Callback for |retry_suspend_timeout_id_|.
@@ -96,17 +91,11 @@ class Suspender : public SuspendDelayObserver {
   void SendSuspendStateChangedSignal(SuspendState_Type type,
                                      const base::Time& wall_time);
 
-  // Callback for |screen_lock_timeout_id_|.  Invoked if screen lock is
-  // taking too long; sets |wait_for_screen_lock_| to false and calls
-  // SuspendIfReady().
-  SIGNAL_CALLBACK_0(Suspender, gboolean, HandleScreenLockTimeout);
-
   // Clean up suspend delay upon unregister or dbus name change.
   // Remove |client_name| from list of suspend delay callback clients.
   bool CleanUpSuspendDelay(const char* client_name);
 
   Daemon* daemon_;
-  ScreenLocker* locker_;
   FileTagger* file_tagger_;
   DBusSenderInterface* dbus_sender_;
   system::Input* input_;
@@ -123,14 +112,6 @@ class Suspender : public SuspendDelayObserver {
   // process?  This is generally true if the lid was already closed when
   // RequestSuspend() was called.
   bool cancel_suspend_if_lid_open_;
-
-  // True if SuspendIfReady() should wait for |locker_| to report that the
-  // screen is locked before suspending.  HandleScreenLockTimeout() sets
-  // this back to false once the timeout has been hit.
-  bool wait_for_screen_lock_;
-
-  // ID of GLib source that will run HandleScreenLockTimeout(), or 0 if unset.
-  guint screen_lock_timeout_id_;
 
   // Identify user activity to cancel suspend in progress.
   FilePath user_active_file_;

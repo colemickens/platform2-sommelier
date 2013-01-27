@@ -28,23 +28,14 @@
 using std::max;
 using std::min;
 
-namespace {
-
-// Maximum amount of time to wait for the screen to be locked before suspending.
-const unsigned int kScreenLockTimeoutMs = 3000;
-
-}  // namespace
-
 namespace power_manager {
 
 Suspender::Suspender(Daemon* daemon,
-                     ScreenLocker* locker,
                      FileTagger* file_tagger,
                      DBusSenderInterface* dbus_sender,
                      system::Input* input,
                      const FilePath& run_dir)
     : daemon_(daemon),
-      locker_(locker),
       file_tagger_(file_tagger),
       dbus_sender_(dbus_sender),
       input_(input),
@@ -52,8 +43,6 @@ Suspender::Suspender(Daemon* daemon,
       suspend_requested_(false),
       suspend_id_(0),
       cancel_suspend_if_lid_open_(true),
-      wait_for_screen_lock_(false),
-      screen_lock_timeout_id_(0),
       user_active_file_(run_dir.Append(kUserActiveFile)),
       wakeup_count_valid_(false),
       num_retries_(0),
@@ -63,7 +52,6 @@ Suspender::Suspender(Daemon* daemon,
 
 Suspender::~Suspender() {
   suspend_delay_controller_->RemoveObserver(this);
-  util::RemoveTimeout(&screen_lock_timeout_id_);
   util::RemoveTimeout(&retry_suspend_timeout_id_);
 }
 
@@ -95,23 +83,11 @@ void Suspender::RequestSuspend(bool cancel_if_lid_open) {
 
   suspend_id_++;
   suspend_delay_controller_->PrepareForSuspend(suspend_id_);
-
-  // TODO(derat): Make Chrome just register a suspend delay and lock the screen
-  // itself if lock-on-suspend is enabled instead of setting a powerd pref.
-  util::RemoveTimeout(&screen_lock_timeout_id_);
-  wait_for_screen_lock_ = locker_->lock_on_suspend_enabled();
-  if (wait_for_screen_lock_) {
-    locker_->LockScreen();
-    screen_lock_timeout_id_ = g_timeout_add(
-        kScreenLockTimeoutMs, HandleScreenLockTimeoutThunk, this);
-  }
 }
 
 void Suspender::SuspendIfReady() {
   if (suspend_requested_ &&
-      suspend_delay_controller_->ready_for_suspend() &&
-      (!wait_for_screen_lock_ || locker_->is_locked())) {
-    util::RemoveTimeout(&screen_lock_timeout_id_);
+      suspend_delay_controller_->ready_for_suspend()) {
     suspend_requested_ = false;
     LOG(INFO) << "Ready to suspend; suspending";
     Suspend();
@@ -143,7 +119,6 @@ void Suspender::CancelSuspend() {
   }
 
   suspend_requested_ = false;
-  util::RemoveTimeout(&screen_lock_timeout_id_);
 }
 
 DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
@@ -261,14 +236,6 @@ void Suspender::SendSuspendStateChangedSignal(SuspendState_Type type,
   proto.set_type(type);
   proto.set_wall_time(wall_time.ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendStateChangedSignal, proto);
-}
-
-gboolean Suspender::HandleScreenLockTimeout() {
-  LOG(ERROR) << "Screen lock timed out";
-  screen_lock_timeout_id_ = 0;
-  wait_for_screen_lock_ = false;
-  SuspendIfReady();
-  return FALSE;
 }
 
 }  // namespace power_manager
