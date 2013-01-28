@@ -36,12 +36,11 @@
 #include "power_manager/powerd/rolling_average.h"
 #include "power_manager/powerd/screen_locker.h"
 #include "power_manager/powerd/suspender.h"
+#include "power_manager/powerd/system/audio_observer.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
 struct udev_monitor;
-// From cras_client.h
-struct cras_client;
 
 namespace power_manager {
 
@@ -50,6 +49,7 @@ class Prefs;
 class StateControl;
 
 namespace system {
+class AudioDetector;
 class Input;
 }  // namespace system
 
@@ -86,7 +86,8 @@ enum BatteryReportState {
 class Daemon : public BacklightControllerObserver,
                public IdleObserver,
                public PrefsObserver,
-               public policy::InputController::Delegate {
+               public policy::InputController::Delegate,
+               public system::AudioObserver {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
@@ -166,6 +167,9 @@ class Daemon : public BacklightControllerObserver,
   virtual void EnsureBacklightIsOn() OVERRIDE;
   virtual void SendPowerButtonMetric(bool down, base::TimeTicks timestamp)
       OVERRIDE;
+
+  // Overridden from system::AudioObserver:
+  virtual void OnAudioActivity(base::TimeTicks last_audio_time) OVERRIDE;
 
  private:
   friend class DaemonTest;
@@ -476,17 +480,12 @@ class Daemon : public BacklightControllerObserver,
   // buzzing sound when suspended.
   bool ShouldStayAwakeForHeadphoneJack();
 
-  // Attempts to connect to ChromeOS audio server.  Used in glib main loop.
-  // Returns TRUE if it does not connect, so it tries again.
-  // Returns FALSE if it successfully connected, so it stops trying.
-  SIGNAL_CALLBACK_0(Daemon, gboolean, ConnectToCras);
-
   // Send changes to the backlight power state to the backlight
   // controllers. This also will determine if the ALS needs to be toggled
   // on/off.
   void SetPowerState(PowerState state);
 
-  // Checks cras to determine if audio has been playing recently.
+  // Checks |audio_detector_| to determine if audio has been playing recently.
   // "Recently" is defined by |kAudioActivityThresholdMs| in powerd.cc.
   bool IsAudioPlaying();
 
@@ -516,6 +515,7 @@ class Daemon : public BacklightControllerObserver,
   scoped_ptr<DBusSenderInterface> dbus_sender_;
   scoped_ptr<system::Input> input_;
   scoped_ptr<policy::InputController> input_controller_;
+  scoped_ptr<system::AudioDetector> audio_detector_;
 
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;
@@ -623,16 +623,6 @@ class Daemon : public BacklightControllerObserver,
 
   // Flag indicating whether the system is projecting to an external display.
   bool is_projecting_;
-
-  // Chrome OS audio server client.  Used to check if headphone jack is plugged.
-  cras_client* cras_client_;
-
-  // Indicates whether the cras client has connected to cras server and is up
-  // and running.
-  bool connected_to_cras_;
-
-  // GLib timeout ID for running ConnectToCras(), or 0 if unset.
-  guint cras_retry_connect_timeout_id_;
 
   // String that indicates reason for shutting down.  See power_constants.cc for
   // valid values.

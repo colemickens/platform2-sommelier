@@ -4,12 +4,6 @@
 
 #include "power_manager/powerd/powerd.h"
 
-#include <cras_client.h>
-// cras_client.h includes cras_util.h which defines macros with the name min and
-// max. This causes all sorts of fun issues when trying to use the STL version.
-#undef min
-#undef max
-
 #include <libudev.h>
 #include <stdint.h>
 #include <sys/inotify.h>
@@ -35,6 +29,7 @@
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/state_control.h"
+#include "power_manager/powerd/system/audio_detector.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_state_control.pb.h"
 #include "power_supply_properties.pb.h"
@@ -65,9 +60,6 @@ std::set<std::string> kValidStates(
 
 // Minimum time a user must be idle to have returned from idle
 const int64 kMinTimeForIdle = 10;
-
-// Delay before retrying connecting to ChromeOS audio server.
-const int64 kCrasRetryConnectMs = 1000;
 
 // Upper limit to accept for raw battery times, in seconds. If the time of
 // interest is above this level assume something is wrong.
@@ -105,6 +97,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       input_controller_(
           new policy::InputController(input_.get(), this, dbus_sender_.get(),
                                       run_dir)),
+      audio_detector_(new system::AudioDetector),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -135,9 +128,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
       is_projecting_(false),
-      cras_client_(NULL),
-      connected_to_cras_(false),
-      cras_retry_connect_timeout_id_(0),
       shutdown_reason_(kShutdownReasonUnknown),
       require_usb_input_device_to_suspend_(false),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
@@ -145,25 +135,20 @@ Daemon::Daemon(BacklightController* backlight_controller,
       keep_backlight_on_for_audio_(false) {
   prefs_->AddObserver(this);
   idle_->AddObserver(this);
+  audio_detector_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
+  audio_detector_->RemoveObserver(this);
   idle_->RemoveObserver(this);
   prefs_->RemoveObserver(this);
 
-  util::RemoveTimeout(&cras_retry_connect_timeout_id_);
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
   util::RemoveTimeout(&generate_thermal_metrics_timeout_id_);
 
   if (udev_)
     udev_unref(udev_);
-
-  if (cras_client_) {
-    if (connected_to_cras_)
-      cras_client_stop(cras_client_);
-    cras_client_destroy(cras_client_);
-  }
 }
 
 void Daemon::Init() {
@@ -196,19 +181,11 @@ void Daemon::Init() {
 
   input_controller_->Init(prefs_);
 
-  // Create a client and connect it to the CRAS server.
-  if (cras_client_create(&cras_client_)) {
-    LOG(WARNING) << "Couldn't create CRAS client.";
-    cras_client_ = NULL;
-  }
-  if (cras_client_connect(cras_client_) ||
-      cras_client_run_thread(cras_client_)) {
-    LOG(WARNING) << "Couldn't connect CRAS client, trying again later.";
-    cras_retry_connect_timeout_id_ =
-        g_timeout_add(kCrasRetryConnectMs, ConnectToCrasThunk, this);
-  } else {
-    connected_to_cras_ = true;
-  }
+  std::string headphone_device;
+#ifdef STAY_AWAKE_PLUGGED_DEVICE
+  headphone_device = STAY_AWAKE_PLUGGED_DEVICE;
+#endif
+  audio_detector_->Init(headphone_device);
 
   // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
   // This is necessary for receiving external display projection status from
@@ -851,6 +828,10 @@ void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
                   kMetricPowerButtonDownTimeBuckets)) {
     LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
   }
+}
+
+void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
+  // TODO(derat): Notify new state-controlling code.
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -1718,23 +1699,10 @@ void Daemon::AdjustIdleTimeoutsForProjection() {
 
 bool Daemon::ShouldStayAwakeForHeadphoneJack() {
 #ifdef STAY_AWAKE_PLUGGED_DEVICE
-  if (cras_client_ &&
-      cras_client_output_dev_plugged(cras_client_, STAY_AWAKE_PLUGGED_DEVICE))
-    return true;
-#endif
+  return audio_detector_->IsHeadphoneJackConnected();
+#else
   return false;
-}
-
-gboolean Daemon::ConnectToCras() {
-  if (cras_client_connect(cras_client_) ||
-      cras_client_run_thread(cras_client_)) {
-    LOG(WARNING) << "Couldn't connect CRAS client, trying again later.";
-    return TRUE;
-  }
-  LOG(INFO) << "CRAS client successfully connected to CRAS server.";
-  connected_to_cras_ = true;
-  cras_retry_connect_timeout_id_ = 0;
-  return FALSE;
+#endif
 }
 
 void Daemon::SetPowerState(PowerState state) {
@@ -1744,26 +1712,12 @@ void Daemon::SetPowerState(PowerState state) {
 }
 
 bool Daemon::IsAudioPlaying() {
-  struct timespec last_audio_time;
-  if (!connected_to_cras_) {
-    LOG(WARNING) << "Not connected to CRAS, assuming no audio playing.";
+  base::TimeTicks last_audio_time;
+  if (!audio_detector_->GetLastAudioActivityTime(&last_audio_time))
     return false;
-  }
-  if (cras_client_get_num_active_streams(cras_client_, &last_audio_time) > 0)
-    return true;
-  struct timespec time_now;
-  if (clock_gettime(CLOCK_MONOTONIC, &time_now)) {
-    LOG(WARNING) << "Could not read current clock time.";
-    return false;
-  }
-  int64 delta_seconds = time_now.tv_sec - last_audio_time.tv_sec;
-  int64 delta_ns = time_now.tv_nsec - last_audio_time.tv_nsec;
-  CHECK(delta_seconds >= 0);
-  base::TimeDelta last_audio_time_delta =
-      base::TimeDelta::FromSeconds(delta_seconds) +
-      base::TimeDelta::FromMicroseconds(
-          delta_ns / base::Time::kNanosecondsPerMicrosecond);
-  return last_audio_time_delta.InMilliseconds() < kAudioActivityThresholdMs;
+
+  return base::TimeTicks::Now() - last_audio_time <
+      base::TimeDelta::FromMilliseconds(kAudioActivityThresholdMs);
 }
 
 void Daemon::UpdateBatteryReportState() {

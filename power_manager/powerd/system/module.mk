@@ -5,13 +5,14 @@
 include common.mk
 
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
+	powerd/system/audio_detector.o \
 	powerd/system/external_backlight.o \
 	powerd/system/input.o \
 	powerd/system/internal_backlight.o
-CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
-	CPPFLAGS += $(GLIB_FLAGS)
-CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
-	LDLIBS += $(GLIB_LIBS) -ludev
+CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): CPPFLAGS += \
+	$(GLIB_FLAGS) $(shell $(PKG_CONFIG) --cflags libcras)
+CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
+	$(GLIB_LIBS) -ludev $(shell $(PKG_CONFIG) --libs libcras)
 clean: CLEAN(powerd/libsystem.pie.a)
 
 CXX_BINARY(powerd/system_unittest): \
