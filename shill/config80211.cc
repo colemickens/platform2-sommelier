@@ -54,10 +54,15 @@ Config80211 *Config80211::GetInstance() {
   return g_config80211.Pointer();
 }
 
-void Config80211::Reset() {
+void Config80211::Reset(bool full) {
   wifi_state_ = kWifiDown;
   subscribed_events_.clear();
   ClearBroadcastCallbacks();
+  if (full) {
+    dispatcher_ = NULL;
+    delete sock_;
+    sock_ = NULL;
+  }
 }
 
 bool Config80211::Init(EventDispatcher *dispatcher) {

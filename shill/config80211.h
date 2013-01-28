@@ -137,6 +137,7 @@ class Config80211 {
 
  private:
   friend class Config80211Test;
+  friend class ShillDaemonTest;
   FRIEND_TEST(Config80211Test, BroadcastCallbackTest);
   FRIEND_TEST(Config80211Test, MessageCallbackTest);
   typedef std::map<EventType, std::string> EventTypeStrings;
@@ -161,9 +162,9 @@ class Config80211 {
   // Called by InputHandler on exceptional events.
   void OnReadError(const Error &error);
 
-  // Just for tests, this method turns off WiFi and clears the subscribed
-  // events list.
-  void Reset();
+  // Just for tests, this method turns off WiFi and clears the subscribed events
+  // list. If |full| is true, also clears state set by Init.
+  void Reset(bool full);
 
   // Config80211 Callbacks, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.

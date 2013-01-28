@@ -376,7 +376,7 @@ class Config80211Test : public Test {
     EXPECT_NE(config80211_, reinterpret_cast<Config80211 *>(NULL));
     config80211_->sock_ = &socket_;
     EXPECT_TRUE(config80211_->Init(reinterpret_cast<EventDispatcher *>(NULL)));
-    config80211_->Reset();
+    config80211_->Reset(false);
   }
 
   Config80211 *config80211_;

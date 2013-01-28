@@ -204,6 +204,10 @@ class ShillDaemonTest : public Test {
     daemon_.Start();
   }
 
+  void ResetConfig80211() {
+    daemon_.config80211_->Reset(true);
+  }
+
   MOCK_METHOD0(TerminationAction, void());
 
  protected:
@@ -295,7 +299,7 @@ TEST_F(ShillDaemonTest, Quit) {
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(Bind(&Daemon::Quit, Unretained(&daemon_)));
   daemon_.Run();
+  ResetConfig80211();
 }
-
 
 }  // namespace shill
