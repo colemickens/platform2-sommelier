@@ -157,6 +157,20 @@ class Metrics {
     kTerminationActionReasonTerminate
   };
 
+  enum CellularDropTechnology {
+    kCellularDropTechnology1Xrtt = 0,
+    kCellularDropTechnologyEdge = 1,
+    kCellularDropTechnologyEvdo = 2,
+    kCellularDropTechnologyGprs = 3,
+    kCellularDropTechnologyGsm = 4,
+    kCellularDropTechnologyHspa = 5,
+    kCellularDropTechnologyHspaPlus = 6,
+    kCellularDropTechnologyLte = 7,
+    kCellularDropTechnologyUmts = 8,
+    kCellularDropTechnologyUnknown = 9,
+    kCellularDropTechnologyMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -261,6 +275,13 @@ class Metrics {
 
   // WiFiService Entry Fixup.
   static const char kMetricServiceFixupEntries[];
+
+  // Cellular specific statistics.
+  static const char kMetricCellularDrop[];
+  static const char kMetricCellularSignalStrengthBeforeDrop[];
+  static const int kMetricCellularSignalStrengthBeforeDropMax;
+  static const int kMetricCellularSignalStrengthBeforeDropMin;
+  static const int kMetricCellularSignalStrengthBeforeDropNumBuckets;
 
   Metrics();
   virtual ~Metrics();
@@ -373,6 +394,11 @@ class Metrics {
 
   // Notifies this object that a device has completed the connect process.
   void NotifyDeviceConnectFinished(int interface_index);
+
+  // Notifies this object that a cellular device has been dropped by the
+  // network.
+  void NotifyCellularDeviceDrop(const std::string &network_technology,
+                                uint16 signal_strength);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

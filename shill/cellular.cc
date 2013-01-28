@@ -117,7 +117,8 @@ Cellular::Cellular(ControlInterface *control_interface,
       cellular_operator_info_(cellular_operator_info),
       provider_db_(provider_db),
       proxy_factory_(proxy_factory),
-      allow_roaming_(false) {
+      allow_roaming_(false),
+      explicit_disconnect_(false) {
   PropertyStore *store = this->mutable_store();
   // TODO(jglasgow): kDBusConnectionProperty is deprecated.
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
@@ -215,6 +216,7 @@ void Cellular::Start(Error *error,
 void Cellular::Stop(Error *error,
                     const EnabledStateChangedCallback &callback) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
+  explicit_disconnect_ = true;
   ResultCallback cb = Bind(&Cellular::StopModemCallback,
                            weak_ptr_factory_.GetWeakPtr(),
                            callback);
@@ -267,6 +269,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback &callback,
 void Cellular::StopModemCallback(const EnabledStateChangedCallback &callback,
                                  const Error &error) {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
+  explicit_disconnect_ = false;
   // Destroy the cellular service regardless of any errors that occur during
   // the stop process since we do not know the state of the modem at this
   // point.
@@ -361,6 +364,11 @@ void Cellular::HandleNewRegistrationState() {
     return;
   }
   if (!capability_->IsRegistered()) {
+    if (!explicit_disconnect_ &&
+        (state_ == kStateLinked || state_ == kStateConnected) &&
+        service_.get())
+      metrics()->NotifyCellularDeviceDrop(
+        capability_->GetNetworkTechnologyString(), service_->strength());
     DestroyService();
     if (state_ == kStateLinked ||
         state_ == kStateConnected ||
@@ -491,6 +499,7 @@ void Cellular::Disconnect(Error *error) {
         error, Error::kNotConnected, "Not connected; request ignored.");
     return;
   }
+  explicit_disconnect_ = true;
   ResultCallback cb = Bind(&Cellular::OnDisconnectReply,
                            weak_ptr_factory_.GetWeakPtr());
   capability_->Disconnect(error, cb);
@@ -498,6 +507,7 @@ void Cellular::Disconnect(Error *error) {
 
 void Cellular::OnDisconnectReply(const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
+  explicit_disconnect_ = false;
   if (error.IsSuccess())
     OnDisconnected();
   else

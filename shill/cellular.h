@@ -15,6 +15,7 @@
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
 
@@ -334,6 +335,9 @@ class Cellular : public Device {
 
   // User preference to allow or disallow roaming
   bool allow_roaming_;
+
+  // Flag indicating that a disconnect has been explicitly requested.
+  bool explicit_disconnect_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

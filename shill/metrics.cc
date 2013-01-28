@@ -190,6 +190,15 @@ const char Metrics::kMetricLinkClientDisconnectType[] =
 const char Metrics::kMetricLinkApDisconnectType[] =
     "Network.Shill.WiFi.ApDisconnectType";
 
+// static
+const char Metrics::kMetricCellularDrop[] =
+    "Network.Shill.Cellular.Drop";
+const char Metrics::kMetricCellularSignalStrengthBeforeDrop[] =
+    "Network.Shill.Cellular.SignalStrengthBeforeDrop";
+const int Metrics::kMetricCellularSignalStrengthBeforeDropMax = 100;
+const int Metrics::kMetricCellularSignalStrengthBeforeDropMin = 0;
+const int Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets = 10;
+
 
 Metrics::Metrics()
     : library_(&metrics_library_),
@@ -736,6 +745,40 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
     return;
   device_metrics->connect_timer->Stop();
   device_metrics->connect_timer->ReportMilliseconds();
+}
+
+void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
+                                       uint16 signal_strength) {
+  SLOG(Metrics, 2) << __func__ << ": " << network_technology
+                               << ", " << signal_strength;
+  CellularDropTechnology drop_technology = kCellularDropTechnologyUnknown;
+  if (network_technology == flimflam::kNetworkTechnology1Xrtt) {
+    drop_technology = kCellularDropTechnology1Xrtt;
+  } else if (network_technology == flimflam::kNetworkTechnologyEdge) {
+    drop_technology = kCellularDropTechnologyEdge;
+  } else if (network_technology == flimflam::kNetworkTechnologyEvdo) {
+    drop_technology = kCellularDropTechnologyEvdo;
+  } else if (network_technology == flimflam::kNetworkTechnologyGprs) {
+    drop_technology = kCellularDropTechnologyGprs;
+  } else if (network_technology == flimflam::kNetworkTechnologyGsm) {
+    drop_technology = kCellularDropTechnologyGsm;
+  } else if (network_technology == flimflam::kNetworkTechnologyHspa) {
+    drop_technology = kCellularDropTechnologyHspa;
+  } else if (network_technology == flimflam::kNetworkTechnologyHspaPlus) {
+    drop_technology = kCellularDropTechnologyHspaPlus;
+  } else if (network_technology == flimflam::kNetworkTechnologyLte) {
+    drop_technology = kCellularDropTechnologyLte;
+  } else if (network_technology == flimflam::kNetworkTechnologyUmts) {
+    drop_technology = kCellularDropTechnologyUmts;
+  }
+  SendEnumToUMA(kMetricCellularDrop,
+                drop_technology,
+                kCellularDropTechnologyMax);
+  SendToUMA(kMetricCellularSignalStrengthBeforeDrop,
+            signal_strength,
+            kMetricCellularSignalStrengthBeforeDropMin,
+            kMetricCellularSignalStrengthBeforeDropMax,
+            kMetricCellularSignalStrengthBeforeDropNumBuckets);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

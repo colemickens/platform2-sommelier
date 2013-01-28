@@ -4,6 +4,8 @@
 
 #include "shill/metrics.h"
 
+#include <string>
+
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
@@ -11,6 +13,8 @@
 #include "shill/mock_service.h"
 #include "shill/mock_wifi_service.h"
 #include "shill/property_store_unittest.h"
+
+using std::string;
 
 using testing::_;
 using testing::DoAll;
@@ -411,6 +415,37 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   EXPECT_CALL(library_, SendToUMA(_, _, _, _, _)).Times(0);
   metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
+}
+
+TEST_F(MetricsTest, CellularDrop) {
+  const char *kUMATechnologyStrings[] = {
+      flimflam::kNetworkTechnology1Xrtt,
+      flimflam::kNetworkTechnologyEdge,
+      flimflam::kNetworkTechnologyEvdo,
+      flimflam::kNetworkTechnologyGprs,
+      flimflam::kNetworkTechnologyGsm,
+      flimflam::kNetworkTechnologyHspa,
+      flimflam::kNetworkTechnologyHspaPlus,
+      flimflam::kNetworkTechnologyLte,
+      flimflam::kNetworkTechnologyUmts,
+      "Unknown" };
+
+  const uint16 signal_strength = 100;
+  for (size_t index = 0; index < arraysize(kUMATechnologyStrings); ++index) {
+    EXPECT_CALL(library_,
+        SendEnumToUMA(Metrics::kMetricCellularDrop,
+                      index,
+                      Metrics::kCellularDropTechnologyMax));
+    EXPECT_CALL(library_,
+        SendToUMA(Metrics::kMetricCellularSignalStrengthBeforeDrop,
+                  signal_strength,
+                  Metrics::kMetricCellularSignalStrengthBeforeDropMin,
+                  Metrics::kMetricCellularSignalStrengthBeforeDropMax,
+                  Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets));
+    metrics_.NotifyCellularDeviceDrop(kUMATechnologyStrings[index],
+                                      signal_strength);
+    Mock::VerifyAndClearExpectations(&library_);
+  }
 }
 
 #ifndef NDEBUG
