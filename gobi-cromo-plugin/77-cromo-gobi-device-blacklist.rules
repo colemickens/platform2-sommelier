@@ -178,6 +178,12 @@ ATTRS{idVendor}=="1199", ATTRS{idProduct}=="9009", ENV{ID_MM_DEVICE_IGNORE}="1"
 # Sierra Wireless Gobi 2000 Modem device (VT773)
 ATTRS{idVendor}=="1199", ATTRS{idProduct}=="900a", ENV{ID_MM_DEVICE_IGNORE}="1"
 
+# Sierra Wireless Gobi 3000 Modem device (MC8355)
+ATTRS{idVendor}=="1199", ATTRS{idProduct}=="9012", ENV{ID_MM_DEVICE_IGNORE}="1"
+
+# Sierra Wireless Gobi 3000 Modem device (MC8355)
+ATTRS{idVendor}=="1199", ATTRS{idProduct}=="9013", ENV{ID_MM_DEVICE_IGNORE}="1"
+
 # CMDTech Gobi 2000 QDL device (VU922)
 ATTRS{idVendor}=="16d8", ATTRS{idProduct}=="8001", ENV{ID_MM_DEVICE_IGNORE}="1"
 
