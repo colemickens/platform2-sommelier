@@ -95,6 +95,13 @@ const char Metrics::kMetricTimeToOnlineMilliseconds[] =
     "Network.Shill.%s.TimeToOnline";
 const char Metrics::kMetricTimeToPortalMilliseconds[] =
     "Network.Shill.%s.TimeToPortal";
+
+const char Metrics::kMetricTimeToScanMilliseconds[] =
+    "Network.Shill.%s.TimeToScan";
+const int Metrics::kMetricTimeToScanMillisecondsMax = 180 * 1000;  // 3 minutes
+const int Metrics::kMetricTimeToScanMillisecondsMin = 1;
+const int Metrics::kMetricTimeToScanMillisecondsNumBuckets = 90;
+
 const int Metrics::kTimerHistogramMillisecondsMax = 45 * 1000;
 const int Metrics::kTimerHistogramMillisecondsMin = 1;
 const int Metrics::kTimerHistogramNumBuckets = 50;
@@ -617,6 +624,14 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToDisableMillisecondsMin,
           kMetricTimeToDisableMillisecondsMax,
           kMetricTimeToDisableMillisecondsNumBuckets));
+  histogram = GetFullMetricName(kMetricTimeToScanMilliseconds,
+                                technology);
+  device_metrics->scan_timer.reset(
+      new chromeos_metrics::TimerReporter(
+          histogram,
+          kMetricTimeToScanMillisecondsMin,
+          kMetricTimeToScanMillisecondsMax,
+          kMetricTimeToScanMillisecondsNumBuckets));
   histogram = GetFullMetricName(kMetricTimeToConnectMilliseconds,
                                 technology);
   device_metrics->connect_timer.reset(
@@ -679,6 +694,33 @@ void Metrics::NotifyDeviceDisableFinished(int interface_index) {
     return;
   device_metrics->disable_timer->Stop();
   device_metrics->disable_timer->ReportMilliseconds();
+}
+
+void Metrics::NotifyDeviceScanStarted(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  // This metric is only supported for cellular devices.
+  if (device_metrics->technology != Technology::kCellular)
+    return;
+  device_metrics->scan_timer->Start();
+}
+
+void Metrics::NotifyDeviceScanFinished(int interface_index) {
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  // This metric is only supported for cellular devices.
+  if (device_metrics->technology != Technology::kCellular)
+    return;
+  device_metrics->scan_timer->Stop();
+  // Don't send TimeToScan metrics if the elapsed time exceeds the max
+  // metrics value.  This usually means that the modem is in an area
+  // without service and we're not interested in this scenario.
+  base::TimeDelta elapsed_time;
+  device_metrics->scan_timer->GetElapsedTime(&elapsed_time);
+  if (elapsed_time.InMilliseconds() <= kMetricTimeToScanMillisecondsMax)
+    device_metrics->scan_timer->ReportMilliseconds();
 }
 
 void Metrics::NotifyDeviceConnectStarted(int interface_index) {

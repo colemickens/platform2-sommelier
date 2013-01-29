@@ -379,6 +379,7 @@ void Cellular::HandleNewRegistrationState() {
     SetState(kStateRegistered);
   }
   if (!service_.get()) {
+    metrics()->NotifyDeviceScanFinished(interface_index());
     CreateService();
   }
   capability_->GetSignalQuality();

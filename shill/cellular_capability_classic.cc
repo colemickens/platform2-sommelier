@@ -121,7 +121,10 @@ void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
   callback.Run(Error());
   GetRegistrationState();
   GetSignalQuality();
+  // We expect the modem to start scanning after it has been enabled.
+  // Change this if this behavior is no longer the case in the future.
   metrics()->NotifyDeviceEnableFinished(cellular()->interface_index());
+  metrics()->NotifyDeviceScanStarted(cellular()->interface_index());
 }
 
 void CellularCapabilityClassic::FinishDisable(const ResultCallback &callback) {
