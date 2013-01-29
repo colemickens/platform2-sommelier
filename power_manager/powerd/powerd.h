@@ -47,6 +47,11 @@ namespace power_manager {
 class DBusSenderInterface;
 class Prefs;
 class StateControl;
+class StateController;
+
+namespace policy {
+class StateController;
+}  // namespace policy
 
 namespace system {
 class AudioDetector;
@@ -105,6 +110,7 @@ class Daemon : public BacklightControllerObserver,
 
   const std::string& current_user() const { return current_user_; }
 
+  void set_use_state_controller(bool use) { use_state_controller_ = use; }
   void set_disable_dbus_for_testing(bool disable) {
     disable_dbus_for_testing_ = disable;
   }
@@ -162,8 +168,8 @@ class Daemon : public BacklightControllerObserver,
   void GenerateRetrySuspendMetric(int num_retries, int max_retries);
 
   // Overridden from policy::InputController::Delegate:
-  virtual void StartSuspendForLidClose() OVERRIDE;
-  virtual void CancelSuspendForLidOpen() OVERRIDE;
+  virtual void HandleLidClosed() OVERRIDE;
+  virtual void HandleLidOpened() OVERRIDE;
   virtual void EnsureBacklightIsOn() OVERRIDE;
   virtual void SendPowerButtonMetric(bool down, base::TimeTicks timestamp)
       OVERRIDE;
@@ -232,6 +238,8 @@ class Daemon : public BacklightControllerObserver,
     SHUTDOWN_STATE_POWER_OFF
   };
 
+  class StateControllerDelegate;
+
   // Reads settings from disk
   void ReadSettings();
 
@@ -296,6 +304,7 @@ class Daemon : public BacklightControllerObserver,
   DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
+  DBusMessage* HandleSetPolicyMethod(DBusMessage* message);
 
   // Removes the previous power supply polling timer and replaces it with one
   // that fires every 5s and calls ShortPollPowerSupply. The nature of this
@@ -505,6 +514,8 @@ class Daemon : public BacklightControllerObserver,
   // battery shutdown.
   double GetUsableBatteryPercent() const;
 
+  scoped_ptr<StateControllerDelegate> state_controller_delegate_;
+
   BacklightController* backlight_controller_;
   PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
@@ -516,6 +527,7 @@ class Daemon : public BacklightControllerObserver,
   scoped_ptr<system::Input> input_;
   scoped_ptr<policy::InputController> input_controller_;
   scoped_ptr<system::AudioDetector> audio_detector_;
+  scoped_ptr<policy::StateController> state_controller_;
 
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;
@@ -646,6 +658,14 @@ class Daemon : public BacklightControllerObserver,
   // Flag for devices where the display powers the audio output, such that the
   // display must not be powered off if audio is playing.
   bool keep_backlight_on_for_audio_;
+
+  // Has |state_controller_| been initialized?  Daemon::Init() invokes a
+  // bunch of event-handling functions directly, but events shouldn't be
+  // passed to |state_controller_| until it's been initialized.
+  bool state_controller_initialized_;
+
+  // Should |state_controller_|'s actions be performed?
+  bool use_state_controller_;
 };
 
 }  // namespace power_manager

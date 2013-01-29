@@ -51,6 +51,8 @@ DEFINE_string(run_dir, "",
 DEFINE_string(vmodule, "",
               "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
+DEFINE_bool(use_state_controller, false, "Use the new StateController class");
+
 namespace {
 
 // Returns true on success.
@@ -175,6 +177,7 @@ int main(int argc, char* argv[]) {
                                &idle,
                                keyboard_backlight_controller.get(),
                                run_dir);
+  daemon.set_use_state_controller(FLAGS_use_state_controller);
 
   daemon.Init();
   daemon.Run();

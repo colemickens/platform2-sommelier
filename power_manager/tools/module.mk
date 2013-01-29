@@ -61,6 +61,18 @@ CXX_BINARY(tools/powerd_dbus_suspend): LDLIBS += $(DBUS_LIBS) -lgflags \
 clean: CXX_BINARY(tools/powerd_dbus_suspend)
 all: CXX_BINARY(tools/powerd_dbus_suspend)
 
+SET_POWER_POLICY_DEPS = libchromeos-$(BASE_VER) libchrome-$(BASE_VER)
+CXX_BINARY(tools/set_power_policy): \
+	tools/set_power_policy.o \
+	power_manager/policy.pb.o \
+	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
+CXX_BINARY(tools/set_power_policy): CPPFLAGS += \
+	$(shell $(PKG_CONFIG) --cflags $(SET_POWER_POLICY_DEPS)) $(DBUS_FLAGS)
+CXX_BINARY(tools/set_power_policy): LDLIBS += -lgflags -lprotobuf-lite \
+	$(shell $(PKG_CONFIG) --libs $(SET_POWER_POLICY_DEPS)) $(DBUS_LIBS)
+clean: CXX_BINARY(tools/set_power_policy)
+all: CXX_BINARY(tools/set_power_policy)
+
 CXX_BINARY(tools/suspend_delay_sample): \
 	tools/suspend_delay_sample.o \
 	common/power_constants.o \

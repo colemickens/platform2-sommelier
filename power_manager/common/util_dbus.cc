@@ -152,18 +152,22 @@ bool CallMethodInPowerD(const char* method_name,
     dbus_error_free(&error);
     return false;
   }
-  DBusError response_error;
-  dbus_error_init(&response_error);
-  if (!dbus_message_get_args(response, &response_error,
-                             DBUS_TYPE_INT32, return_value,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Couldn't read args for '" << method_name
-                 << "' response: " << response_error.name
-                 << " (" << response_error.message << ")";
-    dbus_error_free(&response_error);
-    dbus_message_unref(response);
-    return false;
+
+  if (return_value) {
+    DBusError response_error;
+    dbus_error_init(&response_error);
+    if (!dbus_message_get_args(response, &response_error,
+                               DBUS_TYPE_INT32, return_value,
+                               DBUS_TYPE_INVALID)) {
+      LOG(WARNING) << "Couldn't read args for '" << method_name
+                   << "' response: " << response_error.name
+                   << " (" << response_error.message << ")";
+      dbus_error_free(&response_error);
+      dbus_message_unref(response);
+      return false;
+    }
   }
+
   dbus_message_unref(response);
   return true;
 }

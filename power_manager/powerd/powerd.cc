@@ -25,8 +25,10 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
+#include "power_manager/policy.pb.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/metrics_constants.h"
+#include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/state_control.h"
 #include "power_manager/powerd/system/audio_detector.h"
@@ -50,6 +52,11 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 // in milliseconds.
 const int64 kAudioActivityThresholdMs = 60 * 1000;
 
+// Strings for states that powerd cares about from the session manager's
+// SessionStateChanged signal.
+const char kSessionStarted[] = "started";
+const char kSessionStopped[] = "stopped";
+
 // Valid string values for the state value of Session Manager
 const std::string kValidStateStrings[] = { "started", "stopping", "stopped" };
 
@@ -72,6 +79,89 @@ namespace power_manager {
 // Timeouts are multiplied by this factor when projecting to external display.
 static const int64 kProjectionTimeoutFactor = 2;
 
+// Performs actions requested by |state_controller_|.  The reason that
+// this is a nested class of Daemon rather than just being implented as
+// part of Daemon is to avoid method naming conflicts.
+class Daemon::StateControllerDelegate
+    : public policy::StateController::Delegate {
+ public:
+  explicit StateControllerDelegate(Daemon* daemon)
+      : daemon_(daemon),
+        screen_dimmed_(false),
+        screen_off_(false) {
+  }
+
+  ~StateControllerDelegate() {
+    daemon_ = NULL;
+  }
+
+  // Overridden from policy::StateController::Delegate:
+  virtual bool IsUsbInputDeviceConnected() OVERRIDE {
+    return daemon_->input_->IsUSBInputDeviceConnected();
+  }
+
+  virtual bool IsOobeCompleted() OVERRIDE {
+    return util::OOBECompleted();
+  }
+
+  virtual void DimScreen() OVERRIDE {
+    screen_dimmed_ = true;
+    if (daemon_->use_state_controller_ && !screen_off_)
+      daemon_->SetPowerState(BACKLIGHT_DIM);
+  }
+
+  virtual void UndimScreen() OVERRIDE {
+    screen_dimmed_ = false;
+    if (daemon_->use_state_controller_ && !screen_off_)
+      daemon_->SetPowerState(BACKLIGHT_ACTIVE);
+  }
+
+  virtual void TurnScreenOff() OVERRIDE {
+    screen_off_ = true;
+    if (daemon_->use_state_controller_)
+      daemon_->SetPowerState(BACKLIGHT_IDLE_OFF);
+  }
+
+  virtual void TurnScreenOn() OVERRIDE {
+    screen_off_ = false;
+    if (daemon_->use_state_controller_)
+      daemon_->SetPowerState(screen_dimmed_ ? BACKLIGHT_DIM : BACKLIGHT_ACTIVE);
+  }
+
+  virtual void LockScreen() OVERRIDE {
+    if (daemon_->use_state_controller_) {
+      util::SendSignalToSessionManager(
+          login_manager::kSessionManagerLockScreen);
+    }
+  }
+
+  virtual void Suspend() OVERRIDE {
+    if (daemon_->use_state_controller_)
+      daemon_->Suspend();
+  }
+
+  virtual void StopSession() OVERRIDE {
+    if (daemon_->use_state_controller_) {
+      util::SendSignalToSessionManager(
+          login_manager::kSessionManagerStopSession);
+    }
+  }
+
+  virtual void ShutDown() OVERRIDE {
+    // TODO(derat): Maybe pass the shutdown reason (idle vs. lid-closed)
+    // and set it here.  This isn't necessary at the moment, since nothing
+    // special is done for any reason besides |kShutdownReasonLowBattery|.
+    if (daemon_->use_state_controller_)
+      daemon_->OnRequestShutdown();
+  }
+
+ private:
+  Daemon* daemon_;  // not owned
+
+  bool screen_dimmed_;
+  bool screen_off_;
+};
+
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle and on video activity indicator from Chrome.
 //         This daemon is responsible for dimming of the backlight, turning
@@ -85,7 +175,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
                IdleDetector* idle,
                KeyboardBacklightController* keyboard_controller,
                const FilePath& run_dir)
-    : backlight_controller_(backlight_controller),
+    : state_controller_delegate_(new StateControllerDelegate(this)),
+      backlight_controller_(backlight_controller),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
       video_detector_(video_detector),
@@ -98,6 +189,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
           new policy::InputController(input_.get(), this, dbus_sender_.get(),
                                       run_dir)),
       audio_detector_(new system::AudioDetector),
+      state_controller_(new policy::StateController(
+          state_controller_delegate_.get(), prefs_)),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -123,7 +216,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       generate_backlight_metrics_timeout_id_(0),
       generate_thermal_metrics_timeout_id_(0),
       battery_discharge_rate_metric_last_(0),
-      current_session_state_("stopped"),
+      current_session_state_(kSessionStopped),
       udev_(NULL),
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
@@ -132,7 +225,9 @@ Daemon::Daemon(BacklightController* backlight_controller,
       require_usb_input_device_to_suspend_(false),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false),
-      keep_backlight_on_for_audio_(false) {
+      keep_backlight_on_for_audio_(false),
+      state_controller_initialized_(false),
+      use_state_controller_(false) {
   prefs_->AddObserver(this);
   idle_->AddObserver(this);
   audio_detector_->AddObserver(this);
@@ -186,6 +281,26 @@ void Daemon::Init() {
   headphone_device = STAY_AWAKE_PLUGGED_DEVICE;
 #endif
   audio_detector_->Init(headphone_device);
+
+  if (use_state_controller_)
+    SetPowerState(BACKLIGHT_ACTIVE);
+
+  int raw_lid_state = 0;  // 0 is open, 1 is closed (per system/input.h)
+  policy::StateController::PowerSource power_source =
+      plugged_state_ == PLUGGED_STATE_DISCONNECTED ?
+      policy::StateController::POWER_BATTERY :
+      policy::StateController::POWER_AC;
+  policy::StateController::LidState lid_state =
+      input_->QueryLidState(&raw_lid_state) && raw_lid_state == 1 ?
+      policy::StateController::LID_CLOSED :
+      policy::StateController::LID_OPEN;
+  policy::StateController::SessionState session_state =
+      current_session_state_ == kSessionStarted ?
+      policy::StateController::SESSION_STARTED :
+      policy::StateController::SESSION_STOPPED;
+  state_controller_->Init(power_source, lid_state, session_state,
+                          policy::StateController::DISPLAY_NORMAL);
+  state_controller_initialized_ = true;
 
   // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
   // This is necessary for receiving external display projection status from
@@ -362,7 +477,15 @@ void Daemon::Run() {
 
 void Daemon::UpdateIdleStates() {
   LOG(INFO) << "Daemon : UpdateIdleStates";
-  SetIdleState(idle_->GetIdleTimeMs());
+  if (state_controller_initialized_) {
+    state_controller_->HandleOverrideChange(
+        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM),
+        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK),
+        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND),
+        state_control_->IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
+  }
+  if (!use_state_controller_)
+    SetIdleState(idle_->GetIdleTimeMs());
 }
 
 void Daemon::SetPlugged(bool plugged) {
@@ -386,25 +509,36 @@ void Daemon::SetPlugged(bool plugged) {
   LOG(INFO) << "Daemon : SetPlugged = " << plugged;
   plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
       PLUGGED_STATE_DISCONNECTED;
+
   int64 idle_time_ms = idle_->GetIdleTimeMs();
-  // If the screen is on, and the user plugged or unplugged the computer,
-  // we should wait a bit before turning off the screen.
-  // If the screen is off, don't immediately suspend, wait another
-  // suspend timeout.
-  // If the state is uninitialized, this is the powerd startup condition, so
-  // we ignore any idle time from before powerd starts.
-  if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE ||
-      backlight_controller_->GetPowerState() == BACKLIGHT_DIM)
-    SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
-  else if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF)
-    SetIdleOffset(idle_time_ms, IDLE_STATE_SUSPEND);
-  else if (backlight_controller_->GetPowerState() == BACKLIGHT_UNINITIALIZED)
-    SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
-  else
-    SetIdleOffset(0, IDLE_STATE_NORMAL);
+  if (!use_state_controller_) {
+    // If the screen is on, and the user plugged or unplugged the computer,
+    // we should wait a bit before turning off the screen.
+    // If the screen is off, don't immediately suspend, wait another
+    // suspend timeout.
+    // If the state is uninitialized, this is the powerd startup condition, so
+    // we ignore any idle time from before powerd starts.
+    if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE ||
+        backlight_controller_->GetPowerState() == BACKLIGHT_DIM)
+      SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
+    else if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF)
+      SetIdleOffset(idle_time_ms, IDLE_STATE_SUSPEND);
+    else if (backlight_controller_->GetPowerState() == BACKLIGHT_UNINITIALIZED)
+      SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
+    else
+      SetIdleOffset(0, IDLE_STATE_NORMAL);
+  }
 
   backlight_controller_->OnPlugEvent(plugged);
-  SetIdleState(idle_time_ms);
+  if (!use_state_controller_)
+    SetIdleState(idle_time_ms);
+
+  if (state_controller_initialized_) {
+    state_controller_->HandlePowerSourceChange(
+        plugged ?
+        policy::StateController::POWER_AC :
+        policy::StateController::POWER_BATTERY);
+  }
 }
 
 void Daemon::OnRequestRestart() {
@@ -444,6 +578,7 @@ void Daemon::StartCleanShutdown() {
 }
 
 void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
+  CHECK(!use_state_controller_);
   AdjustIdleTimeoutsForProjection();
   int64 prev_dim_ms = dim_ms_;
   int64 prev_off_ms = off_ms_;
@@ -530,6 +665,7 @@ void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
 // SetActive will transition to Normal state. Used for transitioning on events
 // that do not result in activity monitored by chrome, i.e. lid open.
 void Daemon::SetActive() {
+  CHECK(!use_state_controller_);
   idle_->HandleUserActivity(base::TimeTicks::Now());
   int64 idle_time_ms = idle_->GetIdleTimeMs();
   SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
@@ -537,6 +673,7 @@ void Daemon::SetActive() {
 }
 
 void Daemon::SetIdleState(int64 idle_time_ms) {
+  CHECK(!use_state_controller_);
   PowerState old_state = backlight_controller_->GetPowerState();
   if (idle_time_ms >= suspend_ms_ &&
       !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND)) {
@@ -620,6 +757,7 @@ void Daemon::BrightenScreenIfOff() {
 }
 
 void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
+  CHECK(!use_state_controller_);
   CHECK(plugged_state_ != PLUGGED_STATE_UNKNOWN);
   if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
       dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
@@ -747,10 +885,12 @@ void Daemon::OnPrefChanged(const std::string& pref_name) {
   if (pref_name == kLockOnIdleSuspendPref) {
     ReadLockScreenSettings();
     locker_.Init(lock_on_idle_suspend_);
-    SetIdleOffset(0, IDLE_STATE_NORMAL);
+    if (!use_state_controller_)
+      SetIdleOffset(0, IDLE_STATE_NORMAL);
   } else if (pref_name == kDisableIdleSuspendPref) {
     ReadSuspendSettings();
-    SetIdleOffset(0, IDLE_STATE_NORMAL);
+    if (!use_state_controller_)
+      SetIdleOffset(0, IDLE_STATE_NORMAL);
   }
 }
 
@@ -782,14 +922,23 @@ void Daemon::MarkPowerStatusStale() {
   is_power_status_stale_ = true;
 }
 
-void Daemon::StartSuspendForLidClose() {
-  SetActive();
-  Suspend();
+void Daemon::HandleLidClosed() {
+  if (!use_state_controller_) {
+    SetActive();
+    Suspend();
+  }
+  if (state_controller_initialized_) {
+    state_controller_->HandleLidStateChange(
+        policy::StateController::LID_CLOSED);
+  }
 }
 
-void Daemon::CancelSuspendForLidOpen() {
-  SetActive();
+void Daemon::HandleLidOpened() {
+  if (!use_state_controller_)
+    SetActive();
   suspender_.CancelSuspend();
+  if (state_controller_initialized_)
+    state_controller_->HandleLidStateChange(policy::StateController::LID_OPEN);
 }
 
 void Daemon::EnsureBacklightIsOn() {
@@ -831,7 +980,7 @@ void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
 }
 
 void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
-  // TODO(derat): Notify new state-controlling code.
+  state_controller_->HandleAudioActivity();
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -996,6 +1145,10 @@ void Daemon::RegisterDBusMessageHandler() {
       base::Bind(&Daemon::HandleSetIsProjectingMethod, base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
+      kSetPolicyMethod,
+      base::Bind(&Daemon::HandleSetPolicyMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
       kRegisterSuspendDelayMethod,
       base::Bind(&Suspender::RegisterSuspendDelay,
                  base::Unretained(&suspender_)));
@@ -1045,7 +1198,8 @@ bool Daemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   suspender_.HandlePowerStateChanged(state, power_rc);
   if (g_str_equal(state, "on") == TRUE) {
     HandleResume();
-    SetActive();
+    if (!use_state_controller_)
+      SetActive();
   } else {
     DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
   }
@@ -1268,6 +1422,11 @@ DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
   int return_value = 0;
   if (util::ParseProtocolBufferFromDBusMessage(message, &protobuf) &&
       state_control_->StateOverrideRequest(protobuf, &return_value)) {
+    state_controller_->HandleOverrideChange(
+        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM),
+        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK),
+        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND),
+        state_control_->IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
     DBusMessage* reply = util::CreateEmptyDBusReply(message);
     dbus_message_append_args(reply,
                              DBUS_TYPE_INT32, &return_value,
@@ -1301,6 +1460,7 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   video_detector_->HandleFullscreenChange(protobuf.is_fullscreen());
   video_detector_->HandleActivity(
       base::TimeTicks::FromInternalValue(protobuf.last_activity_time()));
+  state_controller_->HandleVideoActivity();
   return NULL;
 }
 
@@ -1318,6 +1478,7 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
   }
   idle_->HandleUserActivity(
       base::TimeTicks::FromInternalValue(last_activity_time_internal));
+  state_controller_->HandleUserActivity();
   return NULL;
 }
 
@@ -1334,6 +1495,10 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
     if (is_projecting != is_projecting_) {
       is_projecting_ = is_projecting;
       AdjustIdleTimeoutsForProjection();
+      state_controller_->HandleDisplayModeChange(
+          is_projecting ?
+          policy::StateController::DISPLAY_PRESENTATION :
+          policy::StateController::DISPLAY_NORMAL);
     }
   } else {
     // The message was malformed so log this and return an error.
@@ -1342,6 +1507,16 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
     reply = util::CreateDBusInvalidArgsErrorReply(message);
   }
   return reply;
+}
+
+DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
+  PowerManagementPolicy policy;
+  if (!util::ParseProtocolBufferFromDBusMessage(message, &policy)) {
+    LOG(WARNING) << "Unable to parse " << kSetPolicyMethod << " request";
+    return util::CreateDBusInvalidArgsErrorReply(message);
+  }
+  state_controller_->HandlePolicyChange(policy);
+  return NULL;
 }
 
 void Daemon::ScheduleShortPollPowerSupply() {
@@ -1574,7 +1749,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     return;
   }
 
-  if (state_string == "started") {
+  if (state_string == kSessionStarted) {
     // We always want to take action even if we were already "started", since we
     // want to record when the current session started.  If this warning is
     // appearing it means either we are querying the state of Session Manager
@@ -1605,13 +1780,20 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     // actually changed state, since the code we are calling assumes that we are
     // actually transitioning between states.
     current_user_.clear();
-    if (current_session_state_ == "stopped")
+    if (current_session_state_ == kSessionStopped)
       GenerateEndOfSessionMetrics(power_status_,
                                   *backlight_controller_,
                                   base::TimeTicks::Now(),
                                   session_start_);
   }
   current_session_state_ = state;
+
+  if (state_controller_initialized_) {
+    state_controller_->HandleSessionStateChange(
+        current_session_state_ == kSessionStarted ?
+        policy::StateController::SESSION_STARTED :
+        policy::StateController::SESSION_STOPPED);
+  }
 }
 
 void Daemon::Shutdown() {
@@ -1632,7 +1814,7 @@ void Daemon::Suspend() {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
     return;
   }
-  if (util::IsSessionStarted()) {
+  if (use_state_controller_ || util::IsSessionStarted()) {
     power_supply_.SetSuspendState(true);
 
     // When going to suspend, notify the backlight controller so it will turn
@@ -1644,7 +1826,6 @@ void Daemon::Suspend() {
     // the suspend attempt.
     bool cancel_if_lid_open = !input_controller_->lid_is_open();
     suspender_.RequestSuspend(cancel_if_lid_open);
-
   } else {
     if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
       shutdown_reason_ = kShutdownReasonIdle;
@@ -1661,6 +1842,9 @@ void Daemon::HandleResume() {
   ResumePollPowerSupply();
   file_tagger_.HandleResumeEvent();
   power_supply_.SetSuspendState(false);
+  if (use_state_controller_)
+    SetPowerState(BACKLIGHT_ACTIVE);
+  state_controller_->HandleResume();
 }
 
 void Daemon::RetrieveSessionState() {

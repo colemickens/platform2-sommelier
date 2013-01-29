@@ -45,13 +45,15 @@ void AppendProtocolBufferToDBusMessage(
     DBusMessage* message_out);
 
 // Sends a message |signal| to the session manager.
+// TODO(derat): Rename this; it's actually making method calls.
 void SendSignalToSessionManager(const char* signal);
 
 // Sends a message |signal| and int32 to the unprivileged power daemon.
 void SendSignalWithIntToPowerD(const char* signal, int value);
 
-// Calls a method |method_name| in powerd that takes a protocol buffer and
-// returns an integer.  This is a blocking operation.
+// Calls a method |method_name| in powerd that takes a protocol buffer.  If
+// |return_value| is non-NULL, expects an integer response.  This is a
+// blocking operation.
 bool CallMethodInPowerD(const char* method_name,
                         const google::protobuf::MessageLite& protobuf,
                         int* return_value);

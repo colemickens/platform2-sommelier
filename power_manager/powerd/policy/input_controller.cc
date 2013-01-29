@@ -54,13 +54,13 @@ void InputController::OnInputEvent(InputType type, int value) {
         input_->SetWakeInputsState(false);
         util::RemoveStatusFile(lid_open_file_);
         SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
-        delegate_->StartSuspendForLidClose();
+        delegate_->HandleLidClosed();
       } else {
         input_->SetTouchDevicesState(true);
         input_->SetWakeInputsState(true);
         util::CreateStatusFile(lid_open_file_);
         SendInputEventSignal(INPUT_LID, BUTTON_UP);
-        delegate_->CancelSuspendForLidOpen();
+        delegate_->HandleLidOpened();
       }
       break;
     }

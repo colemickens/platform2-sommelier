@@ -186,6 +186,8 @@ void Suspender::OnReadyForSuspend(int suspend_id) {
 }
 
 void Suspender::Suspend() {
+  // Note: If this log message is changed, the power_AudioDetector test
+  // must be updated.
   LOG(INFO) << "Starting suspend";
   daemon_->HaltPollPowerSupply();
   daemon_->MarkPowerStatusStale();

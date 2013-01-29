@@ -34,12 +34,11 @@ class InputController : public system::InputObserver {
    public:
     virtual ~Delegate() {}
 
-    // Suspends the system in response to the lid being closed.
-    virtual void StartSuspendForLidClose() = 0;
+    // Handles the lid being closed.
+    virtual void HandleLidClosed() = 0;
 
-    // Cancels the still-in-progress suspend, if any, in response to the lid
-    // being opened.
-    virtual void CancelSuspendForLidOpen() = 0;
+    // Handles the lid being opened.
+    virtual void HandleLidOpened() = 0;
 
     // Ensures that the backlight is turned on.
     virtual void EnsureBacklightIsOn() = 0;
