@@ -21,6 +21,7 @@ class MockVPNProvider : public VPNProvider {
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD2(OnDeviceInfoAvailable, bool(const std::string &link_name,
                                            int interface_index));
+  MOCK_CONST_METHOD0(HasActiveService, bool());
 
   DISALLOW_COPY_AND_ASSIGN(MockVPNProvider);
 };

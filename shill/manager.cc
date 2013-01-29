@@ -1194,13 +1194,13 @@ void Manager::AutoConnect() {
   }
 }
 
-string Manager::CalculateState(Error */*error*/) {
+bool Manager::IsOnline() const {
   // |services_| is sorted such that connected services are first.
-  if (!services_.empty() &&
-      services_.front()->IsConnected()) {
-    return flimflam::kStateOnline;
-  }
-  return flimflam::kStateOffline;
+  return !services_.empty() && services_.front()->IsConnected();
+}
+
+string Manager::CalculateState(Error */*error*/) {
+  return IsOnline() ? flimflam::kStateOnline : flimflam::kStateOffline;
 }
 
 vector<string> Manager::AvailableTechnologies(Error */*error*/) {

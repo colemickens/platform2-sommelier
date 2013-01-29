@@ -186,4 +186,14 @@ VPNServiceRefPtr VPNProvider::FindService(const std::string &type,
   return NULL;
 }
 
+bool VPNProvider::HasActiveService() const {
+  for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
+       it != services_.end(); ++it) {
+    if ((*it)->IsConnecting() || (*it)->IsConnected()) {
+      return true;
+    }
+  }
+  return false;
+}
+
 }  // namespace shill

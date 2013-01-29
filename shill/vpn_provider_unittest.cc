@@ -44,6 +44,15 @@ class VPNProviderTest : public testing::Test {
     return service->friendly_name();
   }
 
+  void SetConnectState(const ServiceRefPtr &service,
+                       Service::ConnectState state) {
+    service->state_ = state;
+  }
+
+  void AddService(const VPNServiceRefPtr &service) {
+    provider_.services_.push_back(service);
+  }
+
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
@@ -240,6 +249,28 @@ TEST_F(VPNProviderTest, CreateService) {
       provider_.CreateService("unknown-vpn-type", kName, kStorageID, &error);
   EXPECT_FALSE(unknown_service);
   EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
+TEST_F(VPNProviderTest, HasActiveService) {
+  EXPECT_FALSE(provider_.HasActiveService());
+
+  scoped_refptr<MockVPNService> service0(
+      new MockVPNService(&control_, NULL, &metrics_, NULL, NULL));
+  scoped_refptr<MockVPNService> service1(
+      new MockVPNService(&control_, NULL, &metrics_, NULL, NULL));
+  scoped_refptr<MockVPNService> service2(
+      new MockVPNService(&control_, NULL, &metrics_, NULL, NULL));
+
+  AddService(service0);
+  AddService(service1);
+  AddService(service2);
+  EXPECT_FALSE(provider_.HasActiveService());
+
+  SetConnectState(service1, Service::kStateAssociating);
+  EXPECT_TRUE(provider_.HasActiveService());
+
+  SetConnectState(service1, Service::kStateOnline);
+  EXPECT_TRUE(provider_.HasActiveService());
 }
 
 }  // namespace shill

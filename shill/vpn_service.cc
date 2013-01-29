@@ -24,6 +24,7 @@ using std::string;
 namespace shill {
 
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
+const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
 
 VPNService::VPNService(ControlInterface *control,
                        EventDispatcher *dispatcher,
@@ -151,6 +152,11 @@ bool VPNService::IsAutoConnectable(const char **reason) const {
   // the chances that the VPN service is connectable and avoids dialog popups.
   if (!has_ever_connected()) {
     *reason = kAutoConnNeverConnected;
+    return false;
+  }
+  // Don't auto-connect a VPN service if another VPN service is already active.
+  if (manager()->vpn_provider()->HasActiveService()) {
+    *reason = kAutoConnVPNAlreadyActive;
     return false;
   }
   return true;

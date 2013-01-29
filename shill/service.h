@@ -572,6 +572,7 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnConnecting[];
   static const char kAutoConnExplicitDisconnect[];
   static const char kAutoConnNotConnectable[];
+  static const char kAutoConnOffline[];
   static const char kAutoConnThrottled[];
 
   static const size_t kEAPMaxCertificationElements;

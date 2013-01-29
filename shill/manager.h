@@ -200,6 +200,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Return whether |storage| is for the default profile.
   virtual bool IsDefaultProfile(const StoreInterface *storage) const;
 
+  // Returns true if at least one connection exists, and false if there's no
+  // connected service.
+  virtual bool IsOnline() const;
   std::string CalculateState(Error *error);
 
   virtual int GetPortalCheckInterval() const {
@@ -282,8 +285,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
-  FRIEND_TEST(ManagerTest, CalculateStateOffline);
-  FRIEND_TEST(ManagerTest, CalculateStateOnline);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);

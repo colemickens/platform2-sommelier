@@ -89,7 +89,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, InitClientAuthOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitEnvironment);
   FRIEND_TEST(OpenVPNDriverTest, InitLoggingOptions);
-  FRIEND_TEST(OpenVPNDriverTest, InitManagementChannelOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptions);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsHostWithPort);
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);

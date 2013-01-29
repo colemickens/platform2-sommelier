@@ -44,6 +44,7 @@ const char Service::kAutoConnConnected[] = "connected";
 const char Service::kAutoConnConnecting[] = "connecting";
 const char Service::kAutoConnExplicitDisconnect[] = "explicitly disconnected";
 const char Service::kAutoConnNotConnectable[] = "not connectable";
+const char Service::kAutoConnOffline[] = "offline";
 const char Service::kAutoConnThrottled[] = "throttled";
 
 const size_t Service::kEAPMaxCertificationElements = 10;
@@ -1079,6 +1080,12 @@ bool Service::IsAutoConnectable(const char **reason) const {
 
   if (!reenable_auto_connect_task_.IsCancelled()) {
     *reason = kAutoConnThrottled;
+    return false;
+  }
+
+  if (!Technology::IsPrimaryConnectivityTechnology(technology_) &&
+      !manager_->IsOnline()) {
+    *reason = kAutoConnOffline;
     return false;
   }
 

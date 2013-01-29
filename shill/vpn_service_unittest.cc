@@ -67,6 +67,22 @@ class VPNServiceTest : public testing::Test {
     service_->connectable_ = connectable;
   }
 
+  const char *GetAutoConnOffline() {
+    return Service::kAutoConnOffline;
+  }
+
+  const char *GetAutoConnNeverConnected() {
+    return VPNService::kAutoConnNeverConnected;
+  }
+
+  const char *GetAutoConnVPNAlreadyActive() {
+    return VPNService::kAutoConnVPNAlreadyActive;
+  }
+
+  bool IsAutoConnectable(const char **reason) const {
+    return service_->IsAutoConnectable(reason);
+  }
+
   std::string interface_name_;
   std::string ipconfig_rpc_identifier_;
   MockVPNDriver *driver_;  // Owned by |service_|.
@@ -219,21 +235,51 @@ TEST_F(VPNServiceTest, OnConnectionDisconnected) {
   connection_->OnLowerDisconnect();
 }
 
-TEST_F(VPNServiceTest, IsAutoConnectable) {
+TEST_F(VPNServiceTest, IsAutoConnectableOffline) {
+  EXPECT_TRUE(service_->connectable());
+  const char *reason = NULL;
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_FALSE(IsAutoConnectable(&reason));
+  EXPECT_STREQ(GetAutoConnOffline(), reason);
+}
+
+TEST_F(VPNServiceTest, IsAutoConnectableNeverConnected) {
   EXPECT_TRUE(service_->connectable());
   EXPECT_FALSE(service_->has_ever_connected());
-
   const char *reason = NULL;
-  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
-  EXPECT_STREQ(VPNService::kAutoConnNeverConnected, reason);
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  EXPECT_FALSE(IsAutoConnectable(&reason));
+  EXPECT_STREQ(GetAutoConnNeverConnected(), reason);
+}
 
+TEST_F(VPNServiceTest, IsAutoConnectableVPNAlreadyActive) {
+  EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
-  reason = NULL;
-  EXPECT_TRUE(service_->IsAutoConnectable(&reason));
-  EXPECT_FALSE(reason);
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  MockVPNProvider provider;
+  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&provider));
+  EXPECT_CALL(provider, HasActiveService()).WillOnce(Return(true));
+  const char *reason = NULL;
+  EXPECT_FALSE(IsAutoConnectable(&reason));
+  EXPECT_STREQ(GetAutoConnVPNAlreadyActive(), reason);
+}
 
+TEST_F(VPNServiceTest, IsAutoConnectableNotConnectable) {
+  const char *reason = NULL;
   SetConnectable(false);
-  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_FALSE(IsAutoConnectable(&reason));
+}
+
+TEST_F(VPNServiceTest, IsAutoConnectable) {
+  EXPECT_TRUE(service_->connectable());
+  SetHasEverConnected(true);
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
+  MockVPNProvider provider;
+  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&provider));
+  EXPECT_CALL(provider, HasActiveService()).WillOnce(Return(false));
+  const char *reason = NULL;
+  EXPECT_TRUE(IsAutoConnectable(&reason));
+  EXPECT_FALSE(reason);
 }
 
 }  // namespace shill

@@ -541,8 +541,17 @@ TEST_F(ServiceTest, ReMakeFavorite) {
 }
 
 TEST_F(ServiceTest, IsAutoConnectable) {
-  const char *reason;
+  const char *reason = NULL;
   service_->set_connectable(true);
+
+  // Services with non-primary connectivity technologies should not auto-connect
+  // when the system is offline.
+  EXPECT_EQ(Technology::kUnknown, service_->technology());
+  EXPECT_CALL(mock_manager_, IsOnline()).WillOnce(Return(false));
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(Service::kAutoConnOffline, reason);
+
+  service_->technology_ = Technology::kEthernet;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // We should not auto-connect to a Service that a user has
@@ -607,6 +616,7 @@ TEST_F(ServiceTest, AutoConnectLogging) {
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   const char *reason;
   service_->set_connectable(true);
+  service_->technology_ = Technology::kEthernet;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // The very first AutoConnect() doesn't trigger any throttling.

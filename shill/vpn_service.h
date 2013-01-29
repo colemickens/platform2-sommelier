@@ -48,11 +48,12 @@ class VPNService : public Service {
   virtual bool IsAutoConnectable(const char **reason) const;
 
  private:
+  friend class VPNServiceTest;
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
-  FRIEND_TEST(VPNServiceTest, IsAutoConnectable);
   FRIEND_TEST(VPNServiceTest, SetConnection);
 
   static const char kAutoConnNeverConnected[];
+  static const char kAutoConnVPNAlreadyActive[];
 
   virtual std::string GetDeviceRpcId(Error *error);
 

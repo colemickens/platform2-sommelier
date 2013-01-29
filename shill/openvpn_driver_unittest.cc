@@ -114,6 +114,14 @@ class OpenVPNDriverTest : public testing::Test,
     return device_->selected_service();
   }
 
+  bool InitManagementChannelOptions(vector<string> *options, Error *error) {
+    return driver_->InitManagementChannelOptions(options, error);
+  }
+
+  Sockets *GetSockets() {
+    return &driver_->sockets_;
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -475,8 +483,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  ServiceRefPtr null_service;
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
 
   Error error;
   vector<string> options;
@@ -505,8 +512,7 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   driver_->tunnel_interface_ = kInterfaceName;
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  ServiceRefPtr null_service;
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
 
   Error error;
   vector<string> options;
@@ -626,43 +632,35 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
   ExpectInFlags(options, "--pkcs11-providers", kProvider);
 }
 
-TEST_F(OpenVPNDriverTest, InitManagementChannelOptions) {
+TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {
   vector<string> options;
+  EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
+      .WillOnce(Return(false));
   Error error;
-
-  EXPECT_CALL(*management_server_,
-              Start(&dispatcher_, &driver_->sockets_, &options))
-      .Times(4)
-      .WillOnce(Return(false))
-      .WillRepeatedly(Return(true));
-
-  // Management server fails to start.
-  EXPECT_FALSE(driver_->InitManagementChannelOptions(&options, &error));
+  EXPECT_FALSE(InitManagementChannelOptions(&options, &error));
   EXPECT_EQ(Error::kInternalError, error.type());
   EXPECT_EQ("Unable to setup management channel.", error.message());
+}
 
-  // Start with a connected default service.
-  scoped_refptr<MockService> mock_service(
-      new MockService(&control_, &dispatcher_, &metrics_, &manager_));
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(mock_service));
-  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
+TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOnline) {
+  vector<string> options;
+  EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
   EXPECT_CALL(*management_server_, ReleaseHold());
-  error.Reset();
-  EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
+  Error error;
+  EXPECT_TRUE(InitManagementChannelOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
+}
 
-  // Start with a disconnected default service.
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(mock_service));
-  EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(false));
+TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOffline) {
+  vector<string> options;
+  EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
+      .WillOnce(Return(true));
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
-  EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
-  EXPECT_TRUE(error.IsSuccess());
-
-  // Start with no default service.
-  ServiceRefPtr null_service;
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
-  EXPECT_CALL(*management_server_, ReleaseHold()).Times(0);
-  EXPECT_TRUE(driver_->InitManagementChannelOptions(&options, &error));
+  Error error;
+  EXPECT_TRUE(InitManagementChannelOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
 }
 
@@ -737,8 +735,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   static const char kHost[] = "192.168.2.254";
   SetArg(flimflam::kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
-  ServiceRefPtr null_service;
-  EXPECT_CALL(manager_, GetDefaultService()).WillOnce(Return(null_service));
+  EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
   EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
@@ -817,10 +814,7 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_CALL(*management_server_, Start(_, _, _))
       .Times(2)
       .WillRepeatedly(Return(true));
-  ServiceRefPtr null_service;
-  EXPECT_CALL(manager_, GetDefaultService())
-      .Times(2)
-      .WillRepeatedly(Return(null_service));
+  EXPECT_CALL(manager_, IsOnline()).Times(2).WillRepeatedly(Return(false));
 
   const int kPID = 234678;
   EXPECT_CALL(glib_,

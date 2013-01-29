@@ -120,6 +120,10 @@ class ManagerTest : public PropertyStoreTest {
   }
   virtual ~ManagerTest() {}
 
+  void SetMetrics(Metrics *metrics) {
+    manager()->set_metrics(metrics);
+  }
+
   bool IsDeviceRegistered(const DeviceRefPtr &device,
                           Technology::Identifier tech) {
     vector<DeviceRefPtr> devices;
@@ -1901,7 +1905,7 @@ TEST_F(ManagerTest, SortServices) {
 
 TEST_F(ManagerTest, SortServicesWithConnection) {
   MockMetrics mock_metrics;
-  manager()->set_metrics(&mock_metrics);
+  SetMetrics(&mock_metrics);
 
   scoped_refptr<MockService> mock_service0(
       new NiceMock<MockService>(control_interface(),
@@ -1980,7 +1984,7 @@ TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 
   MockMetrics mock_metrics;
-  manager()->set_metrics(&mock_metrics);
+  SetMetrics(&mock_metrics);
 
   scoped_refptr<MockService> mock_service(
       new NiceMock<MockService>(
@@ -2620,8 +2624,11 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
 
 
 TEST_F(ManagerTest, CalculateStateOffline) {
+  EXPECT_FALSE(manager()->IsOnline());
+  EXPECT_EQ("offline", manager()->CalculateState(NULL));
+
   MockMetrics mock_metrics;
-  manager()->set_metrics(&mock_metrics);
+  SetMetrics(&mock_metrics);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(_))
       .Times(AnyNumber());
   scoped_refptr<MockService> mock_service0(
@@ -2644,6 +2651,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
   manager()->RegisterService(mock_service0);
   manager()->RegisterService(mock_service1);
 
+  EXPECT_FALSE(manager()->IsOnline());
   EXPECT_EQ("offline", manager()->CalculateState(NULL));
 
   manager()->DeregisterService(mock_service0);
@@ -2652,7 +2660,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
 
 TEST_F(ManagerTest, CalculateStateOnline) {
   MockMetrics mock_metrics;
-  manager()->set_metrics(&mock_metrics);
+  SetMetrics(&mock_metrics);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(_))
       .Times(AnyNumber());
   scoped_refptr<MockService> mock_service0(
@@ -2680,6 +2688,7 @@ TEST_F(ManagerTest, CalculateStateOnline) {
   manager()->RegisterService(mock_service1);
   CompleteServiceSort();
 
+  EXPECT_TRUE(manager()->IsOnline());
   EXPECT_EQ("online", manager()->CalculateState(NULL));
 
   manager()->DeregisterService(mock_service0);

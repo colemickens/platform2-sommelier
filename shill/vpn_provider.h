@@ -47,7 +47,11 @@ class VPNProvider {
 
   void CreateServicesFromProfile(ProfileRefPtr profile);
 
+  // Returns true if any of the managed VPN services is connecting or connected.
+  virtual bool HasActiveService() const;
+
  private:
+  friend class VPNProviderTest;
   FRIEND_TEST(VPNProviderTest, CreateService);
   FRIEND_TEST(VPNProviderTest, OnDeviceInfoAvailable);
   FRIEND_TEST(VPNProviderTest, RemoveService);
