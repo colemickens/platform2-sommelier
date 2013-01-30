@@ -150,21 +150,3 @@ message EncryptedData {
   optional bytes mac = 4;
   optional bytes encrypted_data = 5;
 }
-
-// The reset request to be sent to the attestation server.
-message AttestationResetRequest {
-  // The AIK cert, in X.509 form, encrypted using the server's public key with
-  // the following parameters:
-  //   Key encryption: RSA-OAEP with no custom parameters.
-  //   Data encryption: 256-bit key, AES-CBC with PKCS5 padding.
-  //   MAC: HMAC-SHA-512 using the AES key.
-  optional EncryptedData encrypted_identity_credential = 1;
-}
-
-// The response from the attestation server for the reset request.
-message AttestationResetResponse {
-  // The response status.
-  optional ResponseStatus status = 1;
-  // Detail response message. Included when the result is not OK.
-  optional string detail = 2;
-}
