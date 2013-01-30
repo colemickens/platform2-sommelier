@@ -66,6 +66,10 @@ gboolean cryptohome_async_remove(Cryptohome *self,
 gboolean cryptohome_get_system_salt(Cryptohome *self,
                                     GArray **OUT_salt,
                                     GError **error);
+gboolean cryptohome_get_sanitized_username(Cryptohome *self,
+                                           gchar *username,
+                                           gchar **OUT_sanitized,
+                                           GError **error);
 gboolean cryptohome_is_mounted(Cryptohome *self,
                                gboolean *OUT_is_mounted,
                                GError **error);

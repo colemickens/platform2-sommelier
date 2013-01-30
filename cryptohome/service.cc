@@ -19,6 +19,7 @@
 #include <base/string_util.h>
 #include <base/time.h>
 #include <base/values.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/secure_blob.h>
 #include <metrics/metrics_library.h>
@@ -682,6 +683,21 @@ gboolean Service::GetSystemSalt(GArray **OUT_salt, GError **error) {
     return FALSE;
   *OUT_salt = g_array_new(false, false, 1);
   g_array_append_vals(*OUT_salt, &system_salt_.front(), system_salt_.size());
+  return TRUE;
+}
+
+gboolean Service::GetSanitizedUsername(gchar *username,
+                                       gchar **OUT_sanitized,
+                                       GError **error) {
+  // UsernamePasskey::GetObfuscatedUsername() returns an uppercase hex encoding,
+  // while SanitizeUserName() returns a lowercase hex encoding. They should
+  // return the same value, but login_manager is already relying on
+  // SanitizeUserName() and that's the value that chrome should see.
+  std::string sanitized =
+      chromeos::cryptohome::home::SanitizeUserName(username);
+  if (sanitized.empty())
+    return FALSE;
+  *OUT_sanitized = g_strndup(sanitized.data(), sanitized.size());
   return TRUE;
 }
 

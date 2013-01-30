@@ -9,6 +9,7 @@
 #include <base/at_exit.h>
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
@@ -32,14 +33,14 @@ using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
+const char kSaltFile[] = "test_image_dir/salt";
 class ServiceInterfaceTest : public ::testing::Test {
  public:
   ServiceInterfaceTest() { }
   virtual ~ServiceInterfaceTest() { }
 
   void SetUp() {
-    FilePath image_dir(kImageDir);
-    FilePath path = image_dir.Append("salt");
+    FilePath path(kSaltFile);
     ASSERT_TRUE(file_util::PathExists(path)) << path.value()
                                              << " does not exist!";
 
@@ -166,6 +167,25 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
     PlatformThread::Sleep(100);
   }
   EXPECT_TRUE(out);
+}
+
+TEST_F(ServiceInterfaceTest, GetSanitizedUsername) {
+  chromeos::cryptohome::home::SetSystemSaltPath(kSaltFile);
+
+  Service service;
+  char username[] = "chromeos-user";
+  gchar *sanitized = NULL;
+  GError *error = NULL;
+  EXPECT_TRUE(service.GetSanitizedUsername(username, &sanitized, &error));
+  EXPECT_TRUE(error == NULL);
+  ASSERT_TRUE(sanitized);
+
+  const std::string expected(
+      chromeos::cryptohome::home::SanitizeUserName(username));
+  EXPECT_FALSE(expected.empty());
+
+  EXPECT_EQ(expected, sanitized);
+  g_free(sanitized);
 }
 
 TEST(Standalone, CheckAutoCleanupCallback) {

@@ -134,6 +134,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                gint *OUT_async_id,
                                GError **error);
   virtual gboolean GetSystemSalt(GArray **OUT_salt, GError **error);
+  virtual gboolean GetSanitizedUsername(gchar *username,
+                                        gchar **OUT_sanitized,
+                                        GError **error);
   virtual gboolean IsMountedForUser(gchar *user,
                                     gboolean *OUT_is_mounted,
                                     gboolean *OUT_is_ephemeral_mount,

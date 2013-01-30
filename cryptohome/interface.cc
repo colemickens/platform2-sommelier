@@ -101,6 +101,12 @@ gboolean cryptohome_get_system_salt(Cryptohome *self,
                                     GError **error) {
   CRYPTOHOME_WRAP_METHOD(GetSystemSalt, OUT_salt);
 }
+gboolean cryptohome_get_sanitized_username(Cryptohome *self,
+                                           gchar *username,
+                                           gchar **OUT_sanitized,
+                                           GError **error) {
+  CRYPTOHOME_WRAP_METHOD(GetSanitizedUsername, username, OUT_sanitized);
+}
 gboolean cryptohome_is_mounted(Cryptohome *self,
                                gboolean *OUT_is_mounted,
                                GError **error) {

@@ -52,6 +52,10 @@
     <method name="GetSystemSalt">
       <arg type="ay" name="salt" direction="out" />
     </method>
+    <method name="GetSanitizedUsername">
+      <arg type="s" name="username" direction="in" />
+      <arg type="s" name="sanitized" direction="out" />
+    </method>
     <method name="Mount">
       <arg type="s" name="username" direction="in" />
       <arg type="s" name="key" direction="in" />
