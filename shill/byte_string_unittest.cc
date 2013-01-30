@@ -6,9 +6,12 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 #include "shill/byte_string.h"
 
 using testing::Test;
+using std::string;
 
 namespace shill {
 
@@ -19,10 +22,43 @@ const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
 const unsigned char kTest3[] = { 0, 0, 0, 0 };
 const char kTest4[] = "Hello world";
-const char kTest5[] = { 0, 1, 2, 3 };
 }  // namespace {}
 
 class ByteStringTest : public Test {
+ public:
+  void CalculateBitwiseAndResult(ByteString *bs,
+                                 ByteString *mask,
+                                 ByteString *expected_result,
+                                 size_t count) {
+    ASSERT_NE(reinterpret_cast<ByteString *>(NULL), bs);
+    ASSERT_NE(reinterpret_cast<ByteString *>(NULL), mask);
+    ASSERT_NE(reinterpret_cast<ByteString *>(NULL), expected_result);
+
+    for (size_t i = 0; i < count; i++) {
+      EXPECT_FALSE(bs->BitwiseAnd(*mask));
+      unsigned char val = count - i;
+      mask->Append(ByteString(&val, 1));
+      val &= bs->GetConstData()[i];
+      expected_result->Append(ByteString(&val, 1));
+    }
+  }
+
+  void CalculateBitwiseOrResult(ByteString *bs,
+                                ByteString *merge,
+                                ByteString *expected_result,
+                                size_t count) {
+    ASSERT_NE(reinterpret_cast<ByteString *>(NULL), bs);
+    ASSERT_NE(reinterpret_cast<ByteString *>(NULL), merge);
+    ASSERT_NE(reinterpret_cast<ByteString *>(NULL), expected_result);
+
+    for (size_t i = 0; i < count; i++) {
+      EXPECT_FALSE(bs->BitwiseOr(*merge));
+      unsigned char val = sizeof(kTest1) - i;
+      merge->Append(ByteString(&val, 1));
+      val |= bs->GetConstData()[i];
+      expected_result->Append(ByteString(&val, 1));
+    }
+  }
 };
 
 TEST_F(ByteStringTest, Empty) {
@@ -41,62 +77,65 @@ TEST_F(ByteStringTest, NonEmpty) {
   uint32 val;
 
   EXPECT_FALSE(bs1.IsEmpty());
-
+  ASSERT_TRUE(bs1.GetData() != NULL);
   EXPECT_EQ(sizeof(kTest1), bs1.GetLength());
   for (unsigned int i = 0; i < sizeof(kTest1); i++) {
     EXPECT_EQ(bs1.GetData()[i], kTest1[i]);
   }
-  EXPECT_TRUE(bs1.GetData() != NULL);
   EXPECT_FALSE(bs1.ConvertToNetUInt32(&val));
   EXPECT_FALSE(bs1.IsZero());
 
+  // Build a ByteString (different to bs1), verify that the new ByteString
+  // looks as expected, verify that it's different to bs1.
   ByteString bs2(kTest2, sizeof(kTest2));
+  ASSERT_TRUE(bs2.GetData() != NULL);
   EXPECT_EQ(sizeof(kTest2), bs2.GetLength());
   for (unsigned int i = 0; i < sizeof(kTest2); i++) {
     EXPECT_EQ(bs2.GetData()[i], kTest2[i]);
   }
-  EXPECT_TRUE(bs2.GetData() != NULL);
   EXPECT_FALSE(bs2.IsZero());
-
   EXPECT_FALSE(bs2.Equals(bs1));
 
+  // Build _another_ ByteString (different to bs1 and bs2), verify that the
+  // new ByteString looks as expected, verify that it's different to bs1 and
+  // bs2.
   ByteString bs3(kTest3, sizeof(kTest3));
+  ASSERT_TRUE(bs3.GetData() != NULL);
   EXPECT_EQ(sizeof(kTest3), bs3.GetLength());
   for (unsigned int i = 0; i < sizeof(kTest3); i++) {
     EXPECT_EQ(bs3.GetData()[i], kTest3[i]);
   }
-  EXPECT_TRUE(bs3.GetData() != NULL);
   EXPECT_TRUE(bs3.IsZero());
   EXPECT_FALSE(bs2.Equals(bs1));
   EXPECT_FALSE(bs3.Equals(bs1));
 
-  ByteString bs4(std::string(kTest4), false);
+  // Check two equal ByteStrings.
+  ByteString bs6(kTest1, sizeof(kTest1));
+  EXPECT_TRUE(bs6.Equals(bs1));
+}
+
+TEST_F(ByteStringTest, CopyTerminator) {
+  ByteString bs4(string(kTest4), false);
   EXPECT_EQ(strlen(kTest4), bs4.GetLength());
   EXPECT_EQ(0, memcmp(kTest4, bs4.GetData(), bs4.GetLength()));
 
-  ByteString bs5(std::string(kTest4), true);
+  ByteString bs5(string(kTest4), true);
   EXPECT_EQ(strlen(kTest4) + 1, bs5.GetLength());
   EXPECT_EQ(0, memcmp(kTest4, bs5.GetData(), bs5.GetLength()));
-
-  ByteString bs6(kTest1, sizeof(kTest1));
-  EXPECT_TRUE(bs6.Equals(bs1));
-
-  ByteString bs7(kTest5, sizeof(kTest5));
-  ASSERT_TRUE(bs7.GetData() != NULL);
-  EXPECT_EQ(sizeof(kTest5), bs7.GetLength());
-  for (unsigned int i = 0; i < sizeof(kTest5); i++) {
-    EXPECT_EQ(bs7.GetData()[i], kTest5[i]);
-  }
 }
 
 TEST_F(ByteStringTest, SubString) {
   ByteString bs1(kTest1, sizeof(kTest1));
-  ByteString bs2(kTest1 + 3, 4);
-  EXPECT_TRUE(bs2.Equals(bs1.GetSubstring(3, 4)));
+  ByteString fragment(kTest1 + 3, 4);
+  EXPECT_TRUE(fragment.Equals(bs1.GetSubstring(3, 4)));
   const int kMargin = sizeof(kTest1) - 3;
-  ByteString bs3(kTest1 + kMargin, sizeof(kTest1) - kMargin);
-  EXPECT_TRUE(bs3.Equals(bs1.GetSubstring(kMargin, sizeof(kTest1))));
-  EXPECT_TRUE(bs1.GetSubstring(sizeof(kTest1), 10).IsEmpty());
+  ByteString end_fragment(kTest1 + kMargin, sizeof(kTest1) - kMargin);
+  EXPECT_TRUE(end_fragment.Equals(bs1.GetSubstring(kMargin, sizeof(kTest1))));
+
+  // Verify that the ByteString correctly handles accessing a substring
+  // outside the range of the ByteString.
+  const size_t kBogusOffset = 10;
+  EXPECT_TRUE(bs1.GetSubstring(sizeof(kTest1), kBogusOffset).IsEmpty());
 }
 
 TEST_F(ByteStringTest, UInt32) {
@@ -104,7 +143,7 @@ TEST_F(ByteStringTest, UInt32) {
   uint32 val;
 
   EXPECT_EQ(4, bs1.GetLength());
-  EXPECT_TRUE(bs1.GetData() != NULL);
+  ASSERT_TRUE(bs1.GetData() != NULL);
   EXPECT_TRUE(bs1.ConvertToNetUInt32(&val));
   EXPECT_EQ(kTest2Uint32, val);
   EXPECT_FALSE(bs1.IsZero());
@@ -116,7 +155,7 @@ TEST_F(ByteStringTest, UInt32) {
 
   ByteString bs3 = ByteString::CreateFromCPUUInt32(0x1020304);
   EXPECT_EQ(4, bs1.GetLength());
-  EXPECT_TRUE(bs3.GetData() != NULL);
+  ASSERT_TRUE(bs3.GetData() != NULL);
   EXPECT_TRUE(bs3.ConvertToCPUUInt32(&val));
   EXPECT_EQ(0x1020304, val);
   EXPECT_FALSE(bs3.IsZero());
@@ -129,19 +168,21 @@ TEST_F(ByteStringTest, UInt32) {
 }
 
 TEST_F(ByteStringTest, Resize) {
-  ByteString bs1(kTest2, sizeof(kTest2));
+  ByteString bs(kTest2, sizeof(kTest2));
 
-  bs1.Resize(sizeof(kTest2) + 10);
-  EXPECT_EQ(sizeof(kTest2) + 10, bs1.GetLength());
-  EXPECT_TRUE(bs1.GetData() != NULL);
-  EXPECT_EQ(0, memcmp(bs1.GetData(), kTest2, sizeof(kTest2)));
-  for (size_t i = sizeof(kTest2); i < sizeof(kTest2) + 10; ++i) {
-    EXPECT_EQ(0, bs1.GetData()[i]);
+  const size_t kSizeExtension = 10;
+  bs.Resize(sizeof(kTest2) + kSizeExtension);
+  EXPECT_EQ(sizeof(kTest2) + kSizeExtension, bs.GetLength());
+  ASSERT_TRUE(bs.GetData() != NULL);
+  EXPECT_EQ(0, memcmp(bs.GetData(), kTest2, sizeof(kTest2)));
+  for (size_t i = sizeof(kTest2); i < sizeof(kTest2) + kSizeExtension; ++i) {
+    EXPECT_EQ(0, bs.GetData()[i]);
   }
 
-  bs1.Resize(sizeof(kTest2) - 2);
-  EXPECT_EQ(sizeof(kTest2) - 2, bs1.GetLength());
-  EXPECT_EQ(0, memcmp(bs1.GetData(), kTest2, sizeof(kTest2) - 2));
+  const size_t kSizeReduction = 2;
+  bs.Resize(sizeof(kTest2) - kSizeReduction);
+  EXPECT_EQ(sizeof(kTest2) - kSizeReduction, bs.GetLength());
+  EXPECT_EQ(0, memcmp(bs.GetData(), kTest2, sizeof(kTest2) - kSizeReduction));
 }
 
 TEST_F(ByteStringTest, HexEncode) {
@@ -149,49 +190,187 @@ TEST_F(ByteStringTest, HexEncode) {
   EXPECT_EQ(kTest2HexString, bs.HexEncode());
 }
 
-TEST_F(ByteStringTest, BitwiseAnd) {
-  ByteString bs(kTest1, sizeof(kTest1));
-  ByteString mask;
-  ByteString expected_result;
-  for (size_t i = 0; i < sizeof(kTest1); i++) {
+TEST_F(ByteStringTest, BitwiseAndWithAndWithoutOffsets) {
+  const size_t kOffset[] = {0, 2, 7};
+  for (size_t i = 0; i < arraysize(kOffset); ++i) {
+    ByteString bs(kTest1, sizeof(kTest1));
+    bs.RemovePrefix(kOffset[i]);
+    ByteString mask;
+    ByteString expected_result;
+    CalculateBitwiseAndResult(&bs, &mask, &expected_result,
+                              sizeof(kTest1) - kOffset[i]);
+    EXPECT_TRUE(bs.BitwiseAnd(mask));
+    EXPECT_TRUE(bs.Equals(expected_result));
+    bs.Resize(sizeof(kTest1) - 1);
     EXPECT_FALSE(bs.BitwiseAnd(mask));
-    unsigned char val = sizeof(kTest1) - i;
-    mask.Append(ByteString(&val, 1));
-    val &= bs.GetConstData()[i];
-    expected_result.Append(ByteString(&val, 1));
   }
-  EXPECT_TRUE(bs.BitwiseAnd(mask));
-  EXPECT_TRUE(bs.Equals(expected_result));
-  bs.Resize(sizeof(kTest1) - 1);
-  EXPECT_FALSE(bs.BitwiseAnd(mask));
 }
 
-TEST_F(ByteStringTest, BitwiseOr) {
-  ByteString bs(kTest1, sizeof(kTest1));
-  ByteString merge;
-  ByteString expected_result;
-  for (size_t i = 0; i < sizeof(kTest1); i++) {
+TEST_F(ByteStringTest, BitwiseOrWithAndWithoutOffsets) {
+  const size_t kOffset[] = {0, 2, 7};
+  for (size_t i = 0; i < arraysize(kOffset); ++i) {
+    ByteString bs(kTest1, sizeof(kTest1));
+    bs.RemovePrefix(kOffset[i]);
+    ByteString merge;
+    ByteString expected_result;
+    CalculateBitwiseOrResult(&bs, &merge, &expected_result,
+                             sizeof(kTest1) - kOffset[i]);
+    EXPECT_TRUE(bs.BitwiseOr(merge));
+    EXPECT_TRUE(bs.Equals(expected_result));
+    bs.Resize(sizeof(kTest1) - 1);
     EXPECT_FALSE(bs.BitwiseOr(merge));
-    unsigned char val = sizeof(kTest1) - i;
-    merge.Append(ByteString(&val, 1));
-    val |= bs.GetConstData()[i];
-    expected_result.Append(ByteString(&val, 1));
   }
-  EXPECT_TRUE(bs.BitwiseOr(merge));
-  EXPECT_TRUE(bs.Equals(expected_result));
-  bs.Resize(sizeof(kTest1) - 1);
-  EXPECT_FALSE(bs.BitwiseOr(merge));
 }
 
-TEST_F(ByteStringTest, BitwiseInvert) {
-  ByteString bs(kTest1, sizeof(kTest1));
-  ByteString invert;
-  for (size_t i = 0; i < sizeof(kTest1); i++) {
-    unsigned char val = kTest1[i] ^ 0xff;
-    invert.Append(ByteString(&val, 1));
+TEST_F(ByteStringTest, BitwiseInvertWithAndWithoutOffsets) {
+  const size_t kOffset[] = {0, 2, 7};
+  for (size_t i = 0; i < arraysize(kOffset); ++i) {
+    ByteString bs(kTest1, sizeof(kTest1));
+    bs.RemovePrefix(kOffset[i]);
+    ByteString invert;
+    for (size_t j = kOffset[i]; j < sizeof(kTest1); j++) {
+      unsigned char val = kTest1[j] ^ 0xff;
+      invert.Append(ByteString(&val, 1));
+    }
+    bs.BitwiseInvert();
+    EXPECT_TRUE(bs.Equals(invert));
   }
-  bs.BitwiseInvert();
-  EXPECT_TRUE(bs.Equals(invert));
+}
+
+// The tests, below, test various ByteString operations where some bytes have
+// been removed from the beginning of one or more of the ByteStrings in the
+// test.
+
+TEST_F(ByteStringTest, EmptyOffset) {
+  uint32 val;
+
+  ByteString bs1(kTest1, sizeof(kTest1));
+  bs1.RemovePrefix(sizeof(kTest1));
+  EXPECT_TRUE(bs1.IsEmpty());
+  EXPECT_EQ(0, bs1.GetLength());
+  EXPECT_TRUE(bs1.GetData() == NULL);
+  EXPECT_FALSE(bs1.ConvertToNetUInt32(&val));
+  EXPECT_TRUE(bs1.IsZero());
+}
+
+TEST_F(ByteStringTest, NonEmptyOffset) {
+  ByteString bs1(kTest1, sizeof(kTest1));
+  const size_t kNewLength1 = 2;
+  const size_t kOffset1 = sizeof(kTest1) - kNewLength1;
+
+  {
+    bs1.RemovePrefix(kOffset1);
+    ASSERT_TRUE(bs1.GetData() != NULL);
+    EXPECT_FALSE(bs1.IsEmpty());
+    EXPECT_EQ(kNewLength1, bs1.GetLength());
+    for (unsigned int i = kOffset1; i < sizeof(kTest1); i++) {
+      EXPECT_EQ(bs1.GetData()[i - kOffset1], kTest1[i]);
+    }
+    uint32 val;
+    EXPECT_FALSE(bs1.ConvertToNetUInt32(&val));
+    EXPECT_FALSE(bs1.IsZero());
+  }
+
+  // Check a non-equal ByteString.
+  {
+    const size_t kNewLength2 = 3;
+    const size_t kOffset2 = sizeof(kTest2) - kNewLength2;
+    ByteString bs2(kTest2, sizeof(kTest2));
+    bs2.RemovePrefix(kOffset2);
+    ASSERT_TRUE(bs2.GetData() != NULL);
+    EXPECT_EQ(kNewLength2, bs2.GetLength());
+    for (unsigned int i = kOffset2; i < sizeof(kTest2); i++) {
+      EXPECT_EQ(bs2.GetData()[i - kOffset2], kTest2[i]);
+    }
+    EXPECT_FALSE(bs2.IsZero());
+    EXPECT_FALSE(bs2.Equals(bs1));
+  }
+
+  // Check whether two equal ByteStrings are, in fact, equal.
+  {
+    ByteString bs6(kTest1, sizeof(kTest1));
+    bs6.RemovePrefix(kOffset1);
+    EXPECT_TRUE(bs6.Equals(bs1));
+  }
+}
+
+TEST_F(ByteStringTest, CopyTerminatorOffset) {
+  {
+    ByteString bs4(string(kTest4), false);
+    const size_t kOffset4 = 1;
+    bs4.RemovePrefix(kOffset4);
+    EXPECT_EQ(strlen(kTest4) - kOffset4, bs4.GetLength());
+    EXPECT_EQ(0, memcmp(kTest4 + kOffset4, bs4.GetData(), bs4.GetLength()));
+  }
+
+  {
+    ByteString bs5(string(kTest4), true);
+    const size_t kOffset5 = 1;
+    bs5.RemovePrefix(kOffset5);
+    EXPECT_EQ(strlen(kTest4) + 1 - kOffset5, bs5.GetLength());
+    EXPECT_EQ(0, memcmp(kTest4 + kOffset5, bs5.GetData(), bs5.GetLength()));
+  }
+}
+
+TEST_F(ByteStringTest, SubStringOffset) {
+  const size_t kFramgmetOffset = 3;
+  const size_t kFragmentLength = 4;
+  ByteString bs1(kTest1, sizeof(kTest1));
+  ByteString fragment(kTest1, kFramgmetOffset + kFragmentLength);
+  fragment.RemovePrefix(kFramgmetOffset);
+  EXPECT_TRUE(fragment.Equals(bs1.GetSubstring(kFramgmetOffset,
+                                               kFragmentLength)));
+
+  const int kMargin = sizeof(kTest1) - kFramgmetOffset;
+  ByteString end_fragment(kTest1 + kMargin, sizeof(kTest1) - kMargin);
+  EXPECT_TRUE(end_fragment.Equals(bs1.GetSubstring(kMargin, sizeof(kTest1))));
+
+  // Verify that the ByteString correctly handles accessing a substring
+  // outside the range of the ByteString.
+  const size_t kBogusOffset = 10;
+  EXPECT_TRUE(bs1.GetSubstring(sizeof(kTest1), kBogusOffset).IsEmpty());
+}
+
+TEST_F(ByteStringTest, ResizeOffset) {
+  ByteString bs(kTest2, sizeof(kTest2));
+  const size_t kOffset = 1;
+  bs.RemovePrefix(kOffset);
+
+  const size_t kSizeExtension = 10;
+  bs.Resize(sizeof(kTest2) + kSizeExtension);
+  EXPECT_EQ(sizeof(kTest2) + kSizeExtension, bs.GetLength());
+  ASSERT_TRUE(bs.GetData() != NULL);
+  EXPECT_EQ(0, memcmp(bs.GetData(),
+                      kTest2 + kOffset,
+                      sizeof(kTest2) - kOffset));
+  for (size_t i = sizeof(kTest2) - kOffset;
+       i < sizeof(kTest2) + kSizeExtension; ++i) {
+    EXPECT_EQ(0, bs.GetData()[i]);
+  }
+
+  const size_t kSizeReduction = 2;
+  bs.Resize(sizeof(kTest2) - kSizeReduction);
+  EXPECT_EQ(sizeof(kTest2) - kSizeReduction, bs.GetLength());
+  EXPECT_EQ(0, memcmp(bs.GetData(), kTest2 + kOffset,
+                      sizeof(kTest2) - kSizeReduction));
+}
+
+TEST_F(ByteStringTest, HexEncodeWithOffset) {
+  ByteString bs(kTest2, sizeof(kTest2));
+  const size_t kOffset = 2;
+  const size_t kBytesPerHexDigit = 2;
+  bs.RemovePrefix(kOffset);
+  EXPECT_EQ(kTest2HexString + kOffset * kBytesPerHexDigit, bs.HexEncode());
+}
+
+TEST_F(ByteStringTest, ChopByteClear) {
+  ByteString bs(kTest1, sizeof(kTest1));
+  ByteString expected_result(kTest2, sizeof(kTest2));
+  bs.RemovePrefix(5);
+  bs.Clear();
+  bs.Append(ByteString(kTest2, sizeof(kTest2)));
+
+  EXPECT_TRUE(bs.Equals(expected_result));
 }
 
 }  // namespace shill

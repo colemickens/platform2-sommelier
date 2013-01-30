@@ -8,9 +8,33 @@
 
 #include <base/string_number_conversions.h>
 
+using std::distance;
 using std::string;
 
 namespace shill {
+
+ByteString::ByteString(const ByteString &b) {
+  data_.assign(Vector::const_iterator(b.begin_), b.data_.end());
+  begin_ = data_.begin();
+}
+
+ByteString &ByteString::operator=(const ByteString &b) {
+  data_.assign(Vector::const_iterator(b.begin_), b.data_.end());
+  begin_ = data_.begin();
+  return *this;
+}
+
+unsigned char *ByteString::GetData() {
+  return (GetLength() == 0) ? NULL : &*begin_;
+}
+
+const unsigned char *ByteString::GetConstData() const {
+  return (GetLength() == 0) ? NULL : &*begin_;
+}
+
+size_t ByteString::GetLength() const {
+  return distance(Vector::const_iterator(begin_), data_.end());
+}
 
 ByteString ByteString::GetSubstring(size_t offset, size_t length) const {
   if (offset > GetLength()) {
@@ -33,7 +57,7 @@ ByteString ByteString::CreateFromNetUInt32(uint32 val) {
 }
 
 bool ByteString::ConvertToCPUUInt32(uint32 *val) const {
-  if (val == NULL || data_.size() != sizeof(*val)) {
+  if (val == NULL || GetLength() != sizeof(*val)) {
     return false;
   }
   memcpy(val, GetConstData(), sizeof(*val));
@@ -50,8 +74,7 @@ bool ByteString::ConvertToNetUInt32(uint32 *val) const {
 }
 
 bool ByteString::IsZero() const {
-  for (std::vector<unsigned char>::const_iterator i = data_.begin();
-       i != data_.end(); ++i) {
+  for (Vector::const_iterator i = begin_; i != data_.end(); ++i) {
     if (*i != 0) {
       return false;
     }
@@ -63,8 +86,10 @@ bool ByteString::BitwiseAnd(const ByteString &b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
-  for (size_t i = 0; i < GetLength(); ++i) {
-    data_[i] &= b.data_[i];
+  Vector::iterator lhs(begin_);
+  Vector::const_iterator rhs(b.begin_);
+  while (lhs != data_.end()) {
+    *lhs++ &= *rhs++;
   }
   return true;
 }
@@ -73,28 +98,65 @@ bool ByteString::BitwiseOr(const ByteString &b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
-  for (size_t i = 0; i < GetLength(); ++i) {
-    data_[i] |= b.data_[i];
+  Vector::iterator lhs(begin_);
+  Vector::const_iterator rhs(b.begin_);
+  while (lhs != data_.end()) {
+    *lhs++ |= *rhs++;
   }
   return true;
 }
 
 void ByteString::BitwiseInvert() {
-  for (size_t i = 0; i < GetLength(); ++i) {
-    data_[i] = ~data_[i];
+  for (Vector::iterator i = begin_; i != data_.end(); ++i) {
+    *i = ~*i;
   }
 }
 
 bool ByteString::Equals(const ByteString &b) const {
-  return data_ == b.data_;
+  if (GetLength() != b.GetLength()) {
+    return false;
+  }
+  Vector::const_iterator lhs(begin_);
+  Vector::const_iterator rhs(b.begin_);
+  while(lhs != data_.end()) {
+    if (*lhs++ != *rhs++) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void ByteString::Append(const ByteString &b) {
-  data_.insert(data_.end(), b.data_.begin(), b.data_.end());
+  // Save and reapply offset since |insert| may reallocate the memory and
+  // invalidate the iterator.
+  size_t offset = distance(data_.begin(), begin_);
+  data_.insert(data_.end(), Vector::const_iterator(b.begin_), b.data_.end());
+  begin_ = data_.begin() + offset;
+}
+
+void ByteString::Clear() {
+  data_.clear();
+  begin_ = data_.begin();
+}
+
+void ByteString::Resize(int size) {
+  // Save and reapply offset since |resize| may reallocate the memory and
+  // invalidate the iterator.
+  size_t offset = distance(data_.begin(), begin_);
+  data_.resize(size + offset, 0);
+  begin_ = data_.begin() + offset;
 }
 
 string ByteString::HexEncode() const {
   return base::HexEncode(GetConstData(), GetLength());
+}
+
+void ByteString::RemovePrefix(size_t offset) {
+  if (offset >= GetLength()) {
+    begin_ = data_.end();
+  } else {
+    begin_ += offset;
+  }
 }
 
 }  // namespace shill
