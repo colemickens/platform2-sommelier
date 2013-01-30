@@ -243,6 +243,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateScanningProperty);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);

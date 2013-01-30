@@ -577,6 +577,54 @@ TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
                                        vector<string>());
 }
 
+TEST_F(CellularCapabilityUniversalTest, UpdateServiceName) {
+  ::DBus::Struct<uint32_t, bool> data;
+  data._1 = 100;
+  data._2 = true;
+  EXPECT_CALL(*modem_proxy_, SignalQuality()).WillRepeatedly(Return(data));
+
+  SetUp();
+  InitProviderDB();
+  capability_->InitProxies();
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+
+  SetService();
+
+  size_t len = strlen(CellularCapabilityUniversal::kGenericServiceNamePrefix);
+  EXPECT_EQ(CellularCapabilityUniversal::kGenericServiceNamePrefix,
+            cellular_->service_->friendly_name().substr(0, len));
+
+  capability_->imsi_ = "310240123456789";
+  capability_->SetHomeProvider();
+  EXPECT_EQ("", capability_->spn_);
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+  EXPECT_EQ(CellularCapabilityUniversal::kGenericServiceNamePrefix,
+            cellular_->service_->friendly_name().substr(0, len));
+
+  capability_->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  capability_->SetHomeProvider();
+  EXPECT_EQ("", capability_->spn_);
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+  EXPECT_EQ("T-Mobile", cellular_->service_->friendly_name());
+
+  capability_->spn_ = "Test Home Provider";
+  capability_->SetHomeProvider();
+  EXPECT_EQ("Test Home Provider", cellular_->home_provider().GetName());
+  EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
+
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "", "OTA Name");
+  EXPECT_EQ("OTA Name", cellular_->service_->friendly_name());
+
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "123", "OTA Name 2");
+  EXPECT_EQ("OTA Name 2", cellular_->service_->friendly_name());
+
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "123", "");
+  EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
+}
+
 TEST_F(CellularCapabilityUniversalTest, SimPathChanged) {
   // Set up mock modem SIM properties
   const char kImsi[] = "310100000001";
@@ -1134,7 +1182,12 @@ TEST_F(CellularCapabilityUniversalTest, UpdateStorageIdentifier) {
   SetService();
 
   const string prefix = "cellular_" + string(kMachineAddress) + "_";
-  const string default_identifier_pattern = prefix + "GSMNetwork*";
+  string default_identifier_pattern =
+      prefix + string(CellularCapabilityUniversal::kGenericServiceNamePrefix);
+  std::replace_if(default_identifier_pattern.begin(),
+                  default_identifier_pattern.end(),
+                  &Service::IllegalChar, '_');
+  default_identifier_pattern += "*";
 
   // |capability_->operator_id_| is "".
   capability_->UpdateStorageIdentifier();
@@ -1249,8 +1302,8 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId) {
 
 TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
   CellularCapabilityUniversal::friendly_service_name_id_ = 0;
-  EXPECT_EQ("GSMNetwork0", capability_->CreateFriendlyServiceName());
-  EXPECT_EQ("GSMNetwork1", capability_->CreateFriendlyServiceName());
+  EXPECT_EQ("Mobile Network 0", capability_->CreateFriendlyServiceName());
+  EXPECT_EQ("Mobile Network 1", capability_->CreateFriendlyServiceName());
 
   capability_->operator_id_ = "0123";
   EXPECT_EQ("cellular_0123", capability_->CreateFriendlyServiceName());

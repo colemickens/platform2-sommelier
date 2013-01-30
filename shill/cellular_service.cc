@@ -339,7 +339,7 @@ void CellularService::SetOLP(const OLP &olp) {
                                   olp.ToDict());
 }
 
-void CellularService::SetUsageURL(const std::string &url) {
+void CellularService::SetUsageURL(const string &url) {
   if (url == usage_url_) {
     return;
   }

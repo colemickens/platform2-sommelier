@@ -51,6 +51,8 @@ const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
 const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
+const char CellularCapabilityUniversal::kGenericServiceNamePrefix[] =
+    "Mobile Network";
 const char CellularCapabilityUniversal::kStatusProperty[] = "status";
 const char CellularCapabilityUniversal::kOperatorLongProperty[] =
     "operator-long";
@@ -533,6 +535,13 @@ void CellularCapabilityUniversal::GetProperties() {
   OnModem3GPPPropertiesChanged(properties, vector<string>());
 }
 
+// static
+string CellularCapabilityUniversal::GenerateNewGenericServiceName() {
+  return base::StringPrintf("%s %u",
+                            kGenericServiceNamePrefix,
+                            friendly_service_name_id_++);
+}
+
 string CellularCapabilityUniversal::CreateFriendlyServiceName() {
   SLOG(Cellular, 2) << __func__ << ": " << GetRoamingStateString();
 
@@ -557,11 +566,10 @@ string CellularCapabilityUniversal::CreateFriendlyServiceName() {
       !home_provider_name.empty()) {
     return home_provider_name;
   }
-  string serving_operator_code = serving_operator_.GetCode();
-  if (!serving_operator_code.empty()) {
-    return "cellular_" + serving_operator_code;
+  if (!serving_operator_.GetCode().empty()) {
+    return "cellular_" + serving_operator_.GetCode();
   }
-  return base::StringPrintf("GSMNetwork%u", friendly_service_name_id_++);
+  return GenerateNewGenericServiceName();
 }
 
 void CellularCapabilityUniversal::SetHomeProvider() {
@@ -611,6 +619,7 @@ void CellularCapabilityUniversal::SetHomeProvider() {
                     << oper.GetName() << ", " << oper.GetCountry()
                     << (provider_requires_roaming_ ? ", roaming required" : "");
   InitAPNList();
+  UpdateServiceName();
 }
 
 void CellularCapabilityUniversal::UpdateScanningProperty() {
@@ -662,8 +671,16 @@ void CellularCapabilityUniversal::UpdateOLP() {
   cellular()->service()->SetOLP(olp);
 }
 
+void CellularCapabilityUniversal::UpdateServiceName() {
+  if (cellular()->service()) {
+    cellular()->service()->SetFriendlyName(CreateFriendlyServiceName());
+  }
+}
+
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
   SLOG(Cellular, 2) << __func__;
+  // TODO(armansito): Use CellularOperatorInfo here instead of
+  // mobile_provider_db.
 
   // Sometimes the modem fails to acquire the operator code OTA, in which case
   // |serving_operator_| may not have an operator ID (sometimes due to service
@@ -1447,8 +1464,14 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
   registration_state_ = state;
   serving_operator_.SetCode(operator_code);
   serving_operator_.SetName(operator_name);
+
+  // Update the carrier name for |serving_operator_|.
   UpdateOperatorInfo();
+
   cellular()->HandleNewRegistrationState();
+
+  // Update the user facing name of the cellular service.
+  UpdateServiceName();
 }
 
 void CellularCapabilityUniversal::OnModemStateChangedSignal(

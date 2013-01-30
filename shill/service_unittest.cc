@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -915,6 +915,30 @@ TEST_F(ServiceTest, SetCheckPortal) {
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
   }
+}
+
+TEST_F(ServiceTest, SetFriendlyName) {
+  EXPECT_EQ(service_->unique_name_, service_->friendly_name_);
+  ServiceMockAdaptor *adaptor =
+      dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+
+  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
+  service_->SetFriendlyName(service_->unique_name_);
+  EXPECT_EQ(service_->unique_name_, service_->friendly_name_);
+
+  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kNameProperty,
+                                          "Test Name 1"));
+  service_->SetFriendlyName("Test Name 1");
+  EXPECT_EQ("Test Name 1", service_->friendly_name_);
+
+  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
+  service_->SetFriendlyName("Test Name 1");
+  EXPECT_EQ("Test Name 1", service_->friendly_name_);
+
+  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kNameProperty,
+                                          "Test Name 2"));
+  service_->SetFriendlyName("Test Name 2");
+  EXPECT_EQ("Test Name 2", service_->friendly_name_);
 }
 
 TEST_F(ServiceTest, SetConnectable) {

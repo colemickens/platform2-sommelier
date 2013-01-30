@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -1365,6 +1365,13 @@ void Service::SaveToProfile() {
   if (profile_.get() && profile_->GetConstStorage()) {
     profile_->UpdateService(this);
   }
+}
+
+void Service::SetFriendlyName(const string &friendly_name) {
+  if (friendly_name == friendly_name_)
+    return;
+  friendly_name_ = friendly_name;
+  adaptor()->EmitStringChanged(flimflam::kNameProperty, friendly_name_);
 }
 
 void Service::SetStrength(uint8 strength) {

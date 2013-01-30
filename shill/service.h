@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -347,6 +347,8 @@ class Service : public base::RefCounted<Service> {
   bool favorite() const { return favorite_; }
   // Setter is deliberately omitted; use MakeFavorite.
 
+  // Sets the flimflam::kNameProperty
+  void SetFriendlyName(const std::string &friendly_name);
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
 
   const std::string &guid() const { return guid_; }
@@ -558,9 +560,10 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringCrypted);
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
-  FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, SetConnectable);
+  FRIEND_TEST(ServiceTest, SetFriendlyName);
+  FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, Unload);
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);

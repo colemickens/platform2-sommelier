@@ -126,6 +126,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Modem Model ID strings.  From modem firmware via modemmanager.
   static const char kE362ModelId[];
 
+  // Generic service name prefix, shown when the correct carrier name is
+  // unknown.
+  static const char kGenericServiceNamePrefix[];
+
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
@@ -150,6 +154,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
@@ -170,6 +175,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_Disable(const ResultCallback &callback);
   void Stop_DisableCompleted(const ResultCallback &callback,
                              const Error &error);
+
+  // Updates the name property that is exposed by the service to Chrome.
+  void UpdateServiceName();
 
   void UpdateScanningProperty();
 
@@ -281,6 +289,8 @@ class CellularCapabilityUniversal : public CellularCapability {
                       const Error &error);
   void OnListBearersReply(const std::vector<DBus::Path> &paths,
                           const Error &error);
+
+  static std::string GenerateNewGenericServiceName();
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
