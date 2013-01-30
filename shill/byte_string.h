@@ -15,34 +15,37 @@ namespace shill {
 // Provides a holder of a string of bytes
 class ByteString {
  public:
-  ByteString() {}
-  ByteString(const ByteString &b) : data_(b.data_) {}
-  explicit ByteString(size_t length) : data_(length) {}
+  ByteString() : initial_offset_(0) {}
+  ByteString(const ByteString &b) : data_(b.data_), initial_offset_(0) {}
+  explicit ByteString(size_t length) : data_(length), initial_offset_(0) {}
 
   ByteString(const unsigned char *data, size_t length)
-      : data_(data, data + length) {}
+      : data_(data, data + length), initial_offset_(0) {}
 
   ByteString(const char *data, size_t length)
-      : data_(data, data + length) {}
+      : data_(data, data + length), initial_offset_(0) {}
 
   ByteString(const signed char *data, size_t length)
-      : data_(data, data + length) {}
+      : data_(data, data + length), initial_offset_(0) {}
 
   ByteString(const std::string &data, bool copy_terminator)
     : data_(reinterpret_cast<const unsigned char *>(data.c_str()),
             reinterpret_cast<const unsigned char *>(data.c_str() +
                                                     data.length() +
                                                     (copy_terminator ?
-                                                     1 : 0))) {}
+                                                     1 : 0))),
+      initial_offset_(0) {}
 
   ByteString &operator=(const ByteString &b) {
     data_ = b.data_;
+    initial_offset_ = b.initial_offset_;
     return *this;
   }
 
-  unsigned char *GetData() { return data_.data(); }
-  const unsigned char *GetConstData() const { return data_.data(); }
-  size_t GetLength() const { return data_.size(); }
+  unsigned char *GetData();
+  const unsigned char *GetConstData() const;
+
+  size_t GetLength() const { return data_.size() - initial_offset_; }
 
   // Returns a ByteString containing |length| bytes from the ByteString
   // starting at |offset|.  This function truncates the returned string
@@ -86,13 +89,17 @@ class ByteString {
   void Append(const ByteString &b);
   void Clear() { data_.clear(); }
   void Resize(int size) {
-    data_.resize(size, 0);
+    data_.resize(size + initial_offset_, 0);
   }
 
   std::string HexEncode() const;
+  void ChopBeginningBytes(size_t offset);
 
  private:
   std::vector<unsigned char> data_;
+
+  // Permit chopping-off the front part of the data without requiring a copy.
+  size_t initial_offset_;
   // NO DISALLOW_COPY_AND_ASSIGN -- we assign ByteStrings in STL hashes
 };
 

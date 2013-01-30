@@ -12,6 +12,14 @@ using std::string;
 
 namespace shill {
 
+unsigned char *ByteString::GetData() {
+  return (GetLength() == 0) ? NULL : data_.data() + initial_offset_;
+}
+
+const unsigned char *ByteString::GetConstData() const {
+  return (GetLength() == 0) ? NULL : data_.data() + initial_offset_;
+}
+
 ByteString ByteString::GetSubstring(size_t offset, size_t length) const {
   if (offset > GetLength()) {
     offset = GetLength();
@@ -33,7 +41,7 @@ ByteString ByteString::CreateFromNetUInt32(uint32 val) {
 }
 
 bool ByteString::ConvertToCPUUInt32(uint32 *val) const {
-  if (val == NULL || data_.size() != sizeof(*val)) {
+  if (val == NULL || GetLength() != sizeof(*val)) {
     return false;
   }
   memcpy(val, GetConstData(), sizeof(*val));
@@ -50,8 +58,9 @@ bool ByteString::ConvertToNetUInt32(uint32 *val) const {
 }
 
 bool ByteString::IsZero() const {
-  for (std::vector<unsigned char>::const_iterator i = data_.begin();
-       i != data_.end(); ++i) {
+  std::vector<unsigned char>::const_iterator i = data_.begin() +
+      initial_offset_;
+  for (; i != data_.end(); ++i) {
     if (*i != 0) {
       return false;
     }
@@ -63,8 +72,11 @@ bool ByteString::BitwiseAnd(const ByteString &b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
+  std::vector<unsigned char>::iterator lhs = data_.begin() + initial_offset_;
+  std::vector<unsigned char>::const_iterator rhs =
+      b.data_.begin() + b.initial_offset_;
   for (size_t i = 0; i < GetLength(); ++i) {
-    data_[i] &= b.data_[i];
+    *lhs++ &= *rhs++;
   }
   return true;
 }
@@ -73,28 +85,52 @@ bool ByteString::BitwiseOr(const ByteString &b) {
   if (GetLength() != b.GetLength()) {
     return false;
   }
+  std::vector<unsigned char>::iterator lhs = data_.begin() + initial_offset_;
+  std::vector<unsigned char>::const_iterator rhs =
+      b.data_.begin() + b.initial_offset_;
   for (size_t i = 0; i < GetLength(); ++i) {
-    data_[i] |= b.data_[i];
+    *lhs++ |= *rhs++;
   }
   return true;
 }
 
 void ByteString::BitwiseInvert() {
-  for (size_t i = 0; i < GetLength(); ++i) {
+  for (size_t i = initial_offset_; i < GetLength() + initial_offset_; ++i) {
     data_[i] = ~data_[i];
   }
 }
 
 bool ByteString::Equals(const ByteString &b) const {
-  return data_ == b.data_;
+  if (GetLength() != b.GetLength()) {
+    return false;
+  }
+  std::vector<unsigned char>::const_iterator lhs =
+      data_.begin() + initial_offset_;
+  std::vector<unsigned char>::const_iterator rhs =
+      b.data_.begin() + b.initial_offset_;
+  for (size_t i = 0; i < GetLength(); ++i) {
+    if (*lhs++ != *rhs++) {
+      return false;
+    }
+  }
+  return true;
 }
 
 void ByteString::Append(const ByteString &b) {
-  data_.insert(data_.end(), b.data_.begin(), b.data_.end());
+  data_.insert(data_.end(), b.data_.begin() + b.initial_offset_,
+               b.data_.end());
 }
 
 string ByteString::HexEncode() const {
   return base::HexEncode(GetConstData(), GetLength());
+}
+
+void ByteString::ChopBeginningBytes(size_t offset) {
+  if (offset >= GetLength()) {
+    initial_offset_ = data_.size();
+  } else {
+    initial_offset_ += offset;
+  }
 }
 
 }  // namespace shill
