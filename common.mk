@@ -64,7 +64,11 @@
 # Possible command line variables:
 #   - COLOR=[0|1] to set ANSI color output (default: 1)
 #   - VERBOSE=[0|1] to hide/show commands (default: 0)
-#   - MODE=dbg to turn down optimizations (default: opt)
+#   - MODE=[opt|dbg|profiling] (default: opt)
+#          opt - Enable optimizations for release builds
+#          dbg - Turn down optimization for debugging
+#          profiling - Turn off optimization and turn on profiling/coverage
+#                      support.
 #   - ARCH=[x86|arm|supported qemu name] (default: from portage or uname -m)
 #   - SPLITDEBUG=[0|1] splits debug info in target.debug (default: 0)
 #        If NOSTRIP=1, SPLITDEBUG will never strip the final emitted objects.
@@ -97,8 +101,6 @@ COLOR ?= 1
 VERBOSE ?= 0
 MODE ?= opt
 ARCH ?= $(shell uname -m)
-# TODO: profiling support not completed.
-PROFILING ?= 0
 NEEDS_ROOT = 0
 NEEDS_MOUNTS = 0
 
@@ -269,10 +271,6 @@ else
 CXXDRIVER = gcc
 endif
 
-ifeq ($(PROFILING),1)
-  $(warning PROFILING=1 disables relocatable executables.)
-endif
-
 # To update these from an including Makefile:
 #  CXXFLAGS += -mahflag  # Append to the list
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
@@ -286,10 +284,6 @@ CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 
-ifeq ($(PROFILING),1)
-  CFLAGS := -pg
-  CXXFLAGS := -pg
-endif
 
 ifeq ($(MODE),opt)
   # Up the optimizations.
@@ -301,6 +295,12 @@ ifeq ($(MODE),opt)
     CFLAGS := $(filter-out -ggdb3,$(CFLAGS))
     CXXFLAGS := $(filter-out -ggdb3,$(CXXFLAGS))
   endif
+endif
+
+ifeq ($(MODE),profiling)
+  CFLAGS := $(CFLAGS) -O0 -g  --coverage
+  CXXFLAGS := $(CXXFLAG) -O0 -g  --coverage
+  LDFLAGS := $(LDFLAGS) --coverage
 endif
 
 LDFLAGS := $(LDFLAGS) -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now
@@ -647,7 +647,27 @@ all:
 
 # Builds and runs tests for the target arch
 # Run them in parallel
+# After the test have completed, if profiling, run coverage analysis
 tests:
+ifeq ($(MODE),profiling)
+	@$(ECHO) -n "COVERAGE		gcov "
+	@$(ECHO) "[$(COLOR_YELLOW)STARTED$(COLOR_RESET)]"
+	$(QUIET)(FILES="";						\
+		for GCNO in `find . -name "*.gcno"`;			\
+		do							\
+			GCDA="$${GCNO%.gcno}.gcda";			\
+			[ -e $${GCDA} ] && FILES="$${FILES} $${GCDA}";	\
+		done;							\
+		gcov -l $${FILES})
+	@$(ECHO) -n "COVERAGE		gcov "
+	@$(ECHO) "[$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
+	@$(ECHO) -n "COVERAGE		lcov "
+	@$(ECHO) "[$(COLOR_YELLOW)STARTED$(COLOR_RESET)]"
+	$(QUIET)lcov --capture --directory . --output-file=lcov-coverage.info
+	$(QUIET)genhtml lcov-coverage.info --output-directory lcov-html
+	@$(ECHO) -n "COVERAGE		lcov "
+	@$(ECHO) "[$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
+endif
 .PHONY: tests
 
 qemu_clean:
@@ -752,6 +772,8 @@ endef
 clean: qemu_clean
 clean: CLEAN($(OUT)*.d) CLEAN($(OUT)*.o) CLEAN($(OUT)*.debug)
 clean: CLEAN($(OUT)*.test) CLEAN($(OUT)*.depends)
+clean: CLEAN($(OUT)*.gcno) CLEAN($(OUT)*.gcda) CLEAN($(OUT)*.gcov)
+clean: CLEAN($(OUT)lcov-coverage.info) CLEAN($(OUT)lcov-html)
 
 clean:
 	$(QUIET)# Always delete the containing directory last.
@@ -795,6 +817,9 @@ $(eval LD_DIRS := $(LD_DIRS):$(OUT)$(MODULE))
 clean: CLEAN($(OUT)$(MODULE)/*.d) CLEAN($(OUT)$(MODULE)/*.o)
 clean: CLEAN($(OUT)$(MODULE)/*.debug) CLEAN($(OUT)$(MODULE)/*.test)
 clean: CLEAN($(OUT)$(MODULE)/*.depends)
+clean: CLEAN($(OUT)$(MODULE)/*.gcno) CLEAN($(OUT)$(MODULE)/*.gcda)
+clean: CLEAN($(OUT)$(MODULE)/*.gcov) CLEAN($(OUT)lcov-coverage.info)
+clean: CLEAN($(OUT)lcov-html)
 
 $(info + submodule: $(MODULE_NAME))
 # We must eval otherwise they may be dropped.
