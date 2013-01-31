@@ -78,8 +78,10 @@ void AsyncFileReader::StartRead(
 }
 
 gboolean AsyncFileReader::UpdateState() {
-  if (!read_in_progress_)
+  if (!read_in_progress_) {
+    update_state_timeout_id_ = 0;
     return FALSE;
+  }
 
   int status = aio_error(&aio_control_);
 
