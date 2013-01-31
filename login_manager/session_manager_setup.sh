@@ -265,8 +265,10 @@ if [ "$(uname -m)" = "armv7l" ] ; then
 fi
 
 EVDA_FLAGS=
+PPAPI_OOP_FLAG=
 if is_board daisy; then
   EVDA_FLAGS="--use-exynos-vda"
+  PPAPI_OOP_FLAG="--ppapi-out-of-process"
   # On boards with ARM NEON support, force libvpx to use the NEON-optimized
   # code paths. Remove once http://crbug.com/161834 is fixed.
   # This is needed because libvpx cannot check cpuinfo within the sandbox.
@@ -387,5 +389,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
+            ${PPAPI_OOP_FLAG} \
             ${EVDA_FLAGS} \
             ${VMODULE_FLAG}
