@@ -162,7 +162,7 @@ GLuint DdxDdyShaderProgram(bool ddx, GLuint vertex_buffer) {
 
 
 bool VaryingsAndDdxyShaderTest::Run() {
-  glViewport(-g_width, -g_height, g_width*2, g_height*2);
+  glViewport(0, 0, g_width, g_height);
 
   const int c = 4;
   GLfloat *vertices = NULL;

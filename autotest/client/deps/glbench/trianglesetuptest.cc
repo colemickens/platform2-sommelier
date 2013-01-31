@@ -36,11 +36,13 @@ const char* kFragmentShader =
     "}";
 
 bool TriangleSetupTest::Run() {
-  glViewport(-g_width, -g_height, g_width*2, g_height*2);
+  glViewport(0, 0, g_width, g_height);
 
+  // This specifies a square mesh in the middle of the viewport.
   // Larger meshes make this test too slow for devices that do 1 mtri/sec.
-  GLint width = 64;
-  GLint height = 64;
+  // Also note that GLES 2.0 uses 16 bit indices.
+  GLint width = 128;
+  GLint height = 128;
 
   GLfloat *vertices = NULL;
   GLsizeiptr vertex_buffer_size = 0;
@@ -62,8 +64,9 @@ bool TriangleSetupTest::Run() {
   GLsizeiptr index_buffer_size = 0;
 
   {
-    const GLfloat white[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glUniform4fv(color_uniform, 1, white);
+    // Use orange for drawing solid/all culled quads.
+    const GLfloat orange[4] = {1.0f, 0.5f, 0.0f, 1.0f};
+    glUniform4fv(color_uniform, 1, orange);
     count_ = CreateMesh(&indices, &index_buffer_size, width, height, 0);
 
     index_buffer = SetupVBO(GL_ELEMENT_ARRAY_BUFFER,
@@ -78,7 +81,8 @@ bool TriangleSetupTest::Run() {
   }
 
   {
-    const GLfloat cyan[4] = {0.0f, 1.0f, 1.0f, 1.0f};
+    // Use blue-ish color for drawing quad with many holes.
+    const GLfloat cyan[4] = {0.0f, 0.5f, 0.5f, 1.0f};
     glUniform4fv(color_uniform, 1, cyan);
     count_ = CreateMesh(&indices, &index_buffer_size, width, height,
                         RAND_MAX / 2);

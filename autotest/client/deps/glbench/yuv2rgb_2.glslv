@@ -39,7 +39,7 @@ varying vec2 uPlane;
 varying vec2 vPlane;
 
 void main() {
-  gl_Position = c;
+  gl_Position = vec4(2.0 * c.x - 1.0, 2.0 * c.y - 1.0, 0.0, 1.0);
   lineCounter = vec2(c.y * imageHeight / 4.0, 0.0);
   yPlane = vec2(c.x, 1. - (2.0 * c.y + 1.0) / 3.0);
   uPlane = vec2(c.x / 2.0, 1. - (c.y + 1.0) / 6.0);

@@ -104,15 +104,17 @@ GLuint SetupVBO(GLenum target, GLsizeiptr size, const GLvoid *data) {
   return buf;
 }
 
-// Generates a tautological lattice.
+// Generates a lattice symmetric around the origin (all quadrants).
 void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
                    GLfloat size_x, GLfloat size_y, int width, int height)
 {
   GLfloat *vptr = *vertices = new GLfloat[2 * (width + 1) * (height + 1)];
+  GLfloat shift_x = size_x * width;
+  GLfloat shift_y = size_y * height;
   for (int j = 0; j <= height; j++) {
     for (int i = 0; i <= width; i++) {
-      *vptr++ = i * size_x;
-      *vptr++ = j * size_y;
+      *vptr++ = 2 * i * size_x - shift_x;
+      *vptr++ = 2 * j * size_y - shift_y;
     }
   }
   *size = (vptr - *vertices) * sizeof(GLfloat);
@@ -122,7 +124,7 @@ void CreateLattice(GLfloat **vertices, GLsizeiptr *size,
 // back facing triangles is culled_ratio/RAND_MAX.  Returns the number of
 // vertices in the mesh.
 int CreateMesh(GLushort **indices, GLsizeiptr *size,
-                      int width, int height, int culled_ratio) {
+               int width, int height, int culled_ratio) {
   srand(0);
 
   // We use 16 bit indices for compatibility with GL ES

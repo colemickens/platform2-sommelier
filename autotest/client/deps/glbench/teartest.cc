@@ -47,7 +47,7 @@ const char *vertex_shader =
     "uniform float shift;"
     "varying vec4 v1;"
     "void main() {"
-    "    gl_Position = c;"
+    "    gl_Position = vec4(2.0 * c.x - 1.0, 2.0 * c.y - 1.0, 0.0, 1.0);"
     "    v1 = vec4(c.y, c.x - shift, 0.0, 0.0);"
     "}";
 
@@ -183,8 +183,7 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  glViewport(-g_width, -g_height, g_width*2, g_height*2);
-
+  glViewport(0, 0, g_width, g_height);
   GLuint texture = GenerateAndBindTexture();
 
   GLfloat vertices[8] = {

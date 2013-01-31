@@ -52,6 +52,17 @@ void printDateTime(void) {
   printf("# DateTime: %s\n", time_string);
 }
 
+bool PassesSanityCheck(void) {
+  GLint viewport[2];
+  glGetIntegerv(GL_MAX_VIEWPORT_DIMS, viewport);
+  if (viewport[0] < g_width || viewport[1] < g_height) {
+    printf("# Error: MAX_VIEWPORT_DIMS=(%d, %d) are too small.\n",
+           viewport[0], viewport[1]);
+    return false;
+  }
+  return true;
+}
+
 int main(int argc, char *argv[]) {
   SetBasePathFromArgv0(argv[0], "src");
   google::ParseCommandLineFlags(&argc, &argv, false);
@@ -74,6 +85,8 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
   printDateTime();
+  if (!PassesSanityCheck())
+    return 1;
 
   vector<string> enabled_tests;
   base::SplitString(FLAGS_tests, ':', &enabled_tests);

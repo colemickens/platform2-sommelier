@@ -225,8 +225,7 @@ bool YuvToRgbTest::Run() {
   if (!SetupTextures())
     return false;
 
-  glViewport(-YUV2RGB_WIDTH, -YUV2RGB_PIXEL_HEIGHT,
-             YUV2RGB_WIDTH*2, YUV2RGB_PIXEL_HEIGHT * 2);
+  glViewport(0, 0, YUV2RGB_WIDTH, YUV2RGB_PIXEL_HEIGHT);
 
   YuvTestFlavor flavors[] = {
     YUV_PLANAR_ONE_TEXTURE_SLOW, YUV_PLANAR_ONE_TEXTURE_FASTER,

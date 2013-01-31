@@ -33,6 +33,6 @@ attribute vec4 c;
 varying vec4 v1;
 
 void main() {
-  gl_Position = c;
+  gl_Position = vec4(2.0 * c.x - 1.0, 2.0 * c.y - 1.0, 0.0, 1.0);
   v1 = c;
 }

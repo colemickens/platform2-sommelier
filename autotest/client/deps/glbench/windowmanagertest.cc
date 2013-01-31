@@ -29,12 +29,11 @@ GLuint GenerateAndBindTexture() {
   return name;
 }
 
-
 unsigned char* CreateBitmap(int w, int h) {
-  unsigned char* bitmap = new unsigned char[w * h];
+  unsigned char* bitmap = new unsigned char[4 * w * h];
   unsigned char* pixel = bitmap;
-  float w2 = w/2.0f;
-  float h2 = h/2.0f;
+  float w2 = 0.5f * w;
+  float h2 = 0.5f * h;
   for (int y = 0; y < h; y++) {
     for (int x = 0; x < w; x++) {
       // Fill with soft ellipse
@@ -43,7 +42,13 @@ unsigned char* CreateBitmap(int w, int h) {
       float dist2 = dx*dx + dy*dy;
       if (dist2 > 1.f)
         dist2 = 1.f;
-      *pixel = (1.f-dist2) * 255.f;
+      *pixel = (1.f - dist2) * 255.f;
+      pixel++;
+      *pixel = (1.f - dist2) * 255.f;
+      pixel++;
+      *pixel = (1.f - dist2) * 255.f;
+      pixel++;
+      *pixel = 0;
       pixel++;
     }
   }
@@ -53,18 +58,18 @@ unsigned char* CreateBitmap(int w, int h) {
 
 const char kVertexShader[] =
     "attribute vec4 vertices;"
-    "varying vec4 v1;"
+    "varying vec2 v1;"
     "void main() {"
-    "    gl_Position = vertices;"
-    "    v1 = vec4(vertices.yx, 0.0, 0.0);"
+    "    gl_Position = vec4(vertices.x, vertices.y, 0.0, 1.0);"
+    "    v1 = vec2(0.5 * vertices.x + 0.5, 0.5 * vertices.y + 0.5);"
     "}";
 
 const char kFragmentShader[] =
     "uniform sampler2D tex;"
     "uniform vec4 color;"
-    "varying vec4 v1;"
+    "varying vec2 v1;"
     "void main() {"
-    "    gl_FragColor = color * texture2D(tex, v1.xy);"
+    "    gl_FragColor = color * texture2D(tex, v1);"
     "}";
 
 // Command line flags
@@ -87,17 +92,23 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  glViewport(-g_width, -g_height, g_width*2, g_height*2);
+  GLint viewport[2];
+  glGetIntegerv(GL_MAX_VIEWPORT_DIMS, viewport);
+  if (viewport[0] < g_width || viewport[1] < g_height) {
+    printf("# Error: MAX_VIEWPORT_DIMS too small\n");
+    return 1;
+  }
+  glViewport(0, 0, g_width, g_height);
 
   unsigned char* bitmap = CreateBitmap(g_height, g_width);
   GLuint texture = GenerateAndBindTexture();
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_LUMINANCE, g_height, g_width, 0,
-               GL_LUMINANCE, GL_UNSIGNED_BYTE, bitmap);
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, g_height, g_width, 0,
+               GL_RGBA, GL_UNSIGNED_BYTE, bitmap);
 
   GLfloat vertices[8] = {
-    0.f, 0.f,
-    1.f, 0.f,
-    0.f, 1.f,
+    -1.f, -1.f,
+    1.f, -1.f,
+    -1.f, 1.f,
     1.f, 1.f,
   };
 
@@ -136,7 +147,6 @@ int main(int argc, char* argv[]) {
       glUniform4fv(display_color, 1, blue);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     g_main_gl_interface->SwapBuffers();
-
     // Loop until next event
     float seconds_since_last_event =
         static_cast<float>(GetUTime() - last_event_time) / 1000000ULL;

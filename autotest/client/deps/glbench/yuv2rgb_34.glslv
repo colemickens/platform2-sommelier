@@ -34,6 +34,6 @@ varying vec2 yPlane;
 varying vec2 uvPlane;
 
 void main() {
-  gl_Position = c;
+  gl_Position = vec4(2.0 * c.x - 1.0, 2.0 * c.y - 1.0, 0.0, 1.0);
   yPlane = uvPlane = vec2(c.x, 1. - c.y);
 }

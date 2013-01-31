@@ -90,7 +90,7 @@ bool AttributeFetchShaderTest::Run() {
   GLint width = 64;
   GLint height = 64;
 
-  glViewport(-g_width, -g_height, g_width*2, g_height*2);
+  glViewport(0, 0, g_width, g_height);
 
   GLfloat *vertices = NULL;
   GLsizeiptr vertex_buffer_size = 0;
