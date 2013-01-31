@@ -658,11 +658,11 @@ void CellularCapabilityUniversal::UpdateOLP() {
 void CellularCapabilityUniversal::UpdateOperatorInfo() {
   SLOG(Cellular, 2) << __func__;
 
-  // If service activation is required, |serving_operator_| may not have an
-  // operator ID. Use |operator_id_| as a fallback when available.
-  // |operator_id_| is retrieved from the SIM card.
-  if (IsServiceActivationRequired() && serving_operator_.GetCode().empty() &&
-      !operator_id_.empty()) {
+  // Sometimes the modem fails to acquire the operator code OTA, in which case
+  // |serving_operator_| may not have an operator ID (sometimes due to service
+  // activation being required or broken modem firmware). Use |operator_id_| as
+  // a fallback when available. |operator_id_| is retrieved from the SIM card.
+  if (serving_operator_.GetCode().empty() && !operator_id_.empty()) {
     SLOG(Cellular, 2) << "Assuming operator '" << operator_id_
                       << "' as serving operator.";
     serving_operator_.SetCode(operator_id_);
