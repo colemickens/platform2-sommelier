@@ -447,8 +447,11 @@ void Cellular::Connect(Error *error) {
                            weak_ptr_factory_.GetWeakPtr());
   OnConnecting();
   capability_->Connect(properties, error, cb);
-  if (error->IsSuccess())
-    metrics()->NotifyDeviceConnectStarted(interface_index());
+  if (!error->IsSuccess())
+    return;
+
+  bool is_auto_connecting = service_.get() && service_->is_auto_connecting();
+  metrics()->NotifyDeviceConnectStarted(interface_index(), is_auto_connecting);
 }
 
 // Note that there's no ResultCallback argument to this,

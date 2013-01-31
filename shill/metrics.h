@@ -282,6 +282,14 @@ class Metrics {
   static const int kMetricCellularSignalStrengthBeforeDropMax;
   static const int kMetricCellularSignalStrengthBeforeDropMin;
   static const int kMetricCellularSignalStrengthBeforeDropNumBuckets;
+  static const char kMetricCellularAutoConnectTries[];
+  static const int kMetricCellularAutoConnectTriesMax;
+  static const int kMetricCellularAutoConnectTriesMin;
+  static const int kMetricCellularAutoConnectTriesNumBuckets;
+  static const char kMetricCellularAutoConnectTotalTime[];
+  static const int kMetricCellularAutoConnectTotalTimeMax;
+  static const int kMetricCellularAutoConnectTotalTimeMin;
+  static const int kMetricCellularAutoConnectTotalTimeNumBuckets;
 
   Metrics();
   virtual ~Metrics();
@@ -390,7 +398,8 @@ class Metrics {
   void NotifyDeviceScanFinished(int interface_index);
 
   // Notifies this object that a device has started the connect process.
-  void NotifyDeviceConnectStarted(int interface_index);
+  void NotifyDeviceConnectStarted(int interface_index,
+                                  bool is_auto_connecting);
 
   // Notifies this object that a device has completed the connect process.
   void NotifyDeviceConnectFinished(int interface_index);
@@ -447,6 +456,8 @@ class Metrics {
     scoped_ptr<chromeos_metrics::TimerReporter> disable_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> scan_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> connect_timer;
+    int auto_connect_tries;
+    scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
   };
   typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;
@@ -472,6 +483,7 @@ class Metrics {
   void SendServiceFailure(const Service *service);
 
   DeviceMetrics *GetDeviceMetrics (int interface_index) const;
+  void AutoConnectMetricsReset(DeviceMetrics *device_metrics);
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);

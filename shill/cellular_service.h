@@ -61,6 +61,7 @@ class CellularService : public Service {
   virtual ~CellularService();
 
   // Inherited from Service.
+  virtual void AutoConnect();
   virtual void Connect(Error *error);
   virtual void Disconnect(Error *error);
   virtual void ActivateCellularModem(const std::string &carrier,
@@ -94,6 +95,10 @@ class CellularService : public Service {
   // Sets roaming state to |state| and broadcasts the property change.
   void SetRoamingState(const std::string &state);
   const std::string &roaming_state() const { return roaming_state_; }
+
+  bool is_auto_connecting() const {
+    return is_auto_connecting_;
+  }
 
   // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
@@ -167,6 +172,12 @@ class CellularService : public Service {
   std::string storage_identifier_;
 
   CellularRefPtr cellular_;
+
+  // Flag indicating that a connect request is an auto-connect request.
+  // Note: Since Connect() is asynchronous, this flag is only set during the
+  // call to Connect().  It does not remain set while the async request is
+  // in flight.
+  bool is_auto_connecting_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };

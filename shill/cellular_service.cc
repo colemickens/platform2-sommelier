@@ -93,7 +93,8 @@ CellularService::CellularService(ControlInterface *control_interface,
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kCellular),
       activate_over_non_cellular_network_(false),
-      cellular_(device) {
+      cellular_(device),
+      is_auto_connecting_(false) {
   set_connectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
@@ -273,6 +274,12 @@ void CellularService::SaveApnField(StoreInterface *storage,
     storage->SetString(storage_group, key, str);
   else
     storage->DeleteKey(storage_group, key);
+}
+
+void CellularService::AutoConnect() {
+  is_auto_connecting_ = true;
+  Service::AutoConnect();
+  is_auto_connecting_ = false;
 }
 
 void CellularService::Connect(Error *error) {
