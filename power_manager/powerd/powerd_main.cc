@@ -45,6 +45,11 @@ DEFINE_string(log_dir, "",
               "Directory to store logs.");
 DEFINE_string(run_dir, "",
               "Directory to store stateful data for daemon.");
+// This flag is handled by libbase/libchrome's logging library instead of
+// directly by powerd, but it is defined here so gflags won't abort after
+// seeing an unexpected flag.
+DEFINE_string(vmodule, "",
+              "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
 namespace {
 
@@ -75,12 +80,14 @@ int main(int argc, char* argv[]) {
   openlog("powerd", LOG_PID, LOG_DAEMON);
   syslog(LOG_NOTICE, "vcsid %s", VCSID);
   closelog();
+
+  // gflags rewrites argv; give base::CommandLine first crack at it.
+  CommandLine::Init(argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
   CHECK(!FLAGS_prefs_dir.empty()) << "--prefs_dir is required";
   CHECK(!FLAGS_log_dir.empty()) << "--log_dir is required";
   CHECK(!FLAGS_run_dir.empty()) << "--run_dir is required";
   CHECK_EQ(argc, 1) << "Unexpected arguments. Try --help";
-  CommandLine::Init(argc, argv);
 
   const string log_latest =
       StringPrintf("%s/powerd.LATEST", FLAGS_log_dir.c_str());
