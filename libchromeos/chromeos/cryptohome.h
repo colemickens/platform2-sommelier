@@ -47,7 +47,19 @@ void SetUserHomePrefix(const std::string& prefix);
 void SetRootHomePrefix(const std::string& prefix);
 
 // Overrides the path of the system salt. This is used for testing only.
+// DEPRECATED: If you are using this, please move to SetSystemSalt().
 void SetSystemSaltPath(const std::string& path);
+
+// Overrides the contents of the system salt.
+// salt should be non-NULL and non-empty when attempting to avoid filesystem
+// usage in tests.
+// Note:
+// (1) Never mix usage with SetSystemSaltPath().
+// (2) Ownership of the pointer stays with the caller.
+void SetSystemSalt(std::string* salt);
+
+// Returns the system salt.
+std::string* GetSystemSalt();
 
 } // namespace home
 } // namespace cryptohome

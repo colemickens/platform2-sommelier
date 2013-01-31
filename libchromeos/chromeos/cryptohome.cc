@@ -120,6 +120,14 @@ void SetSystemSaltPath(const std::string& path) {
   }
 }
 
+std::string* GetSystemSalt() {
+  return salt;
+}
+
+void SetSystemSalt(std::string* value) {
+  salt = value;
+}
+
 } // namespace home
 } // namespace cryptohome
 } // namespace chromeos
