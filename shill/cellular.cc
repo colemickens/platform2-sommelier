@@ -462,6 +462,7 @@ void Cellular::OnConnectReply(const Error &error) {
     metrics()->NotifyDeviceConnectFinished(interface_index());
     OnConnected();
   } else {
+    metrics()->NotifyCellularDeviceFailure(error);
     OnConnectFailed(error);
   }
 }
@@ -511,10 +512,12 @@ void Cellular::Disconnect(Error *error) {
 void Cellular::OnDisconnectReply(const Error &error) {
   SLOG(Cellular, 2) << __func__ << "(" << error << ")";
   explicit_disconnect_ = false;
-  if (error.IsSuccess())
+  if (error.IsSuccess()) {
     OnDisconnected();
-  else
+  } else {
+    metrics()->NotifyCellularDeviceFailure(error);
     OnDisconnectFailed();
+  }
   manager()->TerminationActionComplete(FriendlyName());
   manager()->RemoveTerminationAction(FriendlyName());
 }

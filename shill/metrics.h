@@ -278,6 +278,7 @@ class Metrics {
 
   // Cellular specific statistics.
   static const char kMetricCellularDrop[];
+  static const char kMetricCellularFailureReason[];
   static const char kMetricCellularSignalStrengthBeforeDrop[];
   static const int kMetricCellularSignalStrengthBeforeDropMax;
   static const int kMetricCellularSignalStrengthBeforeDropMin;
@@ -408,6 +409,9 @@ class Metrics {
   // network.
   void NotifyCellularDeviceDrop(const std::string &network_technology,
                                 uint16 signal_strength);
+
+  // Notifies this object about a cellular device failure code.
+  void NotifyCellularDeviceFailure(const Error &error);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

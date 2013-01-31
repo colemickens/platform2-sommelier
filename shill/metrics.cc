@@ -193,6 +193,11 @@ const char Metrics::kMetricLinkApDisconnectType[] =
 // static
 const char Metrics::kMetricCellularDrop[] =
     "Network.Shill.Cellular.Drop";
+// The format of FailureReason is different to other metrics because this
+// name is prepended to the error message before the entire string is sent
+// via SendUserActionToUMA.
+const char Metrics::kMetricCellularFailureReason[] =
+    "Network.Shill.Cellular.FailureReason: ";
 const char Metrics::kMetricCellularSignalStrengthBeforeDrop[] =
     "Network.Shill.Cellular.SignalStrengthBeforeDrop";
 const int Metrics::kMetricCellularSignalStrengthBeforeDropMax = 100;
@@ -821,6 +826,11 @@ void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
             kMetricCellularSignalStrengthBeforeDropMin,
             kMetricCellularSignalStrengthBeforeDropMax,
             kMetricCellularSignalStrengthBeforeDropNumBuckets);
+}
+
+void Metrics::NotifyCellularDeviceFailure(const Error &error) {
+  library_->SendUserActionToUMA(
+      kMetricCellularFailureReason + error.message());
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {
