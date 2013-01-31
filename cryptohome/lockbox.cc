@@ -13,8 +13,6 @@
 #include <stdint.h>
 
 #include <base/logging.h>
-#include <base/file_path.h>
-#include <base/file_util.h>
 #include <base/string_split.h>
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
@@ -22,6 +20,7 @@
 #include <chromeos/utility.h>
 
 #include "cryptolib.h"
+#include "platform.h"
 
 using chromeos::SecureBlob;
 
@@ -51,7 +50,9 @@ Lockbox::Lockbox(Tpm* tpm, uint32_t nvram_index)
     nvram_index_(nvram_index),
     nvram_version_(kNvramVersionDefault),
     process_(new chromeos::ProcessImpl()),
-    contents_(new LockboxContents()) {
+    contents_(new LockboxContents()),
+    default_platform_(new Platform()),
+    platform_(default_platform_.get()) {
 }
 
 Lockbox::~Lockbox() {
@@ -379,9 +380,10 @@ bool Lockbox::ParseSizeBlob(const chromeos::Blob& blob, uint32_t* size) const {
   return true;
 }
 
+// TODO(keescook) Write unittests for this.
 void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
   std::string hex;
-  FilePath outfile_path;
+  std::string outfile_path;
   FILE *outfile;
   int rc;
 
@@ -395,7 +397,7 @@ void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
   process_->AddArg(hex);
 
   // Redirect stdout/stderr somewhere useful for error reporting.
-  outfile = file_util::CreateAndOpenTemporaryFile(&outfile_path);
+  outfile = platform_->CreateAndOpenTemporaryFile(&outfile_path);
   if (outfile) {
     process_->BindFd(fileno(outfile), STDOUT_FILENO);
     process_->BindFd(fileno(outfile), STDERR_FILENO);
@@ -413,7 +415,7 @@ void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
       std::vector<std::string>::iterator it;
       std::string contents;
 
-      if (file_util::ReadFileToString(outfile_path, &contents)) {
+      if (platform_->ReadFileToString(outfile_path, &contents)) {
         base::SplitString(contents, '\n', &output);
         for (it = output.begin(); it < output.end(); it++) {
           LOG(ERROR) << *it;
@@ -425,7 +427,7 @@ void Lockbox::FinalizeMountEncrypted(const chromeos::Blob &entropy) const {
   }
 
   if (outfile)
-    fclose(outfile);
+    platform_->CloseFile(outfile);
 
   return;
 }

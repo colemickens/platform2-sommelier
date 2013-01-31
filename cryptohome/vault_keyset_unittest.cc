@@ -55,7 +55,7 @@ class VaultKeysetTest : public ::testing::Test {
 
 TEST_F(VaultKeysetTest, AllocateRandom) {
   // Check that allocating a random VaultKeyset works
-  Crypto crypto;
+  Crypto crypto(&platform_);
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
@@ -72,7 +72,7 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
 
 TEST_F(VaultKeysetTest, SerializeTest) {
   // Check that serialize works
-  Crypto crypto;
+  Crypto crypto(&platform_);
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
@@ -90,7 +90,7 @@ TEST_F(VaultKeysetTest, SerializeTest) {
 
 TEST_F(VaultKeysetTest, DeserializeTest) {
   // Check that deserialize works
-  Crypto crypto;
+  Crypto crypto(&platform_);
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
@@ -134,7 +134,7 @@ ACTION_P(CopyFromSecureBlob, b) {
 
 TEST_F(VaultKeysetTest, LoadSaveTest) {
   MockPlatform platform;
-  Crypto crypto;
+  Crypto crypto(&platform);
   VaultKeyset keyset(&platform, &crypto);
   keyset.CreateRandom();
   SecureBlob bytes;

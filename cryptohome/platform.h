@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -8,12 +8,14 @@
 #include <sys/stat.h>
 
 #include <base/basictypes.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 #include <set>
 #include <string>
 #include <vector>
 
 namespace base { class Time; }
+namespace file_util { class FileEnumerator; }
 
 namespace cryptohome {
 
@@ -21,6 +23,7 @@ namespace cryptohome {
 extern const int kDefaultUmask;
 
 class ProcessInformation;
+class FileEnumerator;
 
 // Platform specific routines abstraction layer.
 // Also helps us to be able to mock them in tests.
@@ -164,6 +167,33 @@ class Platform {
   // Check if a directory exists as the given path
   virtual bool DirectoryExists(const std::string& path);
 
+  // Provides the size of a file at |path| if it exists.
+  //
+  // Parameters
+  //   path - Path of the file to check
+  //   size - int64* to populate with the size
+  // Returns true if the size was acquired and false otherwise.
+  virtual bool GetFileSize(const std::string& path, int64* size);
+
+  // Opens a file, if possible, returning a FILE*. If not, returns NULL.
+  //
+  // Parameters
+  //   path - Path of the file to open
+  //   mode - mode string of the file when opened
+  virtual FILE* OpenFile(const std::string& path, const char* mode);
+
+  // Closes a FILE* opened with OpenFile()
+  //
+  // Parameters
+  //  fp - FILE* to close
+  virtual bool CloseFile(FILE* fp);
+
+  // Creates and opens a temporary file if possible.
+  //
+  // Parameters
+  //  path - Pointer to where the file is created if successful.
+  virtual FILE* CreateAndOpenTemporaryFile(std::string* path);
+
   // Reads a file completely into a Blob.
   //
   // Parameters
@@ -172,12 +202,36 @@ class Platform {
   virtual bool ReadFile(const std::string& path, chromeos::Blob* blob);
   virtual bool ReadFileToString(const std::string& path, std::string* string);
 
+  // Writes to the open file pointer.
+  //
+  // Parameters
+  //   fp   - pointer to the FILE*
+  //   blob - data to write
+  virtual bool WriteOpenFile(FILE* fp, const chromeos::Blob& blob);
+
   // Writes the entirety of the data to the given file.
   //
   // Parameters
   //  path - Path of the file to write
   //  blob - blob to populate from
   virtual bool WriteFile(const std::string& path, const chromeos::Blob& blob);
+
+  // Writes the entirety of the string to the given file.
+  //
+  // Parameters
+  //  path - Path of the file to write
+  //  data - string to write out
+  virtual bool WriteStringToFile(const std::string& path,
+                                 const std::string& data);
+
+  // Returns true if the |data| was completely written to |path|.
+  //
+  // Parameters
+  //   path - Path to the file to write
+  //   data - char array to write
+  //   size - length of |data|
+  virtual bool WriteArrayToFile(const std::string& path, const char* data,
+                                size_t size);
 
   // Delete file(s) at the given path
   //
@@ -199,6 +253,16 @@ class Platform {
                                          bool is_recursive,
                                          std::vector<std::string>* ent_list);
 
+  // Returns a new FileEnumerator instance.
+  //
+  // The caller TAKES OWNERSHIP of the returned pointer.
+  //
+  // Parameters
+  // (see FileEnumerator())
+  virtual FileEnumerator* GetFileEnumerator(const std::string& root_path,
+                                            bool recursive,
+                                            int file_type);
+
   // Look up information about a file or directory
   //
   // Parameters
@@ -218,6 +282,13 @@ class Platform {
 
   // Copies from to to.
   virtual bool Copy(const std::string& from, const std::string& to);
+
+  // Moves a given path on the filesystem
+  //
+  // Parameters
+  //   from - path to move
+  //   to   - destination of the move
+  virtual bool Move(const std::string& from, const std::string& to);
 
   // Runs "df -Pk" with redirected output.
   //
@@ -250,6 +321,20 @@ class Platform {
   //  lgofile - the path written with output
   virtual bool ReportFilesystemDetails(const std::string &filesystem,
                                        const std::string &logfile);
+
+
+  // Clears the kernel-managed user keyring
+  virtual long ClearUserKeyring();
+
+  // Creates an ecryptfs auth token and installs it in the kernel keyring.
+  //
+  // Parameters
+  //   key - The key to add
+  //   key_sig - The key's (ascii) signature
+  //   salt - The salt
+  virtual long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
+                                    const std::string& key_sig,
+                                    const chromeos::SecureBlob& salt);
 
   // Override the location of the mtab file used. Default is kMtab.
   virtual void set_mtab_path(const std::string &mtab_path) {
@@ -359,6 +444,53 @@ class ProcessInformation {
   std::set<std::string> open_files_;
   std::string cwd_;
   int process_id_;
+};
+
+// A class for enumerating the files in a provided path. The order of the
+// results is not guaranteed.
+//
+// DO NOT USE FROM THE MAIN THREAD of your application unless it is a test
+// program where latency does not matter. This class is blocking.
+//
+// See file_util::FileEnumerator for details.  This is merely a mockable
+// wrapper.
+class FileEnumerator {
+ public:
+  typedef struct {
+    struct stat stat;
+    std::string filename;
+  } FindInfo;
+  enum FileType {
+    FILES                 = 1 << 0,
+    DIRECTORIES           = 1 << 1,
+    INCLUDE_DOT_DOT       = 1 << 2,
+    SHOW_SYM_LINKS        = 1 << 4,
+  };
+
+  FileEnumerator(const std::string& root_path,
+                 bool recursive,
+                 int file_type);
+  FileEnumerator(const std::string& root_path,
+                 bool recursive,
+                 int file_type,
+                 const std::string& pattern);
+  // Meant for testing only.
+  FileEnumerator() : enumerator_(NULL) { }
+  virtual ~FileEnumerator();
+
+  // Returns an empty string if there are no more results.
+  virtual std::string Next();
+
+  // Write the file info into |info|.
+  virtual void GetFindInfo(FindInfo* info);
+
+  // The static methods are exclusively helpers for interpreting FindInfo.
+  static bool IsDirectory(const FindInfo& info);
+  static std::string GetFilename(const FindInfo& find_info);
+  static int64 GetFilesize(const FindInfo& find_info);
+  static base::Time GetLastModifiedTime(const FindInfo& find_info);
+ private:
+   file_util::FileEnumerator* enumerator_;
 };
 
 }  // namespace cryptohome

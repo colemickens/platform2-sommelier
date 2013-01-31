@@ -9,7 +9,6 @@
 // keys.
 // TODO(wad) make more functions virtual for use in mock_tpm.h.
 
-#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/synchronization/lock.h>
@@ -104,7 +103,7 @@ class Tpm {
                        TpmRetryAction* retry_action);
 
   // Retrieves the sha1sum of the public key component of the cryptohome RSA key
-  TpmRetryAction GetPublicKeyHash(chromeos::SecureBlob* hash);
+  virtual TpmRetryAction GetPublicKeyHash(chromeos::SecureBlob* hash);
 
   // Gets the TPM status information as a Value.
   //

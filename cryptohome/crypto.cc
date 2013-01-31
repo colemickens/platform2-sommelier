@@ -14,8 +14,8 @@
 #include <openssl/sha.h>
 #include <unistd.h>
 
-#include <base/file_util.h>
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 extern "C" {
 #include <scrypt/crypto_scrypt.h>
@@ -78,20 +78,21 @@ const unsigned int kDefaultAesKeySize = 32;
 // Maximum size of the salt file.
 const int64 Crypto::kSaltMax = (1 << 20);  // 1 MB
 
-Crypto::Crypto()
+Crypto::Crypto(Platform* platform)
     : use_tpm_(false),
-      tpm_(NULL) {
+      tpm_(NULL),
+      platform_(platform) {
 }
 
 Crypto::~Crypto() {
 }
 
-bool Crypto::Init(Platform* platform) {
+bool Crypto::Init() {
   if (use_tpm_ && tpm_ == NULL) {
     tpm_ = Tpm::GetSingleton();
   }
   if (tpm_) {
-    tpm_->Init(platform, true);
+    tpm_->Init(platform_, true);
   }
   return true;
 }
@@ -151,13 +152,12 @@ bool Crypto::PasskeyToTokenAuthData(const chromeos::Blob& passkey,
 bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
                              bool force, SecureBlob* salt) const {
   int64 file_len = 0;
-  if (file_util::PathExists(path)) {
-    if (!file_util::GetFileSize(path, &file_len)) {
+  if (platform_->FileExists(path.value())) {
+    if (!platform_->GetFileSize(path.value(), &file_len)) {
       LOG(ERROR) << "Can't get file len for " << path.value();
       return false;
     }
   }
-
   SecureBlob local_salt;
   if (force || file_len == 0 || file_len > kSaltMax) {
     LOG(ERROR) << "Creating new salt at " << path.value()
@@ -166,22 +166,15 @@ bool Crypto::GetOrCreateSalt(const FilePath& path, unsigned int length,
     local_salt.resize(length);
     CryptoLib::GetSecureRandom(static_cast<unsigned char*>(local_salt.data()),
                                local_salt.size());
-    unsigned int data_written = file_util::WriteFile(path,
-        static_cast<const char*>(local_salt.const_data()),
-        length);
-    if (data_written != length) {
-      LOG(ERROR) << "Could not write user salt: " << data_written
-                 << " != " << length;
+    if (!platform_->WriteFile(path.value(), local_salt)) {
+      LOG(ERROR) << "Could not write user salt";
       return false;
     }
     sync();
   } else {
     local_salt.resize(file_len);
-    int data_read = file_util::ReadFile(path,
-                                        static_cast<char*>(local_salt.data()),
-                                        local_salt.size());
-    if (data_read <= 0 || static_cast<int64>(data_read) != file_len) {
-      LOG(ERROR) << "Could not read entire file " << file_len;
+    if (!platform_->ReadFile(path.value(), &local_salt)) {
+      LOG(ERROR) << "Could not read sale file of length " << file_len;
       return false;
     }
   }
@@ -216,7 +209,10 @@ bool Crypto::AddKeyset(const VaultKeyset& vault_keyset,
 }
 
 void Crypto::ClearKeyset() const {
-  keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
+  errno = 0;
+  long ret = platform_->ClearUserKeyring();
+  if (ret == -1)
+    LOG(ERROR) << "Failed to clear user keyring: " << errno;
 }
 
 Crypto::CryptoError Crypto::TpmErrorToCrypto(
@@ -237,21 +233,8 @@ Crypto::CryptoError Crypto::TpmErrorToCrypto(
 
 bool Crypto::PushVaultKey(const SecureBlob& key, const std::string& key_sig,
                           const SecureBlob& salt) const {
-  DCHECK(key.size() == ECRYPTFS_MAX_KEY_BYTES);
-  DCHECK(key_sig.length() == (ECRYPTFS_SIG_SIZE * 2));
-  DCHECK(salt.size() == ECRYPTFS_SALT_SIZE);
-
-  struct ecryptfs_auth_tok auth_token;
-
-  generate_payload(&auth_token, const_cast<char*>(key_sig.c_str()),
-                   const_cast<char*>(reinterpret_cast<const char*>(&salt[0])),
-                   const_cast<char*>(reinterpret_cast<const char*>(&key[0])));
-
-  if (ecryptfs_add_auth_tok_to_keyring(&auth_token,
-          const_cast<char*>(key_sig.c_str())) < 0) {
+  if (platform_->AddEcryptfsAuthToken(key, key_sig, salt) < 0)
     LOG(ERROR) << "PushVaultKey failed";
-  }
-
   return true;
 }
 

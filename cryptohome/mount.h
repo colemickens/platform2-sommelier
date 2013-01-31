@@ -179,8 +179,22 @@ class Mount {
   }
 
   // Get the Crypto instance
-  virtual Crypto* get_crypto() {
+  virtual Crypto* crypto() {
     return crypto_;
+  }
+
+  // Used to override the default HomeDirs handler (does not take ownership)
+  void set_homedirs(HomeDirs* value) {
+    homedirs_ = value;
+  }
+
+  // Get the HomeDirs instance
+  virtual HomeDirs* homedirs() {
+    return homedirs_;
+  }
+
+  virtual Platform* platform() {
+    return platform_;
   }
 
   // Used to override the default Platform handler (does not take ownership)
@@ -198,7 +212,6 @@ class Mount {
     current_user_ = value;
   }
 
-
   // Set/get last access timestamp cache instance for test purposes.
   UserOldestActivityTimestampCache* user_timestamp_cache() const {
     return user_timestamp_;
@@ -207,13 +220,13 @@ class Mount {
   // Set/get a flag, that this machine is enterprise owned.
   void set_enterprise_owned(bool value) {
     enterprise_owned_ = value;
-    homedirs_.set_enterprise_owned(value);
+    homedirs_->set_enterprise_owned(value);
   }
 
   // Set/get time delta of last user's activity to be considered as old.
   void set_old_user_last_activity_time(base::TimeDelta value) {
     old_user_last_activity_time_ = value;
-    homedirs_.set_old_user_last_activity_time(value);
+    homedirs_->set_old_user_last_activity_time(value);
   }
 
   // Flag indicating if PKCS#11 is ready.
@@ -246,17 +259,18 @@ class Mount {
   // Removes the current user's PKCS #11 token.
   void RemovePkcs11Token();
 
+  // Used to override the policy provider for testing (takes ownership)
+  // TODO(wad) move this in line with other testing accessors
+  void set_policy_provider(policy::PolicyProvider* provider) {
+    policy_provider_.reset(provider);
+    homedirs_->set_policy_provider(provider);
+  }
+
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
   friend class MountTest;
   friend class EphemeralTest;
-
-  // Used to override the policy provider for testing (takes ownership)
-  void set_policy_provider(policy::PolicyProvider* provider) {
-    policy_provider_.reset(provider);
-    homedirs_.set_policy_provider(provider);
-  }
 
  private:
   // A class which scopes a mount point.  i.e. The mount point is unmounted on
@@ -683,13 +697,19 @@ class Mount {
   // Stores the global system salt
   chromeos::SecureBlob system_salt_;
 
+  // The platform-specific calls
+  scoped_ptr<Platform> default_platform_;
+  Platform *platform_;
+
   // The crypto implementation
   scoped_ptr<Crypto> default_crypto_;
   Crypto *crypto_;
 
-  // The platform-specific calls
-  scoped_ptr<Platform> default_platform_;
-  Platform *platform_;
+  // Temporary; some of the methods on Mount (currently,
+  // DoAutomaticFreeDiskSpaceControl) are shims that call into this object
+  // instead. Please do not use this; it will go away once the shims are gone.
+  scoped_ptr<HomeDirs> default_homedirs_;
+  HomeDirs *homedirs_;
 
   // Whether to use the TPM for added security
   bool use_tpm_;
@@ -729,11 +749,6 @@ class Mount {
   // Used to track whether passkey migration has occurred and PKCS #11 migration
   // of authorization data based on the passkey needs to be performed also.
   bool is_pkcs11_passkey_migration_required_;
-
-  // Temporary; some of the methods on Mount (currently,
-  // DoAutomaticFreeDiskSpaceControl) are shims that call into this object
-  // instead. Please do not use this; it will go away once the shims are gone.
-  HomeDirs homedirs_;
 
   // Stack of mounts (in the mount(2) sense) that we've made.
   MountStack mounts_;

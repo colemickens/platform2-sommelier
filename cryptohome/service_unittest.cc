@@ -21,6 +21,7 @@
 #include "mock_homedirs.h"
 #include "mock_install_attributes.h"
 #include "mock_mount.h"
+#include "mock_platform.h"
 #include "mock_tpm.h"
 #include "username_passkey.h"
 
@@ -41,24 +42,14 @@ class ServiceInterfaceTest : public ::testing::Test {
   virtual ~ServiceInterfaceTest() { }
 
   void SetUp() {
-    FilePath path(kSaltFile);
-    ASSERT_TRUE(file_util::PathExists(path)) << path.value()
-                                             << " does not exist!";
-
-    int64 file_size;
-    ASSERT_TRUE(file_util::GetFileSize(path, &file_size))
-                << "Could not get size of "
-                << path.value();
-
-    char* buf = new char[file_size];
-    int data_read = file_util::ReadFile(path, buf, file_size);
-    system_salt_.assign(buf, buf + data_read);
-    delete[] buf;
+    test_helper_.SetUpSystemSalt();
+  }
+  void TearDown() {
+    test_helper_.TearDownSystemSalt();
   }
 
  protected:
-  // Protected for trivial access
-  chromeos::Blob system_salt_;
+  MakeTests test_helper_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ServiceInterfaceTest);
@@ -116,7 +107,18 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
 TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   Mount mount;
   NiceMock<MockTpm> tpm;
-  mount.get_crypto()->set_tpm(&tpm);
+  NiceMock<MockPlatform> platform;
+
+  test_helper_.InjectSystemSalt(&platform, kSaltFile);
+  test_helper_.InitTestData(kImageDir, kDefaultUsers, kDefaultUserCount);
+  TestUser* user = &test_helper_.users[7];
+  user->InjectKeyset(&platform);
+
+  mount.crypto()->set_tpm(&tpm);
+  mount.crypto()->set_platform(&platform);
+  mount.homedirs()->set_platform(&platform);
+  mount.homedirs()->crypto()->set_platform(&platform);
+  mount.set_platform(&platform);
   mount.set_shadow_root(kImageDir);
   mount.set_skel_source(kSkelDir);
   mount.set_use_tpm(false);
@@ -125,13 +127,17 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
 
   HomeDirs homedirs;
   homedirs.crypto()->set_tpm(&tpm);
-  homedirs.set_shadow_root(kImageDir);
   homedirs.crypto()->set_use_tpm(false);
+  homedirs.crypto()->set_platform(&platform);
+  homedirs.set_shadow_root(kImageDir);
+  homedirs.set_platform(&platform);
   homedirs.set_policy_provider(new policy::PolicyProvider(
       new NiceMock<policy::MockDevicePolicy>));
 
   ServiceSubclass service;
+  service.set_platform(&platform);
   service.set_homedirs(&homedirs);
+  service.crypto()->set_platform(&platform);
   service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
@@ -139,8 +145,8 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   service.Initialize();
 
   SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[7].password,
-                                        system_salt_, &passkey);
+  cryptohome::Crypto::PasswordToPasskey(user->password,
+                                        test_helper_.system_salt, &passkey);
   std::string passkey_string(static_cast<const char*>(passkey.const_data()),
                              passkey.size());
 
@@ -148,7 +154,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   GError *error = NULL;
   gint async_id = -1;
   EXPECT_TRUE(service.AsyncCheckKey(
-      const_cast<gchar*>(static_cast<const gchar*>(kDefaultUsers[7].username)),
+      const_cast<gchar*>(static_cast<const gchar*>(user->username)),
       const_cast<gchar*>(static_cast<const gchar*>(passkey_string.c_str())),
       &async_id,
       &error));
@@ -171,8 +177,6 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
 }
 
 TEST_F(ServiceInterfaceTest, GetSanitizedUsername) {
-  chromeos::cryptohome::home::SetSystemSaltPath(kSaltFile);
-
   Service service;
   char username[] = "chromeos-user";
   gchar *sanitized = NULL;

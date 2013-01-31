@@ -33,6 +33,8 @@ class MockTpm : public Tpm {
         .WillByDefault(Return(true));
     ON_CALL(*this, GetPublicKey(_, _))
         .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
+    ON_CALL(*this, GetPublicKeyHash(_))
+        .WillByDefault(Return(Tpm::Fatal));
     ON_CALL(*this, Init(_, _))
         .WillByDefault(Return(true));
     ON_CALL(*this, GetEndorsementPublicKey(_))
@@ -67,6 +69,7 @@ class MockTpm : public Tpm {
                              const chromeos::SecureBlob&,
                                    chromeos::SecureBlob*, TpmRetryAction*));
   MOCK_METHOD2(GetPublicKey, bool(chromeos::SecureBlob*, TpmRetryAction*));
+  MOCK_METHOD1(GetPublicKeyHash, Tpm::TpmRetryAction(chromeos::SecureBlob*));
   MOCK_METHOD1(GetOwnerPassword, bool(chromeos::Blob*));
   MOCK_METHOD1(RemoveOwnerDependency, void(Tpm::TpmOwnerDependency));
   MOCK_CONST_METHOD0(IsEnabled, bool());

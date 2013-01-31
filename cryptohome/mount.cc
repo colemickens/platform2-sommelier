@@ -10,7 +10,6 @@
 #include <sys/stat.h>
 
 #include <base/bind.h>
-#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/threading/platform_thread.h>
 #include <base/string_util.h>
@@ -104,10 +103,12 @@ Mount::Mount()
       shadow_root_(kDefaultShadowRoot),
       skel_source_(kDefaultSkeletonSource),
       system_salt_(),
-      default_crypto_(new Crypto()),
-      crypto_(default_crypto_.get()),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
+      default_crypto_(new Crypto(platform_)),
+      crypto_(default_crypto_.get()),
+      default_homedirs_(new HomeDirs()),
+      homedirs_(default_homedirs_.get()),
       use_tpm_(true),
       default_current_user_(new UserSession()),
       current_user_(default_current_user_.get()),
@@ -127,17 +128,17 @@ Mount::~Mount() {
 bool Mount::Init() {
   bool result = true;
 
-  homedirs_.set_platform(platform_);
-  homedirs_.set_shadow_root(shadow_root_);
-  homedirs_.set_timestamp_cache(user_timestamp_);
-  homedirs_.set_enterprise_owned(enterprise_owned_);
-  homedirs_.set_old_user_last_activity_time(old_user_last_activity_time_);
+  homedirs_->set_platform(platform_);
+  homedirs_->set_shadow_root(shadow_root_);
+  homedirs_->set_timestamp_cache(user_timestamp_);
+  homedirs_->set_enterprise_owned(enterprise_owned_);
+  homedirs_->set_old_user_last_activity_time(old_user_last_activity_time_);
 
   // Make sure both we and |homedirs_| have a proper device policy object.
   EnsureDevicePolicyLoaded(false);
-  homedirs_.set_policy_provider(policy_provider_.get());
-  homedirs_.set_crypto(crypto_);
-  if (!homedirs_.Init())
+  homedirs_->set_policy_provider(policy_provider_.get());
+  homedirs_->set_crypto(crypto_);
+  if (!homedirs_->Init())
     result = false;
 
   // Get the user id and group id of the default user
@@ -162,12 +163,12 @@ bool Mount::Init() {
 
   int original_mask = platform_->SetMask(kDefaultUmask);
   // Create the shadow root if it doesn't exist
-  FilePath shadow_root(shadow_root_);
-  if (!file_util::DirectoryExists(shadow_root)) {
-    file_util::CreateDirectory(shadow_root);
+  if (!platform_->DirectoryExists(shadow_root_)) {
+    platform_->CreateDirectory(shadow_root_);
   }
 
-  if (!crypto_->Init(platform_)) {
+  if (!crypto_->Init()) {
+    LOG(ERROR) << "Failed to initialize a Crypto instance";
     result = false;
   }
 
@@ -190,18 +191,18 @@ bool Mount::Init() {
 bool Mount::EnsureCryptohome(const Credentials& credentials,
                              bool* created) const {
   // If the user has an old-style cryptohome, delete it
-  FilePath old_image_path(StringPrintf("%s/image",
-                                       GetUserDirectory(credentials).c_str()));
-  if (file_util::PathExists(old_image_path)) {
-    file_util::Delete(FilePath(GetUserDirectory(credentials)), true);
+  const std::string old_image_path(StringPrintf("%s/image",
+    GetUserDirectory(credentials).c_str()));
+  if (platform_->FileExists(old_image_path)) {
+    platform_->DeleteFile(GetUserDirectory(credentials), true);
   }
   if (!EnsureUserMountPoints(credentials)) {
     return false;
   }
   // Now check for the presence of a vault directory
-  FilePath vault_path(GetUserVaultPath(
+  const std::string vault_path(GetUserVaultPath(
       credentials.GetObfuscatedUsername(system_salt_)));
-  if (!file_util::DirectoryExists(vault_path)) {
+  if (!platform_->DirectoryExists(vault_path)) {
     // If the vault directory doesn't exist, then create the cryptohome from
     // scratch
     bool result = CreateCryptohome(credentials);
@@ -218,9 +219,9 @@ bool Mount::EnsureCryptohome(const Credentials& credentials,
 
 bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
   // Check for the presence of a vault directory
-  FilePath vault_path(GetUserVaultPath(
+  const std::string vault_path(GetUserVaultPath(
       credentials.GetObfuscatedUsername(system_salt_)));
-  return file_util::DirectoryExists(vault_path);
+  return platform_->DirectoryExists(vault_path);
 }
 
 bool Mount::MountCryptohome(const Credentials& credentials,
@@ -280,7 +281,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     }
 
     if (!MountEphemeralCryptohome(credentials)) {
-      homedirs_.Remove(credentials.username());
+      homedirs_->Remove(credentials.username());
       *mount_error = MOUNT_ERROR_FATAL;
       return false;
     }
@@ -328,7 +329,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     if (recreate_decrypt_fatal & (local_mount_error & MOUNT_ERROR_FATAL)) {
       LOG(ERROR) << "Error, cryptohome must be re-created because of fatal "
                  << "error.";
-      if (!homedirs_.Remove(credentials.username())) {
+      if (!homedirs_->Remove(credentials.username())) {
         LOG(ERROR) << "Fatal decryption error, but unable to remove "
                    << "cryptohome.";
         return false;
@@ -528,8 +529,8 @@ bool Mount::SetUpEphemeralCryptohome(const string& source_path,
   // made group accessible when SetupGroupAccess() is called.
   FilePath downloads_path =
       FilePath(ephemeral_skeleton_path).Append(kDownloadsDir);
-  if (!file_util::DirectoryExists(downloads_path)) {
-    if (!file_util::CreateDirectory(downloads_path) ||
+  if (!platform_->DirectoryExists(downloads_path.value())) {
+    if (!platform_->CreateDirectory(downloads_path.value()) ||
         !platform_->SetOwnership(downloads_path.value(),
                                  default_user_, default_group_)) {
       LOG(ERROR) << "Couldn't create user Downloads directory: "
@@ -628,23 +629,26 @@ void Mount::ForceUnmount(const std::string& mount_point) {
 
 void Mount::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
   if (vault != FilePath(GetUserVaultPath(GetObfuscatedOwner())))
-    file_util::Delete(vault.DirName(), true);
+    platform_->DeleteFile(vault.DirName().value(), true);
 }
 
 void Mount::RemoveNonOwnerDirectories(const FilePath& prefix) {
-  file_util::FileEnumerator dir_enumerator(prefix, false,
-      file_util::FileEnumerator::DIRECTORIES);
-  for (FilePath next_path = dir_enumerator.Next(); !next_path.empty();
-       next_path = dir_enumerator.Next()) {
-    const std::string str_dir_name = next_path.BaseName().value();
-    if (!base::strcasecmp(str_dir_name.c_str(), GetObfuscatedOwner().c_str()))
+  std::vector<std::string> dirents;
+  if (!platform_->EnumerateDirectoryEntries(prefix.value(), false, &dirents))
+    return;
+  std::string owner(GetObfuscatedOwner());
+  for (std::vector<std::string>::iterator it = dirents.begin();
+       it != dirents.end(); ++it) {
+    FilePath path(*it);
+    const std::string basename = path.BaseName().value();
+    if (!strcasecmp(basename.c_str(), owner.c_str()))
       continue;  // Skip the owner's directory.
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(str_dir_name))
+    if (!chromeos::cryptohome::home::IsSanitizedUserName(basename))
       continue;  // Skip any directory whose name is not an obfuscated user
                  // name.
-    if (platform_->IsDirectoryMounted(next_path.value()))
+    if (platform_->IsDirectoryMounted(path.value()))
       continue;  // Skip any directory that is currently mounted.
-    platform_->DeleteFile(next_path.value(), true);
+    platform_->DeleteFile(path.value(), true);
   }
 }
 
@@ -701,7 +705,7 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
 
   // Create the user's entry in the shadow root
   FilePath user_dir(GetUserDirectory(credentials));
-  file_util::CreateDirectory(user_dir);
+  platform_->CreateDirectory(user_dir.value());
 
   // Generate a new master key
   VaultKeyset vault_keyset(platform_, crypto_);
@@ -709,10 +713,12 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   SerializedVaultKeyset serialized;
   if (!AddVaultKeyset(credentials, vault_keyset, &serialized)) {
     platform_->SetMask(original_mask);
+    LOG(ERROR) << "Failed to add vault keyset to new user";
     return false;
   }
   if (!StoreVaultKeyset(credentials, serialized)) {
     platform_->SetMask(original_mask);
+    LOG(ERROR) << "Failed to store vault keyset for new user";
     return false;
   }
 
@@ -737,7 +743,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   // Add the subdirectories if they do not exist.
   const FilePath shadow_home(VaultPathToUserPath(GetUserVaultPath(
       credentials.GetObfuscatedUsername(system_salt_))));
-  if (!file_util::DirectoryExists(shadow_home)) {
+  if (!platform_->DirectoryExists(shadow_home.value())) {
      LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
      platform_->SetMask(original_mask);
      return false;
@@ -763,22 +769,22 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 
     // If non-pass-through dir with the same name existed - delete it
     // to prevent duplication.
-    if (!is_new && file_util::DirectoryExists(userside_dir) &&
-        !file_util::DirectoryExists(shadowside_dir)) {
-      file_util::Delete(userside_dir, true);
+    if (!is_new && platform_->DirectoryExists(userside_dir.value()) &&
+        !platform_->DirectoryExists(shadowside_dir.value())) {
+      platform_->DeleteFile(userside_dir.value(), true);
     }
 
     // Create pass-through directory.
-    if (!file_util::DirectoryExists(shadowside_dir)) {
+    if (!platform_->DirectoryExists(shadowside_dir.value())) {
       LOG(INFO) << "Creating pass-through directories "
                 << shadowside_dir.value();
-      file_util::CreateDirectory(shadowside_dir);
+      platform_->CreateDirectory(shadowside_dir.value());
       if (!platform_->SetOwnership(shadowside_dir.value(),
                                    default_user_, default_group_)) {
         LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                    << default_group_ << ") of tracked directory path: "
                    << shadowside_dir.value();
-        file_util::Delete(shadowside_dir, true);
+        platform_->DeleteFile(shadowside_dir.value(), true);
         result = false;
         continue;
       }
@@ -813,7 +819,7 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 void Mount::EnsureDevicePolicyLoaded(bool force_reload) {
   if (!policy_provider_.get()) {
     policy_provider_.reset(new policy::PolicyProvider());
-    homedirs_.set_policy_provider(policy_provider_.get());
+    homedirs_->set_policy_provider(policy_provider_.get());
   } else if (force_reload) {
     policy_provider_->Reload();
   }
@@ -821,28 +827,29 @@ void Mount::EnsureDevicePolicyLoaded(bool force_reload) {
 
 void Mount::DoForEveryUnmountedCryptohome(
     const CryptohomeCallback& cryptohome_cb) {
-  FilePath shadow_root(shadow_root_);
-  file_util::FileEnumerator dir_enumerator(shadow_root, false,
-      file_util::FileEnumerator::DIRECTORIES);
-  for (FilePath next_path = dir_enumerator.Next(); !next_path.empty();
-       next_path = dir_enumerator.Next()) {
-    const std::string str_dir_name = next_path.BaseName().value();
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(str_dir_name))
+  std::vector<std::string> entries;
+  if (!platform_->EnumerateDirectoryEntries(shadow_root_, false, &entries))
+    return;
+  for (std::vector<std::string>::iterator it = entries.begin();
+       it != entries.end(); ++it) {
+    FilePath path(*it);
+    const std::string dir_name = path.BaseName().value();
+    if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name))
       continue;
-    const FilePath vault_path = next_path.Append(kVaultDir);
-    if (!file_util::DirectoryExists(vault_path)) {
-      continue;
-    }
-    if (platform_->IsDirectoryMountedWith(kDefaultHomeDir,
-                                          vault_path.value())) {
+    std::string vault_path = path.Append(kVaultDir).value();
+    std::string mount_path = path.Append(kMountDir).value();
+    if (!platform_->DirectoryExists(vault_path)) {
       continue;
     }
-    cryptohome_cb.Run(vault_path);
+    if (platform_->IsDirectoryMountedWith(mount_path, vault_path)) {
+      continue;
+    }
+    cryptohome_cb.Run(FilePath(vault_path));
   }
 }
 
 bool Mount::DoAutomaticFreeDiskSpaceControl() {
-  return homedirs_.FreeDiskSpace();
+  return homedirs_->FreeDiskSpace();
 }
 
 bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
@@ -863,7 +870,7 @@ bool Mount::SetupGroupAccess(const FilePath& home_dir) const {
 
   mode_t mode = S_IXGRP;
   for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kGroupAccessiblePaths); ++i) {
-    if (!file_util::PathExists(kGroupAccessiblePaths[i].path) &&
+    if (!platform_->FileExists(kGroupAccessiblePaths[i].path.value()) &&
         kGroupAccessiblePaths[i].optional)
       continue;
 
@@ -903,11 +910,13 @@ bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
   }
   SecureBlob cipher_text;
   if (!platform_->ReadFile(user_key_file, &cipher_text)) {
+    LOG(ERROR) << "Failed to read keyset file for user " << obfuscated_username;
     return false;
   }
   if (!serialized->ParseFromArray(
            static_cast<const unsigned char*>(cipher_text.data()),
            cipher_text.size())) {
+    LOG(ERROR) << "Failed to parse keyset for user " << obfuscated_username;
     return false;
   }
   return true;
@@ -926,15 +935,8 @@ bool Mount::StoreVaultKeysetForUser(
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  unsigned int data_written = file_util::WriteFile(
-      FilePath(GetUserKeyFileForUser(obfuscated_username)),
-      static_cast<const char*>(final_blob.const_data()),
-      final_blob.size());
-
-  if (data_written != final_blob.size()) {
-    return false;
-  }
-  return true;
+  return platform_->WriteFile(GetUserKeyFileForUser(obfuscated_username),
+                              final_blob);
 }
 
 bool Mount::DecryptVaultKeyset(const Credentials& credentials,
@@ -1284,40 +1286,6 @@ void Mount::RemovePkcs11Token() {
   chaps_event_client_.FireLogoutEvent(kChapsTokenDir);
 }
 
-void Mount::RecursiveCopy(const FilePath& destination,
-                          const FilePath& source) const {
-  file_util::FileEnumerator file_enumerator(source, false,
-                                            file_util::FileEnumerator::FILES);
-  FilePath next_path;
-  while (!(next_path = file_enumerator.Next()).empty()) {
-    FilePath file_name = next_path.BaseName();
-    FilePath destination_file = destination.Append(file_name);
-    // TODO(ellyjones): use Platform
-    file_util::CopyFile(next_path, destination_file);
-    if (chown(destination_file.value().c_str(), default_user_,
-             default_group_)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of skeleton path: "
-                 << destination_file.value().c_str();
-    }
-  }
-  file_util::FileEnumerator dir_enumerator(source, false,
-      file_util::FileEnumerator::DIRECTORIES);
-  while (!(next_path = dir_enumerator.Next()).empty()) {
-    FilePath dir_name = next_path.BaseName();
-    FilePath destination_dir = destination.Append(dir_name);
-    LOG(INFO) << "RecursiveCopy: " << destination_dir.value();
-    file_util::CreateDirectory(destination_dir);
-    if (chown(destination_dir.value().c_str(), default_user_,
-             default_group_)) {
-      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
-                 << default_group_ << ") of skeleton path: "
-                 << destination_dir.value().c_str();
-    }
-    RecursiveCopy(destination_dir, next_path);
-  }
-}
-
 void Mount::MigrateToUserHome(const std::string& vault_path) const {
   std::vector<string> ent_list;
   std::vector<string>::iterator ent_iter;
@@ -1408,17 +1376,18 @@ void Mount::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(destination, FilePath(skel_source_));
 }
 
+
 bool Mount::CacheOldFiles(const std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
-    if (file_util::PathExists(file_bak)) {
-      if (!file_util::Delete(file_bak, false)) {
+    if (platform_->FileExists(file_bak.value())) {
+      if (!platform_->DeleteFile(file_bak.value(), false)) {
         return false;
       }
     }
-    if (file_util::PathExists(file)) {
-      if (!file_util::Move(file, file_bak)) {
+    if (platform_->FileExists(file.value())) {
+      if (!platform_->Move(file.value(), file_bak.value())) {
         return false;
       }
     }
@@ -1426,12 +1395,47 @@ bool Mount::CacheOldFiles(const std::vector<std::string>& files) const {
   return true;
 }
 
+void Mount::RecursiveCopy(const FilePath& destination,
+                          const FilePath& source) const {
+  scoped_ptr<FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(source.value(), false,
+                                   FileEnumerator::FILES));
+  std::string next_path;
+  while (!(next_path = file_enumerator->Next()).empty()) {
+    FilePath file_name = FilePath(next_path).BaseName();
+    FilePath destination_file = destination.Append(file_name);
+    if (!platform_->Copy(next_path, destination_file.value()) ||
+        !platform_->SetOwnership(destination_file.value(),
+                                default_user_, default_group_)) {
+      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                 << default_group_ << ") of destination path: "
+                 << destination_file.value().c_str();
+    }
+  }
+  scoped_ptr<FileEnumerator> dir_enumerator(
+      platform_->GetFileEnumerator(source.value(), false,
+                                   FileEnumerator::DIRECTORIES));
+  while (!(next_path = dir_enumerator->Next()).empty()) {
+    FilePath dir_name = FilePath(next_path).BaseName();
+    FilePath destination_dir = destination.Append(dir_name);
+    LOG(INFO) << "RecursiveCopy: " << destination_dir.value();
+    if (!platform_->CreateDirectory(destination_dir.value()) ||
+        !platform_->SetOwnership(destination_dir.value(),
+                                 default_user_, default_group_)) {
+      LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
+                 << default_group_ << ") of destination path: "
+                 << destination_dir.value().c_str();
+    }
+    RecursiveCopy(destination_dir, FilePath(next_path));
+  }
+}
+
 bool Mount::RevertCacheFiles(const std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
-    if (file_util::PathExists(file_bak)) {
-      if (!file_util::Move(file_bak, file)) {
+    if (platform_->FileExists(file_bak.value())) {
+      if (!platform_->Move(file_bak.value(), file.value())) {
         return false;
       }
     }
@@ -1443,8 +1447,8 @@ bool Mount::DeleteCacheFiles(const std::vector<std::string>& files) const {
   for (unsigned int index = 0; index < files.size(); ++index) {
     FilePath file(files[index]);
     FilePath file_bak(StringPrintf("%s.bak", files[index].c_str()));
-    if (file_util::PathExists(file_bak)) {
-      if (!file_util::Delete(file_bak, false)) {
+    if (platform_->FileExists(file_bak.value())) {
+      if (!platform_->DeleteFile(file_bak.value(), false)) {
         return false;
       }
     }

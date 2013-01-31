@@ -209,9 +209,9 @@ Service::Service()
       loop_(NULL),
       cryptohome_(NULL),
       system_salt_(),
-      crypto_(new Crypto()),
       default_platform_(new Platform()),
       platform_(default_platform_.get()),
+      crypto_(new Crypto(platform_)),
       tpm_(Tpm::GetSingleton()),
       default_tpm_init_(new TpmInit(platform_)),
       tpm_init_(default_tpm_init_.get()),
@@ -251,7 +251,7 @@ bool Service::Initialize() {
   chromeos_metrics::TimerReporter::set_metrics_lib(&metrics_lib_);
 
   crypto_->set_use_tpm(use_tpm_);
-  if (!crypto_->Init(platform_))
+  if (!crypto_->Init())
     return false;
 
   homedirs_->set_crypto(crypto_);
@@ -399,9 +399,7 @@ bool Service::SeedUrandom() {
     LOG(ERROR) << "Could not get random data from the TPM";
     return false;
   }
-  size_t written = file_util::WriteFile(FilePath(kDefaultEntropySource),
-      static_cast<const char*>(random.const_data()), random.size());
-  if (written != random.size()) {
+  if (!platform_->WriteFile(kDefaultEntropySource, random)) {
     LOG(ERROR) << "Error writing data to /dev/urandom";
     return false;
   }

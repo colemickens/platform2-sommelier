@@ -14,6 +14,7 @@
 #include <chromeos/process.h>
 #include <chromeos/utility.h>
 
+#include "platform.h"
 #include "tpm.h"
 
 
@@ -135,6 +136,10 @@ class Lockbox {
   // Does NOT take ownership of the pointer.
   virtual void set_process(chromeos::Process* p) { process_ = p; }
 
+  // Replaces the Platform class (only used for mount-encrypted).
+  // Does NOT take ownership of the pointer.
+  virtual void set_platform(Platform* p) { platform_ = p; }
+
   // Return NVRAM index.
   virtual uint32_t nvram_index() const { return nvram_index_; }
   // Return NVRAM version.
@@ -189,6 +194,8 @@ class Lockbox {
   uint32_t nvram_version_;
   chromeos::Process* process_;
   scoped_ptr<LockboxContents> contents_;
+  scoped_ptr<Platform> default_platform_;
+  Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(Lockbox);
 };

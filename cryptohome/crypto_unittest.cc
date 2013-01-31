@@ -12,7 +12,6 @@
 #include <openssl/rand.h>
 #include <openssl/sha.h>
 
-#include <base/file_util.h>
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
@@ -24,10 +23,14 @@
 #include "mock_tpm.h"
 
 namespace cryptohome {
+using chromeos::Blob;
 using chromeos::SecureBlob;
 using std::string;
-using ::testing::Return;
 using ::testing::_;
+using ::testing::DoAll;
+using ::testing::Return;
+using ::testing::SaveArg;
+using ::testing::SetArgumentPointee;
 using ::testing::NiceMock;
 
 const char kImageDir[] = "test_image_dir";
@@ -160,7 +163,7 @@ class CryptoTest : public ::testing::Test {
 
 TEST_F(CryptoTest, EncryptionTest) {
   // Check that EncryptVaultKeyset returns something other than the bytes passed
-  Crypto crypto;
+  Crypto crypto(&platform_);
 
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
@@ -186,7 +189,8 @@ TEST_F(CryptoTest, EncryptionTest) {
 
 TEST_F(CryptoTest, DecryptionTest) {
   // Check that DecryptVaultKeyset returns the original keyset
-  Crypto crypto;
+  MockPlatform platform;
+  Crypto crypto(&platform);
 
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
@@ -223,36 +227,55 @@ TEST_F(CryptoTest, DecryptionTest) {
 }
 
 TEST_F(CryptoTest, SaltCreateTest) {
-  // Check that GetOrCreateSalt works
-  Crypto crypto;
+  MockPlatform platform;
+  Crypto crypto(&platform);
 
-  FilePath salt_path(FilePath(kImageDir).Append("crypto_test_salt"));
-
-  file_util::Delete(salt_path, false);
-
-  ASSERT_FALSE(file_util::PathExists(salt_path));
-
+  // Case 1: No salt exists
   SecureBlob salt;
+  Blob salt_written;
+  Blob *salt_ptr = &salt_written;
+  FilePath salt_path(FilePath(kImageDir).Append("crypto_test_salt"));
+  EXPECT_CALL(platform, FileExists(salt_path.value()))
+      .WillOnce(Return(false));
+  EXPECT_CALL(platform, WriteFile(salt_path.value(), _))
+      .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, false, &salt);
 
   ASSERT_EQ(32, salt.size());
-  ASSERT_TRUE(file_util::PathExists(salt_path));
+  EXPECT_EQ(std::string(static_cast<const char*>(salt.const_data()),
+                        salt.size()),
+            std::string(reinterpret_cast<char*>(&salt_ptr->at(0)),
+                        salt_ptr->size()));
 
+  // Case 2: Salt exists, but forced
   SecureBlob new_salt;
+  salt_written.resize(0);
+  salt_ptr = &salt_written;
+  EXPECT_CALL(platform, FileExists(salt_path.value()))
+      .WillOnce(Return(true));
+  int64 salt_size = 32;
+  EXPECT_CALL(platform, GetFileSize(salt_path.value(), _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(salt_size), Return(true)));
+  EXPECT_CALL(platform, WriteFile(salt_path.value(), _))
+      .WillOnce(DoAll(SaveArg<1>(salt_ptr), Return(true)));
   crypto.GetOrCreateSalt(salt_path, 32, true, &new_salt);
-
   ASSERT_EQ(32, new_salt.size());
-  ASSERT_TRUE(file_util::PathExists(salt_path));
+  EXPECT_EQ(std::string(static_cast<const char*>(new_salt.const_data()),
+                        new_salt.size()),
+            std::string(reinterpret_cast<char*>(&salt_ptr->at(0)),
+                        salt_ptr->size()));
 
-  ASSERT_EQ(salt.size(), new_salt.size());
-  ASSERT_FALSE(CryptoTest::FindBlobInBlob(salt, new_salt));
+  EXPECT_EQ(salt.size(), new_salt.size());
+  EXPECT_FALSE(CryptoTest::FindBlobInBlob(salt, new_salt));
 
-  file_util::Delete(salt_path, false);
+  // TODO: cases not covered: file is 0 bytes, file fails to read,
+  //       existing salt is read.
 }
 
 TEST_F(CryptoTest, AsciiEncodeTest) {
   // Check that AsciiEncodeToBuffer works
-  Crypto crypto;
+  MockPlatform platform;
+  Crypto crypto(&platform);
 
   SecureBlob blob_in(256);
   SecureBlob blob_out(512);
@@ -275,7 +298,7 @@ TEST_F(CryptoTest, AsciiEncodeTest) {
 TEST_F(CryptoTest, TpmStepTest) {
   // Check that the code path changes to support the TPM work
   MockPlatform platform;
-  Crypto crypto;
+  Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
 
   crypto.set_tpm(&tpm);
@@ -288,7 +311,7 @@ TEST_F(CryptoTest, TpmStepTest) {
   EXPECT_CALL(tpm, IsConnected())
       .WillRepeatedly(Return(true));
 
-  crypto.Init(&platform);
+  crypto.Init();
 
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
@@ -327,9 +350,9 @@ TEST_F(CryptoTest, TpmStepTest) {
 TEST_F(CryptoTest, ScryptStepTest) {
   // Check that the code path changes to support scrypt work
   MockPlatform platform;
-  Crypto crypto;
+  Crypto crypto(&platform);
 
-  crypto.Init(&platform);
+  crypto.Init();
 
   VaultKeyset vault_keyset(&platform, &crypto);
   vault_keyset.CreateRandom();
@@ -369,7 +392,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   // Check that the code path changes to support when TPM + scrypt fallback are
   // enabled
   MockPlatform platform;
-  Crypto crypto;
+  Crypto crypto(&platform);
   NiceMock<MockTpm> tpm;
 
   crypto.set_tpm(&tpm);
@@ -379,7 +402,7 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
   EXPECT_CALL(tpm, Encrypt(_, _, _, _));
   EXPECT_CALL(tpm, Decrypt(_, _, _, _));
 
-  crypto.Init(&platform);
+  crypto.Init();
 
   VaultKeyset vault_keyset(&platform_, &crypto);
   vault_keyset.CreateRandom();
@@ -416,7 +439,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 }
 
 TEST_F(CryptoTest, GetSha1FipsTest) {
-  Crypto crypto;
+  MockPlatform platform;
+  Crypto crypto(&platform);
   ShaTestVectors vectors(1);
   for (size_t i = 0; i < vectors.count(); ++i) {
     SecureBlob digest = CryptoLib::Sha1(*vectors.input(i));
@@ -430,7 +454,8 @@ TEST_F(CryptoTest, GetSha1FipsTest) {
 }
 
 TEST_F(CryptoTest, GetSha256FipsTest) {
-  Crypto crypto;
+  MockPlatform platform;
+  Crypto crypto(&platform);
   ShaTestVectors vectors(256);
   for (size_t i = 0; i < vectors.count(); ++i) {
     SecureBlob digest = CryptoLib::Sha256(*vectors.input(i));

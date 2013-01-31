@@ -36,12 +36,12 @@ class Crypto {
   };
 
   // Default constructor
-  Crypto();
+  Crypto(Platform* platform);
 
   virtual ~Crypto();
 
   // Initializes Crypto
-  bool Init(Platform* platform);
+  bool Init();
 
   // Decrypts an encrypted vault keyset.  The vault keyset should be the output
   // of EncryptVaultKeyset().
@@ -151,6 +151,16 @@ class Crypto {
     return tpm_->IsConnected();
   }
 
+  // Sets the Platform implementation
+  // Does NOT take ownership of the pointer.
+  void set_platform(Platform* value) {
+    platform_ = value;
+  }
+
+  Platform* platform() {
+    return platform_;
+  }
+
   static const int64 kSaltMax;
 
  private:
@@ -193,6 +203,9 @@ class Crypto {
 
   // The TPM implementation
   Tpm* tpm_;
+
+  // Platform abstraction
+  Platform* platform_;
 
   DISALLOW_COPY_AND_ASSIGN(Crypto);
 };

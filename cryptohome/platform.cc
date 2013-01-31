@@ -28,6 +28,7 @@
 #include <base/sys_info.h>
 #include <base/time.h>
 #include <chromeos/process.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
 using base::SplitString;
@@ -391,8 +392,46 @@ bool Platform::DirectoryExists(const std::string& path) {
   return file_util::DirectoryExists(FilePath(path));
 }
 
+bool Platform::GetFileSize(const std::string& path, int64* size) {
+  return file_util::GetFileSize(FilePath(path), size);
+}
+
+FILE* Platform::CreateAndOpenTemporaryFile(std::string* path) {
+  FilePath created_path;
+  FILE* f = file_util::CreateAndOpenTemporaryFile(&created_path);
+  if (f)
+    path->assign(created_path.value());
+
+  return f;
+}
+
+FILE* Platform::OpenFile(const std::string& path, const char* mode) {
+  return file_util::OpenFile(FilePath(path), mode);
+}
+
+bool Platform::CloseFile(FILE* fp) {
+  return file_util::CloseFile(fp);
+}
+
+bool Platform::WriteOpenFile(FILE* fp, const chromeos::Blob& blob) {
+  return (fwrite(static_cast<const void*>(&blob.at(0)), 1, blob.size(), fp)
+            != blob.size());
+}
+
 bool Platform::WriteFile(const std::string& path,
                          const chromeos::Blob& blob) {
+  return WriteArrayToFile(path,
+                          reinterpret_cast<const char*>(&blob[0]),
+                          blob.size());
+}
+
+bool Platform::WriteStringToFile(const std::string& path,
+                                 const std::string& data) {
+  return WriteArrayToFile(path, data.data(), data.size());
+}
+
+bool Platform::WriteArrayToFile(const std::string& path, const char* data,
+                                size_t size) {
   FilePath file_path(path);
   if (!file_util::DirectoryExists(file_path.DirName())) {
     if (!file_util::CreateDirectory(file_path.DirName())) {
@@ -401,17 +440,14 @@ bool Platform::WriteFile(const std::string& path,
     }
   }
   // chromeos::Blob::size_type is std::vector::size_type and is unsigned.
-  if (blob.size() > static_cast<chromeos::Blob::size_type>(INT_MAX)) {
+  if (size > static_cast<std::string::size_type>(INT_MAX)) {
     LOG(ERROR) << "Cannot write to " << path
-               << ". Blob is too large: " << blob.size() << " bytes.";
+               << ". Data is too large: " << size << " bytes.";
     return false;
   }
 
-  int data_written = file_util::WriteFile(
-      file_path,
-      reinterpret_cast<const char*>(&blob[0]),
-      blob.size());
-  return data_written == static_cast<int>(blob.size());
+  int data_written = file_util::WriteFile(file_path, data, size);
+  return data_written == static_cast<int>(size);
 }
 
 bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
@@ -453,6 +489,10 @@ bool Platform::CreateDirectory(const std::string& path) {
 
 bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
   return file_util::Delete(FilePath(path), is_recursive);
+}
+
+bool Platform::Move(const std::string& from, const std::string& to) {
+  return file_util::Move(FilePath(from), FilePath(to));
 }
 
 bool Platform::EnumerateDirectoryEntries(const std::string& path,
@@ -570,6 +610,113 @@ bool Platform::ReportFilesystemDetails(const std::string &filesystem,
   LOG(ERROR) << "Failed to run tune2fs on " << device
              << " (" << filesystem << ", exit " << rc << ")";
   return false;
+}
+
+// Encapsulate these helpers to avoid include conflicts.
+namespace ecryptfs {
+extern "C" {
+#include <ecryptfs.h>
+#include <keyutils.h>
+}
+
+long ClearUserKeyring() {
+  return keyctl(KEYCTL_CLEAR, KEY_SPEC_USER_KEYRING);
+}
+
+long AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
+                          const std::string& key_sig,
+                          const chromeos::SecureBlob& salt) {
+  DCHECK(key.size() == ECRYPTFS_MAX_KEY_BYTES);
+  DCHECK(key_sig.length() == (ECRYPTFS_SIG_SIZE * 2));
+  DCHECK(salt.size() == ECRYPTFS_SALT_SIZE);
+
+  struct ecryptfs_auth_tok auth_token;
+
+  generate_payload(&auth_token, const_cast<char*>(key_sig.c_str()),
+                   const_cast<char*>(reinterpret_cast<const char*>(&salt[0])),
+                   const_cast<char*>(reinterpret_cast<const char*>(&key[0])));
+
+  long ret = ecryptfs_add_auth_tok_to_keyring(&auth_token,
+               const_cast<char*>(key_sig.c_str()));
+  return ret;
+}
+}  // namespace ecryptfs
+
+long Platform::ClearUserKeyring() {
+  return ecryptfs::ClearUserKeyring();
+}
+
+long Platform::AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
+                                    const std::string& key_sig,
+                                    const chromeos::SecureBlob& salt) {
+  return ecryptfs::AddEcryptfsAuthToken(key, key_sig, salt);
+}
+
+FileEnumerator* Platform::GetFileEnumerator(const std::string& root_path,
+                                            bool recursive,
+                                            int file_type) {
+  return new FileEnumerator(root_path, recursive, file_type);
+}
+
+
+
+FileEnumerator::FileEnumerator(const std::string& root_path,
+                               bool recursive,
+                               int file_type) {
+  enumerator_ = new file_util::FileEnumerator(
+      FilePath(root_path),
+      recursive,
+      static_cast<file_util::FileEnumerator::FileType>(file_type));
+}
+
+FileEnumerator::FileEnumerator(const std::string& root_path,
+                               bool recursive,
+                               int file_type,
+                               const std::string& pattern) {
+  enumerator_ = new file_util::FileEnumerator(
+      FilePath(root_path),
+      recursive,
+      static_cast<file_util::FileEnumerator::FileType>(file_type),
+      pattern);
+}
+
+FileEnumerator::~FileEnumerator() {
+  if (enumerator_)
+    delete enumerator_;
+}
+
+std::string FileEnumerator::Next() {
+  if (!enumerator_)
+    return "";
+  return enumerator_->Next().value();
+}
+
+void FileEnumerator::GetFindInfo(FindInfo* info) {
+  DCHECK(info);
+  enumerator_->GetFindInfo(
+      reinterpret_cast<file_util::FileEnumerator::FindInfo*>(info));
+}
+
+// static
+bool FileEnumerator::IsDirectory(const FindInfo& info) {
+ return !!S_ISDIR(info.stat.st_mode);
+}
+
+//static
+std::string FileEnumerator::GetFilename(const FindInfo& find_info) {
+  return find_info.filename;
+}
+
+// static
+int64 FileEnumerator::GetFilesize(const FindInfo& info) {
+  return file_util::FileEnumerator::GetFilesize(
+    *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
+}
+
+// static
+base::Time FileEnumerator::GetLastModifiedTime(const FindInfo& info) {
+  return file_util::FileEnumerator::GetLastModifiedTime(
+    *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
 }
 
 }  // namespace cryptohome

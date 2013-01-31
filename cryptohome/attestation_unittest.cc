@@ -4,14 +4,17 @@
 
 #include "attestation.h"
 
-#include <base/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "mock_platform.h"
 #include "mock_tpm.h"
 
+using ::testing::_;
+using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Return;
+using ::testing::StartsWith;
 
 namespace cryptohome {
 
@@ -19,13 +22,28 @@ static const char* kTestPath = "/tmp/attestation_test.epb";
 
 class AttestationTest : public testing::Test {
  public:
-  AttestationTest() : attestation_(&tpm_, &platform_) {
-    file_util::Delete(FilePath(kTestPath), true);
+  AttestationTest() : attestation_(&tpm_, &platform_) { }
+  virtual ~AttestationTest() { }
+
+  void SetUp() {
     attestation_.set_database_path(kTestPath);
+    // Fake up a single file by default.
+    ON_CALL(platform_, WriteStringToFile(StartsWith(kTestPath), _))
+        .WillByDefault(Invoke(this, &AttestationTest::WriteDB));
+    ON_CALL(platform_, ReadFileToString(StartsWith(kTestPath), _))
+        .WillByDefault(Invoke(this, &AttestationTest::ReadDB));
   }
-  virtual ~AttestationTest() {
-    file_util::Delete(FilePath(kTestPath), true);
+
+  virtual bool WriteDB(const std::string& path, const std::string& db) {
+    serialized_db.assign(db);
+    return true;
   }
+  virtual bool ReadDB(const std::string& path, std::string* db) {
+    db->assign(serialized_db);
+    return true;
+  }
+
+  std::string serialized_db;
  protected:
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;

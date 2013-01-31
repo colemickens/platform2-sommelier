@@ -8,7 +8,6 @@
 #include <string>
 
 #include <arpa/inet.h>
-#include <base/file_util.h>
 #include <base/time.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
@@ -572,8 +571,7 @@ bool Attestation::StoreDatabase(const EncryptedData& encrypted_db) {
     LOG(ERROR) << "Failed to serialize encrypted db.";
     return false;
   }
-  if (-1 == file_util::WriteFile(database_path_, database_serial.data(),
-                                 database_serial.length())) {
+  if (!platform_->WriteStringToFile(database_path_.value(), database_serial)) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }
@@ -584,7 +582,7 @@ bool Attestation::StoreDatabase(const EncryptedData& encrypted_db) {
 bool Attestation::LoadDatabase(EncryptedData* encrypted_db) {
   CheckDatabasePermissions();
   string serial;
-  if (!file_util::ReadFileToString(database_path_, &serial)) {
+  if (!platform_->ReadFileToString(database_path_.value(), &serial)) {
     return false;
   }
   if (!encrypted_db->ParseFromString(serial)) {

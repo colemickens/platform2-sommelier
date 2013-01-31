@@ -4,6 +4,7 @@
 
 #include "homedirs.h"
 
+#include <base/stringprintf.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
@@ -23,6 +24,7 @@ using ::testing::DoAll;
 using ::testing::InSequence;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::_;
 
@@ -39,7 +41,6 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 
 namespace {
 const char *kTestRoot = "alt_test_home_dir";
-const char *kTestImage = "alt_test_image_dir";
 
 struct homedir {
   const char *name;
@@ -67,13 +68,17 @@ class HomeDirsTest : public ::testing::Test {
   virtual ~HomeDirsTest() { }
 
   void SetUp() {
+    test_helper_.SetUpSystemSalt();
+    test_helper_.InitTestData(kTestRoot, kDefaultUsers, kDefaultUserCount);
     homedirs_.set_platform(&platform_);
+    homedirs_.crypto()->set_platform(&platform_);
     homedirs_.set_shadow_root(kTestRoot);
+    test_helper_.InjectSystemSalt(&platform_,
+                                  StringPrintf("%s/salt", kTestRoot));
     set_policy(true, kOwner, false);
     homedirs_.timestamp_cache()->Initialize();
     homedirs_.Init();
     FilePath fp = FilePath(kTestRoot);
-    file_util::CreateDirectory(fp);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
       const struct homedir *hd = &kHomedirs[i];
       base::Time t = base::Time::FromUTCExploded(hd->time);
@@ -89,6 +94,10 @@ class HomeDirsTest : public ::testing::Test {
       LOG(ERROR) << "push: " << path.value();
       homedir_paths_.push_back(path.value());
     }
+  }
+
+  void TearDown() {
+    test_helper_.TearDownSystemSalt();
   }
 
   void set_policy(bool owner_known,
@@ -108,6 +117,7 @@ class HomeDirsTest : public ::testing::Test {
   HomeDirs homedirs_;
   NiceMock<MockPlatform> platform_;
   std::vector<std::string> homedir_paths_;
+  MakeTests test_helper_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HomeDirsTest);
@@ -146,6 +156,7 @@ TEST_F(HomeDirsTest, FreeDiskSpace) {
     .WillRepeatedly(
         DoAll(SetArgumentPointee<2>(homedir_paths_),
               Return(true)));
+
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
     .WillOnce(Return(0))
     .WillOnce(Return(0))
@@ -154,6 +165,16 @@ TEST_F(HomeDirsTest, FreeDiskSpace) {
     .WillOnce(Return(kEnoughFreeSpace + 1));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
@@ -166,19 +187,17 @@ TEST_F(HomeDirsTest, GoodDecryptTest) {
   // create a HomeDirs instance that points to a good shadow root, test that it
   // properly authenticates against the first key.
   SecureBlob system_salt;
-  cryptohome::MakeTests make_tests;
-  make_tests.InitTestData(kTestImage, kDefaultUsers, kDefaultUserCount);
   NiceMock<MockTpm> tpm;
-  homedirs_.set_shadow_root(kTestImage);   // TODO(ellyjones): wat?
   homedirs_.crypto()->set_tpm(&tpm);
   homedirs_.crypto()->set_use_tpm(false);
   ASSERT_TRUE(homedirs_.GetSystemSalt(&system_salt));
   set_policy(false, "", false);
 
+  test_helper_.users[1].InjectKeyset(&platform_);
   cryptohome::SecureBlob passkey;
-  cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[1].password,
+  cryptohome::Crypto::PasswordToPasskey(test_helper_.users[1].password,
                                         system_salt, &passkey);
-  UsernamePasskey up(kDefaultUsers[1].username, passkey);
+  UsernamePasskey up(test_helper_.users[1].username, passkey);
 
   ASSERT_TRUE(homedirs_.AreCredentialsValid(up));
 }
@@ -187,17 +206,16 @@ TEST_F(HomeDirsTest, BadDecryptTest) {
   // create a HomeDirs instance that points to a good shadow root, test that it
   // properly denies access with a bad passkey
   SecureBlob system_salt;
-  cryptohome::MakeTests make_tests;
-  make_tests.InitTestData(kTestImage, kDefaultUsers, kDefaultUserCount);
   NiceMock<MockTpm> tpm;
-  homedirs_.set_shadow_root(kTestImage);
   homedirs_.crypto()->set_tpm(&tpm);
   homedirs_.crypto()->set_use_tpm(false);
   set_policy(false, "", false);
 
+  test_helper_.users[4].InjectKeyset(&platform_);
+
   cryptohome::SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", system_salt, &passkey);
-  UsernamePasskey up(kDefaultUsers[4].username, passkey);
+  UsernamePasskey up(test_helper_.users[4].username, passkey);
 
   ASSERT_FALSE(homedirs_.AreCredentialsValid(up));
 }

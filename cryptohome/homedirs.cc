@@ -30,7 +30,7 @@ HomeDirs::HomeDirs()
       enterprise_owned_(false),
       default_policy_provider_(new policy::PolicyProvider()),
       policy_provider_(default_policy_provider_.get()),
-      default_crypto_(new Crypto()),
+      default_crypto_(new Crypto(platform_)),
       crypto_(default_crypto_.get()) { }
 
 HomeDirs::~HomeDirs() { }
@@ -189,16 +189,17 @@ void HomeDirs::DoForEveryUnmountedCryptohome(
 }
 
 void HomeDirs::DeleteDirectoryContents(const FilePath& dir) {
-  file_util::FileEnumerator subdir_enumerator(
-      dir,
+  scoped_ptr<FileEnumerator> subdir_enumerator(platform_->GetFileEnumerator(
+      dir.value(),
       false,
-      static_cast<file_util::FileEnumerator::FileType>(
-          file_util::FileEnumerator::FILES |
-          file_util::FileEnumerator::DIRECTORIES |
-          file_util::FileEnumerator::SHOW_SYM_LINKS));
-  for (FilePath subdir_path = subdir_enumerator.Next(); !subdir_path.empty();
-       subdir_path = subdir_enumerator.Next()) {
-    platform_->DeleteFile(subdir_path.value(), true);
+      static_cast<FileEnumerator::FileType>(
+          FileEnumerator::FILES |
+          FileEnumerator::DIRECTORIES |
+          FileEnumerator::SHOW_SYM_LINKS)));
+  for (std::string subdir_path = subdir_enumerator->Next();
+       !subdir_path.empty();
+       subdir_path = subdir_enumerator->Next()) {
+    platform_->DeleteFile(subdir_path, true);
   }
 }
 
@@ -258,11 +259,14 @@ bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
   if (!platform_->FileExists(user_key_file))
     return false;
   SecureBlob cipher_text;
-  if (!platform_->ReadFile(user_key_file, &cipher_text))
+  if (!platform_->ReadFile(user_key_file, &cipher_text)) {
+    LOG(ERROR) << "Failed to read keyset file for user " << obfuscated_user;
     return false;
+  }
   if (!serialized->ParseFromArray(
            static_cast<const unsigned char*>(cipher_text.data()),
            cipher_text.size())) {
+    LOG(ERROR) << "Failed to parse keyset for user " << obfuscated_user;
     return false;
   }
   return true;

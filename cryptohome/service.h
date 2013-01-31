@@ -94,11 +94,14 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual void set_use_tpm(bool value) {
     use_tpm_ = value;
   }
-  virtual void set_platform(Platform *value) {
-    platform_ = value;
-  }
+
+  // Overrides the Platform implementation for Service.
+  virtual void set_platform(Platform *value) { platform_ = value; }
+
+  virtual cryptohome::Crypto* crypto() { return crypto_; }
 
   virtual void set_homedirs(cryptohome::HomeDirs* value) { homedirs_ = value; }
+
   virtual cryptohome::HomeDirs* homedirs() { return homedirs_; }
 
   // CryptohomeEventSourceSink
@@ -274,9 +277,9 @@ class Service : public chromeos::dbus::AbstractDbusService,
   gobject::Cryptohome* cryptohome_;
   chromeos::SecureBlob system_salt_;
   cryptohome::Mount* mount_;
-  cryptohome::Crypto* crypto_;
   scoped_ptr<Platform> default_platform_;
   Platform* platform_;
+  cryptohome::Crypto* crypto_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
   Tpm* tpm_;

@@ -10,6 +10,7 @@
 
 #include <base/callback.h>
 #include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
 #include <chaps/login_event_client.h>
@@ -74,6 +75,7 @@ class HomeDirs {
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
+  // TODO(wad) Should this update default_crypto_.set_platform()?
   void set_platform(Platform *value) { platform_ = value; }
   Platform* platform() { return platform_; }
   void set_shadow_root(const std::string& value) { shadow_root_ = value; }

@@ -7,7 +7,6 @@
 #include "tpm.h"
 
 #include <arpa/inet.h>
-#include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/platform_thread.h>
 #include <base/time.h>
@@ -109,13 +108,13 @@ bool Tpm::Init(Platform* platform, bool open_key) {
   metrics_->Init();
 
   // Migrate any old status files from old location to new location.
-  if (!file_util::PathExists(FilePath(kTpmOwnedFile)) &&
-      file_util::PathExists(FilePath(kTpmOwnedFileOld))) {
-    file_util::Move(FilePath(kTpmOwnedFileOld), FilePath(kTpmOwnedFile));
+  if (!platform_->FileExists(kTpmOwnedFile) &&
+      platform_->FileExists(kTpmOwnedFileOld)) {
+    platform_->Move(kTpmOwnedFileOld, kTpmOwnedFile);
   }
-  if (!file_util::PathExists(FilePath(kTpmStatusFile)) &&
-      file_util::PathExists(FilePath(kTpmStatusFileOld))) {
-    file_util::Move(FilePath(kTpmStatusFileOld), FilePath(kTpmStatusFile));
+  if (!platform_->FileExists(kTpmStatusFile) &&
+      platform_->FileExists(kTpmStatusFileOld)) {
+    platform_->Move(kTpmStatusFileOld, kTpmStatusFile);
   }
 
   // Checking disabled and owned either via sysfs or via TSS calls will block if
@@ -125,7 +124,7 @@ bool Tpm::Init(Platform* platform, bool open_key) {
   // threads can check without being blocked.  InitializeTpm() will reset the
   // is_owned_ bit on success.
   bool successful_check = false;
-  if (file_util::PathExists(FilePath(kTpmCheckEnabledFile))) {
+  if (platform_->FileExists(kTpmCheckEnabledFile)) {
     is_disabled_ = IsDisabledCheckViaSysfs();
     is_owned_ = IsOwnedCheckViaSysfs();
     successful_check = true;
@@ -143,13 +142,14 @@ bool Tpm::Init(Platform* platform, bool open_key) {
     }
   }
   if (successful_check && !is_owned_) {
-    file_util::Delete(FilePath(kOpenCryptokiPath), true);
-    file_util::Delete(FilePath(kTpmOwnedFile), false);
-    file_util::Delete(FilePath(kTpmStatusFile), false);
+    platform_->DeleteFile(kOpenCryptokiPath, true);
+    platform_->DeleteFile(kTpmOwnedFile, false);
+    platform_->DeleteFile(kTpmStatusFile, false);
   }
   if (successful_check && is_owned_) {
-    if (!file_util::PathExists(FilePath(kTpmOwnedFile))) {
-      file_util::WriteFile(FilePath(kTpmOwnedFile), NULL, 0);
+    if (!platform_->FileExists(kTpmOwnedFile)) {
+      chromeos::Blob empty_blob(0);
+      platform_->WriteFile(kTpmOwnedFile, empty_blob);
     }
   }
   TpmStatus tpm_status;
@@ -690,19 +690,12 @@ bool Tpm::SaveCryptohomeKey(TSS_HCONTEXT context_handle, TSS_HKEY key_handle,
     LOG(ERROR) << "Error getting key blob";
     return false;
   }
-  Platform platform;
-  int previous_mask = platform.SetMask(cryptohome::kDefaultUmask);
-  unsigned int data_written = file_util::WriteFile(
-      FilePath(kDefaultCryptohomeKeyFile),
-      static_cast<const char*>(raw_key.const_data()),
-      raw_key.size());
-  platform.SetMask(previous_mask);
-  if (data_written != raw_key.size()) {
-    LOG(ERROR) << "Error writing key file.  Wrote: " << data_written
-               << ", expected: " << raw_key.size();
-    return false;
-  }
-  return true;
+  int previous_mask = platform_->SetMask(cryptohome::kDefaultUmask);
+  bool ok = platform_->WriteFile(kDefaultCryptohomeKeyFile, raw_key);
+  platform_->SetMask(previous_mask);
+  if (!ok)
+    LOG(ERROR) << "Error writing key file of desired size: " << raw_key.size();
+  return ok;
 }
 
 bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
@@ -1056,7 +1049,7 @@ bool Tpm::LoadSrk(TSS_HCONTEXT context_handle, TSS_HKEY* srk_handle,
 
 bool Tpm::IsDisabledCheckViaSysfs() {
   std::string contents;
-  if (!file_util::ReadFileToString(FilePath(kTpmCheckEnabledFile), &contents)) {
+  if (!platform_->ReadFileToString(kTpmCheckEnabledFile, &contents)) {
     return false;
   }
   if (contents.size() < 1) {
@@ -1067,7 +1060,7 @@ bool Tpm::IsDisabledCheckViaSysfs() {
 
 bool Tpm::IsOwnedCheckViaSysfs() {
   std::string contents;
-  if (!file_util::ReadFileToString(FilePath(kTpmCheckOwnedFile), &contents)) {
+  if (!platform_->ReadFileToString(kTpmCheckOwnedFile, &contents)) {
     return false;
   }
   if (contents.size() < 1) {
@@ -1500,9 +1493,9 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
   bool took_ownership = false;
   if (!is_owned_) {
     is_being_owned_ = true;
-    file_util::Delete(FilePath(kOpenCryptokiPath), true);
-    file_util::Delete(FilePath(kTpmOwnedFile), false);
-    file_util::Delete(FilePath(kTpmStatusFile), false);
+    platform_->DeleteFile(kOpenCryptokiPath, true);
+    platform_->DeleteFile(kTpmOwnedFile, false);
+    platform_->DeleteFile(kTpmStatusFile, false);
 
     if (!IsEndorsementKeyAvailable(context_handle)) {
       if (!CreateEndorsementKey(context_handle)) {
@@ -1555,7 +1548,7 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
   // If we can open the TPM with the default password, then we still need to
   // zero the SRK password and unrestrict it, then change the owner password.
   TSS_HTPM tpm_handle;
-  if (!file_util::PathExists(FilePath(kTpmOwnedFile)) &&
+  if (!platform_->FileExists(kTpmOwnedFile) &&
       GetTpmWithAuth(context_handle, default_owner_password, &tpm_handle) &&
       TestTpmAuth(tpm_handle)) {
     if (!ZeroSrkPassword(context_handle, default_owner_password)) {
@@ -1588,15 +1581,16 @@ bool Tpm::InitializeTpm(bool* OUT_took_ownership) {
       owner_password_.assign(owner_password.begin(), owner_password.end());
       password_sync_lock_.Release();
     }
-
-    file_util::WriteFile(FilePath(kTpmOwnedFile), NULL, 0);
+    chromeos::Blob empty_blob(0);
+    platform_->WriteFile(kTpmOwnedFile, empty_blob);
   } else {
     // If we fall through here, then the TPM owned file doesn't exist, but we
     // couldn't auth with the well-known password.  In this case, we must assume
     // that the TPM has already been owned and set to a random password, so
     // touch the TPM owned file.
-    if (!file_util::PathExists(FilePath(kTpmOwnedFile))) {
-      file_util::WriteFile(FilePath(kTpmOwnedFile), NULL, 0);
+    if (!platform_->FileExists(kTpmOwnedFile)) {
+      chromeos::Blob empty_blob(0);
+      platform_->WriteFile(kTpmOwnedFile, empty_blob);
     }
   }
 
@@ -2036,8 +2030,7 @@ void Tpm::RemoveOwnerDependency(TpmOwnerDependency dependency) {
 }
 
 bool Tpm::LoadTpmStatus(TpmStatus* serialized) {
-  FilePath tpm_status_file(kTpmStatusFile);
-  if (!file_util::PathExists(tpm_status_file)) {
+  if (!platform_->FileExists(kTpmStatusFile)) {
     return false;
   }
   SecureBlob file_data;
@@ -2053,46 +2046,35 @@ bool Tpm::LoadTpmStatus(TpmStatus* serialized) {
 }
 
 bool Tpm::StoreTpmStatus(const TpmStatus& serialized) {
-  Platform platform;
-  int old_mask = platform.SetMask(kDefaultUmask);
-  FilePath tpm_status_file(kTpmStatusFile);
-  if (file_util::PathExists(tpm_status_file)) {
+  int old_mask = platform_->SetMask(kDefaultUmask);
+  if (platform_->FileExists(kTpmStatusFile)) {
     do {
       int64 file_size;
-      if (!file_util::GetFileSize(tpm_status_file, &file_size)) {
+      if (!platform_->GetFileSize(kTpmStatusFile, &file_size)) {
         break;
       }
       SecureBlob random;
       if (!GetRandomData(file_size, &random)) {
         break;
       }
-      FILE* file = file_util::OpenFile(tpm_status_file, "wb+");
+      FILE* file = platform_->OpenFile(kTpmStatusFile, "wb+");
       if (!file) {
         break;
       }
-      if (fwrite(random.const_data(), 1, random.size(), file) !=
-          random.size()) {
-        file_util::CloseFile(file);
+      if (!platform_->WriteOpenFile(file, random)) {
+        platform_->CloseFile(file);
         break;
       }
-      file_util::CloseFile(file);
+      platform_->CloseFile(file);
     } while (false);
-    file_util::Delete(tpm_status_file, false);
+    platform_->DeleteFile(kTpmStatusFile, false);
   }
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  unsigned int data_written = file_util::WriteFile(
-      tpm_status_file,
-      static_cast<const char*>(final_blob.const_data()),
-      final_blob.size());
-
-  if (data_written != final_blob.size()) {
-    platform.SetMask(old_mask);
-    return false;
-  }
-  platform.SetMask(old_mask);
-  return true;
+  bool ok = platform_->WriteFile(kTpmStatusFile, final_blob);
+  platform_->SetMask(old_mask);
+  return ok;
 }
 
 Value* Tpm::GetStatusValue(TpmInit* init) {

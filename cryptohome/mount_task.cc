@@ -113,7 +113,7 @@ void MountTaskRemove::Run() {
 
 void MountTaskResetTpmContext::Run() {
   if (mount_) {
-    Crypto* crypto = mount_->get_crypto();
+    Crypto* crypto = mount_->crypto();
     if (crypto) {
       crypto->EnsureTpm(true);
     }
