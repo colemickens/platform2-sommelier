@@ -567,16 +567,19 @@ string CellularCapabilityUniversal::CreateFriendlyServiceName() {
 void CellularCapabilityUniversal::SetHomeProvider() {
   SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi_
           << " SPN: " << spn_ << ")";
-  // TODO(petkov): The test for NULL provider_db should be done by
-  // mobile_provider_lookup_best_match.
-  if (imsi_.empty() || !cellular()->provider_db()) {
+
+  if (!cellular()->provider_db())
     return;
-  }
-  mobile_provider *provider =
-      mobile_provider_lookup_best_match(
-          cellular()->provider_db(), spn_.c_str(), imsi_.c_str());
+
+  // MCCMNC can be determined either from IMSI or Operator Code. Use whichever
+  // one is available. If both were reported by the SIM, use IMSI.
+  const string &network_id = imsi_.empty() ? operator_id_ : imsi_;
+  mobile_provider *provider = mobile_provider_lookup_best_match(
+      cellular()->provider_db(),
+      spn_.c_str(),
+      network_id.c_str());
   if (!provider) {
-    SLOG(Cellular, 2) << "GSM provider not found.";
+    SLOG(Cellular, 2) << "3GPP provider not found.";
     return;
   }
 
@@ -585,7 +588,11 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   home_provider_ = provider;
   provider_requires_roaming_ = home_provider_->requires_roaming;
   Cellular::Operator oper;
-  if (provider->networks && provider->networks[0]) {
+  // If Operator ID is available, use that as network code, otherwise
+  // use what was returned from the database.
+  if (!operator_id_.empty()) {
+    oper.SetCode(operator_id_);
+  } else if (provider->networks && provider->networks[0]) {
     oper.SetCode(provider->networks[0]);
   }
   if (provider->country) {
@@ -1479,24 +1486,26 @@ void CellularCapabilityUniversal::OnSimPropertiesChanged(
     const vector<string> &/* invalidated_properties */) {
   SLOG(Cellular, 2) << __func__;
   string value;
-  bool must_update_home_provider = false;
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_SIMIDENTIFIER, &value))
     OnSimIdentifierChanged(value);
   if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORIDENTIFIER,
                                 &value))
     OnOperatorIdChanged(value);
-  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value)) {
-    spn_ = value;
-    must_update_home_provider = true;
-  }
-  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value)) {
-    imsi_ = value;
-    must_update_home_provider = true;
-  }
-  // TODO(jglasgow): May eventually want to get SPDI, etc
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_OPERATORNAME, &value))
+    OnSpnChanged(value);
+  if (DBusProperties::GetString(props, MM_SIM_PROPERTY_IMSI, &value))
+    OnImsiChanged(value);
+  SetHomeProvider();
+}
 
-  if (must_update_home_provider)
-    SetHomeProvider();
+// TODO(armansito): The following methods should probably log their argument
+// values. Need to learn if any of them need to be scrubbed.
+void CellularCapabilityUniversal::OnImsiChanged(const std::string &imsi) {
+  imsi_ = imsi;
+}
+
+void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
+  spn_ = spn;
 }
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {

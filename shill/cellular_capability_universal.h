@@ -171,11 +171,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_DisableCompleted(const ResultCallback &callback,
                              const Error &error);
 
-  // Sets the upper level information about the home cellular provider from the
-  // modem's IMSI and SPN.
-  void SetHomeProvider();
-
   void UpdateScanningProperty();
+
+  // Methods used in acquiring information related to the carrier;
 
   // Updates the online payment portal information, if any, for the cellular
   // provider.
@@ -185,8 +183,15 @@ class CellularCapabilityUniversal : public CellularCapability {
   // obtained network id.
   void UpdateOperatorInfo();
 
+  // Sets the upper level information about the home cellular provider from the
+  // modem's IMSI and SPN.
+  void SetHomeProvider();
+
   // Updates the serving operator on the active service.
   void UpdateServingOperator();
+
+  // Initializes the |apn_list_| property based on the current |home_provider_|.
+  void InitAPNList();
 
   // Updates |bearer_path_| to match the currently active bearer.
   void UpdateBearerPath();
@@ -194,8 +199,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Updates the storage identifier used for the current cellular service.
   void UpdateStorageIdentifier();
 
-  // Initializes the |apn_list_| property based on the current |home_provider_|.
-  void InitAPNList();
 
   Stringmap ParseScanResult(const ScanResult &result);
 
@@ -261,6 +264,7 @@ class CellularCapabilityUniversal : public CellularCapability {
       const DBusPropertiesMap &props,
       const std::vector<std::string> &invalidated_properties);
   void OnImsiChanged(const std::string &imsi);
+  void OnSpnChanged(const std::string &spn);
   void OnSimIdentifierChanged(const std::string &id);
   void OnOperatorIdChanged(const std::string &operator_id);
   void OnOperatorNameChanged(const std::string &operator_name);

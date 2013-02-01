@@ -663,7 +663,6 @@ TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
   // Updating the SIM
   DBusPropertiesMap new_properties;
   const char kCountry[] = "us";
-  const char kCode[] = "310160";
   const char kNewImsi[] = "310240123456789";
   const char kSimIdentifier[] = "9999888";
   const char kOperatorIdentifier[] = "310240";
@@ -682,7 +681,7 @@ TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
   EXPECT_EQ("", capability_->spn_);
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
-  EXPECT_EQ(kCode, cellular_->home_provider().GetCode());
+  EXPECT_EQ(kOperatorIdentifier, cellular_->home_provider().GetCode());
   EXPECT_EQ(4, capability_->apn_list_.size());
 
   new_properties[MM_SIM_PROPERTY_OPERATORNAME].writer().
@@ -998,18 +997,43 @@ TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
   static const char kTestCarrier[] = "The Cellular Carrier";
   static const char kCountry[] = "us";
   static const char kCode[] = "310160";
-  capability_->imsi_ = "310240123456789";
 
   EXPECT_FALSE(capability_->home_provider_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
-  capability_->SetHomeProvider();  // No mobile provider DB available.
+  // No mobile provider DB available.
+  capability_->SetHomeProvider();
   EXPECT_TRUE(cellular_->home_provider().GetName().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
   EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
   EXPECT_FALSE(capability_->provider_requires_roaming_);
 
   InitProviderDB();
+
+  // IMSI and Operator Code not available.
+  capability_->SetHomeProvider();
+  EXPECT_TRUE(cellular_->home_provider().GetName().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCountry().empty());
+  EXPECT_TRUE(cellular_->home_provider().GetCode().empty());
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
+
+  // Operator Code available.
+  capability_->operator_id_ = "310240";
+  capability_->SetHomeProvider();
+  EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
+  EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
+  EXPECT_EQ("310240", cellular_->home_provider().GetCode());
+  EXPECT_EQ(4, capability_->apn_list_.size());
+  ASSERT_TRUE(capability_->home_provider_);
+  EXPECT_FALSE(capability_->provider_requires_roaming_);
+
+  cellular_->home_provider_.SetName("");
+  cellular_->home_provider_.SetCountry("");
+  cellular_->home_provider_.SetCode("");
+
+  // IMSI available
+  capability_->imsi_ = "310240123456789";
+  capability_->operator_id_.clear();
   capability_->SetHomeProvider();
   EXPECT_EQ("T-Mobile", cellular_->home_provider().GetName());
   EXPECT_EQ(kCountry, cellular_->home_provider().GetCountry());
