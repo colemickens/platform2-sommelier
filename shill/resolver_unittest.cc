@@ -30,12 +30,12 @@ const char kExpectedOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"
   "search chromium.org google.com\n"
-  "options single-request timeout:1\n";
+  "options single-request timeout:1 attempts:5\n";
 const char kExpectedIgnoredSearchOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"
   "search google.com\n"
-  "options single-request timeout:1\n";
+  "options single-request timeout:1 attempts:5\n";
 }  // namespace {}
 
 class ResolverTest : public Test {

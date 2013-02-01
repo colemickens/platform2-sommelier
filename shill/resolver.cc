@@ -65,10 +65,18 @@ bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
     lines.push_back("search " + JoinString(filtered_domain_search, ' '));
   }
 
-  // Send queries one-at-a-time, rather than parallelizing IPv4
-  // and IPv6 queries for a single host.  Also override the default
-  // 5-second request timeout and use a 1-second tiemout instead.
-  lines.push_back("options single-request timeout:1");
+  // - Send queries one-at-a-time, rather than parallelizing IPv4
+  //   and IPv6 queries for a single host.
+  // - Override the default 5-second request timeout and use a
+  //   1-second timeout instead. (NOTE: Chrome's ADNS will use
+  //   one second, regardless of what we put here.)
+  // - Allow 5 attempts, rather than the default of 2.
+  //   - For glibc, the worst case number of queries will be
+  //        attempts * count(servers) * (count(search domains)+1)
+  //   - For Chrome, the worst case number of queries will be
+  //        attempts * count(servers) + 3 * glibc
+  //   See crbug.com/224756 for supporting data.
+  lines.push_back("options single-request timeout:1 attempts:5");
 
   // Newline at end of file
   lines.push_back("");
