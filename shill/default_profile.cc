@@ -49,9 +49,6 @@ const char DefaultProfile::kStoragePortalURL[] = "PortalURL";
 // static
 const char DefaultProfile::kStoragePortalCheckInterval[] =
     "PortalCheckInterval";
-// static
-const char DefaultProfile::kStorageShortDNSTimeoutTechnologies[] =
-    "ShortDNSTimeoutTechnologies";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
                                Metrics *metrics,
@@ -80,8 +77,6 @@ DefaultProfile::DefaultProfile(ControlInterface *control,
                              &manager_props.portal_url);
   store->RegisterConstInt32(shill::kPortalCheckIntervalProperty,
                             &manager_props.portal_check_interval_seconds);
-  store->RegisterConstString(shill::kShortDNSTimeoutTechnologiesProperty,
-                             &manager_props.short_dns_timeout_technologies);
 }
 
 DefaultProfile::~DefaultProfile() {}
@@ -121,12 +116,6 @@ bool DefaultProfile::LoadManagerProperties(Manager::Properties *manager_props) {
     manager_props->portal_check_interval_seconds =
         PortalDetector::kDefaultCheckIntervalSeconds;
   }
-  if (!storage()->GetString(kStorageId,
-                            kStorageShortDNSTimeoutTechnologies,
-                            &manager_props->short_dns_timeout_technologies)) {
-    manager_props->short_dns_timeout_technologies =
-        Resolver::kDefaultShortTimeoutTechnologies;
-  }
   return true;
 }
 
@@ -165,9 +154,6 @@ bool DefaultProfile::Save() {
   storage()->SetString(kStorageId,
                        kStoragePortalCheckInterval,
                        base::IntToString(props_.portal_check_interval_seconds));
-  storage()->SetString(kStorageId,
-                       kStorageShortDNSTimeoutTechnologies,
-                       props_.short_dns_timeout_technologies);
   return Profile::Save();
 }
 

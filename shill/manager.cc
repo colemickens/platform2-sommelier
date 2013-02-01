@@ -156,8 +156,6 @@ Manager::Manager(ControlInterface *control_interface,
                                          &Manager::EnumerateCompleteServices);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServiceWatchListProperty,
                                          &Manager::EnumerateWatchedServices);
-  store_.RegisterString(shill::kShortDNSTimeoutTechnologiesProperty,
-                        &props_.short_dns_timeout_technologies);
   HelpRegisterDerivedStrings(kUninitializedTechnologiesProperty,
                              &Manager::UninitializedTechnologies,
                              NULL);
@@ -643,11 +641,6 @@ bool Manager::IsProfileBefore(const ProfileRefPtr &a,
 
 bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
   return service->profile() == ephemeral_profile_;
-}
-
-bool Manager::IsTechnologyShortDNSTimeoutEnabled(
-    Technology::Identifier technology) const {
-  return IsTechnologyInList(props_.short_dns_timeout_technologies, technology);
 }
 
 bool Manager::IsTechnologyLinkMonitorEnabled(

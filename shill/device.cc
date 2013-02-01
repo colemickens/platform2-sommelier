@@ -530,12 +530,10 @@ void Device::OnConnectionUpdated() {
 void Device::CreateConnection() {
   SLOG(Device, 2) << __func__;
   if (!connection_.get()) {
-    connection_ = new Connection(
-        interface_index_,
-        link_name_,
-        technology_,
-        manager_->device_info(),
-        manager_->IsTechnologyShortDNSTimeoutEnabled(technology_));
+    connection_ = new Connection(interface_index_,
+                                 link_name_,
+                                 technology_,
+                                 manager_->device_info());
   }
 }
 

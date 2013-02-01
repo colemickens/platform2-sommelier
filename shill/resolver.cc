@@ -26,11 +26,6 @@ base::LazyInstance<Resolver> g_resolver = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
 const char Resolver::kDefaultIgnoredSearchList[] = "gateway.2wire.net";
-const char Resolver::kDefaultShortTimeoutTechnologies[] = "ethernet,wifi";
-const char Resolver::kDefaultTimeoutOptions[] =
-    "options single-request timeout:1 attempts:3";
-const char Resolver::kShortTimeoutOptions[] =
-    "options single-request timeout-ms:300 attempts:15";
 
 Resolver::Resolver() {}
 
@@ -40,12 +35,9 @@ Resolver* Resolver::GetInstance() {
   return g_resolver.Pointer();
 }
 
-bool Resolver::SetDNSFromLists(const vector<string> &dns_servers,
-                               const vector<string> &domain_search,
-                               TimeoutParameters timeout) {
+bool Resolver::SetDNSFromLists(const std::vector<std::string> &dns_servers,
+                               const std::vector<std::string> &domain_search) {
   SLOG(Resolver, 2) << __func__;
-
-  CHECK(!path_.empty());
 
   if (dns_servers.empty() && domain_search.empty()) {
     SLOG(Resolver, 2) << "DNS list is empty";
@@ -75,14 +67,8 @@ bool Resolver::SetDNSFromLists(const vector<string> &dns_servers,
 
   // Send queries one-at-a-time, rather than parallelizing IPv4
   // and IPv6 queries for a single host.  Also override the default
-  // 5-second request timeout and 2 retries.
-  if (timeout == kDefaultTimeout) {
-    lines.push_back(kDefaultTimeoutOptions);
-  } else if (timeout == kShortTimeout) {
-    lines.push_back(kShortTimeoutOptions);
-  } else {
-    NOTIMPLEMENTED() << "Unknown Resolver timeout parameters";
-  }
+  // 5-second request timeout and use a 1-second tiemout instead.
+  lines.push_back("options single-request timeout:1");
 
   // Newline at end of file
   lines.push_back("");

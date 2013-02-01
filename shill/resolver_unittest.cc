@@ -30,17 +30,12 @@ const char kExpectedOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"
   "search chromium.org google.com\n"
-  "options single-request timeout:1 attempts:3\n";
-const char kExpectedShortTimeoutOutput[] =
-  "nameserver 8.8.8.8\n"
-  "nameserver 8.8.9.9\n"
-  "search chromium.org google.com\n"
-  "options single-request timeout-ms:300 attempts:15\n";
+  "options single-request timeout:1\n";
 const char kExpectedIgnoredSearchOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"
   "search google.com\n"
-  "options single-request timeout:1 attempts:3\n";
+  "options single-request timeout:1\n";
 }  // namespace {}
 
 class ResolverTest : public Test {
@@ -84,30 +79,9 @@ TEST_F(ResolverTest, NonEmpty) {
   domain_search.push_back(kSearchDomain0);
   domain_search.push_back(kSearchDomain1);
 
-  EXPECT_TRUE(resolver_->SetDNSFromLists(
-      dns_servers, domain_search, Resolver::kDefaultTimeout));
+  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(file_util::PathExists(path_));
   EXPECT_EQ(kExpectedOutput, ReadFile());
-
-  EXPECT_TRUE(resolver_->ClearDNS());
-}
-
-TEST_F(ResolverTest, ShortTimeout) {
-  EXPECT_FALSE(file_util::PathExists(path_));
-  EXPECT_TRUE(resolver_->ClearDNS());
-
-  MockControl control;
-  vector<string> dns_servers;
-  vector<string> domain_search;
-  dns_servers.push_back(kNameServer0);
-  dns_servers.push_back(kNameServer1);
-  domain_search.push_back(kSearchDomain0);
-  domain_search.push_back(kSearchDomain1);
-
-  EXPECT_TRUE(resolver_->SetDNSFromLists(
-      dns_servers, domain_search, Resolver::kShortTimeout));
-  EXPECT_TRUE(file_util::PathExists(path_));
-  EXPECT_EQ(kExpectedShortTimeoutOutput, ReadFile());
 
   EXPECT_TRUE(resolver_->ClearDNS());
 }
@@ -119,8 +93,7 @@ TEST_F(ResolverTest, Empty) {
   vector<string> dns_servers;
   vector<string> domain_search;
 
-  EXPECT_TRUE(resolver_->SetDNSFromLists(
-      dns_servers, domain_search, Resolver::kDefaultTimeout));
+  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_FALSE(file_util::PathExists(path_));
 }
 
@@ -139,8 +112,7 @@ TEST_F(ResolverTest, IgnoredSearchList) {
   ignored_search.push_back(kSearchDomain0);
   ignored_search.push_back(kSearchDomain2);
   resolver_->set_ignored_search_list(ignored_search);
-  EXPECT_TRUE(resolver_->SetDNSFromLists(
-      dns_servers, domain_search, Resolver::kDefaultTimeout));
+  EXPECT_TRUE(resolver_->SetDNSFromLists(dns_servers, domain_search));
   EXPECT_TRUE(file_util::PathExists(path_));
   EXPECT_EQ(kExpectedIgnoredSearchOutput, ReadFile());
 

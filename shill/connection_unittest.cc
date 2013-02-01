@@ -64,8 +64,7 @@ class ConnectionTest : public Test {
             kTestDeviceInterfaceIndex0,
             kTestDeviceName0,
             Technology::kUnknown,
-            device_info_.get(),
-            false)),
+            device_info_.get())),
         ipconfig_(new IPConfig(&control_, kTestDeviceName0)),
         local_address_(IPAddress::kFamilyIPv4),
         broadcast_address_(IPAddress::kFamilyIPv4),
@@ -157,8 +156,7 @@ class ConnectionTest : public Test {
     ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
                                                kTestDeviceName0,
                                                Technology::kUnknown,
-                                               device_info_.get(),
-                                               false));
+                                               device_info_.get()));
     ReplaceSingletons(connection);
     return connection;
   }
@@ -239,8 +237,7 @@ TEST_F(ConnectionTest, AddConfig) {
                                                GetDefaultMetric()));
   EXPECT_CALL(resolver_, SetDNSFromLists(
       ipconfig_->properties().dns_servers,
-      ipconfig_->properties().domain_search,
-      Resolver::kDefaultTimeout));
+      ipconfig_->properties().domain_search));
 
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
@@ -352,8 +349,7 @@ TEST_F(ConnectionTest, AddConfigReverse) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(kTestDeviceInterfaceIndex0,
                                                GetDefaultMetric()));
   vector<string> empty_list;
-  EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list,
-                                         Resolver::kDefaultTimeout));
+  EXPECT_CALL(resolver_, SetDNSFromLists(empty_list, empty_list));
   scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
       &control_,
       reinterpret_cast<EventDispatcher *>(NULL),
@@ -387,51 +383,11 @@ TEST_F(ConnectionTest, AddConfigReverse) {
               ConfigureRoutes(kTestDeviceInterfaceIndex0,
                               ipconfig_,
                               GetDefaultMetric()));
-  EXPECT_CALL(resolver_, SetDNSFromLists(ipconfig_->properties().dns_servers,
-                                         ipconfig_->properties().domain_search,
-                                         Resolver::kDefaultTimeout));
+  EXPECT_CALL(resolver_,
+              SetDNSFromLists(ipconfig_->properties().dns_servers,
+                              ipconfig_->properties().domain_search));
 
   connection_->UpdateFromIPConfig(ipconfig_);
-}
-
-TEST_F(ConnectionTest, AddConfigShortTimeout) {
-  ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex0,
-                                             kTestDeviceName0,
-                                             Technology::kUnknown,
-                                             device_info_.get(),
-                                             true));
-  ReplaceSingletons(connection);
-  EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(rtnl_handler_, AddInterfaceAddress(_, _, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(routing_table_, SetDefaultRoute(_, _, _))
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(routing_table_, ConfigureRoutes(_, _, _))
-      .WillRepeatedly(Return(true));
-  connection->UpdateFromIPConfig(ipconfig_);
-  EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
-  EXPECT_CALL(resolver_, SetDNSFromLists(
-      ipconfig_->properties().dns_servers,
-      ipconfig_->properties().domain_search,
-      Resolver::kShortTimeout));
-  scoped_refptr<MockDevice> device(new StrictMock<MockDevice>(
-      &control_,
-      reinterpret_cast<EventDispatcher *>(NULL),
-      reinterpret_cast<Metrics *>(NULL),
-      reinterpret_cast<Manager *>(NULL),
-      kTestDeviceName0,
-      string(),
-      kTestDeviceInterfaceIndex0));
-  EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
-  EXPECT_CALL(*device.get(), RequestPortalDetection()).WillOnce(Return(true));
-  EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
-  connection->SetIsDefault(true);
-  EXPECT_CALL(*device_info_, HasOtherAddress(_, _)).WillOnce(Return(false));
-  EXPECT_CALL(resolver_, SetDNSFromLists(ipconfig_->properties().dns_servers,
-                                         ipconfig_->properties().domain_search,
-                                         Resolver::kShortTimeout));
-  connection->UpdateFromIPConfig(ipconfig_);
-  AddDestructorExpectations();
 }
 
 TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
@@ -449,7 +405,7 @@ TEST_F(ConnectionTest, AddConfigWithDNSDomain) {
   EXPECT_CALL(routing_table_, SetDefaultMetric(_, _));
   vector<string> domain_search_list;
   domain_search_list.push_back(kDomainName + ".");
-  EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list, _));
+  EXPECT_CALL(resolver_, SetDNSFromLists(_, domain_search_list));
   DeviceRefPtr device;
   EXPECT_CALL(*device_info_, GetDevice(_)).WillOnce(Return(device));
   EXPECT_CALL(routing_table_, FlushCache()).WillOnce(Return(true));
@@ -512,8 +468,7 @@ TEST_F(ConnectionTest, Destructor) {
   ConnectionRefPtr connection(new Connection(kTestDeviceInterfaceIndex1,
                                              kTestDeviceName1,
                                              Technology::kUnknown,
-                                             device_info_.get(),
-                                             false));
+                                             device_info_.get()));
   connection->resolver_ = &resolver_;
   connection->routing_table_ = &routing_table_;
   connection->rtnl_handler_ = &rtnl_handler_;

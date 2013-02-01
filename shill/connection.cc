@@ -64,8 +64,7 @@ void Connection::Binder::OnDisconnect() {
 Connection::Connection(int interface_index,
                        const std::string& interface_name,
                        Technology::Identifier technology,
-                       const DeviceInfo *device_info,
-                       bool is_short_dns_timeout_enabled)
+                       const DeviceInfo *device_info)
     : weak_ptr_factory_(this),
       is_default_(false),
       has_broadcast_domain_(false),
@@ -80,7 +79,6 @@ Connection::Connection(int interface_index,
           // Connection owns a single instance of |lower_binder_| so it's safe
           // to use an Unretained callback.
           Bind(&Connection::OnLowerDisconnect, Unretained(this))),
-      dns_timeout_parameters_(Resolver::kDefaultTimeout),
       device_info_(device_info),
       resolver_(Resolver::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
@@ -88,9 +86,6 @@ Connection::Connection(int interface_index,
   SLOG(Connection, 2) << __func__ << "(" << interface_index << ", "
                       << interface_name << ", "
                       << Technology::NameFromIdentifier(technology) << ")";
-  if (is_short_dns_timeout_enabled) {
-    dns_timeout_parameters_ = Resolver::kShortTimeout;
-  }
 }
 
 Connection::~Connection() {
@@ -241,8 +236,7 @@ void Connection::PushDNSConfig() {
                         << dns_domain_name_;
     domain_search.push_back(dns_domain_name_ + ".");
   }
-  resolver_->SetDNSFromLists(dns_servers_, domain_search,
-                             dns_timeout_parameters_);
+  resolver_->SetDNSFromLists(dns_servers_, domain_search);
 }
 
 void Connection::RequestRouting() {

@@ -605,13 +605,6 @@ Properties 	object ActiveProfile [readwrite]
 			Service list is reordered, even if this list has not
 			changed.
 
-		string ShortDNSTimeoutTechnologies [readwrite]
-
-			The list of technologies for which a short DNS
-			timeout will be used, in order to improve retry
-			performance.  This is a comma-separated string;
-			e.g. "wifi,wimax,vpn".
-
 		string State [readonly]
 
 			The global connection state of a system. Possible

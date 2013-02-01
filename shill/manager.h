@@ -64,9 +64,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
     // Whether to ARP for the default gateway in the DHCP client after
     // acquiring a lease.
     bool arp_gateway;
-    // Comma separated list of technologies on which to use a short DNS
-    // timeout to improve performance.
-    std::string short_dns_timeout_technologies;
     // Comma-separated list of technologies for which link-monitoring is
     // enabled.
     std::string link_monitor_technologies;
@@ -211,9 +208,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Return whether a Technology has any connected Services.
   virtual bool IsTechnologyConnected(Technology::Identifier technology) const;
-
-  // Return whether a technology is enabled for using short DNS timeouts.
-  bool IsTechnologyShortDNSTimeoutEnabled(Technology::Identifier tech) const;
 
   // Return whether a technology is enabled for link monitoring.
   virtual bool IsTechnologyLinkMonitorEnabled(

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -20,11 +20,6 @@ namespace shill {
 // of an ipconfig into a "resolv.conf" formatted file.
 class Resolver {
  public:
-  enum TimeoutParameters {
-    kDefaultTimeout,
-    kShortTimeout
-  };
-
   // The default comma-separated list of search-list prefixes that
   // should be ignored when writing out a DNS configuration.  These
   // are usually preconfigured by a DHCP server and are not of real
@@ -32,10 +27,6 @@ class Resolver {
   // we expect will have a better chance of getting what the user is
   // looking for.
   static const char kDefaultIgnoredSearchList[];
-
-  // The default comma-separated list of technologies for which short
-  // DNS timeouts should be enabled.
-  static const char kDefaultShortTimeoutTechnologies[];
 
   virtual ~Resolver();
 
@@ -45,11 +36,10 @@ class Resolver {
   virtual void set_path(const base::FilePath &path) { path_ = path; }
 
   // Install domain name service parameters, given a list of
-  // DNS servers in |dns_servers|, a list of DNS search suffixes in
-  // |domain_search| and a DNS timeout parameter in |timeout|.
+  // DNS servers in |dns_servers|, and a list of DNS search suffixes in
+  // |domain_search|.
   virtual bool SetDNSFromLists(const std::vector<std::string> &dns_servers,
-                               const std::vector<std::string> &domain_search,
-                               TimeoutParameters timeout);
+                               const std::vector<std::string> &domain_search);
 
   // Remove any created domain name service file.
   virtual bool ClearDNS();
@@ -67,9 +57,6 @@ class Resolver {
  private:
   friend struct base::DefaultLazyInstanceTraits<Resolver>;
   friend class ResolverTest;
-
-  static const char kDefaultTimeoutOptions[];
-  static const char kShortTimeoutOptions[];
 
   base::FilePath path_;
   std::vector<std::string> ignored_search_list_;
