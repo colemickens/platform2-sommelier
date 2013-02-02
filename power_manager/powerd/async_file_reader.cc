@@ -5,6 +5,7 @@
 #include "power_manager/powerd/async_file_reader.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <glib.h>
 #include <stdio.h>
 #include <sys/stat.h>
