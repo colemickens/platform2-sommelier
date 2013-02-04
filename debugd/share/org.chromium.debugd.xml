@@ -22,6 +22,7 @@
       <arg name="options" type="a{sv}" direction="in">
         <tp:docstring>
           Options to pass to the ping command. Accepted keys include:
+            broadcast (bool): Send broadcast pings.
             count (int default 4): Number of packets to send.
             interval (int): Time to wait between packets.
             numeric (bool): Print numeric remote hosts.

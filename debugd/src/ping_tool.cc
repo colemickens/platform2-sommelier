@@ -27,6 +27,9 @@ std::string PingTool::Start(const DBus::FileDescriptor& outfd,
     return "";
   p->AddArg(kSetuidHack);
   p->AddArg(kPing);
+  if (options.count("broadcast") == 1) {
+    p->AddArg("-b");
+  }
   if (options.count("count") == 1) {
     // If we try to convert a non-int value to an int here, dbus-c++ will toss
     // a C++ exception, which the dbus-c++ main loop will convert into a dbus
