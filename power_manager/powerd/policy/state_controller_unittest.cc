@@ -826,6 +826,20 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   policy.set_idle_action(PowerManagementPolicy_Action_SUSPEND);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // The pref should also override the shutdown-on-idle action that's the
+  // default when the session is stopped.
+  controller_.HandlePolicyChange(PowerManagementPolicy());
+  controller_.HandleSessionStateChange(StateController::SESSION_STOPPED);
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, NULL),
+            delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 // Tests that state overrides are honored.

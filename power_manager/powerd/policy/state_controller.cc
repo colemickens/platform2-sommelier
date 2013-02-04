@@ -545,8 +545,10 @@ void StateController::UpdateSettingsAndState() {
       delays_.screen_lock = delays_.idle - (orig_idle - delays_.screen_lock);
   }
 
-  // The disable-idle-suspend pref overrides |policy_|.
-  if (disable_idle_suspend_ && idle_action_ == SUSPEND)
+  // The disable-idle-suspend pref overrides |policy_|.  Note that it also
+  // overrides non-suspend actions; it should e.g. block the system from
+  // shutting down on idle if no session has been started.
+  if (disable_idle_suspend_)
     idle_action_ = DO_NOTHING;
 
   // Finally, apply temporary state overrides.
