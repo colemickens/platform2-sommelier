@@ -165,6 +165,8 @@ class DHCPConfig : public IPConfig {
   // Informs upper layers of the failure.
   void ProcessDHCPTimeout();
 
+  void KillClient();
+
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
 

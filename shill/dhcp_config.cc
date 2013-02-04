@@ -91,9 +91,6 @@ DHCPConfig::~DHCPConfig() {
 
   // Don't leave behind dhcpcd running.
   Stop(__func__);
-
-  // Make sure we don't get any callbacks to the destroyed instance.
-  CleanupClientState();
 }
 
 bool DHCPConfig::RequestIP() {
@@ -223,46 +220,45 @@ bool DHCPConfig::Start() {
 }
 
 void DHCPConfig::Stop(const char *reason) {
-  if (pid_) {
-    LOG(INFO) << "Terminating " << pid_ << " (" << reason << ")";
-    if (kill(pid_, SIGTERM) < 0) {
-      PLOG(ERROR);
-      return;
-    }
-    pid_t ret;
-    int num_iterations =
-        kDHCPCDExitWaitMilliseconds / kDHCPCDExitPollMilliseconds;
-    for (int count = 0; count < num_iterations; ++count) {
-      ret = waitpid(pid_, NULL, WNOHANG);
-      if (ret == pid_ || ret == -1)
-        break;
-      usleep(kDHCPCDExitPollMilliseconds * 1000);
-      if (count == num_iterations / 2) {
-        // Make one last attempt to kill dhcpcd.
-        LOG(WARNING) << "Terminating " << pid_ << " with SIGKILL "
-                     << "(" << reason << ")";
-        kill(pid_, SIGKILL);
-      }
-    }
-    if (ret != pid_)
-      PLOG(ERROR);
+  LOG_IF(INFO, pid_) << "Stopping " << pid_ << " (" << reason << ")";
+  KillClient();
+  // KillClient waits for the client to terminate so it's safe to cleanup the
+  // state.
+  CleanupClientState();
+}
+
+void DHCPConfig::KillClient() {
+  if (!pid_) {
+    return;
   }
-  StopDHCPTimeout();
+  if (kill(pid_, SIGTERM) < 0) {
+    PLOG(ERROR);
+    return;
+  }
+  pid_t ret;
+  int num_iterations =
+      kDHCPCDExitWaitMilliseconds / kDHCPCDExitPollMilliseconds;
+  for (int count = 0; count < num_iterations; ++count) {
+    ret = waitpid(pid_, NULL, WNOHANG);
+    if (ret == pid_ || ret == -1)
+      break;
+    usleep(kDHCPCDExitPollMilliseconds * 1000);
+    if (count == num_iterations / 2) {
+      // Make one last attempt to kill dhcpcd.
+      LOG(WARNING) << "Terminating " << pid_ << " with SIGKILL.";
+      kill(pid_, SIGKILL);
+    }
+  }
+  if (ret != pid_)
+    PLOG(ERROR);
 }
 
 bool DHCPConfig::Restart() {
-  // Check to ensure that this instance doesn't get destroyed in the middle of
-  // this call. If stopping a running client while there's only one reference to
-  // this instance, we will end up destroying it when the PID is unbound from
-  // the Provider. Since the Provider doesn't invoke Restart, this would mean
-  // that Restart was erroneously executed through a bare reference.
-  CHECK(!pid_ || !HasOneRef());
-  Stop(__func__);
-  if (pid_) {
-    provider_->UnbindPID(pid_);
-  }
-  CleanupClientState();
-  return Start();
+  // Take a reference of this instance to make sure we don't get destroyed in
+  // the middle of this call.
+  DHCPConfigRefPtr me = this;
+  me->Stop(__func__);
+  return me->Start();
 }
 
 string DHCPConfig::GetIPv4AddressString(unsigned int address) {
@@ -420,18 +416,17 @@ void DHCPConfig::ChildWatchCallback(GPid pid, gint status, gpointer data) {
   DHCPConfig *config = reinterpret_cast<DHCPConfig *>(data);
   config->child_watch_tag_ = 0;
   CHECK_EQ(pid, config->pid_);
-  config->CleanupClientState();
-
   // |config| instance may be destroyed after this call.
-  config->provider_->UnbindPID(pid);
+  config->CleanupClientState();
 }
 
 void DHCPConfig::CleanupClientState() {
+  SLOG(DHCP, 2) << __func__ << ": " << device_name();
+  StopDHCPTimeout();
   if (child_watch_tag_) {
     glib_->SourceRemove(child_watch_tag_);
     child_watch_tag_ = 0;
   }
-  pid_ = 0;
   proxy_.reset();
   if (lease_file_suffix_ == device_name()) {
     // If the lease file suffix was left as default, clean it up at exit.
@@ -441,6 +436,12 @@ void DHCPConfig::CleanupClientState() {
   }
   file_util::Delete(root_.Append(
       base::StringPrintf(kDHCPCDPathFormatPID, device_name().c_str())), false);
+  if (pid_) {
+    int pid = pid_;
+    pid_ = 0;
+    // |this| instance may be destroyed after this call.
+    provider_->UnbindPID(pid);
+  }
 }
 
 void DHCPConfig::StartDHCPTimeout() {

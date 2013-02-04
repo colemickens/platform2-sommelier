@@ -553,15 +553,17 @@ TEST_F(DHCPConfigTest, StartTimeout) {
 }
 
 TEST_F(DHCPConfigTest, Stop) {
-  // Ensure no crashes.
   const int kPID = 1 << 17;  // Ensure unknown positive PID.
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, ContainsRegex(
-      base::StringPrintf("Terminating.+%s", __func__))));
+      base::StringPrintf("Stopping.+%s", __func__))));
   config_->pid_ = kPID;
+  DHCPProvider::GetInstance()->BindPID(kPID, config_);
   config_->Stop(__func__);
   EXPECT_TRUE(config_->lease_acquisition_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(DHCPProvider::GetInstance()->GetConfig(kPID));
+  EXPECT_FALSE(config_->pid_);
 }
 
 TEST_F(DHCPConfigTest, StopDuringRequestIP) {
