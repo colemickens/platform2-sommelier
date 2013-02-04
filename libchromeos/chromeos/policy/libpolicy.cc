@@ -13,8 +13,6 @@ namespace policy {
 PolicyProvider::PolicyProvider()
     : device_policy_(new DevicePolicyImpl),
       device_policy_is_loaded_(false) {
-  // Force initial load of the policy contents.
-  Reload();
 }
 
 PolicyProvider::PolicyProvider(DevicePolicy* device_policy)
