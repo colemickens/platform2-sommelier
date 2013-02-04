@@ -298,10 +298,10 @@ void StateController::HandleOverrideChange(bool override_screen_dim,
       override_lid_suspend == override_lid_suspend_)
     return;
 
-  VLOG(1) << "Overrides changed (override_dim=" << override_screen_dim
-          << ", override_off=" << override_screen_off
-          << ", override_idle_suspend=" << override_idle_suspend
-          << ", override_lid_suspend=" << override_lid_suspend << ")";
+  VLOG(1) << "Overrides changed: override_dim=" << override_screen_dim
+          << " override_off=" << override_screen_off
+          << " override_idle_suspend=" << override_idle_suspend
+          << " override_lid_suspend=" << override_lid_suspend;
   override_screen_dim_ = override_screen_dim;
   override_screen_off_ = override_screen_off;
   override_idle_suspend_ = override_idle_suspend;

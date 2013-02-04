@@ -352,7 +352,7 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
   // For the first time SetPowerState() is called (when the system just
   // boots), if the ALS value has not been seen, skip the backlight adjustment.
   if (old_state == BACKLIGHT_UNINITIALIZED && !has_seen_als_event_) {
-    LOG(INFO) << "First time SetPowerState() called, skip the backlight "
+    LOG(INFO) << "First time SetPowerState() called; skipping the backlight "
               << "brightness adjustment since no ALS value available yet.";
     write_brightness = false;
   }
@@ -420,7 +420,7 @@ bool InternalBacklightController::OnPlugEvent(bool is_plugged) {
       return WriteBrightness(
         true, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
     }
-    LOG(INFO) << "First time OnPlugEvent() called, skip the backlight "
+    LOG(INFO) << "First time OnPlugEvent() called; skipping the backlight "
               << "brightness adjustment since no ALS value available yet.";
     return true;
   }
@@ -508,9 +508,8 @@ void InternalBacklightController::OnAmbientLightChanged(
   if (als_temporal_count_ >= kAlsHystResponse) {
     als_temporal_count_ = 0;
     als_adjustment_count_++;
-    LOG(INFO) << "Ambient light sensor-triggered brightness adjustment.";
-    LOG(INFO) << "ALS history (most recent first): "
-              << light_sensor_->DumpPercentHistory();
+    LOG(INFO) << "ALS-triggered adjustment; history (most recent "
+              << "first): " << light_sensor_->DumpPercentHistory();
     // ALS adjustment should not change brightness offset.
     WriteBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_SLOW);
   }
@@ -617,7 +616,8 @@ bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
     als_hysteresis_percent_ = als_offset_percent_;
     target_percent_ = last_active_offset_percent_;
     int64 level = PercentToLevel(target_percent_);
-    LOG(INFO) << "Set resume brightness: " << target_percent_ << "%";
+    LOG(INFO) << "Set resume brightness: " << target_percent_ << "% ("
+              << level << "); also setting actual brightness to 0";
     backlight_->SetResumeBrightnessLevel(level);
     SetBrightness(PercentToLevel(0), TRANSITION_INSTANT);
     return true;
@@ -625,8 +625,8 @@ bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
 
   als_hysteresis_percent_ = als_offset_percent_;
   int64 level = PercentToLevel(target_percent_);
-  LOG(INFO) << "WriteBrightness: " << old_percent << "% -> "
-            << target_percent_ << "%";
+  LOG(INFO) << "WriteBrightness: " << old_percent << "% -> " << target_percent_
+            << "% (" << target_level_ << " -> " << level << ")";
   if (SetBrightness(level, style)) {
     WritePrefs();
     if (observer_)
@@ -638,9 +638,6 @@ bool InternalBacklightController::WriteBrightness(bool adjust_brightness_offset,
 
 bool InternalBacklightController::SetBrightness(int64 target_level,
                                                 TransitionStyle style) {
-  LOG(INFO) << "Setting brightness level to " << target_level
-            << " (previous target was " << target_level_ << ")";
-
   // If this is a redundant call (existing target level is the same as
   // new target level), ignore this call.
   if (target_level_ == target_level)
@@ -698,7 +695,7 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
   }
 
   if (!backlight_->SetBrightnessLevel(target_level, interval))
-    DLOG(INFO) << "Could not set brightness to " << target_level;
+    LOG(WARNING) << "Could not set brightness to " << target_level;
   return true;
 }
 

@@ -307,13 +307,13 @@ void Daemon::HandleNumOfSessionsPerChargeOnSetPlugged(
 
 bool Daemon::SendMetric(const std::string& name, int sample,
                         int min, int max, int nbuckets) {
-  DLOG(INFO) << "Sending metric: " << name << " " << sample << " "
-             << min << " " << max << " " << nbuckets;
+  VLOG(1) << "Sending metric: " << name << " " << sample << " "
+          << min << " " << max << " " << nbuckets;
   return metrics_lib_->SendToUMA(name, sample, min, max, nbuckets);
 }
 
 bool Daemon::SendEnumMetric(const std::string& name, int sample, int max) {
-  DLOG(INFO) << "Sending enum metric: " << name << " " << sample << " " << max;
+  VLOG(1) << "Sending enum metric: " << name << " " << sample << " " << max;
   return metrics_lib_->SendEnumToUMA(name, sample, max);
 }
 

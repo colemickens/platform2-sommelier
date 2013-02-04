@@ -95,11 +95,11 @@ void StateControl::RescanState(time_t cur_time) {
     }
     ++iter;
   }
-  LOG(INFO) << "Rescanned states:"
-            << " disable_idle_dim = "     << disable_idle_dim_
-            << " disable_idle_blank = "   << disable_idle_blank_
-            << " disable_idle_suspend = " << disable_idle_suspend_
-            << " disable_lid_suspend = "  << disable_lid_suspend_;
+  VLOG(1) << "Rescanned states:"
+          << " disable_idle_dim="     << disable_idle_dim_
+          << " disable_idle_blank="   << disable_idle_blank_
+          << " disable_idle_suspend=" << disable_idle_suspend_
+          << " disable_lid_suspend="  << disable_lid_suspend_;
   if (next_check_ > 0) {
     util::RemoveTimeout(&record_expired_timeout_id_);
     record_expired_timeout_id_ = g_timeout_add_seconds(
@@ -108,6 +108,7 @@ void StateControl::RescanState(time_t cur_time) {
 }
 
 void StateControl::RemoveOverride(int request_id) {
+  LOG(INFO) << "Removing override: request_id=" << request_id;
   StateControlList::iterator iter = state_override_list_.find(request_id);
   if (state_override_list_.end() == iter) {
     LOG(WARNING) << "RemoveOverride id " << request_id << " not found";
@@ -133,7 +134,7 @@ void StateControl::RemoveOverrideAndUpdate(int request_id) {
 }
 
 gboolean StateControl::RecordExpired() {
-  LOG(INFO) << "Expiring StateControl entries";
+  VLOG(1) << "Expiring StateControl entries";
   record_expired_timeout_id_ = 0;
   RescanState();
   CHECK(daemon_);
@@ -199,7 +200,7 @@ bool StateControl::StateOverrideRequestStruct(const StateControlInfo* request,
     // Try kMaxRetries (20) times to find unused ID. Should be rare we collide
     for (unsigned int i = 0; i < kMaxRetries; i++) {
       new_entry->request_id = ++last_id_;
-      LOG(INFO) << "Checking " << new_entry->request_id;
+      VLOG(1) << "Checking " << new_entry->request_id;
       if (new_entry->request_id != 0 &&
           state_override_list_.count(new_entry->request_id) == 0) {
         break;
@@ -228,13 +229,13 @@ bool StateControl::StateOverrideRequestStruct(const StateControlInfo* request,
   disable_idle_suspend_ |= new_entry->disable_idle_suspend;
   disable_lid_suspend_  |= new_entry->disable_lid_suspend;
 
-  LOG(INFO) << "New override added: "
-            << " request_id = "           << new_entry->request_id
-            << " duration = "             << new_entry->duration
-            << " disable_idle_dim = "     << new_entry->disable_idle_dim
-            << " disable_idle_blank = "   << new_entry->disable_idle_blank
-            << " disable_idle_suspend = " << new_entry->disable_idle_suspend
-            << " disable_lid_suspend = "  << new_entry->disable_lid_suspend;
+  LOG(INFO) << "Added override:"
+            << " request_id="           << new_entry->request_id
+            << " duration="             << new_entry->duration
+            << " disable_idle_dim="     << new_entry->disable_idle_dim
+            << " disable_idle_blank="   << new_entry->disable_idle_blank
+            << " disable_idle_suspend=" << new_entry->disable_idle_suspend
+            << " disable_lid_suspend="  << new_entry->disable_lid_suspend;
 
   if (next_check_ == 0 || new_entry->expires < next_check_) {
     next_check_ = new_entry->expires;
@@ -254,19 +255,17 @@ bool StateControl::IsStateDisabled(StateControlStates state) {
 
   switch (state) {
   case STATE_CONTROL_IDLE_DIM:
-    LOG(INFO) << "Checking disable_idle_dim. Value = " << disable_idle_dim_;
+    VLOG(1) << "Checking disable_idle_dim. Value = " << disable_idle_dim_;
     return(disable_idle_dim_);
   case STATE_CONTROL_IDLE_BLANK:
-    LOG(INFO) << "Checking disable_idle_blank. Value = "
-              << disable_idle_blank_;
+    VLOG(1) << "Checking disable_idle_blank. Value = " << disable_idle_blank_;
     return(disable_idle_blank_);
   case STATE_CONTROL_IDLE_SUSPEND:
-    LOG(INFO) << "Checking disable_idle_suspend. Value = "
-              << disable_idle_suspend_;
+    VLOG(1) << "Checking disable_idle_suspend. Value = "
+            << disable_idle_suspend_;
     return(disable_idle_suspend_);
   case STATE_CONTROL_LID_SUSPEND:
-    LOG(INFO) << "Checking disable_lid_suspend. Value = "
-              << disable_lid_suspend_;
+    VLOG(1) << "Checking disable_lid_suspend. Value = " << disable_lid_suspend_;
     return(disable_lid_suspend_);
   default:
     LOG(ERROR) << "Invalid state " << state << " passed to IsStateDisabled";

@@ -476,7 +476,6 @@ void Daemon::Run() {
 }
 
 void Daemon::UpdateIdleStates() {
-  LOG(INFO) << "Daemon : UpdateIdleStates";
   if (state_controller_initialized_) {
     state_controller_->HandleOverrideChange(
         state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM),
@@ -492,6 +491,8 @@ void Daemon::SetPlugged(bool plugged) {
   if (plugged == plugged_state_)
     return;
 
+  LOG(INFO) << "SetPlugged: plugged=" << plugged;
+
   HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
                                            plugged ?
                                            PLUGGED_STATE_CONNECTED :
@@ -506,7 +507,6 @@ void Daemon::SetPlugged(bool plugged) {
         power_status_);
   }
 
-  LOG(INFO) << "Daemon : SetPlugged = " << plugged;
   plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
       PLUGGED_STATE_DISCONNECTED;
 
@@ -990,9 +990,7 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
 
   struct udev_device* dev = udev_monitor_receive_device(daemon->udev_monitor_);
   if (dev) {
-    LOG(INFO) << "Event on ("
-              << udev_device_get_subsystem(dev)
-              << ") Action "
+    LOG(INFO) << "Event on (" << udev_device_get_subsystem(dev) << ") Action "
               << udev_device_get_action(dev);
     CHECK(std::string(udev_device_get_subsystem(dev)) ==
           kPowerSupplyUdevSubsystem);

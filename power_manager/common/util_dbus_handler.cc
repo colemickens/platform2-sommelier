@@ -95,7 +95,7 @@ DBusHandlerResult DBusHandler::MainDBusSignalHandler(DBusConnection* connection,
   if (iter == handler->dbus_signal_handler_table_.end())
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-  LOG(INFO) << "Got " << member << " signal";
+  VLOG(1) << "Got " << member << " signal";
   const DBusSignalHandler& callback = iter->second;
 
   if (callback.Run(message))
@@ -123,7 +123,7 @@ DBusHandlerResult DBusHandler::MainDBusMethodHandler(DBusConnection* connection,
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
   }
 
-  LOG(INFO) << "Got " << member << " method call";
+  VLOG(1) << "Got " << member << " method call";
   const DBusMethodHandler& callback = iter->second;
   DBusMessage* reply = callback.Run(message);
 
