@@ -11,8 +11,8 @@
 # Usage:
 #   -b -- indicates that this script is invoked at boot time.
 
-# Directory where temporary state files are written by the root user.
-root_run_dir=/var/run/power_manager/root
+# Directory where state files are written by the root user.
+root_spool_dir=/var/spool/power_manager/root
 
 # Send a message to /var/log/messages.
 # Arguments:
@@ -23,7 +23,7 @@ log_msg() {
     logger -t "send_metrics_on_resume[${PPID}]" $@
 }
 
-LAST_RESUME_TIMINGS_FILE=${root_run_dir}/last_resume_timings
+LAST_RESUME_TIMINGS_FILE=${root_spool_dir}/last_resume_timings
 # Save a message which can be parsed by autotests to determine resume timings.
 # Messages are being saved here so that we only parse the log file in one
 # location.
@@ -88,7 +88,7 @@ send_time_in_suspend() {
   local time_in_suspend_name=Power.TimeInSuspendAt$1
 
   # On suspend, powerd_suspend stores the current RTC value to a file.
-  local f_suspend_at=${root_run_dir}/suspend-to-ram-time
+  local f_suspend_at=${root_spool_dir}/suspend-to-ram-time
   [ -r $f_suspend_at ] || return
 
   local resume_at=$(/bin/cat /sys/class/rtc/rtc0/since_epoch)
@@ -221,7 +221,7 @@ send_suspend_resume_time() {
   local recent_messages="$1"
 
   # On suspend, powerd_suspend stores the power status to a file.
-  local power_status_on_suspend=${root_run_dir}/power-status-on-suspend
+  local power_status_on_suspend=${root_spool_dir}/power-status-on-suspend
   [ -r $power_status_on_suspend ] || return
 
   # Greps the timestamps.

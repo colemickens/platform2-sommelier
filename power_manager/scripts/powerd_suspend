@@ -13,24 +13,28 @@ DEFINE_boolean cancel_if_lid_open $FLAGS_FALSE "cancel suspend if lid is open" l
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
 
-# Directory where this script and send_metrics_on_resume (running as root) write
-# temporary state files.
+# Directory where this script (running as root) writes temporary state
+# files.
 root_run_dir=/var/run/power_manager/root
 
 # For testing: write RTC resume timestamp to this file if it exists
 timestamp_file=${root_run_dir}/hwclock-on-resume
 
+# Directory where this script and send_metrics_on_resume (running as root)
+# write files that must persist across reboots.
+root_spool_dir=/var/spool/power_manager/root
+
 # File used to record the power status (AC vs. battery) before suspending.  Read
 # by send_metrics_on_resume.
-power_status_on_suspend_file=${root_run_dir}/power-status-on-suspend
+power_status_on_suspend_file=${root_spool_dir}/power-status-on-suspend
 
 # File containing the time at which we started suspending.  Read by
 # send_metrics_on_resume.
-suspend_to_ram_time_file=${root_run_dir}/suspend-to-ram-time
+suspend_to_ram_time_file=${root_spool_dir}/suspend-to-ram-time
 
 # File containing resume-related timing information.  Written by
 # send_metrics_on_resume.
-last_resume_timings_file=${root_run_dir}/last_resume_timings
+last_resume_timings_file=${root_spool_dir}/last_resume_timings
 
 # Directory where the powerd process (running as the "power" user) writes
 # temporary state files.
