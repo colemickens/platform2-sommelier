@@ -43,7 +43,7 @@ class UserPolicyServiceTest : public ::testing::Test {
 
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
-    key_copy_file_ = tmpdir_.path().Append("key_copy.pub");
+    key_copy_file_ = tmpdir_.path().Append("hash/key_copy.pub");
 
     key_ = new StrictMock<MockPolicyKey>;
     store_ = new StrictMock<MockPolicyStore>;

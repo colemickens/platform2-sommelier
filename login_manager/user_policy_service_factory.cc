@@ -42,9 +42,9 @@ const FilePath::CharType kPolicyKeyFile[] = FILE_PATH_LITERAL("key");
 // chrome process can read them; the authoritative version of the key is still
 // the vault's.
 const FilePath::CharType kPolicyKeyCopyDir[] =
-    FILE_PATH_LITERAL("/var/run/user_policy/");
-// Suffix of the policy key files.
-const FilePath::CharType kPolicyKeyCopyFileSuffix[] = FILE_PATH_LITERAL(".pub");
+    FILE_PATH_LITERAL("/var/run/user_policy");
+// Name of the policy key files.
+const FilePath::CharType kPolicyKeyCopyFile[] = FILE_PATH_LITERAL("policy.pub");
 
 }  // namespace
 
@@ -84,10 +84,10 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
 
   using chromeos::cryptohome::home::SanitizeUserName;
   const std::string sanitized(SanitizeUserName(username));
-  const FilePath key_copy_file(base::StringPrintf("%s%s%s",
+  const FilePath key_copy_file(base::StringPrintf("%s/%s/%s",
                                                   kPolicyKeyCopyDir,
                                                   sanitized.c_str(),
-                                                  kPolicyKeyCopyFileSuffix));
+                                                  kPolicyKeyCopyFile));
 
   UserPolicyService* service = new UserPolicyService(
       store.Pass(), key.Pass(), key_copy_file, main_loop_, system_utils_);

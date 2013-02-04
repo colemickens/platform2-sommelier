@@ -8,6 +8,7 @@
 
 #include <vector>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 
@@ -40,11 +41,16 @@ void UserPolicyService::PersistKeyCopy() {
   if (key_copy_path_.empty())
     return;
   if (scoped_policy_key_->IsPopulated()) {
+    FilePath dir(key_copy_path_.DirName());
+    file_util::CreateDirectory(dir);
+    mode_t mode = S_IRWXU | S_IXGRP | S_IXOTH;
+    chmod(dir.value().c_str(), mode);
+
     const std::vector<uint8>& key = scoped_policy_key_->public_key_der();
     system_utils_->AtomicFileWrite(key_copy_path_,
                                    reinterpret_cast<const char*>(&key[0]),
                                    key.size());
-    mode_t mode = S_IRUSR | S_IRGRP | S_IROTH;
+    mode = S_IRUSR | S_IRGRP | S_IROTH;
     chmod(key_copy_path_.value().c_str(), mode);
   } else {
     // Remove the key if it has been cleared.
