@@ -36,6 +36,7 @@ HomeDirs::HomeDirs()
 HomeDirs::~HomeDirs() { }
 
 bool HomeDirs::Init() {
+  LoadDevicePolicy();
   if (!platform_->DirectoryExists(shadow_root_))
     platform_->CreateDirectory(shadow_root_);
   return GetSystemSalt(NULL);
@@ -46,10 +47,9 @@ bool HomeDirs::FreeDiskSpace() {
     return false;
   }
 
-  LoadDevicePolicy();
-
   // If ephemeral users are enabled, remove all cryptohomes except those
   // currently mounted or belonging to the owner.
+  // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled()) {
     RemoveNonOwnerCryptohomes();
     return true;
@@ -125,9 +125,9 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
 }
 
 bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
-  LoadDevicePolicy();
   std::string owner;
   std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
+  // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled() && GetOwner(&owner) && obfuscated != owner)
     return false;
   VaultKeyset vk(platform_, crypto_);
