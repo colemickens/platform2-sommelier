@@ -330,6 +330,18 @@ void StateController::HandleAudioActivity() {
   UpdateState();
 }
 
+void StateController::AddIdleNotification(base::TimeDelta delay) {
+  DCHECK(initialized_);
+  if (delay <= base::TimeDelta()) {
+    LOG(WARNING) << "Ignoring idle notification request for "
+                 << TimeDeltaToString(delay);
+    return;
+  }
+  VLOG(1) << "Adding idle notification for " << TimeDeltaToString(delay);
+  pending_idle_notifications_.insert(delay);
+  UpdateState();
+}
+
 void StateController::OnPrefChanged(const std::string& pref_name) {
   DCHECK(initialized_);
   // The lock-on-suspend pref is the only one that's updated at runtime.
@@ -612,6 +624,18 @@ void StateController::UpdateState() {
       now - GetLastActivityTimeForScreenDimOrLock();
   base::TimeDelta screen_off_duration = now - GetLastActivityTimeForScreenOff();
 
+  for (std::set<base::TimeDelta>::iterator it =
+           pending_idle_notifications_.begin();
+       it != pending_idle_notifications_.end(); ) {
+    if (*it <= idle_duration) {
+      VLOG(1) << "Emitting idle notification for " << TimeDeltaToString(*it);
+      delegate_->EmitIdleNotification(*it);
+      pending_idle_notifications_.erase(it++);
+    } else {
+      break;
+    }
+  }
+
   HandleDelay(delays_.screen_dim, screen_dim_or_lock_duration,
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
@@ -691,6 +715,12 @@ void StateController::ScheduleTimeout(base::TimeTicks now) {
                        delays_.screen_lock));
   timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
       GetRemainingTime(GetLastActivityTimeForIdle(), now, delays_.idle));
+
+  if (!pending_idle_notifications_.empty()) {
+    timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
+        GetRemainingTime(GetLastActivityTimeForIdle(), now,
+                         *pending_idle_notifications_.begin()));
+  }
 
   util::RemoveTimeout(&timeout_id_);
   timeout_time_for_testing_ = base::TimeTicks();

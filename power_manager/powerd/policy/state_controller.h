@@ -6,6 +6,7 @@
 #define POWER_MANAGER_POWERD_POLICY_STATE_CONTROLLER_H_
 #pragma once
 
+#include <set>
 #include <string>
 
 #include "base/basictypes.h"
@@ -84,6 +85,10 @@ class StateController : public PrefsObserver {
 
     // Shuts the system down.
     virtual void ShutDown() = 0;
+
+    // Announces that an idle notification requested via
+    // AddIdleNotification() has been triggered.
+    virtual void EmitIdleNotification(base::TimeDelta delay) = 0;
   };
 
   class TestApi {
@@ -115,6 +120,10 @@ class StateController : public PrefsObserver {
   StateController(Delegate* delegate, PrefsInterface* prefs);
   ~StateController();
 
+  base::TimeTicks last_user_activity_time() const {
+    return last_user_activity_time_;
+  }
+
   void Init(PowerSource power_source,
             LidState lid_state,
             SessionState session_state,
@@ -136,6 +145,13 @@ class StateController : public PrefsObserver {
   void HandleUserActivity();
   void HandleVideoActivity();
   void HandleAudioActivity();
+
+  // Adds an idle notification on behalf of an external process.
+  // TODO(derat): Kill this.  "Idle" is poorly defined here, e.g. should it
+  // include video activity?  Chrome should handle this itself
+  // (notifications are currently used by Chrome for kiosk mode and
+  // screensavers).
+  void AddIdleNotification(base::TimeDelta delay);
 
   // PrefsInterface::Observer implementation:
   virtual void OnPrefChanged(const std::string& pref_name) OVERRIDE;
@@ -269,6 +285,11 @@ class StateController : public PrefsObserver {
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref
   // and overrides |policy_|.
   bool disable_idle_suspend_;
+
+  // Externally-requested idle notifications added via
+  // AddIdleNotification() that haven't yet fired.  (Notifications are only
+  // sent once.)
+  std::set<base::TimeDelta> pending_idle_notifications_;
 
   base::TimeTicks last_user_activity_time_;
   base::TimeTicks last_video_activity_time_;

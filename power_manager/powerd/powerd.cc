@@ -155,6 +155,11 @@ class Daemon::StateControllerDelegate
       daemon_->OnRequestShutdown();
   }
 
+  virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
+    if (daemon_->use_state_controller_)
+      daemon_->IdleEventNotify(delay.InMilliseconds());
+  }
+
  private:
   Daemon* daemon_;  // not owned
 
@@ -1354,7 +1359,15 @@ DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
 }
 
 DBusMessage* Daemon::HandleGetIdleTimeMethod(DBusMessage* message) {
-  int64 idle_time_ms = idle_->GetIdleTimeMs();
+  int64 idle_time_ms = 0;
+  if (use_state_controller_) {
+    base::TimeDelta interval =
+        base::TimeTicks::Now() - state_controller_->last_user_activity_time();
+    idle_time_ms = interval.InMilliseconds();
+  } else {
+    idle_time_ms = idle_->GetIdleTimeMs();
+  }
+
   DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
   dbus_message_append_args(reply,
@@ -1370,7 +1383,12 @@ DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
   if (dbus_message_get_args(message, &error,
                             DBUS_TYPE_INT64, &threshold,
                             DBUS_TYPE_INVALID)) {
-    AddIdleThreshold(threshold);
+    if (use_state_controller_) {
+      state_controller_->AddIdleNotification(
+          base::TimeDelta::FromMilliseconds(threshold));
+    } else {
+      AddIdleThreshold(threshold);
+    }
   } else {
     LOG(WARNING) << "Unable to read " << kRequestIdleNotification << " args";
     dbus_error_free(&error);
