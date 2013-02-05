@@ -41,6 +41,9 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   virtual ~OpenVPNManagementServerTest() {}
 
+ protected:
+  static const int kConnectedSocket;
+
   void SetSockets() { server_.sockets_ = &sockets_; }
   void SetDispatcher() { server_.dispatcher_ = &dispatcher_; }
   void ExpectNotStarted() { EXPECT_FALSE(server_.IsStarted()); }
@@ -84,6 +87,11 @@ class OpenVPNManagementServerTest : public testing::Test {
     ExpectSend("hold release\n");
   }
 
+  void ExpectRestart() {
+    SetConnectedSocket();
+    ExpectSend("signal SIGUSR1\n");
+  }
+
   InputData CreateInputDataFromString(const string &str) {
     InputData data(
         reinterpret_cast<unsigned char *>(const_cast<char *>(str.data())),
@@ -91,8 +99,13 @@ class OpenVPNManagementServerTest : public testing::Test {
     return data;
   }
 
- protected:
-  static const int kConnectedSocket;
+  void SendSignal(const string &signal) {
+    server_.SendSignal(signal);
+  }
+
+  bool ProcessSuccessMessage(const string &message) {
+    return server_.ProcessSuccessMessage(message);
+  }
 
   GLib glib_;
   MockOpenVPNDriver driver_;
@@ -207,7 +220,8 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">PASSWORD:Need 'User-Specific TPM Token FOO' ...\n"
         ">PASSWORD:Verification Failed: .\n"
         ">STATE:123,RECONNECTING,detail,...,...\n"
-        ">HOLD:Waiting for hold release";
+        ">HOLD:Waiting for hold release\n"
+        "SUCCESS: Hold released.";
     InputData data = CreateInputDataFromString(s);
     ExpectStaticChallengeResponse();
     ExpectPINResponse();
@@ -241,9 +255,14 @@ TEST_F(OpenVPNManagementServerTest, ProcessMessage) {
   server_.ProcessMessage(">STATE:123,RECONNECTING,detail,...,...");
 }
 
+TEST_F(OpenVPNManagementServerTest, ProcessSuccessMessage) {
+  EXPECT_FALSE(ProcessSuccessMessage("foo"));
+  EXPECT_TRUE(ProcessSuccessMessage("SUCCESS: foo"));
+}
+
 TEST_F(OpenVPNManagementServerTest, ProcessInfoMessage) {
   EXPECT_FALSE(server_.ProcessInfoMessage("foo"));
-  EXPECT_TRUE(server_.ProcessInfoMessage(">INFO:"));
+  EXPECT_TRUE(server_.ProcessInfoMessage(">INFO:foo"));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
@@ -378,6 +397,17 @@ TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
   EXPECT_TRUE(
       server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
+}
+
+TEST_F(OpenVPNManagementServerTest, SendSignal) {
+  SetConnectedSocket();
+  ExpectSend("signal SIGUSR2\n");
+  SendSignal("SIGUSR2");
+}
+
+TEST_F(OpenVPNManagementServerTest, Restart) {
+  ExpectRestart();
+  server_.Restart();
 }
 
 TEST_F(OpenVPNManagementServerTest, SendHoldRelease) {

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_OPENVPN_DRIVER_
-#define SHILL_OPENVPN_DRIVER_
+#ifndef SHILL_OPENVPN_DRIVER_H_
+#define SHILL_OPENVPN_DRIVER_H_
 
 #include <map>
 #include <string>
@@ -49,19 +49,6 @@ class OpenVPNDriver : public VPNDriver,
                 GLib *glib);
   virtual ~OpenVPNDriver();
 
-  // Inherited from VPNDriver. |Connect| initiates the VPN connection by
-  // creating a tunnel device. When the device index becomes available, this
-  // instance is notified through |ClaimInterface| and resumes the connection
-  // process by setting up and spawning an external 'openvpn' process. IP
-  // configuration settings are passed back from the external process through
-  // the |Notify| RPC service method.
-  virtual void Connect(const VPNServiceRefPtr &service, Error *error);
-  virtual bool ClaimInterface(const std::string &link_name,
-                              int interface_index);
-  virtual void Disconnect();
-  virtual void OnConnectionDisconnected();
-  virtual std::string GetProviderType() const;
-
   virtual void OnReconnecting();
 
   virtual void Cleanup(Service::ConnectState state);
@@ -75,6 +62,21 @@ class OpenVPNDriver : public VPNDriver,
   bool AppendFlag(const std::string &property,
                   const std::string &option,
                   std::vector<std::string> *options);
+
+ protected:
+  // Inherited from VPNDriver. |Connect| initiates the VPN connection by
+  // creating a tunnel device. When the device index becomes available, this
+  // instance is notified through |ClaimInterface| and resumes the connection
+  // process by setting up and spawning an external 'openvpn' process. IP
+  // configuration settings are passed back from the external process through
+  // the |Notify| RPC service method.
+  virtual void Connect(const VPNServiceRefPtr &service, Error *error);
+  virtual bool ClaimInterface(const std::string &link_name,
+                              int interface_index);
+  virtual void Disconnect();
+  virtual std::string GetProviderType() const;
+  virtual void OnConnectionDisconnected();
+  virtual void OnConnectTimeout();
 
  private:
   friend class OpenVPNDriverTest;
@@ -95,7 +97,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
-  FRIEND_TEST(OpenVPNDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultServiceChanged);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
   FRIEND_TEST(OpenVPNDriverTest, OnReconnecting);
@@ -213,4 +214,4 @@ class OpenVPNDriver : public VPNDriver,
 
 }  // namespace shill
 
-#endif  // SHILL_OPENVPN_DRIVER_
+#endif  // SHILL_OPENVPN_DRIVER_H_

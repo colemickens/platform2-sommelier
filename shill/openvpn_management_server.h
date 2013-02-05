@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_OPENVPN_MANAGEMENT_SERVER_
-#define SHILL_OPENVPN_MANAGEMENT_SERVER_
+#ifndef SHILL_OPENVPN_MANAGEMENT_SERVER_H_
+#define SHILL_OPENVPN_MANAGEMENT_SERVER_H_
 
 #include <string>
 #include <vector>
@@ -44,6 +44,9 @@ class OpenVPNManagementServer {
   // sets |hold_release_| to false). Note that this method neither drops an
   // existing connection, nor sends any commands to the openvpn client.
   virtual void Hold();
+
+  // Restarts openvpn causing a disconnect followed by a reconnect attempt.
+  virtual void Restart();
 
  private:
   friend class OpenVPNManagementServerTest;
@@ -86,6 +89,7 @@ class OpenVPNManagementServer {
   void SendUsername(const std::string &tag, const std::string &username);
   void SendPassword(const std::string &tag, const std::string &password);
   void SendHoldRelease();
+  void SendSignal(const std::string &signal);
 
   void ProcessMessage(const std::string &message);
   bool ProcessInfoMessage(const std::string &message);
@@ -93,6 +97,7 @@ class OpenVPNManagementServer {
   bool ProcessFailedPasswordMessage(const std::string &message);
   bool ProcessStateMessage(const std::string &message);
   bool ProcessHoldMessage(const std::string &message);
+  bool ProcessSuccessMessage(const std::string &message);
 
   void PerformStaticChallenge(const std::string &tag);
   void PerformAuthentication(const std::string &tag);
@@ -128,4 +133,4 @@ class OpenVPNManagementServer {
 
 }  // namespace shill
 
-#endif  // SHILL_OPENVPN_MANAGEMENT_SERVER_
+#endif  // SHILL_OPENVPN_MANAGEMENT_SERVER_H_

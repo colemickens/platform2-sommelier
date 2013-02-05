@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_
-#define SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_
+#ifndef SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_H_
+#define SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_H_
 
 #include <gmock/gmock.h>
 
@@ -22,6 +22,7 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD0(ReleaseHold, void());
   MOCK_METHOD0(Hold, void());
+  MOCK_METHOD0(Restart, void());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockOpenVPNManagementServer);
@@ -29,4 +30,4 @@ class MockOpenVPNManagementServer : public OpenVPNManagementServer {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_
+#endif  // SHILL_MOCK_OPENVPN_MANAGEMENT_SERVER_H_

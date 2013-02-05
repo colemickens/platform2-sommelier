@@ -737,7 +737,19 @@ void OpenVPNDriver::Disconnect() {
 }
 
 void OpenVPNDriver::OnConnectionDisconnected() {
-  LOG(ERROR) << "VPN connection disconnected.";
+  LOG(INFO) << "Underlying connection disconnected.";
+  // Restart the OpenVPN client forcing a reconnect attempt.
+  management_server_->Restart();
+  // Indicate reconnect state right away to drop the VPN connection and start
+  // the connect timeout. This ensures that any miscommunication between shill
+  // and openvpn will not lead to a permanently stale connectivity state. Note
+  // that a subsequent invocation of OnReconnecting due to a RECONNECTING
+  // message will essentially be a no-op.
+  OnReconnecting();
+}
+
+void OpenVPNDriver::OnConnectTimeout() {
+  VPNDriver::OnConnectTimeout();
   Cleanup(Service::kStateFailure);
 }
 

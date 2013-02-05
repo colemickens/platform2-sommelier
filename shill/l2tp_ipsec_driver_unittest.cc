@@ -83,6 +83,30 @@ class L2TPIPSecDriverTest : public testing::Test,
     return driver_->args();
   }
 
+  string GetProviderType() {
+    return driver_->GetProviderType();
+  }
+
+  void SetService(const VPNServiceRefPtr &service) {
+    driver_->service_ = service;
+  }
+
+  VPNServiceRefPtr GetService() {
+    return driver_->service_;
+  }
+
+  void OnConnectTimeout() {
+    driver_->OnConnectTimeout();
+  }
+
+  void StartConnectTimeout() {
+    driver_->StartConnectTimeout();
+  }
+
+  bool IsConnectTimeoutStarted() {
+    return driver_->IsConnectTimeoutStarted();
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -165,7 +189,7 @@ FilePath L2TPIPSecDriverTest::SetupPSKFile() {
 }
 
 TEST_F(L2TPIPSecDriverTest, GetProviderType) {
-  EXPECT_EQ(flimflam::kProviderL2tpIpsec, driver_->GetProviderType());
+  EXPECT_EQ(flimflam::kProviderL2tpIpsec, GetProviderType());
 }
 
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
@@ -452,9 +476,18 @@ TEST_F(L2TPIPSecDriverTest, Disconnect) {
 
 TEST_F(L2TPIPSecDriverTest, OnConnectionDisconnected) {
   driver_->service_ = service_;
-  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->OnConnectionDisconnected();
   EXPECT_FALSE(driver_->service_);
+}
+
+TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
+  StartConnectTimeout();
+  SetService(service_);
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  OnConnectTimeout();
+  EXPECT_FALSE(GetService());
+  EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPropertyStore) {

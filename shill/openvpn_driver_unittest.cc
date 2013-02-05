@@ -122,6 +122,34 @@ class OpenVPNDriverTest : public testing::Test,
     return &driver_->sockets_;
   }
 
+  void SetDevice(const VPNRefPtr &device) {
+    driver_->device_ = device;
+  }
+
+  void SetService(const VPNServiceRefPtr &service) {
+    driver_->service_ = service;
+  }
+
+  VPNServiceRefPtr GetService() {
+    return driver_->service_;
+  }
+
+  void OnConnectionDisconnected() {
+    driver_->OnConnectionDisconnected();
+  }
+
+  void OnConnectTimeout() {
+    driver_->OnConnectTimeout();
+  }
+
+  void StartConnectTimeout() {
+    driver_->StartConnectTimeout();
+  }
+
+  bool IsConnectTimeoutStarted() {
+    return driver_->IsConnectTimeoutStarted();
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -857,10 +885,22 @@ TEST_F(OpenVPNDriverTest, Disconnect) {
 }
 
 TEST_F(OpenVPNDriverTest, OnConnectionDisconnected) {
-  driver_->service_ = service_;
+  EXPECT_CALL(*management_server_, Restart());
+  SetDevice(device_);
+  SetService(service_);
+  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*service_, SetState(Service::kStateAssociating));
+  OnConnectionDisconnected();
+  EXPECT_TRUE(IsConnectTimeoutStarted());
+}
+
+TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
+  StartConnectTimeout();
+  SetService(service_);
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
-  driver_->OnConnectionDisconnected();
-  EXPECT_FALSE(driver_->service_);
+  OnConnectTimeout();
+  EXPECT_FALSE(GetService());
+  EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
 TEST_F(OpenVPNDriverTest, OnReconnecting) {

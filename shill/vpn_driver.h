@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_VPN_DRIVER_
-#define SHILL_VPN_DRIVER_
+#ifndef SHILL_VPN_DRIVER_H_
+#define SHILL_VPN_DRIVER_H_
 
 #include <string>
 
@@ -32,8 +32,10 @@ class VPNDriver {
                               int interface_index) = 0;
   virtual void Connect(const VPNServiceRefPtr &service, Error *error) = 0;
   virtual void Disconnect() = 0;
-  virtual void OnConnectionDisconnected() = 0;
   virtual std::string GetProviderType() const = 0;
+
+  // Invoked by VPNService when the underlying connection disconnects.
+  virtual void OnConnectionDisconnected() = 0;
 
   virtual void InitPropertyStore(PropertyStore *store);
 
@@ -76,6 +78,10 @@ class VPNDriver {
   // Returns true if a connect timeout is scheduled, false otherwise.
   bool IsConnectTimeoutStarted() const;
 
+  // Called if a connect timeout scheduled through StartConnectTimeout
+  // fires. Cancels the timeout callback.
+  virtual void OnConnectTimeout();
+
  private:
   FRIEND_TEST(VPNDriverTest, ConnectTimeout);
 
@@ -85,10 +91,6 @@ class VPNDriver {
   std::string GetMappedProperty(const size_t &index, Error *error);
   void SetMappedProperty(
       const size_t &index, const std::string &value, Error *error);
-
-  // Called if a connect timeout scheduled through StartConnectTimeout
-  // fires. Marks the callback as stopped and invokes OnConnectionDisconnected.
-  void OnConnectTimeout();
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
   EventDispatcher *dispatcher_;
@@ -105,4 +107,4 @@ class VPNDriver {
 
 }  // namespace shill
 
-#endif  // SHILL_VPN_DRIVER_
+#endif  // SHILL_VPN_DRIVER_H_

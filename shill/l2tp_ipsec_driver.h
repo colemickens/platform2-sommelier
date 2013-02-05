@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_L2TP_IPSEC_DRIVER_
-#define SHILL_L2TP_IPSEC_DRIVER_
+#ifndef SHILL_L2TP_IPSEC_DRIVER_H_
+#define SHILL_L2TP_IPSEC_DRIVER_H_
 
 #include <vector>
 
@@ -48,13 +48,15 @@ class L2TPIPSecDriver : public VPNDriver,
                   GLib *glib);
   virtual ~L2TPIPSecDriver();
 
+ protected:
   // Inherited from VPNDriver.
   virtual bool ClaimInterface(const std::string &link_name,
                               int interface_index);
   virtual void Connect(const VPNServiceRefPtr &service, Error *error);
   virtual void Disconnect();
-  virtual void OnConnectionDisconnected();
   virtual std::string GetProviderType() const;
+  virtual void OnConnectionDisconnected();
+  virtual void OnConnectTimeout();
 
  private:
   friend class L2TPIPSecDriverTest;
@@ -147,4 +149,4 @@ class L2TPIPSecDriver : public VPNDriver,
 
 }  // namespace shill
 
-#endif  // SHILL_L2TP_IPSEC_DRIVER_
+#endif  // SHILL_L2TP_IPSEC_DRIVER_H_

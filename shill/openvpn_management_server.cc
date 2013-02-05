@@ -140,6 +140,11 @@ void OpenVPNManagementServer::Hold() {
   hold_release_ = false;
 }
 
+void OpenVPNManagementServer::Restart() {
+  LOG(INFO) << "Restart.";
+  SendSignal("SIGUSR1");
+}
+
 void OpenVPNManagementServer::OnReady(int fd) {
   SLOG(VPN, 2) << __func__ << "(" << fd << ")";
   connected_socket_ = sockets_->Accept(fd, NULL, NULL);
@@ -174,7 +179,8 @@ void OpenVPNManagementServer::ProcessMessage(const string &message) {
       !ProcessNeedPasswordMessage(message) &&
       !ProcessFailedPasswordMessage(message) &&
       !ProcessStateMessage(message) &&
-      !ProcessHoldMessage(message)) {
+      !ProcessHoldMessage(message) &&
+      !ProcessSuccessMessage(message)) {
     LOG(WARNING) << "OpenVPN management message ignored: " << message;
   }
 }
@@ -183,7 +189,7 @@ bool OpenVPNManagementServer::ProcessInfoMessage(const string &message) {
   if (!StartsWithASCII(message, ">INFO:", true)) {
     return false;
   }
-  LOG(INFO) << "Processing info message.";
+  LOG(INFO) << message;
   return true;
 }
 
@@ -309,10 +315,10 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
   if (!StartsWithASCII(message, ">STATE:", true)) {
     return false;
   }
-  LOG(INFO) << "Processing state message.";
   vector<string> details;
   SplitString(message, ',', &details);
   if (details.size() > 1) {
+    LOG(INFO) << "Processing state message: " << details[1];
     if (details[1] == "RECONNECTING") {
       driver_->OnReconnecting();
     }
@@ -325,11 +331,19 @@ bool OpenVPNManagementServer::ProcessHoldMessage(const string &message) {
   if (!StartsWithASCII(message, ">HOLD:Waiting for hold release", true)) {
     return false;
   }
-  LOG(INFO) << "Processing hold message.";
+  LOG(INFO) << "Client waiting for hold release.";
   hold_waiting_ = true;
   if (hold_release_) {
     ReleaseHold();
   }
+  return true;
+}
+
+bool OpenVPNManagementServer::ProcessSuccessMessage(const string &message) {
+  if (!StartsWithASCII(message, "SUCCESS: ", true)) {
+    return false;
+  }
+  LOG(INFO) << message;
   return true;
 }
 
@@ -369,6 +383,11 @@ void OpenVPNManagementServer::SendPassword(const string &tag,
   Send(StringPrintf("password \"%s\" \"%s\"\n",
                     tag.c_str(),
                     EscapeToQuote(password).c_str()));
+}
+
+void OpenVPNManagementServer::SendSignal(const string &signal) {
+  SLOG(VPN, 2) << __func__ << "(" << signal << ")";
+  Send(StringPrintf("signal %s\n", signal.c_str()));
 }
 
 void OpenVPNManagementServer::SendHoldRelease() {

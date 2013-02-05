@@ -181,9 +181,8 @@ bool VPNDriver::IsConnectTimeoutStarted() const {
 }
 
 void VPNDriver::OnConnectTimeout() {
-  LOG(ERROR) << "VPN connection timeout.";
+  LOG(INFO) << "VPN connect timeout.";
   StopConnectTimeout();
-  OnConnectionDisconnected();
 }
 
 }  // namespace shill

@@ -291,7 +291,6 @@ TEST_F(VPNDriverTest, ConnectTimeout) {
   EXPECT_TRUE(driver_.IsConnectTimeoutStarted());
   driver_.dispatcher_ = NULL;
   driver_.StartConnectTimeout();  // Expect no crash.
-  EXPECT_CALL(driver_, OnConnectionDisconnected());
   dispatcher_.DispatchPendingEvents();
   EXPECT_TRUE(driver_.connect_timeout_callback_.IsCancelled());
   EXPECT_FALSE(driver_.IsConnectTimeoutStarted());
