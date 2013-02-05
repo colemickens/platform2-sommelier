@@ -1010,7 +1010,7 @@ main () {
           anonymize_macs=no
           ;;
         *)
-          rest+=$param
+          rest+=($param)
           ;;
       esac
     done
@@ -1055,9 +1055,14 @@ main () {
           default_run=no
           diag_wifi_monitor
           ;;
-        --help|-help|-h|-*)
+        --help|-help|-h)
           usage
           exit 0
+          ;;
+        -*)
+          echo "Unknown parameter: $param"
+          usage
+          exit 1
           ;;
         *)
           test_host=$param
