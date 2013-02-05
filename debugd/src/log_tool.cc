@@ -120,7 +120,7 @@ static const Log common_logs[] = {
          " s.^./var/log/update_engine/.)" },
   { "verified boot", "/bin/cat /var/log/debug_vboot_noisy.log" },
   { "vpd_2.0", "/bin/cat /var/log/vpd_2.0.txt" },
-  { "wifi_status", "/usr/bin/network_diagnostics --wifi --no-log" },
+  { "wifi_status", "/usr/bin/network_diagnostics --wifi-internal --no-log" },
 
 
   // Stuff pulled out of the original list. These need access to the running X
