@@ -31,6 +31,7 @@ const char kScreenOn[] = "on";
 const char kSuspend[] = "suspend";
 const char kStopSession[] = "logout";
 const char kShutDown[] = "shutdown";
+const char kReportUserActivityMetrics[] = "metrics";
 
 // String returned by TestDelegate::GetActions() if no actions were
 // requested.
@@ -65,11 +66,15 @@ std::string JoinActions(const char* action, ...) {
 class TestDelegate : public StateController::Delegate {
  public:
   TestDelegate()
-      : usb_input_device_connected_(false),
+      : record_metrics_actions_(false),
+        usb_input_device_connected_(false),
         oobe_completed_(true) {
   }
   ~TestDelegate() {}
 
+  void set_record_metrics_actions(bool record) {
+    record_metrics_actions_ = record;
+  }
   void set_usb_input_device_connected(bool connected) {
     usb_input_device_connected_ = connected;
   }
@@ -102,6 +107,10 @@ class TestDelegate : public StateController::Delegate {
   virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
     AppendAction(GetEmitIdleNotificationAction(delay));
   }
+  virtual void ReportUserActivityMetrics() OVERRIDE {
+    if (record_metrics_actions_)
+      AppendAction(kReportUserActivityMetrics);
+  }
 
  private:
   void AppendAction(const std::string& action) {
@@ -109,6 +118,10 @@ class TestDelegate : public StateController::Delegate {
       actions_ += ",";
     actions_ += action;
   }
+
+  // Should calls to ReportUserActivityMetrics() be recorded in |actions_|?
+  // These are noisy, so by default, they aren't recorded.
+  bool record_metrics_actions_;
 
   // Should IsUsbInputDeviceConnected() return true?
   bool usb_input_device_connected_;
@@ -951,6 +964,27 @@ TEST_F(StateControllerTest, EmitIdleNotification) {
   controller_.HandleUserActivity();
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDelay30));
   EXPECT_EQ(GetEmitIdleNotificationAction(kDelay30), delegate_.GetActions());
+}
+
+// Tests that the controller cues the delegate to report metrics when user
+// activity is observed.
+TEST_F(StateControllerTest, ReportMetrics) {
+  delegate_.set_record_metrics_actions(true);
+  Init();
+
+  // Various events considered to represent user activity (direct activity,
+  // power source changes, presentation mode, etc.) should all trigger
+  // metrics.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kReportUserActivityMetrics, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  controller_.HandlePowerSourceChange(StateController::POWER_BATTERY);
+  EXPECT_EQ(JoinActions(kReportUserActivityMetrics, kScreenUndim, NULL),
+            delegate_.GetActions());
+  AdvanceTime(default_ac_screen_dim_delay_ / 2);
+  controller_.HandleDisplayModeChange(StateController::DISPLAY_PRESENTATION);
+  EXPECT_EQ(kReportUserActivityMetrics, delegate_.GetActions());
 }
 
 }  // namespace policy

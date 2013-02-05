@@ -44,7 +44,7 @@ void Daemon::MetricInit() {
                     &Daemon::GenerateThermalMetricsThunk, this);
 }
 
-void Daemon::GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms) {
+void Daemon::GenerateMetricsOnLeavingIdle() {
   TimeTicks current_time = TimeTicks::Now();
   TimeDelta event_delta = current_time - last_idle_event_timestamp_;
   TimeDelta total_delta = event_delta + last_idle_timedelta_;

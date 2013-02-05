@@ -89,6 +89,9 @@ class StateController : public PrefsObserver {
     // Announces that an idle notification requested via
     // AddIdleNotification() has been triggered.
     virtual void EmitIdleNotification(base::TimeDelta delay) = 0;
+
+    // Reports metrics in response to user activity.
+    virtual void ReportUserActivityMetrics() = 0;
   };
 
   class TestApi {
@@ -207,6 +210,10 @@ class StateController : public PrefsObserver {
   // GetLastActivityTimeForScreenDimOrLock() but may differ if
   // |keep_screen_on_for_audio_| is set.
   base::TimeTicks GetLastActivityTimeForScreenOff() const;
+
+  // Updates |last_user_activity_time_| to contain the current time and
+  // calls |delegate_|'s ReportUserActivityMetrics() method.
+  void UpdateLastUserActivityTime();
 
   // Initializes |require_usb_input_device_to_suspend_| and |pref_*| from
   // |prefs_|.

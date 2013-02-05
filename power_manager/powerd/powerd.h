@@ -370,8 +370,8 @@ class Daemon : public BacklightControllerObserver,
   void SuspendDisable();
   void SuspendEnable();
 
-  // Generates UMA metrics on every idle event.
-  void GenerateMetricsOnIdleEvent(bool is_idle, int64 idle_time_ms);
+  // Generates UMA metrics on when leaving the idle state.
+  void GenerateMetricsOnLeavingIdle();
 
   // Generates UMA metrics on every power event based on the current
   // power status.

@@ -235,7 +235,7 @@ void StateController::HandlePowerSourceChange(PowerSource source) {
 
   VLOG(1) << "Power source changed to " << PowerSourceToString(source);
   power_source_ = source;
-  last_user_activity_time_ = GetCurrentTime();
+  UpdateLastUserActivityTime();
   UpdateSettingsAndState();
 }
 
@@ -247,7 +247,7 @@ void StateController::HandleLidStateChange(LidState state) {
   VLOG(1) << "Lid state changed to " << LidStateToString(state);
   lid_state_ = state;
   if (state == LID_OPEN)
-    last_user_activity_time_ = GetCurrentTime();
+    UpdateLastUserActivityTime();
   UpdateState();
 }
 
@@ -258,7 +258,7 @@ void StateController::HandleSessionStateChange(SessionState state) {
 
   VLOG(1) << "Session state changed to " << SessionStateToString(state);
   session_state_ = state;
-  last_user_activity_time_ = GetCurrentTime();
+  UpdateLastUserActivityTime();
   UpdateSettingsAndState();
 }
 
@@ -269,14 +269,14 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 
   VLOG(1) << "Display mode changed to " << DisplayModeToString(mode);
   display_mode_ = mode;
-  last_user_activity_time_ = GetCurrentTime();
+  UpdateLastUserActivityTime();
   UpdateSettingsAndState();
 }
 
 void StateController::HandleResume() {
   DCHECK(initialized_);
   VLOG(1) << "System resumed";
-  last_user_activity_time_ = GetCurrentTime();
+  UpdateLastUserActivityTime();
   UpdateState();
 }
 
@@ -312,7 +312,7 @@ void StateController::HandleOverrideChange(bool override_screen_dim,
 void StateController::HandleUserActivity() {
   DCHECK(initialized_);
   VLOG(1) << "Saw user activity";
-  last_user_activity_time_ = GetCurrentTime();
+  UpdateLastUserActivityTime();
   UpdateState();
 }
 
@@ -466,6 +466,11 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff() const {
   if (keep_screen_on_for_audio_)
     last_time = std::max(last_time, last_audio_activity_time_);
   return last_time;
+}
+
+void StateController::UpdateLastUserActivityTime() {
+  last_user_activity_time_ = GetCurrentTime();
+  delegate_->ReportUserActivityMetrics();
 }
 
 void StateController::LoadPrefs() {

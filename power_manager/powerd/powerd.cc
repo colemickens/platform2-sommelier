@@ -106,8 +106,14 @@ class Daemon::StateControllerDelegate
 
   virtual void DimScreen() OVERRIDE {
     screen_dimmed_ = true;
-    if (daemon_->use_state_controller_ && !screen_off_)
+    if (daemon_->use_state_controller_ && !screen_off_) {
       daemon_->SetPowerState(BACKLIGHT_DIM);
+      base::TimeTicks now = base::TimeTicks::Now();
+      daemon_->idle_transition_timestamps_[BACKLIGHT_DIM] = now;
+      daemon_->last_idle_event_timestamp_ = now;
+      daemon_->last_idle_timedelta_ =
+          now - daemon_->state_controller_->last_user_activity_time();
+    }
   }
 
   virtual void UndimScreen() OVERRIDE {
@@ -118,8 +124,14 @@ class Daemon::StateControllerDelegate
 
   virtual void TurnScreenOff() OVERRIDE {
     screen_off_ = true;
-    if (daemon_->use_state_controller_)
+    if (daemon_->use_state_controller_) {
       daemon_->SetPowerState(BACKLIGHT_IDLE_OFF);
+      base::TimeTicks now = base::TimeTicks::Now();
+      daemon_->idle_transition_timestamps_[BACKLIGHT_IDLE_OFF] = now;
+      daemon_->last_idle_event_timestamp_ = now;
+      daemon_->last_idle_timedelta_ =
+          now - daemon_->state_controller_->last_user_activity_time();
+    }
   }
 
   virtual void TurnScreenOn() OVERRIDE {
@@ -158,6 +170,13 @@ class Daemon::StateControllerDelegate
   virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
     if (daemon_->use_state_controller_)
       daemon_->IdleEventNotify(delay.InMilliseconds());
+  }
+
+  virtual void ReportUserActivityMetrics() OVERRIDE {
+    if (daemon_->use_state_controller_) {
+      if (!daemon_->last_idle_event_timestamp_.is_null())
+        daemon_->GenerateMetricsOnLeavingIdle();
+    }
   }
 
  private:
@@ -818,7 +837,7 @@ void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
     last_idle_timedelta_ = base::TimeDelta::FromMilliseconds(idle_time_ms);
   } else if (!last_idle_event_timestamp_.is_null() &&
              idle_time_ms < last_idle_timedelta_.InMilliseconds()) {
-    GenerateMetricsOnIdleEvent(is_idle, idle_time_ms);
+    GenerateMetricsOnLeavingIdle();
   }
   SetIdleState(idle_time_ms);
   if (!is_idle && offset_ms_ != 0)
