@@ -76,7 +76,7 @@ HELP_ADVANCED='
   Configures the modem for the specified carrier.
 
  network_diag [--date] [--flimflam] [--link] [--show-macs] [--wifi] [--help]
-   [--wifi-monitor] <host>
+   [--wifi-mon] <host>
   A function that performs a suite of network diagnostics.  Saves a copy
   of the output to your download directory.
 
