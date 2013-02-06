@@ -30,11 +30,11 @@ RM_ON_CLEAN += $(OUT)libcros_boot_mode.so
 # Tests are not built by default.
 #
 
-$(OUT)cros_boot_mode_testrunner: $(filter-out %_main.o,$(CXX_OBJECTS))
-	$(call cxx_binary,-lgtest -lgmock $(PC_LIBS))
-RM_ON_CLEAN += $(OUT)cros_boot_mode_testrunner
-# Will run each prerequisite for tests.
-# If cross-compiled, this is done against the correct architecture.
-small_tests: $(OUT)cros_boot_mode_testrunner
+CXX_BINARY(cros_boot_mode_testrunner): $(filter-out %_main.o,$(CXX_OBJECTS))
+CXX_BINARY(cros_boot_mode_testrunner): LDLIBS += -lgtest -lgmock $(PC_LIBS)
+
+clean: CLEAN(cros_boot_mode_testrunner)
+tests: TEST(CXX_BINARY(cros_boot_mode_testrunner))
+small_tests: CXX_BINARY(cros_boot_mode_testrunner)
 # No large tests here so we use the NONE target.
 large_tests: NONE
