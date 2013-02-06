@@ -1821,6 +1821,7 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
                                   base::TimeTicks::Now(),
                                   session_start_);
   }
+
   current_session_state_ = state;
 
   if (state_controller_initialized_) {
@@ -1829,6 +1830,9 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
         policy::StateController::SESSION_STARTED :
         policy::StateController::SESSION_STOPPED);
   }
+
+  // If the backlight was manually turned off by the user, turn it back on.
+  EnsureBacklightIsOn();
 }
 
 void Daemon::Shutdown() {
