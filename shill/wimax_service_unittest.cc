@@ -44,6 +44,7 @@ class WiMaxServiceTest : public testing::Test {
   WiMaxServiceTest()
       : proxy_(new MockWiMaxNetworkProxy()),
         manager_(&control_, NULL, NULL, NULL),
+        metrics_(static_cast<EventDispatcher *>(NULL)),
         device_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
                               kTestLinkName, kTestAddress, kTestInterfaceIndex,
                               kTestPath)),

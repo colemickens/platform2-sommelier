@@ -368,7 +368,9 @@ void Cellular::HandleNewRegistrationState() {
         (state_ == kStateLinked || state_ == kStateConnected) &&
         service_.get())
       metrics()->NotifyCellularDeviceDrop(
-        capability_->GetNetworkTechnologyString(), service_->strength());
+        interface_index(),
+        capability_->GetNetworkTechnologyString(),
+        service_->strength());
     DestroyService();
     if (state_ == kStateLinked ||
         state_ == kStateConnected ||

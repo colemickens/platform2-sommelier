@@ -6,7 +6,8 @@
 
 namespace shill {
 
-MockMetrics::MockMetrics() {}
+MockMetrics::MockMetrics(EventDispatcher *dispatcher)
+    : Metrics(dispatcher) {}
 
 MockMetrics::~MockMetrics() {}
 

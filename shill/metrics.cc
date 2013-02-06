@@ -4,6 +4,7 @@
 
 #include "shill/metrics.h"
 
+#include <base/bind.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -14,6 +15,8 @@
 #include "shill/logging.h"
 #include "shill/wifi_service.h"
 
+using base::Bind;
+using base::Unretained;
 using std::string;
 using std::tr1::shared_ptr;
 
@@ -193,6 +196,11 @@ const char Metrics::kMetricLinkApDisconnectType[] =
 // static
 const char Metrics::kMetricCellularDrop[] =
     "Network.Shill.Cellular.Drop";
+const char Metrics::kMetricCellularDropsPerHour[] =
+    "Network.Shill.Cellular.DropsPerHour";
+const int Metrics::kMetricCellularDropsPerHourMax = 60;
+const int Metrics::kMetricCellularDropsPerHourMin = 1;
+const int Metrics::kMetricCellularDropsPerHourNumBuckets = 10;
 // The format of FailureReason is different to other metrics because this
 // name is prepended to the error message before the entire string is sent
 // via SendUserActionToUMA.
@@ -215,9 +223,13 @@ const int Metrics::kMetricCellularAutoConnectTotalTimeMax =
 const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 0;
 const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 
+// static
+const int Metrics::kHourlyTimeoutMilliseconds = 3600 * 1000;  // One hour
 
-Metrics::Metrics()
-    : library_(&metrics_library_),
+
+Metrics::Metrics(EventDispatcher *dispatcher)
+    : dispatcher_(dispatcher),
+      library_(&metrics_library_),
       last_default_technology_(Technology::kUnknown),
       was_online_(false),
       time_online_timer_(new chromeos_metrics::Timer),
@@ -361,6 +373,19 @@ Metrics::PortalResult Metrics::PortalDetectionResultToEnum(
   }
 
   return retval;
+}
+
+void Metrics::Start() {
+  SLOG(Metrics, 2) << __func__;
+  hourly_timeout_handler_.Reset(
+      Bind(&Metrics::HourlyTimeoutHandler, Unretained(this)));
+  dispatcher_->PostDelayedTask(hourly_timeout_handler_.callback(),
+                               kHourlyTimeoutMilliseconds);
+}
+
+void Metrics::Stop() {
+  SLOG(Metrics, 2) << __func__;
+  hourly_timeout_handler_.Cancel();
 }
 
 void Metrics::RegisterService(const Service *service) {
@@ -665,7 +690,6 @@ void Metrics::RegisterDevice(int interface_index,
           kMetricTimeToConnectMillisecondsMin,
           kMetricTimeToConnectMillisecondsMax,
           kMetricTimeToConnectMillisecondsNumBuckets));
-  device_metrics->auto_connect_tries = 0;
   device_metrics->auto_connect_timer.reset(
       new chromeos_metrics::TimerReporter(
           kMetricCellularAutoConnectTotalTime,
@@ -794,7 +818,8 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
   }
 }
 
-void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
+void Metrics::NotifyCellularDeviceDrop(int interface_index,
+                                       const string &network_technology,
                                        uint16 signal_strength) {
   SLOG(Metrics, 2) << __func__ << ": " << network_technology
                                << ", " << signal_strength;
@@ -826,6 +851,11 @@ void Metrics::NotifyCellularDeviceDrop(const string &network_technology,
             kMetricCellularSignalStrengthBeforeDropMin,
             kMetricCellularSignalStrengthBeforeDropMax,
             kMetricCellularSignalStrengthBeforeDropNumBuckets);
+
+  DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+  if (device_metrics == NULL)
+    return;
+  device_metrics->num_drops++;
 }
 
 void Metrics::NotifyCellularDeviceFailure(const Error &error) {
@@ -900,6 +930,24 @@ Metrics::DeviceMetrics *Metrics::GetDeviceMetrics(int interface_index) const {
 void Metrics::AutoConnectMetricsReset(DeviceMetrics *device_metrics) {
   device_metrics->auto_connect_tries = 0;
   device_metrics->auto_connect_timer->Reset();
+}
+
+void Metrics::HourlyTimeoutHandler() {
+  SLOG(Metrics, 2) << __func__;
+  DeviceMetricsLookupMap::iterator it;
+  for (it = devices_metrics_.begin(); it != devices_metrics_.end(); ++it) {
+    if (it->second->technology != Technology::kCellular ||
+        it->second->num_drops == 0)
+      continue;
+    SendToUMA(kMetricCellularDropsPerHour,
+              it->second->num_drops,
+              kMetricCellularDropsPerHourMin,
+              kMetricCellularDropsPerHourMax,
+              kMetricCellularDropsPerHourNumBuckets);
+    it->second->num_drops = 0;
+  }
+  dispatcher_->PostDelayedTask(hourly_timeout_handler_.callback(),
+                               kHourlyTimeoutMilliseconds);
 }
 
 void Metrics::set_library(MetricsLibraryInterface *library) {

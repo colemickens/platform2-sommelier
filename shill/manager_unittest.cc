@@ -1904,7 +1904,7 @@ TEST_F(ManagerTest, SortServices) {
 }
 
 TEST_F(ManagerTest, SortServicesWithConnection) {
-  MockMetrics mock_metrics;
+  MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);
 
   scoped_refptr<MockService> mock_service0(
@@ -1983,7 +1983,7 @@ TEST_F(ManagerTest, NotifyDefaultServiceChanged) {
   EXPECT_EQ(0, manager()->default_service_callback_tag_);
   EXPECT_TRUE(manager()->default_service_callbacks_.empty());
 
-  MockMetrics mock_metrics;
+  MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);
 
   scoped_refptr<MockService> mock_service(
@@ -2627,7 +2627,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
   EXPECT_FALSE(manager()->IsOnline());
   EXPECT_EQ("offline", manager()->CalculateState(NULL));
 
-  MockMetrics mock_metrics;
+  MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(_))
       .Times(AnyNumber());
@@ -2659,7 +2659,7 @@ TEST_F(ManagerTest, CalculateStateOffline) {
 }
 
 TEST_F(ManagerTest, CalculateStateOnline) {
-  MockMetrics mock_metrics;
+  MockMetrics mock_metrics(dispatcher());
   SetMetrics(&mock_metrics);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(_))
       .Times(AnyNumber());

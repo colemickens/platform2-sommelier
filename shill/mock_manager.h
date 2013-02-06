@@ -28,6 +28,7 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(store, const PropertyStore &());
   MOCK_CONST_METHOD0(run_path, const FilePath &());
   MOCK_METHOD0(Start, void());
+  MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &to_manage));
   MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr &to_forget));
   MOCK_METHOD1(HasService, bool(const ServiceRefPtr &to_manage));

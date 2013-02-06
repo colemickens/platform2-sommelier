@@ -78,7 +78,8 @@ MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
 class LinkMonitorTest : public Test {
  public:
   LinkMonitorTest()
-      : device_info_(
+      : metrics_(&dispatcher_),
+        device_info_(
             &control_,
             reinterpret_cast<EventDispatcher*>(NULL),
             reinterpret_cast<Metrics*>(NULL),

@@ -55,7 +55,8 @@ MATCHER(IsFailure, "") {
 class CellularCapabilityGSMTest : public testing::Test {
  public:
   CellularCapabilityGSMTest()
-      : create_card_proxy_from_factory_(false),
+      : metrics_(&dispatcher_),
+        create_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
         card_proxy_(new MockModemGSMCardProxy()),

@@ -10,9 +10,12 @@
 #include <metrics/metrics_library_mock.h>
 #include <metrics/timer_mock.h>
 
+#include "shill/mock_control.h"
+#include "shill/mock_event_dispatcher.h"
+#include "shill/mock_glib.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_service.h"
 #include "shill/mock_wifi_service.h"
-#include "shill/property_store_unittest.h"
 
 using std::string;
 
@@ -26,24 +29,29 @@ using testing::Test;
 
 namespace shill {
 
-class MetricsTest : public PropertyStoreTest {
+class MetricsTest : public Test {
  public:
   MetricsTest()
-      : service_(new MockService(control_interface(),
-                                 dispatcher(),
+      : manager_(&control_interface_,
+                 &dispatcher_,
+                 &metrics_,
+                 &glib_),
+        metrics_(&dispatcher_),
+        service_(new MockService(&control_interface_,
+                                 &dispatcher_,
                                  &metrics_,
-                                 manager())),
-        wifi_(new WiFi(control_interface(),
-                       dispatcher(),
+                                 &manager_)),
+        wifi_(new WiFi(&control_interface_,
+                       &dispatcher_,
                        &metrics_,
-                       manager(),
+                       &manager_,
                        "wlan0",
                        "000102030405",
                        0)),
-        wifi_service_(new MockWiFiService(control_interface(),
-                                          dispatcher(),
+        wifi_service_(new MockWiFiService(&control_interface_,
+                                          &dispatcher_,
                                           &metrics_,
-                                          manager(),
+                                          &manager_,
                                           wifi_,
                                           ssid_,
                                           flimflam::kModeManaged,
@@ -80,6 +88,10 @@ class MetricsTest : public PropertyStoreTest {
                           Metrics::kMetricNetworkSignalStrengthNumBuckets));
   }
 
+  MockControl control_interface_;
+  MockEventDispatcher dispatcher_;
+  MockGLib glib_;
+  MockManager manager_;
   Metrics metrics_;  // This must be destroyed after service_ and wifi_service_
   MetricsLibraryMock library_;
   scoped_refptr<MockService> service_;
@@ -457,6 +469,8 @@ TEST_F(MetricsTest, CellularDrop) {
       "Unknown" };
 
   const uint16 signal_strength = 100;
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
   for (size_t index = 0; index < arraysize(kUMATechnologyStrings); ++index) {
     EXPECT_CALL(library_,
         SendEnumToUMA(Metrics::kMetricCellularDrop,
@@ -468,10 +482,47 @@ TEST_F(MetricsTest, CellularDrop) {
                   Metrics::kMetricCellularSignalStrengthBeforeDropMin,
                   Metrics::kMetricCellularSignalStrengthBeforeDropMax,
                   Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets));
-    metrics_.NotifyCellularDeviceDrop(kUMATechnologyStrings[index],
+    metrics_.NotifyCellularDeviceDrop(kInterfaceIndex,
+                                      kUMATechnologyStrings[index],
                                       signal_strength);
     Mock::VerifyAndClearExpectations(&library_);
   }
+}
+
+TEST_F(MetricsTest, CellularDropsPerHour) {
+  const int kInterfaceIndex = 1;
+  const int kSignalStrength = 33;
+  const int kNumDrops = 3;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricCellularDrop,
+                    Metrics::kCellularDropTechnologyLte,
+                    Metrics::kCellularDropTechnologyMax))
+      .Times(kNumDrops);
+  EXPECT_CALL(library_,
+      SendToUMA(Metrics::kMetricCellularSignalStrengthBeforeDrop,
+                kSignalStrength,
+                Metrics::kMetricCellularSignalStrengthBeforeDropMin,
+                Metrics::kMetricCellularSignalStrengthBeforeDropMax,
+                Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets))
+      .Times(kNumDrops);
+  EXPECT_CALL(library_,
+      SendToUMA(Metrics::kMetricCellularDropsPerHour,
+                kNumDrops,
+                Metrics::kMetricCellularDropsPerHourMin,
+                Metrics::kMetricCellularDropsPerHourMax,
+                Metrics::kMetricCellularDropsPerHourNumBuckets));
+  for (int count = 0; count < kNumDrops; ++count)
+    metrics_.NotifyCellularDeviceDrop(kInterfaceIndex,
+                                      flimflam::kNetworkTechnologyLte,
+                                      kSignalStrength);
+  metrics_.HourlyTimeoutHandler();
+
+  // Make sure the number of drops gets resetted after each hour.
+  EXPECT_CALL(library_,
+      SendToUMA(Metrics::kMetricCellularDropsPerHour, _, _, _, _))
+      .Times(0);
+  metrics_.HourlyTimeoutHandler();
 }
 
 TEST_F(MetricsTest, CellularDeviceFailure) {

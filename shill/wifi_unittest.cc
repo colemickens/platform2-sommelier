@@ -185,6 +185,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
   WiFiObjectTest(EventDispatcher *dispatcher)
       : event_dispatcher_(dispatcher),
+        metrics_(NULL),
         manager_(&control_interface_, NULL, &metrics_, &glib_),
         device_info_(&control_interface_, dispatcher, &metrics_, &manager_),
         wifi_(new WiFi(&control_interface_,

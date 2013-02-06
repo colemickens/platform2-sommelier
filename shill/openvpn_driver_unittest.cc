@@ -55,6 +55,7 @@ class OpenVPNDriverTest : public testing::Test,
  public:
   OpenVPNDriverTest()
       : device_info_(&control_, &dispatcher_, &metrics_, &manager_),
+        metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, &glib_),
         driver_(new OpenVPNDriver(&control_, &dispatcher_, &metrics_, &manager_,
                                   &device_info_, &glib_)),

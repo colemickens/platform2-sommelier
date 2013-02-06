@@ -61,7 +61,8 @@ class TestEventDispatcher : public EventDispatcher {
 class RTNLHandlerTest : public Test {
  public:
   RTNLHandlerTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         callback_(Bind(&RTNLHandlerTest::HandlerCallback, Unretained(this))) {
   }
 

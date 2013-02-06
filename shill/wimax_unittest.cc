@@ -44,6 +44,7 @@ class WiMaxTest : public testing::Test {
   WiMaxTest()
       : proxy_(new MockWiMaxDeviceProxy()),
         proxy_factory_(this),
+        metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, NULL),
         dhcp_config_(new MockDHCPConfig(&control_,
                                         kTestLinkName)),

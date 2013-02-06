@@ -48,7 +48,8 @@ const char kAddressAsString[] = "000102030405";
 class Modem1Test : public Test {
  public:
   Modem1Test()
-      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),

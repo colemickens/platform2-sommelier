@@ -11,6 +11,7 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
 #include "shill/portal_detector.h"
 #include "shill/power_manager.h"
@@ -278,6 +279,10 @@ class Metrics {
 
   // Cellular specific statistics.
   static const char kMetricCellularDrop[];
+  static const char kMetricCellularDropsPerHour[];
+  static const int kMetricCellularDropsPerHourMax;
+  static const int kMetricCellularDropsPerHourMin;
+  static const int kMetricCellularDropsPerHourNumBuckets;
   static const char kMetricCellularFailureReason[];
   static const char kMetricCellularSignalStrengthBeforeDrop[];
   static const int kMetricCellularSignalStrengthBeforeDropMax;
@@ -292,7 +297,7 @@ class Metrics {
   static const int kMetricCellularAutoConnectTotalTimeMin;
   static const int kMetricCellularAutoConnectTotalTimeNumBuckets;
 
-  Metrics();
+  explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
 
   // Converts the WiFi frequency into the associated UMA channel enumerator.
@@ -304,6 +309,12 @@ class Metrics {
   // Converts portal detection result to UMA portal result enumerator.
   static PortalResult PortalDetectionResultToEnum(
       const PortalDetector::Result &result);
+
+  // Starts this object.  Call this during initialization.
+  virtual void Start();
+
+  // Stops this object.  Call this during cleanup.
+  virtual void Stop();
 
   // Registers a service with this object so it can use the timers to track
   // state transition metrics.
@@ -407,7 +418,8 @@ class Metrics {
 
   // Notifies this object that a cellular device has been dropped by the
   // network.
-  void NotifyCellularDeviceDrop(const std::string &network_technology,
+  void NotifyCellularDeviceDrop(int interface_index,
+                                const std::string &network_technology,
                                 uint16 signal_strength);
 
   // Notifies this object about a cellular device failure code.
@@ -422,6 +434,7 @@ class Metrics {
 
  private:
   friend class MetricsTest;
+  FRIEND_TEST(MetricsTest, CellularDropsPerHour);
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
   FRIEND_TEST(MetricsTest, ServiceFailure);
   FRIEND_TEST(MetricsTest, TimeOnlineTimeToDrop);
@@ -453,15 +466,16 @@ class Metrics {
       ServiceMetricsLookupMap;
 
   struct DeviceMetrics {
-    DeviceMetrics() {}
+    DeviceMetrics() : auto_connect_tries(0), num_drops(0) {}
     Technology::Identifier technology;
     scoped_ptr<chromeos_metrics::TimerReporter> initialization_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> enable_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> disable_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> scan_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> connect_timer;
-    int auto_connect_tries;
     scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
+    int auto_connect_tries;
+    int num_drops;
   };
   typedef std::map<const int, std::tr1::shared_ptr<DeviceMetrics> >
       DeviceMetricsLookupMap;
@@ -481,6 +495,8 @@ class Metrics {
   static const uint16 kWiFiFrequency5745;
   static const uint16 kWiFiFrequency5825;
 
+  static const int kHourlyTimeoutMilliseconds;
+
   void InitializeCommonServiceMetrics(const Service *service);
   void UpdateServiceStateTransitionMetrics(ServiceMetrics *service_metrics,
                                            Service::ConnectState new_state);
@@ -488,6 +504,8 @@ class Metrics {
 
   DeviceMetrics *GetDeviceMetrics (int interface_index) const;
   void AutoConnectMetricsReset(DeviceMetrics *device_metrics);
+
+  void HourlyTimeoutHandler();
 
   // For unit test purposes.
   void set_library(MetricsLibraryInterface *library);
@@ -513,6 +531,7 @@ class Metrics {
   // |library_| points to |metrics_library_| when shill runs normally.
   // However, in order to allow for unit testing, we point |library_| to a
   // MetricsLibraryMock object instead.
+  EventDispatcher *dispatcher_;
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface *library_;
   ServiceMetricsLookupMap services_metrics_;
@@ -524,6 +543,7 @@ class Metrics {
   scoped_ptr<chromeos_metrics::Timer> time_termination_actions_timer;
   bool collect_bootstats_;
   DeviceMetricsLookupMap devices_metrics_;
+  base::CancelableClosure hourly_timeout_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Metrics);
 };

@@ -70,7 +70,8 @@ MATCHER_P(HasApn, expected_apn, "") {
 class CellularCapabilityUniversalTest : public testing::Test {
  public:
   CellularCapabilityUniversalTest()
-      : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_, &dispatcher_, &metrics_, &glib_),
         bearer_proxy_(new mm1::MockBearerProxy()),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),

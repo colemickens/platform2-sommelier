@@ -15,7 +15,8 @@ namespace shill {
 class WiFiProviderTest : public testing::Test {
  public:
   WiFiProviderTest()
-      : manager_(&control_, NULL, &metrics_, NULL),
+      : metrics_(NULL),
+        manager_(&control_, NULL, &metrics_, NULL),
         provider_(&control_, NULL, &metrics_, &manager_) {}
 
   virtual ~WiFiProviderTest() {}

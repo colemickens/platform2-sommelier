@@ -29,7 +29,8 @@ namespace shill {
 class CellularServiceTest : public testing::Test {
  public:
   CellularServiceTest()
-      : manager_(&control_, &dispatcher_, &metrics_, NULL),
+      : metrics_(&dispatcher_),
+        manager_(&control_, &dispatcher_, &metrics_, NULL),
         device_(new Cellular(&control_,
                              NULL,
                              &metrics_,

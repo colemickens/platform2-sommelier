@@ -56,6 +56,7 @@ class WiMaxProviderTest : public testing::Test {
       : wimax_manager_proxy_(new MockWiMaxManagerProxy()),
         network_proxy_(new MockWiMaxNetworkProxy()),
         proxy_factory_(this),
+        metrics_(NULL),
         manager_(&control_, NULL, &metrics_, NULL),
         device_info_(&control_, NULL, &metrics_, &manager_),
         dbus_manager_(new MockDBusManager()),

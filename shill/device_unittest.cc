@@ -92,7 +92,8 @@ class DeviceTest : public PropertyStoreTest {
                                kDeviceAddress,
                                kDeviceInterfaceIndex,
                                Technology::kUnknown)),
-        device_info_(control_interface(), NULL, NULL, NULL) {
+        device_info_(control_interface(), NULL, NULL, NULL),
+        metrics_(dispatcher()) {
     DHCPProvider::GetInstance()->glib_ = glib();
     DHCPProvider::GetInstance()->control_interface_ = control_interface();
     DHCPProvider::GetInstance()->dispatcher_ = dispatcher();

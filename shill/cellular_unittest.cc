@@ -122,7 +122,8 @@ TEST_F(CellularPropertyTest, SetProperty) {
 class CellularTest : public testing::Test {
  public:
   CellularTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         kTestDeviceName)),

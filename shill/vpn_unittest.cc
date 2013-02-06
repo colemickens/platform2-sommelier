@@ -17,7 +17,8 @@ namespace shill {
 class VPNTest : public testing::Test {
  public:
   VPNTest()
-      : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_, &dispatcher_, &metrics_, &glib_),
         vpn_(new VPN(&control_,
                      &dispatcher_,
                      &metrics_,

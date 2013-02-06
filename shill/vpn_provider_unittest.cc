@@ -30,7 +30,8 @@ namespace shill {
 class VPNProviderTest : public testing::Test {
  public:
   VPNProviderTest()
-      : manager_(&control_, NULL, &metrics_, NULL),
+      : metrics_(NULL),
+        manager_(&control_, NULL, &metrics_, NULL),
         device_info_(&control_, NULL, &metrics_, &manager_),
         provider_(&control_, NULL, &metrics_, &manager_) {}
 

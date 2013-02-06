@@ -13,9 +13,11 @@ namespace shill {
 
 class MockMetrics : public Metrics {
  public:
-  MockMetrics();
+  MockMetrics(EventDispatcher *dispatcher);
   virtual ~MockMetrics();
 
+  MOCK_METHOD0(Start, void());
+  MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
   MOCK_METHOD2(NotifyServiceStateChanged,
                void(const Service *service, Service::ConnectState new_state));

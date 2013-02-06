@@ -83,7 +83,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void AddDeviceToBlackList(const std::string &device_name);
 
   virtual void Start();
-  void Stop();
+  virtual void Stop();
   bool running() const { return running_; }
 
   const ProfileRefPtr &ActiveProfile() const;

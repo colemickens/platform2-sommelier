@@ -37,6 +37,7 @@ class CellularCapabilityCDMATest : public testing::Test {
  public:
   CellularCapabilityCDMATest()
       : manager_(&control_, &dispatcher_, &metrics_, &glib_),
+        metrics_(&dispatcher_),
         cellular_(new MockCellular(&control_,
                                    &dispatcher_,
                                    &metrics_,

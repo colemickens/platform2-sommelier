@@ -17,6 +17,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_proxy_factory.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_routing_table.h"
@@ -31,6 +32,7 @@ using base::WeakPtrFactory;
 
 using ::testing::Expectation;
 using ::testing::Gt;
+using ::testing::Mock;
 using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::StrictMock;
@@ -179,11 +181,12 @@ class ShillDaemonTest : public Test {
  public:
   ShillDaemonTest()
       : daemon_(&config_, new MockControl()),
+        metrics_(new MockMetrics(&daemon_.dispatcher_)),
         manager_(new MockManager(daemon_.control_,
                                  &daemon_.dispatcher_,
-                                 &daemon_.metrics_,
+                                 metrics_,
                                  &daemon_.glib_)),
-        device_info_(daemon_.control_, dispatcher_, &daemon_.metrics_,
+        device_info_(daemon_.control_, dispatcher_, metrics_,
                      daemon_.manager_.get()),
         dispatcher_(&daemon_.dispatcher_),
         dispatcher_test_(dispatcher_) {
@@ -197,11 +200,16 @@ class ShillDaemonTest : public Test {
     daemon_.rtnl_handler_ = &rtnl_handler_;
     daemon_.routing_table_ = &routing_table_;
     daemon_.dhcp_provider_ = &dhcp_provider_;
+    daemon_.metrics_.reset(metrics_);  // Passes ownership
     daemon_.manager_.reset(manager_);  // Passes ownership
     dispatcher_test_.ScheduleFailSafe();
   }
   void StartDaemon() {
     daemon_.Start();
+  }
+
+  void StopDaemon() {
+    daemon_.Stop();
   }
 
   void ResetConfig80211() {
@@ -217,6 +225,7 @@ class ShillDaemonTest : public Test {
   MockRTNLHandler rtnl_handler_;
   MockRoutingTable routing_table_;
   MockDHCPProvider dhcp_provider_;
+  MockMetrics *metrics_;
   MockManager *manager_;
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
@@ -224,7 +233,7 @@ class ShillDaemonTest : public Test {
 };
 
 
-TEST_F(ShillDaemonTest, Start) {
+TEST_F(ShillDaemonTest, StartStop) {
   // To ensure we do not have any stale routes, we flush a device's routes
   // when it is started.  This requires that the routing table is fully
   // populated before we create and start devices.  So test to make sure that
@@ -234,11 +243,18 @@ TEST_F(ShillDaemonTest, Start) {
   // completes, we request the dump of the links.  For each link found, we
   // create and start the device.
   EXPECT_CALL(proxy_factory_, Init());
+  EXPECT_CALL(*metrics_, Start());
   EXPECT_CALL(rtnl_handler_, Start(_, _));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _));
   EXPECT_CALL(*manager_, Start()).After(routing_table_started);
   StartDaemon();
+  Mock::VerifyAndClearExpectations(metrics_);
+  Mock::VerifyAndClearExpectations(manager_);
+
+  EXPECT_CALL(*manager_, Stop());
+  EXPECT_CALL(*metrics_, Stop());
+  StopDaemon();
 }
 
 TEST_F(ShillDaemonTest, EventDispatcherTimer) {

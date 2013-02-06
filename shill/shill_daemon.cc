@@ -34,6 +34,7 @@ namespace shill {
 Daemon::Daemon(Config *config, ControlInterface *control)
     : config_(config),
       control_(control),
+      metrics_(new Metrics(&dispatcher_)),
       nss_(NSS::GetInstance()),
       proxy_factory_(ProxyFactory::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -42,13 +43,13 @@ Daemon::Daemon(Config *config, ControlInterface *control)
       config80211_(Config80211::GetInstance()),
       manager_(new Manager(control_,
                            &dispatcher_,
-                           &metrics_,
+                           metrics_.get(),
                            &glib_,
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())),
       callback80211_output_(),
-      callback80211_metrics_(&metrics_) {
+      callback80211_metrics_(metrics_.get()) {
 }
 
 Daemon::~Daemon() { }
@@ -88,7 +89,7 @@ void Daemon::Quit() {
 
 void Daemon::TerminationActionsCompleted(const Error &error) {
   SLOG(Daemon, 1) << "Finished termination actions.  Result: " << error;
-  metrics_.NotifyTerminationActionsCompleted(
+  metrics_->NotifyTerminationActionsCompleted(
       Metrics::kTerminationActionReasonTerminate, error.IsSuccess());
   dispatcher_.PostTask(MessageLoop::QuitClosure());
 }
@@ -96,6 +97,7 @@ void Daemon::TerminationActionsCompleted(const Error &error) {
 void Daemon::Start() {
   glib_.TypeInit();
   proxy_factory_->Init();
+  metrics_->Start();
   rtnl_handler_->Start(&dispatcher_, &sockets_);
   routing_table_->Start();
   dhcp_provider_->Init(control_, &dispatcher_, &glib_);
@@ -123,6 +125,7 @@ void Daemon::Start() {
 
 void Daemon::Stop() {
   manager_->Stop();
+  metrics_->Stop();
 }
 
 }  // namespace shill

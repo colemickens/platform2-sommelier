@@ -71,7 +71,8 @@ class TestEventDispatcherForDeviceInfo : public EventDispatcher {
 class DeviceInfoTest : public Test {
  public:
   DeviceInfoTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_) {
   }
   virtual ~DeviceInfoTest() {}

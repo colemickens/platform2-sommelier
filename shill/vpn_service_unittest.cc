@@ -33,6 +33,7 @@ class VPNServiceTest : public testing::Test {
       : interface_name_("test-interface"),
         driver_(new MockVPNDriver()),
         manager_(&control_, NULL, NULL, NULL),
+        metrics_(NULL),
         device_info_(&control_, NULL, NULL, NULL),
         connection_(new NiceMock<MockConnection>(&device_info_)),
         sockets_(new MockSockets()),

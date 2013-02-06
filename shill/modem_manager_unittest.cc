@@ -61,7 +61,8 @@ class ModemManagerCore : public ModemManager {
 class ModemManagerTest : public Test {
  public:
   ModemManagerTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_) {
+      : metrics_(&dispatcher_),
+        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_) {
   }
 
   virtual void SetUp() {

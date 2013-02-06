@@ -170,7 +170,8 @@ class ServiceTest : public PropertyStoreTest {
 class AllMockServiceTest : public testing::Test {
  public:
   AllMockServiceTest()
-      : manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
+      : metrics_(&dispatcher_),
+        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
         service_(new ServiceUnderTest(&control_interface_,
                                       &dispatcher_,
                                       &metrics_,

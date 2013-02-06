@@ -12,7 +12,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/manager.h"
-#include "shill/metrics.h"
 #include "shill/sockets.h"
 #include "shill/callback80211_object.h"
 #include "shill/callback80211_metrics.h"
@@ -25,6 +24,7 @@ class ControlInterface;
 class DHCPProvider;
 class Error;
 class GLib;
+class Metrics;
 class NSS;
 class ProxyFactory;
 class RoutingTable;
@@ -56,7 +56,7 @@ class Daemon {
 
   Config *config_;
   ControlInterface *control_;
-  Metrics metrics_;
+  scoped_ptr<Metrics> metrics_;
   NSS *nss_;
   ProxyFactory *proxy_factory_;
   RTNLHandler *rtnl_handler_;
