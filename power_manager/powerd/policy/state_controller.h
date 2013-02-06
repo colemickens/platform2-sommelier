@@ -184,6 +184,15 @@ class StateController : public PrefsObserver {
   // to the corresponding StateController::Action value.
   static Action ProtoActionToAction(PowerManagementPolicy_Action proto_action);
 
+  // Returns a string describing |delays| with each field prefixed by
+  // |prefix|.  Helper method for GetPolicyDebugString().
+  static std::string GetPolicyDelaysDebugString(
+      const PowerManagementPolicy::Delays& delays,
+      const std::string& prefix);
+
+  // Returns a string describing |policy|.
+  static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
+
   // Adjusts values in |delays| to ensure they make sense.
   static void SanitizeDelays(Delays* delays);
 

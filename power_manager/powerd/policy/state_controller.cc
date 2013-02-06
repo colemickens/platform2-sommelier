@@ -11,6 +11,7 @@
 #include "base/bind.h"
 #include "base/callback.h"
 #include "base/logging.h"
+#include "base/string_number_conversions.h"
 #include "base/stringprintf.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -74,6 +75,12 @@ std::string TimeDeltaToString(base::TimeDelta delta) {
   return StringPrintf("%s%" PRId64 "m%" PRId64 "s",
                       delta < base::TimeDelta() ? "-" : "",
                       seconds / 60, seconds % 60);
+}
+
+// Returns |time_ms|, a time in milliseconds, as a
+// TimeDeltaToString()-style string.
+std::string MsToString(int64 time_ms) {
+  return TimeDeltaToString(base::TimeDelta::FromMilliseconds(time_ms));
 }
 
 // Returns the time until an event occurring |delay| after |start| will
@@ -282,7 +289,8 @@ void StateController::HandleResume() {
 
 void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
   DCHECK(initialized_);
-  VLOG(1) << "Received updated policy";
+  VLOG(1) << "Received updated external policy: "
+          << GetPolicyDebugString(policy);
   policy_ = policy;
   UpdateSettingsAndState();
 }
@@ -298,7 +306,8 @@ void StateController::HandleOverrideChange(bool override_screen_dim,
       override_lid_suspend == override_lid_suspend_)
     return;
 
-  VLOG(1) << "Overrides changed: override_dim=" << override_screen_dim
+  VLOG(1) << "Overrides changed:"
+          << " override_dim=" << override_screen_dim
           << " override_off=" << override_screen_off
           << " override_idle_suspend=" << override_idle_suspend
           << " override_lid_suspend=" << override_lid_suspend;
@@ -384,6 +393,49 @@ StateController::Action StateController::ProtoActionToAction(
       NOTREACHED() << "Unhandled action " << proto_action;
       return DO_NOTHING;
   }
+}
+
+// static
+std::string StateController::GetPolicyDelaysDebugString(
+    const PowerManagementPolicy::Delays& delays,
+    const std::string& prefix) {
+  std::string str;
+  if (delays.has_screen_dim_ms())
+    str += prefix + "_dim=" + MsToString(delays.screen_dim_ms()) + " ";
+  if (delays.has_screen_off_ms())
+    str += prefix + "_screen_off=" + MsToString(delays.screen_off_ms()) + " ";
+  if (delays.has_screen_lock_ms())
+    str += prefix + "_lock=" + MsToString(delays.screen_lock_ms()) + " ";
+  if (delays.has_idle_ms())
+    str += prefix + "_idle=" + MsToString(delays.idle_ms()) + " ";
+  return str;
+}
+
+// static
+std::string StateController::GetPolicyDebugString(
+    const PowerManagementPolicy& policy) {
+  std::string str = GetPolicyDelaysDebugString(policy.ac_delays(), "ac");
+  str += GetPolicyDelaysDebugString(policy.battery_delays(), "battery");
+
+  if (policy.has_idle_action()) {
+    str += "idle=" +
+           ActionToString(ProtoActionToAction(policy.idle_action())) + " ";
+  }
+  if (policy.has_lid_closed_action()) {
+    str += "lid_closed=" +
+           ActionToString(ProtoActionToAction(policy.lid_closed_action())) +
+           " ";
+  }
+  if (policy.has_use_audio_activity())
+    str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
+  if (policy.has_use_video_activity())
+    str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
+  if (policy.has_presentation_idle_delay_factor()) {
+    str += "presentation_factor=" +
+           base::DoubleToString(policy.presentation_idle_delay_factor()) + " ";
+  }
+
+  return str.empty() ? "[empty]" : str;
 }
 
 // static
@@ -592,14 +644,14 @@ void StateController::UpdateSettingsAndState() {
   SanitizeDelays(&delays_);
 
   VLOG(1) << "Updated settings:"
-          << " idle_action=" << ActionToString(idle_action_)
-          << " lid_closed_action=" << ActionToString(lid_closed_action_)
-          << " screen_dim_ms=" << delays_.screen_dim.InMilliseconds()
-          << " screen_off_ms=" << delays_.screen_off.InMilliseconds()
-          << " screen_lock_ms=" << delays_.screen_lock.InMilliseconds()
-          << " idle_ms=" << delays_.idle.InMilliseconds()
-          << " use_audio_activity=" << use_audio_activity_
-          << " use_video_activity=" << use_video_activity_;
+          << " dim=" << TimeDeltaToString(delays_.screen_dim)
+          << " screen_off=" << TimeDeltaToString(delays_.screen_off)
+          << " lock=" << TimeDeltaToString(delays_.screen_lock)
+          << " idle=" << TimeDeltaToString(delays_.idle)
+          << " (" << ActionToString(idle_action_) << ")"
+          << " lid_closed=" << ActionToString(lid_closed_action_)
+          << " use_audio=" << use_audio_activity_
+          << " use_video=" << use_video_activity_;
 
   UpdateState();
 }
