@@ -63,17 +63,14 @@ CXX_BINARY(mtpd): $(filter-out %_testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
 	mtp_file_entry.pb.o mtp_storage_info.pb.o
 clean: CLEAN(mtpd)
 
-mtpd_testrunner: $(filter-out %main.o,$(CXX_OBJECTS)) \
+CXX_BINARY(mtpd_testrunner): $(filter-out %main.o,$(CXX_OBJECTS)) \
 	mtp_file_entry.pb.o mtp_storage_info.pb.o
-	$(call cxx_binary, -lgtest)
+CXX_BINARY(mtpd_testrunner): LDLIBS += -lgtest -lgmock -lpthread
 clean: CLEAN(mtpd_testrunner)
 
 # Some shortcuts
 mtpd: CXX_BINARY(mtpd)
 all: mtpd
 
-user_tests: TEST(mtpd_testrunner)
-.PHONY: user_tests
-
-tests:
-	$(MAKE) user_tests
+user_tests: TEST(CXX_BINARY(mtpd_testrunner))
+tests: user_tests
