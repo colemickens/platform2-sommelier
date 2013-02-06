@@ -30,9 +30,17 @@ namespace {
 // by replacing it with an incremental instance identifier. Every different
 // pattern defines a separate instance identifier space. See the unit test for
 // AnonymizerTool::AnonymizeCustomPattern for pattern anonymization examples.
+//
+// Useful regular expression syntax:
+//
+// \b matches a word boundary.
+// (?i) turns on case insensitivy for the remainder of the regex.
+// (?-s) turns off "dot matches newline" for the remainder of the regex.
+// (?:regex) denotes non-capturing parentheses group.
 const char *kCustomPatterns[] = {
   "(\\bCell ID: ')([0-9a-fA-F]+)(')",  // ModemManager
   "(\\bLocation area code: ')([0-9a-fA-F]+)(')",  // ModemManager
+  "(?i-s)(\\bssid[= ]')(.+)(')",  // wpa_supplicant
 };
 
 }  // namespace

@@ -72,6 +72,11 @@ TEST_F(AnonymizerToolTest, AnonymizeCustomPatterns) {
 
   EXPECT_EQ("foo Location area code: '1' bar",
             AnonymizeCustomPatterns("foo Location area code: 'A1B2' bar"));
+
+  EXPECT_EQ("foo\na SSID='1' b\n'",
+            AnonymizeCustomPatterns("foo\na SSID='Joe's' b\n'"));
+  EXPECT_EQ("ssid '2'", AnonymizeCustomPatterns("ssid 'My AP'"));
+  EXPECT_EQ("bssid 'aa:bb'", AnonymizeCustomPatterns("bssid 'aa:bb'"));
 }
 
 TEST_F(AnonymizerToolTest, AnonymizeCustomPattern) {
