@@ -2883,4 +2883,9 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   ReportWiFiDebugScopeChanged(false);
 }
 
+TEST_F(WiFiMainTest, LogSSID) {
+  EXPECT_EQ("[SSID=]", WiFi::LogSSID(""));
+  EXPECT_EQ("[SSID=foo\\x5b\\x09\\x5dbar]", WiFi::LogSSID("foo[\t]bar"));
+}
+
 }  // namespace shill

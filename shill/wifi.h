@@ -168,6 +168,9 @@ class WiFi : public Device {
   // characters were changed.
   static bool SanitizeSSID(std::string *ssid);
 
+  // Formats |ssid| for logging purposes, to ease scrubbing.
+  static std::string LogSSID(const std::string &ssid);
+
   // Called by Linkmonitor (overriden from Device superclass).
   virtual void OnLinkMonitorFailure();
 

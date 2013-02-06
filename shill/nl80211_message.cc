@@ -50,6 +50,7 @@
 #include "shill/netlink_socket.h"
 #include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
+#include "shill/wifi.h"
 
 using base::LazyInstance;
 using base::StringAppendF;
@@ -554,6 +555,34 @@ string Nl80211Message::GenericToString() const {
   return output;
 }
 
+string Nl80211Message::GetScanFrequenciesAttributeAsString() const {
+  string output = "frequencies: ";
+  vector<uint32_t> list;
+  if (GetScanFrequenciesAttribute(NL80211_ATTR_SCAN_FREQUENCIES, &list)) {
+    string str;
+    for (vector<uint32_t>::const_iterator i = list.begin();
+         i != list.end(); ++i) {
+      StringAppendF(&str, " %" PRIu32 ", ", *i);
+    }
+    output.append(str);
+  }
+  return output;
+}
+
+string Nl80211Message::GetScanSsidsAttributeAsString() const {
+  string output = "SSIDs: ";
+  vector<string> list;
+  if (GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS, &list)) {
+    string str;
+    for (vector<string>::const_iterator i = list.begin();
+         i != list.end(); ++i) {
+      StringAppendF(&str, "%s, ", WiFi::LogSSID(*i).c_str());
+    }
+    output.append(str);
+  }
+  return output;
+}
+
 ByteString Nl80211Message::Encode(uint16_t nlmsg_type) const {
   // Build netlink header.
   nlmsghdr header;
@@ -922,33 +951,8 @@ const char NewScanResultsMessage::kCommandString[] =
 string NewScanResultsMessage::ToString() const {
   string output(GetHeaderString());
   output.append("scan finished");
-
-  {
-    output.append("; frequencies: ");
-    vector<uint32_t> list;
-    if (GetScanFrequenciesAttribute(NL80211_ATTR_SCAN_FREQUENCIES, &list)) {
-      string str;
-      for (vector<uint32_t>::const_iterator i = list.begin();
-             i != list.end(); ++i) {
-        StringAppendF(&str, " %" PRIu32 ", ", *i);
-      }
-      output.append(str);
-    }
-  }
-
-  {
-    output.append("; SSIDs: ");
-    vector<string> list;
-    if (GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS, &list)) {
-      string str;
-      for (vector<string>::const_iterator i = list.begin();
-           i != list.end(); ++i) {
-        StringAppendF(&str, "\"%s\", ", i->c_str());
-      }
-      output.append(str);
-    }
-  }
-
+  output.append("; " + GetScanFrequenciesAttributeAsString());
+  output.append("; " + GetScanSsidsAttributeAsString());
   return output;
 }
 
@@ -1248,33 +1252,8 @@ const char ScanAbortedMessage::kCommandString[] = "NL80211_CMD_SCAN_ABORTED";
 string ScanAbortedMessage::ToString() const {
   string output(GetHeaderString());
   output.append("scan aborted");
-
-  {
-    output.append("; frequencies: ");
-    vector<uint32_t> list;
-    if (GetScanFrequenciesAttribute(NL80211_ATTR_SCAN_FREQUENCIES, &list)) {
-      string str;
-      for (vector<uint32_t>::const_iterator i = list.begin();
-           i != list.end(); ++i) {
-        StringAppendF(&str, " %" PRIu32 ", ", *i);
-      }
-      output.append(str);
-    }
-  }
-
-  {
-    output.append("; SSIDs: ");
-    vector<string> list;
-    if (GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS, &list)) {
-      string str;
-      for (vector<string>::const_iterator i = list.begin();
-           i != list.end(); ++i) {
-        StringAppendF(&str, "\"%s\", ", i->c_str());
-      }
-      output.append(str);
-    }
-  }
-
+  output.append("; " + GetScanFrequenciesAttributeAsString());
+  output.append("; " + GetScanSsidsAttributeAsString());
   return output;
 }
 
@@ -1284,33 +1263,8 @@ const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 string TriggerScanMessage::ToString() const {
   string output(GetHeaderString());
   output.append("scan started");
-
-  {
-    output.append("; frequencies: ");
-    vector<uint32_t> list;
-    if (GetScanFrequenciesAttribute(NL80211_ATTR_SCAN_FREQUENCIES, &list)) {
-      string str;
-      for (vector<uint32_t>::const_iterator i = list.begin();
-             i != list.end(); ++i) {
-        StringAppendF(&str, "%" PRIu32 ", ", *i);
-      }
-      output.append(str);
-    }
-  }
-
-  {
-    output.append("; SSIDs: ");
-    vector<string> list;
-    if (GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS, &list)) {
-      string str;
-      for (vector<string>::const_iterator i = list.begin();
-           i != list.end(); ++i) {
-        StringAppendF(&str, "\"%s\", ", i->c_str());
-      }
-      output.append(str);
-    }
-  }
-
+  output.append("; " + GetScanFrequenciesAttributeAsString());
+  output.append("; " + GetScanSsidsAttributeAsString());
   return output;
 }
 

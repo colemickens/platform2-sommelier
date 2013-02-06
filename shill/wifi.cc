@@ -727,7 +727,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
 
   SLOG(WiFi, 2) << "WiFi " << link_name()
                 << " roamed to Endpoint " << endpoint.bssid_string()
-                << " (SSID " << endpoint.ssid_string() << ")";
+                << " " << LogSSID(endpoint.ssid_string());
 
   service->NotifyCurrentEndpoint(&endpoint);
 
@@ -1044,7 +1044,7 @@ void WiFi::BSSAddedTask(
       new WiFiEndpoint(proxy_factory_, this, path, properties));
   SLOG(WiFi, 1) << "Found endpoint. "
                 << "RPC path: " << path << ", "
-                << "ssid: " << endpoint->ssid_string() << ", "
+                << LogSSID(endpoint->ssid_string()) << ", "
                 << "bssid: " << endpoint->bssid_string() << ", "
                 << "signal: " << endpoint->signal_strength() << ", "
                 << "security: " << endpoint->security_mode() << ", "
@@ -1504,6 +1504,21 @@ bool WiFi::SanitizeSSID(string *ssid) {
   }
 
   return changed;
+}
+
+// static
+string WiFi::LogSSID(const string &ssid) {
+  string out;
+  for (string::const_iterator it = ssid.begin(); it != ssid.end(); ++it) {
+    // Replace '[' and ']' (in addition to non-printable characters) so that
+    // it's easy to match the right substring through a non-greedy regex.
+    if (*it == '[' || *it == ']' || !g_ascii_isprint(*it)) {
+      base::StringAppendF(&out, "\\x%02x", *it);
+    } else {
+      out += *it;
+    }
+  }
+  return StringPrintf("[SSID=%s]", out.c_str());
 }
 
 void WiFi::OnLinkMonitorFailure() {

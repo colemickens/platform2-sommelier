@@ -115,6 +115,9 @@ class Nl80211Message {
   // characters are string-ized.
   static std::string StringFromSsid(const uint8_t len, const uint8_t *data);
 
+  std::string GetScanFrequenciesAttributeAsString() const;
+  std::string GetScanSsidsAttributeAsString() const;
+
  private:
   friend class Config80211Test;
   FRIEND_TEST(Config80211Test, NL80211_CMD_NOTIFY_CQM);
