@@ -521,7 +521,8 @@ TEST_F(SessionManagerProcessTest, StatsRecorded) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
   ExpectChildJobBoilerplate(job);
   // Override looser expectation from ExpectChildJobBoilerplate().
-  EXPECT_CALL(*metrics_, RecordStats("chrome-exec")).Times(1);
+  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
+      .Times(1);
 
   EXPECT_CALL(*job, ShouldStop())
       .WillOnce(Return(true));
