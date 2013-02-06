@@ -61,6 +61,4 @@ user_tests: override GTEST_ARGS.qemu.arm := --gtest_filter='-*.RunAsRoot*:DiskMa
 user_tests: TEST(disks_testrunner)
 .PHONY: user_tests root_tests
 
-tests:
-	$(MAKE) user_tests
-	$(MAKE) root_tests # NEEDS_ROOT=1 NEEDS_MOUNTS=1
+tests: user_tests root_tests
