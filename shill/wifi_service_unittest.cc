@@ -1421,4 +1421,14 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Ieee80211w) {
   EXPECT_TRUE(service->ieee80211w_required());
 }
 
+TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {
+  service->AddEndpoint(ok_endpoint);
+  service->SetState(Service::kStateAssociating);
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
+                       EndsWith("disconnect due to no remaining endpoints.")));
+  service->RemoveEndpoint(ok_endpoint);
+}
+
 }  // namespace shill

@@ -565,6 +565,9 @@ void WiFiService::UpdateFromEndpoints() {
   WiFiRefPtr wifi;
   if (representative_endpoint) {
     wifi = representative_endpoint->device();
+  } else if (IsConnected() || IsConnecting()) {
+    LOG(WARNING) << "Service " << unique_name()
+                 << " will disconnect due to no remaining endpoints.";
   }
 
   SetWiFi(wifi);
