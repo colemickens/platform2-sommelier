@@ -108,6 +108,16 @@ class Daemon::StateControllerDelegate
     return daemon_->ShouldStayAwakeForHeadphoneJack();
   }
 
+  virtual policy::StateController::LidState QueryLidState() OVERRIDE {
+    int raw_lid_state = 0;  // 0 is open, 1 is closed (per system/input.h)
+    if (!daemon_->input_->QueryLidState(&raw_lid_state))
+      return policy::StateController::LID_OPEN;
+
+    return raw_lid_state == 1 ?
+        policy::StateController::LID_CLOSED :
+        policy::StateController::LID_OPEN;
+  }
+
   virtual void DimScreen() OVERRIDE {
     screen_dimmed_ = true;
     if (daemon_->use_state_controller_ && !screen_off_) {
@@ -315,20 +325,17 @@ void Daemon::Init() {
   if (use_state_controller_)
     SetPowerState(BACKLIGHT_ACTIVE);
 
-  int raw_lid_state = 0;  // 0 is open, 1 is closed (per system/input.h)
-  policy::StateController::PowerSource power_source =
-      plugged_state_ == PLUGGED_STATE_DISCONNECTED ?
-      policy::StateController::POWER_BATTERY :
-      policy::StateController::POWER_AC;
-  policy::StateController::LidState lid_state =
-      input_->QueryLidState(&raw_lid_state) && raw_lid_state == 1 ?
-      policy::StateController::LID_CLOSED :
-      policy::StateController::LID_OPEN;
-  policy::StateController::SessionState session_state =
-      current_session_state_ == kSessionStarted ?
-      policy::StateController::SESSION_STARTED :
-      policy::StateController::SESSION_STOPPED;
-  state_controller_->Init(power_source, lid_state, session_state,
+  bool has_lid = true;
+  prefs_->GetBool(kUseLidPref, &has_lid);
+  state_controller_->Init((plugged_state_ == PLUGGED_STATE_DISCONNECTED ?
+                           policy::StateController::POWER_BATTERY :
+                           policy::StateController::POWER_AC),
+                          (has_lid ?
+                           state_controller_delegate_->QueryLidState() :
+                           policy::StateController::LID_OPEN),
+                          (current_session_state_ == kSessionStarted ?
+                           policy::StateController::SESSION_STARTED :
+                           policy::StateController::SESSION_STOPPED),
                           policy::StateController::DISPLAY_NORMAL);
   state_controller_initialized_ = true;
 

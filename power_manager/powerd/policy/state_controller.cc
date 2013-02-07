@@ -204,6 +204,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
+      has_lid_(true),
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
       use_audio_activity_(true),
@@ -224,13 +225,14 @@ void StateController::Init(PowerSource power_source,
                            LidState lid_state,
                            SessionState session_state,
                            DisplayMode display_mode) {
+  LoadPrefs();
+
   last_user_activity_time_ = GetCurrentTime();
   power_source_ = power_source;
-  lid_state_ = lid_state;
+  lid_state_ = has_lid_ ? lid_state : LID_OPEN;
   session_state_ = session_state;
   display_mode_ = display_mode;
 
-  LoadPrefs();
   UpdateSettingsAndState();
   initialized_ = true;
 }
@@ -248,6 +250,11 @@ void StateController::HandlePowerSourceChange(PowerSource source) {
 
 void StateController::HandleLidStateChange(LidState state) {
   DCHECK(initialized_);
+  if (!has_lid_) {
+    LOG(WARNING) << "Ignoring lid event; " << kUseLidPref << " was false";
+    return;
+  }
+
   if (state == lid_state_)
     return;
 
@@ -283,7 +290,25 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 void StateController::HandleResume() {
   DCHECK(initialized_);
   VLOG(1) << "System resumed";
-  UpdateLastUserActivityTime();
+
+  if (!has_lid_ || delegate_->QueryLidState() == LID_OPEN) {
+    // Undim the screen and turn it back on immediately after the user
+    // opens the lid.
+    UpdateLastUserActivityTime();
+  } else {
+    // If the lid is closed to suspend the machine and then very quickly
+    // opened and closed again, the machine may resume without lid-opened
+    // and lid-closed events being generated.  Ensure that we're able to
+    // resuspend immediately in this case.
+    if (lid_state_ == LID_CLOSED &&
+        lid_closed_action_ == SUSPEND &&
+        lid_closed_action_performed_) {
+      VLOG(1) << "Lid still closed after resuming from lid-close-triggered "
+              << "suspend; repeating lid-closed action";
+      lid_closed_action_performed_ = false;
+    }
+  }
+
   UpdateState();
 }
 
@@ -530,6 +555,7 @@ void StateController::LoadPrefs() {
                   &require_usb_input_device_to_suspend_);
   prefs_->GetBool(kKeepBacklightOnForAudioPref, &keep_screen_on_for_audio_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
+  prefs_->GetBool(kUseLidPref, &has_lid_);
 
   CHECK(GetMillisecondPref(prefs_, kPluggedSuspendMsPref,
                            &pref_ac_delays_.idle));

@@ -67,6 +67,9 @@ class StateController : public PrefsObserver {
     // that produces noise over the jack while suspended).
     virtual bool ShouldAvoidSuspendForHeadphoneJack() = 0;
 
+    // Returns the current lid state.
+    virtual LidState QueryLidState() = 0;
+
     // Dims the screen in response to the system being idle.
     virtual void DimScreen() = 0;
 
@@ -306,6 +309,9 @@ class StateController : public PrefsObserver {
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref
   // and overrides |policy_|.
   bool disable_idle_suspend_;
+
+  // Does the system have a lid?
+  bool has_lid_;
 
   // Externally-requested idle notifications added via
   // AddIdleNotification() that haven't yet fired.  (Notifications are only
