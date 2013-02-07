@@ -296,15 +296,14 @@ fi
 
 # Make sure required /var subdirectories exist.
 mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lib/ureadahead \
-                 /var/lock /var/log/metrics /var/log/window_manager \
-                 /var/run /var/tmp
+                 /var/lock /var/log/metrics /var/run /var/tmp
 
 # /var/tmp must be world-writable and sticky
 chmod 1777 /var/tmp
 # /home/root must be group-writable and sticky
 chmod 1771 /home/root
 # Selected directories must belong to the chronos user.
-chown chronos:chronos /home/chronos /var/log/metrics /var/log/window_manager
+chown chronos:chronos /home/chronos /var/log/metrics
 # rsyslog needs to be able to create new logfiles, but not delete other logs
 chgrp syslog /var/log
 chmod 1775 /var/log
