@@ -77,6 +77,14 @@ TEST_F(AnonymizerToolTest, AnonymizeCustomPatterns) {
             AnonymizeCustomPatterns("foo\na SSID='Joe's' b\n'"));
   EXPECT_EQ("ssid '2'", AnonymizeCustomPatterns("ssid 'My AP'"));
   EXPECT_EQ("bssid 'aa:bb'", AnonymizeCustomPatterns("bssid 'aa:bb'"));
+
+  EXPECT_EQ("Scan SSID - hexdump(len=6): 1\nfoo",
+            AnonymizeCustomPatterns(
+                "Scan SSID - hexdump(len=6): 47 6f 6f 67 6c 65\nfoo"));
+
+  EXPECT_EQ("a\nb [SSID=1] [SSID=2] [SSID=foo\nbar] b",
+            AnonymizeCustomPatterns(
+                "a\nb [SSID=foo] [SSID=bar] [SSID=foo\nbar] b"));
 }
 
 TEST_F(AnonymizerToolTest, AnonymizeCustomPattern) {
