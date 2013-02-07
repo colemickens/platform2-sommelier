@@ -299,7 +299,7 @@ endif
 
 ifeq ($(MODE),profiling)
   CFLAGS := $(CFLAGS) -O0 -g  --coverage
-  CXXFLAGS := $(CXXFLAG) -O0 -g  --coverage
+  CXXFLAGS := $(CXXFLAGS) -O0 -g  --coverage
   LDFLAGS := $(LDFLAGS) --coverage
 endif
 
