@@ -266,7 +266,7 @@ fi
 
 EVDA_FLAGS=
 PPAPI_OOP_FLAG=
-if is_board daisy; then
+if use_flag_is_set exynos; then
   EVDA_FLAGS="--use-exynos-vda"
   PPAPI_OOP_FLAG="--ppapi-out-of-process"
   # On boards with ARM NEON support, force libvpx to use the NEON-optimized
