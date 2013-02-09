@@ -26,10 +26,12 @@ DEFINE_string(action, "", "Action to perform.  Must be one of "
 DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
               "lowercase letter and consisting only of lowercase letters and "
               "dashes.");
-DEFINE_bool(suspend_cancel_if_lid_open, false, "Pass --cancel_if_lid_open to "
-            "powerd_suspend for the \"suspend\" action.");
-DEFINE_int32(suspend_wakeup_count, -1, "Pass --wakeup_count <INT> to "
-            "powerd_suspend for the \"suspend\" action.");
+DEFINE_int32(suspend_id, -1, "Pass --suspend_id <INT> to powerd_suspend for "
+             "the \"suspend\" action.");
+DEFINE_uint64(suspend_wakeup_count, 0, "Pass --wakeup_count <INT> to "
+              "powerd_suspend for the \"suspend\" action.");
+DEFINE_bool(suspend_wakeup_count_valid, false,
+            "Should --suspend_wakeup_count be honored?");
 
 // Maximum number of arguments supported for internally-defined commands.
 const size_t kMaxArgs = 64;
@@ -103,12 +105,14 @@ int main(int argc, char* argv[]) {
     RunCommand(kInitctlPath, "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
                (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
   } else if (FLAGS_action == "suspend") {
-    std::string cancel_flag = FLAGS_suspend_cancel_if_lid_open ?
-        "--cancel_if_lid_open" : "--nocancel_if_lid_open";
-    std::string wakeup_flag = "--wakeup_count=" +
-        base::IntToString(FLAGS_suspend_wakeup_count);
-    RunCommand(kPowerdSuspendPath, cancel_flag.c_str(), wakeup_flag.c_str(),
-               NULL);
+    std::string id_flag = "--suspend_id=" + base::IntToString(FLAGS_suspend_id);
+    std::string wakeup_flag;
+    if (FLAGS_suspend_wakeup_count_valid) {
+      wakeup_flag = "--wakeup_count=" +
+          base::Uint64ToString(FLAGS_suspend_wakeup_count);
+    }
+    RunCommand(kPowerdSuspendPath, id_flag.c_str(),
+               wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
   } else if (FLAGS_action == "unlock_vt") {
     SetVTSwitchingAllowed(true);
   } else {

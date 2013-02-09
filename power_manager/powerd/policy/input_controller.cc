@@ -22,10 +22,8 @@ InputController::InputController(system::Input* input,
       delegate_(delegate),
       dbus_sender_(dbus_sender),
       lid_state_(LID_STATE_OPENED),
-      use_input_for_lid_(true),
-      lid_open_file_(run_dir.Append(kLidOpenFile)) {
+      use_input_for_lid_(true) {
   input_->AddObserver(this);
-
 }
 
 InputController::~InputController() {
@@ -52,13 +50,11 @@ void InputController::OnInputEvent(InputType type, int value) {
       if (lid_state_ == LID_STATE_CLOSED) {
         input_->SetTouchDevicesState(false);
         input_->SetWakeInputsState(false);
-        util::RemoveStatusFile(lid_open_file_);
         SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
         delegate_->HandleLidClosed();
       } else {
         input_->SetTouchDevicesState(true);
         input_->SetWakeInputsState(true);
-        util::CreateStatusFile(lid_open_file_);
         SendInputEventSignal(INPUT_LID, BUTTON_UP);
         delegate_->HandleLidOpened();
       }

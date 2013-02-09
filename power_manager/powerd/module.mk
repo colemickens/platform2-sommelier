@@ -108,6 +108,7 @@ POWERD_UNITTEST_OBJS = \
 	powerd/rolling_average_unittest.o \
 	powerd/state_control_unittest.o \
 	powerd/suspend_delay_controller_unittest.o \
+	powerd/suspender_unittest.o \
 	powerd/video_detector_unittest.o
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \

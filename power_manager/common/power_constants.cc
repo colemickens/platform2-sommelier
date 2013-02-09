@@ -66,10 +66,6 @@ const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";
 
-// Files to signal powerd_suspend whether suspend should be cancelled.
-const char kLidOpenFile[] = "lid_opened";
-const char kUserActiveFile[] = "user_active";
-
 // Reasons for shutting down.
 const char kShutdownReasonUnknown[] = "unknown";
 // Explicit user request such as pressing the power key or the power button in

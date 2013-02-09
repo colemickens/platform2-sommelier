@@ -61,10 +61,6 @@ extern const int64 kBatteryPercentTaperMs;
 // Broadcast signals.
 extern const char kPowerStateChanged[];
 
-// Files to signal powerd_suspend whether suspend should be cancelled.
-extern const char kLidOpenFile[];
-extern const char kUserActiveFile[];
-
 // Reasons for shutting down
 extern const char kShutdownReasonUnknown[];
 extern const char kShutdownReasonUserRequest[];

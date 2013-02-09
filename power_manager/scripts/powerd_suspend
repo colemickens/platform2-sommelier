@@ -9,7 +9,7 @@
 
 . /usr/share/misc/shflags
 
-DEFINE_boolean cancel_if_lid_open $FLAGS_FALSE "cancel suspend if lid is open" l
+DEFINE_integer suspend_id -1 "ID representing this suspend request" i
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
 
@@ -42,11 +42,8 @@ suspend_to_ram_time_file=${root_spool_dir}/suspend-to-ram-time
 # temporary state files.
 power_run_dir=/var/run/power_manager/power
 
-# File touched by powerd when the lid is opened and removed when it's closed.
-lid_open_file=${power_run_dir}/lid_opened
-
-# File touched by powerd when user activity occurs.
-user_active_file=${power_run_dir}/user_active
+# File touched by powerd when suspend should be canceled.
+cancel_suspend_file=${power_run_dir}/cancel_suspend
 
 log_msg() {
     logger -t "powerd_suspend[${PPID}]" -- $@
@@ -118,12 +115,9 @@ suspend_pm_wakeup_cancel() {
     fi
 }
 
-# These files are created by powerd.  Their existence means an event has
-# occurred that should cancel suspend.
+# Returns success if suspend should be canceled.
 suspend_cancel() {
-    if [ $FLAGS_cancel_if_lid_open -eq $FLAGS_TRUE -a -e "$lid_open_file" ] ||
-       [ -e "$user_active_file" ] ||
-       suspend_pm_wakeup_cancel; then
+    if [ -e "$cancel_suspend_file" ] || suspend_pm_wakeup_cancel; then
         cancel=1
         return 0
     else
@@ -164,7 +158,8 @@ rm -f $last_resume_timings_file
 
 # - announces the event
 dbus-send --type=signal --system /org/chromium/PowerManager \
-  org.chromium.PowerManager.PowerStateChanged string:mem int32:0
+  org.chromium.PowerManager.PowerStateChanged \
+  string:mem int32:0 "int32:${FLAGS_suspend_id}"
 
 # - stores the current power status
 power-supply-info 2> /dev/null \
@@ -206,6 +201,8 @@ sync
 
 suspend_rc=-1
 if suspend_cancel; then
+    # Note: The client/cros/power_suspend.py module in autotest depends on
+    # this message.
     log_msg "Cancel suspend at kernel"
 
     # This file is usually removed by send_metrics_on_resume, but that script
@@ -270,8 +267,8 @@ fi
 
 # - announces the event
 dbus-send --type=signal --system /org/chromium/PowerManager \
-    org.chromium.PowerManager.PowerStateChanged string:on \
-    "int32:${suspend_rc}" &
+    org.chromium.PowerManager.PowerStateChanged \
+    string:on "int32:${suspend_rc}" "int32:${FLAGS_suspend_id}" &
 
 cleanup_for_resume
 

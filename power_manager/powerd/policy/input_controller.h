@@ -90,10 +90,6 @@ class InputController : public system::InputObserver {
   // Should |input_| be queried for the state of the lid?
   bool use_input_for_lid_;
 
-  // File that is touched the lid is opened so that the powerd_suspend script
-  // can abort if it's in the process of suspending.
-  FilePath lid_open_file_;
-
   DISALLOW_COPY_AND_ASSIGN(InputController);
 };
 

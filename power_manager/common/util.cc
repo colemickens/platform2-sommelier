@@ -21,8 +21,6 @@
 
 namespace {
 
-const char kWakeupCountPath[] = "/sys/power/wakeup_count";
-
 // Path to program used to run code as root.
 const char kSetuidHelperPath[] = "/usr/bin/powerd_setuid_helper";
 
@@ -80,23 +78,6 @@ void RemoveStatusFile(const FilePath& file) {
     else
       LOG(INFO) << "Removed " << file.value();
   }
-}
-
-bool GetWakeupCount(unsigned int* value) {
-  int64 temp_value;
-  FilePath path(kWakeupCountPath);
-  std::string buf;
-  if (file_util::ReadFileToString(path, &buf)) {
-    TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-    if (base::StringToInt64(buf, &temp_value)) {
-      *value = static_cast<unsigned int>(temp_value);
-      return true;
-    } else {
-      LOG(ERROR) << "Garbage found in " << path.value();
-    }
-  }
-  LOG(INFO) << "Could not read " << path.value();
-  return false;
 }
 
 bool GetUintFromFile(const char* filename, unsigned int* value) {

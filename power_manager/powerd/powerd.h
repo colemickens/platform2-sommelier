@@ -563,6 +563,7 @@ class Daemon : public BacklightControllerObserver,
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;
   ScreenLocker locker_;
+  scoped_ptr<Suspender::Delegate> suspender_delegate_;
   Suspender suspender_;
   FilePath run_dir_;
   PowerSupply power_supply_;

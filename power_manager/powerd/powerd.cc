@@ -234,8 +234,9 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
-      suspender_(this, &file_tagger_, dbus_sender_.get(),
-                 input_.get(), run_dir),
+      suspender_delegate_(
+          Suspender::CreateDefaultDelegate(this, &file_tagger_, run_dir)),
+      suspender_(suspender_delegate_.get(), dbus_sender_.get()),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
       is_power_status_stale_(true),
@@ -589,7 +590,7 @@ void Daemon::ShutdownForFailedSuspend() {
 
 void Daemon::StartCleanShutdown() {
   clean_shutdown_initiated_ = true;
-  suspender_.CancelSuspend();
+  suspender_.HandleShutdown();
   util::RunSetuidHelper("clean_shutdown", "", false);
   clean_shutdown_timeout_id_ = g_timeout_add(
       clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
@@ -714,10 +715,8 @@ void Daemon::SetIdleState(int64 idle_time_ms) {
     SetPowerState(BACKLIGHT_DIM);
   } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
     if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
-      if (old_state == BACKLIGHT_SUSPENDED) {
-        util::CreateStatusFile(FilePath(run_dir_).Append(kUserActiveFile));
-        suspender_.CancelSuspend();
-      }
+      if (old_state == BACKLIGHT_SUSPENDED)
+        suspender_.HandleUserActivity();
     }
     if (keyboard_controller_)
       keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
@@ -962,7 +961,7 @@ void Daemon::HandleLidClosed() {
 void Daemon::HandleLidOpened() {
   if (!use_state_controller_)
     SetActive();
-  suspender_.CancelSuspend();
+  suspender_.HandleLidOpened();
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(policy::StateController::LID_OPEN);
 }
@@ -1207,19 +1206,22 @@ bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
 
 bool Daemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   const char* state = '\0';
-  int32 power_rc = -1;
+  int32 suspend_result = -1;
+  int32 suspend_id = -1;
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error,
                              DBUS_TYPE_STRING, &state,
-                             DBUS_TYPE_INT32, &power_rc,
+                             DBUS_TYPE_INT32, &suspend_result,
+                             DBUS_TYPE_INT32, &suspend_id,
                              DBUS_TYPE_INVALID)) {
     LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
     dbus_error_free(&error);
     return false;
   }
 
-  suspender_.HandlePowerStateChanged(state, power_rc);
+  suspender_.HandlePowerStateChanged(
+      state ? state : "", suspend_result, suspend_id);
   if (g_str_equal(state, "on") == TRUE) {
     HandleResume();
     if (!use_state_controller_)
@@ -1254,7 +1256,6 @@ bool Daemon::HandleSessionManagerScreenIsLockedSignal(
     DBusMessage* message) {
   LOG(INFO) << "HandleSessionManagerScreenIsLockedSignal";
   locker_.set_locked(true);
-  suspender_.SuspendIfReady();
   return true;
 }
 
@@ -1513,6 +1514,7 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
     dbus_error_free(&error);
     return util::CreateDBusInvalidArgsErrorReply(message);
   }
+  suspender_.HandleUserActivity();
   idle_->HandleUserActivity(
       base::TimeTicks::FromInternalValue(last_activity_time_internal));
   state_controller_->HandleUserActivity();
@@ -1863,10 +1865,7 @@ void Daemon::Suspend() {
     // this before turning the panel back on (which happens in RequestSuspend).
     SetPowerState(BACKLIGHT_SUSPENDED);
 
-    // If the lid is currently closed, abort if the lid is opened midway through
-    // the suspend attempt.
-    bool cancel_if_lid_open = !input_controller_->lid_is_open();
-    suspender_.RequestSuspend(cancel_if_lid_open);
+    suspender_.RequestSuspend();
   } else {
     if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
       shutdown_reason_ = kShutdownReasonIdle;
