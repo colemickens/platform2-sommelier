@@ -98,17 +98,24 @@ void AppendProtocolBufferToDBusMessage(
                            DBUS_TYPE_INVALID);
 }
 
-void SendSignalToSessionManager(const char* signal) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              login_manager::kSessionManagerServiceName,
-                              login_manager::kSessionManagerServicePath,
-                              login_manager::kSessionManagerInterface);
-  GError* error = NULL;
-  if (!dbus_g_proxy_call(proxy.gproxy(), signal, &error, G_TYPE_INVALID,
-                         G_TYPE_INVALID)) {
-    LOG(ERROR) << "Error sending signal: " << error->message;
-    g_error_free(error);
+void CallSessionManagerMethod(const std::string& method_name,
+                              const char* optional_string_arg) {
+  DBusMessage* message = dbus_message_new_method_call(
+      login_manager::kSessionManagerServiceName,
+      login_manager::kSessionManagerServicePath,
+      login_manager::kSessionManagerInterface,
+      method_name.c_str());
+  CHECK(message);
+  if (optional_string_arg) {
+    dbus_message_append_args(message, DBUS_TYPE_STRING, &optional_string_arg,
+                             DBUS_TYPE_INVALID);
   }
+
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  dbus_connection_send(connection, message, NULL);
+  dbus_message_unref(message);
 }
 
 void SendSignalWithIntToPowerD(const char* signal_name, int value) {

@@ -5,6 +5,7 @@
 #include "power_manager/powerd/screen_locker.h"
 
 #include "base/logging.h"
+#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 
@@ -21,7 +22,8 @@ void ScreenLocker::Init(bool lock_on_suspend) {
 
 void ScreenLocker::LockScreen() {
   LOG(INFO) << "Locking screen";
-  util::SendSignalToSessionManager("LockScreen");
+  util::CallSessionManagerMethod(
+      login_manager::kSessionManagerLockScreen, NULL);
   last_lock_request_time_ = base::TimeTicks::Now();
 }
 

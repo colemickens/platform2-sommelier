@@ -44,9 +44,10 @@ void AppendProtocolBufferToDBusMessage(
     const google::protobuf::MessageLite& protobuf,
     DBusMessage* message_out);
 
-// Sends a message |signal| to the session manager.
-// TODO(derat): Rename this; it's actually making method calls.
-void SendSignalToSessionManager(const char* signal);
+// Asynchronously calls the session manager's |method_name| D-Bus method.
+// If |optional_string_arg| is non-NULL, it is passed as an argument.
+void CallSessionManagerMethod(const std::string& method_name,
+                              const char* optional_string_arg);
 
 // Sends a message |signal| and int32 to the unprivileged power daemon.
 void SendSignalWithIntToPowerD(const char* signal, int value);

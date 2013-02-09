@@ -142,8 +142,8 @@ class Daemon::StateControllerDelegate
 
   virtual void LockScreen() OVERRIDE {
     if (daemon_->use_state_controller_) {
-      util::SendSignalToSessionManager(
-          login_manager::kSessionManagerLockScreen);
+      util::CallSessionManagerMethod(
+          login_manager::kSessionManagerLockScreen, NULL);
     }
   }
 
@@ -154,8 +154,10 @@ class Daemon::StateControllerDelegate
 
   virtual void StopSession() OVERRIDE {
     if (daemon_->use_state_controller_) {
-      util::SendSignalToSessionManager(
-          login_manager::kSessionManagerStopSession);
+      // This session manager method takes a string argument, although it
+      // doesn't currently do anything with it.
+      util::CallSessionManagerMethod(
+          login_manager::kSessionManagerStopSession, "");
     }
   }
 
