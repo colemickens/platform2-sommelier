@@ -268,9 +268,10 @@ if use_flag_is_set disable_login_animations; then
   AURA_FLAGS="$AURA_FLAGS --ash-copy-host-background-at-boot"
 fi
 
-# Setup GPU & acceleration flags which differ between x86/ARM SoC
-if [ "$(uname -m)" = "armv7l" ] ; then
-  ACCELERATED_FLAGS="--use-gl=egl"
+# Setup GPU & acceleration flags which differ between SoCs that
+# use EGL/GLX rendering
+if use_flag_is_set egl; then
+    ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
 EVDA_FLAGS=
