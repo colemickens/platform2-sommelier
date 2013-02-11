@@ -119,13 +119,12 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNMgmtEnableProperty, 0 },
 };
 
-// static
 const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
-// static
 const char OpenVPNDriver::kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
-//static
 const char OpenVPNDriver::kChromeOSReleaseVersion[] =
     "CHROMEOS_RELEASE_VERSION";
+const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
+const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
 
 OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
                              EventDispatcher *dispatcher,
@@ -470,7 +469,7 @@ bool OpenVPNDriver::SplitPortFromHost(
 }
 
 void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
-  StartConnectTimeout();
+  StartConnectTimeout(kDefaultConnectTimeoutSeconds);
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
@@ -745,7 +744,7 @@ void OpenVPNDriver::OnConnectionDisconnected() {
   // and openvpn will not lead to a permanently stale connectivity state. Note
   // that a subsequent invocation of OnReconnecting due to a RECONNECTING
   // message will essentially be a no-op.
-  OnReconnecting();
+  OnReconnecting(kReconnectReasonOffline);
 }
 
 void OpenVPNDriver::OnConnectTimeout() {
@@ -753,9 +752,16 @@ void OpenVPNDriver::OnConnectTimeout() {
   Cleanup(Service::kStateFailure);
 }
 
-void OpenVPNDriver::OnReconnecting() {
-  SLOG(VPN, 2) << __func__;
-  StartConnectTimeout();
+void OpenVPNDriver::OnReconnecting(ReconnectReason reason) {
+  LOG(INFO) << __func__ << "(" << reason << ")";
+  int timeout_seconds = GetReconnectTimeoutSeconds(reason);
+  if (reason == kReconnectReasonTLSError &&
+      timeout_seconds < connect_timeout_seconds()) {
+    // Reconnect due to TLS error happens during connect so we need to cancel
+    // the original connect timeout first and then reduce the time limit.
+    StopConnectTimeout();
+  }
+  StartConnectTimeout(timeout_seconds);
   // On restart/reconnect, drop the VPN connection, if any. The openvpn client
   // might be in hold state if the VPN connection was previously established
   // successfully. The hold will be released by OnDefaultServiceChanged when a
@@ -767,6 +773,19 @@ void OpenVPNDriver::OnReconnecting() {
   if (service_) {
     service_->SetState(Service::kStateAssociating);
   }
+}
+
+// static
+int OpenVPNDriver::GetReconnectTimeoutSeconds(ReconnectReason reason) {
+  switch (reason) {
+    case kReconnectReasonOffline:
+      return kReconnectOfflineTimeoutSeconds;
+    case kReconnectReasonTLSError:
+      return kReconnectTLSErrorTimeoutSeconds;
+    default:
+      break;
+  }
+  return kDefaultConnectTimeoutSeconds;
 }
 
 string OpenVPNDriver::GetProviderType() const {

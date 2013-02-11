@@ -318,11 +318,17 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
   vector<string> details;
   SplitString(message, ',', &details);
   if (details.size() > 1) {
-    LOG(INFO) << "Processing state message: " << details[1];
     if (details[1] == "RECONNECTING") {
-      driver_->OnReconnecting();
+      OpenVPNDriver::ReconnectReason reason =
+          OpenVPNDriver::kReconnectReasonUnknown;
+      if (details.size() > 2 && details[2] == "tls-error") {
+        reason = OpenVPNDriver::kReconnectReasonTLSError;
+      }
+      driver_->OnReconnecting(reason);
+    } else {
+      // The rest of the states are currently ignored.
+      LOG(INFO) << "Ignoring state message: " << details[1];
     }
-    // The rest of the states are currently ignored.
   }
   return true;
 }

@@ -59,6 +59,8 @@ class VPNDriver {
     int flags;
   };
 
+  static const int kDefaultConnectTimeoutSeconds;
+
   VPNDriver(EventDispatcher *dispatcher,
             Manager *manager,
             const Property *properties,
@@ -69,9 +71,10 @@ class VPNDriver {
 
   virtual KeyValueStore GetProvider(Error *error);
 
-  // Initializes a callback that will invoke OnConnectTimeout. The timeout will
-  // not be restarted if it's already scheduled.
-  void StartConnectTimeout();
+  // Initializes a callback that will invoke OnConnectTimeout after
+  // |timeout_seconds|. The timeout will not be restarted if it's already
+  // scheduled.
+  void StartConnectTimeout(int timeout_seconds);
   // Cancels the connect timeout callback, if any, previously scheduled through
   // StartConnectTimeout.
   void StopConnectTimeout();
@@ -82,10 +85,10 @@ class VPNDriver {
   // fires. Cancels the timeout callback.
   virtual void OnConnectTimeout();
 
- private:
-  FRIEND_TEST(VPNDriverTest, ConnectTimeout);
+  int connect_timeout_seconds() const { return connect_timeout_seconds_; }
 
-  static const int kDefaultConnectTimeoutSeconds;
+ private:
+  friend class VPNDriverTest;
 
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);

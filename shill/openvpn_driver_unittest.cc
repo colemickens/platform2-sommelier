@@ -18,6 +18,7 @@
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -143,12 +144,28 @@ class OpenVPNDriverTest : public testing::Test,
     driver_->OnConnectTimeout();
   }
 
-  void StartConnectTimeout() {
-    driver_->StartConnectTimeout();
+  void StartConnectTimeout(int timeout_seconds) {
+    driver_->StartConnectTimeout(timeout_seconds);
   }
 
   bool IsConnectTimeoutStarted() {
     return driver_->IsConnectTimeoutStarted();
+  }
+
+  static int GetDefaultConnectTimeoutSeconds() {
+    return OpenVPNDriver::kDefaultConnectTimeoutSeconds;
+  }
+
+  static int GetReconnectOfflineTimeoutSeconds() {
+    return OpenVPNDriver::kReconnectOfflineTimeoutSeconds;
+  }
+
+  static int GetReconnectTLSErrorTimeoutSeconds() {
+    return OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds;
+  }
+
+  static int GetReconnectTimeoutSeconds(OpenVPNDriver::ReconnectReason reason) {
+    return OpenVPNDriver::GetReconnectTimeoutSeconds(reason);
   }
 
   // Used to assert that a flag appears in the options.
@@ -165,7 +182,7 @@ class OpenVPNDriverTest : public testing::Test,
 
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
-  EventDispatcher dispatcher_;
+  MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
@@ -283,7 +300,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
   map<string, string> config;
   driver_->service_ = service_;
   driver_->device_ = device_;
-  driver_->StartConnectTimeout();
+  StartConnectTimeout(0);
   EXPECT_CALL(*device_,
               UpdateIPConfig(Field(&IPConfig::Properties::address, "")));
   driver_->Notify("up", config);
@@ -300,7 +317,7 @@ TEST_F(OpenVPNDriverTest, Notify) {
 TEST_F(OpenVPNDriverTest, NotifyFail) {
   map<string, string> dict;
   driver_->device_ = device_;
-  driver_->StartConnectTimeout();
+  StartConnectTimeout(0);
   EXPECT_CALL(*device_, OnDisconnected());
   driver_->Notify("fail", dict);
   EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
@@ -792,7 +809,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   driver_->device_ = device_;
   driver_->service_ = service_;
   driver_->ip_properties_.address = "1.2.3.4";
-  driver_->StartConnectTimeout();
+  StartConnectTimeout(0);
   FilePath tls_auth_file;
   EXPECT_TRUE(file_util::CreateTemporaryFile(&tls_auth_file));
   EXPECT_FALSE(tls_auth_file.empty());
@@ -896,7 +913,7 @@ TEST_F(OpenVPNDriverTest, OnConnectionDisconnected) {
 }
 
 TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
-  StartConnectTimeout();
+  StartConnectTimeout(0);
   SetService(service_);
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   OnConnectTimeout();
@@ -904,14 +921,39 @@ TEST_F(OpenVPNDriverTest, OnConnectTimeout) {
   EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
-TEST_F(OpenVPNDriverTest, OnReconnecting) {
-  driver_->OnReconnecting();  // Expect no crash.
-  driver_->device_ = device_;
-  driver_->service_ = service_;
+TEST_F(OpenVPNDriverTest, OnReconnectingUnknown) {
+  EXPECT_FALSE(IsConnectTimeoutStarted());
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(_, GetDefaultConnectTimeoutSeconds() * 1000))
+      .WillOnce(Return(true));
+  SetDevice(device_);
+  SetService(service_);
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*service_, SetState(Service::kStateAssociating));
-  driver_->OnReconnecting();
-  EXPECT_TRUE(driver_->IsConnectTimeoutStarted());
+  driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonUnknown);
+  EXPECT_TRUE(IsConnectTimeoutStarted());
+}
+
+TEST_F(OpenVPNDriverTest, OnReconnectingTLSError) {
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(_, GetReconnectOfflineTimeoutSeconds() * 1000))
+      .WillOnce(Return(true));
+  EXPECT_CALL(dispatcher_,
+              PostDelayedTask(_, GetReconnectTLSErrorTimeoutSeconds() * 1000))
+      .WillOnce(Return(true));
+
+  driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonOffline);
+  EXPECT_TRUE(IsConnectTimeoutStarted());
+
+  // The scheduled timeout should not be affected for unknown reason.
+  driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonUnknown);
+  EXPECT_TRUE(IsConnectTimeoutStarted());
+
+  // Reconnect on TLS error reschedules the timeout once.
+  driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonTLSError);
+  EXPECT_TRUE(IsConnectTimeoutStarted());
+  driver_->OnReconnecting(OpenVPNDriver::kReconnectReasonTLSError);
+  EXPECT_TRUE(IsConnectTimeoutStarted());
 }
 
 TEST_F(OpenVPNDriverTest, VerifyPaths) {
@@ -1028,6 +1070,16 @@ TEST_F(OpenVPNDriverTest, OnDefaultServiceChanged) {
   EXPECT_CALL(*mock_service, IsConnected()).WillOnce(Return(true));
   EXPECT_CALL(*management_server_, ReleaseHold());
   driver_->OnDefaultServiceChanged(mock_service);
+}
+
+TEST_F(OpenVPNDriverTest, GetReconnectTimeoutSeconds) {
+  EXPECT_EQ(GetDefaultConnectTimeoutSeconds(),
+            GetReconnectTimeoutSeconds(OpenVPNDriver::kReconnectReasonUnknown));
+  EXPECT_EQ(GetReconnectOfflineTimeoutSeconds(),
+            GetReconnectTimeoutSeconds(OpenVPNDriver::kReconnectReasonOffline));
+  EXPECT_EQ(GetReconnectTLSErrorTimeoutSeconds(),
+            GetReconnectTimeoutSeconds(
+                OpenVPNDriver::kReconnectReasonTLSError));
 }
 
 }  // namespace shill

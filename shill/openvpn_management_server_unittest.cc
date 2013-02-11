@@ -19,6 +19,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::Assign;
+using testing::InSequence;
 using testing::Return;
 using testing::ReturnNew;
 
@@ -103,9 +104,23 @@ class OpenVPNManagementServerTest : public testing::Test {
     server_.SendSignal(signal);
   }
 
+  void OnInput(InputData *data) {
+    server_.OnInput(data);
+  }
+
+  void ProcessMessage(const string &message) {
+    server_.ProcessMessage(message);
+  }
+
   bool ProcessSuccessMessage(const string &message) {
     return server_.ProcessSuccessMessage(message);
   }
+
+  bool ProcessStateMessage(const string &message) {
+    return server_.ProcessStateMessage(message);
+  }
+
+  bool GetHoldWaiting() { return server_.hold_waiting_; }
 
   GLib glib_;
   MockOpenVPNDriver driver_;
@@ -211,7 +226,7 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
   {
     string s;
     InputData data = CreateInputDataFromString(s);
-    server_.OnInput(&data);
+    OnInput(&data);
   }
   {
     string s = "foo\n"
@@ -226,10 +241,10 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
     ExpectStaticChallengeResponse();
     ExpectPINResponse();
     EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
-    EXPECT_CALL(driver_, OnReconnecting());
-    EXPECT_FALSE(server_.hold_waiting_);
-    server_.OnInput(&data);
-    EXPECT_TRUE(server_.hold_waiting_);
+    EXPECT_CALL(driver_, OnReconnecting(_));
+    EXPECT_FALSE(GetHoldWaiting());
+    OnInput(&data);
+    EXPECT_TRUE(GetHoldWaiting());
   }
 }
 
@@ -243,16 +258,16 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
   EXPECT_CALL(driver_, Cleanup(Service::kStateFailure))
       .WillOnce(Assign(&server_.sockets_, reinterpret_cast<Sockets *>(NULL)));
   // The second message should not be processed.
-  EXPECT_CALL(driver_, OnReconnecting()).Times(0);
-  server_.OnInput(&data);
+  EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
+  OnInput(&data);
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessMessage) {
-  server_.ProcessMessage("foo");
-  server_.ProcessMessage(">INFO:");
+  ProcessMessage("foo");
+  ProcessMessage(">INFO:");
 
-  EXPECT_CALL(driver_, OnReconnecting());
-  server_.ProcessMessage(">STATE:123,RECONNECTING,detail,...,...");
+  EXPECT_CALL(driver_, OnReconnecting(_));
+  ProcessMessage(">STATE:123,RECONNECTING,detail,...,...");
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessSuccessMessage) {
@@ -266,11 +281,17 @@ TEST_F(OpenVPNManagementServerTest, ProcessInfoMessage) {
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
-  EXPECT_FALSE(server_.ProcessStateMessage("foo"));
-  EXPECT_TRUE(server_.ProcessStateMessage(">STATE:123,WAIT,detail,...,..."));
-  EXPECT_CALL(driver_, OnReconnecting());
-  EXPECT_TRUE(
-      server_.ProcessStateMessage(">STATE:123,RECONNECTING,detail,...,..."));
+  EXPECT_FALSE(ProcessStateMessage("foo"));
+  EXPECT_TRUE(ProcessStateMessage(">STATE:123,WAIT,detail,...,..."));
+  {
+    InSequence seq;
+    EXPECT_CALL(driver_,
+                OnReconnecting(OpenVPNDriver::kReconnectReasonUnknown));
+    EXPECT_CALL(driver_,
+                OnReconnecting(OpenVPNDriver::kReconnectReasonTLSError));
+  }
+  EXPECT_TRUE(ProcessStateMessage(">STATE:123,RECONNECTING,detail,...,..."));
+  EXPECT_TRUE(ProcessStateMessage(">STATE:123,RECONNECTING,tls-error,...,..."));
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC) {

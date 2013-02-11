@@ -96,7 +96,7 @@ bool L2TPIPSecDriver::ClaimInterface(const string &link_name,
 }
 
 void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
-  StartConnectTimeout();
+  StartConnectTimeout(kDefaultConnectTimeoutSeconds);
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
   rpc_task_.reset(new RPCTask(control_, this));

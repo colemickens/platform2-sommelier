@@ -72,7 +72,6 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
-  FRIEND_TEST(L2TPIPSecDriverTest, Notify);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);

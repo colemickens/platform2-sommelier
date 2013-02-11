@@ -88,6 +88,10 @@ class L2TPIPSecDriverTest : public testing::Test,
     return driver_->GetProviderType();
   }
 
+  void SetDevice(const VPNRefPtr &device) {
+    driver_->device_ = device;
+  }
+
   void SetService(const VPNServiceRefPtr &service) {
     driver_->service_ = service;
   }
@@ -100,8 +104,8 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->OnConnectTimeout();
   }
 
-  void StartConnectTimeout() {
-    driver_->StartConnectTimeout();
+  void StartConnectTimeout(int timeout_seconds) {
+    driver_->StartConnectTimeout(timeout_seconds);
   }
 
   bool IsConnectTimeoutStarted() {
@@ -113,6 +117,12 @@ class L2TPIPSecDriverTest : public testing::Test,
                      const string &value);
 
   FilePath SetupPSKFile();
+
+  FilePath GetPSKFile() { return driver_->psk_file_; }
+
+  void InvokeNotify(const string &reason, const map<string, string> &dict) {
+    driver_->Notify(reason, dict);
+  }
 
   // Inherited from RPCTaskDelegate.
   virtual void GetLogin(string *user, string *password);
@@ -209,7 +219,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   FilePath psk_file = SetupPSKFile();
-  driver_->StartConnectTimeout();
+  StartConnectTimeout(0);
   driver_->Cleanup(Service::kStateFailure);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
@@ -483,7 +493,7 @@ TEST_F(L2TPIPSecDriverTest, OnConnectionDisconnected) {
 }
 
 TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
-  StartConnectTimeout();
+  StartConnectTimeout(0);
   SetService(service_);
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
   OnConnectTimeout();
@@ -572,13 +582,13 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*device_, SetEnabled(true));
   EXPECT_CALL(*device_, UpdateIPConfig(_));
-  driver_->device_ = device_;
+  SetDevice(device_);
   FilePath psk_file = SetupPSKFile();
-  driver_->StartConnectTimeout();
-  driver_->Notify(kL2TPIPSecReasonConnect, config);
+  StartConnectTimeout(0);
+  InvokeNotify(kL2TPIPSecReasonConnect, config);
   EXPECT_FALSE(file_util::PathExists(psk_file));
-  EXPECT_TRUE(driver_->psk_file_.empty());
-  EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
+  EXPECT_TRUE(GetPSKFile().empty());
+  EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 
 TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {

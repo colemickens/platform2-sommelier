@@ -52,7 +52,6 @@ class OpenVPNManagementServer {
   friend class OpenVPNManagementServerTest;
   FRIEND_TEST(OpenVPNManagementServerTest, EscapeToQuote);
   FRIEND_TEST(OpenVPNManagementServerTest, Hold);
-  FRIEND_TEST(OpenVPNManagementServerTest, OnInput);
   FRIEND_TEST(OpenVPNManagementServerTest, OnInputStop);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
@@ -64,12 +63,10 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessFailedPasswordMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessHoldMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessInfoMessage);
-  FRIEND_TEST(OpenVPNManagementServerTest, ProcessMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuth);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageAuthSC);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageTPMToken);
   FRIEND_TEST(OpenVPNManagementServerTest, ProcessNeedPasswordMessageUnknown);
-  FRIEND_TEST(OpenVPNManagementServerTest, ProcessStateMessage);
   FRIEND_TEST(OpenVPNManagementServerTest, Send);
   FRIEND_TEST(OpenVPNManagementServerTest, SendHoldRelease);
   FRIEND_TEST(OpenVPNManagementServerTest, SendPassword);

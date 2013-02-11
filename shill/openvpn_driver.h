@@ -41,6 +41,12 @@ class ProcessKiller;
 class OpenVPNDriver : public VPNDriver,
                       public RPCTaskDelegate {
  public:
+  enum ReconnectReason {
+    kReconnectReasonUnknown,
+    kReconnectReasonOffline,
+    kReconnectReasonTLSError,
+  };
+
   OpenVPNDriver(ControlInterface *control,
                 EventDispatcher *dispatcher,
                 Metrics *metrics,
@@ -49,7 +55,7 @@ class OpenVPNDriver : public VPNDriver,
                 GLib *glib);
   virtual ~OpenVPNDriver();
 
-  virtual void OnReconnecting();
+  virtual void OnReconnecting(ReconnectReason reason);
 
   virtual void Cleanup(Service::ConnectState state);
 
@@ -99,7 +105,6 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultServiceChanged);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
-  FRIEND_TEST(OpenVPNDriverTest, OnReconnecting);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
@@ -109,6 +114,11 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
+
+  // The map is a sorted container that allows us to iterate through the options
+  // in order.
+  typedef std::map<int, std::string> ForeignOptions;
+  typedef std::map<int, IPConfig::Route> RouteOptions;
 
   static const char kOpenVPNCertProperty[];
   static const char kOpenVPNKeyProperty[];
@@ -123,10 +133,8 @@ class OpenVPNDriver : public VPNDriver,
   static const char kChromeOSReleaseName[];
   static const char kChromeOSReleaseVersion[];
 
-  // The map is a sorted container that allows us to iterate through the options
-  // in order.
-  typedef std::map<int, std::string> ForeignOptions;
-  typedef std::map<int, IPConfig::Route> RouteOptions;
+  static const int kReconnectOfflineTimeoutSeconds;
+  static const int kReconnectTLSErrorTimeoutSeconds;
 
   static void ParseIPConfiguration(
       const std::map<std::string, std::string> &configuration,
@@ -163,6 +171,8 @@ class OpenVPNDriver : public VPNDriver,
   bool ParseLSBRelease(std::map<std::string, std::string> *lsb_release);
 
   bool SpawnOpenVPN();
+
+  static int GetReconnectTimeoutSeconds(ReconnectReason reason);
 
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
