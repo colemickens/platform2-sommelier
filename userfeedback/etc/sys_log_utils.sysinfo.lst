@@ -25,5 +25,4 @@ hack-33025-touchpad_activity,/opt/google/touchpad/generate_userfeedback
 hack-33025-touchscreen_activity,/opt/google/touchscreen/touchscreen_feedback
 touch-noise,/opt/google/touchscreen/touch_noise_feedback
 chrome_user_log,/bin/cat /home/chronos/user/log/chrome
-login-times,/bin/cat /home/chronos/user/login-times
 logout-times,/bin/cat /home/chronos/user/logout-times
