@@ -132,6 +132,10 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   static const unsigned int kDefaultScanningOrSearchingTimeoutMilliseconds;
 
+  // Root path. The SIM path is reported by ModemManager to be the root path
+  // when no SIM is present.
+  static const char kRootPath[];
+
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
@@ -142,6 +146,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               OnModemCurrentCapabilitiesChanged);
@@ -298,6 +303,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Timeout callback for the network scan initiated when Cellular connectivity
   // gets enabled.
   void OnScanningOrSearchingTimeout();
+
+  // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
+  // path is accepted to be valid, as long as it is not equal to one of ""
+  // and "/".
+  bool IsValidSimPath(const std::string &sim_path) const;
 
   static std::string GenerateNewGenericServiceName();
 

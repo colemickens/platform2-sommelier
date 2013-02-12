@@ -238,12 +238,17 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     virtual mm1::SimProxyInterface *CreateSimProxy(
         const std::string &/*path*/,
         const std::string &/*service*/) {
-      return test_->sim_proxy_.release();
+      mm1::MockSimProxy *sim_proxy = test_->sim_proxy_.release();
+      test_->sim_proxy_.reset(new mm1::MockSimProxy());
+      return sim_proxy;
     }
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
         const std::string &/*path*/,
         const std::string &/*service*/) {
-      return test_->properties_proxy_.release();
+      MockDBusPropertiesProxy *properties_proxy =
+          test_->properties_proxy_.release();
+      test_->properties_proxy_.reset(new MockDBusPropertiesProxy());
+      return properties_proxy;
     }
 
    private:
@@ -658,6 +663,21 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
   EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, IsValidSimPath) {
+  // Invalid paths
+  EXPECT_FALSE(capability_->IsValidSimPath(""));
+  EXPECT_FALSE(capability_->IsValidSimPath("/"));
+
+  // A valid path
+  EXPECT_TRUE(capability_->IsValidSimPath(
+      "/org/freedesktop/ModemManager1/SIM/0"));
+
+  // Note that any string that is not one of the above invalid paths is
+  // currently regarded as valid, since the ModemManager spec doesn't impose
+  // a strict format on the path. The validity of this is subject to change.
+  EXPECT_TRUE(capability_->IsValidSimPath("path"));
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   // Set up mock modem SIM properties
   const char kImsi[] = "310100000001";
@@ -707,6 +727,27 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_FALSE(capability_->sim_present_);
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
+  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
+
+  EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
+      .Times(1).WillOnce(Return(sim_properties));
+
+  capability_->OnSimPathChanged(kSimPath);
+  EXPECT_TRUE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ != NULL);
+  EXPECT_EQ(kSimPath, capability_->sim_path_);
+  EXPECT_EQ(kImsi, capability_->imsi_);
+  EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
+  EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
+  EXPECT_EQ(kOperatorName, capability_->spn_);
+
+  capability_->OnSimPathChanged("/");
+  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ("/", capability_->sim_path_);
   EXPECT_EQ("", capability_->imsi_);
   EXPECT_EQ("", capability_->sim_identifier_);
   EXPECT_EQ("", capability_->operator_id_);

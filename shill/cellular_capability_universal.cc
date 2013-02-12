@@ -56,6 +56,7 @@ CellularCapabilityUniversal::kDefaultScanningOrSearchingTimeoutMilliseconds =
     60000;
 const char CellularCapabilityUniversal::kGenericServiceNamePrefix[] =
     "Mobile Network";
+const char CellularCapabilityUniversal::kRootPath[] = "/";
 const char CellularCapabilityUniversal::kStatusProperty[] = "status";
 const char CellularCapabilityUniversal::kOperatorLongProperty[] =
     "operator-long";
@@ -1268,19 +1269,23 @@ void CellularCapabilityUniversal::OnNetworkModeSignal(uint32 /*mode*/) {
   NOTIMPLEMENTED();
 }
 
+bool CellularCapabilityUniversal::IsValidSimPath(const string &sim_path) const {
+  return !sim_path.empty() && sim_path != kRootPath;
+}
+
 void CellularCapabilityUniversal::OnSimPathChanged(
     const string &sim_path) {
   if (sim_path == sim_path_)
     return;
 
   mm1::SimProxyInterface *proxy = NULL;
-  if (!sim_path.empty())
+  if (IsValidSimPath(sim_path))
     proxy = proxy_factory()->CreateSimProxy(sim_path,
                                             cellular()->dbus_owner());
   sim_path_ = sim_path;
   sim_proxy_.reset(proxy);
 
-  if (sim_path.empty()) {
+  if (!IsValidSimPath(sim_path)) {
     // Clear all data about the sim
     imsi_ = "";
     spn_ = "";
