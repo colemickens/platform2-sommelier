@@ -130,36 +130,41 @@ class CellularCapabilityUniversal : public CellularCapability {
   // unknown.
   static const char kGenericServiceNamePrefix[];
 
+  static const unsigned int kDefaultScanningOrSearchingTimeoutMilliseconds;
+
   friend class CellularTest;
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
-  FRIEND_TEST(CellularCapabilityUniversalTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Connect);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ConnectApns);
-  FRIEND_TEST(CellularCapabilityUniversalTest, CreateFriendlyServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalTest, DisconnectNoProxy);
-  FRIEND_TEST(CellularCapabilityUniversalTest, GetTypeString);
-  FRIEND_TEST(CellularCapabilityUniversalTest, IsServiceActivationRequired);
-  FRIEND_TEST(CellularCapabilityUniversalTest, OnListBearersReply);
-  FRIEND_TEST(CellularCapabilityUniversalTest,
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
               OnModemCurrentCapabilitiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, PropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Reset);
-  FRIEND_TEST(CellularCapabilityUniversalTest, Scan);
-  FRIEND_TEST(CellularCapabilityUniversalTest, ScanFailure);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SetHomeProvider);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SimLockStatusChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SimPathChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, SimPropertiesChanged);
-  FRIEND_TEST(CellularCapabilityUniversalTest, StartModem);
-  FRIEND_TEST(CellularCapabilityUniversalTest, StopModem);
-  FRIEND_TEST(CellularCapabilityUniversalTest, StopModemConnected);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOLP);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfo);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateScanningProperty);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, PropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, Reset);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, Scan);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, ScanFailure);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPropertiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOperatorInfo);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdateOperatorInfoViaOperatorId);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
+  FRIEND_TEST(CellularCapabilityUniversalTimerTest,
+              UpdateScanningPropertyTimeout);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
@@ -290,6 +295,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnListBearersReply(const std::vector<DBus::Path> &paths,
                           const Error &error);
 
+  // Timeout callback for the network scan initiated when Cellular connectivity
+  // gets enabled.
+  void OnScanningOrSearchingTimeout();
+
   static std::string GenerateNewGenericServiceName();
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
@@ -348,6 +357,13 @@ class CellularCapabilityUniversal : public CellularCapability {
   // If the modem is not in a state to be enabled when StartModem is called,
   // enabling is deferred using this callback.
   base::Closure deferred_enable_modem_callback_;
+
+  // Sometimes modems may be stuck in the SEARCHING state during the lack of
+  // presence of a network. During this indefinite duration of time, keeping
+  // the Device.Scanning property as |true| causes a bad user experience.
+  // This callback sets it to |false| after a timeout period has passed.
+  base::CancelableClosure scanning_or_searching_timeout_callback_;
+  unsigned int scanning_or_searching_timeout_milliseconds_;
 
   static unsigned int friendly_service_name_id_;
 

@@ -119,8 +119,8 @@ class CellularService : public Service {
   friend class CellularServiceTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateServiceName);
-  FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);

@@ -51,6 +51,9 @@ const char CellularCapabilityUniversal::kConnectNumber[] = "number";
 const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
 const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
+const unsigned int
+CellularCapabilityUniversal::kDefaultScanningOrSearchingTimeoutMilliseconds =
+    60000;
 const char CellularCapabilityUniversal::kGenericServiceNamePrefix[] =
     "Mobile Network";
 const char CellularCapabilityUniversal::kStatusProperty[] = "status";
@@ -136,7 +139,9 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       scanning_(false),
       scanning_or_searching_(false),
       scan_interval_(0),
-      sim_present_(false) {
+      sim_present_(false),
+      scanning_or_searching_timeout_milliseconds_(
+          kDefaultScanningOrSearchingTimeoutMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
   PropertyStore *store = cellular->mutable_store();
 
@@ -645,7 +650,27 @@ void CellularCapabilityUniversal::UpdateScanningProperty() {
     scanning_or_searching_ = new_scanning_or_searching;
     cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
                                            new_scanning_or_searching);
+
+    if (!scanning_or_searching_) {
+      SLOG(Cellular, 2) << "Initial network scan ended. Canceling timeout.";
+      scanning_or_searching_timeout_callback_.Cancel();
+    } else if (scanning_or_searching_timeout_callback_.IsCancelled()) {
+      SLOG(Cellular, 2) << "Initial network scan started. Starting timeout.";
+      scanning_or_searching_timeout_callback_.Reset(
+          Bind(&CellularCapabilityUniversal::OnScanningOrSearchingTimeout,
+               weak_ptr_factory_.GetWeakPtr()));
+      cellular()->dispatcher()->PostDelayedTask(
+          scanning_or_searching_timeout_callback_.callback(),
+          scanning_or_searching_timeout_milliseconds_);
+    }
   }
+}
+
+void CellularCapabilityUniversal::OnScanningOrSearchingTimeout() {
+  SLOG(Cellular, 2) << "Initial network scan timed out. Changing "
+                    << "flimflam::kScanningProperty to |false|.";
+  scanning_or_searching_ = false;
+  cellular()->adaptor()->EmitBoolChanged(flimflam::kScanningProperty, false);
 }
 
 void CellularCapabilityUniversal::UpdateOLP() {

@@ -11,6 +11,7 @@
 #include <base/stringprintf.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mobile_provider.h>
 #include <ModemManager/ModemManager.h>
@@ -24,6 +25,7 @@
 #include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
@@ -45,6 +47,7 @@ using std::string;
 using std::vector;
 using testing::InSequence;
 using testing::Invoke;
+using testing::InvokeWithoutArgs;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -67,11 +70,12 @@ MATCHER_P(HasApn, expected_apn, "") {
           apn == expected_apn);
 }
 
-class CellularCapabilityUniversalTest : public testing::Test {
+class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
-  CellularCapabilityUniversalTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+  CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
+      : event_dispatcher_(dispatcher),
+        metrics_(dispatcher),
+        manager_(&control_, dispatcher, &metrics_, &glib_),
         bearer_proxy_(new mm1::MockBearerProxy()),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
@@ -84,7 +88,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
         device_adaptor_(NULL),
         provider_db_(NULL),
         cellular_(new Cellular(&control_,
-                               &dispatcher_,
+                               dispatcher,
                                &metrics_,
                                &manager_,
                                "",
@@ -98,7 +102,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
                                NULL,
                                &proxy_factory_)),
         service_(new MockCellularService(&control_,
-                                         &dispatcher_,
+                                         dispatcher,
                                          &metrics_,
                                          &manager_,
                                          cellular_)) {
@@ -130,7 +134,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, &metrics_, NULL, cellular_);
+        &control_, event_dispatcher_, &metrics_, NULL, cellular_);
   }
 
   void InitProviderDB() {
@@ -161,6 +165,11 @@ class CellularCapabilityUniversalTest : public testing::Test {
   void ScanError(Error *error, const DBusPropertyMapsCallback &callback,
                  int timeout) {
     error->Populate(Error::kOperationFailed);
+  }
+
+  bool InvokeScanningOrSearchingTimeout() {
+    capability_->OnScanningOrSearchingTimeout();
+    return true;
   }
 
   void Set3gppProxy() {
@@ -242,7 +251,7 @@ class CellularCapabilityUniversalTest : public testing::Test {
   };
 
   NiceMockControl control_;
-  EventDispatcher dispatcher_;
+  EventDispatcher *event_dispatcher_;
   MockMetrics metrics_;
   MockGLib glib_;
   MockManager manager_;
@@ -264,6 +273,29 @@ class CellularCapabilityUniversalTest : public testing::Test {
   DBusPathCallback connect_callback_;  // saved for testing connect operations
 };
 
+// Most of our tests involve using a real EventDispatcher object.
+class CellularCapabilityUniversalMainTest
+    : public CellularCapabilityUniversalTest {
+ public:
+  CellularCapabilityUniversalMainTest() :
+      CellularCapabilityUniversalTest(&dispatcher_) {}
+
+ protected:
+  EventDispatcher dispatcher_;
+};
+
+// Tests that involve timers will (or may) use a mock of the event dispatcher
+// instead of a real one.
+class CellularCapabilityUniversalTimerTest
+    : public CellularCapabilityUniversalTest {
+ public:
+  CellularCapabilityUniversalTimerTest()
+      : CellularCapabilityUniversalTest(&mock_dispatcher_) {}
+
+ protected:
+  ::testing::StrictMock<MockEventDispatcher> mock_dispatcher_;
+};
+
 const char CellularCapabilityUniversalTest::kActiveBearerPathPrefix[] =
     "/bearer/active";
 const char CellularCapabilityUniversalTest::kImei[] = "999911110000";
@@ -276,7 +308,7 @@ const uint32 CellularCapabilityUniversalTest::kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE |
     MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
 
-TEST_F(CellularCapabilityUniversalTest, StartModem) {
+TEST_F(CellularCapabilityUniversalMainTest, StartModem) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;
   string operator_name = "TestOperator";
@@ -348,7 +380,7 @@ TEST_F(CellularCapabilityUniversalTest, StartModem) {
   EXPECT_EQ(kAccessTechnologies, capability_->access_technologies_);
 }
 
-TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
+TEST_F(CellularCapabilityUniversalMainTest, StartModemFail) {
   EXPECT_CALL(*modem_proxy_, State())
           .WillOnce(Return(Cellular::kModemStateDisabled));
   EXPECT_CALL(*modem_proxy_,
@@ -365,7 +397,7 @@ TEST_F(CellularCapabilityUniversalTest, StartModemFail) {
   EXPECT_TRUE(error.IsOngoing());
 }
 
-TEST_F(CellularCapabilityUniversalTest, StopModem) {
+TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   SetUp();
@@ -388,7 +420,7 @@ TEST_F(CellularCapabilityUniversalTest, StopModem) {
   disable_callback.Run(Error(Error::kSuccess));
 }
 
-TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
+TEST_F(CellularCapabilityUniversalMainTest, StopModemConnected) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
@@ -418,7 +450,7 @@ TEST_F(CellularCapabilityUniversalTest, StopModemConnected) {
   disable_callback.Run(Error(Error::kSuccess));
 }
 
-TEST_F(CellularCapabilityUniversalTest, DisconnectModemNoBearer) {
+TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {
   Error error;
   ResultCallback disconnect_callback;
   EXPECT_CALL(*modem_simple_proxy_,
@@ -427,7 +459,7 @@ TEST_F(CellularCapabilityUniversalTest, DisconnectModemNoBearer) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
-TEST_F(CellularCapabilityUniversalTest, DisconnectNoProxy) {
+TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
   Error error;
   ResultCallback disconnect_callback;
   capability_->bearer_path_ = "/foo";
@@ -438,7 +470,7 @@ TEST_F(CellularCapabilityUniversalTest, DisconnectNoProxy) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
-TEST_F(CellularCapabilityUniversalTest, SimLockStatusChanged) {
+TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // Set up mock SIM properties
   const char kImsi[] = "310100000001";
   const char kSimIdentifier[] = "9999888";
@@ -495,7 +527,7 @@ TEST_F(CellularCapabilityUniversalTest, SimLockStatusChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 }
 
-TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
+TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;
   modem_properties[MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES].
@@ -578,7 +610,7 @@ TEST_F(CellularCapabilityUniversalTest, PropertiesChanged) {
                                        vector<string>());
 }
 
-TEST_F(CellularCapabilityUniversalTest, UpdateServiceName) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
   ::DBus::Struct<uint32_t, bool> data;
   data._1 = 100;
   data._2 = true;
@@ -626,7 +658,7 @@ TEST_F(CellularCapabilityUniversalTest, UpdateServiceName) {
   EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
 }
 
-TEST_F(CellularCapabilityUniversalTest, SimPathChanged) {
+TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   // Set up mock modem SIM properties
   const char kImsi[] = "310100000001";
   const char kSimIdentifier[] = "9999888";
@@ -681,7 +713,7 @@ TEST_F(CellularCapabilityUniversalTest, SimPathChanged) {
   EXPECT_EQ("", capability_->spn_);
 }
 
-TEST_F(CellularCapabilityUniversalTest, SimPropertiesChanged) {
+TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   // Set up mock modem properties
   DBusPropertiesMap modem_properties;
   modem_properties[MM_MODEM_PROPERTY_SIM].writer().append_path(kSimPath);
@@ -746,7 +778,7 @@ MATCHER_P(SizeIs, value, "") {
   return static_cast<size_t>(value) == arg.size();
 }
 
-TEST_F(CellularCapabilityUniversalTest, Reset) {
+TEST_F(CellularCapabilityUniversalMainTest, Reset) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   SetUp();
@@ -766,7 +798,7 @@ TEST_F(CellularCapabilityUniversalTest, Reset) {
 }
 
 // Validates that OnScanReply does not crash with a null callback.
-TEST_F(CellularCapabilityUniversalTest, ScanWithNullCallback) {
+TEST_F(CellularCapabilityUniversalMainTest, ScanWithNullCallback) {
   Error error;
   EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
       .WillOnce(Invoke(this, &CellularCapabilityUniversalTest::InvokeScan));
@@ -779,7 +811,7 @@ TEST_F(CellularCapabilityUniversalTest, ScanWithNullCallback) {
 }
 
 // Validates that the scanning property is updated
-TEST_F(CellularCapabilityUniversalTest, Scan) {
+TEST_F(CellularCapabilityUniversalMainTest, Scan) {
   Error error;
 
   EXPECT_CALL(*modem_3gpp_proxy_, Scan(_, _, CellularCapability::kTimeoutScan))
@@ -823,7 +855,7 @@ TEST_F(CellularCapabilityUniversalTest, Scan) {
 }
 
 // Validates expected property updates when scan fails
-TEST_F(CellularCapabilityUniversalTest, ScanFailure) {
+TEST_F(CellularCapabilityUniversalMainTest, ScanFailure) {
   Error error;
 
   // Test immediate error
@@ -868,7 +900,7 @@ TEST_F(CellularCapabilityUniversalTest, ScanFailure) {
 }
 
 // Validates expected behavior of OnListBearersReply function
-TEST_F(CellularCapabilityUniversalTest, OnListBearersReply) {
+TEST_F(CellularCapabilityUniversalMainTest, OnListBearersReply) {
   // Check that bearer_path_ is set correctly when an active bearer
   // is returned.
   const size_t kPathCount = 3;
@@ -914,7 +946,7 @@ TEST_F(CellularCapabilityUniversalTest, OnListBearersReply) {
 }
 
 // Validates expected behavior of Connect function
-TEST_F(CellularCapabilityUniversalTest, Connect) {
+TEST_F(CellularCapabilityUniversalMainTest, Connect) {
   mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
@@ -956,7 +988,7 @@ TEST_F(CellularCapabilityUniversalTest, Connect) {
 }
 
 // Validates Connect iterates over APNs
-TEST_F(CellularCapabilityUniversalTest, ConnectApns) {
+TEST_F(CellularCapabilityUniversalMainTest, ConnectApns) {
   mm1::MockModemSimpleProxy *modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   Error error;
@@ -991,7 +1023,7 @@ TEST_F(CellularCapabilityUniversalTest, ConnectApns) {
 }
 
 // Validates GetTypeString and AccessTechnologyToTechnologyFamily
-TEST_F(CellularCapabilityUniversalTest, GetTypeString) {
+TEST_F(CellularCapabilityUniversalMainTest, GetTypeString) {
   const int gsm_technologies[] = {
     MM_MODEM_ACCESS_TECHNOLOGY_LTE,
     MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS,
@@ -1031,7 +1063,7 @@ TEST_F(CellularCapabilityUniversalTest, GetTypeString) {
   ASSERT_EQ(capability_->GetTypeString(), "");
 }
 
-TEST_F(CellularCapabilityUniversalTest, AllowRoaming) {
+TEST_F(CellularCapabilityUniversalMainTest, AllowRoaming) {
   EXPECT_FALSE(cellular_->allow_roaming_);
   EXPECT_FALSE(capability_->provider_requires_roaming_);
   EXPECT_FALSE(capability_->AllowRoaming());
@@ -1042,7 +1074,7 @@ TEST_F(CellularCapabilityUniversalTest, AllowRoaming) {
   EXPECT_TRUE(capability_->AllowRoaming());
 }
 
-TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
+TEST_F(CellularCapabilityUniversalMainTest, SetHomeProvider) {
   static const char kTestCarrier[] = "The Cellular Carrier";
   static const char kCountry[] = "us";
   static const char kCode[] = "310160";
@@ -1118,7 +1150,7 @@ TEST_F(CellularCapabilityUniversalTest, SetHomeProvider) {
   EXPECT_TRUE(capability_->provider_requires_roaming_);
 }
 
-TEST_F(CellularCapabilityUniversalTest, UpdateScanningProperty) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   // mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
   SetUp();
@@ -1176,7 +1208,62 @@ TEST_F(CellularCapabilityUniversalTest, UpdateScanningProperty) {
   EXPECT_FALSE(capability_->scanning_or_searching_);
 }
 
-TEST_F(CellularCapabilityUniversalTest, UpdateStorageIdentifier) {
+TEST_F(CellularCapabilityUniversalTimerTest, UpdateScanningPropertyTimeout) {
+  SetUp();
+  capability_->InitProxies();
+
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  EXPECT_TRUE(
+      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+  EXPECT_TRUE(
+      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
+
+  EXPECT_CALL(mock_dispatcher_,
+              PostDelayedTask(
+                  _,
+                  CellularCapabilityUniversal::
+                      kDefaultScanningOrSearchingTimeoutMilliseconds));
+
+  capability_->scanning_ = true;
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(
+      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
+  EXPECT_TRUE(capability_->scanning_or_searching_);
+
+  EXPECT_CALL(mock_dispatcher_,
+              PostDelayedTask(
+                  _,
+                  CellularCapabilityUniversal::
+                      kDefaultScanningOrSearchingTimeoutMilliseconds))
+      .Times(0);
+
+  capability_->scanning_ = false;
+  capability_->UpdateScanningProperty();
+  EXPECT_TRUE(
+      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+
+  EXPECT_CALL(mock_dispatcher_,
+              PostDelayedTask(
+                  _,
+                  CellularCapabilityUniversal::
+                      kDefaultScanningOrSearchingTimeoutMilliseconds))
+      .WillOnce(InvokeWithoutArgs(
+          this,
+          &CellularCapabilityUniversalTest::InvokeScanningOrSearchingTimeout));
+
+  capability_->scanning_ = true;
+  capability_->UpdateScanningProperty();
+  // The callback has been scheduled
+  EXPECT_FALSE(
+      capability_->scanning_or_searching_timeout_callback_.IsCancelled());
+  // Our mock invocation worked
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
   CellularOperatorInfo::CellularOperator provider;
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
 
@@ -1232,7 +1319,7 @@ TEST_F(CellularCapabilityUniversalTest, UpdateStorageIdentifier) {
             cellular_->service()->storage_identifier_);
 }
 
-TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
   CellularService::OLP test_olp;
   test_olp.SetURL("http://testurl");
   test_olp.SetMethod("POST");
@@ -1262,7 +1349,7 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOLP) {
             olp.GetPostData());
 }
 
-TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfo) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdateOperatorInfo) {
   static const char kOperatorName[] = "Swisscom";
   InitProviderDB();
   capability_->serving_operator_.SetCode("22801");
@@ -1281,7 +1368,7 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfo) {
   EXPECT_EQ(kTestOperator, cellular_->service()->serving_operator().GetName());
 }
 
-TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId) {
+TEST_F(CellularCapabilityUniversalMainTest, UpdateOperatorInfoViaOperatorId) {
   static const char kOperatorName[] = "Swisscom";
   static const char kOperatorId[] = "22801";
   InitProviderDB();
@@ -1301,7 +1388,7 @@ TEST_F(CellularCapabilityUniversalTest, UpdateOperatorInfoViaOperatorId) {
   EXPECT_EQ(kOperatorName, cellular_->service()->serving_operator().GetName());
 }
 
-TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
+TEST_F(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName) {
   CellularCapabilityUniversal::friendly_service_name_id_ = 0;
   EXPECT_EQ("Mobile Network 0", capability_->CreateFriendlyServiceName());
   EXPECT_EQ("Mobile Network 1", capability_->CreateFriendlyServiceName());
@@ -1328,7 +1415,7 @@ TEST_F(CellularCapabilityUniversalTest, CreateFriendlyServiceName) {
             capability_->CreateFriendlyServiceName());
 }
 
-TEST_F(CellularCapabilityUniversalTest, IsServiceActivationRequired) {
+TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = NULL;
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
@@ -1354,7 +1441,7 @@ TEST_F(CellularCapabilityUniversalTest, IsServiceActivationRequired) {
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 }
 
-TEST_F(CellularCapabilityUniversalTest, OnModemCurrentCapabilitiesChanged) {
+TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
   EXPECT_FALSE(capability_->scanning_supported_);
   capability_->OnModemCurrentCapabilitiesChanged(MM_MODEM_CAPABILITY_LTE);
   EXPECT_FALSE(capability_->scanning_supported_);

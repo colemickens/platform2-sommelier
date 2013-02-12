@@ -74,7 +74,7 @@ class CellularOperatorInfo {
     friend class CellularCapabilityUniversalTest;
     friend class CellularOperatorInfo;
     friend class CellularOperatorInfoTest;
-    FRIEND_TEST(CellularCapabilityUniversalTest, UpdateStorageIdentifier);
+    FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
     FRIEND_TEST(CellularOperatorInfoTest, HandleMCCMNC);
     FRIEND_TEST(CellularOperatorInfoTest, HandleSID);
 
