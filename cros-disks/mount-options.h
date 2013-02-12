@@ -15,12 +15,14 @@ namespace cros_disks {
 class MountOptions {
  public:
   static const char kOptionBind[];
+  static const char kOptionFlush[];
   static const char kOptionNoDev[];
   static const char kOptionNoExec[];
   static const char kOptionNoSuid[];
   static const char kOptionReadOnly[];
   static const char kOptionReadWrite[];
   static const char kOptionSynchronous[];
+  static const char kOptionUtf8[];
 
   MountOptions() {}
   ~MountOptions() {}

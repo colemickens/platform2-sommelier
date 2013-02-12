@@ -17,12 +17,14 @@ using std::vector;
 namespace cros_disks {
 
 const char MountOptions::kOptionBind[] = "bind";
+const char MountOptions::kOptionFlush[] = "flush";
 const char MountOptions::kOptionNoDev[] = "nodev";
 const char MountOptions::kOptionNoExec[] = "noexec";
 const char MountOptions::kOptionNoSuid[] = "nosuid";
 const char MountOptions::kOptionReadOnly[] = "ro";
 const char MountOptions::kOptionReadWrite[] = "rw";
 const char MountOptions::kOptionSynchronous[] = "sync";
+const char MountOptions::kOptionUtf8[] = "utf8";
 
 void MountOptions::Initialize(const vector<string>& options,
                               bool set_user_and_group_id,
@@ -37,6 +39,13 @@ void MountOptions::Initialize(const vector<string>& options,
   for (vector<string>::const_iterator option_iterator = options.begin();
        option_iterator != options.end(); ++option_iterator) {
     const string& option = *option_iterator;
+
+    // Skip early if |option| contains a comma.
+    if (option.find(",") != string::npos) {
+      LOG(WARNING) << "Ignoring invalid mount option '" << option << "'.";
+      continue;
+    }
+
     if (option == kOptionReadOnly) {
       option_read_only = true;
     } else if (option == kOptionReadWrite) {
@@ -45,8 +54,21 @@ void MountOptions::Initialize(const vector<string>& options,
       option_user_id = option;
     } else if (StartsWithASCII(option, "gid=", false)) {
       option_group_id = option;
-    } else {
+    } else if (option == kOptionNoDev ||
+               option == kOptionNoExec ||
+               option == kOptionNoSuid) {
+      // We'll add these options unconditionally below.
+      continue;
+    } else if (option == kOptionBind ||
+               option == kOptionFlush ||
+               option == kOptionSynchronous ||
+               option == kOptionUtf8 ||
+               StartsWithASCII(option, "shortname=", false)) {
+      // Only add options in the whitelist.
       options_.push_back(option);
+    } else {
+      // Never add unknown/non-whitelisted options.
+      LOG(WARNING) << "Ignoring unsupported mount option '" << option << "'.";
     }
   }
 
@@ -69,6 +91,11 @@ void MountOptions::Initialize(const vector<string>& options,
       options_.push_back("gid=" + default_group_id);
     }
   }
+
+  // Always set 'nodev', 'noexec', and 'nosuid'.
+  options_.push_back(kOptionNoDev);
+  options_.push_back(kOptionNoExec);
+  options_.push_back(kOptionNoSuid);
 }
 
 bool MountOptions::IsReadOnlyOptionSet() const {
