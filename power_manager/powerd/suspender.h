@@ -9,7 +9,6 @@
 #include <dbus/dbus-glib-lowlevel.h>
 
 #include "base/compiler_specific.h"
-#include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
@@ -20,7 +19,6 @@ namespace power_manager {
 
 class Daemon;
 class DBusSenderInterface;
-class FileTagger;
 class PrefsInterface;
 class SuspendDelayController;
 
@@ -50,11 +48,6 @@ class Input;
 // file is touched to tell it to abort.
 class Suspender : public SuspendDelayObserver {
  public:
-  // Constants used in PowerStateChanged signals for the suspended and resumed
-  // states.
-  static const char kMemState[];
-  static const char kOnState[];
-
   // Interface for classes responsible for performing actions on behalf of
   // Suspender.
   class Delegate {
@@ -69,28 +62,23 @@ class Suspender : public SuspendDelayObserver {
     // |wakeup_count|.  Returns true on success.
     virtual bool GetWakeupCount(uint64* wakeup_count) = 0;
 
-    // Runs the powerd_suspend script to suspend the system.  If
-    // |wakeup_count_valid| is true, passes |wakeup_count| to the script so
-    // it can avoid suspending if additional wakeup events occur.
-    virtual void Suspend(uint64 wakeup_count,
-                         bool wakeup_count_valid,
-                         int suspend_id) = 0;
-
-    // Attempts to cancel a previous call to Suspend().
-    virtual void CancelSuspend() = 0;
+    // Synchronously runs the powerd_suspend script to suspend the system.
+    // If |wakeup_count_valid| is true, passes |wakeup_count| to the script
+    // so it can avoid suspending if additional wakeup events occur.
+    virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) = 0;
 
     // Emits a PowerStateChanged D-Bus signal with an "on" status, similar to
     // what is emitted by powerd_suspend after resume.  Emitting this from
     // powerd is necessary when an imminent suspend has been announced but the
     // request is canceled before powerd_suspend has been run, so that processes
     // that have performed pre-suspend actions will know to undo them.
-    virtual void EmitPowerStateChangedOnSignal(int suspend_id) = 0;
+    virtual void EmitPowerStateChangedOnSignal() = 0;
 
-    // Handles the system resuming.  If |success| is true, reports
-    // |num_retries| and |max_retries| as metrics.
-    virtual void HandleResume(bool success,
-                              int num_retries,
-                              int max_retries) = 0;
+    // Handles the system resuming (or recovering from a failed suspend
+    // attempt).
+    virtual void HandleResume(bool suspend_was_successful,
+                              int num_suspend_retries,
+                              int max_suspend_retries) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
     virtual void ShutdownForFailedSuspend() = 0;
@@ -118,9 +106,7 @@ class Suspender : public SuspendDelayObserver {
 
   // Creates a new delegate.  Ownership is passed to the caller.
   static Delegate* CreateDefaultDelegate(Daemon* daemon,
-                                         system::Input* input,
-                                         FileTagger* file_tagger,
-                                         const FilePath& run_dir);
+                                         system::Input* input);
 
   static void NameOwnerChangedHandler(DBusGProxy* proxy,
                                       const gchar* name,
@@ -149,11 +135,6 @@ class Suspender : public SuspendDelayObserver {
   // Handles a HandleSuspendReadiness call and returns a reply that should be
   // sent (or NULL if an empty reply should be sent).
   DBusMessage* HandleSuspendReadiness(DBusMessage* message);
-
-  // Handles a PowerStateChanged signal emitted by the powerd_suspend script.
-  void HandlePowerStateChanged(const std::string& state,
-                               int suspend_result,
-                               int suspend_id);
 
   // Handles the lid being opened, user activity, or the system shutting down,
   // any of which may abort an in-progress suspend attempt.
@@ -191,13 +172,8 @@ class Suspender : public SuspendDelayObserver {
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
   // Whether the system will be suspended soon.  This is set to true by
-  // RequestSuspend() and set to false when the system resumes or the
-  // suspend attempt is canceled.
-  bool suspend_requested_;
-
-  // Whether the system is in the process of suspending.  This is only set
-  // to true once Suspend() has been called.
-  bool suspend_started_;
+  // RequestSuspend() and set to false by OnReadyForSuspend().
+  bool waiting_for_readiness_;
 
   // Unique ID associated with the current suspend request.
   int suspend_id_;
@@ -218,16 +194,6 @@ class Suspender : public SuspendDelayObserver {
 
   // ID of GLib timeout that will run RetrySuspend() or 0 if unset.
   guint retry_suspend_timeout_id_;
-
-  // Time at which Suspend() was last called to suspend the system.  We
-  // cache this so it can be passed to SendSuspendStateChangedSignal():
-  // it's possible that the system will go to sleep before
-  // HandlePowerStateChangedSignal() gets called in response to the D-Bus
-  // signal that powerd_suspend emits before suspending, so we can't just
-  // get the current time from there -- it may actually run post-resuming.
-  // This is a base::Time rather than base::TimeTicks since the monotonic
-  // clock doesn't increase while we're suspended.
-  base::Time last_suspend_wall_time_;
 
   // If non-empty, used in place of base::Time::Now() whenever the current
   // time is needed.

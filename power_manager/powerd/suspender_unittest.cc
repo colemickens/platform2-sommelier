@@ -5,6 +5,8 @@
 #include <gtest/gtest.h>
 
 #include "base/basictypes.h"
+#include "base/bind.h"
+#include "base/callback.h"
 #include "base/compiler_specific.h"
 #include "base/logging.h"
 #include "base/stringprintf.h"
@@ -26,6 +28,27 @@ const char kResume[] = "resume";
 const char kShutdown[] = "shutdown";
 const char kNoActions[] = "";
 
+// Joins a sequence of strings describing actions (e.g. kScreenDim) such
+// that they can be compared against a string returned by
+// TestDelegate::GetActions().  The list of actions must be terminated by a
+// NULL pointer.
+// TODO(derat): Move this and state_controller_unittest.cc's implementation
+// into a shared library.
+std::string JoinActions(const char* action, ...) {
+  std::string actions;
+
+  va_list arg_list;
+  va_start(arg_list, action);
+  while (action) {
+    if (!actions.empty())
+      actions += ",";
+    actions += action;
+    action = va_arg(arg_list, const char*);
+  }
+  va_end(arg_list);
+  return actions;
+}
+
 // Test implementation of Suspender::Delegate that just records the actions it
 // was asked to perform.
 class TestDelegate : public Suspender::Delegate {
@@ -33,24 +56,28 @@ class TestDelegate : public Suspender::Delegate {
   TestDelegate()
       : lid_closed_(false),
         report_success_for_get_wakeup_count_(true),
+        report_success_for_suspend_(true),
         wakeup_count_(0),
         suspend_wakeup_count_(0),
-        suspend_wakeup_count_valid_(false),
-        suspend_suspend_id_(-1),
-        emit_suspend_id_(-1) {
+        suspend_wakeup_count_valid_(false) {
   }
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
   void set_report_success_for_get_wakeup_count(bool success) {
     report_success_for_get_wakeup_count_ = success;
   }
+  void set_report_success_for_suspend(bool success) {
+    report_success_for_suspend_ = success;
+  }
   void set_wakeup_count(uint64 count) { wakeup_count_ = count; }
+  void set_suspend_callback(base::Closure callback) {
+    suspend_callback_ = callback;
+  }
+
   uint64 suspend_wakeup_count() const { return suspend_wakeup_count_; }
   bool suspend_wakeup_count_valid() const {
     return suspend_wakeup_count_valid_;
   }
-  int suspend_suspend_id() const { return suspend_suspend_id_; }
-  int emit_suspend_id() const { return emit_suspend_id_; }
 
   // Returns a comma-separated, oldest-first list of the calls made to the
   // delegate since the last call to GetActions().
@@ -70,21 +97,18 @@ class TestDelegate : public Suspender::Delegate {
     return true;
   }
 
-  virtual void Suspend(uint64 wakeup_count,
-                       bool wakeup_count_valid,
-                       int suspend_id) OVERRIDE {
+  virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) OVERRIDE {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
-    suspend_suspend_id_ = suspend_id;
+    if (!suspend_callback_.is_null()) {
+      suspend_callback_.Run();
+      suspend_callback_.Reset();
+    }
+    return report_success_for_suspend_;
   }
 
-  virtual void CancelSuspend() OVERRIDE { AppendAction(kCancel); }
-
-  virtual void EmitPowerStateChangedOnSignal(int suspend_id) OVERRIDE {
-    AppendAction(kEmit);
-    emit_suspend_id_ = suspend_id;
-  }
+  virtual void EmitPowerStateChangedOnSignal() OVERRIDE { AppendAction(kEmit); }
 
   virtual void HandleResume(bool success,
                             int num_retries,
@@ -103,11 +127,15 @@ class TestDelegate : public Suspender::Delegate {
   // Value returned by IsLidClosed().
   bool lid_closed_;
 
-  // Should GetWakeupCount() report success?
+  // Should GetWakeupCount() and Suspend() report success?
   bool report_success_for_get_wakeup_count_;
+  bool report_success_for_suspend_;;
 
   // Count that should be returned by GetWakeupCount().
   uint64 wakeup_count_;
+
+  // Callback that will be run (if non-null) when Suspend() is called.
+  base::Closure suspend_callback_;
 
   // Comma-separated list describing called methods.
   std::string actions_;
@@ -115,10 +143,6 @@ class TestDelegate : public Suspender::Delegate {
   // Arguments passed to latest invocation of Suspend().
   uint64 suspend_wakeup_count_;
   bool suspend_wakeup_count_valid_;
-  int suspend_suspend_id_;
-
-  // Argument passed to last invocation of EmitPowerStateChangedOnSignal().
-  int emit_suspend_id_;
 
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
@@ -164,39 +188,35 @@ TEST_F(SuspenderTest, SuspendResume) {
   suspender_.RequestSuspend();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
-  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
-  EXPECT_EQ(test_api_.suspend_id(), delegate_.suspend_suspend_id());
-
-  // When Suspender receives notice that the system is suspending, it
-  // should emit a SuspendStateChanged signal with the wall time from the
-  // original request.
+  // Advance the time and register a callback to advance the time again
+  // when the suspend request is received.
   const base::Time kSuspendTime = base::Time::FromInternalValue(301);
   test_api_.SetCurrentWallTime(kSuspendTime);
-  dbus_sender_.ClearSentSignals();
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  const base::Time kResumeTime = base::Time::FromInternalValue(567);
+  delegate_.set_suspend_callback(
+      base::Bind(&Suspender::TestApi::SetCurrentWallTime,
+                 base::Unretained(&test_api_), kResumeTime));
 
+  // When Suspender receives notice that the system is ready to be
+  // suspended, it should immediately suspend the system.
+  dbus_sender_.ClearSentSignals();
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
+
+  // Just before Suspender suspends the system, it should emit a
+  // SuspendStateChanged signal with the current wall time.
   SuspendState proto;
   EXPECT_TRUE(
       dbus_sender_.GetSentSignal(0, kSuspendStateChangedSignal, &proto));
   EXPECT_EQ(SuspendState_Type_SUSPEND_TO_MEMORY, proto.type());
-  EXPECT_EQ(kRequestTime.ToInternalValue(), proto.wall_time());
+  EXPECT_EQ(kSuspendTime.ToInternalValue(), proto.wall_time());
 
-  // Notification that the system has resumed should trigger a call to the
-  // delegate's HandleResume() method and another SuspendStateChanged
-  // signal.
-  const base::Time kResumeTime = base::Time::FromInternalValue(567);
-  test_api_.SetCurrentWallTime(kResumeTime);
-  dbus_sender_.ClearSentSignals();
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, 0, test_api_.suspend_id());
-  EXPECT_EQ(kResume, delegate_.GetActions());
+  // After suspend/resume completes, it should emit a second signal with an
+  // updated timestamp.
   EXPECT_TRUE(
-      dbus_sender_.GetSentSignal(0, kSuspendStateChangedSignal, &proto));
+      dbus_sender_.GetSentSignal(1, kSuspendStateChangedSignal, &proto));
   EXPECT_EQ(SuspendState_Type_RESUME, proto.type());
   EXPECT_EQ(kResumeTime.ToInternalValue(), proto.wall_time());
 
@@ -212,7 +232,7 @@ TEST_F(SuspenderTest, MissingWakeupCount) {
   delegate_.set_report_success_for_get_wakeup_count(false);
   suspender_.RequestSuspend();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_wakeup_count_valid());
 }
 
@@ -230,30 +250,6 @@ TEST_F(SuspenderTest, IgnoreDuplicateSuspendRequests) {
   suspender_.RequestSuspend();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_EQ(orig_suspend_id, test_api_.suspend_id());
-
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-
-  // Calling RequestSuspend() after powerd_suspend has been run also shouldn't
-  // do anything.
-  suspender_.RequestSuspend();
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_EQ(orig_suspend_id, test_api_.suspend_id());
-
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, 0, test_api_.suspend_id());
-  EXPECT_EQ(kResume, delegate_.GetActions());
-
-  // After the system suspends and resumes successfully, RequestSuspend() should
-  // work as before.
-  suspender_.RequestSuspend();
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  EXPECT_GT(test_api_.suspend_id(), orig_suspend_id);
-
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
 // Tests that suspend is retried on failure.
@@ -262,35 +258,40 @@ TEST_F(SuspenderTest, RetryOnFailure) {
 
   const uint64 kOrigWakeupCount = 46;
   delegate_.set_wakeup_count(kOrigWakeupCount);
+  delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  int orig_suspend_id = test_api_.suspend_id();
+
+  suspender_.OnReadyForSuspend(orig_suspend_id);
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
   EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
 
-  // Pass a result of 1 in the "on" signal to tell powerd that the suspend was
-  // unsuccessful.  The retry timeout should be set and should cause
-  // powerd_suspend to be run again.
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, 1, test_api_.suspend_id());
-  EXPECT_EQ(kResume, delegate_.GetActions());
-
+  // The timeout should trigger a new suspend announcement.
   const uint64 kRetryWakeupCount = 67;
   delegate_.set_wakeup_count(kRetryWakeupCount);
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  int new_suspend_id = test_api_.suspend_id();
+  EXPECT_NE(orig_suspend_id, new_suspend_id);
+
+  suspender_.OnReadyForSuspend(new_suspend_id);
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
   EXPECT_EQ(kRetryWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
 
-  // Report success this time and check that the timeout is removed.
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, 0, test_api_.suspend_id());
+  // Explicitly requesting a suspend should cancel the timeout and generate a
+  // new announcement immediately.
+  suspender_.RequestSuspend();
+  int final_suspend_id = test_api_.suspend_id();
+  EXPECT_NE(new_suspend_id, final_suspend_id);
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kResume, delegate_.GetActions());
+
+  // Report success this time and check that the timeout isn't registered.
+  delegate_.set_report_success_for_suspend(true);
+  suspender_.OnReadyForSuspend(final_suspend_id);
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 }
 
 // Tests that the system is shut down after repeated suspend failures.
@@ -298,27 +299,20 @@ TEST_F(SuspenderTest, ShutdownAfterRepeatedFailures) {
   pref_num_retries_ = 5;
   Init();
 
+  delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
 
   // Proceed through all retries, reporting failure each time.
   for (int i = 1; i <= pref_num_retries_; ++i) {
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, -1, test_api_.suspend_id());
-    EXPECT_EQ(kResume, delegate_.GetActions()) << "Retry #" << (i - 1);
     EXPECT_TRUE(test_api_.TriggerRetryTimeout()) << "Retry #" << i;
-    EXPECT_EQ(kSuspend, delegate_.GetActions()) << "Retry #" << i;
+    suspender_.OnReadyForSuspend(test_api_.suspend_id());
+    EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions())
+        << "Retry #" << i;
   }
 
-  // On the last failed attempt, the system should shut down.
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, -1, test_api_.suspend_id());
-  EXPECT_EQ(kResume, delegate_.GetActions());
+  // On the last failed attempt, the system should shut down immediately.
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
   EXPECT_EQ(kShutdown, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
@@ -356,77 +350,16 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 }
 
-// Tests that the delagate's Cancel() method is called if the suspend request
-// should be canceled after powerd_suspend has already started.
-TEST_F(SuspenderTest, CancelDuringSuspend) {
+// Tests that the a suspend-canceling action after a failed suspend attempt
+// should remove the retry timeout.
+TEST_F(SuspenderTest, CancelAfterSuspend) {
   Init();
-
+  delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
   suspender_.HandleUserActivity();
-  EXPECT_EQ(kCancel, delegate_.GetActions());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, -1, test_api_.suspend_id());
-  EXPECT_EQ(kResume, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-
-  suspender_.RequestSuspend();
-  suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandleLidOpened();
-  EXPECT_EQ(kCancel, delegate_.GetActions());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, -1, test_api_.suspend_id());
-  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
-}
-
-// Tests that the system re-suspends when the lid is quickly opened and
-// closed, which can result in lid-open and lid-closed events arriving
-// before notification that the system has resumed from the initial
-// suspend.
-TEST_F(SuspenderTest, NextSuspendRequestArrivesBeforeResume) {
-  Init();
-
-  // Request suspend.
-  suspender_.RequestSuspend();
-  int orig_suspend_id = test_api_.suspend_id();
-  suspender_.OnReadyForSuspend(orig_suspend_id);
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(orig_suspend_id, delegate_.suspend_suspend_id());
-  suspender_.HandlePowerStateChanged(Suspender::kMemState, 0, orig_suspend_id);
-
-  // Suppose that the system suspends successfully here.  The user opens
-  // the lid, which wakes the system up, but the lid-open event may
-  // actually arrive before powerd_suspend's PowerStateChanged "on" signal
-  // (sent post-resume after the original suspend).
-  suspender_.HandleLidOpened();
-  EXPECT_EQ(kCancel, delegate_.GetActions());
-
-  // Before the "on" signal arrives, request suspend again (e.g. from
-  // closing the lid immediately).
-  suspender_.RequestSuspend();
-  int next_suspend_id = test_api_.suspend_id();
-  ASSERT_NE(orig_suspend_id, next_suspend_id);
-
-  // Finally delivery the "on" signal.  This resume should be ignored since
-  // the system is about to suspend again.
-  suspender_.HandlePowerStateChanged(Suspender::kOnState, 0, orig_suspend_id);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  // When the second suspend request is ready, the system should suspend.
-  suspender_.OnReadyForSuspend(next_suspend_id);
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  EXPECT_EQ(next_suspend_id, delegate_.suspend_suspend_id());
-
-  // Resume should be announced this time.
-  suspender_.HandlePowerStateChanged(Suspender::kMemState, 0, next_suspend_id);
-  suspender_.HandlePowerStateChanged(Suspender::kOnState, 0, next_suspend_id);
-  EXPECT_EQ(kResume, delegate_.GetActions());
 }
 
 // Tests that Chrome-reported user activity received while suspending with
@@ -440,20 +373,20 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   suspender_.RequestSuspend();
   suspender_.HandleUserActivity();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kMemState, 0, test_api_.suspend_id());
-  suspender_.HandlePowerStateChanged(
-      Suspender::kOnState, 0, test_api_.suspend_id());
-  EXPECT_EQ(kResume, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
 
-  // Report user activity after powerd_suspend and check that the
-  // delegate's CancelSuspend() method isn't called.
+  // Report user activity after powerd_suspend fails and check that the
+  // retry timeout isn't removed.
+  delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
   suspender_.HandleUserActivity();
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  delegate_.set_report_success_for_suspend(true);
+  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
 }
 
 }  // namespace power_manager

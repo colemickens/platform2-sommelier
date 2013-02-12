@@ -9,7 +9,6 @@
 
 . /usr/share/misc/shflags
 
-DEFINE_integer suspend_id -1 "ID representing this suspend request" i
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
 
@@ -37,13 +36,6 @@ root_spool_dir=/var/spool/power_manager/root
 # File containing the time at which we started suspending.  Read by
 # send_metrics_on_resume.
 suspend_to_ram_time_file=${root_spool_dir}/suspend-to-ram-time
-
-# Directory where the powerd process (running as the "power" user) writes
-# temporary state files.
-power_run_dir=/var/run/power_manager/power
-
-# File touched by powerd when suspend should be canceled.
-cancel_suspend_file=${power_run_dir}/cancel_suspend
 
 log_msg() {
     logger -t "powerd_suspend[${PPID}]" -- $@
@@ -108,21 +100,12 @@ do_lumpy_gobi_modem_revive() {
 suspend_pm_wakeup_cancel() {
     if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
        echo "${FLAGS_wakeup_count}" > "/sys/power/wakeup_count"; then
-        return 1;
-    else
-        log_msg "Aborting suspend, wake event received"
-        return 0;
-    fi
-}
-
-# Returns success if suspend should be canceled.
-suspend_cancel() {
-    if [ -e "$cancel_suspend_file" ] || suspend_pm_wakeup_cancel; then
-        cancel=1
-        return 0
-    else
         cancel=0
         return 1
+    else
+        log_msg "Aborting suspend, wake event received"
+        cancel=1
+        return 0
     fi
 }
 
@@ -133,10 +116,6 @@ suspend_cancel() {
 #   3 - attempted
 send_uma_status() {
   metrics_client -e Power.SuspendStatus $1 4 &
-}
-
-cleanup_for_resume() {
-  rm -f "$user_active_file"
 }
 
 # Note: Don't change or remove this line without also updating
@@ -151,15 +130,14 @@ send_uma_status 3
 
 # - logs the time going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch $suspend_to_ram_time_file \
-  2> /dev/null || true
+    2> /dev/null || true
 
 # - Remove last_resume_timings to ensure the file is fresh on resume
 rm -f $last_resume_timings_file
 
 # - announces the event
 dbus-send --type=signal --system /org/chromium/PowerManager \
-  org.chromium.PowerManager.PowerStateChanged \
-  string:mem int32:0 "int32:${FLAGS_suspend_id}"
+    org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
 power-supply-info 2> /dev/null \
@@ -200,7 +178,7 @@ log_msg "Explicit sync"
 sync
 
 suspend_rc=-1
-if suspend_cancel; then
+if suspend_pm_wakeup_cancel; then
     # Note: The client/cros/power_suspend.py module in autotest depends on
     # this message.
     log_msg "Cancel suspend at kernel"
@@ -267,10 +245,7 @@ fi
 
 # - announces the event
 dbus-send --type=signal --system /org/chromium/PowerManager \
-    org.chromium.PowerManager.PowerStateChanged \
-    string:on "int32:${suspend_rc}" "int32:${FLAGS_suspend_id}" &
-
-cleanup_for_resume
+    org.chromium.PowerManager.PowerStateChanged string:on &
 
 initctl emit system-resumed &
 
@@ -283,3 +258,5 @@ fi
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME
 
 log_msg "Resume finished"
+
+return $suspend_rc

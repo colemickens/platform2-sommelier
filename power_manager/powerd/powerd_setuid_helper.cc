@@ -26,8 +26,6 @@ DEFINE_string(action, "", "Action to perform.  Must be one of "
 DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
               "lowercase letter and consisting only of lowercase letters and "
               "dashes.");
-DEFINE_int32(suspend_id, -1, "Pass --suspend_id <INT> to powerd_suspend for "
-             "the \"suspend\" action.");
 DEFINE_uint64(suspend_wakeup_count, 0, "Pass --wakeup_count <INT> to "
               "powerd_suspend for the \"suspend\" action.");
 DEFINE_bool(suspend_wakeup_count_valid, false,
@@ -105,13 +103,12 @@ int main(int argc, char* argv[]) {
     RunCommand(kInitctlPath, "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
                (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
   } else if (FLAGS_action == "suspend") {
-    std::string id_flag = "--suspend_id=" + base::IntToString(FLAGS_suspend_id);
     std::string wakeup_flag;
     if (FLAGS_suspend_wakeup_count_valid) {
       wakeup_flag = "--wakeup_count=" +
           base::Uint64ToString(FLAGS_suspend_wakeup_count);
     }
-    RunCommand(kPowerdSuspendPath, id_flag.c_str(),
+    RunCommand(kPowerdSuspendPath,
                wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
   } else if (FLAGS_action == "unlock_vt") {
     SetVTSwitchingAllowed(true);

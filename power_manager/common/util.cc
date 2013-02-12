@@ -45,23 +45,30 @@ void Launch(const char* command) {
   }
 }
 
-void Run(const char* command) {
+int Run(const char* command) {
   LOG(INFO) << "Running \"" << command << "\"";
   int return_value = system(command);
-  if (return_value)
+  if (return_value == -1) {
+    LOG(ERROR) << "fork() failed";
+  } else if (return_value) {
+    return_value = WEXITSTATUS(return_value);
     LOG(ERROR) << "Command failed with " << return_value;
+  }
+  return return_value;
 }
 
-void RunSetuidHelper(const std::string& action,
-                     const std::string& additional_args,
-                     bool wait_for_completion) {
+int RunSetuidHelper(const std::string& action,
+                    const std::string& additional_args,
+                    bool wait_for_completion) {
   std::string command = kSetuidHelperPath + std::string(" --action=" + action);
   if (!additional_args.empty())
     command += " " + additional_args;
-  if (wait_for_completion)
-    Run(command.c_str());
-  else
+  if (wait_for_completion) {
+    return Run(command.c_str());
+  } else {
     Launch(command.c_str());
+    return 0;
+  }
 }
 
 void CreateStatusFile(const FilePath& file) {

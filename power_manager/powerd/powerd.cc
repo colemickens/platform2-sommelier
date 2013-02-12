@@ -238,8 +238,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
-      suspender_delegate_(Suspender::CreateDefaultDelegate(
-          this, input_.get(), &file_tagger_, run_dir)),
+      suspender_delegate_(Suspender::CreateDefaultDelegate(this, input_.get())),
       suspender_(suspender_delegate_.get(), dbus_sender_.get()),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),
@@ -951,6 +950,42 @@ void Daemon::MarkPowerStatusStale() {
   is_power_status_stale_ = true;
 }
 
+void Daemon::PrepareForSuspend() {
+  // When going to suspend, notify the backlight controller so it will turn
+  // the backlight off and set the backlight correctly upon resume.
+  SetPowerState(BACKLIGHT_SUSPENDED);
+
+#ifdef SUSPEND_LOCK_VT
+  // Do not let suspend change the console terminal.
+  util::RunSetuidHelper("lock_vt", "", true);
+#endif
+
+  power_supply_.SetSuspendState(true);
+  HaltPollPowerSupply();
+  MarkPowerStatusStale();
+  file_tagger_.HandleSuspendEvent();
+}
+
+void Daemon::HandleResume(bool suspend_was_successful,
+                          int num_suspend_retries,
+                          int max_suspend_retries) {
+#ifdef SUSPEND_LOCK_VT
+    // Allow virtual terminal switching again.
+    util::RunSetuidHelper("unlock_vt", "", true);
+#endif
+
+  time_to_empty_average_.Clear();
+  time_to_full_average_.Clear();
+  ResumePollPowerSupply();
+  file_tagger_.HandleResumeEvent();
+  power_supply_.SetSuspendState(false);
+  if (use_state_controller_)
+    SetPowerState(BACKLIGHT_ACTIVE);
+  state_controller_->HandleResume();
+  if (suspend_was_successful)
+    GenerateRetrySuspendMetric(num_suspend_retries, max_suspend_retries);
+}
+
 void Daemon::HandleLidClosed() {
   if (!use_state_controller_) {
     SetActive();
@@ -1210,24 +1245,17 @@ bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
 
 bool Daemon::HandlePowerStateChangedSignal(DBusMessage* message) {
   const char* state = '\0';
-  int32 suspend_result = -1;
-  int32 suspend_id = -1;
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error,
                              DBUS_TYPE_STRING, &state,
-                             DBUS_TYPE_INT32, &suspend_result,
-                             DBUS_TYPE_INT32, &suspend_id,
                              DBUS_TYPE_INVALID)) {
     LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
     dbus_error_free(&error);
     return false;
   }
 
-  suspender_.HandlePowerStateChanged(
-      state ? state : "", suspend_result, suspend_id);
   if (g_str_equal(state, "on") == TRUE) {
-    HandleResume();
     if (!use_state_controller_)
       SetActive();
   } else {
@@ -1862,13 +1890,6 @@ void Daemon::Suspend() {
     return;
   }
   if (use_state_controller_ || util::IsSessionStarted()) {
-    power_supply_.SetSuspendState(true);
-
-    // When going to suspend, notify the backlight controller so it will turn
-    // the backlight off and set the backlight correctly upon resume. We do
-    // this before turning the panel back on (which happens in RequestSuspend).
-    SetPowerState(BACKLIGHT_SUSPENDED);
-
     suspender_.RequestSuspend();
   } else {
     if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
@@ -1878,17 +1899,6 @@ void Daemon::Suspend() {
     LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
     OnRequestShutdown();
   }
-}
-
-void Daemon::HandleResume() {
-  time_to_empty_average_.Clear();
-  time_to_full_average_.Clear();
-  ResumePollPowerSupply();
-  file_tagger_.HandleResumeEvent();
-  power_supply_.SetSuspendState(false);
-  if (use_state_controller_)
-    SetPowerState(BACKLIGHT_ACTIVE);
-  state_controller_->HandleResume();
 }
 
 void Daemon::RetrieveSessionState() {

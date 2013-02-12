@@ -163,6 +163,15 @@ class Daemon : public BacklightControllerObserver,
   // resume before we have updated.
   void MarkPowerStatusStale();
 
+  // Called by |suspender_| just before a suspend attempt begins.
+  void PrepareForSuspend();
+
+  // Called by |suspender_| after the completion of a suspend/resume cycle
+  // (which did not necessarily succeed).
+  void HandleResume(bool suspend_was_successful,
+                    int num_suspend_retries,
+                    int max_suspend_retries);
+
   // Sends a metric describing a suspend attempt that didn't succeed on its
   // first attempt.  Doesn't send anything if |num_retries| is 0.
   void GenerateRetrySuspendMetric(int num_retries, int max_retries);
@@ -472,9 +481,6 @@ class Daemon : public BacklightControllerObserver,
   // Generates UMA metrics for fan thermal state transitions
   // Always returns true.
   SIGNAL_CALLBACK_0(Daemon, gboolean, GenerateThermalMetrics);
-
-  // Called by dbus handler when resume signal is received
-  void HandleResume();
 
   // Sends a synchronous D-Bus request to the session manager to retrieve the
   // session state and updates |current_user_| based on the response.
