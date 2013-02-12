@@ -19,7 +19,10 @@
 #include <dbus/dbus-glib.h>
 #include <glib.h>
 
+namespace base {
 class FilePath;
+}
+
 struct DBusPendingCall;
 
 namespace login_manager {
@@ -49,25 +52,26 @@ class SystemUtils {
   //          false if we time out.
   virtual bool ChildIsGone(pid_t child_spec, int timeout);
 
-  virtual bool EnsureAndReturnSafeFileSize(const FilePath& file,
+  virtual bool EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                            int32* file_size_32);
 
   virtual bool EnsureAndReturnSafeSize(int64 size_64, int32* size_32);
 
   // Returns whether a file exists.
-  virtual bool Exists(const FilePath& file);
+  virtual bool Exists(const base::FilePath& file);
 
   // Generates a guaranteed-unique filename in a write-only temp dir.
   // Returns false upon failure.
-  virtual bool GetUniqueFilenameInWriteOnlyTempDir(FilePath* temp_file_path);
+  virtual bool GetUniqueFilenameInWriteOnlyTempDir(
+      base::FilePath* temp_file_path);
 
   // Removes a file.
-  virtual bool RemoveFile(const FilePath& filename);
+  virtual bool RemoveFile(const base::FilePath& filename);
 
   // Atomically writes the given buffer into the file, overwriting any
   // data that was previously there.  Returns the number of bytes
   // written, or -1 on error.
-  virtual bool AtomicFileWrite(const FilePath& filename,
+  virtual bool AtomicFileWrite(const base::FilePath& filename,
                                const char* data,
                                int size);
 

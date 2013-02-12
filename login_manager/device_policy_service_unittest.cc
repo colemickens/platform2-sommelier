@@ -12,9 +12,10 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
-#include <base/scoped_temp_dir.h>
+#include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -229,7 +230,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         .WillOnce(Return(true));
     EXPECT_CALL(*store_, Persist())
         .WillOnce(Return(true));
-    loop_.RunAllPending();
+    base::RunLoop().RunUntilIdle();
   }
 
   void ExpectNoPersistKeyAndPolicy() {
@@ -238,7 +239,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
     EXPECT_CALL(key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
-    loop_.RunAllPending();
+    base::RunLoop().RunUntilIdle();
   }
 
   void ExpectKeyPopulated(bool key_populated) {
@@ -302,7 +303,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
 
   MessageLoop loop_;
 
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
   FilePath serial_recovery_flag_file_;
   FilePath policy_file_;
 
@@ -921,7 +922,7 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
       service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
                       policy_str_.size(), &completion_,
                       PolicyService::KEY_CLOBBER));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_EQ(service_->GetSettings().SerializeAsString(),
             settings.SerializeAsString());
 }

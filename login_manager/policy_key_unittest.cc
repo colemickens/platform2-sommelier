@@ -9,8 +9,8 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/scoped_temp_dir.h>
 #include <crypto/nss_util.h>
 #include <crypto/rsa_private_key.h>
 #include <gtest/gtest.h>
@@ -56,7 +56,7 @@ class PolicyKeyTest : public ::testing::Test {
 
  private:
   CheckPublicKeyUtilFactory factory_;
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
   DISALLOW_COPY_AND_ASSIGN(PolicyKeyTest);
 };
 

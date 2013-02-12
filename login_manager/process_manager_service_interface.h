@@ -6,6 +6,7 @@
 #define LOGIN_MANAGER_PROCESS_MANAGER_SERVICE_INTERFACE_H_
 
 #include <string>
+#include <vector>
 
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>

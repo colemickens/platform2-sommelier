@@ -18,8 +18,8 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/scoped_temp_dir.h>
 #include <base/time.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
@@ -95,7 +95,7 @@ bool SystemUtils::ChildIsGone(pid_t child_spec, int timeout) {
   return errno == ECHILD;  // EINTR means we timed out.
 }
 
-bool SystemUtils::EnsureAndReturnSafeFileSize(const FilePath& file,
+bool SystemUtils::EnsureAndReturnSafeFileSize(const base::FilePath& file,
                                               int32* file_size_32) {
   // Get the file size (must fit in a 32 bit int for NSS).
   int64 file_size;
@@ -119,16 +119,16 @@ bool SystemUtils::EnsureAndReturnSafeSize(int64 size_64, int32* size_32) {
   return true;
 }
 
-bool SystemUtils::Exists(const FilePath& file) {
+bool SystemUtils::Exists(const base::FilePath& file) {
   return file_util::PathExists(file);
 }
 
 bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
-    FilePath* temp_file_path) {
+    base::FilePath* temp_file_path) {
   // Create a temporary directory to put the testing channel in.
   // It will be made write-only below; we need to be able to read it
   // when trying to create a unique name inside it.
-  FilePath temp_dir_path;
+  base::FilePath temp_dir_path;
   if (!file_util::CreateNewTempDirectory(
           FILE_PATH_LITERAL(""), &temp_dir_path)) {
     PLOG(ERROR) << "Can't create temp dir";
@@ -152,14 +152,14 @@ bool SystemUtils::GetUniqueFilenameInWriteOnlyTempDir(
   return true;
 }
 
-bool SystemUtils::RemoveFile(const FilePath& filename) {
+bool SystemUtils::RemoveFile(const base::FilePath& filename) {
   return file_util::Delete(filename, false);
 }
 
-bool SystemUtils::AtomicFileWrite(const FilePath& filename,
+bool SystemUtils::AtomicFileWrite(const base::FilePath& filename,
                                   const char* data,
                                   int size) {
-  FilePath scratch_file;
+  base::FilePath scratch_file;
   if (!file_util::CreateTemporaryFileInDir(filename.DirName(), &scratch_file))
     return false;
   if (file_util::WriteFile(scratch_file, data, size) != size)

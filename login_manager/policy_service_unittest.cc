@@ -11,6 +11,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
+#include <base/run_loop.h>
 #include <base/threading/thread.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -118,7 +119,7 @@ class PolicyServiceTest : public testing::Test {
 
     EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_,
                                  flags));
-    loop_.RunAllPending();
+    base::RunLoop().RunUntilIdle();
   }
 
   PolicyStore* store() { return service_->store(); }
@@ -177,7 +178,7 @@ TEST_F(PolicyServiceTest, Store) {
   Mock::VerifyAndClearExpectations(store_);
 
   ExpectPersistPolicy(s2);
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(PolicyServiceTest, StoreWrongSignature) {
@@ -240,7 +241,7 @@ TEST_F(PolicyServiceTest, StoreNewKey) {
 
   ExpectPersistKey(s1);
   ExpectPersistPolicy(s2);
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
@@ -263,7 +264,7 @@ TEST_F(PolicyServiceTest, StoreNewKeyClobber) {
 
   ExpectPersistKey(s1);
   ExpectPersistPolicy(s2);
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeySame) {
@@ -283,7 +284,7 @@ TEST_F(PolicyServiceTest, StoreNewKeySame) {
   Mock::VerifyAndClearExpectations(store_);
 
   ExpectPersistPolicy(s2);
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(PolicyServiceTest, StoreNewKeyNotAllowed) {
@@ -316,7 +317,7 @@ TEST_F(PolicyServiceTest, StoreRotation) {
 
   ExpectPersistKey(s1);
   ExpectPersistPolicy(s2);
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(PolicyServiceTest, StoreRotationClobber) {
@@ -339,7 +340,7 @@ TEST_F(PolicyServiceTest, StoreRotationClobber) {
 
   ExpectPersistKey(s1);
   ExpectPersistPolicy(s2);
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(PolicyServiceTest, StoreRotationNoSignature) {

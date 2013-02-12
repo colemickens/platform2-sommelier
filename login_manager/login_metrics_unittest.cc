@@ -4,9 +4,9 @@
 
 #include "login_manager/login_metrics.h"
 
-#include <base/memory/scoped_ptr.h>
-#include <base/scoped_temp_dir.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest.h>
 
 namespace login_manager {
@@ -39,7 +39,7 @@ class LoginMetricsTest : public testing::Test {
   }
 
  protected:
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
   scoped_ptr<LoginMetrics> metrics_;
 
  private:

@@ -9,6 +9,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
+#include <base/run_loop.h>
 #include <base/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dbus.h>
@@ -114,14 +115,14 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
-  MessageLoop::current()->RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
   EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
-  MessageLoop::current()->RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
@@ -133,7 +134,7 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   ExpectPingResponsePingCheckPingAndQuit();
   // Expect _no_ browser abort!
   checker_->CheckAndSendLivenessPing(TimeDelta());
-  MessageLoop::current()->RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(LivenessCheckerImplTest, StartStop) {

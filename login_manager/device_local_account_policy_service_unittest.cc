@@ -7,10 +7,11 @@
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
-#include <base/scoped_temp_dir.h>
+#include <base/run_loop.h>
 #include <chromeos/cryptohome.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -81,7 +82,7 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
   std::string policy_blob_;
 
   MessageLoop loop_;
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
 
   MockPolicyKey key_;
   MockPolicyServiceCompletion completion_;
@@ -97,7 +98,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreInvalidAccount) {
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
 }
 
@@ -110,7 +111,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreSuccess) {
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(file_util::PathExists(fake_account_policy_path_));
 }
 
@@ -125,7 +126,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadPolicy) {
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
 }
 
@@ -140,7 +141,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreBadSignature) {
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
 }
 
@@ -167,7 +168,7 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, StoreNoRotation) {
       service_->Store(fake_account_,
                       reinterpret_cast<const uint8*>(policy_blob_.c_str()),
                       policy_blob_.size(), &completion_));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
 }
 

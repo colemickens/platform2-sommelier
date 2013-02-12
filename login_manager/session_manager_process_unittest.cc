@@ -3,18 +3,19 @@
 // found in the LICENSE file.
 
 #include <errno.h>
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
+
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
-#include <base/scoped_temp_dir.h>
 #include <base/string_util.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/mock_child_job.h"
@@ -229,7 +230,7 @@ class SessionManagerProcessTest : public ::testing::Test {
 
  private:
   bool must_destroy_mocks_;
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerProcessTest);
 };

@@ -4,8 +4,6 @@
 
 #include "login_manager/session_manager_impl.h"
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -16,15 +14,17 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
-#include <base/scoped_temp_dir.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/device_management_backend.pb.h"
@@ -191,7 +191,7 @@ class SessionManagerImplTest : public ::testing::Test {
   MockSystemUtils utils_;
 
   SessionManagerImpl impl_;
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
 
   static const pid_t kDummyPid;
  private:
@@ -548,7 +548,7 @@ TEST_F(SessionManagerImplTest, StartDeviceWipe) {
 }
 
 TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
-  ScopedTempDir tmpdir;
+  base::ScopedTempDir tmpdir;
   FilePath key_file_path;
   string key("key_contents");
   ASSERT_TRUE(tmpdir.CreateUniqueTempDir());

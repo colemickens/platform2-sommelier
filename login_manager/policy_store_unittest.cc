@@ -5,8 +5,8 @@
 #include "login_manager/policy_store.h"
 
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 namespace em = enterprise_management;
@@ -40,7 +40,7 @@ class PolicyStoreTest : public ::testing::Test {
     EXPECT_EQ(serialized, serialized_from);
   }
 
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
   FilePath tmpfile_;
 
  private:

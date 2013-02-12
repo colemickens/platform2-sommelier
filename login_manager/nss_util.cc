@@ -52,9 +52,9 @@ class NssUtilImpl : public NssUtil {
 
   RSAPrivateKey* GenerateKeyPair();
 
-  FilePath GetOwnerKeyFilePath();
+  base::FilePath GetOwnerKeyFilePath();
 
-  FilePath GetNssdbSubpath();
+  base::FilePath GetNssdbSubpath();
 
   bool CheckPublicKeyBlob(const std::vector<uint8>& blob);
 
@@ -109,7 +109,7 @@ NssUtilImpl::NssUtilImpl() {
 NssUtilImpl::~NssUtilImpl() {}
 
 bool NssUtilImpl::MightHaveKeys() {
-  return file_util::PathExists(FilePath(NssUtilImpl::kUserDbPath));
+  return file_util::PathExists(base::FilePath(NssUtilImpl::kUserDbPath));
 }
 
 bool NssUtilImpl::OpenUserDB() {
@@ -140,11 +140,11 @@ RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
   return RSAPrivateKey::CreateSensitive(kKeySizeInBits);
 }
 
-FilePath NssUtilImpl::GetOwnerKeyFilePath() {
-  return FilePath(kOwnerKeyFile);
+base::FilePath NssUtilImpl::GetOwnerKeyFilePath() {
+  return base::FilePath(kOwnerKeyFile);
 }
 
-FilePath NssUtilImpl::GetNssdbSubpath() {
+base::FilePath NssUtilImpl::GetNssdbSubpath() {
   return FilePath(kNssdbSubpath);
 }
 

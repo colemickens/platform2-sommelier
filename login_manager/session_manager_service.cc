@@ -32,6 +32,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
 #include <base/time.h>
@@ -67,15 +68,6 @@ using std::make_pair;
 using std::pair;
 using std::string;
 using std::vector;
-
-// Jacked from chrome base/eintr_wrapper.h
-#define HANDLE_EINTR(x) ({ \
-  typeof(x) __eintr_result__; \
-  do { \
-    __eintr_result__ = x; \
-  } while (__eintr_result__ == -1 && errno == EINTR); \
-  __eintr_result__;\
-})
 
 int g_shutdown_pipe_write_fd = -1;
 int g_shutdown_pipe_read_fd = -1;

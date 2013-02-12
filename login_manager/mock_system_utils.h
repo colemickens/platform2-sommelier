@@ -13,9 +13,9 @@
 #include <vector>
 
 #include <base/file_path.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
-#include <base/scoped_temp_dir.h>
 #include <dbus/dbus.h>
 #include <gmock/gmock.h>
 
@@ -74,7 +74,7 @@ class MockSystemUtils : public SystemUtils {
   void EnqueueFakePendingCall(scoped_ptr<ScopedDBusPendingCall> fake_call);
 
  private:
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
   std::string unique_file_name_;
   ScopedVector<ScopedDBusPendingCall> fake_calls_;
   DISALLOW_COPY_AND_ASSIGN(MockSystemUtils);

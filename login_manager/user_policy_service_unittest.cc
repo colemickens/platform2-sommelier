@@ -8,9 +8,10 @@
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
-#include <base/scoped_temp_dir.h>
+#include <base/run_loop.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -84,7 +85,7 @@ class UserPolicyServiceTest : public ::testing::Test {
 
  protected:
   SystemUtils system_utils_;
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
   FilePath key_copy_file_;
 
   const std::string fake_signature_;
@@ -119,7 +120,7 @@ TEST_F(UserPolicyServiceTest, StoreSignedPolicy) {
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
@@ -132,7 +133,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedSigned) {
   ExpectStorePolicy(s1);
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
@@ -157,7 +158,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedKeyPresent) {
 
   EXPECT_FALSE(file_util::PathExists(key_copy_file_));
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
 
   EXPECT_TRUE(file_util::PathExists(key_copy_file_));
   std::string content;
@@ -176,7 +177,7 @@ TEST_F(UserPolicyServiceTest, StoreUnmanagedNoKey) {
       .WillRepeatedly(Return(false));
 
   EXPECT_TRUE(service_->Store(policy_data_, policy_len_, &completion_, 0));
-  loop_.RunAllPending();
+  base::RunLoop().RunUntilIdle();
   EXPECT_FALSE(file_util::PathExists(key_copy_file_));
 }
 
@@ -189,7 +190,8 @@ TEST_F(UserPolicyServiceTest, StoreInvalidSignature) {
   EXPECT_CALL(completion_, Failure(_));
 
   EXPECT_FALSE(service_->Store(policy_data_, policy_len_, &completion_, 0));
-  loop_.RunAllPending();
+
+  base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(UserPolicyServiceTest, PersistKeyCopy) {

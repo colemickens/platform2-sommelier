@@ -4,16 +4,17 @@
 
 #include "login_manager/key_generator.h"
 
-#include <base/file_path.h>
-#include <base/file_util.h>
-#include <base/basictypes.h>
-#include <base/memory/ref_counted.h>
-#include <base/memory/scoped_ptr.h>
-#include <base/scoped_temp_dir.h>
-#include <base/time.h>
-#include <gtest/gtest.h>
 #include <signal.h>
 #include <unistd.h>
+
+#include <base/basictypes.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/memory/ref_counted.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/time.h>
+#include <gtest/gtest.h>
 
 #include "login_manager/child_job.h"
 #include "login_manager/keygen_worker.h"
@@ -54,7 +55,7 @@ class KeyGeneratorTest : public ::testing::Test {
  protected:
   scoped_refptr<SessionManagerService> manager_;
   MockSystemUtils utils_;
-  ScopedTempDir tmpdir_;
+  base::ScopedTempDir tmpdir_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyGeneratorTest);

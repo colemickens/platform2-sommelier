@@ -9,7 +9,9 @@
 #include <string>
 #include <vector>
 
+namespace base {
 class FilePath;
+}
 
 namespace crypto {
 class RSAPrivateKey;
@@ -53,10 +55,10 @@ class NssUtil {
   // Caller takes ownership of returned key.
   virtual crypto::RSAPrivateKey* GenerateKeyPair() = 0;
 
-  virtual FilePath GetOwnerKeyFilePath() = 0;
+  virtual base::FilePath GetOwnerKeyFilePath() = 0;
 
   // Returns subpath of the NSS DB; e.g. '.pki/nssdb'
-  virtual FilePath GetNssdbSubpath() = 0;
+  virtual base::FilePath GetNssdbSubpath() = 0;
 
   // Returns true if |blob| is a validly encoded NSS SubjectPublicKeyInfo.
   virtual bool CheckPublicKeyBlob(const std::vector<uint8>& blob) = 0;
