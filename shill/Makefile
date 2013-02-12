@@ -39,6 +39,11 @@ SHILL_PC_DEPS = \
 	libnl-3.0 \
 	libnl-genl-3.0
 NET_DIAGS_UPLOAD_PC_DEPS = $(COMMON_PC_DEPS)
+NETFILTER_QUEUE_HELPER_PC_DEPS = \
+	$(COMMON_PC_DEPS) \
+	libmnl \
+	libnetfilter_queue \
+	libnfnetlink
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
 OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
@@ -48,6 +53,7 @@ INCLUDE_DIRS = \
 	-iquote $(BUILDDIR) \
 	$(shell $(PKG_CONFIG) --cflags \
 		$(NET_DIAGS_UPLOAD_PC_DEPS) \
+		$(NETFILTER_QUEUE_HELPER_PC_DEPS) \
 		$(NSS_GET_CERT_PC_DEPS) \
 		$(OPENVPN_SCRIPT_PC_DEPS) \
 		$(PPPD_PLUGIN_PC_DEPS) \
@@ -63,11 +69,14 @@ SHILL_LIBS = \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
 NET_DIAGS_UPLOAD_LIBS = \
 	$(shell $(PKG_CONFIG) --libs $(NET_DIAGS_UPLOAD_PC_DEPS))
+NETFILTER_QUEUE_HELPER_LIBS = \
+	$(shell $(PKG_CONFIG) --libs $(NETFILTER_QUEUE_HELPER_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
 OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
 PPPD_PLUGIN_LIBS = $(shell $(PKG_CONFIG) --libs $(PPPD_PLUGIN_PC_DEPS))
 SET_APN_HELPER_LIBS = $(shell $(PKG_CONFIG) --libs $(SET_APN_HELPER_PC_DEPS))
-TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) -lgmock -lgtest
+TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) $(NETFILTER_QUEUE_HELPER_LIBS) \
+	-lgmock -lgtest
 
 DBUS_BINDINGS_DIR = dbus_bindings
 BUILD_DBUS_BINDINGS_DIR = $(BUILDDIR)/shill/$(DBUS_BINDINGS_DIR)
@@ -465,6 +474,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	shill_unittest.o \
 	shims/certificates_unittest.o \
 	shims/environment_unittest.o \
+	shims/netfilter_queue_processor_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	testrunner.o \
@@ -483,6 +493,10 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 
 NET_DIAGS_UPLOAD_MAIN_OBJ = $(BUILD_SHIMS_DIR)/net_diags_upload.o
 NET_DIAGS_UPLOAD_BIN = $(BUILD_SHIMS_DIR)/net-diags-upload
+
+NETFILTER_QUEUE_HELPER_OBJS = $(BUILD_SHIMS_DIR)/netfilter_queue_processor.o
+NETFILTER_QUEUE_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/netfilter_queue_helper.o
+NETFILTER_QUEUE_HELPER_BIN = $(BUILD_SHIMS_DIR)/netfilter_queue_helper
 
 NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
@@ -511,6 +525,8 @@ WPA_SUPPLICANT_CONF = $(BUILD_SHIMS_DIR)/wpa_supplicant.conf
 
 OBJS = \
 	$(NET_DIAGS_UPLOAD_MAIN_OBJ) \
+	$(NETFILTER_QUEUE_HELPER_MAIN_OBJ) \
+	$(NETFILTER_QUEUE_HELPER_OBJS) \
 	$(NSS_GET_CERT_MAIN_OBJ) \
 	$(NSS_GET_CERT_OBJS) \
 	$(OPENVPN_SCRIPT_MAIN_OBJ) \
@@ -527,6 +543,7 @@ all: $(SHILL_BIN) $(TEST_BIN) shims
 
 shims: \
 	$(NET_DIAGS_UPLOAD_BIN) \
+	$(NETFILTER_QUEUE_HELPER_BIN) \
 	$(NSS_GET_CERT_BIN) \
 	$(OPENVPN_SCRIPT_BIN) \
 	$(PPPD_PLUGIN_SO) \
@@ -581,6 +598,11 @@ $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
 $(NET_DIAGS_UPLOAD_BIN): $(NET_DIAGS_UPLOAD_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NET_DIAGS_UPLOAD_LIBS) -o $@
 
+$(NETFILTER_QUEUE_HELPER_BIN): \
+	$(NETFILTER_QUEUE_HELPER_MAIN_OBJ) \
+	$(NETFILTER_QUEUE_HELPER_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NETFILTER_QUEUE_HELPER_LIBS) -o $@
+
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
 
@@ -604,6 +626,7 @@ $(WPA_SUPPLICANT_CONF): shims/wpa_supplicant.conf.in
 $(TEST_BIN): CPPFLAGS += -DUNIT_TEST -DSYSROOT=\"$(SYSROOT)\"
 $(TEST_BIN): \
 	$(TEST_OBJS) \
+	$(NETFILTER_QUEUE_HELPER_OBJS) \
 	$(NSS_GET_CERT_OBJS) \
 	$(OPENVPN_SCRIPT_OBJS) \
 	$(SHILL_LIB)
