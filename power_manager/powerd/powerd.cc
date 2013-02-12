@@ -234,8 +234,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
-      suspender_delegate_(
-          Suspender::CreateDefaultDelegate(this, &file_tagger_, run_dir)),
+      suspender_delegate_(Suspender::CreateDefaultDelegate(
+          this, input_.get(), &file_tagger_, run_dir)),
       suspender_(suspender_delegate_.get(), dbus_sender_.get()),
       run_dir_(run_dir),
       power_supply_(FilePath(kPowerStatusPath), prefs),

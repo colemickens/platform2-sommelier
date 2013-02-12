@@ -31,7 +31,8 @@ const char kNoActions[] = "";
 class TestDelegate : public Suspender::Delegate {
  public:
   TestDelegate()
-      : report_success_for_get_wakeup_count_(true),
+      : lid_closed_(false),
+        report_success_for_get_wakeup_count_(true),
         wakeup_count_(0),
         suspend_wakeup_count_(0),
         suspend_wakeup_count_valid_(false),
@@ -39,6 +40,7 @@ class TestDelegate : public Suspender::Delegate {
         emit_suspend_id_(-1) {
   }
 
+  void set_lid_closed(bool closed) { lid_closed_ = closed; }
   void set_report_success_for_get_wakeup_count(bool success) {
     report_success_for_get_wakeup_count_ = success;
   }
@@ -59,6 +61,8 @@ class TestDelegate : public Suspender::Delegate {
   }
 
   // Delegate implementation:
+  virtual bool IsLidClosed() OVERRIDE { return lid_closed_; }
+
   virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
     if (!report_success_for_get_wakeup_count_)
       return false;
@@ -95,6 +99,9 @@ class TestDelegate : public Suspender::Delegate {
       actions_ += ",";
     actions_ += action;
   }
+
+  // Value returned by IsLidClosed().
+  bool lid_closed_;
 
   // Should GetWakeupCount() report success?
   bool report_success_for_get_wakeup_count_;
@@ -420,6 +427,33 @@ TEST_F(SuspenderTest, NextSuspendRequestArrivesBeforeResume) {
   suspender_.HandlePowerStateChanged(Suspender::kMemState, 0, next_suspend_id);
   suspender_.HandlePowerStateChanged(Suspender::kOnState, 0, next_suspend_id);
   EXPECT_EQ(kResume, delegate_.GetActions());
+}
+
+// Tests that Chrome-reported user activity received while suspending with
+// a closed lid doesn't abort the suspend attempt (http://crosbug.com/38819).
+TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
+  delegate_.set_lid_closed(true);
+  Init();
+
+  // Report user activity before powerd_suspend is executed and check that
+  // Suspender still suspends when OnReadyForSuspend() is called.
+  suspender_.RequestSuspend();
+  suspender_.HandleUserActivity();
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  suspender_.HandlePowerStateChanged(
+      Suspender::kMemState, 0, test_api_.suspend_id());
+  suspender_.HandlePowerStateChanged(
+      Suspender::kOnState, 0, test_api_.suspend_id());
+  EXPECT_EQ(kResume, delegate_.GetActions());
+
+  // Report user activity after powerd_suspend and check that the
+  // delegate's CancelSuspend() method isn't called.
+  suspender_.RequestSuspend();
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  suspender_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 }  // namespace power_manager

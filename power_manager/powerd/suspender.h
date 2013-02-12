@@ -24,6 +24,10 @@ class FileTagger;
 class PrefsInterface;
 class SuspendDelayController;
 
+namespace system {
+class Input;
+}  // namespace system
+
 // Suspender is responsible for suspending the system.  The typical flow is
 // as follows:
 //
@@ -56,6 +60,10 @@ class Suspender : public SuspendDelayObserver {
   class Delegate {
    public:
     virtual ~Delegate() {}
+
+    // Is the lid currently closed?  Returns false if the query fails or if
+    // the system doesn't have a lid.
+    virtual bool IsLidClosed() = 0;
 
     // Reads the current wakeup count from sysfs and stores it in
     // |wakeup_count|.  Returns true on success.
@@ -110,6 +118,7 @@ class Suspender : public SuspendDelayObserver {
 
   // Creates a new delegate.  Ownership is passed to the caller.
   static Delegate* CreateDefaultDelegate(Daemon* daemon,
+                                         system::Input* input,
                                          FileTagger* file_tagger,
                                          const FilePath& run_dir);
 

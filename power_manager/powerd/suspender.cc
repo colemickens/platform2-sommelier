@@ -23,6 +23,7 @@
 #include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/suspend_delay_controller.h"
+#include "power_manager/powerd/system/input.h"
 #include "power_manager/suspend.pb.h"
 
 namespace power_manager {
@@ -44,9 +45,11 @@ const char Suspender::kOnState[] = "on";
 class Suspender::RealDelegate : public Suspender::Delegate {
  public:
   RealDelegate(Daemon* daemon,
+               system::Input* input,
                FileTagger* file_tagger,
                const FilePath& run_dir)
       : daemon_(daemon),
+        input_(input),
         file_tagger_(file_tagger),
         cancel_file_(run_dir.Append(kCancelSuspendFile)) {
   }
@@ -54,6 +57,13 @@ class Suspender::RealDelegate : public Suspender::Delegate {
   virtual ~RealDelegate() {}
 
   // Delegate implementation:
+  virtual bool IsLidClosed() OVERRIDE {
+    int lid_state = 0;
+    if (!input_->QueryLidState(&lid_state))
+      return false;
+    return lid_state == 1;
+  }
+
   virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
     DCHECK(wakeup_count);
     FilePath path(kWakeupCountPath);
@@ -133,6 +143,7 @@ class Suspender::RealDelegate : public Suspender::Delegate {
 
  private:
   Daemon* daemon_;  // not owned
+  system::Input* input_;  // not owned
   FileTagger* file_tagger_;  // not owned
 
   // File that can be touched to tell the powerd_suspend script to cancel
@@ -160,9 +171,10 @@ bool Suspender::TestApi::TriggerRetryTimeout() {
 
 // static
 Suspender::Delegate* Suspender::CreateDefaultDelegate(Daemon* daemon,
+                                                      system::Input* input,
                                                       FileTagger* file_tagger,
                                                       const FilePath& run_dir) {
-  return new RealDelegate(daemon, file_tagger, run_dir);
+  return new RealDelegate(daemon, input, file_tagger, run_dir);
 }
 
 // static
@@ -290,7 +302,10 @@ void Suspender::HandleLidOpened() {
 }
 
 void Suspender::HandleUserActivity() {
-  CancelSuspend();
+  if (delegate_->IsLidClosed())
+    LOG(INFO) << "Ignoring user activity received while lid is closed";
+  else
+    CancelSuspend();
 }
 
 void Suspender::HandleShutdown() {
