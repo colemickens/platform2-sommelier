@@ -11,8 +11,6 @@
 
 #include <base/basictypes.h>
 
-class FilePath;
-
 #pragma GCC visibility push(default)
 
 namespace policy {

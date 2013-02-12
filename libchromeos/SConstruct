@@ -71,6 +71,7 @@ env = common_env()
 env.Append(
     LIBS = ['event'],
     CPPPATH = ['../third_party/chrome/files'],
+    CCFLAGS = ['-DBASE_VER=%s' % BASE_VER],
   )
 env_test = env.Clone()
 

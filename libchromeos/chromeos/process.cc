@@ -12,7 +12,12 @@
 
 #include <map>
 
+// TODO(cmasone): Come back and clear this out (http://crosbug.com/38805).
+#if BASE_VER > 125070
+#include <base/posix/eintr_wrapper.h>
+#else
 #include <base/eintr_wrapper.h>
+#endif
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
@@ -226,8 +231,10 @@ int ProcessImpl::Wait() {
   // kill the process that has just exited.
   UpdatePid(0);
   if (!WIFEXITED(status)) {
+    DCHECK(WIFSIGNALED(status)) << old_pid
+                                << " neither exited, nor died on a signal?";
     LOG(ERROR) << "Process " << old_pid << " did not exit normally: "
-               << status;
+               << WTERMSIG(status);
     return -1;
   }
   return WEXITSTATUS(status);

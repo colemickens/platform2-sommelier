@@ -11,8 +11,6 @@
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
 
-class FilePath;
-
 #pragma GCC visibility push(default)
 
 namespace policy {

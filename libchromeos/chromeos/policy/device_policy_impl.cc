@@ -4,15 +4,15 @@
 
 #include "device_policy_impl.h"
 
+#include <base/basictypes.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/logging.h>
 #include <openssl/evp.h>
 #include <openssl/x509.h>
 
 #include <string>
 
-#include "base/basictypes.h"
-#include "base/file_path.h"
-#include "base/file_util.h"
-#include "base/logging.h"
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
 
