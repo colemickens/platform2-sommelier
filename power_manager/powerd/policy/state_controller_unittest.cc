@@ -68,7 +68,8 @@ class TestDelegate : public StateController::Delegate {
   TestDelegate()
       : record_metrics_actions_(false),
         usb_input_device_connected_(false),
-        oobe_completed_(true) {
+        oobe_completed_(true),
+        avoid_suspend_for_headphones_(false) {
   }
   ~TestDelegate() {}
 
@@ -80,6 +81,9 @@ class TestDelegate : public StateController::Delegate {
   }
   void set_oobe_completed(bool completed) {
     oobe_completed_ = completed;
+  }
+  void set_avoid_suspend_for_headphones(bool avoid_suspend) {
+    avoid_suspend_for_headphones_ = avoid_suspend;
   }
 
   // Returns a comma-separated string describing the actions that were
@@ -96,6 +100,9 @@ class TestDelegate : public StateController::Delegate {
     return usb_input_device_connected_;
   }
   virtual bool IsOobeCompleted() OVERRIDE { return oobe_completed_; }
+  virtual bool ShouldAvoidSuspendForHeadphoneJack() OVERRIDE {
+    return avoid_suspend_for_headphones_;
+  }
   virtual void DimScreen() OVERRIDE { AppendAction(kScreenDim); }
   virtual void UndimScreen() OVERRIDE { AppendAction(kScreenUndim); }
   virtual void TurnScreenOff() OVERRIDE { AppendAction(kScreenOff); }
@@ -128,6 +135,9 @@ class TestDelegate : public StateController::Delegate {
 
   // Should IsOobeCompleted() return true?
   bool oobe_completed_;
+
+  // Should ShouldAvoidSuspendForHeadphoneJack() return true?
+  bool avoid_suspend_for_headphones_;
 
   std::string actions_;
 
@@ -985,6 +995,51 @@ TEST_F(StateControllerTest, ReportMetrics) {
   AdvanceTime(default_ac_screen_dim_delay_ / 2);
   controller_.HandleDisplayModeChange(StateController::DISPLAY_PRESENTATION);
   EXPECT_EQ(kReportUserActivityMetrics, delegate_.GetActions());
+}
+
+// Tests that we avoid suspending while headphones are connected when so
+// requested.
+TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
+  Init();
+
+  // With headphones connected, we shouldn't suspend.
+  delegate_.set_avoid_suspend_for_headphones(true);
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, NULL),
+            delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Without headphones, we should.
+  delegate_.set_avoid_suspend_for_headphones(false);
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kSuspend, NULL),
+            delegate_.GetActions());
+
+  // Non-suspend actions should still be performed while headphones are
+  // connected.
+  controller_.HandleResume();
+  delegate_.set_avoid_suspend_for_headphones(true);
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  PowerManagementPolicy policy;
+  policy.set_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kShutDown, NULL),
+            delegate_.GetActions());
 }
 
 }  // namespace policy

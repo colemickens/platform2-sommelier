@@ -719,6 +719,11 @@ void StateController::UpdateState() {
         VLOG(1) << "Not suspending for idle without USB input device";
         idle_action_to_perform = DO_NOTHING;
       }
+      if (idle_action_to_perform == SUSPEND &&
+          delegate_->ShouldAvoidSuspendForHeadphoneJack()) {
+        VLOG(1) << "Not suspending for idle due to headphone jack";
+        idle_action_to_perform = DO_NOTHING;
+      }
       VLOG(1) << "Ready to perform idle action ("
               << ActionToString(idle_action_to_perform) << ") after "
               << TimeDeltaToString(idle_duration);

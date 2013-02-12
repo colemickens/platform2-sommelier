@@ -104,6 +104,10 @@ class Daemon::StateControllerDelegate
     return util::OOBECompleted();
   }
 
+  virtual bool ShouldAvoidSuspendForHeadphoneJack() OVERRIDE {
+    return daemon_->ShouldStayAwakeForHeadphoneJack();
+  }
+
   virtual void DimScreen() OVERRIDE {
     screen_dimmed_ = true;
     if (daemon_->use_state_controller_ && !screen_off_) {

@@ -62,6 +62,11 @@ class StateController : public PrefsObserver {
     // completed.
     virtual bool IsOobeCompleted() = 0;
 
+    // Returns true if the system should not be suspended due to something
+    // being connected to the headphone jack (as a workaround for hardware
+    // that produces noise over the jack while suspended).
+    virtual bool ShouldAvoidSuspendForHeadphoneJack() = 0;
+
     // Dims the screen in response to the system being idle.
     virtual void DimScreen() = 0;
 
