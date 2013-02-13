@@ -433,8 +433,11 @@ void Cellular::Connect(Error *error) {
     Error::PopulateAndLog(error, Error::kAlreadyConnected,
                           "Already connected; connection request ignored.");
     return;
+  } else if (state_ != kStateRegistered) {
+    Error::PopulateAndLog(error, Error::kNotRegistered,
+                          "Modem not registered; connection request ignored.");
+    return;
   }
-  CHECK_EQ(kStateRegistered, state_);
 
   if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {

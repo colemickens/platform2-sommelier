@@ -585,6 +585,15 @@ TEST_F(CellularTest, Connect) {
   device_->Connect(&error);
   EXPECT_EQ(Error::kAlreadyConnected, error.type());
 
+  device_->state_ = Cellular::kStateEnabled;
+  device_->Connect(&error);
+  EXPECT_EQ(Error::kNotRegistered, error.type());
+
+  error.Reset();
+  device_->state_ = Cellular::kStateDisabled;
+  device_->Connect(&error);
+  EXPECT_EQ(Error::kNotRegistered, error.type());
+
   device_->state_ = Cellular::kStateRegistered;
   device_->service_ = new CellularService(
       &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
