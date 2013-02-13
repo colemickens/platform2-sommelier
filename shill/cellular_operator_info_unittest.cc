@@ -7,6 +7,8 @@
 #include <base/file_util.h>
 #include <gtest/gtest.h>
 
+#include "shill/glib.h"
+
 using std::map;
 using std::string;
 using std::vector;
@@ -61,6 +63,22 @@ class CellularOperatorInfoTest : public testing::Test {
                                    arraysize(kTestInfoFileContent)));
   }
 
+  void TruncateFile() {
+    FILE *file = file_util::OpenFile(info_file_path_, "rw");
+    file_util::TruncateFile(file);
+    file_util::CloseFile(file);
+  }
+
+  void WriteToFile(const char *content) {
+    ASSERT_EQ(strlen(content),
+              file_util::WriteFile(info_file_path_, content, strlen(content)));
+  }
+
+  void TruncateAndWriteToFile(const char *content) {
+    TruncateFile();
+    WriteToFile(content);
+  }
+
   void TearDown() {
     ASSERT_TRUE(file_util::Delete(info_file_path_, false));
   }
@@ -72,76 +90,78 @@ class CellularOperatorInfoTest : public testing::Test {
 
 TEST_F(CellularOperatorInfoTest, ParseSuccess) {
   EXPECT_TRUE(info_.Load(info_file_path_));
-  EXPECT_EQ(info_.operators().size(), 2);
+  EXPECT_EQ(2, info_.operators().size());
 
   const CellularOperatorInfo::CellularOperator *provider = info_.operators()[0];
   EXPECT_FALSE(provider->is_primary());
   EXPECT_TRUE(provider->requires_roaming());
-  EXPECT_EQ(provider->country(), "us");
-  EXPECT_EQ(provider->identifier(), "provider1identifier");
-  EXPECT_EQ(provider->name_list().size(), 1);
-  EXPECT_EQ(provider->name_list()[0].language, "");
-  EXPECT_EQ(provider->name_list()[0].name, "TestProvider1");
-  EXPECT_EQ(provider->mccmnc_list().size(), 2);
-  EXPECT_EQ(provider->mccmnc_list()[0], "000001");
-  EXPECT_EQ(provider->mccmnc_list()[1], "000002");
-  EXPECT_EQ(provider->sid_list().size(), 3);
-  EXPECT_EQ(provider->sid_list()[0], "1");
-  EXPECT_EQ(provider->sid_list()[1], "2");
-  EXPECT_EQ(provider->sid_list()[2], "3");
-  EXPECT_EQ(provider->olp_list().size(), 1);
-  EXPECT_EQ(provider->olp_list()[0]->GetURL(), "https://testurl");
-  EXPECT_EQ(provider->olp_list()[0]->GetMethod(), "POST");
-  EXPECT_EQ(provider->olp_list()[0]->GetPostData(),
-            "imei=${imei}&iccid=${iccid}");
-  EXPECT_EQ(provider->apn_list().size(), 1);
-  EXPECT_EQ(provider->apn_list()[0]->apn(), "testprovider1apn");
-  EXPECT_EQ(provider->apn_list()[0]->username(), "");
-  EXPECT_EQ(provider->apn_list()[0]->password(), "");
-  EXPECT_EQ(provider->apn_list()[0]->name_list().size(), 2);
-  EXPECT_EQ(provider->apn_list()[0]->name_list()[0].language, "en");
-  EXPECT_EQ(provider->apn_list()[0]->name_list()[0].name, "Test Provider 1");
-  EXPECT_EQ(provider->apn_list()[0]->name_list()[1].language, "de");
-  EXPECT_EQ(provider->apn_list()[0]->name_list()[1].name,
-            "Testmobilfunkanbieter 1");
+  EXPECT_EQ("us", provider->country());
+  EXPECT_EQ("provider1identifier", provider->identifier());
+  EXPECT_EQ(1, provider->name_list().size());
+  EXPECT_TRUE(provider->name_list()[0].language.empty());
+  EXPECT_EQ("TestProvider1", provider->name_list()[0].name);
+  EXPECT_EQ(2, provider->mccmnc_list().size());
+  EXPECT_EQ("000001", provider->mccmnc_list()[0]);
+  EXPECT_EQ("000002", provider->mccmnc_list()[1]);
+  EXPECT_EQ(3, provider->sid_list().size());
+  EXPECT_EQ("1", provider->sid_list()[0]);
+  EXPECT_EQ("2", provider->sid_list()[1]);
+  EXPECT_EQ("3", provider->sid_list()[2]);
+  EXPECT_EQ(1, provider->olp_list().size());
+  EXPECT_EQ("https://testurl", provider->olp_list()[0]->GetURL());
+  EXPECT_EQ("POST", provider->olp_list()[0]->GetMethod());
+  EXPECT_EQ("imei=${imei}&iccid=${iccid}",
+            provider->olp_list()[0]->GetPostData());
+  EXPECT_EQ(1, provider->apn_list().size());
+  EXPECT_EQ("testprovider1apn", provider->apn_list()[0]->apn);
+  EXPECT_TRUE(provider->apn_list()[0]->username.empty());
+  EXPECT_TRUE(provider->apn_list()[0]->password.empty());
+  EXPECT_EQ(2, provider->apn_list()[0]->name_list.size());
+  EXPECT_EQ("en", provider->apn_list()[0]->name_list[0].language);
+  EXPECT_EQ("Test Provider 1", provider->apn_list()[0]->name_list[0].name);
+  EXPECT_EQ("de", provider->apn_list()[0]->name_list[1].language);
+  EXPECT_EQ("Testmobilfunkanbieter 1",
+            provider->apn_list()[0]->name_list[1].name);
 
   const CellularOperatorInfo::CellularOperator *provider2 =
       info_.operators()[1];
   EXPECT_TRUE(provider2->is_primary());
   EXPECT_FALSE(provider2->requires_roaming());
-  EXPECT_EQ(provider2->country(), "us");
-  EXPECT_EQ(provider2->identifier(), "provider2identifier");
-  EXPECT_EQ(provider2->name_list().size(), 2);
-  EXPECT_EQ(provider2->name_list()[0].language, "");
-  EXPECT_EQ(provider2->name_list()[0].name, "TestProviderTwo");
-  EXPECT_EQ(provider2->name_list()[1].language, "");
-  EXPECT_EQ(provider2->name_list()[1].name, "TestProvider2");
-  EXPECT_EQ(provider2->mccmnc_list().size(), 2);
-  EXPECT_EQ(provider2->mccmnc_list()[0], "100001");
-  EXPECT_EQ(provider2->mccmnc_list()[1], "100002");
-  EXPECT_EQ(provider2->sid_list().size(), 2);
-  EXPECT_EQ(provider2->sid_list()[0], "4");
-  EXPECT_EQ(provider2->sid_list()[1], "5");
-  EXPECT_EQ(provider2->olp_list().size(), 2);
-  EXPECT_EQ(provider2->olp_list()[0]->GetURL(), "https://testurl2");
-  EXPECT_EQ(provider2->olp_list()[0]->GetMethod(), "");
-  EXPECT_EQ(provider2->olp_list()[0]->GetPostData(), "");
-  EXPECT_EQ(provider2->olp_list()[1]->GetURL(), "https://testurl3");
-  EXPECT_EQ(provider2->olp_list()[1]->GetMethod(), "");
-  EXPECT_EQ(provider2->olp_list()[1]->GetPostData(), "");
-  EXPECT_EQ(provider2->apn_list().size(), 2);
-  EXPECT_EQ(provider2->apn_list()[0]->apn(), "testprovider2apn");
-  EXPECT_EQ(provider2->apn_list()[0]->username(), "");
-  EXPECT_EQ(provider2->apn_list()[0]->password(), "");
-  EXPECT_EQ(provider2->apn_list()[0]->name_list().size(), 1);
-  EXPECT_EQ(provider2->apn_list()[0]->name_list()[0].language, "");
-  EXPECT_EQ(provider2->apn_list()[0]->name_list()[0].name, "Test Provider 2");
-  EXPECT_EQ(provider2->apn_list()[1]->apn(), "testprovider2apn2");
-  EXPECT_EQ(provider2->apn_list()[1]->username(), "testusername");
-  EXPECT_EQ(provider2->apn_list()[1]->password(), "testpassword");
-  EXPECT_EQ(provider2->apn_list()[1]->name_list().size(), 1);
-  EXPECT_EQ(provider2->apn_list()[1]->name_list()[0].language, "tr");
-  EXPECT_EQ(provider2->apn_list()[1]->name_list()[0].name, "Test Operatoru 2");
+  EXPECT_EQ("us", provider2->country());
+  EXPECT_EQ("provider2identifier", provider2->identifier());
+  EXPECT_EQ(2, provider2->name_list().size());
+  EXPECT_TRUE(provider2->name_list()[0].language.empty());
+  EXPECT_EQ("TestProviderTwo", provider2->name_list()[0].name);
+  EXPECT_TRUE(provider2->name_list()[1].language.empty());
+  EXPECT_EQ("TestProvider2", provider2->name_list()[1].name);
+  EXPECT_EQ(2, provider2->mccmnc_list().size());
+  EXPECT_EQ("100001", provider2->mccmnc_list()[0]);
+  EXPECT_EQ("100002", provider2->mccmnc_list()[1]);
+  EXPECT_EQ(2, provider2->sid_list().size());
+  EXPECT_EQ("4", provider2->sid_list()[0]);
+  EXPECT_EQ("5", provider2->sid_list()[1]);
+  EXPECT_EQ(2, provider2->olp_list().size());
+  EXPECT_EQ("https://testurl2", provider2->olp_list()[0]->GetURL());
+  EXPECT_TRUE(provider2->olp_list()[0]->GetMethod().empty());
+  EXPECT_TRUE(provider2->olp_list()[0]->GetPostData().empty());
+  EXPECT_EQ("https://testurl3", provider2->olp_list()[1]->GetURL());
+  EXPECT_TRUE(provider2->olp_list()[1]->GetMethod().empty());
+  EXPECT_TRUE(provider2->olp_list()[1]->GetPostData().empty());
+  EXPECT_EQ(2, provider2->apn_list().size());
+  EXPECT_EQ("testprovider2apn", provider2->apn_list()[0]->apn);
+  EXPECT_TRUE(provider2->apn_list()[0]->username.empty());
+  EXPECT_TRUE(provider2->apn_list()[0]->password.empty());
+  EXPECT_EQ(1, provider2->apn_list()[0]->name_list.size());
+  EXPECT_TRUE(provider2->apn_list()[0]->name_list[0].language.empty());
+  EXPECT_EQ("Test Provider 2",
+            provider2->apn_list()[0]->name_list[0].name);
+  EXPECT_EQ("testprovider2apn2", provider2->apn_list()[1]->apn);
+  EXPECT_EQ("testusername", provider2->apn_list()[1]->username);
+  EXPECT_EQ("testpassword", provider2->apn_list()[1]->password);
+  EXPECT_EQ(1, provider2->apn_list()[1]->name_list.size());
+  EXPECT_EQ("tr", provider2->apn_list()[1]->name_list[0].language);
+  EXPECT_EQ("Test Operatoru 2",
+            provider2->apn_list()[1]->name_list[0].name);
 }
 
 TEST_F(CellularOperatorInfoTest, GetCellularOperatorByMCCMNC) {
@@ -154,13 +174,13 @@ TEST_F(CellularOperatorInfoTest, GetCellularOperatorByMCCMNC) {
 
   const CellularOperatorInfo::CellularOperator *provider = NULL;
   EXPECT_TRUE((provider = info_.GetCellularOperatorByMCCMNC("000001")));
-  EXPECT_EQ(provider, info_.operators()[0]);
+  EXPECT_EQ(info_.operators()[0], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorByMCCMNC("100001")));
-  EXPECT_EQ(provider, info_.operators()[1]);
+  EXPECT_EQ(info_.operators()[1], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorByMCCMNC("000002")));
-  EXPECT_EQ(provider, info_.operators()[0]);
+  EXPECT_EQ(info_.operators()[0], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorByMCCMNC("100002")));
-  EXPECT_EQ(provider, info_.operators()[1]);
+  EXPECT_EQ(info_.operators()[1], provider);
 }
 
 TEST_F(CellularOperatorInfoTest, GetCellularOperatorBySID) {
@@ -174,33 +194,33 @@ TEST_F(CellularOperatorInfoTest, GetCellularOperatorBySID) {
 
   const CellularOperatorInfo::CellularOperator *provider = NULL;
   EXPECT_TRUE((provider = info_.GetCellularOperatorBySID("1")));
-  EXPECT_EQ(provider, info_.operators()[0]);
+  EXPECT_EQ(info_.operators()[0], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorBySID("4")));
-  EXPECT_EQ(provider, info_.operators()[1]);
+  EXPECT_EQ(info_.operators()[1], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorBySID("2")));
-  EXPECT_EQ(provider, info_.operators()[0]);
+  EXPECT_EQ(info_.operators()[0], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorBySID("5")));
-  EXPECT_EQ(provider, info_.operators()[1]);
+  EXPECT_EQ(info_.operators()[1], provider);
   EXPECT_TRUE((provider = info_.GetCellularOperatorBySID("3")));
-  EXPECT_EQ(provider, info_.operators()[0]);
+  EXPECT_EQ(info_.operators()[0], provider);
 }
 
-TEST_F(CellularOperatorInfoTest, GetCellularOperatorsByName) {
+TEST_F(CellularOperatorInfoTest, GetCellularOperators) {
   EXPECT_TRUE(info_.Load(info_file_path_));
 
   const vector<const CellularOperatorInfo::CellularOperator *> *list = NULL;
-  EXPECT_FALSE(info_.GetCellularOperatorsByName("banana"));
-  EXPECT_FALSE(info_.GetCellularOperatorsByName("TestProvider2"));
+  EXPECT_FALSE(info_.GetCellularOperators("banana"));
+  EXPECT_FALSE(info_.GetCellularOperators("TestProvider2"));
 
-  EXPECT_TRUE((list = info_.GetCellularOperatorsByName("TestProvider1")));
-  EXPECT_EQ(list->size(), 1);
-  EXPECT_EQ((*list)[0]->apn_list()[0]->apn(), "testprovider1apn");
+  EXPECT_TRUE((list = info_.GetCellularOperators("TestProvider1")));
+  EXPECT_EQ(1, list->size());
+  EXPECT_EQ("testprovider1apn", (*list)[0]->apn_list()[0]->apn);
 
-  EXPECT_FALSE(info_.GetCellularOperatorsByName("TestProvider2"));
+  EXPECT_FALSE(info_.GetCellularOperators("TestProvider2"));
 
-  EXPECT_TRUE((list = info_.GetCellularOperatorsByName("TestProviderTwo")));
-  EXPECT_EQ(list->size(), 1);
-  EXPECT_EQ((*list)[0]->apn_list()[0]->apn(), "testprovider2apn");
+  EXPECT_TRUE((list = info_.GetCellularOperators("TestProviderTwo")));
+  EXPECT_EQ(1, list->size());
+  EXPECT_EQ("testprovider2apn", (*list)[0]->apn_list()[0]->apn);
 }
 
 TEST_F(CellularOperatorInfoTest, GetOLPByMCCMNC) {
@@ -219,13 +239,13 @@ TEST_F(CellularOperatorInfoTest, GetOLPByMCCMNC) {
 
   EXPECT_TRUE((olp = info_.GetOLPByMCCMNC("100001")));
   EXPECT_EQ("https://testurl3", olp->GetURL());
-  EXPECT_EQ("", olp->GetMethod());
-  EXPECT_EQ("", olp->GetPostData());
+  EXPECT_TRUE(olp->GetMethod().empty());
+  EXPECT_TRUE(olp->GetPostData().empty());
 
   EXPECT_TRUE((olp = info_.GetOLPByMCCMNC("100002")));
   EXPECT_EQ("https://testurl2", olp->GetURL());
-  EXPECT_EQ("", olp->GetMethod());
-  EXPECT_EQ("", olp->GetPostData());
+  EXPECT_TRUE(olp->GetMethod().empty());
+  EXPECT_TRUE(olp->GetPostData().empty());
 
   EXPECT_FALSE(info_.GetOLPByMCCMNC("000003"));
   EXPECT_FALSE(info_.GetOLPByMCCMNC("000004"));
@@ -252,255 +272,308 @@ TEST_F(CellularOperatorInfoTest, GetOLPBySID) {
 
   EXPECT_TRUE((olp = info_.GetOLPBySID("4")));
   EXPECT_EQ("https://testurl2", olp->GetURL());
-  EXPECT_EQ("", olp->GetMethod());
-  EXPECT_EQ("", olp->GetPostData());
+  EXPECT_TRUE(olp->GetMethod().empty());
+  EXPECT_TRUE(olp->GetPostData().empty());
 
   EXPECT_TRUE((olp = info_.GetOLPBySID("5")));
   EXPECT_EQ("https://testurl3", olp->GetURL());
-  EXPECT_EQ("", olp->GetMethod());
-  EXPECT_EQ("", olp->GetPostData());
+  EXPECT_TRUE(olp->GetMethod().empty());
+  EXPECT_TRUE(olp->GetPostData().empty());
 
   EXPECT_FALSE(info_.GetOLPBySID("6"));
   EXPECT_FALSE(info_.GetOLPBySID("7"));
 }
 
+TEST_F(CellularOperatorInfoTest, BadServiceProvidersLine) {
+  TruncateFile();
+
+  // Invalid first line.
+  TruncateAndWriteToFile(
+      "# Bla bla bla\n"
+      "# Blabbidy boo\n"
+      "serviceproviders:2.3\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+
+  // Valid first line
+  TruncateAndWriteToFile(
+      "# Bla bla bla\n"
+      "# Blabbidy boo\n"
+      "serviceproviders:3.0\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+}
+
 TEST_F(CellularOperatorInfoTest, HandleProvider) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleProvider(&state, "0,0,0"));
-  EXPECT_FALSE(state.provider);
-  EXPECT_EQ(info_.operators_.size(), 0);
+  // Invalid provider entry
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# Invalid provider entry\n"
+      "provider:0,0,0\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "0,0,0,0"));
-  EXPECT_TRUE(state.provider);
-  EXPECT_EQ(info_.operators_.size(), 1);
-  EXPECT_FALSE(state.provider->is_primary());
-  EXPECT_FALSE(state.provider->requires_roaming());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# Invalid provider entry\n"
+      "provider:1,1,0,1\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_FALSE(info_.operators()[0]->is_primary());
+  EXPECT_TRUE(info_.operators()[0]->requires_roaming());
+  EXPECT_TRUE(info_.operators()[0]->country().empty());
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,1"));
-  EXPECT_EQ(info_.operators_.size(), 2);
-  EXPECT_EQ(state.provider, info_.operators_[1]);
-  EXPECT_FALSE(state.provider->is_primary());
-  EXPECT_TRUE(state.provider->requires_roaming());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# Invalid provider entry\n"
+      "country:us\n"
+      "provider:1,1,1,0\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_TRUE(info_.operators()[0]->is_primary());
+  EXPECT_FALSE(info_.operators()[0]->requires_roaming());
+  EXPECT_EQ("us", info_.operators()[0]->country());
 }
 
 TEST_F(CellularOperatorInfoTest, HandleMCCMNC) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleMCCMNC(&state, "1,1"));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# MCCMNC entry without a provider.\n"
+      "mccmnc:1,1\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
-  EXPECT_TRUE(state.provider);
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# Empty MCCMNC entry.\n"
+      "provider:1,1,0,1\n"
+      "mccmnc:\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_FALSE(info_.HandleMCCMNC(&state, ""));
-  EXPECT_TRUE(state.provider->mccmnc_list().empty());
-  EXPECT_TRUE(info_.mccmnc_to_operator_.empty());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# MCCMNC entry has odd number of values.\n"
+      "provider:1,1,0,1\n"
+      "mccmnc:000001,0,000002\n");
 
-  EXPECT_FALSE(info_.HandleMCCMNC(&state, "000001,0,000002"));
-  EXPECT_TRUE(state.provider->mccmnc_list().empty());
-  EXPECT_TRUE(info_.mccmnc_to_operator_.empty());
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_TRUE(info_.HandleMCCMNC(&state, "000001,0,000002,3"));
-  EXPECT_EQ(state.provider->mccmnc_list().size(), 2);
-  EXPECT_EQ(info_.mccmnc_to_operator_.size(), 2);
-  EXPECT_EQ(info_.mccmnc_to_operator_["000001"], state.provider);
-  EXPECT_EQ(info_.mccmnc_to_operator_["000002"], state.provider);
-  EXPECT_EQ(state.provider->mccmnc_list()[0], "000001");
-  EXPECT_EQ(state.provider->mccmnc_list()[1], "000002");
-  EXPECT_EQ(state.provider->mccmnc_to_olp_idx_.size(), 2);
-  EXPECT_EQ(state.provider->mccmnc_to_olp_idx_["000001"], 0);
-  EXPECT_EQ(state.provider->mccmnc_to_olp_idx_["000002"], 3);
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# MCCMNC entry in this one is good.\n"
+      "provider:1,1,0,1\n"
+      "mccmnc:000001,0,000002,3\n");
+
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(2, info_.operators()[0]->mccmnc_list().size());
+  EXPECT_EQ("000001", info_.operators()[0]->mccmnc_list()[0]);
+  EXPECT_EQ("000002", info_.operators()[0]->mccmnc_list()[1]);
+  EXPECT_EQ(info_.operators()[0], info_.GetCellularOperatorByMCCMNC("000001"));
+  EXPECT_EQ(info_.operators()[0], info_.GetCellularOperatorByMCCMNC("000002"));
+  EXPECT_EQ(NULL, info_.GetCellularOperatorByMCCMNC("000003"));
 }
 
 TEST_F(CellularOperatorInfoTest, HandleName) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleName(&state, ","));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# No provider entry\n"
+      "name:,\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
-  EXPECT_TRUE(state.provider);
-  EXPECT_TRUE(state.provider->name_list().empty());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "# Name has incorrect number of fields.\n"
+      "name:,,\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_FALSE(info_.HandleName(&state, ",,"));
-  EXPECT_TRUE(state.provider->name_list().empty());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "# Name is valid.\n"
+      "name:en,Test Name\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(1, info_.operators()[0]->name_list().size());
+  EXPECT_EQ("en", info_.operators()[0]->name_list()[0].language);
+  EXPECT_EQ("Test Name", info_.operators()[0]->name_list()[0].name);
 
-  EXPECT_TRUE(info_.HandleName(&state, "en,Test Name"));
-  EXPECT_EQ(state.provider->name_list().size(), 1);
-
-  const CellularOperatorInfo::LocalizedName &name =
-      state.provider->name_list()[0];
-  EXPECT_EQ(name.language, "en");
-  EXPECT_EQ(name.name, "Test Name");
-
-  EXPECT_TRUE(info_.HandleName(&state, ",Other Test Name"));
-  EXPECT_EQ(state.provider->name_list().size(), 2);
-
-  const CellularOperatorInfo::LocalizedName &name2 =
-      state.provider->name_list()[1];
-  EXPECT_EQ(name2.language, "");
-  EXPECT_EQ(name2.name, "Other Test Name");
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "# More than one valid names.\n"
+      "name:en,Test Name\n"
+      "name:,Other Name\n"
+      "name:de,\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(3, info_.operators()[0]->name_list().size());
+  EXPECT_EQ("en", info_.operators()[0]->name_list()[0].language);
+  EXPECT_EQ("Test Name", info_.operators()[0]->name_list()[0].name);
+  EXPECT_TRUE(info_.operators()[0]->name_list()[1].language.empty());
+  EXPECT_EQ("Other Name", info_.operators()[0]->name_list()[1].name);
+  EXPECT_EQ("de", info_.operators()[0]->name_list()[2].language);
+  EXPECT_TRUE(info_.operators()[0]->name_list()[2].name.empty());
 }
 
 TEST_F(CellularOperatorInfoTest, HandleAPN) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleAPN(&state, ",,,"));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# No provider\n"
+      "apn:,,,\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
-  EXPECT_TRUE(state.provider);
-  EXPECT_TRUE(state.provider->apn_list().empty());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,0,0,0\n"
+      "# Badly formed apn line.\n"
+      "apn:,\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_FALSE(info_.HandleAPN(&state, ","));
-  EXPECT_TRUE(state.provider->apn_list().empty());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,0,0,0\n"
+      "apn:0,testapn,testusername,testpassword\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(1, info_.operators()[0]->apn_list().size());
+  EXPECT_EQ("testapn", info_.operators()[0]->apn_list()[0]->apn);
+  EXPECT_EQ("testusername", info_.operators()[0]->apn_list()[0]->username);
+  EXPECT_EQ("testpassword", info_.operators()[0]->apn_list()[0]->password);
 
-  EXPECT_FALSE(state.parsing_apn);
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,0,0,0\n"
+      "apn:0,apn1,user1,password1\n"
+      "apn:2,apn2,user2,password2\n"
+      "name:en,Apn Name\n"
+      "name:de,Apn Name2\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(2, info_.operators()[0]->apn_list().size());
+  EXPECT_EQ("apn1", info_.operators()[0]->apn_list()[0]->apn);
+  EXPECT_EQ("user1", info_.operators()[0]->apn_list()[0]->username);
+  EXPECT_EQ("password1", info_.operators()[0]->apn_list()[0]->password);
+  EXPECT_EQ("apn2", info_.operators()[0]->apn_list()[1]->apn);
+  EXPECT_EQ("user2", info_.operators()[0]->apn_list()[1]->username);
+  EXPECT_EQ("password2", info_.operators()[0]->apn_list()[1]->password);
 
-  EXPECT_TRUE(info_.HandleAPN(&state, "0,testapn,testusername,testpassword"));
-  EXPECT_EQ(state.provider->apn_list().size(), 1);
-  EXPECT_TRUE(state.parsing_apn);
-
-  const CellularOperatorInfo::MobileAPN *apn = state.provider->apn_list()[0];
-  EXPECT_EQ(apn->apn(), "testapn");
-  EXPECT_EQ(apn->username(), "testusername");
-  EXPECT_EQ(apn->password(), "testpassword");
-}
-
-TEST_F(CellularOperatorInfoTest, HandleAPNName) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleAPNName(&state, ","));
-  state.parsing_apn = true;
-  EXPECT_FALSE(info_.HandleAPNName(&state, ","));
-  state.parsing_apn = false;
-  state.apn = (CellularOperatorInfo::MobileAPN *)1;
-  EXPECT_FALSE(info_.HandleAPNName(&state, ","));
-
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
-  EXPECT_TRUE(state.provider);
-  EXPECT_TRUE(info_.HandleAPN(&state, ",,,"));
-  EXPECT_TRUE(state.parsing_apn && state.apn);
-
-  const CellularOperatorInfo::MobileAPN *apn = state.provider->apn_list()[0];
-
-  EXPECT_FALSE(info_.HandleAPNName(&state, ",,"));
-  EXPECT_EQ(apn->name_list().size(), 0);
-
-  EXPECT_TRUE(info_.HandleAPNName(&state, "en,APN Name"));
-  EXPECT_EQ(apn->name_list().size(), 1);
-
-  const CellularOperatorInfo::LocalizedName &name = apn->name_list()[0];
-  EXPECT_EQ(name.language, "en");
-  EXPECT_EQ(name.name, "APN Name");
-
-  EXPECT_TRUE(info_.HandleAPNName(&state, ",Other APN Name"));
-  EXPECT_EQ(apn->name_list().size(), 2);
-
-  const CellularOperatorInfo::LocalizedName &name2 = apn->name_list()[1];
-  EXPECT_EQ(name2.language, "");
-  EXPECT_EQ(name2.name, "Other APN Name");
+  EXPECT_TRUE(info_.operators()[0]->apn_list()[0]->name_list.empty());
+  EXPECT_EQ(2, info_.operators()[0]->apn_list()[1]->name_list.size());
+  EXPECT_EQ("en",
+            info_.operators()[0]->apn_list()[1]->name_list[0].language);
+  EXPECT_EQ("Apn Name",
+            info_.operators()[0]->apn_list()[1]->name_list[0].name);
+  EXPECT_EQ("de",
+            info_.operators()[0]->apn_list()[1]->name_list[1].language);
+  EXPECT_EQ("Apn Name2",
+            info_.operators()[0]->apn_list()[1]->name_list[1].name);
 }
 
 TEST_F(CellularOperatorInfoTest, HandleSID) {
- CellularOperatorInfo::ParserState state;
- EXPECT_FALSE(info_.HandleSID(&state, "1,0"));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# SID entry without a provider.\n"
+      "sid:1,1\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
 
- EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
- EXPECT_TRUE(state.provider);
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# Empty SID entry.\n"
+      "provider:1,1,0,1\n"
+      "sid:\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
- EXPECT_FALSE(info_.HandleSID(&state, ""));
- EXPECT_TRUE(state.provider->sid_list().empty());
- EXPECT_TRUE(info_.sid_to_operator_.empty());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# SID entry has odd number of values.\n"
+      "provider:1,1,0,1\n"
+      "sid:1,0,2\n");
 
- EXPECT_FALSE(info_.HandleSID(&state, "1,2,3"));
- EXPECT_TRUE(state.provider->sid_list().empty());
- EXPECT_TRUE(info_.sid_to_operator_.empty());
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
- EXPECT_TRUE(info_.HandleSID(&state, "1,5,2,3,3,0"));
- EXPECT_EQ(state.provider->sid_list().size(), 3);
- EXPECT_EQ(info_.sid_to_operator_.size(), 3);
- EXPECT_EQ(info_.sid_to_operator_["1"], state.provider);
- EXPECT_EQ(info_.sid_to_operator_["2"], state.provider);
- EXPECT_EQ(info_.sid_to_operator_["3"], state.provider);
- EXPECT_EQ(state.provider->sid_list()[0], "1");
- EXPECT_EQ(state.provider->sid_list()[1], "2");
- EXPECT_EQ(state.provider->sid_list()[2], "3");
- EXPECT_EQ(state.provider->sid_to_olp_idx_.size(), 3);
- EXPECT_EQ(state.provider->sid_to_olp_idx_["1"], 5);
- EXPECT_EQ(state.provider->sid_to_olp_idx_["2"], 3);
- EXPECT_EQ(state.provider->sid_to_olp_idx_["3"], 0);
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# SID entry in this one is good.\n"
+      "provider:1,1,0,1\n"
+      "sid:1,0,2,3\n");
+
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(2, info_.operators()[0]->sid_list().size());
+  EXPECT_EQ("1", info_.operators()[0]->sid_list()[0]);
+  EXPECT_EQ("2", info_.operators()[0]->sid_list()[1]);
+  EXPECT_EQ(info_.operators()[0], info_.GetCellularOperatorBySID("1"));
+  EXPECT_EQ(info_.operators()[0], info_.GetCellularOperatorBySID("2"));
+  EXPECT_EQ(NULL, info_.GetCellularOperatorBySID("3"));
 }
 
 TEST_F(CellularOperatorInfoTest, HandleIdentifier) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleIdentifier(&state, "testidentifier"));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# No provider entry.\n"
+      "identifier:test-id\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
-  EXPECT_TRUE(state.provider);
-  EXPECT_EQ("", state.provider->identifier());
-
-  EXPECT_TRUE(info_.HandleIdentifier(&state, "testidentifier0"));
-  EXPECT_EQ("testidentifier0", state.provider->identifier());
-  EXPECT_TRUE(info_.HandleIdentifier(&state, "testidentifier1"));
-  EXPECT_EQ("testidentifier1", state.provider->identifier());
-  EXPECT_TRUE(info_.HandleIdentifier(&state, "testidentifier2"));
-  EXPECT_EQ("testidentifier2", state.provider->identifier());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "identifier:test-id\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ("test-id", info_.operators()[0]->identifier());
 }
 
 TEST_F(CellularOperatorInfoTest, HandleOLP) {
-  CellularOperatorInfo::ParserState state;
-  EXPECT_FALSE(info_.HandleOLP(&state, ",,"));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# No provider entry.\n"
+      "olp:,,\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_TRUE(info_.HandleProvider(&state, "1,1,0,0"));
-  EXPECT_TRUE(state.provider);
-  EXPECT_EQ(0, state.provider->olp_list().size());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "# Badly formed APN\n"
+      "olp:,\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
 
-  EXPECT_FALSE(info_.HandleOLP(&state, ","));
-  EXPECT_EQ(0, state.provider->olp_list().size());
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "# Badly formed APN\n"
+      "olp:,,\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(1, info_.operators()[0]->olp_list().size());
+  EXPECT_TRUE(info_.operators()[0]->olp_list()[0]->GetURL().empty());
+  EXPECT_TRUE(info_.operators()[0]->olp_list()[0]->GetMethod().empty());
+  EXPECT_TRUE(info_.operators()[0]->olp_list()[0]->GetPostData().empty());
 
-  EXPECT_TRUE(info_.HandleOLP(&state, ",,"));
-  EXPECT_EQ(1, state.provider->olp_list().size());
-  EXPECT_EQ(state.provider->olp_list()[0]->GetURL(), "");
-  EXPECT_EQ(state.provider->olp_list()[0]->GetMethod(), "");
-  EXPECT_EQ(state.provider->olp_list()[0]->GetPostData(), "");
-
-  EXPECT_TRUE(info_.HandleOLP(&state, "a,b,c"));
-  EXPECT_EQ(2, state.provider->olp_list().size());
-  EXPECT_EQ(state.provider->olp_list()[0]->GetURL(), "");
-  EXPECT_EQ(state.provider->olp_list()[0]->GetMethod(), "");
-  EXPECT_EQ(state.provider->olp_list()[0]->GetPostData(), "");
-  EXPECT_EQ(state.provider->olp_list()[1]->GetMethod(), "a");
-  EXPECT_EQ(state.provider->olp_list()[1]->GetURL(), "b");
-  EXPECT_EQ(state.provider->olp_list()[1]->GetPostData(), "c");
-}
-
-TEST_F(CellularOperatorInfoTest, ParseNameLine) {
-  CellularOperatorInfo::LocalizedName name;
-  EXPECT_FALSE(info_.ParseNameLine(",,", &name));
-  EXPECT_FALSE(info_.ParseNameLine("", &name));
-  EXPECT_TRUE(info_.ParseNameLine("a,b", &name));
-  EXPECT_EQ(name.language, "a");
-  EXPECT_EQ(name.name, "b");
-}
-
-TEST_F(CellularOperatorInfoTest, ParseKeyValue) {
-  string line = "key:value";
-  string key, value;
-  EXPECT_TRUE(CellularOperatorInfo::ParseKeyValue(line, ':', &key, &value));
-  EXPECT_EQ("key", key);
-  EXPECT_EQ("value", value);
-
-  line = "key:::::";
-  EXPECT_TRUE(CellularOperatorInfo::ParseKeyValue(line, ':', &key, &value));
-  EXPECT_EQ("key", key);
-  EXPECT_EQ("::::", value);
-
-  line = ":";
-  EXPECT_TRUE(CellularOperatorInfo::ParseKeyValue(line, ':', &key, &value));
-  EXPECT_EQ("", key);
-  EXPECT_EQ("", value);
-
-  line = ":value";
-  EXPECT_TRUE(CellularOperatorInfo::ParseKeyValue(line, ':', &key, &value));
-  EXPECT_EQ("", key);
-  EXPECT_EQ("value", value);
-
-  line = "";
-  EXPECT_FALSE(CellularOperatorInfo::ParseKeyValue(line, ':', &key, &value));
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "# Badly formed APN\n"
+      "olp:a,b,c\n"
+      "olp:d,e,f\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ(2, info_.operators()[0]->olp_list().size());
+  EXPECT_EQ("a", info_.operators()[0]->olp_list()[0]->GetMethod());
+  EXPECT_EQ("b", info_.operators()[0]->olp_list()[0]->GetURL());
+  EXPECT_EQ("c", info_.operators()[0]->olp_list()[0]->GetPostData());
+  EXPECT_EQ("d", info_.operators()[0]->olp_list()[1]->GetMethod());
+  EXPECT_EQ("e", info_.operators()[0]->olp_list()[1]->GetURL());
+  EXPECT_EQ("f", info_.operators()[0]->olp_list()[1]->GetPostData());
 }
 
 }  // namespace shill
