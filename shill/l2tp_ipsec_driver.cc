@@ -187,18 +187,14 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
   process_env.push_back(NULL);
 
   CHECK(!pid_);
-  // Redirect all l2tp/ipsec output to stderr.
-  int stderr_fd = fileno(stderr);
-  if (!glib_->SpawnAsyncWithPipesCWD(process_args.data(),
-                                     process_env.data(),
-                                     G_SPAWN_DO_NOT_REAP_CHILD,
-                                     NULL,
-                                     NULL,
-                                     &pid_,
-                                     NULL,
-                                     &stderr_fd,
-                                     &stderr_fd,
-                                     NULL)) {
+  if (!glib_->SpawnAsync(NULL,
+                         process_args.data(),
+                         process_env.data(),
+                         G_SPAWN_DO_NOT_REAP_CHILD,
+                         NULL,
+                         NULL,
+                         &pid_,
+                         NULL)) {
     Error::PopulateAndLog(error, Error::kInternalError,
                           string("Unable to spawn: ") + process_args[0]);
     return false;

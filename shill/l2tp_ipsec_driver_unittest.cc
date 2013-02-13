@@ -444,10 +444,9 @@ TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
 
   const int kPID = 234678;
-  EXPECT_CALL(glib_,
-              SpawnAsyncWithPipesCWD(_, CheckEnv(), _, _, _, _, _, _, _, _))
+  EXPECT_CALL(glib_, SpawnAsync(_, _, CheckEnv(), _, _, _, _, _))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<5>(kPID), Return(true)));
+      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
   const int kTag = 6;
   EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_->OnL2TPIPSecVPNDied, driver_))
       .WillOnce(Return(kTag));
@@ -465,8 +464,7 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
   static const char kHost[] = "192.168.2.254";
   SetArg(flimflam::kProviderHostProperty, kHost);
-  EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
   Error error;
   driver_->Connect(service_, &error);

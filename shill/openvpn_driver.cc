@@ -227,18 +227,14 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   process_env.push_back(NULL);
 
   CHECK(!pid_);
-  // Redirect all openvpn output to stderr.
-  int stderr_fd = fileno(stderr);
-  if (!glib_->SpawnAsyncWithPipesCWD(process_args.data(),
-                                     process_env.data(),
-                                     G_SPAWN_DO_NOT_REAP_CHILD,
-                                     NULL,
-                                     NULL,
-                                     &pid_,
-                                     NULL,
-                                     &stderr_fd,
-                                     &stderr_fd,
-                                     NULL)) {
+  if (!glib_->SpawnAsync(NULL,
+                         process_args.data(),
+                         process_env.data(),
+                         G_SPAWN_DO_NOT_REAP_CHILD,
+                         NULL,
+                         NULL,
+                         &pid_,
+                         NULL)) {
     LOG(ERROR) << "Unable to spawn: " << kOpenVPNPath;
     return false;
   }
@@ -283,10 +279,11 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnOpenVPN()) {
     Cleanup(Service::kStateFailure);
+  } else {
+    default_service_callback_tag_ =
+        manager()->RegisterDefaultServiceCallback(
+            Bind(&OpenVPNDriver::OnDefaultServiceChanged, Unretained(this)));
   }
-  default_service_callback_tag_ =
-      manager()->RegisterDefaultServiceCallback(
-          Bind(&OpenVPNDriver::OnDefaultServiceChanged, Unretained(this)));
   return true;
 }
 

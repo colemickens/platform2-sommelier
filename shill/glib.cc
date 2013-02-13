@@ -197,29 +197,6 @@ gboolean GLib::SpawnAsync(const gchar *working_directory,
                        error);
 }
 
-gboolean GLib::SpawnAsyncWithPipesCWD(gchar **argv,
-                                      gchar **envp,
-                                      GSpawnFlags flags,
-                                      GSpawnChildSetupFunc child_setup,
-                                      gpointer user_data,
-                                      GPid *child_pid,
-                                      gint *standard_input,
-                                      gint *standard_output,
-                                      gint *standard_error,
-                                      GError **error) {
-  return g_spawn_async_with_pipes(NULL,
-                                  argv,
-                                  envp,
-                                  flags,
-                                  child_setup,
-                                  user_data,
-                                  child_pid,
-                                  standard_input,
-                                  standard_output,
-                                  standard_error,
-                                  error);
-}
-
 void GLib::SpawnClosePID(GPid pid) {
   g_spawn_close_pid(pid);
 }

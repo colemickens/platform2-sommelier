@@ -132,17 +132,6 @@ class GLib {
                               gpointer user_data,
                               GPid *child_pid,
                               GError **error);
-  // g_spawn_async_with_pipes(NULL, ...
-  virtual gboolean SpawnAsyncWithPipesCWD(gchar **argv,
-                                          gchar **envp,
-                                          GSpawnFlags flags,
-                                          GSpawnChildSetupFunc child_setup,
-                                          gpointer user_data,
-                                          GPid *child_pid,
-                                          gint *standard_input,
-                                          gint *standard_output,
-                                          gint *standard_error,
-                                          GError **error);
   // g_spawn_close_pid
   virtual void SpawnClosePID(GPid pid);
   // g_spawn_sync

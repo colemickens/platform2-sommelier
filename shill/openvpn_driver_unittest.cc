@@ -782,8 +782,7 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   SetArg(flimflam::kProviderHostProperty, kHost);
   EXPECT_CALL(*management_server_, Start(_, _, _)).WillOnce(Return(true));
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
-  EXPECT_CALL(glib_, SpawnAsyncWithPipesCWD(_, _, _, _, _, _, _, _, _, _))
-      .WillOnce(Return(true));
+  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
   const int kServiceCallbackTag = 1;
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
@@ -863,10 +862,9 @@ TEST_F(OpenVPNDriverTest, SpawnOpenVPN) {
   EXPECT_CALL(manager_, IsOnline()).Times(2).WillRepeatedly(Return(false));
 
   const int kPID = 234678;
-  EXPECT_CALL(glib_,
-              SpawnAsyncWithPipesCWD(_, CheckEnv(), _, _, _, _, _, _, _, _))
+  EXPECT_CALL(glib_, SpawnAsync(_, _, CheckEnv(), _, _, _, _, _))
       .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<5>(kPID), Return(true)));
+      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
   const int kTag = 6;
   EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_->OnOpenVPNDied, driver_))
       .WillOnce(Return(kTag));
