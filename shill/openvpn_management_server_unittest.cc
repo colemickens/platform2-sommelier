@@ -15,6 +15,8 @@
 #include "shill/mock_openvpn_driver.h"
 #include "shill/mock_sockets.h"
 
+using base::Bind;
+using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
@@ -26,10 +28,6 @@ using testing::ReturnNew;
 namespace shill {
 
 namespace {
-MATCHER_P(CallbackEq, callback, "") {
-  return arg.Equals(callback);
-}
-
 MATCHER_P(VoidStringEq, value, "") {
   return value == reinterpret_cast<const char *>(arg);
 }
@@ -164,8 +162,7 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_CALL(sockets_, Listen(kSocket, 1)).WillOnce(Return(0));
   EXPECT_CALL(sockets_, GetSockName(kSocket, _, _)).WillOnce(Return(0));
   EXPECT_CALL(dispatcher_,
-              CreateReadyHandler(kSocket, IOHandler::kModeInput,
-                                 CallbackEq(server_.ready_callback_)))
+              CreateReadyHandler(kSocket, IOHandler::kModeInput, _))
       .WillOnce(ReturnNew<IOHandler>());
   vector<string> options;
   EXPECT_TRUE(server_.Start(&dispatcher_, &sockets_, &options));
@@ -211,9 +208,7 @@ TEST_F(OpenVPNManagementServerTest, OnReady) {
   EXPECT_CALL(sockets_, Accept(kSocket, NULL, NULL))
       .WillOnce(Return(kConnectedSocket));
   server_.ready_handler_.reset(new IOHandler());
-  EXPECT_CALL(dispatcher_,
-              CreateInputHandler(kConnectedSocket,
-                                 CallbackEq(server_.input_callback_), _))
+  EXPECT_CALL(dispatcher_, CreateInputHandler(kConnectedSocket, _, _))
       .WillOnce(ReturnNew<IOHandler>());
   ExpectSend("state on\n");
   server_.OnReady(kSocket);

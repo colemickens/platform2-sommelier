@@ -14,6 +14,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/glib.h"
 #include "shill/logging.h"
@@ -24,6 +25,7 @@ using base::Bind;
 using base::IntToString;
 using base::SplitString;
 using base::StringPrintf;
+using base::Unretained;
 using std::string;
 using std::vector;
 
@@ -33,11 +35,6 @@ OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
                                                  GLib *glib)
     : driver_(driver),
       glib_(glib),
-      weak_ptr_factory_(this),
-      ready_callback_(Bind(&OpenVPNManagementServer::OnReady,
-                           weak_ptr_factory_.GetWeakPtr())),
-      input_callback_(Bind(&OpenVPNManagementServer::OnInput,
-                           weak_ptr_factory_.GetWeakPtr())),
       sockets_(NULL),
       socket_(-1),
       dispatcher_(NULL),
@@ -83,7 +80,8 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   socket_ = socket;
   ready_handler_.reset(
       dispatcher->CreateReadyHandler(
-          socket, IOHandler::kModeInput, ready_callback_));
+          socket, IOHandler::kModeInput,
+          Bind(&OpenVPNManagementServer::OnReady, Unretained(this))));
   dispatcher_ = dispatcher;
 
   // Append openvpn management API options.
@@ -153,9 +151,10 @@ void OpenVPNManagementServer::OnReady(int fd) {
     return;
   }
   ready_handler_.reset();
-  // TODO(petkov): Create an error callback.  crosbug.com/37427
   input_handler_.reset(dispatcher_->CreateInputHandler(
-      connected_socket_, input_callback_, IOHandler::ErrorCallback()));
+      connected_socket_,
+      Bind(&OpenVPNManagementServer::OnInput, Unretained(this)),
+      Bind(&OpenVPNManagementServer::OnInputError, Unretained(this))));
   SendState("on");
 }
 
@@ -168,6 +167,11 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
        it != messages.end() && IsStarted(); ++it) {
     ProcessMessage(*it);
   }
+}
+
+void OpenVPNManagementServer::OnInputError(const Error &error) {
+  LOG(ERROR) << error;
+  driver_->Cleanup(Service::kStateFailure);
 }
 
 void OpenVPNManagementServer::ProcessMessage(const string &message) {

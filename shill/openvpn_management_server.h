@@ -9,12 +9,12 @@
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/cancelable_callback.h>
-#include <base/memory/weak_ptr.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
 
+class Error;
 class EventDispatcher;
 class GLib;
 struct InputData;
@@ -80,6 +80,7 @@ class OpenVPNManagementServer {
   // IO handler callbacks.
   void OnReady(int fd);
   void OnInput(InputData *data);
+  void OnInputError(const Error &error);
 
   void Send(const std::string &data);
   void SendState(const std::string &state);
@@ -111,9 +112,6 @@ class OpenVPNManagementServer {
 
   OpenVPNDriver *driver_;
   GLib *glib_;
-  base::WeakPtrFactory<OpenVPNManagementServer> weak_ptr_factory_;
-  base::Callback<void(int)> ready_callback_;
-  base::Callback<void(InputData *)> input_callback_;
 
   Sockets *sockets_;
   int socket_;
