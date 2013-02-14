@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 PKG_CONFIG ?= pkg-config
-BASE_VER = 85268
+BASE_VER ?= 180609
 PC_DEPS = dbus-c++-1 gobject-2.0 gthread-2.0 \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
