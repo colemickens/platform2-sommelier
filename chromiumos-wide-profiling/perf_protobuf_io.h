@@ -8,11 +8,10 @@
 #include <string>
 #include "perf_data.pb.h"
 
-bool WriteProtobufToFile(const PerfDataProto & perf_data_proto,
-                         const std::string & filename);
+bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
+                         const std::string& filename);
 
-bool ReadProtobufFromFile(PerfDataProto * perf_data_proto,
-                          const std::string & filename);
+bool ReadProtobufFromFile(PerfDataProto* perf_data_proto,
+                          const std::string& filename);
 
-
-#endif /*PERF_PROTOBUF_IO_H_*/
+#endif  // PERF_PROTOBUF_IO_H_

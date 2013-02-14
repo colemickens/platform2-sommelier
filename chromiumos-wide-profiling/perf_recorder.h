@@ -5,6 +5,8 @@
 #ifndef PERF_RECORDER_H_
 #define PERF_RECORDER_H_
 
+#include <string>
+
 #include "common.h"
 #include "perf_reader.h"
 #include "perf_data.pb.h"
@@ -12,13 +14,12 @@
 class PerfRecorder {
  public:
   PerfRecorder() {}
-  bool RecordAndConvertToProtobuf(std::string perf_command,
+  bool RecordAndConvertToProtobuf(const std::string& perf_command,
                                   const int time,
-                                  PerfDataProto * perf_data);
+                                  PerfDataProto* perf_data);
  private:
   std::string GetSleepCommand(const int time);
   DISALLOW_COPY_AND_ASSIGN(PerfRecorder);
 };
 
-
-#endif /*PERF_RECORDER_H_*/
+#endif  // PERF_RECORDER_H_

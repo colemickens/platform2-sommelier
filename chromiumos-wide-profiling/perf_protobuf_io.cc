@@ -3,13 +3,13 @@
 // found in the LICENSE file.
 
 #include <fstream>
+#include <vector>
 
 #include "perf_protobuf_io.h"
 #include "utils.h"
 
-bool WriteProtobufToFile(const PerfDataProto & perf_data_proto,
-                         const std::string & filename)
-{
+bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
+                         const std::string& filename) {
   std::string target;
   perf_data_proto.SerializeToString(&target);
 
@@ -17,12 +17,11 @@ bool WriteProtobufToFile(const PerfDataProto & perf_data_proto,
   return BufferToFile(filename, buffer);
 }
 
-bool ReadProtobufFromFile(PerfDataProto * perf_data_proto,
-                          const std::string & filename)
-{
+bool ReadProtobufFromFile(PerfDataProto* perf_data_proto,
+                          const std::string& filename) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   std::vector<char> buffer;
-  if(!FileToBuffer(filename, &buffer))
+  if (!FileToBuffer(filename, &buffer))
     return false;
 
   bool ret = perf_data_proto->ParseFromArray(buffer.data(), buffer.size());

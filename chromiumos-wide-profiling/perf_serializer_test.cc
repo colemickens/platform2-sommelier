@@ -2,54 +2,48 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string>
 #include <gtest/gtest.h>
+
+#include <string>
 
 #include "perf_reader.h"
 #include "perf_serializer.h"
 #include "perf_protobuf_io.h"
 #include "utils.h"
 
-void SerializeAndDeserialize(const std::string & input,
-                             const std::string & output) {
+void SerializeAndDeserialize(const std::string& input,
+                             const std::string& output) {
   PerfSerializer perf_serializer;
   PerfDataProto perf_data_proto;
-  EXPECT_TRUE(perf_serializer.Serialize(input.c_str(),
-                                        &perf_data_proto));
-  EXPECT_TRUE(perf_serializer.Deserialize(output.c_str(),
-                                          &perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Serialize(input.c_str(), &perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Deserialize(output.c_str(), perf_data_proto));
 }
 
-void SerializeToFileAndBack(const std::string & input,
-                            const std::string & output)
-{
+void SerializeToFileAndBack(const std::string& input,
+                            const std::string& output) {
   PerfSerializer perf_serializer;
-  PerfDataProto perf_data_proto, perf_data_proto1;
+  PerfDataProto input_perf_data_proto, output_perf_data_proto;
 
-  EXPECT_TRUE(perf_serializer.Serialize(input.c_str(),
-                                        &perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Serialize(input.c_str(), &input_perf_data_proto));
   // Now store the protobuf into a file.
-  std::string filename, filename1;
-  EXPECT_TRUE(CreateNamedTempFile(&filename));
-  EXPECT_TRUE(CreateNamedTempFile(&filename1));
+  std::string input_filename, output_filename;
+  EXPECT_TRUE(CreateNamedTempFile(&input_filename));
+  EXPECT_TRUE(CreateNamedTempFile(&output_filename));
 
-  EXPECT_TRUE(WriteProtobufToFile(perf_data_proto,
-                                  filename));
+  EXPECT_TRUE(WriteProtobufToFile(input_perf_data_proto, input_filename));
 
-  EXPECT_TRUE(ReadProtobufFromFile(&perf_data_proto1,
-                                   filename));
+  EXPECT_TRUE(ReadProtobufFromFile(&output_perf_data_proto, input_filename));
 
   EXPECT_TRUE(perf_serializer.Deserialize(output.c_str(),
-                                          &perf_data_proto1));
+                                          output_perf_data_proto));
 
-  EXPECT_TRUE(WriteProtobufToFile(perf_data_proto1,
-                                  filename1));
+  EXPECT_TRUE(WriteProtobufToFile(output_perf_data_proto, output_filename));
 
-  EXPECT_TRUE(GetFileSize(filename) != 0);
-  ASSERT_TRUE(CompareFileContents(filename, filename1));
+  EXPECT_NE(GetFileSize(input_filename), 0);
+  ASSERT_TRUE(CompareFileContents(input_filename, output_filename));
 
-  remove(filename.c_str());
-  remove(filename1.c_str());
+  remove(input_filename.c_str());
+  remove(output_filename.c_str());
 }
 
 TEST(PerfReaderTest, Test1Cycle) {
@@ -78,16 +72,15 @@ TEST(PerfReaderTest, Test1Cycle) {
   output_perf_reader2.ReadFile(output_perf_data2);
 
   // Make sure the # of events do not change.
-  ASSERT_TRUE(input_perf_reader.get_events().size() ==
-              output_perf_reader.get_events().size());
-  ASSERT_TRUE(input_perf_reader.get_events().size() ==
-              output_perf_reader1.get_events().size());
-  ASSERT_TRUE(input_perf_reader.get_events().size() ==
-              output_perf_reader2.get_events().size());
+  ASSERT_TRUE(input_perf_reader.events().size() ==
+              output_perf_reader.events().size());
+  ASSERT_TRUE(input_perf_reader.events().size() ==
+              output_perf_reader1.events().size());
+  ASSERT_TRUE(input_perf_reader.events().size() ==
+              output_perf_reader2.events().size());
 }
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

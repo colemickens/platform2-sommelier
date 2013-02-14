@@ -16,35 +16,28 @@ std::string PerfRecorder::GetSleepCommand(const int time) {
 }
 
 bool PerfRecorder::RecordAndConvertToProtobuf(
-    std::string perf_command,
+    const std::string& perf_command,
     const int time,
-    PerfDataProto * perf_data) {
-  FILE * fp;
-  int ret;
-
+    PerfDataProto* perf_data) {
   std::string temp_file;
   if (!CreateNamedTempFile(&temp_file))
     return false;
-  // Add -o - to the command line.
-  perf_command += std::string(" -o ") +
-      temp_file +
-      " -- " + GetSleepCommand(time);
+  // TODO(asharif): Use a pipe instead of a temporary file here.
+  std::string full_perf_command = perf_command + std::string(" -o ") +
+      temp_file + " -- " + GetSleepCommand(time);
 
-
-  fp = popen(perf_command.c_str(), "r");
-  ret = pclose(fp);
-  if (ret != 0)
+  FILE* fp = popen(full_perf_command.c_str(), "r");
+  if (pclose(fp))
     return false;
 
   // Now parse the output of perf into a protobuf.
   PerfReader perf_reader;
   perf_reader.ReadFile(temp_file);
 
-  ret = remove(temp_file.c_str());
-  if (ret != 0)
-    return false;
+  if (remove(temp_file.c_str()))
+      return false;
 
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;
-  return perf_serializer.SerializeReader(&perf_reader, perf_data);
+  return perf_serializer.SerializeReader(perf_reader, perf_data);
 }

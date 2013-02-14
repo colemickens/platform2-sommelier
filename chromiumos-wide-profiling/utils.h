@@ -10,14 +10,12 @@
 
 #include "common.h"
 
+bool FileToBuffer(const std::string& filename, std::vector<char>* contents);
+bool BufferToFile(const std::string& filename,
+                  const std::vector<char>& contents);
+std::ifstream::pos_type GetFileSize(const std::string& filename);
+bool CompareFileContents(const std::string& a, const std::string& b);
+uint64 Md5Prefix(const std::string& input);
+bool CreateNamedTempFile(std::string* name);
 
-bool FileToBuffer(const std::string & filename, std::vector<char> * contents);
-bool BufferToFile(const std::string & filename,
-                  const std::vector<char> & contents);
-std::ifstream::pos_type GetFileSize(const std::string & filename);
-bool CompareFileContents(const std::string & a, const std::string & b);
-uint64 Md5Prefix(const std::string input);
-bool CreateNamedTempFile(std::string * name);
-
-
-#endif /*UTILS_H_*/
+#endif  // UTILS_H_

@@ -8,10 +8,12 @@
 #include "perf_reader.h"
 #include "perf_recorder.h"
 
-bool ParseArguments(int argc, char * argv[],
-                    std::string * perf_command_line,
-                    int * duration)
-{
+namespace {
+const char kDefaultOutputFile[] = "/dev/stdout";
+}
+
+bool ParseArguments(int argc, char* argv[], std::string* perf_command_line,
+                    int* duration) {
   if (argc < 3) {
     LOG(ERROR) << "Invalid command line.";
     LOG(ERROR) << "Usage: " << argv[0] <<
@@ -25,8 +27,7 @@ bool ParseArguments(int argc, char * argv[],
   ss << argv[1];
   ss >> *duration;
 
-  for( int i=2 ; i<argc ; i++ )
-  {
+  for (int i = 2; i < argc; i++) {
     *perf_command_line += " ";
     *perf_command_line += argv[i];
   }
@@ -35,26 +36,20 @@ bool ParseArguments(int argc, char * argv[],
 
 // Usage is:
 // <exe> <duration in seconds> <perf command line>
-int main(int argc, char * argv[])
-{
-  PerfDataProto perf_data_proto;
-  PerfRecorder perf_recorder;
-  bool ret;
+int main(int argc, char* argv[]) {
   std::string perf_command_line;
   int perf_duration;
 
-  ret = ParseArguments(argc, argv, &perf_command_line, &perf_duration);
-  if (!ret)
+  if (!ParseArguments(argc, argv, &perf_command_line, &perf_duration))
     return 1;
 
-  ret = perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
-                                                 atoi(argv[1]),
-                                                 &perf_data_proto);
-  if (ret == false)
+  PerfRecorder perf_recorder;
+  PerfDataProto perf_data_proto;
+  if (!perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
+                                                perf_duration,
+                                                &perf_data_proto))
     return 1;
-  ret = WriteProtobufToFile(perf_data_proto,
-                            "/dev/stdout");
-  if (ret == false)
+  if (!WriteProtobufToFile(perf_data_proto, kDefaultOutputFile))
     return 1;
   return 0;
 }

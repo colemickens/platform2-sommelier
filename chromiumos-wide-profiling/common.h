@@ -5,15 +5,16 @@
 #ifndef COMMON_H_
 #define COMMON_H_
 
+#include <stdint.h>
+
 #include <iostream>
 #include <sstream>
-#include <stdint.h>
 
 typedef uint64_t uint64;
 
 // Simulate Chrome-like logging:
 
-enum LOG_LEVEL {
+enum LogLevel {
   ERROR,
   INFO,
   WARNING,
@@ -21,7 +22,7 @@ enum LOG_LEVEL {
 
 class LOG {
  public:
-  LOG(int level) {
+  explicit LOG(int level) {
     level_ = level;
   }
 
@@ -29,7 +30,7 @@ class LOG {
     std::cerr << ss_.str() << std::endl;
   }
 
-  template <class T> LOG & operator <<(const T &x) {
+  template <class T> LOG& operator <<(const T& x) {
     ss_ << x;
     return *this;
   }
@@ -44,4 +45,4 @@ class LOG {
     TypeName(const TypeName&); \
     void operator=(const TypeName&)
 
-#endif /*COMMON_H_*/
+#endif  // COMMON_H_

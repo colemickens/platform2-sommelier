@@ -7,7 +7,6 @@
 
 #include "perf_reader.h"
 
-
 TEST(PerfReaderTest, Test1Cycle) {
   PerfReader pr;
   std::string input_perf_data = "perf.data";
@@ -16,8 +15,7 @@ TEST(PerfReaderTest, Test1Cycle) {
   ASSERT_TRUE(pr.WriteFile(output_perf_data));
 }
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }

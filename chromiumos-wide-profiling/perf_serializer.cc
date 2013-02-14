@@ -15,29 +15,29 @@ PerfSerializer::~PerfSerializer() {
 }
 
 void PerfSerializer::SerializeEventHeader(
-    const perf_event_header * header,
-    PerfDataProto_EventHeader * header_proto) const {
+    const perf_event_header* header,
+    PerfDataProto_EventHeader* header_proto) const {
   header_proto->set_type(header->type);
   header_proto->set_misc(header->misc);
   header_proto->set_size(header->size);
 }
 
 void PerfSerializer::DeserializeEventHeader(
-    perf_event_header * header,
-    const PerfDataProto_EventHeader * header_proto) const {
+    perf_event_header* header,
+    const PerfDataProto_EventHeader* header_proto) const {
   header->type = header_proto->type();
   header->misc = header_proto->misc();
   header->size = header_proto->size();
 }
 
 void PerfSerializer::SerializeRecordSample(
-    const event_t * event,
-    PerfDataProto_SampleEvent * sample) const {
+    const event_t* event,
+    PerfDataProto_SampleEvent* sample) const {
   union {
     u64 val64;
     u32 val32[2];
   } u;
-  const u64 * array = event->sample.array;
+  const u64* array = event->sample.array;
   if (type_ & PERF_SAMPLE_IP) {
     sample->set_ip(event->ip.ip);
     array++;
@@ -76,13 +76,13 @@ void PerfSerializer::SerializeRecordSample(
 }
 
 void PerfSerializer::DeserializeRecordSample(
-    event_t * event,
-    const PerfDataProto_SampleEvent * sample) const {
+    event_t* event,
+    const PerfDataProto_SampleEvent* sample) const {
   union {
     u64 val64;
     u32 val32[2];
   } u;
-  u64 * array = event->sample.array;
+  u64* array = event->sample.array;
   if (sample->has_ip()) {
     event->ip.ip = sample->ip();
     array++;
@@ -121,8 +121,8 @@ void PerfSerializer::DeserializeRecordSample(
 }
 
 void PerfSerializer::SerializeCommSample(
-      const event_t * event,
-      PerfDataProto_CommEvent * sample) const {
+      const event_t* event,
+      PerfDataProto_CommEvent* sample) const {
   sample->set_pid(event->comm.pid);
   sample->set_tid(event->comm.tid);
   sample->set_comm(event->comm.comm);
@@ -130,8 +130,8 @@ void PerfSerializer::SerializeCommSample(
 }
 
 void PerfSerializer::DeserializeCommSample(
-    event_t * event,
-    const PerfDataProto_CommEvent * sample) const {
+    event_t* event,
+    const PerfDataProto_CommEvent* sample) const {
   event->comm.pid = sample->pid();
   event->comm.tid = sample->tid();
   snprintf(event->comm.comm,
@@ -141,8 +141,8 @@ void PerfSerializer::DeserializeCommSample(
 }
 
 void PerfSerializer::SerializeMMapSample(
-    const event_t * event,
-    PerfDataProto_MMapEvent * sample) const {
+    const event_t* event,
+    PerfDataProto_MMapEvent* sample) const {
   sample->set_pid(event->mmap.pid);
   sample->set_tid(event->mmap.tid);
   sample->set_start(event->mmap.start);
@@ -153,8 +153,8 @@ void PerfSerializer::SerializeMMapSample(
 }
 
 void PerfSerializer::DeserializeMMapSample(
-    event_t * event,
-    const PerfDataProto_MMapEvent * sample) const {
+    event_t* event,
+    const PerfDataProto_MMapEvent* sample) const {
   event->mmap.pid = sample->pid();
   event->mmap.tid = sample->tid();
   event->mmap.start = sample->start();
@@ -167,22 +167,22 @@ void PerfSerializer::DeserializeMMapSample(
 }
 
 void PerfSerializer::DeserializeEvent(
-    event_t * event,
-    const PerfDataProto_PerfEvent * event_proto) const {
-  DeserializeEventHeader(&(event->header), &(event_proto->header()));
+    event_t* event,
+    const PerfDataProto_PerfEvent* event_proto) const {
+  DeserializeEventHeader(&event->header, &event_proto->header());
   switch (event_proto->header().type()) {
     case PERF_RECORD_SAMPLE: {
-        DeserializeRecordSample(event, &(event_proto->sample_event()));
-        break;
-      }
+      DeserializeRecordSample(event, &event_proto->sample_event());
+      break;
+    }
     case PERF_RECORD_MMAP: {
-        DeserializeMMapSample(event, &(event_proto->mmap_event()));
-        break;
-      }
+      DeserializeMMapSample(event, &event_proto->mmap_event());
+      break;
+    }
     case PERF_RECORD_COMM: {
-        DeserializeCommSample(event, &(event_proto->comm_event()));
-        break;
-      }
+      DeserializeCommSample(event, &event_proto->comm_event());
+      break;
+    }
     case PERF_RECORD_LOST:
     case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
@@ -196,28 +196,28 @@ void PerfSerializer::DeserializeEvent(
 }
 
 void PerfSerializer::SerializeEvent(
-    const event_t * event,
-    PerfDataProto_PerfEvent * event_proto) const {
-  SerializeEventHeader(&(event->header), event_proto->mutable_header());
+    const event_t* event,
+    PerfDataProto_PerfEvent* event_proto) const {
+  SerializeEventHeader(&event->header, event_proto->mutable_header());
   switch (event->header.type) {
     case PERF_RECORD_SAMPLE: {
-        PerfDataProto_SampleEvent * sample_proto =
-            event_proto->mutable_sample_event();
-        SerializeRecordSample(event, sample_proto);
-        break;
-      }
+      PerfDataProto_SampleEvent* sample_proto =
+          event_proto->mutable_sample_event();
+      SerializeRecordSample(event, sample_proto);
+      break;
+    }
     case PERF_RECORD_MMAP: {
-        PerfDataProto_MMapEvent * mmap_proto =
-            event_proto->mutable_mmap_event();
-        SerializeMMapSample(event, mmap_proto);
-        break;
-      }
+      PerfDataProto_MMapEvent* mmap_proto =
+          event_proto->mutable_mmap_event();
+      SerializeMMapSample(event, mmap_proto);
+      break;
+    }
     case PERF_RECORD_COMM: {
-        PerfDataProto_CommEvent * comm_proto =
-            event_proto->mutable_comm_event();
-        SerializeCommSample(event, comm_proto);
-        break;
-      }
+      PerfDataProto_CommEvent* comm_proto =
+          event_proto->mutable_comm_event();
+      SerializeCommSample(event, comm_proto);
+      break;
+    }
     case PERF_RECORD_LOST:
     case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
@@ -231,8 +231,8 @@ void PerfSerializer::SerializeEvent(
 }
 
 void PerfSerializer::DeserializePerfEventAttr(
-    perf_event_attr * perf_event_attr,
-    const PerfDataProto_PerfEventAttr * perf_event_attr_proto) {
+    perf_event_attr* perf_event_attr,
+    const PerfDataProto_PerfEventAttr* perf_event_attr_proto) {
   memset(perf_event_attr, 0, sizeof(*perf_event_attr));
 #define S(x) perf_event_attr->x = perf_event_attr_proto->x()
   S(type);
@@ -279,8 +279,8 @@ void PerfSerializer::DeserializePerfEventAttr(
 }
 
 void PerfSerializer::SerializePerfEventAttr(
-    const perf_event_attr * perf_event_attr,
-    PerfDataProto_PerfEventAttr * perf_event_attr_proto) {
+    const perf_event_attr* perf_event_attr,
+    PerfDataProto_PerfEventAttr* perf_event_attr_proto) {
 #define S(x) perf_event_attr_proto->set_##x(perf_event_attr->x)
   S(type);
   S(size);
@@ -326,62 +326,57 @@ void PerfSerializer::SerializePerfEventAttr(
 }
 
 void PerfSerializer::SerializePerfFileAttr(
-    const PerfFileAttr * perf_file_attr,
-    PerfDataProto_PerfFileAttr * perf_file_attr_proto) {
-  SerializePerfEventAttr(&(perf_file_attr->attr),
-                          perf_file_attr_proto->mutable_attr());
-  for ( size_t i = 0 ; i < perf_file_attr->ids.size() ; i++ )
+    const PerfFileAttr* perf_file_attr,
+    PerfDataProto_PerfFileAttr* perf_file_attr_proto) {
+  SerializePerfEventAttr(&perf_file_attr->attr,
+                         perf_file_attr_proto->mutable_attr());
+  for (size_t i = 0; i < perf_file_attr->ids.size(); i++ )
     perf_file_attr_proto->add_ids(perf_file_attr->ids[i]);
 }
 
 void PerfSerializer::DeserializePerfFileAttr(
-    PerfFileAttr * perf_file_attr,
-    const PerfDataProto_PerfFileAttr * perf_file_attr_proto) {
-  DeserializePerfEventAttr(&(perf_file_attr->attr),
-                            &(perf_file_attr_proto->attr()));
-  for ( int i = 0 ; i < perf_file_attr_proto->ids_size() ; i++ )
+    PerfFileAttr* perf_file_attr,
+    const PerfDataProto_PerfFileAttr* perf_file_attr_proto) {
+  DeserializePerfEventAttr(&perf_file_attr->attr,
+                           &perf_file_attr_proto->attr());
+  for (int i = 0; i < perf_file_attr_proto->ids_size(); i++ )
     perf_file_attr->ids.push_back(perf_file_attr_proto->ids(i));
 }
 
-bool PerfSerializer::SerializeReader(PerfReader * perf_reader,
-                                     PerfDataProto * perf_data_proto) {
+bool PerfSerializer::SerializeReader(const PerfReader& perf_reader,
+                                     PerfDataProto* perf_data_proto) {
   type_set_ = false;
   SerializePerfFileAttrs(
-      &(perf_reader->get_attrs()), perf_data_proto->mutable_file_attrs());
-  SerializeEvents(&(perf_reader->get_events()),
+      &perf_reader.attrs(), perf_data_proto->mutable_file_attrs());
+  SerializeEvents(&perf_reader.events(),
                   perf_data_proto->mutable_events());
   return true;
 }
 
-bool PerfSerializer::Serialize(const char * filename,
-                               PerfDataProto * perf_data_proto) {
+bool PerfSerializer::Serialize(const char* filename,
+                               PerfDataProto* perf_data_proto) {
   PerfReader perf_reader;
-  bool perf_data_read;
 
-  perf_data_read = perf_reader.ReadFile(filename);
-  if (!perf_data_read)
+  if (!perf_reader.ReadFile(filename))
     return false;
 
-  return SerializeReader(&perf_reader,
-                         perf_data_proto);
+  return SerializeReader(perf_reader, perf_data_proto);
 }
 
-bool PerfSerializer::DeserializeReader(PerfReader * perf_reader,
-                                       const PerfDataProto * perf_data_proto) {
+bool PerfSerializer::DeserializeReader(const PerfDataProto& perf_data_proto,
+                                       PerfReader* perf_reader) {
   type_set_ = false;
   DeserializePerfFileAttrs(
-      &(perf_reader->get_attrs()), &(perf_data_proto->file_attrs()));
-  DeserializeEvents(&(perf_reader->get_events()), &(perf_data_proto->events()));
+      perf_reader->mutable_attrs(), &perf_data_proto.file_attrs());
+  DeserializeEvents(perf_reader->mutable_events(),
+                    &perf_data_proto.events());
   return true;
 }
 
-bool PerfSerializer::Deserialize(const char * filename,
-                                 const PerfDataProto * perf_data_proto) {
+bool PerfSerializer::Deserialize(const char* filename,
+                                 const PerfDataProto& perf_data_proto) {
   PerfReader perf_reader;
-
-  DeserializeReader(&perf_reader, perf_data_proto);
-
+  DeserializeReader(perf_data_proto, &perf_reader);
   perf_reader.WriteFile(filename);
-
   return true;
 }

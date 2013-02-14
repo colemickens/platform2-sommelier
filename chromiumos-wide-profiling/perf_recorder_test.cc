@@ -11,7 +11,6 @@
 #include "perf_recorder.h"
 #include "utils.h"
 
-
 TEST(PerfRecorderTest, TestRecord) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
@@ -24,8 +23,7 @@ TEST(PerfRecorderTest, TestRecord) {
                                                        &perf_data_proto));
 }
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
