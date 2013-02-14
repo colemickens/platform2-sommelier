@@ -950,11 +950,21 @@ void Daemon::MarkPowerStatusStale() {
   is_power_status_stale_ = true;
 }
 
-void Daemon::PrepareForSuspend() {
-  // When going to suspend, notify the backlight controller so it will turn
-  // the backlight off and set the backlight correctly upon resume.
+void Daemon::PrepareForSuspendAnnouncement() {
+  // When going to suspend, notify the backlight controller so it can turn
+  // the backlight off and tell the kernel to resume the current level
+  // after resuming.  This must occur before Chrome is told that the system
+  // is going to suspend (Chrome turns the display back on while leaving
+  // the backlight off).
   SetPowerState(BACKLIGHT_SUSPENDED);
+}
 
+void Daemon::HandleCanceledSuspendAnnouncement() {
+  // Undo the earlier BACKLIGHT_SUSPENDED call.
+  SetPowerState(BACKLIGHT_ACTIVE);
+}
+
+void Daemon::PrepareForSuspend() {
 #ifdef SUSPEND_LOCK_VT
   // Do not let suspend change the console terminal.
   util::RunSetuidHelper("lock_vt", "", true);
@@ -969,6 +979,9 @@ void Daemon::PrepareForSuspend() {
 void Daemon::HandleResume(bool suspend_was_successful,
                           int num_suspend_retries,
                           int max_suspend_retries) {
+  // Undo the earlier BACKLIGHT_SUSPENDED call.
+  SetPowerState(BACKLIGHT_ACTIVE);
+
 #ifdef SUSPEND_LOCK_VT
     // Allow virtual terminal switching again.
     util::RunSetuidHelper("unlock_vt", "", true);
@@ -979,8 +992,6 @@ void Daemon::HandleResume(bool suspend_was_successful,
   ResumePollPowerSupply();
   file_tagger_.HandleResumeEvent();
   power_supply_.SetSuspendState(false);
-  if (use_state_controller_)
-    SetPowerState(BACKLIGHT_ACTIVE);
   state_controller_->HandleResume();
   if (suspend_was_successful)
     GenerateRetrySuspendMetric(num_suspend_retries, max_suspend_retries);

@@ -67,18 +67,19 @@ class Suspender::RealDelegate : public Suspender::Delegate {
     return false;
   }
 
-  virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) {
-    daemon_->PrepareForSuspend();
-
-    std::string args;
-    if (wakeup_count_valid) {
-      args += StringPrintf(" --suspend_wakeup_count_valid"
-                           " --suspend_wakeup_count %" PRIu64, wakeup_count);
-    }
-    return util::RunSetuidHelper("suspend", args, true) == 0;
+  virtual void PrepareForSuspendAnnouncement() OVERRIDE {
+    daemon_->PrepareForSuspendAnnouncement();
   }
 
-  virtual void EmitPowerStateChangedOnSignal() OVERRIDE {
+  virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
+    daemon_->HandleCanceledSuspendAnnouncement();
+
+    // Emit a PowerStateChanged D-Bus signal with an "on" status, similar
+    // to what is emitted by powerd_suspend after resume.  Emitting this
+    // from powerd is necessary when an imminent suspend has been announced
+    // but the request is canceled before powerd_suspend has been run, so
+    // that processes that have performed pre-suspend actions will know to
+    // undo them.
     // TODO(benchan): Refactor this code and the code in the powerd_suspend
     // script.
     chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
@@ -93,6 +94,17 @@ class Suspender::RealDelegate : public Suspender::Delegate {
                              DBUS_TYPE_INVALID);
     dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
     dbus_message_unref(signal);
+  }
+
+  virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) OVERRIDE {
+    daemon_->PrepareForSuspend();
+
+    std::string args;
+    if (wakeup_count_valid) {
+      args += StringPrintf(" --suspend_wakeup_count_valid"
+                           " --suspend_wakeup_count %" PRIu64, wakeup_count);
+    }
+    return util::RunSetuidHelper("suspend", args, true) == 0;
   }
 
   virtual void HandleResume(bool suspend_was_successful,
@@ -183,6 +195,7 @@ void Suspender::RequestSuspend() {
   util::RemoveTimeout(&retry_suspend_timeout_id_);
   wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
   suspend_id_++;
+  delegate_->PrepareForSuspendAnnouncement();
   suspend_delay_controller_->PrepareForSuspend(suspend_id_);
 }
 
@@ -292,7 +305,7 @@ void Suspender::CancelSuspend() {
     LOG(INFO) << "Canceling suspend before running powerd_suspend";
     waiting_for_readiness_ = false;
     DCHECK(!retry_suspend_timeout_id_);
-    delegate_->EmitPowerStateChangedOnSignal();
+    delegate_->HandleCanceledSuspendAnnouncement();
   } else if (retry_suspend_timeout_id_) {
     LOG(INFO) << "Canceling suspend between retries";
     util::RemoveTimeout(&retry_suspend_timeout_id_);

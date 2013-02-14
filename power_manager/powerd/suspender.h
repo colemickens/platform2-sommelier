@@ -34,22 +34,31 @@ class Input;
 //   have previously registered suspend delays via RegisterSuspendDelay().
 // - OnReadyForSuspend() is called to announce that all processes have announced
 //   readiness via HandleSuspendReadiness().  It calls Suspend(), which runs the
-//   powerd_suspend script to begin the actual suspend process.
+//   powerd_suspend script to perform the actual suspend/resume cycle.
 // - powerd_suspend emits a PowerStateChanged D-Bus signal with a "mem" argument
 //   before asking the kernel to suspend and a second signal with an "on"
 //   argument after the system resumes.
-// - Suspender listens for PowerStateChanged and emits SuspendStateChanged
-//   signals with additional details.  If the PowerStateChanged "on" signal
-//   reported that the suspend attempt was unsuccessful, a timer is kept alive
-//   to retry the suspend attempt.
+// - If powerd_suspend reports failure, a timeout is created to retry the
+//   suspend attempt.
 //
-// At any point during the suspend process, user activity can cancel the current
-// suspend attempt.  If the powerd_suspend script has already been started, a
-// file is touched to tell it to abort.
+// At any point before Suspend() has been called, user activity can cancel
+// the current suspend attempt.  A synthetic PowerStateChanged "on" signal
+// is emitted so that other processes can undo any setup that they did in
+// response to suspend delays.
 class Suspender : public SuspendDelayObserver {
  public:
   // Interface for classes responsible for performing actions on behalf of
-  // Suspender.
+  // Suspender.  The general sequence when suspending is:
+  //
+  // - Suspender::RequestSuspend() calls PrepareForSuspendAnnouncement()
+  //   and then notifies other processes that the system is about to
+  //   suspend.
+  // - If the suspend attempt is canceled while Suspender is still waiting
+  //   for other processes to report readiness for suspend, then
+  //   HandleCanceledSuspendAnnouncementIsCalled().
+  // - Otherwise, Suspend() is called.
+  // - After the system resumes from suspend (or if the suspend attempt
+  //   failed), HandleResume() is called.
   class Delegate {
    public:
     virtual ~Delegate() {}
@@ -62,20 +71,26 @@ class Suspender : public SuspendDelayObserver {
     // |wakeup_count|.  Returns true on success.
     virtual bool GetWakeupCount(uint64* wakeup_count) = 0;
 
+    // Performs any work that needs to happen before other processes are
+    // informed that the system is about to suspend.  Called by
+    // RequestSuspend().
+    virtual void PrepareForSuspendAnnouncement() = 0;
+
+    // Called if the suspend request is aborted before Suspend() and
+    // HandleResume() are called.  This method should undo any work done by
+    // PrepareForSuspendAnnouncement().
+    virtual void HandleCanceledSuspendAnnouncement() = 0;
+
     // Synchronously runs the powerd_suspend script to suspend the system.
     // If |wakeup_count_valid| is true, passes |wakeup_count| to the script
-    // so it can avoid suspending if additional wakeup events occur.
+    // so it can avoid suspending if additional wakeup events occur.  After
+    // the suspend/resume cycle is complete (and even if the system failed
+    // to suspend), HandleResume() will be called.
     virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) = 0;
 
-    // Emits a PowerStateChanged D-Bus signal with an "on" status, similar to
-    // what is emitted by powerd_suspend after resume.  Emitting this from
-    // powerd is necessary when an imminent suspend has been announced but the
-    // request is canceled before powerd_suspend has been run, so that processes
-    // that have performed pre-suspend actions will know to undo them.
-    virtual void EmitPowerStateChangedOnSignal() = 0;
-
     // Handles the system resuming (or recovering from a failed suspend
-    // attempt).
+    // attempt).  This method should undo any work done by both
+    // PrepareForSuspendAnnouncement() and Suspend().
     virtual void HandleResume(bool suspend_was_successful,
                               int num_suspend_retries,
                               int max_suspend_retries) = 0;

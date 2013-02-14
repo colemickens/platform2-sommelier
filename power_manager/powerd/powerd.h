@@ -163,6 +163,14 @@ class Daemon : public BacklightControllerObserver,
   // resume before we have updated.
   void MarkPowerStatusStale();
 
+  // Called by |suspender_| before other processes are informed that the
+  // system will be suspending soon.
+  void PrepareForSuspendAnnouncement();
+
+  // Called by |suspender_| if a suspend request is aborted before
+  // PrepareForSuspend() has been called.
+  void HandleCanceledSuspendAnnouncement();
+
   // Called by |suspender_| just before a suspend attempt begins.
   void PrepareForSuspend();
 
