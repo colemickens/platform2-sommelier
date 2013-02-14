@@ -9,9 +9,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "base/eintr_wrapper.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/posix/eintr_wrapper.h"
 #include "base/string_util.h"
 #include "chromeos/process.h"
 #include "gflags/gflags.h"

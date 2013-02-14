@@ -6,7 +6,7 @@
 
 #include "base/command_line.h"
 #include "base/file_util.h"
-#include "base/scoped_temp_dir.h"
+#include "base/files/scoped_temp_dir.h"
 #include "chromeos/syslog_logging.h"
 #include "chromeos/test_helpers.h"
 #include "gmock/gmock.h"
@@ -56,7 +56,7 @@ class ServiceManagerTest : public ::testing::Test {
 TEST_F(ServiceManagerTest, InitializeDirectories) {
   FilePath picked_temp;
   {
-    ScopedTempDir my_temp;
+    base::ScopedTempDir my_temp;
     EXPECT_FALSE(my_temp.IsValid());
     ServiceManager::InitializeDirectories(&my_temp);
     EXPECT_TRUE(my_temp.IsValid());

@@ -7,10 +7,10 @@
 #include <arpa/inet.h>  // for inet_ntop and inet_pton
 #include <netdb.h>  // for getaddrinfo
 
-#include "base/eintr_wrapper.h"
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
-#include "base/scoped_temp_dir.h"
+#include "base/posix/eintr_wrapper.h"
 #include "base/string_split.h"
 #include "base/string_util.h"
 
@@ -76,7 +76,8 @@ ServiceError ServiceManager::GetError() const {
   return error_;
 }
 
-void ServiceManager::InitializeDirectories(ScopedTempDir* scoped_temp_path) {
+void ServiceManager::InitializeDirectories(
+    base::ScopedTempDir* scoped_temp_path) {
   bool success =
       scoped_temp_path->CreateUniqueTempDirUnderPath(FilePath(temp_base_path_));
   temp_path_ = &scoped_temp_path->path();

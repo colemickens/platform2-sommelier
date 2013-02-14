@@ -12,7 +12,9 @@
 
 #include "vpn-manager/service_error.h"
 
+namespace base {
 class ScopedTempDir;
+}
 
 // Generic code to manage setting up and stopping a set of layered
 // tunnel services.  This object contains the code to manage a single
@@ -30,7 +32,7 @@ class ServiceManager {
   // be set to manage an appropriate temp directory.  This function
   // uses a reference to |scoped_temp_dir| and so its lifetime must be
   // equal to that of all objects derived from ServiceManager.
-  static void InitializeDirectories(ScopedTempDir* scoped_temp_path);
+  static void InitializeDirectories(base::ScopedTempDir* scoped_temp_path);
 
   // Call to initiate this service.  If starting fails immediately this
   // returns false.  If something fails after this returns, OnStopped

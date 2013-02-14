@@ -10,8 +10,8 @@
 #include <string>
 
 #include "base/command_line.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
-#include "base/scoped_temp_dir.h"
 #include "chromeos/process.h"
 #include "chromeos/syslog_logging.h"
 #include "gflags/gflags.h"
@@ -102,7 +102,7 @@ static void RunEventLoop(IpsecManager* ipsec, L2tpManager* l2tp) {
 }
 
 int main(int argc, char* argv[]) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   CommandLine::Init(argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
   int log_flags = chromeos::kLogToSyslog;
