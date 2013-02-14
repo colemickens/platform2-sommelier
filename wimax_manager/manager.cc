@@ -68,7 +68,7 @@ bool Manager::Initialize() {
 
 bool Manager::Finalize() {
   CancelDeviceScan();
-  devices_.reset();
+  devices_.clear();
   dbus_adaptor()->UpdateDevices();
 
   if (!driver_.get())
@@ -124,7 +124,7 @@ void Manager::CancelDeviceScan() {
 
 void Manager::Suspend() {
   CancelDeviceScan();
-  devices_.reset();
+  devices_.clear();
   dbus_adaptor()->UpdateDevices();
 }
 
