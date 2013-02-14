@@ -249,6 +249,9 @@ dbus-send --type=signal --system /org/chromium/PowerManager \
 
 initctl emit system-resumed &
 
+# - refresh mosys eventlog to help feedback reports pick up the latest snapshot
+/usr/share/userfeedback/scripts/eventlog &
+
 # - unmute audio (if we muted it before suspend)
 if [ $PLAYBACK_WAS_ON -eq 1 ]; then
     amixer cset name='Master Playback Switch' on > /dev/null
