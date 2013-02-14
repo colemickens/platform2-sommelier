@@ -7,8 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
-#include <base/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/external-mounter.h"
@@ -23,7 +23,7 @@ class ExternalMounterTest : public ::testing::Test {
 };
 
 TEST_F(ExternalMounterTest, RunAsRootMount) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
                           "tmpfs", MountOptions());
@@ -37,7 +37,7 @@ TEST_F(ExternalMounterTest, RunAsRootMount) {
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentSourcePath) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   // To test mounting a nonexistent source path, use ext2 as the
   // filesystem type instead of tmpfs since tmpfs does not care
@@ -53,7 +53,7 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentTargetPath) {
 }
 
 TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   ExternalMounter mounter("/dev/null", temp_dir.path().value(),
                           "nonexistentfs", MountOptions());

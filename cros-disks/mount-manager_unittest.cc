@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -709,7 +709,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePath) {
 // Verifies that MountManager::Unmount() returns no error when it successfully
 // unmounts a mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPath) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   string actual_mount_path = temp_dir.path().value();
 
@@ -783,7 +783,7 @@ TEST_F(MountManagerTest, UnmountSucceededWithGivenSourcePathInReservedCase) {
 // Verifies that MountManager::Unmount() returns no error when it is invoked
 // to unmount a reserved mount path.
 TEST_F(MountManagerTest, UnmountSucceededWithGivenMountPathInReservedCase) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   string actual_mount_path = temp_dir.path().value();
 

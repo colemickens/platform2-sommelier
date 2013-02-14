@@ -9,7 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 using std::set;
@@ -41,7 +41,7 @@ class PlatformTest : public ::testing::Test {
 };
 
 TEST_F(PlatformTest, CreateDirectory) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
@@ -59,7 +59,7 @@ TEST_F(PlatformTest, CreateDirectory) {
 }
 
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
@@ -77,7 +77,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectory) {
 }
 
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   set<string> reserved_paths;
 
@@ -118,7 +118,7 @@ TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallback) {
 }
 
 TEST_F(PlatformTest, CreateOrReuseEmptyDirectoryWithFallbackAndReservedPaths) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   set<string> reserved_paths;
 
@@ -173,7 +173,7 @@ TEST_F(PlatformTest, GetUserAndGroupIdOfNonExistentUser) {
 }
 
 TEST_F(PlatformTest, GetOwnershipOfDirectory) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   string path = temp_dir.path().value();
 
@@ -185,7 +185,7 @@ TEST_F(PlatformTest, GetOwnershipOfDirectory) {
 }
 
 TEST_F(PlatformTest, GetOwnershipOfFile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
@@ -199,7 +199,7 @@ TEST_F(PlatformTest, GetOwnershipOfFile) {
 }
 
 TEST_F(PlatformTest, GetOwnershipOfSymbolicLink) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
@@ -223,7 +223,7 @@ TEST_F(PlatformTest, GetOwnershipOfNonexistentPath) {
 }
 
 TEST_F(PlatformTest, GetPermissionsOfDirectory) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   string path = temp_dir.path().value();
 
@@ -242,7 +242,7 @@ TEST_F(PlatformTest, GetPermissionsOfDirectory) {
 }
 
 TEST_F(PlatformTest, GetPermissionsOfFile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
@@ -263,7 +263,7 @@ TEST_F(PlatformTest, GetPermissionsOfFile) {
 }
 
 TEST_F(PlatformTest, GetPermissionsOfSymbolicLink) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath temp_file;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &temp_file));
@@ -292,7 +292,7 @@ TEST_F(PlatformTest, GetPermissionsOfNonexistentPath) {
 }
 
 TEST_F(PlatformTest, RemoveEmptyDirectory) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
   // Nonexistent directory
@@ -333,7 +333,7 @@ TEST_F(PlatformTest, SetOwnershipOfNonExistentPath) {
 }
 
 TEST_F(PlatformTest, SetOwnershipOfExistentPath) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   string path = temp_dir.path().value();
 
@@ -346,7 +346,7 @@ TEST_F(PlatformTest, SetPermissionsOfNonExistentPath) {
 }
 
 TEST_F(PlatformTest, SetPermissionsOfExistentPath) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   string path = temp_dir.path().value();
 

@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "cros-disks/mount-options.h"
@@ -22,7 +22,7 @@ class SystemMounterTest : public ::testing::Test {
 };
 
 TEST_F(SystemMounterTest, RunAsRootMount) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
                         "tmpfs", MountOptions());
@@ -31,7 +31,7 @@ TEST_F(SystemMounterTest, RunAsRootMount) {
 }
 
 TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentSourcePath) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   // To test mounting a nonexistent source path, use ext2 as the
   // filesystem type instead of tmpfs since tmpfs does not care
@@ -47,7 +47,7 @@ TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentTargetPath) {
 }
 
 TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   SystemMounter mounter("/dev/null", temp_dir.path().value(),
                         "nonexistentfs", MountOptions());
