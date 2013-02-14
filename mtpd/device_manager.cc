@@ -11,7 +11,6 @@
 #include <base/bind.h>
 #include <base/file_path.h>
 #include <base/logging.h>
-#include <base/memory/scoped_generic_obj.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
@@ -61,13 +60,8 @@ std::string StorageToString(const std::string& usb_bus_str,
   return base::StringPrintf("%s:%u", usb_bus_str.c_str(), storage_id);
 }
 
-// TODO(thestig) Convert this to struct LibmtpFileDeleter when CrOS's base
-// package has an updated base/memory/scoped_ptr.h that supports
-// scoped_ptr<MyType, MyDeleter>.
-// Also replace scoped_ptr_malloc<Foo> with scoped_ptr<Foo, base::FreeDeleter>.
-class ScopedDestroyLibmtpFile {
- public:
-  void operator()(LIBMTP_file_t* file) const {
+struct LibmtpFileDeleter {
+  void operator()(LIBMTP_file_t* file) {
     LIBMTP_destroy_file_t(file);
   }
 };
@@ -343,8 +337,8 @@ bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
                                  const std::string& file_path,
                                  ProcessPathComponentFunc process_func,
                                  uint32_t* file_id) {
-  std::vector<FilePath::StringType> path_components;
-  FilePath(file_path).GetComponents(&path_components);
+  std::vector<base::FilePath::StringType> path_components;
+  base::FilePath(file_path).GetComponents(&path_components);
   uint32_t current_file_id = kPtpGohRootParent;
   const size_t num_path_components = path_components.size();
   for (size_t i = 0; i < num_path_components; ++i) {
@@ -357,8 +351,7 @@ bool DeviceManager::PathToFileId(LIBMTP_mtpdevice_t* device,
     const uint32_t old_file_id = current_file_id;
     LIBMTP_file_t* file = files;
     while (file != NULL) {
-      ScopedGenericObj<LIBMTP_file_t*,
-                       ScopedDestroyLibmtpFile> current_file(file);
+      scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
       file = file->next;
       if (current_file.get()->filename != path_components[i])
         continue;
@@ -389,8 +382,7 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
 
   LIBMTP_file_t* file = files;
   while (file != NULL) {
-    ScopedGenericObj<LIBMTP_file_t*,
-                     ScopedDestroyLibmtpFile> current_file(file);
+    scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
     file = file->next;
     out->push_back(FileEntry(*current_file));
   }
