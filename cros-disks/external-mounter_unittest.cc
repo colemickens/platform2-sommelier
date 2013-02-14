@@ -60,16 +60,4 @@ TEST_F(ExternalMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
 }
 
-TEST_F(ExternalMounterTest, RunAsRootMountWithInvalidMountOptions) {
-  ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  vector<string> options;
-  options.push_back("this_is_an_invalid_option");
-  MountOptions mount_options;
-  mount_options.Initialize(options, false, "", "");
-  ExternalMounter mounter("/dev/null", temp_dir.path().value(),
-                          "tmpfs", mount_options);
-  EXPECT_EQ(MOUNT_ERROR_MOUNT_PROGRAM_FAILED, mounter.Mount());
-}
-
 }  // namespace cros_disks

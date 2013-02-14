@@ -54,16 +54,4 @@ TEST_F(SystemMounterTest, RunAsRootMountWithNonexistentFilesystemType) {
   EXPECT_EQ(MOUNT_ERROR_UNSUPPORTED_FILESYSTEM, mounter.Mount());
 }
 
-TEST_F(SystemMounterTest, RunAsRootMountWithInvalidMountOptions) {
-  ScopedTempDir temp_dir;
-  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  vector<string> options;
-  options.push_back("this_is_an_invalid_option");
-  MountOptions mount_options;
-  mount_options.Initialize(options, false, "", "");
-  SystemMounter mounter("/dev/null", temp_dir.path().value(),
-                        "tmpfs", mount_options);
-  EXPECT_EQ(MOUNT_ERROR_INTERNAL, mounter.Mount());
-}
-
 }  // namespace cros_disks
