@@ -1248,13 +1248,17 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateScanningProperty) {
   capability_->UpdateScanningProperty();
   EXPECT_FALSE(capability_->scanning_or_searching_);
 
-  // Modem with an unactivated service in the 'searching' state
-  capability_->cellular()->modem_state_ = Cellular::kModemStateSearching;
+  // Modem with an unactivated service in the 'enabled' or 'searching' state
+  capability_->cellular()->modem_state_ = Cellular::kModemStateEnabled;
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
   CellularService::OLP olp;
   EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
-      .WillOnce(Return(&olp));
+      .WillRepeatedly(Return(&olp));
+  capability_->UpdateScanningProperty();
+  EXPECT_FALSE(capability_->scanning_or_searching_);
+
+  capability_->cellular()->modem_state_ = Cellular::kModemStateSearching;
   capability_->UpdateScanningProperty();
   EXPECT_FALSE(capability_->scanning_or_searching_);
 }

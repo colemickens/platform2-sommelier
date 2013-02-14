@@ -639,13 +639,13 @@ void CellularCapabilityUniversal::UpdateScanningProperty() {
   // the network UI can start showing the initializing/scanning animation as
   // soon as the modem is being enabled.
   Cellular::ModemState modem_state = cellular()->modem_state();
-  bool is_searching_for_activated_service =
-      (modem_state == Cellular::kModemStateSearching &&
+  bool is_activated_service_waiting_for_registration =
+      ((modem_state == Cellular::kModemStateEnabled ||
+        modem_state == Cellular::kModemStateSearching) &&
        !IsServiceActivationRequired());
   bool new_scanning_or_searching =
-      (modem_state == Cellular::kModemStateEnabling ||
-       modem_state == Cellular::kModemStateEnabled ||
-       is_searching_for_activated_service) ||
+      modem_state == Cellular::kModemStateEnabling ||
+      is_activated_service_waiting_for_registration ||
       scanning_;
   if (new_scanning_or_searching != scanning_or_searching_) {
     scanning_or_searching_ = new_scanning_or_searching;
