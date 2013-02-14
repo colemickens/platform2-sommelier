@@ -307,7 +307,9 @@ fi
 # Override via a flag-file is allowed to enable integration testing.
 HANG_DETECTION_FLAG_FILE=/var/run/session_manager/enable_hang_detection
 HANG_DETECTION_FLAG=
-if ! is_developer_end_user; then
+# TODO(derat): Re-enable this after determining if it's responsible for a bunch
+# of mysterious Chrome SIGABRT crashes in poll(): http://crosbug.com/38892
+if false && ! is_developer_end_user; then
   HANG_DETECTION_FLAG="--enable-hang-detection"
 elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
   HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
