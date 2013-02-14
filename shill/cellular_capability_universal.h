@@ -147,6 +147,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, NormalizeMdn);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               OnModemCurrentCapabilitiesChanged);
@@ -308,6 +309,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   // path is accepted to be valid, as long as it is not equal to one of ""
   // and "/".
   bool IsValidSimPath(const std::string &sim_path) const;
+
+  // Returns the normalized version of |mdn| by keeping only digits in |mdn|
+  // and removing other non-digit characters.
+  std::string NormalizeMdn(const std::string &mdn) const;
 
   static std::string GenerateNewGenericServiceName();
 

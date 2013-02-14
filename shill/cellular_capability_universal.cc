@@ -853,10 +853,10 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   if (mdn_.empty())
     return false;
 
-  // If MDN contains only zeros ('+' and '-' characters are ignored),
-  // the service requires activation.
+  // If MDN contains only zeros, the service requires activation.
+  // Note that |mdn_| is normalized to contain only digits in OnMdnChanged().
   for (size_t i = 0; i < mdn_.size(); ++i) {
-    if (mdn_[i] != '0' && mdn_[i] != '-' && mdn_[i] != '+')
+    if (mdn_[i] != '0')
       return false;
   }
   return true;
@@ -1273,6 +1273,15 @@ bool CellularCapabilityUniversal::IsValidSimPath(const string &sim_path) const {
   return !sim_path.empty() && sim_path != kRootPath;
 }
 
+string CellularCapabilityUniversal::NormalizeMdn(const string &mdn) const {
+  string normalized_mdn;
+  for (size_t i = 0; i < mdn.size(); ++i) {
+    if (IsAsciiDigit(mdn[i]))
+      normalized_mdn += mdn[i];
+  }
+  return normalized_mdn;
+}
+
 void CellularCapabilityUniversal::OnSimPathChanged(
     const string &sim_path) {
   if (sim_path == sim_path_)
@@ -1328,7 +1337,7 @@ void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
 
 void CellularCapabilityUniversal::OnMdnChanged(
     const string &mdn) {
-  mdn_ = mdn;
+  mdn_ = NormalizeMdn(mdn);
 }
 
 void CellularCapabilityUniversal::OnModemManufacturerChanged(

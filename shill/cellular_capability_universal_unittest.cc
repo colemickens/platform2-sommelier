@@ -678,6 +678,16 @@ TEST_F(CellularCapabilityUniversalMainTest, IsValidSimPath) {
   EXPECT_TRUE(capability_->IsValidSimPath("path"));
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, NormalizeMdn) {
+  EXPECT_EQ("", capability_->NormalizeMdn(""));
+  EXPECT_EQ("12345678901", capability_->NormalizeMdn("12345678901"));
+  EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1 234 567 8901"));
+  EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1-234-567-8901"));
+  EXPECT_EQ("12345678901", capability_->NormalizeMdn("+1 (234) 567-8901"));
+  EXPECT_EQ("12345678901", capability_->NormalizeMdn("1 234  567 8901 "));
+  EXPECT_EQ("2345678901", capability_->NormalizeMdn("(234) 567-8901"));
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   // Set up mock modem SIM properties
   const char kImsi[] = "310100000001";
@@ -1472,13 +1482,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
   capability_->mdn_ = "1234567890";
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
-  capability_->mdn_ = "+1-234-567-890";
-  EXPECT_FALSE(capability_->IsServiceActivationRequired());
   capability_->mdn_ = "0000000000";
-  EXPECT_TRUE(capability_->IsServiceActivationRequired());
-  capability_->mdn_ = "0-000-000-000";
-  EXPECT_TRUE(capability_->IsServiceActivationRequired());
-  capability_->mdn_ = "+0-000-000-000";
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
 }
 
