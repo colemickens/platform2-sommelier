@@ -61,4 +61,8 @@ user_tests: override GTEST_ARGS.qemu.arm := --gtest_filter='-*.RunAsRoot*:DiskMa
 user_tests: TEST(disks_testrunner)
 .PHONY: user_tests root_tests
 
-tests: user_tests root_tests
+# TODO(benchan): Figure out why "tests: user_tests root_tests" does not work.
+# See https://gerrit.chromium.org/gerrit/42786
+tests:
+	$(MAKE) user_tests
+	$(MAKE) root_tests # NEEDS_ROOT=1 NEEDS_MOUNTS=1
