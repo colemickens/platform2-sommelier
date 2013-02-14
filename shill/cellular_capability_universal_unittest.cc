@@ -421,8 +421,21 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
       .WillOnce(SaveArg<2>(&disable_callback));
   dispatcher_.DispatchPendingEvents();
 
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  ResultCallback set_power_state_callback;
+  EXPECT_CALL(*modem_proxy,
+              SetPowerState(
+                  MM_MODEM_POWER_STATE_LOW, _, _,
+                  CellularCapabilityUniversal::kSetPowerStateTimeoutSeconds))
+      .WillOnce(SaveArg<2>(&set_power_state_callback));
   disable_callback.Run(Error(Error::kSuccess));
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  set_power_state_callback.Run(Error(Error::kSuccess));
+
+  // TestCallback should get called with success even if the power state
+  // callback gets called with an error
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  set_power_state_callback.Run(Error(Error::kOperationFailed));
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, StopModemConnected) {
@@ -451,8 +464,17 @@ TEST_F(CellularCapabilityUniversalMainTest, StopModemConnected) {
       .WillOnce(SaveArg<2>(&disable_callback));
   disconnect_callback.Run(Error(Error::kSuccess));
 
-  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  ResultCallback set_power_state_callback;
+  EXPECT_CALL(*modem_proxy,
+              SetPowerState(
+                  MM_MODEM_POWER_STATE_LOW, _, _,
+                  CellularCapabilityUniversal::kSetPowerStateTimeoutSeconds))
+      .WillOnce(SaveArg<2>(&set_power_state_callback));
+
   disable_callback.Run(Error(Error::kSuccess));
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  set_power_state_callback.Run(Error(Error::kSuccess));
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, DisconnectModemNoBearer) {

@@ -67,6 +67,7 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
+const int CellularCapabilityUniversal::kSetPowerStateTimeoutSeconds = 20;
 unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
 
 
@@ -338,10 +339,48 @@ void CellularCapabilityUniversal::Stop_DisableCompleted(
   SLOG(Cellular, 2) << __func__;
 
   if (error.IsSuccess()) {
-    metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
-    ReleaseProxies();
+    // The modem has been successfully disabled, but we still need to power it
+    // down.
+    Stop_PowerDown(callback);
+  } else {
+    // An error occurred; terminate the disable sequence.
+    callback.Run(error);
   }
-  callback.Run(error);
+}
+
+void CellularCapabilityUniversal::Stop_PowerDown(
+    const ResultCallback &callback) {
+  SLOG(Cellular, 2) << __func__;
+  Error error;
+  modem_proxy_->SetPowerState(
+      MM_MODEM_POWER_STATE_LOW,
+      &error,
+      Bind(&CellularCapabilityUniversal::Stop_PowerDownCompleted,
+           weak_ptr_factory_.GetWeakPtr(), callback),
+      kSetPowerStateTimeoutSeconds);
+
+  if (error.IsFailure())
+    // This really shouldn't happen, but if it does, report success,
+    // because a stop initiated power down is only called if the
+    // modem was successfully disabled, but the failure of this
+    // operation should still be propagated up as a successful disable.
+    Stop_PowerDownCompleted(callback, error);
+}
+
+void CellularCapabilityUniversal::Stop_PowerDownCompleted(
+    const ResultCallback &callback,
+    const Error &error) {
+  SLOG(Cellular, 2) << __func__;
+
+  if (error.IsFailure())
+    SLOG(Cellular, 2) << "Ignoring error returned by SetPowerState: " << error;
+
+  // Since the disable succeeded, if power down fails, we currently fail
+  // silently, i.e. we need to report the disable operation as having
+  // succeeded.
+  metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
+  ReleaseProxies();
+  callback.Run(Error());
 }
 
 void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,

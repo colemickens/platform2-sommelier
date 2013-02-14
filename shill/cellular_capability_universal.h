@@ -131,6 +131,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kGenericServiceNamePrefix[];
 
   static const unsigned int kDefaultScanningOrSearchingTimeoutMilliseconds;
+  static const int kSetPowerStateTimeoutSeconds;
+
 
   // Root path. The SIM path is reported by ModemManager to be the root path
   // when no SIM is present.
@@ -186,6 +188,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   void Stop_Disable(const ResultCallback &callback);
   void Stop_DisableCompleted(const ResultCallback &callback,
                              const Error &error);
+  void Stop_PowerDown(const ResultCallback &callback);
+  void Stop_PowerDownCompleted(const ResultCallback &callback,
+                               const Error &error);
 
   // Updates the name property that is exposed by the service to Chrome.
   void UpdateServiceName();

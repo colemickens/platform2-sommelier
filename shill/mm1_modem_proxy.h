@@ -60,6 +60,10 @@ class ModemProxy : public ModemProxyInterface {
                        Error *error,
                        const StringCallback &callback,
                        int timeout);
+  virtual void SetPowerState(const uint32_t &power_state,
+                             Error *error,
+                             const ResultCallback &callback,
+                             int timeout);
 
   virtual void set_state_changed_callback(
       const ModemStateChangedSignalCallback &callback);
@@ -89,6 +93,7 @@ class ModemProxy : public ModemProxyInterface {
   virtual uint32_t PreferredMode();
   virtual const std::vector< uint32_t > SupportedBands();
   virtual const std::vector< uint32_t > Bands();
+  virtual uint32_t PowerState();
 
  private:
   class Proxy : public org::freedesktop::ModemManager1::Modem_proxy,
@@ -126,6 +131,8 @@ class ModemProxy : public ModemProxyInterface {
     virtual void CommandCallback(const std::string &response,
                                  const ::DBus::Error &dberror,
                                  void *data);
+    virtual void SetPowerStateCallback(const ::DBus::Error &dberror,
+                                       void *data);
 
     ModemStateChangedSignalCallback state_changed_callback_;
 

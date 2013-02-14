@@ -63,6 +63,10 @@ class ModemProxyInterface {
                        Error *error,
                        const StringCallback &callback,
                        int timeout) = 0;
+  virtual void SetPowerState(const uint32_t &power_state,
+                             Error *error,
+                             const ResultCallback &callback,
+                             int timeout) = 0;
 
 
   virtual void set_state_changed_callback(
@@ -93,6 +97,7 @@ class ModemProxyInterface {
   virtual uint32_t PreferredMode() = 0;
   virtual const std::vector< uint32_t > SupportedBands() = 0;
   virtual const std::vector< uint32_t > Bands() = 0;
+  virtual uint32_t PowerState() = 0;
 };
 
 }  // namespace mm1

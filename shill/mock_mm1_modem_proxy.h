@@ -57,6 +57,10 @@ class MockModemProxy : public ModemProxyInterface {
                              Error *error,
                              const StringCallback &callback,
                              int timeout));
+  MOCK_METHOD4(SetPowerState, void(const uint32_t &power_state,
+                                   Error *error,
+                                   const ResultCallback &callback,
+                                   int timeout));
   MOCK_METHOD1(set_state_changed_callback, void(
       const ModemStateChangedSignalCallback &callback));
 
@@ -87,6 +91,7 @@ class MockModemProxy : public ModemProxyInterface {
   MOCK_METHOD0(PreferredMode, uint32_t());
   MOCK_METHOD0(SupportedBands, const std::vector< uint32_t >());
   MOCK_METHOD0(Bands, const std::vector< uint32_t >());
+  MOCK_METHOD0(PowerState, uint32_t());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockModemProxy);

@@ -161,6 +161,21 @@ void ModemProxy::Command(const std::string &cmd,
   }
 }
 
+void ModemProxy::SetPowerState(const uint32_t &power_state,
+                               Error *error,
+                               const ResultCallback &callback,
+                               int timeout) {
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    SLOG(DBus, 2) << __func__;
+    proxy_.SetPowerState(power_state, cb.get(), timeout);
+    cb.release();
+  } catch (const DBus::Error &e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
 // Inherited properties from ModemProxyInterface.
 const ::DBus::Path ModemProxy::Sim() {
   SLOG(DBus, 2) << __func__;
@@ -378,6 +393,15 @@ const std::vector<uint32_t> ModemProxy::Bands() {
     return std::vector<uint32_t>();  // Make the compiler happy.
   }
 }
+uint32_t ModemProxy::PowerState() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.PowerState();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
+}
 
 ModemProxy::Proxy::Proxy(DBus::Connection *connection,
                          const std::string &path,
@@ -482,6 +506,15 @@ void ModemProxy::Proxy::SetBandsCallback(const ::DBus::Error& dberror,
 void ModemProxy::Proxy::CommandCallback(const std::string &response,
                                         const ::DBus::Error& dberror,
                                         void *data) {
+  SLOG(DBus, 2) << __func__;
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+void ModemProxy::Proxy::SetPowerStateCallback(const ::DBus::Error &dberror,
+                                              void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
