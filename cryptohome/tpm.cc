@@ -722,7 +722,8 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
       // If there was a communications failure, try sleeping a bit here--it may
       // be that tcsd is still starting
       if (ERROR_CODE(local_result) == TSS_E_COMM_FAILURE) {
-        PlatformThread::Sleep(kTpmConnectIntervalMs);
+        PlatformThread::Sleep(
+            base::TimeDelta::FromMilliseconds(kTpmConnectIntervalMs));
       } else {
         TPM_LOG(ERROR, local_result) << "Error calling Tspi_Context_Connect";
         if (result)

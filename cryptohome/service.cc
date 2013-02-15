@@ -1308,7 +1308,9 @@ gboolean Service::GetStatusString(gchar** OUT_status, GError** error) {
   dv.Set("installattrs", attrs);
   dv.Set("tpm", tpm);
   std::string json;
-  base::JSONWriter::Write(&dv, true, &json);
+  base::JSONWriter::WriteWithOptions(&dv,
+                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                     &json);
   *OUT_status = g_strdup(json.c_str());
   return TRUE;
 }
@@ -1332,7 +1334,7 @@ void Service::AutoCleanupCallback() {
   mount_thread_.message_loop()->PostDelayedTask(
       FROM_HERE,
       base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)),
-      auto_cleanup_period_);
+      base::TimeDelta::FromMilliseconds(auto_cleanup_period_));
 }
 
 void Service::DetectEnterpriseOwnership() const {

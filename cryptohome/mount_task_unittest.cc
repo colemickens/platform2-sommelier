@@ -124,7 +124,7 @@ TEST_F(MountTaskTest, ObserveTest) {
       base::Bind(&MountTask::Run, mount_task.get()));
   for (unsigned int i = 0; i < 64; i++) {
     if (!notifier.notified_) {
-      PlatformThread::Sleep(100);
+      PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
     } else {
       break;
     }

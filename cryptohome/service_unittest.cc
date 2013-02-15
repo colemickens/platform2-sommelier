@@ -9,6 +9,7 @@
 #include <base/at_exit.h>
 #include <base/threading/platform_thread.h>
 #include <base/file_util.h>
+#include <base/time.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/secure_blob.h>
 #include <gtest/gtest.h>
@@ -164,7 +165,7 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
     if (found) {
       break;
     }
-    PlatformThread::Sleep(100);
+    PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
   }
   EXPECT_TRUE(out);
 }
@@ -210,7 +211,7 @@ TEST(Standalone, CheckAutoCleanupCallback) {
   service.set_auto_cleanup_period(2);  // 2ms = 500HZ
   service.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
   service.Initialize();
-  PlatformThread::Sleep(100);
+  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(100));
 }
 
 TEST(Standalone, CheckAutoCleanupCallbackFirst) {
@@ -231,7 +232,8 @@ TEST(Standalone, CheckAutoCleanupCallbackFirst) {
       .Times(1);
   service.set_auto_cleanup_period(1000);  // 1s - long enough
   service.Initialize();
-  PlatformThread::Sleep(10);  // short delay to see the first invocation
+  // short delay to see the first invocation
+  PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
 }
 
 }  // namespace cryptohome
