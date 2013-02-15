@@ -187,6 +187,15 @@ if [ -f "$CONSENT_FILE" ]; then
   fi
 fi
 
+# Allow Chrome to access GPU memory information despite /sys/kernel/debug
+# being owned by debugd. This limits the security attack surface versus
+# leaving the whole debug directory world-readable. http://crbug.com/175828
+DEBUGFS_GPU=/var/run/debugfs_gpu
+if [ ! -d $DEBUGFS_GPU ]; then
+  mkdir -p $DEBUGFS_GPU
+  mount -o bind /sys/kernel/debug/dri/0 $DEBUGFS_GPU
+fi
+
 # We need to delete these files as Chrome may have left them around from
 # its prior run (if it crashed).
 rm -f ${DATA_DIR}/SingletonLock
