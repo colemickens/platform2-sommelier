@@ -259,6 +259,18 @@ class Mount {
   }
 
  private:
+  // A class which scopes a mount point.  i.e. The mount point is unmounted on
+  // destruction.
+  class ScopedMountPoint {
+   public:
+    ScopedMountPoint(Mount* mount, const std::string& path);
+    ~ScopedMountPoint();
+
+   private:
+    Mount* mount_;
+    std::string path_;
+  };
+
   // Checks if the cryptohome vault exists for the given credentials
   //
   // Parameters
@@ -294,7 +306,7 @@ class Mount {
 
   // Changes the group ownership and permissions on those directories inside
   // the cryptohome that need to be accessible by other system daemons
-  virtual bool SetupGroupAccess() const;
+  virtual bool SetupGroupAccess(const FilePath& home_dir) const;
 
   virtual bool LoadVaultKeyset(const Credentials& credentials,
                                SerializedVaultKeyset* encrypted_keyset) const;
@@ -444,6 +456,10 @@ class Mount {
   //   credentials - The Credentials representing the user
   std::string GetMountedRootHomePath(const Credentials& credentials) const;
 
+  // Returns a path suitable for building a skeleton for an ephemeral home
+  // directory.
+  std::string GetEphemeralSkeletonPath();
+
   // Get the owner user's obfuscated hash. This is empty if the owner has not
   // been set yet or the device is enterprise owned.
   // The value is cached. It is the caller's responsibility to invoke
@@ -511,8 +527,10 @@ class Mount {
   // and populating it with a skeleton directory and file structure.
   //
   // Parameters
+  //   source_path - A name for the mount point which will appear in /etc/mtab.
   //   home_dir - The path at which the user's cryptohome has been mounted.
-  bool SetUpEphemeralCryptohome(const std::string& home_dir);
+  bool SetUpEphemeralCryptohome(const std::string& source_path,
+                                const std::string& home_dir);
 
   // Recursively copies directory contents to the destination if the destination
   // file does not exist.  Sets ownership to the default_user_
@@ -527,11 +545,14 @@ class Mount {
   //
   // Parameters
   //   credentials - The Credentials representing the user
+  //   destination - Where to copy files to
   void CopySkeletonForUser(const Credentials& credentials) const;
 
-  // Copies the skeleton directory to the cryptohome mount point
+  // Copies the skeleton directory to the given destination.
   //
-  void CopySkeleton() const;
+  // Parameters
+  //   destination - Where to copy files to
+  void CopySkeleton(const FilePath& destination) const;
 
   // Returns the user's salt
   //
