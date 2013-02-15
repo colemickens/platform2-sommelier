@@ -92,6 +92,29 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   std::map<std::string, ::DBus::Variant> GetNetworksForGeolocation(
       ::DBus::Error &error);
 
+  bool VerifyDestination(const std::string &certificate,
+                         const std::string &public_key,
+                         const std::string &nonce,
+                         const std::string &signed_data,
+                         const std::string &destination_udn,
+                         ::DBus::Error &error);
+
+  std::string VerifyAndEncryptCredentials(const std::string &certificate,
+                                          const std::string &public_key,
+                                          const std::string &nonce,
+                                          const std::string &signed_data,
+                                          const std::string &destination_udn,
+                                          const ::DBus::Path &path,
+                                          ::DBus::Error &error);
+
+  std::string VerifyAndEncryptData(const std::string &certificate,
+                                   const std::string &public_key,
+                                   const std::string &nonce,
+                                   const std::string &signed_data,
+                                   const std::string &destination_udn,
+                                   const std::string &data,
+                                   ::DBus::Error &error);
+
  private:
   Manager *manager_;
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusAdaptor);

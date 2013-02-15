@@ -277,6 +277,79 @@ Methods		dict GetProperties()
 			For more details, see:
 			https://developers.google.com/maps/documentation/business/geolocation/
 
+		boolean VerifyDestination(string certificate,
+					  string public_key
+					  string nonce,
+					  string signed_data,
+					  string destination_udn)
+
+			Verify that the given |certificate| refers to a valid
+			destination with attributes as described in
+			|signed_data|.  |certificate| is a x509 certificate in
+			PEM format.  |public_key| is the base64 encoded public
+			half of a 1024 bit RSA key in DER format.  |nonce| is
+			random string of characters.  |destination_udn| is the
+			unique device number for the given destination.
+			|signed_data| formed as follows:
+
+				Suppose we're connected to a destination with
+				an SSID of ChromeDest1123, a BSSID of
+				00:11::22::33:44:55, a serial number of
+				ABCDEFG-1234-5678, a public key of "MIGJAoGB+",
+				and a nonce like "2ldg8".  The device takes
+				that information and joins it together with
+				commas like so:
+
+				"ChromeDest1123,ABCDEFG-1234-5678,00:11:22:33:44:55,MIGJAoGB+,2ldg8"
+
+				The device then takes the SHA-1 hash of that
+				string, and encrypts that hash with its private
+				key.  The resulting byte string is base64
+				encoded and passed as |signed_data|.
+
+			This function verifies that the device described by all
+			these pieces of data is a real device by checking that:
+
+			1) The |certificate| is signed by a trusted CA.
+			2) The public key signed by the CA matches to the
+			   private key used to encrypt |signed_data|.
+			3) The public key given is tied to the certificate by
+			   being included in the |signed_data|.
+			4) A WiFi service is currently connected to the SSID
+			   and BSSID in |signed_data|,
+			5) The BSSID we're connected to is valid.
+
+			If all properties hold, this function will return true,
+			otherwise false.
+
+
+		string VerifyAndEncryptCredentials(string certificate,
+						   string public_key
+						   string nonce,
+						   string signed_data,
+						   string destination_udn,
+						   object service)
+
+			Verifies the given credentials as in VerifyDestination,
+			and then uses |public_key| to encrypt the psk for the
+			service identified by |service|.  The psk is padded
+			with PKCS#1 v1.5.  Returns the base64 encoded,
+			encrypted psk, or an empty string on error.
+
+		string VerifyAndEncryptData(string certificate,
+					    string public_key
+					    string nonce,
+					    string signed_data,
+					    string destination_udn,
+					    string data_to_encrypt)
+
+			Verifies the given credentials as in VerifyDestination,
+			and then uses |public_key| to encrypt
+			|data_to_encrypt|.  The data to encrypt is padded as in
+			VerifyAndEncryptCredentials.  Returns the base64 encoded,
+			encrypted data, or an empty string on error.
+
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

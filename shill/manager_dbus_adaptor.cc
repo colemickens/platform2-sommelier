@@ -338,4 +338,45 @@ map<string, ::DBus::Variant> ManagerDBusAdaptor::GetNetworksForGeolocation(
   return networks;
 }
 
+bool ManagerDBusAdaptor::VerifyDestination(const string &certificate,
+                                           const string &public_key,
+                                           const string &nonce,
+                                           const string &signed_data,
+                                           const string &destination_udn,
+                                           ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  Error e(Error::kNotImplemented, "Not implemented");
+  e.ToDBusError(&error);
+  return false;
+}
+
+string ManagerDBusAdaptor::VerifyAndEncryptCredentials(
+    const string &certificate,
+    const string &public_key,
+    const string &nonce,
+    const string &signed_data,
+    const string &destination_udn,
+    const ::DBus::Path &network,
+    ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  Error e(Error::kNotImplemented, "Not implemented");
+  e.ToDBusError(&error);
+  return "";
+}
+
+string ManagerDBusAdaptor::VerifyAndEncryptData(
+    const string &certificate,
+    const string &public_key,
+    const string &nonce,
+    const string &signed_data,
+    const string &destination_udn,
+    const string &data,
+    ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  Error e(Error::kNotImplemented, "Not implemented");
+  e.ToDBusError(&error);
+  return "";
+}
+
+
 }  // namespace shill
