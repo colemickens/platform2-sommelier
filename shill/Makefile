@@ -496,7 +496,7 @@ NET_DIAGS_UPLOAD_BIN = $(BUILD_SHIMS_DIR)/net-diags-upload
 
 NETFILTER_QUEUE_HELPER_OBJS = $(BUILD_SHIMS_DIR)/netfilter_queue_processor.o
 NETFILTER_QUEUE_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/netfilter_queue_helper.o
-NETFILTER_QUEUE_HELPER_BIN = $(BUILD_SHIMS_DIR)/netfilter_queue_helper
+NETFILTER_QUEUE_HELPER_BIN = $(BUILD_SHIMS_DIR)/netfilter-queue-helper
 
 NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
