@@ -35,6 +35,7 @@
 		<method name="ActivateCellularModem">
 			<arg type="s" direction="in"/>
 		</method>
+		<method name="CompleteCellularActivation"/>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

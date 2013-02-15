@@ -521,6 +521,12 @@ TEST_F(ServiceTest, ActivateCellularModem) {
   EXPECT_TRUE(error.IsFailure());
 }
 
+TEST_F(ServiceTest, CompleteCellularActivation) {
+  Error error;
+  service_->CompleteCellularActivation(&error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
 TEST_F(ServiceTest, MakeFavorite) {
   EXPECT_FALSE(service_->favorite());
   EXPECT_FALSE(service_->auto_connect());

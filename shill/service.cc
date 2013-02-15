@@ -302,6 +302,12 @@ void Service::ActivateCellularModem(const string &/*carrier*/,
                         "Service doesn't support cellular modem activation.");
 }
 
+void Service::CompleteCellularActivation(Error *error) {
+  Error::PopulateAndLog(
+      error, Error::kNotSupported,
+      "Service doesn't support cellular activation completion.");
+}
+
 bool Service::IsActive(Error */*error*/) {
   return state() != kStateUnknown &&
     state() != kStateIdle &&

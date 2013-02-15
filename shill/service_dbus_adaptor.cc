@@ -150,4 +150,11 @@ void ServiceDBusAdaptor::ActivateCellularModem(const string &carrier,
   ReturnResultOrDefer(tag, e, &error);
 }
 
+void ServiceDBusAdaptor::CompleteCellularActivation(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  Error e;
+  service_->CompleteCellularActivation(&e);
+  e.ToDBusError(&error);
+}
+
 }  // namespace shill

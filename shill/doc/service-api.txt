@@ -137,6 +137,30 @@ Methods		dict GetProperties()
 			Expected Result: [service].Error.InProgress
 			Possible Errors: [service].Error.NotSupported
 
+		void CompleteCellularActivation()
+
+			Complete the activation of a cellular service that is
+			being activated over a non-cellular network.  This
+			method is called upon the completion of the online
+			payment portal and performs the necessary checks
+			to ensure the activation process has fully completed.
+
+			This method returns immediately.  The caller
+			can either poll the Cellular.ActivationState
+			property, or monitor the PropertyChanged
+			signal to know when and if the activation process
+			has completed.
+
+			If this method is called on a non-cellular service
+			or on a cellular service that is not being activated
+			over a non-cellular network, it will return a
+			NotSupported error.
+
+			If the cellular service is already activated or being
+			activated, nothing is returned.
+
+			Possible Errors: [service].Error.NotSupported
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given

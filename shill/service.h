@@ -199,6 +199,8 @@ class Service : public base::RefCounted<Service> {
   virtual void ActivateCellularModem(const std::string &carrier,
                                      Error *error,
                                      const ResultCallback &callback);
+  // The default implementation returns the error kNotSupported.
+  virtual void CompleteCellularActivation(Error *error);
 
   virtual bool IsActive(Error *error);
 
