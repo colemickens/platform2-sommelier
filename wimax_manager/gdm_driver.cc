@@ -453,7 +453,7 @@ bool GdmDriver::DisconnectDeviceFromNetwork(GdmDevice *device) {
 bool GdmDriver::CreateInitialDirectories() const {
   for (size_t i = 0; i < arraysize(InitalDirectoriesToCreate); ++i) {
     const char *directory = InitalDirectoriesToCreate[i];
-    if (!file_util::CreateDirectory(FilePath(directory))) {
+    if (!file_util::CreateDirectory(base::FilePath(directory))) {
       LOG(ERROR) << "Failed to create directory '" << directory << "'";
       return false;
     }
