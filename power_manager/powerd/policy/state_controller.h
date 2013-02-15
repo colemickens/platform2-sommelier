@@ -12,6 +12,7 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/time.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/policy.pb.h"
@@ -29,26 +30,6 @@ namespace policy {
 // perform various actions.
 class StateController : public PrefsObserver {
  public:
-  enum PowerSource {
-    POWER_AC,
-    POWER_BATTERY,
-  };
-
-  enum LidState {
-    LID_OPEN,
-    LID_CLOSED,
-  };
-
-  enum SessionState {
-    SESSION_STOPPED,
-    SESSION_STARTED,
-  };
-
-  enum DisplayMode {
-    DISPLAY_NORMAL,
-    DISPLAY_PRESENTATION,
-  };
-
   // Interface for classes that perform the actions requested by
   // StateController (or otherwise help it interact with the real world).
   class Delegate {

@@ -53,14 +53,6 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 const char kSessionStarted[] = "started";
 const char kSessionStopped[] = "stopped";
 
-// Valid string values for the state value of Session Manager
-const std::string kValidStateStrings[] = { "started", "stopping", "stopped" };
-
-// Set of valid state strings for easy sanity testing
-std::set<std::string> kValidStates(
-    kValidStateStrings,
-    kValidStateStrings  + sizeof(kValidStateStrings) / sizeof(std::string));
-
 // Upper limit to accept for raw battery times, in seconds. If the time of
 // interest is above this level assume something is wrong.
 const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
@@ -102,14 +94,9 @@ class Daemon::StateControllerDelegate
 #endif
   }
 
-  virtual policy::StateController::LidState QueryLidState() OVERRIDE {
-    int raw_lid_state = 0;  // 0 is open, 1 is closed (per system/input.h)
-    if (!daemon_->input_->QueryLidState(&raw_lid_state))
-      return policy::StateController::LID_OPEN;
-
-    return raw_lid_state == 1 ?
-        policy::StateController::LID_CLOSED :
-        policy::StateController::LID_OPEN;
+  virtual LidState QueryLidState() OVERRIDE {
+    LidState state = LID_OPEN;
+    return daemon_->input_->QueryLidState(&state) ? state : LID_OPEN;
   }
 
   virtual void DimScreen() OVERRIDE {
@@ -233,7 +220,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       generate_backlight_metrics_timeout_id_(0),
       generate_thermal_metrics_timeout_id_(0),
       battery_discharge_rate_metric_last_(0),
-      current_session_state_(kSessionStopped),
+      current_session_state_(SESSION_STOPPED),
       udev_(NULL),
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
@@ -294,16 +281,12 @@ void Daemon::Init() {
 
   bool has_lid = true;
   prefs_->GetBool(kUseLidPref, &has_lid);
-  state_controller_->Init((plugged_state_ == PLUGGED_STATE_DISCONNECTED ?
-                           policy::StateController::POWER_BATTERY :
-                           policy::StateController::POWER_AC),
-                          (has_lid ?
-                           state_controller_delegate_->QueryLidState() :
-                           policy::StateController::LID_OPEN),
-                          (current_session_state_ == kSessionStarted ?
-                           policy::StateController::SESSION_STARTED :
-                           policy::StateController::SESSION_STOPPED),
-                          policy::StateController::DISPLAY_NORMAL);
+  LidState lid_state =
+      has_lid ? state_controller_delegate_->QueryLidState() : LID_OPEN;
+  PowerSource power_source =
+      plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
+  state_controller_->Init(power_source, lid_state, current_session_state_,
+                          DISPLAY_NORMAL);
   state_controller_initialized_ = true;
 
   // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
@@ -441,9 +424,7 @@ void Daemon::SetPlugged(bool plugged) {
 
   if (state_controller_initialized_) {
     state_controller_->HandlePowerSourceChange(
-        plugged ?
-        policy::StateController::POWER_AC :
-        policy::StateController::POWER_BATTERY);
+        plugged ? POWER_AC : POWER_BATTERY);
   }
 }
 
@@ -649,15 +630,14 @@ void Daemon::HandleResume(bool suspend_was_successful,
 
 void Daemon::HandleLidClosed() {
   if (state_controller_initialized_) {
-    state_controller_->HandleLidStateChange(
-        policy::StateController::LID_CLOSED);
+    state_controller_->HandleLidStateChange(LID_CLOSED);
   }
 }
 
 void Daemon::HandleLidOpened() {
   suspender_.HandleLidOpened();
   if (state_controller_initialized_)
-    state_controller_->HandleLidStateChange(policy::StateController::LID_OPEN);
+    state_controller_->HandleLidStateChange(LID_OPEN);
 }
 
 void Daemon::EnsureBacklightIsOn() {
@@ -893,7 +873,7 @@ bool Daemon::HandleSessionManagerSessionStateChangedSignal(
                             DBUS_TYPE_STRING, &state,
                             DBUS_TYPE_STRING, &user,
                             DBUS_TYPE_INVALID)) {
-    OnSessionStateChange(state, user);
+    OnSessionStateChange(state ? state : "", user ? user : "");
   } else {
     LOG(WARNING) << "Unable to read "
                  << login_manager::kSessionManagerSessionStateChanged
@@ -1162,9 +1142,7 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
                             DBUS_TYPE_INVALID);
   if (args_ok) {
     state_controller_->HandleDisplayModeChange(
-        is_projecting ?
-        policy::StateController::DISPLAY_PRESENTATION :
-        policy::StateController::DISPLAY_NORMAL);
+        is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL);
   } else {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
@@ -1401,20 +1379,15 @@ gboolean Daemon::CleanShutdownTimedOut() {
   return FALSE;
 }
 
-void Daemon::OnSessionStateChange(const char* state, const char* user) {
-  if (!state || !user) {
-    LOG(DFATAL) << "Got session state change with missing state or user";
-    return;
-  }
+void Daemon::OnSessionStateChange(const std::string& state_str,
+                                  const std::string& user) {
+  SessionState state = (state_str == kSessionStarted) ?
+      SESSION_STARTED : SESSION_STOPPED;
 
-  std::string state_string(state);
+  if (state == SESSION_STARTED) {
+    DLOG(INFO) << "Session started for "
+               << (user.empty() ? "guest" : "non-guest user");
 
-  if (kValidStates.find(state_string) == kValidStates.end()) {
-    LOG(WARNING) << "Changing to unknown session state: " << state;
-    return;
-  }
-
-  if (state_string == kSessionStarted) {
     // We always want to take action even if we were already "started", since we
     // want to record when the current session started.  If this warning is
     // appearing it means either we are querying the state of Session Manager
@@ -1437,29 +1410,25 @@ void Daemon::OnSessionStateChange(const char* state, const char* user) {
     // Sending up the PowerSupply information, so that the display gets it as
     // soon as possible
     ResumePollPowerSupply();
-    DLOG(INFO) << "Session started for "
-               << (current_user_.empty() ? "guest" : "non-guest user");
   } else if (current_session_state_ != state) {
-    DLOG(INFO) << "Session " << state;
+    DLOG(INFO) << "Session " << state_str;
     // For states other then "started" we only want to take action if we have
     // actually changed state, since the code we are calling assumes that we are
     // actually transitioning between states.
     current_user_.clear();
-    if (current_session_state_ == kSessionStopped)
+    if (state_str == kSessionStopped) {
+      // Don't generate metrics for intermediate states, e.g. "stopping".
       GenerateEndOfSessionMetrics(power_status_,
                                   *backlight_controller_,
                                   base::TimeTicks::Now(),
                                   session_start_);
+    }
   }
 
   current_session_state_ = state;
 
-  if (state_controller_initialized_) {
-    state_controller_->HandleSessionStateChange(
-        current_session_state_ == kSessionStarted ?
-        policy::StateController::SESSION_STARTED :
-        policy::StateController::SESSION_STOPPED);
-  }
+  if (state_controller_initialized_)
+    state_controller_->HandleSessionStateChange(state);
 
   // If the backlight was manually turned off by the user, turn it back on.
   EnsureBacklightIsOn();
@@ -1492,7 +1461,7 @@ void Daemon::RetrieveSessionState() {
   if (!util::GetSessionState(&state, &user))
     return;
   LOG(INFO) << "Retrieved session state of " << state;
-  OnSessionStateChange(state.c_str(), user.c_str());
+  OnSessionStateChange(state, user);
 }
 
 void Daemon::SetPowerState(PowerState state) {

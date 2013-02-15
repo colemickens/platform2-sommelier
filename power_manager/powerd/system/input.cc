@@ -43,6 +43,13 @@ const char kBluetoothMatchString[] = "bluetooth";
 
 const char kConsolePath[] = "/dev/tty0";
 
+// Sources of input events.
+enum InputType {
+  INPUT_LID,
+  INPUT_POWER_BUTTON,
+  INPUT_UNHANDLED,
+};
+
 InputType GetInputType(const struct input_event& event) {
   if (event.type == EV_KEY) {
     // For key events, only handle the keys listed below.
@@ -121,20 +128,20 @@ void Input::RemoveObserver(InputObserver* observer) {
 #define LONG(x) ((x) / BITS_PER_LONG)
 #define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
 
-bool Input::QueryLidState(int* lid_state) {
-  if (0 > lid_fd_) {
-    LOG(ERROR) << "No lid found on system.";
+bool Input::QueryLidState(LidState* state) {
+  if (lid_fd_ < 0) {
+    LOG(ERROR) << "No lid found on system";
     return false;
   }
   unsigned long switch_events[NUM_BITS(SW_LID + 1)];
   memset(switch_events, 0, sizeof(switch_events));
   if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
-    LOG(ERROR) << "Error in GetLidState ioctl";
+    PLOG(ERROR) << "Lid state ioctl() failed";
     return false;
   }
   if (IS_BIT_SET(SW_LID, switch_events)) {
     ioctl(lid_fd_, EVIOCGSW(sizeof(switch_events)), switch_events);
-    *lid_state = IS_BIT_SET(SW_LID, switch_events);
+    *state = IS_BIT_SET(SW_LID, switch_events) ? LID_CLOSED : LID_OPEN;
     return true;
   } else {
     return false;
@@ -585,12 +592,26 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
 
   for (ssize_t i = 0; i < num_events; i++) {
     InputType input_type = GetInputType(events[i]);
-    if (input_type == INPUT_UNHANDLED)
-      continue;
-    LOG(INFO) << "Handling event: " << util::InputTypeToString(input_type);
-    FOR_EACH_OBSERVER(InputObserver, input->observers_,
-                      OnInputEvent(input_type, events[i].value));
-    LOG(INFO) << "Input event handled: " << util::InputTypeToString(input_type);
+    switch (input_type) {
+      case INPUT_LID: {
+        LidState state = events[i].value == 1 ? LID_CLOSED : LID_OPEN;
+        FOR_EACH_OBSERVER(InputObserver, input->observers_, OnLidEvent(state));
+        break;
+      }
+      case INPUT_POWER_BUTTON: {
+        ButtonState state = BUTTON_DOWN;
+        switch (events[i].value) {
+          case 0: state = BUTTON_UP;      break;
+          case 1: state = BUTTON_DOWN;    break;
+          case 2: state = BUTTON_REPEAT;  break;
+          default: LOG(ERROR) << "Unhandled button state " << events[i].value;
+        }
+        FOR_EACH_OBSERVER(InputObserver, input->observers_,
+                          OnPowerButtonEvent(state));
+      }
+      case INPUT_UNHANDLED:
+        break;
+    }
   }
   return true;
 }

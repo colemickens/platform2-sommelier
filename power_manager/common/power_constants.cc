@@ -4,6 +4,8 @@
 
 #include "power_manager/common/power_constants.h"
 
+#include "base/stringprintf.h"
+
 namespace power_manager {
 
 const char kPluggedBrightnessOffsetPref[] = "plugged_brightness_offset";
@@ -79,5 +81,49 @@ const char kShutdownReasonIdle[] = "idle";
 const char kShutdownReasonLowBattery[] = "low-battery";
 // Shutting down because suspend attempts failed.
 const char kShutdownReasonSuspendFailed[] = "suspend-failed";
+
+std::string PowerSourceToString(PowerSource source) {
+  switch (source) {
+    case POWER_AC:
+      return "AC";
+    case POWER_BATTERY:
+      return "battery";
+    default:
+      return StringPrintf("unknown (%d)", source);
+  }
+}
+
+std::string LidStateToString(LidState state) {
+  switch (state) {
+    case LID_OPEN:
+      return "open";
+    case LID_CLOSED:
+      return "closed";
+    default:
+      return StringPrintf("unknown (%d)", state);
+  }
+}
+
+std::string SessionStateToString(SessionState state) {
+  switch (state) {
+    case SESSION_STOPPED:
+      return "stopped";
+    case SESSION_STARTED:
+      return "started";
+    default:
+      return StringPrintf("unknown (%d)", state);
+  }
+}
+
+std::string DisplayModeToString(DisplayMode mode) {
+  switch (mode) {
+    case DISPLAY_NORMAL:
+      return "normal";
+    case DISPLAY_PRESENTATION:
+      return "presentation";
+    default:
+      return StringPrintf("unknown (%d)", mode);
+  }
+}
 
 }  // namespace power_manager

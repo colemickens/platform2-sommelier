@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_POWERD_SYSTEM_INPUT_OBSERVER_H_
 #define POWER_MANAGER_POWERD_SYSTEM_INPUT_OBSERVER_H_
 
+#include "power_manager/common/power_constants.h"
+
 namespace power_manager {
 namespace system {
 
@@ -14,8 +16,11 @@ class InputObserver {
  public:
   virtual ~InputObserver() {}
 
-  // Called when an input event is received.
-  virtual void OnInputEvent(InputType type, int state) = 0;
+  // Called when the lid is opened or closed.
+  virtual void OnLidEvent(LidState state) = 0;
+
+  // Called when a power button event occurs.
+  virtual void OnPowerButtonEvent(ButtonState state) = 0;
 };
 
 }  // namespace system

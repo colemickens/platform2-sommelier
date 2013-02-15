@@ -13,6 +13,7 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/stringprintf.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 
@@ -20,54 +21,6 @@ namespace power_manager {
 namespace policy {
 
 namespace {
-
-// Returns a human-readable description of |source|.
-std::string PowerSourceToString(StateController::PowerSource source) {
-  switch (source) {
-    case StateController::POWER_AC:
-      return "AC";
-    case StateController::POWER_BATTERY:
-      return "battery";
-    default:
-      return StringPrintf("unknown (%d)", source);
-  }
-}
-
-// Returns a human-readable description of |state|.
-std::string LidStateToString(StateController::LidState state) {
-  switch (state) {
-    case StateController::LID_OPEN:
-      return "open";
-    case StateController::LID_CLOSED:
-      return "closed";
-    default:
-      return StringPrintf("unknown (%d)", state);
-  }
-}
-
-// Returns a human-readable description of |state|.
-std::string SessionStateToString(StateController::SessionState state) {
-  switch (state) {
-    case StateController::SESSION_STOPPED:
-      return "stopped";
-    case StateController::SESSION_STARTED:
-      return "started";
-    default:
-      return StringPrintf("unknown (%d)", state);
-  }
-}
-
-// Returns a human-readable description of |mode|.
-std::string DisplayModeToString(StateController::DisplayMode mode) {
-  switch (mode) {
-    case StateController::DISPLAY_NORMAL:
-      return "normal";
-    case StateController::DISPLAY_PRESENTATION:
-      return "presentation";
-    default:
-      return StringPrintf("unknown (%d)", mode);
-  }
-}
 
 // Returns |delta| as a string of the format "3m45s".
 std::string TimeDeltaToString(base::TimeDelta delta) {

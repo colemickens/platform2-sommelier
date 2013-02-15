@@ -44,8 +44,8 @@ class Input {
   void AddObserver(InputObserver* observer);
   void RemoveObserver(InputObserver* observer);
 
-  // |lid_state| is 1 for closed lid. 0 for opened lid.
-  bool QueryLidState(int* lid_state);
+  // Queries the system for the current lid state.
+  bool QueryLidState(LidState* state);
 
   // Checks if any USB input devices are connected, by scanning sysfs for input
   // devices whose paths contain "usb".

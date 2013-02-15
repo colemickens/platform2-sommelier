@@ -54,33 +54,13 @@ class InputController : public system::InputObserver {
                   const FilePath& run_dir);
   ~InputController();
 
-  bool lid_is_open() const { return lid_state_ == LID_STATE_OPENED; }
-
   void Init(PrefsInterface* prefs);
 
   // system::InputObserver implementation:
-  virtual void OnInputEvent(InputType type, int value) OVERRIDE;
+  virtual void OnLidEvent(LidState state) OVERRIDE;
+  virtual void OnPowerButtonEvent(ButtonState state) OVERRIDE;
 
  private:
-  enum LidState {
-    LID_STATE_CLOSED,
-    LID_STATE_OPENED,
-  };
-
-  enum ButtonState {
-    // Don't change these values; GetButtonState() static_casts to this enum.
-    BUTTON_UP     = 0,
-    BUTTON_DOWN   = 1,
-    BUTTON_REPEAT = 2,
-  };
-
-  // Interprets values passed to OnInputEvent().
-  static LidState GetLidState(int value);
-  static ButtonState GetButtonState(int value);
-
-  // Emits an InputEvent D-Bus signal.
-  void SendInputEventSignal(InputType type, ButtonState state);
-
   system::Input* input_;  // not owned
   Delegate* delegate_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned

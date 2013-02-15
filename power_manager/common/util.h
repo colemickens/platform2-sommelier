@@ -7,8 +7,6 @@
 
 #include <string>
 
-#include "power_manager/common/power_constants.h"
-
 class FilePath;
 
 typedef unsigned int guint;
@@ -42,9 +40,6 @@ void RemoveStatusFile(const FilePath& file);
 // in the file well.  They are read in as signed values and then cast
 // to unsigned ints.  So -10 => 4294967286
 bool GetUintFromFile(const char* filename, unsigned int* value);
-
-// Returns a string describing |type|.
-const char* InputTypeToString(InputType type);
 
 // Deletes a GLib timeout ID via g_source_remove() and resets the variable
 // containing it to 0.  Does nothing if |timeout_id| points at a non-zero ID.

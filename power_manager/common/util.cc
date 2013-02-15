@@ -17,7 +17,6 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
-#include "power_manager/common/power_constants.h"
 
 namespace {
 
@@ -100,20 +99,6 @@ bool GetUintFromFile(const char* filename, unsigned int* value) {
       return true;
   LOG(ERROR) << "Garbage found in " << filename << "( " << buf << " )";
   return false;
-}
-
-const char* InputTypeToString(InputType type) {
-  switch (type) {
-    case INPUT_LID:
-      return "input(LID)";
-    case INPUT_POWER_BUTTON:
-      return "input(POWER_BUTTON)";
-    case INPUT_UNHANDLED:
-      return "input(UNHANDLED)";
-    default:
-      NOTREACHED();
-      return "";
-  }
 }
 
 void RemoveTimeout(guint* timeout_id) {

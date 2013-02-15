@@ -362,7 +362,8 @@ class Daemon : public BacklightControllerObserver,
   // Handles information from the session manager about the session state.
   // Invoked by RetrieveSessionState() and also in response to
   // SessionStateChanged D-Bus signals.
-  void OnSessionStateChange(const char* state, const char* user);
+  void OnSessionStateChange(const std::string& state_str,
+                            const std::string& user);
 
   void StartCleanShutdown();
   void Shutdown();
@@ -569,7 +570,7 @@ class Daemon : public BacklightControllerObserver,
   std::string current_user_;
 
   // Last session state that we have been informed of. Initialized as stopped.
-  std::string current_session_state_;
+  SessionState current_session_state_;
 
   // Keep a local copy of power status reading from power_supply.  This way,
   // requests for each field of the power status can be read directly from

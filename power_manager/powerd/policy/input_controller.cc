@@ -21,7 +21,7 @@ InputController::InputController(system::Input* input,
     : input_(input),
       delegate_(delegate),
       dbus_sender_(dbus_sender),
-      lid_state_(LID_STATE_OPENED),
+      lid_state_(LID_OPEN),
       use_input_for_lid_(true) {
   input_->AddObserver(this);
 }
@@ -32,89 +32,53 @@ InputController::~InputController() {
 
 void InputController::Init(PrefsInterface* prefs) {
   CHECK(prefs->GetBool(kUseLidPref, &use_input_for_lid_));
-  int lid_state_value = 0;
-  if (use_input_for_lid_ && input_->QueryLidState(&lid_state_value))
-    OnInputEvent(INPUT_LID, lid_state_value);
+  LidState lid_state = LID_OPEN;
+  if (use_input_for_lid_ && input_->QueryLidState(&lid_state))
+    OnLidEvent(lid_state);
 }
 
-void InputController::OnInputEvent(InputType type, int value) {
-  switch (type) {
-    case INPUT_LID: {
-      lid_state_ = GetLidState(value);
-      LOG(INFO) << "Lid "
-                << (lid_state_ == LID_STATE_CLOSED ? "closed." : "opened.");
-      if (!use_input_for_lid_) {
-        LOG(INFO) << "Ignoring lid.";
-        break;
-      }
-      if (lid_state_ == LID_STATE_CLOSED) {
-        input_->SetTouchDevicesState(false);
-        input_->SetWakeInputsState(false);
-        SendInputEventSignal(INPUT_LID, BUTTON_DOWN);
-        delegate_->HandleLidClosed();
-      } else {
-        input_->SetTouchDevicesState(true);
-        input_->SetWakeInputsState(true);
-        SendInputEventSignal(INPUT_LID, BUTTON_UP);
-        delegate_->HandleLidOpened();
-      }
-      break;
-    }
-    case INPUT_POWER_BUTTON: {
-      ButtonState button_state = GetButtonState(value);
-      SendInputEventSignal(type, button_state);
-      delegate_->SendPowerButtonMetric(button_state == BUTTON_DOWN,
-                                       base::TimeTicks::Now());
-      if (button_state == BUTTON_DOWN) {
-        delegate_->EnsureBacklightIsOn();
-        LOG(INFO) << "Syncing state due to power button down event";
-        util::Launch("sync");
-      }
-      break;
-    }
-    default: {
-      NOTREACHED() << "Bad input type " << type;
-      break;
-    }
-  }
-}
-
-// static
-InputController::LidState InputController::GetLidState(int value) {
-  return value == 0 ? LID_STATE_OPENED : LID_STATE_CLOSED;
-}
-
-// static
-InputController::ButtonState InputController::GetButtonState(int value) {
-  // value == 0 is button up.
-  // value == 1 is button down.
-  // value == 2 is key repeat.
-  return static_cast<ButtonState>(value);
-}
-
-void InputController::SendInputEventSignal(InputType type, ButtonState state) {
-  if (state == BUTTON_REPEAT)
+void InputController::OnLidEvent(LidState state) {
+  LOG(INFO) << "Lid " << LidStateToString(state);
+  lid_state_ = state;
+  if (!use_input_for_lid_) {
+    LOG(WARNING) << "Ignoring lid";
     return;
-  LOG(INFO) << "Sending input event signal: " << util::InputTypeToString(type)
-            << " is " << (state == BUTTON_UP ? "up" : "down");
+  }
 
   InputEvent proto;
-  switch (type) {
-    case INPUT_LID:
-      proto.set_type(state == BUTTON_DOWN ?
-                     InputEvent_Type_LID_CLOSED :
-                     InputEvent_Type_LID_OPEN);
-      break;
-    case INPUT_POWER_BUTTON:
-      proto.set_type(state == BUTTON_DOWN ?
-                     InputEvent_Type_POWER_BUTTON_DOWN :
-                     InputEvent_Type_POWER_BUTTON_UP);
-      break;
-    default:
-      NOTREACHED() << "Unhandled input event type " << type;
+  if (lid_state_ == LID_CLOSED) {
+    input_->SetTouchDevicesState(false);
+    input_->SetWakeInputsState(false);
+    delegate_->HandleLidClosed();
+    proto.set_type(InputEvent_Type_LID_CLOSED);
+  } else {
+    input_->SetTouchDevicesState(true);
+    input_->SetWakeInputsState(true);
+    delegate_->HandleLidOpened();
+    proto.set_type(InputEvent_Type_LID_OPEN);
   }
   proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+}
+
+void InputController::OnPowerButtonEvent(ButtonState state) {
+  if (state != BUTTON_REPEAT) {
+    InputEvent proto;
+    proto.set_type(state == BUTTON_DOWN ?
+                   InputEvent_Type_POWER_BUTTON_DOWN :
+                   InputEvent_Type_POWER_BUTTON_UP);
+    proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
+    dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);
+  }
+
+  delegate_->SendPowerButtonMetric(state == BUTTON_DOWN,
+                                   base::TimeTicks::Now());
+
+  if (state == BUTTON_DOWN) {
+    delegate_->EnsureBacklightIsOn();
+    LOG(INFO) << "Syncing state due to power button down event";
+    util::Launch("sync");
+  }
 }
 
 }  // namespace policy

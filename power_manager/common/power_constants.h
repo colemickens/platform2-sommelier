@@ -5,7 +5,9 @@
 #ifndef POWER_MANAGER_COMMON_POWER_CONSTANTS_H_
 #define POWER_MANAGER_COMMON_POWER_CONSTANTS_H_
 
-#include <base/basictypes.h>
+#include <string>
+
+#include "base/basictypes.h"
 
 namespace power_manager {
 
@@ -69,12 +71,37 @@ extern const char kShutdownReasonIdle[];
 extern const char kShutdownReasonLowBattery[];
 extern const char kShutdownReasonSuspendFailed[];
 
-// Sources of input events.
-enum InputType {
-  INPUT_LID,
-  INPUT_POWER_BUTTON,
-  INPUT_UNHANDLED,
+enum PowerSource {
+  POWER_AC,
+  POWER_BATTERY,
 };
+
+enum LidState {
+  LID_OPEN,
+  LID_CLOSED,
+};
+
+enum SessionState {
+  SESSION_STOPPED,
+  SESSION_STARTED,
+};
+
+enum DisplayMode {
+  DISPLAY_NORMAL,
+  DISPLAY_PRESENTATION,
+};
+
+enum ButtonState {
+  BUTTON_UP,
+  BUTTON_DOWN,
+  BUTTON_REPEAT,
+};
+
+// Returns human-readable descriptions of enum values.
+std::string PowerSourceToString(PowerSource source);
+std::string LidStateToString(LidState state);
+std::string SessionStateToString(SessionState state);
+std::string DisplayModeToString(DisplayMode mode);
 
 }  // namespace power_manager
 
