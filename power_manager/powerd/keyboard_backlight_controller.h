@@ -8,12 +8,13 @@
 #include <glib.h>
 #include <vector>
 
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
 #include "base/compiler_specific.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/video_detector.h"
 
 namespace power_manager {
 
@@ -25,8 +26,7 @@ class BacklightInterface;
 }  // namespace system
 
 // Controls the keyboard backlight for devices with such a backlight.
-class KeyboardBacklightController : public BacklightController,
-                                    public VideoDetectorObserver {
+class KeyboardBacklightController : public BacklightController {
  public:
   KeyboardBacklightController(system::BacklightInterface* backlight,
                               PrefsInterface* prefs,
@@ -40,6 +40,10 @@ class KeyboardBacklightController : public BacklightController,
   void set_current_time_for_testing(base::TimeTicks now) {
     current_time_for_testing_ = now;
   }
+
+  // Called when a notification about video activity has been received.
+  void HandleVideoActivity(base::TimeTicks last_activity_time,
+                           bool is_fullscreen);
 
   // Implementation of BacklightController
   virtual bool Init() OVERRIDE;
@@ -67,16 +71,12 @@ class KeyboardBacklightController : public BacklightController,
   // Implementation of AmbientLightSensorObserver
   virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
 
-  // Implementation of VideoDetectorObserver
-  virtual void OnVideoDetectorEvent(base::TimeTicks last_activity_time,
-                                    bool is_fullscreen) OVERRIDE;
-
  private:
   friend class KeyboardBacklightControllerTest;
   FRIEND_TEST(KeyboardBacklightControllerTest, Init);
   FRIEND_TEST(KeyboardBacklightControllerTest, GetCurrentBrightnessPercent);
   FRIEND_TEST(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent);
-  FRIEND_TEST(KeyboardBacklightControllerTest, OnVideoDetectorEvent);
+  FRIEND_TEST(KeyboardBacklightControllerTest, HandleVideoActivity);
   FRIEND_TEST(KeyboardBacklightControllerTest, UpdateBacklightEnabled);
   FRIEND_TEST(KeyboardBacklightControllerTest, WriteBrightnessLevel);
   FRIEND_TEST(KeyboardBacklightControllerTest, HaltVideoTimeout);

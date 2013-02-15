@@ -43,7 +43,6 @@ LIBPOWERD_OBJS = \
 	powerd/ambient_light_sensor.o \
 	powerd/async_file_reader.o \
 	powerd/file_tagger.o \
-	powerd/idle_detector.o \
 	powerd/keyboard_backlight_controller.o \
 	powerd/metrics_constants.o \
 	powerd/metrics_store.o \
@@ -52,11 +51,9 @@ LIBPOWERD_OBJS = \
 	powerd/powerd.o \
 	powerd/power_supply.o \
 	powerd/rolling_average.o \
-	powerd/screen_locker.o \
 	powerd/state_control.o \
 	powerd/suspend_delay_controller.o \
 	powerd/suspender.o \
-	powerd/video_detector.o \
 	power_manager/suspend.pb.o \
 	power_state_control.pb.o \
 	power_supply_properties.pb.o \
@@ -108,8 +105,7 @@ POWERD_UNITTEST_OBJS = \
 	powerd/rolling_average_unittest.o \
 	powerd/state_control_unittest.o \
 	powerd/suspend_delay_controller_unittest.o \
-	powerd/suspender_unittest.o \
-	powerd/video_detector_unittest.o
+	powerd/suspender_unittest.o
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \

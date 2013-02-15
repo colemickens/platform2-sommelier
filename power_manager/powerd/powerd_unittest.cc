@@ -13,11 +13,9 @@
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/mock_metrics_store.h"
 #include "power_manager/powerd/mock_rolling_average.h"
-#include "power_manager/powerd/mock_video_detector.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/system/mock_backlight.h"
 
@@ -84,8 +82,7 @@ class DaemonTest : public Test {
 #else
         backlight_ctl_(&backlight_, &prefs_, NULL),
 #endif
-        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, &video_detector_,
-                &idle_, NULL, FilePath(".")),
+        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL, FilePath(".")),
         status_(&daemon_.power_status_) {}
 
   virtual void SetUp() {
@@ -287,7 +284,6 @@ class DaemonTest : public Test {
   }
 
   StrictMock<system::MockBacklight> backlight_;
-  StrictMock<MockVideoDetector> video_detector_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   FakePrefs prefs_;
@@ -302,7 +298,6 @@ class DaemonTest : public Test {
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
-  IdleDetector idle_;
   Daemon daemon_;
   PowerStatus* status_;
 };
@@ -331,80 +326,6 @@ TEST_F(DaemonTest, CheckMetricInterval) {
   EXPECT_FALSE(CheckMetricInterval(39, 30, 10));
   EXPECT_TRUE(CheckMetricInterval(40, 30, 10));
   EXPECT_TRUE(CheckMetricInterval(41, 30, 10));
-}
-
-TEST_F(DaemonTest, ExtendTimeoutsWhenProjecting) {
-  const int64 kPluggedDimTimeMs = 10000;
-  const int64 kPluggedOffTimeMs = 20000;
-  const int64 kPluggedSuspendTimeMs = 40000;
-  const int64 kUnpluggedDimTimeMs = 15000;
-  const int64 kUnpluggedOffTimeMs = 25000;
-  const int64 kUnpluggedSuspendTimeMs = 45000;
-
-  const int64 kLockTimeMs = 30000;
-
-  // Set prefs that are read by ReadSettings().  Use 0 for ones that we don't
-  // care about. Setting the window tapering prefs to sane values so the checks
-  // for them don't get tripped.
-  prefs_.SetInt64(kLowBatteryShutdownTimePref, 1);
-  prefs_.SetInt64(kLowBatteryShutdownPercentPref, 0);
-  prefs_.SetInt64(kSampleWindowMaxPref, kSampleWindowMax);
-  prefs_.SetInt64(kSampleWindowMinPref, kSampleWindowMin);
-  prefs_.SetInt64(kTaperTimeMaxPref, kTaperTimeMax);
-  prefs_.SetInt64(kTaperTimeMinPref, kTaperTimeMax);
-  prefs_.SetInt64(kCleanShutdownTimeoutMsPref, 0);
-  prefs_.SetInt64(kPluggedDimMsPref, kPluggedDimTimeMs);
-  prefs_.SetInt64(kPluggedOffMsPref, kPluggedOffTimeMs);
-  prefs_.SetInt64(kPluggedSuspendMsPref, kPluggedSuspendTimeMs);
-  prefs_.SetInt64(kUnpluggedDimMsPref, kUnpluggedDimTimeMs);
-  prefs_.SetInt64(kUnpluggedOffMsPref, kUnpluggedOffTimeMs);
-  prefs_.SetInt64(kUnpluggedSuspendMsPref, kUnpluggedSuspendTimeMs);
-  prefs_.SetInt64(kReactMsPref, 0);
-  prefs_.SetInt64(kFuzzMsPref, 0);
-  prefs_.SetInt64(kBatteryPollIntervalPref, 0);
-  prefs_.SetInt64(kBatteryPollShortIntervalPref, 0);
-  prefs_.SetInt64(kEnforceLockPref, 0);
-  prefs_.SetInt64(kDisableIdleSuspendPref, 0);
-  prefs_.SetInt64(kLockOnIdleSuspendPref, 1);
-  prefs_.SetInt64(kLockMsPref, kLockTimeMs);
-  prefs_.SetInt64(kKeepBacklightOnForAudioPref, 0);
-
-  // Check that the settings are loaded correctly.
-  daemon_.is_projecting_ = false;
-  daemon_.ReadSettings();
-  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
-  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
-  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
-  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
-  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
-  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
-  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
-
-  // When we start projecting, all of the timeouts should be increased.
-  daemon_.is_projecting_ = true;
-  daemon_.AdjustIdleTimeoutsForProjection();
-  EXPECT_GT(daemon_.plugged_dim_ms_, kPluggedDimTimeMs);
-  EXPECT_GT(daemon_.plugged_off_ms_, kPluggedOffTimeMs);
-  EXPECT_GT(daemon_.plugged_suspend_ms_, kPluggedSuspendTimeMs);
-  EXPECT_GT(daemon_.unplugged_dim_ms_, kUnpluggedDimTimeMs);
-  EXPECT_GT(daemon_.unplugged_off_ms_, kUnpluggedOffTimeMs);
-  EXPECT_GT(daemon_.unplugged_suspend_ms_, kUnpluggedSuspendTimeMs);
-  EXPECT_GT(daemon_.default_lock_ms_, kLockTimeMs);
-
-  // Check that the lock timeout remains higher than the screen-off timeout
-  // (http://crosbug.com/24847).
-  EXPECT_GT(daemon_.default_lock_ms_, daemon_.plugged_off_ms_);
-
-  // Stop projecting and check that we go back to the previous values.
-  daemon_.is_projecting_ = false;
-  daemon_.AdjustIdleTimeoutsForProjection();
-  EXPECT_EQ(kPluggedDimTimeMs, daemon_.plugged_dim_ms_);
-  EXPECT_EQ(kPluggedOffTimeMs, daemon_.plugged_off_ms_);
-  EXPECT_EQ(kPluggedSuspendTimeMs, daemon_.plugged_suspend_ms_);
-  EXPECT_EQ(kUnpluggedDimTimeMs, daemon_.unplugged_dim_ms_);
-  EXPECT_EQ(kUnpluggedOffTimeMs, daemon_.unplugged_off_ms_);
-  EXPECT_EQ(kUnpluggedSuspendTimeMs, daemon_.unplugged_suspend_ms_);
-  EXPECT_EQ(kLockTimeMs, daemon_.default_lock_ms_);
 }
 
 TEST_F(DaemonTest, GenerateBacklightLevelMetric) {

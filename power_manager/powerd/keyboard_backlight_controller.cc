@@ -93,6 +93,29 @@ KeyboardBacklightController::~KeyboardBacklightController() {
   HaltVideoTimeout();
 }
 
+void KeyboardBacklightController::HandleVideoActivity(
+    base::TimeTicks last_activity_time,
+    bool is_fullscreen) {
+  LOG(INFO) << "Received video event with fullscreen bit "
+            << (is_fullscreen ? "" : "not ") << "set";
+  int64 timeout_interval_ms = kVideoTimeoutIntervalMs -
+      (GetCurrentTime() - last_activity_time).InMilliseconds();
+  if (timeout_interval_ms <= 0) {
+    LOG(WARNING) << "Didn't get notification about video event before timeout "
+                 << "interval was over!";
+    is_video_playing_ = false;
+    is_fullscreen_ = false;
+    return;
+  }
+  HaltVideoTimeout();
+  is_fullscreen_ = is_fullscreen;
+  is_video_playing_ = true;
+  UpdateBacklightEnabled();
+  video_timeout_timer_id_ = g_timeout_add(timeout_interval_ms,
+                                          VideoTimeoutThunk,
+                                          this);
+}
+
 bool KeyboardBacklightController::Init() {
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
@@ -354,29 +377,6 @@ void KeyboardBacklightController::OnAmbientLightChanged(
         BRIGHTNESS_CHANGE_AUTOMATED,
         TRANSITION_SLOW);
   }
-}
-
-void KeyboardBacklightController::OnVideoDetectorEvent(
-    base::TimeTicks last_activity_time,
-    bool is_fullscreen) {
-  LOG(INFO) << "Received VideoDetectorEvent with fullscreen bit "
-            << (is_fullscreen ? "" : "not ") << "set";
-  int64 timeout_interval_ms = kVideoTimeoutIntervalMs -
-      (GetCurrentTime() - last_activity_time).InMilliseconds();
-  if (timeout_interval_ms <= 0) {
-    LOG(WARNING) << "Didn't get notification about video event before timeout "
-                 << "interval was over!";
-    is_video_playing_ = false;
-    is_fullscreen_ = false;
-    return;
-  }
-  HaltVideoTimeout();
-  is_fullscreen_ = is_fullscreen;
-  is_video_playing_ = true;
-  UpdateBacklightEnabled();
-  video_timeout_timer_id_ = g_timeout_add(timeout_interval_ms,
-                                          VideoTimeoutThunk,
-                                          this);
 }
 
 // static

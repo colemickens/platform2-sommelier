@@ -23,13 +23,11 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/external_backlight_controller.h"
-#include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/system/external_backlight.h"
 #include "power_manager/powerd/system/internal_backlight.h"
-#include "power_manager/powerd/video_detector.h"
 
 #ifndef VCSID
 #define VCSID "<not set>"
@@ -51,7 +49,8 @@ DEFINE_string(run_dir, "",
 DEFINE_string(vmodule, "",
               "Per-module verbose logging levels, e.g. \"foo=1,bar=2\"");
 
-DEFINE_bool(use_state_controller, false, "Use the new StateController class");
+// TODO(derat): Remove this once the init script isn't passing it.
+DEFINE_bool(use_state_controller, true, "Deprecated");
 
 namespace {
 
@@ -163,22 +162,13 @@ int main(int argc, char* argv[]) {
 #endif
 
   MetricsLibrary metrics_lib;
-  power_manager::VideoDetector video_detector;
-  video_detector.Init();
-  if (keyboard_backlight_controller.get())
-    video_detector.AddObserver(keyboard_backlight_controller.get());
-  power_manager::IdleDetector idle;
   metrics_lib.Init();
   FilePath run_dir(FLAGS_run_dir);
   power_manager::Daemon daemon(&display_backlight_controller,
                                &prefs,
                                &metrics_lib,
-                               &video_detector,
-                               &idle,
                                keyboard_backlight_controller.get(),
                                run_dir);
-  daemon.set_use_state_controller(FLAGS_use_state_controller);
-
   daemon.Init();
   daemon.Run();
   return 0;

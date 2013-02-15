@@ -28,13 +28,11 @@
 #include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/file_tagger.h"
-#include "power_manager/powerd/idle_detector.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/metrics_store.h"
 #include "power_manager/powerd/policy/input_controller.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/rolling_average.h"
-#include "power_manager/powerd/screen_locker.h"
 #include "power_manager/powerd/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 
@@ -89,8 +87,6 @@ enum BatteryReportState {
 };
 
 class Daemon : public BacklightControllerObserver,
-               public IdleObserver,
-               public PrefsObserver,
                public policy::InputController::Delegate,
                public system::AudioObserver {
  public:
@@ -99,18 +95,14 @@ class Daemon : public BacklightControllerObserver,
   Daemon(BacklightController* ctl,
          PrefsInterface* prefs,
          MetricsLibraryInterface* metrics_lib,
-         VideoDetector* video_detector,
-         IdleDetector* idle,
          KeyboardBacklightController* keyboard_controller,
          const FilePath& run_dir);
   ~Daemon();
 
-  ScreenLocker* locker() { return &locker_; }
   BacklightController* backlight_controller() { return backlight_controller_; }
 
   const std::string& current_user() const { return current_user_; }
 
-  void set_use_state_controller(bool use) { use_state_controller_ = use; }
   void set_disable_dbus_for_testing(bool disable) {
     disable_dbus_for_testing_ = disable;
   }
@@ -136,12 +128,6 @@ class Daemon : public BacklightControllerObserver,
   // If in the active-but-off state, turn up the brightness when user presses a
   // key so user can see that the screen has been locked.
   void BrightenScreenIfOff();
-
-  // Overridden from IdleObserver:
-  virtual void OnIdleEvent(bool is_idle, int64 idle_time_ms) OVERRIDE;
-
-  // Overridden from PrefsObserver:
-  virtual void OnPrefChanged(const std::string& pref_name) OVERRIDE;
 
   // Overridden from BacklightControllerObserver:
   virtual void OnBrightnessChanged(double brightness_percent,
@@ -301,10 +287,7 @@ class Daemon : public BacklightControllerObserver,
   // Callbacks for handling dbus messages.
   bool HandleRequestSuspendSignal(DBusMessage* message);
   bool HandleCleanShutdownSignal(DBusMessage* message);
-  bool HandlePowerStateChangedSignal(DBusMessage* message);
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
-  bool HandleSessionManagerScreenIsLockedSignal(DBusMessage* message);
-  bool HandleSessionManagerScreenIsUnlockedSignal(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
   DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
   DBusMessage* HandleDecreaseScreenBrightnessMethod(DBusMessage* message);
@@ -508,10 +491,6 @@ class Daemon : public BacklightControllerObserver,
   // on/off.
   void SetPowerState(PowerState state);
 
-  // Checks |audio_detector_| to determine if audio has been playing recently.
-  // "Recently" is defined by |kAudioActivityThresholdMs| in powerd.cc.
-  bool IsAudioPlaying();
-
   // Updates |battery_report_state_| to account for changes in the power state
   // of the device and passage of time. This value is used to control the value
   // we display to the user for battery time, so this should be called before
@@ -533,8 +512,6 @@ class Daemon : public BacklightControllerObserver,
   BacklightController* backlight_controller_;
   PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
-  VideoDetector* video_detector_;
-  IdleDetector* idle_;
   KeyboardBacklightController* keyboard_controller_;  // non-owned
 
   scoped_ptr<DBusSenderInterface> dbus_sender_;
@@ -555,28 +532,11 @@ class Daemon : public BacklightControllerObserver,
   bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
   guint clean_shutdown_timeout_id_;
-  int64 plugged_dim_ms_;
-  int64 plugged_off_ms_;
-  int64 plugged_suspend_ms_;
-  int64 unplugged_dim_ms_;
-  int64 unplugged_off_ms_;
-  int64 unplugged_suspend_ms_;
-  int64 react_ms_;
-  int64 fuzz_ms_;
-  int64 default_lock_ms_;
-  int64 dim_ms_;
-  int64 off_ms_;
-  int64 suspend_ms_;
-  int64 lock_ms_;
-  int64 offset_ms_;
   int64 battery_poll_interval_ms_;
   int64 battery_poll_short_interval_ms_;
-  bool enforce_lock_;
-  bool lock_on_idle_suspend_;
   PluggedState plugged_state_;
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;
-  ScreenLocker locker_;
   scoped_ptr<Suspender::Delegate> suspender_delegate_;
   Suspender suspender_;
   FilePath run_dir_;
@@ -611,14 +571,6 @@ class Daemon : public BacklightControllerObserver,
   // Last session state that we have been informed of. Initialized as stopped.
   std::string current_session_state_;
 
-  // Stores normal timeout values, to be used for switching between projecting
-  // and non-projecting timeouts.  Map keys are variable names found in
-  // power_constants.h.
-  std::map<std::string, int64> base_timeout_values_;
-
-  // List of thresholds to notify Chrome on.
-  IdleThresholds thresholds_;
-
   // Keep a local copy of power status reading from power_supply.  This way,
   // requests for each field of the power status can be read directly from
   // this struct.  Otherwise we'd have to read the whole struct from
@@ -648,16 +600,9 @@ class Daemon : public BacklightControllerObserver,
   RollingAverage time_to_empty_average_;
   RollingAverage time_to_full_average_;
 
-  // Flag indicating whether the system is projecting to an external display.
-  bool is_projecting_;
-
   // String that indicates reason for shutting down.  See power_constants.cc for
   // valid values.
   std::string shutdown_reason_;
-
-  // Flag indicating that this system needs a USB input device connected before
-  // suspending, otherwise it cannot wake up from suspend.
-  bool require_usb_input_device_to_suspend_;
 
   // Variables used for pinning and tapering the battery after we have adjusted
   // it to account for being near full but not charging. The state value tells
@@ -670,17 +615,10 @@ class Daemon : public BacklightControllerObserver,
   // Set by tests to disable emitting D-Bus signals.
   bool disable_dbus_for_testing_;
 
-  // Flag for devices where the display powers the audio output, such that the
-  // display must not be powered off if audio is playing.
-  bool keep_backlight_on_for_audio_;
-
   // Has |state_controller_| been initialized?  Daemon::Init() invokes a
   // bunch of event-handling functions directly, but events shouldn't be
   // passed to |state_controller_| until it's been initialized.
   bool state_controller_initialized_;
-
-  // Should |state_controller_|'s actions be performed?
-  bool use_state_controller_;
 };
 
 }  // namespace power_manager

@@ -269,11 +269,11 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
   Mock::VerifyAndClearExpectations(&backlight_);
 }
 
-TEST_F(KeyboardBacklightControllerTest, OnVideoDetectorEvent) {
+TEST_F(KeyboardBacklightControllerTest, HandleVideoActivity) {
   // Interval already expired.
   controller_->is_fullscreen_ = true;
   controller_->is_video_playing_ = true;
-  controller_->OnVideoDetectorEvent(
+  controller_->HandleVideoActivity(
       base::TimeTicks::Now()
       - base::TimeDelta::FromMilliseconds(kTestTimeoutIntervalMs),
       false);
@@ -288,7 +288,7 @@ TEST_F(KeyboardBacklightControllerTest, OnVideoDetectorEvent) {
   controller_->current_level_ = kTestCurrentLevel;
   controller_->als_target_percent_ = kTestCurrentPercent;
   backlight_.ExpectSetBrightnessLevel(0, true);
-  controller_->OnVideoDetectorEvent(base::TimeTicks::Now(), true);
+  controller_->HandleVideoActivity(base::TimeTicks::Now(), true);
   EXPECT_TRUE(controller_->is_fullscreen_);
   EXPECT_TRUE(controller_->is_video_playing_);
   EXPECT_FALSE(controller_->video_enabled_);

@@ -48,10 +48,6 @@ const char kPowerStatusPath[] = "/sys/class/power_supply";
 // Power supply subsystem for udev events.
 const char kPowerSupplyUdevSubsystem[] = "power_supply";
 
-// How long after last known audio activity to consider audio not to be playing,
-// in milliseconds.
-const int64 kAudioActivityThresholdMs = 60 * 1000;
-
 // Strings for states that powerd cares about from the session manager's
 // SessionStateChanged signal.
 const char kSessionStarted[] = "started";
@@ -65,9 +61,6 @@ std::set<std::string> kValidStates(
     kValidStateStrings,
     kValidStateStrings  + sizeof(kValidStateStrings) / sizeof(std::string));
 
-// Minimum time a user must be idle to have returned from idle
-const int64 kMinTimeForIdle = 10;
-
 // Upper limit to accept for raw battery times, in seconds. If the time of
 // interest is above this level assume something is wrong.
 const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
@@ -75,9 +68,6 @@ const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
 }  // namespace
 
 namespace power_manager {
-
-// Timeouts are multiplied by this factor when projecting to external display.
-static const int64 kProjectionTimeoutFactor = 2;
 
 // Performs actions requested by |state_controller_|.  The reason that
 // this is a nested class of Daemon rather than just being implented as
@@ -105,7 +95,11 @@ class Daemon::StateControllerDelegate
   }
 
   virtual bool ShouldAvoidSuspendForHeadphoneJack() OVERRIDE {
-    return daemon_->ShouldStayAwakeForHeadphoneJack();
+#ifdef STAY_AWAKE_PLUGGED_DEVICE
+    return daemon_->audio_detector_->IsHeadphoneJackConnected();
+#else
+    return false;
+#endif
   }
 
   virtual policy::StateController::LidState QueryLidState() OVERRIDE {
@@ -120,7 +114,7 @@ class Daemon::StateControllerDelegate
 
   virtual void DimScreen() OVERRIDE {
     screen_dimmed_ = true;
-    if (daemon_->use_state_controller_ && !screen_off_) {
+    if (!screen_off_) {
       daemon_->SetPowerState(BACKLIGHT_DIM);
       base::TimeTicks now = base::TimeTicks::Now();
       daemon_->idle_transition_timestamps_[BACKLIGHT_DIM] = now;
@@ -132,67 +126,55 @@ class Daemon::StateControllerDelegate
 
   virtual void UndimScreen() OVERRIDE {
     screen_dimmed_ = false;
-    if (daemon_->use_state_controller_ && !screen_off_)
+    if (!screen_off_)
       daemon_->SetPowerState(BACKLIGHT_ACTIVE);
   }
 
   virtual void TurnScreenOff() OVERRIDE {
     screen_off_ = true;
-    if (daemon_->use_state_controller_) {
-      daemon_->SetPowerState(BACKLIGHT_IDLE_OFF);
-      base::TimeTicks now = base::TimeTicks::Now();
-      daemon_->idle_transition_timestamps_[BACKLIGHT_IDLE_OFF] = now;
-      daemon_->last_idle_event_timestamp_ = now;
-      daemon_->last_idle_timedelta_ =
-          now - daemon_->state_controller_->last_user_activity_time();
-    }
+    daemon_->SetPowerState(BACKLIGHT_IDLE_OFF);
+    base::TimeTicks now = base::TimeTicks::Now();
+    daemon_->idle_transition_timestamps_[BACKLIGHT_IDLE_OFF] = now;
+    daemon_->last_idle_event_timestamp_ = now;
+    daemon_->last_idle_timedelta_ =
+        now - daemon_->state_controller_->last_user_activity_time();
   }
 
   virtual void TurnScreenOn() OVERRIDE {
     screen_off_ = false;
-    if (daemon_->use_state_controller_)
-      daemon_->SetPowerState(screen_dimmed_ ? BACKLIGHT_DIM : BACKLIGHT_ACTIVE);
+    daemon_->SetPowerState(screen_dimmed_ ? BACKLIGHT_DIM : BACKLIGHT_ACTIVE);
   }
 
   virtual void LockScreen() OVERRIDE {
-    if (daemon_->use_state_controller_) {
-      util::CallSessionManagerMethod(
-          login_manager::kSessionManagerLockScreen, NULL);
-    }
+    util::CallSessionManagerMethod(
+        login_manager::kSessionManagerLockScreen, NULL);
   }
 
   virtual void Suspend() OVERRIDE {
-    if (daemon_->use_state_controller_)
-      daemon_->Suspend();
+    daemon_->Suspend();
   }
 
   virtual void StopSession() OVERRIDE {
-    if (daemon_->use_state_controller_) {
-      // This session manager method takes a string argument, although it
-      // doesn't currently do anything with it.
-      util::CallSessionManagerMethod(
-          login_manager::kSessionManagerStopSession, "");
-    }
+    // This session manager method takes a string argument, although it
+    // doesn't currently do anything with it.
+    util::CallSessionManagerMethod(
+        login_manager::kSessionManagerStopSession, "");
   }
 
   virtual void ShutDown() OVERRIDE {
     // TODO(derat): Maybe pass the shutdown reason (idle vs. lid-closed)
     // and set it here.  This isn't necessary at the moment, since nothing
     // special is done for any reason besides |kShutdownReasonLowBattery|.
-    if (daemon_->use_state_controller_)
-      daemon_->OnRequestShutdown();
+    daemon_->OnRequestShutdown();
   }
 
   virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
-    if (daemon_->use_state_controller_)
-      daemon_->IdleEventNotify(delay.InMilliseconds());
+    daemon_->IdleEventNotify(delay.InMilliseconds());
   }
 
   virtual void ReportUserActivityMetrics() OVERRIDE {
-    if (daemon_->use_state_controller_) {
-      if (!daemon_->last_idle_event_timestamp_.is_null())
-        daemon_->GenerateMetricsOnLeavingIdle();
-    }
+    if (!daemon_->last_idle_event_timestamp_.is_null())
+      daemon_->GenerateMetricsOnLeavingIdle();
   }
 
  private:
@@ -211,16 +193,12 @@ class Daemon::StateControllerDelegate
 Daemon::Daemon(BacklightController* backlight_controller,
                PrefsInterface* prefs,
                MetricsLibraryInterface* metrics_lib,
-               VideoDetector* video_detector,
-               IdleDetector* idle,
                KeyboardBacklightController* keyboard_controller,
                const FilePath& run_dir)
     : state_controller_delegate_(new StateControllerDelegate(this)),
       backlight_controller_(backlight_controller),
       prefs_(prefs),
       metrics_lib_(metrics_lib),
-      video_detector_(video_detector),
-      idle_(idle),
       keyboard_controller_(keyboard_controller),
       dbus_sender_(
           new DBusSender(kPowerManagerServicePath, kPowerManagerInterface)),
@@ -244,7 +222,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       clean_shutdown_timeout_id_(0),
       battery_poll_interval_ms_(0),
       battery_poll_short_interval_ms_(0),
-      enforce_lock_(false),
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
@@ -260,23 +237,15 @@ Daemon::Daemon(BacklightController* backlight_controller,
       udev_(NULL),
       state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
-      is_projecting_(false),
       shutdown_reason_(kShutdownReasonUnknown),
-      require_usb_input_device_to_suspend_(false),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false),
-      keep_backlight_on_for_audio_(false),
-      state_controller_initialized_(false),
-      use_state_controller_(false) {
-  prefs_->AddObserver(this);
-  idle_->AddObserver(this);
+      state_controller_initialized_(false) {
   audio_detector_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
   audio_detector_->RemoveObserver(this);
-  idle_->RemoveObserver(this);
-  prefs_->RemoveObserver(this);
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
@@ -293,7 +262,6 @@ void Daemon::Init() {
       << "Unable to initialize metrics store, so we are going to drop number of"
       << " sessions per charge data";
 
-  locker_.Init(lock_on_idle_suspend_);
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
   RetrieveSessionState();
@@ -322,8 +290,7 @@ void Daemon::Init() {
 #endif
   audio_detector_->Init(headphone_device);
 
-  if (use_state_controller_)
-    SetPowerState(BACKLIGHT_ACTIVE);
+  SetPowerState(BACKLIGHT_ACTIVE);
 
   bool has_lid = true;
   prefs_->GetBool(kUseLidPref, &has_lid);
@@ -345,7 +312,6 @@ void Daemon::Init() {
 }
 
 void Daemon::ReadSettings() {
-  int64 enforce_lock;
   int64 low_battery_shutdown_time_s = 0;
   double low_battery_shutdown_percent = 0.0;
   if (!prefs_->GetInt64(kLowBatteryShutdownTimePref,
@@ -366,21 +332,10 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kTaperTimeMinPref, &taper_time_min_s_));
   CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
-  CHECK(prefs_->GetInt64(kPluggedDimMsPref, &plugged_dim_ms_));
-  CHECK(prefs_->GetInt64(kPluggedOffMsPref, &plugged_off_ms_));
-  CHECK(prefs_->GetInt64(kUnpluggedDimMsPref, &unplugged_dim_ms_));
-  CHECK(prefs_->GetInt64(kUnpluggedOffMsPref, &unplugged_off_ms_));
-  CHECK(prefs_->GetInt64(kReactMsPref, &react_ms_));
-  CHECK(prefs_->GetInt64(kFuzzMsPref, &fuzz_ms_));
   CHECK(prefs_->GetInt64(kBatteryPollIntervalPref, &battery_poll_interval_ms_));
   CHECK(prefs_->GetInt64(kBatteryPollShortIntervalPref,
                          &battery_poll_short_interval_ms_));
-  CHECK(prefs_->GetInt64(kEnforceLockPref, &enforce_lock));
-  CHECK(prefs_->GetBool(kKeepBacklightOnForAudioPref,
-                        &keep_backlight_on_for_audio_));
 
-  ReadSuspendSettings();
-  ReadLockScreenSettings();
   if ((low_battery_shutdown_time_s >= 0) &&
       (low_battery_shutdown_time_s <= 8 * 3600)) {
     low_battery_shutdown_time_s_ = low_battery_shutdown_time_s;
@@ -435,75 +390,12 @@ void Daemon::ReadSettings() {
   LOG(INFO) << "Using Taper Time Max(secs) = " << taper_time_max_s_
             << " and Min(secs) = " << taper_time_min_s_;
   taper_time_diff_s_ = taper_time_max_s_ - taper_time_min_s_;
-  lock_ms_ = default_lock_ms_;
-  enforce_lock_ = enforce_lock;
 
   LOG(INFO) << "Using battery polling interval of " << battery_poll_interval_ms_
             << " mS and short interval of " << battery_poll_short_interval_ms_
             << " mS";
 
-  // Check that timeouts are sane.
-  CHECK(kMetricIdleMin >= fuzz_ms_);
-  CHECK(plugged_dim_ms_ >= react_ms_);
-  CHECK(plugged_off_ms_ >= plugged_dim_ms_ + react_ms_);
-  CHECK(plugged_suspend_ms_ >= plugged_off_ms_ + react_ms_);
-  CHECK(unplugged_dim_ms_ >= react_ms_);
-  CHECK(unplugged_off_ms_ >= unplugged_dim_ms_ + react_ms_);
-  CHECK(unplugged_suspend_ms_ >= unplugged_off_ms_ + react_ms_);
-  CHECK(default_lock_ms_ >= unplugged_off_ms_ + react_ms_);
-  CHECK(default_lock_ms_ >= plugged_off_ms_ + react_ms_);
-
-  // Store unmodified timeout values for switching between projecting and non-
-  // projecting timeouts.
-  base_timeout_values_[kPluggedDimMsPref]       = plugged_dim_ms_;
-  base_timeout_values_[kPluggedOffMsPref]       = plugged_off_ms_;
-  base_timeout_values_[kPluggedSuspendMsPref]   = plugged_suspend_ms_;
-  base_timeout_values_[kUnpluggedDimMsPref]     = unplugged_dim_ms_;
-  base_timeout_values_[kUnpluggedOffMsPref]     = unplugged_off_ms_;
-  base_timeout_values_[kUnpluggedSuspendMsPref] = unplugged_suspend_ms_;
-
-  // Initialize from prefs as might be used before AC plug status evaluated.
-  dim_ms_ = unplugged_dim_ms_;
-  off_ms_ = unplugged_off_ms_;
-
   state_control_->ReadSettings(prefs_);
-}
-
-void Daemon::ReadLockScreenSettings() {
-  int64 lock_on_idle_suspend = 0;
-  if (prefs_->GetInt64(kLockOnIdleSuspendPref, &lock_on_idle_suspend) &&
-      lock_on_idle_suspend) {
-    LOG(INFO) << "Enabling screen lock on idle and suspend";
-    CHECK(prefs_->GetInt64(kLockMsPref, &default_lock_ms_));
-  } else {
-    LOG(INFO) << "Disabling screen lock on idle and suspend";
-    default_lock_ms_ = INT64_MAX;
-  }
-  base_timeout_values_[kLockMsPref] = default_lock_ms_;
-  lock_on_idle_suspend_ = lock_on_idle_suspend;
-}
-
-void Daemon::ReadSuspendSettings() {
-  int64 disable_idle_suspend = 0;
-  if (prefs_->GetInt64(kDisableIdleSuspendPref, &disable_idle_suspend) &&
-      disable_idle_suspend) {
-    LOG(INFO) << "Idle suspend feature disabled";
-    plugged_suspend_ms_ = INT64_MAX;
-    unplugged_suspend_ms_ = INT64_MAX;
-  } else {
-    CHECK(prefs_->GetInt64(kPluggedSuspendMsPref, &plugged_suspend_ms_));
-    CHECK(prefs_->GetInt64(kUnpluggedSuspendMsPref, &unplugged_suspend_ms_));
-
-    LOG(INFO) << "Idle suspend enabled. plugged_suspend_ms_ = "
-              << plugged_suspend_ms_ << " unplugged_suspend_ms = "
-              << unplugged_suspend_ms_;
-    prefs_->GetBool(kRequireUsbInputDeviceToSuspendPref,
-                    &require_usb_input_device_to_suspend_);
-  }
-  // Store unmodified timeout values for switching between projecting and
-  // non-projecting timeouts.
-  base_timeout_values_[kPluggedSuspendMsPref]   = plugged_suspend_ms_;
-  base_timeout_values_[kUnpluggedSuspendMsPref] = unplugged_suspend_ms_;
 }
 
 void Daemon::Run() {
@@ -520,8 +412,6 @@ void Daemon::UpdateIdleStates() {
         state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND),
         state_control_->IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
   }
-  if (!use_state_controller_)
-    SetIdleState(idle_->GetIdleTimeMs());
 }
 
 void Daemon::SetPlugged(bool plugged) {
@@ -547,28 +437,7 @@ void Daemon::SetPlugged(bool plugged) {
   plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
       PLUGGED_STATE_DISCONNECTED;
 
-  int64 idle_time_ms = idle_->GetIdleTimeMs();
-  if (!use_state_controller_) {
-    // If the screen is on, and the user plugged or unplugged the computer,
-    // we should wait a bit before turning off the screen.
-    // If the screen is off, don't immediately suspend, wait another
-    // suspend timeout.
-    // If the state is uninitialized, this is the powerd startup condition, so
-    // we ignore any idle time from before powerd starts.
-    if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE ||
-        backlight_controller_->GetPowerState() == BACKLIGHT_DIM)
-      SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
-    else if (backlight_controller_->GetPowerState() == BACKLIGHT_IDLE_OFF)
-      SetIdleOffset(idle_time_ms, IDLE_STATE_SUSPEND);
-    else if (backlight_controller_->GetPowerState() == BACKLIGHT_UNINITIALIZED)
-      SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
-    else
-      SetIdleOffset(0, IDLE_STATE_NORMAL);
-  }
-
   backlight_controller_->OnPlugEvent(plugged);
-  if (!use_state_controller_)
-    SetIdleState(idle_time_ms);
 
   if (state_controller_initialized_) {
     state_controller_->HandlePowerSourceChange(
@@ -614,134 +483,6 @@ void Daemon::StartCleanShutdown() {
   }
 }
 
-void Daemon::SetIdleOffset(int64 offset_ms, IdleState state) {
-  CHECK(!use_state_controller_);
-  AdjustIdleTimeoutsForProjection();
-  int64 prev_dim_ms = dim_ms_;
-  int64 prev_off_ms = off_ms_;
-  LOG(INFO) << "offset_ms_ = " << offset_ms;
-  offset_ms_ = offset_ms;
-  if (plugged_state_ == PLUGGED_STATE_CONNECTED) {
-    dim_ms_ = plugged_dim_ms_;
-    off_ms_ = plugged_off_ms_;
-    suspend_ms_ = plugged_suspend_ms_;
-  } else {
-    CHECK(plugged_state_ == PLUGGED_STATE_DISCONNECTED);
-    dim_ms_ = unplugged_dim_ms_;
-    off_ms_ = unplugged_off_ms_;
-    suspend_ms_ = unplugged_suspend_ms_;
-  }
-  lock_ms_ = default_lock_ms_;
-
-  // Protect against overflow
-  dim_ms_ = std::max(dim_ms_ + offset_ms, dim_ms_);
-  off_ms_ = std::max(off_ms_ + offset_ms, off_ms_);
-  suspend_ms_ = std::max(suspend_ms_ + offset_ms, suspend_ms_);
-
-  if (enforce_lock_) {
-    // Make sure that the screen turns off before it locks, and dims before
-    // it turns off. This ensures the user gets a warning before we lock the
-    // screen.
-    off_ms_ = std::min(off_ms_, lock_ms_ - react_ms_);
-    dim_ms_ = std::min(dim_ms_, lock_ms_ - 2 * react_ms_);
-  } else {
-    lock_ms_ = std::max(lock_ms_ + offset_ms, lock_ms_);
-  }
-
-  // Only offset timeouts for states starting with idle state provided.
-  switch (state) {
-    case IDLE_STATE_SUSPEND:
-      off_ms_ = prev_off_ms;
-    case IDLE_STATE_SCREEN_OFF:
-      dim_ms_ = prev_dim_ms;
-    case IDLE_STATE_DIM:
-    case IDLE_STATE_NORMAL:
-      break;
-    case IDLE_STATE_UNKNOWN:
-    default: {
-      LOG(ERROR) << "SetIdleOffset : Improper Idle State";
-      break;
-    }
-  }
-
-  // Sync up idle state with new settings.
-  idle_->ClearTimeouts();
-  if (offset_ms > fuzz_ms_)
-    idle_->AddIdleTimeout(fuzz_ms_);
-  if (kMetricIdleMin <= dim_ms_ - fuzz_ms_)
-    idle_->AddIdleTimeout(kMetricIdleMin);
-  // XIdle timeout events for dimming and idle-off.
-  idle_->AddIdleTimeout(dim_ms_);
-  idle_->AddIdleTimeout(off_ms_);
-  // This is to start polling audio before a suspend.
-  // |suspend_ms_| must be >= |off_ms_| + |react_ms_|, so if the following
-  // condition is false, then they must be equal.  In that case, the idle
-  // timeout at |off_ms_| would be equivalent, and the following timeout would
-  // be redundant.
-  if (suspend_ms_ - react_ms_ > off_ms_)
-    idle_->AddIdleTimeout(suspend_ms_ - react_ms_);
-  // XIdle timeout events for lock and/or suspend.
-  if (lock_ms_ < suspend_ms_ - fuzz_ms_ || lock_ms_ - fuzz_ms_ > suspend_ms_) {
-    idle_->AddIdleTimeout(lock_ms_);
-    idle_->AddIdleTimeout(suspend_ms_);
-  } else {
-    idle_->AddIdleTimeout(std::max(lock_ms_, suspend_ms_));
-  }
-  // XIdle timeout events for idle notify status
-  for (IdleThresholds::iterator iter = thresholds_.begin();
-       iter != thresholds_.end();
-       ++iter) {
-    if (*iter == 0) {
-      idle_->AddIdleTimeout(kMinTimeForIdle);
-    } else  if (*iter > 0) {
-      idle_->AddIdleTimeout(*iter);
-    }
-  }
-}
-
-// SetActive will transition to Normal state. Used for transitioning on events
-// that do not result in activity monitored by chrome, i.e. lid open.
-void Daemon::SetActive() {
-  CHECK(!use_state_controller_);
-  idle_->HandleUserActivity(base::TimeTicks::Now());
-  int64 idle_time_ms = idle_->GetIdleTimeMs();
-  SetIdleOffset(idle_time_ms, IDLE_STATE_NORMAL);
-  SetIdleState(idle_time_ms);
-}
-
-void Daemon::SetIdleState(int64 idle_time_ms) {
-  CHECK(!use_state_controller_);
-  PowerState old_state = backlight_controller_->GetPowerState();
-  if (idle_time_ms >= suspend_ms_ &&
-      !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND)) {
-    SetPowerState(BACKLIGHT_SUSPENDED);
-    Suspend();
-  } else if (idle_time_ms >= off_ms_ &&
-             !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK)) {
-    if (util::IsSessionStarted())
-      SetPowerState(BACKLIGHT_IDLE_OFF);
-  } else if (idle_time_ms >= dim_ms_ &&
-             !state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM)) {
-    SetPowerState(BACKLIGHT_DIM);
-  } else if (backlight_controller_->GetPowerState() != BACKLIGHT_ACTIVE) {
-    if (backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE)) {
-      if (old_state == BACKLIGHT_SUSPENDED)
-        suspender_.HandleUserActivity();
-    }
-    if (keyboard_controller_)
-      keyboard_controller_->SetPowerState(BACKLIGHT_ACTIVE);
-  } else if (idle_time_ms < react_ms_ && locker_.is_locked()) {
-    BrightenScreenIfOff();
-  }
-  if (idle_time_ms >= lock_ms_ && util::IsSessionStarted() &&
-      backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED) {
-    locker_.LockScreen();
-  }
-  if (old_state != backlight_controller_->GetPowerState())
-    idle_transition_timestamps_[backlight_controller_->GetPowerState()] =
-        base::TimeTicks::Now();
-}
-
 void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
   Daemon* daemon = static_cast<Daemon*>(object);
   daemon->SetPlugged(info.line_power_on);
@@ -760,11 +501,6 @@ void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
                          info.battery_time_to_full,
                          info.battery_percentage);
   }
-}
-
-void Daemon::AddIdleThreshold(int64 threshold) {
-  idle_->AddIdleTimeout((threshold == 0) ? kMinTimeForIdle : threshold);
-  thresholds_.push_back(threshold);
 }
 
 void Daemon::IdleEventNotify(int64 threshold) {
@@ -789,86 +525,6 @@ void Daemon::IdleEventNotify(int64 threshold) {
 void Daemon::BrightenScreenIfOff() {
   if (util::IsSessionStarted() && backlight_controller_->IsBacklightActiveOff())
     backlight_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
-}
-
-void Daemon::OnIdleEvent(bool is_idle, int64 idle_time_ms) {
-  CHECK(!use_state_controller_);
-  CHECK(plugged_state_ != PLUGGED_STATE_UNKNOWN);
-  if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
-      dim_ms_ <= idle_time_ms && !locker_.is_locked()) {
-    int64 video_time_ms = 0;
-    bool video_is_playing = false;
-    int64 dim_timeout = (PLUGGED_STATE_CONNECTED == plugged_state_) ?
-        plugged_dim_ms_ :
-        unplugged_dim_ms_;
-    CHECK(video_detector_->GetActivity(dim_timeout,
-                                       &video_time_ms,
-                                       &video_is_playing));
-    if (video_is_playing)
-      SetIdleOffset(idle_time_ms - video_time_ms, IDLE_STATE_NORMAL);
-  }
-  if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_DIM &&
-      !util::OOBECompleted()) {
-    LOG(INFO) << "OOBE not complete. Delaying screenoff until done.";
-    SetIdleOffset(idle_time_ms, IDLE_STATE_SCREEN_OFF);
-  }
-  if (is_idle && backlight_controller_->GetPowerState() == BACKLIGHT_DIM &&
-      keep_backlight_on_for_audio_ && idle_time_ms  >= off_ms_ &&
-      IsAudioPlaying()) {
-    LOG(INFO) << "Backlight must stay on for audio. Delaying screenoff.";
-    SetIdleOffset(idle_time_ms, IDLE_STATE_SCREEN_OFF);
-  }
-  if (is_idle &&
-      backlight_controller_->GetPowerState() != BACKLIGHT_SUSPENDED &&
-      idle_time_ms >= suspend_ms_) {
-    bool audio_is_playing = IsAudioPlaying();
-    bool delay_suspend = false;
-    if (audio_is_playing || ShouldStayAwakeForHeadphoneJack()) {
-      LOG(INFO) << "Delaying suspend because " <<
-          (audio_is_playing ? "audio is playing." : "headphones are attached.");
-      delay_suspend = true;
-    } else if (require_usb_input_device_to_suspend_ &&
-               !input_->IsUSBInputDeviceConnected()) {
-      LOG(INFO) << "Delaying suspend because no USB input device is connected.";
-      delay_suspend = true;
-    }
-    if (delay_suspend) {
-      // Increase the suspend offset by the react time.  Since the offset is
-      // calculated relative to the ORIGINAL [un]plugged_suspend_ms_ value, we
-      // need to use that here.
-      int64 base_suspend_ms = (plugged_state_ == PLUGGED_STATE_CONNECTED) ?
-                               plugged_suspend_ms_ : unplugged_suspend_ms_;
-      SetIdleOffset(suspend_ms_ - base_suspend_ms + react_ms_,
-                    IDLE_STATE_SUSPEND);
-    }
-  }
-
-  if (is_idle) {
-    last_idle_event_timestamp_ = base::TimeTicks::Now();
-    last_idle_timedelta_ = base::TimeDelta::FromMilliseconds(idle_time_ms);
-  } else if (!last_idle_event_timestamp_.is_null() &&
-             idle_time_ms < last_idle_timedelta_.InMilliseconds()) {
-    GenerateMetricsOnLeavingIdle();
-  }
-  SetIdleState(idle_time_ms);
-  if (!is_idle && offset_ms_ != 0)
-    SetIdleOffset(0, IDLE_STATE_NORMAL);
-
-  // Notify once for each threshold.
-  IdleThresholds::iterator iter = thresholds_.begin();
-  while (iter != thresholds_.end()) {
-    // If we're idle and past a threshold, notify and erase the threshold.
-    if (is_idle && *iter != 0 && idle_time_ms >= *iter) {
-      IdleEventNotify(*iter);
-      iter = thresholds_.erase(iter);
-    // Else, if we just went active and the threshold is a check for active.
-    } else if (!is_idle && *iter == 0) {
-      IdleEventNotify(0);
-      iter = thresholds_.erase(iter);
-    } else {
-      ++iter;
-    }
-  }
 }
 
 void Daemon::AdjustKeyboardBrightness(int direction) {
@@ -914,19 +570,6 @@ void Daemon::SendBrightnessChangedSignal(double brightness_percent,
                            DBUS_TYPE_INVALID);
   dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
   dbus_message_unref(signal);
-}
-
-void Daemon::OnPrefChanged(const std::string& pref_name) {
-  if (pref_name == kLockOnIdleSuspendPref) {
-    ReadLockScreenSettings();
-    locker_.Init(lock_on_idle_suspend_);
-    if (!use_state_controller_)
-      SetIdleOffset(0, IDLE_STATE_NORMAL);
-  } else if (pref_name == kDisableIdleSuspendPref) {
-    ReadSuspendSettings();
-    if (!use_state_controller_)
-      SetIdleOffset(0, IDLE_STATE_NORMAL);
-  }
 }
 
 void Daemon::OnBrightnessChanged(double brightness_percent,
@@ -1005,10 +648,6 @@ void Daemon::HandleResume(bool suspend_was_successful,
 }
 
 void Daemon::HandleLidClosed() {
-  if (!use_state_controller_) {
-    SetActive();
-    Suspend();
-  }
   if (state_controller_initialized_) {
     state_controller_->HandleLidStateChange(
         policy::StateController::LID_CLOSED);
@@ -1016,8 +655,6 @@ void Daemon::HandleLidClosed() {
 }
 
 void Daemon::HandleLidOpened() {
-  if (!use_state_controller_)
-    SetActive();
   suspender_.HandleLidOpened();
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(policy::StateController::LID_OPEN);
@@ -1129,24 +766,9 @@ void Daemon::RegisterDBusMessageHandler() {
       kCleanShutdown,
       base::Bind(&Daemon::HandleCleanShutdownSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
-      kPowerManagerInterface,
-      kPowerStateChangedSignal,
-      base::Bind(&Daemon::HandlePowerStateChangedSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerSessionStateChanged,
       base::Bind(&Daemon::HandleSessionManagerSessionStateChangedSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
-      login_manager::kSessionManagerInterface,
-      login_manager::kScreenIsLockedSignal,
-      base::Bind(&Daemon::HandleSessionManagerScreenIsLockedSignal,
-                 base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
-      login_manager::kSessionManagerInterface,
-      login_manager::kScreenIsUnlockedSignal,
-      base::Bind(&Daemon::HandleSessionManagerScreenIsUnlockedSignal,
                  base::Unretained(this)));
 
   dbus_handler_.AddDBusMethodHandler(
@@ -1261,27 +883,6 @@ bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
   return true;
 }
 
-bool Daemon::HandlePowerStateChangedSignal(DBusMessage* message) {
-  const char* state = '\0';
-  DBusError error;
-  dbus_error_init(&error);
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_STRING, &state,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Unable to read " << kPowerStateChanged << " args";
-    dbus_error_free(&error);
-    return false;
-  }
-
-  if (g_str_equal(state, "on") == TRUE) {
-    if (!use_state_controller_)
-      SetActive();
-  } else {
-    DLOG(INFO) << "Saw arg:" << state << " for PowerStateChange";
-  }
-  return false;
-}
-
 bool Daemon::HandleSessionManagerSessionStateChangedSignal(
     DBusMessage* message) {
   DBusError error;
@@ -1300,20 +901,6 @@ bool Daemon::HandleSessionManagerSessionStateChangedSignal(
     dbus_error_free(&error);
   }
   return false;
-}
-
-bool Daemon::HandleSessionManagerScreenIsLockedSignal(
-    DBusMessage* message) {
-  LOG(INFO) << "HandleSessionManagerScreenIsLockedSignal";
-  locker_.set_locked(true);
-  return true;
-}
-
-bool Daemon::HandleSessionManagerScreenIsUnlockedSignal(
-    DBusMessage* message) {
-  LOG(INFO) << "HandleSessionManagerScreenIsUnlockedSignal";
-  locker_.set_locked(false);
-  return true;
 }
 
 DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
@@ -1432,13 +1019,9 @@ DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
 
 DBusMessage* Daemon::HandleGetIdleTimeMethod(DBusMessage* message) {
   int64 idle_time_ms = 0;
-  if (use_state_controller_) {
-    base::TimeDelta interval =
-        base::TimeTicks::Now() - state_controller_->last_user_activity_time();
-    idle_time_ms = interval.InMilliseconds();
-  } else {
-    idle_time_ms = idle_->GetIdleTimeMs();
-  }
+  base::TimeDelta interval =
+      base::TimeTicks::Now() - state_controller_->last_user_activity_time();
+  idle_time_ms = interval.InMilliseconds();
 
   DBusMessage* reply = util::CreateEmptyDBusReply(message);
   CHECK(reply);
@@ -1455,12 +1038,8 @@ DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
   if (dbus_message_get_args(message, &error,
                             DBUS_TYPE_INT64, &threshold,
                             DBUS_TYPE_INVALID)) {
-    if (use_state_controller_) {
-      state_controller_->AddIdleNotification(
-          base::TimeDelta::FromMilliseconds(threshold));
-    } else {
-      AddIdleThreshold(threshold);
-    }
+    state_controller_->AddIdleNotification(
+        base::TimeDelta::FromMilliseconds(threshold));
   } else {
     LOG(WARNING) << "Unable to read " << kRequestIdleNotification << " args";
     dbus_error_free(&error);
@@ -1545,9 +1124,12 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   VideoActivityUpdate protobuf;
   if (!util::ParseProtocolBufferFromDBusMessage(message, &protobuf))
     return util::CreateDBusInvalidArgsErrorReply(message);
-  video_detector_->HandleFullscreenChange(protobuf.is_fullscreen());
-  video_detector_->HandleActivity(
-      base::TimeTicks::FromInternalValue(protobuf.last_activity_time()));
+
+  if (keyboard_controller_) {
+    keyboard_controller_->HandleVideoActivity(
+        base::TimeTicks::FromInternalValue(protobuf.last_activity_time()),
+        protobuf.is_fullscreen());
+  }
   state_controller_->HandleVideoActivity();
   return NULL;
 }
@@ -1565,8 +1147,6 @@ DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
     return util::CreateDBusInvalidArgsErrorReply(message);
   }
   suspender_.HandleUserActivity();
-  idle_->HandleUserActivity(
-      base::TimeTicks::FromInternalValue(last_activity_time_internal));
   state_controller_->HandleUserActivity();
   return NULL;
 }
@@ -1581,14 +1161,10 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
                             DBUS_TYPE_BOOLEAN, &is_projecting,
                             DBUS_TYPE_INVALID);
   if (args_ok) {
-    if (is_projecting != is_projecting_) {
-      is_projecting_ = is_projecting;
-      AdjustIdleTimeoutsForProjection();
-      state_controller_->HandleDisplayModeChange(
-          is_projecting ?
-          policy::StateController::DISPLAY_PRESENTATION :
-          policy::StateController::DISPLAY_NORMAL);
-    }
+    state_controller_->HandleDisplayModeChange(
+        is_projecting ?
+        policy::StateController::DISPLAY_PRESENTATION :
+        policy::StateController::DISPLAY_NORMAL);
   } else {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
@@ -1907,16 +1483,7 @@ void Daemon::Suspend() {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
     return;
   }
-  if (use_state_controller_ || util::IsSessionStarted()) {
-    suspender_.RequestSuspend();
-  } else {
-    if (backlight_controller_->GetPowerState() == BACKLIGHT_SUSPENDED)
-      shutdown_reason_ = kShutdownReasonIdle;
-    else
-      shutdown_reason_ = kShutdownReasonLidClosed;
-    LOG(INFO) << "Not logged in. Suspend Request -> Shutting down.";
-    OnRequestShutdown();
-  }
+  suspender_.RequestSuspend();
 }
 
 void Daemon::RetrieveSessionState() {
@@ -1928,52 +1495,10 @@ void Daemon::RetrieveSessionState() {
   OnSessionStateChange(state.c_str(), user.c_str());
 }
 
-void Daemon::AdjustIdleTimeoutsForProjection() {
-  plugged_dim_ms_       = base_timeout_values_[kPluggedDimMsPref];
-  plugged_off_ms_       = base_timeout_values_[kPluggedOffMsPref];
-  plugged_suspend_ms_   = base_timeout_values_[kPluggedSuspendMsPref];
-  unplugged_dim_ms_     = base_timeout_values_[kUnpluggedDimMsPref];
-  unplugged_off_ms_     = base_timeout_values_[kUnpluggedOffMsPref];
-  unplugged_suspend_ms_ = base_timeout_values_[kUnpluggedSuspendMsPref];
-  default_lock_ms_      = base_timeout_values_[kLockMsPref];
-
-  if (is_projecting_) {
-    LOG(INFO) << "External display projection: multiplying idle times by "
-              << kProjectionTimeoutFactor;
-    plugged_dim_ms_ *= kProjectionTimeoutFactor;
-    plugged_off_ms_ *= kProjectionTimeoutFactor;
-    if (plugged_suspend_ms_ != INT64_MAX)
-      plugged_suspend_ms_ *= kProjectionTimeoutFactor;
-    unplugged_dim_ms_ *= kProjectionTimeoutFactor;
-    unplugged_off_ms_ *= kProjectionTimeoutFactor;
-    if (unplugged_suspend_ms_ != INT64_MAX)
-      unplugged_suspend_ms_ *= kProjectionTimeoutFactor;
-    if (default_lock_ms_ != INT64_MAX)
-      default_lock_ms_ *= kProjectionTimeoutFactor;
-  }
-}
-
-bool Daemon::ShouldStayAwakeForHeadphoneJack() {
-#ifdef STAY_AWAKE_PLUGGED_DEVICE
-  return audio_detector_->IsHeadphoneJackConnected();
-#else
-  return false;
-#endif
-}
-
 void Daemon::SetPowerState(PowerState state) {
   backlight_controller_->SetPowerState(state);
   if (keyboard_controller_)
     keyboard_controller_->SetPowerState(state);
-}
-
-bool Daemon::IsAudioPlaying() {
-  base::TimeTicks last_audio_time;
-  if (!audio_detector_->GetLastAudioActivityTime(&last_audio_time))
-    return false;
-
-  return base::TimeTicks::Now() - last_audio_time <
-      base::TimeDelta::FromMilliseconds(kAudioActivityThresholdMs);
 }
 
 void Daemon::UpdateBatteryReportState() {
