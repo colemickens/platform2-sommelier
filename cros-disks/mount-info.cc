@@ -9,6 +9,7 @@
 
 #include "cros-disks/file-reader.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 

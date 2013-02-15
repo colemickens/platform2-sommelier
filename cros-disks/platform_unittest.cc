@@ -12,6 +12,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+using base::FilePath;
 using std::set;
 using std::string;
 

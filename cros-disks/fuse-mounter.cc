@@ -14,6 +14,7 @@
 #include "cros-disks/platform.h"
 #include "cros-disks/sandboxed-process.h"
 
+using base::FilePath;
 using std::string;
 
 namespace {

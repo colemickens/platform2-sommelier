@@ -15,6 +15,7 @@
 
 #include "cros-disks/format-manager-observer-interface.h"
 
+using base::FilePath;
 using std::string;
 
 namespace {

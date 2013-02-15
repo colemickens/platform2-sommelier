@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <chromeos/process.h>
 
+using base::FilePath;
 using std::string;
 
 namespace {

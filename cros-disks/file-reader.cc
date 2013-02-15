@@ -4,6 +4,7 @@
 
 #include "cros-disks/file-reader.h"
 
+using base::FilePath;
 using std::string;
 
 namespace cros_disks {

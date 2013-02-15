@@ -7,6 +7,7 @@
 #include <base/file_util.h>
 #include <gtest/gtest.h>
 
+using base::FilePath;
 using std::string;
 
 namespace cros_disks {

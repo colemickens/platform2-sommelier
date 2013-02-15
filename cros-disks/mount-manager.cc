@@ -19,6 +19,7 @@
 
 #include "cros-disks/platform.h"
 
+using base::FilePath;
 using std::pair;
 using std::set;
 using std::string;

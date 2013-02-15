@@ -19,6 +19,7 @@
 #include "cros-disks/sandboxed-process.h"
 #include "cros-disks/system-mounter.h"
 
+using base::FilePath;
 using std::map;
 using std::string;
 using std::vector;
