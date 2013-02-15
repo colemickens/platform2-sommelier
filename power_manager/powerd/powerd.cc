@@ -67,11 +67,7 @@ namespace power_manager {
 class Daemon::StateControllerDelegate
     : public policy::StateController::Delegate {
  public:
-  explicit StateControllerDelegate(Daemon* daemon)
-      : daemon_(daemon),
-        screen_dimmed_(false),
-        screen_off_(false) {
-  }
+  explicit StateControllerDelegate(Daemon* daemon) : daemon_(daemon) {}
 
   ~StateControllerDelegate() {
     daemon_ = NULL;
@@ -100,36 +96,31 @@ class Daemon::StateControllerDelegate
   }
 
   virtual void DimScreen() OVERRIDE {
-    screen_dimmed_ = true;
-    if (!screen_off_) {
-      daemon_->SetPowerState(BACKLIGHT_DIM);
-      base::TimeTicks now = base::TimeTicks::Now();
-      daemon_->idle_transition_timestamps_[BACKLIGHT_DIM] = now;
-      daemon_->last_idle_event_timestamp_ = now;
-      daemon_->last_idle_timedelta_ =
-          now - daemon_->state_controller_->last_user_activity_time();
-    }
+    daemon_->SetBacklightsDimmedForInactivity(true);
+    base::TimeTicks now = base::TimeTicks::Now();
+    daemon_->screen_dim_timestamp_ = now;
+    daemon_->last_idle_event_timestamp_ = now;
+    daemon_->last_idle_timedelta_ =
+        now - daemon_->state_controller_->last_user_activity_time();
   }
 
   virtual void UndimScreen() OVERRIDE {
-    screen_dimmed_ = false;
-    if (!screen_off_)
-      daemon_->SetPowerState(BACKLIGHT_ACTIVE);
+    daemon_->SetBacklightsDimmedForInactivity(false);
+    daemon_->screen_dim_timestamp_ = base::TimeTicks();
   }
 
   virtual void TurnScreenOff() OVERRIDE {
-    screen_off_ = true;
-    daemon_->SetPowerState(BACKLIGHT_IDLE_OFF);
+    daemon_->SetBacklightsOffForInactivity(true);
     base::TimeTicks now = base::TimeTicks::Now();
-    daemon_->idle_transition_timestamps_[BACKLIGHT_IDLE_OFF] = now;
+    daemon_->screen_off_timestamp_ = now;
     daemon_->last_idle_event_timestamp_ = now;
     daemon_->last_idle_timedelta_ =
         now - daemon_->state_controller_->last_user_activity_time();
   }
 
   virtual void TurnScreenOn() OVERRIDE {
-    screen_off_ = false;
-    daemon_->SetPowerState(screen_dimmed_ ? BACKLIGHT_DIM : BACKLIGHT_ACTIVE);
+    daemon_->SetBacklightsOffForInactivity(false);
+    daemon_->screen_off_timestamp_ = base::TimeTicks();
   }
 
   virtual void LockScreen() OVERRIDE {
@@ -174,9 +165,6 @@ class Daemon::StateControllerDelegate
 
  private:
   Daemon* daemon_;  // not owned
-
-  bool screen_dimmed_;
-  bool screen_off_;
 };
 
 // Daemon: Main power manager. Adjusts device status based on whether the
@@ -240,13 +228,16 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false),
       state_controller_initialized_(false) {
+  backlight_controller_->AddObserver(this);
   audio_client_->AddObserver(this);
   peripheral_battery_watcher_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
-  audio_client_->RemoveObserver(this);
   peripheral_battery_watcher_->RemoveObserver(this);
+  audio_client_->RemoveObserver(this);
+  backlight_controller_->RemoveObserver(this);
+
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
@@ -276,7 +267,6 @@ void Daemon::Init() {
   UpdateAveragedTimes(&time_to_empty_average_,
                       &time_to_full_average_);
   file_tagger_.Init();
-  backlight_controller_->SetObserver(this);
 
   std::string wakeup_inputs_str;
   std::vector<std::string> wakeup_inputs;
@@ -291,8 +281,6 @@ void Daemon::Init() {
   headphone_device = STAY_AWAKE_PLUGGED_DEVICE;
 #endif
   audio_client_->Init(headphone_device);
-
-  SetPowerState(BACKLIGHT_ACTIVE);
 
   bool has_lid = true;
   prefs_->GetBool(kUseLidPref, &has_lid);
@@ -437,12 +425,12 @@ void Daemon::SetPlugged(bool plugged) {
   plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
       PLUGGED_STATE_DISCONNECTED;
 
-  backlight_controller_->OnPlugEvent(plugged);
-
-  if (state_controller_initialized_) {
-    state_controller_->HandlePowerSourceChange(
-        plugged ? POWER_AC : POWER_BATTERY);
-  }
+  PowerSource power_source = plugged ? POWER_AC : POWER_BATTERY;
+  backlight_controller_->HandlePowerSourceChange(power_source);
+  if (keyboard_controller_)
+    keyboard_controller_->HandlePowerSourceChange(power_source);
+  if (state_controller_initialized_)
+    state_controller_->HandlePowerSourceChange(power_source);
 }
 
 void Daemon::OnRequestRestart() {
@@ -475,9 +463,9 @@ void Daemon::StartCleanShutdown() {
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.
   if (shutdown_reason_ != kShutdownReasonLowBattery) {
-    backlight_controller_->SetPowerState(BACKLIGHT_SHUTTING_DOWN);
+    backlight_controller_->SetShuttingDown(true);
     if (keyboard_controller_)
-      keyboard_controller_->SetPowerState(BACKLIGHT_SHUTTING_DOWN);
+      keyboard_controller_->SetShuttingDown(true);
   }
 }
 
@@ -520,35 +508,29 @@ void Daemon::IdleEventNotify(int64 threshold) {
   dbus_message_unref(signal);
 }
 
-void Daemon::BrightenScreenIfOff() {
-  if (util::IsSessionStarted() && backlight_controller_->IsBacklightActiveOff())
-    backlight_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
-}
-
 void Daemon::AdjustKeyboardBrightness(int direction) {
   if (!keyboard_controller_)
     return;
 
-  if (direction > 0) {
-    keyboard_controller_->IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
-  } else if (direction < 0) {
-    keyboard_controller_->DecreaseBrightness(true,
-                                             BRIGHTNESS_CHANGE_USER_INITIATED);
-  }
+  if (direction > 0)
+    keyboard_controller_->IncreaseUserBrightness(false /* only_if_zero */);
+  else if (direction < 0)
+    keyboard_controller_->DecreaseUserBrightness(true /* allow_off */);
 }
 
-void Daemon::SendBrightnessChangedSignal(double brightness_percent,
-                                         BrightnessChangeCause cause,
-                                         const std::string& signal_name) {
+void Daemon::SendBrightnessChangedSignal(
+    double brightness_percent,
+    BacklightController::BrightnessChangeCause cause,
+    const std::string& signal_name) {
   dbus_int32_t brightness_percent_int =
       static_cast<dbus_int32_t>(round(brightness_percent));
 
   dbus_bool_t user_initiated = FALSE;
   switch (cause) {
-    case BRIGHTNESS_CHANGE_AUTOMATED:
+    case BacklightController::BRIGHTNESS_CHANGE_AUTOMATED:
       user_initiated = FALSE;
       break;
-    case BRIGHTNESS_CHANGE_USER_INITIATED:
+    case BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED:
       user_initiated = TRUE;
       break;
     default:
@@ -570,9 +552,10 @@ void Daemon::SendBrightnessChangedSignal(double brightness_percent,
   dbus_message_unref(signal);
 }
 
-void Daemon::OnBrightnessChanged(double brightness_percent,
-                                 BrightnessChangeCause cause,
-                                 BacklightController* source) {
+void Daemon::OnBrightnessChanged(
+    double brightness_percent,
+    BacklightController::BrightnessChangeCause cause,
+    BacklightController* source) {
   if (source == backlight_controller_) {
     SendBrightnessChangedSignal(brightness_percent, cause,
                                 kBrightnessChangedSignal);
@@ -604,12 +587,12 @@ void Daemon::PrepareForSuspendAnnouncement() {
   // after resuming.  This must occur before Chrome is told that the system
   // is going to suspend (Chrome turns the display back on while leaving
   // the backlight off).
-  SetPowerState(BACKLIGHT_SUSPENDED);
+  SetBacklightsSuspended(true);
 }
 
 void Daemon::HandleCanceledSuspendAnnouncement() {
   // Undo the earlier BACKLIGHT_SUSPENDED call.
-  SetPowerState(BACKLIGHT_ACTIVE);
+  SetBacklightsSuspended(false);
 }
 
 void Daemon::PrepareForSuspend() {
@@ -628,8 +611,7 @@ void Daemon::PrepareForSuspend() {
 void Daemon::HandleResume(bool suspend_was_successful,
                           int num_suspend_retries,
                           int max_suspend_retries) {
-  // Undo the earlier BACKLIGHT_SUSPENDED call.
-  SetPowerState(BACKLIGHT_ACTIVE);
+  SetBacklightsSuspended(false);
   audio_client_->RestoreMutedState();
 
 #ifdef SUSPEND_LOCK_VT
@@ -667,10 +649,7 @@ void Daemon::HandleLidOpened() {
 void Daemon::EnsureBacklightIsOn() {
   // If the user manually set the brightness to 0, increase it a bit:
   // http://crosbug.com/32570
-  if (backlight_controller_->IsBacklightActiveOff()) {
-    backlight_controller_->IncreaseBrightness(
-        BRIGHTNESS_CHANGE_USER_INITIATED);
-  }
+  backlight_controller_->IncreaseUserBrightness(true /* only_if_zero */);
 }
 
 void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
@@ -972,15 +951,14 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
     LOG(WARNING) << "Unable to read " << kDecreaseScreenBrightness << " args";
     dbus_error_free(&error);
   }
-  bool changed = backlight_controller_->DecreaseBrightness(
-      allow_off, BRIGHTNESS_CHANGE_USER_INITIATED);
+  bool changed = backlight_controller_->DecreaseUserBrightness(allow_off);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                BRIGHTNESS_ADJUST_DOWN,
                                BRIGHTNESS_ADJUST_MAX);
-  if (!changed) {
+  double percent = 0.0;
+  if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
-        backlight_controller_->GetTargetBrightnessPercent(),
-        BRIGHTNESS_CHANGE_USER_INITIATED,
+        percent, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
   return NULL;
@@ -988,15 +966,15 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
 
 DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
     DBusMessage* message) {
-  bool changed = backlight_controller_->IncreaseBrightness(
-      BRIGHTNESS_CHANGE_USER_INITIATED);
+  bool changed = backlight_controller_->IncreaseUserBrightness(
+      false /* only_if_zero */);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                BRIGHTNESS_ADJUST_UP,
                                BRIGHTNESS_ADJUST_MAX);
-  if (!changed) {
+  double percent = 0.0;
+  if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
-        backlight_controller_->GetTargetBrightnessPercent(),
-        BRIGHTNESS_CHANGE_USER_INITIATED,
+        percent, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
   return NULL;
@@ -1016,20 +994,20 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
     dbus_error_free(&error);
     return util::CreateDBusInvalidArgsErrorReply(message);
   }
-  TransitionStyle style = TRANSITION_FAST;
+  BacklightController::TransitionStyle style =
+      BacklightController::TRANSITION_FAST;
   switch (dbus_style) {
     case kBrightnessTransitionGradual:
-      style = TRANSITION_FAST;
+      style = BacklightController::TRANSITION_FAST;
       break;
     case kBrightnessTransitionInstant:
-      style = TRANSITION_INSTANT;
+      style = BacklightController::TRANSITION_INSTANT;
       break;
     default:
       LOG(WARNING) << "Invalid transition style passed ( " << dbus_style
                   << " ).  Using default fast transition";
   }
-  backlight_controller_->SetCurrentBrightnessPercent(
-      percent, BRIGHTNESS_CHANGE_USER_INITIATED, style);
+  backlight_controller_->SetUserBrightnessPercent(percent, style);
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                BRIGHTNESS_ADJUST_ABSOLUTE,
                                BRIGHTNESS_ADJUST_MAX);
@@ -1037,8 +1015,8 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
-  double percent;
-  if (!backlight_controller_->GetCurrentBrightnessPercent(&percent)) {
+  double percent = 0.0;
+  if (!backlight_controller_->GetBrightnessPercent(&percent)) {
     return util::CreateDBusErrorReply(
         message, "Could not fetch Screen Brightness");
   }
@@ -1172,11 +1150,8 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   if (!util::ParseProtocolBufferFromDBusMessage(message, &protobuf))
     return util::CreateDBusInvalidArgsErrorReply(message);
 
-  if (keyboard_controller_) {
-    keyboard_controller_->HandleVideoActivity(
-        base::TimeTicks::FromInternalValue(protobuf.last_activity_time()),
-        protobuf.is_fullscreen());
-  }
+  if (keyboard_controller_)
+    keyboard_controller_->HandleVideoActivity(protobuf.is_fullscreen());
   state_controller_->HandleVideoActivity();
   return NULL;
 }
@@ -1508,8 +1483,10 @@ void Daemon::OnSessionStateChange(const std::string& state_str,
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
 
+#ifndef IS_DESKTOP
   // If the backlight was manually turned off by the user, turn it back on.
   EnsureBacklightIsOn();
+#endif
 }
 
 void Daemon::Shutdown() {
@@ -1542,10 +1519,22 @@ void Daemon::RetrieveSessionState() {
   OnSessionStateChange(state, user);
 }
 
-void Daemon::SetPowerState(PowerState state) {
-  backlight_controller_->SetPowerState(state);
+void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
+  backlight_controller_->SetDimmedForInactivity(dimmed);
   if (keyboard_controller_)
-    keyboard_controller_->SetPowerState(state);
+    keyboard_controller_->SetDimmedForInactivity(dimmed);
+}
+
+void Daemon::SetBacklightsOffForInactivity(bool off) {
+  backlight_controller_->SetOffForInactivity(off);
+  if (keyboard_controller_)
+    keyboard_controller_->SetOffForInactivity(off);
+}
+
+void Daemon::SetBacklightsSuspended(bool suspended) {
+  backlight_controller_->SetSuspended(suspended);
+  if (keyboard_controller_)
+    keyboard_controller_->SetSuspended(suspended);
 }
 
 void Daemon::UpdateBatteryReportState() {

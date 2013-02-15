@@ -7,7 +7,9 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
+#include "base/observer_list.h"
 #include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
 
@@ -18,35 +20,37 @@ class DisplayPowerSetterInterface;
 
 // Controls the brightness of an external display on machines that lack internal
 // displays.
-class ExternalBacklightController : public BacklightController {
+class ExternalBacklightController : public BacklightController,
+                                    public system::BacklightInterfaceObserver {
  public:
   ExternalBacklightController(
       system::BacklightInterface* backlight,
       system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~ExternalBacklightController();
 
-  bool currently_dimming() const { return currently_dimming_; }
-  bool currently_off() const { return currently_off_; }
+  // Exposed for tests.
+  bool dimmed_for_inactivity() const { return dimmed_for_inactivity_; }
 
   void set_disable_dbus_for_testing(bool disable) {
     disable_dbus_for_testing_ = disable;
   }
 
+  // Initializes the object.
+  bool Init();
+
   // BacklightController implementation:
-  virtual bool Init() OVERRIDE;
-  virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
-  virtual double GetTargetBrightnessPercent() OVERRIDE;
-  virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;
-  virtual bool SetCurrentBrightnessPercent(double percent,
-                                           BrightnessChangeCause cause,
-                                           TransitionStyle style) OVERRIDE;
-  virtual bool IncreaseBrightness(BrightnessChangeCause cause) OVERRIDE;
-  virtual bool DecreaseBrightness(bool allow_off,
-                                  BrightnessChangeCause cause) OVERRIDE;
-  virtual bool SetPowerState(PowerState state) OVERRIDE;
-  virtual PowerState GetPowerState() const OVERRIDE;
-  virtual bool OnPlugEvent(bool is_plugged) OVERRIDE;
-  virtual bool IsBacklightActiveOff() OVERRIDE;
+  virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
+  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
+  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
+      OVERRIDE;
+  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE;
+  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
+  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
+  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
+  virtual void SetOffForInactivity(bool off) OVERRIDE;
+  virtual void SetSuspended(bool suspended) OVERRIDE;
+  virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
@@ -54,32 +58,42 @@ class ExternalBacklightController : public BacklightController {
   virtual void OnBacklightDeviceChanged() OVERRIDE;
 
  private:
+  // For PercentToLevel().
   friend class ExternalBacklightControllerTest;
 
   double LevelToPercent(int64 level);
   int64 PercentToLevel(double percent);
 
-  // Adjusts the brightness by |percent_offset|.
-  bool AdjustBrightnessByOffset(double percent_offset,
-                                BrightnessChangeCause cause);
+  // Adjusts the user-requested brightness by |percent_offset|.
+  // |allow_off| and |only_if_zero| correspond to the identically-named
+  // parameters to IncreaseUserBrightness() and DecreaseUserBrightness().
+  bool AdjustUserBrightnessByOffset(double percent_offset,
+                                    bool allow_off,
+                                    bool only_if_zero);
+
+  // Turns displays on or off via |monitor_reconfigure_| as needed for
+  // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
+  void UpdateScreenPowerState();
 
   // Emits a D-Bus signal asking Chrome to dim or undim the screen.  |state| is
   // one of the kSoftwareScreenDimming* constants defined in
   // chromeos/dbus/service_constants.h.
+  // TODO(derat): Move this to a Delegate interface that Daemon implements.
   void SendSoftwareDimmingSignal(int state);
 
   system::BacklightInterface* backlight_;  // not owned
   system::DisplayPowerSetterInterface* display_power_setter_;  // not owned
-  BacklightControllerObserver* observer_;  // not owned
 
-  PowerState power_state_;
+  ObserverList<BacklightControllerObserver> observers_;
+
+  bool dimmed_for_inactivity_;
+  bool off_for_inactivity_;
+  bool suspended_;
+  bool shutting_down_;
 
   // Maximum brightness level exposed by the current display.
   // 0 is always the minimum.
   int64 max_level_;
-
-  // Is Chrome currently dimming the screen on our behalf?
-  bool currently_dimming_;
 
   // Are the external displays currently turned off?
   bool currently_off_;

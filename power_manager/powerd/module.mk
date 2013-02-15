@@ -18,7 +18,6 @@ CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): LDLIBS += $(POWERSUPPLY_LIBS)
 clean: CLEAN(powerd/libpower_supply.pie.a)
 
 LIBBACKLIGHTCTRL_OBJS = \
-	powerd/backlight_controller.o \
 	powerd/external_backlight_controller.o \
 	powerd/internal_backlight_controller.o
 CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \

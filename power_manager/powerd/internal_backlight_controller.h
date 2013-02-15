@@ -5,10 +5,9 @@
 #ifndef POWER_MANAGER_POWERD_INTERNAL_BACKLIGHT_CONTROLLER_H_
 #define POWER_MANAGER_POWERD_INTERNAL_BACKLIGHT_CONTROLLER_H_
 
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
+#include "base/observer_list.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/powerd/backlight_controller.h"
@@ -32,9 +31,11 @@ class DisplayPowerSetterInterface;
 class InternalBacklightController : public BacklightController,
                                     public system::AmbientLightObserver {
  public:
+  // Maximum number of brightness adjustment steps.
+  static const int64 kMaxBrightnessSteps;
+
   // Percent corresponding to |min_visible_level_|, which takes the role of the
-  // lowest brightness step before the screen is turned off.  Exposed here for
-  // tests.
+  // lowest brightness step before the screen is turned off.
   static const double kMinVisiblePercent;
 
   InternalBacklightController(
@@ -44,55 +45,34 @@ class InternalBacklightController : public BacklightController,
       system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~InternalBacklightController();
 
-  int64 target_level_for_testing() const { return target_level_; }
-  TransitionStyle last_transition_style_for_testing() const {
-    return last_transition_style_;
-  }
+  // Initializes the object.
+  bool Init();
 
   // Converts between [0, 100] and [0, |max_level_|] brightness scales.
   double LevelToPercent(int64 level);
   int64 PercentToLevel(double percent);
 
   // BacklightController implementation:
-  virtual bool Init() OVERRIDE;
-  virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
-  virtual double GetTargetBrightnessPercent() OVERRIDE;
-  virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;
-  virtual bool SetCurrentBrightnessPercent(double percent,
-                                           BrightnessChangeCause cause,
-                                           TransitionStyle style) OVERRIDE;
-  virtual bool IncreaseBrightness(BrightnessChangeCause cause) OVERRIDE;
-  virtual bool DecreaseBrightness(bool allow_off,
-                                  BrightnessChangeCause cause) OVERRIDE;
-  virtual bool SetPowerState(PowerState state) OVERRIDE;
-  virtual PowerState GetPowerState() const OVERRIDE;
-  virtual bool OnPlugEvent(bool is_plugged) OVERRIDE;
-  virtual bool IsBacklightActiveOff() OVERRIDE;
+  virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
+  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
+  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
+  virtual void SetOffForInactivity(bool off) OVERRIDE;
+  virtual void SetSuspended(bool suspended) OVERRIDE;
+  virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
+  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
+  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
+      OVERRIDE;
+  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE;
+  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
-
-  // BacklightInterfaceObserver implementation:
-  virtual void OnBacklightDeviceChanged();
 
   // system::AmbientLightObserver implementation:
   virtual void OnAmbientLightChanged(
       system::AmbientLightSensorInterface* sensor) OVERRIDE;
 
  private:
-  friend class DaemonTest;
-  friend class InternalBacklightControllerTest;
-  FRIEND_TEST(DaemonTest, GenerateEndOfSessionMetrics);
-  FRIEND_TEST(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric);
-  FRIEND_TEST(DaemonTest,
-              GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow);
-  FRIEND_TEST(DaemonTest,
-              GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow);
-  FRIEND_TEST(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric);
-  FRIEND_TEST(DaemonTest,
-              GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
-  FRIEND_TEST(DaemonTest,
-              GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
-
   // TODO(derat): Move this and the related code into a separate class,
   // shared between InternalBacklightController and
   // KeyboardBacklightController, that handles ambient light hysteresis.
@@ -103,27 +83,42 @@ class InternalBacklightController : public BacklightController,
     ALS_HYST_IMMEDIATE,
   };
 
-  // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
-  double ClampPercentToVisibleRange(double percent);
+  // Returns the brightness percent that should be used when the system is
+  // in an undimmed state (which is typically just the appropriate
+  // user-set offset plus the current ambient-light-contributed offset).
+  double CalculateUndimmedBrightnessPercent() const;
+
+  // Updates the current brightness after assessing the current state
+  // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be
+  // called whenever the state changes.
+  void UpdateState();
+
+  // Stores the brightness percent that should be used when the display is
+  // in the undimmed state.  If the display is currently in the undimmed
+  // state, additionally calls ApplyBrightnessPercent() to update the
+  // backlight brightness.  Returns true if the brightness was changed.
+  bool SetUndimmedBrightnessPercent(double percent,
+                                    TransitionStyle style,
+                                    BrightnessChangeCause);
+
+  // Sets |backlight_|'s brightness to |percent| over |transition|.  If the
+  // brightness changed, notifies |observers_| that the change was due to
+  // |cause| and returns true.
+  bool ApplyBrightnessPercent(double percent,
+                              TransitionStyle transition,
+                              BrightnessChangeCause cause);
+
+  // Configures |backlight_| to resume from suspend at |resume_percent|.
+  bool ApplyResumeBrightnessPercent(double resume_percent);
 
   void ReadPrefs();
   void WritePrefs();
 
-  // Applies previously-configured brightness to the backlight and updates
-  // |target_percent_|.  In the active and already-dimmed states, the new
-  // brightness is the sum of |als_offset_percent_| and
-  // |*current_offset_percent_|.
-  //
-  // Returns true if the brightness was set and false otherwise.
-  // If |adjust_brightness_offset| is true, |*current_offset_percent_| is
-  // updated (it can change due to clamping of the target brightness).
-  bool WriteBrightness(bool adjust_brightness_offset,
-                       BrightnessChangeCause cause,
-                       TransitionStyle style);
-
-  // Changes the brightness to |target_level|.  Use style = TRANSITION_FAST
-  // to change brightness with smoothing effects.
-  bool SetBrightness(int64 target_level, TransitionStyle style);
+  // Updates displays to |state| after |delay| if |state| doesn't match
+  // |display_power_state_|.  If another change has already been scheduled,
+  // it will be aborted.
+  void SetDisplayPower(chromeos::DisplayPowerState state,
+                       base::TimeDelta delay);
 
   // Backlight used for dimming. Non-owned.
   system::BacklightInterface* backlight_;
@@ -137,11 +132,20 @@ class InternalBacklightController : public BacklightController,
   // Used to turn displays on and off.
   system::DisplayPowerSetterInterface* display_power_setter_;
 
-  // Observer for changes to the brightness level.  Not owned by us.
-  BacklightControllerObserver* observer_;
+  // Observers for changes to the brightness level.
+  ObserverList<BacklightControllerObserver> observers_;
 
-  // Indicate whether ALS value has been read before.
+  // Information describing the current state of the system.
+  PowerSource power_source_;
+  bool dimmed_for_inactivity_;
+  bool off_for_inactivity_;
+  bool suspended_;
+  bool shutting_down_;
+
+  // Indicates whether OnAmbientLightChanged() and
+  // HandlePowerSourceChange() have been called yet.
   bool has_seen_als_event_;
+  bool has_seen_power_source_change_;
 
   // The brightness offset recommended by the ambient light sensor.  Never
   // negative.
@@ -154,37 +158,18 @@ class InternalBacklightController : public BacklightController,
   AlsHysteresisState als_temporal_state_;
   int als_temporal_count_;
 
-  // Count of the number of adjustments that the ALS has caused
+  // Number of ambient-light- and user-triggered brightness adjustments.
   int als_adjustment_count_;
-
-  // Count of the number of adjustments that the user has caused
   int user_adjustment_count_;
 
-  // User adjustable brightness offset when AC plugged.
+  // User-adjustable brightness offset when AC is plugged or unplugged.
+  // Possibly negative.
   double plugged_offset_percent_;
-
-  // User adjustable brightness offset when AC unplugged.
   double unplugged_offset_percent_;
 
-  // Pointer to currently in-use user brightness offset: either
-  // |plugged_offset_percent_|, |unplugged_offset_percent_|, or NULL.
-  double* current_offset_percent_;
-
-  // The offset when the backlight was last in the active state.  It is taken
-  // from |*current_offset_percent| and does not include the ALS offset, which
-  // can vary between suspend and resume.  This is used to restore the backlight
-  // when returning to the active state.
-  double last_active_offset_percent_;
-
-  // Backlight power state, used to distinguish between various cases.
-  // Backlight nonzero, backlight zero, backlight idle-dimmed, etc.
-  PowerState state_;
-
-  // Whether the computer is plugged in.
-  PluggedState plugged_state_;
-
-  // Target brightness in the range [0, 100].
-  double target_percent_;
+  // True if the user explicitly requested zero brightness for the undimmed
+  // state.
+  bool user_requested_zero_;
 
   // Maximum raw brightness level for |backlight_| (0 is assumed to be the
   // minimum, with the backlight turned off).
@@ -212,27 +197,22 @@ class InternalBacklightController : public BacklightController,
 
   // Percentage, in the range [0.0, 100.0], to which we dim the backlight on
   // idle.
-  double idle_brightness_percent_;
+  double dimmed_brightness_percent_;
 
   // Brightness level fractions (e.g. 140/200) are raised to this power when
   // converting them to percents.  A value below 1.0 gives us more granularity
   // at the lower end of the range and less at the upper end.
   double level_to_percent_exponent_;
 
-  // Flag is set if a backlight device exists.
-  bool is_initialized_;
+  // |backlight_|'s current brightness level (or the level to which it's
+  // transitioning).
+  int64 current_level_;
 
-  // The destination hardware brightness used for brightness transitions.
-  int64 target_level_;
-
-  // Flag to indicate whether the state before suspended is idle off;
-  bool suspended_through_idle_off_;
+  // Most-recently-requested display power state.
+  chromeos::DisplayPowerState display_power_state_;
 
   // Screen off delay when user sets brightness to 0.
   base::TimeDelta turn_off_screen_timeout_;
-
-  // Last transition style used by SetBrightness().  Useful for tests.
-  TransitionStyle last_transition_style_;
 
   DISALLOW_COPY_AND_ASSIGN(InternalBacklightController);
 };

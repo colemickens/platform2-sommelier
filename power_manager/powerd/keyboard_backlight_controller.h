@@ -8,9 +8,8 @@
 #include <glib.h>
 #include <vector>
 
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
 #include "base/compiler_specific.h"
+#include "base/observer_list.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/backlight_controller.h"
@@ -30,70 +29,55 @@ class BacklightInterface;
 class KeyboardBacklightController : public BacklightController,
                                     public system::AmbientLightObserver {
  public:
+  // Helper class for tests that need to access internal state.
+  class TestApi {
+   public:
+    explicit TestApi(KeyboardBacklightController* controller);
+    ~TestApi();
+
+    int64 lux_level() const { return controller_->lux_level_; }
+
+    // Triggers |video_timeout_id_|, which must be set.
+    void TriggerVideoTimeout();
+
+   private:
+    KeyboardBacklightController* controller_;  // not owned
+
+    DISALLOW_COPY_AND_ASSIGN(TestApi);
+  };
+
   KeyboardBacklightController(system::BacklightInterface* backlight,
                               PrefsInterface* prefs,
                               system::AmbientLightSensorInterface* sensor);
   virtual ~KeyboardBacklightController();
 
-  // Total durations for different transition styles, in milliseconds.
-  static const int64 kFastTransitionMs;
-  static const int64 kSlowTransitionMs;
-
-  void set_current_time_for_testing(base::TimeTicks now) {
-    current_time_for_testing_ = now;
-  }
+  // Initializes the object.
+  bool Init();
 
   // Called when a notification about video activity has been received.
-  void HandleVideoActivity(base::TimeTicks last_activity_time,
-                           bool is_fullscreen);
+  void HandleVideoActivity(bool is_fullscreen);
 
-  // Implementation of BacklightController
-  virtual bool Init() OVERRIDE;
-  virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
-  virtual double GetTargetBrightnessPercent() OVERRIDE;
-  virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;
-  virtual bool SetCurrentBrightnessPercent(double percent,
-                                           BrightnessChangeCause cause,
-                                           TransitionStyle style) OVERRIDE;
-  virtual bool IncreaseBrightness(BrightnessChangeCause cause) OVERRIDE;
-  virtual bool DecreaseBrightness(bool allow_off,
-                                  BrightnessChangeCause cause) OVERRIDE;
-  virtual bool SetPowerState(PowerState new_state) OVERRIDE;
-  virtual PowerState GetPowerState() const OVERRIDE;
-  virtual bool OnPlugEvent(bool is_plugged) OVERRIDE { return true; };
-  virtual bool IsBacklightActiveOff() OVERRIDE;
+  // BacklightController implementation:
+  virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
+  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
+  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
+  virtual void SetOffForInactivity(bool off) OVERRIDE;
+  virtual void SetSuspended(bool suspended) OVERRIDE;
+  virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
+  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
+  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
+      OVERRIDE;
+  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE;
+  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
-  // Implementation of BacklightInterfaceObserver
-  virtual void OnBacklightDeviceChanged() OVERRIDE;
-
-  // Implementation of system::AmbientLightObserver
+  // system::AmbientLightObserver implementation:
   virtual void OnAmbientLightChanged(
       system::AmbientLightSensorInterface* sensor) OVERRIDE;
 
  private:
-  friend class KeyboardBacklightControllerTest;
-  FRIEND_TEST(KeyboardBacklightControllerTest, Init);
-  FRIEND_TEST(KeyboardBacklightControllerTest, GetCurrentBrightnessPercent);
-  FRIEND_TEST(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent);
-  FRIEND_TEST(KeyboardBacklightControllerTest, HandleVideoActivity);
-  FRIEND_TEST(KeyboardBacklightControllerTest, UpdateBacklightEnabled);
-  FRIEND_TEST(KeyboardBacklightControllerTest, WriteBrightnessLevel);
-  FRIEND_TEST(KeyboardBacklightControllerTest, HaltVideoTimeout);
-  FRIEND_TEST(KeyboardBacklightControllerTest, VideoTimeout);
-  FRIEND_TEST(KeyboardBacklightControllerTest, LevelToPercent);
-  FRIEND_TEST(KeyboardBacklightControllerTest, PercentToLevel);
-  FRIEND_TEST(KeyboardBacklightControllerTest, OnAmbientLightChanged);
-  FRIEND_TEST(KeyboardBacklightControllerTest, Transitions);
-  FRIEND_TEST(KeyboardBacklightControllerTest, ReadLimitsPrefs);
-  FRIEND_TEST(KeyboardBacklightControllerTest, ReadAlsStepsPref);
-  FRIEND_TEST(KeyboardBacklightControllerTest, ReadUserStepsPref);
-  FRIEND_TEST(KeyboardBacklightControllerTest, InitializeUserStepIndex);
-  FRIEND_TEST(KeyboardBacklightControllerTest, GetNewLevel);
-  FRIEND_TEST(KeyboardBacklightControllerTest, IncreaseBrightness);
-  FRIEND_TEST(KeyboardBacklightControllerTest, DecreaseBrightness);
-
   // Contains the information about a brightness step for ALS adjustments. The
   // data for instances of this structure are read out of a prefs
   // file. |target_percent| is the brightness level of the backlight that this
@@ -115,20 +99,14 @@ class KeyboardBacklightController : public BacklightController,
     ALS_HYST_IMMEDIATE,
   };
 
-  // Returns the total duration for |style|.
-  static base::TimeDelta GetTransitionDuration(TransitionStyle style);
-
-  // Returns the current time (or |current_time_for_testing_| if non-null).
-  base::TimeTicks GetCurrentTime() const;
-
   void ReadPrefs();
 
   // Reads in the percentage limits for either the user control or the ALS
-  // control. Takes in the contents of the pref file to a string of the format
-  // "[<min target percent percent>\n<dim target percent>\n<max target
-  // percent>\n]" and parses it into corresponding arguments. If this fails the
-  // values of |min|, |dim|, and |max| are preserved.
-  void ReadLimitsPrefs(const char* prefs_file,
+  // control. Takes in the contents of the pref file to a string of the
+  // format "[<min percent percent>\n<dim percent>\n<max percent>\n]" and
+  // parses it into corresponding arguments. If this fails the values of
+  // |min|, |dim|, and |max| are preserved.
+  void ReadLimitsPrefs(const std::string& pref_name,
                        double* min,
                        double* dim,
                        double* max);
@@ -137,47 +115,43 @@ class KeyboardBacklightController : public BacklightController,
   // in. Takes in the contents of the pref file to a string of the format
   // "[<target percent> <decrease threshold> <increase threshold>\n]+" and
   // parses it into a series of brightness steps.
-  void ReadAlsStepsPref(const char* prefs_file);
+  void ReadAlsStepsPref();
 
   // Takes in the contents of the pref file to a string of the format "[<target
   // percent>\n]+" and parses it into a vector of doubles to be used as steps
   // that user commands change the keyboard brightness by.
-  void ReadUserStepsPref(const char* prefs_file);
+  void ReadUserStepsPref();
 
-  // The backlight level and enabledness are separate values so that the code
-  // that sets the level does not need to be aware of the fact the light in
-  // certain circumstances might be disabled and the disable/enable code doesn't
-  // need to be aware of the level logic.
-  void UpdateBacklightEnabled();
-
-  // Instantaneously sets the backlight device's brightness level.
-  void WriteBrightnessLevel(int64 new_level);
-
-  // Halt the video timeout timer and the callback for the video timeout.
-  void HaltVideoTimeout();
-  SIGNAL_CALLBACK_0(KeyboardBacklightController, gboolean, VideoTimeout);
+  // Handles |video_timeout_id_| firing, indicating that video activity has
+  // stopped.
+  SIGNAL_CALLBACK_0(KeyboardBacklightController, gboolean, HandleVideoTimeout);
 
   int64 PercentToLevel(double percent) const;
   double LevelToPercent(int64 level) const;
 
-  // Until the user issues a command to set the backlight level
-  // |user_step_index_| is set to -1, which is used as a signal about whether to
-  // use |als_target_percent_| or |user_target_percent_|. To initialize this one
-  // has to determine what the closet step for the user brightness to the
-  // current level is and set the index appropriately.
-  void InitializeUserStepIndex();
+  // Returns the brightness from the current step in either |als_steps_| or
+  // |user_steps_|, depending on which is in use.
+  double GetUndimmedPercent() const;
 
-  // This method calculate from the current state of the system and values of
-  // als_target_percent_ and user_target_percent_ the level that the backlight
-  // should be set to.
-  int64 GetNewLevel() const;
+  // Initializes |user_step_index_| when transitioning from ALS to user control.
+  void InitUserStepIndex();
 
-  // Reset the ALS control variables to the initial state and generate a
-  // synthetic lux level based on the current level of the backlight. If entire
-  // process succeeds true is returned, otherwise false is returned.
-  bool ResetAls();
+  // Passes GetUndimmedPercent() to ApplyBrightnessPercent() if currently
+  // in a state where the undimmed brightness should be used.  Returns true
+  // if the brightness was changed.
+  bool UpdateUndimmedBrightness(TransitionStyle transition,
+                                BrightnessChangeCause cause);
 
-  bool is_initialized_;
+  // Updates the current brightness after assessing the current state
+  // (based on |dimmed_for_inactivity_|, |off_for_inactivity_|, etc.).
+  // Should be called whenever the state changes.
+  bool UpdateState();
+
+  // Sets the backlight's brightness to |percent| over |transition|.
+  // Returns true and notifies observers if the brightness was changed.
+  bool ApplyBrightnessPercent(double percent,
+                              TransitionStyle transition,
+                              BrightnessChangeCause cause);
 
   // Backlight used for dimming. Non-owned.
   system::BacklightInterface* backlight_;
@@ -188,51 +162,37 @@ class KeyboardBacklightController : public BacklightController,
   // Light sensor we need to register for updates from.  Non-owned.
   system::AmbientLightSensorInterface* light_sensor_;
 
-  // Observer that needs to be alerted of changes. Normally this is the powerd
-  // daemon. Non-owned.
-  BacklightControllerObserver* observer_;
+  // Observers to notify about changes.
+  ObserverList<BacklightControllerObserver> observers_;
 
-  // Backlight power state, used to distinguish between various cases.
-  // Backlight nonzero, backlight zero, backlight idle-dimmed, etc.
-  PowerState state_;
+  bool dimmed_for_inactivity_;
+  bool off_for_inactivity_;
+  bool shutting_down_;
 
-  // State bits dealing with the video and full screen don't enable the
-  // backlight case.
-  bool is_video_playing_;
-  bool is_fullscreen_;
-
-  // Control value for if the backlight is enabled by the current video state.
-  bool video_enabled_;
+  // Is a fullscreen video currently being played?
+  bool fullscreen_video_playing_;
 
   // Maximum brightness level exposed by the backlight driver.
   // 0 is always the minimum.
   int64 max_level_;
 
-  // Current level that the backlight is set to (or possibly in the process of
-  // transitioning to).  This might vary from |target_percent_| due to the
-  // backlight being disabled.
+  // Current level that |backlight_| is set to (or possibly in the process
+  // of transitioning to).
   int64 current_level_;
-
-  // Current percentage that is trying to be set by the ALS, might not be set if
-  // backlight is disabled.
-  double als_target_percent_;
-
-  // Current percentage that the user has defined.
-  double user_target_percent_;
 
   // Control values used for defining the range that als control will set the
   // target brightness percent and a special value for dimming the backlight
   // when the device idles.
-  double als_target_percent_dim_;
-  double als_target_percent_max_;
-  double als_target_percent_min_;
+  double als_percent_dim_;
+  double als_percent_max_;
+  double als_percent_min_;
 
   // Control values used for defining the range that user control will set the
   // target brightness percent and a special value for dimming the backlight
   // when the device idles.
-  double user_target_percent_dim_;
-  double user_target_percent_max_;
-  double user_target_percent_min_;
+  double user_percent_dim_;
+  double user_percent_max_;
+  double user_percent_min_;
 
   // Apply temporal hysteresis to ALS values.
   AlsHysteresisState hysteresis_state_;
@@ -241,7 +201,8 @@ class KeyboardBacklightController : public BacklightController,
   // Most recent value received from the ALS.
   int lux_level_;
 
-  // Current brightness step being used by the ALS.
+  // Current brightness step within |als_steps_| being used by the ambient
+  // light sensor.
   ssize_t als_step_index_;
 
   // Brightness step data that is read in from the prefs file. It is assumed
@@ -251,8 +212,8 @@ class KeyboardBacklightController : public BacklightController,
   // meant to indicate positive/negative infinity depending on the context.
   std::vector<BrightnessStep> als_steps_;
 
-  // Current brightness step set by user, or -1 is |als_step_index_| should be
-  // used.
+  // Current brightness step within |user_steps_| set by user, or -1 if
+  // |als_step_index_| should be used.
   ssize_t user_step_index_;
 
   // Set of percentages that the user can select from for setting the
@@ -264,17 +225,12 @@ class KeyboardBacklightController : public BacklightController,
   // kDisableALSPref.
   bool ignore_ambient_light_;
 
-  // Value returned when we add a timer for the video timeout. This is
-  // needed for reseting the timer when the next event occurs.
-  guint32 video_timeout_timer_id_;
+  // GLib timeout ID for HandleVideoTimeout().
+  guint32 video_timeout_id_;
 
   // Counters for stat tracking.
   int num_als_adjustments_;
   int num_user_adjustments_;
-
-  // If non-null, used in place of base::TimeTicks::Now() when the current time
-  // is needed.
-  base::TimeTicks current_time_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
 };  // class KeyboardBacklightController

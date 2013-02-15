@@ -11,6 +11,9 @@
 
 namespace power_manager {
 
+// TODO(derat): Move the values for these into this header and remove
+// power_constants.cc.
+
 // Preference names.
 extern const char kPluggedBrightnessOffsetPref[];
 extern const char kUnpluggedBrightnessOffsetPref[];
@@ -70,6 +73,15 @@ extern const char kShutdownReasonLidClosed[];
 extern const char kShutdownReasonIdle[];
 extern const char kShutdownReasonLowBattery[];
 extern const char kShutdownReasonSuspendFailed[];
+
+// Small value used when comparing floating-point percentages.
+extern const double kEpsilon;
+
+// Total time that should be used to gradually animate the backlight level
+// to a new brightness, in milliseconds.  Note that some
+// BacklightController implementations may not use animated transitions.
+extern const int64 kFastBacklightTransitionMs;
+extern const int64 kSlowBacklightTransitionMs;
 
 enum PowerSource {
   POWER_AC,

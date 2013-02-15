@@ -75,7 +75,9 @@ void InputController::OnPowerButtonEvent(ButtonState state) {
                                    base::TimeTicks::Now());
 
   if (state == BUTTON_DOWN) {
+#ifndef IS_DESKTOP
     delegate_->EnsureBacklightIsOn();
+#endif
     LOG(INFO) << "Syncing state due to power button down event";
     util::Launch("sync");
   }

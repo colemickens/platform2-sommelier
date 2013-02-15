@@ -11,6 +11,7 @@
 
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/powerd/backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 
@@ -29,10 +30,11 @@ ExternalBacklightController::ExternalBacklightController(
     system::DisplayPowerSetterInterface* display_power_setter)
     : backlight_(backlight),
       display_power_setter_(display_power_setter),
-      observer_(NULL),
-      power_state_(BACKLIGHT_UNINITIALIZED),
+      dimmed_for_inactivity_(false),
+      off_for_inactivity_(false),
+      suspended_(false),
+      shutting_down_(false),
       max_level_(0),
-      currently_dimming_(false),
       currently_off_(false),
       num_user_adjustments_(0),
       disable_dbus_for_testing_(false) {
@@ -48,11 +50,8 @@ ExternalBacklightController::~ExternalBacklightController() {
 bool ExternalBacklightController::Init() {
   // If we get restarted while Chrome is running, make sure that it doesn't get
   // wedged in a dimmed state.
-  if (!disable_dbus_for_testing_) {
-    SendSoftwareDimmingSignal(currently_dimming_ ?
-                              kSoftwareScreenDimmingIdle :
-                              kSoftwareScreenDimmingNone);
-  }
+  if (max_level_ <= 0 && !disable_dbus_for_testing_)
+    SendSoftwareDimmingSignal(kSoftwareScreenDimmingNone);
 
   if (!backlight_->GetMaxBrightnessLevel(&max_level_)) {
     LOG(ERROR) << "Unable to query maximum brightness level";
@@ -64,22 +63,19 @@ bool ExternalBacklightController::Init() {
   return true;
 }
 
-void ExternalBacklightController::SetObserver(
+void ExternalBacklightController::AddObserver(
     BacklightControllerObserver* observer) {
-  observer_ = observer;
+  DCHECK(observer);
+  observers_.AddObserver(observer);
 }
 
-double ExternalBacklightController::GetTargetBrightnessPercent() {
-  // Just query and return the current level.  The external display could've
-  // been set to a different level without us hearing about it.
-  double current_percent = 0.0;
-  if (!GetCurrentBrightnessPercent(&current_percent))
-    return 100.0;
-
-  return current_percent;
+void ExternalBacklightController::RemoveObserver(
+    BacklightControllerObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
 }
 
-bool ExternalBacklightController::GetCurrentBrightnessPercent(double* percent) {
+bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
   int64 current_level = 0;
   if (!backlight_->GetCurrentBrightnessLevel(&current_level))
     return false;
@@ -88,73 +84,67 @@ bool ExternalBacklightController::GetCurrentBrightnessPercent(double* percent) {
   return true;
 }
 
-bool ExternalBacklightController::SetCurrentBrightnessPercent(
+bool ExternalBacklightController::SetUserBrightnessPercent(
     double percent,
-    BrightnessChangeCause cause,
     TransitionStyle style) {
   if (max_level_ <= 0)
     return false;
+
   // Always perform instant transitions; there's no guarantee about how quickly
   // an external display will respond to our requests.
   if (!backlight_->SetBrightnessLevel(PercentToLevel(percent),
                                       base::TimeDelta()))
     return false;
-  if (cause == BRIGHTNESS_CHANGE_USER_INITIATED)
-    num_user_adjustments_++;
-  if (observer_)
-    observer_->OnBrightnessChanged(GetTargetBrightnessPercent(), cause, this);
+  num_user_adjustments_++;
+  FOR_EACH_OBSERVER(BacklightControllerObserver, observers_,
+                    OnBrightnessChanged(percent,
+                                        BRIGHTNESS_CHANGE_USER_INITIATED,
+                                        this));
   return true;
 }
 
-bool ExternalBacklightController::IncreaseBrightness(
-    BrightnessChangeCause cause) {
-  return AdjustBrightnessByOffset(kBrightnessAdjustmentPercent, cause);
+bool ExternalBacklightController::IncreaseUserBrightness(bool only_if_zero) {
+  return AdjustUserBrightnessByOffset(
+      kBrightnessAdjustmentPercent, true /* allow_off */, only_if_zero);
 }
 
-bool ExternalBacklightController::DecreaseBrightness(
-    bool allow_off,
-    BrightnessChangeCause cause) {
-  return AdjustBrightnessByOffset(-kBrightnessAdjustmentPercent, cause);
+bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
+  return AdjustUserBrightnessByOffset(
+      -kBrightnessAdjustmentPercent, allow_off, false /* only_if_zero */);
 }
 
-bool ExternalBacklightController::SetPowerState(PowerState state) {
-  DCHECK(state != BACKLIGHT_UNINITIALIZED);
-  power_state_ = state;
+void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
 
-  bool should_dim = state != BACKLIGHT_ACTIVE;
-  if (should_dim != currently_dimming_) {
+void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
+  if (dimmed != dimmed_for_inactivity_) {
+    dimmed_for_inactivity_ = dimmed;
     if (!disable_dbus_for_testing_) {
-      SendSoftwareDimmingSignal(should_dim ?
+      SendSoftwareDimmingSignal(dimmed ?
                                 kSoftwareScreenDimmingIdle :
                                 kSoftwareScreenDimmingNone);
     }
-    currently_dimming_ = should_dim;
   }
-
-  bool should_turn_off = state == BACKLIGHT_IDLE_OFF ||
-                         state == BACKLIGHT_SUSPENDED ||
-                         state == BACKLIGHT_SHUTTING_DOWN;
-  if (should_turn_off != currently_off_) {
-    display_power_setter_->SetDisplayPower(should_turn_off ?
-                                           chromeos::DISPLAY_POWER_ALL_OFF :
-                                           chromeos::DISPLAY_POWER_ALL_ON,
-                                           base::TimeDelta());
-    currently_off_ = should_turn_off;
-  }
-
-  return true;
 }
 
-PowerState ExternalBacklightController::GetPowerState() const {
-  return power_state_;
+void ExternalBacklightController::SetOffForInactivity(bool off) {
+  if (off == off_for_inactivity_)
+    return;
+  off_for_inactivity_ = off;
+  UpdateScreenPowerState();
 }
 
-bool ExternalBacklightController::OnPlugEvent(bool is_plugged) {
-  return false;
+void ExternalBacklightController::SetSuspended(bool suspended) {
+  if (suspended == suspended_)
+    return;
+  suspended_ = suspended;
+  UpdateScreenPowerState();
 }
 
-bool ExternalBacklightController::IsBacklightActiveOff() {
-  return false;
+void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
+  if (shutting_down == shutting_down_)
+    return;
+  shutting_down_ = shutting_down;
+  UpdateScreenPowerState();
 }
 
 int ExternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
@@ -185,16 +175,35 @@ int64 ExternalBacklightController::PercentToLevel(double percent) {
   return llround(percent / 100.0 * max_level_);
 }
 
-bool ExternalBacklightController::AdjustBrightnessByOffset(
+bool ExternalBacklightController::AdjustUserBrightnessByOffset(
     double percent_offset,
-    BrightnessChangeCause cause) {
-  double percent = 0.0;
-  if (!GetCurrentBrightnessPercent(&percent))
+    bool allow_off,
+    bool only_if_zero) {
+  double old_percent = 0.0;
+  if (!GetBrightnessPercent(&old_percent))
     return false;
 
-  percent += percent_offset;
-  percent = std::min(std::max(percent, 0.0), 100.0);
-  return SetCurrentBrightnessPercent(percent, cause, TRANSITION_INSTANT);
+  double new_percent = old_percent + percent_offset;
+  new_percent = std::min(std::max(new_percent, 0.0), 100.0);
+
+  if ((!allow_off && new_percent <= kEpsilon) ||
+      (only_if_zero && old_percent > kEpsilon)) {
+    num_user_adjustments_++;
+    return false;
+  }
+
+  return SetUserBrightnessPercent(new_percent, TRANSITION_INSTANT);
+}
+
+void ExternalBacklightController::UpdateScreenPowerState() {
+  bool should_turn_off = off_for_inactivity_ || suspended_ || shutting_down_;
+  if (should_turn_off != currently_off_) {
+    display_power_setter_->SetDisplayPower(should_turn_off ?
+                                           chromeos::DISPLAY_POWER_ALL_OFF :
+                                           chromeos::DISPLAY_POWER_ALL_ON,
+                                           base::TimeDelta());
+    currently_off_ = should_turn_off;
+  }
 }
 
 void ExternalBacklightController::SendSoftwareDimmingSignal(int state) {

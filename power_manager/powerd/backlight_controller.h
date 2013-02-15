@@ -6,122 +6,94 @@
 #define POWER_MANAGER_POWERD_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
+#include "base/time.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
 
-enum PowerState {
-  // User is active.
-  BACKLIGHT_ACTIVE,
-  // Dimmed due to inactivity.
-  BACKLIGHT_DIM,
-  // Got a request to go to BACKLIGHT_DIM while already at a lower level.
-  BACKLIGHT_ALREADY_DIMMED,
-  // Turned backlight off due to inactivity.
-  BACKLIGHT_IDLE_OFF,
-  // Machine is suspended.
-  BACKLIGHT_SUSPENDED,
-  // Machine is shutting down.
-  BACKLIGHT_SHUTTING_DOWN,
-  // State has not yet been set.
-  BACKLIGHT_UNINITIALIZED
-};
-
-// Possible causes of changes to the backlight brightness level.
-enum BrightnessChangeCause {
-  // The brightness was changed automatically (in response to e.g. an idle
-  // transition or AC getting plugged or unplugged).
-  BRIGHTNESS_CHANGE_AUTOMATED,
-
-  // The user requested that the brightness be changed.
-  BRIGHTNESS_CHANGE_USER_INITIATED,
-};
-
-// Different ways to transition brightness levels.
-enum TransitionStyle {
-  TRANSITION_INSTANT,
-  TRANSITION_FAST,
-  TRANSITION_SLOW,
-};
-
-class BacklightController;
-
-// Interface for observing changes made by the backlight controller.
-class BacklightControllerObserver {
- public:
-  // Invoked when the brightness level is changed.  |brightness_percent| is the
-  // current brightness in the range [0, 100].
-  virtual void OnBrightnessChanged(double brightness_percent,
-                                   BrightnessChangeCause cause,
-                                   BacklightController* source) {}
-
- protected:
-  virtual ~BacklightControllerObserver() {}
-};
+class BacklightControllerObserver;
 
 // Interface implemented by classes that control the backlight.
-class BacklightController : public system::BacklightInterfaceObserver {
+class BacklightController {
  public:
+  // Possible causes of changes to the backlight brightness level.
+  enum BrightnessChangeCause {
+    // The brightness was changed automatically (in response to e.g. an idle
+    // transition or AC getting plugged or unplugged).
+    BRIGHTNESS_CHANGE_AUTOMATED,
+
+    // The user requested that the brightness be changed.
+    BRIGHTNESS_CHANGE_USER_INITIATED,
+  };
+
+  // Different ways to transition between brightness levels.
+  enum TransitionStyle {
+    TRANSITION_INSTANT,
+    TRANSITION_FAST,
+    TRANSITION_SLOW,
+  };
+
   BacklightController() {}
   virtual ~BacklightController() {}
 
-  // String names for power states.
-  static const char* PowerStateToString(PowerState state);
+  // Adds or removes an observer.
+  virtual void AddObserver(BacklightControllerObserver* observer) = 0;
+  virtual void RemoveObserver(BacklightControllerObserver* observer) = 0;
 
-  // String names for transition styles.
-  static const char* TransitionStyleToString(TransitionStyle style);
+  // Handles the system's source of power being changed.
+  virtual void HandlePowerSourceChange(PowerSource source) = 0;
 
-  // Initialize the object.  Note that this method is also reinvoked when the
-  // backlight device changes.
-  virtual bool Init() = 0;
+  // Sets whether the backlight should be immediately dimmed in response to
+  // user inactivity.  Note that other states take precedence over this
+  // one, e.g. the backlight will be turned off if
+  // SetOffForInactivity(true) is called after
+  // SetDimmedForInactivity(true).
+  virtual void SetDimmedForInactivity(bool dimmed) = 0;
 
-  virtual void SetObserver(BacklightControllerObserver* observer) = 0;
+  // Sets whether the backlight should be immediately turned off in
+  // response to user inactivity.
+  virtual void SetOffForInactivity(bool off) = 0;
 
-  // Get the brightness that we're currently transitioning to, in the range [0,
-  // 100].  Use GetCurrentBrightnessPercent() to query the instantaneous
-  // brightness.
-  virtual double GetTargetBrightnessPercent() = 0;
+  // Sets whether the backlight should be prepared for the system being
+  // suspended.
+  virtual void SetSuspended(bool suspended) = 0;
 
-  // Get the current brightness of the backlight in the range [0, 100].
-  // We may be in the process of smoothly transitioning to a different level.
-  virtual bool GetCurrentBrightnessPercent(double* percent) = 0;
+  // Sets whether the backlight should be prepared for imminent shutdown.
+  virtual void SetShuttingDown(bool shutting_down) = 0;
 
-  // Set the current brightness of the backlight in the range [0, 100].
-  // Returns true if the brightness was changed, false otherwise.
-  virtual bool SetCurrentBrightnessPercent(double percent,
-                                           BrightnessChangeCause cause,
-                                           TransitionStyle style) = 0;
+  // Gets the brightness that the backlight currently using or
+  // transitioning to, in the range [0.0, 100.0].
+  virtual bool GetBrightnessPercent(double* percent) = 0;
 
-  // Increase the brightness level of the backlight by one step.
-  // Returns true if the brightness was changed, false otherwise.
-  virtual bool IncreaseBrightness(BrightnessChangeCause cause) = 0;
+  // Sets the brightness of the backlight in the range [0.0, 100.0] in
+  // response to a user request.  Note that the change may not take effect
+  // immediately (e.g. the screen may be dimmed or turned off).  Returns
+  // true if the brightness was changed.
+  virtual bool SetUserBrightnessPercent(double percent,
+                                        TransitionStyle style) = 0;
 
-  // Decrease the brightness level of the backlight by one step.
-  // Returns true if the brightness was changed, false otherwise.
+  // Increases the brightness level of the backlight by one step in
+  // response to a user request.  Returns true if the brightness was
+  // changed.
+  //
+  // If |only_if_zero| is true, the user brightness is only increased if it
+  // is currently zero.  This can be used to ensure that the backlight is
+  // turned on (assuming that the system is in an undimmed state) even if
+  // the user previously used the brightness keys to turn the backlight off.
+  virtual bool IncreaseUserBrightness(bool only_if_zero) = 0;
+
+  // Decreases the brightness level of the backlight by one step in
+  // response to a user request.  Returns true if the brightness was
+  // changed.
   //
   // If |allow_off| is false, the backlight will never be entirely turned off.
   // This should be used with on-screen controls to prevent their becoming
   // impossible for the user to see.
-  virtual bool DecreaseBrightness(bool allow_off,
-                                  BrightnessChangeCause cause) = 0;
+  virtual bool DecreaseUserBrightness(bool allow_off) = 0;
 
-  // Turn the backlight on or off.  Returns true if the state was successfully
-  // changed.
-  virtual bool SetPowerState(PowerState state) = 0;
-
-  // Get the previously-set state.
-  virtual PowerState GetPowerState() const = 0;
-
-  // Mark the computer as plugged or unplugged, and adjust the brightness
-  // appropriately.  Returns true if the brightness was set and false
-  // otherwise.
-  virtual bool OnPlugEvent(bool is_plugged) = 0;
-
-  // Determine whether the user has manually turned backlight down to zero.
-  virtual bool IsBacklightActiveOff() = 0;
-
-  // Get the number of times that the backlight has been adjusted as a result of
-  // ALS readings or user requests.
+  // Returns the number of times that the backlight has been adjusted as a
+  // result of ALS readings or user requests.
   virtual int GetNumAmbientLightSensorAdjustments() const = 0;
   virtual int GetNumUserAdjustments() const = 0;
 

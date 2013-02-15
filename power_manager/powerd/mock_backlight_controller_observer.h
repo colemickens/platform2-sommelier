@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/backlight_controller_observer.h"
 
 namespace power_manager {
 
@@ -19,14 +20,14 @@ class MockBacklightControllerObserver : public BacklightControllerObserver {
  public:
   struct ChangeTuple {
     double percent;
-    BrightnessChangeCause cause;
+    BacklightController::BrightnessChangeCause cause;
     BacklightController* source;
   };  // struct ChangeTuple
 
   MockBacklightControllerObserver() {}
   virtual ~MockBacklightControllerObserver() {}
 
-  std::vector<struct ChangeTuple> changes() const {
+  std::vector<ChangeTuple> changes() const {
     return changes_;
   }
 
@@ -35,10 +36,11 @@ class MockBacklightControllerObserver : public BacklightControllerObserver {
   }
 
   // BacklightControllerObserver implementation:
-  virtual void OnBrightnessChanged(double brightness_percent,
-                                   BrightnessChangeCause cause,
-                                   BacklightController* source) {
-    struct ChangeTuple change;
+  virtual void OnBrightnessChanged(
+      double brightness_percent,
+      BacklightController::BrightnessChangeCause cause,
+      BacklightController* source) {
+    ChangeTuple change;
     change.percent = brightness_percent;
     change.cause = cause;
     change.source = source;
@@ -47,7 +49,7 @@ class MockBacklightControllerObserver : public BacklightControllerObserver {
 
  private:
   // Received changes, in oldest-to-newest order.
-  std::vector<struct ChangeTuple> changes_;
+  std::vector<ChangeTuple> changes_;
 
   DISALLOW_COPY_AND_ASSIGN(MockBacklightControllerObserver);
 };

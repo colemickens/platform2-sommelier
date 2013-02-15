@@ -80,6 +80,11 @@ const char kShutdownReasonLowBattery[] = "low-battery";
 // Shutting down because suspend attempts failed.
 const char kShutdownReasonSuspendFailed[] = "suspend-failed";
 
+const double kEpsilon = 0.001;
+
+const int64 kFastBacklightTransitionMs = 200;
+const int64 kSlowBacklightTransitionMs = 2000;
+
 std::string PowerSourceToString(PowerSource source) {
   switch (source) {
     case POWER_AC:

@@ -13,20 +13,11 @@
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/mock_metrics_store.h"
 #include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/powerd.h"
-#include "power_manager/powerd/system/backlight_stub.h"
-#include "power_manager/powerd/system/display_power_setter_stub.h"
-
-#ifdef IS_DESKTOP
-#include "power_manager/powerd/external_backlight_controller.h"
-#else
-#include "power_manager/powerd/internal_backlight_controller.h"
-#endif
-
-namespace power_manager {
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -38,18 +29,10 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
 using ::testing::Test;
 
-static const int64 kDefaultBrightnessLevel = 50;
-static const int64 kMaxBrightnessLevel = 100;
-static const double kPluggedBrightnessPercent = 70;
-static const double kUnpluggedBrightnessPercent = 30;
-static const int64 kSmallInterval = 500;
-static const int64 kBigInterval = kSmallInterval * 4;
-static const int64 kPluggedDim = kBigInterval;
-static const int64 kPluggedOff = 2 * kBigInterval;
-static const int64 kPluggedSuspend = 3 * kBigInterval;
-static const int64 kUnpluggedDim = kPluggedDim;
-static const int64 kUnpluggedOff = kPluggedOff;
-static const int64 kUnpluggedSuspend = kPluggedSuspend;
+namespace power_manager {
+
+namespace {
+
 static const int64 kPowerButtonInterval = 20;
 static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
@@ -72,18 +55,66 @@ static const double kAdjustedBatteryPercentage = 98.0;
 static const double kTestPercentageThreshold = 2.0;
 static const int64 kTestTimeThreshold = 180;
 
+// BacklightController implementation that returns dummy values.
+class BacklightControllerStub : public BacklightController {
+ public:
+  BacklightControllerStub()
+      : percent_(100.0),
+        num_als_adjustments_(0),
+        num_user_adjustments_(0) {
+  }
+  virtual ~BacklightControllerStub() {}
+
+  void set_percent(double percent) { percent_ = percent; }
+  void set_num_als_adjustments(int num) { num_als_adjustments_ = num; }
+  void set_num_user_adjustments(int num) { num_user_adjustments_ = num; }
+
+  // BacklightController implementation:
+  virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE {}
+  virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE {}
+  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE {}
+  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE {}
+  virtual void SetOffForInactivity(bool off) OVERRIDE {}
+  virtual void SetSuspended(bool suspended) OVERRIDE {}
+  virtual void SetShuttingDown(bool shutting_down) OVERRIDE {}
+  virtual bool GetBrightnessPercent(double* percent) OVERRIDE {
+    *percent = percent_;
+    return true;
+  }
+  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
+      OVERRIDE {
+    return true;
+  }
+  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE {
+    return true;
+  }
+  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE { return true; }
+  virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE {
+    return num_als_adjustments_;
+  }
+  virtual int GetNumUserAdjustments() const OVERRIDE {
+    return num_user_adjustments_;
+  }
+
+ private:
+  // Percent to be returned by GetBrightnessPercent().
+  double percent_;
+
+  // Counts to be returned by GetNum*Adjustments().
+  int num_als_adjustments_;
+  int num_user_adjustments_;
+
+  DISALLOW_COPY_AND_ASSIGN(BacklightControllerStub);
+};
+
+}  // namespace
+
 bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 
 class DaemonTest : public Test {
  public:
   DaemonTest()
-      : backlight_(kMaxBrightnessLevel, kDefaultBrightnessLevel),
-#ifdef IS_DESKTOP
-        backlight_ctl_(&backlight_, &display_power_setter_),
-#else
-        backlight_ctl_(&backlight_, &prefs_, NULL, &display_power_setter_),
-#endif
-        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL,
+      : daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL,
                 base::FilePath(".")),
         status_(&daemon_.power_status_) {}
 
@@ -92,13 +123,8 @@ class DaemonTest : public Test {
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-    prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
-    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
-                     kUnpluggedBrightnessPercent);
-#ifdef IS_DESKTOP
-    backlight_ctl_.set_disable_dbus_for_testing(true);
-#endif
-    CHECK(backlight_ctl_.Init());
+    prefs_.SetDouble(kPluggedBrightnessOffsetPref, 70);
+    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref, 30);
     ResetPowerStatus(status_);
     // Setting up the window taper values, since they are needed in some of
     // the tests.
@@ -278,16 +304,10 @@ class DaemonTest : public Test {
                      BATTERY_INFO_MAX);
   }
 
-  system::BacklightStub backlight_;
-  system::DisplayPowerSetterStub display_power_setter_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   FakePrefs prefs_;
-#ifdef IS_DESKTOP
-  ExternalBacklightController backlight_ctl_;
-#else
-  InternalBacklightController backlight_ctl_;
-#endif
+  BacklightControllerStub backlight_ctl_;
 
   StrictMock<MockRollingAverage> empty_average_;
   StrictMock<MockRollingAverage> full_average_;
@@ -326,25 +346,18 @@ TEST_F(DaemonTest, CheckMetricInterval) {
 
 TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
   daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  daemon_.SetPlugged(PLUGGED_STATE_DISCONNECTED);
-  daemon_.backlight_controller_->OnPlugEvent(PLUGGED_STATE_DISCONNECTED);
-  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_DIM);
+  daemon_.screen_dim_timestamp_ = base::TimeTicks::Now();
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
-  daemon_.backlight_controller_->SetPowerState(BACKLIGHT_ACTIVE);
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
 
-  double current_percent = 0.0;
-  ASSERT_TRUE(daemon_.backlight_controller_->
-              GetCurrentBrightnessPercent(&current_percent));
-  int64 current_percent_int = static_cast<int64>(lround(current_percent));
-
-  ExpectEnumMetric("Power.BacklightLevelOnBattery",
-                   current_percent_int,
+  daemon_.screen_dim_timestamp_ = base::TimeTicks();
+  const int64 kCurrentPercent = 57;
+  backlight_ctl_.set_percent(kCurrentPercent);
+  ExpectEnumMetric("Power.BacklightLevelOnBattery", kCurrentPercent,
                    kMetricBacklightLevelMax);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
-  ExpectEnumMetric("Power.BacklightLevelOnAC",
-                   current_percent_int,
+  ExpectEnumMetric("Power.BacklightLevelOnAC", kCurrentPercent,
                    kMetricBacklightLevelMax);
   daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
 }
@@ -450,37 +463,33 @@ TEST_F(DaemonTest, GenerateBatteryInfoWhenChargeStartsMetric) {
   }
 }
 
-#ifndef IS_DESKTOP
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   static const uint adjustment_counts[] = {0, 100, 500, 1000};
   size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
 
   for (size_t i = 0; i < num_counts; i++) {
-    backlight_ctl_.als_adjustment_count_ = adjustment_counts[i];
+    backlight_ctl_.set_num_als_adjustments(adjustment_counts[i]);
     ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
     EXPECT_TRUE(
-        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-            backlight_ctl_));
+        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(backlight_ctl_));
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
-  backlight_ctl_.als_adjustment_count_ =
-      kMetricNumberOfAlsAdjustmentsPerSessionMax + kAdjustmentsOffset;
+  backlight_ctl_.set_num_als_adjustments(
+      kMetricNumberOfAlsAdjustmentsPerSessionMax + kAdjustmentsOffset);
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       kMetricNumberOfAlsAdjustmentsPerSessionMax);
   EXPECT_TRUE(
-      daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-          backlight_ctl_));
+      daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(backlight_ctl_));
 }
 
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
-  backlight_ctl_.als_adjustment_count_ = -kAdjustmentsOffset;
-  EXPECT_FALSE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-            backlight_ctl_));
+  backlight_ctl_.set_num_als_adjustments(-kAdjustmentsOffset);
+  EXPECT_FALSE(
+      daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(backlight_ctl_));
 }
-#endif  // !IS_DESKTOP
 
 TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
   base::TimeTicks now = base::TimeTicks::Now();
@@ -583,27 +592,18 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   int expected_percentage = round(status_->battery_percentage);
   ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
 
-#ifndef IS_DESKTOP
-  backlight_ctl_.als_adjustment_count_ = kAdjustmentsOffset;
-  ExpectNumberOfAlsAdjustmentsPerSessionMetric(
-      backlight_ctl_.als_adjustment_count_);
-#else
-  ExpectNumberOfAlsAdjustmentsPerSessionMetric(0);
-#endif
+  backlight_ctl_.set_num_als_adjustments(kAdjustmentsOffset);
+  ExpectNumberOfAlsAdjustmentsPerSessionMetric(kAdjustmentsOffset);
 
   const int kNumUserAdjustments = 10;
-  for (int i = 0; i < kNumUserAdjustments; ++i)
-    backlight_ctl_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  backlight_ctl_.set_num_user_adjustments(kNumUserAdjustments);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
 
   base::TimeTicks now = base::TimeTicks::Now();
   base::TimeTicks start = now - base::TimeDelta::FromSeconds(kSessionLength);
   ExpectLengthOfSessionMetric(kSessionLength);
 
-  daemon_.GenerateEndOfSessionMetrics(*status_,
-                                      backlight_ctl_,
-                                      now,
-                                      start);
+  daemon_.GenerateEndOfSessionMetrics(*status_, backlight_ctl_, now, start);
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
@@ -666,8 +666,7 @@ TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
 
 TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
   const int kNumUserAdjustments = 10;
-  for (int i = 0; i < kNumUserAdjustments; ++i)
-    backlight_ctl_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+  backlight_ctl_.set_num_user_adjustments(kNumUserAdjustments);
 
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
@@ -685,10 +684,9 @@ TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
       backlight_ctl_));
 }
 
-#ifndef IS_DESKTOP
 TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
-  backlight_ctl_.user_adjustment_count_ =
-      kMetricUserBrightnessAdjustmentsPerSessionMax + kAdjustmentsOffset;
+  backlight_ctl_.set_num_user_adjustments(
+      kMetricUserBrightnessAdjustmentsPerSessionMax + kAdjustmentsOffset);
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
       kMetricUserBrightnessAdjustmentsPerSessionMax);
@@ -697,12 +695,11 @@ TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
 }
 
 TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
-  backlight_ctl_.user_adjustment_count_ = -kAdjustmentsOffset;
+  backlight_ctl_.set_num_user_adjustments(-kAdjustmentsOffset);
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
   EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
       backlight_ctl_));
 }
-#endif
 
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
   daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
@@ -886,21 +883,6 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithBadStatus) {
   EXPECT_EQ(0, status_->averaged_battery_time_to_full);
   EXPECT_TRUE(status_->is_calculating_battery_time);
 }
-
-// Test that the backlight is turned on when the power button is pressed:
-// http://crosbug.com/32570
-#ifndef IS_DESKTOP
-// We don't do this in builds for desktop machines.
-TEST_F(DaemonTest, TurnBacklightOnForPowerButton) {
-  backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
-  ASSERT_TRUE(
-      backlight_ctl_.SetCurrentBrightnessPercent(
-          0.0, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT));
-  ASSERT_DOUBLE_EQ(0.0, backlight_ctl_.GetTargetBrightnessPercent());
-  daemon_.EnsureBacklightIsOn();
-  EXPECT_GT(backlight_ctl_.GetTargetBrightnessPercent(), 0.0);
-}
-#endif
 
 TEST_F(DaemonTest, GetDisplayBatteryPercent) {
   daemon_.low_battery_shutdown_time_s_ = kTestTimeThreshold;

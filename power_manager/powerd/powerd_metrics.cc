@@ -53,25 +53,24 @@ void Daemon::GenerateMetricsOnLeavingIdle() {
   SendMetricWithPowerState(kMetricIdleName, total_delta.InMilliseconds(),
       kMetricIdleMin, kMetricIdleMax, kMetricIdleBuckets);
 
-  if (!idle_transition_timestamps_[BACKLIGHT_DIM].is_null()) {
-    TimeDelta dim_event_delta =
-      current_time - idle_transition_timestamps_[BACKLIGHT_DIM];
+  if (!screen_dim_timestamp_.is_null()) {
+    TimeDelta dim_event_delta = current_time - screen_dim_timestamp_;
     SendMetricWithPowerState(kMetricIdleAfterDimName,
                              dim_event_delta.InMilliseconds(),
                              kMetricIdleAfterDimMin,
                              kMetricIdleAfterDimMax,
                              kMetricIdleAfterDimBuckets);
+    screen_dim_timestamp_ = base::TimeTicks();
   }
-  if (!idle_transition_timestamps_[BACKLIGHT_IDLE_OFF].is_null()) {
-    TimeDelta screen_off_event_delta =
-      current_time - idle_transition_timestamps_[BACKLIGHT_IDLE_OFF];
+  if (!screen_off_timestamp_.is_null()) {
+    TimeDelta screen_off_event_delta = current_time - screen_off_timestamp_;
     SendMetricWithPowerState(kMetricIdleAfterScreenOffName,
                              screen_off_event_delta.InMilliseconds(),
                              kMetricIdleAfterScreenOffMin,
                              kMetricIdleAfterScreenOffMax,
                              kMetricIdleAfterScreenOffBuckets);
+    screen_off_timestamp_ = base::TimeTicks();
   }
-  idle_transition_timestamps_.clear();
 }
 
 void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
@@ -80,14 +79,13 @@ void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
 }
 
 gboolean Daemon::GenerateBacklightLevelMetric() {
-  generate_backlight_metrics_timeout_id_  = 0;
   double percent = 0.0;
-  if (backlight_controller_->GetPowerState() == BACKLIGHT_ACTIVE &&
-      backlight_controller_->GetCurrentBrightnessPercent(&percent)) {
+  if (screen_dim_timestamp_.is_null() && screen_off_timestamp_.is_null() &&
+      backlight_controller_->GetBrightnessPercent(&percent)) {
     SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(percent),
                                  kMetricBacklightLevelMax);
   }
-  return true;
+  return TRUE;
 }
 
 bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
@@ -366,19 +364,17 @@ void Daemon::SendThermalMetrics(unsigned int aborted, unsigned int turned_on,
 }
 
 gboolean Daemon::GenerateThermalMetrics() {
-  generate_thermal_metrics_timeout_id_ = 0;
-
   unsigned int aborted = 0, turned_on = 0, multiple = 0;
   if (!util::GetUintFromFile(kMetricThermalAbortedFanFilename, &aborted) ||
       !util::GetUintFromFile(kMetricThermalTurnedOnFanFilename, &turned_on) ||
       !util::GetUintFromFile(kMetricThermalMultipleFanFilename, &multiple)) {
     LOG(ERROR) << "Unable to read values from debugfs thermal files. "
                << "UMA metrics not being sent this poll period.";
-    return true;
+    return TRUE;
   }
 
   SendThermalMetrics(aborted, turned_on, multiple);
-  return true;
+  return TRUE;
 }
 
 }  // namespace power_manager

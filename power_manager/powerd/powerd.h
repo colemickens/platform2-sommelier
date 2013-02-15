@@ -27,6 +27,7 @@
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/backlight_controller_observer.h"
 #include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/metrics_store.h"
@@ -128,14 +129,11 @@ class Daemon : public BacklightControllerObserver,
   // Notify chrome that an idle event happened.
   void IdleEventNotify(int64 threshold);
 
-  // If in the active-but-off state, turn up the brightness when user presses a
-  // key so user can see that the screen has been locked.
-  void BrightenScreenIfOff();
-
   // Overridden from BacklightControllerObserver:
-  virtual void OnBrightnessChanged(double brightness_percent,
-                                   BrightnessChangeCause cause,
-                                   BacklightController* source) OVERRIDE;
+  virtual void OnBrightnessChanged(
+      double brightness_percent,
+      BacklightController::BrightnessChangeCause cause,
+      BacklightController* source) OVERRIDE;
 
   // Removes the current power supply polling timer.
   void HaltPollPowerSupply();
@@ -266,9 +264,10 @@ class Daemon : public BacklightControllerObserver,
   void AdjustKeyboardBrightness(int direction);
 
   // Shared code between keyboard and screen brightness changed handling
-  void SendBrightnessChangedSignal(double brightness_percent,
-                                   BrightnessChangeCause cause,
-                                   const std::string& signal_name);
+  void SendBrightnessChangedSignal(
+      double brightness_percent,
+      BacklightController::BrightnessChangeCause cause,
+      const std::string& signal_name);
 
   // Sets up idle timers, adding the provided offset to all timeouts
   // starting with the state provided except the locking timeout.
@@ -499,10 +498,11 @@ class Daemon : public BacklightControllerObserver,
   // buzzing sound when suspended.
   bool ShouldStayAwakeForHeadphoneJack();
 
-  // Send changes to the backlight power state to the backlight
-  // controllers. This also will determine if the ALS needs to be toggled
-  // on/off.
-  void SetPowerState(PowerState state);
+  // Updates state in |backlight_controller_| and |keyboard_controller_|
+  // (if non-NULL).
+  void SetBacklightsDimmedForInactivity(bool dimmed);
+  void SetBacklightsOffForInactivity(bool off);
+  void SetBacklightsSuspended(bool suspended);
 
   // Updates |battery_report_state_| to account for changes in the power state
   // of the device and passage of time. This value is used to control the value
@@ -577,7 +577,8 @@ class Daemon : public BacklightControllerObserver,
   base::TimeDelta last_idle_timedelta_;
 
   // Timestamps of the last idle-triggered power state transitions.
-  std::map<PowerState, base::TimeTicks> idle_transition_timestamps_;
+  base::TimeTicks screen_dim_timestamp_;
+  base::TimeTicks screen_off_timestamp_;
 
   // User whose session is currently active, or empty if no session is
   // active or we're in guest mode.

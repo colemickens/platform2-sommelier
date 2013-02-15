@@ -32,14 +32,17 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   }
 
  protected:
-  int64 GetCurrentBrightnessLevel() {
-    double percent = 0.0;
-    CHECK(controller_.GetCurrentBrightnessPercent(&percent));
-    return controller_.PercentToLevel(percent);
+  // Returns |backlight_|'s current brightness, mapped to a
+  // |controller_|-designated percent in the range [0.0, 100.0].
+  double GetBacklightBrightnessPercent() {
+    return controller_.LevelToPercent(backlight_.current_level());
   }
 
-  int64 GetTargetBrightnessLevel() {
-    return controller_.PercentToLevel(controller_.GetTargetBrightnessPercent());
+  // Returns the brightness percent as reported by the controller.
+  double GetControllerBrightnessPercent() {
+    double percent = 0.0;
+    CHECK(controller_.GetBrightnessPercent(&percent));
+    return percent;
   }
 
   system::BacklightStub backlight_;
@@ -47,27 +50,16 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   ExternalBacklightController controller_;
 };
 
-// Test that we record the power state.
-TEST_F(ExternalBacklightControllerTest, GetPowerState) {
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_EQ(BACKLIGHT_ACTIVE, controller_.GetPowerState());
-
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
-  EXPECT_EQ(BACKLIGHT_DIM, controller_.GetPowerState());
-}
-
 // Test that backlight failures are reported correctly.
 TEST_F(ExternalBacklightControllerTest, FailedBacklightRequest) {
   backlight_.set_should_fail(true);
   double percent = 0;
-  EXPECT_FALSE(controller_.GetCurrentBrightnessPercent(&percent));
+  EXPECT_FALSE(controller_.GetBrightnessPercent(&percent));
   EXPECT_FALSE(
-      controller_.SetCurrentBrightnessPercent(
-          50.0, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT));
-  EXPECT_FALSE(
-      controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED));
-  EXPECT_FALSE(
-      controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED));
+      controller_.SetUserBrightnessPercent(
+          50.0, BacklightController::TRANSITION_INSTANT));
+  EXPECT_FALSE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_FALSE(controller_.DecreaseUserBrightness(true /* allow_off */));
   EXPECT_FALSE(controller_.Init());
 }
 
@@ -76,46 +68,42 @@ TEST_F(ExternalBacklightControllerTest, FailedBacklightRequest) {
 TEST_F(ExternalBacklightControllerTest, ReinitializeOnDeviceChange) {
   const int kStartingBacklightLevel = 67;
   backlight_.set_current_level(kStartingBacklightLevel);
-  EXPECT_EQ(kStartingBacklightLevel, GetCurrentBrightnessLevel());
+  EXPECT_EQ(GetBacklightBrightnessPercent(),
+            GetControllerBrightnessPercent());
 
   const int kNewMaxBacklightLevel = 60;
   const int kNewBacklightLevel = 45;
   backlight_.set_max_level(kNewMaxBacklightLevel);
   backlight_.set_current_level(kNewBacklightLevel);
   backlight_.NotifyObservers();
-  EXPECT_EQ(kNewBacklightLevel, GetCurrentBrightnessLevel());
+  EXPECT_EQ(GetBacklightBrightnessPercent(),
+            GetControllerBrightnessPercent());
 }
 
-// Test that we dim whenever we're not in the active state.  We should do this
-// without changing the monitor's brightness settings.
+// Test that we dim whenever requested to do so.  We should do this without
+// changing the monitor's brightness settings.
 TEST_F(ExternalBacklightControllerTest, DimScreen) {
   const int kStartingBacklightLevel = 43;
   backlight_.set_current_level(kStartingBacklightLevel);
-  EXPECT_FALSE(controller_.currently_dimming());
+  // TODO(derat): After moving dimming to a Delegate interface, check the
+  // request that it received from ExternalBacklightController.
+  EXPECT_FALSE(controller_.dimmed_for_inactivity());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_FALSE(controller_.currently_dimming());
+  controller_.SetDimmedForInactivity(true);
+  EXPECT_TRUE(controller_.dimmed_for_inactivity());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
-  EXPECT_TRUE(controller_.currently_dimming());
+  controller_.SetDimmedForInactivity(false);
+  EXPECT_FALSE(controller_.dimmed_for_inactivity());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_FALSE(controller_.currently_dimming());
+  controller_.SetOffForInactivity(true);
+  EXPECT_FALSE(controller_.dimmed_for_inactivity());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_IDLE_OFF));
-  EXPECT_TRUE(controller_.currently_dimming());
-  EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
-
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
-  EXPECT_TRUE(controller_.currently_dimming());
-  EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
-
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_FALSE(controller_.currently_dimming());
+  controller_.SetSuspended(true);
+  EXPECT_FALSE(controller_.dimmed_for_inactivity());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 }
 
@@ -125,27 +113,25 @@ TEST_F(ExternalBacklightControllerTest, DimScreen) {
 TEST_F(ExternalBacklightControllerTest, TurnScreenOff) {
   const int kStartingBacklightLevel = 65;
   backlight_.set_current_level(kStartingBacklightLevel);
-  EXPECT_FALSE(controller_.currently_off());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_FALSE(controller_.currently_off());
+  controller_.SetDimmedForInactivity(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
-  EXPECT_FALSE(controller_.currently_off());
+  controller_.SetOffForInactivity(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_IDLE_OFF));
-  EXPECT_TRUE(controller_.currently_off());
+  controller_.SetSuspended(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
-  EXPECT_TRUE(controller_.currently_off());
-  EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
-
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  EXPECT_FALSE(controller_.currently_off());
+  controller_.SetSuspended(false);
+  controller_.SetOffForInactivity(false);
+  controller_.SetDimmedForInactivity(false);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 }
 
@@ -160,33 +146,25 @@ TEST_F(ExternalBacklightControllerTest, CountAdjustments) {
       kNumUserDownAdjustments +
       kNumUserAbsoluteAdjustments;
   for (int i = 0; i < kNumUserUpAdjustments; ++i)
-    controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
+    controller_.IncreaseUserBrightness(false /* only_if_zero */);
   for (int i = 0; i < kNumUserDownAdjustments; ++i)
-    controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_USER_INITIATED);
+    controller_.DecreaseUserBrightness(true /* allow_off */);
   for (int i = 0; i < kNumUserAbsoluteAdjustments; ++i) {
-    controller_.SetCurrentBrightnessPercent(
-        50.0, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT);
+    controller_.SetUserBrightnessPercent(
+        50.0, BacklightController::TRANSITION_INSTANT);
   }
-
-  // Throw in some random automated adjustments.
-  controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
-  controller_.DecreaseBrightness(false, BRIGHTNESS_CHANGE_AUTOMATED);
-  controller_.SetCurrentBrightnessPercent(
-      50.0, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_INSTANT);
 
   EXPECT_EQ(kTotalUserAdjustments, controller_.GetNumUserAdjustments());
 }
 
-// Test that for both the current and target brightness, we just return the
-// brightness as reported by the display.
+// Test that GetBrightnessPercent() just returns the brightness as reported
+// by the display.
 TEST_F(ExternalBacklightControllerTest, QueryBrightness) {
-  EXPECT_EQ(kDefaultStartingBacklightLevel, GetCurrentBrightnessLevel());
-  EXPECT_EQ(kDefaultStartingBacklightLevel, GetTargetBrightnessLevel());
-
   const int kNewLevel = kDefaultMaxBacklightLevel / 2;
   backlight_.set_current_level(kNewLevel);
-  EXPECT_EQ(kNewLevel, GetCurrentBrightnessLevel());
-  EXPECT_EQ(kNewLevel, GetTargetBrightnessLevel());
+  EXPECT_DOUBLE_EQ(GetBacklightBrightnessPercent(),
+                   GetControllerBrightnessPercent());
+  ASSERT_EQ(kNewLevel, backlight_.current_level());
 }
 
 // Test that requests to change the brightness are honored.
@@ -195,47 +173,41 @@ TEST_F(ExternalBacklightControllerTest, ChangeBrightness) {
 
   // Test setting the brightness to an absolute level.
   const double kNewPercent = 75.0;
-  controller_.SetCurrentBrightnessPercent(
-      kNewPercent, BRIGHTNESS_CHANGE_USER_INITIATED, TRANSITION_INSTANT);
-  EXPECT_DOUBLE_EQ(kNewPercent, controller_.GetTargetBrightnessPercent());
-  EXPECT_EQ(GetTargetBrightnessLevel(), backlight_.current_level());
+  controller_.SetUserBrightnessPercent(kNewPercent,
+                                       BacklightController::TRANSITION_INSTANT);
+  EXPECT_DOUBLE_EQ(kNewPercent, GetBacklightBrightnessPercent());
 
   // Increase enough times to hit 100%.
   for (int i = 0; i < kNumAdjustmentsToReachLimit; ++i)
-    controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(100.0, controller_.GetTargetBrightnessPercent());
-  EXPECT_EQ(kDefaultMaxBacklightLevel, backlight_.current_level());
+    controller_.IncreaseUserBrightness(false /* only_if_zero */);
+  EXPECT_DOUBLE_EQ(100.0, GetBacklightBrightnessPercent());
 
   // Decrease enough times to hit 0%.
   for (int i = 0; i < kNumAdjustmentsToReachLimit; ++i)
-    controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
-  EXPECT_DOUBLE_EQ(0.0, controller_.GetTargetBrightnessPercent());
-  EXPECT_EQ(0, backlight_.current_level());
+    controller_.DecreaseUserBrightness(true /* allow_off */);
+  EXPECT_DOUBLE_EQ(0.0, GetBacklightBrightnessPercent());
 }
 
 // Test that the BrightnessControllerObserver is notified about changes.
 TEST_F(ExternalBacklightControllerTest, NotifyObserver) {
   MockBacklightControllerObserver observer;
-  controller_.SetObserver(&observer);
+  controller_.AddObserver(&observer);
 
   observer.Clear();
-  controller_.IncreaseBrightness(BRIGHTNESS_CHANGE_AUTOMATED);
+  controller_.DecreaseUserBrightness(true /* allow_off */);
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_DOUBLE_EQ(controller_.GetTargetBrightnessPercent(),
+  EXPECT_DOUBLE_EQ(GetBacklightBrightnessPercent(),
                    observer.changes()[0].percent);
-  EXPECT_EQ(BRIGHTNESS_CHANGE_AUTOMATED, observer.changes()[0].cause);
+  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+            observer.changes()[0].cause);
 
-  observer.Clear();
-  controller_.DecreaseBrightness(true, BRIGHTNESS_CHANGE_USER_INITIATED);
-  ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
-  EXPECT_DOUBLE_EQ(controller_.GetTargetBrightnessPercent(),
-                   observer.changes()[0].percent);
-  EXPECT_EQ(BRIGHTNESS_CHANGE_USER_INITIATED, observer.changes()[0].cause);
+  controller_.RemoveObserver(&observer);
 }
 
 TEST_F(ExternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
-  EXPECT_TRUE(controller_.SetPowerState(BACKLIGHT_SHUTTING_DOWN));
-  EXPECT_TRUE(controller_.currently_off());
+  controller_.SetShuttingDown(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
 }  // namespace power_manager
