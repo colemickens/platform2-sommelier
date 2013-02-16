@@ -108,10 +108,16 @@ class CellularCapability {
   virtual void DisconnectCleanup() = 0;
 
   // Activates the modem. Returns an Error on failure.
-  // The default implementation fails by returning a kNotSupported error
-  // to the caller.
   virtual void Activate(const std::string &carrier,
                         Error *error, const ResultCallback &callback) = 0;
+
+  // Initiates the necessary to steps to verify that the cellular service has
+  // been activated. Once these steps have been completed, the service should
+  // be marked as activated.
+  //
+  // The default implementation fails by returning a kNotSupported error
+  // to the caller.
+  virtual void CompleteActivation(Error *error);
 
   // Returns true if service activation is required. Returns false by default
   // in this base class.

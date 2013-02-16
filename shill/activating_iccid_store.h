@@ -44,7 +44,7 @@ class ActivatingIccidStore {
 
   // Constructor performs no initialization.
   ActivatingIccidStore();
-  ~ActivatingIccidStore();
+  virtual ~ActivatingIccidStore();
 
   // Tries to open the underlying store interface from the given file path.
   // Returns false if it fails to open the file.
@@ -53,23 +53,24 @@ class ActivatingIccidStore {
   // open will allways be flushed and closed, however it is not guaranteed that
   // the file will always be successfully reopened (technically it should, but
   // it is not guaranteed).
-  bool InitStorage(GLib *glib, const FilePath &storage_path);
+  virtual bool InitStorage(GLib *glib, const FilePath &storage_path);
 
   // Returns the activation state for a SIM with the given ICCID. A return value
   // of kStateUnknown indicates that the given ICCID was not found.
-  State GetActivationState(const std::string &iccid) const;
+  virtual State GetActivationState(const std::string &iccid) const;
 
   // Sets the activation state for the given ICCID. If an entry for this iccid
   // was not found, a new entry will be created. Returns true on success.
-  bool SetActivationState(const std::string &iccid, State state);
+  virtual bool SetActivationState(const std::string &iccid, State state);
 
   // Removes the entry for the given ICCID from the database. Returns true if
   // the operation was successful. If the iccid did not exist in the database,
   // still returns true.
-  bool RemoveEntry(const std::string &iccid);
+  virtual bool RemoveEntry(const std::string &iccid);
 
  private:
   friend class ActivatingIccidStoreTest;
+  friend class CellularCapabilityUniversalTest;
   FRIEND_TEST(ActivatingIccidStoreTest, FileInteractions);
   FRIEND_TEST(ActivatingIccidStoreTest, GetActivationState);
   FRIEND_TEST(ActivatingIccidStoreTest, RemoveEntry);
@@ -78,7 +79,6 @@ class ActivatingIccidStore {
   static const char kGroupId[];
   static const char kStorageFileName[];
 
-  GLib *glib_;
   scoped_ptr<StoreInterface> storage_;
 
   DISALLOW_COPY_AND_ASSIGN(ActivatingIccidStore);

@@ -22,6 +22,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_activating_iccid_store.h"
 #include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
@@ -172,6 +173,10 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     return true;
   }
 
+  void SetMockIccidStore() {
+    capability_->activating_iccid_store_ = &mock_iccid_store_;
+  }
+
   void Set3gppProxy() {
     capability_->modem_3gpp_proxy_.reset(modem_3gpp_proxy_.release());
   }
@@ -267,6 +272,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   scoped_ptr<mm1::MockModemSimpleProxy> modem_simple_proxy_;
   scoped_ptr<mm1::MockSimProxy> sim_proxy_;
   scoped_ptr<MockDBusPropertiesProxy> properties_proxy_;
+  MockActivatingIccidStore mock_iccid_store_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityUniversal *capability_;  // Owned by |cellular_|.
   NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
@@ -1424,6 +1430,93 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
   EXPECT_EQ("POST", olp.GetMethod());
   EXPECT_EQ("esn=0&imei=1&imsi=2&mdn=3&meid=4&min=5&iccid=6",
             olp.GetPostData());
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, IsMdnValid) {
+  capability_->mdn_.clear();
+  EXPECT_FALSE(capability_->IsMdnValid());
+  capability_->mdn_ = "0000000";
+  EXPECT_FALSE(capability_->IsMdnValid());
+  capability_->mdn_ = "0000001";
+  EXPECT_TRUE(capability_->IsMdnValid());
+  capability_->mdn_ = "1231223";
+  EXPECT_TRUE(capability_->IsMdnValid());
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
+  const char kIccid[] = "1234567";
+
+  mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
+  SetMockIccidStore();
+  capability_->InitProxies();
+  capability_->registration_state_ =
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
+
+  // No MDN, no ICCID.
+  capability_->mdn_ = "0000000";
+  capability_->sim_identifier_.clear();
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_)).Times(0);
+  capability_->UpdateIccidActivationState();
+
+  // ICCID known.
+  capability_->sim_identifier_ = kIccid;
+
+  // After the modem has reset.
+  capability_->reset_done_ = true;
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
+      .Times(1).WillOnce(Return(ActivatingIccidStore::kStatePending));
+  EXPECT_CALL(mock_iccid_store_,
+              SetActivationState(kIccid,
+                                 ActivatingIccidStore::kStateActivated))
+      .Times(1);
+  capability_->UpdateIccidActivationState();
+
+  // Before reset, not registered.
+  capability_->reset_done_ = false;
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
+      .Times(2).WillRepeatedly(Return(ActivatingIccidStore::kStatePending));
+  EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(0);
+  capability_->UpdateIccidActivationState();
+
+  // Before reset, registered.
+  capability_->registration_state_ =
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(1);
+  capability_->UpdateIccidActivationState();
+
+  // Not registered.
+  capability_->registration_state_ =
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
+      .Times(2).WillRepeatedly(Return(ActivatingIccidStore::kStateActivated));
+  EXPECT_CALL(*service_, AutoConnect()).Times(0);
+  capability_->UpdateIccidActivationState();
+
+  // Service, registered.
+  capability_->registration_state_ =
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+  EXPECT_CALL(*service_, AutoConnect()).Times(1);
+  capability_->UpdateIccidActivationState();
+
+  cellular_->service_->activation_state_ =
+      flimflam::kActivationStateNotActivated;
+
+  // Device is connected.
+  cellular_->state_ = Cellular::kStateConnected;
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivated))
+      .Times(3);
+  capability_->UpdateIccidActivationState();
+
+  // Device is linked.
+  cellular_->state_ = Cellular::kStateLinked;
+  capability_->UpdateIccidActivationState();
+
+  // Got valid MDN.
+  cellular_->state_ = Cellular::kStateRegistered;
+  capability_->mdn_ = "1231223";
+  EXPECT_CALL(mock_iccid_store_, RemoveEntry(kIccid)).Times(1);
+  capability_->UpdateIccidActivationState();
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateOperatorInfo) {

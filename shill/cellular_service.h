@@ -67,6 +67,7 @@ class CellularService : public Service {
   virtual void ActivateCellularModem(const std::string &carrier,
                                      Error *error,
                                      const ResultCallback &callback);
+  virtual void CompleteCellularActivation(Error *error);
 
   virtual std::string GetStorageIdentifier() const;
   void SetStorageIdentifier(const std::string &identifier);
@@ -76,7 +77,7 @@ class CellularService : public Service {
     return activate_over_non_cellular_network_;
   }
 
-  void SetActivationState(const std::string &state);
+  virtual void SetActivationState(const std::string &state);
   const std::string &activation_state() const { return activation_state_; }
 
   void SetOLP(const OLP &olp);
@@ -119,6 +120,7 @@ class CellularService : public Service {
   friend class CellularServiceTest;
   FRIEND_TEST(CellularCapabilityGSMTest, SetupApnTryList);
   FRIEND_TEST(CellularCapabilityTest, TryApns);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);

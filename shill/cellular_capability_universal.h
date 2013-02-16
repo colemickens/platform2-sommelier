@@ -30,6 +30,8 @@ struct mobile_provider;
 
 namespace shill {
 
+class ActivatingIccidStore;
+
 // CellularCapabilityUniversal handles modems using the
 // org.chromium.ModemManager1 DBUS interface.  This class is used for
 // all types of modems, i.e. CDMA, GSM, and LTE modems.
@@ -58,7 +60,8 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   CellularCapabilityUniversal(Cellular *cellular,
                               ProxyFactory *proxy_factory,
-                              Metrics *metrics);
+                              Metrics *metrics,
+                              ActivatingIccidStore *activating_iccid_store);
 
   // Inherited from CellularCapability.
   // Checks the modem state.  If the state is kModemStateDisabled, then the
@@ -73,6 +76,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   virtual void DisconnectCleanup();
   virtual void Activate(const std::string &carrier,
                         Error *error, const ResultCallback &callback);
+  virtual void CompleteActivation(Error *error);
 
   virtual void OnServiceCreated();
   virtual void SetupConnectProperties(DBusPropertiesMap *properties);
@@ -147,6 +151,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, NormalizeMdn);
@@ -164,6 +169,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
@@ -273,6 +279,9 @@ class CellularCapabilityUniversal : public CellularCapability {
                             const LockRetryData &lock_retries);
   void OnSimLockStatusChanged();
 
+  // Returns false if the MDN is empty or if the MDN consists of all 0s.
+  bool IsMdnValid() const;
+
   // 3GPP property change handlers
   virtual void OnModem3GPPPropertiesChanged(
       const DBusPropertiesMap &properties,
@@ -320,6 +329,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string NormalizeMdn(const std::string &mdn) const;
 
   static std::string GenerateNewGenericServiceName();
+
+  // Post-payment activation handlers.
+  void UpdateIccidActivationState();
+  void ResetAfterActivation();
+  void OnResetAfterActivationReply(const Error &error);
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemModemCdmaProxyInterface> modem_cdma_proxy_;
@@ -373,6 +387,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string sim_path_;
   bool sim_present_;
   DBus::Path bearer_path_;
+
+  // Post-payment activation state.
+  ActivatingIccidStore *activating_iccid_store_;
+  bool reset_done_;
 
   // If the modem is not in a state to be enabled when StartModem is called,
   // enabling is deferred using this callback.

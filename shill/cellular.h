@@ -12,6 +12,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/activating_iccid_store.h"
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
@@ -134,6 +135,10 @@ class Cellular : public Device {
   void Activate(const std::string &carrier, Error *error,
                 const ResultCallback &callback);
 
+  // Performs the necessary steps to bring the service to the activated state,
+  // once an online payment has been done.
+  void CompleteActivation(Error *error);
+
   const CellularServiceRefPtr &service() const { return service_; }
 
   // Deregisters and destructs the current service and destroys the connection,
@@ -240,6 +245,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateOperatorInfoViaOperatorId);
@@ -341,6 +347,9 @@ class Cellular : public Device {
 
   // Flag indicating that a disconnect has been explicitly requested.
   bool explicit_disconnect_;
+
+  // Post-payment activation state.
+  ActivatingIccidStore activating_iccid_store_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

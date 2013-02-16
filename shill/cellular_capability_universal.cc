@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 
+#include "shill/activating_iccid_store.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_operator_info.h"
 #include "shill/cellular_service.h"
@@ -123,7 +124,8 @@ static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
 CellularCapabilityUniversal::CellularCapabilityUniversal(
     Cellular *cellular,
     ProxyFactory *proxy_factory,
-    Metrics *metrics)
+    Metrics *metrics,
+    ActivatingIccidStore *activating_iccid_store)
     : CellularCapability(cellular, proxy_factory, metrics),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
@@ -142,6 +144,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       scanning_or_searching_(false),
       scan_interval_(0),
       sim_present_(false),
+      activating_iccid_store_(activating_iccid_store),
+      reset_done_(false),
       scanning_or_searching_timeout_milliseconds_(
           kDefaultScanningOrSearchingTimeoutMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
@@ -417,6 +421,114 @@ void CellularCapabilityUniversal::Activate(const string &carrier,
   OnUnsupportedOperation(__func__, error);
 }
 
+void CellularCapabilityUniversal::CompleteActivation(Error *error) {
+  SLOG(Cellular, 2) << __func__;
+
+  // Persist the ICCID as "Pending Activation".
+  // We're assuming that when this function gets called, |sim_identifier_| will
+  // be non-empty. We still check here that is non-empty, though something is
+  // wrong if it is empty.
+  if (IsMdnValid()) {
+    SLOG(Cellular, 2) << "Already acquired a valid MDN. Already activated.";
+    return;
+  }
+  if (sim_identifier_.empty()) {
+    SLOG(Cellular, 2) << "SIM identifier not available. Nothing to do.";
+    return;
+  }
+  activating_iccid_store_->SetActivationState(
+      sim_identifier_,
+      ActivatingIccidStore::kStatePending);
+}
+
+void CellularCapabilityUniversal::ResetAfterActivation() {
+  SLOG(Cellular, 2) << __func__;
+
+  // Here the initial call to Reset might fail in rare cases. Simply ignore.
+  Error error;
+  ResultCallback callback = Bind(
+      &CellularCapabilityUniversal::OnResetAfterActivationReply,
+      weak_ptr_factory_.GetWeakPtr());
+  Reset(&error, callback);
+  if (error.IsFailure())
+    SLOG(Cellular, 2) << "Failed to reset after activation.";
+}
+
+void CellularCapabilityUniversal::OnResetAfterActivationReply(
+    const Error &error) {
+  SLOG(Cellular, 2) << __func__;
+  if (error.IsFailure()) {
+    SLOG(Cellular, 2) << "Failed to reset after activation. Try again later.";
+    // TODO(armansito): Maybe post a delayed reset task?
+    return;
+  }
+  reset_done_ = true;
+  UpdateIccidActivationState();
+}
+
+void CellularCapabilityUniversal::UpdateIccidActivationState() {
+  SLOG(Cellular, 2) << __func__;
+
+  bool registered =
+      registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
+
+  // If we have a valid MDN, the service is activated. Always try to remove
+  // the ICCID from persistence.
+  bool got_mdn = IsMdnValid();
+  if (got_mdn && !sim_identifier_.empty())
+      activating_iccid_store_->RemoveEntry(sim_identifier_);
+
+  if (!cellular()->service().get() ||
+      cellular()->service()->activation_state() ==
+          flimflam::kActivationStateActivated)
+      // Either no service or already activated. Nothing to do.
+      return;
+
+  // If we have a valid MDN or we can connect to the network, then the service
+  // is activated.
+  if (got_mdn || cellular()->state() == Cellular::kStateConnected ||
+      cellular()->state() == Cellular::kStateLinked) {
+    SLOG(Cellular, 2) << "Marking service as activated.";
+    if (cellular()->service().get())
+      cellular()->service()->SetActivationState(
+          flimflam::kActivationStateActivated);
+    return;
+  }
+
+  // If the ICCID is not available, the following logic can be delayed until it
+  // becomes available.
+  if (!sim_identifier_.empty()) {
+    ActivatingIccidStore::State state =
+        activating_iccid_store_->GetActivationState(sim_identifier_);
+    switch (state) {
+      case ActivatingIccidStore::kStatePending:
+        if (reset_done_) {
+          SLOG(Cellular, 2) << "Post-payment activation reset complete.";
+          activating_iccid_store_->SetActivationState(
+              sim_identifier_,
+              ActivatingIccidStore::kStateActivated);
+        } else if (registered) {
+          SLOG(Cellular, 2) << "Resetting modem for activation.";
+          ResetAfterActivation();
+        }
+        break;
+      case ActivatingIccidStore::kStateActivated:
+        if (registered && cellular()->service().get()) {
+          // Trigger auto connect here.
+          SLOG(Cellular, 2) << "Modem has been reset at least once, try to "
+                            << "autoconnect to force MDN to update.";
+          cellular()->service()->AutoConnect();
+        }
+        break;
+      case ActivatingIccidStore::kStateUnknown:
+        // No entry exists for this ICCID. Nothing to do.
+        break;
+      default:
+        NOTREACHED();
+    }
+  }
+}
+
 void CellularCapabilityUniversal::ReleaseProxies() {
   SLOG(Cellular, 2) << __func__;
   modem_3gpp_proxy_.reset();
@@ -560,6 +672,8 @@ void CellularCapabilityUniversal::OnConnectReply(const ResultCallback &callback,
 
   if (!callback.is_null())
     callback.Run(error);
+
+  UpdateIccidActivationState();
 }
 
 bool CellularCapabilityUniversal::AllowRoaming() {
@@ -877,6 +991,11 @@ void CellularCapabilityUniversal::InitAPNList() {
 }
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
+  if (!sim_identifier_.empty() &&
+      activating_iccid_store_->GetActivationState(sim_identifier_) ==
+          ActivatingIccidStore::kStateActivated)
+    return false;
+
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
   if (!cellular()->cellular_operator_info())
@@ -894,11 +1013,15 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
 
   // If MDN contains only zeros, the service requires activation.
   // Note that |mdn_| is normalized to contain only digits in OnMdnChanged().
+  return !IsMdnValid();
+}
+
+bool CellularCapabilityUniversal::IsMdnValid() const {
   for (size_t i = 0; i < mdn_.size(); ++i) {
     if (mdn_[i] != '0')
-      return false;
+      return true;
   }
-  return true;
+  return false;
 }
 
 // always called from an async context
@@ -1377,6 +1500,7 @@ void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
 void CellularCapabilityUniversal::OnMdnChanged(
     const string &mdn) {
   mdn_ = NormalizeMdn(mdn);
+  UpdateIccidActivationState();
 }
 
 void CellularCapabilityUniversal::OnModemManufacturerChanged(
@@ -1550,6 +1674,10 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
 
   // Update the user facing name of the cellular service.
   UpdateServiceName();
+
+  // If the modem registered with the network and the current ICCID is pending
+  // activation, then reset the modem.
+  UpdateIccidActivationState();
 }
 
 void CellularCapabilityUniversal::OnModemStateChangedSignal(
@@ -1611,6 +1739,7 @@ void CellularCapabilityUniversal::OnSpnChanged(const std::string &spn) {
 
 void CellularCapabilityUniversal::OnSimIdentifierChanged(const string &id) {
   sim_identifier_ = id;
+  UpdateIccidActivationState();
 }
 
 void CellularCapabilityUniversal::OnOperatorIdChanged(

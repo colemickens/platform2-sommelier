@@ -47,6 +47,10 @@ void CellularCapability::OnUnsupportedOperation(
   Error::PopulateAndLog(error, Error::kNotSupported, message);
 }
 
+void CellularCapability::CompleteActivation(Error *error) {
+  OnUnsupportedOperation(__func__, error);
+}
+
 bool CellularCapability::IsServiceActivationRequired() const {
   return false;
 }

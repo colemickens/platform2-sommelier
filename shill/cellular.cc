@@ -132,6 +132,12 @@ Cellular::Cellular(ControlInterface *control_interface,
                           &Cellular::SetAllowRoaming);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
+
+  // A NULL value for manager may be passed in some unit tests.
+  if (manager)
+    activating_iccid_store_.InitStorage(manager->glib(),
+                                        manager->storage_path());
+
   // For now, only a single capability is supported.
   InitCapability(type);
 
@@ -295,9 +301,11 @@ void Cellular::InitCapability(Type type) {
                                                    metrics()));
       break;
     case kTypeUniversal:
-      capability_.reset(new CellularCapabilityUniversal(this,
-                                                        proxy_factory_,
-                                                        metrics()));
+      capability_.reset(new CellularCapabilityUniversal(
+          this,
+          proxy_factory_,
+          metrics(),
+          &activating_iccid_store_));
       break;
     default: NOTREACHED();
   }
@@ -306,6 +314,10 @@ void Cellular::InitCapability(Type type) {
 void Cellular::Activate(const string &carrier,
                         Error *error, const ResultCallback &callback) {
   capability_->Activate(carrier, error, callback);
+}
+
+void Cellular::CompleteActivation(Error *error) {
+  capability_->CompleteActivation(error);
 }
 
 void Cellular::RegisterOnNetwork(const string &network_id,

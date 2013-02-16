@@ -22,8 +22,10 @@ class MockCellularService : public CellularService {
                       const CellularRefPtr &device);
   virtual ~MockCellularService();
 
+  MOCK_METHOD0(AutoConnect, void());
   MOCK_METHOD1(SetLastGoodApn, void(const Stringmap &apn_info));
   MOCK_METHOD0(ClearLastGoodApn, void());
+  MOCK_METHOD1(SetActivationState, void(const std::string &state));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCellularService);

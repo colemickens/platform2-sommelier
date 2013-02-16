@@ -37,6 +37,10 @@ bool ActivatingIccidStore::InitStorage(
     storage_->Flush();
     storage_.reset();  // KeyFileStore closes the file in its destructor.
   }
+  if (!glib) {
+    LOG(ERROR) << "Null pointer passed for |glib|.";
+    return false;
+  }
   if (storage_path.empty()) {
     LOG(ERROR) << "Empty storage directory path provided.";
     return false;

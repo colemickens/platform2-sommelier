@@ -234,6 +234,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }
   virtual const FilePath &run_path() const { return run_path_; }
+  const FilePath &storage_path() const { return storage_path_; }
 
   void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
     startup_profiles_ = startup_profiles;

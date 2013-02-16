@@ -367,6 +367,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	manager_unittest.o \
 	memory_log_unittest.o \
 	metrics_unittest.o \
+	mock_activating_iccid_store.o \
 	mock_adaptors.o \
 	mock_ares.o \
 	mock_arp_client.o \
