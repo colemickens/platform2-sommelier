@@ -125,6 +125,11 @@ class Service : public base::RefCounted<Service> {
     kStateFailure,
     kStateOnline
   };
+  enum CryptoAlgorithm {
+    kCryptoNone,
+    kCryptoRc4,
+    kCryptoAes
+  };
   struct EapCredentials {
     EapCredentials() : use_system_cas(true) {}
     // Who we identify ourselves as to the EAP authenticator.
@@ -361,8 +366,9 @@ class Service : public base::RefCounted<Service> {
   int32 priority() const { return priority_; }
   void set_priority(int32 priority) { priority_ = priority; }
 
-  int32 security_level() const { return security_level_; }
-  void set_security_level(int32 security) { security_level_ = security; }
+  size_t crypto_algorithm() const { return crypto_algorithm_; }
+  bool key_rotation() const { return key_rotation_; }
+  bool endpoint_auth() const { return endpoint_auth_; }
 
   void SetStrength(uint8 strength);
 
@@ -523,13 +529,18 @@ class Service : public base::RefCounted<Service> {
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
   const std::string &GetEAPKeyManagement() const;
-  void SetEAPKeyManagement(const std::string &key_management);
+  virtual void SetEAPKeyManagement(const std::string &key_management);
   void SetEAPPassword(const std::string &password, Error *error);
   void SetEAPPrivateKeyPassword(const std::string &password, Error *error);
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
   void set_favorite(bool favorite) { favorite_ = favorite; }
+  // Inform base class of the security properties for the service.
+  //
+  // NB: When adding a call to this function from a subclass, please check
+  // that the semantics of SecurityLevel() are appropriate for the subclass.
+  void SetSecurity(CryptoAlgorithm crypt, bool rotation, bool endpoint_auth);
 
  private:
   friend class EthernetServiceTest;
@@ -545,6 +556,10 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
+  // TODO(quiche): The SortServices test should probably move into
+  // service_unittest.cc. Then the following line should be removed.
+  // (crosbug.com/23370)
+  FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ServiceTest, AutoConnectLogging);
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
@@ -562,6 +577,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringCrypted);
   FRIEND_TEST(ServiceTest, SaveStringDontSave);
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
+  FRIEND_TEST(ServiceTest, SecurityLevel);
   FRIEND_TEST(ServiceTest, SetCheckPortal);
   FRIEND_TEST(ServiceTest, SetConnectable);
   FRIEND_TEST(ServiceTest, SetFriendlyName);
@@ -656,6 +672,10 @@ class Service : public base::RefCounted<Service> {
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool *decision);
 
+  // Linearize security parameters (crypto algorithm, key rotation, endpoint
+  // authentication) for comparison.
+  uint16 SecurityLevel();
+
   ConnectState state_;
   ConnectState previous_state_;
   ConnectFailure failure_;
@@ -666,7 +686,10 @@ class Service : public base::RefCounted<Service> {
   bool explicitly_disconnected_;
   bool favorite_;
   int32 priority_;
-  int32 security_level_;
+  uint8 crypto_algorithm_;
+  bool key_rotation_;
+  bool endpoint_auth_;
+
   uint8 strength_;
   std::string proxy_config_;
   std::string ui_data_;

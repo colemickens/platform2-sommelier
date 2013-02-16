@@ -153,6 +153,18 @@ class WiFiEndpointTest : public PropertyStoreTest {
     return rsn;
   }
 
+  WiFiEndpoint *MakeEndpoint(ProxyFactory *proxy_factory,
+                             const WiFiRefPtr &wifi,
+                             const std::string &ssid,
+                             const std::string &bssid,
+                             bool has_wpa_property,
+                             bool has_rsn_property) {
+    return WiFiEndpoint::MakeEndpoint(
+        proxy_factory, wifi, ssid, bssid,
+        wpa_supplicant::kNetworkModeInfrastructure, 0, 0, has_wpa_property,
+        has_rsn_property);
+  }
+
   WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                  const WiFiRefPtr &wifi,
                                  const std::string &ssid,
@@ -564,6 +576,34 @@ TEST_F(WiFiEndpointTest, PropertiesChanged) {
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
   endpoint->PropertiesChanged(changed_properties);
   EXPECT_EQ(signal_strength, endpoint->signal_strength());
+}
+
+TEST_F(WiFiEndpointTest, HasRsnWpaProperties) {
+  {
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01", false, false);
+    EXPECT_FALSE(endpoint->has_wpa_property());
+    EXPECT_FALSE(endpoint->has_rsn_property());
+  }
+  {
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01", true, false);
+    EXPECT_TRUE(endpoint->has_wpa_property());
+    EXPECT_FALSE(endpoint->has_rsn_property());
+  }
+  {
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01", false, true);
+    EXPECT_FALSE(endpoint->has_wpa_property());
+    EXPECT_TRUE(endpoint->has_rsn_property());
+  }
+  {
+    // Both can be true.
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint(NULL, wifi(), "ssid", "00:00:00:00:00:01", true, true);
+    EXPECT_TRUE(endpoint->has_wpa_property());
+    EXPECT_TRUE(endpoint->has_rsn_property());
+  }
 }
 
 }  // namespace shill

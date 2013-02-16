@@ -61,6 +61,8 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
   network_mode_ = ParseMode(
       properties.find(wpa_supplicant::kBSSPropertyMode)->second);
   security_mode_ = ParseSecurity(properties);
+  has_rsn_property_ = ContainsKey(properties, wpa_supplicant::kPropertyRSN);
+  has_wpa_property_ = ContainsKey(properties, wpa_supplicant::kPropertyWPA);
 
   if (network_mode_.empty()) {
     // XXX log error?
@@ -191,6 +193,14 @@ bool WiFiEndpoint::ieee80211w_required() const {
   return ieee80211w_required_;
 }
 
+bool WiFiEndpoint::has_rsn_property() const {
+  return has_rsn_property_;
+}
+
+bool WiFiEndpoint::has_wpa_property() const {
+  return has_wpa_property_;
+}
+
 // static
 WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                              const WiFiRefPtr &wifi,
@@ -199,6 +209,20 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                              const string &network_mode,
                                              uint16 frequency,
                                              int16 signal_dbm) {
+  return MakeEndpoint(proxy_factory, wifi, ssid, bssid, network_mode,
+                      frequency, signal_dbm, false, false);
+}
+
+// static
+WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
+                                         const WiFiRefPtr &wifi,
+                                         const string &ssid,
+                                         const string &bssid,
+                                         const string &network_mode,
+                                         uint16 frequency,
+                                         int16 signal_dbm,
+                                         bool has_wpa_property,
+                                         bool has_rsn_property) {
   map <string, ::DBus::Variant> args;
   ::DBus::MessageIter writer;
 
@@ -216,7 +240,19 @@ WiFiEndpoint *WiFiEndpoint::MakeOpenEndpoint(ProxyFactory *proxy_factory,
   args[wpa_supplicant::kBSSPropertyFrequency].writer().append_uint16(frequency);
   args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
       network_mode.c_str());
-  // We indicate this is an open BSS by leaving out all security properties.
+
+  if (has_wpa_property) {
+    ::DBus::MessageIter writer;  // local is required; see HACKING
+    map <string, string> empty_dict;
+    writer = args[wpa_supplicant::kPropertyWPA].writer();
+    writer << empty_dict;
+  }
+  if (has_rsn_property) {
+    ::DBus::MessageIter writer;  // local is required; see HACKING
+    map <string, string> empty_dict;
+    writer = args[wpa_supplicant::kPropertyRSN].writer();
+    writer << empty_dict;
+  }
 
   return new WiFiEndpoint(
       proxy_factory, wifi, bssid, args); // |bssid| fakes an RPC ID

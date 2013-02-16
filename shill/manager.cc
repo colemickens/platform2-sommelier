@@ -1201,7 +1201,9 @@ void Manager::AutoConnect() {
                        << " auto_connect: " << service->auto_connect()
                        << " favorite: " << service->favorite()
                        << " priority: " << service->priority()
-                       << " security_level: " << service->security_level()
+                       << " crypto_algorithm: " << service->crypto_algorithm()
+                       << " key_rotation: " << service->key_rotation()
+                       << " endpoint_auth: " << service->endpoint_auth()
                        << " strength: " << service->strength()
                        << " sorted: " << compare_reason;
     }

@@ -106,7 +106,7 @@ class WiFiService : public Service {
 
   // Override from parent Service class to correctly update connectability
   // when the EAP credentials change for 802.1x networks.
-  void set_eap(const EapCredentials& eap);
+  void set_eap(const EapCredentials &eap);
 
   // Override from parent Service class to register hidden services once they
   // have been configured.
@@ -117,6 +117,7 @@ class WiFiService : public Service {
 
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
+  virtual void SetEAPKeyManagement(const std::string &key_management);
 
  private:
   friend class WiFiServiceSecurityTest;
@@ -126,6 +127,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
+  FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);
   FRIEND_TEST(WiFiServiceTest, ConnectTask8021x);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskDynamicWEP);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskPSK);
@@ -142,6 +144,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
+  FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
 
   static const char kAutoConnNoEndpoint[];
   static const char kAnyDeviceAddress[];
@@ -158,7 +161,10 @@ class WiFiService : public Service {
   void ClearPassphrase(Error *error);
   void UpdateConnectable();
   void UpdateFromEndpoints();
+  void UpdateSecurity();
 
+  static CryptoAlgorithm ComputeCipher8021x(
+      const std::set<WiFiEndpointConstRefPtr> &endpoints);
   static void ValidateWEPPassphrase(const std::string &passphrase,
                                     Error *error);
   static void ValidateWPAPassphrase(const std::string &passphrase,
@@ -219,6 +225,9 @@ class WiFiService : public Service {
   std::string storage_identifier_;
   std::string bssid_;
   Stringmap vendor_information_;
+  // If |security_| == kSecurity8021x, the crypto algorithm being used.
+  // (Otherwise, crypto algorithm is implied by |security_|.)
+  CryptoAlgorithm cipher_8021x_;
 
   // Track whether or not we've warned about large signal values.
   // Used to avoid spamming the log.

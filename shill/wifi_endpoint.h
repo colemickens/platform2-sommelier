@@ -69,6 +69,8 @@ class WiFiEndpoint : public Endpoint {
   const std::string &network_mode() const;
   const std::string &security_mode() const;
   bool ieee80211w_required() const;
+  bool has_rsn_property() const;
+  bool has_wpa_property() const;
 
  private:
   friend class WiFiEndpointTest;
@@ -93,6 +95,16 @@ class WiFiEndpoint : public Endpoint {
   };
 
   // Build a simple WiFiEndpoint, for testing purposes.
+  static WiFiEndpoint *MakeEndpoint(ProxyFactory *proxy_factory,
+                                    const WiFiRefPtr &wifi,
+                                    const std::string &ssid,
+                                    const std::string &bssid,
+                                    const std::string &network_mode,
+                                    uint16 frequency,
+                                    int16 signal_dbm,
+                                    bool has_wpa_property,
+                                    bool has_rsn_property);
+  // As above, but with the last two parameters false.
   static WiFiEndpoint *MakeOpenEndpoint(ProxyFactory *proxy_factory,
                                         const WiFiRefPtr &wifi,
                                         const std::string &ssid,
@@ -154,6 +166,8 @@ class WiFiEndpoint : public Endpoint {
   std::string security_mode_;
   VendorInformation vendor_information_;
   bool ieee80211w_required_;
+  bool has_rsn_property_;
+  bool has_wpa_property_;
 
   ProxyFactory *proxy_factory_;
   WiFiRefPtr device_;

@@ -4,6 +4,7 @@
 
 #include "shill/wifi_service.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 
@@ -66,6 +67,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       frequency_(0),
       physical_mode_(0),
       raw_signal_strength_(0),
+      cipher_8021x_(kCryptoNone),
       ssid_(ssid),
       ieee80211w_required_(false),
       nss_(NSS::GetInstance()),
@@ -121,6 +123,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   // Until we know better (at Profile load time), use the generic name.
   storage_identifier_ = GetDefaultStorageIdentifier();
   UpdateConnectable();
+  UpdateSecurity();
 
   IgnoreParameterForConfigure(flimflam::kModeProperty);
   IgnoreParameterForConfigure(flimflam::kSSIDProperty);
@@ -157,6 +160,11 @@ bool WiFiService::IsAutoConnectable(const char **reason) const {
   }
 
   return true;
+}
+
+void WiFiService::SetEAPKeyManagement(const string &key_management) {
+  Service::SetEAPKeyManagement(key_management);
+  UpdateSecurity();
 }
 
 void WiFiService::AddEndpoint(const WiFiEndpointConstRefPtr &endpoint) {
@@ -581,6 +589,9 @@ void WiFiService::UpdateFromEndpoints() {
     }
   }
 
+  if (Is8021x())
+    cipher_8021x_ = ComputeCipher8021x(endpoints_);
+
   uint16 frequency = 0;
   int16 signal = std::numeric_limits<int16>::min();
   string bssid;
@@ -609,6 +620,62 @@ void WiFiService::UpdateFromEndpoints() {
                                     vendor_information_);
   }
   SetStrength(SignalToStrength(signal));
+  UpdateSecurity();
+}
+
+void WiFiService::UpdateSecurity() {
+  CryptoAlgorithm algorithm = kCryptoNone;
+  bool key_rotation = false;
+  bool endpoint_auth = false;
+
+  if (security_ == flimflam::kSecurityNone) {
+    // initial values apply
+  } else if (security_ == flimflam::kSecurityWep) {
+    algorithm = kCryptoRc4;
+    key_rotation = Is8021x();
+    endpoint_auth = Is8021x();
+  } else if (security_ == flimflam::kSecurityPsk ||
+             security_ == flimflam::kSecurityWpa) {
+    algorithm = kCryptoRc4;
+    key_rotation = true;
+    endpoint_auth = false;
+  } else if (security_ == flimflam::kSecurityRsn) {
+    algorithm = kCryptoAes;
+    key_rotation = true;
+    endpoint_auth = false;
+  } else if (security_ == flimflam::kSecurity8021x) {
+    algorithm = cipher_8021x_;
+    key_rotation = true;
+    endpoint_auth = true;
+  }
+  SetSecurity(algorithm, key_rotation, endpoint_auth);
+}
+
+// static
+Service::CryptoAlgorithm WiFiService::ComputeCipher8021x(
+    const set<WiFiEndpointConstRefPtr> &endpoints) {
+
+  if (endpoints.empty())
+    return kCryptoNone;  // Will update after scan results.
+
+  // Find weakest cipher (across endpoints) of the strongest ciphers
+  // (per endpoint).
+  Service::CryptoAlgorithm cipher = Service::kCryptoAes;
+  for (set<WiFiEndpointConstRefPtr>::iterator i = endpoints.begin();
+       i != endpoints.end(); ++i) {
+    Service::CryptoAlgorithm endpoint_cipher;
+    if ((*i)->has_rsn_property()) {
+      endpoint_cipher = Service::kCryptoAes;
+    } else if ((*i)->has_wpa_property()) {
+      endpoint_cipher = Service::kCryptoRc4;
+    } else {
+      // We could be in the Dynamic WEP case here. But that's okay,
+      // because |cipher_8021x_| is not defined in that case.
+      endpoint_cipher = Service::kCryptoNone;
+    }
+    cipher = std::min(cipher, endpoint_cipher);
+  }
+  return cipher;
 }
 
 // static

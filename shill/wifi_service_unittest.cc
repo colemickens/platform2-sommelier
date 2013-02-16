@@ -81,7 +81,14 @@ class WiFiServiceTest : public PropertyStoreTest {
     return service->connectable();
   }
   WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid,
-                             uint16 frequency, int16 signal_dbm) {
+                             uint16 frequency, int16 signal_dbm,
+                             bool has_wpa_property, bool has_rsn_property) {
+    return WiFiEndpoint::MakeEndpoint(
+        NULL, wifi(), ssid, bssid, wpa_supplicant::kNetworkModeInfrastructure,
+        frequency, signal_dbm, has_wpa_property, has_rsn_property);
+  }
+  WiFiEndpoint *MakeOpenEndpoint(const string &ssid, const string &bssid,
+                                 uint16 frequency, int16 signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
         NULL, wifi(), ssid, bssid, wpa_supplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
@@ -228,13 +235,13 @@ class WiFiServiceUpdateFromEndpointsTest : public WiFiServiceTest {
             WiFiService::SignalToStrength(kGoodEndpointSignal)),
         service(MakeGenericService()),
         adaptor(*GetAdaptor(service)) {
-    ok_endpoint = MakeEndpoint(
+    ok_endpoint = MakeOpenEndpoint(
         simple_ssid_string(), kOkEndpointBssId, kOkEndpointFrequency,
         kOkEndpointSignal);
-    good_endpoint = MakeEndpoint(
+    good_endpoint = MakeOpenEndpoint(
         simple_ssid_string(), kGoodEndpointBssId, kGoodEndpointFrequency,
         kGoodEndpointSignal);
-    bad_endpoint = MakeEndpoint(
+    bad_endpoint = MakeOpenEndpoint(
         simple_ssid_string(), kBadEndpointBssId, kBadEndpointFrequency,
         kBadEndpointSignal);
   }
@@ -470,9 +477,9 @@ TEST_F(WiFiServiceTest, ConnectTask8021x) {
 TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
   vector<uint8_t> ssid(1, 'a');
   WiFiEndpointRefPtr endpoint_nofreq =
-      MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
   WiFiEndpointRefPtr endpoint_freq =
-      MakeEndpoint("a", "00:00:00:00:00:02", 2412, 0);
+      MakeOpenEndpoint("a", "00:00:00:00:00:02", 2412, 0);
 
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityNone);
   wifi_service->AddEndpoint(endpoint_freq);
@@ -527,7 +534,8 @@ TEST_F(WiFiServiceTest, ConnectTaskAdHocFrequency) {
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityPsk);
-  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
   endpoint->ieee80211w_required_ = true;
   wifi_service->AddEndpoint(endpoint);
   Error error;
@@ -1084,7 +1092,8 @@ TEST_F(WiFiServiceTest, IsAutoConnectable) {
   EXPECT_STREQ(WiFiService::kAutoConnNoEndpoint, reason);
 
   reason = "";
-  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
@@ -1111,7 +1120,8 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   service->AutoConnect();
   dispatcher()->DispatchPendingEvents();
 
-  WiFiEndpointRefPtr endpoint = MakeEndpoint("a", "00:00:00:00:00:01", 0, 0);
+  WiFiEndpointRefPtr endpoint =
+      MakeOpenEndpoint("a", "00:00:00:00:00:01", 0, 0);
   service->AddEndpoint(endpoint);
   EXPECT_CALL(*wifi(), IsIdle())
       .WillRepeatedly(Return(true));
@@ -1429,6 +1439,175 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {
   EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
                        EndsWith("disconnect due to no remaining endpoints.")));
   service->RemoveEndpoint(ok_endpoint);
+}
+
+TEST_F(WiFiServiceTest, UpdateSecurity) {
+  // Cleartext and pre-shared-key crypto.
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+    EXPECT_EQ(Service::kCryptoNone, service->crypto_algorithm());
+    EXPECT_FALSE(service->key_rotation());
+    EXPECT_FALSE(service->endpoint_auth());
+  }
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWep);
+    EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
+    EXPECT_FALSE(service->key_rotation());
+    EXPECT_FALSE(service->endpoint_auth());
+  }
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityPsk);
+    EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_FALSE(service->endpoint_auth());
+  }
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWpa);
+    EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_FALSE(service->endpoint_auth());
+  }
+  {
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityRsn);
+    EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_FALSE(service->endpoint_auth());
+  }
+
+  // Crypto with 802.1X key management.
+  {
+    // WEP
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWep);
+    service->SetEAPKeyManagement("IEEE8021X");
+    EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_TRUE(service->endpoint_auth());
+  }
+  {
+    // WPA
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, false);
+    service->AddEndpoint(endpoint);
+    EXPECT_EQ(Service::kCryptoRc4, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_TRUE(service->endpoint_auth());
+  }
+  {
+    // RSN
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, true);
+    service->AddEndpoint(endpoint);
+    EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_TRUE(service->endpoint_auth());
+  }
+  {
+    // AP supports both WPA and RSN.
+    WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
+    WiFiEndpointRefPtr endpoint =
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, true);
+    service->AddEndpoint(endpoint);
+    EXPECT_EQ(Service::kCryptoAes, service->crypto_algorithm());
+    EXPECT_TRUE(service->key_rotation());
+    EXPECT_TRUE(service->endpoint_auth());
+  }
+}
+
+TEST_F(WiFiServiceTest, ComputeCipher8021x) {
+  // No endpoints.
+  {
+    const set<WiFiEndpointConstRefPtr> endpoints;
+    EXPECT_EQ(Service::kCryptoNone,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+
+  // Single endpoint, various configs.
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, false));
+    EXPECT_EQ(Service::kCryptoNone,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, false));
+    EXPECT_EQ(Service::kCryptoRc4,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, true));
+    EXPECT_EQ(Service::kCryptoAes,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, true));
+    EXPECT_EQ(Service::kCryptoAes,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+
+  // Multiple endpoints.
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, false));
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, false, false));
+    EXPECT_EQ(Service::kCryptoNone,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, false));
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, true, false));
+    EXPECT_EQ(Service::kCryptoNone,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, false));
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, true, false));
+    EXPECT_EQ(Service::kCryptoRc4,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, false));
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, false, true));
+    EXPECT_EQ(Service::kCryptoRc4,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, false, true));
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, false, true));
+    EXPECT_EQ(Service::kCryptoAes,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
+  {
+    set<WiFiEndpointConstRefPtr> endpoints;
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:01", 0, 0, true, true));
+    endpoints.insert(
+        MakeEndpoint("a", "00:00:00:00:00:02", 0, 0, true, true));
+    EXPECT_EQ(Service::kCryptoAes,
+              WiFiService::ComputeCipher8021x(endpoints));
+  }
 }
 
 }  // namespace shill

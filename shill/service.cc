@@ -128,7 +128,9 @@ Service::Service(ControlInterface *control_interface,
       explicitly_disconnected_(false),
       favorite_(false),
       priority_(kPriorityNone),
-      security_level_(0),
+      crypto_algorithm_(kCryptoNone),
+      key_rotation_(false),
+      endpoint_auth_(false),
       strength_(0),
       save_credentials_(true),
       technology_(technology),
@@ -871,6 +873,10 @@ bool Service::DecideBetween(int a, int b, bool *decision) {
   return true;
 }
 
+uint16 Service::SecurityLevel() {
+  return (crypto_algorithm_ << 2) | (key_rotation_ << 1) | endpoint_auth_;
+}
+
 // static
 bool Service::Compare(ServiceRefPtr a,
                       ServiceRefPtr b,
@@ -943,7 +949,7 @@ bool Service::Compare(ServiceRefPtr a,
     }
   }
 
-  if (DecideBetween(a->security_level(), b->security_level(), &ret) ||
+  if (DecideBetween(a->SecurityLevel(), b->SecurityLevel(), &ret) ||
       DecideBetween(a->strength(), b->strength(), &ret)) {
     *reason = kServiceSortSecurityEtc;
     return ret;
@@ -1304,6 +1310,13 @@ void Service::SetEAPPassword(const string &password, Error */*error*/) {
 void Service::SetEAPPrivateKeyPassword(const string &password,
                                        Error */*error*/) {
   eap_.private_key_password = password;
+}
+
+void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,
+                          bool endpoint_auth) {
+  crypto_algorithm_ = crypto_algorithm;
+  key_rotation_ = key_rotation;
+  endpoint_auth_ = endpoint_auth;
 }
 
 string Service::GetNameProperty(Error *error) {

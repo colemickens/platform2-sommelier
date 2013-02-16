@@ -65,6 +65,10 @@ class ServiceTest : public PropertyStoreTest {
                                       dispatcher(),
                                       metrics(),
                                       &mock_manager_)),
+        service2_(new ServiceUnderTest(control_interface(),
+                                       dispatcher(),
+                                       metrics(),
+                                       &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId),
         power_manager_(new MockPowerManager(NULL, &proxy_factory_)) {
     service_->time_ = &time_;
@@ -162,6 +166,7 @@ class ServiceTest : public PropertyStoreTest {
   MockDiagnosticsReporter diagnostics_reporter_;
   MockTime time_;
   scoped_refptr<ServiceUnderTest> service_;
+  scoped_refptr<ServiceUnderTest> service2_;
   string storage_id_;
   TestProxyFactory proxy_factory_;
   MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
@@ -1358,6 +1363,38 @@ TEST_F(ServiceTest, DiagnosticsProperties) {
       kDiagnosticsMisconnectsProperty, &values, &unused_error));
   ASSERT_EQ(1, values.size());
   EXPECT_EQ(kWallClock1, values[0]);
+}
+
+TEST_F(ServiceTest, SecurityLevel) {
+  // Encrypted is better than not.
+  service_->SetSecurity(Service::kCryptoNone, false, false);
+  service2_->SetSecurity(Service::kCryptoRc4, false, false);
+  EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
+
+  // AES encryption is better than RC4 encryption.
+  service_->SetSecurity(Service::kCryptoRc4, false, false);
+  service2_->SetSecurity(Service::kCryptoAes, false, false);
+  EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
+
+  // Crypto algorithm is more important than key rotation.
+  service_->SetSecurity(Service::kCryptoNone, true, false);
+  service2_->SetSecurity(Service::kCryptoAes, false, false);
+  EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
+
+  // Encrypted-but-unauthenticated is better than clear-but-authenticated.
+  service_->SetSecurity(Service::kCryptoNone, false, true);
+  service2_->SetSecurity(Service::kCryptoAes, false, false);
+  EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
+
+  // For same encryption, prefer key rotation.
+  service_->SetSecurity(Service::kCryptoRc4, false, false);
+  service2_->SetSecurity(Service::kCryptoRc4, true, false);
+  EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
+
+  // For same encryption, prefer authenticated AP.
+  service_->SetSecurity(Service::kCryptoRc4, false, false);
+  service2_->SetSecurity(Service::kCryptoRc4, false, true);
+  EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
 }
 
 }  // namespace shill
