@@ -174,6 +174,7 @@ PROTO_BINDINGS_CC = $(PROTO_BINDINGS_OBJS:.o=.cc)
 
 SHILL_LIB = $(BUILDDIR)/shill.a
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
+	activating_iccid_store.o \
 	arp_client.o \
 	arp_packet.o \
 	async_connection.o \
@@ -218,7 +219,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ethernet_service.o \
 	event_dispatcher.o \
 	file_reader.o \
-	file_reader_unittest.o \
 	geolocation_info.o \
 	glib.o \
 	glib_io_ready_handler.o \
@@ -324,6 +324,7 @@ SHILL_MAIN_OBJ = $(BUILDDIR)/shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = $(addprefix $(BUILDDIR)/, \
+	activating_iccid_store_unittest.o \
 	arp_client_unittest.o \
 	arp_packet_unittest.o \
 	async_connection_unittest.o \
@@ -352,6 +353,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	dns_client_unittest.o \
 	error_unittest.o \
 	ethernet_service_unittest.o \
+	file_reader_unittest.o \
 	hook_table_unittest.o \
 	http_proxy_unittest.o \
 	http_request_unittest.o \
