@@ -117,6 +117,13 @@ match_char_timeout() {
   return 0
 }
 
+# Returns if current device is using virtual developer switch.
+has_virtual_dev_switch() {
+  local VBSD_HONOR_VIRT_DEV_SWITCH="0x400"
+  local vdat_flags="$(crossystem vdat_flags || echo 0)"
+  [ "$((vdat_flags & VBSD_HONOR_VIRT_DEV_SWITCH))" != "0" ]
+}
+
 # Prints message when in developer mode
 # Argument: time to countdown (in seconds)
 mode_warn_dev() {
@@ -179,16 +186,34 @@ mode_warn_dev() {
 # Argument: time to countdown (in seconds)
 mode_enter_dev() {
   local delay_secs="${1:-30}"
-  show_assets_message_image "enter_dev1" ||
-  # The text by echo below is only fallback of localized assets message.
+
+  # The text below is only fallback of localized assets message.
   # Please sync with text there if you want to change the message.
-  echo "
-    Your system is transitioning to Developer Mode.
+  local enter_dev1_text="
     Local data will be cleared.
 
-    To cancel, turn your computer off now and
-    toggle the developer switch back to Normal (Verified) Mode.
-  " >"$STDOUT"
+    Modifications you make to the system are not supported by Google, may cause
+    hardware issues and may void warranty.
+
+    To cancel, turn your computer off now and toggle the Developer Switch back
+    to Verified Mode.
+  "
+  local enter_dev1_virtual_text="
+    Your system is transitioning to Developer Mode.
+    Local data has been cleared.
+
+    Modifications you make to the system are not supported by Google, may cause
+    hardware issues and may void warranty.
+
+    To cancel, turn your computer off now.
+  "
+  if has_virtual_dev_switch; then
+    show_assets_message_image "enter_dev1_virtual" ||
+      echo "$enter_dev1_virtual_text" >"$STDOUT"
+  else
+    show_assets_message_image "enter_dev1" ||
+      echo "$enter_dev1_text" >"$STDOUT"
+  fi
 
   local format='\r  %-30s'
   for dev_count_down in $(seq $delay_secs -1 1); do
