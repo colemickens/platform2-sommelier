@@ -887,6 +887,20 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
             delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // The controller should watch the pref for changes.  After setting it to
+  // 0, the system should shut down due to inactivity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ASSERT_TRUE(prefs_.SetInt64(kDisableIdleSuspendPref, 0));
+  prefs_.NotifyObservers(kDisableIdleSuspendPref);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kShutDown, NULL),
+            delegate_.GetActions());
 }
 
 // Tests that state overrides are honored.

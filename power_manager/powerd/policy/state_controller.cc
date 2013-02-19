@@ -378,9 +378,9 @@ void StateController::AddIdleNotification(base::TimeDelta delay) {
 
 void StateController::OnPrefChanged(const std::string& pref_name) {
   DCHECK(initialized_);
-  // The lock-on-suspend pref is the only one that's updated at runtime.
-  if (pref_name == kLockOnIdleSuspendPref) {
-    VLOG(1) << "Reloading prefs";
+  if (pref_name == kDisableIdleSuspendPref ||
+      pref_name == kLockOnIdleSuspendPref) {
+    VLOG(1) << "Reloading prefs for " << pref_name << " change";
     LoadPrefs();
     UpdateSettingsAndState();
   }
