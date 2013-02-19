@@ -258,7 +258,7 @@ class SessionManagerService
 
   // Sets the proccess' exit code immediately and posts a QuitClosure to the
   // main event loop.
-  void SetExitAndServiceShutdown(ExitCode code);
+  void SetExitAndShutdown(ExitCode code);
 
   // Setup any necessary signal handlers.
   void SetupHandlers();

@@ -398,10 +398,7 @@ bool SessionManagerService::Shutdown() {
 }
 
 void SessionManagerService::ScheduleShutdown() {
-  loop_proxy_->PostTask(
-      FROM_HERE,
-      base::Bind(base::IgnoreResult(&SessionManagerService::Shutdown), this));
-  DeregisterChildWatchers();
+  SetExitAndShutdown(SUCCESS);
 }
 
 void SessionManagerService::RunBrowser() {
@@ -537,7 +534,7 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
                              pid);
   if (manager->impl_->ScreenIsLocked()) {
     LOG(ERROR) << "Screen locked, shutting down";
-    manager->SetExitAndServiceShutdown(CRASH_WHILE_SCREEN_LOCKED);
+    manager->SetExitAndShutdown(CRASH_WHILE_SCREEN_LOCKED);
     return;
   }
 
@@ -545,7 +542,7 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
     manager->liveness_checker_->Stop();
     if (manager->ShouldStopChild(child_job)) {
       LOG(WARNING) << "Child stopped, shutting down";
-      manager->SetExitAndServiceShutdown(CHILD_EXITING_TOO_FAST);
+      manager->SetExitAndShutdown(CHILD_EXITING_TOO_FAST);
     } else if (manager->ShouldRunBrowser()) {
       // TODO(cmasone): deal with fork failing in RunBrowser()
       manager->RunBrowser();
@@ -595,7 +592,7 @@ void SessionManagerService::Finalize() {
   impl_->Finalize();
 }
 
-void SessionManagerService::SetExitAndServiceShutdown(ExitCode code) {
+void SessionManagerService::SetExitAndShutdown(ExitCode code) {
   exit_code_ = code;
   Shutdown();
 }
