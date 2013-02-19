@@ -28,6 +28,7 @@ class ControlInterface;
 class Error;
 class GLib;
 class Manager;
+class Metrics;
 class ProfileAdaptorInterface;
 class StoreInterface;
 
@@ -50,6 +51,7 @@ class Profile : public base::RefCounted<Profile> {
   };
 
   Profile(ControlInterface *control_interface,
+          Metrics *metrics,
           Manager *manager,
           const Identifier &name,
           const std::string &user_storage_format,
@@ -149,6 +151,7 @@ class Profile : public base::RefCounted<Profile> {
 
  protected:
   // Protected getters
+  Metrics *metrics() const { return metrics_; }
   Manager *manager() const { return manager_; }
   StoreInterface *storage() { return storage_.get(); }
 
@@ -176,6 +179,7 @@ class Profile : public base::RefCounted<Profile> {
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section
+  Metrics *metrics_;
   Manager *manager_;
 
   // Shared with |adaptor_| via public getter.

@@ -533,6 +533,13 @@ TEST_F(MetricsTest, CellularDeviceFailure) {
   metrics_.NotifyCellularDeviceFailure(error);
 }
 
+TEST_F(MetricsTest, CorruptedProfile) {
+  EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCorruptedProfile,
+                                      Metrics::kCorruptedProfile,
+                                      Metrics::kCorruptedProfileMax));
+  metrics_.NotifyCorruptedProfile();
+}
+
 #ifndef NDEBUG
 
 typedef MetricsTest MetricsDeathTest;

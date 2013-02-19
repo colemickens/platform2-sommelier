@@ -224,6 +224,10 @@ const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 0;
 const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 
 // static
+const char Metrics::kMetricCorruptedProfile[] =
+    "Network.Shill.CorruptedProfile";
+
+// static
 const int Metrics::kHourlyTimeoutMilliseconds = 3600 * 1000;  // One hour
 
 
@@ -861,6 +865,12 @@ void Metrics::NotifyCellularDeviceDrop(int interface_index,
 void Metrics::NotifyCellularDeviceFailure(const Error &error) {
   library_->SendUserActionToUMA(
       kMetricCellularFailureReason + error.message());
+}
+
+void Metrics::NotifyCorruptedProfile() {
+  SendEnumToUMA(kMetricCorruptedProfile,
+                kCorruptedProfile,
+                kCorruptedProfileMax);
 }
 
 bool Metrics::SendEnumToUMA(const string &name, int sample, int max) {

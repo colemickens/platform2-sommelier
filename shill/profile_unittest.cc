@@ -17,6 +17,7 @@
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
 #include "shill/mock_manager.h"
+#include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
@@ -37,9 +38,10 @@ namespace shill {
 
 class ProfileTest : public PropertyStoreTest {
  public:
-  ProfileTest() {
+  ProfileTest() : mock_metrics_(new MockMetrics(NULL)) {
     Profile::Identifier id("rather", "irrelevant");
-    profile_ = new Profile(control_interface(), manager(), id, "", false);
+    profile_ =
+        new Profile(control_interface(), metrics(), manager(), id, "", false);
   }
 
   MockService *CreateMockService() {
@@ -65,7 +67,8 @@ class ProfileTest : public PropertyStoreTest {
                           Error::Type error_type) {
     Error error;
     ProfileRefPtr profile(
-        new Profile(control_interface(), manager(), id, storage_path(), false));
+        new Profile(control_interface(), mock_metrics_.get(), manager(), id,
+                    storage_path(), false));
     bool ret = profile->InitStorage(&real_glib_, storage_option, &error);
     EXPECT_EQ(error_type, error.type());
     if (ret && save) {
@@ -76,6 +79,7 @@ class ProfileTest : public PropertyStoreTest {
 
  protected:
   GLib real_glib_;
+  scoped_ptr<MockMetrics> mock_metrics_;
   ProfileRefPtr profile_;
 };
 
@@ -181,10 +185,11 @@ TEST_F(ProfileTest, GetFriendlyName) {
   static const char kIdentifier[] = "theIdentifier";
   Profile::Identifier id(kIdentifier);
   ProfileRefPtr profile(
-      new Profile(control_interface(), manager(), id, "", false));
+      new Profile(control_interface(), metrics(), manager(), id, "", false));
   EXPECT_EQ(kIdentifier, profile->GetFriendlyName());
   id.user = kUser;
-  profile = new Profile(control_interface(), manager(), id, "", false);
+  profile =
+      new Profile(control_interface(), metrics(), manager(), id, "", false);
   EXPECT_EQ(string(kUser) + "/" + kIdentifier, profile->GetFriendlyName());
 }
 
@@ -195,11 +200,12 @@ TEST_F(ProfileTest, GetStoragePath) {
   FilePath path;
   Profile::Identifier id(kIdentifier);
   ProfileRefPtr profile(
-      new Profile(control_interface(), manager(), id, "", false));
+      new Profile(control_interface(), metrics(), manager(), id, "", false));
   EXPECT_FALSE(profile->GetStoragePath(&path));
   id.user = kUser;
   profile =
-      new Profile(control_interface(), manager(), id, kFormat, false);
+      new Profile(control_interface(), metrics(), manager(), id, kFormat,
+                  false);
   EXPECT_TRUE(profile->GetStoragePath(&path));
   string suffix = base::StringPrintf("/%s.profile", kIdentifier);
   EXPECT_EQ(base::StringPrintf(kFormat, kUser) + suffix, path.value());
@@ -312,7 +318,7 @@ TEST_F(ProfileTest, MatchesIdentifier) {
   static const char kIdentifier[] = "theIdentifier";
   Profile::Identifier id(kUser, kIdentifier);
   ProfileRefPtr profile(
-      new Profile(control_interface(), manager(), id, "", false));
+      new Profile(control_interface(), metrics(), manager(), id, "", false));
   EXPECT_TRUE(profile->MatchesIdentifier(id));
   EXPECT_FALSE(profile->MatchesIdentifier(Profile::Identifier(kUser, "")));
   EXPECT_FALSE(
@@ -365,10 +371,13 @@ TEST_F(ProfileTest, InitStorage) {
             file_util::WriteFile(final_path, data.data(), data.size()));
 
   // Then test that we fail to open this file.
+  EXPECT_CALL(*mock_metrics_, NotifyCorruptedProfile());
   EXPECT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
                                   Error::kInternalError));
+  Mock::VerifyAndClearExpectations(mock_metrics_.get());
 
   // But then on a second try the file no longer exists.
+  EXPECT_CALL(*mock_metrics_, NotifyCorruptedProfile()).Times(0);
   ASSERT_FALSE(ProfileInitStorage(id, Profile::kOpenExisting, false,
                                   Error::kNotFound));
 }

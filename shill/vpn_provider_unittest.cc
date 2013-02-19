@@ -171,7 +171,7 @@ MATCHER_P(ServiceWithStorageId, storage_id, "") {
 
 TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   scoped_refptr<MockProfile> profile(
-      new NiceMock<MockProfile>(&control_, &manager_, ""));
+      new NiceMock<MockProfile>(&control_, &metrics_, &manager_, ""));
   NiceMock<MockStore> storage;
   EXPECT_CALL(*profile, GetConstStorage())
       .WillRepeatedly(Return(&storage));

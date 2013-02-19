@@ -39,6 +39,7 @@ class DefaultProfileTest : public PropertyStoreTest {
  public:
   DefaultProfileTest()
       : profile_(new DefaultProfile(control_interface(),
+                                    metrics(),
                                     manager(),
                                     FilePath(storage_path()),
                                     DefaultProfile::kDefaultId,

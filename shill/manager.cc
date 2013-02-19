@@ -96,7 +96,8 @@ Manager::Manager(ControlInterface *control_interface,
       resolver_(Resolver::GetInstance()),
       running_(false),
       connect_profiles_to_rpc_(true),
-      ephemeral_profile_(new EphemeralProfile(control_interface, this)),
+      ephemeral_profile_(
+          new EphemeralProfile(control_interface, metrics, this)),
       control_interface_(control_interface),
       metrics_(metrics),
       glib_(glib),
@@ -251,12 +252,17 @@ void Manager::InitializeProfiles() {
   CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
   scoped_refptr<DefaultProfile>
       default_profile(new DefaultProfile(control_interface_,
+                                         metrics_,
                                          this,
                                          storage_path_,
                                          DefaultProfile::kDefaultId,
                                          props_));
-  CHECK(default_profile->InitStorage(glib_, Profile::kCreateOrOpenExisting,
-                                     NULL));
+  // The default profile may fail to initialize if it's corrupted.
+  // If so, recreate the default profile.
+  if (!default_profile->InitStorage(
+      glib_, Profile::kCreateOrOpenExisting, NULL))
+    CHECK(default_profile->InitStorage(glib_, Profile::kCreateNew,
+                                       NULL));
   CHECK(LoadProperties(default_profile));
   profiles_.push_back(default_profile);
   Error error;
@@ -289,12 +295,14 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
   ProfileRefPtr profile;
   if (ident.user.empty()) {
     profile = new DefaultProfile(control_interface_,
+                                 metrics_,
                                  this,
                                  storage_path_,
                                  ident.identifier,
                                  props_);
   } else {
     profile = new Profile(control_interface_,
+                          metrics_,
                           this,
                           ident,
                           user_storage_format_,
@@ -349,6 +357,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
 
     scoped_refptr<DefaultProfile>
         default_profile(new DefaultProfile(control_interface_,
+                                           metrics_,
                                            this,
                                            storage_path_,
                                            ident.identifier,
@@ -367,6 +376,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     profile = default_profile;
   } else {
     profile = new Profile(control_interface_,
+                          metrics_,
                           this,
                           ident,
                           user_storage_format_,
@@ -484,12 +494,14 @@ void Manager::RemoveProfile(const string &name, Error *error) {
   ProfileRefPtr profile;
   if (ident.user.empty()) {
     profile = new DefaultProfile(control_interface_,
+                                 metrics_,
                                  this,
                                  storage_path_,
                                  ident.identifier,
                                  props_);
   } else {
     profile = new Profile(control_interface_,
+                          metrics_,
                           this,
                           ident,
                           user_storage_format_,

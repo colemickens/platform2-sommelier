@@ -411,7 +411,7 @@ TEST_F(CellularCapabilityTest, TryApns) {
   InitProviderDB();
   gsm_capability->SetHomeProvider();
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, reinterpret_cast<Manager *>(NULL)));
+      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
   cellular_->service()->set_profile(profile);
 
   Error error;

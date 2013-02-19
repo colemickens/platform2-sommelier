@@ -431,7 +431,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
   Error error;
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityNone);
   scoped_refptr<MockProfile> mock_profile(
-      new NiceMock<MockProfile>(control_interface(), manager()));
+      new NiceMock<MockProfile>(control_interface(), metrics(), manager()));
   wifi_service->set_profile(mock_profile);
   // With nothing else going on, the service should attempt to connect.
   EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));

@@ -31,11 +31,13 @@ using std::vector;
 namespace shill {
 
 Profile::Profile(ControlInterface *control_interface,
+                 Metrics *metrics,
                  Manager *manager,
                  const Identifier &name,
                  const string &user_storage_format,
                  bool connect_to_rpc)
-    : manager_(manager),
+    : metrics_(metrics),
+      manager_(manager),
       name_(name),
       storage_format_(user_storage_format) {
   if (connect_to_rpc)
@@ -92,6 +94,7 @@ bool Profile::InitStorage(GLib *glib, InitStorageOption storage_option,
       // this file.  Move this file out of the way so a future open attempt
       // will succeed, assuming the failure reason was the former.
       storage->MarkAsCorrupted();
+      metrics_->NotifyCorruptedProfile();
     }
     return false;
   }

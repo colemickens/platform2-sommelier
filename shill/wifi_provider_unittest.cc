@@ -45,7 +45,8 @@ class WiFiProviderTest : public testing::Test {
         manager_(&control_, &dispatcher_, &metrics_,
                  reinterpret_cast<GLib *>(NULL)),
         provider_(&control_, &dispatcher_, &metrics_, &manager_),
-        profile_(new NiceMock<MockProfile>(&control_, &manager_, "")),
+        profile_(
+            new NiceMock<MockProfile>(&control_, &metrics_, &manager_, "")),
         storage_entry_index_(0) {}
 
   virtual ~WiFiProviderTest() {}

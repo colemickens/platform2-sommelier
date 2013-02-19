@@ -915,7 +915,7 @@ TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
   EXPECT_EQ(kTmobileApn, props[flimflam::kApnProperty].reader().get_string());
 
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, reinterpret_cast<Manager *>(NULL)));
+      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
   cellular_->service()->set_profile(profile);
   Stringmap apn_info;
   apn_info[flimflam::kApnProperty] = kLastGoodApn;

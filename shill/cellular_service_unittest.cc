@@ -213,7 +213,7 @@ TEST_F(CellularServiceTest, SetApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, reinterpret_cast<Manager *>(NULL)));
+      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
   service_->set_profile(profile);
   Error error;
   Stringmap testapn;
@@ -243,7 +243,7 @@ TEST_F(CellularServiceTest, ClearApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, reinterpret_cast<Manager *>(NULL)));
+      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
   service_->set_profile(profile);
   Error error;
   // Set up an APN to make sure that it later gets cleared.
@@ -280,7 +280,7 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, reinterpret_cast<Manager *>(NULL)));
+      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
   service_->set_profile(profile);
   Stringmap testapn;
   testapn[flimflam::kApnProperty] = kApn;

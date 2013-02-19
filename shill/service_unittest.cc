@@ -491,7 +491,7 @@ TEST_F(ServiceTest, State) {
   // the service enters kStateConnected. (The case where the service
   // doesn't have a profile is tested above.)
   MockProfileRefPtr mock_profile(
-      new MockProfile(control_interface(), &mock_manager_));
+      new MockProfile(control_interface(), metrics(), &mock_manager_));
   NiceMock<MockStore> storage;
   service_->set_profile(mock_profile);
   service_->has_ever_connected_ = false;
@@ -813,7 +813,7 @@ TEST_F(ServiceTest, IsRemembered) {
   EXPECT_FALSE(service_->IsRemembered());
 
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(control_interface(), manager()));
+      new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
   service_->set_profile(profile);
   EXPECT_CALL(mock_manager_, IsServiceEphemeral(service_ref))
      .WillOnce(Return(true))
@@ -857,7 +857,7 @@ TEST_F(ServiceTest, IsDependentOn) {
 
 TEST_F(ServiceTest, OnPropertyChanged) {
   scoped_refptr<MockProfile> profile(
-      new StrictMock<MockProfile>(control_interface(), manager()));
+      new StrictMock<MockProfile>(control_interface(), metrics(), manager()));
   service_->set_profile(NULL);
   // Expect no crash.
   service_->OnPropertyChanged("");

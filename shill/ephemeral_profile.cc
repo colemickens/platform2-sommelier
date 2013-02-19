@@ -14,8 +14,9 @@
 namespace shill {
 
 EphemeralProfile::EphemeralProfile(ControlInterface *control_interface,
+                                   Metrics *metrics,
                                    Manager *manager)
-    : Profile(control_interface, manager, Identifier(), "", false) {
+    : Profile(control_interface, metrics, manager, Identifier(), "", false) {
 }
 
 EphemeralProfile::~EphemeralProfile() {}

@@ -53,11 +53,12 @@ const char DefaultProfile::kStorageShortDNSTimeoutTechnologies[] =
     "ShortDNSTimeoutTechnologies";
 
 DefaultProfile::DefaultProfile(ControlInterface *control,
+                               Metrics *metrics,
                                Manager *manager,
                                const FilePath &storage_path,
                                const string &profile_id,
                                const Manager::Properties &manager_props)
-    : Profile(control, manager, Identifier(profile_id), "", true),
+    : Profile(control, metrics, manager, Identifier(profile_id), "", true),
       storage_path_(storage_path),
       profile_id_(profile_id),
       props_(manager_props) {

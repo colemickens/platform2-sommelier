@@ -172,6 +172,11 @@ class Metrics {
     kCellularDropTechnologyMax
   };
 
+  enum CorruptedProfile {
+    kCorruptedProfile = 1,
+    kCorruptedProfileMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -296,6 +301,9 @@ class Metrics {
   static const int kMetricCellularAutoConnectTotalTimeMax;
   static const int kMetricCellularAutoConnectTotalTimeMin;
   static const int kMetricCellularAutoConnectTotalTimeNumBuckets;
+
+  // Profile statistics.
+  static const char kMetricCorruptedProfile[];
 
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();
@@ -424,6 +432,9 @@ class Metrics {
 
   // Notifies this object about a cellular device failure code.
   void NotifyCellularDeviceFailure(const Error &error);
+
+  // Notifies this object about a corrupted profile.
+  virtual void NotifyCorruptedProfile();
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string &name, int sample, int max);

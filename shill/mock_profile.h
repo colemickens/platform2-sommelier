@@ -15,8 +15,9 @@ namespace shill {
 
 class MockProfile : public Profile {
  public:
-  MockProfile(ControlInterface *control, Manager *manager);
+  MockProfile(ControlInterface *control, Metrics *metrics, Manager *manager);
   MockProfile(ControlInterface *control,
+              Metrics *metrics,
               Manager *manager,
               const std::string &identifier);
   virtual ~MockProfile();

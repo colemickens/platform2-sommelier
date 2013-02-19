@@ -25,7 +25,9 @@ class StoreInterface;
 // promotion of entries contained herein to the currently active profile.
 class EphemeralProfile : public Profile {
  public:
-  EphemeralProfile(ControlInterface *control_interface, Manager *manager);
+  EphemeralProfile(ControlInterface *control_interface,
+                   Metrics *metrics,
+                   Manager *manager);
   virtual ~EphemeralProfile();
 
   virtual bool AdoptService(const ServiceRefPtr &service);

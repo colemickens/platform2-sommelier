@@ -466,7 +466,8 @@ TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
   EXPECT_EQ(strlen(contents),
             file_util::WriteFile(test_profile, contents, strlen(contents)));
   ASSERT_TRUE(store.Open());
-  scoped_refptr<MockProfile> profile(new MockProfile(&control_, &manager_));
+  scoped_refptr<MockProfile> profile(
+      new MockProfile(&control_, &metrics_, &manager_));
   EXPECT_CALL(*profile, GetConstStorage())
       .Times(2)
       .WillRepeatedly(Return(&store));
