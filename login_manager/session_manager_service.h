@@ -16,6 +16,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/callback_forward.h>
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
@@ -252,6 +253,9 @@ class SessionManagerService
                              GIOCondition condition,
                              gpointer data);
 
+  // Tears down object set up during Initialize().
+  void Finalize();
+
   // Sets the proccess' exit code immediately and posts a QuitClosure to the
   // main event loop.
   void SetExitAndServiceShutdown(ExitCode code);
@@ -301,6 +305,7 @@ class SessionManagerService
   // All task posting should be done via the MessageLoopProxy in loop_proxy_.
   scoped_ptr<MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> loop_proxy_;
+  base::Closure quit_closure_;
 
   SystemUtils* system_;  // Owned by the caller.
   scoped_ptr<NssUtil> nss_;

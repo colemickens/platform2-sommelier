@@ -65,6 +65,7 @@ class SessionManagerProcessTest : public ::testing::Test {
       delete liveness_checker_;
       delete metrics_;
       delete mitigator_;
+      delete session_manager_impl_;
     }
   }
 

@@ -33,6 +33,7 @@
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/run_loop.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
 #include <base/time.h>
@@ -337,8 +338,8 @@ bool SessionManagerService::Reset() {
     return false;
   }
   dont_use_directly_.reset(NULL);
-  dont_use_directly_.reset(new MessageLoopForUI);
-  loop_proxy_ = base::MessageLoopProxy::current();
+  dont_use_directly_.reset(new MessageLoop(MessageLoop::TYPE_UI));
+  loop_proxy_ = dont_use_directly_->message_loop_proxy();
   return true;
 }
 
@@ -369,11 +370,13 @@ bool SessionManagerService::Run() {
   // 'Powerwash', which reboots and then wipes most of the stateful partition.
   if (!impl_->Initialize()) {
     impl_->StartDeviceWipe(NULL, NULL);
-    Shutdown();
+    Finalize();
     return false;
   }
 
-  MessageLoop::current()->Run();
+  base::RunLoop run_loop;
+  quit_closure_ = run_loop.QuitClosure();
+  run_loop.Run();  // Will return when quit_closure_ is posted and run.
   CleanupChildren(GetKillTimeout());
   impl_->AnnounceSessionStopped();
   return true;
@@ -388,13 +391,8 @@ bool SessionManagerService::ShouldStopChild(ChildJobInterface* child_job) {
 }
 
 bool SessionManagerService::Shutdown() {
-  LOG(INFO) << "SessionManagerService exiting";
-  DeregisterChildWatchers();
-  liveness_checker_->Stop();
-  impl_->AnnounceSessionStoppingIfNeeded();
-
-  impl_->Finalize();
-  loop_proxy_->PostTask(FROM_HERE, MessageLoop::QuitClosure());
+  Finalize();
+  loop_proxy_->PostTask(FROM_HERE, quit_closure_);
   LOG(INFO) << "SessionManagerService quitting run loop";
   return true;
 }
@@ -587,6 +585,14 @@ gboolean SessionManagerService::HandleKill(GIOChannel* source,
   SessionManagerService* manager = static_cast<SessionManagerService*>(data);
   manager->Shutdown();
   return FALSE;  // So that the event source that called this gets removed.
+}
+
+void SessionManagerService::Finalize() {
+  LOG(INFO) << "SessionManagerService exiting";
+  DeregisterChildWatchers();
+  liveness_checker_->Stop();
+  impl_->AnnounceSessionStoppingIfNeeded();
+  impl_->Finalize();
 }
 
 void SessionManagerService::SetExitAndServiceShutdown(ExitCode code) {
