@@ -139,20 +139,26 @@
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationCreateCertRequest">
-      <arg type="b" name="is_cert_for_owner" direction="in" />
+      <arg type="b" name="include_stable_id" direction="in" />
+      <arg type="b" name="include_device_state" direction="in" />
       <arg type="ay" name="pca_request" direction="out" />
     </method>
     <method name="AsyncTpmAttestationCreateCertRequest">
-      <arg type="b" name="is_cert_for_owner" direction="in" />
+      <arg type="b" name="include_stable_id" direction="in" />
+      <arg type="b" name="include_device_state" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationFinishCertRequest">
       <arg type="ay" name="pca_response" direction="in" />
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
       <arg type="ay" name="attestation_cert" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="AsyncTpmAttestationFinishCertRequest">
       <arg type="ay" name="pca_response" direction="in" />
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmIsAttestationEnrolled">

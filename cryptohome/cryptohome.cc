@@ -1070,6 +1070,7 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
           proxy.gproxy(),
           TRUE,
+          TRUE,
           &chromeos::Resetter(&data).lvalue(),
           &chromeos::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateCertRequest call failed: %s.\n",
@@ -1083,6 +1084,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(
               proxy.gproxy(),
+              TRUE,
               TRUE,
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
@@ -1119,6 +1121,8 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_finish_cert_request(
           proxy.gproxy(),
           data.get(),
+          TRUE,
+          "test",
           &chromeos::Resetter(&cert).lvalue(),
           &success,
           &chromeos::Resetter(&error).lvalue())) {
@@ -1134,6 +1138,8 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_finish_cert_request(
               proxy.gproxy(),
               data.get(),
+              TRUE,
+              "test",
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationFinishCertRequest call failed: %s.\n",

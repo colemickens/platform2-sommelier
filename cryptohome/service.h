@@ -197,18 +197,25 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncTpmAttestationEnroll(GArray* pca_response,
                                              gint* OUT_async_id,
                                              GError** error);
-  virtual gboolean TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
-                                                   GArray** OUT_pca_request,
-                                                   GError** error);
+  virtual gboolean TpmAttestationCreateCertRequest(
+      gboolean include_stable_id,
+      gboolean include_device_state,
+      GArray** OUT_pca_request,
+      GError** error);
   virtual gboolean AsyncTpmAttestationCreateCertRequest(
-      gboolean is_cert_for_owner,
+      gboolean include_stable_id,
+      gboolean include_device_state,
       gint* OUT_async_id,
       GError** error);
   virtual gboolean TpmAttestationFinishCertRequest(GArray* pca_response,
+                                                   bool is_user_specific,
+                                                   gchar* key_name,
                                                    GArray** OUT_cert,
                                                    gboolean* OUT_success,
                                                    GError** error);
   virtual gboolean AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
+                                                        bool is_user_specific,
+                                                        gchar* key_name,
                                                         gint* OUT_async_id,
                                                         GError** error);
   virtual gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,

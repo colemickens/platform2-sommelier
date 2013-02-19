@@ -1109,7 +1109,8 @@ gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
+gboolean Service::TpmAttestationCreateCertRequest(gboolean include_stable_id,
+                                                  gboolean include_device_state,
                                                   GArray** OUT_pca_request,
                                                   GError** error) {
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
@@ -1119,13 +1120,16 @@ gboolean Service::TpmAttestationCreateCertRequest(gboolean is_cert_for_owner,
     return TRUE;
   }
   chromeos::SecureBlob blob;
-  if (attestation->CreateCertRequest(is_cert_for_owner, &blob))
+  if (attestation->CreateCertRequest(include_stable_id,
+                                     include_device_state,
+                                     &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
   return TRUE;
 }
 
 gboolean Service::AsyncTpmAttestationCreateCertRequest(
-    gboolean is_cert_for_owner,
+    gboolean include_stable_id,
+    gboolean include_device_state,
     gint* OUT_async_id,
     GError** error) {
   AttestationTaskObserver* observer =
@@ -1133,7 +1137,8 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
   scoped_refptr<CreateCertRequestTask> task =
       new CreateCertRequestTask(observer,
                                 tpm_init_->get_attestation(),
-                                is_cert_for_owner);
+                                include_stable_id,
+                                include_device_state);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
       FROM_HERE,
@@ -1142,6 +1147,8 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
 }
 
 gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
+                                                  bool is_user_specific,
+                                                  gchar* key_name,
                                                   GArray** OUT_cert,
                                                   gboolean* OUT_success,
                                                   GError** error) {
@@ -1154,20 +1161,29 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
   }
   chromeos::SecureBlob response_blob(pca_response->data, pca_response->len);
   chromeos::SecureBlob cert_blob;
-  *OUT_success = attestation->FinishCertRequest(response_blob, &cert_blob);
+  *OUT_success = attestation->FinishCertRequest(response_blob,
+                                                is_user_specific,
+                                                key_name,
+                                                &cert_blob);
   if (*OUT_success)
     g_array_append_vals(*OUT_cert, &cert_blob.front(), cert_blob.size());
   return TRUE;
 }
 
 gboolean Service::AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
+                                                       bool is_user_specific,
+                                                       gchar* key_name,
                                                        gint* OUT_async_id,
                                                        GError** error) {
   chromeos::SecureBlob blob(pca_response->data, pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
   scoped_refptr<FinishCertRequestTask> task =
-      new FinishCertRequestTask(observer, tpm_init_->get_attestation(), blob);
+      new FinishCertRequestTask(observer,
+                                tpm_init_->get_attestation(),
+                                blob,
+                                is_user_specific,
+                                key_name);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
       FROM_HERE,

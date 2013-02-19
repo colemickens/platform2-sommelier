@@ -7,6 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "mock_keystore.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
 
@@ -27,6 +28,7 @@ class AttestationTest : public testing::Test {
 
   void SetUp() {
     attestation_.set_database_path(kTestPath);
+    attestation_.set_user_key_store(&key_store_);
     // Fake up a single file by default.
     ON_CALL(platform_, WriteStringToFile(StartsWith(kTestPath), _))
         .WillByDefault(Invoke(this, &AttestationTest::WriteDB));
@@ -47,6 +49,7 @@ class AttestationTest : public testing::Test {
  protected:
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
+  NiceMock<MockKeyStore> key_store_;
   Attestation attestation_;
 
   chromeos::SecureBlob GetEnrollBlob() {
@@ -60,8 +63,12 @@ class AttestationTest : public testing::Test {
     return chromeos::SecureBlob(tmp.data(), tmp.length());
   }
 
-  chromeos::SecureBlob GetCertRequestBlob() {
+  chromeos::SecureBlob GetCertRequestBlob(const chromeos::SecureBlob& request) {
+    AttestationCertificateRequest request_pb;
+    CHECK(request_pb.ParseFromArray(request.const_data(),
+                                    request.size()));
     AttestationCertificateResponse pb;
+    pb.set_message_id(request_pb.message_id());
     pb.set_status(OK);
     pb.set_detail("");
     pb.set_certified_key_credential("1234");
@@ -95,13 +102,28 @@ TEST_F(AttestationTest, Enroll) {
 
 TEST_F(AttestationTest, CertRequest) {
   chromeos::SecureBlob blob;
-  EXPECT_FALSE(attestation_.CreateCertRequest(false, &blob));
+  EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
   attestation_.PrepareForEnrollment();
-  EXPECT_FALSE(attestation_.CreateCertRequest(false, &blob));
+  EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, &blob));
-  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(), &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
+                                             true,
+                                             "test",
+                                             &blob));
   EXPECT_EQ(0, memcmp(blob.data(), "1234", 4));
+}
+
+TEST_F(AttestationTest, CertRequestStorageFailure) {
+  EXPECT_CALL(key_store_, Write("test", _)).WillOnce(Return(false));
+  chromeos::SecureBlob blob;
+  attestation_.PrepareForEnrollment();
+  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_FALSE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
+                                             true,
+                                             "test",
+                                             &blob));
 }
 
 }  // namespace cryptohome

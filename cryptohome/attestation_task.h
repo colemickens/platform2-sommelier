@@ -24,6 +24,7 @@ class AttestationTask : public MountTask {
   Attestation* attestation_;
 };
 
+// An asynchronous task for Attestation::CreateEnrollRequest().
 class CreateEnrollRequestTask : public AttestationTask {
  public:
   CreateEnrollRequestTask(AttestationTaskObserver* observer,
@@ -36,6 +37,7 @@ class CreateEnrollRequestTask : public AttestationTask {
   DISALLOW_COPY_AND_ASSIGN(CreateEnrollRequestTask);
 };
 
+// An asynchronous task for Attestation::Enroll().
 class EnrollTask : public AttestationTask {
  public:
   EnrollTask(AttestationTaskObserver* observer,
@@ -51,32 +53,40 @@ class EnrollTask : public AttestationTask {
   DISALLOW_COPY_AND_ASSIGN(EnrollTask);
 };
 
+// An asynchronous task for Attestation::CreateCertRequest().
 class CreateCertRequestTask : public AttestationTask {
  public:
   CreateCertRequestTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
-                        bool is_cert_for_owner);
+                        bool include_stable_id,
+                        bool include_device_state);
   virtual ~CreateCertRequestTask();
 
   virtual void Run();
 
  private:
-  bool is_cert_for_owner_;
+  bool include_stable_id_;
+  bool include_device_state_;
 
   DISALLOW_COPY_AND_ASSIGN(CreateCertRequestTask);
 };
 
+// An asynchronous task for Attestation::FinishCertRequest().
 class FinishCertRequestTask : public AttestationTask {
  public:
   FinishCertRequestTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
-                        const SecureBlob& pca_response);
+                        const SecureBlob& pca_response,
+                        bool is_user_specific,
+                        const std::string& key_name);
   virtual ~FinishCertRequestTask();
 
   virtual void Run();
 
  private:
   SecureBlob pca_response_;
+  bool is_user_specific_;
+  std::string key_name_;
 
   DISALLOW_COPY_AND_ASSIGN(FinishCertRequestTask);
 };

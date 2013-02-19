@@ -172,22 +172,28 @@ gboolean cryptohome_async_tpm_attestation_enroll(Cryptohome *self,
                                                  GError** error);
 gboolean cryptohome_tpm_attestation_create_cert_request(
     Cryptohome *self,
-    gboolean is_cert_for_owner,
+    gboolean include_stable_id,
+    gboolean include_device_state,
     GArray** OUT_pca_request,
     GError** error);
 gboolean cryptohome_async_tpm_attestation_create_cert_request(
     Cryptohome *self,
-    gboolean is_cert_for_owner,
+    gboolean include_stable_id,
+    gboolean include_device_state,
     gint *OUT_async_id,
     GError** error);
 gboolean cryptohome_tpm_attestation_finish_cert_request(Cryptohome *self,
                                                         GArray* pca_response,
+                                                        bool is_user_specific,
+                                                        gchar* key_name,
                                                         GArray** OUT_cert,
                                                         gboolean* OUT_success,
                                                         GError** error);
 gboolean cryptohome_async_tpm_attestation_finish_cert_request(
     Cryptohome *self,
     GArray* pca_response,
+    bool is_user_specific,
+    gchar* key_name,
     gint *OUT_async_id,
     GError** error);
 gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,

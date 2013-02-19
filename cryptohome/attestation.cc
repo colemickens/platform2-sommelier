@@ -8,6 +8,7 @@
 #include <string>
 
 #include <arpa/inet.h>
+#include <base/stl_util.h>
 #include <base/time.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
@@ -18,6 +19,8 @@
 
 #include "attestation.pb.h"
 #include "cryptolib.h"
+#include "keystore.h"
+#include "pkcs11_keystore.h"
 #include "platform.h"
 #include "tpm.h"
 
@@ -126,7 +129,9 @@ Attestation::Attestation(Tpm* tpm, Platform* platform)
     : tpm_(tpm),
       platform_(platform),
       database_path_(kDefaultDatabasePath),
-      thread_(base::kNullThreadHandle) {}
+      thread_(base::kNullThreadHandle),
+      pkcs11_key_store_(new Pkcs11KeyStore()),
+      user_key_store_(pkcs11_key_store_.get()) {}
 
 Attestation::~Attestation() {
   if (thread_ != base::kNullThreadHandle)
@@ -421,16 +426,23 @@ bool Attestation::Enroll(const SecureBlob& pca_response) {
   return true;
 }
 
-bool Attestation::CreateCertRequest(bool is_cert_for_owner,
+bool Attestation::CreateCertRequest(bool include_stable_id,
+                                    bool include_device_state,
                                     SecureBlob* pca_request) {
   if (!IsEnrolled()) {
     LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
     return false;
   }
   AttestationCertificateRequest request_pb;
+  string message_id(kNonceSize, 0);
+  CryptoLib::GetSecureRandom(
+      reinterpret_cast<unsigned char*>(string_as_array(&message_id)),
+      kNonceSize);
+  request_pb.set_message_id(message_id);
   request_pb.set_identity_credential(
       database_pb_.identity_key().identity_credential());
-  request_pb.set_is_cert_for_owner(is_cert_for_owner);
+  request_pb.set_include_stable_id(include_stable_id);
+  request_pb.set_include_device_state(include_device_state);
   SecureBlob nonce;
   if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": GetRandomData failed.";
@@ -449,7 +461,6 @@ bool Attestation::CreateCertRequest(bool is_cert_for_owner,
     LOG(ERROR) << __func__ << ": Failed to create certified key.";
     return false;
   }
-  // TODO(dkrahn): Save certified key blob and public key for later.
   request_pb.set_certified_public_key(ConvertBlobToString(public_key));
   request_pb.set_certified_key_info(ConvertBlobToString(key_info));
   request_pb.set_certified_key_proof(ConvertBlobToString(proof));
@@ -459,26 +470,76 @@ bool Attestation::CreateCertRequest(bool is_cert_for_owner,
     return false;
   }
   *pca_request = ConvertStringToBlob(tmp);
+  ClearString(&tmp);
+  // Save certified key blob so we can finish the operation later.
+  CertifiedKey certified_key_pb;
+  certified_key_pb.set_key_blob(ConvertBlobToString(key_blob));
+  certified_key_pb.set_public_key(ConvertBlobToString(public_key_der));
+  if (!certified_key_pb.SerializeToString(&tmp)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
+    return false;
+  }
+  pending_cert_requests_[message_id] = ConvertStringToBlob(tmp);
+  ClearString(&tmp);
   return true;
 }
 
 bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
-                                    SecureBlob* attestation_cert) {
+                                    bool is_user_key,
+                                    const string& key_name,
+                                    SecureBlob* certificate) {
   AttestationCertificateResponse response_pb;
   if (!response_pb.ParseFromArray(pca_response.const_data(),
                                   pca_response.size())) {
     LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
     return false;
   }
+  CertRequestMap::iterator iter = pending_cert_requests_.find(
+      response_pb.message_id());
+  if (iter == pending_cert_requests_.end()) {
+    LOG(ERROR) << __func__ << ": Pending request not found.";
+    return false;
+  }
   if (response_pb.status() != OK) {
     LOG(ERROR) << __func__ << ": Error received from Privacy CA: "
                << response_pb.detail();
+    pending_cert_requests_.erase(iter);
     return false;
   }
-  *attestation_cert = ConvertStringToBlob(
+  CertifiedKey certified_key_pb;
+  if (!certified_key_pb.ParseFromArray(iter->second.const_data(),
+                                       iter->second.size())) {
+    LOG(ERROR) << __func__ << ": Failed to parse pending request.";
+    pending_cert_requests_.erase(iter);
+    return false;
+  }
+  pending_cert_requests_.erase(iter);
+
+  // The PCA issued a certificate and the response matched a pending request.
+  // Now we want to finish populating the CertifiedKey and store it for later.
+  certified_key_pb.set_certified_key_credential(
       response_pb.certified_key_credential());
-  // TODO(dkrahn): Save credential in association with certified key blob.
-  LOG(INFO) << "Attestation: Certified key credential received.";
+  certified_key_pb.set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
+  certified_key_pb.set_key_name(key_name);
+  string tmp;
+  if (!certified_key_pb.SerializeToString(&tmp)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
+    return false;
+  }
+  SecureBlob certified_key = ConvertStringToBlob(tmp);
+  ClearString(&tmp);
+  bool result = false;
+  if (is_user_key) {
+    result = user_key_store_->Write(key_name, certified_key);
+  } else {
+    result = AddDeviceKey(key_name, certified_key);
+  }
+  if (!result) {
+    LOG(ERROR) << __func__ << ": Failed to store certified key.";
+    return false;
+  }
+  *certificate = ConvertStringToBlob(response_pb.certified_key_credential());
+  LOG(INFO) << "Attestation: Certified key credential received and stored.";
   return true;
 }
 
@@ -493,7 +554,7 @@ string Attestation::ConvertBlobToString(const chromeos::Blob& blob) {
 SecureBlob Attestation::SecureCat(const SecureBlob& blob1,
                                   const SecureBlob& blob2) {
   SecureBlob result(blob1.size() + blob2.size());
-  unsigned char* buffer = const_cast<unsigned char*>(&result.front());
+  unsigned char* buffer = vector_as_array(&result);
   memcpy(buffer, blob1.const_data(), blob1.size());
   memcpy(buffer + blob1.size(), blob2.const_data(), blob2.size());
   return SecureBlob(result.begin(), result.end());
@@ -747,7 +808,7 @@ bool Attestation::VerifyCertifiedKey(
     return false;
   }
   SecureBlob modulus(BN_num_bytes(rsa->n));
-  BN_bn2bin(rsa->n, const_cast<unsigned char*>(&modulus.front()));
+  BN_bn2bin(rsa->n, vector_as_array(&modulus));
   RSA_free(rsa);
   SecureBlob key_digest = CryptoLib::Sha1(modulus);
   if (std::search(certified_key_info.begin(),
@@ -848,7 +909,8 @@ void Attestation::ClearDatabase() {
 }
 
 void Attestation::ClearString(string* s) {
-  chromeos::SecureMemset(const_cast<char*>(s->data()), 0, s->length());
+  chromeos::SecureMemset(string_as_array(s), 0, s->length());
+  s->clear();
 }
 
 bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
@@ -865,8 +927,7 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
 
   // Generate an AES key and encrypt the credential.
   SecureBlob aes_key(kCipherKeySize);
-  CryptoLib::GetSecureRandom(const_cast<unsigned char*>(&aes_key.front()),
-                             aes_key.size());
+  CryptoLib::GetSecureRandom(vector_as_array(&aes_key), aes_key.size());
   SecureBlob credential(kTestCredential, strlen(kTestCredential));
   SecureBlob encrypted_credential;
   if (!tpm_->TssCompatibleEncrypt(aes_key, credential, &encrypted_credential)) {
@@ -964,9 +1025,9 @@ bool Attestation::EncryptEndorsementCredential(
   string encrypted_key;
   encrypted_key.resize(RSA_size(rsa));
   unsigned char* buffer = reinterpret_cast<unsigned char*>(
-      const_cast<char*>(encrypted_key.data()));
+      string_as_array(&encrypted_key));
   int length = RSA_public_encrypt(aes_key.size(),
-                                  const_cast<unsigned char*>(&aes_key.front()),
+                                  vector_as_array(&aes_key),
                                   buffer, rsa, RSA_PKCS1_OAEP_PADDING);
   if (length == -1) {
     LOG(ERROR) << "RSA_public_encrypt failed.";
@@ -974,6 +1035,12 @@ bool Attestation::EncryptEndorsementCredential(
   }
   encrypted_key.resize(length);
   encrypted_credential->set_wrapped_key(encrypted_key);
+  return true;
+}
+
+bool Attestation::AddDeviceKey(const std::string& key_name,
+                               const chromeos::SecureBlob& key_data) {
+  // TODO(dkrahn): implement
   return true;
 }
 

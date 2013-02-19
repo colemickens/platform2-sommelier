@@ -257,39 +257,51 @@ gboolean cryptohome_async_tpm_attestation_enroll(Cryptohome *self,
 }
 gboolean cryptohome_tpm_attestation_create_cert_request(
     Cryptohome *self,
-    gboolean is_cert_for_owner,
+    gboolean include_stable_id,
+    gboolean include_device_state,
     GArray** OUT_pca_request,
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateCertRequest,
-                         is_cert_for_owner,
+                         include_stable_id,
+                         include_device_state,
                          OUT_pca_request);
 }
 gboolean cryptohome_async_tpm_attestation_create_cert_request(
     Cryptohome *self,
-    gboolean is_cert_for_owner,
+    gboolean include_stable_id,
+    gboolean include_device_state,
     gint *OUT_async_id,
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
-                         is_cert_for_owner,
+                         include_stable_id,
+                         include_device_state,
                          OUT_async_id);
 }
 gboolean cryptohome_tpm_attestation_finish_cert_request(Cryptohome *self,
                                                         GArray* pca_response,
+                                                        bool is_user_specific,
+                                                        gchar* key_name,
                                                         GArray** OUT_cert,
                                                         gboolean* OUT_success,
                                                         GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationFinishCertRequest,
                          pca_response,
+                         is_user_specific,
+                         key_name,
                          OUT_cert,
                          OUT_success);
 }
 gboolean cryptohome_async_tpm_attestation_finish_cert_request(
     Cryptohome *self,
     GArray* pca_response,
+    bool is_user_specific,
+    gchar* key_name,
     gint *OUT_async_id,
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationFinishCertRequest,
                          pca_response,
+                         is_user_specific,
+                         key_name,
                          OUT_async_id);
 }
 gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,

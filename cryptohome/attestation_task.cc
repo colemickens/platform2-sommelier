@@ -57,9 +57,11 @@ void EnrollTask::Run() {
 
 CreateCertRequestTask::CreateCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
-                                             bool is_cert_for_owner)
+                                             bool include_stable_id,
+                                             bool include_device_state)
     : AttestationTask(observer, attestation),
-      is_cert_for_owner_(is_cert_for_owner) {
+      include_stable_id_(include_stable_id),
+      include_device_state_(include_device_state) {
 }
 
 CreateCertRequestTask::~CreateCertRequestTask() {}
@@ -68,7 +70,8 @@ void CreateCertRequestTask::Run() {
   result()->set_return_status(FALSE);
   if (attestation_) {
     SecureBlob pca_request;
-    bool status = attestation_->CreateCertRequest(is_cert_for_owner_,
+    bool status = attestation_->CreateCertRequest(include_stable_id_,
+                                                  include_device_state_,
                                                   &pca_request);
     result()->set_return_status(status);
     result()->set_return_data(pca_request);
@@ -78,9 +81,13 @@ void CreateCertRequestTask::Run() {
 
 FinishCertRequestTask::FinishCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
-                                             const SecureBlob& pca_response)
+                                             const SecureBlob& pca_response,
+                                             bool is_user_specific,
+                                             const std::string& key_name)
     : AttestationTask(observer, attestation),
-      pca_response_(pca_response) {
+      pca_response_(pca_response),
+      is_user_specific_(is_user_specific),
+      key_name_(key_name) {
 }
 
 FinishCertRequestTask::~FinishCertRequestTask() {}
@@ -89,7 +96,10 @@ void FinishCertRequestTask::Run() {
   result()->set_return_status(FALSE);
   if (attestation_) {
     SecureBlob cert;
-    bool status = attestation_->FinishCertRequest(pca_response_, &cert);
+    bool status = attestation_->FinishCertRequest(pca_response_,
+                                                  is_user_specific_,
+                                                  key_name_,
+                                                  &cert);
     result()->set_return_status(status);
     result()->set_return_data(cert);
   }
