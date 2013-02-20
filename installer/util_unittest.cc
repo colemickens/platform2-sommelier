@@ -24,7 +24,6 @@ const string GetSourceFile(const string& file) {
 }
 
 TEST(UtilTest, StringPrintfTest) {
-  EXPECT_EQ(StringPrintf(""), "");
   EXPECT_EQ(StringPrintf("Stuff"), "Stuff");
   EXPECT_EQ(StringPrintf("%s", "Stuff"), "Stuff");
   EXPECT_EQ(StringPrintf("%d", 3), "3");

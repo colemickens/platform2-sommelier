@@ -23,13 +23,13 @@ extern "C" {
 using std::string;
 
 
-string StringPrintf(const string& format, ...) {
+string StringPrintf(const char* format, ...) {
   va_list ap;
 
   va_start(ap, format);
   int v_result = vsnprintf(NULL,
                            0,
-                           format.c_str(),
+                           format,
                            ap);
   va_end(ap);
 
@@ -50,7 +50,7 @@ string StringPrintf(const string& format, ...) {
   va_start(ap, format);
   v_result = vsnprintf(sprintf_buffer,
                        size,
-                       format.c_str(),
+                       format,
                        ap);
   va_end(ap);
 

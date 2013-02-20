@@ -13,7 +13,8 @@
     if (RunCommand(_x) != 0) return false;                      \
   } while (0)
 
-std::string StringPrintf(const std::string& format, ...);
+__attribute__((format(printf, 1, 2)))
+std::string StringPrintf(const char* format, ...);
 
 void SplitString(const std::string& str,
                  char split,
