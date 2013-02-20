@@ -331,8 +331,7 @@ void StateController::AddIdleNotification(base::TimeDelta delay) {
 
 void StateController::OnPrefChanged(const std::string& pref_name) {
   DCHECK(initialized_);
-  if (pref_name == kDisableIdleSuspendPref ||
-      pref_name == kLockOnIdleSuspendPref) {
+  if (pref_name == kDisableIdleSuspendPref) {
     VLOG(1) << "Reloading prefs for " << pref_name << " change";
     LoadPrefs();
     UpdateSettingsAndState();
@@ -523,21 +522,6 @@ void StateController::LoadPrefs() {
                            &pref_battery_delays_.screen_off));
   CHECK(GetMillisecondPref(prefs_, kUnpluggedDimMsPref,
                            &pref_battery_delays_.screen_dim));
-
-  bool lock_on_idle_suspend = false;
-  prefs_->GetBool(kLockOnIdleSuspendPref, &lock_on_idle_suspend);
-
-  base::TimeDelta screen_lock_delay;
-  GetMillisecondPref(prefs_, kLockMsPref, &screen_lock_delay);
-
-  pref_ac_delays_.screen_lock = base::TimeDelta();
-  pref_battery_delays_.screen_lock = base::TimeDelta();
-  if (lock_on_idle_suspend && screen_lock_delay > base::TimeDelta()) {
-    if (screen_lock_delay < pref_ac_delays_.idle)
-      pref_ac_delays_.screen_lock = screen_lock_delay;
-    if (screen_lock_delay < pref_battery_delays_.idle)
-      pref_battery_delays_.screen_lock = screen_lock_delay;
-  }
 
   SanitizeDelays(&pref_ac_delays_);
   SanitizeDelays(&pref_battery_delays_);

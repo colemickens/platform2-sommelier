@@ -25,8 +25,6 @@ extern const char kUnpluggedSuspendMsPref[];
 extern const char kEnforceLockPref[];
 extern const char kDisableIdleSuspendPref[];
 extern const char kUseLidPref[];
-extern const char kLockOnIdleSuspendPref[];
-extern const char kLockMsPref[];
 extern const char kRetrySuspendMsPref[];
 extern const char kRetrySuspendAttemptsPref[];
 extern const char kPluggedSuspendMsPref[];

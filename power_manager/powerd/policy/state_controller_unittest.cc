@@ -166,9 +166,7 @@ class StateControllerTest : public testing::Test {
         default_battery_suspend_delay_(base::TimeDelta::FromSeconds(60)),
         default_battery_screen_off_delay_(base::TimeDelta::FromSeconds(40)),
         default_battery_screen_dim_delay_(base::TimeDelta::FromSeconds(30)),
-        default_screen_lock_delay_(base::TimeDelta::FromSeconds(110)),
         default_disable_idle_suspend_(0),
-        default_lock_on_idle_suspend_(1),
         default_require_usb_input_device_to_suspend_(0),
         default_keep_screen_on_for_audio_(0),
         default_has_lid_(1),
@@ -192,11 +190,8 @@ class StateControllerTest : public testing::Test {
     SetMillisecondPref(kUnpluggedSuspendMsPref, default_battery_suspend_delay_);
     SetMillisecondPref(kUnpluggedOffMsPref, default_battery_screen_off_delay_);
     SetMillisecondPref(kUnpluggedDimMsPref, default_battery_screen_dim_delay_);
-    SetMillisecondPref(kLockMsPref, default_screen_lock_delay_);
     CHECK(prefs_.SetInt64(kDisableIdleSuspendPref,
                           default_disable_idle_suspend_));
-    CHECK(prefs_.SetInt64(kLockOnIdleSuspendPref,
-                          default_lock_on_idle_suspend_));
     CHECK(prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
                           default_require_usb_input_device_to_suspend_));
     CHECK(prefs_.SetInt64(kKeepBacklightOnForAudioPref,
@@ -273,9 +268,7 @@ class StateControllerTest : public testing::Test {
   base::TimeDelta default_battery_suspend_delay_;
   base::TimeDelta default_battery_screen_off_delay_;
   base::TimeDelta default_battery_screen_dim_delay_;
-  base::TimeDelta default_screen_lock_delay_;
   int64 default_disable_idle_suspend_;
-  int64 default_lock_on_idle_suspend_;
   int64 default_require_usb_input_device_to_suspend_;
   int64 default_keep_screen_on_for_audio_;
   int64 default_has_lid_;
@@ -303,8 +296,6 @@ TEST_F(StateControllerTest, BasicDelays) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -350,25 +341,37 @@ TEST_F(StateControllerTest, VideoDefersDimming) {
 }
 
 // Tests that the screen dims, is turned off, and is locked while audio is
-// playing
+// playing.
 TEST_F(StateControllerTest, AudioDefersSuspend) {
   Init();
+
+  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(300);
+  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(310);
+  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(320);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(330);
+
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
 
   // Report audio activity and check that the controller goes through the
   // usual dim->off->lock progression.
   controller_.HandleAudioActivity();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
   EXPECT_EQ(kScreenLock, delegate_.GetActions());
 
   // Report additional audio activity.  The controller should wait for the
   // full suspend delay before suspending.
   controller_.HandleAudioActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
@@ -409,7 +412,6 @@ TEST_F(StateControllerTest, SessionStateChangeResetsTimeouts) {
 // user is logged in.
 TEST_F(StateControllerTest, ShutDownWhenSessionStopped) {
   initial_session_state_ = SESSION_STOPPED;
-  default_screen_lock_delay_ = base::TimeDelta();
   Init();
 
   // The screen should be dimmed and turned off, but the system should shut
@@ -443,41 +445,6 @@ TEST_F(StateControllerTest, ShutDownWhenSessionStopped) {
   EXPECT_EQ(kShutDown, delegate_.GetActions());
 }
 
-// Tests that the lock-on-suspend pref is honored and watched for changes.
-TEST_F(StateControllerTest, LockPref) {
-  // Disable the screen locking pref initially.
-  default_lock_on_idle_suspend_ = false;
-  Init();
-
-  // Check that the screen is dimmed and turned off as expected.  The
-  // system should be suspended instead of getting locked after this.
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-
-  // The screen should be turned on and undimmed in response to user activity.
-  controller_.HandleResume();
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-
-  // Set the lock-on-suspend pref and notify the controller that it changed.
-  ASSERT_TRUE(prefs_.SetInt64(kLockOnIdleSuspendPref, 1));
-  prefs_.NotifyObservers(kLockOnIdleSuspendPref);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  // The screen should be locked and then suspended after being dimmed and
-  // turned off now.
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-}
-
 // Tests that delays are scaled while presenting and that they return to
 // their original values when not presenting.
 TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
@@ -488,8 +455,6 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   // retain the same difference from the suspend delay as before.
   base::TimeDelta suspend_delay = default_ac_suspend_delay_ *
       StateController::kDefaultPresentationIdleDelayFactor;
-  base::TimeDelta screen_lock_delay = suspend_delay -
-      (default_ac_suspend_delay_ - default_screen_lock_delay_);
   base::TimeDelta screen_off_delay = suspend_delay -
       (default_ac_suspend_delay_ - default_ac_screen_off_delay_);
   base::TimeDelta screen_dim_delay = suspend_delay -
@@ -499,8 +464,6 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(screen_off_delay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(screen_lock_delay));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(suspend_delay));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -513,8 +476,6 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
@@ -530,18 +491,12 @@ TEST_F(StateControllerTest, PowerSourceChange) {
   default_ac_screen_dim_delay_ = base::TimeDelta::FromSeconds(120);
   default_ac_screen_off_delay_ = base::TimeDelta::FromSeconds(150);
   default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(160);
-  default_screen_lock_delay_ = base::TimeDelta::FromSeconds(155);
   Init();
 
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  // Since there's only one lock-delay pref for both battery and AC, and it
-  // exceeds the battery suspend delay, the controller should skip locking
-  // the screen.  (If the user has set the lock-on-suspend pref, Chrome
-  // will still lock the screen before the system suspends -- only the
-  // timed screen-lock is skipped here.)
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_battery_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -554,8 +509,6 @@ TEST_F(StateControllerTest, PowerSourceChange) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 
@@ -659,8 +612,6 @@ TEST_F(StateControllerTest, PartiallyFilledPolicy) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
   controller_.HandleResume();
@@ -674,8 +625,6 @@ TEST_F(StateControllerTest, PartiallyFilledPolicy) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
@@ -738,10 +687,8 @@ TEST_F(StateControllerTest, SimultaneousIdleAndLidActions) {
   // to run, close the lid.  We should only make one suspend attempt.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, NULL),
-            delegate_.GetActions());
-  AdvanceTime(default_ac_suspend_delay_ - default_screen_lock_delay_);
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+  AdvanceTime(default_ac_suspend_delay_ - default_ac_screen_off_delay_);
   controller_.HandleLidStateChange(LID_CLOSED);
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
@@ -757,12 +704,9 @@ TEST_F(StateControllerTest, KeepScreenOnForAudio) {
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 
-  // After audio is reported, screen-off should be deferred.  The next action
-  // should instead be locking the screen.
+  // After audio is reported, screen-off should be deferred.
   controller_.HandleAudioActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
 
   // Continue reporting audio activity; the screen should stay on.
   controller_.HandleAudioActivity();
@@ -803,8 +747,6 @@ TEST_F(StateControllerTest, RequireUsbInputDeviceToSuspend) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
@@ -819,8 +761,6 @@ TEST_F(StateControllerTest, RequireUsbInputDeviceToSuspend) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
@@ -828,7 +768,6 @@ TEST_F(StateControllerTest, RequireUsbInputDeviceToSuspend) {
 // Tests that suspend is deferred before OOBE is completed.
 TEST_F(StateControllerTest, DontSuspendBeforeOobeCompleted) {
   delegate_.set_oobe_completed(false);
-  default_screen_lock_delay_ = base::TimeDelta();
   Init();
 
   // The screen should dim and turn off as usual, but the system shouldn't
@@ -861,9 +800,7 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   // when it's idle.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
@@ -882,9 +819,7 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
@@ -897,9 +832,8 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kShutDown, NULL),
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
             delegate_.GetActions());
 }
 
@@ -919,8 +853,8 @@ TEST_F(StateControllerTest, Overrides) {
   controller_.HandleLidStateChange(LID_OPEN);
 
   // Override the suspend properties but not the screen-related delays and
-  // check that the controller dims, turns off, and locks the screen but
-  // doesn't suspend the system.
+  // check that the controller dims and turns off the screen but doesn't
+  // suspend the system.
   controller_.HandleOverrideChange(false /* override_screen_dim */,
                                    false /* override_screen_off */,
                                    true /* override_idle_suspend */,
@@ -929,8 +863,6 @@ TEST_F(StateControllerTest, Overrides) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(kScreenLock, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   controller_.HandleLidStateChange(LID_CLOSED);
@@ -949,18 +881,39 @@ TEST_F(StateControllerTest, Overrides) {
 // that don't make sense.
 TEST_F(StateControllerTest, InvalidDelays) {
   // The dim delay should be less than the off delay, which should be less
-  // than the lock delay, which should be less than the idle delay.  All of
-  // those constraints are violated here, so all of the other delays should
-  // be capped to the idle delay (except for the lock delay, which is
-  // disabled in favor of Chrome just locking before the system suspends).
+  // than the idle delay.  All of those constraints are violated here, so
+  // all of the other delays should be capped to the idle delay.
   default_ac_screen_dim_delay_ = base::TimeDelta::FromSeconds(120);
   default_ac_screen_off_delay_ = base::TimeDelta::FromSeconds(110);
-  default_screen_lock_delay_ = base::TimeDelta::FromSeconds(100);
-  default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(90);
+  default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(100);
   Init();
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
+
+  // Policy delays should also be cleaned up.
+  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(70);
+  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(50);
+  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(80);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(60);
+
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+
+  // The screen-dim delay should be capped to the screen-off delay, while
+  // the screen-lock delay should be ignored since it extends beyond the
+  // suspend delay.
+  controller_.HandleResume();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
 // Tests that idle notifications requested by outside processes are honored.
@@ -969,7 +922,6 @@ TEST_F(StateControllerTest, EmitIdleNotification) {
   // it won't be hit
   default_ac_screen_dim_delay_ = base::TimeDelta();
   default_ac_screen_off_delay_ = base::TimeDelta();
-  default_screen_lock_delay_ = base::TimeDelta();
   default_ac_suspend_delay_ = base::TimeDelta::FromSeconds(600);
   Init();
 
@@ -1033,9 +985,7 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
   delegate_.set_avoid_suspend_for_headphones(true);
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, NULL),
-            delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
@@ -1046,9 +996,8 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kSuspend, NULL),
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
 
   // Non-suspend actions should still be performed while headphones are
@@ -1063,9 +1012,8 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kShutDown, NULL),
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
             delegate_.GetActions());
 }
 
@@ -1075,9 +1023,8 @@ TEST_F(StateControllerTest, LidCloseAfterIdleSuspend) {
   Init();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_screen_lock_delay_));
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kScreenLock, kSuspend, NULL),
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
 
   // Close the lid, which may wake the system.  The controller should
