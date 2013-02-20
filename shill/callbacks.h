@@ -5,6 +5,8 @@
 #ifndef SHILL_CALLBACKS_
 #define SHILL_CALLBACKS_
 
+#include <string>
+
 #include <base/callback.h>
 
 #include "shill/dbus_properties.h"
@@ -14,6 +16,9 @@ namespace shill {
 class Error;
 // Convenient typedefs for some commonly used callbacks.
 typedef base::Callback<void(const Error &)> ResultCallback;
+typedef base::Callback<void(const Error &, bool)> ResultBoolCallback;
+typedef base::Callback<void(const Error &,
+                            const std::string &)> ResultStringCallback;
 typedef base::Callback<void(const Error &)> EnabledStateChangedCallback;
 typedef base::Callback<void(const DBusPropertiesMap &,
                             const Error &)> DBusPropertyMapCallback;

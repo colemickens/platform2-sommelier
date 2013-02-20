@@ -26,7 +26,8 @@ class Manager;
 // having a bare pointer to its owner manager.
 class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                            public DBusAdaptor,
-                           public ManagerAdaptorInterface {
+                           public ManagerAdaptorInterface,
+                           public base::SupportsWeakPtr<ManagerDBusAdaptor> {
  public:
   static const char kPath[];
 

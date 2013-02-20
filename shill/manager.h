@@ -284,6 +284,51 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual int RegisterDefaultServiceCallback(const ServiceCallback &callback);
   virtual void DeregisterDefaultServiceCallback(int tag);
 
+  // Verifies that the destination described by certificate is valid, and that
+  // we're currently connected to that destination.  A full description of the
+  // rules being enforced is in doc/manager-api.txt.  Returns true iff all
+  // checks pass, false otherwise.  On false, error is filled with a
+  // descriptive error code and message.
+  //
+  // |certificate| is a PEM encoded x509 certificate, |public_key| is a base64
+  // encoded public half of an RSA key, |nonce| is a random string, and
+  // |signed_data| is a base64 encoded string as described in
+  // doc/manager-api.txt.
+  void VerifyDestination(const std::string &certificate,
+                         const std::string &public_key,
+                         const std::string &nonce,
+                         const std::string &signed_data,
+                         const std::string &destination_udn,
+                         const ResultBoolCallback &cb,
+                         Error *error);
+
+  // After verifying the destination, encrypt the string data with
+  // |public_key|, the base64 encoded public half of an RSA key pair.  Returns
+  // the base64 encoded result if successful, or an empty string on failure.
+  // On failure, |error| will be filled with an appropriately descriptive
+  // message and error code.
+  void VerifyAndEncryptData(const std::string &certificate,
+                            const std::string &public_key,
+                            const std::string &nonce,
+                            const std::string &signed_data,
+                            const std::string &destination_udn,
+                            const std::string &data,
+                            const ResultStringCallback &cb,
+                            Error *error);
+
+  // After verifying the destination, encrypt the password for |network_path|
+  // under |public_key|.  Similar to EncryptData above except that the
+  // information being encrypted is implicitly the authentication credentials
+  // of the given network.
+  void VerifyAndEncryptCredentials(const std::string &certificate,
+                                   const std::string &public_key,
+                                   const std::string &nonce,
+                                   const std::string &signed_data,
+                                   const std::string &destination_udn,
+                                   const std::string &network_path,
+                                   const ResultStringCallback &cb,
+                                   Error *error);
+
  private:
   friend class CellularTest;
   friend class ManagerAdaptorInterface;

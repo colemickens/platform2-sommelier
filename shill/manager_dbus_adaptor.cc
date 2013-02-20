@@ -8,8 +8,10 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <dbus-c++/dbus.h>
 
+#include "shill/callbacks.h"
 #include "shill/device.h"
 #include "shill/error.h"
 #include "shill/geolocation_info.h"
@@ -18,6 +20,7 @@
 #include "shill/manager.h"
 #include "shill/wifi_service.h"
 
+using base::Bind;
 using std::map;
 using std::string;
 using std::vector;
@@ -345,8 +348,13 @@ bool ManagerDBusAdaptor::VerifyDestination(const string &certificate,
                                            const string &destination_udn,
                                            ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
-  Error e(Error::kNotImplemented, "Not implemented");
-  e.ToDBusError(&error);
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  manager_->VerifyDestination(certificate, public_key, nonce,
+                              signed_data, destination_udn,
+                              GetBoolMethodReplyCallback(tag), &e);
+  ReturnResultOrDefer(tag, e, &error);
+  CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
   return false;
 }
 
@@ -359,8 +367,15 @@ string ManagerDBusAdaptor::VerifyAndEncryptCredentials(
     const ::DBus::Path &network,
     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
-  Error e(Error::kNotImplemented, "Not implemented");
-  e.ToDBusError(&error);
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  manager_->VerifyAndEncryptCredentials(certificate, public_key, nonce,
+                                        signed_data, destination_udn,
+                                        network,
+                                        GetStringMethodReplyCallback(tag),
+                                        &e);
+  ReturnResultOrDefer(tag, e, &error);
+  CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
   return "";
 }
 
@@ -373,8 +388,14 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
     const string &data,
     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
-  Error e(Error::kNotImplemented, "Not implemented");
-  e.ToDBusError(&error);
+  Error e(Error::kOperationInitiated);
+  DBus::Tag *tag = new DBus::Tag();
+  manager_->VerifyAndEncryptData(certificate, public_key, nonce,
+                                 signed_data, destination_udn,
+                                 data, GetStringMethodReplyCallback(tag),
+                                 &e);
+    ReturnResultOrDefer(tag, e, &error);
+  CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
   return "";
 }
 

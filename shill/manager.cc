@@ -1002,6 +1002,38 @@ void Manager::DeregisterDefaultServiceCallback(int tag) {
   default_service_callbacks_.erase(tag);
 }
 
+void Manager::VerifyDestination(const string &certificate,
+                                const string &public_key,
+                                const string &nonce,
+                                const string &signed_data,
+                                const string &destination_udn,
+                                const ResultBoolCallback &cb,
+                                Error *error) {
+  error->Populate(Error::kNotImplemented, "Not implemented");
+}
+
+void Manager::VerifyAndEncryptData(const string &certificate,
+                                   const string &public_key,
+                                   const string &nonce,
+                                   const string &signed_data,
+                                   const string &destination_udn,
+                                   const string &data,
+                                   const ResultStringCallback &cb,
+                                   Error *error) {
+  error->Populate(Error::kNotImplemented, "Not implemented");
+}
+
+void Manager::VerifyAndEncryptCredentials(const string &certificate,
+                                          const string &public_key,
+                                          const string &nonce,
+                                          const string &signed_data,
+                                          const string &destination_udn,
+                                          const string &network_path,
+                                          const ResultStringCallback &cb,
+                                          Error *error) {
+  error->Populate(Error::kNotImplemented, "Not implemented");
+}
+
 void Manager::NotifyDefaultServiceChanged(const ServiceRefPtr &service) {
   for (map<int, ServiceCallback>::const_iterator it =
            default_service_callbacks_.begin();

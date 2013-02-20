@@ -92,6 +92,12 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
 
  protected:
   ResultCallback GetMethodReplyCallback(const DBus::Tag *tag);
+  // It would be nice if these two methods could be templated.  Unfortunately,
+  // attempts to do so will trigger some fairly esoteric warnings from the
+  // base library.
+  ResultStringCallback GetStringMethodReplyCallback(const DBus::Tag *tag);
+  ResultBoolCallback GetBoolMethodReplyCallback(const DBus::Tag *tag);
+
   // Adaptors call this method just before returning. If |error|
   // indicates that the operation has completed, with no asynchronously
   // delivered result expected, then a DBus method reply is immediately
@@ -129,8 +135,17 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static const char kStringsSig[];
 
   void MethodReplyCallback(const DBus::Tag *tag, const Error &error);
+  void StringMethodReplyCallback(const DBus::Tag *tag, const Error &error,
+                                 const std::string &returned);
+  void BoolMethodReplyCallback(const DBus::Tag *tag, const Error &error,
+                               bool returned);
+  template<typename T>
+  void TypedMethodReplyCallback(const DBus::Tag *tag, const Error &error,
+                                const T &returned);
   void DeferReply(const DBus::Tag *tag);
   void ReplyNow(const DBus::Tag *tag);
+  template <typename T>
+  void TypedReplyNow(const DBus::Tag *tag, const T &value);
   void ReplyNowWithError(const DBus::Tag *tag, const DBus::Error &error);
 
   DISALLOW_COPY_AND_ASSIGN(DBusAdaptor);

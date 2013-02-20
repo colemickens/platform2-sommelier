@@ -454,6 +454,14 @@ void DBusAdaptor::ReplyNow(const DBus::Tag *tag) {
   return_now(cont);
 }
 
+template <typename T>
+void DBusAdaptor::TypedReplyNow(const DBus::Tag *tag, const T &value) {
+  Continuation *cont = find_continuation(tag);
+  CHECK(cont);
+  cont->writer() << value;
+  return_now(cont);
+}
+
 void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
                                     const DBus::Error &error) {
   Continuation *cont = find_continuation(tag);
@@ -464,6 +472,29 @@ void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
 ResultCallback DBusAdaptor::GetMethodReplyCallback(
     const DBus::Tag *tag) {
   return Bind(&DBusAdaptor::MethodReplyCallback, AsWeakPtr(), Owned(tag));
+}
+
+ResultStringCallback DBusAdaptor::GetStringMethodReplyCallback(
+    const DBus::Tag *tag) {
+  return Bind(&DBusAdaptor::StringMethodReplyCallback, AsWeakPtr(), Owned(tag));
+}
+
+ResultBoolCallback DBusAdaptor::GetBoolMethodReplyCallback(
+    const DBus::Tag *tag) {
+  return Bind(&DBusAdaptor::BoolMethodReplyCallback, AsWeakPtr(), Owned(tag));
+}
+
+template<typename T>
+void DBusAdaptor::TypedMethodReplyCallback(const DBus::Tag *tag,
+                                           const Error &error,
+                                           const T &returned) {
+  if (error.IsFailure()) {
+    DBus::Error dberror;
+    error.ToDBusError(&dberror);
+    ReplyNowWithError(tag, dberror);
+  } else {
+    TypedReplyNow(tag, returned);
+  }
 }
 
 void DBusAdaptor::ReturnResultOrDefer(const DBus::Tag *tag,
@@ -485,6 +516,18 @@ void DBusAdaptor::MethodReplyCallback(const DBus::Tag *tag,
   } else {
     ReplyNow(tag);
   }
+}
+
+void DBusAdaptor::StringMethodReplyCallback(const DBus::Tag *tag,
+                                            const Error &error,
+                                            const string &returned) {
+  TypedMethodReplyCallback(tag, error, returned);
+}
+
+void DBusAdaptor::BoolMethodReplyCallback(const DBus::Tag *tag,
+                                          const Error &error,
+                                          bool returned) {
+  TypedMethodReplyCallback(tag, error, returned);
 }
 
 }  // namespace shill
