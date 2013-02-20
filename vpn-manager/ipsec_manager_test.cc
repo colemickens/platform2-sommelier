@@ -123,8 +123,8 @@ void IpsecManagerTest::SetStartStarterExpectations(bool already_running) {
   if (already_running) {
     ipsec_.starter_pid_file_ = test_path_.Append("starter_pid").value();
     SetProcessKillExpectations(ipsec_.starter_pid_file_);
-    ipsec_.pluto_pid_file_ = test_path_.Append("pluto_pid").value();
-    SetProcessKillExpectations(ipsec_.pluto_pid_file_);
+    ipsec_.charon_pid_file_ = test_path_.Append("charon_pid").value();
+    SetProcessKillExpectations(ipsec_.charon_pid_file_);
   }
 
   EXPECT_CALL(*starter_, AddArg(IPSEC_STARTER));
@@ -208,7 +208,8 @@ TEST_F(IpsecManagerTest, FormatSecretsNoSlot) {
   DoInitialize(1, false);
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
-  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0:0a \"123456\"\n", formatted);
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0@crypto_module:0a \"123456\"\n",
+            formatted);
 }
 
 TEST_F(IpsecManagerTest, FormatSecretsNonZeroSlot) {
@@ -216,7 +217,29 @@ TEST_F(IpsecManagerTest, FormatSecretsNonZeroSlot) {
   DoInitialize(1, false);
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
-  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard1:0a \"123456\"\n", formatted);
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard1@crypto_module:0a \"123456\"\n",
+            formatted);
+}
+
+TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
+  std::string strongswan_config(
+      "libstrongswan {\n"
+      "  plugins {\n"
+      "    pkcs11 {\n"
+      "      modules {\n"
+      "        crypto_module {\n"
+      "          path = " PKCS11_LIB "\n"
+      "        }\n"
+      "      }\n"
+      "    }\n"
+      "  }\n"
+      "}\n"
+      "charon {\n"
+      "  ignore_routing_tables = 0\n"
+      "  install_routes = no\n"
+      "  routing_table = 0\n"
+      "}\n");
+  EXPECT_EQ(strongswan_config, ipsec_.FormatStrongswanConfigFile());
 }
 
 class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
@@ -260,26 +283,22 @@ TEST_F(IpsecManagerTestIkeV1Psk, StartStarterAlreadyRunning) {
 
 std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug) {
   std::string expected(
-      "config setup\n"
-      "\tcharonstart=no\n");
+      "config setup\n");
   if (debug) {
-    expected.append("\tplutodebug=\"all\"\n");
+    expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
   }
   expected.append(
-      "\tnat_traversal=yes\n"
-      "\tpkcs11module=\"" PKCS11_LIB "\"\n"
-      "\tignorepeeridcheck=yes\n"
       "conn managed\n"
       "\tike=\"3des-sha1-modp1024\"\n"
       "\tesp=\"aes128-sha1,3des-sha1,aes128-md5,3des-md5\"\n"
       "\tkeyexchange=\"ikev1\"\n"
       "\tauthby=\"psk\"\n"
-      "\tpfs=no\n"
       "\trekey=yes\n"
       "\tleft=\"\%defaultroute\"\n"
       "\tleftprotoport=\"17/1701\"\n"
       "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
       "\tright=\"1.2.3.4\"\n"
+      "\trightid=\"%any\"\n"
       "\trightprotoport=\"17/1701\"\n"
       "\ttype=\"transport\"\n"
       "\tauto=\"start\"\n");
@@ -327,27 +346,24 @@ TEST_F(IpsecManagerTestIkeV1Certs, Initialize) {
 TEST_F(IpsecManagerTestIkeV1Certs, FormatSecrets) {
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
-  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0:0a \"123456\"\n", formatted);
+  EXPECT_EQ("5.6.7.8 1.2.3.4 : PIN \%smartcard0@crypto_module:0a \"123456\"\n",
+            formatted);
 }
 
 std::string IpsecManagerTestIkeV1Certs::GetExpectedStarter(bool debug) {
   std::string expected(
-      "config setup\n"
-      "\tcharonstart=no\n");
+      "config setup\n");
   if (debug) {
-    expected.append("\tplutodebug=\"all\"\n");
+    expected.append("\tcharondebug=\"dmn 2, mgr 2, ike 2, net 2\"\n");
   }
   expected.append(
-      "\tnat_traversal=yes\n"
-      "\tpkcs11module=\"" PKCS11_LIB "\"\n"
       "conn managed\n"
       "\tike=\"3des-sha1-modp1024\"\n"
       "\tesp=\"aes128-sha1,3des-sha1,aes128-md5,3des-md5\"\n"
       "\tkeyexchange=\"ikev1\"\n"
-      "\tpfs=no\n"
       "\trekey=yes\n"
       "\tleft=\"\%defaultroute\"\n"
-      "\tleftcert=\"\%smartcard0:0a\"\n"
+      "\tleftcert=\"\%smartcard0@crypto_module:0a\"\n"
       "\tleftprotoport=\"17/1701\"\n"
       "\tleftupdown=\"/usr/libexec/l2tpipsec_vpn/pluto_updown\"\n"
       "\tright=\"1.2.3.4\"\n"

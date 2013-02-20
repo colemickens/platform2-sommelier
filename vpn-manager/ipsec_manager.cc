@@ -38,6 +38,7 @@ DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
 DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
+using ::base::FilePath;
 using ::chromeos::Process;
 using ::chromeos::ProcessImpl;
 
@@ -52,13 +53,14 @@ const char kIpsecRunPath[] = "/var/run/ipsec";
 const char kIpsecUpFile[] = "/var/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
 const char kStarterPidFile[] = "/var/run/starter.pid";
-const char kPlutoPidFile[] = "/var/run/pluto.pid";
+const char kCharonPidFile[] = "/var/run/charon.pid";
 const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
 const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
 const mode_t kStatefulContainerMode =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
+const char kSmartcardModuleName[] = "crypto_module";
 
 // Give IPsec layer 2 seconds to shut down before killing it.
 const int kTermTimeout = 2;
@@ -75,7 +77,7 @@ IpsecManager::IpsecManager()
       ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
       starter_pid_file_(kStarterPidFile),
-      pluto_pid_file_(kPlutoPidFile),
+      charon_pid_file_(kCharonPidFile),
       starter_(new ProcessImpl) {
 }
 
@@ -204,8 +206,9 @@ bool IpsecManager::FormatSecrets(std::string* formatted) {
   std::string secret_mode;
   std::string secret;
   if (psk_file_.empty()) {
-    secret_mode = StringPrintf("PIN %%smartcard%s:%s",
+    secret_mode = StringPrintf("PIN %%smartcard%s@%s:%s",
                                client_cert_slot_.c_str(),
+                               kSmartcardModuleName,
                                client_cert_id_.c_str());
     secret = user_pin_;
   } else {
@@ -249,7 +252,7 @@ void IpsecManager::KillRunningDaemon(const std::string& pid_file) {
 
 void IpsecManager::KillCurrentlyRunning() {
   KillRunningDaemon(starter_pid_file_);
-  KillRunningDaemon(pluto_pid_file_);
+  KillRunningDaemon(charon_pid_file_);
 }
 
 bool IpsecManager::StartStarter() {
@@ -284,24 +287,33 @@ inline void AppendIntSetting(std::string* config, const char* key,
   config->append(StringPrintf("\t%s=%d\n", key, value));
 }
 
+std::string IpsecManager::FormatStrongswanConfigFile() {
+  std::string config;
+  config.append("libstrongswan {\n");
+  config.append("  plugins {\n");
+  config.append("    pkcs11 {\n");
+  config.append("      modules {\n");
+  config.append(StringPrintf("        %s {\n", kSmartcardModuleName));
+  config.append(StringPrintf("          path = %s\n", PKCS11_LIB));
+  config.append("        }\n");
+  config.append("      }\n");
+  config.append("    }\n");
+  config.append("  }\n");
+  config.append("}\n");
+  config.append("charon {\n");
+  config.append("  ignore_routing_tables = 0\n");
+  config.append("  install_routes = no\n");
+  config.append("  routing_table = 0\n");
+  config.append("}\n");
+  return config;
+}
+
 std::string IpsecManager::FormatStarterConfigFile() {
   std::string config;
   config.append("config setup\n");
-  if (ike_version_ == 1) {
-    AppendBoolSetting(&config, "charonstart", false);
-    if (debug()) {
-      AppendStringSetting(&config, "plutodebug", "all");
-    }
-  } else {
-    AppendBoolSetting(&config, "plutostart", false);
+  if (debug()) {
+    AppendStringSetting(&config, "charondebug", "dmn 2, mgr 2, ike 2, net 2");
   }
-  AppendBoolSetting(&config, "nat_traversal", FLAGS_nat_traversal);
-  AppendStringSetting(&config, "pkcs11module", PKCS11_LIB);
-  // If no server ID is specified, ignore the peer ID check in pluto
-  // so that it accepts either IP address or fully qualified domain name
-  // reported by the server (crosbug.com/24476).
-  if (server_id_.empty())
-    AppendBoolSetting(&config, "ignorepeeridcheck", true);
 
   config.append("conn managed\n");
   AppendStringSetting(&config, "ike", FLAGS_ike);
@@ -309,12 +321,12 @@ std::string IpsecManager::FormatStarterConfigFile() {
   AppendStringSetting(&config, "keyexchange",
                       ike_version_ == 1 ? "ikev1" : "ikev2");
   if (!psk_file_.empty()) AppendStringSetting(&config, "authby", "psk");
-  AppendBoolSetting(&config, "pfs", FLAGS_pfs);
   AppendBoolSetting(&config, "rekey", FLAGS_rekey);
   AppendStringSetting(&config, "left", "%defaultroute");
   if (!client_cert_slot_.empty()) {
-    std::string smartcard = StringPrintf("%%smartcard%s:%s",
+    std::string smartcard = StringPrintf("%%smartcard%s@%s:%s",
                                          client_cert_slot_.c_str(),
+                                         kSmartcardModuleName,
                                          client_cert_id_.c_str());
     AppendStringSetting(&config, "leftcert", smartcard);
   }
@@ -324,7 +336,11 @@ std::string IpsecManager::FormatStarterConfigFile() {
   if (!server_ca_subject_.empty()) {
     AppendStringSetting(&config, "rightca", server_ca_subject_);
   }
-  if (!server_id_.empty()) AppendStringSetting(&config, "rightid", server_id_);
+  if (server_id_.empty()) {
+    AppendStringSetting(&config, "rightid", "%any");
+  } else {
+    AppendStringSetting(&config, "rightid", server_id_);
+  }
   AppendStringSetting(&config, "rightprotoport", FLAGS_rightprotoport);
   AppendStringSetting(&config, "type", FLAGS_type);
   AppendStringSetting(&config, "auto", "start");
@@ -366,12 +382,20 @@ bool IpsecManager::WriteConfigFiles() {
     LOG(ERROR) << "Unable to write secrets file " << secrets_path_.value();
     return false;
   }
+  FilePath strongswan_config_path = container_path.Append("strongswan.conf");
+  std::string strongswan_config = FormatStrongswanConfigFile();
+  if (!file_util::WriteFile(strongswan_config_path, strongswan_config.c_str(),
+                            strongswan_config.size()) ||
+      !SetIpsecGroup(strongswan_config_path)) {
+    LOG(ERROR) << "Unable to write strongswan config file";
+    return false;
+  }
   FilePath starter_config_path = temp_path()->Append("ipsec.conf");
   std::string starter_config = FormatStarterConfigFile();
   if (!file_util::WriteFile(starter_config_path, starter_config.c_str(),
                             starter_config.size()) ||
       !SetIpsecGroup(starter_config_path)) {
-    LOG(ERROR) << "Unable to write ipsec config files";
+    LOG(ERROR) << "Unable to write ipsec config file";
     return false;
   }
   FilePath config_symlink_path = container_path.Append("ipsec.conf");

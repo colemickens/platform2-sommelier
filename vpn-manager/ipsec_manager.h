@@ -22,7 +22,7 @@ namespace vpn_manager {
 
 // Manages the ipsec daemon.  This manager orchestrates configuring and
 // launching the strongswan starter process which in turn launches the
-// appropriate IKE v1 (pluto) or IKE v2 (charon) daemon.
+// charon daemon.
 class IpsecManager : public ServiceManager {
  public:
   IpsecManager();
@@ -61,6 +61,7 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
   FRIEND_TEST(IpsecManagerTest, FormatSecretsNoSlot);
   FRIEND_TEST(IpsecManagerTest, FormatSecretsNonZeroSlot);
+  FRIEND_TEST(IpsecManagerTest, FormatStrongswanConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatSecrets);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost);
@@ -79,6 +80,7 @@ class IpsecManager : public ServiceManager {
   void KillRunningDaemon(const std::string& pid_file);
   bool WriteConfigFiles();
   bool CreateIpsecRunDirectory();
+  std::string FormatStrongswanConfigFile();
   std::string FormatStarterConfigFile();
   bool CreateStatefulSymlink(const std::string& target_filename,
                              const std::string& symlink_filename);
@@ -108,8 +110,8 @@ class IpsecManager : public ServiceManager {
   std::string ipsec_prefix_;
   // File containing starter process's process id.
   std::string starter_pid_file_;
-  // File containing pluto process's process id.
-  std::string pluto_pid_file_;
+  // File containing charon process's process id.
+  std::string charon_pid_file_;
   // Remote address of IPsec connection.
   struct sockaddr remote_address_;
   // Remote address of IPsec connection (as a string).
