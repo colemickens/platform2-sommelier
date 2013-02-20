@@ -20,11 +20,11 @@ namespace {
 
 // Abort if it an expected brightness change hasn't been received after this
 // many milliseconds.
-const guint kChangeTimeoutMs = 5000;
+const int kChangeTimeoutMs = 5000;
 
 // Shorter version of kChangeTimeoutMs for tests that expect a timeout and don't
 // want to slow things down.
-const guint kChangeShortTimeoutMs = 500;
+const int kChangeShortTimeoutMs = 500;
 
 // Frequency with which the ambient light sensor file is polled.
 const int kPollIntervalMs = 100;
@@ -38,18 +38,22 @@ class TestObserver : public AmbientLightSensorObserver {
 
   // Runs |loop_| until OnAmbientLightChanged() is called.
   bool RunUntilAmbientLightChanged() {
+    // TODO(derat): Remove LOG(INFO)s once http://crosbug.com/38609 is fixed.
+    LOG(INFO) << "Running loop for up to " << kChangeTimeoutMs << " ms";
     return loop_runner_.StartLoop(
         base::TimeDelta::FromMilliseconds(kChangeTimeoutMs));
   }
 
   // Alternate version of RunUntilAmbientLightChanged() with a shorter timeout.
   bool RunShortUntilAmbientLightChanged() {
+    LOG(INFO) << "Running loop for up to " << kChangeShortTimeoutMs << " ms";
     return loop_runner_.StartLoop(
         base::TimeDelta::FromMilliseconds(kChangeShortTimeoutMs));
   }
 
   // AmbientLightSensorObserver implementation:
   virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE {
+    LOG(INFO) << "Stopping loop after ambient light notification";
     loop_runner_.StopLoop();
   }
 
@@ -72,13 +76,17 @@ class AmbientLightSensorTest : public ::testing::Test {
     CHECK(file_util::CreateDirectory(device_dir));
     data_file_ = device_dir.Append("illuminance0_input");
     sensor_.reset(new AmbientLightSensor);
+    // TODO(derat): Remove once http://crosbug.com/38609 is fixed.
+    sensor_->set_verbose(true);
     sensor_->set_device_list_path_for_testing(temp_dir_.path());
     sensor_->set_poll_interval_ms_for_testing(kPollIntervalMs);
     sensor_->AddObserver(&observer_);
     sensor_->Init();
+    LOG(INFO) << "Initialized sensor";
   }
 
   virtual void TearDown() OVERRIDE {
+    LOG(INFO) << "Tearing down test";
     sensor_->RemoveObserver(&observer_);
   }
 

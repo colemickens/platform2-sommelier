@@ -38,6 +38,8 @@ class AmbientLightSensor {
     poll_interval_ms_ = interval_ms;
   }
 
+  void set_verbose(bool verbose) { als_file_.set_verbose(verbose); }
+
   // Starts polling.  This is separate from c'tor so that tests can call
   // set_*_for_testing() first.
   virtual void Init();

@@ -49,6 +49,7 @@ AmbientLightSensor::AmbientLightSensor()
     : device_list_path_(kDefaultDeviceListPath),
       poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs),
+      lux_value_(-1),
       still_deferring_(false),
       als_found_(false),
       read_cb_(base::Bind(&AmbientLightSensor::ReadCallback,
@@ -149,7 +150,7 @@ gboolean AmbientLightSensor::ReadAls() {
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
   if (!als_file_.HasOpenedFile() && !DeferredInit())
-    return true;  // Return true to try again later.
+    return TRUE;  // Keep the timeout alive.
 
   // StartRead() can call |error_cb_| synchronously, so clear |poll_timeout_id_|
   // first to make sure that we don't leak a newer timeout set by the callback.

@@ -22,7 +22,7 @@ const int kInitialFileReadSize = 4096;
 // How often to poll for the AIO status.
 const int kPollMs = 100;
 
-}
+}  // namespace
 
 namespace power_manager {
 
@@ -33,7 +33,9 @@ AsyncFileReader::AsyncFileReader()
       initial_read_size_(kInitialFileReadSize),
       read_cb_(NULL),
       error_cb_(NULL),
-      update_state_timeout_id_(0) {}
+      update_state_timeout_id_(0),
+      verbose_(false) {
+}
 
 AsyncFileReader::~AsyncFileReader() {
   Reset();
@@ -45,7 +47,7 @@ bool AsyncFileReader::Init(const std::string& filename) {
                     << "descriptor exists.";
   fd_ = open(filename.c_str(), O_RDONLY, 0);
   if (fd_ == -1) {
-    LOG(ERROR) << "Could not open file " << filename;
+    PLOG(ERROR) << "Could not open file " << filename;
     return false;
   }
   filename_ = filename;
@@ -59,6 +61,7 @@ bool AsyncFileReader::HasOpenedFile() const {
 void AsyncFileReader::StartRead(
     base::Callback<void(const std::string&)>* read_cb,
     base::Callback<void()>* error_cb) {
+  LOG_IF(INFO, verbose_) << "Starting read of " << filename_;
   Reset();
 
   if (fd_ == -1) {
@@ -79,12 +82,15 @@ void AsyncFileReader::StartRead(
 }
 
 gboolean AsyncFileReader::UpdateState() {
+  LOG_IF(INFO, verbose_)
+      << "Updating state; read_in_progress=" << read_in_progress_;
   if (!read_in_progress_) {
     update_state_timeout_id_ = 0;
     return FALSE;
   }
 
   int status = aio_error(&aio_control_);
+  LOG_IF(INFO, verbose_) << "Status is " << status;
 
   // If the read is still in-progress, keep the timeout alive.
   if (status == EINPROGRESS)
@@ -130,11 +136,20 @@ gboolean AsyncFileReader::UpdateState() {
 }
 
 void AsyncFileReader::Reset() {
+  LOG_IF(INFO, verbose_ && read_in_progress_) << "Resetting state";
   if (!read_in_progress_)
     return;
 
   util::RemoveTimeout(&update_state_timeout_id_);
-  aio_cancel(fd_, &aio_control_);
+
+  // TODO(derat): Determine if unhandled AIO_NOTCANCELED results are the
+  // cause of http://crosbug.com/38732.
+  int cancel_result = aio_cancel(fd_, &aio_control_);
+  if (cancel_result == -1)
+    PLOG(ERROR) << "aio_cancel() failed";
+  else if (cancel_result == AIO_NOTCANCELED)
+    LOG(ERROR) << "aio_cancel() returned AIO_NOTCANCELED";
+
   delete [] aio_buffer_;
   aio_buffer_ = NULL;
   stored_data_.clear();

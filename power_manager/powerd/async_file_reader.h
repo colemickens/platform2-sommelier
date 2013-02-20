@@ -23,6 +23,8 @@ class AsyncFileReader {
   explicit AsyncFileReader();
   ~AsyncFileReader();
 
+  void set_verbose(bool verbose) { verbose_ = verbose; }
+
   // Read file asynchronously, passing its contents to |read_cb| when done.
   // Invokes |error_cb| on failure. If a read is already in progress, abort it
   // first.  Note that |error_cb| may be invoked synchronously.
@@ -83,6 +85,9 @@ class AsyncFileReader {
 
   // GLib source ID used to run UpdateState(), or 0 if unset.
   guint update_state_timeout_id_;
+
+  // Enables verbose logging.
+  bool verbose_;
 
   DISALLOW_COPY_AND_ASSIGN(AsyncFileReader);
 };
