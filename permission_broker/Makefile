@@ -4,7 +4,7 @@
 
 include common.mk
 
-BASE_VER ?= 125070
+BASE_VER ?= 180609
 PKG_CONFIG ?= pkg-config
 
 CXXFLAGS += -I$(SRC)/..
