@@ -183,7 +183,9 @@ int main() {
   for (size_t i = 0; i < modems.size(); ++i)
     result.Append(modems[i].GetStatus(conn));
   std::string json;
-  base::JSONWriter::Write(&result, true, &json);
+  base::JSONWriter::WriteWithOptions(&result,
+                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                     &json);
   printf("%s\n", json.c_str());
   return 0;
 }
