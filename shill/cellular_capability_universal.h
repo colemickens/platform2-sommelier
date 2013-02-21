@@ -146,6 +146,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, CompleteActivation);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
@@ -170,6 +171,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModem);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateIccidActivationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdateServiceActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
@@ -333,6 +336,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Post-payment activation handlers.
   void UpdateIccidActivationState();
   void ResetAfterActivation();
+  void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error &error);
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;

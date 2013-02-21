@@ -1443,6 +1443,87 @@ TEST_F(CellularCapabilityUniversalMainTest, IsMdnValid) {
   EXPECT_TRUE(capability_->IsMdnValid());
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, CompleteActivation) {
+  const char kIccid[] = "1234567";
+
+  capability_->mdn_.clear();
+  capability_->sim_identifier_.clear();
+  SetMockIccidStore();
+
+  EXPECT_CALL(mock_iccid_store_,
+              SetActivationState(kIccid, ActivatingIccidStore::kStatePending))
+      .Times(0);
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+      .Times(0);
+  EXPECT_CALL(mock_iccid_store_, SetActivationState(_, _)).Times(0);
+  Error error;
+  capability_->CompleteActivation(&error);
+  Mock::VerifyAndClearExpectations(this);
+
+  capability_->sim_identifier_ = kIccid;
+  EXPECT_CALL(mock_iccid_store_,
+              SetActivationState(kIccid, ActivatingIccidStore::kStatePending))
+      .Times(1);
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+      .Times(1);
+  capability_->CompleteActivation(&error);
+  Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(mock_iccid_store_,
+              SetActivationState(kIccid, ActivatingIccidStore::kStatePending))
+      .Times(0);
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+      .Times(0);
+  capability_->mdn_ = "1231231212";
+  capability_->CompleteActivation(&error);
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
+  const char kIccid[] = "1234567";
+  SetMockIccidStore();
+  capability_->sim_identifier_.clear();
+  capability_->mdn_ = "0000000000";
+  cellular_->cellular_operator_info_ = &cellular_operator_info_;
+  CellularService::OLP olp;
+  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+      .WillRepeatedly(Return(&olp));
+
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateNotActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(this);
+
+  capability_->mdn_ = "1231231122";
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(this);
+
+  capability_->mdn_ = "0000000000";
+  capability_->sim_identifier_ = kIccid;
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
+      .Times(2)
+      .WillRepeatedly(Return(ActivatingIccidStore::kStatePending));
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
+      .Times(2)
+      .WillRepeatedly(Return(ActivatingIccidStore::kStateActivated));
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivated))
+      .Times(1);
+  capability_->UpdateServiceActivationState();
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   const char kIccid[] = "1234567";
 
@@ -1475,6 +1556,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   capability_->reset_done_ = false;
   EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
       .Times(2).WillRepeatedly(Return(ActivatingIccidStore::kStatePending));
+  EXPECT_CALL(*service_,
+              SetActivationState(flimflam::kActivationStateActivating))
+     .Times(2);
   EXPECT_CALL(*modem_proxy, Reset(_, _, _)).Times(0);
   capability_->UpdateIccidActivationState();
 
@@ -1588,6 +1672,7 @@ TEST_F(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName) {
 TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = NULL;
+  SetMockIccidStore();
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
@@ -1603,6 +1688,13 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
   capability_->mdn_ = "0000000000";
   EXPECT_TRUE(capability_->IsServiceActivationRequired());
+
+  const char kIccid[] = "1234567890";
+  capability_->sim_identifier_ = kIccid;
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(kIccid))
+      .Times(1)
+      .WillOnce(Return(ActivatingIccidStore::kStateActivated));
+  EXPECT_FALSE(capability_->IsServiceActivationRequired());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {

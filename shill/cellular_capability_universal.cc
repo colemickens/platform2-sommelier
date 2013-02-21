@@ -432,10 +432,16 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
     SLOG(Cellular, 2) << "Already acquired a valid MDN. Already activated.";
     return;
   }
+
   if (sim_identifier_.empty()) {
     SLOG(Cellular, 2) << "SIM identifier not available. Nothing to do.";
     return;
   }
+
+  // There should be a cellular service at this point.
+  if (cellular()->service().get())
+    cellular()->service()->SetActivationState(
+        flimflam::kActivationStateActivating);
   activating_iccid_store_->SetActivationState(
       sim_identifier_,
       ActivatingIccidStore::kStatePending);
@@ -478,9 +484,12 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
   if (got_mdn && !sim_identifier_.empty())
       activating_iccid_store_->RemoveEntry(sim_identifier_);
 
-  if (!cellular()->service().get() ||
-      cellular()->service()->activation_state() ==
-          flimflam::kActivationStateActivated)
+  CellularServiceRefPtr service = cellular()->service();
+
+  if (!service.get())
+    return;
+
+  if (service->activation_state() == flimflam::kActivationStateActivated)
       // Either no service or already activated. Nothing to do.
       return;
 
@@ -489,43 +498,45 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
   if (got_mdn || cellular()->state() == Cellular::kStateConnected ||
       cellular()->state() == Cellular::kStateLinked) {
     SLOG(Cellular, 2) << "Marking service as activated.";
-    if (cellular()->service().get())
-      cellular()->service()->SetActivationState(
-          flimflam::kActivationStateActivated);
+    service->SetActivationState(flimflam::kActivationStateActivated);
     return;
   }
 
   // If the ICCID is not available, the following logic can be delayed until it
   // becomes available.
-  if (!sim_identifier_.empty()) {
-    ActivatingIccidStore::State state =
-        activating_iccid_store_->GetActivationState(sim_identifier_);
-    switch (state) {
-      case ActivatingIccidStore::kStatePending:
-        if (reset_done_) {
-          SLOG(Cellular, 2) << "Post-payment activation reset complete.";
-          activating_iccid_store_->SetActivationState(
-              sim_identifier_,
-              ActivatingIccidStore::kStateActivated);
-        } else if (registered) {
-          SLOG(Cellular, 2) << "Resetting modem for activation.";
-          ResetAfterActivation();
-        }
-        break;
-      case ActivatingIccidStore::kStateActivated:
-        if (registered && cellular()->service().get()) {
-          // Trigger auto connect here.
-          SLOG(Cellular, 2) << "Modem has been reset at least once, try to "
-                            << "autoconnect to force MDN to update.";
-          cellular()->service()->AutoConnect();
-        }
-        break;
-      case ActivatingIccidStore::kStateUnknown:
-        // No entry exists for this ICCID. Nothing to do.
-        break;
-      default:
-        NOTREACHED();
-    }
+  if (sim_identifier_.empty())
+    return;
+
+  ActivatingIccidStore::State state =
+      activating_iccid_store_->GetActivationState(sim_identifier_);
+  switch (state) {
+    case ActivatingIccidStore::kStatePending:
+      // Always mark the service as activating here, as the ICCID could have
+      // been unavailable earlier.
+      service->SetActivationState(flimflam::kActivationStateActivating);
+      if (reset_done_) {
+        SLOG(Cellular, 2) << "Post-payment activation reset complete.";
+        activating_iccid_store_->SetActivationState(
+            sim_identifier_,
+            ActivatingIccidStore::kStateActivated);
+      } else if (registered) {
+        SLOG(Cellular, 2) << "Resetting modem for activation.";
+        ResetAfterActivation();
+      }
+      break;
+    case ActivatingIccidStore::kStateActivated:
+      if (registered) {
+        // Trigger auto connect here.
+        SLOG(Cellular, 2) << "Modem has been reset at least once, try to "
+                          << "autoconnect to force MDN to update.";
+        service->AutoConnect();
+      }
+      break;
+    case ActivatingIccidStore::kStateUnknown:
+      // No entry exists for this ICCID. Nothing to do.
+      break;
+    default:
+      NOTREACHED();
   }
 }
 
@@ -563,19 +574,29 @@ void CellularCapabilityUniversal::UpdateStorageIdentifier() {
   }
 }
 
-void CellularCapabilityUniversal::OnServiceCreated() {
-  UpdateStorageIdentifier();
+void CellularCapabilityUniversal::UpdateServiceActivationState() {
+  if (!cellular()->service().get())
+    return;
   bool activation_required = IsServiceActivationRequired();
-  cellular()->service()->SetActivationState(
-      activation_required ?
-      flimflam::kActivationStateNotActivated :
-      flimflam::kActivationStateActivated);
+  string activation_state = flimflam::kActivationStateActivated;
+  if (!sim_identifier_.empty() &&
+       activating_iccid_store_->GetActivationState(sim_identifier_) ==
+          ActivatingIccidStore::kStatePending)
+    activation_state = flimflam::kActivationStateActivating;
+  else if (activation_required)
+    activation_state = flimflam::kActivationStateNotActivated;
+  cellular()->service()->SetActivationState(activation_state);
   // TODO(benchan): For now, assume the cellular service is activated over
   // a non-cellular network if service activation is required (i.e. a
   // corresponding entry is found in the cellular operator info file).
   // We will need to generalize this logic when migrating CDMA support from
   // cromo to ModemManager.
   cellular()->service()->SetActivateOverNonCellularNetwork(activation_required);
+}
+
+void CellularCapabilityUniversal::OnServiceCreated() {
+  UpdateStorageIdentifier();
+  UpdateServiceActivationState();
   UpdateScanningProperty();
   UpdateServingOperator();
   UpdateOLP();
@@ -1012,11 +1033,11 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
     return false;
 
   // If MDN contains only zeros, the service requires activation.
-  // Note that |mdn_| is normalized to contain only digits in OnMdnChanged().
   return !IsMdnValid();
 }
 
 bool CellularCapabilityUniversal::IsMdnValid() const {
+  // Note that |mdn_| is normalized to contain only digits in OnMdnChanged().
   for (size_t i = 0; i < mdn_.size(); ++i) {
     if (mdn_[i] != '0')
       return true;
