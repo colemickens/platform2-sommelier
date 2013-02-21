@@ -369,9 +369,11 @@ bootstat x-started
 #
 export PATH=/bin:/usr/bin:/usr/bin/X11
 
+# TODO(dgreid): Reduce audio buffer size to 512 (crbug.com/39100)
 exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
     ${HANG_DETECTION_FLAG} -- \
     $CHROME --allow-webui-compositing \
+            --audio-buffer-size=2048 \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
             --enable-autologin \
