@@ -61,6 +61,12 @@ bool Minijail::RunPipe(struct minijail *jail,
   return minijail_run_pid_pipe(jail, args[0], args.data(), pid, stdin) == 0;
 }
 
+bool Minijail::RunPipes(struct minijail *jail, vector<char *> args, pid_t *pid,
+                        int *stdin, int *stdout, int *stderr) {
+  return minijail_run_pid_pipes(jail, args[0], args.data(),
+                                pid, stdin, stdout, stderr) == 0;
+}
+
 bool Minijail::RunAndDestroy(struct minijail *jail,
                              vector<char *> args, pid_t *pid) {
   bool res = Run(jail, args, pid);
@@ -78,6 +84,14 @@ bool Minijail::RunSyncAndDestroy(struct minijail *jail,
 bool Minijail::RunPipeAndDestroy(struct minijail *jail,
                                  vector<char *> args, pid_t *pid, int *stdin) {
   bool res = RunPipe(jail, args, pid, stdin);
+  Destroy(jail);
+  return res;
+}
+
+bool Minijail::RunPipesAndDestroy(struct minijail *jail,
+                                  vector<char *> args, pid_t *pid, int *stdin,
+                                  int *stdout, int *stderr) {
+  bool res = RunPipes(jail, args, pid, stdin, stdout, stderr);
   Destroy(jail);
   return res;
 }

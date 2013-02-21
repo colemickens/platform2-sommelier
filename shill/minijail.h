@@ -45,6 +45,10 @@ class Minijail {
   virtual bool RunPipe(struct minijail *jail, std::vector<char *> args,
                        pid_t *pid, int *stdin);
 
+  // minijail_run_pid_pipes
+  virtual bool RunPipes(struct minijail *jail, std::vector<char *> args,
+                        pid_t *pid, int *stdin, int *stdout, int *stderr);
+
   // Run() and Destroy()
   virtual bool RunAndDestroy(struct minijail *jail,
                              std::vector<char *> args,
@@ -60,6 +64,11 @@ class Minijail {
                                  std::vector<char *> args,
                                  pid_t *pid, int *stdin);
 
+  // RunPipes() and Destroy()
+  virtual bool RunPipesAndDestroy(struct minijail *jail,
+                                  std::vector<char *> args,
+                                  pid_t *pid, int *stdin,
+                                  int *stdout, int *stderr);
  protected:
   Minijail();
 
