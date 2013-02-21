@@ -91,6 +91,7 @@ _CREATE_BUILDDIR := $(shell mkdir -p \
 	$(BUILD_DBUS_BINDINGS_DIR) \
 	$(BUILD_DBUS_BINDINGS_SHIMS_DIR) \
 	$(BUILD_PROTO_BINDINGS_DIR)/power_manager \
+	$(BUILD_PROTO_BINDINGS_DIR)/shims/protos \
 	$(BUILD_SHIMS_DIR))
 
 DBUS_ADAPTOR_HEADERS :=
@@ -166,11 +167,16 @@ DBUS_PROXY_BINDINGS = \
 	$(addprefix $(BUILD_DBUS_BINDINGS_DIR)/, $(DBUS_PROXY_HEADERS))
 
 SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus
-PROTO_BINDINGS_OBJS = $(addprefix $(BUILD_PROTO_BINDINGS_DIR)/, \
+SYSTEM_PROTO_BINDINGS_OBJS = $(addprefix $(BUILD_PROTO_BINDINGS_DIR)/, \
 	power_manager/suspend.pb.o \
 	)
+SHIM_PROTO_BINDINGS_OBJS = $(addprefix $(BUILD_PROTO_BINDINGS_DIR)/, \
+	shims/protos/crypto_util.pb.o \
+	)
+PROTO_BINDINGS_OBJS = $(SYSTEM_PROTO_BINDINGS_OBJS) $(SHIM_PROTO_BINDINGS_OBJS)
 PROTO_BINDINGS_H = $(PROTO_BINDINGS_OBJS:.o=.h)
-PROTO_BINDINGS_CC = $(PROTO_BINDINGS_OBJS:.o=.cc)
+SYSTEM_PROTO_BINDINGS_CC = $(SYSTEM_PROTO_BINDINGS_OBJS:.o=.cc)
+SHIM_PROTO_BINDINGS_CC = $(SHIM_PROTO_BINDINGS_OBJS:.o=.cc)
 
 SHILL_LIB = $(BUILDDIR)/shill.a
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
@@ -205,6 +211,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	dbus_properties_proxy.o \
 	dbus_service_proxy.o \
 	default_profile.o \
+	crypto_util_proxy.o \
 	device.o \
 	device_dbus_adaptor.o \
 	device_info.o \
@@ -343,6 +350,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
+	crypto_util_proxy_unittest.o \
 	config80211_unittest.o \
 	connection_unittest.o \
 	dbus_adaptor_unittest.o \
@@ -574,10 +582,14 @@ $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
 
 $(PROTO_BINDINGS_H): %.h: %.cc ;
 
-$(PROTO_BINDINGS_CC): \
+$(SYSTEM_PROTO_BINDINGS_CC): \
 	$(BUILD_PROTO_BINDINGS_DIR)/%.pb.cc: $(SYSTEM_API_PROTO_PATH)/%.proto
 	$(PROTOC) --proto_path=$(SYSTEM_API_PROTO_PATH) \
 		--cpp_out=$(BUILD_PROTO_BINDINGS_DIR) $<
+
+$(SHIM_PROTO_BINDINGS_CC): \
+	$(BUILD_PROTO_BINDINGS_DIR)/%.pb.cc: %.proto
+	$(PROTOC) --proto_path=./ --cpp_out=$(BUILD_PROTO_BINDINGS_DIR) $<
 
 $(BUILDDIR)/%.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@

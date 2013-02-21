@@ -30,6 +30,10 @@ class MockMinijail : public Minijail {
                                    std::vector<char *> args, pid_t *pid));
   MOCK_METHOD3(RunSyncAndDestroy, bool(struct minijail *jail,
                                        std::vector<char *> args, int *status));
+  MOCK_METHOD6(RunPipesAndDestroy, bool(struct minijail *jail,
+                                        std::vector<char *> args,
+                                        pid_t *pid, int *stdin,
+                                        int *stdout, int *stderr));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMinijail);
