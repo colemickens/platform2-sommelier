@@ -1324,6 +1324,15 @@ void Daemon::OnLowBattery(int64 time_remaining_s,
     low_battery_ = false;
     return;
   }
+
+  // TODO(derat): Figure out what's causing http://crosbug.com/38912.
+  if (battery_percentage < 0.001) {
+    LOG(WARNING) << "Ignoring probably-bogus zero battery percentage "
+                 << "(time-to-empty is " << time_remaining_s << " sec, "
+                 << "time-to-full is " << time_full_s << " sec)";
+    return;
+  }
+
   if (PLUGGED_STATE_DISCONNECTED == plugged_state_ && !low_battery_ &&
       ((time_remaining_s <= low_battery_shutdown_time_s_ &&
         time_remaining_s > 0) ||
