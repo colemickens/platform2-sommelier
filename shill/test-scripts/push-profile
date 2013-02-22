@@ -1,0 +1,11 @@
+#!/usr/bin/python
+
+import dbus, flimflam, sys
+
+if (len(sys.argv) < 2):
+    print "Profile identifier required"
+    sys.exit(1)
+
+flim = flimflam.FlimFlam(dbus.SystemBus())
+profile = flim.PushProfile(sys.argv[1])
+print "Pushed profile %s" % (profile.object_path)

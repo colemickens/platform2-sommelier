@@ -1,0 +1,83 @@
+#!/usr/bin/python
+
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+#
+# Implement an activation server
+#
+
+import BaseHTTPServer
+import dbus
+import os
+import SimpleHTTPServer
+import SocketServer
+
+def Carrier():
+    bus = dbus.SystemBus()
+    obj = bus.get_object('org.chromium.ModemManager',
+                         '/org/chromium/ModemManager/Carrier')
+    return dbus.Interface(obj, 'org.chromium.ModemManager.Carrier')
+
+PORT = 8080
+
+class LocalCarrierRequestHandler(SimpleHTTPServer.SimpleHTTPRequestHandler):
+
+    @staticmethod
+    def PaymentSucceeded():
+        # Always recreate to allow restarts for fake-cromo
+        carrier = Carrier()
+        print 'user paid'
+        carrier.ProcessPayment()
+
+    @staticmethod
+    def PaymentFailed():
+        # Always recreate to allow restarts for fake-cromo
+        carrier = Carrier()
+        print 'user failed to pay'
+        carrier.ConsumePlan()
+
+
+    def do_GET(self, *args, **kwargs):
+        """Handle GET request.
+
+        The LocalCarrierRequestHandler handles 2 specific GET commands
+        based on the path in the url.  These are:
+
+        payment_succeeded.html: Payment succeeded
+        payment_failed.html: Payment request failed
+
+        In both cases a DBUS message is sent to the fake-cromo server so
+        that it can implement carrier specific behavior associated with
+        payments.
+        """
+
+        path = self.translate_path(self.path)
+        basename = os.path.basename(path)
+        if basename == 'payment_succeeded.html':
+            LocalCarrierRequestHandler.PaymentSucceeded()
+        elif basename == 'payment_failed.html':
+            LocalCarrierRequestHandler.PaymentFailed()
+
+        SimpleHTTPServer.SimpleHTTPRequestHandler.do_GET(self, *args, **kwargs)
+
+    def send_response(self, code, message=None):
+        """Send the response header
+
+        This version marks all pages as non cacheable after sending
+        the other default headers in the base class
+
+        """
+        BaseHTTPServer.BaseHTTPRequestHandler.send_response(self, code, message)
+        self.send_header('Cache-Control', 'no-cache')
+
+
+class ThreadingBaseHTTPServer(SocketServer.ThreadingMixIn,
+                              BaseHTTPServer.HTTPServer): pass
+
+
+httpd = ThreadingBaseHTTPServer(("", PORT), LocalCarrierRequestHandler)
+
+print "serving at port", PORT
+
+httpd.serve_forever()

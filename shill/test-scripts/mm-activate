@@ -1,0 +1,25 @@
+#!/usr/bin/python
+
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import mm
+import sys
+
+def Usage(prog):
+    print ("Usage: %s <carrier-name> [<device path substring>]") % prog
+
+if len(sys.argv) < 2 or len(sys.argv) > 3:
+    Usage(sys.argv[0])
+    sys.exit(1)
+
+carrier = sys.argv[1]
+if len(sys.argv) < 3:
+    modem_pattern = ''
+else:
+    modem_pattern = sys.argv[2]
+
+manager, path = mm.PickOneModem(modem_pattern)
+modem = manager.CdmaModem(path)
+modem.Activate(carrier)

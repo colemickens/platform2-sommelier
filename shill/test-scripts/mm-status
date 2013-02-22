@@ -1,0 +1,130 @@
+#!/bin/dash
+
+. "$(dirname "$0")/mm.sh"
+
+# This is somewhat subtle, and quite disgusting. Here's the story: dbus-send
+# --fixed emits arrays and tuples like:
+#   /0 something
+#   /1 anotherthing
+# We happen to know that 0 is actually, say, signal strength, and 1 is carrier
+# name, but we get the info back as a tuple. Fortunately, unpacktuple() to the
+# rescue! This function generates and then runs a sed expression which
+# transforms the indexes into proper keys automatically. For the above
+# expression, we might use:
+#   unpacktuple SignalStrength Carrier
+# And if we then did:
+#   dbus-blahblah GetSomething | unpacktuple SignalStrength Carrier
+# We would end up with nicely-formatted output:
+#   SignalStrength: something
+#   Carrier: anotherthing
+unpacktuple () {
+	local cmd='sed'
+	local argidx=0
+	while test $# != 0; do
+		# Grab a variable name
+		local varname=$1
+		shift
+
+		# Generate an expression that turns the current index into that
+		# variable name, and append it.
+		cmd="$cmd -e s/^\\/${argidx}/$varname:/"
+		argidx=$((argidx+1))
+	done
+
+	# Indent the result. XXX: variable depth? Do we care?
+	$cmd -e 's/^/    /'
+}
+
+stripindexes () {
+	sed -e 's/^\/[[:digit:]]\+\///' -e 's/[^[:space:]]*/\0:/' -e 's/^/    /'
+}
+
+pcdma () {
+	local mm=$1
+	local modem=$2
+	echo "CDMA:"
+	echo -n "  ESN: "
+	dbus $mm $modem $IMODEM_CDMA.GetEsn
+
+	# GetRegistrationState is... 'gratuitously different' in that it
+	# returns a tuple at the top level instead of an array. As such,
+	# the unpack here is nasty.
+	echo "  Registration:"
+	echo -n "    CDMA-1x: "
+	dbus $mm $modem $IMODEM_CDMA.GetRegistrationState | head -n 1
+	echo -n "    EVDO: "
+	dbus $mm $modem $IMODEM_CDMA.GetRegistrationState | tail -n 1
+
+	echo "  ServingSystem:"
+	dbus $mm $modem $IMODEM_CDMA.GetServingSystem \
+		| unpacktuple BandClass Band ID
+	echo -n "  SignalQuality: "
+	dbus $mm $modem $IMODEM_CDMA.GetSignalQuality
+}
+
+pgsm () {
+	local mm=$1
+	local modem=$2
+	echo "GSM:"
+	echo -n "  IMSI: "
+	dbus $mm $modem $IMODEM_GSM_CARD.GetImsi
+	echo "  Registration:"
+	dbus $mm $modem $IMODEM_GSM_NETWORK.GetRegistrationInfo \
+		| unpacktuple Status OperatorCode OperatorName
+	echo -n "  SignalQuality: "
+	dbus $mm $modem $IMODEM_GSM_NETWORK.GetSignalQuality
+}
+
+hidemdn () {
+	[ -z $devmode ] && sed -e '/mdn/s/ 001[0-9]*$/ partial/'
+}
+
+hidemin () {
+	[ -z $devmode ] && sed -e '/min/s/ 001[0-9]*$/ partial/'
+}
+
+pmodem () {
+	local mm=$1
+	local modem=$2
+	echo ""
+	echo "Modem $modem (manager $mm):"
+	echo "  GetStatus:"
+	dbus $mm $modem $IMODEM_SIMPLE.GetStatus | stripindexes | hidemdn | hidemin
+	echo "  GetInfo:"
+	dbus $mm $modem $IMODEM.GetInfo | unpacktuple Manufacturer Modem Version
+	echo "  Props:"
+	modemprops $mm $modem | stripindexes
+	local mtype=$(modemprop $mm $modem Type)
+	if [ -z $mtype ]; then
+		echo "Modem type unknown; no further information available."
+		return
+	fi
+	if [ $mtype -eq $MTYPE_CDMA ]; then
+		pcdma $mm $modem | sed -e 's/^/  /'
+	fi
+	if [ $mtype -eq $MTYPE_GSM ]; then
+		pgsm $mm $modem | sed -e 's/^/  /'
+	fi
+}
+
+usage () {
+	echo "Usage: $0 [-d]"
+	exit 0
+}
+
+if [ $# -gt 0 ]; then
+	case "$1" in
+		-d)
+			devmode=1
+			;;
+		*)
+			usage
+			;;
+	esac
+fi
+
+for mm in $(modemmanagers); do
+	for m in $(modems $mm); do
+		pmodem $mm $m
+	done
+done

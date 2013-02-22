@@ -1,0 +1,39 @@
+#!/bin/dash
+
+. "$(dirname "$0")/mm.sh"
+
+cyclegobi () {
+	local mm=$1
+	local modem=$2
+	dbus $mm $(iface2rootobj $mm)/$modem $IMODEM_GOBI.PowerCycle
+}
+
+cyclegen () {
+	local mm=$1
+	local modem=$2
+	dbus $mm $(iface2rootobj $mm)/$modem $IMODEM.Reset
+}
+
+case $1 in
+	-a)
+		for mm in $(modemmanagers); do
+			for m in $(modems $mm);
+				do $0 $mm $m
+			done
+		done
+		exit 0
+		;;
+esac
+
+mm=$1
+mmobj=$(iface2rootobj $mm)
+mname=$(echo $2 | sed -e "s!$mmobj/!!")
+mtype=$(echo $mname | awk -F/ '{print $1}' | tr A-Z a-z)
+case $mtype in
+	gobi)
+		cyclegobi $mm $mname
+		;;
+	*)
+		cyclegen $mm $mname
+		;;
+esac

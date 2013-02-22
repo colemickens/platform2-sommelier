@@ -1,0 +1,121 @@
+#!/usr/bin/python
+
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+#
+# Call the Simple.Connect API.
+#
+
+import gobject
+import dbus
+import dbus.mainloop.glib
+import mm
+import sys
+from optparse import OptionParser
+
+def state_changed(_, new_state, _, modem_path):
+    """
+    _ (old_state): Previous modem state (but unused).
+    new_state: New modem state.
+    _ (reason):    Reason for transition (but unused).
+    modem_path: Path of the modem object for this status update.
+    """
+    if new_state == 90:
+        print "Connection established for", modem_path
+    else:
+        print "Connection failed for", modem_path
+    mainloop.quit()
+
+usage = '%prog [options]'
+
+parser = OptionParser(usage=usage)
+parser.add_option('--apn', type='string',
+                  dest='apn',
+                  default=None,
+                  help='apn to supply to the connect operation')
+parser.add_option('--username', type='string',
+                  dest='username',
+                  default=None,
+                  help='user name to supply to the connect operation')
+parser.add_option('--password', type='string',
+                  dest='password',
+                  default=None,
+                  help='password to supply to the connect operation')
+parser.add_option('--number', type='string',
+                  dest='number',
+                  default=None,
+                  help='phone number to supply to the connect operation')
+parser.add_option('--carrier', type='choice',
+                  dest='carrier',
+                  choices=['tmobile', 'sprint', 'att', 'verizon'],
+                  default=None,
+                  help='Specifies the carrier. Provided as a convenience '
+                  'to avoid having to supply an APN or phone number.')
+parser.add_option('-w', '--wait',
+                  action='store_true', dest='wait',
+                  default=False,
+                  help='Wait until connection completes or fails '
+                       '(default: %default)')
+
+(options, args) = parser.parse_args()
+if len(args) > 1:
+    parser.error("incorrect number of arguments")
+
+props = dict()
+
+carriers = dict(
+    att=dict(number="*99#", apn='broadband'),
+    tmobile=dict(number="*99#", apn='epc.tmobile.com'),
+    sprint=dict(number="#777"),
+    verizon=dict(number="#777"),
+)
+
+if len(args) < 1:
+    modem_pattern = ''
+else:
+    modem_pattern = args[0]
+
+if options.carrier:
+    try:
+        props = carriers[options.carrier]
+    except KeyError:
+        parser.error("Unknown carrier '%s'." % options.carrier)
+        sys.exit(1)
+
+if options.apn:
+    props['apn'] = options.apn
+if options.username:
+    props['username'] = options.username
+if options.password:
+    props['password'] = options.password
+if options.number:
+    props['number'] = options.number
+
+dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+manager, path = mm.PickOneModem(modem_pattern)
+modem = manager.CdmaModem(path)
+
+print "Connecting", path
+
+if options.wait:
+    bus = dbus.SystemBus()
+    bus.add_signal_receiver(state_changed,
+                            bus_name=manager.provider,
+                            signal_name="StateChanged",
+                            path_keyword="path")
+
+modem = manager.SimpleModem(path)
+try:
+    modem.Connect(props)
+    options.wait = False
+except dbus.exceptions.DBusException, e:
+    if (e.get_dbus_name() !=
+        "org.chromium.ModemManager.Error.OperationInitiated"):
+        raise e
+
+if options.wait:
+    mainloop = gobject.MainLoop()
+    mainloop.run()

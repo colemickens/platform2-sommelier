@@ -1,0 +1,48 @@
+#!/bin/sh
+
+. "$(dirname "$0")"/mm.sh
+
+usage () {
+	echo "Usage: $0 <command> [args...]"
+	echo "  change <old> <new>"
+	echo "  unlock <pin>"
+	echo "  disable <pin>"
+	echo "  enable <pin>"
+	exit 0
+}
+
+change () {
+	dbus $1 $2 $IMODEM_GSM_CARD.ChangePin string:$3 string:$4
+}
+
+unlock () {
+	dbus $1 $2 $IMODEM_GSM_CARD.SendPin string:$3
+}
+
+enable () {
+	dbus $1 $2 $IMODEM_GSM_CARD.EnablePin string:$3 boolean:true
+}
+
+disable () {
+	dbus $1 $2 $IMODEM_GSM_CARD.EnablePin string:$3 boolean:false
+}
+
+if [ ! -z "$1" ]; then
+	cmd="$1" ; shift
+else
+	cmd="help"
+fi
+
+case "$cmd" in
+	change|unlock|enable|disable)
+		;;
+	*)
+		usage
+		;;
+esac
+
+for mm in $(modemmanagers); do
+	for modem in $(modems $mm); do
+		$cmd $mm $modem "$@"
+	done
+done

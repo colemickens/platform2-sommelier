@@ -1,0 +1,63 @@
+#!/usr/bin/python
+
+# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import sys
+import time
+
+import mm
+
+INTERFACES = ['interface_1_dbm', 'interface_2_dbm']
+
+TIME = 60
+SAMPLES = TIME * 2
+
+
+manager, path = mm.PickOneModem('')
+simple_modem = manager.SimpleModem(path)
+
+strengths = []  # list of lists where list[i] is dbm for interface #i
+start = time.time()
+finish = start + TIME
+
+for i in xrange(SAMPLES):
+    next_reading_time = start + i *    (float(TIME) / float(SAMPLES))
+
+    # Wait for next reading time
+    while True:
+        delta = next_reading_time - time.time()
+        if delta > 0.01:
+            time.sleep(delta)
+        elif delta < -1:
+            raise Exception('Fell too far behind: delta = %f' % delta)
+        else:
+            break
+
+    sprops = simple_modem.GetStatus()
+
+    sample = [int(sprops.get(interface, -256)) for
+          interface in INTERFACES]
+    strengths.append(sample)
+
+    sample_string = ['%d' % x for x in sample]
+
+    remaining = '%f remaining' % (finish - time.time())
+    print >> sys.stderr, '\t'.join(['%.3f' % time.time()] +
+                                   sample_string +
+                                   [remaining])
+
+means = []
+
+for interface in xrange(len(INTERFACES)):
+    means.append(sum([sample[interface] for sample in strengths]) /
+                 float(len(strengths)))
+
+output = ['%.1f' % x for x in [start] + means]
+output_string = '\t'.join(output)
+
+print >> sys.stderr, (
+        time.strftime('%a, %d %b %Y %H:%M:%S local:  ', time.localtime()) +
+        output_string)
+print output_string
