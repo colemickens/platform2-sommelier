@@ -22,7 +22,7 @@ all: $(OUT)cros_boot_mode
 RM_ON_CLEAN += $(OUT)cros_boot_mode
 
 $(OUT)libcros_boot_mode.so: $(filter-out %_main.o,$(BOOT_MODE_OBJECTS))
-	$(call cc_library)
+	$(call cxx_library)
 all: $(OUT)libcros_boot_mode.so
 RM_ON_CLEAN += $(OUT)libcros_boot_mode.so
 
