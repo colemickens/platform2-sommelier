@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <stddef.h>
 
+#include <sstream>
+
 #include "perf_recorder.h"
 #include "perf_serializer.h"
 #include "utils.h"

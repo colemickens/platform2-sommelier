@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <fstream>
 
+#include <base/logging.h>
+
 #include "perf_reader.h"
 
 #define PERF_MAGIC 0x32454c4946524550LL

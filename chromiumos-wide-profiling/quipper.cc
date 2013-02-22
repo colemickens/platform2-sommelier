@@ -4,6 +4,8 @@
 
 #include <sstream>
 
+#include <base/logging.h>
+
 #include "perf_protobuf_io.h"
 #include "perf_reader.h"
 #include "perf_recorder.h"

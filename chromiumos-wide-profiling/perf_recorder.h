@@ -7,7 +7,8 @@
 
 #include <string>
 
-#include "common.h"
+#include <base/basictypes.h>
+
 #include "perf_reader.h"
 #include "perf_data.pb.h"
 

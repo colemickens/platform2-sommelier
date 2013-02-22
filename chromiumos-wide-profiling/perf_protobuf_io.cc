@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 
+#include <base/logging.h>
+
 #include "perf_protobuf_io.h"
 #include "utils.h"
 

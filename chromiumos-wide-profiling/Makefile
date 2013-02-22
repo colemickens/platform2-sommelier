@@ -5,10 +5,12 @@
 # TODO(asharif): Convert this to common.mk.
 CXX ?= g++
 
+BASE_VERSION ?= 180609
+
 CXXFLAGS += -g -Wall -Iperf -Werror -Wall \
-	    $(shell pkg-config --cflags protobuf)
+	    $(shell pkg-config --cflags protobuf --cflags libchrome-$(BASE_VERSION))
 LDFLAGS += $(shell pkg-config --libs protobuf) \
-	   $(shell pkg-config --libs openssl)
+	   $(shell pkg-config --libs openssl --libs libchrome-$(BASE_VERSION))
 TEST_LDFLAGS = $(LDFLAGS) -lgtest
 
 MAIN_SOURCES = quipper.cc

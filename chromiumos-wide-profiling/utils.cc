@@ -6,9 +6,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+
 #include <cstdio>
 #include <istream>
 #include <iomanip>
+#include <sstream>
 
 #include <openssl/md5.h>
 

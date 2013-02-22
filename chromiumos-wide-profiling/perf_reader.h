@@ -8,9 +8,9 @@
 #include <vector>
 #include <string>
 
-#include "kernel/perf_internals.h"
+#include <base/basictypes.h>
 
-#include "common.h"
+#include "kernel/perf_internals.h"
 
 struct PerfFileAttr {
   struct perf_event_attr attr;
