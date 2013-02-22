@@ -396,11 +396,19 @@ TEST_F(WiFiProviderTest, CreateTwoServices) {
   EXPECT_EQ(2, GetServices().size());
 }
 
-TEST_F(WiFiProviderTest, GetServiceNoMode) {
+TEST_F(WiFiProviderTest, GetServiceEmptyMode) {
   Error error;
   EXPECT_FALSE(GetService("foo", "", flimflam::kSecurityNone,
                           false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
+}
+
+TEST_F(WiFiProviderTest, GetServiceNoMode) {
+  Error error;
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_TRUE(GetService("foo", NULL, flimflam::kSecurityNone,
+                          false, false, &error).get());
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(WiFiProviderTest, GetServiceBadMode) {

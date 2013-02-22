@@ -137,7 +137,7 @@ WiFiServiceRefPtr WiFiProvider::GetService(
     const KeyValueStore &args, Error *error) {
   CHECK_EQ(args.LookupString(flimflam::kTypeProperty, ""), flimflam::kTypeWifi);
 
-  if (args.LookupString(flimflam::kModeProperty, "") !=
+  if (args.LookupString(flimflam::kModeProperty, flimflam::kModeManaged) !=
       flimflam::kModeManaged) {
     Error::PopulateAndLog(error, Error::kNotSupported,
                           kManagerErrorUnsupportedServiceMode);
