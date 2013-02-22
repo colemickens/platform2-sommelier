@@ -39,8 +39,8 @@
 #include <iomanip>
 #include <string>
 
-#include <base/posix/eintr_wrapper.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/stringprintf.h>
 
 #include "shill/logging.h"
