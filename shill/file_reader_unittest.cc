@@ -8,7 +8,7 @@
 #include <vector>
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/string_util.h>
 #include <gtest/gtest.h>
 
@@ -41,7 +41,7 @@ TEST_F(FileReaderTest, OpenNonExistentFile) {
 }
 
 TEST_F(FileReaderTest, OpenEmptyFile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath path;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &path));
@@ -60,7 +60,7 @@ TEST_F(FileReaderTest, ReadLine) {
   lines.push_back("test");
   string content = JoinString(lines, '\n');
 
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath path;
   ASSERT_TRUE(file_util::CreateTemporaryFileInDir(temp_dir.path(), &path));

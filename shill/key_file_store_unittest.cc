@@ -5,7 +5,7 @@
 #include "shill/key_file_store.h"
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
@@ -56,7 +56,7 @@ class KeyFileStoreTest : public Test {
                       const string &expected_value);
 
   GLib glib_;  // Use real GLib for testing KeyFileStore.
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
   FilePath test_file_;
   KeyFileStore store_;
 };

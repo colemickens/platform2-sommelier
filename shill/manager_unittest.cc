@@ -10,7 +10,7 @@
 #include <glib.h>
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -44,6 +44,7 @@
 #include "shill/wifi_service.h"
 #include "shill/wimax_service.h"
 
+using base::ScopedTempDir;
 using std::map;
 using std::set;
 using std::string;
@@ -144,19 +145,19 @@ class ManagerTest : public PropertyStoreTest {
 
   Profile *CreateProfileForManager(Manager *manager, GLib *glib) {
     Profile::Identifier id("rather", "irrelevant");
-    scoped_ptr<Profile> profile(new Profile(control_interface(),
-                                            manager,
-                                            id,
-                                            "",
-                                            false));
     FilePath final_path(storage_path());
     final_path = final_path.Append("test.profile");
     scoped_ptr<KeyFileStore> storage(new KeyFileStore(glib));
     storage->set_path(final_path);
     if (!storage->Open())
       return NULL;
-    profile->set_storage(storage.release());  // Passes ownership.
-    return profile.release();
+    Profile *profile(new Profile(control_interface(),
+                                 manager,
+                                 id,
+                                 "",
+                                 false));
+    profile->set_storage(storage.release());  // Passes ownership of "storage".
+    return profile;  // Passes onwership of "profile".
   }
 
   bool CreateBackingStoreForService(ScopedTempDir *temp_dir,

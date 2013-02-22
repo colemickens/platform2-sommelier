@@ -35,7 +35,7 @@ class EphemeralProfile : public Profile {
   virtual bool Save();
 
   // Leaves |path| untouched and returns false.
-  virtual bool GetStoragePath(FilePath */*path*/) { return false; }
+  virtual bool GetStoragePath(base::FilePath */*path*/) { return false; }
 
  private:
   DISALLOW_COPY_AND_ASSIGN(EphemeralProfile);

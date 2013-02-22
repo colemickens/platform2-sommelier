@@ -5,7 +5,7 @@
 #include "shill/resolver.h"
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
 #include <gtest/gtest.h>
@@ -60,7 +60,7 @@ class ResolverTest : public Test {
  protected:
   string ReadFile();
 
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
   Resolver *resolver_;
   FilePath path_;
 };

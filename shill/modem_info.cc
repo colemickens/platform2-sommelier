@@ -70,7 +70,7 @@ void ModemInfo::Stop() {
   cellular_operator_info_.reset();
   mobile_provider_close_db(provider_db_);
   provider_db_ = NULL;
-  modem_managers_.reset();
+  modem_managers_.clear();
 }
 
 void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {

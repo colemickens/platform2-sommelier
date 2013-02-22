@@ -7,7 +7,11 @@
 
 #include "shill/byte_string.h"
 
+namespace base {
+
 class FilePath;
+
+}  // namespace base
 
 namespace shill {
 
@@ -17,7 +21,7 @@ class Certificates {
  public:
   static ByteString ConvertDERToPEM(const ByteString &der_cert);
 
-  static bool Write(const ByteString &cert, const FilePath &certfile);
+  static bool Write(const ByteString &cert, const base::FilePath &certfile);
 };
 
 }  // namespace shims

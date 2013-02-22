@@ -28,7 +28,7 @@ LIBDIR = /usr/lib
 SHIMDIR = $(LIBDIR)/shill/shims
 CPPFLAGS += -DSHIMDIR=\"$(SHIMDIR)\"
 
-BASE_VER = 125070
+BASE_VER ?= 180609
 COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 SHILL_PC_DEPS = \
 	$(COMMON_PC_DEPS) \

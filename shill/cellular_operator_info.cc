@@ -142,7 +142,7 @@ CellularOperatorInfo::GetOLPBySID(const string &sid) {
 }
 
 void CellularOperatorInfo::ClearOperators() {
-  operators_.reset();
+  operators_.clear();
   mccmnc_to_operator_.clear();
   sid_to_operator_.clear();
   name_to_operators_.clear();

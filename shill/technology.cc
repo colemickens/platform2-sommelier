@@ -95,8 +95,9 @@ bool Technology::GetTechnologyVectorFromString(
   set<Technology::Identifier> seen;
   technologies_vector->clear();
 
-  // Check if |technologies_string| is empty as base::SplitString returns
-  // a vector with one empty string when given an empty string.
+  // Check if |technologies_string| is empty as some versions of
+  // base::SplitString return a vector with one empty string when given an
+  // empty string.
   if (!technologies_string.empty())
     base::SplitString(technologies_string, ',', &technology_parts);
 

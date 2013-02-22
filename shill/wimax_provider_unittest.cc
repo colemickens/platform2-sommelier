@@ -5,7 +5,7 @@
 #include "shill/wimax_provider.h"
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -439,7 +439,7 @@ TEST_F(WiMaxProviderTest, GetUniqueService) {
 }
 
 TEST_F(WiMaxProviderTest, CreateServicesFromProfile) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath test_profile = temp_dir.path().Append("test-profile");
   GLib glib;

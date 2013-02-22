@@ -258,7 +258,7 @@ void Manager::InitializeProfiles() {
   CHECK(default_profile->InitStorage(glib_, Profile::kCreateOrOpenExisting,
                                      NULL));
   CHECK(LoadProperties(default_profile));
-  profiles_.push_back(default_profile.release());
+  profiles_.push_back(default_profile);
   Error error;
   string path;
   for (vector<string>::iterator it = startup_profiles_.begin();

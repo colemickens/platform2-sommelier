@@ -5,7 +5,7 @@
 #include "shill/diagnostics_reporter.h"
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -98,7 +98,7 @@ TEST_F(DiagnosticsReporterTest, OnConnectivityEvent) {
     .tv_sec = static_cast<long int>(kNow1),
     .tv_usec = 0
   };
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
   ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
   FilePath stashed_net_log = temp_dir_.path().Append("stashed-net-log");
   EXPECT_EQ(0, file_util::WriteFile(stashed_net_log, "", 0));

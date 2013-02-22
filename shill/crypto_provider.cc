@@ -22,7 +22,7 @@ CryptoProvider::CryptoProvider(GLib *glib)
       key_matter_file_(kKeyMatterFile) {}
 
 void CryptoProvider::Init() {
-  cryptos_.reset();
+  cryptos_.clear();
 
   // Register the crypto modules in priority order -- highest priority first.
   scoped_ptr<CryptoDESCBC> des_cbc(new CryptoDESCBC(glib_));

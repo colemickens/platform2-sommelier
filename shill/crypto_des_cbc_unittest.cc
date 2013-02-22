@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "shill/crypto_des_cbc.h"
@@ -41,7 +41,7 @@ TEST_F(CryptoDESCBCTest, GetID) {
 }
 
 TEST_F(CryptoDESCBCTest, LoadKeyMatter) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   const char kKeyMatterFile[] = "key-matter-file";
   FilePath key_matter = temp_dir.path().Append(kKeyMatterFile);

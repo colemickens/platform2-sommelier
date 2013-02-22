@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 
 #include "shill/shill_config.h"
 
@@ -22,7 +22,7 @@ class TestConfig : public Config {
   virtual std::string GetStorageDirectory();
 
  private:
-  ScopedTempDir dir_;
+  base::ScopedTempDir dir_;
 
   DISALLOW_COPY_AND_ASSIGN(TestConfig);
 };

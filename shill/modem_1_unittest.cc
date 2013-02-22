@@ -4,7 +4,7 @@
 
 #include "shill/modem.h"
 
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <ModemManager/ModemManager.h>
@@ -98,7 +98,7 @@ class Modem1Test : public Test {
   scoped_ptr<Modem1> modem_;
   MockRTNLHandler rtnl_handler_;
   ByteString expected_address_;
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
   string device_;
 };
 

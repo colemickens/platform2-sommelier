@@ -8,7 +8,7 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 using std::string;
@@ -38,9 +38,9 @@ TEST_F(CertificatesTest, ConvertDERToPEM) {
 TEST_F(CertificatesTest, Write) {
   string cert_str = "foo";
   ByteString cert(cert_str, false);
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
-  FilePath certfile = temp_dir.path().Append("certfile");
+  base::FilePath certfile = temp_dir.path().Append("certfile");
   EXPECT_TRUE(Certificates::Write(cert, certfile));
   string contents;
   EXPECT_TRUE(file_util::ReadFileToString(certfile, &contents));

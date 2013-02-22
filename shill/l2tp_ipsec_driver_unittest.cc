@@ -5,7 +5,7 @@
 #include "shill/l2tp_ipsec_driver.h"
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/string_util.h>
 #include <gtest/gtest.h>
 
@@ -128,7 +128,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   virtual void GetLogin(string *user, string *password);
   virtual void Notify(const string &reason, const map<string, string> &dict);
 
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
   NiceMockControl control_;
   NiceMock<MockDeviceInfo> device_info_;
   EventDispatcher dispatcher_;

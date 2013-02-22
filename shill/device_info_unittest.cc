@@ -14,9 +14,9 @@
 #include <net/if_arp.h>
 
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/message_loop.h>
-#include <base/scoped_temp_dir.h>
 #include <base/stl_util.h>
 #include <base/string_number_conversions.h>
 #include <gmock/gmock.h>
@@ -747,7 +747,7 @@ TEST_F(DeviceInfoTest, HasOtherAddress) {
 }
 
 TEST_F(DeviceInfoTest, HasSubdir) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   EXPECT_TRUE(temp_dir.CreateUniqueTempDir());
   EXPECT_TRUE(file_util::CreateDirectory(temp_dir.path().Append("child1")));
   FilePath child2 = temp_dir.path().Append("child2");
@@ -867,7 +867,7 @@ class DeviceInfoTechnologyTest : public DeviceInfoTest {
   }
 
  protected:
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
   FilePath device_info_root_;
   string test_device_name_;
 };

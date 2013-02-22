@@ -7,7 +7,7 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -116,7 +116,7 @@ TEST_F(MemoryLogTest, MemoryLogLimitingWorks) {
 }
 
 TEST_F(MemoryLogTest, MemoryLogFlushToFileWorks) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   FilePath test_path = temp_dir.path().Append("somelogfile");
   ::logging::SetMinLogLevel(logging::LOG_WARNING);

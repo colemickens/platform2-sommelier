@@ -12,7 +12,11 @@
 
 #include "shill/crypto_interface.h"
 
+namespace base {
+
 class FilePath;
+
+}  // namespace base
 
 namespace shill {
 
@@ -28,7 +32,7 @@ class CryptoDESCBC : public CryptoInterface {
   // Sets the DES key to the last |kBlockSize| bytes of |key_matter_path| and
   // the DES initialization vector to the second to last |kBlockSize| bytes of
   // |key_matter_path|. Returns true on success.
-  bool LoadKeyMatter(const FilePath &path);
+  bool LoadKeyMatter(const base::FilePath &path);
 
   // Inherited from CryptoInterface.
   virtual std::string GetID();

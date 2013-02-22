@@ -6,7 +6,7 @@
 
 #include <base/bind.h>
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
@@ -23,6 +23,7 @@
 #include "shill/proxy_factory.h"
 
 using base::Bind;
+using base::ScopedTempDir;
 using base::Unretained;
 using std::string;
 using std::vector;

@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <base/memory/scoped_ptr.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -69,7 +69,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   const std::string internal_error_;
   const std::string invalid_args_;
   const std::string invalid_prop_;
-  ScopedTempDir dir_;
+  base::ScopedTempDir dir_;
   const std::string path_;
   MockControl control_interface_;
   EventDispatcher dispatcher_;

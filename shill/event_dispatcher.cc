@@ -10,6 +10,8 @@
 #include <base/callback.h>
 #include <base/location.h>
 #include <base/message_loop_proxy.h>
+#include <base/run_loop.h>
+#include <base/time.h>
 
 #include "shill/glib_io_input_handler.h"
 #include "shill/glib_io_ready_handler.h"
@@ -31,7 +33,7 @@ void EventDispatcher::DispatchForever() {
 }
 
 void EventDispatcher::DispatchPendingEvents() {
-  MessageLoop::current()->RunAllPending();
+  base::RunLoop().RunUntilIdle();
 }
 
 bool EventDispatcher::PostTask(const Closure &task) {
@@ -39,7 +41,8 @@ bool EventDispatcher::PostTask(const Closure &task) {
 }
 
 bool EventDispatcher::PostDelayedTask(const Closure &task, int64 delay_ms) {
-  return message_loop_proxy_->PostDelayedTask(FROM_HERE, task, delay_ms);
+  return message_loop_proxy_->PostDelayedTask(
+      FROM_HERE, task, base::TimeDelta::FromMilliseconds(delay_ms));
 }
 
 IOHandler *EventDispatcher::CreateInputHandler(

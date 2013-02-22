@@ -56,7 +56,7 @@ bool HTTPURL::ParseFromString(const string &url_string) {
   base::SplitString(url_string.substr(host_start, host_end - host_start),
                     kPortSeparator, &host_parts);
 
-  if (host_parts[0].empty() || host_parts.size() > 2) {
+  if (host_parts.empty() || host_parts[0].empty() || host_parts.size() > 2) {
     return false;
   } else if (host_parts.size() == 2) {
     if (!base::StringToInt(host_parts[1], &port)) {

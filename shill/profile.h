@@ -16,7 +16,11 @@
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 
+namespace base {
+
 class FilePath;
+
+}  // namespace base
 
 namespace shill {
 
@@ -155,7 +159,7 @@ class Profile : public base::RefCounted<Profile> {
   //
   // In the default implementation, |name_.user| cannot be empty, because
   // all regular profiles should be associated with a user.
-  virtual bool GetStoragePath(FilePath *path);
+  virtual bool GetStoragePath(base::FilePath *path);
 
  private:
   friend class ProfileAdaptorInterface;

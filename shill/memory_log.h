@@ -15,7 +15,11 @@
 #include <base/logging.h>
 #include <gtest/gtest_prod.h>
 
+namespace base {
+
 class FilePath;
+
+}  // namespace base
 
 // MemoryLog is nothing but a memory buffer of the most recent messages, capped
 // by a configurable limit of how many message bytes to remember at a time.
@@ -90,7 +94,7 @@ class MemoryLog {
   // Attempts to create the parent directories of |file_path| if it does not
   // already exist.  If the resulting log file is too large (> kMaxDiskLogSize),
   // tries to rotate logs.
-  ssize_t FlushToFile(const FilePath &file_path);
+  ssize_t FlushToFile(const base::FilePath &file_path);
   // Flushes the log to disk via FlushToFile, then clears the log, and tries to
   // rotate our logs if |file_path| is larger than
   // |maximum_disk_log_size_bytes_|.
@@ -98,7 +102,7 @@ class MemoryLog {
   // We rotate here rather than through logrotate because we fear situations
   // where we experience a lot of connectivity problems in a short span of time
   // before logrotate has a chance to run.
-  void FlushToDiskImpl(const FilePath &file_path);
+  void FlushToDiskImpl(const base::FilePath &file_path);
 
   size_t maximum_size_bytes_;
   size_t current_size_bytes_;

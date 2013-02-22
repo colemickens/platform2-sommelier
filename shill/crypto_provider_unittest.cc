@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/file_util.h>
-#include <base/scoped_temp_dir.h>
+#include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
 #include "shill/crypto_des_cbc.h"
@@ -11,6 +11,7 @@
 #include "shill/crypto_rot47.h"
 #include "shill/glib.h"
 
+using base::ScopedTempDir;
 using std::string;
 using testing::Test;
 
