@@ -8,7 +8,11 @@
 
 #include "base/compiler_specific.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/system/backlight_interface.h"
+
+using ::testing::_;
+using ::testing::Return;
 
 namespace power_manager {
 
@@ -88,7 +92,10 @@ class TestBacklight : public system::BacklightInterface {
 
 class ExternalBacklightControllerTest : public ::testing::Test {
  public:
-  ExternalBacklightControllerTest() : controller_(&backlight_) {
+  ExternalBacklightControllerTest() : controller_(&backlight_, &monitor_) {
+    EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
+    EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
+        .WillRepeatedly(Return());
     controller_.set_disable_dbus_for_testing(true);
     CHECK(controller_.Init());
   }
@@ -105,6 +112,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   }
 
   TestBacklight backlight_;
+  MockMonitorReconfigure monitor_;
   ExternalBacklightController controller_;
 };
 

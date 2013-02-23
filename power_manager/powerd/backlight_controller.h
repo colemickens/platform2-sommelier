@@ -86,8 +86,6 @@ class BacklightController : public system::BacklightInterfaceObserver,
   // backlight device changes.
   virtual bool Init() = 0;
 
-  virtual void SetMonitorReconfigure(
-      MonitorReconfigureInterface* monitor_reconfigure) = 0;
   virtual void SetObserver(BacklightControllerObserver* observer) = 0;
 
   // Get the brightness that we're currently transitioning to, in the range [0,

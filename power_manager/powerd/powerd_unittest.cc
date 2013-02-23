@@ -15,6 +15,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/mock_metrics_store.h"
+#include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/system/mock_backlight.h"
@@ -78,9 +79,9 @@ class DaemonTest : public Test {
   DaemonTest()
       :
 #ifdef IS_DESKTOP
-        backlight_ctl_(&backlight_),
+        backlight_ctl_(&backlight_, &monitor_),
 #else
-        backlight_ctl_(&backlight_, &prefs_, NULL),
+        backlight_ctl_(&backlight_, &prefs_, NULL, &monitor_),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL, FilePath(".")),
         status_(&daemon_.power_status_) {}
@@ -97,6 +98,11 @@ class DaemonTest : public Test {
                               Return(true)));
     EXPECT_CALL(backlight_, SetBrightnessLevel(_, _))
         .WillRepeatedly(Return(true));
+
+    EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
+    EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
+        .WillRepeatedly(Return());
+
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
                      kUnpluggedBrightnessPercent);
@@ -284,6 +290,7 @@ class DaemonTest : public Test {
   }
 
   StrictMock<system::MockBacklight> backlight_;
+  MockMonitorReconfigure monitor_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   FakePrefs prefs_;

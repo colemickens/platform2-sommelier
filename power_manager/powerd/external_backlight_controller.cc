@@ -25,9 +25,10 @@ double kBrightnessAdjustmentPercent = 10.0;
 namespace power_manager {
 
 ExternalBacklightController::ExternalBacklightController(
-    system::BacklightInterface* backlight)
+    system::BacklightInterface* backlight,
+    MonitorReconfigureInterface* monitor_reconfigure)
     : backlight_(backlight),
-      monitor_reconfigure_(NULL),
+      monitor_reconfigure_(monitor_reconfigure),
       observer_(NULL),
       power_state_(BACKLIGHT_UNINITIALIZED),
       max_level_(0),
@@ -35,6 +36,8 @@ ExternalBacklightController::ExternalBacklightController(
       currently_off_(false),
       num_user_adjustments_(0),
       disable_dbus_for_testing_(false) {
+  DCHECK(backlight_);
+  DCHECK(monitor_reconfigure_);
   backlight_->set_observer(this);
 }
 
@@ -59,11 +62,6 @@ bool ExternalBacklightController::Init() {
   LOG(INFO) << "Initialized external backlight controller: "
             << "max_level=" << max_level_;
   return true;
-}
-
-void ExternalBacklightController::SetMonitorReconfigure(
-    MonitorReconfigureInterface* monitor_reconfigure) {
-  monitor_reconfigure_ = monitor_reconfigure;
 }
 
 void ExternalBacklightController::SetObserver(
@@ -137,11 +135,9 @@ bool ExternalBacklightController::SetPowerState(PowerState state) {
                          state == BACKLIGHT_SUSPENDED ||
                          state == BACKLIGHT_SHUTTING_DOWN;
   if (should_turn_off != currently_off_) {
-    if (monitor_reconfigure_) {
-      monitor_reconfigure_->SetScreenPowerState(
-          OUTPUT_SELECTION_ALL_DISPLAYS,
-          should_turn_off ? POWER_STATE_OFF : POWER_STATE_ON);
-    }
+    monitor_reconfigure_->SetScreenPowerState(
+        OUTPUT_SELECTION_ALL_DISPLAYS,
+        should_turn_off ? POWER_STATE_OFF : POWER_STATE_ON);
     currently_off_ = should_turn_off;
   }
 

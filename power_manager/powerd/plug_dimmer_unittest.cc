@@ -9,6 +9,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
+#include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/system/mock_backlight.h"
 
 using ::testing::_;
@@ -33,7 +34,7 @@ static const int64 kUnpluggedBrightnessP = kUnpluggedBrightness * 100 /
 class PlugDimmerTest : public Test {
  public:
   PlugDimmerTest()
-      : backlight_ctl_(&backlight_, &prefs_, NULL),
+      : backlight_ctl_(&backlight_, &prefs_, NULL, &monitor_),
         current_brightness_(0),
         target_brightness_(0) {
     EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
@@ -47,6 +48,10 @@ class PlugDimmerTest : public Test {
                               SaveArg<0>(&target_brightness_),
                               Return(true)));
 
+    EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
+    EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
+        .WillRepeatedly(Return());
+
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessP);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref, kUnpluggedBrightnessP);
     CHECK(backlight_ctl_.Init());
@@ -54,6 +59,7 @@ class PlugDimmerTest : public Test {
 
  protected:
   system::MockBacklight backlight_;
+  MockMonitorReconfigure monitor_;
   FakePrefs prefs_;
   InternalBacklightController backlight_ctl_;
 

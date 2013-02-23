@@ -18,7 +18,6 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
-#include "power_manager/powerd/monitor_reconfigure.h"
 
 namespace {
 
@@ -75,11 +74,12 @@ const double InternalBacklightController::kMinVisiblePercent =
 InternalBacklightController::InternalBacklightController(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
-    AmbientLightSensor* sensor)
+    AmbientLightSensor* sensor,
+    MonitorReconfigureInterface* monitor_reconfigure)
     : backlight_(backlight),
       prefs_(prefs),
       light_sensor_(sensor),
-      monitor_reconfigure_(NULL),
+      monitor_reconfigure_(monitor_reconfigure),
       observer_(NULL),
       has_seen_als_event_(false),
       als_offset_percent_(0.0),
@@ -105,6 +105,9 @@ InternalBacklightController::InternalBacklightController(
       suspended_through_idle_off_(false),
       set_screen_power_state_timeout_id_(0),
       last_transition_style_(TRANSITION_INSTANT) {
+  DCHECK(backlight_);
+  DCHECK(prefs_);
+  DCHECK(monitor_reconfigure_);
   backlight_->set_observer(this);
 }
 
@@ -182,7 +185,7 @@ bool InternalBacklightController::Init() {
   // If the current brightness is 0, the internal panel must be off.  Update
   // |monitor_reconfigure_| of this state so that it will properly turn on
   // the panel later.
-  if (target_level_ == 0 && monitor_reconfigure_)
+  if (target_level_ == 0)
     monitor_reconfigure_->set_is_internal_panel_enabled(false);
 
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
@@ -191,11 +194,6 @@ bool InternalBacklightController::Init() {
             << " (" << target_percent_ << "%)";
   is_initialized_ = true;
   return true;
-}
-
-void InternalBacklightController::SetMonitorReconfigure(
-    MonitorReconfigureInterface* monitor_reconfigure) {
-  monitor_reconfigure_ = monitor_reconfigure;
 }
 
 void InternalBacklightController::SetObserver(
@@ -286,10 +284,8 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
   state_ = new_state;
 
   if (new_state == BACKLIGHT_SHUTTING_DOWN) {
-    if (monitor_reconfigure_) {
-      monitor_reconfigure_->SetScreenPowerState(
-          OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF);
-    }
+    monitor_reconfigure_->SetScreenPowerState(
+        OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF);
     return true;
   }
 
@@ -703,9 +699,6 @@ void InternalBacklightController::SetScreenPowerState(
     ScreenPowerOutputSelection selection,
     ScreenPowerState state,
     base::TimeDelta delay) {
-  if (!monitor_reconfigure_)
-    return;
-
   util::RemoveTimeout(&set_screen_power_state_timeout_id_);
   if (delay.InMilliseconds() == 0) {
     monitor_reconfigure_->SetScreenPowerState(selection, state);

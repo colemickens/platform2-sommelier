@@ -22,6 +22,7 @@ namespace power_manager {
 
 namespace system {
 class BacklightInterface;
+class MonitorReconfigureInterface;
 }  // namespace system
 
 // Controls the internal backlight on devices with built-in displays.
@@ -39,7 +40,8 @@ class InternalBacklightController : public BacklightController {
 
   InternalBacklightController(system::BacklightInterface* backlight,
                               PrefsInterface* prefs,
-                              AmbientLightSensor* sensor);
+                              AmbientLightSensor* sensor,
+                              MonitorReconfigureInterface* monitor_reconfigure);
   virtual ~InternalBacklightController();
 
   int64 target_level_for_testing() const { return target_level_; }
@@ -53,8 +55,6 @@ class InternalBacklightController : public BacklightController {
 
   // BacklightController implementation:
   virtual bool Init() OVERRIDE;
-  virtual void SetMonitorReconfigure(
-      MonitorReconfigureInterface* monitor_reconfigure) OVERRIDE;
   virtual void SetObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual double GetTargetBrightnessPercent() OVERRIDE;
   virtual bool GetCurrentBrightnessPercent(double* percent) OVERRIDE;

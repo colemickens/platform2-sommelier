@@ -127,17 +127,16 @@ int main(int argc, char* argv[]) {
   if (!display_backlight.Init())
     LOG(WARNING) << "Cannot initialize display backlight";
   power_manager::ExternalBacklightController display_backlight_controller(
-      &display_backlight);
+      &display_backlight, &monitor_reconfigure);
 #else
   power_manager::system::InternalBacklight display_backlight;
   if (!display_backlight.Init(FilePath(power_manager::kInternalBacklightPath),
                               power_manager::kInternalBacklightPattern))
     LOG(WARNING) << "Cannot initialize display backlight";
   power_manager::InternalBacklightController display_backlight_controller(
-      &display_backlight, &prefs, light_sensor.get());
+      &display_backlight, &prefs, light_sensor.get(), &monitor_reconfigure);
 #endif
 
-  display_backlight_controller.SetMonitorReconfigure(&monitor_reconfigure);
   if (!display_backlight_controller.Init())
     LOG(WARNING) << "Cannot initialize display backlight controller";
 
