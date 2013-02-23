@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_DETECTOR_H_
-#define POWER_MANAGER_POWERD_SYSTEM_AUDIO_DETECTOR_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
+#define POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_
 
 #include <string>
 
@@ -22,12 +22,12 @@ namespace system {
 
 class AudioObserver;
 
-// AudioDetector monitors audio activity as reported by CRAS, the Chrome OS
+// AudioClient monitors audio activity as reported by CRAS, the Chrome OS
 // audio server.
-class AudioDetector {
+class AudioClient {
  public:
-  AudioDetector();
-  ~AudioDetector();
+  AudioClient();
+  ~AudioClient();
 
   // Starts attempting to connect to CRAS.  Note that the connection may
   // happen asynchronously if the server is initially unavailable.
@@ -46,6 +46,13 @@ class AudioDetector {
   // failure.
   bool GetLastAudioActivityTime(base::TimeTicks* time_out);
 
+  // Mutes the system.
+  void MuteSystem();
+
+  // Restores the muted state the system had before the call to MuteSystem.
+  // Multiple calls to MuteSystem do not stack.
+  void RestoreMutedState();
+
  private:
   // Attempts to connect to the CRAS server, allocating |cras_client_| if
   // needed.  Starts |poll_for_activity_timeout_id_| on success.  Returns
@@ -54,9 +61,9 @@ class AudioDetector {
 
   // Invoked by |retry_connect_to_cras_timeout_id_|.  Calls ConnectToCras()
   // and continues or stops the timeout as needed.
-  SIGNAL_CALLBACK_0(AudioDetector, gboolean, RetryConnectToCras);
+  SIGNAL_CALLBACK_0(AudioClient, gboolean, RetryConnectToCras);
 
-  SIGNAL_CALLBACK_0(AudioDetector, gboolean, PollForActivity);
+  SIGNAL_CALLBACK_0(AudioClient, gboolean, PollForActivity);
 
   // Client object for communicating with the server component of CRAS.
   cras_client* cras_client_;
@@ -64,6 +71,13 @@ class AudioDetector {
   // Indicates whether |cras_client_| is initialized and connected to the
   // server.
   bool connected_to_cras_;
+
+  // Indicates whether the muted state was successfully stored by a call to
+  // MuteSystem().
+  bool mute_stored_;
+
+  // The state the system was in before the call to MuteSystem().
+  bool originally_muted_;
 
   // GLib timeout ID for running RetryConnectToCras(), or 0 if unset.
   guint retry_connect_to_cras_timeout_id_;
@@ -76,10 +90,10 @@ class AudioDetector {
 
   ObserverList<AudioObserver> observers_;
 
-  DISALLOW_COPY_AND_ASSIGN(AudioDetector);
+  DISALLOW_COPY_AND_ASSIGN(AudioClient);
 };
 
 }  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SYSTEM_AUDIO_DETECTOR_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_AUDIO_CLIENT_H_

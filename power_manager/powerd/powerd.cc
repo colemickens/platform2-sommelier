@@ -31,7 +31,7 @@
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/state_control.h"
-#include "power_manager/powerd/system/audio_detector.h"
+#include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_state_control.pb.h"
 #include "power_supply_properties.pb.h"
@@ -88,7 +88,7 @@ class Daemon::StateControllerDelegate
 
   virtual bool ShouldAvoidSuspendForHeadphoneJack() OVERRIDE {
 #ifdef STAY_AWAKE_PLUGGED_DEVICE
-    return daemon_->audio_detector_->IsHeadphoneJackConnected();
+    return daemon_->audio_client_->IsHeadphoneJackConnected();
 #else
     return false;
 #endif
@@ -193,7 +193,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       input_controller_(
           new policy::InputController(input_.get(), this, dbus_sender_.get(),
                                       run_dir)),
-      audio_detector_(new system::AudioDetector),
+      audio_client_(new system::AudioClient),
       state_controller_(new policy::StateController(
           state_controller_delegate_.get(), prefs_)),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
@@ -229,12 +229,12 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false),
       state_controller_initialized_(false) {
-  audio_detector_->AddObserver(this);
+  audio_client_->AddObserver(this);
   peripheral_battery_watcher_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
-  audio_detector_->RemoveObserver(this);
+  audio_client_->RemoveObserver(this);
   peripheral_battery_watcher_->RemoveObserver(this);
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
@@ -278,7 +278,7 @@ void Daemon::Init() {
 #ifdef STAY_AWAKE_PLUGGED_DEVICE
   headphone_device = STAY_AWAKE_PLUGGED_DEVICE;
 #endif
-  audio_detector_->Init(headphone_device);
+  audio_client_->Init(headphone_device);
 
   SetPowerState(BACKLIGHT_ACTIVE);
 

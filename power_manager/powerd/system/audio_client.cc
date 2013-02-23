@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/system/audio_detector.h"
+#include "power_manager/powerd/system/audio_client.h"
 
 #include <cras_client.h>
 #include <glib.h>
@@ -23,14 +23,16 @@ const int kPollForActivityMs = 5000;
 
 }  // namespace
 
-AudioDetector::AudioDetector()
+AudioClient::AudioClient()
     : cras_client_(NULL),
       connected_to_cras_(false),
+      mute_stored_(false),
+      originally_muted_(false),
       retry_connect_to_cras_timeout_id_(0),
       poll_for_activity_timeout_id_(0) {
 }
 
-AudioDetector::~AudioDetector() {
+AudioClient::~AudioClient() {
   util::RemoveTimeout(&retry_connect_to_cras_timeout_id_);
   util::RemoveTimeout(&poll_for_activity_timeout_id_);
   if (cras_client_) {
@@ -40,7 +42,7 @@ AudioDetector::~AudioDetector() {
   }
 }
 
-void AudioDetector::Init(const std::string& headphone_device) {
+void AudioClient::Init(const std::string& headphone_device) {
   headphone_device_ = headphone_device;
   if (!ConnectToCras()) {
     retry_connect_to_cras_timeout_id_ =
@@ -48,23 +50,23 @@ void AudioDetector::Init(const std::string& headphone_device) {
   }
 }
 
-void AudioDetector::AddObserver(AudioObserver* observer) {
+void AudioClient::AddObserver(AudioObserver* observer) {
   DCHECK(observer);
   observers_.AddObserver(observer);
 }
 
-void AudioDetector::RemoveObserver(AudioObserver* observer) {
+void AudioClient::RemoveObserver(AudioObserver* observer) {
   DCHECK(observer);
   observers_.RemoveObserver(observer);
 }
 
-bool AudioDetector::IsHeadphoneJackConnected() {
+bool AudioClient::IsHeadphoneJackConnected() {
   return connected_to_cras_ &&
       !headphone_device_.empty() &&
       cras_client_output_dev_plugged(cras_client_, headphone_device_.c_str());
 }
 
-bool AudioDetector::GetLastAudioActivityTime(base::TimeTicks* time_out) {
+bool AudioClient::GetLastAudioActivityTime(base::TimeTicks* time_out) {
   if (!connected_to_cras_) {
     LOG(WARNING) << "Not connected to CRAS";
     return false;
@@ -103,7 +105,24 @@ bool AudioDetector::GetLastAudioActivityTime(base::TimeTicks* time_out) {
   return true;
 }
 
-bool AudioDetector::ConnectToCras() {
+void AudioClient::MuteSystem() {
+  if (!connected_to_cras_ || mute_stored_)
+    return;
+
+  mute_stored_ = true;
+  originally_muted_ = cras_client_get_system_muted(cras_client_);
+  cras_client_set_system_mute(cras_client_, true);
+}
+
+void AudioClient::RestoreMutedState() {
+  if (!connected_to_cras_ || !mute_stored_)
+    return;
+
+  mute_stored_ = false;
+  cras_client_set_system_mute(cras_client_, originally_muted_);
+}
+
+bool AudioClient::ConnectToCras() {
   if (connected_to_cras_)
     return true;
 
@@ -129,7 +148,7 @@ bool AudioDetector::ConnectToCras() {
   return true;
 }
 
-gboolean AudioDetector::RetryConnectToCras() {
+gboolean AudioClient::RetryConnectToCras() {
   if (ConnectToCras()) {
     // If we managed to connect successfully, return FALSE to cancel the
     // GLib timeout.
@@ -139,7 +158,7 @@ gboolean AudioDetector::RetryConnectToCras() {
   return TRUE;
 }
 
-gboolean AudioDetector::PollForActivity() {
+gboolean AudioClient::PollForActivity() {
   base::TimeTicks last_activity_time;
   if (GetLastAudioActivityTime(&last_activity_time)) {
     base::TimeDelta time_since_activity =

@@ -53,7 +53,7 @@ class StateController;
 }  // namespace policy
 
 namespace system {
-class AudioDetector;
+class AudioClient;
 class Input;
 }  // namespace system
 
@@ -529,7 +529,7 @@ class Daemon : public BacklightControllerObserver,
   scoped_ptr<DBusSenderInterface> dbus_sender_;
   scoped_ptr<system::Input> input_;
   scoped_ptr<policy::InputController> input_controller_;
-  scoped_ptr<system::AudioDetector> audio_detector_;
+  scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
 

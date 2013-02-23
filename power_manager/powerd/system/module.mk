@@ -7,7 +7,7 @@ include common.mk
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	powerd/system/ambient_light_sensor.o \
 	powerd/system/async_file_reader.o \
-	powerd/system/audio_detector.o \
+	powerd/system/audio_client.o \
 	powerd/system/display_power_setter.o \
 	powerd/system/external_backlight.o \
 	powerd/system/input.o \
