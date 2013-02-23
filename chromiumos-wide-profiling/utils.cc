@@ -162,3 +162,7 @@ bool ComparePerfReports(const string& a, const string& b) {
   // Compare the output strings.
   return outputs[a] == outputs[b];
 }
+
+uint64 AlignSize(uint64 size, uint32 align_size) {
+  return ((size + align_size - 1) / align_size) * align_size;
+}

@@ -5,11 +5,11 @@
 #ifndef PERF_PARSER_H_
 #define PERF_PARSER_H_
 
-#include <vector>
-#include <string>
+#include <map>
 
 #include "base/basictypes.h"
 
+#include "address_mapper.h"
 #include "perf_reader.h"
 
 struct ParsedEvent {
@@ -20,7 +20,9 @@ struct ParsedEvent {
 
 class PerfParser : public PerfReader {
  public:
-  PerfParser() {}
+  PerfParser() : do_remap_(false) {}
+  PerfParser(bool do_remap) : do_remap_(do_remap) {}
+  ~PerfParser();
 
   // Gets parsed event/sample info from raw event data.
   bool ParseRawEvents();
@@ -39,12 +41,27 @@ class PerfParser : public PerfReader {
   }
 
  protected:
-  std::vector<ParsedEvent> parsed_events_;
-  std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
-
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.
   void SortParsedEvents();
+
+  // Used for processing events.  e.g. remapping with synthetic addresses.
+  bool ProcessEvents();
+  bool MapSampleEvent(struct ip_event*);
+  bool MapMmapEvent(struct mmap_event*);
+  bool MapForkEvent(struct fork_event*);
+  bool MapExitEvent(struct fork_event*);
+
+  void ResetAddressMappers();
+
+  std::vector<ParsedEvent> parsed_events_;
+  std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
+
+  // For synthetic address mapping.
+  bool do_remap_;
+  AddressMapper kernel_mapper_;
+  std::map<uint32, AddressMapper*> process_mappers_;
+  std::map<uint32, uint32> child_to_parent_pid_map_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PerfParser);

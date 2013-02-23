@@ -35,7 +35,6 @@ TEST(PerfParserTest, Test1Cycle) {
 
     PerfParser parser;
     ASSERT_TRUE(parser.ReadFile(input_perf_data));
-
     parser.ParseRawEvents();
 
     CHECK_GT(parser.GetEventsSortedByTime().size(), 0U);
@@ -47,6 +46,35 @@ TEST(PerfParserTest, Test1Cycle) {
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
+  }
+}
+
+TEST(PerfParserTest, TestRemap) {
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataFiles);
+       ++i) {
+    string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    LOG(INFO) << "Testing " << input_perf_data;
+
+    PerfParser parser(true);
+    ASSERT_TRUE(parser.ReadFile(input_perf_data));
+    parser.ParseRawEvents();
+    parser.GenerateRawEvents();
+    string output_perf_data = input_perf_data + ".parse.out";
+    ASSERT_TRUE(parser.WriteFile(output_perf_data));
+
+    // Remapped addresses should not match the original addresses.
+    EXPECT_FALSE(ComparePerfReports(input_perf_data, output_perf_data));
+
+    PerfParser remap_parser(true);
+    ASSERT_TRUE(remap_parser.ReadFile(output_perf_data));
+    remap_parser.ParseRawEvents();
+    remap_parser.GenerateRawEvents();
+    string output_perf_data2 = output_perf_data + ".parse.out";
+    ASSERT_TRUE(remap_parser.WriteFile(output_perf_data2));
+
+    // Remapping again should produce the same addresses.
+    EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
   }
 }
 

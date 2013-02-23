@@ -30,4 +30,8 @@ bool CreateNamedTempFile(string* name);
 // compared.
 bool ComparePerfReports(const string& a, const string& b);
 
+// Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple
+// of |align_size| that can fit |size|.
+uint64 AlignSize(uint64 size, uint32 align_size);
+
 #endif  // UTILS_H_

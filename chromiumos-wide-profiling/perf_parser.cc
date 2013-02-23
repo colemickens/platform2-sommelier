@@ -12,6 +12,9 @@
 
 namespace {
 
+// For kernel MMAP events, the pid is -1.
+const uint32 kKernelPid = kuint32max;
+
 // Given a general perf sample format |sample_type|, return the fields of that
 // format that are present in a sample for an event of type |event_type|.
 //
@@ -60,7 +63,7 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
 //
 // This function returns the length of the 8-byte-aligned for storing |string|.
 size_t GetUint64AlignedStringLength(const char* string) {
-  return (strlen(string) / sizeof(uint64) + 1) * sizeof(uint64);
+  return AlignSize(strlen(string) + 1, sizeof(uint64));
 }
 
 // Returns the offset in bytes within a perf event structure at which the raw
@@ -252,7 +255,12 @@ bool CompareParsedEventTimes(const ParsedEvent* e1, const ParsedEvent* e2) {
 
 }  // namespace
 
+PerfParser::~PerfParser() {
+  ResetAddressMappers();
+}
+
 bool PerfParser::ParseRawEvents() {
+  ResetAddressMappers();
   parsed_events_.resize(events_.size());
   for (size_t i = 0; i < events_.size(); ++i) {
     const event_t& raw_event = events_[i];
@@ -265,6 +273,7 @@ bool PerfParser::ParseRawEvents() {
     }
   }
   SortParsedEvents();
+  ProcessEvents();
   return true;
 }
 
@@ -290,4 +299,154 @@ void PerfParser::SortParsedEvents() {
   std::stable_sort(parsed_events_sorted_by_time_.begin(),
                    parsed_events_sorted_by_time_.end(),
                    CompareParsedEventTimes);
+}
+
+bool PerfParser::ProcessEvents() {
+  for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
+    event_t& event = parsed_events_sorted_by_time_[i]->raw_event;
+    switch (event.header.type) {
+      case PERF_RECORD_SAMPLE:
+        LOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
+        if (do_remap_)
+          MapSampleEvent(&event.ip);
+        break;
+      case PERF_RECORD_MMAP:
+        LOG(INFO) << "MMAP: " << event.mmap.filename;
+        if (do_remap_)
+          CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
+        break;
+      case PERF_RECORD_FORK:
+        LOG(INFO) << "FORK: " << event.fork.ppid << " -> " << event.fork.pid;
+        if (do_remap_)
+          CHECK(MapForkEvent(&event.fork)) << "Unable to map FORK event!";
+        break;
+      case PERF_RECORD_EXIT:
+        // EXIT events have the same structure as FORK events.
+        LOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
+        if (do_remap_)
+          CHECK(MapExitEvent(&event.fork)) << "Unable to map EXIT event!";
+        break;
+      case PERF_RECORD_LOST:
+      case PERF_RECORD_COMM:
+      case PERF_RECORD_THROTTLE:
+      case PERF_RECORD_UNTHROTTLE:
+      case PERF_RECORD_READ:
+      case PERF_RECORD_MAX:
+        LOG(INFO) << "Read event type: " << event.header.type
+                  << ". Doing nothing.";
+        break;
+      default:
+        LOG(ERROR) << "Unknown event type: " << event.header.type;
+        return false;
+    }
+  }
+  return true;
+}
+
+bool PerfParser::MapSampleEvent(struct ip_event* event) {
+  // Attempt to find the synthetic address of the IP sample in this order:
+  // 1. Address space of the kernel.
+  // 2. Address space of its own process.
+  // 3. Address space of the parent process.
+  if (kernel_mapper_.GetMappedAddress(event->ip, &event->ip))
+    return true;
+  uint32 pid = event->pid;
+  while (process_mappers_.find(pid) != process_mappers_.end()) {
+    if (process_mappers_[pid]->GetMappedAddress(event->ip, &event->ip))
+      return true;
+    if (child_to_parent_pid_map_.find(pid) == child_to_parent_pid_map_.end())
+      break;
+    pid = child_to_parent_pid_map_[pid];
+  }
+  return false;
+}
+
+bool PerfParser::MapMmapEvent(struct mmap_event* event) {
+  AddressMapper* mapper = &kernel_mapper_;
+  uint32 pid = event->pid;
+
+  // We need to hide only the real kernel addresses.  But the pid of kernel
+  // mmaps may change over time, and thus we could mistakenly identify a kernel
+  // mmap as a non-kernel mmap.  To plug this security hole, simply map all real
+  // addresses (kernel and non-kernel) to synthetic addresses.
+  if (pid != kKernelPid) {
+    if (process_mappers_.find(pid) == process_mappers_.end())
+      process_mappers_[pid] = new AddressMapper;
+    mapper = process_mappers_[pid];
+  }
+
+  // Lengths need to be aligned to 4-byte blocks.
+  uint64 len = AlignSize(event->len, sizeof(uint32));
+  uint64 start = event->start;
+  uint64 pgoff = event->pgoff;
+  if (pgoff < len) {
+    // Sanity check to make sure pgoff is valid.
+    CHECK_GE((void*)(start + pgoff), (void*)start);
+    len -= event->pgoff;
+    start += event->pgoff;
+    pgoff = 0;
+  }
+  if (!mapper->Map(start, len, true))
+    return false;
+
+  CHECK(mapper->GetMappedAddress(start, &event->start));
+  event->len = len;
+  event->pgoff = pgoff;
+
+  return true;
+}
+
+bool PerfParser::MapForkEvent(struct fork_event* event) {
+  uint32 pid = event->pid;
+  if (pid == event->ppid) {
+    LOG(ERROR) << "Forked process should not have the same pid as the parent.";
+    return false;
+  }
+  if (process_mappers_.find(pid) != process_mappers_.end()) {
+    LOG(ERROR) << "Found an existing process mapper with the new process's ID.";
+    return false;
+  }
+  if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end()) {
+    LOG(ERROR) << "Forked process ID has previously been mapped to a parent "
+               << "process.";
+    return false;
+  }
+
+  process_mappers_[pid] = new AddressMapper;
+  child_to_parent_pid_map_[pid] = event->ppid;
+  return true;
+}
+
+bool PerfParser::MapExitEvent(struct fork_event* event) {
+  uint32 pid = event->pid;
+  // An exit event may not correspond to a previously processed fork event.
+  // There can be redundant process events (from looking at "perf report -D"),
+  // or the exiting process could have been created before "perf record" began.
+  // So it is not necessarily a problem if there is no existing process mapping.
+
+  // However, if the child-to-parent mapping exists (there was a fork event), so
+  // must the process mapper.
+  if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end() &&
+      process_mappers_.find(pid) == process_mappers_.end()) {
+    LOG(ERROR) << "Could not find process mapper for exiting process.";
+    return false;
+  }
+
+  if (process_mappers_.find(pid) != process_mappers_.end()) {
+    delete process_mappers_[pid];
+    process_mappers_.erase(pid);
+  }
+
+  if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end())
+    child_to_parent_pid_map_.erase(pid);
+
+  return true;
+}
+
+void PerfParser::ResetAddressMappers() {
+  std::map<uint32, AddressMapper*>::iterator iter;
+  for (iter = process_mappers_.begin(); iter != process_mappers_.end(); ++iter)
+    delete iter->second;
+  process_mappers_.clear();
+  child_to_parent_pid_map_.clear();
 }

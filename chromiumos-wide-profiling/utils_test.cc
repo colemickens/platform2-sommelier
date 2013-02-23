@@ -16,6 +16,17 @@ TEST(UtilsTest, TestMD5) {
             0xe4d909c290d0fb1cLL);
 }
 
+TEST(UtilsTest, TestAlignSize) {
+  EXPECT_EQ(12, AlignSize(10, 4));
+  EXPECT_EQ(12, AlignSize(12, 4));
+  EXPECT_EQ(16, AlignSize(13, 4));
+  EXPECT_EQ(100, AlignSize(97, 4));
+  EXPECT_EQ(100, AlignSize(100, 4));
+  EXPECT_EQ(104, AlignSize(100, 8));
+  EXPECT_EQ(112, AlignSize(108, 8));
+  EXPECT_EQ(112, AlignSize(112, 8));
+}
+
 int main(int argc, char * argv[])
 {
   ::testing::InitGoogleTest(&argc, argv);

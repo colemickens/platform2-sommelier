@@ -5,8 +5,8 @@
 #ifndef PERF_READER_H_
 #define PERF_READER_H_
 
-#include <vector>
 #include <string>
+#include <vector>
 
 #include "base/basictypes.h"
 
@@ -21,6 +21,7 @@ struct PerfFileAttr {
 class PerfReader {
  public:
   PerfReader() : sample_type_(0) {}
+
   bool ReadFile(const string& filename);
   bool ReadFileFromHandle(std::ifstream* in);
   bool WriteFile(const string& filename);
@@ -50,8 +51,6 @@ class PerfReader {
   bool WriteEventTypes(std::ofstream* out) const;
   bool WriteData(std::ofstream* out) const;
   bool WriteEventFull(std::ofstream* out, const event_t& event) const;
-
-  bool ProcessEvent(const event_t& event);
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<event_t> events_;
