@@ -12,6 +12,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
@@ -56,7 +57,9 @@ class Suspender : public SuspendDelayObserver {
   // - If the suspend attempt is canceled while Suspender is still waiting
   //   for other processes to report readiness for suspend, then
   //   HandleCanceledSuspendAnnouncementIsCalled().
-  // - Otherwise, Suspend() is called.
+  // - Otherwise, PrepareForSuspend() is called.
+  // - Suspend() is then called within a do while loop that exits when there is
+  //   a user requested suspend or enough failures.
   // - After the system resumes from suspend (or if the suspend attempt
   //   failed), HandleResume() is called.
   class Delegate {
@@ -81,22 +84,37 @@ class Suspender : public SuspendDelayObserver {
     // PrepareForSuspendAnnouncement().
     virtual void HandleCanceledSuspendAnnouncement() = 0;
 
+    // Handles putting the system into the correct state before suspending such
+    // as suspending the backlight, audio, and sending out the PowerStateChanged
+    // signal. This is separate from Suspend(...) since for the purpose of a
+    // dark resume (which can call suspend again), we don't want to touch the
+    // state of the backlight or audio. We also don't want to send out another
+    // PowerStateChanged signal since those are not sent out during a dark
+    // resume.
+    virtual void PrepareForSuspend() = 0;
+
     // Synchronously runs the powerd_suspend script to suspend the system.
     // If |wakeup_count_valid| is true, passes |wakeup_count| to the script
     // so it can avoid suspending if additional wakeup events occur.  After
     // the suspend/resume cycle is complete (and even if the system failed
     // to suspend), HandleResume() will be called.
-    virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) = 0;
+    virtual bool Suspend(uint64 wakeup_count,
+                         bool wakeup_count_valid,
+                         base::TimeDelta duration) = 0;
 
     // Handles the system resuming (or recovering from a failed suspend
     // attempt).  This method should undo any work done by both
-    // PrepareForSuspendAnnouncement() and Suspend().
+    // PrepareForSuspendAnnouncement() and PrepareForSuspend().
     virtual void HandleResume(bool suspend_was_successful,
                               int num_suspend_retries,
                               int max_suspend_retries) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
     virtual void ShutdownForFailedSuspend() = 0;
+
+    // Shuts the system down in response to the DarkResumePolicy determining the
+    // system should shutdown.
+    virtual void ShutdownForDarkResume() = 0;
   };
 
   // Helper class providing functionality needed by tests.
@@ -129,7 +147,9 @@ class Suspender : public SuspendDelayObserver {
                                       const gchar* new_owner,
                                       gpointer data);
 
-  Suspender(Delegate* delegate, DBusSenderInterface* dbus_sender);
+  Suspender(Delegate* delegate,
+            DBusSenderInterface* dbus_sender,
+            policy::DarkResumePolicy* dark_resume_policy);
   ~Suspender();
 
   void Init(PrefsInterface* prefs);
@@ -183,6 +203,7 @@ class Suspender : public SuspendDelayObserver {
 
   Delegate* delegate_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned
+  policy::DarkResumePolicy* dark_resume_policy_;  // not owned
 
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
@@ -196,6 +217,9 @@ class Suspender : public SuspendDelayObserver {
   // Number of wakeup events received at start of current suspend operation.
   uint64 wakeup_count_;
   bool wakeup_count_valid_;
+
+  // The duration the machine should suspend for.
+  int64 suspend_duration_;
 
   // Time to wait before retrying a failed suspend attempt.
   base::TimeDelta retry_delay_;

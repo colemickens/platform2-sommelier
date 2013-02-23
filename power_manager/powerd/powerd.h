@@ -30,8 +30,8 @@
 #include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/metrics_store.h"
+#include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/input_controller.h"
-#include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/rolling_average.h"
 #include "power_manager/powerd/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
@@ -44,6 +44,7 @@ struct udev_monitor;
 namespace power_manager {
 
 class DBusSenderInterface;
+class PowerSupply;
 class Prefs;
 class StateControl;
 class StateController;
@@ -550,10 +551,11 @@ class Daemon : public BacklightControllerObserver,
   PluggedState plugged_state_;
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;
+  scoped_ptr<PowerSupply> power_supply_;
+  scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
   scoped_ptr<Suspender::Delegate> suspender_delegate_;
   Suspender suspender_;
   base::FilePath run_dir_;
-  PowerSupply power_supply_;
   base::TimeTicks session_start_;
   bool is_power_status_stale_;
 

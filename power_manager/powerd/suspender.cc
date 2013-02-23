@@ -71,36 +71,25 @@ class Suspender::RealDelegate : public Suspender::Delegate {
 
   virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
     daemon_->HandleCanceledSuspendAnnouncement();
-
-    // Emit a PowerStateChanged D-Bus signal with an "on" status, similar
-    // to what is emitted by powerd_suspend after resume.  Emitting this
-    // from powerd is necessary when an imminent suspend has been announced
-    // but the request is canceled before powerd_suspend has been run, so
-    // that processes that have performed pre-suspend actions will know to
-    // undo them.
-    // TODO(benchan): Refactor this code and the code in the powerd_suspend
-    // script.
-    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                                kPowerManagerServicePath,
-                                kPowerManagerInterface);
-    DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                  kPowerManagerInterface,
-                                                  kPowerStateChanged);
-    const char* power_state = "on";
-    dbus_message_append_args(signal,
-                             DBUS_TYPE_STRING, &power_state,
-                             DBUS_TYPE_INVALID);
-    dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-    dbus_message_unref(signal);
+    SendPowerStateChangedSignal("on");
   }
 
-  virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) OVERRIDE {
+  virtual void PrepareForSuspend() {
     daemon_->PrepareForSuspend();
+    SendPowerStateChangedSignal("mem");
+  }
 
+  virtual bool Suspend(uint64 wakeup_count,
+                       bool wakeup_count_valid,
+                       base::TimeDelta duration) OVERRIDE {
     std::string args;
     if (wakeup_count_valid) {
       args += StringPrintf(" --suspend_wakeup_count_valid"
                            " --suspend_wakeup_count %" PRIu64, wakeup_count);
+    }
+    if (duration != base::TimeDelta()) {
+      args += StringPrintf(" --suspend_duration %" PRId64,
+                           duration.InSeconds());
     }
     return util::RunSetuidHelper("suspend", args, true) == 0;
   }
@@ -108,6 +97,7 @@ class Suspender::RealDelegate : public Suspender::Delegate {
   virtual void HandleResume(bool suspend_was_successful,
                             int num_suspend_retries,
                             int max_suspend_retries) OVERRIDE {
+    SendPowerStateChangedSignal("on");
     daemon_->HandleResume(suspend_was_successful,
                           num_suspend_retries,
                           max_suspend_retries);
@@ -117,7 +107,27 @@ class Suspender::RealDelegate : public Suspender::Delegate {
     daemon_->ShutdownForFailedSuspend();
   }
 
+  virtual void ShutdownForDarkResume() OVERRIDE {
+    daemon_->OnRequestShutdown();
+  }
+
  private:
+  void SendPowerStateChangedSignal(const std::string& power_state) {
+    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                                kPowerManagerServicePath,
+                                kPowerManagerInterface);
+    const char* state = power_state.c_str();
+    DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                  kPowerManagerInterface,
+                                                  kPowerStateChanged);
+    CHECK(signal);
+    dbus_message_append_args(signal,
+                             DBUS_TYPE_STRING, &state,
+                             DBUS_TYPE_INVALID);
+    dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+    dbus_message_unref(signal);
+  }
+
   Daemon* daemon_;  // not owned
   system::Input* input_;  // not owned
 
@@ -158,9 +168,11 @@ void Suspender::NameOwnerChangedHandler(DBusGProxy*,
 }
 
 Suspender::Suspender(Delegate* delegate,
-                     DBusSenderInterface* dbus_sender)
+                     DBusSenderInterface* dbus_sender,
+                     policy::DarkResumePolicy* dark_resume_policy)
     : delegate_(delegate),
       dbus_sender_(dbus_sender),
+      dark_resume_policy_(dark_resume_policy),
       suspend_delay_controller_(new SuspendDelayController(dbus_sender)),
       waiting_for_readiness_(false),
       suspend_id_(0),
@@ -260,14 +272,61 @@ base::Time Suspender::GetCurrentWallTime() const {
 }
 
 void Suspender::Suspend() {
+  bool dark_resume = false;
+  bool success = false;
   // Note: If this log message is changed, the power_AudioDetector test
   // must be updated.
   LOG(INFO) << "Starting suspend";
-
   SendSuspendStateChangedSignal(
       SuspendState_Type_SUSPEND_TO_MEMORY, GetCurrentWallTime());
+  delegate_->PrepareForSuspend();
 
-  bool success = delegate_->Suspend(wakeup_count_, wakeup_count_valid_);
+  do {
+    base::TimeDelta suspend_duration;
+    policy::DarkResumePolicy::Action action = dark_resume_policy_->GetAction();
+    switch (action) {
+      case policy::DarkResumePolicy::SHUT_DOWN:
+        LOG(INFO) << "Shutting down from dark resume";
+        delegate_->ShutdownForDarkResume();
+        return;
+      case policy::DarkResumePolicy::SUSPEND_FOR_DURATION:
+        suspend_duration = dark_resume_policy_->GetSuspendDuration();
+        LOG(INFO) << "Suspending for " << suspend_duration.InSeconds()
+                  << " seconds";
+        break;
+      case policy::DarkResumePolicy::SUSPEND_INDEFINITELY:
+        suspend_duration = base::TimeDelta();
+        break;
+      default:
+        NOTREACHED() << "Unhandled dark resume action " << action;
+    }
+
+    // We don't want to use the wakeup_count in the case of a dark resume. The
+    // kernel may not have initialized some of the devices to make the dark
+    // resume as inconspicuous as possible, so allowing the user to use the
+    // system in this state would be bad.
+    success = delegate_->Suspend(wakeup_count_,
+                                 wakeup_count_valid_ && !dark_resume,
+                                 suspend_duration);
+    dark_resume = dark_resume_policy_->IsDarkResume();
+    // Failure handling for dark resume. We don't want to process events during
+    // a dark resume, even if we fail to suspend. To solve this, instead of
+    // scheduling a retry later, delay here and retry without returning from
+    // this function. num_retries_ is not reset until there is a successful user
+    // requested resume.
+    if (!success && dark_resume) {
+      if (num_retries_ >= max_retries_) {
+        LOG(ERROR) << "Retried suspend from dark resume" << num_retries_
+                   << " times; shutting down";
+        delegate_->ShutdownForFailedSuspend();
+      }
+      num_retries_++;
+      LOG(WARNING) << "Retry #" << num_retries_
+                   << " for suspend from dark resume";
+      sleep(retry_delay_.InSeconds());
+    }
+  } while (dark_resume);
+
   if (success) {
     LOG(INFO) << "Resumed successfully from suspend attempt " << suspend_id_;
     num_retries_ = 0;
@@ -280,7 +339,7 @@ void Suspender::Suspend() {
     retry_suspend_timeout_id_ =
         g_timeout_add(retry_delay_.InMilliseconds(), RetrySuspendThunk, this);
   }
-
+  dark_resume_policy_->HandleResume();
   delegate_->HandleResume(success, num_retries_, max_retries_);
 }
 

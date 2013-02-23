@@ -213,10 +213,13 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(base::FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
+      power_supply_(new PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
+      dark_resume_policy_(
+          new policy::DarkResumePolicy(power_supply_.get(), prefs)),
       suspender_delegate_(Suspender::CreateDefaultDelegate(this, input_.get())),
-      suspender_(suspender_delegate_.get(), dbus_sender_.get()),
+      suspender_(suspender_delegate_.get(), dbus_sender_.get(),
+                 dark_resume_policy_.get()),
       run_dir_(run_dir),
-      power_supply_(base::FilePath(kPowerStatusPath), prefs),
       is_power_status_stale_(true),
       generate_backlight_metrics_timeout_id_(0),
       generate_thermal_metrics_timeout_id_(0),
@@ -255,11 +258,12 @@ void Daemon::Init() {
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
   RetrieveSessionState();
+  power_supply_->Init();
+  dark_resume_policy_->Init();
   suspender_.Init(prefs_);
   time_to_empty_average_.Init(sample_window_max_);
   time_to_full_average_.Init(sample_window_max_);
-  power_supply_.Init();
-  power_supply_.GetPowerStatus(&power_status_, false);
+  power_supply_->GetPowerStatus(&power_status_, false);
   OnPowerEvent(this, power_status_);
   UpdateAveragedTimes(&time_to_empty_average_,
                       &time_to_full_average_);
@@ -606,10 +610,11 @@ void Daemon::PrepareForSuspend() {
   util::RunSetuidHelper("lock_vt", "", true);
 #endif
 
-  power_supply_.SetSuspendState(true);
+  power_supply_->SetSuspendState(true);
   HaltPollPowerSupply();
   MarkPowerStatusStale();
   file_tagger_.HandleSuspendEvent();
+  audio_client_->MuteSystem();
 }
 
 void Daemon::HandleResume(bool suspend_was_successful,
@@ -617,6 +622,7 @@ void Daemon::HandleResume(bool suspend_was_successful,
                           int max_suspend_retries) {
   // Undo the earlier BACKLIGHT_SUSPENDED call.
   SetPowerState(BACKLIGHT_ACTIVE);
+  audio_client_->RestoreMutedState();
 
 #ifdef SUSPEND_LOCK_VT
   // Allow virtual terminal switching again.
@@ -632,7 +638,7 @@ void Daemon::HandleResume(bool suspend_was_successful,
   time_to_full_average_.Clear();
   ResumePollPowerSupply();
   file_tagger_.HandleResumeEvent();
-  power_supply_.SetSuspendState(false);
+  power_supply_->SetSuspendState(false);
   state_controller_->HandleResume();
   if (suspend_was_successful)
     GenerateRetrySuspendMetric(num_suspend_retries, max_suspend_retries);
@@ -1089,7 +1095,7 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
     // near the beginning of a session or around Suspend/Resume, so we are
     // assuming that the battery time is untrustworthy, hence the
     // |is_calculating| is true.
-    power_supply_.GetPowerStatus(&power_status_, true);
+    power_supply_->GetPowerStatus(&power_status_, true);
     HandlePollPowerSupply();
     is_power_status_stale_ = true;
   }
@@ -1230,19 +1236,19 @@ void Daemon::SchedulePollPowerSupply() {
 }
 
 gboolean Daemon::EventPollPowerSupply() {
-  power_supply_.GetPowerStatus(&power_status_, true);
+  power_supply_->GetPowerStatus(&power_status_, true);
   return HandlePollPowerSupply();
 }
 
 gboolean Daemon::ShortPollPowerSupply() {
   SchedulePollPowerSupply();
-  power_supply_.GetPowerStatus(&power_status_, false);
+  power_supply_->GetPowerStatus(&power_status_, false);
   HandlePollPowerSupply();
   return false;
 }
 
 gboolean Daemon::PollPowerSupply() {
-  power_supply_.GetPowerStatus(&power_status_, false);
+  power_supply_->GetPowerStatus(&power_status_, false);
   return HandlePollPowerSupply();
 }
 

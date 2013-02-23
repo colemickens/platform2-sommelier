@@ -14,6 +14,7 @@
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/suspender.h"
 
 namespace power_manager {
@@ -21,6 +22,7 @@ namespace power_manager {
 namespace {
 
 // Various actions that can be returned by TestDelegate::GetActions().
+const char kAnnounce[] = "announce";
 const char kPrepare[] = "prepare";
 const char kCancel[] = "cancel";
 const char kSuspend[] = "suspend";
@@ -59,7 +61,8 @@ class TestDelegate : public Suspender::Delegate {
         report_success_for_suspend_(true),
         wakeup_count_(0),
         suspend_wakeup_count_(0),
-        suspend_wakeup_count_valid_(false) {
+        suspend_wakeup_count_valid_(false),
+        suspend_duration_() {
   }
 
   void set_lid_closed(bool closed) { lid_closed_ = closed; }
@@ -98,17 +101,20 @@ class TestDelegate : public Suspender::Delegate {
   }
 
   virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    AppendAction(kPrepare);
+    AppendAction(kAnnounce);
   }
 
   virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
     AppendAction(kCancel);
   }
 
-  virtual bool Suspend(uint64 wakeup_count, bool wakeup_count_valid) OVERRIDE {
+  virtual bool Suspend(uint64 wakeup_count,
+                       bool wakeup_count_valid,
+                       base::TimeDelta duration) OVERRIDE {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
+    suspend_duration_ = duration;
     if (!suspend_callback_.is_null()) {
       suspend_callback_.Run();
       suspend_callback_.Reset();
@@ -116,11 +122,15 @@ class TestDelegate : public Suspender::Delegate {
     return report_success_for_suspend_;
   }
 
+  virtual void PrepareForSuspend() { AppendAction(kPrepare); }
+
   virtual void HandleResume(bool success,
                             int num_retries,
                             int max_retries) OVERRIDE { AppendAction(kResume); }
 
   virtual void ShutdownForFailedSuspend() OVERRIDE { AppendAction(kShutdown); }
+
+  virtual void ShutdownForDarkResume() OVERRIDE { AppendAction(kShutdown); }
 
  private:
   // Appends |action| to |actions_|.
@@ -149,6 +159,7 @@ class TestDelegate : public Suspender::Delegate {
   // Arguments passed to latest invocation of Suspend().
   uint64 suspend_wakeup_count_;
   bool suspend_wakeup_count_valid_;
+  base::TimeDelta suspend_duration_;
 
   DISALLOW_COPY_AND_ASSIGN(TestDelegate);
 };
@@ -158,7 +169,8 @@ class TestDelegate : public Suspender::Delegate {
 class SuspenderTest : public testing::Test {
  public:
   SuspenderTest()
-      : suspender_(&delegate_, &dbus_sender_),
+      : dark_resume_policy_(NULL, &prefs_),
+        suspender_(&delegate_, &dbus_sender_, &dark_resume_policy_),
         test_api_(&suspender_),
         pref_retry_delay_ms_(10000),
         pref_num_retries_(10) {
@@ -169,11 +181,13 @@ class SuspenderTest : public testing::Test {
     CHECK(prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_));
     CHECK(prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_));
     suspender_.Init(&prefs_);
+    dark_resume_policy_.Init();
   }
 
   FakePrefs prefs_;
   TestDelegate delegate_;
   DBusSenderStub dbus_sender_;
+  policy::DarkResumePolicy dark_resume_policy_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
 
@@ -192,7 +206,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   test_api_.SetCurrentWallTime(kRequestTime);
   delegate_.set_wakeup_count(kWakeupCount);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
 
   // Advance the time and register a callback to advance the time again
   // when the suspend request is received.
@@ -207,7 +221,8 @@ TEST_F(SuspenderTest, SuspendResume) {
   // suspended, it should immediately suspend the system.
   dbus_sender_.ClearSentSignals();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   EXPECT_EQ(kWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
 
@@ -237,9 +252,10 @@ TEST_F(SuspenderTest, MissingWakeupCount) {
 
   delegate_.set_report_success_for_get_wakeup_count(false);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   EXPECT_FALSE(delegate_.suspend_wakeup_count_valid());
 }
 
@@ -249,7 +265,7 @@ TEST_F(SuspenderTest, IgnoreDuplicateSuspendRequests) {
   Init();
 
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int orig_suspend_id = test_api_.suspend_id();
 
   // The suspend ID should be left unchanged after a second call to
@@ -267,11 +283,12 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   delegate_.set_wakeup_count(kOrigWakeupCount);
   delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int orig_suspend_id = test_api_.suspend_id();
 
   suspender_.OnReadyForSuspend(orig_suspend_id);
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   EXPECT_EQ(kOrigWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
 
@@ -279,19 +296,20 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   const uint64 kRetryWakeupCount = 67;
   delegate_.set_wakeup_count(kRetryWakeupCount);
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int new_suspend_id = test_api_.suspend_id();
   EXPECT_NE(orig_suspend_id, new_suspend_id);
 
   suspender_.OnReadyForSuspend(new_suspend_id);
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   EXPECT_EQ(kRetryWakeupCount, delegate_.suspend_wakeup_count());
   EXPECT_TRUE(delegate_.suspend_wakeup_count_valid());
 
   // Explicitly requesting a suspend should cancel the timeout and generate a
   // new announcement immediately.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int final_suspend_id = test_api_.suspend_id();
   EXPECT_NE(new_suspend_id, final_suspend_id);
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
@@ -299,7 +317,8 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   // Report success this time and check that the timeout isn't registered.
   delegate_.set_report_success_for_suspend(true);
   suspender_.OnReadyForSuspend(final_suspend_id);
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 }
 
@@ -310,16 +329,18 @@ TEST_F(SuspenderTest, ShutdownAfterRepeatedFailures) {
 
   delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
 
   // Proceed through all retries, reporting failure each time.
   for (int i = 1; i <= pref_num_retries_; ++i) {
     EXPECT_TRUE(test_api_.TriggerRetryTimeout()) << "Retry #" << i;
-    EXPECT_EQ(kPrepare, delegate_.GetActions()) << "Retry #" << i;
+    EXPECT_EQ(kAnnounce, delegate_.GetActions()) << "Retry #" << i;
     suspender_.OnReadyForSuspend(test_api_.suspend_id());
-    EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions())
+    EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+              delegate_.GetActions())
         << "Retry #" << i;
   }
 
@@ -338,7 +359,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   // User activity should cancel suspending.  Suspender should manually
   // emit a PowerStateChanged signal since powerd_suspend didn't run.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.HandleUserActivity();
   EXPECT_EQ(kCancel, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
@@ -347,7 +368,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 
   // The lid being opened should also cancel.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.HandleLidOpened();
   EXPECT_EQ(kCancel, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
@@ -356,7 +377,7 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
 
   // The request should also be canceled if the system starts shutting down.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.HandleShutdown();
   EXPECT_EQ(kCancel, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
@@ -370,9 +391,10 @@ TEST_F(SuspenderTest, CancelAfterSuspend) {
   Init();
   delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   suspender_.HandleUserActivity();
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 }
@@ -386,25 +408,28 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
   // Report user activity before powerd_suspend is executed and check that
   // Suspender still suspends when OnReadyForSuspend() is called.
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.HandleUserActivity();
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
 
   // Report user activity after powerd_suspend fails and check that the
   // retry timeout isn't removed.
   delegate_.set_report_success_for_suspend(false);
   suspender_.RequestSuspend();
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
   suspender_.HandleUserActivity();
 
   delegate_.set_report_success_for_suspend(true);
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kPrepare, delegate_.GetActions());
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
-  EXPECT_EQ(JoinActions(kSuspend, kResume, NULL), delegate_.GetActions());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
 }
 
 }  // namespace power_manager

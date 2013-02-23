@@ -11,6 +11,8 @@
 
 DEFINE_integer wakeup_count -1 \
     "wakeup event count from start of shutdown. -1 to disable" w
+DEFINE_integer suspend_duration -1 \
+    "indicates that the system should wakeup after this many seconds" d
 
 # Directory where this script and send_metrics_on_resume (running as root)
 # write temporary state files.
@@ -118,6 +120,13 @@ send_uma_status() {
   metrics_client -e Power.SuspendStatus $1 4 &
 }
 
+setup_dark_resume() {
+    if [ "${FLAGS_suspend_duration}" -ne -1 ]; then
+        echo 0 > /sys/class/rtc/rtc0/wakealarm
+        echo "+${FLAGS_suspend_duration}" > /sys/class/rtc/rtc0/wakealarm
+    fi
+}
+
 # Note: Don't change or remove this line without also updating
 # send_metrics_on_resume.
 log_msg "Going to suspend-to-RAM state : args=$@"
@@ -134,10 +143,6 @@ cp /sys/class/rtc/rtc0/since_epoch $suspend_to_ram_time_file \
 
 # - Remove last_resume_timings to ensure the file is fresh on resume
 rm -f $last_resume_timings_file
-
-# - announces the event
-dbus-send --type=signal --system /org/chromium/PowerManager \
-    org.chromium.PowerManager.PowerStateChanged string:mem
 
 # - stores the current power status
 power-supply-info 2> /dev/null \
@@ -162,15 +167,6 @@ for i in /sys/bus/usb/devices/*/power/persist; do echo 0 > $i; done
 # - suspends the cryptohome device
 #CRYPTOHOME=/dev/mapper/cryptohome
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup suspend $CRYPTOHOME
-
-# - mute audio (if it is not already muted)
-amixer cget name='Master Playback Switch' | grep -q values=on
-if [ $? -eq 0 ]; then
-    PLAYBACK_WAS_ON=1
-    amixer cset name='Master Playback Switch' off > /dev/null
-else
-    PLAYBACK_WAS_ON=0
-fi
 
 enable_debug
 
@@ -199,6 +195,10 @@ else
     # your suspend and cause you hours of pain and confusion!
     if [ -f "${timestamp_file}" ]; then
         /sbin/hwclock -V > /dev/null
+    else
+        # We don't want to overwrite the alarm for whatever test might be
+        # running
+        setup_dark_resume
     fi
 
     # - suspends to ram
@@ -243,19 +243,10 @@ if [ $cancel -eq 0 ]; then
     fi
 fi
 
-# - announces the event
-dbus-send --type=signal --system /org/chromium/PowerManager \
-    org.chromium.PowerManager.PowerStateChanged string:on &
-
 initctl emit system-resumed &
 
 # - refresh mosys eventlog to help feedback reports pick up the latest snapshot
 /usr/share/userfeedback/scripts/eventlog &
-
-# - unmute audio (if we muted it before suspend)
-if [ $PLAYBACK_WAS_ON -eq 1 ]; then
-    amixer cset name='Master Playback Switch' on > /dev/null
-fi
 
 # - resumes cryptohome device
 #/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME
