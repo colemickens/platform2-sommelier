@@ -7,13 +7,16 @@ include common.mk
 CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a): \
 	power_manager/input_event.pb.o \
 	power_manager/policy.pb.o \
+	powerd/policy/dark_resume_policy.o \
 	powerd/policy/input_controller.o \
 	powerd/policy/state_controller.o
 clean: CLEAN(powerd/libpolicy.pie.a)
 
 CXX_BINARY(powerd/policy_unittest): \
+	powerd/policy/dark_resume_policy_unittest.o \
 	powerd/policy/state_controller_unittest.o \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
