@@ -110,8 +110,12 @@ while true; do
     fi
   fi
 
-  # look for errors in firmware log
-  if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log; then
+  # Look for errors in firmware log.
+  # Exempt a specific error string in Coreboot that is not a real error.
+  # TODO(shawnn): Remove this exemption once all devices have firmware with
+  # this error string changed.
+  if [ -f /sys/firmware/log ] && grep ERROR /sys/firmware/log | \
+    grep -v "attempting to recover by searching for header"; then
     echo "Firmware error found."
     : $(( firmware_errors += 1 ))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
