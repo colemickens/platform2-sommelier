@@ -50,11 +50,14 @@ WiFiProvider::WiFiProvider(ControlInterface *control_interface,
     : control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
-      manager_(manager) {}
+      manager_(manager),
+      running_(false) {}
 
 WiFiProvider::~WiFiProvider() {}
 
-void WiFiProvider::Start() {}
+void WiFiProvider::Start() {
+  running_ = true;
+}
 
 void WiFiProvider::Stop() {
   SLOG(WiFi, 2) << __func__;
@@ -65,6 +68,7 @@ void WiFiProvider::Stop() {
                   << service->unique_name();
     manager_->DeregisterService(service);
   }
+  running_ = false;
 }
 
 void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
@@ -197,6 +201,10 @@ WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
 }
 
 void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
+  if (!running_) {
+    return;
+  }
+
   WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
   if (!service) {
     const bool hidden_ssid = false;
@@ -216,6 +224,10 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
 
 WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
     const WiFiEndpointConstRefPtr &endpoint) {
+  if (!running_) {
+    return NULL;
+  }
+
   WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
 
   CHECK(service) << "Can't find Service for Endpoint "

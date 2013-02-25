@@ -70,6 +70,10 @@ class WiFiProviderTest : public testing::Test {
     return provider_.services_;
   }
 
+  bool GetRunning() {
+    return provider_.running_;
+  }
+
   void AddStringParameterToStorage(const string &id,
                                    const string &key,
                                    const string &value) {
@@ -187,8 +191,10 @@ MATCHER_P(RefPtrMatch, ref, "") {
 TEST_F(WiFiProviderTest, Start) {
   // Doesn't do anything really.  Just testing for no crash.
   EXPECT_TRUE(GetServices().empty());
+  EXPECT_FALSE(GetRunning());
   provider_.Start();
   EXPECT_TRUE(GetServices().empty());
+  EXPECT_TRUE(GetRunning());
 }
 
 TEST_F(WiFiProviderTest, Stop) {
@@ -561,6 +567,7 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAdded) {
+  provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   EXPECT_FALSE(FindService(ssid0_bytes, flimflam::kModeManaged,
@@ -602,11 +609,22 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   EXPECT_TRUE(service1 != service0);
 }
 
+TEST_F(WiFiProviderTest, OnEndpointAddedWhileStopped) {
+  // If we don't call provider_.Start(), OnEndpointAdded should have no effect.
+  const string ssid("an_ssid");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(0);
+  provider_.OnEndpointAdded(endpoint);
+  EXPECT_TRUE(GetServices().empty());
+}
+
 TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
   // The previous test allowed the provider to create its own "real"
   // WiFiServices, which hides some of what we can test with mock
   // services.  Re-do an add-endpoint operation by seeding the provider
   // with a mock service.
+  provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
@@ -651,6 +669,7 @@ TEST_F(WiFiProviderTest, OnEndpointAddedToMockService) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemoved) {
+  provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
@@ -685,6 +704,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
+  provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
@@ -710,6 +730,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
+  provider_.Start();
   const string ssid0("an_ssid");
   const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
   MockWiFiServiceRefPtr service0 = AddMockService(ssid0_bytes,
@@ -734,6 +755,14 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
   EXPECT_EQ(1, GetServices().size());
 }
 
+TEST_F(WiFiProviderTest, OnEndpointRemovedWhileStopped) {
+  // If we don't call provider_.Start(), OnEndpointRemoved should not
+  // cause a crash even if a service matching the endpoint does not exist.
+  const string ssid("an_ssid");
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(ssid, "00:00:00:00:00:00", 0, 0);
+  provider_.OnEndpointRemoved(endpoint);
+}
+
 TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   // This function should never unregister services itself -- the Manager
   // will automatically deregister the service if OnServiceUnloaded()
@@ -741,9 +770,9 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   EXPECT_CALL(manager_, DeregisterService(_)).Times(0);
 
   MockWiFiServiceRefPtr service = AddMockService(vector<uint8_t>(1, '0'),
-                                                  flimflam::kModeManaged,
-                                                  flimflam::kSecurityNone,
-                                                  false);
+                                                 flimflam::kModeManaged,
+                                                 flimflam::kSecurityNone,
+                                                 false);
   EXPECT_EQ(1, GetServices().size());
   EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(true));
   EXPECT_CALL(*service, ResetWiFi()).Times(0);

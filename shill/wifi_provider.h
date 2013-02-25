@@ -94,6 +94,7 @@ class WiFiProvider {
   Manager *manager_;
 
   std::vector<WiFiServiceRefPtr> services_;
+  bool running_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiProvider);
 };
