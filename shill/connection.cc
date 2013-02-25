@@ -108,9 +108,24 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
   SLOG(Connection, 2) << __func__ << " " << interface_name_;
 
   const IPConfig::Properties &properties = config->properties();
-  if (!properties.trusted_ip.empty() && !PinHostRoute(properties)) {
-    LOG(ERROR) << "Unable to pin host route to " << properties.trusted_ip;
+  IPAddress gateway(properties.address_family);
+  if (!properties.gateway.empty() &&
+      !gateway.SetAddressFromString(properties.gateway)) {
+    LOG(ERROR) << "Gateway address " << properties.gateway << " is invalid";
     return;
+  }
+
+  IPAddress trusted_ip(properties.address_family);
+  if (!properties.trusted_ip.empty()) {
+    if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
+      LOG(ERROR) << "Trusted IP address "
+                 << properties.trusted_ip << " is invalid";
+      return;
+    }
+    if (!PinHostRoute(trusted_ip, gateway)) {
+      LOG(ERROR) << "Unable to pin host route to " << properties.trusted_ip;
+      return;
+    }
   }
 
   IPAddress local(properties.address_family);
@@ -140,15 +155,7 @@ void Connection::UpdateFromIPConfig(const IPConfigRefPtr &config) {
     return;
   }
 
-  IPAddress gateway(properties.address_family);
-  if (!properties.gateway.empty() &&
-      !gateway.SetAddressFromString(properties.gateway)) {
-    LOG(ERROR) << "Gateway address " << properties.peer_address
-               << " is invalid";
-    return;
-  }
-
-  if (!FixGatewayReachability(&local, &peer, gateway)) {
+  if (!FixGatewayReachability(&local, &peer, &gateway, trusted_ip)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
@@ -293,29 +300,82 @@ bool Connection::RequestHostRoute(const IPAddress &address) {
 // static
 bool Connection::FixGatewayReachability(IPAddress *local,
                                         IPAddress *peer,
-                                        const IPAddress &gateway) {
-  if (!gateway.IsValid()) {
+                                        IPAddress *gateway,
+                                        const IPAddress &trusted_ip) {
+  if (!gateway->IsValid()) {
     LOG(WARNING) << "No gateway address was provided for this connection.";
     return false;
   }
 
   if (peer->IsValid()) {
-    if (gateway.Equals(*peer)) {
-      return true;
+    if (!gateway->Equals(*peer)) {
+      LOG(WARNING) << "Gateway address "
+                   << gateway->ToString()
+                   << " does not match peer address "
+                   << peer->ToString();
+      return false;
     }
-    LOG(WARNING) << "Gateway address "
-                 << gateway.ToString()
-                 << " does not match peer address "
-                 << peer->ToString();
-    return false;
+    if (gateway->Equals(trusted_ip)) {
+      // In order to send outgoing traffic in a point-to-point network,
+      // the gateway IP address isn't of significance.  As opposed to
+      // broadcast networks, we never ARP for the gateway IP address,
+      // but just send the IP packet addressed to the recipient.  As
+      // such, since using the external trusted IP address as the
+      // gateway or peer wreaks havoc on the routing rules, we choose
+      // not to supply a gateway address.  Here's an example:
+      //
+      //     Client    <->  Internet  <->  VPN Gateway  <->  Internal Network
+      //   192.168.1.2                      10.0.1.25         172.16.5.0/24
+      //
+      // In this example, a client connects to a VPN gateway on its
+      // public IP address 10.0.1.25.  It gets issued an IP address
+      // from the VPN internal pool.  For some VPN gateways, this
+      // results in a pushed-down PPP configuration which specifies:
+      //
+      //    Client local address:   172.16.5.13
+      //    Client peer address:    10.0.1.25
+      //    Client default gateway: 10.0.1.25
+      //
+      // If we take this literally, we need to resolve the fact that
+      // 10.0.1.25 is now listed as the default gateway and interface
+      // peer address for the point-to-point interface.  However, in
+      // order to route tunneled packets to the VPN gateway we must
+      // use the external route through the physical interface and
+      // not the tunnel, or else we end up in an infinite loop
+      // re-entering the tunnel trying to route towards the VPN server.
+      //
+      // We can do this by pinning a route, but we would need to wait
+      // for the pinning process to complete before assigning this
+      // address.  Currently this process is asynchronous and will
+      // complete only after returning to the event loop.  Additionally,
+      // since there's no metric associated with assigning an address
+      // to an interface, it's always possible that having the peer
+      // address of the interface might still trump a host route.
+      //
+      // To solve this problem, we reset the peer and gateway
+      // addresses.  Neither is required in order to perform the
+      // underlying routing task.  A gateway route can be specified
+      // without an IP endpoint on point-to-point links, and simply
+      // specify the outbound interface index.  Similarly, a peer
+      // IP address is not necessary either, and will be assigned
+      // the same IP address as the local IP.  This approach
+      // simplifies routing and doesn't change the desired
+      // functional behavior.
+      //
+      LOG(INFO) << "Removing gateway and peer addresses to preserve "
+                << "routability to trusted IP address.";
+      peer->SetAddressToDefault();
+      gateway->SetAddressToDefault();
+    }
+    return true;
   }
 
-  if (local->CanReachAddress(gateway)) {
+  if (local->CanReachAddress(*gateway)) {
     return true;
   }
 
   LOG(WARNING) << "Gateway "
-               << gateway.ToString()
+               << gateway->ToString()
                << " is unreachable from local address/prefix "
                << local->ToString() << "/" << local->prefix();
 
@@ -328,7 +388,7 @@ bool Connection::FixGatewayReachability(IPAddress *local,
     size_t prefix = original_prefix - 1;
     for (; prefix >= local->GetMinPrefixLength(); --prefix) {
       local->set_prefix(prefix);
-      if (local->CanReachAddress(gateway)) {
+      if (local->CanReachAddress(*gateway)) {
         found_new_prefix = true;
         break;
       }
@@ -340,7 +400,7 @@ bool Connection::FixGatewayReachability(IPAddress *local,
     local->set_prefix(original_prefix);
     DCHECK(!peer->IsValid());
     LOG(WARNING) << "Assuming point-to-point configuration.";
-    *peer = gateway;
+    *peer = *gateway;
     return true;
   }
 
@@ -356,20 +416,14 @@ uint32 Connection::GetMetric(bool is_default) {
   return is_default ? kDefaultMetric : kNonDefaultMetricBase + interface_index_;
 }
 
-bool Connection::PinHostRoute(const IPConfig::Properties &properties) {
+bool Connection::PinHostRoute(const IPAddress &trusted_ip,
+                              const IPAddress &gateway) {
   SLOG(Connection, 2) << __func__;
-  if (properties.gateway.empty() || properties.trusted_ip.empty()) {
-    LOG_IF(ERROR, properties.gateway.empty())
+  if (!trusted_ip.IsValid() || !gateway.IsValid()) {
+    LOG_IF(ERROR, !gateway.IsValid())
         << "No gateway -- unable to pin host route.";
-    LOG_IF(ERROR, properties.trusted_ip.empty())
+    LOG_IF(ERROR, !trusted_ip.IsValid())
         << "No trusted IP -- unable to pin host route.";
-    return false;
-  }
-
-  IPAddress trusted_ip(properties.address_family);
-  if (!trusted_ip.SetAddressFromString(properties.trusted_ip)) {
-    LOG(ERROR) << "Failed to parse trusted_ip "
-               << properties.trusted_ip << "; ignored.";
     return false;
   }
 

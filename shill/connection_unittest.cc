@@ -105,8 +105,9 @@ class ConnectionTest : public Test {
   }
 
   bool PinHostRoute(ConnectionRefPtr connection,
-                    const IPConfig::Properties &properties) {
-    return connection->PinHostRoute(properties);
+                    const IPAddress trusted_ip,
+                    const IPAddress gateway) {
+    return connection->PinHostRoute(trusted_ip, gateway);
   }
 
   const IPAddress &GetLocalAddress(ConnectionRefPtr connection) {
@@ -556,38 +557,37 @@ TEST_F(ConnectionTest, BlackholeIPv6) {
 }
 
 TEST_F(ConnectionTest, PinHostRoute) {
-  static const char kGateway[] = "10.242.2.13";
-  static const char kNetwork[] = "10.242.2.1";
-
   ConnectionRefPtr connection = GetNewConnection();
 
-  IPConfig::Properties props;
-  props.address_family = IPAddress::kFamilyIPv4;
-  EXPECT_FALSE(PinHostRoute(connection, props));
+  IPAddress gateway(IPAddress::kFamilyIPv4);
+  IPAddress trusted_ip(IPAddress::kFamilyIPv4);
 
-  props.gateway = kGateway;
-  EXPECT_FALSE(PinHostRoute(connection, props));
+  // Should fail because neither IP address is set.
+  EXPECT_FALSE(PinHostRoute(connection, trusted_ip, gateway));
 
-  props.gateway.clear();
-  props.trusted_ip = "xxx";
-  EXPECT_FALSE(PinHostRoute(connection, props));
+  static const char kGateway[] = "10.242.2.13";
+  ASSERT_TRUE(gateway.SetAddressFromString(kGateway));
 
-  props.gateway = kGateway;
-  EXPECT_FALSE(PinHostRoute(connection, props));
+  // Should fail because trusted IP is not set.
+  EXPECT_FALSE(PinHostRoute(connection, trusted_ip, gateway));
 
-  props.trusted_ip = kNetwork;
-  IPAddress address(IPAddress::kFamilyIPv4);
-  ASSERT_TRUE(address.SetAddressFromString(kNetwork));
-  size_t prefix_len = address.GetLength() * 8;
+  static const char kTrustedIP[] = "10.0.1.1";
+  ASSERT_TRUE(trusted_ip.SetAddressFromString(kTrustedIP));
+
+  // Should fail because gateway IP is not set.
+  EXPECT_FALSE(PinHostRoute(connection, trusted_ip,
+                            IPAddress(gateway.family())));
+
+  size_t prefix_len = IPAddress::GetMaxPrefixLength(trusted_ip.family());
   EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
+      IsIPAddress(trusted_ip, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
       .WillOnce(Return(false));
-  EXPECT_FALSE(PinHostRoute(connection, props));
+  EXPECT_FALSE(PinHostRoute(connection, trusted_ip, gateway));
 
   EXPECT_CALL(routing_table_, RequestRouteToHost(
-      IsIPAddress(address, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
+      IsIPAddress(trusted_ip, prefix_len), -1, kTestDeviceInterfaceIndex0, _))
       .WillOnce(Return(true));
-  EXPECT_TRUE(PinHostRoute(connection, props));
+  EXPECT_TRUE(PinHostRoute(connection, trusted_ip, gateway));
 
   // The destructor will remove the routes and addresses.
   AddDestructorExpectations();
@@ -601,43 +601,58 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   local.set_prefix(kPrefix);
   IPAddress gateway(IPAddress::kFamilyIPv4);
   IPAddress peer(IPAddress::kFamilyIPv4);
+  IPAddress trusted_ip(IPAddress::kFamilyIPv4);
 
   // Should fail because no gateway is set.
-  EXPECT_FALSE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_FALSE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_FALSE(peer.IsValid());
+  EXPECT_FALSE(gateway.IsValid());
 
   // Should succeed because with the given prefix, this gateway is reachable.
   static const char kReachableGateway[] = "10.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
+  IPAddress gateway_backup(gateway);
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   // Prefix should remain unchanged.
   EXPECT_EQ(kPrefix, local.prefix());
   // Peer should remain unchanged.
   EXPECT_FALSE(peer.IsValid());
+  // Gateway should remain unchanged.
+  EXPECT_TRUE(gateway_backup.Equals(gateway));
 
   // Should succeed because we modified the prefix to match the gateway.
   static const char kExpandableGateway[] = "10.242.3.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
+  gateway_backup = gateway;
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   // Prefix should have opened up by 1 bit.
   EXPECT_EQ(kPrefix - 1, local.prefix());
   // Peer should remain unchanged.
   EXPECT_FALSE(peer.IsValid());
+  // Gateway should remain unchanged.
+  EXPECT_TRUE(gateway_backup.Equals(gateway));
 
   // Should change models to assuming point-to-point because we cannot
   // plausibly expand the prefix past 8.
   local.set_prefix(kPrefix);
   static const char kUnreachableGateway[] = "11.242.2.14";
   ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
+  gateway_backup = gateway;
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   // Prefix should not have changed.
   EXPECT_EQ(kPrefix, local.prefix());
   // Peer address should be set to the gateway address.
   EXPECT_TRUE(peer.Equals(gateway));
+  // Gateway should remain unchanged.
+  EXPECT_TRUE(gateway_backup.Equals(gateway));
 
   // Should also use point-to-point model if the netmask is set to the
   // "all-ones" addresss, even if this address could have been made
@@ -646,28 +661,47 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
       IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4);
   local.set_prefix(kIPv4MaxPrefix);
   ASSERT_TRUE(gateway.SetAddressFromString(kExpandableGateway));
+  gateway_backup = gateway;
   peer = IPAddress(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   // Prefix should not have changed.
   EXPECT_EQ(kIPv4MaxPrefix, local.prefix());
   // Peer address should be set to the gateway address.
   EXPECT_TRUE(peer.Equals(gateway));
+  // Gateway should remain unchanged.
+  EXPECT_TRUE(gateway_backup.Equals(gateway));
 
   // If this is a peer-to-peer interface and the peer matches the gateway,
   // we should succeed.
   local.set_prefix(kPrefix);
   ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
+  gateway_backup = gateway;
   ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
-  EXPECT_TRUE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_TRUE(peer.Equals(gateway));
+  EXPECT_TRUE(gateway_backup.Equals(gateway));
 
   // If there is a peer specified and it does not match the gateway (even
   // if it was reachable via netmask), we should fail.
   ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
-  EXPECT_FALSE(Connection::FixGatewayReachability(&local, &peer, gateway));
+  EXPECT_FALSE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
   EXPECT_EQ(kPrefix, local.prefix());
   EXPECT_FALSE(peer.Equals(gateway));
+
+  // If this is a peer-to-peer interface and the peer matches the gateway,
+  // but it also matches the trusted IP address, the gateway and peer address
+  // should be modified to allow routing to work correctly.
+  ASSERT_TRUE(gateway.SetAddressFromString(kUnreachableGateway));
+  ASSERT_TRUE(peer.SetAddressFromString(kUnreachableGateway));
+  ASSERT_TRUE(trusted_ip.SetAddressFromString(kUnreachableGateway));
+  EXPECT_TRUE(Connection::FixGatewayReachability(
+      &local, &peer, &gateway, trusted_ip));
+  EXPECT_TRUE(peer.IsDefault());
+  EXPECT_TRUE(gateway.IsDefault());
 }
 
 TEST_F(ConnectionTest, Binders) {

@@ -131,9 +131,10 @@ class Connection : public base::RefCounted<Connection> {
   // is unreachable with the provided netmask.
   static bool FixGatewayReachability(IPAddress *local,
                                      IPAddress *peer,
-                                     const IPAddress &gateway);
+                                     IPAddress *gateway,
+                                     const IPAddress &trusted_ip);
   uint32 GetMetric(bool is_default);
-  bool PinHostRoute(const IPConfig::Properties &config);
+  bool PinHostRoute(const IPAddress &trusted_ip, const IPAddress &gateway);
 
   void OnRouteQueryResponse(int interface_index,
                             const RoutingTableEntry &entry);
