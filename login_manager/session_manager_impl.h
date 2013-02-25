@@ -66,7 +66,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   // SessionManagerInterface implementation.
   void AnnounceSessionStoppingIfNeeded() OVERRIDE;
   void AnnounceSessionStopped() OVERRIDE;
-  const std::string& CurrentUser() OVERRIDE { return current_user_; }
+  void ImportValidateAndStoreGeneratedKey(const FilePath& temp_key_file);
   bool ScreenIsLocked() OVERRIDE { return screen_locked_; }
   // Should set up policy stuff; if false DIE.
   bool Initialize() OVERRIDE;
@@ -132,8 +132,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   // login_manager::PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success) OVERRIDE;
   virtual void OnKeyPersisted(bool success) OVERRIDE;
-
-  void ImportValidateAndStoreGeneratedKey(const FilePath& temp_key_file);
 
   // Magic user name strings.
   static const char kIncognitoUser[];
