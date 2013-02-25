@@ -6,7 +6,6 @@
 
 #include <openssl/sha.h>
 
-#include <algorithm>
 #include <cstring>
 #include <limits>
 #include <vector>
@@ -66,10 +65,7 @@ std::string SanitizeUserName(const std::string& username) {
   SHA1_Update(&ctx, salt->data(), salt->size());
   SHA1_Update(&ctx, username.data(), username.size());
   SHA1_Final(binmd, &ctx);
-  std::string final = base::HexEncode(binmd, sizeof(binmd));
-  // Stay compatible with CryptoLib::AsciiEncodeToBuffer()
-  std::transform(final.begin(), final.end(), final.begin(), ::tolower);
-  return final;
+  return base::HexEncode(binmd, sizeof(binmd));
 }
 
 FilePath GetUserPathPrefix() {
