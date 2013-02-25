@@ -177,7 +177,7 @@ bool NetfilterQueueProcessor::Start() {
       nfq_handle_, input_queue_,
       &NetfilterQueueProcessor::InputQueueCallback, this);
   if (!input_queue_handle_) {
-    LOG(ERROR) << "nfq_create_queue() failed for input queue" << input_queue_;
+    LOG(ERROR) << "nfq_create_queue() failed for input queue " << input_queue_;
     return false;
   }
 
@@ -191,7 +191,8 @@ bool NetfilterQueueProcessor::Start() {
       nfq_handle_, output_queue_,
       &NetfilterQueueProcessor::OutputQueueCallback, this);
   if (!output_queue_handle_) {
-    LOG(ERROR) << "nfq_create_queue() failed for output queue" << output_queue_;
+    LOG(ERROR) << "nfq_create_queue() failed for output queue "
+               << output_queue_;
     return false;
   }
 
@@ -363,7 +364,7 @@ void NetfilterQueueProcessor::LogOutgoingPacket(
   }
   int device_index = packet.out_device();
   if (device_index == 0) {
-    VLOG(2) << "Outgoing packet is not assgned a vald device.";
+    VLOG(2) << "Outgoing packet is not assigned a valid device.";
     return;
   }
   uint16_t port = packet.source_port();
