@@ -650,23 +650,22 @@ all:
 # After the test have completed, if profiling, run coverage analysis
 tests:
 ifeq ($(MODE),profiling)
-	@$(ECHO) -n "COVERAGE		gcov "
-	@$(ECHO) "[$(COLOR_YELLOW)STARTED$(COLOR_RESET)]"
-	$(QUIET)(FILES="";						\
-		for GCNO in `find . -name "*.gcno"`;			\
-		do							\
+	@$(ECHO) "COVERAGE [$(COLOR_YELLOW)STARTED$(COLOR_RESET)]"
+	$(QUIET)FILES="";						\
+		for GCNO in `find . -name "*.gcno"`; do			\
 			GCDA="$${GCNO%.gcno}.gcda";			\
-			[ -e $${GCDA} ] && FILES="$${FILES} $${GCDA}";	\
+			if [ -e $${GCDA} ]; then			\
+				FILES="$${FILES} $${GCDA}";		\
+			fi						\
 		done;							\
-		gcov -l $${FILES})
-	@$(ECHO) -n "COVERAGE		gcov "
-	@$(ECHO) "[$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
-	@$(ECHO) -n "COVERAGE		lcov "
-	@$(ECHO) "[$(COLOR_YELLOW)STARTED$(COLOR_RESET)]"
-	$(QUIET)lcov --capture --directory . --output-file=lcov-coverage.info
-	$(QUIET)genhtml lcov-coverage.info --output-directory lcov-html
-	@$(ECHO) -n "COVERAGE		lcov "
-	@$(ECHO) "[$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
+		if [ -n "$${FILES}" ]; then				\
+			gcov -l $${FILES};				\
+			lcov --capture --directory .			\
+				--output-file=lcov-coverage.info;	\
+			genhtml lcov-coverage.info			\
+				--output-directory lcov-html;		\
+		fi
+	@$(ECHO) "COVERAGE [$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
 endif
 .PHONY: tests
 
