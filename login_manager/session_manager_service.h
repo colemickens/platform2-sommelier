@@ -184,7 +184,7 @@ class SessionManagerService
   // Implementing ProcessManagerServiceInterface
   virtual void ScheduleShutdown() OVERRIDE;
   virtual void RunBrowser() OVERRIDE;
-  virtual void AbortBrowser() OVERRIDE;
+  virtual void AbortBrowser(int signal) OVERRIDE;
   virtual bool IsBrowser(pid_t pid) OVERRIDE;
   virtual void RestartBrowserWithArgs(
       const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;

@@ -4,6 +4,8 @@
 
 #include "login_manager/liveness_checker_impl.h"
 
+#include <signal.h>
+
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/callback.h>
@@ -73,8 +75,10 @@ void LivenessCheckerImpl::CheckAndSendLivenessPing(base::TimeDelta interval) {
       !system_->CheckAsyncMethodSuccess(outstanding_liveness_ping_->Get())) {
     LOG(WARNING) << "Browser hang detected!";
     if (enable_aborting_) {
+      // Note: If this log message is changed, the desktopui_HangDetector
+      // autotest must be updated.
       LOG(WARNING) << "Aborting browser process.";
-      manager_->AbortBrowser();
+      manager_->AbortBrowser(SIGFPE);
       // HandleChildExit() will reap the process and restart if needed.
       Stop();
       return;

@@ -113,14 +113,14 @@ class LivenessCheckerImplTest : public ::testing::Test {
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   ExpectUnAckedLivenessPing();
-  EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
+  EXPECT_CALL(*manager_.get(), AbortBrowser(SIGFPE)).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   base::RunLoop().RunUntilIdle();
 }
 
 TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   ExpectLivenessPingResponsePing();
-  EXPECT_CALL(*manager_.get(), AbortBrowser()).Times(1);
+  EXPECT_CALL(*manager_.get(), AbortBrowser(SIGFPE)).Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   base::RunLoop().RunUntilIdle();
 }

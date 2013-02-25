@@ -28,8 +28,8 @@ class ProcessManagerServiceInterface {
   // HandleBrowserExit when the child is done.
   virtual void RunBrowser() = 0;
 
-  // Abort the browser process.
-  virtual void AbortBrowser() = 0;
+  // Abort the browser process with |signal|.
+  virtual void AbortBrowser(int signal) = 0;
 
   // Check if |pid| is the currently-managed browser process.
   virtual bool IsBrowser(pid_t pid) = 0;

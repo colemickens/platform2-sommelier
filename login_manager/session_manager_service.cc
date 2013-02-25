@@ -430,8 +430,8 @@ int SessionManagerService::RunChild(ChildJobInterface* child_job) {
   return pid;
 }
 
-void SessionManagerService::AbortBrowser() {
-  KillChild(browser_.job.get(), browser_.pid, SIGABRT);
+void SessionManagerService::AbortBrowser(int signal) {
+  KillChild(browser_.job.get(), browser_.pid, signal);
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
