@@ -3,16 +3,14 @@
 #ifndef PERF_INTERNALS_H_
 #define PERF_INTERNALS_H_
 
-//#include <linux/types.h>
 #include <linux/limits.h>
+#include <stdint.h>
+
 #include "perf_event.h"
 
-
-// These data structures have been copied from the kernel. Mostly from
-// tools/perf/util/header.c and from others.
-
-typedef unsigned long long u64;
-typedef signed long long   s64;
+// These typedefs are from tools/perf/util/types.h in the kernel.
+typedef uint64_t           u64;
+typedef int64_t            s64;
 typedef unsigned int	   u32;
 typedef signed int	   s32;
 typedef unsigned short	   u16;
@@ -26,6 +24,9 @@ typedef signed char	   s8;
 
 #define DECLARE_BITMAP(name,bits) \
 	unsigned long name[BITS_TO_LONGS(bits)]
+
+// These data structures have been copied from the kernel. See files under
+// tools/perf/util.
 
 enum {
 	HEADER_RESERVED		= 0,	/* always cleared */
