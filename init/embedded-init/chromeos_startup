@@ -107,5 +107,47 @@ mount -n -t tmpfs -o mode=1777,nodev,noexec,nosuid varlock /var/lock
 touch /var/lock/.ramfs # TODO: Is this needed?
 mount -n -t tmpfs -o nodev,noexec,nosuid media /media
 
+# Mount stateful partition for dev packages
+# TODO(arkaitzr@chromium.org) - Only use CROS_DEBUG when cros_debug is
+# correctly set in a test VM after updating itself to itself (that is, it does
+# not fail cros_au_test_harness).
+if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
+  # Capture a snapshot of "normal" mount state here, for auditability,
+  # before we start applying devmode-specific changes.
+  cat /proc/mounts > /var/log/mount_options.log
+  # Create dev_image directory in base images in developer mode.
+  if [ ! -d /mnt/stateful_partition/dev_image ]; then
+    mkdir -p -m 0755 /mnt/stateful_partition/dev_image
+  fi
+  # Mount and then remount to enable exec/suid.
+  mount -n --bind /mnt/stateful_partition/dev_image /usr/local
+  mount -n -o remount,exec,suid /usr/local
+
+  # Set up /var elements needed by gmerge.
+  # TODO(keescook) Use dev/test package installs instead of piling more
+  # things here (crosbug.com/14091).
+  BASE=/mnt/stateful_partition/var_overlay
+  if [ -d ${BASE} ]; then
+    # Keep this list in sync with the var_overlay elements in the DIRLIST
+    # found in chromeos-install from chromeos-base/chromeos-installer.
+    DIRLIST="
+      db/pkg
+      lib/portage
+    "
+    for DIR in ${DIRLIST}; do
+      if [ ! -d ${BASE}/${DIR} ]; then
+        continue
+      fi
+      DEST=/var/${DIR}
+      if [ -e ${DEST} ]; then
+        continue
+      fi
+      PARENT=$(dirname ${DEST})
+      mkdir -p ${PARENT}
+      ln -sf ${BASE}/${DIR} ${DEST}
+    done
+  fi
+fi
+
 # Always return success to avoid killing init
 exit 0
