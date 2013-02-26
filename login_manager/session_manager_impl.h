@@ -25,8 +25,8 @@ class LoginMetrics;
 class PolicyKey;
 class ProcessManagerServiceInterface;
 class SystemUtils;
-class UserPolicyServiceFactory;
 class UpstartSignalEmitter;
+class UserPolicyServiceFactory;
 
 // Friend test classes.
 class SessionManagerImplStaticTest;
@@ -39,24 +39,6 @@ class SessionManagerImpl : public SessionManagerInterface,
                      LoginMetrics* metrics,
                      SystemUtils* utils);
   virtual ~SessionManagerImpl();
-
-  // If you want to call any of these setters, you should do so before calling
-  // any other methods on this class.
-  class TestApi {
-   public:
-    void set_machine_info_file(const FilePath& new_path) {
-      session_manager_impl_->machine_info_file_ = new_path;
-    }
-
-   private:
-    friend class SessionManagerImpl;
-    explicit TestApi(SessionManagerImpl* session_manager_impl)
-        : session_manager_impl_(session_manager_impl) {}
-    SessionManagerImpl* session_manager_impl_;
-  };
-
-  // TestApi exposes internal routines for testing purposes.
-  TestApi test_api() { return TestApi(this); }
 
   void InjectPolicyServices(
       const scoped_refptr<DevicePolicyService>& device_policy,
@@ -197,7 +179,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   LoginMetrics* login_metrics_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.
 
-  FilePath machine_info_file_;
   scoped_refptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
   scoped_refptr<PolicyService> user_policy_;

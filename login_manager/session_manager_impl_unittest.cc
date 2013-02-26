@@ -177,8 +177,6 @@ class SessionManagerImplTest : public ::testing::Test {
     return output;
   }
 
-  FilePath machine_info_file_;
-
   // These are bare pointers, not scoped_ptrs, because we need to give them
   // to a SessionManagerImpl instance, but also be able to set expectations
   // on them after we hand them off.
@@ -343,28 +341,6 @@ TEST_F(SessionManagerImplTest, StartOwnerSession) {
                                      nothing,
                                      &out,
                                      &Resetter(&error).lvalue()));
-}
-
-TEST_F(SessionManagerImplTest, StartSessionRemovesMachineInfo) {
-  FilePath machine_info_file(tmpdir_.path().AppendASCII("machine_info"));
-
-  impl_.test_api().set_machine_info_file(machine_info_file);
-
-  gboolean out;
-  gchar email[] = "user@somewhere";
-  gchar nothing[] = "";
-  ExpectStartSession(email);
-
-  EXPECT_EQ(0, file_util::WriteFile(machine_info_file, NULL, 0));
-  EXPECT_TRUE(file_util::PathExists(machine_info_file));
-
-  ScopedError error;
-  EXPECT_EQ(TRUE, impl_.StartSession(email,
-                                     nothing,
-                                     &out,
-                                     &Resetter(&error).lvalue()));
-
-  EXPECT_FALSE(file_util::PathExists(machine_info_file));
 }
 
 TEST_F(SessionManagerImplTest, StartSessionKeyMitigation) {

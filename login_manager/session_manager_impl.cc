@@ -67,10 +67,6 @@ const char kLegalCharacters[] =
 // The name of the pref that Chrome sets to track who the owner is.
 const char kDeviceOwnerPref[] = "cros.device.owner";
 
-// File that contains world-readable machine statistics. Should be removed once
-// the user session starts.
-const char kMachineInfoFile[] = "/tmp/machine-info";
-
 // The flag to pass to chrome to open a named socket for testing.
 const char kTestingChannelFlag[] = "--testing-channel=NamedTestingInterface:";
 
@@ -129,8 +125,7 @@ SessionManagerImpl::SessionManagerImpl(
       upstart_signal_emitter_(emitter.Pass()),
       manager_(manager),
       login_metrics_(metrics),
-      system_(utils),
-      machine_info_file_(kMachineInfoFile) {
+      system_(utils) {
   // TODO(ellyjones): http://crosbug.com/6615
   // The intent was to use this cookie to authenticate RPC requests from the
   // browser process kicked off by the session_manager.  This didn't actually
@@ -308,10 +303,6 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
         !current_user_is_incognito_) {
       manager_->RunKeyGenerator();
     }
-    // Delete the machine-info file. It contains device-identifiable data such
-    // as the serial number and shouldn't be around during a user session.
-    if (!file_util::Delete(FilePath(machine_info_file_), false))
-      PLOG(WARNING) << "Failed to delete " << machine_info_file_.value();
 
     // Record that a login has successfully completed on this boot.
     system_->AtomicFileWrite(FilePath(kLoggedInFlag), "1", 1);
