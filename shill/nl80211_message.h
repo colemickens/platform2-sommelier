@@ -39,8 +39,10 @@ class Nl80211Message {
 
   // Initializes the message with bytes from the kernel.
   virtual bool InitFromNlmsg(const nlmsghdr *msg);
-
+  static void PrintBytes(int log_level, const unsigned char *buf,
+                         size_t num_bytes);
   uint32_t sequence_number() const { return sequence_number_; }
+  virtual void Print(int log_level) const;
 
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
@@ -75,19 +77,6 @@ class Nl80211Message {
   static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);
 
-  // Returns a string that describes the message in terms of its attributes.
-  // For example, a trigger scan message might look like:
-  // Received _NL80211_CMD_TRIGGER_SCAN (33)
-  //    Attr:NL80211_ATTR_WIPHY=0 Type:uint32_t
-  //    Attr:NL80211_ATTR_IFINDEX=2 Type:uint32_t
-  //    Attr:NL80211_ATTR_SCAN_FREQUENCIES=296 bytes: 0x2c [...]
-  std::string GenericToString() const;
-
-  // Returns a string that describes this message in a message-type-specific
-  // way.  For example, a trigger scan message might look like:
-  // @wlan0 (phy #0): scan started; frequencies: 2412, [...] 5825, ; SSIDs: "",
-  virtual std::string ToString() const { return GetHeaderString(); }
-
   uint8 message_type() const { return message_type_; }
   const char *message_type_string() const { return message_type_string_; }
 
@@ -114,9 +103,6 @@ class Nl80211Message {
   // Returns a string based on the SSID found in 'data'.  Non-printable
   // characters are string-ized.
   static std::string StringFromSsid(const uint8_t len, const uint8_t *data);
-
-  std::string GetScanFrequenciesAttributeAsString() const;
-  std::string GetScanSsidsAttributeAsString() const;
 
  private:
   friend class Config80211Test;
@@ -179,8 +165,6 @@ class AckMessage : public Nl80211Message {
 
   AckMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(AckMessage);
 };
@@ -191,8 +175,6 @@ class AssociateMessage : public Nl80211Message {
   static const char kCommandString[];
 
   AssociateMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AssociateMessage);
@@ -205,8 +187,6 @@ class AuthenticateMessage : public Nl80211Message {
   static const char kCommandString[];
 
   AuthenticateMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AuthenticateMessage);
@@ -221,8 +201,6 @@ class CancelRemainOnChannelMessage : public Nl80211Message {
   CancelRemainOnChannelMessage()
       : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(CancelRemainOnChannelMessage);
 };
@@ -234,8 +212,6 @@ class ConnectMessage : public Nl80211Message {
   static const char kCommandString[];
 
   ConnectMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ConnectMessage);
@@ -249,8 +225,6 @@ class DeauthenticateMessage : public Nl80211Message {
 
   DeauthenticateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(DeauthenticateMessage);
 };
@@ -262,8 +236,6 @@ class DeleteStationMessage : public Nl80211Message {
   static const char kCommandString[];
 
   DeleteStationMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(DeleteStationMessage);
@@ -277,8 +249,6 @@ class DisassociateMessage : public Nl80211Message {
 
   DisassociateMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(DisassociateMessage);
 };
@@ -291,8 +261,6 @@ class DisconnectMessage : public Nl80211Message {
 
   DisconnectMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(DisconnectMessage);
 };
@@ -304,7 +272,6 @@ class ErrorMessage : public Nl80211Message {
   static const char kCommandString[];
 
   explicit ErrorMessage(uint32_t error);
-
   virtual std::string ToString() const;
 
  private:
@@ -320,8 +287,6 @@ class FrameTxStatusMessage : public Nl80211Message {
   static const char kCommandString[];
 
   FrameTxStatusMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(FrameTxStatusMessage);
@@ -346,8 +311,6 @@ class JoinIbssMessage : public Nl80211Message {
 
   JoinIbssMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(JoinIbssMessage);
 };
@@ -359,8 +322,6 @@ class MichaelMicFailureMessage : public Nl80211Message {
   static const char kCommandString[];
 
   MichaelMicFailureMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MichaelMicFailureMessage);
@@ -374,8 +335,6 @@ class NewScanResultsMessage : public Nl80211Message {
 
   NewScanResultsMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(NewScanResultsMessage);
 };
@@ -387,8 +346,6 @@ class NewStationMessage : public Nl80211Message {
   static const char kCommandString[];
 
   NewStationMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewStationMessage);
@@ -402,8 +359,6 @@ class NewWifiMessage : public Nl80211Message {
 
   NewWifiMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(NewWifiMessage);
 };
@@ -415,8 +370,6 @@ class NoopMessage : public Nl80211Message {
   static const char kCommandString[];
 
   NoopMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NoopMessage);
@@ -430,8 +383,6 @@ class NotifyCqmMessage : public Nl80211Message {
 
   NotifyCqmMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(NotifyCqmMessage);
 };
@@ -443,8 +394,6 @@ class PmksaCandidateMessage : public Nl80211Message {
   static const char kCommandString[];
 
   PmksaCandidateMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(PmksaCandidateMessage);
@@ -458,23 +407,7 @@ class RegBeaconHintMessage : public Nl80211Message {
 
   RegBeaconHintMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
-  struct ieee80211_beacon_channel {
-    __u16 center_freq;
-    bool passive_scan;
-    bool no_ibss;
-  };
-
-  // Returns the channel ID calculated from the 802.11 frequency.
-  static int ChannelFromIeee80211Frequency(int freq);
-
-  // Sets values in |chan| based on attributes in |tb|, the array of pointers
-  // to netlink attributes, indexed by attribute type.
-  int ParseBeaconHintChan(const nlattr *tb,
-                          ieee80211_beacon_channel *chan) const;
-
   DISALLOW_COPY_AND_ASSIGN(RegBeaconHintMessage);
 };
 
@@ -485,8 +418,6 @@ class RegChangeMessage : public Nl80211Message {
   static const char kCommandString[];
 
   RegChangeMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RegChangeMessage);
@@ -500,8 +431,6 @@ class RemainOnChannelMessage : public Nl80211Message {
 
   RemainOnChannelMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(RemainOnChannelMessage);
 };
@@ -513,8 +442,6 @@ class RoamMessage : public Nl80211Message {
   static const char kCommandString[];
 
   RoamMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(RoamMessage);
@@ -528,8 +455,6 @@ class ScanAbortedMessage : public Nl80211Message {
 
   ScanAbortedMessage() : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(ScanAbortedMessage);
 };
@@ -541,8 +466,6 @@ class TriggerScanMessage : public Nl80211Message {
   static const char kCommandString[];
 
   TriggerScanMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TriggerScanMessage);
@@ -557,8 +480,6 @@ class UnknownMessage : public Nl80211Message {
 
   static const uint8_t kCommand;
   static const char kCommandString[];
-
-  virtual std::string ToString() const;
 
  private:
   uint8_t command_;
@@ -575,8 +496,6 @@ class UnprotDeauthenticateMessage : public Nl80211Message {
   UnprotDeauthenticateMessage()
       : Nl80211Message(kCommand, kCommandString) {}
 
-  virtual std::string ToString() const;
-
  private:
   DISALLOW_COPY_AND_ASSIGN(UnprotDeauthenticateMessage);
 };
@@ -588,8 +507,6 @@ class UnprotDisassociateMessage : public Nl80211Message {
   static const char kCommandString[];
 
   UnprotDisassociateMessage() : Nl80211Message(kCommand, kCommandString) {}
-
-  virtual std::string ToString() const;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UnprotDisassociateMessage);

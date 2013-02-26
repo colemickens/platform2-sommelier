@@ -44,22 +44,12 @@ bool AttributeList::CreateAndInitFromNlAttr(nl80211_attrs id,
   return attributes_[id]->InitFromNlAttr(data);
 }
 
-string AttributeList::ToString() const {
-  string output;
+void AttributeList::Print(int log_level, int indent) const {
   map<int, AttributePointer>::const_iterator i;
 
   for (i = attributes_.begin(); i != attributes_.end(); ++i) {
-    string attribute_string;
-    if (i->second->has_a_value()) {
-      i->second->ToString(&attribute_string);
-      StringAppendF(&output, "   Attr: %s(%d) Type: %s = %s\n",
-                    i->second->id_string(),
-                    i->second->id(),
-                    i->second->datatype_string(),
-                    attribute_string.c_str());
-    }
+    i->second->Print(log_level, indent);
   }
-  return output;
 }
 
 ByteString AttributeList::Encode() const {

@@ -93,6 +93,9 @@ class Nl80211Attribute {
 
   virtual bool GetRawValue(ByteString *value) const;
 
+  // Prints the attribute info -- for debugging.
+  virtual void Print(int log_level, int indent) const;
+
   // Fill a string with characters that represents the value of the attribute.
   // If no attribute is found or if the datatype isn't trivially stringizable,
   // this method returns 'false' and |value| remains unchanged.
@@ -127,6 +130,9 @@ class Nl80211Attribute {
   }
 
  protected:
+  // Builds a string to precede a printout of this attribute.
+  std::string HeaderToPrint(int indent) const;
+
   // Encodes the attribute suitably for the attributes in the payload portion
   // of a netlink message suitable for Sockets::Send.  Return value is empty on
   // failure.

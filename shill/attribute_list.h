@@ -35,7 +35,10 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // their attributes as message templates.
   bool CreateAndInitFromNlAttr(nl80211_attrs id, const nlattr *data);
 
-  std::string ToString() const;
+  // Prints the attribute list with each attribute using no less than 1 line.
+  // |indent| indicates the amout of leading spaces to be printed (useful for
+  // nested attributes).
+  void Print(int log_level, int indent) const;
 
   // Returns the attributes as the payload portion of a netlink message
   // suitable for Sockets::Send.  Return value is empty on failure (or if no

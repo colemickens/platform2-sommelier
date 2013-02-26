@@ -203,6 +203,13 @@ bool Nl80211Attribute::GetRawValue(ByteString *value) const {
   return false;
 }
 
+void Nl80211Attribute::Print(int log_level, int indent) const {
+  string attribute_value;
+  SLOG(WiFi, log_level) << HeaderToPrint(indent) << " "
+                        << (ToString(&attribute_value) ? attribute_value :
+                            "<DOES NOT EXIST>");
+}
+
 string Nl80211Attribute::RawToString() const {
   string output = " === RAW: ";
 
@@ -223,6 +230,16 @@ string Nl80211Attribute::RawToString() const {
   }
   output.append(" ==== ");
   return output;
+}
+
+string Nl80211Attribute::HeaderToPrint(int indent) const {
+  static const int kSpacesPerIndent = 2;
+  return StringPrintf("%*s%s(%d) %s %s=",
+            indent * kSpacesPerIndent, "",
+            id_string(),
+            id(),
+            datatype_string(),
+            ((has_a_value()) ?  "": "UNINITIALIZED "));
 }
 
 ByteString Nl80211Attribute::EncodeGeneric(const unsigned char *data,

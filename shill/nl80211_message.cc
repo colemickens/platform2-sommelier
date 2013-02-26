@@ -37,6 +37,7 @@
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
 
+#include <algorithm>
 #include <iomanip>
 #include <string>
 
@@ -56,6 +57,7 @@ using base::LazyInstance;
 using base::StringAppendF;
 using base::StringPrintf;
 using std::map;
+using std::min;
 using std::string;
 using std::vector;
 
@@ -103,6 +105,13 @@ map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 //
 // Nl80211Message
 //
+
+void Nl80211Message::Print(int log_level) const {
+  SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
+                                        message_type_string(),
+                                        message_type());
+  attributes_.Print(log_level, 1);
+}
 
 bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   if (!const_msg) {
@@ -334,6 +343,55 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   return true;
 }
 
+// static
+void Nl80211Message::PrintBytes(int log_level, const unsigned char *buf,
+                                size_t num_bytes) {
+  SLOG(WiFi, log_level) << "Netlink Message -- Examining Bytes";
+  if (!buf) {
+    SLOG(WiFi, log_level) << "<NULL Buffer>";
+    return;
+  }
+
+  if (num_bytes >= sizeof(nlmsghdr)) {
+    const nlmsghdr *header = reinterpret_cast<const nlmsghdr *>(buf);
+    SLOG(WiFi, log_level) << StringPrintf(
+        "len:          %02x %02x %02x %02x = %u bytes",
+        buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
+
+    SLOG(WiFi, log_level) << StringPrintf(
+        "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
+        buf[4], buf[5], buf[6], buf[7], header->nlmsg_type,
+        ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
+        ((header->nlmsg_flags & NLM_F_MULTI) ? " MULTI" : ""),
+        ((header->nlmsg_flags & NLM_F_ACK) ? " ACK" : ""),
+        ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
+        ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
+
+    SLOG(WiFi, log_level) << StringPrintf(
+        "sequence:     %02x %02x %02x %02x = %u",
+        buf[8], buf[9], buf[10], buf[11], header->nlmsg_seq);
+    SLOG(WiFi, log_level) << StringPrintf(
+        "pid:          %02x %02x %02x %02x = %u",
+        buf[12], buf[13], buf[14], buf[15], header->nlmsg_pid);
+    buf += sizeof(nlmsghdr);
+    num_bytes -= sizeof(nlmsghdr);
+  } else {
+    SLOG(WiFi, log_level) << "Not enough bytes (" << num_bytes
+                          << ") for a complete nlmsghdr (requires "
+                          << sizeof(nlmsghdr) << ").";
+  }
+
+  while (num_bytes) {
+    string output;
+    size_t bytes_this_row = min(num_bytes, static_cast<size_t>(32));
+    for (size_t i = 0; i < bytes_this_row; ++i) {
+      StringAppendF(&output, " %02x", *buf++);
+    }
+    SLOG(WiFi, log_level) << output;
+    num_bytes -= bytes_this_row;
+  }
+}
+
 // Helper function to provide a string for a MAC address.
 bool Nl80211Message::GetMacAttributeString(nl80211_attrs id,
                                            string *value) const {
@@ -547,42 +605,6 @@ string Nl80211Message::StringFromStatus(uint16_t status) {
   return match->second;
 }
 
-string Nl80211Message::GenericToString() const {
-  string output;
-  StringAppendF(&output, "Message %s (%d)\n",
-                message_type_string(), message_type());
-  StringAppendF(&output, "%s", attributes_.ToString().c_str());
-  return output;
-}
-
-string Nl80211Message::GetScanFrequenciesAttributeAsString() const {
-  string output = "frequencies: ";
-  vector<uint32_t> list;
-  if (GetScanFrequenciesAttribute(NL80211_ATTR_SCAN_FREQUENCIES, &list)) {
-    string str;
-    for (vector<uint32_t>::const_iterator i = list.begin();
-         i != list.end(); ++i) {
-      StringAppendF(&str, " %" PRIu32 ", ", *i);
-    }
-    output.append(str);
-  }
-  return output;
-}
-
-string Nl80211Message::GetScanSsidsAttributeAsString() const {
-  string output = "SSIDs: ";
-  vector<string> list;
-  if (GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS, &list)) {
-    string str;
-    for (vector<string>::const_iterator i = list.begin();
-         i != list.end(); ++i) {
-      StringAppendF(&str, "%s, ", WiFi::LogSSID(*i).c_str());
-    }
-    output.append(str);
-  }
-  return output;
-}
-
 ByteString Nl80211Message::Encode(uint16_t nlmsg_type) const {
   // Build netlink header.
   nlmsghdr header;
@@ -731,134 +753,32 @@ bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
 const uint8_t AckMessage::kCommand = NL80211_CMD_UNSPEC;
 const char AckMessage::kCommandString[] = "NL80211_ACK";
 
-string AckMessage::ToString() const {
-  return "NL80211_ACK";
-}
-
 const uint8_t AssociateMessage::kCommand = NL80211_CMD_ASSOCIATE;
 const char AssociateMessage::kCommandString[] = "NL80211_CMD_ASSOCIATE";
 
-string AssociateMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("assoc");
-  if (attributes().GetRawAttributeValue(NL80211_ATTR_FRAME, NULL))
-    output.append(StringFromFrame(NL80211_ATTR_FRAME));
-  else if (attributes().IsFlagAttributeTrue(NL80211_ATTR_TIMED_OUT))
-    output.append(": timed out");
-  else
-    output.append(": unknown event");
-  return output;
-}
-
 const uint8_t AuthenticateMessage::kCommand = NL80211_CMD_AUTHENTICATE;
 const char AuthenticateMessage::kCommandString[] = "NL80211_CMD_AUTHENTICATE";
-
-string AuthenticateMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("auth");
-  if (attributes().GetRawAttributeValue(NL80211_ATTR_FRAME, NULL)) {
-    output.append(StringFromFrame(NL80211_ATTR_FRAME));
-  } else {
-    output.append(attributes().IsFlagAttributeTrue(NL80211_ATTR_TIMED_OUT) ?
-                  ": timed out" : ": unknown event");
-  }
-  return output;
-}
 
 const uint8_t CancelRemainOnChannelMessage::kCommand =
   NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL;
 const char CancelRemainOnChannelMessage::kCommandString[] =
   "NL80211_CMD_CANCEL_REMAIN_ON_CHANNEL";
 
-string CancelRemainOnChannelMessage::ToString() const {
-  string output(GetHeaderString());
-  uint32_t freq;
-  uint64_t cookie;
-  StringAppendF(&output,
-                "done with remain on freq %" PRIu32 " (cookie %" PRIx64 ")",
-                (attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY_FREQ,
-                                                   &freq) ?  0 : freq),
-                (attributes().GetU64AttributeValue(NL80211_ATTR_COOKIE,
-                                                   &cookie) ?  0 : cookie));
-  return output;
-}
-
 const uint8_t ConnectMessage::kCommand = NL80211_CMD_CONNECT;
 const char ConnectMessage::kCommandString[] = "NL80211_CMD_CONNECT";
-
-string ConnectMessage::ToString() const {
-  string output(GetHeaderString());
-
-  uint16_t status = UINT16_MAX;
-
-  if (!attributes().GetU16AttributeValue(NL80211_ATTR_STATUS_CODE, &status)) {
-    output.append("unknown connect status");
-  } else if (status == 0) {
-    output.append("connected");
-  } else {
-    output.append("failed to connect");
-  }
-
-  if (attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
-    string mac;
-    GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-    StringAppendF(&output, " to %s", mac.c_str());
-  }
-  if (status)
-    StringAppendF(&output, ", status: %u: %s", status,
-                  StringFromStatus(status).c_str());
-  return output;
-}
 
 const uint8_t DeauthenticateMessage::kCommand = NL80211_CMD_DEAUTHENTICATE;
 const char DeauthenticateMessage::kCommandString[] =
     "NL80211_CMD_DEAUTHENTICATE";
 
-string DeauthenticateMessage::ToString() const {
-  string output(GetHeaderString());
-  StringAppendF(&output, "deauth%s",
-                StringFromFrame(NL80211_ATTR_FRAME).c_str());
-  return output;
-}
-
 const uint8_t DeleteStationMessage::kCommand = NL80211_CMD_DEL_STATION;
 const char DeleteStationMessage::kCommandString[] = "NL80211_CMD_DEL_STATION";
-
-string DeleteStationMessage::ToString() const {
-  string mac;
-  GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-  string output(GetHeaderString());
-  StringAppendF(&output, "del station %s", mac.c_str());
-  return output;
-}
 
 const uint8_t DisassociateMessage::kCommand = NL80211_CMD_DISASSOCIATE;
 const char DisassociateMessage::kCommandString[] = "NL80211_CMD_DISASSOCIATE";
 
-string DisassociateMessage::ToString() const {
-  string output(GetHeaderString());
-  StringAppendF(&output, "disassoc%s",
-                StringFromFrame(NL80211_ATTR_FRAME).c_str());
-  return output;
-}
-
 const uint8_t DisconnectMessage::kCommand = NL80211_CMD_DISCONNECT;
 const char DisconnectMessage::kCommandString[] = "NL80211_CMD_DISCONNECT";
-
-string DisconnectMessage::ToString() const {
-  string output(GetHeaderString());
-  StringAppendF(&output, "disconnected %s",
-                ((attributes().IsFlagAttributeTrue(
-                    NL80211_ATTR_DISCONNECTED_BY_AP)) ?
-                 "(by AP)" : "(local request)"));
-
-  uint16_t reason = UINT16_MAX;
-  if (attributes().GetU16AttributeValue(NL80211_ATTR_REASON_CODE, &reason)) {
-    StringAppendF(&output, " reason: %u: %s",
-                  reason, StringFromReason(reason).c_str());
-  }
-  return output;
-}
 
 // An Error is not a GENL message and, as such, has no command.
 const uint8_t ErrorMessage::kCommand = NL80211_CMD_UNSPEC;
@@ -878,428 +798,70 @@ const uint8_t FrameTxStatusMessage::kCommand = NL80211_CMD_FRAME_TX_STATUS;
 const char FrameTxStatusMessage::kCommandString[] =
     "NL80211_CMD_FRAME_TX_STATUS";
 
-string FrameTxStatusMessage::ToString() const {
-  string output(GetHeaderString());
-  uint64_t cookie = UINT64_MAX;
-  attributes().GetU64AttributeValue(NL80211_ATTR_COOKIE, &cookie);
-
-  StringAppendF(&output, "mgmt TX status (cookie %" PRIx64 "): %s", cookie,
-                (attributes().IsFlagAttributeTrue(NL80211_ATTR_ACK) ?
-                 "acked" : "no ack"));
-  return output;
-}
-
 const uint8_t GetRegMessage::kCommand = NL80211_CMD_GET_REG;
 const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 
-
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
 const char JoinIbssMessage::kCommandString[] = "NL80211_CMD_JOIN_IBSS";
-
-string JoinIbssMessage::ToString() const {
-  string mac;
-  GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-  string output(GetHeaderString());
-  StringAppendF(&output, "IBSS %s joined", mac.c_str());
-  return output;
-}
 
 const uint8_t MichaelMicFailureMessage::kCommand =
     NL80211_CMD_MICHAEL_MIC_FAILURE;
 const char MichaelMicFailureMessage::kCommandString[] =
     "NL80211_CMD_MICHAEL_MIC_FAILURE";
 
-string MichaelMicFailureMessage::ToString() const {
-  string output(GetHeaderString());
-
-  output.append("Michael MIC failure event:");
-
-  if (attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
-    string mac;
-    GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-    StringAppendF(&output, " source MAC address %s", mac.c_str());
-  }
-
-  {
-    ByteString rawdata;
-    if (attributes().GetRawAttributeValue(NL80211_ATTR_KEY_SEQ,
-                                          &rawdata) &&
-        rawdata.GetLength() == Nl80211Message::kEthernetAddressBytes) {
-      const unsigned char *seq = rawdata.GetConstData();
-      StringAppendF(&output, " seq=%02x%02x%02x%02x%02x%02x",
-                    seq[0], seq[1], seq[2], seq[3], seq[4], seq[5]);
-    }
-  }
-  uint32_t key_type_val = UINT32_MAX;
-  if (attributes().GetU32AttributeValue(NL80211_ATTR_KEY_TYPE, &key_type_val)) {
-    nl80211_key_type key_type = static_cast<nl80211_key_type>(key_type_val);
-    StringAppendF(&output, " Key Type %s", StringFromKeyType(key_type).c_str());
-  }
-
-  uint8_t key_index = UINT8_MAX;
-  if (attributes().GetU8AttributeValue(NL80211_ATTR_KEY_IDX, &key_index)) {
-    StringAppendF(&output, " Key Id %u", key_index);
-  }
-
-  return output;
-}
-
 const uint8_t NewScanResultsMessage::kCommand = NL80211_CMD_NEW_SCAN_RESULTS;
 const char NewScanResultsMessage::kCommandString[] =
     "NL80211_CMD_NEW_SCAN_RESULTS";
 
-string NewScanResultsMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("scan finished");
-  output.append("; " + GetScanFrequenciesAttributeAsString());
-  output.append("; " + GetScanSsidsAttributeAsString());
-  return output;
-}
-
 const uint8_t NewStationMessage::kCommand = NL80211_CMD_NEW_STATION;
 const char NewStationMessage::kCommandString[] = "NL80211_CMD_NEW_STATION";
 
-string NewStationMessage::ToString() const {
-  string mac;
-  GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-  string output(GetHeaderString());
-  StringAppendF(&output, "new station %s", mac.c_str());
-
-  return output;
-}
-
 const uint8_t NewWifiMessage::kCommand = NL80211_CMD_NEW_WIPHY;
 const char NewWifiMessage::kCommandString[] = "NL80211_CMD_NEW_WIPHY";
-
-string NewWifiMessage::ToString() const {
-  string output(GetHeaderString());
-  string wifi_name = "None";
-  attributes().GetStringAttributeValue(NL80211_ATTR_WIPHY_NAME, &wifi_name);
-  StringAppendF(&output, "renamed to %s", wifi_name.c_str());
-  return output;
-}
 
 // A NOOP is not a GENL message and, as such, has no command.
 const uint8_t NoopMessage::kCommand = NL80211_CMD_UNSPEC;
 const char NoopMessage::kCommandString[] = "NL80211_NOOP";
 
-string NoopMessage::ToString() const {
-  return "NL80211_NOOP";
-}
-
 const uint8_t NotifyCqmMessage::kCommand = NL80211_CMD_NOTIFY_CQM;
 const char NotifyCqmMessage::kCommandString[] = "NL80211_CMD_NOTIFY_CQM";
-
-string NotifyCqmMessage::ToString() const {
-  // TODO(wdg): use attributes().GetNestedAttributeValue()...
-  static const nla_policy kCqmValidationPolicy[NL80211_ATTR_CQM_MAX + 1] = {
-    { NLA_U32, 0, 0 },  // Who Knows?
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THOLD]
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_HYST]
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]
-  };
-
-  string output(GetHeaderString());
-  output.append("connection quality monitor event: ");
-
-  const Nl80211RawAttribute *attribute =
-      attributes().GetRawAttribute(NL80211_ATTR_CQM);
-  if (!attribute) {
-    output.append("missing data!");
-    return output;
-  }
-
-  const nlattr *const_data = attribute->data();
-  // Note that |nla_parse_nested| doesn't change |const_data| but doesn't
-  // declare itself as 'const', either.  Hence the cast.
-  nlattr *cqm_attr = const_cast<nlattr *>(const_data);
-
-  nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
-  if (!cqm_attr ||
-      nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
-                       const_cast<nla_policy *>(kCqmValidationPolicy))) {
-    output.append("missing data!");
-    return output;
-  }
-  if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
-    nl80211_cqm_rssi_threshold_event rssi_event =
-        static_cast<nl80211_cqm_rssi_threshold_event>(
-          Nl80211Attribute::NlaGetU32(
-              cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
-    if (rssi_event == NL80211_CQM_RSSI_THRESHOLD_EVENT_HIGH)
-      output.append("RSSI went above threshold");
-    else
-      output.append("RSSI went below threshold");
-  } else if (cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT] &&
-       attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
-    string mac;
-    GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-    StringAppendF(&output, "peer %s didn't ACK %" PRIu32 " packets",
-                  mac.c_str(),
-                  Nl80211Attribute::NlaGetU32(
-                      cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
-  } else {
-    output.append("unknown event");
-  }
-  return output;
-}
 
 const uint8_t PmksaCandidateMessage::kCommand = NL80211_ATTR_PMKSA_CANDIDATE;
 const char PmksaCandidateMessage::kCommandString[] =
   "NL80211_ATTR_PMKSA_CANDIDATE";
 
-string PmksaCandidateMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("PMKSA candidate found");
-  return output;
-}
-
 const uint8_t RegBeaconHintMessage::kCommand = NL80211_CMD_REG_BEACON_HINT;
 const char RegBeaconHintMessage::kCommandString[] =
     "NL80211_CMD_REG_BEACON_HINT";
 
-string RegBeaconHintMessage::ToString() const {
-  string output(GetHeaderString());
-  uint32_t wiphy_idx = UINT32_MAX;
-  attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY, &wiphy_idx);
-
-  const Nl80211RawAttribute *freq_before =
-      attributes().GetRawAttribute(NL80211_ATTR_FREQ_BEFORE);
-  if (!freq_before)
-    return "";
-  const nlattr *const_before = freq_before->data();
-  ieee80211_beacon_channel chan_before_beacon;
-  memset(&chan_before_beacon, 0, sizeof(chan_before_beacon));
-  if (ParseBeaconHintChan(const_before, &chan_before_beacon))
-    return "";
-
-  const Nl80211RawAttribute *freq_after =
-      attributes().GetRawAttribute(NL80211_ATTR_FREQ_AFTER);
-  if (!freq_after)
-    return "";
-
-  const nlattr *const_after = freq_after->data();
-  ieee80211_beacon_channel chan_after_beacon;
-  memset(&chan_after_beacon, 0, sizeof(chan_after_beacon));
-  if (ParseBeaconHintChan(const_after, &chan_after_beacon))
-    return "";
-
-  if (chan_before_beacon.center_freq != chan_after_beacon.center_freq)
-    return "";
-
-  /* A beacon hint is sent _only_ if something _did_ change */
-  output.append("beacon hint:");
-  StringAppendF(&output, "phy%" PRIu32 " %u MHz [%d]:",
-                wiphy_idx, chan_before_beacon.center_freq,
-                ChannelFromIeee80211Frequency(chan_before_beacon.center_freq));
-
-  if (chan_before_beacon.passive_scan && !chan_after_beacon.passive_scan)
-    output.append("\to active scanning enabled");
-  if (chan_before_beacon.no_ibss && !chan_after_beacon.no_ibss)
-    output.append("\to beaconing enabled");
-  return output;
-}
-
-int RegBeaconHintMessage::ParseBeaconHintChan(const nlattr *tb,
-                                              ieee80211_beacon_channel *chan)
-    const {
-  static const nla_policy kBeaconFreqPolicy[
-      NL80211_FREQUENCY_ATTR_MAX + 1] = {
-        {0, 0, 0},
-        { NLA_U32, 0, 0 },  // [NL80211_FREQUENCY_ATTR_FREQ]
-        {0, 0, 0},
-        { NLA_FLAG, 0, 0 },  // [NL80211_FREQUENCY_ATTR_PASSIVE_SCAN]
-        { NLA_FLAG, 0, 0 },  // [NL80211_FREQUENCY_ATTR_NO_IBSS]
-  };
-
-  if (!tb) {
-    LOG(ERROR) << "|tb| parameter is NULL.";
-    return -EINVAL;
-  }
-
-  if (!chan) {
-    LOG(ERROR) << "|chan| parameter is NULL.";
-    return -EINVAL;
-  }
-
-  nlattr *tb_freq[NL80211_FREQUENCY_ATTR_MAX + 1];
-
-  // Note that |nla_parse_nested| doesn't change its parameters but doesn't
-  // declare itself as 'const', either.  Hence the cast.
-  if (nla_parse_nested(tb_freq,
-                       NL80211_FREQUENCY_ATTR_MAX,
-                       const_cast<nlattr *>(tb),
-                       const_cast<nla_policy *>(kBeaconFreqPolicy)))
-    return -EINVAL;
-
-  chan->center_freq = Nl80211Attribute::NlaGetU32(
-      tb_freq[NL80211_FREQUENCY_ATTR_FREQ]);
-
-  if (tb_freq[NL80211_FREQUENCY_ATTR_PASSIVE_SCAN])
-    chan->passive_scan = true;
-  if (tb_freq[NL80211_FREQUENCY_ATTR_NO_IBSS])
-    chan->no_ibss = true;
-
-  return 0;
-}
-
-int RegBeaconHintMessage::ChannelFromIeee80211Frequency(int freq) {
-  // TODO(wdg): get rid of these magic numbers.
-  if (freq == 2484)
-    return 14;
-
-  if (freq < 2484)
-    return (freq - 2407) / 5;
-
-  /* FIXME: dot11ChannelStartingFactor (802.11-2007 17.3.8.3.2) */
-  return freq/5 - 1000;
-}
-
 const uint8_t RegChangeMessage::kCommand = NL80211_CMD_REG_CHANGE;
 const char RegChangeMessage::kCommandString[] = "NL80211_CMD_REG_CHANGE";
-
-string RegChangeMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("regulatory domain change: ");
-
-  uint8_t reg_type = UINT8_MAX;
-  attributes().GetU8AttributeValue(NL80211_ATTR_REG_TYPE, &reg_type);
-
-  uint32_t initiator = UINT32_MAX;
-  attributes().GetU32AttributeValue(NL80211_ATTR_REG_INITIATOR, &initiator);
-
-  uint32_t wifi = UINT32_MAX;
-  bool wifi_exists = attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                       &wifi);
-
-  string alpha2 = "<None>";
-  attributes().GetStringAttributeValue(NL80211_ATTR_REG_ALPHA2, &alpha2);
-
-  switch (reg_type) {
-  case NL80211_REGDOM_TYPE_COUNTRY:
-    StringAppendF(&output, "set to %s by %s request",
-                  alpha2.c_str(), StringFromRegInitiator(initiator).c_str());
-    if (wifi_exists)
-      StringAppendF(&output, " on phy%" PRIu32, wifi);
-    break;
-
-  case NL80211_REGDOM_TYPE_WORLD:
-    StringAppendF(&output, "set to world roaming by %s request",
-                  StringFromRegInitiator(initiator).c_str());
-    break;
-
-  case NL80211_REGDOM_TYPE_CUSTOM_WORLD:
-    StringAppendF(&output,
-                  "custom world roaming rules in place on phy%" PRIu32
-                  " by %s request",
-                  wifi, StringFromRegInitiator(initiator).c_str());
-    break;
-
-  case NL80211_REGDOM_TYPE_INTERSECTION:
-    StringAppendF(&output, "intersection used due to a request made by %s",
-                  StringFromRegInitiator(initiator).c_str());
-    if (wifi_exists)
-      StringAppendF(&output, " on phy%" PRIu32, wifi);
-    break;
-
-  default:
-    output.append("unknown source");
-    break;
-  }
-  return output;
-}
 
 const uint8_t RemainOnChannelMessage::kCommand = NL80211_CMD_REMAIN_ON_CHANNEL;
 const char RemainOnChannelMessage::kCommandString[] =
     "NL80211_CMD_REMAIN_ON_CHANNEL";
 
-string RemainOnChannelMessage::ToString() const {
-  string output(GetHeaderString());
-
-  uint32_t wifi_freq = UINT32_MAX;
-  attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY_FREQ, &wifi_freq);
-
-  uint32_t duration = UINT32_MAX;
-  attributes().GetU32AttributeValue(NL80211_ATTR_DURATION, &duration);
-
-  uint64_t cookie = UINT64_MAX;
-  attributes().GetU64AttributeValue(NL80211_ATTR_COOKIE, &cookie);
-
-  StringAppendF(&output, "remain on freq %" PRIu32 " (%" PRIu32 "ms, cookie %"
-                PRIx64 ")",
-                wifi_freq, duration, cookie);
-  return output;
-}
-
 const uint8_t RoamMessage::kCommand = NL80211_CMD_ROAM;
 const char RoamMessage::kCommandString[] = "NL80211_CMD_ROAM";
-
-string RoamMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("roamed");
-
-  if (attributes().GetRawAttributeValue(NL80211_ATTR_MAC, NULL)) {
-    string mac;
-    GetMacAttributeString(NL80211_ATTR_MAC, &mac);
-    StringAppendF(&output, " to %s", mac.c_str());
-  }
-  return output;
-}
 
 const uint8_t ScanAbortedMessage::kCommand = NL80211_CMD_SCAN_ABORTED;
 const char ScanAbortedMessage::kCommandString[] = "NL80211_CMD_SCAN_ABORTED";
 
-string ScanAbortedMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("scan aborted");
-  output.append("; " + GetScanFrequenciesAttributeAsString());
-  output.append("; " + GetScanSsidsAttributeAsString());
-  return output;
-}
-
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
 const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
-string TriggerScanMessage::ToString() const {
-  string output(GetHeaderString());
-  output.append("scan started");
-  output.append("; " + GetScanFrequenciesAttributeAsString());
-  output.append("; " + GetScanSsidsAttributeAsString());
-  return output;
-}
-
 const uint8_t UnknownMessage::kCommand = 0xff;
 const char UnknownMessage::kCommandString[] = "<Unknown Message Type>";
-
-string UnknownMessage::ToString() const {
-  string output(GetHeaderString());
-  StringAppendF(&output, "unknown event %u", command_);
-  return output;
-}
 
 const uint8_t UnprotDeauthenticateMessage::kCommand =
     NL80211_CMD_UNPROT_DEAUTHENTICATE;
 const char UnprotDeauthenticateMessage::kCommandString[] =
     "NL80211_CMD_UNPROT_DEAUTHENTICATE";
 
-string UnprotDeauthenticateMessage::ToString() const {
-  string output(GetHeaderString());
-  StringAppendF(&output, "unprotected deauth %s",
-                StringFromFrame(NL80211_ATTR_FRAME).c_str());
-  return output;
-}
-
 const uint8_t UnprotDisassociateMessage::kCommand =
     NL80211_CMD_UNPROT_DISASSOCIATE;
 const char UnprotDisassociateMessage::kCommandString[] =
     "NL80211_CMD_UNPROT_DISASSOCIATE";
-
-string UnprotDisassociateMessage::ToString() const {
-  string output(GetHeaderString());
-  StringAppendF(&output, "unprotected disassoc %s",
-                StringFromFrame(NL80211_ATTR_FRAME).c_str());
-  return output;
-}
 
 //
 // Factory class.

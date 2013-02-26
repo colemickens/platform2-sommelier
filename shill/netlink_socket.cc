@@ -86,19 +86,6 @@ bool NetlinkSocket::SendMessage(Nl80211Message *message) {
 
   ByteString out_msg = message->Encode(family_id());
 
-  if (SLOG_IS_ON(WiFi, 6)) {
-    SLOG(WiFi, 6) << "NL Message " << message->sequence_number() << " ===>";
-    SLOG(WiFi, 6) << "  Sending (" << out_msg.GetLength() << " bytes) : "
-              << message->GenericToString();
-
-    const unsigned char *out_data = out_msg.GetConstData();
-    string output;
-    for (size_t i = 0; i < out_msg.GetLength(); ++i) {
-      StringAppendF(&output, " %02x", out_data[i]);
-    }
-    SLOG(WiFi, 6) << output;
-  }
-
   int result = HANDLE_EINTR(send(GetFd(), out_msg.GetConstData(),
                                  out_msg.GetLength(), 0));
   if (!result) {

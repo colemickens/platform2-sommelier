@@ -149,6 +149,11 @@ bool Config80211::SendMessage(Nl80211Message *message,
     sequence_number = sock_->GetSequenceNumber();
     message->set_sequence_number(sequence_number);
   }
+
+  SLOG(WiFi, 6) << "NL Message " << message->sequence_number()
+                << " Sending ===>";
+  message->Print(6);
+
   if (!sock_->SendMessage(message)) {
     LOG(ERROR) << "Failed to send nl80211 message.";
     return false;
@@ -282,13 +287,18 @@ void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
     return;
   }
   const uint32 sequence_number = msg->nlmsg_seq;
-  SLOG(WiFi, 3) << "\t  Entering " << __func__
-                << " (msg:" << sequence_number << ")";
   scoped_ptr<Nl80211Message> message(Nl80211MessageFactory::CreateMessage(msg));
   if (message == NULL) {
+    SLOG(WiFi, 3) << "NL Message " << sequence_number << " <===";
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
     return;  // Skip current message, continue parsing buffer.
   }
+  SLOG(WiFi, 3) << "NL Message " << sequence_number
+                << " Received (" << msg->nlmsg_len << " bytes) <===";
+  message->Print(6);
+  Nl80211Message::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
+                             msg->nlmsg_len);
+
   // Call (then erase) any message-specific callback.
   // TODO(wdg): Support multi-part messages; don't delete callback until last
   // part appears.
