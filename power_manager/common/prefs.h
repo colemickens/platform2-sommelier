@@ -51,7 +51,7 @@ class Prefs : public PrefsInterface {
 
   // Earlier directories in |pref_paths_| take precedence over later ones.  Only
   // the first directory is watched for changes.
-  bool Init(const std::vector<FilePath>& pref_paths);
+  bool Init(const std::vector<base::FilePath>& pref_paths);
 
   // PrefsInterface implementation:
   virtual void AddObserver(PrefsObserver* observer) OVERRIDE;
@@ -94,7 +94,7 @@ class Prefs : public PrefsInterface {
   // List of file paths to read from, in order of precedence.
   // A value read from the first path will be used instead of values from the
   // other paths.
-  std::vector<FilePath> pref_paths_;
+  std::vector<base::FilePath> pref_paths_;
 
   ObserverList<PrefsObserver> observers_;
 

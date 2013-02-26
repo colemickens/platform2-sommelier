@@ -70,14 +70,14 @@ int RunSetuidHelper(const std::string& action,
   }
 }
 
-void CreateStatusFile(const FilePath& file) {
+void CreateStatusFile(const base::FilePath& file) {
   if (!file_util::WriteFile(file, NULL, 0) == -1)
     LOG(ERROR) << "Unable to create " << file.value();
   else
     LOG(INFO) << "Created " << file.value();
 }
 
-void RemoveStatusFile(const FilePath& file) {
+void RemoveStatusFile(const base::FilePath& file) {
   if (file_util::PathExists(file)) {
     if (!file_util::Delete(file, false))
       LOG(ERROR) << "Unable to remove " << file.value();
@@ -89,7 +89,7 @@ void RemoveStatusFile(const FilePath& file) {
 bool GetUintFromFile(const char* filename, unsigned int* value) {
   std::string buf;
 
-  FilePath path(filename);
+  base::FilePath path(filename);
   if (!file_util::ReadFileToString(path, &buf)) {
     LOG(ERROR) << "Unable to read " << filename;
     return false;

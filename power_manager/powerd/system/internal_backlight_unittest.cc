@@ -34,7 +34,7 @@ class InternalBacklightTest : public Test {
 
   // Create files to make the given directory look like it is a sysfs backlight
   // dir.
-  void PopulateBacklightDir(const FilePath& path,
+  void PopulateBacklightDir(const base::FilePath& path,
                             int64 brightness,
                             int64 max_brightness,
                             int64 actual_brightness) {
@@ -60,9 +60,10 @@ class InternalBacklightTest : public Test {
 
   // Returns the value from the "brightness" file in |directory|.
   // -1 is returned on error.
-  int64 ReadBrightness(const FilePath& directory) {
+  int64 ReadBrightness(const base::FilePath& directory) {
     std::string data;
-    FilePath file = directory.Append(InternalBacklight::kBrightnessFilename);
+    base::FilePath file =
+        directory.Append(InternalBacklight::kBrightnessFilename);
     if (!file_util::ReadFileToString(file, &data)) {
       LOG(ERROR) << "Unable to read data from " << file.value();
       return -1;
@@ -85,17 +86,17 @@ class InternalBacklightTest : public Test {
   }
 
  protected:
-  FilePath test_path_;
+  base::FilePath test_path_;
 };
 
 // A basic test of functionality
 TEST_F(InternalBacklightTest, BasicTest) {
-  FilePath this_test_path = test_path_.Append("basic_test");
+  base::FilePath this_test_path = test_path_.Append("basic_test");
   const int64 kBrightness = 128;
   const int64 kMaxBrightness = 255;
   const int64 kActualBrightness = 127;
 
-  FilePath my_path = this_test_path.Append("pwm-backlight");
+  base::FilePath my_path = this_test_path.Append("pwm-backlight");
   PopulateBacklightDir(my_path, kBrightness, kMaxBrightness, kActualBrightness);
 
   InternalBacklight backlight;
@@ -112,11 +113,12 @@ TEST_F(InternalBacklightTest, BasicTest) {
 
 // Make sure things work OK when there is no actual_brightness file.
 TEST_F(InternalBacklightTest, NoActualBrightnessTest) {
-  FilePath this_test_path = test_path_.Append("no_actual_brightness_test");
+  base::FilePath this_test_path =
+      test_path_.Append("no_actual_brightness_test");
   const int64 kBrightness = 128;
   const int64 kMaxBrightness = 255;
 
-  FilePath my_path = this_test_path.Append("pwm-backlight");
+  base::FilePath my_path = this_test_path.Append("pwm-backlight");
   PopulateBacklightDir(my_path, kBrightness, kMaxBrightness, -1);
 
   InternalBacklight backlight;
@@ -133,16 +135,16 @@ TEST_F(InternalBacklightTest, NoActualBrightnessTest) {
 
 // Test that we pick the one with the greatest granularity
 TEST_F(InternalBacklightTest, GranularityTest) {
-  FilePath this_test_path = test_path_.Append("granularity_test");
+  base::FilePath this_test_path = test_path_.Append("granularity_test");
 
   // Make sure the middle one is the most granular so we're not just
   // getting lucky.  Middle in terms of order created and alphabet, since I
   // don't know how enumaration might be happening.
-  FilePath a_path = this_test_path.Append("a");
+  base::FilePath a_path = this_test_path.Append("a");
   PopulateBacklightDir(a_path, 10, 127, 11);
-  FilePath b_path = this_test_path.Append("b");
+  base::FilePath b_path = this_test_path.Append("b");
   PopulateBacklightDir(b_path, 20, 255, 21);
-  FilePath c_path = this_test_path.Append("c");
+  base::FilePath c_path = this_test_path.Append("c");
   PopulateBacklightDir(c_path, 30, 63, 31);
 
   InternalBacklight backlight;
@@ -159,11 +161,11 @@ TEST_F(InternalBacklightTest, GranularityTest) {
 
 // Test ignore directories starting with a "."
 TEST_F(InternalBacklightTest, NoDotDirsTest) {
-  FilePath this_test_path = test_path_.Append("no_dot_dirs_test");
+  base::FilePath this_test_path = test_path_.Append("no_dot_dirs_test");
 
   // We'll just create one dir and it will have a dot in it.  Then, we can
   // be sure that we didn't just get luckly...
-  FilePath my_path = this_test_path.Append(".pwm-backlight");
+  base::FilePath my_path = this_test_path.Append(".pwm-backlight");
   PopulateBacklightDir(my_path, 128, 255, 127);
 
   InternalBacklight backlight;
@@ -172,18 +174,18 @@ TEST_F(InternalBacklightTest, NoDotDirsTest) {
 
 // Test that the glob is working correctly for searching for backlight dirs.
 TEST_F(InternalBacklightTest, GlobTest) {
-  FilePath this_test_path = test_path_.Append("glob_test");
+  base::FilePath this_test_path = test_path_.Append("glob_test");
 
   // Purposely give my::kbd_backlight a lower "max_level" than
   // .no::kbd_backlight so that we know that dirs starting with a "." are
   // ignored.
-  FilePath my_path = this_test_path.Append("my::kbd_backlight");
+  base::FilePath my_path = this_test_path.Append("my::kbd_backlight");
   PopulateBacklightDir(my_path, 1, 2, -1);
 
-  FilePath ignore1_path = this_test_path.Append("ignore1");
+  base::FilePath ignore1_path = this_test_path.Append("ignore1");
   PopulateBacklightDir(ignore1_path, 3, 4, -1);
 
-  FilePath ignore2_path = this_test_path.Append(".no::kbd_backlight");
+  base::FilePath ignore2_path = this_test_path.Append(".no::kbd_backlight");
   PopulateBacklightDir(ignore2_path, 5, 6, -1);
 
   InternalBacklight backlight;
@@ -200,7 +202,7 @@ TEST_F(InternalBacklightTest, GlobTest) {
 
 TEST_F(InternalBacklightTest, Transitions) {
   const int kMaxBrightness = 100;
-  FilePath backlight_dir = test_path_.Append("transitions_test");
+  base::FilePath backlight_dir = test_path_.Append("transitions_test");
   PopulateBacklightDir(backlight_dir, 50, kMaxBrightness, 50);
 
   InternalBacklight backlight;

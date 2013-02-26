@@ -8,8 +8,8 @@
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
 #include "power_manager/common/test_main_loop_runner.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
@@ -72,7 +72,7 @@ class AmbientLightSensorTest : public ::testing::Test {
 
   virtual void SetUp() OVERRIDE {
     CHECK(temp_dir_.CreateUniqueTempDir());
-    FilePath device_dir = temp_dir_.path().Append("device0");
+    base::FilePath device_dir = temp_dir_.path().Append("device0");
     CHECK(file_util::CreateDirectory(device_dir));
     data_file_ = device_dir.Append("illuminance0_input");
     sensor_.reset(new AmbientLightSensor);
@@ -104,10 +104,10 @@ class AmbientLightSensorTest : public ::testing::Test {
 
   // Temporary directory mimicking a /sys directory containing a set of sensor
   // devices.
-  ScopedTempDir temp_dir_;
+  base::ScopedTempDir temp_dir_;
 
   // Illuminance file containing the sensor's current brightness level.
-  FilePath data_file_;
+  base::FilePath data_file_;
 
   TestObserver observer_;
 

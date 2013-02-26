@@ -6,9 +6,9 @@
 #include <gtest/gtest.h>
 
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/prefs_observer.h"
@@ -86,7 +86,7 @@ class PrefsTest : public Test {
     paths_.clear();
     // Create new temp directories.
     for (int i = 0; i < kNumPrefDirectories; ++i) {
-      temp_dir_generators_[i].reset(new ScopedTempDir());
+      temp_dir_generators_[i].reset(new base::ScopedTempDir());
       ASSERT_TRUE(temp_dir_generators_[i]->CreateUniqueTempDir());
       EXPECT_TRUE(temp_dir_generators_[i]->IsValid());
       paths_.push_back(temp_dir_generators_[i]->path());
@@ -94,14 +94,14 @@ class PrefsTest : public Test {
   }
 
  protected:
-  std::vector<FilePath> paths_;
-  scoped_ptr<ScopedTempDir> temp_dir_generators_[kNumPrefDirectories];
+  std::vector<base::FilePath> paths_;
+  scoped_ptr<base::ScopedTempDir> temp_dir_generators_[kNumPrefDirectories];
 };
 
 // Test read/write with only one directory.
 TEST_F(PrefsTest, TestOneDirectory) {
   Prefs prefs;
-  ASSERT_TRUE(prefs.Init(std::vector<FilePath>(1, paths_[0])));
+  ASSERT_TRUE(prefs.Init(std::vector<base::FilePath>(1, paths_[0])));
 
   // Make sure the pref files don't already exist.
   EXPECT_FALSE(file_util::PathExists(paths_[0].Append(kIntTestFileName)));
@@ -183,7 +183,7 @@ TEST_F(PrefsTest, TestThreeDirectoriesStacked) {
     // Write values to the pref directories as appropriate for this cycle.
     int i;
     for (i = 0; i < kNumPrefDirectories; ++i) {
-      const FilePath& path = paths_[i];
+      const base::FilePath& path = paths_[i];
       // Make sure the files didn't exist already.
       EXPECT_FALSE(file_util::PathExists(path.Append(kIntTestFileName)));
       EXPECT_FALSE(file_util::PathExists(path.Append(kDoubleTestFileName)));
@@ -245,7 +245,7 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
   ASSERT_TRUE(prefs.Init(paths_));
 
   for (int i = 0; i < kNumPrefDirectories; ++i) {
-    const FilePath& path = paths_[i];
+    const base::FilePath& path = paths_[i];
     // Make sure the files didn't exist already.
     EXPECT_FALSE(file_util::PathExists(path.Append(kIntTestFileName)));
     EXPECT_FALSE(file_util::PathExists(path.Append(kDoubleTestFileName)));
@@ -286,7 +286,7 @@ TEST_F(PrefsTest, TestThreeDirectoriesGarbage) {
 TEST_F(PrefsTest, WatchPrefs) {
   const char kPrefName[] = "foo";
   const char kPrefValue[] = "1";
-  const FilePath kFilePath = paths_[0].Append(kPrefName);
+  const base::FilePath kFilePath = paths_[0].Append(kPrefName);
 
   // Create a Prefs object.
   Prefs prefs;

@@ -17,7 +17,7 @@ namespace policy {
 InputController::InputController(system::Input* input,
                                  Delegate* delegate,
                                  DBusSenderInterface* dbus_sender,
-                                 const FilePath& run_dir)
+                                 const base::FilePath& run_dir)
     : input_(input),
       delegate_(delegate),
       dbus_sender_(dbus_sender),

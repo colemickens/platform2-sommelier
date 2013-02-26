@@ -8,8 +8,8 @@
 #include "base/bind.h"
 #include "base/callback.h"
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/async_file_reader.h"
@@ -22,7 +22,7 @@ const char kDummyString[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ\n";
 // Dummy file name.
 const char kDummyFileName[] = "dummy_file";
 
-void CreateFile(const FilePath& path, size_t total_size) {
+void CreateFile(const base::FilePath& path, size_t total_size) {
   // Container for the string that will be written to the file.
   std::string file_contents;
 
@@ -74,7 +74,7 @@ class AsyncFileReaderTest : public ::testing::Test {
 
   virtual void SetUp() {
     // Create a temporary directory for the file to read.
-    temp_dir_generator_.reset(new ScopedTempDir());
+    temp_dir_generator_.reset(new base::ScopedTempDir());
     ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_generator_->IsValid());
 
@@ -117,8 +117,8 @@ class AsyncFileReaderTest : public ::testing::Test {
 
  protected:
   scoped_ptr<AsyncFileReader> file_reader_;
-  scoped_ptr<ScopedTempDir> temp_dir_generator_;
-  FilePath dummy_file_path_;
+  scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
+  base::FilePath dummy_file_path_;
   int initial_read_size_;
 
   // Called to indicate a successful read.

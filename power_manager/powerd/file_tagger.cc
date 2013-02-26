@@ -19,7 +19,7 @@ static const char kPowerdSuspendFile[] = "powerd_suspended";
 // system is running on battery, not on AC power.
 static const char kPowerdLowBatteryFile[] = "powerd_low_battery";
 
-FileTagger::FileTagger(const FilePath& trace_dir)
+FileTagger::FileTagger(const base::FilePath& trace_dir)
   : can_tag_files_(false),
     trace_dir_(trace_dir),
     suspend_file_(trace_dir.Append(kPowerdSuspendFile)),
@@ -58,18 +58,18 @@ void FileTagger::HandleSafeBatteryEvent() {
   DeleteFile(low_battery_file_);
 }
 
-bool FileTagger::TouchFile(const FilePath& file_path) {
+bool FileTagger::TouchFile(const base::FilePath& file_path) {
   if (can_tag_files_) {
-    return file_util::WriteFile(FilePath(file_path), "", 0) == 0;
+    return file_util::WriteFile(base::FilePath(file_path), "", 0) == 0;
   }
   // If file access is not allowed yet, cache the file write.
   cached_files_[file_path] = base::Time::Now();
   return true;
 }
 
-bool FileTagger::DeleteFile(const FilePath& file_path) {
+bool FileTagger::DeleteFile(const base::FilePath& file_path) {
   if (can_tag_files_)
-    return file_util::Delete(FilePath(file_path), false);
+    return file_util::Delete(base::FilePath(file_path), false);
   // If file access is not allowed yet, cache the delete operation.
   return cached_files_.erase(file_path) == 1;
 }
@@ -100,7 +100,8 @@ gboolean FileTagger::TraceFileChangeHandler(const char* name,
       for (FileCache::const_iterator iter = tagger->cached_files_.begin();
            iter != tagger->cached_files_.end(); ++iter) {
         tagger->TouchFile((*iter).first);
-        file_util::SetLastModifiedTime(FilePath((*iter).first), (*iter).second);
+        file_util::SetLastModifiedTime(
+            base::FilePath((*iter).first), (*iter).second);
       }
       tagger->cached_files_.clear();
     }

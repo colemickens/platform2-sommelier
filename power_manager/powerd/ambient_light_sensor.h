@@ -31,7 +31,7 @@ class AmbientLightSensor {
   AmbientLightSensor();
   virtual ~AmbientLightSensor();
 
-  void set_device_list_path_for_testing(const FilePath& path) {
+  void set_device_list_path_for_testing(const base::FilePath& path) {
     device_list_path_ = path;
   }
   void set_poll_interval_ms_for_testing(int interval_ms) {
@@ -82,7 +82,7 @@ class AmbientLightSensor {
 
   // Path containing backlight devices.  Typically under /sys, but can be
   // overridden by tests.
-  FilePath device_list_path_;
+  base::FilePath device_list_path_;
 
   // GLib timeout ID for running ReadAls(), or 0 if unset.
   guint poll_timeout_id_;

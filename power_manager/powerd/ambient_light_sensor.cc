@@ -24,7 +24,7 @@ namespace power_manager {
 namespace {
 
 // Default path examined for backlight device directories.
-const FilePath::CharType kDefaultDeviceListPath[] =
+const base::FilePath::CharType kDefaultDeviceListPath[] =
     FILE_PATH_LITERAL("/sys/bus/iio/devices");
 
 // Default interval for polling the ambient light sensor.
@@ -85,10 +85,10 @@ bool AmbientLightSensor::DeferredInit() {
       "illuminance0_input",
   };
 
-  for (FilePath check_path = dir_enumerator.Next(); !check_path.empty();
+  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
     for (unsigned int i = 0; i < arraysize(input_names); i++) {
-      FilePath als_path = check_path.Append(input_names[i]);
+      base::FilePath als_path = check_path.Append(input_names[i]);
       if (als_file_.Init(als_path.value())) {
         if (still_deferring_)
           LOG(INFO) << "Finally found the lux file";

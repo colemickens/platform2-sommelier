@@ -20,7 +20,7 @@ namespace power_manager {
 
 class FileTagger {
  public:
-  explicit FileTagger(const FilePath& trace_dir);
+  explicit FileTagger(const base::FilePath& trace_dir);
 
   void Init();
 
@@ -41,8 +41,8 @@ class FileTagger {
   FRIEND_TEST(FileTaggerTest, FileCache);
 
   // For file access
-  bool TouchFile(const FilePath& file);
-  bool DeleteFile(const FilePath& file);
+  bool TouchFile(const base::FilePath& file);
+  bool DeleteFile(const base::FilePath& file);
 
   // Initialize the Inotify for trace files
   bool SetupTraceFileNotifier();
@@ -59,14 +59,14 @@ class FileTagger {
   bool can_tag_files_;
 
   // Directory where files are tagged
-  FilePath trace_dir_;
+  base::FilePath trace_dir_;
   // Files to be tagged
-  FilePath suspend_file_;
-  FilePath low_battery_file_;
+  base::FilePath suspend_file_;
+  base::FilePath low_battery_file_;
 
   // Used for recording writes/deletes before the crash reporter has removed
   // the previous trace files.
-  typedef std::map<FilePath, base::Time> FileCache;
+  typedef std::map<base::FilePath, base::Time> FileCache;
   FileCache cached_files_;
 };
 

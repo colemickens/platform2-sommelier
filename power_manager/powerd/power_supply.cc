@@ -47,7 +47,7 @@ inline int64 HoursToSecondsInt(double num_hours) {
 
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
-bool ReadAndTrimString(const FilePath& directory,
+bool ReadAndTrimString(const base::FilePath& directory,
                        const std::string& filename,
                        std::string* out) {
   if (!file_util::ReadFileToString(directory.Append(filename), out))
@@ -58,7 +58,7 @@ bool ReadAndTrimString(const FilePath& directory,
 }
 
 // Reads a 64-bit integer value from a file and returns true on success.
-bool ReadInt64(const FilePath& directory,
+bool ReadInt64(const base::FilePath& directory,
                const std::string& filename,
                int64* out) {
   std::string buffer;
@@ -69,7 +69,7 @@ bool ReadInt64(const FilePath& directory,
 
 // Reads an integer value and scales it to a double (see |kDoubleScaleFactor|.
 // Returns -1.0 on failure.
-double ReadScaledDouble(const FilePath& directory,
+double ReadScaledDouble(const base::FilePath& directory,
                         const std::string& filename) {
   int64 value = 0;
   return ReadInt64(directory, filename, &value) ?
@@ -80,7 +80,7 @@ double ReadScaledDouble(const FilePath& directory,
 
 namespace power_manager {
 
-PowerSupply::PowerSupply(const FilePath& power_supply_path,
+PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
     : prefs_(prefs),
       power_supply_path_(power_supply_path),
@@ -344,7 +344,7 @@ void PowerSupply::GetPowerSupplyPaths() {
       file_util::FileEnumerator::DIRECTORIES);
   // Read type info from all power sources, and try to identify battery and line
   // power sources.  Their paths are to be stored locally.
-  for (FilePath path = file_enum.Next();
+  for (base::FilePath path = file_enum.Next();
        !path.empty();
        path = file_enum.Next()) {
     std::string buf;

@@ -100,7 +100,7 @@ struct PowerInformation {
 // charge and voltage level, current, etc.
 class PowerSupply {
  public:
-  explicit PowerSupply(const FilePath& power_supply_path,
+  explicit PowerSupply(const base::FilePath& power_supply_path,
                        PrefsInterface *prefs);
   ~PowerSupply();
 
@@ -113,8 +113,8 @@ class PowerSupply {
   // Read data from power supply sysfs for PowerInformation structure.
   bool GetPowerInformation(PowerInformation* info);
 
-  const FilePath& line_power_path() const { return line_power_path_; }
-  const FilePath& battery_path() const { return battery_path_; }
+  const base::FilePath& line_power_path() const { return line_power_path_; }
+  const base::FilePath& battery_path() const { return battery_path_; }
 
   void SetSuspendState(bool state);
 
@@ -142,9 +142,9 @@ class PowerSupply {
 
   // Paths to power supply base sysfs directory and battery and line power
   // subdirectories.
-  FilePath power_supply_path_;
-  FilePath line_power_path_;
-  FilePath battery_path_;
+  base::FilePath power_supply_path_;
+  base::FilePath line_power_path_;
+  base::FilePath battery_path_;
 
   // These are used for using hysteresis to avoid large swings in calculated
   // remaining battery time.

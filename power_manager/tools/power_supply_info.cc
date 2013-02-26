@@ -95,7 +95,7 @@ class InfoDisplay {
 }  // namespace
 
 int main(int, char*[]) {
-  FilePath path(kPowerStatusPath);
+  base::FilePath path(kPowerStatusPath);
   power_manager::PowerSupply power_supply(path, NULL);
   power_supply.Init();
 

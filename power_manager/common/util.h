@@ -7,9 +7,11 @@
 
 #include <string>
 
-class FilePath;
-
 typedef unsigned int guint;
+
+namespace base {
+class FilePath;
+}
 
 namespace power_manager {
 namespace util {
@@ -32,8 +34,8 @@ int RunSetuidHelper(const std::string& action,
                     bool wait_for_completion);
 
 // Status file creation and removal.
-void CreateStatusFile(const FilePath& file);
-void RemoveStatusFile(const FilePath& file);
+void CreateStatusFile(const base::FilePath& file);
+void RemoveStatusFile(const base::FilePath& file);
 
 // Read an unsigned int from a file.  Return true on success
 // Due to crbug.com/128596 this function does not handle negative values

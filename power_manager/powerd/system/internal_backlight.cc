@@ -43,16 +43,16 @@ InternalBacklight::~InternalBacklight() {
   CancelTransition();
 }
 
-bool InternalBacklight::Init(const FilePath& base_path,
-                             const FilePath::StringType& pattern) {
-  FilePath dir_path;
+bool InternalBacklight::Init(const base::FilePath& base_path,
+                             const base::FilePath::StringType& pattern) {
+  base::FilePath dir_path;
   file_util::FileEnumerator dir_enumerator(
       base_path, false, file_util::FileEnumerator::DIRECTORIES, pattern);
 
   // Find the backlight interface with greatest granularity (highest max).
-  for (FilePath check_path = dir_enumerator.Next(); !check_path.empty();
+  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
        check_path = dir_enumerator.Next()) {
-    FilePath check_name = check_path.BaseName();
+    base::FilePath check_name = check_path.BaseName();
     std::string str_check_name = check_name.value();
     if (str_check_name[0] == '.')
       continue;
@@ -139,11 +139,12 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
 }
 
 // static
-void InternalBacklight::GetBacklightFilePaths(const FilePath& dir_path,
-                                              FilePath* actual_brightness_path,
-                                              FilePath* brightness_path,
-                                              FilePath* max_brightness_path,
-                                              FilePath* resume_brightness_path) {
+void InternalBacklight::GetBacklightFilePaths(
+    const base::FilePath& dir_path,
+    base::FilePath* actual_brightness_path,
+    base::FilePath* brightness_path,
+    base::FilePath* max_brightness_path,
+    base::FilePath* resume_brightness_path) {
   if (actual_brightness_path)
     *actual_brightness_path = dir_path.Append(kActualBrightnessFilename);
   if (brightness_path)
@@ -155,9 +156,9 @@ void InternalBacklight::GetBacklightFilePaths(const FilePath& dir_path,
 }
 
 // static
-int64 InternalBacklight::CheckBacklightFiles(const FilePath& dir_path) {
-  FilePath actual_brightness_path, brightness_path, max_brightness_path,
-           resume_brightness_path;
+int64 InternalBacklight::CheckBacklightFiles(const base::FilePath& dir_path) {
+  base::FilePath actual_brightness_path, brightness_path, max_brightness_path,
+      resume_brightness_path;
   GetBacklightFilePaths(dir_path,
                         &actual_brightness_path,
                         &brightness_path,
@@ -179,7 +180,7 @@ int64 InternalBacklight::CheckBacklightFiles(const FilePath& dir_path) {
 }
 
 // static
-bool InternalBacklight::ReadBrightnessLevelFromFile(const FilePath& path,
+bool InternalBacklight::ReadBrightnessLevelFromFile(const base::FilePath& path,
                                                     int64* level) {
   DCHECK(level);
 
@@ -200,7 +201,7 @@ bool InternalBacklight::ReadBrightnessLevelFromFile(const FilePath& path,
 }
 
 // static
-bool InternalBacklight::WriteBrightnessLevelToFile(const FilePath& path,
+bool InternalBacklight::WriteBrightnessLevelToFile(const base::FilePath& path,
                                                    int64 level) {
   std::string buf = base::Int64ToString(level);
   if (file_util::WriteFile(path, buf.data(), buf.size()) == -1) {

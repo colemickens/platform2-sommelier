@@ -96,7 +96,7 @@ class Daemon : public BacklightControllerObserver,
          PrefsInterface* prefs,
          MetricsLibraryInterface* metrics_lib,
          KeyboardBacklightController* keyboard_controller,
-         const FilePath& run_dir);
+         const base::FilePath& run_dir);
   ~Daemon();
 
   BacklightController* backlight_controller() { return backlight_controller_; }
@@ -540,7 +540,7 @@ class Daemon : public BacklightControllerObserver,
   ShutdownState shutdown_state_;
   scoped_ptr<Suspender::Delegate> suspender_delegate_;
   Suspender suspender_;
-  FilePath run_dir_;
+  base::FilePath run_dir_;
   PowerSupply power_supply_;
   base::TimeTicks session_start_;
   bool is_power_status_stale_;

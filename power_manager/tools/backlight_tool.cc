@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   CHECK(backlight.Init());
 #else
   power_manager::system::InternalBacklight backlight;
-  CHECK(backlight.Init(FilePath(power_manager::kInternalBacklightPath),
+  CHECK(backlight.Init(base::FilePath(power_manager::kInternalBacklightPath),
                        power_manager::kInternalBacklightPattern));
 #endif
   if (FLAGS_get_brightness) {

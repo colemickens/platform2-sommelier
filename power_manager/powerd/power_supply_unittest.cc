@@ -10,8 +10,8 @@
 #include <string>
 
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
 #include "base/string_number_conversions.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/power_supply.h"
@@ -68,7 +68,7 @@ class PowerSupplyTest : public ::testing::Test {
 
   virtual void SetUp() {
     // Create a temporary directory for the test files
-    temp_dir_generator_.reset(new ScopedTempDir());
+    temp_dir_generator_.reset(new base::ScopedTempDir());
     ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_generator_->IsValid());
     // Initialize the file tagger
@@ -77,7 +77,7 @@ class PowerSupplyTest : public ::testing::Test {
 
  protected:
   scoped_ptr<PowerSupply> power_supply_;
-  scoped_ptr<ScopedTempDir> temp_dir_generator_;
+  scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
 };
 
 // Test that when false is passed in the correct entry in the data structure is
@@ -111,7 +111,7 @@ TEST_F(PowerSupplyTest, TestNoPowerSupplySysfs) {
 
 // Test line power without battery.
 TEST_F(PowerSupplyTest, TestNoBattery) {
-  FilePath path = temp_dir_generator_->path();
+  base::FilePath path = temp_dir_generator_->path();
   file_util::CreateDirectory(path.Append("ac"));
   map<string, string> values;
   values["ac/online"] = kOnline;
@@ -132,7 +132,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
 
 // Test battery charging status.
 TEST_F(PowerSupplyTest, TestCharging) {
-  FilePath path = temp_dir_generator_->path();
+  base::FilePath path = temp_dir_generator_->path();
   file_util::CreateDirectory(path.Append("ac"));
   file_util::CreateDirectory(path.Append("battery"));
   map<string, string> values;
@@ -167,7 +167,7 @@ TEST_F(PowerSupplyTest, TestCharging) {
 // Test battery discharging status.  Test both positive and negative current
 // values.
 TEST_F(PowerSupplyTest, TestDischarging) {
-  FilePath path = temp_dir_generator_->path();
+  base::FilePath path = temp_dir_generator_->path();
   file_util::CreateDirectory(path.Append("ac"));
   file_util::CreateDirectory(path.Append("battery"));
   map<string, string> values;
@@ -211,7 +211,7 @@ TEST_F(PowerSupplyTest, TestDischarging) {
 
 // Test battery reporting energy instead of charge.
 TEST_F(PowerSupplyTest, TestEnergyDischarging) {
-  FilePath path = temp_dir_generator_->path();
+  base::FilePath path = temp_dir_generator_->path();
   file_util::CreateDirectory(path.Append("ac"));
   file_util::CreateDirectory(path.Append("battery"));
   map<string, string> values;
@@ -265,7 +265,7 @@ struct PowerSupplyValues {
 struct HysteresisTestData {
   PowerSupply* power_supply;
   PowerSupplyValues* values;
-  FilePath* path;
+  base::FilePath* path;
   int index;
   int time;
 };
@@ -318,7 +318,7 @@ gboolean HysteresisTestLoop(gpointer data) {
 }  // namespace
 
 TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
-  FilePath path = temp_dir_generator_->path();
+  base::FilePath path = temp_dir_generator_->path();
   file_util::CreateDirectory(path.Append("ac"));
   file_util::CreateDirectory(path.Append("battery"));
   // List of power values to be simulated at one-second intervals.
@@ -435,7 +435,7 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
 
 // Test battery discharge while suspending and resuming.
 TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
-  FilePath path = temp_dir_generator_->path();
+  base::FilePath path = temp_dir_generator_->path();
   file_util::CreateDirectory(path.Append("ac"));
   file_util::CreateDirectory(path.Append("battery"));
   map<string, string> values;

@@ -37,7 +37,8 @@ class InternalBacklight : public BacklightInterface {
   //   base: "/sys/class/leds", pattern: "*:kbd_backlight"
   //
   // On success, return true; otherwise return false.
-  bool Init(const FilePath& base_path, const FilePath::StringType& pattern);
+  bool Init(const base::FilePath& base_path,
+            const base::FilePath::StringType& pattern);
 
   bool transition_timeout_is_set() const { return transition_timeout_id_ != 0; }
   void set_current_time_for_testing(base::TimeTicks now) {
@@ -57,21 +58,23 @@ class InternalBacklight : public BacklightInterface {
  private:
   // Generate FilePaths within |dir_path| for reading and writing brightness
   // information.
-  static void GetBacklightFilePaths(const FilePath& dir_path,
-                                    FilePath* actual_brightness_path,
-                                    FilePath* brightness_path,
-                                    FilePath* max_brightness_path,
-                                    FilePath* resume_brightness_path);
+  static void GetBacklightFilePaths(const base::FilePath& dir_path,
+                                    base::FilePath* actual_brightness_path,
+                                    base::FilePath* brightness_path,
+                                    base::FilePath* max_brightness_path,
+                                    base::FilePath* resume_brightness_path);
 
   // Look for the existence of required files and return the max brightness.
   // Returns 0 if necessary files are missing.
-  static int64 CheckBacklightFiles(const FilePath& dir_path);
+  static int64 CheckBacklightFiles(const base::FilePath& dir_path);
 
   // Read the value from |path| to |level|.  Returns false on failure.
-  static bool ReadBrightnessLevelFromFile(const FilePath& path, int64* level);
+  static bool ReadBrightnessLevelFromFile(const base::FilePath& path,
+                                          int64* level);
 
   // Writes |level| to |path|.  Returns false on failure.
-  static bool WriteBrightnessLevelToFile(const FilePath& path, int64 level);
+  static bool WriteBrightnessLevelToFile(const base::FilePath& path,
+                                         int64 level);
 
   // Returns the current time (or |current_time_for_testing_| if non-null).
   base::TimeTicks GetCurrentTime() const;
@@ -86,10 +89,10 @@ class InternalBacklight : public BacklightInterface {
 
   // Paths to the actual_brightness, brightness, max_brightness and
   // resume_brightness files under /sys/class/backlight.
-  FilePath actual_brightness_path_;
-  FilePath brightness_path_;
-  FilePath max_brightness_path_;
-  FilePath resume_brightness_path_;
+  base::FilePath actual_brightness_path_;
+  base::FilePath brightness_path_;
+  base::FilePath max_brightness_path_;
+  base::FilePath resume_brightness_path_;
 
   // Cached maximum and last-set brightness levels.
   int64 max_brightness_level_;

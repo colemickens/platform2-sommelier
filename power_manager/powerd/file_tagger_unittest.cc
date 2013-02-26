@@ -5,8 +5,8 @@
 #include <gtest/gtest.h>
 
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/file_tagger.h"
 
@@ -18,7 +18,7 @@ class FileTaggerTest : public ::testing::Test {
 
   virtual void SetUp() {
     // Create a temporary directory for the test files
-    temp_dir_generator_.reset(new ScopedTempDir());
+    temp_dir_generator_.reset(new base::ScopedTempDir());
     ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_generator_->IsValid());
     // Initialize the file tagger
@@ -28,7 +28,7 @@ class FileTaggerTest : public ::testing::Test {
 
  protected:
   scoped_ptr<FileTagger> file_tagger_;
-  scoped_ptr<ScopedTempDir> temp_dir_generator_;
+  scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
 };
 
 struct CheckFileTaggerData {

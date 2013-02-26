@@ -4,15 +4,15 @@
 
 #include <gtest/gtest.h>
 
-#include "base/scoped_temp_dir.h"
-#include "power_manager/powerd/system/input.h"
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
+#include "power_manager/powerd/system/input.h"
 
 namespace power_manager {
 namespace system {
 
 TEST(InputTest, DetectUSBDevices) {
-  ScopedTempDir temp_dir;
+  base::ScopedTempDir temp_dir;
   // Create temp directory to be used in place of the default sysfs path.
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
   Input input;

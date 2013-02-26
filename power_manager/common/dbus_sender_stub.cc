@@ -46,7 +46,7 @@ bool DBusSenderStub::GetSentSignal(size_t index,
 }
 
 void DBusSenderStub::ClearSentSignals() {
-  sent_signals_.reset();
+  sent_signals_.clear();
 }
 
 void DBusSenderStub::EmitSignalWithProtocolBuffer(

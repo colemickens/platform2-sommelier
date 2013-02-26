@@ -150,17 +150,17 @@ bool Input::QueryLidState(LidState* state) {
 
 bool Input::IsUSBInputDeviceConnected() const {
   file_util::FileEnumerator enumerator(
-      FilePath(sysfs_input_path_for_testing_.empty() ?
-               kSysClassInputPath : sysfs_input_path_for_testing_),
+      base::FilePath(sysfs_input_path_for_testing_.empty() ?
+                     kSysClassInputPath : sysfs_input_path_for_testing_),
       false,
       static_cast<file_util::FileEnumerator::FileType>(
           file_util::FileEnumerator::FILES |
           file_util::FileEnumerator::SHOW_SYM_LINKS),
       kInputMatchPattern);
-  for (FilePath path = enumerator.Next();
+  for (base::FilePath path = enumerator.Next();
        !path.empty();
        path = enumerator.Next()) {
-    FilePath symlink_path;
+    base::FilePath symlink_path;
     if (!file_util::ReadSymbolicLink(path, &symlink_path))
       continue;
     const std::string& path_string = symlink_path.value();
@@ -200,7 +200,7 @@ void Input::SetTouchDevicesState(bool enable) {
 }
 
 bool Input::RegisterInputDevices() {
-  FilePath input_path(kDevInputPath);
+  base::FilePath input_path(kDevInputPath);
   DIR* dir = opendir(input_path.value().c_str());
   int num_registered = 0;
   if (dir) {
@@ -267,10 +267,10 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   char name[strlen(kInputBaseName) + sizeof(input_num) * 3 + 1];
 
   snprintf(name, sizeof(name), "%s%d", kInputBaseName, input_num);
-  FilePath input_path = FilePath(kSysClassInputPath).Append(name);
+  base::FilePath input_path = base::FilePath(kSysClassInputPath).Append(name);
 
   // wakeup sysfs is at /sys/class/input/inputX/device/power/wakeup
-  FilePath wakeup_path = input_path.Append("device/power/wakeup");
+  base::FilePath wakeup_path = input_path.Append("device/power/wakeup");
   if (access(wakeup_path.value().c_str(), R_OK)) {
     LOG(WARNING) << "Failed to access power/wakeup for : " << name;
     return false;
@@ -317,7 +317,7 @@ bool Input::AddEvent(const char* name) {
     return false;
   }
 
-  FilePath event_path = FilePath(kDevInputPath).Append(name);
+  base::FilePath event_path = base::FilePath(kDevInputPath).Append(name);
   int event_fd;
   if (access(event_path.value().c_str(), R_OK)) {
     LOG(WARNING) << "Failed to read from device.";
@@ -362,8 +362,8 @@ bool Input::AddWakeInput(const char* name) {
       !GetSuffixNumber(name, kInputBaseName, &input_num))
     return false;
 
-  FilePath device_name_path =
-      FilePath(kSysClassInputPath).Append(name).Append("name");
+  base::FilePath device_name_path =
+      base::FilePath(kSysClassInputPath).Append(name).Append("name");
   if (access(device_name_path.value().c_str(), R_OK)) {
     LOG(WARNING) << "Failed to access input name.";
     return false;

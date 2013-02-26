@@ -7,8 +7,8 @@
 #include <string>
 
 #include "base/file_util.h"
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
-#include "base/scoped_temp_dir.h"
 #include "power_manager/common/util.h"
 
 namespace {
@@ -23,23 +23,23 @@ namespace power_manager {
 
     virtual void SetUp() {
       // Create a temporary directory for the test files
-      temp_dir_generator_.reset(new ScopedTempDir());
+      temp_dir_generator_.reset(new base::ScopedTempDir());
       ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
       EXPECT_TRUE(temp_dir_generator_->IsValid());
     }
 
   protected:
-    void WriteFileWrapper(const FilePath& file_path, const char* value);
-    scoped_ptr<ScopedTempDir> temp_dir_generator_;
+    void WriteFileWrapper(const base::FilePath& file_path, const char* value);
+    scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
 };
 
-void UtilTest::WriteFileWrapper(const FilePath &path, const char* value) {
+void UtilTest::WriteFileWrapper(const base::FilePath &path, const char* value) {
   ASSERT_EQ(file_util::WriteFile(path, value, strlen(value)), strlen(value));
 }
 
 TEST_F(UtilTest, GetUintFromFile) {
   unsigned int value;
-  FilePath path = temp_dir_generator_->path().Append(kTestFilename);
+  base::FilePath path = temp_dir_generator_->path().Append(kTestFilename);
   std::string path_str = path.value();
 
   file_util::Delete(path, false);

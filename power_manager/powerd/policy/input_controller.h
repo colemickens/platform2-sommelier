@@ -51,7 +51,7 @@ class InputController : public system::InputObserver {
   InputController(system::Input* input,
                   Delegate* delegate,
                   DBusSenderInterface* dbus_sender,
-                  const FilePath& run_dir);
+                  const base::FilePath& run_dir);
   ~InputController();
 
   void Init(PrefsInterface* prefs);

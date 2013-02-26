@@ -83,7 +83,8 @@ class DaemonTest : public Test {
 #else
         backlight_ctl_(&backlight_, &prefs_, NULL, &monitor_),
 #endif
-        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL, FilePath(".")),
+        daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL,
+                base::FilePath(".")),
         status_(&daemon_.power_status_) {}
 
   virtual void SetUp() {

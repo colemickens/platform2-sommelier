@@ -24,7 +24,7 @@ Prefs::Prefs() {}
 
 Prefs::~Prefs() {}
 
-bool Prefs::Init(const std::vector<FilePath>& pref_paths) {
+bool Prefs::Init(const std::vector<base::FilePath>& pref_paths) {
   CHECK(!pref_paths.empty());
   pref_paths_ = pref_paths;
 
@@ -56,10 +56,10 @@ void Prefs::GetPrefStrings(const std::string& name,
                            bool read_all,
                            std::vector<PrefReadResult>* results) {
   CHECK(results);
-  for (std::vector<FilePath>::const_iterator iter = pref_paths_.begin();
+  for (std::vector<base::FilePath>::const_iterator iter = pref_paths_.begin();
        iter != pref_paths_.end();
        ++iter) {
-    FilePath path = iter->Append(name);
+    base::FilePath path = iter->Append(name);
     std::string buf;
     if (file_util::ReadFileToString(path, &buf)) {
       TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
@@ -125,7 +125,7 @@ bool Prefs::GetBool(const std::string& name, bool* value) {
 
 bool Prefs::SetString(const std::string& name, const std::string& value) {
   CHECK(!pref_paths_.empty());
-  FilePath path = pref_paths_[0].Append(name);
+  base::FilePath path = pref_paths_[0].Append(name);
   int status = file_util::WriteFile(path, value.data(), value.size());
   PLOG_IF(ERROR, status == -1) << "Failed to write to " << path.AsUTF8Unsafe();
   return status != -1;
@@ -133,7 +133,7 @@ bool Prefs::SetString(const std::string& name, const std::string& value) {
 
 bool Prefs::SetInt64(const std::string& name, int64 value) {
   CHECK(!pref_paths_.empty());
-  FilePath path = pref_paths_[0].Append(name);
+  base::FilePath path = pref_paths_[0].Append(name);
   std::string buf = base::Int64ToString(value);
   int status = file_util::WriteFile(path, buf.data(), buf.size());
   PLOG_IF(ERROR, status == -1) << "Failed to write to " << path.AsUTF8Unsafe();
@@ -142,7 +142,7 @@ bool Prefs::SetInt64(const std::string& name, int64 value) {
 
 bool Prefs::SetDouble(const std::string& name, double value) {
   CHECK(!pref_paths_.empty());
-  FilePath path = pref_paths_[0].Append(name);
+  base::FilePath path = pref_paths_[0].Append(name);
   std::string buf = base::DoubleToString(value);
   int status = file_util::WriteFile(path, buf.data(), buf.size());
   PLOG_IF(ERROR, status == -1) << "Failed to write to " << path.AsUTF8Unsafe();

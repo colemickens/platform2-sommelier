@@ -102,11 +102,11 @@ int main(int argc, char* argv[]) {
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
 
-  FilePath prefs_dir(FLAGS_prefs_dir);
-  FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
+  base::FilePath prefs_dir(FLAGS_prefs_dir);
+  base::FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
                              "/usr/share/power_manager" :
                              FLAGS_default_prefs_dir);
-  std::vector<FilePath> pref_paths;
+  std::vector<base::FilePath> pref_paths;
   pref_paths.push_back(prefs_dir);
   pref_paths.push_back(default_prefs_dir.Append("board_specific"));
   pref_paths.push_back(default_prefs_dir);
@@ -130,8 +130,9 @@ int main(int argc, char* argv[]) {
       &display_backlight, &monitor_reconfigure);
 #else
   power_manager::system::InternalBacklight display_backlight;
-  if (!display_backlight.Init(FilePath(power_manager::kInternalBacklightPath),
-                              power_manager::kInternalBacklightPattern))
+  if (!display_backlight.Init(
+          base::FilePath(power_manager::kInternalBacklightPath),
+          power_manager::kInternalBacklightPattern))
     LOG(WARNING) << "Cannot initialize display backlight";
   power_manager::InternalBacklightController display_backlight_controller(
       &display_backlight, &prefs, light_sensor.get(), &monitor_reconfigure);
@@ -145,8 +146,9 @@ int main(int argc, char* argv[]) {
 #ifdef HAS_KEYBOARD_BACKLIGHT
   scoped_ptr<power_manager::system::InternalBacklight> keyboard_backlight(
       new power_manager::system::InternalBacklight);
-  if (keyboard_backlight->Init(FilePath(power_manager::kKeyboardBacklightPath),
-                               power_manager::kKeyboardBacklightPattern)) {
+  if (keyboard_backlight->Init(
+          base::FilePath(power_manager::kKeyboardBacklightPath),
+          power_manager::kKeyboardBacklightPattern)) {
     keyboard_backlight_controller.reset(
         new power_manager::KeyboardBacklightController(
             keyboard_backlight.get(), &prefs, light_sensor.get()));
@@ -162,7 +164,7 @@ int main(int argc, char* argv[]) {
 
   MetricsLibrary metrics_lib;
   metrics_lib.Init();
-  FilePath run_dir(FLAGS_run_dir);
+  base::FilePath run_dir(FLAGS_run_dir);
   power_manager::Daemon daemon(&display_backlight_controller,
                                &prefs,
                                &metrics_lib,

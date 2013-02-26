@@ -51,7 +51,7 @@ class Suspender::RealDelegate : public Suspender::Delegate {
 
   virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
     DCHECK(wakeup_count);
-    FilePath path(kWakeupCountPath);
+    base::FilePath path(kWakeupCountPath);
     std::string buf;
     if (file_util::ReadFileToString(path, &buf)) {
       TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
