@@ -91,6 +91,14 @@ class CryptoLib {
   //   buffer_length - The size of the buffer
   static void AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
                                   unsigned int buffer_length);
+
+  // Encodes a binary blob to base64.
+  //
+  // Parameters
+  //   blob - The input blob.
+  //   include_newlines - Whether to include PEM-style newlines.
+  static std::string Base64Encode(const std::string& blob,
+                                  bool include_newlines);
 };
 
 }  // namespace cryptohome

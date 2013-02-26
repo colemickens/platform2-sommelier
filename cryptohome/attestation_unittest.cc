@@ -11,10 +11,15 @@
 #include "mock_platform.h"
 #include "mock_tpm.h"
 
+#include "cryptolib.h"
+
+using std::string;
 using ::testing::_;
+using ::testing::DoAll;
 using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
 
 namespace cryptohome {
@@ -71,10 +76,41 @@ class AttestationTest : public testing::Test {
     pb.set_message_id(request_pb.message_id());
     pb.set_status(OK);
     pb.set_detail("");
-    pb.set_certified_key_credential("1234");
+    pb.set_certified_key_credential("response_cert");
+    pb.set_intermediate_ca_cert("response_ca_cert");
     std::string tmp;
     pb.SerializeToString(&tmp);
     return chromeos::SecureBlob(tmp.data(), tmp.length());
+  }
+
+  chromeos::SecureBlob GetCertifiedKeyBlob() {
+    CertifiedKey pb;
+    pb.set_certified_key_credential("stored_cert");
+    pb.set_intermediate_ca_cert("stored_ca_cert");
+    pb.set_public_key("public_key");
+    std::string tmp;
+    pb.SerializeToString(&tmp);
+    return chromeos::SecureBlob(tmp.data(), tmp.length());
+  }
+
+  bool CompareBlob(const chromeos::SecureBlob& blob, const std::string& str) {
+    std::string blob_str(reinterpret_cast<const char*>(blob.const_data()),
+                         blob.size());
+    if (blob_str != str) {
+      printf("Comparing: |%s| with |%s|.\n", blob_str.c_str(), str.c_str());
+      return false;
+    }
+    return true;
+    //return (blob_str == str);
+  }
+
+  string EncodeCertChain(const string& cert1, const string& cert2) {
+    string chain = "-----BEGIN CERTIFICATE-----\n";
+    chain += CryptoLib::Base64Encode(cert1, true);
+    chain += "-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\n";
+    chain += CryptoLib::Base64Encode(cert2, true);
+    chain += "-----END CERTIFICATE-----";
+    return chain;
   }
 };
 
@@ -101,6 +137,9 @@ TEST_F(AttestationTest, Enroll) {
 }
 
 TEST_F(AttestationTest, CertRequest) {
+  chromeos::SecureBlob pubkey("generated_pubkey");
+  EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(pubkey), Return(true)));
   chromeos::SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
   attestation_.PrepareForEnrollment();
@@ -108,22 +147,50 @@ TEST_F(AttestationTest, CertRequest) {
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
-                                             true,
+                                             false,
                                              "test",
                                              &blob));
-  EXPECT_EQ(0, memcmp(blob.data(), "1234", 4));
+  EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
+                                                "response_ca_cert")));
+  EXPECT_TRUE(attestation_.GetCertificateChain(false, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
+                                                "response_ca_cert")));
+  EXPECT_TRUE(attestation_.GetPublicKey(false, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, "generated_pubkey"));
 }
 
 TEST_F(AttestationTest, CertRequestStorageFailure) {
-  EXPECT_CALL(key_store_, Write("test", _)).WillOnce(Return(false));
+  EXPECT_CALL(key_store_, Write("test", _))
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(key_store_, Read("test", _))
+      .WillOnce(Return(false))
+      .WillRepeatedly(DoAll(
+          SetArgumentPointee<1>(GetCertifiedKeyBlob()),
+          Return(true)));
   chromeos::SecureBlob blob;
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  // Expect storage failure here.
   EXPECT_FALSE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
+                                              true,
+                                              "test",
+                                              &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              true,
                                              "test",
                                              &blob));
+  EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
+                                                "response_ca_cert")));
+  // Expect storage failure here.
+  EXPECT_FALSE(attestation_.GetCertificateChain(true, "test", &blob));
+  EXPECT_TRUE(attestation_.GetCertificateChain(true, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert",
+                                                "stored_ca_cert")));
+  EXPECT_TRUE(attestation_.GetPublicKey(true, "test", &blob));
+  EXPECT_TRUE(CompareBlob(blob, "public_key"));
 }
 
 }  // namespace cryptohome

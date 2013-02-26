@@ -506,4 +506,20 @@ void CryptoLib::AsciiEncodeToBuffer(const chromeos::Blob& blob, char* buffer,
   }
 }
 
+string CryptoLib::Base64Encode(const string& input, bool include_newlines) {
+  BIO* base64 = BIO_new(BIO_f_base64());
+  if (!include_newlines)
+    BIO_set_flags(base64, BIO_FLAGS_BASE64_NO_NL);
+  BIO* bio = BIO_new(BIO_s_mem());
+  bio = BIO_push(base64, bio);
+  BIO_write(bio, input.data(), input.size());
+  static_cast<void>(BIO_flush(bio));
+  char *data;
+  long length = BIO_get_mem_data(bio, &data);
+  string output(data, length);
+  chromeos::SecureMemset(data, 0, length);
+  BIO_free_all(bio);
+  return output;
+}
+
 }  // namespace cryptohome

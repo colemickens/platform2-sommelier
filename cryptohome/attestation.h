@@ -120,11 +120,43 @@ class Attestation : public base::PlatformThread::Delegate {
   //   key_name - A name for the key.  If a key already exists with this name it
   //              will be destroyed and replaced with this one.  This name may
   //              subsequently be used to query the certificate for the key
-  //              using GetCertByName.
+  //              using GetCertificateChain.
+  //   certificate_chain - The PCA issued certificate chain in PEM format.  By
+  //                       convention the certified key certificate is listed
+  //                       first followed by intermediate CA certificate(s).
+  //                       The PCA root certificate is not included.
   virtual bool FinishCertRequest(const chromeos::SecureBlob& pca_response,
                                  bool is_user_specific,
                                  const std::string& key_name,
-                                 chromeos::SecureBlob* certificate);
+                                 chromeos::SecureBlob* certificate_chain);
+
+  // Gets the PCA issued certificate chain for an existing certified key.
+  // Returns true on success.
+  //
+  // Parameters
+  //
+  //   is_user_specific - Whether the key is associated with the current user.
+  //   key_name - The key name; this is the same name previously passed to
+  //              FinishCertRequest.
+  //   certificate_chain - The PCA issued certificate chain in the same format
+  //                       used by FinishCertRequest.
+  virtual bool GetCertificateChain(bool is_user_specific,
+                                   const std::string& key_name,
+                                   chromeos::SecureBlob* certificate_chain);
+
+  // Gets the public key for an existing certified key.  Returns true on
+  // success.  This method is provided for convenience, the same public key can
+  // also be extracted from the certificate chain.
+  //
+  // Parameters
+  //   is_user_specific - Whether the key is associated with the current user.
+  //   key_name - The key name; this is the same name previously passed to
+  //              FinishCertRequest.
+  //   public_key - The public key in DER form, according to the RSAPublicKey
+  //                ASN.1 type defined in PKCS #1 A.1.1.
+  virtual bool GetPublicKey(bool is_user_specific,
+                            const std::string& key_name,
+                            chromeos::SecureBlob* public_key);
 
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
@@ -251,8 +283,22 @@ class Attestation : public base::PlatformThread::Delegate {
                                     EncryptedData* encrypted_credential);
 
   // Adds named device-wide key to the attestation database.
-  bool AddDeviceKey(const std::string& key_name,
-                    const chromeos::SecureBlob& key_data);
+  bool AddDeviceKey(const std::string& key_name, const CertifiedKey& key);
+
+  // Finds a key by name.
+  bool FindKeyByName(bool is_user_specific,
+                     const std::string& key_name,
+                     CertifiedKey* key);
+
+  // Assembles a certificate chain in PEM format given a leaf certificate and an
+  // intermediate CA certificate.  By convention, the leaf certificate will be
+  // first.
+  bool CreatePEMCertificateChain(const std::string& leaf_certificate,
+                                 const std::string& intermediate_ca_cert,
+                                 chromeos::SecureBlob* certificate_chain);
+
+  // Creates a certificate in PEM format from a DER encoded X.509 certificate.
+  std::string CreatePEMCertificate(const std::string& certificate);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

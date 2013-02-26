@@ -139,6 +139,7 @@ message AttestationDatabase {
   optional IdentityKey identity_key = 4;
   optional Quote pcr0_quote = 5;
   optional Delegation delegate = 6;
+  repeated CertifiedKey device_keys = 7;
 }
 
 // Holds encrypted data and information required to decrypt it.

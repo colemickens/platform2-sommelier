@@ -398,6 +398,7 @@ bool Attestation::Enroll(const SecureBlob& pca_response) {
                << response_pb.detail();
     return false;
   }
+  base::AutoLock lock(database_pb_lock_);
   SecureBlob delegate_blob = ConvertStringToBlob(
       database_pb_.delegate().blob());
   SecureBlob delegate_secret = ConvertStringToBlob(
@@ -433,6 +434,7 @@ bool Attestation::CreateCertRequest(bool include_stable_id,
     LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
     return false;
   }
+  base::AutoLock lock(database_pb_lock_);
   AttestationCertificateRequest request_pb;
   string message_id(kNonceSize, 0);
   CryptoLib::GetSecureRandom(
@@ -485,9 +487,9 @@ bool Attestation::CreateCertRequest(bool include_stable_id,
 }
 
 bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
-                                    bool is_user_key,
+                                    bool is_user_specific,
                                     const string& key_name,
-                                    SecureBlob* certificate) {
+                                    SecureBlob* certificate_chain) {
   AttestationCertificateResponse response_pb;
   if (!response_pb.ParseFromArray(pca_response.const_data(),
                                   pca_response.size())) {
@@ -521,25 +523,52 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
       response_pb.certified_key_credential());
   certified_key_pb.set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
   certified_key_pb.set_key_name(key_name);
-  string tmp;
-  if (!certified_key_pb.SerializeToString(&tmp)) {
-    LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
-    return false;
-  }
-  SecureBlob certified_key = ConvertStringToBlob(tmp);
-  ClearString(&tmp);
-  bool result = false;
-  if (is_user_key) {
-    result = user_key_store_->Write(key_name, certified_key);
+  if (is_user_specific) {
+    string tmp;
+    if (!certified_key_pb.SerializeToString(&tmp)) {
+      LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
+      return false;
+    }
+    SecureBlob certified_key = ConvertStringToBlob(tmp);
+    ClearString(&tmp);
+    if (!user_key_store_->Write(key_name, certified_key)) {
+      LOG(ERROR) << __func__ << ": Failed to store certified key for user.";
+      return false;
+    }
   } else {
-    result = AddDeviceKey(key_name, certified_key);
+    if (!AddDeviceKey(key_name, certified_key_pb)) {
+      LOG(ERROR) << __func__ << ": Failed to store certified key for device.";
+      return false;
+    }
   }
-  if (!result) {
-    LOG(ERROR) << __func__ << ": Failed to store certified key.";
+  LOG(INFO) << "Attestation: Certified key credential received and stored.";
+  return CreatePEMCertificateChain(response_pb.certified_key_credential(),
+                                   response_pb.intermediate_ca_cert(),
+                                   certificate_chain);
+}
+
+bool Attestation::GetCertificateChain(bool is_user_specific,
+                                      const string& key_name,
+                                      SecureBlob* certificate_chain) {
+  CertifiedKey key;
+  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+    LOG(ERROR) << "Could not find certified key: " << key_name;
     return false;
   }
-  *certificate = ConvertStringToBlob(response_pb.certified_key_credential());
-  LOG(INFO) << "Attestation: Certified key credential received and stored.";
+  return CreatePEMCertificateChain(key.certified_key_credential(),
+                                   key.intermediate_ca_cert(),
+                                   certificate_chain);
+}
+
+bool Attestation::GetPublicKey(bool is_user_specific,
+                               const string& key_name,
+                               SecureBlob* public_key) {
+  CertifiedKey key;
+  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+    LOG(ERROR) << "Could not find certified key: " << key_name;
+    return false;
+  }
+  *public_key = ConvertStringToBlob(key.public_key());
   return true;
 }
 
@@ -1039,9 +1068,67 @@ bool Attestation::EncryptEndorsementCredential(
 }
 
 bool Attestation::AddDeviceKey(const std::string& key_name,
-                               const chromeos::SecureBlob& key_data) {
-  // TODO(dkrahn): implement
+                               const CertifiedKey& key) {
+  base::AutoLock lock(database_pb_lock_);
+  // If a key by this name already exists, reuse the field.
+  bool found = false;
+  for (int i = 0; i < database_pb_.device_keys_size(); ++i) {
+    if (database_pb_.device_keys(i).key_name() == key_name) {
+      found = true;
+      *database_pb_.mutable_device_keys(i) = key;
+      break;
+    }
+  }
+  if (!found)
+    *database_pb_.add_device_keys() = key;
+  return PersistDatabaseChanges();
+}
+
+bool Attestation::FindKeyByName(bool is_user_specific,
+                                const string& key_name,
+                                CertifiedKey* key) {
+  if (is_user_specific) {
+    chromeos::SecureBlob key_data;
+    if (!user_key_store_->Read(key_name, &key_data)) {
+      LOG(INFO) << "Key not found: " << key_name;
+      return false;
+    }
+    if (!key->ParseFromArray(key_data.const_data(), key_data.size())) {
+      LOG(ERROR) << "Failed to parse key: " << key_name;
+      return false;
+    }
+    return true;
+  }
+  base::AutoLock lock(database_pb_lock_);
+  for (int i = 0; i < database_pb_.device_keys_size(); ++i) {
+    if (database_pb_.device_keys(i).key_name() == key_name) {
+      *key = database_pb_.device_keys(i);
+      return true;
+    }
+  }
+  LOG(INFO) << "Key not found: " << key_name;
+  return false;
+}
+
+bool Attestation::CreatePEMCertificateChain(const string& leaf_certificate,
+                                            const string& intermediate_ca_cert,
+                                            SecureBlob* certificate_chain) {
+  string leaf_pem = CreatePEMCertificate(leaf_certificate);
+  string ca_pem = CreatePEMCertificate(intermediate_ca_cert);
+  *certificate_chain = ConvertStringToBlob(leaf_pem + "\n" + ca_pem);
+  ClearString(&leaf_pem);
+  ClearString(&ca_pem);
   return true;
+}
+
+string Attestation::CreatePEMCertificate(const string& certificate) {
+  const char kBeginCertificate[] = "-----BEGIN CERTIFICATE-----\n";
+  const char kEndCertificate[] = "-----END CERTIFICATE-----";
+
+  string pem = kBeginCertificate;
+  pem += CryptoLib::Base64Encode(certificate, true);
+  pem += kEndCertificate;
+  return pem;
 }
 
 }
