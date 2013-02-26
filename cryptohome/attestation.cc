@@ -140,7 +140,7 @@ Attestation::~Attestation() {
 }
 
 void Attestation::Initialize() {
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   if (tpm_) {
     EncryptedData encrypted_db;
     if (!LoadDatabase(&encrypted_db)) {
@@ -159,12 +159,12 @@ void Attestation::Initialize() {
 }
 
 bool Attestation::IsPreparedForEnrollment() {
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   return database_pb_.has_credentials();
 }
 
 bool Attestation::IsEnrolled() {
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   return (database_pb_.has_identity_key() &&
           database_pb_.identity_key().has_identity_credential());
 }
@@ -226,7 +226,7 @@ void Attestation::PrepareForEnrollment() {
   }
 
   // Assemble a protobuf to store locally.
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   TPMCredentials* credentials_pb = database_pb_.mutable_credentials();
   credentials_pb->set_endorsement_public_key(ek_public_key.data(),
                                              ek_public_key.size());
@@ -284,11 +284,20 @@ void Attestation::PrepareForEnrollment() {
             << "ms).";
 }
 
+void Attestation::PrepareForEnrollmentAsync() {
+  base::AutoLock lock(lock_);
+  if (thread_ != base::kNullThreadHandle) {
+    LOG(WARNING) << "PrepareForEnrollmentAsync called multiple times.";
+    return;
+  }
+  base::PlatformThread::Create(0, this, &thread_);
+}
+
 bool Attestation::Verify() {
   if (!tpm_)
     return false;
   LOG(INFO) << "Attestation: Verifying data.";
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   const TPMCredentials& credentials = database_pb_.credentials();
   SecureBlob ek_public_key = ConvertStringToBlob(
       credentials.endorsement_public_key());
@@ -366,7 +375,7 @@ bool Attestation::CreateEnrollRequest(SecureBlob* pca_request) {
                << "does not exist.";
     return false;
   }
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   AttestationEnrollmentRequest request_pb;
   if (!EncryptEndorsementCredential(
       ConvertStringToBlob(database_pb_.credentials().endorsement_credential()),
@@ -398,7 +407,7 @@ bool Attestation::Enroll(const SecureBlob& pca_response) {
                << response_pb.detail();
     return false;
   }
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   SecureBlob delegate_blob = ConvertStringToBlob(
       database_pb_.delegate().blob());
   SecureBlob delegate_secret = ConvertStringToBlob(
@@ -434,7 +443,7 @@ bool Attestation::CreateCertRequest(bool include_stable_id,
     LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
     return false;
   }
-  base::AutoLock lock(database_pb_lock_);
+  base::AutoLock lock(lock_);
   AttestationCertificateRequest request_pb;
   string message_id(kNonceSize, 0);
   CryptoLib::GetSecureRandom(
@@ -496,6 +505,7 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
     LOG(ERROR) << __func__ << ": Failed to parse response from Privacy CA.";
     return false;
   }
+  base::AutoLock lock(lock_);
   CertRequestMap::iterator iter = pending_cert_requests_.find(
       response_pb.message_id());
   if (iter == pending_cert_requests_.end()) {
@@ -550,6 +560,7 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
 bool Attestation::GetCertificateChain(bool is_user_specific,
                                       const string& key_name,
                                       SecureBlob* certificate_chain) {
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, key_name, &key)) {
     LOG(ERROR) << "Could not find certified key: " << key_name;
@@ -563,6 +574,7 @@ bool Attestation::GetCertificateChain(bool is_user_specific,
 bool Attestation::GetPublicKey(bool is_user_specific,
                                const string& key_name,
                                SecureBlob* public_key) {
+  base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, key_name, &key)) {
     LOG(ERROR) << "Could not find certified key: " << key_name;
@@ -1069,7 +1081,6 @@ bool Attestation::EncryptEndorsementCredential(
 
 bool Attestation::AddDeviceKey(const std::string& key_name,
                                const CertifiedKey& key) {
-  base::AutoLock lock(database_pb_lock_);
   // If a key by this name already exists, reuse the field.
   bool found = false;
   for (int i = 0; i < database_pb_.device_keys_size(); ++i) {
@@ -1099,7 +1110,6 @@ bool Attestation::FindKeyByName(bool is_user_specific,
     }
     return true;
   }
-  base::AutoLock lock(database_pb_lock_);
   for (int i = 0; i < database_pb_.device_keys_size(); ++i) {
     if (database_pb_.device_keys(i).key_name() == key_name) {
       *key = database_pb_.device_keys(i);

@@ -26,7 +26,8 @@ class Tpm;
 // This class performs tasks which enable attestation enrollment.  These tasks
 // include creating an AIK and recording all information about the AIK and EK
 // that an attestation server will need to issue credentials for this system. If
-// a platform does not have a TPM, this class does nothing.
+// a platform does not have a TPM, this class does nothing.  This class is
+// thread-safe.
 class Attestation : public base::PlatformThread::Delegate {
  public:
   Attestation(Tpm* tpm, Platform* platform);
@@ -47,9 +48,7 @@ class Attestation : public base::PlatformThread::Delegate {
   virtual void PrepareForEnrollment();
 
   // Like PrepareForEnrollment(), but asynchronous.
-  virtual void PrepareForEnrollmentAsync() {
-    base::PlatformThread::Create(0, this, &thread_);
-  }
+  virtual void PrepareForEnrollmentAsync();
 
   // Verifies all attestation data as an attestation server would. Returns true
   // if all data is valid.
@@ -197,7 +196,9 @@ class Attestation : public base::PlatformThread::Delegate {
 
   Tpm* tpm_;
   Platform* platform_;
-  base::Lock database_pb_lock_;
+  // A lock to protect all data members except |tpm_| and |platform_| which are
+  // not owned by this class.
+  base::Lock lock_;
   chromeos::SecureBlob database_key_;
   FilePath database_path_;
   AttestationDatabase database_pb_;
