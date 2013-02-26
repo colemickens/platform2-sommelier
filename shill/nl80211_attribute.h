@@ -22,7 +22,7 @@ struct nlattr;
 
 namespace shill {
 
-// Nl80211Attribute is an abstract base class that describes an attribute in a
+// NetlinkAttribute is an abstract base class that describes an attribute in a
 // netlink-80211 message.  Child classes are type-specific and will define
 // Get*Value and Set*Value methods (where * is the type).  A second-level of
 // child classes exist for each individual attribute type.
@@ -31,7 +31,7 @@ namespace shill {
 // and a value.  In an nlattr (the underlying format for an attribute in a
 // message), the data is stored as a blob without type information; the writer
 // and reader of the attribute must agree on the data type.
-class Nl80211Attribute {
+class NetlinkAttribute {
  public:
   enum Type {
     kTypeU8,
@@ -45,15 +45,15 @@ class Nl80211Attribute {
     kTypeError
   };
 
-  Nl80211Attribute(int id, const char *id_string,
+  NetlinkAttribute(int id, const char *id_string,
                    Type datatype, const char *datatype_string);
-  virtual ~Nl80211Attribute() {}
+  virtual ~NetlinkAttribute() {}
 
   virtual bool InitFromNlAttr(const nlattr *data);
 
-  // Static factory generates the appropriate Nl80211Attribute object from the
+  // Static factory generates the appropriate NetlinkAttribute object from the
   // raw nlattr data.
-  static Nl80211Attribute *NewFromName(nl80211_attrs id);
+  static NetlinkAttribute *NewFromId(int id);
 
   // Accessors for the attribute's id and datatype information.
   int id() const { return id_; }
@@ -63,7 +63,7 @@ class Nl80211Attribute {
 
   // TODO(wdg): Since |data| is used, externally, to support |nla_parse_nested|,
   // make it protected once all functionality has been brought inside the
-  // Nl80211Attribute classes.
+  // NetlinkAttribute classes.
   //
   // |data_| contains an 'nlattr *' but it's been stored as a ByteString.
   // This returns a pointer to the data in the form that is intended.
@@ -129,6 +129,11 @@ class Nl80211Attribute {
     return nla_get_u64(const_cast<nlattr *>(input));
   }
 
+  // Static factories generate the appropriate attribute object from the
+  // raw nlattr data.
+  static NetlinkAttribute *NewControlAttributeFromId(int id);
+  static NetlinkAttribute *NewNl80211AttributeFromId(int id);
+
  protected:
   // Builds a string to precede a printout of this attribute.
   std::string HeaderToPrint(int indent) const;
@@ -139,7 +144,7 @@ class Nl80211Attribute {
   virtual ByteString EncodeGeneric(const unsigned char *data, int bytes) const;
 
   // Raw data corresponding to the value in any of the child classes.
-  // TODO(wdg): When 'data()' is removed, move this to the Nl80211RawAttribute
+  // TODO(wdg): When 'data()' is removed, move this to the NetlinkRawAttribute
   // class.
   ByteString data_;
 
@@ -147,7 +152,7 @@ class Nl80211Attribute {
   bool has_a_value_;
 
  private:
-  int id_;  // In the non-nested case, this is really type nl80211_attrs.
+  int id_;
   const char *id_string_;
   Type datatype_;
   const char *datatype_string_;
@@ -155,12 +160,12 @@ class Nl80211Attribute {
 
 // U8.
 
-class Nl80211U8Attribute : public Nl80211Attribute {
+class NetlinkU8Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U8Attribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkU8Attribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU8Value(uint8_t *value) const;
   bool SetU8Value(uint8_t new_value);
@@ -171,28 +176,28 @@ class Nl80211U8Attribute : public Nl80211Attribute {
   uint8_t value_;
 };
 
-class Nl80211AttributeKeyIdx : public Nl80211U8Attribute {
+class Nl80211AttributeKeyIdx : public NetlinkU8Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeKeyIdx() : Nl80211U8Attribute(kName, kNameString) {}
+  Nl80211AttributeKeyIdx() : NetlinkU8Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeRegType : public Nl80211U8Attribute {
+class Nl80211AttributeRegType : public NetlinkU8Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRegType() : Nl80211U8Attribute(kName, kNameString) {}
+  Nl80211AttributeRegType() : NetlinkU8Attribute(kName, kNameString) {}
 };
 
 // U16.
 
-class Nl80211U16Attribute : public Nl80211Attribute {
+class NetlinkU16Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U16Attribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkU16Attribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU16Value(uint16_t *value) const;
   bool SetU16Value(uint16_t new_value);
@@ -203,28 +208,28 @@ class Nl80211U16Attribute : public Nl80211Attribute {
   uint16_t value_;
 };
 
-class Nl80211AttributeReasonCode : public Nl80211U16Attribute {
+class Nl80211AttributeReasonCode : public NetlinkU16Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeReasonCode() : Nl80211U16Attribute(kName, kNameString) {}
+  Nl80211AttributeReasonCode() : NetlinkU16Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeStatusCode : public Nl80211U16Attribute {
+class Nl80211AttributeStatusCode : public NetlinkU16Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeStatusCode() : Nl80211U16Attribute(kName, kNameString) {}
+  Nl80211AttributeStatusCode() : NetlinkU16Attribute(kName, kNameString) {}
 };
 
 // U32.
 
-class Nl80211U32Attribute : public Nl80211Attribute {
+class NetlinkU32Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U32Attribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkU32Attribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU32Value(uint32_t *value) const;
   bool SetU32Value(uint32_t new_value);
@@ -235,63 +240,63 @@ class Nl80211U32Attribute : public Nl80211Attribute {
   uint32_t value_;
 };
 
-class Nl80211AttributeDuration : public Nl80211U32Attribute {
+class Nl80211AttributeDuration : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeDuration() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeDuration() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeGeneration : public Nl80211U32Attribute {
+class Nl80211AttributeGeneration : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeGeneration() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeGeneration() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeIfindex : public Nl80211U32Attribute {
+class Nl80211AttributeIfindex : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeIfindex() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeIfindex() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeKeyType : public Nl80211U32Attribute {
+class Nl80211AttributeKeyType : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeKeyType() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeKeyType() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeRegInitiator : public Nl80211U32Attribute {
+class Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRegInitiator() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeRegInitiator() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeWiphy : public Nl80211U32Attribute {
+class Nl80211AttributeWiphy : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphy() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphy() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeWiphyFreq : public Nl80211U32Attribute {
+class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyFreq() : Nl80211U32Attribute(kName, kNameString) {}
+  Nl80211AttributeWiphyFreq() : NetlinkU32Attribute(kName, kNameString) {}
 };
 
 // U64.
 
-class Nl80211U64Attribute : public Nl80211Attribute {
+class NetlinkU64Attribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211U64Attribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkU64Attribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetU64Value(uint64_t *value) const;
   bool SetU64Value(uint64_t new_value);
@@ -302,21 +307,21 @@ class Nl80211U64Attribute : public Nl80211Attribute {
   uint64_t value_;
 };
 
-class Nl80211AttributeCookie : public Nl80211U64Attribute {
+class Nl80211AttributeCookie : public NetlinkU64Attribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeCookie() : Nl80211U64Attribute(kName, kNameString) {}
+  Nl80211AttributeCookie() : NetlinkU64Attribute(kName, kNameString) {}
 };
 
 // Flag.
 
-class Nl80211FlagAttribute : public Nl80211Attribute {
+class NetlinkFlagAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211FlagAttribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkFlagAttribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetFlagValue(bool *value) const;
   bool SetFlagValue(bool new_value);
@@ -327,37 +332,37 @@ class Nl80211FlagAttribute : public Nl80211Attribute {
   bool value_;
 };
 
-class Nl80211AttributeDisconnectedByAp : public Nl80211FlagAttribute {
+class Nl80211AttributeDisconnectedByAp : public NetlinkFlagAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
   Nl80211AttributeDisconnectedByAp() :
-    Nl80211FlagAttribute(kName, kNameString) {}
+    NetlinkFlagAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeSupportMeshAuth : public Nl80211FlagAttribute {
+class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
   Nl80211AttributeSupportMeshAuth() :
-    Nl80211FlagAttribute(kName, kNameString) {}
+    NetlinkFlagAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeTimedOut : public Nl80211FlagAttribute {
+class Nl80211AttributeTimedOut : public NetlinkFlagAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeTimedOut() : Nl80211FlagAttribute(kName, kNameString) {}
+  Nl80211AttributeTimedOut() : NetlinkFlagAttribute(kName, kNameString) {}
 };
 
 // String.
 
-class Nl80211StringAttribute : public Nl80211Attribute {
+class NetlinkStringAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211StringAttribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkStringAttribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetStringValue(std::string *value) const;
   bool SetStringValue(const std::string new_value);
@@ -368,27 +373,27 @@ class Nl80211StringAttribute : public Nl80211Attribute {
   std::string value_;
 };
 
-class Nl80211AttributeRegAlpha2 : public Nl80211StringAttribute {
+class Nl80211AttributeRegAlpha2 : public NetlinkStringAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRegAlpha2() : Nl80211StringAttribute(kName, kNameString) {}
+  Nl80211AttributeRegAlpha2() : NetlinkStringAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeWiphyName : public Nl80211StringAttribute {
+class Nl80211AttributeWiphyName : public NetlinkStringAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeWiphyName() : Nl80211StringAttribute(kName, kNameString) {}
+  Nl80211AttributeWiphyName() : NetlinkStringAttribute(kName, kNameString) {}
 };
 
 // Nested.
 
-class Nl80211NestedAttribute : public Nl80211Attribute {
+class NetlinkNestedAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211NestedAttribute(int id, const char *id_string);
+  NetlinkNestedAttribute(int id, const char *id_string);
   bool InitFromNlAttr(const nlattr *data) {
     LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
     return false;
@@ -405,9 +410,9 @@ class Nl80211NestedAttribute : public Nl80211Attribute {
   AttributeList value_;
 };
 
-class Nl80211AttributeCqm : public Nl80211NestedAttribute {
+class Nl80211AttributeCqm : public NetlinkNestedAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
   Nl80211AttributeCqm();
   bool InitFromNlAttr(const nlattr *data);
@@ -416,12 +421,12 @@ class Nl80211AttributeCqm : public Nl80211NestedAttribute {
   }
 };
 
-class Nl80211AttributeStaInfo : public Nl80211NestedAttribute {
+class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
   explicit Nl80211AttributeStaInfo() :
-    Nl80211NestedAttribute(kName, kNameString) {}
+    NetlinkNestedAttribute(kName, kNameString) {}
   bool InitFromNlAttr(const nlattr *const_data);
   bool ToString(std::string *value) const {
     return false;  // TODO(wdg): Need |ToString|.
@@ -430,12 +435,12 @@ class Nl80211AttributeStaInfo : public Nl80211NestedAttribute {
 
 // Raw.
 
-class Nl80211RawAttribute : public Nl80211Attribute {
+class NetlinkRawAttribute : public NetlinkAttribute {
  public:
   static const char kMyTypeString[];
   static const Type kType;
-  Nl80211RawAttribute(int id, const char *id_string)
-      : Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+  NetlinkRawAttribute(int id, const char *id_string)
+      : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
   bool InitFromNlAttr(const nlattr *data);
   bool GetRawValue(ByteString *value) const;
   // Not supporting 'set' for raw data.  This type is a "don't know" type to
@@ -448,55 +453,55 @@ class Nl80211RawAttribute : public Nl80211Attribute {
   }
 };
 
-class Nl80211AttributeFrame : public Nl80211RawAttribute {
+class Nl80211AttributeFrame : public NetlinkRawAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeFrame() : Nl80211RawAttribute(kName, kNameString) {}
+  Nl80211AttributeFrame() : NetlinkRawAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeGeneric : public Nl80211RawAttribute {
+class NetlinkAttributeGeneric : public NetlinkRawAttribute {
  public:
-  explicit Nl80211AttributeGeneric(nl80211_attrs id);
+  explicit NetlinkAttributeGeneric(int id);
   const char *id_string() const;
 
  private:
   std::string id_string_;
 };
 
-class Nl80211AttributeKeySeq : public Nl80211RawAttribute {
+class Nl80211AttributeKeySeq : public NetlinkRawAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeKeySeq() : Nl80211RawAttribute(kName, kNameString) {}
+  Nl80211AttributeKeySeq() : NetlinkRawAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeMac : public Nl80211RawAttribute {
+class Nl80211AttributeMac : public NetlinkRawAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeMac() : Nl80211RawAttribute(kName, kNameString) {}
+  Nl80211AttributeMac() : NetlinkRawAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeRespIe : public Nl80211RawAttribute {
+class Nl80211AttributeRespIe : public NetlinkRawAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeRespIe() : Nl80211RawAttribute(kName, kNameString) {}
+  Nl80211AttributeRespIe() : NetlinkRawAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeScanFrequencies : public Nl80211RawAttribute {
+class Nl80211AttributeScanFrequencies : public NetlinkRawAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeScanFrequencies() : Nl80211RawAttribute(kName, kNameString) {}
+  Nl80211AttributeScanFrequencies() : NetlinkRawAttribute(kName, kNameString) {}
 };
 
-class Nl80211AttributeScanSsids : public Nl80211RawAttribute {
+class Nl80211AttributeScanSsids : public NetlinkRawAttribute {
  public:
-  static const nl80211_attrs kName;
+  static const int kName;
   static const char kNameString[];
-  Nl80211AttributeScanSsids() : Nl80211RawAttribute(kName, kNameString) {}
+  Nl80211AttributeScanSsids() : NetlinkRawAttribute(kName, kNameString) {}
 };
 
 

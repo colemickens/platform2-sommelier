@@ -41,6 +41,7 @@
 #include <iomanip>
 #include <string>
 
+#include <base/bind.h>
 #include <base/format_macros.h>
 #include <base/stl_util.h>
 #include <base/stringprintf.h>
@@ -53,6 +54,7 @@
 #include "shill/scope_logger.h"
 #include "shill/wifi.h"
 
+using base::Bind;
 using base::LazyInstance;
 using base::StringAppendF;
 using base::StringPrintf;
@@ -140,8 +142,8 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
     if (tb[i]) {
       // TODO(wdg): When Nl80211Messages instantiate their own attributes,
       // this call should, instead, call |SetAttributeFromNlAttr|.
-      attributes_.CreateAndInitFromNlAttr(static_cast<enum nl80211_attrs>(i),
-                                          tb[i]);
+      attributes_.CreateAndInitAttribute(
+          i, tb[i], Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
     }
   }
 
@@ -393,8 +395,7 @@ void Nl80211Message::PrintBytes(int log_level, const unsigned char *buf,
 }
 
 // Helper function to provide a string for a MAC address.
-bool Nl80211Message::GetMacAttributeString(nl80211_attrs id,
-                                           string *value) const {
+bool Nl80211Message::GetMacAttributeString(int id, string *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -412,7 +413,7 @@ bool Nl80211Message::GetMacAttributeString(nl80211_attrs id,
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_FREQUENCIES.
 bool Nl80211Message::GetScanFrequenciesAttribute(
-    nl80211_attrs id, vector<uint32_t> *value) const {
+    int id, vector<uint32_t> *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -431,14 +432,14 @@ bool Nl80211Message::GetScanFrequenciesAttribute(
   int len = rawdata.GetLength();
 
   nla_for_each_attr(nst, attr_data, len, rem_nst) {
-    value->push_back(Nl80211Attribute::NlaGetU32(nst));
+    value->push_back(NetlinkAttribute::NlaGetU32(nst));
   }
   return true;
 }
 
 // Helper function to provide a string for NL80211_ATTR_SCAN_SSIDS.
 bool Nl80211Message::GetScanSsidsAttribute(
-    nl80211_attrs id, vector<string> *value) const {
+    int id, vector<string> *value) const {
   if (!value) {
     LOG(ERROR) << "Null |value| parameter";
     return false;
@@ -490,7 +491,7 @@ string Nl80211Message::GetHeaderString() const {
   return output;
 }
 
-string Nl80211Message::StringFromFrame(nl80211_attrs attr_name) const {
+string Nl80211Message::StringFromFrame(int attr_name) const {
   string output;
   ByteString frame_data;
   if (attributes().GetRawAttributeValue(attr_name,

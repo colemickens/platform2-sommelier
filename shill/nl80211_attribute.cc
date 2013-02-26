@@ -28,7 +28,7 @@ using base::WeakPtr;
 
 namespace shill {
 
-Nl80211Attribute::Nl80211Attribute(int id,
+NetlinkAttribute::NetlinkAttribute(int id,
                                    const char *id_string,
                                    Type datatype,
                                    const char *datatype_string)
@@ -36,8 +36,8 @@ Nl80211Attribute::Nl80211Attribute(int id,
       datatype_string_(datatype_string) {}
 
 // static
-Nl80211Attribute *Nl80211Attribute::NewFromName(nl80211_attrs id) {
-  scoped_ptr<Nl80211Attribute> attr;
+NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
+  scoped_ptr<NetlinkAttribute> attr;
   switch (id) {
     case NL80211_ATTR_COOKIE:
       attr.reset(new Nl80211AttributeCookie());
@@ -115,14 +115,14 @@ Nl80211Attribute *Nl80211Attribute::NewFromName(nl80211_attrs id) {
       attr.reset(new Nl80211AttributeWiphyName());
       break;
     default:
-      attr.reset(new Nl80211AttributeGeneric(id));
+      attr.reset(new NetlinkAttributeGeneric(id));
       break;
   }
   return attr.release();
 }
 
 // Duplicate attribute data, store in map indexed on |id|.
-bool Nl80211Attribute::InitFromNlAttr(const nlattr *other) {
+bool NetlinkAttribute::InitFromNlAttr(const nlattr *other) {
   if (!other) {
     LOG(ERROR) << "NULL data";
     return false;
@@ -133,84 +133,84 @@ bool Nl80211Attribute::InitFromNlAttr(const nlattr *other) {
   return true;
 }
 
-bool Nl80211Attribute::GetU8Value(uint8_t *value) const {
+bool NetlinkAttribute::GetU8Value(uint8_t *value) const {
   LOG(ERROR) << "Attribute is not of type 'U8'";
   return false;
 }
 
-bool Nl80211Attribute::SetU8Value(uint8_t value) {
+bool NetlinkAttribute::SetU8Value(uint8_t value) {
   LOG(ERROR) << "Attribute is not of type 'U8'";
   return false;
 }
 
-bool Nl80211Attribute::GetU16Value(uint16_t *value) const {
+bool NetlinkAttribute::GetU16Value(uint16_t *value) const {
   LOG(ERROR) << "Attribute is not of type 'U16'";
   return false;
 }
 
-bool Nl80211Attribute::SetU16Value(uint16_t value) {
+bool NetlinkAttribute::SetU16Value(uint16_t value) {
   LOG(ERROR) << "Attribute is not of type 'U16'";
   return false;
 }
 
-bool Nl80211Attribute::GetU32Value(uint32_t *value) const {
+bool NetlinkAttribute::GetU32Value(uint32_t *value) const {
   LOG(ERROR) << "Attribute is not of type 'U32'";
   return false;
 }
 
-bool Nl80211Attribute::SetU32Value(uint32_t value) {
+bool NetlinkAttribute::SetU32Value(uint32_t value) {
   LOG(ERROR) << "Attribute is not of type 'U32'";
   return false;
 }
 
-bool Nl80211Attribute::GetU64Value(uint64_t *value) const {
+bool NetlinkAttribute::GetU64Value(uint64_t *value) const {
   LOG(ERROR) << "Attribute is not of type 'U64'";
   return false;
 }
 
-bool Nl80211Attribute::SetU64Value(uint64_t value) {
+bool NetlinkAttribute::SetU64Value(uint64_t value) {
   LOG(ERROR) << "Attribute is not of type 'U64'";
   return false;
 }
 
-bool Nl80211Attribute::GetFlagValue(bool *value) const {
+bool NetlinkAttribute::GetFlagValue(bool *value) const {
   LOG(ERROR) << "Attribute is not of type 'Flag'";
   return false;
 }
 
-bool Nl80211Attribute::SetFlagValue(bool value) {
+bool NetlinkAttribute::SetFlagValue(bool value) {
   LOG(ERROR) << "Attribute is not of type 'Flag'";
   return false;
 }
 
-bool Nl80211Attribute::GetStringValue(string *value) const {
+bool NetlinkAttribute::GetStringValue(string *value) const {
   LOG(ERROR) << "Attribute is not of type 'String'";
   return false;
 }
 
-bool Nl80211Attribute::SetStringValue(string value) {
+bool NetlinkAttribute::SetStringValue(string value) {
   LOG(ERROR) << "Attribute is not of type 'String'";
   return false;
 }
 
-bool Nl80211Attribute::GetNestedValue(WeakPtr<AttributeList> *value) {
+bool NetlinkAttribute::GetNestedValue(WeakPtr<AttributeList> *value) {
   LOG(ERROR) << "Attribute is not of type 'Nested'";
   return false;
 }
 
-bool Nl80211Attribute::GetRawValue(ByteString *value) const {
+bool NetlinkAttribute::GetRawValue(ByteString *value) const {
   LOG(ERROR) << "Attribute is not of type 'Raw'";
   return false;
 }
 
-void Nl80211Attribute::Print(int log_level, int indent) const {
+void NetlinkAttribute::Print(int log_level, int indent) const {
   string attribute_value;
   SLOG(WiFi, log_level) << HeaderToPrint(indent) << " "
                         << (ToString(&attribute_value) ? attribute_value :
                             "<DOES NOT EXIST>");
 }
 
-string Nl80211Attribute::RawToString() const {
+string NetlinkAttribute::RawToString() const {
   string output = " === RAW: ";
 
   if (!has_a_value_) {
@@ -232,7 +232,7 @@ string Nl80211Attribute::RawToString() const {
   return output;
 }
 
-string Nl80211Attribute::HeaderToPrint(int indent) const {
+string NetlinkAttribute::HeaderToPrint(int indent) const {
   static const int kSpacesPerIndent = 2;
   return StringPrintf("%*s%s(%d) %s %s=",
             indent * kSpacesPerIndent, "",
@@ -242,7 +242,7 @@ string Nl80211Attribute::HeaderToPrint(int indent) const {
             ((has_a_value()) ?  "": "UNINITIALIZED "));
 }
 
-ByteString Nl80211Attribute::EncodeGeneric(const unsigned char *data,
+ByteString NetlinkAttribute::EncodeGeneric(const unsigned char *data,
                                            int bytes) const {
   nlattr header;
   header.nla_type = id();
@@ -256,13 +256,13 @@ ByteString Nl80211Attribute::EncodeGeneric(const unsigned char *data,
   return result;
 }
 
-// Nl80211U8Attribute
+// NetlinkU8Attribute
 
-const char Nl80211U8Attribute::kMyTypeString[] = "uint8_t";
-const Nl80211Attribute::Type Nl80211U8Attribute::kType =
-    Nl80211Attribute::kTypeU8;
+const char NetlinkU8Attribute::kMyTypeString[] = "uint8_t";
+const NetlinkAttribute::Type NetlinkU8Attribute::kType =
+    NetlinkAttribute::kTypeU8;
 
-bool Nl80211U8Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU8Attribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -270,10 +270,10 @@ bool Nl80211U8Attribute::InitFromNlAttr(const nlattr *input) {
 
   uint8_t data = NlaGetU8(input);
   SetU8Value(data);
-  return Nl80211Attribute::InitFromNlAttr(input);
+  return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool Nl80211U8Attribute::GetU8Value(uint8_t *output) const {
+bool NetlinkU8Attribute::GetU8Value(uint8_t *output) const {
   if (!has_a_value_) {
     SLOG(WiFi, 7) << "U8 attribute " << id_string()
                   << " hasn't been set to any value.";
@@ -285,13 +285,13 @@ bool Nl80211U8Attribute::GetU8Value(uint8_t *output) const {
   return true;
 }
 
-bool Nl80211U8Attribute::SetU8Value(uint8_t new_value) {
+bool NetlinkU8Attribute::SetU8Value(uint8_t new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211U8Attribute::ToString(string *output) const {
+bool NetlinkU8Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -303,19 +303,19 @@ bool Nl80211U8Attribute::ToString(string *output) const {
   return true;
 }
 
-ByteString Nl80211U8Attribute::Encode() const {
-  return Nl80211Attribute::EncodeGeneric(
+ByteString NetlinkU8Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(
       reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
 
-// Nl80211U16Attribute
+// NetlinkU16Attribute
 
-const char Nl80211U16Attribute::kMyTypeString[] = "uint16_t";
-const Nl80211Attribute::Type Nl80211U16Attribute::kType =
-    Nl80211Attribute::kTypeU16;
+const char NetlinkU16Attribute::kMyTypeString[] = "uint16_t";
+const NetlinkAttribute::Type NetlinkU16Attribute::kType =
+    NetlinkAttribute::kTypeU16;
 
-bool Nl80211U16Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU16Attribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -323,10 +323,10 @@ bool Nl80211U16Attribute::InitFromNlAttr(const nlattr *input) {
 
   uint16_t data = NlaGetU16(input);
   SetU16Value(data);
-  return Nl80211Attribute::InitFromNlAttr(input);
+  return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool Nl80211U16Attribute::GetU16Value(uint16_t *output) const {
+bool NetlinkU16Attribute::GetU16Value(uint16_t *output) const {
   if (!has_a_value_) {
     SLOG(WiFi, 7)  << "U16 attribute " << id_string()
                    << " hasn't been set to any value.";
@@ -338,13 +338,13 @@ bool Nl80211U16Attribute::GetU16Value(uint16_t *output) const {
   return true;
 }
 
-bool Nl80211U16Attribute::SetU16Value(uint16_t new_value) {
+bool NetlinkU16Attribute::SetU16Value(uint16_t new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211U16Attribute::ToString(string *output) const {
+bool NetlinkU16Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -356,18 +356,18 @@ bool Nl80211U16Attribute::ToString(string *output) const {
   return true;
 }
 
-ByteString Nl80211U16Attribute::Encode() const {
-  return Nl80211Attribute::EncodeGeneric(
+ByteString NetlinkU16Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(
       reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
-// Nl80211U32Attribute::
+// NetlinkU32Attribute::
 
-const char Nl80211U32Attribute::kMyTypeString[] = "uint32_t";
-const Nl80211Attribute::Type Nl80211U32Attribute::kType =
-    Nl80211Attribute::kTypeU32;
+const char NetlinkU32Attribute::kMyTypeString[] = "uint32_t";
+const NetlinkAttribute::Type NetlinkU32Attribute::kType =
+    NetlinkAttribute::kTypeU32;
 
-bool Nl80211U32Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU32Attribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -375,10 +375,10 @@ bool Nl80211U32Attribute::InitFromNlAttr(const nlattr *input) {
 
   uint32_t data = NlaGetU32(input);
   SetU32Value(data);
-  return Nl80211Attribute::InitFromNlAttr(input);
+  return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool Nl80211U32Attribute::GetU32Value(uint32_t *output) const {
+bool NetlinkU32Attribute::GetU32Value(uint32_t *output) const {
   if (!has_a_value_) {
     SLOG(WiFi, 7)  << "U32 attribute " << id_string()
                    << " hasn't been set to any value.";
@@ -390,13 +390,13 @@ bool Nl80211U32Attribute::GetU32Value(uint32_t *output) const {
   return true;
 }
 
-bool Nl80211U32Attribute::SetU32Value(uint32_t new_value) {
+bool NetlinkU32Attribute::SetU32Value(uint32_t new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211U32Attribute::ToString(string *output) const {
+bool NetlinkU32Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -408,18 +408,18 @@ bool Nl80211U32Attribute::ToString(string *output) const {
   return true;
 }
 
-ByteString Nl80211U32Attribute::Encode() const {
-  return Nl80211Attribute::EncodeGeneric(
+ByteString NetlinkU32Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(
       reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
-// Nl80211U64Attribute
+// NetlinkU64Attribute
 
-const char Nl80211U64Attribute::kMyTypeString[] = "uint64_t";
-const Nl80211Attribute::Type Nl80211U64Attribute::kType =
-    Nl80211Attribute::kTypeU64;
+const char NetlinkU64Attribute::kMyTypeString[] = "uint64_t";
+const NetlinkAttribute::Type NetlinkU64Attribute::kType =
+    NetlinkAttribute::kTypeU64;
 
-bool Nl80211U64Attribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkU64Attribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -427,10 +427,10 @@ bool Nl80211U64Attribute::InitFromNlAttr(const nlattr *input) {
 
   uint64_t data = NlaGetU64(input);
   SetU64Value(data);
-  return Nl80211Attribute::InitFromNlAttr(input);
+  return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool Nl80211U64Attribute::GetU64Value(uint64_t *output) const {
+bool NetlinkU64Attribute::GetU64Value(uint64_t *output) const {
   if (!has_a_value_) {
     SLOG(WiFi, 7)  << "U64 attribute " << id_string()
                    << " hasn't been set to any value.";
@@ -442,13 +442,13 @@ bool Nl80211U64Attribute::GetU64Value(uint64_t *output) const {
   return true;
 }
 
-bool Nl80211U64Attribute::SetU64Value(uint64_t new_value) {
+bool NetlinkU64Attribute::SetU64Value(uint64_t new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211U64Attribute::ToString(string *output) const {
+bool NetlinkU64Attribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -460,18 +460,18 @@ bool Nl80211U64Attribute::ToString(string *output) const {
   return true;
 }
 
-ByteString Nl80211U64Attribute::Encode() const {
-  return Nl80211Attribute::EncodeGeneric(
+ByteString NetlinkU64Attribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(
       reinterpret_cast<const unsigned char *>(&value_), sizeof(value_));
 }
 
-// Nl80211FlagAttribute
+// NetlinkFlagAttribute
 
-const char Nl80211FlagAttribute::kMyTypeString[] = "flag";
-const Nl80211Attribute::Type Nl80211FlagAttribute::kType =
-    Nl80211Attribute::kTypeFlag;
+const char NetlinkFlagAttribute::kMyTypeString[] = "flag";
+const NetlinkAttribute::Type NetlinkFlagAttribute::kType =
+    NetlinkAttribute::kTypeFlag;
 
-bool Nl80211FlagAttribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkFlagAttribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
@@ -479,11 +479,11 @@ bool Nl80211FlagAttribute::InitFromNlAttr(const nlattr *input) {
 
   // The existence of the parameter means it's true
   SetFlagValue(true);
-  return Nl80211Attribute::InitFromNlAttr(input);
+  return NetlinkAttribute::InitFromNlAttr(input);
 }
 
 
-bool Nl80211FlagAttribute::GetFlagValue(bool *output) const {
+bool NetlinkFlagAttribute::GetFlagValue(bool *output) const {
   if (output) {
     // The lack of the existence of the attribute implies 'false'.
     *output = (has_a_value_) ? value_ : false;
@@ -491,13 +491,13 @@ bool Nl80211FlagAttribute::GetFlagValue(bool *output) const {
   return true;
 }
 
-bool Nl80211FlagAttribute::SetFlagValue(bool new_value) {
+bool NetlinkFlagAttribute::SetFlagValue(bool new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211FlagAttribute::ToString(string *output) const {
+bool NetlinkFlagAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -509,30 +509,30 @@ bool Nl80211FlagAttribute::ToString(string *output) const {
   return true;
 }
 
-ByteString Nl80211FlagAttribute::Encode() const {
+ByteString NetlinkFlagAttribute::Encode() const {
   if (has_a_value_ && value_) {
-    return Nl80211Attribute::EncodeGeneric(NULL, 0);
+    return NetlinkAttribute::EncodeGeneric(NULL, 0);
   }
   return ByteString();  // Encoding of nothing implies 'false'.
 }
 
-// Nl80211StringAttribute
+// NetlinkStringAttribute
 
-const char Nl80211StringAttribute::kMyTypeString[] = "string";
-const Nl80211Attribute::Type Nl80211StringAttribute::kType =
-    Nl80211Attribute::kTypeString;
+const char NetlinkStringAttribute::kMyTypeString[] = "string";
+const NetlinkAttribute::Type NetlinkStringAttribute::kType =
+    NetlinkAttribute::kTypeString;
 
-bool Nl80211StringAttribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkStringAttribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
   }
 
   SetStringValue(NlaGetString(input));
-  return Nl80211Attribute::InitFromNlAttr(input);
+  return NetlinkAttribute::InitFromNlAttr(input);
 }
 
-bool Nl80211StringAttribute::GetStringValue(string *output) const {
+bool NetlinkStringAttribute::GetStringValue(string *output) const {
   if (!has_a_value_) {
     SLOG(WiFi, 7)  << "String attribute " << id_string()
                    << " hasn't been set to any value.";
@@ -544,13 +544,13 @@ bool Nl80211StringAttribute::GetStringValue(string *output) const {
   return true;
 }
 
-bool Nl80211StringAttribute::SetStringValue(const string new_value) {
+bool NetlinkStringAttribute::SetStringValue(const string new_value) {
   value_ = new_value;
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211StringAttribute::ToString(string *output) const {
+bool NetlinkStringAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -563,21 +563,21 @@ bool Nl80211StringAttribute::ToString(string *output) const {
   return true;
 }
 
-ByteString Nl80211StringAttribute::Encode() const {
-  return Nl80211Attribute::EncodeGeneric(
+ByteString NetlinkStringAttribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(
       reinterpret_cast<const unsigned char *>(value_.c_str()), value_.size());
 }
 
-// Nl80211NestedAttribute
-const char Nl80211NestedAttribute::kMyTypeString[] = "nested";
-const Nl80211Attribute::Type Nl80211NestedAttribute::kType =
-    Nl80211Attribute::kTypeNested;
+// NetlinkNestedAttribute
+const char NetlinkNestedAttribute::kMyTypeString[] = "nested";
+const NetlinkAttribute::Type NetlinkNestedAttribute::kType =
+    NetlinkAttribute::kTypeNested;
 
-Nl80211NestedAttribute::Nl80211NestedAttribute(int id,
+NetlinkNestedAttribute::NetlinkNestedAttribute(int id,
                                                const char *id_string) :
-    Nl80211Attribute(id, id_string, kType, kMyTypeString) {}
+    NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
 
-bool Nl80211NestedAttribute::GetNestedValue(WeakPtr<AttributeList> *output) {
+bool NetlinkNestedAttribute::GetNestedValue(WeakPtr<AttributeList> *output) {
   if (!has_a_value_) {
     SLOG(WiFi, 7)  << "Nested attribute " << id_string()
                    << " hasn't been set to any value.";
@@ -589,26 +589,26 @@ bool Nl80211NestedAttribute::GetNestedValue(WeakPtr<AttributeList> *output) {
   return true;
 }
 
-// Nl80211RawAttribute
+// NetlinkRawAttribute
 
-const char Nl80211RawAttribute::kMyTypeString[] = "<raw>";
-const Nl80211Attribute::Type Nl80211RawAttribute::kType =
-    Nl80211Attribute::kTypeRaw;
+const char NetlinkRawAttribute::kMyTypeString[] = "<raw>";
+const NetlinkAttribute::Type NetlinkRawAttribute::kType =
+    NetlinkAttribute::kTypeRaw;
 
-bool Nl80211RawAttribute::InitFromNlAttr(const nlattr *input) {
+bool NetlinkRawAttribute::InitFromNlAttr(const nlattr *input) {
   if (!input) {
     LOG(ERROR) << "Null |input| parameter";
     return false;
   }
 
-  if (!Nl80211Attribute::InitFromNlAttr(input)) {
+  if (!NetlinkAttribute::InitFromNlAttr(input)) {
     return false;
   }
   has_a_value_ = true;
   return true;
 }
 
-bool Nl80211RawAttribute::GetRawValue(ByteString *output) const {
+bool NetlinkRawAttribute::GetRawValue(ByteString *output) const {
   if (!has_a_value_) {
     SLOG(WiFi, 7)  << "Raw attribute " << id_string()
                    << " hasn't been set to any value.";
@@ -620,7 +620,7 @@ bool Nl80211RawAttribute::GetRawValue(ByteString *output) const {
   return true;
 }
 
-bool Nl80211RawAttribute::ToString(string *output) const {
+bool NetlinkRawAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -642,14 +642,14 @@ bool Nl80211RawAttribute::ToString(string *output) const {
 // Specific Attributes.
 
 
-const nl80211_attrs Nl80211AttributeCookie::kName = NL80211_ATTR_COOKIE;
+const int Nl80211AttributeCookie::kName = NL80211_ATTR_COOKIE;
 const char Nl80211AttributeCookie::kNameString[] = "NL80211_ATTR_COOKIE";
 
-const nl80211_attrs Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
+const int Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
 const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
 
 Nl80211AttributeCqm::Nl80211AttributeCqm()
-      : Nl80211NestedAttribute(kName, kNameString) {
+      : NetlinkNestedAttribute(kName, kNameString) {
   value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
                             "NL80211_ATTR_CQM_RSSI_THOLD");
   value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
@@ -706,64 +706,64 @@ bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
   return true;
 }
 
-const nl80211_attrs Nl80211AttributeDisconnectedByAp::kName
+const int Nl80211AttributeDisconnectedByAp::kName
     = NL80211_ATTR_DISCONNECTED_BY_AP;
 const char Nl80211AttributeDisconnectedByAp::kNameString[]
     = "NL80211_ATTR_DISCONNECTED_BY_AP";
 
-const nl80211_attrs Nl80211AttributeDuration::kName = NL80211_ATTR_DURATION;
+const int Nl80211AttributeDuration::kName = NL80211_ATTR_DURATION;
 const char Nl80211AttributeDuration::kNameString[] = "NL80211_ATTR_DURATION";
 
-const nl80211_attrs Nl80211AttributeFrame::kName = NL80211_ATTR_FRAME;
+const int Nl80211AttributeFrame::kName = NL80211_ATTR_FRAME;
 const char Nl80211AttributeFrame::kNameString[] = "NL80211_ATTR_FRAME";
 
-const nl80211_attrs Nl80211AttributeGeneration::kName = NL80211_ATTR_GENERATION;
+const int Nl80211AttributeGeneration::kName = NL80211_ATTR_GENERATION;
 const char Nl80211AttributeGeneration::kNameString[]
     = "NL80211_ATTR_GENERATION";
 
-const nl80211_attrs Nl80211AttributeIfindex::kName = NL80211_ATTR_IFINDEX;
+const int Nl80211AttributeIfindex::kName = NL80211_ATTR_IFINDEX;
 const char Nl80211AttributeIfindex::kNameString[] = "NL80211_ATTR_IFINDEX";
 
-const nl80211_attrs Nl80211AttributeKeyIdx::kName = NL80211_ATTR_KEY_IDX;
+const int Nl80211AttributeKeyIdx::kName = NL80211_ATTR_KEY_IDX;
 const char Nl80211AttributeKeyIdx::kNameString[] = "NL80211_ATTR_KEY_IDX";
 
-const nl80211_attrs Nl80211AttributeKeySeq::kName = NL80211_ATTR_KEY_SEQ;
+const int Nl80211AttributeKeySeq::kName = NL80211_ATTR_KEY_SEQ;
 const char Nl80211AttributeKeySeq::kNameString[] = "NL80211_ATTR_KEY_SEQ";
 
-const nl80211_attrs Nl80211AttributeKeyType::kName = NL80211_ATTR_KEY_TYPE;
+const int Nl80211AttributeKeyType::kName = NL80211_ATTR_KEY_TYPE;
 const char Nl80211AttributeKeyType::kNameString[] = "NL80211_ATTR_KEY_TYPE";
 
-const nl80211_attrs Nl80211AttributeMac::kName = NL80211_ATTR_MAC;
+const int Nl80211AttributeMac::kName = NL80211_ATTR_MAC;
 const char Nl80211AttributeMac::kNameString[] = "NL80211_ATTR_MAC";
 
-const nl80211_attrs Nl80211AttributeReasonCode::kName
+const int Nl80211AttributeReasonCode::kName
     = NL80211_ATTR_REASON_CODE;
 const char Nl80211AttributeReasonCode::kNameString[]
     = "NL80211_ATTR_REASON_CODE";
 
-const nl80211_attrs Nl80211AttributeRegAlpha2::kName = NL80211_ATTR_REG_ALPHA2;
+const int Nl80211AttributeRegAlpha2::kName = NL80211_ATTR_REG_ALPHA2;
 const char Nl80211AttributeRegAlpha2::kNameString[] = "NL80211_ATTR_REG_ALPHA2";
 
-const nl80211_attrs Nl80211AttributeRegInitiator::kName
+const int Nl80211AttributeRegInitiator::kName
     = NL80211_ATTR_REG_INITIATOR;
 const char Nl80211AttributeRegInitiator::kNameString[]
     = "NL80211_ATTR_REG_INITIATOR";
 
-const nl80211_attrs Nl80211AttributeRegType::kName = NL80211_ATTR_REG_TYPE;
+const int Nl80211AttributeRegType::kName = NL80211_ATTR_REG_TYPE;
 const char Nl80211AttributeRegType::kNameString[] = "NL80211_ATTR_REG_TYPE";
 
-const nl80211_attrs Nl80211AttributeRespIe::kName = NL80211_ATTR_RESP_IE;
+const int Nl80211AttributeRespIe::kName = NL80211_ATTR_RESP_IE;
 const char Nl80211AttributeRespIe::kNameString[] = "NL80211_ATTR_RESP_IE";
 
-const nl80211_attrs Nl80211AttributeScanFrequencies::kName
+const int Nl80211AttributeScanFrequencies::kName
     = NL80211_ATTR_SCAN_FREQUENCIES;
 const char Nl80211AttributeScanFrequencies::kNameString[]
     = "NL80211_ATTR_SCAN_FREQUENCIES";
 
-const nl80211_attrs Nl80211AttributeScanSsids::kName = NL80211_ATTR_SCAN_SSIDS;
+const int Nl80211AttributeScanSsids::kName = NL80211_ATTR_SCAN_SSIDS;
 const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
 
-const nl80211_attrs Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
+const int Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
 const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 
 bool Nl80211AttributeStaInfo::InitFromNlAttr(const nlattr *const_data) {
@@ -776,34 +776,34 @@ bool Nl80211AttributeStaInfo::InitFromNlAttr(const nlattr *const_data) {
   return true;
 }
 
-const nl80211_attrs Nl80211AttributeStatusCode::kName
+const int Nl80211AttributeStatusCode::kName
     = NL80211_ATTR_STATUS_CODE;
 const char Nl80211AttributeStatusCode::kNameString[]
     = "NL80211_ATTR_STATUS_CODE";
 
-const nl80211_attrs Nl80211AttributeSupportMeshAuth::kName
+const int Nl80211AttributeSupportMeshAuth::kName
     = NL80211_ATTR_SUPPORT_MESH_AUTH;
 const char Nl80211AttributeSupportMeshAuth::kNameString[]
     = "NL80211_ATTR_SUPPORT_MESH_AUTH";
 
-const nl80211_attrs Nl80211AttributeTimedOut::kName = NL80211_ATTR_TIMED_OUT;
+const int Nl80211AttributeTimedOut::kName = NL80211_ATTR_TIMED_OUT;
 const char Nl80211AttributeTimedOut::kNameString[] = "NL80211_ATTR_TIMED_OUT";
 
-const nl80211_attrs Nl80211AttributeWiphyFreq::kName = NL80211_ATTR_WIPHY_FREQ;
+const int Nl80211AttributeWiphyFreq::kName = NL80211_ATTR_WIPHY_FREQ;
 const char Nl80211AttributeWiphyFreq::kNameString[] = "NL80211_ATTR_WIPHY_FREQ";
 
-const nl80211_attrs Nl80211AttributeWiphy::kName = NL80211_ATTR_WIPHY;
+const int Nl80211AttributeWiphy::kName = NL80211_ATTR_WIPHY;
 const char Nl80211AttributeWiphy::kNameString[] = "NL80211_ATTR_WIPHY";
 
-const nl80211_attrs Nl80211AttributeWiphyName::kName = NL80211_ATTR_WIPHY_NAME;
+const int Nl80211AttributeWiphyName::kName = NL80211_ATTR_WIPHY_NAME;
 const char Nl80211AttributeWiphyName::kNameString[] = "NL80211_ATTR_WIPHY_NAME";
 
-Nl80211AttributeGeneric::Nl80211AttributeGeneric(nl80211_attrs id)
-    : Nl80211RawAttribute(id, "unused-string") {
+NetlinkAttributeGeneric::NetlinkAttributeGeneric(int id)
+    : NetlinkRawAttribute(id, "unused-string") {
   StringAppendF(&id_string_, "<UNKNOWN ATTRIBUTE %d>", id);
 }
 
-const char *Nl80211AttributeGeneric::id_string() const {
+const char *NetlinkAttributeGeneric::id_string() const {
   return id_string_.c_str();
 }
 

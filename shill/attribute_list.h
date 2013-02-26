@@ -12,28 +12,31 @@
 #include <string>
 #include <tr1/memory>
 
+#include <base/bind.h>
 #include <base/memory/weak_ptr.h>
 
 struct nlattr;
 namespace shill {
 
 class ByteString;
-class Nl80211Attribute;
-class Nl80211RawAttribute;
+class NetlinkAttribute;
+class NetlinkRawAttribute;
 
 class AttributeList : public base::SupportsWeakPtr<AttributeList> {
  public:
-  typedef std::tr1::shared_ptr<Nl80211Attribute> AttributePointer;
+  typedef std::tr1::shared_ptr<NetlinkAttribute> AttributePointer;
+  typedef base::Callback<NetlinkAttribute *(int id)> NewFromIdMethod;
 
-  // Instantiates an Nl80211Attribute of the appropriate type from |id|,
+  // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // and adds it to |attributes_|.
-  bool CreateAttribute(nl80211_attrs id);
+  bool CreateAttribute(int id, NewFromIdMethod factory);
 
-  // Instantiates an Nl80211Attribute of the appropriate type from |id|,
+  // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // initializes it from |data|, and adds it to |attributes_|.
   // TODO(wdg): This is a stop-gap for use before message constructors add
   // their attributes as message templates.
-  bool CreateAndInitFromNlAttr(nl80211_attrs id, const nlattr *data);
+  bool CreateAndInitAttribute(int id, const nlattr *data,
+                              AttributeList::NewFromIdMethod factory);
 
   // Prints the attribute list with each attribute using no less than 1 line.
   // |indent| indicates the amout of leading spaces to be printed (useful for
@@ -65,12 +68,12 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // TODO(wdg): |GetRawAttribute| is a stopgap to support various
   // Nl80211Message::ToString methods and must, once those are re-written,
   // be destroyed.
-  const Nl80211RawAttribute *GetRawAttribute(int id) const;
+  const NetlinkRawAttribute *GetRawAttribute(int id) const;
 
  private:
   // The Create*Attribute and Set*Attribute methods are specifically for use
   // by nested attributes to add their sub-attributes.  Classes derived from
-  // Nl80211NestedAttribute should be added, here.
+  // NetlinkNestedAttribute should be added, here.
   friend class Nl80211AttributeCqm;
   friend class Nl80211AttributeStaInfo;
 
@@ -96,7 +99,7 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // No |SetNestedAttributeValue| method as it would make no sense.
 
   // Using this to get around issues with const and operator[].
-  Nl80211Attribute *GetAttribute(int id) const;
+  NetlinkAttribute *GetAttribute(int id) const;
 
   // TODO(wdg): This is only used to support |GetRawAttribute|.  Delete this
   // when that goes away.

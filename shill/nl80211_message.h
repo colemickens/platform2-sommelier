@@ -52,19 +52,17 @@ class Nl80211Message {
   // Helper function to provide a string for a MAC address.  If no attribute
   // is found, this method returns 'false'.  On any error with a non-NULL
   // |value|, this method sets |value| to a bogus MAC address.
-  bool GetMacAttributeString(nl80211_attrs id, std::string *value) const;
+  bool GetMacAttributeString(int id, std::string *value) const;
 
   // TODO(wdg): This needs to be moved to AttributeScanFrequencies.
   // Helper function to provide a vector of scan frequencies for attributes
   // that contain them (such as NL80211_ATTR_SCAN_FREQUENCIES).
-  bool GetScanFrequenciesAttribute(nl80211_attrs id,
-                                   std::vector<uint32_t> *value) const;
+  bool GetScanFrequenciesAttribute(int id, std::vector<uint32_t> *value) const;
 
   // TODO(wdg): This needs to be moved to AttributeScanSSids.
   // Helper function to provide a vector of SSIDs for attributes that contain
   // them (such as NL80211_ATTR_SCAN_SSIDS).
-  bool GetScanSsidsAttribute(nl80211_attrs id,
-                             std::vector<std::string> *value) const;
+  bool GetScanSsidsAttribute(int id, std::vector<std::string> *value) const;
 
   // TODO(wdg): This needs to be moved to AttributeMac.
   // Stringizes the MAC address found in 'arg'.  If there are problems (such
@@ -91,7 +89,7 @@ class Nl80211Message {
 
   // Returns a string that describes the contents of the frame pointed to by
   // 'attr'.
-  std::string StringFromFrame(nl80211_attrs attr_name) const;
+  std::string StringFromFrame(int attr_name) const;
 
   // Converts key_type to a string.
   static std::string StringFromKeyType(nl80211_key_type key_type);
