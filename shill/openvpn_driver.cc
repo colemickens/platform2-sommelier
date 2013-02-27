@@ -27,6 +27,7 @@
 #include "shill/vpn_service.h"
 
 using base::Closure;
+using base::FilePath;
 using base::SplitString;
 using base::Unretained;
 using base::WeakPtr;

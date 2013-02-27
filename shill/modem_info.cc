@@ -12,6 +12,7 @@
 #include "shill/logging.h"
 #include "shill/modem_manager.h"
 
+using base::FilePath;
 using std::string;
 
 // TODO(rochberg): Fix modemmanager-next-interfaces ebuild to include

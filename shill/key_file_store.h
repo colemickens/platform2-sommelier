@@ -22,8 +22,8 @@ class KeyFileStore : public StoreInterface {
   explicit KeyFileStore(GLib *glib);
   virtual ~KeyFileStore();
 
-  void set_path(const FilePath &path) { path_ = path; }
-  const FilePath &path() const { return path_; }
+  void set_path(const base::FilePath &path) { path_ = path; }
+  const base::FilePath &path() const { return path_; }
 
   // Returns true if the store exists and is non-empty.
   bool IsNonEmpty() const;
@@ -105,7 +105,7 @@ class KeyFileStore : public StoreInterface {
   GLib *glib_;
   CryptoProvider crypto_;
   GKeyFile *key_file_;
-  FilePath path_;
+  base::FilePath path_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyFileStore);
 };

@@ -24,6 +24,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/service_under_test.h"
 
+using base::FilePath;
 using std::set;
 using std::string;
 using std::vector;

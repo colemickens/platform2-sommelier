@@ -12,6 +12,7 @@
 #include "shill/glib.h"
 #include "shill/mock_store.h"
 
+using base::FilePath;
 using ::testing::_;
 using ::testing::DoAll;
 using ::testing::Return;

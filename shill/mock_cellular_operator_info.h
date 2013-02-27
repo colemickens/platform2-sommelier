@@ -18,7 +18,7 @@ class MockCellularOperatorInfo : public CellularOperatorInfo {
   MockCellularOperatorInfo();
   virtual ~MockCellularOperatorInfo();
 
-  MOCK_METHOD1(Load, bool(const FilePath &info_file_path));
+  MOCK_METHOD1(Load, bool(const base::FilePath &info_file_path));
   MOCK_CONST_METHOD1(GetOLPByMCCMNC,
                      const CellularService::OLP *(const std::string &mccmnc));
   MOCK_CONST_METHOD1(GetCellularOperatorByMCCMNC,

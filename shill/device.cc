@@ -40,6 +40,7 @@
 #include "shill/traffic_monitor.h"
 
 using base::Bind;
+using base::FilePath;
 using base::StringPrintf;
 using std::string;
 using std::vector;
@@ -388,6 +389,10 @@ bool Device::AcquireIPConfigWithLeaseName(const string &lease_name) {
   dispatcher_->PostTask(Bind(&Device::ConfigureStaticIPTask,
                              weak_ptr_factory_.GetWeakPtr()));
   return ipconfig_->RequestIP();
+}
+
+void Device::DestroyIPConfigLease(const string &name) {
+  dhcp_provider_->DestroyLease(name);
 }
 
 void Device::HelpRegisterDerivedString(

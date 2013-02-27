@@ -135,7 +135,7 @@ class L2TPIPSecDriver : public VPNDriver,
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
-  FilePath psk_file_;
+  base::FilePath psk_file_;
   VPNRefPtr device_;
 
   // The PID of the spawned l2tpipsec_vpn process. May be 0 if no process has

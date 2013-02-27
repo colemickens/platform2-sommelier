@@ -24,6 +24,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
 
+using base::FilePath;
 using std::string;
 using testing::_;
 using testing::DoAll;

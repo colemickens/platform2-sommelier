@@ -40,7 +40,7 @@ class DiagnosticsReporter {
   ProcessKiller *process_killer_;
   Time *time_;
   uint64 last_log_stash_;  // Monotonic time seconds.
-  FilePath stashed_net_log_;
+  base::FilePath stashed_net_log_;
 
   DISALLOW_COPY_AND_ASSIGN(DiagnosticsReporter);
 };

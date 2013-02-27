@@ -53,7 +53,7 @@ class ActivatingIccidStore {
   // open will allways be flushed and closed, however it is not guaranteed that
   // the file will always be successfully reopened (technically it should, but
   // it is not guaranteed).
-  virtual bool InitStorage(GLib *glib, const FilePath &storage_path);
+  virtual bool InitStorage(GLib *glib, const base::FilePath &storage_path);
 
   // Returns the activation state for a SIM with the given ICCID. A return value
   // of kStateUnknown indicates that the given ICCID was not found.

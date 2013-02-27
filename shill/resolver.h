@@ -42,7 +42,7 @@ class Resolver {
   // Since this is a singleton, use Resolver::GetInstance()->Foo()
   static Resolver *GetInstance();
 
-  virtual void set_path(const FilePath &path) { path_ = path; }
+  virtual void set_path(const base::FilePath &path) { path_ = path; }
 
   // Install domain name service parameters, given a list of
   // DNS servers in |dns_servers|, a list of DNS search suffixes in
@@ -71,7 +71,7 @@ class Resolver {
   static const char kDefaultTimeoutOptions[];
   static const char kShortTimeoutOptions[];
 
-  FilePath path_;
+  base::FilePath path_;
   std::vector<std::string> ignored_search_list_;
 
   DISALLOW_COPY_AND_ASSIGN(Resolver);

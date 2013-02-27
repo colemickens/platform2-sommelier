@@ -271,6 +271,9 @@ class Service : public base::RefCounted<Service> {
   // the manager, false otherwise.
   virtual bool Unload();
 
+  // Attempt to remove the service. On failure, no changes in state will occur.
+  virtual void Remove(Error *error);
+
   // Saves the service to persistent |storage|. Returns true on success.
   virtual bool Save(StoreInterface *storage);
 

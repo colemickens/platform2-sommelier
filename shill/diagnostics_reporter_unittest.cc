@@ -13,6 +13,7 @@
 #include "shill/mock_process_killer.h"
 #include "shill/mock_time.h"
 
+using base::FilePath;
 using testing::_;
 using testing::ElementsAre;
 using testing::InSequence;

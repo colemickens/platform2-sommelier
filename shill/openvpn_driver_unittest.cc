@@ -34,6 +34,7 @@
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
+using base::FilePath;
 using base::WeakPtr;
 using std::map;
 using std::string;

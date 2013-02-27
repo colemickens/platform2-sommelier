@@ -14,6 +14,7 @@
 #include "shill/logging.h"
 #include "shill/mock_log.h"
 
+using base::FilePath;
 using testing::_;
 
 namespace {

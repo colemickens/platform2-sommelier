@@ -4,12 +4,16 @@
 
 #include "shill/dhcp_provider.h"
 
+#include <base/file_util.h>
+#include <base/stringprintf.h>
+
 #include "shill/control_interface.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
 #include "shill/proxy_factory.h"
 
+using base::FilePath;
 using std::string;
 
 namespace shill {
@@ -18,8 +22,12 @@ namespace {
 base::LazyInstance<DHCPProvider> g_dhcp_provider = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
+const char DHCPProvider::kDHCPCDPathFormatLease[] =
+    "var/lib/dhcpcd/dhcpcd-%s.lease";
+
 DHCPProvider::DHCPProvider()
     : proxy_factory_(ProxyFactory::GetInstance()),
+      root_("/"),
       control_interface_(NULL),
       dispatcher_(NULL),
       glib_(NULL) {
@@ -76,6 +84,13 @@ void DHCPProvider::BindPID(int pid, const DHCPConfigRefPtr &config) {
 void DHCPProvider::UnbindPID(int pid) {
   SLOG(DHCP, 2) << __func__ << " pid: " << pid;
   configs_.erase(pid);
+}
+
+void DHCPProvider::DestroyLease(const string &name) {
+  SLOG(DHCP, 2) << __func__ << " name: " << name;
+  file_util::Delete(root_.Append(
+      base::StringPrintf(kDHCPCDPathFormatLease,
+                         name.c_str())), false);
 }
 
 }  // namespace shill

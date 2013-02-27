@@ -234,8 +234,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }
-  virtual const FilePath &run_path() const { return run_path_; }
-  const FilePath &storage_path() const { return storage_path_; }
+  virtual const base::FilePath &run_path() const { return run_path_; }
+  const base::FilePath &storage_path() const { return storage_path_; }
 
   void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
     startup_profiles_ = startup_profiles;
@@ -443,8 +443,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
 
   EventDispatcher *dispatcher_;
-  const FilePath run_path_;
-  const FilePath storage_path_;
+  const base::FilePath run_path_;
+  const base::FilePath storage_path_;
   const std::string user_storage_format_;
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   scoped_ptr<DBusManager> dbus_manager_;

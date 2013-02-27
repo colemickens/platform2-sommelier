@@ -218,13 +218,13 @@ class OpenVPNDriver : public VPNDriver,
   scoped_ptr<OpenVPNManagementServer> management_server_;
   NSS *nss_;
   ProcessKiller *process_killer_;
-  FilePath lsb_release_file_;
+  base::FilePath lsb_release_file_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
   VPNRefPtr device_;
-  FilePath tls_auth_file_;
+  base::FilePath tls_auth_file_;
   IPConfig::Properties ip_properties_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been

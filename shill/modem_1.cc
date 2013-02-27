@@ -11,6 +11,7 @@
 #include "shill/cellular.h"
 #include "shill/device_info.h"
 
+using base::FilePath;
 using std::string;
 
 namespace shill {

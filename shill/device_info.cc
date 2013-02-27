@@ -44,6 +44,7 @@
 #include "shill/wifi.h"
 
 using base::Bind;
+using base::FilePath;
 using base::StringPrintf;
 using base::Unretained;
 using std::map;

@@ -24,6 +24,7 @@
 #include "shill/shill_config.h"
 #include "shill/shill_daemon.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 

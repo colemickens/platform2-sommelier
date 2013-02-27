@@ -31,7 +31,9 @@ class CryptoProvider {
   // |ciphertext| as is.
   std::string Decrypt(const std::string &ciphertext);
 
-  void set_key_matter_file(const FilePath &path) { key_matter_file_ = path; }
+  void set_key_matter_file(const base::FilePath &path) {
+    key_matter_file_ = path;
+  }
 
  private:
   FRIEND_TEST(CryptoProviderTest, Init);
@@ -45,7 +47,7 @@ class CryptoProvider {
   // Registered crypto modules in high to low priority order.
   Cryptos cryptos_;
 
-  FilePath key_matter_file_;
+  base::FilePath key_matter_file_;
 
   DISALLOW_COPY_AND_ASSIGN(CryptoProvider);
 };

@@ -1086,6 +1086,14 @@ void WiFi::SetScanPending(bool pending) {
   }
 }
 
+string WiFi::GetServiceLeaseName(const WiFiService &service) {
+  return service.GetStorageIdentifier();
+}
+
+void WiFi::DestroyServiceLease(const WiFiService &service) {
+  DestroyIPConfigLease(GetServiceLeaseName(service));
+}
+
 void WiFi::StateChanged(const string &new_state) {
   const string old_state = supplicant_state_;
   supplicant_state_ = new_state;
@@ -1117,7 +1125,7 @@ void WiFi::StateChanged(const string &new_state) {
     } else if (has_already_completed_) {
       LOG(INFO) << link_name() << " L3 configuration already started.";
     } else if (AcquireIPConfigWithLeaseName(
-                   affected_service->GetStorageIdentifier())) {
+                   GetServiceLeaseName(*affected_service))) {
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       affected_service->SetState(Service::kStateConfiguring);
     } else {

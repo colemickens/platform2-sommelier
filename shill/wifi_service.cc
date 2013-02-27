@@ -32,6 +32,7 @@
 #include "shill/wifi_provider.h"
 #include "shill/wpa_supplicant.h"
 
+using base::FilePath;
 using std::set;
 using std::string;
 using std::vector;
@@ -311,6 +312,9 @@ bool WiFiService::Save(StoreInterface *storage) {
 
 bool WiFiService::Unload() {
   Service::Unload();
+  if (wifi_) {
+    wifi_->DestroyServiceLease(*this);
+  }
   hidden_ssid_ = false;
   Error unused_error;
   ClearPassphrase(&unused_error);

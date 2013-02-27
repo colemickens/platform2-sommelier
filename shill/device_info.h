@@ -175,7 +175,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   // Return the FilePath for a given |path_name| in the device sysinfo for
   // a specific interface |iface_name|.
-  FilePath GetDeviceInfoPath(const std::string &iface_name,
+  base::FilePath GetDeviceInfoPath(const std::string &iface_name,
                              const std::string &path_name);
   // Return the contents of the device info file |path_name| for interface
   // |iface_name| in output parameter |contents_out|.  Returns true if file
@@ -189,7 +189,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Returns true if symbolic link read succeeded, false otherwise.
   bool GetDeviceInfoSymbolicLink(const std::string &iface_name,
                                  const std::string &path_name,
-                                 FilePath *path_out);
+                                 base::FilePath *path_out);
   // Classify the device named |iface_name|, and return an identifier
   // indicating its type.
   virtual Technology::Identifier GetDeviceTechnology(
@@ -201,7 +201,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Returns true if |base_dir| has a subdirectory named |subdir|.
   // |subdir| can be an immediate subdirectory of |base_dir| or can be
   // several levels deep.
-  static bool HasSubdir(const FilePath &base_dir, const FilePath &subdir);
+  static bool HasSubdir(const base::FilePath &base_dir,
+                        const base::FilePath &subdir);
 
   void AddLinkMsgHandler(const RTNLMessage &msg);
   void DelLinkMsgHandler(const RTNLMessage &msg);
@@ -230,7 +231,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   scoped_ptr<RTNLListener> link_listener_;
   scoped_ptr<RTNLListener> address_listener_;
   std::set<std::string> black_list_;
-  FilePath device_info_root_;
+  base::FilePath device_info_root_;
 
   // Keep track of devices that require a delayed call to CreateDevice().
   base::CancelableClosure delayed_devices_callback_;

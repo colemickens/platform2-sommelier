@@ -101,8 +101,6 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotSupported
 
-			[Silently ignored in shill so far]
-
 		void MoveBefore(object service)
 
 			Silently ignored in shill.  Do not use.
@@ -472,14 +470,14 @@ Properties	boolean AutoConnect [readwrite]
 
 			This property is included in get requests only
 			when the requester has sufficient privileges.
-		
+
 		string EAP.Password [readwrite]
 
 			The password to use in 802.1x authentication.
 
 			This property is included in get requests only
 			when the requester has sufficient privileges.
-		
+
 		string EAP.KeyMgmt [readwrite]
 
 			(WiFi only) The key management algorithm to be
@@ -760,7 +758,7 @@ Properties	boolean AutoConnect [readwrite]
 
 			The following credentials are not recorded when
 			this property is set to FALSE:
-			
+
 			Passphrase
 			EAP.Identity
 			EAP.AnonymousIdentity

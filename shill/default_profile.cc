@@ -19,6 +19,7 @@
 #include "shill/resolver.h"
 #include "shill/store_interface.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 

@@ -127,8 +127,11 @@ void ServiceDBusAdaptor::Disconnect(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
-void ServiceDBusAdaptor::Remove(::DBus::Error &/*error*/) {
+void ServiceDBusAdaptor::Remove(::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
+  Error e;
+  service_->Remove(&e);
+  e.ToDBusError(&error);
 }
 
 void ServiceDBusAdaptor::MoveBefore(const ::DBus::Path& ,

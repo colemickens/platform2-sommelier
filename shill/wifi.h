@@ -177,6 +177,9 @@ class WiFi : public Device {
   // Called by a WiFiService when it disassociates itself from this Device.
   virtual void DisassociateFromService(const WiFiServiceRefPtr &service);
 
+  // Called by a WiFiService when it unloads to destroy its lease file.
+  virtual void DestroyServiceLease(const WiFiService &service);
+
  private:
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
@@ -328,6 +331,8 @@ class WiFi : public Device {
   void ConnectToSupplicant();
 
   void Restart();
+
+  std::string GetServiceLeaseName(const WiFiService &service);
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;

@@ -11,6 +11,7 @@
 
 #include "shill/glib.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 

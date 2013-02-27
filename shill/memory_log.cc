@@ -21,6 +21,8 @@
 #include "shill/logging.h"
 #include "shill/shill_time.h"
 
+using base::FilePath;
+
 namespace shill {
 
 namespace {

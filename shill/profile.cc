@@ -24,6 +24,7 @@
 #include "shill/service.h"
 #include "shill/store_interface.h"
 
+using base::FilePath;
 using std::set;
 using std::string;
 using std::vector;

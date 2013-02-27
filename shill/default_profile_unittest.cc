@@ -25,6 +25,7 @@
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
 
+using base::FilePath;
 using std::map;
 using std::string;
 using std::vector;

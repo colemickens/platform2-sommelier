@@ -24,12 +24,12 @@ class NSS {
   static NSS *GetInstance();
 
   // Returns an empty path on failure.
-  virtual FilePath GetPEMCertfile(const std::string &nickname,
-                                  const std::vector<char> &id);
+  virtual base::FilePath GetPEMCertfile(const std::string &nickname,
+                                        const std::vector<char> &id);
 
   // Returns an empty path on failure.
-  virtual FilePath GetDERCertfile(const std::string &nickname,
-                                  const std::vector<char> &id);
+  virtual base::FilePath GetDERCertfile(const std::string &nickname,
+                                        const std::vector<char> &id);
 
  protected:
   NSS();
@@ -39,9 +39,9 @@ class NSS {
   friend class NSSTest;
   FRIEND_TEST(NSSTest, GetCertfile);
 
-  FilePath GetCertfile(const std::string &nickname,
-                       const std::vector<char> &id,
-                       const std::string &type);
+  base::FilePath GetCertfile(const std::string &nickname,
+                             const std::vector<char> &id,
+                             const std::string &type);
 
   Minijail *minijail_;
 

@@ -23,6 +23,7 @@
 #include "shill/proxy_factory.h"
 
 using base::Bind;
+using base::FilePath;
 using base::ScopedTempDir;
 using base::Unretained;
 using std::string;

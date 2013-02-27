@@ -7,6 +7,7 @@
 #include "shill/key_file_store.h"
 #include "shill/logging.h"
 
+using base::FilePath;
 using std::string;
 
 namespace shill {

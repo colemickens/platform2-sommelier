@@ -19,7 +19,8 @@ class MockActivatingIccidStore : public ActivatingIccidStore {
   MockActivatingIccidStore();
   virtual ~MockActivatingIccidStore();
 
-  MOCK_METHOD2(InitStorage, bool(GLib *glib, const FilePath &storage_path));
+  MOCK_METHOD2(InitStorage,
+               bool(GLib *glib,const base::FilePath &storage_path));
   MOCK_CONST_METHOD1(GetActivationState, State(const std::string &iccid));
   MOCK_METHOD2(SetActivationState,
                bool(const std::string &iccid, State state));

@@ -9,6 +9,7 @@
 #include "shill/crypto_des_cbc.h"
 #include "shill/glib.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 using testing::Test;

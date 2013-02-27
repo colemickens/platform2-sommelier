@@ -40,6 +40,7 @@
 #include "shill/wimax.h"
 
 using base::Callback;
+using base::FilePath;
 using std::map;
 using std::set;
 using std::string;

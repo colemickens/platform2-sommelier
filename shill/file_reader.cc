@@ -4,6 +4,7 @@
 
 #include "shill/file_reader.h"
 
+using base::FilePath;
 using std::string;
 
 namespace shill {

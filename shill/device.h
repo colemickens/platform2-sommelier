@@ -198,6 +198,10 @@ class Device : public base::RefCounted<Device> {
   // the base class implementation.
   virtual void OnAfterResume();
 
+  // Destroy the lease, if any, with this |name|.
+  // Called by the service during Unload() as part of the cleanup sequence.
+  virtual void DestroyIPConfigLease(const std::string &name);
+
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);

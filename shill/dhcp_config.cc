@@ -41,8 +41,6 @@ const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
 const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
 const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
-const char DHCPConfig::kDHCPCDPathFormatLease[] =
-    "var/lib/dhcpcd/dhcpcd-%s.lease";
 const char DHCPConfig::kDHCPCDPathFormatPID[] =
     "var/run/dhcpcd/dhcpcd-%s.pid";
 const int DHCPConfig::kDHCPTimeoutSeconds = 30;
@@ -431,7 +429,7 @@ void DHCPConfig::CleanupClientState() {
   if (lease_file_suffix_ == device_name()) {
     // If the lease file suffix was left as default, clean it up at exit.
     file_util::Delete(root_.Append(
-        base::StringPrintf(kDHCPCDPathFormatLease,
+        base::StringPrintf(DHCPProvider::kDHCPCDPathFormatLease,
                            device_name().c_str())), false);
   }
   file_util::Delete(root_.Append(

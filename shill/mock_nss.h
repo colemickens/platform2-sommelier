@@ -16,10 +16,10 @@ class MockNSS : public NSS {
   MockNSS();
   virtual ~MockNSS();
 
-  MOCK_METHOD2(GetPEMCertfile, FilePath(const std::string &nickname,
-                                        const std::vector<char> &id));
-  MOCK_METHOD2(GetDERCertfile, FilePath(const std::string &nickname,
-                                        const std::vector<char> &id));
+  MOCK_METHOD2(GetPEMCertfile, base::FilePath(const std::string &nickname,
+                                              const std::vector<char> &id));
+  MOCK_METHOD2(GetDERCertfile, base::FilePath(const std::string &nickname,
+                                              const std::vector<char> &id));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNSS);

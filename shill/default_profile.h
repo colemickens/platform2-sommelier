@@ -29,7 +29,7 @@ class DefaultProfile : public Profile {
   DefaultProfile(ControlInterface *control,
                  Metrics *metrics,
                  Manager *manager,
-                 const FilePath &storage_path,
+                 const base::FilePath &storage_path,
                  const std::string &profile_id,
                  const Manager::Properties &manager_props);
   virtual ~DefaultProfile();
@@ -56,7 +56,7 @@ class DefaultProfile : public Profile {
   // appropriate file location.
   //
   // In this implementation, |name_| is ignored.
-  virtual bool GetStoragePath(FilePath *path);
+  virtual bool GetStoragePath(base::FilePath *path);
 
  private:
   friend class DefaultProfileTest;
@@ -77,7 +77,7 @@ class DefaultProfile : public Profile {
   static const char kStoragePortalURL[];
   static const char kStorageShortDNSTimeoutTechnologies[];
 
-  const FilePath storage_path_;
+  const base::FilePath storage_path_;
   const std::string profile_id_;
   const Manager::Properties &props_;
 

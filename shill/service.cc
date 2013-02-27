@@ -466,6 +466,10 @@ bool Service::Unload() {
   return false;
 }
 
+void Service::Remove(Error */*error*/) {
+  Unload();
+}
+
 bool Service::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
 

@@ -13,6 +13,7 @@
 
 #include "shill/key_value_store.h"
 
+using base::FilePath;
 using file_util::FileEnumerator;
 using std::set;
 using std::string;

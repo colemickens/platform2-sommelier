@@ -44,6 +44,7 @@
 #include "shill/wifi_service.h"
 #include "shill/wimax_service.h"
 
+using base::FilePath;
 using base::ScopedTempDir;
 using std::map;
 using std::set;

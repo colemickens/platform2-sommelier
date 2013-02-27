@@ -47,6 +47,7 @@ class MockWiFi : public WiFi {
   MOCK_CONST_METHOD0(IsIdle, bool());
   MOCK_METHOD1(NotifyEndpointChanged,
                void(const WiFiEndpointConstRefPtr &endpoint));
+  MOCK_METHOD1(DestroyIPConfigLease, void(const std::string &));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFi);

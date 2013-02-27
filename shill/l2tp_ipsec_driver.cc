@@ -20,6 +20,7 @@
 
 using base::Bind;
 using base::Closure;
+using base::FilePath;
 using std::map;
 using std::string;
 using std::vector;

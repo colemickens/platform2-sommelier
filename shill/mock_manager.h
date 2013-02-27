@@ -26,7 +26,7 @@ class MockManager : public Manager {
   MOCK_METHOD0(wimax_provider, WiMaxProvider *());
   MOCK_METHOD0(mutable_store, PropertyStore *());
   MOCK_CONST_METHOD0(store, const PropertyStore &());
-  MOCK_CONST_METHOD0(run_path, const FilePath &());
+  MOCK_CONST_METHOD0(run_path, const base::FilePath &());
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &to_manage));

@@ -187,7 +187,7 @@ class Modem1 : public Modem {
  private:
   friend class Modem1Test;
 
-  FilePath netfiles_path_;  // Used for testing
+  base::FilePath netfiles_path_;  // Used for testing
 
   DISALLOW_COPY_AND_ASSIGN(Modem1);
 };

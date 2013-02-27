@@ -11,6 +11,7 @@
 #include "shill/logging.h"
 #include "shill/minijail.h"
 
+using base::FilePath;
 using base::HexEncode;
 using base::StringPrintf;
 using std::string;

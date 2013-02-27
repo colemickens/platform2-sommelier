@@ -148,7 +148,7 @@ class CellularOperatorInfo {
   virtual ~CellularOperatorInfo();
 
   // Loads the operator info from |info_file_path|. Returns true on success.
-  bool Load(const FilePath &info_file_path);
+  bool Load(const base::FilePath &info_file_path);
 
   // Gets the cellular operator info of the operator with MCCMNC |mccmnc|.
   // If found, returns a pointer to the matching operator.

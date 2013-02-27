@@ -11,6 +11,7 @@
 #include "shill/crypto_rot47.h"
 #include "shill/glib.h"
 
+using base::FilePath;
 using base::ScopedTempDir;
 using std::string;
 using testing::Test;

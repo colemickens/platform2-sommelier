@@ -107,7 +107,6 @@ class DHCPConfig : public IPConfig {
   static const int kDHCPCDExitPollMilliseconds;
   static const int kDHCPCDExitWaitMilliseconds;
   static const char kDHCPCDPath[];
-  static const char kDHCPCDPathFormatLease[];
   static const char kDHCPCDPathFormatPID[];
   static const int kDHCPTimeoutSeconds;
   static const char kDHCPCDUser[];
@@ -202,7 +201,7 @@ class DHCPConfig : public IPConfig {
   unsigned int lease_acquisition_timeout_seconds_;
 
   // Root file path, used for testing.
-  FilePath root_;
+  base::FilePath root_;
 
   base::WeakPtrFactory<DHCPConfig> weak_ptr_factory_;
   EventDispatcher *dispatcher_;

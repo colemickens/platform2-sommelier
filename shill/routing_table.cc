@@ -34,6 +34,7 @@
 #include "shill/rtnl_message.h"
 
 using base::Bind;
+using base::FilePath;
 using base::Unretained;
 using std::deque;
 using std::string;

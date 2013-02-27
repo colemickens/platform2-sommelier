@@ -12,6 +12,7 @@
 
 #include "shill/mock_control.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 using testing::Test;

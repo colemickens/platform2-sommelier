@@ -72,4 +72,8 @@ void EthernetService::SetAutoConnect(const bool &connect, Error *error) {
   Service::SetAutoConnect(connect, error);
 }
 
+void EthernetService::Remove(Error *error) {
+  error->Populate(Error::kNotSupported);
+}
+
 }  // namespace shill

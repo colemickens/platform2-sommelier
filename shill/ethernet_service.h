@@ -36,6 +36,8 @@ class EthernetService : public Service {
   virtual bool IsAutoConnectByDefault() const { return true; }
   virtual void SetAutoConnect(const bool &connect, Error *error);
 
+  virtual void Remove(Error *error);
+
  private:
   static const char kServiceType[];
 

@@ -48,6 +48,7 @@
 #include "shill/wimax_service.h"
 
 using base::Bind;
+using base::FilePath;
 using base::StringPrintf;
 using base::Unretained;
 using std::map;

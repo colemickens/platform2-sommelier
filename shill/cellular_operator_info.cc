@@ -14,6 +14,7 @@
 
 #include "shill/logging.h"
 
+using base::FilePath;
 using std::map;
 using std::string;
 using std::vector;

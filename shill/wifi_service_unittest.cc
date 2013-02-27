@@ -32,6 +32,7 @@
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
+using base::FilePath;
 using std::map;
 using std::set;
 using std::string;
@@ -1621,5 +1622,13 @@ TEST_F(WiFiServiceTest, ComputeCipher8021x) {
               WiFiService::ComputeCipher8021x(endpoints));
   }
 }
+
+TEST_F(WiFiServiceTest, Unload) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurityNone);
+  EXPECT_CALL(*wifi(), DestroyIPConfigLease(service->GetStorageIdentifier())).
+    Times(1);
+  service->Unload();
+}
+
 
 }  // namespace shill

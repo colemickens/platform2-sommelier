@@ -22,6 +22,7 @@
 #include "shill/mock_vpn_service.h"
 #include "shill/vpn.h"
 
+using base::FilePath;
 using std::find;
 using std::map;
 using std::string;

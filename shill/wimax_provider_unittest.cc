@@ -25,6 +25,7 @@
 #include "shill/proxy_factory.h"
 #include "shill/wimax_service.h"
 
+using base::FilePath;
 using std::string;
 using std::vector;
 using testing::_;

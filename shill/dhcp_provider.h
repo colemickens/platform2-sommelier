@@ -8,6 +8,7 @@
 #include <map>
 #include <string>
 
+#include <base/file_path.h>
 #include <base/lazy_instance.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -33,6 +34,8 @@ class ProxyFactory;
 //                                           arp_gateway)->Request();
 class DHCPProvider {
  public:
+  static const char kDHCPCDPathFormatLease[];
+
   virtual ~DHCPProvider();
 
   // This is a singleton -- use DHCPProvider::GetInstance()->Foo()
@@ -72,6 +75,9 @@ class DHCPProvider {
   // destruction of the DHCP config instance if its reference count goes to 0.
   void UnbindPID(int pid);
 
+  // Destroy lease file associated with this |name|.
+  virtual void DestroyLease(const std::string &name);
+
  protected:
   DHCPProvider();
 
@@ -82,6 +88,7 @@ class DHCPProvider {
   friend class DeviceInfoTest;
   friend class DeviceTest;
   FRIEND_TEST(DHCPProviderTest, CreateConfig);
+  FRIEND_TEST(DHCPProviderTest, DestroyLease);
 
   typedef std::map<int, DHCPConfigRefPtr> PIDConfigMap;
 
@@ -95,6 +102,7 @@ class DHCPProvider {
   // A map that binds PIDs to DHCP configuration instances.
   PIDConfigMap configs_;
 
+  base::FilePath root_;
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   GLib *glib_;
