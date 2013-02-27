@@ -32,6 +32,7 @@ const char kAttributeRange[] = "range";
 const char kAttributeReadOnly[] = "ro";
 const char kAttributeRemovable[] = "removable";
 const char kAttributeSize[] = "size";
+const char kDriverMMCBlock[] = "mmcblk";
 const char kPropertyBlkIdFilesystemType[] = "TYPE";
 const char kPropertyBlkIdFilesystemLabel[] = "LABEL";
 const char kPropertyBlkIdFilesystemUUID[] = "UUID";
@@ -194,6 +195,9 @@ DeviceMediaType UdevDevice::GetDeviceMediaType() const {
   if (IsPropertyTrue(kPropertyCDROM))
     return DEVICE_MEDIA_OPTICAL_DISC;
 
+  if (IsOnMMCDevice())
+    return DEVICE_MEDIA_SD;
+
   string vendor_id, product_id;
   if (GetVendorAndProductId(&vendor_id, &product_id)) {
     USBDeviceInfo info;
@@ -309,6 +313,16 @@ bool UdevDevice::IsOnBootDevice() const {
       if (strncmp(boot_device_path, dev_file, PATH_MAX) == 0) {
         return true;
       }
+    }
+  }
+  return false;
+}
+
+bool UdevDevice::IsOnMMCDevice() const {
+  for (struct udev_device *dev = dev_; dev; dev = udev_device_get_parent(dev)) {
+    const char *driver = udev_device_get_driver(dev);
+    if (driver && strcmp(driver, kDriverMMCBlock) == 0) {
+      return true;
     }
   }
   return false;
