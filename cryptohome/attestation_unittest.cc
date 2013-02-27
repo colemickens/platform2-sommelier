@@ -96,12 +96,7 @@ class AttestationTest : public testing::Test {
   bool CompareBlob(const chromeos::SecureBlob& blob, const std::string& str) {
     std::string blob_str(reinterpret_cast<const char*>(blob.const_data()),
                          blob.size());
-    if (blob_str != str) {
-      printf("Comparing: |%s| with |%s|.\n", blob_str.c_str(), str.c_str());
-      return false;
-    }
-    return true;
-    //return (blob_str == str);
+    return (blob_str == str);
   }
 
   string EncodeCertChain(const string& cert1, const string& cert2) {

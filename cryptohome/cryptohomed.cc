@@ -10,6 +10,7 @@
 #include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <chaps/pkcs11/cryptoki.h>
 #include <chromeos/syslog_logging.h>
 #include <dbus/dbus.h>
 #include <glib.h>
@@ -68,5 +69,7 @@ int main(int argc, char **argv) {
     return 1;
   }
 
+  // If PKCS #11 was initialized, this will tear it down.
+  C_Finalize(NULL);
   return 0;
 }
