@@ -102,6 +102,10 @@ HELP_ADVANCED='
   Turn on extra network state checking to make sure the default gateway
   is reachable.
 
+ sound <command> <argument>
+  Low level sound configuration.  Can be used to enable beam forming on Pixel.
+  "sound beamforming <on|off>" will enable/disable the feature.
+
  syslog <message>
   Logs a message to syslog.
 
@@ -219,6 +223,31 @@ check_keyfile() {
   (expr "$1" : "^$HOME" > /dev/null) || \
   (expr "$1" : '^/media/' > /dev/null) || \
   (expr "$1" : '^[^/]*$' > /dev/null)
+}
+
+cmd_sound() {
+  card=$(aplay -l | egrep '^card .*\bCA0132\b' | sed 's/card \([0-9]\+\).*/\1/')
+  if [ -z "$card" ]; then
+    echo "No supported card found"
+    return 1
+  fi
+
+  case "$1" in
+  "beamforming")
+    if [ "$2" != "on" -a "$2" != "off" ]; then
+      echo "invalid option $2."
+      echo "Valid choices: on, off."
+      return 1
+    else
+      amixer -c"$card" cset name='"Voice Focus Capture Switch"' "$2"
+    fi
+    ;;
+  *)
+    echo "Usage:"
+    echo "  sound beamforming <on/off>"
+    return 1
+    ;;
+  esac
 }
 
 check_ssh_host() {
