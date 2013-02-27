@@ -52,20 +52,11 @@ class NetlinkAttribute {
 
   // Accessors for the attribute's id and datatype information.
   int id() const { return id_; }
-  virtual const char *id_string() const { return id_string_; }
+  virtual const char *id_string() const { return id_string_.c_str(); }
   Type datatype() const { return datatype_; }
   const char *datatype_string() const { return datatype_string_; }
 
-  // TODO(wdg): Since |data| is used, externally, to support |nla_parse_nested|,
-  // make it protected once all functionality has been brought inside the
-  // NetlinkAttribute classes.
-  //
-  // |data_| contains an 'nlattr *' but it's been stored as a ByteString.
-  // This returns a pointer to the data in the form that is intended.
-  const nlattr *data() const {
-    return reinterpret_cast<const nlattr *>(data_.GetConstData());
-  }
-
+  // Accessors.  Return false if request is made on wrong type of attribute.
   virtual bool GetU8Value(uint8_t *value) const;
   virtual bool SetU8Value(uint8_t new_value);
 
@@ -90,6 +81,7 @@ class NetlinkAttribute {
   virtual bool SetNestedHasAValue();
 
   virtual bool GetRawValue(ByteString *value) const;
+  virtual bool SetRawValue(const ByteString value);
 
   // Prints the attribute info -- for debugging.
   virtual void Print(int log_level, int indent) const;
@@ -139,11 +131,10 @@ class NetlinkAttribute {
   // Encodes the attribute suitably for the attributes in the payload portion
   // of a netlink message suitable for Sockets::Send.  Return value is empty on
   // failure.
-  virtual ByteString EncodeGeneric(const unsigned char *data, int bytes) const;
+  ByteString EncodeGeneric(const unsigned char *data, size_t num_bytes) const;
 
-  // Raw data corresponding to the value in any of the child classes.
-  // TODO(wdg): When 'data()' is removed, move this to the NetlinkRawAttribute
-  // class.
+  // Attribute data (NOT including the nlattr header) corresponding to the
+  // value in any of the child classes.
   ByteString data_;
 
   // True if a value has been assigned to the attribute; false, otherwise.
@@ -151,7 +142,7 @@ class NetlinkAttribute {
 
  private:
   int id_;
-  const char *id_string_;
+  std::string id_string_;
   Type datatype_;
   const char *datatype_string_;
 };
@@ -164,10 +155,10 @@ class NetlinkU8Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU8Attribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetU8Value(uint8_t *value) const;
-  bool SetU8Value(uint8_t new_value);
-  bool ToString(std::string *value) const;
+  virtual bool InitFromNlAttr(const nlattr *data);
+  virtual bool GetU8Value(uint8_t *value) const;
+  virtual bool SetU8Value(uint8_t new_value);
+  virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
 
  private:
@@ -196,10 +187,10 @@ class NetlinkU16Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU16Attribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetU16Value(uint16_t *value) const;
-  bool SetU16Value(uint16_t new_value);
-  bool ToString(std::string *value) const;
+  virtual bool InitFromNlAttr(const nlattr *data);
+  virtual bool GetU16Value(uint16_t *value) const;
+  virtual bool SetU16Value(uint16_t new_value);
+  virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
 
  private:
@@ -228,10 +219,10 @@ class NetlinkU32Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU32Attribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetU32Value(uint32_t *value) const;
-  bool SetU32Value(uint32_t new_value);
-  bool ToString(std::string *value) const;
+  virtual bool InitFromNlAttr(const nlattr *data);
+  virtual bool GetU32Value(uint32_t *value) const;
+  virtual bool SetU32Value(uint32_t new_value);
+  virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
 
  private:
@@ -295,10 +286,10 @@ class NetlinkU64Attribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkU64Attribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetU64Value(uint64_t *value) const;
-  bool SetU64Value(uint64_t new_value);
-  bool ToString(std::string *value) const;
+  virtual bool InitFromNlAttr(const nlattr *data);
+  virtual bool GetU64Value(uint64_t *value) const;
+  virtual bool SetU64Value(uint64_t new_value);
+  virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
 
  private:
@@ -320,10 +311,10 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkFlagAttribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetFlagValue(bool *value) const;
-  bool SetFlagValue(bool new_value);
-  bool ToString(std::string *value) const;
+  virtual bool InitFromNlAttr(const nlattr *data);
+  virtual bool GetFlagValue(bool *value) const;
+  virtual bool SetFlagValue(bool new_value);
+  virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
 
  private:
@@ -361,10 +352,10 @@ class NetlinkStringAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkStringAttribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetStringValue(std::string *value) const;
-  bool SetStringValue(const std::string new_value);
-  bool ToString(std::string *value) const;
+  virtual bool InitFromNlAttr(const nlattr *data);
+  virtual bool GetStringValue(std::string *value) const;
+  virtual bool SetStringValue(const std::string new_value);
+  virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
 
  private:
@@ -498,16 +489,13 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   static const Type kType;
   NetlinkRawAttribute(int id, const char *id_string)
       : NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
-  bool InitFromNlAttr(const nlattr *data);
-  bool GetRawValue(ByteString *value) const;
-  // Not supporting 'set' for raw data.  This type is a "don't know" type to
-  // be used for user-bound massages (via InitFromNlAttr).  The 'set' method
-  // is intended for building kernel-bound messages and shouldn't be used with
-  // raw data.
-  bool ToString(std::string *value) const;
-  virtual ByteString Encode() const {
-    return ByteString();  // TODO(wdg): Actually encode the attribute.
-  }
+  virtual bool InitFromNlAttr(const nlattr *data);
+  // Gets the value of the data (the header is not stored).
+  virtual bool GetRawValue(ByteString *value) const;
+  // Should set the value of the data (not the attribute header).
+  virtual bool SetRawValue(const ByteString value);
+  virtual bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 };
 
 class Nl80211AttributeFrame : public NetlinkRawAttribute {
@@ -520,7 +508,7 @@ class Nl80211AttributeFrame : public NetlinkRawAttribute {
 class NetlinkAttributeGeneric : public NetlinkRawAttribute {
  public:
   explicit NetlinkAttributeGeneric(int id);
-  const char *id_string() const;
+  virtual const char *id_string() const;
 
  private:
   std::string id_string_;

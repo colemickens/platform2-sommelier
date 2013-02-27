@@ -57,7 +57,7 @@ Config80211 *Config80211::GetInstance() {
 void Config80211::Reset(bool full) {
   wifi_state_ = kWifiDown;
   subscribed_events_.clear();
-  ClearBroadcastCallbacks();
+  ClearBroadcastHandlers();
   if (full) {
     dispatcher_ = NULL;
     delete sock_;
@@ -94,52 +94,54 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
   return true;
 }
 
-bool Config80211::AddBroadcastCallback(const Callback &callback) {
-  list<Callback>::iterator i;
-  if (FindBroadcastCallback(callback)) {
-    LOG(WARNING) << "Trying to re-add a callback";
+bool Config80211::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
+  list<NetlinkMessageHandler>::iterator i;
+  if (FindBroadcastHandler(handler)) {
+    LOG(WARNING) << "Trying to re-add a handler";
     return false;  // Should only be one copy in the list.
   }
-  if (callback.is_null()) {
-    LOG(WARNING) << "Trying to add a NULL callback";
+  if (handler.is_null()) {
+    LOG(WARNING) << "Trying to add a NULL handler";
     return false;
   }
-  // And add the callback to the list.
-  SLOG(WiFi, 3) << "Config80211::" << __func__ << " - adding callback";
-  broadcast_callbacks_.push_back(callback);
+  // And add the handler to the list.
+  SLOG(WiFi, 3) << "Config80211::" << __func__ << " - adding handler";
+  broadcast_handlers_.push_back(handler);
   return true;
 }
 
-bool Config80211::RemoveBroadcastCallback(const Callback &callback) {
-  list<Callback>::iterator i;
-  for (i = broadcast_callbacks_.begin(); i != broadcast_callbacks_.end(); ++i) {
-    if ((*i).Equals(callback)) {
-      broadcast_callbacks_.erase(i);
+bool Config80211::RemoveBroadcastHandler(
+    const NetlinkMessageHandler &handler) {
+  list<NetlinkMessageHandler>::iterator i;
+  for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
+    if ((*i).Equals(handler)) {
+      broadcast_handlers_.erase(i);
       // Should only be one copy in the list so we don't have to continue
       // looking for another one.
       return true;
     }
   }
-  LOG(WARNING) << "Callback not found.";
+  LOG(WARNING) << "NetlinkMessageHandler not found.";
   return false;
 }
 
-bool Config80211::FindBroadcastCallback(const Callback &callback) const {
-  list<Callback>::const_iterator i;
-  for (i = broadcast_callbacks_.begin(); i != broadcast_callbacks_.end(); ++i) {
-    if ((*i).Equals(callback)) {
+bool Config80211::FindBroadcastHandler(const NetlinkMessageHandler &handler)
+    const {
+  list<NetlinkMessageHandler>::const_iterator i;
+  for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
+    if ((*i).Equals(handler)) {
       return true;
     }
   }
   return false;
 }
 
-void Config80211::ClearBroadcastCallbacks() {
-  broadcast_callbacks_.clear();
+void Config80211::ClearBroadcastHandlers() {
+  broadcast_handlers_.clear();
 }
 
 bool Config80211::SendMessage(Nl80211Message *message,
-                              const Callback &callback) {
+                              const NetlinkMessageHandler &handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;
@@ -158,24 +160,24 @@ bool Config80211::SendMessage(Nl80211Message *message,
     LOG(ERROR) << "Failed to send nl80211 message.";
     return false;
   }
-  if (callback.is_null()) {
-    LOG(INFO) << "Callback for message was null.";
+  if (handler.is_null()) {
+    LOG(INFO) << "Handler for message was null.";
     return true;
   }
-  if (ContainsKey(message_callbacks_, sequence_number)) {
-    LOG(ERROR) << "Sent message, but already had a callback for this message?";
+  if (ContainsKey(message_handlers_, sequence_number)) {
+    LOG(ERROR) << "Sent message, but already had a handler for this message?";
     return false;
   }
-  message_callbacks_[sequence_number] = callback;
+  message_handlers_[sequence_number] = handler;
   LOG(INFO) << "Sent nl80211 message with sequence number: " << sequence_number;
   return true;
 }
 
-bool Config80211::RemoveMessageCallback(const Nl80211Message &message) {
-  if (!ContainsKey(message_callbacks_, message.sequence_number())) {
+bool Config80211::RemoveMessageHandler(const Nl80211Message &message) {
+  if (!ContainsKey(message_handlers_, message.sequence_number())) {
     return false;
   }
-  message_callbacks_.erase(message.sequence_number());
+  message_handlers_.erase(message.sequence_number());
   return true;
 }
 
@@ -299,21 +301,23 @@ void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
   Nl80211Message::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
                              msg->nlmsg_len);
 
-  // Call (then erase) any message-specific callback.
-  // TODO(wdg): Support multi-part messages; don't delete callback until last
+  // Call (then erase) any message-specific handler.
+  // TODO(wdg): Support multi-part messages; don't delete handler until last
   // part appears.
-  if (ContainsKey(message_callbacks_, sequence_number)) {
-    SLOG(WiFi, 3) << "found message-specific callback";
-    if (message_callbacks_[sequence_number].is_null()) {
-      LOG(ERROR) << "Callback exists but is NULL for ID " << sequence_number;
+  if (ContainsKey(message_handlers_, sequence_number)) {
+    SLOG(WiFi, 3) << "found message-specific handler";
+    if (message_handlers_[sequence_number].is_null()) {
+      LOG(ERROR) << "NetlinkMessageHandler exists but is NULL for ID "
+                 << sequence_number;
     } else {
-      message_callbacks_[sequence_number].Run(*message);
+      message_handlers_[sequence_number].Run(*message);
     }
-    message_callbacks_.erase(sequence_number);
+    message_handlers_.erase(sequence_number);
   } else {
-    list<Callback>::const_iterator i = broadcast_callbacks_.begin();
-    while (i != broadcast_callbacks_.end()) {
-      SLOG(WiFi, 3) << "      " << __func__ << " - calling callback";
+    list<NetlinkMessageHandler>::const_iterator i =
+        broadcast_handlers_.begin();
+    while (i != broadcast_handlers_.end()) {
+      SLOG(WiFi, 3) << __func__ << " - calling broadcast handler";
       i->Run(*message);
       ++i;
     }

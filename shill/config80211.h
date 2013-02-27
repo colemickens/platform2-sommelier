@@ -13,25 +13,6 @@
 // [cfg80211 kernel module]
 //            |
 //    [mac80211 drivers]
-//
-// For the love of Pete, there are a lot of different types of callbacks,
-// here.  I'll try to differentiate:
-//
-// Config80211 Callback -
-//    This is a base::Callback object installed by the user and called by
-//    Config80211 for each message it receives.  More specifically, when the
-//    user calls Config80211::SubscribeToEvents, Config80211 installs
-//    OnRawNlMessageReceived as a netlink callback function (described below).
-//    OnRawNlMessageReceived, in turn, parses the message from cfg80211 and
-//    calls Config80211::Callback with the resultant Nl80211Message.
-//
-// Dispatcher Callback -
-//    This base::Callback is a private method of Config80211 created and
-//    installed behind the scenes.  This is not the callback you're looking
-//    for; move along.  This is called by shill's EventDispatcher when there's
-//    data waiting for user space code on the netlink socket.  This callback
-//    then calls NetlinkSocket::GetMessages which calls nl_recvmsgs_default
-//    which, in turn, calls the installed netlink callback function.
 
 #ifndef SHILL_CONFIG80211_H_
 #define SHILL_CONFIG80211_H_
@@ -65,7 +46,7 @@ class Nl80211Message;
 // Config80211 is a singleton and, as such, coordinates access to libnl.
 class Config80211 {
  public:
-  typedef base::Callback<void(const Nl80211Message &)> Callback;
+  typedef base::Callback<void(const Nl80211Message &)> NetlinkMessageHandler;
 
   // The different kinds of events to which we can subscribe (and receive)
   // from cfg80211.
@@ -94,30 +75,31 @@ class Config80211 {
   // Returns the file descriptor of socket used to read wifi data.
   int GetFd() const { return (sock_ ? sock_->GetFd() : -1); }
 
-  // Install a Config80211 Callback.  The callback is a user-supplied object
-  // to be called by the system for user-bound messages that do not have a
-  // corresponding messaage-specific callback.  |AddBroadcastCallback| should
-  // be called before |SubscribeToEvents| since the result of this call are
-  // used for that call.
-  bool AddBroadcastCallback(const Callback &callback);
+  // Install a Config80211 NetlinkMessageHandler.  The callback is a
+  // user-supplied object to be called by the system for user-bound messages
+  // that do not have a corresponding messaage-specific callback.
+  // |AddBroadcastHandler| should be called before |SubscribeToEvents| since
+  // the result of this call are used for that call.
+  bool AddBroadcastHandler(const NetlinkMessageHandler &messge_handler);
 
-  // Uninstall a Config80211 Callback.
-  bool RemoveBroadcastCallback(const Callback &callback);
+  // Uninstall a Config80211 Handler.
+  bool RemoveBroadcastHandler(const NetlinkMessageHandler &message_handler);
 
   // Determines whether a callback is in the list of broadcast callbacks.
-  bool FindBroadcastCallback(const Callback &callback) const;
+  bool FindBroadcastHandler(const NetlinkMessageHandler &message_handler) const;
 
-  // Uninstall all Config80211 broadcast Callbacks.
-  void ClearBroadcastCallbacks();
+  // Uninstall all broadcast netlink message handlers.
+  void ClearBroadcastHandlers();
 
-  // Sends a kernel-bound message using the Config80211 socket after
-  // installing a callback to handle it.
+  // Sends a kernel-bound message using the Config80211 socket after installing
+  // a callback to handle it.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
-  bool SendMessage(Nl80211Message *message, const Callback &callback);
+  bool SendMessage(Nl80211Message *message, const NetlinkMessageHandler
+                   &message_handler);
 
-  // Uninstall a Config80211 Callback for a specific message.
-  bool RemoveMessageCallback(const Nl80211Message &message);
+  // Uninstall a Config80211 Handler for a specific message.
+  bool RemoveMessageHandler(const Nl80211Message &message);
 
   // Return a string corresponding to the passed-in EventType.
   static bool GetEventTypeString(EventType type, std::string *value);
@@ -138,11 +120,11 @@ class Config80211 {
  private:
   friend class Config80211Test;
   friend class ShillDaemonTest;
-  FRIEND_TEST(Config80211Test, BroadcastCallbackTest);
-  FRIEND_TEST(Config80211Test, MessageCallbackTest);
+  FRIEND_TEST(Config80211Test, BroadcastHandlerTest);
+  FRIEND_TEST(Config80211Test, MessageHandlerTest);
   typedef std::map<EventType, std::string> EventTypeStrings;
   typedef std::set<EventType> SubscribedEvents;
-  typedef std::map<uint32_t, Callback> MessageCallbacks;
+  typedef std::map<uint32_t, NetlinkMessageHandler> MessageHandlers;
 
   // Sign-up to receive and log multicast events of a specific type (assumes
   // wifi is up).
@@ -156,7 +138,7 @@ class Config80211 {
   // This method processes a message from |OnRawNlMessageReceived| by passing
   // the message to either the Config80211 callback that matches the sequence
   // number of the message or, if there isn't one, to all of the default
-  // Config80211 callbacks in |broadcast_callbacks_|.
+  // Config80211 callbacks in |broadcast_handlers_|.
   void OnNlMessageReceived(nlmsghdr *msg);
 
   // Called by InputHandler on exceptional events.
@@ -166,17 +148,18 @@ class Config80211 {
   // list. If |full| is true, also clears state set by Init.
   void Reset(bool full);
 
-  // Config80211 Callbacks, OnRawNlMessageReceived invokes each of these
+  // Config80211 Handlers, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.
-  std::list<Callback> broadcast_callbacks_;
+  std::list<NetlinkMessageHandler> broadcast_handlers_;
 
   // Message-specific callbacks, mapped by message ID.
-  MessageCallbacks  message_callbacks_;
+  MessageHandlers message_handlers_;
 
   static EventTypeStrings *event_types_;
 
   WifiState wifi_state_;
 
+  // The subscribed multicast groups exist on a per-socket basis.
   SubscribedEvents subscribed_events_;
 
   // Hooks needed to be called by shill's EventDispatcher.

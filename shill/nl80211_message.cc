@@ -70,7 +70,7 @@ LazyInstance<Nl80211MessageDataCollector> g_datacollector =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const char Nl80211Message::kBogusMacAddress[]="XX:XX:XX:XX:XX:XX";
+const char Nl80211Message::kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
 
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;

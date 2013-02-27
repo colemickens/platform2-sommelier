@@ -24,20 +24,22 @@ class Callback80211Object {
   Callback80211Object();
   virtual ~Callback80211Object();
 
-  bool InstallAsBroadcastCallback();
-  bool DeinstallAsCallback();
+  bool InstallAsBroadcastHandler();
+  bool DeinstallAsHandler();
 
-  const Config80211::Callback &callback() const { return callback_; }
+  const Config80211::NetlinkMessageHandler &message_handler() const {
+    return message_handler_;
+  }
  protected:
   // When installed, this is the method Config80211 will call when it gets a
   // message from the mac80211 drivers.
-  virtual void Config80211MessageCallback(const Nl80211Message &msg);
+  virtual void Config80211MessageHandler(const Nl80211Message &msg);
 
  private:
   void ReceiveConfig80211Message(const Nl80211Message &msg);
 
   base::WeakPtrFactory<Callback80211Object> weak_ptr_factory_;
-  Config80211::Callback callback_;
+  Config80211::NetlinkMessageHandler message_handler_;
 
   DISALLOW_COPY_AND_ASSIGN(Callback80211Object);
 };

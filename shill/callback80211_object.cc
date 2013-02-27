@@ -25,29 +25,29 @@ namespace shill {
 
 Callback80211Object::Callback80211Object()
     : weak_ptr_factory_(this),
-      callback_(Bind(&Callback80211Object::ReceiveConfig80211Message,
-                     weak_ptr_factory_.GetWeakPtr())) {
+      message_handler_(Bind(&Callback80211Object::ReceiveConfig80211Message,
+                       weak_ptr_factory_.GetWeakPtr())) {
 }
 
 Callback80211Object::~Callback80211Object() {
-  DeinstallAsCallback();
+  DeinstallAsHandler();
 }
 
-void Callback80211Object::Config80211MessageCallback(
+void Callback80211Object::Config80211MessageHandler(
     const Nl80211Message &message) {
   message.Print(10);
 }
 
-bool Callback80211Object::InstallAsBroadcastCallback() {
-  return Config80211::GetInstance()->AddBroadcastCallback(callback_);
+bool Callback80211Object::InstallAsBroadcastHandler() {
+  return Config80211::GetInstance()->AddBroadcastHandler(message_handler_);
 }
 
-bool Callback80211Object::DeinstallAsCallback() {
-  return Config80211::GetInstance()->RemoveBroadcastCallback(callback_);
+bool Callback80211Object::DeinstallAsHandler() {
+  return Config80211::GetInstance()->RemoveBroadcastHandler(message_handler_);
 }
 
 void Callback80211Object::ReceiveConfig80211Message(const Nl80211Message &msg) {
-  Config80211MessageCallback(msg);
+  Config80211MessageHandler(msg);
 }
 
 }  // namespace shill.

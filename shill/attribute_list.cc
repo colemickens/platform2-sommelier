@@ -277,27 +277,25 @@ bool AttributeList::GetRawAttributeValue(int id,
     return false;
 
   if (output) {
-    const nlattr *const_data =
-        reinterpret_cast<const nlattr *>(raw_value.GetConstData());
-    // nla_data and nla_len don't change their parameters but don't declare
-    // them to be const.  Hence the cast.
-    nlattr *data_nlattr = const_cast<nlattr *>(const_data);
-    *output = ByteString(
-        reinterpret_cast<unsigned char *>(nla_data(data_nlattr)),
-        nla_len(data_nlattr));
+    *output = raw_value;
   }
   return true;
 }
 
-const NetlinkRawAttribute *AttributeList::GetRawAttribute(
-    int id) const {
-  if (!HasRawAttribute(id)) {
-    LOG(ERROR) << "No attribute " << id << " of type kTypeRaw exists.";
-    return NULL;
+bool AttributeList::SetRawAttributeValue(int id, ByteString value) {
+  NetlinkAttribute *attribute = GetAttribute(id);
+  if (!attribute)
+    return false;
+  return attribute->SetRawValue(value);
+}
+
+bool AttributeList::CreateRawAttribute(int id, const char *id_string) {
+  if (ContainsKey(attributes_, id)) {
+    LOG(ERROR) << "Trying to re-add attribute: " << id;
+    return false;
   }
-  const NetlinkRawAttribute *attr =
-      reinterpret_cast<const NetlinkRawAttribute *>(GetAttribute(id));
-  return attr;
+  attributes_[id] = AttributePointer(new NetlinkRawAttribute(id, id_string));
+  return true;
 }
 
 NetlinkAttribute *AttributeList::GetAttribute(int id) const {
@@ -308,16 +306,5 @@ NetlinkAttribute *AttributeList::GetAttribute(int id) const {
   }
   return i->second.get();
 }
-
-bool AttributeList::HasRawAttribute(int id) const {
-  map<int, AttributePointer>::const_iterator i;
-  i = attributes_.find(id);
-  if (i == attributes_.end()) {
-    LOG(ERROR) << "FALSE - Didn't find id " << id;
-    return false;
-  }
-  return (i->second->datatype() == NetlinkAttribute::kTypeRaw) ? true : false;
-}
-
 
 }  // namespace shill

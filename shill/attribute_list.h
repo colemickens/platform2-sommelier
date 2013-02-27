@@ -83,24 +83,21 @@ class AttributeList : public base::RefCounted<AttributeList> {
   bool ConstGetNestedAttributeList(int id,
                                    AttributeListConstRefPtr *value) const;
 
-  // A raw attribute is a place to store unrecognized attributes when they
-  // from the kernel.  For this reason, only limited support is provided for
-  // them.
+  bool CreateRawAttribute(int id, const char *id_string);
+  // |value| should point to the data (after the |nlattr| header, if there is
+  // one).
+  bool SetRawAttributeValue(int id, ByteString value);
   bool GetRawAttributeValue(int id, ByteString *output) const;
-  // TODO(wdg): |GetRawAttribute| is a stopgap to support various
-  // Nl80211Message::ToString methods and must, once those are re-written,
-  // be destroyed.
-  const NetlinkRawAttribute *GetRawAttribute(int id) const;
+
+ protected:
+  friend class base::RefCounted<AttributeList>;
+  virtual ~AttributeList() {}
 
  private:
   friend class NetlinkNestedAttribute;
 
   // Using this to get around issues with const and operator[].
   NetlinkAttribute *GetAttribute(int id) const;
-
-  // TODO(wdg): This is only used to support |GetRawAttribute|.  Delete this
-  // when that goes away.
-  bool HasRawAttribute(int id) const;
 
   std::map<int, AttributePointer> attributes_;
 };

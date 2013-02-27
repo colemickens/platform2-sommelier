@@ -112,8 +112,8 @@ void Daemon::Start() {
       Config80211::kEventTypeMlme };
 
     // Install callbacks in the Config80211 singleton.
-    callback80211_output_.InstallAsBroadcastCallback();
-    callback80211_metrics_.InstallAsBroadcastCallback();
+    callback80211_output_.InstallAsBroadcastHandler();
+    callback80211_metrics_.InstallAsBroadcastHandler();
 
     for (size_t i = 0; i < arraysize(kEvents); i++) {
       config80211_->SubscribeToEvents(kEvents[i]);

@@ -134,8 +134,9 @@ bool NetlinkAttribute::InitFromNlAttr(const nlattr *other) {
     return false;
   }
 
-  data_ = ByteString(reinterpret_cast<const unsigned char *>(other),
-                     nla_total_size(nla_len(const_cast<nlattr *>(other))));
+  data_ = ByteString(
+      reinterpret_cast<char *>(nla_data(const_cast<nlattr *>(other))),
+      nla_len(const_cast<nlattr *>(other)));
   return true;
 }
 
@@ -220,6 +221,11 @@ bool NetlinkAttribute::GetRawValue(ByteString *value) const {
   return false;
 }
 
+bool NetlinkAttribute::SetRawValue(const ByteString new_value) {
+  LOG(ERROR) << "Attribute is not of type 'Raw'";
+  return false;
+}
+
 void NetlinkAttribute::Print(int log_level, int indent) const {
   string attribute_value;
   SLOG(WiFi, log_level) << HeaderToPrint(indent) << " "
@@ -235,12 +241,10 @@ string NetlinkAttribute::RawToString() const {
     return output;
   }
 
-  nlattr *data_nlattr = const_cast<nlattr *>(data());
-  uint16_t length = nla_len(data_nlattr);
+  uint16_t length = data_.GetLength();
+  const uint8_t *const_data = data_.GetConstData();
+
   StringAppendF(&output, "len=%u", length);
-
-  const uint8_t *const_data = reinterpret_cast<const uint8_t *>(data());
-
   output.append(" DATA: ");
   for (int i =0 ; i < length; ++i) {
     StringAppendF(&output, "[%d]=%02x ", i, *(const_data)+i);
@@ -260,16 +264,16 @@ string NetlinkAttribute::HeaderToPrint(int indent) const {
 }
 
 ByteString NetlinkAttribute::EncodeGeneric(const unsigned char *data,
-                                           int bytes) const {
+                                           size_t num_bytes) const {
   nlattr header;
   header.nla_type = id();
-  header.nla_len = nla_attr_size(bytes);
+  header.nla_len = nla_attr_size(num_bytes);
   ByteString result(reinterpret_cast<unsigned char *>(&header), sizeof(header));
   result.Resize(NLA_HDRLEN);  // Add padding after the header.
-  if (data && (bytes != 0)) {
-    result.Append(ByteString(data, bytes));
+  if (data && (num_bytes != 0)) {
+    result.Append(ByteString(data, num_bytes));
   }
-  result.Resize(nla_total_size(bytes));  // Add padding.
+  result.Resize(nla_total_size(num_bytes));  // Add padding.
   return result;
 }
 
@@ -582,7 +586,8 @@ bool NetlinkStringAttribute::ToString(string *output) const {
 
 ByteString NetlinkStringAttribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
-      reinterpret_cast<const unsigned char *>(value_.c_str()), value_.size());
+      reinterpret_cast<const unsigned char *>(value_.c_str()),
+      value_.size() + 1);
 }
 
 // NetlinkNestedAttribute
@@ -797,10 +802,9 @@ void NetlinkNestedAttribute::AddAttributeToNested(
     const nlattr &attr, const NestedData &nested_template) {
   switch (type) {
     case NLA_UNSPEC:
-      NOTIMPLEMENTED() << "NLA_UNSPEC parsing is in an upcoming CL.";
-      // TODO(wdg): list->CreateRawAttribute(id, attribute_name.c_str());
-      // TODO(wdg): list->SetRawAttributeValue(id, ByteString(
-      //    reinterpret_cast<const char *>(nla_data(&attr)), nla_len(&attr)));
+      list->CreateRawAttribute(id, attribute_name.c_str());
+      list->SetRawAttributeValue(id, ByteString(
+          reinterpret_cast<const char *>(nla_data(&attr)), nla_len(&attr)));
       break;
     case NLA_U8:
       list->CreateU8Attribute(id, attribute_name.c_str());
@@ -902,6 +906,12 @@ bool NetlinkRawAttribute::GetRawValue(ByteString *output) const {
   return true;
 }
 
+bool NetlinkRawAttribute::SetRawValue(const ByteString new_value) {
+  data_ = new_value;
+  has_a_value_ = true;
+  return true;
+}
+
 bool NetlinkRawAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
@@ -912,13 +922,19 @@ bool NetlinkRawAttribute::ToString(string *output) const {
                    << " hasn't been set to any value.";
     return false;
   }
-  const uint8_t *raw_data = reinterpret_cast<const uint8_t *>(data());
-  int total_bytes = nla_len(data());
+  int total_bytes = data_.GetLength();
+  const uint8_t *const_data = data_.GetConstData();
+
   *output = StringPrintf("%d bytes:", total_bytes);
   for (int i = 0; i < total_bytes; ++i) {
-    StringAppendF(output, " 0x%02x", raw_data[i]);
+    StringAppendF(output, " 0x%02x", const_data[i]);
   }
   return true;
+}
+
+ByteString NetlinkRawAttribute::Encode() const {
+  return NetlinkAttribute::EncodeGeneric(data_.GetConstData(),
+                                         data_.GetLength());
 }
 
 // Specific Attributes.
@@ -931,16 +947,7 @@ const int Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
 const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
 
 Nl80211AttributeCqm::Nl80211AttributeCqm()
-      : NetlinkNestedAttribute(kName, kNameString) {
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
-                             "NL80211_ATTR_CQM_RSSI_THOLD");
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
-                             "NL80211_ATTR_CQM_RSSI_HYST");
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
-                             "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT");
-  value_->CreateU32Attribute(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
-                             "NL80211_ATTR_CQM_PKT_LOSS_EVENT");
-}
+      : NetlinkNestedAttribute(kName, kNameString) {}
 
 bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
   static const NestedData kCqmValidationTemplate[NL80211_ATTR_CQM_MAX + 1] = {

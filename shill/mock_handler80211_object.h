@@ -13,13 +13,13 @@ namespace shill {
 
 class Nl80211Message;
 
-class MockCallback80211 : public Callback80211Object {
+class MockHandler80211 : public Callback80211Object {
  public:
-  MockCallback80211() {}
-  MOCK_METHOD1(Config80211MessageCallback, void(const Nl80211Message &msg));
+  MockHandler80211() {}
+  MOCK_METHOD1(Config80211MessageHandler, void(const Nl80211Message &msg));
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(MockCallback80211);
+  DISALLOW_COPY_AND_ASSIGN(MockHandler80211);
 };
 
 }  // namespace shill

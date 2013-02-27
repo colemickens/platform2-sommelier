@@ -25,7 +25,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/mock_callback80211_object.h"
+#include "shill/mock_handler80211_object.h"
 #include "shill/mock_nl80211_socket.h"
 #include "shill/nl80211_attribute.h"
 #include "shill/nl80211_message.h"
@@ -56,7 +56,7 @@ namespace {
 // These constants are consistent throughout the packets, below.
 
 const uint32_t kExpectedIfIndex = 4;
-const uint32_t kExpectedWifi = 0;
+const uint32_t kWiPhy = 0;
 const char kExpectedMacAddress[] = "c0:3f:0e:77:e8:7f";
 
 
@@ -374,7 +374,7 @@ class Config80211Test : public Test {
     config80211_->sock_ = NULL;
   }
   void SetupConfig80211Object() {
-    EXPECT_NE(config80211_, reinterpret_cast<Config80211 *>(NULL));
+    EXPECT_NE(reinterpret_cast<Config80211 *>(NULL), config80211_);
     config80211_->sock_ = &socket_;
     EXPECT_TRUE(config80211_->Init(reinterpret_cast<EventDispatcher *>(NULL)));
     config80211_->Reset(false);
@@ -384,44 +384,47 @@ class Config80211Test : public Test {
   MockNl80211Socket socket_;
 };
 
-class TestCallbackObject {
+class TestHandlerObject {
  public:
-  TestCallbackObject() : callback_(Bind(&TestCallbackObject::MessageHandler,
-                                        Unretained(this))) { }
+  TestHandlerObject() :
+    message_handler_(Bind(&TestHandlerObject::MessageHandler,
+                          Unretained(this))) { }
   void MessageHandler(const Nl80211Message &msg) {
   }
-  const Config80211::Callback &GetCallback() const { return callback_; }
+  const Config80211::NetlinkMessageHandler &message_handler() const {
+    return message_handler_;
+  }
 
  private:
-  Config80211::Callback callback_;
+  Config80211::NetlinkMessageHandler message_handler_;
 };
 
-// Checks a config80211 parameter to make sure it contains |callback_arg|
-// in its list of broadcast callbacks.
-MATCHER_P(ContainsCallback, callback_arg, "") {
+// Checks a config80211 parameter to make sure it contains |handler_arg|
+// in its list of broadcast handlers.
+MATCHER_P(ContainsHandler, handler_arg, "") {
   if (arg == reinterpret_cast<void *>(NULL)) {
     LOG(WARNING) << "NULL parameter";
     return false;
   }
   const Config80211 *config80211 = static_cast<Config80211 *>(arg);
-  const Config80211::Callback callback =
-      static_cast<const Config80211::Callback>(callback_arg);
+  const Config80211::NetlinkMessageHandler message_handler =
+      static_cast<const Config80211::NetlinkMessageHandler>(handler_arg);
 
-  return config80211->FindBroadcastCallback(callback);
+  return config80211->FindBroadcastHandler(message_handler);
 }
 
 TEST_F(Config80211Test, AddLinkTest) {
   SetupConfig80211Object();
 
-  // Create a broadcast callback.
-  TestCallbackObject callback_object;
+  // Create a broadcast handler.
+  TestHandlerObject handler_object;
 
-  // Install the callback and subscribe to events using it, wifi down
+  // Install the handler and subscribe to events using it, wifi down
   // (shouldn't actually send the subscription request until wifi comes up).
   EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
 
-  EXPECT_TRUE(config80211_->AddBroadcastCallback(
-      callback_object.GetCallback()));
+  EXPECT_TRUE(config80211_->AddBroadcastHandler(
+      handler_object.message_handler()));
   Config80211::EventType scan_event = Config80211::kEventTypeScan;
   string scan_event_string;
   EXPECT_TRUE(Config80211::GetEventTypeString(scan_event, &scan_event_string));
@@ -454,63 +457,63 @@ TEST_F(Config80211Test, AddLinkTest) {
   config80211_->SetWifiState(Config80211::kWifiUp);
 }
 
-TEST_F(Config80211Test, BroadcastCallbackTest) {
+TEST_F(Config80211Test, BroadcastHandlerTest) {
   SetupConfig80211Object();
 
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
 
-  MockCallback80211 callback1;
-  MockCallback80211 callback2;
+  MockHandler80211 handler1;
+  MockHandler80211 handler2;
 
-  // Simple, 1 callback, case.
-  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
-  callback1.InstallAsBroadcastCallback();
+  // Simple, 1 handler, case.
+  EXPECT_CALL(handler1, Config80211MessageHandler(_)).Times(1);
+  handler1.InstallAsBroadcastHandler();
   config80211_->OnNlMessageReceived(message);
 
-  // Add a second callback.
-  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
-  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
-  EXPECT_TRUE(callback2.InstallAsBroadcastCallback());
+  // Add a second handler.
+  EXPECT_CALL(handler1, Config80211MessageHandler(_)).Times(1);
+  EXPECT_CALL(handler2, Config80211MessageHandler(_)).Times(1);
+  EXPECT_TRUE(handler2.InstallAsBroadcastHandler());
   config80211_->OnNlMessageReceived(message);
 
-  // Verify that a callback can't be added twice.
-  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
-  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
-  EXPECT_FALSE(callback1.InstallAsBroadcastCallback());
+  // Verify that a handler can't be added twice.
+  EXPECT_CALL(handler1, Config80211MessageHandler(_)).Times(1);
+  EXPECT_CALL(handler2, Config80211MessageHandler(_)).Times(1);
+  EXPECT_FALSE(handler1.InstallAsBroadcastHandler());
   config80211_->OnNlMessageReceived(message);
 
-  // Check that we can remove a callback.
-  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(0);
-  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
-  EXPECT_TRUE(callback1.DeinstallAsCallback());
+  // Check that we can remove a handler.
+  EXPECT_CALL(handler1, Config80211MessageHandler(_)).Times(0);
+  EXPECT_CALL(handler2, Config80211MessageHandler(_)).Times(1);
+  EXPECT_TRUE(handler1.DeinstallAsHandler());
   config80211_->OnNlMessageReceived(message);
 
-  // Check that re-adding the callback goes smoothly.
-  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(1);
-  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(1);
-  EXPECT_TRUE(callback1.InstallAsBroadcastCallback());
+  // Check that re-adding the handler goes smoothly.
+  EXPECT_CALL(handler1, Config80211MessageHandler(_)).Times(1);
+  EXPECT_CALL(handler2, Config80211MessageHandler(_)).Times(1);
+  EXPECT_TRUE(handler1.InstallAsBroadcastHandler());
   config80211_->OnNlMessageReceived(message);
 
-  // Check that ClearBroadcastCallbacks works.
-  config80211_->ClearBroadcastCallbacks();
-  EXPECT_CALL(callback1, Config80211MessageCallback(_)).Times(0);
-  EXPECT_CALL(callback2, Config80211MessageCallback(_)).Times(0);
+  // Check that ClearBroadcastHandlers works.
+  config80211_->ClearBroadcastHandlers();
+  EXPECT_CALL(handler1, Config80211MessageHandler(_)).Times(0);
+  EXPECT_CALL(handler2, Config80211MessageHandler(_)).Times(0);
   config80211_->OnNlMessageReceived(message);
 }
 
-TEST_F(Config80211Test, MessageCallbackTest) {
+TEST_F(Config80211Test, MessageHandlerTest) {
   // Setup.
   SetupConfig80211Object();
 
-  MockCallback80211 callback_broadcast;
-  EXPECT_TRUE(callback_broadcast.InstallAsBroadcastCallback());
+  MockHandler80211 handler_broadcast;
+  EXPECT_TRUE(handler_broadcast.InstallAsBroadcastHandler());
 
   Nl80211Message sent_message_1(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
-  MockCallback80211 callback_sent_1;
+  MockHandler80211 handler_sent_1;
 
   Nl80211Message sent_message_2(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
-  MockCallback80211 callback_sent_2;
+  MockHandler80211 handler_sent_2;
 
   // Set up the received message as a response to sent_message_1.
   scoped_array<unsigned char> message_memory(
@@ -522,67 +525,67 @@ TEST_F(Config80211Test, MessageCallbackTest) {
 
   // Now, we can start the actual test...
 
-  // Verify that generic callback gets called for a message when no
-  // message-specific callback has been installed.
-  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  // Verify that generic handler gets called for a message when no
+  // message-specific handler has been installed.
+  EXPECT_CALL(handler_broadcast, Config80211MessageHandler(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 
-  // Send the message and give our callback.  Verify that we get called back.
+  // Send the message and give our handler.  Verify that we get called back.
   EXPECT_TRUE(config80211_->SendMessage(&sent_message_1,
-                                        callback_sent_1.callback()));
+                                        handler_sent_1.message_handler()));
   // Make it appear that this message is in response to our sent message.
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
-  EXPECT_CALL(callback_sent_1, Config80211MessageCallback(_)).Times(1);
+  EXPECT_CALL(handler_sent_1, Config80211MessageHandler(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 
-  // Verify that broadcast callback is called for the message after the
-  // message-specific callback is called once.
-  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  // Verify that broadcast handler is called for the message after the
+  // message-specific handler is called once.
+  EXPECT_CALL(handler_broadcast, Config80211MessageHandler(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 
-  // Install and then uninstall message-specific callback; verify broadcast
-  // callback is called on message receipt.
+  // Install and then uninstall message-specific handler; verify broadcast
+  // handler is called on message receipt.
   EXPECT_TRUE(config80211_->SendMessage(&sent_message_1,
-                                        callback_sent_1.callback()));
+                                        handler_sent_1.message_handler()));
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
-  EXPECT_TRUE(config80211_->RemoveMessageCallback(sent_message_1));
-  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+  EXPECT_TRUE(config80211_->RemoveMessageHandler(sent_message_1));
+  EXPECT_CALL(handler_broadcast, Config80211MessageHandler(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 
-  // Install callback for different message; verify that broadcast callback is
+  // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
   EXPECT_TRUE(config80211_->SendMessage(&sent_message_2,
-                                        callback_sent_2.callback()));
-  EXPECT_CALL(callback_broadcast, Config80211MessageCallback(_)).Times(1);
+                                        handler_sent_2.message_handler()));
+  EXPECT_CALL(handler_broadcast, Config80211MessageHandler(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 
-  // Change the ID for the message to that of the second callback; verify that
-  // the appropriate callback is called for _that_ message.
+  // Change the ID for the message to that of the second handler; verify that
+  // the appropriate handler is called for _that_ message.
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
-  EXPECT_CALL(callback_sent_2, Config80211MessageCallback(_)).Times(1);
+  EXPECT_CALL(handler_sent_2, Config80211MessageHandler(_)).Times(1);
   config80211_->OnNlMessageReceived(received_message);
 }
 
-TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_TRIGGER_SCAN) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_TRIGGER_SCAN)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_TRIGGER_SCAN);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_TRIGGER_SCAN, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   // Make sure the scan frequencies in the attribute are the ones we expect.
@@ -590,7 +593,7 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
     vector<uint32_t>list;
     EXPECT_TRUE(message->GetScanFrequenciesAttribute(
         NL80211_ATTR_SCAN_FREQUENCIES, &list));
-    EXPECT_EQ(arraysize(kScanFrequencyTrigger), list.size());
+    EXPECT_EQ(list.size(), arraysize(kScanFrequencyTrigger));
     int i = 0;
     vector<uint32_t>::const_iterator j = list.begin();
     while (j != list.end()) {
@@ -604,34 +607,34 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
     vector<string> ssids;
     EXPECT_TRUE(message->GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS,
                                                &ssids));
-    EXPECT_EQ(ssids.size(), 1);
-    EXPECT_EQ(ssids[0].compare(""), 0);  // Expect a single, empty SSID.
+    EXPECT_EQ(1, ssids.size());
+    EXPECT_EQ(0, ssids[0].compare(""));  // Expect a single, empty SSID.
   }
 
   EXPECT_TRUE(message->const_attributes()->IsFlagAttributeTrue(
       NL80211_ATTR_SUPPORT_MESH_AUTH));
 }
 
-TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_SCAN_RESULTS)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_SCAN_RESULTS);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_NEW_SCAN_RESULTS, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   // Make sure the scan frequencies in the attribute are the ones we expect.
@@ -653,33 +656,33 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
     vector<string> ssids;
     EXPECT_TRUE(message->GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS,
                                                &ssids));
-    EXPECT_EQ(ssids.size(), 1);
-    EXPECT_EQ(ssids[0].compare(""), 0);  // Expect a single, empty SSID.
+    EXPECT_EQ(1, ssids.size());
+    EXPECT_EQ(0, ssids[0].compare(""));  // Expect a single, empty SSID.
   }
 
   EXPECT_TRUE(message->const_attributes()->IsFlagAttributeTrue(
       NL80211_ATTR_SUPPORT_MESH_AUTH));
 }
 
-TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_NEW_STATION) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_STATION)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_NEW_STATION);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_NEW_STATION, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
     string value;
     EXPECT_TRUE(message->GetMacAttributeString(NL80211_ATTR_MAC, &value));
-    EXPECT_EQ(strncmp(value.c_str(), kExpectedMacAddress, value.length()), 0);
+    EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
   }
 
   {
@@ -692,30 +695,30 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_GENERATION, &value));
-    EXPECT_EQ(value, kNewStationExpectedGeneration);
+    EXPECT_EQ(kNewStationExpectedGeneration, value);
   }
 }
 
-TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_AUTHENTICATE) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_AUTHENTICATE)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_AUTHENTICATE);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_AUTHENTICATE, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
@@ -730,26 +733,26 @@ TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
   }
 }
 
-TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_ASSOCIATE) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_ASSOCIATE)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_ASSOCIATE);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_ASSOCIATE, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
@@ -764,39 +767,39 @@ TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
   }
 }
 
-TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_CONNECT) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_CONNECT)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_CONNECT);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_CONNECT, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
     string value;
     EXPECT_TRUE(message->GetMacAttributeString(NL80211_ATTR_MAC, &value));
-    EXPECT_EQ(strncmp(value.c_str(), kExpectedMacAddress, value.length()), 0);
+    EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
   }
 
   {
     uint16_t value;
     EXPECT_TRUE(message->const_attributes()->GetU16AttributeValue(
         NL80211_ATTR_STATUS_CODE, &value));
-    EXPECT_EQ(value, kExpectedConnectStatus);
+    EXPECT_EQ(kExpectedConnectStatus, value);
   }
 
   // TODO(wdg): Need to check the value of this attribute.
@@ -807,26 +810,26 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
   }
 }
 
-TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_DEAUTHENTICATE) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DEAUTHENTICATE)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_DEAUTHENTICATE);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_DEAUTHENTICATE, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
@@ -841,66 +844,66 @@ TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
   }
 }
 
-TEST_F(Config80211Test, NL80211_CMD_DISCONNECT) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_DISCONNECT) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_DISCONNECT);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_DISCONNECT, message->message_type());
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
     uint16_t value;
     EXPECT_TRUE(message->const_attributes()->GetU16AttributeValue(
         NL80211_ATTR_REASON_CODE, &value));
-    EXPECT_EQ(value, kExpectedDisconnectReason);
+    EXPECT_EQ(kExpectedDisconnectReason, value);
   }
 
   EXPECT_TRUE(message->const_attributes()->IsFlagAttributeTrue(
       NL80211_ATTR_DISCONNECTED_BY_AP));
 }
 
-TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_NOTIFY_CQM) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NOTIFY_CQM)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_NOTIFY_CQM);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_NOTIFY_CQM, message->message_type());
 
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
     string value;
     EXPECT_TRUE(message->GetMacAttributeString(NL80211_ATTR_MAC, &value));
-    EXPECT_EQ(strncmp(value.c_str(), kExpectedMacAddress, value.length()), 0);
+    EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
   }
 
   {
@@ -913,31 +916,31 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
     uint32_t pkt_loss_event;
     EXPECT_TRUE(nested->GetU32AttributeValue(
         NL80211_ATTR_CQM_PKT_LOSS_EVENT, &pkt_loss_event));
-    EXPECT_EQ(pkt_loss_event, kExpectedCqmNotAcked);
+    EXPECT_EQ(kExpectedCqmNotAcked, pkt_loss_event);
   }
 }
 
-TEST_F(Config80211Test, NL80211_CMD_DISASSOCIATE) {
+TEST_F(Config80211Test, Parse_NL80211_CMD_DISASSOCIATE) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISASSOCIATE)));
 
-  EXPECT_NE(message, reinterpret_cast<Nl80211Message *>(NULL));
-  EXPECT_EQ(message->message_type(), NL80211_CMD_DISASSOCIATE);
+  EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
+  EXPECT_EQ(NL80211_CMD_DISASSOCIATE, message->message_type());
 
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_WIPHY, &value));
-    EXPECT_EQ(value, kExpectedWifi);
+    EXPECT_EQ(kWiPhy, value);
   }
 
   {
     uint32_t value;
     EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_IFINDEX, &value));
-    EXPECT_EQ(value, kExpectedIfIndex);
+    EXPECT_EQ(kExpectedIfIndex, value);
   }
 
   {
