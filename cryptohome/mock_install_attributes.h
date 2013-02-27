@@ -26,7 +26,7 @@ class MockInstallAttributes : public InstallAttributes {
 
   MOCK_METHOD0(Init, bool());
 
-  MOCK_METHOD0(IsReady, bool());
+  MOCK_CONST_METHOD0(IsReady, bool());
 
   MOCK_CONST_METHOD2(Get, bool(const std::string&, chromeos::Blob*));
 

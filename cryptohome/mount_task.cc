@@ -27,6 +27,19 @@ MountTask::MountTask(MountTaskObserver* observer,
   result_->set_sequence_id(sequence_id_);
 }
 
+MountTask::MountTask(MountTaskObserver* observer,
+                     Mount* mount)
+    : mount_(mount),
+      credentials_(),
+      sequence_id_(-1),
+      observer_(observer),
+      default_result_(new MountTaskResult),
+      result_(default_result_.get()),
+      complete_event_(NULL) {
+  sequence_id_ = NextSequence();
+  result_->set_sequence_id(sequence_id_);
+}
+
 MountTask::~MountTask() {
 }
 
@@ -141,7 +154,7 @@ void MountTaskUpdateCurrentUserActivityTimestamp::Run() {
 
 MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
                                          Mount* mount)
-    : MountTask(observer, mount, UsernamePasskey()),
+    : MountTask(observer, mount),
       pkcs11_init_result_(new MountTaskResult(kPkcs11InitResultEventType)) {
   set_result(pkcs11_init_result_.get());
 }

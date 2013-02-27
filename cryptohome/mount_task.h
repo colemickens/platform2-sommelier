@@ -188,6 +188,8 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   MountTask(MountTaskObserver* observer,
             Mount* mount,
             const UsernamePasskey& credentials);
+  MountTask(MountTaskObserver* observer,
+            Mount* mount);
   virtual ~MountTask();
 
   // Run is called by the worker thread when this task is being processed
@@ -259,7 +261,7 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
 class MountTaskNop : public MountTask {
  public:
   explicit MountTaskNop(MountTaskObserver* observer)
-      : MountTask(observer, NULL, UsernamePasskey()) {
+      : MountTask(observer, NULL) {
   }
   virtual ~MountTaskNop() { }
 
@@ -296,7 +298,7 @@ class MountTaskMountGuest : public MountTask {
  public:
   MountTaskMountGuest(MountTaskObserver* observer,
                       Mount* mount)
-      : MountTask(observer, mount, UsernamePasskey()) {
+      : MountTask(observer, mount) {
   }
   virtual ~MountTaskMountGuest() { }
 
@@ -334,7 +336,7 @@ class MountTaskUnmount : public MountTask {
  public:
   MountTaskUnmount(MountTaskObserver* observer,
                    Mount* mount)
-      : MountTask(observer, mount, UsernamePasskey()) {
+      : MountTask(observer, mount) {
   }
   virtual ~MountTaskUnmount() { }
 
@@ -384,7 +386,7 @@ class MountTaskRemove : public MountTask {
 class MountTaskResetTpmContext : public MountTask {
  public:
   MountTaskResetTpmContext(MountTaskObserver* observer, Mount* mount)
-      : MountTask(observer, mount, UsernamePasskey()) {
+      : MountTask(observer, mount) {
   }
   virtual ~MountTaskResetTpmContext() { }
 
@@ -400,7 +402,7 @@ class MountTaskAutomaticFreeDiskSpace : public MountTask {
  public:
   MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,
                                   Mount* mount)
-      : MountTask(observer, mount, UsernamePasskey()) {
+      : MountTask(observer, mount) {
   }
   virtual ~MountTaskAutomaticFreeDiskSpace() { }
 
@@ -417,7 +419,7 @@ class MountTaskUpdateCurrentUserActivityTimestamp : public MountTask {
   MountTaskUpdateCurrentUserActivityTimestamp(MountTaskObserver* observer,
                                               Mount* mount,
                                               int time_shift_sec)
-      : MountTask(observer, mount, UsernamePasskey()),
+      : MountTask(observer, mount),
         time_shift_sec_(time_shift_sec) {
   }
   virtual ~MountTaskUpdateCurrentUserActivityTimestamp() { }
@@ -448,7 +450,7 @@ class MountTaskInstallAttrsFinalize : public MountTask {
  public:
   MountTaskInstallAttrsFinalize(MountTaskObserver* observer,
                                 InstallAttributes* attrs)
-      : MountTask(observer, NULL, UsernamePasskey()),
+      : MountTask(observer, NULL),
         install_attrs_(attrs) { }
   virtual ~MountTaskInstallAttrsFinalize() { }
 

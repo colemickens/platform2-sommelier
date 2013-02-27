@@ -14,7 +14,7 @@ namespace cryptohome {
 // Implements a simple writer wrapper for arbitrary Lockboxes
 class LockboxCache {
  public:
-  LockboxCache() : loaded_(false), tpm_(NULL), platform_(NULL), index_(0) {}
+  LockboxCache() : loaded_(false), tpm_(NULL), platform_(NULL) {}
   virtual ~LockboxCache() {}
   // Prepares the cache for use.
   // Does not take ownership of any pointers.
@@ -31,7 +31,6 @@ class LockboxCache {
   bool loaded_;
   Tpm* tpm_;
   Platform* platform_;
-  uint32_t index_;
   chromeos::Blob contents_;
 };
 }  // namespace cryptohome

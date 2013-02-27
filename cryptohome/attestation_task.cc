@@ -12,7 +12,7 @@ namespace cryptohome {
 
 AttestationTask::AttestationTask(AttestationTaskObserver* observer,
                                  Attestation* attestation)
-    : MountTask(observer, NULL, UsernamePasskey()),
+    : MountTask(observer, NULL),
       attestation_(attestation) {
 }
 

@@ -54,6 +54,7 @@ class MountTaskTest : public ::testing::Test {
   MockMount mount_;
   MountTaskResult result_;
   base::TimeDelta wait_time_;
+  UsernamePasskey empty_credentials_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MountTaskTest);
@@ -106,7 +107,7 @@ TEST_F(MountTaskTest, ResultEqualsTest) {
 TEST_F(MountTaskTest, EventTest) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTask> mount_task
-      = new MountTask(NULL, NULL, UsernamePasskey());
+      = new MountTask(NULL, NULL);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -118,7 +119,7 @@ TEST_F(MountTaskTest, EventTest) {
 TEST_F(MountTaskTest, ObserveTest) {
   MountTaskNotifier notifier;
   scoped_refptr<MountTask> mount_task
-      = new MountTask(&notifier, NULL, UsernamePasskey());
+      = new MountTask(&notifier, NULL);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&MountTask::Run, mount_task.get()));
@@ -150,7 +151,7 @@ TEST_F(MountTaskTest, MountTest) {
   ASSERT_FALSE(event_.IsSignaled());
   Mount::MountArgs mount_args;
   scoped_refptr<MountTaskMount> mount_task =
-      new MountTaskMount(NULL, &mount_, UsernamePasskey(), mount_args);
+      new MountTaskMount(NULL, &mount_, empty_credentials_, mount_args);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -181,7 +182,7 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskMigratePasskey> mount_task
-      = new MountTaskMigratePasskey(NULL, &homedirs, UsernamePasskey(), "");
+      = new MountTaskMigratePasskey(NULL, &homedirs, empty_credentials_, "");
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -211,7 +212,7 @@ TEST_F(MountTaskTest, TestCredentialsMountTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(NULL, &mount_, NULL, UsernamePasskey());
+      = new MountTaskTestCredentials(NULL, &mount_, NULL, empty_credentials_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -227,7 +228,7 @@ TEST_F(MountTaskTest, TestCredentialsHomeDirsTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(NULL, NULL, &homedirs, UsernamePasskey());
+      = new MountTaskTestCredentials(NULL, NULL, &homedirs, empty_credentials_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -243,7 +244,7 @@ TEST_F(MountTaskTest, RemoveTest) {
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskRemove> mount_task
-      = new MountTaskRemove(NULL, NULL, UsernamePasskey(), &homedirs);
+      = new MountTaskRemove(NULL, NULL, empty_credentials_, &homedirs);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,

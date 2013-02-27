@@ -951,7 +951,7 @@ class AltImageTest : public MountTest {
  public:
   AltImageTest() { }
 
-  void SetUp(const TestUserInfo *users, int user_count) {
+  void SetUpAltImage(const TestUserInfo *users, int user_count) {
     // Set up fresh users.
     MountTest::SetUp();
     InsertTestUsers(users, user_count);
@@ -1102,7 +1102,7 @@ class DoAutomaticFreeDiskSpaceControlTest : public AltImageTest {
   DoAutomaticFreeDiskSpaceControlTest() { }
 
   void SetUp() {
-    AltImageTest::SetUp(kAlternateUsers, kAlternateUserCount);
+    SetUpAltImage(kAlternateUsers, kAlternateUserCount);
   }
 
  private:
@@ -1602,7 +1602,7 @@ class EphemeralNoUserSystemTest : public AltImageTest {
   EphemeralNoUserSystemTest() { }
 
   void SetUp() {
-    AltImageTest::SetUp(kNoUsers, kNoUserCount);
+    SetUpAltImage(kNoUsers, kNoUserCount);
   }
 
  private:
@@ -1773,7 +1773,7 @@ class EphemeralOwnerOnlySystemTest : public AltImageTest {
   EphemeralOwnerOnlySystemTest() { }
 
   void SetUp() {
-    AltImageTest::SetUp(kOwnerOnlyUsers, kOwnerOnlyUserCount);
+    SetUpAltImage(kOwnerOnlyUsers, kOwnerOnlyUserCount);
   }
 
  private:
@@ -1906,7 +1906,7 @@ class EphemeralExistingUserSystemTest : public AltImageTest {
   EphemeralExistingUserSystemTest() { }
 
   void SetUp() {
-    AltImageTest::SetUp(kAlternateUsers, kAlternateUserCount);
+    SetUpAltImage(kAlternateUsers, kAlternateUserCount);
   }
 
  private:

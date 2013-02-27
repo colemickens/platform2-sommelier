@@ -34,22 +34,6 @@
 using base::SplitString;
 using std::string;
 
-namespace {
-
-// TODO(ellyjones): once we have a newer libbase, migrate to
-// base::StringToUint(). TODOBASE
-bool StringToUint(const std::string& str, unsigned int *value) {
-  char *ep = NULL;
-  // cpplint warns about strtoul(), but our libbase doesn't have StringToUint
-  unsigned int v = strtoul(str.c_str(), &ep, 10); // NOLINT strtoul
-  if (str.size() && *ep)
-    return false;
-  *value = v;
-  return true;
-}
-
-};  // namespace
-
 namespace cryptohome {
 
 const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
