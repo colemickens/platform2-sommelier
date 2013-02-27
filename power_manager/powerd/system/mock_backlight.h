@@ -19,8 +19,17 @@ using ::testing::SetArgumentPointee;
 namespace power_manager {
 namespace system {
 
+// TODO(derat): Remove this and replace it with a simple stub implementation.
 class MockBacklight : public BacklightInterface {
  public:
+  MockBacklight() {
+    EXPECT_CALL(*this, AddObserver(NotNull())).WillRepeatedly(Return());
+    EXPECT_CALL(*this, RemoveObserver(NotNull())).WillRepeatedly(Return());
+  }
+
+  MOCK_METHOD1(AddObserver, void(BacklightInterfaceObserver*));
+  MOCK_METHOD1(RemoveObserver, void(BacklightInterfaceObserver*));
+
   MOCK_METHOD1(GetCurrentBrightnessLevel, bool(int64* current_level));
   void ExpectGetCurrentBrightnessLevel(int64 current_level,
                                        bool ret_val) {

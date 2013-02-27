@@ -42,12 +42,12 @@ class TestBacklight : public system::BacklightInterface {
 
   int64 current_level() const { return current_level_; }
 
-  void NotifyObserver() {
-    if (observer_)
-      observer_->OnBacklightDeviceChanged();
-  }
-
   // BacklightInterface implementation:
+  virtual void AddObserver(system::BacklightInterfaceObserver* observer)
+      OVERRIDE {}
+  virtual void RemoveObserver(system::BacklightInterfaceObserver* observer)
+      OVERRIDE {}
+
   virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE {
     if (should_fail_)
       return false;

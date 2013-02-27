@@ -179,6 +179,16 @@ bool ExternalBacklight::Init() {
   return true;
 }
 
+void ExternalBacklight::AddObserver(BacklightInterfaceObserver* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
+
+void ExternalBacklight::RemoveObserver(BacklightInterfaceObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
 bool ExternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
   return ReadBrightnessLevels(NULL, max_level);
 }
@@ -317,10 +327,10 @@ gboolean ExternalBacklight::ScanForDisplays() {
     display_devices_.erase(iter++);
   }
 
-  // If no devices remain, notify the observer and quit.
+  // If no devices remain, notify observers and quit.
   if (display_devices_.empty()) {
-    if (observer_)
-      observer_->OnBacklightDeviceChanged();
+    FOR_EACH_OBSERVER(BacklightInterfaceObserver, observers_,
+                      OnBacklightDeviceChanged());
     primary_device_.clear();
     return false;
   }
@@ -334,9 +344,8 @@ gboolean ExternalBacklight::ScanForDisplays() {
   if (!HasValidHandle())
     LOG(WARNING) << "Invalid handle for device " << primary_device_;
 
-  if (observer_)
-    observer_->OnBacklightDeviceChanged();
-
+  FOR_EACH_OBSERVER(BacklightInterfaceObserver, observers_,
+                    OnBacklightDeviceChanged());
   return false;
 }
 

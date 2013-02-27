@@ -17,14 +17,12 @@ namespace system {
 class BacklightInterfaceObserver {
  public:
   BacklightInterfaceObserver() {}
+  virtual ~BacklightInterfaceObserver() {}
 
   // Called when the underlying device has changed.  This generally means that
   // the available range of brightness levels (and likely also the current
   // level) has changed.
   virtual void OnBacklightDeviceChanged() = 0;
-
- protected:
-  virtual ~BacklightInterfaceObserver() {}
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BacklightInterfaceObserver);
@@ -33,33 +31,29 @@ class BacklightInterfaceObserver {
 // Interface for getting and setting the backlight level from hardware.
 class BacklightInterface {
  public:
-  BacklightInterface() : observer_(NULL) {}
+  BacklightInterface() {}
+  virtual ~BacklightInterface() {}
 
-  void set_observer(BacklightInterfaceObserver* observer) {
-    DCHECK(!observer || !observer_) << "Replacing existing observer";
-    observer_ = observer;
-  }
+  // Adds or removes an observer.
+  virtual void AddObserver(BacklightInterfaceObserver* observer) = 0;
+  virtual void RemoveObserver(BacklightInterfaceObserver* observer) = 0;
 
-  // Get the maximum brightness level (in an an arbitrary device-specific range;
-  // note that 0 is always the minimum allowable value, though).  This value
-  // never changes.  Returns false on failure.
+  // Gets the maximum brightness level (in an an arbitrary device-specific
+  // range; note that 0 is always the minimum allowable value, though).  If
+  // this value changes, observers' OnBacklightDeviceChanged() methods will
+  // be called.  Returns false on failure.
   virtual bool GetMaxBrightnessLevel(int64* max_level) = 0;
 
-  // Get the current brightness level (in an an arbitrary device-specific
+  // Gets the current brightness level (in an an arbitrary device-specific
   // range).  Returns false on failure.
   virtual bool GetCurrentBrightnessLevel(int64* current_level) = 0;
 
-  // Set the backlight to |level| over |interval|.  Returns false on failure.
+  // Sets the backlight to |level| over |interval|.  Returns false on failure.
   virtual bool SetBrightnessLevel(int64 level,
                                   base::TimeDelta interval) = 0;
 
-  // Set the resume backlight to |level|.  Returns false on failure.
+  // Sets the resume backlight to |level|.  Returns false on failure.
   virtual bool SetResumeBrightnessLevel(int64 level) = 0;
-
- protected:
-  virtual ~BacklightInterface() {}
-
-  BacklightInterfaceObserver* observer_;  // not owned
 
  private:
   DISALLOW_COPY_AND_ASSIGN(BacklightInterface);

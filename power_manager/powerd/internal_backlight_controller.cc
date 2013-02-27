@@ -108,12 +108,12 @@ InternalBacklightController::InternalBacklightController(
   DCHECK(backlight_);
   DCHECK(prefs_);
   DCHECK(monitor_reconfigure_);
-  backlight_->set_observer(this);
+  backlight_->AddObserver(this);
 }
 
 InternalBacklightController::~InternalBacklightController() {
   util::RemoveTimeout(&set_screen_power_state_timeout_id_);
-  backlight_->set_observer(NULL);
+  backlight_->RemoveObserver(this);
   if (light_sensor_) {
     light_sensor_->RemoveObserver(this);
     light_sensor_ = NULL;

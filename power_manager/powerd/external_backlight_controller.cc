@@ -38,11 +38,11 @@ ExternalBacklightController::ExternalBacklightController(
       disable_dbus_for_testing_(false) {
   DCHECK(backlight_);
   DCHECK(monitor_reconfigure_);
-  backlight_->set_observer(this);
+  backlight_->AddObserver(this);
 }
 
 ExternalBacklightController::~ExternalBacklightController() {
-  backlight_->set_observer(NULL);
+  backlight_->RemoveObserver(this);
 }
 
 bool ExternalBacklightController::Init() {

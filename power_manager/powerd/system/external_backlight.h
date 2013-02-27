@@ -11,12 +11,11 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
+#include "base/observer_list.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
-typedef int gboolean;  // Forward declaration of bool type used by glib.
-
-// Forward declarations of structs from libudev.h.
+typedef int gboolean;
 struct udev;
 struct udev_monitor;
 
@@ -33,10 +32,13 @@ class ExternalBacklight : public BacklightInterface {
   bool Init();
 
   // Overridden from BacklightInterface:
-  virtual bool GetMaxBrightnessLevel(int64* max_level);
-  virtual bool GetCurrentBrightnessLevel(int64* current_level);
-  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval);
-  virtual bool SetResumeBrightnessLevel(int64 level);
+  virtual void AddObserver(BacklightInterfaceObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(BacklightInterfaceObserver* observer) OVERRIDE;
+  virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE;
+  virtual bool GetCurrentBrightnessLevel(int64* current_level) OVERRIDE;
+  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
+      OVERRIDE;
+  virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;
 
  private:
   // This contains a set of i2c devices, represented as name-handle pairs.
@@ -59,6 +61,8 @@ class ExternalBacklight : public BacklightInterface {
   // Reads the current and maximum brightness levels into the supplied pointers.
   // Either pointer can be NULL.
   bool ReadBrightnessLevels(int64* current_level, int64* max_level);
+
+  ObserverList<BacklightInterfaceObserver> observers_;
 
   // A list of display devices currently connected via i2c.
   I2CDeviceList display_devices_;

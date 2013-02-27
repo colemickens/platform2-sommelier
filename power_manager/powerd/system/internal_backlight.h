@@ -50,25 +50,28 @@ class InternalBacklight : public BacklightInterface {
   gboolean TriggerTransitionTimeoutForTesting();
 
   // Overridden from BacklightInterface:
-  virtual bool GetMaxBrightnessLevel(int64* max_level);
-  virtual bool GetCurrentBrightnessLevel(int64* current_level);
-  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval);
-  virtual bool SetResumeBrightnessLevel(int64 level);
+  virtual void AddObserver(BacklightInterfaceObserver* observer) OVERRIDE {}
+  virtual void RemoveObserver(BacklightInterfaceObserver* observer) OVERRIDE {}
+  virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE;
+  virtual bool GetCurrentBrightnessLevel(int64* current_level) OVERRIDE;
+  virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
+      OVERRIDE;
+  virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;
 
  private:
-  // Generate FilePaths within |dir_path| for reading and writing brightness
-  // information.
+  // Generates FilePaths within |dir_path| for reading and writing
+  // brightness information.
   static void GetBacklightFilePaths(const base::FilePath& dir_path,
                                     base::FilePath* actual_brightness_path,
                                     base::FilePath* brightness_path,
                                     base::FilePath* max_brightness_path,
                                     base::FilePath* resume_brightness_path);
 
-  // Look for the existence of required files and return the max brightness.
+  // Looks for the existence of required files and returns the max brightness.
   // Returns 0 if necessary files are missing.
   static int64 CheckBacklightFiles(const base::FilePath& dir_path);
 
-  // Read the value from |path| to |level|.  Returns false on failure.
+  // Reads the value from |path| to |level|.  Returns false on failure.
   static bool ReadBrightnessLevelFromFile(const base::FilePath& path,
                                           int64* level);
 
