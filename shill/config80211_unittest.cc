@@ -30,6 +30,7 @@
 #include "shill/nl80211_attribute.h"
 #include "shill/nl80211_message.h"
 #include "shill/nl80211_socket.h"
+#include "shill/refptr_types.h"
 
 using base::Bind;
 using base::Unretained;
@@ -572,15 +573,15 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
@@ -607,7 +608,7 @@ TEST_F(Config80211Test, NL80211_CMD_TRIGGER_SCAN) {
     EXPECT_EQ(ssids[0].compare(""), 0);  // Expect a single, empty SSID.
   }
 
-  EXPECT_TRUE(message->attributes().IsFlagAttributeTrue(
+  EXPECT_TRUE(message->const_attributes()->IsFlagAttributeTrue(
       NL80211_ATTR_SUPPORT_MESH_AUTH));
 }
 
@@ -621,15 +622,15 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
@@ -656,7 +657,7 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_SCAN_RESULTS) {
     EXPECT_EQ(ssids[0].compare(""), 0);  // Expect a single, empty SSID.
   }
 
-  EXPECT_TRUE(message->attributes().IsFlagAttributeTrue(
+  EXPECT_TRUE(message->const_attributes()->IsFlagAttributeTrue(
       NL80211_ATTR_SUPPORT_MESH_AUTH));
 }
 
@@ -670,8 +671,8 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
@@ -682,14 +683,14 @@ TEST_F(Config80211Test, NL80211_CMD_NEW_STATION) {
   }
 
   {
-    WeakPtr<AttributeList> nested;
-    EXPECT_TRUE(message->attributes().GetNestedAttributeValue(
+    AttributeListConstRefPtr nested;
+    EXPECT_TRUE(message->const_attributes()->ConstGetNestedAttributeList(
         NL80211_ATTR_STA_INFO, &nested));
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
         NL80211_ATTR_GENERATION, &value));
     EXPECT_EQ(value, kNewStationExpectedGeneration);
   }
@@ -705,22 +706,22 @@ TEST_F(Config80211Test, NL80211_CMD_AUTHENTICATE) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
   {
     ByteString rawdata;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(NL80211_ATTR_FRAME,
-                                                           &rawdata));
+    EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
+        NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kAuthenticateFrame,
@@ -739,22 +740,22 @@ TEST_F(Config80211Test, NL80211_CMD_ASSOCIATE) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
   {
     ByteString rawdata;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(NL80211_ATTR_FRAME,
-                                                           &rawdata));
+    EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
+        NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kAssociateFrame,
@@ -773,15 +774,15 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
@@ -793,7 +794,7 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
 
   {
     uint16_t value;
-    EXPECT_TRUE(message->attributes().GetU16AttributeValue(
+    EXPECT_TRUE(message->const_attributes()->GetU16AttributeValue(
         NL80211_ATTR_STATUS_CODE, &value));
     EXPECT_EQ(value, kExpectedConnectStatus);
   }
@@ -801,8 +802,8 @@ TEST_F(Config80211Test, NL80211_CMD_CONNECT) {
   // TODO(wdg): Need to check the value of this attribute.
   {
     ByteString rawdata;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(NL80211_ATTR_RESP_IE,
-                                                           &rawdata));
+    EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
+        NL80211_ATTR_RESP_IE, &rawdata));
   }
 }
 
@@ -816,22 +817,22 @@ TEST_F(Config80211Test, NL80211_CMD_DEAUTHENTICATE) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
   {
     ByteString rawdata;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(NL80211_ATTR_FRAME,
-                                                           &rawdata));
+    EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
+        NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kDeauthenticateFrame,
@@ -850,26 +851,26 @@ TEST_F(Config80211Test, NL80211_CMD_DISCONNECT) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
   {
     uint16_t value;
-    EXPECT_TRUE(message->attributes().GetU16AttributeValue(
+    EXPECT_TRUE(message->const_attributes()->GetU16AttributeValue(
         NL80211_ATTR_REASON_CODE, &value));
     EXPECT_EQ(value, kExpectedDisconnectReason);
   }
 
-  EXPECT_TRUE(message->attributes().IsFlagAttributeTrue(
+  EXPECT_TRUE(message->const_attributes()->IsFlagAttributeTrue(
       NL80211_ATTR_DISCONNECTED_BY_AP));
 }
 
@@ -884,15 +885,15 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                          &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
@@ -903,9 +904,9 @@ TEST_F(Config80211Test, NL80211_CMD_NOTIFY_CQM) {
   }
 
   {
-    WeakPtr<AttributeList> nested;
-    EXPECT_TRUE(message->attributes().GetNestedAttributeValue(NL80211_ATTR_CQM,
-                                                              &nested));
+    AttributeListConstRefPtr nested;
+    EXPECT_TRUE(message->const_attributes()->ConstGetNestedAttributeList(
+        NL80211_ATTR_CQM, &nested));
     uint32_t threshold_event;
     EXPECT_FALSE(nested->GetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT, &threshold_event));
@@ -927,22 +928,22 @@ TEST_F(Config80211Test, NL80211_CMD_DISASSOCIATE) {
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_WIPHY, &value));
     EXPECT_EQ(value, kExpectedWifi);
   }
 
   {
     uint32_t value;
-    EXPECT_TRUE(message->attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                           &value));
+    EXPECT_TRUE(message->const_attributes()->GetU32AttributeValue(
+        NL80211_ATTR_IFINDEX, &value));
     EXPECT_EQ(value, kExpectedIfIndex);
   }
 
   {
     ByteString rawdata;
-    EXPECT_TRUE(message->attributes().GetRawAttributeValue(NL80211_ATTR_FRAME,
-                                                           &rawdata));
+    EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
+        NL80211_ATTR_FRAME, &rawdata));
     EXPECT_FALSE(rawdata.IsEmpty());
     Nl80211Frame frame(rawdata);
     Nl80211Frame expected_frame(ByteString(kDisassociateFrame,

@@ -25,14 +25,14 @@ void Callback80211Metrics::Config80211MessageCallback(
   if (metrics_ &&
       message.message_type() == DeauthenticateMessage::kCommand) {
     Metrics::WiFiDisconnectByWhom by_whom =
-        message.attributes().IsFlagAttributeTrue(
+        message.const_attributes()->IsFlagAttributeTrue(
             NL80211_ATTR_DISCONNECTED_BY_AP) ?
                     Metrics::kDisconnectedByAp : Metrics::kDisconnectedNotByAp;
     uint16_t reason = static_cast<uint16_t>(
         IEEE_80211::kReasonCodeInvalid);
     ByteString rawdata;
-    if (message.attributes().GetRawAttributeValue(NL80211_ATTR_FRAME,
-                                                  &rawdata)) {
+    if (message.const_attributes()->GetRawAttributeValue(NL80211_ATTR_FRAME,
+                                                         &rawdata)) {
       Nl80211Frame frame(rawdata);
       reason = frame.reason();
     }

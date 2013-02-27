@@ -24,9 +24,15 @@ using std::string;
 
 using base::StringAppendF;
 using base::StringPrintf;
-using base::WeakPtr;
 
 namespace shill {
+
+// This is a type-corrected copy of |nla_for_each_nested| from libnl.
+#define nla_for_each_nested_type_corrected(pos, nla, rem) \
+  for (pos = reinterpret_cast<struct nlattr *>(nla_data(nla)), \
+       rem = nla_len(nla); \
+    nla_ok(pos, rem); \
+    pos = nla_next(pos, &(rem)))
 
 NetlinkAttribute::NetlinkAttribute(int id,
                                    const char *id_string,
@@ -193,7 +199,18 @@ bool NetlinkAttribute::SetStringValue(string value) {
   return false;
 }
 
-bool NetlinkAttribute::GetNestedValue(WeakPtr<AttributeList> *value) {
+bool NetlinkAttribute::GetNestedAttributeList(AttributeListRefPtr *value) {
+  LOG(ERROR) << "Attribute is not of type 'Nested'";
+  return false;
+}
+
+bool NetlinkAttribute::ConstGetNestedAttributeList(
+    AttributeListConstRefPtr *value) const {
+  LOG(ERROR) << "Attribute is not of type 'Nested'";
+  return false;
+}
+
+bool NetlinkAttribute::SetNestedHasAValue() {
   LOG(ERROR) << "Attribute is not of type 'Nested'";
   return false;
 }
@@ -569,24 +586,244 @@ ByteString NetlinkStringAttribute::Encode() const {
 }
 
 // NetlinkNestedAttribute
+
 const char NetlinkNestedAttribute::kMyTypeString[] = "nested";
 const NetlinkAttribute::Type NetlinkNestedAttribute::kType =
     NetlinkAttribute::kTypeNested;
 
 NetlinkNestedAttribute::NetlinkNestedAttribute(int id,
                                                const char *id_string) :
-    NetlinkAttribute(id, id_string, kType, kMyTypeString) {}
+    NetlinkAttribute(id, id_string, kType, kMyTypeString),
+    value_(new AttributeList) {}
 
-bool NetlinkNestedAttribute::GetNestedValue(WeakPtr<AttributeList> *output) {
+bool NetlinkNestedAttribute::GetNestedAttributeList(
+    AttributeListRefPtr *output) {
+  // Not checking |has_a_value| since GetNestedValue is called to get a newly
+  // created AttributeList in order to have something to which to add
+  // attributes.
+  if (output) {
+    *output = value_;
+  }
+  return true;
+}
+
+bool NetlinkNestedAttribute::ConstGetNestedAttributeList(
+    AttributeListConstRefPtr *output) const {
   if (!has_a_value_) {
-    SLOG(WiFi, 7)  << "Nested attribute " << id_string()
-                   << " hasn't been set to any value.";
+    LOG(ERROR) << "Attribute does not exist.";
     return false;
   }
   if (output) {
-    *output = value_.AsWeakPtr();
+    *output = value_;
   }
   return true;
+}
+
+bool NetlinkNestedAttribute::SetNestedHasAValue() {
+  has_a_value_ = true;
+  return true;
+}
+
+// static
+bool NetlinkNestedAttribute::InitNestedFromNlAttr(
+    AttributeList *list,
+    const NestedData *nested_template,
+    size_t nested_template_size,
+    const nlattr *const_data) {
+  if (!nested_template) {
+    LOG(ERROR) << "Null |nested_template| parameter";
+    return false;
+  }
+  if ((nested_template_size == 1) && (nested_template[0].is_array)) {
+    return ParseNestedArray(list, *nested_template, const_data);
+  } else {
+    return ParseNestedStructure(list, nested_template, nested_template_size,
+                                const_data);
+  }
+  return true;
+}
+
+// A nested array provides an arbitrary number of children, all of the same
+// data type.  Each array element may be a simple type or may be a structure.
+//
+// static
+bool NetlinkNestedAttribute::ParseNestedArray(
+    AttributeList *list,
+    const NestedData &array_template,
+    const nlattr *const_data) {
+  if (!list) {
+    LOG(ERROR) << "NULL |list| parameter";
+    return false;
+  }
+  if (!const_data) {
+    LOG(ERROR) << "Null |const_data| parameter";
+    return false;
+  }
+  // Casting away constness since |nla_parse_nested| doesn't mark its input as
+  // const even though it doesn't modify this input parameter.
+  nlattr *attrs = const_cast<nlattr *>(const_data);
+
+  struct nlattr *attr;
+  int remaining;
+  // The |nlattr::nla_type| value for array elements in the provided data may
+  // start on any number and are allowed to be discontiguous.  In order to
+  // skirt writing an iterator, this code replaces the |nla_type| with a
+  // contiguous |id|, starting at 1 (note that, while nested structure
+  // attributes may not have an |nlattr::nla_type| valued at zero, no such
+  // restriction exists for nested array attributes -- this code starts the id
+  // at zero in order to be consistent with nested structures).
+  //
+  // TODO(wdg): Determine whether any code depends on the value of
+  // |nlattr::nla_type| for nested array attributes.
+  int id = 1;
+  nla_for_each_nested_type_corrected(attr, attrs, remaining) {
+    string attribute_name = StringPrintf("%s_%d",
+                                         array_template.attribute_name, id);
+    AddAttributeToNested(list, array_template.policy.type, id, attribute_name,
+                         *attr, array_template);
+    ++id;
+  }
+  return true;
+}
+
+// A nested structure provides a fixed set of child attributes (some of
+// which may be optional).  The caller provides the expectation of the members
+// and values of a nested structure in the supplied 'policy' template
+// (|struct_template|).
+//
+// static
+bool NetlinkNestedAttribute::ParseNestedStructure(
+    AttributeList *list,
+    const NestedData *struct_template,
+    size_t nested_template_size,
+    const nlattr *const_data) {
+  if (!list) {
+    LOG(ERROR) << "NULL |list| parameter";
+    return false;
+  }
+  if (!struct_template) {
+    LOG(ERROR) << "Null |struct_template| parameter";
+    return false;
+  }
+  if (nested_template_size == 0) {
+    LOG(ERROR) << "|nested_template_size| parameter is zero";
+    return false;
+  }
+  if (!const_data) {
+    LOG(ERROR) << "Null |const_data| parameter";
+    return false;
+  }
+  // Casting away constness since |nla_parse_nested| doesn't mark its input as
+  // const even though it doesn't modify this input parameter.
+  nlattr *attr_data = const_cast<nlattr *>(const_data);
+
+  // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
+  // of zero is illegal, we still need to fill that spot in the policy
+  // array so the loop will start at zero.
+  scoped_array<nla_policy> policy(new nla_policy[nested_template_size]);
+  for (size_t id = 0; id < nested_template_size ; ++id) {
+    memcpy(&policy[id], &struct_template[id].policy, sizeof(nla_policy));
+  }
+
+  // |nla_parse_nested| builds an array of |nlattr| from the input message.
+  scoped_array<nlattr *>attr(new nlattr *[nested_template_size]);
+  if (nla_parse_nested(attr.get(), nested_template_size-1, attr_data,
+                       policy.get())) {
+    LOG(ERROR) << "nla_parse_nested failed";
+    return false;
+  }
+
+  // Note that the attribute id of zero is illegal so we'll start with id=1.
+  for (size_t id = 1; id < nested_template_size; ++id) {
+    // Add |attr[id]| if it exists, otherwise, it's a legally omitted optional
+    // attribute.
+    if (attr[id]) {
+      AddAttributeToNested(list, policy[id].type, id,
+                           struct_template[id].attribute_name, *attr[id],
+                           struct_template[id]);
+    }
+  }
+  return true;
+}
+
+// static
+void NetlinkNestedAttribute::AddAttributeToNested(
+    AttributeList *list, uint16_t type, size_t id, const string &attribute_name,
+    const nlattr &attr, const NestedData &nested_template) {
+  switch (type) {
+    case NLA_UNSPEC:
+      NOTIMPLEMENTED() << "NLA_UNSPEC parsing is in an upcoming CL.";
+      // TODO(wdg): list->CreateRawAttribute(id, attribute_name.c_str());
+      // TODO(wdg): list->SetRawAttributeValue(id, ByteString(
+      //    reinterpret_cast<const char *>(nla_data(&attr)), nla_len(&attr)));
+      break;
+    case NLA_U8:
+      list->CreateU8Attribute(id, attribute_name.c_str());
+      list->SetU8AttributeValue(id, NlaGetU8(&attr));
+      break;
+    case NLA_U16:
+      list->CreateU16Attribute(id, attribute_name.c_str());
+      list->SetU16AttributeValue(id, NlaGetU16(&attr));
+      break;
+    case NLA_U32:
+      list->CreateU32Attribute(id, attribute_name.c_str());
+      list->SetU32AttributeValue(id, NlaGetU32(&attr));
+      break;
+    case NLA_U64:
+      list->CreateU64Attribute(id, attribute_name.c_str());
+      list->SetU64AttributeValue(id, NlaGetU64(&attr));
+      break;
+    case NLA_FLAG:
+      list->CreateFlagAttribute(id, attribute_name.c_str());
+      list->SetFlagAttributeValue(id, true);
+      break;
+    case NLA_STRING:
+      // Note that nested structure attributes are validated by |validate_nla|
+      // which requires a string attribute to have at least 1 character
+      // (presumably for the '\0') while the kernel can create an empty string
+      // for at least one nested string array attribute type
+      // (NL80211_ATTR_SCAN_SSIDS -- the emptyness of the string is exhibited
+      // by the value of |nlattr::nla_len|).  This code handles both cases.
+      list->CreateStringAttribute(id, attribute_name.c_str());
+      if (nla_len(&attr) <= 0) {
+        list->SetStringAttributeValue(id, "");
+      } else {
+        list->SetStringAttributeValue(id, NlaGetString(&attr));
+      }
+      break;
+    case NLA_NESTED:
+      {
+        if (!nested_template.deeper_nesting) {
+          LOG(ERROR) << "No rules for nesting " << attribute_name
+                     << ". Ignoring.";
+          break;
+        }
+        list->CreateNestedAttribute(id, attribute_name.c_str());
+
+        // Now, handle the nested data.
+        AttributeListRefPtr nested_attribute;
+        if (!list->GetNestedAttributeList(id, &nested_attribute) ||
+            !nested_attribute) {
+          LOG(FATAL) << "Couldn't get attribute " << attribute_name
+                     << " which we just created.";
+          break;
+        }
+
+        if (!InitNestedFromNlAttr(nested_attribute.get(),
+                                  nested_template.deeper_nesting,
+                                  nested_template.deeper_nesting_size,
+                                  &attr)) {
+          LOG(ERROR) << "Couldn't parse attribute " << attribute_name;
+          break;
+        }
+        list->SetNestedAttributeHasAValue(id);
+      }
+      break;
+    default:
+      LOG(ERROR) << "Discarding " << attribute_name
+                 << ".  Attribute has unhandled type " << type << ".";
+      break;
+  }
 }
 
 // NetlinkRawAttribute
@@ -650,14 +887,14 @@ const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
 
 Nl80211AttributeCqm::Nl80211AttributeCqm()
       : NetlinkNestedAttribute(kName, kNameString) {
-  value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
-                            "NL80211_ATTR_CQM_RSSI_THOLD");
-  value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
-                            "NL80211_ATTR_CQM_RSSI_HYST");
-  value_.CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
-                            "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT");
-  value_.CreateU32Attribute(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
-                            "NL80211_ATTR_CQM_PKT_LOSS_EVENT");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THOLD,
+                             "NL80211_ATTR_CQM_RSSI_THOLD");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_HYST,
+                             "NL80211_ATTR_CQM_RSSI_HYST");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
+                             "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT");
+  value_->CreateU32Attribute(NL80211_ATTR_CQM_PKT_LOSS_EVENT,
+                             "NL80211_ATTR_CQM_PKT_LOSS_EVENT");
 }
 
 bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
@@ -683,22 +920,22 @@ bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
   }
 
   if (cqm[NL80211_ATTR_CQM_RSSI_THOLD]) {
-    value_.SetU32AttributeValue(
+    value_->SetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_THOLD,
         nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THOLD]));
   }
   if (cqm[NL80211_ATTR_CQM_RSSI_HYST]) {
-    value_.SetU32AttributeValue(
+    value_->SetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_HYST,
         nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_HYST]));
   }
   if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
-    value_.SetU32AttributeValue(
+    value_->SetU32AttributeValue(
         NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
         nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
   }
   if (cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]) {
-    value_.SetU32AttributeValue(
+    value_->SetU32AttributeValue(
         NL80211_ATTR_CQM_PKT_LOSS_EVENT,
         nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
   }

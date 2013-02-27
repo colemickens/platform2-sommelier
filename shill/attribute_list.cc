@@ -82,7 +82,7 @@ bool AttributeList::CreateU8Attribute(int id, const char *id_string) {
   return true;
 }
 
-bool AttributeList::SetU8AttributeValue(int id, uint8_t value) const {
+bool AttributeList::SetU8AttributeValue(int id, uint8_t value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -109,7 +109,7 @@ bool AttributeList::CreateU16Attribute(int id, const char *id_string) {
   return true;
 }
 
-bool AttributeList::SetU16AttributeValue(int id, uint16_t value) const {
+bool AttributeList::SetU16AttributeValue(int id, uint16_t value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -135,7 +135,7 @@ bool AttributeList::CreateU32Attribute(int id, const char *id_string) {
   return true;
 }
 
-bool AttributeList::SetU32AttributeValue(int id, uint32_t value) const {
+bool AttributeList::SetU32AttributeValue(int id, uint32_t value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -161,7 +161,7 @@ bool AttributeList::CreateU64Attribute(int id, const char *id_string) {
   return true;
 }
 
-bool AttributeList::SetU64AttributeValue(int id, uint64_t value) const {
+bool AttributeList::SetU64AttributeValue(int id, uint64_t value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -187,7 +187,7 @@ bool AttributeList::CreateFlagAttribute(int id, const char *id_string) {
   return true;
 }
 
-bool AttributeList::SetFlagAttributeValue(int id, bool value) const {
+bool AttributeList::SetFlagAttributeValue(int id, bool value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -221,7 +221,7 @@ bool AttributeList::CreateStringAttribute(int id, const char *id_string) {
   return true;
 }
 
-bool AttributeList::SetStringAttributeValue(int id, string value) const {
+bool AttributeList::SetStringAttributeValue(int id, string value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
@@ -230,12 +230,27 @@ bool AttributeList::SetStringAttributeValue(int id, string value) const {
 
 // Nested Attribute.
 
-bool AttributeList::GetNestedAttributeValue(
-    int id, WeakPtr<AttributeList> *value) const {
+bool AttributeList::GetNestedAttributeList(int id,
+                                           AttributeListRefPtr *value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)
     return false;
-  return attribute->GetNestedValue(value);
+  return attribute->GetNestedAttributeList(value);
+}
+
+bool AttributeList::ConstGetNestedAttributeList(
+    int id, AttributeListConstRefPtr *value) const {
+  NetlinkAttribute *attribute = GetAttribute(id);
+  if (!attribute)
+    return false;
+  return attribute->ConstGetNestedAttributeList(value);
+}
+
+bool AttributeList::SetNestedAttributeHasAValue(int id) {
+  NetlinkAttribute *attribute = GetAttribute(id);
+  if (!attribute)
+    return false;
+  return attribute->SetNestedHasAValue();
 }
 
 bool AttributeList::CreateNestedAttribute(int id, const char *id_string) {

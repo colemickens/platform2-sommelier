@@ -19,6 +19,7 @@
 
 #include "shill/attribute_list.h"
 #include "shill/byte_string.h"
+#include "shill/refptr_types.h"
 
 struct nlattr;
 struct nlmsghdr;
@@ -34,7 +35,8 @@ class Nl80211Message {
   Nl80211Message(uint8 message_type, const char *message_type_string)
       : message_type_(message_type),
         message_type_string_(message_type_string),
-        sequence_number_(kIllegalMessage) {}
+        sequence_number_(kIllegalMessage),
+        attributes_(new AttributeList) {}
   virtual ~Nl80211Message() {}
 
   // Initializes the message with bytes from the kernel.
@@ -46,7 +48,8 @@ class Nl80211Message {
 
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
-  const AttributeList &attributes() const { return attributes_; }
+  AttributeListConstRefPtr const_attributes() const { return attributes_; }
+  AttributeListRefPtr attributes() { return attributes_; }
 
   // TODO(wdg): This needs to be moved to AttributeMac.
   // Helper function to provide a string for a MAC address.  If no attribute
@@ -114,7 +117,7 @@ class Nl80211Message {
   static std::map<uint16_t, std::string> *status_code_string_;
   uint32_t sequence_number_;
 
-  AttributeList attributes_;
+  AttributeListRefPtr attributes_;
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211Message);
 };

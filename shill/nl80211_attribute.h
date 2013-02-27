@@ -12,11 +12,10 @@
 #include <map>
 #include <string>
 
-#include <base/memory/weak_ptr.h>
-
 #include "shill/attribute_list.h"
 #include "shill/byte_string.h"
 #include "shill/logging.h"
+#include "shill/refptr_types.h"
 
 struct nlattr;
 
@@ -50,10 +49,6 @@ class NetlinkAttribute {
   virtual ~NetlinkAttribute() {}
 
   virtual bool InitFromNlAttr(const nlattr *data);
-
-  // Static factory generates the appropriate NetlinkAttribute object from the
-  // raw nlattr data.
-  static NetlinkAttribute *NewFromId(int id);
 
   // Accessors for the attribute's id and datatype information.
   int id() const { return id_; }
@@ -89,7 +84,10 @@ class NetlinkAttribute {
   virtual bool GetStringValue(std::string *value) const;
   virtual bool SetStringValue(const std::string value);
 
-  virtual bool GetNestedValue(base::WeakPtr<AttributeList> *value);
+  virtual bool GetNestedAttributeList(AttributeListRefPtr *value);
+  virtual bool ConstGetNestedAttributeList(
+      AttributeListConstRefPtr *value) const;
+  virtual bool SetNestedHasAValue();
 
   virtual bool GetRawValue(ByteString *value) const;
 
@@ -398,8 +396,11 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
     LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
     return false;
   }
-  bool GetNestedValue(base::WeakPtr<AttributeList> *value);
-  bool ToString(std::string *value) const {
+  virtual bool GetNestedAttributeList(AttributeListRefPtr *value);
+  virtual bool ConstGetNestedAttributeList(
+      AttributeListConstRefPtr *value) const;
+  virtual bool SetNestedHasAValue();
+  virtual bool ToString(std::string *value) const {
     return false;  // TODO(wdg): Actually generate a string, here.
   }
   virtual ByteString Encode() const {
@@ -407,7 +408,57 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   }
 
  protected:
-  AttributeList value_;
+  // Describes a single nested attribute.  Provides the expected values and
+  // type (including further nesting).  Normally, an array of these, one for
+  // each attribute at one level of nesting is presented, along with the data
+  // to be parsed, to |InitNestedFromNlAttr|.  If the attributes on one level
+  // represent an array, a single |NestedData| is provided and |is_array| is
+  // set (note that one level of nesting either contains _only_ an array or
+  // _no_ array).
+  struct NestedData {
+    nla_policy policy;
+    const char *attribute_name;
+    const NestedData *deeper_nesting;
+    size_t deeper_nesting_size;
+    bool is_array;
+    // TODO(wdg): Add function pointer for a custom attribute parser.
+  };
+
+  // Builds an AttributeList (|list|) that contains all of the attriubtes in
+  // |const_data|.  |const_data| should point to the enclosing nested attribute
+  // header; for the example of the nested attribute NL80211_ATTR_CQM:
+  //    nlattr::nla_type: NL80211_ATTR_CQM <-- const_data points here
+  //    nlattr::nla_len: 12 bytes
+  //      nlattr::nla_type: PKT_LOSS_EVENT (1st and only nested attribute)
+  //      nlattr::nla_len: 8 bytes
+  //      <data>: 0x32
+  // One can assemble (hence, disassemble) a set of child attributes under a
+  // nested attribute parent as an array of elements or as a structure.
+  //
+  // The data is parsed using the expected configuration in |nested_template|.
+  // If the code expects an array, it will pass a single template element and
+  // mark that as an array.
+  static bool InitNestedFromNlAttr(AttributeList *list,
+                                   const NestedData *nested_template,
+                                   size_t nested_template_size,
+                                   const nlattr *const_data);
+
+  static bool ParseNestedArray(AttributeList *list,
+                               const NestedData &nested_template,
+                               const nlattr *const_data);
+
+  static bool ParseNestedStructure(AttributeList *list,
+                                   const NestedData *nested_template,
+                                   size_t nested_template_size,
+                                   const nlattr *const_data);
+
+  // Helper function used by InitNestedFromNlAttr to add a single child
+  // attribute to a nested attribute.
+  static void AddAttributeToNested(AttributeList *list, uint16_t type, size_t i,
+                                   const std::string &attribute_name,
+                                   const nlattr &attr,
+                                   const NestedData &nested_data);
+  AttributeListRefPtr value_;
 };
 
 class Nl80211AttributeCqm : public NetlinkNestedAttribute {

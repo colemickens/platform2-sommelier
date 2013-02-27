@@ -13,7 +13,8 @@
 #include <tr1/memory>
 
 #include <base/bind.h>
-#include <base/memory/weak_ptr.h>
+
+#include "shill/refptr_types.h"
 
 struct nlattr;
 namespace shill {
@@ -22,7 +23,7 @@ class ByteString;
 class NetlinkAttribute;
 class NetlinkRawAttribute;
 
-class AttributeList : public base::SupportsWeakPtr<AttributeList> {
+class AttributeList : public base::RefCounted<AttributeList> {
  public:
   typedef std::tr1::shared_ptr<NetlinkAttribute> AttributePointer;
   typedef base::Callback<NetlinkAttribute *(int id)> NewFromIdMethod;
@@ -48,18 +49,39 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   // attributes exist).
   ByteString Encode() const;
 
+  bool CreateU8Attribute(int id, const char *id_string);
+  bool SetU8AttributeValue(int id, uint8_t value);
   bool GetU8AttributeValue(int id, uint8_t *value) const;
+
+  bool CreateU16Attribute(int id, const char *id_string);
+  bool SetU16AttributeValue(int id, uint16_t value);
   bool GetU16AttributeValue(int id, uint16_t *value) const;
+
+  bool CreateU32Attribute(int id, const char *id_string);
+  bool SetU32AttributeValue(int id, uint32_t value);
   bool GetU32AttributeValue(int id, uint32_t *value) const;
+
+  bool CreateU64Attribute(int id, const char *id_string);
+  bool SetU64AttributeValue(int id, uint64_t value);
   bool GetU64AttributeValue(int id, uint64_t *value) const;
+
+  bool CreateFlagAttribute(int id, const char *id_string);
+  bool SetFlagAttributeValue(int id, bool value);
   bool GetFlagAttributeValue(int id, bool *value) const;
   // |IsFlagAttributeTrue| returns true if the flag attribute |id| is true.  It
   // retruns false if the attribute does not exist, is not of type kTypeFlag,
   // or is not true.
   bool IsFlagAttributeTrue(int id) const;
+
+  bool CreateStringAttribute(int id, const char *id_string);
+  bool SetStringAttributeValue(int id, std::string value);
   bool GetStringAttributeValue(int id, std::string *value) const;
-  bool GetNestedAttributeValue(int id,
-                               base::WeakPtr<AttributeList> *value) const;
+
+  bool CreateNestedAttribute(int id, const char *id_string);
+  bool SetNestedAttributeHasAValue(int id);
+  bool GetNestedAttributeList(int id, AttributeListRefPtr *value);
+  bool ConstGetNestedAttributeList(int id,
+                                   AttributeListConstRefPtr *value) const;
 
   // A raw attribute is a place to store unrecognized attributes when they
   // from the kernel.  For this reason, only limited support is provided for
@@ -71,33 +93,6 @@ class AttributeList : public base::SupportsWeakPtr<AttributeList> {
   const NetlinkRawAttribute *GetRawAttribute(int id) const;
 
  private:
-  // The Create*Attribute and Set*Attribute methods are specifically for use
-  // by nested attributes to add their sub-attributes.  Classes derived from
-  // NetlinkNestedAttribute should be added, here.
-  friend class Nl80211AttributeCqm;
-  friend class Nl80211AttributeStaInfo;
-
-  bool CreateU8Attribute(int id, const char *id_string);
-  bool SetU8AttributeValue(int id, uint8_t value) const;
-
-  bool CreateU16Attribute(int id, const char *id_string);
-  bool SetU16AttributeValue(int id, uint16_t value) const;
-
-  bool CreateU32Attribute(int id, const char *id_string);
-  bool SetU32AttributeValue(int id, uint32_t value) const;
-
-  bool CreateU64Attribute(int id, const char *id_string);
-  bool SetU64AttributeValue(int id, uint64_t value) const;
-
-  bool CreateFlagAttribute(int id, const char *id_string);
-  bool SetFlagAttributeValue(int id, bool value) const;
-
-  bool CreateStringAttribute(int id, const char *id_string);
-  bool SetStringAttributeValue(int id, std::string value) const;
-
-  bool CreateNestedAttribute(int id, const char *id_string);
-  // No |SetNestedAttributeValue| method as it would make no sense.
-
   // Using this to get around issues with const and operator[].
   NetlinkAttribute *GetAttribute(int id) const;
 

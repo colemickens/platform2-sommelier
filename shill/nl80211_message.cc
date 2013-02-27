@@ -112,7 +112,7 @@ void Nl80211Message::Print(int log_level) const {
   SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
                                         message_type_string(),
                                         message_type());
-  attributes_.Print(log_level, 1);
+  attributes_->Print(log_level, 1);
 }
 
 bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
@@ -142,7 +142,7 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
     if (tb[i]) {
       // TODO(wdg): When Nl80211Messages instantiate their own attributes,
       // this call should, instead, call |SetAttributeFromNlAttr|.
-      attributes_.CreateAndInitAttribute(
+      attributes_->CreateAndInitAttribute(
           i, tb[i], Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
     }
   }
@@ -402,7 +402,7 @@ bool Nl80211Message::GetMacAttributeString(int id, string *value) const {
   }
 
   ByteString data;
-  if (!attributes().GetRawAttributeValue(id, &data)) {
+  if (!const_attributes()->GetRawAttributeValue(id, &data)) {
     value->assign(kBogusMacAddress);
     return false;
   }
@@ -421,7 +421,8 @@ bool Nl80211Message::GetScanFrequenciesAttribute(
 
   value->clear();
   ByteString rawdata;
-  if (!attributes().GetRawAttributeValue(id, &rawdata) && !rawdata.IsEmpty())
+  if (!const_attributes()->GetRawAttributeValue(id, &rawdata) &&
+      !rawdata.IsEmpty())
     return false;
 
   nlattr *nst = NULL;
@@ -446,7 +447,8 @@ bool Nl80211Message::GetScanSsidsAttribute(
   }
 
   ByteString rawdata;
-  if (!attributes().GetRawAttributeValue(id, &rawdata) || rawdata.IsEmpty())
+  if (!const_attributes()->GetRawAttributeValue(id, &rawdata) ||
+      rawdata.IsEmpty())
     return false;
 
   nlattr *nst = NULL;
@@ -469,12 +471,12 @@ bool Nl80211Message::GetScanSsidsAttribute(
 string Nl80211Message::GetHeaderString() const {
   char ifname[IF_NAMESIZE] = "";
   uint32_t ifindex = UINT32_MAX;
-  bool ifindex_exists = attributes().GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                          &ifindex);
+  bool ifindex_exists = const_attributes()->GetU32AttributeValue(
+      NL80211_ATTR_IFINDEX, &ifindex);
 
   uint32_t wifi = UINT32_MAX;
-  bool wifi_exists = attributes().GetU32AttributeValue(NL80211_ATTR_WIPHY,
-                                                       &wifi);
+  bool wifi_exists = const_attributes()->GetU32AttributeValue(
+      NL80211_ATTR_WIPHY, &wifi);
 
   string output;
   if (ifindex_exists && wifi_exists) {
@@ -494,8 +496,8 @@ string Nl80211Message::GetHeaderString() const {
 string Nl80211Message::StringFromFrame(int attr_name) const {
   string output;
   ByteString frame_data;
-  if (attributes().GetRawAttributeValue(attr_name,
-                                        &frame_data) && !frame_data.IsEmpty()) {
+  if (const_attributes()->GetRawAttributeValue(attr_name, &frame_data) &&
+      !frame_data.IsEmpty()) {
     Nl80211Frame frame(frame_data);
     frame.ToString(&output);
   } else {
@@ -625,8 +627,8 @@ ByteString Nl80211Message::Encode(uint16_t nlmsg_type) const {
   genl_header.reserved = 0;
 
   // Assemble attributes (padding is included by AttributeList::Encode).
-  ByteString attributes = attributes_.Encode();
-  header.nlmsg_len += attributes.GetLength();
+  ByteString attribute_bytes = attributes_->Encode();
+  header.nlmsg_len += attribute_bytes.GetLength();
 
   // Now that we know the total message size, build the output ByteString.
   ByteString result;
@@ -642,7 +644,7 @@ ByteString Nl80211Message::Encode(uint16_t nlmsg_type) const {
   result.Resize(nlmsghdr_with_pad + genlmsghdr_with_pad);  // Zero-fill.
 
   // Attributes including pad.
-  result.Append(attributes);
+  result.Append(attribute_bytes);
 
   return result;
 }
