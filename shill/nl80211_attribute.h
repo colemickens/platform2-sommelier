@@ -101,8 +101,8 @@ class NetlinkAttribute {
 
   bool has_a_value() const { return has_a_value_; }
 
-  // Note that |nla_get_*| don't change their arguments but don't declare
-  // themselves as 'const', either.  These methods wrap the const castness.
+  // Wrappers for libnl parsers.  Needed because, while |nla_get_*| don't
+  // change their arguments, these methods don't declare themselves as 'const'.
   static char *NlaGetString(const nlattr *input) {
     return nla_get_string(const_cast<nlattr *>(input));
   }
