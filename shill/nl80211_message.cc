@@ -49,8 +49,8 @@
 #include "shill/attribute_list.h"
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
+#include "shill/netlink_attribute.h"
 #include "shill/netlink_socket.h"
-#include "shill/nl80211_attribute.h"
 #include "shill/scope_logger.h"
 #include "shill/wifi.h"
 

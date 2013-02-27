@@ -193,6 +193,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	cellular_service.o \
 	config80211.o \
 	connection.o \
+	control_netlink_attribute.o \
 	crypto_des_cbc.o \
 	crypto_provider.o \
 	crypto_rot47.o \
@@ -262,6 +263,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_proxy.o \
 	modem_simple_proxy.o \
 	netlink_socket.o \
+	netlink_attribute.o \
 	nl80211_attribute.o \
 	nl80211_message.o \
 	nl80211_socket.o \
