@@ -18,7 +18,7 @@
 #include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/powerd.h"
-#include "power_manager/powerd/system/mock_backlight.h"
+#include "power_manager/powerd/system/backlight_stub.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/powerd/external_backlight_controller.h"
@@ -77,7 +77,7 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 class DaemonTest : public Test {
  public:
   DaemonTest()
-      :
+      : backlight_(kMaxBrightnessLevel, kDefaultBrightnessLevel),
 #ifdef IS_DESKTOP
         backlight_ctl_(&backlight_, &monitor_),
 #else
@@ -91,14 +91,6 @@ class DaemonTest : public Test {
     daemon_.set_disable_dbus_for_testing(true);
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-    EXPECT_CALL(backlight_, GetCurrentBrightnessLevel(NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kDefaultBrightnessLevel),
-                              Return(true)));
-    EXPECT_CALL(backlight_, GetMaxBrightnessLevel(NotNull()))
-        .WillRepeatedly(DoAll(SetArgumentPointee<0>(kMaxBrightnessLevel),
-                              Return(true)));
-    EXPECT_CALL(backlight_, SetBrightnessLevel(_, _))
-        .WillRepeatedly(Return(true));
 
     EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
     EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
@@ -290,7 +282,7 @@ class DaemonTest : public Test {
                      BATTERY_INFO_MAX);
   }
 
-  StrictMock<system::MockBacklight> backlight_;
+  system::BacklightStub backlight_;
   MockMonitorReconfigure monitor_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
@@ -899,13 +891,10 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithBadStatus) {
   EXPECT_TRUE(status_->is_calculating_battery_time);
 }
 
-// TODO: Replace MockBacklight with TestBacklight from
-// external_backlight_controller_unittest.cc and enable this test for desktop
-// machines.  MockBacklight doesn't save and return the level that's set, so the
-// GetTargetBrightnessPercent() calls below always return a dummy value.
-#ifndef IS_DESKTOP
 // Test that the backlight is turned on when the power button is pressed:
 // http://crosbug.com/32570
+#ifndef IS_DESKTOP
+// We don't do this in builds for desktop machines.
 TEST_F(DaemonTest, TurnBacklightOnForPowerButton) {
   backlight_ctl_.SetPowerState(BACKLIGHT_ACTIVE);
   ASSERT_TRUE(

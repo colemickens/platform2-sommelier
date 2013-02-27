@@ -15,6 +15,10 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
 	$(GLIB_LIBS) -ludev $(shell $(PKG_CONFIG) --libs libcras)
 clean: CLEAN(powerd/libsystem.pie.a)
 
+CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \
+	powerd/system/backlight_stub.o
+clean: CLEAN(powerd/libsystem_test.pie.a)
+
 CXX_BINARY(powerd/system_unittest): \
 	powerd/system/input_unittest.o \
 	powerd/system/internal_backlight_unittest.o \

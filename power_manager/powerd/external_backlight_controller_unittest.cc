@@ -9,7 +9,7 @@
 #include "base/compiler_specific.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/mock_monitor_reconfigure.h"
-#include "power_manager/powerd/system/backlight_interface.h"
+#include "power_manager/powerd/system/backlight_stub.h"
 
 using ::testing::_;
 using ::testing::Return;
@@ -18,81 +18,18 @@ namespace power_manager {
 
 namespace {
 
-// Default maximum level for TestBacklight.
+// Default maximum and starting current levels for stub backlight.
 const int64 kDefaultMaxBacklightLevel = 100;
-
-// Default starting current level for TestBacklight.
 const int64 kDefaultStartingBacklightLevel = 100;
-
-// Fake BacklightInterface implementation.
-// TODO(derat): Replace MockBacklight with this class.
-class TestBacklight : public system::BacklightInterface {
- public:
-  TestBacklight()
-      : max_level_(kDefaultMaxBacklightLevel),
-        current_level_(kDefaultStartingBacklightLevel),
-        should_fail_(false) {}
-  virtual ~TestBacklight() {}
-
-  void set_levels(int64 max_level, int64 current_level) {
-    max_level_ = max_level;
-    current_level_ = current_level;
-  }
-  void set_should_fail(bool should_fail) { should_fail_ = should_fail; }
-
-  int64 current_level() const { return current_level_; }
-
-  // BacklightInterface implementation:
-  virtual void AddObserver(system::BacklightInterfaceObserver* observer)
-      OVERRIDE {}
-  virtual void RemoveObserver(system::BacklightInterfaceObserver* observer)
-      OVERRIDE {}
-
-  virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE {
-    if (should_fail_)
-      return false;
-    *max_level = max_level_;
-    return true;
-  }
-
-  virtual bool GetCurrentBrightnessLevel(int64* current_level) OVERRIDE {
-    if (should_fail_)
-      return false;
-    *current_level = current_level_;
-    return true;
-  }
-
-  virtual bool SetBrightnessLevel(int64 level,
-                                  base::TimeDelta interval) OVERRIDE {
-    if (should_fail_)
-      return false;
-    current_level_ = level;
-    return true;
-  }
-
-  virtual bool SetResumeBrightnessLevel(int64 level) {
-    NOTIMPLEMENTED();
-    return false;
-  }
-
- private:
-  // Maximum backlight level.
-  int64 max_level_;
-
-  // Most-recently-set backlight level.
-  int64 current_level_;
-
-  // Should we report failure in response to all future requests?
-  bool should_fail_;
-
-  DISALLOW_COPY_AND_ASSIGN(TestBacklight);
-};
 
 }  // namespace
 
 class ExternalBacklightControllerTest : public ::testing::Test {
  public:
-  ExternalBacklightControllerTest() : controller_(&backlight_, &monitor_) {
+  ExternalBacklightControllerTest()
+      : backlight_(kDefaultMaxBacklightLevel,
+                   kDefaultStartingBacklightLevel),
+        controller_(&backlight_, &monitor_) {
     EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
     EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
         .WillRepeatedly(Return());
@@ -111,7 +48,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
     return controller_.PercentToLevel(controller_.GetTargetBrightnessPercent());
   }
 
-  TestBacklight backlight_;
+  system::BacklightStub backlight_;
   MockMonitorReconfigure monitor_;
   ExternalBacklightController controller_;
 };
@@ -144,13 +81,14 @@ TEST_F(ExternalBacklightControllerTest, FailedBacklightRequest) {
 // backlight device has changed.
 TEST_F(ExternalBacklightControllerTest, ReinitializeOnDeviceChange) {
   const int kStartingBacklightLevel = 67;
-  backlight_.set_levels(kDefaultMaxBacklightLevel, kStartingBacklightLevel);
+  backlight_.set_current_level(kStartingBacklightLevel);
   EXPECT_EQ(kStartingBacklightLevel, GetCurrentBrightnessLevel());
 
   const int kNewMaxBacklightLevel = 60;
   const int kNewBacklightLevel = 45;
-  backlight_.set_levels(kNewMaxBacklightLevel, kNewBacklightLevel);
-  controller_.OnBacklightDeviceChanged();
+  backlight_.set_max_level(kNewMaxBacklightLevel);
+  backlight_.set_current_level(kNewBacklightLevel);
+  backlight_.NotifyObservers();
   EXPECT_EQ(kNewBacklightLevel, GetCurrentBrightnessLevel());
 }
 
@@ -158,7 +96,7 @@ TEST_F(ExternalBacklightControllerTest, ReinitializeOnDeviceChange) {
 // without changing the monitor's brightness settings.
 TEST_F(ExternalBacklightControllerTest, DimScreen) {
   const int kStartingBacklightLevel = 43;
-  backlight_.set_levels(kDefaultMaxBacklightLevel, kStartingBacklightLevel);
+  backlight_.set_current_level(kStartingBacklightLevel);
   EXPECT_FALSE(controller_.currently_dimming());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
@@ -192,7 +130,7 @@ TEST_F(ExternalBacklightControllerTest, DimScreen) {
 // settings.
 TEST_F(ExternalBacklightControllerTest, TurnScreenOff) {
   const int kStartingBacklightLevel = 65;
-  backlight_.set_levels(kDefaultMaxBacklightLevel, kStartingBacklightLevel);
+  backlight_.set_current_level(kStartingBacklightLevel);
   EXPECT_FALSE(controller_.currently_off());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
@@ -258,7 +196,7 @@ TEST_F(ExternalBacklightControllerTest, QueryBrightness) {
   EXPECT_EQ(kDefaultStartingBacklightLevel, GetTargetBrightnessLevel());
 
   const int kNewLevel = kDefaultMaxBacklightLevel / 2;
-  backlight_.set_levels(kDefaultMaxBacklightLevel, kNewLevel);
+  backlight_.set_current_level(kNewLevel);
   EXPECT_EQ(kNewLevel, GetCurrentBrightnessLevel());
   EXPECT_EQ(kNewLevel, GetTargetBrightnessLevel());
 }

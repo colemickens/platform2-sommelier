@@ -94,12 +94,10 @@ POWERD_UNITTEST_OBJS = \
 	powerd/async_file_reader_unittest.o \
 	powerd/external_backlight_controller_unittest.o \
 	powerd/file_tagger_unittest.o \
-	powerd/idle_dimmer_unittest.o \
 	powerd/internal_backlight_controller_unittest.o \
 	powerd/keyboard_backlight_controller_unittest.o \
 	powerd/metrics_store_unittest.o \
 	powerd/monitor_reconfigure.o \
-	powerd/plug_dimmer_unittest.o \
 	powerd/powerd_unittest.o \
 	powerd/power_supply_unittest.o \
 	powerd/rolling_average_unittest.o \
@@ -115,7 +113,8 @@ CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
-	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a)
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a)
 CXX_BINARY(powerd/powerd_unittest): CPPFLAGS += $(POWERD_UNITTEST_FLAGS)
 CXX_BINARY(powerd/powerd_unittest): LDLIBS += $(POWERD_UNITTEST_LIBS)
 clean: CXX_BINARY(powerd/powerd_unittest)

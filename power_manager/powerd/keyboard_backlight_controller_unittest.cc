@@ -15,7 +15,7 @@
 #include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
-#include "power_manager/powerd/system/mock_backlight.h"
+#include "power_manager/powerd/system/backlight_stub.h"
 
 using ::testing::Mock;
 using ::testing::StrictMock;
@@ -67,7 +67,9 @@ const int64 kTestTimeoutIntervalMs = 10000;  // Intentionally larger then the
                                              // timeout in the class.
 class KeyboardBacklightControllerTest : public Test {
  public:
-  KeyboardBacklightControllerTest() { }
+  KeyboardBacklightControllerTest()
+      : backlight_(kTestBrightnessMaxLevel, kTestCurrentLevel) {
+  }
 
   virtual void SetUp() {
     light_sensor_.ExpectAddObserver();
@@ -78,8 +80,6 @@ class KeyboardBacklightControllerTest : public Test {
     controller_->max_level_ = kTestBrightnessMaxLevel;
 
     controller_->als_target_percent_ = 0.0;
-    backlight_.ExpectGetMaxBrightnessLevel(kTestBrightnessMaxLevel, true);
-    backlight_.ExpectGetCurrentBrightnessLevel(kTestCurrentLevel, true);
     prefs_.SetString(kKeyboardBacklightAlsLimitsPref, kTestAlsLimitsString);
     prefs_.SetString(kKeyboardBacklightAlsStepsPref, kTestAlsStepsString);
     prefs_.SetString(kKeyboardBacklightUserLimitsPref, kTestUserLimitsString);
@@ -132,7 +132,7 @@ class KeyboardBacklightControllerTest : public Test {
 
  protected:
   StrictMock<MockAmbientLightSensor> light_sensor_;
-  StrictMock<system::MockBacklight> backlight_;
+  system::BacklightStub backlight_;
   FakePrefs prefs_;
   scoped_ptr<KeyboardBacklightController> controller_;
 };  // class KeyboardBacklightControllerTest
@@ -144,7 +144,6 @@ gboolean KeyboardBacklightControllerTest::TestTimeout() {
 TEST_F(KeyboardBacklightControllerTest, Init) {
   light_sensor_.ExpectRemoveObserver(controller_.get());
   controller_.reset();
-  Mock::VerifyAndClearExpectations(&backlight_);
 
   light_sensor_.ExpectAddObserver();
   controller_.reset(new KeyboardBacklightController(&backlight_,
@@ -152,25 +151,15 @@ TEST_F(KeyboardBacklightControllerTest, Init) {
                                                     &light_sensor_));
 
 
-  // GetMaxBrightnessLevel fails.
+  // GetMaxBrightnessLevel and GetCurrentBrightnessLevel fail.
   controller_->als_target_percent_ = 0.0;
-  backlight_.ExpectGetMaxBrightnessLevel(kTestBrightnessMaxLevel, false);
+  backlight_.set_should_fail(true);
   EXPECT_FALSE(controller_->Init());
   EXPECT_EQ(0.0, controller_->als_target_percent_);
-  Mock::VerifyAndClearExpectations(&backlight_);
-
-  // GetCurrentBrightnessLevel fails.
-  controller_->als_target_percent_ = 0.0;
-  backlight_.ExpectGetMaxBrightnessLevel(kTestBrightnessMaxLevel, true);
-  backlight_.ExpectGetCurrentBrightnessLevel(kTestCurrentLevel, false);
-  EXPECT_FALSE(controller_->Init());
-  EXPECT_EQ(0.0, controller_->als_target_percent_);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  backlight_.set_should_fail(false);
 
   // Operation succeeds.
   controller_->als_target_percent_ = 0.0;
-  backlight_.ExpectGetMaxBrightnessLevel(kTestBrightnessMaxLevel, true);
-  backlight_.ExpectGetCurrentBrightnessLevel(kTestCurrentLevel, true);
   EXPECT_TRUE(controller_->Init());
   CheckAlsStep(kTestStepIndex, kTestSyntheticLux);
   for(unsigned int i = 0; i < controller_->als_steps_.size(); i++) {
@@ -204,7 +193,6 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
   // Cause is automated.
   SetControllerState(kTestAlsLevelDim, kTestAlsPercentDim,
                      -1.0, -1, true, NULL);
-  backlight_.ExpectSetBrightnessLevel(kTestCurrentLevel, true);
   EXPECT_TRUE(controller_->SetCurrentBrightnessPercent(
       kTestCurrentPercent,
       BRIGHTNESS_CHANGE_AUTOMATED,
@@ -212,7 +200,7 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
   CheckCurrentBrightnessPercent(kTestCurrentLevel,
                                 kTestCurrentPercent,
                                 -1.0);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestCurrentLevel, backlight_.current_level());
 
   // Call causes no change in brightness.
   SetControllerState(kTestAlsLevelDim, kTestAlsPercentDim,
@@ -224,7 +212,7 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
   CheckCurrentBrightnessPercent(kTestAlsLevelDim,
                                 kTestAlsPercentDim,
                                 -1.0);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestCurrentLevel, backlight_.current_level());
 
   // Cause is user initiated, but user index not initialized.
   SetControllerState(kTestAlsLevelDim, kTestAlsPercentDim,
@@ -238,8 +226,6 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
                                 -1.0);
 
   // Cause is user initiated.
-  backlight_.ExpectSetBrightnessLevel(kTestUserLevels[kTestFoundUserStepIndex],
-                                      true);
   SetControllerState(kTestUserLevelDim, kTestAlsPercentDim,
                      kTestUserPercents[kTestFoundUserStepIndex - 1],
                      kTestFoundUserStepIndex, true, NULL);
@@ -250,14 +236,14 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
   CheckCurrentBrightnessPercent(kTestUserLevels[kTestFoundUserStepIndex],
                                 kTestAlsPercentDim,
                                 kTestUserPercents[kTestFoundUserStepIndex]);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestUserLevels[kTestFoundUserStepIndex],
+            backlight_.current_level());
 
   // Observer present.
   MockBacklightControllerObserver observer;
   ASSERT_EQ(observer.changes().size(), 0);
   SetControllerState(kTestAlsLevelMin, kTestAlsPercentMin,
                      -1.0, -1, true, &observer);
-  backlight_.ExpectSetBrightnessLevel(kTestCurrentLevel, true);
   EXPECT_TRUE(controller_->SetCurrentBrightnessPercent(
       kTestCurrentPercent,
       BRIGHTNESS_CHANGE_AUTOMATED,
@@ -266,7 +252,7 @@ TEST_F(KeyboardBacklightControllerTest, SetCurrentBrightnessPercent) {
                                 kTestCurrentPercent,
                                 -1.0);
   EXPECT_EQ(1, observer.changes().size());
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestCurrentLevel, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, HandleVideoActivity) {
@@ -287,7 +273,6 @@ TEST_F(KeyboardBacklightControllerTest, HandleVideoActivity) {
   controller_->observer_ = NULL;
   controller_->current_level_ = kTestCurrentLevel;
   controller_->als_target_percent_ = kTestCurrentPercent;
-  backlight_.ExpectSetBrightnessLevel(0, true);
   controller_->HandleVideoActivity(base::TimeTicks::Now(), true);
   EXPECT_TRUE(controller_->is_fullscreen_);
   EXPECT_TRUE(controller_->is_video_playing_);
@@ -295,6 +280,7 @@ TEST_F(KeyboardBacklightControllerTest, HandleVideoActivity) {
   EXPECT_EQ(0, controller_->current_level_);
   EXPECT_EQ(kTestCurrentPercent, controller_->als_target_percent_);
   ASSERT_GT(controller_->video_timeout_timer_id_, 0);
+  EXPECT_EQ(0, backlight_.current_level());
   util::RemoveTimeout(&controller_->video_timeout_timer_id_);
 }
 
@@ -318,32 +304,30 @@ TEST_F(KeyboardBacklightControllerTest, UpdateBacklightEnabled) {
   controller_->is_video_playing_ = false;
   controller_->is_fullscreen_ = true;
   controller_->video_enabled_ = false;
-  backlight_.ExpectSetBrightnessLevel(kTestCurrentLevel, true);
   controller_->UpdateBacklightEnabled();
   EXPECT_TRUE(controller_->video_enabled_);
   EXPECT_EQ(kTestCurrentLevel, controller_->current_level_);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestCurrentLevel, backlight_.current_level());
 
   // Enabling the backlight due to not fullscreen.
   controller_->current_level_ = 0;
   controller_->is_video_playing_ = true;
   controller_->is_fullscreen_ = false;
   controller_->video_enabled_ = false;
-  backlight_.ExpectSetBrightnessLevel(kTestCurrentLevel, true);
   controller_->UpdateBacklightEnabled();
   EXPECT_TRUE(controller_->video_enabled_);
   EXPECT_EQ(kTestCurrentLevel, controller_->current_level_);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestCurrentLevel, backlight_.current_level());
 
   // Disabling the backlight.
   controller_->current_level_ = kTestCurrentLevel;
   controller_->is_video_playing_ = true;
   controller_->is_fullscreen_ = true;
   controller_->video_enabled_ = true;
-  backlight_.ExpectSetBrightnessLevel(0, true);
   controller_->UpdateBacklightEnabled();
   EXPECT_FALSE(controller_->video_enabled_);
   EXPECT_EQ(0, controller_->current_level_);
+  EXPECT_EQ(0, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, HaltVideoTimeout) {
@@ -362,12 +346,11 @@ TEST_F(KeyboardBacklightControllerTest, VideoTimeout) {
   controller_->is_video_playing_ = true;
   controller_->is_fullscreen_ = true;
   controller_->video_enabled_ = false;
-  backlight_.ExpectSetBrightnessLevel(kTestCurrentLevel, true);
   EXPECT_FALSE(controller_->VideoTimeout());
   EXPECT_FALSE(controller_->is_video_playing_);
   EXPECT_TRUE(controller_->video_enabled_);
   EXPECT_EQ(kTestCurrentLevel, controller_->current_level_);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestCurrentLevel, backlight_.current_level());
 
   // Timeout doesn't cause causes transition.
   controller_->als_target_percent_ = kTestCurrentPercent;
@@ -446,13 +429,11 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
 
   // Second Increase, hysteresis overcome.
   light_sensor_.ExpectGetAmbientLightLux(kTestIncreaseLux);
-  backlight_.ExpectSetBrightnessLevel(kTestAlsPercents[kTestStepIndex + 1],
-                                      true);
   controller_->OnAmbientLightChanged(&light_sensor_);
+  EXPECT_EQ(kTestAlsPercents[kTestStepIndex + 1], backlight_.current_level());
   CheckAlsStep(kTestStepIndex + 1, kTestIncreaseLux);
   CheckHysteresisState(BacklightController::ALS_HYST_UP, 1);
   Mock::VerifyAndClearExpectations(&light_sensor_);
-  Mock::VerifyAndClearExpectations(&backlight_);
 
   // Reset for testing the other direction.
   controller_->als_step_index_ = kTestStepIndex;
@@ -470,47 +451,41 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
 
   // Second Decrease, hysteresis overcome.
   light_sensor_.ExpectGetAmbientLightLux(kTestDecreaseLux);
-  backlight_.ExpectSetBrightnessLevel(kTestAlsPercents[kTestStepIndex - 1],
-                                      true);
   controller_->OnAmbientLightChanged(&light_sensor_);
+  EXPECT_EQ(kTestAlsPercents[kTestStepIndex - 1], backlight_.current_level());
   CheckAlsStep(kTestStepIndex - 1, kTestDecreaseLux);
   CheckHysteresisState(BacklightController::ALS_HYST_DOWN, 1);
   Mock::VerifyAndClearExpectations(&light_sensor_);
-  Mock::VerifyAndClearExpectations(&backlight_);
 }
 
 TEST_F(KeyboardBacklightControllerTest, Transitions) {
-  const base::TimeDelta kSlowDuration = base::TimeDelta::FromMilliseconds(
-      KeyboardBacklightController::kSlowTransitionMs);
-  const base::TimeDelta kFastDuration = base::TimeDelta::FromMilliseconds(
-      KeyboardBacklightController::kFastTransitionMs);
-
   // Request an instant transition to the maximum level.
-  backlight_.ExpectSetBrightnessLevelWithInterval(
-      kTestAlsLevelMax, base::TimeDelta(), true);
   controller_->SetCurrentBrightnessPercent(
       kTestAlsPercentMax, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_INSTANT);
+  EXPECT_EQ(kTestAlsLevelMax, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   Mock::VerifyAndClearExpectations(&backlight_);
 
   // Start a slow transition to the dimmed level.
-  backlight_.ExpectSetBrightnessLevelWithInterval(
-      controller_->PercentToLevel(kTestAlsPercentDim), kSlowDuration, true);
   controller_->SetCurrentBrightnessPercent(
       kTestAlsPercentDim, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_SLOW);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(controller_->PercentToLevel(kTestAlsPercentDim),
+            backlight_.current_level());
+  EXPECT_EQ(KeyboardBacklightController::kSlowTransitionMs,
+            backlight_.current_interval().InMilliseconds());
 
   // Start a fast transition back to the maximum level.
-  backlight_.ExpectSetBrightnessLevelWithInterval(
-      kTestAlsLevelMax, kFastDuration, true);
   controller_->SetCurrentBrightnessPercent(
       kTestAlsPercentMax, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_FAST);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestAlsLevelMax, backlight_.current_level());
+  EXPECT_EQ(KeyboardBacklightController::kFastTransitionMs,
+            backlight_.current_interval().InMilliseconds());
 
   // We shouldn't do anything in response to a request to go to the level that
   // we last requested.
   controller_->SetCurrentBrightnessPercent(
       kTestAlsPercentMax, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_SLOW);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(kTestAlsLevelMax, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, ReadLimitsPrefs) {
@@ -714,11 +689,10 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
   EXPECT_EQ(-1, controller_->user_step_index_);
 
   // Non-initialized case.
-  backlight_.ExpectSetBrightnessLevel(
-      kTestUserLevels[kTestFoundUserStepIndex + 1],
-      true);
   EXPECT_TRUE(controller_->IncreaseBrightness(
       BRIGHTNESS_CHANGE_USER_INITIATED));
+  EXPECT_EQ(kTestUserLevels[kTestFoundUserStepIndex + 1],
+            backlight_.current_level());
   EXPECT_EQ(1, controller_->num_user_adjustments_);
   EXPECT_EQ(kTestFoundUserStepIndex + 1, controller_->user_step_index_);
   EXPECT_EQ(kTestUserPercents[kTestFoundUserStepIndex + 1],
@@ -727,11 +701,10 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseBrightness) {
             controller_->current_level_);
 
   // Normal case.
-  backlight_.ExpectSetBrightnessLevel(
-      kTestUserLevels[kTestFoundUserStepIndex + 2],
-      true);
   EXPECT_TRUE(controller_->IncreaseBrightness(
       BRIGHTNESS_CHANGE_USER_INITIATED));
+  EXPECT_EQ(kTestUserLevels[kTestFoundUserStepIndex + 2],
+            backlight_.current_level());
   EXPECT_EQ(2, controller_->num_user_adjustments_);
   EXPECT_EQ(kTestFoundUserStepIndex + 2, controller_->user_step_index_);
   EXPECT_EQ(kTestUserPercents[kTestFoundUserStepIndex + 2],
@@ -765,12 +738,11 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
   EXPECT_EQ(-1, controller_->user_step_index_);
 
   // Non-initialized case.
-  backlight_.ExpectSetBrightnessLevel(
-      kTestUserLevels[kTestFoundUserStepIndex - 1],
-      true);
   EXPECT_TRUE(controller_->DecreaseBrightness(
       true,
       BRIGHTNESS_CHANGE_USER_INITIATED));
+  EXPECT_EQ(kTestUserLevels[kTestFoundUserStepIndex - 1],
+            backlight_.current_level());
   EXPECT_EQ(1, controller_->num_user_adjustments_);
   EXPECT_EQ(kTestFoundUserStepIndex - 1, controller_->user_step_index_);
   EXPECT_EQ(kTestUserPercents[kTestFoundUserStepIndex - 1],
@@ -779,12 +751,11 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
             controller_->current_level_);
 
   // Normal case.
-  backlight_.ExpectSetBrightnessLevel(
-      kTestUserLevels[kTestFoundUserStepIndex - 2],
-      true);
   EXPECT_TRUE(controller_->DecreaseBrightness(
       true,
       BRIGHTNESS_CHANGE_USER_INITIATED));
+  EXPECT_EQ(kTestUserLevels[kTestFoundUserStepIndex - 2],
+            backlight_.current_level());
   EXPECT_EQ(2, controller_->num_user_adjustments_);
   EXPECT_EQ(kTestFoundUserStepIndex - 2, controller_->user_step_index_);
   EXPECT_EQ(kTestUserPercents[kTestFoundUserStepIndex - 2],
@@ -805,9 +776,9 @@ TEST_F(KeyboardBacklightControllerTest, DecreaseBrightness) {
 }
 
 TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
-  backlight_.ExpectSetBrightnessLevelWithInterval(0, base::TimeDelta(), true);
   controller_->SetPowerState(BACKLIGHT_SHUTTING_DOWN);
-  Mock::VerifyAndClearExpectations(&backlight_);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 }
 
 }  // namespace power_manager
