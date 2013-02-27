@@ -162,6 +162,10 @@ class KeyboardBacklightController : public BacklightController {
   // should be set to.
   int64 GetNewLevel() const;
 
+  // Reset the hysteresis control variables to the intial state and generate a
+  // synthetic lux level based on the current level of the backlight.
+  void ResetHysteresis();
+
   bool is_initialized_;
 
   // Backlight used for dimming. Non-owned.

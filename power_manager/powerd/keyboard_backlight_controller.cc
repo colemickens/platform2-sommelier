@@ -149,12 +149,7 @@ bool KeyboardBacklightController::Init() {
       BRIGHTNESS_CHANGE_AUTOMATED,
       TRANSITION_FAST);
 
-  // Create a synthetic lux value that is inline with |als_step_index_|.
-  lux_level_ = als_steps_[als_step_index_].decrease_threshold +
-      (als_steps_[als_step_index_].increase_threshold -
-       als_steps_[als_step_index_].decrease_threshold) / 2;
-  LOG(INFO) << "Created synthetic lux value of " << lux_level_;
-
+  ResetHysteresis();
   is_initialized_ = true;
   return true;
 }
@@ -263,6 +258,11 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
     backlight_->SetBrightnessLevel(0, base::TimeDelta());
     return true;
   }
+
+  // When returning to active we need to restart hysteresis since we might have
+  // been ignoring changes from the ALS.
+  if (old_state != BACKLIGHT_ACTIVE && state_ == BACKLIGHT_ACTIVE)
+    ResetHysteresis();
 
   SetCurrentBrightnessPercent(PercentToLevel(GetNewLevel()),
                               user_step_index_ != -1 ?
@@ -605,6 +605,16 @@ int64 KeyboardBacklightController::GetNewLevel() const {
       return current_level_;
       break;
   };
+}
+
+void KeyboardBacklightController::ResetHysteresis() {
+  hysteresis_state_ = ALS_HYST_IDLE;
+  hysteresis_count_ = 0;
+  // Create a synthetic lux value that is inline with |als_step_index_|.
+  lux_level_ = als_steps_[als_step_index_].decrease_threshold +
+      (als_steps_[als_step_index_].increase_threshold -
+       als_steps_[als_step_index_].decrease_threshold) / 2;
+  LOG(INFO) << "Created synthetic lux value of " << lux_level_;
 }
 
 }  // namespace power_manager
