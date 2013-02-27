@@ -16,7 +16,7 @@ TEST(PerfRecorderTest, TestRecord) {
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   PerfDataProto perf_data_proto;
-  std::string perf_command_line = "/usr/sbin/perf record";
+  std::string perf_command_line = "sudo /usr/sbin/perf record";
   PerfRecorder perf_recorder;
   EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
                                                        1,
