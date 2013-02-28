@@ -15,7 +15,7 @@
 namespace chaps {
 
 // This class encapsulates an array of CK_ATTRIBUTEs and provides serialization.
-class Attributes {
+class EXPORT_SPEC Attributes {
  public:
   // This constructor initializes with a NULL array.
   Attributes();

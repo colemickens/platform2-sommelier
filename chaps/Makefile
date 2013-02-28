@@ -128,7 +128,7 @@ qemu_test_filter := -$(subst $(space),:,$(strip $(qemu_test_exclusions)))
 tests: override GTEST_ARGS.qemu.arm := --gtest_filter=$(qemu_test_filter)
 
 # Unit Tests
-chaps_test_OBJS = $(COMMON_OBJS) chaps_test.o chaps_proxy_mock.o
+chaps_test_OBJS = $(COMMON_OBJS) chaps_test.o
 chaps_test_LIBS = $(GMOCK_LIBS)
 CXX_BINARY(chaps_test): $(chaps_test_OBJS) CXX_LIBRARY(libchaps.so)
 CXX_BINARY(chaps_test): LDLIBS += $(chaps_test_LIBS)

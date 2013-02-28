@@ -15,15 +15,20 @@
 
 namespace chaps {
 
-// defined in chaps.cc
+// Defined in chaps.cc.
 extern void EnableMockProxy(ChapsInterface* proxy, bool is_initialized);
 extern void DisableMockProxy();
 
-// ChapsProxyMock is a mock of ChapsInterface
+// ChapsProxyMock is a mock of ChapsInterface.
 class ChapsProxyMock : public ChapsInterface {
 public:
-  ChapsProxyMock(bool is_initialized);
-  virtual ~ChapsProxyMock();
+  ChapsProxyMock(bool is_initialized) {
+    EnableMockProxy(this, is_initialized);
+  };
+
+  virtual ~ChapsProxyMock() {
+    DisableMockProxy();
+  }
 
   MOCK_METHOD2(GetSlotList, uint32_t (bool, std::vector<uint64_t>*));
   MOCK_METHOD8(GetSlotInfo, uint32_t (uint64_t,

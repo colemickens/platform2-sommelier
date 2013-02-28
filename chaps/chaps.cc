@@ -103,7 +103,8 @@ EXPORT_SPEC void DisableMockProxy() {
 // PKCS #11 v2.20 section 11.4 page 102.
 // Connects to the D-Bus service.
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
-  LOG_CK_RV_AND_RETURN_IF(g_is_initialized, CKR_CRYPTOKI_ALREADY_INITIALIZED);
+  if (g_is_initialized)
+    return CKR_CRYPTOKI_ALREADY_INITIALIZED;
   // Validate args (if any).
   if (pInitArgs) {
     CK_C_INITIALIZE_ARGS_PTR args =
