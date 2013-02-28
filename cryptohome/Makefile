@@ -13,7 +13,7 @@ PKG_CONFIG ?= pkg-config
 # When you uprev this, please grep for TODOBASE to find stuff you might want to
 # clean up or fix.
 BASE_VER ?= 180609
-PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 gthread-2.0 nss \
+PC_DEPS = dbus-1 dbus-glib-1 glib-2.0 gthread-2.0 nss openssl \
 	libchrome-$(BASE_VER) libchromeos-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
@@ -34,11 +34,13 @@ MARSHAL_SRCS := $(patsubst %,%.glibmarshal.c,$(MARSHALS))
 MARSHAL_OBJS := $(patsubst %.c,%.o,$(MARSHAL_SRCS))
 BINDING_HDRS := bindings/client.h bindings/server.h
 GEN_HDRS := $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS)
+ME_OBJS := mount-encrypted.o mount-helpers.o
 
 SHARED_OBJS := $(filter-out cryptohomed.o cryptohome.o cryptohome-path.o \
                             lockbox-cache-main.o %_tests.o %_unittest.o \
-                            cryptohome_testrunner.o, $(CXX_OBJECTS))
-TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o, $(CXX_OBJECTS))
+                            cryptohome_testrunner.o $(ME_OBJS), $(CXX_OBJECTS))
+TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o \
+                            $(ME_OBJS), $(CXX_OBJECTS))
 
 # Used to cause an object to depend on all the generated headers. Since the
 # headers are generated, there's no way for common.mk's dependency detection to
@@ -59,7 +61,7 @@ $(eval $(call add_object_rules,$(PB_OBJS),CXX,cc))
 SHARED_OBJS += $(MARSHAL_OBJS) $(PB_OBJS)
 
 all: CXX_BINARY(cryptohomed) CXX_BINARY(cryptohome) CXX_BINARY(cryptohome-path)
-all: CXX_BINARY(lockbox-cache)
+all: CXX_BINARY(lockbox-cache) CC_BINARY(mount-encrypted)
 tests: TEST(CXX_BINARY(cryptohome_testrunner))
 
 %.pb.cc: $(SRC)/%.proto
@@ -84,6 +86,9 @@ CXX_BINARY(cryptohome): $(SHARED_OBJS) cryptohome.o
 CXX_BINARY(cryptohome-path): $(SHARED_OBJS) cryptohome-path.o
 CXX_BINARY(cryptohome_testrunner): LDLIBS += -lgtest -lgmock
 CXX_BINARY(cryptohome_testrunner): $(SHARED_OBJS) $(TEST_OBJS)
+$(ME_OBJS): CFLAGS += -I$(SYSROOT)/usr/include/vboot
+CC_BINARY(mount-encrypted): LDLIBS += -lvboot_host -lm
+CC_BINARY(mount-encrypted): $(ME_OBJS)
 
 CXX_BINARY(lockbox-cache): tpm_status.pb.o cryptolib.o platform.o tpm.o \
                            lockbox.o lockbox-cache.o lockbox-cache-tpm.o \
@@ -91,3 +96,4 @@ CXX_BINARY(lockbox-cache): tpm_status.pb.o cryptolib.o platform.o tpm.o \
 
 clean: CLEAN(*.pb.cc) CLEAN(*.pb.h) CLEAN(cryptohomed) CLEAN(lockbox-cache)
 clean: CLEAN(cryptohome) CLEAN(cryptohome-path) CLEAN(cryptohome_testrunner)
+clean: CLEAN(mount-encrypted)

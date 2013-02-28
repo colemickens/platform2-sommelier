@@ -110,7 +110,7 @@ class LockboxTest : public ::testing::Test {
         .WillOnce(Return(true));
     }
     EXPECT_CALL(process_, Reset(0)).Times(1);
-    EXPECT_CALL(process_, AddArg("/sbin/mount-encrypted")).Times(1);
+    EXPECT_CALL(process_, AddArg("/usr/sbin/mount-encrypted")).Times(1);
     EXPECT_CALL(process_, AddArg("finalize")).Times(1);
     EXPECT_CALL(process_, AddArg(salt_hash)).Times(1);
     EXPECT_CALL(process_, BindFd(_, 1)).Times(1);

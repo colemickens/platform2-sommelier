@@ -41,7 +41,7 @@ const uint32_t Lockbox::kReservedNvramBytesV2 = kReservedSizeBytes +
                                                 kReservedFlagsBytes +
                                                 kReservedSaltBytesV2 +
                                                 kReservedDigestBytes;
-const char * const Lockbox::kMountEncrypted = "/sbin/mount-encrypted";
+const char * const Lockbox::kMountEncrypted = "/usr/sbin/mount-encrypted";
 const char * const Lockbox::kMountEncryptedFinalize = "finalize";
 
 
