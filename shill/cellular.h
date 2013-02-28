@@ -10,6 +10,7 @@
 
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
+#include <base/gtest_prod_util.h>  // for FRIEND_TEST_ALL_PREFIXES
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/activating_iccid_store.h"
@@ -257,7 +258,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularServiceTest, FriendlyName);
   FRIEND_TEST(CellularTest, CreateService);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
+  FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, DisableModem);

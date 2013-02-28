@@ -12,6 +12,7 @@
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
+#include <base/gtest_prod_util.h>  // for FRIEND_TEST_ALL_PREFIXES
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular.h"
@@ -166,7 +167,7 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
   FRIEND_TEST(CellularTest, Connect);
-  FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
+  FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
   FRIEND_TEST(CellularTest, Disconnect);

@@ -15,6 +15,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
+#include <base/gtest_prod_util.h>  // for FRIEND_TEST_ALL_PREFIXES
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/device.h"
@@ -337,7 +338,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   friend class WiFiObjectTest;
   friend class WiMaxProviderTest;
 
-  FRIEND_TEST(CellularTest, ConnectAddsTerminationAction);
+  FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);

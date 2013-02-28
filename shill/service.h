@@ -554,6 +554,7 @@ class Service : public base::RefCounted<Service> {
   friend class WiMaxServiceTest;
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
   // TODO(quiche): The SortServices test should probably move into

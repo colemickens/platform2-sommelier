@@ -868,7 +868,17 @@ TEST_F(CellularTest, StopModemCallbackFail) {
   EXPECT_FALSE(device_->service_.get());
 }
 
-TEST_F(CellularTest, ConnectAddsTerminationAction) {
+// The following test crashes under Clang
+// Disabling it for now (crosbug.com/39351)
+#if defined(__clang__)
+  #define MAYBE_ConnectAddsTerminationAction \
+    DISABLED_ConnectAddsTerminationAction
+#else
+  #define MAYBE_ConnectAddsTerminationAction \
+    ConnectAddsTerminationAction
+#endif  // defined(__clang__)
+
+TEST_F(CellularTest, MAYBE_ConnectAddsTerminationAction) {
   Error error;
   EXPECT_CALL(*simple_proxy_,
               Connect(ContainsPhoneNumber(), _, _,
