@@ -6,10 +6,24 @@
 
 #include <string>
 
+#include "base/logging.h"
+
 #include "perf_reader.h"
 #include "perf_serializer.h"
 #include "perf_protobuf_io.h"
 #include "utils.h"
+
+namespace {
+
+const char* kPerfDataFiles[] = {
+  "perf.data.singleprocess",
+  "perf.data.systemwide.1",
+  "perf.data.systemwide.5",
+  "perf.data.busy.1",
+  "perf.data.busy.5",
+};
+
+}  // namespace
 
 void SerializeAndDeserialize(const std::string& input,
                              const std::string& output) {
@@ -50,34 +64,38 @@ TEST(PerfReaderTest, Test1Cycle) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
-  PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
-             output_perf_reader2;
-  PerfDataProto perf_data_proto, perf_data_proto1;
+  for (unsigned int i = 0; i < arraysize(kPerfDataFiles); ++i) {
+    PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
+               output_perf_reader2;
+    PerfDataProto perf_data_proto, perf_data_proto1;
 
-  std::string input_perf_data = "perf.data";
-  std::string output_perf_data = input_perf_data + ".serialized.out";
-  std::string output_perf_data1 = output_perf_data + ".serialized.out";
+    std::string input_perf_data = kPerfDataFiles[i];
+    std::string output_perf_data = input_perf_data + ".serialized.out";
+    std::string output_perf_data1 = output_perf_data + ".serialized.out";
 
-  input_perf_reader.ReadFile(input_perf_data);
+    LOG(INFO) << "Testing " << input_perf_data;
+    input_perf_reader.ReadFile(input_perf_data);
 
-  SerializeAndDeserialize(input_perf_data, output_perf_data);
-  output_perf_reader.ReadFile(output_perf_data);
-  SerializeAndDeserialize(output_perf_data, output_perf_data1);
-  output_perf_reader1.ReadFile(output_perf_data1);
+    SerializeAndDeserialize(input_perf_data, output_perf_data);
+    output_perf_reader.ReadFile(output_perf_data);
+    SerializeAndDeserialize(output_perf_data, output_perf_data1);
+    output_perf_reader1.ReadFile(output_perf_data1);
 
-  ASSERT_TRUE(CompareFileContents(output_perf_data, output_perf_data1));
+    ASSERT_TRUE(CompareFileContents(output_perf_data, output_perf_data1));
 
-  std::string output_perf_data2 = input_perf_data + ".io.out";
-  SerializeToFileAndBack(input_perf_data, output_perf_data2);
-  output_perf_reader2.ReadFile(output_perf_data2);
+    std::string output_perf_data2 = input_perf_data + ".io.out";
+    SerializeToFileAndBack(input_perf_data, output_perf_data2);
+    output_perf_reader2.ReadFile(output_perf_data2);
 
-  // Make sure the # of events do not change.
-  ASSERT_TRUE(input_perf_reader.events().size() ==
-              output_perf_reader.events().size());
-  ASSERT_TRUE(input_perf_reader.events().size() ==
-              output_perf_reader1.events().size());
-  ASSERT_TRUE(input_perf_reader.events().size() ==
-              output_perf_reader2.events().size());
+    // Make sure the # of events do not change.
+    ASSERT_TRUE(input_perf_reader.events().size() ==
+                output_perf_reader.events().size());
+    ASSERT_TRUE(input_perf_reader.events().size() ==
+                output_perf_reader1.events().size());
+    ASSERT_TRUE(input_perf_reader.events().size() ==
+                output_perf_reader2.events().size());
+    // TODO(sque): check the perf report output also.
+  }
 }
 
 int main(int argc, char * argv[]) {

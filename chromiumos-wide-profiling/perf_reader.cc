@@ -240,6 +240,7 @@ bool PerfReader::ProcessEvent(const event_t& event) {
     case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
+    case PERF_RECORD_FORK:
     case PERF_RECORD_READ:
     case PERF_RECORD_MAX:
       LOG(INFO) << "Read event type: " << event.header.type

@@ -53,8 +53,15 @@ $(PROGRAMS): %: %.o $(COMMON_OBJECTS)
 $(TESTS): %: %.o $(COMMON_OBJECTS)
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(TEST_LDFLAGS)
 
+# With large perf.data files, the tests will spew a lot of logging.  The
+# following calls will pipe the logging to a log file.  To see test logging,
+# build with 'FEATURES="test noclean"' and go to the build directory.
 check: $(TESTS)
-	for test in $(TESTS); do ./$$test || exit 1; done
+	for test in $(TESTS); do \
+		./$$test 2> ./$$test.stderr.log && continue; \
+		cat ./$$test.stderr.log; \
+		exit 1; \
+	done
 
 clean:
 	rm -f *.o *.d.* *.a $(PROGRAMS) $(TESTS) $(GENERATED_SOURCES) \
