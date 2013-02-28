@@ -11,7 +11,9 @@
 
 #include "perf_reader.h"
 
-#define PERF_MAGIC 0x32454c4946524550LL
+namespace {
+const uint64 kPerfMagic = 0x32454c4946524550LL;
+}  // namespace
 
 bool PerfReader::ReadFileFromHandle(std::ifstream* in) {
   if (!in->good())
@@ -25,6 +27,70 @@ bool PerfReader::ReadFile(const std::string& filename) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (ReadFileFromHandle(&in) == false)
     return false;
+  return true;
+}
+
+bool PerfReader::WriteFile(const std::string& filename) {
+  std::ofstream out(filename.c_str(), std::ios::binary);
+  return WriteFileFromHandle(&out);
+}
+
+bool PerfReader::WriteFileFromHandle(std::ofstream* out) {
+  if (!out->good())
+    return false;
+  if (!RegenerateHeader())
+    return false;
+  if (!WriteHeader(out) || !WriteAttrs(out) || !WriteData(out))
+    return false;
+  return true;
+}
+
+bool PerfReader::RegenerateHeader() {
+  // We write attributes and data.
+  // Compute data size.
+  memset(&out_header_, 0, sizeof(out_header_));
+  out_header_.magic = kPerfMagic;
+  out_header_.size = sizeof(out_header_);
+  out_header_.attr_size = sizeof(attrs_[0].attr) + sizeof(perf_file_section);
+  out_header_.attrs.size = out_header_.attr_size * attrs_.size();
+  for (size_t i = 0; i < events_.size(); i++)
+    out_header_.data.size += events_[i].header.size;
+
+  u64 current_offset = 0;
+  current_offset += out_header_.size;
+  out_header_.attrs.offset = current_offset;
+  current_offset += out_header_.attrs.size;
+  for (size_t i = 0; i < attrs_.size(); i++)
+    current_offset += sizeof(attrs_[i].ids[0]) * attrs_[i].ids.size();
+
+  out_header_.data.offset = current_offset;
+
+  return true;
+}
+
+bool PerfReader::ReadHeader(std::ifstream* in) {
+  in->seekg(0, std::ios::beg);
+  in->read(reinterpret_cast<char*>(&header_), sizeof(header_));
+  if (!in->good())
+    return false;
+  if (header_.magic != kPerfMagic) {
+    LOG(ERROR) << "Read wrong magic. Expected: " << kPerfMagic
+               << " Got: " << header_.magic;
+    return false;
+  }
+  if (header_.size != sizeof(header_)) {
+    LOG(ERROR) << "header_.size: " << header_.size << " Expected: "
+               << sizeof(header_);
+    return false;
+  }
+  if (header_.attr_size != sizeof(perf_file_attr)) {
+    LOG(ERROR) << "header_.attr_size: " << header_.attr_size << " Expected: "
+               << sizeof(perf_file_attr);
+    return false;
+  }
+  LOG(INFO) << "event_types.size: " << header_.event_types.size;
+  LOG(INFO) << "event_types.offset: " << header_.event_types.offset;
+
   return true;
 }
 
@@ -104,58 +170,6 @@ bool PerfReader::ReadData(std::ifstream* in) {
   return true;
 }
 
-bool PerfReader::ReadHeader(std::ifstream* in) {
-  in->seekg(0, std::ios::beg);
-  in->read(reinterpret_cast<char*>(&header_), sizeof(header_));
-  if (!in->good())
-    return false;
-  if (header_.magic != PERF_MAGIC) {
-    LOG(ERROR) << "Read wrong magic. Expected: " << PERF_MAGIC
-               << " Got: " << header_.magic;
-    return false;
-  }
-  if (header_.size != sizeof(header_)) {
-    LOG(ERROR) << "header_.size: " << header_.size << " Expected: "
-               << sizeof(header_);
-    return false;
-  }
-  if (header_.attr_size != sizeof(perf_file_attr)) {
-    LOG(ERROR) << "header_.attr_size: " << header_.attr_size << " Expected: "
-               << sizeof(perf_file_attr);
-    return false;
-  }
-  LOG(INFO) << "event_types.size: " << header_.event_types.size;
-  LOG(INFO) << "event_types.offset: " << header_.event_types.offset;
-
-  return true;
-}
-
-bool PerfReader::ProcessEvent(const event_t& event) {
-  switch (event.header.type) {
-    case PERF_RECORD_SAMPLE:
-      LOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
-      break;
-    case PERF_RECORD_MMAP:
-      LOG(INFO) << "MMAP: " << event.mmap.filename;
-      break;
-    case PERF_RECORD_LOST:
-    case PERF_RECORD_COMM:
-    case PERF_RECORD_EXIT:
-    case PERF_RECORD_THROTTLE:
-    case PERF_RECORD_UNTHROTTLE:
-    case PERF_RECORD_FORK:
-    case PERF_RECORD_READ:
-    case PERF_RECORD_MAX:
-      LOG(INFO) << "Read event type: " << event.header.type <<
-                ". Doing nothing.";
-      break;
-    default:
-      LOG(ERROR) << "Unknown event type: " << event.header.type;
-      return false;
-  }
-  return true;
-}
-
 bool PerfReader::WriteHeader(std::ofstream* out) const {
   out->seekp(0, std::ios::beg);
   out->write(reinterpret_cast<const char*>(&out_header_), sizeof(out_header_));
@@ -173,35 +187,6 @@ bool PerfReader::WriteData(std::ofstream* out) const {
       return false;
     }
   }
-  return true;
-}
-
-bool PerfReader::WriteEventFull(std::ofstream* out,
-                                const event_t& event) const {
-  out->write(reinterpret_cast<const char*>(&event), event.header.size);
-  return out->good();
-}
-
-bool PerfReader::RegenerateHeader() {
-  // We write attributes and data.
-  // Compute data size.
-  memset(&out_header_, 0, sizeof(out_header_));
-  out_header_.magic = PERF_MAGIC;
-  out_header_.size = sizeof(out_header_);
-  out_header_.attr_size = sizeof(attrs_[0].attr) + sizeof(perf_file_section);
-  out_header_.attrs.size = out_header_.attr_size * attrs_.size();
-  for (size_t i = 0; i < events_.size(); i++)
-    out_header_.data.size += events_[i].header.size;
-
-  u64 current_offset = 0;
-  current_offset += out_header_.size;
-  out_header_.attrs.offset = current_offset;
-  current_offset += out_header_.attrs.size;
-  for (size_t i = 0; i < attrs_.size(); i++)
-    current_offset += sizeof(attrs_[i].ids[0]) * attrs_[i].ids.size();
-
-  out_header_.data.offset = current_offset;
-
   return true;
 }
 
@@ -236,17 +221,33 @@ bool PerfReader::WriteAttrs(std::ofstream* out) const {
   return true;
 }
 
-bool PerfReader::WriteFile(const std::string& filename) {
-  std::ofstream out(filename.c_str(), std::ios::binary);
-  return WriteFileFromHandle(&out);
+bool PerfReader::WriteEventFull(std::ofstream* out,
+                                const event_t& event) const {
+  out->write(reinterpret_cast<const char*>(&event), event.header.size);
+  return out->good();
 }
 
-bool PerfReader::WriteFileFromHandle(std::ofstream* out) {
-  if (!out->good())
-    return false;
-  if (!RegenerateHeader())
-    return false;
-  if (!WriteHeader(out) || !WriteAttrs(out) || !WriteData(out))
-    return false;
+bool PerfReader::ProcessEvent(const event_t& event) {
+  switch (event.header.type) {
+    case PERF_RECORD_SAMPLE:
+      LOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
+      break;
+    case PERF_RECORD_MMAP:
+      LOG(INFO) << "MMAP: " << event.mmap.filename;
+      break;
+    case PERF_RECORD_LOST:
+    case PERF_RECORD_COMM:
+    case PERF_RECORD_EXIT:
+    case PERF_RECORD_THROTTLE:
+    case PERF_RECORD_UNTHROTTLE:
+    case PERF_RECORD_READ:
+    case PERF_RECORD_MAX:
+      LOG(INFO) << "Read event type: " << event.header.type
+                << ". Doing nothing.";
+      break;
+    default:
+      LOG(ERROR) << "Unknown event type: " << event.header.type;
+      return false;
+  }
   return true;
 }

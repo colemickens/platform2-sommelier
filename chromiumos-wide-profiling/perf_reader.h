@@ -43,20 +43,22 @@ class PerfReader {
   }
 
  private:
-  bool ProcessEvent(const event_t& event);
-  bool WriteHeader(std::ofstream* out) const;
-  bool WriteAttrs(std::ofstream* out) const;
-  bool WriteEventFull(std::ofstream* out, const event_t& event) const;
-  bool WriteData(std::ofstream* out) const;
   bool ReadHeader(std::ifstream* in);
   bool ReadAttrs(std::ifstream* in);
   bool ReadData(std::ifstream* in);
+  bool WriteHeader(std::ofstream* out) const;
+  bool WriteAttrs(std::ofstream* out) const;
+  bool WriteData(std::ofstream* out) const;
+  bool WriteEventFull(std::ofstream* out, const event_t& event) const;
+
+  bool ProcessEvent(const event_t& event);
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<event_t> events_;
 
   struct perf_file_header header_;
   struct perf_file_header out_header_;
+
   DISALLOW_COPY_AND_ASSIGN(PerfReader);
 };
 
