@@ -16,8 +16,8 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/common/util.h"
 #include "power_manager/powerd/ambient_light_sensor.h"
+#include "power_manager/powerd/system/display_power_setter.h"
 
 namespace {
 
@@ -75,11 +75,11 @@ InternalBacklightController::InternalBacklightController(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
     AmbientLightSensor* sensor,
-    MonitorReconfigureInterface* monitor_reconfigure)
+    system::DisplayPowerSetterInterface* display_power_setter)
     : backlight_(backlight),
       prefs_(prefs),
       light_sensor_(sensor),
-      monitor_reconfigure_(monitor_reconfigure),
+      display_power_setter_(display_power_setter),
       observer_(NULL),
       has_seen_als_event_(false),
       als_offset_percent_(0.0),
@@ -103,16 +103,14 @@ InternalBacklightController::InternalBacklightController(
       is_initialized_(false),
       target_level_(0),
       suspended_through_idle_off_(false),
-      set_screen_power_state_timeout_id_(0),
       last_transition_style_(TRANSITION_INSTANT) {
   DCHECK(backlight_);
   DCHECK(prefs_);
-  DCHECK(monitor_reconfigure_);
+  DCHECK(display_power_setter_);
   backlight_->AddObserver(this);
 }
 
 InternalBacklightController::~InternalBacklightController() {
-  util::RemoveTimeout(&set_screen_power_state_timeout_id_);
   backlight_->RemoveObserver(this);
   if (light_sensor_) {
     light_sensor_->RemoveObserver(this);
@@ -181,12 +179,6 @@ bool InternalBacklightController::Init() {
 
   idle_brightness_percent_ = ClampPercentToVisibleRange(
       LevelToPercent(lround(kIdleBrightnessFraction * max_level_)));
-
-  // If the current brightness is 0, the internal panel must be off.  Update
-  // |monitor_reconfigure_| of this state so that it will properly turn on
-  // the panel later.
-  if (target_level_ == 0)
-    monitor_reconfigure_->set_is_internal_panel_enabled(false);
 
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
             << step_percent_ << "% step and minimum-visible level of "
@@ -284,15 +276,15 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
   state_ = new_state;
 
   if (new_state == BACKLIGHT_SHUTTING_DOWN) {
-    monitor_reconfigure_->SetScreenPowerState(
-        OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF);
+    display_power_setter_->SetDisplayPower(
+        chromeos::DISPLAY_POWER_ALL_OFF, base::TimeDelta());
     return true;
   }
 
   if (old_state == BACKLIGHT_SHUTTING_DOWN) {
     LOG(WARNING) << "Unexpectedly transitioning out of shutting-down state";
-    monitor_reconfigure_->SetScreenPowerState(
-        OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
+    display_power_setter_->SetDisplayPower(
+        chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
   }
 
   TransitionStyle style = TRANSITION_FAST;
@@ -316,8 +308,8 @@ bool InternalBacklightController::SetPowerState(PowerState new_state) {
     // the system back to a non IDLE_OFF state, and we do nothing in this case.
     if (old_state == BACKLIGHT_IDLE_OFF ||
         (old_state == BACKLIGHT_SUSPENDED && suspended_through_idle_off_)) {
-      SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON,
-                          base::TimeDelta());
+      display_power_setter_->SetDisplayPower(
+          chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
     }
 
     // If returning from suspend, force the backlight to zero to cancel out any
@@ -677,46 +669,23 @@ bool InternalBacklightController::SetBrightness(int64 target_level,
     // save power.  We don't do anything in the SUSPENDED state since the
     // kernel driver should turn off the screen.
     if (state_ == BACKLIGHT_IDLE_OFF) {
-      SetScreenPowerState(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF,
-                          interval);
+      display_power_setter_->SetDisplayPower(
+          chromeos::DISPLAY_POWER_ALL_OFF, interval);
     } else if (state_ == BACKLIGHT_ACTIVE) {
-      SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_OFF,
-                          interval + turn_off_screen_timeout_);
+      display_power_setter_->SetDisplayPower(
+          chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+          interval + turn_off_screen_timeout_);
     }
   } else if (old_target_level == 0 && state_ != BACKLIGHT_SUSPENDED) {
     // If we're about to suspend, don't turn the internal panel on -- we're just
     // setting the brightness so that it'll be at the right level immediately
-    SetScreenPowerState(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON,
-                        base::TimeDelta());
+    display_power_setter_->SetDisplayPower(
+        chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
   }
 
   if (!backlight_->SetBrightnessLevel(target_level, interval))
     LOG(WARNING) << "Could not set brightness to " << target_level;
   return true;
-}
-
-void InternalBacklightController::SetScreenPowerState(
-    ScreenPowerOutputSelection selection,
-    ScreenPowerState state,
-    base::TimeDelta delay) {
-  util::RemoveTimeout(&set_screen_power_state_timeout_id_);
-  if (delay.InMilliseconds() == 0) {
-    monitor_reconfigure_->SetScreenPowerState(selection, state);
-  } else {
-    set_screen_power_state_timeout_id_ =
-        g_timeout_add(delay.InMilliseconds(),
-                      HandleSetScreenPowerStateTimeoutThunk,
-                      CreateHandleSetScreenPowerStateTimeoutArgs(
-                          this, selection, state));
-  }
-}
-
-gboolean InternalBacklightController::HandleSetScreenPowerStateTimeout(
-    ScreenPowerOutputSelection selection,
-    ScreenPowerState state) {
-  monitor_reconfigure_->SetScreenPowerState(selection, state);
-  set_screen_power_state_timeout_id_ = 0;
-  return FALSE;
 }
 
 }  // namespace power_manager

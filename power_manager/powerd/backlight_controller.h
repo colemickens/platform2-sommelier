@@ -11,8 +11,6 @@
 
 namespace power_manager {
 
-class MonitorReconfigureInterface;
-
 enum PowerState {
   // User is active.
   BACKLIGHT_ACTIVE,

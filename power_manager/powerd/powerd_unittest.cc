@@ -15,10 +15,10 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/mock_metrics_store.h"
-#include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/system/backlight_stub.h"
+#include "power_manager/powerd/system/display_power_setter_stub.h"
 
 #ifdef IS_DESKTOP
 #include "power_manager/powerd/external_backlight_controller.h"
@@ -79,9 +79,9 @@ class DaemonTest : public Test {
   DaemonTest()
       : backlight_(kMaxBrightnessLevel, kDefaultBrightnessLevel),
 #ifdef IS_DESKTOP
-        backlight_ctl_(&backlight_, &monitor_),
+        backlight_ctl_(&backlight_, &display_power_setter_),
 #else
-        backlight_ctl_(&backlight_, &prefs_, NULL, &monitor_),
+        backlight_ctl_(&backlight_, &prefs_, NULL, &display_power_setter_),
 #endif
         daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL,
                 base::FilePath(".")),
@@ -91,10 +91,6 @@ class DaemonTest : public Test {
     daemon_.set_disable_dbus_for_testing(true);
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
-    EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
-    EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
-        .WillRepeatedly(Return());
 
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
@@ -283,7 +279,7 @@ class DaemonTest : public Test {
   }
 
   system::BacklightStub backlight_;
-  MockMonitorReconfigure monitor_;
+  system::DisplayPowerSetterStub display_power_setter_;
   StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   FakePrefs prefs_;

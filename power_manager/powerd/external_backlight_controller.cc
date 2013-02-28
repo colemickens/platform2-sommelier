@@ -11,8 +11,8 @@
 
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/system/backlight_interface.h"
+#include "power_manager/powerd/system/display_power_setter.h"
 
 namespace {
 
@@ -26,9 +26,9 @@ namespace power_manager {
 
 ExternalBacklightController::ExternalBacklightController(
     system::BacklightInterface* backlight,
-    MonitorReconfigureInterface* monitor_reconfigure)
+    system::DisplayPowerSetterInterface* display_power_setter)
     : backlight_(backlight),
-      monitor_reconfigure_(monitor_reconfigure),
+      display_power_setter_(display_power_setter),
       observer_(NULL),
       power_state_(BACKLIGHT_UNINITIALIZED),
       max_level_(0),
@@ -37,7 +37,7 @@ ExternalBacklightController::ExternalBacklightController(
       num_user_adjustments_(0),
       disable_dbus_for_testing_(false) {
   DCHECK(backlight_);
-  DCHECK(monitor_reconfigure_);
+  DCHECK(display_power_setter_);
   backlight_->AddObserver(this);
 }
 
@@ -135,9 +135,10 @@ bool ExternalBacklightController::SetPowerState(PowerState state) {
                          state == BACKLIGHT_SUSPENDED ||
                          state == BACKLIGHT_SHUTTING_DOWN;
   if (should_turn_off != currently_off_) {
-    monitor_reconfigure_->SetScreenPowerState(
-        OUTPUT_SELECTION_ALL_DISPLAYS,
-        should_turn_off ? POWER_STATE_OFF : POWER_STATE_ON);
+    display_power_setter_->SetDisplayPower(should_turn_off ?
+                                           chromeos::DISPLAY_POWER_ALL_OFF :
+                                           chromeos::DISPLAY_POWER_ALL_ON,
+                                           base::TimeDelta());
     currently_off_ = should_turn_off;
   }
 

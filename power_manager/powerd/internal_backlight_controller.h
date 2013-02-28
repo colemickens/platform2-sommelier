@@ -10,19 +10,15 @@
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/time.h"
-#include "power_manager/common/signal_callback.h"
+#include "chromeos/dbus/service_constants.h"
 #include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
-
-typedef int gboolean;
-typedef unsigned int guint;
 
 namespace power_manager {
 
 namespace system {
 class BacklightInterface;
-class MonitorReconfigureInterface;
+class DisplayPowerSetterInterface;
 }  // namespace system
 
 // Controls the internal backlight on devices with built-in displays.
@@ -38,10 +34,11 @@ class InternalBacklightController : public BacklightController {
   // tests.
   static const double kMinVisiblePercent;
 
-  InternalBacklightController(system::BacklightInterface* backlight,
-                              PrefsInterface* prefs,
-                              AmbientLightSensor* sensor,
-                              MonitorReconfigureInterface* monitor_reconfigure);
+  InternalBacklightController(
+      system::BacklightInterface* backlight,
+      PrefsInterface* prefs,
+      AmbientLightSensor* sensor,
+      system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~InternalBacklightController();
 
   int64 target_level_for_testing() const { return target_level_; }
@@ -114,22 +111,6 @@ class InternalBacklightController : public BacklightController {
   // to change brightness with smoothing effects.
   bool SetBrightness(int64 target_level, TransitionStyle style);
 
-  // Changes |selection|'s state to |state| after |delay|.  If another change
-  // has already been scheduled, it will be aborted.
-  void SetScreenPowerState(
-      ScreenPowerOutputSelection selection,
-      ScreenPowerState state,
-      base::TimeDelta delay);
-
-  // Timeout callback that sets the passed-in state, resets
-  // |set_screen_power_state_timeout_id_|, and returns FALSE to cancel the
-  // timeout.
-  SIGNAL_CALLBACK_PACKED_2(InternalBacklightController,
-                           gboolean,
-                           HandleSetScreenPowerStateTimeout,
-                           ScreenPowerOutputSelection,
-                           ScreenPowerState);
-
   // Backlight used for dimming. Non-owned.
   system::BacklightInterface* backlight_;
 
@@ -139,8 +120,8 @@ class InternalBacklightController : public BacklightController {
   // Light sensor we need to register for updates from.  Non-owned.
   AmbientLightSensor* light_sensor_;
 
-  // Use MonitorReconfigure to turn on/off the display.
-  MonitorReconfigureInterface* monitor_reconfigure_;
+  // Used to turn displays on and off.
+  system::DisplayPowerSetterInterface* display_power_setter_;
 
   // Observer for changes to the brightness level.  Not owned by us.
   BacklightControllerObserver* observer_;
@@ -232,10 +213,6 @@ class InternalBacklightController : public BacklightController {
 
   // Flag to indicate whether the state before suspended is idle off;
   bool suspended_through_idle_off_;
-
-  // Source ID for timeout that will run HandleSetScreenPowerStateTimeout(), or
-  // 0 if no timeout is currently set.
-  guint set_screen_power_state_timeout_id_;
 
   // Screen off delay when user sets brightness to 0.
   base::TimeDelta turn_off_screen_timeout_;

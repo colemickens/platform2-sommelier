@@ -24,8 +24,8 @@
 #include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/external_backlight_controller.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
-#include "power_manager/powerd/monitor_reconfigure.h"
 #include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/system/display_power_setter.h"
 #include "power_manager/powerd/system/external_backlight.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 
@@ -120,14 +120,14 @@ int main(int argc, char* argv[]) {
   light_sensor->Init();
 #endif
 
-  power_manager::MonitorReconfigure monitor_reconfigure;
+  power_manager::system::DisplayPowerSetter display_power_setter;
 
 #ifdef IS_DESKTOP
   power_manager::system::ExternalBacklight display_backlight;
   if (!display_backlight.Init())
     LOG(WARNING) << "Cannot initialize display backlight";
   power_manager::ExternalBacklightController display_backlight_controller(
-      &display_backlight, &monitor_reconfigure);
+      &display_backlight, &display_power_setter);
 #else
   power_manager::system::InternalBacklight display_backlight;
   if (!display_backlight.Init(
@@ -135,7 +135,7 @@ int main(int argc, char* argv[]) {
           power_manager::kInternalBacklightPattern))
     LOG(WARNING) << "Cannot initialize display backlight";
   power_manager::InternalBacklightController display_backlight_controller(
-      &display_backlight, &prefs, light_sensor.get(), &monitor_reconfigure);
+      &display_backlight, &prefs, light_sensor.get(), &display_power_setter);
 #endif
 
   if (!display_backlight_controller.Init())

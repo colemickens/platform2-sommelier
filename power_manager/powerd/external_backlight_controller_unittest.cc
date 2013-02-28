@@ -8,11 +8,8 @@
 
 #include "base/compiler_specific.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
-#include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/system/backlight_stub.h"
-
-using ::testing::_;
-using ::testing::Return;
+#include "power_manager/powerd/system/display_power_setter_stub.h"
 
 namespace power_manager {
 
@@ -29,10 +26,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   ExternalBacklightControllerTest()
       : backlight_(kDefaultMaxBacklightLevel,
                    kDefaultStartingBacklightLevel),
-        controller_(&backlight_, &monitor_) {
-    EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
-    EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
-        .WillRepeatedly(Return());
+        controller_(&backlight_, &display_power_setter_) {
     controller_.set_disable_dbus_for_testing(true);
     CHECK(controller_.Init());
   }
@@ -49,7 +43,7 @@ class ExternalBacklightControllerTest : public ::testing::Test {
   }
 
   system::BacklightStub backlight_;
-  MockMonitorReconfigure monitor_;
+  system::DisplayPowerSetterStub display_power_setter_;
   ExternalBacklightController controller_;
 };
 

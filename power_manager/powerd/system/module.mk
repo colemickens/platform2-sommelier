@@ -6,6 +6,7 @@ include common.mk
 
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	powerd/system/audio_detector.o \
+	powerd/system/display_power_setter.o \
 	powerd/system/external_backlight.o \
 	powerd/system/input.o \
 	powerd/system/internal_backlight.o
@@ -16,7 +17,8 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
 clean: CLEAN(powerd/libsystem.pie.a)
 
 CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \
-	powerd/system/backlight_stub.o
+	powerd/system/backlight_stub.o \
+	powerd/system/display_power_setter_stub.o
 clean: CLEAN(powerd/libsystem_test.pie.a)
 
 CXX_BINARY(powerd/system_unittest): \

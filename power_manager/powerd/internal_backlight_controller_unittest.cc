@@ -14,8 +14,8 @@
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
-#include "power_manager/powerd/mock_monitor_reconfigure.h"
 #include "power_manager/powerd/system/backlight_stub.h"
+#include "power_manager/powerd/system/display_power_setter_stub.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -47,14 +47,11 @@ class InternalBacklightControllerTest : public ::testing::Test {
  public:
   InternalBacklightControllerTest()
       : backlight_(kMaxBrightnessLevel, kDefaultBrightnessLevel),
-        controller_(&backlight_, &prefs_, &light_sensor_, &monitor_) {
+        controller_(&backlight_, &prefs_, &light_sensor_,
+                    &display_power_setter_) {
   }
 
   virtual void SetUp() {
-    EXPECT_CALL(monitor_, SetScreenPowerState(_, _)).WillRepeatedly(Return());
-    EXPECT_CALL(monitor_, set_is_internal_panel_enabled(_))
-        .WillRepeatedly(Return());
-
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, kPluggedBrightnessPercent);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref,
                      kUnpluggedBrightnessPercent);
@@ -71,7 +68,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
  protected:
   system::BacklightStub backlight_;
   ::testing::StrictMock<MockAmbientLightSensor> light_sensor_;
-  MockMonitorReconfigure monitor_;
+  system::DisplayPowerSetterStub display_power_setter_;
   FakePrefs prefs_;
   InternalBacklightController controller_;
 };
@@ -349,45 +346,43 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
 
-  // Test suspend and resume.
+  // Test suspend and resume.  When suspending, the current brightness
+  // level should be saved as the resume level.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-  Mock::VerifyAndClearExpectations(&monitor_);
+  EXPECT_EQ(controller_.PercentToLevel(kPluggedBrightnessPercent),
+            backlight_.resume_level());
 
-  // We expect to turn the internal panel on before suspend.
-  // This lets us do a faster resume.
-  monitor_.ExpectRequest(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-  Mock::VerifyAndClearExpectations(&monitor_);
 
   // Test idling into suspend state.  The backlight should be at 0% after the
   // display is turned off, but it should be set back to the active level (with
   // the screen still off) before suspending, so that the kernel driver can
   // restore that level after resuming.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_DIM));
-  Mock::VerifyAndClearExpectations(&monitor_);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 
-  // We can't check that |monitor_| is told to turn off all displays here,
-  // since we schedule an animated transition to 0 and don't turn the
-  // displays off until it's done. :-(
+  // The displays are turned off for the idle-off state.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_IDLE_OFF));
   EXPECT_DOUBLE_EQ(0.0, controller_.GetTargetBrightnessPercent());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
 
+  // Chrome will turn the displays on (without any involvement from powerd)
+  // before suspending so that they come back up in the correct state after
+  // resuming.
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SUSPENDED));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-  Mock::VerifyAndClearExpectations(&monitor_);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
 
   // Test resume.
-  monitor_.ExpectRequest(OUTPUT_SELECTION_INTERNAL_ONLY, POWER_STATE_ON);
-  monitor_.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
   EXPECT_DOUBLE_EQ(kPluggedBrightnessPercent,
                    controller_.GetTargetBrightnessPercent());
-  Mock::VerifyAndClearExpectations(&monitor_);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 }
 
 // Check that InternalBacklightController reinitializes itself correctly when
@@ -508,15 +503,13 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
 TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
   // When the backlight controller is told that the system is shutting down, it
   // should turn off all displays.
-  monitor_.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_OFF);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_SHUTTING_DOWN));
-  Mock::VerifyAndClearExpectations(&monitor_);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_OFF, display_power_setter_.state());
 
   // This isn't expected, but if the state changes after we start shutting down,
   // the displays should be turned back on.
-  monitor_.ExpectRequest(OUTPUT_SELECTION_ALL_DISPLAYS, POWER_STATE_ON);
   ASSERT_TRUE(controller_.SetPowerState(BACKLIGHT_ACTIVE));
-  Mock::VerifyAndClearExpectations(&monitor_);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 }
 
 // Test that OnPlugEvent sets the brightness appropriately when

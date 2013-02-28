@@ -46,7 +46,6 @@ LIBPOWERD_OBJS = \
 	powerd/keyboard_backlight_controller.o \
 	powerd/metrics_constants.o \
 	powerd/metrics_store.o \
-	powerd/monitor_reconfigure.o \
 	powerd/powerd_metrics.o \
 	powerd/powerd.o \
 	powerd/power_supply.o \
@@ -97,7 +96,6 @@ POWERD_UNITTEST_OBJS = \
 	powerd/internal_backlight_controller_unittest.o \
 	powerd/keyboard_backlight_controller_unittest.o \
 	powerd/metrics_store_unittest.o \
-	powerd/monitor_reconfigure.o \
 	powerd/powerd_unittest.o \
 	powerd/power_supply_unittest.o \
 	powerd/rolling_average_unittest.o \

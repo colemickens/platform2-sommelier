@@ -13,15 +13,16 @@ namespace power_manager {
 
 namespace system {
 class BacklightInterface;
-class MonitorReconfigureInterface;
+class DisplayPowerSetterInterface;
 }  // namespace system
 
 // Controls the brightness of an external display on machines that lack internal
 // displays.
 class ExternalBacklightController : public BacklightController {
  public:
-  ExternalBacklightController(system::BacklightInterface* backlight,
-                              MonitorReconfigureInterface* monitor_reconfigure);
+  ExternalBacklightController(
+      system::BacklightInterface* backlight,
+      system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~ExternalBacklightController();
 
   bool currently_dimming() const { return currently_dimming_; }
@@ -71,7 +72,7 @@ class ExternalBacklightController : public BacklightController {
   void SendSoftwareDimmingSignal(int state);
 
   system::BacklightInterface* backlight_;  // not owned
-  MonitorReconfigureInterface* monitor_reconfigure_;  // not owned
+  system::DisplayPowerSetterInterface* display_power_setter_;  // not owned
   BacklightControllerObserver* observer_;  // not owned
 
   PowerState power_state_;
