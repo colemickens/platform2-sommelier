@@ -108,7 +108,8 @@ Manager::Manager(ControlInterface *control_interface,
       termination_actions_(dispatcher),
       suspend_delay_registered_(false),
       suspend_delay_id_(0),
-      default_service_callback_tag_(0) {
+      default_service_callback_tag_(0),
+      crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
@@ -1024,7 +1025,44 @@ void Manager::VerifyDestination(const string &certificate,
                                 const string &destination_udn,
                                 const ResultBoolCallback &cb,
                                 Error *error) {
-  error->Populate(Error::kNotImplemented, "Not implemented");
+  vector<ServiceRefPtr>::iterator sit;
+  // For now, we only support a single connected WiFi service.  If we change
+  // that, we'll need to revisit this.
+  for (sit = services_.begin(); sit != services_.end(); ++sit) {
+    if ((*sit)->technology() != Technology::kWifi || !(*sit)->IsConnected()) {
+      continue;
+    }
+    break;
+  }
+  if (sit == services_.end()) {
+    error->Populate(Error::kOperationFailed,
+                    "Unable to find connected WiFi service.");
+    return;
+  }
+  WiFiService *service = reinterpret_cast<WiFiService *>(&(*(*sit)));
+  crypto_util_proxy_->VerifyDestination(certificate, public_key, nonce,
+                                        signed_data, destination_udn,
+                                        service->ssid(), service->bssid(),
+                                        cb, error);
+}
+
+void Manager::VerifyToEncryptLink(string public_key,
+                                  string data,
+                                  ResultStringCallback cb,
+                                  const Error &error,
+                                  bool success) {
+  if (!success || !error.IsSuccess()) {
+    CHECK(error.IsFailure()) << "Return code from CryptoUtilProxy "
+                             << "inconsistent with error code.";
+    cb.Run(error, "");
+    return;
+  }
+  Error encrypt_error;
+  if (!crypto_util_proxy_->EncryptData(public_key, data, cb, &encrypt_error)) {
+    CHECK(error.IsFailure()) << "CryptoUtilProxy::EncryptData returned "
+                             << "inconsistently.";
+    cb.Run(error, "");
+  }
 }
 
 void Manager::VerifyAndEncryptData(const string &certificate,
@@ -1035,7 +1073,10 @@ void Manager::VerifyAndEncryptData(const string &certificate,
                                    const string &data,
                                    const ResultStringCallback &cb,
                                    Error *error) {
-  error->Populate(Error::kNotImplemented, "Not implemented");
+  ResultBoolCallback on_verification_success = Bind(
+      &Manager::VerifyToEncryptLink, AsWeakPtr(), public_key, data, cb);
+  VerifyDestination(certificate, public_key, nonce, signed_data,
+                    destination_udn, on_verification_success, error);
 }
 
 void Manager::VerifyAndEncryptCredentials(const string &certificate,
@@ -1046,6 +1087,7 @@ void Manager::VerifyAndEncryptCredentials(const string &certificate,
                                           const string &network_path,
                                           const ResultStringCallback &cb,
                                           Error *error) {
+  // This is intentionally left unimplemented until we have a security review.
   error->Populate(Error::kNotImplemented, "Not implemented");
 }
 

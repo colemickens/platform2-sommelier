@@ -18,6 +18,7 @@
 #include <base/gtest_prod_util.h>  // for FRIEND_TEST_ALL_PREFIXES
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/crypto_util_proxy.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
@@ -443,6 +444,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void OnSuspendImminent(int suspend_id);
 
   void OnSuspendActionsComplete(int suspend_id, const Error &error);
+  void VerifyToEncryptLink(std::string public_key, std::string data,
+                           ResultStringCallback cb, const Error &error,
+                           bool success);
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
@@ -517,6 +521,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Maps tags to callbacks for monitoring default service changes.
   std::map<int, ServiceCallback> default_service_callbacks_;
   int default_service_callback_tag_;
+
+  // Delegate to handle destination verification operations for the manager.
+  scoped_ptr<CryptoUtilProxy> crypto_util_proxy_;
 };
 
 }  // namespace shill

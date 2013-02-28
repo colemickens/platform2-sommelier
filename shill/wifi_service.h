@@ -85,6 +85,7 @@ class WiFiService : public Service {
   const std::string &mode() const { return mode_; }
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }
+  const std::string &bssid() const { return bssid_; }
 
   // Overrride Load and Save from parent Service class.  We will call
   // the parent method.
