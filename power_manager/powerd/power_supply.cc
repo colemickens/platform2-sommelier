@@ -347,6 +347,19 @@ void PowerSupply::GetPowerSupplyPaths() {
   for (base::FilePath path = file_enum.Next();
        !path.empty();
        path = file_enum.Next()) {
+    // External devices have "scope" attributes containing the value "Device".
+    // Skip them.
+    FilePath scope_path = path.Append("scope");
+    if (file_util::PathExists(scope_path)) {
+      std::string buf;
+      file_util::ReadFileToString(scope_path, &buf);
+      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+      if (buf == "Device") {
+        VLOG(1) << "Skipping Power supply " << path.value()
+                << " with scope: " << buf;
+        continue;
+      }
+    }
     std::string buf;
     if (file_util::ReadFileToString(path.Append("type"), &buf)) {
       TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
