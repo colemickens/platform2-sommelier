@@ -21,8 +21,8 @@
 #include "shill/dhcp_provider.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_control.h"
 #include "shill/mock_connection.h"
+#include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
@@ -36,10 +36,12 @@
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/mock_traffic_monitor.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/technology.h"
+#include "shill/traffic_monitor.h"
 
 using std::map;
 using std::string;
@@ -140,6 +142,18 @@ class DeviceTest : public PropertyStoreTest {
 
   uint64 GetLinkMonitorResponseTime(Error *error) {
     return device_->GetLinkMonitorResponseTime(error);
+  }
+
+  void SetTrafficMonitor(TrafficMonitor *traffic_monitor) {
+    device_->set_traffic_monitor(traffic_monitor);  // Passes ownership.
+  }
+
+  bool StartTrafficMonitor() {
+    return device_->StartTrafficMonitor();
+  }
+
+  void StopTrafficMonitor() {
+    device_->StopTrafficMonitor();
   }
 
   void SetManager(Manager *manager) {
@@ -507,6 +521,55 @@ TEST_F(DeviceTest, LinkMonitorCancelledOnSelectService) {
   EXPECT_TRUE(HasLinkMonitor());
   SelectService(NULL);
   EXPECT_FALSE(HasLinkMonitor());
+}
+
+TEST_F(DeviceTest, StartTrafficMonitor) {
+  MockTrafficMonitor *traffic_monitor = new StrictMock<MockTrafficMonitor>();
+  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+
+  EXPECT_CALL(*traffic_monitor, Start()).Times(0);
+  EXPECT_FALSE(device_->traffic_monitor_enabled());
+  EXPECT_FALSE(StartTrafficMonitor());
+
+  device_->set_traffic_monitor_enabled(true);
+  EXPECT_CALL(*traffic_monitor, Start()).Times(1);
+  EXPECT_TRUE(device_->traffic_monitor_enabled());
+  EXPECT_TRUE(StartTrafficMonitor());
+}
+
+TEST_F(DeviceTest, StopTrafficMonitor) {
+  // Invoke Stop() without a traffic monitor set.
+  EXPECT_FALSE(device_->traffic_monitor_.get());
+  StopTrafficMonitor();
+  EXPECT_FALSE(device_->traffic_monitor_.get());
+
+  // Invoke Stop() with a traffic monitor set but without invoking Start().
+  TrafficMonitor *traffic_monitor = new TrafficMonitor(device_, dispatcher());
+  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+  EXPECT_TRUE(device_->traffic_monitor_.get());
+  StopTrafficMonitor();
+  EXPECT_FALSE(device_->traffic_monitor_.get());
+
+  // Invoke Stop() with a traffic monitor set but not enabled.
+  traffic_monitor = new TrafficMonitor(device_, dispatcher());
+  SetTrafficMonitor(traffic_monitor);  // Passes ownership.
+  EXPECT_FALSE(device_->traffic_monitor_enabled());
+  EXPECT_FALSE(StartTrafficMonitor());
+  EXPECT_TRUE(device_->traffic_monitor_.get());
+  StopTrafficMonitor();
+  EXPECT_FALSE(device_->traffic_monitor_.get());
+
+  // Invoke Stop() with a traffic monitor set and started.
+  device_->set_traffic_monitor_enabled(true);
+  EXPECT_TRUE(device_->traffic_monitor_enabled());
+  EXPECT_TRUE(StartTrafficMonitor());
+  EXPECT_TRUE(device_->traffic_monitor_.get());
+  StopTrafficMonitor();
+  EXPECT_FALSE(device_->traffic_monitor_.get());
+
+  // Invoke Stop() again after the traffic monitor is stopped.
+  StopTrafficMonitor();
+  EXPECT_FALSE(device_->traffic_monitor_.get());
 }
 
 class DevicePortalDetectionTest : public DeviceTest {
@@ -904,8 +967,8 @@ class DeviceByteCountTest : public DeviceTest {
 
   bool ExpectByteCounts(DeviceRefPtr device,
                         int64 expected_rx, int64 expected_tx) {
-    int64 actual_rx = device->GetReceiveByteCount(NULL);
-    int64 actual_tx = device->GetTransmitByteCount(NULL);
+    int64 actual_rx = device->GetReceiveByteCount();
+    int64 actual_tx = device->GetTransmitByteCount();
     EXPECT_EQ(expected_rx, actual_rx);
     EXPECT_EQ(expected_tx, actual_tx);
     return expected_rx == actual_rx && expected_tx == actual_tx;

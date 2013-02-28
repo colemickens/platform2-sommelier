@@ -37,6 +37,7 @@
 #include "shill/service.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
+#include "shill/traffic_monitor.h"
 
 using base::Bind;
 using base::StringPrintf;
@@ -95,6 +96,7 @@ Device::Device(ControlInterface *control_interface,
       manager_(manager),
       weak_ptr_factory_(this),
       adaptor_(control_interface->CreateDeviceAdaptor(this)),
+      traffic_monitor_enabled_(false),
       portal_detector_callback_(Bind(&Device::PortalDetectorCallback,
                                      weak_ptr_factory_.GetWeakPtr())),
       technology_(technology),
@@ -153,9 +155,9 @@ Device::Device(ControlInterface *control_interface,
     manager_->device_info()->GetByteCounts(
         interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
     HelpRegisterConstDerivedUint64(shill::kReceiveByteCountProperty,
-                                   &Device::GetReceiveByteCount);
+                                   &Device::GetReceiveByteCountProperty);
     HelpRegisterConstDerivedUint64(shill::kTransmitByteCountProperty,
-                                   &Device::GetTransmitByteCount);
+                                   &Device::GetTransmitByteCountProperty);
   }
 
   LOG(INFO) << "Device created: " << link_name_
@@ -334,8 +336,8 @@ bool Device::Save(StoreInterface *storage) {
     ipconfig_->Save(storage, suffix);
     storage->SetString(id, kStorageIPConfigs, SerializeIPConfigs(suffix));
   }
-  storage->SetUint64(id, kStorageReceiveByteCount, GetReceiveByteCount(NULL));
-  storage->SetUint64(id, kStorageTransmitByteCount, GetTransmitByteCount(NULL));
+  storage->SetUint64(id, kStorageReceiveByteCount, GetReceiveByteCount());
+  storage->SetUint64(id, kStorageTransmitByteCount, GetTransmitByteCount());
   return true;
 }
 
@@ -472,6 +474,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
       StartPortalDetection();
     }
     StartLinkMonitor();
+    StartTrafficMonitor();
   } else {
     // TODO(pstew): This logic gets yet more complex when multiple
     // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
@@ -529,6 +532,7 @@ void Device::DestroyConnection() {
   SLOG(Device, 2) << __func__;
   StopPortalDetection();
   StopLinkMonitor();
+  StopTrafficMonitor();
   if (selected_service_.get()) {
     selected_service_->SetConnection(NULL);
   }
@@ -553,6 +557,7 @@ void Device::SelectService(const ServiceRefPtr &service) {
     // sure the previously selected service has its connection removed.
     selected_service_->SetConnection(NULL);
     StopLinkMonitor();
+    StopTrafficMonitor();
     StopPortalDetection();
   }
   selected_service_ = service;
@@ -734,6 +739,40 @@ void Device::OnLinkMonitorFailure() {
              << ": Link Monitor indicates failure.";
 }
 
+void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
+  traffic_monitor_.reset(traffic_monitor);
+}
+
+bool Device::StartTrafficMonitor() {
+  if (!traffic_monitor_enabled_) {
+    SLOG(Device, 2) << "Device " << FriendlyName()
+                    << ": Traffic Monitoring is disabled.";
+    return false;
+  }
+
+  if (!traffic_monitor_.get()) {
+    traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
+    traffic_monitor_->set_no_incoming_traffic_callback(
+        Bind(&Device::OnNoIncomingTraffic, weak_ptr_factory_.GetWeakPtr()));
+  }
+
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Traffic Monitor starting.";
+  traffic_monitor_->Start();
+  return true;
+}
+
+void Device::StopTrafficMonitor() {
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Traffic Monitor stopping.";
+  traffic_monitor_.reset();
+}
+
+void Device::OnNoIncomingTraffic() {
+  SLOG(Device, 2) << "Device " << FriendlyName()
+                  << ": Traffic Monitor detects there is no incoming traffic.";
+}
+
 void Device::SetServiceConnectedState(Service::ConnectState state) {
   DCHECK(selected_service_.get());
 
@@ -840,18 +879,26 @@ uint64 Device::GetLinkMonitorResponseTime(Error *error) {
   return link_monitor_->GetResponseTimeMilliseconds();
 }
 
-uint64 Device::GetReceiveByteCount(Error */*error*/) {
+uint64 Device::GetReceiveByteCount() {
   uint64 rx_byte_count = 0, tx_byte_count = 0;
   manager_->device_info()->GetByteCounts(
       interface_index_, &rx_byte_count, &tx_byte_count);
   return rx_byte_count - receive_byte_offset_;
 }
 
-uint64 Device::GetTransmitByteCount(Error */*error*/) {
+uint64 Device::GetTransmitByteCount() {
   uint64 rx_byte_count = 0, tx_byte_count = 0;
   manager_->device_info()->GetByteCounts(
       interface_index_, &rx_byte_count, &tx_byte_count);
   return tx_byte_count - transmit_byte_offset_;
+}
+
+uint64 Device::GetReceiveByteCountProperty(Error */*error*/) {
+  return GetReceiveByteCount();
+}
+
+uint64 Device::GetTransmitByteCountProperty(Error */*error*/) {
+  return GetTransmitByteCount();
 }
 
 bool Device::IsUnderlyingDeviceEnabled() const {

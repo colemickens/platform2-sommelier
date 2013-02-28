@@ -74,7 +74,7 @@ const char *DeviceInfo::kModemDrivers[] = {
 };
 const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
 const int DeviceInfo::kDelayedDeviceCreationSeconds = 5;
-const int DeviceInfo::kRequestLinkStatisticsIntervalSeconds = 60;
+const int DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds = 20000;
 
 DeviceInfo::DeviceInfo(ControlInterface *control_interface,
                        EventDispatcher *dispatcher,
@@ -114,7 +114,7 @@ void DeviceInfo::Start() {
   request_link_statistics_callback_.Reset(
       Bind(&DeviceInfo::RequestLinkStatistics, AsWeakPtr()));
   dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
-                               kRequestLinkStatisticsIntervalSeconds * 1000);
+                               kRequestLinkStatisticsIntervalMilliseconds);
 }
 
 void DeviceInfo::Stop() {
@@ -861,7 +861,7 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
 void DeviceInfo::RequestLinkStatistics() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
   dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
-                               kRequestLinkStatisticsIntervalSeconds * 1000);
+                               kRequestLinkStatisticsIntervalMilliseconds);
 }
 
 }  // namespace shill

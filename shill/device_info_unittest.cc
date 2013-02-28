@@ -111,10 +111,6 @@ class DeviceInfoTest : public Test {
     return DeviceInfo::kDelayedDeviceCreationSeconds * 1000;
   }
 
-  int GetRequestLinkStatisticsIntervalMilliseconds() {
-    return DeviceInfo::kRequestLinkStatisticsIntervalSeconds * 1000;
-  }
-
   void SetSockets() {
     mock_sockets_ = new MockSockets();
     device_info_.set_sockets(mock_sockets_);
@@ -233,7 +229,7 @@ TEST_F(DeviceInfoTest, StartStop) {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink |
                                          RTNLHandler::kRequestAddr));
   EXPECT_CALL(dispatcher_, PostDelayedTask(
-      _, GetRequestLinkStatisticsIntervalMilliseconds()));
+      _, DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds));
   device_info_.Start();
   EXPECT_TRUE(device_info_.link_listener_.get());
   EXPECT_TRUE(device_info_.address_listener_.get());
@@ -252,7 +248,7 @@ TEST_F(DeviceInfoTest, StartStop) {
 TEST_F(DeviceInfoTest, RequestLinkStatistics) {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink));
   EXPECT_CALL(dispatcher_, PostDelayedTask(
-      _, GetRequestLinkStatisticsIntervalMilliseconds()));
+      _, DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds));
   device_info_.RequestLinkStatistics();
 }
 

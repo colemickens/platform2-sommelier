@@ -38,6 +38,7 @@ class LinkMonitor;
 class Manager;
 class Metrics;
 class RTNLHandler;
+class TrafficMonitor;
 
 // Device superclass.  Individual network interfaces types will inherit from
 // this class.
@@ -120,6 +121,10 @@ class Device : public base::RefCounted<Device> {
   // way that may affect the decision to run portal detection at all.
   // Returns true if portal detection was started.
   virtual bool RestartPortalDetection();
+
+  // Get receive and transmit byte counters.
+  virtual uint64 GetReceiveByteCount();
+  virtual uint64 GetTransmitByteCount();
 
   // Reset the persisted byte counters associated with the device.
   void ResetByteCounters();
@@ -205,7 +210,9 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(DeviceTest, SetEnabledPersistent);
   FRIEND_TEST(DeviceTest, SetServiceConnectedState);
   FRIEND_TEST(DeviceTest, Start);
+  FRIEND_TEST(DeviceTest, StartTrafficMonitor);
   FRIEND_TEST(DeviceTest, Stop);
+  FRIEND_TEST(DeviceTest, StopTrafficMonitor);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
@@ -324,6 +331,18 @@ class Device : public base::RefCounted<Device> {
   // Respond to a LinkMonitor failure in a Device-specific manner.
   virtual void OnLinkMonitorFailure();
 
+  // Initiates traffic monitoring if it's enabled via
+  // set_traffic_monitor_enabled() and returns true if the monitoring
+  // is started.
+  bool StartTrafficMonitor();
+
+  // Stops traffic monitoring if it is running.
+  void StopTrafficMonitor();
+
+  // Responds to a TrafficMonitor no-incoming-traffic failure in a
+  // Device-specific manner.
+  virtual void OnNoIncomingTraffic();
+
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.
   void SetServiceConnectedState(Service::ConnectState state);
@@ -358,6 +377,16 @@ class Device : public base::RefCounted<Device> {
   Manager *manager() const { return manager_; }
   const LinkMonitor *link_monitor() const { return link_monitor_.get(); }
   void set_link_monitor(LinkMonitor *link_monitor);
+  const TrafficMonitor *traffic_monitor() const {
+    return traffic_monitor_.get();
+  }
+
+  // Ownership of |traffic_monitor| is taken.
+  void set_traffic_monitor(TrafficMonitor *traffic_monitor);
+  bool traffic_monitor_enabled() const { return traffic_monitor_enabled_; }
+  void set_traffic_monitor_enabled(bool traffic_monitor_enabled) {
+    traffic_monitor_enabled_ = traffic_monitor_enabled;
+  }
 
  private:
   friend class CellularCapabilityTest;
@@ -407,9 +436,11 @@ class Device : public base::RefCounted<Device> {
   // Get the LinkMonitor's average response time.
   uint64 GetLinkMonitorResponseTime(Error *error);
 
-  // Get receive and transmit byte counters.
-  uint64 GetReceiveByteCount(Error *error);
-  uint64 GetTransmitByteCount(Error *error);
+  // Get receive and transmit byte counters. These methods simply wrap
+  // GetReceiveByteCount and GetTransmitByteCount in order to be used by
+  // HelpRegisterConstDerivedUint64.
+  uint64 GetReceiveByteCountProperty(Error *error);
+  uint64 GetTransmitByteCountProperty(Error *error);
 
   // |enabled_persistent_| is the value of the Powered property, as
   // read from the profile. If it is not found in the profile, it
@@ -458,6 +489,8 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<DeviceAdaptorInterface> adaptor_;
   scoped_ptr<PortalDetector> portal_detector_;
   scoped_ptr<LinkMonitor> link_monitor_;
+  scoped_ptr<TrafficMonitor> traffic_monitor_;
+  bool traffic_monitor_enabled_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
   Technology::Identifier technology_;

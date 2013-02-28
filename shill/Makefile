@@ -299,6 +299,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	supplicant_network_proxy.o \
 	supplicant_process_proxy.o \
 	technology.o \
+	traffic_monitor.o \
 	virtio_ethernet.o \
 	vpn.o \
 	vpn_driver.o \
@@ -438,6 +439,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_supplicant_network_proxy.o \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
+	mock_traffic_monitor.o \
 	mock_vpn.o \
 	mock_vpn_driver.o \
 	mock_vpn_provider.o \
@@ -481,6 +483,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	shims/netfilter_queue_processor_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
+	traffic_monitor_unittest.o \
 	testrunner.o \
 	vpn_driver_unittest.o \
 	vpn_provider_unittest.o \

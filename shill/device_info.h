@@ -51,6 +51,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static const char kModemPseudoDeviceNamePrefix[];
   // Device name prefix for virtual ethernet devices used in testing.
   static const char kEthernetPseudoDeviceNamePrefix[];
+  // Time interval for polling for link statistics.
+  static const int kRequestLinkStatisticsIntervalMilliseconds;
 
   DeviceInfo(ControlInterface *control_interface,
              EventDispatcher *dispatcher,
@@ -162,8 +164,6 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   static const char kTunDeviceName[];
   // Time to wait before registering devices which need extra time to detect.
   static const int kDelayedDeviceCreationSeconds;
-  // Time interval for polling for link statistics.
-  static const int kRequestLinkStatisticsIntervalSeconds;
 
   // Create a Device object for the interface named |linkname|, with a
   // string-form MAC address |address|, whose kernel interface index
