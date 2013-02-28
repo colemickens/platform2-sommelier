@@ -112,6 +112,7 @@ static const Log common_logs[] = {
   { "ps", "/bin/ps aux" },
   { "syslog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/messages" },
+  { "tlsdate", "/bin/cat /var/log/tlsdate.log" },
   { "touchpad", "/opt/google/touchpad/tpcontrol status" },
   { "touchpad_activity", "/opt/google/touchpad/generate_userfeedback alt" },
   { "ui_log", "/usr/share/userfeedback/scripts/get_log /var/log/ui/ui.LATEST" },
