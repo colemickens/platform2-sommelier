@@ -1,31 +1,61 @@
 #!/usr/bin/python
 
-import pprint, sys
-import dbus, flimflam
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
 
-if (len(sys.argv) < 2):
-    print "Usage: %s <ssid> [passphrase] [security]" % (sys.argv[0])
-    sys.exit(1)
+import dbus
+import logging
+import sys
 
-print "Attempting to connect service %s" % (sys.argv[1])
+import shill_proxy
 
-flim = flimflam.FlimFlam(dbus.SystemBus())
+def main():
+    """
+    Ask shill to connect to a WiFi service, and block until we connect
+    successfully or fail for the first time.
+    """
 
-params = {}
-params["mode"] = "managed"
-params["ssid"] = sys.argv[1]
-if len(sys.argv) > 2:
+
+    if len(sys.argv) < 2:
+        logging.error('Usage: %s <ssid> [passphrase] [security]' % sys.argv[0])
+        logging.error('    |security| defaults to "none"')
+        logging.error('    when |passphrase| is given without |security|, '
+                      '|security| defaults to "psk"')
+        return
+
+    logging.info('Attempting to connect service %s' % sys.argv[1])
+    shill = shill_proxy.ShillProxy()
+    ssid = sys.argv[1]
+    security = 'none'
+    passphrase = ''
+    save_credentials = False
+    if len(sys.argv) > 2:
+        passphrase = sys.argv[2]
+        security = 'psk'
     if len(sys.argv) > 3:
-        params["security"] = sys.argv[3]
+        security = sys.argv[3]
+
+    result = shill.connect_to_wifi_network(ssid,
+                                           security,
+                                           passphrase,
+                                           save_credentials)
+    (successful,
+     discovery_time,
+     association_time,
+     configuration_time,
+     reason) = result
+    if successful:
+        logging.info('Operation succeeded.')
     else:
-        params["security"] = "psk"
-    params["passphrase"] = sys.argv[2]
-else:
-    params["security"] = "none"
-    params["passphrase"] = ""
+        logging.info('Operation failed. (%s)' % reason)
+    logging.debug('Discovery time: %f.' % discovery_time)
+    logging.debug('Association time: %f.' % association_time)
+    logging.debug('Configuration time: %f.' % configuration_time)
+    return successful
 
-(success, diagnostics) = flim.ConnectService(service_type='wifi',
-                                             **params)
-
-print 'Success:', success
-pprint.pprint(diagnostics)
+if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(message)s')
+    if not main():
+      sys.exit(1)
