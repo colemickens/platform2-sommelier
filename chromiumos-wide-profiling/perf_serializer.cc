@@ -175,6 +175,26 @@ void PerfSerializer::DeserializeMMapSample(
            sample->filename().c_str());
 }
 
+void PerfSerializer::SerializeForkSample(
+    const event_t* event,
+    PerfDataProto_ForkEvent* sample) const {
+  sample->set_pid(event->fork.pid);
+  sample->set_ppid(event->fork.ppid);
+  sample->set_tid(event->fork.tid);
+  sample->set_ptid(event->fork.ppid);
+  sample->set_time(event->fork.time);
+}
+
+void PerfSerializer::DeserializeForkSample(
+    event_t* event,
+    const PerfDataProto_ForkEvent* sample) const {
+  event->fork.pid = sample->pid();
+  event->fork.ppid = sample->ppid();
+  event->fork.tid = sample->tid();
+  event->fork.ptid = sample->ptid();
+  event->fork.time = sample->time();
+}
+
 void PerfSerializer::DeserializeEvent(
     event_t* event,
     const PerfDataProto_PerfEvent* event_proto) const {
@@ -192,11 +212,14 @@ void PerfSerializer::DeserializeEvent(
       DeserializeCommSample(event, &event_proto->comm_event());
       break;
     }
+    case PERF_RECORD_FORK: {
+      DeserializeForkSample(event, &event_proto->fork_event());
+      break;
+    }
     case PERF_RECORD_LOST:
     case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-    case PERF_RECORD_FORK:
     case PERF_RECORD_READ:
     case PERF_RECORD_MAX:
     default:
@@ -227,11 +250,16 @@ void PerfSerializer::SerializeEvent(
       SerializeCommSample(event, comm_proto);
       break;
     }
+    case PERF_RECORD_FORK: {
+      PerfDataProto_ForkEvent* fork_proto =
+          event_proto->mutable_fork_event();
+      SerializeForkSample(event, fork_proto);
+      break;
+    }
     case PERF_RECORD_LOST:
     case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-    case PERF_RECORD_FORK:
     case PERF_RECORD_READ:
     case PERF_RECORD_MAX:
     default:

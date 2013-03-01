@@ -49,6 +49,11 @@ class PerfSerializer {
   void DeserializeMMapSample(event_t* event,
                              const PerfDataProto_MMapEvent* sample) const;
 
+  void SerializeForkSample(const event_t* event,
+                           PerfDataProto_ForkEvent* sample) const;
+  void DeserializeForkSample(event_t* event,
+                             const PerfDataProto_ForkEvent* sample) const;
+
   void SerializeCommSample(
       const event_t* event,
       PerfDataProto_CommEvent* sample) const;

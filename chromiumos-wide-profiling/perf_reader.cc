@@ -292,12 +292,14 @@ bool PerfReader::ProcessEvent(const event_t& event) {
     case PERF_RECORD_MMAP:
       LOG(INFO) << "MMAP: " << event.mmap.filename;
       break;
+    case PERF_RECORD_FORK:
+      LOG(INFO) << "FORK: " << event.fork.pid << " <- " << event.fork.ppid;
+      break;
     case PERF_RECORD_LOST:
     case PERF_RECORD_COMM:
     case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
-    case PERF_RECORD_FORK:
     case PERF_RECORD_READ:
     case PERF_RECORD_MAX:
       LOG(INFO) << "Read event type: " << event.header.type

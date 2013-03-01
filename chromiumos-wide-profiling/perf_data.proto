@@ -208,6 +208,24 @@ message PerfDataProto {
     optional uint32 raw_size = 10;
   }
 
+  // Next tag: 6
+  message ForkEvent {
+    // Forked process ID.
+    optional uint32 pid = 1;
+
+    // Parent process ID.
+    optional uint32 ppid = 2;
+
+    // Forked process thread ID.
+    optional uint32 tid = 3;
+
+    // Parent process thread ID.
+    optional uint32 ptid = 4;
+
+    // Time of fork event.
+    optional uint64 time = 5;
+  }
+
   // Next tag: 4
   message EventHeader {
     // Type of event.
@@ -217,13 +235,14 @@ message PerfDataProto {
     optional uint32 size = 3;
   }
 
-  // Next tag: 5
+  // Next tag: 6
   message PerfEvent {
     optional EventHeader header = 1;
 
     optional MMapEvent mmap_event = 2;
     optional SampleEvent sample_event = 3;
     optional CommEvent comm_event = 4;
+    optional ForkEvent fork_event = 5;
   }
 
   repeated PerfFileAttr file_attrs = 1;
