@@ -62,7 +62,7 @@ $(TESTS): %: %.o $(COMMON_OBJECTS)
 check: $(TESTS)
 	for test in $(TESTS); do \
 		./$$test 2> ./$$test.stderr.log && continue; \
-		cat ./$$test.stderr.log; \
+		echo "See $$test.stderr.log for errors"; \
 		exit 1; \
 	done
 
