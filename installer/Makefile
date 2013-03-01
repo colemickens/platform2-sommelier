@@ -6,11 +6,9 @@ OUT ?= $(PWD)/build
 
 include common.mk
 
-CFLAGS := -I$(SRC)/include $(CFLAGS) -I/usr/include/verity
-CXXFLAGS := -I$(SRC)/include -DCHROMEOS_ENVIRONMENT $(CXXFLAGS)
-CXXFLAGS += -I/usr/include/verity
+CXXFLAGS += -DCHROMEOS_ENVIRONMENT
 
-LDFLAGS += -ldump_kernel_config -lcgpt-cc -ldm-bht
+LDFLAGS += -lvboot_host -ldm-bht
 
 CXX_STATIC_BINARY(cros_installer): \
 		$(C_OBJECTS) \

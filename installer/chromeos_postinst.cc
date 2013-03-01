@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-#include <vboot/CgptManager.h>
+#include "CgptManager.h"
 
 #include "chromeos_legacy.h"
 #include "chromeos_install_config.h"

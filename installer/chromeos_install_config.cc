@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 
-#include <vboot/CgptManager.h>
+#include "CgptManager.h"
 
 using std::string;
 
