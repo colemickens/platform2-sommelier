@@ -25,6 +25,8 @@ typedef signed char	   s8;
 #define DECLARE_BITMAP(name,bits) \
 	unsigned long name[BITS_TO_LONGS(bits)]
 
+#define MAX_EVENT_NAME 64
+
 // These data structures have been copied from the kernel. See files under
 // tools/perf/util.
 
@@ -59,6 +61,11 @@ struct perf_file_section {
 struct perf_file_attr {
 	struct perf_event_attr	attr;
 	struct perf_file_section	ids;
+};
+
+struct perf_trace_event_type {
+  u64     event_id;
+  char    name[MAX_EVENT_NAME];
 };
 
 struct perf_file_header {

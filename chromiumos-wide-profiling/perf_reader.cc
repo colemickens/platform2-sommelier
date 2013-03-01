@@ -18,7 +18,7 @@ const uint64 kPerfMagic = 0x32454c4946524550LL;
 bool PerfReader::ReadFileFromHandle(std::ifstream* in) {
   if (!in->good())
     return false;
-  if (!ReadHeader(in) || !ReadAttrs(in) || !ReadData(in))
+  if (!ReadHeader(in) || !ReadAttrs(in) || !ReadEventTypes(in) || !ReadData(in))
     return false;
   return true;
 }
@@ -40,13 +40,17 @@ bool PerfReader::WriteFileFromHandle(std::ofstream* out) {
     return false;
   if (!RegenerateHeader())
     return false;
-  if (!WriteHeader(out) || !WriteAttrs(out) || !WriteData(out))
+  if (!WriteHeader(out) ||
+      !WriteAttrs(out) ||
+      !WriteEventTypes(out) ||
+      !WriteData(out)) {
     return false;
+  }
   return true;
 }
 
 bool PerfReader::RegenerateHeader() {
-  // This is the order of the perf file contents (both input and output):
+  // This is the order of the input perf file contents:
   // 1. Header
   // 2. Attribute IDs (pointed to by attr.ids.offset)
   // 3. Attributes
@@ -61,6 +65,10 @@ bool PerfReader::RegenerateHeader() {
   out_header_.attrs.size = out_header_.attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
     out_header_.data.size += events_[i].header.size;
+  if (!event_types_.empty()) {
+    out_header_.event_types.size =
+        event_types_.size() * sizeof(event_types_[0]);
+  }
 
   u64 current_offset = 0;
   current_offset += out_header_.size;
@@ -68,6 +76,8 @@ bool PerfReader::RegenerateHeader() {
     current_offset += sizeof(attrs_[i].ids[0]) * attrs_[i].ids.size();
   out_header_.attrs.offset = current_offset;
   current_offset += out_header_.attrs.size;
+  out_header_.event_types.offset = current_offset;
+  current_offset += out_header_.event_types.size;
 
   out_header_.data.offset = current_offset;
 
@@ -126,6 +136,30 @@ bool PerfReader::ReadAttrs(std::ifstream* in) {
       if (!in->good())
         return false;
     }
+  }
+
+  return true;
+}
+
+bool PerfReader::ReadEventTypes(std::ifstream* in) {
+  size_t num_event_types = header_.event_types.size /
+      sizeof(struct perf_trace_event_type);
+  assert(sizeof(struct perf_trace_event_type) * num_event_types ==
+         header_.event_types.size);
+  event_types_.resize(num_event_types);
+  for (size_t i = 0; i < num_event_types; ++i) {
+    // Read each event type.
+    struct perf_trace_event_type& current_type = event_types_[i];
+    in->seekg(header_.event_types.offset + i * sizeof(current_type),
+              std::ios::beg);
+
+    in->read(reinterpret_cast<char*>(&current_type.event_id),
+             sizeof(current_type.event_id));
+    if (!in->good())
+      return false;
+    in->read(current_type.name, sizeof(current_type.name));
+    if (!in->good())
+      return false;
   }
 
   return true;
@@ -222,6 +256,23 @@ bool PerfReader::WriteAttrs(std::ofstream* out) const {
     if (!out->good())
       return false;
     ids_size += ids.size;
+  }
+
+  return true;
+}
+
+bool PerfReader::WriteEventTypes(std::ofstream* out) const {
+  for (size_t i = 0; i < event_types_.size(); ++i) {
+    out->seekp(out_header_.event_types.offset +
+                  sizeof(struct perf_trace_event_type) * i,
+               std::ios::beg);
+    out->write(reinterpret_cast<const char*>(&event_types_[i].event_id),
+               sizeof(event_types_[i].event_id));
+    if (!out->good())
+      return false;
+    out->write(event_types_[i].name, sizeof(event_types_[i].name));
+    if (!out->good())
+      return false;
   }
 
   return true;
