@@ -68,6 +68,10 @@ CXX_BINARY($(TEST_BIN)): LDLIBS += -lgtest -lgmock
 clean: CLEAN(CXX_BINARY($(TEST_BIN)))
 tests: TEST(CXX_BINARY($(TEST_BIN)))
 
-all: login_manager
+CC_BINARY(cros-xauth): cros-xauth.o
+CC_BINARY(cros-xauth): LDLIBS =
+clean: CC_BINARY(cros-xauth)
+
+all: login_manager CC_BINARY(cros-xauth)
 login_manager: \
   CXX_BINARY($(KEYGEN_BIN)) CXX_BINARY($(SESSION_BIN))

@@ -8,9 +8,7 @@ XUSER="${1}"
 VT="${2}"
 XAUTH_FILE="${3}"
 
-XCOOKIE=$(mcookie)
-rm -f ${XAUTH_FILE} && xauth -q -f ${XAUTH_FILE} add :0 . ${XCOOKIE} &&
-  chown ${XUSER}:${XUSER} ${XAUTH_FILE}
+cros-xauth ${XAUTH_FILE} && chown ${XUSER}:${XUSER} ${XAUTH_FILE}
 
 # Set permissions for logfile
 mkdir -p /var/log/xorg && chown ${XUSER}:${XUSER} /var/log/xorg
