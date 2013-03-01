@@ -93,6 +93,8 @@ class AttributeList : public base::RefCounted<AttributeList> {
   const NetlinkRawAttribute *GetRawAttribute(int id) const;
 
  private:
+  friend class NetlinkNestedAttribute;
+
   // Using this to get around issues with const and operator[].
   NetlinkAttribute *GetAttribute(int id) const;
 

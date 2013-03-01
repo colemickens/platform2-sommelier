@@ -420,20 +420,21 @@ bool Nl80211Message::GetScanFrequenciesAttribute(
   }
 
   value->clear();
-  ByteString rawdata;
-  if (!const_attributes()->GetRawAttributeValue(id, &rawdata) &&
-      !rawdata.IsEmpty())
+
+  AttributeListConstRefPtr frequency_list;
+  if (!const_attributes()->ConstGetNestedAttributeList(
+      NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) || !frequency_list) {
+    LOG(ERROR) << "Couldn't get NL80211_ATTR_SCAN_FREQUENCIES attribute";
     return false;
+  }
 
-  nlattr *nst = NULL;
-  // |nla_for_each_attr| requires a non-const parameter even though it
-  // doesn't change the data.
-  nlattr *attr_data = reinterpret_cast<nlattr *>(rawdata.GetData());
-  int rem_nst;
-  int len = rawdata.GetLength();
-
-  nla_for_each_attr(nst, attr_data, len, rem_nst) {
-    value->push_back(NetlinkAttribute::NlaGetU32(nst));
+  // Assume IDs for the nested attribute array are linear starting from 1.
+  // Currently, that is enforced in the input to the nested attribute.
+  uint32_t freq;
+  int i = 1;
+  while (frequency_list->GetU32AttributeValue(i, &freq)) {
+    value->push_back(freq);
+    ++i;
   }
   return true;
 }
@@ -446,22 +447,20 @@ bool Nl80211Message::GetScanSsidsAttribute(
     return false;
   }
 
-  ByteString rawdata;
-  if (!const_attributes()->GetRawAttributeValue(id, &rawdata) ||
-      rawdata.IsEmpty())
+  AttributeListConstRefPtr ssid_list;
+  if (!const_attributes()->ConstGetNestedAttributeList(
+      NL80211_ATTR_SCAN_SSIDS, &ssid_list) || !ssid_list) {
+    LOG(ERROR) << "Couldn't get NL80211_ATTR_SCAN_SSIDS attribute";
     return false;
+  }
 
-  nlattr *nst = NULL;
-  // |nla_for_each_attr| requires a non-const parameter even though it
-  // doesn't change the data.
-  nlattr *data = reinterpret_cast<nlattr *>(rawdata.GetData());
-  int rem_nst;
-  int len = rawdata.GetLength();
-
-  nla_for_each_attr(nst, data, len, rem_nst) {
-    value->push_back(StringFromSsid(nla_len(nst),
-                                    reinterpret_cast<const uint8_t *>(
-                                      nla_data(nst))).c_str());
+  // Assume IDs for the nested attribute array are linear starting from 1.
+  // Currently, that is enforced in the input to the nested attribute.
+  string ssid;
+  int i = 1;
+  while (ssid_list->GetStringAttributeValue(i, &ssid)) {
+    value->push_back(ssid);
+    ++i;
   }
   return true;
 }

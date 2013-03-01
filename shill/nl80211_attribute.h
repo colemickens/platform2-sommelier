@@ -392,7 +392,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   static const char kMyTypeString[];
   static const Type kType;
   NetlinkNestedAttribute(int id, const char *id_string);
-  bool InitFromNlAttr(const nlattr *data) {
+  virtual bool InitFromNlAttr(const nlattr *data) {
     LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
     return false;
   }
@@ -400,12 +400,9 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   virtual bool ConstGetNestedAttributeList(
       AttributeListConstRefPtr *value) const;
   virtual bool SetNestedHasAValue();
-  virtual bool ToString(std::string *value) const {
-    return false;  // TODO(wdg): Actually generate a string, here.
-  }
-  virtual ByteString Encode() const {
-    return ByteString();  // TODO(wdg): Actually encode the attribute.
-  }
+  virtual void Print(int log_level, int indent) const;
+  virtual bool ToString(std::string *value) const;
+  virtual ByteString Encode() const;
 
  protected:
   // Describes a single nested attribute.  Provides the expected values and
@@ -466,22 +463,31 @@ class Nl80211AttributeCqm : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeCqm();
-  bool InitFromNlAttr(const nlattr *data);
-  bool ToString(std::string *value) const {
-    return false;  // TODO(wdg): Need |ToString|.
-  }
+  virtual bool InitFromNlAttr(const nlattr *data);
+};
+
+class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  explicit Nl80211AttributeScanFrequencies();
+  virtual bool InitFromNlAttr(const nlattr *const_data);
+};
+
+class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  explicit Nl80211AttributeScanSsids();
+  virtual bool InitFromNlAttr(const nlattr *const_data);
 };
 
 class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
  public:
   static const int kName;
   static const char kNameString[];
-  explicit Nl80211AttributeStaInfo() :
-    NetlinkNestedAttribute(kName, kNameString) {}
-  bool InitFromNlAttr(const nlattr *const_data);
-  bool ToString(std::string *value) const {
-    return false;  // TODO(wdg): Need |ToString|.
-  }
+  Nl80211AttributeStaInfo();
+  virtual bool InitFromNlAttr(const nlattr *const_data);
 };
 
 // Raw.
@@ -540,21 +546,6 @@ class Nl80211AttributeRespIe : public NetlinkRawAttribute {
   static const char kNameString[];
   Nl80211AttributeRespIe() : NetlinkRawAttribute(kName, kNameString) {}
 };
-
-class Nl80211AttributeScanFrequencies : public NetlinkRawAttribute {
- public:
-  static const int kName;
-  static const char kNameString[];
-  Nl80211AttributeScanFrequencies() : NetlinkRawAttribute(kName, kNameString) {}
-};
-
-class Nl80211AttributeScanSsids : public NetlinkRawAttribute {
- public:
-  static const int kName;
-  static const char kNameString[];
-  Nl80211AttributeScanSsids() : NetlinkRawAttribute(kName, kNameString) {}
-};
-
 
 }  // namespace shill
 

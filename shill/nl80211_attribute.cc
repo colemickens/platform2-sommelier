@@ -596,10 +596,55 @@ NetlinkNestedAttribute::NetlinkNestedAttribute(int id,
     NetlinkAttribute(id, id_string, kType, kMyTypeString),
     value_(new AttributeList) {}
 
+ByteString NetlinkNestedAttribute::Encode() const {
+  // Encode attribute header.
+  nlattr header;
+  header.nla_type = id();
+  header.nla_len = nla_attr_size(sizeof(header));
+  ByteString result(reinterpret_cast<unsigned char *>(&header), sizeof(header));
+  result.Resize(NLA_HDRLEN);  // Add padding after the header.
+
+  // Encode all nested attributes.
+  std::map<int, AttributeList::AttributePointer>::const_iterator attribute;
+  for (attribute = value_->attributes_.begin();
+       attribute != value_->attributes_.end();
+       ++attribute) {
+    // Each attribute appends appropriate padding so it's not necessary to
+    // re-add padding.
+    result.Append(attribute->second->Encode());
+  }
+
+  // Go back and fill-in the size.
+  nlattr *new_header = reinterpret_cast<nlattr *>(result.GetData());
+  new_header->nla_len = result.GetLength();
+
+  return result;
+}
+
+void NetlinkNestedAttribute::Print(int log_level, int indent) const {
+  SLOG(WiFi, log_level) << HeaderToPrint(indent);
+  value_->Print(log_level, indent + 1);
+}
+
+bool NetlinkNestedAttribute::ToString(std::string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+
+  // This should never be called (attribute->ToString is only called
+  // from attribute->Print but NetlinkNestedAttribute::Print doesn't call
+  // |ToString|.  Still, we should print something in case we got here
+  // accidentally.
+  LOG(WARNING) << "It is unexpected for this method to be called.";
+  output->append("<Nested Attribute>");
+  return true;
+}
+
 bool NetlinkNestedAttribute::GetNestedAttributeList(
     AttributeListRefPtr *output) {
-  // Not checking |has_a_value| since GetNestedValue is called to get a newly
-  // created AttributeList in order to have something to which to add
+  // Not checking |has_a_value| since GetNestedAttributeList is called to get
+  // a newly created AttributeList in order to have something to which to add
   // attributes.
   if (output) {
     *output = value_;
@@ -898,46 +943,20 @@ Nl80211AttributeCqm::Nl80211AttributeCqm()
 }
 
 bool Nl80211AttributeCqm::InitFromNlAttr(const nlattr *const_data) {
-  if (!const_data) {
-    LOG(ERROR) << "Null |const_data| parameter";
-    return false;
-  }
-  nlattr *cqm_attr = const_cast<nlattr *>(const_data);
-
-  static const nla_policy kCqmValidationPolicy[NL80211_ATTR_CQM_MAX + 1] = {
-    { NLA_U32, 0, 0 },  // Who Knows?
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THOLD]
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_HYST]
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]
-    { NLA_U32, 0, 0 },  // [NL80211_ATTR_CQM_PKT_LOSS_EVENT]
+  static const NestedData kCqmValidationTemplate[NL80211_ATTR_CQM_MAX + 1] = {
+    {{NLA_U32, 0, 0},  "__NL80211_ATTR_CQM_INVALID", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_ATTR_CQM_RSSI_THOLD", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_ATTR_CQM_RSSI_HYST", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT", NULL, 0,
+      false},
+    {{NLA_U32, 0, 0}, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", NULL, 0, false},
   };
 
-  nlattr *cqm[NL80211_ATTR_CQM_MAX + 1];
-  if (nla_parse_nested(cqm, NL80211_ATTR_CQM_MAX, cqm_attr,
-                       const_cast<nla_policy *>(kCqmValidationPolicy))) {
-    LOG(ERROR) << "nla_parse_nested failed";
+  if (!InitNestedFromNlAttr(value_.get(),
+                            kCqmValidationTemplate,
+                            arraysize(kCqmValidationTemplate),
+                            const_data)) {
     return false;
-  }
-
-  if (cqm[NL80211_ATTR_CQM_RSSI_THOLD]) {
-    value_->SetU32AttributeValue(
-        NL80211_ATTR_CQM_RSSI_THOLD,
-        nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THOLD]));
-  }
-  if (cqm[NL80211_ATTR_CQM_RSSI_HYST]) {
-    value_->SetU32AttributeValue(
-        NL80211_ATTR_CQM_RSSI_HYST,
-        nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_HYST]));
-  }
-  if (cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]) {
-    value_->SetU32AttributeValue(
-        NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT,
-        nla_get_u32(cqm[NL80211_ATTR_CQM_RSSI_THRESHOLD_EVENT]));
-  }
-  if (cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]) {
-    value_->SetU32AttributeValue(
-        NL80211_ATTR_CQM_PKT_LOSS_EVENT,
-        nla_get_u32(cqm[NL80211_ATTR_CQM_PKT_LOSS_EVENT]));
   }
   has_a_value_ = true;
   return true;
@@ -997,18 +1016,106 @@ const int Nl80211AttributeScanFrequencies::kName
 const char Nl80211AttributeScanFrequencies::kNameString[]
     = "NL80211_ATTR_SCAN_FREQUENCIES";
 
+Nl80211AttributeScanFrequencies::Nl80211AttributeScanFrequencies()
+      : NetlinkNestedAttribute(kName, kNameString) {}
+
+bool Nl80211AttributeScanFrequencies::InitFromNlAttr(const nlattr *const_data) {
+  static const NestedData kScanFrequencyTemplate[] = {
+    {{ NLA_U32, 0, 0 }, "NL80211_SCAN_FREQ", NULL, 0, true},
+  };
+
+  if (!InitNestedFromNlAttr(value_.get(),
+                            kScanFrequencyTemplate,
+                            arraysize(kScanFrequencyTemplate),
+                            const_data)) {
+    LOG(ERROR) << "InitNestedFromNlAttr() failed";
+    return false;
+  }
+  has_a_value_ = true;
+  return true;
+}
+
 const int Nl80211AttributeScanSsids::kName = NL80211_ATTR_SCAN_SSIDS;
 const char Nl80211AttributeScanSsids::kNameString[] = "NL80211_ATTR_SCAN_SSIDS";
+
+Nl80211AttributeScanSsids::Nl80211AttributeScanSsids()
+      : NetlinkNestedAttribute(kName, kNameString) {}
+
+bool Nl80211AttributeScanSsids::InitFromNlAttr(const nlattr *const_data) {
+  static const NestedData kScanSsidTemplate[] = {
+    {{ NLA_STRING, 0, 0 }, "NL80211_SCAN_SSID", NULL, 0, true},
+  };
+
+  if (!InitNestedFromNlAttr(value_.get(),
+                            kScanSsidTemplate,
+                            arraysize(kScanSsidTemplate),
+                            const_data)) {
+    LOG(ERROR) << "InitNestedFromNlAttr() failed";
+    return false;
+  }
+  has_a_value_ = true;
+  return true;
+}
 
 const int Nl80211AttributeStaInfo::kName = NL80211_ATTR_STA_INFO;
 const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 
+Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
+      : NetlinkNestedAttribute(kName, kNameString) {}
+
 bool Nl80211AttributeStaInfo::InitFromNlAttr(const nlattr *const_data) {
-  if (!const_data) {
-    LOG(ERROR) << "Null |const_data| parameter";
+  static const NestedData kRateTemplate[NL80211_RATE_INFO_MAX + 1] = {
+    {{NLA_U32, 0, 0}, "__NL80211_RATE_INFO_INVALID", NULL, 0, false},
+    {{NLA_U16, 0, 0}, "NL80211_RATE_INFO_BITRATE", NULL, 0, false},
+    {{NLA_U8, 0, 0}, "NL80211_RATE_INFO_MCS", NULL, 0, false},
+    {{NLA_FLAG, 0, 0}, "NL80211_RATE_INFO_40_MHZ_WIDTH", NULL, 0, false},
+    {{NLA_FLAG, 0, 0}, "NL80211_RATE_INFO_SHORT_GI", NULL, 0, false},
+  };
+
+  static const NestedData kBssTemplate[NL80211_STA_BSS_PARAM_MAX + 1] = {
+    {{NLA_U32, 0, 0}, "__NL80211_STA_BSS_PARAM_INVALID", NULL, 0, false},
+    {{NLA_FLAG, 0, 0}, "NL80211_STA_BSS_PARAM_CTS_PROT", NULL, 0, false},
+    {{NLA_FLAG, 0, 0}, "NL80211_STA_BSS_PARAM_SHORT_PREAMBLE", NULL, 0,
+      false},
+    {{NLA_FLAG, 0, 0}, "NL80211_STA_BSS_PARAM_SHORT_SLOT_TIME", NULL, 0,
+      false},
+    {{NLA_U8, 0, 0}, "NL80211_STA_BSS_PARAM_DTIM_PERIOD", NULL, 0, false},
+    {{NLA_U16, 0, 0}, "NL80211_STA_BSS_PARAM_BEACON_INTERVAL", NULL, 0,
+      false},
+  };
+
+  static const NestedData kStationInfoTemplate[NL80211_STA_INFO_MAX + 1] = {
+    {{NLA_U32, 0, 0}, "__NL80211_STA_INFO_INVALID", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_INACTIVE_TIME", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_RX_BYTES", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_TX_BYTES", NULL, 0, false},
+    {{NLA_U16, 0, 0}, "NL80211_STA_INFO_LLID", NULL, 0, false},
+    {{NLA_U16, 0, 0}, "NL80211_STA_INFO_PLID", NULL, false},
+    {{NLA_U8, 0, 0}, "NL80211_STA_INFO_PLINK_STATE", NULL, 0, false},
+    {{NLA_U8, 0, 0}, "NL80211_STA_INFO_SIGNAL", NULL, 0, false},
+    {{NLA_NESTED, 0, 0}, "NL80211_STA_INFO_TX_BITRATE", &kRateTemplate[0],
+      arraysize(kRateTemplate), false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_RX_PACKETS", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_TX_PACKETS", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_TX_RETRIES", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_TX_FAILED", NULL, 0, false},
+    {{NLA_U8, 0, 0}, "NL80211_STA_INFO_SIGNAL_AVG", NULL, 0, false},
+    {{NLA_NESTED, 0, 0}, "NL80211_STA_INFO_RX_BITRATE", &kRateTemplate[0],
+      arraysize(kRateTemplate), false},
+    {{NLA_NESTED, 0, 0}, "NL80211_STA_INFO_BSS_PARAM", &kBssTemplate[0],
+      arraysize(kBssTemplate), false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_CONNECTED_TIME", NULL, 0, false},
+    {{NLA_U64, 0, 0}, "NL80211_STA_INFO_STA_FLAGS", NULL, 0, false},
+    {{NLA_U32, 0, 0}, "NL80211_STA_INFO_BEACON_LOSS", NULL, 0, false},
+  };
+
+  if (!InitNestedFromNlAttr(value_.get(),
+                            kStationInfoTemplate,
+                            arraysize(kStationInfoTemplate),
+                            const_data)) {
+    LOG(ERROR) << "InitNestedFromNlAttr() failed";
     return false;
   }
-  // TODO(wdg): Add code, here.
   has_a_value_ = true;
   return true;
 }
