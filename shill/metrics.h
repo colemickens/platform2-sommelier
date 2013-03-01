@@ -92,6 +92,31 @@ class Metrics {
     kWiFiNetworkPhyModeMax
   };
 
+  enum EapOuterProtocol {
+    kEapOuterProtocolUnknown = 0,
+    kEapOuterProtocolLeap = 1,
+    kEapOuterProtocolPeap = 2,
+    kEapOuterProtocolTls = 3,
+    kEapOuterProtocolTtls = 4,
+
+    kEapOuterProtocolMax
+  };
+
+  enum EapInnerProtocol {
+    kEapInnerProtocolUnknown = 0,
+    kEapInnerProtocolNone = 1,
+    kEapInnerProtocolPeapMd5 = 2,
+    kEapInnerProtocolPeapMschapv2 = 3,
+    kEapInnerProtocolTtlsEapMd5 = 4,
+    kEapInnerProtocolTtlsEapMschapv2 = 5,
+    kEapInnerProtocolTtlsMschapv2 = 6,
+    kEapInnerProtocolTtlsMschap = 7,
+    kEapInnerProtocolTtlsPap = 8,
+    kEapInnerProtocolTtlsChap = 9,
+
+    kEapInnerProtocolMax
+  };
+
   enum WiFiSecurity {
     kWiFiSecurityUnknown = 0,
     kWiFiSecurityNone = 1,
@@ -183,6 +208,10 @@ class Metrics {
   static const int kMetricDisconnectNumBuckets;
   static const char kMetricNetworkChannel[];
   static const int kMetricNetworkChannelMax;
+  static const char kMetricNetworkEapInnerProtocol[];
+  static const int kMetricNetworkEapInnerProtocolMax;
+  static const char kMetricNetworkEapOuterProtocol[];
+  static const int kMetricNetworkEapOuterProtocolMax;
   static const char kMetricNetworkPhyMode[];
   static const int kMetricNetworkPhyModeMax;
   static const char kMetricNetworkSecurity[];
@@ -313,6 +342,14 @@ class Metrics {
 
   // Converts a flimflam security string into its UMA security enumerator.
   static WiFiSecurity WiFiSecurityStringToEnum(const std::string &security);
+
+  // Converts a flimflam EAP outer protocol string into its UMA enumerator.
+  static EapOuterProtocol EapOuterProtocolStringToEnum(
+      const std::string &outer);
+
+  // Converts a flimflam EAP inner protocol string into its UMA enumerator.
+  static EapInnerProtocol EapInnerProtocolStringToEnum(
+      const std::string &inner);
 
   // Converts portal detection result to UMA portal result enumerator.
   static PortalResult PortalDetectionResultToEnum(

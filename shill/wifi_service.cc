@@ -353,6 +353,24 @@ void WiFiService::SendPostReadyStateMetrics(
       security_uma,
       Metrics::kMetricNetworkSecurityMax);
 
+  if (Is8021x()) {
+    Metrics::EapOuterProtocol outer_protocol =
+        Metrics::EapOuterProtocolStringToEnum(eap().eap);
+    metrics()->SendEnumToUMA(
+        metrics()->GetFullMetricName(Metrics::kMetricNetworkEapOuterProtocol,
+                                     technology()),
+        outer_protocol,
+        Metrics::kMetricNetworkEapOuterProtocolMax);
+
+    Metrics::EapInnerProtocol inner_protocol =
+        Metrics::EapInnerProtocolStringToEnum(eap().inner_eap);
+    metrics()->SendEnumToUMA(
+        metrics()->GetFullMetricName(Metrics::kMetricNetworkEapInnerProtocol,
+                                     technology()),
+        inner_protocol,
+        Metrics::kMetricNetworkEapInnerProtocolMax);
+  }
+
   // We invert the sign of the signal strength value, since UMA histograms
   // cannot represent negative numbers (it stores them but cannot display
   // them), and dBm values of interest start at 0 and go negative from there.

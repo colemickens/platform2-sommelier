@@ -159,6 +159,10 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                         -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   _, _, _, _)).Times(0);
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
+                                       _, _)).Times(0);
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
+                                      _, _)).Times(0);
   wifi_service_->frequency_ = 2412;
   wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wifi_service_->security_ = flimflam::kSecurityWep;
@@ -192,6 +196,30 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                         -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   _, _, _, _)).Times(0);
+  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
+}
+
+TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
+  const int kStrength = -42;
+  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
+                        Metrics::kWiFiNetworkPhyMode11a,
+                        Metrics::kWiFiSecurity8021x,
+                        -kStrength);
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
+                                      Metrics::kEapOuterProtocolPeap,
+                                      Metrics::kEapOuterProtocolMax));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
+                                      Metrics::kEapInnerProtocolPeapMschapv2,
+                                      Metrics::kEapInnerProtocolMax));
+  wifi_service_->frequency_ = 2412;
+  wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  wifi_service_->security_ = flimflam::kSecurity8021x;
+  wifi_service_->raw_signal_strength_ = kStrength;
+  Service::EapCredentials eap;
+  eap.eap = flimflam::kEapMethodPEAP;
+  eap.inner_eap = flimflam::kEapPhase2AuthPEAPMSCHAPV2;
+  wifi_service_->set_eap(eap);
+  metrics_.RegisterService(wifi_service_);
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
 }
 

@@ -39,6 +39,14 @@ const int Metrics::kMetricDisconnectNumBuckets = 3;
 
 const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
+const char Metrics::kMetricNetworkEapInnerProtocol[] =
+    "Network.Shill.%s.EapInnerProtocol";
+const int Metrics::kMetricNetworkEapInnerProtocolMax =
+    Metrics::kEapInnerProtocolMax;
+const char Metrics::kMetricNetworkEapOuterProtocol[] =
+    "Network.Shill.%s.EapOuterProtocol";
+const int Metrics::kMetricNetworkEapOuterProtocolMax =
+    Metrics::kEapOuterProtocolMax;
 const char Metrics::kMetricNetworkPhyMode[] = "Network.Shill.%s.PhyMode";
 const int Metrics::kMetricNetworkPhyModeMax = Metrics::kWiFiNetworkPhyModeMax;
 const char Metrics::kMetricNetworkSecurity[] = "Network.Shill.%s.Security";
@@ -313,6 +321,48 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
     return kWiFiSecurityPsk;
   } else {
     return kWiFiSecurityUnknown;
+  }
+}
+
+// static
+Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
+    const std::string &outer) {
+  if (outer == flimflam::kEapMethodPEAP) {
+    return kEapOuterProtocolPeap;
+  } else if (outer == flimflam::kEapMethodTLS) {
+    return kEapOuterProtocolTls;
+  } else if (outer == flimflam::kEapMethodTTLS) {
+    return kEapOuterProtocolTtls;
+  } else if (outer == flimflam::kEapMethodLEAP) {
+    return kEapOuterProtocolLeap;
+  } else {
+    return kEapOuterProtocolUnknown;
+  }
+}
+
+// static
+Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
+    const std::string &inner) {
+  if (inner.empty()) {
+    return kEapInnerProtocolNone;
+  } else if (inner == flimflam::kEapPhase2AuthPEAPMD5) {
+    return kEapInnerProtocolPeapMd5;
+  } else if (inner == flimflam::kEapPhase2AuthPEAPMSCHAPV2) {
+    return kEapInnerProtocolPeapMschapv2;
+  } else if (inner == flimflam::kEapPhase2AuthTTLSEAPMD5) {
+    return kEapInnerProtocolTtlsEapMd5;
+  } else if (inner == flimflam::kEapPhase2AuthTTLSEAPMSCHAPV2) {
+    return kEapInnerProtocolTtlsEapMschapv2;
+  } else if (inner == flimflam::kEapPhase2AuthTTLSMSCHAPV2) {
+    return kEapInnerProtocolTtlsMschapv2;
+  } else if (inner == flimflam::kEapPhase2AuthTTLSMSCHAP) {
+    return kEapInnerProtocolTtlsMschap;
+  } else if (inner == flimflam::kEapPhase2AuthTTLSPAP) {
+    return kEapInnerProtocolTtlsPap;
+  } else if (inner == flimflam::kEapPhase2AuthTTLSCHAP) {
+    return kEapInnerProtocolTtlsChap;
+  } else {
+    return kEapInnerProtocolUnknown;
   }
 }
 
