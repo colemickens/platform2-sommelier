@@ -9,6 +9,7 @@
 #include "base/logging.h"
 
 #include "perf_reader.h"
+#include "utils.h"
 
 namespace {
 
@@ -32,7 +33,8 @@ TEST(PerfReaderTest, Test1Cycle) {
     std::string output_perf_data = input_perf_data + ".pr.out";
     ASSERT_TRUE(pr.ReadFile(input_perf_data));
     ASSERT_TRUE(pr.WriteFile(output_perf_data));
-    // TODO(sque): make sure the perf reports match.
+
+    EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
   }
 }
 

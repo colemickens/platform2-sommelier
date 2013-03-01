@@ -96,7 +96,9 @@ TEST(PerfReaderTest, Test1Cycle) {
                 output_perf_reader1.events().size());
     ASSERT_TRUE(input_perf_reader.events().size() ==
                 output_perf_reader2.events().size());
-    // TODO(sque): check the perf report output also.
+
+    EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
+    EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
   }
 }
 
