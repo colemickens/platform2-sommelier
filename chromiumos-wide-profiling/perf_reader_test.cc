@@ -10,12 +10,14 @@
 
 #include "perf_reader.h"
 
-namespace{
+namespace {
 
 const char* kPerfDataFiles[] = {
   "perf.data.singleprocess",
+  "perf.data.systemwide.0",
   "perf.data.systemwide.1",
   "perf.data.systemwide.5",
+  "perf.data.busy.0",
   "perf.data.busy.1",
   "perf.data.busy.5",
 };
