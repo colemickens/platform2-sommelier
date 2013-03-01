@@ -4,6 +4,8 @@
 
 #include <stdio.h>
 
+#include "base/logging.h"
+
 #include "perf_serializer.h"
 #include "perf_reader.h"
 #include "utils.h"
@@ -67,6 +69,12 @@ void PerfSerializer::SerializeRecordSample(
   if (type_ & PERF_SAMPLE_CPU) {
     u.val64 = *array;
     sample->set_cpu(u.val32[0]);
+    // TODO (sque): The upper uint32 of PERF_SAMPLE_CPU is listed as "res" in
+    // perf_event.h in the kernel.  However, it doesn't appear to be used in the
+    // perf code.  For now, make sure it is unused.  If that changes, both this
+    // code and the corresponding block in DeserializeRecordSample() should be
+    // updated accordingly.
+    CHECK(u.val32[1] == 0);
     array++;
   }
   if (type_ & PERF_SAMPLE_PERIOD) {
@@ -111,6 +119,7 @@ void PerfSerializer::DeserializeRecordSample(
   }
   if (sample->has_cpu()) {
     u.val32[0] = sample->cpu();
+    u.val32[1] = 0;
     *array = u.val64;
     array++;
   }
