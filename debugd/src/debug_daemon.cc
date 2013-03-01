@@ -101,6 +101,12 @@ std::string DebugDaemon::GetModemStatus(DBus::Error& error) { // NOLINT dbuscxx
   return modem_status_tool_->GetModemStatus(error);
 }
 
+std::string DebugDaemon::RunModemCommand(
+    const std::string& command,
+    DBus::Error& error) {
+  return modem_status_tool_->RunModemCommand(command);
+}
+
 std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
   return network_status_tool_->GetNetworkStatus(error);
 }

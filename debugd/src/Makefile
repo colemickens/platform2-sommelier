@@ -29,7 +29,11 @@ TOOLS := $(patsubst %,%_tool.o,anonymizer debug_logs debug_mode example icmp \
            systrace tracepath)
 OBJS := debug_daemon.o process_with_id.o process_with_output.o \
         sandboxed_process.o $(TOOLS)
-TESTOBJS := anonymizer_tool_test.o log_tool_test.o process_with_id_test.o
+TESTOBJS := \
+	anonymizer_tool_test.o \
+	log_tool_test.o \
+	modem_status_tool_test.o \
+	process_with_id_test.o
 
 CXX_BINARY(debugd): main.o $(OBJS)
 	$(call cxx_binary,-lminijail $(PC_LIBS))
