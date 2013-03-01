@@ -2,19 +2,64 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <openssl/md5.h>
 #include <unistd.h>
 
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <istream>
 #include <iomanip>
+#include <map>
 #include <sstream>
+#include <vector>
 
-#include <openssl/md5.h>
+#include "base/basictypes.h"
+#include "base/logging.h"
+#include "base/string_split.h"
+#include "base/string_util.h"
 
 #include "utils.h"
+
+namespace {
+
+// Specify buffer size to be used to read the perf report.
+const int kPerfReportReadBufferSize = 0x10000;
+
+// Perf report command and arguments.
+// Don't attempt to symbolize:  --symfs=/dev/null
+// Use stdio:                   --stdio
+// Show event count:            -n
+// Use subsequent input file:   -i
+const char kPerfReportCommand[] =
+    "/usr/sbin/perf report --symfs=/dev/null --stdio -n -i ";
+
+// Given a perf report file, get the perf report and read it into a string.
+bool GetPerfReport(const std::string& filename, std::string* output) {
+  std::string cmd = std::string(kPerfReportCommand) + filename;
+  FILE* file = popen(cmd.c_str(), "r");
+  if (!file) {
+    LOG(ERROR) << "Could not execute '" << cmd << "'.";
+    return false;
+  }
+
+  char buffer[kPerfReportReadBufferSize];
+  // Read line by line, discarding commented lines.  That should skip the
+  // header metadata, which we are not including.
+  output->clear();
+  while (fgets(buffer, sizeof(buffer), file)) {
+    if (buffer[0] == '#')
+      continue;
+    std::string str;
+    TrimWhitespaceASCII(buffer, TRIM_ALL, &str);
+    *output += str + '\n';
+  }
+  fclose(file);
+
+  return true;
+}
+
+}  // namespace
 
 uint64 Md5Prefix(const std::string& input) {
   uint64 digest_prefix = 0;
@@ -90,4 +135,16 @@ bool CreateNamedTempFile(std::string * name) {
   close(fd);
   *name = filename;
   return true;
+}
+
+bool ComparePerfReports(const std::string& a, const std::string& b) {
+  const std::string* files[] = { &a, &b };
+  std::map<std::string, std::string> outputs;
+
+  // Generate a perf report for each file.
+  for (unsigned int i = 0; i < arraysize(files); ++i)
+    CHECK(GetPerfReport(*files[i], &outputs[*files[i]]));
+
+  // Compare the output strings.
+  return outputs[a] == outputs[b];
 }
