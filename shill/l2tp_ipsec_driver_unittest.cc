@@ -583,6 +583,27 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   SetDevice(device_);
   FilePath psk_file = SetupPSKFile();
   StartConnectTimeout(0);
+
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      Metrics::kMetricVpnDriver,
+      Metrics::kVpnDriverL2tpIpsec,
+      Metrics::kMetricVpnDriverMax));
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      Metrics::kMetricVpnRemoteAuthenticationType,
+      Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+      Metrics::kVpnRemoteAuthenticationTypeMax));
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      Metrics::kMetricVpnUserAuthenticationType,
+      Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
+      Metrics::kVpnUserAuthenticationTypeMax));
+
+  Error unused_error;
+  PropertyStore store;
+  driver_->InitPropertyStore(&store);
+  store.SetStringProperty(flimflam::kL2tpIpsecPskProperty, "", &unused_error);
+  store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "",
+                          &unused_error);
+
   InvokeNotify(kL2TPIPSecReasonConnect, config);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(GetPSKFile().empty());

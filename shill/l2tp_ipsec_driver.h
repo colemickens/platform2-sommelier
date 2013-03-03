@@ -124,6 +124,8 @@ class L2TPIPSecDriver : public VPNDriver,
 
   static void DeleteRPCTask(RPCTask *rpc_task);
 
+  void ReportConnectionMetrics();
+
   ControlInterface *control_;
   Metrics *metrics_;
   DeviceInfo *device_info_;

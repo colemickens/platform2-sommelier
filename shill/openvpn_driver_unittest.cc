@@ -314,6 +314,36 @@ TEST_F(OpenVPNDriverTest, Notify) {
   driver_->Notify("up", config);
 }
 
+TEST_F(OpenVPNDriverTest, NotifyUMA) {
+  map<string, string> config;
+  driver_->service_ = service_;
+  driver_->device_ = device_;
+
+  // Check that UMA metrics are emitted on Notify.
+  EXPECT_CALL(*device_, UpdateIPConfig(_));
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      Metrics::kMetricVpnDriver,
+      Metrics::kVpnDriverOpenVpn,
+      Metrics::kMetricVpnDriverMax));
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      Metrics::kMetricVpnRemoteAuthenticationType,
+      Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
+      Metrics::kVpnRemoteAuthenticationTypeMax));
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      Metrics::kMetricVpnUserAuthenticationType,
+      Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+      Metrics::kVpnUserAuthenticationTypeMax));
+
+  Error unused_error;
+  PropertyStore store;
+  driver_->InitPropertyStore(&store);
+  store.SetStringProperty(flimflam::kOpenVPNCaCertProperty, "",
+                          &unused_error);
+  store.SetStringProperty(flimflam::kOpenVPNUserProperty, "",
+                          &unused_error);
+  driver_->Notify("up", config);
+}
+
 TEST_F(OpenVPNDriverTest, NotifyFail) {
   map<string, string> dict;
   driver_->device_ = device_;

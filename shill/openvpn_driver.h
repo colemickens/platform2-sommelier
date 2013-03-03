@@ -102,6 +102,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoHost);
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
+  FRIEND_TEST(OpenVPNDriverTest, NotifyUMA);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultServiceChanged);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
@@ -191,6 +192,8 @@ class OpenVPNDriver : public VPNDriver,
                       const std::map<std::string, std::string> &dict);
 
   void OnDefaultServiceChanged(const ServiceRefPtr &service);
+
+  void ReportConnectionMetrics();
 
   ControlInterface *control_;
   Metrics *metrics_;

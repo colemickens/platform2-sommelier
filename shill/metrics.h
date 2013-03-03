@@ -202,6 +202,32 @@ class Metrics {
     kCorruptedProfileMax
   };
 
+  enum VpnDriver {
+    kVpnDriverOpenVpn = 0,
+    kVpnDriverL2tpIpsec = 1,
+    kVpnDriverMax
+  };
+
+  enum VpnRemoteAuthenticationType {
+    kVpnRemoteAuthenticationTypeOpenVpnDefault = 0,
+    kVpnRemoteAuthenticationTypeOpenVpnCertificate = 1,
+    kVpnRemoteAuthenticationTypeL2tpIpsecDefault = 2,
+    kVpnRemoteAuthenticationTypeL2tpIpsecCertificate = 3,
+    kVpnRemoteAuthenticationTypeL2tpIpsecPsk = 4,
+    kVpnRemoteAuthenticationTypeMax
+  };
+
+  enum VpnUserAuthenticationType {
+    kVpnUserAuthenticationTypeOpenVpnNone = 0,
+    kVpnUserAuthenticationTypeOpenVpnCertificate = 1,
+    kVpnUserAuthenticationTypeOpenVpnUsernamePassword = 2,
+    kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp = 3,
+    kVpnUserAuthenticationTypeL2tpIpsecNone = 4,
+    kVpnUserAuthenticationTypeL2tpIpsecCertificate = 5,
+    kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword = 6,
+    kVpnUserAuthenticationTypeMax
+  };
+
   static const char kMetricDisconnect[];
   static const int kMetricDisconnectMax;
   static const int kMetricDisconnectMin;
@@ -333,6 +359,14 @@ class Metrics {
 
   // Profile statistics.
   static const char kMetricCorruptedProfile[];
+
+  // VPN connection statistics.
+  static const char kMetricVpnDriver[];
+  static const int kMetricVpnDriverMax;
+  static const char kMetricVpnRemoteAuthenticationType[];
+  static const int kMetricVpnRemoteAuthenticationTypeMax;
+  static const char kMetricVpnUserAuthenticationType[];
+  static const int kMetricVpnUserAuthenticationTypeMax;
 
   explicit Metrics(EventDispatcher *dispatcher);
   virtual ~Metrics();

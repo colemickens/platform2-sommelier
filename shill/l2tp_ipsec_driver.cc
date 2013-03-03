@@ -418,6 +418,7 @@ void L2TPIPSecDriver::Notify(
   device_->SetEnabled(true);
   device_->SelectService(service_);
   device_->UpdateIPConfig(properties);
+  ReportConnectionMetrics();
   StopConnectTimeout();
 }
 
@@ -436,6 +437,59 @@ KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {
                 args()->LookupString(
                     flimflam::kL2tpIpsecPskProperty, "").empty());
   return props;
+}
+
+void L2TPIPSecDriver::ReportConnectionMetrics() {
+  metrics_->SendEnumToUMA(
+      Metrics::kMetricVpnDriver,
+      Metrics::kVpnDriverL2tpIpsec,
+      Metrics::kMetricVpnDriverMax);
+
+  // We output an enum for each of the authentication types specified,
+  // even if more than one is set at the same time.
+  bool has_remote_authentication = false;
+  if (args()->ContainsString(flimflam::kL2tpIpsecCaCertNssProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+    has_remote_authentication = true;
+  }
+  if (args()->ContainsString(flimflam::kL2tpIpsecPskProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+    has_remote_authentication = true;
+  }
+  if (!has_remote_authentication) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecDefault,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+  }
+
+  bool has_user_authentication = false;
+  if (args()->ContainsString(flimflam::kL2tpIpsecClientCertIdProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (args()->ContainsString(flimflam::kL2tpIpsecPasswordProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (!has_user_authentication) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecNone,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+  }
 }
 
 }  // namespace shill

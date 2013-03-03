@@ -236,6 +236,19 @@ const char Metrics::kMetricCorruptedProfile[] =
     "Network.Shill.CorruptedProfile";
 
 // static
+const char Metrics::kMetricVpnDriver[] =
+    "Network.Shill.Vpn.Driver";
+const int Metrics::kMetricVpnDriverMax = Metrics::kVpnDriverMax;
+const char Metrics::kMetricVpnRemoteAuthenticationType[] =
+    "Network.Shill.Vpn.RemoteAuthenticationType";
+const int Metrics::kMetricVpnRemoteAuthenticationTypeMax =
+    Metrics::kVpnRemoteAuthenticationTypeMax;
+const char Metrics::kMetricVpnUserAuthenticationType[] =
+    "Network.Shill.Vpn.UserAuthenticationType";
+const int Metrics::kMetricVpnUserAuthenticationTypeMax =
+    Metrics::kVpnUserAuthenticationTypeMax;
+
+// static
 const int Metrics::kHourlyTimeoutMilliseconds = 3600 * 1000;  // One hour
 
 

@@ -302,6 +302,7 @@ void OpenVPNDriver::Notify(const string &reason,
   ParseIPConfiguration(dict, &ip_properties_);
   device_->SelectService(service_);
   device_->UpdateIPConfig(ip_properties_);
+  ReportConnectionMetrics();
   StopConnectTimeout();
 }
 
@@ -849,6 +850,57 @@ void OpenVPNDriver::OnDefaultServiceChanged(const ServiceRefPtr &service) {
     management_server_->ReleaseHold();
   } else {
     management_server_->Hold();
+  }
+}
+
+void OpenVPNDriver::ReportConnectionMetrics() {
+  metrics_->SendEnumToUMA(
+      Metrics::kMetricVpnDriver,
+      Metrics::kVpnDriverOpenVpn,
+      Metrics::kMetricVpnDriverMax);
+
+  if (args()->ContainsString(flimflam::kOpenVPNCaCertNSSProperty) ||
+      args()->ContainsString(flimflam::kOpenVPNCaCertProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+  } else {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeOpenVpnDefault,
+        Metrics::kMetricVpnRemoteAuthenticationTypeMax);
+  }
+
+  bool has_user_authentication = false;
+  if (args()->ContainsString(flimflam::kOpenVPNOTPProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (args()->ContainsString(flimflam::kOpenVPNAuthUserPassProperty) ||
+      args()->ContainsString(flimflam::kOpenVPNUserProperty))  {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (args()->ContainsString(flimflam::kOpenVPNClientCertIdProperty) ||
+      args()->ContainsString(kOpenVPNCertProperty)) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
+    has_user_authentication = true;
+  }
+  if (!has_user_authentication) {
+    metrics_->SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeOpenVpnNone,
+        Metrics::kMetricVpnUserAuthenticationTypeMax);
   }
 }
 
