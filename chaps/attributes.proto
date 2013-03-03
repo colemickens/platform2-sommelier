@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 package chaps;
+option optimize_for = LITE_RUNTIME;
 
 message Attribute {
   required uint32 type = 1;

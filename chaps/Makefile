@@ -44,7 +44,7 @@ chapsd.o.depends : chaps_adaptor_generated.h
 attributes.pb.h attributes.pb.cc: $(SRC)/attributes.proto
 	$(PROTOC) -I$(SRC) --cpp_out=$(OUT) $<
 clean: CLEAN(attributes.pb.h attributes.pb.cc)
-$(eval $(call add_object_rules,attributes.pb.o,CXX,cc))
+$(eval $(call add_object_rules,attributes.pb.o,CXX,cc,CXXFLAGS))
 
 object_pool_impl.o.depends \
 object_pool_test.o.depends \
