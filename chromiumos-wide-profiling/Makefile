@@ -5,13 +5,15 @@
 # TODO(asharif): Convert this to common.mk.
 CXX ?= g++
 
-BASE_VERSION ?= 180609
+BASE_VER ?= 180609
+PKG_CONFIG ?= pkg-config
+PC_DEPS = openssl protobuf libchrome-$(BASE_VER)
+PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
+PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS += -g -Wall -Iperf -Werror -Wall \
-	    $(shell pkg-config --cflags protobuf --cflags libchrome-$(BASE_VERSION))
-LDFLAGS += $(shell pkg-config --libs protobuf) \
-	   $(shell pkg-config --libs openssl --libs libchrome-$(BASE_VERSION))
-TEST_LDFLAGS = $(LDFLAGS) -lgtest
+CXXFLAGS += -g -Wall -Werror -Wall
+CPPFLAGS += -Iperf $(PC_CFLAGS)
+LDLIBS += $(PC_LIBS)
 
 MAIN_SOURCES = quipper.cc
 PROGRAMS = $(MAIN_SOURCES:.cc=)
@@ -48,10 +50,11 @@ endif
 	protoc --cpp_out=. $^
 
 $(PROGRAMS): %: %.o $(COMMON_OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
+$(TESTS): LDLIBS += -lgtest
 $(TESTS): %: %.o $(COMMON_OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(TEST_LDFLAGS)
+	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 # With large perf.data files, the tests will spew a lot of logging.  The
 # following calls will pipe the logging to a log file.  To see test logging,
