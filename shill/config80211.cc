@@ -146,17 +146,15 @@ bool Config80211::SendMessage(Nl80211Message *message,
     LOG(ERROR) << "Message is NULL.";
     return false;
   }
-  uint32 sequence_number = message->sequence_number();
-  if (!sequence_number) {
-    sequence_number = sock_->GetSequenceNumber();
-    message->set_sequence_number(sequence_number);
-  }
+
+  ByteString message_string = message->Encode(this->GetSequenceNumber(),
+                                              sock_->family_id());
 
   SLOG(WiFi, 6) << "NL Message " << message->sequence_number()
                 << " Sending ===>";
   message->Print(6);
 
-  if (!sock_->SendMessage(message)) {
+  if (!sock_->SendMessage(message_string)) {
     LOG(ERROR) << "Failed to send nl80211 message.";
     return false;
   }
@@ -164,12 +162,13 @@ bool Config80211::SendMessage(Nl80211Message *message,
     LOG(INFO) << "Handler for message was null.";
     return true;
   }
-  if (ContainsKey(message_handlers_, sequence_number)) {
+  if (ContainsKey(message_handlers_, message->sequence_number())) {
     LOG(ERROR) << "Sent message, but already had a handler for this message?";
     return false;
   }
-  message_handlers_[sequence_number] = handler;
-  LOG(INFO) << "Sent nl80211 message with sequence number: " << sequence_number;
+  message_handlers_[message->sequence_number()] = handler;
+  LOG(INFO) << "Sent nl80211 message with sequence number: "
+            << message->sequence_number();
   return true;
 }
 
@@ -229,6 +228,11 @@ void Config80211::SetWifiState(WifiState new_state) {
     }
   }
   wifi_state_ = new_state;
+}
+
+uint32_t Config80211::GetSequenceNumber() {
+  return sock_ ?
+      sock_->GetSequenceNumber() : Nl80211Message::kBroadcastSequenceNumber;
 }
 
 bool Config80211::SubscribeToEvents(EventType type) {

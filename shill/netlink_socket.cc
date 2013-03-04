@@ -73,18 +73,16 @@ bool NetlinkSocket::Init() {
   return true;
 }
 
-bool NetlinkSocket::SendMessage(Nl80211Message *message) {
-  if (!message) {
-    LOG(ERROR) << "NULL |message|.";
-    return false;
+bool NetlinkSocket::SendMessage(const ByteString &out_msg) {
+  if (out_msg.GetLength() == 0) {
+    SLOG(WiFi, 3) << "Not sending empty message.";
+    return true;
   }
 
   if (!nl_sock_) {
     LOG(ERROR) << "Need to initialize the socket first.";
     return false;
   }
-
-  ByteString out_msg = message->Encode(family_id());
 
   int result = HANDLE_EINTR(send(GetFd(), out_msg.GetConstData(),
                                  out_msg.GetLength(), 0));

@@ -20,10 +20,10 @@ Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
 
 void Callback80211Metrics::Config80211MessageCallback(
     const Nl80211Message &message) {
-  SLOG(WiFi, 3) << "Received " << message.message_type_string()
-                << " (" << + message.message_type() << ")";
+  SLOG(WiFi, 3) << "Received " << message.command_string()
+                << " (" << + message.command() << ")";
   if (metrics_ &&
-      message.message_type() == DeauthenticateMessage::kCommand) {
+      message.command() == DeauthenticateMessage::kCommand) {
     Metrics::WiFiDisconnectByWhom by_whom =
         message.const_attributes()->IsFlagAttributeTrue(
             NL80211_ATTR_DISCONNECTED_BY_AP) ?

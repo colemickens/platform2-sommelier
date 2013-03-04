@@ -26,18 +26,27 @@ struct nlmsghdr;
 
 namespace shill {
 
+class Config80211;
+
 // Class for messages received from libnl.
 class Nl80211Message {
  public:
+  static const uint32_t kBroadcastSequenceNumber;
+  static const uint16_t kIllegalMessageType;
   static const unsigned int kEthernetAddressBytes;
   static const char kBogusMacAddress[];
 
-  Nl80211Message(uint8 message_type, const char *message_type_string)
-      : message_type_(message_type),
-        message_type_string_(message_type_string),
-        sequence_number_(kIllegalMessage),
-        attributes_(new AttributeList) {}
+  Nl80211Message(uint8 command, const char *command_string)
+      : attributes_(new AttributeList),
+        command_(command),
+        command_string_(command_string),
+        flags_(0),
+        message_type_(nl80211_message_type_),
+        sequence_number_(kBroadcastSequenceNumber) {}
   virtual ~Nl80211Message() {}
+
+  uint8 command() const { return command_; }
+  const char *command_string() const { return command_string_; }
 
   // Initializes the message with bytes from the kernel.
   virtual bool InitFromNlmsg(const nlmsghdr *msg);
@@ -78,15 +87,22 @@ class Nl80211Message {
   static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);
 
-  uint8 message_type() const { return message_type_; }
-  const char *message_type_string() const { return message_type_string_; }
-
   // Returns a netlink message suitable for Sockets::Send.  Return value is
   // empty on failure.  |nlmsg_type| needs to be the family id returned by
   // |genl_ctrl_resolve|.
-  ByteString Encode(uint16_t nlmsg_type) const;
+  ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
 
  protected:
+  // Reads the values from the |nlmsghdr| and |genlmsghdr| portions of the
+  // netlink message and removes those headers (and any padding that happens to
+  // be there) from |input| leaving, hopefully, the attributes.
+  bool InitAndStripHeader(ByteString *input);
+
+  // Returns a string of bytes representing an |nlmsghdr| with the members
+  // filled-in with values representing the current message, and any required
+  // padding.
+  ByteString EncodeHeader(uint32_t sequence_number, uint16_t nlmsg_type);
+
   // Returns a string that should precede all user-bound message strings.
   virtual std::string GetHeaderString() const;
 
@@ -109,15 +125,16 @@ class Nl80211Message {
   friend class Config80211Test;
   FRIEND_TEST(Config80211Test, NL80211_CMD_NOTIFY_CQM);
 
-  static const uint32_t kIllegalMessage;
-
-  const uint8 message_type_;
-  const char *message_type_string_;
+  static uint16_t nl80211_message_type_;
   static std::map<uint16_t, std::string> *reason_code_string_;
   static std::map<uint16_t, std::string> *status_code_string_;
-  uint32_t sequence_number_;
 
   AttributeListRefPtr attributes_;
+  const uint8 command_;
+  const char *command_string_;
+  uint16_t flags_;
+  uint16_t message_type_;
+  uint32_t sequence_number_;
 
   DISALLOW_COPY_AND_ASSIGN(Nl80211Message);
 };

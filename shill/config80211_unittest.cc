@@ -57,7 +57,19 @@ namespace {
 
 const uint32_t kExpectedIfIndex = 4;
 const uint32_t kWiPhy = 0;
+const uint16_t kNl80211FamilyId = 0x13;
 const char kExpectedMacAddress[] = "c0:3f:0e:77:e8:7f";
+
+const uint8_t kMacAddressBytes[] = {
+  0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f
+};
+
+const uint8_t kAssignedRespIeBytes[] = {
+  0x01, 0x08, 0x82, 0x84,
+  0x8b, 0x96, 0x0c, 0x12,
+  0x18, 0x24, 0x32, 0x04,
+  0x30, 0x48, 0x60, 0x6c
+};
 
 
 // wlan0 (phy #0): scan started
@@ -349,17 +361,12 @@ const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
 
 }  // namespace
 
-bool MockNl80211Socket::SendMessage(Nl80211Message *message) {
-  if (!message) {
-    LOG(ERROR) << "Null |message|";
-    return false;
-  }
+bool MockNl80211Socket::SendMessage(const ByteString &out_string) {
   return true;
 }
 
 uint32_t MockNl80211Socket::GetSequenceNumber() {
-  // Sequence number 0 is reserved for broadcast messages from the kernel.
-  if (++sequence_number_ == 0)
+  if (++sequence_number_ == Nl80211Message::kBroadcastSequenceNumber)
     ++sequence_number_;
   return sequence_number_;
 }
@@ -572,7 +579,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_TRIGGER_SCAN) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_TRIGGER_SCAN)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_TRIGGER_SCAN, message->message_type());
+  EXPECT_EQ(NL80211_CMD_TRIGGER_SCAN, message->command());
 
   {
     uint32_t value;
@@ -621,7 +628,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_SCAN_RESULTS)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_NEW_SCAN_RESULTS, message->message_type());
+  EXPECT_EQ(NL80211_CMD_NEW_SCAN_RESULTS, message->command());
 
   {
     uint32_t value;
@@ -670,7 +677,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_NEW_STATION) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NEW_STATION)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_NEW_STATION, message->message_type());
+  EXPECT_EQ(NL80211_CMD_NEW_STATION, message->command());
 
   {
     uint32_t value;
@@ -705,7 +712,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_AUTHENTICATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_AUTHENTICATE)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_AUTHENTICATE, message->message_type());
+  EXPECT_EQ(NL80211_CMD_AUTHENTICATE, message->command());
 
   {
     uint32_t value;
@@ -739,7 +746,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_ASSOCIATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_ASSOCIATE)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_ASSOCIATE, message->message_type());
+  EXPECT_EQ(NL80211_CMD_ASSOCIATE, message->command());
 
   {
     uint32_t value;
@@ -773,7 +780,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_CONNECT) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_CONNECT)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_CONNECT, message->message_type());
+  EXPECT_EQ(NL80211_CMD_CONNECT, message->command());
 
   {
     uint32_t value;
@@ -810,13 +817,61 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_CONNECT) {
   }
 }
 
+TEST_F(Config80211Test, Build_NL80211_CMD_CONNECT) {
+  SetupConfig80211Object();
+
+  // Build the message that is found in kNL80211_CMD_CONNECT.
+  ConnectMessage message;
+  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_WIPHY,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->SetU32AttributeValue(NL80211_ATTR_WIPHY,
+                                                        kWiPhy));
+
+  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_IFINDEX,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->SetU32AttributeValue(
+      NL80211_ATTR_IFINDEX, kExpectedIfIndex));
+
+  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_MAC,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_MAC,
+      ByteString(kMacAddressBytes, arraysize(kMacAddressBytes))));
+
+  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_STATUS_CODE,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->SetU16AttributeValue(
+      NL80211_ATTR_STATUS_CODE, kExpectedConnectStatus));
+
+  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_RESP_IE,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+  EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_RESP_IE,
+      ByteString(kAssignedRespIeBytes, arraysize(kAssignedRespIeBytes))));
+
+  // Encode the message to a ByteString and remove all the run-specific
+  // values.
+
+  // TODO(wdg): Get nl80211's family id from Config80211 after it starts
+  // keeping track of family id for each family name.
+  ByteString message_bytes = message.Encode(config80211_->GetSequenceNumber(),
+                                            kNl80211FamilyId);
+  nlmsghdr *header = reinterpret_cast<nlmsghdr *>(message_bytes.GetData());
+  header->nlmsg_flags = 0;  // Overwrite with known values.
+  header->nlmsg_seq = 0;
+  header->nlmsg_pid = 0;
+
+  // Verify that the messages are equal.
+  EXPECT_TRUE(message_bytes.Equals(
+      ByteString(kNL80211_CMD_CONNECT, arraysize(kNL80211_CMD_CONNECT))));
+}
+
+
 TEST_F(Config80211Test, Parse_NL80211_CMD_DEAUTHENTICATE) {
   Nl80211Message *message = Nl80211MessageFactory::CreateMessage(
       const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DEAUTHENTICATE)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_DEAUTHENTICATE, message->message_type());
+  EXPECT_EQ(NL80211_CMD_DEAUTHENTICATE, message->command());
 
   {
     uint32_t value;
@@ -850,7 +905,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_DISCONNECT) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_DISCONNECT, message->message_type());
+  EXPECT_EQ(NL80211_CMD_DISCONNECT, message->command());
 
   {
     uint32_t value;
@@ -883,7 +938,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_NOTIFY_CQM) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_NOTIFY_CQM)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_NOTIFY_CQM, message->message_type());
+  EXPECT_EQ(NL80211_CMD_NOTIFY_CQM, message->command());
 
 
   {
@@ -926,7 +981,7 @@ TEST_F(Config80211Test, Parse_NL80211_CMD_DISASSOCIATE) {
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISASSOCIATE)));
 
   EXPECT_NE(reinterpret_cast<Nl80211Message *>(NULL), message);
-  EXPECT_EQ(NL80211_CMD_DISASSOCIATE, message->message_type());
+  EXPECT_EQ(NL80211_CMD_DISASSOCIATE, message->command());
 
 
   {

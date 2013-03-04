@@ -27,6 +27,7 @@
 #include <ctype.h>
 #include <endian.h>
 #include <errno.h>
+#include <limits.h>
 #include <linux/nl80211.h>
 #include <net/if.h>
 #include <netinet/in.h>
@@ -52,7 +53,6 @@
 #include "shill/netlink_attribute.h"
 #include "shill/netlink_socket.h"
 #include "shill/scope_logger.h"
-#include "shill/wifi.h"
 
 using base::Bind;
 using base::LazyInstance;
@@ -70,15 +70,19 @@ LazyInstance<Nl80211MessageDataCollector> g_datacollector =
     LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const char Nl80211Message::kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
-
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
-const uint32_t Nl80211Message::kIllegalMessage = 0;
+// TODO(wdg): These will go into NetlinkMessage when that class exists.
+const uint32_t Nl80211Message::kBroadcastSequenceNumber = 0;
+const uint16_t Nl80211Message::kIllegalMessageType = UINT16_MAX;
+
+const char Nl80211Message::kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
 const unsigned int Nl80211Message::kEthernetAddressBytes = 6;
 map<uint16_t, string> *Nl80211Message::reason_code_string_ = NULL;
 map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
+uint16_t Nl80211Message::nl80211_message_type_ = kIllegalMessageType;
+
 
 // The nl messages look like this:
 //
@@ -108,11 +112,30 @@ map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 // Nl80211Message
 //
 
-void Nl80211Message::Print(int log_level) const {
-  SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
-                                        message_type_string(),
-                                        message_type());
-  attributes_->Print(log_level, 1);
+bool Nl80211Message::InitAndStripHeader(ByteString *input) {
+  if (!input) {
+    LOG(ERROR) << "NULL input";
+    return false;
+  }
+  // Read the nlmsghdr.
+  nlmsghdr *header = reinterpret_cast<nlmsghdr *>(input->GetData());
+  message_type_ = header->nlmsg_type;
+  flags_ = header->nlmsg_flags;
+  sequence_number_ = header->nlmsg_seq;
+
+  // Strip the nlmsghdr.
+  input->RemovePrefix(NLMSG_ALIGN(sizeof(struct nlmsghdr)));
+
+  // Read the genlmsghdr.
+  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(input->GetData());
+  if (command_ != gnlh->cmd) {
+    LOG(WARNING) << "This object thinks it's a " << command_
+                 << " but the message thinks it's a " << gnlh->cmd;
+  }
+
+  // Strip the genlmsghdr.
+  input->RemovePrefix(NLMSG_ALIGN(sizeof(struct genlmsghdr)));
+  return true;
 }
 
 bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
@@ -120,23 +143,19 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
     LOG(ERROR) << "Null |msg| parameter";
     return false;
   }
+  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+                     const_msg->nlmsg_len);
 
-  // Netlink header.
-  sequence_number_ = const_msg->nlmsg_seq;
-  SLOG(WiFi, 6) << "NL Message " << sequence_number() << " <===";
-
-  // Casting away constness, here, since the libnl code doesn't properly label
-  // their stuff as const (even though it is).
-  nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
-
-  // Genl message header.
-  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(nlmsg_data(msg));
+  if (!InitAndStripHeader(&message)) {
+    return false;
+  }
 
   // Attributes.
   // Parse the attributes from the nl message payload into the 'tb' array.
   nlattr *tb[NL80211_ATTR_MAX + 1];
-  nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
-            genlmsg_attrlen(gnlh, 0), NULL);
+  nla_parse(tb, NL80211_ATTR_MAX,
+            reinterpret_cast<nlattr *>(message.GetData()), message.GetLength(),
+            NULL);
 
   for (int i = 0; i < NL80211_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
@@ -343,6 +362,13 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   }
 
   return true;
+}
+
+void Nl80211Message::Print(int log_level) const {
+  SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
+                                        command_string(),
+                                        command());
+  attributes_->Print(log_level, 1);
 }
 
 // static
@@ -607,42 +633,61 @@ string Nl80211Message::StringFromStatus(uint16_t status) {
   return match->second;
 }
 
-ByteString Nl80211Message::Encode(uint16_t nlmsg_type) const {
+ByteString Nl80211Message::EncodeHeader(uint32_t sequence_number,
+                                        uint16_t nlmsg_type) {
+  ByteString result;
+  sequence_number_ = sequence_number;
+  if (sequence_number_ == kBroadcastSequenceNumber) {
+    LOG(ERROR) << "Couldn't get a legal sequence number";
+    return result;
+  }
+
   // Build netlink header.
   nlmsghdr header;
   size_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
   header.nlmsg_len = nlmsghdr_with_pad;
   header.nlmsg_type = nlmsg_type;
   header.nlmsg_flags = NLM_F_REQUEST;
-  header.nlmsg_seq = sequence_number();
+  header.nlmsg_seq = sequence_number_;
   header.nlmsg_pid = getpid();
-
-  // Build genl message header.
-  genlmsghdr genl_header;
-  size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
-  header.nlmsg_len += genlmsghdr_with_pad;
-  genl_header.cmd = message_type();
-  genl_header.version = 1;
-  genl_header.reserved = 0;
-
-  // Assemble attributes (padding is included by AttributeList::Encode).
-  ByteString attribute_bytes = attributes_->Encode();
-  header.nlmsg_len += attribute_bytes.GetLength();
-
-  // Now that we know the total message size, build the output ByteString.
-  ByteString result;
 
   // Netlink header + pad.
   result.Append(ByteString(reinterpret_cast<unsigned char *>(&header),
                            sizeof(header)));
   result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
 
-  // Genl message header + pad.
-  result.Append(ByteString(reinterpret_cast<unsigned char *>(&genl_header),
-                           sizeof(genl_header)));
-  result.Resize(nlmsghdr_with_pad + genlmsghdr_with_pad);  // Zero-fill.
+ // Build and append the genl message header.
+  genlmsghdr genl_header;
+  genl_header.cmd = command();
+  genl_header.version = 1;
+  genl_header.reserved = 0;
 
-  // Attributes including pad.
+  ByteString genl_header_string(
+      reinterpret_cast<unsigned char *>(&genl_header), sizeof(genl_header));
+  size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
+  genl_header_string.Resize(genlmsghdr_with_pad);  // Zero-fill.
+
+  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
+  pheader->nlmsg_len += genlmsghdr_with_pad;
+  result.Append(genl_header_string);
+  return result;
+}
+
+ByteString Nl80211Message::Encode(uint32_t sequence_number,
+                                  uint16_t nlmsg_type) {
+  ByteString result(EncodeHeader(sequence_number, nlmsg_type));
+  if (result.GetLength() == 0) {
+    LOG(ERROR) << "Couldn't encode message header.";
+    return result;
+  }
+
+  // Build and append attributes (padding is included by
+  // AttributeList::Encode).
+  ByteString attribute_bytes = attributes_->Encode();
+
+  // Need to re-calculate |header| since |Append|, above, moves the data.
+  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
+  pheader->nlmsg_len += attribute_bytes.GetLength();
   result.Append(attribute_bytes);
 
   return result;
@@ -991,13 +1036,13 @@ void Nl80211MessageDataCollector::CollectDebugData(
   bool doit = false;
 
   map<uint8_t, bool>::const_iterator node;
-  node = need_to_print.find(message.message_type());
+  node = need_to_print.find(message.command());
   if (node != need_to_print.end())
     doit = node->second;
 
   if (doit) {
     LOG(INFO) << "@@const unsigned char "
-               << "k" << message.message_type_string()
+               << "k" << message.command_string()
                << "[] = {";
 
     int payload_bytes = nlmsg_datalen(msg);
@@ -1010,7 +1055,7 @@ void Nl80211MessageDataCollector::CollectDebugData(
                  << + rawdata[i] << ",";
     }
     LOG(INFO) << "};";
-    need_to_print[message.message_type()] = false;
+    need_to_print[message.command()] = false;
   }
 }
 

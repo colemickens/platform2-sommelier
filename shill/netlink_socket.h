@@ -43,7 +43,7 @@ struct nl_msg;
 
 namespace shill {
 
-class Nl80211Message;
+class ByteString;
 
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/ for documentation on how netlink
@@ -73,7 +73,7 @@ class NetlinkSocket {
   virtual std::string GetSocketFamilyName() const = 0;
 
   // Sends a message, returns true if successful.
-  virtual bool SendMessage(Nl80211Message *message);
+  virtual bool SendMessage(const ByteString &message);
 
  protected:
   struct nl_sock *GetNlSock() { return nl_sock_; }

@@ -112,6 +112,10 @@ class Config80211 {
   // subscription requests or down.
   void SetWifiState(WifiState new_state);
 
+  // Gets the next sequence number for a NetlinkMessage to be sent over
+  // Config80211's netlink socket.
+  uint32_t GetSequenceNumber();
+
  protected:
   friend struct base::DefaultLazyInstanceTraits<Config80211>;
 

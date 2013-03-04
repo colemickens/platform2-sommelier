@@ -24,7 +24,7 @@ class MockNl80211Socket : public Nl80211Socket {
   MOCK_METHOD1(AddGroupMembership, bool(const std::string &group_name));
 
   virtual uint32_t GetSequenceNumber();
-  virtual bool SendMessage(Nl80211Message *message);
+  virtual bool SendMessage(const ByteString &message);
   uint32 GetLastSequenceNumber() const { return sequence_number_; }
 
  private:
