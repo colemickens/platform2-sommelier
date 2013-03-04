@@ -18,7 +18,6 @@ const char kPluggedOffMsPref[] = "plugged_off_ms";
 const char kUnpluggedDimMsPref[] = "unplugged_dim_ms";
 const char kUnpluggedOffMsPref[] = "unplugged_off_ms";
 const char kUnpluggedSuspendMsPref[] = "unplugged_suspend_ms";
-const char kEnforceLockPref[] = "enforce_lock";
 const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
 const char kUseLidPref[] = "use_lid";
 const char kRetrySuspendMsPref[] = "retry_suspend_ms";
@@ -30,10 +29,6 @@ const char kInstantTransitionsBelowMinLevelPref[] =
 const char kDisableALSPref[] = "disable_als";
 const char kKeepBacklightOnForAudioPref[] = "keep_backlight_on_for_audio";
 const char kWakeupInputPref[] = "wakeup_input_device_names";
-// The minimum delta between timers when we want to give a user time to react.
-const char kReactMsPref[] = "react_ms";
-// The minimum delta between timers to avoid timer precision issues.
-const char kFuzzMsPref[] = "fuzz_ms";
 // The maximum duration in seconds the state machine can be disabled for
 const char kStateMaxDisabledDurationSecPref[] =
     "state_max_disabled_duration_sec";
