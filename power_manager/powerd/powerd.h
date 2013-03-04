@@ -35,6 +35,7 @@
 #include "power_manager/powerd/rolling_average.h"
 #include "power_manager/powerd/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
+#include "power_manager/powerd/system/peripheral_battery_watcher.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
@@ -88,7 +89,8 @@ enum BatteryReportState {
 
 class Daemon : public BacklightControllerObserver,
                public policy::InputController::Delegate,
-               public system::AudioObserver {
+               public system::AudioObserver,
+               public system::PeripheralBatteryObserver {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
@@ -355,6 +357,14 @@ class Daemon : public BacklightControllerObserver,
                     int64 time_full_s,
                     double battery_percentage);
 
+  // Overridden from PeripheralBatteryObserver:
+  virtual void OnPeripheralBatteryUpdate(const std::string& path,
+                                         const std::string& model_name,
+                                         int level) OVERRIDE;
+
+  virtual void OnPeripheralBatteryError(const std::string& path,
+                                        const std::string& model_name) OVERRIDE;
+
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,
   // go through with the shutdown now.
@@ -521,6 +531,7 @@ class Daemon : public BacklightControllerObserver,
   scoped_ptr<policy::InputController> input_controller_;
   scoped_ptr<system::AudioDetector> audio_detector_;
   scoped_ptr<policy::StateController> state_controller_;
+  scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
 
   int64 low_battery_shutdown_time_s_;
   double low_battery_shutdown_percent_;

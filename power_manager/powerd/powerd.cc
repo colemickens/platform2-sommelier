@@ -196,6 +196,7 @@ Daemon::Daemon(BacklightController* backlight_controller,
       audio_detector_(new system::AudioDetector),
       state_controller_(new policy::StateController(
           state_controller_delegate_.get(), prefs_)),
+      peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -229,10 +230,12 @@ Daemon::Daemon(BacklightController* backlight_controller,
       disable_dbus_for_testing_(false),
       state_controller_initialized_(false) {
   audio_detector_->AddObserver(this);
+  peripheral_battery_watcher_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
   audio_detector_->RemoveObserver(this);
+  peripheral_battery_watcher_->RemoveObserver(this);
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
@@ -288,6 +291,8 @@ void Daemon::Init() {
   state_controller_->Init(power_source, lid_state, current_session_state_,
                           DISPLAY_NORMAL);
   state_controller_initialized_ = true;
+
+  peripheral_battery_watcher_->Init();
 
   // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
   // This is necessary for receiving external display projection status from
@@ -1361,6 +1366,19 @@ void Daemon::AdjustWindowSize(int64 battery_time,
     window_size += sample_window_min_;
   }
   empty_average->ChangeWindowSize(window_size);
+}
+
+void Daemon::OnPeripheralBatteryUpdate(const std::string& path,
+                                       const std::string& model_name,
+                                       int level) {
+  VLOG(1) << "Got battery update from " << path << ":" << model_name
+          << " with battery level " << level;
+}
+
+void Daemon::OnPeripheralBatteryError(const std::string& path,
+                                      const std::string& model_name) {
+  VLOG(1) << "Got error on reading battery level for " << path
+          << ":" << model_name;
 }
 
 void Daemon::OnLowBattery(int64 time_remaining_s,

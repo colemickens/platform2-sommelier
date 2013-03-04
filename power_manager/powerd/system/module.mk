@@ -11,7 +11,8 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	powerd/system/display_power_setter.o \
 	powerd/system/external_backlight.o \
 	powerd/system/input.o \
-	powerd/system/internal_backlight.o
+	powerd/system/internal_backlight.o \
+	powerd/system/peripheral_battery_watcher.o
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): CPPFLAGS += \
 	$(GLIB_FLAGS) $(shell $(PKG_CONFIG) --cflags libcras)
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
@@ -29,6 +30,7 @@ CXX_BINARY(powerd/system_unittest): \
 	powerd/system/async_file_reader_unittest.o \
 	powerd/system/input_unittest.o \
 	powerd/system/internal_backlight_unittest.o \
+	powerd/system/peripheral_battery_watcher_unittest.o \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
