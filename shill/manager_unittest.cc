@@ -217,12 +217,18 @@ class ManagerTest : public PropertyStoreTest {
     return error.type();
   }
 
-  void AddMockProfileToManager(Manager *manager) {
+  scoped_refptr<MockProfile> AddNamedMockProfileToManager(
+      Manager *manager, const string &name) {
     scoped_refptr<MockProfile> profile(
         new MockProfile(control_interface(), metrics(), manager, ""));
-    EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return("/"));
+    EXPECT_CALL(*profile, GetRpcIdentifier()).WillRepeatedly(Return(name));
     EXPECT_CALL(*profile, UpdateDevice(_)).WillRepeatedly(Return(false));
     AdoptProfile(manager, profile);
+    return profile;
+  }
+
+  void AddMockProfileToManager(Manager *manager) {
+    AddNamedMockProfileToManager(manager, "/");
   }
 
   void CompleteServiceSort() {
@@ -245,6 +251,13 @@ class ManagerTest : public PropertyStoreTest {
 
   const string &GetIgnoredDNSSearchPaths() {
     return manager()->props_.ignored_dns_search_paths;
+  }
+
+  WiFiServiceRefPtr ReleaseTempMockService() {
+    // Take a reference to hold during this function.
+    WiFiServiceRefPtr temp_service = temp_mock_service_;
+    temp_mock_service_ = NULL;
+    return temp_service;
   }
 
  protected:
@@ -354,6 +367,11 @@ class ManagerTest : public PropertyStoreTest {
   scoped_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
   scoped_ptr<MockDeviceInfo> device_info_;
+
+  // This service is held for the manager, and given ownership in a mock
+  // function.  This ensures that when the Manager takes ownership, there
+  // is only one reference left.
+  scoped_refptr<MockWiFiService> temp_mock_service_;
 
   // These pointers are owned by the manager, and only tracked here for
   // EXPECT*()
@@ -1553,7 +1571,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithoutProfile) {
 
   AdoptProfile(manager(), profile);  // This is now the active profile.
 
-  const std::vector<uint8_t> ssid;
+  const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
       new NiceMock<MockWiFiService>(control_interface(),
                                     dispatcher(),
@@ -1604,7 +1622,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithProfile) {
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
-  const std::vector<uint8_t> ssid;
+  const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
       new NiceMock<MockWiFiService>(control_interface(),
                                     dispatcher(),
@@ -1654,7 +1672,7 @@ TEST_F(ManagerTest, ConfigureRegisteredServiceWithSameProfile) {
 
   AdoptProfile(manager(), profile0);  // profile0 is now the ActiveProfile.
 
-  const std::vector<uint8_t> ssid;
+  const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
       new NiceMock<MockWiFiService>(control_interface(),
                                     dispatcher(),
@@ -1708,7 +1726,7 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   AdoptProfile(manager(), profile0);
   AdoptProfile(manager(), profile1);  // profile1 is now the ActiveProfile.
 
-  const std::vector<uint8_t> ssid;
+  const vector<uint8_t> ssid;
   scoped_refptr<MockWiFiService> service(
       new NiceMock<MockWiFiService>(control_interface(),
                                     dispatcher(),
@@ -1737,6 +1755,340 @@ TEST_F(ManagerTest, ConfigureUnregisteredServiceWithProfile) {
   Error error;
   manager()->ConfigureService(args, &error);
   EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
+  KeyValueStore args;
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile("", args, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ("This method only supports WiFi services", error.message());
+  EXPECT_EQ(NULL, service.get());
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeCellular);
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile("", args, &error);
+  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ("This method only supports WiFi services", error.message());
+  EXPECT_EQ(NULL, service.get());
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileWithMissingProfile) {
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile("/profile/foo", args, &error);
+  EXPECT_EQ(Error::kNotFound, error.type());
+  EXPECT_EQ("Profile specified was not found", error.message());
+  EXPECT_EQ(NULL, service.get());
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileWithProfileMismatch) {
+  const string kProfileName0 = "profile0";
+  const string kProfileName1 = "profile1";
+  scoped_refptr<MockProfile> profile0(
+      AddNamedMockProfileToManager(manager(), kProfileName0));
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kProfileProperty, kProfileName1);
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Profile argument does not match that in "
+            "the configuration arguments", error.message());
+  EXPECT_EQ(NULL, service.get());
+}
+
+TEST_F(ManagerTest,
+       ConfigureServiceForProfileWithNoMatchingServiceFailGetService) {
+  const string kProfileName0 = "profile0";
+  scoped_refptr<MockProfile> profile0(
+      AddNamedMockProfileToManager(manager(), kProfileName0));
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kProfileProperty, kProfileName0);
+
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
+      .WillOnce(Return(WiFiServiceRefPtr()));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _))
+      .WillOnce(Return(WiFiServiceRefPtr()));
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
+  // Since we didn't set the error in the GetService expectation above...
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(NULL, service.get());
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileCreateNewService) {
+  const string kProfileName0 = "profile0";
+  scoped_refptr<MockProfile> profile0(
+      AddNamedMockProfileToManager(manager(), kProfileName0));
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+
+  scoped_refptr<MockWiFiService> mock_service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    wifi_provider_,
+                                    vector<uint8_t>(),
+                                    flimflam::kModeManaged,
+                                    flimflam::kSecurityNone,
+                                    false));
+  ServiceRefPtr mock_service_generic(mock_service.get());
+  mock_service->set_profile(profile0);
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
+      .WillOnce(Return(WiFiServiceRefPtr()));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).WillOnce(Return(mock_service));
+  EXPECT_CALL(*profile0, UpdateService(mock_service_generic))
+      .WillOnce(Return(true));
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(mock_service.get(), service.get());
+  mock_service->set_profile(NULL);  // Breaks reference cycle.
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
+  scoped_refptr<MockService> mock_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  const string kGUID = "a guid";
+  mock_service->set_guid(kGUID);
+  manager()->RegisterService(mock_service);
+  ServiceRefPtr mock_service_generic(mock_service.get());
+
+  const string kProfileName = "profile";
+  scoped_refptr<MockProfile> profile(
+      AddNamedMockProfileToManager(manager(), kProfileName));
+  mock_service->set_profile(profile);
+
+  EXPECT_CALL(*mock_service, technology())
+     .WillOnce(Return(Technology::kCellular))
+     .WillOnce(Return(Technology::kWifi));
+
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _)).Times(0);
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
+  EXPECT_CALL(*profile, AdoptService(mock_service_generic)).Times(0);
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  args.SetString(flimflam::kGuidProperty, kGUID);
+
+  // The first attempt should fail because the service reports a technology
+  // other than "WiFi".
+  {
+    Error error;
+    ServiceRefPtr service =
+        manager()->ConfigureServiceForProfile(kProfileName, args, &error);
+    EXPECT_EQ(NULL, service.get());
+    EXPECT_EQ(Error::kNotSupported, error.type());
+    EXPECT_EQ("This GUID matches a non-WiFi service", error.message());
+  }
+
+  EXPECT_CALL(*mock_service, Configure(_, _)).Times(1);
+  EXPECT_CALL(*profile, UpdateService(mock_service_generic)).Times(1);
+
+  {
+    Error error;
+    ServiceRefPtr service =
+        manager()->ConfigureServiceForProfile(kProfileName, args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(mock_service.get(), service.get());
+    EXPECT_EQ(profile.get(), service->profile().get());
+  }
+  mock_service->set_profile(NULL);  // Breaks reference cycle.
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceAndProfile) {
+  const string kProfileName = "profile";
+  scoped_refptr<MockProfile> profile(
+      AddNamedMockProfileToManager(manager(), kProfileName));
+
+  scoped_refptr<MockWiFiService> mock_service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    wifi_provider_,
+                                    vector<uint8_t>(),
+                                    flimflam::kModeManaged,
+                                    flimflam::kSecurityNone,
+                                    false));
+  mock_service->set_profile(profile);
+  ServiceRefPtr mock_service_generic(mock_service.get());
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
+      .WillOnce(Return(mock_service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
+  EXPECT_CALL(*profile, AdoptService(mock_service_generic)).Times(0);
+  EXPECT_CALL(*mock_service, Configure(_, _)).Times(1);
+  EXPECT_CALL(*profile, UpdateService(mock_service_generic)).Times(1);
+
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName, args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(mock_service.get(), service.get());
+  EXPECT_EQ(profile.get(), service->profile().get());
+  mock_service->set_profile(NULL);  // Breaks reference cycle.
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceEphemeralProfile) {
+  const string kProfileName = "profile";
+  scoped_refptr<MockProfile> profile(
+      AddNamedMockProfileToManager(manager(), kProfileName));
+
+  scoped_refptr<MockWiFiService> mock_service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    wifi_provider_,
+                                    vector<uint8_t>(),
+                                    flimflam::kModeManaged,
+                                    flimflam::kSecurityNone,
+                                    false));
+  mock_service->set_profile(GetEphemeralProfile(manager()));
+  ServiceRefPtr mock_service_generic(mock_service.get());
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
+      .WillOnce(Return(mock_service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
+  EXPECT_CALL(*mock_service, Configure(_, _)).Times(1);
+  EXPECT_CALL(*profile, UpdateService(mock_service_generic)).Times(1);
+
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName, args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(mock_service.get(), service.get());
+  EXPECT_EQ(profile.get(), service->profile().get());
+  mock_service->set_profile(NULL);  // Breaks reference cycle.
+}
+
+TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServicePrecedingProfile) {
+  const string kProfileName0 = "profile0";
+  scoped_refptr<MockProfile> profile0(
+      AddNamedMockProfileToManager(manager(), kProfileName0));
+  const string kProfileName1 = "profile1";
+  scoped_refptr<MockProfile> profile1(
+      AddNamedMockProfileToManager(manager(), kProfileName1));
+
+  scoped_refptr<MockWiFiService> mock_service(
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    wifi_provider_,
+                                    vector<uint8_t>(),
+                                    flimflam::kModeManaged,
+                                    flimflam::kSecurityNone,
+                                    false));
+  manager()->RegisterService(mock_service);
+  mock_service->set_profile(profile0);
+  ServiceRefPtr mock_service_generic(mock_service.get());
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
+      .WillOnce(Return(mock_service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
+  EXPECT_CALL(*profile0, AbandonService(_)).Times(0);
+  EXPECT_CALL(*profile1, AdoptService(_)).Times(0);
+  // This happens once to make the service loadable for the ConfigureService
+  // below, and a second time after the service is modified.
+  EXPECT_CALL(*profile1, ConfigureService(mock_service_generic)).Times(0);
+  EXPECT_CALL(*wifi_provider_, CreateTemporaryService(_, _)).Times(0);
+  EXPECT_CALL(*mock_service, Configure(_, _)).Times(1);
+  EXPECT_CALL(*profile1, UpdateService(mock_service_generic)).Times(1);
+
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName1, args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(mock_service.get(), service.get());
+  mock_service->set_profile(NULL);  // Breaks reference cycle.
+}
+
+TEST_F(ManagerTest,
+       ConfigureServiceForProfileMatchingServiceProceedingProfile) {
+  const string kProfileName0 = "profile0";
+  scoped_refptr<MockProfile> profile0(
+      AddNamedMockProfileToManager(manager(), kProfileName0));
+  const string kProfileName1 = "profile1";
+  scoped_refptr<MockProfile> profile1(
+      AddNamedMockProfileToManager(manager(), kProfileName1));
+
+  scoped_refptr<MockWiFiService> matching_service(
+      new StrictMock<MockWiFiService>(control_interface(),
+                                      dispatcher(),
+                                      metrics(),
+                                      manager(),
+                                      wifi_provider_,
+                                      vector<uint8_t>(),
+                                      flimflam::kModeManaged,
+                                      flimflam::kSecurityNone,
+                                      false));
+  matching_service->set_profile(profile1);
+
+  // We need to get rid of our reference to this mock service as soon
+  // as Manager::ConfigureServiceForProfile() takes a reference in its
+  // call to WiFiProvider::CreateTemporaryService().  This way the
+  // latter function can keep a DCHECK(service->HasOneRef() even in
+  // unit tests.
+  temp_mock_service_ =
+      new NiceMock<MockWiFiService>(control_interface(),
+                                    dispatcher(),
+                                    metrics(),
+                                    manager(),
+                                    wifi_provider_,
+                                    vector<uint8_t>(),
+                                    flimflam::kModeManaged,
+                                    flimflam::kSecurityNone,
+                                    false);
+
+  // Only hold a pointer here so we don't affect the refcount.
+  MockWiFiService *mock_service_ptr = temp_mock_service_.get();
+
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+  EXPECT_CALL(*wifi_provider_, FindSimilarService(_, _))
+      .WillOnce(Return(matching_service));
+  EXPECT_CALL(*wifi_provider_, GetService(_, _)).Times(0);
+  EXPECT_CALL(*profile1, AbandonService(_)).Times(0);
+  EXPECT_CALL(*profile0, AdoptService(_)).Times(0);
+  EXPECT_CALL(*wifi_provider_, CreateTemporaryService(_, _))
+      .WillOnce(InvokeWithoutArgs(this, &ManagerTest::ReleaseTempMockService));
+  EXPECT_CALL(*profile0, ConfigureService(IsRefPtrTo(mock_service_ptr)))
+      .Times(1);
+  EXPECT_CALL(*mock_service_ptr, Configure(_, _)).Times(1);
+  EXPECT_CALL(*profile0, UpdateService(IsRefPtrTo(mock_service_ptr))).Times(1);
+
+  Error error;
+  ServiceRefPtr service =
+      manager()->ConfigureServiceForProfile(kProfileName0, args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(NULL, service.get());
+  EXPECT_EQ(profile1.get(), matching_service->profile().get());
 }
 
 TEST_F(ManagerTest, FindMatchingService) {
@@ -3230,6 +3582,29 @@ TEST_F(ManagerTest, VerifyDestination) {
     passed_down_callback.Run(e, false);
     Mock::VerifyAndClearExpectations(&dv_test);
   }
+}
+
+TEST_F(ManagerTest, IsProfileBefore) {
+  scoped_refptr<MockProfile> profile0(
+      new NiceMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(
+      new NiceMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+
+  AdoptProfile(manager(), profile0);
+  AdoptProfile(manager(), profile1);  // profile1 is after profile0.
+  EXPECT_TRUE(manager()->IsProfileBefore(profile0, profile1));
+  EXPECT_FALSE(manager()->IsProfileBefore(profile1, profile0));
+
+  // A few abnormal cases, but it's good to track their behavior.
+  scoped_refptr<MockProfile> profile2(
+      new NiceMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+  EXPECT_TRUE(manager()->IsProfileBefore(profile0, profile2));
+  EXPECT_TRUE(manager()->IsProfileBefore(profile1, profile2));
+  EXPECT_FALSE(manager()->IsProfileBefore(profile2, profile0));
+  EXPECT_FALSE(manager()->IsProfileBefore(profile2, profile1));
 }
 
 }  // namespace shill

@@ -79,6 +79,9 @@ class WiFiService : public Service {
   // these properties.  Returns true if any entries were fixed.
   static bool FixupServiceEntries(StoreInterface *storage);
 
+  // Validate |mode| against all valid and supported service modes.
+  static bool IsValidMode(const std::string &mode);
+
   // Validate |method| against all valid and supported security methods.
   static bool IsValidSecurityMethod(const std::string &method);
 

@@ -114,6 +114,39 @@ class WiFiProviderTest : public testing::Test {
     return id;
   }
 
+  void SetServiceParameters(const char *ssid,
+                            const char *mode,
+                            const char *security,
+                            bool is_hidden,
+                            bool provide_hidden,
+                            KeyValueStore *args) {
+    args->SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
+    if (ssid) {
+      args->SetString(flimflam::kSSIDProperty, ssid);
+    }
+    if (mode) {
+      args->SetString(flimflam::kModeProperty, mode);
+    }
+    if (security) {
+      args->SetString(flimflam::kSecurityProperty, security);
+    }
+    if (provide_hidden) {
+      args->SetBool(flimflam::kWifiHiddenSsid, is_hidden);
+    }
+  }
+
+  WiFiServiceRefPtr CreateTemporaryService(const char *ssid,
+                                           const char *mode,
+                                           const char *security,
+                                           bool is_hidden,
+                                           bool provide_hidden,
+                                           Error *error) {
+    KeyValueStore args;
+    SetServiceParameters(
+        ssid, mode, security, is_hidden, provide_hidden, &args);
+    return provider_.CreateTemporaryService(args, error);
+  }
+
   WiFiServiceRefPtr GetService(const char *ssid,
                                const char *mode,
                                const char *security,
@@ -121,19 +154,8 @@ class WiFiProviderTest : public testing::Test {
                                bool provide_hidden,
                                Error *error) {
     KeyValueStore args;
-    args.SetString(flimflam::kTypeProperty, flimflam::kTypeWifi);
-    if (ssid) {
-      args.SetString(flimflam::kSSIDProperty, ssid);
-    }
-    if (mode) {
-      args.SetString(flimflam::kModeProperty, mode);
-    }
-    if (security) {
-      args.SetString(flimflam::kSecurityProperty, security);
-    }
-    if (provide_hidden) {
-      args.SetBool(flimflam::kWifiHiddenSsid, is_hidden);
-    }
+    SetServiceParameters(
+        ssid, mode, security, is_hidden, provide_hidden, &args);
     return provider_.GetService(args, error);
   }
 
@@ -419,7 +441,7 @@ TEST_F(WiFiProviderTest, GetServiceNoMode) {
 
 TEST_F(WiFiProviderTest, GetServiceBadMode) {
   Error error;
-  EXPECT_FALSE(GetService("foo", flimflam::kModeAdhoc,
+  EXPECT_FALSE(GetService("foo", "BogoMesh",
                           flimflam::kSecurityNone,
                           false, false, &error).get());
   EXPECT_EQ(Error::kNotSupported, error.type());
@@ -524,6 +546,69 @@ TEST_F(WiFiProviderTest, GetServiceFullySpecified) {
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_NE(service0.get(), service2.get());
   EXPECT_EQ(2, GetServices().size());
+}
+
+TEST_F(WiFiProviderTest, FindSimilarService) {
+  // Since CreateTemporyService uses exactly the same validation as
+  // GetService, don't bother with testing invalid parameters.
+  const string kSSID("foo");
+  KeyValueStore args;
+  SetServiceParameters(
+      kSSID.c_str(), flimflam::kModeManaged, flimflam::kSecurityNone,
+      true, true, &args);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  Error get_service_error;
+  WiFiServiceRefPtr service = provider_.GetService(args, &get_service_error);
+  EXPECT_EQ(1, GetServices().size());
+
+  {
+    Error error;
+    WiFiServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    EXPECT_EQ(service.get(), find_service.get());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  args.SetBool(flimflam::kWifiHiddenSsid, false);
+
+  {
+    Error error;
+    WiFiServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    EXPECT_EQ(service.get(), find_service.get());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  args.SetString(flimflam::kSecurityProperty, flimflam::kSecurityWpa);
+
+  {
+    Error error;
+    WiFiServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    EXPECT_EQ(NULL, find_service.get());
+    EXPECT_EQ(Error::kNotFound, error.type());
+  }
+}
+
+TEST_F(WiFiProviderTest, CreateTemporaryService) {
+  // Since CreateTemporyService uses exactly the same validation as
+  // GetService, don't bother with testing invalid parameters.
+  const string kSSID("foo");
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  Error error;
+  WiFiServiceRefPtr service0 =
+      GetService(kSSID.c_str(), flimflam::kModeManaged,
+                 flimflam::kSecurityNone, true, true, &error);
+  EXPECT_EQ(1, GetServices().size());
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+  WiFiServiceRefPtr service1 =
+      CreateTemporaryService(kSSID.c_str(), flimflam::kModeManaged,
+                             flimflam::kSecurityNone, true, true, &error);
+
+  // Test that a new service was created, but not registered with the
+  // manager or added to the provider's service list.
+  EXPECT_EQ(1, GetServices().size());
+  EXPECT_TRUE(service0 != service1);
+  EXPECT_TRUE(service1->HasOneRef());
 }
 
 TEST_F(WiFiProviderTest, FindServiceWPA) {

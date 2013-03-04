@@ -106,4 +106,33 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_FALSE(store_.ContainsUint(kUintKey));
 }
 
+TEST_F(KeyValueStoreTest, CopyFrom) {
+  KeyValueStore donor;
+  const string kBoolKey("foo");
+  const bool kBoolValue = true;
+  donor.SetBool(kBoolKey, kBoolValue);
+  const string kIntKey("bar");
+  const int kIntValue = 123;
+  donor.SetInt(kIntKey, kIntValue);
+  const string kStringKey("baz");
+  const string kStringValue("string");
+  donor.SetString(kStringKey, kStringValue);
+  const string kUintKey("bun");
+  const uint32 kUintValue = 456;
+  donor.SetUint(kUintKey, kUintValue);
+
+  EXPECT_FALSE(store_.ContainsBool(kBoolKey));
+  EXPECT_FALSE(store_.ContainsInt(kIntKey));
+  EXPECT_FALSE(store_.ContainsString(kStringKey));
+  EXPECT_FALSE(store_.ContainsUint(kUintKey));
+  store_.CopyFrom(donor);
+  EXPECT_TRUE(store_.ContainsBool(kBoolKey));
+  EXPECT_EQ(kBoolValue, store_.GetBool(kBoolKey));
+  EXPECT_TRUE(store_.ContainsInt(kIntKey));
+  EXPECT_EQ(kIntValue, store_.GetInt(kIntKey));
+  EXPECT_TRUE(store_.ContainsString(kStringKey));
+  EXPECT_EQ(kStringValue, store_.GetString(kStringKey));
+  EXPECT_TRUE(store_.ContainsUint(kUintKey));
+  EXPECT_EQ(kUintValue, store_.GetUint(kUintKey));
+}
 }  // namespace shill

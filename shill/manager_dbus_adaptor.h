@@ -77,6 +77,10 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   ::DBus::Path ConfigureService(
       const std::map<std::string, ::DBus::Variant> &args,
       ::DBus::Error &error);
+  ::DBus::Path ConfigureServiceForProfile(
+      const ::DBus::Path &profile_rpcid,
+      const std::map<std::string, ::DBus::Variant> &args,
+      ::DBus::Error &error);
   ::DBus::Path FindMatchingService(
       const std::map<std::string, ::DBus::Variant> &args,
       ::DBus::Error &error);

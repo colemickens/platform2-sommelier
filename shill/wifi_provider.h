@@ -38,6 +38,19 @@ class WiFiProvider {
   virtual void CreateServicesFromProfile(const ProfileRefPtr &profile);
   virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
 
+  // Find a Service with the same SSID, mode and security as provided
+  // in |args|.  Returns a reference to a matching service if one
+  // exists.  Otherwise it returns a NULL reference and populates |error|.
+  virtual WiFiServiceRefPtr FindSimilarService(
+      const KeyValueStore &args, Error *error) const;
+
+  // Create a temporary WiFiService with the mode, ssid, security and
+  // hidden properties populated from |args|.  Callers outside of the
+  // WiFiProvider must must never register this service with the Manager
+  // or connect it since it was never added to the provider's service list.
+  virtual WiFiServiceRefPtr CreateTemporaryService(
+      const KeyValueStore &args, Error *error);
+
   // Find a Service this Endpoint should be associated with.
   virtual WiFiServiceRefPtr FindServiceForEndpoint(
       const WiFiEndpointConstRefPtr &endpoint);
@@ -87,6 +100,19 @@ class WiFiProvider {
   // Disassociate the service from its WiFi device and remove it from the
   // services_ vector.
   void ForgetService(const WiFiServiceRefPtr &service);
+
+  // Retrieve a WiFi service's identifying properties from passed-in |args|.
+  // Returns true if |args| are valid and populates |ssid|, |mode|,
+  // |security| and |hidden_ssid|, if successful.  Otherwise, this function
+  // returns false and populates |error| with the reason for failure.  It
+  // is a fatal error if the "Type" parameter passed in |args| is not
+  // flimflam::kWiFi.
+  static bool GetServiceParametersFromArgs(const KeyValueStore &args,
+                                           std::vector<uint8_t> *ssid_bytes,
+                                           std::string *mode,
+                                           std::string *security_method,
+                                           bool *hidden_ssid,
+                                           Error *error);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

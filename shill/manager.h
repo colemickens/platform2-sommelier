@@ -127,6 +127,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // called via RPC (e.g., from ManagerDBusAdaptor)
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
   ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
+  ServiceRefPtr ConfigureServiceForProfile(
+      const std::string &profile_rpcid,
+      const KeyValueStore &args,
+      Error *error);
   ServiceRefPtr FindMatchingService(const KeyValueStore &args, Error *error);
   std::map<std::string, GeolocationInfos> GetNetworksForGeolocation();
   void ConnectToBestServices(Error *error);
@@ -196,6 +200,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // then, we ignore but do not overwrite whatever value is stored in the
   // profile.
   void SetStartupPortalList(const std::string &portal_list);
+
+  // Returns true if profile |a| has been pushed on the Manager's
+  // |profiles_| stack before profile |b|.
+  bool IsProfileBefore(const ProfileRefPtr &a,
+                       const ProfileRefPtr &b) const;
 
   // Return whether a service belongs to the ephemeral profile.
   virtual bool IsServiceEphemeral(const ServiceConstRefPtr &service) const;
@@ -428,6 +437,16 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void SortServices();
   void SortServicesTask();
   bool MatchProfileWithService(const ServiceRefPtr &service);
+
+  // Sets the profile of |service| to |profile|, without notifying its
+  // previous profile.  Configures a |service| with |args|, then saves
+  // the resulting configuration to |profile|.  This method is useful
+  // when copying a service configuration from one profile to another,
+  // or writing a newly created service config to a specific profile.
+  static void SetupServiceInProfile(ServiceRefPtr service,
+                                    ProfileRefPtr profile,
+                                    const KeyValueStore &args,
+                                    Error *error);
 
   // For each technology present, connect to the "best" service available,
   // as determined by sorting all services independent of their current state.

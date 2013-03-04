@@ -624,6 +624,23 @@ void Manager::SetStartupPortalList(const string &portal_list) {
   use_startup_portal_list_ = true;
 }
 
+bool Manager::IsProfileBefore(const ProfileRefPtr &a,
+                              const ProfileRefPtr &b) const {
+  DCHECK(a != b);
+  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
+       it != profiles_.end();
+       ++it) {
+    if (*it == a) {
+      return true;
+    }
+    if (*it == b) {
+      return false;
+    }
+  }
+  NOTREACHED() << "We should have found both profiles in the profiles_ list!";
+  return false;
+}
+
 bool Manager::IsServiceEphemeral(const ServiceConstRefPtr &service) const {
   return service->profile() == ephemeral_profile_;
 }
@@ -1636,6 +1653,100 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
   service->OnProfileConfigured();
 
   return service;
+}
+
+// called via RPC (e.g., from ManagerDBusAdaptor)
+ServiceRefPtr Manager::ConfigureServiceForProfile(
+    const string &profile_rpcid, const KeyValueStore &args, Error *error) {
+  if (args.LookupString(flimflam::kTypeProperty, "") != flimflam::kTypeWifi) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          "This method only supports WiFi services");
+    return NULL;
+  }
+
+  ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
+  if (!profile) {
+    Error::PopulateAndLog(error, Error::kNotFound,
+                          "Profile specified was not found");
+    return NULL;
+  }
+  if (args.LookupString(flimflam::kProfileProperty,
+                        profile_rpcid) != profile_rpcid) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Profile argument does not match that in "
+                          "the configuration arguments");
+    return NULL;
+  }
+
+  ServiceRefPtr service;
+  if (args.ContainsString(flimflam::kGuidProperty)) {
+    SLOG(Manager, 2) << __func__ << ": searching by GUID";
+    service = GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
+    if (service && service->technology() != Technology::kWifi) {
+      Error::PopulateAndLog(error, Error::kNotSupported,
+                            "This GUID matches a non-WiFi service");
+      return NULL;
+    }
+  }
+
+  if (!service) {
+    Error find_error;
+    service = wifi_provider_->FindSimilarService(args, &find_error);
+  }
+
+  // If no matching service exists, create a new service in the specified
+  // profile using ConfigureService().
+  if (!service) {
+    KeyValueStore configure_args;
+    configure_args.CopyFrom(args);
+    configure_args.SetString(flimflam::kProfileProperty, profile_rpcid);
+    return ConfigureService(configure_args, error);
+  }
+
+  // The service already exists and is set to the desired profile,
+  // the service is in the ephemeral profile, or the current profile
+  // for the service appears before the desired profile, we need to
+  // reassign the service to the new profile if necessary, leaving
+  // the old profile intact (i.e, not calling Profile::AbandonService()).
+  // Then, configure the properties on the service as well as its newly
+  // associated profile.
+  if (service->profile() == profile ||
+      IsServiceEphemeral(service) ||
+      IsProfileBefore(service->profile(), profile)) {
+    SetupServiceInProfile(service, profile, args, error);
+    return service;
+  }
+
+  // The current profile for the service appears after the desired
+  // profile.  We must create a temporary service specifically for
+  // the task of creating configuration data.  This service will
+  // neither inherit properties from the visible service, nor will
+  // it exist after this function returns.
+  service = wifi_provider_->CreateTemporaryService(args, error);
+  if (!service || !error->IsSuccess()) {
+    // Service::CreateTemporaryService() failed, and has set the error
+    // appropriately.
+    return NULL;
+  }
+
+  // The profile may already have configuration for this service.
+  profile->ConfigureService(service);
+
+  SetupServiceInProfile(service, profile, args, error);
+
+  // Although we have succeeded, this service will not exist, so its
+  // path is of no use to the caller.
+  DCHECK(service->HasOneRef());
+  return NULL;
+}
+
+void Manager::SetupServiceInProfile(ServiceRefPtr service,
+                                    ProfileRefPtr profile,
+                                    const KeyValueStore &args,
+                                    Error *error) {
+  service->SetProfile(profile);
+  service->Configure(args, error);
+  profile->UpdateService(service);
 }
 
 ServiceRefPtr Manager::FindMatchingService(const KeyValueStore &args,

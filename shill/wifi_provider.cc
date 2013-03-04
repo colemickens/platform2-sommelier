@@ -137,55 +137,65 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   }
 }
 
+WiFiServiceRefPtr WiFiProvider::FindSimilarService(
+    const KeyValueStore &args, Error *error) const {
+  vector<uint8_t> ssid;
+  string mode;
+  string security;
+  bool hidden_ssid;
+
+  if (!GetServiceParametersFromArgs(
+          args, &ssid, &mode, &security, &hidden_ssid, error)) {
+    return NULL;
+  }
+
+  WiFiServiceRefPtr service(FindService(ssid, mode, security));
+  if (!service) {
+    error->Populate(Error::kNotFound, "Matching service was not found");
+  }
+
+  return service;
+}
+
+WiFiServiceRefPtr WiFiProvider::CreateTemporaryService(
+    const KeyValueStore &args, Error *error) {
+  vector<uint8_t> ssid;
+  string mode;
+  string security;
+  bool hidden_ssid;
+
+  if (!GetServiceParametersFromArgs(
+          args, &ssid, &mode, &security, &hidden_ssid, error)) {
+    return NULL;
+  }
+
+  return new WiFiService(control_interface_,
+                         dispatcher_,
+                         metrics_,
+                         manager_,
+                         this,
+                         ssid,
+                         mode,
+                         security,
+                         hidden_ssid);
+}
+
 WiFiServiceRefPtr WiFiProvider::GetService(
     const KeyValueStore &args, Error *error) {
-  CHECK_EQ(args.LookupString(flimflam::kTypeProperty, ""), flimflam::kTypeWifi);
+  vector<uint8_t> ssid_bytes;
+  string mode;
+  string security_method;
+  bool hidden_ssid;
 
-  if (args.LookupString(flimflam::kModeProperty, flimflam::kModeManaged) !=
-      flimflam::kModeManaged) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          kManagerErrorUnsupportedServiceMode);
+  if (!GetServiceParametersFromArgs(
+          args, &ssid_bytes, &mode, &security_method, &hidden_ssid, error)) {
     return NULL;
   }
 
-  if (!args.ContainsString(flimflam::kSSIDProperty)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          kManagerErrorSSIDRequired);
-    return NULL;
-  }
-
-  string ssid = args.GetString(flimflam::kSSIDProperty);
-  if (ssid.length() < 1) {
-    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
-                          kManagerErrorSSIDTooShort);
-    return NULL;
-  }
-
-  if (ssid.length() > IEEE_80211::kMaxSSIDLen) {
-    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
-                          kManagerErrorSSIDTooLong);
-    return NULL;
-  }
-
-  string security_method = args.LookupString(flimflam::kSecurityProperty,
-                                             flimflam::kSecurityNone);
-
-  if (!WiFiService::IsValidSecurityMethod(security_method)) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          kManagerErrorUnsupportedSecurityMode);
-    return NULL;
-  }
-
-  // If the service is not found, and the caller hasn't specified otherwise,
-  // we assume it is a hidden service.
-  bool hidden_ssid = args.LookupBool(flimflam::kWifiHiddenSsid, true);
-
-  vector<uint8_t> ssid_bytes(ssid.begin(), ssid.end());
-  WiFiServiceRefPtr service(FindService(ssid_bytes, flimflam::kModeManaged,
-                                        security_method));
+  WiFiServiceRefPtr service(FindService(ssid_bytes, mode, security_method));
   if (!service) {
     service = AddService(ssid_bytes,
-                         flimflam::kModeManaged,
+                         mode,
                          security_method,
                          hidden_ssid);
   }
@@ -334,6 +344,62 @@ void WiFiProvider::ForgetService(const WiFiServiceRefPtr &service) {
   }
   (*it)->ResetWiFi();
   services_.erase(it);
+}
+
+// static
+bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
+                                                vector<uint8_t> *ssid_bytes,
+                                                string *mode,
+                                                string *security_method,
+                                                bool *hidden_ssid,
+                                                Error *error) {
+  CHECK_EQ(args.LookupString(flimflam::kTypeProperty, ""), flimflam::kTypeWifi);
+
+  string mode_test =
+      args.LookupString(flimflam::kModeProperty, flimflam::kModeManaged);
+  if (!WiFiService::IsValidMode(mode_test)) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kManagerErrorUnsupportedServiceMode);
+    return false;
+  }
+
+  if (!args.ContainsString(flimflam::kSSIDProperty)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          kManagerErrorSSIDRequired);
+    return false;
+  }
+
+  string ssid = args.GetString(flimflam::kSSIDProperty);
+
+  if (ssid.length() < 1) {
+    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
+                          kManagerErrorSSIDTooShort);
+    return false;
+  }
+
+  if (ssid.length() > IEEE_80211::kMaxSSIDLen) {
+    Error::PopulateAndLog(error, Error::kInvalidNetworkName,
+                          kManagerErrorSSIDTooLong);
+    return false;
+  }
+
+  string security_method_test = args.LookupString(flimflam::kSecurityProperty,
+                                                  flimflam::kSecurityNone);
+
+  if (!WiFiService::IsValidSecurityMethod(security_method_test)) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kManagerErrorUnsupportedSecurityMode);
+    return false;
+  }
+
+  *ssid_bytes = vector<uint8_t>(ssid.begin(), ssid.end());
+  *mode = mode_test;
+  *security_method = security_method_test;
+
+  // If the caller hasn't specified otherwise, we assume it is a hidden service.
+  *hidden_ssid = args.LookupBool(flimflam::kWifiHiddenSsid, true);
+
+  return true;
 }
 
 }  // namespace shill

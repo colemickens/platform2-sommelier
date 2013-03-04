@@ -137,7 +137,7 @@ void ManagerDBusAdaptor::RemoveProfile(const string &name,
   e.ToDBusError(&error);
 }
 
-::DBus::Path ManagerDBusAdaptor::PushProfile(const std::string &name,
+::DBus::Path ManagerDBusAdaptor::PushProfile(const string &name,
                                              ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   Error e;
@@ -147,7 +147,7 @@ void ManagerDBusAdaptor::RemoveProfile(const string &name,
   return ::DBus::Path(path);
 }
 
-void ManagerDBusAdaptor::PopProfile(const std::string &name,
+void ManagerDBusAdaptor::PopProfile(const string &name,
                                     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   Error e;
@@ -262,6 +262,27 @@ void ManagerDBusAdaptor::DisableTechnology(const string &technology_name,
   return service->GetRpcIdentifier();
 }
 
+::DBus::Path ManagerDBusAdaptor::ConfigureServiceForProfile(
+    const ::DBus::Path &profile_rpcid,
+    const map<string, ::DBus::Variant> &args,
+    ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  ServiceRefPtr service;
+  KeyValueStore args_store;
+  Error key_value_store_error;
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &key_value_store_error);
+  if (key_value_store_error.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid.
+  }
+  Error configure_error;
+  service = manager_->ConfigureServiceForProfile(
+      profile_rpcid, args_store, &configure_error);
+  if (!service || configure_error.ToDBusError(&error)) {
+    return "/";  // ensure return is syntactically valid.
+  }
+  return service->GetRpcIdentifier();
+}
+
 ::DBus::Path ManagerDBusAdaptor::FindMatchingService(
     const map<string, ::DBus::Variant> &args,
     ::DBus::Error &error) {
@@ -313,18 +334,18 @@ void ManagerDBusAdaptor::SetServiceOrder(const string &order,
   e.ToDBusError(&error);
 }
 
-std::string ManagerDBusAdaptor::GetDebugTags(::DBus::Error &/*error*/) {
+string ManagerDBusAdaptor::GetDebugTags(::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__;
   return ScopeLogger::GetInstance()->GetEnabledScopeNames();
 }
 
-void ManagerDBusAdaptor::SetDebugTags(const std::string &tags,
+void ManagerDBusAdaptor::SetDebugTags(const string &tags,
                                       ::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__ << ": " << tags;
   ScopeLogger::GetInstance()->EnableScopesByName(tags);
 }
 
-std::string ManagerDBusAdaptor::ListDebugTags(::DBus::Error &/*error*/) {
+string ManagerDBusAdaptor::ListDebugTags(::DBus::Error &/*error*/) {
   SLOG(DBus, 2) << __func__;
   return ScopeLogger::GetInstance()->GetAllScopeNames();
 }

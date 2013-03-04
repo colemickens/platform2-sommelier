@@ -20,6 +20,11 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
   MOCK_METHOD1(CreateServicesFromProfile, void(const ProfileRefPtr &profile));
+  MOCK_CONST_METHOD2(FindSimilarService,
+                     WiFiServiceRefPtr(const KeyValueStore &args,
+                                       Error *error));
+  MOCK_METHOD2(CreateTemporaryService,
+               WiFiServiceRefPtr(const KeyValueStore &args, Error *error));
   MOCK_METHOD2(GetService, WiFiServiceRefPtr(const KeyValueStore &args,
                                              Error *error));
   MOCK_METHOD1(FindServiceForEndpoint,

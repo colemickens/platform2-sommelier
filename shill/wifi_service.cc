@@ -908,6 +908,12 @@ bool WiFiService::FixupServiceEntries(StoreInterface *storage) {
 }
 
 // static
+bool WiFiService::IsValidMode(const string &mode) {
+  return mode == flimflam::kModeManaged ||
+      mode == flimflam::kModeAdhoc;
+}
+
+// static
 bool WiFiService::IsValidSecurityMethod(const string &method) {
   return method == flimflam::kSecurityNone ||
       method == flimflam::kSecurityWep ||

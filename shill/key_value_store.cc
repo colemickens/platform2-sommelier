@@ -22,6 +22,13 @@ void KeyValueStore::Clear() {
   uint_properties_.clear();
 }
 
+void KeyValueStore::CopyFrom(const KeyValueStore &b) {
+  bool_properties_ = b.bool_properties_;
+  int_properties_ = b.int_properties_;
+  string_properties_ = b.string_properties_;
+  uint_properties_ = b.uint_properties_;
+}
+
 bool KeyValueStore::ContainsBool(const string &name) const {
   return ContainsKey(bool_properties_, name);
 }
