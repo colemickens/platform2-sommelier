@@ -37,6 +37,7 @@ const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
 const char* Attestation::kDefaultDatabasePath =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
+#ifndef USE_TEST_PCA
 // This has been extracted from the Chrome OS PCA's encryption certificate.
 const char* Attestation::kDefaultPCAPublicKey =
     "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
@@ -47,6 +48,18 @@ const char* Attestation::kDefaultPCAPublicKey =
     "4083FD98758745CBFFD6F55DA699B2EE983307C14C9990DDFB48897F26DF8FB2"
     "CFFF03E631E62FAE59CBF89525EDACD1F7BBE0BA478B5418E756FF3E14AC9970"
     "D334DB04A1DF267D2343C75E5D282A287060D345981ABDA0B2506AD882579FEF";
+#else
+// The test instance uses different keys.
+const char* Attestation::kDefaultPCAPublicKey =
+    "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
+    "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
+    "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
+    "E9E46F9312B1EF28F4025E7D332E33F4416525FEB8F0FC7B815E8FBB79CDABE6"
+    "327B5A155FEF13F559A7086CB8A543D72AD6ECAEE2E704FF28824149D7F4E393"
+    "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
+    "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
+    "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
+#endif
 
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
   {"IFX TPM EK Intermediate CA 06",
@@ -582,6 +595,13 @@ bool Attestation::GetPublicKey(bool is_user_specific,
   }
   *public_key = ConvertStringToBlob(key.public_key());
   return true;
+}
+
+bool Attestation::DoesKeyExist(bool is_user_specific,
+                               const string& key_name) {
+  base::AutoLock lock(lock_);
+  CertifiedKey key;
+  return FindKeyByName(is_user_specific, key_name, &key);
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {

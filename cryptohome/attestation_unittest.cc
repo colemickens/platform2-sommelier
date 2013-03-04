@@ -141,12 +141,14 @@ TEST_F(AttestationTest, CertRequest) {
   EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_FALSE(attestation_.DoesKeyExist(false, "test"));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",
                                              &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
                                                 "response_ca_cert")));
+  EXPECT_TRUE(attestation_.DoesKeyExist(false, "test"));
   EXPECT_TRUE(attestation_.GetCertificateChain(false, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
                                                 "response_ca_cert")));
@@ -181,6 +183,7 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
                                                 "response_ca_cert")));
   // Expect storage failure here.
   EXPECT_FALSE(attestation_.GetCertificateChain(true, "test", &blob));
+  EXPECT_TRUE(attestation_.DoesKeyExist(true, "test"));
   EXPECT_TRUE(attestation_.GetCertificateChain(true, "test", &blob));
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert",
                                                 "stored_ca_cert")));

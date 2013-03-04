@@ -157,6 +157,9 @@ class Attestation : public base::PlatformThread::Delegate {
                             const std::string& key_name,
                             chromeos::SecureBlob* public_key);
 
+  // Returns true iff a given key exists.
+  virtual bool DoesKeyExist(bool is_user_specific, const std::string& key_name);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);

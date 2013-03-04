@@ -199,6 +199,46 @@ gboolean cryptohome_async_tpm_attestation_finish_cert_request(
 gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,
                                                 gboolean *OUT_is_enrolled,
                                                 GError **error);
+gboolean cryptohome_tpm_attestation_does_key_exist(Cryptohome *self,
+                                                   bool is_user_specific,
+                                                   gchar* key_name,
+                                                   gboolean *OUT_exists,
+                                                   GError **error);
+gboolean cryptohome_tpm_attestation_get_certificate(Cryptohome *self,
+                                                    bool is_user_specific,
+                                                    gchar* key_name,
+                                                    GArray** OUT_certificate,
+                                                    gboolean* OUT_success,
+                                                    GError **error);
+gboolean cryptohome_tpm_attestation_get_public_key(Cryptohome *self,
+                                                   bool is_user_specific,
+                                                   gchar* key_name,
+                                                   GArray** OUT_public_key,
+                                                   gboolean* OUT_success,
+                                                   GError **error);
+gboolean cryptohome_tpm_attestation_register_key(Cryptohome *self,
+                                                 bool is_user_specific,
+                                                 gchar* key_name,
+                                                 gboolean *OUT_success,
+                                                 GError **error);
+gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
+    Cryptohome *self,
+    bool is_user_specific,
+    gchar* key_name,
+    gchar* domain,
+    GArray* device_id,
+    GArray* enterprise_signing_key,
+    GArray* enterprise_encryption_key,
+    GArray* challenge,
+    gint *OUT_async_id,
+    GError **error);
+gboolean cryptohome_tpm_attestation_sign_simple_challenge(
+    Cryptohome *self,
+    bool is_user_specific,
+    gchar* key_name,
+    GArray* challenge,
+    gint *OUT_async_id,
+    GError **error);
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

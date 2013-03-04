@@ -1403,6 +1403,97 @@ gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
   return TRUE;
 }
 
+gboolean Service::TpmAttestationDoesKeyExist(bool is_user_specific,
+                                             gchar* key_name,
+                                             gboolean *OUT_exists,
+                                             GError** error) {
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_exists = FALSE;
+    return TRUE;
+  }
+  *OUT_exists = attestation->DoesKeyExist(is_user_specific, key_name);
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationGetCertificate(bool is_user_specific,
+                                               gchar* key_name,
+                                               GArray **OUT_certificate,
+                                               gboolean* OUT_success,
+                                               GError** error) {
+  *OUT_certificate = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  chromeos::SecureBlob blob;
+  *OUT_success = attestation->GetCertificateChain(is_user_specific,
+                                                  key_name,
+                                                  &blob);
+  if (*OUT_success)
+    g_array_append_vals(*OUT_certificate, &blob.front(), blob.size());
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationGetPublicKey(bool is_user_specific,
+                                             gchar* key_name,
+                                             GArray **OUT_public_key,
+                                             gboolean* OUT_success,
+                                             GError** error) {
+  *OUT_public_key = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  chromeos::SecureBlob blob;
+  *OUT_success = attestation->GetPublicKey(is_user_specific,
+                                           key_name,
+                                           &blob);
+  if (*OUT_success)
+    g_array_append_vals(*OUT_public_key, &blob.front(), blob.size());
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationRegisterKey(bool is_user_specific,
+                                            gchar* key_name,
+                                            gboolean *OUT_success,
+                                            GError** error) {
+  // TODO(dkrahn): implement
+  LOG(ERROR) << __func__ << ": Not implemented";
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationSignEnterpriseChallenge(
+      bool is_user_specific,
+      gchar* key_name,
+      gchar* domain,
+      GArray* device_id,
+      GArray* enterprise_signing_key,
+      GArray* enterprise_encryption_key,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error) {
+  // TODO(dkrahn): implement
+  LOG(ERROR) << __func__ << ": Not implemented";
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationSignSimpleChallenge(
+      bool is_user_specific,
+      gchar* key_name,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error) {
+  // TODO(dkrahn): implement
+  LOG(ERROR) << __func__ << ": Not implemented";
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11

@@ -16,6 +16,7 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/dbus.h>
@@ -69,6 +70,7 @@ namespace switches {
     "tpm_attestation_finish_enroll",
     "tpm_attestation_start_cert_request",
     "tpm_attestation_finish_cert_request",
+    "tpm_attestation_key_status",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -99,6 +101,7 @@ namespace switches {
     ACTION_TPM_ATTESTATION_FINISH_ENROLL,
     ACTION_TPM_ATTESTATION_START_CERTREQ,
     ACTION_TPM_ATTESTATION_FINISH_CERTREQ,
+    ACTION_TPM_ATTESTATION_KEY_STATUS,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -1106,6 +1109,11 @@ int main(int argc, char **argv) {
   } else if (!strcmp(
       switches::kActions[switches::ACTION_TPM_ATTESTATION_FINISH_CERTREQ],
       action.c_str())) {
+    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--name=<name>)\n");
+      return 1;
+    }
     string contents;
     if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
       printf("Failed to read input file.\n");
@@ -1122,7 +1130,7 @@ int main(int argc, char **argv) {
           proxy.gproxy(),
           data.get(),
           TRUE,
-          "test",
+          key_name.c_str(),
           &chromeos::Resetter(&cert).lvalue(),
           &success,
           &chromeos::Resetter(&error).lvalue())) {
@@ -1139,7 +1147,7 @@ int main(int argc, char **argv) {
               proxy.gproxy(),
               data.get(),
               TRUE,
-              "test",
+              key_name.c_str(),
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationFinishCertRequest call failed: %s.\n",
@@ -1156,6 +1164,57 @@ int main(int argc, char **argv) {
       return 1;
     }
     file_util::WriteFile(GetFile(cl), cert_data.data(), cert_data.length());
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_KEY_STATUS],
+      action.c_str())) {
+    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--name=<name>)\n");
+      return 1;
+    }
+    chromeos::glib::ScopedError error;
+    gboolean exists = FALSE;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
+          proxy.gproxy(),
+          true,
+          key_name.c_str(),
+          &exists,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationDoesKeyExist call failed: %s.\n", error->message);
+      return 1;
+    }
+    if (!exists) {
+      printf("Key does not exist.\n");
+      return 0;
+    }
+    gboolean success = FALSE;
+    chromeos::glib::ScopedArray cert;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
+          proxy.gproxy(),
+          true,
+          key_name.c_str(),
+          &chromeos::Resetter(&cert).lvalue(),
+          &success,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationGetCertificate call failed: %s.\n", error->message);
+      return 1;
+    }
+    chromeos::glib::ScopedArray public_key;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
+          proxy.gproxy(),
+          true,
+          key_name.c_str(),
+          &chromeos::Resetter(&public_key).lvalue(),
+          &success,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationGetPublicKey call failed: %s.\n", error->message);
+      return 1;
+    }
+    string cert_pem = string(static_cast<char*>(cert->data), cert->len);
+    string public_key_hex = base::HexEncode(public_key->data, public_key->len);
+    printf("Public Key:\n%s\n\nCertificate:\n%s\n",
+           public_key_hex.c_str(),
+           cert_pem.c_str());
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

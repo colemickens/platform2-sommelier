@@ -152,7 +152,7 @@
       <arg type="ay" name="pca_response" direction="in" />
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="key_name" direction="in" />
-      <arg type="ay" name="attestation_cert" direction="out" />
+      <arg type="ay" name="certificate" direction="out" />
       <arg type="b" name="success" direction="out" />
     </method>
     <method name="AsyncTpmAttestationFinishCertRequest">
@@ -163,6 +163,44 @@
     </method>
     <method name="TpmIsAttestationEnrolled">
       <arg type="b" name="enrolled" direction="out" />
+    </method>
+    <method name="TpmAttestationDoesKeyExist">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="b" name="exists" direction="out" />
+    </method>
+    <method name="TpmAttestationGetCertificate">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="certificate" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationGetPublicKey">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="public_key" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationRegisterKey">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationSignEnterpriseChallenge">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="s" name="domain" direction="in" />
+      <arg type="ay" name="device_id" direction="in" />
+      <arg type="ay" name="enterprise_signing_key" direction="in" />
+      <arg type="ay" name="enterprise_encryption_key" direction="in" />
+      <arg type="ay" name="challenge" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
+    </method>
+    <method name="TpmAttestationSignSimpleChallenge">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="challenge" direction="in" />
+      <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />

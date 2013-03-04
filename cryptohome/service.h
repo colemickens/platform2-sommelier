@@ -235,6 +235,40 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                                         GError** error);
   virtual gboolean TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
                                             GError** error);
+  virtual gboolean TpmAttestationDoesKeyExist(bool is_user_specific,
+                                              gchar* key_name,
+                                              gboolean *OUT_exists,
+                                              GError** error);
+  virtual gboolean TpmAttestationGetCertificate(bool is_user_specific,
+                                                gchar* key_name,
+                                                GArray **OUT_certificate,
+                                                gboolean* OUT_success,
+                                                GError** error);
+  virtual gboolean TpmAttestationGetPublicKey(bool is_user_specific,
+                                              gchar* key_name,
+                                              GArray **OUT_public_key,
+                                              gboolean* OUT_success,
+                                              GError** error);
+  virtual gboolean TpmAttestationRegisterKey(bool is_user_specific,
+                                             gchar* key_name,
+                                             gboolean *OUT_success,
+                                             GError** error);
+  virtual gboolean TpmAttestationSignEnterpriseChallenge(
+      bool is_user_specific,
+      gchar* key_name,
+      gchar* domain,
+      GArray* device_id,
+      GArray* enterprise_signing_key,
+      GArray* enterprise_encryption_key,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error);
+  virtual gboolean TpmAttestationSignSimpleChallenge(
+      bool is_user_specific,
+      gchar* key_name,
+      GArray* challenge,
+      gint *OUT_async_id,
+      GError** error);
 
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,

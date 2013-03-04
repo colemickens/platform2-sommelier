@@ -309,6 +309,84 @@ gboolean cryptohome_tpm_is_attestation_enrolled(Cryptohome *self,
                                                 GError **error) {
   CRYPTOHOME_WRAP_METHOD(TpmIsAttestationEnrolled, OUT_is_enrolled);
 }
+gboolean cryptohome_tpm_attestation_does_key_exist(Cryptohome *self,
+                                                   bool is_user_specific,
+                                                   gchar* key_name,
+                                                   gboolean *OUT_exists,
+                                                   GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationDoesKeyExist,
+                         is_user_specific,
+                         key_name,
+                         OUT_exists);
+}
+gboolean cryptohome_tpm_attestation_get_certificate(Cryptohome *self,
+                                                    bool is_user_specific,
+                                                    gchar* key_name,
+                                                    GArray** OUT_certificate,
+                                                    gboolean* OUT_success,
+                                                    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetCertificate,
+                         is_user_specific,
+                         key_name,
+                         OUT_certificate,
+                         OUT_success);
+}
+gboolean cryptohome_tpm_attestation_get_public_key(Cryptohome *self,
+                                                   bool is_user_specific,
+                                                   gchar* key_name,
+                                                   GArray** OUT_public_key,
+                                                   gboolean* OUT_success,
+                                                   GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetPublicKey,
+                         is_user_specific,
+                         key_name,
+                         OUT_public_key,
+                         OUT_success);
+}
+gboolean cryptohome_tpm_attestation_register_key(Cryptohome *self,
+                                                 bool is_user_specific,
+                                                 gchar* key_name,
+                                                 gboolean *OUT_success,
+                                                 GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationRegisterKey,
+                         is_user_specific,
+                         key_name,
+                         OUT_success);
+}
+gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
+    Cryptohome *self,
+    bool is_user_specific,
+    gchar* key_name,
+    gchar* domain,
+    GArray* device_id,
+    GArray* enterprise_signing_key,
+    GArray* enterprise_encryption_key,
+    GArray* challenge,
+    gint *OUT_async_id,
+    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationSignEnterpriseChallenge,
+                         is_user_specific,
+                         key_name,
+                         domain,
+                         device_id,
+                         enterprise_signing_key,
+                         enterprise_encryption_key,
+                         challenge,
+                         OUT_async_id);
+}
+gboolean cryptohome_tpm_attestation_sign_simple_challenge(
+    Cryptohome *self,
+    bool is_user_specific,
+    gchar* key_name,
+    GArray* challenge,
+    gint *OUT_async_id,
+    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationSignSimpleChallenge,
+                         is_user_specific,
+                         key_name,
+                         challenge,
+                         OUT_async_id);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,
