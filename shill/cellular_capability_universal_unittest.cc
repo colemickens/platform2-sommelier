@@ -408,6 +408,19 @@ TEST_F(CellularCapabilityUniversalMainTest, StartModemFail) {
   EXPECT_TRUE(error.IsOngoing());
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, StartModemAlreadyEnabled) {
+  EXPECT_CALL(*modem_proxy_, State())
+          .WillOnce(Return(Cellular::kModemStateEnabled));
+  SetUp();
+  capability_->cellular()->modem_state_ = Cellular::kModemStateConnected;
+
+  // Make sure the call to StartModem() doesn't attempt to complete the
+  // request synchronously, else it will crash DBus-C++.
+  Error error(Error::kOperationInitiated);
+  capability_->StartModem(&error, ResultCallback());
+  EXPECT_TRUE(error.IsOngoing());
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, StopModem) {
   // Save pointers to proxies before they are lost by the call to InitProxies
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();

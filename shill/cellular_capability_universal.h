@@ -188,6 +188,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Methods used in starting a modem
   void EnableModem(Error *error, const ResultCallback &callback);
+  void Start_ModemAlreadyEnabled(const ResultCallback &callback);
   void Start_EnableModemCompleted(const ResultCallback &callback,
                                   const Error &error);
 

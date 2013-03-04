@@ -247,9 +247,12 @@ void CellularCapabilityUniversal::StartModem(Error *error,
              weak_ptr_factory_.GetWeakPtr(), static_cast<Error *>(NULL),
              callback);
   } else {
-    // Call GetProperties() here to sync up with the modem state
-    GetProperties();
-    callback.Run(*error);
+    // This request cannot be completed synchronously here because a method
+    // reply requires a continuation tag that is not created until the message
+    // handler returns, see DBus-C++ ObjectAdapter::handle_message().
+    cellular()->dispatcher()->PostTask(
+        Bind(&CellularCapabilityUniversal::Start_ModemAlreadyEnabled,
+             weak_ptr_factory_.GetWeakPtr(), callback));
   }
 }
 
@@ -267,11 +270,17 @@ void CellularCapabilityUniversal::EnableModem(Error *error,
       kTimeoutEnable);
   if (local_error.IsFailure()) {
     SLOG(Cellular, 2) << __func__ << "Call to modem_proxy_->Enable() failed";
-    callback.Run(local_error);
   }
   if (error) {
     error->CopyFrom(local_error);
   }
+}
+
+void CellularCapabilityUniversal::Start_ModemAlreadyEnabled(
+    const ResultCallback &callback) {
+  // Call GetProperties() here to sync up with the modem state
+  GetProperties();
+  callback.Run(Error());
 }
 
 void CellularCapabilityUniversal::Start_EnableModemCompleted(
