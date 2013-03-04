@@ -285,11 +285,11 @@ class Daemon : public BacklightControllerObserver,
   void RegisterDBusMessageHandler();
 
   // Callbacks for handling dbus messages.
-  bool HandleRequestSuspendSignal(DBusMessage* message);
   bool HandleCleanShutdownSignal(DBusMessage* message);
   bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
   DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
+  DBusMessage* HandleRequestSuspendMethod(DBusMessage* message);
   DBusMessage* HandleDecreaseScreenBrightnessMethod(DBusMessage* message);
   DBusMessage* HandleIncreaseScreenBrightnessMethod(DBusMessage* message);
   DBusMessage* HandleGetScreenBrightnessMethod(DBusMessage* message);

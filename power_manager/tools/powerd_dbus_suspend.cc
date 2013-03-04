@@ -35,30 +35,24 @@ int main(int argc, char* argv[]) {
   DBusConnection* connection = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
   CHECK(!dbus_error_is_set(&error)) << error.name << ": " << error.message;
 
-  // Listen to resume signal
+  // Listen to resume signal.
   std::string match = base::StringPrintf("type='signal',interface='%s',"
       "member='%s',arg0='on'", power_manager::kPowerManagerInterface,
       power_manager::kPowerStateChangedSignal);
   dbus_bus_add_match(connection, match.c_str(), &error);
   CHECK(!dbus_error_is_set(&error)) << error.name << ": " << error.message;
 
-  // Send suspend signal
-  DBusMessage* message = dbus_message_new_signal("/",
+  // Send suspend request.
+  DBusMessage* message = dbus_message_new_method_call(
+      power_manager::kPowerManagerServiceName,
+      power_manager::kPowerManagerServicePath,
       power_manager::kPowerManagerInterface,
-      power_manager::kRequestSuspendSignal);
+      power_manager::kRequestSuspendMethod);
   CHECK(message);
-  dbus_uint32_t wakeup_count = 0;
-  dbus_bool_t wakeup_count_valid = false;
-  dbus_bool_t cancel_suspend_if_lid_open = false;
-  dbus_message_append_args(message,
-                           DBUS_TYPE_UINT32, &wakeup_count,
-                           DBUS_TYPE_BOOLEAN, &wakeup_count_valid,
-                           DBUS_TYPE_BOOLEAN, &cancel_suspend_if_lid_open,
-                           DBUS_TYPE_INVALID);
   CHECK(dbus_connection_send(connection, message, NULL));
   dbus_message_unref(message);
 
-  // Process queued up operations and wait for signal
+  // Process queued up operations and wait for signal.
   do {
     CHECK(dbus_connection_read_write(connection, timeout.InMilliseconds()))
         << "DBusConnection closed before receiving resume signal.";
@@ -70,10 +64,9 @@ int main(int argc, char* argv[]) {
       }
       dbus_message_unref(message);
     }
-    if (!FLAGS_timeout)
-      continue;
-    timeout = end - base::TimeTicks::Now();
-  } while (timeout > base::TimeDelta());
+    if (FLAGS_timeout)
+      timeout = end - base::TimeTicks::Now();
+  } while (!FLAGS_timeout || timeout > base::TimeDelta());
 
   LOG(FATAL) << "Did not receive a resume message within the timeout.";
 }

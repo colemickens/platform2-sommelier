@@ -739,10 +739,6 @@ void Daemon::RegisterDBusMessageHandler() {
 
   dbus_handler_.AddDBusSignalHandler(
       kPowerManagerInterface,
-      kRequestSuspendSignal,
-      base::Bind(&Daemon::HandleRequestSuspendSignal, base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
-      kPowerManagerInterface,
       kCleanShutdown,
       base::Bind(&Daemon::HandleCleanShutdownSignal, base::Unretained(this)));
   dbus_handler_.AddDBusSignalHandler(
@@ -759,6 +755,10 @@ void Daemon::RegisterDBusMessageHandler() {
       kPowerManagerInterface,
       kRequestRestartMethod,
       base::Bind(&Daemon::HandleRequestRestartMethod, base::Unretained(this)));
+  dbus_handler_.AddDBusMethodHandler(
+      kPowerManagerInterface,
+      kRequestSuspendMethod,
+      base::Bind(&Daemon::HandleRequestSuspendMethod, base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
       kDecreaseScreenBrightness,
@@ -848,11 +848,6 @@ void Daemon::RegisterDBusMessageHandler() {
   dbus_handler_.Start();
 }
 
-bool Daemon::HandleRequestSuspendSignal(DBusMessage*) {  // NOLINT
-  Suspend();
-  return true;
-}
-
 bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
   if (clean_shutdown_initiated_) {
     clean_shutdown_initiated_ = false;
@@ -891,6 +886,11 @@ DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleRequestRestartMethod(DBusMessage* message) {
   OnRequestRestart();
+  return NULL;
+}
+
+DBusMessage* Daemon::HandleRequestSuspendMethod(DBusMessage* message) {
+  Suspend();
   return NULL;
 }
 
