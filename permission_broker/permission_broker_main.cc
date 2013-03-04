@@ -28,18 +28,12 @@ int main(int argc, char **argv) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
   PermissionBroker broker;
-
-  // The following exceptions are owned by mschilder@chromium.org
-  broker.AddUsbException(0x1050, 0x0200);
-  broker.AddUsbException(0x1050, 0x0210);
-
   broker.AddRule(new AllowUsbDeviceRule());
   broker.AddRule(new DenyClaimedUsbDeviceRule());
   broker.AddRule(new DenyUninitializedDeviceRule());
   broker.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_HUB));
   broker.AddRule(new DenyUsbDeviceClassRule(USB_CLASS_MASS_STORAGE));
   broker.AddRule(new DenyUsbVendorIdRule(kLinuxFoundationUsbVendorId));
-
   broker.Run();
 
   return 0;
