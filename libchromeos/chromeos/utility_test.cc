@@ -20,7 +20,7 @@ static void MessageToValues(DBus::Message& m, std::vector<Value*>* result,
   ListValue* lv = NULL;
   ASSERT_TRUE(v->GetAsList(&lv));
   std::vector<Value*> values;
-  for (int i = 0; i < lv->GetSize(); i++) {
+  for (size_t i = 0; i < lv->GetSize(); i++) {
     Value* v0 = NULL;
     ASSERT_TRUE(lv->Get(i, &v0));
     values.push_back(v0);

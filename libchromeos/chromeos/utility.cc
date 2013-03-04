@@ -233,7 +233,7 @@ bool SecureRandom(uint8_t *buf, size_t len) {
   int fd = open("/dev/urandom", O_RDONLY);
   if (fd < 0)
     return false;
-  if (read(fd, buf, len) != len) {
+  if (read(fd, buf, len) != static_cast<ssize_t>(len)) {
     close(fd);
     return false;
   }

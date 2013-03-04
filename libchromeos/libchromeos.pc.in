@@ -3,5 +3,5 @@ bslot=@BSLOT@
 Name: libchromeos
 Description: chromeos base library
 Version: ${bslot}
-Requires.private: libchrome-${bslot} @PRIVATE_PC@
+Requires.private: @PRIVATE_PC@
 Libs: -lchromeos-${bslot}

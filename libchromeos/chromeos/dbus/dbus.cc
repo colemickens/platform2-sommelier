@@ -184,7 +184,6 @@ bool RegisterExclusiveService(const BusConnection& connection,
   // Exclusivity is determined by replacing any existing
   // service, not queuing, and ensuring we are the primary
   // owner after the name is ours.
-  guint flags = DBUS_NAME_FLAG_DO_NOT_QUEUE|DBUS_NAME_FLAG_REPLACE_EXISTING;
   glib::ScopedError err;
   guint result = 0;
   // TODO(wad) determine if we are moving away from using generated functions
