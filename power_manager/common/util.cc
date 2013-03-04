@@ -71,7 +71,7 @@ int RunSetuidHelper(const std::string& action,
 }
 
 void CreateStatusFile(const base::FilePath& file) {
-  if (!file_util::WriteFile(file, NULL, 0) == -1)
+  if (file_util::WriteFile(file, NULL, 0) == -1)
     LOG(ERROR) << "Unable to create " << file.value();
   else
     LOG(INFO) << "Created " << file.value();
