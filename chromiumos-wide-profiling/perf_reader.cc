@@ -46,8 +46,14 @@ bool PerfReader::WriteFileFromHandle(std::ofstream* out) {
 }
 
 bool PerfReader::RegenerateHeader() {
-  // We write attributes and data.
-  // Compute data size.
+  // This is the order of the perf file contents (both input and output):
+  // 1. Header
+  // 2. Attribute IDs (pointed to by attr.ids.offset)
+  // 3. Attributes
+  // 4. Event types
+  // 5. Data
+
+  // Compute offsets in the above order.
   memset(&out_header_, 0, sizeof(out_header_));
   out_header_.magic = kPerfMagic;
   out_header_.size = sizeof(out_header_);
@@ -58,10 +64,10 @@ bool PerfReader::RegenerateHeader() {
 
   u64 current_offset = 0;
   current_offset += out_header_.size;
-  out_header_.attrs.offset = current_offset;
-  current_offset += out_header_.attrs.size;
   for (size_t i = 0; i < attrs_.size(); i++)
     current_offset += sizeof(attrs_[i].ids[0]) * attrs_[i].ids.size();
+  out_header_.attrs.offset = current_offset;
+  current_offset += out_header_.attrs.size;
 
   out_header_.data.offset = current_offset;
 
@@ -193,21 +199,9 @@ bool PerfReader::WriteData(std::ofstream* out) const {
 bool PerfReader::WriteAttrs(std::ofstream* out) const {
   u64 ids_size = 0;
   for (size_t i = 0; i < attrs_.size(); i++) {
-    out->seekp(out_header_.attrs.offset + out_header_.attr_size * i,
-               std::ios::beg);
-    out->write(reinterpret_cast<const char*>(&attrs_[i].attr),
-               sizeof(attrs_[i].attr));
-    if (!out->good())
-      return false;
-
     struct perf_file_section ids;
-    ids.offset = out_header_.size + out_header_.attrs.size + ids_size;
+    ids.offset = out_header_.size + ids_size;
     ids.size = attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
-
-    out->write(reinterpret_cast<const char*>(&ids), sizeof(ids));
-    if (!out->good())
-      return false;
-    ids_size += ids.size;
 
     out->seekp(ids.offset, std::ios::beg);
     for (size_t j = 0; j < attrs_[i].ids.size(); j++) {
@@ -216,6 +210,18 @@ bool PerfReader::WriteAttrs(std::ofstream* out) const {
       if (!out->good())
         return false;
     }
+
+    out->seekp(out_header_.attrs.offset + out_header_.attr_size * i,
+               std::ios::beg);
+    out->write(reinterpret_cast<const char*>(&attrs_[i].attr),
+               sizeof(attrs_[i].attr));
+    if (!out->good())
+      return false;
+
+    out->write(reinterpret_cast<const char*>(&ids), sizeof(ids));
+    if (!out->good())
+      return false;
+    ids_size += ids.size;
   }
 
   return true;
