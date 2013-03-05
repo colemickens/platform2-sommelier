@@ -17,7 +17,7 @@ class PerfRecorder {
   PerfRecorder() {}
   bool RecordAndConvertToProtobuf(const std::string& perf_command,
                                   const int time,
-                                  PerfDataProto* perf_data);
+                                  quipper::PerfDataProto* perf_data);
  private:
   std::string GetSleepCommand(const int time);
   DISALLOW_COPY_AND_ASSIGN(PerfRecorder);

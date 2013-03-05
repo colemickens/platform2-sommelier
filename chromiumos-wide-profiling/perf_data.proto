@@ -4,6 +4,8 @@
 
 syntax = "proto2";
 
+package quipper;
+
 option optimize_for = LITE_RUNTIME;
 
 // Stores information from a perf session generated via running:

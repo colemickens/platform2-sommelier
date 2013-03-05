@@ -15,7 +15,7 @@ TEST(PerfRecorderTest, TestRecord) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
-  PerfDataProto perf_data_proto;
+  quipper::PerfDataProto perf_data_proto;
   std::string perf_command_line = "sudo /usr/sbin/perf record";
   PerfRecorder perf_recorder;
   EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(perf_command_line,

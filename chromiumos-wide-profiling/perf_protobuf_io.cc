@@ -10,6 +10,8 @@
 #include "perf_protobuf_io.h"
 #include "utils.h"
 
+using quipper::PerfDataProto;
+
 bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
                          const std::string& filename) {
   std::string target;

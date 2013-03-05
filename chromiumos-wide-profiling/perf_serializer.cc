@@ -10,6 +10,16 @@
 #include "perf_reader.h"
 #include "utils.h"
 
+using quipper::PerfDataProto;
+using quipper::PerfDataProto_CommEvent;
+using quipper::PerfDataProto_EventHeader;
+using quipper::PerfDataProto_ForkEvent;
+using quipper::PerfDataProto_MMapEvent;
+using quipper::PerfDataProto_PerfEvent;
+using quipper::PerfDataProto_PerfFileAttr;
+using quipper::PerfDataProto_PerfEventAttr;
+using quipper::PerfDataProto_SampleEvent;
+
 PerfSerializer::PerfSerializer() {
 }
 

@@ -30,7 +30,7 @@ const char* kPerfDataFiles[] = {
 void SerializeAndDeserialize(const std::string& input,
                              const std::string& output) {
   PerfSerializer perf_serializer;
-  PerfDataProto perf_data_proto;
+  quipper::PerfDataProto perf_data_proto;
   EXPECT_TRUE(perf_serializer.Serialize(input.c_str(), &perf_data_proto));
   EXPECT_TRUE(perf_serializer.Deserialize(output.c_str(), perf_data_proto));
 }
@@ -38,7 +38,7 @@ void SerializeAndDeserialize(const std::string& input,
 void SerializeToFileAndBack(const std::string& input,
                             const std::string& output) {
   PerfSerializer perf_serializer;
-  PerfDataProto input_perf_data_proto, output_perf_data_proto;
+  quipper::PerfDataProto input_perf_data_proto, output_perf_data_proto;
 
   EXPECT_TRUE(perf_serializer.Serialize(input.c_str(), &input_perf_data_proto));
   // Now store the protobuf into a file.
@@ -69,7 +69,7 @@ TEST(PerfReaderTest, Test1Cycle) {
   for (unsigned int i = 0; i < arraysize(kPerfDataFiles); ++i) {
     PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
                output_perf_reader2;
-    PerfDataProto perf_data_proto, perf_data_proto1;
+    quipper::PerfDataProto perf_data_proto, perf_data_proto1;
 
     std::string input_perf_data = kPerfDataFiles[i];
     std::string output_perf_data = input_perf_data + ".serialized.out";

@@ -18,63 +18,67 @@ class PerfSerializer {
   ~PerfSerializer();
 
   bool SerializeReader(const PerfReader& perf_reader,
-                       PerfDataProto* perf_data_proto);
+                       quipper::PerfDataProto* perf_data_proto);
   bool Serialize(const char* filename,
-                 PerfDataProto* perf_data_proto);
-  bool DeserializeReader(const PerfDataProto& perf_data_proto,
+                 quipper::PerfDataProto* perf_data_proto);
+  bool DeserializeReader(const quipper::PerfDataProto& perf_data_proto,
                          PerfReader* perf_reader);
   bool Deserialize(const char* filename,
-                   const PerfDataProto& perf_data_proto);
+                   const quipper::PerfDataProto& perf_data_proto);
 
  private:
   void SerializeEvent(const event_t* event,
-                      PerfDataProto_PerfEvent* event_proto) const;
-  void DeserializeEvent(event_t* event,
-                        const PerfDataProto_PerfEvent* event_proto) const;
+                      quipper::PerfDataProto_PerfEvent* event_proto) const;
+  void DeserializeEvent(
+      event_t* event,
+      const quipper::PerfDataProto_PerfEvent* event_proto) const;
 
-  void SerializeEventHeader(const perf_event_header* header,
-                            PerfDataProto_EventHeader* header_proto) const;
+  void SerializeEventHeader(
+      const perf_event_header* header,
+      quipper::PerfDataProto_EventHeader* header_proto) const;
   void DeserializeEventHeader(
       perf_event_header* header,
-      const PerfDataProto_EventHeader* header_proto) const;
+      const quipper::PerfDataProto_EventHeader* header_proto) const;
 
   void SerializeRecordSample(const event_t* event,
-                             PerfDataProto_SampleEvent* sample) const;
+                             quipper::PerfDataProto_SampleEvent* sample) const;
   void DeserializeRecordSample(
       event_t* event,
-      const PerfDataProto_SampleEvent* sample) const;
+      const quipper::PerfDataProto_SampleEvent* sample) const;
 
   void SerializeMMapSample(const event_t* event,
-                           PerfDataProto_MMapEvent* sample) const;
-  void DeserializeMMapSample(event_t* event,
-                             const PerfDataProto_MMapEvent* sample) const;
+                           quipper::PerfDataProto_MMapEvent* sample) const;
+  void DeserializeMMapSample(
+      event_t* event,
+      const quipper::PerfDataProto_MMapEvent* sample) const;
 
   void SerializeForkSample(const event_t* event,
-                           PerfDataProto_ForkEvent* sample) const;
-  void DeserializeForkSample(event_t* event,
-                             const PerfDataProto_ForkEvent* sample) const;
+                           quipper::PerfDataProto_ForkEvent* sample) const;
+  void DeserializeForkSample(
+      event_t* event,
+      const quipper::PerfDataProto_ForkEvent* sample) const;
 
   void SerializeCommSample(
       const event_t* event,
-      PerfDataProto_CommEvent* sample) const;
+      quipper::PerfDataProto_CommEvent* sample) const;
 
   void DeserializeCommSample(
       event_t* event,
-      const PerfDataProto_CommEvent* sample) const;
+      const quipper::PerfDataProto_CommEvent* sample) const;
 
   void SerializePerfEventAttr(
       const perf_event_attr* perf_event_attr,
-      PerfDataProto_PerfEventAttr* perf_event_attr_proto);
+      quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
   void DeserializePerfEventAttr(
       perf_event_attr* perf_event_attr,
-      const PerfDataProto_PerfEventAttr* perf_event_attr_proto);
+      const quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
 
   void SerializePerfFileAttr(
       const PerfFileAttr* perf_file_attr,
-      PerfDataProto_PerfFileAttr* perf_file_attr_proto);
+      quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
   void DeserializePerfFileAttr(
       PerfFileAttr* perf_file_attr,
-      const PerfDataProto_PerfFileAttr* perf_file_attr_proto);
+      const quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
 
 #define SERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
 bool name(const std::vector<vec_type>* from, \
@@ -104,17 +108,17 @@ bool name(std::vector<vec_type>* to, \
 }
 
   DESERIALIZEVECTORFUNCTION(DeserializePerfFileAttrs, PerfFileAttr,
-                            PerfDataProto_PerfFileAttr,
+                            quipper::PerfDataProto_PerfFileAttr,
                             DeserializePerfFileAttr)
   SERIALIZEVECTORFUNCTION(SerializePerfFileAttrs, PerfFileAttr,
-                          PerfDataProto_PerfFileAttr,
+                          quipper::PerfDataProto_PerfFileAttr,
                           SerializePerfFileAttr)
 
   DESERIALIZEVECTORFUNCTION(DeserializeEvents, event_t,
-                            PerfDataProto_PerfEvent,
+                            quipper::PerfDataProto_PerfEvent,
                             DeserializeEvent)
   SERIALIZEVECTORFUNCTION(SerializeEvents, event_t,
-                          PerfDataProto_PerfEvent,
+                          quipper::PerfDataProto_PerfEvent,
                           SerializeEvent)
   bool type_set_;
   u64 type_;

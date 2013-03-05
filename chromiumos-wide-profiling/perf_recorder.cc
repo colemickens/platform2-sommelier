@@ -20,7 +20,7 @@ std::string PerfRecorder::GetSleepCommand(const int time) {
 bool PerfRecorder::RecordAndConvertToProtobuf(
     const std::string& perf_command,
     const int time,
-    PerfDataProto* perf_data) {
+    quipper::PerfDataProto* perf_data) {
   std::string temp_file;
   if (!CreateNamedTempFile(&temp_file))
     return false;

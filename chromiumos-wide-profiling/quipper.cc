@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
     return 1;
 
   PerfRecorder perf_recorder;
-  PerfDataProto perf_data_proto;
+  quipper::PerfDataProto perf_data_proto;
   if (!perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
                                                 perf_duration,
                                                 &perf_data_proto))
