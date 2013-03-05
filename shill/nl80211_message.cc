@@ -73,9 +73,8 @@ LazyInstance<Nl80211MessageDataCollector> g_datacollector =
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
-// TODO(wdg): These will go into NetlinkMessage when that class exists.
-const uint32_t Nl80211Message::kBroadcastSequenceNumber = 0;
-const uint16_t Nl80211Message::kIllegalMessageType = UINT16_MAX;
+const uint32_t NetlinkMessage::kBroadcastSequenceNumber = 0;
+const uint16_t NetlinkMessage::kIllegalMessageType = UINT16_MAX;
 
 const char Nl80211Message::kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
 const unsigned int Nl80211Message::kEthernetAddressBytes = 6;
@@ -83,40 +82,43 @@ map<uint16_t, string> *Nl80211Message::reason_code_string_ = NULL;
 map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 uint16_t Nl80211Message::nl80211_message_type_ = kIllegalMessageType;
 
+// NetlinkMessage
 
-// The nl messages look like this:
-//
-//       XXXXXXXXXXXXXXXXXXX-nlmsg_total_size-XXXXXXXXXXXXXXXXXXX
-//       XXXXXXXXXXXXXXXXXXX-nlmsg_msg_size-XXXXXXXXXXXXXXXXXXX
-//               +-- gnhl                        nlmsg_tail(hdr) --+
-//               |                               nlmsg_next(hdr) --+
-//               v        XXXXXXXXXXXX-nlmsg_len-XXXXXXXXXXXXXX    V
-// -----+-----+-+----------------------------------------------+-++----
-//  ... |     | |                payload                       | ||
-//      |     | +------+-+--------+-+--------------------------+ ||
-//      | nl  | |      | |        | |      attribs             | ||
-//      | msg |p| genl |p| family |p+------+-+-------+-+-------+p|| ...
-//      | hdr |a| msg  |a| header |a| nl   |p| pay   |p|       |a||
-//      |     |d| hdr  |d|        |d| attr |a| load  |a| ...   |d||
-//      |     | |      | |        | |      |d|       |d|       | ||
-// -----+-----+-+----------------------------------------------+-++----
-//       ^       ^                   ^        ^
-//       |       |                   |        XXXXXXX <-- nla_len(nlattr)
-//       |       |                   |        +-- nla_data(nlattr)
-//       |       |                   X-nla_total_size-X
-//       |       |                   XXXXX-nlmsg_attrlen-XXXXXX
-//       |       +-- nlmsg_data(hdr) +-- nlmsg_attrdata()
-//       +-- msg = nlmsg_hdr(raw_message)
+ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number,
+                                        uint16_t nlmsg_type) {
+  ByteString result;
+  sequence_number_ = sequence_number;
+  if (sequence_number_ == kBroadcastSequenceNumber) {
+    LOG(ERROR) << "Couldn't get a legal sequence number";
+    return result;
+  }
 
-//
-// Nl80211Message
-//
+  // Build netlink header.
+  nlmsghdr header;
+  size_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
+  header.nlmsg_len = nlmsghdr_with_pad;
+  header.nlmsg_type = nlmsg_type;
+  header.nlmsg_flags = NLM_F_REQUEST | flags_;
+  header.nlmsg_seq = sequence_number_;
+  header.nlmsg_pid = getpid();
 
-bool Nl80211Message::InitAndStripHeader(ByteString *input) {
+  // Netlink header + pad.
+  result.Append(ByteString(reinterpret_cast<unsigned char *>(&header),
+                           sizeof(header)));
+  result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
+  return result;
+}
+
+bool NetlinkMessage::InitAndStripHeader(ByteString *input) {
   if (!input) {
     LOG(ERROR) << "NULL input";
     return false;
   }
+  if (input->GetLength() < sizeof(nlmsghdr)) {
+    LOG(ERROR) << "Insufficient input to extract nlmsghdr";
+    return false;
+  }
+
   // Read the nlmsghdr.
   nlmsghdr *header = reinterpret_cast<nlmsghdr *>(input->GetData());
   message_type_ = header->nlmsg_type;
@@ -125,6 +127,127 @@ bool Nl80211Message::InitAndStripHeader(ByteString *input) {
 
   // Strip the nlmsghdr.
   input->RemovePrefix(NLMSG_ALIGN(sizeof(struct nlmsghdr)));
+  return true;
+}
+
+bool NetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
+  if (!const_msg) {
+    LOG(ERROR) << "Null |const_msg| parameter";
+    return false;
+  }
+  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+                     const_msg->nlmsg_len);
+  if (!InitAndStripHeader(&message)) {
+    return false;
+  }
+  return true;
+}
+
+// static
+void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
+                                size_t num_bytes) {
+  SLOG(WiFi, log_level) << "Netlink Message -- Examining Bytes";
+  if (!buf) {
+    SLOG(WiFi, log_level) << "<NULL Buffer>";
+    return;
+  }
+
+  if (num_bytes >= sizeof(nlmsghdr)) {
+      const nlmsghdr *header = reinterpret_cast<const nlmsghdr *>(buf);
+      SLOG(WiFi, log_level) << StringPrintf(
+          "len:          %02x %02x %02x %02x = %u bytes",
+          buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
+
+      SLOG(WiFi, log_level) << StringPrintf(
+          "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
+          buf[4], buf[5], buf[6], buf[7], header->nlmsg_type,
+          ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
+          ((header->nlmsg_flags & NLM_F_MULTI) ? " MULTI" : ""),
+          ((header->nlmsg_flags & NLM_F_ACK) ? " ACK" : ""),
+          ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
+          ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
+
+      SLOG(WiFi, log_level) << StringPrintf(
+          "sequence:     %02x %02x %02x %02x = %u",
+          buf[8], buf[9], buf[10], buf[11], header->nlmsg_seq);
+      SLOG(WiFi, log_level) << StringPrintf(
+          "pid:          %02x %02x %02x %02x = %u",
+          buf[12], buf[13], buf[14], buf[15], header->nlmsg_pid);
+      buf += sizeof(nlmsghdr);
+      num_bytes -= sizeof(nlmsghdr);
+  } else {
+    SLOG(WiFi, log_level) << "Not enough bytes (" << num_bytes
+                          << ") for a complete nlmsghdr (requires "
+                          << sizeof(nlmsghdr) << ").";
+  }
+
+  while (num_bytes) {
+    string output;
+    size_t bytes_this_row = min(num_bytes, static_cast<size_t>(32));
+    for (size_t i = 0; i < bytes_this_row; ++i) {
+      StringAppendF(&output, " %02x", *buf++);
+    }
+    SLOG(WiFi, log_level) << output;
+    num_bytes -= bytes_this_row;
+  }
+}
+
+// GenericNetlinkMessage
+
+ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number,
+                                               uint16_t nlmsg_type) {
+  // Build nlmsghdr.
+  ByteString result(NetlinkMessage::EncodeHeader(sequence_number, nlmsg_type));
+  if (result.GetLength() == 0) {
+    LOG(ERROR) << "Couldn't encode message header.";
+    return result;
+  }
+
+  // Build and append the genl message header.
+  genlmsghdr genl_header;
+  genl_header.cmd = command();
+  genl_header.version = 1;
+  genl_header.reserved = 0;
+
+  ByteString genl_header_string(
+      reinterpret_cast<unsigned char *>(&genl_header), sizeof(genl_header));
+  size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
+  genl_header_string.Resize(genlmsghdr_with_pad);  // Zero-fill.
+
+  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
+  pheader->nlmsg_len += genlmsghdr_with_pad;
+  result.Append(genl_header_string);
+  return result;
+}
+
+ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number,
+                                         uint16_t nlmsg_type) {
+  ByteString result(EncodeHeader(sequence_number, nlmsg_type));
+  if (result.GetLength() == 0) {
+    LOG(ERROR) << "Couldn't encode message header.";
+    return result;
+  }
+
+  // Build and append attributes (padding is included by
+  // AttributeList::Encode).
+  ByteString attribute_string = attributes_->Encode();
+
+  // Need to re-calculate |header| since |Append|, above, moves the data.
+  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
+  pheader->nlmsg_len += attribute_string.GetLength();
+  result.Append(attribute_string);
+
+  return result;
+}
+
+bool GenericNetlinkMessage::InitAndStripHeader(ByteString *input) {
+  if (!input) {
+    LOG(ERROR) << "NULL input";
+    return false;
+  }
+  if (!NetlinkMessage::InitAndStripHeader(input)) {
+    return false;
+  }
 
   // Read the genlmsghdr.
   genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(input->GetData());
@@ -137,6 +260,15 @@ bool Nl80211Message::InitAndStripHeader(ByteString *input) {
   input->RemovePrefix(NLMSG_ALIGN(sizeof(struct genlmsghdr)));
   return true;
 }
+
+void GenericNetlinkMessage::Print(int log_level) const {
+  SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
+                                        command_string(),
+                                        command());
+  attributes_->Print(log_level, 1);
+}
+
+// Nl80211Message
 
 bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   if (!const_msg) {
@@ -364,61 +496,6 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   return true;
 }
 
-void Nl80211Message::Print(int log_level) const {
-  SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
-                                        command_string(),
-                                        command());
-  attributes_->Print(log_level, 1);
-}
-
-// static
-void Nl80211Message::PrintBytes(int log_level, const unsigned char *buf,
-                                size_t num_bytes) {
-  SLOG(WiFi, log_level) << "Netlink Message -- Examining Bytes";
-  if (!buf) {
-    SLOG(WiFi, log_level) << "<NULL Buffer>";
-    return;
-  }
-
-  if (num_bytes >= sizeof(nlmsghdr)) {
-    const nlmsghdr *header = reinterpret_cast<const nlmsghdr *>(buf);
-    SLOG(WiFi, log_level) << StringPrintf(
-        "len:          %02x %02x %02x %02x = %u bytes",
-        buf[0], buf[1], buf[2], buf[3], header->nlmsg_len);
-
-    SLOG(WiFi, log_level) << StringPrintf(
-        "type | flags: %02x %02x %02x %02x - type:%u flags:%s%s%s%s%s",
-        buf[4], buf[5], buf[6], buf[7], header->nlmsg_type,
-        ((header->nlmsg_flags & NLM_F_REQUEST) ? " REQUEST" : ""),
-        ((header->nlmsg_flags & NLM_F_MULTI) ? " MULTI" : ""),
-        ((header->nlmsg_flags & NLM_F_ACK) ? " ACK" : ""),
-        ((header->nlmsg_flags & NLM_F_ECHO) ? " ECHO" : ""),
-        ((header->nlmsg_flags & NLM_F_DUMP_INTR) ? " BAD-SEQ" : ""));
-
-    SLOG(WiFi, log_level) << StringPrintf(
-        "sequence:     %02x %02x %02x %02x = %u",
-        buf[8], buf[9], buf[10], buf[11], header->nlmsg_seq);
-    SLOG(WiFi, log_level) << StringPrintf(
-        "pid:          %02x %02x %02x %02x = %u",
-        buf[12], buf[13], buf[14], buf[15], header->nlmsg_pid);
-    buf += sizeof(nlmsghdr);
-    num_bytes -= sizeof(nlmsghdr);
-  } else {
-    SLOG(WiFi, log_level) << "Not enough bytes (" << num_bytes
-                          << ") for a complete nlmsghdr (requires "
-                          << sizeof(nlmsghdr) << ").";
-  }
-
-  while (num_bytes) {
-    string output;
-    size_t bytes_this_row = min(num_bytes, static_cast<size_t>(32));
-    for (size_t i = 0; i < bytes_this_row; ++i) {
-      StringAppendF(&output, " %02x", *buf++);
-    }
-    SLOG(WiFi, log_level) << output;
-    num_bytes -= bytes_this_row;
-  }
-}
 
 // Helper function to provide a string for a MAC address.
 bool Nl80211Message::GetMacAttributeString(int id, string *value) const {
@@ -491,61 +568,6 @@ bool Nl80211Message::GetScanSsidsAttribute(
   return true;
 }
 
-// Protected members.
-
-string Nl80211Message::GetHeaderString() const {
-  char ifname[IF_NAMESIZE] = "";
-  uint32_t ifindex = UINT32_MAX;
-  bool ifindex_exists = const_attributes()->GetU32AttributeValue(
-      NL80211_ATTR_IFINDEX, &ifindex);
-
-  uint32_t wifi = UINT32_MAX;
-  bool wifi_exists = const_attributes()->GetU32AttributeValue(
-      NL80211_ATTR_WIPHY, &wifi);
-
-  string output;
-  if (ifindex_exists && wifi_exists) {
-    StringAppendF(&output, "%s (phy #%" PRIu32 "): ",
-                  (if_indextoname(ifindex, ifname) ? ifname : "<unknown>"),
-                  wifi);
-  } else if (ifindex_exists) {
-    StringAppendF(&output, "%s: ",
-                  (if_indextoname(ifindex, ifname) ? ifname : "<unknown>"));
-  } else if (wifi_exists) {
-    StringAppendF(&output, "phy #%" PRIu32 "u: ", wifi);
-  }
-
-  return output;
-}
-
-string Nl80211Message::StringFromFrame(int attr_name) const {
-  string output;
-  ByteString frame_data;
-  if (const_attributes()->GetRawAttributeValue(attr_name, &frame_data) &&
-      !frame_data.IsEmpty()) {
-    Nl80211Frame frame(frame_data);
-    frame.ToString(&output);
-  } else {
-    output.append(" [no frame]");
-  }
-
-  return output;
-}
-
-// static
-string Nl80211Message::StringFromKeyType(nl80211_key_type key_type) {
-  switch (key_type) {
-  case NL80211_KEYTYPE_GROUP:
-    return "Group";
-  case NL80211_KEYTYPE_PAIRWISE:
-    return "Pairwise";
-  case NL80211_KEYTYPE_PEERKEY:
-    return "PeerKey";
-  default:
-    return "<Unknown Key Type>";
-  }
-}
-
 // static
 string Nl80211Message::StringFromMacAddress(const uint8_t *arg) {
   string output;
@@ -560,44 +582,6 @@ string Nl80211Message::StringFromMacAddress(const uint8_t *arg) {
       StringAppendF(&output, ":%02x", arg[i]);
     }
   }
-  return output;
-}
-
-// static
-string Nl80211Message::StringFromRegInitiator(__u8 initiator) {
-  switch (initiator) {
-  case NL80211_REGDOM_SET_BY_CORE:
-    return "the wireless core upon initialization";
-  case NL80211_REGDOM_SET_BY_USER:
-    return "a user";
-  case NL80211_REGDOM_SET_BY_DRIVER:
-    return "a driver";
-  case NL80211_REGDOM_SET_BY_COUNTRY_IE:
-    return "a country IE";
-  default:
-    return "<Unknown Reg Initiator>";
-  }
-}
-
-// static
-string Nl80211Message::StringFromSsid(const uint8_t len,
-                                          const uint8_t *data) {
-  string output;
-  if (!data) {
-    StringAppendF(&output, "<Error from %s, NULL parameter>", __func__);
-    LOG(ERROR) << "|data| parameter is NULL.";
-    return output;
-  }
-
-  for (int i = 0; i < len; ++i) {
-    if (data[i] == ' ')
-      output.append(" ");
-    else if (isprint(data[i]))
-      StringAppendF(&output, "%c", static_cast<char>(data[i]));
-    else
-      StringAppendF(&output, "\\x%2x", data[i]);
-  }
-
   return output;
 }
 
@@ -633,65 +617,6 @@ string Nl80211Message::StringFromStatus(uint16_t status) {
   return match->second;
 }
 
-ByteString Nl80211Message::EncodeHeader(uint32_t sequence_number,
-                                        uint16_t nlmsg_type) {
-  ByteString result;
-  sequence_number_ = sequence_number;
-  if (sequence_number_ == kBroadcastSequenceNumber) {
-    LOG(ERROR) << "Couldn't get a legal sequence number";
-    return result;
-  }
-
-  // Build netlink header.
-  nlmsghdr header;
-  size_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
-  header.nlmsg_len = nlmsghdr_with_pad;
-  header.nlmsg_type = nlmsg_type;
-  header.nlmsg_flags = NLM_F_REQUEST;
-  header.nlmsg_seq = sequence_number_;
-  header.nlmsg_pid = getpid();
-
-  // Netlink header + pad.
-  result.Append(ByteString(reinterpret_cast<unsigned char *>(&header),
-                           sizeof(header)));
-  result.Resize(nlmsghdr_with_pad);  // Zero-fill pad space (if any).
-
- // Build and append the genl message header.
-  genlmsghdr genl_header;
-  genl_header.cmd = command();
-  genl_header.version = 1;
-  genl_header.reserved = 0;
-
-  ByteString genl_header_string(
-      reinterpret_cast<unsigned char *>(&genl_header), sizeof(genl_header));
-  size_t genlmsghdr_with_pad = NLMSG_ALIGN(sizeof(genl_header));
-  genl_header_string.Resize(genlmsghdr_with_pad);  // Zero-fill.
-
-  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
-  pheader->nlmsg_len += genlmsghdr_with_pad;
-  result.Append(genl_header_string);
-  return result;
-}
-
-ByteString Nl80211Message::Encode(uint32_t sequence_number,
-                                  uint16_t nlmsg_type) {
-  ByteString result(EncodeHeader(sequence_number, nlmsg_type));
-  if (result.GetLength() == 0) {
-    LOG(ERROR) << "Couldn't encode message header.";
-    return result;
-  }
-
-  // Build and append attributes (padding is included by
-  // AttributeList::Encode).
-  ByteString attribute_bytes = attributes_->Encode();
-
-  // Need to re-calculate |header| since |Append|, above, moves the data.
-  nlmsghdr *pheader = reinterpret_cast<nlmsghdr *>(result.GetData());
-  pheader->nlmsg_len += attribute_bytes.GetLength();
-  result.Append(attribute_bytes);
-
-  return result;
-}
 
 Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
   : frame_type_(kIllegalFrameType), reason_(UINT16_MAX), status_(UINT16_MAX),
@@ -914,13 +839,13 @@ const char UnprotDisassociateMessage::kCommandString[] =
 // Factory class.
 //
 
-Nl80211Message *Nl80211MessageFactory::CreateMessage(nlmsghdr *msg) {
+NetlinkMessage *NetlinkMessageFactory::CreateMessage(nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << "NULL |msg| parameter";
     return NULL;
   }
 
-  scoped_ptr<Nl80211Message> message;
+  scoped_ptr<NetlinkMessage> message;
   void *payload = nlmsg_data(msg);
 
   if (msg->nlmsg_type == NLMSG_NOOP) {

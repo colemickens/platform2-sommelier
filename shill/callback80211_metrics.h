@@ -23,7 +23,7 @@ class Callback80211Metrics : public Callback80211Object {
   explicit Callback80211Metrics(Metrics *metrics);
 
  protected:
-  virtual void Config80211MessageCallback(const Nl80211Message &msg);
+  virtual void Config80211MessageCallback(const NetlinkMessage &msg);
 
  private:
   static const char kMetricLinkDisconnectCount[];

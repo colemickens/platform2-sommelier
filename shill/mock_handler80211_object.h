@@ -16,7 +16,7 @@ class Nl80211Message;
 class MockHandler80211 : public Callback80211Object {
  public:
   MockHandler80211() {}
-  MOCK_METHOD1(Config80211MessageHandler, void(const Nl80211Message &msg));
+  MOCK_METHOD1(Config80211MessageHandler, void(const NetlinkMessage &msg));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockHandler80211);

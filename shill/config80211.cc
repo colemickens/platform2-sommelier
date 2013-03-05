@@ -140,7 +140,7 @@ void Config80211::ClearBroadcastHandlers() {
   broadcast_handlers_.clear();
 }
 
-bool Config80211::SendMessage(Nl80211Message *message,
+bool Config80211::SendMessage(NetlinkMessage *message,
                               const NetlinkMessageHandler &handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
@@ -155,7 +155,7 @@ bool Config80211::SendMessage(Nl80211Message *message,
   message->Print(6);
 
   if (!sock_->SendMessage(message_string)) {
-    LOG(ERROR) << "Failed to send nl80211 message.";
+    LOG(ERROR) << "Failed to send Netlink message.";
     return false;
   }
   if (handler.is_null()) {
@@ -167,12 +167,12 @@ bool Config80211::SendMessage(Nl80211Message *message,
     return false;
   }
   message_handlers_[message->sequence_number()] = handler;
-  LOG(INFO) << "Sent nl80211 message with sequence number: "
+  LOG(INFO) << "Sent Netlink message with sequence number: "
             << message->sequence_number();
   return true;
 }
 
-bool Config80211::RemoveMessageHandler(const Nl80211Message &message) {
+bool Config80211::RemoveMessageHandler(const NetlinkMessage &message) {
   if (!ContainsKey(message_handlers_, message.sequence_number())) {
     return false;
   }
@@ -232,7 +232,7 @@ void Config80211::SetWifiState(WifiState new_state) {
 
 uint32_t Config80211::GetSequenceNumber() {
   return sock_ ?
-      sock_->GetSequenceNumber() : Nl80211Message::kBroadcastSequenceNumber;
+      sock_->GetSequenceNumber() : NetlinkMessage::kBroadcastSequenceNumber;
 }
 
 bool Config80211::SubscribeToEvents(EventType type) {
@@ -293,7 +293,7 @@ void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
     return;
   }
   const uint32 sequence_number = msg->nlmsg_seq;
-  scoped_ptr<Nl80211Message> message(Nl80211MessageFactory::CreateMessage(msg));
+  scoped_ptr<NetlinkMessage> message(NetlinkMessageFactory::CreateMessage(msg));
   if (message == NULL) {
     SLOG(WiFi, 3) << "NL Message " << sequence_number << " <===";
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
@@ -302,7 +302,7 @@ void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
   SLOG(WiFi, 3) << "NL Message " << sequence_number
                 << " Received (" << msg->nlmsg_len << " bytes) <===";
   message->Print(6);
-  Nl80211Message::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
+  NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
                              msg->nlmsg_len);
 
   // Call (then erase) any message-specific handler.

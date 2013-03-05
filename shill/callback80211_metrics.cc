@@ -19,7 +19,8 @@ Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
 }
 
 void Callback80211Metrics::Config80211MessageCallback(
-    const Nl80211Message &message) {
+    const NetlinkMessage &message) {
+#if 0  // TODO(wdg): Enable after code arrives from upcoming CL.
   SLOG(WiFi, 3) << "Received " << message.command_string()
                 << " (" << + message.command() << ")";
   if (metrics_ &&
@@ -40,6 +41,7 @@ void Callback80211Metrics::Config80211MessageCallback(
         static_cast<IEEE_80211::WiFiReasonCode>(reason);
     metrics_->Notify80211Disconnect(by_whom, reason_enum);
   }
+#endif  // 0
 }
 
 }  // namespace shill.

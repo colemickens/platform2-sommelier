@@ -34,7 +34,7 @@ Callback80211Object::~Callback80211Object() {
 }
 
 void Callback80211Object::Config80211MessageHandler(
-    const Nl80211Message &message) {
+    const NetlinkMessage &message) {
   message.Print(10);
 }
 
@@ -46,7 +46,7 @@ bool Callback80211Object::DeinstallAsHandler() {
   return Config80211::GetInstance()->RemoveBroadcastHandler(message_handler_);
 }
 
-void Callback80211Object::ReceiveConfig80211Message(const Nl80211Message &msg) {
+void Callback80211Object::ReceiveConfig80211Message(const NetlinkMessage &msg) {
   Config80211MessageHandler(msg);
 }
 

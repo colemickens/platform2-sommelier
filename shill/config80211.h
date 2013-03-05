@@ -37,7 +37,7 @@ namespace shill {
 
 class Error;
 struct InputData;
-class Nl80211Message;
+class NetlinkMessage;
 
 // Provides a transport-independent ability to receive status from the wifi
 // configuration.  In its current implementation, it uses the netlink socket
@@ -46,7 +46,7 @@ class Nl80211Message;
 // Config80211 is a singleton and, as such, coordinates access to libnl.
 class Config80211 {
  public:
-  typedef base::Callback<void(const Nl80211Message &)> NetlinkMessageHandler;
+  typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
 
   // The different kinds of events to which we can subscribe (and receive)
   // from cfg80211.
@@ -95,11 +95,11 @@ class Config80211 {
   // a callback to handle it.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
-  bool SendMessage(Nl80211Message *message, const NetlinkMessageHandler
+  bool SendMessage(NetlinkMessage *message, const NetlinkMessageHandler
                    &message_handler);
 
   // Uninstall a Config80211 Handler for a specific message.
-  bool RemoveMessageHandler(const Nl80211Message &message);
+  bool RemoveMessageHandler(const NetlinkMessage &message);
 
   // Return a string corresponding to the passed-in EventType.
   static bool GetEventTypeString(EventType type, std::string *value);
