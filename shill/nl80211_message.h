@@ -120,6 +120,73 @@ class NetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(NetlinkMessage);
 };
 
+
+// The Error and Ack messages are received from the kernel and are combined,
+// here, because they look so much alike (the only difference is that the
+// error code is 0 for the Ack messages).  Error messages are received from
+// the kernel in response to a sent message when there's a problem (such as
+// a malformed message or a busy kernel module).  Ack messages are received
+// from the kernel when a sent message has the NLM_F_ACK flag set, indicating
+// that an Ack is requested.
+class ErrorAckMessage : public NetlinkMessage {
+ public:
+  static const uint16_t kMessageType;
+
+  ErrorAckMessage() : NetlinkMessage(kMessageType), error_(0) {}
+  virtual bool InitFromNlmsg(const nlmsghdr *const_msg);
+  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual void Print(int log_level) const;
+  std::string ToString() const;
+  uint32_t error() const { return -error_; }
+
+ private:
+  uint32_t error_;
+
+  DISALLOW_COPY_AND_ASSIGN(ErrorAckMessage);
+};
+
+
+class NoopMessage : public NetlinkMessage {
+ public:
+  static const uint16_t kMessageType;
+
+  NoopMessage() : NetlinkMessage(kMessageType) {}
+  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual void Print(int log_level) const;
+  std::string ToString() const { return "<NOOP>"; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NoopMessage);
+};
+
+
+class DoneMessage : public NetlinkMessage {
+ public:
+  static const uint16_t kMessageType;
+
+  DoneMessage() : NetlinkMessage(kMessageType) {}
+  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual void Print(int log_level) const;
+  std::string ToString() const { return "<DONE with multipart message>"; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(DoneMessage);
+};
+
+
+class OverrunMessage : public NetlinkMessage {
+ public:
+  static const uint16_t kMessageType;
+
+  OverrunMessage() : NetlinkMessage(kMessageType) {}
+  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual void Print(int log_level) const;
+  std::string ToString() const { return "<OVERRUN - data lost>"; }
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(OverrunMessage);
+};
+
 // Objects of the |GenericNetlinkMessage| type represent messages that contain
 // a |genlmsghdr| after a |nlmsghdr|.  These messages seem to all contain a
 // payload that consists of a list of structured attributes (it's possible that
@@ -196,6 +263,40 @@ class GenericNetlinkMessage : public NetlinkMessage {
  private:
   DISALLOW_COPY_AND_ASSIGN(GenericNetlinkMessage);
 };
+
+// Control Messages
+
+class ControlNetlinkMessage : public GenericNetlinkMessage {
+ public:
+  static const uint16_t kMessageType;
+  ControlNetlinkMessage(uint8 command, const char *command_string)
+      : GenericNetlinkMessage(kMessageType, command, command_string) {}
+
+  virtual bool InitFromNlmsg(const nlmsghdr *msg);
+};
+
+class NewFamilyMessage : public ControlNetlinkMessage {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  NewFamilyMessage() : ControlNetlinkMessage(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NewFamilyMessage);
+};
+
+class GetFamilyMessage : public ControlNetlinkMessage {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetFamilyMessage() : ControlNetlinkMessage(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetFamilyMessage);
+};
+
 
 // Class for messages received from the mac80211 drivers by way of the
 // cfg80211 kernel module.
@@ -288,17 +389,6 @@ class Nl80211Frame {
 //
 // Specific Nl80211Message types.
 //
-
-class AckMessage : public Nl80211Message {
- public:
-  static const uint8_t kCommand;
-  static const char kCommandString[];
-
-  AckMessage() : Nl80211Message(kCommand, kCommandString) {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(AckMessage);
-};
 
 class AssociateMessage : public Nl80211Message {
  public:
@@ -397,21 +487,6 @@ class DisconnectMessage : public Nl80211Message {
 };
 
 
-class ErrorMessage : public Nl80211Message {
- public:
-  static const uint8_t kCommand;
-  static const char kCommandString[];
-
-  explicit ErrorMessage(uint32_t error);
-  virtual std::string ToString() const;
-
- private:
-  uint32_t error_;
-
-  DISALLOW_COPY_AND_ASSIGN(ErrorMessage);
-};
-
-
 class FrameTxStatusMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -492,18 +567,6 @@ class NewWifiMessage : public Nl80211Message {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NewWifiMessage);
-};
-
-
-class NoopMessage : public Nl80211Message {
- public:
-  static const uint8_t kCommand;
-  static const char kCommandString[];
-
-  NoopMessage() : Nl80211Message(kCommand, kCommandString) {}
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(NoopMessage);
 };
 
 
@@ -588,6 +651,18 @@ class ScanAbortedMessage : public Nl80211Message {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ScanAbortedMessage);
+};
+
+
+class GetScanMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetScanMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetScanMessage);
 };
 
 

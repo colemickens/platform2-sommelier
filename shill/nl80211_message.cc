@@ -192,6 +192,80 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
   }
 }
 
+const uint16_t ErrorAckMessage::kMessageType = NLMSG_ERROR;
+
+bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
+  if (!const_msg) {
+    LOG(ERROR) << "Null |const_msg| parameter";
+    return false;
+  }
+  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+                     const_msg->nlmsg_len);
+  if (!InitAndStripHeader(&message)) {
+    return false;
+  }
+
+  // Get the error code from the payload.
+  error_ = *(reinterpret_cast<const uint32_t *>(message.GetConstData()));
+  return true;
+}
+
+ByteString ErrorAckMessage::Encode(uint32_t sequence_number,
+                                   uint16_t nlmsg_type) {
+  LOG(ERROR) << "We're not supposed to send errors or Acks to the kernel";
+  return ByteString();
+}
+
+string ErrorAckMessage::ToString() const {
+  string output;
+  if (error()) {
+    StringAppendF(&output, "NL80211_ERROR 0x%" PRIx32 ": %s",
+                  -error_, strerror(-error_));
+  } else {
+    StringAppendF(&output, "ACK");
+  }
+  return output;
+}
+
+void ErrorAckMessage::Print(int log_level) const {
+  SLOG(WiFi, log_level) << ToString();
+}
+
+const uint16_t NoopMessage::kMessageType = NLMSG_NOOP;
+
+ByteString NoopMessage::Encode(uint32_t sequence_number, uint16_t nlmsg_type) {
+  LOG(ERROR) << "We're not supposed to send NOOP to the kernel";
+  return ByteString();
+}
+
+void NoopMessage::Print(int log_level) const {
+  SLOG(WiFi, log_level) << ToString();
+}
+
+const uint16_t DoneMessage::kMessageType = NLMSG_DONE;
+
+ByteString DoneMessage::Encode(uint32_t sequence_number, uint16_t nlmsg_type) {
+  LOG(ERROR)
+      << "We're not supposed to send Done messages (are we?) to the kernel";
+  return ByteString();
+}
+
+void DoneMessage::Print(int log_level) const {
+  SLOG(WiFi, log_level) << ToString();
+}
+
+const uint16_t OverrunMessage::kMessageType = NLMSG_OVERRUN;
+
+ByteString OverrunMessage::Encode(uint32_t sequence_number,
+                                  uint16_t nlmsg_type) {
+  LOG(ERROR) << "We're not supposed to send Overruns to the kernel";
+  return ByteString();
+}
+
+void OverrunMessage::Print(int log_level) const {
+  SLOG(WiFi, log_level) << ToString();
+}
+
 // GenericNetlinkMessage
 
 ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number,
@@ -618,6 +692,50 @@ string Nl80211Message::StringFromStatus(uint16_t status) {
 }
 
 
+// Control Message
+
+const uint16_t ControlNetlinkMessage::kMessageType = GENL_ID_CTRL;
+
+bool ControlNetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
+  if (!const_msg) {
+    LOG(ERROR) << "Null |msg| parameter";
+    return false;
+  }
+  ByteString message(reinterpret_cast<const unsigned char *>(const_msg),
+                     const_msg->nlmsg_len);
+
+  if (!InitAndStripHeader(&message)) {
+    return false;
+  }
+
+  // Attributes.
+  // Parse the attributes from the nl message payload into the 'tb' array.
+  nlattr *tb[CTRL_ATTR_MAX + 1];
+  nla_parse(tb, CTRL_ATTR_MAX,
+            reinterpret_cast<nlattr *>(message.GetData()), message.GetLength(),
+            NULL);
+
+  for (int i = 0; i < CTRL_ATTR_MAX + 1; ++i) {
+    if (tb[i]) {
+      // TODO(wdg): When Nl80211Messages instantiate their own attributes,
+      // this call should, instead, call |SetAttributeFromNlAttr|.
+      attributes_->CreateAndInitAttribute(
+          i, tb[i], Bind(&NetlinkAttribute::NewControlAttributeFromId));
+    }
+  }
+  return true;
+}
+
+// Specific Control types.
+
+const uint8_t NewFamilyMessage::kCommand = CTRL_CMD_NEWFAMILY;
+const char NewFamilyMessage::kCommandString[] = "CTRL_CMD_NEWFAMILY";
+
+const uint8_t GetFamilyMessage::kCommand = CTRL_CMD_GETFAMILY;
+const char GetFamilyMessage::kCommandString[] = "CTRL_CMD_GETFAMILY";
+
+// Nl80211Frame
+
 Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
   : frame_type_(kIllegalFrameType), reason_(UINT16_MAX), status_(UINT16_MAX),
     frame_(raw_frame) {
@@ -721,10 +839,6 @@ bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
 // Specific Nl80211Message types.
 //
 
-// An Ack is not a GENL message and, as such, has no command.
-const uint8_t AckMessage::kCommand = NL80211_CMD_UNSPEC;
-const char AckMessage::kCommandString[] = "NL80211_ACK";
-
 const uint8_t AssociateMessage::kCommand = NL80211_CMD_ASSOCIATE;
 const char AssociateMessage::kCommandString[] = "NL80211_CMD_ASSOCIATE";
 
@@ -752,20 +866,6 @@ const char DisassociateMessage::kCommandString[] = "NL80211_CMD_DISASSOCIATE";
 const uint8_t DisconnectMessage::kCommand = NL80211_CMD_DISCONNECT;
 const char DisconnectMessage::kCommandString[] = "NL80211_CMD_DISCONNECT";
 
-// An Error is not a GENL message and, as such, has no command.
-const uint8_t ErrorMessage::kCommand = NL80211_CMD_UNSPEC;
-const char ErrorMessage::kCommandString[] = "NL80211_ERROR";
-
-ErrorMessage::ErrorMessage(uint32_t error)
-  : Nl80211Message(kCommand, kCommandString), error_(error) {}
-
-string ErrorMessage::ToString() const {
-  string output;
-  StringAppendF(&output, "NL80211_ERROR %" PRIx32 ": %s",
-                error_, strerror(error_));
-  return output;
-}
-
 const uint8_t FrameTxStatusMessage::kCommand = NL80211_CMD_FRAME_TX_STATUS;
 const char FrameTxStatusMessage::kCommandString[] =
     "NL80211_CMD_FRAME_TX_STATUS";
@@ -791,10 +891,6 @@ const char NewStationMessage::kCommandString[] = "NL80211_CMD_NEW_STATION";
 const uint8_t NewWifiMessage::kCommand = NL80211_CMD_NEW_WIPHY;
 const char NewWifiMessage::kCommandString[] = "NL80211_CMD_NEW_WIPHY";
 
-// A NOOP is not a GENL message and, as such, has no command.
-const uint8_t NoopMessage::kCommand = NL80211_CMD_UNSPEC;
-const char NoopMessage::kCommandString[] = "NL80211_NOOP";
-
 const uint8_t NotifyCqmMessage::kCommand = NL80211_CMD_NOTIFY_CQM;
 const char NotifyCqmMessage::kCommandString[] = "NL80211_CMD_NOTIFY_CQM";
 
@@ -819,6 +915,9 @@ const char RoamMessage::kCommandString[] = "NL80211_CMD_ROAM";
 const uint8_t ScanAbortedMessage::kCommand = NL80211_CMD_SCAN_ABORTED;
 const char ScanAbortedMessage::kCommandString[] = "NL80211_CMD_SCAN_ABORTED";
 
+const uint8_t GetScanMessage::kCommand = NL80211_CMD_GET_SCAN;
+const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
+
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
 const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
@@ -839,6 +938,8 @@ const char UnprotDisassociateMessage::kCommandString[] =
 // Factory class.
 //
 
+// TODO(wdg): later, each message_type should register its own callback for
+// creating messages.  For now, however, this is much easier.
 NetlinkMessage *NetlinkMessageFactory::CreateMessage(nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << "NULL |msg| parameter";
@@ -848,20 +949,27 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(nlmsghdr *msg) {
   scoped_ptr<NetlinkMessage> message;
   void *payload = nlmsg_data(msg);
 
-  if (msg->nlmsg_type == NLMSG_NOOP) {
-    SLOG(WiFi, 6) << "Creating a NOP message";
+  if (msg->nlmsg_type == NoopMessage::kMessageType) {
     message.reset(new NoopMessage());
-  } else if (msg->nlmsg_type == NLMSG_ERROR) {
-    uint32_t error_code = *(reinterpret_cast<uint32_t *>(payload));
-    if (error_code) {
-      SLOG(WiFi, 6) << "Creating an ERROR message:" << error_code;
-      message.reset(new ErrorMessage(error_code));
-    } else {
-      SLOG(WiFi, 6) << "Creating an ACK message";
-      message.reset(new AckMessage());
+  } else if (msg->nlmsg_type == DoneMessage::kMessageType) {
+    message.reset(new DoneMessage());
+  } else if (msg->nlmsg_type == OverrunMessage::kMessageType) {
+    message.reset(new OverrunMessage());
+  } else if (msg->nlmsg_type == ErrorAckMessage::kMessageType) {
+    message.reset(new ErrorAckMessage());
+  } else if (msg->nlmsg_type == ControlNetlinkMessage::kMessageType) {
+    genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
+
+    switch (gnlh->cmd) {
+      case NewFamilyMessage::kCommand:
+        message.reset(new NewFamilyMessage()); break;
+      case GetFamilyMessage::kCommand:
+        message.reset(new GetFamilyMessage()); break;
+
+      default:
+        message.reset(new UnknownMessage(gnlh->cmd)); break;
     }
   } else {
-    SLOG(WiFi, 6) << "Creating a Regular message";
     genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
 
     switch (gnlh->cmd) {
@@ -919,11 +1027,11 @@ NetlinkMessage *NetlinkMessageFactory::CreateMessage(nlmsghdr *msg) {
       default:
         message.reset(new UnknownMessage(gnlh->cmd)); break;
     }
+  }
 
-    if (!message->InitFromNlmsg(msg)) {
-      LOG(ERROR) << "Message did not initialize properly";
-      return NULL;
-    }
+  if (!message->InitFromNlmsg(msg)) {
+    LOG(ERROR) << "Message did not initialize properly";
+    return NULL;
   }
 
   return message.release();
