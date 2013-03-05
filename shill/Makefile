@@ -258,7 +258,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	netlink_attribute.o \
 	nl80211_attribute.o \
 	nl80211_message.o \
-	nl80211_socket.o \
 	nss.o \
 	portal_detector.o \
 	power_manager.o \
@@ -426,6 +425,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wimax_provider.o \
 	mock_wimax_service.o \
 	modem_info_unittest.o \
+	netlink_socket_unittest.o \
 	nice_mock_control.o \
 	nss_unittest.o \
 	portal_detector_unittest.o \

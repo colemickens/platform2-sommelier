@@ -36,54 +36,54 @@
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/logging.h>
-
-enum nl_cb_kind;
-enum nl_cb_type;
-struct nl_msg;
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
 
-class ByteString;
+class Nl80211Message;
+class Sockets;
+struct ByteString;
 
 // Provides an abstraction to a netlink socket.  See
-// http://www.infradead.org/~tgr/libnl/ for documentation on how netlink
-// sockets work.
+// http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
+// for documentation on how netlink sockets work (note that most of the rest of
+// this document discusses libnl -- something not used by this code for
+// netlink communication).
 class NetlinkSocket {
  public:
-  NetlinkSocket() : nl_sock_(NULL) {}
+  static const int kReceiveBufferSize;
+
+  NetlinkSocket();
   virtual ~NetlinkSocket();
 
   // Non-trivial initialization.
   bool Init();
 
-  // Disables sequence checking on the message stream.
-  virtual bool DisableSequenceChecking();
-
   // Returns the file descriptor used by the socket.
-  virtual int GetFd() const;
+  int file_descriptor() const { return file_descriptor_; }
 
-  // Get the next message sequence number for this socket.  Disallow zero so
-  // that we can use that as the 'broadcast' sequence number.
+  // Get the next message sequence number for this socket.
+  // |GetSequenceNumber| won't return zero because that is the 'broadcast'
+  // sequence number.
   virtual uint32_t GetSequenceNumber();
 
-  // Returns the value returned by the 'genl_ctrl_resolve' call.
-  virtual int family_id() const = 0;
-
-  // Returns the family name of the socket created by this type of object.
-  virtual std::string GetSocketFamilyName() const = 0;
+  // Reads data from the socket into |message| and returns true if successful.
+  // The |message| parameter will be resized to hold the entirety of the read
+  // message (and any data in |message| will be overwritten).
+  bool RecvMessage(ByteString *message);
 
   // Sends a message, returns true if successful.
   virtual bool SendMessage(const ByteString &message);
 
  protected:
-  struct nl_sock *GetNlSock() { return nl_sock_; }
+  uint32_t sequence_number_;
 
  private:
-  // Netlink Callback function for nl80211.  Used to disable the sequence
-  // checking on messages received from the netlink module.
-  static int IgnoreSequenceCheck(nl_msg *ignored_msg, void *ignored_arg);
+  friend class NetlinkSocketTest;
+  FRIEND_TEST(NetlinkSocketTest, SequenceNumberTest);
 
-  struct nl_sock *nl_sock_;
+  scoped_ptr<Sockets> sockets_;
+  int file_descriptor_;
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkSocket);
 };

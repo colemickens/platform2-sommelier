@@ -26,10 +26,10 @@
 #include <gtest/gtest.h>
 
 #include "shill/mock_handler80211_object.h"
-#include "shill/mock_nl80211_socket.h"
+#include "shill/mock_netlink_socket.h"
+#include "shill/netlink_socket.h"
 #include "shill/nl80211_attribute.h"
 #include "shill/nl80211_message.h"
-#include "shill/nl80211_socket.h"
 #include "shill/refptr_types.h"
 
 using base::Bind;
@@ -361,14 +361,8 @@ const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
 
 }  // namespace
 
-bool MockNl80211Socket::SendMessage(const ByteString &out_string) {
+bool MockNetlinkSocket::SendMessage(const ByteString &out_string) {
   return true;
-}
-
-uint32_t MockNl80211Socket::GetSequenceNumber() {
-  if (++sequence_number_ == NetlinkMessage::kBroadcastSequenceNumber)
-    ++sequence_number_;
-  return sequence_number_;
 }
 
 class Config80211Test : public Test {
@@ -388,7 +382,7 @@ class Config80211Test : public Test {
   }
 
   Config80211 *config80211_;
-  MockNl80211Socket socket_;
+  MockNetlinkSocket socket_;
 };
 
 class TestHandlerObject {
@@ -428,8 +422,6 @@ TEST_F(Config80211Test, AddLinkTest) {
 
   // Install the handler and subscribe to events using it, wifi down
   // (shouldn't actually send the subscription request until wifi comes up).
-  EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
-
   EXPECT_TRUE(config80211_->AddBroadcastHandler(
       handler_object.message_handler()));
   Config80211::EventType scan_event = Config80211::kEventTypeScan;
@@ -438,12 +430,9 @@ TEST_F(Config80211Test, AddLinkTest) {
   EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
 
   // Wifi up, should subscribe to events.
-  EXPECT_CALL(socket_, AddGroupMembership(scan_event_string))
-      .WillOnce(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
 
   // Second subscribe, same event (should do nothing).
-  EXPECT_CALL(socket_, AddGroupMembership(_)).Times(0);
   EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
 
   // Bring the wifi back down.
@@ -457,10 +446,6 @@ TEST_F(Config80211Test, AddLinkTest) {
 
   // Wifi up (again), should subscribe to the original scan event and the new
   // mlme event.
-  EXPECT_CALL(socket_, AddGroupMembership(scan_event_string))
-      .WillOnce(Return(true));
-  EXPECT_CALL(socket_, AddGroupMembership(mlme_event_string))
-      .WillOnce(Return(true));
   config80211_->SetWifiState(Config80211::kWifiUp);
 }
 

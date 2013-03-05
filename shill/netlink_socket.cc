@@ -1,26 +1,6 @@
 // Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
-//
-// This code is derived from the 'iw' source code.  The copyright and license
-// of that code is as follows:
-//
-// Copyright (c) 2007, 2008  Johannes Berg
-// Copyright (c) 2007  Andy Lutomirski
-// Copyright (c) 2007  Mike Kershaw
-// Copyright (c) 2008-2009  Luis R. Rodriguez
-//
-// Permission to use, copy, modify, and/or distribute this software for any
-// purpose with or without fee is hereby granted, provided that the above
-// copyright notice and this permission notice appear in all copies.
-//
-// THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-// WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-// ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-// WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-// ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-// OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
 #include "shill/netlink_socket.h"
 
@@ -28,6 +8,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <arpa/inet.h>
+#include <linux/if_packet.h>
 #include <net/if.h>
 #include <netlink/attr.h>
 #include <netlink/genl/ctrl.h>
@@ -35,107 +17,131 @@
 #include <netlink/genl/genl.h>
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
+#include <sys/socket.h>
 
 #include <iomanip>
 #include <string>
 
 #include <base/logging.h>
-#include <base/posix/eintr_wrapper.h>
 #include <base/stringprintf.h>
 
 #include "shill/logging.h"
 #include "shill/nl80211_message.h"
+#include "shill/sockets.h"
 
 using base::StringAppendF;
 using std::string;
 
 namespace shill {
 
+// Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
+const int NetlinkSocket::kReceiveBufferSize = 512 * 1024;
+
+NetlinkSocket::NetlinkSocket() : sequence_number_(0), file_descriptor_(-1) {}
+
 NetlinkSocket::~NetlinkSocket() {
-  if (nl_sock_) {
-    nl_socket_free(nl_sock_);
-    nl_sock_ = NULL;
+  if (sockets_ && (file_descriptor_ >= 0)) {
+    sockets_->Close(file_descriptor_);
   }
 }
 
 bool NetlinkSocket::Init() {
-  nl_sock_ = nl_socket_alloc();
-  if (!nl_sock_) {
-    LOG(ERROR) << "Failed to allocate netlink socket.";
+  // Allows for a test to set |sockets_| before calling |Init|.
+  if (sockets_) {
+    LOG(INFO) << "|sockets_| already has a value -- this must be a test.";
+  } else {
+    sockets_.reset(new Sockets);
+  }
+
+  // The following is stolen directly from RTNLHandler.
+  // TODO(wdg): refactor this and RTNLHandler together to use common code.
+  // crosbug.com/39842
+
+  file_descriptor_ = sockets_->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC);
+  if (file_descriptor_ < 0) {
+    LOG(ERROR) << "Failed to open netlink socket";
     return false;
   }
 
-  if (genl_connect(nl_sock_)) {
-    LOG(ERROR) << "Failed to connect to generic netlink.";
+  if (sockets_->SetReceiveBuffer(file_descriptor_, kReceiveBufferSize)) {
+    LOG(ERROR) << "Failed to increase receive buffer size";
+  }
+
+  struct sockaddr_nl addr;
+  memset(&addr, 0, sizeof(addr));
+  addr.nl_family = AF_NETLINK;
+
+  if (sockets_->Bind(file_descriptor_,
+                    reinterpret_cast<struct sockaddr *>(&addr),
+                    sizeof(addr)) < 0) {
+    sockets_->Close(file_descriptor_);
+    file_descriptor_ = -1;
+    LOG(ERROR) << "Netlink socket bind failed";
+    return false;
+  }
+  SLOG(WiFi, 2) << "Netlink socket started";
+
+  return true;
+}
+
+bool NetlinkSocket::RecvMessage(ByteString *message) {
+  if (!message) {
+    LOG(ERROR) << "Null |message|";
     return false;
   }
 
+  // Determine the amount of data currently waiting.
+  const size_t kDummyReadByteCount = 1;
+  ByteString dummy_read(kDummyReadByteCount);
+  ssize_t result;
+  result = sockets_->RecvFrom(
+      file_descriptor_,
+      dummy_read.GetData(),
+      dummy_read.GetLength(),
+      MSG_TRUNC | MSG_PEEK,
+      NULL,
+      NULL);
+  if (result < 0) {
+    PLOG(ERROR) << "Socket recvfrom failed.";
+    return false;
+  }
+
+  // Read the data that was waiting when we did our previous read.
+  message->Resize(result);
+  result = sockets_->RecvFrom(
+      file_descriptor_,
+      message->GetData(),
+      message->GetLength(),
+      0,
+      NULL,
+      NULL);
+  if (result < 0) {
+    PLOG(ERROR) << "Second socket recvfrom failed.";
+    return false;
+  }
   return true;
 }
 
 bool NetlinkSocket::SendMessage(const ByteString &out_msg) {
-  if (out_msg.GetLength() == 0) {
-    SLOG(WiFi, 3) << "Not sending empty message.";
-    return true;
-  }
-
-  if (!nl_sock_) {
-    LOG(ERROR) << "Need to initialize the socket first.";
-    return false;
-  }
-
-  int result = HANDLE_EINTR(send(GetFd(), out_msg.GetConstData(),
-                                 out_msg.GetLength(), 0));
+  ssize_t result = sockets_->Send(file_descriptor(), out_msg.GetConstData(),
+                                  out_msg.GetLength(), 0);
   if (!result) {
     PLOG(ERROR) << "Send failed.";
     return false;
   }
-
-  return true;
-}
-
-
-bool NetlinkSocket::DisableSequenceChecking() {
-  if (!nl_sock_) {
-    LOG(ERROR) << "NULL socket";
-    return false;
-  }
-
-  // NOTE: can't use nl_socket_disable_seq_check(); it's not in this version
-  // of the library.
-  int result = nl_socket_modify_cb(nl_sock_, NL_CB_SEQ_CHECK, NL_CB_CUSTOM,
-                                   NetlinkSocket::IgnoreSequenceCheck, NULL);
-  if (result) {
-    LOG(ERROR) << "Failed call to nl_socket_modify_cb: " << result;
+  if (result != static_cast<ssize_t>(out_msg.GetLength())) {
+    LOG(ERROR) << "Only sent " << result << " bytes out of "
+               << out_msg.GetLength() << ".";
     return false;
   }
 
   return true;
 }
 
-int NetlinkSocket::GetFd() const {
-  if (!nl_sock_) {
-    LOG(ERROR) << "NULL socket";
-    return -1;
-  }
-  return nl_socket_get_fd(nl_sock_);
-}
-
-unsigned int NetlinkSocket::GetSequenceNumber() {
-  unsigned int number = nl_socket_use_seq(nl_sock_);
-  if (number == 0) {
-    number = nl_socket_use_seq(nl_sock_);
-  }
-  if (number == 0) {
-    LOG(WARNING) << "Couldn't get non-zero sequence number";
-    number = 1;
-  }
-  return number;
-}
-
-int NetlinkSocket::IgnoreSequenceCheck(struct nl_msg *ignored_msg,
-                                       void *ignored_arg) {
-  return NL_OK;  // Proceed.
+uint32_t NetlinkSocket::GetSequenceNumber() {
+  if (++sequence_number_ == NetlinkMessage::kBroadcastSequenceNumber)
+    ++sequence_number_;
+  return sequence_number_;
 }
 
 }  // namespace shill.

@@ -17,8 +17,8 @@
 #include "shill/error.h"
 #include "shill/io_handler.h"
 #include "shill/logging.h"
+#include "shill/netlink_socket.h"
 #include "shill/nl80211_message.h"
-#include "shill/nl80211_socket.h"
 #include "shill/scope_logger.h"
 
 using base::Bind;
@@ -67,7 +67,7 @@ void Config80211::Reset(bool full) {
 
 bool Config80211::Init(EventDispatcher *dispatcher) {
   if (!sock_) {
-    sock_ = new Nl80211Socket;
+    sock_ = new NetlinkSocket;
     if (!sock_) {
       LOG(ERROR) << "No memory";
       return false;
@@ -76,10 +76,6 @@ bool Config80211::Init(EventDispatcher *dispatcher) {
     if (!sock_->Init()) {
       return false;
     }
-    // Don't make libnl do the sequence checking (because it'll not like
-    // the broadcast messages for which we'll eventually ask).  We'll do all the
-    // sequence checking we need.
-    sock_->DisableSequenceChecking();
   }
 
   if (!event_types_) {
@@ -142,33 +138,37 @@ void Config80211::ClearBroadcastHandlers() {
 
 bool Config80211::SendMessage(NetlinkMessage *message,
                               const NetlinkMessageHandler &handler) {
+  // TODO(wdg): Replace the following with a discovered value in the absolute
+  // next CL!
+  static const uint16_t kNl80211FamilyId = 19;
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;
   }
 
   ByteString message_string = message->Encode(this->GetSequenceNumber(),
-                                              sock_->family_id());
+                                              kNl80211FamilyId);
+
+  if (handler.is_null()) {
+    SLOG(WiFi, 3) << "Handler for message was null.";
+  } else if (ContainsKey(message_handlers_, message->sequence_number())) {
+    LOG(ERROR) << "A handler already existed for sequence: "
+               << message->sequence_number() << ". Ignoring new handler.";
+  } else {
+    message_handlers_[message->sequence_number()] = handler;
+  }
 
   SLOG(WiFi, 6) << "NL Message " << message->sequence_number()
-                << " Sending ===>";
+                << " Sending (" << message_string.GetLength()
+                << " bytes) ===>";
   message->Print(6);
+  NetlinkMessage::PrintBytes(6, message_string.GetConstData(),
+                             message_string.GetLength());
 
   if (!sock_->SendMessage(message_string)) {
     LOG(ERROR) << "Failed to send Netlink message.";
     return false;
   }
-  if (handler.is_null()) {
-    LOG(INFO) << "Handler for message was null.";
-    return true;
-  }
-  if (ContainsKey(message_handlers_, message->sequence_number())) {
-    LOG(ERROR) << "Sent message, but already had a handler for this message?";
-    return false;
-  }
-  message_handlers_[message->sequence_number()] = handler;
-  LOG(INFO) << "Sent Netlink message with sequence number: "
-            << message->sequence_number();
   return true;
 }
 
@@ -212,10 +212,10 @@ void Config80211::SetWifiState(WifiState new_state) {
 
   if (new_state == kWifiUp) {
     // Install ourselves in the shill mainloop so we receive messages on the
-    // nl80211 socket.
+    // netlink socket.
     if (dispatcher_) {
       dispatcher_handler_.reset(dispatcher_->CreateInputHandler(
-          GetFd(),
+          file_descriptor(),
           dispatcher_callback_,
           Bind(&Config80211::OnReadError, weak_ptr_factory_.GetWeakPtr())));
     }
@@ -253,9 +253,6 @@ bool Config80211::ActuallySubscribeToEvents(EventType type) {
   string group_name;
 
   if (!GetEventTypeString(type, &group_name)) {
-    return false;
-  }
-  if (!sock_->AddGroupMembership(group_name)) {
     return false;
   }
   return true;

@@ -31,7 +31,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/io_handler.h"
-#include "shill/nl80211_socket.h"
+#include "shill/netlink_socket.h"
 
 namespace shill {
 
@@ -73,7 +73,9 @@ class Config80211 {
   bool Init(EventDispatcher *dispatcher);
 
   // Returns the file descriptor of socket used to read wifi data.
-  int GetFd() const { return (sock_ ? sock_->GetFd() : -1); }
+  int file_descriptor() const {
+    return (sock_ ? sock_->file_descriptor() : -1);
+  }
 
   // Install a Config80211 NetlinkMessageHandler.  The callback is a
   // user-supplied object to be called by the system for user-bound messages
@@ -172,7 +174,7 @@ class Config80211 {
   base::Callback<void(InputData *)> dispatcher_callback_;
   scoped_ptr<IOHandler> dispatcher_handler_;
 
-  Nl80211Socket *sock_;
+  NetlinkSocket *sock_;
 
   DISALLOW_COPY_AND_ASSIGN(Config80211);
 };
