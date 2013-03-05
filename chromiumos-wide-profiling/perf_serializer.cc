@@ -136,6 +136,16 @@ void PerfSerializer::SerializeCommSample(
   sample->set_tid(event->comm.tid);
   sample->set_comm(event->comm.comm);
   sample->set_comm_md5_prefix(Md5Prefix(event->comm.comm));
+
+  const u64* array =
+      reinterpret_cast<const u64*>(reinterpret_cast<uint64>(event) +
+                                   sizeof(event->comm));
+
+  // Comm event data contains additional time field.
+  if (type_ & PERF_SAMPLE_TIME) {
+    sample->set_sample_time(*array);
+    array++;
+  }
 }
 
 void PerfSerializer::DeserializeCommSample(
@@ -147,6 +157,14 @@ void PerfSerializer::DeserializeCommSample(
            sizeof(event->comm.comm),
            "%s",
            sample->comm().c_str());
+
+  u64* array =
+      reinterpret_cast<u64*>(reinterpret_cast<uint64>(event) +
+                             sizeof(event->comm));
+  if (sample->has_sample_time()) {
+    *array = sample->sample_time();
+    array++;
+  }
 }
 
 void PerfSerializer::SerializeMMapSample(

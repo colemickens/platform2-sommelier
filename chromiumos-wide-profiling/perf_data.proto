@@ -145,16 +145,22 @@ message PerfDataProto {
     repeated uint64 ids = 2;
   }
 
-  // Next tag: 5
+  // Next tag: 6
   message CommEvent {
     // Process id.
     optional uint32 pid = 1;
+
     // Thread id.
     optional uint32 tid = 2;
+
     // Comm string.
     optional string comm = 3;
+
     // Comm string's md5 prefix
     optional uint64 comm_md5_prefix = 4;
+
+    // Perf sample timestamp.
+    optional uint64 sample_time = 5;
   }
 
   // Next tag: 8
