@@ -161,6 +161,9 @@ message AttestationResetRequest {
   //   Data encryption: 256-bit key, AES-CBC with PKCS5 padding.
   //   MAC: HMAC-SHA-512 using the AES key.
   optional EncryptedData encrypted_identity_credential = 1;
+
+  // The one time token to make sure the reset process can be triggered only once.
+  optional bytes token = 2;
 }
 
 // The response from the attestation server for the reset request.
