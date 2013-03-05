@@ -295,9 +295,12 @@ bool PerfReader::ProcessEvent(const event_t& event) {
     case PERF_RECORD_FORK:
       LOG(INFO) << "FORK: " << event.fork.pid << " <- " << event.fork.ppid;
       break;
+    case PERF_RECORD_EXIT:
+      // EXIT events have the same structure as FORK events.
+      LOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
+      break;
     case PERF_RECORD_LOST:
     case PERF_RECORD_COMM:
-    case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
     case PERF_RECORD_READ:

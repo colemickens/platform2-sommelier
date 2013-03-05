@@ -183,6 +183,43 @@ void PerfSerializer::SerializeForkSample(
   sample->set_tid(event->fork.tid);
   sample->set_ptid(event->fork.ppid);
   sample->set_time(event->fork.time);
+
+  union {
+    u64 val64;
+    u32 val32[2];
+  } u;
+  const u64* array =
+      reinterpret_cast<const u64*>(reinterpret_cast<uint64>(event) +
+                                   sizeof(event->fork));
+
+  // Fork event data contains additional pid/tid, time, id, and cpu fields.
+  // TODO(sque): since this follows the same format as SerializeRecordSample(),
+  // put it in a common function.  Do the same for DeserializeForkSample().
+  if (type_ & PERF_SAMPLE_TID) {
+    u.val64 = *array;
+    sample->set_sample_pid(u.val32[0]);
+    sample->set_sample_tid(u.val32[1]);
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_TIME) {
+    sample->set_sample_time(*array);
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_ADDR) {
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_ID) {
+    sample->set_sample_id(*array);
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_STREAM_ID) {
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_CPU) {
+    u.val64 = *array;
+    sample->set_sample_cpu(u.val32[0]);
+    array++;
+  }
 }
 
 void PerfSerializer::DeserializeForkSample(
@@ -193,6 +230,40 @@ void PerfSerializer::DeserializeForkSample(
   event->fork.tid = sample->tid();
   event->fork.ptid = sample->ptid();
   event->fork.time = sample->time();
+
+  union {
+    u64 val64;
+    u32 val32[2];
+  } u;
+  u64* array =
+      reinterpret_cast<u64*>(reinterpret_cast<uint64>(event) +
+                             sizeof(event->fork));
+  if (sample->has_sample_tid()) {
+    u.val32[0] = sample->sample_pid();
+    u.val32[1] = sample->sample_tid();
+    *array = u.val64;
+    array++;
+  }
+  if (sample->has_sample_time()) {
+    *array = sample->sample_time();
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_ADDR) {
+    array++;
+  }
+  if (sample->has_sample_id()) {
+    *array = sample->sample_id();
+    array++;
+  }
+  if (type_ & PERF_SAMPLE_STREAM_ID) {
+    array++;
+  }
+  if (sample->has_sample_cpu()) {
+    u.val32[0] = sample->sample_cpu();
+    u.val32[1] = 0;
+    *array = u.val64;
+    array++;
+  }
 }
 
 void PerfSerializer::DeserializeEvent(
@@ -212,12 +283,12 @@ void PerfSerializer::DeserializeEvent(
       DeserializeCommSample(event, &event_proto->comm_event());
       break;
     }
+    case PERF_RECORD_EXIT:
     case PERF_RECORD_FORK: {
       DeserializeForkSample(event, &event_proto->fork_event());
       break;
     }
     case PERF_RECORD_LOST:
-    case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
     case PERF_RECORD_READ:
@@ -250,6 +321,7 @@ void PerfSerializer::SerializeEvent(
       SerializeCommSample(event, comm_proto);
       break;
     }
+    case PERF_RECORD_EXIT:
     case PERF_RECORD_FORK: {
       PerfDataProto_ForkEvent* fork_proto =
           event_proto->mutable_fork_event();
@@ -257,7 +329,6 @@ void PerfSerializer::SerializeEvent(
       break;
     }
     case PERF_RECORD_LOST:
-    case PERF_RECORD_EXIT:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
     case PERF_RECORD_READ:

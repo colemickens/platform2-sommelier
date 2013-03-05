@@ -208,7 +208,11 @@ message PerfDataProto {
     optional uint32 raw_size = 10;
   }
 
-  // Next tag: 6
+  // ForkEvent is used for both FORK and EXIT events, which have the same data
+  // format.  We don't want to call this "ForkOrExitEvent", in case a separate
+  // exit event is introduced in the future.
+
+  // Next tag: 11
   message ForkEvent {
     // Forked process ID.
     optional uint32 pid = 1;
@@ -224,6 +228,13 @@ message PerfDataProto {
 
     // Time of fork event.
     optional uint64 time = 5;
+
+    // The following fields have the same meaning as in SampleEvent.
+    optional uint32 sample_pid = 6;
+    optional uint32 sample_tid = 7;
+    optional uint64 sample_time = 8;
+    optional uint64 sample_id = 9;
+    optional uint32 sample_cpu = 10;
   }
 
   // Next tag: 4
