@@ -256,11 +256,12 @@ loop_offset_setup() {
   local filename=$1
   local offset=$2
 
-  LOOP_DEV=$(sudo losetup --show -f -o $(($offset * 512)) ${filename})
+  LOOP_DEV=$(sudo losetup -f)
   if [ -z "$LOOP_DEV" ]; then
     echo "No free loop device. Free up a loop device or reboot. Exiting."
     exit 1
   fi
+  sudo losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
 
   LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
 }
@@ -514,9 +515,13 @@ if [ -f "${ROOT}"/root/.dev_mode ]; then
     if [ ! -d "${ROOT}/mnt/stateful_partition/${DIR}" ]; then
       continue
     fi
+    OPT_U=""
+    if cp -u /dev/null /dev/zero 2>/dev/null; then
+      OPT_U="u"
+    fi
     PARENT=$(dirname ${DIR})
     sudo mkdir -p ${TMPMNT}/${PARENT}
-    sudo cp -fpru "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
+    sudo cp -a${OPT_U} "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
   done
 elif crossystem 'devsw_boot?1' ; then
   # The dev switch was on when we booted; we assume it will be on
