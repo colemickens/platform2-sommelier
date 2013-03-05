@@ -117,8 +117,7 @@ void KeyboardBacklightController::HandleVideoActivity(
 }
 
 bool KeyboardBacklightController::Init() {
-  if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
-      !backlight_->GetCurrentBrightnessLevel(&current_level_)) {
+  if (!backlight_->GetMaxBrightnessLevel(&max_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";
     is_initialized_ = false;
     return false;
@@ -126,30 +125,11 @@ bool KeyboardBacklightController::Init() {
 
   ReadPrefs();
 
-  // This needs to be clamped since the brightness steps that are defined might
-  // not use the whole range of the backlight, so the EC set level might be out
-  // of range.
-  double percent = std::min(LevelToPercent(current_level_),
-                            als_target_percent_max_);
-  // Select the nearest step to the current backlight level and adjust the
-  // target percent in line with it. Set |percent_delta| to an arbitrary too
-  // large delta and go through |als_steps_| minimizing the difference
-  // between the step's |als_target_percent_| and the percent calculated above.
-  double percent_delta = 2 * als_target_percent_max_;
-  for (size_t i = 0; i < als_steps_.size(); i++) {
-    double temp_delta = abs(percent - als_steps_[i].target_percent);
-    if (temp_delta < percent_delta) {
-      percent_delta = temp_delta;
-      als_step_index_ = i;
-    }
+  if (!ResetAls()) {
+    is_initialized_ = false;
+    return false;
   }
-  CHECK(percent_delta < 2 * als_target_percent_max_);
-  SetCurrentBrightnessPercent(
-      als_steps_[als_step_index_].target_percent,
-      BRIGHTNESS_CHANGE_AUTOMATED,
-      TRANSITION_FAST);
 
-  ResetHysteresis();
   is_initialized_ = true;
   return true;
 }
@@ -259,10 +239,12 @@ bool KeyboardBacklightController::SetPowerState(PowerState new_state) {
     return true;
   }
 
-  // When returning to active we need to restart hysteresis since we might have
-  // been ignoring changes from the ALS.
-  if (old_state != BACKLIGHT_ACTIVE && state_ == BACKLIGHT_ACTIVE)
-    ResetHysteresis();
+  // When returning to active we need to restart the internal ALS values since
+  // we might have been ignoring changes from the ALS.
+  if (old_state != BACKLIGHT_ACTIVE && state_ == BACKLIGHT_ACTIVE) {
+    if (!ResetAls())
+      return false;
+  }
 
   SetCurrentBrightnessPercent(PercentToLevel(GetNewLevel()),
                               user_step_index_ != -1 ?
@@ -607,7 +589,32 @@ int64 KeyboardBacklightController::GetNewLevel() const {
   };
 }
 
-void KeyboardBacklightController::ResetHysteresis() {
+bool KeyboardBacklightController::ResetAls() {
+  if (!backlight_->GetCurrentBrightnessLevel(&current_level_)) {
+    LOG(ERROR) << "Querying backlight during ALS reset failed";
+    return false;
+  }
+
+  // This needs to be clamped since the brightness steps that are defined might
+  // not use the whole range of the backlight, so the EC set level might be out
+  // of range.
+  double percent = std::min(LevelToPercent(current_level_),
+                            als_target_percent_max_);
+  // Select the nearest step to the current backlight level and adjust the
+  // target percent in line with it. Set |percent_delta| to an arbitrary too
+  // large delta and go through |als_steps_| minimizing the difference
+  // between the step's |als_target_percent_| and the percent calculated above.
+  double percent_delta = 2 * als_target_percent_max_;
+  for (size_t i = 0; i < als_steps_.size(); i++) {
+    double temp_delta = abs(percent - als_steps_[i].target_percent);
+    if (temp_delta < percent_delta) {
+      percent_delta = temp_delta;
+      als_step_index_ = i;
+      als_target_percent_ = als_steps_[i].target_percent;
+    }
+  }
+  CHECK(percent_delta < 2 * als_target_percent_max_);
+
   hysteresis_state_ = ALS_HYST_IDLE;
   hysteresis_count_ = 0;
   // Create a synthetic lux value that is inline with |als_step_index_|.
@@ -615,6 +622,8 @@ void KeyboardBacklightController::ResetHysteresis() {
       (als_steps_[als_step_index_].increase_threshold -
        als_steps_[als_step_index_].decrease_threshold) / 2;
   LOG(INFO) << "Created synthetic lux value of " << lux_level_;
+
+  return true;
 }
 
 }  // namespace power_manager
