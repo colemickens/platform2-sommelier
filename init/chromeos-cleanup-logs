@@ -8,6 +8,17 @@
 
 CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
 NUM_DAYS_TO_PRESERVE=7
+STATEFUL="/mnt/stateful_partition"
+
+# Get the percentage of space used on the stateful partition.
+get_stateful_space() {
+  local stateful_space="$(df -P ${STATEFUL} | grep -m 1 ${STATEFUL})"
+  # Remove everything after and including the "%"
+  stateful_space="${stateful_space%%%*}"
+  # Remove all fields except the last one.
+  stateful_space="${stateful_space##* }"
+  echo $stateful_space
+}
 
 remove_old_dated_files() {
   find "$1" -name "$2" -mtime +${NUM_DAYS_TO_PRESERVE} -exec rm '{}' ';'
@@ -72,3 +83,6 @@ metrics_client Platform.DiskUsageVar \
                $(du -sxk /var/ | awk '{print $1}') $METRICS_ARGS
 metrics_client Platform.DiskUsageChronos \
                $(du -sxk /home/chronos | awk '{print $1}') $METRICS_ARGS
+
+# Report overall stateful usage.
+metrics_client -e Platform.StatefulUsage "$(get_stateful_space)" 101
