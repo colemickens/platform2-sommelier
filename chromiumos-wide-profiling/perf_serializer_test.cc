@@ -90,12 +90,12 @@ TEST(PerfReaderTest, Test1Cycle) {
     output_perf_reader2.ReadFile(output_perf_data2);
 
     // Make sure the # of events do not change.
-    ASSERT_TRUE(input_perf_reader.events().size() ==
-                output_perf_reader.events().size());
-    ASSERT_TRUE(input_perf_reader.events().size() ==
-                output_perf_reader1.events().size());
-    ASSERT_TRUE(input_perf_reader.events().size() ==
-                output_perf_reader2.events().size());
+    ASSERT_EQ(output_perf_reader.events().size(),
+              input_perf_reader.events().size());
+    ASSERT_EQ(output_perf_reader1.events().size(),
+              input_perf_reader.events().size());
+    ASSERT_EQ(output_perf_reader2.events().size(),
+              input_perf_reader.events().size());
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
     EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
