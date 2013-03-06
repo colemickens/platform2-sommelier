@@ -20,7 +20,7 @@ using quipper::PerfDataProto_PerfFileAttr;
 using quipper::PerfDataProto_PerfEventAttr;
 using quipper::PerfDataProto_SampleEvent;
 
-PerfSerializer::PerfSerializer() {
+PerfSerializer::PerfSerializer() : sample_type_(0) {
 }
 
 PerfSerializer::~PerfSerializer() {
@@ -45,98 +45,53 @@ void PerfSerializer::DeserializeEventHeader(
 void PerfSerializer::SerializeRecordSample(
     const event_t* event,
     PerfDataProto_SampleEvent* sample) const {
-  union {
-    u64 val64;
-    u32 val32[2];
-  } u;
-  const u64* array = event->sample.array;
-  if (sample_type_ & PERF_SAMPLE_IP) {
-    sample->set_ip(event->ip.ip);
-    array++;
-  }
+  struct perf_sample perf_sample;
+  ReadPerfSampleInfo(*event, sample_type_, &perf_sample);
+
+  if (sample_type_ & PERF_SAMPLE_IP)
+    sample->set_ip(perf_sample.ip);
   if (sample_type_ & PERF_SAMPLE_TID) {
-    u.val64 = *array;
-    sample->set_pid(u.val32[0]);
-    sample->set_tid(u.val32[1]);
-    array++;
+    sample->set_pid(perf_sample.pid);
+    sample->set_tid(perf_sample.tid);
   }
-  if (sample_type_ & PERF_SAMPLE_TIME) {
-    sample->set_time(*array);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_ADDR) {
-    sample->set_addr(*array);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_ID) {
-    sample->set_id(*array);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_STREAM_ID) {
-    sample->set_stream_id(*array);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_CPU) {
-    u.val64 = *array;
-    sample->set_cpu(u.val32[0]);
-    // TODO (sque): The upper uint32 of PERF_SAMPLE_CPU is listed as "res" in
-    // perf_event.h in the kernel.  However, it doesn't appear to be used in the
-    // perf code.  For now, make sure it is unused.  If that changes, both this
-    // code and the corresponding block in DeserializeRecordSample() should be
-    // updated accordingly.
-    CHECK(u.val32[1] == 0);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_PERIOD) {
-    sample->set_period(*array);
-    array++;
-  }
+  if (sample_type_ & PERF_SAMPLE_TIME)
+    sample->set_time(perf_sample.time);
+  if (sample_type_ & PERF_SAMPLE_ADDR)
+    sample->set_addr(perf_sample.addr);
+  if (sample_type_ & PERF_SAMPLE_ID)
+    sample->set_id(perf_sample.id);
+  if (sample_type_ & PERF_SAMPLE_STREAM_ID)
+    sample->set_stream_id(perf_sample.stream_id);
+  if (sample_type_ & PERF_SAMPLE_CPU)
+    sample->set_cpu(perf_sample.cpu);
+  if (sample_type_ & PERF_SAMPLE_PERIOD)
+    sample->set_period(perf_sample.period);
 }
 
 void PerfSerializer::DeserializeRecordSample(
     event_t* event,
     const PerfDataProto_SampleEvent* sample) const {
-  union {
-    u64 val64;
-    u32 val32[2];
-  } u;
-  u64* array = event->sample.array;
-  if (sample->has_ip()) {
-    event->ip.ip = sample->ip();
-    array++;
-  }
+  struct perf_sample perf_sample;
+  if (sample->has_ip())
+    perf_sample.ip = sample->ip();
   if (sample->has_tid()) {
-    u.val32[0] = sample->pid();
-    u.val32[1] = sample->tid();
-    *array = u.val64;
-    array++;
+    perf_sample.pid = sample->pid();
+    perf_sample.tid = sample->tid();
   }
-  if (sample->has_time()) {
-    *array = sample->time();
-    array++;
-  }
-  if (sample->has_addr()) {
-    *array = sample->addr();
-    array++;
-  }
-  if (sample->has_id()) {
-    *array = sample->id();
-    array++;
-  }
-  if (sample->has_stream_id()) {
-    *array = sample->stream_id();
-    array++;
-  }
-  if (sample->has_cpu()) {
-    u.val32[0] = sample->cpu();
-    u.val32[1] = 0;
-    *array = u.val64;
-    array++;
-  }
-  if (sample->has_period()) {
-    *array = sample->period();
-    array++;
-  }
+  if (sample->has_time())
+    perf_sample.time = sample->time();
+  if (sample->has_addr())
+    perf_sample.addr = sample->addr();
+  if (sample->has_id())
+    perf_sample.id = sample->id();
+  if (sample->has_stream_id())
+    perf_sample.stream_id = sample->stream_id();
+  if (sample->has_cpu())
+    perf_sample.cpu = sample->cpu();
+  if (sample->has_period())
+    perf_sample.period = sample->period();
+
+  WritePerfSampleInfo(perf_sample, sample_type_, event);
 }
 
 void PerfSerializer::SerializeCommSample(
