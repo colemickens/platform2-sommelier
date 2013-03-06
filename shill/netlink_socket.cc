@@ -32,6 +32,9 @@
 using base::StringAppendF;
 using std::string;
 
+// This is from a version of linux/socket.h that we don't have.
+#define SOL_NETLINK 270
+
 namespace shill {
 
 // Keep this large enough to avoid overflows on IPv6 SNM routing update spikes
@@ -135,6 +138,16 @@ bool NetlinkSocket::SendMessage(const ByteString &out_msg) {
     return false;
   }
 
+  return true;
+}
+
+bool NetlinkSocket::SubscribeToEvents(uint32_t group_id) {
+  int err = setsockopt(file_descriptor_, SOL_NETLINK, NETLINK_ADD_MEMBERSHIP,
+                       &group_id, sizeof(group_id));
+  if (err < 0) {
+    PLOG(ERROR) << "setsockopt didn't work.";
+    return false;
+  }
   return true;
 }
 

@@ -31,6 +31,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/nl80211_message.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
@@ -103,7 +104,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
-      scan_interval_seconds_(kDefaultScanIntervalSeconds) {
+      scan_interval_seconds_(kDefaultScanIntervalSeconds),
+      config80211_(Config80211::GetInstance()) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       flimflam::kBgscanMethodProperty,
@@ -138,6 +140,7 @@ WiFi::WiFi(ControlInterface *control_interface,
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
+  CHECK(config80211_);
   SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -166,10 +169,15 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   // Connect to WPA supplicant if it's already present. If not, we'll connect to
   // it when it appears.
   ConnectToSupplicant();
-  Config80211 *config80211 = Config80211::GetInstance();
-  if (config80211) {
-    config80211->SetWifiState(Config80211::kWifiUp);
-  }
+  // Subscribe to multicast events.
+  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                  Config80211::kEventTypeConfig);
+  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                  Config80211::kEventTypeScan);
+  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                  Config80211::kEventTypeRegulatory);
+  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                  Config80211::kEventTypeMlme);
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {

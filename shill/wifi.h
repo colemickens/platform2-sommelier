@@ -96,6 +96,7 @@
 
 namespace shill {
 
+class Config80211;
 class Error;
 class GeolocationInfo;
 class KeyValueStore;
@@ -399,6 +400,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   int32 bgscan_signal_threshold_dbm_;
   bool scan_pending_;
   uint16 scan_interval_seconds_;
+
+  Config80211 *config80211_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

@@ -2,9 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// This library provides an abstracted interface to the cfg80211 kernel module
-// and mac80211 drivers.  These are accessed via a netlink socket using the
-// following software stack:
+// This software provides an abstracted interface to the netlink socket
+// interface.  In its current implementation it is used, primarily, to
+// communicate with the cfg80211 kernel module and mac80211 drivers:
 //
 //         [shill]--[nl80211 library, libnl_genl/libnl libraries]
 //            |
@@ -13,6 +13,48 @@
 // [cfg80211 kernel module]
 //            |
 //    [mac80211 drivers]
+//
+// In order to send a message and handle it's response, do the following:
+// - Create a handler (it'll want to verify that it's the kind of message you
+//   want, cast it to the appropriate type, and get attributes from the cast
+//   message):
+//
+//    #include "nl80211_message.h"
+//    class SomeClass {
+//      static void MyMessageHandler(const NetlinkMessage &raw) {
+//        if (raw.message_type() != ControlNetlinkMessage::kMessageType)
+//          return;
+//        const ControlNetlinkMessage *message =
+//          reinterpret_cast<const ControlNetlinkMessage *>(&raw);
+//        if (message.command() != NewFamilyMessage::kCommand)
+//          return;
+//        uint16_t my_attribute;
+//        message->const_attributes()->GetU16AttributeValue(
+//          CTRL_ATTR_FAMILY_ID, &my_attribute);
+//      }  // MyMessageHandler.
+//    }  // class SomeClass.
+//
+// - Instantiate a message:
+//
+//    #include "nl80211_message.h"
+//    GetFamilyMessage msg;
+//
+// - And add attributes:
+//
+//    if (msg.attributes()->CreateStringAttribute(CTRL_ATTR_FAMILY_NAME,
+//                                                "CTRL_ATTR_FAMILY_NAME")) {
+//      msg.attributes()->SetStringAttributeValue(CTRL_ATTR_FAMILY_NAME,
+//                                                "foo");
+//    }
+//
+// - Then send the message, passing-in a closure to the handler you created:
+//
+//    Config80211 *config80211 = Config80211::GetInstance();
+//    config80211->SendMessage(&msg, Bind(&SomeClass::MyMessageHandler));
+//
+// Config80211 will then save your handler and send your message.  When a
+// response to your message arrives, it'll call your handler.
+//
 
 #ifndef SHILL_CONFIG80211_H_
 #define SHILL_CONFIG80211_H_
@@ -39,24 +81,41 @@ class Error;
 struct InputData;
 class NetlinkMessage;
 
-// Provides a transport-independent ability to receive status from the wifi
-// configuration.  In its current implementation, it uses the netlink socket
-// interface to interface with the wifi system.
-//
-// Config80211 is a singleton and, as such, coordinates access to libnl.
+// Config80211 is a singleton that coordinates sending netlink messages to,
+// and receiving netlink messages from, the kernel.  The first use of this is
+// to communicate between user-space and the cfg80211 module that manages wifi
+// drivers.  Bring Config80211 up as follows:
+//  Config80211 *config80211_ = Config80211::GetInstance();
+//  EventDispatcher dispatcher_;
+//  config80211_->Init();  // Initialize the socket.
+//  // Get message types for all dynamic message types.
+//  Nl80211Message::SetMessageType(
+//      config80211_->GetFamily(Nl80211Message::kMessageTypeString,
+//                              Bind(&Nl80211Message::CreateMessage)));
+//  config80211_->Start(&dispatcher_);  // Leave event loop handling to others.
 class Config80211 {
  public:
   typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
 
-  // The different kinds of events to which we can subscribe (and receive)
-  // from cfg80211.
-  enum EventType {
-    kEventTypeConfig,
-    kEventTypeScan,
-    kEventTypeRegulatory,
-    kEventTypeMlme,
-    kEventTypeCount
+  // Encapsulates all the different things we know about a specific message
+  // type like its name, its id, and, eventually, a factory for creating
+  // messages of the designated type.
+  struct MessageType {
+    MessageType();
+
+    uint16_t family_id;
+
+    // Multicast groups supported by the family.  The string and mapping to
+    // a group id are extracted from the CTRL_CMD_NEWFAMILY message.
+    std::map<std::string, uint32_t> groups;
   };
+
+  // Various kinds of events to which we can subscribe (and receive) from
+  // cfg80211.
+  static const char kEventTypeConfig[];
+  static const char kEventTypeScan[];
+  static const char kEventTypeRegulatory[];
+  static const char kEventTypeMlme[];
 
   // This represents whether the cfg80211/mac80211 are installed in the kernel.
   enum WifiState {
@@ -64,55 +123,58 @@ class Config80211 {
     kWifiDown
   };
 
-  virtual ~Config80211();
-
-  // This is a singleton -- use Config80211::GetInstance()->Foo()
+  // Config80211 is a singleton and this is the way to access it.
   static Config80211 *GetInstance();
 
   // Performs non-trivial object initialization of the Config80211 singleton.
-  bool Init(EventDispatcher *dispatcher);
+  bool Init();
 
-  // Returns the file descriptor of socket used to read wifi data.
-  int file_descriptor() const {
-    return (sock_ ? sock_->file_descriptor() : -1);
-  }
+  // Passes the job of waiting for, and the subsequent reading from, the
+  // netlink socket to |dispatcher|.
+  void Start(EventDispatcher *dispatcher);
 
-  // Install a Config80211 NetlinkMessageHandler.  The callback is a
+  // The following methods deal with the network family table.  This table
+  // associates netlink family names with family_ids (also called message
+  // types).  Note that some families have static ids assigned to them but
+  // others require the kernel to resolve a string describing the family into
+  // a dynamically-determined id.
+
+  // Returns the family_id (message type) associated with |family_name|,
+  // calling the kernel if needed.  Returns
+  // |NetlinkMessage::kIllegalMessageType| if the message type could not be
+  // determined.  May block so |GetFamily| should be called before entering the
+  // event loop.
+  uint16_t GetFamily(std::string family_name);
+
+  // Install a Config80211 NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
   // that do not have a corresponding messaage-specific callback.
   // |AddBroadcastHandler| should be called before |SubscribeToEvents| since
   // the result of this call are used for that call.
   bool AddBroadcastHandler(const NetlinkMessageHandler &messge_handler);
 
-  // Uninstall a Config80211 Handler.
+  // Uninstall a NetlinkMessage Handler.
   bool RemoveBroadcastHandler(const NetlinkMessageHandler &message_handler);
 
-  // Determines whether a callback is in the list of broadcast callbacks.
+  // Determines whether a handler is in the list of broadcast handlers.
   bool FindBroadcastHandler(const NetlinkMessageHandler &message_handler) const;
 
   // Uninstall all broadcast netlink message handlers.
   void ClearBroadcastHandlers();
 
-  // Sends a kernel-bound message using the Config80211 socket after installing
-  // a callback to handle it.
+  // Sends a netlink message to the kernel using the Config80211 socket after
+  // installing a handler to deal with the kernel's response to the message.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
   bool SendMessage(NetlinkMessage *message, const NetlinkMessageHandler
                    &message_handler);
 
-  // Uninstall a Config80211 Handler for a specific message.
+  // Uninstall the handler for a specific netlink message.
   bool RemoveMessageHandler(const NetlinkMessage &message);
-
-  // Return a string corresponding to the passed-in EventType.
-  static bool GetEventTypeString(EventType type, std::string *value);
 
   // Sign-up to receive and log multicast events of a specific type (once wifi
   // is up).
-  bool SubscribeToEvents(EventType type);
-
-  // Indicate that the mac80211 driver is up and, ostensibly, accepting event
-  // subscription requests or down.
-  void SetWifiState(WifiState new_state);
+  bool SubscribeToEvents(const std::string &family, const std::string &group);
 
   // Gets the next sequence number for a NetlinkMessage to be sent over
   // Config80211's netlink socket.
@@ -126,19 +188,23 @@ class Config80211 {
  private:
   friend class Config80211Test;
   friend class ShillDaemonTest;
+  FRIEND_TEST(Config80211Test, AddLinkTest);
   FRIEND_TEST(Config80211Test, BroadcastHandlerTest);
   FRIEND_TEST(Config80211Test, MessageHandlerTest);
-  typedef std::map<EventType, std::string> EventTypeStrings;
-  typedef std::set<EventType> SubscribedEvents;
   typedef std::map<uint32_t, NetlinkMessageHandler> MessageHandlers;
 
-  // Sign-up to receive and log multicast events of a specific type (assumes
-  // wifi is up).
-  bool ActuallySubscribeToEvents(EventType type);
+  static const long kMaximumNewFamilyWaitSeconds;
+  static const long kMaximumNewFamilyWaitMicroSeconds;
+
+  // Returns the file descriptor of socket used to read wifi data.
+  int file_descriptor() const {
+    return (sock_ ? sock_->file_descriptor() : -1);
+  }
 
   // EventDispatcher calls this when data is available on our socket.  This
   // method passes each, individual, message in the input to
-  // |OnNlMessageReceived|.
+  // |OnNlMessageReceived|.  Each part of a multipart message gets handled,
+  // individually, by this method.
   void OnRawNlMessageReceived(InputData *data);
 
   // This method processes a message from |OnRawNlMessageReceived| by passing
@@ -150,9 +216,12 @@ class Config80211 {
   // Called by InputHandler on exceptional events.
   void OnReadError(const Error &error);
 
-  // Just for tests, this method turns off WiFi and clears the subscribed events
-  // list. If |full| is true, also clears state set by Init.
+  // Just for tests, this method turns off WiFi and clears the subscribed
+  // events list. If |full| is true, also clears state set by Init.
   void Reset(bool full);
+
+  // Handles a CTRL_CMD_NEWFAMILY message from the kernel.
+  void OnNewFamilyMessage(const NetlinkMessage &message);
 
   // Config80211 Handlers, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.
@@ -161,13 +230,6 @@ class Config80211 {
   // Message-specific callbacks, mapped by message ID.
   MessageHandlers message_handlers_;
 
-  static EventTypeStrings *event_types_;
-
-  WifiState wifi_state_;
-
-  // The subscribed multicast groups exist on a per-socket basis.
-  SubscribedEvents subscribed_events_;
-
   // Hooks needed to be called by shill's EventDispatcher.
   EventDispatcher *dispatcher_;
   base::WeakPtrFactory<Config80211> weak_ptr_factory_;
@@ -175,6 +237,7 @@ class Config80211 {
   scoped_ptr<IOHandler> dispatcher_handler_;
 
   NetlinkSocket *sock_;
+  std::map<const std::string, MessageType> message_types_;
 
   DISALLOW_COPY_AND_ASSIGN(Config80211);
 };

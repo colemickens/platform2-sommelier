@@ -78,15 +78,19 @@ const uint16_t NetlinkMessage::kIllegalMessageType = UINT16_MAX;
 
 const char Nl80211Message::kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
 const unsigned int Nl80211Message::kEthernetAddressBytes = 6;
+const char Nl80211Message::kMessageTypeString[] = "nl80211";
 map<uint16_t, string> *Nl80211Message::reason_code_string_ = NULL;
 map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 uint16_t Nl80211Message::nl80211_message_type_ = kIllegalMessageType;
 
 // NetlinkMessage
 
-ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number,
-                                        uint16_t nlmsg_type) {
+ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   ByteString result;
+  if (message_type_ == kIllegalMessageType) {
+    LOG(ERROR) << "Message type not set";
+    return result;
+  }
   sequence_number_ = sequence_number;
   if (sequence_number_ == kBroadcastSequenceNumber) {
     LOG(ERROR) << "Couldn't get a legal sequence number";
@@ -97,7 +101,7 @@ ByteString NetlinkMessage::EncodeHeader(uint32_t sequence_number,
   nlmsghdr header;
   size_t nlmsghdr_with_pad = NLMSG_ALIGN(sizeof(header));
   header.nlmsg_len = nlmsghdr_with_pad;
-  header.nlmsg_type = nlmsg_type;
+  header.nlmsg_type = message_type_;
   header.nlmsg_flags = NLM_F_REQUEST | flags_;
   header.nlmsg_seq = sequence_number_;
   header.nlmsg_pid = getpid();
@@ -210,8 +214,7 @@ bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
   return true;
 }
 
-ByteString ErrorAckMessage::Encode(uint32_t sequence_number,
-                                   uint16_t nlmsg_type) {
+ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send errors or Acks to the kernel";
   return ByteString();
 }
@@ -233,7 +236,7 @@ void ErrorAckMessage::Print(int log_level) const {
 
 const uint16_t NoopMessage::kMessageType = NLMSG_NOOP;
 
-ByteString NoopMessage::Encode(uint32_t sequence_number, uint16_t nlmsg_type) {
+ByteString NoopMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send NOOP to the kernel";
   return ByteString();
 }
@@ -244,7 +247,7 @@ void NoopMessage::Print(int log_level) const {
 
 const uint16_t DoneMessage::kMessageType = NLMSG_DONE;
 
-ByteString DoneMessage::Encode(uint32_t sequence_number, uint16_t nlmsg_type) {
+ByteString DoneMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR)
       << "We're not supposed to send Done messages (are we?) to the kernel";
   return ByteString();
@@ -256,8 +259,7 @@ void DoneMessage::Print(int log_level) const {
 
 const uint16_t OverrunMessage::kMessageType = NLMSG_OVERRUN;
 
-ByteString OverrunMessage::Encode(uint32_t sequence_number,
-                                  uint16_t nlmsg_type) {
+ByteString OverrunMessage::Encode(uint32_t sequence_number) {
   LOG(ERROR) << "We're not supposed to send Overruns to the kernel";
   return ByteString();
 }
@@ -268,10 +270,9 @@ void OverrunMessage::Print(int log_level) const {
 
 // GenericNetlinkMessage
 
-ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number,
-                                               uint16_t nlmsg_type) {
+ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number) {
   // Build nlmsghdr.
-  ByteString result(NetlinkMessage::EncodeHeader(sequence_number, nlmsg_type));
+  ByteString result(NetlinkMessage::EncodeHeader(sequence_number));
   if (result.GetLength() == 0) {
     LOG(ERROR) << "Couldn't encode message header.";
     return result;
@@ -294,9 +295,8 @@ ByteString GenericNetlinkMessage::EncodeHeader(uint32_t sequence_number,
   return result;
 }
 
-ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number,
-                                         uint16_t nlmsg_type) {
-  ByteString result(EncodeHeader(sequence_number, nlmsg_type));
+ByteString GenericNetlinkMessage::Encode(uint32_t sequence_number) {
+  ByteString result(EncodeHeader(sequence_number));
   if (result.GetLength() == 0) {
     LOG(ERROR) << "Couldn't encode message header.";
     return result;
@@ -343,6 +343,14 @@ void GenericNetlinkMessage::Print(int log_level) const {
 }
 
 // Nl80211Message
+
+// static
+void Nl80211Message::SetMessageType(uint16_t message_type) {
+  if (message_type == NetlinkMessage::kIllegalMessageType) {
+    LOG(FATAL) << "Absolutely need a legal message type for Nl80211 messages.";
+  }
+  nl80211_message_type_ = message_type;
+}
 
 bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   if (!const_msg) {
@@ -569,7 +577,6 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
 
   return true;
 }
-
 
 // Helper function to provide a string for a MAC address.
 bool Nl80211Message::GetMacAttributeString(int id, string *value) const {

@@ -64,10 +64,9 @@ class Config80211;
 //
 // Other message types ("nl80211", for example), are assigned by the kernel
 // dynamically.  To get the message type, pass a closure to assign the
-// message_type along with the sting to Config80211::AddFamilyByString:
+// message_type along with the sting to Config80211::GetFamily:
 //
-//  config80211_->AddFamilyByString(Nl80211Message::kMessageType,
-//                                  Bind(&Nl80211Message::SetFamilyId));
+//  nl80211_type = config80211_->GetFamily(Nl80211Message::kMessageType);
 //
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
@@ -85,7 +84,7 @@ class NetlinkMessage {
   // Returns a string of bytes representing the message (with it headers) and
   // any necessary padding.  These bytes are appropriately formatted to be
   // written to a netlink socket.
-  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type) = 0;
+  virtual ByteString Encode(uint32_t sequence_number) = 0;
 
   // Initializes the |NetlinkMessage| from a complete and legal message
   // (potentially received from the kernel via a netlink socket).
@@ -107,8 +106,7 @@ class NetlinkMessage {
 
   // Returns a string of bytes representing an |nlmsghdr|, filled-in, and its
   // padding.
-  virtual ByteString EncodeHeader(uint32_t sequence_number,
-                                  uint16_t nlmsg_type);
+  virtual ByteString EncodeHeader(uint32_t sequence_number);
   // Reads the |nlmsghdr| and removes it from |input|.
   virtual bool InitAndStripHeader(ByteString *input);
 
@@ -134,7 +132,7 @@ class ErrorAckMessage : public NetlinkMessage {
 
   ErrorAckMessage() : NetlinkMessage(kMessageType), error_(0) {}
   virtual bool InitFromNlmsg(const nlmsghdr *const_msg);
-  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int log_level) const;
   std::string ToString() const;
   uint32_t error() const { return -error_; }
@@ -151,7 +149,7 @@ class NoopMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   NoopMessage() : NetlinkMessage(kMessageType) {}
-  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int log_level) const;
   std::string ToString() const { return "<NOOP>"; }
 
@@ -165,7 +163,7 @@ class DoneMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   DoneMessage() : NetlinkMessage(kMessageType) {}
-  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int log_level) const;
   std::string ToString() const { return "<DONE with multipart message>"; }
 
@@ -179,7 +177,7 @@ class OverrunMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   OverrunMessage() : NetlinkMessage(kMessageType) {}
-  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int log_level) const;
   std::string ToString() const { return "<OVERRUN - data lost>"; }
 
@@ -237,11 +235,10 @@ class GenericNetlinkMessage : public NetlinkMessage {
         command_string_(command_string) {}
   virtual ~GenericNetlinkMessage() {}
 
-  virtual ByteString Encode(uint32_t sequence_number, uint16_t nlmsg_type);
+  virtual ByteString Encode(uint32_t sequence_number);
 
   uint8 command() const { return command_; }
   const char *command_string() const { return command_string_; }
-
   AttributeListConstRefPtr const_attributes() const { return attributes_; }
   AttributeListRefPtr attributes() { return attributes_; }
 
@@ -250,8 +247,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
  protected:
   // Returns a string of bytes representing _both_ an |nlmsghdr| and a
   // |genlmsghdr|, filled-in, and its padding.
-  virtual ByteString EncodeHeader(uint32_t sequence_number,
-                                  uint16_t nlmsg_type);
+  virtual ByteString EncodeHeader(uint32_t sequence_number);
   // Reads the |nlmsghdr| and |genlmsghdr| headers and removes them from
   // |input|.
   virtual bool InitAndStripHeader(ByteString *input);
@@ -309,6 +305,9 @@ class Nl80211Message : public GenericNetlinkMessage {
   Nl80211Message(uint8 command, const char *command_string)
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
   virtual ~Nl80211Message() {}
+
+  // Sets the family_id / message_type for all Nl80211 messages.
+  static void SetMessageType(uint16_t message_type);
 
   virtual bool InitFromNlmsg(const nlmsghdr *msg);
 

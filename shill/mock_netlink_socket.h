@@ -26,6 +26,7 @@ class MockNetlinkSocket : public NetlinkSocket {
 
   virtual bool SendMessage(const ByteString &out_string);
   uint32 GetLastSequenceNumber() const { return sequence_number_; }
+  MOCK_METHOD1(SubscribeToEvents, bool(uint32_t group_id));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNetlinkSocket);

@@ -42,7 +42,7 @@ namespace shill {
 
 class Nl80211Message;
 class Sockets;
-struct ByteString;
+class ByteString;
 
 // Provides an abstraction to a netlink socket.  See
 // http://www.infradead.org/~tgr/libnl/doc/core.html#core_netlink_fundamentals
@@ -74,6 +74,9 @@ class NetlinkSocket {
 
   // Sends a message, returns true if successful.
   virtual bool SendMessage(const ByteString &message);
+
+  // Subscribes to netlink broadcast events.
+  virtual bool SubscribeToEvents(uint32_t group_id);
 
  protected:
   uint32_t sequence_number_;

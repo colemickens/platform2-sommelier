@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -46,6 +47,13 @@ using testing::Test;
 namespace shill {
 
 namespace {
+
+// The group_id of the scan and mlme groups are, for the purposes of this
+// test, arbitrary as long as they're different.  The values, here, have been
+// extracted from a specific run on hardware but that was, in reality, just
+// being pedantic.
+const uint32_t kEventTypeScanId = 4;
+const uint32_t kEventTypeMlmeId = 6;
 
 // These data blocks have been collected by shill using Config80211 while,
 // simultaneously (and manually) comparing shill output with that of the 'iw'
@@ -367,7 +375,12 @@ bool MockNetlinkSocket::SendMessage(const ByteString &out_string) {
 
 class Config80211Test : public Test {
  public:
-  Config80211Test() : config80211_(Config80211::GetInstance()) {}
+  Config80211Test() : config80211_(Config80211::GetInstance()) {
+    config80211_->message_types_[Nl80211Message::kMessageTypeString].family_id =
+        kNl80211FamilyId;
+    Nl80211Message::SetMessageType(
+        config80211_->GetFamily(Nl80211Message::kMessageTypeString));
+  }
   ~Config80211Test() {
     // Config80211 is a singleton, the sock_ field *MUST* be cleared
     // before "Config80211Test::socket_" gets invalidated, otherwise
@@ -377,13 +390,19 @@ class Config80211Test : public Test {
   void SetupConfig80211Object() {
     EXPECT_NE(reinterpret_cast<Config80211 *>(NULL), config80211_);
     config80211_->sock_ = &socket_;
-    EXPECT_TRUE(config80211_->Init(reinterpret_cast<EventDispatcher *>(NULL)));
-    config80211_->Reset(false);
+    EXPECT_TRUE(config80211_->Init());
   }
 
   Config80211 *config80211_;
   MockNetlinkSocket socket_;
 };
+
+// TODO(wdg): Add a test for multi-part messages.  crbug.com/224652
+// TODO(wdg): Add a test for GetFaimily.  crbug.com/224649
+// TODO(wdg): Add a test for OnNewFamilyMessage.  crbug.com/222486
+// TODO(wdg): Add a test for SubscribeToEvents (verify that it handles bad input
+// appropriately, and that it calls NetlinkSocket::SubscribeToEvents if input
+// is good.)
 
 class TestHandlerObject {
  public:
@@ -412,41 +431,6 @@ MATCHER_P(ContainsHandler, handler_arg, "") {
       static_cast<const Config80211::NetlinkMessageHandler>(handler_arg);
 
   return config80211->FindBroadcastHandler(message_handler);
-}
-
-TEST_F(Config80211Test, AddLinkTest) {
-  SetupConfig80211Object();
-
-  // Create a broadcast handler.
-  TestHandlerObject handler_object;
-
-  // Install the handler and subscribe to events using it, wifi down
-  // (shouldn't actually send the subscription request until wifi comes up).
-  EXPECT_TRUE(config80211_->AddBroadcastHandler(
-      handler_object.message_handler()));
-  Config80211::EventType scan_event = Config80211::kEventTypeScan;
-  string scan_event_string;
-  EXPECT_TRUE(Config80211::GetEventTypeString(scan_event, &scan_event_string));
-  EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
-
-  // Wifi up, should subscribe to events.
-  config80211_->SetWifiState(Config80211::kWifiUp);
-
-  // Second subscribe, same event (should do nothing).
-  EXPECT_TRUE(config80211_->SubscribeToEvents(scan_event));
-
-  // Bring the wifi back down.
-  config80211_->SetWifiState(Config80211::kWifiDown);
-
-  // Subscribe to a new event with the wifi down (should still do nothing).
-  Config80211::EventType mlme_event = Config80211::kEventTypeMlme;
-  string mlme_event_string;
-  EXPECT_TRUE(Config80211::GetEventTypeString(mlme_event, &mlme_event_string));
-  EXPECT_TRUE(config80211_->SubscribeToEvents(mlme_event));
-
-  // Wifi up (again), should subscribe to the original scan event and the new
-  // mlme event.
-  config80211_->SetWifiState(Config80211::kWifiUp);
 }
 
 TEST_F(Config80211Test, BroadcastHandlerTest) {
@@ -855,10 +839,7 @@ TEST_F(Config80211Test, Build_NL80211_CMD_CONNECT) {
   // Encode the message to a ByteString and remove all the run-specific
   // values.
 
-  // TODO(wdg): Get nl80211's family id from Config80211 after it starts
-  // keeping track of family id for each family name.
-  ByteString message_bytes = message.Encode(config80211_->GetSequenceNumber(),
-                                            kNl80211FamilyId);
+  ByteString message_bytes = message.Encode(config80211_->GetSequenceNumber());
   nlmsghdr *header = reinterpret_cast<nlmsghdr *>(message_bytes.GetData());
   header->nlmsg_flags = 0;  // Overwrite with known values.
   header->nlmsg_seq = 0;

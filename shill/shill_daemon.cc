@@ -18,6 +18,7 @@
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/nl80211_message.h"
 #include "shill/nss.h"
 #include "shill/proxy_factory.h"
 #include "shill/routing_table.h"
@@ -103,21 +104,18 @@ void Daemon::Start() {
   dhcp_provider_->Init(control_, &dispatcher_, &glib_);
 
   if (config80211_) {
-    config80211_->Init(&dispatcher_);
-    // Subscribe to all the events in which we're interested.
-    static const Config80211::EventType kEvents[] = {
-      Config80211::kEventTypeConfig,
-      Config80211::kEventTypeScan,
-      Config80211::kEventTypeRegulatory,
-      Config80211::kEventTypeMlme };
+    config80211_->Init();
+    uint16_t nl80211_family_id = config80211_->GetFamily(
+        Nl80211Message::kMessageTypeString);
+    if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
+      LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
+    }
+    Nl80211Message::SetMessageType(nl80211_family_id);
+    config80211_->Start(&dispatcher_);
 
     // Install callbacks in the Config80211 singleton.
     callback80211_output_.InstallAsBroadcastHandler();
     callback80211_metrics_.InstallAsBroadcastHandler();
-
-    for (size_t i = 0; i < arraysize(kEvents); i++) {
-      config80211_->SubscribeToEvents(kEvents[i]);
-    }
   }
 
   manager_->Start();

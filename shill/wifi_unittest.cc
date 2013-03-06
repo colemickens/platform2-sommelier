@@ -32,6 +32,7 @@
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/mock_config80211.h"
 #include "shill/mock_dbus_manager.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -233,6 +234,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
     wifi_->provider_ = &wifi_provider_;
     wifi_->time_ = &time_;
+    // TODO(wdg): Flesh out the wifi tests to include config80211.
+    wifi_->config80211_ = &config80211_;
   }
 
   virtual void SetUp() {
@@ -727,6 +730,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // and manager so we can perform expectations against them.
   MockDBusManager *dbus_manager_;
   MockSupplicantEAPStateHandler *eap_state_handler_;
+  MockConfig80211 config80211_;
 
  private:
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
