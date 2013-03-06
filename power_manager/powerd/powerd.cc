@@ -614,9 +614,14 @@ void Daemon::HandleResume(bool suspend_was_successful,
   SetPowerState(BACKLIGHT_ACTIVE);
 
 #ifdef SUSPEND_LOCK_VT
-    // Allow virtual terminal switching again.
-    util::RunSetuidHelper("unlock_vt", "", true);
+  // Allow virtual terminal switching again.
+  util::RunSetuidHelper("unlock_vt", "", true);
 #endif
+
+  // The battery could've drained while the system was suspended; ensure
+  // that we don't leave the reported percentage pinned at 100% or slowly
+  // tapering down to the actual level: http://crosbug.com/38834
+  battery_report_state_ = BATTERY_REPORT_ADJUSTED;
 
   time_to_empty_average_.Clear();
   time_to_full_average_.Clear();
