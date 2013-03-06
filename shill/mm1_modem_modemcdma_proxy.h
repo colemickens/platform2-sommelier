@@ -40,6 +40,7 @@ class ModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   // Inherited properties from ModemCdmaProxyInterface.
   virtual std::string Meid();
   virtual std::string Esn();
+  virtual uint32_t ActivationState();
   virtual uint32_t Sid();
   virtual uint32_t Nid();
   virtual uint32_t Cdma1xRegistrationState();

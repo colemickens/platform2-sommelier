@@ -38,6 +38,7 @@ class MockModemModemCdmaProxy : public ModemModemCdmaProxyInterface {
   // Properties.
   MOCK_METHOD0(Meid, std::string());
   MOCK_METHOD0(Esn, std::string());
+  MOCK_METHOD0(ActivationState, uint32_t());
   MOCK_METHOD0(Sid, uint32_t());
   MOCK_METHOD0(Nid, uint32_t());
   MOCK_METHOD0(Cdma1xRegistrationState, uint32_t());

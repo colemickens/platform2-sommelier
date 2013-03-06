@@ -41,6 +41,7 @@ class ModemModemCdmaProxyInterface {
   // Properties.
   virtual std::string Meid() = 0;
   virtual std::string Esn() = 0;
+  virtual uint32_t ActivationState() = 0;
   virtual uint32_t Sid() = 0;
   virtual uint32_t Nid() = 0;
   virtual uint32_t Cdma1xRegistrationState() = 0;

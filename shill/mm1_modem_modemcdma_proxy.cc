@@ -74,6 +74,15 @@ std::string ModemModemCdmaProxy::Esn() {
     return std::string();  // Make the compiler happy.
   }
 };
+uint32_t ModemModemCdmaProxy::ActivationState() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.ActivationState();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
+};
 uint32_t ModemModemCdmaProxy::Sid() {
   SLOG(DBus, 2) << __func__;
   try {
