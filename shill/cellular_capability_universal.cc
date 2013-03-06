@@ -68,7 +68,8 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
-const int CellularCapabilityUniversal::kSetPowerStateTimeoutSeconds = 20;
+const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
+    20000;
 unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
 
 
@@ -370,7 +371,7 @@ void CellularCapabilityUniversal::Stop_PowerDown(
       &error,
       Bind(&CellularCapabilityUniversal::Stop_PowerDownCompleted,
            weak_ptr_factory_.GetWeakPtr(), callback),
-      kSetPowerStateTimeoutSeconds);
+      kSetPowerStateTimeoutMilliseconds);
 
   if (error.IsFailure())
     // This really shouldn't happen, but if it does, report success,

@@ -135,7 +135,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kGenericServiceNamePrefix[];
 
   static const unsigned int kDefaultScanningOrSearchingTimeoutMilliseconds;
-  static const int kSetPowerStateTimeoutSeconds;
+  static const int kSetPowerStateTimeoutMilliseconds;
 
 
   // Root path. The SIM path is reported by ModemManager to be the root path
