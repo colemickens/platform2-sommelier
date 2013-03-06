@@ -139,7 +139,6 @@ struct sample_event{
 	u64 array[];
 };
 
-
 typedef union event_union {
 	struct perf_event_header	header;
 	struct ip_event			ip;
@@ -150,6 +149,24 @@ typedef union event_union {
 	struct read_event		read;
 	struct sample_event		sample;
 } event_t;
+
+// All the possible fields of a perf sample.  This is not an actual data
+// structure found in raw perf data, as each field may or may not be present in
+// the data.
+struct perf_sample {
+	u64 ip;
+	u32 pid, tid;
+	u64 time;
+	u64 addr;
+	u64 id;
+	u64 stream_id;
+	u64 period;
+	u32 cpu;
+	u32 raw_size;
+	void *raw_data;
+	struct ip_callchain *callchain;
+	struct branch_stack *branch_stack;
+};
 
 // End data structures copied from the kernel.
 
