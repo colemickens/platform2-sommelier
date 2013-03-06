@@ -120,8 +120,7 @@ bool name(std::vector<vec_type>* to, \
   SERIALIZEVECTORFUNCTION(SerializeEvents, event_t,
                           quipper::PerfDataProto_PerfEvent,
                           SerializeEvent)
-  bool type_set_;
-  u64 type_;
+  u64 sample_type_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

@@ -19,7 +19,7 @@ struct PerfFileAttr {
 
 class PerfReader {
  public:
-  PerfReader() {}
+  PerfReader() : sample_type_(0) {}
   bool ReadFile(const std::string& filename);
   bool ReadFileFromHandle(std::ifstream* in);
   bool WriteFile(const std::string& filename);
@@ -50,6 +50,10 @@ class PerfReader {
     return &event_types_;
   }
 
+  uint64 sample_type() const {
+    return sample_type_;
+  }
+
  private:
   bool ReadHeader(std::ifstream* in);
   bool ReadAttrs(std::ifstream* in);
@@ -66,6 +70,7 @@ class PerfReader {
   std::vector<PerfFileAttr> attrs_;
   std::vector<event_t> events_;
   std::vector<perf_trace_event_type> event_types_;
+  uint64 sample_type_;
 
   struct perf_file_header header_;
   struct perf_file_header out_header_;

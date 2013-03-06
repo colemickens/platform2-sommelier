@@ -111,10 +111,10 @@ bool PerfReader::ReadHeader(std::ifstream* in) {
 }
 
 bool PerfReader::ReadAttrs(std::ifstream* in) {
-  size_t nr_attrs = header_.attrs.size / header_.attr_size;
+  size_t num_attrs = header_.attrs.size / header_.attr_size;
   assert(sizeof(struct perf_file_attr) == header_.attr_size);
-  attrs_.resize(nr_attrs);
-  for (size_t i = 0; i < nr_attrs; i++) {
+  attrs_.resize(num_attrs);
+  for (size_t i = 0; i < num_attrs; i++) {
     // Read each attr.
     in->seekg(header_.attrs.offset + i * header_.attr_size, std::ios::beg);
     PerfFileAttr& current_attr = attrs_[i];
@@ -123,6 +123,13 @@ bool PerfReader::ReadAttrs(std::ifstream* in) {
              sizeof(current_attr.attr));
     if (!in->good())
       return false;
+
+    // Currently, all perf event types have the same sample format (same fields
+    // present).  The following CHECK will catch any data that shows otherwise.
+    CHECK_EQ(attrs_[i].attr.sample_type, attrs_[0].attr.sample_type)
+        << "Event type #" << i << " sample format does not match format of "
+        << "other event type samples.";
+
     struct perf_file_section ids;
     in->read(reinterpret_cast<char*>(&ids), sizeof(ids));
     if (!in->good())
@@ -137,6 +144,8 @@ bool PerfReader::ReadAttrs(std::ifstream* in) {
         return false;
     }
   }
+  if (num_attrs > 0)
+    sample_type_ = attrs_[0].attr.sample_type;
 
   return true;
 }

@@ -50,33 +50,33 @@ void PerfSerializer::SerializeRecordSample(
     u32 val32[2];
   } u;
   const u64* array = event->sample.array;
-  if (type_ & PERF_SAMPLE_IP) {
+  if (sample_type_ & PERF_SAMPLE_IP) {
     sample->set_ip(event->ip.ip);
     array++;
   }
-  if (type_ & PERF_SAMPLE_TID) {
+  if (sample_type_ & PERF_SAMPLE_TID) {
     u.val64 = *array;
     sample->set_pid(u.val32[0]);
     sample->set_tid(u.val32[1]);
     array++;
   }
-  if (type_ & PERF_SAMPLE_TIME) {
+  if (sample_type_ & PERF_SAMPLE_TIME) {
     sample->set_time(*array);
     array++;
   }
-  if (type_ & PERF_SAMPLE_ADDR) {
+  if (sample_type_ & PERF_SAMPLE_ADDR) {
     sample->set_addr(*array);
     array++;
   }
-  if (type_ & PERF_SAMPLE_ID) {
+  if (sample_type_ & PERF_SAMPLE_ID) {
     sample->set_id(*array);
     array++;
   }
-  if (type_ & PERF_SAMPLE_STREAM_ID) {
+  if (sample_type_ & PERF_SAMPLE_STREAM_ID) {
     sample->set_stream_id(*array);
     array++;
   }
-  if (type_ & PERF_SAMPLE_CPU) {
+  if (sample_type_ & PERF_SAMPLE_CPU) {
     u.val64 = *array;
     sample->set_cpu(u.val32[0]);
     // TODO (sque): The upper uint32 of PERF_SAMPLE_CPU is listed as "res" in
@@ -87,7 +87,7 @@ void PerfSerializer::SerializeRecordSample(
     CHECK(u.val32[1] == 0);
     array++;
   }
-  if (type_ & PERF_SAMPLE_PERIOD) {
+  if (sample_type_ & PERF_SAMPLE_PERIOD) {
     sample->set_period(*array);
     array++;
   }
@@ -152,7 +152,7 @@ void PerfSerializer::SerializeCommSample(
                                    sizeof(event->comm));
 
   // Comm event data contains additional time field.
-  if (type_ & PERF_SAMPLE_TIME) {
+  if (sample_type_ & PERF_SAMPLE_TIME) {
     sample->set_sample_time(*array);
     array++;
   }
@@ -223,27 +223,27 @@ void PerfSerializer::SerializeForkSample(
   // Fork event data contains additional pid/tid, time, id, and cpu fields.
   // TODO(sque): since this follows the same format as SerializeRecordSample(),
   // put it in a common function.  Do the same for DeserializeForkSample().
-  if (type_ & PERF_SAMPLE_TID) {
+  if (sample_type_ & PERF_SAMPLE_TID) {
     u.val64 = *array;
     sample->set_sample_pid(u.val32[0]);
     sample->set_sample_tid(u.val32[1]);
     array++;
   }
-  if (type_ & PERF_SAMPLE_TIME) {
+  if (sample_type_ & PERF_SAMPLE_TIME) {
     sample->set_sample_time(*array);
     array++;
   }
-  if (type_ & PERF_SAMPLE_ADDR) {
+  if (sample_type_ & PERF_SAMPLE_ADDR) {
     array++;
   }
-  if (type_ & PERF_SAMPLE_ID) {
+  if (sample_type_ & PERF_SAMPLE_ID) {
     sample->set_sample_id(*array);
     array++;
   }
-  if (type_ & PERF_SAMPLE_STREAM_ID) {
+  if (sample_type_ & PERF_SAMPLE_STREAM_ID) {
     array++;
   }
-  if (type_ & PERF_SAMPLE_CPU) {
+  if (sample_type_ & PERF_SAMPLE_CPU) {
     u.val64 = *array;
     sample->set_sample_cpu(u.val32[0]);
     array++;
@@ -276,14 +276,14 @@ void PerfSerializer::DeserializeForkSample(
     *array = sample->sample_time();
     array++;
   }
-  if (type_ & PERF_SAMPLE_ADDR) {
+  if (sample_type_ & PERF_SAMPLE_ADDR) {
     array++;
   }
   if (sample->has_sample_id()) {
     *array = sample->sample_id();
     array++;
   }
-  if (type_ & PERF_SAMPLE_STREAM_ID) {
+  if (sample_type_ & PERF_SAMPLE_STREAM_ID) {
     array++;
   }
   if (sample->has_sample_cpu()) {
@@ -408,10 +408,6 @@ void PerfSerializer::DeserializePerfEventAttr(
   S(bp_len);
   S(branch_sample_type);
 #undef S
-  if (!type_set_) {
-    type_set_ = true;
-    type_ = perf_event_attr->sample_type;
-  }
 }
 
 void PerfSerializer::SerializePerfEventAttr(
@@ -455,10 +451,6 @@ void PerfSerializer::SerializePerfEventAttr(
   S(bp_len);
   S(branch_sample_type);
 #undef S
-  if (!type_set_) {
-    type_set_ = true;
-    type_ = perf_event_attr->sample_type;
-  }
 }
 
 void PerfSerializer::SerializePerfFileAttr(
@@ -481,7 +473,7 @@ void PerfSerializer::DeserializePerfFileAttr(
 
 bool PerfSerializer::SerializeReader(const PerfReader& perf_reader,
                                      PerfDataProto* perf_data_proto) {
-  type_set_ = false;
+  sample_type_ = perf_reader.sample_type();
   SerializePerfFileAttrs(
       &perf_reader.attrs(), perf_data_proto->mutable_file_attrs());
   SerializeEvents(&perf_reader.events(),
@@ -501,7 +493,19 @@ bool PerfSerializer::Serialize(const char* filename,
 
 bool PerfSerializer::DeserializeReader(const PerfDataProto& perf_data_proto,
                                        PerfReader* perf_reader) {
-  type_set_ = false;
+  // Make sure all event types (attrs) have the same sample type.
+  const ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfFileAttr>&
+      attrs = perf_data_proto.file_attrs();
+  for (int i = 0; i < attrs.size(); ++i) {
+    CHECK_EQ(attrs.Get(i).attr().sample_type(),
+             attrs.Get(0).attr().sample_type())
+        << "Sample type for attribute #" << i
+        << " (" << (void*)attrs.Get(i).attr().sample_type() << ") "
+        << " does not match that of attribute 0 ("
+        << (void*)attrs.Get(0).attr().sample_type() << ")";
+  }
+  CHECK_GT(attrs.size(), 0);
+  sample_type_ = attrs.Get(0).attr().sample_type();
   DeserializePerfFileAttrs(
       perf_reader->mutable_attrs(), &perf_data_proto.file_attrs());
   DeserializeEvents(perf_reader->mutable_events(),
