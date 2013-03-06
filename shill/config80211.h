@@ -146,6 +146,10 @@ class Config80211 {
   // event loop.
   uint16_t GetFamily(std::string family_name);
 
+  // Retrieves a family id (message type) given the |name| string describing
+  // the message family.
+  uint16_t GetMessageType(std::string name) const;
+
   // Install a Config80211 NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
   // that do not have a corresponding messaage-specific callback.

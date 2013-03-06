@@ -49,8 +49,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())),
-      callback80211_output_(),
-      callback80211_metrics_(metrics_.get()) {
+      callback80211_metrics_(*config80211_, metrics_.get()) {
 }
 
 Daemon::~Daemon() { }
@@ -113,9 +112,13 @@ void Daemon::Start() {
     Nl80211Message::SetMessageType(nl80211_family_id);
     config80211_->Start(&dispatcher_);
 
-    // Install callbacks in the Config80211 singleton.
-    callback80211_output_.InstallAsBroadcastHandler();
-    callback80211_metrics_.InstallAsBroadcastHandler();
+    callback80211_metrics_.InitNl80211FamilyId(*config80211_);
+
+    // Install handlers for NetlinkMessages that don't have specific handlers
+    // (which are registered by message sequence number).
+    config80211_->AddBroadcastHandler(Bind(
+        &Callback80211Metrics::CollectDisconnectStatistics,
+        callback80211_metrics_.AsWeakPtr()));
   }
 
   manager_->Start();

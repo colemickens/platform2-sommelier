@@ -13,14 +13,31 @@
 
 namespace shill {
 
-Callback80211Metrics::Callback80211Metrics(Metrics *metrics)
-    : Callback80211Object(),
-      metrics_(metrics) {
+Callback80211Metrics::Callback80211Metrics(const Config80211 &config80211,
+                                           Metrics *metrics)
+    : metrics_(metrics),
+      nl80211_message_type_(NetlinkMessage::kIllegalMessageType) {}
+
+void Callback80211Metrics::InitNl80211FamilyId(
+    const Config80211 &config80211) {
+  nl80211_message_type_ =
+      config80211.GetMessageType(Nl80211Message::kMessageTypeString);
 }
 
-void Callback80211Metrics::Config80211MessageCallback(
-    const NetlinkMessage &message) {
-#if 0  // TODO(wdg): Enable after code arrives from upcoming CL.
+void Callback80211Metrics::CollectDisconnectStatistics(
+    const NetlinkMessage &netlink_message) {
+  if (nl80211_message_type_ == NetlinkMessage::kIllegalMessageType) {
+    LOG(ERROR) << "Somehow, nl80211_message_type_ didn't get set correctly";
+    return;
+  }
+
+  // We only handle deauthenticate messages, which are nl80211 messages.
+  if (netlink_message.message_type() != nl80211_message_type_) {
+    return;
+  }
+  const Nl80211Message &message =
+      * reinterpret_cast<const Nl80211Message *>(&netlink_message);
+
   SLOG(WiFi, 3) << "Received " << message.command_string()
                 << " (" << + message.command() << ")";
   if (metrics_ &&
@@ -33,7 +50,7 @@ void Callback80211Metrics::Config80211MessageCallback(
         IEEE_80211::kReasonCodeInvalid);
     ByteString rawdata;
     if (message.const_attributes()->GetRawAttributeValue(NL80211_ATTR_FRAME,
-                                                         &rawdata)) {
+                                                          &rawdata)) {
       Nl80211Frame frame(rawdata);
       reason = frame.reason();
     }
@@ -41,7 +58,6 @@ void Callback80211Metrics::Config80211MessageCallback(
         static_cast<IEEE_80211::WiFiReasonCode>(reason);
     metrics_->Notify80211Disconnect(by_whom, reason_enum);
   }
-#endif  // 0
 }
 
 }  // namespace shill.

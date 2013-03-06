@@ -28,6 +28,7 @@
 using base::Bind;
 using base::LazyInstance;
 using std::list;
+using std::map;
 using std::string;
 
 namespace shill {
@@ -242,6 +243,17 @@ uint16_t Config80211::GetFamily(string name) {
   LOG(ERROR) << "Timed out waiting for family_id for family '" << name << "'.";
   return NetlinkMessage::kIllegalMessageType;
 }
+
+uint16_t Config80211::GetMessageType(string name) const {
+  map<const string, MessageType>::const_iterator family =
+      message_types_.find(name);
+  if (family == message_types_.end()) {
+    LOG(WARNING) << "Family '" << name << "' is not in list.";
+    return NetlinkMessage::kIllegalMessageType;
+  }
+  return family->second.family_id;
+}
+
 
 bool Config80211::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
   list<NetlinkMessageHandler>::iterator i;

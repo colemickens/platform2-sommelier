@@ -200,7 +200,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	attribute_list.o \
 	byte_string.o \
 	callback80211_metrics.o \
-	callback80211_object.o \
 	certificate_file.o \
 	config80211.o \
 	connection.o \
