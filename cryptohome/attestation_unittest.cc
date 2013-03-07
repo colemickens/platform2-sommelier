@@ -4,8 +4,13 @@
 
 #include "attestation.h"
 
+#include <string>
+
+#include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <openssl/rsa.h>
+#include <openssl/x509.h>
 
 #include "mock_keystore.h"
 #include "mock_platform.h"
@@ -13,6 +18,7 @@
 
 #include "cryptolib.h"
 
+using chromeos::SecureBlob;
 using std::string;
 using ::testing::_;
 using ::testing::DoAll;
@@ -28,8 +34,11 @@ static const char* kTestPath = "/tmp/attestation_test.epb";
 
 class AttestationTest : public testing::Test {
  public:
-  AttestationTest() : attestation_(&tpm_, &platform_) { }
-  virtual ~AttestationTest() { }
+  AttestationTest() : attestation_(&tpm_, &platform_), rsa_(NULL) { }
+  virtual ~AttestationTest() {
+    if (rsa_)
+      RSA_free(rsa_);
+  }
 
   void SetUp() {
     attestation_.set_database_path(kTestPath);
@@ -41,34 +50,51 @@ class AttestationTest : public testing::Test {
         .WillByDefault(Invoke(this, &AttestationTest::ReadDB));
   }
 
-  virtual bool WriteDB(const std::string& path, const std::string& db) {
+  virtual bool WriteDB(const string& path, const string& db) {
     serialized_db.assign(db);
     return true;
   }
-  virtual bool ReadDB(const std::string& path, std::string* db) {
+  virtual bool ReadDB(const string& path, string* db) {
     db->assign(serialized_db);
     return true;
   }
 
-  std::string serialized_db;
+  string serialized_db;
  protected:
   NiceMock<MockTpm> tpm_;
   NiceMock<MockPlatform> platform_;
   NiceMock<MockKeyStore> key_store_;
   Attestation attestation_;
+  RSA* rsa_;  // Access with rsa().
 
-  chromeos::SecureBlob GetEnrollBlob() {
+  RSA* rsa() {
+    if (!rsa_) {
+      rsa_ = RSA_generate_key(2048, 65537, NULL, NULL);
+      CHECK(rsa_);
+    }
+    return rsa_;
+  }
+
+  SecureBlob ConvertStringToBlob(const string& s) {
+    return SecureBlob(s.data(), s.length());
+  }
+
+  string ConvertBlobToString(const chromeos::Blob& blob) {
+    return string(reinterpret_cast<const char*>(&blob.front()), blob.size());
+  }
+
+  SecureBlob GetEnrollBlob() {
     AttestationEnrollmentResponse pb;
     pb.set_status(OK);
     pb.set_detail("");
     pb.mutable_encrypted_identity_credential()->set_asym_ca_contents("1234");
     pb.mutable_encrypted_identity_credential()->set_sym_ca_attestation("5678");
-    std::string tmp;
+    string tmp;
     pb.SerializeToString(&tmp);
-    return chromeos::SecureBlob(tmp.data(), tmp.length());
+    return SecureBlob(tmp.data(), tmp.length());
   }
 
-  chromeos::SecureBlob GetCertRequestBlob(const chromeos::SecureBlob& request) {
+  SecureBlob GetCertRequestBlob(const SecureBlob& request) {
     AttestationCertificateRequest request_pb;
     CHECK(request_pb.ParseFromArray(request.const_data(),
                                     request.size()));
@@ -78,23 +104,23 @@ class AttestationTest : public testing::Test {
     pb.set_detail("");
     pb.set_certified_key_credential("response_cert");
     pb.set_intermediate_ca_cert("response_ca_cert");
-    std::string tmp;
+    string tmp;
     pb.SerializeToString(&tmp);
-    return chromeos::SecureBlob(tmp.data(), tmp.length());
+    return SecureBlob(tmp.data(), tmp.length());
   }
 
-  chromeos::SecureBlob GetCertifiedKeyBlob() {
+  SecureBlob GetCertifiedKeyBlob() {
     CertifiedKey pb;
     pb.set_certified_key_credential("stored_cert");
     pb.set_intermediate_ca_cert("stored_ca_cert");
-    pb.set_public_key("public_key");
-    std::string tmp;
+    pb.set_public_key(ConvertBlobToString(GetPKCS1PublicKey()));
+    string tmp;
     pb.SerializeToString(&tmp);
-    return chromeos::SecureBlob(tmp.data(), tmp.length());
+    return SecureBlob(tmp.data(), tmp.length());
   }
 
-  bool CompareBlob(const chromeos::SecureBlob& blob, const std::string& str) {
-    std::string blob_str(reinterpret_cast<const char*>(blob.const_data()),
+  bool CompareBlob(const SecureBlob& blob, const string& str) {
+    string blob_str(reinterpret_cast<const char*>(blob.const_data()),
                          blob.size());
     return (blob_str == str);
   }
@@ -106,6 +132,26 @@ class AttestationTest : public testing::Test {
     chain += CryptoLib::Base64Encode(cert2, true);
     chain += "-----END CERTIFICATE-----";
     return chain;
+  }
+
+  SecureBlob GetPKCS1PublicKey() {
+    unsigned char* buffer = NULL;
+    int length = i2d_RSAPublicKey(rsa(), &buffer);
+    if (length <= 0)
+      return SecureBlob();
+    SecureBlob tmp(buffer, length);
+    OPENSSL_free(buffer);
+    return tmp;
+  }
+
+  SecureBlob GetX509PublicKey() {
+    unsigned char* buffer = NULL;
+    int length = i2d_RSA_PUBKEY(rsa(), &buffer);
+    if (length <= 0)
+      return SecureBlob();
+    SecureBlob tmp(buffer, length);
+    OPENSSL_free(buffer);
+    return tmp;
   }
 };
 
@@ -122,7 +168,7 @@ TEST_F(AttestationTest, PrepareForEnrollment) {
 }
 
 TEST_F(AttestationTest, Enroll) {
-  chromeos::SecureBlob blob;
+  SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateEnrollRequest(&blob));
   attestation_.PrepareForEnrollment();
   EXPECT_FALSE(attestation_.IsEnrolled());
@@ -132,10 +178,10 @@ TEST_F(AttestationTest, Enroll) {
 }
 
 TEST_F(AttestationTest, CertRequest) {
-  chromeos::SecureBlob pubkey("generated_pubkey");
   EXPECT_CALL(tpm_, CreateCertifiedKey(_, _, _, _, _, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(pubkey), Return(true)));
-  chromeos::SecureBlob blob;
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
+                            Return(true)));
+  SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
   attestation_.PrepareForEnrollment();
   EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
@@ -153,7 +199,7 @@ TEST_F(AttestationTest, CertRequest) {
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("response_cert",
                                                 "response_ca_cert")));
   EXPECT_TRUE(attestation_.GetPublicKey(false, "test", &blob));
-  EXPECT_TRUE(CompareBlob(blob, "generated_pubkey"));
+  EXPECT_TRUE(blob == GetX509PublicKey());
 }
 
 TEST_F(AttestationTest, CertRequestStorageFailure) {
@@ -165,7 +211,7 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
       .WillRepeatedly(DoAll(
           SetArgumentPointee<1>(GetCertifiedKeyBlob()),
           Return(true)));
-  chromeos::SecureBlob blob;
+  SecureBlob blob;
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
@@ -188,7 +234,7 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
   EXPECT_TRUE(CompareBlob(blob, EncodeCertChain("stored_cert",
                                                 "stored_ca_cert")));
   EXPECT_TRUE(attestation_.GetPublicKey(true, "test", &blob));
-  EXPECT_TRUE(CompareBlob(blob, "public_key"));
+  EXPECT_TRUE(blob == GetX509PublicKey());
 }
 
 }  // namespace cryptohome

@@ -593,7 +593,27 @@ bool Attestation::GetPublicKey(bool is_user_specific,
     LOG(ERROR) << "Could not find certified key: " << key_name;
     return false;
   }
-  *public_key = ConvertStringToBlob(key.public_key());
+  SecureBlob public_key_der = ConvertStringToBlob(key.public_key());
+
+  // Convert from PKCS #1 RSAPublicKey to X.509 SubjectPublicKeyInfo.
+  const unsigned char* asn1_ptr = &public_key_der.front();
+  RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size());
+  if (!rsa) {
+    LOG(ERROR) << "Failed to decode public key.";
+    return false;
+  }
+  unsigned char* buffer = NULL;
+  int length = i2d_RSA_PUBKEY(rsa, &buffer);
+  if (length <= 0) {
+    LOG(ERROR) << "Failed to encode public key.";
+    RSA_free(rsa);
+    return false;
+  }
+  SecureBlob tmp(buffer, length);
+  chromeos::SecureMemset(buffer, 0, length);
+  OPENSSL_free(buffer);
+  RSA_free(rsa);
+  public_key->swap(tmp);
   return true;
 }
 
