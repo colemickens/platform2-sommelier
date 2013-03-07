@@ -118,6 +118,10 @@ class OpenVPNManagementServerTest : public testing::Test {
     return server_.ProcessStateMessage(message);
   }
 
+  bool ProcessAuthTokenMessage(const string &message) {
+    return server_.ProcessAuthTokenMessage(message);
+  }
+
   bool GetHoldWaiting() { return server_.hold_waiting_; }
 
   GLib glib_;
@@ -229,6 +233,7 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
         ">PASSWORD:Need 'Auth' SC:user/password/otp\n"
         ">PASSWORD:Need 'User-Specific TPM Token FOO' ...\n"
         ">PASSWORD:Verification Failed: .\n"
+        ">PASSWORD:Auth-Token:ToKeN==\n"
         ">STATE:123,RECONNECTING,detail,...,...\n"
         ">HOLD:Waiting for hold release\n"
         "SUCCESS: Hold released.";
@@ -413,6 +418,11 @@ TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_CALL(driver_, Cleanup(Service::kStateFailure));
   EXPECT_TRUE(
       server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
+}
+
+TEST_F(OpenVPNManagementServerTest, ProcessAuthTokenMessage) {
+  EXPECT_FALSE(ProcessAuthTokenMessage("foo"));
+  EXPECT_TRUE(ProcessAuthTokenMessage(">PASSWORD:Auth-Token:ToKeN=="));
 }
 
 TEST_F(OpenVPNManagementServerTest, SendSignal) {

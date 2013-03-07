@@ -93,6 +93,7 @@ class OpenVPNManagementServer {
   bool ProcessInfoMessage(const std::string &message);
   bool ProcessNeedPasswordMessage(const std::string &message);
   bool ProcessFailedPasswordMessage(const std::string &message);
+  bool ProcessAuthTokenMessage(const std::string &message);
   bool ProcessStateMessage(const std::string &message);
   bool ProcessHoldMessage(const std::string &message);
   bool ProcessSuccessMessage(const std::string &message);

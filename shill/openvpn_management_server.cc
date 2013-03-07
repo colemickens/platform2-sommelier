@@ -182,10 +182,11 @@ void OpenVPNManagementServer::ProcessMessage(const string &message) {
   if (!ProcessInfoMessage(message) &&
       !ProcessNeedPasswordMessage(message) &&
       !ProcessFailedPasswordMessage(message) &&
+      !ProcessAuthTokenMessage(message) &&
       !ProcessStateMessage(message) &&
       !ProcessHoldMessage(message) &&
       !ProcessSuccessMessage(message)) {
-    LOG(WARNING) << "OpenVPN management message ignored: " << message;
+    LOG(WARNING) << "Message ignored: " << message;
   }
 }
 
@@ -302,6 +303,14 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
   }
   NOTIMPLEMENTED();
   driver_->Cleanup(Service::kStateFailure);
+  return true;
+}
+
+bool OpenVPNManagementServer::ProcessAuthTokenMessage(const string &message) {
+  if (!StartsWithASCII(message, ">PASSWORD:Auth-Token:", true)) {
+    return false;
+  }
+  LOG(INFO) << "Auth-Token message ignored.";
   return true;
 }
 
