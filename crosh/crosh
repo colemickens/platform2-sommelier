@@ -57,6 +57,11 @@ HELP='
 '
 
 HELP_ADVANCED='
+ bt_console [<agent capability>]
+  Enters a Bluetooth debugging console. Optional argument specifies the
+  capability of a pairing agent the console will provide; see the Bluetooth
+  Core specification for valid options.
+
  chaps_debug [start|stop|<log_level>]
   Sets the chapsd logging level.  No arguments will start verbose logging.
 
@@ -586,6 +591,14 @@ cmd_experimental_storage() {
     else
       echo "Could not $1 experimental storage features."
     fi
+  fi
+}
+
+cmd_bt_console(){
+  if [ -x /usr/bin/bluetoothctl ]; then
+    /usr/bin/bluetoothctl "${1:+--agent=$1}"
+  else
+    echo "Bluetooth console not available"
   fi
 }
 
