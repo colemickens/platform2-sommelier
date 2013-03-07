@@ -81,6 +81,18 @@ enum SessionState {
   SESSION_STARTED,
 };
 
+// Current status of update engine, the system updater.
+enum UpdaterState {
+  // No update is currently being applied.
+  UPDATER_IDLE,
+
+  // An update is being downloaded, verified, or applied.
+  UPDATER_UPDATING,
+
+  // An update has been successfully applied and will be used after a reboot.
+  UPDATER_UPDATED,
+};
+
 enum DisplayMode {
   DISPLAY_NORMAL,
   DISPLAY_PRESENTATION,
@@ -96,6 +108,7 @@ enum ButtonState {
 std::string PowerSourceToString(PowerSource source);
 std::string LidStateToString(LidState state);
 std::string SessionStateToString(SessionState state);
+std::string UpdaterStateToString(UpdaterState state);
 std::string DisplayModeToString(DisplayMode mode);
 
 }  // namespace power_manager

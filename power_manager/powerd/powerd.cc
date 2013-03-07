@@ -751,6 +751,11 @@ void Daemon::RegisterDBusMessageHandler() {
       login_manager::kSessionManagerSessionStateChanged,
       base::Bind(&Daemon::HandleSessionManagerSessionStateChangedSignal,
                  base::Unretained(this)));
+  dbus_handler_.AddDBusSignalHandler(
+      update_engine::kUpdateEngineInterface,
+      update_engine::kStatusUpdate,
+      base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
+                 base::Unretained(this)));
 
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
@@ -880,6 +885,44 @@ bool Daemon::HandleSessionManagerSessionStateChangedSignal(
                  << " args";
     dbus_error_free(&error);
   }
+  return false;
+}
+
+bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
+  DBusError error;
+  dbus_error_init(&error);
+
+  dbus_int64_t last_checked_time = 0;
+  double progress = 0.0;
+  const char* current_operation = NULL;
+  const char* new_version = NULL;
+  dbus_int64_t new_size = 0;
+
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_INT64, &last_checked_time,
+                             DBUS_TYPE_DOUBLE, &progress,
+                             DBUS_TYPE_STRING, &current_operation,
+                             DBUS_TYPE_STRING, &new_version,
+                             DBUS_TYPE_INT64, &new_size,
+                             DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << "Unable to read args from " << update_engine::kStatusUpdate
+                 << " signal";
+    dbus_error_free(&error);
+    return false;
+  }
+
+  // TODO: Use shared constants instead: http://crosbug.com/39706
+  UpdaterState state = UPDATER_IDLE;
+  std::string operation = current_operation;
+  if (operation == "UPDATE_STATUS_DOWNLOADING" ||
+      operation == "UPDATE_STATUS_VERIFYING" ||
+      operation == "UPDATE_STATUS_FINALIZING") {
+    state = UPDATER_UPDATING;
+  } else if (operation == "UPDATE_STATUS_UPDATED_NEED_REBOOT") {
+    state = UPDATER_UPDATED;
+  }
+  state_controller_->HandleUpdaterStateChange(state);
+
   return false;
 }
 

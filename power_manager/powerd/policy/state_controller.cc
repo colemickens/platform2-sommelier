@@ -148,6 +148,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       power_source_(POWER_AC),
       lid_state_(LID_OPEN),
       session_state_(SESSION_STOPPED),
+      updater_state_(UPDATER_IDLE),
       display_mode_(DISPLAY_NORMAL),
       screen_dimmed_(false),
       screen_turned_off_(false),
@@ -226,6 +227,16 @@ void StateController::HandleSessionStateChange(SessionState state) {
   VLOG(1) << "Session state changed to " << SessionStateToString(state);
   session_state_ = state;
   UpdateLastUserActivityTime();
+  UpdateSettingsAndState();
+}
+
+void StateController::HandleUpdaterStateChange(UpdaterState state) {
+  DCHECK(initialized_);
+  if (state == updater_state_)
+    return;
+
+  VLOG(1) << "Updater state changed to " << UpdaterStateToString(state);
+  updater_state_ = state;
   UpdateSettingsAndState();
 }
 
@@ -528,6 +539,7 @@ void StateController::LoadPrefs() {
 }
 
 void StateController::UpdateSettingsAndState() {
+  Action old_idle_action = idle_action_;
   Action old_lid_closed_action = lid_closed_action_;
 
   // Start out with the defaults loaded from the power manager's prefs.
@@ -583,6 +595,14 @@ void StateController::UpdateSettingsAndState() {
   if (disable_idle_suspend_)
     idle_action_ = DO_NOTHING;
 
+  // Avoid suspending or shutting down due to inactivity while a system
+  // update is being applied on AC power so users on slow connections can
+  // get updates.  Continue suspending on lid-close so users don't get
+  // confused, though.
+  if (updater_state_ == UPDATER_UPDATING && power_source_ == POWER_AC &&
+      (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
+    idle_action_ = DO_NOTHING;
+
   // Finally, apply temporary state overrides.
   // Screen-related overrides are only honored if the external policy
   // has not specified that video activity should be disregarded.
@@ -599,8 +619,11 @@ void StateController::UpdateSettingsAndState() {
   if (override_lid_suspend_ && lid_closed_action_ == SUSPEND)
     lid_closed_action_ = DO_NOTHING;
 
-  // If the lid-closed action changed, make sure that we perform the new
-  // action in the event that the lid is already closed.
+  // If the idle or lid-closed actions changed, make sure that we perform
+  // the new actions in the event that the system is already idle or the
+  // lid is already closed.
+  if (idle_action_ != old_idle_action)
+    idle_action_performed_ = false;
   if (lid_closed_action_ != old_lid_closed_action)
     lid_closed_action_performed_ = false;
 

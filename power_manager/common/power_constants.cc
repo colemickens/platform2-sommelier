@@ -108,6 +108,19 @@ std::string SessionStateToString(SessionState state) {
   }
 }
 
+std::string UpdaterStateToString(UpdaterState state) {
+  switch (state) {
+    case UPDATER_IDLE:
+      return "idle";
+    case UPDATER_UPDATING:
+      return "updating";
+    case UPDATER_UPDATED:
+      return "updated";
+    default:
+      return StringPrintf("unknown (%d)", state);
+  }
+}
+
 std::string DisplayModeToString(DisplayMode mode) {
   switch (mode) {
     case DISPLAY_NORMAL:

@@ -251,6 +251,15 @@ class StateControllerTest : public testing::Test {
   // Resets the "last delay" used by StepTimeAndTriggerTimeout().
   void ResetLastStepDelay() { last_step_delay_ = base::TimeDelta(); }
 
+  // Steps through time to trigger the default AC screen dim, off, and
+  // suspend timeouts.
+  void TriggerDefaultAcTimeouts() {
+    ResetLastStepDelay();
+    ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+    ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+    ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  }
+
   FakePrefs prefs_;
   TestDelegate delegate_;
   StateController controller_;
@@ -416,11 +425,9 @@ TEST_F(StateControllerTest, ShutDownWhenSessionStopped) {
 
   // The screen should be dimmed and turned off, but the system should shut
   // down instead of suspending.
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kShutDown, delegate_.GetActions());
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
+            delegate_.GetActions());
 
   // Send a session-started notification (which is a bit unrealistic given
   // that the system was just shut down).
@@ -428,10 +435,7 @@ TEST_F(StateControllerTest, ShutDownWhenSessionStopped) {
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
 
   // The system should suspend now.
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
 
@@ -620,13 +624,9 @@ TEST_F(StateControllerTest, PartiallyFilledPolicy) {
   // Setting an empty policy should revert to the values from the prefs.
   policy.Clear();
   controller_.HandlePolicyChange(policy);
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
+            delegate_.GetActions());
 }
 
 // Tests that policies that enable audio detection while disabling video
@@ -743,26 +743,17 @@ TEST_F(StateControllerTest, RequireUsbInputDeviceToSuspend) {
 
   // Advance through the usual delays.  The suspend timeout should
   // trigger as before, but no action should be performed.
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
 
   // After a USB input device is connected, the system should suspend as
   // before.
   delegate_.set_usb_input_device_connected(true);
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
+            delegate_.GetActions());
 }
 
 // Tests that suspend is deferred before OOBE is completed.
@@ -772,23 +763,17 @@ TEST_F(StateControllerTest, DontSuspendBeforeOobeCompleted) {
 
   // The screen should dim and turn off as usual, but the system shouldn't
   // be suspended.
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Report user activity and mark OOBE as done.  The system should suspend
   // this time.
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   delegate_.set_oobe_completed(true);
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
+            delegate_.GetActions());
 }
 
 // Tests that the disable-idle-suspend pref is honored and overrides policies.
@@ -798,11 +783,8 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
 
   // With the disable-idle-suspend pref set, the system shouldn't suspend
   // when it's idle.
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Even after explicitly setting a policy to suspend on idle, the system
   // should still stay up.
@@ -816,12 +798,8 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   controller_.HandlePolicyChange(PowerManagementPolicy());
   controller_.HandleSessionStateChange(SESSION_STOPPED);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // The controller should watch the pref for changes.  After setting it to
   // 0, the system should shut down due to inactivity.
@@ -829,10 +807,7 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ASSERT_TRUE(prefs_.SetInt64(kDisableIdleSuspendPref, 0));
   prefs_.NotifyObservers(kDisableIdleSuspendPref);
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
             delegate_.GetActions());
 }
@@ -983,20 +958,14 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
 
   // With headphones connected, we shouldn't suspend.
   delegate_.set_avoid_suspend_for_headphones(true);
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Without headphones, we should.
   delegate_.set_avoid_suspend_for_headphones(false);
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
 
@@ -1009,10 +978,7 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
   policy.set_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
             delegate_.GetActions());
 }
@@ -1021,9 +987,7 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
 // lid-close event (http://crosbug.com/38011).
 TEST_F(StateControllerTest, LidCloseAfterIdleSuspend) {
   Init();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
+  TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
 
@@ -1059,6 +1023,57 @@ TEST_F(StateControllerTest, IgnoreLidEventsIfNoLid) {
   delegate_.set_lid_state(LID_CLOSED);
   controller_.HandleLidStateChange(LID_CLOSED);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
+}
+
+// Tests that the system doesn't suspend while an update is being applied.
+TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
+  Init();
+
+  // Inform the controller that an update is being applied.  The screen
+  // should dim and be turned off, but the system should stay on.
+  controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // When the update has been applied, the system should suspend immediately.
+  controller_.HandleUpdaterStateChange(UPDATER_UPDATED);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Resume the system and announce another update.
+  controller_.HandleResume();
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
+
+  // Closing the lid should still suspend.
+  controller_.HandleLidStateChange(LID_CLOSED);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Step through all of the timeouts again.
+  controller_.HandleResume();
+  controller_.HandleLidStateChange(LID_OPEN);
+  controller_.HandleUserActivity();
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // The system should also suspend immediately after transitioning from
+  // the "updating" state back to "idle" (i.e. the update was unsuccessful).
+  controller_.HandleUpdaterStateChange(UPDATER_IDLE);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  controller_.HandleResume();
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+
+  // If the idle action is changed to log the user out instead of
+  // suspending or shutting down, it should still be performed while an
+  // update is in-progress.
+  PowerManagementPolicy policy;
+  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  controller_.HandlePolicyChange(policy);
+  controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kStopSession, NULL),
+            delegate_.GetActions());
 }
 
 }  // namespace policy

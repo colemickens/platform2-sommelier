@@ -125,6 +125,7 @@ class StateController : public PrefsObserver {
   void HandlePowerSourceChange(PowerSource source);
   void HandleLidStateChange(LidState state);
   void HandleSessionStateChange(SessionState state);
+  void HandleUpdaterStateChange(UpdaterState state);
   void HandleDisplayModeChange(DisplayMode mode);
   void HandleResume();
   void HandlePolicyChange(const PowerManagementPolicy& policy);
@@ -263,6 +264,9 @@ class StateController : public PrefsObserver {
 
   // Current session state.
   SessionState session_state_;
+
+  // Current system update state.
+  UpdaterState updater_state_;
 
   // Whether the system is presenting or not.
   DisplayMode display_mode_;
