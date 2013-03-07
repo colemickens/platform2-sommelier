@@ -11,31 +11,23 @@
 
 #include "shill/config80211.h"
 
-#include <net/if.h>
-#include <netlink/attr.h>
-#include <netlink/genl/genl.h>
-#include <netlink/msg.h>
 #include <netlink/netlink.h>
 
-#include <list>
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/stl_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_netlink_socket.h"
-#include "shill/netlink_socket.h"
-#include "shill/nl80211_attribute.h"
+#include "shill/netlink_attribute.h"
 #include "shill/nl80211_message.h"
 #include "shill/refptr_types.h"
 
 using base::Bind;
 using base::Unretained;
 using base::WeakPtr;
-using std::list;
 using std::string;
 using std::vector;
 using testing::_;

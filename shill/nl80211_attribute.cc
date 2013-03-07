@@ -4,26 +4,9 @@
 
 #include "shill/nl80211_attribute.h"
 
-#include <ctype.h>
-#include <linux/nl80211.h>
 #include <netlink/attr.h>
-#include <netlink/netlink.h>
 
-#include <iomanip>
-#include <string>
-
-#include <base/format_macros.h>
-#include <base/stl_util.h>
-#include <base/stringprintf.h>
-
-#include "shill/attribute_list.h"
 #include "shill/logging.h"
-#include "shill/scope_logger.h"
-
-using std::string;
-
-using base::StringAppendF;
-using base::StringPrintf;
 
 namespace shill {
 

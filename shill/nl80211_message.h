@@ -2,26 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_USER_BOUND_NLMESSAGE_H_
-#define SHILL_USER_BOUND_NLMESSAGE_H_
+#ifndef SHILL_NL80211_MESSAGE_H_
+#define SHILL_NL80211_MESSAGE_H_
 
-#include <linux/nl80211.h>
-
-#include <iomanip>
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/basictypes.h>
-#include <base/bind.h>
 #include <base/lazy_instance.h>
-#include <gtest/gtest.h>
+
+#include <gtest/gtest.h>  // for FRIEND_TEST.
 
 #include "shill/attribute_list.h"
 #include "shill/byte_string.h"
 #include "shill/refptr_types.h"
 
-struct nlattr;
 struct nlmsghdr;
 
 namespace shill {
@@ -761,4 +757,4 @@ class Nl80211MessageDataCollector {
 
 }  // namespace shill
 
-#endif  // SHILL_USER_BOUND_NLMESSAGE_H_
+#endif  // SHILL_NL80211_MESSAGE_H_

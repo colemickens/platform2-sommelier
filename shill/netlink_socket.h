@@ -25,22 +25,14 @@
 #ifndef SHILL_NETLINK_SOCKET_H_
 #define SHILL_NETLINK_SOCKET_H_
 
-#include <iomanip>
-#include <string>
-
-#include <asm/types.h>
-#include <linux/nl80211.h>
-#include <netlink/handlers.h>
-#include <netlink/netlink.h>
-
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace shill {
 
-class Nl80211Message;
 class Sockets;
 class ByteString;
 

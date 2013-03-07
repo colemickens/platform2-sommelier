@@ -24,35 +24,25 @@
 
 #include "shill/nl80211_message.h"
 
-#include <ctype.h>
-#include <endian.h>
-#include <errno.h>
 #include <limits.h>
-#include <linux/nl80211.h>
-#include <net/if.h>
-#include <netinet/in.h>
 #include <netlink/attr.h>
-#include <netlink/genl/ctrl.h>
-#include <netlink/genl/family.h>
-#include <netlink/genl/genl.h>
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
 
 #include <algorithm>
-#include <iomanip>
+#include <map>
 #include <string>
+#include <vector>
 
 #include <base/bind.h>
 #include <base/format_macros.h>
-#include <base/stl_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/attribute_list.h"
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
 #include "shill/netlink_attribute.h"
-#include "shill/netlink_socket.h"
-#include "shill/scope_logger.h"
+#include "shill/refptr_types.h"
 
 using base::Bind;
 using base::LazyInstance;

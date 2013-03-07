@@ -61,7 +61,6 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include <iomanip>
 #include <list>
 #include <map>
 #include <set>
@@ -71,15 +70,16 @@
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 
-#include "shill/event_dispatcher.h"
-#include "shill/io_handler.h"
-#include "shill/netlink_socket.h"
+struct nlmsghdr;
 
 namespace shill {
 
 class Error;
+class EventDispatcher;
 struct InputData;
+class IOHandler;
 class NetlinkMessage;
+class NetlinkSocket;
 
 // Config80211 is a singleton that coordinates sending netlink messages to,
 // and receiving netlink messages from, the kernel.  The first use of this is
@@ -201,9 +201,7 @@ class Config80211 {
   static const long kMaximumNewFamilyWaitMicroSeconds;
 
   // Returns the file descriptor of socket used to read wifi data.
-  int file_descriptor() const {
-    return (sock_ ? sock_->file_descriptor() : -1);
-  }
+  int file_descriptor() const;
 
   // EventDispatcher calls this when data is available on our socket.  This
   // method passes each, individual, message in the input to

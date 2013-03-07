@@ -15,7 +15,6 @@
 #include "shill/control_netlink_attribute.h"
 #include "shill/logging.h"
 #include "shill/nl80211_attribute.h"
-#include "shill/scope_logger.h"
 
 using std::string;
 

@@ -4,33 +4,12 @@
 
 #include "shill/netlink_socket.h"
 
-#include <ctype.h>
-#include <errno.h>
-#include <string.h>
-
-#include <arpa/inet.h>
 #include <linux/if_packet.h>
-#include <net/if.h>
-#include <netlink/attr.h>
-#include <netlink/genl/ctrl.h>
-#include <netlink/genl/family.h>
-#include <netlink/genl/genl.h>
-#include <netlink/msg.h>
-#include <netlink/netlink.h>
 #include <sys/socket.h>
-
-#include <iomanip>
-#include <string>
-
-#include <base/logging.h>
-#include <base/stringprintf.h>
 
 #include "shill/logging.h"
 #include "shill/nl80211_message.h"
 #include "shill/sockets.h"
-
-using base::StringAppendF;
-using std::string;
 
 // This is from a version of linux/socket.h that we don't have.
 #define SOL_NETLINK 270

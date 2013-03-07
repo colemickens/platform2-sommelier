@@ -7,7 +7,6 @@
 #include <netlink/attr.h>
 
 #include "shill/logging.h"
-#include "shill/scope_logger.h"
 
 namespace shill {
 

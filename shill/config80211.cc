@@ -4,20 +4,17 @@
 
 #include "shill/config80211.h"
 
-#include <ctype.h>
-#include <netlink/msg.h>
+#include <netlink/netlink.h>
 #include <sys/select.h>
 #include <sys/time.h>
-
 #include <map>
-#include <sstream>
-#include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <base/stl_util.h>
 
 #include "shill/attribute_list.h"
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/io_handler.h"
 #include "shill/logging.h"
 #include "shill/netlink_socket.h"
@@ -162,6 +159,10 @@ void Config80211::Start(EventDispatcher *dispatcher) {
       file_descriptor(),
       dispatcher_callback_,
       Bind(&Config80211::OnReadError, weak_ptr_factory_.GetWeakPtr())));
+}
+
+int Config80211::file_descriptor() const {
+  return (sock_ ? sock_->file_descriptor() : -1);
 }
 
 uint16_t Config80211::GetFamily(string name) {

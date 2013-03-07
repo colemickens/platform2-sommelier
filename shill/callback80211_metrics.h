@@ -5,8 +5,8 @@
 // This class is a callback object that observes all nl80211 events that come
 // up from the kernel.
 
-#ifndef SHILL_CALLBACK80211_METRICS_H
-#define SHILL_CALLBACK80211_METRICS_H
+#ifndef SHILL_CALLBACK80211_METRICS_H_
+#define SHILL_CALLBACK80211_METRICS_H_
 
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
@@ -46,4 +46,4 @@ class Callback80211Metrics :
 
 }  // namespace shill
 
-#endif  // SHILL_CALLBACK80211_METRICS_H
+#endif  // SHILL_CALLBACK80211_METRICS_H_

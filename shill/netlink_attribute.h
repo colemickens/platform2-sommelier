@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/memory/weak_ptr.h>
+#include <base/basictypes.h>
 
 #include "shill/attribute_list.h"
 #include "shill/byte_string.h"
@@ -144,6 +144,8 @@ class NetlinkAttribute {
   std::string id_string_;
   Type datatype_;
   const char *datatype_string_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkAttribute);
 };
 
 class NetlinkU8Attribute : public NetlinkAttribute {
@@ -160,6 +162,8 @@ class NetlinkU8Attribute : public NetlinkAttribute {
 
  private:
   uint8_t value_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkU8Attribute);
 };
 
 class NetlinkU16Attribute : public NetlinkAttribute {
@@ -176,6 +180,8 @@ class NetlinkU16Attribute : public NetlinkAttribute {
 
  private:
   uint16_t value_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkU16Attribute);
 };
 
 class NetlinkU32Attribute : public NetlinkAttribute {
@@ -192,6 +198,8 @@ class NetlinkU32Attribute : public NetlinkAttribute {
 
  private:
   uint32_t value_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkU32Attribute);
 };
 
 class NetlinkU64Attribute : public NetlinkAttribute {
@@ -208,6 +216,8 @@ class NetlinkU64Attribute : public NetlinkAttribute {
 
  private:
   uint64_t value_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkU64Attribute);
 };
 
 class NetlinkFlagAttribute : public NetlinkAttribute {
@@ -224,6 +234,8 @@ class NetlinkFlagAttribute : public NetlinkAttribute {
 
  private:
   bool value_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkFlagAttribute);
 };
 
 class NetlinkStringAttribute : public NetlinkAttribute {
@@ -240,6 +252,8 @@ class NetlinkStringAttribute : public NetlinkAttribute {
 
  private:
   std::string value_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkStringAttribute);
 };
 
 class NetlinkNestedAttribute : public NetlinkAttribute {
@@ -311,6 +325,9 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
                                    const nlattr &attr,
                                    const NestedData &nested_data);
   AttributeListRefPtr value_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NetlinkNestedAttribute);
 };
 
 class NetlinkRawAttribute : public NetlinkAttribute {
@@ -326,6 +343,9 @@ class NetlinkRawAttribute : public NetlinkAttribute {
   virtual bool SetRawValue(const ByteString value);
   virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NetlinkRawAttribute);
 };
 
 class NetlinkAttributeGeneric : public NetlinkRawAttribute {
@@ -335,6 +355,8 @@ class NetlinkAttributeGeneric : public NetlinkRawAttribute {
 
  private:
   std::string id_string_;
+
+  DISALLOW_COPY_AND_ASSIGN(NetlinkAttributeGeneric);
 };
 
 }  // namespace shill

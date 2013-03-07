@@ -5,15 +5,12 @@
 #ifndef SHILL_MOCK_NETLINK_SOCKET_H_
 #define SHILL_MOCK_NETLINK_SOCKET_H_
 
-#include <netlink/attr.h>
-#include <netlink/netlink.h>
 
-#include <string>
+#include <base/basictypes.h>
 
 #include <gmock/gmock.h>
 
 #include "shill/netlink_socket.h"
-
 
 namespace shill {
 

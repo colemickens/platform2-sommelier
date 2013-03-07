@@ -7,8 +7,9 @@
 
 #include <netlink/attr.h>
 
+#include <base/basictypes.h>
+
 #include "shill/netlink_attribute.h"
-#include "shill/refptr_types.h"
 
 struct nlattr;
 
@@ -21,6 +22,9 @@ class Nl80211AttributeKeyIdx : public NetlinkU8Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeKeyIdx() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeKeyIdx);
 };
 
 class Nl80211AttributeRegType : public NetlinkU8Attribute {
@@ -28,6 +32,9 @@ class Nl80211AttributeRegType : public NetlinkU8Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeRegType() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRegType);
 };
 
 // U16.
@@ -37,6 +44,9 @@ class Nl80211AttributeReasonCode : public NetlinkU16Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeReasonCode() : NetlinkU16Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeReasonCode);
 };
 
 class Nl80211AttributeStatusCode : public NetlinkU16Attribute {
@@ -44,6 +54,9 @@ class Nl80211AttributeStatusCode : public NetlinkU16Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeStatusCode() : NetlinkU16Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeStatusCode);
 };
 
 // U32.
@@ -53,6 +66,9 @@ class Nl80211AttributeDuration : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeDuration() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDuration);
 };
 
 class Nl80211AttributeGeneration : public NetlinkU32Attribute {
@@ -60,6 +76,9 @@ class Nl80211AttributeGeneration : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeGeneration() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeGeneration);
 };
 
 class Nl80211AttributeIfindex : public NetlinkU32Attribute {
@@ -67,6 +86,9 @@ class Nl80211AttributeIfindex : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeIfindex() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeIfindex);
 };
 
 class Nl80211AttributeKeyType : public NetlinkU32Attribute {
@@ -74,6 +96,9 @@ class Nl80211AttributeKeyType : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeKeyType() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeKeyType);
 };
 
 class Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
@@ -81,6 +106,9 @@ class Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeRegInitiator() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRegInitiator);
 };
 
 class Nl80211AttributeWiphy : public NetlinkU32Attribute {
@@ -88,6 +116,9 @@ class Nl80211AttributeWiphy : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphy() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphy);
 };
 
 class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
@@ -95,6 +126,9 @@ class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyFreq() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyFreq);
 };
 
 // U64.
@@ -104,6 +138,9 @@ class Nl80211AttributeCookie : public NetlinkU64Attribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeCookie() : NetlinkU64Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCookie);
 };
 
 // Flag.
@@ -114,6 +151,9 @@ class Nl80211AttributeDisconnectedByAp : public NetlinkFlagAttribute {
   static const char kNameString[];
   Nl80211AttributeDisconnectedByAp() :
     NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDisconnectedByAp);
 };
 
 class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
@@ -122,6 +162,9 @@ class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
   static const char kNameString[];
   Nl80211AttributeSupportMeshAuth() :
     NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportMeshAuth);
 };
 
 class Nl80211AttributeTimedOut : public NetlinkFlagAttribute {
@@ -129,6 +172,9 @@ class Nl80211AttributeTimedOut : public NetlinkFlagAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeTimedOut() : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeTimedOut);
 };
 
 // String.
@@ -138,6 +184,9 @@ class Nl80211AttributeRegAlpha2 : public NetlinkStringAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeRegAlpha2() : NetlinkStringAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRegAlpha2);
 };
 
 class Nl80211AttributeWiphyName : public NetlinkStringAttribute {
@@ -145,6 +194,9 @@ class Nl80211AttributeWiphyName : public NetlinkStringAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeWiphyName() : NetlinkStringAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyName);
 };
 
 // Nested.
@@ -155,6 +207,9 @@ class Nl80211AttributeCqm : public NetlinkNestedAttribute {
   static const char kNameString[];
   Nl80211AttributeCqm();
   virtual bool InitFromNlAttr(const nlattr *data);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCqm);
 };
 
 class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
@@ -163,6 +218,9 @@ class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
   static const char kNameString[];
   explicit Nl80211AttributeScanFrequencies();
   virtual bool InitFromNlAttr(const nlattr *const_data);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeScanFrequencies);
 };
 
 class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
@@ -171,6 +229,9 @@ class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
   static const char kNameString[];
   explicit Nl80211AttributeScanSsids();
   virtual bool InitFromNlAttr(const nlattr *const_data);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeScanSsids);
 };
 
 class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
@@ -179,6 +240,9 @@ class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
   static const char kNameString[];
   Nl80211AttributeStaInfo();
   virtual bool InitFromNlAttr(const nlattr *const_data);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeStaInfo);
 };
 
 // Raw.
@@ -188,6 +252,9 @@ class Nl80211AttributeFrame : public NetlinkRawAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeFrame() : NetlinkRawAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeFrame);
 };
 
 class Nl80211AttributeKeySeq : public NetlinkRawAttribute {
@@ -195,6 +262,9 @@ class Nl80211AttributeKeySeq : public NetlinkRawAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeKeySeq() : NetlinkRawAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeKeySeq);
 };
 
 class Nl80211AttributeMac : public NetlinkRawAttribute {
@@ -202,6 +272,9 @@ class Nl80211AttributeMac : public NetlinkRawAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeMac() : NetlinkRawAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMac);
 };
 
 class Nl80211AttributeRespIe : public NetlinkRawAttribute {
@@ -209,6 +282,9 @@ class Nl80211AttributeRespIe : public NetlinkRawAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeRespIe() : NetlinkRawAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRespIe);
 };
 
 }  // namespace shill

@@ -5,7 +5,7 @@
 #ifndef SHILL_CONTROL_NETLINK_ATTRIBUTE_H_
 #define SHILL_CONTROL_NETLINK_ATTRIBUTE_H_
 
-#include <netlink/attr.h>
+#include <base/basictypes.h>
 
 #include "shill/netlink_attribute.h"
 
@@ -20,6 +20,9 @@ class ControlAttributeFamilyId : public NetlinkU16Attribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeFamilyId() : NetlinkU16Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeFamilyId);
 };
 
 class ControlAttributeFamilyName : public NetlinkStringAttribute {
@@ -27,6 +30,9 @@ class ControlAttributeFamilyName : public NetlinkStringAttribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeFamilyName() : NetlinkStringAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeFamilyName);
 };
 
 class ControlAttributeVersion : public NetlinkU32Attribute {
@@ -34,6 +40,9 @@ class ControlAttributeVersion : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeVersion() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeVersion);
 };
 
 class ControlAttributeHdrSize : public NetlinkU32Attribute {
@@ -41,6 +50,9 @@ class ControlAttributeHdrSize : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeHdrSize() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeHdrSize);
 };
 
 class ControlAttributeMaxAttr : public NetlinkU32Attribute {
@@ -48,6 +60,9 @@ class ControlAttributeMaxAttr : public NetlinkU32Attribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeMaxAttr() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeMaxAttr);
 };
 
 class ControlAttributeAttrOps : public NetlinkNestedAttribute {
@@ -56,6 +71,9 @@ class ControlAttributeAttrOps : public NetlinkNestedAttribute {
   static const char kNameString[];
   ControlAttributeAttrOps();
   virtual bool InitFromNlAttr(const nlattr *data);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeAttrOps);
 };
 
 class ControlAttributeMcastGroups : public NetlinkNestedAttribute {
@@ -64,6 +82,9 @@ class ControlAttributeMcastGroups : public NetlinkNestedAttribute {
   static const char kNameString[];
   ControlAttributeMcastGroups();
   virtual bool InitFromNlAttr(const nlattr *data);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlAttributeMcastGroups);
 };
 
 }  // namespace shill
