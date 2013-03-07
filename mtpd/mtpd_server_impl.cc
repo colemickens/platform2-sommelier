@@ -7,9 +7,15 @@
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
 
 #include "service_constants.h"
+
+// TODO(thestig) Merge these once libchrome catches up to Chromium's base.
+#if defined(CROS_BUILD)
+#include <base/string_number_conversions.h>
+#else
+#include <base/strings/string_number_conversions.h>
+#endif
 
 namespace mtpd {
 

@@ -12,20 +12,21 @@
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stl_util.h>
-#include <base/string_number_conversions.h>
-#include <base/string_split.h>
 #include <base/stringprintf.h>
 
 #include "build_config.h"
 #include "device_event_delegate.h"
 #include "service_constants.h"
 
-// TODO(thestig) Set this back to base/files/file_path.h once libchrome
-// catches up to Chromium's base.
+// TODO(thestig) Merge these once libchrome catches up to Chromium's base.
 #if defined(CROS_BUILD)
 #include <base/file_path.h>
+#include <base/string_number_conversions.h>
+#include <base/string_split.h>
 #else
 #include <base/files/file_path.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #endif
 
 namespace {
