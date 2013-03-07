@@ -19,6 +19,7 @@ using quipper::PerfDataProto_PerfEvent;
 using quipper::PerfDataProto_PerfFileAttr;
 using quipper::PerfDataProto_PerfEventAttr;
 using quipper::PerfDataProto_SampleEvent;
+using quipper::PerfDataProto_SampleInfo;
 
 PerfSerializer::PerfSerializer() : sample_type_(0) {
 }
@@ -102,15 +103,7 @@ void PerfSerializer::SerializeCommSample(
   sample->set_comm(event->comm.comm);
   sample->set_comm_md5_prefix(Md5Prefix(event->comm.comm));
 
-  const u64* array =
-      reinterpret_cast<const u64*>(reinterpret_cast<uint64>(event) +
-                                   sizeof(event->comm));
-
-  // Comm event data contains additional time field.
-  if (sample_type_ & PERF_SAMPLE_TIME) {
-    sample->set_sample_time(*array);
-    array++;
-  }
+  SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
 void PerfSerializer::DeserializeCommSample(
@@ -123,13 +116,7 @@ void PerfSerializer::DeserializeCommSample(
            "%s",
            sample->comm().c_str());
 
-  u64* array =
-      reinterpret_cast<u64*>(reinterpret_cast<uint64>(event) +
-                             sizeof(event->comm));
-  if (sample->has_sample_time()) {
-    *array = sample->sample_time();
-    array++;
-  }
+  DeserializeSampleInfo(event, &sample->sample_info());
 }
 
 void PerfSerializer::SerializeMMapSample(
@@ -142,6 +129,8 @@ void PerfSerializer::SerializeMMapSample(
   sample->set_pgoff(event->mmap.pgoff);
   sample->set_filename(event->mmap.filename);
   sample->set_filename_md5_prefix(Md5Prefix(event->mmap.filename));
+
+  SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
 void PerfSerializer::DeserializeMMapSample(
@@ -156,6 +145,8 @@ void PerfSerializer::DeserializeMMapSample(
            PATH_MAX,
            "%s",
            sample->filename().c_str());
+
+  DeserializeSampleInfo(event, &sample->sample_info());
 }
 
 void PerfSerializer::SerializeForkSample(
@@ -167,42 +158,7 @@ void PerfSerializer::SerializeForkSample(
   sample->set_ptid(event->fork.ppid);
   sample->set_time(event->fork.time);
 
-  union {
-    u64 val64;
-    u32 val32[2];
-  } u;
-  const u64* array =
-      reinterpret_cast<const u64*>(reinterpret_cast<uint64>(event) +
-                                   sizeof(event->fork));
-
-  // Fork event data contains additional pid/tid, time, id, and cpu fields.
-  // TODO(sque): since this follows the same format as SerializeRecordSample(),
-  // put it in a common function.  Do the same for DeserializeForkSample().
-  if (sample_type_ & PERF_SAMPLE_TID) {
-    u.val64 = *array;
-    sample->set_sample_pid(u.val32[0]);
-    sample->set_sample_tid(u.val32[1]);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_TIME) {
-    sample->set_sample_time(*array);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_ADDR) {
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_ID) {
-    sample->set_sample_id(*array);
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_STREAM_ID) {
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_CPU) {
-    u.val64 = *array;
-    sample->set_sample_cpu(u.val32[0]);
-    array++;
-  }
+  SerializeSampleInfo(event, sample->mutable_sample_info());
 }
 
 void PerfSerializer::DeserializeForkSample(
@@ -214,39 +170,43 @@ void PerfSerializer::DeserializeForkSample(
   event->fork.ptid = sample->ptid();
   event->fork.time = sample->time();
 
-  union {
-    u64 val64;
-    u32 val32[2];
-  } u;
-  u64* array =
-      reinterpret_cast<u64*>(reinterpret_cast<uint64>(event) +
-                             sizeof(event->fork));
-  if (sample->has_sample_tid()) {
-    u.val32[0] = sample->sample_pid();
-    u.val32[1] = sample->sample_tid();
-    *array = u.val64;
-    array++;
+  DeserializeSampleInfo(event, &sample->sample_info());
+}
+
+void PerfSerializer::SerializeSampleInfo(
+    const event_t* event,
+    PerfDataProto_SampleInfo* sample_info) const {
+  struct perf_sample perf_sample;
+  ReadPerfSampleInfo(*event, sample_type_, &perf_sample);
+
+  if (sample_type_ & PERF_SAMPLE_TID) {
+    sample_info->set_pid(perf_sample.pid);
+    sample_info->set_tid(perf_sample.tid);
   }
-  if (sample->has_sample_time()) {
-    *array = sample->sample_time();
-    array++;
+  if (sample_type_ & PERF_SAMPLE_TIME)
+    sample_info->set_time(perf_sample.time);
+  if (sample_type_ & PERF_SAMPLE_ID)
+    sample_info->set_id(perf_sample.id);
+  if (sample_type_ & PERF_SAMPLE_CPU)
+    sample_info->set_cpu(perf_sample.cpu);
+}
+
+void PerfSerializer::DeserializeSampleInfo(
+    event_t* event,
+    const PerfDataProto_SampleInfo* sample_info) const {
+  struct perf_sample perf_sample;
+  if (sample_info->has_tid()) {
+    perf_sample.pid = sample_info->pid();
+    perf_sample.tid = sample_info->tid();
   }
-  if (sample_type_ & PERF_SAMPLE_ADDR) {
-    array++;
-  }
-  if (sample->has_sample_id()) {
-    *array = sample->sample_id();
-    array++;
-  }
-  if (sample_type_ & PERF_SAMPLE_STREAM_ID) {
-    array++;
-  }
-  if (sample->has_sample_cpu()) {
-    u.val32[0] = sample->sample_cpu();
-    u.val32[1] = 0;
-    *array = u.val64;
-    array++;
-  }
+  if (sample_info->has_time())
+    perf_sample.time = sample_info->time();
+  if (sample_info->has_id())
+    perf_sample.id = sample_info->id();
+  if (sample_info->has_cpu())
+    perf_sample.cpu = sample_info->cpu();
+
+  WritePerfSampleInfo(perf_sample, sample_type_, event);
 }
 
 void PerfSerializer::DeserializeEvent(
@@ -254,23 +214,19 @@ void PerfSerializer::DeserializeEvent(
     const PerfDataProto_PerfEvent* event_proto) const {
   DeserializeEventHeader(&event->header, &event_proto->header());
   switch (event_proto->header().type()) {
-    case PERF_RECORD_SAMPLE: {
+    case PERF_RECORD_SAMPLE:
       DeserializeRecordSample(event, &event_proto->sample_event());
       break;
-    }
-    case PERF_RECORD_MMAP: {
+    case PERF_RECORD_MMAP:
       DeserializeMMapSample(event, &event_proto->mmap_event());
       break;
-    }
-    case PERF_RECORD_COMM: {
+    case PERF_RECORD_COMM:
       DeserializeCommSample(event, &event_proto->comm_event());
       break;
-    }
     case PERF_RECORD_EXIT:
-    case PERF_RECORD_FORK: {
+    case PERF_RECORD_FORK:
       DeserializeForkSample(event, &event_proto->fork_event());
       break;
-    }
     case PERF_RECORD_LOST:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:
@@ -286,31 +242,19 @@ void PerfSerializer::SerializeEvent(
     PerfDataProto_PerfEvent* event_proto) const {
   SerializeEventHeader(&event->header, event_proto->mutable_header());
   switch (event->header.type) {
-    case PERF_RECORD_SAMPLE: {
-      PerfDataProto_SampleEvent* sample_proto =
-          event_proto->mutable_sample_event();
-      SerializeRecordSample(event, sample_proto);
+    case PERF_RECORD_SAMPLE:
+      SerializeRecordSample(event, event_proto->mutable_sample_event());
       break;
-    }
-    case PERF_RECORD_MMAP: {
-      PerfDataProto_MMapEvent* mmap_proto =
-          event_proto->mutable_mmap_event();
-      SerializeMMapSample(event, mmap_proto);
+    case PERF_RECORD_MMAP:
+      SerializeMMapSample(event, event_proto->mutable_mmap_event());
       break;
-    }
-    case PERF_RECORD_COMM: {
-      PerfDataProto_CommEvent* comm_proto =
-          event_proto->mutable_comm_event();
-      SerializeCommSample(event, comm_proto);
+    case PERF_RECORD_COMM:
+      SerializeCommSample(event, event_proto->mutable_comm_event());
       break;
-    }
     case PERF_RECORD_EXIT:
-    case PERF_RECORD_FORK: {
-      PerfDataProto_ForkEvent* fork_proto =
-          event_proto->mutable_fork_event();
-      SerializeForkSample(event, fork_proto);
+    case PERF_RECORD_FORK:
+      SerializeForkSample(event, event_proto->mutable_fork_event());
       break;
-    }
     case PERF_RECORD_LOST:
     case PERF_RECORD_THROTTLE:
     case PERF_RECORD_UNTHROTTLE:

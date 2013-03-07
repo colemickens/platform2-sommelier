@@ -147,7 +147,7 @@ message PerfDataProto {
     repeated uint64 ids = 2;
   }
 
-  // Next tag: 6
+  // Next tag: 7
   message CommEvent {
     // Process id.
     optional uint32 pid = 1;
@@ -161,11 +161,11 @@ message PerfDataProto {
     // Comm string's md5 prefix
     optional uint64 comm_md5_prefix = 4;
 
-    // Perf sample timestamp.
-    optional uint64 sample_time = 5;
+    // Info about the perf sample containing this event.
+    optional SampleInfo sample_info = 6;
   }
 
-  // Next tag: 8
+  // Next tag: 9
   message MMapEvent {
     // Process id.
     optional uint32 pid = 1;
@@ -181,6 +181,9 @@ message PerfDataProto {
     optional string filename = 6;
     // Filename's md5 prefix.
     optional uint64 filename_md5_prefix = 7;
+
+    // Info about the perf sample containing this event.
+    optional SampleInfo sample_info = 8;
   }
 
   // Next tag: 11
@@ -220,7 +223,7 @@ message PerfDataProto {
   // format.  We don't want to call this "ForkOrExitEvent", in case a separate
   // exit event is introduced in the future.
 
-  // Next tag: 11
+  // Next tag: 12
   message ForkEvent {
     // Forked process ID.
     optional uint32 pid = 1;
@@ -237,12 +240,28 @@ message PerfDataProto {
     // Time of fork event.
     optional uint64 time = 5;
 
-    // The following fields have the same meaning as in SampleEvent.
-    optional uint32 sample_pid = 6;
-    optional uint32 sample_tid = 7;
-    optional uint64 sample_time = 8;
-    optional uint64 sample_id = 9;
-    optional uint32 sample_cpu = 10;
+    // Info about the perf sample containing this event.
+    optional SampleInfo sample_info = 11;
+  }
+
+  // This message contains information about a perf sample itself, as opposed to
+  // a perf event captured by a sample.
+
+  // Next tag: 6
+  message SampleInfo {
+    // Process ID / thread ID from which this sample was taken.
+    optional uint32 pid = 1;
+    optional uint32 tid = 2;
+
+    // Time this sample was taken (NOT the same as an event time).
+    optional uint64 time = 3;
+
+    // The ID of the sample's event type (cycles, instructions, etc).
+    // The event type IDs are defined in PerfFileAttr.
+    optional uint64 id = 4;
+
+    // The CPU on which this sample was taken.
+    optional uint32 cpu = 5;
   }
 
   // Next tag: 4

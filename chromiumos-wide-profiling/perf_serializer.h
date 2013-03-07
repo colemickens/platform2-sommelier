@@ -66,6 +66,13 @@ class PerfSerializer {
       event_t* event,
       const quipper::PerfDataProto_CommEvent* sample) const;
 
+  void SerializeSampleInfo(
+      const event_t* event,
+      quipper::PerfDataProto_SampleInfo* sample_info) const;
+  void DeserializeSampleInfo(
+      event_t* event,
+      const quipper::PerfDataProto_SampleInfo* info) const;
+
   void SerializePerfEventAttr(
       const perf_event_attr* perf_event_attr,
       quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
