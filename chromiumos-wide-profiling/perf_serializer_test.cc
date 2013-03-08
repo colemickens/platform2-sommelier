@@ -61,7 +61,7 @@ void SerializeToFileAndBack(const std::string& input,
   remove(output_filename.c_str());
 }
 
-TEST(PerfReaderTest, Test1Cycle) {
+TEST(PerfSerializerTest, Test1Cycle) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
