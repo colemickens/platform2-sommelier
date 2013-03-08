@@ -342,6 +342,12 @@ bool ComparePerfReports(const string& a, const string& b) {
   return outputs[a] == outputs[b];
 }
 
+void CopyPerfEventSpecificInfo(const event_t& source, event_t* destination) {
+  // The sample info offset is equal to the amount of event-specific data that
+  // precedes it.
+  memcpy(destination, &source, GetPerfSampleDataOffset(source));
+}
+
 bool ReadPerfSampleInfo(const event_t& event,
                         uint64 sample_type,
                         struct perf_sample* sample) {

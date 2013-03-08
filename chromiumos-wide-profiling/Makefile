@@ -17,13 +17,14 @@ LDLIBS += $(PC_LIBS)
 
 MAIN_SOURCES = quipper.cc
 PROGRAMS = $(MAIN_SOURCES:.cc=)
-TEST_SOURCES = perf_reader_test.cc perf_serializer_test.cc \
+TEST_SOURCES = perf_parser_test.cc perf_reader_test.cc perf_serializer_test.cc \
 	       perf_recorder_test.cc utils_test.cc
 GENERATED_SOURCES = perf_data.pb.cc
 GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
-COMMON_SOURCES = utils.cc perf_protobuf_io.cc perf_reader.cc perf_recorder.cc \
-		 perf_serializer.cc $(GENERATED_SOURCES)
+COMMON_SOURCES = perf_parser.cc perf_protobuf_io.cc perf_reader.cc \
+		 perf_recorder.cc perf_serializer.cc utils.cc \
+		 $(GENERATED_SOURCES)
 COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
 
 TESTS = $(TEST_SOURCES:.cc=)
