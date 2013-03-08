@@ -100,10 +100,11 @@ void PerfSerializer::DeserializeRecordSample(
 void PerfSerializer::SerializeCommSample(
       const event_t& event,
       PerfDataProto_CommEvent* sample) const {
-  sample->set_pid(event.comm.pid);
-  sample->set_tid(event.comm.tid);
-  sample->set_comm(event.comm.comm);
-  sample->set_comm_md5_prefix(Md5Prefix(event.comm.comm));
+  const struct comm_event& comm = event.comm;
+  sample->set_pid(comm.pid);
+  sample->set_tid(comm.tid);
+  sample->set_comm(comm.comm);
+  sample->set_comm_md5_prefix(Md5Prefix(comm.comm));
 
   SerializeSampleInfo(event, sample->mutable_sample_info());
 }
@@ -111,12 +112,10 @@ void PerfSerializer::SerializeCommSample(
 void PerfSerializer::DeserializeCommSample(
     const PerfDataProto_CommEvent& sample,
     event_t* event) const {
-  event->comm.pid = sample.pid();
-  event->comm.tid = sample.tid();
-  snprintf(event->comm.comm,
-           sizeof(event->comm.comm),
-           "%s",
-           sample.comm().c_str());
+  struct comm_event& comm = event->comm;
+  comm.pid = sample.pid();
+  comm.tid = sample.tid();
+  snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
 
   DeserializeSampleInfo(sample.sample_info(), event);
 }
@@ -124,13 +123,14 @@ void PerfSerializer::DeserializeCommSample(
 void PerfSerializer::SerializeMMapSample(
     const event_t& event,
     PerfDataProto_MMapEvent* sample) const {
-  sample->set_pid(event.mmap.pid);
-  sample->set_tid(event.mmap.tid);
-  sample->set_start(event.mmap.start);
-  sample->set_len(event.mmap.len);
-  sample->set_pgoff(event.mmap.pgoff);
-  sample->set_filename(event.mmap.filename);
-  sample->set_filename_md5_prefix(Md5Prefix(event.mmap.filename));
+  const struct mmap_event& mmap = event.mmap;
+  sample->set_pid(mmap.pid);
+  sample->set_tid(mmap.tid);
+  sample->set_start(mmap.start);
+  sample->set_len(mmap.len);
+  sample->set_pgoff(mmap.pgoff);
+  sample->set_filename(mmap.filename);
+  sample->set_filename_md5_prefix(Md5Prefix(mmap.filename));
 
   SerializeSampleInfo(event, sample->mutable_sample_info());
 }
@@ -138,15 +138,13 @@ void PerfSerializer::SerializeMMapSample(
 void PerfSerializer::DeserializeMMapSample(
     const PerfDataProto_MMapEvent& sample,
     event_t* event) const {
-  event->mmap.pid = sample.pid();
-  event->mmap.tid = sample.tid();
-  event->mmap.start = sample.start();
-  event->mmap.len = sample.len();
-  event->mmap.pgoff = sample.pgoff();
-  snprintf(event->mmap.filename,
-           PATH_MAX,
-           "%s",
-           sample.filename().c_str());
+  struct mmap_event& mmap = event->mmap;
+  mmap.pid = sample.pid();
+  mmap.tid = sample.tid();
+  mmap.start = sample.start();
+  mmap.len = sample.len();
+  mmap.pgoff = sample.pgoff();
+  snprintf(mmap.filename, PATH_MAX, "%s", sample.filename().c_str());
 
   DeserializeSampleInfo(sample.sample_info(), event);
 }
@@ -154,11 +152,12 @@ void PerfSerializer::DeserializeMMapSample(
 void PerfSerializer::SerializeForkSample(
     const event_t& event,
     PerfDataProto_ForkEvent* sample) const {
-  sample->set_pid(event.fork.pid);
-  sample->set_ppid(event.fork.ppid);
-  sample->set_tid(event.fork.tid);
-  sample->set_ptid(event.fork.ppid);
-  sample->set_time(event.fork.time);
+  const struct fork_event& fork = event.fork;
+  sample->set_pid(fork.pid);
+  sample->set_ppid(fork.ppid);
+  sample->set_tid(fork.tid);
+  sample->set_ptid(fork.ppid);
+  sample->set_time(fork.time);
 
   SerializeSampleInfo(event, sample->mutable_sample_info());
 }
@@ -166,11 +165,12 @@ void PerfSerializer::SerializeForkSample(
 void PerfSerializer::DeserializeForkSample(
     const PerfDataProto_ForkEvent& sample,
     event_t* event) const {
-  event->fork.pid = sample.pid();
-  event->fork.ppid = sample.ppid();
-  event->fork.tid = sample.tid();
-  event->fork.ptid = sample.ptid();
-  event->fork.time = sample.time();
+  struct fork_event& fork = event->fork;
+  fork.pid = sample.pid();
+  fork.ppid = sample.ppid();
+  fork.tid = sample.tid();
+  fork.ptid = sample.ptid();
+  fork.time = sample.time();
 
   DeserializeSampleInfo(sample.sample_info(), event);
 }
