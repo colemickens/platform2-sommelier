@@ -46,6 +46,7 @@ extern const char kRequireUsbInputDeviceToSuspendPref[];
 extern const char kBatteryPollIntervalPref[];
 extern const char kBatteryPollShortIntervalPref[];
 extern const char kTurnOffScreenTimeoutMsPref[];
+extern const char kDisableDarkResumePref[];
 extern const char kDarkResumeSuspendDurationsPref[];
 extern const char kDarkResumeDevicesPref[];
 extern const char kDarkResumeSourcesPref[];

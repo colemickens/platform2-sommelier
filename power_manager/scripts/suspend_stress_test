@@ -35,7 +35,21 @@ boolean_value() {
   fi
 }
 
+disable_dark_resume() {
+  temp_prefs=$(mktemp -d /tmp/power_manager.XXXXXXXXXXXX)
+  echo 1 > ${temp_prefs}/disable_dark_resume
+  mount --bind /var/lib/power_manager ${temp_prefs}
+  restart powerd
+}
+
+restore_dark_resume_state() {
+  umount ${temp_prefs}
+  rm -rf ${temp_prefs}
+  restart powerd
+}
+
 dump_stats_and_exit() {
+  restore_dark_resume_state
   echo ""
   echo "Finished ${cur} iterations."
   echo "Suspend_failures: $(( $(get_failed_count) - ${initial_failed} ))"
@@ -82,6 +96,7 @@ suspend_interval=$(( FLAGS_suspend_max - FLAGS_suspend_min + 1 ))
 wake_interval=$(( FLAGS_wake_max - FLAGS_wake_min + 1 ))
 
 trap dump_stats_and_exit INT
+disable_dark_resume
 
 cur=0
 firmware_errors=0

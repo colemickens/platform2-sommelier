@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/file_path.h"
 #include "power_manager/powerd/power_supply.h"
 
 namespace power_manager {
@@ -64,8 +65,12 @@ class DarkResumePolicy {
   // to to enable the functionality for dark resume. This includes whether the
   // device should do something different during a dark resume or whether it is
   // a wakeup source for dark resume.
-  void SetEnableDevices(const std::string& prefs_file,
-                        const std::string& base_file);
+  void GetFiles(std::vector<base::FilePath>* files,
+                const std::string& prefs_file,
+                const std::string& base_file);
+
+  void SetStates(const std::vector<base::FilePath>& files,
+                 const std::string& state);
 
   // Updates |battery_shutdown_threshold_|, |battery_suspend_level_|, and
   // |thresholds_set_|.
@@ -100,6 +105,9 @@ class DarkResumePolicy {
   // battery charge that it is greater than or equal to.
   typedef std::map<double, base::TimeDelta> SuspendMap;
   SuspendMap suspend_durations_;
+
+  std::vector<base::FilePath> dark_resume_sources_;
+  std::vector<base::FilePath> dark_resume_devices_;
 };
 
 }  // namespace policy

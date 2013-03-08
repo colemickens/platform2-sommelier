@@ -47,6 +47,7 @@ const char kRequireUsbInputDeviceToSuspendPref[] =
 const char kBatteryPollIntervalPref[] = "battery_poll_interval_ms";
 const char kBatteryPollShortIntervalPref[] = "battery_poll_short_interval_ms";
 const char kTurnOffScreenTimeoutMsPref[] = "turn_off_screen_timeout_ms";
+const char kDisableDarkResumePref[] = "disable_dark_resume";
 const char kDarkResumeSuspendDurationsPref[] = "dark_resume_suspend_durations";
 const char kDarkResumeDevicesPref[] = "dark_resume_devices";
 const char kDarkResumeSourcesPref[] = "dark_resume_sources";

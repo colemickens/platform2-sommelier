@@ -215,5 +215,29 @@ TEST_F(DarkResumePolicyTest, TestACOnline) {
       DarkResumePolicy::SUSPEND_FOR_DURATION);
 }
 
+// Check that setting the pref disable_dark_resume to 1 disables dark resume and
+// that setting it to 0 enables it.
+TEST_F(DarkResumePolicyTest, TestDisable) {
+  SetBattery(path_, 100.0, false);
+
+  prefs_.SetInt64(kDisableDarkResumePref, 1);
+  prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
+  prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
+  power_supply_->Init();
+  dark_resume_policy_->Init();
+
+  EXPECT_EQ(dark_resume_policy_->GetAction(),
+      DarkResumePolicy::SUSPEND_INDEFINITELY);
+
+  prefs_.SetInt64(kDisableDarkResumePref, 0);
+  prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
+  prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
+  power_supply_->Init();
+  dark_resume_policy_->Init();
+
+  EXPECT_EQ(dark_resume_policy_->GetAction(),
+      DarkResumePolicy::SUSPEND_FOR_DURATION);
+}
+
 }  // namespace policy
 }  // namespace power_manager

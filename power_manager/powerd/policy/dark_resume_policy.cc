@@ -34,9 +34,10 @@ const char kDarkResumeActive[] = "dark_resume_active";
 const char kDarkResumeSource[] = "dark_resume_source";
 const char kPowerDir[] = "power/";
 
-// String to write to sysfs files to enable dark resume functionality on the
-// kernel level.
+// Strings to write to sysfs files to enable/disable dark resume functionality
+// on the kernel level.
 const char kEnabled[] = "enabled";
+const char kDisabled[] = "disabled";
 
 }  // namespace
 
@@ -50,21 +51,25 @@ DarkResumePolicy::DarkResumePolicy(PowerSupply* power_supply,
 }
 
 DarkResumePolicy::~DarkResumePolicy() {
+  SetStates(dark_resume_sources_, kDisabled);
+  SetStates(dark_resume_devices_, kDisabled);
 }
 
 void DarkResumePolicy::Init() {
-  // This won't really work well with "default" preferences, at least not as
-  // well as preferences fine-tuned to the device. Because of this, just don't
-  // use the feature unless the preferences are there (for now).
-  if (!prefs_ || !ReadSuspendDurationsPref() || !ReadBatteryMarginsPref()) {
-    LOG(INFO) << "Dark resume user space disabled";
-    enabled_ = false;
-    return;
-  }
-  enabled_ = true;
-  LOG(INFO) << "Dark resume user space enabled";
-  SetEnableDevices(kDarkResumeDevicesPref, kDarkResumeActive);
-  SetEnableDevices(kDarkResumeSourcesPref, kDarkResumeSource);
+  bool disable = false;
+  // Check if dark resume is disabled and make sure the suspend durations and
+  // battery margins are read in properly. This won't really work well with
+  // "default" preferences, at least not as well as preferences fine-tuned to
+  // the device. Because of this, just don't use the feature unless the
+  // preferences are there (for now).
+  enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
+              ReadSuspendDurationsPref() &&
+              ReadBatteryMarginsPref();
+  LOG(INFO) << "Dark resume user space " << (enabled_ ? "enabled" : "disabled");
+  GetFiles(&dark_resume_sources_, kDarkResumeSourcesPref, kDarkResumeSource);
+  GetFiles(&dark_resume_devices_, kDarkResumeDevicesPref, kDarkResumeActive);
+  SetStates(dark_resume_sources_, (enabled_ ? kEnabled : kDisabled));
+  SetStates(dark_resume_devices_, (enabled_ ? kEnabled : kDisabled));
 }
 
 DarkResumePolicy::Action DarkResumePolicy::GetAction() {
@@ -196,8 +201,10 @@ bool DarkResumePolicy::ReadBatteryMarginsPref() {
   return !battery_margins_.empty();
 }
 
-void DarkResumePolicy::SetEnableDevices(const std::string& prefs_file,
-                                        const std::string& base_file) {
+void DarkResumePolicy::GetFiles(std::vector<base::FilePath>* files,
+                                const std::string& prefs_file,
+                                const std::string& base_file) {
+  files->clear();
   std::vector<std::string> lines;
   if (!ExtractLines(prefs_file.c_str(), &lines))
     return;
@@ -207,9 +214,18 @@ void DarkResumePolicy::SetEnableDevices(const std::string& prefs_file,
     FilePath path = FilePath(*iter);
     path = path.AppendASCII(kPowerDir);
     path = path.AppendASCII(base_file.c_str());
-    file_util::WriteFile(path, kEnabled, strlen(kEnabled));
+    files->push_back(path);
   }
 }
+
+void DarkResumePolicy::SetStates(const std::vector<base::FilePath>& files,
+                                 const std::string& state) {
+  for (std::vector<base::FilePath>::const_iterator iter = files.begin();
+       iter != files.end();
+       ++iter)
+    file_util::WriteFile(*iter, state.c_str(), state.length());
+}
+
 
 void DarkResumePolicy::SetThresholds() {
     double battery = power_status_.battery_percentage;
