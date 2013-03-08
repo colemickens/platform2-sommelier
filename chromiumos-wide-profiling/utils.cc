@@ -54,7 +54,12 @@ bool GetPerfReport(const string& filename, string* output) {
     TrimWhitespaceASCII(buffer, TRIM_ALL, &str);
     *output += str + '\n';
   }
-  fclose(file);
+
+  int status = pclose(file);
+  if (status) {
+    LOG(ERROR) << "Perf command: '" << cmd << "' returned status: " << status;
+    return false;
+  };
 
   return true;
 }
