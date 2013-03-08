@@ -52,6 +52,33 @@ Platform::Platform()
 Platform::~Platform() {
 }
 
+bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
+                 std::multimap<const std::string, const std::string>* mounts) {
+  std::string contents;
+  if (!file_util::ReadFileToString(FilePath(mtab_path_), &contents))
+    return false;
+
+  std::vector<std::string> lines;
+  SplitString(contents, '\n', &lines);
+  for (std::vector<std::string>::iterator it = lines.begin();
+       it < lines.end();
+       ++it) {
+    if (it->substr(0, from_prefix.size()) != from_prefix)
+      continue;
+    // If there is no mounts pointer, we can return true right away.
+    if (!mounts)
+      return true;
+    size_t src_end = it->find(' ');
+    std::string source = it->substr(0, src_end);
+    size_t dst_start = src_end + 1;
+    size_t dst_end = it->find(' ', dst_start);
+    std::string destination = it->substr(dst_start, dst_end - dst_start);
+    mounts->insert(
+      std::pair<const std::string, const std::string>(source, destination));
+  }
+  return mounts && mounts->size();
+}
+
 bool Platform::IsDirectoryMounted(const std::string& directory) {
   // Trivial string match from /etc/mtab to see if the cryptohome mount point is
   // listed.  This works because Chrome OS is a controlled environment and the

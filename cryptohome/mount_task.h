@@ -24,9 +24,11 @@
 #ifndef CRYPTOHOME_MOUNT_TASK_H_
 #define CRYPTOHOME_MOUNT_TASK_H_
 
+#include <base/atomicops.h>
 #include <base/atomic_sequence_num.h>
 #include <base/memory/ref_counted.h>
 #include <base/threading/thread.h>
+#include <base/synchronization/cancellation_flag.h>
 #include <base/synchronization/waitable_event.h>
 #include <chromeos/process.h>
 #include <chromeos/secure_blob.h>
@@ -112,7 +114,7 @@ class MountTaskResult : public CryptohomeEventBase {
     return_code_ = value;
   }
 
-  Mount* mount() const {
+  scoped_refptr<Mount> mount() const {
     return mount_;
   }
 
@@ -168,7 +170,7 @@ class MountTaskResult : public CryptohomeEventBase {
   MountError return_code_;
   SecureBlob return_data_;
   const char* event_name_;
-  Mount* mount_;
+  scoped_refptr<Mount> mount_;
   bool pkcs11_init_;
   bool guest_;
 };
@@ -197,9 +199,26 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
     Notify();
   }
 
+  // Allow cancellation to be sent from the main thread. This must be checked
+  // in each inherited Run().
+  virtual void Cancel() {
+    base::subtle::Release_Store(&cancel_flag_, 1);
+  }
+
+  // Indicate if cancellation was requested.
+  virtual bool IsCanceled() {
+    return base::subtle::Acquire_Load(&cancel_flag_) != 0;
+  }
+
   // Gets the asynchronous call id of this task
   int sequence_id() {
     return sequence_id_;
+  }
+
+  // Returns the mount this task is for.
+  // TODO(wad) Figure out a better way. Queue per Mount?
+  scoped_refptr<Mount> mount() {
+    return mount_;
   }
 
   // Gets the MountTaskResult for this task
@@ -223,13 +242,17 @@ class MountTask : public base::RefCountedThreadSafe<MountTask> {
   void Notify();
 
   // The Mount instance that does the actual work
-  Mount* mount_;
+  scoped_refptr<Mount> mount_;
 
   // The Credentials associated with this task
   UsernamePasskey credentials_;
 
   // The asychronous call id for this task
   int sequence_id_;
+
+  // Checked before all Run() calls to cancel.
+  // base::CancellationFlag isn't available in CrOS yet.
+  base::subtle::Atomic32 cancel_flag_;
 
  private:
   // Signal will call Signal on the completion event if it is set
@@ -397,18 +420,18 @@ class MountTaskResetTpmContext : public MountTask {
 };
 
 // Implements asychronous removal of tracked subdirectories
-// Implements asychronous removal of tracked subdirectories
 class MountTaskAutomaticFreeDiskSpace : public MountTask {
  public:
   MountTaskAutomaticFreeDiskSpace(MountTaskObserver* observer,
-                                  Mount* mount)
-      : MountTask(observer, mount) {
+                                  HomeDirs* homedirs)
+      : MountTask(observer, NULL), homedirs_(homedirs) {
   }
   virtual ~MountTaskAutomaticFreeDiskSpace() { }
 
   virtual void Run();
 
  private:
+  HomeDirs* homedirs_;
   DISALLOW_COPY_AND_ASSIGN(MountTaskAutomaticFreeDiskSpace);
 };
 

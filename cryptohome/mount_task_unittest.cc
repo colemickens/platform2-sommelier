@@ -31,7 +31,8 @@ class MountTaskTest : public ::testing::Test {
   MountTaskTest()
       : runner_("RunnerThread"),
         event_(true, false),
-        mount_(),
+        mount_(new MockMount),
+        homedirs_(),
         result_() {
     wait_time_ = base::TimeDelta::FromSeconds(180);
   }
@@ -51,7 +52,8 @@ class MountTaskTest : public ::testing::Test {
  protected:
   base::Thread runner_;
   base::WaitableEvent event_;
-  MockMount mount_;
+  scoped_refptr<MockMount> mount_;
+  MockHomeDirs homedirs_;
   MountTaskResult result_;
   base::TimeDelta wait_time_;
   UsernamePasskey empty_credentials_;
@@ -145,13 +147,13 @@ TEST_F(MountTaskTest, NopTest) {
 }
 
 TEST_F(MountTaskTest, MountTest) {
-  EXPECT_CALL(mount_, MountCryptohome(_, _, _))
+  EXPECT_CALL(*mount_, MountCryptohome(_, _, _))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
   Mount::MountArgs mount_args;
   scoped_refptr<MountTaskMount> mount_task =
-      new MountTaskMount(NULL, &mount_, empty_credentials_, mount_args);
+      new MountTaskMount(NULL, mount_.get(), empty_credentials_, mount_args);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -161,12 +163,12 @@ TEST_F(MountTaskTest, MountTest) {
 }
 
 TEST_F(MountTaskTest, MountGuestTest) {
-  EXPECT_CALL(mount_, MountGuestCryptohome())
+  EXPECT_CALL(*mount_, MountGuestCryptohome())
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskMountGuest> mount_task
-      = new MountTaskMountGuest(NULL, &mount_);
+      = new MountTaskMountGuest(NULL, mount_.get());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -192,12 +194,12 @@ TEST_F(MountTaskTest, MigratePasskeyTest) {
 }
 
 TEST_F(MountTaskTest, UnmountTest) {
-  EXPECT_CALL(mount_, UnmountCryptohome())
+  EXPECT_CALL(*mount_, UnmountCryptohome())
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskUnmount> mount_task
-      = new MountTaskUnmount(NULL, &mount_);
+      = new MountTaskUnmount(NULL, mount_.get());
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -207,12 +209,13 @@ TEST_F(MountTaskTest, UnmountTest) {
 }
 
 TEST_F(MountTaskTest, TestCredentialsMountTest) {
-  EXPECT_CALL(mount_, AreValid(_))
+  EXPECT_CALL(*mount_, AreValid(_))
       .WillOnce(Return(true));
 
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskTestCredentials> mount_task
-      = new MountTaskTestCredentials(NULL, &mount_, NULL, empty_credentials_);
+      = new MountTaskTestCredentials(NULL, mount_.get(), NULL,
+                                     empty_credentials_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,
@@ -268,7 +271,7 @@ TEST_F(MountTaskTest, ResetTpmContext) {
 TEST_F(MountTaskTest, AutomaticFreeDiskSpace) {
   ASSERT_FALSE(event_.IsSignaled());
   scoped_refptr<MountTaskAutomaticFreeDiskSpace> mount_task
-      = new MountTaskAutomaticFreeDiskSpace(NULL, &mount_);
+      = new MountTaskAutomaticFreeDiskSpace(NULL, &homedirs_);
   mount_task->set_complete_event(&event_);
   mount_task->set_result(&result_);
   runner_.message_loop()->PostTask(FROM_HERE,

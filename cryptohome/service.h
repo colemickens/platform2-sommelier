@@ -1,10 +1,11 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 #ifndef CRYPTOHOME_SERVICE_H_
 #define CRYPTOHOME_SERVICE_H_
 
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/thread.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
@@ -20,6 +21,7 @@
 #include "cryptohome_event_source.h"
 #include "install_attributes.h"
 #include "mount.h"
+#include "mount_factory.h"
 #include "mount_task.h"
 #include "pkcs11_init.h"
 #include "tpm_init.h"
@@ -33,7 +35,6 @@ struct Cryptohome;
 // Wrapper for all timers used by the cryptohome daemon.
 class TimerCollection;
 
-class Platform;
 
 // Service
 // Provides a wrapper for exporting CryptohomeInterface to
@@ -91,12 +92,17 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                   cryptohome::Mount* m) {
     mounts_[username] = m;
   }
+  virtual void set_mount_factory(cryptohome::MountFactory* mf) {
+    mount_factory_ = mf;
+  }
   virtual void set_use_tpm(bool value) {
     use_tpm_ = value;
   }
 
   // Overrides the Platform implementation for Service.
-  virtual void set_platform(Platform *value) { platform_ = value; }
+  virtual void set_platform(cryptohome::Platform *platform) {
+    platform_ = platform;
+  }
 
   virtual cryptohome::Crypto* crypto() { return crypto_; }
 
@@ -109,6 +115,15 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   // TpmInitCallback
   virtual void InitializeTpmComplete(bool status, bool took_ownership);
+
+  // Called during initialization (and on mount events) to ensure old mounts
+  // are marked for unmount when possible by the kernel.  Returns true if any
+  // mounts were stale and not cleaned up (because of open files).
+  //
+  // Parameters
+  // - force: if true, unmounts all existing shadow mounts.
+  //          if false, unmounts shadows mounts with no open files.
+  virtual bool CleanUpStaleMounts(bool force);
 
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
@@ -266,6 +281,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Called periodically on Mount thread to initiate automatic disk
   // cleanup if needed.
   virtual void AutoCleanupCallback();
+  // Returns true if there are any existing mounts and populates
+  // |mounts| with the mount point.
+  virtual bool GetExistingMounts(
+                   std::multimap<const std::string, const std::string>* mounts);
 
   // Checks if the machine is enterprise owned and report to mount_ then.
   virtual void DetectEnterpriseOwnership() const;
@@ -273,19 +292,33 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // Runs the event loop once. Only for testing.
   virtual void DispatchEvents();
 
+  virtual scoped_refptr<cryptohome::Mount> GetMountForUser(
+      const std::string& username);
+
+  // Ensures only one Mount is ever created per username.
+  virtual scoped_refptr<cryptohome::Mount> GetOrCreateMountForUser(
+      const std::string& username);
+
+  // Safely removes the MountMap reference for the given Mount.
+  virtual bool RemoveMountForUser(const std::string& username);
+
+  // Safelt removes the given Mount from MountMap.
+  virtual void RemoveMount(cryptohome::Mount* mount);
+
+  // Safely empties the MountMap and may request unmounting. If |unmount| is
+  // true, the return value will reflect if all mounts unmounted cleanly or not.
+  virtual bool RemoveAllMounts(bool unmount);
+
  private:
   bool CreateSystemSaltIfNeeded();
-  cryptohome::Mount* GetMountForUser(const std::string& username);
-  cryptohome::Mount* CreateMountForUser(const std::string& username);
-
   bool use_tpm_;
+
   GMainLoop* loop_;
   // Can't use scoped_ptr for cryptohome_ because memory is allocated by glib.
   gobject::Cryptohome* cryptohome_;
   chromeos::SecureBlob system_salt_;
-  cryptohome::Mount* mount_;
-  scoped_ptr<Platform> default_platform_;
-  Platform* platform_;
+  scoped_ptr<cryptohome::Platform> default_platform_;
+  cryptohome::Platform* platform_;
   cryptohome::Crypto* crypto_;
   // TPM doesn't use the scoped_ptr for default pattern, since the tpm is a
   // singleton - we don't want it getting destroyed when we are.
@@ -315,8 +348,16 @@ class Service : public chromeos::dbus::AbstractDbusService,
   bool reported_pkcs11_init_fail_;
 
   // Tracks Mount objects for each user by username.
-  typedef std::map<const std::string, cryptohome::Mount*> MountMap;
+  typedef std::map<const std::string,
+                   scoped_refptr<cryptohome::Mount> > MountMap;
   MountMap mounts_;
+  base::Lock mounts_lock_;  // Protects against parallel insertions only.
+  scoped_ptr<cryptohome::MountFactory> default_mount_factory_;
+  cryptohome::MountFactory* mount_factory_;
+
+  typedef std::map<int,
+                   scoped_refptr<MountTaskPkcs11Init> > Pkcs11TaskMap;
+  Pkcs11TaskMap pkcs11_tasks_;
 
   scoped_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;

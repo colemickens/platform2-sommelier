@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -21,6 +21,7 @@
 #include "mock_homedirs.h"
 #include "mock_install_attributes.h"
 #include "mock_mount.h"
+#include "mock_mount_factory.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
 #include "username_passkey.h"
@@ -29,9 +30,13 @@ using base::PlatformThread;
 using chromeos::SecureBlob;
 
 namespace cryptohome {
-using ::testing::Return;
 using ::testing::_;
+using ::testing::EndsWith;
+using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Return;
+using ::testing::StartsWith;
+using ::testing::SetArgumentPointee;
 
 const char kImageDir[] = "test_image_dir";
 const char kSkelDir[] = "test_image_dir/skel";
@@ -77,20 +82,20 @@ class ServiceSubclass : public Service {
 };
 
 TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
-  MockMount mount;
   MockHomeDirs homedirs;
+  scoped_refptr<MockMount> mount = new MockMount();
   EXPECT_CALL(homedirs, Init())
       .WillOnce(Return(true));
-  EXPECT_CALL(mount, Init())
+  EXPECT_CALL(homedirs, FreeDiskSpace())
       .WillOnce(Return(true));
-  EXPECT_CALL(mount, AreSameUser(_))
+  EXPECT_CALL(*mount, AreSameUser(_))
       .WillOnce(Return(false));
   EXPECT_CALL(homedirs, AreCredentialsValid(_))
       .WillOnce(Return(true));
 
   Service service;
   service.set_homedirs(&homedirs);
-  service.set_mount_for_user("", &mount);
+  service.set_mount_for_user("chromeos-user", mount.get());
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
@@ -105,7 +110,6 @@ TEST_F(ServiceInterfaceTest, CheckKeySuccessTest) {
 }
 
 TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
-  Mount mount;
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
 
@@ -113,17 +117,6 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   test_helper_.InitTestData(kImageDir, kDefaultUsers, kDefaultUserCount);
   TestUser* user = &test_helper_.users[7];
   user->InjectKeyset(&platform);
-
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.homedirs()->set_platform(&platform);
-  mount.homedirs()->crypto()->set_platform(&platform);
-  mount.set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_policy_provider(new policy::PolicyProvider(
-      new NiceMock<policy::MockDevicePolicy>));
 
   HomeDirs homedirs;
   homedirs.crypto()->set_tpm(&tpm);
@@ -138,7 +131,6 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   service.set_platform(&platform);
   service.set_homedirs(&homedirs);
   service.crypto()->set_platform(&platform);
-  service.set_mount_for_user("", &mount);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
@@ -195,10 +187,8 @@ TEST_F(ServiceInterfaceTest, GetSanitizedUsername) {
 
 TEST(Standalone, CheckAutoCleanupCallback) {
   // Checks that AutoCleanupCallback() is called periodically.
-  NiceMock<MockMount> mount;
   MockHomeDirs homedirs;
   Service service;
-  service.set_mount_for_user("", &mount);
   service.set_homedirs(&homedirs);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
@@ -210,8 +200,12 @@ TEST(Standalone, CheckAutoCleanupCallback) {
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
       .Times(::testing::AtLeast(3));
-  EXPECT_CALL(mount, UpdateCurrentUserActivityTimestamp(0))
+
+  scoped_refptr<MockMount> mount = new MockMount();
+  EXPECT_CALL(*mount, UpdateCurrentUserActivityTimestamp(0))
       .Times(::testing::AtLeast(3));
+  service.set_mount_for_user("some-user-to-clean-up", mount.get());
+
   service.set_auto_cleanup_period(2);  // 2ms = 500HZ
   service.set_update_user_activity_period(2);  // 2 x 5ms = 25HZ
   service.Initialize();
@@ -220,16 +214,14 @@ TEST(Standalone, CheckAutoCleanupCallback) {
 
 TEST(Standalone, CheckAutoCleanupCallbackFirst) {
   // Checks that AutoCleanupCallback() is called first right after init.
-  NiceMock<MockMount> mount;
   MockHomeDirs homedirs;
   Service service;
-  service.set_mount_for_user("", &mount);
   service.set_homedirs(&homedirs);
   NiceMock<MockInstallAttributes> attrs;
   service.set_install_attrs(&attrs);
   service.set_initialize_tpm(false);
 
-  // Service will schedule first claenup right after its init.
+  // Service will schedule first cleanup right after its init.
   EXPECT_CALL(homedirs, Init())
       .WillOnce(Return(true));
   EXPECT_CALL(homedirs, FreeDiskSpace())
@@ -238,6 +230,87 @@ TEST(Standalone, CheckAutoCleanupCallbackFirst) {
   service.Initialize();
   // short delay to see the first invocation
   PlatformThread::Sleep(base::TimeDelta::FromMilliseconds(10));
+}
+
+struct Mounts {
+  const char* src;
+  const char* dst;
+};
+
+const struct Mounts kShadowMounts[] = {
+  { "/home/.shadow/a", "/home/user/0" },
+  { "/home/.shadow/a", "/home/root/0" },
+  { "/home/.shadow/b", "/home/user/1" },
+  { "/home/.shadow/a", "/home/chronos/user" },
+  { "/home/.shadow/b", "/home/root/1" },
+};
+const int kShadowMountsCount = 5;
+
+bool StaleShadowMounts(const std::string& from_prefix,
+                 std::multimap<const std::string, const std::string>* mounts) {
+  LOG(INFO) << "StaleShadowMounts(" << from_prefix << "): called";
+  if (from_prefix == "/home/.shadow/") {
+    if (!mounts)
+      return true;
+    const struct Mounts* m = &kShadowMounts[0];
+    for (int i = 0; i < kShadowMountsCount; ++i, ++m) {
+      mounts->insert(
+          std::pair<const std::string, const std::string>(m->src, m->dst));
+      LOG(INFO) << "Inserting " << m->src << ":" << m->dst;
+    }
+    return true;
+  }
+  return false;
+}
+
+TEST(Standalone, CleanUpStaleMounts_EmptyMap_NoOpenFiles_ShadowOnly) {
+  // Checks that AutoCleanupCallback() is called first right after init.
+  NiceMock<MockHomeDirs> homedirs;
+  NiceMock<MockInstallAttributes> attrs;
+  MockPlatform platform;
+  Service service;
+  service.set_homedirs(&homedirs);
+  service.set_install_attrs(&attrs);
+  service.set_initialize_tpm(false);
+  service.set_platform(&platform);
+
+  EXPECT_CALL(platform, GetMountsBySourcePrefix(_, _))
+    .Times(3)
+    .WillRepeatedly(Invoke(StaleShadowMounts));
+  EXPECT_CALL(platform, GetProcessesWithOpenFiles(_, _))
+    .Times(kShadowMountsCount);
+  EXPECT_CALL(platform, Unmount(_, true, _))
+    .Times(kShadowMountsCount)
+    .WillRepeatedly(Return(true));
+  EXPECT_FALSE(service.CleanUpStaleMounts(false));
+}
+
+TEST(Standalone, CleanUpStaleMounts_EmptyMap_OpenLegacy_ShadowOnly) {
+  // Checks that AutoCleanupCallback() is called first right after init.
+  NiceMock<MockHomeDirs> homedirs;
+  NiceMock<MockInstallAttributes> attrs;
+  MockPlatform platform;
+  Service service;
+  service.set_homedirs(&homedirs);
+  service.set_install_attrs(&attrs);
+  service.set_initialize_tpm(false);
+  service.set_platform(&platform);
+
+  EXPECT_CALL(platform, GetMountsBySourcePrefix(_, _))
+    .Times(3)
+    .WillRepeatedly(Invoke(StaleShadowMounts));
+  std::vector<ProcessInformation> processes(1);
+  processes[0].set_process_id(1);
+  EXPECT_CALL(platform, GetProcessesWithOpenFiles(_, _))
+    .Times(kShadowMountsCount - 1);
+  EXPECT_CALL(platform, GetProcessesWithOpenFiles(
+      "/home/chronos/user", _))
+    .Times(1)
+    .WillRepeatedly(SetArgumentPointee<1>(processes));
+  EXPECT_CALL(platform, Unmount(EndsWith("/1"), true, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
+  EXPECT_TRUE(service.CleanUpStaleMounts(false));
 }
 
 }  // namespace cryptohome

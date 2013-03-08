@@ -10,6 +10,7 @@
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
+#include <map>
 #include <set>
 #include <string>
 #include <vector>
@@ -58,6 +59,16 @@ class Platform {
   //   was_busy (OUT) - Set to true on return if the mount point was busy
   virtual bool Unmount(const std::string& path, bool lazy, bool* was_busy);
 
+
+  // Returns true if any mounts match. Populates |mounts| if
+  // any mount sources have a matching prefix (|from_prefix|).
+  //
+  // Parameters
+  //   from_prefix - Prefix for matching mount sources
+  //   mounts - matching mounted paths, may be NULL
+  virtual bool GetMountsBySourcePrefix(const std::string& from_prefix,
+                  std::multimap<const std::string, const std::string>* mounts);
+
   // Returns true if the directory is in the mtab
   //
   // Parameters
@@ -78,7 +89,7 @@ class Platform {
   // Parameters
   //   path - The path to check if the process has open files on
   //   pids (OUT) - The PIDs found
-  void GetProcessesWithOpenFiles(const std::string& path_in,
+  virtual void GetProcessesWithOpenFiles(const std::string& path_in,
                                  std::vector<ProcessInformation>* processes);
 
   // Calls the platform stat() function to obtain the ownership of

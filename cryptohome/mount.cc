@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -121,7 +121,7 @@ Mount::Mount()
 }
 
 Mount::~Mount() {
-  if (IsCryptohomeMounted())
+  if (IsMounted())
     UnmountCryptohome();
 }
 
@@ -383,13 +383,14 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // /home/user/$hash: owned by chronos
   // /home/root/$hash: owned by root
 
-  string vault_path = GetUserVaultPath(
-      credentials.GetObfuscatedUsername(system_salt_));
+  string obfuscated_username = credentials.GetObfuscatedUsername(system_salt_);
+  string vault_path = GetUserVaultPath(obfuscated_username);
   // Create vault_path/user as a passthrough directory, move all the (encrypted)
   // contents of vault_path into vault_path/user, create vault_path/root.
   MigrateToUserHome(vault_path);
 
-  mount_point_ = GetUserMountDirectory(credentials);
+  // TODO(wad) Make mount_point_ not instance-wide or do it at Init time.
+  mount_point_ = GetUserMountDirectory(obfuscated_username);
   if (!platform_->CreateDirectory(mount_point_)) {
     PLOG(ERROR) << "Directory creation failed for " << mount_point_;
     if (mount_error) {
@@ -398,6 +399,17 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
+  // Since Service::Mount cleans up stale mounts, we should only reach
+  // this point if someone attempts to re-mount an in-use mount point.
+  if (platform_->IsDirectoryMounted(mount_point_)) {
+    LOG(ERROR) << "Mount point is busy: " << mount_point_
+               << " for " << vault_path;
+    if (mount_error) {
+      *mount_error = MOUNT_ERROR_FATAL;
+    }
+    return false;
+  }
+  // TODO(wad,ellyjones) Why does Mount take current_user_?
   if (!MountForUser(current_user_, vault_path, mount_point_, "ecryptfs",
                     ecryptfs_options)) {
     PLOG(ERROR) << "Cryptohome mount failed for vault " << vault_path;
@@ -407,15 +419,21 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
+  // Set the current user here so we can rely on it in the helpers..
+  // On failure, they will linger, but should be reset on a new MountCryptohome
+  // request.
+  // TODO(wad): It seems like a Mount->Init(credentials) would be more
+  //            meaningful.
+  current_user_->SetUser(credentials);
+
   // Move the tracked subdirectories from mount_point_/user to vault_path
   // as passthrough directories.
   CreateTrackedSubdirectories(credentials, created);
 
-  if (created) {
-    CopySkeletonForUser(credentials);
-  }
+  if (created)
+    CopySkeleton();
 
-  string user_home = GetMountedUserHomePath(credentials);
+  string user_home = GetMountedUserHomePath(obfuscated_username);
   if (!SetupGroupAccess(FilePath(user_home))) {
     UnmountAllForUser(current_user_);
     if (mount_error) {
@@ -424,7 +442,10 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  if (!BindForUser(current_user_, user_home, kDefaultHomeDir)) {
+  // Multiple mounts can't live on the legacy mountpoint.
+  if (platform_->IsDirectoryMounted(kDefaultHomeDir)) {
+    LOG(INFO) << "Skipping binding to /home/chronos/user.";
+  } else if (!BindForUser(current_user_, user_home, kDefaultHomeDir)) {
     PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
                 << kDefaultHomeDir;
     UnmountAllForUser(current_user_);
@@ -446,7 +467,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  string root_home = GetMountedRootHomePath(credentials);
+  string root_home = GetMountedRootHomePath(obfuscated_username);
   string root_multi_home =
       chromeos::cryptohome::home::GetRootPath(username).value();
   if (!BindForUser(current_user_, root_home, root_multi_home)) {
@@ -466,7 +487,6 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     *mount_error = MOUNT_ERROR_NONE;
   }
 
-  current_user_->SetUser(credentials);
   credentials.GetPasskey(&pkcs11_passkey_);
   return true;
 }
@@ -493,7 +513,10 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     UnmountAllForUser(current_user_);
     return false;
   }
-  if (!BindForUser(current_user_, user_multi_home, kDefaultHomeDir)) {
+
+  if (platform_->IsDirectoryMounted(kDefaultHomeDir)) {
+    LOG(INFO) << "Skipping binding to /home/chronos/user.";
+  } else if (!BindForUser(current_user_, user_multi_home, kDefaultHomeDir)) {
     LOG(ERROR) << "Bind mount of ephemeral user home from " << user_multi_home
                << " to " << kDefaultHomeDir << " failed: " << errno;
     UnmountAllForUser(current_user_);
@@ -512,6 +535,8 @@ bool Mount::SetUpEphemeralCryptohome(const string& source_path,
                << errno;
     return false;
   }
+  // Note! This mount point does not show up in the MountStack.
+  // TODO(wad) check for existing mount first.
   if (!platform_->Mount(source_path,
                         ephemeral_skeleton_path,
                         kEphemeralMountType,
@@ -523,7 +548,7 @@ bool Mount::SetUpEphemeralCryptohome(const string& source_path,
   // Whatever happens, we want to unmount the tmpfs used to build the skeleton
   // home directory.
   ScopedMountPoint scoped_skeleton_mount(this, ephemeral_skeleton_path);
-  CopySkeleton(FilePath(ephemeral_skeleton_path));
+  CopySkeleton();
 
   // Create the Downloads directory if it does not exist so that it can later be
   // made group accessible when SetupGroupAccess() is called.
@@ -678,26 +703,19 @@ bool Mount::UnmountCryptohome() {
   return true;
 }
 
-bool Mount::IsCryptohomeMounted() const {
-  return platform_->IsDirectoryMounted(kDefaultHomeDir);
+bool Mount::IsMounted() const {
+  return mounts_.size() != 0;
 }
 
-bool Mount::IsCryptohomeMountedForUser(const Credentials& credentials) const {
-  const string obfuscated_owner =
-      credentials.GetObfuscatedUsername(system_salt_);
-  const string home_dir = GetUserMountDirectory(credentials);
-  return (platform_->IsDirectoryMountedWith(
-              home_dir,
-              GetUserVaultPath(obfuscated_owner)) ||
-          platform_->IsDirectoryMountedWith(
-              home_dir,
-              GetUserEphemeralPath(obfuscated_owner)));
+bool Mount::IsVaultMounted() const {
+  string obfuscated_username;
+  current_user_->GetObfuscatedUsername(&obfuscated_username);
+  const std::string vault_path = GetUserMountDirectory(obfuscated_username);
+  return mounts_.Contains(vault_path);
 }
 
-bool Mount::IsVaultMountedForUser(const Credentials& credentials) const {
-  return platform_->IsDirectoryMountedWith(
-      kDefaultHomeDir,
-      GetUserVaultPath(credentials.GetObfuscatedUsername(system_salt_)));
+bool Mount::OwnsMountPoint(const std::string& path) const {
+  return mounts_.Contains(path);
 }
 
 bool Mount::CreateCryptohome(const Credentials& credentials) const {
@@ -741,15 +759,17 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
   const int original_mask = platform_->SetMask(kDefaultUmask);
 
   // Add the subdirectories if they do not exist.
+  const std::string obfuscated_username =
+      credentials.GetObfuscatedUsername(system_salt_);
   const FilePath shadow_home(VaultPathToUserPath(GetUserVaultPath(
-      credentials.GetObfuscatedUsername(system_salt_))));
+      obfuscated_username)));
   if (!platform_->DirectoryExists(shadow_home.value())) {
      LOG(ERROR) << "Can't create tracked subdirectories for a missing user.";
      platform_->SetMask(original_mask);
      return false;
   }
 
-  const FilePath user_home(GetMountedUserHomePath(credentials));
+  const FilePath user_home(GetMountedUserHomePath(obfuscated_username));
 
   static const FilePath kTrackedDirs[] = {
     FilePath(kCacheDir),
@@ -1085,6 +1105,9 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
 
 bool Mount::MountGuestCryptohome() {
   current_user_->Reset();
+  // TODO(wad,ellyjones) Should we make a /home/user/guest/...
+  // It can use the legacy path since there is no user, but it might be easier
+  // to codify a separate location in libchromeos.
   return SetUpEphemeralCryptohome("guestfs", kDefaultHomeDir);
 }
 
@@ -1127,10 +1150,11 @@ string Mount::GetUserVaultPath(const std::string& obfuscated_username) const {
                       kVaultDir);
 }
 
-string Mount::GetUserMountDirectory(const Credentials& credentials) const {
+string Mount::GetUserMountDirectory(
+    const std::string& obfuscated_username) const {
   return StringPrintf("%s/%s/%s",
                       shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str(),
+                      obfuscated_username.c_str(),
                       kMountDir);
 }
 
@@ -1142,17 +1166,23 @@ string Mount::VaultPathToRootPath(const std::string& vault) const {
   return StringPrintf("%s/%s", vault.c_str(), kRootHomeSuffix);
 }
 
-string Mount::GetMountedUserHomePath(const Credentials& credentials) const {
-  return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
+string Mount::GetMountedUserHomePath(
+    const std::string& obfuscated_username) const {
+  return StringPrintf("%s/%s",
+                      GetUserMountDirectory(obfuscated_username).c_str(),
                       kUserHomeSuffix);
 }
 
-string Mount::GetMountedRootHomePath(const Credentials& credentials) const {
-  return StringPrintf("%s/%s", GetUserMountDirectory(credentials).c_str(),
+string Mount::GetMountedRootHomePath(
+    const std::string& obfuscated_username) const {
+  return StringPrintf("%s/%s",
+                      GetUserMountDirectory(obfuscated_username).c_str(),
                       kRootHomeSuffix);
 }
 
-string Mount::GetEphemeralSkeletonPath() {
+// TODO(dkrahn,wad) Makes this unique so we don't have to worry about
+//                  parallelism.
+string Mount::GetEphemeralSkeletonPath() const {
   return StringPrintf("%s/%s", shadow_root_.c_str(), kSkeletonDir);
 }
 
@@ -1363,16 +1393,23 @@ void Mount::MigrateToUserHome(const std::string& vault_path) const {
     PLOG(ERROR) << "SetPermissions() failed: " << root_path.value();
     return;
   }
-  LOG(INFO) << "Migrated user directory: " << vault_path.c_str();
+  LOG(INFO) << "Migrated (or created) user directory: " << vault_path.c_str();
 }
 
-void Mount::CopySkeletonForUser(const Credentials& credentials) const {
-  if (IsCryptohomeMountedForUser(credentials)) {
-    CopySkeleton(FilePath(GetMountedUserHomePath(credentials)));
+void Mount::CopySkeleton() const {
+  CHECK(current_user_);
+  FilePath destination = FilePath(GetEphemeralSkeletonPath());
+  // For a Mount with a real vault, the skeleton can be safely
+  // prepared under /home/.shadow/[hash]/mount/user, but for
+  // ephemeral mounts, we use a single location.
+  if (IsVaultMounted()) {
+    std::string user;
+    current_user_->GetObfuscatedUsername(&user);
+    destination = FilePath(GetMountedUserHomePath(user));
+  } else if (!platform_->IsDirectoryMounted(destination.value())) {
+    LOG(ERROR) << "CopySkeleton with no mounted vault or ephemeral path.";
+    return;
   }
-}
-
-void Mount::CopySkeleton(const FilePath& destination) const {
   RecursiveCopy(destination, FilePath(skel_source_));
 }
 
@@ -1406,7 +1443,7 @@ void Mount::RecursiveCopy(const FilePath& destination,
     FilePath destination_file = destination.Append(file_name);
     if (!platform_->Copy(next_path, destination_file.value()) ||
         !platform_->SetOwnership(destination_file.value(),
-                                default_user_, default_group_)) {
+                                 default_user_, default_group_)) {
       LOG(ERROR) << "Couldn't change owner (" << default_user_ << ":"
                  << default_group_ << ") of destination path: "
                  << destination_file.value().c_str();
@@ -1547,7 +1584,7 @@ Value* Mount::GetStatus() {
     keysets->Append(keyset0);
   }
   dv->Set("keysets", keysets);
-  dv->SetBoolean("mounted", IsCryptohomeMounted());
+  dv->SetBoolean("mounted", IsMounted());
   dv->SetString("owner", GetObfuscatedOwner());
   dv->SetBoolean("enterprise", enterprise_owned_);
   return dv;

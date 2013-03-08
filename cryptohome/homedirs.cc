@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -31,7 +31,9 @@ HomeDirs::HomeDirs()
       default_policy_provider_(new policy::PolicyProvider()),
       policy_provider_(default_policy_provider_.get()),
       default_crypto_(new Crypto(platform_)),
-      crypto_(default_crypto_.get()) { }
+      crypto_(default_crypto_.get()),
+      default_mount_factory_(new MountFactory()),
+      mount_factory_(default_mount_factory_.get()) { }
 
 HomeDirs::~HomeDirs() { }
 
@@ -319,11 +321,11 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   SecureBlob newkey;
   newcreds.GetPasskey(&newkey);
   UsernamePasskey oldcreds(newcreds.username().c_str(), oldkey);
-  Mount mount;
-  mount.set_platform(platform_);
-  mount.set_crypto(crypto_);
-  mount.Init();
-  if (!mount.MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
+  scoped_refptr<Mount> mount = mount_factory_->New();
+  mount->set_platform(platform_);
+  mount->set_crypto(crypto_);
+  mount->Init();
+  if (!mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
     LOG(ERROR) << "Migrate: Mount failed";
     // Fail as early as possible. Note that we don't have to worry about leaking
     // this mount - Mount unmounts itself if it's still mounted in the

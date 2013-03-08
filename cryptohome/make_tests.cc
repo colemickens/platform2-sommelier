@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/cryptohome.h>
@@ -177,16 +178,16 @@ void TestUser::GenerateCredentials() {
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
   //MockPlatform platform;
-  Mount mount;
-  mount.set_platform(&platform);
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.homedirs()->set_platform(&platform);
-  mount.homedirs()->crypto()->set_platform(&platform);
-  mount.set_shadow_root(shadow_root);
-  mount.set_skel_source(skel_dir);
-  mount.set_use_tpm(false);
-  mount.set_policy_provider(new policy::PolicyProvider(
+  scoped_refptr<Mount> mount = new cryptohome::Mount();
+  mount->set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->homedirs()->set_platform(&platform);
+  mount->homedirs()->crypto()->set_platform(&platform);
+  mount->set_shadow_root(shadow_root);
+  mount->set_skel_source(skel_dir);
+  mount->set_use_tpm(false);
+  mount->set_policy_provider(new policy::PolicyProvider(
       new NiceMock<policy::MockDevicePolicy>));
   std::string salt_path = StringPrintf("%s/salt", shadow_root.c_str());
   int64 salt_size = salt.size();
@@ -198,7 +199,7 @@ void TestUser::GenerateCredentials() {
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(salt), Return(true)));
   EXPECT_CALL(platform, DirectoryExists(shadow_root))
     .WillRepeatedly(Return(true));
-   mount.Init();
+   mount->Init();
 
   cryptohome::Crypto::PasswordToPasskey(password,
                                         salt,
@@ -229,7 +230,7 @@ void TestUser::GenerateCredentials() {
   // Grab the generated credential
   EXPECT_CALL(platform, WriteFile(keyset_path, _))
     .WillOnce(DoAll(SaveArg<1>(&credentials), Return(true)));
-  mount.EnsureCryptohome(up, &created);
+  mount->EnsureCryptohome(up, &created);
   DCHECK(created && credentials.size());
 }
 

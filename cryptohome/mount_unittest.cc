@@ -176,16 +176,16 @@ class MountTest : public ::testing::Test {
 
 TEST_F(MountTest, BadInitTest) {
   // create a Mount instance that points to a bad shadow root
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.set_shadow_root("/dev/null");
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root("/dev/null");
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
   MockPlatform platform;
-  mount.set_platform(&platform);
-  mount.crypto()->set_platform(&platform);
-  set_policy(&mount, false, "", false);
+  mount->set_platform(&platform);
+  mount->crypto()->set_platform(&platform);
+  set_policy(mount.get(), false, "", false);
 
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[0].password,
@@ -214,22 +214,22 @@ TEST_F(MountTest, BadInitTest) {
                     Return(true)));
   EXPECT_CALL(platform, GetGroupId("chronos-access", _))
     .WillOnce(DoAll(SetArgumentPointee<1>(1002), Return(true)));
-  EXPECT_FALSE(mount.Init());
-  ASSERT_FALSE(mount.AreValid(up));
+  EXPECT_FALSE(mount->Init());
+  ASSERT_FALSE(mount->AreValid(up));
 }
 
 TEST_F(MountTest, CurrentCredentialsTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly authenticates against the first key
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
 
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey(kDefaultUsers[3].password,
@@ -237,53 +237,53 @@ TEST_F(MountTest, CurrentCredentialsTest) {
   UsernamePasskey up(kDefaultUsers[3].username, passkey);
 
   helper_.InjectSystemSalt(&platform, kImageSaltFile);
-  EXPECT_TRUE(mount.Init());
+  EXPECT_TRUE(mount->Init());
 
   NiceMock<MockUserSession> user_session;
   user_session.Init(SecureBlob());
   user_session.SetUser(up);
-  mount.set_current_user(&user_session);
+  mount->set_current_user(&user_session);
 
   EXPECT_CALL(user_session, CheckUser(_))
       .WillOnce(Return(true));
   EXPECT_CALL(user_session, Verify(_))
       .WillOnce(Return(true));
 
-  ASSERT_TRUE(mount.AreValid(up));
+  ASSERT_TRUE(mount->AreValid(up));
 }
 
 TEST_F(MountTest, BadDecryptTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly denies access with a bad passkey
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
 
   SecureBlob passkey;
   cryptohome::Crypto::PasswordToPasskey("bogus", helper_.system_salt, &passkey);
   UsernamePasskey up(kDefaultUsers[4].username, passkey);
 
-  EXPECT_TRUE(mount.Init());
-  ASSERT_FALSE(mount.AreValid(up));
+  EXPECT_TRUE(mount->Init());
+  ASSERT_FALSE(mount->AreValid(up));
 }
 
 TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir) {
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
   chaps_uid_ = 101010;
   shared_gid_ = 101010;
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetOwnership(_, _, _))
@@ -291,45 +291,45 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir) {
                             SetArgumentPointee<2>(shared_gid_),
                             Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_TRUE(permissions_status);
 }
 
 TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms) {
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockPlatform> platform;
   mode_t bad_perms = S_IXGRP;
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_platform(&platform);
-  EXPECT_TRUE(DoMountInit(&mount));
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
+  EXPECT_TRUE(DoMountInit(mount.get()));
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetPermissions(_, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms), Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
 TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
   uid_t bad_uid = 0;
 
   // Populate the chaps uid and gid.
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
 
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
@@ -342,25 +342,25 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
                             Return(true)));
 
   bool permissions_status = false;
-  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
 TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID) {
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
 
   chaps_uid_ = 101010;
   shared_gid_ = 101011;
   gid_t bad_gid = 0;
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetOwnership(_, _, _))
@@ -368,22 +368,22 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID) {
                             SetArgumentPointee<2>(bad_gid),
                             Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
 TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
   helper_.InjectSystemSalt(&platform, kImageSaltFile);
-  EXPECT_TRUE(mount.Init());
+  EXPECT_TRUE(mount->Init());
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform, CreateDirectory(_))
@@ -397,26 +397,26 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
   EXPECT_CALL(platform, GetPermissions(_, _))
       .WillRepeatedly(Return(false));
   bool permissions_status = false;
-  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
 TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError) {
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockPlatform> platform;
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  mount.set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
   helper_.InjectSystemSalt(&platform, kImageSaltFile);
-  EXPECT_TRUE(mount.Init());
+  EXPECT_TRUE(mount->Init());
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, GetPermissions(_, _))
@@ -425,34 +425,34 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError) {
   EXPECT_CALL(platform, GetOwnership(_, _, _))
       .WillRepeatedly(Return(false));
   bool permissions_status = false;
-  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount.CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
 TEST_F(MountTest, CreateCryptohomeTest) {
   InsertTestUsers(&kDefaultUsers[5], 1);
   // creates a cryptohome and tests credentials
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   HomeDirs homedirs;
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
-  set_policy(&mount, false, "", false);
-  mount.crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
   homedirs.set_shadow_root(kImageDir);
   homedirs.set_platform(&platform);
-  homedirs.set_crypto(mount.crypto());
-  mount.crypto()->set_platform(&platform);
-  mount.set_platform(&platform);
+  homedirs.set_crypto(mount->crypto());
+  mount->crypto()->set_platform(&platform);
+  mount->set_platform(&platform);
 
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
   EXPECT_TRUE(homedirs.Init());
   bool created;
 
@@ -479,10 +479,10 @@ TEST_F(MountTest, CreateCryptohomeTest) {
   EXPECT_CALL(platform, WriteFile(user->keyset_path, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
-  ASSERT_TRUE(mount.EnsureCryptohome(up, &created));
+  ASSERT_TRUE(mount->EnsureCryptohome(up, &created));
   ASSERT_TRUE(created);
   ASSERT_NE(creds.size(), 0);
-  ASSERT_FALSE(mount.AreValid(up));
+  ASSERT_FALSE(mount->AreValid(up));
   EXPECT_CALL(platform, ReadFile(user->keyset_path, _))
     .WillOnce(DoAll(SetArgumentPointee<1>(creds), Return(true)));
   ASSERT_TRUE(homedirs.AreCredentialsValid(up));
@@ -493,20 +493,20 @@ TEST_F(MountTest, GoodReDecryptTest) {
   // create a Mount instance that points to a good shadow root, test that it
   // properly re-authenticates against the first key
   HomeDirs homedirs;
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   MockTpm tpm;
   NiceMock<MockPlatform> platform;
   Crypto crypto(&platform);
   crypto.set_use_tpm(true);
   crypto.set_tpm(&tpm);
-  mount.set_use_tpm(true);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_platform(&platform);
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_use_tpm(true);
-  mount.crypto()->set_platform(&platform);
-  set_policy(&mount, false, "", false);
+  mount->set_use_tpm(true);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_platform(&platform);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_use_tpm(true);
+  mount->crypto()->set_platform(&platform);
+  set_policy(mount.get(), false, "", false);
   homedirs.set_shadow_root(kImageDir);
   homedirs.set_platform(&platform);
   homedirs.crypto()->set_platform(&platform);
@@ -525,11 +525,11 @@ TEST_F(MountTest, GoodReDecryptTest) {
   EXPECT_CALL(tpm, IsConnected())
     .WillRepeatedly(Return(true));
   helper_.InjectSystemSalt(&platform, kImageSaltFile);
-  EXPECT_TRUE(mount.Init());
+  EXPECT_TRUE(mount->Init());
   EXPECT_TRUE(homedirs.Init());
 
   // Load the pre-generated keyset
-  std::string key_path = mount.GetUserKeyFile(up);
+  std::string key_path = mount->GetUserKeyFile(up);
   cryptohome::SerializedVaultKeyset serialized;
   EXPECT_TRUE(serialized.ParseFromArray(
                   static_cast<const unsigned char*>(&user->credentials[0]),
@@ -584,7 +584,7 @@ TEST_F(MountTest, GoodReDecryptTest) {
   chromeos::Blob migrated_keyset;
   EXPECT_CALL(platform, WriteFile(user->keyset_path, _))
     .WillOnce(DoAll(SaveArg<1>(&migrated_keyset), Return(true)));
-  EXPECT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+  EXPECT_TRUE(mount->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
   ASSERT_EQ(error, MOUNT_ERROR_NONE);
   ASSERT_NE(migrated_keyset.size(), 0);
@@ -618,21 +618,21 @@ TEST_F(MountTest, MountCryptohome) {
   // checks that cryptohome tries to mount successfully, and tests that the
   // tracked directories are created/replaced as expected
   InsertTestUsers(&kDefaultUsers[10], 1);
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
 
   MockPlatform platform;
-  mount.set_platform(&platform);
-  mount.crypto()->set_platform(&platform);
+  mount->set_platform(&platform);
+  mount->crypto()->set_platform(&platform);
 
   EXPECT_CALL(platform, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
 
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
@@ -649,33 +649,40 @@ TEST_F(MountTest, MountCryptohome) {
   EXPECT_CALL(platform, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(platform, IsDirectoryMounted(user->vault_mount_path))
+    .WillOnce(Return(false));
+  // user exists, so there'll be no skel copy after.
   EXPECT_CALL(platform, Mount(_, _, _, _))
     .WillRepeatedly(Return(true));
+  // Only one mount, so the legacy mount point is used.
+  EXPECT_CALL(platform, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, Bind(_, _))
     .WillRepeatedly(Return(true));
 
+
   MountError error = MOUNT_ERROR_NONE;
-  EXPECT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
+  EXPECT_TRUE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
 }
 
 TEST_F(MountTest, MountCryptohomeNoChange) {
   // checks that cryptohome doesn't by default re-save the cryptohome when mount
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
   Crypto crypto(&platform);
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
 
-  mount.set_platform(&platform);
+  mount->set_platform(&platform);
 
   EXPECT_CALL(platform, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
 
   InsertTestUsers(&kDefaultUsers[11], 1);
   TestUser* user = &helper_.users[0];
@@ -685,7 +692,7 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   VaultKeyset vault_keyset(&platform, &crypto);
   SerializedVaultKeyset serialized;
   MountError error;
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
+  ASSERT_TRUE(mount->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
 
   user->InjectUserPaths(&platform, chronos_uid_, shared_gid_, kDaemonGid);
@@ -698,11 +705,11 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
       .Times(3)
       .WillRepeatedly(Return(true));
 
-  ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
 
   SerializedVaultKeyset new_serialized;
-  ASSERT_TRUE(mount.DecryptVaultKeyset(up, true, &vault_keyset, &new_serialized,
-                                       &error));
+  ASSERT_TRUE(mount->DecryptVaultKeyset(up, true, &vault_keyset,
+                                        &new_serialized, &error));
 
   SecureBlob lhs;
   GetKeysetBlob(serialized, &lhs);
@@ -715,21 +722,21 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
 TEST_F(MountTest, MountCryptohomeNoCreate) {
   // checks that doesn't create the cryptohome for the user on Mount without
   // being told to do so.
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
 
   NiceMock<MockPlatform> platform;
-  mount.set_platform(&platform);
-  mount.crypto()->set_platform(&platform);
+  mount->set_platform(&platform);
+  mount->crypto()->set_platform(&platform);
 
   EXPECT_CALL(platform, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
 
   // Test user at index 12 hasn't been created
   InsertTestUsers(&kDefaultUsers[12], 1);
@@ -745,7 +752,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = false;
   MountError error = MOUNT_ERROR_NONE;
-  ASSERT_FALSE(mount.MountCryptohome(up, mount_args, &error));
+  ASSERT_FALSE(mount->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_USER_DOES_NOT_EXIST, error);
 
   // Now let it create the vault.
@@ -769,8 +776,12 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform, WriteFile(user->keyset_path, _))
     .WillOnce(DoAll(SaveArg<1>(&creds), Return(true)));
 
+  EXPECT_CALL(platform, IsDirectoryMounted(user->vault_mount_path))
+    .WillOnce(Return(false));  // mount precondition
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(platform, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // bind precondition for first mount
   EXPECT_CALL(platform, Bind(_, _))
       .Times(3)
       .WillRepeatedly(Return(true));
@@ -783,28 +794,28 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
 
   mount_args.create_if_missing = true;
   error = MOUNT_ERROR_NONE;
-  ASSERT_TRUE(mount.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_NONE, error);
 }
 
 TEST_F(MountTest, UserActivityTimestampUpdated) {
   // checks that user activity timestamp is updated during Mount() and
   // periodically while mounted, other Keyset fields remains the same
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
-  mount.crypto()->set_tpm(&tpm);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
-  set_policy(&mount, false, "", false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
+  set_policy(mount.get(), false, "", false);
 
   NiceMock<MockPlatform> platform;
-  mount.set_platform(&platform);
-  mount.crypto()->set_platform(&platform);
+  mount->set_platform(&platform);
+  mount->crypto()->set_platform(&platform);
 
   EXPECT_CALL(platform, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
 
   InsertTestUsers(&kDefaultUsers[9], 1);
   TestUser* user = &helper_.users[0];
@@ -819,7 +830,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform, Bind(_, _))
       .Times(3)
       .WillRepeatedly(Return(true));
-  ASSERT_TRUE(mount.MountCryptohome(up, Mount::MountArgs(), &error));
+  ASSERT_TRUE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
 
   // Update the timestamp. Normally it is called in MountTaskMount::Run() in
   // background but here in the test we must call it manually.
@@ -829,7 +840,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
     .WillRepeatedly(DoAll(SaveArg<1>(&updated_keyset), Return(true)));
   EXPECT_CALL(platform, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp)));
-  mount.UpdateCurrentUserActivityTimestamp(0);
+  mount->UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized1;
   ASSERT_TRUE(serialized1.ParseFromArray(
       static_cast<const unsigned char*>(&updated_keyset[0]),
@@ -846,7 +857,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform, Unmount(_, _, _))
       .Times(4)
       .WillRepeatedly(Return(true));
-  mount.UnmountCryptohome();
+  mount->UnmountCryptohome();
   SerializedVaultKeyset serialized2;
   ASSERT_TRUE(serialized2.ParseFromArray(
       static_cast<const unsigned char*>(&updated_keyset[0]),
@@ -856,7 +867,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 
   // Update timestamp again, after user is unmounted. User's activity
   // timestamp must not change this.
-  mount.UpdateCurrentUserActivityTimestamp(0);
+  mount->UpdateCurrentUserActivityTimestamp(0);
   SerializedVaultKeyset serialized3;
   ASSERT_TRUE(serialized3.ParseFromArray(
       static_cast<const unsigned char*>(&updated_keyset[0]),
@@ -869,20 +880,20 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
 TEST_F(MountTest, MountForUserOrderingTest) {
   // Checks that mounts made with MountForUser/BindForUser are undone in the
   // right order.
-  Mount mount;
+  scoped_refptr<Mount> mount = new Mount();
   NiceMock<MockTpm> tpm;
   NiceMock<MockPlatform> platform;
-  mount.set_platform(&platform);
+  mount->set_platform(&platform);
 
-  mount.crypto()->set_tpm(&tpm);
-  mount.crypto()->set_platform(&platform);
-  mount.set_shadow_root(kImageDir);
-  mount.set_skel_source(kSkelDir);
-  mount.set_use_tpm(false);
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_shadow_root(kImageDir);
+  mount->set_skel_source(kSkelDir);
+  mount->set_use_tpm(false);
 
   EXPECT_CALL(platform, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit(&mount));
+  EXPECT_TRUE(DoMountInit(mount.get()));
   UserSession session;
   Crypto crypto(&platform);
   SecureBlob salt;
@@ -911,11 +922,11 @@ TEST_F(MountTest, MountForUserOrderingTest) {
     EXPECT_CALL(platform, Unmount(dest0, _, _))
         .WillOnce(Return(true));
 
-    EXPECT_TRUE(mount.MountForUser(&session, src, dest0, "", ""));
-    EXPECT_TRUE(mount.BindForUser(&session, src, dest1));
-    EXPECT_TRUE(mount.MountForUser(&session, src, dest2, "", ""));
-    mount.UnmountAllForUser(&session);
-    EXPECT_FALSE(mount.UnmountForUser(&session));
+    EXPECT_TRUE(mount->MountForUser(&session, src, dest0, "", ""));
+    EXPECT_TRUE(mount->BindForUser(&session, src, dest1));
+    EXPECT_TRUE(mount->MountForUser(&session, src, dest2, "", ""));
+    mount->UnmountAllForUser(&session);
+    EXPECT_FALSE(mount->UnmountForUser(&session));
   }
 }
 
@@ -957,17 +968,18 @@ class AltImageTest : public MountTest {
     InsertTestUsers(users, user_count);
 
     // Initialize Mount object.
-    mount_.set_platform(&platform_);
-    mount_.crypto()->set_tpm(&tpm_);
-    mount_.crypto()->set_platform(&platform_);
-    mount_.homedirs()->set_platform(&platform_);
-    mount_.set_shadow_root(kImageDir);
-    mount_.set_use_tpm(false);
-    set_policy(&mount_, false, "", false);
+    mount_ = new Mount();
+    mount_->set_platform(&platform_);
+    mount_->crypto()->set_tpm(&tpm_);
+    mount_->crypto()->set_platform(&platform_);
+    mount_->homedirs()->set_platform(&platform_);
+    mount_->set_shadow_root(kImageDir);
+    mount_->set_use_tpm(false);
+    set_policy(mount_.get(), false, "", false);
 
     EXPECT_CALL(platform_, DirectoryExists(kImageDir))
       .WillRepeatedly(Return(true));
-    EXPECT_TRUE(DoMountInit(&mount_));
+    EXPECT_TRUE(DoMountInit(mount_.get()));
   }
 
   bool StoreSerializedKeyset(const SerializedVaultKeyset& serialized,
@@ -1087,7 +1099,7 @@ class AltImageTest : public MountTest {
 
   std::vector<std::string> vaults_;
  protected:
-  Mount mount_;
+  scoped_refptr<Mount> mount_;
   NiceMock<MockTpm> tpm_;
   MockPlatform platform_;
 
@@ -1113,7 +1125,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, NoCacheCleanup) {
   // Pretend we have lots of free space.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillRepeatedly(Return(kMinFreeSpace + 1));
-  EXPECT_FALSE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_FALSE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OnlyCacheCleanup) {
@@ -1131,7 +1143,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OnlyCacheCleanup) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheAndGCacheCleanup) {
@@ -1148,7 +1160,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CacheAndGCacheCleanup) {
   // removal.  No Owner is set, though, so no vaults will be deleted.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillRepeatedly(Return(kMinFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
@@ -1157,7 +1169,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
 
   // Verify that user timestamp cache must be not initialized by now.
   UserOldestActivityTimestampCache* user_timestamp =
-      mount_.user_timestamp_cache();
+      mount_->user_timestamp_cache();
   EXPECT_FALSE(user_timestamp->initialized());
 
   // Make sure no users actually deleted as we didn't put
@@ -1165,7 +1177,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
   PrepareHomedirs(true, true, true, NULL, NULL);
 
   // Setting owner so that old user may be deleted.
-  set_policy(&mount_, true, helper_.users[3].username, false);
+  set_policy(mount_.get(), true, helper_.users[3].username, false);
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
@@ -1179,7 +1191,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 
   // Verify that user timestamp cache must be initialized by now.
   EXPECT_TRUE(user_timestamp->initialized());
@@ -1197,7 +1209,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 
   // Verify that user timestamp cache must be initialized.
   EXPECT_TRUE(user_timestamp->initialized());
@@ -1219,14 +1231,14 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoTimestamp) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, CleanUpOneOldUser) {
   // Remove old users, oldest first. Stops removing when disk space is enough.
 
   // Setting owner so that old user may be deleted.
-  set_policy(&mount_, true, helper_.users[3].username, false);
+  set_policy(mount_.get(), true, helper_.users[3].username, false);
 
   // Update cached users with following timestamps:
   // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
@@ -1261,7 +1273,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CleanUpOneOldUser) {
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillOnce(Return(kEnoughFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 
@@ -1269,7 +1281,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CleanUpMultipleOldUsers) {
   // Remove old users, oldest first. Stops removing when disk space is enough.
 
   // Setting owner so that old user may be deleted.
-  set_policy(&mount_, true, helper_.users[3].username, false);
+  set_policy(mount_.get(), true, helper_.users[3].username, false);
 
   // Update cached users with following timestamps:
   // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
@@ -1305,7 +1317,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, CleanUpMultipleOldUsers) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
@@ -1322,7 +1334,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
                    base::Time::Now() - kOldUserLastActivityTime * 2);
 
   // Setting owner so that old user may be deleted.
-  set_policy(&mount_, true, helper_.users[3].username, false);
+  set_policy(mount_.get(), true, helper_.users[3].username, false);
 
   // Now pretend we have lack of free space 3 times.
   // user[0] is old, user[1] is up to date, user[2] still have no timestamp,
@@ -1345,7 +1357,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillOnce(Return(kEnoughFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 
   // Forget about mount_ instance as if it has crashed.
   // Simulate cryptohome restart. Create new Mount instance.
@@ -1355,17 +1367,17 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   vaults_.clear();
   expect_deletion.clear();
 
-  Mount mount2;
-  mount2.set_platform(&platform_);
-  mount2.crypto()->set_tpm(&tpm_);
-  mount2.crypto()->set_platform(&platform_);
-  mount2.homedirs()->set_platform(&platform_);
-  mount2.set_shadow_root(kImageDir);
-  mount2.set_use_tpm(false);
+  scoped_refptr<Mount> mount2 = new Mount();
+  mount2->set_platform(&platform_);
+  mount2->crypto()->set_tpm(&tpm_);
+  mount2->crypto()->set_platform(&platform_);
+  mount2->homedirs()->set_platform(&platform_);
+  mount2->set_shadow_root(kImageDir);
+  mount2->set_use_tpm(false);
 
   EXPECT_CALL(platform_, DirectoryExists(kImageDir))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(DoMountInit(&mount2));
+  EXPECT_TRUE(DoMountInit(mount2.get()));
 
   // Expect only users_[0] to be removed since it is now
   // the oldest.
@@ -1373,7 +1385,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   PrepareHomedirs(true, true, true, &expect_deletion, NULL);
 
   // Setting owner so that old user may be deleted.
-  set_policy(&mount2, true, helper_.users[2].username, false);
+  set_policy(mount2.get(), true, helper_.users[2].username, false);
 
   // Let Mount know how many vaults there are.
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kImageDir, false, _))
@@ -1390,12 +1402,12 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWithRestart) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-  EXPECT_TRUE(mount2.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount2->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEphemeral) {
   // When ephemeral users are enabled, all users except owner should be removed.
-  set_policy(&mount_, true, helper_.users[3].username, true);
+  set_policy(mount_.get(), true, helper_.users[3].username, true);
 
   // Expect all accounts but the owner to be deleted.
   std::vector<int> expect_deletion;
@@ -1424,7 +1436,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEphemeral) {
   // Pretend we have lack of free space.
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoOwnerSet) {
@@ -1449,15 +1461,15 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupNoOwnerSet) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(_))
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEnterprise) {
   // All users must be deleted because they are either old or with no
   // timestamp. Owner is not counted because we are in enterprise
   // mode.
-  set_policy(&mount_, true, "", false);  // enterprise-owned.
-  mount_.set_enterprise_owned(true);
+  set_policy(mount_.get(), true, "", false);  // enterprise-owned.
+  mount_->set_enterprise_owned(true);
 
   // Update cached users with artificial timestamp: user[0] is old,
   // Other users still have no timestamp so we consider them even older.
@@ -1482,17 +1494,17 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupEnterprise) {
       .WillOnce(Return(kMinFreeSpace - 1))
       .WillRepeatedly(Return(kMinFreeSpace - 1));
   // Now we expect the user dirs to get destroyed.
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Do not remove currently mounted user and do remove it when unmounted.
 
   // Setting owner (user[3]) so that old user may be deleted.
-  set_policy(&mount_, true, helper_.users[3].username, false);
+  set_policy(mount_.get(), true, helper_.users[3].username, false);
 
   // Set all users old should one of them have a timestamp.
-  mount_.set_old_user_last_activity_time(base::TimeDelta::FromMicroseconds(0));
+  mount_->set_old_user_last_activity_time(base::TimeDelta::FromMicroseconds(0));
   SetUserTimestamp(&helper_.users[3],
                    base::Time::Now() - kOldUserLastActivityTime);
 
@@ -1521,7 +1533,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   EXPECT_CALL(platform_, Bind(_, _))
       .Times(3)
       .WillRepeatedly(Return(true));
-  ASSERT_TRUE(mount_.MountCryptohome(
+  ASSERT_TRUE(mount_->MountCryptohome(
       up, Mount::MountArgs(), &error));
 
   EXPECT_CALL(platform_, GetCurrentTime())
@@ -1531,7 +1543,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
 
   // Update current user timestamp.
   // Normally it is done in MountTaskMount::Run() in background.
-  mount_.UpdateCurrentUserActivityTimestamp(0);
+  mount_->UpdateCurrentUserActivityTimestamp(0);
 
   std::vector<int> expected_deletions;
   // 0 should be mounted and 3 should be the owner.
@@ -1554,7 +1566,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, user->vault_path))
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillRepeatedly(Return(0));
@@ -1564,7 +1576,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   EXPECT_CALL(platform_, Unmount(_, _, _))
       .Times(4)
       .WillRepeatedly(Return(true));
-  mount_.UnmountCryptohome();
+  mount_->UnmountCryptohome();
 
   // Get rid of users.
   Mock::VerifyAndClearExpectations(&platform_);
@@ -1594,7 +1606,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
       .WillRepeatedly(Return(kEnoughFreeSpace - 1));
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
       .WillRepeatedly(Return(false));
-  EXPECT_TRUE(mount_.DoAutomaticFreeDiskSpaceControl());
+  EXPECT_TRUE(mount_->DoAutomaticFreeDiskSpaceControl());
 }
 
 class EphemeralNoUserSystemTest : public AltImageTest {
@@ -1612,13 +1624,13 @@ class EphemeralNoUserSystemTest : public AltImageTest {
 TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, a regular vault is created and mounted.
-  set_policy(&mount_, false, "", true);
+  set_policy(mount_.get(), false, "", true);
 
   // Setup a NiceMock to not need to mock the entire creation flow.
   NiceMock<MockPlatform> platform;
-  mount_.set_platform(&platform);
-  mount_.crypto()->set_platform(&platform);
-  mount_.homedirs()->set_platform(&platform);
+  mount_->set_platform(&platform);
+  mount_->crypto()->set_platform(&platform);
+  mount_->homedirs()->set_platform(&platform);
 
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
@@ -1649,16 +1661,18 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up,
+  ASSERT_TRUE(mount_->MountCryptohome(up,
                                      mount_args,
                                      &error));
 }
 
+// TODO(wad) Duplicate these tests with multiple mounts instead of one.
+
 TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   // Checks that when a device is enterprise enrolled, a tmpfs cryptohome is
   // mounted and no regular vault is created.
-  set_policy(&mount_, false, "", true);
-  mount_.set_enterprise_owned(true);
+  set_policy(mount_.get(), false, "", true);
+  mount_->set_enterprise_owned(true);
   TestUser *user = &helper_.users[0];
 
   // Always removes non-owner cryptohomes.
@@ -1690,8 +1704,15 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   // Make sure it's a tmpfs mount until we move to ephemeral key use.
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
@@ -1699,13 +1720,13 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountNoCreateTest) {
   mount_args.create_if_missing = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, a mount request with the |ensure_ephemeral| flag set fails.
-  set_policy(&mount_, false, "", false);
+  set_policy(mount_.get(), false, "", false);
   TestUser *user = &helper_.users[0];
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
@@ -1715,7 +1736,7 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountEnsureEphemeralTest) {
   mount_args.ensure_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
-  ASSERT_FALSE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_FATAL, error);
 }
 
@@ -1723,8 +1744,8 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   // Checks that when a device is enterprise enrolled, a mount request with the
   // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted and no
   // regular vault to be created.
-  set_policy(&mount_, true, "", false);
-  mount_.set_enterprise_owned(true);
+  set_policy(mount_.get(), true, "", false);
+  mount_->set_enterprise_owned(true);
   TestUser *user = &helper_.users[0];
 
   // Always removes non-owner cryptohomes.
@@ -1755,8 +1776,16 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
@@ -1765,7 +1794,7 @@ TEST_F(EphemeralNoUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   mount_args.ensure_ephemeral = true;
   MountError error;
   UsernamePasskey up(user->username, user->passkey);
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 class EphemeralOwnerOnlySystemTest : public AltImageTest {
@@ -1785,7 +1814,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
   // a tmpfs cryptohome is mounted and no regular vault is created.
   TestUser* owner = &helper_.users[3];
   TestUser* user = &helper_.users[0];
-  set_policy(&mount_, true, owner->username, true);
+  set_policy(mount_.get(), true, owner->username, true);
   UsernamePasskey up(user->username, user->passkey);
 
   // Always removes non-owner cryptohomes.
@@ -1820,15 +1849,22 @@ TEST_F(EphemeralOwnerOnlySystemTest, MountNoCreateTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
@@ -1837,7 +1873,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   // causes a tmpfs cryptohome to be mounted and no regular vault to be created.
   TestUser* owner = &helper_.users[3];
   TestUser* user = &helper_.users[0];
-  set_policy(&mount_, true, owner->username, false);
+  set_policy(mount_.get(), true, owner->username, false);
   UsernamePasskey up(user->username, user->passkey);
 
   // Always removes non-owner cryptohomes.
@@ -1872,8 +1908,15 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
@@ -1881,14 +1924,14 @@ TEST_F(EphemeralOwnerOnlySystemTest, NonOwnerMountEnsureEphemeralTest) {
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // a mount request for the owner with the |ensure_ephemeral| flag set fails.
   TestUser* owner = &helper_.users[3];
-  set_policy(&mount_, true, owner->username, false);
+  set_policy(mount_.get(), true, owner->username, false);
   UsernamePasskey up(owner->username, owner->passkey);
 
   EXPECT_CALL(platform_, Mount(_, _, _, _)).Times(0);
@@ -1897,7 +1940,7 @@ TEST_F(EphemeralOwnerOnlySystemTest, OwnerMountEnsureEphemeralTest) {
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
-  ASSERT_FALSE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_FALSE(mount_->MountCryptohome(up, mount_args, &error));
   ASSERT_EQ(MOUNT_ERROR_FATAL, error);
 }
 
@@ -1916,7 +1959,7 @@ class EphemeralExistingUserSystemTest : public AltImageTest {
 TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, no stale cryptohomes are removed while mounting.
-  set_policy(&mount_, false, "", true);
+  set_policy(mount_.get(), false, "", true);
   TestUser* user = &helper_.users[0];
 
   // No c-homes will be removed.  The rest of the mocking just gets us to
@@ -1969,14 +2012,14 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   MountError error;
   user->InjectKeyset(&platform_);
   UsernamePasskey up(user->username, user->passkey);
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
   // Checks that when a device is enterprise enrolled, all stale cryptohomes are
   // removed while mounting.
-  set_policy(&mount_, false, "", true);
-  mount_.set_enterprise_owned(true);
+  set_policy(mount_.get(), false, "", true);
+  mount_->set_enterprise_owned(true);
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
@@ -2027,22 +2070,28 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // all non-owner cryptohomes are removed while mounting.
   TestUser* owner = &helper_.users[3];
-  set_policy(&mount_, true, owner->username, true);
+  set_policy(mount_.get(), true, owner->username, true);
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
@@ -2093,31 +2142,37 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
   Mount::MountArgs mount_args;
   mount_args.create_if_missing = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownUnmountNoRemoveTest) {
   // Checks that when a device is not enterprise enrolled and does not have a
   // known owner, no stale cryptohomes are removed while unmounting.
-  set_policy(&mount_, false, "", true);
+  set_policy(mount_.get(), false, "", true);
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(0));
-  ASSERT_TRUE(mount_.UnmountCryptohome());
+  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   // Checks that when a device is enterprise enrolled, all stale cryptohomes are
   // removed while unmounting.
-  set_policy(&mount_, false, "", true);
-  mount_.set_enterprise_owned(true);
+  set_policy(mount_.get(), false, "", true);
+  mount_->set_enterprise_owned(true);
 
   std::vector<int> expect_deletion;
   expect_deletion.push_back(0);
@@ -2142,14 +2197,14 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseUnmountRemoveTest) {
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(0));
 
-  ASSERT_TRUE(mount_.UnmountCryptohome());
+  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   // Checks that when a device is not enterprise enrolled and has a known owner,
   // all stale cryptohomes are removed while unmounting.
   TestUser* owner = &helper_.users[3];
-  set_policy(&mount_, true, owner->username, true);
+  set_policy(mount_.get(), true, owner->username, true);
   // All users but the owner.
   std::vector<int> expect_deletion;
   expect_deletion.push_back(0);
@@ -2173,7 +2228,7 @@ TEST_F(EphemeralExistingUserSystemTest, UnmountRemoveTest) {
   EXPECT_CALL(platform_, ClearUserKeyring())
     .WillOnce(Return(0));
 
-  ASSERT_TRUE(mount_.UnmountCryptohome());
+  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
@@ -2183,7 +2238,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   // the user.
   // Since ephemeral users aren't enabled, no vaults will be deleted.
   TestUser* owner = &helper_.users[3];
-  set_policy(&mount_, true, owner->username, false);
+  set_policy(mount_.get(), true, owner->username, false);
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
@@ -2227,12 +2282,21 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   EXPECT_CALL(platform_, FileExists(StartsWith("/home/chronos/user")))
     .WillRepeatedly(Return(true));
 
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
+
   helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
@@ -2240,7 +2304,7 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 
 TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
@@ -2248,8 +2312,8 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   // |ensure_ephemeral| flag set causes a tmpfs cryptohome to be mounted, even
   // if a regular vault exists for the user.
   // Since ephemeral users aren't enabled, no vaults will be deleted.
-  set_policy(&mount_, true, "", false);
-  mount_.set_enterprise_owned(true);
+  set_policy(mount_.get(), true, "", false);
+  mount_->set_enterprise_owned(true);
 
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
@@ -2295,13 +2359,21 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
     .WillOnce(Return(new NiceMock<MockFileEnumerator>()));
   EXPECT_CALL(platform_, FileExists(StartsWith("/home/chronos/user")))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
 
   helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .Times(0);
+  EXPECT_CALL(platform_, IsDirectoryMounted("test_image_dir/skeleton"))
+    .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, Mount(_, _, kEphemeralMountType, _))
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("test_image_dir/skeleton", _, _))
+      .WillOnce(Return(true));  // Scope mount
+  EXPECT_CALL(platform_, IsDirectoryMounted("/home/chronos/user"))
+    .WillOnce(Return(false));  // first mount
   EXPECT_CALL(platform_, Bind(_, _))
       .WillRepeatedly(Return(true));
 
@@ -2309,6 +2381,6 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   mount_args.create_if_missing = true;
   mount_args.ensure_ephemeral = true;
   MountError error;
-  ASSERT_TRUE(mount_.MountCryptohome(up, mount_args, &error));
+  ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
 }  // namespace cryptohome

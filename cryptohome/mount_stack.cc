@@ -1,9 +1,10 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
 #include "mount_stack.h"
 
+#include <algorithm>
 #include <base/logging.h>
 
 MountStack::MountStack() { }
@@ -26,4 +27,8 @@ bool MountStack::Pop(std::string* path) {
   *path = mounts_.back();
   mounts_.pop_back();
   return true;
+}
+
+bool MountStack::Contains(const std::string& path) const {
+  return std::find(mounts_.begin(), mounts_.end(), path) != mounts_.end();
 }

@@ -18,6 +18,7 @@ MountTask::MountTask(MountTaskObserver* observer,
     : mount_(mount),
       credentials_(),
       sequence_id_(-1),
+      cancel_flag_(false),
       observer_(observer),
       default_result_(new MountTaskResult),
       result_(default_result_.get()),
@@ -32,6 +33,7 @@ MountTask::MountTask(MountTaskObserver* observer,
     : mount_(mount),
       credentials_(),
       sequence_id_(-1),
+      cancel_flag_(false),
       observer_(observer),
       default_result_(new MountTaskResult),
       result_(default_result_.get()),
@@ -136,8 +138,8 @@ void MountTaskResetTpmContext::Run() {
 
 void MountTaskAutomaticFreeDiskSpace::Run() {
   bool rc = false;
-  if (mount_) {
-    rc = mount_->DoAutomaticFreeDiskSpaceControl();
+  if (homedirs_) {
+    rc = homedirs_->FreeDiskSpace();
   }
   result()->set_return_status(rc);
   MountTask::Notify();
@@ -160,10 +162,11 @@ MountTaskPkcs11Init::MountTaskPkcs11Init(MountTaskObserver* observer,
 }
 
 void MountTaskPkcs11Init::Run() {
-  if (mount_) {
+  if (!IsCanceled() && mount_) {
     // This will send an insertion event to the Chaps daemon with appropriate
     // authorization data.
-    mount_->InsertPkcs11Token();
+    if (mount_->IsMounted())
+      mount_->InsertPkcs11Token();
     result()->set_return_status(1);
   }
   MountTask::Notify();

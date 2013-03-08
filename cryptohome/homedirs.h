@@ -20,6 +20,7 @@
 #include <string>
 
 #include "crypto.h"
+#include "mount_factory.h"
 #include "vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -100,6 +101,8 @@ class HomeDirs {
   policy::PolicyProvider* policy_provider() { return policy_provider_; }
   void set_crypto(Crypto* value) { crypto_ = value; }
   Crypto* crypto() const { return crypto_; }
+  void set_mount_factory(MountFactory* value) { mount_factory_ = value; }
+  MountFactory* mount_factory() const { return mount_factory_; }
 
  private:
   bool AreEphemeralUsersEnabled();
@@ -145,6 +148,8 @@ class HomeDirs {
   policy::PolicyProvider* policy_provider_;
   scoped_ptr<Crypto> default_crypto_;
   Crypto* crypto_;
+  scoped_ptr<MountFactory> default_mount_factory_;
+  MountFactory* mount_factory_;
   base::TimeDelta old_user_last_activity_time_;
   chromeos::SecureBlob system_salt_;
   chaps::LoginEventClient chaps_event_client_;

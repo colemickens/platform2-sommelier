@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -124,9 +124,13 @@ class MockPlatform : public Platform {
                            const std::string&, const std::string&));
   MOCK_METHOD2(Bind, bool(const std::string&, const std::string&));
   MOCK_METHOD3(Unmount, bool(const std::string&, bool, bool*));
+  MOCK_METHOD2(GetMountsBySourcePrefix, bool(const std::string&,
+                  std::multimap<const std::string, const std::string>*));
   MOCK_METHOD1(IsDirectoryMounted, bool(const std::string&));
   MOCK_METHOD2(IsDirectoryMountedWith, bool(const std::string&,
                                             const std::string&));
+  MOCK_METHOD2(GetProcessesWithOpenFiles, void(const std::string&,
+                                          std::vector<ProcessInformation>*));
   MOCK_CONST_METHOD3(GetOwnership, bool(const std::string&, uid_t*, gid_t*));
   MOCK_CONST_METHOD3(SetOwnership, bool(const std::string&, uid_t, gid_t));
   MOCK_CONST_METHOD2(GetPermissions, bool(const std::string&, mode_t*));

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -16,6 +16,7 @@
 #include <base/callback.h>
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/ref_counted.h>
 #include <base/time.h>
 #include <base/values.h>
 #include <chaps/login_event_client.h>
@@ -63,7 +64,7 @@ extern const base::TimeDelta kOldUserLastActivityTime;
 // The Mount class handles mounting/unmounting of the user's cryptohome
 // directory as well as offline verification of the user's credentials against
 // the directory's crypto key.
-class Mount {
+class Mount : public base::RefCountedThreadSafe<Mount> {
  public:
   struct MountArgs {
     bool create_if_missing;
@@ -101,24 +102,17 @@ class Mount {
   // Unmounts any mount at the cryptohome mount point
   virtual bool UnmountCryptohome();
 
-  // Checks if the mount point currently has a mount
-  virtual bool IsCryptohomeMounted() const;
-
   // Checks whether the mount point currently has a cryptohome mounted for the
-  // specified credentials.
+  // current user.
   //
   // Parameters
   //   credentials - The credentials for which to test the mount point.
-  virtual bool IsCryptohomeMountedForUser(const Credentials& credentials) const;
+  virtual bool IsMounted() const;
 
   // Checks whether the mount point currently has a cryptohome mounted for the
-  // specified credentials that is backed by a vault.
+  // current user that is backed by a vault.
   //
-  // Parameters
-  //   credentials - The credentials for which to test the mount point.
-  // TODO(ellyjones): factor this into IsCryptohomeMountedForUser() with an
-  // |*ephemeral| arg or something.
-  virtual bool IsVaultMountedForUser(const Credentials& credentials) const;
+  virtual bool IsVaultMounted() const;
 
   // Checks if the cryptohome vault exists for the given credentials and creates
   // it if not (calls CreateCryptohome).
@@ -258,6 +252,9 @@ class Mount {
 
   // Removes the current user's PKCS #11 token.
   void RemovePkcs11Token();
+
+  // Returns true if this Mount instances owns the mount path.
+  virtual bool OwnsMountPoint(const std::string& path) const;
 
   // Used to override the policy provider for testing (takes ownership)
   // TODO(wad) move this in line with other testing accessors
@@ -444,7 +441,8 @@ class Mount {
   //
   // Parameters
   //   credentials - The credentials representing the user
-  std::string GetUserMountDirectory(const Credentials& credentials) const;
+  std::string GetUserMountDirectory(
+      const std::string& obfuscated_username) const;
 
   // Returns the path of a user passthrough inside a vault
   //
@@ -462,17 +460,19 @@ class Mount {
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetMountedUserHomePath(const Credentials& credentials) const;
+  std::string GetMountedUserHomePath(
+      const std::string& obfuscated_username) const;
 
   // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
   //
   // Parameters
   //   credentials - The Credentials representing the user
-  std::string GetMountedRootHomePath(const Credentials& credentials) const;
+  std::string GetMountedRootHomePath(
+      const std::string& obfuscated_username) const;
 
   // Returns a path suitable for building a skeleton for an ephemeral home
   // directory.
-  std::string GetEphemeralSkeletonPath();
+  std::string GetEphemeralSkeletonPath() const;
 
   // Get the owner user's obfuscated hash. This is empty if the owner has not
   // been set yet or the device is enterprise owned.
@@ -557,16 +557,7 @@ class Mount {
   // Copies the skeleton directory to the user's cryptohome if that user is
   // currently mounted
   //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  //   destination - Where to copy files to
-  void CopySkeletonForUser(const Credentials& credentials) const;
-
-  // Copies the skeleton directory to the given destination.
-  //
-  // Parameters
-  //   destination - Where to copy files to
-  void CopySkeleton(const FilePath& destination) const;
+  void CopySkeleton(void) const;
 
   // Returns the user's salt
   //
