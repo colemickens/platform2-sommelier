@@ -8,6 +8,7 @@
 
 #include "perf_serializer.h"
 #include "perf_reader.h"
+#include "quipper_string.h"
 #include "utils.h"
 
 using quipper::PerfDataProto;
@@ -380,7 +381,7 @@ bool PerfSerializer::SerializeReader(const PerfReader& perf_reader,
   return true;
 }
 
-bool PerfSerializer::Serialize(const char* filename,
+bool PerfSerializer::Serialize(const string& filename,
                                PerfDataProto* perf_data_proto) {
   PerfReader perf_reader;
 
@@ -412,7 +413,7 @@ bool PerfSerializer::DeserializeReader(const PerfDataProto& perf_data_proto,
   return true;
 }
 
-bool PerfSerializer::Deserialize(const char* filename,
+bool PerfSerializer::Deserialize(const string& filename,
                                  const PerfDataProto& perf_data_proto) {
   PerfReader perf_reader;
   DeserializeReader(perf_data_proto, &perf_reader);

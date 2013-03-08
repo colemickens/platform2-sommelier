@@ -31,8 +31,8 @@ void SerializeAndDeserialize(const std::string& input,
                              const std::string& output) {
   PerfSerializer perf_serializer;
   quipper::PerfDataProto perf_data_proto;
-  EXPECT_TRUE(perf_serializer.Serialize(input.c_str(), &perf_data_proto));
-  EXPECT_TRUE(perf_serializer.Deserialize(output.c_str(), perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Serialize(input, &perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Deserialize(output, perf_data_proto));
 }
 
 void SerializeToFileAndBack(const std::string& input,
@@ -40,7 +40,7 @@ void SerializeToFileAndBack(const std::string& input,
   PerfSerializer perf_serializer;
   quipper::PerfDataProto input_perf_data_proto, output_perf_data_proto;
 
-  EXPECT_TRUE(perf_serializer.Serialize(input.c_str(), &input_perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Serialize(input, &input_perf_data_proto));
   // Now store the protobuf into a file.
   std::string input_filename, output_filename;
   EXPECT_TRUE(CreateNamedTempFile(&input_filename));
@@ -50,8 +50,7 @@ void SerializeToFileAndBack(const std::string& input,
 
   EXPECT_TRUE(ReadProtobufFromFile(&output_perf_data_proto, input_filename));
 
-  EXPECT_TRUE(perf_serializer.Deserialize(output.c_str(),
-                                          output_perf_data_proto));
+  EXPECT_TRUE(perf_serializer.Deserialize(output, output_perf_data_proto));
 
   EXPECT_TRUE(WriteProtobufToFile(output_perf_data_proto, output_filename));
 
