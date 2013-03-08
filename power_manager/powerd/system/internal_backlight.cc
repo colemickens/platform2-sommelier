@@ -86,7 +86,17 @@ bool InternalBacklight::Init(const base::FilePath& base_path,
 }
 
 gboolean InternalBacklight::TriggerTransitionTimeoutForTesting() {
-  return HandleTransitionTimeout();
+  CHECK(transition_timeout_id_);
+  guint scheduled_id = transition_timeout_id_;
+  gboolean ret = HandleTransitionTimeout();
+  if (!ret) {
+    // Since the GLib timeout didn't actually fire, we need to remove it
+    // manually to ensure it won't be leaked.
+    CHECK(transition_timeout_id_ != scheduled_id);
+    util::RemoveTimeout(&scheduled_id);
+  }
+
+  return ret;
 }
 
 bool InternalBacklight::GetMaxBrightnessLevel(int64* max_level) {
