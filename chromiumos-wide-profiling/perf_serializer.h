@@ -24,90 +24,85 @@ class PerfSerializer {
                    const quipper::PerfDataProto& perf_data_proto);
 
  private:
-  void SerializeEvent(const event_t* event,
+  void SerializeEvent(const event_t& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
   void DeserializeEvent(
-      event_t* event,
-      const quipper::PerfDataProto_PerfEvent* event_proto) const;
+      const quipper::PerfDataProto_PerfEvent& event_proto,
+      event_t* event) const;
 
   void SerializeEventHeader(
-      const perf_event_header* header,
+      const perf_event_header& header,
       quipper::PerfDataProto_EventHeader* header_proto) const;
   void DeserializeEventHeader(
-      perf_event_header* header,
-      const quipper::PerfDataProto_EventHeader* header_proto) const;
+      const quipper::PerfDataProto_EventHeader& header_proto,
+      perf_event_header* header) const;
 
-  void SerializeRecordSample(const event_t* event,
+  void SerializeRecordSample(const event_t& event,
                              quipper::PerfDataProto_SampleEvent* sample) const;
   void DeserializeRecordSample(
-      event_t* event,
-      const quipper::PerfDataProto_SampleEvent* sample) const;
+      const quipper::PerfDataProto_SampleEvent& sample,
+      event_t* event) const;
 
-  void SerializeMMapSample(const event_t* event,
+  void SerializeMMapSample(const event_t& event,
                            quipper::PerfDataProto_MMapEvent* sample) const;
   void DeserializeMMapSample(
-      event_t* event,
-      const quipper::PerfDataProto_MMapEvent* sample) const;
+      const quipper::PerfDataProto_MMapEvent& sample,
+      event_t* event) const;
 
-  void SerializeForkSample(const event_t* event,
+  void SerializeForkSample(const event_t& event,
                            quipper::PerfDataProto_ForkEvent* sample) const;
   void DeserializeForkSample(
-      event_t* event,
-      const quipper::PerfDataProto_ForkEvent* sample) const;
+      const quipper::PerfDataProto_ForkEvent& sample,
+      event_t* event) const;
 
   void SerializeCommSample(
-      const event_t* event,
+      const event_t& event,
       quipper::PerfDataProto_CommEvent* sample) const;
 
   void DeserializeCommSample(
-      event_t* event,
-      const quipper::PerfDataProto_CommEvent* sample) const;
+      const quipper::PerfDataProto_CommEvent& sample,
+      event_t* event) const;
 
   void SerializeSampleInfo(
-      const event_t* event,
+      const event_t& event,
       quipper::PerfDataProto_SampleInfo* sample_info) const;
   void DeserializeSampleInfo(
-      event_t* event,
-      const quipper::PerfDataProto_SampleInfo* info) const;
+      const quipper::PerfDataProto_SampleInfo& info,
+      event_t* event) const;
 
   void SerializePerfEventAttr(
-      const perf_event_attr* perf_event_attr,
+      const perf_event_attr& perf_event_attr,
       quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
   void DeserializePerfEventAttr(
-      perf_event_attr* perf_event_attr,
-      const quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
+      const quipper::PerfDataProto_PerfEventAttr& perf_event_attr_proto,
+      perf_event_attr* perf_event_attr);
 
   void SerializePerfFileAttr(
-      const PerfFileAttr* perf_file_attr,
+      const PerfFileAttr& perf_file_attr,
       quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
   void DeserializePerfFileAttr(
-      PerfFileAttr* perf_file_attr,
-      const quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
+      const quipper::PerfDataProto_PerfFileAttr& perf_file_attr_proto,
+      PerfFileAttr* perf_file_attr);
 
 #define SERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
-bool name(const std::vector<vec_type>* from, \
-          ::google::protobuf::RepeatedPtrField<proto_type>* to) \
-{ \
-  to->Reserve(from->size()); \
-  for (size_t i = 0; i < from->size(); i++) \
-  { \
+bool name(const std::vector<vec_type>& from, \
+          ::google::protobuf::RepeatedPtrField<proto_type>* to) { \
+  to->Reserve(from.size()); \
+  for (size_t i = 0; i < from.size(); i++) { \
     proto_type* to_element = to->Add(); \
     if (to_element == NULL) \
       return false; \
-    function(&from->at(i), to->Mutable(i)); \
+    function(from.at(i), to->Mutable(i)); \
   } \
   return true; \
 }
 
 #define DESERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
-bool name(std::vector<vec_type>* to, \
-          const ::google::protobuf::RepeatedPtrField<proto_type>* from) \
-{ \
-  to->resize(from->size()); \
-  for (int i = 0; i < from->size(); i++) \
-  { \
-    function(&to->at(i), &from->Get(i)); \
-  } \
+bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
+          std::vector<vec_type>* to) { \
+  to->resize(from.size()); \
+  for (int i = 0; i < from.size(); i++) \
+    function(from.Get(i), &to->at(i)); \
   return true; \
 }
 
