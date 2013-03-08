@@ -8,13 +8,14 @@
 #include "base/logging.h"
 
 #include "perf_protobuf_io.h"
+#include "quipper_string.h"
 #include "utils.h"
 
 using quipper::PerfDataProto;
 
 bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
-                         const std::string& filename) {
-  std::string target;
+                         const string& filename) {
+  string target;
   perf_data_proto.SerializeToString(&target);
 
   std::vector<char> buffer(target.begin(), target.end());
@@ -22,7 +23,7 @@ bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
 }
 
 bool ReadProtobufFromFile(PerfDataProto* perf_data_proto,
-                          const std::string& filename) {
+                          const string& filename) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   std::vector<char> buffer;
   if (!FileToBuffer(filename, &buffer))

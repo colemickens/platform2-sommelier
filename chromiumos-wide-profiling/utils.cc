@@ -35,8 +35,8 @@ const char kPerfReportCommand[] =
     "/usr/sbin/perf report --symfs=/dev/null --stdio -n -i ";
 
 // Given a perf report file, get the perf report and read it into a string.
-bool GetPerfReport(const std::string& filename, std::string* output) {
-  std::string cmd = std::string(kPerfReportCommand) + filename;
+bool GetPerfReport(const string& filename, string* output) {
+  string cmd = string(kPerfReportCommand) + filename;
   FILE* file = popen(cmd.c_str(), "r");
   if (!file) {
     LOG(ERROR) << "Could not execute '" << cmd << "'.";
@@ -50,7 +50,7 @@ bool GetPerfReport(const std::string& filename, std::string* output) {
   while (fgets(buffer, sizeof(buffer), file)) {
     if (buffer[0] == '#')
       continue;
-    std::string str;
+    string str;
     TrimWhitespaceASCII(buffer, TRIM_ALL, &str);
     *output += str + '\n';
   }
@@ -249,14 +249,14 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
 
 }  // namespace
 
-uint64 Md5Prefix(const std::string& input) {
+uint64 Md5Prefix(const string& input) {
   uint64 digest_prefix = 0;
   unsigned char digest[MD5_DIGEST_LENGTH + 1];
 
   MD5(reinterpret_cast<const unsigned char*>(input.c_str()), input.size(),
       digest);
   // We need 64-bits / # of bits in a byte.
-  std::stringstream ss;
+  stringstream ss;
   for( size_t i = 0 ; i < sizeof(uint64) ; i++ )
     // The setw(2) and setfill('0') calls are needed to make sure we output 2
     // hex characters for every 8-bits of the hash.
@@ -266,13 +266,13 @@ uint64 Md5Prefix(const std::string& input) {
   return digest_prefix;
 }
 
-std::ifstream::pos_type GetFileSize(const std::string& filename) {
+std::ifstream::pos_type GetFileSize(const string& filename) {
   std::ifstream in(filename.c_str(), std::ifstream::in | std::ifstream::binary);
   in.seekg(0, std::ifstream::end);
   return in.tellg();
 }
 
-bool BufferToFile(const std::string& filename,
+bool BufferToFile(const string& filename,
                   const std::vector<char> & contents) {
   std::ofstream out(filename.c_str(), std::ios::binary);
   if (out.good())
@@ -285,7 +285,7 @@ bool BufferToFile(const std::string& filename,
   return false;
 }
 
-bool FileToBuffer(const std::string& filename, std::vector<char>* contents) {
+bool FileToBuffer(const string& filename, std::vector<char>* contents) {
   contents->reserve(GetFileSize(filename));
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (in.good())
@@ -298,9 +298,9 @@ bool FileToBuffer(const std::string& filename, std::vector<char>* contents) {
   return false;
 }
 
-bool CompareFileContents(const std::string& a, const std::string& b) {
+bool CompareFileContents(const string& a, const string& b) {
   struct FileInfo {
-    std::string name;
+    string name;
     std::vector<char> contents;
   };
   FileInfo file_infos[2];
@@ -315,7 +315,7 @@ bool CompareFileContents(const std::string& a, const std::string& b) {
   return file_infos[0].contents == file_infos[1].contents;
 }
 
-bool CreateNamedTempFile(std::string * name) {
+bool CreateNamedTempFile(string * name) {
   char filename[] = "/tmp/XXXXXX";
   int fd = mkstemp(filename);
   if (fd == -1)
@@ -325,9 +325,9 @@ bool CreateNamedTempFile(std::string * name) {
   return true;
 }
 
-bool ComparePerfReports(const std::string& a, const std::string& b) {
-  const std::string* files[] = { &a, &b };
-  std::map<std::string, std::string> outputs;
+bool ComparePerfReports(const string& a, const string& b) {
+  const string* files[] = { &a, &b };
+  std::map<string, string> outputs;
 
   // Generate a perf report for each file.
   for (unsigned int i = 0; i < arraysize(files); ++i)

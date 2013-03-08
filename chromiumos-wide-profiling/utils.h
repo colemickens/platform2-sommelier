@@ -10,24 +10,25 @@
 
 #include "base/basictypes.h"
 
+#include "quipper_string.h"
 #include "kernel/perf_internals.h"
 
-bool FileToBuffer(const std::string& filename, std::vector<char>* contents);
+bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
-bool BufferToFile(const std::string& filename,
+bool BufferToFile(const string& filename,
                   const std::vector<char>& contents);
 
-std::ifstream::pos_type GetFileSize(const std::string& filename);
+std::ifstream::pos_type GetFileSize(const string& filename);
 
-bool CompareFileContents(const std::string& a, const std::string& b);
+bool CompareFileContents(const string& a, const string& b);
 
-uint64 Md5Prefix(const std::string& input);
+uint64 Md5Prefix(const string& input);
 
-bool CreateNamedTempFile(std::string* name);
+bool CreateNamedTempFile(string* name);
 
 // Returns true if the perf reports show the same summary.  Metadata is not
 // compared.
-bool ComparePerfReports(const std::string& a, const std::string& b);
+bool ComparePerfReports(const string& a, const string& b);
 
 // Returns info about the raw perf sample that recorded a perf event.
 bool ReadPerfSampleInfo(const event_t& event,

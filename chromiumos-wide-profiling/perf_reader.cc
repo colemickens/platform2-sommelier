@@ -10,6 +10,7 @@
 #include "base/logging.h"
 
 #include "perf_reader.h"
+#include "quipper_string.h"
 
 namespace {
 const uint64 kPerfMagic = 0x32454c4946524550LL;
@@ -23,14 +24,14 @@ bool PerfReader::ReadFileFromHandle(std::ifstream* in) {
   return true;
 }
 
-bool PerfReader::ReadFile(const std::string& filename) {
+bool PerfReader::ReadFile(const string& filename) {
   std::ifstream in(filename.c_str(), std::ios::binary);
   if (ReadFileFromHandle(&in) == false)
     return false;
   return true;
 }
 
-bool PerfReader::WriteFile(const std::string& filename) {
+bool PerfReader::WriteFile(const string& filename) {
   std::ofstream out(filename.c_str(), std::ios::binary);
   return WriteFileFromHandle(&out);
 }

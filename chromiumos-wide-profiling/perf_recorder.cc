@@ -9,23 +9,24 @@
 
 #include "perf_recorder.h"
 #include "perf_serializer.h"
+#include "quipper_string.h"
 #include "utils.h"
 
-std::string PerfRecorder::GetSleepCommand(const int time) {
-  std::stringstream ss;
+string PerfRecorder::GetSleepCommand(const int time) {
+  stringstream ss;
   ss << "sleep " << time;
   return ss.str();
 }
 
 bool PerfRecorder::RecordAndConvertToProtobuf(
-    const std::string& perf_command,
+    const string& perf_command,
     const int time,
     quipper::PerfDataProto* perf_data) {
-  std::string temp_file;
+  string temp_file;
   if (!CreateNamedTempFile(&temp_file))
     return false;
   // TODO(asharif): Use a pipe instead of a temporary file here.
-  std::string full_perf_command = perf_command + std::string(" -o ") +
+  string full_perf_command = perf_command + string(" -o ") +
       temp_file + " -- " + GetSleepCommand(time);
 
   FILE* fp = popen(full_perf_command.c_str(), "r");

@@ -9,6 +9,7 @@
 #include "perf_serializer.h"
 #include "perf_protobuf_io.h"
 #include "perf_recorder.h"
+#include "quipper_string.h"
 #include "utils.h"
 
 TEST(PerfRecorderTest, TestRecord) {
@@ -16,7 +17,7 @@ TEST(PerfRecorderTest, TestRecord) {
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
   quipper::PerfDataProto perf_data_proto;
-  std::string perf_command_line = "sudo /usr/sbin/perf record";
+  string perf_command_line = "sudo /usr/sbin/perf record";
   PerfRecorder perf_recorder;
   EXPECT_TRUE(perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
                                                        1,

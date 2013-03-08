@@ -7,11 +7,12 @@
 
 #include <string>
 #include "perf_data.pb.h"
+#include "quipper_string.h"
 
 bool WriteProtobufToFile(const quipper::PerfDataProto& perf_data_proto,
-                         const std::string& filename);
+                         const string& filename);
 
 bool ReadProtobufFromFile(quipper::PerfDataProto* perf_data_proto,
-                          const std::string& filename);
+                          const string& filename);
 
 #endif  // PERF_PROTOBUF_IO_H_

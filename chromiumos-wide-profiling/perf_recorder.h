@@ -11,15 +11,16 @@
 
 #include "perf_reader.h"
 #include "perf_data.pb.h"
+#include "quipper_string.h"
 
 class PerfRecorder {
  public:
   PerfRecorder() {}
-  bool RecordAndConvertToProtobuf(const std::string& perf_command,
+  bool RecordAndConvertToProtobuf(const string& perf_command,
                                   const int time,
                                   quipper::PerfDataProto* perf_data);
  private:
-  std::string GetSleepCommand(const int time);
+  string GetSleepCommand(const int time);
   DISALLOW_COPY_AND_ASSIGN(PerfRecorder);
 };
 

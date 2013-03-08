@@ -10,6 +10,7 @@
 
 #include "base/basictypes.h"
 
+#include "quipper_string.h"
 #include "kernel/perf_internals.h"
 
 struct PerfFileAttr {
@@ -20,9 +21,9 @@ struct PerfFileAttr {
 class PerfReader {
  public:
   PerfReader() : sample_type_(0) {}
-  bool ReadFile(const std::string& filename);
+  bool ReadFile(const string& filename);
   bool ReadFileFromHandle(std::ifstream* in);
-  bool WriteFile(const std::string& filename);
+  bool WriteFile(const string& filename);
   bool WriteFileFromHandle(std::ofstream* out);
   bool RegenerateHeader();
 
