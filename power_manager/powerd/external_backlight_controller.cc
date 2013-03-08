@@ -169,12 +169,6 @@ void ExternalBacklightController::OnBacklightDeviceChanged() {
   Init();
 }
 
-void ExternalBacklightController::OnAmbientLightChanged(
-    AmbientLightSensor* sensor) {
-  // Desktop systems are not expected to have an ALS
-  NOTIMPLEMENTED();
-}
-
 double ExternalBacklightController::LevelToPercent(int64 level) {
   if (max_level_ <= 0)
     return 0.0;

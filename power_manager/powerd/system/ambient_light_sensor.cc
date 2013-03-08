@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 
 #include <fcntl.h>
 #include <errno.h>
@@ -20,6 +20,7 @@
 #include "power_manager/common/util.h"
 
 namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -62,7 +63,6 @@ AmbientLightSensor::AmbientLightSensor()
   double lo = kLuxLo + kLuxOffset;
   log_multiply_factor_ = 100 / log(hi / lo);
   log_subtract_factor_ = log(lo) * log_multiply_factor_;
-
 }
 
 AmbientLightSensor::~AmbientLightSensor() {
@@ -73,56 +73,25 @@ void AmbientLightSensor::Init() {
   poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
 }
 
-bool AmbientLightSensor::DeferredInit() {
-  CHECK(!als_file_.HasOpenedFile());
-  // Search the iio/devices directory for a subdirectory (eg "device0" or
-  // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
-  file_util::FileEnumerator dir_enumerator(
-      device_list_path_, false, file_util::FileEnumerator::DIRECTORIES);
-  const char* input_names[] = {
-      "in_illuminance0_input",
-      "in_illuminance0_raw",
-      "illuminance0_input",
-  };
-
-  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
-       check_path = dir_enumerator.Next()) {
-    for (unsigned int i = 0; i < arraysize(input_names); i++) {
-      base::FilePath als_path = check_path.Append(input_names[i]);
-      if (als_file_.Init(als_path.value())) {
-        if (still_deferring_)
-          LOG(INFO) << "Finally found the lux file";
-        return true;
-      }
-    }
-  }
-
-  // If the illuminance file is not immediately found, issue a deferral
-  // message and try again later.
-  if (still_deferring_)
-    return false;
-  LOG(WARNING) << "Deferring lux: " << strerror(errno);
-  still_deferring_ = true;
-  return false;
+void AmbientLightSensor::AddObserver(AmbientLightObserver* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
 }
 
-void AmbientLightSensor::AddObserver(AmbientLightSensorObserver* observer) {
-  observer_list_.AddObserver(observer);
+void AmbientLightSensor::RemoveObserver(AmbientLightObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
 }
 
-void AmbientLightSensor::RemoveObserver(AmbientLightSensorObserver* observer) {
-  observer_list_.RemoveObserver(observer);
-}
-
-double AmbientLightSensor::GetAmbientLightPercent() const {
+double AmbientLightSensor::GetAmbientLightPercent() {
   return (lux_value_ != -1) ? Tsl2563LuxToPercent(lux_value_) : -1.0;
 }
 
-int AmbientLightSensor::GetAmbientLightLux() const {
+int AmbientLightSensor::GetAmbientLightLux() {
   return lux_value_;
 }
 
-std::string AmbientLightSensor::DumpPercentHistory() const {
+std::string AmbientLightSensor::DumpPercentHistory() {
   std::string buffer;
   for (std::list<double>::const_reverse_iterator it = percent_history_.rbegin();
        it != percent_history_.rend();
@@ -134,7 +103,7 @@ std::string AmbientLightSensor::DumpPercentHistory() const {
   return "[" + buffer + "]";
 }
 
-std::string AmbientLightSensor::DumpLuxHistory() const {
+std::string AmbientLightSensor::DumpLuxHistory() {
   std::string buffer;
   for (std::list<int>::const_reverse_iterator it = lux_history_.rbegin();
        it != lux_history_.rend();
@@ -174,7 +143,7 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
       lux_history_.pop_front();
     lux_history_.push_back(lux_value_);
     if (lux_value_ != previous_lux_value) {
-      FOR_EACH_OBSERVER(AmbientLightSensorObserver, observer_list_,
+      FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
                         OnAmbientLightChanged(this));
     }
   } else {
@@ -188,6 +157,39 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
 void AmbientLightSensor::ErrorCallback() {
   LOG(ERROR) << "Error reading ALS file.";
   poll_timeout_id_ = g_timeout_add(poll_interval_ms_, ReadAlsThunk, this);
+}
+
+bool AmbientLightSensor::DeferredInit() {
+  CHECK(!als_file_.HasOpenedFile());
+  // Search the iio/devices directory for a subdirectory (eg "device0" or
+  // "iio:device0") that contains the "[in_]illuminance0_{input|raw}" file.
+  file_util::FileEnumerator dir_enumerator(
+      device_list_path_, false, file_util::FileEnumerator::DIRECTORIES);
+  const char* input_names[] = {
+      "in_illuminance0_input",
+      "in_illuminance0_raw",
+      "illuminance0_input",
+  };
+
+  for (base::FilePath check_path = dir_enumerator.Next(); !check_path.empty();
+       check_path = dir_enumerator.Next()) {
+    for (unsigned int i = 0; i < arraysize(input_names); i++) {
+      base::FilePath als_path = check_path.Append(input_names[i]);
+      if (als_file_.Init(als_path.value())) {
+        if (still_deferring_)
+          LOG(INFO) << "Finally found the lux file";
+        return true;
+      }
+    }
+  }
+
+  // If the illuminance file is not immediately found, issue a deferral
+  // message and try again later.
+  if (still_deferring_)
+    return false;
+  LOG(WARNING) << "Deferring lux: " << strerror(errno);
+  still_deferring_ = true;
+  return false;
 }
 
 double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) const {
@@ -220,4 +222,5 @@ double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) const {
   return std::max(0.0, std::min(100.0, response));
 }
 
+}  // namespace system
 }  // namespace power_manager

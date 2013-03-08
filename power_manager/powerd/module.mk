@@ -40,8 +40,6 @@ LIBPOWERD_LIBS = \
 	$(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lprotobuf-lite \
 	-lrt $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 LIBPOWERD_OBJS = \
-	powerd/ambient_light_sensor.o \
-	powerd/async_file_reader.o \
 	powerd/file_tagger.o \
 	powerd/keyboard_backlight_controller.o \
 	powerd/metrics_constants.o \
@@ -89,8 +87,6 @@ all: CXX_BINARY(powerd/powerd_setuid_helper)
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
 POWERD_UNITTEST_OBJS = \
-	powerd/ambient_light_sensor_unittest.o \
-	powerd/async_file_reader_unittest.o \
 	powerd/external_backlight_controller_unittest.o \
 	powerd/file_tagger_unittest.o \
 	powerd/internal_backlight_controller_unittest.o \

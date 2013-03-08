@@ -53,9 +53,6 @@ class ExternalBacklightController : public BacklightController {
   // BacklightInterfaceObserver implementation:
   virtual void OnBacklightDeviceChanged() OVERRIDE;
 
-  // Implementation of AmbientLightSensorObserver
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
-
  private:
   friend class ExternalBacklightControllerTest;
 

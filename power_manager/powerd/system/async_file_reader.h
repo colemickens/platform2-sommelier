@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_ASYNC_FILE_READER_H_
-#define POWER_MANAGER_POWERD_ASYNC_FILE_READER_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_ASYNC_FILE_READER_H_
+#define POWER_MANAGER_POWERD_SYSTEM_ASYNC_FILE_READER_H_
 
 #include <aio.h>
 #include <unistd.h>
@@ -17,6 +17,7 @@ typedef int gboolean;
 typedef unsigned int guint;
 
 namespace power_manager {
+namespace system {
 
 class AsyncFileReader {
  public:
@@ -92,6 +93,7 @@ class AsyncFileReader {
   DISALLOW_COPY_AND_ASSIGN(AsyncFileReader);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif // POWER_MANAGER_POWERD_ASYNC_FILE_READER_H_
+#endif // POWER_MANAGER_POWERD_SYSTEM_ASYNC_FILE_READER_H_

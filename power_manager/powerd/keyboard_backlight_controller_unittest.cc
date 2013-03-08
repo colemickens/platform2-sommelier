@@ -13,15 +13,14 @@
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
-#include "power_manager/powerd/mock_ambient_light_sensor.h"
 #include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 
-using ::testing::Mock;
-using ::testing::StrictMock;
-using ::testing::Test;
-
 namespace power_manager {
+
+namespace {
+
 const std::string kTestAlsLimitsString = "0.0\n20.0\n75.0";
 const double kTestAlsPercentDim = 20.0;
 const double kTestAlsPercentMax = 75.0;
@@ -65,14 +64,21 @@ const int64 kTestBrightnessMaxLevel = 100;
 const double kTestBrightnessMaxPercent = 100.0;
 const int64 kTestTimeoutIntervalMs = 10000;  // Intentionally larger then the
                                              // timeout in the class.
-class KeyboardBacklightControllerTest : public Test {
+
+// Initial ambient light levels.
+const double kInitialAmbientLightPercent = 0.0;
+const int kInitialAmbientLightLux = 0;
+
+}  // namespace
+
+class KeyboardBacklightControllerTest : public ::testing::Test {
  public:
   KeyboardBacklightControllerTest()
-      : backlight_(kTestBrightnessMaxLevel, kTestCurrentLevel) {
+      : light_sensor_(kInitialAmbientLightPercent, kInitialAmbientLightLux),
+        backlight_(kTestBrightnessMaxLevel, kTestCurrentLevel) {
   }
 
   virtual void SetUp() {
-    light_sensor_.ExpectAddObserver();
     controller_.reset(new KeyboardBacklightController(&backlight_,
                                                       &prefs_,
                                                       &light_sensor_));
@@ -89,8 +95,6 @@ class KeyboardBacklightControllerTest : public Test {
   }
 
   virtual void TearDown() {
-    if (controller_->light_sensor_ != NULL)
-      light_sensor_.ExpectRemoveObserver(controller_.get());
     controller_.reset();
   }
 
@@ -122,8 +126,9 @@ class KeyboardBacklightControllerTest : public Test {
     EXPECT_EQ(lux, controller_->lux_level_);
   }
 
-  void CheckHysteresisState(BacklightController::AlsHysteresisState state,
-                            int hysteresis_count) {
+  void CheckHysteresisState(
+      KeyboardBacklightController::AlsHysteresisState state,
+      int hysteresis_count) {
     EXPECT_EQ(state, controller_->hysteresis_state_);
     EXPECT_EQ(hysteresis_count, controller_->hysteresis_count_);
   }
@@ -131,7 +136,7 @@ class KeyboardBacklightControllerTest : public Test {
   SIGNAL_CALLBACK_0(KeyboardBacklightControllerTest, gboolean, TestTimeout);
 
  protected:
-  StrictMock<MockAmbientLightSensor> light_sensor_;
+  system::AmbientLightSensorStub light_sensor_;
   system::BacklightStub backlight_;
   FakePrefs prefs_;
   scoped_ptr<KeyboardBacklightController> controller_;
@@ -142,14 +147,10 @@ gboolean KeyboardBacklightControllerTest::TestTimeout() {
 }
 
 TEST_F(KeyboardBacklightControllerTest, Init) {
-  light_sensor_.ExpectRemoveObserver(controller_.get());
   controller_.reset();
-
-  light_sensor_.ExpectAddObserver();
   controller_.reset(new KeyboardBacklightController(&backlight_,
                                                     &prefs_,
                                                     &light_sensor_));
-
 
   // GetMaxBrightnessLevel and GetCurrentBrightnessLevel fail.
   controller_->als_target_percent_ = 0.0;
@@ -407,55 +408,49 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
   controller_->video_enabled_ = true;
 
   // ALS returns bad value.
-  light_sensor_.ExpectGetAmbientLightLux(-1);
+  light_sensor_.set_values(0.0, -1);
   controller_->OnAmbientLightChanged(&light_sensor_);
   CheckAlsStep(kTestStepIndex, kTestSyntheticLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_IDLE, 0);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  CheckHysteresisState(KeyboardBacklightController::ALS_HYST_IDLE, 0);
 
   // ALS returns the already set value.
-  light_sensor_.ExpectGetAmbientLightLux(controller_->lux_level_);
-  controller_->OnAmbientLightChanged(&light_sensor_);
+  light_sensor_.set_values(0.0, controller_->lux_level_);
+  light_sensor_.NotifyObservers();
   CheckAlsStep(kTestStepIndex, kTestSyntheticLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_IDLE, 0);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  CheckHysteresisState(KeyboardBacklightController::ALS_HYST_IDLE, 0);
 
   // First Increase, hysteresis not overcome.
-  light_sensor_.ExpectGetAmbientLightLux(kTestIncreaseLux);
-  controller_->OnAmbientLightChanged(&light_sensor_);
+  light_sensor_.set_values(0.0, kTestIncreaseLux);
+  light_sensor_.NotifyObservers();
   CheckAlsStep(kTestStepIndex, kTestSyntheticLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_UP, 1);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  CheckHysteresisState(KeyboardBacklightController::ALS_HYST_UP, 1);
 
   // Second Increase, hysteresis overcome.
-  light_sensor_.ExpectGetAmbientLightLux(kTestIncreaseLux);
-  controller_->OnAmbientLightChanged(&light_sensor_);
+  light_sensor_.set_values(0.0, kTestIncreaseLux);
+  light_sensor_.NotifyObservers();
   EXPECT_EQ(kTestAlsPercents[kTestStepIndex + 1], backlight_.current_level());
   CheckAlsStep(kTestStepIndex + 1, kTestIncreaseLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_UP, 1);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  CheckHysteresisState(KeyboardBacklightController::ALS_HYST_UP, 1);
 
   // Reset for testing the other direction.
   controller_->als_step_index_ = kTestStepIndex;
   controller_->als_target_percent_ = kTestAlsPercents[kTestStepIndex];
   controller_->lux_level_ = kTestSyntheticLux;
-  controller_->hysteresis_state_ = BacklightController::ALS_HYST_IDLE;
+  controller_->hysteresis_state_ = KeyboardBacklightController::ALS_HYST_IDLE;
   controller_->hysteresis_count_ = 0;
 
   // First Decrease, hysteresis not overcome.
-  light_sensor_.ExpectGetAmbientLightLux(kTestDecreaseLux);
-  controller_->OnAmbientLightChanged(&light_sensor_);
+  light_sensor_.set_values(0.0, kTestDecreaseLux);
+  light_sensor_.NotifyObservers();
   CheckAlsStep(kTestStepIndex, kTestSyntheticLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_DOWN, 1);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  CheckHysteresisState(KeyboardBacklightController::ALS_HYST_DOWN, 1);
 
   // Second Decrease, hysteresis overcome.
-  light_sensor_.ExpectGetAmbientLightLux(kTestDecreaseLux);
-  controller_->OnAmbientLightChanged(&light_sensor_);
+  light_sensor_.set_values(0.0, kTestDecreaseLux);
+  light_sensor_.NotifyObservers();
   EXPECT_EQ(kTestAlsPercents[kTestStepIndex - 1], backlight_.current_level());
   CheckAlsStep(kTestStepIndex - 1, kTestDecreaseLux);
-  CheckHysteresisState(BacklightController::ALS_HYST_DOWN, 1);
-  Mock::VerifyAndClearExpectations(&light_sensor_);
+  CheckHysteresisState(KeyboardBacklightController::ALS_HYST_DOWN, 1);
 }
 
 TEST_F(KeyboardBacklightControllerTest, Transitions) {
@@ -464,7 +459,6 @@ TEST_F(KeyboardBacklightControllerTest, Transitions) {
       kTestAlsPercentMax, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_INSTANT);
   EXPECT_EQ(kTestAlsLevelMax, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
-  Mock::VerifyAndClearExpectations(&backlight_);
 
   // Start a slow transition to the dimmed level.
   controller_->SetCurrentBrightnessPercent(

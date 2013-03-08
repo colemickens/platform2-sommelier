@@ -2,31 +2,56 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_AMBIENT_LIGHT_SENSOR_H_
-#define POWER_MANAGER_POWERD_AMBIENT_LIGHT_SENSOR_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
+#define POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_
 
 #include <glib.h>
 #include <list>
 #include <string>
 
+#include "base/basictypes.h"
+#include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/async_file_reader.h"
+#include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager {
+namespace system {
 
-class AmbientLightSensor;
-
-class AmbientLightSensorObserver {
+class AmbientLightSensorInterface {
  public:
-  virtual ~AmbientLightSensorObserver() {}
+  AmbientLightSensorInterface() {}
+  virtual ~AmbientLightSensorInterface() {}
 
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) = 0;
+  // Adds or removes observers for sensor readings.
+  virtual void AddObserver(AmbientLightObserver* observer) = 0;
+  virtual void RemoveObserver(AmbientLightObserver* observer) = 0;
+
+  // Used by observers in their callback to get the adjustment percentage
+  // suggested by the current ambient light. -1.0 is considered an error value.
+  virtual double GetAmbientLightPercent() = 0;
+
+  // Used by observers in their callback to get the raw reading from the sensor
+  // for the ambient light level. -1 is considered an error value.
+  virtual int GetAmbientLightLux() = 0;
+
+  // Used by observers to get a recent log of adjustment percentages suggested
+  // by the current ambient levels.  Returned values are in newest-to-oldest
+  // order.
+  virtual std::string DumpPercentHistory() = 0;
+
+  // Used by observers to get a recent log of raw readings from the sensor.
+  // Returned values are in newest-to-oldest order.
+  virtual std::string DumpLuxHistory() = 0;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(AmbientLightSensorInterface);
 };
 
-class AmbientLightSensor {
+class AmbientLightSensor : public AmbientLightSensorInterface {
  public:
   AmbientLightSensor();
   virtual ~AmbientLightSensor();
@@ -44,26 +69,13 @@ class AmbientLightSensor {
   // set_*_for_testing() first.
   virtual void Init();
 
-  // Adds or removes observers for sensor readings.
-  virtual void AddObserver(AmbientLightSensorObserver* observer);
-  virtual void RemoveObserver(AmbientLightSensorObserver* observer);
-
-  // Used by observers in their callback to get the adjustment percentage
-  // suggested by the current ambient light. -1.0 is considered an error value.
-  virtual double GetAmbientLightPercent() const;
-
-  // Used by observers in their callback to get the raw reading from the sensor
-  // for the ambient light level. -1 is considered an error value.
-  virtual int GetAmbientLightLux() const;
-
-  // Used by observers to get a recent log of adjustment percentages suggested
-  // by the current ambient levels.  Returned values are in newest-to-oldest
-  // order.
-  virtual std::string DumpPercentHistory() const;
-
-  // Used by observers to get a recent log of raw readings from the sensor.
-  // Returned values are in newest-to-oldest order.
-  virtual std::string DumpLuxHistory() const;
+  // AmbientLightSensorInterface implementation:
+  virtual void AddObserver(AmbientLightObserver* observer) OVERRIDE;
+  virtual void RemoveObserver(AmbientLightObserver* observer) OVERRIDE;
+  virtual double GetAmbientLightPercent() OVERRIDE;
+  virtual int GetAmbientLightLux() OVERRIDE;
+  virtual std::string DumpPercentHistory() OVERRIDE;
+  virtual std::string DumpLuxHistory() OVERRIDE;
 
  private:
   // Handler for a periodic event that reads the ambient light sensor.
@@ -92,7 +104,7 @@ class AmbientLightSensor {
 
   // List of backlight controllers that are currently interested in updates from
   // this sensor.
-  ObserverList<AmbientLightSensorObserver> observer_list_;
+  ObserverList<AmbientLightObserver> observers_;
 
   // Lux value read by the class. If this read did not succeed or no read has
   // occured yet this variable is set to -1.
@@ -123,6 +135,7 @@ class AmbientLightSensor {
   DISALLOW_COPY_AND_ASSIGN(AmbientLightSensor);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_AMBIENT_LIGHT_SENSOR_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_AMBIENT_LIGHT_SENSOR_H_

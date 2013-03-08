@@ -12,7 +12,10 @@
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/async_file_reader.h"
+#include "power_manager/powerd/system/async_file_reader.h"
+
+namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -62,8 +65,6 @@ const int kMaxFileReadTimeMs = 60000;
 const int kWaitPollMs = 200;
 
 }
-
-namespace power_manager {
 
 class AsyncFileReaderTest : public ::testing::Test {
  public:
@@ -218,4 +219,5 @@ TEST_F(AsyncFileReaderTest, ReadNonexistentFile) {
   EXPECT_TRUE(error_found_);
 }
 
+}  // namespace system
 }  // namespace power_manager

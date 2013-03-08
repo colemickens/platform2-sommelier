@@ -13,8 +13,8 @@
 #include "base/compiler_specific.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/system/ambient_light_observer.h"
 
 namespace power_manager {
 
@@ -22,15 +22,17 @@ class KeyboardBacklightControllerTest;
 class PrefsInterface;
 
 namespace system {
+class AmbientLightSensorInterface;
 class BacklightInterface;
 }  // namespace system
 
 // Controls the keyboard backlight for devices with such a backlight.
-class KeyboardBacklightController : public BacklightController {
+class KeyboardBacklightController : public BacklightController,
+                                    public system::AmbientLightObserver {
  public:
   KeyboardBacklightController(system::BacklightInterface* backlight,
                               PrefsInterface* prefs,
-                              AmbientLightSensor* sensor);
+                              system::AmbientLightSensorInterface* sensor);
   virtual ~KeyboardBacklightController();
 
   // Total durations for different transition styles, in milliseconds.
@@ -66,8 +68,9 @@ class KeyboardBacklightController : public BacklightController {
   // Implementation of BacklightInterfaceObserver
   virtual void OnBacklightDeviceChanged() OVERRIDE;
 
-  // Implementation of AmbientLightSensorObserver
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
+  // Implementation of system::AmbientLightObserver
+  virtual void OnAmbientLightChanged(
+      system::AmbientLightSensorInterface* sensor) OVERRIDE;
 
  private:
   friend class KeyboardBacklightControllerTest;
@@ -103,6 +106,13 @@ class KeyboardBacklightController : public BacklightController {
     double target_percent;
     int decrease_threshold;
     int increase_threshold;
+  };
+
+  enum AlsHysteresisState {
+    ALS_HYST_IDLE,
+    ALS_HYST_DOWN,
+    ALS_HYST_UP,
+    ALS_HYST_IMMEDIATE,
   };
 
   // Returns the total duration for |style|.
@@ -176,7 +186,7 @@ class KeyboardBacklightController : public BacklightController {
   PrefsInterface* prefs_;
 
   // Light sensor we need to register for updates from.  Non-owned.
-  AmbientLightSensor* light_sensor_;
+  system::AmbientLightSensorInterface* light_sensor_;
 
   // Observer that needs to be alerted of changes. Normally this is the powerd
   // daemon. Non-owned.

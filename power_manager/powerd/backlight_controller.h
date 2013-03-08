@@ -6,7 +6,6 @@
 #define POWER_MANAGER_POWERD_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
-#include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
@@ -61,16 +60,8 @@ class BacklightControllerObserver {
 };
 
 // Interface implemented by classes that control the backlight.
-class BacklightController : public system::BacklightInterfaceObserver,
-                            public AmbientLightSensorObserver {
+class BacklightController : public system::BacklightInterfaceObserver {
  public:
-  enum AlsHysteresisState {
-    ALS_HYST_IDLE,
-    ALS_HYST_DOWN,
-    ALS_HYST_UP,
-    ALS_HYST_IMMEDIATE,
-  };
-
   BacklightController() {}
   virtual ~BacklightController() {}
 

@@ -13,10 +13,12 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/system/ambient_light_observer.h"
 
 namespace power_manager {
 
 namespace system {
+class AmbientLightSensorInterface;
 class BacklightInterface;
 class DisplayPowerSetterInterface;
 }  // namespace system
@@ -27,7 +29,8 @@ class DisplayPowerSetterInterface;
 // brightness percentage in the range [0.0, 100.0] (where 0 indicates a
 // fully-off backlight), while "level" refers to a 64-bit hardware-specific
 // brightness in the range [0, max-brightness-per-sysfs].
-class InternalBacklightController : public BacklightController {
+class InternalBacklightController : public BacklightController,
+                                    public system::AmbientLightObserver {
  public:
   // Percent corresponding to |min_visible_level_|, which takes the role of the
   // lowest brightness step before the screen is turned off.  Exposed here for
@@ -37,7 +40,7 @@ class InternalBacklightController : public BacklightController {
   InternalBacklightController(
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
-      AmbientLightSensor* sensor,
+      system::AmbientLightSensorInterface* sensor,
       system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~InternalBacklightController();
 
@@ -71,8 +74,9 @@ class InternalBacklightController : public BacklightController {
   // BacklightInterfaceObserver implementation:
   virtual void OnBacklightDeviceChanged();
 
-  // Implementation of AmbientLightSensorObserver
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE;
+  // system::AmbientLightObserver implementation:
+  virtual void OnAmbientLightChanged(
+      system::AmbientLightSensorInterface* sensor) OVERRIDE;
 
  private:
   friend class DaemonTest;
@@ -88,6 +92,16 @@ class InternalBacklightController : public BacklightController {
               GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow);
   FRIEND_TEST(DaemonTest,
               GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow);
+
+  // TODO(derat): Move this and the related code into a separate class,
+  // shared between InternalBacklightController and
+  // KeyboardBacklightController, that handles ambient light hysteresis.
+  enum AlsHysteresisState {
+    ALS_HYST_IDLE,
+    ALS_HYST_DOWN,
+    ALS_HYST_UP,
+    ALS_HYST_IMMEDIATE,
+  };
 
   // Clamp |percent| to fit between LevelToPercent(min_visible_level_) and 100.
   double ClampPercentToVisibleRange(double percent);
@@ -118,7 +132,7 @@ class InternalBacklightController : public BacklightController {
   PrefsInterface* prefs_;
 
   // Light sensor we need to register for updates from.  Non-owned.
-  AmbientLightSensor* light_sensor_;
+  system::AmbientLightSensorInterface* light_sensor_;
 
   // Used to turn displays on and off.
   system::DisplayPowerSetterInterface* display_power_setter_;

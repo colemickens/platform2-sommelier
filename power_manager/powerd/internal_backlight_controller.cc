@@ -16,7 +16,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 
 namespace {
@@ -74,7 +74,7 @@ const double InternalBacklightController::kMinVisiblePercent =
 InternalBacklightController::InternalBacklightController(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
-    AmbientLightSensor* sensor,
+    system::AmbientLightSensorInterface* sensor,
     system::DisplayPowerSetterInterface* display_power_setter)
     : backlight_(backlight),
       prefs_(prefs),
@@ -108,6 +108,8 @@ InternalBacklightController::InternalBacklightController(
   DCHECK(prefs_);
   DCHECK(display_power_setter_);
   backlight_->AddObserver(this);
+  if (light_sensor_)
+    light_sensor_->AddObserver(this);
 }
 
 InternalBacklightController::~InternalBacklightController() {
@@ -150,8 +152,6 @@ int64 InternalBacklightController::PercentToLevel(double percent) {
 }
 
 bool InternalBacklightController::Init() {
-  if (light_sensor_)
-    light_sensor_->AddObserver(this);
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
       !backlight_->GetCurrentBrightnessLevel(&target_level_)) {
     LOG(ERROR) << "Querying backlight during initialization failed";
@@ -435,7 +435,7 @@ void InternalBacklightController::OnBacklightDeviceChanged() {
 }
 
 void InternalBacklightController::OnAmbientLightChanged(
-    AmbientLightSensor* sensor) {
+    system::AmbientLightSensorInterface* sensor) {
 #ifndef HAS_ALS
   LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
                << "Please check the platform ALS configuration.";

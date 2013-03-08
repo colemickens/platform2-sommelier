@@ -12,8 +12,8 @@
 #include "base/string_split.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/keyboard_backlight_controller.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace {
@@ -51,7 +51,7 @@ const int64 KeyboardBacklightController::kSlowTransitionMs = 2000;
 KeyboardBacklightController::KeyboardBacklightController(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
-    AmbientLightSensor* sensor)
+    system::AmbientLightSensorInterface* sensor)
     : is_initialized_ (false),
       backlight_(backlight),
       prefs_(prefs),
@@ -284,7 +284,7 @@ void KeyboardBacklightController::OnBacklightDeviceChanged() {
 }
 
 void KeyboardBacklightController::OnAmbientLightChanged(
-    AmbientLightSensor* sensor) {
+    system::AmbientLightSensorInterface* sensor) {
 #ifndef HAS_ALS
   LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
                << "Please check the platform ALS configuration.";

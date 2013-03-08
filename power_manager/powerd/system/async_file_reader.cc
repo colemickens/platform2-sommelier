@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/async_file_reader.h"
+#include "power_manager/powerd/system/async_file_reader.h"
 
 #include <errno.h>
 #include <fcntl.h>
@@ -12,6 +12,9 @@
 
 #include "base/logging.h"
 #include "power_manager/common/util.h"
+
+namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -23,8 +26,6 @@ const int kInitialFileReadSize = 4096;
 const int kPollMs = 100;
 
 }  // namespace
-
-namespace power_manager {
 
 AsyncFileReader::AsyncFileReader()
     : read_in_progress_(false),
@@ -179,4 +180,5 @@ bool AsyncFileReader::AsyncRead(int size, int offset) {
   return true;
 }
 
+}  // namespace system
 }  // namespace power_manager

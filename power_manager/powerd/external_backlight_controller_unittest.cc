@@ -175,12 +175,6 @@ TEST_F(ExternalBacklightControllerTest, CountAdjustments) {
       50.0, BRIGHTNESS_CHANGE_AUTOMATED, TRANSITION_INSTANT);
 
   EXPECT_EQ(kTotalUserAdjustments, controller_.GetNumUserAdjustments());
-
-  // The external controller ignores ALS readings.
-  const int kNumAmbientLightSensorReadings = 20;
-  for (int i = 0; i < kNumAmbientLightSensorReadings; ++i)
-    controller_.OnAmbientLightChanged(NULL);
-  EXPECT_EQ(0, controller_.GetNumAmbientLightSensorAdjustments());
 }
 
 // Test that for both the current and target brightness, we just return the

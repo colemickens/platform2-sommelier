@@ -12,9 +12,11 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/string_number_conversions.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/powerd/ambient_light_sensor.h"
+#include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 
 namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -29,9 +31,9 @@ const int kChangeShortTimeoutMs = 500;
 // Frequency with which the ambient light sensor file is polled.
 const int kPollIntervalMs = 100;
 
-// Simple AmbientLightSensorObserver implementation that runs the event loop
+// Simple AmbientLightObserver implementation that runs the event loop
 // until it receives notification that the ambient light level has changed.
-class TestObserver : public AmbientLightSensorObserver {
+class TestObserver : public AmbientLightObserver {
  public:
   TestObserver() {}
   virtual ~TestObserver() {}
@@ -51,8 +53,9 @@ class TestObserver : public AmbientLightSensorObserver {
         base::TimeDelta::FromMilliseconds(kChangeShortTimeoutMs));
   }
 
-  // AmbientLightSensorObserver implementation:
-  virtual void OnAmbientLightChanged(AmbientLightSensor* sensor) OVERRIDE {
+  // AmbientLightObserver implementation:
+  virtual void OnAmbientLightChanged(
+      AmbientLightSensorInterface* sensor) OVERRIDE {
     LOG(INFO) << "Stopping loop after ambient light notification";
     loop_runner_.StopLoop();
   }
@@ -135,4 +138,5 @@ TEST_F(AmbientLightSensorTest, Basic) {
   EXPECT_EQ(200, sensor_->GetAmbientLightLux());
 }
 
+}  // namespace system
 }  // namespace power_manager

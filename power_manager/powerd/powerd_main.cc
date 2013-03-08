@@ -21,10 +21,10 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/ambient_light_sensor.h"
 #include "power_manager/powerd/external_backlight_controller.h"
 #include "power_manager/powerd/internal_backlight_controller.h"
 #include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 #include "power_manager/powerd/system/external_backlight.h"
 #include "power_manager/powerd/system/internal_backlight.h"
@@ -114,9 +114,9 @@ int main(int argc, char* argv[]) {
   CHECK(prefs.Init(pref_paths));
   g_type_init();
 
-  scoped_ptr<power_manager::AmbientLightSensor> light_sensor;
+  scoped_ptr<power_manager::system::AmbientLightSensor> light_sensor;
 #ifndef IS_DESKTOP
-  light_sensor.reset(new power_manager::AmbientLightSensor());
+  light_sensor.reset(new power_manager::system::AmbientLightSensor());
   light_sensor->Init();
 #endif
 
