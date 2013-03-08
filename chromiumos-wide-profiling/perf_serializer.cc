@@ -371,28 +371,25 @@ void PerfSerializer::DeserializePerfFileAttr(
     perf_file_attr->ids.push_back(perf_file_attr_proto->ids(i));
 }
 
-bool PerfSerializer::SerializeReader(const PerfReader& perf_reader,
-                                     PerfDataProto* perf_data_proto) {
+bool PerfSerializer::Serialize(const string& filename,
+                               PerfDataProto* perf_data_proto) {
+  PerfReader perf_reader;
+  if (!perf_reader.ReadFile(filename))
+    return false;
+
   sample_type_ = perf_reader.sample_type();
   SerializePerfFileAttrs(
       &perf_reader.attrs(), perf_data_proto->mutable_file_attrs());
   SerializeEvents(&perf_reader.events(),
                   perf_data_proto->mutable_events());
+
   return true;
 }
 
-bool PerfSerializer::Serialize(const string& filename,
-                               PerfDataProto* perf_data_proto) {
+bool PerfSerializer::Deserialize(const string& filename,
+                                 const PerfDataProto& perf_data_proto) {
   PerfReader perf_reader;
 
-  if (!perf_reader.ReadFile(filename))
-    return false;
-
-  return SerializeReader(perf_reader, perf_data_proto);
-}
-
-bool PerfSerializer::DeserializeReader(const PerfDataProto& perf_data_proto,
-                                       PerfReader* perf_reader) {
   // Make sure all event types (attrs) have the same sample type.
   const ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfFileAttr>&
       attrs = perf_data_proto.file_attrs();
@@ -407,16 +404,10 @@ bool PerfSerializer::DeserializeReader(const PerfDataProto& perf_data_proto,
   CHECK_GT(attrs.size(), 0);
   sample_type_ = attrs.Get(0).attr().sample_type();
   DeserializePerfFileAttrs(
-      perf_reader->mutable_attrs(), &perf_data_proto.file_attrs());
-  DeserializeEvents(perf_reader->mutable_events(),
+      perf_reader.mutable_attrs(), &perf_data_proto.file_attrs());
+  DeserializeEvents(perf_reader.mutable_events(),
                     &perf_data_proto.events());
-  return true;
-}
 
-bool PerfSerializer::Deserialize(const string& filename,
-                                 const PerfDataProto& perf_data_proto) {
-  PerfReader perf_reader;
-  DeserializeReader(perf_data_proto, &perf_reader);
   perf_reader.WriteFile(filename);
   return true;
 }

@@ -18,12 +18,8 @@ class PerfSerializer {
   PerfSerializer();
   ~PerfSerializer();
 
-  bool SerializeReader(const PerfReader& perf_reader,
-                       quipper::PerfDataProto* perf_data_proto);
   bool Serialize(const string& filename,
                  quipper::PerfDataProto* perf_data_proto);
-  bool DeserializeReader(const quipper::PerfDataProto& perf_data_proto,
-                         PerfReader* perf_reader);
   bool Deserialize(const string& filename,
                    const quipper::PerfDataProto& perf_data_proto);
 

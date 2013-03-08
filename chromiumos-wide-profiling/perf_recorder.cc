@@ -33,14 +33,12 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
   if (pclose(fp))
     return false;
 
-  // Now parse the output of perf into a protobuf.
-  PerfReader perf_reader;
-  perf_reader.ReadFile(temp_file);
+  // Now convert it into a protobuf.
+  PerfSerializer perf_serializer;
+  bool result = perf_serializer.Serialize(temp_file, perf_data);
 
   if (remove(temp_file.c_str()))
       return false;
 
-  // Now convert it into a protobuf.
-  PerfSerializer perf_serializer;
-  return perf_serializer.SerializeReader(perf_reader, perf_data);
+  return result;
 }
