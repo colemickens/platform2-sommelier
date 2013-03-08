@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 
+#include "perf_parser.h"
 #include "perf_reader.h"
 #include "quipper_string.h"
 #include "utils.h"
@@ -46,10 +47,9 @@ void PerfSerializer::DeserializeEventHeader(
 }
 
 void PerfSerializer::SerializeRecordSample(
-    const event_t& event,
+    const ParsedEvent& event,
     PerfDataProto_SampleEvent* sample) const {
-  struct perf_sample perf_sample;
-  ReadPerfSampleInfo(event, sample_type_, &perf_sample);
+  const struct perf_sample& perf_sample = event.sample_info;
 
   if (sample_type_ & PERF_SAMPLE_IP)
     sample->set_ip(perf_sample.ip);
@@ -73,8 +73,8 @@ void PerfSerializer::SerializeRecordSample(
 
 void PerfSerializer::DeserializeRecordSample(
     const PerfDataProto_SampleEvent& sample,
-    event_t* event) const {
-  struct perf_sample perf_sample;
+    ParsedEvent* event) const {
+  struct perf_sample& perf_sample = event->sample_info;
   if (sample.has_ip())
     perf_sample.ip = sample.ip();
   if (sample.has_tid()) {
@@ -93,14 +93,12 @@ void PerfSerializer::DeserializeRecordSample(
     perf_sample.cpu = sample.cpu();
   if (sample.has_period())
     perf_sample.period = sample.period();
-
-  WritePerfSampleInfo(perf_sample, sample_type_, event);
 }
 
 void PerfSerializer::SerializeCommSample(
-      const event_t& event,
+      const ParsedEvent& event,
       PerfDataProto_CommEvent* sample) const {
-  const struct comm_event& comm = event.comm;
+  const struct comm_event& comm = event.raw_event.comm;
   sample->set_pid(comm.pid);
   sample->set_tid(comm.tid);
   sample->set_comm(comm.comm);
@@ -111,8 +109,8 @@ void PerfSerializer::SerializeCommSample(
 
 void PerfSerializer::DeserializeCommSample(
     const PerfDataProto_CommEvent& sample,
-    event_t* event) const {
-  struct comm_event& comm = event->comm;
+    ParsedEvent* event) const {
+  struct comm_event& comm = event->raw_event.comm;
   comm.pid = sample.pid();
   comm.tid = sample.tid();
   snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
@@ -121,9 +119,9 @@ void PerfSerializer::DeserializeCommSample(
 }
 
 void PerfSerializer::SerializeMMapSample(
-    const event_t& event,
+    const ParsedEvent& event,
     PerfDataProto_MMapEvent* sample) const {
-  const struct mmap_event& mmap = event.mmap;
+  const struct mmap_event& mmap = event.raw_event.mmap;
   sample->set_pid(mmap.pid);
   sample->set_tid(mmap.tid);
   sample->set_start(mmap.start);
@@ -137,8 +135,8 @@ void PerfSerializer::SerializeMMapSample(
 
 void PerfSerializer::DeserializeMMapSample(
     const PerfDataProto_MMapEvent& sample,
-    event_t* event) const {
-  struct mmap_event& mmap = event->mmap;
+    ParsedEvent* event) const {
+  struct mmap_event& mmap = event->raw_event.mmap;
   mmap.pid = sample.pid();
   mmap.tid = sample.tid();
   mmap.start = sample.start();
@@ -150,9 +148,9 @@ void PerfSerializer::DeserializeMMapSample(
 }
 
 void PerfSerializer::SerializeForkSample(
-    const event_t& event,
+    const ParsedEvent& event,
     PerfDataProto_ForkEvent* sample) const {
-  const struct fork_event& fork = event.fork;
+  const struct fork_event& fork = event.raw_event.fork;
   sample->set_pid(fork.pid);
   sample->set_ppid(fork.ppid);
   sample->set_tid(fork.tid);
@@ -164,8 +162,8 @@ void PerfSerializer::SerializeForkSample(
 
 void PerfSerializer::DeserializeForkSample(
     const PerfDataProto_ForkEvent& sample,
-    event_t* event) const {
-  struct fork_event& fork = event->fork;
+    ParsedEvent* event) const {
+  struct fork_event& fork = event->raw_event.fork;
   fork.pid = sample.pid();
   fork.ppid = sample.ppid();
   fork.tid = sample.tid();
@@ -176,10 +174,9 @@ void PerfSerializer::DeserializeForkSample(
 }
 
 void PerfSerializer::SerializeSampleInfo(
-    const event_t& event,
+    const ParsedEvent& event,
     PerfDataProto_SampleInfo* sample_info) const {
-  struct perf_sample perf_sample;
-  ReadPerfSampleInfo(event, sample_type_, &perf_sample);
+  const struct perf_sample perf_sample = event.sample_info;
 
   if (sample_type_ & PERF_SAMPLE_TID) {
     sample_info->set_pid(perf_sample.pid);
@@ -195,8 +192,8 @@ void PerfSerializer::SerializeSampleInfo(
 
 void PerfSerializer::DeserializeSampleInfo(
     const PerfDataProto_SampleInfo& sample_info,
-    event_t* event) const {
-  struct perf_sample perf_sample;
+    ParsedEvent* event) const {
+  struct perf_sample& perf_sample = event->sample_info;
   if (sample_info.has_tid()) {
     perf_sample.pid = sample_info.pid();
     perf_sample.tid = sample_info.tid();
@@ -207,14 +204,12 @@ void PerfSerializer::DeserializeSampleInfo(
     perf_sample.id = sample_info.id();
   if (sample_info.has_cpu())
     perf_sample.cpu = sample_info.cpu();
-
-  WritePerfSampleInfo(perf_sample, sample_type_, event);
 }
 
 void PerfSerializer::DeserializeEvent(
     const PerfDataProto_PerfEvent& event_proto,
-    event_t* event) const {
-  DeserializeEventHeader(event_proto.header(), &event->header);
+    ParsedEvent* event) const {
+  DeserializeEventHeader(event_proto.header(), &event->raw_event.header);
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
       DeserializeRecordSample(event_proto.sample_event(), event);
@@ -240,10 +235,10 @@ void PerfSerializer::DeserializeEvent(
 }
 
 void PerfSerializer::SerializeEvent(
-    const event_t& event,
+    const ParsedEvent& event,
     PerfDataProto_PerfEvent* event_proto) const {
-  SerializeEventHeader(event.header, event_proto->mutable_header());
-  switch (event.header.type) {
+  SerializeEventHeader(event.raw_event.header, event_proto->mutable_header());
+  switch (event.raw_event.header.type) {
     case PERF_RECORD_SAMPLE:
       SerializeRecordSample(event, event_proto->mutable_sample_event());
       break;
@@ -380,7 +375,12 @@ bool PerfSerializer::Serialize(const string& filename,
   sample_type_ = perf_reader.sample_type();
   SerializePerfFileAttrs(
       perf_reader.attrs(), perf_data_proto->mutable_file_attrs());
-  SerializeEvents(perf_reader.events(), perf_data_proto->mutable_events());
+
+  PerfParser interpreter;
+  if (!interpreter.ParseRawEvents(perf_reader.attrs(), perf_reader.events()))
+    return false;
+
+  SerializeEvents(interpreter.events(), perf_data_proto->mutable_events());
   return true;
 }
 
@@ -403,8 +403,15 @@ bool PerfSerializer::Deserialize(const string& filename,
   sample_type_ = attrs.Get(0).attr().sample_type();
   DeserializePerfFileAttrs(
       perf_data_proto.file_attrs(), perf_reader.mutable_attrs());
-  DeserializeEvents(perf_data_proto.events(), perf_reader.mutable_events());
 
-  perf_reader.WriteFile(filename);
-  return true;
+  std::vector<ParsedEvent> events;
+  DeserializeEvents(perf_data_proto.events(), &events);
+
+  PerfParser parser;
+  if (!parser.GenerateRawEvents(perf_reader.attrs(), events))
+    return false;
+
+  *perf_reader.mutable_events() = parser.raw_events();
+
+  return perf_reader.WriteFile(filename);
 }
