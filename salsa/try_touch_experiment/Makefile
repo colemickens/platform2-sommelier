@@ -17,7 +17,6 @@ CXXFLAGS+=\
 	-g \
 	-fno-exceptions \
 	-fno-strict-aliasing \
-	-fPIC \
 	-Wall \
 	-Wclobbered \
 	-Wempty-body \
@@ -26,8 +25,10 @@ CXXFLAGS+=\
 	-Wmissing-field-initializers \
 	-Wsign-compare \
 	-Wtype-limits \
-	-Wuninitialized \
+	-Wuninitialized
+CPPFLAGS+=\
 	-D__STDC_FORMAT_MACROS=1 \
+	-D_LARGEFILE_SOURCE \
 	-D_FILE_OFFSET_BITS=64 \
 	-DGESTURES_INTERNAL=1 \
 	-I..
@@ -38,26 +39,30 @@ PC_DEPS = libchrome-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS += $(PC_CFLAGS)
+CPPFLAGS += $(PC_CFLAGS)
 
-LINK_FLAGS=\
+LDLIBS=\
 	$(PC_LIBS) \
 	-lcurses
+
+define auto_mkdir
+  $(if $(wildcard $(dir $1)),$2,$(QUIET)mkdir -p "$(dir $1)")
+endef
 
 EXE=try_touch_experiment
 
 all: $(EXE)
 
 $(EXE): $(OBJECTS)
-	$(CXX) -o $@ $(CXXFLAGS) $(OBJECTS) $(LINK_FLAGS)
+	$(CXX) -o $@ $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS)
 
 $(OBJDIR)/%.o : %.cc
-	mkdir -p $(OBJDIR) || true
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+	$(call auto_mkdir,$@)
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 $(OBJDIR)/%.o : %.c
-	mkdir -p $(OBJDIR) || true
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(call auto_mkdir,$@)
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 install: $(EXE)
 	install -D -m 0755 $(EXE) $(DESTDIR)/usr/sbin/$(EXE)
