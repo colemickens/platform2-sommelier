@@ -30,18 +30,4 @@ bool CreateNamedTempFile(string* name);
 // compared.
 bool ComparePerfReports(const string& a, const string& b);
 
-// Copies only the event-specific data from one event_t to another.  The sample
-// info is not copied.
-void CopyPerfEventSpecificInfo(const event_t& source, event_t* destination);
-
-// Returns info about the raw perf sample that recorded a perf event.
-bool ReadPerfSampleInfo(const event_t& event,
-                        uint64 sample_type,
-                        struct perf_sample* sample);
-
-// Requires that event->header has already been filled with the sample data.
-bool WritePerfSampleInfo(const perf_sample& sample,
-                         uint64 sample_type,
-                         event_t* event);
-
 #endif  // UTILS_H_
