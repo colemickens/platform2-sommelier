@@ -15,7 +15,7 @@ include common.mk
 PROTOC ?= protoc
 # BASE_VER is used to determine what versions of libbase and libchromeos we are
 # going to compile against
-BASE_VER ?= 125070
+BASE_VER ?= 180609
 PKG_CONFIG ?= pkg-config
 
 # base_env

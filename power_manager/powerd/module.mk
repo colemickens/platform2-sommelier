@@ -38,7 +38,7 @@ LIBPOWERD_FLAGS = \
 	$(shell $(PKG_CONFIG) --cflags $(LIBPOWERD_DEPS))
 LIBPOWERD_LIBS = \
 	$(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lprotobuf-lite \
-	$(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
+	-lrt $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 LIBPOWERD_OBJS = \
 	powerd/ambient_light_sensor.o \
 	powerd/async_file_reader.o \
