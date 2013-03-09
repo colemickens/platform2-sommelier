@@ -8,8 +8,6 @@
 
 #include "base/logging.h"
 
-#include "perf_parser.h"
-#include "perf_reader.h"
 #include "quipper_string.h"
 #include "utils.h"
 
@@ -24,7 +22,7 @@ using quipper::PerfDataProto_PerfEventAttr;
 using quipper::PerfDataProto_SampleEvent;
 using quipper::PerfDataProto_SampleInfo;
 
-PerfSerializer::PerfSerializer() : sample_type_(0) {
+PerfSerializer::PerfSerializer() {
 }
 
 PerfSerializer::~PerfSerializer() {
@@ -368,50 +366,36 @@ void PerfSerializer::DeserializePerfFileAttr(
 
 bool PerfSerializer::Serialize(const string& filename,
                                PerfDataProto* perf_data_proto) {
-  PerfReader perf_reader;
-  if (!perf_reader.ReadFile(filename))
+  if (!ReadFile(filename))
     return false;
 
-  sample_type_ = perf_reader.sample_type();
-  SerializePerfFileAttrs(
-      perf_reader.attrs(), perf_data_proto->mutable_file_attrs());
+  SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs());
 
-  PerfParser interpreter;
-  if (!interpreter.ParseRawEvents(perf_reader.attrs(), perf_reader.events()))
+  if (!ParseRawEvents())
     return false;
 
-  SerializeEvents(interpreter.events(), perf_data_proto->mutable_events());
+  SerializeEvents(parsed_events_, perf_data_proto->mutable_events());
   return true;
 }
 
 bool PerfSerializer::Deserialize(const string& filename,
                                  const PerfDataProto& perf_data_proto) {
-  PerfReader perf_reader;
+  DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_);
 
   // Make sure all event types (attrs) have the same sample type.
-  const ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfFileAttr>&
-      attrs = perf_data_proto.file_attrs();
-  for (int i = 0; i < attrs.size(); ++i) {
-    CHECK_EQ(attrs.Get(i).attr().sample_type(),
-             attrs.Get(0).attr().sample_type())
+  for (size_t i = 0; i < attrs_.size(); ++i) {
+    CHECK_EQ(attrs_[i].attr.sample_type, attrs_[0].attr.sample_type)
         << "Sample type for attribute #" << i
-        << " (" << (void*)attrs.Get(i).attr().sample_type() << ") "
-        << " does not match that of attribute 0 ("
-        << (void*)attrs.Get(0).attr().sample_type() << ")";
+        << " (" << (void*)attrs_[i].attr.sample_type << ")"
+        << " does not match that of attribute 0"
+        << " (" << (void*)attrs_[0].attr.sample_type << ")";
   }
-  CHECK_GT(attrs.size(), 0);
-  sample_type_ = attrs.Get(0).attr().sample_type();
-  DeserializePerfFileAttrs(
-      perf_data_proto.file_attrs(), perf_reader.mutable_attrs());
+  CHECK_GT(attrs_.size(), 0U);
+  sample_type_ = attrs_[0].attr.sample_type;
 
-  std::vector<ParsedEvent> events;
-  DeserializeEvents(perf_data_proto.events(), &events);
-
-  PerfParser parser;
-  if (!parser.GenerateRawEvents(perf_reader.attrs(), events))
+  DeserializeEvents(perf_data_proto.events(), &parsed_events_);
+  if (!GenerateRawEvents())
     return false;
 
-  *perf_reader.mutable_events() = parser.raw_events();
-
-  return perf_reader.WriteFile(filename);
+  return WriteFile(filename);
 }

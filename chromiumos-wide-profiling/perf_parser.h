@@ -13,30 +13,21 @@
 #include "perf_reader.h"
 
 struct ParsedEvent {
+  // TODO(sque): to save space, |raw_event| should be a pointer.
   event_t raw_event;                // Contains perf event info.
   struct perf_sample sample_info;   // Contains perf sample info.
 };
 
-class PerfParser {
+class PerfParser : public PerfReader {
  public:
   PerfParser() {}
-  bool ParseRawEvents(const std::vector<PerfFileAttr>& attrs,
-                      const std::vector<event_t>& raw_events);
-  bool GenerateRawEvents(const std::vector<PerfFileAttr>& attrs,
-                         const std::vector<ParsedEvent>& events);
+  bool ParseRawEvents();
+  bool GenerateRawEvents();
 
-  const std::vector<ParsedEvent>& events() {
-    return events_;
-  }
-
-  const std::vector<event_t>& raw_events() {
-    return raw_events_;
-  }
+ protected:
+  std::vector<ParsedEvent> parsed_events_;
 
  private:
-  std::vector<ParsedEvent> events_;
-  std::vector<event_t> raw_events_;
-
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };
 

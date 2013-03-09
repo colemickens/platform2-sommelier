@@ -27,35 +27,20 @@ class PerfReader {
   bool WriteFileFromHandle(std::ofstream* out);
   bool RegenerateHeader();
 
+  // Accessor funcs.
   const std::vector<PerfFileAttr>& attrs() const {
     return attrs_;
-  }
-
-  std::vector<PerfFileAttr>* mutable_attrs() {
-    return &attrs_;
   }
 
   const std::vector<event_t>& events() const {
     return events_;
   }
 
-  std::vector<event_t>* mutable_events() {
-    return &events_;
-  }
-
   const std::vector<perf_trace_event_type>& event_types() const {
     return event_types_;
   }
 
-  std::vector<perf_trace_event_type>* mutable_event_types() {
-    return &event_types_;
-  }
-
-  uint64 sample_type() const {
-    return sample_type_;
-  }
-
- private:
+ protected:
   bool ReadHeader(std::ifstream* in);
   bool ReadAttrs(std::ifstream* in);
   bool ReadEventTypes(std::ifstream* in);
@@ -73,6 +58,7 @@ class PerfReader {
   std::vector<perf_trace_event_type> event_types_;
   uint64 sample_type_;
 
+ private:
   struct perf_file_header header_;
   struct perf_file_header out_header_;
 

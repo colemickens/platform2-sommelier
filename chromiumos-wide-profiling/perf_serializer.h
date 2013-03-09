@@ -10,20 +10,15 @@
 #include "base/basictypes.h"
 
 #include "perf_parser.h"
-#include "perf_reader.h"
 #include "perf_data.pb.h"
 
-class PerfSerializer {
+class PerfSerializer : public PerfParser {
  public:
   PerfSerializer();
   ~PerfSerializer();
 
-  bool SerializeReader(const PerfReader& perf_reader,
-                       quipper::PerfDataProto* perf_data_proto);
   bool Serialize(const string& filename,
                  quipper::PerfDataProto* perf_data_proto);
-  bool DeserializeReader(const quipper::PerfDataProto& perf_data_proto,
-                         PerfReader* perf_reader);
   bool Deserialize(const string& filename,
                    const quipper::PerfDataProto& perf_data_proto);
 
@@ -123,7 +118,6 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   SERIALIZEVECTORFUNCTION(SerializeEvents, ParsedEvent,
                           quipper::PerfDataProto_PerfEvent,
                           SerializeEvent)
-  u64 sample_type_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

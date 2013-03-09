@@ -10,6 +10,7 @@
 
 #include "perf_parser.h"
 #include "perf_reader.h"
+#include "quipper_string.h"
 #include "utils.h"
 
 namespace {
@@ -29,22 +30,17 @@ const char* kPerfDataFiles[] = {
 
 TEST(PerfParserTest, Test1Cycle) {
   for (unsigned int i = 0; i < arraysize(kPerfDataFiles); ++i) {
-    PerfReader reader;
     string input_perf_data = kPerfDataFiles[i];
     LOG(INFO) << "Testing " << input_perf_data;
-    ASSERT_TRUE(reader.ReadFile(input_perf_data));
 
-    PerfParser interpreter;
-    interpreter.ParseRawEvents(reader.attrs(), reader.events());
+    PerfParser parser;
+    ASSERT_TRUE(parser.ReadFile(input_perf_data));
 
-    PerfParser composer;
-    composer.GenerateRawEvents(reader.attrs(), interpreter.events());
+    parser.ParseRawEvents();
+    parser.GenerateRawEvents();
 
-    PerfReader writer;
-    *writer.mutable_attrs() = reader.attrs();
-    *writer.mutable_events() = composer.raw_events();
-    string output_perf_data = input_perf_data + ".int.out";
-    ASSERT_TRUE(writer.WriteFile(output_perf_data));
+    string output_perf_data = input_perf_data + ".parse.out";
+    ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
   }
