@@ -16,8 +16,6 @@
 
 #include "base/basictypes.h"
 #include "base/logging.h"
-#include "base/string_split.h"
-#include "base/string_util.h"
 
 #include "utils.h"
 
@@ -25,6 +23,13 @@ namespace {
 
 // Specify buffer size to be used to read the perf report.
 const int kPerfReportReadBufferSize = 0x10000;
+
+// Trim leading and trailing whitespace from |str|.
+void TrimWhitespace(string* str) {
+  stringstream ss;
+  ss << *str;
+  ss >> *str;
+}
 
 // Perf report command and arguments.
 // Don't attempt to symbolize:  --symfs=/dev/null
@@ -50,8 +55,8 @@ bool GetPerfReport(const string& filename, string* output) {
   while (fgets(buffer, sizeof(buffer), file)) {
     if (buffer[0] == '#')
       continue;
-    string str;
-    TrimWhitespaceASCII(buffer, TRIM_ALL, &str);
+    string str = buffer;
+    TrimWhitespace(&str);
     *output += str + '\n';
   }
 
@@ -100,7 +105,7 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   case PERF_RECORD_MAX:
     break;
   default:
-    NOTREACHED() << "Unknown event type " << event_type;
+    LOG(FATAL) << "Unknown event type " << event_type;
   }
   return sample_type & mask;
 }
@@ -145,9 +150,9 @@ uint64 GetPerfSampleDataOffset(const event_t& event) {
   case PERF_RECORD_UNTHROTTLE:
   case PERF_RECORD_READ:
   case PERF_RECORD_MAX:
-    NOTREACHED() << "Unsupported event type " << event.header.type;
+    LOG(FATAL) << "Unsupported event type " << event.header.type;
   default:
-    NOTREACHED() << "Unknown event type " << event.header.type;
+    LOG(FATAL) << "Unknown event type " << event.header.type;
   }
   // Make sure the offset was valid
   CHECK_NE(offset, kuint64max);
@@ -198,7 +203,7 @@ size_t ReadPerfSampleFromData(const uint64* array,
       sample->period = val64;
       break;
     default:
-      NOTREACHED() << "Invalid sample type " << (void*)sample_type;
+      LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
   }
   return num_values_read * sizeof(uint64);
@@ -244,7 +249,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       val64 = sample.period;
       break;
     default:
-      NOTREACHED() << "Invalid sample type " << (void*)sample_type;
+      LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
     *array++ = val64;
     ++num_values_written;

@@ -11,6 +11,7 @@
 #include "perf_reader.h"
 #include "perf_serializer.h"
 #include "perf_protobuf_io.h"
+#include "quipper_string.h"
 #include "utils.h"
 
 namespace {
@@ -27,22 +28,22 @@ const char* kPerfDataFiles[] = {
 
 }  // namespace
 
-void SerializeAndDeserialize(const std::string& input,
-                             const std::string& output) {
+void SerializeAndDeserialize(const string& input,
+                             const string& output) {
   PerfSerializer perf_serializer;
   quipper::PerfDataProto perf_data_proto;
   EXPECT_TRUE(perf_serializer.Serialize(input, &perf_data_proto));
   EXPECT_TRUE(perf_serializer.Deserialize(output, perf_data_proto));
 }
 
-void SerializeToFileAndBack(const std::string& input,
-                            const std::string& output) {
+void SerializeToFileAndBack(const string& input,
+                            const string& output) {
   PerfSerializer perf_serializer;
   quipper::PerfDataProto input_perf_data_proto, output_perf_data_proto;
 
   EXPECT_TRUE(perf_serializer.Serialize(input, &input_perf_data_proto));
   // Now store the protobuf into a file.
-  std::string input_filename, output_filename;
+  string input_filename, output_filename;
   EXPECT_TRUE(CreateNamedTempFile(&input_filename));
   EXPECT_TRUE(CreateNamedTempFile(&output_filename));
 
@@ -70,9 +71,9 @@ TEST(PerfSerializerTest, Test1Cycle) {
                output_perf_reader2;
     quipper::PerfDataProto perf_data_proto, perf_data_proto1;
 
-    std::string input_perf_data = kPerfDataFiles[i];
-    std::string output_perf_data = input_perf_data + ".serialized.out";
-    std::string output_perf_data1 = output_perf_data + ".serialized.out";
+    string input_perf_data = kPerfDataFiles[i];
+    string output_perf_data = input_perf_data + ".serialized.out";
+    string output_perf_data1 = output_perf_data + ".serialized.out";
 
     LOG(INFO) << "Testing " << input_perf_data;
     input_perf_reader.ReadFile(input_perf_data);
@@ -84,7 +85,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
 
     ASSERT_TRUE(CompareFileContents(output_perf_data, output_perf_data1));
 
-    std::string output_perf_data2 = input_perf_data + ".io.out";
+    string output_perf_data2 = input_perf_data + ".io.out";
     SerializeToFileAndBack(input_perf_data, output_perf_data2);
     output_perf_reader2.ReadFile(output_perf_data2);
 
