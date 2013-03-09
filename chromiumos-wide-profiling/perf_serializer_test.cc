@@ -26,8 +26,6 @@ const char* kPerfDataFiles[] = {
   "perf.data.busy.5",
 };
 
-}  // namespace
-
 void SerializeAndDeserialize(const string& input,
                              const string& output) {
   PerfSerializer perf_serializer;
@@ -61,6 +59,8 @@ void SerializeToFileAndBack(const string& input,
   remove(input_filename.c_str());
   remove(output_filename.c_str());
 }
+
+}  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
   // Read perf data using the PerfReader class.
