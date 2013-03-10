@@ -66,6 +66,7 @@ SHILL_LIBS = \
 	-lmetrics \
 	-lminijail \
 	-lprotobuf-lite \
+	-lrt \
 	$(shell $(PKG_CONFIG) --libs $(SHILL_PC_DEPS))
 NET_DIAGS_UPLOAD_LIBS = \
 	$(shell $(PKG_CONFIG) --libs $(NET_DIAGS_UPLOAD_PC_DEPS))
