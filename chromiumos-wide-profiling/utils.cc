@@ -26,9 +26,13 @@ const int kPerfReportReadBufferSize = 0x10000;
 
 // Trim leading and trailing whitespace from |str|.
 void TrimWhitespace(string* str) {
-  stringstream ss;
-  ss << *str;
-  ss >> *str;
+  const char kWhitespaceCharacters[] = " \t\n\r";
+  size_t end = str->find_last_not_of(kWhitespaceCharacters);
+  if (end != std::string::npos)
+    *str = str->substr(0, end+1);
+  size_t start = str->find_first_not_of(kWhitespaceCharacters);
+  if (start != std::string::npos)
+    *str = str->substr(start);
 }
 
 // Perf report command and arguments.
