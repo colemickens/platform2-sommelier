@@ -194,6 +194,9 @@
   </ul>
 
   <div class="treatment">
+    <h2> Experiment-specific Instructions </h2>
+    {{ experiment.instructions|safe }}
+
     <h2> Experiment Command </h2>
     <div class="command">
       try_touch_experiment
