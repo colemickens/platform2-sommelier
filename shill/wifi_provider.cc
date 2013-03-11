@@ -208,10 +208,11 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
   WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
   if (!service) {
     const bool hidden_ssid = false;
-    service = AddService(endpoint->ssid(),
-                         endpoint->network_mode(),
-                         endpoint->security_mode(),
-                         hidden_ssid);
+    service = AddService(
+        endpoint->ssid(),
+        endpoint->network_mode(),
+        WiFiService::GetSecurityClass(endpoint->security_mode()),
+        hidden_ssid);
   }
 
   service->AddEndpoint(endpoint);

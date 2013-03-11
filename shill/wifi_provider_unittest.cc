@@ -609,6 +609,53 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
   EXPECT_TRUE(service1 != service0);
 }
 
+TEST_F(WiFiProviderTest, OnEndpointAddedWithSecurity) {
+  provider_.Start();
+  const string ssid0("an_ssid");
+  const vector<uint8_t> ssid0_bytes(ssid0.begin(), ssid0.end());
+  EXPECT_FALSE(FindService(ssid0_bytes, flimflam::kModeManaged,
+                           flimflam::kSecurityNone));
+  WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  endpoint0->set_security_mode(flimflam::kSecurityRsn);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  provider_.OnEndpointAdded(endpoint0);
+  Mock::VerifyAndClearExpectations(&manager_);
+  EXPECT_EQ(1, GetServices().size());
+  WiFiServiceRefPtr service0(FindService(ssid0_bytes, flimflam::kModeManaged,
+                                         flimflam::kSecurityWpa));
+  EXPECT_TRUE(service0);
+  EXPECT_TRUE(service0->HasEndpoints());
+  EXPECT_EQ(flimflam::kSecurityPsk, service0->security_);
+
+  WiFiEndpointRefPtr endpoint1 = MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
+  endpoint1->set_security_mode(flimflam::kSecurityWpa);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+  EXPECT_CALL(manager_, UpdateService(RefPtrMatch(service0))).Times(1);
+  provider_.OnEndpointAdded(endpoint1);
+  Mock::VerifyAndClearExpectations(&manager_);
+  EXPECT_EQ(1, GetServices().size());
+
+  const string ssid1("another_ssid");
+  const vector<uint8_t> ssid1_bytes(ssid1.begin(), ssid1.end());
+  EXPECT_FALSE(FindService(ssid1_bytes, flimflam::kModeManaged,
+                           flimflam::kSecurityNone));
+  WiFiEndpointRefPtr endpoint2 = MakeEndpoint(ssid1, "00:00:00:00:00:02", 0, 0);
+  endpoint2->set_security_mode(flimflam::kSecurityWpa);
+  EXPECT_CALL(manager_, RegisterService(_)).Times(1);
+  EXPECT_CALL(manager_, UpdateService(_)).Times(1);
+  provider_.OnEndpointAdded(endpoint2);
+  Mock::VerifyAndClearExpectations(&manager_);
+  EXPECT_EQ(2, GetServices().size());
+
+  WiFiServiceRefPtr service1(FindService(ssid1_bytes, flimflam::kModeManaged,
+                                         flimflam::kSecurityRsn));
+  EXPECT_TRUE(service1);
+  EXPECT_TRUE(service1->HasEndpoints());
+  EXPECT_EQ(flimflam::kSecurityPsk, service1->security_);
+  EXPECT_TRUE(service1 != service0);
+}
+
 TEST_F(WiFiProviderTest, OnEndpointAddedWhileStopped) {
   // If we don't call provider_.Start(), OnEndpointAdded should have no effect.
   const string ssid("an_ssid");

@@ -60,7 +60,7 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
 
   network_mode_ = ParseMode(
       properties.find(wpa_supplicant::kBSSPropertyMode)->second);
-  security_mode_ = ParseSecurity(properties);
+  set_security_mode(ParseSecurity(properties));
   has_rsn_property_ = ContainsKey(properties, wpa_supplicant::kPropertyRSN);
   has_wpa_property_ = ContainsKey(properties, wpa_supplicant::kPropertyWPA);
 

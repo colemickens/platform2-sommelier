@@ -115,6 +115,10 @@ class WiFiService : public Service {
   // Called by WiFiProvider to reset the WiFi device reference on shutdown.
   virtual void ResetWiFi();
 
+  // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
+  // This function maps them all into "psk".
+  static std::string GetSecurityClass(const std::string &security);
+
  protected:
   virtual bool IsAutoConnectable(const char **reason) const;
   virtual void SetEAPKeyManagement(const std::string &key_management);
@@ -126,6 +130,7 @@ class WiFiService : public Service {
   FRIEND_TEST(MetricsTest, WiFiServicePostReady);
   FRIEND_TEST(MetricsTest, WiFiServicePostReadyEAP);
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
+  FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity); // security_
   FRIEND_TEST(WiFiServiceTest, AutoConnect);
   FRIEND_TEST(WiFiServiceTest, ClearWriteOnlyDerivedProperty);  // passphrase_
   FRIEND_TEST(WiFiServiceTest, ComputeCipher8021x);
@@ -181,10 +186,6 @@ class WiFiService : public Service {
   // Maps a signal value, in dBm, to a "strength" value, from
   // |Service::kStrengthMin| to |Service:kStrengthMax|.
   static uint8 SignalToStrength(int16 signal_dbm);
-
-  // "wpa", "rsn" and "psk" are equivalent from a configuration perspective.
-  // This function maps them all into "psk".
-  static std::string GetSecurityClass(const std::string &security);
 
   // Create a default group name for this WiFi service.
   std::string GetDefaultStorageIdentifier() const;

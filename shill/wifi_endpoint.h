@@ -85,6 +85,7 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseVendorIEs);
   FRIEND_TEST(WiFiEndpointTest, ParseWPACapabilities);
+  FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);
@@ -149,6 +150,9 @@ class WiFiEndpoint : public Endpoint {
                             std::vector<uint8_t>::const_iterator end,
                             VendorInformation *vendor_information,
                             bool *ieee80211w_required);
+
+  // Private setter used in unit tests.
+  void set_security_mode(const std::string &mode) { security_mode_ = mode; }
 
   // TODO(quiche): make const?
   std::vector<uint8_t> ssid_;
