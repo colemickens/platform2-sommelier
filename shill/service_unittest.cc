@@ -98,6 +98,10 @@ class ServiceTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
   };
 
+  ServiceMockAdaptor *GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  }
+
   string GetFriendlyName() { return service_->friendly_name(); }
 
   void SetManagerRunning(bool running) { mock_manager_.running_ = running; }
@@ -443,9 +447,9 @@ TEST_F(ServiceTest, State) {
 
   ServiceRefPtr service_ref(service_);
 
-  EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
+  EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(flimflam::kStateProperty, _)).Times(7);
-  EXPECT_CALL(*dynamic_cast<ServiceMockAdaptor *>(service_->adaptor_.get()),
+  EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(flimflam::kErrorProperty, _)).Times(4);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetState(Service::kStateConnected);
@@ -931,8 +935,7 @@ TEST_F(ServiceTest, SetCheckPortal) {
 
 TEST_F(ServiceTest, SetFriendlyName) {
   EXPECT_EQ(service_->unique_name_, service_->friendly_name_);
-  ServiceMockAdaptor *adaptor =
-      dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor *adaptor = GetAdaptor();
 
   EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
   service_->SetFriendlyName(service_->unique_name_);
@@ -956,8 +959,7 @@ TEST_F(ServiceTest, SetFriendlyName) {
 TEST_F(ServiceTest, SetConnectable) {
   EXPECT_FALSE(service_->connectable());
 
-  ServiceMockAdaptor *adaptor =
-      dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  ServiceMockAdaptor *adaptor = GetAdaptor();
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(_, _)).Times(0);
   EXPECT_CALL(mock_manager_, HasService(_)).Times(0);
@@ -1395,6 +1397,19 @@ TEST_F(ServiceTest, SecurityLevel) {
   service_->SetSecurity(Service::kCryptoRc4, false, false);
   service2_->SetSecurity(Service::kCryptoRc4, false, true);
   EXPECT_GT(service2_->SecurityLevel(), service_->SecurityLevel());
+}
+
+TEST_F(ServiceTest, SetErrorDetails) {
+  EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
+  static const char kDetails[] = "Certificate revoked.";
+  ServiceMockAdaptor *adaptor = GetAdaptor();
+  EXPECT_CALL(*adaptor, EmitStringChanged(shill::kErrorDetailsProperty,
+                                          kDetails));
+  service_->SetErrorDetails(Service::kErrorDetailsNone);
+  EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
+  service_->SetErrorDetails(kDetails);
+  EXPECT_EQ(kDetails, service_->error_details());
+  service_->SetErrorDetails(kDetails);
 }
 
 }  // namespace shill

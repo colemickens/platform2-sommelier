@@ -55,7 +55,6 @@ class OpenVPNManagementServer {
   FRIEND_TEST(OpenVPNManagementServerTest, OnInputStop);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReady);
   FRIEND_TEST(OpenVPNManagementServerTest, OnReadyAcceptFail);
-  FRIEND_TEST(OpenVPNManagementServerTest, ParseNeedPasswordTag);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthentication);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformAuthenticationNoCreds);
   FRIEND_TEST(OpenVPNManagementServerTest, PerformStaticChallenge);
@@ -102,7 +101,23 @@ class OpenVPNManagementServer {
   void PerformAuthentication(const std::string &tag);
   void SupplyTPMToken(const std::string &tag);
 
-  static std::string ParseNeedPasswordTag(const std::string &message);
+  // Returns the first substring in |message| enclosed by the |start| and |end|
+  // substrings. Note that the first |end| substring after the position of
+  // |start| is matched.
+  static std::string ParseSubstring(const std::string &message,
+                                    const std::string &start,
+                                    const std::string &end);
+
+  // Password messages come in two forms:
+  //
+  // >PASSWORD:Need 'AUTH_TYPE' ...
+  // >PASSWORD:Verification Failed: 'AUTH_TYPE' ['REASON_STRING']
+  //
+  // ParsePasswordTag parses AUTH_TYPE out of a password |message| and returns
+  // it. ParsePasswordFailedReason parses REASON_STRING, if any, out of a
+  // password |message| and returns it.
+  static std::string ParsePasswordTag(const std::string &message);
+  static std::string ParsePasswordFailedReason(const std::string &message);
 
   // Escapes |str| per OpenVPN's command parsing rules assuming |str| will be
   // sent over the management interface quoted (i.e., whitespace is not

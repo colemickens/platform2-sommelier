@@ -31,6 +31,10 @@ using std::vector;
 
 namespace shill {
 
+namespace {
+const char kPasswordTagAuth[] = "Auth";
+}  // namespace
+
 OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
                                                  GLib *glib)
     : driver_(driver),
@@ -171,7 +175,7 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
 
 void OpenVPNManagementServer::OnInputError(const Error &error) {
   LOG(ERROR) << error;
-  driver_->Cleanup(Service::kStateFailure);
+  driver_->FailService(Service::kErrorDetailsNone);
 }
 
 void OpenVPNManagementServer::ProcessMessage(const string &message) {
@@ -204,8 +208,8 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     return false;
   }
   LOG(INFO) << "Processing need-password message.";
-  string tag = ParseNeedPasswordTag(message);
-  if (tag == "Auth") {
+  string tag = ParsePasswordTag(message);
+  if (tag == kPasswordTagAuth) {
     if (message.find("SC:") != string::npos) {
       PerformStaticChallenge(tag);
     } else {
@@ -215,23 +219,39 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     SupplyTPMToken(tag);
   } else {
     NOTIMPLEMENTED() << ": Unsupported need-password message: " << message;
-    driver_->Cleanup(Service::kStateFailure);
+    driver_->FailService(Service::kErrorDetailsNone);
   }
   return true;
 }
 
 // static
-string OpenVPNManagementServer::ParseNeedPasswordTag(const string &message) {
-  SLOG(VPN, 2) << __func__ << "(" << message << ")";
-  size_t start = message.find('\'');
-  if (start == string::npos) {
+string OpenVPNManagementServer::ParseSubstring(const string &message,
+                                               const string &start,
+                                               const string &end) {
+  SLOG(VPN, 2) << __func__ << "(" << message
+               << ", " << start << ", " << end << ")";
+  DCHECK(!start.empty() && !end.empty());
+  size_t start_pos = message.find(start);
+  if (start_pos == string::npos) {
     return string();
   }
-  size_t end = message.find('\'', start + 1);
-  if (end == string::npos) {
+  size_t end_pos = message.find(end, start_pos + start.size());
+  if (end_pos == string::npos) {
     return string();
   }
-  return message.substr(start + 1, end - start - 1);
+  return message.substr(start_pos + start.size(),
+                        end_pos - start_pos - start.size());
+}
+
+// static
+string OpenVPNManagementServer::ParsePasswordTag(const string &message) {
+  return ParseSubstring(message, "'", "'");
+}
+
+// static
+string OpenVPNManagementServer::ParsePasswordFailedReason(
+    const string &message) {
+  return ParseSubstring(message, "['", "']");
 }
 
 void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
@@ -247,7 +267,7 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
                      << (user.empty() ? " no-user" : "")
                      << (password.empty() ? " no-password" : "")
                      << (otp.empty() ? " no-otp" : "");
-    driver_->Cleanup(Service::kStateFailure);
+    driver_->FailService(Service::kErrorDetailsNone);
     return;
   }
   gchar *b64_password =
@@ -278,7 +298,7 @@ void OpenVPNManagementServer::PerformAuthentication(const string &tag) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
                      << (password.empty() ? " no-password" : "");
-    driver_->Cleanup(Service::kStateFailure);
+    driver_->FailService(Service::kErrorDetailsNone);
     return;
   }
   SendUsername(tag, user);
@@ -290,7 +310,7 @@ void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
   string pin = driver_->args()->LookupString(flimflam::kOpenVPNPinProperty, "");
   if (pin.empty()) {
     NOTIMPLEMENTED() << ": Missing PIN.";
-    driver_->Cleanup(Service::kStateFailure);
+    driver_->FailService(Service::kErrorDetailsNone);
     return;
   }
   SendPassword(tag, pin);
@@ -301,8 +321,12 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
   if (!StartsWithASCII(message, ">PASSWORD:Verification Failed:", true)) {
     return false;
   }
-  NOTIMPLEMENTED();
-  driver_->Cleanup(Service::kStateFailure);
+  LOG(INFO) << message;
+  string reason;
+  if (ParsePasswordTag(message) == kPasswordTagAuth) {
+    reason = ParsePasswordFailedReason(message);
+  }
+  driver_->FailService(reason);
   return true;
 }
 

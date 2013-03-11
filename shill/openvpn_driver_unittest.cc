@@ -824,12 +824,30 @@ TEST_F(OpenVPNDriverTest, ClaimInterface) {
   EXPECT_EQ(kServiceCallbackTag, driver_->default_service_callback_tag_);
 }
 
+TEST_F(OpenVPNDriverTest, IdleService) {
+  SetService(service_);
+  service_->SetErrorDetails("Bad OTP.");
+  EXPECT_CALL(*service_, SetState(Service::kStateIdle));
+  driver_->IdleService();
+  EXPECT_EQ(Service::kErrorDetailsNone, service_->error_details());
+}
+
+TEST_F(OpenVPNDriverTest, FailService) {
+  static const char kErrorDetails[] = "Bad password.";
+  SetService(service_);
+  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  driver_->FailService(kErrorDetails);
+  EXPECT_EQ(kErrorDetails, service_->error_details());
+}
+
 TEST_F(OpenVPNDriverTest, Cleanup) {
-  driver_->Cleanup(Service::kStateIdle);  // Ensure no crash.
+  // Ensure no crash.
+  driver_->Cleanup(Service::kStateIdle, Service::kErrorDetailsNone);
 
   const unsigned int kChildTag = 123;
   const int kPID = 123456;
   const int kServiceCallbackTag = 5;
+  static const char kErrorDetails[] = "Certificate revoked.";
   driver_->default_service_callback_tag_ = kServiceCallbackTag;
   driver_->child_watch_tag_ = kChildTag;
   driver_->pid_ = kPID;
@@ -853,7 +871,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetState(Service::kStateFailure));
-  driver_->Cleanup(Service::kStateFailure);
+  driver_->Cleanup(Service::kStateFailure, kErrorDetails);
   EXPECT_EQ(0, driver_->child_watch_tag_);
   EXPECT_EQ(0, driver_->default_service_callback_tag_);
   EXPECT_EQ(0, driver_->pid_);
@@ -861,6 +879,7 @@ TEST_F(OpenVPNDriverTest, Cleanup) {
   EXPECT_TRUE(driver_->tunnel_interface_.empty());
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
+  EXPECT_EQ(kErrorDetails, service_->error_details());
   EXPECT_FALSE(file_util::PathExists(tls_auth_file));
   EXPECT_TRUE(driver_->tls_auth_file_.empty());
   EXPECT_TRUE(driver_->ip_properties_.address.empty());

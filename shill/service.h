@@ -59,6 +59,8 @@ class Service : public base::RefCounted<Service> {
   static const char kCheckPortalFalse[];
   static const char kCheckPortalTrue[];
 
+  static const char kErrorDetailsNone[];
+
   // TODO(pstew): Storage constants shouldn't need to be public
   // crosbug.com/25813
   static const char kStorageAutoConnect[];
@@ -388,6 +390,9 @@ class Service : public base::RefCounted<Service> {
   const std::string &error() const { return error_; }
   void set_error(const std::string &error) { error_ = error; }
 
+  const std::string &error_details() const { return error_details_; }
+  void SetErrorDetails(const std::string &details);
+
   static const char *ConnectFailureToString(const ConnectFailure &state);
   static const char *ConnectStateToString(const ConnectState &state);
 
@@ -684,6 +689,7 @@ class Service : public base::RefCounted<Service> {
   std::string check_portal_;
   bool connectable_;
   std::string error_;
+  std::string error_details_;
   bool explicitly_disconnected_;
   bool favorite_;
   int32 priority_;

@@ -146,12 +146,21 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       default_service_callback_tag_(0) {}
 
 OpenVPNDriver::~OpenVPNDriver() {
-  Cleanup(Service::kStateIdle);
+  IdleService();
 }
 
-void OpenVPNDriver::Cleanup(Service::ConnectState state) {
+void OpenVPNDriver::IdleService() {
+  Cleanup(Service::kStateIdle, Service::kErrorDetailsNone);
+}
+
+void OpenVPNDriver::FailService(const string &error_details) {
+  Cleanup(Service::kStateFailure, error_details);
+}
+
+void OpenVPNDriver::Cleanup(Service::ConnectState state,
+                            const string &error_details) {
   SLOG(VPN, 2) << __func__ << "(" << Service::ConnectStateToString(state)
-               << ")";
+               << ", " << error_details << ")";
   StopConnectTimeout();
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
@@ -189,6 +198,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state) {
   }
   tunnel_interface_.clear();
   if (service_) {
+    service_->SetErrorDetails(error_details);
     service_->SetState(state);
     service_ = NULL;
   }
@@ -250,7 +260,7 @@ void OpenVPNDriver::OnOpenVPNDied(GPid pid, gint status, gpointer data) {
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
   me->pid_ = 0;
-  me->Cleanup(Service::kStateFailure);
+  me->FailService(Service::kErrorDetailsNone);
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
@@ -278,7 +288,7 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
 
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnOpenVPN()) {
-    Cleanup(Service::kStateFailure);
+    FailService(Service::kErrorDetailsNone);
   } else {
     default_service_callback_tag_ =
         manager()->RegisterDefaultServiceCallback(
@@ -473,7 +483,7 @@ void OpenVPNDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   if (!device_info_->CreateTunnelInterface(&tunnel_interface_)) {
     Error::PopulateAndLog(
         error, Error::kInternalError, "Could not create tunnel interface.");
-    Cleanup(Service::kStateFailure);
+    FailService(Service::kErrorDetailsNone);
   }
   // Wait for the ClaimInterface callback to continue the connection process.
 }
@@ -730,7 +740,7 @@ bool OpenVPNDriver::AppendFlag(
 
 void OpenVPNDriver::Disconnect() {
   SLOG(VPN, 2) << __func__;
-  Cleanup(Service::kStateIdle);
+  IdleService();
 }
 
 void OpenVPNDriver::OnConnectionDisconnected() {
@@ -747,7 +757,7 @@ void OpenVPNDriver::OnConnectionDisconnected() {
 
 void OpenVPNDriver::OnConnectTimeout() {
   VPNDriver::OnConnectTimeout();
-  Cleanup(Service::kStateFailure);
+  FailService(Service::kErrorDetailsNone);
 }
 
 void OpenVPNDriver::OnReconnecting(ReconnectReason reason) {

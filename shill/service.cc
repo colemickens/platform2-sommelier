@@ -53,6 +53,8 @@ const char Service::kCheckPortalAuto[] = "auto";
 const char Service::kCheckPortalFalse[] = "false";
 const char Service::kCheckPortalTrue[] = "true";
 
+const char Service::kErrorDetailsNone[] = "";
+
 const int Service::kPriorityNone = 0;
 
 const char Service::kServiceSortAutoConnect[] = "AutoConnect";
@@ -125,6 +127,7 @@ Service::Service(ControlInterface *control_interface,
       check_portal_(kCheckPortalAuto),
       connectable_(false),
       error_(ConnectFailureToString(failure_)),
+      error_details_(kErrorDetailsNone),
       explicitly_disconnected_(false),
       favorite_(false),
       priority_(kPriorityNone),
@@ -202,6 +205,7 @@ Service::Service(ControlInterface *control_interface,
   // setting the service state to IDLE. Is this important? I could
   // see an autotest depending on it.
   store_.RegisterConstString(flimflam::kErrorProperty, &error_);
+  store_.RegisterConstString(shill::kErrorDetailsProperty, &error_details_);
   store_.RegisterConstBool(flimflam::kFavoriteProperty, &favorite_);
   HelpRegisterDerivedUint16(shill::kHTTPProxyPortProperty,
                             &Service::GetHTTPProxyPort,
@@ -354,6 +358,7 @@ void Service::SetState(ConnectState state) {
   state_ = state;
   if (state != kStateFailure) {
     failure_ = kFailureUnknown;
+    SetErrorDetails(kErrorDetailsNone);
   }
   if (state == kStateConnected) {
     failed_time_ = 0;
@@ -1399,6 +1404,14 @@ void Service::SetStrength(uint8 strength) {
   }
   strength_ = strength;
   adaptor_->EmitUint8Changed(flimflam::kSignalStrengthProperty, strength);
+}
+
+void Service::SetErrorDetails(const string &details) {
+  if (error_details_ == details) {
+    return;
+  }
+  error_details_ = details;
+  adaptor_->EmitStringChanged(shill::kErrorDetailsProperty, error_details_);
 }
 
 void Service::UpdateErrorProperty() {
