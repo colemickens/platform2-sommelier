@@ -4,6 +4,8 @@
 
 #include "perf_parser.h"
 
+#include <algorithm>
+
 #include "base/logging.h"
 
 #include "utils.h"
@@ -246,6 +248,13 @@ bool WritePerfSampleInfo(const perf_sample& sample,
   return (size_written == expected_size);
 }
 
+// Returns true if |e1| has an earlier timestamp than |e2|.  The args are const
+// pointers instead of references because of the way this function is used when
+// calling std::stable_sort.
+bool CompareParsedEventTimes(const ParsedEvent* e1, const ParsedEvent* e2) {
+  return (e1->sample_info.time < e2->sample_info.time);
+}
+
 }  // namespace
 
 bool PerfParser::ParseRawEvents() {
@@ -260,6 +269,7 @@ bool PerfParser::ParseRawEvents() {
       return false;
     }
   }
+  SortParsedEvents();
   return true;
 }
 
@@ -276,4 +286,13 @@ bool PerfParser::GenerateRawEvents() {
     }
   }
   return true;
+}
+
+void PerfParser::SortParsedEvents() {
+  parsed_events_sorted_by_time_.resize(parsed_events_.size());
+  for (unsigned int i = 0; i < parsed_events_.size(); ++i)
+    parsed_events_sorted_by_time_[i] = &parsed_events_[i];
+  std::stable_sort(parsed_events_sorted_by_time_.begin(),
+                   parsed_events_sorted_by_time_.end(),
+                   CompareParsedEventTimes);
 }

@@ -26,6 +26,14 @@ const char* kPerfDataFiles[] = {
   "perf.data.busy.5",
 };
 
+void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
+  for (unsigned int i = 1; i < events.size(); ++i) {
+    uint64 time = events[i]->sample_info.time;
+    uint64 prev_time = events[i - 1]->sample_info.time;
+    CHECK_LE(prev_time, time);
+  }
+}
+
 }  // namespace
 
 TEST(PerfParserTest, Test1Cycle) {
@@ -37,6 +45,10 @@ TEST(PerfParserTest, Test1Cycle) {
     ASSERT_TRUE(parser.ReadFile(input_perf_data));
 
     parser.ParseRawEvents();
+
+    CHECK_GT(parser.GetEventsSortedByTime().size(), 0U);
+    CheckChronologicalOrderOfEvents(parser.GetEventsSortedByTime());
+
     parser.GenerateRawEvents();
 
     string output_perf_data = input_perf_data + ".parse.out";
