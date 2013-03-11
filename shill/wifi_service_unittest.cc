@@ -388,8 +388,10 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
   DBusAdaptor::GetProperties(wifi_service->store(), &properties, NULL);
 }
 
-MATCHER(WPASecurityArgs, "") {
+MATCHER(PSKSecurityArgs, "") {
   return ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol) &&
+      arg.find(wpa_supplicant::kPropertySecurityProtocol)->second.
+           reader().get_string() == string("WPA RSN") &&
       ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey);
 }
 
@@ -411,8 +413,7 @@ MATCHER_P(FrequencyArg, has_arg, "") {
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityWpa);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);
@@ -420,8 +421,7 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA) {
 
 TEST_F(WiFiServiceTest, ConnectTaskRSN) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityRsn);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);
@@ -457,8 +457,7 @@ TEST_F(WiFiServiceTest, ConnectConditions) {
 
 TEST_F(WiFiServiceTest, ConnectTaskPSK) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityPsk);
-  EXPECT_CALL(*wifi(),
-              ConnectTo(wifi_service.get(), WPASecurityArgs()));
+  EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), PSKSecurityArgs()));
   Error error;
   wifi_service->SetPassphrase("0:mumblemumblem", &error);
   wifi_service->Connect(NULL);

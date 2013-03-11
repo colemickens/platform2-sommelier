@@ -344,8 +344,12 @@ void WiFiService::SendPostReadyStateMetrics(
       static_cast<Metrics::WiFiNetworkPhyMode>(physical_mode_),
       Metrics::kWiFiNetworkPhyModeMax);
 
+  string security_mode = security_;
+  if (current_endpoint_) {
+    security_mode = current_endpoint_->security_mode();
+  }
   Metrics::WiFiSecurity security_uma =
-      Metrics::WiFiSecurityStringToEnum(security_);
+      Metrics::WiFiSecurityStringToEnum(security_mode);
   DCHECK(security_uma != Metrics::kWiFiSecurityUnknown);
   metrics()->SendEnumToUMA(
       metrics()->GetFullMetricName(Metrics::kMetricNetworkSecurity,
@@ -473,22 +477,14 @@ void WiFiService::Connect(Error *error) {
       SetEAPKeyManagement("WPA-EAP");
     Populate8021xProperties(&params);
     ClearEAPCertification();
-  } else if (security_ == flimflam::kSecurityPsk) {
+  } else if (security_ == flimflam::kSecurityPsk ||
+             security_ == flimflam::kSecurityRsn ||
+             security_ == flimflam::kSecurityWpa) {
     const string psk_proto = StringPrintf("%s %s",
                                           wpa_supplicant::kSecurityModeWPA,
                                           wpa_supplicant::kSecurityModeRSN);
     params[wpa_supplicant::kPropertySecurityProtocol].writer().
         append_string(psk_proto.c_str());
-    params[wpa_supplicant::kPropertyPreSharedKey].writer().
-        append_string(passphrase_.c_str());
-  } else if (security_ == flimflam::kSecurityRsn) {
-    params[wpa_supplicant::kPropertySecurityProtocol].writer().
-        append_string(wpa_supplicant::kSecurityModeRSN);
-    params[wpa_supplicant::kPropertyPreSharedKey].writer().
-        append_string(passphrase_.c_str());
-  } else if (security_ == flimflam::kSecurityWpa) {
-    params[wpa_supplicant::kPropertySecurityProtocol].writer().
-        append_string(wpa_supplicant::kSecurityModeWPA);
     params[wpa_supplicant::kPropertyPreSharedKey].writer().
         append_string(passphrase_.c_str());
   } else if (security_ == flimflam::kSecurityWep) {
