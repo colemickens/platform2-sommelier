@@ -25,17 +25,12 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   uint64 mask = kuint64max;
   switch (event_type) {
   case PERF_RECORD_SAMPLE:
-    // All fields of |sample_type| are present in an actual sample event.
+    mask = PERF_SAMPLE_TIME | PERF_SAMPLE_ID | PERF_SAMPLE_CPU |
+           PERF_SAMPLE_PERIOD;
     break;
   case PERF_RECORD_MMAP:
-    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
-           PERF_SAMPLE_CPU;
-    break;
   case PERF_RECORD_FORK:
   case PERF_RECORD_EXIT:
-    mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
-           PERF_SAMPLE_CPU;
-    break;
   case PERF_RECORD_COMM:
     mask = PERF_SAMPLE_TID | PERF_SAMPLE_TIME | PERF_SAMPLE_ID |
            PERF_SAMPLE_CPU;
@@ -48,7 +43,7 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   case PERF_RECORD_MAX:
     break;
   default:
-    NOTREACHED() << "Unknown event type " << event_type;
+    LOG(FATAL) << "Unknown event type " << event_type;
   }
   return sample_type & mask;
 }
@@ -74,7 +69,7 @@ uint64 GetPerfSampleDataOffset(const event_t& event) {
   uint64 offset = kuint64max;
   switch (event.header.type) {
   case PERF_RECORD_SAMPLE:
-    offset = sizeof(event.header);
+    offset = sizeof(event.ip);
     break;
   case PERF_RECORD_MMAP:
     offset = sizeof(event.mmap) - sizeof(event.mmap.filename) +
@@ -146,7 +141,7 @@ size_t ReadPerfSampleFromData(const uint64* array,
       sample->period = val64;
       break;
     default:
-      NOTREACHED() << "Invalid sample type " << (void*)sample_type;
+      LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
   }
   return num_values_read * sizeof(uint64);
@@ -192,7 +187,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       val64 = sample.period;
       break;
     default:
-      NOTREACHED() << "Invalid sample type " << (void*)sample_type;
+      LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
     *array++ = val64;
     ++num_values_written;

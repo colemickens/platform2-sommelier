@@ -48,12 +48,13 @@ void PerfSerializer::SerializeRecordSample(
     const ParsedEvent& event,
     PerfDataProto_SampleEvent* sample) const {
   const struct perf_sample& perf_sample = event.sample_info;
+  const struct ip_event& ip_event = event.raw_event.ip;
 
   if (sample_type_ & PERF_SAMPLE_IP)
-    sample->set_ip(perf_sample.ip);
+    sample->set_ip(ip_event.ip);
   if (sample_type_ & PERF_SAMPLE_TID) {
-    sample->set_pid(perf_sample.pid);
-    sample->set_tid(perf_sample.tid);
+    sample->set_pid(ip_event.pid);
+    sample->set_tid(ip_event.tid);
   }
   if (sample_type_ & PERF_SAMPLE_TIME)
     sample->set_time(perf_sample.time);
@@ -73,11 +74,13 @@ void PerfSerializer::DeserializeRecordSample(
     const PerfDataProto_SampleEvent& sample,
     ParsedEvent* event) const {
   struct perf_sample& perf_sample = event->sample_info;
+  struct ip_event& ip_event = event->raw_event.ip;
   if (sample.has_ip())
-    perf_sample.ip = sample.ip();
-  if (sample.has_tid()) {
-    perf_sample.pid = sample.pid();
-    perf_sample.tid = sample.tid();
+    ip_event.ip = sample.ip();
+  if (sample.has_pid()) {
+    CHECK(sample.has_tid()) << "Cannot have PID without TID.";
+    ip_event.pid = sample.pid();
+    ip_event.tid = sample.tid();
   }
   if (sample.has_time())
     perf_sample.time = sample.time();
