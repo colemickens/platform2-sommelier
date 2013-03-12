@@ -75,6 +75,7 @@ bool CryptoUtilProxy::VerifyDestination(
   message.set_certificate(certificate);
   message.set_signed_data(signed_data);
   message.set_unsigned_data(unsigned_data);
+  message.set_mac_address(bssid);
 
   string raw_bytes;
   if (!message.SerializeToString(&raw_bytes)) {

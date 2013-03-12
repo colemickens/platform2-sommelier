@@ -49,6 +49,9 @@ message VerifyCredentialsMessage {
   // Data string built up by shill.  Needs to be hashed with SHA-1 for
   // comparison with the decrypted version of signed_data.
   optional bytes unsigned_data = 3;
+
+  // Mac address in human readable format like 00:11:22:33:44:55.
+  optional bytes mac_address = 4;
 }
 
 // The response from a call to VerifyCredentials.
