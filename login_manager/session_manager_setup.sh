@@ -277,9 +277,7 @@ fi
 EVDA_FLAGS=
 PPAPI_OOP_FLAG=
 if use_flag_is_set exynos; then
-  # Temporarily disable EVDA until related bugs are fixed.
-  # TODO(sheu): re-enable this once done (crosbug.com/37807).
-  #EVDA_FLAGS="--use-exynos-vda"
+  EVDA_FLAGS="--use-exynos-vda"
   PPAPI_OOP_FLAG="--ppapi-out-of-process"
   # On boards with ARM NEON support, force libvpx to use the NEON-optimized
   # code paths. Remove once http://crbug.com/161834 is fixed.
