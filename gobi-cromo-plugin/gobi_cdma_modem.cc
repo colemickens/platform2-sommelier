@@ -499,6 +499,11 @@ uint32_t GobiCdmaModem::ActivateOmadm() {
   ULONG rc;
   LOG(INFO) << "Activating OMA-DM";
 
+  rc = sdk_->OMADMSetPRLUpdateFeature(TRUE);
+  if (rc != 0) {
+    LOG(ERROR) << "OMA-DM activation failed to enable PRL update: " << rc;
+    return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
+  }
   rc = sdk_->OMADMStartSession(gobi::kConfigure);
   if (rc != 0) {
     LOG(ERROR) << "OMA-DM activation failed: " << rc;
