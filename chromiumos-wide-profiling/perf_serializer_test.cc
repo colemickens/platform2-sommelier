@@ -8,23 +8,12 @@
 
 #include "base/logging.h"
 
+#include "perf_protobuf_io.h"
 #include "perf_reader.h"
 #include "perf_serializer.h"
-#include "perf_protobuf_io.h"
+#include "perf_test_files.h"
 #include "quipper_string.h"
 #include "utils.h"
-
-namespace {
-
-const char* kPerfDataFiles[] = {
-  "perf.data.singleprocess",
-  "perf.data.systemwide.0",
-  "perf.data.systemwide.1",
-  "perf.data.systemwide.5",
-  "perf.data.busy.0",
-  "perf.data.busy.1",
-  "perf.data.busy.5",
-};
 
 void SerializeAndDeserialize(const string& input,
                              const string& output) {
@@ -63,18 +52,18 @@ void SerializeToFileAndBack(const string& input,
   remove(output_filename.c_str());
 }
 
-}  // namespace
-
 TEST(PerfSerializerTest, Test1Cycle) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
-  for (unsigned int i = 0; i < arraysize(kPerfDataFiles); ++i) {
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataFiles);
+       ++i) {
     PerfReader input_perf_reader, output_perf_reader, output_perf_reader1,
                output_perf_reader2;
     quipper::PerfDataProto perf_data_proto, perf_data_proto1;
 
-    string input_perf_data = kPerfDataFiles[i];
+    string input_perf_data = perf_test_files::kPerfDataFiles[i];
     string output_perf_data = input_perf_data + ".serialized.out";
     string output_perf_data1 = output_perf_data + ".serialized.out";
 

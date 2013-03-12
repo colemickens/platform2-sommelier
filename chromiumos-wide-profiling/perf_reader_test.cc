@@ -9,27 +9,16 @@
 #include "base/logging.h"
 
 #include "perf_reader.h"
+#include "perf_test_files.h"
 #include "quipper_string.h"
 #include "utils.h"
 
-namespace {
-
-const char* kPerfDataFiles[] = {
-  "perf.data.singleprocess",
-  "perf.data.systemwide.0",
-  "perf.data.systemwide.1",
-  "perf.data.systemwide.5",
-  "perf.data.busy.0",
-  "perf.data.busy.1",
-  "perf.data.busy.5",
-};
-
-}  // namespace
-
 TEST(PerfReaderTest, Test1Cycle) {
-  for (unsigned int i = 0; i < arraysize(kPerfDataFiles); ++i) {
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataFiles);
+       ++i) {
     PerfReader pr;
-    string input_perf_data = kPerfDataFiles[i];
+    string input_perf_data = perf_test_files::kPerfDataFiles[i];
     LOG(INFO) << "Testing " << input_perf_data;
     string output_perf_data = input_perf_data + ".pr.out";
     ASSERT_TRUE(pr.ReadFile(input_perf_data));
