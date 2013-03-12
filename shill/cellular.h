@@ -126,7 +126,7 @@ class Cellular : public Device {
 
   // Asynchronously connects the modem to the network. Populates |error| on
   // failure, leaves it unchanged otherwise.
-  void Connect(Error *error);
+  virtual void Connect(Error *error);
 
   // Asynchronously disconnects the modem from the network and populates
   // |error| on failure, leaves it unchanged otherwise.

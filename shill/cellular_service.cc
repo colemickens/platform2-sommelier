@@ -20,6 +20,11 @@ namespace shill {
 
 const char CellularService::kAutoConnActivating[] = "activating";
 const char CellularService::kAutoConnDeviceDisabled[] = "device disabled";
+const char CellularService::kAutoConnOutOfCredits[] = "device out of credits";
+const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
+    "device detecting out-of-credits";
+const int64 CellularService::kOutOfCreditsConnectionDropSeconds = 15;
+const int CellularService::kOutOfCreditsMaxConnectAttempts = 3;
 const char CellularService::kStorageAPN[] = "Cellular.APN";
 const char CellularService::kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
@@ -92,9 +97,14 @@ CellularService::CellularService(ControlInterface *control_interface,
                                  const CellularRefPtr &device)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kCellular),
+      weak_ptr_factory_(this),
       activate_over_non_cellular_network_(false),
       cellular_(device),
-      is_auto_connecting_(false) {
+      is_auto_connecting_(false),
+      enforce_out_of_credits_detection_(false),
+      num_connect_attempts_(0),
+      out_of_credits_detection_in_progress_(false),
+      out_of_credits_(false) {
   set_connectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
@@ -108,6 +118,7 @@ CellularService::CellularService(ControlInterface *control_interface,
                                 &last_good_apn_info_);
   store->RegisterConstString(flimflam::kNetworkTechnologyProperty,
                              &network_technology_);
+  store->RegisterConstBool(kOutOfCreditsProperty, &out_of_credits_);
   store->RegisterConstStringmap(flimflam::kPaymentPortalProperty,
                                 &olp_.ToDict());
   store->RegisterConstString(flimflam::kRoamingStateProperty, &roaming_state_);
@@ -130,6 +141,14 @@ bool CellularService::IsAutoConnectable(const char **reason) const {
   }
   if (cellular_->IsActivating()) {
     *reason = kAutoConnActivating;
+    return false;
+  }
+  if (out_of_credits_detection_in_progress_) {
+    *reason = kAutoConnOutOfCreditsDetectionInProgress;
+    return false;
+  }
+  if (out_of_credits_) {
+    *reason = kAutoConnOutOfCredits;
     return false;
   }
   return Service::IsAutoConnectable(reason);
@@ -240,6 +259,67 @@ bool CellularService::LoadApnField(StoreInterface *storage,
   return false;
 }
 
+void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
+                                                   ConnectState new_state) {
+  // WORKAROUND:
+  // Some modems on Verizon network does not properly redirect when a SIM
+  // runs out of credits.  This workaround is used to detect an out-of-credits
+  // condition by by retrying a connect request if it was dropped within
+  // kOutOfCreditsConnectionDropSeconds.  If the number of retries exceeds
+  // kOutOfCreditsMaxConnectAttempts, then the SIM is considered
+  // out-of-credits and the cellular service kOutOfCreditsProperty is set.
+  // This will signal Chrome to display the appropriate UX and also suppress
+  // auto-connect until the next time the user manually connects.
+  //
+  // TODO(thieule): Remove this workaround (crosbug.com/p/18169).
+  base::TimeDelta
+      time_since_connect = base::Time::Now() - connect_start_time_;
+  if (time_since_connect.InSeconds() > kOutOfCreditsConnectionDropSeconds) {
+    ResetOutOfCreditsState();
+    return;
+  }
+  // Verizon can drop the connection in two ways:
+  //   - Denies the connect request
+  //   - Allows connect request but disconnects later
+  bool connection_dropped =
+      (IsConnectedState(curr_state) || IsConnectingState(curr_state)) &&
+      (new_state == kStateFailure || new_state == kStateIdle);
+  if (!connection_dropped)
+    return;
+  if (explicitly_disconnected())
+    return;
+  if (roaming_state_ == flimflam::kRoamingStateRoaming &&
+      !cellular_->allow_roaming_property())
+    return;
+  if (time_since_connect.InSeconds() <= kOutOfCreditsConnectionDropSeconds) {
+    if (num_connect_attempts_ < kOutOfCreditsMaxConnectAttempts) {
+      SLOG(Cellular, 2) << "Out-Of-Credits detection: Reconnecting "
+                        << "(retry #" << num_connect_attempts_ << ")";
+      // Prevent autoconnect logic from kicking in while we perform the
+      // out-of-credits detection.
+      out_of_credits_detection_in_progress_ = true;
+      dispatcher()->PostTask(
+          Bind(&CellularService::OutOfCreditsReconnect,
+               weak_ptr_factory_.GetWeakPtr()));
+    } else {
+      LOG(ERROR) <<
+          "Out-Of-Credits detection: Marking service as out-of-credits";
+      SetOutOfCredits(true);
+      ResetOutOfCreditsState();
+    }
+  }
+}
+
+void CellularService::OutOfCreditsReconnect() {
+  Error error;
+  Connect(&error);
+}
+
+void CellularService::ResetOutOfCreditsState() {
+  out_of_credits_detection_in_progress_ = false;
+  num_connect_attempts_ = 0;
+}
+
 bool CellularService::Save(StoreInterface *storage) {
   // Save properties common to all Services.
   if (!Service::Save(storage))
@@ -283,8 +363,14 @@ void CellularService::AutoConnect() {
 }
 
 void CellularService::Connect(Error *error) {
+  if (num_connect_attempts_ == 0)
+    SetOutOfCredits(false);
+  connect_start_time_ = base::Time::Now();
+  num_connect_attempts_++;
   Service::Connect(error);
   cellular_->Connect(error);
+  if (error->IsFailure())
+    ResetOutOfCreditsState();
 }
 
 void CellularService::Disconnect(Error *error) {
@@ -300,6 +386,12 @@ void CellularService::ActivateCellularModem(const string &carrier,
 
 void CellularService::CompleteCellularActivation(Error *error) {
   cellular_->CompleteActivation(error);
+}
+
+void CellularService::SetState(ConnectState new_state) {
+  if (enforce_out_of_credits_detection_)
+    PerformOutOfCreditsDetection(state(), new_state);
+  Service::SetState(new_state);
 }
 
 void CellularService::SetStorageIdentifier(const string &identifier) {
@@ -366,6 +458,14 @@ void CellularService::SetRoamingState(const string &state) {
   }
   roaming_state_ = state;
   adaptor()->EmitStringChanged(flimflam::kRoamingStateProperty, state);
+}
+
+void CellularService::SetOutOfCredits(bool state) {
+  if (state == out_of_credits_) {
+    return;
+  }
+  out_of_credits_ = state;
+  adaptor()->EmitBoolChanged(kOutOfCreditsProperty, state);
 }
 
 const Cellular::Operator &CellularService::serving_operator() const {

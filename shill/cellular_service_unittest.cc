@@ -11,6 +11,7 @@
 #include "shill/cellular_capability.h"
 #include "shill/cellular_capability_cdma.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_cellular.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
@@ -31,22 +32,22 @@ class CellularServiceTest : public testing::Test {
   CellularServiceTest()
       : metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, NULL),
-        device_(new Cellular(&control_,
-                             NULL,
-                             &metrics_,
-                             &manager_,
-                             "usb0",
-                             kAddress,
-                             3,
-                             Cellular::kTypeCDMA,
-                             "",
-                             "",
-                             "",
-                             NULL,
-                             NULL,
-                             ProxyFactory::GetInstance())),
-        service_(new CellularService(&control_, NULL, &metrics_, &manager_,
-                                     device_)),
+        device_(new MockCellular(&control_,
+                                 NULL,
+                                 &metrics_,
+                                 &manager_,
+                                 "usb0",
+                                 kAddress,
+                                 3,
+                                 Cellular::kTypeCDMA,
+                                 "",
+                                 "",
+                                 "",
+                                 NULL,
+                                 NULL,
+                                 ProxyFactory::GetInstance())),
+        service_(new CellularService(&control_, &dispatcher_, &metrics_,
+                                     &manager_, device_)),
         adaptor_(NULL) {}
 
   virtual ~CellularServiceTest() {
@@ -69,9 +70,9 @@ class CellularServiceTest : public testing::Test {
 
   NiceMockControl control_;
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
+  NiceMock<MockMetrics> metrics_;
   MockManager manager_;
-  CellularRefPtr device_;
+  scoped_refptr<MockCellular> device_;
   CellularServiceRefPtr service_;
   NiceMock<ServiceMockAdaptor> *adaptor_;  // Owned by |service_|.
 };
@@ -333,6 +334,24 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
 
+  GetCapabilityCDMA()->activation_state_ =
+      MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
+
+  // Auto-connect should be suppressed if the we're undergoing an
+  // out-of-credits detection.
+  service_->out_of_credits_detection_in_progress_ = true;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnOutOfCreditsDetectionInProgress,
+               reason);
+
+  // Auto-connect should be suppressed if we're out of credits.
+  service_->out_of_credits_detection_in_progress_ = false;
+  service_->out_of_credits_ = true;
+  EXPECT_FALSE(service_->IsAutoConnectable(&reason));
+  EXPECT_STREQ(CellularService::kAutoConnOutOfCredits, reason);
+
+  service_->out_of_credits_ = false;
+
   // But other activation states are fine.
   GetCapabilityCDMA()->activation_state_ =
       MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
@@ -381,6 +400,86 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
   service_->SetState(Service::kStateAssociating);
   EXPECT_FALSE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ(Service::kAutoConnConnecting, reason);
+}
+
+TEST_F(CellularServiceTest, OutOfCreditsDetected) {
+  service_->set_enforce_out_of_credits_detection(true);
+  EXPECT_CALL(*device_, Connect(_)).Times(3);
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateAssociating);
+  service_->SetState(Service::kStateFailure);
+  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
+  dispatcher_.DispatchPendingEvents();
+  service_->SetState(Service::kStateConfiguring);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
+  dispatcher_.DispatchPendingEvents();
+  service_->SetState(Service::kStateConnected);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+}
+
+TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedExplicitDisconnect) {
+  service_->set_enforce_out_of_credits_detection(true);
+  EXPECT_CALL(*device_, Connect(_));
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateConnected);
+  service_->UserInitiatedDisconnect(&error);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_FALSE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+  // There should not be any pending connect requests but dispatch pending
+  // events anyway to be sure.
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped) {
+  service_->set_enforce_out_of_credits_detection(true);
+  EXPECT_CALL(*device_, Connect(_));
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateAssociating);
+  service_->SetState(Service::kStateConfiguring);
+  service_->SetState(Service::kStateConnected);
+  EXPECT_FALSE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+  // There should not be any pending connect requests but dispatch pending
+  // events anyway to be sure.
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork) {
+  service_->set_enforce_out_of_credits_detection(true);
+  EXPECT_CALL(*device_, Connect(_));
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateConnected);
+  service_->connect_start_time_ =
+      base::Time::Now() -
+      base::TimeDelta::FromSeconds(
+          CellularService::kOutOfCreditsConnectionDropSeconds + 1);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_FALSE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+  // There should not be any pending connect requests but dispatch pending
+  // events anyway to be sure.
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularServiceTest, OutOfCreditsNotEnforced) {
+  EXPECT_CALL(*device_, Connect(_));
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateConnected);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_FALSE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+  // There should not be any pending connect requests but dispatch pending
+  // events anyway to be sure.
+  dispatcher_.DispatchPendingEvents();
 }
 
 }  // namespace shill

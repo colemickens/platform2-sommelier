@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular.h"
@@ -68,6 +69,7 @@ class CellularService : public Service {
                                      Error *error,
                                      const ResultCallback &callback);
   virtual void CompleteCellularActivation(Error *error);
+  virtual void SetState(ConnectState new_state);
 
   virtual std::string GetStorageIdentifier() const;
   void SetStorageIdentifier(const std::string &identifier);
@@ -101,6 +103,11 @@ class CellularService : public Service {
     return is_auto_connecting_;
   }
 
+  void set_enforce_out_of_credits_detection(bool state) {
+    enforce_out_of_credits_detection_ = state;
+  }
+  void SetOutOfCredits(bool state);
+
   // Overrides Load and Save from parent Service class.  We will call
   // the parent method.
   virtual bool Load(StoreInterface *storage);
@@ -128,9 +135,19 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
+  FRIEND_TEST(CellularServiceTest, OutOfCreditsDetected);
+  FRIEND_TEST(CellularServiceTest,
+              OutOfCreditsDetectionSkippedExplicitDisconnect);
+  FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped);
+  FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork);
+  FRIEND_TEST(CellularServiceTest, OutOfCreditsNotEnforced);
 
   static const char kAutoConnActivating[];
   static const char kAutoConnDeviceDisabled[];
+  static const char kAutoConnOutOfCredits[];
+  static const char kAutoConnOutOfCreditsDetectionInProgress[];
+  static const int64 kOutOfCreditsConnectionDropSeconds;
+  static const int kOutOfCreditsMaxConnectAttempts;
 
   void HelpRegisterDerivedStringmap(
       const std::string &name,
@@ -160,6 +177,13 @@ class CellularService : public Service {
                            const std::string &apntag,
                            Stringmap *apn_info);
 
+  void PerformOutOfCreditsDetection(ConnectState curr_state,
+                                    ConnectState new_state);
+  void OutOfCreditsReconnect();
+  void ResetOutOfCreditsState();
+
+  base::WeakPtrFactory<CellularService> weak_ptr_factory_;
+
   // Properties
   bool activate_over_non_cellular_network_;
   std::string activation_state_;
@@ -181,6 +205,17 @@ class CellularService : public Service {
   // call to Connect().  It does not remain set while the async request is
   // in flight.
   bool is_auto_connecting_;
+
+  // Flag indicating whether we need to perform out-of-credits detection.
+  bool enforce_out_of_credits_detection_;
+  // Time when the last connect request started.
+  base::Time connect_start_time_;
+  // Number of connect attempts.
+  int num_connect_attempts_;
+  // Flag indicating whether out-of-credits detection is in progress.
+  bool out_of_credits_detection_in_progress_;
+  // Flag indicating if the SIM is out-of-credits.
+  bool out_of_credits_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };

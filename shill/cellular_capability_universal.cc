@@ -610,6 +610,13 @@ void CellularCapabilityUniversal::OnServiceCreated() {
   UpdateScanningProperty();
   UpdateServingOperator();
   UpdateOLP();
+
+  // WORKAROUND:
+  // E362 modems on Verizon network does not properly redirect when a SIM
+  // runs out of credits, we need to enforce out-of-credits detection.
+  // TODO(thieule): Remove this workaround (crosbug.com/p/18619).
+  if (model_id_ == kE362ModelId)
+    cellular()->service()->set_enforce_out_of_credits_detection(true);
 }
 
 // Create the list of APNs to try, in the following order:

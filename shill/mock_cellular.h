@@ -32,6 +32,7 @@ class MockCellular : public Cellular {
                ProxyFactory *proxy_factory);
   virtual ~MockCellular();
 
+  MOCK_METHOD1(Connect, void(Error *error));
   MOCK_METHOD1(Disconnect, void(Error *error));
   MOCK_METHOD3(OnDBusPropertiesChanged, void(
       const std::string &interface,
