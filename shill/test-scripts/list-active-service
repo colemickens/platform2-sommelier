@@ -1,0 +1,43 @@
+#!/usr/bin/python
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# usage:
+# list-active-service [[service-type [[service-prop1] ... [service-propN]]]]
+#     service-type: shill service type: wifi, ethernet, etc
+#     service-propX: shill service property: Connectable, Name, etc
+#
+# Queries the currently active services from shill, optionally filtering
+# for specific service types and properties
+
+import dbus, flimflam, sys
+
+def main():
+    if len(sys.argv) > 1 and str(sys.argv[1]) in ['-h','-?','--help','-help']:
+        print('usage: %s [[service-type [[service-prop1] ... [service-propN]]]]'
+            % str(sys.argv[0]))
+        return
+
+    flim = flimflam.FlimFlam(dbus.SystemBus())
+
+    for service in flim.GetObjectList('Service'):
+        properties = service.GetProperties(utf8_strings = True)
+        if not bool(properties['IsActive']):
+            continue
+
+        if len(sys.argv) > 1 and str(properties['Type']) != sys.argv[1]:
+            continue
+
+        if len(sys.argv) > 2:
+            requested_keys = sys.argv[2:]
+        else:
+            print('[ %s ]' % service.object_path)
+            requested_keys = properties.keys()
+
+        for key in requested_keys:
+            print('    %s = %s' % (
+                    key, flimflam.convert_dbus_value(properties[key], 4)))
+
+if __name__ == '__main__':
+    main()
