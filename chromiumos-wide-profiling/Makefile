@@ -62,8 +62,15 @@ $(TESTS): %: %.o $(COMMON_OBJECTS)
 # build with 'FEATURES="test noclean"' and go to the build directory.
 check: $(TESTS)
 	for test in $(TESTS); do \
-		./$$test 2> ./$$test.stderr.log && continue; \
-		echo "See $$test.stderr.log for errors"; \
+		case $$test in \
+		perf_*_test) \
+			./$$test 2> ./$$test.stderr.log && continue; \
+			echo "See $$test.stderr.log for errors" \
+			;; \
+		*) \
+			./$$test && continue \
+			;; \
+		esac; \
 		exit 1; \
 	done
 
