@@ -378,7 +378,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --audio-buffer-size=2048 \
             --device-management-url="$DMSERVER" \
             --disable-seccomp-sandbox \
-            --enable-autologin \
             --enable-encrypted-media \
             --enable-gpu-sandbox \
             --enable-logging \
