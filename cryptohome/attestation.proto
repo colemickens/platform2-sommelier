@@ -187,7 +187,7 @@ message SignedData {
 // SignedData message, in which the data field is the serialized Challenge
 // message, and the signature field is the signature of the data field signed
 // by the enterprise server using a hard-coded key. The signature algorithm is
-// RSA-PSS-SHA256.
+// RSASSA-PKCS1-v1_5-SHA256.
 message Challenge {
   // A string for the client to sanity check a legitimate challenge.
   optional string prefix = 1;
@@ -203,7 +203,7 @@ message Challenge {
 // SignedData message, in which the data field is the serialized
 // ChallengeResponse message, and the signature field is the signature of the
 // data field signed by the client using the key being challenged. The
-// signature algorithm is RSA-PSS-SHA256.
+// signature algorithm is RSASSA-PKCS1-v1_5-SHA256.
 message ChallengeResponse {
   // The original challenge data.
   optional SignedData challenge = 1;
