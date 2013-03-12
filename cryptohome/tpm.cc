@@ -741,9 +741,9 @@ bool Tpm::OpenAndConnectTpm(TSS_HCONTEXT* context_handle, TSS_RESULT* result) {
   return (*context_handle != 0);
 }
 
-bool Tpm::Encrypt(const chromeos::SecureBlob& plaintext,
-                  const chromeos::SecureBlob& key,
-                  chromeos::SecureBlob* ciphertext,
+bool Tpm::Encrypt(const SecureBlob& plaintext,
+                  const SecureBlob& key,
+                  SecureBlob* ciphertext,
                   Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
@@ -761,9 +761,9 @@ bool Tpm::Encrypt(const chromeos::SecureBlob& plaintext,
   return true;
 }
 
-bool Tpm::Decrypt(const chromeos::SecureBlob& ciphertext,
-                  const chromeos::SecureBlob& key,
-                  chromeos::SecureBlob* plaintext,
+bool Tpm::Decrypt(const SecureBlob& ciphertext,
+                  const SecureBlob& key,
+                  SecureBlob* plaintext,
                   Tpm::TpmRetryAction* retry_action) {
   *retry_action = Tpm::RetryNone;
   if (!IsConnected()) {
@@ -908,9 +908,9 @@ bool Tpm::DecryptBlob(TSS_HCONTEXT context_handle,
 // any known plaintext. This approach also requires brute-force attempts on k to
 // go through the TPM, since there's no way to test a potential decryption
 // without doing UnRSA-on-TPM() to see if the message is valid now.
-bool Tpm::ObscureRSAMessage(const chromeos::SecureBlob& plaintext,
-                            const chromeos::SecureBlob& key,
-                            chromeos::SecureBlob* ciphertext) {
+bool Tpm::ObscureRSAMessage(const SecureBlob& plaintext,
+                            const SecureBlob& key,
+                            SecureBlob* ciphertext) {
   unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
   if (plaintext.size() < aes_block_size * 2) {
     LOG(ERROR) << "Plaintext is too small.";
@@ -934,9 +934,9 @@ bool Tpm::ObscureRSAMessage(const chromeos::SecureBlob& plaintext,
   return true;
 }
 
-bool Tpm::UnobscureRSAMessage(const chromeos::SecureBlob& ciphertext,
-                              const chromeos::SecureBlob& key,
-                              chromeos::SecureBlob* plaintext) {
+bool Tpm::UnobscureRSAMessage(const SecureBlob& ciphertext,
+                              const SecureBlob& key,
+                              SecureBlob* plaintext) {
   unsigned int aes_block_size = CryptoLib::GetAesBlockSize();
   if (ciphertext.size() < aes_block_size * 2) {
     LOG(ERROR) << "Ciphertext is is too small.";
@@ -1347,7 +1347,7 @@ bool Tpm::StoreOwnerPassword(const chromeos::Blob& owner_password,
   // Use PCR0 when sealing the data so that the owner password is only
   // available in the current boot mode.  This helps protect the password from
   // offline attacks until it has been presented and cleared.
-  chromeos::SecureBlob sealed_password;
+  SecureBlob sealed_password;
   if (!SealToPCR0(owner_password, &sealed_password)) {
     LOG(ERROR) << "StoreOwnerPassword: Failed to seal owner password.";
     return false;
@@ -2101,7 +2101,7 @@ Value* Tpm::GetStatusValue(TpmInit* init) {
   return dv;
 }
 
-bool Tpm::GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key) {
+bool Tpm::GetEndorsementPublicKey(SecureBlob* ek_public_key) {
   // Connect to the TPM as the owner.
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -2129,7 +2129,7 @@ bool Tpm::GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key) {
     TPM_LOG(ERROR, result) << "GetEndorsementPublicKey: Failed to read key.";
     return false;
   }
-  chromeos::SecureBlob ek_public_key_blob(ek_public_key_buf.value(),
+  SecureBlob ek_public_key_blob(ek_public_key_buf.value(),
                                           ek_public_key_length);
   chromeos::SecureMemset(ek_public_key_buf.value(), 0, ek_public_key_length);
 
@@ -2140,7 +2140,7 @@ bool Tpm::GetEndorsementPublicKey(chromeos::SecureBlob* ek_public_key) {
   return true;
 }
 
-bool Tpm::GetEndorsementCredential(chromeos::SecureBlob* credential) {
+bool Tpm::GetEndorsementCredential(SecureBlob* credential) {
   // Connect to the TPM as the owner.
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -2217,11 +2217,11 @@ bool Tpm::GetEndorsementCredential(chromeos::SecureBlob* credential) {
 }
 
 bool Tpm::DecryptIdentityRequest(RSA* pca_key,
-                                 const chromeos::SecureBlob& request,
-                                 chromeos::SecureBlob* identity_binding,
-                                 chromeos::SecureBlob* endorsement_credential,
-                                 chromeos::SecureBlob* platform_credential,
-                                 chromeos::SecureBlob* conformance_credential) {
+                                 const SecureBlob& request,
+                                 SecureBlob* identity_binding,
+                                 SecureBlob* endorsement_credential,
+                                 SecureBlob* platform_credential,
+                                 SecureBlob* conformance_credential) {
   // Parse the serialized TPM_IDENTITY_REQ structure.
   UINT64 offset = 0;
   BYTE* buffer = const_cast<BYTE*>(&request.front());
@@ -2254,7 +2254,7 @@ bool Tpm::DecryptIdentityRequest(RSA* pca_key,
   scoped_ptr_malloc<BYTE> scoped_sym_key(symmetric_key.data);
 
   // Decrypt the request with the symmetric key.
-  chromeos::SecureBlob proof_serial;
+  SecureBlob proof_serial;
   proof_serial.resize(request_parsed.symSize);
   UINT32 proof_serial_length = proof_serial.size();
   result = Trspi_SymDecrypt(symmetric_key.algId, TPM_ES_SYM_CBC_PKCS5PAD,
@@ -2300,8 +2300,8 @@ bool Tpm::DecryptIdentityRequest(RSA* pca_key,
   return true;
 }
 
-bool Tpm::ConvertPublicKeyToDER(const chromeos::SecureBlob& public_key,
-                                chromeos::SecureBlob* public_key_der) {
+bool Tpm::ConvertPublicKeyToDER(const SecureBlob& public_key,
+                                SecureBlob* public_key_der) {
   // Parse the serialized TPM_PUBKEY.
   UINT64 offset = 0;
   BYTE* buffer = const_cast<BYTE*>(&public_key.front());
@@ -2348,15 +2348,15 @@ bool Tpm::ConvertPublicKeyToDER(const chromeos::SecureBlob& public_key,
   return true;
 }
 
-bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
-                       chromeos::SecureBlob* identity_public_key,
-                       chromeos::SecureBlob* identity_key_blob,
-                       chromeos::SecureBlob* identity_binding,
-                       chromeos::SecureBlob* identity_label,
-                       chromeos::SecureBlob* pca_public_key,
-                       chromeos::SecureBlob* endorsement_credential,
-                       chromeos::SecureBlob* platform_credential,
-                       chromeos::SecureBlob* conformance_credential) {
+bool Tpm::MakeIdentity(SecureBlob* identity_public_key_der,
+                       SecureBlob* identity_public_key,
+                       SecureBlob* identity_key_blob,
+                       SecureBlob* identity_binding,
+                       SecureBlob* identity_label,
+                       SecureBlob* pca_public_key,
+                       SecureBlob* endorsement_credential,
+                       SecureBlob* platform_credential,
+                       SecureBlob* conformance_credential) {
   CHECK(identity_public_key_der && identity_public_key && identity_key_blob &&
         identity_binding && identity_label && pca_public_key &&
         endorsement_credential && platform_credential &&
@@ -2480,7 +2480,7 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
   }
 
   // Decrypt and parse the identity request.
-  chromeos::SecureBlob request_blob(request.value(), request_length);
+  SecureBlob request_blob(request.value(), request_length);
   if (!DecryptIdentityRequest(fake_pca_key.get(), request_blob,
                               identity_binding, endorsement_credential,
                               platform_credential, conformance_credential)) {
@@ -2535,11 +2535,11 @@ bool Tpm::MakeIdentity(chromeos::SecureBlob* identity_public_key_der,
   return true;
 }
 
-bool Tpm::QuotePCR0(const chromeos::SecureBlob& identity_key_blob,
-                    const chromeos::SecureBlob& external_data,
-                    chromeos::SecureBlob* pcr_value,
-                    chromeos::SecureBlob* quoted_data,
-                    chromeos::SecureBlob* quote) {
+bool Tpm::QuotePCR0(const SecureBlob& identity_key_blob,
+                    const SecureBlob& external_data,
+                    SecureBlob* pcr_value,
+                    SecureBlob* quoted_data,
+                    SecureBlob* quote) {
   CHECK(pcr_value && quoted_data && quote);
   ScopedTssContext context_handle;
   TSS_HTPM tpm_handle;
@@ -2740,13 +2740,13 @@ bool Tpm::Unseal(const chromeos::Blob& sealed_value, chromeos::Blob* value) {
   return true;
 }
 
-bool Tpm::CreateCertifiedKey(const chromeos::SecureBlob& identity_key_blob,
-                             const chromeos::SecureBlob& external_data,
-                             chromeos::SecureBlob* certified_public_key,
-                             chromeos::SecureBlob* certified_public_key_der,
-                             chromeos::SecureBlob* certified_key_blob,
-                             chromeos::SecureBlob* certified_key_info,
-                             chromeos::SecureBlob* certified_key_proof) {
+bool Tpm::CreateCertifiedKey(const SecureBlob& identity_key_blob,
+                             const SecureBlob& external_data,
+                             SecureBlob* certified_public_key,
+                             SecureBlob* certified_public_key_der,
+                             SecureBlob* certified_key_blob,
+                             SecureBlob* certified_key_info,
+                             SecureBlob* certified_key_proof) {
   CHECK(certified_public_key && certified_key_blob && certified_key_info &&
         certified_key_proof);
   ScopedTssContext context_handle;
@@ -2977,12 +2977,12 @@ bool Tpm::CreateDelegate(const SecureBlob& identity_key_blob,
   return true;
 }
 
-bool Tpm::ActivateIdentity(const chromeos::SecureBlob& delegate_blob,
-                           const chromeos::SecureBlob& delegate_secret,
-                           const chromeos::SecureBlob& identity_key_blob,
-                           const chromeos::SecureBlob& encrypted_asym_ca,
-                           const chromeos::SecureBlob& encrypted_sym_ca,
-                           chromeos::SecureBlob* identity_credential) {
+bool Tpm::ActivateIdentity(const SecureBlob& delegate_blob,
+                           const SecureBlob& delegate_secret,
+                           const SecureBlob& identity_key_blob,
+                           const SecureBlob& encrypted_asym_ca,
+                           const SecureBlob& encrypted_sym_ca,
+                           SecureBlob* identity_credential) {
   CHECK(identity_credential);
 
   // Connect to the TPM as the owner delegate.
@@ -3034,9 +3034,9 @@ bool Tpm::ActivateIdentity(const chromeos::SecureBlob& delegate_blob,
   return true;
 }
 
-bool Tpm::TssCompatibleEncrypt(const chromeos::SecureBlob& key,
-                               const chromeos::SecureBlob& input,
-                               chromeos::SecureBlob* output) {
+bool Tpm::TssCompatibleEncrypt(const SecureBlob& key,
+                               const SecureBlob& input,
+                               SecureBlob* output) {
   CHECK(output);
   BYTE* key_buffer = const_cast<BYTE*>(&key.front());
   BYTE* in_buffer = const_cast<BYTE*>(&input.front());
@@ -3057,8 +3057,8 @@ bool Tpm::TssCompatibleEncrypt(const chromeos::SecureBlob& key,
 }
 
 bool Tpm::TpmCompatibleOAEPEncrypt(RSA* key,
-                                   const chromeos::SecureBlob& input,
-                                   chromeos::SecureBlob* output) {
+                                   const SecureBlob& input,
+                                   SecureBlob* output) {
   CHECK(output);
   // The custom OAEP parameter as specified in TPM Main Part 1, Section 31.1.1.
   unsigned char oaep_param[4] = {'T', 'C', 'P', 'A'};
@@ -3080,6 +3080,71 @@ bool Tpm::TpmCompatibleOAEPEncrypt(RSA* key,
     LOG(ERROR) << "Failed to encrypt OAEP padded input.";
     return false;
   }
+  return true;
+}
+
+bool Tpm::Sign(const SecureBlob& key_blob,
+               const SecureBlob& der_encoded_input,
+               SecureBlob* signature) {
+  CHECK(signature);
+  ScopedTssContext context_handle;
+  TSS_HTPM tpm_handle;
+  if (!ConnectContextAsUser(context_handle.ptr(), &tpm_handle)) {
+    LOG(ERROR) << "Sign: Failed to connect to the TPM.";
+    return false;
+  }
+
+  // Load the Storage Root Key.
+  TSS_RESULT result;
+  ScopedTssKey srk_handle(context_handle);
+  if (!LoadSrk(context_handle, srk_handle.ptr(), &result)) {
+    TPM_LOG(INFO, result) << "Sign: Failed to load SRK.";
+    return false;
+  }
+
+  // Load the key (which should be wrapped by the SRK).
+  ScopedTssKey key_handle(context_handle);
+  result = Tspi_Context_LoadKeyByBlob(context_handle,
+                                      srk_handle,
+                                      key_blob.size(),
+                                      const_cast<BYTE*>(&key_blob.front()),
+                                      key_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Sign: Failed to load key.";
+    return false;
+  }
+
+  // Create a hash object to hold the input.
+  ScopedTssObject<TSS_HHASH> hash_handle(context_handle);
+  result = Tspi_Context_CreateObject(context_handle,
+                                     TSS_OBJECT_TYPE_HASH,
+                                     TSS_HASH_OTHER,
+                                     hash_handle.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Sign: Failed to create hash object.";
+    return false;
+  }
+
+  // Don't hash anything, just push the input data into the hash object.
+  result = Tspi_Hash_SetHashValue(
+      hash_handle,
+      der_encoded_input.size(),
+      const_cast<BYTE*>(&der_encoded_input.front()));
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Sign: Failed to set hash data.";
+    return false;
+  }
+
+  UINT32 length = 0;
+  ScopedTssMemory buffer(context_handle);
+  result = Tspi_Hash_Sign(hash_handle, key_handle, &length, buffer.ptr());
+  if (TPM_ERROR(result)) {
+    TPM_LOG(ERROR, result) << "Sign: Failed to generate signature.";
+    return false;
+  }
+  SecureBlob tmp(buffer.value(), length);
+  chromeos::SecureMemset(buffer.value(), 0, length);
+  signature->swap(tmp);
   return true;
 }
 

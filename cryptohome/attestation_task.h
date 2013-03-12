@@ -91,4 +91,40 @@ class FinishCertRequestTask : public AttestationTask {
   DISALLOW_COPY_AND_ASSIGN(FinishCertRequestTask);
 };
 
+// An asynchronous task for Attestation::Sign*Challenge().
+class SignChallengeTask : public AttestationTask {
+ public:
+  // Constructs a task for SignSimpleChallenge.
+  SignChallengeTask(AttestationTaskObserver* observer,
+                    Attestation* attestation,
+                    bool is_user_specific,
+                    const std::string& key_name,
+                    const chromeos::SecureBlob& challenge);
+  // Constructs a task for SignEnterpriseChallenge.
+  SignChallengeTask(AttestationTaskObserver* observer,
+                    Attestation* attestation,
+                    bool is_user_specific,
+                    const std::string& key_name,
+                    const std::string& domain,
+                    const chromeos::SecureBlob& device_id,
+                    const chromeos::SecureBlob& signing_key,
+                    const chromeos::SecureBlob& encryption_key,
+                    const chromeos::SecureBlob& challenge);
+  virtual ~SignChallengeTask();
+
+  virtual void Run();
+
+ private:
+  bool is_enterprise_;
+  bool is_user_specific_;
+  std::string key_name_;
+  std::string domain_;
+  chromeos::SecureBlob device_id_;
+  chromeos::SecureBlob signing_key_;
+  chromeos::SecureBlob encryption_key_;
+  chromeos::SecureBlob challenge_;
+
+  DISALLOW_COPY_AND_ASSIGN(SignChallengeTask);
+};
+
 }  // namespace cryptohome

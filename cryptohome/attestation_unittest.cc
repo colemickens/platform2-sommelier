@@ -153,6 +153,98 @@ class AttestationTest : public testing::Test {
     OPENSSL_free(buffer);
     return tmp;
   }
+
+  bool VerifySimpleChallenge(const SecureBlob& response,
+                             const string& challenge,
+                             const string& signature) {
+    SignedData signed_data;
+    if (!signed_data.ParseFromArray(response.const_data(), response.size()))
+      return false;
+    if (signed_data.data().find(challenge) != 0 ||
+        signed_data.data() == challenge)
+      return false;
+    if (signed_data.signature() != signature)
+      return false;
+    return true;
+  }
+
+  bool VerifyEnterpriseChallenge(const SecureBlob& response,
+                                 KeyType key_type,
+                                 const string& domain,
+                                 const string& device_id,
+                                 const string& cert_chain,
+                                 const string& signature) {
+    SignedData signed_data;
+    if (!signed_data.ParseFromArray(response.const_data(), response.size()))
+      return false;
+    ChallengeResponse response_pb;
+    if (!response_pb.ParseFromString(signed_data.data()))
+      return false;
+    string expected_challenge = ConvertBlobToString(
+        GetEnterpriseChallenge("EnterpriseKeyChallenge", false));
+    if (response_pb.challenge().data() != expected_challenge)
+      return false;
+    string key_info;
+    if (!DecryptData(response_pb.encrypted_key_info(), &key_info))
+      return false;
+    KeyInfo key_info_pb;
+    if (!key_info_pb.ParseFromString(key_info))
+      return false;
+    if (key_info_pb.domain() != domain ||
+        key_info_pb.device_id() != device_id ||
+        key_info_pb.key_type() != key_type ||
+        key_info_pb.certificate() != cert_chain)
+      return false;
+    if (signed_data.signature() != signature)
+      return false;
+    return true;
+  }
+
+  SecureBlob GetEnterpriseChallenge(const string& prefix, bool sign) {
+    Challenge challenge;
+    challenge.set_prefix(prefix);
+    challenge.set_nonce("nonce");
+    challenge.set_timestamp(123456789);
+    string serialized;
+    challenge.SerializeToString(&serialized);
+    if (sign) {
+      unsigned char buffer[256];
+      unsigned int length = 0;
+      SecureBlob digest = CryptoLib::Sha256(ConvertStringToBlob(serialized));
+      RSA_sign(NID_sha256,
+               &digest.front(), digest.size(),
+               buffer, &length,
+               rsa());
+      SignedData signed_challenge;
+      signed_challenge.set_data(serialized);
+      signed_challenge.set_signature(buffer, length);
+      signed_challenge.SerializeToString(&serialized);
+    }
+    return ConvertStringToBlob(serialized);
+  }
+
+  bool DecryptData(const EncryptedData& input, string* output) {
+    // Unwrap the AES key.
+    unsigned char* wrapped_key_buffer = reinterpret_cast<unsigned char*>(
+        const_cast<char*>(input.wrapped_key().data()));
+    unsigned char buffer[256];
+    int length = RSA_private_decrypt(input.wrapped_key().size(),
+                                     wrapped_key_buffer,
+                                     buffer,
+                                     rsa(),
+                                     RSA_PKCS1_OAEP_PADDING);
+    if (length != 32)
+      return false;
+    SecureBlob aes_key(buffer, length);
+    // Decrypt the blob.
+    SecureBlob decrypted;
+    SecureBlob encrypted = ConvertStringToBlob(input.encrypted_data());
+    SecureBlob aes_iv = ConvertStringToBlob(input.iv());
+    if (!CryptoLib::AesDecrypt(encrypted, aes_key, aes_iv, &decrypted))
+      return false;
+    *output = ConvertBlobToString(decrypted);
+    return true;
+  }
 };
 
 TEST(AttestationTest_, NullTpm) {
@@ -235,6 +327,100 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
                                                 "stored_ca_cert")));
   EXPECT_TRUE(attestation_.GetPublicKey(true, "test", &blob));
   EXPECT_TRUE(blob == GetX509PublicKey());
+}
+
+TEST_F(AttestationTest, SimpleChallenge) {
+  EXPECT_CALL(tpm_, Sign(_, _, _))
+      .WillOnce(Return(false))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
+                            Return(true)));
+  chromeos::SecureBlob blob;
+  attestation_.PrepareForEnrollment();
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
+  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
+                                             false,
+                                             "test",
+                                             &blob));
+  // Expect tpm_.Sign() failure the first attempt.
+  EXPECT_FALSE(attestation_.SignSimpleChallenge(false,
+                                                "test",
+                                                SecureBlob("challenge"),
+                                                &blob));
+  EXPECT_TRUE(attestation_.SignSimpleChallenge(false,
+                                               "test",
+                                               SecureBlob("challenge"),
+                                               &blob));
+  EXPECT_TRUE(VerifySimpleChallenge(blob, "challenge", "signature"));
+}
+
+TEST_F(AttestationTest, EMKChallenge) {
+  EXPECT_CALL(tpm_, Sign(_, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
+                            Return(true)));
+  chromeos::SecureBlob blob;
+  attestation_.PrepareForEnrollment();
+  EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
+  EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
+  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
+                                             false,
+                                             "test",
+                                             &blob));
+  SecureBlob public_key = GetX509PublicKey();
+  SecureBlob bad_prefix_challenge = GetEnterpriseChallenge("bad", true);
+  EXPECT_FALSE(attestation_.SignEnterpriseChallenge(false,
+                                                    "test",
+                                                    "test_domain",
+                                                    SecureBlob("test_id"),
+                                                    public_key,
+                                                    public_key,
+                                                    bad_prefix_challenge,
+                                                    &blob));
+  SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
+  EXPECT_TRUE(attestation_.SignEnterpriseChallenge(false,
+                                                   "test",
+                                                   "test_domain",
+                                                   SecureBlob("test_id"),
+                                                   public_key,
+                                                   public_key,
+                                                   challenge,
+                                                   &blob));
+  EXPECT_TRUE(VerifyEnterpriseChallenge(blob,
+                                        EMK,
+                                        "test_domain",
+                                        "test_id",
+                                        "",
+                                        "signature"));
+}
+
+TEST_F(AttestationTest, EUKChallenge) {
+  EXPECT_CALL(tpm_, Sign(_, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(SecureBlob("signature")),
+                            Return(true)));
+  EXPECT_CALL(key_store_, Read("test", _))
+      .WillRepeatedly(DoAll(
+          SetArgumentPointee<1>(GetCertifiedKeyBlob()),
+          Return(true)));
+  chromeos::SecureBlob blob;
+  SecureBlob public_key = GetX509PublicKey();
+  SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
+  EXPECT_TRUE(attestation_.SignEnterpriseChallenge(true,
+                                                   "test",
+                                                   "test_domain",
+                                                   SecureBlob("test_id"),
+                                                   public_key,
+                                                   public_key,
+                                                   challenge,
+                                                   &blob));
+  EXPECT_TRUE(VerifyEnterpriseChallenge(blob,
+                                        EUK,
+                                        "test_domain",
+                                        "test_id",
+                                        EncodeCertChain("stored_cert",
+                                                        "stored_ca_cert"),
+                                        "signature"));
 }
 
 }  // namespace cryptohome

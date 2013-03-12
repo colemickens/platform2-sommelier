@@ -1478,8 +1478,28 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  // TODO(dkrahn): implement
-  LOG(ERROR) << __func__ << ": Not implemented";
+  chromeos::SecureBlob device_id_blob(device_id->data, device_id->len);
+  chromeos::SecureBlob signing_key(enterprise_signing_key->data,
+                                   enterprise_signing_key->len);
+  chromeos::SecureBlob encryption_key(enterprise_encryption_key->data,
+                                      enterprise_encryption_key->len);
+  chromeos::SecureBlob challenge_blob(challenge->data, challenge->len);
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<SignChallengeTask> task =
+      new SignChallengeTask(observer,
+                            tpm_init_->get_attestation(),
+                            is_user_specific,
+                            key_name,
+                            domain,
+                            device_id_blob,
+                            signing_key,
+                            encryption_key,
+                            challenge_blob);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&SignChallengeTask::Run, task.get()));
   return TRUE;
 }
 
@@ -1489,8 +1509,19 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
-  // TODO(dkrahn): implement
-  LOG(ERROR) << __func__ << ": Not implemented";
+  chromeos::SecureBlob challenge_blob(challenge->data, challenge->len);
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<SignChallengeTask> task =
+      new SignChallengeTask(observer,
+                            tpm_init_->get_attestation(),
+                            is_user_specific,
+                            key_name,
+                            challenge_blob);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&SignChallengeTask::Run, task.get()));
   return TRUE;
 }
 

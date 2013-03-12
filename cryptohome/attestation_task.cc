@@ -6,7 +6,14 @@
 
 #include "attestation_task.h"
 
+#include <string>
+
+#include <chromeos/secure_blob.h>
+
 #include "attestation.h"
+
+using chromeos::SecureBlob;
+using std::string;
 
 namespace cryptohome {
 
@@ -83,7 +90,7 @@ FinishCertRequestTask::FinishCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
                                              const SecureBlob& pca_response,
                                              bool is_user_specific,
-                                             const std::string& key_name)
+                                             const string& key_name)
     : AttestationTask(observer, attestation),
       pca_response_(pca_response),
       is_user_specific_(is_user_specific),
@@ -103,6 +110,68 @@ void FinishCertRequestTask::Run() {
     result()->set_return_status(status);
     result()->set_return_data(cert);
   }
+  Notify();
+}
+
+SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
+                                     Attestation* attestation,
+                                     bool is_user_specific,
+                                     const string& key_name,
+                                     const SecureBlob& challenge)
+    : AttestationTask(observer, attestation),
+      is_enterprise_(false),
+      is_user_specific_(is_user_specific),
+      key_name_(key_name),
+      challenge_(challenge) {
+}
+
+SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
+                                     Attestation* attestation,
+                                     bool is_user_specific,
+                                     const string& key_name,
+                                     const string& domain,
+                                     const SecureBlob& device_id,
+                                     const SecureBlob& signing_key,
+                                     const SecureBlob& encryption_key,
+                                     const SecureBlob& challenge)
+    : AttestationTask(observer, attestation),
+      is_enterprise_(true),
+      is_user_specific_(is_user_specific),
+      key_name_(key_name),
+      domain_(domain),
+      device_id_(device_id),
+      signing_key_(signing_key),
+      encryption_key_(encryption_key),
+      challenge_(challenge) {
+}
+
+SignChallengeTask::~SignChallengeTask() {}
+
+void SignChallengeTask::Run() {
+  result()->set_return_status(FALSE);
+  if (!attestation_) {
+    Notify();
+    return;
+  }
+  SecureBlob response;
+  bool status = false;
+  if (is_enterprise_) {
+    status = attestation_->SignEnterpriseChallenge(is_user_specific_,
+                                                   key_name_,
+                                                   domain_,
+                                                   device_id_,
+                                                   signing_key_,
+                                                   encryption_key_,
+                                                   challenge_,
+                                                   &response);
+  } else {
+    status = attestation_->SignSimpleChallenge(is_user_specific_,
+                                               key_name_,
+                                               challenge_,
+                                               &response);
+  }
+  result()->set_return_status(status);
+  result()->set_return_data(response);
   Notify();
 }
 

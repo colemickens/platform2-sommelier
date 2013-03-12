@@ -34,12 +34,12 @@ const size_t Attestation::kCipherKeySize = 32;
 const size_t Attestation::kCipherBlockSize = 16;
 const size_t Attestation::kNonceSize = 20;  // As per TPM_NONCE definition.
 const size_t Attestation::kDigestSize = 20;  // As per TPM_DIGEST definition.
-const char* Attestation::kDefaultDatabasePath =
+const char Attestation::kDefaultDatabasePath[] =
     "/mnt/stateful_partition/unencrypted/preserve/attestation.epb";
 
 #ifndef USE_TEST_PCA
 // This has been extracted from the Chrome OS PCA's encryption certificate.
-const char* Attestation::kDefaultPCAPublicKey =
+const char Attestation::kDefaultPCAPublicKey[] =
     "A2976637E113CC457013F4334312A416395B08D4B2A9724FC9BAD65D0290F39C"
     "866D1163C2CD6474A24A55403C968CF78FA153C338179407FE568C6E550949B1"
     "B3A80731BA9311EC16F8F66060A2C550914D252DB90B44D19BC6C15E923FFCFB"
@@ -50,7 +50,7 @@ const char* Attestation::kDefaultPCAPublicKey =
     "D334DB04A1DF267D2343C75E5D282A287060D345981ABDA0B2506AD882579FEF";
 #else
 // The test instance uses different keys.
-const char* Attestation::kDefaultPCAPublicKey =
+const char Attestation::kDefaultPCAPublicKey[] =
     "A1D50D088994000492B5F3ED8A9C5FC8772706219F4C063B2F6A8C6B74D3AD6B"
     "212A53D01DABB34A6261288540D420D3BA59ED279D859DE6227A7AB6BD88FADD"
     "FC3078D465F4DF97E03A52A587BD0165AE3B180FE7B255B7BEDC1BE81CB1383F"
@@ -136,6 +136,11 @@ const Attestation::PCRValue Attestation::kKnownPCRValues[] = {
   { true,  false, kDeveloper },
   { true,  true,  kVerified  },
   { true,  true,  kDeveloper }
+};
+
+const unsigned char Attestation::kSha256DigestInfo[] = {
+    0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01, 0x65, 0x03,
+    0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 };
 
 Attestation::Attestation(Tpm* tpm, Platform* platform)
@@ -576,7 +581,7 @@ bool Attestation::GetCertificateChain(bool is_user_specific,
   base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, key_name, &key)) {
-    LOG(ERROR) << "Could not find certified key: " << key_name;
+    LOG(ERROR) << __func__ << ": Could not find certified key: " << key_name;
     return false;
   }
   return CreatePEMCertificateChain(key.certified_key_credential(),
@@ -590,7 +595,7 @@ bool Attestation::GetPublicKey(bool is_user_specific,
   base::AutoLock lock(lock_);
   CertifiedKey key;
   if (!FindKeyByName(is_user_specific, key_name, &key)) {
-    LOG(ERROR) << "Could not find certified key: " << key_name;
+    LOG(ERROR) << __func__ << ": Could not find certified key: " << key_name;
     return false;
   }
   SecureBlob public_key_der = ConvertStringToBlob(key.public_key());
@@ -599,13 +604,13 @@ bool Attestation::GetPublicKey(bool is_user_specific,
   const unsigned char* asn1_ptr = &public_key_der.front();
   RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size());
   if (!rsa) {
-    LOG(ERROR) << "Failed to decode public key.";
+    LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return false;
   }
   unsigned char* buffer = NULL;
   int length = i2d_RSA_PUBKEY(rsa, &buffer);
   if (length <= 0) {
-    LOG(ERROR) << "Failed to encode public key.";
+    LOG(ERROR) << __func__ << ": Failed to encode public key.";
     RSA_free(rsa);
     return false;
   }
@@ -622,6 +627,104 @@ bool Attestation::DoesKeyExist(bool is_user_specific,
   base::AutoLock lock(lock_);
   CertifiedKey key;
   return FindKeyByName(is_user_specific, key_name, &key);
+}
+
+bool Attestation::SignEnterpriseChallenge(
+      bool is_user_specific,
+      const string& key_name,
+      const string& domain,
+      const SecureBlob& device_id,
+      const SecureBlob& signing_key,
+      const SecureBlob& encryption_key,
+      const SecureBlob& challenge,
+      SecureBlob* response) {
+  CertifiedKey key;
+  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+    LOG(ERROR) << __func__ << ": Key not found.";
+    return false;
+  }
+
+  // Validate that the challenge is coming from the expected source.
+  SignedData signed_challenge;
+  if (!signed_challenge.ParseFromArray(challenge.const_data(),
+                                       challenge.size())) {
+    LOG(ERROR) << __func__ << ": Failed to parse signed challenge.";
+    return false;
+  }
+  if (!ValidateEnterpriseChallenge(signed_challenge, signing_key)) {
+    LOG(ERROR) << __func__ << ": Invalid challenge.";
+    return false;
+  }
+
+  // Assemble a response protobuf.
+  ChallengeResponse response_pb;
+  *response_pb.mutable_challenge() = signed_challenge;
+  SecureBlob nonce;
+  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": Failed to generate nonce.";
+    return false;
+  }
+  response_pb.set_nonce(ConvertBlobToString(nonce));
+  KeyInfo key_info;
+  // EUK -> Enterprise User Key
+  // EMK -> Enterprise Machine Key
+  key_info.set_key_type(is_user_specific ? EUK : EMK);
+  key_info.set_domain(domain);
+  key_info.set_device_id(ConvertBlobToString(device_id));
+  // Only include the certificate if this is a user key.
+  if (is_user_specific) {
+    SecureBlob certificate_chain;
+    if (!CreatePEMCertificateChain(key.certified_key_credential(),
+                                   key.intermediate_ca_cert(),
+                                   &certificate_chain)) {
+      LOG(ERROR) << __func__ << ": Failed to construct certificate chain.";
+      return false;
+    }
+    key_info.set_certificate(ConvertBlobToString(certificate_chain));
+  }
+  if (!EncryptKeyInfo(key_info,
+                      encryption_key,
+                      response_pb.mutable_encrypted_key_info())) {
+    LOG(ERROR) << __func__ << ": Failed to encrypt KeyInfo.";
+    return false;
+  }
+
+  // Serialize and sign the response protobuf.
+  string serialized;
+  if (!response_pb.SerializeToString(&serialized)) {
+    LOG(ERROR) << __func__ << ": Failed to serialize response protobuf.";
+    return false;
+  }
+  SecureBlob input_data = ConvertStringToBlob(serialized);
+  ClearString(&serialized);
+  if (!SignChallengeData(key, input_data, response)) {
+    LOG(ERROR) << __func__ << ": Failed to sign data.";
+    return false;
+  }
+  return true;
+}
+
+bool Attestation::SignSimpleChallenge(bool is_user_specific,
+                                      const string& key_name,
+                                      const SecureBlob& challenge,
+                                      SecureBlob* response) {
+  CertifiedKey key;
+  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+    LOG(ERROR) << __func__ << ": Key not found.";
+    return false;
+  }
+  // Add a nonce to ensure this service cannot be used to sign arbitrary data.
+  SecureBlob nonce;
+  if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
+    LOG(ERROR) << __func__ << ": Failed to generate nonce.";
+    return false;
+  }
+  SecureBlob input_data = SecureCat(challenge, nonce);
+  if (!SignChallengeData(key, input_data, response)) {
+    LOG(ERROR) << __func__ << ": Failed to sign data.";
+    return false;
+  }
+  return true;
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {
@@ -1066,27 +1169,6 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
 bool Attestation::EncryptEndorsementCredential(
     const SecureBlob& credential,
     EncryptedData* encrypted_credential) {
-  // Encrypt the credential with a generated AES key.
-  SecureBlob aes_key;
-  if (!tpm_->GetRandomData(kCipherKeySize, &aes_key)) {
-    LOG(ERROR) << "GetRandomData failed.";
-    return false;
-  }
-  SecureBlob aes_iv;
-  if (!tpm_->GetRandomData(kCipherBlockSize, &aes_iv)) {
-    LOG(ERROR) << "GetRandomData failed.";
-    return false;
-  }
-  SecureBlob encrypted_data;
-  if (!CryptoLib::AesEncrypt(credential, aes_key, aes_iv, &encrypted_data)) {
-    LOG(ERROR) << "AesEncrypt failed.";
-    return false;
-  }
-  encrypted_credential->set_encrypted_data(encrypted_data.data(),
-                                           encrypted_data.size());
-  encrypted_credential->set_iv(aes_iv.data(), aes_iv.size());
-  encrypted_credential->set_mac(ComputeHMAC(*encrypted_credential, aes_key));
-
   // Wrap the AES key with the PCA public key.
   RSA* rsa = RSA_new();
   if (!rsa)
@@ -1103,23 +1185,13 @@ bool Attestation::EncryptEndorsementCredential(
     return false;
   }
   BN_hex2bn(&rsa->n, kDefaultPCAPublicKey);
-  string encrypted_key;
-  encrypted_key.resize(RSA_size(rsa));
-  unsigned char* buffer = reinterpret_cast<unsigned char*>(
-      string_as_array(&encrypted_key));
-  int length = RSA_public_encrypt(aes_key.size(),
-                                  vector_as_array(&aes_key),
-                                  buffer, rsa, RSA_PKCS1_OAEP_PADDING);
-  if (length == -1) {
-    LOG(ERROR) << "RSA_public_encrypt failed.";
-    return false;
-  }
-  encrypted_key.resize(length);
-  encrypted_credential->set_wrapped_key(encrypted_key);
-  return true;
+
+  bool result = EncryptData(credential, rsa, encrypted_credential);
+  RSA_free(rsa);
+  return result;
 }
 
-bool Attestation::AddDeviceKey(const std::string& key_name,
+bool Attestation::AddDeviceKey(const string& key_name,
                                const CertifiedKey& key) {
   // If a key by this name already exists, reuse the field.
   bool found = false;
@@ -1139,7 +1211,7 @@ bool Attestation::FindKeyByName(bool is_user_specific,
                                 const string& key_name,
                                 CertifiedKey* key) {
   if (is_user_specific) {
-    chromeos::SecureBlob key_data;
+    SecureBlob key_data;
     if (!user_key_store_->Read(key_name, &key_data)) {
       LOG(INFO) << "Key not found: " << key_name;
       return false;
@@ -1179,6 +1251,130 @@ string Attestation::CreatePEMCertificate(const string& certificate) {
   pem += CryptoLib::Base64Encode(certificate, true);
   pem += kEndCertificate;
   return pem;
+}
+
+bool Attestation::SignChallengeData(const CertifiedKey& key,
+                                    const SecureBlob& data_to_sign,
+                                    SecureBlob* response) {
+  SecureBlob der_header(kSha256DigestInfo, arraysize(kSha256DigestInfo));
+  SecureBlob der_encoded_input = SecureCat(der_header,
+                                           CryptoLib::Sha256(data_to_sign));
+  SecureBlob signature;
+  if (!tpm_->Sign(ConvertStringToBlob(key.key_blob()),
+                  der_encoded_input,
+                  &signature)) {
+    LOG(ERROR) << "Failed to generate signature.";
+    return false;
+  }
+  SignedData signed_data;
+  signed_data.set_data(ConvertBlobToString(data_to_sign));
+  signed_data.set_signature(ConvertBlobToString(signature));
+  string serialized;
+  if (!signed_data.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Failed to serialize signed data.";
+    return false;
+  }
+  SecureBlob tmp = ConvertStringToBlob(serialized);
+  ClearString(&serialized);
+  response->swap(tmp);
+  return true;
+}
+
+bool Attestation::ValidateEnterpriseChallenge(
+    const SignedData& signed_challenge,
+    const SecureBlob& signing_key) {
+  const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
+  // Decode the public key, we're expecting X.509 SubjectPublicKeyInfo format.
+  const unsigned char* asn1_ptr = &signing_key.front();
+  RSA* rsa = d2i_RSA_PUBKEY(NULL, &asn1_ptr, signing_key.size());
+  if (!rsa) {
+    LOG(ERROR) << "Failed to decode public key.";
+    return false;
+  }
+  SecureBlob digest = CryptoLib::Sha256(
+      ConvertStringToBlob(signed_challenge.data()));
+  SecureBlob signature = ConvertStringToBlob(signed_challenge.signature());
+  if (!RSA_verify(NID_sha256, &digest.front(), digest.size(),
+                  const_cast<unsigned char*>(&signature.front()),
+                  signature.size(), rsa)) {
+    LOG(ERROR) << "Failed to verify challenge signature.";
+    RSA_free(rsa);
+    return false;
+  }
+  RSA_free(rsa);
+  Challenge challenge;
+  if (!challenge.ParseFromString(signed_challenge.data())) {
+    LOG(ERROR) << "Failed to parse challenge protobuf.";
+    return false;
+  }
+  if (challenge.prefix() != kExpectedChallengePrefix) {
+    LOG(ERROR) << "Unexpected challenge prefix.";
+    return false;
+  }
+  return true;
+}
+
+bool Attestation::EncryptKeyInfo(const KeyInfo& key_info,
+                                 const SecureBlob& encryption_key,
+                                 EncryptedData* encrypted_data) {
+  // Decode the public key, we're expecting X.509 SubjectPublicKeyInfo format.
+  const unsigned char* asn1_ptr = &encryption_key.front();
+  RSA* rsa = d2i_RSA_PUBKEY(NULL, &asn1_ptr, encryption_key.size());
+  if (!rsa) {
+    LOG(ERROR) << "Failed to decode public key.";
+    return false;
+  }
+  string serialized;
+  if (!key_info.SerializeToString(&serialized)) {
+    LOG(ERROR) << "Failed to serialize key info.";
+    return false;
+  }
+  bool result = EncryptData(ConvertStringToBlob(serialized),
+                            rsa,
+                            encrypted_data);
+  RSA_free(rsa);
+  ClearString(&serialized);
+  return result;
+}
+
+bool Attestation::EncryptData(const SecureBlob& input,
+                              RSA* wrapping_key,
+                              EncryptedData* output) {
+  // Encrypt with a randomly generated AES key.
+  SecureBlob aes_key;
+  if (!tpm_->GetRandomData(kCipherKeySize, &aes_key)) {
+    LOG(ERROR) << "GetRandomData failed.";
+    return false;
+  }
+  SecureBlob aes_iv;
+  if (!tpm_->GetRandomData(kCipherBlockSize, &aes_iv)) {
+    LOG(ERROR) << "GetRandomData failed.";
+    return false;
+  }
+  SecureBlob encrypted;
+  if (!CryptoLib::AesEncrypt(input, aes_key, aes_iv, &encrypted)) {
+    LOG(ERROR) << "AesEncrypt failed.";
+    return false;
+  }
+  output->set_encrypted_data(encrypted.data(), encrypted.size());
+  output->set_iv(aes_iv.data(), aes_iv.size());
+  output->set_mac(ComputeHMAC(*output, aes_key));
+
+  // Wrap the AES key with the given public key.
+  string encrypted_key;
+  encrypted_key.resize(RSA_size(wrapping_key));
+  unsigned char* buffer = reinterpret_cast<unsigned char*>(
+      string_as_array(&encrypted_key));
+  int length = RSA_public_encrypt(aes_key.size(),
+                                  vector_as_array(&aes_key),
+                                  buffer, wrapping_key, RSA_PKCS1_OAEP_PADDING);
+  if (length == -1) {
+    LOG(ERROR) << "RSA_public_encrypt failed.";
+    return false;
+  }
+  encrypted_key.resize(length);
+  output->set_wrapped_key(encrypted_key);
+  return true;
 }
 
 }

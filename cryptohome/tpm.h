@@ -365,6 +365,19 @@ class Tpm {
                                         const chromeos::SecureBlob& input,
                                         chromeos::SecureBlob* output);
 
+  // Signs data using the TPM_SS_RSASSAPKCS1v15_DER scheme.  This method will
+  // work with any signing key that has been assigned this scheme.  This
+  // includes all keys created using CreateCertifiedKey.
+  //
+  // Parameters
+  //   key_blob - An SRK-wrapped private key blob.
+  //   der_encoded_input - The value to be signed, encoded as required by the
+  //                       TPM_SS_RSASSAPKCS1v15_DER scheme.
+  //   signature - On success, will be populated with the signature.
+  virtual bool Sign(const chromeos::SecureBlob& key_blob,
+                    const chromeos::SecureBlob& der_encoded_input,
+                    chromeos::SecureBlob* signature);
+
  protected:
   // Default constructor
   Tpm();
