@@ -16,7 +16,7 @@ class MockProcessKiller : public ProcessKiller {
   MockProcessKiller();
   virtual ~MockProcessKiller();
 
-  MOCK_METHOD2(Wait, void(int pid, const base::Closure &callback));
+  MOCK_METHOD2(Wait, bool(int pid, const base::Closure &callback));
   MOCK_METHOD2(Kill, void(int pid, const base::Closure &callback));
 
  private:

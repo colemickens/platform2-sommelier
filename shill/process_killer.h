@@ -26,8 +26,9 @@ class ProcessKiller {
   // Uses GLib to wait asynchronously for the process to exit and reap it. GLib
   // supports only a single callback per process ID so there should be no other
   // child watch callbacks registered for this |pid|. If |callback| is non-null,
-  // runs it when the process exits.
-  virtual void Wait(int pid, const base::Closure &callback);
+  // runs it when the process exits. Returns false if the process has already
+  // exited.
+  virtual bool Wait(int pid, const base::Closure &callback);
 
   // Terminates process |pid| and reaps it through Wait(pid, callback).
   virtual void Kill(int pid, const base::Closure &callback);

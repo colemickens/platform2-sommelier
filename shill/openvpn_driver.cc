@@ -162,6 +162,13 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   SLOG(VPN, 2) << __func__ << "(" << Service::ConnectStateToString(state)
                << ", " << error_details << ")";
   StopConnectTimeout();
+  if (child_watch_tag_) {
+    glib_->SourceRemove(child_watch_tag_);
+    child_watch_tag_ = 0;
+  }
+  // Disconnecting the management interface will terminate the openvpn
+  // process. Ensure this is handled robustly by first removing the child watch
+  // above and then terminating and reaping the process through ProcessKiller.
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {
     file_util::Delete(tls_auth_file_, false);
@@ -170,10 +177,6 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   if (default_service_callback_tag_) {
     manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
     default_service_callback_tag_ = 0;
-  }
-  if (child_watch_tag_) {
-    glib_->SourceRemove(child_watch_tag_);
-    child_watch_tag_ = 0;
   }
   rpc_task_.reset();
   int interface_index = -1;

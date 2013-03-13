@@ -4,6 +4,9 @@
 
 #include "shill/process_killer.h"
 
+#include <errno.h>
+#include <sys/wait.h>
+
 using base::Closure;
 using std::map;
 
@@ -28,20 +31,42 @@ ProcessKiller *ProcessKiller::GetInstance() {
   return g_process_killer.Pointer();
 }
 
-void ProcessKiller::Wait(int pid, const Closure &callback) {
+bool ProcessKiller::Wait(int pid, const Closure &callback) {
   LOG(INFO) << "Waiting for pid " << pid;
   if (!callback.is_null()) {
     callbacks_[pid] = callback;
   }
+  // Check if the child process is dead already. This guards against the case
+  // when the caller had registered a child watch on that process but the
+  // process exited before the caller removed the watch and invoked this.
+  int status = 0;
+  pid_t rpid = waitpid(pid, &status, WNOHANG);
+  if (rpid == -1) {
+    DCHECK_EQ(ECHILD, errno);
+    LOG(INFO) << "No such child -- assuming process has already exited.";
+    OnProcessDied(pid, 0, this);
+    return false;
+  }
+  if (rpid == pid) {
+    LOG(INFO) << "Process has already exited.";
+    OnProcessDied(pid, status, this);
+    return false;
+  }
   g_child_watch_add(pid, OnProcessDied, this);
+  return true;
 }
 
 void ProcessKiller::Kill(int pid, const Closure &callback) {
-  Wait(pid, callback);
+  if (!Wait(pid, callback)) {
+    LOG(INFO) << "Process already dead, no need to kill.";
+    return;
+  }
   LOG(INFO) << "Killing pid " << pid;
   // TODO(petkov): Consider sending subsequent periodic signals and raising the
   // signal to SIGKILL if the process keeps running.
-  kill(pid, SIGTERM);
+  if (kill(pid, SIGTERM) == -1) {
+    PLOG(ERROR) << "SIGTERM failed";
+  }
 }
 
 // static
