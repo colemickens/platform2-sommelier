@@ -114,13 +114,14 @@ class AddressMapperTest : public ::testing::Test {
          offset < range.size;
          offset += range.size / kNumRangeTestIntervals) {
       EXPECT_TRUE(mapper_->GetMappedAddress(range.addr + offset, &mapped_addr));
-      EXPECT_EQ(expected_mapped_addr + offset, mapped_addr);
+      EXPECT_EQ((void*)(expected_mapped_addr + offset), (void*)mapped_addr);
     }
 
     // Check address at end of the range.
     EXPECT_TRUE(mapper_->GetMappedAddress(range.addr + range.size - 1,
                                           &mapped_addr));
-    EXPECT_EQ(expected_mapped_addr + range.size - 1, mapped_addr);
+    EXPECT_EQ((void*)(expected_mapped_addr + range.size - 1),
+              (void*)mapped_addr);
   }
 
   scoped_ptr<AddressMapper> mapper_;
@@ -238,7 +239,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
     bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
     if (kBigRegion.contains(addr)) {
       EXPECT_TRUE(map_success);
-      EXPECT_EQ(addr - kBigRegion.addr, mapped_addr);
+      EXPECT_EQ((void*)(addr - kBigRegion.addr), (void*)mapped_addr);
     } else {
       EXPECT_FALSE(map_success);
     }
@@ -256,7 +257,7 @@ TEST_F(AddressMapperTest, OverlapBig) {
       bool map_success = mapper_->GetMappedAddress(addr, &mapped_addr);
       if (kBigRegion.contains(addr)) {
         EXPECT_TRUE(map_success);
-        EXPECT_EQ(addr - kBigRegion.addr, mapped_addr);
+        EXPECT_EQ((void*)(addr - kBigRegion.addr), (void*)mapped_addr);
       } else {
         EXPECT_FALSE(map_success);
       }
