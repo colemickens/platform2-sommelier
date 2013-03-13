@@ -94,6 +94,7 @@ int main(int argc, char* argv[]) {
 
   GLint viewport[2];
   glGetIntegerv(GL_MAX_VIEWPORT_DIMS, viewport);
+  printf("# MAX_VIEWPORT_DIMS=(%d, %d)\n", viewport[0], viewport[1]);
   if (viewport[0] < g_width || viewport[1] < g_height) {
     printf("# Error: MAX_VIEWPORT_DIMS too small\n");
     return 1;

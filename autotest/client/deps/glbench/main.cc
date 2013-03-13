@@ -55,6 +55,7 @@ void printDateTime(void) {
 bool PassesSanityCheck(void) {
   GLint viewport[2];
   glGetIntegerv(GL_MAX_VIEWPORT_DIMS, viewport);
+  printf("# MAX_VIEWPORT_DIMS=(%d, %d)\n", viewport[0], viewport[1]);
   if (viewport[0] < g_width || viewport[1] < g_height) {
     printf("# Error: MAX_VIEWPORT_DIMS=(%d, %d) are too small.\n",
            viewport[0], viewport[1]);
@@ -75,6 +76,8 @@ int main(int argc, char *argv[]) {
 
   printf("# board_id: %s - %s\n",
          glGetString(GL_VENDOR), glGetString(GL_RENDERER));
+  if (!PassesSanityCheck())
+    return 1;
   g_main_gl_interface->Cleanup();
 
   if (argc == 1) {
@@ -85,8 +88,6 @@ int main(int argc, char *argv[]) {
     printf("\n");
   }
   printDateTime();
-  if (!PassesSanityCheck())
-    return 1;
 
   vector<string> enabled_tests;
   base::SplitString(FLAGS_tests, ':', &enabled_tests);
