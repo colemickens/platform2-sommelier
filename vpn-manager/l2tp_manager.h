@@ -17,6 +17,8 @@ namespace chromeos {
 class Process;
 }
 
+namespace vpn_manager {
+
 // Manages the L2TP daemon.  This manager orchestrates configuring and
 // launching the L2TP daemon, initiating the L2TP connection, and
 // detecting when PPP has been set up.  It also sends user credentials
@@ -93,5 +95,7 @@ class L2tpManager : public ServiceManager {
   // Running l2tp process.
   scoped_ptr<chromeos::Process> l2tpd_;
 };
+
+}  // namespace vpn_manager
 
 #endif  // _VPN_MANAGER_L2TP_MANAGER_H_

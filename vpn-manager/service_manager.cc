@@ -14,6 +14,8 @@
 #include "base/string_split.h"
 #include "base/string_util.h"
 
+namespace vpn_manager {
+
 const FilePath* ServiceManager::temp_path_ = NULL;
 const char* ServiceManager::temp_base_path_ = "/home/chronos/user/tmp";
 
@@ -192,3 +194,5 @@ bool ServiceManager::GetLocalAddressFromRemote(
   HANDLE_EINTR(close(sock));
   return result;
 }
+
+}  // namespace vpn_manager

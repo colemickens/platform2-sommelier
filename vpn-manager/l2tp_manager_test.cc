@@ -24,6 +24,8 @@ using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;
 
+namespace vpn_manager {
+
 class L2tpManagerTest : public ::testing::Test {
  public:
   void SetUp() {
@@ -208,6 +210,8 @@ TEST_F(L2tpManagerTest, PollNothingIfRunning) {
   l2tp_.is_running_ = true;
   EXPECT_EQ(-1, l2tp_.Poll());
 }
+
+}  // namespace vpn_manager
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);

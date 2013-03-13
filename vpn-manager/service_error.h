@@ -5,6 +5,8 @@
 #ifndef _VPN_MANAGER_SERVICE_ERROR_H_
 #define _VPN_MANAGER_SERVICE_ERROR_H_
 
+namespace vpn_manager {
+
 // A enumeration of service errors. These error identifiers are ordered in a way
 // that a more specific error has a higher value than a less specific one, and
 // an error from an inner service has a higher value than an error from an outer
@@ -29,5 +31,7 @@ enum ServiceError {
   kServiceErrorPppConnectionFailed = 128,
   kServiceErrorPppAuthenticationFailed = 129,
 };
+
+}  // namespace vpn_manager
 
 #endif  // _VPN_MANAGER_SERVICE_ERROR_H_

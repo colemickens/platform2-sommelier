@@ -17,11 +17,17 @@ using ::testing::_;
 using ::testing::InSequence;
 using ::testing::Return;
 
+DECLARE_int32(ipsec_timeout);
+
+namespace vpn_manager {
+
+namespace {
+
 const int kMockFd = 123;
 
 const int kMockStarterPid = 10001;
 
-DECLARE_int32(ipsec_timeout);
+}  // namespace
 
 class IpsecManagerTest : public ::testing::Test {
  public:
@@ -369,6 +375,8 @@ TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
       "ipsec.secrets")));
   ASSERT_TRUE(file_util::PathExists(stateful_container_.Append("cacert.der")));
 }
+
+}  // namespace vpn_manager
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);

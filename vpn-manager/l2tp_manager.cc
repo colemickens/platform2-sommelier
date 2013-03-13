@@ -31,6 +31,12 @@ DEFINE_string(user, "", "user name");
 DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
+using ::chromeos::ProcessImpl;
+
+namespace vpn_manager {
+
+namespace {
+
 const char kL2tpConnectionName[] = "managed";
 // Environment variable available to ppp plugin to know the resolved address
 // of the L2TP server.
@@ -39,7 +45,7 @@ const char kPppInterfacePath[] = "/sys/class/net/ppp0";
 const char kPppLogPrefix[] = "pppd: ";
 const char kPppAuthenticationFailurePattern[] = "*authentication failed*";
 
-using ::chromeos::ProcessImpl;
+}  // namespace
 
 L2tpManager::L2tpManager()
     : ServiceManager("l2tp"),
@@ -285,3 +291,5 @@ void L2tpManager::OnSyslogOutput(const std::string& prefix,
     Stop();
   }
 }
+
+}  // namespace vpn_manager

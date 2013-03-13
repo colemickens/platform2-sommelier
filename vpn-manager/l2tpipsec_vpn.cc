@@ -29,6 +29,10 @@ DEFINE_string(server_id, "", "ID expected from server");
 DEFINE_string(user_pin, "", "PKCS#11 User PIN");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
+using vpn_manager::IpsecManager;
+using vpn_manager::L2tpManager;
+using vpn_manager::ServiceManager;
+
 // True if a signal has requested termination.
 static bool s_terminate_request = false;
 
@@ -123,7 +127,7 @@ int main(int argc, char* argv[]) {
   if (!ServiceManager::ResolveNameToSockAddr(FLAGS_remote_host,
                                              &remote_address)) {
     LOG(ERROR) << "Unable to resolve hostname " << FLAGS_remote_host;
-    return kServiceErrorResolveHostnameFailed;
+    return vpn_manager::kServiceErrorResolveHostnameFailed;
   }
 
   if (!ipsec.Initialize(1,

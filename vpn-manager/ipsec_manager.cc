@@ -38,6 +38,13 @@ DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
 DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
+using ::chromeos::Process;
+using ::chromeos::ProcessImpl;
+
+namespace vpn_manager {
+
+namespace {
+
 const char kDefaultCertSlot[] = "0";
 const char kIpsecConnectionName[] = "ipsec_managed";
 const char kIpsecGroupName[] = "ipsec";
@@ -56,8 +63,7 @@ const char kIpsecAuthenticationFailurePattern[] =
 // Give IPsec layer 2 seconds to shut down before killing it.
 const int kTermTimeout = 2;
 
-using ::chromeos::Process;
-using ::chromeos::ProcessImpl;
+}  // namespace
 
 IpsecManager::IpsecManager()
     : ServiceManager(kIpsecServiceName),
@@ -492,3 +498,5 @@ void IpsecManager::OnSyslogOutput(const std::string& prefix,
     }
   }
 }
+
+}  // namespace vpn_manager

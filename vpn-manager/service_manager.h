@@ -5,6 +5,8 @@
 #ifndef _VPN_MANAGER_SERVICE_MANAGER_H_
 #define _VPN_MANAGER_SERVICE_MANAGER_H_
 
+#include <netinet/in.h>
+
 #include <string>
 
 #include "base/file_path.h"
@@ -15,6 +17,8 @@
 namespace base {
 class ScopedTempDir;
 }
+
+namespace vpn_manager {
 
 // Generic code to manage setting up and stopping a set of layered
 // tunnel services.  This object contains the code to manage a single
@@ -185,5 +189,7 @@ class ServiceManager {
   // Path to base directory of temporary directory on cryptohome.
   static const char* temp_base_path_;
 };
+
+}  // namespace vpn_manager
 
 #endif  // _VPN_MANAGER_SERVICE_MANAGER_H_

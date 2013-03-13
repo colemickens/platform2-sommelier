@@ -19,6 +19,8 @@ using ::chromeos::GetLog;
 using ::testing::InSequence;
 using ::testing::Return;
 
+namespace vpn_manager {
+
 class MockService : public ServiceManager {
  public:
   MockService() : ServiceManager("mock") {}
@@ -180,6 +182,8 @@ TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
                                                         &local_address_text));
   EXPECT_EQ("127.0.0.1", local_address_text);
 }
+
+}  // namespace vpn_manager
 
 int main(int argc, char** argv) {
   SetUpTests(&argc, argv, true);

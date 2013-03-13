@@ -18,6 +18,8 @@ namespace chromeos {
 class Process;
 }
 
+namespace vpn_manager {
+
 // Manages the ipsec daemon.  This manager orchestrates configuring and
 // launching the strongswan starter process which in turn launches the
 // appropriate IKE v1 (pluto) or IKE v2 (charon) daemon.
@@ -133,5 +135,7 @@ class IpsecManager : public ServiceManager {
   // IPsec starter process.
   scoped_ptr<chromeos::Process> starter_;
 };
+
+}  // namespace vpn_manager
 
 #endif  // _VPN_MANAGER_IPSEC_MANAGER_H_
