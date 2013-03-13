@@ -16,8 +16,8 @@
 
 namespace vpn_manager {
 
-const FilePath* ServiceManager::temp_path_ = NULL;
-const char* ServiceManager::temp_base_path_ = "/home/chronos/user/tmp";
+const base::FilePath *ServiceManager::temp_path_ = NULL;
+const char *ServiceManager::temp_base_path_ = "/home/chronos/user/tmp";
 
 ServiceManager::ServiceManager(const std::string& service_name)
     : is_running_(false),

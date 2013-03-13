@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chromeos/process_mock.h"
-#include "chromeos/syslog_logging.h"
-#include "chromeos/test_helpers.h"
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
+#include <base/files/scoped_temp_dir.h>
+#include <chromeos/process_mock.h>
+#include <chromeos/syslog_logging.h>
+#include <chromeos/test_helpers.h>
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
 
 #include "vpn-manager/l2tp_manager.h"
 
@@ -18,6 +19,7 @@ DECLARE_int32(ppp_setup_timeout);
 DECLARE_string(pppd_plugin);
 DECLARE_string(user);
 
+using ::base::FilePath;
 using ::chromeos::FindLog;
 using ::chromeos::ProcessMock;
 using ::testing::_;
@@ -29,7 +31,8 @@ namespace vpn_manager {
 class L2tpManagerTest : public ::testing::Test {
  public:
   void SetUp() {
-    test_path_ = FilePath("l2tp_manager_testdir");
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    test_path_ = temp_dir_.path().Append("l2tp_manager_testdir");
     ServiceManager::temp_path_ = new FilePath(test_path_);
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
@@ -60,6 +63,7 @@ class L2tpManagerTest : public ::testing::Test {
   FilePath ppp_interface_path_;
   L2tpManager l2tp_;
   ProcessMock* l2tpd_;
+  base::ScopedTempDir temp_dir_;
 };
 
 std::string L2tpManagerTest::GetExpectedConfig(std::string remote_address_text,

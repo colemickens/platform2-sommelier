@@ -12,6 +12,7 @@ IPSEC_WHACK = /usr/libexec/ipsec/whack
 IPSEC_UPDOWN = /usr/libexec/l2tpipsec_vpn/pluto_updown
 L2TPD = /usr/sbin/xl2tpd
 L2TPIPSEC_OBJS = \
+	daemon.o \
 	ipsec_manager.o \
 	l2tp_manager.o \
 	service_manager.o
@@ -42,10 +43,13 @@ CXX_BINARY(l2tpipsec_vpn): l2tpipsec_vpn.o $(L2TPIPSEC_OBJS)
 clean: CLEAN(l2tpipsec_vpn)
 
 tests: \
+	TEST(CXX_BINARY(daemon_test)) \
 	TEST(CXX_BINARY(ipsec_manager_test)) \
 	TEST(CXX_BINARY(l2tp_manager_test)) \
 	TEST(CXX_BINARY(service_manager_test))
 
+CXX_BINARY(daemon_test): daemon_test.o $(TEST_OBJS)
+CXX_BINARY(daemon_test): LDLIBS += $(TEST_LIBS)
 CXX_BINARY(ipsec_manager_test): ipsec_manager_test.o $(TEST_OBJS)
 CXX_BINARY(ipsec_manager_test): LDLIBS += $(TEST_LIBS)
 CXX_BINARY(l2tp_manager_test): l2tp_manager_test.o $(TEST_OBJS)

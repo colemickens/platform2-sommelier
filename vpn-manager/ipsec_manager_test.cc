@@ -2,15 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "base/command_line.h"
-#include "base/file_util.h"
-#include "chromeos/process_mock.h"
-#include "chromeos/syslog_logging.h"
-#include "chromeos/test_helpers.h"
-#include "gflags/gflags.h"
-#include "gtest/gtest.h"
+#include <base/command_line.h>
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <chromeos/process_mock.h>
+#include <chromeos/syslog_logging.h>
+#include <chromeos/test_helpers.h>
+#include <gflags/gflags.h>
+#include <gtest/gtest.h>
+
+#include "vpn-manager/daemon_mock.h"
 #include "vpn-manager/ipsec_manager.h"
 
+using ::base::FilePath;
 using ::chromeos::FindLog;
 using ::chromeos::ProcessMock;
 using ::testing::_;
@@ -31,10 +35,13 @@ const int kMockStarterPid = 10001;
 
 class IpsecManagerTest : public ::testing::Test {
  public:
+  IpsecManagerTest() : starter_daemon_(NULL), charon_daemon_(NULL) {}
+  virtual ~IpsecManagerTest() {}
+
   void SetUp() {
     FilePath cwd;
-    file_util::GetCurrentDirectory(&cwd);
-    test_path_ = cwd.Append("ipsec_manager_testdir");
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    test_path_ = temp_dir_.path().Append("ipsec_manager_testdir");
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
     stateful_container_ = test_path_.Append("etc");
@@ -58,8 +65,10 @@ class IpsecManagerTest : public ::testing::Test {
     file_util::CopyFile(srcdir.Append("testdata/cacert.der"),
                         FilePath(server_ca_file_));
     chromeos::ClearLog();
-    starter_ = new ProcessMock;
-    ipsec_.starter_.reset(starter_);
+    starter_daemon_ = new DaemonMock;
+    charon_daemon_ = new DaemonMock;
+    ipsec_.starter_daemon_.reset(starter_daemon_);  // Passes ownership.
+    ipsec_.charon_daemon_.reset(charon_daemon_);  // Passes ownership.
     ipsec_.stateful_container_ = stateful_container_.value();
     ipsec_.ipsec_group_ = getgid();
     ipsec_.ipsec_run_path_ = ipsec_run_path_;
@@ -67,7 +76,10 @@ class IpsecManagerTest : public ::testing::Test {
     ipsec_.force_local_address_ = "5.6.7.8";
   }
 
-  void SetStartStarterExpectations(bool already_running);
+  // Creates a ProcessMock that will be handed to to the IpsecManager when
+  // it creates a process.  The caller owns this mock and is responsible for
+  // disposing of it (since the IpsecManager assumes the Daemon owns it).
+  ProcessMock *SetStartStarterExpectations();
 
  protected:
   void WriteFile(const std::string& file_path, const char* contents) {
@@ -78,7 +90,6 @@ class IpsecManagerTest : public ::testing::Test {
   }
 
   void DoInitialize(int ike_version, bool use_psk);
-  void SetProcessKillExpectations(const std::string& pid_file);
 
   IpsecManager ipsec_;
   FilePath stateful_container_;
@@ -93,7 +104,11 @@ class IpsecManagerTest : public ::testing::Test {
   std::string tpm_user_pin_;
   std::string ipsec_run_path_;
   std::string ipsec_up_file_;
-  ProcessMock* starter_;
+  // These mock daemons are owned by the ipsec instance and tracked here only
+  // for expectations.
+  DaemonMock *starter_daemon_;
+  DaemonMock *charon_daemon_;
+  base::ScopedTempDir temp_dir_;
 };
 
 void IpsecManagerTest::DoInitialize(int ike_version, bool use_psk) {
@@ -108,31 +123,23 @@ void IpsecManagerTest::DoInitialize(int ike_version, bool use_psk) {
   }
 }
 
-void IpsecManagerTest::SetProcessKillExpectations(
-    const std::string& pid_file) {
-  // File must exist.
-  file_util::WriteFile(FilePath(pid_file), "", 0);
-  // Test that it attempts to kill the running starter.
-  EXPECT_CALL(*starter_, ResetPidByFile(pid_file)).
-    WillOnce(Return(true));
-  EXPECT_CALL(*starter_, pid()).WillOnce(Return(1));
-  EXPECT_CALL(*starter_, Reset(0));
-}
 
-void IpsecManagerTest::SetStartStarterExpectations(bool already_running) {
-  if (already_running) {
-    ipsec_.starter_pid_file_ = test_path_.Append("starter_pid").value();
-    SetProcessKillExpectations(ipsec_.starter_pid_file_);
-    ipsec_.charon_pid_file_ = test_path_.Append("charon_pid").value();
-    SetProcessKillExpectations(ipsec_.charon_pid_file_);
-  }
-
-  EXPECT_CALL(*starter_, AddArg(IPSEC_STARTER));
-  EXPECT_CALL(*starter_, AddArg("--nofork"));
-  EXPECT_CALL(*starter_, RedirectUsingPipe(STDERR_FILENO, false));
-  EXPECT_CALL(*starter_, Start()).WillOnce(Return(true));
-  EXPECT_CALL(*starter_, GetPipe(STDERR_FILENO)).WillOnce(Return(kMockFd));
-  EXPECT_CALL(*starter_, pid()).WillOnce(Return(kMockStarterPid));
+ProcessMock *IpsecManagerTest::SetStartStarterExpectations() {
+  EXPECT_CALL(*starter_daemon_, FindProcess());
+  EXPECT_CALL(*charon_daemon_, FindProcess());
+  EXPECT_CALL(*starter_daemon_, ClearProcess());
+  EXPECT_CALL(*charon_daemon_, ClearProcess());
+  ProcessMock *process = new ProcessMock;
+  // Does not pass ownership.
+  EXPECT_CALL(*starter_daemon_, CreateProcess())
+      .WillOnce(Return(process));
+  EXPECT_CALL(*process, AddArg(IPSEC_STARTER));
+  EXPECT_CALL(*process, AddArg("--nofork"));
+  EXPECT_CALL(*process, RedirectUsingPipe(STDERR_FILENO, false));
+  EXPECT_CALL(*process, Start()).WillOnce(Return(true));
+  EXPECT_CALL(*process, GetPipe(STDERR_FILENO)).WillOnce(Return(kMockFd));
+  EXPECT_CALL(*process, pid()).WillOnce(Return(kMockStarterPid));
+  return process;
 }
 
 TEST_F(IpsecManagerTest, InitializeNoAuth) {
@@ -242,6 +249,34 @@ TEST_F(IpsecManagerTest, FormatStrongswanConfigFile) {
   EXPECT_EQ(strongswan_config, ipsec_.FormatStrongswanConfigFile());
 }
 
+TEST_F(IpsecManagerTest, StartStarter) {
+  InSequence unused;
+  scoped_ptr<ProcessMock> process(SetStartStarterExpectations());
+  EXPECT_TRUE(ipsec_.StartStarter());
+  EXPECT_EQ(kMockFd, ipsec_.output_fd());
+  EXPECT_EQ("ipsec[10001]: ", ipsec_.ipsec_prefix_);
+}
+
+TEST_F(IpsecManagerTest, StopWhileRunning) {
+  InSequence unused;
+  EXPECT_CALL(*starter_daemon_, IsRunning()).WillOnce(Return(true));
+  EXPECT_CALL(*starter_daemon_, FindProcess()).Times(0);
+  EXPECT_CALL(*charon_daemon_, FindProcess()).Times(1);
+  EXPECT_CALL(*starter_daemon_, Terminate()).WillOnce(Return(true));
+  EXPECT_CALL(*charon_daemon_, Terminate()).WillOnce(Return(false));
+  ipsec_.Stop();
+}
+
+TEST_F(IpsecManagerTest, StopWhileNotRunning) {
+  InSequence unused;
+  EXPECT_CALL(*starter_daemon_, IsRunning()).WillOnce(Return(false));
+  EXPECT_CALL(*starter_daemon_, FindProcess()).Times(1);
+  EXPECT_CALL(*charon_daemon_, FindProcess()).Times(1);
+  EXPECT_CALL(*starter_daemon_, Terminate()).WillOnce(Return(false));
+  EXPECT_CALL(*charon_daemon_, Terminate()).WillOnce(Return(false));
+  ipsec_.Stop();
+}
+
 class IpsecManagerTestIkeV1Psk : public IpsecManagerTest {
  public:
   void SetUp() {
@@ -263,22 +298,6 @@ TEST_F(IpsecManagerTestIkeV1Psk, FormatSecrets) {
   std::string formatted;
   EXPECT_TRUE(ipsec_.FormatSecrets(&formatted));
   EXPECT_EQ("5.6.7.8 1.2.3.4 : PSK \"pAssword\"\n", formatted);
-}
-
-TEST_F(IpsecManagerTestIkeV1Psk, StartStarterNotYetRunning) {
-  InSequence unused;
-  SetStartStarterExpectations(false);
-  EXPECT_TRUE(ipsec_.StartStarter());
-  EXPECT_EQ(kMockFd, ipsec_.output_fd());
-  EXPECT_EQ("ipsec[10001]: ", ipsec_.ipsec_prefix_);
-}
-
-TEST_F(IpsecManagerTestIkeV1Psk, StartStarterAlreadyRunning) {
-  InSequence unused;
-  SetStartStarterExpectations(true);
-  EXPECT_TRUE(ipsec_.StartStarter());
-  EXPECT_EQ(kMockFd, ipsec_.output_fd());
-  EXPECT_EQ("ipsec[10001]: ", ipsec_.ipsec_prefix_);
 }
 
 std::string IpsecManagerTestIkeV1Psk::GetExpectedStarter(bool debug) {
@@ -313,7 +332,7 @@ TEST_F(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile) {
 
 TEST_F(IpsecManagerTestIkeV1Psk, Start) {
   InSequence unused;
-  SetStartStarterExpectations(false);
+  scoped_ptr<ProcessMock> process(SetStartStarterExpectations());
   EXPECT_TRUE(ipsec_.Start());
   EXPECT_FALSE(ipsec_.start_ticks_.is_null());
 }

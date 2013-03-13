@@ -13,6 +13,7 @@
 #include "gtest/gtest.h"
 #include "vpn-manager/service_manager.h"
 
+using ::base::FilePath;
 using ::chromeos::ClearLog;
 using ::chromeos::FindLog;
 using ::chromeos::GetLog;
@@ -34,7 +35,8 @@ class MockService : public ServiceManager {
 class ServiceManagerTest : public ::testing::Test {
  public:
   void SetUp() {
-    test_path_ = FilePath("service_manager_testdir");
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    test_path_ = temp_dir_.path().Append("service_manager_testdir");
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
     temp_path_ = test_path_.Append("service");
@@ -53,6 +55,7 @@ class ServiceManagerTest : public ::testing::Test {
   MockService outer_service_;
   MockService inner_service_;
   MockService single_service_;
+  base::ScopedTempDir temp_dir_;
 };
 
 TEST_F(ServiceManagerTest, InitializeDirectories) {

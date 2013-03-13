@@ -21,6 +21,8 @@
 #include "gflags/gflags.h"
 #include "openssl/x509.h"
 
+#include "vpn-manager/daemon.h"
+
 #pragma GCC diagnostic ignored "-Wstrict-aliasing"
 // Cisco ASA L2TP/IPsec setup instructions indicate using md5 for
 // authentication for the IPsec SA.  Default StrongS/WAN setup is
@@ -62,9 +64,6 @@ const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
 const char kSmartcardModuleName[] = "crypto_module";
 
-// Give IPsec layer 2 seconds to shut down before killing it.
-const int kTermTimeout = 2;
-
 }  // namespace
 
 IpsecManager::IpsecManager()
@@ -76,9 +75,8 @@ IpsecManager::IpsecManager()
       stateful_container_(kStatefulContainer),
       ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
-      starter_pid_file_(kStarterPidFile),
-      charon_pid_file_(kCharonPidFile),
-      starter_(new ProcessImpl) {
+      starter_daemon_(new Daemon(kStarterPidFile)),
+      charon_daemon_(new Daemon(kCharonPidFile)) {
 }
 
 bool IpsecManager::Initialize(int ike_version,
@@ -239,34 +237,26 @@ bool IpsecManager::FormatSecrets(std::string* formatted) {
   return true;
 }
 
-void IpsecManager::KillRunningDaemon(const std::string& pid_file) {
-  if (!file_util::PathExists(FilePath(pid_file)))
-    return;
-  starter_->ResetPidByFile(pid_file);
-  if (Process::ProcessExists(starter_->pid()))
-    starter_->Reset(0);
-  else
-    starter_->Release();
-  file_util::Delete(FilePath(pid_file), false);
-}
-
 void IpsecManager::KillCurrentlyRunning() {
-  KillRunningDaemon(starter_pid_file_);
-  KillRunningDaemon(charon_pid_file_);
+  starter_daemon_->FindProcess();
+  charon_daemon_->FindProcess();
+  starter_daemon_->ClearProcess();
+  charon_daemon_->ClearProcess();
 }
 
 bool IpsecManager::StartStarter() {
   KillCurrentlyRunning();
   LOG(INFO) << "Starting starter";
-  starter_->AddArg(IPSEC_STARTER);
-  starter_->AddArg("--nofork");
-  starter_->RedirectUsingPipe(STDERR_FILENO, false);
-  if (!starter_->Start()) {
+  Process *starter = starter_daemon_->CreateProcess();
+  starter->AddArg(IPSEC_STARTER);
+  starter->AddArg("--nofork");
+  starter->RedirectUsingPipe(STDERR_FILENO, false);
+  if (!starter->Start()) {
     LOG(ERROR) << "Starter did not start successfully";
     return false;
   }
-  output_fd_ = starter_->GetPipe(STDERR_FILENO);
-  pid_t starter_pid = starter_->pid();
+  output_fd_ = starter->GetPipe(STDERR_FILENO);
+  pid_t starter_pid = starter->pid();
   LOG(INFO) << "Starter started as pid " << starter_pid;
   ipsec_prefix_ = StringPrintf("ipsec[%d]: ", starter_pid);
   return true;
@@ -494,20 +484,20 @@ void IpsecManager::ProcessOutput() {
 }
 
 bool IpsecManager::IsChild(pid_t pid) {
-  return pid == starter_->pid();
+  return pid == starter_daemon_->GetPid();
 }
 
 void IpsecManager::Stop() {
-  if (starter_->pid() == 0) {
-    return;
-  }
+  // If the process started in StartStarter() is no longer running, see if
+  // there is a pid file associated to a different running instance of the
+  // starter.
+  if (!starter_daemon_->IsRunning())
+    starter_daemon_->FindProcess();
+  charon_daemon_->FindProcess();
 
-  if (!starter_->Kill(SIGTERM, kTermTimeout)) {
-    starter_->Kill(SIGKILL, 0);
-    OnStopped(true);
-    return;
-  }
-  OnStopped(false);
+  bool unclean_termination = !starter_daemon_->Terminate();
+  charon_daemon_->Terminate();
+  OnStopped(unclean_termination);
 }
 
 void IpsecManager::OnSyslogOutput(const std::string& prefix,

@@ -9,12 +9,14 @@
 
 #include <string>
 
-#include "base/command_line.h"
-#include "base/files/scoped_temp_dir.h"
-#include "base/logging.h"
-#include "chromeos/process.h"
-#include "chromeos/syslog_logging.h"
-#include "gflags/gflags.h"
+#include <base/command_line.h>
+#include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
+#include <chromeos/process.h>
+#include <chromeos/syslog_logging.h>
+#include <gflags/gflags.h>
+
+#include "vpn-manager/daemon.h"
 #include "vpn-manager/ipsec_manager.h"
 #include "vpn-manager/l2tp_manager.h"
 

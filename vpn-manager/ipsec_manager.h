@@ -13,12 +13,15 @@
 #include "gtest/gtest_prod.h"  // for FRIEND_TEST
 #include "vpn-manager/service_manager.h"
 
+namespace base {
+
 class FilePath;
-namespace chromeos {
-class Process;
-}
+
+}  // namespace base
 
 namespace vpn_manager {
+
+class Daemon;
 
 // Manages the ipsec daemon.  This manager orchestrates configuring and
 // launching the strongswan starter process which in turn launches the
@@ -62,22 +65,20 @@ class IpsecManager : public ServiceManager {
   FRIEND_TEST(IpsecManagerTest, FormatSecretsNoSlot);
   FRIEND_TEST(IpsecManagerTest, FormatSecretsNonZeroSlot);
   FRIEND_TEST(IpsecManagerTest, FormatStrongswanConfigFile);
+  FRIEND_TEST(IpsecManagerTest, StartStarter);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatSecrets);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, FormatStarterConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, GetAddressesFromRemoteHost);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, Start);
-  FRIEND_TEST(IpsecManagerTestIkeV1Psk, StartStarterAlreadyRunning);
-  FRIEND_TEST(IpsecManagerTestIkeV1Psk, StartStarterNotYetRunning);
   FRIEND_TEST(IpsecManagerTestIkeV1Psk, WriteConfigFiles);
   FRIEND_TEST(IpsecManagerTestIkeV1Certs, FormatSecrets);
   FRIEND_TEST(IpsecManagerTestIkeV1Certs, FormatStarterConfigFile);
   FRIEND_TEST(IpsecManagerTestIkeV1Certs, WriteConfigFiles);
 
-  bool ReadCertificateSubject(const FilePath& filepath,
+  bool ReadCertificateSubject(const base::FilePath& filepath,
                               std::string* output);
   bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
-  void KillRunningDaemon(const std::string& pid_file);
   bool WriteConfigFiles();
   bool CreateIpsecRunDirectory();
   std::string FormatStrongswanConfigFile();
@@ -134,8 +135,10 @@ class IpsecManager : public ServiceManager {
   std::string partial_output_line_;
   // Time when ipsec was started.
   base::TimeTicks start_ticks_;
-  // IPsec starter process.
-  scoped_ptr<chromeos::Process> starter_;
+  // IPsec starter daemon.
+  scoped_ptr<Daemon> starter_daemon_;
+  // IPsec charon daemon.
+  scoped_ptr<Daemon> charon_daemon_;
 };
 
 }  // namespace vpn_manager

@@ -31,6 +31,7 @@ DEFINE_string(user, "", "user name");
 DEFINE_bool(systemconfig, true, "enable ppp to configure IPs/routes/DNS");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
+using ::base::FilePath;
 using ::chromeos::ProcessImpl;
 
 namespace vpn_manager {
