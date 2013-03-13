@@ -390,6 +390,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --ui-enable-per-tile-painting \
             --ui-enable-threaded-compositing \
             --ui-prioritize-in-gpu-process \
+            --ui-max-frames-pending=1 \
             --use-cras \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
