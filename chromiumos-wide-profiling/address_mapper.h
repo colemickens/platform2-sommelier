@@ -10,6 +10,8 @@
 
 #include "base/basictypes.h"
 
+#include "quipper_string.h"
+
 class AddressMapper {
  public:
   AddressMapper() {}
@@ -19,11 +21,25 @@ class AddressMapper {
   // collide with the new range in real address space, indicating it has been
   // unmapped.
   // Returns true if mapping was successful.
-  bool Map(const uint64 real_addr, const uint64 length,
+  bool Map(const uint64 real_addr,
+           const uint64 length,
            bool remove_existing_mappings);
+
+  // Like Map(real_addr, length, remove_existing_mappings).  |name| is a name
+  // string to be stored along with the mapping.
+  bool MapWithName(const uint64 real_addr,
+                   const uint64 length,
+                   const string& name,
+                   bool remove_existing_mappings);
 
   // Looks up |real_addr| and returns the mapped address.
   bool GetMappedAddress(const uint64 real_addr, uint64* mapped_addr) const;
+
+  // Looks up |real_addr| and returns the mapping's name and offset from the
+  // start of the mapped space.
+  bool GetMappedNameAndOffset(const uint64 real_addr,
+                              string* name,
+                              uint64* offset) const;
 
   // Returns true if there are no mappings.
   bool IsEmpty() const {
@@ -40,6 +56,8 @@ class AddressMapper {
     uint64 real_addr;
     uint64 mapped_addr;
     uint64 size;
+
+    string name;
 
     // Length of unmapped space after this range.
     uint64 unmapped_space_after;
@@ -61,6 +79,11 @@ class AddressMapper {
     inline bool Contains(const MappedRange& range) const {
       return (real_addr < range.real_addr) &&
              (real_addr + size - 1 > range.real_addr + range.size - 1);
+    }
+
+    // Determines if this range contains the given address |addr|.
+    inline bool ContainsAddress(uint64 addr) const {
+      return (addr >= real_addr && addr <= real_addr + size - 1);
     }
   };
 

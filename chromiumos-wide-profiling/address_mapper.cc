@@ -6,11 +6,21 @@
 
 #include <base/logging.h>
 
-bool AddressMapper::Map(const uint64 real_addr, const uint64 size,
-                        bool remove_existing_mappings) {
+bool AddressMapper::Map(const uint64 real_addr,
+                        const uint64 size,
+                        const bool remove_existing_mappings) {
+  return MapWithName(real_addr, size, "", remove_existing_mappings);
+}
+
+bool AddressMapper::MapWithName(const uint64 real_addr,
+                                const uint64 size,
+                                const string& name,
+                                bool remove_existing_mappings) {
   MappedRange range;
   range.real_addr = real_addr;
   range.size = size;
+  if (name.size())
+    range.name = name;
 
   if (size == 0) {
     LOG(ERROR) << "Must allocate a nonzero-length address range.";
@@ -112,11 +122,26 @@ bool AddressMapper::GetMappedAddress(const uint64 real_addr,
   CHECK(mapped_addr);
   MappingList::const_iterator iter;
   for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
-    if (real_addr >= iter->real_addr &&
-        real_addr <= iter->real_addr + iter->size - 1) {
-      *mapped_addr = iter->mapped_addr + real_addr - iter->real_addr;
-      return true;
-    }
+    if (!iter->ContainsAddress(real_addr))
+      continue;
+    *mapped_addr = iter->mapped_addr + real_addr - iter->real_addr;
+    return true;
+  }
+  return false;
+}
+
+bool AddressMapper::GetMappedNameAndOffset(const uint64 real_addr,
+                                           string* name,
+                                           uint64* offset) const {
+  CHECK(name);
+  CHECK(offset);
+  MappingList::const_iterator iter;
+  for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
+    if (!iter->ContainsAddress(real_addr))
+      continue;
+    *name = iter->name;
+    *offset = real_addr - iter->real_addr;
+    return true;
   }
   return false;
 }
