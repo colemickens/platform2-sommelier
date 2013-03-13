@@ -28,6 +28,42 @@ PerfSerializer::PerfSerializer() {
 PerfSerializer::~PerfSerializer() {
 }
 
+bool PerfSerializer::SerializeFromFile(const string& filename,
+                                       PerfDataProto* perf_data_proto) {
+  if (!ReadFile(filename))
+    return false;
+
+  SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs());
+
+  if (!ParseRawEvents())
+    return false;
+
+  SerializeEvents(parsed_events_, perf_data_proto->mutable_events());
+  return true;
+}
+
+bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
+                                       const string& filename) {
+  DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_);
+
+  // Make sure all event types (attrs) have the same sample type.
+  for (size_t i = 0; i < attrs_.size(); ++i) {
+    CHECK_EQ(attrs_[i].attr.sample_type, attrs_[0].attr.sample_type)
+        << "Sample type for attribute #" << i
+        << " (" << (void*)attrs_[i].attr.sample_type << ")"
+        << " does not match that of attribute 0"
+        << " (" << (void*)attrs_[0].attr.sample_type << ")";
+  }
+  CHECK_GT(attrs_.size(), 0U);
+  sample_type_ = attrs_[0].attr.sample_type;
+
+  DeserializeEvents(perf_data_proto.events(), &parsed_events_);
+  if (!GenerateRawEvents())
+    return false;
+
+  return WriteFile(filename);
+}
+
 void PerfSerializer::SerializeEventHeader(
     const perf_event_header& header,
     PerfDataProto_EventHeader* header_proto) const {
@@ -365,40 +401,4 @@ void PerfSerializer::DeserializePerfFileAttr(
   DeserializePerfEventAttr(perf_file_attr_proto.attr(), &perf_file_attr->attr);
   for (int i = 0; i < perf_file_attr_proto.ids_size(); i++ )
     perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
-}
-
-bool PerfSerializer::SerializeFromFile(const string& filename,
-                                       PerfDataProto* perf_data_proto) {
-  if (!ReadFile(filename))
-    return false;
-
-  SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs());
-
-  if (!ParseRawEvents())
-    return false;
-
-  SerializeEvents(parsed_events_, perf_data_proto->mutable_events());
-  return true;
-}
-
-bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
-                                       const string& filename) {
-  DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_);
-
-  // Make sure all event types (attrs) have the same sample type.
-  for (size_t i = 0; i < attrs_.size(); ++i) {
-    CHECK_EQ(attrs_[i].attr.sample_type, attrs_[0].attr.sample_type)
-        << "Sample type for attribute #" << i
-        << " (" << (void*)attrs_[i].attr.sample_type << ")"
-        << " does not match that of attribute 0"
-        << " (" << (void*)attrs_[0].attr.sample_type << ")";
-  }
-  CHECK_GT(attrs_.size(), 0U);
-  sample_type_ = attrs_[0].attr.sample_type;
-
-  DeserializeEvents(perf_data_proto.events(), &parsed_events_);
-  if (!GenerateRawEvents())
-    return false;
-
-  return WriteFile(filename);
 }

@@ -16,17 +16,17 @@ namespace {
 const uint64 kPerfMagic = 0x32454c4946524550LL;
 }  // namespace
 
-bool PerfReader::ReadFileFromHandle(std::ifstream* in) {
-  if (!in->good())
-    return false;
-  if (!ReadHeader(in) || !ReadAttrs(in) || !ReadEventTypes(in) || !ReadData(in))
+bool PerfReader::ReadFile(const string& filename) {
+  std::ifstream in(filename.c_str(), std::ios::binary);
+  if (ReadFileFromHandle(&in) == false)
     return false;
   return true;
 }
 
-bool PerfReader::ReadFile(const string& filename) {
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (ReadFileFromHandle(&in) == false)
+bool PerfReader::ReadFileFromHandle(std::ifstream* in) {
+  if (!in->good())
+    return false;
+  if (!ReadHeader(in) || !ReadAttrs(in) || !ReadEventTypes(in) || !ReadData(in))
     return false;
   return true;
 }
