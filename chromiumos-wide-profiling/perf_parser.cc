@@ -303,28 +303,28 @@ void PerfParser::SortParsedEvents() {
 
 bool PerfParser::ProcessEvents() {
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
-    event_t& event = parsed_events_sorted_by_time_[i]->raw_event;
+    ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
+    event_t& event = parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
         LOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
-        if (do_remap_)
-          MapSampleEvent(&event.ip);
+        MapSampleEventAndGetNameAndOffset(
+            &event.ip,
+            &parsed_event.dso_and_offset.dso_name,
+            &parsed_event.dso_and_offset.offset);
         break;
       case PERF_RECORD_MMAP:
         LOG(INFO) << "MMAP: " << event.mmap.filename;
-        if (do_remap_)
-          CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
+        CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
         break;
       case PERF_RECORD_FORK:
         LOG(INFO) << "FORK: " << event.fork.ppid << " -> " << event.fork.pid;
-        if (do_remap_)
-          CHECK(MapForkEvent(&event.fork)) << "Unable to map FORK event!";
+        CHECK(MapForkEvent(event.fork)) << "Unable to map FORK event!";
         break;
       case PERF_RECORD_EXIT:
         // EXIT events have the same structure as FORK events.
         LOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
-        if (do_remap_)
-          CHECK(MapExitEvent(&event.fork)) << "Unable to map EXIT event!";
+        CHECK(MapExitEvent(event.fork)) << "Unable to map EXIT event!";
         break;
       case PERF_RECORD_LOST:
       case PERF_RECORD_COMM:
@@ -344,21 +344,42 @@ bool PerfParser::ProcessEvents() {
 }
 
 bool PerfParser::MapSampleEvent(struct ip_event* event) {
+  return MapSampleEventAndGetNameAndOffset(event, NULL, NULL);
+}
+
+bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
+                                                   string* name,
+                                                   uint64* offset) {
   // Attempt to find the synthetic address of the IP sample in this order:
   // 1. Address space of the kernel.
   // 2. Address space of its own process.
   // 3. Address space of the parent process.
-  if (kernel_mapper_.GetMappedAddress(event->ip, &event->ip))
-    return true;
-  uint32 pid = event->pid;
-  while (process_mappers_.find(pid) != process_mappers_.end()) {
-    if (process_mappers_[pid]->GetMappedAddress(event->ip, &event->ip))
-      return true;
-    if (child_to_parent_pid_map_.find(pid) == child_to_parent_pid_map_.end())
-      break;
-    pid = child_to_parent_pid_map_[pid];
+  uint64 mapped_addr;
+  bool mapped = false;
+  AddressMapper* mapper = NULL;
+  if (kernel_mapper_.GetMappedAddress(event->ip, &mapped_addr)) {
+    mapped = true;
+    mapper = &kernel_mapper_;
+  } else {
+    uint32 pid = event->pid;
+    while (process_mappers_.find(pid) != process_mappers_.end()) {
+      mapper = process_mappers_[pid];
+      if (mapper->GetMappedAddress(event->ip, &mapped_addr)) {
+        mapped = true;
+        break;
+      }
+      if (child_to_parent_pid_map_.find(pid) == child_to_parent_pid_map_.end())
+        return false;
+      pid = child_to_parent_pid_map_[pid];
+    }
   }
-  return false;
+  if (mapped) {
+    if (name && offset)
+      CHECK(mapper->GetMappedNameAndOffset(event->ip, name, offset));
+    if (do_remap_)
+      event->ip = mapped_addr;
+  }
+  return mapped;
 }
 
 bool PerfParser::MapMmapEvent(struct mmap_event* event) {
@@ -389,16 +410,19 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event) {
   if (!mapper->Map(start, len, true))
     return false;
 
-  CHECK(mapper->GetMappedAddress(start, &event->start));
-  event->len = len;
-  event->pgoff = pgoff;
-
+  uint64 mapped_addr;
+  CHECK(mapper->GetMappedAddress(start, &mapped_addr));
+  if (do_remap_) {
+    event->start = mapped_addr;
+    event->len = len;
+    event->pgoff = pgoff;
+  }
   return true;
 }
 
-bool PerfParser::MapForkEvent(struct fork_event* event) {
-  uint32 pid = event->pid;
-  if (pid == event->ppid) {
+bool PerfParser::MapForkEvent(const struct fork_event& event) {
+  uint32 pid = event.pid;
+  if (pid == event.ppid) {
     LOG(ERROR) << "Forked process should not have the same pid as the parent.";
     return false;
   }
@@ -413,12 +437,12 @@ bool PerfParser::MapForkEvent(struct fork_event* event) {
   }
 
   process_mappers_[pid] = new AddressMapper;
-  child_to_parent_pid_map_[pid] = event->ppid;
+  child_to_parent_pid_map_[pid] = event.ppid;
   return true;
 }
 
-bool PerfParser::MapExitEvent(struct fork_event* event) {
-  uint32 pid = event->pid;
+bool PerfParser::MapExitEvent(const struct fork_event& event) {
+  uint32 pid = event.pid;
   // An exit event may not correspond to a previously processed fork event.
   // There can be redundant process events (from looking at "perf report -D"),
   // or the exiting process could have been created before "perf record" began.

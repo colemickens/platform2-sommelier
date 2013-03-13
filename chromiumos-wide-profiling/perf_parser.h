@@ -16,6 +16,11 @@ struct ParsedEvent {
   // TODO(sque): to save space, |raw_event| should be a pointer.
   event_t raw_event;                // Contains perf event info.
   struct perf_sample sample_info;   // Contains perf sample info.
+
+  struct DSOAndOffset {
+    string dso_name;
+    uint64 offset;
+  } dso_and_offset;
 };
 
 class PerfParser : public PerfReader {
@@ -49,8 +54,13 @@ class PerfParser : public PerfReader {
   bool ProcessEvents();
   bool MapSampleEvent(struct ip_event*);
   bool MapMmapEvent(struct mmap_event*);
-  bool MapForkEvent(struct fork_event*);
-  bool MapExitEvent(struct fork_event*);
+  bool MapForkEvent(const struct fork_event&);
+  bool MapExitEvent(const struct fork_event&);
+
+  // Does a sample event remap and then returns DSO name and offset of sample.
+  bool MapSampleEventAndGetNameAndOffset(struct ip_event* event,
+                                         string* name,
+                                         uint64* offset);
 
   void ResetAddressMappers();
 
