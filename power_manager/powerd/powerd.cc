@@ -1174,17 +1174,6 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  int64 last_activity_time_internal = 0;
-  if (!dbus_message_get_args(message, &error,
-                             DBUS_TYPE_INT64, &last_activity_time_internal,
-                             DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << kHandleUserActivityMethod
-                << ": Error reading args: " << error.message;
-    dbus_error_free(&error);
-    return util::CreateDBusInvalidArgsErrorReply(message);
-  }
   suspender_.HandleUserActivity();
   state_controller_->HandleUserActivity();
   return NULL;
