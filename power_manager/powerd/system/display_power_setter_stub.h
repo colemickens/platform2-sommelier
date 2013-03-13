@@ -21,6 +21,8 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
 
   chromeos::DisplayPowerState state() const { return state_; }
   base::TimeDelta delay() const { return delay_; }
+  int num_calls() const { return num_calls_; }
+  void reset_num_calls() { num_calls_ = 0; }
 
   // DisplayPowerSetterInterface implementation:
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
@@ -30,6 +32,9 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
   // Arguments passed to most-recent SetDisplayPower() call.
   chromeos::DisplayPowerState state_;
   base::TimeDelta delay_;
+
+  // Number of times that SetDisplayPower() has been called.
+  int num_calls_;
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetterStub);
 };

@@ -22,6 +22,7 @@ class BacklightStub : public BacklightInterface {
   void set_max_level(int64 level) { max_level_ = level; }
   void set_current_level(int64 level) { current_level_ = level; }
   void set_should_fail(bool should_fail) { should_fail_ = should_fail; }
+  void clear_resume_level() { resume_level_ = -1; }
 
   int64 current_level() const { return current_level_; }
   int64 resume_level() const { return resume_level_; }

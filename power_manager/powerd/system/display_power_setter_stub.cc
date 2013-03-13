@@ -8,7 +8,8 @@ namespace power_manager {
 namespace system {
 
 DisplayPowerSetterStub::DisplayPowerSetterStub()
-    : state_(chromeos::DISPLAY_POWER_ALL_ON) {
+    : state_(chromeos::DISPLAY_POWER_ALL_ON),
+      num_calls_(0) {
 }
 
 DisplayPowerSetterStub::~DisplayPowerSetterStub() {}
@@ -17,6 +18,7 @@ void DisplayPowerSetterStub::SetDisplayPower(chromeos::DisplayPowerState state,
                                              base::TimeDelta delay) {
   state_ = state;
   delay_ = delay;
+  num_calls_++;
 }
 
 }  // system
