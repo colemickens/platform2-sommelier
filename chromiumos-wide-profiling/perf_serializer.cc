@@ -44,6 +44,11 @@ bool PerfSerializer::SerializeFromFile(const string& filename,
 
 bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
                                        const string& filename) {
+  Deserialize(perf_data_proto);
+  return WriteFile(filename);
+}
+
+bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_);
 
   // Make sure all event types (attrs) have the same sample type.
@@ -58,10 +63,8 @@ bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
   sample_type_ = attrs_[0].attr.sample_type;
 
   DeserializeEvents(perf_data_proto.events(), &parsed_events_);
-  if (!GenerateRawEvents())
-    return false;
 
-  return WriteFile(filename);
+  return GenerateRawEvents();
 }
 
 void PerfSerializer::SerializeEventHeader(

@@ -23,6 +23,10 @@ class PerfSerializer : public PerfParser {
   bool DeserializeToFile(const quipper::PerfDataProto& perf_data_proto,
                          const string& filename);
 
+  // Reads in contents of protobuf to store locally.  Does not write to any
+  // output files.
+  bool Deserialize(const quipper::PerfDataProto& perf_data_proto);
+
  private:
   void SerializeEvent(const ParsedEvent& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
