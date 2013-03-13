@@ -753,6 +753,10 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
       return flimflam::kErrorOutOfRange;
     case kFailurePinMissing:
       return flimflam::kErrorPinMissing;
+    case kFailureIPSecCertAuth:
+      return flimflam::kErrorIpsecCertAuthFailed;
+    case kFailureIPSecPSKAuth:
+      return flimflam::kErrorIpsecPskAuthFailed;
     case kFailurePPPAuth:
       return flimflam::kErrorPppAuthFailed;
     case kFailureEAPAuthentication:

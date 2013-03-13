@@ -7,6 +7,7 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/string_util.h>
+#include <chromeos/vpn-manager/service_error.h>
 #include <gtest/gtest.h>
 
 #include "shill/event_dispatcher.h"
@@ -205,7 +206,7 @@ TEST_F(L2TPIPSecDriverTest, GetProviderType) {
 }
 
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
-  driver_->Cleanup(Service::kStateIdle);  // Ensure no crash.
+  driver_->IdleService();  // Ensure no crash.
 
   const unsigned int kTag = 123;
   driver_->child_watch_tag_ = kTag;
@@ -217,11 +218,11 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->service_ = service_;
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*device_, SetEnabled(false));
-  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  EXPECT_CALL(*service_, SetFailure(Service::kFailureBadPassphrase));
   driver_->rpc_task_.reset(new RPCTask(&control_, this));
   FilePath psk_file = SetupPSKFile();
   StartConnectTimeout(0);
-  driver_->Cleanup(Service::kStateFailure);
+  driver_->FailService(Service::kFailureBadPassphrase);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
   EXPECT_EQ(0, driver_->child_watch_tag_);
@@ -230,6 +231,11 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
+
+  driver_->service_ = service_;
+  EXPECT_CALL(*service_, SetState(Service::kStateIdle));
+  driver_->IdleService();
+  EXPECT_FALSE(driver_->service_);
 }
 
 TEST_F(L2TPIPSecDriverTest, DeletePSKFile) {
@@ -420,10 +426,14 @@ TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
   const int kPID = 99999;
   driver_->child_watch_tag_ = 333;
   driver_->pid_ = kPID;
+  driver_->service_ = service_;
+  EXPECT_CALL(*service_, SetFailure(Service::kFailureDNSLookup));
   EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
-  L2TPIPSecDriver::OnL2TPIPSecVPNDied(kPID, 2, driver_);
+  L2TPIPSecDriver::OnL2TPIPSecVPNDied(
+      kPID, vpn_manager::kServiceErrorResolveHostnameFailed << 8, driver_);
   EXPECT_EQ(0, driver_->child_watch_tag_);
   EXPECT_EQ(0, driver_->pid_);
+  EXPECT_FALSE(driver_->service_);
 }
 
 namespace {
@@ -494,7 +504,7 @@ TEST_F(L2TPIPSecDriverTest, OnConnectionDisconnected) {
 TEST_F(L2TPIPSecDriverTest, OnConnectTimeout) {
   StartConnectTimeout(0);
   SetService(service_);
-  EXPECT_CALL(*service_, SetState(Service::kStateFailure));
+  EXPECT_CALL(*service_, SetFailure(Service::kFailureConnect));
   OnConnectTimeout();
   EXPECT_FALSE(GetService());
   EXPECT_FALSE(IsConnectTimeoutStarted());

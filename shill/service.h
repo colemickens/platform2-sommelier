@@ -110,6 +110,8 @@ class Service : public base::RefCounted<Service> {
     kFailureConnect,
     kFailureDNSLookup,
     kFailureHTTPGet,
+    kFailureIPSecCertAuth,
+    kFailureIPSecPSKAuth,
     kFailurePPPAuth,
     kFailureEAPAuthentication,
     kFailureEAPLocalTLS,

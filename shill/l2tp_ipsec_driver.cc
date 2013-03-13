@@ -4,10 +4,13 @@
 
 #include "shill/l2tp_ipsec_driver.h"
 
+#include <sys/wait.h>
+
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/vpn-manager/service_error.h>
 
 #include "shill/device_info.h"
 #include "shill/error.h"
@@ -86,7 +89,7 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       child_watch_tag_(0) {}
 
 L2TPIPSecDriver::~L2TPIPSecDriver() {
-  Cleanup(Service::kStateIdle);
+  IdleService();
 }
 
 bool L2TPIPSecDriver::ClaimInterface(const string &link_name,
@@ -102,32 +105,42 @@ void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   service_->SetState(Service::kStateConfiguring);
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnL2TPIPSecVPN(error)) {
-    Cleanup(Service::kStateFailure);
+    FailService(Service::kFailureConnect);
   }
 }
 
 void L2TPIPSecDriver::Disconnect() {
   SLOG(VPN, 2) << __func__;
-  Cleanup(Service::kStateIdle);
+  IdleService();
 }
 
 void L2TPIPSecDriver::OnConnectionDisconnected() {
   LOG(INFO) << "Underlying connection disconnected.";
-  Cleanup(Service::kStateIdle);
+  IdleService();
 }
 
 void L2TPIPSecDriver::OnConnectTimeout() {
   VPNDriver::OnConnectTimeout();
-  Cleanup(Service::kStateFailure);
+  FailService(Service::kFailureConnect);
 }
 
 string L2TPIPSecDriver::GetProviderType() const {
   return flimflam::kProviderL2tpIpsec;
 }
 
-void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
-  SLOG(VPN, 2) << __func__
-               << "(" << Service::ConnectStateToString(state) << ")";
+void L2TPIPSecDriver::IdleService() {
+  Cleanup(Service::kStateIdle, Service::kFailureUnknown);
+}
+
+void L2TPIPSecDriver::FailService(Service::ConnectFailure failure) {
+  Cleanup(Service::kStateFailure, failure);
+}
+
+void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
+                              Service::ConnectFailure failure) {
+  SLOG(VPN, 2) << __func__ << "("
+               << Service::ConnectStateToString(state) << ", "
+               << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
   DeletePSKFile();
   if (child_watch_tag_) {
@@ -145,7 +158,11 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state) {
   }
   rpc_task_.reset();
   if (service_) {
-    service_->SetState(state);
+    if (state == Service::kStateFailure) {
+      service_->SetFailure(failure);
+    } else {
+      service_->SetState(state);
+    }
     service_ = NULL;
   }
 }
@@ -164,8 +181,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
   if (!InitOptions(&options, error)) {
     return false;
   }
-  SLOG(VPN, 2) << "L2TP/IPSec VPN process options: "
-               << JoinString(options, ' ');
+  LOG(INFO) << "L2TP/IPSec VPN process options: " << JoinString(options, ' ');
 
   // TODO(petkov): This code needs to be abstracted away in a separate external
   // process module (crosbug.com/27131).
@@ -319,13 +335,38 @@ bool L2TPIPSecDriver::AppendFlag(const string &property,
 
 // static
 void L2TPIPSecDriver::OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data) {
-  SLOG(VPN, 2) << __func__ << "(" << pid << ", "  << status << ")";
+  LOG(INFO) << __func__ << "(" << pid << ", "  << status << ")";
   L2TPIPSecDriver *me = reinterpret_cast<L2TPIPSecDriver *>(data);
   me->child_watch_tag_ = 0;
   CHECK_EQ(pid, me->pid_);
   me->pid_ = 0;
-  me->Cleanup(Service::kStateFailure);
+  me->FailService(TranslateExitStatusToFailure(status));
   // TODO(petkov): Figure if we need to restart the connection.
+}
+
+// static
+Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
+    int status) {
+  if (!WIFEXITED(status)) {
+    return Service::kFailureUnknown;
+  }
+  switch (WEXITSTATUS(status)) {
+    case vpn_manager::kServiceErrorResolveHostnameFailed:
+      return Service::kFailureDNSLookup;
+    case vpn_manager::kServiceErrorIpsecConnectionFailed:
+    case vpn_manager::kServiceErrorL2tpConnectionFailed:
+    case vpn_manager::kServiceErrorPppConnectionFailed:
+      return Service::kFailureConnect;
+    case vpn_manager::kServiceErrorIpsecPresharedKeyAuthenticationFailed:
+      return Service::kFailureIPSecPSKAuth;
+    case vpn_manager::kServiceErrorIpsecCertificateAuthenticationFailed:
+      return Service::kFailureIPSecCertAuth;
+    case vpn_manager::kServiceErrorPppAuthenticationFailed:
+      return Service::kFailurePPPAuth;
+    default:
+      break;
+  }
+  return Service::kFailureUnknown;
 }
 
 void L2TPIPSecDriver::GetLogin(string *user, string *password) {
@@ -392,7 +433,7 @@ void L2TPIPSecDriver::Notify(
     // Avoid destroying the RPC task inside the adaptor callback by doing it
     // from the main event loop.
     dispatcher()->PostTask(Bind(&DeleteRPCTask, rpc_task_.release()));
-    Cleanup(Service::kStateFailure);
+    FailService(Service::kFailureUnknown);
     return;
   }
 

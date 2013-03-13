@@ -91,7 +91,21 @@ class L2TPIPSecDriver : public VPNDriver,
   bool InitPSKOptions(std::vector<std::string> *options, Error *error);
   void InitNSSOptions(std::vector<std::string> *options);
 
-  void Cleanup(Service::ConnectState state);
+  // Resets the VPN state and deallocates all resources. If there's a service
+  // associated through Connect, sets its state to Service::kStateIdle and
+  // disassociates from the service.
+  void IdleService();
+
+  // Resets the VPN state and deallocates all resources. If there's a service
+  // associated through Connect, sets its state to Service::kStateFailure with
+  // failure reason |failure| and disassociates from the service.
+  void FailService(Service::ConnectFailure failure);
+
+  // Implements the IdleService and FailService methods. Resets the VPN state
+  // and deallocates all resources. If there's a service associated through
+  // Connect, sets its state |state|; if |state| is Service::kStateFailure, sets
+  // the failure reason to |failure|; disassociates from the service.
+  void Cleanup(Service::ConnectState state, Service::ConnectFailure failure);
 
   void DeletePSKFile();
 
@@ -113,6 +127,8 @@ class L2TPIPSecDriver : public VPNDriver,
 
   // Called when the l2tpipsec_vpn process exits.
   static void OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data);
+
+  static Service::ConnectFailure TranslateExitStatusToFailure(int status);
 
   // Inherit from VPNDriver to add custom properties.
   virtual KeyValueStore GetProvider(Error *error);
