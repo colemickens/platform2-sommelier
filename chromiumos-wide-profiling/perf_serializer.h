@@ -17,10 +17,11 @@ class PerfSerializer : public PerfParser {
   PerfSerializer();
   ~PerfSerializer();
 
-  bool Serialize(const string& filename,
-                 quipper::PerfDataProto* perf_data_proto);
-  bool Deserialize(const string& filename,
-                   const quipper::PerfDataProto& perf_data_proto);
+  // Converts between raw perf data file and protobuf.
+  bool SerializeFromFile(const string& filename,
+                         quipper::PerfDataProto* perf_data_proto);
+  bool DeserializeToFile(const quipper::PerfDataProto& perf_data_proto,
+                         const string& filename);
 
  private:
   void SerializeEvent(const ParsedEvent& event,

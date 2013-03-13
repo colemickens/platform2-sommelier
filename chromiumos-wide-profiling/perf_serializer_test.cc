@@ -30,16 +30,16 @@ void SerializeAndDeserialize(const string& input,
                              const string& output) {
   quipper::PerfDataProto perf_data_proto;
   PerfSerializer serializer;
-  EXPECT_TRUE(serializer.Serialize(input, &perf_data_proto));
+  EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
   PerfSerializer deserializer;
-  EXPECT_TRUE(deserializer.Deserialize(output, perf_data_proto));
+  EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
 }
 
 void SerializeToFileAndBack(const string& input,
                             const string& output) {
   quipper::PerfDataProto input_perf_data_proto;
   PerfSerializer serializer;
-  EXPECT_TRUE(serializer.Serialize(input, &input_perf_data_proto));
+  EXPECT_TRUE(serializer.SerializeFromFile(input, &input_perf_data_proto));
 
   // Now store the protobuf into a file.
   string input_filename, output_filename;
@@ -52,7 +52,7 @@ void SerializeToFileAndBack(const string& input,
   EXPECT_TRUE(ReadProtobufFromFile(&output_perf_data_proto, input_filename));
 
   PerfSerializer deserializer;
-  EXPECT_TRUE(deserializer.Deserialize(output, output_perf_data_proto));
+  EXPECT_TRUE(deserializer.DeserializeToFile(output_perf_data_proto, output));
 
   EXPECT_TRUE(WriteProtobufToFile(output_perf_data_proto, output_filename));
 

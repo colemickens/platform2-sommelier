@@ -35,7 +35,7 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
 
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;
-  bool result = perf_serializer.Serialize(temp_file, perf_data);
+  bool result = perf_serializer.SerializeFromFile(temp_file, perf_data);
 
   if (remove(temp_file.c_str()))
       return false;

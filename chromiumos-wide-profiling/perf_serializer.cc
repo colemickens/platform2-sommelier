@@ -367,8 +367,8 @@ void PerfSerializer::DeserializePerfFileAttr(
     perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
 }
 
-bool PerfSerializer::Serialize(const string& filename,
-                               PerfDataProto* perf_data_proto) {
+bool PerfSerializer::SerializeFromFile(const string& filename,
+                                       PerfDataProto* perf_data_proto) {
   if (!ReadFile(filename))
     return false;
 
@@ -381,8 +381,8 @@ bool PerfSerializer::Serialize(const string& filename,
   return true;
 }
 
-bool PerfSerializer::Deserialize(const string& filename,
-                                 const PerfDataProto& perf_data_proto) {
+bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
+                                       const string& filename) {
   DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_);
 
   // Make sure all event types (attrs) have the same sample type.
