@@ -36,11 +36,11 @@ BINDING_HDRS := bindings/client.h bindings/server.h
 GEN_HDRS := $(PB_HDRS) $(MARSHAL_HDRS) $(BINDING_HDRS)
 ME_OBJS := mount-encrypted.o mount-helpers.o
 
+TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o mock_%.o, \
+                      $(CXX_OBJECTS))
 SHARED_OBJS := $(filter-out cryptohomed.o cryptohome.o cryptohome-path.o \
-                            lockbox-cache-main.o %_tests.o %_unittest.o \
-                            cryptohome_testrunner.o $(ME_OBJS), $(CXX_OBJECTS))
-TEST_OBJS := $(filter %_unittest.o cryptohome_testrunner.o %_tests.o \
-                            $(ME_OBJS), $(CXX_OBJECTS))
+                            lockbox-cache-main.o $(ME_OBJS) $(TEST_OBJS), \
+                            $(CXX_OBJECTS))
 
 # Used to cause an object to depend on all the generated headers. Since the
 # headers are generated, there's no way for common.mk's dependency detection to

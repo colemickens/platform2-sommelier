@@ -19,11 +19,8 @@ namespace cryptohome {
 
 class MockKeyStore : public KeyStore {
  public:
-  MockKeyStore() {
-    ON_CALL(*this, Read(_, _)).WillByDefault(Return(true));
-    ON_CALL(*this, Write(_, _)).WillByDefault(Return(true));
-  }
-  virtual ~MockKeyStore() {}
+  MockKeyStore();
+  virtual ~MockKeyStore();
 
   MOCK_METHOD2(Read, bool(const std::string& name,
                           chromeos::SecureBlob* key_data));

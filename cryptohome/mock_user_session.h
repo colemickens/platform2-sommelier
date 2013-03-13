@@ -19,20 +19,8 @@ using ::testing::Invoke;
 
 class MockUserSession : public UserSession {
  public:
-  MockUserSession()
-      : user_session_() {
-    ON_CALL(*this, Init(_))
-        .WillByDefault(Invoke(&user_session_, &UserSession::Init));
-    ON_CALL(*this, SetUser(_))
-        .WillByDefault(Invoke(&user_session_, &UserSession::SetUser));
-    ON_CALL(*this, Reset())
-        .WillByDefault(Invoke(&user_session_, &UserSession::Reset));
-    ON_CALL(*this, CheckUser(_))
-        .WillByDefault(Invoke(&user_session_, &UserSession::CheckUser));
-    ON_CALL(*this, Verify(_))
-        .WillByDefault(Invoke(&user_session_, &UserSession::Verify));
-  }
-  ~MockUserSession() {}
+  MockUserSession();
+  ~MockUserSession();
   MOCK_METHOD1(Init, void(const chromeos::SecureBlob&));
   MOCK_METHOD1(SetUser, bool(const Credentials&));
   MOCK_METHOD0(Reset, void(void));

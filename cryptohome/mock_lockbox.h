@@ -19,8 +19,8 @@ using ::testing::Return;
 
 class MockLockbox : public Lockbox {
  public:
-  MockLockbox() : Lockbox(NULL, 0) {}
-  virtual ~MockLockbox() {}
+  MockLockbox();
+  virtual ~MockLockbox();
   MOCK_METHOD1(Create, bool(ErrorId*));  // NOLINT
   MOCK_METHOD1(Destroy, bool(ErrorId*));  // NOLINT
   MOCK_METHOD1(Load, bool(ErrorId*));  // NOLINT

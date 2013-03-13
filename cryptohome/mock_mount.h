@@ -14,8 +14,8 @@ class Credentials;
 
 class MockMount : public Mount {
  public:
-  MockMount() {}
-  ~MockMount() {}
+  MockMount();
+  ~MockMount();
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD1(AreSameUser, bool(const Credentials&));
   MOCK_METHOD1(AreValid, bool(const Credentials&));

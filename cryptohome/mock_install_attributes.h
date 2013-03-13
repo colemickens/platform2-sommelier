@@ -19,8 +19,8 @@ namespace cryptohome {
 
 class MockInstallAttributes : public InstallAttributes {
  public:
-  MockInstallAttributes() : InstallAttributes(NULL) {}
-  virtual ~MockInstallAttributes() {}
+  MockInstallAttributes();
+  virtual ~MockInstallAttributes();
 
   MOCK_METHOD0(PrepareSystem, bool());
 

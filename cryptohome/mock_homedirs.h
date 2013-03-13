@@ -16,8 +16,8 @@ namespace cryptohome {
 
 class MockHomeDirs : public HomeDirs {
  public:
-  MockHomeDirs() {}
-  virtual ~MockHomeDirs() {}
+  MockHomeDirs();
+  virtual ~MockHomeDirs();
 
   MOCK_METHOD0(Init, bool());
   MOCK_METHOD0(FreeDiskSpace, bool());

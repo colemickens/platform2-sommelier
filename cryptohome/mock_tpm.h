@@ -22,43 +22,8 @@ class Crypto;
 
 class MockTpm : public Tpm {
  public:
-  MockTpm() {
-    ON_CALL(*this, Encrypt(_, _, _, _))
-        .WillByDefault(Invoke(this, &MockTpm::Xor));
-    ON_CALL(*this, Decrypt(_, _, _, _))
-        .WillByDefault(Invoke(this, &MockTpm::Xor));
-    ON_CALL(*this, IsConnected())
-        .WillByDefault(Return(true));
-    ON_CALL(*this, Connect(_))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, GetPublicKey(_, _))
-        .WillByDefault(Invoke(this, &MockTpm::GetBlankPublicKey));
-    ON_CALL(*this, GetPublicKeyHash(_))
-        .WillByDefault(Return(Tpm::Fatal));
-    ON_CALL(*this, Init(_, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, GetEndorsementPublicKey(_))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, MakeIdentity(_, _, _, _, _, _, _, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, ActivateIdentity(_, _, _, _, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, QuotePCR0(_, _, _, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, SealToPCR0(_, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, Unseal(_, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, GetRandomData(_, _))
-        .WillByDefault(Invoke(this, &MockTpm::FakeGetRandomData));
-    ON_CALL(*this, CreateDelegate(_, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, CreateCertifiedKey(_, _, _, _, _, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*this, Sign(_, _, _))
-        .WillByDefault(Return(true));
-  }
-  ~MockTpm() {}
+  MockTpm();
+  ~MockTpm();
   MOCK_METHOD2(Init, bool(Platform*, bool));
   MOCK_METHOD0(IsConnected, bool());
   MOCK_CONST_METHOD0(IsOwned, bool());
