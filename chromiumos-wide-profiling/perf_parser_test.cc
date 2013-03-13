@@ -56,7 +56,8 @@ TEST(PerfParserTest, TestRemap) {
     string input_perf_data = perf_test_files::kPerfDataFiles[i];
     LOG(INFO) << "Testing " << input_perf_data;
 
-    PerfParser parser(true);
+    PerfParser parser;
+    parser.set_do_remap(true);
     ASSERT_TRUE(parser.ReadFile(input_perf_data));
     parser.ParseRawEvents();
     parser.GenerateRawEvents();
@@ -66,7 +67,8 @@ TEST(PerfParserTest, TestRemap) {
     // Remapped addresses should not match the original addresses.
     EXPECT_FALSE(ComparePerfReports(input_perf_data, output_perf_data));
 
-    PerfParser remap_parser(true);
+    PerfParser remap_parser;
+    remap_parser.set_do_remap(true);
     ASSERT_TRUE(remap_parser.ReadFile(output_perf_data));
     remap_parser.ParseRawEvents();
     remap_parser.GenerateRawEvents();

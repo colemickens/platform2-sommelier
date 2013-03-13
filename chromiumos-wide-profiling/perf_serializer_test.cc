@@ -16,11 +16,14 @@
 #include "utils.h"
 
 void SerializeAndDeserialize(const string& input,
-                             const string& output) {
+                             const string& output,
+                             bool do_remap) {
   quipper::PerfDataProto perf_data_proto;
   PerfSerializer serializer;
+  serializer.set_do_remap(do_remap);
   EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
   PerfSerializer deserializer;
+  deserializer.set_do_remap(do_remap);
   EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
 }
 
@@ -70,9 +73,9 @@ TEST(PerfSerializerTest, Test1Cycle) {
     LOG(INFO) << "Testing " << input_perf_data;
     input_perf_reader.ReadFile(input_perf_data);
 
-    SerializeAndDeserialize(input_perf_data, output_perf_data);
+    SerializeAndDeserialize(input_perf_data, output_perf_data, false);
     output_perf_reader.ReadFile(output_perf_data);
-    SerializeAndDeserialize(output_perf_data, output_perf_data1);
+    SerializeAndDeserialize(output_perf_data, output_perf_data1, false);
     output_perf_reader1.ReadFile(output_perf_data1);
 
     ASSERT_TRUE(CompareFileContents(output_perf_data, output_perf_data1));
@@ -91,6 +94,19 @@ TEST(PerfSerializerTest, Test1Cycle) {
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
     EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
+  }
+}
+
+TEST(PerfSerializerTest, TestRemap) {
+  // Read perf data using the PerfReader class with address remapping.
+  // Dump it to a protobuf.
+  // Read the protobuf, and reconstruct the perf data.
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataFiles);
+       ++i) {
+    const string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    const string output_perf_data = input_perf_data + ".ser.remap.out";
+    SerializeAndDeserialize(input_perf_data, output_perf_data, true);
   }
 }
 

@@ -64,6 +64,9 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
 
   DeserializeEvents(perf_data_proto.events(), &parsed_events_);
 
+  SortParsedEvents();
+  ProcessEvents();
+
   return GenerateRawEvents();
 }
 

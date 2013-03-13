@@ -26,7 +26,6 @@ struct ParsedEvent {
 class PerfParser : public PerfReader {
  public:
   PerfParser() : do_remap_(false) {}
-  PerfParser(bool do_remap) : do_remap_(do_remap) {}
   ~PerfParser();
 
   // Gets parsed event/sample info from raw event data.
@@ -43,6 +42,14 @@ class PerfParser : public PerfReader {
   // The first time this is called, it will create the sorted array.
   const std::vector<ParsedEvent*>& GetEventsSortedByTime() const {
     return parsed_events_sorted_by_time_;
+  }
+
+  bool do_remap() const {
+    return do_remap_;
+  }
+
+  void set_do_remap(bool do_remap) {
+    do_remap_ = do_remap;
   }
 
  protected:
