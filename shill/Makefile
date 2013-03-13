@@ -424,6 +424,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wimax_provider.o \
 	mock_wimax_service.o \
 	modem_info_unittest.o \
+	netlink_message_unittest.o \
 	netlink_socket_unittest.o \
 	nice_mock_control.o \
 	nss_unittest.o \

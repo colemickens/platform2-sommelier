@@ -36,6 +36,7 @@
 
 #include <base/bind.h>
 #include <base/format_macros.h>
+#include <base/stl_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/attribute_list.h"
@@ -186,6 +187,8 @@ void NetlinkMessage::PrintBytes(int log_level, const unsigned char *buf,
   }
 }
 
+// ErrorAckMessage.
+
 const uint16_t ErrorAckMessage::kMessageType = NLMSG_ERROR;
 
 bool ErrorAckMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
@@ -224,6 +227,8 @@ void ErrorAckMessage::Print(int log_level) const {
   SLOG(WiFi, log_level) << ToString();
 }
 
+// NoopMessage.
+
 const uint16_t NoopMessage::kMessageType = NLMSG_NOOP;
 
 ByteString NoopMessage::Encode(uint32_t sequence_number) {
@@ -234,6 +239,8 @@ ByteString NoopMessage::Encode(uint32_t sequence_number) {
 void NoopMessage::Print(int log_level) const {
   SLOG(WiFi, log_level) << ToString();
 }
+
+// DoneMessage.
 
 const uint16_t DoneMessage::kMessageType = NLMSG_DONE;
 
@@ -247,6 +254,8 @@ void DoneMessage::Print(int log_level) const {
   SLOG(WiFi, log_level) << ToString();
 }
 
+// OverrunMessage.
+
 const uint16_t OverrunMessage::kMessageType = NLMSG_OVERRUN;
 
 ByteString OverrunMessage::Encode(uint32_t sequence_number) {
@@ -256,6 +265,24 @@ ByteString OverrunMessage::Encode(uint32_t sequence_number) {
 
 void OverrunMessage::Print(int log_level) const {
   SLOG(WiFi, log_level) << ToString();
+}
+
+// UnknownMessage.
+
+ByteString UnknownMessage::Encode(uint32_t sequence_number) {
+  LOG(ERROR) << "We're not supposed to send UNKNOWN messages to the kernel";
+  return ByteString();
+}
+
+void UnknownMessage::Print(int log_level) const {
+  int total_bytes = message_body_.GetLength();
+  const uint8_t *const_data = message_body_.GetConstData();
+
+  string output = StringPrintf("%d bytes:", total_bytes);
+  for (int i = 0; i < total_bytes; ++i) {
+    StringAppendF(&output, " 0x%02x", const_data[i]);
+  }
+  SLOG(WiFi, log_level) << output;
 }
 
 // GenericNetlinkMessage
@@ -731,6 +758,31 @@ const char NewFamilyMessage::kCommandString[] = "CTRL_CMD_NEWFAMILY";
 const uint8_t GetFamilyMessage::kCommand = CTRL_CMD_GETFAMILY;
 const char GetFamilyMessage::kCommandString[] = "CTRL_CMD_GETFAMILY";
 
+// static
+NetlinkMessage *ControlNetlinkMessage::CreateMessage(
+    const nlmsghdr *const_msg) {
+  if (!const_msg) {
+    LOG(ERROR) << "NULL |const_msg| parameter";
+    return NULL;
+  }
+  // Casting away constness since, while nlmsg_data doesn't change its
+  // parameter, it also doesn't declare its paramenter as const.
+  nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
+  void *payload = nlmsg_data(msg);
+  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
+
+  switch (gnlh->cmd) {
+    case NewFamilyMessage::kCommand:
+      return new NewFamilyMessage();
+    case GetFamilyMessage::kCommand:
+      return new GetFamilyMessage();
+    default:
+      LOG(WARNING) << "Unknown/unhandled netlink control message " << gnlh->cmd;
+      break;
+  }
+  return NULL;
+}
+
 // Nl80211Frame
 
 Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
@@ -831,7 +883,6 @@ bool Nl80211Frame::IsEqual(const Nl80211Frame &other) const {
   return frame_.Equals(other.frame_);
 }
 
-
 //
 // Specific Nl80211Message types.
 //
@@ -918,9 +969,6 @@ const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
 const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
-const uint8_t UnknownMessage::kCommand = 0xff;
-const char UnknownMessage::kCommandString[] = "<Unknown Message Type>";
-
 const uint8_t UnprotDeauthenticateMessage::kCommand =
     NL80211_CMD_UNPROT_DEAUTHENTICATE;
 const char UnprotDeauthenticateMessage::kCommandString[] =
@@ -931,108 +979,141 @@ const uint8_t UnprotDisassociateMessage::kCommand =
 const char UnprotDisassociateMessage::kCommandString[] =
     "NL80211_CMD_UNPROT_DISASSOCIATE";
 
+// static
+NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
+  if (!const_msg) {
+    LOG(ERROR) << "NULL |const_msg| parameter";
+    return NULL;
+  }
+  // Casting away constness since, while nlmsg_data doesn't change its
+  // parameter, it also doesn't declare its paramenter as const.
+  nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
+  void *payload = nlmsg_data(msg);
+  genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
+  scoped_ptr<NetlinkMessage> message;
+
+  switch (gnlh->cmd) {
+    case AssociateMessage::kCommand:
+      return new AssociateMessage();
+    case AuthenticateMessage::kCommand:
+      return new AuthenticateMessage();
+    case CancelRemainOnChannelMessage::kCommand:
+      return new CancelRemainOnChannelMessage();
+    case ConnectMessage::kCommand:
+      return new ConnectMessage();
+    case DeauthenticateMessage::kCommand:
+      return new DeauthenticateMessage();
+    case DeleteStationMessage::kCommand:
+      return new DeleteStationMessage();
+    case DisassociateMessage::kCommand:
+      return new DisassociateMessage();
+    case DisconnectMessage::kCommand:
+      return new DisconnectMessage();
+    case FrameTxStatusMessage::kCommand:
+      return new FrameTxStatusMessage();
+    case GetRegMessage::kCommand:
+      return new GetRegMessage();
+    case JoinIbssMessage::kCommand:
+      return new JoinIbssMessage();
+    case MichaelMicFailureMessage::kCommand:
+      return new MichaelMicFailureMessage();
+    case NewScanResultsMessage::kCommand:
+      return new NewScanResultsMessage();
+    case NewStationMessage::kCommand:
+      return new NewStationMessage();
+    case NewWifiMessage::kCommand:
+      return new NewWifiMessage();
+    case NotifyCqmMessage::kCommand:
+      return new NotifyCqmMessage();
+    case PmksaCandidateMessage::kCommand:
+      return new PmksaCandidateMessage();
+    case RegBeaconHintMessage::kCommand:
+      return new RegBeaconHintMessage();
+    case RegChangeMessage::kCommand:
+      return new RegChangeMessage();
+    case RemainOnChannelMessage::kCommand:
+      return new RemainOnChannelMessage();
+    case RoamMessage::kCommand:
+      return new RoamMessage();
+    case ScanAbortedMessage::kCommand:
+      return new ScanAbortedMessage();
+    case TriggerScanMessage::kCommand:
+      return new TriggerScanMessage();
+    case UnprotDeauthenticateMessage::kCommand:
+      return new UnprotDeauthenticateMessage();
+    case UnprotDisassociateMessage::kCommand:
+      return new UnprotDisassociateMessage();
+    default:
+      LOG(WARNING) << "Unknown/unhandled netlink nl80211 message " << gnlh->cmd;
+      break;
+  }
+  return NULL;
+}
+
 //
 // Factory class.
 //
 
-// TODO(wdg): later, each message_type should register its own callback for
-// creating messages.  For now, however, this is much easier.
-NetlinkMessage *NetlinkMessageFactory::CreateMessage(nlmsghdr *msg) {
-  if (!msg) {
-    LOG(ERROR) << "NULL |msg| parameter";
+bool NetlinkMessageFactory::AddFactoryMethod(uint16_t message_type,
+                                             FactoryMethod factory) {
+  if (ContainsKey(factories_, message_type)) {
+    LOG(WARNING) << "Message type " << message_type << " already exists.";
+    return false;
+  }
+  if (message_type == NetlinkMessage::kIllegalMessageType) {
+    LOG(ERROR) << "Not installing factory for illegal message type.";
+    return false;
+  }
+  factories_[message_type] = factory;
+  return true;
+}
+
+NetlinkMessage *NetlinkMessageFactory::CreateMessage(
+    const nlmsghdr *const_msg) const {
+  if (!const_msg) {
+    LOG(ERROR) << "NULL |const_msg| parameter";
     return NULL;
   }
 
   scoped_ptr<NetlinkMessage> message;
-  void *payload = nlmsg_data(msg);
 
-  if (msg->nlmsg_type == NoopMessage::kMessageType) {
+  if (const_msg->nlmsg_type == NoopMessage::kMessageType) {
     message.reset(new NoopMessage());
-  } else if (msg->nlmsg_type == DoneMessage::kMessageType) {
+  } else if (const_msg->nlmsg_type == DoneMessage::kMessageType) {
     message.reset(new DoneMessage());
-  } else if (msg->nlmsg_type == OverrunMessage::kMessageType) {
+  } else if (const_msg->nlmsg_type == OverrunMessage::kMessageType) {
     message.reset(new OverrunMessage());
-  } else if (msg->nlmsg_type == ErrorAckMessage::kMessageType) {
+  } else if (const_msg->nlmsg_type == ErrorAckMessage::kMessageType) {
     message.reset(new ErrorAckMessage());
-  } else if (msg->nlmsg_type == ControlNetlinkMessage::kMessageType) {
-    genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
-
-    switch (gnlh->cmd) {
-      case NewFamilyMessage::kCommand:
-        message.reset(new NewFamilyMessage()); break;
-      case GetFamilyMessage::kCommand:
-        message.reset(new GetFamilyMessage()); break;
-
-      default:
-        message.reset(new UnknownMessage(gnlh->cmd)); break;
-    }
-  } else {
-    genlmsghdr *gnlh = reinterpret_cast<genlmsghdr *>(payload);
-
-    switch (gnlh->cmd) {
-      case AssociateMessage::kCommand:
-        message.reset(new AssociateMessage()); break;
-      case AuthenticateMessage::kCommand:
-        message.reset(new AuthenticateMessage()); break;
-      case CancelRemainOnChannelMessage::kCommand:
-        message.reset(new CancelRemainOnChannelMessage()); break;
-      case ConnectMessage::kCommand:
-        message.reset(new ConnectMessage()); break;
-      case DeauthenticateMessage::kCommand:
-        message.reset(new DeauthenticateMessage()); break;
-      case DeleteStationMessage::kCommand:
-        message.reset(new DeleteStationMessage()); break;
-      case DisassociateMessage::kCommand:
-        message.reset(new DisassociateMessage()); break;
-      case DisconnectMessage::kCommand:
-        message.reset(new DisconnectMessage()); break;
-      case FrameTxStatusMessage::kCommand:
-        message.reset(new FrameTxStatusMessage()); break;
-      case GetRegMessage::kCommand:
-        message.reset(new GetRegMessage()); break;
-      case JoinIbssMessage::kCommand:
-        message.reset(new JoinIbssMessage()); break;
-      case MichaelMicFailureMessage::kCommand:
-        message.reset(new MichaelMicFailureMessage()); break;
-      case NewScanResultsMessage::kCommand:
-        message.reset(new NewScanResultsMessage()); break;
-      case NewStationMessage::kCommand:
-        message.reset(new NewStationMessage()); break;
-      case NewWifiMessage::kCommand:
-        message.reset(new NewWifiMessage()); break;
-      case NotifyCqmMessage::kCommand:
-        message.reset(new NotifyCqmMessage()); break;
-      case PmksaCandidateMessage::kCommand:
-        message.reset(new PmksaCandidateMessage()); break;
-      case RegBeaconHintMessage::kCommand:
-        message.reset(new RegBeaconHintMessage()); break;
-      case RegChangeMessage::kCommand:
-        message.reset(new RegChangeMessage()); break;
-      case RemainOnChannelMessage::kCommand:
-        message.reset(new RemainOnChannelMessage()); break;
-      case RoamMessage::kCommand:
-        message.reset(new RoamMessage()); break;
-      case ScanAbortedMessage::kCommand:
-        message.reset(new ScanAbortedMessage()); break;
-      case TriggerScanMessage::kCommand:
-        message.reset(new TriggerScanMessage()); break;
-      case UnprotDeauthenticateMessage::kCommand:
-        message.reset(new UnprotDeauthenticateMessage()); break;
-      case UnprotDisassociateMessage::kCommand:
-        message.reset(new UnprotDisassociateMessage()); break;
-
-      default:
-        message.reset(new UnknownMessage(gnlh->cmd)); break;
-    }
+  } else if (ContainsKey(factories_, const_msg->nlmsg_type)) {
+    map<uint16_t, FactoryMethod>::const_iterator factory;
+    factory = factories_.find(const_msg->nlmsg_type);
+    message.reset(factory->second.Run(const_msg));
   }
 
-  if (!message->InitFromNlmsg(msg)) {
+  // If no factory exists for this message _or_ if a factory exists but it
+  // failed, there'll be no message.  Handle either of those cases, by
+  // creating an |UnknownMessage|.
+  if (!message) {
+    // Casting away constness since, while nlmsg_data doesn't change its
+    // parameter, it also doesn't declare its paramenter as const.
+    nlmsghdr *msg = const_cast<nlmsghdr *>(const_msg);
+    ByteString payload(reinterpret_cast<char *>(nlmsg_data(msg)),
+                       nlmsg_datalen(msg));
+    message.reset(new UnknownMessage(msg->nlmsg_type, payload));
+  }
+
+  if (!message->InitFromNlmsg(const_msg)) {
     LOG(ERROR) << "Message did not initialize properly";
     return NULL;
   }
 
   return message.release();
 }
+
+//
+// Data Collector
+//
 
 Nl80211MessageDataCollector *
     Nl80211MessageDataCollector::GetInstance() {

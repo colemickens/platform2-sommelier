@@ -136,6 +136,11 @@ void Config80211::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
 }
 
 bool Config80211::Init() {
+  // Install message factory for control class of messages, which has
+  // statically-known message type.
+  message_factory_.AddFactoryMethod(
+      ControlNetlinkMessage::kMessageType,
+      Bind(&ControlNetlinkMessage::CreateMessage));
   if (!sock_) {
     sock_ = new NetlinkSocket;
     if (!sock_) {
@@ -165,7 +170,8 @@ int Config80211::file_descriptor() const {
   return (sock_ ? sock_->file_descriptor() : -1);
 }
 
-uint16_t Config80211::GetFamily(string name) {
+uint16_t Config80211::GetFamily(string name,
+    const NetlinkMessageFactory::FactoryMethod &message_factory) {
   MessageType &message_type = message_types_[name];
   if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
     return message_type.family_id;
@@ -230,6 +236,10 @@ uint16_t Config80211::GetFamily(string name) {
     InputData input_data(received.GetData(), received.GetLength());
     OnRawNlMessageReceived(&input_data);
     if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
+      uint16_t family_id = message_type.family_id;
+      if (family_id != NetlinkMessage::kIllegalMessageType) {
+        message_factory_.AddFactoryMethod(family_id, message_factory);
+      }
       time->GetTimeMonotonic(&now);
       timersub(&now, &start_time, &wait_duration);
       SLOG(WiFi, 5) << "Found id " << message_type.family_id
@@ -254,7 +264,6 @@ uint16_t Config80211::GetMessageType(string name) const {
   }
   return family->second.family_id;
 }
-
 
 bool Config80211::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
   list<NetlinkMessageHandler>::iterator i;
@@ -400,7 +409,7 @@ void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
     return;
   }
   const uint32 sequence_number = msg->nlmsg_seq;
-  scoped_ptr<NetlinkMessage> message(NetlinkMessageFactory::CreateMessage(msg));
+  scoped_ptr<NetlinkMessage> message(message_factory_.CreateMessage(msg));
   if (message == NULL) {
     SLOG(WiFi, 3) << "NL Message " << sequence_number << " <===";
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";

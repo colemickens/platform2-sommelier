@@ -70,6 +70,8 @@
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 
+#include "shill/nl80211_message.h"
+
 struct nlmsghdr;
 
 namespace shill {
@@ -117,12 +119,6 @@ class Config80211 {
   static const char kEventTypeRegulatory[];
   static const char kEventTypeMlme[];
 
-  // This represents whether the cfg80211/mac80211 are installed in the kernel.
-  enum WifiState {
-    kWifiUp,
-    kWifiDown
-  };
-
   // Config80211 is a singleton and this is the way to access it.
   static Config80211 *GetInstance();
 
@@ -144,7 +140,8 @@ class Config80211 {
   // |NetlinkMessage::kIllegalMessageType| if the message type could not be
   // determined.  May block so |GetFamily| should be called before entering the
   // event loop.
-  uint16_t GetFamily(std::string family_name);
+  uint16_t GetFamily(std::string family_name,
+      const NetlinkMessageFactory::FactoryMethod &message_factory);
 
   // Retrieves a family id (message type) given the |name| string describing
   // the message family.
@@ -191,10 +188,22 @@ class Config80211 {
 
  private:
   friend class Config80211Test;
+  friend class NetlinkMessageTest;
   friend class ShillDaemonTest;
   FRIEND_TEST(Config80211Test, AddLinkTest);
   FRIEND_TEST(Config80211Test, BroadcastHandlerTest);
   FRIEND_TEST(Config80211Test, MessageHandlerTest);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE);
+
   typedef std::map<uint32_t, NetlinkMessageHandler> MessageHandlers;
 
   static const long kMaximumNewFamilyWaitSeconds;
@@ -240,6 +249,7 @@ class Config80211 {
 
   NetlinkSocket *sock_;
   std::map<const std::string, MessageType> message_types_;
+  NetlinkMessageFactory message_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(Config80211);
 };

@@ -181,6 +181,20 @@ class OverrunMessage : public NetlinkMessage {
   DISALLOW_COPY_AND_ASSIGN(OverrunMessage);
 };
 
+
+class UnknownMessage : public NetlinkMessage {
+ public:
+  UnknownMessage(uint16_t message_type, ByteString message_body) :
+      NetlinkMessage(message_type), message_body_(message_body) {}
+  virtual ByteString Encode(uint32_t sequence_number);
+  virtual void Print(int log_level) const;
+
+ private:
+  ByteString message_body_;
+
+  DISALLOW_COPY_AND_ASSIGN(UnknownMessage);
+};
+
 // Objects of the |GenericNetlinkMessage| type represent messages that contain
 // a |genlmsghdr| after a |nlmsghdr|.  These messages seem to all contain a
 // payload that consists of a list of structured attributes (it's possible that
@@ -265,6 +279,9 @@ class ControlNetlinkMessage : public GenericNetlinkMessage {
       : GenericNetlinkMessage(kMessageType, command, command_string) {}
 
   virtual bool InitFromNlmsg(const nlmsghdr *msg);
+
+  // Message factory for all types of Control netlink message.
+  static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);
 };
 
 class NewFamilyMessage : public ControlNetlinkMessage {
@@ -339,6 +356,9 @@ class Nl80211Message : public GenericNetlinkMessage {
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute).
   static std::string StringFromReason(uint16_t reason);
   static std::string StringFromStatus(uint16_t status);
+
+  // Message factory for all types of Nl80211 message.
+  static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);
 
  private:
   static std::map<uint16_t, std::string> *reason_code_string_;
@@ -673,22 +693,6 @@ class TriggerScanMessage : public Nl80211Message {
 };
 
 
-class UnknownMessage : public Nl80211Message {
- public:
-  explicit UnknownMessage(uint8_t command)
-      : Nl80211Message(command, kCommandString),
-        command_(command) {}
-
-  static const uint8_t kCommand;
-  static const char kCommandString[];
-
- private:
-  uint8_t command_;
-
-  DISALLOW_COPY_AND_ASSIGN(UnknownMessage);
-};
-
-
 class UnprotDeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
@@ -720,17 +724,23 @@ class UnprotDisassociateMessage : public Nl80211Message {
 
 class NetlinkMessageFactory {
  public:
+  typedef base::Callback<NetlinkMessage *(const nlmsghdr *msg)> FactoryMethod;
+
+  NetlinkMessageFactory() {}
+
+  // Adds a message factory for a specific message_type.  Intended to be used
+  // at initialization.
+  bool AddFactoryMethod(uint16_t message_type, FactoryMethod factory);
+
   // Ownership of the message is passed to the caller and, as such, he should
   // delete it.
-  static NetlinkMessage *CreateMessage(nlmsghdr *msg);
-  // TODO(wdg): Need a way for a class to register a callback and a message
-  // type.  That way, CreateMessage can call the appropriate factory based on
-  // the incoming message type.
+  NetlinkMessage *CreateMessage(const nlmsghdr *msg) const;
 
  private:
+  std::map<uint16_t, FactoryMethod> factories_;
+
   DISALLOW_COPY_AND_ASSIGN(NetlinkMessageFactory);
 };
-
 
 // Nl80211MessageDataCollector - this class is used to collect data to be
 // used for unit tests.  It is only invoked in this case.

@@ -105,7 +105,8 @@ void Daemon::Start() {
   if (config80211_) {
     config80211_->Init();
     uint16_t nl80211_family_id = config80211_->GetFamily(
-        Nl80211Message::kMessageTypeString);
+        Nl80211Message::kMessageTypeString,
+        Bind(&Nl80211Message::CreateMessage));
     if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }
