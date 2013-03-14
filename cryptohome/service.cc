@@ -431,9 +431,11 @@ void Service::InitializeInstallAttributes(bool first_time) {
   // InstallAttributes can handle a NULL or !IsEnabled Tpm object.
   install_attrs_->SetTpm(tpm_);
 
-  if (first_time)
-    // TODO(wad) Go nuclear if PrepareSystem fails!
-    install_attrs_->PrepareSystem();
+  if (first_time && !install_attrs_->PrepareSystem()) {
+    // TODO(wad) persist this failure to allow recovery or force
+    //           powerwash/reset.
+    LOG(ERROR) << "Unable to prepare system for install attributes.";
+  }
 
   // Init can fail without making the interface inconsistent so we're okay here.
   install_attrs_->Init();

@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -59,15 +59,32 @@ Lockbox::~Lockbox() {
 }
 
 bool Lockbox::TpmIsReady() const {
-  return tpm_ && tpm_->IsConnected() && tpm_->IsOwned();
+  if (!tpm_) {
+    LOG(ERROR) << "TpmIsReady: no tpm_ instance.";
+    return false;
+  }
+  if (!tpm_->IsEnabled()) {
+    LOG(ERROR) << "TpmIsReady: is not enabled.";
+    return false;
+  }
+  if (!tpm_->IsOwned()) {
+    LOG(ERROR) << "TpmIsReady: is not owned.";
+    return false;
+  }
+  return true;
 }
 
 bool Lockbox::HasAuthorization() const {
-  if (!TpmIsReady())
+  if (!TpmIsReady()) {
+    LOG(ERROR) << "HasAuthorization: TPM not ready.";
     return false;
+  }
   // If we have a TPM owner password, we can reset.
   chromeos::Blob owner_password;
-  return tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0;
+  if (tpm_->GetOwnerPassword(&owner_password) && owner_password.size() != 0)
+    return true;
+  LOG(INFO) << "HasAuthorization: TPM Owner password not available.";
+  return false;
 }
 
 bool Lockbox::Destroy(ErrorId* error) {

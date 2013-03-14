@@ -1,4 +1,4 @@
-// Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 //
@@ -76,8 +76,8 @@ class LockboxTest : public ::testing::Test {
     lockbox->set_process(&process_);
     Lockbox::ErrorId error;
 
-    // Ensure a connected, owned TPM.
-    EXPECT_CALL(tpm_, IsConnected())
+    // Ensure an enabled, owned TPM.
+    EXPECT_CALL(tpm_, IsEnabled())
       .Times(1)
       .WillRepeatedly(Return(true));
     EXPECT_CALL(tpm_, IsOwned())
@@ -147,8 +147,8 @@ const char* LockboxTest::kFileData = "42";
 TEST_F(LockboxTest, CreateFirstInstall) {
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned-this-time TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned-this-time TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(2)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -175,8 +175,8 @@ TEST_F(LockboxTest, CreateFirstInstall) {
 TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned-this-time TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned-this-time TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(2)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -205,8 +205,8 @@ TEST_F(LockboxTest, CreateOnReinstallWithFullAuth) {
 TEST_F(LockboxTest, CreateWithNoAuth) {
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned-this-time TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned-this-time TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -221,7 +221,7 @@ TEST_F(LockboxTest, CreateWithNoAuth) {
 TEST_F(LockboxTest, DestroyPristine) {
   Lockbox::ErrorId error;
 
-  EXPECT_CALL(tpm_, IsConnected())
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -244,7 +244,7 @@ TEST_F(LockboxTest, DestroyPristine) {
 TEST_F(LockboxTest, DestroyWithOldData) {
   Lockbox::ErrorId error;
 
-  EXPECT_CALL(tpm_, IsConnected())
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -275,8 +275,8 @@ TEST_F(LockboxTest, StoreOk) {
 TEST_F(LockboxTest, StoreLockedNvram) {
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -293,8 +293,8 @@ TEST_F(LockboxTest, StoreLockedNvram) {
 TEST_F(LockboxTest, StoreUnlockedNvramSizeBad) {
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -315,8 +315,8 @@ TEST_F(LockboxTest, StoreNoNvram) {
   lockbox_.set_tpm(&tpm_);
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -332,8 +332,8 @@ TEST_F(LockboxTest, StoreNoNvram) {
 TEST_F(LockboxTest, StoreTpmNotReady) {
   Lockbox::ErrorId error;
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -348,8 +348,8 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmDefault) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
                     Lockbox::kReservedNvramBytesV2);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -373,8 +373,8 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV1) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersion1,
                     Lockbox::kReservedNvramBytesV1);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -398,8 +398,8 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersion2,
                     Lockbox::kReservedNvramBytesV2);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -423,8 +423,8 @@ TEST_F(LockboxTest, LoadAndVerifyOkTpmV2Downgrade) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
                     Lockbox::kReservedNvramBytesV1);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -448,8 +448,8 @@ TEST_F(LockboxTest, LoadAndVerifyBadSize) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
                     Lockbox::kReservedNvramBytesV2);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -479,8 +479,8 @@ TEST_F(LockboxTest, LoadAndVerifyBadHash) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
                     Lockbox::kReservedNvramBytesV2);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
@@ -509,8 +509,8 @@ TEST_F(LockboxTest, LoadAndVerifyBadData) {
   GenerateNvramData(&nvram_data, Lockbox::kNvramVersionDefault,
                     Lockbox::kReservedNvramBytesV2);
 
-  // Ensure a connected, owned TPM.
-  EXPECT_CALL(tpm_, IsConnected())
+  // Ensure an enabled, owned TPM.
+  EXPECT_CALL(tpm_, IsEnabled())
     .Times(1)
     .WillRepeatedly(Return(true));
   EXPECT_CALL(tpm_, IsOwned())
