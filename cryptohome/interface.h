@@ -220,7 +220,7 @@ gboolean cryptohome_tpm_attestation_get_public_key(Cryptohome *self,
 gboolean cryptohome_tpm_attestation_register_key(Cryptohome *self,
                                                  gboolean is_user_specific,
                                                  gchar* key_name,
-                                                 gboolean *OUT_success,
+                                                 gint *OUT_async_id,
                                                  GError **error);
 gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
     Cryptohome *self,

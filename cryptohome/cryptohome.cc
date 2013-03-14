@@ -71,6 +71,7 @@ namespace switches {
     "tpm_attestation_start_cert_request",
     "tpm_attestation_finish_cert_request",
     "tpm_attestation_key_status",
+    "tpm_attestation_register_key",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -102,6 +103,7 @@ namespace switches {
     ACTION_TPM_ATTESTATION_START_CERTREQ,
     ACTION_TPM_ATTESTATION_FINISH_CERTREQ,
     ACTION_TPM_ATTESTATION_KEY_STATUS,
+    ACTION_TPM_ATTESTATION_REGISTER_KEY,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -1111,7 +1113,8 @@ int main(int argc, char **argv) {
       action.c_str())) {
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--name=<name>)\n");
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
       return 1;
     }
     string contents;
@@ -1169,7 +1172,8 @@ int main(int argc, char **argv) {
       action.c_str())) {
     string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
     if (key_name.length() == 0) {
-      printf("No key name specified (--name=<name>)\n");
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
       return 1;
     }
     chromeos::glib::ScopedError error;
@@ -1215,6 +1219,32 @@ int main(int argc, char **argv) {
     printf("Public Key:\n%s\n\nCertificate:\n%s\n",
            public_key_hex.c_str(),
            cert_pem.c_str());
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_REGISTER_KEY],
+      action.c_str())) {
+    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
+      return 1;
+    }
+    ClientLoop client_loop;
+    client_loop.Initialize(&proxy);
+    gint async_id = -1;
+    chromeos::glib::ScopedError error;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_register_key(
+          proxy.gproxy(),
+          true,
+          key_name.c_str(),
+          &async_id,
+          &chromeos::Resetter(&error).lvalue())) {
+      printf("TpmAttestationRegisterKey call failed: %s.\n", error->message);
+      return 1;
+    } else {
+      client_loop.Run(async_id);
+      gboolean result = client_loop.get_return_status();
+      printf("Result: %s\n", result ? "Success" : "Failure");
+    }
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)

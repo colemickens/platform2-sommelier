@@ -184,7 +184,7 @@
     <method name="TpmAttestationRegisterKey">
       <arg type="b" name="is_user_specific" direction="in" />
       <arg type="s" name="key_name" direction="in" />
-      <arg type="b" name="success" direction="out" />
+      <arg type="i" name="async_id" direction="out" />
     </method>
     <method name="TpmAttestationSignEnterpriseChallenge">
       <arg type="b" name="is_user_specific" direction="in" />

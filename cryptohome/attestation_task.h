@@ -127,4 +127,22 @@ class SignChallengeTask : public AttestationTask {
   DISALLOW_COPY_AND_ASSIGN(SignChallengeTask);
 };
 
+// An asynchronous task for Attestation::RegisterKey().
+class RegisterKeyTask : public AttestationTask {
+ public:
+  RegisterKeyTask(AttestationTaskObserver* observer,
+                        Attestation* attestation,
+                        bool is_user_specific,
+                        const std::string& key_name);
+  virtual ~RegisterKeyTask();
+
+  virtual void Run();
+
+ private:
+  bool is_user_specific_;
+  std::string key_name_;
+
+  DISALLOW_COPY_AND_ASSIGN(RegisterKeyTask);
+};
+
 }  // namespace cryptohome

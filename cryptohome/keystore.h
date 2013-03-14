@@ -28,6 +28,15 @@ class KeyStore {
   virtual bool Write(const std::string& key_name,
                      const chromeos::SecureBlob& key_data) = 0;
 
+  // Deletes key data for the key identified by |key_name|.  Returns false if
+  // key data exists but could not be deleted.
+  virtual bool Delete(const std::string& key_name) = 0;
+
+  // Registers a key.  |private_key_blob| holds the private key in some opaque
+  // format and |public_key_der| holds the public key in PKCS #1 RSAPublicKey
+  // format.  Returns true on success.
+  virtual bool Register(const chromeos::SecureBlob& private_key_blob,
+                        const chromeos::SecureBlob& public_key_der) = 0;
  private:
   DISALLOW_COPY_AND_ASSIGN(KeyStore);
 };

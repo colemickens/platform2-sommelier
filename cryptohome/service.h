@@ -252,7 +252,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                               GError** error);
   virtual gboolean TpmAttestationRegisterKey(gboolean is_user_specific,
                                              gchar* key_name,
-                                             gboolean *OUT_success,
+                                             gint *OUT_async_id,
                                              GError** error);
   virtual gboolean TpmAttestationSignEnterpriseChallenge(
       gboolean is_user_specific,

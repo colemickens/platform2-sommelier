@@ -41,6 +41,9 @@ class Pkcs11KeyStore : public KeyStore {
                     chromeos::SecureBlob* key_data);
   virtual bool Write(const std::string& key_name,
                      const chromeos::SecureBlob& key_data);
+  virtual bool Delete(const std::string& key_name);
+  virtual bool Register(const chromeos::SecureBlob& private_key_blob,
+                        const chromeos::SecureBlob& public_key_der);
 
  private:
   // Searches for a PKCS #11 object for a given key name.  If one exists, the

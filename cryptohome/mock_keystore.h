@@ -26,6 +26,9 @@ class MockKeyStore : public KeyStore {
                           chromeos::SecureBlob* key_data));
   MOCK_METHOD2(Write, bool(const std::string& name,
                            const chromeos::SecureBlob& key_data));
+  MOCK_METHOD1(Delete, bool(const std::string& name));
+  MOCK_METHOD2(Register, bool(const chromeos::SecureBlob&,
+                              const chromeos::SecureBlob&));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockKeyStore);

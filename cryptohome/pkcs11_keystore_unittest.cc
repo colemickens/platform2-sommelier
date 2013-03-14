@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/string_number_conversions.h>
 #include <chaps/attributes.h>
 #include <chaps/chaps_proxy_mock.h>
 #include <chromeos/secure_blob.h>
@@ -55,6 +56,8 @@ class KeyStoreTest : public testing::Test {
         .WillByDefault(Return(0));
     ON_CALL(pkcs11_, CreateObject(kDefaultHandle, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::CreateObject));
+    ON_CALL(pkcs11_, DestroyObject(kDefaultHandle, _))
+        .WillByDefault(Invoke(this, &KeyStoreTest::DestroyObject));
     ON_CALL(pkcs11_, GetAttributeValue(kDefaultHandle, kDefaultHandle, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::GetAttributeValue));
     ON_CALL(pkcs11_, SetAttributeValue(kDefaultHandle, kDefaultHandle, _))
@@ -73,6 +76,12 @@ class KeyStoreTest : public testing::Test {
                                 uint64_t* new_object_handle) {
     *new_object_handle = kDefaultHandle;
     objects_[GetValue(attributes, CKA_LABEL)] = GetValue(attributes, CKA_VALUE);
+    return CKR_OK;
+  }
+
+  // Deletes a labeled object.
+  virtual uint32_t DestroyObject(uint64_t session_id, uint64_t object_handle) {
+    objects_.erase(current_object_);
     return CKR_OK;
   }
 
@@ -192,6 +201,10 @@ TEST_F(KeyStoreTest, Pkcs11Success) {
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data3")));
   EXPECT_TRUE(key_store.Read("test", &blob));
   EXPECT_TRUE(CompareBlob(blob, "test_data3"));
+  // Delete key data.
+  EXPECT_TRUE(key_store.Delete("test2"));
+  EXPECT_FALSE(key_store.Read("test2", &blob));
+  EXPECT_TRUE(key_store.Read("test", &blob));
 }
 
 // Tests the key store when PKCS #11 fails to open a session.
@@ -224,13 +237,14 @@ TEST_F(KeyStoreTest, ReadValueFail) {
   EXPECT_FALSE(key_store.Read("test", &blob));
 }
 
-// Tests the key store when PKCS #11 fails to write attribute values.
-TEST_F(KeyStoreTest, WriteValueFail) {
-  EXPECT_CALL(pkcs11_, SetAttributeValue(_, _, _))
+// Tests the key store when PKCS #11 fails to delete key data.
+TEST_F(KeyStoreTest, DeleteValueFail) {
+  EXPECT_CALL(pkcs11_, DestroyObject(_, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store;
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
   EXPECT_FALSE(key_store.Write("test", SecureBlob("test_data2")));
+  EXPECT_FALSE(key_store.Delete("test"));
 }
 
 // Tests the key store when PKCS #11 fails to find objects.  Tests each part of
@@ -267,6 +281,28 @@ TEST_F(KeyStoreTest, FindNoObjects) {
   SecureBlob blob;
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
   EXPECT_FALSE(key_store.Read("test", &blob));
+}
+
+TEST_F(KeyStoreTest, Register) {
+  Pkcs11KeyStore key_store;
+  EXPECT_FALSE(key_store.Register(SecureBlob("private_key_blob"),
+                                  SecureBlob("bad_pubkey")));
+  const char* public_key_der_hex =
+      "3082010A0282010100"
+      "961037BC12D2A298BEBF06B2D5F8C9B64B832A2237F8CF27D5F96407A6041A4D"
+      "AD383CB5F88E625F412E8ACD5E9D69DF0F4FA81FCE7955829A38366CBBA5A2B1"
+      "CE3B48C14B59E9F094B51F0A39155874C8DE18A0C299EBF7A88114F806BE4F25"
+      "3C29A509B10E4B19E31675AFE3B2DA77077D94F43D8CE61C205781ED04D183B4"
+      "C349F61B1956C64B5398A3A98FAFF17D1B3D9120C832763EDFC8F4137F6EFBEF"
+      "46D8F6DE03BD00E49DEF987C10BDD5B6F8758B6A855C23C982DDA14D8F0F2B74"
+      "E6DEFA7EEE5A6FC717EB0FF103CB8049F693A2C8A5039EF1F5C025DC44BD8435"
+      "E8D8375DADE00E0C0F5C196E04B8483CC98B1D5B03DCD7E0048B2AB343FFC11F"
+      "0203"
+      "010001";
+  SecureBlob public_key_der;
+  base::HexStringToBytes(public_key_der_hex, &public_key_der);
+  EXPECT_TRUE(key_store.Register(SecureBlob("private_key_blob"),
+                                 public_key_der));
 }
 
 }  // namespace cryptohome

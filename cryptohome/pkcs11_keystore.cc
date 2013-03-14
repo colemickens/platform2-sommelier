@@ -12,6 +12,9 @@
 #include <base/stl_util.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chromeos/secure_blob.h>
+#include <openssl/rsa.h>
+
+#include "cryptolib.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -100,23 +103,12 @@ bool Pkcs11KeyStore::Read(const string& key_name,
 
 bool Pkcs11KeyStore::Write(const string& key_name,
                            const SecureBlob& key_data) {
+  // Delete any existing key with the same name.
+  if (!Delete(key_name))
+    return false;
   ScopedSession session(kDefaultSlotID);
   if (!session.IsValid())
     return false;
-  CK_OBJECT_HANDLE key_handle = FindObject(session.handle(), key_name);
-  if (key_handle != CK_INVALID_HANDLE) {
-    // The key already exists, just replace the key data.
-    CK_ATTRIBUTE attribute = {CKA_VALUE,
-                              const_cast<CK_VOID_PTR>(key_data.const_data()),
-                              key_data.size()};
-    if (C_SetAttributeValue(session.handle(),
-                            key_handle,
-                            &attribute, 1) != CKR_OK) {
-      LOG(ERROR) << "Pkcs11KeyStore: Failed to write key data: " << key_name;
-      return false;
-    }
-    return true;
-  }
   // Create a new data object for the key.
   CK_OBJECT_CLASS object_class = CKO_DATA;
   CK_BBOOL true_value = CK_TRUE;
@@ -142,6 +134,7 @@ bool Pkcs11KeyStore::Write(const string& key_name,
     {CKA_PRIVATE, &true_value, sizeof(CK_BBOOL)},
     {CKA_MODIFIABLE, &false_value, sizeof(CK_BBOOL)}
   };
+  CK_OBJECT_HANDLE key_handle = CK_INVALID_HANDLE;
   if (C_CreateObject(session.handle(),
                      attributes,
                      arraysize(attributes),
@@ -149,6 +142,116 @@ bool Pkcs11KeyStore::Write(const string& key_name,
     LOG(ERROR) << "Pkcs11KeyStore: Failed to write key data: " << key_name;
     return false;
   }
+  return true;
+}
+
+bool Pkcs11KeyStore::Delete(const std::string& key_name) {
+  ScopedSession session(kDefaultSlotID);
+  if (!session.IsValid())
+    return false;
+  CK_OBJECT_HANDLE key_handle = FindObject(session.handle(), key_name);
+  if (key_handle != CK_INVALID_HANDLE) {
+    if (C_DestroyObject(session.handle(), key_handle) != CKR_OK) {
+      LOG(ERROR) << "Pkcs11KeyStore: Failed to delete key data.";
+      return false;
+    }
+  }
+  return true;
+}
+
+bool Pkcs11KeyStore::Register(const chromeos::SecureBlob& private_key_blob,
+                              const chromeos::SecureBlob& public_key_der) {
+  const CK_ATTRIBUTE_TYPE kKeyBlobAttribute = CKA_VENDOR_DEFINED + 1;
+
+  ScopedSession session(kDefaultSlotID);
+  if (!session.IsValid())
+    return false;
+
+  // Extract the modulus from the public key.
+  const unsigned char* asn1_ptr = &public_key_der.front();
+  RSA* public_key = d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size());
+  if (!public_key) {
+    LOG(ERROR) << "Pkcs11KeyStore: Failed to decode public key.";
+    return false;
+  }
+  SecureBlob modulus(BN_num_bytes(public_key->n));
+  int length = BN_bn2bin(public_key->n, &modulus.front());
+  if (length <= 0) {
+    LOG(ERROR) << "Pkcs11KeyStore: Failed to extract public key modulus.";
+    RSA_free(public_key);
+    return false;
+  }
+  modulus.resize(length);
+  RSA_free(public_key);
+
+  // Construct a PKCS #11 template for the public key object.
+  CK_BBOOL true_value = CK_TRUE;
+  CK_BBOOL false_value = CK_FALSE;
+  CK_KEY_TYPE key_type = CKK_RSA;
+  CK_OBJECT_CLASS public_key_class = CKO_PUBLIC_KEY;
+  SecureBlob id = CryptoLib::Sha1(modulus);
+  CK_ULONG modulus_bits = modulus.size() * 8;
+  unsigned char public_exponent[] = {1, 0, 1};
+  CK_ATTRIBUTE public_key_attributes[] = {
+    {CKA_CLASS, &public_key_class, sizeof(CK_OBJECT_CLASS)},
+    {CKA_TOKEN, &true_value, sizeof(CK_BBOOL)},
+    {CKA_DERIVE, &false_value, sizeof(CK_BBOOL)},
+    {CKA_WRAP, &false_value, sizeof(CK_BBOOL)},
+    {CKA_VERIFY, &true_value, sizeof(CK_BBOOL)},
+    {CKA_VERIFY_RECOVER, &false_value, sizeof(CK_BBOOL)},
+    {CKA_ENCRYPT, &false_value, sizeof(CK_BBOOL)},
+    {CKA_KEY_TYPE, &key_type, sizeof(CK_KEY_TYPE)},
+    {CKA_ID, id.data(), id.size()},
+    {CKA_MODULUS_BITS, &modulus_bits, sizeof(CK_ULONG)},
+    {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
+    {CKA_MODULUS, modulus.data(), modulus.size()}
+  };
+
+  CK_OBJECT_HANDLE object_handle = CK_INVALID_HANDLE;
+  if (C_CreateObject(session.handle(),
+                     public_key_attributes,
+                     arraysize(public_key_attributes),
+                     &object_handle) != CKR_OK) {
+    LOG(ERROR) << "Pkcs11KeyStore: Failed to create public key object.";
+    return false;
+  }
+
+  // Construct a PKCS #11 template for the private key object.
+  CK_OBJECT_CLASS private_key_class = CKO_PRIVATE_KEY;
+  CK_ATTRIBUTE private_key_attributes[] = {
+    {CKA_CLASS, &private_key_class, sizeof(CK_OBJECT_CLASS)},
+    {CKA_TOKEN, &true_value, sizeof(CK_BBOOL)},
+    {CKA_PRIVATE, &true_value, sizeof(CK_BBOOL)},
+    {CKA_SENSITIVE, &true_value, sizeof(CK_BBOOL)},
+    {CKA_EXTRACTABLE, &false_value, sizeof(CK_BBOOL)},
+    {CKA_DERIVE, &false_value, sizeof(CK_BBOOL)},
+    {CKA_UNWRAP, &false_value, sizeof(CK_BBOOL)},
+    {CKA_SIGN, &true_value, sizeof(CK_BBOOL)},
+    {CKA_SIGN_RECOVER, &false_value, sizeof(CK_BBOOL)},
+    {CKA_DECRYPT, &false_value, sizeof(CK_BBOOL)},
+    {CKA_KEY_TYPE, &key_type, sizeof(CK_KEY_TYPE)},
+    {CKA_ID, id.data(), id.size()},
+    {CKA_PUBLIC_EXPONENT, public_exponent, arraysize(public_exponent)},
+    {CKA_MODULUS, modulus.data(), modulus.size()},
+    {
+      kKeyBlobAttribute,
+      const_cast<CK_VOID_PTR>(private_key_blob.const_data()),
+      private_key_blob.size()
+    }
+  };
+
+  if (C_CreateObject(session.handle(),
+                     private_key_attributes,
+                     arraysize(private_key_attributes),
+                     &object_handle) != CKR_OK) {
+    LOG(ERROR) << "Pkcs11KeyStore: Failed to create private key object.";
+    return false;
+  }
+
+  // Close all sessions in an attempt to trigger other modules to find the new
+  // objects.
+  C_CloseAllSessions(kDefaultSlotID);
+
   return true;
 }
 

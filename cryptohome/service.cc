@@ -1462,10 +1462,19 @@ gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
 
 gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
                                             gchar* key_name,
-                                            gboolean *OUT_success,
+                                            gint *OUT_async_id,
                                             GError** error) {
-  // TODO(dkrahn): implement
-  LOG(ERROR) << __func__ << ": Not implemented";
+  AttestationTaskObserver* observer =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<RegisterKeyTask> task =
+      new RegisterKeyTask(observer,
+                          tpm_init_->get_attestation(),
+                          is_user_specific,
+                          key_name);
+  *OUT_async_id = task->sequence_id();
+  mount_thread_.message_loop()->PostTask(
+      FROM_HERE,
+      base::Bind(&RegisterKeyTask::Run, task.get()));
   return TRUE;
 }
 

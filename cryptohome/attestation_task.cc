@@ -175,4 +175,24 @@ void SignChallengeTask::Run() {
   Notify();
 }
 
+RegisterKeyTask::RegisterKeyTask(AttestationTaskObserver* observer,
+                                 Attestation* attestation,
+                                 bool is_user_specific,
+                                 const string& key_name)
+    : AttestationTask(observer, attestation),
+      is_user_specific_(is_user_specific),
+      key_name_(key_name) {
+}
+
+RegisterKeyTask::~RegisterKeyTask() {}
+
+void RegisterKeyTask::Run() {
+  result()->set_return_status(FALSE);
+  if (attestation_) {
+    bool status = attestation_->RegisterKey(is_user_specific_, key_name_);
+    result()->set_return_status(status);
+  }
+  Notify();
+}
+
 }  // namespace cryptohome

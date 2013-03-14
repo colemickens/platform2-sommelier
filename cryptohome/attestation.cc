@@ -727,6 +727,29 @@ bool Attestation::SignSimpleChallenge(bool is_user_specific,
   return true;
 }
 
+bool Attestation::RegisterKey(bool is_user_specific, const string& key_name) {
+  if (!is_user_specific) {
+    // Currently there are no use cases which require a non-user key to be
+    // registered.  This prevents any accidental or malicious registration.
+    LOG(WARNING) << "Attestation: Rejecting attempt to register machine key.";
+    return false;
+  }
+  CertifiedKey key;
+  if (!FindKeyByName(true, key_name, &key)) {
+    LOG(ERROR) << __func__ << ": Key not found.";
+    return false;
+  }
+  if (!user_key_store_->Register(ConvertStringToBlob(key.key_blob()),
+                                 ConvertStringToBlob(key.public_key()))) {
+    LOG(ERROR) << __func__ << ": Failed to register key.";
+    return false;
+  }
+  if (!user_key_store_->Delete(key_name)) {
+    LOG(WARNING) << __func__ << ": Failed to delete registered key.";
+  }
+  return true;
+}
+
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {
   return SecureBlob(s.data(), s.length());
 }

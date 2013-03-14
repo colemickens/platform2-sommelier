@@ -206,6 +206,17 @@ class Attestation : public base::PlatformThread::Delegate {
                                    const chromeos::SecureBlob& challenge,
                                    chromeos::SecureBlob* response);
 
+  // Registers a key with the user's PKCS #11 token.  On success, the key is
+  // removed from its old location and will no longer be available via this
+  // interface.  Returns true on success.
+  //
+  // Parameters
+  //
+  //   is_user_specific - Whether the key is associated with the current user.
+  //   key_name - The key name; this is the same name previously passed to
+  //              FinishCertRequest.
+  virtual bool RegisterKey(bool is_user_specific, const std::string& key_name);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);
