@@ -1440,6 +1440,19 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {
   service->RemoveEndpoint(ok_endpoint);
 }
 
+TEST_F(WiFiServiceTest, SecurityFromCurrentEndpoint) {
+  WiFiServiceRefPtr service(MakeSimpleService(flimflam::kSecurityPsk));
+  EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));
+  WiFiEndpoint *endpoint = MakeOpenEndpoint(
+        simple_ssid_string(), "00:00:00:00:00:00", 0, 0);
+  service->AddEndpoint(endpoint);
+  EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));
+  service->NotifyCurrentEndpoint(endpoint);
+  EXPECT_EQ(flimflam::kSecurityNone, service->GetSecurity(NULL));
+  service->NotifyCurrentEndpoint(NULL);
+  EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));
+}
+
 TEST_F(WiFiServiceTest, UpdateSecurity) {
   // Cleartext and pre-shared-key crypto.
   {

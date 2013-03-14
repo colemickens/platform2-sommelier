@@ -148,6 +148,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, Populate8021xNoSystemCAs);
   FRIEND_TEST(WiFiServiceTest, Populate8021xUsingHardwareAuth);
   FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
+  FRIEND_TEST(WiFiServiceTest, SecurityFromCurrentEndpoint);  // GetSecurity
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
   FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
@@ -157,6 +158,10 @@ class WiFiService : public Service {
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
+  void HelpRegisterDerivedString(
+      const std::string &name,
+      std::string(WiFiService::*get)(Error *error),
+      void(WiFiService::*set)(const std::string &value, Error *error));
   void HelpRegisterWriteOnlyDerivedString(
       const std::string &name,
       void(WiFiService::*set)(const std::string &value, Error *error),
@@ -189,6 +194,11 @@ class WiFiService : public Service {
 
   // Create a default group name for this WiFi service.
   std::string GetDefaultStorageIdentifier() const;
+
+  // Return the security of this service.  If connected, the security
+  // reported from the currently connected endpoint is returned.  Otherwise
+  // the configured security for the service is returned.
+  std::string GetSecurity(Error *error);
 
   // Profile data for a WPA/RSN service can be stored under a number of
   // different security types.  These functions create different storage

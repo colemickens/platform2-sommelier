@@ -79,7 +79,9 @@ WiFiService::WiFiService(ControlInterface *control_interface,
                                      &WiFiService::ClearPassphrase,
                                      NULL);
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
-  store->RegisterConstString(flimflam::kSecurityProperty, &security_);
+  HelpRegisterDerivedString(flimflam::kSecurityProperty,
+                            &WiFiService::GetSecurity,
+                            NULL);
 
   store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
   store->RegisterBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
@@ -398,6 +400,15 @@ void WiFiService::SendPostReadyStateMetrics(
 }
 
 // private methods
+void WiFiService::HelpRegisterDerivedString(
+    const string &name,
+    string(WiFiService::*get)(Error *),
+    void(WiFiService::*set)(const string&, Error *)) {
+  mutable_store()->RegisterDerivedString(
+      name,
+      StringAccessor(new CustomAccessor<WiFiService, string>(this, get, set)));
+}
+
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
     const string &name,
     void(WiFiService::*set)(const string &, Error *),
@@ -939,6 +950,13 @@ string WiFiService::GetDefaultStorageIdentifier() const {
                                                hex_ssid_.c_str(),
                                                mode_.c_str(),
                                                security.c_str()));
+}
+
+string WiFiService::GetSecurity(Error */*error*/) {
+  if (current_endpoint_) {
+    return current_endpoint_->security_mode();
+  }
+  return security_;
 }
 
 void WiFiService::ClearCachedCredentials() {
