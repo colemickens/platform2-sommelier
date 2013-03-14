@@ -516,6 +516,12 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
 
 void Device::OnConnected() {}
 
+void Device::OnConnectionUpdated() {
+  if (selected_service_) {
+    manager_->UpdateService(selected_service_);
+  }
+}
+
 void Device::CreateConnection() {
   SLOG(Device, 2) << __func__;
   if (!connection_.get()) {

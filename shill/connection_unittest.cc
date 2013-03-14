@@ -900,6 +900,9 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   // connection to create a gateway route.
   EXPECT_CALL(*mock_connection, CreateGatewayRoute())
       .WillOnce(Return(true));
+
+  // Ensure that the Device is notified of the change to the connection.
+  EXPECT_CALL(*device, OnConnectionUpdated()).Times(1);
   connection_->OnRouteQueryResponse(
       kTestDeviceInterfaceIndex1, RoutingTableEntry());
 

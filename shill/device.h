@@ -111,6 +111,10 @@ class Device : public base::RefCounted<Device> {
   // getting an IP.  Subclasses should call up to the parent first.
   virtual void OnConnected();
 
+  // Called by the Connection so that the Device can update the service sorting
+  // after one connection is bound to another.
+  virtual void OnConnectionUpdated();
+
   // Returns true if the selected service on the device (if any) is connected
   // and matches the passed-in argument |service|.  Returns false if there is
   // no connected service, or if it does not match |service|.

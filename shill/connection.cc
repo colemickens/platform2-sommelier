@@ -447,6 +447,7 @@ void Connection::OnRouteQueryResponse(int interface_index,
   }
   lower_binder_.Attach(connection);
   connection->CreateGatewayRoute();
+  device->OnConnectionUpdated();
 }
 
 bool Connection::CreateGatewayRoute() {

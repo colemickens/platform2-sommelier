@@ -1187,7 +1187,11 @@ void Manager::SortServicesTask() {
     }
     if (services_[0]->connection()) {
       services_[0]->connection()->SetIsDefault(true);
-      default_service = services_[0];
+      if (default_service != services_[0]) {
+        default_service = services_[0];
+        LOG(INFO) << "Default service is now "
+                  << default_service->unique_name();
+      }
     } else {
       default_service = NULL;
     }
