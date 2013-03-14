@@ -5,6 +5,7 @@
 #include "perf_serializer.h"
 
 #include <stdio.h>
+#include <sys/time.h>
 
 #include "base/logging.h"
 
@@ -39,6 +40,12 @@ bool PerfSerializer::SerializeFromFile(const string& filename,
     return false;
 
   SerializeEvents(parsed_events_, perf_data_proto->mutable_events());
+
+  // Add a timestamp to the protobuf.
+  struct timeval timestamp;
+  if (!gettimeofday(&timestamp, NULL))
+    perf_data_proto->set_timestamp(timestamp.tv_sec);
+
   return true;
 }
 

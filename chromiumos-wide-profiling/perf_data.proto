@@ -285,4 +285,8 @@ message PerfDataProto {
 
   repeated PerfFileAttr file_attrs = 1;
   repeated PerfEvent events = 2;
+
+  // Time when quipper generated this perf data / protobuf, given as seconds
+  // since the Epoch.
+  optional uint64 timestamp = 3;
 }

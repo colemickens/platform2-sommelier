@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
+#include <sys/time.h>
 
 #include <string>
 
@@ -30,8 +31,18 @@ void SerializeAndDeserialize(const string& input,
 void SerializeToFileAndBack(const string& input,
                             const string& output) {
   quipper::PerfDataProto input_perf_data_proto;
+  struct timeval pre_serialize_time;
+  gettimeofday(&pre_serialize_time, NULL);
   PerfSerializer serializer;
   EXPECT_TRUE(serializer.SerializeFromFile(input, &input_perf_data_proto));
+
+  // Make sure the timestamp was properly recorded.
+  EXPECT_TRUE(input_perf_data_proto.has_timestamp());
+  // Check it against the current time.
+  struct timeval post_serialize_time;
+  gettimeofday(&post_serialize_time, NULL);
+  EXPECT_GE(input_perf_data_proto.timestamp(), pre_serialize_time.tv_sec);
+  EXPECT_LE(input_perf_data_proto.timestamp(), post_serialize_time.tv_sec);
 
   // Now store the protobuf into a file.
   string input_filename, output_filename;
