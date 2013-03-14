@@ -492,9 +492,16 @@ TEST_F(SessionManagerImplTest, RestartJobWithAuthBadCookie) {
 }
 
 TEST_F(SessionManagerImplTest, LockScreen) {
+  ExpectAndRunStartSession("user@somewhere");
   EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+}
+
+TEST_F(SessionManagerImplTest, LockScreenNoSession) {
+  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(0);
+  GError *error = NULL;
+  EXPECT_EQ(FALSE, impl_.LockScreen(&error));
 }
 
 TEST_F(SessionManagerImplTest, LockScreenGuest) {
