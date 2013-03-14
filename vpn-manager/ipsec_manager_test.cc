@@ -69,7 +69,7 @@ class IpsecManagerTest : public ::testing::Test {
     charon_daemon_ = new DaemonMock;
     ipsec_.starter_daemon_.reset(starter_daemon_);  // Passes ownership.
     ipsec_.charon_daemon_.reset(charon_daemon_);  // Passes ownership.
-    ipsec_.stateful_container_ = stateful_container_.value();
+    ipsec_.stateful_container_ = stateful_container_;
     ipsec_.ipsec_group_ = getgid();
     ipsec_.ipsec_run_path_ = ipsec_run_path_;
     ipsec_.ipsec_up_file_ = ipsec_up_file_;

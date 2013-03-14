@@ -8,16 +8,11 @@
 #include <string>
 #include <sys/socket.h>
 
+#include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "gtest/gtest_prod.h"  // for FRIEND_TEST
 #include "vpn-manager/service_manager.h"
-
-namespace base {
-
-class FilePath;
-
-}  // namespace base
 
 namespace vpn_manager {
 
@@ -79,6 +74,10 @@ class IpsecManager : public ServiceManager {
                               std::string* output);
   bool FormatSecrets(std::string* formatted);
   void KillCurrentlyRunning();
+  bool WriteConfigFile(const std::string &output_name,
+                       const std::string &contents);
+  bool MakeSymbolicLink(const std::string &output_name,
+                        const base::FilePath &source_path);
   bool WriteConfigFiles();
   bool CreateIpsecRunDirectory();
   std::string FormatStrongswanConfigFile();
@@ -86,7 +85,7 @@ class IpsecManager : public ServiceManager {
   bool CreateStatefulSymlink(const std::string& target_filename,
                              const std::string& symlink_filename);
   bool StartStarter();
-  bool SetIpsecGroup(const FilePath& file_path);
+  bool SetIpsecGroup(const base::FilePath& file_path);
 
   // for testing, always return these values from
   // GetAddressesFromRemoteHostname.
@@ -101,7 +100,7 @@ class IpsecManager : public ServiceManager {
   gid_t ipsec_group_;
   // Writeable directory to which we can write configuration files for
   // ipsec daemons.
-  std::string stateful_container_;
+  base::FilePath stateful_container_;
   // Directory containing run files for ipsec that we create with
   // permissions locked to ipsec group.
   std::string ipsec_run_path_;

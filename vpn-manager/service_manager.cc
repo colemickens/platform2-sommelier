@@ -17,7 +17,7 @@
 namespace vpn_manager {
 
 const base::FilePath *ServiceManager::temp_path_ = NULL;
-const char *ServiceManager::temp_base_path_ = "/home/chronos/user/tmp";
+const char *ServiceManager::temp_base_path_ = "/var/run/l2tpipsec_vpn";
 
 ServiceManager::ServiceManager(const std::string& service_name)
     : is_running_(false),

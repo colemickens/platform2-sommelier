@@ -49,12 +49,16 @@ namespace vpn_manager {
 namespace {
 
 const char kDefaultCertSlot[] = "0";
+const char kIpsecCaCertsName[] = "cacert.der";
 const char kIpsecConnectionName[] = "ipsec_managed";
+const char kIpsecStarterConfName[] = "ipsec.conf";
+const char kIpsecSecretsName[] = "ipsec.secrets";
 const char kIpsecGroupName[] = "ipsec";
 const char kIpsecRunPath[] = "/var/run/ipsec";
 const char kIpsecUpFile[] = "/var/run/ipsec/up";
 const char kIpsecServiceName[] = "ipsec";
 const char kStarterPidFile[] = "/var/run/starter.pid";
+const char kStrongswanConfName[] = "strongswan.conf";
 const char kCharonPidFile[] = "/var/run/charon.pid";
 const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
 const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
@@ -341,83 +345,84 @@ bool IpsecManager::SetIpsecGroup(const FilePath& file_path) {
   return chown(file_path.value().c_str(), getuid(), ipsec_group_) == 0;
 }
 
+bool IpsecManager::WriteConfigFile(
+    const std::string &output_name, const std::string &contents) {
+  FilePath temp_file = temp_path()->Append(output_name);
+  file_util::Delete(temp_file, false);
+  if (file_util::PathExists(temp_file)) {
+    LOG(ERROR) << "Unable to remove existing file "
+               << temp_file.value();
+    return false;
+  }
+  if (!file_util::WriteFile(temp_file, contents.c_str(), contents.length()) ||
+      !SetIpsecGroup(temp_file)) {
+    LOG(ERROR) << "Unable to write " << output_name
+               << " file " << temp_file.value();
+    return false;
+  }
+
+  return MakeSymbolicLink(output_name, temp_file);
+}
+
+bool IpsecManager::MakeSymbolicLink(const std::string &output_name,
+                                    const FilePath &source_path) {
+  FilePath symlink_path = stateful_container_.Append(output_name);
+  // Use unlink to remove the symlink directly since file_util::Delete
+  // cannot delete dangling symlinks.
+  unlink(symlink_path.value().c_str());
+  if (file_util::PathExists(symlink_path)) {
+    LOG(ERROR) << "Unable to remove existing file "
+               << symlink_path.value();
+    return false;
+  }
+  if (symlink(source_path.value().c_str(), symlink_path.value().c_str()) < 0) {
+    PLOG(ERROR) << "Unable to symlink config file "
+                << symlink_path.value() << " -> "
+                << source_path.value();
+    return false;
+  }
+  return true;
+}
+
 bool IpsecManager::WriteConfigFiles() {
-  // We need to keep secrets in /mnt/stateful_partition/etc for now
-  // because pluto loses permissions to /home/chronos before it tries
-  // reading secrets. Ditto for CA certs.
-  // TODO(kmixter): write this via a fifo.
-  FilePath container_path(stateful_container_);
-  if (!file_util::CreateDirectory(container_path)) {
+  // The strongSwan binaries have hard-coded paths to /etc, which on a
+  // ChromeOS image are symlinks to a fixed place in the stateful
+  // partition.  We create the configuration files in /var/run and link
+  // from the stateful partition to these newly created files.
+  if (!file_util::CreateDirectory(stateful_container_)) {
     LOG(ERROR) << "Unable to create container directory "
-               << container_path.value();
+               << stateful_container_.value();
     return false;
   }
 
-  if (chmod(container_path.value().c_str(), kStatefulContainerMode) != 0) {
+  if (chmod(stateful_container_.value().c_str(), kStatefulContainerMode) != 0) {
     PLOG(ERROR) << "Unable to change permissions of container directory "
-                << container_path.value();
+                << stateful_container_.value();
     return false;
   }
 
-  FilePath secrets_path_ = container_path.Append("ipsec.secrets");
-  file_util::Delete(secrets_path_, false);
   std::string formatted_secrets;
   if (!FormatSecrets(&formatted_secrets)) {
     LOG(ERROR) << "Unable to create secrets contents";
     return false;
   }
-  if (!file_util::WriteFile(secrets_path_, formatted_secrets.c_str(),
-                            formatted_secrets.length()) ||
-      !SetIpsecGroup(secrets_path_)) {
-    LOG(ERROR) << "Unable to write secrets file " << secrets_path_.value();
+
+  if (!WriteConfigFile(kIpsecSecretsName, formatted_secrets)) {
     return false;
   }
-  FilePath strongswan_config_path = container_path.Append("strongswan.conf");
-  std::string strongswan_config = FormatStrongswanConfigFile();
-  if (!file_util::WriteFile(strongswan_config_path, strongswan_config.c_str(),
-                            strongswan_config.size()) ||
-      !SetIpsecGroup(strongswan_config_path)) {
-    LOG(ERROR) << "Unable to write strongswan config file";
+
+  if (!WriteConfigFile(kStrongswanConfName, FormatStrongswanConfigFile())) {
     return false;
   }
-  FilePath starter_config_path = temp_path()->Append("ipsec.conf");
-  std::string starter_config = FormatStarterConfigFile();
-  if (!file_util::WriteFile(starter_config_path, starter_config.c_str(),
-                            starter_config.size()) ||
-      !SetIpsecGroup(starter_config_path)) {
-    LOG(ERROR) << "Unable to write ipsec config file";
-    return false;
-  }
-  FilePath config_symlink_path = container_path.Append("ipsec.conf");
-  // Use unlink to remove the symlink directly since file_util::Delete
-  // cannot delete dangling symlinks.
-  unlink(config_symlink_path.value().c_str());
-  if (file_util::PathExists(config_symlink_path)) {
-    LOG(ERROR) << "Unable to remove existing file "
-               << config_symlink_path.value();
-    return false;
-  }
-  if (symlink(starter_config_path.value().c_str(),
-              config_symlink_path.value().c_str()) < 0) {
-    int saved_errno = errno;
-    LOG(ERROR) << "Unable to symlink config file "
-               << config_symlink_path.value() << " -> "
-               << starter_config_path.value() << ": " << saved_errno;
+  if (!WriteConfigFile(kIpsecStarterConfName, FormatStarterConfigFile())) {
     return false;
   }
 
   if (!server_ca_file_.empty()) {
-    FilePath target_ca_path = container_path.Append("cacert.der");
-    unlink(target_ca_path.value().c_str());
-    if (file_util::PathExists(target_ca_path)) {
-      LOG(ERROR) << "Unable to delete old CA cert";
-      return false;
-    }
-    if (!file_util::CopyFile(FilePath(server_ca_file_), target_ca_path) ||
-        !SetIpsecGroup(target_ca_path)) {
-      LOG(ERROR) << "Unable to copy CA cert file to stateful partition";
-      return false;
-    }
+    // We have a contract with shill that certificate files it
+    // creates will be readable by the ipsec client.  As such we do
+    // not need to copy this file, and can link to it directly.
+    return MakeSymbolicLink(kIpsecCaCertsName, FilePath(server_ca_file_));
   }
 
   return true;
