@@ -31,6 +31,8 @@ bool DebugDaemon::Init() {
   tracepath_tool_ = new TracePathTool();
   log_tool_ = new LogTool();
   perf_tool_ = new PerfTool();
+  storage_tool_ = new StorageTool();
+  memory_tool_ = new MemtesterTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -154,6 +156,30 @@ std::string DebugDaemon::GetInterfaces(DBus::Error& error) { // NOLINT dbuscxx
 
 std::string DebugDaemon::TestICMP(const std::string& host, DBus::Error& error) { // NOLINT dbuscxx
   return icmp_tool_->TestICMP(host, &error);
+}
+
+std::string DebugDaemon::Smartctl(const std::string& option,
+                                  DBus::Error& error) { // NOLINT
+  return storage_tool_->Smartctl(option, error);
+}
+
+std::string DebugDaemon::MemtesterStart(const DBus::FileDescriptor& outfd,
+                                        const uint32_t& memory,
+                                        DBus::Error& error) {
+  return memory_tool_->Start(outfd, memory, error);
+}
+
+void DebugDaemon::MemtesterStop(const std::string& handle, DBus::Error& error) {
+  return memory_tool_->Stop(handle, error);
+}
+
+std::string DebugDaemon::BadblocksStart(const DBus::FileDescriptor& outfd,
+                                        DBus::Error& error) {
+  return storage_tool_->Start(outfd, error);
+}
+
+void DebugDaemon::BadblocksStop(const std::string& handle, DBus::Error& error) {
+  return storage_tool_->Stop(handle, error);
 }
 
 };  // namespace debugd

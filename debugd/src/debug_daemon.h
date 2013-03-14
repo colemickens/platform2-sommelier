@@ -16,12 +16,14 @@
 #include "example_tool.h"
 #include "icmp_tool.h"
 #include "log_tool.h"
+#include "memory_tool.h"
 #include "modem_status_tool.h"
 #include "netif_tool.h"
 #include "network_status_tool.h"
 #include "perf_tool.h"
 #include "ping_tool.h"
 #include "route_tool.h"
+#include "storage_tool.h"
 #include "systrace_tool.h"
 #include "tracepath_tool.h"
 
@@ -108,6 +110,15 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual std::string GetExample(DBus::Error& error); // NOLINT
   virtual std::string GetInterfaces(DBus::Error& error); // NOLINT
   virtual std::string TestICMP(const std::string& host, DBus::Error& error); // NOLINT
+  virtual std::string Smartctl(const std::string& option,
+                               DBus::Error& error); // NOLINT
+  virtual std::string MemtesterStart(const DBus::FileDescriptor& outfd,
+                                     const uint32_t& memory,
+                                     DBus::Error& error);
+  virtual void MemtesterStop(const std::string& handle, DBus::Error& error);
+  virtual std::string BadblocksStart(const DBus::FileDescriptor& outfd,
+                                     DBus::Error& error);
+  virtual void BadblocksStop(const std::string& handle, DBus::Error& error);
 
  private:
   DBus::Connection* dbus_;
@@ -118,12 +129,14 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   ExampleTool* example_tool_;
   ICMPTool* icmp_tool_;
   LogTool* log_tool_;
+  MemtesterTool* memory_tool_;
   ModemStatusTool* modem_status_tool_;
   NetifTool* netif_tool_;
   NetworkStatusTool* network_status_tool_;
   PerfTool* perf_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;
+  StorageTool* storage_tool_;
   SystraceTool* systrace_tool_;
   TracePathTool* tracepath_tool_;
 };
