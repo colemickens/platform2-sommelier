@@ -9,6 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/scoped_ptr.h>
+
 #include "shill/dbus_bindings/supplicant-interface.h"
 #include "shill/event_dispatcher.h"
 #include "shill/key_value_store.h"
@@ -17,6 +19,7 @@
 
 namespace shill {
 
+class CertificateFile;
 class ControlInterface;
 class EventDispatcher;
 class Error;
@@ -148,6 +151,7 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, Populate8021xNoSystemCAs);
   FRIEND_TEST(WiFiServiceTest, Populate8021xUsingHardwareAuth);
   FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xPEM);
   FRIEND_TEST(WiFiServiceTest, SecurityFromCurrentEndpoint);  // GetSecurity
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
@@ -252,6 +256,7 @@ class WiFiService : public Service {
   // mandated by one or more endpoints we have seen that provide this service.
   bool ieee80211w_required_;
   NSS *nss_;
+  scoped_ptr<CertificateFile> certificate_file_;
   // Bare pointer is safe because WiFi service instances are owned by
   // the WiFiProvider and are guaranteed to be deallocated by the time
   // the WiFiProvider is.

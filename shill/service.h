@@ -69,6 +69,7 @@ class Service : public base::RefCounted<Service> {
   static const char kStorageEapCACert[];
   static const char kStorageEapCACertID[];
   static const char kStorageEapCACertNSS[];
+  static const char kStorageEapCACertPEM[];
   static const char kStorageEapCertID[];
   static const char kStorageEapClientCert[];
   static const char kStorageEapEap[];
@@ -160,6 +161,8 @@ class Service : public base::RefCounted<Service> {
     std::string ca_cert_id;
     // Locator for the CA certificate within the user NSS database.
     std::string ca_cert_nss;
+    // Raw PEM contents of the CA certificate.
+    std::string ca_cert_pem;
     // If true, use the system-wide CA database to authenticate the remote.
     bool use_system_cas;
     // PIN code for accessing the security token.

@@ -19,6 +19,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_certificate_file.h"
 #include "shill/mock_control.h"
 #include "shill/mock_log.h"
 #include "shill/mock_nss.h"
@@ -1206,6 +1207,28 @@ TEST_F(WiFiServiceTest, Populate8021xNSS) {
   EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
   if (ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert)) {
     EXPECT_EQ(kNSSCertfile, params[wpa_supplicant::kNetworkPropertyEapCaCert]
+              .reader().get_string());
+  }
+}
+
+TEST_F(WiFiServiceTest, Populate8021xPEM) {
+  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  Service::EapCredentials eap;
+  eap.ca_cert_pem = "-pem-certificate-here-";
+  service->set_eap(eap);
+  MockCertificateFile *certificate_file = new MockCertificateFile();
+  service->certificate_file_.reset(certificate_file);  // Passes ownership.
+
+  const string kPEMCertfile("/tmp/pem-cert");
+  FilePath pem_cert(kPEMCertfile);
+  EXPECT_CALL(*certificate_file, CreateDERFromString(eap.ca_cert_pem))
+      .WillOnce(Return(pem_cert));
+
+  map<string, ::DBus::Variant> params;
+  service->Populate8021xProperties(&params);
+  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
+  if (ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert)) {
+    EXPECT_EQ(kPEMCertfile, params[wpa_supplicant::kNetworkPropertyEapCaCert]
               .reader().get_string());
   }
 }

@@ -30,6 +30,7 @@ class WeakPtr;
 
 namespace shill {
 
+class CertificateFile;
 class ControlInterface;
 class DeviceInfo;
 class Error;
@@ -217,6 +218,7 @@ class OpenVPNDriver : public VPNDriver,
   Sockets sockets_;
   scoped_ptr<OpenVPNManagementServer> management_server_;
   NSS *nss_;
+  scoped_ptr<CertificateFile> certificate_file_;
   ProcessKiller *process_killer_;
   base::FilePath lsb_release_file_;
 

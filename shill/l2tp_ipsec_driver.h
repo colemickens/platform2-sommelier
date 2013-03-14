@@ -30,6 +30,7 @@ static const char kL2TPIPSecLNSAddress[] = "LNS_ADDRESS";
 static const char kL2TPIPSecReasonConnect[] = "connect";
 static const char kL2TPIPSecReasonDisconnect[] = "disconnect";
 
+class CertificateFile;
 class ControlInterface;
 class DeviceInfo;
 class GLib;
@@ -69,6 +70,7 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, GetLogin);
   FRIEND_TEST(L2TPIPSecDriverTest, InitEnvironment);
   FRIEND_TEST(L2TPIPSecDriverTest, InitNSSOptions);
+  FRIEND_TEST(L2TPIPSecDriverTest, InitPEMOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
@@ -90,6 +92,7 @@ class L2TPIPSecDriver : public VPNDriver,
   bool InitOptions(std::vector<std::string> *options, Error *error);
   bool InitPSKOptions(std::vector<std::string> *options, Error *error);
   void InitNSSOptions(std::vector<std::string> *options);
+  bool InitPEMOptions(std::vector<std::string> *options);
 
   // Resets the VPN state and deallocates all resources. If there's a service
   // associated through Connect, sets its state to Service::kStateIdle and
@@ -152,6 +155,7 @@ class L2TPIPSecDriver : public VPNDriver,
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
   base::FilePath psk_file_;
+  scoped_ptr<CertificateFile> certificate_file_;
   VPNRefPtr device_;
 
   // The PID of the spawned l2tpipsec_vpn process. May be 0 if no process has

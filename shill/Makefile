@@ -192,6 +192,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	cellular_error.o \
 	cellular_operator_info.o \
 	cellular_service.o \
+	certificate_file.o \
 	config80211.o \
 	connection.o \
 	control_netlink_attribute.o \
@@ -339,6 +340,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	cellular_operator_info_unittest.o \
 	cellular_service_unittest.o \
 	cellular_unittest.o \
+	certificate_file_unittest.o \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
@@ -378,6 +380,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_cellular.o \
 	mock_cellular_operator_info.o \
 	mock_cellular_service.o \
+	mock_certificate_file.o \
 	mock_connection.o \
 	mock_control.o \
 	mock_dbus_manager.o \

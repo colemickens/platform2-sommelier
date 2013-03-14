@@ -30,6 +30,9 @@ class MockMinijail : public Minijail {
                                    std::vector<char *> args, pid_t *pid));
   MOCK_METHOD3(RunSyncAndDestroy, bool(struct minijail *jail,
                                        std::vector<char *> args, int *status));
+  MOCK_METHOD4(RunPipeAndDestroy, bool(struct minijail *jail,
+                                       std::vector<char *> args,
+                                       pid_t *pid, int *stdin));
   MOCK_METHOD6(RunPipesAndDestroy, bool(struct minijail *jail,
                                         std::vector<char *> args,
                                         pid_t *pid, int *stdin,

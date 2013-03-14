@@ -13,6 +13,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
@@ -51,8 +52,10 @@ class L2TPIPSecDriverTest : public testing::Test,
                                     &manager_, driver_)),
         device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
                             kInterfaceName, kInterfaceIndex)),
+        certificate_file_(new MockCertificateFile()),
         test_rpc_task_destroyed_(false) {
     driver_->nss_ = &nss_;
+    driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->process_killer_ = &process_killer_;
   }
 
@@ -141,6 +144,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVPN> device_;
   MockNSS nss_;
+  MockCertificateFile *certificate_file_;  // Owned by |driver_|.
   MockProcessKiller process_killer_;
   bool test_rpc_task_destroyed_;
 };
@@ -343,6 +347,23 @@ TEST_F(L2TPIPSecDriverTest, InitNSSOptions) {
   EXPECT_TRUE(options.empty());
   driver_->InitNSSOptions(&options);
   ExpectInFlags(options, "--server_ca_file", kNSSCertfile);
+}
+
+TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {
+  static const char kCaCertPEM[] = "Insert PEM encoded data here";
+  static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
+  FilePath empty_cert;
+  FilePath pem_cert(kPEMCertfile);
+  SetArg(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
+  EXPECT_CALL(*certificate_file_, CreateDERFromString(kCaCertPEM))
+      .WillOnce(Return(empty_cert))
+      .WillOnce(Return(pem_cert));
+
+  vector<string> options;
+  driver_->InitPEMOptions(&options);
+  EXPECT_TRUE(options.empty());
+  driver_->InitPEMOptions(&options);
+  ExpectInFlags(options, "--server_ca_file", kPEMCertfile);
 }
 
 TEST_F(L2TPIPSecDriverTest, AppendValueOption) {

@@ -76,6 +76,7 @@ const char Service::kStorageEapAnonymousIdentity[] = "EAP.AnonymousIdentity";
 const char Service::kStorageEapCACert[] = "EAP.CACert";
 const char Service::kStorageEapCACertID[] = "EAP.CACertID";
 const char Service::kStorageEapCACertNSS[] = "EAP.CACertNSS";
+const char Service::kStorageEapCACertPEM[] = "EAP.CACertPEM";
 const char Service::kStorageEapCertID[] = "EAP.CertID";
 const char Service::kStorageEapClientCert[] = "EAP.ClientCert";
 const char Service::kStorageEapEap[] = "EAP.EAP";
@@ -189,6 +190,7 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterString(flimflam::kEapCaCertProperty, &eap_.ca_cert);
   store_.RegisterString(flimflam::kEapCaCertIDProperty, &eap_.ca_cert_id);
   store_.RegisterString(flimflam::kEapCaCertNssProperty, &eap_.ca_cert_nss);
+  store_.RegisterString(kEapCaCertPemProperty, &eap_.ca_cert_pem);
   store_.RegisterString(flimflam::kEAPPINProperty, &eap_.pin);
   HelpRegisterWriteOnlyDerivedString(flimflam::kEapPasswordProperty,
                                      &Service::SetEAPPassword,
@@ -1216,6 +1218,7 @@ void Service::LoadEapCredentials(StoreInterface *storage, const string &id) {
   storage->GetString(id, kStorageEapCACert, &eap.ca_cert);
   storage->GetString(id, kStorageEapCACertID, &eap.ca_cert_id);
   storage->GetString(id, kStorageEapCACertNSS, &eap.ca_cert_nss);
+  storage->GetString(id, kStorageEapCACertPEM, &eap.ca_cert_pem);
   storage->GetBool(id, kStorageEapUseSystemCAs, &eap.use_system_cas);
   storage->GetString(id, kStorageEapPIN, &eap.pin);
   storage->GetCryptedString(id, kStorageEapPassword, &eap.password);
@@ -1247,6 +1250,7 @@ void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {
   SaveString(storage, id, kStorageEapCACert, eap_.ca_cert, false, true);
   SaveString(storage, id, kStorageEapCACertID, eap_.ca_cert_id, false, true);
   SaveString(storage, id, kStorageEapCACertNSS, eap_.ca_cert_nss, false, true);
+  SaveString(storage, id, kStorageEapCACertPEM, eap_.ca_cert_pem, false, true);
   storage->SetBool(id, kStorageEapUseSystemCAs, eap_.use_system_cas);
   SaveString(storage, id, kStorageEapPIN, eap_.pin, false, save);
   SaveString(storage, id, kStorageEapPassword, eap_.password, true, save);

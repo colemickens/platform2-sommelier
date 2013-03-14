@@ -17,6 +17,7 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
@@ -65,9 +66,11 @@ class OpenVPNDriverTest : public testing::Test,
                                     &manager_, driver_)),
         device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
                             kInterfaceName, kInterfaceIndex)),
+        certificate_file_(new MockCertificateFile()),
         management_server_(new NiceMock<MockOpenVPNManagementServer>()) {
     driver_->management_server_.reset(management_server_);
     driver_->nss_ = &nss_;
+    driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->process_killer_ = &process_killer_;
   }
 
@@ -190,6 +193,7 @@ class OpenVPNDriverTest : public testing::Test,
   OpenVPNDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
   scoped_refptr<MockVPN> device_;
+  MockCertificateFile *certificate_file_;  // Owned by |driver_|.
   MockNSS nss_;
   MockProcessKiller process_killer_;
 
@@ -625,7 +629,8 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
   EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Can't specify both CACert and CACertNSS.", error.message());
+  EXPECT_EQ("Can't specify more than one of CACert, CACertNSS and CACertPEM.",
+            error.message());
 
   SetArg(flimflam::kOpenVPNCaCertProperty, "");
   SetArg(flimflam::kProviderHostProperty, kHost);
@@ -646,6 +651,33 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   options.clear();
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   ExpectInFlags(options, "--ca", kNSSCertfile);
+  EXPECT_TRUE(error.IsSuccess());
+
+  static const char kCaCertPEM[] = "---PEM CONTENTS---";
+  SetArg(kOpenVPNCaCertPemProperty, kCaCertPEM);
+  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Can't specify more than one of CACert, CACertNSS and CACertPEM.",
+            error.message());
+
+  options.clear();
+  SetArg(flimflam::kOpenVPNCaCertNSSProperty, "");
+  SetArg(flimflam::kProviderHostProperty, "");
+  static const char kPEMCertfile[] = "/tmp/pem-cert";
+  FilePath pem_cert(kPEMCertfile);
+  EXPECT_CALL(*certificate_file_, CreatePEMFromString(kCaCertPEM))
+      .WillOnce(Return(empty_cert))
+      .WillOnce(Return(pem_cert));
+
+  error.Reset();
+  EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("Unable to extract PEM CA certificate.", error.message());
+
+  error.Reset();
+  options.clear();
+  EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
+  ExpectInFlags(options, "--ca", kPEMCertfile);
   EXPECT_TRUE(error.IsSuccess());
 }
 

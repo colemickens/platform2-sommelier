@@ -386,16 +386,6 @@ Properties	boolean AutoConnect [readwrite]
 			This property is included in get requests only
 			when the requester has sufficient privileges.
 
-		string EAP.ClientCert [readwrite]
-
-			The pathname to a file containing the client
-			certificate for setting up services of type
-			"802_1x".  The certificate file must be in
-			PEM format.
-
-			This property is included in get requests only
-			when the requester has sufficient privileges.
-
 		string EAP.CertID [readwrite]
 
 			The PKCS#11 identifier of the client certificate
@@ -447,6 +437,15 @@ Properties	boolean AutoConnect [readwrite]
 
 			This property is included in get requests only
 			when the requester has sufficient privileges.
+
+		string EAP.CACertPEM [readwrite]
+
+			An x509 CA certificate in PEM format; specifically
+			the base64 counterpart of the DER contents
+			surrounded by a "-----BEGIN CERTIFICATE-----" and
+			"-----END CERTIFICATE-----" line.  This certificate
+			will be used to authenticate the remote RADIUS
+			server in the 802.1x authentication process.
 
 		boolean EAP.UseSystemCAs [readwrite]
 

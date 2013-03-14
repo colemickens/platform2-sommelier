@@ -12,6 +12,7 @@
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/certificate_file.h"
 #include "shill/connection.h"
 #include "shill/device_info.h"
 #include "shill/dhcp_config.h"
@@ -107,6 +108,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kProviderHostProperty, 0 },
   { flimflam::kProviderNameProperty, 0 },
   { flimflam::kProviderTypeProperty, 0 },
+  { kOpenVPNCaCertPemProperty, 0 },
   { kOpenVPNCertProperty, 0 },
   { kOpenVPNKeyProperty, 0 },
   { kOpenVPNPingExitProperty, 0 },
@@ -140,6 +142,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       glib_(glib),
       management_server_(new OpenVPNManagementServer(this, glib)),
       nss_(NSS::GetInstance()),
+      certificate_file_(new CertificateFile(glib)),
       process_killer_(ProcessKiller::GetInstance()),
       lsb_release_file_(kLSBReleaseFile),
       pid_(0),
@@ -633,19 +636,28 @@ bool OpenVPNDriver::InitCAOptions(vector<string> *options, Error *error) {
       args()->LookupString(flimflam::kOpenVPNCaCertProperty, "");
   string ca_cert_nss =
       args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
-  if (ca_cert.empty() && ca_cert_nss.empty()) {
+  string ca_cert_pem = args()->LookupString(kOpenVPNCaCertPemProperty, "");
+
+  int num_ca_cert_types = 0;
+  if (!ca_cert.empty())
+      num_ca_cert_types++;
+  if (!ca_cert_nss.empty())
+      num_ca_cert_types++;
+  if (!ca_cert_pem.empty())
+      num_ca_cert_types++;
+  if (num_ca_cert_types == 0) {
     // Use default CAs if no CA certificate is provided.
     options->push_back(kDefaultCACertificates);
     return true;
-  }
-  if (!ca_cert.empty() && !ca_cert_nss.empty()) {
-    Error::PopulateAndLog(error,
-                          Error::kInvalidArguments,
-                          "Can't specify both CACert and CACertNSS.");
+  } else if (num_ca_cert_types > 1) {
+    Error::PopulateAndLog(
+        error, Error::kInvalidArguments,
+        "Can't specify more than one of CACert, CACertNSS and CACertPEM.");
     return false;
   }
+  string cert_file;
   if (!ca_cert_nss.empty()) {
-    DCHECK(ca_cert.empty());
+    DCHECK(ca_cert.empty() && ca_cert_pem.empty());
     const string &vpnhost = args()->GetString(flimflam::kProviderHostProperty);
     vector<char> id(vpnhost.begin(), vpnhost.end());
     FilePath certfile = nss_->GetPEMCertfile(ca_cert_nss, id);
@@ -658,8 +670,20 @@ bool OpenVPNDriver::InitCAOptions(vector<string> *options, Error *error) {
     }
     options->push_back(certfile.value());
     return true;
+  } else if (!ca_cert_pem.empty()) {
+    DCHECK(ca_cert.empty() && ca_cert_nss.empty());
+    FilePath certfile = certificate_file_->CreatePEMFromString(ca_cert_pem);
+    if (certfile.empty()) {
+      Error::PopulateAndLog(
+          error,
+          Error::kInvalidArguments,
+          "Unable to extract PEM CA certificate.");
+      return false;
+    }
+    options->push_back(certfile.value());
+    return true;
   }
-  DCHECK(!ca_cert.empty() && ca_cert_nss.empty());
+  DCHECK(!ca_cert.empty() && ca_cert_nss.empty() && ca_cert_pem.empty());
   options->push_back(ca_cert);
   return true;
 }

@@ -12,6 +12,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/vpn-manager/service_error.h>
 
+#include "shill/certificate_file.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/logging.h"
@@ -61,6 +62,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { flimflam::kProviderHostProperty, 0 },
   { flimflam::kProviderNameProperty, 0 },
   { flimflam::kProviderTypeProperty, 0 },
+  { kL2tpIpsecCaCertPemProperty, 0 },
   { kL2TPIPSecIPSecTimeoutProperty, 0 },
   { kL2TPIPSecLeftProtoPortProperty, 0 },
   { kL2TPIPSecLengthBitProperty, 0 },
@@ -85,6 +87,7 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       glib_(glib),
       nss_(NSS::GetInstance()),
       process_killer_(ProcessKiller::GetInstance()),
+      certificate_file_(new CertificateFile(glib)),
       pid_(0),
       child_watch_tag_(0) {}
 
@@ -247,7 +250,11 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 
-  InitNSSOptions(options);
+  // Accept a PEM CA certificate or an NSS certificate, but not both.
+  // Prefer PEM to NSS.
+  if (!InitPEMOptions(options)) {
+    InitNSSOptions(options);
+  }
 
   AppendValueOption(flimflam::kL2tpIpsecClientCertIdProperty,
                     "--client_cert_id", options);
@@ -308,6 +315,21 @@ void L2TPIPSecDriver::InitNSSOptions(vector<string> *options) {
       options->push_back(certfile.value());
     }
   }
+}
+
+bool L2TPIPSecDriver::InitPEMOptions(vector<string> *options) {
+  string ca_cert = args()->LookupString(kL2tpIpsecCaCertPemProperty, "");
+  if (ca_cert.empty()) {
+    return false;
+  }
+  FilePath certfile = certificate_file_->CreateDERFromString(ca_cert);
+  if (certfile.empty()) {
+    LOG(ERROR) << "Unable to extract certificate from PEM string.";
+    return false;
+  }
+  options->push_back("--server_ca_file");
+  options->push_back(certfile.value());
+  return true;
 }
 
 bool L2TPIPSecDriver::AppendValueOption(

@@ -16,6 +16,7 @@
 #include <dbus/dbus.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/certificate_file.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/error.h"
@@ -72,6 +73,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid),
       ieee80211w_required_(false),
       nss_(NSS::GetInstance()),
+      certificate_file_(new CertificateFile(manager->glib())),
       provider_(provider) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);
@@ -1006,11 +1008,19 @@ bool WiFiService::Is8021x() const {
 void WiFiService::Populate8021xProperties(
     std::map<string, DBus::Variant> *params) {
   string ca_cert = eap().ca_cert;
-  if (!eap().ca_cert_nss.empty()) {
+  if (!eap().ca_cert_pem.empty()) {
+    FilePath certfile =
+        certificate_file_->CreateDERFromString(eap().ca_cert_pem);
+    if (certfile.empty()) {
+      LOG(ERROR) << "Unable to extract PEM certificate.";
+    } else {
+      ca_cert = certfile.value();
+    }
+  } else if (!eap().ca_cert_nss.empty()) {
     vector<char> id(ssid_.begin(), ssid_.end());
     FilePath certfile = nss_->GetDERCertfile(eap().ca_cert_nss, id);
     if (certfile.empty()) {
-      LOG(ERROR) << "Unable to extract certificate: " << eap().ca_cert_nss;
+      LOG(ERROR) << "Unable to extract DER certificate: " << eap().ca_cert_nss;
     } else {
       ca_cert = certfile.value();
     }
