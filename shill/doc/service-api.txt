@@ -316,6 +316,11 @@ Properties	boolean AutoConnect [readwrite]
 			The format of this property is the same as for
 			the Cellular.APN property.
 
+		boolean Cellular.OutOfCredits [readonly]
+
+			(Cellular only) Indicates whether a cellular service
+			has any remaining bandwidth credits with the carrier.
+
 		string CheckPortal [readwrite]
 
 			Control captive portal checking.  Possible values
