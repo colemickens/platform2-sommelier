@@ -11,7 +11,6 @@ from google.protobuf import descriptor_pb2
 # @@protoc_insertion_point(imports)
 
 
-
 DESCRIPTOR = descriptor.FileDescriptor(
   name='shims/protos/crypto_util.proto',
   package='shill_protos',
@@ -205,12 +204,9 @@ _VERIFYCREDENTIALSRESPONSE = descriptor.Descriptor(
   serialized_end=370,
 )
 
+
 _ENCRYPTDATARESPONSE.fields_by_name['ret'].enum_type = _RETURNCODE
 _VERIFYCREDENTIALSRESPONSE.fields_by_name['ret'].enum_type = _RETURNCODE
-DESCRIPTOR.message_types_by_name['EncryptDataMessage'] = _ENCRYPTDATAMESSAGE
-DESCRIPTOR.message_types_by_name['EncryptDataResponse'] = _ENCRYPTDATARESPONSE
-DESCRIPTOR.message_types_by_name['VerifyCredentialsMessage'] = _VERIFYCREDENTIALSMESSAGE
-DESCRIPTOR.message_types_by_name['VerifyCredentialsResponse'] = _VERIFYCREDENTIALSRESPONSE
 
 class EncryptDataMessage(message.Message):
   __metaclass__ = reflection.GeneratedProtocolMessageType
