@@ -22,6 +22,13 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG
 LDLIBS += $(PC_LIBS)
 
+# Test if libsnappy is required to compile LevelDB.
+LEVELDB_LIBS := $(call check_libs_cxx, \
+	'\#include<leveldb/db.h>\nint main(){\
+	 leveldb::Options options; leveldb::DB::Open(options, 0, 0);\
+	 return 0;}',\
+	 -lleveldb -lmemenv, -lleveldb -lmemenv -lsnappy)
+
 # Rules for Generated Code
 chaps_proxy_generated.h: $(SRC)/chaps_interface.xml
 	$(DBUSXX_XML2CPP) $< --proxy=$@
@@ -74,7 +81,7 @@ chapsd_OBJS = $(COMMON_OBJS) \
               chaps_factory_impl.o \
               object_store_impl.o \
               opencryptoki_importer.o
-chapsd_LIBS = -ldl -ltspi -lleveldb -lmemenv
+chapsd_LIBS = -ldl -ltspi $(LEVELDB_LIBS)
 CXX_BINARY(chapsd): $(chapsd_OBJS)
 CXX_BINARY(chapsd): LDLIBS += $(chapsd_LIBS)
 clean: CLEAN(chapsd)
@@ -189,7 +196,8 @@ clean: CLEAN(object_pool_test)
 tests: TEST(CXX_BINARY(object_pool_test))
 
 object_store_test_OBJS = $(COMMON_OBJS) object_store_test.o object_store_impl.o
-object_store_test_LIBS = -lgtest -lleveldb -lmemenv
+object_store_test_LIBS = -lgtest $(LEVELDB_LIBS)
+
 CXX_BINARY(object_store_test): $(object_store_test_OBJS)
 CXX_BINARY(object_store_test): LDLIBS += $(object_store_test_LIBS)
 clean: CLEAN(object_store_test)
