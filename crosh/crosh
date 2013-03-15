@@ -74,6 +74,9 @@ HELP_ADVANCED='
  ff_debug [<tag_expr>] [--help] [--list_valid_tags] [--reset]
   Add and remove flimflam debugging tags.
 
+ memory_test
+  Performs extensive memory testing on the available free memory.
+
  modem <command> [args...]
   Interact with the 3G modem. Run "modem help" for detailed help.
 
@@ -113,6 +116,15 @@ HELP_ADVANCED='
   "sound beamforming <on|off>" will enable/disable the feature.
   "sound record [duration]" will start recording.
   "sound play <filename>" will play the recorded audio samples.
+
+ storage_status
+  Reads storage device SMART health status, vendor attributes, and error log.
+
+ storage_test_1
+  Performs a short offline SMART test.
+
+ storage_test_2
+  Performs an extensive readability test.
 
  syslog <message>
   Logs a message to syslog.
@@ -715,21 +727,7 @@ cmd_ping() {
 
   option=$(echo "$option" | sed 's/,$//')
 
-  # We want C-c to terminate the running ping so that the UI stays the same.
-  # Therefore, create a fifo to direct the output of the ping to, and have a
-  # subshell read from the fifo and emit to stdout. When the subshell ends (at a
-  # C-c), we stop the ping and clean up the fifo.
-  # no way to mktemp a fifo, so make a dir to hold it instead
-  dir=$(mktemp -d "/tmp/crosh-ping-XXXXXXXXXX")
-  if [ $? -ne 0 ]; then
-    echo "Can't create temporary directory"
-    return 1
-  fi
-  fifo="${dir}/fifo"
-  if ! mkfifo "$fifo"; then
-    echo "Can't create fifo at $fifo"
-    return 1
-  fi
+  fifo="$(mk_fifo)"
   debugd PingStart "fd:1" "string:$dest" "$option" 2>&1 > "$fifo" &
   read pid < "$fifo"
   echo "pid: $pid"
@@ -739,7 +737,7 @@ cmd_ping() {
     echo "Can't stop ping"
     return 1
   fi
-  rm -rf "$dir"
+  rm -rf "$(dirname ${fifo})"
 }
 
 # TODO(dkrahn): Remove once this is the default. crosbug.com/22543
@@ -841,22 +839,7 @@ cmd_tracepath() {
     return 1
   fi
 
-  # We want C-c to terminate the running tracepath so that the UI stays the same.
-  # Therefore, create a fifo to direct the output of the tracepath to, and have a
-  # subshell read from the fifo and emit to stdout. When the subshell ends (at a
-  # C-c), we stop the tracepath and clean up the fifo.
-  # TODO(ellyjones): factor this (and the similar code in cmd_ping) out somehow
-  # no way to mktemp a fifo, so make a dir to hold it instead
-  dir=$(mktemp -d "/tmp/crosh-tracepath-XXXXXXXXXX")
-  if [ $? -ne 0 ]; then
-    echo "Can't create temporary directory"
-    return 1
-  fi
-  fifo="${dir}/fifo"
-  if ! mkfifo "$fifo"; then
-    echo "Can't create fifo at $fifo"
-    return 1
-  fi
+  fifo="$(mk_fifo)"
   debugd TracePathStart "fd:1" "string:$1" "$option" 2>&1 > "$fifo" &
   read pid < "$fifo"
   echo "pid: $pid"
@@ -866,7 +849,7 @@ cmd_tracepath() {
     echo "Can't stop tracepath"
     return 1
   fi
-  rm -rf "$dir"
+  rm -rf "$(dirname ${fifo})"
 }
 
 cmd_top() {
@@ -976,6 +959,129 @@ cmd_xset() {
   *) set -- ;; # Gets us a usage string.
   esac
   xset-mini "$@"
+}
+
+mk_fifo() {
+  # We want C-c to terminate the running test so that the UI stays the same.
+  # Therefore, create a fifo to direct the output of the test to, and have a
+  # subshell read from the fifo and emit to stdout. When the subshell ends (at a
+  # C-c), we stop the test and clean up the fifo.
+  # no way to mktemp a fifo, so make a dir to hold it instead
+  dir=$(mktemp -d "/tmp/crosh-test-XXXXXXXXXX")
+  if [ $? -ne 0 ]; then
+    echo "Can't create temporary directory"
+    return 1
+  fi
+  fifo="${dir}/fifo"
+  if ! mkfifo "$fifo"; then
+    echo "Can't create fifo at $fifo"
+    return 1
+  fi
+
+  echo "$fifo"
+}
+
+cmd_storage_test_1() {
+  option="$1"
+
+  debugd Smartctl "string:abort_test" &> /dev/null
+
+  test=$(debugd Smartctl "string:short_test")
+  if [ "$option" != "-v" ]; then
+    echo "$test" | sed -n '1p;2p'
+    echo ""
+    echo "$test" | grep "Please wait"
+  else
+    echo "$test"
+  fi
+
+  echo ""
+
+  while debugd Smartctl "string:capabilities" |
+        grep "of test remaining" &> /dev/null; do
+    true
+  done
+
+  result=$(debugd Smartctl "string:selftest")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | grep -e "Num" -e "# 1"
+  else
+    echo "$result"
+  fi
+
+  debugd Smartctl "string:abort_test" &> /dev/null
+}
+
+cmd_storage_test_2() {
+  fifo="$(mk_fifo)"
+  pid_file="$(mktemp)"
+  debugd BadblocksStart "fd:1" 2>&1 > "$fifo" &
+  (while read line; do echo "$line" | tee -a "$pid_file"; done) < "$fifo"
+  read -r pid < "$pid_file"
+  rm -f "$pid_file"
+
+  debugd BadblocksStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop badblocks"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
+}
+
+cmd_storage_status() {
+  option="$1"
+
+  result=$(debugd Smartctl "string:health")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | sed -n '1p;2p'
+    echo ""
+    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '2,$p'
+  else
+    echo "$result"
+  fi
+
+  echo ""
+
+  result=$(debugd Smartctl "string:error")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '3,$p'
+  else
+    echo "$result"
+  fi
+
+  echo ""
+
+  result=$(debugd Smartctl "string:attributes")
+  if [ "$option" != "-v" ]; then
+    echo "$result" | sed -n '/START OF READ/,$p' | sed -n '3,$p'
+  else
+    echo "$result"
+  fi
+}
+
+cmd_memory_test() {
+  # Getting total free memory in KB.
+  mem=$(cat /proc/meminfo | grep MemFree | tr -s " " | cut -d" " -f 2)
+
+  # Converting to MB.
+  mem=$(($mem / 1024))
+
+  # Giving OS 200MB free memory before hogging the rest of it.
+  mem=$(($mem - 200))
+
+  fifo="$(mk_fifo)"
+  pid_file="$(mktemp)"
+  debugd MemtesterStart "fd:1" "uint32:$mem" 2>&1 > "$fifo" &
+  (while read line; do echo "$line" | tee -a "$pid_file"; done) < "$fifo"
+  read -r pid < "$pid_file"
+  rm -f "$pid_file"
+
+  debugd MemtesterStop "string:$pid"
+  if [ $? -ne 0 ]; then
+    echo "Can't stop memtester"
+    return 1
+  fi
+  rm -rf "$(dirname ${fifo})"
 }
 
 substr() {
