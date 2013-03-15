@@ -36,12 +36,11 @@ class ActivatingIccidStoreTest : public ::testing::Test {
 };
 
 TEST_F(ActivatingIccidStoreTest, FileInteractions) {
-  const char kStoragePath[] = "./";
   const char kIccid1[] = "1234";
   const char kIccid2[] = "4321";
-  FilePath path(kStoragePath);
-  FilePath file_path(ActivatingIccidStore::kStorageFileName);
-  ASSERT_TRUE(file_util::CreateTemporaryFile(&file_path));
+  FilePath path;
+  FilePath::StringType prefix("");  //No prefix specified.
+  ASSERT_TRUE(file_util::CreateNewTempDirectory(prefix, &path));
 
   EXPECT_TRUE(iccid_store_.InitStorage(&glib_, path));
 
@@ -93,7 +92,7 @@ TEST_F(ActivatingIccidStoreTest, FileInteractions) {
   EXPECT_EQ(ActivatingIccidStore::kStateUnknown,
             iccid_store_.GetActivationState(kIccid2));
 
-  ASSERT_TRUE(file_util::Delete(file_path, false));
+  ASSERT_TRUE(file_util::Delete(path, true));
 }
 
 TEST_F(ActivatingIccidStoreTest, GetActivationState) {

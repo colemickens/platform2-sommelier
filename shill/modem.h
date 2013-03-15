@@ -22,6 +22,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class ActivatingIccidStore;
 class CellularOperatorInfo;
 class ControlInterface;
 class EventDispatcher;
@@ -43,6 +44,7 @@ class Modem {
         EventDispatcher *dispatcher,
         Metrics *metrics,
         Manager *manager,
+        ActivatingIccidStore *activating_iccid_store,
         CellularOperatorInfo *cellular_operator_info,
         mobile_provider_db *provider_db);
   virtual ~Modem();
@@ -125,6 +127,7 @@ class Modem {
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
   Manager *manager_;
+  ActivatingIccidStore *activating_iccid_store_;
   CellularOperatorInfo *cellular_operator_info_;
   mobile_provider_db *provider_db_;
   std::string link_name_;
@@ -147,6 +150,7 @@ class ModemClassic : public Modem {
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager,
+               ActivatingIccidStore *activating_iccid_store,
                CellularOperatorInfo *cellular_operator_info,
                mobile_provider_db *provider_db);
   virtual ~ModemClassic();
@@ -172,6 +176,7 @@ class Modem1 : public Modem {
          EventDispatcher *dispatcher,
          Metrics *metrics,
          Manager *manager,
+         ActivatingIccidStore *activating_iccid_store,
          CellularOperatorInfo *cellular_operator_info,
          mobile_provider_db *provider_db);
   virtual ~Modem1();

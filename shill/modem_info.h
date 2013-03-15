@@ -15,6 +15,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class ActivatingIccidStore;
 class CellularOperatorInfo;
 class ControlInterface;
 class EventDispatcher;
@@ -56,6 +57,8 @@ class ModemInfo {
   Manager *manager_;
   GLib *glib_;
 
+  // Post-payment activation state of the modem.
+  scoped_ptr<ActivatingIccidStore> activating_iccid_store_;
   scoped_ptr<CellularOperatorInfo> cellular_operator_info_;
   std::string provider_db_path_;  // For testing.
   mobile_provider_db *provider_db_;  // Database instance owned by |this|.

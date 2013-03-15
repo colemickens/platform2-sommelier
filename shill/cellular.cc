@@ -97,6 +97,7 @@ Cellular::Cellular(ControlInterface *control_interface,
                    const string &owner,
                    const string &service,
                    const string &path,
+                   ActivatingIccidStore *activating_iccid_store,
                    CellularOperatorInfo *cellular_operator_info,
                    mobile_provider_db *provider_db,
                    ProxyFactory *proxy_factory)
@@ -114,6 +115,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       dbus_owner_(owner),
       dbus_service_(service),
       dbus_path_(path),
+      activating_iccid_store_(activating_iccid_store),
       cellular_operator_info_(cellular_operator_info),
       provider_db_(provider_db),
       proxy_factory_(proxy_factory),
@@ -132,11 +134,6 @@ Cellular::Cellular(ControlInterface *control_interface,
                           &Cellular::SetAllowRoaming);
   store->RegisterConstStringmap(flimflam::kHomeProviderProperty,
                                 &home_provider_.ToDict());
-
-  // A NULL value for manager may be passed in some unit tests.
-  if (manager)
-    activating_iccid_store_.InitStorage(manager->glib(),
-                                        manager->storage_path());
 
   // For now, only a single capability is supported.
   InitCapability(type);
@@ -305,7 +302,7 @@ void Cellular::InitCapability(Type type) {
           this,
           proxy_factory_,
           metrics(),
-          &activating_iccid_store_));
+          activating_iccid_store_));
       break;
     default: NOTREACHED();
   }

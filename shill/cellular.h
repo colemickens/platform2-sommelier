@@ -13,7 +13,6 @@
 #include <base/gtest_prod_util.h>  // for FRIEND_TEST_ALL_PREFIXES
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/activating_iccid_store.h"
 #include "shill/dbus_properties.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
@@ -25,6 +24,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class ActivatingIccidStore;
 class CellularCapability;
 class CellularOperatorInfo;
 class Error;
@@ -113,6 +113,7 @@ class Cellular : public Device {
            const std::string &owner,
            const std::string &service,
            const std::string &path,
+           ActivatingIccidStore *activating_iccid_store,
            CellularOperatorInfo *cellular_operator_info,
            mobile_provider_db *provider_db,
            ProxyFactory *proxy_factory);
@@ -337,6 +338,7 @@ class Cellular : public Device {
   const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
 
+  ActivatingIccidStore *activating_iccid_store_;
   CellularOperatorInfo *cellular_operator_info_;
   mobile_provider_db *provider_db_;
   ProxyFactory *proxy_factory_;
@@ -351,9 +353,6 @@ class Cellular : public Device {
 
   // Flag indicating that a disconnect has been explicitly requested.
   bool explicit_disconnect_;
-
-  // Post-payment activation state.
-  ActivatingIccidStore activating_iccid_store_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

@@ -51,6 +51,7 @@ class CellularCapabilityCDMATest : public testing::Test {
                                    "",
                                    NULL,
                                    NULL,
+                                   NULL,
                                    ProxyFactory::GetInstance())),
         classic_proxy_(new MockModemProxy()),
         proxy_(new MockModemCDMAProxy()),

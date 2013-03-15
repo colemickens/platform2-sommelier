@@ -27,6 +27,7 @@ ModemManager::ModemManager(const string &service,
                            Metrics *metrics,
                            Manager *manager,
                            GLib *glib,
+                           ActivatingIccidStore *activating_iccid_store,
                            CellularOperatorInfo *cellular_operator_info,
                            mobile_provider_db *provider_db)
     : proxy_factory_(ProxyFactory::GetInstance()),
@@ -38,6 +39,7 @@ ModemManager::ModemManager(const string &service,
       metrics_(metrics),
       manager_(manager),
       glib_(glib),
+      activating_iccid_store_(activating_iccid_store),
       cellular_operator_info_(cellular_operator_info),
       provider_db_(provider_db) {}
 
@@ -130,6 +132,7 @@ ModemManagerClassic::ModemManagerClassic(
     Metrics *metrics,
     Manager *manager,
     GLib *glib,
+    ActivatingIccidStore *activating_iccid_store,
     CellularOperatorInfo *cellular_operator_info,
     mobile_provider_db *provider_db)
     : ModemManager(service,
@@ -139,6 +142,7 @@ ModemManagerClassic::ModemManagerClassic(
                    metrics,
                    manager,
                    glib,
+                   activating_iccid_store,
                    cellular_operator_info,
                    provider_db) {}
 
@@ -167,6 +171,7 @@ void ModemManagerClassic::AddModemClassic(const string &path) {
                                                   dispatcher(),
                                                   metrics(),
                                                   manager(),
+                                                  activating_iccid_store(),
                                                   cellular_operator_info(),
                                                   provider_db()));
   RecordAddedModem(modem);

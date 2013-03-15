@@ -101,6 +101,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                "",
                                NULL,
                                NULL,
+                               NULL,
                                &proxy_factory_)),
         service_(new MockCellularService(&control_,
                                          dispatcher,
@@ -127,6 +128,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     device_adaptor_ =
         dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
     cellular_->service_ = service_;
+    SetMockIccidStore();
   }
 
   virtual void TearDown() {
@@ -136,6 +138,15 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   void SetService() {
     cellular_->service_ = new CellularService(
         &control_, event_dispatcher_, &metrics_, NULL, cellular_);
+  }
+
+  void SetMockIccidStore() {
+    // Assumption: capability_ points to cellular_->capability_.
+    capability_->activating_iccid_store_ = &mock_iccid_store_;
+    // kStateUnknown leads to minimal extra work in maintaining
+    // activation state.
+    ON_CALL(mock_iccid_store_, GetActivationState(_)).
+      WillByDefault(Return(ActivatingIccidStore::kStateUnknown));
   }
 
   void InitProviderDB() {
@@ -171,10 +182,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   bool InvokeScanningOrSearchingTimeout() {
     capability_->OnScanningOrSearchingTimeout();
     return true;
-  }
-
-  void SetMockIccidStore() {
-    capability_->activating_iccid_store_ = &mock_iccid_store_;
   }
 
   void Set3gppProxy() {
@@ -535,6 +542,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_))
+      .Times(1);
 
   SetUp();
   InitProviderDB();
@@ -555,6 +564,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // SIM is locked.
   capability_->sim_lock_status_.lock_type = "sim-pin";
   capability_->OnSimLockStatusChanged();
+  Mock::VerifyAndClearExpectations(&mock_iccid_store_);
 
   EXPECT_EQ("", capability_->imsi_);
   EXPECT_EQ("", capability_->sim_identifier_);
@@ -565,9 +575,12 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   properties_proxy_.reset(new MockDBusPropertiesProxy());
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_))
+      .Times(1);
 
   capability_->sim_lock_status_.lock_type = "";
   capability_->OnSimLockStatusChanged();
+  Mock::VerifyAndClearExpectations(&mock_iccid_store_);
 
   EXPECT_EQ(kImsi, capability_->imsi_);
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
@@ -748,6 +761,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .Times(1).WillOnce(Return(sim_properties));
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_))
+      .Times(1);
 
   EXPECT_FALSE(capability_->sim_present_);
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
@@ -777,6 +792,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
   EXPECT_EQ(kOperatorName, capability_->spn_);
 
   capability_->OnSimPathChanged("");
+  Mock::VerifyAndClearExpectations(&mock_iccid_store_);
   EXPECT_FALSE(capability_->sim_present_);
   EXPECT_TRUE(capability_->sim_proxy_ == NULL);
   EXPECT_EQ("", capability_->sim_path_);
@@ -787,6 +803,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPathChanged) {
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .Times(1).WillOnce(Return(sim_properties));
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_))
+      .Times(1);
 
   capability_->OnSimPathChanged(kSimPath);
   EXPECT_TRUE(capability_->sim_present_);
@@ -819,7 +837,8 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
 
   EXPECT_CALL(*properties_proxy_, GetAll(MM_DBUS_INTERFACE_SIM))
       .WillOnce(Return(sim_properties));
-
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_))
+      .Times(0);
   // After setup we lose pointers to the proxies, so it is hard to set
   // expectations.
   SetUp();
@@ -834,8 +853,11 @@ TEST_F(CellularCapabilityUniversalMainTest, SimPropertiesChanged) {
   EXPECT_EQ(kSimPath, capability_->sim_path_);
   EXPECT_TRUE(capability_->sim_proxy_.get());
   EXPECT_EQ(kImsi, capability_->imsi_);
+  Mock::VerifyAndClearExpectations(&mock_iccid_store_);
 
   // Updating the SIM
+  EXPECT_CALL(mock_iccid_store_, GetActivationState(_))
+      .Times(2);
   DBusPropertiesMap new_properties;
   const char kCountry[] = "us";
   const char kNewImsi[] = "310240123456789";
@@ -1463,7 +1485,6 @@ TEST_F(CellularCapabilityUniversalMainTest, CompleteActivation) {
 
   capability_->mdn_.clear();
   capability_->sim_identifier_.clear();
-  SetMockIccidStore();
 
   EXPECT_CALL(mock_iccid_store_,
               SetActivationState(kIccid, ActivatingIccidStore::kStatePending))
@@ -1474,7 +1495,7 @@ TEST_F(CellularCapabilityUniversalMainTest, CompleteActivation) {
   EXPECT_CALL(mock_iccid_store_, SetActivationState(_, _)).Times(0);
   Error error;
   capability_->CompleteActivation(&error);
-  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(&mock_iccid_store_);
 
   capability_->sim_identifier_ = kIccid;
   EXPECT_CALL(mock_iccid_store_,
@@ -1484,7 +1505,7 @@ TEST_F(CellularCapabilityUniversalMainTest, CompleteActivation) {
               SetActivationState(flimflam::kActivationStateActivating))
       .Times(1);
   capability_->CompleteActivation(&error);
-  Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(&mock_iccid_store_);
 
   EXPECT_CALL(mock_iccid_store_,
               SetActivationState(kIccid, ActivatingIccidStore::kStatePending))
@@ -1498,7 +1519,6 @@ TEST_F(CellularCapabilityUniversalMainTest, CompleteActivation) {
 
 TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   const char kIccid[] = "1234567";
-  SetMockIccidStore();
   capability_->sim_identifier_.clear();
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = &cellular_operator_info_;
@@ -1543,7 +1563,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateIccidActivationState) {
   const char kIccid[] = "1234567";
 
   mm1::MockModemProxy *modem_proxy = modem_proxy_.get();
-  SetMockIccidStore();
   capability_->InitProxies();
   capability_->registration_state_ =
       MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING;
@@ -1687,7 +1706,6 @@ TEST_F(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName) {
 TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   capability_->mdn_ = "0000000000";
   cellular_->cellular_operator_info_ = NULL;
-  SetMockIccidStore();
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   cellular_->cellular_operator_info_ = &cellular_operator_info_;

@@ -63,6 +63,7 @@ class Modem1Test : public Test {
                 &dispatcher_,
                 &metrics_,
                 &manager_,
+                static_cast<ActivatingIccidStore *>(NULL),
                 static_cast<CellularOperatorInfo *>(NULL),
                 static_cast<mobile_provider_db *>(NULL))) {}
   virtual void SetUp();

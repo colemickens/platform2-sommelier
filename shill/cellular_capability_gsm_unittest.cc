@@ -78,6 +78,7 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                NULL,
                                NULL,
+                               NULL,
                                &proxy_factory_)) {
     metrics_.RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);

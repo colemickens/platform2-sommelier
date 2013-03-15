@@ -22,6 +22,7 @@ class MockModem : public Modem {
             EventDispatcher *dispatcher,
             Metrics *metrics,
             Manager *manager,
+            ActivatingIccidStore *activating_iccid_store,
             CellularOperatorInfo *cellular_operator_info,
             mobile_provider_db *provider_db);
   virtual ~MockModem();

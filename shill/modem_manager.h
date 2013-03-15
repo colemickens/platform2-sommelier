@@ -23,6 +23,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
+class ActivatingIccidStore;
 class CellularOperatorInfo;
 class ControlInterface;
 class DBusObjectManagerProxyInterface;
@@ -46,7 +47,8 @@ class ModemManager {
                Metrics *metrics,
                Manager *manager,
                GLib *glib,
-               CellularOperatorInfo *cellular_operator_info_,
+               ActivatingIccidStore *activating_iccid_store,
+               CellularOperatorInfo *cellular_operator_info,
                mobile_provider_db *provider_db);
   virtual ~ModemManager();
 
@@ -70,6 +72,9 @@ class ModemManager {
   const std::string &service() const { return service_; }
   const std::string &path() const { return path_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
+  ActivatingIccidStore *activating_iccid_store() const {
+    return activating_iccid_store_;
+  }
   CellularOperatorInfo *cellular_operator_info() const {
     return cellular_operator_info_;
   }
@@ -130,6 +135,7 @@ class ModemManager {
   Metrics *metrics_;
   Manager *manager_;
   GLib *glib_;
+  ActivatingIccidStore *activating_iccid_store_;
   CellularOperatorInfo *cellular_operator_info_;
   mobile_provider_db *provider_db_;
 
@@ -145,6 +151,7 @@ class ModemManagerClassic : public ModemManager {
                       Metrics *metrics,
                       Manager *manager,
                       GLib *glib,
+                      ActivatingIccidStore *activating_iccid_store,
                       CellularOperatorInfo *cellular_operator_info,
                       mobile_provider_db *provider_db);
 
@@ -179,6 +186,7 @@ class ModemManager1 : public ModemManager {
                 Metrics *metrics,
                 Manager *manager,
                 GLib *glib,
+                ActivatingIccidStore *activating_iccid_store,
                 CellularOperatorInfo *cellular_operator_info,
                 mobile_provider_db *provider_db);
 

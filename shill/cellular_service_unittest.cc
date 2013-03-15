@@ -45,9 +45,10 @@ class CellularServiceTest : public testing::Test {
                                  "",
                                  NULL,
                                  NULL,
+                                 NULL,
                                  ProxyFactory::GetInstance())),
-        service_(new CellularService(&control_, &dispatcher_, &metrics_,
-                                     &manager_, device_)),
+        service_(new CellularService(&control_, &dispatcher_,
+                                     &metrics_, &manager_, device_)),
         adaptor_(NULL) {}
 
   virtual ~CellularServiceTest() {

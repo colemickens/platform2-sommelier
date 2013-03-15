@@ -30,10 +30,12 @@ Modem1::Modem1(const string &owner,
                EventDispatcher *dispatcher,
                Metrics *metrics,
                Manager *manager,
+               ActivatingIccidStore *activating_iccid_store,
                CellularOperatorInfo *cellular_operator_info,
                mobile_provider_db *provider_db)
     : Modem(owner, service, path, control_interface, dispatcher, metrics,
-            manager, cellular_operator_info, provider_db),
+            manager, activating_iccid_store, cellular_operator_info,
+            provider_db),
       netfiles_path_(kDefaultNetfilesPath) {
 }
 

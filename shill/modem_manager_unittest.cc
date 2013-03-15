@@ -40,6 +40,7 @@ class ModemManagerCore : public ModemManager {
                    Metrics *metrics,
                    Manager *manager,
                    GLib *glib,
+                   ActivatingIccidStore *activating_iccid_store,
                    CellularOperatorInfo *cellular_operator_info,
                    mobile_provider_db *provider_db)
       : ModemManager(service,
@@ -49,6 +50,7 @@ class ModemManagerCore : public ModemManager {
                      metrics,
                      manager,
                      glib,
+                     activating_iccid_store,
                      cellular_operator_info,
                      provider_db) {}
 
@@ -68,7 +70,8 @@ class ModemManagerTest : public Test {
   virtual void SetUp() {
     modem_.reset(new StrictModem(
         kOwner, kService, kModemPath, &control_interface_, &dispatcher_,
-        &metrics_, &manager_, static_cast<CellularOperatorInfo *>(NULL),
+        &metrics_, &manager_, static_cast<ActivatingIccidStore *>(NULL),
+        static_cast<CellularOperatorInfo *>(NULL),
         static_cast<mobile_provider_db *>(NULL)));
   }
 
@@ -103,6 +106,7 @@ class ModemManagerCoreTest : public ModemManagerTest {
                        &metrics_,
                        &manager_,
                        &glib_,
+                       NULL,
                        NULL,
                        NULL) {}
 
@@ -179,6 +183,7 @@ class ModemManagerClassicMockInit : public ModemManagerClassic {
                               Metrics *metrics,
                               Manager *manager,
                               GLib *glib,
+                              ActivatingIccidStore *activating_iccid_store,
                               CellularOperatorInfo *cellular_operator_info,
                               mobile_provider_db *provider_db) :
       ModemManagerClassic(service,
@@ -188,6 +193,7 @@ class ModemManagerClassicMockInit : public ModemManagerClassic {
                           metrics,
                           manager,
                           glib,
+                          activating_iccid_store,
                           cellular_operator_info,
                           provider_db) {}
   MOCK_METHOD1(InitModemClassic, void(shared_ptr<ModemClassic>));
@@ -204,6 +210,7 @@ class ModemManagerClassicTest : public ModemManagerTest {
                        &metrics_,
                        &manager_,
                        &glib_,
+                       NULL,
                        NULL,
                        NULL),
         proxy_(new MockModemManagerProxy()),
@@ -265,6 +272,7 @@ class ModemManager1MockInit : public ModemManager1 {
                         Metrics *metrics,
                         Manager *manager,
                         GLib *glib,
+                        ActivatingIccidStore *activating_iccid_store,
                         CellularOperatorInfo *cellular_operator_info,
                         mobile_provider_db *provider_db) :
       ModemManager1(service,
@@ -274,6 +282,7 @@ class ModemManager1MockInit : public ModemManager1 {
                     metrics,
                     manager,
                     glib,
+                    activating_iccid_store,
                     cellular_operator_info,
                     provider_db) {}
   MOCK_METHOD2(InitModem1, void(shared_ptr<Modem1>,
@@ -292,6 +301,7 @@ class ModemManager1Test : public ModemManagerTest {
                        &metrics_,
                        &manager_,
                        &glib_,
+                       NULL,
                        NULL,
                        NULL),
         proxy_(new MockDBusObjectManagerProxy()),
