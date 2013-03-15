@@ -514,11 +514,25 @@ Properties	boolean AutoConnect [readwrite]
 			property to help the user interface to present the
 			user with alternate options.
 
-			This property is only valid when the service is in
-			the "failure" or "activation-failure" states. Otherwise
-			it might be empty or not present at all.
+			This property is only valid when the service is in a
+			failure state. Otherwise it might be empty or not
+			present at all.
 
-			Current defined error code is "dhcp-failed".
+			Look for "Flimflam error options" in
+			system_api/dbus/service_constants.h for the set of
+			defined error codes.
+
+		string ErrorDetails [readonly]
+
+			Free-style service error status details in addition to
+			the defined error codes presented through the
+			Service.Error property. For example, this property may
+			contain a server-supplied error description for a
+			rejected VPN connection attempt.
+
+			This property is only valid when the service is in a
+			failure state. Otherwise it might be empty or not
+			present at all.
 
 		boolean Favorite [readonly]
 
