@@ -272,13 +272,12 @@ bool SessionManagerService::Initialize() {
                               liveness_checking_interval_));
 
   owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath()));
-  scoped_refptr<DevicePolicyService> device_policy(
-      DevicePolicyService::Create(login_metrics_.get(),
-                                  owner_key_.get(),
-                                  mitigator_.Pass(),
-                                  nss_.get(),
-                                  loop_proxy_));
-  device_policy->set_delegate(impl);
+  device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
+                                               owner_key_.get(),
+                                               mitigator_.Pass(),
+                                               nss_.get(),
+                                               loop_proxy_);
+  device_policy_->set_delegate(impl);
 
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory(
       new UserPolicyServiceFactory(getuid(), loop_proxy_, system_));
@@ -286,7 +285,7 @@ bool SessionManagerService::Initialize() {
       new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
                                           owner_key_.get(),
                                           loop_proxy_));
-  impl->InjectPolicyServices(device_policy,
+  impl->InjectPolicyServices(device_policy_,
                              user_policy_factory.Pass(),
                              device_local_account_policy.Pass());
   impl_.reset(impl);
@@ -361,8 +360,6 @@ bool SessionManagerService::Run() {
                       HandleKill,
                       this,
                       NULL);
-  if (ShouldRunBrowser())  // Allows devs to start/stop browser manually.
-    RunBrowser();
 
   // Initializes policy subsystems which, among other things, finds and
   // validates the stored policy signing key if one is present.
@@ -373,6 +370,13 @@ bool SessionManagerService::Run() {
     Finalize();
     return false;
   }
+
+  // Set any flags that were specified system-wide.
+  if (device_policy_)
+    browser_.job->SetExtraArguments(device_policy_->GetStartUpFlags());
+
+  if (ShouldRunBrowser())  // Allows devs to start/stop browser manually.
+    RunBrowser();
 
   base::RunLoop run_loop;
   quit_closure_ = run_loop.QuitClosure();

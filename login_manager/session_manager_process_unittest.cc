@@ -538,16 +538,16 @@ TEST_F(SessionManagerProcessTest, StatsRecorded) {
 }
 
 TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
-  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+  CreateMockJobWithRestartPolicy(ALWAYS);
 
   // Expected to occur during manager_->Run().
-  ExpectChildJobBoilerplate(job);
+  EXPECT_CALL(*metrics_, HasRecordedChromeExec())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
+      .Times(AnyNumber());
   EXPECT_CALL(*session_manager_impl_, Initialize())
     .WillOnce(Return(false));
   MockChildProcess proc(kDummyPid, 0, manager_->test_api());
-  EXPECT_CALL(utils_, fork())
-      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
-                      Return(proc.pid())));
 
   // Expect Powerwash to be triggered.
   EXPECT_CALL(*session_manager_impl_, StartDeviceWipe(_, _))

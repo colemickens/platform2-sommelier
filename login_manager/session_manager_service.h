@@ -324,6 +324,7 @@ class SessionManagerService
   scoped_ptr<OwnerKeyLossMitigator> mitigator_;
 
   scoped_ptr<SessionManagerInterface> impl_;
+  scoped_refptr<DevicePolicyService> device_policy_;
 
   bool shutting_down_;
   bool shutdown_already_;

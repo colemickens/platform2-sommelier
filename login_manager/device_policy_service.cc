@@ -199,6 +199,20 @@ void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,
   metrics_->SendPolicyFilesStatus(status);
 }
 
+std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
+  std::vector<std::string> policy_args;
+  const em::ChromeDeviceSettingsProto& policy = GetSettings();
+  if (policy.has_start_up_flags()) {
+    const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
+    const RepeatedPtrField<std::string>& flags = flags_proto.flags();
+    for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
+         it != flags.end(); ++it) {
+      policy_args.push_back(*it);
+    }
+  }
+  return policy_args;
+}
+
 const em::ChromeDeviceSettingsProto& DevicePolicyService::GetSettings() {
   if (!settings_.get()) {
     settings_.reset(new em::ChromeDeviceSettingsProto());
