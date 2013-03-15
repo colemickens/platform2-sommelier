@@ -1176,7 +1176,7 @@ int main(int argc, char **argv) {
     gboolean exists = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
           proxy.gproxy(),
-          true,
+          TRUE,
           key_name.c_str(),
           &exists,
           &chromeos::Resetter(&error).lvalue())) {
@@ -1191,7 +1191,7 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedArray cert;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
           proxy.gproxy(),
-          true,
+          TRUE,
           key_name.c_str(),
           &chromeos::Resetter(&cert).lvalue(),
           &success,
@@ -1202,7 +1202,7 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedArray public_key;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
           proxy.gproxy(),
-          true,
+          TRUE,
           key_name.c_str(),
           &chromeos::Resetter(&public_key).lvalue(),
           &success,

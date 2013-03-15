@@ -1350,7 +1350,7 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
 }
 
 gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
-                                                  bool is_user_specific,
+                                                  gboolean is_user_specific,
                                                   gchar* key_name,
                                                   GArray** OUT_cert,
                                                   gboolean* OUT_success,
@@ -1373,11 +1373,12 @@ gboolean Service::TpmAttestationFinishCertRequest(GArray* pca_response,
   return TRUE;
 }
 
-gboolean Service::AsyncTpmAttestationFinishCertRequest(GArray* pca_response,
-                                                       bool is_user_specific,
-                                                       gchar* key_name,
-                                                       gint* OUT_async_id,
-                                                       GError** error) {
+gboolean Service::AsyncTpmAttestationFinishCertRequest(
+    GArray* pca_response,
+    gboolean is_user_specific,
+    gchar* key_name,
+    gint* OUT_async_id,
+    GError** error) {
   chromeos::SecureBlob blob(pca_response->data, pca_response->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -1403,7 +1404,7 @@ gboolean Service::TpmIsAttestationEnrolled(gboolean* OUT_is_enrolled,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationDoesKeyExist(bool is_user_specific,
+gboolean Service::TpmAttestationDoesKeyExist(gboolean is_user_specific,
                                              gchar* key_name,
                                              gboolean *OUT_exists,
                                              GError** error) {
@@ -1417,7 +1418,7 @@ gboolean Service::TpmAttestationDoesKeyExist(bool is_user_specific,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationGetCertificate(bool is_user_specific,
+gboolean Service::TpmAttestationGetCertificate(gboolean is_user_specific,
                                                gchar* key_name,
                                                GArray **OUT_certificate,
                                                gboolean* OUT_success,
@@ -1438,7 +1439,7 @@ gboolean Service::TpmAttestationGetCertificate(bool is_user_specific,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationGetPublicKey(bool is_user_specific,
+gboolean Service::TpmAttestationGetPublicKey(gboolean is_user_specific,
                                              gchar* key_name,
                                              GArray **OUT_public_key,
                                              gboolean* OUT_success,
@@ -1459,7 +1460,7 @@ gboolean Service::TpmAttestationGetPublicKey(bool is_user_specific,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationRegisterKey(bool is_user_specific,
+gboolean Service::TpmAttestationRegisterKey(gboolean is_user_specific,
                                             gchar* key_name,
                                             gboolean *OUT_success,
                                             GError** error) {
@@ -1469,7 +1470,7 @@ gboolean Service::TpmAttestationRegisterKey(bool is_user_specific,
 }
 
 gboolean Service::TpmAttestationSignEnterpriseChallenge(
-      bool is_user_specific,
+      gboolean is_user_specific,
       gchar* key_name,
       gchar* domain,
       GArray* device_id,
@@ -1504,7 +1505,7 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
 }
 
 gboolean Service::TpmAttestationSignSimpleChallenge(
-      bool is_user_specific,
+      gboolean is_user_specific,
       gchar* key_name,
       GArray* challenge,
       gint *OUT_async_id,
