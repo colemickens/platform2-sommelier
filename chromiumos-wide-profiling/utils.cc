@@ -45,7 +45,9 @@ const char kPerfReportCommand[] =
 
 // Given a perf report file, get the perf report and read it into a string.
 bool GetPerfReport(const string& filename, string* output) {
-  string cmd = string(kPerfReportCommand) + filename;
+  // Redirecting stderr does lose warnings and errors, but serious errors should
+  // be caught by the return value of perf report.
+  string cmd = string(kPerfReportCommand) + filename + " 2>/dev/null";
   FILE* file = popen(cmd.c_str(), "r");
   if (!file) {
     LOG(ERROR) << "Could not execute '" << cmd << "'.";
