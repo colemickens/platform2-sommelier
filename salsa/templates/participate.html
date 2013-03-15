@@ -220,50 +220,68 @@
     {{ experiment.device }}</font> please do not participate.
   </div>
 
-  <p>
-    Drag the following blocks into the gray rectangle to sort the treatments
-    you just experienced from best to worst.
-  </p>
-  <p>
-    The better a treatment is, the higher it should be placed.  If two
-    treatments were the same, you may place them next to each other.  Don't
-    be shy if you couldn't decide between two of them.  Ties provide valuable
-    information as well.
-  </p>
+  {% if treatments|length > 2 %}
+    <p>
+      Drag the following blocks into the gray rectangle to sort the treatments
+      you just experienced from best to worst.
+    </p>
+    <p>
+      The better a treatment is, the higher it should be placed.  If two
+      treatments were the same, you may place them next to each other.  Don't
+      be shy if you couldn't decide between two of them.  Ties provide valuable
+      information as well.
+    </p>
 
-  <center>
-  <table><tr>
-    <td>
-      <table id="starting_box">
-      {% for treatment in treatments %}
-        <tr><td>
-        <div class="rankable" id="test{{ loop.index0 }}" draggable="true"
-             ondragstart="drag(event)">
-          Treatment {{ loop.index0 }}
-        </div>
-        </td></tr>
-      {% endfor %}
-      </table>
-    </td>
-    <td id="arrow">
-       <div class="arrowbody"></div>
-       <div class="arrowhead"></div>
-    </td>
-    <td>
-      <table>
-        <tr><th>&uarr; Better &uarr;</th></tr>
-        <tr><td>
-          <div id="container" class="rank_container">
-            <div id="rank1" ondragover="allowDrop(event)" ondrop="drop(event)"
-                 ondragenter="highlight(this)" ondragleave="unhighlight(this)"
-                 class="rank end"></div>
+    <center>
+    <table><tr>
+      <td>
+        <table id="starting_box">
+        {% for treatment in treatments %}
+          <tr><td>
+          <div class="rankable" id="test{{ loop.index0 }}" draggable="true"
+               ondragstart="drag(event)">
+            Treatment {{ loop.index0 }}
           </div>
-        </td></tr>
-        <tr><th>&darr; Worse &darr;</th></tr>
-      </table>
-    </td>
-  </tr></table>
-  </center>
+          </td></tr>
+        {% endfor %}
+        </table>
+      </td>
+      <td id="arrow">
+         <div class="arrowbody"></div>
+         <div class="arrowhead"></div>
+      </td>
+      <td>
+        <table>
+          <tr><th>&uarr; Better &uarr;</th></tr>
+          <tr><td>
+            <div id="container" class="rank_container">
+              <div id="rank1" ondragover="allowDrop(event)" ondrop="drop(event)"
+                   ondragenter="highlight(this)" ondragleave="unhighlight(this)"
+                   class="rank end"></div>
+            </div>
+          </td></tr>
+          <tr><th>&darr; Worse &darr;</th></tr>
+        </table>
+      </td>
+    </tr></table>
+    </center>
+  {% else %}
+    <form action="submit" method="get">
+    <input type="hidden" name="exp_key" value="{{ experiment.key() }}">
+    <p>
+    <input type="radio" name="ranking"
+      value="{{ treatments[0].key() }}>{{ treatments[1].key() }}">
+      Treatment 0 is better
+    <br>
+    <input type="radio" name="ranking"
+      value="{{ treatments[0].key() }}={{ treatments[1].key() }}">
+      They are the same
+    <br>
+    <input type="radio" name="ranking"
+      value="{{ treatments[1].key() }}>{{ treatments[0].key() }}">
+      Treatment 1 is better
+    </p>
+  {% endif %}
 
   <p>
     (Optional) If you have any comments you would like to include you may do
@@ -272,12 +290,17 @@
     anything you think might be useful.
   </p>
   <p>
-    <textarea rows="3" cols="40" id="feedback"
+    <textarea rows="3" cols="40" id="feedback" name="feedback"
               onKeyUp="update_characters_remaining()"
               onKeyDown="update_characters_remaining()"></textarea>
     <div id="remaining_characters"></div>
   </p>
 
-  <p><button name="submit" onclick="submitReview()">Submit</button></p>
+  {% if treatments|length > 2 %}
+    <p><button name="submit" onclick="submitReview()">Submit</button></p>
+  {% else %}
+    <p><input type="submit"></p>
+    </form>
+  {% endif %}
 
 {% endblock %}
