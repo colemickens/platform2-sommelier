@@ -1256,45 +1256,48 @@ CK_RV SessionImpl::RSAVerify(OperationContext* context,
 }
 
 CK_RV SessionImpl::WrapPrivateKey(Object* object) {
-  if (object->GetObjectClass() == CKO_PRIVATE_KEY) {
-    if (!object->IsAttributePresent(CKA_PUBLIC_EXPONENT) ||
-        !object->IsAttributePresent(CKA_MODULUS) ||
-        !(object->IsAttributePresent(CKA_PRIME_1) ||
-          object->IsAttributePresent(CKA_PRIME_2)))
-      return CKR_TEMPLATE_INCOMPLETE;
-    string prime;
-    if (object->IsAttributePresent(CKA_PRIME_1)) {
-      prime = object->GetAttributeString(CKA_PRIME_1);
-    } else {
-      prime = object->GetAttributeString(CKA_PRIME_2);
-    }
-    int key_size_bits = object->GetAttributeString(CKA_MODULUS).length() * 8;
-    if (key_size_bits > kMaxRSAKeyBitsHW || key_size_bits < kMinRSAKeyBits) {
-      LOG(WARNING) << "WARNING: " << key_size_bits
-                   << "-bit private key cannot be wrapped by the TPM.";
-      // Fall back to software.
-      return CKR_OK;
-    }
-    string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
-    string key_blob;
-    int tpm_key_handle = 0;
-    if (!tpm_utility_->WrapKey(slot_id_,
-                               object->GetAttributeString(CKA_PUBLIC_EXPONENT),
-                               object->GetAttributeString(CKA_MODULUS),
-                               prime,
-                               SecureBlob(auth_data.data(), auth_data.length()),
-                               &key_blob,
-                               &tpm_key_handle))
-      return CKR_FUNCTION_FAILED;
-    object->SetAttributeString(kAuthDataAttribute, auth_data);
-    object->SetAttributeString(kKeyBlobAttribute, key_blob);
-    object->RemoveAttribute(CKA_PRIVATE_EXPONENT);
-    object->RemoveAttribute(CKA_PRIME_1);
-    object->RemoveAttribute(CKA_PRIME_2);
-    object->RemoveAttribute(CKA_EXPONENT_1);
-    object->RemoveAttribute(CKA_EXPONENT_2);
-    object->RemoveAttribute(CKA_COEFFICIENT);
+  if (object->GetObjectClass() != CKO_PRIVATE_KEY ||
+      object->IsAttributePresent(kKeyBlobAttribute)) {
+    // This object does not need to be wrapped.
+    return CKR_OK;
   }
+  if (!object->IsAttributePresent(CKA_PUBLIC_EXPONENT) ||
+      !object->IsAttributePresent(CKA_MODULUS) ||
+      !(object->IsAttributePresent(CKA_PRIME_1) ||
+        object->IsAttributePresent(CKA_PRIME_2)))
+    return CKR_TEMPLATE_INCOMPLETE;
+  string prime;
+  if (object->IsAttributePresent(CKA_PRIME_1)) {
+    prime = object->GetAttributeString(CKA_PRIME_1);
+  } else {
+    prime = object->GetAttributeString(CKA_PRIME_2);
+  }
+  int key_size_bits = object->GetAttributeString(CKA_MODULUS).length() * 8;
+  if (key_size_bits > kMaxRSAKeyBitsHW || key_size_bits < kMinRSAKeyBits) {
+    LOG(WARNING) << "WARNING: " << key_size_bits
+                 << "-bit private key cannot be wrapped by the TPM.";
+    // Fall back to software.
+    return CKR_OK;
+  }
+  string auth_data = GenerateRandomSoftware(kDefaultAuthDataBytes);
+  string key_blob;
+  int tpm_key_handle = 0;
+  if (!tpm_utility_->WrapKey(slot_id_,
+                             object->GetAttributeString(CKA_PUBLIC_EXPONENT),
+                             object->GetAttributeString(CKA_MODULUS),
+                             prime,
+                             SecureBlob(auth_data.data(), auth_data.length()),
+                             &key_blob,
+                             &tpm_key_handle))
+    return CKR_FUNCTION_FAILED;
+  object->SetAttributeString(kAuthDataAttribute, auth_data);
+  object->SetAttributeString(kKeyBlobAttribute, key_blob);
+  object->RemoveAttribute(CKA_PRIVATE_EXPONENT);
+  object->RemoveAttribute(CKA_PRIME_1);
+  object->RemoveAttribute(CKA_PRIME_2);
+  object->RemoveAttribute(CKA_EXPONENT_1);
+  object->RemoveAttribute(CKA_EXPONENT_2);
+  object->RemoveAttribute(CKA_COEFFICIENT);
   return CKR_OK;
 }
 

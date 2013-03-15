@@ -12,6 +12,13 @@
 
 namespace chaps {
 
+// Read policy list as follows:
+//   {attribute, sensitive, read-only {create, copy, modify}, required}
+// sensitive - True if attribute cannot be read.
+// read-only.create - True if attribute cannot be set with C_CreateObject.
+// read-only.copy - True if attribute cannot be set with C_CopyObject.
+// read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
+// required - True if attribute is required for a valid object.
 static const AttributePolicy kPrivateKeyPolicies[] = {
   {CKA_ALWAYS_SENSITIVE, false, {true, true, true}, false},
   {CKA_NEVER_EXTRACTABLE, false, {true, true, true}, false},
@@ -26,8 +33,8 @@ static const AttributePolicy kPrivateKeyPolicies[] = {
   {CKA_EXPONENT_1, true, {false, false, true}, false},
   {CKA_EXPONENT_2, true, {false, false, true}, false},
   {CKA_COEFFICIENT, true, {false, false, true}, false},
-  {kKeyBlobAttribute, true, {true, true, true}, false},
-  {kAuthDataAttribute, true, {true, true, true}, false},
+  {kKeyBlobAttribute, true, {false, true, true}, false},
+  {kAuthDataAttribute, true, {false, true, true}, false},
 };
 
 ObjectPolicyPrivateKey::ObjectPolicyPrivateKey() {

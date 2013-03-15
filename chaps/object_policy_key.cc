@@ -8,6 +8,13 @@
 
 namespace chaps {
 
+// Read policy list as follows:
+//   {attribute, sensitive, read-only {create, copy, modify}, required}
+// sensitive - True if attribute cannot be read.
+// read-only.create - True if attribute cannot be set with C_CreateObject.
+// read-only.copy - True if attribute cannot be set with C_CopyObject.
+// read-only.modify - True if attribute cannot be set with C_SetAttributeValue.
+// required - True if attribute is required for a valid object.
 static const AttributePolicy kKeyPolicies[] = {
   {CKA_KEY_TYPE, false, {false, false, true}, true},
   {CKA_LOCAL, false, {true, true, true}, false},
