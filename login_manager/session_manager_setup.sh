@@ -288,6 +288,8 @@ fi
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
+  # TODO(reveman): Only with highdpi until LCD text works (crbug.com/165775)
+  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-impl-side-painting"
 fi
 
 TOUCHUI_FLAGS=
