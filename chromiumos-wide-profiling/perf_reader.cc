@@ -187,11 +187,11 @@ bool PerfReader::ReadData(std::ifstream* in) {
     if (!in->good())
       return false;
 
-    LOG(INFO) << "Data remaining: " << data_remaining_bytes;
-    LOG(INFO) << "Data type: " << pe_header.type;
-    LOG(INFO) << "Data size: " << pe_header.size;
+    DLOG(INFO) << "Data remaining: " << data_remaining_bytes;
+    DLOG(INFO) << "Data type: " << pe_header.type;
+    DLOG(INFO) << "Data size: " << pe_header.size;
     size_t remaining_size = pe_header.size - sizeof(pe_header);
-    LOG(INFO) << "Seek size: " << remaining_size;
+    DLOG(INFO) << "Seek size: " << remaining_size;
     data_remaining_bytes -= pe_header.size;
 
     if (pe_header.size > sizeof(event_t)) {
@@ -208,9 +208,9 @@ bool PerfReader::ReadData(std::ifstream* in) {
       return false;
 
     if (pe_header.type == PERF_RECORD_COMM) {
-      LOG(INFO) << "len: " << pe_header.size;
-      LOG(INFO) << "sizeof header: " << sizeof(pe_header);
-      LOG(INFO) << "sizeof comm_event: " << sizeof(comm_event);
+      DLOG(INFO) << "len: " << pe_header.size;
+      DLOG(INFO) << "sizeof header: " << sizeof(pe_header);
+      DLOG(INFO) << "sizeof comm_event: " << sizeof(comm_event);
     }
   }
 

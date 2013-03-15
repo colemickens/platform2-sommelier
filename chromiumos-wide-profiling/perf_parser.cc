@@ -307,23 +307,23 @@ bool PerfParser::ProcessEvents() {
     event_t& event = parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
-        LOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
+        DLOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
         MapSampleEventAndGetNameAndOffset(
             &event.ip,
             &parsed_event.dso_and_offset.dso_name,
             &parsed_event.dso_and_offset.offset);
         break;
       case PERF_RECORD_MMAP:
-        LOG(INFO) << "MMAP: " << event.mmap.filename;
+        DLOG(INFO) << "MMAP: " << event.mmap.filename;
         CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
         break;
       case PERF_RECORD_FORK:
-        LOG(INFO) << "FORK: " << event.fork.ppid << " -> " << event.fork.pid;
+        DLOG(INFO) << "FORK: " << event.fork.ppid << " -> " << event.fork.pid;
         CHECK(MapForkEvent(event.fork)) << "Unable to map FORK event!";
         break;
       case PERF_RECORD_EXIT:
         // EXIT events have the same structure as FORK events.
-        LOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
+        DLOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
         CHECK(MapExitEvent(event.fork)) << "Unable to map EXIT event!";
         break;
       case PERF_RECORD_LOST:
@@ -332,8 +332,8 @@ bool PerfParser::ProcessEvents() {
       case PERF_RECORD_UNTHROTTLE:
       case PERF_RECORD_READ:
       case PERF_RECORD_MAX:
-        LOG(INFO) << "Read event type: " << event.header.type
-                  << ". Doing nothing.";
+        DLOG(INFO) << "Parsed event type: " << event.header.type
+                   << ". Doing nothing.";
         break;
       default:
         LOG(ERROR) << "Unknown event type: " << event.header.type;
