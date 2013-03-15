@@ -13,7 +13,7 @@ option optimize_for = LITE_RUNTIME;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 3
+// Next tag: 5
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -283,10 +283,31 @@ message PerfDataProto {
     optional ForkEvent fork_event = 5;
   }
 
+  // Next tag: 8
+  message PerfEventStats {
+    // Total number of events read from perf data.
+    optional uint32 num_events_read = 1;
+
+    // Total number of various types of events.
+    optional uint32 num_sample_events = 2;
+    optional uint32 num_mmap_events = 3;
+    optional uint32 num_fork_events = 4;
+    optional uint32 num_exit_events = 5;
+
+    // Number of sample events that were successfully mapped by the mapper.
+    optional uint32 num_sample_events_mapped = 6;
+
+    // Whether address remapping was enabled.
+    optional bool did_remap = 7;
+  }
+
   repeated PerfFileAttr file_attrs = 1;
   repeated PerfEvent events = 2;
 
   // Time when quipper generated this perf data / protobuf, given as seconds
   // since the Epoch.
   optional uint64 timestamp = 3;
+
+  // Records some stats about the serialized perf events.
+  optional PerfEventStats stats = 4;
 }

@@ -40,6 +40,13 @@ TEST(PerfParserTest, Test1Cycle) {
     CHECK_GT(parser.GetEventsSortedByTime().size(), 0U);
     CheckChronologicalOrderOfEvents(parser.GetEventsSortedByTime());
 
+    // Check perf event stats.
+    const PerfEventStats& stats = parser.stats();
+    EXPECT_GT(stats.num_sample_events, 0U);
+    EXPECT_GT(stats.num_mmap_events, 0U);
+    EXPECT_GT(stats.num_sample_events_mapped, 0U);
+    EXPECT_FALSE(stats.did_remap);
+
     parser.GenerateRawEvents();
 
     string output_perf_data = input_perf_data + ".parse.out";
@@ -60,6 +67,14 @@ TEST(PerfParserTest, TestRemap) {
     parser.set_do_remap(true);
     ASSERT_TRUE(parser.ReadFile(input_perf_data));
     parser.ParseRawEvents();
+
+    // Check perf event stats.
+    const PerfEventStats& stats = parser.stats();
+    EXPECT_GT(stats.num_sample_events, 0U);
+    EXPECT_GT(stats.num_mmap_events, 0U);
+    EXPECT_GT(stats.num_sample_events_mapped, 0U);
+    EXPECT_TRUE(stats.did_remap);
+
     parser.GenerateRawEvents();
     string output_perf_data = input_perf_data + ".parse.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));

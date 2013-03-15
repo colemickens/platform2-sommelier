@@ -20,6 +20,7 @@ using quipper::PerfDataProto_MMapEvent;
 using quipper::PerfDataProto_PerfEvent;
 using quipper::PerfDataProto_PerfFileAttr;
 using quipper::PerfDataProto_PerfEventAttr;
+using quipper::PerfDataProto_PerfEventStats;
 using quipper::PerfDataProto_SampleEvent;
 using quipper::PerfDataProto_SampleInfo;
 
@@ -46,6 +47,13 @@ bool PerfSerializer::SerializeFromFile(const string& filename,
   if (!gettimeofday(&timestamp, NULL))
     perf_data_proto->set_timestamp(timestamp.tv_sec);
 
+  PerfDataProto_PerfEventStats* stats = perf_data_proto->mutable_stats();
+  stats->set_num_sample_events(stats_.num_sample_events);
+  stats->set_num_mmap_events(stats_.num_mmap_events);
+  stats->set_num_fork_events(stats_.num_fork_events);
+  stats->set_num_exit_events(stats_.num_exit_events);
+  stats->set_did_remap(stats_.did_remap);
+  stats->set_num_sample_events_mapped(stats_.num_sample_events_mapped);
   return true;
 }
 
@@ -73,6 +81,15 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
 
   SortParsedEvents();
   ProcessEvents();
+
+  memset(&stats_, 0, sizeof(stats_));
+  const PerfDataProto_PerfEventStats& stats = perf_data_proto.stats();
+  stats_.num_sample_events = stats.num_sample_events();
+  stats_.num_mmap_events = stats.num_mmap_events();
+  stats_.num_fork_events = stats.num_fork_events();
+  stats_.num_exit_events = stats.num_exit_events();
+  stats_.did_remap = stats.did_remap();
+  stats_.num_sample_events_mapped = stats.num_sample_events_mapped();
 
   return GenerateRawEvents();
 }

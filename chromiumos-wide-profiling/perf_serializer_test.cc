@@ -23,9 +23,22 @@ void SerializeAndDeserialize(const string& input,
   PerfSerializer serializer;
   serializer.set_do_remap(do_remap);
   EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
+
   PerfSerializer deserializer;
   deserializer.set_do_remap(do_remap);
   EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
+
+  // Check perf event stats.
+  const PerfEventStats& in_stats = serializer.stats();
+  const PerfEventStats& out_stats = deserializer.stats();
+  EXPECT_EQ(in_stats.num_sample_events, out_stats.num_sample_events);
+  EXPECT_EQ(in_stats.num_mmap_events, out_stats.num_mmap_events);
+  EXPECT_EQ(in_stats.num_fork_events, out_stats.num_fork_events);
+  EXPECT_EQ(in_stats.num_exit_events, out_stats.num_exit_events);
+  EXPECT_EQ(in_stats.num_sample_events_mapped,
+            out_stats.num_sample_events_mapped);
+  EXPECT_EQ(do_remap, in_stats.did_remap);
+  EXPECT_EQ(do_remap, out_stats.did_remap);
 }
 
 void SerializeToFileAndBack(const string& input,

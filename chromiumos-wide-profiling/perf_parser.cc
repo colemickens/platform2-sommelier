@@ -302,28 +302,35 @@ void PerfParser::SortParsedEvents() {
 }
 
 bool PerfParser::ProcessEvents() {
+  memset(&stats_, 0, sizeof(stats_));
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
     event_t& event = parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
         DLOG(INFO) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
-        MapSampleEventAndGetNameAndOffset(
-            &event.ip,
-            &parsed_event.dso_and_offset.dso_name,
-            &parsed_event.dso_and_offset.offset);
+        ++stats_.num_sample_events;
+        if (MapSampleEventAndGetNameAndOffset(
+                &event.ip,
+                &parsed_event.dso_and_offset.dso_name,
+                &parsed_event.dso_and_offset.offset)) {
+          ++stats_.num_sample_events_mapped;
+        }
         break;
       case PERF_RECORD_MMAP:
         DLOG(INFO) << "MMAP: " << event.mmap.filename;
+        ++stats_.num_mmap_events;
         CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
         break;
       case PERF_RECORD_FORK:
         DLOG(INFO) << "FORK: " << event.fork.ppid << " -> " << event.fork.pid;
+        ++stats_.num_fork_events;
         CHECK(MapForkEvent(event.fork)) << "Unable to map FORK event!";
         break;
       case PERF_RECORD_EXIT:
         // EXIT events have the same structure as FORK events.
         DLOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
+        ++stats_.num_exit_events;
         CHECK(MapExitEvent(event.fork)) << "Unable to map EXIT event!";
         break;
       case PERF_RECORD_LOST:
@@ -340,6 +347,7 @@ bool PerfParser::ProcessEvents() {
         return false;
     }
   }
+  stats_.did_remap = do_remap_;
   return true;
 }
 
