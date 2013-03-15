@@ -2,78 +2,50 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# TODO(asharif): Convert this to common.mk.
-CXX ?= g++
+include common.mk
 
 BASE_VER ?= 180609
-PKG_CONFIG ?= pkg-config
 PC_DEPS = openssl protobuf libchrome-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CXXFLAGS += -g -Wall -Werror -Wall
 CPPFLAGS += -Iperf $(PC_CFLAGS)
 LDLIBS += $(PC_LIBS)
 
-MAIN_SOURCES = quipper.cc
-PROGRAMS = $(MAIN_SOURCES:.cc=)
 TEST_SOURCES = address_mapper_test.cc perf_parser_test.cc perf_reader_test.cc \
 	       perf_serializer_test.cc perf_recorder_test.cc utils_test.cc
-GENERATED_SOURCES = perf_data.pb.cc
-GENERATED_HEADERS = $(GENERATED_SOURCES:.pb.cc=.pb.h)
 
-COMMON_SOURCES = address_mapper.cc perf_parser.cc perf_protobuf_io.cc \
-		 perf_reader.cc perf_recorder.cc perf_serializer.cc utils.cc \
-		 $(GENERATED_SOURCES)
-COMMON_OBJECTS = $(COMMON_SOURCES:.cc=.o)
+GENERATED_OBJECTS = perf_data.pb.o
+GENERATED_HEADERS = $(GENERATED_OBJECTS:.pb.o=.pb.h)
 
-TESTS = $(TEST_SOURCES:.cc=)
+COMMON_OBJECTS = address_mapper.o perf_parser.o perf_protobuf_io.o \
+		 perf_reader.o perf_recorder.o perf_serializer.o utils.o \
+		 $(GENERATED_OBJECTS)
 
-ALL_SOURCES = $(MAIN_SOURCES) $(COMMON_SOURCES) $(TEST_SOURCES)
-
-all: $(PROGRAMS) $(TESTS)
-	@echo Sources compiled!
-
-ifneq ($(MAKECMDGOALS),clean)
-  -include $(ALL_SOURCES:.cc=.d)
-endif
-
-# Taken from:
-# http://www.gnu.org/software/make/manual/make.html#Automatic-Prerequisites
-%.d: %.cc
-	@set -e; rm -f $@; \
-	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< > $@.$$$$; \
-	sed 's,\($*\)\.o[ :]*,\1.o $@ : ,g' < $@.$$$$ > $@; \
-	rm -f $@.$$$$
-
-# Rule for compiling protobufs.
-%.pb.h %.pb.cc: %.proto
+# Rule for compiling protobuf.
+perf_data.pb.h perf_data.pb.cc: perf_data.proto
 	protoc --cpp_out=. $^
+clean: CLEAN(perf_data.pb.h perf_data.pb.cc)
+$(eval $(call add_object_rules,perf_data.pb.o,CXX,cc))
 
-$(PROGRAMS): %: %.o $(COMMON_OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+# Dependencies on the protobuf.
+quipper.o.depends \
+perf_protobuf_io.o.depends \
+perf_recorder.o.depends \
+perf_serializer.o.depends: perf_data.pb.h
 
-$(TESTS): LDLIBS += -lgtest
-$(TESTS): %: %.o $(COMMON_OBJECTS)
-	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
+# Rule for compiling main quipper executable.
+CXX_BINARY(quipper): quipper.o $(COMMON_OBJECTS)
+clean: CLEAN(quipper)
+all: CXX_BINARY(quipper)
 
-# With large perf.data files, the tests will spew a lot of logging.  The
-# following calls will pipe the logging to a log file.  To see test logging,
-# build with 'FEATURES="test noclean"' and go to the build directory.
-check: $(TESTS)
-	for test in $(TESTS); do \
-		case $$test in \
-		perf_*_test) \
-			./$$test 2> ./$$test.stderr.log && continue; \
-			echo "See $$test.stderr.log for errors" \
-			;; \
-		*) \
-			./$$test && continue \
-			;; \
-		esac; \
-		exit 1; \
-	done
+# Template for unit tests.
+define TEST_RULES_template
+CXX_BINARY($(1)): LDLIBS += -lgtest -lgmock
+CXX_BINARY($(1)): $(1).o $(COMMON_OBJECTS)
+clean: CLEAN($(1))
+tests: TEST(CXX_BINARY($(1)))
+endef
 
-clean:
-	rm -f *.o *.d.* *.a $(PROGRAMS) $(TESTS) $(GENERATED_SOURCES) \
-		$(GENERATED_HEADERS)
+TEST_BINS = $(patsubst $(SRC)/%.cc,%,$(wildcard $(SRC)/*_test.cc))
+$(foreach prog,$(TEST_BINS),$(eval $(call TEST_RULES_template,$(prog))))
