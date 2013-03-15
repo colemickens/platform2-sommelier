@@ -75,6 +75,9 @@ h2 {
     font-size: 18px;
 }
 
+.comment {
+    font-size: 9px;
+}
 
 /* Header */
 .header {
@@ -117,15 +120,6 @@ h2 {
 }
 
 /* High level formatting */
-.treatment {
-    border: 1px solid;
-    border-radius: 5px;
-    padding: 7px;
-    margin: 7px;
-    box-shadow: 5px 5px 2px #ddd;
-    border-color: #ccc
-}
-
 .delete {
     float: right;
 }
@@ -133,9 +127,14 @@ h2 {
 .command {
     font-size: 10px;
     font-family: monospace;
-    border-left: solid;
-    background: #eee;
+}
+
+.rectangle {
+    border: solid #bbb 1px;
     word-wrap: break-word;
+    border-radius: 5px;
+    margin: 10px;
+    padding: 5px;
 }
 
 .rankable {
