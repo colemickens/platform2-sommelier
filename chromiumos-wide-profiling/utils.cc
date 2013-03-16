@@ -22,7 +22,8 @@
 namespace {
 
 // Specify buffer size to be used to read the perf report.
-const int kPerfReportReadBufferSize = 0x10000;
+// This is allocated on the stack, so make sure it's less than 16k.
+const int kPerfReportReadBufferSize = 1024;
 
 // Trim leading and trailing whitespace from |str|.
 void TrimWhitespace(string* str) {
