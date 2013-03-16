@@ -407,7 +407,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event) {
     start += event->pgoff;
     pgoff = 0;
   }
-  if (!mapper->Map(start, len, true))
+  if (!mapper->MapWithName(start, len, event->filename, true))
     return false;
 
   uint64 mapped_addr;
