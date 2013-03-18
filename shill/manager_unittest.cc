@@ -2898,4 +2898,107 @@ TEST_F(ManagerTest, EnumerateServices) {
   manager()->DeregisterService(mock_service);
 }
 
+TEST_F(ManagerTest, ConnectToBestServices) {
+  scoped_refptr<MockService> wifi_service0(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  EXPECT_CALL(*wifi_service0.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*wifi_service0.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  wifi_service0->set_connectable(true);
+  wifi_service0->set_auto_connect(true);
+  wifi_service0->SetSecurity(Service::kCryptoAes, true, true);
+  EXPECT_CALL(*wifi_service0.get(), technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+
+  scoped_refptr<MockService> wifi_service1(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  EXPECT_CALL(*wifi_service1.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*wifi_service1.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  wifi_service1->set_auto_connect(true);
+  wifi_service1->set_connectable(true);
+  wifi_service1->SetSecurity(Service::kCryptoRc4, true, true);
+  EXPECT_CALL(*wifi_service1.get(), technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+
+  scoped_refptr<MockService> wifi_service2(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+  EXPECT_CALL(*wifi_service2.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*wifi_service2.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  wifi_service2->set_auto_connect(true);
+  wifi_service2->set_connectable(true);
+  wifi_service2->SetSecurity(Service::kCryptoNone, false, false);
+  EXPECT_CALL(*wifi_service2.get(), technology())
+      .WillRepeatedly(Return(Technology::kWifi));
+
+  manager()->RegisterService(wifi_service0);
+  manager()->RegisterService(wifi_service1);
+  manager()->RegisterService(wifi_service2);
+
+  CompleteServiceSort();
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, wifi_service0));
+
+  scoped_refptr<MockService> cell_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*cell_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*cell_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  wifi_service2->set_auto_connect(true);
+  cell_service->set_connectable(true);
+  EXPECT_CALL(*cell_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kCellular));
+  manager()->RegisterService(cell_service);
+
+  scoped_refptr<MockService> vpn_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*vpn_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*vpn_service.get(), IsConnected())
+      .WillRepeatedly(Return(false));
+  wifi_service2->set_auto_connect(false);
+  vpn_service->set_connectable(true);
+  EXPECT_CALL(*vpn_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kVPN));
+  manager()->RegisterService(vpn_service);
+
+  // The connected services should be at the top.
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cell_service));
+
+  EXPECT_CALL(*wifi_service0.get(), Connect(_)).Times(1);
+  EXPECT_CALL(*wifi_service1.get(), Connect(_)).Times(0);  // Lower priority.
+  EXPECT_CALL(*wifi_service2.get(), Connect(_)).Times(0);  // Lower priority.
+  EXPECT_CALL(*cell_service.get(), Connect(_)).Times(0);  // Already connected.
+  EXPECT_CALL(*vpn_service.get(), Connect(_)).Times(0);  // Not auto-connect.
+
+  manager()->ConnectToBestServices(NULL);
+  dispatcher()->DispatchPendingEvents();
+
+  // After this operation, since the Connect calls above are mocked and
+  // no actual state changes have occurred, we should expect that the
+  // service sorting order will not have changed.
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cell_service));
+}
+
 }  // namespace shill

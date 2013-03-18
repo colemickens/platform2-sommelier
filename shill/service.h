@@ -404,10 +404,16 @@ class Service : public base::RefCounted<Service> {
   static const char *ConnectFailureToString(const ConnectFailure &state);
   static const char *ConnectStateToString(const ConnectState &state);
 
-  // Compare two services.  Returns true if Service a should be displayed
-  // above Service b
+  // Compare two services.  Returns true if Service |a| should be displayed
+  // above |b|.  If |compare_connectivity_state| is true, the connectivity
+  // state of the service (service->state()) is used as the most significant
+  // criteria for comparsion, otherwise the service state is ignored.  Use
+  // |tech_order| to rank services if more decisive criteria do not yield a
+  // difference.  |reason| is populated with the exact criteria used for the
+  // ultimate comparison.
   static bool Compare(ServiceRefPtr a,
                       ServiceRefPtr b,
+                      bool compare_connectivity_state,
                       const std::vector<Technology::Identifier> &tech_order,
                       const char **reason);
 
@@ -570,6 +576,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(DeviceTest, IPConfigUpdatedFailureWithStatic);
+  FRIEND_TEST(ManagerTest, ConnectToBestServices);
   // TODO(quiche): The SortServices test should probably move into
   // service_unittest.cc. Then the following line should be removed.
   // (crosbug.com/23370)

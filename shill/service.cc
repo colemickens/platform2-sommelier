@@ -895,11 +895,12 @@ uint16 Service::SecurityLevel() {
 // static
 bool Service::Compare(ServiceRefPtr a,
                       ServiceRefPtr b,
+                      bool compare_connectivity_state,
                       const vector<Technology::Identifier> &tech_order,
                       const char **reason) {
   bool ret;
 
-  if (a->state() != b->state()) {
+  if (compare_connectivity_state && a->state() != b->state()) {
     if (DecideBetween(a->IsConnected(), b->IsConnected(), &ret)) {
       *reason = kServiceSortIsConnected;
       return ret;

@@ -349,6 +349,17 @@ Methods		dict GetProperties()
 			VerifyAndEncryptCredentials.  Returns the base64 encoded,
 			encrypted data, or an empty string on error.
 
+		void ConnectToBestServices()
+
+			For each technology present, connect to the "best"
+			service available, as determined by sorting all
+			services independent of their current connectivity
+			state.  As a general rule, shill does not disrupt
+			current connectivity even if "better" connectivity
+			options appear.  This method allows this rule to be
+			violated for a single instance for each technology
+			type.
+
 
 Signals		PropertyChanged(string name, variant value)
 

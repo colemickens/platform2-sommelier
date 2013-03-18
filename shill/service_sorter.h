@@ -20,16 +20,21 @@ class Manager;
 // compare two Service objects at a time.
 class ServiceSorter {
  public:
-  explicit ServiceSorter(const std::vector<Technology::Identifier> &tech_order)
-      : technology_order_(tech_order) {}
+  ServiceSorter(bool compare_connectivity_state,
+                const std::vector<Technology::Identifier> &tech_order)
+      : compare_connectivity_state_(compare_connectivity_state),
+        technology_order_(tech_order) {}
   bool operator() (ServiceRefPtr a, ServiceRefPtr b) {
     const char *reason;
-    return Service::Compare(a, b, technology_order_, &reason);
+    return Service::Compare(a, b, compare_connectivity_state_,
+                            technology_order_, &reason);
   }
 
  private:
+  const bool compare_connectivity_state_;
   const std::vector<Technology::Identifier> &technology_order_;
-  // We can't DISALLOW_COPY_AND_ASSIGN since this is passed by value to STL sort
+  // We can't DISALLOW_COPY_AND_ASSIGN since this is passed by value to STL
+  // sort.
 };
 
 }  // namespace shill

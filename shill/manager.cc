@@ -1169,7 +1169,9 @@ void Manager::SortServicesTask() {
     // connection.
     default_service = services_[0];
   }
-  sort(services_.begin(), services_.end(), ServiceSorter(technology_order_));
+  const bool kCompareConnectivityState = true;
+  sort(services_.begin(), services_.end(),
+       ServiceSorter(kCompareConnectivityState, technology_order_));
 
   adaptor_->EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty,
                                           EnumerateAvailableServices(NULL));
@@ -1239,8 +1241,10 @@ void Manager::AutoConnect() {
       ServiceRefPtr service = services_[i];
       const char *compare_reason = NULL;
       if (i + 1 < services_.size()) {
+        const bool kCompareConnectivityState = true;
         Service::Compare(
-            service, services_[i+1], technology_order_, &compare_reason);
+            service, services_[i+1], kCompareConnectivityState,
+            technology_order_, &compare_reason);
       } else {
         compare_reason = "last";
       }
@@ -1265,6 +1269,53 @@ void Manager::AutoConnect() {
        it != services_.end(); ++it) {
     if ((*it)->auto_connect()) {
       (*it)->AutoConnect();
+    }
+  }
+}
+
+void Manager::ConnectToBestServices(Error */*error*/) {
+  dispatcher_->PostTask(Bind(&Manager::ConnectToBestServicesTask, AsWeakPtr()));
+}
+
+void Manager::ConnectToBestServicesTask() {
+  vector<ServiceRefPtr> services_copy = services_;
+  const bool kCompareConnectivityState = false;
+  sort(services_copy.begin(), services_copy.end(),
+       ServiceSorter(kCompareConnectivityState, technology_order_));
+  set<Technology::Identifier> connecting_technologies;
+  for (vector<ServiceRefPtr>::const_iterator it = services_copy.begin();
+       it != services_copy.end();
+       ++it) {
+    if (!(*it)->connectable()) {
+      // Due to service sort order, it is guaranteed that no services beyond
+      // this one will be connectable either.
+      break;
+    }
+    if (!(*it)->auto_connect()) {
+      continue;
+    }
+    Technology::Identifier technology = (*it)->technology();
+    if (!Technology::IsPrimaryConnectivityTechnology(technology) &&
+        !IsOnline()) {
+      // Non-primary services need some other service connected first.
+      continue;
+    }
+    if (ContainsKey(connecting_technologies, technology)) {
+      // We have already started a connection for this technology.
+      continue;
+    }
+    connecting_technologies.insert(technology);
+    if (!(*it)->IsConnected() && !(*it)->IsConnecting()) {
+      // At first blush, it may seem that using Service::AutoConnect might
+      // be the right choice, however Service::IsAutoConnectable and its
+      // overridden implementations consider a host of conditions which
+      // prevent it from attempting a connection which we'd like to ignore
+      // for the purposes of this user-initiated action.
+      Error error;
+      (*it)->Connect(&error);
+      if (error.IsFailure()) {
+        LOG(ERROR) << "Connection failed: " << error.message();
+      }
     }
   }
 }

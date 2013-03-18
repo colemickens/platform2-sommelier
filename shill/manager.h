@@ -128,6 +128,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
   ServiceRefPtr FindMatchingService(const KeyValueStore &args, Error *error);
   std::map<std::string, GeolocationInfos> GetNetworksForGeolocation();
+  void ConnectToBestServices(Error *error);
 
   // Request portal detection checks on each registered device until a portal
   // detection attempt starts on one of them.
@@ -344,6 +345,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(ManagerTest, AvailableTechnologies);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
+  FRIEND_TEST(ManagerTest, ConnectToBestServices);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DeviceRegistrationAndStart);
   FRIEND_TEST(ManagerTest, DisableTechnology);
@@ -422,6 +424,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void SortServices();
   void SortServicesTask();
   bool MatchProfileWithService(const ServiceRefPtr &service);
+
+  // For each technology present, connect to the "best" service available,
+  // as determined by sorting all services independent of their current state.
+  void ConnectToBestServicesTask();
 
   void NotifyDefaultServiceChanged(const ServiceRefPtr &service);
 

@@ -116,6 +116,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                                    const std::string &data,
                                    ::DBus::Error &error);
 
+  void ConnectToBestServices(::DBus::Error &error);
+
  private:
   Manager *manager_;
   DISALLOW_COPY_AND_ASSIGN(ManagerDBusAdaptor);

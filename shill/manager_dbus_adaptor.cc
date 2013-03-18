@@ -399,5 +399,10 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
   return "";
 }
 
+void ManagerDBusAdaptor::ConnectToBestServices(::DBus::Error &error) {
+  Error e;
+  manager_->ConnectToBestServices(&e);
+  e.ToDBusError(&error);
+}
 
 }  // namespace shill
