@@ -117,6 +117,11 @@ class DeviceInfoTest : public Test {
     device_info_.set_sockets(mock_sockets_);
   }
 
+  // Takes ownership of |provider|.
+  void SetVPNProvider(VPNProvider *provider) {
+    manager_.vpn_provider_.reset(provider);
+  }
+
  protected:
   static const int kTestDeviceIndex;
   static const char kTestDeviceName[];
@@ -452,9 +457,9 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelAccepted) {
   IPAddress address = CreateInterfaceAddress();
 
   // A VPN device should be offered to VPNProvider.
-  StrictMock<MockVPNProvider> vpn_provider;
-  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&vpn_provider));
-  EXPECT_CALL(vpn_provider,
+  MockVPNProvider *vpn_provider = new StrictMock<MockVPNProvider>;
+  SetVPNProvider(vpn_provider);
+  EXPECT_CALL(*vpn_provider,
               OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
       .WillOnce(Return(true));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
@@ -469,9 +474,9 @@ TEST_F(DeviceInfoTest, CreateDeviceTunnelRejected) {
   IPAddress address = CreateInterfaceAddress();
 
   // A VPN device should be offered to VPNProvider.
-  StrictMock<MockVPNProvider> vpn_provider;
-  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&vpn_provider));
-  EXPECT_CALL(vpn_provider,
+  MockVPNProvider *vpn_provider = new StrictMock<MockVPNProvider>;
+  SetVPNProvider(vpn_provider);
+  EXPECT_CALL(*vpn_provider,
               OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
@@ -488,9 +493,9 @@ TEST_F(DeviceInfoTest, CreateDevicePPP) {
   IPAddress address = CreateInterfaceAddress();
 
   // A VPN device should be offered to VPNProvider.
-  StrictMock<MockVPNProvider> vpn_provider;
-  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&vpn_provider));
-  EXPECT_CALL(vpn_provider,
+  MockVPNProvider *vpn_provider = new StrictMock<MockVPNProvider>;
+  SetVPNProvider(vpn_provider);
+  EXPECT_CALL(*vpn_provider,
               OnDeviceInfoAvailable(kTestDeviceName, kTestDeviceIndex))
       .WillOnce(Return(false));
   EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);

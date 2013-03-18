@@ -84,6 +84,11 @@ class VPNServiceTest : public testing::Test {
     return service_->IsAutoConnectable(reason);
   }
 
+  // Takes ownership of |provider|.
+  void SetVPNProvider(VPNProvider *provider) {
+    manager_.vpn_provider_.reset(provider);
+  }
+
   std::string interface_name_;
   std::string ipconfig_rpc_identifier_;
   MockVPNDriver *driver_;  // Owned by |service_|.
@@ -195,13 +200,13 @@ TEST_F(VPNServiceTest, Unload) {
   service_->set_save_credentials(true);
   EXPECT_CALL(*driver_, Disconnect());
   EXPECT_CALL(*driver_, UnloadCredentials());
-  MockVPNProvider provider;
-  EXPECT_CALL(manager_, vpn_provider()).WillRepeatedly(Return(&provider));
-  provider.services_.push_back(service_);
+  MockVPNProvider *provider = new MockVPNProvider;
+  SetVPNProvider(provider);
+  provider->services_.push_back(service_);
   service_->Unload();
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(service_->save_credentials());
-  EXPECT_TRUE(provider.services_.empty());
+  EXPECT_TRUE(provider->services_.empty());
 }
 
 TEST_F(VPNServiceTest, InitPropertyStore) {
@@ -257,9 +262,9 @@ TEST_F(VPNServiceTest, IsAutoConnectableVPNAlreadyActive) {
   EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
-  MockVPNProvider provider;
-  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&provider));
-  EXPECT_CALL(provider, HasActiveService()).WillOnce(Return(true));
+  MockVPNProvider *provider = new MockVPNProvider;
+  SetVPNProvider(provider);
+  EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(true));
   const char *reason = NULL;
   EXPECT_FALSE(IsAutoConnectable(&reason));
   EXPECT_STREQ(GetAutoConnVPNAlreadyActive(), reason);
@@ -275,9 +280,9 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
   EXPECT_TRUE(service_->connectable());
   SetHasEverConnected(true);
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
-  MockVPNProvider provider;
-  EXPECT_CALL(manager_, vpn_provider()).WillOnce(Return(&provider));
-  EXPECT_CALL(provider, HasActiveService()).WillOnce(Return(false));
+  MockVPNProvider *provider = new MockVPNProvider;
+  SetVPNProvider(provider);
+  EXPECT_CALL(*provider, HasActiveService()).WillOnce(Return(false));
   const char *reason = NULL;
   EXPECT_TRUE(IsAutoConnectable(&reason));
   EXPECT_FALSE(reason);

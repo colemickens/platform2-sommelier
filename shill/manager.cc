@@ -41,6 +41,7 @@
 #include "shill/resolver.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
+#include "shill/vpn_provider.h"
 #include "shill/vpn_service.h"
 #include "shill/wifi.h"
 #include "shill/wifi_provider.h"
@@ -90,7 +91,8 @@ Manager::Manager(ControlInterface *control_interface,
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
       modem_info_(control_interface, dispatcher, metrics, this, glib),
-      vpn_provider_(control_interface, dispatcher, metrics, this),
+      vpn_provider_(
+          new VPNProvider(control_interface, dispatcher, metrics, this)),
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
       wimax_provider_(control_interface, dispatcher, metrics, this),
@@ -205,7 +207,7 @@ void Manager::Start() {
   adaptor_->UpdateRunning();
   device_info_.Start();
   modem_info_.Start();
-  vpn_provider_.Start();
+  vpn_provider_->Start();
   wifi_provider_->Start();
   wimax_provider_.Start();
 }
@@ -239,7 +241,7 @@ void Manager::Stop() {
   adaptor_->UpdateRunning();
   wimax_provider_.Stop();
   wifi_provider_->Stop();
-  vpn_provider_.Stop();
+  vpn_provider_->Stop();
   modem_info_.Stop();
   device_info_.Stop();
   sort_services_task_.Cancel();
@@ -405,7 +407,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
 
   // Offer the Profile contents to the service/device providers which will
   // create new services if necessary.
-  vpn_provider_.CreateServicesFromProfile(profile);
+  vpn_provider_->CreateServicesFromProfile(profile);
   wifi_provider_->CreateServicesFromProfile(profile);
   wimax_provider_.CreateServicesFromProfile(profile);
 
@@ -1446,7 +1448,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   string type = args.GetString(flimflam::kTypeProperty);
   if (type == flimflam::kTypeVPN) {
     SLOG(Manager, 2) << __func__ << ": getting VPN Service";
-    return vpn_provider_.GetService(args, error);
+    return vpn_provider_->GetService(args, error);
   }
   if (type == flimflam::kTypeWifi) {
     SLOG(Manager, 2) << __func__ << ": getting WiFi Service";

@@ -45,8 +45,6 @@ NETFILTER_QUEUE_HELPER_PC_DEPS = \
 	libnetfilter_queue \
 	libnfnetlink
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
-OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
-PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
 SET_APN_HELPER_PC_DEPS = dbus-1
 INCLUDE_DIRS = \
 	-iquote.. \
@@ -55,8 +53,6 @@ INCLUDE_DIRS = \
 		$(NET_DIAGS_UPLOAD_PC_DEPS) \
 		$(NETFILTER_QUEUE_HELPER_PC_DEPS) \
 		$(NSS_GET_CERT_PC_DEPS) \
-		$(OPENVPN_SCRIPT_PC_DEPS) \
-		$(PPPD_PLUGIN_PC_DEPS) \
 		$(SET_APN_HELPER_PC_DEPS) \
 		$(SHILL_PC_DEPS))
 SHILL_LIBS = \
@@ -73,8 +69,6 @@ NET_DIAGS_UPLOAD_LIBS = \
 NETFILTER_QUEUE_HELPER_LIBS = \
 	$(shell $(PKG_CONFIG) --libs $(NETFILTER_QUEUE_HELPER_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
-OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
-PPPD_PLUGIN_LIBS = $(shell $(PKG_CONFIG) --libs $(PPPD_PLUGIN_PC_DEPS))
 SET_APN_HELPER_LIBS = $(shell $(PKG_CONFIG) --libs $(SET_APN_HELPER_PC_DEPS))
 TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) $(NETFILTER_QUEUE_HELPER_LIBS) \
 	-lgmock -lgtest
@@ -243,7 +237,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	key_file_store.o \
 	key_value_store.o \
 	link_monitor.o \
-	l2tp_ipsec_driver.o \
 	manager.o \
 	manager_dbus_adaptor.o \
 	memory_log.o \
@@ -276,8 +269,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	nl80211_message.o \
 	nl80211_socket.o \
 	nss.o \
-	openvpn_driver.o \
-	openvpn_management_server.o \
 	portal_detector.o \
 	power_manager.o \
 	power_manager_proxy.o \
@@ -375,7 +366,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
 	key_value_store_unittest.o \
-	l2tp_ipsec_driver_unittest.o \
 	link_monitor_unittest.o \
 	manager_unittest.o \
 	memory_log_unittest.o \
@@ -430,8 +420,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_modem_proxy.o \
 	mock_modem_simple_proxy.o \
 	mock_nss.o \
-	mock_openvpn_driver.o \
-	mock_openvpn_management_server.o \
 	mock_portal_detector.o \
 	mock_power_manager.o \
 	mock_power_manager_proxy.o \
@@ -451,10 +439,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
 	mock_traffic_monitor.o \
-	mock_vpn.o \
-	mock_vpn_driver.o \
 	mock_vpn_provider.o \
-	mock_vpn_service.o \
 	mock_wifi.o \
 	mock_wifi_provider.o \
 	mock_wifi_service.o \
@@ -470,8 +455,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	modem_unittest.o \
 	nice_mock_control.o \
 	nss_unittest.o \
-	openvpn_driver_unittest.o \
-	openvpn_management_server_unittest.o \
 	portal_detector_unittest.o \
 	power_manager_unittest.o \
 	process_killer_unittest.o \
@@ -490,16 +473,11 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	service_unittest.o \
 	shill_unittest.o \
 	shims/certificates_unittest.o \
-	shims/environment_unittest.o \
 	shims/netfilter_queue_processor_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	traffic_monitor_unittest.o \
 	testrunner.o \
-	vpn_driver_unittest.o \
-	vpn_provider_unittest.o \
-	vpn_service_unittest.o \
-	vpn_unittest.o \
 	wifi_endpoint_unittest.o \
 	wifi_provider_unittest.o \
 	wifi_service_unittest.o \
@@ -520,6 +498,29 @@ NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
 NSS_GET_CERT_BIN = $(BUILD_SHIMS_DIR)/nss-get-cert
 
+SET_APN_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/set_apn_helper.o
+SET_APN_HELPER_BIN = $(BUILD_SHIMS_DIR)/set-apn-helper
+
+WPA_SUPPLICANT_CONF = $(BUILD_SHIMS_DIR)/wpa_supplicant.conf
+
+# If SHILL_VPN=0, don't build VPN support into shill.
+ifeq ($(SHILL_VPN), 0)
+
+CPPFLAGS += -DDISABLE_VPN
+
+else
+
+OPENVPN_SCRIPT_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
+PPPD_PLUGIN_PC_DEPS = $(COMMON_PC_DEPS) dbus-c++-1
+
+INCLUDE_DIRS += \
+	$(shell $(PKG_CONFIG) --cflags \
+		$(OPENVPN_SCRIPT_PC_DEPS) \
+		$(PPPD_PLUGIN_PC_DEPS))
+
+OPENVPN_SCRIPT_LIBS = $(shell $(PKG_CONFIG) --libs $(OPENVPN_SCRIPT_PC_DEPS))
+PPPD_PLUGIN_LIBS = $(shell $(PKG_CONFIG) --libs $(PPPD_PLUGIN_PC_DEPS))
+
 OPENVPN_SCRIPT_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
 	environment.o \
 	task_proxy.o \
@@ -536,10 +537,40 @@ PPPD_PLUGIN_OBJS = $(addprefix $(BUILD_SHIMS_DIR)/, \
 	)
 PPPD_PLUGIN_SO = $(BUILD_SHIMS_DIR)/shill-pppd-plugin.so
 
-SET_APN_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/set_apn_helper.o
-SET_APN_HELPER_BIN = $(BUILD_SHIMS_DIR)/set-apn-helper
+SHILL_OBJS += $(addprefix $(BUILDDIR)/, \
+	l2tp_ipsec_driver.o \
+	openvpn_driver.o \
+	openvpn_management_server.o \
+	)
 
-WPA_SUPPLICANT_CONF = $(BUILD_SHIMS_DIR)/wpa_supplicant.conf
+TEST_OBJS += $(addprefix $(BUILDDIR)/, \
+	l2tp_ipsec_driver_unittest.o \
+	mock_openvpn_driver.o \
+	mock_openvpn_management_server.o \
+	mock_vpn.o \
+	mock_vpn_driver.o \
+	mock_vpn_service.o \
+	openvpn_driver_unittest.o \
+	openvpn_management_server_unittest.o \
+	shims/environment_unittest.o \
+	vpn_driver_unittest.o \
+	vpn_provider_unittest.o \
+	vpn_service_unittest.o \
+	vpn_unittest.o \
+	)
+
+$(OPENVPN_SCRIPT_OBJS): $(DBUS_PROXY_BINDINGS)
+$(OPENVPN_SCRIPT_MAIN_OBJ): $(DBUS_PROXY_BINDINGS)
+
+$(OPENVPN_SCRIPT_BIN): $(OPENVPN_SCRIPT_MAIN_OBJ) $(OPENVPN_SCRIPT_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(OPENVPN_SCRIPT_LIBS) -o $@
+
+$(PPPD_PLUGIN_OBJS): $(DBUS_PROXY_BINDINGS)
+
+$(PPPD_PLUGIN_SO): $(PPPD_PLUGIN_OBJS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $^ $(PPPD_PLUGIN_LIBS) -o $@
+
+endif  # SHILL_VPN=0
 
 OBJS = \
 	$(NET_DIAGS_UPLOAD_MAIN_OBJ) \
@@ -627,17 +658,6 @@ $(NETFILTER_QUEUE_HELPER_BIN): \
 
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
-
-$(OPENVPN_SCRIPT_OBJS): $(DBUS_PROXY_BINDINGS)
-$(OPENVPN_SCRIPT_MAIN_OBJ): $(DBUS_PROXY_BINDINGS)
-
-$(OPENVPN_SCRIPT_BIN): $(OPENVPN_SCRIPT_MAIN_OBJ) $(OPENVPN_SCRIPT_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(OPENVPN_SCRIPT_LIBS) -o $@
-
-$(PPPD_PLUGIN_OBJS): $(DBUS_PROXY_BINDINGS)
-
-$(PPPD_PLUGIN_SO): $(PPPD_PLUGIN_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $^ $(PPPD_PLUGIN_LIBS) -o $@
 
 $(SET_APN_HELPER_BIN): $(SET_APN_HELPER_MAIN_OBJ)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SET_APN_HELPER_LIBS) -o $@

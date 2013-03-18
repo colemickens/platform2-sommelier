@@ -144,6 +144,13 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
                                             Error *error) {
   SLOG(VPN, 2) << __func__ << " type " << type << " name " << name
                << " storage id " << storage_id;
+#if defined(DISABLE_VPN)
+
+  Error::PopulateAndLog(error, Error::kNotSupported, "VPN is not supported.");
+  return NULL;
+
+#else
+
   scoped_ptr<VPNDriver> driver;
   if (type == flimflam::kProviderOpenVpn) {
     driver.reset(new OpenVPNDriver(
@@ -170,6 +177,8 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
   manager_->RegisterService(service);
 
   return service;
+
+#endif  // DISABLE_VPN
 }
 
 VPNServiceRefPtr VPNProvider::FindService(const std::string &type,

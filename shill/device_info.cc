@@ -41,6 +41,7 @@
 #include "shill/service.h"
 #include "shill/sockets.h"
 #include "shill/virtio_ethernet.h"
+#include "shill/vpn_provider.h"
 #include "shill/wifi.h"
 
 using base::Bind;

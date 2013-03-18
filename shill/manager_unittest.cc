@@ -1422,6 +1422,15 @@ TEST_F(ManagerTest, GetServiceVPN) {
       new StrictMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));
   AdoptProfile(manager(), profile);
+
+#if defined(DISABLE_VPN)
+
+  ServiceRefPtr service = manager()->GetService(args, &e);
+  EXPECT_EQ(Error::kNotSupported, e.type());
+  EXPECT_FALSE(service);
+
+#else
+
   ServiceRefPtr updated_service;
   EXPECT_CALL(*profile, UpdateService(_))
       .WillOnce(DoAll(SaveArg<0>(&updated_service), Return(true)));
@@ -1435,6 +1444,8 @@ TEST_F(ManagerTest, GetServiceVPN) {
   EXPECT_TRUE(service);
   EXPECT_EQ(service, updated_service);
   EXPECT_EQ(service, configured_service);
+
+#endif  // DISABLE_VPN
 }
 
 TEST_F(ManagerTest, GetServiceWiMaxNoNetworkId) {

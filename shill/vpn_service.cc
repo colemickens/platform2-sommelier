@@ -14,6 +14,7 @@
 #include "shill/manager.h"
 #include "shill/technology.h"
 #include "shill/vpn_driver.h"
+#include "shill/vpn_provider.h"
 
 using base::Bind;
 using base::StringPrintf;
