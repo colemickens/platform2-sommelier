@@ -153,72 +153,56 @@
 {% block first_column %}
   <h1> {{ experiment.name }}: Participate </h1>
 
-  {% if user|string in experiment.participants %}
-    <div class="error">
-      Error! Our records indicate that you have already completed this
-      experiment.  A submission has already been saved for your username
-      and subsequent submissions will <b>overwrite</b> your previous ones.
-    </div>
-  {% endif %}
-
-  <p>
-    This experiment consists of {{ treatments|length }} </i>treatments</i>.
-    Each treatment is a variation on the touchpad settings.  To participate in
-    this experiment, you will try out each of these treatments and then
-    provide us with feedback regarding their performance.
-  </p>
-
-  <p>
-    Below you will find a command you can run on your Chromebook to temporarily
-    alter the way your touchpad works.  To try out an experiment, simply open
-    up Crosh with Ctrl + Alt + t and paste in the given command.  Note that to
-    paste into the terminal you must either right click and press paste or use
-    Ctrl + Shift + v on your keyboard.
-  </p>
-
-  <p>
-    You will be given on-screen instructions on how to switch between the
-    different treatments once you run that command. Finally, once you have 
-    tried all of the treatments, use the form on the right to rank your 
-    experiences and click "Submit" to record your responses.
-  </p>
-
-  <p>
-    Note: the treatments are assigned a random ordering for each participant so
-    as to keep the comparisons fair.  Treatment 0 is not necissarily a control,
-    nor will your treatment 0 be the same as someone else's.
-  </p>
-
-  <ul>
-    <li> Name: {{ experiment.name }}
-    <li> Owner:
-      <a href="mailto:{{ experiment.owner }}@google.com?cc=chromeos-tango@google.com">
-        {{ experiment.owner }}
-      </a>
-    <li> Created: {{ experiment.created }}
-    <li> Treatments: {{ treatments|length }}
-  </ul>
-
-  <div class="treatment">
-    <h2> Experiment-specific Instructions </h2>
-    {{ experiment.instructions|safe }}
-
-    <h2> Experiment Command </h2>
-    <div class="command">
-      try_touch_experiment
-      {{ experiment|encode_experiment(treatments, properties) }}
-    </div>
-  </div>
-{% endblock %}
-
-{% block second_column %}
-  <h1> Rate your experiences </h1>
-
   <div class="warning">
     This experiment is for <font class="giant">{{ experiment.device }}</font>
     <u>only</u>!  If you are not currently on a <font class="giant">
     {{ experiment.device }}</font> please do not participate.
   </div>
+
+  <p>
+    To try out this experiment, simply press Ctrl + Alt + t to open a terminal
+    and paste in the cryptic command below.  (Note that to paste into the
+    terminal you must either right click and press paste or use Ctrl + Shift
+    + v on your keyboard)
+  </p>
+
+  <div class="command rectangle">
+    try_touch_experiment
+    {{ experiment|encode_experiment(treatments, properties) }}
+  </div>
+
+  <p>
+    This will allow you to switch between the treatments and see which you
+    prefer. Try them each out by following the experiment-specific
+    instructions below.  Once you have tried all of the treatments, use the
+    form on the right to rank your experiences.
+  </p>
+
+  <p class="rectangle"> {{ experiment.instructions|safe }} </p>
+
+  <p class="comment">
+    Created {{ experiment.created }} by
+    <a href="mailto:{{ experiment.owner }}@google.com?cc=chromeos-tango@google.com">
+      {{ experiment.owner }}
+    </a>
+  </p>
+
+
+{% endblock %}
+
+{% block second_column %}
+  <h1> Rate your experiences </h1>
+
+  {% if user|string in experiment.participants %}
+    <div class="error">
+      <b>Error!</b> You have already completed this experiment. Subsequent
+      submissions will <b>overwrite</b> your previous rankings!
+    </div>
+    <script type="text/javascript">
+        window.onload = function(){ alert('Error! you have already ' +
+                                          'completed this experiment!'); }
+    </script>
+  {% endif %}
 
   {% if treatments|length > 2 %}
     <p>
@@ -285,9 +269,7 @@
 
   <p>
     (Optional) If you have any comments you would like to include you may do
-    so below.  Useful things include odd behavior you encountered or peculiar
-    touchpad habits you may have such as extremely high speed settings --
-    anything you think might be useful.
+    so below.
   </p>
   <p>
     <textarea rows="3" cols="40" id="feedback" name="feedback"
