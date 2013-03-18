@@ -70,7 +70,7 @@ int Property::GetPropertyNumber() const {
 double Property::GetCurrentValue() const {
   string command = StringPrintf("DISPLAY=:0 xinput list-props %d"
                                 " | grep '%s'"
-                                " | sed -e 's/[^:]*:\\s*\\([0-9.]*\\)$/\\1/'",
+                                " | sed -e 's/[^:]*:\\s*\\([-0-9.]*\\)$/\\1/'",
                                 device_,
                                 name_.c_str());
   return atoi(RunCommand(command).c_str());

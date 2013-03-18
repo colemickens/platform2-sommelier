@@ -4,6 +4,7 @@
 
 #include "salsa_experiment_runner.h"
 
+using base::StringPrintf;
 using std::string;
 
 bool SalsaExperimentRunner::LoadExperiment(string const &exp_string) {
@@ -45,23 +46,36 @@ void SalsaExperimentRunner::StartCurses() {
   noecho();
   refresh();
   atexit(SalsaExperimentRunner::EndCurses);
+  keypad(stdscr, TRUE);
 }
 
 void SalsaExperimentRunner::run() const {
   int current_treatment = -1;
   bool success = false;
-  char key_press = '0';
+  int key_press = '0';
+
+  string treatment_list = "";
+  for (int i = 0; i < exp_.Size(); i++)
+    treatment_list = StringPrintf("%s  %d  ", treatment_list.c_str(), i);
 
   SalsaExperimentRunner::StartCurses();
-  WINDOW* win = newwin(19, 59, 0, 0);
+  WINDOW* win = newwin(23, 59, 0, 0);
   while (key_press != 'q') {
-    int selected_treatment = key_press - '0';
+    wclear(win);
+    int selected_treatment = -1;
+    if (key_press >= '0' && key_press - '0' < exp_.Size())
+      selected_treatment = key_press - '0';
+    else if (key_press == KEY_RIGHT || key_press == KEY_UP)
+      selected_treatment = current_treatment + 1;
+    else if (key_press == KEY_LEFT || key_press == KEY_DOWN)
+      selected_treatment = current_treatment - 1;
+
     if (selected_treatment >= 0 && selected_treatment < exp_.Size()) {
       current_treatment = selected_treatment;
       success = exp_.ApplyTreatment(current_treatment);
     }
 
-    box(win, 0, 0);
+    wborder(win, '|', '|', '-', '-', ' ', ' ', ' ', ' ');
     mvwprintw(win, 1, 15, "  _____       _           ");
     mvwprintw(win, 2, 15, " / ____|     | |          ");
     mvwprintw(win, 3, 15, "| (___   __ _| |___  __ _ ");
@@ -69,19 +83,27 @@ void SalsaExperimentRunner::run() const {
     mvwprintw(win, 5, 15, " ____) | (_| | \\__ \\ (_| |");
     mvwprintw(win, 6, 15, "|_____/ \\__,_|_|___/\\__,_|");
 
-    mvwprintw(win, 9, 2, "Thanks for your participation!");
-
-    if (success)
-      mvwprintw(win, 11, 2, "You are currently experiencing treatment #%d",
-                current_treatment);
-    else
-      mvwprintw(win, 11, 2, "There was an error applying treatment #%d. "
+    mvwprintw(win, 9, 2, "Selected Treatment: %s", treatment_list.c_str());
+    if (success) {
+      mvwprintw(win, 8, 23 + current_treatment * 5, "###");
+      mvwprintw(win, 9, 22 + current_treatment * 5, "#");
+      mvwprintw(win, 9, 26 + current_treatment * 5, "#");
+      mvwprintw(win, 10, 23 + current_treatment * 5, "###");
+    } else {
+      mvwprintw(win, 10, 2, "There was an error applying a treatment."
                             "Try again.", current_treatment);
-    mvwprintw(win, 12, 2, "Available treatments: 0 -> %d", (exp_.Size() - 1));
+    }
 
-    mvwprintw(win, 14, 2, "Commands:");
-    mvwprintw(win, 15, 6, "Number keys -- Change treatment");
-    mvwprintw(win, 16, 6, ("q          -- Quit and restore your old settings"));
+    mvwprintw(win, 12, 2, "Commands:");
+    mvwprintw(win, 13, 6, "Arrow keys  -- Change selected treatment");
+    mvwprintw(win, 14, 6, "Number keys -- Jump to a treatment");
+    mvwprintw(win, 15, 6, "q           -- Quit and restore your old settings");
+
+    mvwprintw(win, 17, 12, "Thank you for your participation!");
+
+    mvwprintw(win, 19, 7, "Note: Treatments are ordered randomly, so there");
+    mvwprintw(win, 20, 7, "is no special significance to their labels.");
+
     wrefresh(win);
 
     key_press = getch();

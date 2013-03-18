@@ -5,9 +5,10 @@
 #ifndef GESTURES_SALSA_TRY_TOUCH_EXPERIMENT_RUNNER_H_
 #define GESTURES_SALSA_TRY_TOUCH_EXPERIMENT_RUNNER_H_
 
-#include <ncurses.h>
 #include <string>
+#include <base/stringprintf.h>
 #include <base/string_util.h>
+#include <ncurses.h>
 #include "experiment.h"
 
 class SalsaExperimentRunner {
