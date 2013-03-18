@@ -31,6 +31,8 @@ const char kScreenOn[] = "on";
 const char kSuspend[] = "suspend";
 const char kStopSession[] = "logout";
 const char kShutDown[] = "shutdown";
+const char kIdleImminent[] = "idle_imminent";
+const char kIdleDeferred[] = "idle_deferred";
 const char kReportUserActivityMetrics[] = "metrics";
 
 // String returned by TestDelegate::GetActions() if no actions were
@@ -118,6 +120,12 @@ class TestDelegate : public StateController::Delegate {
   virtual void ShutDown() OVERRIDE { AppendAction(kShutDown); }
   virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
     AppendAction(GetEmitIdleNotificationAction(delay));
+  }
+  virtual void EmitIdleActionImminent() OVERRIDE {
+    AppendAction(kIdleImminent);
+  }
+  virtual void EmitIdleActionDeferred() OVERRIDE {
+    AppendAction(kIdleDeferred);
   }
   virtual void ReportUserActivityMetrics() OVERRIDE {
     if (record_metrics_actions_)
@@ -1074,6 +1082,65 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   TriggerDefaultAcTimeouts();
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kStopSession, NULL),
             delegate_.GetActions());
+}
+
+// Tests that idle warnings are emitted as requested.
+TEST_F(StateControllerTest, IdleWarnings) {
+  Init();
+
+  const base::TimeDelta kIdleWarningDelay = base::TimeDelta::FromSeconds(50);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(60);
+  const base::TimeDelta kHalfInterval = (kIdleDelay - kIdleWarningDelay) / 2;
+
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(0);
+  policy.mutable_ac_delays()->set_screen_off_ms(0);
+  policy.mutable_ac_delays()->set_screen_lock_ms(0);
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      kIdleWarningDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  controller_.HandlePolicyChange(policy);
+
+  // The idle-action-imminent notification should be sent at the requested
+  // time.
+  StepTimeAndTriggerTimeout(kIdleWarningDelay);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  StepTimeAndTriggerTimeout(kIdleDelay);
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // The idle-action-deferred notification shouldn't be sent when exiting
+  // the inactive state after the idle action has been performed.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // If the controller exits the inactive state before the idle action is
+  // performed, an idle-action-deferred notification should be sent.
+  ResetLastStepDelay();
+  StepTimeAndTriggerTimeout(kIdleWarningDelay);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  AdvanceTime(kHalfInterval);
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+
+  // Let the warning fire again.
+  ResetLastStepDelay();
+  StepTimeAndTriggerTimeout(kIdleWarningDelay);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+
+  // Increase the warning delay and check that the deferred notification is
+  // sent.
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      (kIdleWarningDelay + kHalfInterval).InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+
+  // The warning should be sent again when its new delay is reached, and
+  // the idle action should be performed at the usual time.
+  AdvanceTimeAndTriggerTimeout(kHalfInterval);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  AdvanceTimeAndTriggerTimeout(kHalfInterval);
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
 }
 
 }  // namespace policy

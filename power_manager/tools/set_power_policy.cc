@@ -28,6 +28,8 @@ DEFINE_int32(ac_screen_off_delay, -1,
              "Delay before turning screen off on AC power, in seconds");
 DEFINE_int32(ac_screen_lock_delay, -1,
              "Delay before locking screen on AC power, in seconds");
+DEFINE_int32(ac_idle_warning_delay, -1,
+             "Delay before idle action warning on AC power, in seconds");
 DEFINE_int32(ac_idle_delay, -1,
              "Delay before idle action on AC power, in seconds");
 DEFINE_int32(battery_screen_dim_delay, -1,
@@ -36,6 +38,8 @@ DEFINE_int32(battery_screen_off_delay, -1,
              "Delay before turning screen off on battery power, in seconds");
 DEFINE_int32(battery_screen_lock_delay, -1,
              "Delay before locking screen on battery power, in seconds");
+DEFINE_int32(battery_idle_warning_delay, -1,
+             "Delay before idle action warning on battery power, in seconds");
 DEFINE_int32(battery_idle_delay, -1,
              "Delay before idle action on battery power, in seconds");
 DEFINE_int32(use_audio_activity, -1,
@@ -99,12 +103,14 @@ int main(int argc, char* argv[]) {
   SET_DELAY_FIELD(FLAGS_ac_screen_dim_delay, delays, screen_dim_ms);
   SET_DELAY_FIELD(FLAGS_ac_screen_off_delay, delays, screen_off_ms);
   SET_DELAY_FIELD(FLAGS_ac_screen_lock_delay, delays, screen_lock_ms);
+  SET_DELAY_FIELD(FLAGS_ac_idle_warning_delay, delays, idle_warning_ms);
   SET_DELAY_FIELD(FLAGS_ac_idle_delay, delays, idle_ms);
 
   delays = policy.mutable_battery_delays();
   SET_DELAY_FIELD(FLAGS_battery_screen_dim_delay, delays, screen_dim_ms);
   SET_DELAY_FIELD(FLAGS_battery_screen_off_delay, delays, screen_off_ms);
   SET_DELAY_FIELD(FLAGS_battery_screen_lock_delay, delays, screen_lock_ms);
+  SET_DELAY_FIELD(FLAGS_battery_idle_warning_delay, delays, idle_warning_ms);
   SET_DELAY_FIELD(FLAGS_battery_idle_delay, delays, idle_ms);
 
   if (FLAGS_use_audio_activity >= 0)

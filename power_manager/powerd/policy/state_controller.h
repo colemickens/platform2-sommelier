@@ -79,6 +79,14 @@ class StateController : public PrefsObserver {
     // AddIdleNotification() has been triggered.
     virtual void EmitIdleNotification(base::TimeDelta delay) = 0;
 
+    // Announces that the idle action will be performed soon (with "soon"
+    // defined by the PowerManagementPolicy |idle_warning_ms| delays).
+    virtual void EmitIdleActionImminent() = 0;
+
+    // Called after EmitIdleActionImminent() if the system left the idle
+    // state before the idle action was performed.
+    virtual void EmitIdleActionDeferred() = 0;
+
     // Reports metrics in response to user activity.
     virtual void ReportUserActivityMetrics() = 0;
   };
@@ -153,6 +161,7 @@ class StateController : public PrefsObserver {
   // Holds a collection of delays.
   struct Delays {
     base::TimeDelta idle;
+    base::TimeDelta idle_warning;
     base::TimeDelta screen_off;
     base::TimeDelta screen_dim;
     base::TimeDelta screen_lock;
@@ -276,6 +285,7 @@ class StateController : public PrefsObserver {
   bool screen_dimmed_;
   bool screen_turned_off_;
   bool requested_screen_lock_;
+  bool sent_idle_warning_;
   bool idle_action_performed_;
   bool lid_closed_action_performed_;
 

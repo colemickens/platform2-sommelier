@@ -159,6 +159,14 @@ class Daemon::StateControllerDelegate
     daemon_->IdleEventNotify(delay.InMilliseconds());
   }
 
+  virtual void EmitIdleActionImminent() OVERRIDE {
+    daemon_->dbus_sender_->EmitBareSignal(kIdleActionImminentSignal);
+  }
+
+  virtual void EmitIdleActionDeferred() OVERRIDE {
+    daemon_->dbus_sender_->EmitBareSignal(kIdleActionDeferredSignal);
+  }
+
   virtual void ReportUserActivityMetrics() OVERRIDE {
     if (!daemon_->last_idle_event_timestamp_.is_null())
       daemon_->GenerateMetricsOnLeavingIdle();

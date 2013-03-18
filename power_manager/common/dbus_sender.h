@@ -25,6 +25,9 @@ class DBusSenderInterface {
  public:
   virtual ~DBusSenderInterface() {}
 
+  // Emits a signal named |signal_name| without any arguments.
+  virtual void EmitBareSignal(const std::string& signal_name) = 0;
+
   // Emits a signal named |signal_name| and containing a serialized copy of
   // |protobuf| as a single byte array argument.
   virtual void EmitSignalWithProtocolBuffer(
@@ -41,11 +44,17 @@ class DBusSender : public DBusSenderInterface {
   virtual ~DBusSender();
 
   // DBusSenderInterface override:
+  virtual void EmitBareSignal(const std::string& signal_name) OVERRIDE;
   virtual void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
       const google::protobuf::MessageLite& protobuf) OVERRIDE;
 
  private:
+  // Emits |signal_name|, serializing |protobuf| and passing it as a byte
+  // array argument if non-NULL.
+  void EmitSignalInternal(const std::string& signal_name,
+                          const google::protobuf::MessageLite* protobuf);
+
   std::string path_;
   std::string interface_;
 

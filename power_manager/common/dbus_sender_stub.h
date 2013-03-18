@@ -33,6 +33,7 @@ class DBusSenderStub : public DBusSenderInterface {
   // buffer.  false is returned if the index is out-of-range, the D-Bus signal
   // name doesn't match |expected_signal_name|, or the type of protocol buffer
   // that was attached to the signal doesn't match |protobuf|'s type.
+  // |protobuf| can be NULL, in which case only the signal name is checked.
   bool GetSentSignal(size_t index,
                      const std::string& expected_signal_name,
                      google::protobuf::MessageLite* protobuf);
@@ -41,6 +42,7 @@ class DBusSenderStub : public DBusSenderInterface {
   void ClearSentSignals();
 
   // DBusSenderInterface override:
+  virtual void EmitBareSignal(const std::string& signal_name) OVERRIDE;
   virtual void EmitSignalWithProtocolBuffer(
       const std::string& signal_name,
       const google::protobuf::MessageLite& protobuf) OVERRIDE;

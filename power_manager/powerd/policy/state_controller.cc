@@ -153,6 +153,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       screen_dimmed_(false),
       screen_turned_off_(false),
       requested_screen_lock_(false),
+      sent_idle_warning_(false),
       idle_action_performed_(false),
       lid_closed_action_performed_(false),
       require_usb_input_device_to_suspend_(false),
@@ -394,6 +395,8 @@ std::string StateController::GetPolicyDelaysDebugString(
     str += prefix + "_screen_off=" + MsToString(delays.screen_off_ms()) + " ";
   if (delays.has_screen_lock_ms())
     str += prefix + "_lock=" + MsToString(delays.screen_lock_ms()) + " ";
+  if (delays.has_idle_warning_ms())
+    str += prefix + "_idle_warn=" + MsToString(delays.idle_warning_ms()) + " ";
   if (delays.has_idle_ms())
     str += prefix + "_idle=" + MsToString(delays.idle_ms()) + " ";
   return str;
@@ -445,6 +448,12 @@ void StateController::SanitizeDelays(Delays* delays) {
     delays->screen_dim = base::TimeDelta();
   }
 
+  // Cap the idle-warning timeout to the idle-action timeout.
+  if (delays->idle_warning > base::TimeDelta())
+    delays->idle_warning = std::min(delays->idle_warning, delays->idle);
+  else
+    delays->idle_warning = base::TimeDelta();
+
   // If the lock delay matches or exceeds the idle delay, unset it --
   // Chrome's lock-before-suspend setting should be enabled instead.
   if (delays->screen_lock >= delays->idle ||
@@ -462,6 +471,11 @@ void StateController::MergeDelaysFromPolicy(
   if (policy_delays.has_idle_ms() && policy_delays.idle_ms() >= 0) {
     delays_out->idle =
         base::TimeDelta::FromMilliseconds(policy_delays.idle_ms());
+  }
+  if (policy_delays.has_idle_warning_ms() &&
+      policy_delays.idle_warning_ms() >= 0) {
+    delays_out->idle_warning =
+        base::TimeDelta::FromMilliseconds(policy_delays.idle_warning_ms());
   }
   if (policy_delays.has_screen_dim_ms() && policy_delays.screen_dim_ms() >= 0) {
     delays_out->screen_dim =
@@ -633,6 +647,7 @@ void StateController::UpdateSettingsAndState() {
           << " dim=" << TimeDeltaToString(delays_.screen_dim)
           << " screen_off=" << TimeDeltaToString(delays_.screen_off)
           << " lock=" << TimeDeltaToString(delays_.screen_lock)
+          << " idle_warn=" << TimeDeltaToString(delays_.idle_warning)
           << " idle=" << TimeDeltaToString(delays_.idle)
           << " (" << ActionToString(idle_action_) << ")"
           << " lid_closed=" << ActionToString(lid_closed_action_)
@@ -690,6 +705,18 @@ void StateController::UpdateState() {
   HandleDelay(delays_.screen_lock, screen_dim_or_lock_duration,
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
               base::Closure(), "Locking screen", "", &requested_screen_lock_);
+
+  // When exiting the idle-warning state, only emit the idle-deferred
+  // signal if the idle action hasn't been executed yet.
+  HandleDelay(delays_.idle_warning, idle_duration,
+              base::Bind(&Delegate::EmitIdleActionImminent,
+                         base::Unretained(delegate_)),
+              idle_action_performed_ ? base::Closure() :
+                  base::Bind(&Delegate::EmitIdleActionDeferred,
+                             base::Unretained(delegate_)),
+              "Emitting idle-imminent signal",
+              idle_action_performed_ ? "" : "Emitting idle-deferred signal",
+              &sent_idle_warning_);
 
   Action idle_action_to_perform = DO_NOTHING;
   if (idle_duration >= delays_.idle) {
@@ -761,6 +788,9 @@ void StateController::ScheduleTimeout(base::TimeTicks now) {
   timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
       GetRemainingTime(GetLastActivityTimeForScreenDimOrLock(), now,
                        delays_.screen_lock));
+  timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
+      GetRemainingTime(GetLastActivityTimeForIdle(), now,
+                       delays_.idle_warning));
   timeout_delay = GetMinPositiveTimeDelta(timeout_delay,
       GetRemainingTime(GetLastActivityTimeForIdle(), now, delays_.idle));
 

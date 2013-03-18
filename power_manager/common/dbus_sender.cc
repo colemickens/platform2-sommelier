@@ -24,14 +24,25 @@ DBusSender::DBusSender(const std::string& path,
 
 DBusSender::~DBusSender() {}
 
+void DBusSender::EmitBareSignal(const std::string& signal_name) {
+  EmitSignalInternal(signal_name, NULL);
+}
+
 void DBusSender::EmitSignalWithProtocolBuffer(
     const std::string& signal_name,
     const google::protobuf::MessageLite& protobuf) {
+  EmitSignalInternal(signal_name, &protobuf);
+}
+
+void DBusSender::EmitSignalInternal(
+    const std::string& signal_name,
+    const google::protobuf::MessageLite* protobuf) {
   DBusMessage* signal = dbus_message_new_signal(path_.c_str(),
                                                 interface_.c_str(),
                                                 signal_name.c_str());
   CHECK(signal);
-  util::AppendProtocolBufferToDBusMessage(protobuf, signal);
+  if (protobuf)
+    util::AppendProtocolBufferToDBusMessage(*protobuf, signal);
   DBusConnection* connection = dbus_g_connection_get_connection(
       chromeos::dbus::GetSystemBusConnection().g_connection());
   CHECK(dbus_connection_send(connection, signal, NULL));
