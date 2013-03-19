@@ -384,12 +384,8 @@ bool DeviceManager::ReadDirectory(LIBMTP_mtpdevice_t* device,
                                   uint32_t storage_id,
                                   uint32_t file_id,
                                   std::vector<FileEntry>* out) {
-  LIBMTP_file_t* files =
+  LIBMTP_file_t* file =
       LIBMTP_Get_Files_And_Folders(device, storage_id, file_id);
-  if (!files)
-    return false;
-
-  LIBMTP_file_t* file = files;
   while (file != NULL) {
     scoped_ptr<LIBMTP_file_t, LibmtpFileDeleter> current_file(file);
     file = file->next;
