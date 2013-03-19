@@ -35,7 +35,6 @@ SHILL_PC_DEPS = \
 	dbus-c++-1 \
 	gio-2.0 \
 	glib-2.0 \
-	ModemManager \
 	libnl-3.0 \
 	libnl-genl-3.0
 NET_DIAGS_UPLOAD_PC_DEPS = $(COMMON_PC_DEPS)
@@ -45,7 +44,6 @@ NETFILTER_QUEUE_HELPER_PC_DEPS = \
 	libnetfilter_queue \
 	libnfnetlink
 NSS_GET_CERT_PC_DEPS = $(COMMON_PC_DEPS) nss
-SET_APN_HELPER_PC_DEPS = dbus-1
 INCLUDE_DIRS = \
 	-iquote.. \
 	-iquote $(BUILDDIR) \
@@ -53,12 +51,10 @@ INCLUDE_DIRS = \
 		$(NET_DIAGS_UPLOAD_PC_DEPS) \
 		$(NETFILTER_QUEUE_HELPER_PC_DEPS) \
 		$(NSS_GET_CERT_PC_DEPS) \
-		$(SET_APN_HELPER_PC_DEPS) \
 		$(SHILL_PC_DEPS))
 SHILL_LIBS = \
 	-lbootstat \
 	-lcares \
-	-lmobile-provider \
 	-lmetrics \
 	-lminijail \
 	-lprotobuf-lite \
@@ -69,9 +65,6 @@ NET_DIAGS_UPLOAD_LIBS = \
 NETFILTER_QUEUE_HELPER_LIBS = \
 	$(shell $(PKG_CONFIG) --libs $(NETFILTER_QUEUE_HELPER_PC_DEPS))
 NSS_GET_CERT_LIBS = $(shell $(PKG_CONFIG) --libs $(NSS_GET_CERT_PC_DEPS))
-SET_APN_HELPER_LIBS = $(shell $(PKG_CONFIG) --libs $(SET_APN_HELPER_PC_DEPS))
-TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) $(NETFILTER_QUEUE_HELPER_LIBS) \
-	-lgmock -lgtest
 
 DBUS_BINDINGS_DIR = dbus_bindings
 BUILD_DBUS_BINDINGS_DIR = $(BUILDDIR)/shill/$(DBUS_BINDINGS_DIR)
@@ -183,15 +176,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	byte_string.o \
 	callback80211_metrics.o \
 	callback80211_object.o \
-	cellular.o \
-	cellular_capability.o \
-	cellular_capability_cdma.o \
-	cellular_capability_classic.o \
-	cellular_capability_gsm.o \
-	cellular_capability_universal.o \
 	cellular_error.o \
-	cellular_operator_info.o \
-	cellular_service.o \
 	certificate_file.o \
 	config80211.o \
 	connection.o \
@@ -243,27 +228,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	memory_log.o \
 	metrics.o \
 	minijail.o \
-	mm1_bearer_proxy.o \
-	mm1_modem_location_proxy.o \
-	mm1_modem_modem3gpp_proxy.o \
-	mm1_modem_modemcdma_proxy.o \
-	mm1_modem_proxy.o \
-	mm1_modem_simple_proxy.o \
-	mm1_modem_time_proxy.o \
-	mm1_sim_proxy.o \
-	modem.o \
-	modem_1.o \
-	modem_cdma_proxy.o \
-	modem_classic.o \
-	modem_gobi_proxy.o \
-	modem_gsm_card_proxy.o \
-	modem_gsm_network_proxy.o \
 	modem_info.o \
-	modem_manager.o \
-	modem_manager_1.o \
-	modem_manager_proxy.o \
-	modem_proxy.o \
-	modem_simple_proxy.o \
 	netlink_socket.o \
 	netlink_attribute.o \
 	nl80211_attribute.o \
@@ -333,13 +298,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	arp_packet_unittest.o \
 	async_connection_unittest.o \
 	byte_string_unittest.o \
-	cellular_capability_cdma_unittest.o \
-	cellular_capability_classic_unittest.o \
-	cellular_capability_gsm_unittest.o \
-	cellular_capability_universal_unittest.o \
-	cellular_operator_info_unittest.o \
-	cellular_service_unittest.o \
-	cellular_unittest.o \
 	certificate_file_unittest.o \
 	crypto_des_cbc_unittest.o \
 	crypto_provider_unittest.o \
@@ -377,9 +335,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_ares.o \
 	mock_arp_client.o \
 	mock_async_connection.o \
-	mock_cellular.o \
-	mock_cellular_operator_info.o \
-	mock_cellular_service.o \
 	mock_certificate_file.o \
 	mock_connection.o \
 	mock_control.o \
@@ -405,23 +360,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_manager.o \
 	mock_metrics.o \
 	mock_minijail.o \
-	mock_mm1_bearer_proxy.o \
-	mock_mm1_modem_location_proxy.o \
-	mock_mm1_modem_modemcdma_proxy.o \
-	mock_mm1_modem_modem3gpp_proxy.o \
-	mock_mm1_modem_proxy.o \
-	mock_mm1_modem_simple_proxy.o \
-	mock_mm1_modem_time_proxy.o \
-	mock_mm1_sim_proxy.o \
-	mock_modem.o \
-	mock_modem_cdma_proxy.o \
-	mock_modem_gobi_proxy.o \
-	mock_modem_gsm_card_proxy.o \
-	mock_modem_gsm_network_proxy.o \
 	mock_modem_info.o \
-	mock_modem_manager_proxy.o \
-	mock_modem_proxy.o \
-	mock_modem_simple_proxy.o \
 	mock_nss.o \
 	mock_portal_detector.o \
 	mock_power_manager.o \
@@ -452,10 +391,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wimax_network_proxy.o \
 	mock_wimax_provider.o \
 	mock_wimax_service.o \
-	modem_1_unittest.o \
 	modem_info_unittest.o \
-	modem_manager_unittest.o \
-	modem_unittest.o \
 	nice_mock_control.o \
 	nss_unittest.o \
 	portal_detector_unittest.o \
@@ -501,10 +437,99 @@ NSS_GET_CERT_OBJS = $(BUILD_SHIMS_DIR)/certificates.o
 NSS_GET_CERT_MAIN_OBJ = $(BUILD_SHIMS_DIR)/nss_get_cert.o
 NSS_GET_CERT_BIN = $(BUILD_SHIMS_DIR)/nss-get-cert
 
+WPA_SUPPLICANT_CONF = $(BUILD_SHIMS_DIR)/wpa_supplicant.conf
+
+# If SHILL_CELLULAR=0, don't build cellular support into shill.
+ifeq ($(SHILL_CELLULAR), 0)
+
+CPPFLAGS += -DDISABLE_CELLULAR
+
+else
+
+CELLULAR_PC_DEPS = ModemManager
+SET_APN_HELPER_PC_DEPS = dbus-1
+
+INCLUDE_DIRS += \
+	$(shell $(PKG_CONFIG) --cflags \
+		$(CELLULAR_PC_DEPS) \
+		$(SET_APN_HELPER_PC_DEPS))
+
+SET_APN_HELPER_LIBS = $(shell $(PKG_CONFIG) --libs $(SET_APN_HELPER_PC_DEPS))
+
+SHILL_LIBS += \
+	-lmobile-provider \
+	$(shell $(PKG_CONFIG) --libs $(CELLULAR_PC_DEPS))
+
+SHILL_OBJS += $(addprefix $(BUILDDIR)/, \
+	cellular.o \
+	cellular_capability.o \
+	cellular_capability_cdma.o \
+	cellular_capability_classic.o \
+	cellular_capability_gsm.o \
+	cellular_capability_universal.o \
+	cellular_operator_info.o \
+	cellular_service.o \
+	mm1_bearer_proxy.o \
+	mm1_modem_location_proxy.o \
+	mm1_modem_modem3gpp_proxy.o \
+	mm1_modem_modemcdma_proxy.o \
+	mm1_modem_proxy.o \
+	mm1_modem_simple_proxy.o \
+	mm1_modem_time_proxy.o \
+	mm1_sim_proxy.o \
+	modem.o \
+	modem_1.o \
+	modem_cdma_proxy.o \
+	modem_classic.o \
+	modem_gobi_proxy.o \
+	modem_gsm_card_proxy.o \
+	modem_gsm_network_proxy.o \
+	modem_manager.o \
+	modem_manager_1.o \
+	modem_manager_proxy.o \
+	modem_proxy.o \
+	modem_simple_proxy.o \
+	)
+
+TEST_OBJS += $(addprefix $(BUILDDIR)/, \
+	cellular_capability_cdma_unittest.o \
+	cellular_capability_classic_unittest.o \
+	cellular_capability_gsm_unittest.o \
+	cellular_capability_universal_unittest.o \
+	cellular_operator_info_unittest.o \
+	cellular_service_unittest.o \
+	cellular_unittest.o \
+	mock_cellular.o \
+	mock_mm1_bearer_proxy.o \
+	mock_mm1_modem_location_proxy.o \
+	mock_mm1_modem_modemcdma_proxy.o \
+	mock_mm1_modem_modem3gpp_proxy.o \
+	mock_mm1_modem_proxy.o \
+	mock_mm1_modem_simple_proxy.o \
+	mock_mm1_modem_time_proxy.o \
+	mock_mm1_sim_proxy.o \
+	mock_modem.o \
+	mock_modem_cdma_proxy.o \
+	mock_modem_gobi_proxy.o \
+	mock_modem_gsm_card_proxy.o \
+	mock_modem_gsm_network_proxy.o \
+	mock_modem_manager_proxy.o \
+	mock_modem_proxy.o \
+	mock_modem_simple_proxy.o \
+	mock_cellular_operator_info.o \
+	mock_cellular_service.o \
+	modem_1_unittest.o \
+	modem_manager_unittest.o \
+	modem_unittest.o \
+	)
+
 SET_APN_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/set_apn_helper.o
 SET_APN_HELPER_BIN = $(BUILD_SHIMS_DIR)/set-apn-helper
 
-WPA_SUPPLICANT_CONF = $(BUILD_SHIMS_DIR)/wpa_supplicant.conf
+$(SET_APN_HELPER_BIN): $(SET_APN_HELPER_MAIN_OBJ)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SET_APN_HELPER_LIBS) -o $@
+
+endif  # SHILL_CELLULAR=0
 
 # If SHILL_VPN=0, don't build VPN support into shill.
 ifeq ($(SHILL_VPN), 0)
@@ -589,6 +614,9 @@ OBJS = \
 	$(SHILL_OBJS) \
 	$(TEST_OBJS)
 
+TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) $(NETFILTER_QUEUE_HELPER_LIBS) \
+	-lgmock -lgtest
+
 .PHONY: all clean shims
 
 all: $(SHILL_BIN) $(TEST_BIN) shims
@@ -661,9 +689,6 @@ $(NETFILTER_QUEUE_HELPER_BIN): \
 
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
-
-$(SET_APN_HELPER_BIN): $(SET_APN_HELPER_MAIN_OBJ)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SET_APN_HELPER_LIBS) -o $@
 
 $(WPA_SUPPLICANT_CONF): shims/wpa_supplicant.conf.in
 	sed s,@libdir@,$(LIBDIR), $^ > $@

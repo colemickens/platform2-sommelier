@@ -61,6 +61,8 @@ class ProxyFactory {
 
   virtual void Init();
 
+  DBus::Connection *connection() const { return connection_.get(); }
+
   virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
       const std::string &path,
       const std::string &service);
@@ -70,6 +72,40 @@ class ProxyFactory {
       const std::string &service);
 
   virtual DBusServiceProxyInterface *CreateDBusServiceProxy();
+
+  virtual WiMaxDeviceProxyInterface *CreateWiMaxDeviceProxy(
+      const std::string &path);
+  virtual WiMaxManagerProxyInterface *CreateWiMaxManagerProxy();
+  virtual WiMaxNetworkProxyInterface *CreateWiMaxNetworkProxy(
+      const std::string &path);
+
+  // The caller retains ownership of 'delegate'.  It must not be deleted before
+  // the proxy.
+  virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
+      PowerManagerProxyDelegate *delegate);
+
+  virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
+      const char *dbus_path,
+      const char *dbus_addr);
+
+  virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
+      const WiFiRefPtr &wifi,
+      const DBus::Path &object_path,
+      const char *dbus_addr);
+
+  virtual SupplicantNetworkProxyInterface *CreateSupplicantNetworkProxy(
+      const DBus::Path &object_path,
+      const char *dbus_addr);
+
+  // See comment in supplicant_bss_proxy.h, about bare pointer.
+  virtual SupplicantBSSProxyInterface *CreateSupplicantBSSProxy(
+      WiFiEndpoint *wifi_endpoint,
+      const DBus::Path &object_path,
+      const char *dbus_addr);
+
+  virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
+
+#if !defined(DISABLE_CELLULAR)
 
   virtual ModemManagerProxyInterface *CreateModemManagerProxy(
       ModemManagerClassic *manager,
@@ -132,39 +168,7 @@ class ProxyFactory {
       const std::string &path,
       const std::string &service);
 
-  virtual WiMaxDeviceProxyInterface *CreateWiMaxDeviceProxy(
-      const std::string &path);
-  virtual WiMaxManagerProxyInterface *CreateWiMaxManagerProxy();
-  virtual WiMaxNetworkProxyInterface *CreateWiMaxNetworkProxy(
-      const std::string &path);
-
-  // The caller retains ownership of 'delegate'.  It must not be deleted before
-  // the proxy.
-  virtual PowerManagerProxyInterface *CreatePowerManagerProxy(
-      PowerManagerProxyDelegate *delegate);
-
-  virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
-      const char *dbus_path,
-      const char *dbus_addr);
-
-  virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
-      const WiFiRefPtr &wifi,
-      const DBus::Path &object_path,
-      const char *dbus_addr);
-
-  virtual SupplicantNetworkProxyInterface *CreateSupplicantNetworkProxy(
-      const DBus::Path &object_path,
-      const char *dbus_addr);
-
-  // See comment in supplicant_bss_proxy.h, about bare pointer.
-  virtual SupplicantBSSProxyInterface *CreateSupplicantBSSProxy(
-      WiFiEndpoint *wifi_endpoint,
-      const DBus::Path &object_path,
-      const char *dbus_addr);
-
-  virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
-
-  DBus::Connection *connection() const { return connection_.get(); }
+#endif  // DISABLE_CELLULAR
 
  protected:
   ProxyFactory();

@@ -71,6 +71,63 @@ DBusServiceProxyInterface *ProxyFactory::CreateDBusServiceProxy() {
   return new DBusServiceProxy(connection());
 }
 
+WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
+    const string &path) {
+  return new WiMaxDeviceProxy(connection(), path);
+}
+
+WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
+  return new WiMaxManagerProxy(connection());
+}
+
+WiMaxNetworkProxyInterface *ProxyFactory::CreateWiMaxNetworkProxy(
+    const string &path) {
+  return new WiMaxNetworkProxy(connection(), path);
+}
+
+PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
+    PowerManagerProxyDelegate *delegate) {
+  return new PowerManagerProxy(delegate, connection());
+}
+
+SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
+    const char *dbus_path,
+    const char *dbus_addr) {
+  return new SupplicantProcessProxy(connection(), dbus_path, dbus_addr);
+}
+
+SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
+    const WiFiRefPtr &wifi,
+    const DBus::Path &object_path,
+    const char *dbus_addr) {
+  return new SupplicantInterfaceProxy(wifi,
+                                      connection(),
+                                      object_path,
+                                      dbus_addr);
+}
+
+SupplicantNetworkProxyInterface *ProxyFactory::CreateSupplicantNetworkProxy(
+    const DBus::Path &object_path,
+    const char *dbus_addr) {
+  return new SupplicantNetworkProxy(connection(),
+                                    object_path,
+                                    dbus_addr);
+}
+
+SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
+    WiFiEndpoint *wifi_endpoint,
+    const DBus::Path &object_path,
+    const char *dbus_addr) {
+  return new SupplicantBSSProxy(
+      wifi_endpoint, connection(), object_path, dbus_addr);
+}
+
+DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
+  return new DHCPCDProxy(connection(), service);
+}
+
+#if !defined(DISABLE_CELLULAR)
+
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
     ModemManagerClassic *manager,
     const string &path,
@@ -163,59 +220,6 @@ mm1::BearerProxyInterface *ProxyFactory::CreateBearerProxy(
   return new mm1::BearerProxy(connection(), path, service);
 }
 
-WiMaxDeviceProxyInterface *ProxyFactory::CreateWiMaxDeviceProxy(
-    const string &path) {
-  return new WiMaxDeviceProxy(connection(), path);
-}
-
-WiMaxManagerProxyInterface *ProxyFactory::CreateWiMaxManagerProxy() {
-  return new WiMaxManagerProxy(connection());
-}
-
-WiMaxNetworkProxyInterface *ProxyFactory::CreateWiMaxNetworkProxy(
-    const string &path) {
-  return new WiMaxNetworkProxy(connection(), path);
-}
-
-PowerManagerProxyInterface *ProxyFactory::CreatePowerManagerProxy(
-    PowerManagerProxyDelegate *delegate) {
-  return new PowerManagerProxy(delegate, connection());
-}
-
-SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
-    const char *dbus_path,
-    const char *dbus_addr) {
-  return new SupplicantProcessProxy(connection(), dbus_path, dbus_addr);
-}
-
-SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
-    const WiFiRefPtr &wifi,
-    const DBus::Path &object_path,
-    const char *dbus_addr) {
-  return new SupplicantInterfaceProxy(wifi,
-                                      connection(),
-                                      object_path,
-                                      dbus_addr);
-}
-
-SupplicantNetworkProxyInterface *ProxyFactory::CreateSupplicantNetworkProxy(
-    const DBus::Path &object_path,
-    const char *dbus_addr) {
-  return new SupplicantNetworkProxy(connection(),
-                                    object_path,
-                                    dbus_addr);
-}
-
-SupplicantBSSProxyInterface *ProxyFactory::CreateSupplicantBSSProxy(
-    WiFiEndpoint *wifi_endpoint,
-    const DBus::Path &object_path,
-    const char *dbus_addr) {
-  return new SupplicantBSSProxy(
-      wifi_endpoint, connection(), object_path, dbus_addr);
-}
-
-DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
-  return new DHCPCDProxy(connection(), service);
-}
+#endif  // DISABLE_CELLULAR
 
 }  // namespace shill

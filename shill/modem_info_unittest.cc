@@ -4,7 +4,10 @@
 
 #include <base/stl_util.h>
 #include <gtest/gtest.h>
+
+#if !defined(DISABLE_CELLULAR)
 #include <mobile_provider.h>
+#endif
 
 #include "shill/manager.h"
 #include "shill/mock_control.h"
@@ -41,6 +44,20 @@ class ModemInfoTest : public Test {
 
 const char ModemInfoTest::kTestMobileProviderDBPath[] =
     "provider_db_unittest.bfd";
+
+#if defined(DISABLE_CELLULAR)
+
+TEST_F(ModemInfoTest, StartStop) {
+  EXPECT_EQ(0, modem_info_.modem_managers_.size());
+  EXPECT_CALL(glib_, BusWatchName(_, _, _, _, _, _, _)).Times(0);
+  modem_info_.provider_db_path_ = kTestMobileProviderDBPath;
+  modem_info_.Start();
+  EXPECT_EQ(0, modem_info_.modem_managers_.size());
+  EXPECT_FALSE(modem_info_.provider_db_);
+  modem_info_.Stop();
+}
+
+#else
 
 TEST_F(ModemInfoTest, StartStop) {
   const int kWatcher = 123;
@@ -82,5 +99,7 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   EXPECT_EQ(modem_info_.provider_db_, manager->provider_db_);
   manager->watcher_id_ = 0;
 }
+
+#endif  // DISABLE_CELLULAR
 
 }  // namespace shill
