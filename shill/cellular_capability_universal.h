@@ -151,6 +151,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              GetNetworkTechnologyStringOnE362);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);

@@ -617,6 +617,10 @@ void CellularCapabilityUniversal::OnServiceCreated() {
   // TODO(thieule): Remove this workaround (crosbug.com/p/18619).
   if (model_id_ == kE362ModelId)
     cellular()->service()->set_enforce_out_of_credits_detection(true);
+
+  // Make sure that the network technology is set when the service gets
+  // created, just in case.
+  cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
 }
 
 // Create the list of APNs to try, in the following order:
@@ -1304,9 +1308,18 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
 }
 
 string CellularCapabilityUniversal::GetNetworkTechnologyString() const {
+  // If we know that the modem is an E362, return LTE here to make sure that
+  // Chrome sees LTE as the network technology even if the actual technology is
+  // unknown.
+  // TODO(armansito): This hack will cause the UI to display LTE even if the
+  // modem doesn't support it at a given time. This might be problematic if we
+  // ever want to support switching between access technologies (e.g. falling
+  // back to 3G when LTE is not available).
+  if (model_id_ == kE362ModelId)
+    return flimflam::kNetworkTechnologyLte;
+
   // Order is important.  Return the highest speed technology
   // TODO(jglasgow): change shill interfaces to a capability model
-
   return AccessTechnologyToString(access_technologies_);
 }
 

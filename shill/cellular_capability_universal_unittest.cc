@@ -1725,4 +1725,22 @@ TEST_F(CellularCapabilityUniversalMainTest, OnModemCurrentCapabilitiesChanged) {
   EXPECT_TRUE(capability_->scanning_supported_);
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
+  capability_->model_id_.clear();
+  capability_->access_technologies_ = 0;
+  EXPECT_TRUE(capability_->GetNetworkTechnologyString().empty());
+
+  capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
+  EXPECT_EQ(flimflam::kNetworkTechnologyLte,
+            capability_->GetNetworkTechnologyString());
+
+  capability_->access_technologies_ = MM_MODEM_ACCESS_TECHNOLOGY_GPRS;
+  EXPECT_EQ(flimflam::kNetworkTechnologyLte,
+            capability_->GetNetworkTechnologyString());
+
+  capability_->model_id_.clear();
+  EXPECT_EQ(flimflam::kNetworkTechnologyGprs,
+            capability_->GetNetworkTechnologyString());
+}
+
 }  // namespace shill
