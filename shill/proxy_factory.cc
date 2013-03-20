@@ -4,11 +4,21 @@
 
 #include "shill/proxy_factory.h"
 
-#include "shill/dbus_objectmanager_proxy.h"
 #include "shill/dbus_properties_proxy.h"
 #include "shill/dbus_service_proxy.h"
 #include "shill/dhcpcd_proxy.h"
 #include "shill/logging.h"
+#include "shill/power_manager_proxy.h"
+#include "shill/supplicant_bss_proxy.h"
+#include "shill/supplicant_interface_proxy.h"
+#include "shill/supplicant_network_proxy.h"
+#include "shill/supplicant_process_proxy.h"
+#include "shill/wimax_device_proxy.h"
+#include "shill/wimax_manager_proxy.h"
+#include "shill/wimax_network_proxy.h"
+
+#if !defined(DISABLE_CELLULAR)
+#include "shill/dbus_objectmanager_proxy.h"
 #include "shill/mm1_bearer_proxy.h"
 #include "shill/mm1_modem_location_proxy.h"
 #include "shill/mm1_modem_modem3gpp_proxy.h"
@@ -24,14 +34,7 @@
 #include "shill/modem_manager_proxy.h"
 #include "shill/modem_proxy.h"
 #include "shill/modem_simple_proxy.h"
-#include "shill/power_manager_proxy.h"
-#include "shill/supplicant_bss_proxy.h"
-#include "shill/supplicant_interface_proxy.h"
-#include "shill/supplicant_network_proxy.h"
-#include "shill/supplicant_process_proxy.h"
-#include "shill/wimax_device_proxy.h"
-#include "shill/wimax_manager_proxy.h"
-#include "shill/wimax_network_proxy.h"
+#endif
 
 using std::string;
 
@@ -53,12 +56,6 @@ void ProxyFactory::Init() {
   CHECK(DBus::default_dispatcher);  // Initialized in DBusControl::Init.
   CHECK(!connection_.get());
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
-}
-
-DBusObjectManagerProxyInterface *ProxyFactory::CreateDBusObjectManagerProxy(
-    const string &path,
-    const string &service) {
-  return new DBusObjectManagerProxy(connection(), path, service);
 }
 
 DBusPropertiesProxyInterface *ProxyFactory::CreateDBusPropertiesProxy(
@@ -127,6 +124,12 @@ DHCPProxyInterface *ProxyFactory::CreateDHCPProxy(const string &service) {
 }
 
 #if !defined(DISABLE_CELLULAR)
+
+DBusObjectManagerProxyInterface *ProxyFactory::CreateDBusObjectManagerProxy(
+    const string &path,
+    const string &service) {
+  return new DBusObjectManagerProxy(connection(), path, service);
+}
 
 ModemManagerProxyInterface *ProxyFactory::CreateModemManagerProxy(
     ModemManagerClassic *manager,

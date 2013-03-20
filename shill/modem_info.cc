@@ -65,7 +65,7 @@ ModemInfo::~ModemInfo() {
 void ModemInfo::Start() {}
 void ModemInfo::Stop() {}
 void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
-  NOTREACHED();
+  NOTIMPLEMENTED();
 }
 
 #else

@@ -85,11 +85,9 @@ _CREATE_BUILDDIR := $(shell mkdir -p \
 DBUS_ADAPTOR_HEADERS :=
 
 DBUS_PROXY_HEADERS = \
-	dbus-objectmanager.h \
 	dbus-properties.h \
 	dbus-service.h \
 	dhcpcd.h \
-	modem-gobi.h \
 	power_manager.h \
 	shims/flimflam-task.h \
 	supplicant-bss.h \
@@ -102,7 +100,25 @@ DBUS_PROXY_HEADERS = \
 DBUS_BINDINGS_XML_SYSROOT = \
 	org.chromium.WiMaxManager>wimax_manager \
 	org.chromium.WiMaxManager.Device>wimax_manager-device \
-	org.chromium.WiMaxManager.Network>wimax_manager-network \
+	org.chromium.WiMaxManager.Network>wimax_manager-network
+
+# Rename local XML files with the names required by DBus to XML files with the
+# names required by the style guide, which will then be turned into generated
+# headers later.
+DBUS_BINDINGS_XML_LOCAL = \
+	org.chromium.flimflam.Device>flimflam-device \
+	org.chromium.flimflam.IPConfig>flimflam-ipconfig \
+	org.chromium.flimflam.Manager>flimflam-manager \
+	org.chromium.flimflam.Profile>flimflam-profile \
+	org.chromium.flimflam.Service>flimflam-service \
+	org.chromium.flimflam.Task>flimflam-task
+
+ifneq ($(SHILL_CELLULAR), 0)
+DBUS_PROXY_HEADERS += \
+	dbus-objectmanager.h \
+	modem-gobi.h
+
+DBUS_BINDINGS_XML_SYSROOT += \
 	org.freedesktop.ModemManager>modem_manager \
 	org.freedesktop.ModemManager.Modem>modem \
 	org.freedesktop.ModemManager.Modem.Cdma>modem-cdma \
@@ -117,17 +133,7 @@ DBUS_BINDINGS_XML_SYSROOT = \
 	org.freedesktop.ModemManager1.Modem.Simple>mm1-modem-simple \
 	org.freedesktop.ModemManager1.Modem.Time>mm1-modem-time \
 	org.freedesktop.ModemManager1.Sim>mm1-sim
-
-# Rename local XML files with the names required by DBus to XML files with the
-# names required by the style guide, which will then be turned into generated
-# headers later.
-DBUS_BINDINGS_XML_LOCAL = \
-	org.chromium.flimflam.Device>flimflam-device \
-	org.chromium.flimflam.IPConfig>flimflam-ipconfig \
-	org.chromium.flimflam.Manager>flimflam-manager \
-	org.chromium.flimflam.Profile>flimflam-profile \
-	org.chromium.flimflam.Service>flimflam-service \
-	org.chromium.flimflam.Task>flimflam-task
+endif  # SHILL_CELLULAR
 
 define ADD_BINDING
 $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
@@ -176,7 +182,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	byte_string.o \
 	callback80211_metrics.o \
 	callback80211_object.o \
-	cellular_error.o \
 	certificate_file.o \
 	config80211.o \
 	connection.o \
@@ -187,7 +192,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	dbus_adaptor.o \
 	dbus_control.o \
 	dbus_manager.o \
-	dbus_objectmanager_proxy.o \
 	dbus_properties.o \
 	dbus_properties_proxy.o \
 	dbus_service_proxy.o \
@@ -467,8 +471,10 @@ SHILL_OBJS += $(addprefix $(BUILDDIR)/, \
 	cellular_capability_classic.o \
 	cellular_capability_gsm.o \
 	cellular_capability_universal.o \
+	cellular_error.o \
 	cellular_operator_info.o \
 	cellular_service.o \
+	dbus_objectmanager_proxy.o \
 	mm1_bearer_proxy.o \
 	mm1_modem_location_proxy.o \
 	mm1_modem_modem3gpp_proxy.o \

@@ -63,10 +63,6 @@ class ProxyFactory {
 
   DBus::Connection *connection() const { return connection_.get(); }
 
-  virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
-      const std::string &path,
-      const std::string &service);
-
   virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
       const std::string &path,
       const std::string &service);
@@ -106,6 +102,10 @@ class ProxyFactory {
   virtual DHCPProxyInterface *CreateDHCPProxy(const std::string &service);
 
 #if !defined(DISABLE_CELLULAR)
+
+  virtual DBusObjectManagerProxyInterface *CreateDBusObjectManagerProxy(
+      const std::string &path,
+      const std::string &service);
 
   virtual ModemManagerProxyInterface *CreateModemManagerProxy(
       ModemManagerClassic *manager,
