@@ -24,6 +24,11 @@ class GLib {
   virtual guchar *Base64Decode(const gchar *text, gsize *out_len);
   // g_base64_encode
   virtual gchar *Base64Encode(const guchar *data, gsize len);
+
+  // Thin wrappers around Base64Decode/Encode.  Return true on success.
+  virtual bool B64Decode(const std::string &input, std::string *output);
+  virtual bool B64Encode(const std::string &input, std::string *output);
+
   // g_bus_unwatch_name
   virtual void BusUnwatchName(guint watcher_id);
   // g_bus_watch_name

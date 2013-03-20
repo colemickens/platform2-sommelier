@@ -2,9 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "shill/glib.h"
+
+#include <string>
+
 #include <base/stringprintf.h>
 
-#include "shill/glib.h"
+#include "shill/logging.h"
+
+using std::string;
 
 namespace shill {
 
@@ -26,6 +32,40 @@ guchar *GLib::Base64Decode(const gchar *text, gsize *out_len) {
 
 gchar *GLib::Base64Encode(const guchar *data, gsize len) {
   return g_base64_encode(data, len);
+}
+
+bool GLib::B64Decode(const string &input, string *output) {
+  CHECK(output);
+  gsize result_len = 0;
+  guchar *result = Base64Decode(input.c_str(), &result_len);
+  if (!result) {
+    LOG(ERROR) << "Failed in encoding.";
+    return false;
+  }
+
+  if (!result_len) {
+    LOG(ERROR) << "Failed in encoding.";
+    Free(result);
+    return false;
+  }
+
+  output->assign(reinterpret_cast<char *>(result), result_len);
+  Free(result);
+  return true;
+}
+
+bool GLib::B64Encode(const string &input, string *output) {
+  CHECK(output);
+  gchar *result = Base64Encode(
+      reinterpret_cast<const unsigned char *>(input.c_str()), input.length());
+  if (!result) {
+    LOG(ERROR) << "Failed in encoding.";
+    return false;
+  }
+
+  output->assign(result);
+  Free(result);
+  return true;
 }
 
 void GLib::BusUnwatchName(guint watcher_id) {

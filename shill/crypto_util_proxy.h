@@ -24,6 +24,7 @@ namespace shill {
 
 class EventDispatcher;
 class FileIO;
+class GLib;
 class ProcessKiller;
 
 class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
@@ -32,7 +33,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   static const char kCommandEncrypt[];
   static const char kCryptoUtilShimPath[];
 
-  CryptoUtilProxy(EventDispatcher *dispatcher);
+  CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib);
   virtual ~CryptoUtilProxy();
 
   // Verify credentials for the currently connected endpoint of
@@ -40,6 +41,14 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   // Returns true if we've succeeded in kicking off a job to an external shim
   // to verify credentials.  |result_callback| will be called with the actual
   // result of the job, either true, or false with a descriptive error.
+  //
+  // |certificate| should be a device certificate in PEM format.
+  // |public_key| is a base64 encoded DER RSAPublicKey format public key.
+  // |nonce| has no particular format requirements.
+  // |signed_data| is the base64 encoded signed string given by the device.
+  // |destination_udn| has no format requirements.
+  // |ssid| has no constraints.
+  // |bssid| should be in the human readable format: 00:11:22:33:44:55.
   virtual bool VerifyDestination(const std::string &certificate,
                                  const std::string &public_key,
                                  const std::string &nonce,
@@ -50,12 +59,14 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                                  const ResultBoolCallback &result_callback,
                                  Error *error);
 
-  // Encrypt |data| under |public_key|.  |public_key| is expected to be a
-  // base64 encode public half of an RSA key.  This is a fairly time consuming
+  // Encrypt |data| under |public_key|.  This is a fairly time consuming
   // process.  Returns true if we've succeeded in kicking off a job to an
   // external shim to sign the data.  |result_callback| will be called with the
   // results of the operation: an empty string and a descriptive error or the
   // base64 encoded bytes of the encrypted data.
+  //
+  // |public_key| is a base64 encoded DER RSAPublicKey format public key.
+  // |data| has no particular format requirements.
   virtual bool EncryptData(const std::string &public_key,
                            const std::string &data,
                            const ResultStringCallback &result_callback,
@@ -107,6 +118,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                            const Error &error);
 
   EventDispatcher *dispatcher_;
+  GLib *glib_;
   Minijail *minijail_;
   ProcessKiller *process_killer_;
   FileIO *file_io_;

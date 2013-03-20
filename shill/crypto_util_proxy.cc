@@ -12,8 +12,9 @@
 #include <base/stringprintf.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/process_killer.h"
 #include "shill/file_io.h"
+#include "shill/glib.h"
+#include "shill/process_killer.h"
 
 using base::Bind;
 using base::Callback;
@@ -35,8 +36,9 @@ const char CryptoUtilProxy::kCryptoUtilShimPath[] = SHIMDIR "/crypto-util";
 const char CryptoUtilProxy::kDestinationVerificationUser[] = "chronos";
 const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
 
-CryptoUtilProxy::CryptoUtilProxy(EventDispatcher *dispatcher)
+CryptoUtilProxy::CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib)
     : dispatcher_(dispatcher),
+      glib_(glib),
       minijail_(Minijail::GetInstance()),
       process_killer_(ProcessKiller::GetInstance()),
       file_io_(FileIO::GetInstance()),
@@ -63,7 +65,6 @@ bool CryptoUtilProxy::VerifyDestination(
     const string &bssid,
     const ResultBoolCallback &result_callback,
     Error *error) {
-  // TODO(wiley) Check that the MAC address looks right.
   string unsigned_data(reinterpret_cast<const char *>(&ssid[0]),
                        ssid.size());
   unsigned_data.append(StringPrintf(",%s,%s,%s,%s",
@@ -71,9 +72,16 @@ bool CryptoUtilProxy::VerifyDestination(
                                     bssid.c_str(),
                                     public_key.c_str(),
                                     nonce.c_str()));
+  string decoded_signed_data;
+  if (!glib_->B64Decode(signed_data, &decoded_signed_data)) {
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          "Failed to decode signed data.");
+    return false;
+  }
+
   VerifyCredentialsMessage message;
   message.set_certificate(certificate);
-  message.set_signed_data(signed_data);
+  message.set_signed_data(decoded_signed_data);
   message.set_unsigned_data(unsigned_data);
   message.set_mac_address(bssid);
 
@@ -101,10 +109,16 @@ bool CryptoUtilProxy::EncryptData(
     const string &data,
     const ResultStringCallback &result_callback,
     Error *error) {
-  EncryptDataMessage message;
-  message.set_public_key(public_key);
-  message.set_data(data);
+  string decoded_public_key;
+  if (!glib_->B64Decode(public_key, &decoded_public_key)) {
+    Error::PopulateAndLog(error, Error::kOperationFailed,
+                          "Unable to decode public key.");
+    return false;
+  }
 
+  EncryptDataMessage message;
+  message.set_public_key(decoded_public_key);
+  message.set_data(data);
   string raw_bytes;
   if (!message.SerializeToString(&raw_bytes)) {
     Error::PopulateAndLog(error, Error::kOperationFailed,
@@ -350,7 +364,14 @@ void CryptoUtilProxy::HandleEncryptResult(
     return;
   }
 
-  result_handler.Run(e, response.encrypted_data());
+  string encoded_data;
+  if (!glib_->B64Encode(response.encrypted_data(), &encoded_data)) {
+    e.Populate(Error::kInternalError, "Failed to encode result.");
+    result_handler.Run(e, "");
+    return;
+  }
+
+  result_handler.Run(e, encoded_data);
 }
 
 }  // namespace shill

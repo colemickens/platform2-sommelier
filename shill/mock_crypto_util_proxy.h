@@ -23,8 +23,8 @@ class MockCryptoUtilProxy
     : public CryptoUtilProxy,
       public base::SupportsWeakPtr<MockCryptoUtilProxy> {
  public:
-  MockCryptoUtilProxy(EventDispatcher *dispatcher)
-      : CryptoUtilProxy(dispatcher) {}
+  MockCryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib)
+      : CryptoUtilProxy(dispatcher, glib) {}
   virtual ~MockCryptoUtilProxy() {}
 
 
