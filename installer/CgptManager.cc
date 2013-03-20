@@ -43,7 +43,7 @@ CgptErrorCode CgptManager::ClearAll() {
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.zap = 0;
 
-  int retval = cgpt_create(&params);
+  int retval = CgptCreate(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -73,12 +73,12 @@ CgptErrorCode CgptManager::AddPartition(const string& label,
   params.size = num_sectors;
   params.set_size = 1;
 
-  if (!IsZero(&unique_id)) {
+  if (!GuidIsZero(&unique_id)) {
      params.unique_guid = unique_id;
      params.set_unique = 1;
   }
 
-  int retval = cgpt_add(&params);
+  int retval = CgptAdd(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -96,7 +96,7 @@ CgptErrorCode CgptManager::GetNumNonEmptyPartitions(uint8_t* num_partitions) con
   memset(&params, 0, sizeof(params));
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
-  int retval = cgpt_get_num_non_empty_partitions(&params);
+  int retval = CgptGetNumNonEmptyPartitions(&params);
 
   if (retval != CGPT_OK)
     return kCgptUnknownError;
@@ -121,7 +121,7 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
   params.partition = boot_partition_number;
   params.create_pmbr = should_create_legacy_partition;
 
-  int retval = cgpt_boot(&params);
+  int retval = CgptBoot(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -141,7 +141,7 @@ CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
 
   params.drive_name = const_cast<char *>(device_name_.c_str());
 
-  int retval = cgpt_get_boot_partition_number(&params);
+  int retval = CgptGetBootPartitionNumber(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -164,7 +164,7 @@ CgptErrorCode CgptManager::SetSuccessful(
   params.successful = is_successful;
   params.set_successful = true;
 
-  int retval = cgpt_set_attributes(&params);
+  int retval = CgptSetAttributes(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -185,7 +185,7 @@ CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -207,7 +207,7 @@ CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
   params.tries = numTries;
   params.set_tries = true;
 
-  int retval = cgpt_set_attributes(&params);
+  int retval = CgptSetAttributes(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -228,7 +228,7 @@ CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -250,7 +250,7 @@ CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
   params.priority = priority;
   params.set_priority = true;
 
-  int retval = cgpt_set_attributes(&params);
+  int retval = CgptSetAttributes(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -271,7 +271,7 @@ CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -293,7 +293,7 @@ CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -315,7 +315,7 @@ CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -337,7 +337,7 @@ CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -359,7 +359,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
   params.drive_name = const_cast<char *>(device_name_.c_str());
   params.partition = partition_number;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -383,7 +383,7 @@ CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
   params.unique_guid = unique_id;
   params.set_unique = 1;
 
-  int retval = cgpt_get_partition_details(&params);
+  int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -403,7 +403,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
   params.set_partition = partition_number;
   params.max_priority = highest_priority;
 
-  int retval = cgpt_prioritize(&params);
+  int retval = CgptPrioritize(&params);
   if (retval != CGPT_OK)
     return kCgptUnknownError;
 
@@ -411,7 +411,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
 }
 
 CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number) {
-  // The internal implementation in cgpt_prioritize automatically computes the
+  // The internal implementation in CgptPrioritize automatically computes the
   // right priority number if we supply 0 for the highest_priority argument.
   return SetHighestPriority(partition_number, 0);
 }

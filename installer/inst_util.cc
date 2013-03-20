@@ -482,7 +482,7 @@ string DumpKernelConfig(const string& kernel_dev) {
 
   // Map the kernel image blob.
   size_t blob_size;
-  uint8_t* blob = static_cast<uint8_t*>(MapFile(kernel_dev.c_str(),
+  uint8_t* blob = static_cast<uint8_t*>(MMapFile(kernel_dev.c_str(),
                                                 &blob_size));
 
   if (!blob) {
@@ -490,7 +490,7 @@ string DumpKernelConfig(const string& kernel_dev) {
     return result;
   }
 
-  uint8_t *config = find_kernel_config(blob,
+  uint8_t *config = FindKernelConfig(blob,
                                        static_cast<uint64_t>(blob_size),
                                        CROS_NO_ENTRY_ADDR);
   if (!config) {
