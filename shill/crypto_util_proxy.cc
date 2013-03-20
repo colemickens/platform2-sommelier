@@ -33,7 +33,7 @@ namespace shill {
 const char CryptoUtilProxy::kCommandEncrypt[] = "encrypt";
 const char CryptoUtilProxy::kCommandVerify[] = "verify";
 const char CryptoUtilProxy::kCryptoUtilShimPath[] = SHIMDIR "/crypto-util";
-const char CryptoUtilProxy::kDestinationVerificationUser[] = "chronos";
+const char CryptoUtilProxy::kDestinationVerificationUser[] = "shill-crypto";
 const int CryptoUtilProxy::kShimJobTimeoutMilliseconds = 30 * 1000;
 
 CryptoUtilProxy::CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib)
