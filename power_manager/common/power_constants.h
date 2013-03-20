@@ -11,9 +11,6 @@
 
 namespace power_manager {
 
-// TODO(derat): Move the values for these into this header and remove
-// power_constants.cc.
-
 // Preference names.
 extern const char kPluggedBrightnessOffsetPref[];
 extern const char kUnpluggedBrightnessOffsetPref[];
@@ -54,6 +51,9 @@ extern const char kDarkResumeSuspendDurationsPref[];
 extern const char kDarkResumeDevicesPref[];
 extern const char kDarkResumeSourcesPref[];
 extern const char kDarkResumeBatteryMarginsPref[];
+// Non-zero if the system should suspend instead of shutting down due to
+// user inactivity at the login screen.
+extern const char kSuspendAtLoginScreenPref[];
 
 // Miscellaneous constants.
 extern const char kInternalBacklightPath[];

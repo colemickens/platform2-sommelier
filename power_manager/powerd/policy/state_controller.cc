@@ -159,6 +159,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
+      suspend_at_login_screen_(false),
       has_lid_(true),
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
@@ -535,6 +536,7 @@ void StateController::LoadPrefs() {
                   &require_usb_input_device_to_suspend_);
   prefs_->GetBool(kKeepBacklightOnForAudioPref, &keep_screen_on_for_audio_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
+  prefs_->GetBool(kSuspendAtLoginScreenPref, &suspend_at_login_screen_);
   prefs_->GetBool(kUseLidPref, &has_lid_);
 
   CHECK(GetMillisecondPref(prefs_, kPluggedSuspendMsPref,
@@ -560,7 +562,9 @@ void StateController::UpdateSettingsAndState() {
   Action old_lid_closed_action = lid_closed_action_;
 
   // Start out with the defaults loaded from the power manager's prefs.
-  idle_action_ = session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN;
+  idle_action_ =
+      (session_state_ == SESSION_STARTED || suspend_at_login_screen_) ?
+      SUSPEND : SHUT_DOWN;
   lid_closed_action_ = session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN;
   delays_ = power_source_ == POWER_AC ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;

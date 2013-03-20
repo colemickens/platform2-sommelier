@@ -177,6 +177,7 @@ class StateControllerTest : public testing::Test {
         default_disable_idle_suspend_(0),
         default_require_usb_input_device_to_suspend_(0),
         default_keep_screen_on_for_audio_(0),
+        default_suspend_at_login_screen_(0),
         default_has_lid_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
@@ -204,6 +205,8 @@ class StateControllerTest : public testing::Test {
                           default_require_usb_input_device_to_suspend_));
     CHECK(prefs_.SetInt64(kKeepBacklightOnForAudioPref,
                           default_keep_screen_on_for_audio_));
+    CHECK(prefs_.SetInt64(kSuspendAtLoginScreenPref,
+                          default_suspend_at_login_screen_));
     CHECK(prefs_.SetInt64(kUseLidPref, default_has_lid_));
 
     test_api_.SetCurrentTime(now_);
@@ -288,6 +291,7 @@ class StateControllerTest : public testing::Test {
   int64 default_disable_idle_suspend_;
   int64 default_require_usb_input_device_to_suspend_;
   int64 default_keep_screen_on_for_audio_;
+  int64 default_suspend_at_login_screen_;
   int64 default_has_lid_;
 
   // Values passed by Init() to StateController::Init().
@@ -1141,6 +1145,17 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
   AdvanceTimeAndTriggerTimeout(kHalfInterval);
   EXPECT_EQ(kStopSession, delegate_.GetActions());
+}
+
+// Tests that when the suspend_at_login_screen pref is set, the system
+// suspends instead of shutting down due to user inactivity.
+TEST_F(StateControllerTest, SuspendAtLoginScreen) {
+  initial_session_state_ = SESSION_STOPPED;
+  default_suspend_at_login_screen_ = 1;
+  Init();
+  TriggerDefaultAcTimeouts();
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
+            delegate_.GetActions());
 }
 
 }  // namespace policy

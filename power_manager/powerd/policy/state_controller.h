@@ -305,6 +305,11 @@ class StateController : public PrefsObserver {
   // and overrides |policy_|.
   bool disable_idle_suspend_;
 
+  // When the user is inactive at the login screen, should the system
+  // suspend rather than shutting down?  This is controlled by the
+  // |kSuspendAtLoginScreenPref| pref.
+  bool suspend_at_login_screen_;
+
   // Does the system have a lid?
   bool has_lid_;
 
