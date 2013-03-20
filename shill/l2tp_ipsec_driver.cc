@@ -512,14 +512,14 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   // We output an enum for each of the authentication types specified,
   // even if more than one is set at the same time.
   bool has_remote_authentication = false;
-  if (args()->ContainsString(flimflam::kL2tpIpsecCaCertNssProperty)) {
+  if (args()->LookupString(flimflam::kL2tpIpsecCaCertNssProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecCertificate,
         Metrics::kMetricVpnRemoteAuthenticationTypeMax);
     has_remote_authentication = true;
   }
-  if (args()->ContainsString(flimflam::kL2tpIpsecPskProperty)) {
+  if (args()->LookupString(flimflam::kL2tpIpsecPskProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
@@ -534,14 +534,15 @@ void L2TPIPSecDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->ContainsString(flimflam::kL2tpIpsecClientCertIdProperty)) {
+  if (args()->LookupString(flimflam::kL2tpIpsecClientCertIdProperty,
+                           "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecCertificate,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->ContainsString(flimflam::kL2tpIpsecPasswordProperty)) {
+  if (args()->LookupString(flimflam::kL2tpIpsecPasswordProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,

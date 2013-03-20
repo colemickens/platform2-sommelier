@@ -897,8 +897,8 @@ void OpenVPNDriver::ReportConnectionMetrics() {
       Metrics::kVpnDriverOpenVpn,
       Metrics::kMetricVpnDriverMax);
 
-  if (args()->ContainsString(flimflam::kOpenVPNCaCertNSSProperty) ||
-      args()->ContainsString(flimflam::kOpenVPNCaCertProperty)) {
+  if (args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "") != "" ||
+      args()->LookupString(flimflam::kOpenVPNCaCertProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnRemoteAuthenticationType,
         Metrics::kVpnRemoteAuthenticationTypeOpenVpnCertificate,
@@ -911,23 +911,23 @@ void OpenVPNDriver::ReportConnectionMetrics() {
   }
 
   bool has_user_authentication = false;
-  if (args()->ContainsString(flimflam::kOpenVPNOTPProperty)) {
+  if (args()->LookupString(flimflam::kOpenVPNOTPProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePasswordOtp,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->ContainsString(flimflam::kOpenVPNAuthUserPassProperty) ||
-      args()->ContainsString(flimflam::kOpenVPNUserProperty))  {
+  if (args()->LookupString(flimflam::kOpenVPNAuthUserPassProperty, "") != ""||
+      args()->LookupString(flimflam::kOpenVPNUserProperty, "") != "")  {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnUsernamePassword,
         Metrics::kMetricVpnUserAuthenticationTypeMax);
     has_user_authentication = true;
   }
-  if (args()->ContainsString(flimflam::kOpenVPNClientCertIdProperty) ||
-      args()->ContainsString(kOpenVPNCertProperty)) {
+  if (args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "") != "" ||
+      args()->LookupString(kOpenVPNCertProperty, "") != "") {
     metrics_->SendEnumToUMA(
         Metrics::kMetricVpnUserAuthenticationType,
         Metrics::kVpnUserAuthenticationTypeOpenVpnCertificate,

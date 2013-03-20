@@ -632,8 +632,8 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   Error unused_error;
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  store.SetStringProperty(flimflam::kL2tpIpsecPskProperty, "", &unused_error);
-  store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "",
+  store.SetStringProperty(flimflam::kL2tpIpsecPskProperty, "x", &unused_error);
+  store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "y",
                           &unused_error);
 
   InvokeNotify(kL2TPIPSecReasonConnect, config);

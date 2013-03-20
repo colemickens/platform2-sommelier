@@ -342,9 +342,9 @@ TEST_F(OpenVPNDriverTest, NotifyUMA) {
   Error unused_error;
   PropertyStore store;
   driver_->InitPropertyStore(&store);
-  store.SetStringProperty(flimflam::kOpenVPNCaCertProperty, "",
+  store.SetStringProperty(flimflam::kOpenVPNCaCertProperty, "x",
                           &unused_error);
-  store.SetStringProperty(flimflam::kOpenVPNUserProperty, "",
+  store.SetStringProperty(flimflam::kOpenVPNUserProperty, "y",
                           &unused_error);
   driver_->Notify("up", config);
 }
