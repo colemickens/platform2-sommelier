@@ -18,6 +18,7 @@
 namespace debugd {
 
 const char *kShell = "/bin/sh";
+const char *kDebugfsGroup = "debugfs-access";
 
 using std::string;
 using std::vector;
@@ -84,15 +85,34 @@ static const Log common_logs[] = {
   { "dmesg", "/bin/dmesg" },
   { "ec_info", "/bin/cat /var/log/ec_info.txt" },
   { "eventlog", "/bin/cat /var/log/eventlog.txt" },
-  { "exynos_gem_objects",
-        "/bin/cat /sys/kernel/debug/dri/0/exynos_gem_objects" },
+  {
+    "exynos_gem_objects",
+    "/bin/cat /sys/kernel/debug/dri/0/exynos_gem_objects",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup
+  },
   { "font_info", "/usr/share/userfeedback/scripts/font_info" },
   { "hardware_class", "/usr/bin/crossystem hwid" },
   { "hostname", "/bin/hostname" },
   { "hw_platform", "/usr/bin/uname -i" },
-  { "i915_gem_gtt", "/bin/cat /sys/kernel/debug/dri/0/i915_gem_gtt" },
-  { "i915_gem_objects", "/bin/cat /sys/kernel/debug/dri/0/i915_gem_objects" },
-  { "i915_error_state", "/bin/cat /sys/kernel/debug/dri/0/i915_error_state" },
+  {
+    "i915_gem_gtt",
+    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_gtt",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup
+  },
+  {
+    "i915_gem_objects",
+    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_objects",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup
+  },
+  {
+    "i915_error_state",
+    "/bin/cat /sys/kernel/debug/dri/0/i915_error_state",
+    SandboxedProcess::kDefaultUser,
+    kDebugfsGroup,
+  },
   { "ifconfig", "/sbin/ifconfig -a" },
   { "kernel-crashes", "/bin/cat /var/spool/crash/kernel.*.kcrash" },
   { "lsmod", "lsmod" },

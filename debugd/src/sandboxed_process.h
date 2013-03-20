@@ -22,6 +22,9 @@ class SandboxedProcess : public chromeos::ProcessImpl {
   // Change the default sandboxing for this process
   virtual void SandboxAs(const std::string& user, const std::string& group);
 
+  static const char *kDefaultUser;
+  static const char *kDefaultGroup;
+
  private:
   bool sandboxing_;
   std::string user_;
