@@ -426,6 +426,9 @@ std::string StateController::GetPolicyDebugString(
            base::DoubleToString(policy.presentation_idle_delay_factor()) + " ";
   }
 
+  if (policy.has_reason())
+    str += "(" + policy.reason() + ")";
+
   return str.empty() ? "[empty]" : str;
 }
 
