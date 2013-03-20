@@ -35,6 +35,8 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
 
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;
+  // Make sure to remap address for security reasons.
+  perf_serializer.set_do_remap(true);
   bool result = perf_serializer.SerializeFromFile(temp_file, perf_data);
 
   if (remove(temp_file.c_str()))
