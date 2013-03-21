@@ -16,6 +16,7 @@
 #include "base/file_util.h"
 #include "base/logging.h"
 #include "base/posix/eintr_wrapper.h"
+#include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "chromeos/process.h"
 #include "gflags/gflags.h"
@@ -37,6 +38,7 @@ DEFINE_bool(nat_traversal, true, "Enable NAT-T nat traversal");
 DEFINE_bool(pfs, false, "pfs");
 DEFINE_bool(rekey, true, "rekey");
 DEFINE_string(rightprotoport, "17/1701", "server protocol/port");
+DEFINE_string(tunnel_group, "", "Cisco Tunnel Group Name");
 DEFINE_string(type, "transport", "IPsec type (transport or tunnel)");
 #pragma GCC diagnostic error "-Wstrict-aliasing"
 
@@ -323,6 +325,14 @@ std::string IpsecManager::FormatStarterConfigFile() {
                                          kSmartcardModuleName,
                                          client_cert_id_.c_str());
     AppendStringSetting(&config, "leftcert", smartcard);
+  }
+  std::string tunnel_group = FLAGS_tunnel_group;
+  if (!tunnel_group.empty()) {
+    AppendStringSetting(&config, "aggressive", "yes");
+    std::string hex_tunnel_id =
+      base::HexEncode(tunnel_group.c_str(), tunnel_group.length());
+    std::string left_id = StringPrintf("@#%s", hex_tunnel_id.c_str());
+    AppendStringSetting(&config, "leftid", left_id);
   }
   AppendStringSetting(&config, "leftprotoport", FLAGS_leftprotoport);
   AppendStringSetting(&config, "leftupdown", IPSEC_UPDOWN);
