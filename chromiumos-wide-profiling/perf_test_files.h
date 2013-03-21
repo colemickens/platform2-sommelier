@@ -15,6 +15,7 @@ const char* kPerfDataFiles[] = {
   "perf.data.busy.0",
   "perf.data.busy.1",
   "perf.data.busy.5",
+  "perf.data.forkexit",
 };
 
 }  // namespace perf_test_files

@@ -83,7 +83,6 @@ class PerfParser : public PerfReader {
   bool MapSampleEvent(struct ip_event*);
   bool MapMmapEvent(struct mmap_event*);
   bool MapForkEvent(const struct fork_event&);
-  bool MapExitEvent(const struct fork_event&);
 
   // Does a sample event remap and then returns DSO name and offset of sample.
   bool MapSampleEventAndGetNameAndOffset(struct ip_event* event,

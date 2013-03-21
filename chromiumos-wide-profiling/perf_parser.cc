@@ -335,7 +335,6 @@ bool PerfParser::ProcessEvents() {
         CHECK_EQ(event.fork.pid, event.fork.ppid);
         CHECK_EQ(event.fork.tid, event.fork.ptid);
         ++stats_.num_exit_events;
-        CHECK(MapExitEvent(event.fork)) << "Unable to map EXIT event!";
         break;
       case PERF_RECORD_LOST:
       case PERF_RECORD_COMM:
@@ -443,12 +442,12 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event) {
 bool PerfParser::MapForkEvent(const struct fork_event& event) {
   uint32 pid = event.pid;
   if (pid == event.ppid) {
-    LOG(ERROR) << "Forked process should not have the same pid as the parent.";
-    return false;
+    DLOG(INFO) << "Forked process should not have the same pid as the parent.";
+    return true;
   }
   if (process_mappers_.find(pid) != process_mappers_.end()) {
-    LOG(ERROR) << "Found an existing process mapper with the new process's ID.";
-    return false;
+    DLOG(INFO) << "Found an existing process mapper with the new process's ID.";
+    return true;
   }
   if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end()) {
     LOG(ERROR) << "Forked process ID has previously been mapped to a parent "
@@ -458,32 +457,6 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
 
   process_mappers_[pid] = new AddressMapper;
   child_to_parent_pid_map_[pid] = event.ppid;
-  return true;
-}
-
-bool PerfParser::MapExitEvent(const struct fork_event& event) {
-  uint32 pid = event.pid;
-  // An exit event may not correspond to a previously processed fork event.
-  // There can be redundant process events (from looking at "perf report -D"),
-  // or the exiting process could have been created before "perf record" began.
-  // So it is not necessarily a problem if there is no existing process mapping.
-
-  // However, if the child-to-parent mapping exists (there was a fork event), so
-  // must the process mapper.
-  if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end() &&
-      process_mappers_.find(pid) == process_mappers_.end()) {
-    LOG(ERROR) << "Could not find process mapper for exiting process.";
-    return false;
-  }
-
-  if (process_mappers_.find(pid) != process_mappers_.end()) {
-    delete process_mappers_[pid];
-    process_mappers_.erase(pid);
-  }
-
-  if (child_to_parent_pid_map_.find(pid) != child_to_parent_pid_map_.end())
-    child_to_parent_pid_map_.erase(pid);
-
   return true;
 }
 
