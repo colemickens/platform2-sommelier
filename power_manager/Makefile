@@ -56,7 +56,6 @@ SYSTEM_API_PROTO_BINDINGS = \
 	power_manager/input_event.pb.cc \
 	power_manager/policy.pb.cc \
 	power_manager/suspend.pb.cc \
-	power_state_control.pb.cc \
 	power_supply_properties.pb.cc \
 	video_activity_update.pb.cc
 SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus

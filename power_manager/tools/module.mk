@@ -24,21 +24,6 @@ CXX_BINARY(tools/power-supply-info): LDLIBS += $(POWERSUPPLY_LIBS)
 clean: CLEAN(tools/power-supply-info)
 all: CXX_BINARY(tools/power-supply-info)
 
-power_state_tool.o.depends: power_state_control.pb.h
-POWERSTATETOOL_DEPS = libchromeos-$(BASE_VER)
-POWERSTATETOOL_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
-                       $(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))
-POWERSTATETOOL_LIBS = $(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lprotobuf-lite \
-                      $(shell $(PKG_CONFIG) --libs $(POWERSTATETOOL_DEPS))
-POWERSTATETOOL_OBJS = power_state_control.pb.o tools/power_state_tool.o \
-                      common/power_constants.o
-CXX_BINARY(tools/power_state_tool): $(POWERSTATETOOL_OBJS) \
-	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a)
-CXX_BINARY(tools/power_state_tool): CPPFLAGS += $(POWERSTATETOOL_FLAGS)
-CXX_BINARY(tools/power_state_tool): LDLIBS += $(POWERSTATETOOL_LIBS)
-clean: CXX_BINARY(tools/power_state_tool)
-all: CXX_BINARY(tools/power_state_tool)
-
 BACKLIGHTDBUSTOOL_DEPS = libchromeos-$(BASE_VER)
 BACKLIGHTDBUSTOOL_FLAGS = $(GLIB_FLAGS) $(DBUS_FLAGS) \
 	$(shell $(PKG_CONFIG) --cflags $(POWERSTATETOOL_DEPS))

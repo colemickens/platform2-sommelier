@@ -824,46 +824,6 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
             delegate_.GetActions());
 }
 
-// Tests that state overrides are honored.
-TEST_F(StateControllerTest, Overrides) {
-  Init();
-
-  // Override everything.  The idle timeout should fire but do nothing.
-  controller_.HandleOverrideChange(true /* override_screen_dim */,
-                                   true /* override_screen_off */,
-                                   true /* override_idle_suspend */,
-                                   true /* override_lid_suspend */);
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_CLOSED);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_OPEN);
-
-  // Override the suspend properties but not the screen-related delays and
-  // check that the controller dims and turns off the screen but doesn't
-  // suspend the system.
-  controller_.HandleOverrideChange(false /* override_screen_dim */,
-                                   false /* override_screen_off */,
-                                   true /* override_idle_suspend */,
-                                   true /* override_lid_suspend */);
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_CLOSED);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-
-  // If the lid override is removed while the lid is still closed, the
-  // system should suspend immediately.
-  controller_.HandleOverrideChange(false /* override_screen_dim */,
-                                   false /* override_screen_off */,
-                                   true /* override_idle_suspend */,
-                                   false /* override_lid_suspend */);
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
-}
-
 // Tests that the controller does something reasonable when given delays
 // that don't make sense.
 TEST_F(StateControllerTest, InvalidDelays) {

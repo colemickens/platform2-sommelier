@@ -47,8 +47,6 @@ namespace power_manager {
 class DBusSenderInterface;
 class PowerSupply;
 class Prefs;
-class StateControl;
-class StateController;
 
 namespace policy {
 class StateController;
@@ -58,8 +56,6 @@ namespace system {
 class AudioClient;
 class Input;
 }  // namespace system
-
-typedef std::vector<int64> IdleThresholds;
 
 enum PluggedState {
   PLUGGED_STATE_DISCONNECTED,
@@ -114,7 +110,6 @@ class Daemon : public BacklightControllerObserver,
   void Init();
   void Run();
   void SetActive();
-  void UpdateIdleStates();
   void SetPlugged(bool plugged);
 
   void OnRequestRestart();
@@ -299,11 +294,8 @@ class Daemon : public BacklightControllerObserver,
   DBusMessage* HandleSetScreenBrightnessMethod(DBusMessage* message);
   DBusMessage* HandleDecreaseKeyboardBrightnessMethod(DBusMessage* message);
   DBusMessage* HandleIncreaseKeyboardBrightnessMethod(DBusMessage* message);
-  DBusMessage* HandleGetIdleTimeMethod(DBusMessage* message);
   DBusMessage* HandleRequestIdleNotificationMethod(DBusMessage* message);
   DBusMessage* HandleGetPowerSupplyPropertiesMethod(DBusMessage* message);
-  DBusMessage* HandleStateOverrideRequestMethod(DBusMessage* message);
-  DBusMessage* HandleStateOverrideCancelMethod(DBusMessage* message);
   DBusMessage* HandleVideoActivityMethod(DBusMessage* message);
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
@@ -599,11 +591,6 @@ class Daemon : public BacklightControllerObserver,
 
   // Persistent storage for metrics that need to exist for more then one session
   MetricsStore metrics_store_;
-
-  // The state_control_ class manages requests to disable different parts
-  // of the state machine.  kiosk mode and autoupdate are clients of this
-  // as they may need to disable different idle timeouts when they are running
-  scoped_ptr<StateControl> state_control_;
 
   // Value returned when we add a timer for polling the power supply. This is
   // needed for removing the timer when we want to interrupt polling.

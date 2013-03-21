@@ -30,10 +30,8 @@
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/power_supply.h"
-#include "power_manager/powerd/state_control.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/input.h"
-#include "power_state_control.pb.h"
 #include "power_supply_properties.pb.h"
 #include "video_activity_update.pb.h"
 
@@ -222,7 +220,6 @@ Daemon::Daemon(BacklightController* backlight_controller,
       battery_discharge_rate_metric_last_(0),
       current_session_state_(SESSION_STOPPED),
       udev_(NULL),
-      state_control_(new StateControl(this)),
       poll_power_supply_timer_id_(0),
       shutdown_reason_(kShutdownReasonUnknown),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
@@ -382,24 +379,12 @@ void Daemon::ReadSettings() {
   LOG(INFO) << "Using battery polling interval of " << battery_poll_interval_ms_
             << " mS and short interval of " << battery_poll_short_interval_ms_
             << " mS";
-
-  state_control_->ReadSettings(prefs_);
 }
 
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
   ResumePollPowerSupply();
   g_main_loop_run(loop);
-}
-
-void Daemon::UpdateIdleStates() {
-  if (state_controller_initialized_) {
-    state_controller_->HandleOverrideChange(
-        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM),
-        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK),
-        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND),
-        state_control_->IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
-  }
 }
 
 void Daemon::SetPlugged(bool plugged) {
@@ -499,7 +484,7 @@ void Daemon::IdleEventNotify(int64 threshold) {
   DBusMessage* signal = dbus_message_new_signal(
       kPowerManagerServicePath,
       kPowerManagerInterface,
-      threshold ? kIdleNotifySignal : kActiveNotifySignal);
+      kIdleNotifySignal);
   CHECK(signal);
   dbus_message_append_args(signal,
                            DBUS_TYPE_INT64, &threshold_int,
@@ -799,10 +784,6 @@ void Daemon::RegisterDBusMessageHandler() {
                  base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
-      kGetIdleTime,
-      base::Bind(&Daemon::HandleGetIdleTimeMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
-      kPowerManagerInterface,
       kRequestIdleNotification,
       base::Bind(&Daemon::HandleRequestIdleNotificationMethod,
                  base::Unretained(this)));
@@ -810,16 +791,6 @@ void Daemon::RegisterDBusMessageHandler() {
       kPowerManagerInterface,
       kGetPowerSupplyPropertiesMethod,
       base::Bind(&Daemon::HandleGetPowerSupplyPropertiesMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
-      kPowerManagerInterface,
-      kStateOverrideRequest,
-      base::Bind(&Daemon::HandleStateOverrideRequestMethod,
-                 base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
-      kPowerManagerInterface,
-      kStateOverrideCancel,
-      base::Bind(&Daemon::HandleStateOverrideCancelMethod,
                  base::Unretained(this)));
   dbus_handler_.AddDBusMethodHandler(
       kPowerManagerInterface,
@@ -1042,20 +1013,6 @@ DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
   return NULL;
 }
 
-DBusMessage* Daemon::HandleGetIdleTimeMethod(DBusMessage* message) {
-  int64 idle_time_ms = 0;
-  base::TimeDelta interval =
-      base::TimeTicks::Now() - state_controller_->last_user_activity_time();
-  idle_time_ms = interval.InMilliseconds();
-
-  DBusMessage* reply = util::CreateEmptyDBusReply(message);
-  CHECK(reply);
-  dbus_message_append_args(reply,
-                           DBUS_TYPE_INT64, &idle_time_ms,
-                           DBUS_TYPE_INVALID);
-  return reply;
-}
-
 DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
@@ -1107,42 +1064,6 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
       status->averaged_battery_time_to_full);
 
   return util::CreateDBusProtocolBufferReply(message, protobuf);
-}
-
-DBusMessage* Daemon::HandleStateOverrideRequestMethod(DBusMessage* message) {
-  PowerStateControl protobuf;
-  int return_value = 0;
-  if (util::ParseProtocolBufferFromDBusMessage(message, &protobuf) &&
-      state_control_->StateOverrideRequest(protobuf, &return_value)) {
-    state_controller_->HandleOverrideChange(
-        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_DIM),
-        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_BLANK),
-        state_control_->IsStateDisabled(STATE_CONTROL_IDLE_SUSPEND),
-        state_control_->IsStateDisabled(STATE_CONTROL_LID_SUSPEND));
-    DBusMessage* reply = util::CreateEmptyDBusReply(message);
-    dbus_message_append_args(reply,
-                             DBUS_TYPE_INT32, &return_value,
-                             DBUS_TYPE_INVALID);
-    return reply;
-  }
-  return util::CreateDBusErrorReply(message, "Failed processing request");
-}
-
-DBusMessage* Daemon::HandleStateOverrideCancelMethod(DBusMessage* message) {
-  DBusError error;
-  dbus_error_init(&error);
-  int request_id;
-  if (dbus_message_get_args(message, &error,
-                            DBUS_TYPE_INT32, &request_id,
-                            DBUS_TYPE_INVALID)) {
-    state_control_->RemoveOverrideAndUpdate(request_id);
-  } else {
-    LOG(WARNING) << kStateOverrideCancel << ": Error reading args: "
-                 << error.message;
-    dbus_error_free(&error);
-    return util::CreateDBusInvalidArgsErrorReply(message);
-  }
-  return NULL;
 }
 
 DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {

@@ -137,10 +137,6 @@ class StateController : public PrefsObserver {
   void HandleDisplayModeChange(DisplayMode mode);
   void HandleResume();
   void HandlePolicyChange(const PowerManagementPolicy& policy);
-  void HandleOverrideChange(bool override_screen_dim,
-                            bool override_screen_off,
-                            bool override_idle_suspend,
-                            bool override_lid_suspend);
 
   // Handles notification of different types of activity.
   void HandleUserActivity();
@@ -335,13 +331,6 @@ class StateController : public PrefsObserver {
   // Default settings loaded from prefs.
   Delays pref_ac_delays_;
   Delays pref_battery_delays_;
-
-  // Temporary state overrides passed via StateOverrideRequest.
-  // TODO(derat): Make Chrome use PowerManagementPolicy for this instead.
-  bool override_screen_dim_;
-  bool override_screen_off_;
-  bool override_idle_suspend_;
-  bool override_lid_suspend_;
 
   DISALLOW_COPY_AND_ASSIGN(StateController);
 };

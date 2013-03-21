@@ -164,11 +164,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
       use_audio_activity_(true),
-      use_video_activity_(true),
-      override_screen_dim_(false),
-      override_screen_off_(false),
-      override_idle_suspend_(false),
-      override_lid_suspend_(false) {
+      use_video_activity_(true) {
   prefs_->AddObserver(this);
 }
 
@@ -283,29 +279,6 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
   VLOG(1) << "Received updated external policy: "
           << GetPolicyDebugString(policy);
   policy_ = policy;
-  UpdateSettingsAndState();
-}
-
-void StateController::HandleOverrideChange(bool override_screen_dim,
-                                           bool override_screen_off,
-                                           bool override_idle_suspend,
-                                           bool override_lid_suspend) {
-  DCHECK(initialized_);
-  if (override_screen_dim == override_screen_dim_ &&
-      override_screen_off == override_screen_off_ &&
-      override_idle_suspend == override_idle_suspend_ &&
-      override_lid_suspend == override_lid_suspend_)
-    return;
-
-  VLOG(1) << "Overrides changed:"
-          << " override_dim=" << override_screen_dim
-          << " override_off=" << override_screen_off
-          << " override_idle_suspend=" << override_idle_suspend
-          << " override_lid_suspend=" << override_lid_suspend;
-  override_screen_dim_ = override_screen_dim;
-  override_screen_off_ = override_screen_off;
-  override_idle_suspend_ = override_idle_suspend;
-  override_lid_suspend_ = override_lid_suspend;
   UpdateSettingsAndState();
 }
 
@@ -625,22 +598,6 @@ void StateController::UpdateSettingsAndState() {
   if (updater_state_ == UPDATER_UPDATING && power_source_ == POWER_AC &&
       (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
     idle_action_ = DO_NOTHING;
-
-  // Finally, apply temporary state overrides.
-  // Screen-related overrides are only honored if the external policy
-  // has not specified that video activity should be disregarded.
-  if (use_video_activity_) {
-    if (override_screen_dim_)
-      delays_.screen_dim = base::TimeDelta();
-    if (override_screen_off_)
-      delays_.screen_off = base::TimeDelta();
-    if (override_screen_dim_ || override_screen_off_)
-      delays_.screen_lock = base::TimeDelta();
-  }
-  if (override_idle_suspend_ && idle_action_ == SUSPEND)
-    idle_action_ = DO_NOTHING;
-  if (override_lid_suspend_ && lid_closed_action_ == SUSPEND)
-    lid_closed_action_ = DO_NOTHING;
 
   // If the idle or lid-closed actions changed, make sure that we perform
   // the new actions in the event that the system is already idle or the

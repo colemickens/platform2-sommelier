@@ -30,7 +30,6 @@ clean: CLEAN(powerd/libbacklight_controller.pie.a)
 
 powerd/powerd.o.depends: power_supply_properties.pb.h
 powerd/powerd.o.depends: video_activity_update.pb.h
-powerd/state_control.o.depends: power_supply_properties.pb.h
 LIBPOWERD_DEPS = libchromeos-$(BASE_VER) libcras
 LIBPOWERD_FLAGS = \
 	$(GLIB_FLAGS) $(DBUS_FLAGS) \
@@ -47,11 +46,9 @@ LIBPOWERD_OBJS = \
 	powerd/powerd.o \
 	powerd/power_supply.o \
 	powerd/rolling_average.o \
-	powerd/state_control.o \
 	powerd/suspend_delay_controller.o \
 	powerd/suspender.o \
 	power_manager/suspend.pb.o \
-	power_state_control.pb.o \
 	power_supply_properties.pb.o \
 	video_activity_update.pb.o
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): $(LIBPOWERD_OBJS)
@@ -94,7 +91,6 @@ POWERD_UNITTEST_OBJS = \
 	powerd/powerd_unittest.o \
 	powerd/power_supply_unittest.o \
 	powerd/rolling_average_unittest.o \
-	powerd/state_control_unittest.o \
 	powerd/suspend_delay_controller_unittest.o \
 	powerd/suspender_unittest.o
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
