@@ -79,7 +79,8 @@ Input::Input()
     : lid_fd_(-1),
       num_power_key_events_(0),
       num_lid_events_(0),
-      wakeups_enabled_(true) {}
+      wakeups_enabled_(true),
+      console_fd_(-1) {}
 
 Input::~Input() {
   for (InputMap::iterator iter = registered_inputs_.begin();
@@ -87,8 +88,11 @@ Input::~Input() {
        ++iter) {
     CloseIOChannel(&iter->second);
   }
+
   if (lid_fd_ >= 0)
     close(lid_fd_);
+  if (console_fd_ >= 0)
+    close(console_fd_);
 }
 
 bool Input::Init(const vector<string>& wakeup_input_names) {
@@ -105,6 +109,9 @@ bool Input::Init(const vector<string>& wakeup_input_names) {
   // Don't bother doing anything if we're running under a test.
   if (!sysfs_input_path_for_testing_.empty())
     return true;
+
+  if ((console_fd_ = open(kConsolePath, O_WRONLY)) == -1)
+    PLOG(ERROR) << "Unable to open " << kConsolePath;
 
   RegisterUdevEventHandler();
   RegisterInputWakeSources();
@@ -182,6 +189,15 @@ bool Input::IsUSBInputDeviceConnected() const {
       return true;
   }
   return false;
+}
+
+int Input::GetActiveVT() {
+  struct vt_stat state;
+  if (ioctl(console_fd_, VT_GETSTATE, &state) == -1) {
+    PLOG(ERROR) << "VT_GETSTATE ioctl on " << kConsolePath << "failed";
+    return -1;
+  }
+  return state.v_active;
 }
 
 bool Input::SetWakeInputsState(bool enable) {
@@ -461,7 +477,8 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     if (IS_BIT_SET(KEY_POWER, keys)) {
       LOG(INFO) << "Watching this event for power button!";
       channel = g_io_channel_unix_new(fd);
-      watch_id = g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
+      watch_id = g_io_add_watch(
+          channel, G_IO_IN, &Input::HandleInputEventThunk, this);
       num_power_key_events_++;
       watch_added = true;
     }
@@ -482,8 +499,8 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
       if (!watch_added) {
         LOG(INFO) << "Watching this event for lid switch!";
         channel = g_io_channel_unix_new(fd);
-        watch_id =
-            g_io_add_watch(channel, G_IO_IN, &(Input::EventHandler), this);
+        watch_id = g_io_add_watch(
+            channel, G_IO_IN, &(Input::HandleInputEventThunk), this);
         watch_added = true;
       } else {
         LOG(INFO) << "Watched event also has a lid!";
@@ -496,9 +513,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   if (!watch_added)
     return false;
 
-  IOChannelWatch desc;
-  desc.channel = channel;
-  desc.source_id = watch_id;
+  IOChannelWatch desc(channel, watch_id);
   // The watch id should be valid if there was a successful event registration.
   // Thus, if the id turns out to be invalid, log a warning instead of failing
   // or skipping this part.
@@ -507,12 +522,9 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   return true;
 }
 
-gboolean Input::UdevEventHandler(GIOChannel* /* source */,
-                                 GIOCondition /* condition */,
-                                 gpointer data) {
-  Input* input = static_cast<Input*>(data);
-
-  struct udev_device* dev = udev_monitor_receive_device(input->udev_monitor_);
+gboolean Input::HandleUdevEvent(GIOChannel* /* source */,
+                                GIOCondition /* condition */) {
+  struct udev_device* dev = udev_monitor_receive_device(udev_monitor_);
   if (dev) {
     const char* action = udev_device_get_action(dev);
     const char* sysname = udev_device_get_sysname(dev);
@@ -524,14 +536,14 @@ gboolean Input::UdevEventHandler(GIOChannel* /* source */,
               << udev_device_get_sysname(dev);
     if (strncmp(kEventBaseName, sysname, strlen(kEventBaseName)) == 0) {
       if (strcmp("add", action) == 0)
-        input->AddEvent(sysname);
+        AddEvent(sysname);
       else if (strcmp("remove", action) == 0)
-        input->RemoveEvent(sysname);
+        RemoveEvent(sysname);
     } else if (strncmp(kInputBaseName, sysname, strlen(kInputBaseName)) == 0) {
       if (strcmp("add", action) == 0)
-        input->AddWakeInput(sysname);
+        AddWakeInput(sysname);
       else if (strcmp("remove", action) == 0)
-        input->RemoveWakeInput(sysname);
+        RemoveWakeInput(sysname);
     }
     udev_device_unref(dev);
   } else {
@@ -561,15 +573,13 @@ void Input::RegisterUdevEventHandler() {
   int fd = udev_monitor_get_fd(udev_monitor_);
 
   GIOChannel* channel = g_io_channel_unix_new(fd);
-  g_io_add_watch(channel, G_IO_IN, &(Input::UdevEventHandler), this);
+  g_io_add_watch(channel, G_IO_IN, &Input::HandleUdevEventThunk, this);
 
   LOG(INFO) << "Udev controller waiting for events on subsystem "
             << kInputUdevSubsystem;
 }
 
-gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
-                             gpointer data) {
-  Input* input = static_cast<Input*>(data);
+gboolean Input::HandleInputEvent(GIOChannel* source, GIOCondition condition) {
   if (condition != G_IO_IN)
     return false;
   struct input_event events[64];
@@ -595,7 +605,7 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
     switch (input_type) {
       case INPUT_LID: {
         LidState state = events[i].value == 1 ? LID_CLOSED : LID_OPEN;
-        FOR_EACH_OBSERVER(InputObserver, input->observers_, OnLidEvent(state));
+        FOR_EACH_OBSERVER(InputObserver, observers_, OnLidEvent(state));
         break;
       }
       case INPUT_POWER_BUTTON: {
@@ -606,8 +616,7 @@ gboolean Input::EventHandler(GIOChannel* source, GIOCondition condition,
           case 2: state = BUTTON_REPEAT;  break;
           default: LOG(ERROR) << "Unhandled button state " << events[i].value;
         }
-        FOR_EACH_OBSERVER(InputObserver, input->observers_,
-                          OnPowerButtonEvent(state));
+        FOR_EACH_OBSERVER(InputObserver, observers_, OnPowerButtonEvent(state));
       }
       case INPUT_UNHANDLED:
         break;

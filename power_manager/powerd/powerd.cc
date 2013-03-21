@@ -184,12 +184,12 @@ Daemon::Daemon(BacklightController* backlight_controller,
       dbus_sender_(
           new DBusSender(kPowerManagerServicePath, kPowerManagerInterface)),
       input_(new system::Input),
-      input_controller_(
-          new policy::InputController(input_.get(), this, dbus_sender_.get(),
-                                      run_dir)),
-      audio_client_(new system::AudioClient),
       state_controller_(new policy::StateController(
           state_controller_delegate_.get(), prefs_)),
+      input_controller_(new policy::InputController(
+          input_.get(), this, backlight_controller, state_controller_.get(),
+          dbus_sender_.get(), run_dir)),
+      audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
@@ -234,7 +234,6 @@ Daemon::~Daemon() {
   peripheral_battery_watcher_->RemoveObserver(this);
   audio_client_->RemoveObserver(this);
   backlight_controller_->RemoveObserver(this);
-
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
@@ -629,12 +628,6 @@ void Daemon::HandleLidOpened() {
   suspender_.HandleLidOpened();
   if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(LID_OPEN);
-}
-
-void Daemon::EnsureBacklightIsOn() {
-  // If the user manually set the brightness to 0, increase it a bit:
-  // http://crosbug.com/32570
-  backlight_controller_->IncreaseUserBrightness(true /* only_if_zero */);
 }
 
 void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
@@ -1406,7 +1399,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str,
 
 #ifndef IS_DESKTOP
   // If the backlight was manually turned off by the user, turn it back on.
-  EnsureBacklightIsOn();
+  backlight_controller_->IncreaseUserBrightness(true /* only_if_zero */);
 #endif
 }
 

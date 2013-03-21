@@ -169,7 +169,6 @@ class Daemon : public BacklightControllerObserver,
   // Overridden from policy::InputController::Delegate:
   virtual void HandleLidClosed() OVERRIDE;
   virtual void HandleLidOpened() OVERRIDE;
-  virtual void EnsureBacklightIsOn() OVERRIDE;
   virtual void SendPowerButtonMetric(bool down, base::TimeTicks timestamp)
       OVERRIDE;
 
@@ -521,9 +520,9 @@ class Daemon : public BacklightControllerObserver,
 
   scoped_ptr<DBusSenderInterface> dbus_sender_;
   scoped_ptr<system::Input> input_;
+  scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<policy::InputController> input_controller_;
   scoped_ptr<system::AudioClient> audio_client_;
-  scoped_ptr<policy::StateController> state_controller_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
 
   int64 low_battery_shutdown_time_s_;

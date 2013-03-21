@@ -15,6 +15,7 @@
 #include "base/callback.h"
 #include "base/observer_list.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/signal_callback.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
@@ -51,6 +52,9 @@ class Input {
   // devices whose paths contain "usb".
   bool IsUSBInputDeviceConnected() const;
 
+  // Returns the (1-indexed) number of the currently-active virtual terminal.
+  int GetActiveVT();
+
   // Enable or disable special wakeup input devices.
   bool SetWakeInputsState(bool enable);
 
@@ -66,6 +70,12 @@ class Input {
 
  private:
   struct IOChannelWatch {
+    IOChannelWatch() : channel(NULL), source_id(0) {}
+    IOChannelWatch(GIOChannel* channel, guint source_id)
+        : channel(channel),
+          source_id(source_id) {
+    }
+
     GIOChannel* channel;
     guint source_id;
   };
@@ -101,17 +111,16 @@ class Input {
   // file handle could have been for something other than the power key or lid.
   bool RegisterInputEvent(int fd, int event_num);
 
-  static gboolean UdevEventHandler(GIOChannel* source,
-                                   GIOCondition condition,
-                                   gpointer data);
+  SIGNAL_CALLBACK_2(Input, gboolean, HandleUdevEvent, GIOChannel*,
+                    GIOCondition);
+
   void RegisterUdevEventHandler();
 
   // Event handler for input events. |source| contains the IO Channel that has
   // changed. |condition| contains the condition of change. |data| contains a
   // pointer to an Input object.
-  static gboolean EventHandler(GIOChannel* source,
-                               GIOCondition condition,
-                               gpointer data);
+  SIGNAL_CALLBACK_2(Input, gboolean, HandleInputEvent, GIOChannel*,
+                    GIOCondition);
 
   int lid_fd_;
   int num_power_key_events_;
@@ -120,11 +129,14 @@ class Input {
   struct udev* udev_;
   bool wakeups_enabled_;
 
-  // maps from an input event number to a source tag.
+  // Used to make ioctls to /dev/console to check which VT is active.
+  int console_fd_;
+
+  // Maps from an input event number to a source tag.
   typedef std::map<int, IOChannelWatch> InputMap;
   InputMap registered_inputs_;
 
-  // maps from an input name to an input number
+  // Maps from an input name to an input number.
   typedef std::map<std::string, int> WakeupMap;
   WakeupMap wakeup_inputs_map_;
 
