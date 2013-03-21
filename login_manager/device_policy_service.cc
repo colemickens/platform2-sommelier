@@ -20,6 +20,13 @@
 
 namespace em = enterprise_management;
 
+namespace {
+// Sentinel flags for separating flags introduced through the StartUpFlags
+// policy from the rest of the command line.
+const char kBeginPolicyFlagsFlag[] = "--policy-switches-begin";
+const char kEndPolicyFlagsFlag[] = "--policy-switches-end";
+}  // namespace
+
 namespace login_manager {
 using google::protobuf::RepeatedPtrField;
 using std::string;
@@ -205,10 +212,12 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
   if (policy.has_start_up_flags()) {
     const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
     const RepeatedPtrField<std::string>& flags = flags_proto.flags();
+    policy_args.push_back(kBeginPolicyFlagsFlag);
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
          it != flags.end(); ++it) {
       policy_args.push_back(*it);
     }
+    policy_args.push_back(kEndPolicyFlagsFlag);
   }
   return policy_args;
 }
