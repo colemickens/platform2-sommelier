@@ -274,20 +274,17 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
     driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
     return;
   }
-  gchar *b64_password =
-      glib_->Base64Encode(reinterpret_cast<const guchar *>(password.data()),
-                          password.size());
-  gchar *b64_otp =
-      glib_->Base64Encode(reinterpret_cast<const guchar *>(otp.data()),
-                          otp.size());
-  if (!b64_password || !b64_otp) {
+  string b64_password;
+  string b64_otp;
+  if (!glib_->B64Encode(password, &b64_password) ||
+      !glib_->B64Encode(otp, &b64_otp)) {
     LOG(ERROR) << "Unable to base64-encode credentials.";
     return;
   }
   SendUsername(tag, user);
-  SendPassword(tag, StringPrintf("SCRV1:%s:%s", b64_password, b64_otp));
-  glib_->Free(b64_otp);
-  glib_->Free(b64_password);
+  SendPassword(tag, StringPrintf("SCRV1:%s:%s",
+                                 b64_password.c_str(),
+                                 b64_otp.c_str()));
   // Don't reuse OTP.
   driver_->args()->RemoveString(flimflam::kOpenVPNOTPProperty);
 }

@@ -97,17 +97,12 @@ TEST_F(CertificateFileTest, CreatePEMFromString) {
 TEST_F(CertificateFileTest, CreateDERFromString) {
   // Create a DER file from the inner HEX data.
   const string kPEMString = kPEMData;
-  guchar fake_data[] = "this is a fake";
-  const gsize kFakeLength = 5;
-  const string kFakeData(fake_data, fake_data + kFakeLength);
-  EXPECT_CALL(glib_, Base64Decode(StrEq(kPEMString), _))
-      .WillOnce(Return(reinterpret_cast<guchar *>(NULL)))
-      .WillOnce(DoAll(SetArgumentPointee<1>(0), Return(fake_data)))
-      .WillOnce(DoAll(SetArgumentPointee<1>(kFakeLength),
-                      Return(fake_data)));
-  EXPECT_CALL(glib_, Free(NULL)).Times(1);
-  EXPECT_CALL(glib_, Free(fake_data)).Times(2);
-  EXPECT_TRUE(certificate_file_.CreateDERFromString(kPEMData).empty());
+  const string fake_data("this is a fake");
+
+  EXPECT_CALL(glib_, B64Decode(StrEq(kPEMString), _))
+      .WillOnce(Return(false))
+      .WillOnce(DoAll(SetArgumentPointee<1>(fake_data),
+                      Return(true)));
   EXPECT_TRUE(certificate_file_.CreateDERFromString(kPEMData).empty());
 
   FilePath outfile = certificate_file_.CreateDERFromString(kPEMData);
@@ -115,7 +110,7 @@ TEST_F(CertificateFileTest, CreateDERFromString) {
   EXPECT_TRUE(file_util::PathExists(outfile));
   string file_string;
   EXPECT_TRUE(file_util::ReadFileToString(outfile, &file_string));
-  EXPECT_EQ(kFakeData, file_string);
+  EXPECT_EQ(fake_data, file_string);
 }
 
 TEST_F(CertificateFileTest, ExtractHexData) {

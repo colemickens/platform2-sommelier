@@ -10,20 +10,18 @@
 #include <gio/gio.h>
 #include <glib.h>
 
+#include <base/basictypes.h>
+
 namespace shill {
 
 // A GLib abstraction allowing GLib mocking in tests.
 class GLib {
  public:
+  GLib();
   virtual ~GLib();
 
   // Converts GLib's |error| to a string message and frees the GError object.
   virtual std::string ConvertErrorToMessage(GError *error);
-
-  // g_base64_decode
-  virtual guchar *Base64Decode(const gchar *text, gsize *out_len);
-  // g_base64_encode
-  virtual gchar *Base64Encode(const guchar *data, gsize len);
 
   // Thin wrappers around Base64Decode/Encode.  Return true on success.
   virtual bool B64Decode(const std::string &input, std::string *output);
@@ -154,6 +152,9 @@ class GLib {
   virtual void Strfreev(gchar **str_array);
   // g_type_init
   virtual void TypeInit();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GLib);
 };
 
 }  // namespace shill

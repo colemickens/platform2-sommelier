@@ -54,16 +54,12 @@ FilePath CertificateFile::CreatePEMFromString(const string &pem_contents) {
 
 FilePath CertificateFile::CreateDERFromString(const string &pem_contents) {
   string hex_data = ExtractHexData(pem_contents);
-  gsize out_len = 0;
-  guchar *data = glib_->Base64Decode(hex_data.c_str(), &out_len);
-  if (!data || !out_len) {
+  string der_contents;
+  if (!glib_->B64Decode(hex_data, &der_contents)) {
     LOG(ERROR) << "Could not decode hex data from input PEM";
-    glib_->Free(data);
     return FilePath();
   }
 
-  string der_contents(data, data + out_len);
-  glib_->Free(data);
   return WriteFile(der_contents);
 }
 

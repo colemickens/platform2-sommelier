@@ -14,6 +14,7 @@ using std::string;
 
 namespace shill {
 
+GLib::GLib() {}
 GLib::~GLib() {}
 
 std::string GLib::ConvertErrorToMessage(GError *error) {
@@ -26,18 +27,10 @@ std::string GLib::ConvertErrorToMessage(GError *error) {
   return message;
 }
 
-guchar *GLib::Base64Decode(const gchar *text, gsize *out_len) {
-  return g_base64_decode(text, out_len);
-}
-
-gchar *GLib::Base64Encode(const guchar *data, gsize len) {
-  return g_base64_encode(data, len);
-}
-
 bool GLib::B64Decode(const string &input, string *output) {
   CHECK(output);
   gsize result_len = 0;
-  guchar *result = Base64Decode(input.c_str(), &result_len);
+  guchar *result = g_base64_decode(input.c_str(), &result_len);
   if (!result) {
     LOG(ERROR) << "Failed in encoding.";
     return false;
@@ -56,7 +49,7 @@ bool GLib::B64Decode(const string &input, string *output) {
 
 bool GLib::B64Encode(const string &input, string *output) {
   CHECK(output);
-  gchar *result = Base64Encode(
+  gchar *result = g_base64_encode(
       reinterpret_cast<const unsigned char *>(input.c_str()), input.length());
   if (!result) {
     LOG(ERROR) << "Failed in encoding.";

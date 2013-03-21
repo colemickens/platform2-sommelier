@@ -44,15 +44,14 @@ bool CryptoDESCBC::Decrypt(const string &ciphertext, string *plaintext) {
     b64_ciphertext.erase(0, strlen(kVersion2Prefix));
   }
 
-  gsize data_len = 0;
-  guchar *gdata = glib_->Base64Decode(b64_ciphertext.c_str(), &data_len);
-  if (!gdata) {
+  string decoded_data;
+  if (!glib_->B64Decode(b64_ciphertext, &decoded_data)) {
     LOG(ERROR) << "Unable to base64-decode DEC-CBC ciphertext.";
     return false;
   }
 
-  vector<char> data(gdata, gdata + data_len);
-  glib_->Free(gdata);
+  vector<char> data(decoded_data.c_str(),
+                    decoded_data.c_str() + decoded_data.length());
   if (data.empty() || (data.size() % kBlockSize != 0)) {
     LOG(ERROR) << "Invalid DES-CBC ciphertext size: " << data.size();
     return false;
