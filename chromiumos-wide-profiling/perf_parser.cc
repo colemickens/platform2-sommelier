@@ -347,6 +347,14 @@ bool PerfParser::ProcessEvents() {
         return false;
     }
   }
+  // Print stats collected from parsing.
+  LOG(INFO) << "Parser processed: ";
+  LOG(INFO) << "  " << stats_.num_mmap_events << " MMAP events";
+  LOG(INFO) << "  " << stats_.num_fork_events << " FORK events";
+  LOG(INFO) << "  " << stats_.num_exit_events << " EXIT events";
+  LOG(INFO) << "  " << stats_.num_sample_events << " SAMPLE events";
+  LOG(INFO) << "    " << stats_.num_sample_events_mapped
+            << " of these were mapped";
   stats_.did_remap = do_remap_;
   return true;
 }
