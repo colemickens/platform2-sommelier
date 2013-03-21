@@ -108,7 +108,7 @@ void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   service_->SetState(Service::kStateConfiguring);
   rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnL2TPIPSecVPN(error)) {
-    FailService(Service::kFailureConnect);
+    FailService(Service::kFailureInternal);
   }
 }
 
@@ -370,7 +370,7 @@ void L2TPIPSecDriver::OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data) {
 Service::ConnectFailure L2TPIPSecDriver::TranslateExitStatusToFailure(
     int status) {
   if (!WIFEXITED(status)) {
-    return Service::kFailureUnknown;
+    return Service::kFailureInternal;
   }
   switch (WEXITSTATUS(status)) {
     case vpn_manager::kServiceErrorResolveHostnameFailed:

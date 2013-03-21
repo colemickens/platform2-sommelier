@@ -65,9 +65,10 @@ class OpenVPNDriver : public VPNDriver,
 
   // Resets the VPN state and deallocates all resources. If there's a service
   // associated through Connect, sets its state to Service::kStateFailure, sets
-  // its ErrorDetails property to |error_details| and disassociates from the
-  // service.
-  virtual void FailService(const std::string &error_details);
+  // the failure reason to |failure|, sets its ErrorDetails property to
+  // |error_details|, and disassociates from the service.
+  virtual void FailService(Service::ConnectFailure failure,
+                           const std::string &error_details);
 
   // Returns true if an option was appended.
   bool AppendValueOption(const std::string &property,
@@ -185,9 +186,12 @@ class OpenVPNDriver : public VPNDriver,
 
   // Implements the public IdleService and FailService methods. Resets the VPN
   // state and deallocates all resources. If there's a service associated
-  // through Connect, sets its state |state|, sets its ErrorDetails property to
-  // |error_details| and disassociates from the service.
-  void Cleanup(Service::ConnectState state, const std::string &error_details);
+  // through Connect, sets its state |state|; if |state| is
+  // Service::kStateFailure, sets the failure reason to |failure| and its
+  // ErrorDetails property to |error_details|; disassociates from the service.
+  void Cleanup(Service::ConnectState state,
+               Service::ConnectFailure failure,
+               const std::string &error_details);
 
   static int GetReconnectTimeoutSeconds(ReconnectReason reason);
 

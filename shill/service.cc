@@ -743,8 +743,20 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
       return flimflam::kErrorDNSLookupFailed;
     case kFailureDHCP:
       return flimflam::kErrorDhcpFailed;
+    case kFailureEAPAuthentication:
+      return shill::kErrorEapAuthenticationFailed;
+    case kFailureEAPLocalTLS:
+      return shill::kErrorEapLocalTlsFailed;
+    case kFailureEAPRemoteTLS:
+      return shill::kErrorEapRemoteTlsFailed;
     case kFailureHTTPGet:
       return flimflam::kErrorHTTPGetFailed;
+    case kFailureInternal:
+      return flimflam::kErrorInternal;
+    case kFailureIPSecCertAuth:
+      return flimflam::kErrorIpsecCertAuthFailed;
+    case kFailureIPSecPSKAuth:
+      return flimflam::kErrorIpsecPskAuthFailed;
     case kFailureNeedEVDO:
       return flimflam::kErrorNeedEvdo;
     case kFailureNeedHomeNetwork:
@@ -755,20 +767,10 @@ const char *Service::ConnectFailureToString(const ConnectFailure &state) {
       return flimflam::kErrorOutOfRange;
     case kFailurePinMissing:
       return flimflam::kErrorPinMissing;
-    case kFailureIPSecCertAuth:
-      return flimflam::kErrorIpsecCertAuthFailed;
-    case kFailureIPSecPSKAuth:
-      return flimflam::kErrorIpsecPskAuthFailed;
     case kFailurePPPAuth:
       return flimflam::kErrorPppAuthFailed;
-    case kFailureEAPAuthentication:
-      return shill::kErrorEapAuthenticationFailed;
-    case kFailureEAPLocalTLS:
-      return shill::kErrorEapLocalTlsFailed;
-    case kFailureEAPRemoteTLS:
-      return shill::kErrorEapRemoteTlsFailed;
     case kFailureMax:
-      return "Max failure error code";
+      NOTREACHED();
   }
   return "Invalid";
 }

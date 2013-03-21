@@ -137,6 +137,10 @@ class OpenVPNManagementServerTest : public testing::Test {
     return OpenVPNManagementServer::ParsePasswordFailedReason(message);
   }
 
+  void SetClientState(const string &state) {
+    server_.state_ = state;
+  }
+
   GLib glib_;
   MockOpenVPNDriver driver_;
   OpenVPNManagementServer server_;
@@ -191,6 +195,7 @@ TEST_F(OpenVPNManagementServerTest, Start) {
 }
 
 TEST_F(OpenVPNManagementServerTest, Stop) {
+  EXPECT_TRUE(server_.state().empty());
   SetSockets();
   server_.input_handler_.reset(new IOHandler());
   const int kConnectedSocket = 234;
@@ -200,6 +205,7 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
   server_.ready_handler_.reset(new IOHandler());
   const int kSocket = 345;
   server_.socket_ = kSocket;
+  SetClientState(OpenVPNManagementServer::kStateReconnecting);
   EXPECT_CALL(sockets_, Close(kSocket)).WillOnce(Return(0));
   server_.Stop();
   EXPECT_FALSE(server_.input_handler_.get());
@@ -207,6 +213,7 @@ TEST_F(OpenVPNManagementServerTest, Stop) {
   EXPECT_FALSE(server_.dispatcher_);
   EXPECT_FALSE(server_.ready_handler_.get());
   EXPECT_EQ(-1, server_.socket_);
+  EXPECT_TRUE(server_.state().empty());
   ExpectNotStarted();
 }
 
@@ -253,7 +260,8 @@ TEST_F(OpenVPNManagementServerTest, OnInput) {
     InputData data = CreateInputDataFromString(s);
     ExpectStaticChallengeResponse();
     ExpectPINResponse();
-    EXPECT_CALL(driver_, FailService(Service::kErrorDetailsNone));
+    EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
+                                     Service::kErrorDetailsNone));
     EXPECT_CALL(driver_, OnReconnecting(_));
     EXPECT_FALSE(GetHoldWaiting());
     OnInput(&data);
@@ -268,7 +276,8 @@ TEST_F(OpenVPNManagementServerTest, OnInputStop) {
   InputData data = CreateInputDataFromString(s);
   SetSockets();
   // Stops the server after the first message is processed.
-  EXPECT_CALL(driver_, FailService(Service::kErrorDetailsNone))
+  EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
+                                   Service::kErrorDetailsNone))
       .WillOnce(Assign(&server_.sockets_, reinterpret_cast<Sockets *>(NULL)));
   // The second message should not be processed.
   EXPECT_CALL(driver_, OnReconnecting(_)).Times(0);
@@ -294,8 +303,11 @@ TEST_F(OpenVPNManagementServerTest, ProcessInfoMessage) {
 }
 
 TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
+  EXPECT_TRUE(server_.state().empty());
   EXPECT_FALSE(ProcessStateMessage("foo"));
+  EXPECT_TRUE(server_.state().empty());
   EXPECT_TRUE(ProcessStateMessage(">STATE:123,WAIT,detail,...,..."));
+  EXPECT_EQ("WAIT", server_.state());
   {
     InSequence seq;
     EXPECT_CALL(driver_,
@@ -304,6 +316,7 @@ TEST_F(OpenVPNManagementServerTest, ProcessStateMessage) {
                 OnReconnecting(OpenVPNDriver::kReconnectReasonTLSError));
   }
   EXPECT_TRUE(ProcessStateMessage(">STATE:123,RECONNECTING,detail,...,..."));
+  EXPECT_EQ(OpenVPNManagementServer::kStateReconnecting, server_.state());
   EXPECT_TRUE(ProcessStateMessage(">STATE:123,RECONNECTING,tls-error,...,..."));
 }
 
@@ -363,7 +376,8 @@ TEST_F(OpenVPNManagementServerTest, ParsePasswordFailedReason) {
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformStaticChallengeNoCreds) {
-  EXPECT_CALL(driver_, FailService(Service::kErrorDetailsNone)).Times(3);
+  EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
+                                   Service::kErrorDetailsNone)).Times(3);
   server_.PerformStaticChallenge("Auth");
   driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
   server_.PerformStaticChallenge("Auth");
@@ -378,7 +392,8 @@ TEST_F(OpenVPNManagementServerTest, PerformStaticChallenge) {
 }
 
 TEST_F(OpenVPNManagementServerTest, PerformAuthenticationNoCreds) {
-  EXPECT_CALL(driver_, FailService(Service::kErrorDetailsNone)).Times(2);
+  EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
+                                   Service::kErrorDetailsNone)).Times(2);
   server_.PerformAuthentication("Auth");
   driver_.args()->SetString(flimflam::kOpenVPNUserProperty, "jojo");
   server_.PerformAuthentication("Auth");
@@ -408,7 +423,8 @@ TEST_F(OpenVPNManagementServerTest, ProcessHoldMessage) {
 }
 
 TEST_F(OpenVPNManagementServerTest, SupplyTPMTokenNoPIN) {
-  EXPECT_CALL(driver_, FailService(Service::kErrorDetailsNone));
+  EXPECT_CALL(driver_, FailService(Service::kFailureInternal,
+                                   Service::kErrorDetailsNone));
   server_.SupplyTPMToken("User-Specific TPM Token FOO");
 }
 
@@ -444,8 +460,9 @@ TEST_F(OpenVPNManagementServerTest, SendPassword) {
 
 TEST_F(OpenVPNManagementServerTest, ProcessFailedPasswordMessage) {
   EXPECT_FALSE(server_.ProcessFailedPasswordMessage("foo"));
-  EXPECT_CALL(driver_, FailService(Service::kErrorDetailsNone)).Times(3);
-  EXPECT_CALL(driver_, FailService("Revoked."));
+  EXPECT_CALL(driver_, FailService(Service::kFailureConnect,
+                                   Service::kErrorDetailsNone)).Times(3);
+  EXPECT_CALL(driver_, FailService(Service::kFailureConnect, "Revoked."));
   EXPECT_TRUE(
       server_.ProcessFailedPasswordMessage(">PASSWORD:Verification Failed: ."));
   EXPECT_TRUE(

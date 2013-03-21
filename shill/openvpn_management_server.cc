@@ -35,6 +35,9 @@ namespace {
 const char kPasswordTagAuth[] = "Auth";
 }  // namespace
 
+const char OpenVPNManagementServer::kStateReconnecting[] = "RECONNECTING";
+const char OpenVPNManagementServer::kStateResolve[] = "RESOLVE";
+
 OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver *driver,
                                                  GLib *glib)
     : driver_(driver),
@@ -112,6 +115,7 @@ void OpenVPNManagementServer::Stop() {
   if (!IsStarted()) {
     return;
   }
+  state_.clear();
   input_handler_.reset();
   if (connected_socket_ >= 0) {
     sockets_->Close(connected_socket_);
@@ -175,7 +179,7 @@ void OpenVPNManagementServer::OnInput(InputData *data) {
 
 void OpenVPNManagementServer::OnInputError(const Error &error) {
   LOG(ERROR) << error;
-  driver_->FailService(Service::kErrorDetailsNone);
+  driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
 }
 
 void OpenVPNManagementServer::ProcessMessage(const string &message) {
@@ -219,7 +223,7 @@ bool OpenVPNManagementServer::ProcessNeedPasswordMessage(
     SupplyTPMToken(tag);
   } else {
     NOTIMPLEMENTED() << ": Unsupported need-password message: " << message;
-    driver_->FailService(Service::kErrorDetailsNone);
+    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
   }
   return true;
 }
@@ -267,7 +271,7 @@ void OpenVPNManagementServer::PerformStaticChallenge(const string &tag) {
                      << (user.empty() ? " no-user" : "")
                      << (password.empty() ? " no-password" : "")
                      << (otp.empty() ? " no-otp" : "");
-    driver_->FailService(Service::kErrorDetailsNone);
+    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
     return;
   }
   gchar *b64_password =
@@ -298,7 +302,7 @@ void OpenVPNManagementServer::PerformAuthentication(const string &tag) {
     NOTIMPLEMENTED() << ": Missing credentials:"
                      << (user.empty() ? " no-user" : "")
                      << (password.empty() ? " no-password" : "");
-    driver_->FailService(Service::kErrorDetailsNone);
+    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
     return;
   }
   SendUsername(tag, user);
@@ -310,7 +314,7 @@ void OpenVPNManagementServer::SupplyTPMToken(const string &tag) {
   string pin = driver_->args()->LookupString(flimflam::kOpenVPNPinProperty, "");
   if (pin.empty()) {
     NOTIMPLEMENTED() << ": Missing PIN.";
-    driver_->FailService(Service::kErrorDetailsNone);
+    driver_->FailService(Service::kFailureInternal, Service::kErrorDetailsNone);
     return;
   }
   SendPassword(tag, pin);
@@ -326,7 +330,7 @@ bool OpenVPNManagementServer::ProcessFailedPasswordMessage(
   if (ParsePasswordTag(message) == kPasswordTagAuth) {
     reason = ParsePasswordFailedReason(message);
   }
-  driver_->FailService(reason);
+  driver_->FailService(Service::kFailureConnect, reason);
   return true;
 }
 
@@ -355,18 +359,18 @@ bool OpenVPNManagementServer::ProcessStateMessage(const string &message) {
   vector<string> details;
   SplitString(message, ',', &details);
   if (details.size() > 1) {
-    if (details[1] == "RECONNECTING") {
+    state_ = details[1];
+    LOG(INFO) << "OpenVPN state: " << state_;
+    if (state_ == kStateReconnecting) {
       OpenVPNDriver::ReconnectReason reason =
           OpenVPNDriver::kReconnectReasonUnknown;
       if (details.size() > 2 && details[2] == "tls-error") {
         reason = OpenVPNDriver::kReconnectReasonTLSError;
       }
       driver_->OnReconnecting(reason);
-    } else {
-      // The rest of the states are currently ignored.
-      LOG(INFO) << "Ignoring state message: " << details[1];
     }
   }
+
   return true;
 }
 

@@ -24,6 +24,9 @@ class Sockets;
 
 class OpenVPNManagementServer {
  public:
+  static const char kStateReconnecting[];
+  static const char kStateResolve[];
+
   OpenVPNManagementServer(OpenVPNDriver *driver, GLib *glib);
   virtual ~OpenVPNManagementServer();
 
@@ -48,7 +51,11 @@ class OpenVPNManagementServer {
   // Restarts openvpn causing a disconnect followed by a reconnect attempt.
   virtual void Restart();
 
+  // OpenVPN client state.
+  const std::string &state() const { return state_; }
+
  private:
+  friend class OpenVPNDriverTest;
   friend class OpenVPNManagementServerTest;
   FRIEND_TEST(OpenVPNManagementServerTest, EscapeToQuote);
   FRIEND_TEST(OpenVPNManagementServerTest, Hold);
@@ -135,6 +142,8 @@ class OpenVPNManagementServer {
   EventDispatcher *dispatcher_;
   int connected_socket_;
   scoped_ptr<IOHandler> input_handler_;
+
+  std::string state_;
 
   bool hold_waiting_;
   bool hold_release_;
