@@ -2,6 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// The term "L2TP / IPSec" refers to a pair of layered protocols used
+// together to establish a tunneled VPN connection.  First, an "IPSec"
+// link is created, which secures a single IP traffic pair between the
+// client and server.  For this link to complete, one or two levels of
+// authentication are performed.  The first, inner mandatory authentication
+// ensures the two parties establishing the IPSec link are correct.  This
+// can use a certificate exchange or a less secure "shared group key"
+// (PSK) authentication.  An optional outer IPSec authentication can also be
+// performed, which is not fully supported by shill's implementation.
+// In order to support "tunnel groups" from some vendor VPNs shill supports
+// supplying the authentication realm portion during the outer authentication.
+// Notably, XAUTH and other forms of user authentication on this outer link
+// are not supported.
+//
+// When IPSec authentication completes, traffic is tunneled through a
+// layer 2 tunnel, called "L2TP".  Using the secured link, we tunnel a
+// PPP link, through which a second layer of authentication is performed,
+// using the provided "user" and "password" properties.
+
 #include "shill/l2tp_ipsec_driver.h"
 
 #include <sys/wait.h>
@@ -63,6 +82,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { flimflam::kProviderNameProperty, 0 },
   { flimflam::kProviderTypeProperty, 0 },
   { kL2tpIpsecCaCertPemProperty, 0 },
+  { kL2tpIpsecTunnelGroupProperty, 0 },
   { kL2TPIPSecIPSecTimeoutProperty, 0 },
   { kL2TPIPSecLeftProtoPortProperty, 0 },
   { kL2TPIPSecLengthBitProperty, 0 },
@@ -277,6 +297,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
              "--require_authentication", "--norequire_authentication", options);
   AppendFlag(kL2TPIPSecLengthBitProperty,
              "--length_bit", "--nolength_bit", options);
+  AppendValueOption(kL2tpIpsecTunnelGroupProperty, "--tunnel_group", options);
   if (SLOG_IS_ON(VPN, 0)) {
     options->push_back("--debug");
   }

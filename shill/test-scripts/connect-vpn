@@ -61,6 +61,13 @@ def main(argv):
                       help    = ("This is passed through to OpenVPN when "
                                  "not 'none'.  "
                                  "Ignored when not 'OpenVPN'."))
+    parser.add_option("--tunnel-group",
+                      dest    = "tunnel_group",
+                      action  = "store",
+                      default = "",
+                      help    = ("Provide a tunnel group parameter to "
+                                 "l2tpipsec links.  "
+                                 "Ignored when not 'L2TPIPSec'."))
 
     (options, args) = parser.parse_args(argv[1:])
 
@@ -119,6 +126,7 @@ def main(argv):
                     params["L2TPIPsec.Password"] = args[6]
                 else:
                     show_usage(parser, vpn_type)
+                params["L2TPIPsec.TunnelGroup"] = options.tunnel_group
             else:
                 show_usage(parser, vpn_type)
         else:
