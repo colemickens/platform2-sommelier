@@ -608,6 +608,8 @@ void StateController::UpdateSettingsAndState() {
       delays_.screen_dim = delays_.idle - (orig_idle - delays_.screen_dim);
     if (delays_.screen_lock > base::TimeDelta())
       delays_.screen_lock = delays_.idle - (orig_idle - delays_.screen_lock);
+    if (delays_.idle_warning > base::TimeDelta())
+      delays_.idle_warning = delays_.idle - (orig_idle - delays_.idle_warning);
   }
 
   // The disable-idle-suspend pref overrides |policy_|.  Note that it also

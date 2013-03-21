@@ -1145,6 +1145,23 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
   AdvanceTimeAndTriggerTimeout(kHalfInterval);
   EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // When the idle delay is scaled up as a result of presentation mode, the
+  // interval between the warning and the action should remain the same as
+  // before.
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      kIdleWarningDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  const base::TimeDelta kPresentationIdleDelay = kIdleDelay *
+      StateController::kDefaultPresentationIdleDelayFactor;
+  const base::TimeDelta kPresentationIdleWarningDelay =
+      kPresentationIdleDelay - (kIdleDelay - kIdleWarningDelay);
+  ResetLastStepDelay();
+  StepTimeAndTriggerTimeout(kPresentationIdleWarningDelay);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  StepTimeAndTriggerTimeout(kPresentationIdleDelay);
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
 }
 
 // Tests that when the suspend_at_login_screen pref is set, the system
