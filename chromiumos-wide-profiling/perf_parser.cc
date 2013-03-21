@@ -323,13 +323,17 @@ bool PerfParser::ProcessEvents() {
         CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
         break;
       case PERF_RECORD_FORK:
-        DLOG(INFO) << "FORK: " << event.fork.ppid << " -> " << event.fork.pid;
+        DLOG(INFO) << "FORK: " << event.fork.ppid << ":" << event.fork.ptid
+                   << " -> " << event.fork.pid << ":" << event.fork.tid;
         ++stats_.num_fork_events;
         CHECK(MapForkEvent(event.fork)) << "Unable to map FORK event!";
         break;
       case PERF_RECORD_EXIT:
         // EXIT events have the same structure as FORK events.
-        DLOG(INFO) << "EXIT: " << event.fork.pid << " <- " << event.fork.ppid;
+        DLOG(INFO) << "EXIT: " << event.fork.ppid << ":" << event.fork.ptid;
+        // In an EXIT event, ppid:ptid and pid:tid must be the same.
+        CHECK_EQ(event.fork.pid, event.fork.ppid);
+        CHECK_EQ(event.fork.tid, event.fork.ptid);
         ++stats_.num_exit_events;
         CHECK(MapExitEvent(event.fork)) << "Unable to map EXIT event!";
         break;
