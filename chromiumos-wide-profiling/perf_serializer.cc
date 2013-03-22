@@ -123,7 +123,7 @@ void PerfSerializer::SerializeRecordSample(
     sample->set_tid(ip_event.tid);
   }
   if (sample_type_ & PERF_SAMPLE_TIME)
-    sample->set_time(perf_sample.time);
+    sample->set_sample_time(perf_sample.time);
   if (sample_type_ & PERF_SAMPLE_ADDR)
     sample->set_addr(perf_sample.addr);
   if (sample_type_ & PERF_SAMPLE_ID)
@@ -148,8 +148,8 @@ void PerfSerializer::DeserializeRecordSample(
     ip_event.pid = sample.pid();
     ip_event.tid = sample.tid();
   }
-  if (sample.has_time())
-    perf_sample.time = sample.time();
+  if (sample.has_sample_time())
+    perf_sample.time = sample.sample_time();
   if (sample.has_addr())
     perf_sample.addr = sample.addr();
   if (sample.has_id())
@@ -222,7 +222,7 @@ void PerfSerializer::SerializeForkSample(
   sample->set_ppid(fork.ppid);
   sample->set_tid(fork.tid);
   sample->set_ptid(fork.ppid);
-  sample->set_time(fork.time);
+  sample->set_fork_time(fork.time);
 
   SerializeSampleInfo(event, sample->mutable_sample_info());
 }
@@ -235,7 +235,7 @@ void PerfSerializer::DeserializeForkSample(
   fork.ppid = sample.ppid();
   fork.tid = sample.tid();
   fork.ptid = sample.ptid();
-  fork.time = sample.time();
+  fork.time = sample.fork_time();
 
   DeserializeSampleInfo(sample.sample_info(), event);
 }
@@ -250,7 +250,7 @@ void PerfSerializer::SerializeSampleInfo(
     sample_info->set_tid(perf_sample.tid);
   }
   if (sample_type_ & PERF_SAMPLE_TIME)
-    sample_info->set_time(perf_sample.time);
+    sample_info->set_sample_time(perf_sample.time);
   if (sample_type_ & PERF_SAMPLE_ID)
     sample_info->set_id(perf_sample.id);
   if (sample_type_ & PERF_SAMPLE_CPU)
@@ -265,8 +265,8 @@ void PerfSerializer::DeserializeSampleInfo(
     perf_sample.pid = sample_info.pid();
     perf_sample.tid = sample_info.tid();
   }
-  if (sample_info.has_time())
-    perf_sample.time = sample_info.time();
+  if (sample_info.has_sample_time())
+    perf_sample.time = sample_info.sample_time();
   if (sample_info.has_id())
     perf_sample.id = sample_info.id();
   if (sample_info.has_cpu())

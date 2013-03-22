@@ -198,7 +198,7 @@ message PerfDataProto {
     optional uint32 tid = 3;
 
     // The time at which the sample was recorded.
-    optional uint64 time = 4;
+    optional uint64 sample_time = 4;
 
     // The address of the sample.
     optional uint64 addr = 5;
@@ -238,7 +238,7 @@ message PerfDataProto {
     optional uint32 ptid = 4;
 
     // Time of fork event.
-    optional uint64 time = 5;
+    optional uint64 fork_time = 5;
 
     // Info about the perf sample containing this event.
     optional SampleInfo sample_info = 11;
@@ -254,7 +254,7 @@ message PerfDataProto {
     optional uint32 tid = 2;
 
     // Time this sample was taken (NOT the same as an event time).
-    optional uint64 time = 3;
+    optional uint64 sample_time = 3;
 
     // The ID of the sample's event type (cycles, instructions, etc).
     // The event type IDs are defined in PerfFileAttr.
