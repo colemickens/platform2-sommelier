@@ -430,6 +430,14 @@ TEST_F(MetricsTest, TimeToScan) {
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 }
 
+TEST_F(MetricsTest, TimeToScanNoStart) {
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Cellular.TimeToScan", _, _, _, _)).Times(0);
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kCellular);
+  metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
+}
+
 TEST_F(MetricsTest, TimeToScanIgnore) {
   // Make sure TimeToScan is not sent if the elapsed time exceeds the max
   // value.  This simulates the case where the device is in an area with no
@@ -442,6 +450,7 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   chromeos_metrics::TimerReporterMock *mock_time_to_scan_timer =
       new chromeos_metrics::TimerReporterMock;
   metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_time_to_scan_timer);
+  EXPECT_CALL(*mock_time_to_scan_timer, Stop()).WillOnce(Return(true));
   EXPECT_CALL(*mock_time_to_scan_timer, GetElapsedTime(_)).
       WillOnce(DoAll(SetArgumentPointee<0>(large_time_delta), Return(true)));
   EXPECT_CALL(library_, SendToUMA(_, _, _, _, _)).Times(0);

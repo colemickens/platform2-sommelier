@@ -785,7 +785,8 @@ void Metrics::NotifyDeviceInitialized(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == NULL)
     return;
-  device_metrics->initialization_timer->Stop();
+  if (!device_metrics->initialization_timer->Stop())
+    return;
   device_metrics->initialization_timer->ReportMilliseconds();
 }
 
@@ -800,7 +801,8 @@ void Metrics::NotifyDeviceEnableFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == NULL)
     return;
-  device_metrics->enable_timer->Stop();
+  if (!device_metrics->enable_timer->Stop())
+      return;
   device_metrics->enable_timer->ReportMilliseconds();
 }
 
@@ -815,7 +817,8 @@ void Metrics::NotifyDeviceDisableFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == NULL)
     return;
-  device_metrics->disable_timer->Stop();
+  if (!device_metrics->disable_timer->Stop())
+    return;
   device_metrics->disable_timer->ReportMilliseconds();
 }
 
@@ -836,7 +839,8 @@ void Metrics::NotifyDeviceScanFinished(int interface_index) {
   // This metric is only supported for cellular devices.
   if (device_metrics->technology != Technology::kCellular)
     return;
-  device_metrics->scan_timer->Stop();
+  if (!device_metrics->scan_timer->Stop())
+    return;
   // Don't send TimeToScan metrics if the elapsed time exceeds the max
   // metrics value.  This usually means that the modem is in an area
   // without service and we're not interested in this scenario.
@@ -866,11 +870,13 @@ void Metrics::NotifyDeviceConnectFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == NULL)
     return;
-  device_metrics->connect_timer->Stop();
+  if (!device_metrics->connect_timer->Stop())
+    return;
   device_metrics->connect_timer->ReportMilliseconds();
 
   if (device_metrics->auto_connect_tries > 0) {
-    device_metrics->auto_connect_timer->Stop();
+    if (!device_metrics->auto_connect_timer->Stop())
+      return;
     base::TimeDelta elapsed_time;
     device_metrics->auto_connect_timer->GetElapsedTime(&elapsed_time);
     if (elapsed_time.InMilliseconds() > kMetricCellularAutoConnectTotalTimeMax)
@@ -978,8 +984,8 @@ void Metrics::UpdateServiceStateTransitionMetrics(
 
   TimerReportersList &stop_timers = service_metrics->stop_on_state[new_state];
   for (it = stop_timers.begin(); it != stop_timers.end(); ++it) {
-    (*it)->Stop();
-    (*it)->ReportMilliseconds();
+    if ((*it)->Stop())
+      (*it)->ReportMilliseconds();
   }
 }
 
