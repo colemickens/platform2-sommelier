@@ -231,6 +231,7 @@ Service::Service()
       update_user_activity_period_(kUpdateUserActivityPeriod - 1),
       timer_collection_(new TimerCollection()),
       reported_pkcs11_init_fail_(false),
+      enterprise_owned_(false),
       mounts_lock_(),
       default_mount_factory_(new cryptohome::MountFactory),
       mount_factory_(default_mount_factory_.get()),
@@ -1686,15 +1687,17 @@ void Service::AutoCleanupCallback() {
       base::TimeDelta::FromMilliseconds(auto_cleanup_period_));
 }
 
-void Service::DetectEnterpriseOwnership() const {
+void Service::DetectEnterpriseOwnership() {
   static const char true_str[] = "true";
   const chromeos::Blob true_value(true_str, true_str + arraysize(true_str));
   chromeos::Blob value;
-  if (install_attrs_->Get("enterprise.owned", &value) && value == true_value)
-    // Tell every mount that it is enterprise-owned.
+  if (install_attrs_->Get("enterprise.owned", &value) && value == true_value) {
+    enterprise_owned_ = true;
+    // Update any active mounts with the state.
     for (MountMap::const_iterator it = mounts_.begin();
          it != mounts_.end(); ++it)
       it->second->set_enterprise_owned(true);
+  }
 }
 
 scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
@@ -1704,6 +1707,7 @@ scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
   if (mounts_.count(username) == 0U) {
     m = mount_factory_->New();
     m->Init();
+    m->set_enterprise_owned(enterprise_owned_);
     mounts_[username] = m;
   } else {
     m = mounts_[username];

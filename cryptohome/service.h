@@ -322,7 +322,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
                    std::multimap<const std::string, const std::string>* mounts);
 
   // Checks if the machine is enterprise owned and report to mount_ then.
-  virtual void DetectEnterpriseOwnership() const;
+  virtual void DetectEnterpriseOwnership();
 
   // Runs the event loop once. Only for testing.
   virtual void DispatchEvents();
@@ -381,6 +381,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // during this user login. We use this not to report a same failure multiple
   // times.
   bool reported_pkcs11_init_fail_;
+  // Keeps track of whether the device is enterprise-owned.
+  bool enterprise_owned_;
 
   // Tracks Mount objects for each user by username.
   typedef std::map<const std::string,
