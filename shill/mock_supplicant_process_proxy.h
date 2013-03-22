@@ -11,6 +11,7 @@
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
+#include "shill/dbus_variant_gmock_printer.h"
 #include "shill/supplicant_process_proxy_interface.h"
 
 namespace shill {
