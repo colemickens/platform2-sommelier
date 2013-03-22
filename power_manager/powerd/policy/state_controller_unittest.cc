@@ -1162,6 +1162,47 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
   StepTimeAndTriggerTimeout(kPresentationIdleDelay);
   EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  // Setting the idle action to "do nothing" should send a idle-deferred
+  // message if idle-imminent was already sent.
+  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  ResetLastStepDelay();
+  StepTimeAndTriggerTimeout(kIdleWarningDelay);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  policy.set_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+
+  // Setting the idle action back to "stop session" should cause
+  // idle-imminent to get sent again.
+  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  policy.set_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
+  StepTimeAndTriggerTimeout(kIdleDelay);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // The idle-imminent message shouldn't get sent in the first place when
+  // the action is unset.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  AdvanceTimeAndTriggerTimeout(kIdleDelay);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // If an action is set after the idle delay has been reached,
+  // idle-imminent should be sent immediately and the action should
+  // be performed.
+  controller_.HandleUserActivity();
+  AdvanceTimeAndTriggerTimeout(kIdleDelay);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  controller_.HandlePolicyChange(policy);
+  EXPECT_EQ(JoinActions(kIdleImminent, kStopSession, NULL),
+            delegate_.GetActions());
 }
 
 // Tests that when the suspend_at_login_screen pref is set, the system

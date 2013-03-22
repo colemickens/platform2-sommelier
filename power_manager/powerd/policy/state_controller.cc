@@ -715,17 +715,26 @@ void StateController::UpdateState() {
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
               base::Closure(), "Locking screen", "", &requested_screen_lock_);
 
-  // When exiting the idle-warning state, only emit the idle-deferred
-  // signal if the idle action hasn't been executed yet.
-  HandleDelay(delays_.idle_warning, idle_duration,
-              base::Bind(&Delegate::EmitIdleActionImminent,
-                         base::Unretained(delegate_)),
-              idle_action_performed_ ? base::Closure() :
-                  base::Bind(&Delegate::EmitIdleActionDeferred,
-                             base::Unretained(delegate_)),
-              "Emitting idle-imminent signal",
-              idle_action_performed_ ? "" : "Emitting idle-deferred signal",
-              &sent_idle_warning_);
+  // The idle-imminent signal is only emitted if an idle action is set.
+  if (delays_.idle_warning > base::TimeDelta() &&
+      idle_duration >= delays_.idle_warning &&
+      idle_action_ != DO_NOTHING) {
+    if (!sent_idle_warning_) {
+      VLOG(1) << "Emitting idle-imminent signal after "
+              << TimeDeltaToString(idle_duration);
+      delegate_->EmitIdleActionImminent();
+      sent_idle_warning_ = true;
+    }
+  } else if (sent_idle_warning_) {
+    sent_idle_warning_ = false;
+    // When resetting the idle-warning trigger, only emit the idle-deferred
+    // signal if the idle action hasn't been performed yet or if it was a
+    // no-op action.
+    if (!idle_action_performed_ || idle_action_ == DO_NOTHING) {
+      VLOG(1) << "Emitting idle-deferred signal";
+      delegate_->EmitIdleActionDeferred();
+    }
+  }
 
   Action idle_action_to_perform = DO_NOTHING;
   if (idle_duration >= delays_.idle) {
