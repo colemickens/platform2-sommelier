@@ -337,6 +337,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	dbus_adaptor_unittest.o \
 	dbus_manager_unittest.o \
 	dbus_properties_unittest.o \
+	dbus_variant_gmock_printer.o \
 	default_profile_unittest.o \
 	device_info_unittest.o \
 	device_unittest.o \
