@@ -32,11 +32,19 @@ script_name=$(basename $0)
 flimflam_profile_dir=~chronos/flimflam
 flimflam_profile="${flimflam_profile_dir}/flimflam.profile"
 
-# NB: must quote ~chronos in command sent over dbus; don't want it expanded.
 profile_user=chronos
 profile_name="~${profile_user}/shill"
 profile_link_root=/var/run/shill/user_profiles
 profile_link_dir="$profile_link_root/$profile_user"
+
+# For multiprofile: Choose a different link name if "chronos" exists.
+profile_user_suffix=0
+while [ -e "$profile_link_dir" ] ; do
+  profile_user_suffix=$(( profile_user_suffix + 1 ))
+  profile_user=$(printf "user%03d" $profile_user_suffix)
+  profile_name="~${profile_user}/shill"
+  profile_link_dir="$profile_link_root/$profile_user"
+done
 
 old_profile_dir=~chronos/shill
 old_profile="$old_profile_dir/shill.profile"
@@ -70,12 +78,16 @@ if ! mkdir -p --mode 0700 "$profile_link_root"; then
   logger -t "$script_name" \
     "Unable to create shill user profile link directory"
 fi
-rm -f "$profile_link_root"/*
+
 ln -s "$cryptohome_profile_dir" "$profile_link_dir" ||
   logger -t "$script_name" \
     "Failed to create shill user cryptohome link $profile_link_dir"
 
-if [ ! -f "$cryptohome_profile" ]; then
+# If there is no configuration available for the default user,
+# there may be some left-over configuration available from an
+# older shill implementation or perhaps even one from flimflam
+# that we can retrofit.
+if [ "$profile_user" = "chronos" -a ! -f "$cryptohome_profile" ]; then
   if [ -f "$flimflam_profile" ]; then
     if [ -f "$old_profile" ]; then
       logger -t "$script_name" "Removing outdated flimflam user profile"
