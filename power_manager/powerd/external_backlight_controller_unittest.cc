@@ -27,7 +27,6 @@ class ExternalBacklightControllerTest : public ::testing::Test {
       : backlight_(kDefaultMaxBacklightLevel,
                    kDefaultStartingBacklightLevel),
         controller_(&backlight_, &display_power_setter_) {
-    controller_.set_disable_dbus_for_testing(true);
     CHECK(controller_.Init());
   }
 
@@ -85,25 +84,23 @@ TEST_F(ExternalBacklightControllerTest, ReinitializeOnDeviceChange) {
 TEST_F(ExternalBacklightControllerTest, DimScreen) {
   const int kStartingBacklightLevel = 43;
   backlight_.set_current_level(kStartingBacklightLevel);
-  // TODO(derat): After moving dimming to a Delegate interface, check the
-  // request that it received from ExternalBacklightController.
-  EXPECT_FALSE(controller_.dimmed_for_inactivity());
+  EXPECT_FALSE(display_power_setter_.dimmed());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
   controller_.SetDimmedForInactivity(true);
-  EXPECT_TRUE(controller_.dimmed_for_inactivity());
+  EXPECT_TRUE(display_power_setter_.dimmed());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
   controller_.SetDimmedForInactivity(false);
-  EXPECT_FALSE(controller_.dimmed_for_inactivity());
+  EXPECT_FALSE(display_power_setter_.dimmed());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
   controller_.SetOffForInactivity(true);
-  EXPECT_FALSE(controller_.dimmed_for_inactivity());
+  EXPECT_FALSE(display_power_setter_.dimmed());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 
   controller_.SetSuspended(true);
-  EXPECT_FALSE(controller_.dimmed_for_inactivity());
+  EXPECT_FALSE(display_power_setter_.dimmed());
   EXPECT_EQ(kStartingBacklightLevel, backlight_.current_level());
 }
 

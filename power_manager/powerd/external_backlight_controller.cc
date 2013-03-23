@@ -4,13 +4,9 @@
 
 #include "power_manager/powerd/external_backlight_controller.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include <algorithm>
 #include <cmath>
 
-#include "chromeos/dbus/dbus.h"
-#include "chromeos/dbus/service_constants.h"
 #include "power_manager/powerd/backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/display_power_setter.h"
@@ -36,8 +32,7 @@ ExternalBacklightController::ExternalBacklightController(
       shutting_down_(false),
       max_level_(0),
       currently_off_(false),
-      num_user_adjustments_(0),
-      disable_dbus_for_testing_(false) {
+      num_user_adjustments_(0) {
   DCHECK(backlight_);
   DCHECK(display_power_setter_);
   backlight_->AddObserver(this);
@@ -50,8 +45,8 @@ ExternalBacklightController::~ExternalBacklightController() {
 bool ExternalBacklightController::Init() {
   // If we get restarted while Chrome is running, make sure that it doesn't get
   // wedged in a dimmed state.
-  if (max_level_ <= 0 && !disable_dbus_for_testing_)
-    SendSoftwareDimmingSignal(kSoftwareScreenDimmingNone);
+  if (max_level_ <= 0)
+    display_power_setter_->SetDisplaySoftwareDimming(false);
 
   if (!backlight_->GetMaxBrightnessLevel(&max_level_)) {
     LOG(ERROR) << "Unable to query maximum brightness level";
@@ -118,11 +113,7 @@ void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
 void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed != dimmed_for_inactivity_) {
     dimmed_for_inactivity_ = dimmed;
-    if (!disable_dbus_for_testing_) {
-      SendSoftwareDimmingSignal(dimmed ?
-                                kSoftwareScreenDimmingIdle :
-                                kSoftwareScreenDimmingNone);
-    }
+    display_power_setter_->SetDisplaySoftwareDimming(dimmed);
   }
 }
 
@@ -204,23 +195,6 @@ void ExternalBacklightController::UpdateScreenPowerState() {
                                            base::TimeDelta());
     currently_off_ = should_turn_off;
   }
-}
-
-void ExternalBacklightController::SendSoftwareDimmingSignal(int state) {
-  chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                              kPowerManagerServicePath,
-                              kPowerManagerInterface);
-  DBusMessage* signal = dbus_message_new_signal(
-      kPowerManagerServicePath,
-      kPowerManagerInterface,
-      kSoftwareScreenDimmingRequestedSignal);
-  CHECK(signal);
-
-  dbus_message_append_args(signal,
-                           DBUS_TYPE_INT32, &state,
-                           DBUS_TYPE_INVALID);
-  dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-  dbus_message_unref(signal);
 }
 
 }  // namespace power_manager

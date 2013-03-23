@@ -21,12 +21,14 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
 
   chromeos::DisplayPowerState state() const { return state_; }
   base::TimeDelta delay() const { return delay_; }
-  int num_calls() const { return num_calls_; }
-  void reset_num_calls() { num_calls_ = 0; }
+  int num_power_calls() const { return num_power_calls_; }
+  void reset_num_power_calls() { num_power_calls_ = 0; }
+  bool dimmed() const { return dimmed_; }
 
   // DisplayPowerSetterInterface implementation:
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
                                base::TimeDelta delay) OVERRIDE;
+  virtual void SetDisplaySoftwareDimming(bool dimmed) OVERRIDE;
 
  private:
   // Arguments passed to most-recent SetDisplayPower() call.
@@ -34,7 +36,10 @@ class DisplayPowerSetterStub : public DisplayPowerSetterInterface {
   base::TimeDelta delay_;
 
   // Number of times that SetDisplayPower() has been called.
-  int num_calls_;
+  int num_power_calls_;
+
+  // Value of most-recent SetDisplaySoftwareDimming() call.
+  bool dimmed_;
 
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetterStub);
 };

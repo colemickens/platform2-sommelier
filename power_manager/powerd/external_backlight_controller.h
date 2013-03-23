@@ -28,13 +28,6 @@ class ExternalBacklightController : public BacklightController,
       system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~ExternalBacklightController();
 
-  // Exposed for tests.
-  bool dimmed_for_inactivity() const { return dimmed_for_inactivity_; }
-
-  void set_disable_dbus_for_testing(bool disable) {
-    disable_dbus_for_testing_ = disable;
-  }
-
   // Initializes the object.
   bool Init();
 
@@ -75,12 +68,6 @@ class ExternalBacklightController : public BacklightController,
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
   void UpdateScreenPowerState();
 
-  // Emits a D-Bus signal asking Chrome to dim or undim the screen.  |state| is
-  // one of the kSoftwareScreenDimming* constants defined in
-  // chromeos/dbus/service_constants.h.
-  // TODO(derat): Move this to a Delegate interface that Daemon implements.
-  void SendSoftwareDimmingSignal(int state);
-
   system::BacklightInterface* backlight_;  // not owned
   system::DisplayPowerSetterInterface* display_power_setter_;  // not owned
 
@@ -100,9 +87,6 @@ class ExternalBacklightController : public BacklightController,
 
   // Number of times that we've applied user-initiated brightness requests.
   int num_user_adjustments_;
-
-  // Set by tests to disable emitting D-Bus signals.
-  bool disable_dbus_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklightController);
 };

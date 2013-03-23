@@ -223,9 +223,9 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
 
   // Test suspend and resume.  When suspending, the previously-current
   // brightness level should be saved as the resume level.
-  display_power_setter_.reset_num_calls();
+  display_power_setter_.reset_num_power_calls();
   controller_->SetSuspended(true);
-  EXPECT_EQ(0, display_power_setter_.num_calls());
+  EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kDefaultLevel, backlight_.resume_level());
 
@@ -252,9 +252,9 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   // suspending; Chrome will turn the displays on (without any involvement
   // from powerd) so that they come back up in the correct state after
   // resuming.
-  display_power_setter_.reset_num_calls();
+  display_power_setter_.reset_num_power_calls();
   controller_->SetSuspended(true);
-  EXPECT_EQ(0, display_power_setter_.num_calls());
+  EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(kDefaultLevel, backlight_.resume_level());
 

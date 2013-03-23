@@ -9,7 +9,8 @@ namespace system {
 
 DisplayPowerSetterStub::DisplayPowerSetterStub()
     : state_(chromeos::DISPLAY_POWER_ALL_ON),
-      num_calls_(0) {
+      num_power_calls_(0),
+      dimmed_(false) {
 }
 
 DisplayPowerSetterStub::~DisplayPowerSetterStub() {}
@@ -18,7 +19,11 @@ void DisplayPowerSetterStub::SetDisplayPower(chromeos::DisplayPowerState state,
                                              base::TimeDelta delay) {
   state_ = state;
   delay_ = delay;
-  num_calls_++;
+  num_power_calls_++;
+}
+
+void DisplayPowerSetterStub::SetDisplaySoftwareDimming(bool dimmed) {
+  dimmed_ = dimmed;
 }
 
 }  // system

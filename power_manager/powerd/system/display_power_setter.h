@@ -29,6 +29,11 @@ class DisplayPowerSetterInterface {
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
                                base::TimeDelta delay) = 0;
 
+  // Tells Chrome to simulate the display being dimmed or undimmed in
+  // software.  This is used as a substitute for actually changing the
+  // display's brightness in some cases, e.g. for external displays.
+  virtual void SetDisplaySoftwareDimming(bool dimmed) = 0;
+
  private:
   DISALLOW_COPY_AND_ASSIGN(DisplayPowerSetterInterface);
 };
@@ -43,6 +48,7 @@ class DisplayPowerSetter : public DisplayPowerSetterInterface {
   // DisplayPowerSetterInterface implementation:
   virtual void SetDisplayPower(chromeos::DisplayPowerState state,
                                base::TimeDelta delay) OVERRIDE;
+  virtual void SetDisplaySoftwareDimming(bool dimmed) OVERRIDE;
 
  private:
   // Makes an asynchronous D-Bus method call to Chrome to apply |state|.

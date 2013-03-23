@@ -30,6 +30,26 @@ std::string DisplayPowerStateToString(chromeos::DisplayPowerState state) {
   }
 }
 
+// Allocates a new DBusMessage for calling |method| in Chrome.
+DBusMessage* CreateChromeMethodCall(const std::string& method) {
+  DBusMessage* message = dbus_message_new_method_call(
+      chromeos::kLibCrosServiceName,
+      chromeos::kLibCrosServicePath,
+      chromeos::kLibCrosServiceInterface,
+      method.c_str());
+  CHECK(message);
+  return message;
+}
+
+// Sends |message| asynchronously and unrefs it.
+void SendAndUnrefMessage(DBusMessage* message) {
+  DBusConnection* connection = dbus_g_connection_get_connection(
+      chromeos::dbus::GetSystemBusConnection().g_connection());
+  CHECK(connection);
+  dbus_connection_send(connection, message, NULL);
+  dbus_message_unref(message);
+}
+
 }  // namespace
 
 DisplayPowerSetter::DisplayPowerSetter() : timeout_id_(0) {}
@@ -50,21 +70,22 @@ void DisplayPowerSetter::SetDisplayPower(chromeos::DisplayPowerState state,
   }
 }
 
+void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
+  LOG(INFO) << "Asking Chrome to " << (dimmed ? "dim" : "undim")
+            << " the display in software";
+  DBusMessage* message =
+      CreateChromeMethodCall(chromeos::kSetDisplaySoftwareDimming);
+  int dimmed_int = dimmed;
+  dbus_message_append_args(
+      message, DBUS_TYPE_BOOLEAN, &dimmed_int, DBUS_TYPE_INVALID);
+  SendAndUnrefMessage(message);
+}
+
 void DisplayPowerSetter::SendStateToChrome(chromeos::DisplayPowerState state) {
   LOG(INFO) << "Asking Chrome to turn " << DisplayPowerStateToString(state);
-  DBusMessage* message = dbus_message_new_method_call(
-      chromeos::kLibCrosServiceName,
-      chromeos::kLibCrosServicePath,
-      chromeos::kLibCrosServiceInterface,
-      chromeos::kSetDisplayPower);
-  CHECK(message);
+  DBusMessage* message = CreateChromeMethodCall(chromeos::kSetDisplayPower);
   dbus_message_append_args(message, DBUS_TYPE_INT32, &state, DBUS_TYPE_INVALID);
-
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  CHECK(connection);
-  dbus_connection_send(connection, message, NULL);
-  dbus_message_unref(message);
+  SendAndUnrefMessage(message);
 }
 
 gboolean DisplayPowerSetter::HandleTimeout(chromeos::DisplayPowerState state) {
