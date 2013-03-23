@@ -153,6 +153,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void PopProfile(const std::string &name, Error *error);
   // Remove the active profile.
   void PopAnyProfile(Error *error);
+  // Remove all user profiles from the stack of managed profiles leaving only
+  // default profiles.
+  void PopAllUserProfiles(Error *error);
   // Remove the underlying persistent storage for a profile.
   void RemoveProfile(const std::string &name, Error *error);
   // Handle the event where a profile is about to remove a profile entry.

@@ -90,6 +90,11 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		object PopAllUserProfiles()
+
+			Remove all user profiles from the stack of managed
+			profiles leaving only default profiles if any exist.
+
 		void RemoveProfile(string name)
 
 			Remove the profile with specified identifier.

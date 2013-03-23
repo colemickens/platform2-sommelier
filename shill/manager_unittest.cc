@@ -144,6 +144,10 @@ class ManagerTest : public PropertyStoreTest {
     return manager->ephemeral_profile_;
   }
 
+  vector<ProfileRefPtr> &GetProfiles(Manager *manager) {
+    return manager->profiles_;
+  }
+
   Profile *CreateProfileForManager(Manager *manager, GLib *glib) {
     Profile::Identifier id("rather", "irrelevant");
     FilePath final_path(storage_path());
@@ -183,6 +187,12 @@ class ManagerTest : public PropertyStoreTest {
   Error::Type TestPopAnyProfile(Manager *manager) {
     Error error;
     manager->PopAnyProfile(&error);
+    return error.type();
+  }
+
+  Error::Type TestPopAllUserProfiles(Manager *manager) {
+    Error error;
+    manager->PopAllUserProfiles(&error);
     return error.type();
   }
 
@@ -921,6 +931,19 @@ TEST_F(ManagerTest, PushPopProfile) {
   // machine profile on.
   EXPECT_EQ(Error::kSuccess, TestPopAnyProfile(&manager));
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kMachineProfile1));
+
+  // Add two user profiles to the top of the stack.
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile0));
+  EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager, kProfile1));
+  vector<ProfileRefPtr> &profiles = GetProfiles(&manager);
+  EXPECT_EQ(4, profiles.size());
+
+  // PopAllUserProfiles should remove both user profiles, leaving the two
+  // machine profiles.
+  EXPECT_EQ(Error::kSuccess, TestPopAllUserProfiles(&manager));
+  EXPECT_EQ(2, profiles.size());
+  EXPECT_TRUE(profiles[0]->GetUser().empty());
+  EXPECT_TRUE(profiles[1]->GetUser().empty());
 }
 
 TEST_F(ManagerTest, RemoveProfile) {

@@ -475,6 +475,18 @@ void Manager::PopAnyProfile(Error *error) {
   PopProfileInternal();
 }
 
+void Manager::PopAllUserProfiles(Error */*error*/) {
+  SLOG(Manager, 2) << __func__;
+  // This signal is sent when a user logs out of a session.  Regardless of
+  // whether we find their profile to remove, lets clear the network related
+  // logs.
+  MemoryLog::GetInstance()->Clear();
+  LOG(INFO) << "Cleared the memory log on logout event.";
+  while (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
+    PopProfileInternal();
+  }
+}
+
 void Manager::RemoveProfile(const string &name, Error *error) {
   Profile::Identifier ident;
   if (!Profile::ParseIdentifier(name, &ident)) {

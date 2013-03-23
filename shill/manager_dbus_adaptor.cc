@@ -162,6 +162,13 @@ void ManagerDBusAdaptor::PopAnyProfile(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
+void ManagerDBusAdaptor::PopAllUserProfiles(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  Error e;
+  manager_->PopAllUserProfiles(&e);
+  e.ToDBusError(&error);
+}
+
 void ManagerDBusAdaptor::RecheckPortal(::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e;

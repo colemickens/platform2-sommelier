@@ -60,6 +60,7 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
   ::DBus::Path PushProfile(const std::string &, ::DBus::Error &error);
   void PopProfile(const std::string &, ::DBus::Error &error);
   void PopAnyProfile(::DBus::Error &error);
+  void PopAllUserProfiles(::DBus::Error &error);
   void RecheckPortal(::DBus::Error &error);
   void RequestScan(const std::string &, ::DBus::Error &error);
 
