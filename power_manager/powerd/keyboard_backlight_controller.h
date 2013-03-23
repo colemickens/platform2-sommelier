@@ -9,11 +9,12 @@
 #include <vector>
 
 #include "base/compiler_specific.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/system/ambient_light_observer.h"
+#include "power_manager/powerd/policy/ambient_light_handler.h"
 
 namespace power_manager {
 
@@ -26,16 +27,15 @@ class BacklightInterface;
 }  // namespace system
 
 // Controls the keyboard backlight for devices with such a backlight.
-class KeyboardBacklightController : public BacklightController,
-                                    public system::AmbientLightObserver {
+class KeyboardBacklightController
+    : public BacklightController,
+      public policy::AmbientLightHandler::Delegate {
  public:
   // Helper class for tests that need to access internal state.
   class TestApi {
    public:
     explicit TestApi(KeyboardBacklightController* controller);
     ~TestApi();
-
-    int64 lux_level() const { return controller_->lux_level_; }
 
     // Triggers |video_timeout_id_|, which must be set.
     void TriggerVideoTimeout();
@@ -73,32 +73,11 @@ class KeyboardBacklightController : public BacklightController,
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
-  // system::AmbientLightObserver implementation:
-  virtual void OnAmbientLightChanged(
-      system::AmbientLightSensorInterface* sensor) OVERRIDE;
+  // policy::AmbientLightHandler::Delegate implementation:
+  virtual void SetBrightnessPercentForAmbientLight(
+      double brightness_percent) OVERRIDE;
 
  private:
-  // Contains the information about a brightness step for ALS adjustments. The
-  // data for instances of this structure are read out of a prefs
-  // file. |target_percent| is the brightness level of the backlight that this
-  // step causes. The thresholds are used to determine when to leave this
-  // state. Specifically as the lux value is decreasing if the lux value is
-  // lower then |decrease_threshold| is used. The equivalent logic is used in
-  // the increasing case. The step whose threshold is closest but not passed by
-  // the lux value is the one that is selected to be used.
-  struct BrightnessStep {
-    double target_percent;
-    int decrease_threshold;
-    int increase_threshold;
-  };
-
-  enum AlsHysteresisState {
-    ALS_HYST_IDLE,
-    ALS_HYST_DOWN,
-    ALS_HYST_UP,
-    ALS_HYST_IMMEDIATE,
-  };
-
   void ReadPrefs();
 
   // Reads in the percentage limits for either the user control or the ALS
@@ -110,12 +89,6 @@ class KeyboardBacklightController : public BacklightController,
                        double* min,
                        double* dim,
                        double* max);
-
-  // Get the control values for the steps that the ALS control can move
-  // in. Takes in the contents of the pref file to a string of the format
-  // "[<target percent> <decrease threshold> <increase threshold>\n]+" and
-  // parses it into a series of brightness steps.
-  void ReadAlsStepsPref();
 
   // Takes in the contents of the pref file to a string of the format "[<target
   // percent>\n]+" and parses it into a vector of doubles to be used as steps
@@ -159,8 +132,7 @@ class KeyboardBacklightController : public BacklightController,
   // Interface for saving preferences. Non-owned.
   PrefsInterface* prefs_;
 
-  // Light sensor we need to register for updates from.  Non-owned.
-  system::AmbientLightSensorInterface* light_sensor_;
+  scoped_ptr<policy::AmbientLightHandler> ambient_light_handler_;
 
   // Observers to notify about changes.
   ObserverList<BacklightControllerObserver> observers_;
@@ -180,13 +152,6 @@ class KeyboardBacklightController : public BacklightController,
   // of transitioning to).
   int64 current_level_;
 
-  // Control values used for defining the range that als control will set the
-  // target brightness percent and a special value for dimming the backlight
-  // when the device idles.
-  double als_percent_dim_;
-  double als_percent_max_;
-  double als_percent_min_;
-
   // Control values used for defining the range that user control will set the
   // target brightness percent and a special value for dimming the backlight
   // when the device idles.
@@ -194,32 +159,19 @@ class KeyboardBacklightController : public BacklightController,
   double user_percent_max_;
   double user_percent_min_;
 
-  // Apply temporal hysteresis to ALS values.
-  AlsHysteresisState hysteresis_state_;
-  int hysteresis_count_;
-
-  // Most recent value received from the ALS.
-  int lux_level_;
-
-  // Current brightness step within |als_steps_| being used by the ambient
-  // light sensor.
-  ssize_t als_step_index_;
-
-  // Brightness step data that is read in from the prefs file. It is assumed
-  // that this data is well formed, specifically for each entry in the file the
-  // decrease thresholds are monotonically increasing and the increase
-  // thresholds are monotonically decreasing. The value -1 is special and is
-  // meant to indicate positive/negative infinity depending on the context.
-  std::vector<BrightnessStep> als_steps_;
-
   // Current brightness step within |user_steps_| set by user, or -1 if
-  // |als_step_index_| should be used.
+  // |percent_for_ambient_light_| should be used.
   ssize_t user_step_index_;
 
   // Set of percentages that the user can select from for setting the
   // brightness. This is populated by either reading from a config value or
   // dropping in target_percent [min, dim, max] in.
   std::vector<double> user_steps_;
+
+  // Backlight brightness in the range [0.0, 100.0] to use when the ambient
+  // light sensor is controlling the brightness.  This is set by
+  // |ambient_light_handler_|.
+  double percent_for_ambient_light_;
 
   // If true, we ignore readings from the ambient light sensor.  Controlled by
   // kDisableALSPref.

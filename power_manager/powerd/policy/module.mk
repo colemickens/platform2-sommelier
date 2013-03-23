@@ -7,6 +7,7 @@ include common.mk
 CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a): \
 	power_manager/input_event.pb.o \
 	power_manager/policy.pb.o \
+	powerd/policy/ambient_light_handler.o \
 	powerd/policy/dark_resume_policy.o \
 	powerd/policy/input_controller.o \
 	powerd/policy/state_controller.o

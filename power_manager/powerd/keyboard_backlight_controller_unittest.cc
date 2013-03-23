@@ -152,8 +152,8 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
   light_sensor_.NotifyObservers();
   EXPECT_EQ(20, backlight_.current_level());
 
-  // ALS returns the already set value.
-  light_sensor_.set_values(0.0, test_api_.lux_level());
+  // ALS returns a value in the middle of the initial step.
+  light_sensor_.set_values(0.0, 25);
   light_sensor_.NotifyObservers();
   EXPECT_EQ(20, backlight_.current_level());
 

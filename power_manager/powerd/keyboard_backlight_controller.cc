@@ -16,25 +16,16 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/backlight_controller_observer.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
 
 namespace {
 
-// Default control values for the als target percent.
-const double kAlsPercentDim = 10.0;
-const double kAlsPercentMax = 60.0;
-const double kAlsPercentMin = 0.0;
-
 // Default control values for the user percent.
 const double kUserPercentDim = 10.0;
 const double kUserPercentMax = 100.0;
 const double kUserPercentMin = 0.0;
-
-// Number of light sensor responses required to overcome temporal hysteresis.
-const int kAlsHystResponse = 2;
 
 // This is how long after a video playing message is received we should wait
 // until reverting to the not playing state. If another message is received in
@@ -84,38 +75,27 @@ KeyboardBacklightController::KeyboardBacklightController(
     system::AmbientLightSensorInterface* sensor)
     : backlight_(backlight),
       prefs_(prefs),
-      light_sensor_(sensor),
+      ambient_light_handler_(
+          sensor ? new policy::AmbientLightHandler(sensor, this) : NULL),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       shutting_down_(false),
       fullscreen_video_playing_(false),
       max_level_(0),
       current_level_(0),
-      als_percent_dim_(kAlsPercentDim),
-      als_percent_max_(kAlsPercentMax),
-      als_percent_min_(kAlsPercentMin),
       user_percent_dim_(kUserPercentDim),
       user_percent_max_(kUserPercentMax),
       user_percent_min_(kUserPercentMin),
-      hysteresis_state_(ALS_HYST_IMMEDIATE),
-      hysteresis_count_(0),
-      lux_level_(0),
-      als_step_index_(0),
       user_step_index_(-1),
+      percent_for_ambient_light_(100.0),
       ignore_ambient_light_(false),
       video_timeout_id_(0),
       num_als_adjustments_(0),
       num_user_adjustments_(0) {
   DCHECK(backlight);
-  if (light_sensor_)
-    light_sensor_->AddObserver(this);
 }
 
 KeyboardBacklightController::~KeyboardBacklightController() {
-  if (light_sensor_) {
-    light_sensor_->RemoveObserver(this);
-    light_sensor_ = NULL;
-  }
   util::RemoveTimeout(&video_timeout_id_ );
 }
 
@@ -128,44 +108,14 @@ bool KeyboardBacklightController::Init() {
 
   ReadPrefs();
 
-  // This needs to be clamped since the brightness steps that are defined might
-  // not use the whole range of the backlight, so the EC set level might be out
-  // of range.
-  double percent = std::min(LevelToPercent(current_level_), als_percent_max_);
-
-  // Select the nearest step to the current backlight level and adjust the
-  // target percent in line with it. Set |percent_delta| to an arbitrary too
-  // large delta and go through |als_steps_| minimizing the difference
-  // between the step's percent and the percent calculated above.
-  double percent_delta = 2 * als_percent_max_;
-  for (size_t i = 0; i < als_steps_.size(); i++) {
-    double temp_delta = abs(percent - als_steps_[i].target_percent);
-    if (temp_delta < percent_delta) {
-      percent_delta = temp_delta;
-      als_step_index_ = i;
-    }
-  }
-  CHECK(percent_delta < 2 * als_percent_max_);
-
-  // Create a synthetic lux value that is inline with |als_step_index_|.
-  // If one or both of the thresholds are unbounded, just do the best we
-  // can.
-  if (als_steps_[als_step_index_].decrease_threshold >= 0 &&
-      als_steps_[als_step_index_].increase_threshold >= 0) {
-    lux_level_ = als_steps_[als_step_index_].decrease_threshold +
-        (als_steps_[als_step_index_].increase_threshold -
-         als_steps_[als_step_index_].decrease_threshold) / 2;
-  } else if (als_steps_[als_step_index_].decrease_threshold >= 0) {
-    lux_level_ = als_steps_[als_step_index_].decrease_threshold;
-  } else if (als_steps_[als_step_index_].increase_threshold >= 0) {
-    lux_level_ = als_steps_[als_step_index_].increase_threshold;
-  } else {
-    lux_level_ = 0;
+  if (ambient_light_handler_.get()) {
+    ambient_light_handler_->Init(prefs_, kKeyboardBacklightAlsLimitsPref,
+                                 kKeyboardBacklightAlsStepsPref,
+                                 LevelToPercent(current_level_));
   }
 
-  LOG(INFO) << "Backlight has range [0, " << max_level_ << "]; "
-            << "created synthetic lux value of " << lux_level_
-            << " for current level " << current_level_;
+  LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with initial "
+            << "level " << current_level_;
   return true;
 }
 
@@ -267,96 +217,18 @@ int KeyboardBacklightController::GetNumUserAdjustments() const {
   return num_user_adjustments_;
 }
 
-void KeyboardBacklightController::OnAmbientLightChanged(
-    system::AmbientLightSensorInterface* sensor) {
-#ifndef HAS_ALS
-  LOG(WARNING) << "Got ALS reading from platform supposed to have no ALS. "
-               << "Please check the platform ALS configuration.";
-#endif
-
-  DCHECK_EQ(sensor, light_sensor_);
-
+void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
+    double brightness_percent) {
   if (ignore_ambient_light_)
     return;
-
-  int new_lux = light_sensor_->GetAmbientLightLux();
-  if (new_lux < 0) {
-    LOG(WARNING) << "ALS doesn't have valid value after sending "
-                 << "OnAmbientLightChanged";
-    return;
-  }
-
-  if (hysteresis_state_ != ALS_HYST_IMMEDIATE && new_lux == lux_level_) {
-    hysteresis_state_ = ALS_HYST_IDLE;
-    return;
-  }
-
-  int new_step_index = als_step_index_;
-  int num_steps = als_steps_.size();
-  if (new_lux > lux_level_) {
-    if (hysteresis_state_ != ALS_HYST_IMMEDIATE &&
-        hysteresis_state_ != ALS_HYST_UP) {
-      VLOG(2) << "ALS transitioned to brightness increasing";
-      hysteresis_state_ = ALS_HYST_UP;
-      hysteresis_count_ = 0;
-    }
-    for (; new_step_index < num_steps; new_step_index++) {
-      if (new_lux < als_steps_[new_step_index].increase_threshold ||
-          als_steps_[new_step_index].increase_threshold == -1)
-        break;
-    }
-  } else if (new_lux < lux_level_) {
-    if (hysteresis_state_ != ALS_HYST_IMMEDIATE &&
-        hysteresis_state_ != ALS_HYST_DOWN) {
-      VLOG(2) << "ALS transitioned to brightness decreasing";
-      hysteresis_state_ = ALS_HYST_DOWN;
-      hysteresis_count_ = 0;
-    }
-    for (; new_step_index >= 0; new_step_index--) {
-      if (new_lux > als_steps_[new_step_index].decrease_threshold ||
-          als_steps_[new_step_index].decrease_threshold == -1)
-        break;
-    }
-  }
-  DCHECK_GE(new_step_index, 0);
-  DCHECK_LT(new_step_index, num_steps);
-
-  if (hysteresis_state_ == ALS_HYST_IMMEDIATE) {
-    VLOG(1) << "Immediately going to step " << new_step_index << " with lux "
-            << new_lux;
-    als_step_index_ = new_step_index;
-    lux_level_ = new_lux;
-    hysteresis_state_ = ALS_HYST_IDLE;
-    hysteresis_count_ = 0;
-    num_als_adjustments_++;
-    UpdateUndimmedBrightness(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
-    return;
-  }
-
-  if (als_step_index_ == new_step_index)
-    return;
-
-  hysteresis_count_++;
-  VLOG(2) << "Incremented hysteresis count to " << hysteresis_count_
-          << " (lux went from " << lux_level_ << " to " << new_lux << ")";
-  if (hysteresis_count_ >= kAlsHystResponse) {
-    VLOG(1) << "Hysteresis overcome, transitioning step from "
-            << als_step_index_ << " to " << new_step_index << "; history "
-            << "(most recent first): " << light_sensor_->DumpLuxHistory();
-    als_step_index_ = new_step_index;
-    lux_level_ = new_lux;
-    hysteresis_count_ = 1;
-    num_als_adjustments_++;
-    UpdateUndimmedBrightness(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
-  }
+  percent_for_ambient_light_ = brightness_percent;
+  num_als_adjustments_++;
+  UpdateUndimmedBrightness(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
 void KeyboardBacklightController::ReadPrefs() {
-  ReadLimitsPrefs(kKeyboardBacklightAlsLimitsPref,
-                  &als_percent_min_, &als_percent_dim_, &als_percent_max_);
   ReadLimitsPrefs(kKeyboardBacklightUserLimitsPref,
                   &user_percent_min_, &user_percent_dim_, &user_percent_max_);
-  ReadAlsStepsPref();
   ReadUserStepsPref();
   prefs_->GetBool(kDisableALSPref, &ignore_ambient_light_);
 }
@@ -384,46 +256,6 @@ void KeyboardBacklightController::ReadLimitsPrefs(const std::string& pref_name,
     }
   } else {
     LOG(ERROR) << "Failed to read pref " << pref_name;
-  }
-}
-
-void KeyboardBacklightController::ReadAlsStepsPref() {
-  als_steps_.clear();
-  std::string input_str;
-  if (prefs_->GetString(kKeyboardBacklightAlsStepsPref, &input_str)) {
-    std::vector<std::string> lines;
-    base::SplitString(input_str, '\n', &lines);
-    for (std::vector<std::string>::iterator iter = lines.begin();
-         iter != lines.end(); ++iter) {
-      std::vector<std::string> segments;
-      base::SplitString(*iter, ' ', &segments);
-      BrightnessStep new_step;
-      if (segments.size() == 3 &&
-          base::StringToDouble(segments[0], &new_step.target_percent) &&
-          base::StringToInt(segments[1], &new_step.decrease_threshold) &&
-          base::StringToInt(segments[2],  &new_step.increase_threshold)) {
-        als_steps_.push_back(new_step);
-      } else {
-        LOG(ERROR) << "Skipping line in ALS step pref: \"" << *iter << "\"";
-      }
-    }
-  } else {
-    LOG(ERROR) << "Failed to read ALS steps pref";
-  }
-
-  // If don't have any values in |als_steps_| insert a default value so
-  // that we can effectively ignore the ALS, but still operate in a reasonable
-  // manner.
-  if (als_steps_.empty()) {
-    BrightnessStep default_step;
-    default_step.target_percent = als_percent_max_;
-    default_step.decrease_threshold = -1;
-    default_step.increase_threshold = -1;
-    als_steps_.push_back(default_step);
-    VLOG(1) << "No ALS brightness steps read; inserted default step ("
-            << default_step.target_percent << ", "
-            << default_step.decrease_threshold << ", "
-            << default_step.increase_threshold << ")";
   }
 }
 
@@ -499,7 +331,7 @@ void KeyboardBacklightController::InitUserStepIndex() {
 
 double KeyboardBacklightController::GetUndimmedPercent() const {
   return user_step_index_ != -1 ? user_steps_[user_step_index_] :
-      als_steps_[als_step_index_].target_percent;
+      percent_for_ambient_light_;
 }
 
 bool KeyboardBacklightController::UpdateUndimmedBrightness(
@@ -520,13 +352,13 @@ bool KeyboardBacklightController::UpdateState() {
   if (shutting_down_) {
     percent = 0.0;
     transition = TRANSITION_INSTANT;
-  } else if (fullscreen_video_playing_) {
-    percent = als_percent_min_;
-  } else if (off_for_inactivity_) {
-    percent = use_user ? user_percent_min_ : als_percent_min_;
+  } else if (fullscreen_video_playing_ || off_for_inactivity_) {
+    percent = use_user ? user_percent_min_ :
+        ambient_light_handler_->min_brightness_percent();
   } else if (dimmed_for_inactivity_) {
-    percent = std::min(use_user ? user_percent_dim_ : als_percent_dim_,
-                       GetUndimmedPercent());
+    double dimmed_percent = use_user ? user_percent_dim_ :
+        ambient_light_handler_->dimmed_brightness_percent();
+    percent = std::min(dimmed_percent, GetUndimmedPercent());
   } else {
     percent = GetUndimmedPercent();
   }
