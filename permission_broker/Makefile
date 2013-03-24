@@ -38,7 +38,9 @@ CXX_BINARY(permission_broker): \
 clean: CLEAN(permission_broker)
 
 PERMISSION_BROKER_UNITTEST_FLAGS = $(PERMISSION_BROKER_FLAGS)
-PERMISSION_BROKER_UNITTEST_LIBS = $(PERMISSION_BROKER_LIBS) -lgmock -lgtest
+TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
+PERMISSION_BROKER_UNITTEST_LIBS = $(PERMISSION_BROKER_LIBS) $(TEST_LIBS)
+
 CXX_BINARY(permission_broker_unittest): \
   CXXFLAGS += $(PERMISSION_BROKER_UNITTEST_FLAGS)
 CXX_BINARY(permission_broker_unittest): \

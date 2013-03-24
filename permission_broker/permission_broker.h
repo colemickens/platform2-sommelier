@@ -26,7 +26,7 @@ class Rule;
 class PermissionBroker {
  public:
   PermissionBroker();
-  ~PermissionBroker();
+  virtual ~PermissionBroker();
 
   // Initializes the broker and loops waiting for requests on the DBus
   // interface. Never returns.
@@ -57,7 +57,7 @@ class PermissionBroker {
   // Waits for all queued udev events to complete before returning. Is
   // equivalent to invoking 'udevadm settle', but without the external
   // dependency and overhead.
-  void WaitForEmptyUdevQueue();
+  virtual void WaitForEmptyUdevQueue();
 
   // Invokes each of the rules in order on |path| until either a rule explicitly
   // denies access to the path or until there are no more rules left. If, after

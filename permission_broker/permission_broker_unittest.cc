@@ -34,6 +34,7 @@ class MockPermissionBroker : public PermissionBroker {
   virtual ~MockPermissionBroker() {}
 
   MOCK_METHOD1(MockGrantAccess, bool(const string &path));
+  MOCK_METHOD0(WaitForEmptyUdevQueue, void(void));
 
  private:
   virtual bool GrantAccess(const string &path) {
