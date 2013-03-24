@@ -64,7 +64,8 @@ clean: CLEAN($(SESSION_BIN))
 
 CXX_BINARY($(TEST_BIN)): $(TEST_OBJS) | CXX_BINARY($(KEYGEN_BIN))
 CXX_BINARY($(TEST_BIN)): CPPFLAGS += -DUNIT_TEST
-CXX_BINARY($(TEST_BIN)): LDLIBS += -lgtest -lgmock
+UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
+CXX_BINARY($(TEST_BIN)): LDLIBS += $(UNITTEST_LIBS)
 clean: CLEAN(CXX_BINARY($(TEST_BIN)))
 tests: TEST(CXX_BINARY($(TEST_BIN)))
 
