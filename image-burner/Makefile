@@ -37,8 +37,9 @@ marshal.h: marshal.list
 clean:
 	rm -rf *.o $(BINDINGS_DIR)/* marshal.h $(BINS)
 
+UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 unittest_runner: unittest_runner.o image_burner_impl_unittest.o $(COMMON_OBJS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -lgmock -lgtest -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) $(UNITTEST_LIBS) -o $@
 
 image_burner_tester.o: bindings/client.h
 image_burner_tester: image_burner_tester.o
