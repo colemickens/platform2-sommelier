@@ -24,7 +24,7 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 LDLIBS = -lgflags $(PC_LIBS)
 
-TEST_LIBS = -lgtest -lgmock
+TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 
 CPPFLAGS += \
 	-I$(SRC)/.. \
