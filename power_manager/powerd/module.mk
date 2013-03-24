@@ -81,7 +81,8 @@ clean: CLEAN(powerd/powerd_setuid_helper)
 all: CXX_BINARY(powerd/powerd_setuid_helper)
 
 POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
-POWERD_UNITTEST_LIBS = $(POWERD_LIBS) -lgtest -lgmock
+TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
+POWERD_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
 POWERD_UNITTEST_OBJS = \
 	powerd/external_backlight_controller_unittest.o \
 	powerd/file_tagger_unittest.o \
