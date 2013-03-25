@@ -525,14 +525,19 @@ cmd_swap() {
       # remove file in case root owns it
       rm -f $swap_enable_file
       echo "$2" > $swap_enable_file
+      echo "You have selected a size of $2 MB for compressed swap."
+      echo "Your choice may affect system performance in various ways."
+      echo "Presumably you know what you are doing."
     fi
     echo "Swap will be ON at next reboot."
-    echo "You are turning on compressed swap, which is an experimental feature"
-    echo "of Chrome OS.  System instability may result.  To turn it off, use"
-    echo "the command \"swap disable\"."
     ;;
   "disable")
+    # remove file in case root owns it
     rm -f $swap_enable_file
+    echo 0 > $swap_enable_file
+    echo "You are turning compressed swap off."
+    echo "This may impact system performance in various ways."
+    echo "Presumably you know what you are doing."
     echo "Swap will be OFF at next reboot."
     ;;
   "status")
