@@ -1298,9 +1298,14 @@ bool Service::GetAutoConnect(Error */*error*/) {
   return auto_connect();
 }
 
-void Service::SetAutoConnect(const bool &connect, Error *error) {
-  LOG(INFO) << __func__ << "(" << connect << ")";
+void Service::SetAutoConnect(const bool &connect, Error */*error*/) {
+  LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
+            << auto_connect() << "->" << connect;
+  if (auto_connect() == connect) {
+    return;
+  }
   set_auto_connect(connect);
+  manager_->UpdateService(this);
 }
 
 string Service::GetCheckPortal(Error *error) {

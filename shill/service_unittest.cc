@@ -166,6 +166,14 @@ class ServiceTest : public PropertyStoreTest {
     return Service::ExtractWallClockToStrings(timestamps);
   }
 
+  bool GetAutoConnect(Error *error) {
+    return service_->GetAutoConnect(error);
+  }
+
+  void SetAutoConnect(bool connect, Error *error) {
+    service_->SetAutoConnect(connect, error);
+  }
+
   MockManager mock_manager_;
   MockDiagnosticsReporter diagnostics_reporter_;
   MockTime time_;
@@ -1410,6 +1418,45 @@ TEST_F(ServiceTest, SetErrorDetails) {
   service_->SetErrorDetails(kDetails);
   EXPECT_EQ(kDetails, service_->error_details());
   service_->SetErrorDetails(kDetails);
+}
+
+TEST_F(ServiceTest, SetAutoConnect) {
+  EXPECT_FALSE(service_->auto_connect());
+  Error error;
+  EXPECT_FALSE(GetAutoConnect(&error));
+  EXPECT_TRUE(error.IsSuccess());
+
+  // false -> false
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
+  SetAutoConnect(false, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_FALSE(GetAutoConnect(NULL));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // false -> true
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
+  SetAutoConnect(true, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(service_->auto_connect());
+  EXPECT_TRUE(GetAutoConnect(NULL));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // true -> true
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
+  SetAutoConnect(true, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(service_->auto_connect());
+  EXPECT_TRUE(GetAutoConnect(NULL));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
+
+  // true -> false
+  EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
+  SetAutoConnect(false, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_FALSE(service_->auto_connect());
+  EXPECT_FALSE(GetAutoConnect(NULL));
+  Mock::VerifyAndClearExpectations(&mock_manager_);
 }
 
 }  // namespace shill
