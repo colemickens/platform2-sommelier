@@ -66,6 +66,13 @@ class WiFiProvider {
   virtual WiFiServiceRefPtr OnEndpointRemoved(
       const WiFiEndpointConstRefPtr &endpoint);
 
+  // Called by a Device when it receives notification that an Endpoint
+  // has changed.  Ensure the updated endpoint still matches its
+  // associated service.  If necessary re-assign the endpoint to a new
+  // service, otherwise notify the associated service of the update to
+  // the endpoint.
+  virtual void OnEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint);
+
   // Called by a WiFiService when it is unloaded and no longer visible.
   virtual bool OnServiceUnloaded(const WiFiServiceRefPtr &service);
 
@@ -79,6 +86,8 @@ class WiFiProvider {
 
  private:
   friend class WiFiProviderTest;
+
+  typedef std::map<const WiFiEndpoint *, WiFiServiceRefPtr> EndpointServiceMap;
 
   static const char kManagerErrorSSIDTooLong[];
   static const char kManagerErrorSSIDTooShort[];
@@ -120,6 +129,8 @@ class WiFiProvider {
   Manager *manager_;
 
   std::vector<WiFiServiceRefPtr> services_;
+  EndpointServiceMap service_by_endpoint_;
+
   bool running_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiProvider);

@@ -32,6 +32,8 @@ class MockWiFiProvider : public WiFiProvider {
   MOCK_METHOD1(OnEndpointAdded, void(const WiFiEndpointConstRefPtr &endpoint));
   MOCK_METHOD1(OnEndpointRemoved,
                WiFiServiceRefPtr(const WiFiEndpointConstRefPtr &endpoint));
+  MOCK_METHOD1(OnEndpointUpdated,
+               void(const WiFiEndpointConstRefPtr &endpoint));
   MOCK_METHOD1(OnServiceUnloaded, bool(const WiFiServiceRefPtr &service));
   MOCK_METHOD0(GetHiddenSSIDList, ByteArrays());
   MOCK_METHOD2(FixupServiceEntries, void(StoreInterface *storage,

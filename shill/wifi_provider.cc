@@ -68,6 +68,7 @@ void WiFiProvider::Stop() {
                   << service->unique_name();
     manager_->DeregisterService(service);
   }
+  service_by_endpoint_.clear();
   running_ = false;
 }
 
@@ -205,9 +206,11 @@ WiFiServiceRefPtr WiFiProvider::GetService(
 
 WiFiServiceRefPtr WiFiProvider::FindServiceForEndpoint(
     const WiFiEndpointConstRefPtr &endpoint) {
-  return FindService(endpoint->ssid(),
-                     endpoint->network_mode(),
-                     endpoint->security_mode());
+  EndpointServiceMap::iterator service_it =
+      service_by_endpoint_.find(endpoint);
+  if (service_it == service_by_endpoint_.end())
+    return NULL;
+  return service_it->second;
 }
 
 void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
@@ -215,7 +218,9 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
     return;
   }
 
-  WiFiServiceRefPtr service = FindServiceForEndpoint(endpoint);
+  WiFiServiceRefPtr service = FindService(endpoint->ssid(),
+                                          endpoint->network_mode(),
+                                          endpoint->security_mode());
   if (!service) {
     const bool hidden_ssid = false;
     service = AddService(
@@ -226,6 +231,7 @@ void WiFiProvider::OnEndpointAdded(const WiFiEndpointConstRefPtr &endpoint) {
   }
 
   service->AddEndpoint(endpoint);
+  service_by_endpoint_[endpoint] = service;
 
   SLOG(WiFi, 1) << "Assigned endpoint " << endpoint->bssid_string()
                 << " to service " << service->unique_name() << ".";
@@ -246,6 +252,7 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
   SLOG(WiFi, 1) << "Removing endpoint " << endpoint->bssid_string()
                 << " from Service " << service->unique_name();
   service->RemoveEndpoint(endpoint);
+  service_by_endpoint_.erase(endpoint);
 
   if (service->HasEndpoints() || service->IsRemembered()) {
     // Keep services around if they are in a profile or have remaining
@@ -258,6 +265,26 @@ WiFiServiceRefPtr WiFiProvider::OnEndpointRemoved(
   manager_->DeregisterService(service);
 
   return service;
+}
+
+void WiFiProvider::OnEndpointUpdated(const WiFiEndpointConstRefPtr &endpoint) {
+  WiFiService *service = FindServiceForEndpoint(endpoint);
+  CHECK(service);
+
+  // If the service still matches the endpoint in its new configuration,
+  // we need only to update the service.
+  if (service->ssid() == endpoint->ssid() &&
+      service->mode() == endpoint->network_mode() &&
+      service->IsSecurityMatch(endpoint->security_mode())) {
+    service->NotifyEndpointUpdated(endpoint);
+    return;
+  }
+
+  // The endpoint no longer matches the associated service.  Remove the
+  // endpoint, so current references to the endpoint are reset, then add
+  // it again so it can be associated with a new service.
+  OnEndpointRemoved(endpoint);
+  OnEndpointAdded(endpoint);
 }
 
 bool WiFiProvider::OnServiceUnloaded(const WiFiServiceRefPtr &service) {

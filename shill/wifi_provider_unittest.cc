@@ -70,6 +70,10 @@ class WiFiProviderTest : public testing::Test {
     return provider_.services_;
   }
 
+  const WiFiProvider::EndpointServiceMap &GetServiceByEndpoint() {
+    return provider_.service_by_endpoint_;
+  }
+
   bool GetRunning() {
     return provider_.running_;
   }
@@ -187,6 +191,10 @@ class WiFiProviderTest : public testing::Test {
     provider_.services_.push_back(service);
     return service;
   }
+  void AddEndpointToService(WiFiServiceRefPtr service,
+                            const WiFiEndpointConstRefPtr &endpoint) {
+    provider_.service_by_endpoint_[endpoint] = service;
+  }
   NiceMockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
@@ -217,6 +225,7 @@ TEST_F(WiFiProviderTest, Start) {
   provider_.Start();
   EXPECT_TRUE(GetServices().empty());
   EXPECT_TRUE(GetRunning());
+  EXPECT_TRUE(GetServiceByEndpoint().empty());
 }
 
 TEST_F(WiFiProviderTest, Stop) {
@@ -228,7 +237,11 @@ TEST_F(WiFiProviderTest, Stop) {
                                                   flimflam::kModeManaged,
                                                   flimflam::kSecurityNone,
                                                   false);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint("", "00:00:00:00:00:00", 0, 0);
+  AddEndpointToService(service0, endpoint);
+
   EXPECT_EQ(2, GetServices().size());
+  EXPECT_FALSE(GetServiceByEndpoint().empty());
   EXPECT_CALL(*service0, ResetWiFi()).Times(1);
   EXPECT_CALL(*service1, ResetWiFi()).Times(1);
   EXPECT_CALL(manager_, DeregisterService(RefPtrMatch(service0))).Times(1);
@@ -240,6 +253,7 @@ TEST_F(WiFiProviderTest, Stop) {
   Mock::VerifyAndClearExpectations(service1);
   Mock::VerifyAndClearExpectations(&manager_);
   EXPECT_TRUE(GetServices().empty());
+  EXPECT_TRUE(GetServiceByEndpoint().empty());
 }
 
 TEST_F(WiFiProviderTest, CreateServicesFromProfileWithNoGroups) {
@@ -648,7 +662,10 @@ TEST_F(WiFiProviderTest, FindServiceForEndpoint) {
   WiFiEndpointRefPtr endpoint = MakeEndpoint(kSSID, "00:00:00:00:00:00", 0, 0);
   WiFiServiceRefPtr endpoint_service =
       provider_.FindServiceForEndpoint(endpoint);
-  EXPECT_EQ(service.get(), endpoint_service.get());
+  // Just because a matching service exists, we shouldn't necessarily have
+  // it returned.  We will test that this function returns the correct
+  // service if the endpoint is added below.
+  EXPECT_EQ(NULL, endpoint_service.get());
 }
 
 TEST_F(WiFiProviderTest, OnEndpointAdded) {
@@ -667,6 +684,10 @@ TEST_F(WiFiProviderTest, OnEndpointAdded) {
                                          flimflam::kSecurityNone));
   EXPECT_TRUE(service0);
   EXPECT_TRUE(service0->HasEndpoints());
+  EXPECT_EQ(1, GetServiceByEndpoint().size());
+  WiFiServiceRefPtr endpoint_service =
+      provider_.FindServiceForEndpoint(endpoint0);
+  EXPECT_EQ(service0.get(), endpoint_service.get());
 
   WiFiEndpointRefPtr endpoint1 = MakeEndpoint(ssid0, "00:00:00:00:00:01", 0, 0);
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
@@ -818,6 +839,9 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
 
   // Remove the last endpoint of a non-remembered service.
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  AddEndpointToService(service0, endpoint0);
+  EXPECT_EQ(1, GetServiceByEndpoint().size());
+
   EXPECT_CALL(*service0, RemoveEndpoint(RefPtrMatch(endpoint0))).Times(1);
   EXPECT_CALL(*service1, RemoveEndpoint(_)).Times(0);
   EXPECT_CALL(*service0, HasEndpoints()).WillOnce(Return(false));
@@ -833,6 +857,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemoved) {
   Mock::VerifyAndClearExpectations(service1);
   EXPECT_EQ(1, GetServices().size());
   EXPECT_EQ(service1.get(), GetServices().front().get());
+  EXPECT_TRUE(GetServiceByEndpoint().empty());
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
@@ -847,6 +872,9 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
 
   // Remove an endpoint of a non-remembered service.
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  AddEndpointToService(service0, endpoint0);
+  EXPECT_EQ(1, GetServiceByEndpoint().size());
+
   EXPECT_CALL(*service0, RemoveEndpoint(RefPtrMatch(endpoint0))).Times(1);
   EXPECT_CALL(*service0, HasEndpoints()).WillOnce(Return(true));
   EXPECT_CALL(*service0, IsRemembered()).WillRepeatedly(Return(false));
@@ -859,6 +887,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButHasEndpoints) {
   Mock::VerifyAndClearExpectations(&manager_);
   Mock::VerifyAndClearExpectations(service0);
   EXPECT_EQ(1, GetServices().size());
+  EXPECT_TRUE(GetServiceByEndpoint().empty());
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
@@ -873,6 +902,9 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
 
   // Remove the last endpoint of a remembered service.
   WiFiEndpointRefPtr endpoint0 = MakeEndpoint(ssid0, "00:00:00:00:00:00", 0, 0);
+  AddEndpointToService(service0, endpoint0);
+  EXPECT_EQ(1, GetServiceByEndpoint().size());
+
   EXPECT_CALL(*service0, RemoveEndpoint(RefPtrMatch(endpoint0))).Times(1);
   EXPECT_CALL(*service0, HasEndpoints()).WillRepeatedly(Return(false));
   EXPECT_CALL(*service0, IsRemembered()).WillOnce(Return(true));
@@ -885,6 +917,7 @@ TEST_F(WiFiProviderTest, OnEndpointRemovedButIsRemembered) {
   Mock::VerifyAndClearExpectations(&manager_);
   Mock::VerifyAndClearExpectations(service0);
   EXPECT_EQ(1, GetServices().size());
+  EXPECT_TRUE(GetServiceByEndpoint().empty());
 }
 
 TEST_F(WiFiProviderTest, OnEndpointRemovedWhileStopped) {

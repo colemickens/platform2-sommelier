@@ -434,11 +434,7 @@ void WiFi::ClearCachedCredentials(const WiFiService *service) {
 }
 
 void WiFi::NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint) {
-  WiFiService *service = provider_->FindServiceForEndpoint(endpoint);
-  DCHECK(service);
-  if (service) {
-    service->NotifyEndpointUpdated(endpoint);
-  }
+  provider_->OnEndpointUpdated(endpoint);
 }
 
 void WiFi::AppendBgscan(WiFiService *service,

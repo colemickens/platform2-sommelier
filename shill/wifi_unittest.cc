@@ -544,6 +544,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ClearCachedCredentials(const WiFiService *service) {
     return wifi_->ClearCachedCredentials(service);
   }
+  void NotifyEndpointChanged(const WiFiEndpointConstRefPtr &endpoint) {
+    wifi_->NotifyEndpointChanged(endpoint);
+  }
   bool RemoveNetwork(const ::DBus::Path &network) {
     return wifi_->RemoveNetwork(network);
   }
@@ -880,6 +883,13 @@ TEST_F(WiFiMainTest, ClearCachedCredentials) {
   WiFiServiceRefPtr service(SetupConnectedService(network, NULL, NULL));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(network));
   ClearCachedCredentials(service);
+}
+
+TEST_F(WiFiMainTest, NotifyEndpointChanged) {
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpointWithMode("ssid", "00:00:00:00:00:00", kNetworkModeAdHoc);
+  EXPECT_CALL(*wifi_provider(), OnEndpointUpdated(EndpointMatch(endpoint)));
+  NotifyEndpointChanged(endpoint);
 }
 
 TEST_F(WiFiMainTest, RemoveNetwork) {
