@@ -499,21 +499,6 @@ cmd_ssh_forget_host() {
 
 cmd_swap() {
   local swap_enable_file="/home/chronos/.swap_enabled"
-  # See /etc/init/swap-exp.conf for an explanation of these files.
-  local swap_exp_enrolled_file="/home/chronos/.swap_exp_enrolled"
-  local swap_exp_forced_file="/home/chronos/.swap_exp_forced"
-
-  if [ -f $swap_exp_forced_file -a "$1" != "opt-out" ]; then
-    echo "WARNING: you have been opted into a field trial of compressed swap."
-    echo "To opt out and not use swap, type 'swap opt-out'."
-    echo "To opt out and use swap, use 'swap enable [<size>]'."
-    echo ""
-  fi
-
-  # If enrolled in field trial, unenroll.  This forces correct re-enrollment at
-  # the next boot, and prevents new Chrome instances from sending the wrong
-  # stats.
-  rm -f $swap_exp_enrolled_file
 
   case "$1" in
   "enable")
@@ -521,7 +506,6 @@ cmd_swap() {
       # remove file in case root owns it
       rm -f $swap_enable_file
       touch $swap_enable_file
-      rm -f $swap_exp_forced_file
     elif ! echo "$2" | grep -q "^[0-9]*$"; then
       echo "$2 is not a valid integer literal"
       cmd_swap usage
@@ -541,7 +525,6 @@ cmd_swap() {
       # remove file in case root owns it
       rm -f $swap_enable_file
       echo "$2" > $swap_enable_file
-      rm -f $swap_exp_forced_file
     fi
     echo "Swap will be ON at next reboot."
     echo "You are turning on compressed swap, which is an experimental feature"
@@ -550,25 +533,16 @@ cmd_swap() {
     ;;
   "disable")
     rm -f $swap_enable_file
-    echo "Swap will be OFF at next reboot (unless forced ON by field trial)."
+    echo "Swap will be OFF at next reboot."
     ;;
   "status")
     /sbin/swapon -s
-    ;;
-  "opt-out")
-    rm -f $swap_enable_file
-    rm -f $swap_exp_forced_file
-    echo x > $swap_exp_enrolled_file
-    echo "You have opted out of the swap field trial and will not use swap."
-    echo "You may still manually enable swap with the 'swap enable' command."
-    echo "To reset your status and resume the trial, type 'swap disable'."
     ;;
   *)
     echo "Usage:"
     echo "  swap status          print swap device max and current size (if on)"
     echo "  swap enable [<optional swap size (MB)>]"
     echo "  swap disable"
-    echo "  swap opt-out         opt out of swap field trial (no swap)"
     return 1
     ;;
   esac
