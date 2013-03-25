@@ -989,8 +989,9 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
 
   if (failure != Service::kFailureUnknown) {
     // Avoid a reporting failure twice by clearing eap_in_progress_ early.
+    Error unused_error;
     is_eap_in_progress_ = false;
-    current_service_->DisconnectWithFailure(failure, NULL);
+    current_service_->DisconnectWithFailure(failure, &unused_error);
   }
 }
 
@@ -1390,9 +1391,11 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
 }
 
 void WiFi::PendingTimeoutHandler() {
+  Error unused_error;
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   CHECK(pending_service_);
-  pending_service_->DisconnectWithFailure(Service::kFailureOutOfRange, NULL);
+  pending_service_->DisconnectWithFailure(
+      Service::kFailureOutOfRange, &unused_error);
 }
 
 void WiFi::StartReconnectTimer() {

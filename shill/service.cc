@@ -1344,7 +1344,7 @@ void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,
   endpoint_auth_ = endpoint_auth;
 }
 
-string Service::GetNameProperty(Error *error) {
+string Service::GetNameProperty(Error */*error*/) {
   return friendly_name_;
 }
 

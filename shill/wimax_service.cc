@@ -180,11 +180,11 @@ string WiMaxService::GetStorageIdentifier() const {
 }
 
 string WiMaxService::GetDeviceRpcId(Error *error) {
-  if (device_) {
-    return device_->GetRpcIdentifier();
+  if (!device_) {
+    error->Populate(Error::kNotFound, "Not associated with a device");
+    return "/";
   }
-  error->Populate(Error::kNotSupported);
-  return "/";
+  return device_->GetRpcIdentifier();
 }
 
 bool WiMaxService::IsAutoConnectable(const char **reason) const {

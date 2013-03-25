@@ -107,7 +107,7 @@ TEST_F(WiMaxServiceTest, GetConnectParameters) {
 TEST_F(WiMaxServiceTest, GetDeviceRpcId) {
   Error error;
   EXPECT_EQ("/", service_->GetDeviceRpcId(&error));
-  EXPECT_EQ(Error::kNotSupported, error.type());
+  EXPECT_EQ(Error::kNotFound, error.type());
   service_->device_ = device_;
   error.Reset();
   EXPECT_EQ(DeviceMockAdaptor::kRpcId, service_->GetDeviceRpcId(&error));

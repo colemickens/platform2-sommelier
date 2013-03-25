@@ -76,6 +76,7 @@ using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
 using ::testing::Mock;
 using ::testing::NiceMock;
+using ::testing::NotNull;
 using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
@@ -2017,8 +2018,8 @@ TEST_F(WiFiMainTest, EAPEvent) {
 
   // An EAP failure without a previous TLS indication yields a generic failure.
   Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureEAPAuthentication, NULL))
+  EXPECT_CALL(*service, DisconnectWithFailure(
+      Service::kFailureEAPAuthentication, NotNull()))
       .Times(1);
   ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
                  wpa_supplicant::kEAPParameterFailure);
@@ -2031,7 +2032,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   ReportEAPEvent(wpa_supplicant::kEAPStatusLocalTLSAlert, string());
   Mock::VerifyAndClearExpectations(service.get());
   EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureEAPLocalTLS, NULL))
+              DisconnectWithFailure(Service::kFailureEAPLocalTLS, NotNull()))
       .Times(1);
   ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
                  wpa_supplicant::kEAPParameterFailure);
@@ -2043,7 +2044,7 @@ TEST_F(WiFiMainTest, EAPEvent) {
   ReportEAPEvent(wpa_supplicant::kEAPStatusRemoteTLSAlert, string());
   Mock::VerifyAndClearExpectations(service.get());
   EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureEAPRemoteTLS, NULL))
+              DisconnectWithFailure(Service::kFailureEAPRemoteTLS, NotNull()))
       .Times(1);
   ReportEAPEvent(wpa_supplicant::kEAPStatusCompletion,
                  wpa_supplicant::kEAPParameterFailure);
