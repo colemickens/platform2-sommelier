@@ -156,6 +156,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       sent_idle_warning_(false),
       idle_action_performed_(false),
       lid_closed_action_performed_(false),
+      turned_panel_off_for_docked_mode_(false),
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
@@ -538,7 +539,8 @@ void StateController::UpdateSettingsAndState() {
   idle_action_ =
       (session_state_ == SESSION_STARTED || suspend_at_login_screen_) ?
       SUSPEND : SHUT_DOWN;
-  lid_closed_action_ = session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN;
+  lid_closed_action_ = display_mode_ == DISPLAY_PRESENTATION ? DO_NOTHING :
+      (session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN);
   delays_ = power_source_ == POWER_AC ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;
   use_video_activity_ = true;
@@ -691,6 +693,15 @@ void StateController::UpdateState() {
       VLOG(1) << "Emitting idle-deferred signal";
       delegate_->EmitIdleActionDeferred();
     }
+  }
+
+  bool docked = display_mode_ == DISPLAY_PRESENTATION &&
+      lid_state_ == LID_CLOSED;
+  if (docked != turned_panel_off_for_docked_mode_) {
+    VLOG(1) << "Turning panel " << (docked ? "off" : "on") << " after "
+            << (docked ? "entering" : "leaving") << " docked mode";
+    delegate_->UpdatePanelForDockedMode(docked);
+    turned_panel_off_for_docked_mode_ = docked;
   }
 
   Action idle_action_to_perform = DO_NOTHING;

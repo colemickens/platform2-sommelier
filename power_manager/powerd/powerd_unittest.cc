@@ -80,6 +80,7 @@ class BacklightControllerStub : public BacklightController {
   virtual void SetOffForInactivity(bool off) OVERRIDE {}
   virtual void SetSuspended(bool suspended) OVERRIDE {}
   virtual void SetShuttingDown(bool shutting_down) OVERRIDE {}
+  virtual void SetDocked(bool docked) OVERRIDE {}
   virtual bool GetBrightnessPercent(double* percent) OVERRIDE {
     *percent = percent_;
     return true;

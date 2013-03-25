@@ -63,6 +63,7 @@ class InternalBacklightController : public BacklightController,
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;
   virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
+  virtual void SetDocked(bool docked) OVERRIDE;
   virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
   virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
       OVERRIDE;
@@ -150,6 +151,7 @@ class InternalBacklightController : public BacklightController,
   bool off_for_inactivity_;
   bool suspended_;
   bool shutting_down_;
+  bool docked_;
 
   // Indicates whether OnAmbientLightChanged() and
   // HandlePowerSourceChange() have been called yet.

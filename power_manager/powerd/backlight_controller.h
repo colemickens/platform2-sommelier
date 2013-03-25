@@ -70,6 +70,10 @@ class BacklightController {
   // Sets whether the backlight should be prepared for imminent shutdown.
   virtual void SetShuttingDown(bool shutting_down) = 0;
 
+  // Sets whether the system is in "docked mode" (external display
+  // connected while lid closed).
+  virtual void SetDocked(bool docked) = 0;
+
   // Gets the brightness that the backlight currently using or
   // transitioning to, in the range [0.0, 100.0].
   virtual bool GetBrightnessPercent(double* percent) = 0;

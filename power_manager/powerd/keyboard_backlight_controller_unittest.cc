@@ -460,4 +460,15 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenShuttingDown) {
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
 }
 
+TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
+  ASSERT_TRUE(Init());
+  controller_.SetDocked(true);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
+
+  // User requests to increase the brightness shouldn't turn the backlight on.
+  EXPECT_FALSE(controller_.IncreaseUserBrightness());
+  EXPECT_EQ(0, backlight_.current_level());
+}
+
 }  // namespace power_manager

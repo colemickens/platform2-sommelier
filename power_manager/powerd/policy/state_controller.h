@@ -75,6 +75,10 @@ class StateController : public PrefsObserver {
     // Shuts the system down.
     virtual void ShutDown() = 0;
 
+    // Turns the internal panel off if the system is currently in "docked
+    // mode" and on if the system isn't in docked mode.
+    virtual void UpdatePanelForDockedMode(bool docked) = 0;
+
     // Announces that an idle notification requested via
     // AddIdleNotification() has been triggered.
     virtual void EmitIdleNotification(base::TimeDelta delay) = 0;
@@ -284,6 +288,7 @@ class StateController : public PrefsObserver {
   bool sent_idle_warning_;
   bool idle_action_performed_;
   bool lid_closed_action_performed_;
+  bool turned_panel_off_for_docked_mode_;
 
   // Should the system only idle-suspend if a USB input device is
   // connected?  This is controlled by the

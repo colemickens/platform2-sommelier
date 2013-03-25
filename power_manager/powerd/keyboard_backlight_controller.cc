@@ -80,6 +80,7 @@ KeyboardBacklightController::KeyboardBacklightController(
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       shutting_down_(false),
+      docked_(false),
       fullscreen_video_playing_(false),
       max_level_(0),
       current_level_(0),
@@ -175,6 +176,13 @@ void KeyboardBacklightController::SetShuttingDown(bool shutting_down) {
   if (shutting_down == shutting_down_)
     return;
   shutting_down_ = shutting_down;
+  UpdateState();
+}
+
+void KeyboardBacklightController::SetDocked(bool docked) {
+  if (docked == docked_)
+    return;
+  docked_ = docked;
   UpdateState();
 }
 
@@ -344,7 +352,7 @@ bool KeyboardBacklightController::UpdateUndimmedBrightness(
     TransitionStyle transition,
     BrightnessChangeCause cause) {
   if (shutting_down_|| fullscreen_video_playing_ || off_for_inactivity_ ||
-      dimmed_for_inactivity_)
+      dimmed_for_inactivity_ || docked_)
     return false;
 
   return ApplyBrightnessPercent(GetUndimmedPercent(), transition, cause);
@@ -355,7 +363,7 @@ bool KeyboardBacklightController::UpdateState() {
   TransitionStyle transition = TRANSITION_SLOW;
   bool use_user = user_step_index_ != -1;
 
-  if (shutting_down_) {
+  if (shutting_down_ || docked_) {
     percent = 0.0;
     transition = TRANSITION_INSTANT;
   } else if (fullscreen_video_playing_ || off_for_inactivity_) {

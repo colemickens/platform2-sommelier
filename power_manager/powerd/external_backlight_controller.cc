@@ -144,6 +144,8 @@ bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
   return AdjustUserBrightnessByOffset(-kBrightnessAdjustmentPercent, allow_off);
 }
 
+void ExternalBacklightController::SetDocked(bool docked) {}
+
 int ExternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
   return 0;
 }

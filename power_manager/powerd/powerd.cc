@@ -144,6 +144,10 @@ class Daemon::StateControllerDelegate
     daemon_->OnRequestShutdown();
   }
 
+  virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
+    daemon_->SetBacklightsDocked(docked);
+  }
+
   virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
     daemon_->IdleEventNotify(delay.InMilliseconds());
   }
@@ -618,9 +622,8 @@ void Daemon::HandleResume(bool suspend_was_successful,
 }
 
 void Daemon::HandleLidClosed() {
-  if (state_controller_initialized_) {
+  if (state_controller_initialized_)
     state_controller_->HandleLidStateChange(LID_CLOSED);
-  }
 }
 
 void Daemon::HandleLidOpened() {
@@ -1433,6 +1436,12 @@ void Daemon::SetBacklightsSuspended(bool suspended) {
   backlight_controller_->SetSuspended(suspended);
   if (keyboard_controller_)
     keyboard_controller_->SetSuspended(suspended);
+}
+
+void Daemon::SetBacklightsDocked(bool docked) {
+  backlight_controller_->SetDocked(docked);
+  if (keyboard_controller_)
+    keyboard_controller_->SetDocked(docked);
 }
 
 void Daemon::UpdateBatteryReportState() {

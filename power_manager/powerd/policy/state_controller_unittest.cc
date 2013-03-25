@@ -31,6 +31,8 @@ const char kScreenOn[] = "on";
 const char kSuspend[] = "suspend";
 const char kStopSession[] = "logout";
 const char kShutDown[] = "shutdown";
+const char kDocked[] = "docked";
+const char kUndocked[] = "undocked";
 const char kIdleImminent[] = "idle_imminent";
 const char kIdleDeferred[] = "idle_deferred";
 const char kReportUserActivityMetrics[] = "metrics";
@@ -118,6 +120,9 @@ class TestDelegate : public StateController::Delegate {
   virtual void Suspend() OVERRIDE { AppendAction(kSuspend); }
   virtual void StopSession() OVERRIDE { AppendAction(kStopSession); }
   virtual void ShutDown() OVERRIDE { AppendAction(kShutDown); }
+  virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
+    AppendAction(docked ? kDocked : kUndocked);
+  }
   virtual void EmitIdleNotification(base::TimeDelta delay) OVERRIDE {
     AppendAction(GetEmitIdleNotificationAction(delay));
   }
@@ -591,6 +596,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
 
   // The policy's request to do nothing when the lid is closed should be
   // honored.
+  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
   controller_.HandleLidStateChange(LID_CLOSED);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
@@ -1179,6 +1185,30 @@ TEST_F(StateControllerTest, SuspendAtLoginScreen) {
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
+}
+
+// Tests that the system avoids suspending on lid-closed when an external
+// display is connected.
+TEST_F(StateControllerTest, DockedMode) {
+  Init();
+
+  // Connect an external display and close the lid.  The internal panel
+  // should be turned off, but the system shouldn't suspend.
+  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  controller_.HandleLidStateChange(LID_CLOSED);
+  EXPECT_EQ(kDocked, delegate_.GetActions());
+
+  // Open the lid and check that the internal panels turns back on.
+  controller_.HandleLidStateChange(LID_OPEN);
+  EXPECT_EQ(kUndocked, delegate_.GetActions());
+
+  // Close the lid again and check that the system suspends immediately
+  // after the external display is unplugged.
+  controller_.HandleLidStateChange(LID_CLOSED);
+  EXPECT_EQ(kDocked, delegate_.GetActions());
+  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  EXPECT_EQ(JoinActions(kUndocked, kSuspend, NULL), delegate_.GetActions());
 }
 
 }  // namespace policy

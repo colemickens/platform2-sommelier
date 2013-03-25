@@ -130,11 +130,17 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   // One more request with |allow_off| should go to 0.
   controller_->DecreaseUserBrightness(true /* allow_off */);
   EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            display_power_setter_.delay().InMilliseconds());
 
   // One increase request should raise the brightness to the minimum
   // visible level, while a second one should increase it above that.
   controller_->IncreaseUserBrightness();
   EXPECT_EQ(default_min_visible_level_, backlight_.current_level());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
   controller_->IncreaseUserBrightness();
   EXPECT_GT(backlight_.current_level(), default_min_visible_level_);
 }
@@ -223,10 +229,12 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   controller_->SetSuspended(true);
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(kDefaultLevel, backlight_.resume_level());
 
   controller_->SetSuspended(false);
   EXPECT_EQ(kDefaultLevel, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 
@@ -255,10 +263,11 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   EXPECT_EQ(kDefaultLevel, backlight_.resume_level());
 
   // Test resume.
-  controller_->SetSuspended(false);
-  controller_->SetOffForInactivity(false);
   controller_->SetDimmedForInactivity(false);
+  controller_->SetOffForInactivity(false);
+  controller_->SetSuspended(false);
   EXPECT_EQ(kDefaultLevel, backlight_.current_level());
+  EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
@@ -604,6 +613,29 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   // The backlight should be turned on after exiting presentation mode.
   controller_->HandleDisplayModeChange(DISPLAY_NORMAL);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+}
+
+TEST_F(InternalBacklightControllerTest, DockedMode) {
+  Init(POWER_AC);
+
+  display_power_setter_.reset_num_power_calls();
+  controller_->SetDocked(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+
+  // Increasing the brightness or dimming the backlight shouldn't change
+  // the displays' power settings while docked.
+  controller_->IncreaseUserBrightness();
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+  controller_->SetDimmedForInactivity(true);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_INTERNAL_OFF_EXTERNAL_ON,
+            display_power_setter_.state());
+
+  controller_->SetDocked(false);
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
 }  // namespace power_manager

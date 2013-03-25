@@ -491,6 +491,7 @@ class Daemon : public BacklightControllerObserver,
   void SetBacklightsDimmedForInactivity(bool dimmed);
   void SetBacklightsOffForInactivity(bool off);
   void SetBacklightsSuspended(bool suspended);
+  void SetBacklightsDocked(bool docked);
 
   // Updates |battery_report_state_| to account for changes in the power state
   // of the device and passage of time. This value is used to control the value

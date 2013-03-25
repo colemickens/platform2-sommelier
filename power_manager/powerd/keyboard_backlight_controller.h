@@ -68,6 +68,7 @@ class KeyboardBacklightController
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;
   virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
+  virtual void SetDocked(bool docked) OVERRIDE;
   virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
   virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
       OVERRIDE;
@@ -143,6 +144,7 @@ class KeyboardBacklightController
   bool dimmed_for_inactivity_;
   bool off_for_inactivity_;
   bool shutting_down_;
+  bool docked_;
 
   // Is a fullscreen video currently being played?
   bool fullscreen_video_playing_;
