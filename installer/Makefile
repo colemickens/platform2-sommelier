@@ -18,7 +18,7 @@ clean: CLEAN(cros_installer)
 all: CXX_STATIC_BINARY(cros_installer)
 cros_installer: CXX_STATIC_BINARY(cros_installer)
 
-UNITTEST_LIBS = -lgmock -lgtest
+UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 CXX_BINARY(cros_installer_unittest): LDFLAGS += $(UNITTEST_LIBS)
 CXX_BINARY(cros_installer_unittest): \
 		$(C_OBJECTS) \
