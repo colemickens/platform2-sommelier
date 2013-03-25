@@ -60,7 +60,7 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
 
   network_mode_ = ParseMode(
       properties.find(WPASupplicant::kBSSPropertyMode)->second);
-  set_security_mode(ParseSecurity(properties));
+  set_security_mode(ParseSecurity(properties, &security_flags_));
   has_rsn_property_ = ContainsKey(properties, WPASupplicant::kPropertyRSN);
   has_wpa_property_ = ContainsKey(properties, WPASupplicant::kPropertyWPA);
 
@@ -88,12 +88,36 @@ void WiFiEndpoint::Start() {
 void WiFiEndpoint::PropertiesChanged(
     const map<string, ::DBus::Variant> &properties) {
   SLOG(WiFi, 2) << __func__;
+  bool should_notify = false;
   map<string, ::DBus::Variant>::const_iterator properties_it =
       properties.find(WPASupplicant::kBSSPropertySignal);
   if (properties_it != properties.end()) {
     signal_strength_ = properties_it->second.reader().get_int16();
     SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
                   << signal_strength_;
+    should_notify = true;
+  }
+
+  properties_it = properties.find(WPASupplicant::kBSSPropertyMode);
+  if (properties_it != properties.end()) {
+    string new_mode = ParseMode(properties_it->second);
+    if (new_mode != network_mode_) {
+      network_mode_ = new_mode;
+      SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " mode is now "
+                    << network_mode_;
+      should_notify = true;
+    }
+  }
+
+  const char *new_security_mode = ParseSecurity(properties, &security_flags_);
+  if (new_security_mode != security_mode()) {
+    set_security_mode(new_security_mode);
+    SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " security is now "
+                  << security_mode();
+    should_notify = true;
+  }
+
+  if (should_notify) {
     device_->NotifyEndpointChanged(this);
   }
 }
@@ -275,39 +299,41 @@ const char *WiFiEndpoint::ParseMode(const string &mode_string) {
 
 // static
 const char *WiFiEndpoint::ParseSecurity(
-    const map<string, ::DBus::Variant> &properties) {
-  set<KeyManagement> rsn_key_management_methods;
+    const map<string, ::DBus::Variant> &properties, SecurityFlags *flags) {
   if (ContainsKey(properties, WPASupplicant::kPropertyRSN)) {
     // TODO(quiche): check type before casting
     const map<string, ::DBus::Variant> rsn_properties(
         properties.find(WPASupplicant::kPropertyRSN)->second.
         operator map<string, ::DBus::Variant>());
-    ParseKeyManagementMethods(rsn_properties, &rsn_key_management_methods);
+    set<KeyManagement> key_management;
+    ParseKeyManagementMethods(rsn_properties, &key_management);
+    flags->rsn_8021x = ContainsKey(key_management, kKeyManagement802_1x);
+    flags->rsn_psk = ContainsKey(key_management, kKeyManagementPSK);
   }
 
-  set<KeyManagement> wpa_key_management_methods;
   if (ContainsKey(properties, WPASupplicant::kPropertyWPA)) {
     // TODO(quiche): check type before casting
     const map<string, ::DBus::Variant> rsn_properties(
         properties.find(WPASupplicant::kPropertyWPA)->second.
         operator map<string, ::DBus::Variant>());
-    ParseKeyManagementMethods(rsn_properties, &wpa_key_management_methods);
+    set<KeyManagement> key_management;
+    ParseKeyManagementMethods(rsn_properties, &key_management);
+    flags->wpa_8021x = ContainsKey(key_management, kKeyManagement802_1x);
+    flags->wpa_psk = ContainsKey(key_management, kKeyManagementPSK);
   }
 
-  bool wep_privacy = false;
   if (ContainsKey(properties, WPASupplicant::kPropertyPrivacy)) {
-    wep_privacy = properties.find(WPASupplicant::kPropertyPrivacy)->second.
+    flags->privacy = properties.find(WPASupplicant::kPropertyPrivacy)->second.
         reader().get_bool();
   }
 
-  if (ContainsKey(rsn_key_management_methods, kKeyManagement802_1x) ||
-      ContainsKey(wpa_key_management_methods, kKeyManagement802_1x)) {
+  if (flags->rsn_8021x || flags->wpa_8021x) {
     return flimflam::kSecurity8021x;
-  } else if (ContainsKey(rsn_key_management_methods, kKeyManagementPSK)) {
+  } else if (flags->rsn_psk) {
     return flimflam::kSecurityRsn;
-  } else if (ContainsKey(wpa_key_management_methods, kKeyManagementPSK)) {
+  } else if (flags->wpa_psk) {
     return flimflam::kSecurityWpa;
-  } else if (wep_privacy) {
+  } else if (flags->privacy) {
     return flimflam::kSecurityWep;
   } else {
     return flimflam::kSecurityNone;

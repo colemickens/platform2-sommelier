@@ -26,6 +26,19 @@ class SupplicantBSSProxyInterface;
 
 class WiFiEndpoint : public Endpoint {
  public:
+  struct SecurityFlags {
+    SecurityFlags()
+        : rsn_8021x(false),
+          rsn_psk(false),
+          wpa_8021x(false),
+          wpa_psk(false),
+          privacy(false) {}
+    bool rsn_8021x;
+    bool rsn_psk;
+    bool wpa_8021x;
+    bool wpa_psk;
+    bool privacy;
+  };
   struct VendorInformation {
     std::string wps_manufacturer;
     std::string wps_model_name;
@@ -114,12 +127,16 @@ class WiFiEndpoint : public Endpoint {
                                         uint16 frequency,
                                         int16 signal_dbm);
   // Maps mode strings from supplicant into flimflam's nomenclature, as defined
-  // in chromeos/dbus/service_constants.h
+  // in chromeos/dbus/service_constants.h.
   static const char *ParseMode(const std::string &mode_string);
-  // Parses an Endpoint's properties to identify approprirate flimflam
-  // security property value, as defined in chromeos/dbus/service_constants.h
+  // Parses an Endpoint's properties to identify an approprirate flimflam
+  // security property value, as defined in chromeos/dbus/service_constants.h.
+  // The stored data in the |flags| parameter is merged with the provided
+  // properties, and the security value returned is the result of the
+  // merger.
   static const char *ParseSecurity(
-      const std::map<std::string, ::DBus::Variant> &properties);
+      const std::map<std::string, ::DBus::Variant> &properties,
+      SecurityFlags *flags);
   // Parses an Endpoint's properties' "RSN" or "WPA" sub-dictionary, to
   // identify supported key management methods (802.1x or PSK).
   static void ParseKeyManagementMethods(
@@ -172,6 +189,7 @@ class WiFiEndpoint : public Endpoint {
   bool ieee80211w_required_;
   bool has_rsn_property_;
   bool has_wpa_property_;
+  SecurityFlags security_flags_;
 
   ProxyFactory *proxy_factory_;
   WiFiRefPtr device_;
