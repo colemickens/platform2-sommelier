@@ -167,7 +167,7 @@ class WiFiProviderTest : public testing::Test {
   WiFiEndpointRefPtr MakeEndpoint(const string &ssid, const string &bssid,
                                   uint16 frequency, int16 signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        NULL, NULL, ssid, bssid, wpa_supplicant::kNetworkModeInfrastructure,
+        NULL, NULL, ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
   }
   MockWiFiServiceRefPtr AddMockService(const vector<uint8_t> &ssid,

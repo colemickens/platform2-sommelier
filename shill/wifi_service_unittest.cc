@@ -72,7 +72,7 @@ class WiFiServiceTest : public PropertyStoreTest {
   static const char fake_mac[];
 
   bool CheckConnectable(const std::string &security, const char *passphrase,
-                        Service::EapCredentials *eap) {
+                        EapCredentials *eap) {
     Error error;
     WiFiServiceRefPtr service = MakeSimpleService(security);
     if (passphrase)
@@ -86,13 +86,13 @@ class WiFiServiceTest : public PropertyStoreTest {
                              uint16 frequency, int16 signal_dbm,
                              bool has_wpa_property, bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
-        NULL, wifi(), ssid, bssid, wpa_supplicant::kNetworkModeInfrastructure,
+        NULL, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm, has_wpa_property, has_rsn_property);
   }
   WiFiEndpoint *MakeOpenEndpoint(const string &ssid, const string &bssid,
                                  uint16 frequency, int16 signal_dbm) {
     return WiFiEndpoint::MakeOpenEndpoint(
-        NULL, wifi(), ssid, bssid, wpa_supplicant::kNetworkModeInfrastructure,
+        NULL, wifi(), ssid, bssid, WPASupplicant::kNetworkModeInfrastructure,
         frequency, signal_dbm);
   }
   WiFiServiceRefPtr MakeSimpleService(const string &security) {
@@ -391,26 +391,26 @@ TEST_F(WiFiServiceTest, NonUTF8SSID) {
 }
 
 MATCHER(PSKSecurityArgs, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol) &&
-      arg.find(wpa_supplicant::kPropertySecurityProtocol)->second.
+  return ContainsKey(arg, WPASupplicant::kPropertySecurityProtocol) &&
+      arg.find(WPASupplicant::kPropertySecurityProtocol)->second.
            reader().get_string() == string("WPA RSN") &&
-      ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey);
+      ContainsKey(arg, WPASupplicant::kPropertyPreSharedKey);
 }
 
 MATCHER(WPA80211wSecurityArgs, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyPreSharedKey) &&
-      ContainsKey(arg, wpa_supplicant::kNetworkPropertyIeee80211w);
+  return ContainsKey(arg, WPASupplicant::kPropertySecurityProtocol) &&
+      ContainsKey(arg, WPASupplicant::kPropertyPreSharedKey) &&
+      ContainsKey(arg, WPASupplicant::kNetworkPropertyIeee80211w);
 }
 
 MATCHER(EAPSecurityArgs, "") {
-  return ContainsKey(arg, wpa_supplicant::kNetworkPropertyEapIdentity) &&
-      ContainsKey(arg, wpa_supplicant::kNetworkPropertyCaPath);
+  return ContainsKey(arg, WPASupplicant::kNetworkPropertyEapIdentity) &&
+      ContainsKey(arg, WPASupplicant::kNetworkPropertyCaPath);
 }
 
 MATCHER_P(FrequencyArg, has_arg, "") {
   return has_arg ==
-      ContainsKey(arg, wpa_supplicant::kNetworkPropertyFrequency);
+      ContainsKey(arg, WPASupplicant::kNetworkPropertyFrequency);
 }
 
 TEST_F(WiFiServiceTest, ConnectTaskWPA) {
@@ -467,7 +467,7 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurity8021x);
-  Service::EapCredentials eap;
+  EapCredentials eap;
   eap.identity = "identity";
   eap.password = "mumble";
   service->set_eap(eap);
@@ -547,34 +547,34 @@ TEST_F(WiFiServiceTest, ConnectTaskWPA80211w) {
 }
 
 MATCHER(WEPSecurityArgsKeyIndex0, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("0")) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("0")) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
            reader().get_uint32() == 0);
 }
 
 MATCHER(WEPSecurityArgsKeyIndex1, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("1")) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("1")) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
            reader().get_uint32() == 1);
 }
 
 MATCHER(WEPSecurityArgsKeyIndex2, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("2")) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("2")) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
            reader().get_uint32() == 2);
 }
 
 MATCHER(WEPSecurityArgsKeyIndex3, "") {
-  return ContainsKey(arg, wpa_supplicant::kPropertyAuthAlg) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPKey + std::string("3")) &&
-      ContainsKey(arg, wpa_supplicant::kPropertyWEPTxKeyIndex) &&
-      (arg.find(wpa_supplicant::kPropertyWEPTxKeyIndex)->second.
+  return ContainsKey(arg, WPASupplicant::kPropertyAuthAlg) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPKey + std::string("3")) &&
+      ContainsKey(arg, WPASupplicant::kPropertyWEPTxKeyIndex) &&
+      (arg.find(WPASupplicant::kPropertyWEPTxKeyIndex)->second.
            reader().get_uint32() == 3);
 }
 
@@ -609,16 +609,16 @@ TEST_F(WiFiServiceTest, ConnectTaskWEP) {
 
 
 MATCHER(DynamicWEPArgs, "") {
-  return ContainsKey(arg, wpa_supplicant::kNetworkPropertyEapIdentity) &&
-      ContainsKey(arg, wpa_supplicant::kNetworkPropertyCaPath) &&
-      !ContainsKey(arg, wpa_supplicant::kPropertySecurityProtocol);
+  return ContainsKey(arg, WPASupplicant::kNetworkPropertyEapIdentity) &&
+      ContainsKey(arg, WPASupplicant::kNetworkPropertyCaPath) &&
+      !ContainsKey(arg, WPASupplicant::kPropertySecurityProtocol);
 }
 
 // Dynamic WEP + 802.1x.
 TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityWep);
 
-  Service::EapCredentials eap;
+  EapCredentials eap;
   eap.key_management = "IEEE8021X";
   eap.identity = "something";
   eap.password = "mumble";
@@ -683,7 +683,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // Any change to EAP parameters (including a null one) will trigger cache
     // removal.  This is a lot less granular than the passphrase checks above.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    wifi_service->set_eap(Service::EapCredentials());
+    wifi_service->set_eap(EapCredentials());
     Mock::VerifyAndClearExpectations(wifi());
   }
 }
@@ -1057,7 +1057,7 @@ TEST_F(WiFiServiceTest, Connectable) {
   // Unconfigured 802.1x should NOT be connectable.
   EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, NULL));
 
-  Service::EapCredentials eap;
+  EapCredentials eap;
   // Empty EAP credentials should not make a 802.1x network connectable.
   EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
 
@@ -1135,102 +1135,6 @@ TEST_F(WiFiServiceTest, AutoConnect) {
   service->UserInitiatedDisconnect(&error);
   dispatcher()->DispatchPendingEvents();
   EXPECT_FALSE(service->IsAutoConnectable(&reason));
-}
-
-TEST_F(WiFiServiceTest, Populate8021x) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
-  Service::EapCredentials eap;
-  eap.identity = "testidentity";
-  eap.pin = "xxxx";
-  service->set_eap(eap);
-  map<string, ::DBus::Variant> params;
-  service->Populate8021xProperties(&params);
-  // Test that only non-empty 802.1x properties are populated.
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapIdentity));
-  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapKeyId));
-  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
-
-  // Test that CA path is set by default.
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyCaPath));
-
-  // Test that hardware-backed security arguments are not set.
-  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapPin));
-  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngine));
-  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngineId));
-}
-
-TEST_F(WiFiServiceTest, Populate8021xNoSystemCAs) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
-  Service::EapCredentials eap;
-  eap.identity = "testidentity";
-  eap.use_system_cas = false;
-  service->set_eap(eap);
-  map<string, ::DBus::Variant> params;
-  service->Populate8021xProperties(&params);
-  // Test that CA path is not set if use_system_cas is explicitly false.
-  EXPECT_FALSE(ContainsKey(params, wpa_supplicant::kNetworkPropertyCaPath));
-}
-
-TEST_F(WiFiServiceTest, Populate8021xUsingHardwareAuth) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
-  Service::EapCredentials eap;
-  eap.identity = "testidentity";
-  eap.key_id = "key_id";
-  eap.pin = "xxxx";
-  service->set_eap(eap);
-  map<string, ::DBus::Variant> params;
-  service->Populate8021xProperties(&params);
-  // Test that EAP engine parameters set if key_id is set.
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapPin));
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapKeyId));
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngine));
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEngineId));
-}
-
-TEST_F(WiFiServiceTest, Populate8021xNSS) {
-  vector<uint8_t> ssid(1, 'a');
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
-  Service::EapCredentials eap;
-  eap.ca_cert_nss = "nss_nickname";
-  service->set_eap(eap);
-  MockNSS nss;
-  service->nss_ = &nss;
-
-  const string kNSSCertfile("/tmp/nss-cert");
-  FilePath nss_cert(kNSSCertfile);
-  vector<char> ssid_in_chars(ssid.begin(), ssid.end());
-  EXPECT_CALL(nss, GetDERCertfile(eap.ca_cert_nss, ssid_in_chars))
-      .WillOnce(Return(nss_cert));
-
-  map<string, ::DBus::Variant> params;
-  service->Populate8021xProperties(&params);
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
-  if (ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert)) {
-    EXPECT_EQ(kNSSCertfile, params[wpa_supplicant::kNetworkPropertyEapCaCert]
-              .reader().get_string());
-  }
-}
-
-TEST_F(WiFiServiceTest, Populate8021xPEM) {
-  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
-  Service::EapCredentials eap;
-  eap.ca_cert_pem = "-pem-certificate-here-";
-  service->set_eap(eap);
-  MockCertificateFile *certificate_file = new MockCertificateFile();
-  service->certificate_file_.reset(certificate_file);  // Passes ownership.
-
-  const string kPEMCertfile("/tmp/pem-cert");
-  FilePath pem_cert(kPEMCertfile);
-  EXPECT_CALL(*certificate_file, CreateDERFromString(eap.ca_cert_pem))
-      .WillOnce(Return(pem_cert));
-
-  map<string, ::DBus::Variant> params;
-  service->Populate8021xProperties(&params);
-  EXPECT_TRUE(ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert));
-  if (ContainsKey(params, wpa_supplicant::kNetworkPropertyEapCaCert)) {
-    EXPECT_EQ(kPEMCertfile, params[wpa_supplicant::kNetworkPropertyEapCaCert]
-              .reader().get_string());
-  }
 }
 
 TEST_F(WiFiServiceTest, ClearWriteOnlyDerivedProperty) {
