@@ -217,6 +217,7 @@ class Daemon : public BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithSetThreshold);
   FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithBadStatus);
+  FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithBadIgnoredValues);
   FRIEND_TEST(DaemonTest, TurnBacklightOnForPowerButton);
   FRIEND_TEST(DaemonTest, DetectUSBDevices);
   FRIEND_TEST(DaemonTest, GetDisplayBatteryPercent);

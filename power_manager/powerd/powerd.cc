@@ -1175,15 +1175,17 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
   // bad value since it is too high. For some devices the value for the
   // uninteresting time, that we are not using, might be bizarre, so we cannot
   // just check both times for overly high values.
-  if (power_status_.battery_time_to_empty < 0 ||
-      power_status_.battery_time_to_full < 0 ||
-      (power_status_.battery_time_to_empty > kBatteryTimeMaxValidSec &&
-       !power_status_.line_power_on) ||
-      (power_status_.battery_time_to_full > kBatteryTimeMaxValidSec &&
-       power_status_.line_power_on)) {
-    LOG(ERROR) << "Invalid raw times, time to empty = "
-               << power_status_.battery_time_to_empty << ", and time to full = "
-               << power_status_.battery_time_to_full;
+  if ((power_status_.line_power_on &&
+       (power_status_.battery_time_to_full < 0 ||
+        power_status_.battery_time_to_full > kBatteryTimeMaxValidSec)) ||
+      (!power_status_.line_power_on &&
+       (power_status_.battery_time_to_empty < 0 ||
+        power_status_.battery_time_to_empty > kBatteryTimeMaxValidSec))) {
+    LOG(ERROR) << "Battery time-to-"
+               << (power_status_.line_power_on ? "full" : "empty") << " is "
+               << (power_status_.line_power_on ?
+                   power_status_.battery_time_to_full :
+                   power_status_.battery_time_to_empty);
     power_status_.averaged_battery_time_to_empty = 0;
     power_status_.averaged_battery_time_to_full = 0;
     power_status_.is_calculating_battery_time = true;
@@ -1207,9 +1209,8 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
     // equivalent of the percentage threshold
     int64 time_threshold_s = low_battery_shutdown_time_s_ ?
         low_battery_shutdown_time_s_ :
-        power_status_.battery_time_to_empty
-        * (low_battery_shutdown_percent_
-           / power_status_.battery_percentage);
+        (power_status_.battery_time_to_empty *
+         low_battery_shutdown_percent_ / power_status_.battery_percentage);
     battery_time = power_status_.battery_time_to_empty - time_threshold_s;
     LOG_IF(WARNING, battery_time < 0)
         << "Calculated invalid negative time to empty value, trimming to 0!";
@@ -1221,16 +1222,12 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
 
   if (!power_status_.is_calculating_battery_time) {
     if (!power_status_.line_power_on)
-      AdjustWindowSize(battery_time,
-                       empty_average,
-                       full_average);
+      AdjustWindowSize(battery_time, empty_average, full_average);
     else
       empty_average->ChangeWindowSize(sample_window_max_);
   }
-  power_status_.averaged_battery_time_to_full =
-      full_average->GetAverage();
-  power_status_.averaged_battery_time_to_empty =
-      empty_average->GetAverage();
+  power_status_.averaged_battery_time_to_full = full_average->GetAverage();
+  power_status_.averaged_battery_time_to_empty = empty_average->GetAverage();
   return true;
 }
 
