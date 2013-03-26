@@ -38,16 +38,16 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
       rpc_id_(rpc_id) {
   // XXX will segfault on missing properties
   ssid_ =
-      properties.find(wpa_supplicant::kBSSPropertySSID)->second.
+      properties.find(WPASupplicant::kBSSPropertySSID)->second.
       operator std::vector<uint8_t>();
   bssid_ =
-      properties.find(wpa_supplicant::kBSSPropertyBSSID)->second.
+      properties.find(WPASupplicant::kBSSPropertyBSSID)->second.
       operator std::vector<uint8_t>();
   signal_strength_ =
-      properties.find(wpa_supplicant::kBSSPropertySignal)->second.
+      properties.find(WPASupplicant::kBSSPropertySignal)->second.
       reader().get_int16();
   map<string, ::DBus::Variant>::const_iterator it =
-      properties.find(wpa_supplicant::kBSSPropertyFrequency);
+      properties.find(WPASupplicant::kBSSPropertyFrequency);
   if (it != properties.end())
     frequency_ = it->second.reader().get_uint16();
 
@@ -59,10 +59,10 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
   physical_mode_ = phy_mode;
 
   network_mode_ = ParseMode(
-      properties.find(wpa_supplicant::kBSSPropertyMode)->second);
+      properties.find(WPASupplicant::kBSSPropertyMode)->second);
   set_security_mode(ParseSecurity(properties));
-  has_rsn_property_ = ContainsKey(properties, wpa_supplicant::kPropertyRSN);
-  has_wpa_property_ = ContainsKey(properties, wpa_supplicant::kPropertyWPA);
+  has_rsn_property_ = ContainsKey(properties, WPASupplicant::kPropertyRSN);
+  has_wpa_property_ = ContainsKey(properties, WPASupplicant::kPropertyWPA);
 
   if (network_mode_.empty()) {
     // XXX log error?
@@ -82,14 +82,14 @@ WiFiEndpoint::~WiFiEndpoint() {}
 void WiFiEndpoint::Start() {
   supplicant_bss_proxy_.reset(
       proxy_factory_->CreateSupplicantBSSProxy(
-          this, rpc_id_, wpa_supplicant::kDBusAddr));
+          this, rpc_id_, WPASupplicant::kDBusAddr));
 }
 
 void WiFiEndpoint::PropertiesChanged(
     const map<string, ::DBus::Variant> &properties) {
   SLOG(WiFi, 2) << __func__;
   map<string, ::DBus::Variant>::const_iterator properties_it =
-      properties.find(wpa_supplicant::kBSSPropertySignal);
+      properties.find(WPASupplicant::kBSSPropertySignal);
   if (properties_it != properties.end()) {
     signal_strength_ = properties_it->second.reader().get_int16();
     SLOG(WiFi, 2) << "WiFiEndpoint " << bssid_string_ << " signal is now "
@@ -136,9 +136,9 @@ map<string, string> WiFiEndpoint::GetVendorInformation() const {
 // static
 uint32_t WiFiEndpoint::ModeStringToUint(const string &mode_string) {
   if (mode_string == flimflam::kModeManaged)
-    return wpa_supplicant::kNetworkModeInfrastructureInt;
+    return WPASupplicant::kNetworkModeInfrastructureInt;
   else if (mode_string == flimflam::kModeAdhoc)
-    return wpa_supplicant::kNetworkModeAdHocInt;
+    return WPASupplicant::kNetworkModeAdHocInt;
   else
     NOTIMPLEMENTED() << "Shill dos not support " << mode_string
                      << " mode at this time.";
@@ -226,31 +226,31 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
   map <string, ::DBus::Variant> args;
   ::DBus::MessageIter writer;
 
-  writer = args[wpa_supplicant::kBSSPropertySSID].writer();
+  writer = args[WPASupplicant::kBSSPropertySSID].writer();
   writer << vector<uint8_t>(ssid.begin(), ssid.end());
 
   string bssid_nosep;
   RemoveChars(bssid, ":", &bssid_nosep);
   vector<uint8_t> bssid_bytes;
   base::HexStringToBytes(bssid_nosep, &bssid_bytes);
-  writer = args[wpa_supplicant::kBSSPropertyBSSID].writer();
+  writer = args[WPASupplicant::kBSSPropertyBSSID].writer();
   writer << bssid_bytes;
 
-  args[wpa_supplicant::kBSSPropertySignal].writer().append_int16(signal_dbm);
-  args[wpa_supplicant::kBSSPropertyFrequency].writer().append_uint16(frequency);
-  args[wpa_supplicant::kBSSPropertyMode].writer().append_string(
+  args[WPASupplicant::kBSSPropertySignal].writer().append_int16(signal_dbm);
+  args[WPASupplicant::kBSSPropertyFrequency].writer().append_uint16(frequency);
+  args[WPASupplicant::kBSSPropertyMode].writer().append_string(
       network_mode.c_str());
 
   if (has_wpa_property) {
     ::DBus::MessageIter writer;  // local is required; see HACKING
     map <string, string> empty_dict;
-    writer = args[wpa_supplicant::kPropertyWPA].writer();
+    writer = args[WPASupplicant::kPropertyWPA].writer();
     writer << empty_dict;
   }
   if (has_rsn_property) {
     ::DBus::MessageIter writer;  // local is required; see HACKING
     map <string, string> empty_dict;
-    writer = args[wpa_supplicant::kPropertyRSN].writer();
+    writer = args[WPASupplicant::kPropertyRSN].writer();
     writer << empty_dict;
   }
 
@@ -260,11 +260,11 @@ WiFiEndpoint *WiFiEndpoint::MakeEndpoint(ProxyFactory *proxy_factory,
 
 // static
 const char *WiFiEndpoint::ParseMode(const string &mode_string) {
-  if (mode_string == wpa_supplicant::kNetworkModeInfrastructure) {
+  if (mode_string == WPASupplicant::kNetworkModeInfrastructure) {
     return flimflam::kModeManaged;
-  } else if (mode_string == wpa_supplicant::kNetworkModeAdHoc) {
+  } else if (mode_string == WPASupplicant::kNetworkModeAdHoc) {
     return flimflam::kModeAdhoc;
-  } else if (mode_string == wpa_supplicant::kNetworkModeAccessPoint) {
+  } else if (mode_string == WPASupplicant::kNetworkModeAccessPoint) {
     NOTREACHED() << "Shill does not support AP mode at this time.";
     return NULL;
   } else {
@@ -277,26 +277,26 @@ const char *WiFiEndpoint::ParseMode(const string &mode_string) {
 const char *WiFiEndpoint::ParseSecurity(
     const map<string, ::DBus::Variant> &properties) {
   set<KeyManagement> rsn_key_management_methods;
-  if (ContainsKey(properties, wpa_supplicant::kPropertyRSN)) {
+  if (ContainsKey(properties, WPASupplicant::kPropertyRSN)) {
     // TODO(quiche): check type before casting
     const map<string, ::DBus::Variant> rsn_properties(
-        properties.find(wpa_supplicant::kPropertyRSN)->second.
+        properties.find(WPASupplicant::kPropertyRSN)->second.
         operator map<string, ::DBus::Variant>());
     ParseKeyManagementMethods(rsn_properties, &rsn_key_management_methods);
   }
 
   set<KeyManagement> wpa_key_management_methods;
-  if (ContainsKey(properties, wpa_supplicant::kPropertyWPA)) {
+  if (ContainsKey(properties, WPASupplicant::kPropertyWPA)) {
     // TODO(quiche): check type before casting
     const map<string, ::DBus::Variant> rsn_properties(
-        properties.find(wpa_supplicant::kPropertyWPA)->second.
+        properties.find(WPASupplicant::kPropertyWPA)->second.
         operator map<string, ::DBus::Variant>());
     ParseKeyManagementMethods(rsn_properties, &wpa_key_management_methods);
   }
 
   bool wep_privacy = false;
-  if (ContainsKey(properties, wpa_supplicant::kPropertyPrivacy)) {
-    wep_privacy = properties.find(wpa_supplicant::kPropertyPrivacy)->second.
+  if (ContainsKey(properties, WPASupplicant::kPropertyPrivacy)) {
+    wep_privacy = properties.find(WPASupplicant::kPropertyPrivacy)->second.
         reader().get_bool();
   }
 
@@ -319,22 +319,22 @@ void WiFiEndpoint::ParseKeyManagementMethods(
     const map<string, ::DBus::Variant> &security_method_properties,
     set<KeyManagement> *key_management_methods) {
   if (!ContainsKey(security_method_properties,
-                   wpa_supplicant::kSecurityMethodPropertyKeyManagement)) {
+                   WPASupplicant::kSecurityMethodPropertyKeyManagement)) {
     return;
   }
 
   // TODO(quiche): check type before cast
   const vector<string> key_management_vec =
       security_method_properties.
-      find(wpa_supplicant::kSecurityMethodPropertyKeyManagement)->second.
+      find(WPASupplicant::kSecurityMethodPropertyKeyManagement)->second.
       operator vector<string>();
   for (vector<string>::const_iterator it = key_management_vec.begin();
        it != key_management_vec.end();
        ++it) {
-    if (EndsWith(*it, wpa_supplicant::kKeyManagementMethodSuffixEAP, true)) {
+    if (EndsWith(*it, WPASupplicant::kKeyManagementMethodSuffixEAP, true)) {
       key_management_methods->insert(kKeyManagement802_1x);
     } else if (
-        EndsWith(*it, wpa_supplicant::kKeyManagementMethodSuffixPSK, true)) {
+        EndsWith(*it, WPASupplicant::kKeyManagementMethodSuffixPSK, true)) {
       key_management_methods->insert(kKeyManagementPSK);
     }
   }
@@ -345,7 +345,7 @@ Metrics::WiFiNetworkPhyMode WiFiEndpoint::DeterminePhyModeFromFrequency(
     const map<string, ::DBus::Variant> &properties, uint16 frequency) {
   uint32_t max_rate = 0;
   map<string, ::DBus::Variant>::const_iterator it =
-      properties.find(wpa_supplicant::kBSSPropertyRates);
+      properties.find(WPASupplicant::kBSSPropertyRates);
   if (it != properties.end()) {
     vector<uint32_t> rates = it->second.operator vector<uint32_t>();
     if (rates.size() > 0)
@@ -375,7 +375,7 @@ bool WiFiEndpoint::ParseIEs(
     bool *ieee80211w_required) {
 
   map<string, ::DBus::Variant>::const_iterator ies_property =
-      properties.find(wpa_supplicant::kBSSPropertyIEs);
+      properties.find(WPASupplicant::kBSSPropertyIEs);
   if (ies_property == properties.end()) {
     SLOG(WiFi, 2) << __func__ << ": No IE property in BSS.";
     return false;

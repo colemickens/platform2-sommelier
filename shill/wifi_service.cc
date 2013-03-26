@@ -33,7 +33,6 @@
 #include "shill/wifi_provider.h"
 #include "shill/wpa_supplicant.h"
 
-using base::FilePath;
 using std::set;
 using std::string;
 using std::vector;
@@ -477,14 +476,14 @@ void WiFiService::Connect(Error *error) {
     return;
   }
 
-  params[wpa_supplicant::kNetworkPropertyMode].writer().
+  params[WPASupplicant::kNetworkPropertyMode].writer().
       append_uint32(WiFiEndpoint::ModeStringToUint(mode_));
 
   if (mode_ == flimflam::kModeAdhoc && frequency_ != 0) {
     // Frequency is required in order to successfully conntect to an IBSS
     // with wpa_supplicant.  If we have one from our endpoint, insert it
     // here.
-    params[wpa_supplicant::kNetworkPropertyFrequency].writer().
+    params[WPASupplicant::kNetworkPropertyFrequency].writer().
         append_int32(frequency_);
   }
 
@@ -492,29 +491,31 @@ void WiFiService::Connect(Error *error) {
     // Is EAP key management is not set, set to a default.
     if (GetEAPKeyManagement().empty())
       SetEAPKeyManagement("WPA-EAP");
-    Populate8021xProperties(&params);
+    vector<char> nss_identifier(ssid_.begin(), ssid_.end());
+    WPASupplicant::Populate8021xProperties(
+        eap(), certificate_file_.get(), nss_, nss_identifier, &params);
     ClearEAPCertification();
   } else if (security_ == flimflam::kSecurityPsk ||
              security_ == flimflam::kSecurityRsn ||
              security_ == flimflam::kSecurityWpa) {
     const string psk_proto = StringPrintf("%s %s",
-                                          wpa_supplicant::kSecurityModeWPA,
-                                          wpa_supplicant::kSecurityModeRSN);
-    params[wpa_supplicant::kPropertySecurityProtocol].writer().
+                                          WPASupplicant::kSecurityModeWPA,
+                                          WPASupplicant::kSecurityModeRSN);
+    params[WPASupplicant::kPropertySecurityProtocol].writer().
         append_string(psk_proto.c_str());
-    params[wpa_supplicant::kPropertyPreSharedKey].writer().
+    params[WPASupplicant::kPropertyPreSharedKey].writer().
         append_string(passphrase_.c_str());
   } else if (security_ == flimflam::kSecurityWep) {
-    params[wpa_supplicant::kPropertyAuthAlg].writer().
-        append_string(wpa_supplicant::kSecurityAuthAlg);
+    params[WPASupplicant::kPropertyAuthAlg].writer().
+        append_string(WPASupplicant::kSecurityAuthAlg);
     Error error;
     int key_index;
     std::vector<uint8> password_bytes;
     ParseWEPPassphrase(passphrase_, &key_index, &password_bytes, &error);
-    writer = params[wpa_supplicant::kPropertyWEPKey +
+    writer = params[WPASupplicant::kPropertyWEPKey +
                     base::IntToString(key_index)].writer();
     writer << password_bytes;
-    params[wpa_supplicant::kPropertyWEPTxKeyIndex].writer().
+    params[WPASupplicant::kPropertyWEPTxKeyIndex].writer().
         append_uint32(key_index);
   } else if (security_ == flimflam::kSecurityNone) {
     // Nothing special to do here.
@@ -522,19 +523,19 @@ void WiFiService::Connect(Error *error) {
     LOG(ERROR) << "Can't connect. Unsupported security method " << security_;
   }
 
-  params[wpa_supplicant::kNetworkPropertyEapKeyManagement].writer().
+  params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
       append_string(key_management().c_str());
 
   if (ieee80211w_required_) {
     // TODO(pstew): We should also enable IEEE 802.11w if the user
     // explicitly enables support for this through a service / device
     // property.  crosbug.com/37800
-    params[wpa_supplicant::kNetworkPropertyIeee80211w].writer().
-        append_uint32(wpa_supplicant::kNetworkIeee80211wEnabled);
+    params[WPASupplicant::kNetworkPropertyIeee80211w].writer().
+        append_uint32(WPASupplicant::kNetworkIeee80211wEnabled);
   }
 
   // See note in dbus_adaptor.cc on why we need to use a local.
-  writer = params[wpa_supplicant::kNetworkPropertySSID].writer();
+  writer = params[WPASupplicant::kNetworkPropertySSID].writer();
   writer << ssid_;
 
   wifi->ConnectTo(this, params);
@@ -1009,86 +1010,6 @@ bool WiFiService::Is8021x() const {
       GetEAPKeyManagement() == "IEEE8021X")
     return true;
   return false;
-}
-
-void WiFiService::Populate8021xProperties(
-    std::map<string, DBus::Variant> *params) {
-  string ca_cert = eap().ca_cert;
-  if (!eap().ca_cert_pem.empty()) {
-    FilePath certfile =
-        certificate_file_->CreateDERFromString(eap().ca_cert_pem);
-    if (certfile.empty()) {
-      LOG(ERROR) << "Unable to extract PEM certificate.";
-    } else {
-      ca_cert = certfile.value();
-    }
-  } else if (!eap().ca_cert_nss.empty()) {
-    vector<char> id(ssid_.begin(), ssid_.end());
-    FilePath certfile = nss_->GetDERCertfile(eap().ca_cert_nss, id);
-    if (certfile.empty()) {
-      LOG(ERROR) << "Unable to extract DER certificate: " << eap().ca_cert_nss;
-    } else {
-      ca_cert = certfile.value();
-    }
-  }
-
-
-  typedef std::pair<const char *, const char *> KeyVal;
-  KeyVal init_propertyvals[] = {
-    KeyVal(wpa_supplicant::kNetworkPropertyEapIdentity, eap().identity.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapEap, eap().eap.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapInnerEap,
-           eap().inner_eap.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapAnonymousIdentity,
-           eap().anonymous_identity.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapClientCert,
-           eap().client_cert.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapPrivateKey,
-           eap().private_key.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapPrivateKeyPassword,
-           eap().private_key_password.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapCaCert, ca_cert.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapCaPassword,
-           eap().password.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapCertId, eap().cert_id.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapKeyId, eap().key_id.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapCaCertId,
-           eap().ca_cert_id.c_str()),
-    KeyVal(wpa_supplicant::kNetworkPropertyEapSubjectMatch,
-           eap().subject_match.c_str())
-  };
-
-  vector<KeyVal> propertyvals(init_propertyvals,
-                              init_propertyvals + arraysize(init_propertyvals));
-  if (eap().use_system_cas) {
-    propertyvals.push_back(KeyVal(
-        wpa_supplicant::kNetworkPropertyCaPath, wpa_supplicant::kCaPath));
-  } else if (ca_cert.empty()) {
-      LOG(WARNING) << __func__
-                   << ": No certificate authorities are configured."
-                   << " Server certificates will be accepted"
-                   << " unconditionally.";
-  }
-
-  if (!eap().cert_id.empty() || !eap().key_id.empty() ||
-      !eap().ca_cert_id.empty()) {
-    propertyvals.push_back(KeyVal(
-        wpa_supplicant::kNetworkPropertyEapPin, eap().pin.c_str()));
-    propertyvals.push_back(KeyVal(
-        wpa_supplicant::kNetworkPropertyEngineId,
-        wpa_supplicant::kEnginePKCS11));
-    // We can't use the propertyvals vector for this since this argument
-    // is a uint32, not a string.
-    (*params)[wpa_supplicant::kNetworkPropertyEngine].writer().
-        append_uint32(wpa_supplicant::kDefaultEngine);
-  }
-
-  vector<KeyVal>::iterator it;
-  for (it = propertyvals.begin(); it != propertyvals.end(); ++it) {
-    if (strlen((*it).second) > 0) {
-      (*params)[(*it).first].writer().append_string((*it).second);
-    }
-  }
 }
 
 WiFiRefPtr WiFiService::ChooseDevice() {

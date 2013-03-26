@@ -4,118 +4,219 @@
 
 #include "shill/wpa_supplicant.h"
 
+#include <map>
+#include <string>
+#include <vector>
+
+#include <base/file_path.h>
+
+#include "shill/certificate_file.h"
+#include "shill/eap_credentials.h"
+#include "shill/nss.h"
+
+using base::FilePath;
+using std::map;
+using std::string;
+using std::vector;
+
 namespace shill {
 
-namespace wpa_supplicant {
-const char kBSSPropertyBSSID[]      = "BSSID";
-const char kBSSPropertyFrequency[]  = "Frequency";
-const char kBSSPropertyIEs[]        = "IEs";
-const char kBSSPropertyMode[]       = "Mode";
-const char kBSSPropertyRates[]      = "Rates";
-const char kBSSPropertySSID[]       = "SSID";
-const char kBSSPropertySignal[]     = "Signal";
+// static
+const char WPASupplicant::kBSSPropertyBSSID[] = "BSSID";
+const char WPASupplicant::kBSSPropertyFrequency[] = "Frequency";
+const char WPASupplicant::kBSSPropertyIEs[] = "IEs";
+const char WPASupplicant::kBSSPropertyMode[] = "Mode";
+const char WPASupplicant::kBSSPropertyRates[] = "Rates";
+const char WPASupplicant::kBSSPropertySSID[] = "SSID";
+const char WPASupplicant::kBSSPropertySignal[] = "Signal";
 // TODO(gauravsh): Make this path be a configurable option. crosbug.com/25661
 // Location of the system root CA certificates.
-const char kCaPath[] = "/etc/ssl/certs";
-const char kCurrentBSSNull[] = "/";
-const char kDBusAddr[]              = "fi.w1.wpa_supplicant1";
-const char kDBusPath[]              = "/fi/w1/wpa_supplicant1";
-const char kDebugLevelDebug[] = "debug";
-const char kDebugLevelError[] = "error";
-const char kDebugLevelExcessive[] = "excessive";
-const char kDebugLevelInfo[] = "info";
-const char kDebugLevelMsgDump[] = "msgdump";
-const char kDebugLevelWarning[] = "warning";
-const char kDriverNL80211[]         = "nl80211";
-const char kEAPParameterAlertUnknownCA[] = "unknown CA";
-const char kEAPParameterFailure[] = "failure";
-const char kEAPParameterSuccess[] = "success";
-const char kEAPStatusAcceptProposedMethod[] = "accept proposed method";
-const char kEAPStatusCompletion[] = "completion";
-const char kEAPStatusLocalTLSAlert[] = "local TLS alert";
-const char kEAPStatusParameterNeeded[] = "eap parameter needed";
-const char kEAPStatusRemoteCertificateVerification[] =
+const char WPASupplicant::kCaPath[] = "/etc/ssl/certs";
+const char WPASupplicant::kCurrentBSSNull[] = "/";
+const char WPASupplicant::kDBusAddr[] = "fi.w1.wpa_supplicant1";
+const char WPASupplicant::kDBusPath[] = "/fi/w1/wpa_supplicant1";
+const char WPASupplicant::kDebugLevelDebug[] = "debug";
+const char WPASupplicant::kDebugLevelError[] = "error";
+const char WPASupplicant::kDebugLevelExcessive[] = "excessive";
+const char WPASupplicant::kDebugLevelInfo[] = "info";
+const char WPASupplicant::kDebugLevelMsgDump[] = "msgdump";
+const char WPASupplicant::kDebugLevelWarning[] = "warning";
+const char WPASupplicant::kDriverNL80211[] = "nl80211";
+const char WPASupplicant::kEAPParameterAlertUnknownCA[] = "unknown CA";
+const char WPASupplicant::kEAPParameterFailure[] = "failure";
+const char WPASupplicant::kEAPParameterSuccess[] = "success";
+const char WPASupplicant::kEAPStatusAcceptProposedMethod[] =
+    "accept proposed method";
+const char WPASupplicant::kEAPStatusCompletion[] = "completion";
+const char WPASupplicant::kEAPStatusLocalTLSAlert[] = "local TLS alert";
+const char WPASupplicant::kEAPStatusParameterNeeded[] = "eap parameter needed";
+const char WPASupplicant::kEAPStatusRemoteCertificateVerification[] =
     "remote certificate verification";
-const char kEAPStatusRemoteTLSAlert[] = "remote TLS alert";
-const char kEAPStatusStarted[] = "started";
-const char kEnginePKCS11[]          = "pkcs11";
-const char kErrorNetworkUnknown[]   = "fi.w1.wpa_supplicant1.NetworkUnknown";
-const char kErrorInterfaceExists[]  = "fi.w1.wpa_supplicant1.InterfaceExists";
-const char kInterfacePropertyConfigFile[] = "ConfigFile";
-const char kInterfacePropertyCurrentBSS[] = "CurrentBSS";
-const char kInterfacePropertyDepth[] = "depth";
-const char kInterfacePropertyDriver[] = "Driver";
-const char kInterfacePropertyName[] = "Ifname";
-const char kInterfacePropertyState[] = "State";
-const char kInterfacePropertySubject[] = "subject";
-const char kInterfaceState4WayHandshake[]  = "4way_handshake";
-const char kInterfaceStateAssociated[]     = "associated";
-const char kInterfaceStateAssociating[]    = "associating";
-const char kInterfaceStateAuthenticating[] = "authenticating";
-const char kInterfaceStateCompleted[]      = "completed";
-const char kInterfaceStateDisconnected[]   = "disconnected";
-const char kInterfaceStateGroupHandshake[] = "group_handshake";
-const char kInterfaceStateInactive[]       = "inactive";
-const char kInterfaceStateScanning[]       = "scanning";
-const char kKeyManagementMethodSuffixEAP[] = "-eap";
-const char kKeyManagementMethodSuffixPSK[] = "-psk";
-const char kKeyModeNone[]           = "NONE";
-const char kNetworkBgscanMethodLearn[]  = "learn";
+const char WPASupplicant::kEAPStatusRemoteTLSAlert[] = "remote TLS alert";
+const char WPASupplicant::kEAPStatusStarted[] = "started";
+const char WPASupplicant::kEnginePKCS11[] = "pkcs11";
+const char WPASupplicant::kErrorNetworkUnknown[]
+    = "fi.w1.wpa_supplicant1.NetworkUnknown";
+const char WPASupplicant::kErrorInterfaceExists[]
+    = "fi.w1.wpa_supplicant1.InterfaceExists";
+const char WPASupplicant::kInterfacePropertyConfigFile[] = "ConfigFile";
+const char WPASupplicant::kInterfacePropertyCurrentBSS[] = "CurrentBSS";
+const char WPASupplicant::kInterfacePropertyDepth[] = "depth";
+const char WPASupplicant::kInterfacePropertyDriver[] = "Driver";
+const char WPASupplicant::kInterfacePropertyName[] = "Ifname";
+const char WPASupplicant::kInterfacePropertyState[] = "State";
+const char WPASupplicant::kInterfacePropertySubject[] = "subject";
+const char WPASupplicant::kInterfaceState4WayHandshake[] = "4way_handshake";
+const char WPASupplicant::kInterfaceStateAssociated[] = "associated";
+const char WPASupplicant::kInterfaceStateAssociating[] = "associating";
+const char WPASupplicant::kInterfaceStateAuthenticating[] = "authenticating";
+const char WPASupplicant::kInterfaceStateCompleted[] = "completed";
+const char WPASupplicant::kInterfaceStateDisconnected[] = "disconnected";
+const char WPASupplicant::kInterfaceStateGroupHandshake[] = "group_handshake";
+const char WPASupplicant::kInterfaceStateInactive[] = "inactive";
+const char WPASupplicant::kInterfaceStateScanning[] = "scanning";
+const char WPASupplicant::kKeyManagementMethodSuffixEAP[] = "-eap";
+const char WPASupplicant::kKeyManagementMethodSuffixPSK[] = "-psk";
+const char WPASupplicant::kKeyModeNone[] = "NONE";
+const char WPASupplicant::kNetworkBgscanMethodLearn[] = "learn";
 // None is not a real method name, but we interpret 'none' as a request that
 // no background scan parameter should be supplied to wpa_supplicant.
-const char kNetworkBgscanMethodNone[]   = "none";
-const char kNetworkBgscanMethodSimple[] = "simple";
-const char kNetworkModeInfrastructure[] = "infrastructure";
-const char kNetworkModeAdHoc[]       = "ad-hoc";
-const char kNetworkModeAccessPoint[] = "ap";
-const char kNetworkPropertyBgscan[] = "bgscan";
-const char kNetworkPropertyCaPath[] = "ca_path";
-const char kNetworkPropertyEapIdentity[] = "identity";
-const char kNetworkPropertyEapKeyManagement[] = "key_mgmt";
-const char kNetworkPropertyEapEap[] = "eap";
-const char kNetworkPropertyEapInnerEap[] = "phase2";
-const char kNetworkPropertyEapAnonymousIdentity[] = "anonymous_identity";
-const char kNetworkPropertyEapClientCert[] = "client_cert";
-const char kNetworkPropertyEapPrivateKey[] = "private_key";
-const char kNetworkPropertyEapPrivateKeyPassword[] = "private_key_passwd";
-const char kNetworkPropertyEapCaCert[] = "ca_cert";
-const char kNetworkPropertyEapCaPassword[] = "password";
-const char kNetworkPropertyEapCertId[] = "cert_id";
-const char kNetworkPropertyEapKeyId[] = "key_id";
-const char kNetworkPropertyEapCaCertId[] = "ca_cert_id";
-const char kNetworkPropertyEapPin[] = "pin";
-const char kNetworkPropertyEapSubjectMatch[] = "subject_match";
-const char kNetworkPropertyEngine[] = "engine";
-const char kNetworkPropertyEngineId[] = "engine_id";
-const char kNetworkPropertyFrequency[] = "frequency";
-const char kNetworkPropertyIeee80211w[] = "ieee80211w";
-const char kNetworkPropertyMode[]   = "mode";
-const char kNetworkPropertyScanSSID[] = "scan_ssid";
-const char kNetworkPropertySSID[]   = "ssid";
-const char kPropertyAuthAlg[]       = "auth_alg";
-const char kPropertyPreSharedKey[]  = "psk";
-const char kPropertyPrivacy[]       = "Privacy";
-const char kPropertyRSN[]           = "RSN";
-const char kPropertyScanSSIDs[]     = "SSIDs";
-const char kPropertyScanType[]      = "Type";
-const char kPropertySecurityProtocol[] = "proto";
-const char kPropertyWEPKey[]        = "wep_key";
-const char kPropertyWEPTxKeyIndex[] = "wep_tx_keyidx";
-const char kPropertyWPA[]           = "WPA";
-const char kScanTypeActive[]        = "active";
-const char kSecurityAuthAlg[]       = "OPEN SHARED";
-const char kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
-const char kSecurityModeRSN[]       = "RSN";
-const char kSecurityModeWPA[]       = "WPA";
+const char WPASupplicant::kNetworkBgscanMethodNone[] = "none";
+const char WPASupplicant::kNetworkBgscanMethodSimple[] = "simple";
+const char WPASupplicant::kNetworkModeInfrastructure[] = "infrastructure";
+const char WPASupplicant::kNetworkModeAdHoc[] = "ad-hoc";
+const char WPASupplicant::kNetworkModeAccessPoint[] = "ap";
+const char WPASupplicant::kNetworkPropertyBgscan[] = "bgscan";
+const char WPASupplicant::kNetworkPropertyCaPath[] = "ca_path";
+const char WPASupplicant::kNetworkPropertyEapIdentity[] = "identity";
+const char WPASupplicant::kNetworkPropertyEapKeyManagement[] = "key_mgmt";
+const char WPASupplicant::kNetworkPropertyEapEap[] = "eap";
+const char WPASupplicant::kNetworkPropertyEapInnerEap[] = "phase2";
+const char WPASupplicant::kNetworkPropertyEapAnonymousIdentity[]
+    = "anonymous_identity";
+const char WPASupplicant::kNetworkPropertyEapClientCert[] = "client_cert";
+const char WPASupplicant::kNetworkPropertyEapPrivateKey[] = "private_key";
+const char WPASupplicant::kNetworkPropertyEapPrivateKeyPassword[] =
+    "private_key_passwd";
+const char WPASupplicant::kNetworkPropertyEapCaCert[] = "ca_cert";
+const char WPASupplicant::kNetworkPropertyEapCaPassword[] = "password";
+const char WPASupplicant::kNetworkPropertyEapCertId[] = "cert_id";
+const char WPASupplicant::kNetworkPropertyEapKeyId[] = "key_id";
+const char WPASupplicant::kNetworkPropertyEapCaCertId[] = "ca_cert_id";
+const char WPASupplicant::kNetworkPropertyEapPin[] = "pin";
+const char WPASupplicant::kNetworkPropertyEapSubjectMatch[] = "subject_match";
+const char WPASupplicant::kNetworkPropertyEngine[] = "engine";
+const char WPASupplicant::kNetworkPropertyEngineId[] = "engine_id";
+const char WPASupplicant::kNetworkPropertyFrequency[] = "frequency";
+const char WPASupplicant::kNetworkPropertyIeee80211w[] = "ieee80211w";
+const char WPASupplicant::kNetworkPropertyMode[] = "mode";
+const char WPASupplicant::kNetworkPropertyScanSSID[] = "scan_ssid";
+const char WPASupplicant::kNetworkPropertySSID[] = "ssid";
+const char WPASupplicant::kPropertyAuthAlg[] = "auth_alg";
+const char WPASupplicant::kPropertyPreSharedKey[] = "psk";
+const char WPASupplicant::kPropertyPrivacy[] = "Privacy";
+const char WPASupplicant::kPropertyRSN[] = "RSN";
+const char WPASupplicant::kPropertyScanSSIDs[] = "SSIDs";
+const char WPASupplicant::kPropertyScanType[] = "Type";
+const char WPASupplicant::kPropertySecurityProtocol[] = "proto";
+const char WPASupplicant::kPropertyWEPKey[] = "wep_key";
+const char WPASupplicant::kPropertyWEPTxKeyIndex[] = "wep_tx_keyidx";
+const char WPASupplicant::kPropertyWPA[] = "WPA";
+const char WPASupplicant::kScanTypeActive[] = "active";
+const char WPASupplicant::kSecurityAuthAlg[] = "OPEN SHARED";
+const char WPASupplicant::kSecurityMethodPropertyKeyManagement[] = "KeyMgmt";
+const char WPASupplicant::kSecurityModeRSN[] = "RSN";
+const char WPASupplicant::kSecurityModeWPA[] = "WPA";
 
-const uint32_t kDefaultEngine = 1;
-const uint32_t kNetworkIeee80211wDisabled = 0;
-const uint32_t kNetworkIeee80211wEnabled = 1;
-const uint32_t kNetworkIeee80211wRequired = 2;
-const uint32_t kNetworkModeInfrastructureInt = 0;
-const uint32_t kNetworkModeAdHocInt          = 1;
-const uint32_t kNetworkModeAccessPointInt    = 2;
-const uint32_t kScanMaxSSIDsPerScan          = 4;
-};
+const uint32_t WPASupplicant::kDefaultEngine = 1;
+const uint32_t WPASupplicant::kNetworkIeee80211wDisabled = 0;
+const uint32_t WPASupplicant::kNetworkIeee80211wEnabled = 1;
+const uint32_t WPASupplicant::kNetworkIeee80211wRequired = 2;
+const uint32_t WPASupplicant::kNetworkModeInfrastructureInt = 0;
+const uint32_t WPASupplicant::kNetworkModeAdHocInt = 1;
+const uint32_t WPASupplicant::kNetworkModeAccessPointInt = 2;
+const uint32_t WPASupplicant::kScanMaxSSIDsPerScan = 4;
+
+// static
+void WPASupplicant::Populate8021xProperties(
+    const EapCredentials &eap, CertificateFile *certificate_file,
+    NSS *nss, const vector<char> nss_identifier,
+    map<string, DBus::Variant> *params) {
+  string ca_cert = eap.ca_cert;
+  if (!eap.ca_cert_pem.empty()) {
+    FilePath certfile =
+        certificate_file->CreateDERFromString(eap.ca_cert_pem);
+    if (certfile.empty()) {
+      LOG(ERROR) << "Unable to extract PEM certificate.";
+    } else {
+      ca_cert = certfile.value();
+    }
+  } else if (!eap.ca_cert_nss.empty()) {
+    FilePath certfile = nss->GetDERCertfile(eap.ca_cert_nss, nss_identifier);
+    if (certfile.empty()) {
+      LOG(ERROR) << "Unable to extract DER certificate: " << eap.ca_cert_nss;
+    } else {
+      ca_cert = certfile.value();
+    }
+  }
+
+
+  typedef std::pair<const char *, const char *> KeyVal;
+  KeyVal init_propertyvals[] = {
+    KeyVal(WPASupplicant::kNetworkPropertyEapIdentity, eap.identity.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapEap, eap.eap.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapInnerEap,
+           eap.inner_eap.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapAnonymousIdentity,
+           eap.anonymous_identity.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapClientCert,
+           eap.client_cert.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapPrivateKey,
+           eap.private_key.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapPrivateKeyPassword,
+           eap.private_key_password.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapCaCert, ca_cert.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapCaPassword,
+           eap.password.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapCertId, eap.cert_id.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapKeyId, eap.key_id.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapCaCertId,
+           eap.ca_cert_id.c_str()),
+    KeyVal(WPASupplicant::kNetworkPropertyEapSubjectMatch,
+           eap.subject_match.c_str())
+  };
+
+  vector<KeyVal> propertyvals(init_propertyvals,
+                              init_propertyvals + arraysize(init_propertyvals));
+  if (eap.use_system_cas) {
+    propertyvals.push_back(KeyVal(
+        WPASupplicant::kNetworkPropertyCaPath, WPASupplicant::kCaPath));
+  } else if (ca_cert.empty()) {
+    LOG(WARNING) << __func__
+                 << ": No certificate authorities are configured."
+                 << " Server certificates will be accepted"
+                 << " unconditionally.";
+  }
+
+  if (!eap.cert_id.empty() || !eap.key_id.empty() ||
+      !eap.ca_cert_id.empty()) {
+    propertyvals.push_back(KeyVal(
+        WPASupplicant::kNetworkPropertyEapPin, eap.pin.c_str()));
+    propertyvals.push_back(KeyVal(
+        WPASupplicant::kNetworkPropertyEngineId,
+        WPASupplicant::kEnginePKCS11));
+    // We can't use the propertyvals vector for this since this argument
+    // is a uint32, not a string.
+    (*params)[WPASupplicant::kNetworkPropertyEngine].writer().
+        append_uint32(WPASupplicant::kDefaultEngine);
+  }
+
+  vector<KeyVal>::iterator it;
+  for (it = propertyvals.begin(); it != propertyvals.end(); ++it) {
+    if (strlen((*it).second) > 0) {
+      (*params)[(*it).first].writer().append_string((*it).second);
+    }
+  }
+}
 
 }  // namespace shill

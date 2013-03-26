@@ -63,7 +63,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
     map<string, ::DBus::Variant> args;
     ::DBus::MessageIter writer;
     writer =
-        args[wpa_supplicant::kSecurityMethodPropertyKeyManagement].writer();
+        args[WPASupplicant::kSecurityMethodPropertyKeyManagement].writer();
     writer << key_management_method_strings;
     return args;
   }
@@ -120,7 +120,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
       const vector<uint8_t> &ies) {
     map<string, ::DBus::Variant> properties;
     ::DBus::MessageIter writer =
-          properties[wpa_supplicant::kBSSPropertyIEs].writer();
+          properties[WPASupplicant::kBSSPropertyIEs].writer();
     writer << ies;
     return properties;
   }
@@ -161,7 +161,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
                              bool has_rsn_property) {
     return WiFiEndpoint::MakeEndpoint(
         proxy_factory, wifi, ssid, bssid,
-        wpa_supplicant::kNetworkModeInfrastructure, 0, 0, has_wpa_property,
+        WPASupplicant::kNetworkModeInfrastructure, 0, 0, has_wpa_property,
         has_rsn_property);
   }
 
@@ -171,7 +171,7 @@ class WiFiEndpointTest : public PropertyStoreTest {
                                  const std::string &bssid) {
     return WiFiEndpoint::MakeOpenEndpoint(
         proxy_factory, wifi, ssid, bssid,
-        wpa_supplicant::kNetworkModeInfrastructure, 0, 0);
+        WPASupplicant::kNetworkModeInfrastructure, 0, 0);
   }
 
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
@@ -236,7 +236,7 @@ TEST_F(WiFiEndpointTest, ParseSecurityWPAPSK) {
 
 TEST_F(WiFiEndpointTest, ParseSecurityWEP) {
   map<string, ::DBus::Variant> top_params;
-  top_params[wpa_supplicant::kPropertyPrivacy].writer().append_bool(true);
+  top_params[WPASupplicant::kPropertyPrivacy].writer().append_bool(true);
   EXPECT_STREQ(flimflam::kSecurityWep, ParseSecurity(top_params));
 }
 
@@ -261,7 +261,7 @@ TEST_F(WiFiEndpointTest, DeterminePhyModeFromFrequency) {
     map<string, ::DBus::Variant> properties;
     vector<uint32_t> rates(1, 22000000);
     ::DBus::MessageIter writer =
-        properties[wpa_supplicant::kBSSPropertyRates].writer();
+        properties[WPASupplicant::kBSSPropertyRates].writer();
     writer << rates;
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11b,
               WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
@@ -270,7 +270,7 @@ TEST_F(WiFiEndpointTest, DeterminePhyModeFromFrequency) {
     map<string, ::DBus::Variant> properties;
     vector<uint32_t> rates(1, 54000000);
     ::DBus::MessageIter writer =
-        properties[wpa_supplicant::kBSSPropertyRates].writer();
+        properties[WPASupplicant::kBSSPropertyRates].writer();
     writer << rates;
     EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11g,
               WiFiEndpoint::DeterminePhyModeFromFrequency(properties, 2400));
@@ -570,7 +570,7 @@ TEST_F(WiFiEndpointTest, PropertiesChanged) {
 
   EXPECT_NE(signal_strength, endpoint->signal_strength());
   writer =
-      changed_properties[wpa_supplicant::kBSSPropertySignal].writer();
+      changed_properties[WPASupplicant::kBSSPropertySignal].writer();
   writer << signal_strength;
 
   EXPECT_CALL(*wifi(), NotifyEndpointChanged(_));
