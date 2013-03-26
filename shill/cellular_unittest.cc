@@ -10,7 +10,6 @@
 
 #include <base/bind.h>
 #include <chromeos/dbus/service_constants.h>
-#include <mobile_provider.h>
 
 #include "shill/cellular_capability_cdma.h"
 #include "shill/cellular_capability_classic.h"
@@ -19,20 +18,17 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
-#include "shill/mock_manager.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_rtnl_handler.h"
-#include "shill/nice_mock_control.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
 
@@ -66,10 +62,12 @@ MATCHER(IsFailure, "") {
 class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
-      : device_(new Cellular(control_interface(),
-                             NULL,
-                             NULL,
-                             NULL,
+      : modem_info_(control_interface(),
+                    dispatcher(),
+                    metrics(),
+                    manager(),
+                    glib()),
+        device_(new Cellular(&modem_info_,
                              "usb0",
                              "00:01:02:03:04:05",
                              3,
@@ -77,13 +75,11 @@ class CellularPropertyTest : public PropertyStoreTest {
                              "",
                              "",
                              "",
-                             NULL,
-                             NULL,
-                             NULL,
                              ProxyFactory::GetInstance())) {}
   virtual ~CellularPropertyTest() {}
 
  protected:
+  MockModemInfo modem_info_;
   DeviceRefPtr device_;
 };
 
@@ -123,10 +119,10 @@ TEST_F(CellularPropertyTest, SetProperty) {
 class CellularTest : public testing::Test {
  public:
   CellularTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
-        device_info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
-        dhcp_config_(new MockDHCPConfig(&control_interface_,
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+        device_info_(modem_info_.control_interface(), &dispatcher_,
+                     modem_info_.metrics(), modem_info_.manager()),
+        dhcp_config_(new MockDHCPConfig(modem_info_.control_interface(),
                                         kTestDeviceName)),
         create_gsm_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
@@ -135,11 +131,7 @@ class CellularTest : public testing::Test {
         gsm_card_proxy_(new MockModemGSMCardProxy()),
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
         proxy_factory_(this),
-        provider_db_(NULL),
-        device_(new Cellular(&control_interface_,
-                             &dispatcher_,
-                             &metrics_,
-                             &manager_,
+        device_(new Cellular(&modem_info_,
                              kTestDeviceName,
                              kTestDeviceAddress,
                              3,
@@ -147,23 +139,18 @@ class CellularTest : public testing::Test {
                              kDBusOwner,
                              kDBusService,
                              kDBusPath,
-                             NULL,
-                             NULL,
-                             NULL,
                              &proxy_factory_)) {
-    metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
-  }
-
-  virtual ~CellularTest() {
-    mobile_provider_close_db(provider_db_);
-    provider_db_ = NULL;
+    modem_info_.metrics()->RegisterDevice(device_->interface_index(),
+                                          Technology::kCellular);
   }
 
   virtual void SetUp() {
     static_cast<Device *>(device_)->rtnl_handler_ = &rtnl_handler_;
     device_->set_dhcp_provider(&dhcp_provider_);
-    EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
-    EXPECT_CALL(manager_, DeregisterService(_)).Times(AnyNumber());
+    EXPECT_CALL(*modem_info_.mock_manager(), device_info())
+        .WillRepeatedly(Return(&device_info_));
+    EXPECT_CALL(*modem_info_.mock_manager(), DeregisterService(_))
+        .Times(AnyNumber());
   }
 
   virtual void TearDown() {
@@ -171,6 +158,10 @@ class CellularTest : public testing::Test {
     device_->state_ = Cellular::kStateDisabled;
     device_->capability_->ReleaseProxies();
     device_->set_dhcp_provider(NULL);
+  }
+
+  void InitProviderDB() {
+    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
   }
 
   void InvokeEnable(bool enable, Error *error,
@@ -300,7 +291,7 @@ class CellularTest : public testing::Test {
         .Times(2)
         .WillRepeatedly(Invoke(this, &CellularTest::InvokeGetSignalQuality));
     EXPECT_CALL(*this, TestCallback(IsSuccess()));
-    EXPECT_CALL(manager_, RegisterService(_));
+    EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
   }
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
@@ -391,12 +382,29 @@ class CellularTest : public testing::Test {
         device_->capability_.get());
   }
 
-  NiceMockControl control_interface_;
+  // Different tests simulate a cellular service being set using a real /m mock
+  // service.
+  CellularService* SetService() {
+    device_->service_ = new CellularService(
+        modem_info_.control_interface(),
+        modem_info_.dispatcher(),
+        modem_info_.metrics(),
+        modem_info_.manager(),
+        device_);
+    return device_->service_;
+  }
+  CellularService* SetMockService() {
+    device_->service_ = new MockCellularService(
+        modem_info_.control_interface(),
+        modem_info_.dispatcher(),
+        modem_info_.metrics(),
+        modem_info_.manager(),
+        device_);
+    return device_->service_;
+  }
+
   EventDispatcher dispatcher_;
-  MockCellularOperatorInfo cellular_operator_info_;
-  MockMetrics metrics_;
-  MockGLib glib_;
-  MockManager manager_;
+  MockModemInfo modem_info_;
   MockDeviceInfo device_info_;
   NiceMock<MockRTNLHandler> rtnl_handler_;
 
@@ -410,7 +418,6 @@ class CellularTest : public testing::Test {
   scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
   TestProxyFactory proxy_factory_;
-  mobile_provider_db *provider_db_;
   CellularRefPtr device_;
 };
 
@@ -460,9 +467,7 @@ TEST_F(CellularTest, StartCDMARegister) {
 }
 
 TEST_F(CellularTest, StartGSMRegister) {
-  provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
-  ASSERT_TRUE(provider_db_);
-  device_->provider_db_ = provider_db_;
+  InitProviderDB();
   EXPECT_CALL(*proxy_, Enable(true, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
   EXPECT_CALL(*gsm_card_proxy_,
@@ -492,7 +497,7 @@ TEST_F(CellularTest, StartGSMRegister) {
       .WillRepeatedly(Invoke(this,
                              &CellularTest::InvokeGetSignalQuality));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  EXPECT_CALL(manager_, RegisterService(_));
+  EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
   AllowCreateGSMCardProxyFromFactory();
 
   Error error;
@@ -539,7 +544,7 @@ TEST_F(CellularTest, StartLinked) {
   EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
       .WillOnce(Return(dhcp_config_));
   EXPECT_CALL(*dhcp_config_, RequestIP()).WillOnce(Return(true));
-  EXPECT_CALL(manager_, UpdateService(_)).Times(3);
+  EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_)).Times(3);
   Error error;
   device_->Start(&error, Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_TRUE(error.IsSuccess());
@@ -597,8 +602,7 @@ TEST_F(CellularTest, Connect) {
   EXPECT_EQ(Error::kNotRegistered, error.type());
 
   device_->state_ = Cellular::kStateRegistered;
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  SetService();
 
   device_->allow_roaming_ = false;
   device_->service_->roaming_state_ = flimflam::kRoamingStateRoaming;
@@ -669,8 +673,7 @@ TEST_F(CellularTest, DisconnectFailure) {
 TEST_F(CellularTest, ConnectFailure) {
   SetCellularType(Cellular::kTypeCDMA);
   device_->state_ = Cellular::kStateRegistered;
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  SetService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
   EXPECT_CALL(*simple_proxy_,
               Connect(_, _, _, CellularCapability::kTimeoutConnect))
@@ -687,13 +690,12 @@ TEST_F(CellularTest, ConnectFailureNoService) {
   // then quick disabled.
   SetCellularType(Cellular::kTypeCDMA);
   device_->state_ = Cellular::kStateRegistered;
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  SetService();
   EXPECT_CALL(
       *simple_proxy_,
       Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFailNoService));
-  EXPECT_CALL(manager_, UpdateService(_));
+  EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
   GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
   Error error;
   device_->Connect(&error);
@@ -703,9 +705,7 @@ TEST_F(CellularTest, LinkEventWontDestroyService) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection but the service object should persist.
   device_->state_ = Cellular::kStateLinked;
-  CellularService *service = new CellularService(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
-  device_->service_ = service;
+  CellularService *service = SetService();
   device_->LinkEvent(0, 0);  // flags doesn't contain IFF_UP
   EXPECT_EQ(device_->state_, Cellular::kStateConnected);
   EXPECT_EQ(device_->service_, service);
@@ -722,9 +722,8 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
 
   // Service activation is needed
   GetCapabilityUniversal()->mdn_ = "0000000000";
-  device_->cellular_operator_info_ = &cellular_operator_info_;
   CellularService::OLP olp;
-  EXPECT_CALL(cellular_operator_info_, GetOLPByMCCMNC(_))
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
 
   device_->state_ = Cellular::kStateDisabled;
@@ -750,7 +749,7 @@ TEST_F(CellularTest, ModemStateChangeEnable) {
                        &CellularTest::InvokeGetRegistrationStateUnregistered));
   EXPECT_CALL(*cdma_proxy_, GetSignalQuality(NULL, _, _))
       .WillOnce(Invoke(this, &CellularTest::InvokeGetSignalQuality));
-  EXPECT_CALL(manager_, UpdateEnabledTechnologies());
+  EXPECT_CALL(*modem_info_.mock_manager(), UpdateEnabledTechnologies());
   device_->state_ = Cellular::kStateDisabled;
   device_->set_modem_state(Cellular::kModemStateDisabled);
   SetCellularType(Cellular::kTypeCDMA);
@@ -773,7 +772,7 @@ TEST_F(CellularTest, ModemStateChangeDisable) {
   EXPECT_CALL(*proxy_,
               Enable(false, _, _, CellularCapability::kTimeoutEnable))
       .WillOnce(Invoke(this, &CellularTest::InvokeEnable));
-  EXPECT_CALL(manager_, UpdateEnabledTechnologies());
+  EXPECT_CALL(*modem_info_.mock_manager(), UpdateEnabledTechnologies());
   device_->enabled_ = true;
   device_->enabled_pending_ = true;
   device_->state_ = Cellular::kStateEnabled;
@@ -805,8 +804,7 @@ TEST_F(CellularTest, ModemStateChangeStaleConnected) {
 
 TEST_F(CellularTest, ModemStateChangeValidConnected) {
   device_->state_ = Cellular::kStateEnabled;
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  SetService();
   device_->OnModemStateChanged(Cellular::kModemStateConnecting,
                                Cellular::kModemStateConnected,
                                0);
@@ -844,11 +842,7 @@ TEST_F(CellularTest, StartModemCallbackFail) {
 
 TEST_F(CellularTest, StopModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  device_->service_ = new MockCellularService(&control_interface_,
-                                              &dispatcher_,
-                                              &metrics_,
-                                              &manager_,
-                                              device_);
+  SetMockService();
   device_->StopModemCallback(Bind(&CellularTest::TestCallback,
                                   Unretained(this)),
                              Error(Error::kSuccess));
@@ -858,11 +852,7 @@ TEST_F(CellularTest, StopModemCallback) {
 
 TEST_F(CellularTest, StopModemCallbackFail) {
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  device_->service_ = new MockCellularService(&control_interface_,
-                                              &dispatcher_,
-                                              &metrics_,
-                                              &manager_,
-                                              device_);
+  SetMockService();
   device_->StopModemCallback(Bind(&CellularTest::TestCallback,
                                   Unretained(this)),
                              Error(Error::kOperationFailed));
@@ -895,8 +885,7 @@ TEST_F(CellularTest, MAYBE_ConnectAddsTerminationAction) {
   // status.
   EXPECT_CALL(*this, TestCallback(IsSuccess())).Times(2);
 
-  device_->service_ = new CellularService(
-      &control_interface_, &dispatcher_, &metrics_, &manager_, device_);
+  SetService();
   GetCapabilityClassic()->proxy_.reset(proxy_.release());
   GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
   device_->state_ = Cellular::kStateRegistered;
@@ -908,7 +897,7 @@ TEST_F(CellularTest, MAYBE_ConnectAddsTerminationAction) {
   // If the action of establishing a connection registered a termination action
   // with the manager, then running the termination action will result in a
   // disconnect.
-  manager_.RunTerminationActions(
+  modem_info_.manager()->RunTerminationActions(
       Bind(&CellularTest::TestCallback, Unretained(this)));
   EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
   dispatcher_.DispatchPendingEvents();
@@ -918,14 +907,14 @@ TEST_F(CellularTest, MAYBE_ConnectAddsTerminationAction) {
   // TestCallback being called with success because there are no registered
   // termination actions..  If the termination action is not removed, then
   // TestCallback will be called with kOperationTimeout.
-  manager_.RunTerminationActions(
+  modem_info_.manager()->RunTerminationActions(
       Bind(&CellularTest::TestCallback, Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
 
 TEST_F(CellularTest, SetAllowRoaming) {
   EXPECT_FALSE(device_->allow_roaming_);
-  EXPECT_CALL(manager_, UpdateDevice(_));
+  EXPECT_CALL(*modem_info_.mock_manager(), UpdateDevice(_));
   Error error;
   device_->SetAllowRoaming(true, &error);
   EXPECT_TRUE(error.IsSuccess());

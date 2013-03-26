@@ -20,13 +20,12 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_log.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_profile.h"
-#include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
 using base::Bind;
@@ -54,7 +53,7 @@ MATCHER(IsFailure, "") {
 class CellularCapabilityGSMTest : public testing::Test {
  public:
   CellularCapabilityGSMTest()
-      : metrics_(&dispatcher_),
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
         create_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
@@ -63,11 +62,7 @@ class CellularCapabilityGSMTest : public testing::Test {
         proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL),
-        provider_db_(NULL),
-        cellular_(new Cellular(&control_,
-                               &dispatcher_,
-                               &metrics_,
-                               NULL,
+        cellular_(new Cellular(&modem_info_,
                                "",
                                kAddress,
                                0,
@@ -75,20 +70,13 @@ class CellularCapabilityGSMTest : public testing::Test {
                                "",
                                "",
                                "",
-                               NULL,
-                               NULL,
-                               NULL,
                                &proxy_factory_)) {
-    metrics_.RegisterDevice(cellular_->interface_index(),
-                            Technology::kCellular);
+    modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
+                                          Technology::kCellular);
   }
 
   virtual ~CellularCapabilityGSMTest() {
     cellular_->service_ = NULL;
-    if (provider_db_) {
-      mobile_provider_close_db(provider_db_);
-      provider_db_ = NULL;
-    }
     capability_ = NULL;
     device_adaptor_ = NULL;
   }
@@ -97,7 +85,11 @@ class CellularCapabilityGSMTest : public testing::Test {
     capability_ =
         dynamic_cast<CellularCapabilityGSM *>(cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
+        dynamic_cast<DeviceMockAdaptor *>(cellular_->adaptor());
+  }
+
+  void InitProviderDB() {
+    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
   }
 
   void InvokeEnable(bool enable, Error *error,
@@ -270,13 +262,8 @@ class CellularCapabilityGSMTest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, &metrics_, NULL, cellular_);
-  }
-
-  void InitProviderDB() {
-    provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
-    ASSERT_TRUE(provider_db_);
-    cellular_->provider_db_ = provider_db_;
+        modem_info_.control_interface(), modem_info_.dispatcher(),
+        modem_info_.metrics(), modem_info_.manager(), cellular_);
   }
 
   void SetupCommonProxiesExpectations() {
@@ -318,9 +305,8 @@ class CellularCapabilityGSMTest : public testing::Test {
     create_card_proxy_from_factory_ = true;
   }
 
-  NiceMockControl control_;
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
+  MockModemInfo modem_info_;
   bool create_card_proxy_from_factory_;
   scoped_ptr<MockModemProxy> proxy_;
   scoped_ptr<MockModemSimpleProxy> simple_proxy_;
@@ -328,8 +314,7 @@ class CellularCapabilityGSMTest : public testing::Test {
   scoped_ptr<MockModemGSMNetworkProxy> network_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityGSM *capability_;  // Owned by |cellular_|.
-  NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
-  mobile_provider_db *provider_db_;
+  DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
   ScanResultsCallback scan_callback_;  // saved for testing scan operations
 };
@@ -733,7 +718,7 @@ MATCHER(SizeIs4, "") {
 TEST_F(CellularCapabilityGSMTest, InitAPNList) {
   InitProviderDB();
   capability_->home_provider_ =
-      mobile_provider_lookup_by_name(cellular_->provider_db(), "T-Mobile");
+      mobile_provider_lookup_by_name(modem_info_.provider_db(), "T-Mobile");
   ASSERT_TRUE(capability_->home_provider_);
   EXPECT_EQ(0, capability_->apn_list_.size());
   EXPECT_CALL(*device_adaptor_,
@@ -948,7 +933,8 @@ TEST_F(CellularCapabilityGSMTest, SetupApnTryList) {
   EXPECT_EQ(kTmobileApn, props[flimflam::kApnProperty].reader().get_string());
 
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
+      modem_info_.control_interface(), modem_info_.metrics(),
+      modem_info_.manager()));
   cellular_->service()->set_profile(profile);
   Stringmap apn_info;
   apn_info[flimflam::kApnProperty] = kLastGoodApn;

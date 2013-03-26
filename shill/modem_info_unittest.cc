@@ -96,7 +96,7 @@ TEST_F(ModemInfoTest, RegisterModemManager) {
   ModemManager *manager = modem_info_.modem_managers_[0];
   EXPECT_EQ(kService, manager->service_);
   EXPECT_EQ(kWatcher, manager->watcher_id_);
-  EXPECT_EQ(modem_info_.provider_db_, manager->provider_db_);
+  EXPECT_EQ(&modem_info_, manager->modem_info_);
   manager->watcher_id_ = 0;
 }
 

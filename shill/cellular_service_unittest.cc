@@ -14,6 +14,7 @@
 #include "shill/mock_cellular.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
@@ -32,10 +33,8 @@ class CellularServiceTest : public testing::Test {
   CellularServiceTest()
       : metrics_(&dispatcher_),
         manager_(&control_, &dispatcher_, &metrics_, NULL),
-        device_(new MockCellular(&control_,
-                                 NULL,
-                                 &metrics_,
-                                 &manager_,
+        modem_info_(&control_, &dispatcher_, &metrics_, &manager_, NULL),
+        device_(new MockCellular(&modem_info_,
                                  "usb0",
                                  kAddress,
                                  3,
@@ -43,9 +42,6 @@ class CellularServiceTest : public testing::Test {
                                  "",
                                  "",
                                  "",
-                                 NULL,
-                                 NULL,
-                                 NULL,
                                  ProxyFactory::GetInstance())),
         service_(new CellularService(&control_, &dispatcher_,
                                      &metrics_, &manager_, device_)),
@@ -73,6 +69,7 @@ class CellularServiceTest : public testing::Test {
   EventDispatcher dispatcher_;
   NiceMock<MockMetrics> metrics_;
   MockManager manager_;
+  MockModemInfo modem_info_;
   scoped_refptr<MockCellular> device_;
   CellularServiceRefPtr service_;
   NiceMock<ServiceMockAdaptor> *adaptor_;  // Owned by |service_|.

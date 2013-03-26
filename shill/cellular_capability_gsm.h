@@ -25,11 +25,13 @@ struct mobile_provider;
 
 namespace shill {
 
+class ModemInfo;
+
 class CellularCapabilityGSM : public CellularCapabilityClassic {
  public:
   CellularCapabilityGSM(Cellular *cellular,
                         ProxyFactory *proxy_factory,
-                        Metrics *metrics);
+                        ModemInfo *modem_info);
 
   // Inherited from CellularCapability.
   virtual void StartModem(Error *error, const ResultCallback &callback);

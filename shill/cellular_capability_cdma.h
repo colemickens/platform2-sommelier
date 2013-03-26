@@ -20,11 +20,13 @@
 
 namespace shill {
 
+class ModemInfo;
+
 class CellularCapabilityCDMA : public CellularCapabilityClassic {
  public:
   CellularCapabilityCDMA(Cellular *cellular,
                          ProxyFactory *proxy_factory,
-                         Metrics *metrics);
+                         ModemInfo *modem_info);
 
   // Inherited from CellularCapability.
   virtual void StartModem(Error *error, const ResultCallback &callback);

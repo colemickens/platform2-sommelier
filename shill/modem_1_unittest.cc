@@ -14,12 +14,9 @@
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
 #include "shill/mock_cellular.h"
-#include "shill/mock_control.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_device_info.h"
-#include "shill/mock_glib.h"
-#include "shill/mock_manager.h"
-#include "shill/mock_metrics.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
@@ -49,9 +46,9 @@ const char kAddressAsString[] = "000102030405";
 class Modem1Test : public Test {
  public:
   Modem1Test()
-      : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_),
-        info_(&control_interface_, &dispatcher_, &metrics_, &manager_),
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+        device_info_(modem_info_.control_interface(), modem_info_.dispatcher(),
+                     modem_info_.metrics(), modem_info_.manager()),
         proxy_(new MockDBusPropertiesProxy()),
         proxy_factory_(this),
         modem_(
@@ -59,13 +56,7 @@ class Modem1Test : public Test {
                 kOwner,
                 kService,
                 kPath,
-                &control_interface_,
-                &dispatcher_,
-                &metrics_,
-                &manager_,
-                static_cast<ActivatingIccidStore *>(NULL),
-                static_cast<CellularOperatorInfo *>(NULL),
-                static_cast<mobile_provider_db *>(NULL))) {}
+                &modem_info_)) {}
   virtual void SetUp();
   virtual void TearDown();
 
@@ -89,12 +80,9 @@ class Modem1Test : public Test {
     Modem1Test *test_;
   };
 
-  MockGLib glib_;
-  MockControl control_interface_;
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
-  MockManager manager_;
-  MockDeviceInfo info_;
+  MockModemInfo modem_info_;
+  MockDeviceInfo device_info_;
   scoped_ptr<MockDBusPropertiesProxy> proxy_;
   TestProxyFactory proxy_factory_;
   scoped_ptr<Modem1> modem_;
@@ -122,8 +110,9 @@ void Modem1Test::SetUp() {
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kLinkName)).
       WillRepeatedly(Return(kTestInterfaceIndex));
 
-  EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&info_));
-  EXPECT_CALL(info_, GetMACAddress(kTestInterfaceIndex, _)).
+  EXPECT_CALL(*modem_info_.mock_manager(), device_info())
+      .WillRepeatedly(Return(&device_info_));
+  EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _)).
       WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
                      Return(true)));
 }

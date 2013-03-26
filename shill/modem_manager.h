@@ -18,6 +18,7 @@
 #include "shill/dbus_objectmanager_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/glib.h"
+#include "shill/modem_info.h"
 
 struct mobile_provider_db;
 
@@ -42,14 +43,7 @@ class ModemManager {
  public:
   ModemManager(const std::string &service,
                const std::string &path,
-               ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
-               GLib *glib,
-               ActivatingIccidStore *activating_iccid_store,
-               CellularOperatorInfo *cellular_operator_info,
-               mobile_provider_db *provider_db);
+               ModemInfo *modem_info);
   virtual ~ModemManager();
 
   // Starts watching for and handling the DBus modem manager service.
@@ -64,21 +58,11 @@ class ModemManager {
  protected:
   typedef std::map<std::string, std::tr1::shared_ptr<Modem> > Modems;
 
-  ControlInterface *control_interface() const { return control_interface_; }
-  EventDispatcher *dispatcher() const { return dispatcher_; }
-  Manager *manager() const { return manager_; }
-  Metrics *metrics() const { return metrics_; }
   const std::string &owner() const { return owner_; }
   const std::string &service() const { return service_; }
   const std::string &path() const { return path_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
-  ActivatingIccidStore *activating_iccid_store() const {
-    return activating_iccid_store_;
-  }
-  CellularOperatorInfo *cellular_operator_info() const {
-    return cellular_operator_info_;
-  }
-  mobile_provider_db *provider_db() const { return provider_db_; }
+  ModemInfo *modem_info() const { return modem_info_; }
 
   // Connect/Disconnect to a modem manager service.
   // Inheriting classes must call this superclass method.
@@ -130,14 +114,7 @@ class ModemManager {
 
   Modems modems_;  // Maps a modem |path| to a modem instance.
 
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
-  GLib *glib_;
-  ActivatingIccidStore *activating_iccid_store_;
-  CellularOperatorInfo *cellular_operator_info_;
-  mobile_provider_db *provider_db_;
+  ModemInfo *modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(ModemManager);
 };
@@ -146,14 +123,7 @@ class ModemManagerClassic : public ModemManager {
  public:
   ModemManagerClassic(const std::string &service,
                       const std::string &path,
-                      ControlInterface *control_interface,
-                      EventDispatcher *dispatcher,
-                      Metrics *metrics,
-                      Manager *manager,
-                      GLib *glib,
-                      ActivatingIccidStore *activating_iccid_store,
-                      CellularOperatorInfo *cellular_operator_info,
-                      mobile_provider_db *provider_db);
+                      ModemInfo *modem_info);
 
   virtual ~ModemManagerClassic();
 
@@ -181,14 +151,7 @@ class ModemManager1 : public ModemManager {
  public:
   ModemManager1(const std::string &service,
                 const std::string &path,
-                ControlInterface *control_interface,
-                EventDispatcher *dispatcher,
-                Metrics *metrics,
-                Manager *manager,
-                GLib *glib,
-                ActivatingIccidStore *activating_iccid_store,
-                CellularOperatorInfo *cellular_operator_info,
-                mobile_provider_db *provider_db);
+                ModemInfo *modem_info);
 
   virtual ~ModemManager1();
 

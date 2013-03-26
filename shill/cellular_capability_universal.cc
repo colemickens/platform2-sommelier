@@ -125,9 +125,8 @@ static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
 CellularCapabilityUniversal::CellularCapabilityUniversal(
     Cellular *cellular,
     ProxyFactory *proxy_factory,
-    Metrics *metrics,
-    ActivatingIccidStore *activating_iccid_store)
-    : CellularCapability(cellular, proxy_factory, metrics),
+    ModemInfo *modem_info)
+    : CellularCapability(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
       cdma_registration_state_(MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN),
@@ -145,7 +144,6 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       scanning_or_searching_(false),
       scan_interval_(0),
       sim_present_(false),
-      activating_iccid_store_(activating_iccid_store),
       reset_done_(false),
       scanning_or_searching_timeout_milliseconds_(
           kDefaultScanningOrSearchingTimeoutMilliseconds) {
@@ -262,7 +260,8 @@ void CellularCapabilityUniversal::EnableModem(Error *error,
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error local_error(Error::kOperationInitiated);
-  metrics()->NotifyDeviceEnableStarted(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceEnableStarted(
+      cellular()->interface_index());
   modem_proxy_->Enable(
       true,
       &local_error,
@@ -297,8 +296,10 @@ void CellularCapabilityUniversal::Start_EnableModemCompleted(
   GetProperties();
   // We expect the modem to start scanning after it has been enabled.
   // Change this if this behavior is no longer the case in the future.
-  metrics()->NotifyDeviceEnableFinished(cellular()->interface_index());
-  metrics()->NotifyDeviceScanStarted(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceEnableFinished(
+      cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceScanStarted(
+      cellular()->interface_index());
   callback.Run(error);
 }
 
@@ -338,7 +339,8 @@ void CellularCapabilityUniversal::Stop_DisconnectCompleted(
 
 void CellularCapabilityUniversal::Stop_Disable(const ResultCallback &callback) {
   Error error;
-  metrics()->NotifyDeviceDisableStarted(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceDisableStarted(
+      cellular()->interface_index());
   modem_proxy_->Enable(
       false, &error,
       Bind(&CellularCapabilityUniversal::Stop_DisableCompleted,
@@ -392,7 +394,8 @@ void CellularCapabilityUniversal::Stop_PowerDownCompleted(
   // Since the disable succeeded, if power down fails, we currently fail
   // silently, i.e. we need to report the disable operation as having
   // succeeded.
-  metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceDisableFinished(
+      cellular()->interface_index());
   ReleaseProxies();
   callback.Run(Error());
 }
@@ -452,7 +455,7 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
   if (cellular()->service().get())
     cellular()->service()->SetActivationState(
         flimflam::kActivationStateActivating);
-  activating_iccid_store_->SetActivationState(
+  modem_info()->activating_iccid_store()->SetActivationState(
       sim_identifier_,
       ActivatingIccidStore::kStatePending);
 }
@@ -492,7 +495,7 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
   // the ICCID from persistence.
   bool got_mdn = IsMdnValid();
   if (got_mdn && !sim_identifier_.empty())
-      activating_iccid_store_->RemoveEntry(sim_identifier_);
+      modem_info()->activating_iccid_store()->RemoveEntry(sim_identifier_);
 
   CellularServiceRefPtr service = cellular()->service();
 
@@ -518,7 +521,8 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
     return;
 
   ActivatingIccidStore::State state =
-      activating_iccid_store_->GetActivationState(sim_identifier_);
+      modem_info()->activating_iccid_store()->GetActivationState(
+          sim_identifier_);
   switch (state) {
     case ActivatingIccidStore::kStatePending:
       // Always mark the service as activating here, as the ICCID could have
@@ -526,7 +530,7 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
       service->SetActivationState(flimflam::kActivationStateActivating);
       if (reset_done_) {
         SLOG(Cellular, 2) << "Post-payment activation reset complete.";
-        activating_iccid_store_->SetActivationState(
+        modem_info()->activating_iccid_store()->SetActivationState(
             sim_identifier_,
             ActivatingIccidStore::kStateActivated);
       } else if (registered) {
@@ -569,8 +573,8 @@ void CellularCapabilityUniversal::UpdateStorageIdentifier() {
   string storage_id;
   if (!operator_id_.empty()) {
     const CellularOperatorInfo::CellularOperator *provider =
-      cellular()->cellular_operator_info()->
-          GetCellularOperatorByMCCMNC(operator_id_);
+        modem_info()->cellular_operator_info()->GetCellularOperatorByMCCMNC(
+            operator_id_);
     if (provider && !provider->identifier().empty()) {
       storage_id = prefix + provider->identifier();
     }
@@ -590,8 +594,8 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
   bool activation_required = IsServiceActivationRequired();
   string activation_state = flimflam::kActivationStateActivated;
   if (!sim_identifier_.empty() &&
-       activating_iccid_store_->GetActivationState(sim_identifier_) ==
-          ActivatingIccidStore::kStatePending)
+       modem_info()->activating_iccid_store()->GetActivationState(
+           sim_identifier_) == ActivatingIccidStore::kStatePending)
     activation_state = flimflam::kActivationStateActivating;
   else if (activation_required)
     activation_state = flimflam::kActivationStateNotActivated;
@@ -777,14 +781,14 @@ void CellularCapabilityUniversal::SetHomeProvider() {
   SLOG(Cellular, 2) << __func__ << "(IMSI: " << imsi_
           << " SPN: " << spn_ << ")";
 
-  if (!cellular()->provider_db())
+  if (!modem_info()->provider_db())
     return;
 
   // MCCMNC can be determined either from IMSI or Operator Code. Use whichever
   // one is available. If both were reported by the SIM, use IMSI.
   const string &network_id = imsi_.empty() ? operator_id_ : imsi_;
   mobile_provider *provider = mobile_provider_lookup_best_match(
-      cellular()->provider_db(),
+      modem_info()->provider_db(),
       spn_.c_str(),
       network_id.c_str());
   if (!provider) {
@@ -870,11 +874,11 @@ void CellularCapabilityUniversal::OnScanningOrSearchingTimeout() {
 }
 
 void CellularCapabilityUniversal::UpdateOLP() {
-  if (!cellular()->cellular_operator_info())
+  if (!modem_info()->cellular_operator_info())
     return;
 
   const CellularService::OLP *result =
-      cellular()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
+      modem_info()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
   if (!result)
     return;
 
@@ -917,7 +921,7 @@ void CellularCapabilityUniversal::UpdateOperatorInfo() {
   if (!network_id.empty()) {
     SLOG(Cellular, 2) << "Looking up network id: " << network_id;
     mobile_provider *provider =
-        mobile_provider_lookup_by_network(cellular()->provider_db(),
+        mobile_provider_lookup_by_network(modem_info()->provider_db(),
                                           network_id.c_str());
     if (provider) {
       if (serving_operator_.GetName().empty()) {
@@ -1034,17 +1038,17 @@ void CellularCapabilityUniversal::InitAPNList() {
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   if (!sim_identifier_.empty() &&
-      activating_iccid_store_->GetActivationState(sim_identifier_) ==
-          ActivatingIccidStore::kStateActivated)
+      modem_info()->activating_iccid_store()->GetActivationState(
+          sim_identifier_) == ActivatingIccidStore::kStateActivated)
     return false;
 
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
-  if (!cellular()->cellular_operator_info())
+  if (!modem_info()->cellular_operator_info())
     return false;
 
   const CellularService::OLP *olp =
-      cellular()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
+      modem_info()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
   if (!olp)
     return false;
 
@@ -1295,7 +1299,7 @@ Stringmap CellularCapabilityUniversal::ParseScanResult(
       ContainsKey(parsed, flimflam::kNetworkIdProperty)) {
     mobile_provider *provider =
         mobile_provider_lookup_by_network(
-            cellular()->provider_db(),
+            modem_info()->provider_db(),
             parsed[flimflam::kNetworkIdProperty].c_str());
     if (provider) {
       const char *long_name = mobile_provider_get_name(provider);

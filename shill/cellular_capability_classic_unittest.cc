@@ -15,18 +15,15 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_glib.h"
-#include "shill/mock_manager.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_gobi_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
-#include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
 using base::Bind;
@@ -48,8 +45,7 @@ MATCHER(IsFailure, "") {
 class CellularCapabilityTest : public testing::Test {
  public:
   CellularCapabilityTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, &glib_),
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
         create_gsm_card_proxy_from_factory_(false),
         proxy_(new MockModemProxy()),
         simple_proxy_(new MockModemSimpleProxy()),
@@ -60,11 +56,7 @@ class CellularCapabilityTest : public testing::Test {
         proxy_factory_(this),
         capability_(NULL),
         device_adaptor_(NULL),
-        provider_db_(NULL),
-        cellular_(new Cellular(&control_,
-                               &dispatcher_,
-                               &metrics_,
-                               &manager_,
+        cellular_(new Cellular(&modem_info_,
                                "",
                                "",
                                0,
@@ -72,11 +64,8 @@ class CellularCapabilityTest : public testing::Test {
                                "",
                                "",
                                "",
-                               NULL,
-                               NULL,
-                               NULL,
                                &proxy_factory_)) {
-    metrics_.RegisterDevice(cellular_->interface_index(),
+    modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);
   }
 
@@ -84,8 +73,6 @@ class CellularCapabilityTest : public testing::Test {
     cellular_->service_ = NULL;
     capability_ = NULL;
     device_adaptor_ = NULL;
-    mobile_provider_close_db(provider_db_);
-    provider_db_ = NULL;
   }
 
   virtual void SetUp() {
@@ -94,22 +81,22 @@ class CellularCapabilityTest : public testing::Test {
     capability_ = dynamic_cast<CellularCapabilityClassic *>(
         cellular_->capability_.get());
     device_adaptor_ =
-        dynamic_cast<NiceMock<DeviceMockAdaptor> *>(cellular_->adaptor());
+        dynamic_cast<DeviceMockAdaptor*>(cellular_->adaptor());
+    ASSERT_TRUE(device_adaptor_ != NULL);
   }
 
   virtual void TearDown() {
     capability_->proxy_factory_ = NULL;
   }
 
-  void InitProviderDB() {
-    provider_db_ = mobile_provider_open_db(kTestMobileProviderDBPath);
-    ASSERT_TRUE(provider_db_);
-    cellular_->provider_db_ = provider_db_;
-  }
-
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, &metrics_, NULL, cellular_);
+        modem_info_.control_interface(), modem_info_.dispatcher(),
+        modem_info_.metrics(), modem_info_.manager(), cellular_);
+  }
+
+  void InitProviderDB() {
+    modem_info_.SetProviderDB(kTestMobileProviderDBPath);
   }
 
   CellularCapabilityGSM *GetGsmCapability() {
@@ -239,11 +226,8 @@ class CellularCapabilityTest : public testing::Test {
     create_gsm_card_proxy_from_factory_ = true;
   }
 
-  NiceMockControl control_;
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
-  MockGLib glib_;
-  MockManager manager_;
+  MockModemInfo modem_info_;
   MockRTNLHandler rtnl_handler_;
   bool create_gsm_card_proxy_from_factory_;
   scoped_ptr<MockModemProxy> proxy_;
@@ -254,8 +238,7 @@ class CellularCapabilityTest : public testing::Test {
   scoped_ptr<MockModemGobiProxy> gobi_proxy_;
   TestProxyFactory proxy_factory_;
   CellularCapabilityClassic *capability_;  // Owned by |cellular_|.
-  NiceMock<DeviceMockAdaptor> *device_adaptor_;  // Owned by |cellular_|.
-  mobile_provider_db *provider_db_;
+  DeviceMockAdaptor *device_adaptor_;  // Owned by |cellular_|.
   CellularRefPtr cellular_;
 };
 
@@ -412,7 +395,8 @@ TEST_F(CellularCapabilityTest, TryApns) {
   InitProviderDB();
   gsm_capability->SetHomeProvider();
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
+      modem_info_.control_interface(), modem_info_.metrics(),
+      modem_info_.manager()));
   cellular_->service()->set_profile(profile);
 
   Error error;

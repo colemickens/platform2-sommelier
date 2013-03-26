@@ -16,10 +16,7 @@ namespace shill {
 
 class MockCellular : public Cellular {
  public:
-  MockCellular(ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
+  MockCellular(ModemInfo *modem_info,
                const std::string &link_name,
                const std::string &address,
                int interface_index,
@@ -27,9 +24,6 @@ class MockCellular : public Cellular {
                const std::string &owner,
                const std::string &service,
                const std::string &path,
-               ActivatingIccidStore *activating_iccid_store,
-               CellularOperatorInfo *cellular_operator_info,
-               mobile_provider_db *provider_db,
                ProxyFactory *proxy_factory);
   virtual ~MockCellular();
 

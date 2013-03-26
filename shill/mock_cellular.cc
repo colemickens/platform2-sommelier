@@ -13,10 +13,7 @@ namespace shill {
 // TODO(rochberg): The cellular constructor does work.  Ought to fix
 // this so that we don't depend on passing real values in for Type.
 
-MockCellular::MockCellular(ControlInterface *control_interface,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager,
+MockCellular::MockCellular(ModemInfo *modem_info,
                            const std::string &link_name,
                            const std::string &address,
                            int interface_index,
@@ -24,14 +21,9 @@ MockCellular::MockCellular(ControlInterface *control_interface,
                            const std::string &owner,
                            const std::string &service,
                            const std::string &path,
-                           ActivatingIccidStore *activating_iccid_store,
-                           CellularOperatorInfo *cellular_operator_info,
-                           mobile_provider_db *provider_db,
                            ProxyFactory *proxy_factory)
-    : Cellular(control_interface, dispatcher, metrics, manager, link_name,
-               address, interface_index, type, owner, service, path,
-               activating_iccid_store, cellular_operator_info, provider_db,
-               proxy_factory) {}
+    : Cellular(modem_info, link_name, address, interface_index, type, owner,
+               service, path, proxy_factory) {}
 
 MockCellular::~MockCellular() {}
 

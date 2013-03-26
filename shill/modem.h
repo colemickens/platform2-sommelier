@@ -16,6 +16,7 @@
 #include "shill/cellular.h"
 #include "shill/dbus_objectmanager_proxy_interface.h"
 #include "shill/dbus_properties_proxy_interface.h"
+#include "shill/modem_info.h"
 #include "shill/refptr_types.h"
 
 struct mobile_provider_db;
@@ -40,13 +41,7 @@ class Modem {
   Modem(const std::string &owner,
         const std::string &service,
         const std::string &path,
-        ControlInterface *control_interface,
-        EventDispatcher *dispatcher,
-        Metrics *metrics,
-        Manager *manager,
-        ActivatingIccidStore *activating_iccid_store,
-        CellularOperatorInfo *cellular_operator_info,
-        mobile_provider_db *provider_db);
+        ModemInfo *modem_info);
   virtual ~Modem();
 
   // Asynchronously initializes support for the modem.
@@ -71,15 +66,7 @@ class Modem {
 
   virtual void Init();
 
-  ControlInterface *control_interface() const { return control_interface_; }
   CellularRefPtr device() const { return device_; }
-  EventDispatcher *dispatcher() const { return dispatcher_; }
-  Manager *manager() const { return manager_; }
-  Metrics *metrics() const { return metrics_; }
-  CellularOperatorInfo *cellular_operator_info() const {
-    return cellular_operator_info_;
-  }
-  mobile_provider_db *provider_db() const { return provider_db_; }
 
   virtual Cellular *ConstructCellular(const std::string &link_name,
                                       const std::string &device_name,
@@ -123,13 +110,7 @@ class Modem {
 
   CellularRefPtr device_;
 
-  ControlInterface *control_interface_;
-  EventDispatcher *dispatcher_;
-  Metrics *metrics_;
-  Manager *manager_;
-  ActivatingIccidStore *activating_iccid_store_;
-  CellularOperatorInfo *cellular_operator_info_;
-  mobile_provider_db *provider_db_;
+  ModemInfo *modem_info_;
   std::string link_name_;
   Cellular::Type type_;
   bool pending_device_info_;
@@ -146,13 +127,7 @@ class ModemClassic : public Modem {
   ModemClassic(const std::string &owner,
                const std::string &service,
                const std::string &path,
-               ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
-               ActivatingIccidStore *activating_iccid_store,
-               CellularOperatorInfo *cellular_operator_info,
-               mobile_provider_db *provider_db);
+               ModemInfo *modem_info);
   virtual ~ModemClassic();
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.
@@ -172,13 +147,7 @@ class Modem1 : public Modem {
   Modem1(const std::string &owner,
          const std::string &service,
          const std::string &path,
-         ControlInterface *control_interface,
-         EventDispatcher *dispatcher,
-         Metrics *metrics,
-         Manager *manager,
-         ActivatingIccidStore *activating_iccid_store,
-         CellularOperatorInfo *cellular_operator_info,
-         mobile_provider_db *provider_db);
+         ModemInfo *modem_info);
   virtual ~Modem1();
 
   // Gathers information and passes it to CreateDeviceFromModemProperties.

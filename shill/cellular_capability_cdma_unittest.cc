@@ -15,12 +15,9 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_cellular.h"
-#include "shill/mock_glib.h"
-#include "shill/mock_manager.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_modem_cdma_proxy.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_modem_proxy.h"
-#include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
 
 using base::Bind;
@@ -36,12 +33,8 @@ namespace shill {
 class CellularCapabilityCDMATest : public testing::Test {
  public:
   CellularCapabilityCDMATest()
-      : manager_(&control_, &dispatcher_, &metrics_, &glib_),
-        metrics_(&dispatcher_),
-        cellular_(new MockCellular(&control_,
-                                   &dispatcher_,
-                                   &metrics_,
-                                   &manager_,
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
+        cellular_(new MockCellular(&modem_info_,
                                    "",
                                    "",
                                    0,
@@ -49,15 +42,12 @@ class CellularCapabilityCDMATest : public testing::Test {
                                    "",
                                    "",
                                    "",
-                                   NULL,
-                                   NULL,
-                                   NULL,
                                    ProxyFactory::GetInstance())),
         classic_proxy_(new MockModemProxy()),
         proxy_(new MockModemCDMAProxy()),
         capability_(NULL) {
-    metrics_.RegisterDevice(cellular_->interface_index(),
-                            Technology::kCellular);
+    modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
+                                          Technology::kCellular);
   }
 
   virtual ~CellularCapabilityCDMATest() {
@@ -131,18 +121,16 @@ class CellularCapabilityCDMATest : public testing::Test {
 
   void SetService() {
     cellular_->service_ = new CellularService(
-        &control_, &dispatcher_, &metrics_, &manager_, cellular_);
+        modem_info_.control_interface(), modem_info_.dispatcher(),
+        modem_info_.metrics(), modem_info_.manager(), cellular_);
   }
 
   void SetDeviceState(Cellular::State state) {
     cellular_->state_ = state;
   }
 
-  NiceMockControl control_;
   EventDispatcher dispatcher_;
-  MockGLib glib_;
-  MockManager manager_;
-  MockMetrics metrics_;
+  MockModemInfo modem_info_;
   scoped_refptr<MockCellular> cellular_;
   scoped_ptr<MockModemProxy> classic_proxy_;
   scoped_ptr<MockModemCDMAProxy> proxy_;
@@ -387,7 +375,7 @@ TEST_F(CellularCapabilityCDMATest, GetRegistrationState) {
           &CellularCapabilityCDMATest::InvokeGetRegistrationState));
   SetProxy();
   cellular_->state_ = Cellular::kStateEnabled;
-  EXPECT_CALL(manager_, RegisterService(_));
+  EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
   capability_->GetRegistrationState();
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_CDMA_REGISTRATION_STATE_REGISTERED,

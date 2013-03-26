@@ -52,8 +52,8 @@ const int64 CellularCapabilityGSM::kGetIMSIRetryDelayMilliseconds = 500;
 
 CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
                                              ProxyFactory *proxy_factory,
-                                             Metrics *metrics)
-    : CellularCapabilityClassic(cellular, proxy_factory, metrics),
+                                             ModemInfo *modem_info)
+    : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_GSM_NETWORK_REG_STATUS_UNKNOWN),
       access_technology_(MM_MODEM_GSM_ACCESS_TECH_UNKNOWN),
@@ -474,12 +474,12 @@ void CellularCapabilityGSM::SetHomeProvider() {
                     << " SPN: " << spn_ << ")";
   // TODO(petkov): The test for NULL provider_db should be done by
   // mobile_provider_lookup_best_match.
-  if (imsi_.empty() || !cellular()->provider_db()) {
+  if (imsi_.empty() || !modem_info()->provider_db()) {
     return;
   }
   mobile_provider *provider =
       mobile_provider_lookup_best_match(
-          cellular()->provider_db(), spn_.c_str(), imsi_.c_str());
+          modem_info()->provider_db(), spn_.c_str(), imsi_.c_str());
   if (!provider) {
     SLOG(Cellular, 2) << "GSM provider not found.";
     return;
@@ -514,7 +514,7 @@ void CellularCapabilityGSM::UpdateOperatorInfo() {
   if (!network_id.empty()) {
     SLOG(Cellular, 2) << "Looking up network id: " << network_id;
     mobile_provider *provider =
-        mobile_provider_lookup_by_network(cellular()->provider_db(),
+        mobile_provider_lookup_by_network(modem_info()->provider_db(),
                                           network_id.c_str());
     if (provider) {
       if (serving_operator_.GetName().empty()) {
@@ -780,7 +780,7 @@ Stringmap CellularCapabilityGSM::ParseScanResult(const GSMScanResult &result) {
       ContainsKey(parsed, flimflam::kNetworkIdProperty)) {
     mobile_provider *provider =
         mobile_provider_lookup_by_network(
-            cellular()->provider_db(),
+            modem_info()->provider_db(),
             parsed[flimflam::kNetworkIdProperty].c_str());
     if (provider) {
       const char *long_name = mobile_provider_get_name(provider);

@@ -27,7 +27,7 @@ class ModemManager;
 // Manages modem managers.
 class ModemInfo {
  public:
-  ModemInfo(ControlInterface *control_interface,
+  ModemInfo(ControlInterface *control,
             EventDispatcher *dispatcher,
             Metrics *metrics,
             Manager *manager,
@@ -38,6 +38,44 @@ class ModemInfo {
   virtual void Stop();
 
   virtual void OnDeviceInfoAvailable(const std::string &link_name);
+
+  ControlInterface *control_interface() const { return control_interface_; }
+  EventDispatcher *dispatcher() const { return dispatcher_; }
+  Metrics *metrics() const { return metrics_; }
+  Manager *manager() const { return manager_; }
+  GLib *glib() const { return glib_; }
+  ActivatingIccidStore *activating_iccid_store() const {
+    return activating_iccid_store_.get();
+  }
+  CellularOperatorInfo *cellular_operator_info() const {
+    return cellular_operator_info_.get();
+  }
+  mobile_provider_db *provider_db() const { return provider_db_; }
+
+ protected:
+  // Write accessors for unit-tests.
+  void set_control_interface(ControlInterface *control) {
+    control_interface_ = control;
+  }
+  void set_event_dispatcher(EventDispatcher *dispatcher) {
+    dispatcher_ = dispatcher;
+  }
+  void set_metrics(Metrics *metrics) {
+    metrics_ = metrics;
+  }
+  void set_manager(Manager *manager) {
+    manager_ = manager;
+  }
+  void set_glib(GLib *glib) {
+    glib_ = glib;
+  }
+  void set_activating_iccid_store(
+      ActivatingIccidStore *activating_iccid_store);
+  void set_cellular_operator_info(
+      CellularOperatorInfo *cellular_operator_info);
+  void set_mobile_provider_db(mobile_provider_db *provider_db) {
+    provider_db_ = provider_db;
+  }
 
  private:
   friend class ModemInfoTest;

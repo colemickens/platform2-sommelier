@@ -17,6 +17,7 @@
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/metrics.h"
+#include "shill/modem_info.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
 
@@ -24,9 +25,7 @@ struct mobile_provider_db;
 
 namespace shill {
 
-class ActivatingIccidStore;
 class CellularCapability;
-class CellularOperatorInfo;
 class Error;
 class ProxyFactory;
 
@@ -102,10 +101,7 @@ class Cellular : public Device {
   // |service| is the modem mananager service name (e.g.,
   // /org/freeDesktop/ModemManager, /org/freedesktop/ModemManager1
   // or /org/chromium/ModemManager).
-  Cellular(ControlInterface *control_interface,
-           EventDispatcher *dispatcher,
-           Metrics *metrics,
-           Manager *manager,
+  Cellular(ModemInfo *modem_info,
            const std::string &link_name,
            const std::string &address,
            int interface_index,
@@ -113,9 +109,6 @@ class Cellular : public Device {
            const std::string &owner,
            const std::string &service,
            const std::string &path,
-           ActivatingIccidStore *activating_iccid_store,
-           CellularOperatorInfo *cellular_operator_info,
-           mobile_provider_db *provider_db,
            ProxyFactory *proxy_factory);
   virtual ~Cellular();
 
@@ -159,11 +152,6 @@ class Cellular : public Device {
   bool IsUnderlyingDeviceEnabled() const;
   bool IsModemRegistered() const;
   static bool IsEnabledModemState(ModemState state);
-
-  CellularOperatorInfo *cellular_operator_info() const {
-    return cellular_operator_info_;
-  }
-  mobile_provider_db *provider_db() const { return provider_db_; }
 
   const std::string &dbus_owner() const { return dbus_owner_; }
   const std::string &dbus_path() const { return dbus_path_; }
@@ -338,9 +326,7 @@ class Cellular : public Device {
   const std::string dbus_service_;  // org.*.ModemManager*
   const std::string dbus_path_;  // ModemManager.Modem
 
-  ActivatingIccidStore *activating_iccid_store_;
-  CellularOperatorInfo *cellular_operator_info_;
-  mobile_provider_db *provider_db_;
+  ModemInfo *modem_info_;
   ProxyFactory *proxy_factory_;
 
   CellularServiceRefPtr service_;

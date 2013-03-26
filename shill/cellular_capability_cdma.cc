@@ -30,8 +30,8 @@ const char CellularCapabilityCDMA::kPhoneNumber[] = "#777";
 
 CellularCapabilityCDMA::CellularCapabilityCDMA(Cellular *cellular,
                                                ProxyFactory *proxy_factory,
-                                               Metrics *metrics)
-    : CellularCapabilityClassic(cellular, proxy_factory, metrics),
+                                               ModemInfo *modem_info)
+    : CellularCapabilityClassic(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       activation_starting_(false),
       activation_state_(MM_MODEM_CDMA_ACTIVATION_STATE_NOT_ACTIVATED),

@@ -27,6 +27,7 @@ class Cellular;
 class Error;
 class EventDispatcher;
 class ModemGobiProxyInterface;
+class ModemInfo;
 class ProxyFactory;
 
 enum ModemClassicState {
@@ -57,7 +58,7 @@ class CellularCapabilityClassic : public CellularCapability {
   // |cellular| is the parent Cellular device.
   CellularCapabilityClassic(Cellular *cellular,
                             ProxyFactory *proxy_factory,
-                            Metrics *metrics);
+                            ModemInfo *modem_info);
   virtual ~CellularCapabilityClassic();
 
   virtual void StopModem(Error *error, const ResultCallback &callback);

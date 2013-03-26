@@ -26,18 +26,9 @@ const char kDefaultNetfilesPath[] = "/sys/class/net";
 Modem1::Modem1(const string &owner,
                const string &service,
                const string &path,
-               ControlInterface *control_interface,
-               EventDispatcher *dispatcher,
-               Metrics *metrics,
-               Manager *manager,
-               ActivatingIccidStore *activating_iccid_store,
-               CellularOperatorInfo *cellular_operator_info,
-               mobile_provider_db *provider_db)
-    : Modem(owner, service, path, control_interface, dispatcher, metrics,
-            manager, activating_iccid_store, cellular_operator_info,
-            provider_db),
-      netfiles_path_(kDefaultNetfilesPath) {
-}
+               ModemInfo *modem_info)
+    : Modem(owner, service, path, modem_info),
+      netfiles_path_(kDefaultNetfilesPath) {}
 
 Modem1::~Modem1() {}
 

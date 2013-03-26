@@ -30,7 +30,7 @@ struct mobile_provider;
 
 namespace shill {
 
-class ActivatingIccidStore;
+class ModemInfo;
 
 // CellularCapabilityUniversal handles modems using the
 // org.chromium.ModemManager1 DBUS interface.  This class is used for
@@ -60,8 +60,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   CellularCapabilityUniversal(Cellular *cellular,
                               ProxyFactory *proxy_factory,
-                              Metrics *metrics,
-                              ActivatingIccidStore *activating_iccid_store);
+                              ModemInfo *modem_info);
 
   // Inherited from CellularCapability.
   // Checks the modem state.  If the state is kModemStateDisabled, then the
@@ -394,9 +393,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   std::string sim_path_;
   bool sim_present_;
   DBus::Path bearer_path_;
-
-  // Post-payment activation state.
-  ActivatingIccidStore *activating_iccid_store_;
   bool reset_done_;
 
   // If the modem is not in a state to be enabled when StartModem is called,

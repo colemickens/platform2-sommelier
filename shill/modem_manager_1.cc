@@ -22,24 +22,10 @@ namespace shill {
 
 ModemManager1::ModemManager1(const string &service,
                              const string &path,
-                             ControlInterface *control_interface,
-                             EventDispatcher *dispatcher,
-                             Metrics *metrics,
-                             Manager *manager,
-                             GLib *glib,
-                             ActivatingIccidStore *activating_iccid_store,
-                             CellularOperatorInfo *cellular_operator_info,
-                             mobile_provider_db *provider_db)
+                             ModemInfo *modem_info)
     : ModemManager(service,
                    path,
-                   control_interface,
-                   dispatcher,
-                   metrics,
-                   manager,
-                   glib,
-                   activating_iccid_store,
-                   cellular_operator_info,
-                   provider_db),
+                   modem_info),
       weak_ptr_factory_(this) {}
 
 ModemManager1::~ModemManager1() {}
@@ -76,13 +62,7 @@ void ModemManager1::AddModem1(const string &path,
   shared_ptr<Modem1> modem1(new Modem1(owner(),
                                        service(),
                                        path,
-                                       control_interface(),
-                                       dispatcher(),
-                                       metrics(),
-                                       manager(),
-                                       activating_iccid_store(),
-                                       cellular_operator_info(),
-                                       provider_db()));
+                                       modem_info()));
   RecordAddedModem(modem1);
   InitModem1(modem1, properties);
 }

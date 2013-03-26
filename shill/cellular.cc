@@ -86,10 +86,7 @@ const Stringmap &Cellular::Operator::ToDict() const {
   return dict_;
 }
 
-Cellular::Cellular(ControlInterface *control_interface,
-                   EventDispatcher *dispatcher,
-                   Metrics *metrics,
-                   Manager *manager,
+Cellular::Cellular(ModemInfo *modem_info,
                    const string &link_name,
                    const string &address,
                    int interface_index,
@@ -97,14 +94,11 @@ Cellular::Cellular(ControlInterface *control_interface,
                    const string &owner,
                    const string &service,
                    const string &path,
-                   ActivatingIccidStore *activating_iccid_store,
-                   CellularOperatorInfo *cellular_operator_info,
-                   mobile_provider_db *provider_db,
                    ProxyFactory *proxy_factory)
-    : Device(control_interface,
-             dispatcher,
-             metrics,
-             manager,
+    : Device(modem_info->control_interface(),
+             modem_info->dispatcher(),
+             modem_info->metrics(),
+             modem_info->manager(),
              link_name,
              address,
              interface_index,
@@ -115,9 +109,7 @@ Cellular::Cellular(ControlInterface *control_interface,
       dbus_owner_(owner),
       dbus_service_(service),
       dbus_path_(path),
-      activating_iccid_store_(activating_iccid_store),
-      cellular_operator_info_(cellular_operator_info),
-      provider_db_(provider_db),
+      modem_info_(modem_info),
       proxy_factory_(proxy_factory),
       allow_roaming_(false),
       explicit_disconnect_(false) {
@@ -290,19 +282,18 @@ void Cellular::InitCapability(Type type) {
     case kTypeGSM:
       capability_.reset(new CellularCapabilityGSM(this,
                                                   proxy_factory_,
-                                                  metrics()));
+                                                  modem_info_));
       break;
     case kTypeCDMA:
       capability_.reset(new CellularCapabilityCDMA(this,
                                                    proxy_factory_,
-                                                   metrics()));
+                                                   modem_info_));
       break;
     case kTypeUniversal:
       capability_.reset(new CellularCapabilityUniversal(
           this,
           proxy_factory_,
-          metrics(),
-          activating_iccid_store_));
+          modem_info_));
       break;
     default: NOTREACHED();
   }

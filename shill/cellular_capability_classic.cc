@@ -63,8 +63,8 @@ static Cellular::ModemState ConvertClassicToModemState(uint32 classic_state) {
 CellularCapabilityClassic::CellularCapabilityClassic(
     Cellular *cellular,
     ProxyFactory *proxy_factory,
-    Metrics *metrics)
-    : CellularCapability(cellular, proxy_factory, metrics),
+    ModemInfo *modem_info)
+    : CellularCapability(cellular, proxy_factory, modem_info),
       scanning_supported_(false),
       weak_ptr_factory_(this) {
   PropertyStore *store = cellular->mutable_store();
@@ -123,12 +123,15 @@ void CellularCapabilityClassic::FinishEnable(const ResultCallback &callback) {
   GetSignalQuality();
   // We expect the modem to start scanning after it has been enabled.
   // Change this if this behavior is no longer the case in the future.
-  metrics()->NotifyDeviceEnableFinished(cellular()->interface_index());
-  metrics()->NotifyDeviceScanStarted(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceEnableFinished(
+      cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceScanStarted(
+      cellular()->interface_index());
 }
 
 void CellularCapabilityClassic::FinishDisable(const ResultCallback &callback) {
-  metrics()->NotifyDeviceDisableFinished(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceDisableFinished(
+      cellular()->interface_index());
   ReleaseProxies();
   callback.Run(Error());
 }
@@ -168,7 +171,8 @@ void CellularCapabilityClassic::EnableModem(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
-  metrics()->NotifyDeviceEnableStarted(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceEnableStarted(
+      cellular()->interface_index());
   proxy_->Enable(true, &error, callback, kTimeoutEnable);
   if (error.IsFailure())
     callback.Run(error);
@@ -179,7 +183,8 @@ void CellularCapabilityClassic::DisableModem(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   CHECK(!callback.is_null());
   Error error;
-  metrics()->NotifyDeviceDisableStarted(cellular()->interface_index());
+  modem_info()->metrics()->NotifyDeviceDisableStarted(
+      cellular()->interface_index());
   proxy_->Enable(false, &error, callback, kTimeoutEnable);
   if (error.IsFailure())
       callback.Run(error);

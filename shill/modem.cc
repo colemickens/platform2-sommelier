@@ -27,23 +27,11 @@ const char Modem::kPropertyType[] = "Type";
 Modem::Modem(const string &owner,
              const string &service,
              const string &path,
-             ControlInterface *control_interface,
-             EventDispatcher *dispatcher,
-             Metrics *metrics,
-             Manager *manager,
-             ActivatingIccidStore *activating_iccid_store,
-             CellularOperatorInfo *cellular_operator_info,
-             mobile_provider_db *provider_db)
+             ModemInfo * modem_info)
     : owner_(owner),
       service_(service),
       path_(path),
-      control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager),
-      activating_iccid_store_(activating_iccid_store),
-      cellular_operator_info_(cellular_operator_info),
-      provider_db_(provider_db),
+      modem_info_(modem_info),
       type_(Cellular::kTypeInvalid),
       pending_device_info_(false),
       rtnl_handler_(RTNLHandler::GetInstance()),
@@ -55,7 +43,7 @@ Modem::~Modem() {
   LOG(INFO) << "Modem destructed: " << owner_ << " at " << path_;
   if (device_) {
     device_->DestroyService();
-    manager_->device_info()->DeregisterDevice(device_);
+    modem_info_->manager()->device_info()->DeregisterDevice(device_);
   }
 }
 
@@ -84,10 +72,7 @@ Cellular *Modem::ConstructCellular(const string &link_name,
                                    int interface_index) {
   LOG(INFO) << "Creating a cellular device on link " << link_name_
             << " interface index " << interface_index << ".";
-  return new Cellular(control_interface_,
-                      dispatcher_,
-                      metrics_,
-                      manager_,
+  return new Cellular(modem_info_,
                       link_name,
                       address,
                       interface_index,
@@ -95,9 +80,6 @@ Cellular *Modem::ConstructCellular(const string &link_name,
                       owner_,
                       service_,
                       path_,
-                      activating_iccid_store_,
-                      cellular_operator_info_,
-                      provider_db_,
                       ProxyFactory::GetInstance());
 }
 
@@ -119,7 +101,7 @@ void Modem::CreateDeviceFromModemProperties(
     LOG(ERROR) << "Unable to create cellular device without a link name.";
     return;
   }
-  if (manager_->device_info()->IsDeviceBlackListed(link_name_)) {
+  if (modem_info_->manager()->device_info()->IsDeviceBlackListed(link_name_)) {
     LOG(INFO) << "Do not create cellular device for blacklisted interface "
               << link_name_;
     return;
@@ -134,8 +116,8 @@ void Modem::CreateDeviceFromModemProperties(
   }
 
   ByteString address_bytes;
-  if (!manager_->device_info()->GetMACAddress(interface_index,
-                                              &address_bytes)) {
+  if (!modem_info_->manager()->device_info()->GetMACAddress(interface_index,
+                                                            &address_bytes)) {
     // Save our properties, wait for OnDeviceInfoAvailable to be called.
     LOG(WARNING) << "No hardware address, device creation pending device info.";
     initial_properties_ = properties;
@@ -153,7 +135,7 @@ void Modem::CreateDeviceFromModemProperties(
         properties_it->first, properties_it->second, vector<string>());
   }
 
-  manager_->device_info()->RegisterDevice(device_);
+  modem_info_->manager()->device_info()->RegisterDevice(device_);
 }
 
 void Modem::OnDBusPropertiesChanged(

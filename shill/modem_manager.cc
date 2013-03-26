@@ -22,26 +22,12 @@ namespace shill {
 
 ModemManager::ModemManager(const string &service,
                            const string &path,
-                           ControlInterface *control_interface,
-                           EventDispatcher *dispatcher,
-                           Metrics *metrics,
-                           Manager *manager,
-                           GLib *glib,
-                           ActivatingIccidStore *activating_iccid_store,
-                           CellularOperatorInfo *cellular_operator_info,
-                           mobile_provider_db *provider_db)
+                           ModemInfo *modem_info)
     : proxy_factory_(ProxyFactory::GetInstance()),
       service_(service),
       path_(path),
       watcher_id_(0),
-      control_interface_(control_interface),
-      dispatcher_(dispatcher),
-      metrics_(metrics),
-      manager_(manager),
-      glib_(glib),
-      activating_iccid_store_(activating_iccid_store),
-      cellular_operator_info_(cellular_operator_info),
-      provider_db_(provider_db) {}
+      modem_info_(modem_info) {}
 
 ModemManager::~ModemManager() {
   Stop();
@@ -51,19 +37,19 @@ void ModemManager::Start() {
   LOG(INFO) << "Start watching modem manager service: " << service_;
   CHECK_EQ(0U, watcher_id_);
   // TODO(petkov): Implement DBus name watching through dbus-c++.
-  watcher_id_ = glib_->BusWatchName(G_BUS_TYPE_SYSTEM,
-                                    service_.c_str(),
-                                    G_BUS_NAME_WATCHER_FLAGS_NONE,
-                                    OnAppear,
-                                    OnVanish,
-                                    this,
-                                    NULL);
+  watcher_id_ = modem_info_->glib()->BusWatchName(G_BUS_TYPE_SYSTEM,
+                                                  service_.c_str(),
+                                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
+                                                  OnAppear,
+                                                  OnVanish,
+                                                  this,
+                                                  NULL);
 }
 
 void ModemManager::Stop() {
   LOG(INFO) << "Stop watching modem manager service: " << service_;
   if (watcher_id_) {
-    glib_->BusUnwatchName(watcher_id_);
+    modem_info_->glib()->BusUnwatchName(watcher_id_);
     watcher_id_ = 0;
   }
   Disconnect();
@@ -127,24 +113,10 @@ void ModemManager::OnDeviceInfoAvailable(const string &link_name) {
 ModemManagerClassic::ModemManagerClassic(
     const string &service,
     const string &path,
-    ControlInterface *control_interface,
-    EventDispatcher *dispatcher,
-    Metrics *metrics,
-    Manager *manager,
-    GLib *glib,
-    ActivatingIccidStore *activating_iccid_store,
-    CellularOperatorInfo *cellular_operator_info,
-    mobile_provider_db *provider_db)
+    ModemInfo *modem_info)
     : ModemManager(service,
                    path,
-                   control_interface,
-                   dispatcher,
-                   metrics,
-                   manager,
-                   glib,
-                   activating_iccid_store,
-                   cellular_operator_info,
-                   provider_db) {}
+                   modem_info) {}
 
 ModemManagerClassic::~ModemManagerClassic() {}
 
@@ -167,13 +139,7 @@ void ModemManagerClassic::AddModemClassic(const string &path) {
   shared_ptr<ModemClassic> modem(new ModemClassic(owner(),
                                                   service(),
                                                   path,
-                                                  control_interface(),
-                                                  dispatcher(),
-                                                  metrics(),
-                                                  manager(),
-                                                  activating_iccid_store(),
-                                                  cellular_operator_info(),
-                                                  provider_db()));
+                                                  modem_info()));
   RecordAddedModem(modem);
   InitModemClassic(modem);
 }

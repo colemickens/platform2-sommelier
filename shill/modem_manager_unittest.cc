@@ -7,12 +7,9 @@
 #include <ModemManager/ModemManager.h>
 
 #include "shill/manager.h"
-#include "shill/mock_control.h"
 #include "shill/mock_dbus_objectmanager_proxy.h"
-#include "shill/mock_glib.h"
-#include "shill/mock_manager.h"
-#include "shill/mock_metrics.h"
 #include "shill/mock_modem.h"
+#include "shill/mock_modem_info.h"
 #include "shill/mock_modem_manager_proxy.h"
 #include "shill/modem.h"
 #include "shill/modem_manager.h"
@@ -35,24 +32,10 @@ class ModemManagerCore : public ModemManager {
  public:
   ModemManagerCore(const string &service,
                    const string &path,
-                   ControlInterface *control_interface,
-                   EventDispatcher *dispatcher,
-                   Metrics *metrics,
-                   Manager *manager,
-                   GLib *glib,
-                   ActivatingIccidStore *activating_iccid_store,
-                   CellularOperatorInfo *cellular_operator_info,
-                   mobile_provider_db *provider_db)
+                   ModemInfo * modem_info)
       : ModemManager(service,
                      path,
-                     control_interface,
-                     dispatcher,
-                     metrics,
-                     manager,
-                     glib,
-                     activating_iccid_store,
-                     cellular_operator_info,
-                     provider_db) {}
+                     modem_info) {}
 
   virtual ~ModemManagerCore() {}
 
@@ -63,16 +46,10 @@ class ModemManagerCore : public ModemManager {
 class ModemManagerTest : public Test {
  public:
   ModemManagerTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_interface_, &dispatcher_, &metrics_, &glib_) {
-  }
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL) {}
 
   virtual void SetUp() {
-    modem_.reset(new StrictModem(
-        kOwner, kService, kModemPath, &control_interface_, &dispatcher_,
-        &metrics_, &manager_, static_cast<ActivatingIccidStore *>(NULL),
-        static_cast<CellularOperatorInfo *>(NULL),
-        static_cast<mobile_provider_db *>(NULL)));
+    modem_.reset(new StrictModem(kOwner, kService, kModemPath, &modem_info_));
   }
 
  protected:
@@ -83,11 +60,8 @@ class ModemManagerTest : public Test {
 
   shared_ptr<StrictModem> modem_;
 
-  MockGLib glib_;
-  MockControl control_interface_;
   EventDispatcher dispatcher_;
-  MockMetrics metrics_;
-  MockManager manager_;
+  MockModemInfo modem_info_;
 };
 
 const char ModemManagerTest::kService[] = "org.chromium.ModemManager";
@@ -99,16 +73,7 @@ class ModemManagerCoreTest : public ModemManagerTest {
  public:
   ModemManagerCoreTest()
       : ModemManagerTest(),
-        modem_manager_(kService,
-                       kPath,
-                       &control_interface_,
-                       &dispatcher_,
-                       &metrics_,
-                       &manager_,
-                       &glib_,
-                       NULL,
-                       NULL,
-                       NULL) {}
+        modem_manager_(kService, kPath, &modem_info_) {}
 
   virtual void TearDown() {
     modem_manager_.watcher_id_ = 0;
@@ -120,13 +85,14 @@ class ModemManagerCoreTest : public ModemManagerTest {
 
 TEST_F(ModemManagerCoreTest, Start) {
   const int kWatcher = 123;
-  EXPECT_CALL(glib_, BusWatchName(G_BUS_TYPE_SYSTEM,
-                                  StrEq(kService),
-                                  G_BUS_NAME_WATCHER_FLAGS_NONE,
-                                  ModemManager::OnAppear,
-                                  ModemManager::OnVanish,
-                                  &modem_manager_,
-                                  NULL))
+  EXPECT_CALL(*modem_info_.mock_glib(),
+              BusWatchName(G_BUS_TYPE_SYSTEM,
+                           StrEq(kService),
+                           G_BUS_NAME_WATCHER_FLAGS_NONE,
+                           ModemManager::OnAppear,
+                           ModemManager::OnVanish,
+                           &modem_manager_,
+                           NULL))
       .WillOnce(Return(kWatcher));
   EXPECT_EQ(0, modem_manager_.watcher_id_);
   modem_manager_.Start();
@@ -137,7 +103,7 @@ TEST_F(ModemManagerCoreTest, Stop) {
   const int kWatcher = 345;
   modem_manager_.watcher_id_ = kWatcher;
   modem_manager_.owner_ = kOwner;
-  EXPECT_CALL(glib_, BusUnwatchName(kWatcher)).Times(1);
+  EXPECT_CALL(*modem_info_.mock_glib(), BusUnwatchName(kWatcher)).Times(1);
   EXPECT_CALL(modem_manager_, Disconnect());
   modem_manager_.Stop();
 }
@@ -178,24 +144,9 @@ class ModemManagerClassicMockInit : public ModemManagerClassic {
  public:
   ModemManagerClassicMockInit(const string &service,
                               const string &path,
-                              ControlInterface *control_interface,
-                              EventDispatcher *dispatcher,
-                              Metrics *metrics,
-                              Manager *manager,
-                              GLib *glib,
-                              ActivatingIccidStore *activating_iccid_store,
-                              CellularOperatorInfo *cellular_operator_info,
-                              mobile_provider_db *provider_db) :
-      ModemManagerClassic(service,
-                          path,
-                          control_interface,
-                          dispatcher,
-                          metrics,
-                          manager,
-                          glib,
-                          activating_iccid_store,
-                          cellular_operator_info,
-                          provider_db) {}
+                              ModemInfo *modem_info_) :
+      ModemManagerClassic(service, path, modem_info_) {}
+
   MOCK_METHOD1(InitModemClassic, void(shared_ptr<ModemClassic>));
 };
 
@@ -205,14 +156,7 @@ class ModemManagerClassicTest : public ModemManagerTest {
       : ModemManagerTest(),
         modem_manager_(kService,
                        kPath,
-                       &control_interface_,
-                       &dispatcher_,
-                       &metrics_,
-                       &manager_,
-                       &glib_,
-                       NULL,
-                       NULL,
-                       NULL),
+                       &modem_info_),
         proxy_(new MockModemManagerProxy()),
         proxy_factory_(this) {
   }
@@ -267,24 +211,8 @@ class ModemManager1MockInit : public ModemManager1 {
  public:
   ModemManager1MockInit(const string &service,
                         const string &path,
-                        ControlInterface *control_interface,
-                        EventDispatcher *dispatcher,
-                        Metrics *metrics,
-                        Manager *manager,
-                        GLib *glib,
-                        ActivatingIccidStore *activating_iccid_store,
-                        CellularOperatorInfo *cellular_operator_info,
-                        mobile_provider_db *provider_db) :
-      ModemManager1(service,
-                    path,
-                    control_interface,
-                    dispatcher,
-                    metrics,
-                    manager,
-                    glib,
-                    activating_iccid_store,
-                    cellular_operator_info,
-                    provider_db) {}
+                        ModemInfo *modem_info_) :
+      ModemManager1(service, path, modem_info_) {}
   MOCK_METHOD2(InitModem1, void(shared_ptr<Modem1>,
                                 const DBusInterfaceToProperties &));
 };
@@ -294,19 +222,9 @@ class ModemManager1Test : public ModemManagerTest {
  public:
   ModemManager1Test()
       : ModemManagerTest(),
-        modem_manager_(kService,
-                       kPath,
-                       &control_interface_,
-                       &dispatcher_,
-                       &metrics_,
-                       &manager_,
-                       &glib_,
-                       NULL,
-                       NULL,
-                       NULL),
+        modem_manager_(kService, kPath, &modem_info_),
         proxy_(new MockDBusObjectManagerProxy()),
-        proxy_factory_(this) {
-  }
+        proxy_factory_(this) {}
 
  protected:
   class TestProxyFactory : public ProxyFactory {

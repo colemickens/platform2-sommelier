@@ -91,7 +91,8 @@ void ModemInfo::Start() {
 void ModemInfo::Stop() {
   activating_iccid_store_.reset();
   cellular_operator_info_.reset();
-  mobile_provider_close_db(provider_db_);
+  if(provider_db_)
+    mobile_provider_close_db(provider_db_);
   provider_db_ = NULL;
   modem_managers_.clear();
 }
@@ -103,19 +104,20 @@ void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
   }
 }
 
+void ModemInfo::set_activating_iccid_store(
+    ActivatingIccidStore *activating_iccid_store) {
+  activating_iccid_store_.reset(activating_iccid_store);
+}
+
+void ModemInfo::set_cellular_operator_info(
+    CellularOperatorInfo *cellular_operator_info) {
+  cellular_operator_info_.reset(cellular_operator_info);
+}
+
 template <class mm>
 void ModemInfo::RegisterModemManager(const string &service,
                                      const string &path) {
-  ModemManager *manager = new mm(service,
-                                 path,
-                                 control_interface_,
-                                 dispatcher_,
-                                 metrics_,
-                                 manager_,
-                                 glib_,
-                                 activating_iccid_store_.get(),
-                                 cellular_operator_info_.get(),
-                                 provider_db_);
+  ModemManager *manager = new mm(service, path, this);
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();
 }

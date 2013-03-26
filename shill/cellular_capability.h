@@ -22,6 +22,7 @@ namespace shill {
 
 class Cellular;
 class Error;
+class ModemInfo;
 class ProxyFactory;
 
 // Cellular devices instantiate subclasses of CellularCapability that
@@ -75,12 +76,12 @@ class CellularCapability {
   // |cellular| is the parent Cellular device.
   CellularCapability(Cellular *cellular,
                      ProxyFactory *proxy_factory,
-                     Metrics *metrics);
+                     ModemInfo *modem_info);
   virtual ~CellularCapability();
 
   Cellular *cellular() const { return cellular_; }
   ProxyFactory *proxy_factory() const { return proxy_factory_; }
-  Metrics *metrics() const { return metrics_; }
+  ModemInfo *modem_info() const { return modem_info_; }
 
   // Invoked by the parent Cellular device when a new service is created.
   virtual void OnServiceCreated() = 0;
@@ -220,9 +221,8 @@ class CellularCapability {
 
   Cellular *cellular_;
 
-  // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
-  Metrics *metrics_;
+  ModemInfo *modem_info_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularCapability);
 };
