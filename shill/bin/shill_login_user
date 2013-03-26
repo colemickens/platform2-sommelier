@@ -28,10 +28,6 @@ set -e
 user=$1
 script_name=$(basename $0)
 
-# Reference to older connection manager profile.
-flimflam_profile_dir=~chronos/flimflam
-flimflam_profile="${flimflam_profile_dir}/flimflam.profile"
-
 profile_user=chronos
 profile_name="~${profile_user}/shill"
 profile_link_root=/var/run/shill/user_profiles
@@ -46,30 +42,39 @@ while [ -e "$profile_link_dir" ] ; do
   profile_link_dir="$profile_link_root/$profile_user"
 done
 
-old_profile_dir=~chronos/shill
-old_profile="$old_profile_dir/shill.profile"
-
 if [ -n "$user" ] ; then
-  cryptohome_dir=$(cryptohome-path system ${user})
-  if [ ! -d "$cryptohome_dir" ] ; then
+  profile_base=$(cryptohome-path system $user)
+  if [ ! -d "$profile_base" ] ; then
     logger -t "$script_name" \
-      "User cryptohome dir $cryptohome_dir does not exist"
+      "User cryptohome dir $profile_base does not exist"
     exit 1
+  fi
+
+  # Make references to the older connection manager profiles that lived
+  # in the user-owned home directory.
+  user_base=$(cryptohome-path user $user)
+  if [ -d "$user_base" ] ; then
+    flimflam_profile_dir="$user_base/flimflam"
+    flimflam_profile="$flimflam_profile_dir/flimflam.profile"
+    old_profile_dir="$user_base/shill"
+    old_profile="$old_profile_dir/shill.profile"
   fi
 else
   # If no user is given, create a temporary profile directory which will
   # be erased on logout.
-  cryptohome_dir="/var/run/shill/guest_user_profile"
-  rm -rf "$cryptohome_dir"
+  profile_base="/var/run/shill/guest_user_profile"
+  rm -rf "$profile_base"
+  flimflam_profile=""
+  old_profile=""
 fi
 
-cryptohome_profile_dir="$cryptohome_dir/shill"
-cryptohome_profile="$cryptohome_profile_dir/shill.profile"
+profile_dir="$profile_base/shill"
+profile="$profile_dir/shill.profile"
 
-if [ ! -d "$cryptohome_profile_dir" ]; then
-  if ! mkdir -p --mode=700 $cryptohome_profile_dir ; then
+if [ ! -d "$profile_dir" ]; then
+  if ! mkdir -p --mode=700 $profile_dir ; then
     logger -t "$script_name" \
-      "Failed to create shill user profile directory $cryptohome_profile_dir"
+      "Failed to create shill user profile directory $profile_dir"
     exit 1
   fi
 fi
@@ -79,15 +84,11 @@ if ! mkdir -p --mode 0700 "$profile_link_root"; then
     "Unable to create shill user profile link directory"
 fi
 
-ln -s "$cryptohome_profile_dir" "$profile_link_dir" ||
+ln -s "$profile_dir" "$profile_link_dir" ||
   logger -t "$script_name" \
     "Failed to create shill user cryptohome link $profile_link_dir"
 
-# If there is no configuration available for the default user,
-# there may be some left-over configuration available from an
-# older shill implementation or perhaps even one from flimflam
-# that we can retrofit.
-if [ "$profile_user" = "chronos" -a ! -f "$cryptohome_profile" ]; then
+if [ ! -f "$profile" ]; then
   if [ -f "$flimflam_profile" ]; then
     if [ -f "$old_profile" ]; then
       logger -t "$script_name" "Removing outdated flimflam user profile"
@@ -100,7 +101,7 @@ if [ "$profile_user" = "chronos" -a ! -f "$cryptohome_profile" ]; then
   fi
 
   if [ -f "$old_profile" ] ; then
-    test_profile="$cryptohome_profile_dir/shill.profile.test"
+    test_profile="$profile_dir/shill.profile.test"
     mv "$old_profile" "$test_profile" ||
       logger -t "$script_name" "Failed to test-move old shill profile"
     rmdir --ignore-fail-on-non-empty "$old_profile_dir"
@@ -116,7 +117,7 @@ if [ "$profile_user" = "chronos" -a ! -f "$cryptohome_profile" ]; then
       logger -t "$script_name" "Old shill profile was not properly owned"
     else
       logger -t "$script_name" "Moving old shill profile from $old_profile"
-      mv "$test_profile" "$cryptohome_profile" ||
+      mv "$test_profile" "$profile" ||
         logger -t "$script_name" "Failed to copy old shill profile"
     fi
     rm -rf "$test_profile"
@@ -128,7 +129,7 @@ if [ "$profile_user" = "chronos" -a ! -f "$cryptohome_profile" ]; then
     rmdir --ignore-fail-on-non-empty "$old_profile_dir"
   fi
 
-  if [ ! -f "$cryptohome_profile" ]; then
+  if [ ! -f "$profile" ]; then
     # If profile still does not exist, ask shill to create one.
     dbus-send --system --dest=org.chromium.flimflam --print-reply / \
       org.chromium.flimflam.Manager.CreateProfile string:$profile_name ||
