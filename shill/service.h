@@ -328,6 +328,7 @@ class Service : public base::RefCounted<Service> {
   // Sets the flimflam::kNameProperty
   void SetFriendlyName(const std::string &friendly_name);
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
+  const std::string &friendly_name() const { return friendly_name_; }
 
   const std::string &guid() const { return guid_; }
   void set_guid(const std::string &guid) { guid_ = guid; }
@@ -421,8 +422,6 @@ class Service : public base::RefCounted<Service> {
   static const char kAutoConnBusy[];
 
   virtual ~Service();
-
-  const std::string &friendly_name() const { return friendly_name_; }
 
   // Returns true if a character is allowed to be in a service storage id.
   static bool LegalChar(char a) { return isalnum(a) || a == '_'; }
@@ -611,8 +610,10 @@ class Service : public base::RefCounted<Service> {
 
   std::string GetIPConfigRpcIdentifier(Error *error);
 
+  // The base implementation asserts that |name| matches the current Name
+  // property value.
+  virtual void SetNameProperty(const std::string &name, Error *error);
   std::string GetNameProperty(Error *error);
-  void AssertTrivialSetNameProperty(const std::string &name, Error *error);
 
   std::string GetProfileRpcId(Error *error);
   void SetProfileRpcId(const std::string &profile, Error *error);

@@ -45,6 +45,8 @@ class VPNDriver {
                     bool save_credentials);
   virtual void UnloadCredentials();
 
+  std::string GetHost() const;
+
   KeyValueStore *args() { return &args_; }
 
  protected:

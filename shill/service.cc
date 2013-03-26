@@ -220,11 +220,9 @@ Service::Service(ControlInterface *control_interface,
                           NULL);
   // flimflam::kModeProperty: Registered in WiFiService
 
-  // Although this is a read-only property, some callers want to blindly
-  // set this value to its current value.
   HelpRegisterDerivedString(flimflam::kNameProperty,
                             &Service::GetNameProperty,
-                            &Service::AssertTrivialSetNameProperty);
+                            &Service::SetNameProperty);
   // flimflam::kPassphraseProperty: Registered in WiFiService
   // flimflam::kPassphraseRequiredProperty: Registered in WiFiService
   store_.RegisterInt32(flimflam::kPriorityProperty, &priority_);
@@ -1348,7 +1346,7 @@ string Service::GetNameProperty(Error */*error*/) {
   return friendly_name_;
 }
 
-void Service::AssertTrivialSetNameProperty(const string &name, Error *error) {
+void Service::SetNameProperty(const string &name, Error *error) {
   if (name != friendly_name_) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           base::StringPrintf(

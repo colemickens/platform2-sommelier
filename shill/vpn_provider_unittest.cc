@@ -54,6 +54,10 @@ class VPNProviderTest : public testing::Test {
     provider_.services_.push_back(service);
   }
 
+  VPNServiceRefPtr GetServiceAt(int idx) {
+    return provider_.services_[idx];
+  }
+
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
@@ -99,6 +103,10 @@ TEST_F(VPNProviderTest, GetService) {
   ASSERT_TRUE(service0);
   EXPECT_EQ("vpn_10_8_0_1_vpn_name", service0->GetStorageIdentifier());
   EXPECT_EQ(kName, GetServiceFriendlyName(service0));
+
+  // Configure the service to set its properties (including Provider.Host).
+  service0->Configure(args, &e);
+  EXPECT_TRUE(e.IsSuccess());
 
   // A second call should return the same service.
   VPNServiceRefPtr service1 = provider_.GetService(args, &e);
@@ -173,50 +181,67 @@ TEST_F(VPNProviderTest, CreateServicesFromProfile) {
   scoped_refptr<MockProfile> profile(
       new NiceMock<MockProfile>(&control_, &metrics_, &manager_, ""));
   NiceMock<MockStore> storage;
-  EXPECT_CALL(*profile, GetConstStorage())
-      .WillRepeatedly(Return(&storage));
-  EXPECT_CALL(storage, GetString(_, _, _))
-      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*profile, GetConstStorage()).WillRepeatedly(Return(&storage));
+  EXPECT_CALL(storage, GetString(_, _, _)).WillRepeatedly(Return(false));
 
   std::set<string> groups;
-  const string kNonVPNIdentifier("foo_123_456");
+
+  const string kNonVPNIdentifier("foo_1");
   groups.insert(kNonVPNIdentifier);
-  const string kVPNIdentifier0("vpn_123_456");
-  const string kVPNIdentifier1("vpn_789_012");
-  groups.insert(kVPNIdentifier0);
-  groups.insert(kVPNIdentifier1);
+
+  const string kVPNIdentifierNoProvider("vpn_no_provider");
+  groups.insert(kVPNIdentifierNoProvider);
+
+  const string kVPNIdentifierNoName("vpn_no_name");
+  groups.insert(kVPNIdentifierNoName);
+  const string kOpenVPNProvider(flimflam::kProviderOpenVpn);
+  EXPECT_CALL(storage, GetString(kVPNIdentifierNoName,
+                                 flimflam::kProviderTypeProperty,
+                                 _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kOpenVPNProvider),
+                            Return(true)));
+
+  const string kVPNIdentifierNoHost("vpn_no_host");
+  groups.insert(kVPNIdentifierNoHost);
+  EXPECT_CALL(storage, GetString(kVPNIdentifierNoHost,
+                                 flimflam::kProviderTypeProperty,
+                                 _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kOpenVPNProvider),
+                            Return(true)));
+  const string kName("name");
+  EXPECT_CALL(storage, GetString(kVPNIdentifierNoHost,
+                                 flimflam::kNameProperty, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kName), Return(true)));
+
+  const string kVPNIdentifierValid("vpn_valid");
+  groups.insert(kVPNIdentifierValid);
+  EXPECT_CALL(storage, GetString(kVPNIdentifierValid,
+                                 flimflam::kProviderTypeProperty,
+                                 _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kOpenVPNProvider),
+                            Return(true)));
+  EXPECT_CALL(storage, GetString(kVPNIdentifierValid,
+                                 flimflam::kNameProperty, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kName), Return(true)));
+  const string kHost("1.2.3.4");
+  EXPECT_CALL(storage, GetString(kVPNIdentifierValid,
+                                 flimflam::kProviderHostProperty, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kHost), Return(true)));
+
   EXPECT_CALL(storage, GetGroupsWithKey(flimflam::kProviderTypeProperty))
       .WillRepeatedly(Return(groups));
 
-  EXPECT_CALL(*profile, ConfigureService(ServiceWithStorageId(kVPNIdentifier1)))
-      .WillOnce(Return(true));
-
-  const string kName("name");
-  EXPECT_CALL(storage, GetString(_, flimflam::kNameProperty, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kName), Return(true)));
-
-  const string kProviderTypeUnknown("unknown");
-  EXPECT_CALL(storage, GetString(kVPNIdentifier0,
-                                 flimflam::kProviderTypeProperty,
-                                 _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProviderTypeUnknown),
-                            Return(true)));
-
-  const string kProviderTypeOpenVPN(flimflam::kProviderOpenVpn);
-  EXPECT_CALL(storage, GetString(kVPNIdentifier1,
-                                 flimflam::kProviderTypeProperty,
-                                 _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProviderTypeOpenVPN),
-                            Return(true)));
-
   EXPECT_CALL(manager_, device_info())
       .WillRepeatedly(Return(reinterpret_cast<DeviceInfo *>(NULL)));
-
-  EXPECT_CALL(manager_, RegisterService(ServiceWithStorageId(kVPNIdentifier1)))
-      .Times(1);
-
+  EXPECT_CALL(manager_,
+              RegisterService(ServiceWithStorageId(kVPNIdentifierValid)));
+  EXPECT_CALL(*profile,
+              ConfigureService(ServiceWithStorageId(kVPNIdentifierValid)))
+      .WillOnce(Return(true));
   provider_.CreateServicesFromProfile(profile);
 
+  GetServiceAt(0)->driver()->args()->SetString(flimflam::kProviderHostProperty,
+                                             kHost);
   // Calling this again should not create any more services (checked by the
   // Times(1) above).
   provider_.CreateServicesFromProfile(profile);

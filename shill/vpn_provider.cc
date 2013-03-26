@@ -49,23 +49,28 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
+  string host = args.LookupString(flimflam::kProviderHostProperty, "");
+  if (host.empty()) {
+    Error::PopulateAndLog(
+        error, Error::kNotSupported, "Missing VPN host property.");
+    return NULL;
+  }
+
   string storage_id = VPNService::CreateStorageIdentifier(args, error);
   if (storage_id.empty()) {
     return NULL;
   }
 
-  // Find a service in the provider list which matches these parameters.
-  VPNServiceRefPtr service = FindService(type, storage_id);
-
-  if (service == NULL) {
-    // Create a service, using the name and type arguments passed in.
-    string name = args.LookupString(flimflam::kProviderNameProperty, "");
-    if (name.empty()) {
-      name = args.LookupString(flimflam::kNameProperty, "");
-    }
-    service = CreateService(type, name, storage_id, error);
+  string name = args.LookupString(flimflam::kProviderNameProperty, "");
+  if (name.empty()) {
+    name = args.LookupString(flimflam::kNameProperty, "");
   }
 
+  // Find a service in the provider list which matches these parameters.
+  VPNServiceRefPtr service = FindService(type, name, host);
+  if (service == NULL) {
+    service = CreateService(type, name, storage_id, error);
+  }
   return service;
 }
 
@@ -115,7 +120,14 @@ void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
       continue;
     }
 
-    VPNServiceRefPtr service = FindService(type, *it);
+    string host;
+    if (!storage->GetString(*it, flimflam::kProviderHostProperty, &host)) {
+      LOG(ERROR) << "Group " << *it << " is missing the "
+                 << flimflam::kProviderHostProperty << " property.";
+      continue;
+    }
+
+    VPNServiceRefPtr service = FindService(type, name, host);
     if (service != NULL) {
       // If the service already exists, it does not need to be configured,
       // since PushProfile would have already called ConfigureService on it.
@@ -181,17 +193,18 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
 #endif  // DISABLE_VPN
 }
 
-VPNServiceRefPtr VPNProvider::FindService(const std::string &type,
-                                          const std::string &storage_id) {
+VPNServiceRefPtr VPNProvider::FindService(const string &type,
+                                          const string &name,
+                                          const string &host) {
   for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
     if (type == (*it)->driver()->GetProviderType() &&
-        storage_id == (*it)->GetStorageIdentifier()) {
+        name == (*it)->friendly_name() &&
+        host == (*it)->driver()->GetHost()) {
       return *it;
     }
   }
-
   return NULL;
 }
 

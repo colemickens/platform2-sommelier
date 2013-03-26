@@ -7,6 +7,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/dbus_adaptor.h"
 #include "shill/error.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
@@ -14,6 +15,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_profile.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
@@ -286,6 +288,34 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
   const char *reason = NULL;
   EXPECT_TRUE(IsAutoConnectable(&reason));
   EXPECT_FALSE(reason);
+}
+
+TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
+  DBus::Error error;
+  EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                       flimflam::kNameProperty,
+                                       DBusAdaptor::StringToVariant(
+                                           service_->friendly_name()),
+                                       &error));
+}
+
+TEST_F(VPNServiceTest, SetNameProperty) {
+  const string kHost = "1.2.3.4";
+  driver_->args()->SetString(flimflam::kProviderHostProperty, kHost);
+  string kOldId = service_->GetStorageIdentifier();
+  DBus::Error error;
+  const string kName = "New Name";
+  scoped_refptr<MockProfile> profile(
+      new MockProfile(&control_, &metrics_, &manager_));
+  EXPECT_CALL(*profile, DeleteEntry(kOldId, _));
+  EXPECT_CALL(*profile, UpdateService(_));
+  service_->set_profile(profile);
+  EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                       flimflam::kNameProperty,
+                                       DBusAdaptor::StringToVariant(kName),
+                                       &error));
+  EXPECT_NE(service_->GetStorageIdentifier(), kOldId);
+  EXPECT_EQ(kName, service_->friendly_name());
 }
 
 }  // namespace shill

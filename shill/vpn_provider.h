@@ -66,9 +66,11 @@ class VPNProvider {
                                  const std::string &storage_id,
                                  Error *error);
 
-  // Find a service of type |type| whose storage identifier is |storage_id|.
+  // Finds a service of type |type| with its Name property set to |name| and its
+  // Provider.Host property set to |host|.
   VPNServiceRefPtr FindService(const std::string &type,
-                               const std::string &storage_id);
+                               const std::string &name,
+                               const std::string &host);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

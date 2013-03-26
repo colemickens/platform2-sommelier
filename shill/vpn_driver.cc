@@ -188,4 +188,8 @@ void VPNDriver::OnConnectTimeout() {
   StopConnectTimeout();
 }
 
+string VPNDriver::GetHost() const {
+  return args_.LookupString(flimflam::kProviderHostProperty, "");
+}
+
 }  // namespace shill
