@@ -259,13 +259,19 @@ cmd_sound() {
     cras_test_client --playback_file $2
     ;;
   "record")
-    if [[ ! -z "${2//[0-9]/}" || $2 -gt 30 ]]; then
+    record_time=0
+    if [ $# -lt 2 ]; then
+      record_time=30
+    elif [[ ! -z "${2//[0-9]/}" || $2 -gt 30 ]]; then
       echo "Recording duration has to be numeric and less than 30 seconds."
       return 1
+    else
+      record_time=$2
     fi
+
     filename=/home/chronos/user/Downloads/audio_`date '+%Y%m%d%H%M%S'`
     echo "Recording..."
-    cras_test_client --capture_file $filename --duration_seconds $2
+    cras_test_client --capture_file $filename --duration_seconds $record_time
     echo "Audio samples recorded at $filename"
     ;;
   *)
