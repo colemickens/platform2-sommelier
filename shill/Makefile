@@ -634,8 +634,9 @@ OBJS = \
 	$(SHILL_OBJS) \
 	$(TEST_OBJS)
 
+GTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 TEST_LIBS = $(SHILL_LIBS) $(NSS_GET_CERT_LIBS) $(NETFILTER_QUEUE_HELPER_LIBS) \
-	-lgmock -lgtest
+	$(GTEST_LIBS)
 
 .PHONY: all clean shims
 
