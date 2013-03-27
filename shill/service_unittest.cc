@@ -846,8 +846,10 @@ TEST_F(ServiceTest, IsDependentOn) {
       new NiceMock<MockConnection>(mock_device_info.get()));
 
   service_->connection_ = mock_connection0;
-  EXPECT_CALL(*mock_connection0.get(), GetLowerConnection())
+  EXPECT_CALL(*mock_connection0, GetLowerConnection())
       .WillRepeatedly(Return(mock_connection1));
+  EXPECT_CALL(*mock_connection1, GetLowerConnection())
+      .WillRepeatedly(Return(ConnectionRefPtr()));
   EXPECT_FALSE(service_->IsDependentOn(NULL));
 
   scoped_refptr<ServiceUnderTest> service1 =
@@ -863,8 +865,11 @@ TEST_F(ServiceTest, IsDependentOn) {
   service1->connection_ = mock_connection1;
   EXPECT_TRUE(service_->IsDependentOn(service1));
 
-  service_->connection_ = NULL;
+  service_->connection_ = mock_connection1;
   service1->connection_ = NULL;
+  EXPECT_FALSE(service_->IsDependentOn(service1));
+
+  service_->connection_ = NULL;
 }
 
 TEST_F(ServiceTest, OnPropertyChanged) {

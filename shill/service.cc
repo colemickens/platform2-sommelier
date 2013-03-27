@@ -607,7 +607,7 @@ bool Service::IsRemembered() const {
 }
 
 bool Service::IsDependentOn(const ServiceRefPtr &b) const {
-  if (!connection_ || !b) {
+  if (!connection_ || !b || !b->connection()) {
     return false;
   }
   return connection_->GetLowerConnection() == b->connection();
