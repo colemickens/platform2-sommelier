@@ -21,9 +21,9 @@ CXX_STATIC_LIBRARY(common/libutil.pie.a): CPPFLAGS += $(LIBUTIL_FLAGS)
 CXX_STATIC_LIBRARY(common/libutil.pie.a): LDLIBS += $(LIBUTIL_LIBS)
 clean: CLEAN(common/libutil.pie.a)
 
-LIBUTIL_DBUS_OBJS = common/dbus_sender.o \
-                    common/util_dbus.o \
-                    common/util_dbus_handler.o
+LIBUTIL_DBUS_OBJS = common/dbus_handler.o \
+                    common/dbus_sender.o \
+                    common/util_dbus.o
 LIBUTIL_DBUS_FLAGS = $(DBUS_FLAGS) $(GLIB_FLAGS)
 LIBUTIL_DBUS_LIBS = $(DBUS_LIBS) $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a): $(LIBUTIL_DBUS_OBJS)

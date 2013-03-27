@@ -715,109 +715,115 @@ void Daemon::RegisterUdevEventHandler() {
 void Daemon::RegisterDBusMessageHandler() {
   util::RequestDBusServiceName(kPowerManagerServiceName);
 
-  dbus_handler_.SetNameOwnerChangedHandler(&Suspender::NameOwnerChangedHandler,
-                                           &suspender_);
+  dbus_handler_.SetNameOwnerChangedHandler(
+      base::Bind(&Daemon::HandleDBusNameOwnerChanged, base::Unretained(this)));
 
-  dbus_handler_.AddDBusSignalHandler(
+  dbus_handler_.AddSignalHandler(
       kPowerManagerInterface,
       kCleanShutdown,
       base::Bind(&Daemon::HandleCleanShutdownSignal, base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
+  dbus_handler_.AddSignalHandler(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerSessionStateChanged,
       base::Bind(&Daemon::HandleSessionManagerSessionStateChangedSignal,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusSignalHandler(
+  dbus_handler_.AddSignalHandler(
       update_engine::kUpdateEngineInterface,
       update_engine::kStatusUpdate,
       base::Bind(&Daemon::HandleUpdateEngineStatusUpdateSignal,
                  base::Unretained(this)));
 
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRequestShutdownMethod,
       base::Bind(&Daemon::HandleRequestShutdownMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRequestRestartMethod,
       base::Bind(&Daemon::HandleRequestRestartMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRequestSuspendMethod,
       base::Bind(&Daemon::HandleRequestSuspendMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kDecreaseScreenBrightness,
       base::Bind(&Daemon::HandleDecreaseScreenBrightnessMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kIncreaseScreenBrightness,
       base::Bind(&Daemon::HandleIncreaseScreenBrightnessMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kGetScreenBrightnessPercent,
       base::Bind(&Daemon::HandleGetScreenBrightnessMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kSetScreenBrightnessPercent,
       base::Bind(&Daemon::HandleSetScreenBrightnessMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kDecreaseKeyboardBrightness,
       base::Bind(&Daemon::HandleDecreaseKeyboardBrightnessMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kIncreaseKeyboardBrightness,
       base::Bind(&Daemon::HandleIncreaseKeyboardBrightnessMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRequestIdleNotification,
       base::Bind(&Daemon::HandleRequestIdleNotificationMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kGetPowerSupplyPropertiesMethod,
       base::Bind(&Daemon::HandleGetPowerSupplyPropertiesMethod,
                  base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kHandleVideoActivityMethod,
       base::Bind(&Daemon::HandleVideoActivityMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kHandleUserActivityMethod,
       base::Bind(&Daemon::HandleUserActivityMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kSetIsProjectingMethod,
       base::Bind(&Daemon::HandleSetIsProjectingMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kSetPolicyMethod,
       base::Bind(&Daemon::HandleSetPolicyMethod, base::Unretained(this)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRegisterSuspendDelayMethod,
       base::Bind(&Suspender::RegisterSuspendDelay,
                  base::Unretained(&suspender_)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kUnregisterSuspendDelayMethod,
       base::Bind(&Suspender::UnregisterSuspendDelay,
                  base::Unretained(&suspender_)));
-  dbus_handler_.AddDBusMethodHandler(
+  dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kHandleSuspendReadinessMethod,
       base::Bind(&Suspender::HandleSuspendReadiness,
                  base::Unretained(&suspender_)));
 
   dbus_handler_.Start();
+}
+
+void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
+                                        const std::string& old_owner,
+                                        const std::string& new_owner) {
+  suspender_.HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 
 bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT

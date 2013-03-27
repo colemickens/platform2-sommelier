@@ -11,8 +11,8 @@
 #include "base/time.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/dbus_handler.h"
 #include "power_manager/common/util_dbus.h"
-#include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/suspend.pb.h"
 
 DEFINE_int32(delay_ms, 5000,
@@ -105,12 +105,11 @@ bool SuspendDelaySignaled(DBusMessage* message) {
 }
 
 void RegisterDBusMessageHandler() {
-  dbus_handler.AddDBusSignalHandler(
+  dbus_handler.AddSignalHandler(
       power_manager::kPowerManagerInterface,
       power_manager::kSuspendImminentSignal,
       base::Bind(&SuspendDelaySignaled));
   dbus_handler.Start();
-
 }
 
 int main(int argc, char* argv[]) {

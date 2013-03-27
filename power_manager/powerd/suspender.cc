@@ -156,17 +156,6 @@ Suspender::Delegate* Suspender::CreateDefaultDelegate(Daemon* daemon,
   return new RealDelegate(daemon, input);
 }
 
-// static
-void Suspender::NameOwnerChangedHandler(DBusGProxy*,
-                                        const gchar* name,
-                                        const gchar* /*old_owner*/,
-                                        const gchar* new_owner,
-                                        gpointer data) {
-  Suspender* suspender = static_cast<Suspender*>(data);
-  if (name && new_owner && strlen(new_owner) == 0)
-    suspender->suspend_delay_controller_->HandleDBusClientDisconnected(name);
-}
-
 Suspender::Suspender(Delegate* delegate,
                      DBusSenderInterface* dbus_sender,
                      policy::DarkResumePolicy* dark_resume_policy)
@@ -256,6 +245,13 @@ void Suspender::HandleUserActivity() {
 
 void Suspender::HandleShutdown() {
   CancelSuspend();
+}
+
+void Suspender::HandleDBusNameOwnerChanged(const std::string& name,
+                                           const std::string& old_owner,
+                                           const std::string& new_owner) {
+  if (new_owner.empty())
+    suspend_delay_controller_->HandleDBusClientDisconnected(name);
 }
 
 void Suspender::OnReadyForSuspend(int suspend_id) {

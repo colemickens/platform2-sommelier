@@ -22,10 +22,10 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "metrics/metrics_library.h"
+#include "power_manager/common/dbus_handler.h"
 #include "power_manager/common/inotify.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/common/util_dbus_handler.h"
 #include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/backlight_controller_observer.h"
 #include "power_manager/powerd/file_tagger.h"
@@ -280,6 +280,11 @@ class Daemon : public BacklightControllerObserver,
 
   // Registers the dbus message handler with appropriate dbus events.
   void RegisterDBusMessageHandler();
+
+  // Handles changes to D-Bus name ownership.
+  void HandleDBusNameOwnerChanged(const std::string& name,
+                                  const std::string& old_owner,
+                                  const std::string& new_owner);
 
   // Callbacks for handling dbus messages.
   bool HandleCleanShutdownSignal(DBusMessage* message);

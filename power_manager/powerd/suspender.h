@@ -141,12 +141,6 @@ class Suspender : public SuspendDelayObserver {
   static Delegate* CreateDefaultDelegate(Daemon* daemon,
                                          system::Input* input);
 
-  static void NameOwnerChangedHandler(DBusGProxy* proxy,
-                                      const gchar* name,
-                                      const gchar* old_owner,
-                                      const gchar* new_owner,
-                                      gpointer data);
-
   Suspender(Delegate* delegate,
             DBusSenderInterface* dbus_sender,
             policy::DarkResumePolicy* dark_resume_policy);
@@ -176,6 +170,12 @@ class Suspender : public SuspendDelayObserver {
   void HandleLidOpened();
   void HandleUserActivity();
   void HandleShutdown();
+
+  // Handles the D-Bus name |name| becoming owned by |new_owner| instead of
+  // |old_owner|.
+  void HandleDBusNameOwnerChanged(const std::string& name,
+                                  const std::string& old_owner,
+                                  const std::string& new_owner);
 
   // SuspendDelayObserver override:
   virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;

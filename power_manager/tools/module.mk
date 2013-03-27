@@ -60,9 +60,9 @@ all: CXX_BINARY(tools/set_power_policy)
 
 CXX_BINARY(tools/suspend_delay_sample): \
 	tools/suspend_delay_sample.o \
+	common/dbus_handler.o \
 	common/power_constants.o \
 	common/util_dbus.o \
-	common/util_dbus_handler.o \
 	power_manager/suspend.pb.o
 CXX_BINARY(tools/suspend_delay_sample): CPPFLAGS += $(LIBPOWERMAN_FLAGS) \
 	$(DBUS_FLAGS) $(GLIB_FLAGS)
