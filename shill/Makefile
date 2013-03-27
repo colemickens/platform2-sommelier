@@ -438,7 +438,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_provider_unittest.o \
 	wimax_service_unittest.o \
 	wimax_unittest.o \
-	wpa_supplicant_unittest.o \
 	)
 
 CRYPTO_UTIL_MAIN_OBJ = $(BUILD_SHIMS_DIR)/crypto_util.o

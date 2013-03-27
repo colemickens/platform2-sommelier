@@ -215,7 +215,7 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wifi_service_->security_ = flimflam::kSecurity8021x;
   wifi_service_->raw_signal_strength_ = kStrength;
-  EapCredentials eap;
+  Service::EapCredentials eap;
   eap.eap = flimflam::kEapMethodPEAP;
   eap.inner_eap = flimflam::kEapPhase2AuthPEAPMSCHAPV2;
   wifi_service_->set_eap(eap);

@@ -88,7 +88,7 @@ TEST_F(WiMaxServiceTest, GetConnectParameters) {
     EXPECT_FALSE(parameters.ContainsString(kEAPUserPassword));
   }
   {
-    EapCredentials eap;
+    Service::EapCredentials eap;
     eap.anonymous_identity = "TestAnonymousIdentity";
     eap.identity = "TestUserIdentity";
     eap.password = "TestPassword";
@@ -159,7 +159,7 @@ TEST_F(WiMaxServiceTest, SetEAP) {
   EXPECT_FALSE(base_service->connectable());
 
   // No password.
-  EapCredentials eap;
+  Service::EapCredentials eap;
   eap.identity = "TestIdentity";
   base_service->set_eap(eap);
   EXPECT_TRUE(service_->need_passphrase_);
@@ -258,7 +258,7 @@ TEST_F(WiMaxServiceTest, Unload) {
   EXPECT_CALL(manager_, wimax_provider())
       .Times(2)
       .WillRepeatedly(Return(&provider));
-  EapCredentials eap;
+  Service::EapCredentials eap;
   eap.identity = "TestUserIdentity";
   service_->set_eap(eap);
   EXPECT_CALL(provider, OnServiceUnloaded(_)).WillOnce(Return(false));

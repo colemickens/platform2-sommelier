@@ -5,140 +5,122 @@
 #ifndef SHILL_WPA_SUPPLICANT_H
 #define SHILL_WPA_SUPPLICANT_H
 
-#include <map>
-#include <string>
-#include <vector>
-
 #include <base/basictypes.h>
-#include <dbus-c++/dbus.h>
 
 namespace shill {
 
-class CertificateFile;
-class EapCredentials;
-class NSS;
-
-class WPASupplicant {
- public:
-  static const char kBSSPropertyBSSID[];
-  static const char kBSSPropertyFrequency[];
-  static const char kBSSPropertyIEs[];
-  static const char kBSSPropertyMode[];
-  static const char kBSSPropertyRates[];
-  static const char kBSSPropertySSID[];
-  static const char kBSSPropertySignal[];
-  static const char kCaPath[];
-  static const char kCurrentBSSNull[];
-  static const char kDBusAddr[];
-  static const char kDBusPath[];
-  static const char kDebugLevelDebug[];
-  static const char kDebugLevelError[];
-  static const char kDebugLevelExcessive[];
-  static const char kDebugLevelInfo[];
-  static const char kDebugLevelMsgDump[];
-  static const char kDebugLevelWarning[];
-  static const char kDriverNL80211[];
-  static const char kEAPParameterAlertUnknownCA[];
-  static const char kEAPParameterFailure[];
-  static const char kEAPParameterSuccess[];
-  static const char kEAPStatusAcceptProposedMethod[];
-  static const char kEAPStatusCompletion[];
-  static const char kEAPStatusLocalTLSAlert[];
-  static const char kEAPStatusParameterNeeded[];
-  static const char kEAPStatusRemoteCertificateVerification[];
-  static const char kEAPStatusRemoteTLSAlert[];
-  static const char kEAPStatusStarted[];
-  static const char kEnginePKCS11[];
-  static const char kErrorNetworkUnknown[];
-  static const char kErrorInterfaceExists[];
-  static const char kInterfacePropertyConfigFile[];
-  static const char kInterfacePropertyCurrentBSS[];
-  static const char kInterfacePropertyDepth[];
-  static const char kInterfacePropertyDriver[];
-  static const char kInterfacePropertyName[];
-  static const char kInterfacePropertyState[];
-  static const char kInterfacePropertySubject[];
-  static const char kInterfaceState4WayHandshake[];
-  static const char kInterfaceStateAssociated[];
-  static const char kInterfaceStateAssociating[];
-  static const char kInterfaceStateAuthenticating[];
-  static const char kInterfaceStateCompleted[];
-  static const char kInterfaceStateDisconnected[];
-  static const char kInterfaceStateGroupHandshake[];
-  static const char kInterfaceStateInactive[];
-  static const char kInterfaceStateScanning[];
-  static const char kKeyManagementMethodSuffixEAP[];
-  static const char kKeyManagementMethodSuffixPSK[];
-  static const char kKeyModeNone[];
-  static const char kNetworkBgscanMethodLearn[];
+namespace wpa_supplicant {
+extern const char kBSSPropertyBSSID[];
+extern const char kBSSPropertyFrequency[];
+extern const char kBSSPropertyIEs[];
+extern const char kBSSPropertyMode[];
+extern const char kBSSPropertyRates[];
+extern const char kBSSPropertySSID[];
+extern const char kBSSPropertySignal[];
+extern const char kCaPath[];
+extern const char kCurrentBSSNull[];
+extern const char kDBusAddr[];
+extern const char kDBusPath[];
+extern const char kDebugLevelDebug[];
+extern const char kDebugLevelError[];
+extern const char kDebugLevelExcessive[];
+extern const char kDebugLevelInfo[];
+extern const char kDebugLevelMsgDump[];
+extern const char kDebugLevelWarning[];
+extern const char kDriverNL80211[];
+extern const char kEAPParameterAlertUnknownCA[];
+extern const char kEAPParameterFailure[];
+extern const char kEAPParameterSuccess[];
+extern const char kEAPStatusAcceptProposedMethod[];
+extern const char kEAPStatusCompletion[];
+extern const char kEAPStatusLocalTLSAlert[];
+extern const char kEAPStatusParameterNeeded[];
+extern const char kEAPStatusRemoteCertificateVerification[];
+extern const char kEAPStatusRemoteTLSAlert[];
+extern const char kEAPStatusStarted[];
+extern const char kEnginePKCS11[];
+extern const char kErrorNetworkUnknown[];
+extern const char kErrorInterfaceExists[];
+extern const char kInterfacePropertyConfigFile[];
+extern const char kInterfacePropertyCurrentBSS[];
+extern const char kInterfacePropertyDepth[];
+extern const char kInterfacePropertyDriver[];
+extern const char kInterfacePropertyName[];
+extern const char kInterfacePropertyState[];
+extern const char kInterfacePropertySubject[];
+extern const char kInterfaceState4WayHandshake[];
+extern const char kInterfaceStateAssociated[];
+extern const char kInterfaceStateAssociating[];
+extern const char kInterfaceStateAuthenticating[];
+extern const char kInterfaceStateCompleted[];
+extern const char kInterfaceStateDisconnected[];
+extern const char kInterfaceStateGroupHandshake[];
+extern const char kInterfaceStateInactive[];
+extern const char kInterfaceStateScanning[];
+extern const char kKeyManagementMethodSuffixEAP[];
+extern const char kKeyManagementMethodSuffixPSK[];
+extern const char kKeyModeNone[];
+extern const char kNetworkBgscanMethodLearn[];
 // None is not a real method name, but we interpret 'none' as a request that
 // no background scan parameter should be supplied to wpa_supplicant.
-  static const char kNetworkBgscanMethodNone[];
-  static const char kNetworkBgscanMethodSimple[];
-  static const char kNetworkModeInfrastructure[];
-  static const char kNetworkModeAdHoc[];
-  static const char kNetworkModeAccessPoint[];
-  static const char kNetworkPropertyBgscan[];
-  static const char kNetworkPropertyCaPath[];
-  static const char kNetworkPropertyEapKeyManagement[];
-  static const char kNetworkPropertyEapIdentity[];
-  static const char kNetworkPropertyEapEap[];
-  static const char kNetworkPropertyEapInnerEap[];
-  static const char kNetworkPropertyEapAnonymousIdentity[];
-  static const char kNetworkPropertyEapClientCert[];
-  static const char kNetworkPropertyEapPrivateKey[];
-  static const char kNetworkPropertyEapPrivateKeyPassword[];
-  static const char kNetworkPropertyEapCaCert[];
-  static const char kNetworkPropertyEapCaPassword[];
-  static const char kNetworkPropertyEapCertId[];
-  static const char kNetworkPropertyEapKeyId[];
-  static const char kNetworkPropertyEapCaCertId[];
-  static const char kNetworkPropertyEapPin[];
-  static const char kNetworkPropertyEapSubjectMatch[];
-  static const char kNetworkPropertyEngine[];
-  static const char kNetworkPropertyEngineId[];
-  static const char kNetworkPropertyFrequency[];
-  static const char kNetworkPropertyIeee80211w[];
-  static const char kNetworkPropertyMode[];
-  static const char kNetworkPropertySSID[];
-  static const char kNetworkPropertyScanSSID[];
+extern const char kNetworkBgscanMethodNone[];
+extern const char kNetworkBgscanMethodSimple[];
+extern const char kNetworkModeInfrastructure[];
+extern const char kNetworkModeAdHoc[];
+extern const char kNetworkModeAccessPoint[];
+extern const char kNetworkPropertyBgscan[];
+extern const char kNetworkPropertyCaPath[];
+extern const char kNetworkPropertyEapKeyManagement[];
+extern const char kNetworkPropertyEapIdentity[];
+extern const char kNetworkPropertyEapEap[];
+extern const char kNetworkPropertyEapInnerEap[];
+extern const char kNetworkPropertyEapAnonymousIdentity[];
+extern const char kNetworkPropertyEapClientCert[];
+extern const char kNetworkPropertyEapPrivateKey[];
+extern const char kNetworkPropertyEapPrivateKeyPassword[];
+extern const char kNetworkPropertyEapCaCert[];
+extern const char kNetworkPropertyEapCaPassword[];
+extern const char kNetworkPropertyEapCertId[];
+extern const char kNetworkPropertyEapKeyId[];
+extern const char kNetworkPropertyEapCaCertId[];
+extern const char kNetworkPropertyEapPin[];
+extern const char kNetworkPropertyEapSubjectMatch[];
+extern const char kNetworkPropertyEngine[];
+extern const char kNetworkPropertyEngineId[];
+extern const char kNetworkPropertyFrequency[];
+extern const char kNetworkPropertyIeee80211w[];
+extern const char kNetworkPropertyMode[];
+extern const char kNetworkPropertySSID[];
+extern const char kNetworkPropertyScanSSID[];
 // TODO(quiche): Make the naming scheme more consistent, by adding the
 // object type to the property names below. (crosbug.com/23656)
-  static const char kPropertyAuthAlg[];
-  static const char kPropertyBSSID[];
-  static const char kPropertyMode[];
-  static const char kPropertyPreSharedKey[];
-  static const char kPropertyPrivacy[];
-  static const char kPropertyRSN[];
-  static const char kPropertyScanSSIDs[];
-  static const char kPropertyScanType[];
-  static const char kPropertySecurityProtocol[];
-  static const char kPropertySignal[];
-  static const char kPropertyWEPKey[];
-  static const char kPropertyWEPTxKeyIndex[];
-  static const char kPropertyWPA[];
-  static const char kScanTypeActive[];
-  static const char kSecurityAuthAlg[];
-  static const char kSecurityMethodPropertyKeyManagement[];
-  static const char kSecurityModeRSN[];
-  static const char kSecurityModeWPA[];
+extern const char kPropertyAuthAlg[];
+extern const char kPropertyBSSID[];
+extern const char kPropertyMode[];
+extern const char kPropertyPreSharedKey[];
+extern const char kPropertyPrivacy[];
+extern const char kPropertyRSN[];
+extern const char kPropertyScanSSIDs[];
+extern const char kPropertyScanType[];
+extern const char kPropertySecurityProtocol[];
+extern const char kPropertySignal[];
+extern const char kPropertyWEPKey[];
+extern const char kPropertyWEPTxKeyIndex[];
+extern const char kPropertyWPA[];
+extern const char kScanTypeActive[];
+extern const char kSecurityAuthAlg[];
+extern const char kSecurityMethodPropertyKeyManagement[];
+extern const char kSecurityModeRSN[];
+extern const char kSecurityModeWPA[];
 
-  static const uint32_t kDefaultEngine;
-  static const uint32_t kNetworkIeee80211wDisabled;
-  static const uint32_t kNetworkIeee80211wEnabled;
-  static const uint32_t kNetworkIeee80211wRequired;
-  static const uint32_t kNetworkModeInfrastructureInt;
-  static const uint32_t kNetworkModeAdHocInt;
-  static const uint32_t kNetworkModeAccessPointInt;
-  static const uint32_t kScanMaxSSIDsPerScan;
-
-  // Populate the wpa_supplicant DBus parameter map |params| with the
-  // credentials in |eap|.  To do so, this function may use |certificate_file|
-  // or |nss| to export CA certificates to be passed to wpa_supplicant.
-  static void Populate8021xProperties(
-      const EapCredentials &eap, CertificateFile *certificate_file,
-      NSS *nss, const std::vector<char> nss_identifier,
-      std::map<std::string, DBus::Variant> *params);
+extern const uint32_t kDefaultEngine;
+extern const uint32_t kNetworkIeee80211wDisabled;
+extern const uint32_t kNetworkIeee80211wEnabled;
+extern const uint32_t kNetworkIeee80211wRequired;
+extern const uint32_t kNetworkModeInfrastructureInt;
+extern const uint32_t kNetworkModeAdHocInt;
+extern const uint32_t kNetworkModeAccessPointInt;
+extern const uint32_t kScanMaxSSIDsPerScan;
 };
 
 }  // namespace shill

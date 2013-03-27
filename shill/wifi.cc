@@ -56,7 +56,7 @@ namespace shill {
 // statics
 const char WiFi::kSupplicantConfPath[] = SHIMDIR "/wpa_supplicant.conf";
 const char *WiFi::kDefaultBgscanMethod =
-    WPASupplicant::kNetworkBgscanMethodSimple;
+    wpa_supplicant::kNetworkBgscanMethodSimple;
 const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
 const int32 WiFi::kDefaultBgscanSignalThresholdDbm = -50;
 const uint16 WiFi::kDefaultScanIntervalSeconds = 180;
@@ -159,7 +159,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
         Bind(&WiFi::OnSupplicantAppear, Unretained(this)));
     on_supplicant_vanish_.Reset(
         Bind(&WiFi::OnSupplicantVanish, Unretained(this)));
-    manager()->dbus_manager()->WatchName(WPASupplicant::kDBusAddr,
+    manager()->dbus_manager()->WatchName(wpa_supplicant::kDBusAddr,
                                          on_supplicant_appear_.callback(),
                                          on_supplicant_vanish_.callback());
   }
@@ -292,7 +292,7 @@ void WiFi::ConnectTo(WiFiService *service,
   if (network_path.empty()) {
     try {
       const uint32_t scan_ssid = 1;  // "True": Use directed probe.
-      service_params[WPASupplicant::kNetworkPropertyScanSSID].writer().
+      service_params[wpa_supplicant::kNetworkPropertyScanSSID].writer().
           append_uint32(scan_ssid);
       AppendBgscan(service, &service_params);
       network_path = supplicant_interface_proxy_->AddNetwork(service_params);
@@ -394,7 +394,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 bool WiFi::DisableNetwork(const ::DBus::Path &network) {
   scoped_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy(
       proxy_factory_->CreateSupplicantNetworkProxy(
-          network, WPASupplicant::kDBusAddr));
+          network, wpa_supplicant::kDBusAddr));
   try {
     supplicant_network_proxy->SetEnabled(false);
   } catch (const DBus::Error &e) {  // NOLINT
@@ -418,7 +418,7 @@ bool WiFi::RemoveNetwork(const ::DBus::Path &network) {
     // should not fail with an InvalidArgs error. Return false in such case
     // as something weird may have happened. Similarly, return false in case
     // of an UnknownError.
-    if (strcmp(e.name(), WPASupplicant::kErrorNetworkUnknown) != 0) {
+    if (strcmp(e.name(), wpa_supplicant::kErrorNetworkUnknown) != 0) {
       return false;
     }
   }
@@ -455,7 +455,7 @@ void WiFi::AppendBgscan(WiFiService *service,
       LOG(INFO) << "Background scan disabled -- single Endpoint for Service.";
       return;
     }
-  } else if (method.compare(WPASupplicant::kNetworkBgscanMethodNone) == 0) {
+  } else if (method.compare(wpa_supplicant::kNetworkBgscanMethodNone) == 0) {
       LOG(INFO) << "Background scan disabled -- chose None method.";
       return;
   } else {
@@ -470,7 +470,7 @@ void WiFi::AppendBgscan(WiFiService *service,
                                       bgscan_signal_threshold_dbm_,
                                       scan_interval);
   LOG(INFO) << "Background scan: " << config_string;
-  (*service_params)[WPASupplicant::kNetworkPropertyBgscan].writer()
+  (*service_params)[wpa_supplicant::kNetworkPropertyBgscan].writer()
       .append_string(config_string.c_str());
 }
 
@@ -480,9 +480,9 @@ string WiFi::GetBgscanMethod(const int &/*argument*/, Error */* error */) {
 
 void WiFi::SetBgscanMethod(
     const int &/*argument*/, const string &method, Error *error) {
-  if (method != WPASupplicant::kNetworkBgscanMethodSimple &&
-      method != WPASupplicant::kNetworkBgscanMethodLearn &&
-      method != WPASupplicant::kNetworkBgscanMethodNone) {
+  if (method != wpa_supplicant::kNetworkBgscanMethodSimple &&
+      method != wpa_supplicant::kNetworkBgscanMethodLearn &&
+      method != wpa_supplicant::kNetworkBgscanMethodNone) {
     const string error_message =
         StringPrintf("Unrecognized bgscan method %s", method.c_str());
     LOG(WARNING) << error_message;
@@ -538,7 +538,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   // reconnect.
   StopReconnectTimer();
 
-  if (new_bss == WPASupplicant::kCurrentBSSNull) {
+  if (new_bss == wpa_supplicant::kCurrentBSSNull) {
     HandleDisconnect();
     if (!provider_->GetHiddenSSIDList().empty()) {
       // Before disconnecting, wpa_supplicant probably scanned for
@@ -918,13 +918,13 @@ void WiFi::CertificationTask(
   }
 
   map<string, ::DBus::Variant>::const_iterator properties_it =
-      properties.find(WPASupplicant::kInterfacePropertyDepth);
+      properties.find(wpa_supplicant::kInterfacePropertyDepth);
   if (properties_it == properties.end()) {
     LOG(ERROR) << __func__ << " no depth parameter.";
     return;
   }
   uint32 depth = properties_it->second.reader().get_uint32();
-  properties_it = properties.find(WPASupplicant::kInterfacePropertySubject);
+  properties_it = properties.find(wpa_supplicant::kInterfacePropertySubject);
   if (properties_it == properties.end()) {
     LOG(ERROR) << __func__ << " no subject parameter.";
     return;
@@ -942,19 +942,19 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
     return;
   }
 
-  if (status == WPASupplicant::kEAPStatusAcceptProposedMethod) {
+  if (status == wpa_supplicant::kEAPStatusAcceptProposedMethod) {
     LOG(INFO) << link_name() << ": accepted EAP method " << parameter;
-  } else if (status == WPASupplicant::kEAPStatusCompletion) {
-    if (parameter == WPASupplicant::kEAPParameterSuccess) {
+  } else if (status == wpa_supplicant::kEAPStatusCompletion) {
+    if (parameter == wpa_supplicant::kEAPParameterSuccess) {
       SLOG(WiFi, 2) << link_name() << ": EAP: "
                     << "Completed authentication.";
       is_eap_in_progress_ = false;
-    } else if (parameter == WPASupplicant::kEAPParameterFailure) {
+    } else if (parameter == wpa_supplicant::kEAPParameterFailure) {
       // If there was a TLS error, use this instead of the generic failure.
-      if (supplicant_tls_error_ == WPASupplicant::kEAPStatusLocalTLSAlert) {
+      if (supplicant_tls_error_ == wpa_supplicant::kEAPStatusLocalTLSAlert) {
         failure = Service::kFailureEAPLocalTLS;
       } else if (supplicant_tls_error_ ==
-                 WPASupplicant::kEAPStatusRemoteTLSAlert) {
+                 wpa_supplicant::kEAPStatusRemoteTLSAlert) {
         failure = Service::kFailureEAPRemoteTLS;
       } else {
         failure = Service::kFailureEAPAuthentication;
@@ -963,12 +963,12 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
       LOG(ERROR) << link_name() << ": EAP: "
                  << "Unexpected " << status << " parameter: " << parameter;
     }
-  } else if (status == WPASupplicant::kEAPStatusLocalTLSAlert ||
-             status == WPASupplicant::kEAPStatusRemoteTLSAlert) {
+  } else if (status == wpa_supplicant::kEAPStatusLocalTLSAlert ||
+             status == wpa_supplicant::kEAPStatusRemoteTLSAlert) {
     supplicant_tls_error_ = status;
   } else if (status ==
-             WPASupplicant::kEAPStatusRemoteCertificateVerification) {
-    if (parameter == WPASupplicant::kEAPParameterSuccess) {
+             wpa_supplicant::kEAPStatusRemoteCertificateVerification) {
+    if (parameter == wpa_supplicant::kEAPParameterSuccess) {
       SLOG(WiFi, 2) << link_name() << ": EAP: "
                     << "Completed remote certificate verification.";
     } else {
@@ -977,12 +977,12 @@ void WiFi::EAPEventTask(const string &status, const string &parameter) {
       LOG(ERROR) << link_name() << ": EAP: "
                  << "Unexpected " << status << " parameter: " << parameter;
     }
-  } else if (status == WPASupplicant::kEAPStatusParameterNeeded) {
+  } else if (status == wpa_supplicant::kEAPStatusParameterNeeded) {
     LOG(ERROR) << link_name() << ": EAP: "
                << "Authentication due to missing authentication parameter: "
                << parameter;
     failure = Service::kFailureEAPAuthentication;
-  } else if (status == WPASupplicant::kEAPStatusStarted) {
+  } else if (status == wpa_supplicant::kEAPStatusStarted) {
     SLOG(WiFi, 2) << link_name() << ": EAP authentication starting.";
     is_eap_in_progress_ = true;
   }
@@ -1005,12 +1005,12 @@ void WiFi::PropertiesChangedTask(
   // that we update the state of the correct Endpoint/Service.
 
   map<string, ::DBus::Variant>::const_iterator properties_it =
-      properties.find(WPASupplicant::kInterfacePropertyCurrentBSS);
+      properties.find(wpa_supplicant::kInterfacePropertyCurrentBSS);
   if (properties_it != properties.end()) {
     CurrentBSSChanged(properties_it->second.reader().get_path());
   }
 
-  properties_it = properties.find(WPASupplicant::kInterfacePropertyState);
+  properties_it = properties.find(wpa_supplicant::kInterfacePropertyState);
   if (properties_it != properties.end()) {
     StateChanged(properties_it->second.reader().get_string());
   }
@@ -1049,16 +1049,16 @@ void WiFi::ScanTask() {
     return;
   }
   map<string, DBus::Variant> scan_args;
-  scan_args[WPASupplicant::kPropertyScanType].writer().
-      append_string(WPASupplicant::kScanTypeActive);
+  scan_args[wpa_supplicant::kPropertyScanType].writer().
+      append_string(wpa_supplicant::kScanTypeActive);
 
   ByteArrays hidden_ssids = provider_->GetHiddenSSIDList();
   if (!hidden_ssids.empty()) {
     // TODO(pstew): Devise a better method for time-sharing with SSIDs that do
     // not fit in.
-    if (hidden_ssids.size() >= WPASupplicant::kScanMaxSSIDsPerScan) {
+    if (hidden_ssids.size() >= wpa_supplicant::kScanMaxSSIDsPerScan) {
       hidden_ssids.erase(
-          hidden_ssids.begin() + WPASupplicant::kScanMaxSSIDsPerScan - 1,
+          hidden_ssids.begin() + wpa_supplicant::kScanMaxSSIDsPerScan - 1,
           hidden_ssids.end());
     }
     // Add Broadcast SSID, signified by an empty ByteArray.  If we specify
@@ -1066,7 +1066,7 @@ void WiFi::ScanTask() {
     // behavior of doing a broadcast probe.
     hidden_ssids.push_back(ByteArray());
 
-    scan_args[WPASupplicant::kPropertyScanSSIDs] =
+    scan_args[wpa_supplicant::kPropertyScanSSIDs] =
         DBusAdaptor::ByteArraysToVariant(hidden_ssids);
   }
 
@@ -1110,7 +1110,7 @@ void WiFi::StateChanged(const string &new_state) {
   // doesn't become the |current_service_| until wpa_supplicant
   // reports a CurrentBSS change to the |pending_service_|. And the
   // CurrentBSS change won't be reported until the |pending_service_|
-  // reaches the WPASupplicant::kInterfaceStateCompleted state.
+  // reaches the wpa_supplicant::kInterfaceStateCompleted state.
   affected_service =
       pending_service_.get() ? pending_service_.get() : current_service_.get();
   if (!affected_service) {
@@ -1119,7 +1119,7 @@ void WiFi::StateChanged(const string &new_state) {
     return;
   }
 
-  if (new_state == WPASupplicant::kInterfaceStateCompleted) {
+  if (new_state == wpa_supplicant::kInterfaceStateCompleted) {
     if (affected_service->IsConnected()) {
       StopReconnectTimer();
       EnableHighBitrates();
@@ -1133,22 +1133,22 @@ void WiFi::StateChanged(const string &new_state) {
       LOG(ERROR) << "Unable to acquire DHCP config.";
     }
     has_already_completed_ = true;
-  } else if (new_state == WPASupplicant::kInterfaceStateAssociated) {
+  } else if (new_state == wpa_supplicant::kInterfaceStateAssociated) {
     affected_service->SetState(Service::kStateAssociating);
-  } else if (new_state == WPASupplicant::kInterfaceStateAuthenticating ||
-             new_state == WPASupplicant::kInterfaceStateAssociating ||
-             new_state == WPASupplicant::kInterfaceState4WayHandshake ||
-             new_state == WPASupplicant::kInterfaceStateGroupHandshake) {
+  } else if (new_state == wpa_supplicant::kInterfaceStateAuthenticating ||
+             new_state == wpa_supplicant::kInterfaceStateAssociating ||
+             new_state == wpa_supplicant::kInterfaceState4WayHandshake ||
+             new_state == wpa_supplicant::kInterfaceStateGroupHandshake) {
     // Ignore transitions into these states from Completed, to avoid
     // bothering the user when roaming, or re-keying.
-    if (old_state != WPASupplicant::kInterfaceStateCompleted)
+    if (old_state != wpa_supplicant::kInterfaceStateCompleted)
       affected_service->SetState(Service::kStateAssociating);
     // TOOD(quiche): On backwards transitions, we should probably set
     // a timeout for getting back into the completed state. At present,
     // we depend on wpa_supplicant eventually reporting that CurrentBSS
     // has changed. But there may be cases where that signal is not sent.
     // (crosbug.com/23207)
-  } else if (new_state == WPASupplicant::kInterfaceStateDisconnected &&
+  } else if (new_state == wpa_supplicant::kInterfaceStateDisconnected &&
              affected_service == current_service_ &&
              affected_service->IsConnected()) {
     // This means that wpa_supplicant failed in a re-connect attempt, but
@@ -1168,7 +1168,7 @@ void WiFi::StateChanged(const string &new_state) {
 bool WiFi::SuspectCredentials(
     const WiFiService &service, Service::ConnectFailure *failure) const {
   if (service.IsSecurityMatch(flimflam::kSecurityPsk)) {
-    if (supplicant_state_ == WPASupplicant::kInterfaceState4WayHandshake &&
+    if (supplicant_state_ == wpa_supplicant::kInterfaceState4WayHandshake &&
         !service.has_ever_connected()) {
       if (failure) {
         *failure = Service::kFailureBadPassphrase;
@@ -1465,15 +1465,15 @@ void WiFi::OnWiFiDebugScopeChanged(bool enabled) {
     return;
   }
 
-  if (current_level != WPASupplicant::kDebugLevelInfo &&
-      current_level != WPASupplicant::kDebugLevelDebug) {
+  if (current_level != wpa_supplicant::kDebugLevelInfo &&
+      current_level != wpa_supplicant::kDebugLevelDebug) {
     SLOG(WiFi, 2) << "WiFi debug level is currently "
                   << current_level
                   << "; assuming that it is being controlled elsewhere.";
     return;
   }
-  string new_level = enabled ? WPASupplicant::kDebugLevelDebug :
-      WPASupplicant::kDebugLevelInfo;
+  string new_level = enabled ? wpa_supplicant::kDebugLevelDebug :
+      wpa_supplicant::kDebugLevelInfo;
 
   if (new_level == current_level) {
     SLOG(WiFi, 2) << "WiFi debug level is already the desired level "
@@ -1509,23 +1509,23 @@ void WiFi::ConnectToSupplicant() {
   }
   supplicant_process_proxy_.reset(
       proxy_factory_->CreateSupplicantProcessProxy(
-          WPASupplicant::kDBusPath, WPASupplicant::kDBusAddr));
+          wpa_supplicant::kDBusPath, wpa_supplicant::kDBusAddr));
   OnWiFiDebugScopeChanged(
       ScopeLogger::GetInstance()->IsScopeEnabled(ScopeLogger::kWiFi));
   ::DBus::Path interface_path;
   try {
     map<string, DBus::Variant> create_interface_args;
-    create_interface_args[WPASupplicant::kInterfacePropertyName].writer().
+    create_interface_args[wpa_supplicant::kInterfacePropertyName].writer().
         append_string(link_name().c_str());
-    create_interface_args[WPASupplicant::kInterfacePropertyDriver].writer().
-        append_string(WPASupplicant::kDriverNL80211);
+    create_interface_args[wpa_supplicant::kInterfacePropertyDriver].writer().
+        append_string(wpa_supplicant::kDriverNL80211);
     create_interface_args[
-        WPASupplicant::kInterfacePropertyConfigFile].writer().
+        wpa_supplicant::kInterfacePropertyConfigFile].writer().
         append_string(kSupplicantConfPath);
     interface_path =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
   } catch (const DBus::Error &e) {  // NOLINT
-    if (!strcmp(e.name(), WPASupplicant::kErrorInterfaceExists)) {
+    if (!strcmp(e.name(), wpa_supplicant::kErrorInterfaceExists)) {
       interface_path =
           supplicant_process_proxy_->GetInterface(link_name());
       // TODO(quiche): Is it okay to crash here, if device is missing?
@@ -1537,7 +1537,7 @@ void WiFi::ConnectToSupplicant() {
 
   supplicant_interface_proxy_.reset(
       proxy_factory_->CreateSupplicantInterfaceProxy(
-          this, interface_path, WPASupplicant::kDBusAddr));
+          this, interface_path, wpa_supplicant::kDBusAddr));
 
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);

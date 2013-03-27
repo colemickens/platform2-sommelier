@@ -151,6 +151,11 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiFiServiceTest, LoadHidden);
   FRIEND_TEST(WiFiServiceTest, LoadAndUnloadPassphrase);
+  FRIEND_TEST(WiFiServiceTest, Populate8021x);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xNoSystemCAs);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xUsingHardwareAuth);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xNSS);
+  FRIEND_TEST(WiFiServiceTest, Populate8021xPEM);
   FRIEND_TEST(WiFiServiceTest, SecurityFromCurrentEndpoint);  // GetSecurity
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
@@ -211,6 +216,9 @@ class WiFiService : public Service {
 
   // Validate then apply a passphrase for this service.
   void SetPassphrase(const std::string &passphrase, Error *error);
+
+  // Populate the |params| map with available 802.1x EAP properties.
+  void Populate8021xProperties(std::map<std::string, DBus::Variant> *params);
 
   // Select a WiFi device (e.g, for connecting a hidden service with no
   // endpoints).
