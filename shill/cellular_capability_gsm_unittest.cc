@@ -18,7 +18,6 @@
 #include "shill/cellular_service.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
-#include "shill/key_value_store_matcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
@@ -836,6 +835,39 @@ TEST_F(CellularCapabilityGSMTest, SetStorageIdentifier) {
   capability_->OnServiceCreated();
   EXPECT_EQ(string(flimflam::kTypeCellular) + "_" + kAddress + "_" + kIMSI,
             cellular_->service()->GetStorageIdentifier());
+}
+
+MATCHER_P(KeyValueStoreEq, value, "") {
+  bool match = value.bool_properties() == arg.bool_properties() &&
+      value.int_properties() == arg.int_properties() &&
+      value.string_properties() == arg.string_properties() &&
+      value.uint_properties() == arg.uint_properties();
+#if 0
+  // TODO(gauravsh): Enable the match failure explainer once gtest is
+  //  upgraded to version 1.6 (1.5 is the lowest version that supports
+  // |result_listener| and PrintToString). crbug.com/211445
+  if (!match) {
+    *result_listener << "\nExpected KeyValueStore:\n"
+                     << "\tbool_properties: "
+                     << testing::PrintToString(value.bool_properties())
+                     << "\n\tint_properties: "
+                     << testing::PrintToString(value.int_properties())
+                     << "\n\tstring_properties: "
+                     << testing::PrintToString(value.string_properties())
+                     << "\n\tint_properties: "
+                     << testing::PrintToString(value.uint_properties())
+                     << "\nGot KeyValueStore:\n"
+                     << "\tbool_properties: "
+                     << testing::PrintToString(arg.bool_properties())
+                     << "\n\tint_properties: "
+                     << testing::PrintToString(arg.int_properties())
+                     << "\n\tstring_properties: "
+                     << testing::PrintToString(arg.string_properties())
+                     << "\n\tuint_properties: "
+                     << testing::PrintToString(arg.uint_properties());
+  }
+#endif
+  return match;
 }
 
 TEST_F(CellularCapabilityGSMTest, OnDBusPropertiesChanged) {
