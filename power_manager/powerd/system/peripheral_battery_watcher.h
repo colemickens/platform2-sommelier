@@ -17,22 +17,14 @@
 #include "power_manager/powerd/system/async_file_reader.h"
 
 namespace power_manager {
-namespace system {
 
-class PeripheralBatteryObserver {
- public:
-  virtual ~PeripheralBatteryObserver() {}
-  // |level| is the current battery level within range [0, 100].
-  virtual void OnPeripheralBatteryUpdate(const std::string& path,
-                                         const std::string& model_name,
-                                         int level) = 0;
-  virtual void OnPeripheralBatteryError(const std::string& path,
-                                        const std::string& model_name) = 0;
-};
+class DBusSenderInterface;
+
+namespace system {
 
 class PeripheralBatteryWatcher {
  public:
-  PeripheralBatteryWatcher();
+  explicit PeripheralBatteryWatcher(DBusSenderInterface* dbus_sender);
   ~PeripheralBatteryWatcher();
 
   void set_battery_path_for_testing(const base::FilePath& path) {
@@ -41,10 +33,6 @@ class PeripheralBatteryWatcher {
 
   // Starts polling.
   void Init();
-
-  // Adds or removes observers for battery readings.
-  void AddObserver(PeripheralBatteryObserver* observer);
-  void RemoveObserver(PeripheralBatteryObserver* observer);
 
  private:
   // Handler for a periodic event that reads the peripheral batteries'
@@ -55,10 +43,17 @@ class PeripheralBatteryWatcher {
   // peripheral batteries.
   void GetBatteryList(std::vector<base::FilePath>* battery_list);
 
+  // Sends the battery status through D-Bus.
+  void SendBatteryStatus(const std::string& path,
+                         const std::string& model_name,
+                         int level);
+
   // Asynchronous I/O success and error handlers, respectively.
   void ReadCallback(const std::string& path, const std::string& model_name,
                     const std::string& data);
   void ErrorCallback(const std::string& path, const std::string& model_name);
+
+  DBusSenderInterface* dbus_sender_;  // not owned
 
   // Path containing battery info for peripheral devices.
   base::FilePath peripheral_battery_path_;
@@ -68,9 +63,6 @@ class PeripheralBatteryWatcher {
 
   // Time between polls of the peripheral battery reading, in milliseconds.
   int poll_interval_ms_;
-
-  // List of observers interested in updates about peripheral batteries.
-  ObserverList<PeripheralBatteryObserver> observer_list_;
 
   // AsyncFileReaders for different peripheral batteries.
   ScopedVector<AsyncFileReader> battery_readers_;

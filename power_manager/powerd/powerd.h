@@ -87,8 +87,7 @@ enum BatteryReportState {
 
 class Daemon : public BacklightControllerObserver,
                public policy::InputController::Delegate,
-               public system::AudioObserver,
-               public system::PeripheralBatteryObserver {
+               public system::AudioObserver {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
@@ -353,14 +352,6 @@ class Daemon : public BacklightControllerObserver,
   void OnLowBattery(int64 time_remaining_s,
                     int64 time_full_s,
                     double battery_percentage);
-
-  // Overridden from PeripheralBatteryObserver:
-  virtual void OnPeripheralBatteryUpdate(const std::string& path,
-                                         const std::string& model_name,
-                                         int level) OVERRIDE;
-
-  virtual void OnPeripheralBatteryError(const std::string& path,
-                                        const std::string& model_name) OVERRIDE;
 
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,

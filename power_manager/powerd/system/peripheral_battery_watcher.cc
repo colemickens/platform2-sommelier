@@ -15,7 +15,10 @@
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
+#include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
+#include "power_manager/peripheral_battery_status.pb.h"
 
 namespace power_manager {
 namespace system {
@@ -31,8 +34,10 @@ const int kDefaultPollIntervalMs = 10000;
 
 }  // namespace
 
-PeripheralBatteryWatcher::PeripheralBatteryWatcher()
-    : peripheral_battery_path_(kDefaultPeripheralBatteryPath),
+PeripheralBatteryWatcher::PeripheralBatteryWatcher(
+    DBusSenderInterface* dbus_sender)
+    : dbus_sender_(dbus_sender),
+      peripheral_battery_path_(kDefaultPeripheralBatteryPath),
       poll_timeout_id_(0),
       poll_interval_ms_(kDefaultPollIntervalMs) {
 }
@@ -43,16 +48,6 @@ PeripheralBatteryWatcher::~PeripheralBatteryWatcher() {
 
 void PeripheralBatteryWatcher::Init() {
   ReadBatteryStatuses();
-}
-
-void PeripheralBatteryWatcher::AddObserver(
-    PeripheralBatteryObserver* observer) {
-  observer_list_.AddObserver(observer);
-}
-
-void PeripheralBatteryWatcher::RemoveObserver(
-    PeripheralBatteryObserver* observer) {
-  observer_list_.RemoveObserver(observer);
 }
 
 void PeripheralBatteryWatcher::GetBatteryList(
@@ -129,6 +124,18 @@ gboolean PeripheralBatteryWatcher::ReadBatteryStatuses() {
   return FALSE;
 }
 
+void PeripheralBatteryWatcher::SendBatteryStatus(const std::string& path,
+                                                 const std::string& model_name,
+                                                 int level) {
+  PeripheralBatteryStatus proto;
+  proto.set_path(path);
+  proto.set_name(model_name);
+  if (level >= 0)
+    proto.set_level(level);
+  dbus_sender_->EmitSignalWithProtocolBuffer(kPeripheralBatteryStatusSignal,
+                                             proto);
+}
+
 void PeripheralBatteryWatcher::ReadCallback(const std::string& path,
                                             const std::string& model_name,
                                             const std::string& data) {
@@ -136,8 +143,7 @@ void PeripheralBatteryWatcher::ReadCallback(const std::string& path,
   TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
   int level = -1;
   if (base::StringToInt(trimmed_data, &level)) {
-    FOR_EACH_OBSERVER(PeripheralBatteryObserver, observer_list_,
-                      OnPeripheralBatteryUpdate(path, model_name, level));
+    SendBatteryStatus(path, model_name, level);
   } else {
     LOG(ERROR) << "Invalid battery level reading : [" << data << "]"
                << " from " << path;
@@ -146,8 +152,7 @@ void PeripheralBatteryWatcher::ReadCallback(const std::string& path,
 
 void PeripheralBatteryWatcher::ErrorCallback(const std::string& path,
                                              const std::string& model_name) {
-  FOR_EACH_OBSERVER(PeripheralBatteryObserver, observer_list_,
-                    OnPeripheralBatteryError(path, model_name));
+  SendBatteryStatus(path, model_name, -1);
 }
 
 }  // namespace system

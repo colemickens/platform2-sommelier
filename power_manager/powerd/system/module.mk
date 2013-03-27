@@ -5,6 +5,7 @@
 include common.mk
 
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
+	power_manager/peripheral_battery_status.pb.o \
 	powerd/system/ambient_light_sensor.o \
 	powerd/system/async_file_reader.o \
 	powerd/system/audio_client.o \
@@ -16,7 +17,7 @@ CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): CPPFLAGS += \
 	$(GLIB_FLAGS) $(shell $(PKG_CONFIG) --cflags libcras)
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): LDLIBS += \
-	$(GLIB_LIBS) -lrt -ludev $(shell $(PKG_CONFIG) --libs libcras)
+	$(GLIB_LIBS) -lrt -ludev $(shell $(PKG_CONFIG) --libs libcras) -lprotobuf-lite
 clean: CLEAN(powerd/libsystem.pie.a)
 
 CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a): \
@@ -38,6 +39,6 @@ CXX_BINARY(powerd/system_unittest): \
 CXX_BINARY(powerd/system_unittest): \
 	CPPFLAGS += $(GLIB_FLAGS)
 CXX_BINARY(powerd/system_unittest): \
-	LDLIBS += $(GLIB_LIBS) -lgtest -lgmock -lrt -ludev
+	LDLIBS += $(GLIB_LIBS) -lgtest -lgmock -lrt -ludev -lprotobuf-lite
 clean: CXX_BINARY(powerd/system_unittest)
 tests: TEST(CXX_BINARY(powerd/system_unittest))

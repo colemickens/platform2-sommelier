@@ -190,7 +190,8 @@ Daemon::Daemon(BacklightController* backlight_controller,
           input_.get(), this, backlight_controller, state_controller_.get(),
           dbus_sender_.get(), run_dir)),
       audio_client_(new system::AudioClient),
-      peripheral_battery_watcher_(new system::PeripheralBatteryWatcher),
+      peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
+          dbus_sender_.get())),
       low_battery_shutdown_time_s_(0),
       low_battery_shutdown_percent_(0.0),
       sample_window_max_(0),
@@ -227,11 +228,9 @@ Daemon::Daemon(BacklightController* backlight_controller,
       state_controller_initialized_(false) {
   backlight_controller_->AddObserver(this);
   audio_client_->AddObserver(this);
-  peripheral_battery_watcher_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
-  peripheral_battery_watcher_->RemoveObserver(this);
   audio_client_->RemoveObserver(this);
   backlight_controller_->RemoveObserver(this);
 
@@ -1261,19 +1260,6 @@ void Daemon::AdjustWindowSize(int64 battery_time,
     window_size += sample_window_min_;
   }
   empty_average->ChangeWindowSize(window_size);
-}
-
-void Daemon::OnPeripheralBatteryUpdate(const std::string& path,
-                                       const std::string& model_name,
-                                       int level) {
-  VLOG(1) << "Got battery update from " << path << ":" << model_name
-          << " with battery level " << level;
-}
-
-void Daemon::OnPeripheralBatteryError(const std::string& path,
-                                      const std::string& model_name) {
-  VLOG(1) << "Got error on reading battery level for " << path
-          << ":" << model_name;
 }
 
 void Daemon::OnLowBattery(int64 time_remaining_s,

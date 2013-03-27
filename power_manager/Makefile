@@ -54,6 +54,7 @@ GLIB_LIBS := $(shell $(PKG_CONFIG) --libs $(GLIB_DEPS))
 #                                    use them here
 SYSTEM_API_PROTO_BINDINGS = \
 	power_manager/input_event.pb.cc \
+	power_manager/peripheral_battery_status.pb.cc \
 	power_manager/policy.pb.cc \
 	power_manager/suspend.pb.cc \
 	power_supply_properties.pb.cc \
