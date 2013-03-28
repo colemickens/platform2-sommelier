@@ -496,7 +496,7 @@ void Daemon::AdjustKeyboardBrightness(int direction) {
     return;
 
   if (direction > 0)
-    keyboard_controller_->IncreaseUserBrightness(false /* only_if_zero */);
+    keyboard_controller_->IncreaseUserBrightness();
   else if (direction < 0)
     keyboard_controller_->DecreaseUserBrightness(true /* allow_off */);
 }
@@ -935,8 +935,7 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
 
 DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
     DBusMessage* message) {
-  bool changed = backlight_controller_->IncreaseUserBrightness(
-      false /* only_if_zero */);
+  bool changed = backlight_controller_->IncreaseUserBrightness();
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                BRIGHTNESS_ADJUST_UP,
                                BRIGHTNESS_ADJUST_MAX);
@@ -1091,8 +1090,9 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
                             DBUS_TYPE_BOOLEAN, &is_projecting,
                             DBUS_TYPE_INVALID);
   if (args_ok) {
-    state_controller_->HandleDisplayModeChange(
-        is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL);
+    DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
+    state_controller_->HandleDisplayModeChange(mode);
+    backlight_controller_->HandleDisplayModeChange(mode);
   } else {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
@@ -1382,14 +1382,9 @@ void Daemon::OnSessionStateChange(const std::string& state_str,
   }
 
   current_session_state_ = state;
-
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
-
-#ifndef IS_DESKTOP
-  // If the backlight was manually turned off by the user, turn it back on.
-  backlight_controller_->IncreaseUserBrightness(true /* only_if_zero */);
-#endif
+  backlight_controller_->HandleSessionStateChange(state);
 }
 
 void Daemon::Shutdown() {

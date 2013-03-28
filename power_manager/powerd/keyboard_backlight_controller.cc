@@ -148,6 +148,13 @@ void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
 
 void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {}
 
+void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
+
+void KeyboardBacklightController::HandleSessionStateChange(
+    SessionState state) {}
+
+void KeyboardBacklightController::HandlePowerButtonPress() {}
+
 void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed == dimmed_for_inactivity_)
     return;
@@ -186,11 +193,10 @@ bool KeyboardBacklightController::SetUserBrightnessPercent(
   return false;
 }
 
-bool KeyboardBacklightController::IncreaseUserBrightness(bool only_if_zero) {
+bool KeyboardBacklightController::IncreaseUserBrightness() {
   if (user_step_index_ == -1)
     InitUserStepIndex();
-  int top_step = static_cast<int>(user_steps_.size()) - 1;
-  if ((!only_if_zero || user_step_index_ == 0) && user_step_index_ < top_step)
+  if (user_step_index_ < static_cast<int>(user_steps_.size()) - 1)
     user_step_index_++;
   num_user_adjustments_++;
 

@@ -98,7 +98,7 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
   EXPECT_DOUBLE_EQ(static_cast<double>(initial_backlight_level_), percent);
 
   // After increasing the brightness, the new level should be returned.
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_TRUE(controller_.GetBrightnessPercent(&percent));
   EXPECT_DOUBLE_EQ(static_cast<double>(backlight_.current_level()), percent);
 }
@@ -187,9 +187,9 @@ TEST_F(KeyboardBacklightControllerTest, TwoValueLimitsPref) {
   // values instead of the expected three.
   user_limits_pref_ = "0.0\n50.0";
   ASSERT_TRUE(Init());
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
+  controller_.IncreaseUserBrightness();
+  controller_.IncreaseUserBrightness();
+  controller_.IncreaseUserBrightness();
   EXPECT_EQ(100, backlight_.current_level());
 }
 
@@ -198,9 +198,9 @@ TEST_F(KeyboardBacklightControllerTest, UnparseableLimitsPref) {
   // non-numeric value.
   user_limits_pref_ = "0.0\n50.0\nfoo";
   ASSERT_TRUE(Init());
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
+  controller_.IncreaseUserBrightness();
+  controller_.IncreaseUserBrightness();
+  controller_.IncreaseUserBrightness();
   EXPECT_EQ(100, backlight_.current_level());
 }
 
@@ -211,11 +211,11 @@ TEST_F(KeyboardBacklightControllerTest, SkipBogusUserStep) {
   ASSERT_EQ(0, backlight_.current_level());
 
   // The invalid value should be skipped over.
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(10, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(60, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
 }
 
@@ -228,9 +228,9 @@ TEST_F(KeyboardBacklightControllerTest, EmptyUserStepsPref) {
   ASSERT_TRUE(Init());
   ASSERT_EQ(0, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(63, backlight_.current_level());
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(87, backlight_.current_level());
 }
 
@@ -290,7 +290,7 @@ TEST_F(KeyboardBacklightControllerTest, ChangeStates) {
             backlight_.current_interval().InMilliseconds());
 
   // Send an increase request to switch to user control.
-  controller_.IncreaseUserBrightness(false /* only_if_zero */);
+  controller_.IncreaseUserBrightness();
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -367,7 +367,7 @@ TEST_F(KeyboardBacklightControllerTest, InitialUserLevel) {
   // After an increase request switches to user control of the brightness
   // level, the controller should first choose the step (10) nearest to the
   // initial level (15) and then increase to the next step (40).
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -399,25 +399,25 @@ TEST_F(KeyboardBacklightControllerTest, IncreaseUserBrightness) {
 
   EXPECT_EQ(0, backlight_.current_level());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(10, backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(1, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(40, backlight_.current_level());
   EXPECT_EQ(2, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(60, backlight_.current_level());
   EXPECT_EQ(3, controller_.GetNumUserAdjustments());
 
-  EXPECT_TRUE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(4, controller_.GetNumUserAdjustments());
 
-  EXPECT_FALSE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_FALSE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(100, backlight_.current_level());
   EXPECT_EQ(5, controller_.GetNumUserAdjustments());
 }

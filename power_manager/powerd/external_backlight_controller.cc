@@ -70,6 +70,43 @@ void ExternalBacklightController::RemoveObserver(
   observers_.RemoveObserver(observer);
 }
 
+void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
+
+void ExternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
+
+void ExternalBacklightController::HandleSessionStateChange(
+    SessionState state) {}
+
+void ExternalBacklightController::HandlePowerButtonPress() {}
+
+void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
+  if (dimmed != dimmed_for_inactivity_) {
+    dimmed_for_inactivity_ = dimmed;
+    display_power_setter_->SetDisplaySoftwareDimming(dimmed);
+  }
+}
+
+void ExternalBacklightController::SetOffForInactivity(bool off) {
+  if (off == off_for_inactivity_)
+    return;
+  off_for_inactivity_ = off;
+  UpdateScreenPowerState();
+}
+
+void ExternalBacklightController::SetSuspended(bool suspended) {
+  if (suspended == suspended_)
+    return;
+  suspended_ = suspended;
+  UpdateScreenPowerState();
+}
+
+void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
+  if (shutting_down == shutting_down_)
+    return;
+  shutting_down_ = shutting_down;
+  UpdateScreenPowerState();
+}
+
 bool ExternalBacklightController::GetBrightnessPercent(double* percent) {
   int64 current_level = 0;
   if (!backlight_->GetCurrentBrightnessLevel(&current_level))
@@ -98,44 +135,13 @@ bool ExternalBacklightController::SetUserBrightnessPercent(
   return true;
 }
 
-bool ExternalBacklightController::IncreaseUserBrightness(bool only_if_zero) {
+bool ExternalBacklightController::IncreaseUserBrightness() {
   return AdjustUserBrightnessByOffset(
-      kBrightnessAdjustmentPercent, true /* allow_off */, only_if_zero);
+      kBrightnessAdjustmentPercent, true /* allow_off */);
 }
 
 bool ExternalBacklightController::DecreaseUserBrightness(bool allow_off) {
-  return AdjustUserBrightnessByOffset(
-      -kBrightnessAdjustmentPercent, allow_off, false /* only_if_zero */);
-}
-
-void ExternalBacklightController::HandlePowerSourceChange(PowerSource source) {}
-
-void ExternalBacklightController::SetDimmedForInactivity(bool dimmed) {
-  if (dimmed != dimmed_for_inactivity_) {
-    dimmed_for_inactivity_ = dimmed;
-    display_power_setter_->SetDisplaySoftwareDimming(dimmed);
-  }
-}
-
-void ExternalBacklightController::SetOffForInactivity(bool off) {
-  if (off == off_for_inactivity_)
-    return;
-  off_for_inactivity_ = off;
-  UpdateScreenPowerState();
-}
-
-void ExternalBacklightController::SetSuspended(bool suspended) {
-  if (suspended == suspended_)
-    return;
-  suspended_ = suspended;
-  UpdateScreenPowerState();
-}
-
-void ExternalBacklightController::SetShuttingDown(bool shutting_down) {
-  if (shutting_down == shutting_down_)
-    return;
-  shutting_down_ = shutting_down;
-  UpdateScreenPowerState();
+  return AdjustUserBrightnessByOffset(-kBrightnessAdjustmentPercent, allow_off);
 }
 
 int ExternalBacklightController::GetNumAmbientLightSensorAdjustments() const {
@@ -168,8 +174,7 @@ int64 ExternalBacklightController::PercentToLevel(double percent) {
 
 bool ExternalBacklightController::AdjustUserBrightnessByOffset(
     double percent_offset,
-    bool allow_off,
-    bool only_if_zero) {
+    bool allow_off) {
   double old_percent = 0.0;
   if (!GetBrightnessPercent(&old_percent))
     return false;
@@ -177,8 +182,7 @@ bool ExternalBacklightController::AdjustUserBrightnessByOffset(
   double new_percent = old_percent + percent_offset;
   new_percent = std::min(std::max(new_percent, 0.0), 100.0);
 
-  if ((!allow_off && new_percent <= kEpsilon) ||
-      (only_if_zero && old_percent > kEpsilon)) {
+  if (!allow_off && new_percent <= kEpsilon) {
     num_user_adjustments_++;
     return false;
   }

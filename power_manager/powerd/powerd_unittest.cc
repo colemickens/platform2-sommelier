@@ -73,6 +73,9 @@ class BacklightControllerStub : public BacklightController {
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE {}
   virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE {}
   virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE {}
+  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE {}
+  virtual void HandleSessionStateChange(SessionState state) OVERRIDE {}
+  virtual void HandlePowerButtonPress() OVERRIDE {}
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE {}
   virtual void SetOffForInactivity(bool off) OVERRIDE {}
   virtual void SetSuspended(bool suspended) OVERRIDE {}
@@ -85,9 +88,7 @@ class BacklightControllerStub : public BacklightController {
       OVERRIDE {
     return true;
   }
-  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE {
-    return true;
-  }
+  virtual bool IncreaseUserBrightness() OVERRIDE { return true; }
   virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE { return true; }
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE {
     return num_als_adjustments_;

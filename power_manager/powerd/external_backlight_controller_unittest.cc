@@ -57,7 +57,7 @@ TEST_F(ExternalBacklightControllerTest, FailedBacklightRequest) {
   EXPECT_FALSE(
       controller_.SetUserBrightnessPercent(
           50.0, BacklightController::TRANSITION_INSTANT));
-  EXPECT_FALSE(controller_.IncreaseUserBrightness(false /* only_if_zero */));
+  EXPECT_FALSE(controller_.IncreaseUserBrightness());
   EXPECT_FALSE(controller_.DecreaseUserBrightness(true /* allow_off */));
   EXPECT_FALSE(controller_.Init());
 }
@@ -143,7 +143,7 @@ TEST_F(ExternalBacklightControllerTest, CountAdjustments) {
       kNumUserDownAdjustments +
       kNumUserAbsoluteAdjustments;
   for (int i = 0; i < kNumUserUpAdjustments; ++i)
-    controller_.IncreaseUserBrightness(false /* only_if_zero */);
+    controller_.IncreaseUserBrightness();
   for (int i = 0; i < kNumUserDownAdjustments; ++i)
     controller_.DecreaseUserBrightness(true /* allow_off */);
   for (int i = 0; i < kNumUserAbsoluteAdjustments; ++i) {
@@ -176,7 +176,7 @@ TEST_F(ExternalBacklightControllerTest, ChangeBrightness) {
 
   // Increase enough times to hit 100%.
   for (int i = 0; i < kNumAdjustmentsToReachLimit; ++i)
-    controller_.IncreaseUserBrightness(false /* only_if_zero */);
+    controller_.IncreaseUserBrightness();
   EXPECT_DOUBLE_EQ(100.0, GetBacklightBrightnessPercent());
 
   // Decrease enough times to hit 0%.

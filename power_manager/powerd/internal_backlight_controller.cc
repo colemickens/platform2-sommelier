@@ -95,6 +95,7 @@ InternalBacklightController::InternalBacklightController(
       light_sensor_(sensor),
       display_power_setter_(display_power_setter),
       power_source_(POWER_BATTERY),
+      display_mode_(DISPLAY_NORMAL),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       suspended_(false),
@@ -147,7 +148,7 @@ bool InternalBacklightController::Init() {
     // 1 is subtracted from kMaxBrightnessSteps to account for the step between
     // |min_brightness_level_| and 0.
     step_percent_ =
-        (kMaxPercent - LevelToPercent(min_visible_level_)) /
+        (kMaxPercent - kMinVisiblePercent) /
         std::min(kMaxBrightnessSteps - 1, max_level_ - min_visible_level_);
   }
   CHECK_GT(step_percent_, 0.0);
@@ -235,6 +236,25 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   UpdateState();
 }
 
+void InternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {
+  if (display_mode_ == mode)
+    return;
+
+  display_mode_ = mode;
+
+  // If there's no external display now, make sure that the panel is on.
+  if (display_mode_ == DISPLAY_NORMAL)
+    EnsureUserBrightnessIsNonzero();
+}
+
+void InternalBacklightController::HandleSessionStateChange(SessionState state) {
+  EnsureUserBrightnessIsNonzero();
+}
+
+void InternalBacklightController::HandlePowerButtonPress() {
+  EnsureUserBrightnessIsNonzero();
+}
+
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed_for_inactivity_ == dimmed)
     return;
@@ -292,16 +312,10 @@ bool InternalBacklightController::SetUserBrightnessPercent(
                                       BRIGHTNESS_CHANGE_USER_INITIATED);
 }
 
-bool InternalBacklightController::IncreaseUserBrightness(bool only_if_zero) {
+bool InternalBacklightController::IncreaseUserBrightness() {
   double old_percent = CalculateUndimmedBrightnessPercent();
-  if (only_if_zero && old_percent >= LevelToPercent(min_visible_level_)) {
-    user_adjustment_count_++;
-    return false;
-  }
-
   double new_percent =
-      old_percent < LevelToPercent(min_visible_level_) - kEpsilon ?
-      LevelToPercent(min_visible_level_) :
+      (old_percent < kMinVisiblePercent - kEpsilon) ? kMinVisiblePercent :
       ClampPercentToVisibleRange(old_percent + step_percent_);
   return SetUserBrightnessPercent(new_percent, TRANSITION_FAST);
 }
@@ -310,8 +324,7 @@ bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
   // Lower the backlight to the next step, turning it off if it was already at
   // the minimum visible level.
   double old_percent = CalculateUndimmedBrightnessPercent();
-  double new_percent =
-      old_percent <= LevelToPercent(min_visible_level_) + kEpsilon ? 0.0 :
+  double new_percent = old_percent <= kMinVisiblePercent + kEpsilon ? 0.0 :
       ClampPercentToVisibleRange(old_percent - step_percent_);
 
   if (!allow_off && new_percent <= kEpsilon) {
@@ -395,6 +408,14 @@ double InternalBacklightController::CalculateUndimmedBrightnessPercent() const {
       plugged_offset_percent_ : unplugged_offset_percent_;
   percent += als_offset_percent_;
   return user_requested_zero_ ? 0.0 : ClampPercentToVisibleRange(percent);
+}
+
+void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
+  // Avoid turning the backlight back on if an external display is
+  // connected since doing so may result in the desktop being resized.
+  if (display_mode_ == DISPLAY_NORMAL &&
+      CalculateUndimmedBrightnessPercent() < kMinVisiblePercent)
+    IncreaseUserBrightness();
 }
 
 void InternalBacklightController::UpdateState() {
@@ -560,9 +581,10 @@ void InternalBacklightController::ReadPrefs() {
   CHECK_GE(unplugged_offset_percent_, -kMaxPercent);
   CHECK_LE(unplugged_offset_percent_, kMaxPercent);
 
-  double min_percent = LevelToPercent(min_visible_level_);
-  plugged_offset_percent_ = std::max(min_percent, plugged_offset_percent_);
-  unplugged_offset_percent_ = std::max(min_percent, unplugged_offset_percent_);
+  plugged_offset_percent_ =
+      std::max(kMinVisiblePercent, plugged_offset_percent_);
+  unplugged_offset_percent_ =
+      std::max(kMinVisiblePercent, unplugged_offset_percent_);
 
   prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
                   &instant_transitions_below_min_level_);

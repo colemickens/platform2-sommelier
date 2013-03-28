@@ -44,11 +44,19 @@ class BacklightController {
   // Handles the system's source of power being changed.
   virtual void HandlePowerSourceChange(PowerSource source) = 0;
 
+  // Handles the display mode changing.
+  virtual void HandleDisplayModeChange(DisplayMode mode) = 0;
+
+  // Handles the session state changing.
+  virtual void HandleSessionStateChange(SessionState state) = 0;
+
+  // Handles the power button being pressed.
+  virtual void HandlePowerButtonPress() = 0;
+
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this
-  // one, e.g. the backlight will be turned off if
-  // SetOffForInactivity(true) is called after
-  // SetDimmedForInactivity(true).
+  // one, e.g. the backlight will be turned off if SetOffForInactivity(true)
+  // is called after SetDimmedForInactivity(true).
   virtual void SetDimmedForInactivity(bool dimmed) = 0;
 
   // Sets whether the backlight should be immediately turned off in
@@ -76,12 +84,7 @@ class BacklightController {
   // Increases the brightness level of the backlight by one step in
   // response to a user request.  Returns true if the brightness was
   // changed.
-  //
-  // If |only_if_zero| is true, the user brightness is only increased if it
-  // is currently zero.  This can be used to ensure that the backlight is
-  // turned on (assuming that the system is in an undimmed state) even if
-  // the user previously used the brightness keys to turn the backlight off.
-  virtual bool IncreaseUserBrightness(bool only_if_zero) = 0;
+  virtual bool IncreaseUserBrightness() = 0;
 
   // Decreases the brightness level of the backlight by one step in
   // response to a user request.  Returns true if the brightness was

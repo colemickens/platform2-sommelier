@@ -61,6 +61,9 @@ class KeyboardBacklightController
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
+  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE;
+  virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
+  virtual void HandlePowerButtonPress() OVERRIDE;
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;
@@ -68,7 +71,7 @@ class KeyboardBacklightController
   virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
   virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
       OVERRIDE;
-  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE;
+  virtual bool IncreaseUserBrightness() OVERRIDE;
   virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;

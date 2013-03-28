@@ -34,16 +34,19 @@ class ExternalBacklightController : public BacklightController,
   // BacklightController implementation:
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
-  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
-  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
-      OVERRIDE;
-  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE;
-  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
   virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
+  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE;
+  virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
+  virtual void HandlePowerButtonPress() OVERRIDE;
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;
   virtual void SetShuttingDown(bool shutting_down) OVERRIDE;
+  virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
+  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
+      OVERRIDE;
+  virtual bool IncreaseUserBrightness() OVERRIDE;
+  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
@@ -58,11 +61,9 @@ class ExternalBacklightController : public BacklightController,
   int64 PercentToLevel(double percent);
 
   // Adjusts the user-requested brightness by |percent_offset|.
-  // |allow_off| and |only_if_zero| correspond to the identically-named
-  // parameters to IncreaseUserBrightness() and DecreaseUserBrightness().
-  bool AdjustUserBrightnessByOffset(double percent_offset,
-                                    bool allow_off,
-                                    bool only_if_zero);
+  // |allow_off| corresponds to the identically-named parameter to
+  // DecreaseUserBrightness().
+  bool AdjustUserBrightnessByOffset(double percent_offset, bool allow_off);
 
   // Turns displays on or off via |monitor_reconfigure_| as needed for
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.

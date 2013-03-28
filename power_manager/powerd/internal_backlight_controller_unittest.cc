@@ -107,11 +107,11 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
 
   // Check that the first step increases the brightness; within the loop
   // we'll just ensure that the brightness never decreases.
-  controller_->IncreaseUserBrightness(false /* only_if_zero */);
+  controller_->IncreaseUserBrightness();
   EXPECT_GT(backlight_.current_level(), kPrefLevel);
   for (int i = 0; i < InternalBacklightController::kMaxBrightnessSteps; ++i) {
     int64 old_level = backlight_.current_level();
-    controller_->IncreaseUserBrightness(false /* only_if_zero */);
+    controller_->IncreaseUserBrightness();
     EXPECT_GE(backlight_.current_level(), old_level);
   }
   EXPECT_EQ(max_backlight_level_, backlight_.current_level());
@@ -131,15 +131,11 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   controller_->DecreaseUserBrightness(true /* allow_off */);
   EXPECT_EQ(0, backlight_.current_level());
 
-  // Check that the |only_if_zero| parameter is honored.
-  controller_->IncreaseUserBrightness(true /* only_if_zero */);
+  // One increase request should raise the brightness to the minimum
+  // visible level, while a second one should increase it above that.
+  controller_->IncreaseUserBrightness();
   EXPECT_EQ(default_min_visible_level_, backlight_.current_level());
-  controller_->IncreaseUserBrightness(true /* only_if_zero */);
-  EXPECT_EQ(default_min_visible_level_, backlight_.current_level());
-
-  // Sending another increase request should raise the brightness above the
-  // minimum visible level.
-  controller_->IncreaseUserBrightness(false /* only_if_zero */);
+  controller_->IncreaseUserBrightness();
   EXPECT_GT(backlight_.current_level(), default_min_visible_level_);
 }
 
@@ -152,7 +148,7 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
   controller_->AddObserver(&observer);
 
   // Increase the brightness and check that the observer is notified.
-  controller_->IncreaseUserBrightness(false /* only_if_zero */);
+  controller_->IncreaseUserBrightness();
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
@@ -572,6 +568,42 @@ TEST_F(InternalBacklightControllerTest, AvoidStrangePowerSourceAdjustments) {
   // The plugged pref shouldn't be changed.
   ASSERT_TRUE(prefs_.GetDouble(kPluggedBrightnessOffsetPref, &pref_value));
   EXPECT_DOUBLE_EQ(kNewPluggedPercent, pref_value);
+}
+
+TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
+  // Set the brightness to zero and check that it's increased to the
+  // minimum visible level when the session state changes.
+  Init(POWER_AC);
+  const int kMinVisibleLevel =
+      PercentToLevel(InternalBacklightController::kMinVisiblePercent);
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT));
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+
+  // Pressing the power button should also increase the brightness.
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT));
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandlePowerButtonPress();
+  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+
+  // Enter presentation mode.  The same actions that forced the backlight
+  // on before shouldn't do anything now; turning the panel back on while a
+  // second display is connected would resize the desktop.
+  controller_->HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT));
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandleSessionStateChange(SESSION_STOPPED);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandlePowerButtonPress();
+  EXPECT_EQ(0, backlight_.current_level());
+
+  // The backlight should be turned on after exiting presentation mode.
+  controller_->HandleDisplayModeChange(DISPLAY_NORMAL);
+  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 }
 
 }  // namespace power_manager

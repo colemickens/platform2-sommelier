@@ -56,6 +56,9 @@ class InternalBacklightController : public BacklightController,
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE;
   virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE;
+  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE;
+  virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
+  virtual void HandlePowerButtonPress() OVERRIDE;
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;
@@ -63,7 +66,7 @@ class InternalBacklightController : public BacklightController,
   virtual bool GetBrightnessPercent(double* percent) OVERRIDE;
   virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
       OVERRIDE;
-  virtual bool IncreaseUserBrightness(bool only_if_zero) OVERRIDE;
+  virtual bool IncreaseUserBrightness() OVERRIDE;
   virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE;
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
@@ -87,6 +90,11 @@ class InternalBacklightController : public BacklightController,
   // in an undimmed state (which is typically just the appropriate
   // user-set offset plus the current ambient-light-contributed offset).
   double CalculateUndimmedBrightnessPercent() const;
+
+  // Increases the user-set brightness to the minimum visible level if it's
+  // currently set to zero.  Note that the brightness is left unchanged if
+  // an external display is connected to avoid resizing the desktop.
+  void EnsureUserBrightnessIsNonzero();
 
   // Updates the current brightness after assessing the current state
   // (based on |power_source_|, |dimmed_for_inactivity_|, etc.).  Should be
@@ -137,6 +145,7 @@ class InternalBacklightController : public BacklightController,
 
   // Information describing the current state of the system.
   PowerSource power_source_;
+  DisplayMode display_mode_;
   bool dimmed_for_inactivity_;
   bool off_for_inactivity_;
   bool suspended_;
