@@ -9,8 +9,9 @@
 
 #include "base/basictypes.h"
 
-#include "address_mapper.h"
 #include "perf_reader.h"
+
+class AddressMapper;
 
 struct ParsedEvent {
   // TODO(sque): to save space, |raw_event| should be a pointer.
@@ -42,7 +43,7 @@ struct PerfEventStats {
 
 class PerfParser : public PerfReader {
  public:
-  PerfParser() : do_remap_(false) {}
+  PerfParser();
   ~PerfParser();
 
   // Gets parsed event/sample info from raw event data.
@@ -96,7 +97,7 @@ class PerfParser : public PerfReader {
 
   // For synthetic address mapping.
   bool do_remap_;
-  AddressMapper kernel_mapper_;
+  AddressMapper* kernel_mapper_;
   std::map<uint32, AddressMapper*> process_mappers_;
   std::map<uint32, uint32> child_to_parent_pid_map_;
 

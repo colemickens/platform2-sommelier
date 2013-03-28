@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 
+#include "address_mapper.h"
 #include "utils.h"
 
 namespace {
@@ -255,8 +256,12 @@ bool CompareParsedEventTimes(const ParsedEvent* e1, const ParsedEvent* e2) {
 
 }  // namespace
 
+PerfParser::PerfParser() : do_remap_(false),
+                           kernel_mapper_(new AddressMapper) {}
+
 PerfParser::~PerfParser() {
   ResetAddressMappers();
+  delete kernel_mapper_;
 }
 
 bool PerfParser::ParseRawEvents() {
@@ -376,9 +381,9 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
   uint64 mapped_addr;
   bool mapped = false;
   AddressMapper* mapper = NULL;
-  if (kernel_mapper_.GetMappedAddress(event->ip, &mapped_addr)) {
+  if (kernel_mapper_->GetMappedAddress(event->ip, &mapped_addr)) {
     mapped = true;
-    mapper = &kernel_mapper_;
+    mapper = kernel_mapper_;
   } else {
     uint32 pid = event->pid;
     while (process_mappers_.find(pid) != process_mappers_.end()) {
@@ -402,7 +407,7 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
 }
 
 bool PerfParser::MapMmapEvent(struct mmap_event* event) {
-  AddressMapper* mapper = &kernel_mapper_;
+  AddressMapper* mapper = kernel_mapper_;
   uint32 pid = event->pid;
 
   // We need to hide only the real kernel addresses.  But the pid of kernel
