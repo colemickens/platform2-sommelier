@@ -10,7 +10,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/logging.h"
-#include "shill/wifi.h"
+#include "shill/supplicant_event_delegate_interface.h"
 
 using std::map;
 using std::string;
@@ -18,11 +18,11 @@ using std::string;
 namespace shill {
 
 SupplicantInterfaceProxy::SupplicantInterfaceProxy(
-    const WiFiRefPtr &wifi,
+    SupplicantEventDelegateInterface *delegate,
     DBus::Connection *bus,
     const ::DBus::Path &object_path,
     const char *dbus_addr)
-    : proxy_(wifi, bus, object_path, dbus_addr) {}
+    : proxy_(delegate, bus, object_path, dbus_addr) {}
 
 SupplicantInterfaceProxy::~SupplicantInterfaceProxy() {}
 
@@ -155,10 +155,10 @@ void SupplicantInterfaceProxy::SetDisableHighBitrates(
 // definitions for private class SupplicantInterfaceProxy::Proxy
 
 SupplicantInterfaceProxy::Proxy::Proxy(
-    const WiFiRefPtr &wifi, DBus::Connection *bus,
+    SupplicantEventDelegateInterface *delegate, DBus::Connection *bus,
     const DBus::Path &dbus_path, const char *dbus_addr)
     : DBus::ObjectProxy(*bus, dbus_path, dbus_addr),
-      wifi_(wifi) {}
+      delegate_(delegate) {}
 
 SupplicantInterfaceProxy::Proxy::~Proxy() {}
 
@@ -176,25 +176,25 @@ void SupplicantInterfaceProxy::Proxy::BSSAdded(
     const ::DBus::Path &BSS,
     const std::map<string, ::DBus::Variant> &properties) {
   SLOG(DBus, 2) << __func__;
-  wifi_->BSSAdded(BSS, properties);
+  delegate_->BSSAdded(BSS, properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::Certification(
     const std::map<string, ::DBus::Variant> &properties) {
   SLOG(DBus, 2) << __func__;
-  wifi_->Certification(properties);
+  delegate_->Certification(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::EAP(
     const string &status, const string &parameter) {
   SLOG(DBus, 2) << __func__ << ": status " << status
                 << ", parameter " << parameter;
-  wifi_->EAPEvent(status, parameter);
+  delegate_->EAPEvent(status, parameter);
 }
 
 void SupplicantInterfaceProxy::Proxy::BSSRemoved(const ::DBus::Path &BSS) {
   SLOG(DBus, 2) << __func__;
-  wifi_->BSSRemoved(BSS);
+  delegate_->BSSRemoved(BSS);
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkAdded(
@@ -207,7 +207,7 @@ void SupplicantInterfaceProxy::Proxy::NetworkAdded(
 void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
     const ::DBus::Path &/*network*/) {
   SLOG(DBus, 2) << __func__;
-  // TODO(quiche): Pass this up to WiFi, so that it can clean its
+  // TODO(quiche): Pass this up to the delegate, so that it can clean its
   // rpcid_by_service_ map. crosbug.com/24699
 }
 
@@ -220,13 +220,13 @@ void SupplicantInterfaceProxy::Proxy::NetworkSelected(
 void SupplicantInterfaceProxy::Proxy::PropertiesChanged(
     const std::map<string, ::DBus::Variant> &properties) {
   SLOG(DBus, 2) << __func__;
-  wifi_->PropertiesChanged(properties);
+  delegate_->PropertiesChanged(properties);
 }
 
 void SupplicantInterfaceProxy::Proxy::ScanDone(const bool& success) {
   SLOG(DBus, 2) << __func__ << ": " << success;
   if (success) {
-    wifi_->ScanDone();
+    delegate_->ScanDone();
   }
 }
 

@@ -54,7 +54,6 @@ using std::vector;
 namespace shill {
 
 // statics
-const char WiFi::kSupplicantConfPath[] = SHIMDIR "/wpa_supplicant.conf";
 const char *WiFi::kDefaultBgscanMethod =
     WPASupplicant::kNetworkBgscanMethodSimple;
 const uint16 WiFi::kDefaultBgscanShortIntervalSeconds = 30;
@@ -1521,7 +1520,7 @@ void WiFi::ConnectToSupplicant() {
         append_string(WPASupplicant::kDriverNL80211);
     create_interface_args[
         WPASupplicant::kInterfacePropertyConfigFile].writer().
-        append_string(kSupplicantConfPath);
+        append_string(WPASupplicant::kSupplicantConfPath);
     interface_path =
         supplicant_process_proxy_->CreateInterface(create_interface_args);
   } catch (const DBus::Error &e) {  // NOLINT

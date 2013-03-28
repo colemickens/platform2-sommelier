@@ -31,6 +31,7 @@ class ModemSimpleProxyInterface;
 class PowerManagerProxyDelegate;
 class PowerManagerProxyInterface;
 class SupplicantBSSProxyInterface;
+class SupplicantEventDelegateInterface;
 class SupplicantInterfaceProxyInterface;
 class SupplicantNetworkProxyInterface;
 class SupplicantProcessProxyInterface;
@@ -85,7 +86,7 @@ class ProxyFactory {
       const char *dbus_addr);
 
   virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
-      const WiFiRefPtr &wifi,
+      SupplicantEventDelegateInterface *delegate,
       const DBus::Path &object_path,
       const char *dbus_addr);
 

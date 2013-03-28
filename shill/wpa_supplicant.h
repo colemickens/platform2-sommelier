@@ -38,6 +38,7 @@ class WPASupplicant {
   static const char kDebugLevelMsgDump[];
   static const char kDebugLevelWarning[];
   static const char kDriverNL80211[];
+  static const char kDriverWired[];
   static const char kEAPParameterAlertUnknownCA[];
   static const char kEAPParameterFailure[];
   static const char kEAPParameterSuccess[];
@@ -131,6 +132,8 @@ class WPASupplicant {
   static const uint32_t kNetworkModeAdHocInt;
   static const uint32_t kNetworkModeAccessPointInt;
   static const uint32_t kScanMaxSSIDsPerScan;
+
+  static const char kSupplicantConfPath[];
 
   // Populate the wpa_supplicant DBus parameter map |params| with the
   // credentials in |eap|.  To do so, this function may use |certificate_file|

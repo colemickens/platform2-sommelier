@@ -284,7 +284,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     }
 
     virtual SupplicantInterfaceProxyInterface *CreateSupplicantInterfaceProxy(
-        const WiFiRefPtr &/*wifi*/,
+        SupplicantEventDelegateInterface */*delegate*/,
         const DBus::Path &/*object_path*/,
         const char */*dbus_addr*/) {
       return test_->supplicant_interface_proxy_.release();
@@ -2075,7 +2075,7 @@ TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {
 }
 
 TEST_F(WiFiMainTest, VerifyPaths) {
-  string path = WiFi::kSupplicantConfPath;
+  string path(WPASupplicant::kSupplicantConfPath);
   TrimString(path, FilePath::kSeparators, &path);
   EXPECT_TRUE(file_util::PathExists(FilePath(SYSROOT).Append(path)));
 }

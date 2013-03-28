@@ -16,12 +16,17 @@
 
 namespace shill {
 
+class SupplicantEventDelegateInterface;
+
 // SupplicantInterfaceProxy. provides access to wpa_supplicant's
-// network-interface APIs via D-Bus.
+// network-interface APIs via D-Bus.  This takes a delegate, which
+// is an interface that is used to send notifications of supplicant
+// events.  This pointer is not owned by SupplicantInterfaceProxy
+// and must outlive the proxy.
 class SupplicantInterfaceProxy
     : public SupplicantInterfaceProxyInterface {
  public:
-  SupplicantInterfaceProxy(const WiFiRefPtr &wifi,
+  SupplicantInterfaceProxy(SupplicantEventDelegateInterface *delegate,
                            DBus::Connection *bus,
                            const ::DBus::Path &object_path,
                            const char *dbus_addr);
@@ -46,7 +51,7 @@ class SupplicantInterfaceProxy
   class Proxy : public fi::w1::wpa_supplicant1::Interface_proxy,
     public ::DBus::ObjectProxy {
    public:
-    Proxy(const WiFiRefPtr &wifi,
+    Proxy(SupplicantEventDelegateInterface *delegate,
           DBus::Connection *bus,
           const ::DBus::Path &object_path,
           const char *dbus_addr);
@@ -73,7 +78,10 @@ class SupplicantInterfaceProxy
                                    &properties);
     virtual void ScanDone(const bool &success);
 
-    WiFiRefPtr wifi_;
+    // This pointer is owned by the object that created |this|.  That object
+    // MUST destroy |this| before destroying itself.
+    SupplicantEventDelegateInterface *delegate_;
+
     DISALLOW_COPY_AND_ASSIGN(Proxy);
   };
 

@@ -42,6 +42,7 @@ const char WPASupplicant::kDebugLevelInfo[] = "info";
 const char WPASupplicant::kDebugLevelMsgDump[] = "msgdump";
 const char WPASupplicant::kDebugLevelWarning[] = "warning";
 const char WPASupplicant::kDriverNL80211[] = "nl80211";
+const char WPASupplicant::kDriverWired[] = "wired";
 const char WPASupplicant::kEAPParameterAlertUnknownCA[] = "unknown CA";
 const char WPASupplicant::kEAPParameterFailure[] = "failure";
 const char WPASupplicant::kEAPParameterSuccess[] = "success";
@@ -136,6 +137,9 @@ const uint32_t WPASupplicant::kNetworkModeInfrastructureInt = 0;
 const uint32_t WPASupplicant::kNetworkModeAdHocInt = 1;
 const uint32_t WPASupplicant::kNetworkModeAccessPointInt = 2;
 const uint32_t WPASupplicant::kScanMaxSSIDsPerScan = 4;
+
+const char WPASupplicant::kSupplicantConfPath[] =
+    SHIMDIR "/wpa_supplicant.conf";
 
 // static
 void WPASupplicant::Populate8021xProperties(

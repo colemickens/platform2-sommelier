@@ -94,10 +94,10 @@ SupplicantProcessProxyInterface *ProxyFactory::CreateSupplicantProcessProxy(
 }
 
 SupplicantInterfaceProxyInterface *ProxyFactory::CreateSupplicantInterfaceProxy(
-    const WiFiRefPtr &wifi,
+    SupplicantEventDelegateInterface *delegate,
     const DBus::Path &object_path,
     const char *dbus_addr) {
-  return new SupplicantInterfaceProxy(wifi,
+  return new SupplicantInterfaceProxy(delegate,
                                       connection(),
                                       object_path,
                                       dbus_addr);

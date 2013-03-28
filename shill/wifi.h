@@ -91,6 +91,7 @@
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/supplicant_event_delegate_interface.h"
 
 namespace shill {
 
@@ -104,7 +105,7 @@ class WiFiProvider;
 class WiFiService;
 
 // WiFi class. Specialization of Device for WiFi.
-class WiFi : public Device {
+class WiFi : public Device, public SupplicantEventDelegateInterface {
  public:
   WiFi(ControlInterface *control_interface,
        EventDispatcher *dispatcher,
@@ -125,16 +126,20 @@ class WiFi : public Device {
   // Callback for when a service is configured with an IP.
   virtual void OnConnected();
 
-  // Called by SupplicantInterfaceProxy, in response to events from
+  // Implementation of SupplicantEventDelegateInterface.  These methods
+  // are called by SupplicantInterfaceProxy, in response to events from
   // wpa_supplicant.
-  void BSSAdded(const ::DBus::Path &BSS,
-                const std::map<std::string, ::DBus::Variant> &properties);
-  void BSSRemoved(const ::DBus::Path &BSS);
-  void Certification(const std::map<std::string, ::DBus::Variant> &properties);
-  void EAPEvent(const std::string &status, const std::string &parameter);
-  void PropertiesChanged(
+  virtual void BSSAdded(
+      const ::DBus::Path &BSS,
       const std::map<std::string, ::DBus::Variant> &properties);
-  void ScanDone();
+  virtual void BSSRemoved(const ::DBus::Path &BSS);
+  virtual void Certification(
+      const std::map<std::string, ::DBus::Variant> &properties);
+  virtual void EAPEvent(
+      const std::string &status, const std::string &parameter);
+  virtual void PropertiesChanged(
+      const std::map<std::string, ::DBus::Variant> &properties);
+  virtual void ScanDone();
 
   // Called by WiFiService.
   virtual void ConnectTo(
@@ -198,7 +203,6 @@ class WiFi : public Device {
   typedef std::map<const std::string, WiFiEndpointRefPtr> EndpointMap;
   typedef std::map<const WiFiService *, std::string> ReverseServiceMap;
 
-  static const char kSupplicantConfPath[];
   static const char *kDefaultBgscanMethod;
   static const uint16 kDefaultBgscanShortIntervalSeconds;
   static const int32 kDefaultBgscanSignalThresholdDbm;
