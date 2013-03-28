@@ -827,10 +827,6 @@ MATCHER_P(KeyValueStoreEq, value, "") {
       value.int_properties() == arg.int_properties() &&
       value.string_properties() == arg.string_properties() &&
       value.uint_properties() == arg.uint_properties();
-#if 0
-  // TODO(gauravsh): Enable the match failure explainer once gtest is
-  //  upgraded to version 1.6 (1.5 is the lowest version that supports
-  // |result_listener| and PrintToString). crbug.com/211445
   if (!match) {
     *result_listener << "\nExpected KeyValueStore:\n"
                      << "\tbool_properties: "
@@ -851,7 +847,6 @@ MATCHER_P(KeyValueStoreEq, value, "") {
                      << "\n\tuint_properties: "
                      << testing::PrintToString(arg.uint_properties());
   }
-#endif
   return match;
 }
 
