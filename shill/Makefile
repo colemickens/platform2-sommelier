@@ -5,7 +5,12 @@
 AR ?= ar
 CC ?= gcc
 CXX ?= g++
+# -clang uses clang to syntax check, and then runs gcc/g++ to actually
+# generate binaries.
+# -print-cmdline outputs both the clang and gnu command lines.
+# For more, see http://www.chromium.org/chromium-os/developer-guide
 CFLAGS += \
+	-clang -print-cmdline \
 	-Wall \
 	-Werror \
 	-Wextra \
@@ -14,7 +19,21 @@ CFLAGS += \
 	-Wno-unused-result \
 	-Wuninitialized
 CXXFLAGS ?= -fno-strict-aliasing
-CXXFLAGS += $(CFLAGS) -Woverloaded-virtual
+
+# -Wno-bind-to-temporary copy is required for clang, because clang is
+# more strict than g++ with respect to c++98 and references to
+# temporaries.  The restriction is relaxed in c++11, but we can't use
+# --std=c++11, because our code has other issues with c++11.
+#
+# For info on binding to temporaries, see
+# - http://stackoverflow.com/questions/13898750
+# - http://stackoverflow.com/questions/1826934
+#
+# TODO(quiche): remove -Wno-bind-to-temporary-copy after we move to
+# c++11. (crosbug.com/224515)
+CXXFLAGS += $(CFLAGS) \
+	-Woverloaded-virtual \
+	-Xclang-only=-Wno-bind-to-temporary-copy
 CXXFLAGS += $(EXTRA_CXXFLAGS)
 CPPFLAGS ?= -D__STDC_FORMAT_MACROS -D__STDC_LIMIT_MACROS
 PKG_CONFIG ?= pkg-config
