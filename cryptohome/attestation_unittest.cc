@@ -71,6 +71,7 @@ class AttestationTest : public testing::Test {
     if (!rsa_) {
       rsa_ = RSA_generate_key(2048, 65537, NULL, NULL);
       CHECK(rsa_);
+      attestation_.set_enterprise_test_key(rsa_);
     }
     return rsa_;
   }
@@ -368,14 +369,11 @@ TEST_F(AttestationTest, EMKChallenge) {
                                              false,
                                              "test",
                                              &blob));
-  SecureBlob public_key = GetX509PublicKey();
   SecureBlob bad_prefix_challenge = GetEnterpriseChallenge("bad", true);
   EXPECT_FALSE(attestation_.SignEnterpriseChallenge(false,
                                                     "test",
                                                     "test_domain",
                                                     SecureBlob("test_id"),
-                                                    public_key,
-                                                    public_key,
                                                     bad_prefix_challenge,
                                                     &blob));
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
@@ -383,8 +381,6 @@ TEST_F(AttestationTest, EMKChallenge) {
                                                    "test",
                                                    "test_domain",
                                                    SecureBlob("test_id"),
-                                                   public_key,
-                                                   public_key,
                                                    challenge,
                                                    &blob));
   EXPECT_TRUE(VerifyEnterpriseChallenge(blob,
@@ -404,14 +400,11 @@ TEST_F(AttestationTest, EUKChallenge) {
           SetArgumentPointee<1>(GetCertifiedKeyBlob()),
           Return(true)));
   chromeos::SecureBlob blob;
-  SecureBlob public_key = GetX509PublicKey();
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
   EXPECT_TRUE(attestation_.SignEnterpriseChallenge(true,
                                                    "test",
                                                    "test_domain",
                                                    SecureBlob("test_id"),
-                                                   public_key,
-                                                   public_key,
                                                    challenge,
                                                    &blob));
   EXPECT_TRUE(VerifyEnterpriseChallenge(blob,

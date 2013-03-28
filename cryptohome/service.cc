@@ -1484,16 +1484,10 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       gchar* key_name,
       gchar* domain,
       GArray* device_id,
-      GArray* enterprise_signing_key,
-      GArray* enterprise_encryption_key,
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
   chromeos::SecureBlob device_id_blob(device_id->data, device_id->len);
-  chromeos::SecureBlob signing_key(enterprise_signing_key->data,
-                                   enterprise_signing_key->len);
-  chromeos::SecureBlob encryption_key(enterprise_encryption_key->data,
-                                      enterprise_encryption_key->len);
   chromeos::SecureBlob challenge_blob(challenge->data, challenge->len);
   AttestationTaskObserver* observer =
       new MountTaskObserverBridge(NULL, &event_source_);
@@ -1504,8 +1498,6 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
                             key_name,
                             domain,
                             device_id_blob,
-                            signing_key,
-                            encryption_key,
                             challenge_blob);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(

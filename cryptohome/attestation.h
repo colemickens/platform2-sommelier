@@ -173,11 +173,6 @@ class Attestation : public base::PlatformThread::Delegate {
   //            value is opaque to this class.
   //   device_id - A device identifier to be included in the challenge response.
   //               This value is opaque to this class.
-  //   signing_key - The public key of the DMServer signing key used to sign
-  //                 challenges.  Typically this value comes from user policy.
-  //   encryption_key - The public key of the DMServer encryption key used to
-  //                    decrypt challenge responses.  Typically this value comes
-  //                    from user policy.
   //   challenge - The challenge to be signed.
   //   response - On success is populated with the challenge response.
   virtual bool SignEnterpriseChallenge(
@@ -185,8 +180,6 @@ class Attestation : public base::PlatformThread::Delegate {
       const std::string& key_name,
       const std::string& domain,
       const chromeos::SecureBlob& device_id,
-      const chromeos::SecureBlob& signing_key,
-      const chromeos::SecureBlob& encryption_key,
       const chromeos::SecureBlob& challenge,
       chromeos::SecureBlob* response);
 
@@ -227,6 +220,10 @@ class Attestation : public base::PlatformThread::Delegate {
     user_key_store_ = user_key_store;
   }
 
+  virtual void set_enterprise_test_key(RSA* enterprise_test_key) {
+    enterprise_test_key_ = enterprise_test_key;
+  }
+
   // PlatformThread::Delegate interface.
   virtual void ThreadMain() { PrepareForEnrollment(); }
 
@@ -237,6 +234,16 @@ class Attestation : public base::PlatformThread::Delegate {
     kVerified,
     kDeveloper
   };
+  // So we can use scoped_ptr with openssl types.
+  struct RSADeleter {
+    inline void operator()(void* ptr) const;
+  };
+  struct X509Deleter {
+    inline void operator()(void* ptr) const;
+  };
+  struct EVP_PKEYDeleter {
+    inline void operator()(void* ptr) const;
+  };
   static const size_t kQuoteExternalDataSize;
   static const size_t kCipherKeySize;
   static const size_t kCipherBlockSize;
@@ -244,6 +251,8 @@ class Attestation : public base::PlatformThread::Delegate {
   static const size_t kDigestSize;
   static const char kDefaultDatabasePath[];
   static const char kDefaultPCAPublicKey[];
+  static const char kEnterpriseSigningPublicKey[];
+  static const char kEnterpriseEncryptionPublicKey[];
   static const struct CertificateAuthority {
     const char* issuer;
     const char* modulus;  // In hex format.
@@ -268,6 +277,9 @@ class Attestation : public base::PlatformThread::Delegate {
   CertRequestMap pending_cert_requests_;
   scoped_ptr<Pkcs11KeyStore> pkcs11_key_store_;
   KeyStore* user_key_store_;
+  // If set, this will be used to sign / encrypt enterprise challenge-response
+  // data instead of using kEnterprise*PublicKey.
+  RSA* enterprise_test_key_;
 
   // Moves data from a std::string container to a SecureBlob container.
   chromeos::SecureBlob ConvertStringToBlob(const std::string& s);
@@ -321,7 +333,8 @@ class Attestation : public base::PlatformThread::Delegate {
                           const chromeos::SecureBlob& proof);
 
   // Creates a public key based on a known credential issuer.
-  EVP_PKEY* GetAuthorityPublicKey(const char* issuer_name);
+  scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> GetAuthorityPublicKey(
+      const char* issuer_name);
 
   // Verifies an RSA-PKCS1-SHA1 digital signature.
   bool VerifySignature(const chromeos::SecureBlob& public_key,
@@ -370,20 +383,23 @@ class Attestation : public base::PlatformThread::Delegate {
                          chromeos::SecureBlob* response);
 
   // Validates incoming enterprise challenge data.
-  bool ValidateEnterpriseChallenge(const SignedData& signed_challenge,
-                                   const chromeos::SecureBlob& signing_key);
+  bool ValidateEnterpriseChallenge(const SignedData& signed_challenge);
 
   // Encrypts a KeyInfo protobuf as required for an enterprise challenge
   // response.
-  bool EncryptKeyInfo(const KeyInfo& key_info,
-                      const chromeos::SecureBlob& encryption_key,
-                      EncryptedData* encrypted_data);
+  bool EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
+                                EncryptedData* encrypted_data);
 
   // Encrypts data into an EncryptedData protobuf, wrapping the encryption key
   // with |wrapping_key|.
   bool EncryptData(const chromeos::SecureBlob& input,
                    RSA* wrapping_key,
                    EncryptedData* output);
+
+  // Creates an RSA* given a modulus in hex format.  The exponent is always set
+  // to 65537.  If an error occurs, NULL is returned.
+  scoped_ptr<RSA, RSADeleter> CreateRSAFromHexModulus(
+      const std::string& hex_modulus);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

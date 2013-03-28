@@ -259,8 +259,6 @@ class Service : public chromeos::dbus::AbstractDbusService,
       gchar* key_name,
       gchar* domain,
       GArray* device_id,
-      GArray* enterprise_signing_key,
-      GArray* enterprise_encryption_key,
       GArray* challenge,
       gint *OUT_async_id,
       GError** error);

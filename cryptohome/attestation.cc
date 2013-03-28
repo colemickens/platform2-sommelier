@@ -61,6 +61,26 @@ const char Attestation::kDefaultPCAPublicKey[] =
     "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
 #endif
 
+const char Attestation::kEnterpriseSigningPublicKey[] =
+    "bf7fefa3a661437b26aed0801db64d7ba8b58875c351d3bdc9f653847d4a67b3"
+    "b67479327724d56aa0f71a3f57c2290fdc1ff05df80589715e381dfbbda2c4ac"
+    "114c30d0a73c5b7b2e22178d26d8b65860aa8dd65e1b3d61a07c81de87c1e7e4"
+    "590145624936a011ece10434c1d5d41f917c3dc4b41dd8392479130c4fd6eafc"
+    "3bb4e0dedcc8f6a9c28428bf8fbba8bd6438a325a9d3eabee1e89e838138ad99"
+    "69c292c6d9f6f52522333b84ddf9471ffe00f01bf2de5faa1621f967f49e158b"
+    "f2b305360f886826cc6fdbef11a12b2d6002d70d8d1e8f40e0901ff94c203cb2"
+    "01a36a0bd6e83955f14b494f4f2f17c0c826657b85c25ffb8a73599721fa17ab";
+
+const char Attestation::kEnterpriseEncryptionPublicKey[] =
+    "edba5e723da811e41636f792c7a77aef633fbf39b542aa537c93c93eaba7a3b1"
+    "0bc3e484388c13d625ef5573358ec9e7fbeb6baaaa87ca87d93fb61bf5760e29"
+    "6813c435763ed2c81f631e26e3ff1a670261cdc3c39a4640b6bbf4ead3d6587b"
+    "e43ef7f1f08e7596b628ec0b44c9b7ad71c9ee3a1258852c7a986c7614f0c4ec"
+    "f0ce147650a53b6aa9ae107374a2d6d4e7922065f2f6eb537a994372e1936c87"
+    "eb08318611d44daf6044f8527687dc7ce5319b51eae6ab12bee6bd16e59c499e"
+    "fa53d80232ae886c7ee9ad8bc1cbd6e4ac55cb8fa515671f7e7ad66e98769f52"
+    "c3c309f98bf08a3b8fbb0166e97906151b46402217e65c5d01ddac8514340e8b";
+
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
   {"IFX TPM EK Intermediate CA 06",
    "de9e58a353313d21d683c687d6aaaab240248717557c077161c5e515f41d8efa"
@@ -149,7 +169,8 @@ Attestation::Attestation(Tpm* tpm, Platform* platform)
       database_path_(kDefaultDatabasePath),
       thread_(base::kNullThreadHandle),
       pkcs11_key_store_(new Pkcs11KeyStore()),
-      user_key_store_(pkcs11_key_store_.get()) {}
+      user_key_store_(pkcs11_key_store_.get()),
+      enterprise_test_key_(NULL) {}
 
 Attestation::~Attestation() {
   if (thread_ != base::kNullThreadHandle)
@@ -602,22 +623,21 @@ bool Attestation::GetPublicKey(bool is_user_specific,
 
   // Convert from PKCS #1 RSAPublicKey to X.509 SubjectPublicKeyInfo.
   const unsigned char* asn1_ptr = &public_key_der.front();
-  RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size());
-  if (!rsa) {
+  scoped_ptr<RSA, RSADeleter> rsa(
+      d2i_RSAPublicKey(NULL, &asn1_ptr, public_key_der.size()));
+  if (!rsa.get()) {
     LOG(ERROR) << __func__ << ": Failed to decode public key.";
     return false;
   }
   unsigned char* buffer = NULL;
-  int length = i2d_RSA_PUBKEY(rsa, &buffer);
+  int length = i2d_RSA_PUBKEY(rsa.get(), &buffer);
   if (length <= 0) {
     LOG(ERROR) << __func__ << ": Failed to encode public key.";
-    RSA_free(rsa);
     return false;
   }
   SecureBlob tmp(buffer, length);
   chromeos::SecureMemset(buffer, 0, length);
   OPENSSL_free(buffer);
-  RSA_free(rsa);
   public_key->swap(tmp);
   return true;
 }
@@ -634,8 +654,6 @@ bool Attestation::SignEnterpriseChallenge(
       const string& key_name,
       const string& domain,
       const SecureBlob& device_id,
-      const SecureBlob& signing_key,
-      const SecureBlob& encryption_key,
       const SecureBlob& challenge,
       SecureBlob* response) {
   CertifiedKey key;
@@ -651,7 +669,7 @@ bool Attestation::SignEnterpriseChallenge(
     LOG(ERROR) << __func__ << ": Failed to parse signed challenge.";
     return false;
   }
-  if (!ValidateEnterpriseChallenge(signed_challenge, signing_key)) {
+  if (!ValidateEnterpriseChallenge(signed_challenge)) {
     LOG(ERROR) << __func__ << ": Invalid challenge.";
     return false;
   }
@@ -682,9 +700,8 @@ bool Attestation::SignEnterpriseChallenge(
     }
     key_info.set_certificate(ConvertBlobToString(certificate_chain));
   }
-  if (!EncryptKeyInfo(key_info,
-                      encryption_key,
-                      response_pb.mutable_encrypted_key_info())) {
+  if (!EncryptEnterpriseKeyInfo(key_info,
+                                response_pb.mutable_encrypted_key_info())) {
     LOG(ERROR) << __func__ << ": Failed to encrypt KeyInfo.";
     return false;
   }
@@ -884,31 +901,34 @@ void Attestation::CheckDatabasePermissions() {
 bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
                                               const SecureBlob& public_key) {
   const unsigned char* asn1_ptr = &credential.front();
-  X509* x509 = d2i_X509(NULL, &asn1_ptr, credential.size());
-  if (!x509) {
+  scoped_ptr<X509, X509Deleter> x509(
+      d2i_X509(NULL, &asn1_ptr, credential.size()));
+  if (!x509.get()) {
     LOG(ERROR) << "Failed to parse endorsement credential.";
     return false;
   }
   // Manually verify the certificate signature.
   char issuer[100];  // A longer CN will truncate.
-  X509_NAME_get_text_by_NID(x509->cert_info->issuer, NID_commonName, issuer,
+  X509_NAME_get_text_by_NID(x509.get()->cert_info->issuer,
+                            NID_commonName,
+                            issuer,
                             arraysize(issuer));
-  EVP_PKEY* issuer_key = GetAuthorityPublicKey(issuer);
-  if (!issuer_key) {
+  scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> issuer_key =
+      GetAuthorityPublicKey(issuer);
+  if (!issuer_key.get()) {
     LOG(ERROR) << "Unknown endorsement credential issuer.";
     return false;
   }
-  if (X509_verify(x509, issuer_key) != 1) {
+  if (X509_verify(x509.get(), issuer_key.get()) != 1) {
     LOG(ERROR) << "Bad endorsement credential signature.";
-    EVP_PKEY_free(issuer_key);
     return false;
   }
-  EVP_PKEY_free(issuer_key);
   // Verify that the given public key matches the public key in the credential.
   // Note: Do not use any openssl functions that attempt to decode the public
   // key. These will fail because openssl does not recognize the OAEP key type.
-  SecureBlob credential_public_key(x509->cert_info->key->public_key->data,
-                                   x509->cert_info->key->public_key->length);
+  SecureBlob credential_public_key(
+      x509.get()->cert_info->key->public_key->data,
+      x509.get()->cert_info->key->public_key->length);
   if (credential_public_key.size() != public_key.size() ||
       memcmp(&credential_public_key.front(),
              &public_key.front(),
@@ -916,7 +936,6 @@ bool Attestation::VerifyEndorsementCredential(const SecureBlob& credential,
     LOG(ERROR) << "Bad endorsement credential public key.";
     return false;
   }
-  X509_free(x509);
   return true;
 }
 
@@ -1009,74 +1028,60 @@ bool Attestation::VerifyCertifiedKey(
     return false;
   }
   const unsigned char* asn1_ptr = &certified_public_key.front();
-  RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, certified_public_key.size());
-  if (!rsa) {
+  scoped_ptr<RSA, RSADeleter> rsa(
+      d2i_RSAPublicKey(NULL, &asn1_ptr, certified_public_key.size()));
+  if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode certified public key.";
     return false;
   }
-  SecureBlob modulus(BN_num_bytes(rsa->n));
-  BN_bn2bin(rsa->n, vector_as_array(&modulus));
-  RSA_free(rsa);
+  SecureBlob modulus(BN_num_bytes(rsa.get()->n));
+  BN_bn2bin(rsa.get()->n, vector_as_array(&modulus));
   SecureBlob key_digest = CryptoLib::Sha1(modulus);
   if (std::search(certified_key_info.begin(),
                   certified_key_info.end(),
                   key_digest.begin(),
                   key_digest.end()) == certified_key_info.end()) {
-    LOG(ERROR) << "Cerified public key mismatch.";
+    LOG(ERROR) << "Certified public key mismatch.";
     return false;
   }
   return true;
 }
 
-EVP_PKEY* Attestation::GetAuthorityPublicKey(const char* issuer_name) {
+scoped_ptr<EVP_PKEY, Attestation::EVP_PKEYDeleter>
+    Attestation::GetAuthorityPublicKey(const char* issuer_name) {
   const int kNumIssuers = arraysize(kKnownEndorsementCA);
   for (int i = 0; i < kNumIssuers; ++i) {
     if (0 == strcmp(issuer_name, kKnownEndorsementCA[i].issuer)) {
-      RSA* rsa = RSA_new();
-      if (!rsa)
-        return NULL;
-      rsa->e = BN_new();
-      if (!rsa->e) {
-        RSA_free(rsa);
-        return NULL;
+      scoped_ptr<RSA, RSADeleter> rsa = CreateRSAFromHexModulus(
+          kKnownEndorsementCA[i].modulus);
+      scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> pkey(EVP_PKEY_new());
+      if (!pkey.get()) {
+        return scoped_ptr<EVP_PKEY, EVP_PKEYDeleter>();
       }
-      BN_set_word(rsa->e, kWellKnownExponent);
-      rsa->n = BN_new();
-      if (!rsa->n) {
-        RSA_free(rsa);
-        return NULL;
-      }
-      BN_hex2bn(&rsa->n, kKnownEndorsementCA[i].modulus);
-      EVP_PKEY* pkey = EVP_PKEY_new();
-      if (!pkey) {
-        RSA_free(rsa);
-        return NULL;
-      }
-      EVP_PKEY_assign_RSA(pkey, rsa);
-      return pkey;
+      EVP_PKEY_assign_RSA(pkey.get(), rsa.release());
+      return pkey.Pass();
     }
   }
-  return NULL;
+  return scoped_ptr<EVP_PKEY, EVP_PKEYDeleter>();
 }
 
 bool Attestation::VerifySignature(const SecureBlob& public_key,
                                   const SecureBlob& signed_data,
                                   const SecureBlob& signature) {
   const unsigned char* asn1_ptr = &public_key.front();
-  RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size());
-  if (!rsa) {
+  scoped_ptr<RSA, RSADeleter> rsa(
+      d2i_RSAPublicKey(NULL, &asn1_ptr, public_key.size()));
+  if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
   SecureBlob digest = CryptoLib::Sha1(signed_data);
   if (!RSA_verify(NID_sha1, &digest.front(), digest.size(),
                   const_cast<unsigned char*>(&signature.front()),
-                  signature.size(), rsa)) {
+                  signature.size(), rsa.get())) {
     LOG(ERROR) << "Failed to verify signature.";
-    RSA_free(rsa);
     return false;
   }
-  RSA_free(rsa);
   return true;
 }
 
@@ -1151,13 +1156,14 @@ bool Attestation::VerifyActivateIdentity(const SecureBlob& delegate_blob,
 
   // Encrypt the TPM_ASYM_CA_CONTENTS with the EK public key.
   const unsigned char* asn1_ptr = &ek_public_key[0];
-  RSA* rsa = d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key.size());
-  if (!rsa) {
+  scoped_ptr<RSA, RSADeleter> rsa(
+      d2i_RSAPublicKey(NULL, &asn1_ptr, ek_public_key.size()));
+  if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode EK public key.";
     return false;
   }
   SecureBlob encrypted_asym_content;
-  if (!tpm_->TpmCompatibleOAEPEncrypt(rsa, asym_content,
+  if (!tpm_->TpmCompatibleOAEPEncrypt(rsa.get(), asym_content,
                                       &encrypted_asym_content)) {
     LOG(ERROR) << "Failed to encrypt with EK public key.";
     return false;
@@ -1193,25 +1199,11 @@ bool Attestation::EncryptEndorsementCredential(
     const SecureBlob& credential,
     EncryptedData* encrypted_credential) {
   // Wrap the AES key with the PCA public key.
-  RSA* rsa = RSA_new();
-  if (!rsa)
+  scoped_ptr<RSA, RSADeleter> rsa =
+      CreateRSAFromHexModulus(kDefaultPCAPublicKey);
+  if (!rsa.get())
     return false;
-  rsa->e = BN_new();
-  if (!rsa->e) {
-    RSA_free(rsa);
-    return false;
-  }
-  BN_set_word(rsa->e, kWellKnownExponent);
-  rsa->n = BN_new();
-  if (!rsa->n) {
-    RSA_free(rsa);
-    return false;
-  }
-  BN_hex2bn(&rsa->n, kDefaultPCAPublicKey);
-
-  bool result = EncryptData(credential, rsa, encrypted_credential);
-  RSA_free(rsa);
-  return result;
+  return EncryptData(credential, rsa.get(), encrypted_credential);
 }
 
 bool Attestation::AddDeviceKey(const string& key_name,
@@ -1304,27 +1296,24 @@ bool Attestation::SignChallengeData(const CertifiedKey& key,
 }
 
 bool Attestation::ValidateEnterpriseChallenge(
-    const SignedData& signed_challenge,
-    const SecureBlob& signing_key) {
+    const SignedData& signed_challenge) {
   const char kExpectedChallengePrefix[] = "EnterpriseKeyChallenge";
-  // Decode the public key, we're expecting X.509 SubjectPublicKeyInfo format.
-  const unsigned char* asn1_ptr = &signing_key.front();
-  RSA* rsa = d2i_RSA_PUBKEY(NULL, &asn1_ptr, signing_key.size());
-  if (!rsa) {
+  scoped_ptr<RSA, RSADeleter> rsa =
+      CreateRSAFromHexModulus(kEnterpriseSigningPublicKey);
+  if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
   SecureBlob digest = CryptoLib::Sha256(
       ConvertStringToBlob(signed_challenge.data()));
   SecureBlob signature = ConvertStringToBlob(signed_challenge.signature());
+  RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
   if (!RSA_verify(NID_sha256, &digest.front(), digest.size(),
                   const_cast<unsigned char*>(&signature.front()),
-                  signature.size(), rsa)) {
+                  signature.size(), enterprise_key)) {
     LOG(ERROR) << "Failed to verify challenge signature.";
-    RSA_free(rsa);
     return false;
   }
-  RSA_free(rsa);
   Challenge challenge;
   if (!challenge.ParseFromString(signed_challenge.data())) {
     LOG(ERROR) << "Failed to parse challenge protobuf.";
@@ -1337,13 +1326,11 @@ bool Attestation::ValidateEnterpriseChallenge(
   return true;
 }
 
-bool Attestation::EncryptKeyInfo(const KeyInfo& key_info,
-                                 const SecureBlob& encryption_key,
-                                 EncryptedData* encrypted_data) {
-  // Decode the public key, we're expecting X.509 SubjectPublicKeyInfo format.
-  const unsigned char* asn1_ptr = &encryption_key.front();
-  RSA* rsa = d2i_RSA_PUBKEY(NULL, &asn1_ptr, encryption_key.size());
-  if (!rsa) {
+bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
+                                           EncryptedData* encrypted_data) {
+  scoped_ptr<RSA, RSADeleter> rsa =
+      CreateRSAFromHexModulus(kEnterpriseEncryptionPublicKey);
+  if (!rsa.get()) {
     LOG(ERROR) << "Failed to decode public key.";
     return false;
   }
@@ -1352,10 +1339,10 @@ bool Attestation::EncryptKeyInfo(const KeyInfo& key_info,
     LOG(ERROR) << "Failed to serialize key info.";
     return false;
   }
+  RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
   bool result = EncryptData(ConvertStringToBlob(serialized),
-                            rsa,
+                            enterprise_key,
                             encrypted_data);
-  RSA_free(rsa);
   ClearString(&serialized);
   return result;
 }
@@ -1398,6 +1385,38 @@ bool Attestation::EncryptData(const SecureBlob& input,
   encrypted_key.resize(length);
   output->set_wrapped_key(encrypted_key);
   return true;
+}
+
+scoped_ptr<RSA, Attestation::RSADeleter> Attestation::CreateRSAFromHexModulus(
+    const string& hex_modulus) {
+  scoped_ptr<RSA, RSADeleter> rsa(RSA_new());
+  if (!rsa.get())
+    return scoped_ptr<RSA, RSADeleter>();
+  rsa->e = BN_new();
+  if (!rsa->e)
+    return scoped_ptr<RSA, RSADeleter>();
+  BN_set_word(rsa->e, kWellKnownExponent);
+  rsa->n = BN_new();
+  if (!rsa->n)
+    return scoped_ptr<RSA, RSADeleter>();
+  if (0 == BN_hex2bn(&rsa->n, hex_modulus.c_str()))
+    return scoped_ptr<RSA, RSADeleter>();
+  return rsa.Pass();
+}
+
+void Attestation::RSADeleter::operator()(void* ptr) const {
+  if (ptr)
+    RSA_free(reinterpret_cast<RSA*>(ptr));
+}
+
+void Attestation::X509Deleter::operator()(void* ptr) const {
+  if (ptr)
+    X509_free(reinterpret_cast<X509*>(ptr));
+}
+
+void Attestation::EVP_PKEYDeleter::operator()(void* ptr) const {
+  if (ptr)
+    EVP_PKEY_free(reinterpret_cast<EVP_PKEY*>(ptr));
 }
 
 }
