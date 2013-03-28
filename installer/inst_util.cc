@@ -16,9 +16,8 @@
 #include <unistd.h>
 
 extern "C" {
-#include "vboot/dump_kernel_config.h"
+#include "dump_kernel_config.h"
 }
-#include "vboot/kernel_blob.h"
 
 using std::string;
 
@@ -480,28 +479,14 @@ void VbExError(const char* format, ...) {
 string DumpKernelConfig(const string& kernel_dev) {
   string result;
 
-  // Map the kernel image blob.
-  size_t blob_size;
-  uint8_t* blob = static_cast<uint8_t*>(MMapFile(kernel_dev.c_str(),
-                                                &blob_size));
-
-  if (!blob) {
-    printf("Error reading input file\n");
-    return result;
-  }
-
-  uint8_t *config = FindKernelConfig(blob,
-                                       static_cast<uint64_t>(blob_size),
-                                       CROS_NO_ENTRY_ADDR);
+  char *config = FindKernelConfig(kernel_dev.c_str(), USE_PREAMBLE_LOAD_ADDR);
   if (!config) {
     printf("Error parsing input file\n");
-    munmap(blob, blob_size);
     return result;
   }
 
-  result = string(reinterpret_cast<const char *>(config),
-                  static_cast<size_t>(CROS_CONFIG_SIZE));
-  munmap(blob, blob_size);
+  result = string(config, MAX_KERNEL_CONFIG_SIZE);
+  free(config);
 
   return result;
 }
