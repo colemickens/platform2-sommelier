@@ -76,7 +76,7 @@ TEST(PerfParserTest, TestRemap) {
     EXPECT_TRUE(stats.did_remap);
 
     parser.GenerateRawEvents();
-    string output_perf_data = input_perf_data + ".parse.out";
+    string output_perf_data = input_perf_data + ".parse.remap.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     // Remapped addresses should not match the original addresses.
@@ -87,7 +87,7 @@ TEST(PerfParserTest, TestRemap) {
     ASSERT_TRUE(remap_parser.ReadFile(output_perf_data));
     remap_parser.ParseRawEvents();
     remap_parser.GenerateRawEvents();
-    string output_perf_data2 = output_perf_data + ".parse.out";
+    string output_perf_data2 = input_perf_data + ".parse.remap2.out";
     ASSERT_TRUE(remap_parser.WriteFile(output_perf_data2));
 
     // Remapping again should produce the same addresses.

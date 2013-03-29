@@ -92,7 +92,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
 
     string input_perf_data = perf_test_files::kPerfDataFiles[i];
     string output_perf_data = input_perf_data + ".serialized.out";
-    string output_perf_data1 = output_perf_data + ".serialized.out";
+    string output_perf_data1 = input_perf_data + ".serialized.1.out";
 
     LOG(INFO) << "Testing " << input_perf_data;
     input_perf_reader.ReadFile(input_perf_data);
