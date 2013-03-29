@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIFI_
-#define SHILL_WIFI_
+#ifndef SHILL_WIFI_H_
+#define SHILL_WIFI_H_
 
 // A WiFi device represents a wireless network interface implemented as an IEEE
 // 802.11 station.  An Access Point (AP) (or, more correctly, a Basic Service
@@ -81,6 +81,7 @@
 
 #include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -99,6 +100,7 @@ class Error;
 class GeolocationInfo;
 class KeyValueStore;
 class ProxyFactory;
+class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
 class WiFiProvider;
@@ -369,7 +371,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   WiFiServiceRefPtr pending_service_;
   std::string supplicant_state_;
   std::string supplicant_bss_;
-  std::string supplicant_tls_error_;
   // Indicates that we should flush supplicant's BSS cache after the
   // next scan completes.
   bool need_bss_flush_;
@@ -389,8 +390,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool has_already_completed_;
   // Indicates that we are debugging a problematic connection.
   bool is_debugging_connection_;
-  // Indicates that we are in the middle of EAP authentication.
-  bool is_eap_in_progress_;
+  // Tracks the process of an EAP negotiation.
+  scoped_ptr<SupplicantEAPStateHandler> eap_state_handler_;
 
   // Properties
   std::string bgscan_method_;
@@ -404,4 +405,4 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
 }  // namespace shill
 
-#endif  // SHILL_WIFI_
+#endif  // SHILL_WIFI_H_

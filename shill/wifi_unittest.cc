@@ -46,6 +46,7 @@
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_store.h"
 #include "shill/mock_supplicant_bss_proxy.h"
+#include "shill/mock_supplicant_eap_state_handler.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_network_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
@@ -212,6 +213,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         kDeviceName)),
         dbus_manager_(new NiceMock<MockDBusManager>()),
+        eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>(wifi_)),
         proxy_factory_(this) {
@@ -225,7 +227,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         WillByDefault(InvokeWithoutArgs(
             this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
 
-    manager_.dbus_manager_.reset(dbus_manager_);  // Transfers ownership.
+    // Transfers ownership.
+    manager_.dbus_manager_.reset(dbus_manager_);
+    wifi_->eap_state_handler_.reset(eap_state_handler_);
 
     wifi_->provider_ = &wifi_provider_;
     wifi_->time_ = &time_;
@@ -715,7 +719,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   scoped_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
-  NiceMock<MockDBusManager> *dbus_manager_;
+
+  // These pointers track mock objects owned by the WiFi device instance
+  // and manager so we can perform expectations against them.
+  MockDBusManager *dbus_manager_;
+  MockSupplicantEAPStateHandler *eap_state_handler_;
 
  private:
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
@@ -1197,6 +1205,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentService) {
       kPath, WPASupplicant::kDBusAddr))
       .WillOnce(Return(network_proxy));
   EXPECT_CALL(*network_proxy, SetEnabled(false));
+  EXPECT_CALL(*eap_state_handler_, Reset());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveNetwork(kPath)).Times(0);
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
   EXPECT_EQ(NULL, GetCurrentService().get());
@@ -1834,23 +1843,22 @@ TEST_F(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected) {
 
 TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
-  SetCurrentService(service);
+  EXPECT_CALL(*eap_state_handler_, is_eap_in_progress())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
   service->has_ever_connected_ = false;
   EXPECT_FALSE(SuspectCredentials(*service, NULL));
-  ReportEAPEvent(WPASupplicant::kEAPStatusStarted, "");
-  service->has_ever_connected_ = true;
-  EXPECT_FALSE(SuspectCredentials(*service, NULL));
-  service->has_ever_connected_ = false;
   Service::ConnectFailure failure;
   EXPECT_TRUE(SuspectCredentials(*service, &failure));
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure);
-  ReportEAPEvent(WPASupplicant::kEAPStatusCompletion,
-                 WPASupplicant::kEAPParameterSuccess);
+  service->has_ever_connected_ = true;
+  EXPECT_FALSE(SuspectCredentials(*service, NULL));
   EXPECT_FALSE(SuspectCredentials(*service, NULL));
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureWPA) {
-  ScopedMockLog log;
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWpa);
   SetPendingService(service);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
@@ -1859,6 +1867,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureWPA) {
   EXPECT_CALL(*service, SetFailure(Service::kFailureBadPassphrase));
   EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
+  ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        EndsWith(flimflam::kErrorBadPassphrase)));
@@ -1866,18 +1875,23 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureWPA) {
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
-  ScopedMockLog log;
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
   SetCurrentService(service);
-  ReportEAPEvent(WPASupplicant::kEAPStatusStarted, "");
   EXPECT_FALSE(service->has_ever_connected());
 
-  EXPECT_CALL(*service, SetFailure(Service::kFailureEAPAuthentication));
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
-  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  // Ensure that we retrieve is_eap_in_progress() before resetting the
+  // EAP handler's state.
+  InSequence seq;
+  EXPECT_CALL(*eap_state_handler_, is_eap_in_progress())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*service, SetFailure(Service::kFailureEAPAuthentication));
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        EndsWith(shill::kErrorEapAuthenticationFailed)));
+  EXPECT_CALL(*eap_state_handler_, Reset());
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
 }
 
@@ -2005,71 +2019,28 @@ TEST_F(WiFiMainTest, EAPCertification) {
 }
 
 TEST_F(WiFiMainTest, EAPEvent) {
-  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
-  EXPECT_CALL(*service, SetFailure(_)).Times(0);
-
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith("no current service.")));
-  ReportEAPEvent(string(), string());
-  Mock::VerifyAndClearExpectations(&log);
-
-  SetCurrentService(service);
-  const string kEAPMethod("EAP-ROCHAMBEAU");
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       EndsWith("accepted EAP method " + kEAPMethod)));
-  ReportEAPEvent(WPASupplicant::kEAPStatusAcceptProposedMethod, kEAPMethod);
-
-  EXPECT_CALL(log, Log(_, _, EndsWith("Completed authentication."))).Times(1);
-  ReportEAPEvent(WPASupplicant::kEAPStatusCompletion,
-                 WPASupplicant::kEAPParameterSuccess);
-
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(_, _, _)).Times(0);
+  const string kEAPStatus("eap-status");
+  const string kEAPParameter("eap-parameter");
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
   Mock::VerifyAndClearExpectations(&log);
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
 
-  // An EAP failure without a previous TLS indication yields a generic failure.
-  Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_CALL(*service, DisconnectWithFailure(
-      Service::kFailureEAPAuthentication, NotNull()))
-      .Times(1);
-  ReportEAPEvent(WPASupplicant::kEAPStatusCompletion,
-                 WPASupplicant::kEAPParameterFailure);
-  Mock::VerifyAndClearExpectations(service.get());
-
-  // An EAP failure with a previous TLS indication yields a specific failure.
-  SetCurrentService(service);
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
   EXPECT_CALL(*service, SetFailure(_)).Times(0);
-  ReportEAPEvent(WPASupplicant::kEAPStatusLocalTLSAlert, string());
-  Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureEAPLocalTLS, NotNull()))
-      .Times(1);
-  ReportEAPEvent(WPASupplicant::kEAPStatusCompletion,
-                 WPASupplicant::kEAPParameterFailure);
-  Mock::VerifyAndClearExpectations(service.get());
-
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _));
   SetCurrentService(service);
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
-  EXPECT_CALL(*service, SetFailure(_)).Times(0);
-  ReportEAPEvent(WPASupplicant::kEAPStatusRemoteTLSAlert, string());
-  Mock::VerifyAndClearExpectations(service.get());
-  EXPECT_CALL(*service,
-              DisconnectWithFailure(Service::kFailureEAPRemoteTLS, NotNull()))
-      .Times(1);
-  ReportEAPEvent(WPASupplicant::kEAPStatusCompletion,
-                 WPASupplicant::kEAPParameterFailure);
-  Mock::VerifyAndClearExpectations(service.get());
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
+  Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(eap_state_handler_);
 
-  SetCurrentService(service);
-  EXPECT_CALL(*service, DisconnectWithFailure(_, _)).Times(0);
-  EXPECT_CALL(*service, SetFailure(_)).Times(0);
-  const string kStrangeParameter("ennui");
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,EndsWith(
-      string("Unexpected ") +
-      WPASupplicant::kEAPStatusRemoteCertificateVerification +
-      " parameter: " + kStrangeParameter)));
-  ReportEAPEvent(WPASupplicant::kEAPStatusRemoteCertificateVerification,
-                 kStrangeParameter);
+  EXPECT_CALL(*eap_state_handler_, ParseStatus(kEAPStatus, kEAPParameter, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(Service::kFailureOutOfRange),
+                Return(false)));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _));
+  ReportEAPEvent(kEAPStatus, kEAPParameter);
 }
 
 TEST_F(WiFiMainTest, PendingScanDoesNotCrashAfterStop) {

@@ -142,6 +142,14 @@ class WPASupplicant {
       const EapCredentials &eap, CertificateFile *certificate_file,
       NSS *nss, const std::vector<char> nss_identifier,
       std::map<std::string, DBus::Variant> *params);
+
+  // Retrieve the |subject| and |depth| of an a remote certifying entity,
+  // as contained the the |properties| to a Certification event from
+  // wpa_supplicant.  Returns true if an |subject| and |depth| were
+  // extracted successfully, false otherwise.
+  static bool ExtractRemoteCertification(
+      const std::map<std::string, DBus::Variant> &properties,
+      std::string *subject, uint32 *depth);
 };
 
 }  // namespace shill

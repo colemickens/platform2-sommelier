@@ -295,6 +295,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	sockets.o \
 	static_ip_parameters.o \
 	supplicant_bss_proxy.o \
+	supplicant_eap_state_handler.o \
 	supplicant_interface_proxy.o \
 	supplicant_network_proxy.o \
 	supplicant_process_proxy.o \
@@ -409,6 +410,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_sockets.o \
 	mock_store.o \
 	mock_supplicant_bss_proxy.o \
+	mock_supplicant_eap_state_handler.o \
 	mock_supplicant_interface_proxy.o \
 	mock_supplicant_network_proxy.o \
 	mock_supplicant_process_proxy.o \
@@ -443,6 +445,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	scope_logger_unittest.o \
 	service_under_test.o \
 	service_unittest.o \
+	supplicant_eap_state_handler_unittest.o \
 	shill_unittest.o \
 	shims/certificates_unittest.o \
 	shims/netfilter_queue_processor_unittest.o \

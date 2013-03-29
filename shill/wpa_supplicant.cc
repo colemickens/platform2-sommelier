@@ -223,4 +223,25 @@ void WPASupplicant::Populate8021xProperties(
   }
 }
 
+// static
+bool WPASupplicant::ExtractRemoteCertification(
+      const std::map<std::string, DBus::Variant> &properties,
+      std::string *subject, uint32 *depth) {
+  map<string, ::DBus::Variant>::const_iterator depth_it =
+      properties.find(WPASupplicant::kInterfacePropertyDepth);
+  if (depth_it == properties.end()) {
+    LOG(ERROR) << __func__ << " no depth parameter.";
+    return false;
+  }
+  map<string, ::DBus::Variant>::const_iterator subject_it =
+      properties.find(WPASupplicant::kInterfacePropertySubject);
+  if (subject_it == properties.end()) {
+    LOG(ERROR) << __func__ << " no subject parameter.";
+    return false;
+  }
+  *depth = depth_it->second.reader().get_uint32();
+  *subject = subject_it->second.reader().get_string();
+  return true;
+}
+
 }  // namespace shill

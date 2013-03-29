@@ -36,6 +36,7 @@
 #include "shill/rtnl_handler.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
+#include "shill/supplicant_eap_state_handler.h"
 #include "shill/supplicant_interface_proxy_interface.h"
 #include "shill/supplicant_network_proxy_interface.h"
 #include "shill/supplicant_process_proxy_interface.h"
@@ -98,7 +99,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       fast_scans_remaining_(kNumFastScanAttempts),
       has_already_completed_(false),
       is_debugging_connection_(false),
-      is_eap_in_progress_(false),
+      eap_state_handler_(new SupplicantEAPStateHandler()),
       bgscan_short_interval_seconds_(kDefaultBgscanShortIntervalSeconds),
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
@@ -525,7 +526,6 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
   SLOG(WiFi, 3) << "WiFi " << link_name() << " CurrentBSS "
                 << supplicant_bss_ << " -> " << new_bss;
   supplicant_bss_ = new_bss;
-  supplicant_tls_error_ = "";
   has_already_completed_ = false;
 
   // Any change in CurrentBSS means supplicant is actively changing our
@@ -556,9 +556,9 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
     HandleRoam(new_bss);
   }
 
-  // Reset eap_in_progress_ after calling HandleDisconnect() so it can
-  // be used to detect disconnects during EAP authentication.
-  is_eap_in_progress_ = false;
+  // Reset the EAP handler only after calling HandleDisconnect() above
+  // so our EAP state could be used to detect a failed authentication.
+  eap_state_handler_->Reset();
 
   // If we are selecting a new service, or if we're clearing selection
   // of a something other than the pending service, call SelectService.
@@ -912,80 +912,25 @@ void WiFi::CertificationTask(
     return;
   }
 
-  map<string, ::DBus::Variant>::const_iterator properties_it =
-      properties.find(WPASupplicant::kInterfacePropertyDepth);
-  if (properties_it == properties.end()) {
-    LOG(ERROR) << __func__ << " no depth parameter.";
-    return;
+  string subject;
+  uint32 depth;
+  if (WPASupplicant::ExtractRemoteCertification(properties, &subject, &depth)) {
+    current_service_->AddEAPCertification(subject, depth);
   }
-  uint32 depth = properties_it->second.reader().get_uint32();
-  properties_it = properties.find(WPASupplicant::kInterfacePropertySubject);
-  if (properties_it == properties.end()) {
-    LOG(ERROR) << __func__ << " no subject parameter.";
-    return;
-  }
-  string subject(properties_it->second.reader().get_string());
-  current_service_->AddEAPCertification(subject, depth);
 }
 
 void WiFi::EAPEventTask(const string &status, const string &parameter) {
-  Service::ConnectFailure failure = Service::kFailureUnknown;
-
   if (!current_service_) {
     LOG(ERROR) << "WiFi " << link_name() << " " << __func__
                << " with no current service.";
     return;
   }
-
-  if (status == WPASupplicant::kEAPStatusAcceptProposedMethod) {
-    LOG(INFO) << link_name() << ": accepted EAP method " << parameter;
-  } else if (status == WPASupplicant::kEAPStatusCompletion) {
-    if (parameter == WPASupplicant::kEAPParameterSuccess) {
-      SLOG(WiFi, 2) << link_name() << ": EAP: "
-                    << "Completed authentication.";
-      is_eap_in_progress_ = false;
-    } else if (parameter == WPASupplicant::kEAPParameterFailure) {
-      // If there was a TLS error, use this instead of the generic failure.
-      if (supplicant_tls_error_ == WPASupplicant::kEAPStatusLocalTLSAlert) {
-        failure = Service::kFailureEAPLocalTLS;
-      } else if (supplicant_tls_error_ ==
-                 WPASupplicant::kEAPStatusRemoteTLSAlert) {
-        failure = Service::kFailureEAPRemoteTLS;
-      } else {
-        failure = Service::kFailureEAPAuthentication;
-      }
-    } else {
-      LOG(ERROR) << link_name() << ": EAP: "
-                 << "Unexpected " << status << " parameter: " << parameter;
-    }
-  } else if (status == WPASupplicant::kEAPStatusLocalTLSAlert ||
-             status == WPASupplicant::kEAPStatusRemoteTLSAlert) {
-    supplicant_tls_error_ = status;
-  } else if (status ==
-             WPASupplicant::kEAPStatusRemoteCertificateVerification) {
-    if (parameter == WPASupplicant::kEAPParameterSuccess) {
-      SLOG(WiFi, 2) << link_name() << ": EAP: "
-                    << "Completed remote certificate verification.";
-    } else {
-      // wpa_supplicant doesn't currently have a verification failure
-      // message.  We will instead get a RemoteTLSAlert above.
-      LOG(ERROR) << link_name() << ": EAP: "
-                 << "Unexpected " << status << " parameter: " << parameter;
-    }
-  } else if (status == WPASupplicant::kEAPStatusParameterNeeded) {
-    LOG(ERROR) << link_name() << ": EAP: "
-               << "Authentication due to missing authentication parameter: "
-               << parameter;
-    failure = Service::kFailureEAPAuthentication;
-  } else if (status == WPASupplicant::kEAPStatusStarted) {
-    SLOG(WiFi, 2) << link_name() << ": EAP authentication starting.";
-    is_eap_in_progress_ = true;
-  }
-
+  Service::ConnectFailure failure = Service::kFailureUnknown;
+  eap_state_handler_->ParseStatus(status, parameter, &failure);
   if (failure != Service::kFailureUnknown) {
-    // Avoid a reporting failure twice by clearing eap_in_progress_ early.
+    // Avoid a reporting failure twice by resetting EAP state handler early.
+    eap_state_handler_->Reset();
     Error unused_error;
-    is_eap_in_progress_ = false;
     current_service_->DisconnectWithFailure(failure, &unused_error);
   }
 }
@@ -1171,7 +1116,8 @@ bool WiFi::SuspectCredentials(
       return true;
     }
   } else if (service.IsSecurityMatch(flimflam::kSecurity8021x)) {
-    if (is_eap_in_progress_ && !service.has_ever_connected()) {
+    if (eap_state_handler_->is_eap_in_progress() &&
+        !service.has_ever_connected()) {
       if (failure) {
         *failure = Service::kFailureEAPAuthentication;
       }
