@@ -24,7 +24,7 @@ GLXSyncControlTest::GLXSyncControlTest() {
 void GLXSyncControlTest::Init() { }
 
 bool GLXSyncControlTest::Loop(int interval) {
-  std::cout << "GLX version of this test has not been implementd, return true "
+  std::cout << "GLX version of this test has not been implemented, return true "
             << "to avoid the test failing!";
   return true;
 }

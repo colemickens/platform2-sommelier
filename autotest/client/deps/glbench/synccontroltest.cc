@@ -18,7 +18,7 @@ const double kMaxVsyncHz = 150.0;
 }  // namespace
 
 DEFINE_double(vsync, 60.0,
-             "Rate in Hz that vetrical refreshes occur on the screen. The "
+             "Rate in Hz that vertical refreshes occur on the screen. The "
               "default value is 60.0 Hz.");
 
 static bool ValidateVsync(const char* flagname, double rate) {
