@@ -16,7 +16,7 @@ def dbus2primitive(value):
     elif isinstance(value, str):
         return str(value)
     elif isinstance(value, unicode):
-        return unicode(value)
+        return str(value)
     elif isinstance(value, list):
         return [dbus2primitive(x) for x in value]
     elif isinstance(value, tuple):
@@ -31,25 +31,27 @@ def dbus2primitive(value):
 
 
 class ShillProxy(object):
-    UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
-
     DBUS_INTERFACE = 'org.chromium.flimflam'
     DBUS_TYPE_MANAGER = 'org.chromium.flimflam.Manager'
+    DBUS_TYPE_PROFILE = 'org.chromium.flimflam.Profile'
     DBUS_TYPE_SERVICE = 'org.chromium.flimflam.Service'
 
+    MANAGER_PROPERTY_ACTIVE_PROFILE = 'ActiveProfile'
+    MANAGER_PROPERTY_PROFILES = 'Profiles'
 
-    SERVICE_PROPERTY_TYPE = 'Type'
-    SERVICE_PROPERTY_NAME = 'Name'
+    SERVICE_PROPERTY_GUID = 'GUID'
     SERVICE_PROPERTY_MODE = 'Mode'
-    SERVICE_PROPERTY_SSID = 'SSID'
-    SERVICE_PROPERTY_STATE = 'State'
-    SERVICE_PROPERTY_SECURITY = 'Security'
+    SERVICE_PROPERTY_NAME = 'Name'
     SERVICE_PROPERTY_PASSPHRASE = 'Passphrase'
     SERVICE_PROPERTY_SAVE_CREDENTIALS = 'SaveCredentials'
-    SERVICE_PROPERTY_GUID = 'GUID'
-
+    SERVICE_PROPERTY_SECURITY = 'Security'
+    SERVICE_PROPERTY_SSID = 'SSID'
+    SERVICE_PROPERTY_STATE = 'State'
+    SERVICE_PROPERTY_TYPE = 'Type'
 
     POLLING_INTERVAL_SECONDS = 0.2
+
+    UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 
 
     def wait_for_property_in(self, dbus_object, property_name,
@@ -99,6 +101,19 @@ class ShillProxy(object):
         return self._manager
 
 
+    def get_active_profile(self):
+        """
+        Get the active profile in shill.
+
+        @return dbus object representing the active profile.
+
+        """
+        properties = self.manager.GetProperties(utf8_strings=True)
+        return self.get_dbus_object(
+                self.DBUS_TYPE_PROFILE,
+                properties[self.MANAGER_PROPERTY_ACTIVE_PROFILE])
+
+
     def get_dbus_object(self, type_str, path):
         """
         Return the DBus object of type |type_str| at |path| in shill.
@@ -111,6 +126,12 @@ class ShillProxy(object):
         return dbus.Interface(
                 self._bus.get_object(self.DBUS_INTERFACE, path),
                 type_str)
+
+
+    def get_profiles(self):
+        properties = self.manager.GetProperties(utf8_strings=True)
+        return [self.get_dbus_object(self.DBUS_TYPE_PROFILE, path)
+                for path in properties[self.MANAGER_PROPERTY_PROFILES]]
 
 
     def get_service(self, params):
