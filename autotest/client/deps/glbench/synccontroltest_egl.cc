@@ -63,7 +63,7 @@ class EGLSyncControlTest : public SyncControlTest {
   EGLInterface* interface_;
   PFNEGLGETSYNCVALUESCHROMIUMPROC egl_get_sync_values_;
 
-  struct SyncValues GetSyncValues();
+  EGLBoolean GetSyncValues(struct SyncValues &sync_values);
   bool TestAgainstSystem(khronos_uint64_t ust);
 };
 
@@ -93,16 +93,21 @@ void EGLSyncControlTest::Init() {
 }
 
 bool EGLSyncControlTest::Loop(int interval) {
-  struct SyncValues first_call, second_call;
+  struct SyncValues first_call = { 0, 0, 0 };
+  struct SyncValues second_call = { 0, 0, 0 };
   khronos_uint64_t real_ust_delta, expected_ust_delta, ust_delta_error;
   bool test_val = true;
+  EGLBoolean ret;
 
   glClearColor(kFillValueRed, kFillValueGreen, kFillValueBlue, 0.0);
   glClear(GL_COLOR_BUFFER_BIT);
 
-  first_call = GetSyncValues();
+  ret = GetSyncValues(first_call);
 
-  if (!TestAgainstSystem(first_call.ust)) {
+  if (!ret) {
+    LOG(ERROR) << "Failure: First eglGetSyncValuesCHROMIUM returned false.\n";
+    test_val = false;
+  } else if (!TestAgainstSystem(first_call.ust)) {
     LOG(ERROR) << "Failure: First ust value failed to test against system "
                << "time!";
     test_val = false;
@@ -110,9 +115,12 @@ bool EGLSyncControlTest::Loop(int interval) {
 
   interface_->SwapBuffers();
   usleep(interval);
-  second_call = GetSyncValues();
+  ret = GetSyncValues(second_call);
 
-  if (!TestAgainstSystem(second_call.ust)) {
+  if (!ret) {
+    LOG(ERROR) << "Failure: Second eglGetSyncValuesCHROMIUM returned false.\n";
+    test_val = false;
+  } else if (!TestAgainstSystem(second_call.ust)) {
     LOG(ERROR) << "Failure: Second ust value failed to test against system "
                << "time!";
     test_val = false;
@@ -162,15 +170,15 @@ bool EGLSyncControlTest::Loop(int interval) {
   return test_val;
 }
 
-struct SyncValues EGLSyncControlTest::GetSyncValues() {
-  struct SyncValues ret_val;
-  egl_get_sync_values_(interface_->display(),
-                       interface_->surface(),
-                       &ret_val.ust,
-                       &ret_val.msc,
-                       &ret_val.sbc);
+EGLBoolean EGLSyncControlTest::GetSyncValues(struct SyncValues &sync_values) {
+  EGLBoolean ret;
+  ret = egl_get_sync_values_(interface_->display(),
+                             interface_->surface(),
+                             &sync_values.ust,
+                             &sync_values.msc,
+                             &sync_values.sbc);
   interface_->CheckError();
-  return ret_val;
+  return ret;
 }
 
 bool EGLSyncControlTest::TestAgainstSystem(khronos_uint64_t ust) {
