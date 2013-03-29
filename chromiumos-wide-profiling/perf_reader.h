@@ -13,6 +13,8 @@
 #include "quipper_string.h"
 #include "kernel/perf_internals.h"
 
+namespace quipper {
+
 struct PerfFileAttr {
   struct perf_event_attr attr;
   std::vector<u64> ids;
@@ -74,5 +76,7 @@ class PerfReader {
 
   DISALLOW_COPY_AND_ASSIGN(PerfReader);
 };
+
+}  // namespace quipper
 
 #endif  // PERF_READER_H_

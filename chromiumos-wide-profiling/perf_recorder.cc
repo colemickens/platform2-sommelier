@@ -12,6 +12,8 @@
 #include "quipper_string.h"
 #include "utils.h"
 
+namespace quipper {
+
 string PerfRecorder::GetSleepCommand(const int time) {
   stringstream ss;
   ss << "sleep " << time;
@@ -34,3 +36,5 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
   return (perf_serializer.ReadFileData(raw_perf_data) &&
           perf_serializer.Serialize(perf_data));
 }
+
+}  // namespace quipper

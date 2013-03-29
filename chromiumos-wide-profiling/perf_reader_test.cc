@@ -13,6 +13,8 @@
 #include "quipper_string.h"
 #include "utils.h"
 
+namespace quipper {
+
 TEST(PerfReaderTest, Test1Cycle) {
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
@@ -27,6 +29,8 @@ TEST(PerfReaderTest, Test1Cycle) {
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
   }
 }
+
+}  // namespace quipper
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);

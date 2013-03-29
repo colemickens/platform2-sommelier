@@ -47,6 +47,8 @@ bool WriteDataToVector(const void* data,
 
 }  // namespace
 
+namespace quipper {
+
 bool PerfReader::ReadFile(const string& filename) {
   std::vector<char> data;
   if (!ReadFileToData(filename, &data))
@@ -378,3 +380,5 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
   }
   return true;
 }
+
+}  // namespace quipper

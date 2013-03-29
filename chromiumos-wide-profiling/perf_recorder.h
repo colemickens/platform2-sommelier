@@ -13,6 +13,8 @@
 #include "perf_data.pb.h"
 #include "quipper_string.h"
 
+namespace quipper {
+
 class PerfRecorder {
  public:
   PerfRecorder() {}
@@ -23,5 +25,7 @@ class PerfRecorder {
   string GetSleepCommand(const int time);
   DISALLOW_COPY_AND_ASSIGN(PerfRecorder);
 };
+
+}  // namespace quipper
 
 #endif  // PERF_RECORDER_H_

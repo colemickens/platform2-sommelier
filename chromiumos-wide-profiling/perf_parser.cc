@@ -11,6 +11,8 @@
 #include "address_mapper.h"
 #include "utils.h"
 
+namespace quipper {
+
 namespace {
 
 // For kernel MMAP events, the pid is -1.
@@ -250,7 +252,8 @@ bool WritePerfSampleInfo(const perf_sample& sample,
 // Returns true if |e1| has an earlier timestamp than |e2|.  The args are const
 // pointers instead of references because of the way this function is used when
 // calling std::stable_sort.
-bool CompareParsedEventTimes(const ParsedEvent* e1, const ParsedEvent* e2) {
+bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
+                             const quipper::ParsedEvent* e2) {
   return (e1->sample_info.time < e2->sample_info.time);
 }
 
@@ -483,3 +486,5 @@ void PerfParser::ResetAddressMappers() {
   process_mappers_.clear();
   child_to_parent_pid_map_.clear();
 }
+
+}  // namespace quipper

@@ -13,6 +13,8 @@
 
 class AddressMapper;
 
+namespace quipper {
+
 struct ParsedEvent {
   struct perf_sample sample_info;   // Contains perf sample info.
 
@@ -106,5 +108,7 @@ class PerfParser : public PerfReader {
  private:
   DISALLOW_COPY_AND_ASSIGN(PerfParser);
 };
+
+}  // namespace quipper
 
 #endif  // PERF_PARSER_H_

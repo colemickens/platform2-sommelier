@@ -12,17 +12,7 @@
 #include "quipper_string.h"
 #include "utils.h"
 
-using quipper::PerfDataProto;
-using quipper::PerfDataProto_CommEvent;
-using quipper::PerfDataProto_EventHeader;
-using quipper::PerfDataProto_ForkEvent;
-using quipper::PerfDataProto_MMapEvent;
-using quipper::PerfDataProto_PerfEvent;
-using quipper::PerfDataProto_PerfFileAttr;
-using quipper::PerfDataProto_PerfEventAttr;
-using quipper::PerfDataProto_PerfEventStats;
-using quipper::PerfDataProto_SampleEvent;
-using quipper::PerfDataProto_SampleInfo;
+namespace quipper {
 
 PerfSerializer::PerfSerializer() {
 }
@@ -435,3 +425,5 @@ void PerfSerializer::DeserializePerfFileAttr(
   for (int i = 0; i < perf_file_attr_proto.ids_size(); i++ )
     perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
 }
+
+}  // namespace quipper

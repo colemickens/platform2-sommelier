@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
   if (!ParseArguments(argc, argv, &perf_command_line, &perf_duration))
     return 1;
 
-  PerfRecorder perf_recorder;
+  quipper::PerfRecorder perf_recorder;
   quipper::PerfDataProto perf_data_proto;
   if (!perf_recorder.RecordAndConvertToProtobuf(perf_command_line,
                                                 perf_duration,

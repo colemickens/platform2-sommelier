@@ -8,6 +8,8 @@
 
 #include "perf_event.h"
 
+namespace quipper {
+
 // These typedefs are from tools/perf/util/types.h in the kernel.
 typedef uint64_t           u64;
 typedef int64_t            s64;
@@ -210,5 +212,12 @@ struct perf_sample {
 
 // End data structures copied from the kernel.
 
+#undef BITS_PER_BYTE
+#undef DIV_ROUND_UP
+#undef BITS_TO_LONGS
+#undef DECLARE_BITMAP
+#undef MAX_EVENT_NAME
+
+}  // namespace quipper
 
 #endif /*PERF_INTERNALS_H_*/

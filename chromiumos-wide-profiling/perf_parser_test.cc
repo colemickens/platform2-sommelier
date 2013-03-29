@@ -14,6 +14,8 @@
 #include "quipper_string.h"
 #include "utils.h"
 
+namespace quipper {
+
 namespace {
 
 void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
@@ -94,6 +96,8 @@ TEST(PerfParserTest, TestRemap) {
     EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
   }
 }
+
+}  // namespace quipper
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);

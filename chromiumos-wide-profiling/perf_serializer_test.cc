@@ -16,6 +16,10 @@
 #include "quipper_string.h"
 #include "utils.h"
 
+namespace quipper {
+
+namespace {
+
 void SerializeAndDeserialize(const string& input,
                              const string& output,
                              bool do_remap) {
@@ -78,6 +82,7 @@ void SerializeToFileAndBack(const string& input,
   remove(input_filename.c_str());
   remove(output_filename.c_str());
 }
+}  // namespace
 
 TEST(PerfSerializerTest, Test1Cycle) {
   // Read perf data using the PerfReader class.
@@ -133,6 +138,8 @@ TEST(PerfSerializerTest, TestRemap) {
     SerializeAndDeserialize(input_perf_data, output_perf_data, true);
   }
 }
+
+}  // namespace quipper
 
 int main(int argc, char * argv[]) {
   ::testing::InitGoogleTest(&argc, argv);

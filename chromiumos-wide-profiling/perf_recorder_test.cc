@@ -12,6 +12,8 @@
 #include "quipper_string.h"
 #include "utils.h"
 
+namespace quipper{
+
 TEST(PerfRecorderTest, TestRecord) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
@@ -23,6 +25,8 @@ TEST(PerfRecorderTest, TestRecord) {
                                                        1,
                                                        &perf_data_proto));
 }
+
+}  // namespace quipper
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);

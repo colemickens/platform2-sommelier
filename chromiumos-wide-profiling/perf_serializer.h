@@ -13,6 +13,8 @@
 #include "perf_parser.h"
 #include "perf_data.pb.h"
 
+namespace quipper {
+
 class PerfSerializer : public PerfParser {
  public:
   PerfSerializer();
@@ -132,5 +134,7 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };
+
+}  // namespace quipper
 
 #endif  // PERF_SERIALIZER_H_
