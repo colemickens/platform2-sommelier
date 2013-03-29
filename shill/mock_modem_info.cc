@@ -10,7 +10,7 @@ namespace shill {
 
 MockModemInfo::MockModemInfo() :
     ModemInfo(NULL, NULL, NULL, NULL, NULL),
-    mock_activating_iccid_store_(NULL),
+    mock_pending_activation_store_(NULL),
     mock_cellular_operator_info_(NULL) {}
 
 MockModemInfo::MockModemInfo(ControlInterface *control,
@@ -19,7 +19,7 @@ MockModemInfo::MockModemInfo(ControlInterface *control,
                              Manager *manager,
                              GLib *glib) :
     ModemInfo(control, dispatcher, metrics, manager, glib),
-    mock_activating_iccid_store_(NULL),
+    mock_pending_activation_store_(NULL),
     mock_cellular_operator_info_(NULL) {
   SetMockMembers();
 }
@@ -29,9 +29,9 @@ MockModemInfo::~MockModemInfo() {}
 void MockModemInfo::SetMockMembers() {
   // These are always replaced by mocks.
   // Assumes ownership.
-  set_activating_iccid_store(new MockActivatingIccidStore());
-  mock_activating_iccid_store_ =
-      static_cast<MockActivatingIccidStore*>(activating_iccid_store());
+  set_pending_activation_store(new MockPendingActivationStore());
+  mock_pending_activation_store_ =
+      static_cast<MockPendingActivationStore*>(pending_activation_store());
   // Assumes ownership.
   set_cellular_operator_info(new MockCellularOperatorInfo());
   mock_cellular_operator_info_ =

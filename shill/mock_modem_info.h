@@ -8,13 +8,13 @@
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
 
-#include "shill/mock_activating_iccid_store.h"
 #include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_control.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_pending_activation_store.h"
 #include "shill/modem_info.h"
 
 namespace shill {
@@ -35,7 +35,7 @@ class MockModemInfo : public ModemInfo {
   // Replaces data members in ModemInfo by mock objects.
   // The following are relaced by mocks if they are NULL: control_interface,
   // dispatcher, metrics, manager, glib.
-  // The following are always replaced by mocks: activating_iccid_store,
+  // The following are always replaced by mocks: pending_activation_store,
   // cellular_operator_info.
   void SetMockMembers();
 
@@ -44,8 +44,8 @@ class MockModemInfo : public ModemInfo {
   void SetProviderDB(const char *provider_db_path);
 
   // Accessors for mock objects
-  MockActivatingIccidStore* mock_activating_iccid_store() const {
-    return mock_activating_iccid_store_;
+  MockPendingActivationStore* mock_pending_activation_store() const {
+    return mock_pending_activation_store_;
   }
   MockCellularOperatorInfo* mock_cellular_operator_info() const {
     return mock_cellular_operator_info_;
@@ -78,7 +78,7 @@ class MockModemInfo : public ModemInfo {
   scoped_ptr<MockGLib> mock_glib_;
 
   // owned by ModemInfo
-  MockActivatingIccidStore *mock_activating_iccid_store_;
+  MockPendingActivationStore *mock_pending_activation_store_;
   MockCellularOperatorInfo *mock_cellular_operator_info_;
 
   DISALLOW_COPY_AND_ASSIGN(MockModemInfo);

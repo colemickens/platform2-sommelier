@@ -15,13 +15,13 @@
 #include <string>
 #include <vector>
 
-#include "shill/activating_iccid_store.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular_operator_info.h"
 #include "shill/cellular_service.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/pending_activation_store.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 
@@ -438,8 +438,9 @@ void CellularCapabilityUniversal::Activate(const string &carrier,
 void CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout() {
   SLOG(Cellular, 2) << __func__;
   if (sim_identifier_.empty() ||
-      modem_info()->activating_iccid_store()->GetActivationState(
-          sim_identifier_) == ActivatingIccidStore::kStateActivated) {
+      modem_info()->pending_activation_store()->GetActivationState(
+          PendingActivationStore::kIdentifierICCID,
+          sim_identifier_) == PendingActivationStore::kStateActivated) {
     SLOG(Cellular, 2) << "Modem is already scheduled to be reset.";
     return;
   }
@@ -455,9 +456,10 @@ void CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout() {
   // Still not activated after timeout. Reset the modem.
   SLOG(Cellular, 2) << "Still not registered after timeout. Reset directly "
                     << "to update MDN.";
-  modem_info()->activating_iccid_store()->SetActivationState(
+  modem_info()->pending_activation_store()->SetActivationState(
+      PendingActivationStore::kIdentifierICCID,
       sim_identifier_,
-      ActivatingIccidStore::kStatePendingTimeout);
+      PendingActivationStore::kStatePendingTimeout);
   ResetAfterActivation();
 }
 
@@ -482,9 +484,10 @@ void CellularCapabilityUniversal::CompleteActivation(Error *error) {
   if (cellular()->service().get())
     cellular()->service()->SetActivationState(
         flimflam::kActivationStateActivating);
-  modem_info()->activating_iccid_store()->SetActivationState(
+  modem_info()->pending_activation_store()->SetActivationState(
+      PendingActivationStore::kIdentifierICCID,
       sim_identifier_,
-      ActivatingIccidStore::kStatePending);
+      PendingActivationStore::kStatePending);
 
   activation_wait_for_registration_callback_.Reset(
       Bind(&CellularCapabilityUniversal::OnActivationWaitForRegisterTimeout,
@@ -530,7 +533,9 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
   // the ICCID from persistence.
   bool got_mdn = IsMdnValid();
   if (got_mdn && !sim_identifier_.empty())
-      modem_info()->activating_iccid_store()->RemoveEntry(sim_identifier_);
+      modem_info()->pending_activation_store()->RemoveEntry(
+          PendingActivationStore::kIdentifierICCID,
+          sim_identifier_);
 
   CellularServiceRefPtr service = cellular()->service();
 
@@ -555,26 +560,28 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
   if (sim_identifier_.empty())
     return;
 
-  ActivatingIccidStore::State state =
-      modem_info()->activating_iccid_store()->GetActivationState(
+  PendingActivationStore::State state =
+      modem_info()->pending_activation_store()->GetActivationState(
+          PendingActivationStore::kIdentifierICCID,
           sim_identifier_);
   switch (state) {
-    case ActivatingIccidStore::kStatePending:
+    case PendingActivationStore::kStatePending:
       // Always mark the service as activating here, as the ICCID could have
       // been unavailable earlier.
       service->SetActivationState(flimflam::kActivationStateActivating);
       if (reset_done_) {
         SLOG(Cellular, 2) << "Post-payment activation reset complete.";
-        modem_info()->activating_iccid_store()->SetActivationState(
+        modem_info()->pending_activation_store()->SetActivationState(
+            PendingActivationStore::kIdentifierICCID,
             sim_identifier_,
-            ActivatingIccidStore::kStateActivated);
+            PendingActivationStore::kStateActivated);
       } else if (registered) {
         SLOG(Cellular, 2) << "Resetting modem for activation.";
         activation_wait_for_registration_callback_.Cancel();
         ResetAfterActivation();
       }
       break;
-    case ActivatingIccidStore::kStateActivated:
+    case PendingActivationStore::kStateActivated:
       if (registered) {
         // Trigger auto connect here.
         SLOG(Cellular, 2) << "Modem has been reset at least once, try to "
@@ -582,18 +589,19 @@ void CellularCapabilityUniversal::UpdateIccidActivationState() {
         service->AutoConnect();
       }
       break;
-    case ActivatingIccidStore::kStatePendingTimeout:
+    case PendingActivationStore::kStatePendingTimeout:
       SLOG(Cellular, 2) << "Modem failed to register within timeout, but has "
                         << "been reset at least once.";
       if (registered) {
         SLOG(Cellular, 2) << "Registered to network, marking as activated.";
-        modem_info()->activating_iccid_store()->SetActivationState(
+        modem_info()->pending_activation_store()->SetActivationState(
+            PendingActivationStore::kIdentifierICCID,
             sim_identifier_,
-            ActivatingIccidStore::kStateActivated);
+            PendingActivationStore::kStateActivated);
         service->SetActivationState(flimflam::kActivationStateActivated);
       }
       break;
-    case ActivatingIccidStore::kStateUnknown:
+    case PendingActivationStore::kStateUnknown:
       // No entry exists for this ICCID. Nothing to do.
       break;
     default:
@@ -639,12 +647,13 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
     return;
   bool activation_required = IsServiceActivationRequired();
   string activation_state = flimflam::kActivationStateActivated;
-  ActivatingIccidStore::State state =
-      modem_info()->activating_iccid_store()->GetActivationState(
+  PendingActivationStore::State state =
+      modem_info()->pending_activation_store()->GetActivationState(
+          PendingActivationStore::kIdentifierICCID,
           sim_identifier_);
   if (!sim_identifier_.empty() &&
-      (state == ActivatingIccidStore::kStatePending ||
-       state == ActivatingIccidStore::kStatePendingTimeout))
+      (state == PendingActivationStore::kStatePending ||
+       state == PendingActivationStore::kStatePendingTimeout))
     activation_state = flimflam::kActivationStateActivating;
   else if (activation_required)
     activation_state = flimflam::kActivationStateNotActivated;
@@ -1089,8 +1098,9 @@ void CellularCapabilityUniversal::InitAPNList() {
 
 bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   if (!sim_identifier_.empty() &&
-      modem_info()->activating_iccid_store()->GetActivationState(
-          sim_identifier_) != ActivatingIccidStore::kStateUnknown)
+      modem_info()->pending_activation_store()->GetActivationState(
+          PendingActivationStore::kIdentifierICCID,
+          sim_identifier_) != PendingActivationStore::kStateUnknown)
     return false;
 
   // If there is no online payment portal information, it's safer to assume

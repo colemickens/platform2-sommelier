@@ -2,11 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/mock_activating_iccid_store.h"
+#include "shill/mock_pending_activation_store.h"
 
 namespace shill {
 
-MockActivatingIccidStore::MockActivatingIccidStore() {}
-MockActivatingIccidStore::~MockActivatingIccidStore() {}
+MockPendingActivationStore::MockPendingActivationStore() {}
+MockPendingActivationStore::~MockPendingActivationStore() {}
 
 }  // namespace shill

@@ -716,9 +716,9 @@ TEST_F(CellularTest, HandleNewRegistrationStateForServiceRequiringActivation) {
   CellularService::OLP olp;
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
-  EXPECT_CALL(*modem_info_.mock_activating_iccid_store(),
-              GetActivationState(_))
-      .WillRepeatedly(Return(ActivatingIccidStore::kStateUnknown));
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_,_))
+      .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
 
   device_->state_ = Cellular::kStateDisabled;
   device_->HandleNewRegistrationState();

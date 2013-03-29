@@ -13,11 +13,11 @@
 
 #endif  // DISABLE_CELLULAR
 
-#include "shill/activating_iccid_store.h"
 #include "shill/cellular_operator_info.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/modem_manager.h"
+#include "shill/pending_activation_store.h"
 
 using base::FilePath;
 using std::string;
@@ -52,7 +52,7 @@ ModemInfo::ModemInfo(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager),
       glib_(glib),
-      activating_iccid_store_(NULL),
+      pending_activation_store_(NULL),
       provider_db_path_(kMobileProviderDBPath),
       provider_db_(NULL) {}
 
@@ -71,8 +71,8 @@ void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
 #else
 
 void ModemInfo::Start() {
-  activating_iccid_store_.reset(new ActivatingIccidStore());
-  activating_iccid_store_->InitStorage(manager_->glib(),
+  pending_activation_store_.reset(new PendingActivationStore());
+  pending_activation_store_->InitStorage(manager_->glib(),
       manager_->storage_path());
   cellular_operator_info_.reset(new CellularOperatorInfo());
   cellular_operator_info_->Load(FilePath(kCellularOperatorInfoPath));
@@ -88,7 +88,7 @@ void ModemInfo::Start() {
 }
 
 void ModemInfo::Stop() {
-  activating_iccid_store_.reset();
+  pending_activation_store_.reset();
   cellular_operator_info_.reset();
   if(provider_db_)
     mobile_provider_close_db(provider_db_);
@@ -103,9 +103,9 @@ void ModemInfo::OnDeviceInfoAvailable(const string &link_name) {
   }
 }
 
-void ModemInfo::set_activating_iccid_store(
-    ActivatingIccidStore *activating_iccid_store) {
-  activating_iccid_store_.reset(activating_iccid_store);
+void ModemInfo::set_pending_activation_store(
+    PendingActivationStore *pending_activation_store) {
+  pending_activation_store_.reset(pending_activation_store);
 }
 
 void ModemInfo::set_cellular_operator_info(

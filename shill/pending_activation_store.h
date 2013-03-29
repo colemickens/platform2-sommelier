@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_ACTIVATING_ICCID_STORE_H_
-#define SHILL_ACTIVATING_ICCID_STORE_H_
+#ifndef SHILL_PENDING_ACTIVATION_STORE_H_
+#define SHILL_PENDING_ACTIVATION_STORE_H_
 
 #include <string>
 
@@ -18,16 +18,16 @@ namespace shill {
 class GLib;
 class StoreInterface;
 
-// ActivatingIccidStore stores the network activation status for a
+// PendingActivationStore stores the network activation status for a
 // particular SIM. Once an online payment for the activation of a 3GPP
 // network is successful, the associated SIM is regarded as pending
 // activation and stored in the persistent profile. Once shill knows that
 // the activation associated with a particular SIM is successful, it is removed
 // from the profile and the cellular service is marked as activated.
-class ActivatingIccidStore {
+class PendingActivationStore {
  public:
   enum State {
-    // This state indicates that information for a articular SIM was never
+    // This state indicates that information for a particular SIM was never
     // stored in this database.
     kStateUnknown,
     // This state indicates that an online payment has been made but the modem
@@ -44,9 +44,14 @@ class ActivatingIccidStore {
     kStateMax,
   };
 
+  enum IdentifierType {
+    kIdentifierICCID,
+    kIdentifierMEID,
+  };
+
   // Constructor performs no initialization.
-  ActivatingIccidStore();
-  virtual ~ActivatingIccidStore();
+  PendingActivationStore();
+  virtual ~PendingActivationStore();
 
   // Tries to open the underlying store interface from the given file path.
   // Returns false if it fails to open the file.
@@ -57,35 +62,42 @@ class ActivatingIccidStore {
   // it is not guaranteed).
   virtual bool InitStorage(GLib *glib, const base::FilePath &storage_path);
 
-  // Returns the activation state for a SIM with the given ICCID. A return value
-  // of kStateUnknown indicates that the given ICCID was not found.
-  virtual State GetActivationState(const std::string &iccid) const;
+  // Returns the activation state for a SIM with the given identifier. A return
+  // value of kStateUnknown indicates that the given identifier was not found.
+  virtual State GetActivationState(IdentifierType type,
+                                   const std::string &identifier) const;
 
-  // Sets the activation state for the given ICCID. If an entry for this iccid
-  // was not found, a new entry will be created. Returns true on success.
-  virtual bool SetActivationState(const std::string &iccid, State state);
+  // Sets the activation state for the given identifier. If an entry for this
+  // identifier was not found, a new entry will be created. Returns true on
+  // success.
+  virtual bool SetActivationState(IdentifierType type,
+                                  const std::string &identifier,
+                                  State state);
 
-  // Removes the entry for the given ICCID from the database. Returns true if
-  // the operation was successful. If the iccid did not exist in the database,
-  // still returns true.
-  virtual bool RemoveEntry(const std::string &iccid);
+  // Removes the entry for the given identifier from the database. Returns true
+  // if the operation was successful. If the identifier did not exist in the
+  // database, still returns true.
+  virtual bool RemoveEntry(IdentifierType type, const std::string &identifier);
 
  private:
-  friend class ActivatingIccidStoreTest;
+  friend class PendingActivationStoreTest;
   friend class CellularCapabilityUniversalTest;
-  FRIEND_TEST(ActivatingIccidStoreTest, FileInteractions);
-  FRIEND_TEST(ActivatingIccidStoreTest, GetActivationState);
-  FRIEND_TEST(ActivatingIccidStoreTest, RemoveEntry);
-  FRIEND_TEST(ActivatingIccidStoreTest, SetActivationState);
+  FRIEND_TEST(PendingActivationStoreTest, FileInteractions);
+  FRIEND_TEST(PendingActivationStoreTest, GetActivationState);
+  FRIEND_TEST(PendingActivationStoreTest, RemoveEntry);
+  FRIEND_TEST(PendingActivationStoreTest, SetActivationState);
 
-  static const char kGroupId[];
+  static const char kIccidGroupId[];
+  static const char kMeidGroupId[];
   static const char kStorageFileName[];
+
+  static std::string IdentifierTypeToGroupId(IdentifierType type);
 
   scoped_ptr<StoreInterface> storage_;
 
-  DISALLOW_COPY_AND_ASSIGN(ActivatingIccidStore);
+  DISALLOW_COPY_AND_ASSIGN(PendingActivationStore);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_ACTIVATING_ICCID_STORE_H_
+#endif  // SHILL_PENDING_ACTIVATION_STORE_H_

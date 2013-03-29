@@ -23,12 +23,6 @@ struct mobile_provider_db;
 
 namespace shill {
 
-class ActivatingIccidStore;
-class CellularOperatorInfo;
-class ControlInterface;
-class EventDispatcher;
-class Manager;
-class Metrics;
 class ProxyFactory;
 
 // Handles an instance of ModemManager.Modem and an instance of a Cellular

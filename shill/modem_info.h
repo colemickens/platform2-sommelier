@@ -15,7 +15,6 @@ struct mobile_provider_db;
 
 namespace shill {
 
-class ActivatingIccidStore;
 class CellularOperatorInfo;
 class ControlInterface;
 class EventDispatcher;
@@ -23,6 +22,7 @@ class GLib;
 class Manager;
 class Metrics;
 class ModemManager;
+class PendingActivationStore;
 
 // Manages modem managers.
 class ModemInfo {
@@ -44,8 +44,8 @@ class ModemInfo {
   Metrics *metrics() const { return metrics_; }
   Manager *manager() const { return manager_; }
   GLib *glib() const { return glib_; }
-  ActivatingIccidStore *activating_iccid_store() const {
-    return activating_iccid_store_.get();
+  PendingActivationStore *pending_activation_store() const {
+    return pending_activation_store_.get();
   }
   CellularOperatorInfo *cellular_operator_info() const {
     return cellular_operator_info_.get();
@@ -69,8 +69,8 @@ class ModemInfo {
   void set_glib(GLib *glib) {
     glib_ = glib;
   }
-  void set_activating_iccid_store(
-      ActivatingIccidStore *activating_iccid_store);
+  void set_pending_activation_store(
+      PendingActivationStore *pending_activation_store);
   void set_cellular_operator_info(
       CellularOperatorInfo *cellular_operator_info);
   void set_mobile_provider_db(mobile_provider_db *provider_db) {
@@ -95,7 +95,7 @@ class ModemInfo {
   GLib *glib_;
 
   // Post-payment activation state of the modem.
-  scoped_ptr<ActivatingIccidStore> activating_iccid_store_;
+  scoped_ptr<PendingActivationStore> pending_activation_store_;
   scoped_ptr<CellularOperatorInfo> cellular_operator_info_;
   std::string provider_db_path_;  // For testing.
   mobile_provider_db *provider_db_;  // Database instance owned by |this|.

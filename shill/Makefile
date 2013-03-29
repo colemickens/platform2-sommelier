@@ -194,7 +194,6 @@ SHIM_PROTO_BINDINGS_CC = $(CRYPTO_UTIL_PROTO_BINDINGS_OBJS:.o=.cc)
 
 SHILL_LIB = $(BUILDDIR)/shill.a
 SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
-	activating_iccid_store.o \
 	arp_client.o \
 	arp_packet.o \
 	async_connection.o \
@@ -268,6 +267,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	nl80211_attribute.o \
 	nl80211_message.o \
 	nss.o \
+	pending_activation_store.o \
 	portal_detector.o \
 	power_manager.o \
 	power_manager_proxy.o \
@@ -330,7 +330,6 @@ SHILL_MAIN_OBJ = $(BUILDDIR)/shill_main.o
 
 TEST_BIN = shill_unittest
 TEST_OBJS = $(addprefix $(BUILDDIR)/, \
-	activating_iccid_store_unittest.o \
 	arp_client_unittest.o \
 	arp_packet_unittest.o \
 	async_connection_unittest.o \
@@ -384,7 +383,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	manager_unittest.o \
 	memory_log_unittest.o \
 	metrics_unittest.o \
-	mock_activating_iccid_store.o \
 	mock_adaptors.o \
 	mock_ares.o \
 	mock_arp_client.o \
@@ -424,6 +422,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_minijail.o \
 	mock_modem_info.o \
 	mock_nss.o \
+	mock_pending_activation_store.o \
 	mock_portal_detector.o \
 	mock_power_manager.o \
 	mock_power_manager_proxy.o \
@@ -461,6 +460,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	netlink_socket_unittest.o \
 	nice_mock_control.o \
 	nss_unittest.o \
+	pending_activation_store_unittest.o \
 	portal_detector_unittest.o \
 	power_manager_unittest.o \
 	process_killer_unittest.o \

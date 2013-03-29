@@ -24,14 +24,8 @@ struct mobile_provider_db;
 
 namespace shill {
 
-class ActivatingIccidStore;
-class CellularOperatorInfo;
-class ControlInterface;
 class DBusObjectManagerProxyInterface;
 class DBusPropertiesProxyInterface;
-class EventDispatcher;
-class Manager;
-class Metrics;
 class Modem1;
 class Modem;
 class ModemClassic;
