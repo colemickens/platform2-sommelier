@@ -34,8 +34,7 @@ AsyncFileReader::AsyncFileReader()
       initial_read_size_(kInitialFileReadSize),
       read_cb_(NULL),
       error_cb_(NULL),
-      update_state_timeout_id_(0),
-      verbose_(false) {
+      update_state_timeout_id_(0) {
 }
 
 AsyncFileReader::~AsyncFileReader() {
@@ -62,7 +61,6 @@ bool AsyncFileReader::HasOpenedFile() const {
 void AsyncFileReader::StartRead(
     base::Callback<void(const std::string&)>* read_cb,
     base::Callback<void()>* error_cb) {
-  LOG_IF(INFO, verbose_) << "Starting read of " << filename_;
   Reset();
 
   if (fd_ == -1) {
@@ -83,15 +81,12 @@ void AsyncFileReader::StartRead(
 }
 
 gboolean AsyncFileReader::UpdateState() {
-  LOG_IF(INFO, verbose_)
-      << "Updating state; read_in_progress=" << read_in_progress_;
   if (!read_in_progress_) {
     update_state_timeout_id_ = 0;
     return FALSE;
   }
 
   int status = aio_error(&aio_control_);
-  LOG_IF(INFO, verbose_) << "Status is " << status;
 
   // If the read is still in-progress, keep the timeout alive.
   if (status == EINPROGRESS)
@@ -137,21 +132,23 @@ gboolean AsyncFileReader::UpdateState() {
 }
 
 void AsyncFileReader::Reset() {
-  LOG_IF(INFO, verbose_ && read_in_progress_) << "Resetting state";
   if (!read_in_progress_)
     return;
 
   util::RemoveTimeout(&update_state_timeout_id_);
 
-  // TODO(derat): Determine if unhandled AIO_NOTCANCELED results are the
-  // cause of http://crosbug.com/38732.
   int cancel_result = aio_cancel(fd_, &aio_control_);
-  if (cancel_result == -1)
+  if (cancel_result == -1) {
     PLOG(ERROR) << "aio_cancel() failed";
-  else if (cancel_result == AIO_NOTCANCELED)
-    LOG(ERROR) << "aio_cancel() returned AIO_NOTCANCELED";
+  } else if (cancel_result == AIO_NOTCANCELED) {
+    LOG(INFO) << "aio_cancel() returned AIO_NOTCANCELED; waiting for "
+              << "request to complete";
+    const aiocb* aiocb_list = { &aio_control_ };
+    if (aio_suspend(&aiocb_list, 1, NULL) == -1)
+      PLOG(ERROR) << "aio_suspend() failed";
+  }
 
-  delete [] aio_buffer_;
+  delete[] aio_buffer_;
   aio_buffer_ = NULL;
   stored_data_.clear();
   read_cb_ = NULL;
