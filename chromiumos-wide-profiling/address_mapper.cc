@@ -146,6 +146,19 @@ bool AddressMapper::GetMappedNameAndOffset(const uint64 real_addr,
   return false;
 }
 
+uint64 AddressMapper::GetMaxMappedLength() const {
+  if (IsEmpty())
+    return 0;
+
+  uint64 min = mappings_.begin()->mapped_addr;
+
+  MappingList::const_iterator iter = mappings_.end();
+  --iter;
+  uint64 max = iter->mapped_addr + iter->size;
+
+  return max - min;
+}
+
 bool AddressMapper::Unmap(const MappedRange& range) {
   MappingList::iterator iter;
   // TODO(sque): this is highly inefficient since Unmap() is called from a

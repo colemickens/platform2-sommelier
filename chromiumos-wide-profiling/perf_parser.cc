@@ -381,6 +381,7 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
   uint64 mapped_addr;
   bool mapped = false;
   AddressMapper* mapper = NULL;
+  CHECK(kernel_mapper_);
   if (kernel_mapper_->GetMappedAddress(event->ip, &mapped_addr)) {
     mapped = true;
     mapper = kernel_mapper_;
@@ -390,6 +391,9 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
       mapper = process_mappers_[pid];
       if (mapper->GetMappedAddress(event->ip, &mapped_addr)) {
         mapped = true;
+        // For non-kernel addresses, the address is shifted to after where the
+        // kernel objects are mapped.  Described more in MapMmapEvent().
+        mapped_addr += kernel_mapper_->GetMaxMappedLength();
         break;
       }
       if (child_to_parent_pid_map_.find(pid) == child_to_parent_pid_map_.end())
@@ -408,6 +412,7 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
 
 bool PerfParser::MapMmapEvent(struct mmap_event* event) {
   AddressMapper* mapper = kernel_mapper_;
+  CHECK(kernel_mapper_);
   uint32 pid = event->pid;
 
   // We need to hide only the real kernel addresses.  But the pid of kernel
@@ -438,6 +443,12 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event) {
   CHECK(mapper->GetMappedAddress(start, &mapped_addr));
   if (do_remap_) {
     event->start = mapped_addr;
+    // If this is a non-kernel DSO, shift it to after where the kernel objects
+    // are mapped.  This allows for kernel addresses to be identified by address
+    // rather than by pid, since kernel addresses are distinct from non-kernel
+    // addresses even in quipper space.
+    if (pid != kKernelPid)
+      event->start += kernel_mapper_->GetMaxMappedLength();
     event->len = len;
     event->pgoff = pgoff;
   }

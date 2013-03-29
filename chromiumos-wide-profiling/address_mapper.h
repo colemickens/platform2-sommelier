@@ -51,6 +51,12 @@ class AddressMapper {
     return mappings_.size();
   }
 
+  // Returns the maximum length of quipper space containing mapped areas.
+  // There may be gaps in between blocks.
+  // If the result is 2^64 (all of quipper space), this returns 0.  Call
+  // IsEmpty() to distinguish this from actual emptiness.
+  uint64 GetMaxMappedLength() const;
+
  private:
   struct MappedRange {
     uint64 real_addr;

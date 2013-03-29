@@ -6,6 +6,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 
@@ -161,15 +163,22 @@ TEST_F(AddressMapperTest, MapSingle) {
                                            &mapped_addr));
     EXPECT_FALSE(mapper_->GetMappedAddress(range.addr + range.size + 0x100,
                                            &mapped_addr));
+    EXPECT_EQ(range.size, mapper_->GetMaxMappedLength());
   }
 }
 
 // Map all the ranges at once and test looking up addresses.
 TEST_F(AddressMapperTest, MapAll) {
   unsigned int i;
-  for (i = 0; i < arraysize(kMapRanges); ++i)
+  uint64 size_mapped = 0;
+  for (i = 0; i < arraysize(kMapRanges); ++i) {
     ASSERT_TRUE(MapRange(kMapRanges[i], false));
+    size_mapped += kMapRanges[i].size;
+  }
   EXPECT_EQ(arraysize(kMapRanges), mapper_->GetNumMappedRanges());
+
+  // Check the max mapped length in quipper space.
+  EXPECT_EQ(size_mapped, mapper_->GetMaxMappedLength());
 
   // For each mapped range, test addresses at the start, middle, and end.
   // Also test the address right before and after each range.
@@ -306,6 +315,8 @@ TEST_F(AddressMapperTest, OverlapBig) {
       }
     }
   }
+
+  EXPECT_EQ(kBigRegion.size, mapper_->GetMaxMappedLength());
 }
 
 TEST_F(AddressMapperTest, EndOfMemory) {
