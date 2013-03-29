@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 extern "C" {
-#include "dump_kernel_config.h"
+#include "vboot_host.h"
 }
 
 using std::string;

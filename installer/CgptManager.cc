@@ -7,7 +7,7 @@
 #include "CgptManager.h"
 
 extern "C" {
-#include "cgpt_params.h"
+#include "vboot_host.h"
 }
 
 using std::string;
