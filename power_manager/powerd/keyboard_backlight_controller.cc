@@ -156,6 +156,8 @@ void KeyboardBacklightController::HandleSessionStateChange(
 
 void KeyboardBacklightController::HandlePowerButtonPress() {}
 
+void KeyboardBacklightController::HandleUserActivity() {}
+
 void KeyboardBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed == dimmed_for_inactivity_)
     return;

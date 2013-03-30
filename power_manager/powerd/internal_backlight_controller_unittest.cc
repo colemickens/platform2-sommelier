@@ -598,6 +598,13 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   controller_->HandlePowerButtonPress();
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
+  // Ditto for any user activity.
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT));
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity();
+  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+
   // Enter presentation mode.  The same actions that forced the backlight
   // on before shouldn't do anything now; turning the panel back on while a
   // second display is connected would resize the desktop.
@@ -608,6 +615,8 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   controller_->HandleSessionStateChange(SESSION_STOPPED);
   EXPECT_EQ(0, backlight_.current_level());
   controller_->HandlePowerButtonPress();
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity();
   EXPECT_EQ(0, backlight_.current_level());
 
   // The backlight should be turned on after exiting presentation mode.

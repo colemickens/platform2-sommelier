@@ -256,6 +256,10 @@ void InternalBacklightController::HandlePowerButtonPress() {
   EnsureUserBrightnessIsNonzero();
 }
 
+void InternalBacklightController::HandleUserActivity() {
+  EnsureUserBrightnessIsNonzero();
+}
+
 void InternalBacklightController::SetDimmedForInactivity(bool dimmed) {
   if (dimmed_for_inactivity_ == dimmed)
     return;

@@ -1080,6 +1080,7 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
 DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
   suspender_.HandleUserActivity();
   state_controller_->HandleUserActivity();
+  backlight_controller_->HandleUserActivity();
   return NULL;
 }
 

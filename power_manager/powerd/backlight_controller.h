@@ -53,6 +53,12 @@ class BacklightController {
   // Handles the power button being pressed.
   virtual void HandlePowerButtonPress() = 0;
 
+  // Handles user activity.  Note that screen dimming and undimming in
+  // response to user inactivity/activity are controlled via
+  // SetDimmingForInactivity(); this method should only be used for e.g.
+  // ensuring that the user-set brightness is nonzero.
+  virtual void HandleUserActivity() = 0;
+
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this
   // one, e.g. the backlight will be turned off if SetOffForInactivity(true)
