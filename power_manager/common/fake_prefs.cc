@@ -61,22 +61,19 @@ bool FakePrefs::GetBool(const std::string& name, bool* value) {
   return true;
 }
 
-bool FakePrefs::SetString(const std::string& name, const std::string& value) {
+void FakePrefs::SetString(const std::string& name, const std::string& value) {
   Unset(name);
   string_prefs_[name] = value;
-  return true;
 }
 
-bool FakePrefs::SetInt64(const std::string& name, int64 value) {
+void FakePrefs::SetInt64(const std::string& name, int64 value) {
   Unset(name);
   int64_prefs_[name] = value;
-  return true;
 }
 
-bool FakePrefs::SetDouble(const std::string& name, double value) {
+void FakePrefs::SetDouble(const std::string& name, double value) {
   Unset(name);
   double_prefs_[name] = value;
-  return true;
 }
 
 }  // namespace power_manager

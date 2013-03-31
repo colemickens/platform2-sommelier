@@ -192,7 +192,7 @@ class StateControllerTest : public testing::Test {
 
  protected:
   void SetMillisecondPref(const std::string& name, base::TimeDelta value) {
-    CHECK(prefs_.SetInt64(name, value.InMilliseconds()));
+    prefs_.SetInt64(name, value.InMilliseconds());
   }
 
   // Sets values in |prefs_| based on |default_*| members and initializes
@@ -204,15 +204,14 @@ class StateControllerTest : public testing::Test {
     SetMillisecondPref(kUnpluggedSuspendMsPref, default_battery_suspend_delay_);
     SetMillisecondPref(kUnpluggedOffMsPref, default_battery_screen_off_delay_);
     SetMillisecondPref(kUnpluggedDimMsPref, default_battery_screen_dim_delay_);
-    CHECK(prefs_.SetInt64(kDisableIdleSuspendPref,
-                          default_disable_idle_suspend_));
-    CHECK(prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
-                          default_require_usb_input_device_to_suspend_));
-    CHECK(prefs_.SetInt64(kKeepBacklightOnForAudioPref,
-                          default_keep_screen_on_for_audio_));
-    CHECK(prefs_.SetInt64(kSuspendAtLoginScreenPref,
-                          default_suspend_at_login_screen_));
-    CHECK(prefs_.SetInt64(kUseLidPref, default_has_lid_));
+    prefs_.SetInt64(kDisableIdleSuspendPref, default_disable_idle_suspend_);
+    prefs_.SetInt64(kRequireUsbInputDeviceToSuspendPref,
+                    default_require_usb_input_device_to_suspend_);
+    prefs_.SetInt64(kKeepBacklightOnForAudioPref,
+                    default_keep_screen_on_for_audio_);
+    prefs_.SetInt64(kSuspendAtLoginScreenPref,
+                    default_suspend_at_login_screen_);
+    prefs_.SetInt64(kUseLidPref, default_has_lid_);
 
     test_api_.SetCurrentTime(now_);
     controller_.Init(initial_power_source_, initial_lid_state_,
@@ -825,7 +824,7 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   // 0, the system should shut down due to inactivity.
   controller_.HandleUserActivity();
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  ASSERT_TRUE(prefs_.SetInt64(kDisableIdleSuspendPref, 0));
+  prefs_.SetInt64(kDisableIdleSuspendPref, 0);
   prefs_.NotifyObservers(kDisableIdleSuspendPref);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
   EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),

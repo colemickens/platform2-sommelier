@@ -23,19 +23,19 @@ Inotify::Inotify()
 
 Inotify::~Inotify() {
   if (channel_) {
-    LOG(INFO) << "cleaning inotify";
+    VLOG(1) << "cleaning inotify";
     if (gio_watch_id_ > 0)
       g_source_remove(gio_watch_id_);
     g_io_channel_shutdown(channel_, TRUE, NULL);
     g_io_channel_unref(channel_);
-    LOG(INFO) << "done!";
+    VLOG(1) << "done!";
   }
 }
 
 bool Inotify::Init(InotifyCallback callback, gpointer data) {
   int fd = inotify_init();
   if (fd < 0) {
-    LOG(ERROR) << "Error in inotify_init";
+    PLOG(ERROR) << "inotify_init() failed";
     return false;
   }
   channel_ = g_io_channel_unix_new(fd);
@@ -60,15 +60,15 @@ int Inotify::AddWatch(const char* name, int mask) {
     LOG(ERROR) << "Error getting fd";
     return -1;
   }
-  LOG(INFO) << "Creating watch for " << name;
+  VLOG(1) << "Creating watch for " << name;
   int watch_handle = inotify_add_watch(fd, name, mask);
   if (watch_handle < 0)
-    LOG(ERROR) << "Error creating inotify watch for " << name;
+    PLOG(ERROR) << "inotify_add_watch() failed for " << name;
   return watch_handle;
 }
 
 void Inotify::Start() {
-  LOG(INFO) << "Starting Inotify Monitoring!";
+  VLOG(1) << "Starting Inotify Monitoring!";
   gio_watch_id_ = g_io_add_watch(channel_, G_IO_IN, &(Inotify::CallbackHandler),
                                  this);
 }

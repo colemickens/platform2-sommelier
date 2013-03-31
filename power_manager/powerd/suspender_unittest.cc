@@ -178,8 +178,8 @@ class SuspenderTest : public testing::Test {
 
  protected:
   void Init() {
-    CHECK(prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_));
-    CHECK(prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_));
+    prefs_.SetInt64(kRetrySuspendMsPref, pref_retry_delay_ms_);
+    prefs_.SetInt64(kRetrySuspendAttemptsPref, pref_num_retries_);
     suspender_.Init(&prefs_);
     dark_resume_policy_.Init();
   }

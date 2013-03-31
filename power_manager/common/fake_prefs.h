@@ -34,10 +34,10 @@ class FakePrefs : public PrefsInterface {
   virtual bool GetInt64(const std::string& name, int64* value) OVERRIDE;
   virtual bool GetDouble(const std::string& name, double* value) OVERRIDE;
   virtual bool GetBool(const std::string& name, bool* value) OVERRIDE;
-  virtual bool SetString(const std::string& name,
+  virtual void SetString(const std::string& name,
                          const std::string& value) OVERRIDE;
-  virtual bool SetInt64(const std::string& name, int64 value) OVERRIDE;
-  virtual bool SetDouble(const std::string& name, double value) OVERRIDE;
+  virtual void SetInt64(const std::string& name, int64 value) OVERRIDE;
+  virtual void SetDouble(const std::string& name, double value) OVERRIDE;
 
  private:
   ObserverList<PrefsObserver> observers_;
