@@ -37,8 +37,7 @@ InputController::InputController(system::Input* input,
       backlight_controller_(backlight_controller),
       state_controller_(state_controller),
       dbus_sender_(dbus_sender),
-      lid_state_(LID_OPEN),
-      use_input_for_lid_(true),
+      lid_state_(LID_NOT_PRESENT),
       check_active_vt_timeout_id_(0) {
   input_->AddObserver(this);
 }
@@ -49,34 +48,31 @@ InputController::~InputController() {
 }
 
 void InputController::Init(PrefsInterface* prefs) {
-  CHECK(prefs->GetBool(kUseLidPref, &use_input_for_lid_));
-  LidState lid_state = LID_OPEN;
-  if (use_input_for_lid_ && input_->QueryLidState(&lid_state))
-    OnLidEvent(lid_state);
-
+  OnLidEvent(input_->QueryLidState());
   check_active_vt_timeout_id_ = g_timeout_add(
       kCheckActiveVTFrequencySec * 1000, CheckActiveVTThunk, this);
 }
 
 void InputController::OnLidEvent(LidState state) {
   LOG(INFO) << "Lid " << LidStateToString(state);
-  lid_state_ = state;
-  if (!use_input_for_lid_) {
-    LOG(WARNING) << "Ignoring lid";
-    return;
-  }
 
+  lid_state_ = state;
   InputEvent proto;
-  if (lid_state_ == LID_CLOSED) {
-    input_->SetTouchDevicesState(false);
-    input_->SetWakeInputsState(false);
-    delegate_->HandleLidClosed();
-    proto.set_type(InputEvent_Type_LID_CLOSED);
-  } else {
-    input_->SetTouchDevicesState(true);
-    input_->SetWakeInputsState(true);
-    delegate_->HandleLidOpened();
-    proto.set_type(InputEvent_Type_LID_OPEN);
+  switch (lid_state_) {
+    case LID_CLOSED:
+      input_->SetTouchDevicesState(false);
+      input_->SetWakeInputsState(false);
+      delegate_->HandleLidClosed();
+      proto.set_type(InputEvent_Type_LID_CLOSED);
+      break;
+    case LID_OPEN:
+      input_->SetTouchDevicesState(true);
+      input_->SetWakeInputsState(true);
+      delegate_->HandleLidOpened();
+      proto.set_type(InputEvent_Type_LID_OPEN);
+      break;
+    case LID_NOT_PRESENT:
+      return;
   }
   proto.set_timestamp(base::TimeTicks::Now().ToInternalValue());
   dbus_sender_->EmitSignalWithProtocolBuffer(kInputEventSignal, proto);

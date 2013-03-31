@@ -91,6 +91,7 @@ enum PowerSource {
 enum LidState {
   LID_OPEN,
   LID_CLOSED,
+  LID_NOT_PRESENT,
 };
 
 enum SessionState {

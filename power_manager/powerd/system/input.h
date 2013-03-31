@@ -35,18 +35,18 @@ class Input {
     sysfs_input_path_for_testing_ = path;
   }
 
-  // Initialize the input object.
-  // |wakeup_inputs_names| is a vector of strings of input device names that may
-  // wake the system from resume that may be disabled.
-  // On success, return true; otherwise return false.
-  bool Init(const std::vector<std::string>& wakeup_inputs_names);
+  // |wakeup_inputs_names| contains input device names that may wake the
+  // system from resume.  If |use_lid| is true, the lid will be watched for
+  // events if present.  Returns true on success.
+  bool Init(const std::vector<std::string>& wakeup_input_names, bool use_lid);
 
   // Adds or removes an observer.
   void AddObserver(InputObserver* observer);
   void RemoveObserver(InputObserver* observer);
 
-  // Queries the system for the current lid state.
-  bool QueryLidState(LidState* state);
+  // Queries the system for the current lid state.  LID_NOT_PRESENT is
+  // returned on error.
+  LidState QueryLidState();
 
   // Checks if any USB input devices are connected, by scanning sysfs for input
   // devices whose paths contain "usb".
@@ -128,6 +128,9 @@ class Input {
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
   bool wakeups_enabled_;
+
+  // Should the lid be watched for events if present?
+  bool use_lid_;
 
   // Used to make ioctls to /dev/console to check which VT is active.
   int console_fd_;

@@ -183,7 +183,6 @@ class StateControllerTest : public testing::Test {
         default_require_usb_input_device_to_suspend_(0),
         default_keep_screen_on_for_audio_(0),
         default_suspend_at_login_screen_(0),
-        default_has_lid_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
         initial_session_state_(SESSION_STARTED),
@@ -211,7 +210,6 @@ class StateControllerTest : public testing::Test {
                     default_keep_screen_on_for_audio_);
     prefs_.SetInt64(kSuspendAtLoginScreenPref,
                     default_suspend_at_login_screen_);
-    prefs_.SetInt64(kUseLidPref, default_has_lid_);
 
     test_api_.SetCurrentTime(now_);
     controller_.Init(initial_power_source_, initial_lid_state_,
@@ -298,7 +296,6 @@ class StateControllerTest : public testing::Test {
   int64 default_require_usb_input_device_to_suspend_;
   int64 default_keep_screen_on_for_audio_;
   int64 default_suspend_at_login_screen_;
-  int64 default_has_lid_;
 
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
@@ -995,13 +992,18 @@ TEST_F(StateControllerTest, ResuspendAfterLidOpenAndClose) {
   EXPECT_EQ(kSuspend, delegate_.GetActions());
 }
 
-// Tests that the lid action is ignored if the "use lid" pref is false.
-TEST_F(StateControllerTest, IgnoreLidEventsIfNoLid) {
-  default_has_lid_ = 0;
+// Tests that delays function as expected on a system that lacks a lid and
+// that resume is treated as user activity.
+TEST_F(StateControllerTest, LidNotPresent) {
+  initial_lid_state_ = LID_NOT_PRESENT;
+  delegate_.set_lid_state(LID_NOT_PRESENT);
   Init();
-  delegate_.set_lid_state(LID_CLOSED);
-  controller_.HandleLidStateChange(LID_CLOSED);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  ASSERT_TRUE(TriggerDefaultAcTimeouts());
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
+            delegate_.GetActions());
+  controller_.HandleResume();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
 }
 
 // Tests that the system doesn't suspend while an update is being applied.

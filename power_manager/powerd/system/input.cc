@@ -80,6 +80,7 @@ Input::Input()
       num_power_key_events_(0),
       num_lid_events_(0),
       wakeups_enabled_(true),
+      use_lid_(true),
       console_fd_(-1) {}
 
 Input::~Input() {
@@ -95,7 +96,8 @@ Input::~Input() {
     close(console_fd_);
 }
 
-bool Input::Init(const vector<string>& wakeup_input_names) {
+bool Input::Init(const vector<string>& wakeup_input_names, bool use_lid) {
+  use_lid_ = use_lid;
   for (vector<string>::const_iterator names_iter = wakeup_input_names.begin();
       names_iter != wakeup_input_names.end(); ++names_iter) {
     // Iterate through the vector of input names, and if not the empty string,
@@ -135,23 +137,21 @@ void Input::RemoveObserver(InputObserver* observer) {
 #define LONG(x) ((x) / BITS_PER_LONG)
 #define IS_BIT_SET(bit, array)  ((array[LONG(bit)] >> OFF(bit)) & 1)
 
-bool Input::QueryLidState(LidState* state) {
-  if (lid_fd_ < 0) {
-    LOG(ERROR) << "No lid found on system";
-    return false;
-  }
+LidState Input::QueryLidState() {
+  if (lid_fd_ < 0)
+    return LID_NOT_PRESENT;
+
   unsigned long switch_events[NUM_BITS(SW_LID + 1)];
   memset(switch_events, 0, sizeof(switch_events));
   if (ioctl(lid_fd_, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
     PLOG(ERROR) << "Lid state ioctl() failed";
-    return false;
+    return LID_NOT_PRESENT;
   }
   if (IS_BIT_SET(SW_LID, switch_events)) {
     ioctl(lid_fd_, EVIOCGSW(sizeof(switch_events)), switch_events);
-    *state = IS_BIT_SET(SW_LID, switch_events) ? LID_CLOSED : LID_OPEN;
-    return true;
+    return IS_BIT_SET(SW_LID, switch_events) ? LID_CLOSED : LID_OPEN;
   } else {
-    return false;
+    return LID_NOT_PRESENT;
   }
 }
 
@@ -494,7 +494,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     // by the gpio_keys driver, both will share a single event in /dev/input.
     // In this case, only create one io channel per fd, and only add one
     // watch per event file.
-    if (IS_BIT_SET(SW_LID, switch_events)) {
+    if (use_lid_ && IS_BIT_SET(SW_LID, switch_events)) {
       num_lid_events_++;
       if (!watch_added) {
         LOG(INFO) << "Watching this event for lid switch!";

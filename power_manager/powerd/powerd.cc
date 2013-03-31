@@ -89,8 +89,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual LidState QueryLidState() OVERRIDE {
-    LidState state = LID_OPEN;
-    return daemon_->input_->QueryLidState(&state) ? state : LID_OPEN;
+    return daemon_->input_->QueryLidState();
   }
 
   virtual void DimScreen() OVERRIDE {
@@ -271,7 +270,9 @@ void Daemon::Init() {
   std::vector<std::string> wakeup_inputs;
   if (prefs_->GetString(kWakeupInputPref, &wakeup_inputs_str))
     base::SplitString(wakeup_inputs_str, '\n', &wakeup_inputs);
-  CHECK(input_->Init(wakeup_inputs));
+  bool use_lid = true;
+  prefs_->GetBool(kUseLidPref, &use_lid);
+  CHECK(input_->Init(wakeup_inputs, use_lid));
 
   input_controller_->Init(prefs_);
 
@@ -281,14 +282,10 @@ void Daemon::Init() {
 #endif
   audio_client_->Init(headphone_device);
 
-  bool has_lid = true;
-  prefs_->GetBool(kUseLidPref, &has_lid);
-  LidState lid_state =
-      has_lid ? state_controller_delegate_->QueryLidState() : LID_OPEN;
   PowerSource power_source =
       plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
-  state_controller_->Init(power_source, lid_state, current_session_state_,
-                          DISPLAY_NORMAL);
+  state_controller_->Init(power_source, input_->QueryLidState(),
+                          current_session_state_, DISPLAY_NORMAL);
   state_controller_initialized_ = true;
 
   peripheral_battery_watcher_->Init();

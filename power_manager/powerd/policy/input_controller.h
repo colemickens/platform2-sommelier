@@ -81,9 +81,6 @@ class InputController : public system::InputObserver {
 
   LidState lid_state_;
 
-  // Should |input_| be queried for the state of the lid?
-  bool use_input_for_lid_;
-
   // GLib source ID for a timeout that calls CheckActiveVT() periodically.
   guint check_active_vt_timeout_id_;
 

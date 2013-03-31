@@ -311,9 +311,6 @@ class StateController : public PrefsObserver {
   // |kSuspendAtLoginScreenPref| pref.
   bool suspend_at_login_screen_;
 
-  // Does the system have a lid?
-  bool has_lid_;
-
   // Externally-requested idle notifications added via
   // AddIdleNotification() that haven't yet fired.  (Notifications are only
   // sent once.)

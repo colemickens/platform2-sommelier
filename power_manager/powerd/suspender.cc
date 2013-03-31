@@ -45,8 +45,7 @@ class Suspender::RealDelegate : public Suspender::Delegate {
 
   // Delegate implementation:
   virtual bool IsLidClosed() OVERRIDE {
-    LidState state = LID_OPEN;
-    return input_->QueryLidState(&state) ? (state == LID_CLOSED) : false;
+    return input_->QueryLidState() == LID_CLOSED;
   }
 
   virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {

@@ -103,6 +103,8 @@ std::string LidStateToString(LidState state) {
       return "open";
     case LID_CLOSED:
       return "closed";
+    case LID_NOT_PRESENT:
+      return "not present";
     default:
       return StringPrintf("unknown (%d)", state);
   }
