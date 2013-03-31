@@ -25,6 +25,7 @@ using std::vector;
 DEFINE_int32(duration, 0, "run tests in a loop for at least this many seconds");
 DEFINE_string(tests, "", "colon-separated list of tests to run; "
               "all tests if omitted");
+DEFINE_string(blacklist, "", "colon-separated list of tests to disable");
 
 bool test_is_enabled(glbench::TestBase* test,
                      const vector<string>& enabled_tests) {
@@ -34,6 +35,23 @@ bool test_is_enabled(glbench::TestBase* test,
   const char* test_name = test->Name();
   for (vector<string>::const_iterator i = enabled_tests.begin();
        i != enabled_tests.end(); ++i) {
+    // This is not very precise, but will do until there's a need for something
+    // more flexible.
+    if (strstr(test_name, i->c_str()))
+      return true;
+  }
+
+  return false;
+}
+
+bool test_is_disabled(glbench::TestBase* test,
+                     const vector<string>& disabled_tests) {
+  if (disabled_tests.empty())
+    return false;
+
+  const char* test_name = test->Name();
+  for (vector<string>::const_iterator i = disabled_tests.begin();
+       i != disabled_tests.end(); ++i) {
     // This is not very precise, but will do until there's a need for something
     // more flexible.
     if (strstr(test_name, i->c_str()))
@@ -89,8 +107,9 @@ int main(int argc, char *argv[]) {
   }
   printDateTime();
 
-  vector<string> enabled_tests;
+  vector<string> enabled_tests, disabled_tests;
   base::SplitString(FLAGS_tests, ':', &enabled_tests);
+  base::SplitString(FLAGS_blacklist, ':', &disabled_tests);
   glbench::TestBase* tests[] = {
     glbench::GetSwapTest(),
     glbench::GetContextTest(),
@@ -111,7 +130,8 @@ int main(int argc, char *argv[]) {
   uint64_t done = GetUTime() + 1000000ULL * FLAGS_duration;
   do {
     for (unsigned int i = 0; i < arraysize(tests); i++) {
-      if (!test_is_enabled(tests[i], enabled_tests))
+      if (!test_is_enabled(tests[i], enabled_tests) ||
+          test_is_disabled(tests[i], disabled_tests))
         continue;
       if (!g_main_gl_interface->Init()) {
         printf("Initialize failed\n");
