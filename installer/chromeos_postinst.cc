@@ -352,7 +352,13 @@ bool RunPostInstall(const string& install_dir,
   // If we can read in the lsb-release we are updating FROM, log it.
   string lsb_contents;
   if (ReadFileToString("/etc/lsb-release", &lsb_contents)) {
-    printf("\nFROM:\n%s", lsb_contents.c_str());
+    printf("\nFROM (rootfs):\n%s", lsb_contents.c_str());
+  }
+
+  // If we can read in the stateful lsb-release we are updating FROM, log it.
+  if (ReadFileToString("/mnt/stateful_partition/etc/lsb-release",
+                       &lsb_contents)) {
+    printf("\nFROM (stateful):\n%s", lsb_contents.c_str());
   }
 
   // If we can read the lsb-release we are updating TO, log it
