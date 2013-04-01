@@ -214,4 +214,27 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, PurgeStaleAccounts) {
   EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
 }
 
+TEST_F(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs) {
+  const char *kDir1 = "356a192b7913b04c54574d18c28d46e6395428ab";
+  const char *kDir2 = "DA4B9237BACCCDF19C0760CAB7AEC4A8359010B0";
+  const char *kDir2Lower = "da4b9237bacccdf19c0760cab7aec4a8359010b0";
+  const char *kUnrelated = "foobar";
+
+  FilePath fp1(temp_dir_.path().Append(kDir1));
+  FilePath fp2(temp_dir_.path().Append(kDir2));
+  FilePath fp2lower(temp_dir_.path().Append(kDir2Lower));
+  FilePath fpunrel(temp_dir_.path().Append(kUnrelated));
+
+  EXPECT_TRUE(file_util::CreateDirectory(fp1));
+  EXPECT_TRUE(file_util::CreateDirectory(fp2));
+  EXPECT_TRUE(file_util::CreateDirectory(fpunrel));
+
+  EXPECT_TRUE(service_->MigrateUppercaseDirs());
+
+  EXPECT_TRUE(file_util::DirectoryExists(fp1));
+  EXPECT_FALSE(file_util::DirectoryExists(fp2));
+  EXPECT_TRUE(file_util::DirectoryExists(fp2lower));
+  EXPECT_TRUE(file_util::DirectoryExists(fpunrel));
+}
+
 }  // namespace login_manager

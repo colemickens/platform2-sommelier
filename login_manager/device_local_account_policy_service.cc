@@ -10,6 +10,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop_proxy.h>
 #include <base/stl_util.h>
+#include <base/string_util.h>
 #include <chromeos/cryptohome.h>
 
 #include "login_manager/chrome_device_policy.pb.h"
@@ -81,6 +82,8 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
   }
   policy_map_.swap(new_policy_map);
 
+  MigrateUppercaseDirs();
+
   // Purge all existing on-disk accounts that are no longer defined.
   file_util::FileEnumerator enumerator(device_local_account_dir_, false,
                                        file_util::FileEnumerator::DIRECTORIES);
@@ -93,6 +96,25 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
         LOG(ERROR) << "Failed to delete " << subdir.value();
     }
   }
+}
+
+bool DeviceLocalAccountPolicyService::MigrateUppercaseDirs(void) {
+  file_util::FileEnumerator enumerator(device_local_account_dir_, false,
+                                       file_util::FileEnumerator::DIRECTORIES);
+  FilePath subdir;
+
+  while (!(subdir = enumerator.Next()).empty()) {
+    std::string upper = subdir.BaseName().value();
+    std::string lower = StringToLowerASCII(upper);
+    if (IsValidAccountKey(lower) && lower != upper) {
+      FilePath subdir_to(subdir.DirName().Append(lower));
+      LOG(INFO) << "Migrating " << upper << " to " << lower;
+      if (!file_util::ReplaceFile(subdir, subdir_to))
+        LOG(ERROR) << "Failed to migrate " << subdir.value();
+    }
+  }
+
+  return true;
 }
 
 PolicyService* DeviceLocalAccountPolicyService::GetPolicyService(

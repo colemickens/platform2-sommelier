@@ -12,6 +12,7 @@
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/memory/ref_counted.h>
+#include <gtest/gtest.h>
 
 #include "login_manager/policy_service.h"
 
@@ -65,6 +66,10 @@ class DeviceLocalAccountPolicyService {
       const enterprise_management::ChromeDeviceSettingsProto& device_settings);
 
  private:
+  // Migrate uppercase local-account directories to their lowercase variants.
+  // This is to repair the damage caused by http://crbug.com/225472.
+  bool MigrateUppercaseDirs(void);
+
   // Obtains the PolicyService instance that manages disk storage for
   // |account_id| after checking that |account_id| is valid. The PolicyService
   // is lazily created on the fly if not present yet.
@@ -92,6 +97,8 @@ class DeviceLocalAccountPolicyService {
   // that are not present are invalid, entries that contain a NULL pointer
   // indicate the respective policy blob hasn't been pulled from disk yet.
   std::map<std::string, scoped_refptr<PolicyService> > policy_map_;
+
+  FRIEND_TEST(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs);
 
   DISALLOW_COPY_AND_ASSIGN(DeviceLocalAccountPolicyService);
 };
