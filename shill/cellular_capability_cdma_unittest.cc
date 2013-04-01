@@ -120,9 +120,7 @@ class CellularCapabilityCDMATest : public testing::Test {
   }
 
   void SetService() {
-    cellular_->service_ = new CellularService(
-        modem_info_.control_interface(), modem_info_.dispatcher(),
-        modem_info_.metrics(), modem_info_.manager(), cellular_);
+    cellular_->service_ = new CellularService(&modem_info_, cellular_);
   }
 
   void SetDeviceState(Cellular::State state) {

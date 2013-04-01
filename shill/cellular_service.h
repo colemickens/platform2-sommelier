@@ -54,10 +54,7 @@ class CellularService : public Service {
     DISALLOW_COPY_AND_ASSIGN(OLP);
   };
 
-  CellularService(ControlInterface *control_interface,
-                  EventDispatcher *dispatcher,
-                  Metrics *metrics,
-                  Manager *manager,
+  CellularService(ModemInfo *modem_info,
                   const CellularRefPtr &device);
   virtual ~CellularService();
 

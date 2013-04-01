@@ -33,9 +33,7 @@ namespace shill {
 class CellularServiceTest : public testing::Test {
  public:
   CellularServiceTest()
-      : metrics_(&dispatcher_),
-        manager_(&control_, &dispatcher_, &metrics_, NULL),
-        modem_info_(&control_, &dispatcher_, &metrics_, &manager_, NULL),
+      : modem_info_(NULL, &dispatcher_, NULL, NULL, NULL),
         device_(new MockCellular(&modem_info_,
                                  "usb0",
                                  kAddress,
@@ -45,8 +43,7 @@ class CellularServiceTest : public testing::Test {
                                  "",
                                  "",
                                  ProxyFactory::GetInstance())),
-        service_(new CellularService(&control_, &dispatcher_,
-                                     &metrics_, &manager_, device_)),
+        service_(new CellularService(&modem_info_, device_)),
         adaptor_(NULL) {}
 
   virtual ~CellularServiceTest() {
@@ -55,7 +52,7 @@ class CellularServiceTest : public testing::Test {
 
   virtual void SetUp() {
     adaptor_ =
-        dynamic_cast<NiceMock<ServiceMockAdaptor> *>(service_->adaptor());
+        dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
   }
 
   CellularCapabilityCDMA *GetCapabilityCDMA() {
@@ -67,14 +64,11 @@ class CellularServiceTest : public testing::Test {
 
   string GetFriendlyName() const { return service_->friendly_name(); }
 
-  NiceMockControl control_;
   EventDispatcher dispatcher_;
-  NiceMock<MockMetrics> metrics_;
-  MockManager manager_;
   MockModemInfo modem_info_;
   scoped_refptr<MockCellular> device_;
   CellularServiceRefPtr service_;
-  NiceMock<ServiceMockAdaptor> *adaptor_;  // Owned by |service_|.
+  ServiceMockAdaptor *adaptor_;  // Owned by |service_|.
 };
 
 const char CellularServiceTest::kAddress[] = "000102030405";
@@ -108,7 +102,8 @@ TEST_F(CellularServiceTest, SetActivationState) {
     EXPECT_CALL(*adaptor_, EmitBoolChanged(
         flimflam::kConnectableProperty, false));
   }
-  EXPECT_CALL(manager_, HasService(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(*modem_info_.mock_manager(), HasService(_))
+      .WillRepeatedly(Return(false));
 
   EXPECT_TRUE(service_->activation_state().empty());
   EXPECT_TRUE(service_->connectable());
@@ -158,7 +153,7 @@ TEST_F(CellularServiceTest, SetRoamingState) {
 TEST_F(CellularServiceTest, FriendlyName) {
   static const char kCarrier[] = "Cellular Carrier";
   GetCapabilityCDMA()->carrier_ = kCarrier;
-  service_ = new CellularService(&control_, NULL, &metrics_, NULL, device_);
+  service_ = new CellularService(&modem_info_, device_);
   EXPECT_EQ(kCarrier, GetFriendlyName());
 }
 
@@ -214,7 +209,8 @@ TEST_F(CellularServiceTest, SetApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
+      modem_info_.control_interface(), modem_info_.metrics(),
+      modem_info_.manager()));
   service_->set_profile(profile);
   Error error;
   Stringmap testapn;
@@ -244,7 +240,8 @@ TEST_F(CellularServiceTest, ClearApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
+      modem_info_.control_interface(), modem_info_.metrics(),
+      modem_info_.manager()));
   service_->set_profile(profile);
   Error error;
   // Set up an APN to make sure that it later gets cleared.
@@ -281,7 +278,8 @@ TEST_F(CellularServiceTest, LastGoodApn) {
   static const char kApn[] = "TheAPN";
   static const char kUsername[] = "commander.data";
   ProfileRefPtr profile(new NiceMock<MockProfile>(
-      &control_, &metrics_, reinterpret_cast<Manager *>(NULL)));
+      modem_info_.control_interface(), modem_info_.metrics(),
+      modem_info_.manager()));
   service_->set_profile(profile);
   Stringmap testapn;
   testapn[flimflam::kApnProperty] = kApn;

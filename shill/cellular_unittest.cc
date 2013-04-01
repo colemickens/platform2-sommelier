@@ -383,26 +383,15 @@ class CellularTest : public testing::Test {
         device_->capability_.get());
   }
 
-  // Different tests simulate a cellular service being set using a real /m mock
+  // Different tests simulate a cellular service being set using a real /mock
   // service.
   CellularService *SetService() {
-    device_->service_ = new CellularService(
-        modem_info_.control_interface(),
-        modem_info_.dispatcher(),
-        modem_info_.metrics(),
-        modem_info_.manager(),
-        device_);
+    device_->service_ = new CellularService(&modem_info_, device_);
     return device_->service_;
   }
   MockCellularService *SetMockService() {
-    MockCellularService *service = new MockCellularService(
-        modem_info_.control_interface(),
-        modem_info_.dispatcher(),
-        modem_info_.metrics(),
-        modem_info_.manager(),
-        device_);
-    device_->service_ = service;
-    return service;
+    device_->service_ = new MockCellularService(&modem_info_, device_);
+    return static_cast<MockCellularService *>(device_->service_.get());
   }
 
   EventDispatcher dispatcher_;
@@ -894,7 +883,7 @@ TEST_F(CellularTest, StopModemCallbackFail) {
 }
 
 TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
-  scoped_refptr<MockCellularService> service(SetMockService());
+  MockCellularService *service(SetMockService());
   EXPECT_FALSE(service->out_of_credits_);
 
   EXPECT_CALL(*service, Disconnect(_)).Times(0);

@@ -456,9 +456,7 @@ void Cellular::HandleNewSignalQuality(uint32 strength) {
 void Cellular::CreateService() {
   SLOG(Cellular, 2) << __func__;
   CHECK(!service_.get());
-  service_ =
-      new CellularService(control_interface(), dispatcher(), metrics(),
-                          manager(), this);
+  service_ = new CellularService(modem_info_, this);
   capability_->OnServiceCreated();
   manager()->RegisterService(service_);
 }

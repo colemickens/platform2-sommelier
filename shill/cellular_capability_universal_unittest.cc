@@ -91,11 +91,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
                                "",
                                "",
                                &proxy_factory_)),
-        service_(new MockCellularService(modem_info_.control_interface(),
-                                         modem_info_.dispatcher(),
-                                         modem_info_.metrics(),
-                                         modem_info_.manager(),
-                                         cellular_)) {
+        service_(new MockCellularService(&modem_info_, cellular_)) {
     modem_info_.metrics()->RegisterDevice(cellular_->interface_index(),
                                           Technology::kCellular);
   }
@@ -128,9 +124,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   }
 
   void SetService() {
-    cellular_->service_ = new CellularService(
-        modem_info_.control_interface(), modem_info_.dispatcher(),
-        modem_info_.metrics(), modem_info_.manager(), cellular_);
+    cellular_->service_ = new CellularService(&modem_info_, cellular_);
   }
 
   void InvokeEnable(bool enable, Error *error,

@@ -91,12 +91,10 @@ const Stringmap &CellularService::OLP::ToDict() const {
   return dict_;
 }
 
-CellularService::CellularService(ControlInterface *control_interface,
-                                 EventDispatcher *dispatcher,
-                                 Metrics *metrics,
-                                 Manager *manager,
+CellularService::CellularService(ModemInfo *modem_info,
                                  const CellularRefPtr &device)
-    : Service(control_interface, dispatcher, metrics, manager,
+    : Service(modem_info->control_interface(), modem_info->dispatcher(),
+              modem_info->metrics(), modem_info->manager(),
               Technology::kCellular),
       weak_ptr_factory_(this),
       activate_over_non_cellular_network_(false),

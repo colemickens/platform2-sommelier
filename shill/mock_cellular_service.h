@@ -15,10 +15,7 @@ namespace shill {
 
 class MockCellularService : public CellularService {
  public:
-  MockCellularService(ControlInterface *control_interface,
-                      EventDispatcher *dispatcher,
-                      Metrics *metrics,
-                      Manager *manager,
+  MockCellularService(ModemInfo *modem_info,
                       const CellularRefPtr &device);
   virtual ~MockCellularService();
 

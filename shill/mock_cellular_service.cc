@@ -6,13 +6,9 @@
 
 namespace shill {
 
-MockCellularService::MockCellularService(ControlInterface *control_interface,
-                                         EventDispatcher *dispatcher,
-                                         Metrics *metrics,
-                                         Manager *manager,
+MockCellularService::MockCellularService(ModemInfo *modem_info,
                                          const CellularRefPtr &device)
-    : CellularService(control_interface, dispatcher, metrics, manager, device) {
-}
+    : CellularService(modem_info, device) {}
 
 MockCellularService::~MockCellularService() {}
 
