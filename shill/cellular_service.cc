@@ -25,6 +25,7 @@ const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
     "device detecting out-of-credits";
 const int64 CellularService::kOutOfCreditsConnectionDropSeconds = 15;
 const int CellularService::kOutOfCreditsMaxConnectAttempts = 3;
+const int64 CellularService::kOutOfCreditsResumeIgnoreSeconds = 5;
 const char CellularService::kStorageAPN[] = "Cellular.APN";
 const char CellularService::kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
@@ -221,6 +222,11 @@ void CellularService::ClearLastGoodApn() {
   SaveToCurrentProfile();
 }
 
+void CellularService::OnAfterResume() {
+  Service::OnAfterResume();
+  resume_start_time_ = base::Time::Now();
+}
+
 bool CellularService::Load(StoreInterface *storage) {
   // Load properties common to all Services.
   if (!Service::Load(storage))
@@ -272,6 +278,31 @@ void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
   // auto-connect until the next time the user manually connects.
   //
   // TODO(thieule): Remove this workaround (crosbug.com/p/18169).
+  base::TimeDelta
+      time_since_resume = base::Time::Now() - resume_start_time_;
+  if (time_since_resume.InSeconds() < kOutOfCreditsResumeIgnoreSeconds) {
+    // On platforms that power down the modem during suspend, make sure that
+    // we do not display a false out-of-credits warning to the user
+    // due to the sequence below by skipping out-of-credits detection
+    // immediately after a resume.
+    //   1. User suspends Chromebook.
+    //   2. Hardware turns off power to modem.
+    //   3. User resumes Chromebook.
+    //   4. Hardware restores power to modem.
+    //   5. ModemManager still has instance of old modem.
+    //      ModemManager does not delete this instance until udev fires a
+    //      device removed event.  ModemManager does not detect new modem
+    //      until udev fires a new device event.
+    //   6. Shill performs auto-connect against the old modem.
+    //      Make sure at this step that we do not display a false
+    //      out-of-credits warning.
+    //   7. Udev fires device removed event.
+    //   8. Udev fires new device event.
+    SLOG(Cellular, 2) <<
+        "Skipping out-of-credits detection, too soon since resume.";
+    ResetOutOfCreditsState();
+    return;
+  }
   base::TimeDelta
       time_since_connect = base::Time::Now() - connect_start_time_;
   if (time_since_connect.InSeconds() > kOutOfCreditsConnectionDropSeconds) {

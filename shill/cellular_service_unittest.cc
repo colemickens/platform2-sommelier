@@ -419,6 +419,45 @@ TEST_F(CellularServiceTest, OutOfCreditsDetected) {
   EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
 }
 
+TEST_F(CellularServiceTest, OutOfCreditsDetectionNotSkippedAfterSlowResume) {
+  service_->set_enforce_out_of_credits_detection(true);
+  service_->OnAfterResume();
+  service_->resume_start_time_ =
+      base::Time::Now() -
+      base::TimeDelta::FromSeconds(
+          CellularService::kOutOfCreditsResumeIgnoreSeconds + 1);
+  EXPECT_CALL(*device_, Connect(_)).Times(3);
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateAssociating);
+  service_->SetState(Service::kStateFailure);
+  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
+  dispatcher_.DispatchPendingEvents();
+  service_->SetState(Service::kStateConfiguring);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(service_->out_of_credits_detection_in_progress_);
+  dispatcher_.DispatchPendingEvents();
+  service_->SetState(Service::kStateConnected);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_TRUE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+}
+
+TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume) {
+  service_->set_enforce_out_of_credits_detection(true);
+  service_->OnAfterResume();
+  EXPECT_CALL(*device_, Connect(_));
+  Error error;
+  service_->Connect(&error);
+  service_->SetState(Service::kStateConnected);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_FALSE(service_->out_of_credits_);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+  // There should not be any pending connect requests but dispatch pending
+  // events anyway to be sure.
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedExplicitDisconnect) {
   service_->set_enforce_out_of_credits_detection(true);
   EXPECT_CALL(*device_, Connect(_));

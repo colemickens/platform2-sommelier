@@ -118,6 +118,8 @@ class CellularService : public Service {
   virtual void SetLastGoodApn(const Stringmap &apn_info);
   virtual void ClearLastGoodApn();
 
+  virtual void OnAfterResume();
+
  protected:
   // Overrides IsAutoConnectable from parent Service class.
   virtual bool IsAutoConnectable(const char **reason) const;
@@ -136,6 +138,9 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsDetected);
+  FRIEND_TEST(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume);
+  FRIEND_TEST(CellularServiceTest,
+              OutOfCreditsDetectionNotSkippedAfterSlowResume);
   FRIEND_TEST(CellularServiceTest,
               OutOfCreditsDetectionSkippedExplicitDisconnect);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped);
@@ -148,6 +153,7 @@ class CellularService : public Service {
   static const char kAutoConnOutOfCreditsDetectionInProgress[];
   static const int64 kOutOfCreditsConnectionDropSeconds;
   static const int kOutOfCreditsMaxConnectAttempts;
+  static const int64 kOutOfCreditsResumeIgnoreSeconds;
 
   void HelpRegisterDerivedStringmap(
       const std::string &name,
@@ -216,6 +222,8 @@ class CellularService : public Service {
   bool out_of_credits_detection_in_progress_;
   // Flag indicating if the SIM is out-of-credits.
   bool out_of_credits_;
+  // Time when the last resume occurred.
+  base::Time resume_start_time_;
 
   DISALLOW_COPY_AND_ASSIGN(CellularService);
 };
