@@ -47,6 +47,8 @@ class WiFiProvider;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
+  // Specifies whether a scan request is made from outside shill (ostensibly
+  // across dbus via RPC) or from within shill.
   typedef base::Callback<void(const ServiceRefPtr &service)> ServiceCallback;
 
   struct Properties {
@@ -139,7 +141,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // |service|.
   virtual void RecheckPortalOnService(const ServiceRefPtr &service);
 
-  virtual void RequestScan(const std::string &technology, Error *error);
+  virtual void RequestScan(Device::ScanType scan_type,
+                           const std::string &technology, Error *error);
   std::string GetTechnologyOrder();
   void SetTechnologyOrder(const std::string &order, Error *error);
   // Set up the profile list starting with a default profile along with

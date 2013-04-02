@@ -53,7 +53,8 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD1(IsTechnologyLinkMonitorEnabled,
                      bool(Technology::Identifier tech));
   MOCK_CONST_METHOD1(IsDefaultProfile, bool(const StoreInterface *storage));
-  MOCK_METHOD2(RequestScan, void(const std::string &technology, Error *error));
+  MOCK_METHOD3(RequestScan, void(Device::ScanType request_origin,
+                                 const std::string &technology, Error *error));
   MOCK_CONST_METHOD0(GetPortalCheckURL, const std::string &());
   MOCK_CONST_METHOD0(GetPortalCheckInterval, int());
 

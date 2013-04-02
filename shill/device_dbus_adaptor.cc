@@ -114,7 +114,10 @@ void DeviceDBusAdaptor::Disable(::DBus::Error &error) {
 void DeviceDBusAdaptor::ProposeScan(::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e;
-  device_->Scan(&e);
+  // User scan requests, which are the likely source of DBus requests, probably
+  // aren't time-critical so we might as well perform a complete scan.  It
+  // also provides a failsafe for progressive scan.
+  device_->Scan(Device::kFullScan, &e);
   e.ToDBusError(&error);
 }
 

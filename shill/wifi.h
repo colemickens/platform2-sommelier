@@ -120,7 +120,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void Scan(Error *error);
+  virtual void Scan(ScanType scan_type, Error *error);
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.

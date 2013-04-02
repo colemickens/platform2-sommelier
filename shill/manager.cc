@@ -1805,16 +1805,15 @@ void Manager::RecheckPortalOnService(const ServiceRefPtr &service) {
   }
 }
 
-// called via RPC (e.g., from ManagerDBusAdaptor)
-void Manager::RequestScan(const string &technology, Error *error) {
+void Manager::RequestScan(Device::ScanType scan_type,
+                          const string &technology, Error *error) {
   if (technology == flimflam::kTypeWifi || technology == "") {
     vector<DeviceRefPtr> wifi_devices;
     FilterByTechnology(Technology::kWifi, &wifi_devices);
-
     for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
          it != wifi_devices.end();
          ++it) {
-      (*it)->Scan(error);
+      (*it)->Scan(scan_type, error);
     }
   } else {
     // TODO(quiche): support scanning for other technologies?

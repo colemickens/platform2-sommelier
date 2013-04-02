@@ -826,9 +826,6 @@ void Metrics::NotifyDeviceScanStarted(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == NULL)
     return;
-  // This metric is only supported for cellular devices.
-  if (device_metrics->technology != Technology::kCellular)
-    return;
   device_metrics->scan_timer->Start();
 }
 
@@ -836,14 +833,12 @@ void Metrics::NotifyDeviceScanFinished(int interface_index) {
   DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
   if (device_metrics == NULL)
     return;
-  // This metric is only supported for cellular devices.
-  if (device_metrics->technology != Technology::kCellular)
-    return;
   if (!device_metrics->scan_timer->Stop())
     return;
-  // Don't send TimeToScan metrics if the elapsed time exceeds the max
-  // metrics value.  This usually means that the modem is in an area
-  // without service and we're not interested in this scenario.
+  // Don't send TimeToScan metrics if the elapsed time exceeds the max metrics
+  // value.  Huge scan times usually mean something's gone awry; for cellular,
+  // for instance, this usually means that the modem is in an area without
+  // service and we're not interested in this scenario.
   base::TimeDelta elapsed_time;
   device_metrics->scan_timer->GetElapsedTime(&elapsed_time);
   if (elapsed_time.InMilliseconds() <= kMetricTimeToScanMillisecondsMax)

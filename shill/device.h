@@ -44,6 +44,16 @@ class TrafficMonitor;
 // this class.
 class Device : public base::RefCounted<Device> {
  public:
+  // Progressively scanning for access points (APs) is done with multiple scans,
+  // each containing a group of channels.  The scans are performed in order of
+  // decreasing likelihood of connecting on one of the channels in a group
+  // (the number of channels in a group is a matter for system tuning).  Fully
+  // scanning for APs does a complete scan of all the channels in a single scan.
+  // Progressive scanning is supported for wifi devices; technologies that
+  // support scan but don't support progressive scan will always perform a full
+  // scan, regardless of the requested scan type.
+  enum ScanType { kProgressiveScan, kFullScan };
+
   // A constructor for the Device object
   Device(ControlInterface *control_interface,
          EventDispatcher *dispatcher,
@@ -73,7 +83,7 @@ class Device : public base::RefCounted<Device> {
   virtual void LinkEvent(unsigned flags, unsigned change);
 
   // The default implementation sets |error| to kNotSupported.
-  virtual void Scan(Error *error);
+  virtual void Scan(ScanType scan_type, Error *error);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error,
                                  const ResultCallback &callback);
   virtual void RequirePIN(const std::string &pin, bool require,

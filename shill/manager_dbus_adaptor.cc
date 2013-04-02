@@ -180,7 +180,7 @@ void ManagerDBusAdaptor::RequestScan(const string &technology,
                                      ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__ << ": " << technology;
   Error e;
-  manager_->RequestScan(technology, &e);
+  manager_->RequestScan(Device::kFullScan, technology, &e);
   e.ToDBusError(&error);
 }
 

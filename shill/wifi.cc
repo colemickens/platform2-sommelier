@@ -213,8 +213,11 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 }
 
-void WiFi::Scan(Error */*error*/) {
+void WiFi::Scan(ScanType scan_type, Error */*error*/) {
   LOG(INFO) << __func__;
+
+  if (scan_type == kProgressiveScan)
+    metrics()->NotifyDeviceScanStarted(interface_index());
 
   // Needs to send a D-Bus message, but may be called from D-Bus
   // signal handler context (via Manager::RequestScan). So defer work
@@ -265,6 +268,7 @@ void WiFi::ScanDone() {
   // may require the the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
+  metrics()->NotifyDeviceScanFinished(interface_index());
   dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask,
                               weak_ptr_factory_.GetWeakPtr()));
 }
@@ -550,7 +554,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
       // We may want to reconsider this immediate scan, if/when shill
       // takes greater responsibility for scanning (vs. letting
       // supplicant handle most of it).
-      Scan(NULL);
+      Scan(kProgressiveScan, NULL);
     }
   } else {
     HandleRoam(new_bss);
@@ -1262,7 +1266,7 @@ void WiFi::OnAfterResume() {
 
   if (!scan_pending_ && IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(NULL);
+    Scan(kProgressiveScan, NULL);
   } else {
     SLOG(WiFi, 1) << __func__
                   << " skipping scan, already scanning or connected.";
@@ -1300,7 +1304,7 @@ void WiFi::StopScanTimer() {
 void WiFi::ScanTimerHandler() {
   SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
   if (IsIdle() && !scan_pending_) {
-    Scan(NULL);
+    Scan(kProgressiveScan, NULL);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
@@ -1528,7 +1532,7 @@ void WiFi::ConnectToSupplicant() {
                << "May be running an older version of wpa_supplicant.";
   }
 
-  Scan(NULL);
+  Scan(kProgressiveScan, NULL);
   StartScanTimer();
 }
 

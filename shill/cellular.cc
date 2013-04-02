@@ -350,7 +350,8 @@ void Cellular::SetCarrier(const string &carrier,
   capability_->SetCarrier(carrier, error, callback);
 }
 
-void Cellular::Scan(Error *error) {
+void Cellular::Scan(ScanType scan_type, Error *error) {
+  // |scan_type| is ignored because Cellular only does a full scan.
   // TODO(ers): for now report immediate success or failure.
   capability_->Scan(error, ResultCallback());
 }

@@ -134,7 +134,8 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   if (created_hidden_service &&
       !manager_->IsTechnologyConnected(Technology::kWifi)) {
     Error unused_error;
-    manager_->RequestScan(flimflam::kTypeWifi, &unused_error);
+    manager_->RequestScan(Device::kProgressiveScan, flimflam::kTypeWifi,
+                          &unused_error);
   }
 }
 

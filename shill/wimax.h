@@ -35,7 +35,7 @@ class WiMax : public Device {
   // Inherited from Device.
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
-  virtual void Scan(Error *error);
+  virtual void Scan(ScanType scan_type, Error *error);
 
   virtual void ConnectTo(const WiMaxServiceRefPtr &service, Error *error);
   virtual void DisconnectFrom(const ServiceRefPtr &service, Error *error);

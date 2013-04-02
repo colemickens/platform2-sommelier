@@ -177,7 +177,7 @@ void Device::LinkEvent(unsigned flags, unsigned change) {
                   << std::dec << std::noshowbase;
 }
 
-void Device::Scan(Error *error) {
+void Device::Scan(ScanType scan_type, Error *error) {
   SLOG(Device, 2) << "Device " << link_name_ << " scan requested.";
   Error::PopulateAndLog(error, Error::kNotSupported,
                         "Device doesn't support scan.");
