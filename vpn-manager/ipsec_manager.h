@@ -82,8 +82,6 @@ class IpsecManager : public ServiceManager {
   bool CreateIpsecRunDirectory();
   std::string FormatStrongswanConfigFile();
   std::string FormatStarterConfigFile();
-  bool CreateStatefulSymlink(const std::string& target_filename,
-                             const std::string& symlink_filename);
   bool StartStarter();
   bool SetIpsecGroup(const base::FilePath& file_path);
 
@@ -98,9 +96,9 @@ class IpsecManager : public ServiceManager {
   // Group id of the "ipsec" group on this machine.  This is the group
   // that we expect the underlying IKE daemons to run as.
   gid_t ipsec_group_;
-  // Writeable directory to which we can write configuration files for
-  // ipsec daemons.
-  base::FilePath stateful_container_;
+  // Writeable directory that the root filesystem has symbolic links to for
+  // all VPN configuration files we care about.
+  base::FilePath persistent_path_;
   // Directory containing run files for ipsec that we create with
   // permissions locked to ipsec group.
   std::string ipsec_run_path_;

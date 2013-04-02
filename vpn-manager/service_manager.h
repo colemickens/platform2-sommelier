@@ -151,17 +151,27 @@ class ServiceManager {
   friend class ServiceManagerTest;
   FRIEND_TEST(L2tpManagerTest, PollNothingIfRunning);
   FRIEND_TEST(IpsecManagerTest, PollNothingIfRunning);
+  FRIEND_TEST(ServiceManagerTest, GetRootPersistentPath);
   FRIEND_TEST(ServiceManagerTest, InitializeDirectories);
   FRIEND_TEST(ServiceManagerTest, OnStoppedFromFailure);
   FRIEND_TEST(ServiceManagerTest, OnStoppedFromSuccess);
+
+  static FilePath GetRootPersistentPath();
 
   ServiceManager* inner_service() { return inner_service_; }
 
   ServiceManager* outer_service() { return outer_service_; }
 
   static const FilePath* temp_path() { return temp_path_; }
+  static const char* temp_base_path() { return temp_base_path_; }
 
  private:
+  // The default value for temp_base_path_.
+  static const char kDefaultTempBasePath[];
+
+  // Path name under |temp_base_path_| that the root filesystem links to.
+  static const char kPersistentSubdir[];
+
   // Indicates if this service is currently running.
   bool is_running_;
 

@@ -63,8 +63,7 @@ const char kStarterPidFile[] = "/var/run/starter.pid";
 const char kStrongswanConfName[] = "strongswan.conf";
 const char kCharonPidFile[] = "/var/run/charon.pid";
 const mode_t kIpsecRunPathMode = S_IRWXU | S_IRWXG;
-const char kStatefulContainer[] = "/mnt/stateful_partition/etc";
-const mode_t kStatefulContainerMode =
+const mode_t kPersistentPathMode =
     S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
 const char kIpsecAuthenticationFailurePattern[] =
     "*discarding duplicate packet*STATE_MAIN_I3*";
@@ -78,7 +77,7 @@ IpsecManager::IpsecManager()
       output_fd_(-1),
       ike_version_(0),
       ipsec_group_(0),
-      stateful_container_(kStatefulContainer),
+      persistent_path_(GetRootPersistentPath()),
       ipsec_run_path_(kIpsecRunPath),
       ipsec_up_file_(kIpsecUpFile),
       starter_daemon_(new Daemon(kStarterPidFile)),
@@ -376,7 +375,7 @@ bool IpsecManager::WriteConfigFile(
 
 bool IpsecManager::MakeSymbolicLink(const std::string &output_name,
                                     const FilePath &source_path) {
-  FilePath symlink_path = stateful_container_.Append(output_name);
+  FilePath symlink_path = persistent_path_.Append(output_name);
   // Use unlink to remove the symlink directly since file_util::Delete
   // cannot delete dangling symlinks.
   unlink(symlink_path.value().c_str());
@@ -396,18 +395,27 @@ bool IpsecManager::MakeSymbolicLink(const std::string &output_name,
 
 bool IpsecManager::WriteConfigFiles() {
   // The strongSwan binaries have hard-coded paths to /etc, which on a
-  // ChromeOS image are symlinks to a fixed place in the stateful
-  // partition.  We create the configuration files in /var/run and link
-  // from the stateful partition to these newly created files.
-  if (!file_util::CreateDirectory(stateful_container_)) {
+  // ChromeOS image are symlinks to a fixed place |persistent_path_|.
+  // We create the configuration files in /var/run and link from the
+  // |persistent_path_| to these newly created files.
+  if (!file_util::CreateDirectory(persistent_path_)) {
     LOG(ERROR) << "Unable to create container directory "
-               << stateful_container_.value();
+               << persistent_path_.value();
     return false;
   }
 
-  if (chmod(stateful_container_.value().c_str(), kStatefulContainerMode) != 0) {
+  // Make sure the base path is accessible for read by non-root users.
+  // This will allow items like CA certificates to be visible by the
+  // l2tpipsec process even after it has dropped privileges.
+  if (chmod(temp_base_path(), kPersistentPathMode) != 0) {
+    PLOG(ERROR) << "Unable to change permissions of base path directory "
+                << temp_base_path();
+    return false;
+  }
+
+  if (chmod(persistent_path_.value().c_str(), kPersistentPathMode) != 0) {
     PLOG(ERROR) << "Unable to change permissions of container directory "
-                << stateful_container_.value();
+                << persistent_path_.value();
     return false;
   }
 

@@ -17,7 +17,10 @@
 namespace vpn_manager {
 
 const base::FilePath *ServiceManager::temp_path_ = NULL;
-const char *ServiceManager::temp_base_path_ = "/var/run/l2tpipsec_vpn";
+const char ServiceManager::kDefaultTempBasePath[] = "/var/run/l2tpipsec_vpn";
+const char ServiceManager::kPersistentSubdir[] = "current";
+const char *ServiceManager::temp_base_path_ =
+    ServiceManager::kDefaultTempBasePath;
 
 ServiceManager::ServiceManager(const std::string& service_name)
     : is_running_(false),
@@ -193,6 +196,11 @@ bool ServiceManager::GetLocalAddressFromRemote(
  error_label:
   HANDLE_EINTR(close(sock));
   return result;
+}
+
+// static
+FilePath ServiceManager::GetRootPersistentPath() {
+  return FilePath(temp_base_path_).Append(kPersistentSubdir);
 }
 
 }  // namespace vpn_manager

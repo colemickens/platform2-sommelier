@@ -186,6 +186,14 @@ TEST_F(ServiceManagerTest, GetLocalAddressFromRemote) {
   EXPECT_EQ("127.0.0.1", local_address_text);
 }
 
+
+TEST_F(ServiceManagerTest, GetRootPersistentPath) {
+  // Restore the non-testing default base path.
+  ServiceManager::temp_base_path_ = ServiceManager::kDefaultTempBasePath;
+  EXPECT_EQ("/var/run/l2tpipsec_vpn/current",
+            ServiceManager::GetRootPersistentPath().value());
+}
+
 }  // namespace vpn_manager
 
 int main(int argc, char** argv) {

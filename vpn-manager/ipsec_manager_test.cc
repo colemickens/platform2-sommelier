@@ -44,12 +44,13 @@ class IpsecManagerTest : public ::testing::Test {
     test_path_ = temp_dir_.path().Append("ipsec_manager_testdir");
     file_util::Delete(test_path_, true);
     file_util::CreateDirectory(test_path_);
-    stateful_container_ = test_path_.Append("etc");
-    file_util::CreateDirectory(stateful_container_);
+    persistent_path_ = test_path_.Append("persistent");
+    file_util::CreateDirectory(persistent_path_);
     remote_address_text_ = "1.2.3.4";
     ASSERT_TRUE(ServiceManager::ConvertIPStringToSockAddr(remote_address_text_,
                                                           &remote_address_));
     ServiceManager::temp_path_ = new FilePath(test_path_);
+    ServiceManager::temp_base_path_ = test_path_.value().c_str();
     psk_file_ = test_path_.Append("psk").value();
     server_ca_file_ = test_path_.Append("server.ca").value();
     WriteFile(server_ca_file_, "contents not used for testing");
@@ -69,7 +70,7 @@ class IpsecManagerTest : public ::testing::Test {
     charon_daemon_ = new DaemonMock;
     ipsec_.starter_daemon_.reset(starter_daemon_);  // Passes ownership.
     ipsec_.charon_daemon_.reset(charon_daemon_);  // Passes ownership.
-    ipsec_.stateful_container_ = stateful_container_;
+    ipsec_.persistent_path_ = persistent_path_;
     ipsec_.ipsec_group_ = getgid();
     ipsec_.ipsec_run_path_ = ipsec_run_path_;
     ipsec_.ipsec_up_file_ = ipsec_up_file_;
@@ -92,7 +93,7 @@ class IpsecManagerTest : public ::testing::Test {
   void DoInitialize(int ike_version, bool use_psk);
 
   IpsecManager ipsec_;
-  FilePath stateful_container_;
+  FilePath persistent_path_;
   FilePath test_path_;
   std::string remote_address_text_;
   struct sockaddr remote_address_;
@@ -341,9 +342,9 @@ TEST_F(IpsecManagerTestIkeV1Psk, WriteConfigFiles) {
   EXPECT_TRUE(ipsec_.WriteConfigFiles());
   std::string conf_contents;
   ASSERT_TRUE(file_util::ReadFileToString(
-      stateful_container_.Append("ipsec.conf"), &conf_contents));
+      persistent_path_.Append("ipsec.conf"), &conf_contents));
   EXPECT_EQ(GetExpectedStarter(false), conf_contents);
-  ASSERT_TRUE(file_util::PathExists(stateful_container_.Append(
+  ASSERT_TRUE(file_util::PathExists(persistent_path_.Append(
       "ipsec.secrets")));
 }
 
@@ -404,11 +405,11 @@ TEST_F(IpsecManagerTestIkeV1Certs, WriteConfigFiles) {
   EXPECT_TRUE(ipsec_.WriteConfigFiles());
   std::string conf_contents;
   ASSERT_TRUE(file_util::ReadFileToString(
-      stateful_container_.Append("ipsec.conf"), &conf_contents));
+      persistent_path_.Append("ipsec.conf"), &conf_contents));
   EXPECT_EQ(GetExpectedStarter(false), conf_contents);
-  ASSERT_TRUE(file_util::PathExists(stateful_container_.Append(
+  ASSERT_TRUE(file_util::PathExists(persistent_path_.Append(
       "ipsec.secrets")));
-  ASSERT_TRUE(file_util::PathExists(stateful_container_.Append("cacert.der")));
+  ASSERT_TRUE(file_util::PathExists(persistent_path_.Append("cacert.der")));
 }
 
 }  // namespace vpn_manager
