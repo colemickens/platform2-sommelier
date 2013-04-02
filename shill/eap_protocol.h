@@ -1,0 +1,50 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#ifndef SHILL_EAP_PROTOCOL_H_
+#define SHILL_EAP_PROTOCOL_H_
+
+#include <base/basictypes.h>
+#include <base/compiler_specific.h>
+
+namespace shill {
+
+namespace eap_protocol {
+
+struct ALIGNAS(1) Ieee8021xHdr {
+  uint8 version;
+  uint8 type;
+  uint16 length;
+};
+
+enum IeeeEapolVersion {
+  kIeee8021xEapolVersion2 = 2
+};
+
+enum IeeeEapolType {
+  kIIeee8021xTypeEapPacket = 0,
+  kIIeee8021xTypeEapolStart = 1,
+  kIIeee8021xTypeEapolLogoff = 2,
+  kIIeee8021xTypeEapolKey = 3,
+  kIIeee8021xTypeEapolEncapsulatedAsfAlert = 4
+};
+
+struct ALIGNAS(1) EapHeader {
+  uint8 code;
+  uint8 identifier;
+  uint16 length;  // including code and identifier; network byte order
+};
+
+enum EapCode {
+  kEapCodeRequest = 1,
+  kEapCodeRespnose = 2,
+  kEapCodeSuccess = 3,
+  kEapCodeFailure = 4
+};
+
+}  // namespace eap_protocol
+
+}  // namespace shill
+
+#endif  // SHILL_EAP_PROTOCOL_H_

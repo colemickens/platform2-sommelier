@@ -22,7 +22,6 @@ using testing::HasSubstr;
 using testing::InSequence;
 using testing::Invoke;
 using testing::Mock;
-using testing::Test;
 using testing::Return;
 using testing::StrictMock;
 using testing::Test;

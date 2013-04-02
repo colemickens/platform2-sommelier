@@ -234,6 +234,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	dhcpcd_proxy.o \
 	diagnostics_reporter.o \
 	dns_client.o \
+	eap_listener.o \
 	endpoint.o \
 	ephemeral_profile.o \
 	error.o \
@@ -349,6 +350,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	dhcp_provider_unittest.o \
 	diagnostics_reporter_unittest.o \
 	dns_client_unittest.o \
+	eap_listener_unittest.o \
 	error_unittest.o \
 	ethernet_service_unittest.o \
 	file_reader_unittest.o \
