@@ -78,7 +78,7 @@ def main(argv):
         if vpn_type == "openvpn":
             if (len(args) == 7):
                 params["Provider.Type"]  = "openvpn"
-                params["Provider.Name"]  = args[1]
+                params["Name"]  = args[1]
                 params["Provider.Host"]  = args[2]
                 params["VPN.Domain"]     = args[3]
                 params["OpenVPN.CACert"] = args[4]
@@ -105,7 +105,7 @@ def main(argv):
               vpn_type == "l2tpipsec-psk"):
             if len(args) > 4:
                 params["Provider.Type"] = "l2tpipsec"
-                params["Provider.Name"] = args[1]
+                params["Name"] = args[1]
                 params["Provider.Host"] = args[2]
                 params["VPN.Domain"] = args[3]
                 if vpn_type == "l2tpipsec-cert" and len(args) == 10:

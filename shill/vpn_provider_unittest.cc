@@ -83,7 +83,7 @@ TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, "unknown-vpn-type");
   args.SetString(flimflam::kProviderHostProperty, kHost);
-  args.SetString(flimflam::kProviderNameProperty, kName);
+  args.SetString(flimflam::kNameProperty, kName);
   VPNServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
@@ -95,7 +95,7 @@ TEST_F(VPNProviderTest, GetService) {
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
   args.SetString(flimflam::kProviderHostProperty, kHost);
-  args.SetString(flimflam::kProviderNameProperty, kName);
+  args.SetString(flimflam::kNameProperty, kName);
   EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_));
   VPNServiceRefPtr service0 = provider_.GetService(args, &e);

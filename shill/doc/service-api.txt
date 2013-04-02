@@ -752,12 +752,8 @@ Properties	boolean AutoConnect [readwrite]
 			that piggy-backs on top of a transport service.
 			This is presently used by VPN services.
 
-			string Domain [readonly]
-				VPN domain name.
 			string Host [readonly]
 				VPN host IP address.
-			string Name [readonly]
-				VPN provider name.
 			string Type [readonly]
 				VPN provider type (e.g. openvpn).
 

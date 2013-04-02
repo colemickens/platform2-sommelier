@@ -61,10 +61,7 @@ VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
-  string name = args.LookupString(flimflam::kProviderNameProperty, "");
-  if (name.empty()) {
-    name = args.LookupString(flimflam::kNameProperty, "");
-  }
+  string name = args.LookupString(flimflam::kNameProperty, "");
 
   // Find a service in the provider list which matches these parameters.
   VPNServiceRefPtr service = FindService(type, name, host);
@@ -113,10 +110,9 @@ void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
     }
 
     string name;
-    if (!storage->GetString(*it, flimflam::kProviderNameProperty, &name) &&
-        !storage->GetString(*it, flimflam::kNameProperty, &name)) {
+    if (!storage->GetString(*it, flimflam::kNameProperty, &name)) {
       LOG(ERROR) << "Group " << *it << " is missing the "
-                 << flimflam::kProviderNameProperty << " property.";
+                 << flimflam::kNameProperty << " property.";
       continue;
     }
 

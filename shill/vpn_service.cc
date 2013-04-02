@@ -72,14 +72,10 @@ string VPNService::CreateStorageIdentifier(const KeyValueStore &args,
         error, Error::kInvalidProperty, "Missing VPN host.");
     return "";
   }
-  string name = args.LookupString(flimflam::kProviderNameProperty, "");
+  string name = args.LookupString(flimflam::kNameProperty, "");
   if (name.empty()) {
-    name = args.LookupString(flimflam::kNameProperty, "");
-    if (name.empty()) {
-      Error::PopulateAndLog(
-          error, Error::kNotSupported, "Missing VPN name.");
-      return "";
-    }
+    Error::PopulateAndLog(error, Error::kNotSupported, "Missing VPN name.");
+    return "";
   }
   string id = StringPrintf("vpn_%s_%s", host.c_str(), name.c_str());
   replace_if(id.begin(), id.end(), &Service::IllegalChar, '_');
@@ -172,9 +168,6 @@ void VPNService::SetNameProperty(const string &name, Error *error) {
             << friendly_name() << " -> " << name;
 
   KeyValueStore *args = driver_->args();
-  if (args->LookupString(flimflam::kProviderNameProperty, "") != "") {
-    args->SetString(flimflam::kProviderNameProperty, name);
-  }
   args->SetString(flimflam::kNameProperty, name);
   string new_storage_id = CreateStorageIdentifier(*args, error);
   if (new_storage_id.empty()) {

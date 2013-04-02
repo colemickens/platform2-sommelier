@@ -79,7 +79,6 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { flimflam::kL2tpIpsecPskProperty, Property::kCredential },
   { flimflam::kL2tpIpsecUserProperty, 0 },
   { flimflam::kProviderHostProperty, 0 },
-  { flimflam::kProviderNameProperty, 0 },
   { flimflam::kProviderTypeProperty, 0 },
   { kL2tpIpsecCaCertPemProperty, 0 },
   { kL2tpIpsecTunnelGroupProperty, 0 },

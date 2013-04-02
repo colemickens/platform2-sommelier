@@ -133,7 +133,7 @@ TEST_F(VPNServiceTest, Disconnect) {
 TEST_F(VPNServiceTest, CreateStorageIdentifierNoHost) {
   KeyValueStore args;
   Error error;
-  args.SetString(flimflam::kProviderNameProperty, "vpn-name");
+  args.SetString(flimflam::kNameProperty, "vpn-name");
   EXPECT_EQ("", VPNService::CreateStorageIdentifier(args, &error));
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
@@ -149,7 +149,7 @@ TEST_F(VPNServiceTest, CreateStorageIdentifierNoName) {
 TEST_F(VPNServiceTest, CreateStorageIdentifier) {
   KeyValueStore args;
   Error error;
-  args.SetString(flimflam::kProviderNameProperty, "vpn-name");
+  args.SetString(flimflam::kNameProperty, "vpn-name");
   args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
   EXPECT_EQ("vpn_10_8_0_1_vpn_name",
             VPNService::CreateStorageIdentifier(args, &error));

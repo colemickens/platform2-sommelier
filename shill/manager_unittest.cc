@@ -1480,7 +1480,7 @@ TEST_F(ManagerTest, GetServiceVPN) {
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
   args.SetString(flimflam::kProviderHostProperty, "10.8.0.1");
-  args.SetString(flimflam::kProviderNameProperty, "vpn-name");
+  args.SetString(flimflam::kNameProperty, "vpn-name");
   scoped_refptr<MockProfile> profile(
       new StrictMock<MockProfile>(
           control_interface(), metrics(), manager(), ""));

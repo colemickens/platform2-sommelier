@@ -76,7 +76,7 @@ const VPNDriverUnderTest::Property VPNDriverUnderTest::kProperties[] = {
   { kPSKProperty, Property::kCredential },
   { kPasswordProperty, Property::kCredential },
   { kPortProperty, 0 },
-  { flimflam::kProviderNameProperty, 0 },
+  { flimflam::kProviderTypeProperty, 0 },
 };
 
 VPNDriverUnderTest::VPNDriverUnderTest(
@@ -174,14 +174,14 @@ TEST_F(VPNDriverTest, Load) {
 }
 
 TEST_F(VPNDriverTest, Save) {
-  SetArg(flimflam::kProviderNameProperty, "");
+  SetArg(flimflam::kProviderTypeProperty, "");
   SetArg(kPINProperty, kPIN);
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
   SetArg(kOTPProperty, "987654");
   MockStore storage;
   EXPECT_CALL(storage,
-              SetString(kStorageID, flimflam::kProviderNameProperty, ""))
+              SetString(kStorageID, flimflam::kProviderTypeProperty, ""))
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetString(kStorageID, kPortProperty, kPort))
       .WillOnce(Return(true));
@@ -192,7 +192,7 @@ TEST_F(VPNDriverTest, Save) {
       .WillOnce(Return(true));
   EXPECT_CALL(storage, SetCryptedString(_, kOTPProperty, _)).Times(0);
   EXPECT_CALL(storage, SetString(_, kOTPProperty, _)).Times(0);
-  EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kProviderNameProperty))
+  EXPECT_CALL(storage, DeleteKey(kStorageID, flimflam::kProviderTypeProperty))
       .Times(0);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kPSKProperty)).Times(1);
   EXPECT_CALL(storage, DeleteKey(kStorageID, kHostProperty)).Times(1);
@@ -235,10 +235,10 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   }
   EXPECT_FALSE(GetProviderProperty(store, kPortProperty, NULL));
 
-  const string kProviderName = "boo";
+  const string kProviderType = "boo";
   SetArg(kPortProperty, kPort);
   SetArg(kPasswordProperty, kPassword);
-  SetArg(flimflam::kProviderNameProperty, kProviderName);
+  SetArg(flimflam::kProviderTypeProperty, kProviderType);
   SetArg(kHostProperty, "");
 
   // We should not be able to read a property out of the driver args using the
@@ -267,8 +267,8 @@ TEST_F(VPNDriverTest, InitPropertyStore) {
   // name in the Properties dict with the prefix removed.
   {
     string value;
-    EXPECT_TRUE(GetProviderProperty(store, flimflam::kNameProperty, &value));
-    EXPECT_EQ(kProviderName, value);
+    EXPECT_TRUE(GetProviderProperty(store, flimflam::kTypeProperty, &value));
+    EXPECT_EQ(kProviderType, value);
   }
 
   // If we clear a property, we should no longer be able to find it.
