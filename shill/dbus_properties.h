@@ -13,7 +13,6 @@
 #include <dbus-c++/types.h>
 
 #include "shill/accessor_interface.h"
-#include "shill/dbus_variant_gmock_printer.h"
 
 namespace shill {
 
