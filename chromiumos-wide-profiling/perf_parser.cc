@@ -225,6 +225,11 @@ bool ReadPerfSampleInfo(const event_t& event,
       sample_format,
       sample);
 
+  if (event.header.type == PERF_RECORD_SAMPLE) {
+    sample->pid = event.ip.pid;
+    sample->tid = event.ip.tid;
+  }
+
   size_t expected_size = event.header.size - offset;
   return (size_read == expected_size);
 }

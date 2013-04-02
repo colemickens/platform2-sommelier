@@ -112,6 +112,8 @@ void PerfSerializer::SerializeRecordSample(
   if (sample_type_ & PERF_SAMPLE_IP)
     sample->set_ip(ip_event.ip);
   if (sample_type_ & PERF_SAMPLE_TID) {
+    CHECK_EQ(ip_event.pid, perf_sample.pid);
+    CHECK_EQ(ip_event.tid, perf_sample.tid);
     sample->set_pid(ip_event.pid);
     sample->set_tid(ip_event.tid);
   }
@@ -140,6 +142,8 @@ void PerfSerializer::DeserializeRecordSample(
     CHECK(sample.has_tid()) << "Cannot have PID without TID.";
     ip_event.pid = sample.pid();
     ip_event.tid = sample.tid();
+    perf_sample.pid = sample.pid();
+    perf_sample.tid = sample.tid();
   }
   if (sample.has_sample_time_ns())
     perf_sample.time = sample.sample_time_ns();
