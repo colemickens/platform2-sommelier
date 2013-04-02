@@ -684,6 +684,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
                 << " " << LogSSID(endpoint->ssid_string());
 
   service->NotifyCurrentEndpoint(endpoint);
+  provider_->IncrementConnectCount(endpoint->frequency());
 
   if (pending_service_.get() &&
       service.get() != pending_service_.get()) {

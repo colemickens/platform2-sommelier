@@ -4,6 +4,9 @@
 
 #include "shill/wifi_provider.h"
 
+#include <stdlib.h>
+
+#include <limits>
 #include <set>
 #include <string>
 #include <vector>
@@ -42,6 +45,9 @@ const char WiFiProvider::kManagerErrorUnsupportedSecurityMode[] =
     "security mode is unsupported";
 const char WiFiProvider::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
+const char WiFiProvider::kFrequencyDelimiter[] = ":";
+const char WiFiProvider::kStorageId[] = "wifi_provider";
+const char WiFiProvider::kStorageFrequencies[] = "Frequencies";
 
 WiFiProvider::WiFiProvider(ControlInterface *control_interface,
                            EventDispatcher *dispatcher,
@@ -51,7 +57,8 @@ WiFiProvider::WiFiProvider(ControlInterface *control_interface,
       dispatcher_(dispatcher),
       metrics_(metrics),
       manager_(manager),
-      running_(false) {}
+      running_(false),
+      total_frequency_connections_(-1L) {}
 
 WiFiProvider::~WiFiProvider() {}
 
@@ -301,7 +308,7 @@ bool WiFiProvider::OnServiceUnloaded(const WiFiServiceRefPtr &service) {
   return true;
 }
 
-void WiFiProvider::FixupServiceEntries(
+void WiFiProvider::LoadAndFixupServiceEntries(
     StoreInterface *storage, bool is_default_profile) {
   if (WiFiService::FixupServiceEntries(storage)) {
     storage->Flush();
@@ -315,6 +322,32 @@ void WiFiProvider::FixupServiceEntries(
         profile_type,
         Metrics::kMetricServiceFixupMax);
   }
+  // TODO(wdg): Determine how this should be structured for, currently
+  // non-existant, autotests.  |kStorageFrequencies| should only exist in the
+  // default profile except for autotests where a test_profile is pushed.  This
+  // may need to be modified for that case.
+  if (is_default_profile) {
+    vector<string> frequencies;
+    if (storage->GetStringList(kStorageId,
+                               kStorageFrequencies,
+                               &frequencies)) {
+      StringListToFrequencyMap(frequencies, &connect_count_by_frequency_);
+      total_frequency_connections_ = 0L;
+      WiFiProvider::ConnectFrequencyMap::const_iterator i;
+      for (i = connect_count_by_frequency_.begin();
+           i != connect_count_by_frequency_.end();
+           ++i) {
+        total_frequency_connections_ += i->second;
+      }
+    }
+  }
+}
+
+bool WiFiProvider::Save(StoreInterface *storage) const {
+  vector<string> frequencies;
+  FrequencyMapToStringList(connect_count_by_frequency_, &frequencies);
+  storage->SetStringList(kStorageId, kStorageFrequencies, frequencies);
+  return true;
 }
 
 WiFiServiceRefPtr WiFiProvider::AddService(const vector<uint8_t> &ssid,
@@ -428,6 +461,80 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
   *hidden_ssid = args.LookupBool(flimflam::kWifiHiddenSsid, true);
 
   return true;
+}
+
+// static
+void WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
+                                            ConnectFrequencyMap *numbers) {
+  if (!numbers) {
+    LOG(ERROR) << "Null |numbers| parameter";
+    return;
+  }
+
+  vector<string>::const_iterator i;
+  for (i = strings.begin(); i != strings.end(); ++i) {
+    size_t delimiter = i->find(kFrequencyDelimiter);
+    if (delimiter == i->npos) {
+      LOG(WARNING) << "Found no '" << kFrequencyDelimiter << "' in '"
+                   << *i << "'";
+      continue;
+    }
+    uint16 freq = atoi(i->c_str());
+    uint64 connections = atoll(i->c_str() + delimiter + 1);
+    (*numbers)[freq] = connections;
+  }
+}
+
+// static
+void WiFiProvider::FrequencyMapToStringList(const ConnectFrequencyMap &numbers,
+                                            vector<string> *strings) {
+  if (!strings) {
+    LOG(ERROR) << "Null |strings| parameter";
+    return;
+  }
+
+  ConnectFrequencyMap::const_iterator i;
+  for (i = numbers.begin(); i != numbers.end(); ++i) {
+    // Use base::Int64ToString() instead of using something like "%llu"
+    // (not correct for native 64 bit architectures) or PRId64 (does not
+    // work correctly using cros_workon_make due to include intricacies).
+    string result = StringPrintf("%u%s%s", i->first, kFrequencyDelimiter,
+                                  base::Int64ToString(i->second).c_str());
+    strings->push_back(result);
+  }
+}
+
+void WiFiProvider::IncrementConnectCount(uint16 frequency_mhz) {
+  // Freeze the accumulation of frequency counts when the total maxes-out.
+  // This ensures that no count wraps and that the relative values are
+  // consistent.
+  // TODO(wdg): In future CL, |total_frequency_connections_| is used to
+  // calculate percentiles for progressive scan.  This check needs to be in
+  // place so _that_ value doesn't wrap, either.
+  // TODO(wdg): Replace this, simple, 'forever' collection of connection
+  // statistics with a more clever 'aging' algorithm.  crbug.com/227233
+  if (total_frequency_connections_ + 1 == std::numeric_limits<int64_t>::max()) {
+    LOG(ERROR) << "Shill has logged " << total_frequency_connections_
+               << " connections -- must be an error.  Resetting connection "
+               << "count.";
+    connect_count_by_frequency_.clear();
+  }
+
+  int64 previous_value = 0;
+  if (ContainsKey(connect_count_by_frequency_, frequency_mhz)) {
+    previous_value = connect_count_by_frequency_[frequency_mhz];
+  }
+
+  connect_count_by_frequency_[frequency_mhz] = ++previous_value;
+  ++total_frequency_connections_;
+  manager_->UpdateWiFiProvider();
+
+  metrics_->SendToUMA(
+      Metrics::kMetricFrequenciesConnectedEver,
+      connect_count_by_frequency_.size(),
+      Metrics::kMetricFrequenciesConnectedMin,
+      Metrics::kMetricFrequenciesConnectedMax,
+      Metrics::kMetricFrequenciesConnectedNumBuckets);
 }
 
 }  // namespace shill

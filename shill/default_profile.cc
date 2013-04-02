@@ -18,6 +18,7 @@
 #include "shill/portal_detector.h"
 #include "shill/resolver.h"
 #include "shill/store_interface.h"
+#include "shill/wifi_provider.h"
 
 using base::FilePath;
 using std::string;
@@ -159,6 +160,10 @@ bool DefaultProfile::Save() {
 
 bool DefaultProfile::UpdateDevice(const DeviceRefPtr &device) {
   return device->Save(storage()) && storage()->Flush();
+}
+
+bool DefaultProfile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
+  return wifi_provider.Save(storage()) && storage()->Flush();
 }
 
 bool DefaultProfile::GetStoragePath(FilePath *path) {

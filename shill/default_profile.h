@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_DEFAULT_PROFILE_
-#define SHILL_DEFAULT_PROFILE_
+#ifndef SHILL_DEFAULT_PROFILE_H_
+#define SHILL_DEFAULT_PROFILE_H_
 
 #include <string>
 #include <vector>
@@ -21,6 +21,7 @@
 namespace shill {
 
 class ControlInterface;
+class WiFiProvider;
 
 class DefaultProfile : public Profile {
  public:
@@ -49,6 +50,9 @@ class DefaultProfile : public Profile {
 
   // Inherited from Profile.
   virtual bool UpdateDevice(const DeviceRefPtr &device);
+
+  // Inherited from Profile.
+  virtual bool UpdateWiFiProvider(const WiFiProvider &wifi_provider);
 
  protected:
   // Sets |path| to the persistent store file path for the default, global
@@ -85,4 +89,4 @@ class DefaultProfile : public Profile {
 
 }  // namespace shill
 
-#endif  // SHILL_DEFAULT_PROFILE_
+#endif  // SHILL_DEFAULT_PROFILE_H_

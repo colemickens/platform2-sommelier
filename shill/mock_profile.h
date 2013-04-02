@@ -2,14 +2,15 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_PROFILE_
-#define SHILL_MOCK_PROFILE_
+#ifndef SHILL_MOCK_PROFILE_H_
+#define SHILL_MOCK_PROFILE_H_
 
 #include <string>
 
 #include <gmock/gmock.h>
 
 #include "shill/profile.h"
+#include "shill/wifi_provider.h"
 
 namespace shill {
 
@@ -32,6 +33,7 @@ class MockProfile : public Profile {
   MOCK_METHOD1(GetStoragePath, bool(base::FilePath *filepath));
   MOCK_METHOD1(UpdateService, bool(const ServiceRefPtr &service));
   MOCK_METHOD1(UpdateDevice, bool(const DeviceRefPtr &device));
+  MOCK_METHOD1(UpdateWiFiProvider, bool(const WiFiProvider &wifi_provider));
   MOCK_METHOD0(Save, bool());
   MOCK_CONST_METHOD0(GetConstStorage, const StoreInterface *());
 
@@ -41,4 +43,4 @@ class MockProfile : public Profile {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_PROFILE_
+#endif  // SHILL_MOCK_PROFILE_H_

@@ -21,9 +21,11 @@
 #include "shill/mock_device.h"
 #include "shill/mock_service.h"
 #include "shill/mock_store.h"
+#include "shill/mock_wifi_provider.h"
 #include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/resolver.h"
+#include "shill/wifi_service.h"
 
 using base::FilePath;
 using std::map;
@@ -319,6 +321,34 @@ TEST_F(DefaultProfileTest, UpdateDevice) {
   profile_->set_storage(storage.release());
   EXPECT_TRUE(profile_->UpdateDevice(device_));
   EXPECT_FALSE(profile_->UpdateDevice(device_));
+}
+
+TEST_F(DefaultProfileTest, UpdateWiFiProvider) {
+  MockWiFiProvider wifi_provider;
+
+  {
+    scoped_ptr<MockStore> storage(new MockStore());
+    EXPECT_CALL(*storage, Flush()).Times(0);
+    EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(false));
+    profile_->set_storage(storage.release());
+    EXPECT_FALSE(profile_->UpdateWiFiProvider(wifi_provider));
+  }
+
+  {
+    scoped_ptr<MockStore> storage(new MockStore());
+    EXPECT_CALL(*storage, Flush()).WillOnce(Return(false));
+    EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
+    profile_->set_storage(storage.release());
+    EXPECT_FALSE(profile_->UpdateWiFiProvider(wifi_provider));
+  }
+
+  {
+    scoped_ptr<MockStore> storage(new MockStore());
+    EXPECT_CALL(*storage, Flush()).WillOnce(Return(true));
+    EXPECT_CALL(wifi_provider, Save(storage.get())).WillOnce(Return(true));
+    profile_->set_storage(storage.release());
+    EXPECT_TRUE(profile_->UpdateWiFiProvider(wifi_provider));
+  }
 }
 
 }  // namespace shill

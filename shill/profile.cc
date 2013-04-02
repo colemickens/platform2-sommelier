@@ -301,6 +301,10 @@ bool Profile::UpdateDevice(const DeviceRefPtr &device) {
   return false;
 }
 
+bool Profile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
+  return false;
+}
+
 void Profile::HelpRegisterDerivedStrings(
     const string &name,
     Strings(Profile::*get)(Error *),

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROFILE_
-#define SHILL_PROFILE_
+#ifndef SHILL_PROFILE_H_
+#define SHILL_PROFILE_H_
 
 #include <map>
 #include <string>
@@ -31,6 +31,7 @@ class Manager;
 class Metrics;
 class ProfileAdaptorInterface;
 class StoreInterface;
+class WiFiProvider;
 
 class Profile : public base::RefCounted<Profile> {
  public:
@@ -129,6 +130,12 @@ class Profile : public base::RefCounted<Profile> {
   // DefaultProfile.
   virtual bool UpdateDevice(const DeviceRefPtr &device);
 
+  // Clobbers persisted notion of |wifi_provider| with data from
+  // |wifi_provider|. Returns true if |wifi_provider| was found and updated,
+  // false otherwise. The base implementation always returns false -- currently
+  // wifi_provider is persisted only in DefaultProfile.
+  virtual bool UpdateWiFiProvider(const WiFiProvider &wifi_provider);
+
   // Write all in-memory state to disk via |storage_|.
   virtual bool Save();
 
@@ -201,4 +208,4 @@ class Profile : public base::RefCounted<Profile> {
 
 }  // namespace shill
 
-#endif  // SHILL_PROFILE_
+#endif  // SHILL_PROFILE_H_

@@ -114,6 +114,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Persists |to_update| into an appropriate profile.
   virtual void UpdateDevice(const DeviceRefPtr &to_update);
 
+  virtual void UpdateWiFiProvider();
+
   void FilterByTechnology(Technology::Identifier tech,
                           std::vector<DeviceRefPtr> *found) const;
 

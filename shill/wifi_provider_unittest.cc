@@ -30,6 +30,7 @@ using std::set;
 using std::string;
 using std::vector;
 using ::testing::_;
+using ::testing::ContainerEq;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
@@ -62,8 +63,8 @@ class WiFiProviderTest : public testing::Test {
     provider_.CreateServicesFromProfile(profile_);
   }
 
-  void FixupServiceEntries(bool is_default_profile) {
-    provider_.FixupServiceEntries(&storage_, is_default_profile);
+  void LoadAndFixupServiceEntries(bool is_default_profile) {
+    provider_.LoadAndFixupServiceEntries(&storage_, is_default_profile);
   }
 
   const vector<WiFiServiceRefPtr> GetServices() {
@@ -195,6 +196,45 @@ class WiFiProviderTest : public testing::Test {
                             const WiFiEndpointConstRefPtr &endpoint) {
     provider_.service_by_endpoint_[endpoint] = service;
   }
+
+  void BuildFreqCountStrings(vector<string> *strings) {
+    // NOTE: These strings match the frequencies in |BuildFreqCountMap|.  They
+    // are also provided, here, in sorted order to match the frequency map
+    // (iterators for which will provide them in frequency-sorted order).
+    static const char *kStrings[] = {
+      "5180:14", "5240:16", "5745:7", "5765:4", "5785:14", "5805:5"
+    };
+    if (!strings) {
+      LOG(ERROR) << "NULL |strings|.";
+      return;
+    }
+    for (size_t i = 0; i < arraysize(kStrings); ++i) {
+      (*strings).push_back(kStrings[i]);
+    }
+  }
+
+  void BuildFreqCountMap(WiFiProvider::ConnectFrequencyMap *frequencies) {
+    // NOTE: These structures match the strings in |BuildFreqCountStrings|.
+    static const struct FreqCount {
+      uint16 freq;
+      int64 count;
+    } kConnectFreq[] = {
+      {5180, 14},
+      {5240, 16},
+      {5745, 7},
+      {5765, 4},
+      {5785, 14},
+      {5805, 5}
+    };
+    if (!frequencies) {
+      LOG(ERROR) << "NULL |frequencies|.";
+      return;
+    }
+    for (size_t i = 0; i < ARRAYSIZE_UNSAFE(kConnectFreq); ++i) {
+      (*frequencies)[kConnectFreq[i].freq] = kConnectFreq[i].count;
+    }
+  }
+
   NiceMockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
@@ -957,9 +997,9 @@ TEST_F(WiFiProviderTest, OnServiceUnloaded) {
   Mock::VerifyAndClearExpectations(&manager_);
 }
 
-TEST_F(WiFiProviderTest, FixupServiceEntries) {
-  // We test FixupServiceEntries indirectly since it calls a static method
-  // in WiFiService.
+TEST_F(WiFiProviderTest, LoadAndFixupServiceEntries) {
+  // We test LoadAndFixupServiceEntries indirectly since it calls a static
+  // method in WiFiService.
   EXPECT_CALL(metrics_, SendEnumToUMA(
       "Network.Shill.Wifi.ServiceFixupEntries",
       Metrics::kMetricServiceFixupDefaultProfile,
@@ -977,7 +1017,10 @@ TEST_F(WiFiProviderTest, FixupServiceEntries) {
   set<string> groups;
   groups.insert(kGroupId);
   EXPECT_CALL(storage_, GetGroups()).WillRepeatedly(Return(groups));
-  FixupServiceEntries(true);
+  EXPECT_CALL(storage_, GetStringList(WiFiProvider::kStorageId,
+                                      WiFiProvider::kStorageFrequencies, _))
+      .WillOnce(Return(true));
+  LoadAndFixupServiceEntries(true);
   Mock::VerifyAndClearExpectations(&metrics_);
 
   EXPECT_CALL(metrics_, SendEnumToUMA(
@@ -985,10 +1028,11 @@ TEST_F(WiFiProviderTest, FixupServiceEntries) {
       Metrics::kMetricServiceFixupUserProfile,
       Metrics::kMetricServiceFixupMax)).Times(1);
   EXPECT_CALL(storage_, Flush()).Times(1);
-  FixupServiceEntries(false);
+  EXPECT_CALL(storage_, GetStringList(_, _, _)).Times(0);
+  LoadAndFixupServiceEntries(false);
 }
 
-TEST_F(WiFiProviderTest, FixupServiceEntriesNothingToDo) {
+TEST_F(WiFiProviderTest, LoadAndFixupServiceEntriesNothingToDo) {
   EXPECT_CALL(metrics_, SendEnumToUMA(_, _, _)).Times(0);
   EXPECT_CALL(storage_, Flush()).Times(0);
   const string kGroupId =
@@ -1001,7 +1045,10 @@ TEST_F(WiFiProviderTest, FixupServiceEntriesNothingToDo) {
   set<string> groups;
   groups.insert(kGroupId);
   EXPECT_CALL(storage_, GetGroups()).WillOnce(Return(groups));
-  FixupServiceEntries(true);
+  EXPECT_CALL(storage_, GetStringList(WiFiProvider::kStorageId,
+                                      WiFiProvider::kStorageFrequencies, _))
+      .WillOnce(Return(true));
+  LoadAndFixupServiceEntries(true);
 }
 
 TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
@@ -1052,6 +1099,28 @@ TEST_F(WiFiProviderTest, GetHiddenSSIDList) {
   EXPECT_EQ(2, ssid_list.size());
   EXPECT_TRUE(ssid_list[0] == ssid2);
   EXPECT_TRUE(ssid_list[1] == ssid4);
+}
+
+TEST_F(WiFiProviderTest, StringListToFrequencyMap) {
+  vector<string> strings;
+  BuildFreqCountStrings(&strings);
+  WiFiProvider::ConnectFrequencyMap frequencies_result;
+  WiFiProvider::StringListToFrequencyMap(strings, &frequencies_result);
+
+  WiFiProvider::ConnectFrequencyMap frequencies_expect;
+  BuildFreqCountMap(&frequencies_expect);
+  EXPECT_THAT(frequencies_result, ContainerEq(frequencies_expect));
+}
+
+TEST_F(WiFiProviderTest, FrequencyMapToStringList) {
+  WiFiProvider::ConnectFrequencyMap frequencies;
+  BuildFreqCountMap(&frequencies);
+  vector<string> strings_result;
+  WiFiProvider::FrequencyMapToStringList(frequencies, &strings_result);
+
+  vector<string> strings_expect;
+  BuildFreqCountStrings(&strings_expect);
+  EXPECT_THAT(strings_result, ContainerEq(strings_expect));
 }
 
 }  // namespace shill

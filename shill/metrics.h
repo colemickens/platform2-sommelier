@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_METRICS_
-#define SHILL_METRICS_
+#ifndef SHILL_METRICS_H_
+#define SHILL_METRICS_H_
 
 #include <list>
 
@@ -303,6 +303,12 @@ class Metrics {
   // The result of the portal detection.
   static const char kMetricPortalResult[];
 
+  // Wifi connection frequencies.
+  static const char kMetricFrequenciesConnectedEver[];
+  static const int kMetricFrequenciesConnectedMax;
+  static const int kMetricFrequenciesConnectedMin;
+  static const int kMetricFrequenciesConnectedNumBuckets;
+
   static const char kMetricPowerManagerKey[];
 
   // LinkMonitor statistics.
@@ -584,7 +590,7 @@ class Metrics {
                                            Service::ConnectState new_state);
   void SendServiceFailure(const Service *service);
 
-  DeviceMetrics *GetDeviceMetrics (int interface_index) const;
+  DeviceMetrics *GetDeviceMetrics(int interface_index) const;
   void AutoConnectMetricsReset(DeviceMetrics *device_metrics);
 
   void HourlyTimeoutHandler();
@@ -632,4 +638,4 @@ class Metrics {
 
 }  // namespace shill
 
-#endif  // SHILL_METRICS_
+#endif  // SHILL_METRICS_H_

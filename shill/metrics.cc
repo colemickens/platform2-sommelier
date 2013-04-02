@@ -133,6 +133,12 @@ const int Metrics::kMetricPortalAttemptsToOnlineNumBuckets = 10;
 
 const char Metrics::kMetricPortalResult[] = "Network.Shill.%s.PortalResult";
 
+const char Metrics::kMetricFrequenciesConnectedEver[] =
+    "Network.Shill.WiFi.FrequenciesConnectedEver";
+const int Metrics::kMetricFrequenciesConnectedMax = 50;
+const int Metrics::kMetricFrequenciesConnectedMin = 1;
+const int Metrics::kMetricFrequenciesConnectedNumBuckets = 50;
+
 const char Metrics::kMetricTerminationActionTimeOnTerminate[] =
     "Network.Shill.TerminationActionTime.OnTerminate";
 const char Metrics::kMetricTerminationActionResultOnTerminate[] =
@@ -690,7 +696,7 @@ void Metrics::Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
   } else {
     metric_disconnect_reason = kMetricLinkClientDisconnectReason;
     metric_disconnect_type = kMetricLinkClientDisconnectType;
-    switch(reason) {
+    switch (reason) {
       case IEEE_80211::kReasonCodeSenderHasLeft:
       case IEEE_80211::kReasonCodeDisassociatedHasLeft:
         type = kStatusCodeTypeByUser;

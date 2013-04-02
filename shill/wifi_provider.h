@@ -2,8 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_WIFI_PROVIDER_
-#define SHILL_WIFI_PROVIDER_
+#ifndef SHILL_WIFI_PROVIDER_H_
+#define SHILL_WIFI_PROVIDER_H_
+
+#include <map>
+
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"  // for ByteArrays
 #include "shill/refptr_types.h"
@@ -25,6 +29,8 @@ class WiFiService;
 // (created due to user or storage configuration) Services.
 class WiFiProvider {
  public:
+  typedef std::map<uint16, int64> ConnectFrequencyMap;
+
   WiFiProvider(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
                Metrics *metrics,
@@ -81,11 +87,20 @@ class WiFiProvider {
 
   // Calls WiFiService::FixupServiceEntries() and adds a UMA metric if
   // this causes entries to be updated.
-  virtual void FixupServiceEntries(
-      StoreInterface *storage, bool is_default_profile);
+  virtual void LoadAndFixupServiceEntries(StoreInterface *storage,
+                                          bool is_default_profile);
+
+  // Save configuration for wifi_provider to |storage|.
+  virtual bool Save(StoreInterface *storage) const;
+
+  virtual void IncrementConnectCount(uint16 frequency_mhz);
 
  private:
   friend class WiFiProviderTest;
+  FRIEND_TEST(WiFiProviderTest, FrequencyMapToStringList);
+  FRIEND_TEST(WiFiProviderTest, LoadAndFixupServiceEntries);
+  FRIEND_TEST(WiFiProviderTest, LoadAndFixupServiceEntriesNothingToDo);
+  FRIEND_TEST(WiFiProviderTest, StringListToFrequencyMap);
 
   typedef std::map<const WiFiEndpoint *, WiFiServiceRefPtr> EndpointServiceMap;
 
@@ -94,6 +109,9 @@ class WiFiProvider {
   static const char kManagerErrorSSIDRequired[];
   static const char kManagerErrorUnsupportedSecurityMode[];
   static const char kManagerErrorUnsupportedServiceMode[];
+  static const char kFrequencyDelimiter[];
+  static const char kStorageId[];
+  static const char kStorageFrequencies[];
 
   // Add a service to the service_ vector and register it with the Manager.
   WiFiServiceRefPtr AddService(const std::vector<uint8_t> &ssid,
@@ -123,6 +141,18 @@ class WiFiProvider {
                                            bool *hidden_ssid,
                                            Error *error);
 
+  // Converts frequency profile information from a list of strings of the form
+  // "frequency:connections" to a form consistent with
+  // |connect_count_by_frequency_|
+  static void StringListToFrequencyMap(const std::vector<std::string> &strings,
+                                       ConnectFrequencyMap *numbers);
+
+  // Converts frequency profile information from a form consistent with
+  // |connect_count_by_frequency_| to a list of strings of the form
+  // "frequency:connections"
+  static void FrequencyMapToStringList(const ConnectFrequencyMap &numbers,
+                                       std::vector<std::string> *strings);
+
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;
   Metrics *metrics_;
@@ -133,9 +163,17 @@ class WiFiProvider {
 
   bool running_;
 
+  // Map of frequencies at which we've connected and the number of times a
+  // successful connection has been made at that frequency.  Absent frequencies
+  // have not had a successful connection.
+  ConnectFrequencyMap connect_count_by_frequency_;
+
+  // Count of successful wifi connections we've made.
+  int64_t total_frequency_connections_;
+
   DISALLOW_COPY_AND_ASSIGN(WiFiProvider);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_WIFI_PROVIDER_
+#endif  // SHILL_WIFI_PROVIDER_H_

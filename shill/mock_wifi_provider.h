@@ -36,8 +36,10 @@ class MockWiFiProvider : public WiFiProvider {
                void(const WiFiEndpointConstRefPtr &endpoint));
   MOCK_METHOD1(OnServiceUnloaded, bool(const WiFiServiceRefPtr &service));
   MOCK_METHOD0(GetHiddenSSIDList, ByteArrays());
-  MOCK_METHOD2(FixupServiceEntries, void(StoreInterface *storage,
-                                         bool is_default_profile));
+  MOCK_METHOD2(LoadAndFixupServiceEntries, void(StoreInterface *storage,
+                                                bool is_default_profile));
+  MOCK_CONST_METHOD1(Save, bool(StoreInterface *storage));
+  MOCK_METHOD1(IncrementConnectCount, void(uint16 frequency));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockWiFiProvider);

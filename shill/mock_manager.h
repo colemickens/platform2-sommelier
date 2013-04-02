@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_MANAGER_
-#define SHILL_MOCK_MANAGER_
+#ifndef SHILL_MOCK_MANAGER_H_
+#define SHILL_MOCK_MANAGER_H_
 
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
@@ -38,10 +38,11 @@ class MockManager : public Manager {
                int(const ServiceCallback &callback));
   MOCK_METHOD1(DeregisterDefaultServiceCallback, void(int tag));
   MOCK_METHOD1(UpdateDevice, void(const DeviceRefPtr &to_update));
+  MOCK_METHOD0(UpdateWiFiProvider, void());
   MOCK_METHOD1(RecheckPortalOnService, void(const ServiceRefPtr &service));
   MOCK_METHOD2(HandleProfileEntryDeletion,
-               bool (const ProfileRefPtr &profile,
-                     const std::string &entry_name));
+               bool(const ProfileRefPtr &profile,
+                    const std::string &entry_name));
   MOCK_CONST_METHOD0(GetDefaultService, ServiceRefPtr());
   MOCK_CONST_METHOD0(IsOnline, bool());
   MOCK_METHOD0(UpdateEnabledTechnologies, void());
@@ -64,4 +65,4 @@ class MockManager : public Manager {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_MANAGER_
+#endif  // SHILL_MOCK_MANAGER_H_

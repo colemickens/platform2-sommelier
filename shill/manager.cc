@@ -220,6 +220,8 @@ void Manager::Stop() {
     UpdateDevice(*devices_it);
   }
 
+  UpdateWiFiProvider();
+
   // Persist profile, service information to disk.
   vector<ProfileRefPtr>::iterator profiles_it;
   for (profiles_it = profiles_.begin(); profiles_it != profiles_.end();
@@ -653,7 +655,8 @@ bool Manager::IsDefaultProfile(StoreInterface *storage) {
 }
 
 void Manager::OnProfileStorageInitialized(StoreInterface *storage) {
-  wifi_provider_->FixupServiceEntries(storage, IsDefaultProfile(storage));
+  wifi_provider_->LoadAndFixupServiceEntries(storage,
+                                             IsDefaultProfile(storage));
 }
 
 DeviceRefPtr Manager::GetEnabledDeviceWithTechnology(
@@ -936,12 +939,28 @@ void Manager::UpdateService(const ServiceRefPtr &to_update) {
 void Manager::UpdateDevice(const DeviceRefPtr &to_update) {
   LOG(INFO) << "Device " << to_update->link_name() << " updated: "
             << (to_update->enabled_persistent() ? "enabled" : "disabled");
-  // Saves the device to the topmost profile that accepts it. Normally, this
-  // would be the only DefaultProfile at the bottom of the stack except in
-  // autotests that push a second test-only DefaultProfile.
+  // Saves the device to the topmost profile that accepts it (ordinary
+  // profiles don't update but default profiles do). Normally, the topmost
+  // updating profile would be the DefaultProfile at the bottom of the stack.
+  // Autotests, differ from the normal scenario, however, in that they push a
+  // second test-only DefaultProfile.
   for (vector<ProfileRefPtr>::reverse_iterator rit = profiles_.rbegin();
        rit != profiles_.rend(); ++rit) {
     if ((*rit)->UpdateDevice(to_update)) {
+      return;
+    }
+  }
+}
+
+void Manager::UpdateWiFiProvider() {
+  // Saves |wifi_provider_| to the topmost profile that accepts it (ordinary
+  // profiles don't update but default profiles do). Normally, the topmost
+  // updating profile would be the DefaultProfile at the bottom of the stack.
+  // Autotests, differ from the normal scenario, however, in that they push a
+  // second test-only DefaultProfile.
+  for (vector<ProfileRefPtr>::reverse_iterator rit = profiles_.rbegin();
+       rit != profiles_.rend(); ++rit) {
+    if ((*rit)->UpdateWiFiProvider(*wifi_provider_)) {
       return;
     }
   }
@@ -1758,7 +1777,7 @@ map<string, GeolocationInfos> Manager::GetNetworksForGeolocation() {
   map<string, GeolocationInfos> networks;
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
-    switch((*it)->technology()) {
+    switch ((*it)->technology()) {
       // TODO(gauravsh): crosbug.com/35736 Need a strategy for combining
       // geolocation objects from multiple devices of the same technolgy.
       // Currently, we just pick the geolocation objects from the first found
