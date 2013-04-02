@@ -293,6 +293,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	shill_daemon.o \
 	shill_test_config.o \
 	shill_time.o \
+	socket_info.o \
 	sockets.o \
 	static_ip_parameters.o \
 	supplicant_bss_proxy.o \
@@ -453,6 +454,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	shill_unittest.o \
 	shims/certificates_unittest.o \
 	shims/netfilter_queue_processor_unittest.o \
+	socket_info_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	traffic_monitor_unittest.o \
