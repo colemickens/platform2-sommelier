@@ -48,6 +48,7 @@ class MockSockets : public Sockets {
                                socklen_t addrlen));
   MOCK_METHOD1(SetNonBlocking, int(int sockfd));
   MOCK_METHOD2(SetReceiveBuffer, int(int sockfd, int size));
+  MOCK_METHOD2(ShutDown, int(int sockfd, int how));
   MOCK_METHOD3(Socket, int(int domain, int type, int protocol));
 
  private:
