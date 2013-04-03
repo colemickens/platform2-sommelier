@@ -38,6 +38,7 @@
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
+#include "power_manager/powerd/system/power_supply_observer.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
@@ -87,7 +88,8 @@ enum BatteryReportState {
 
 class Daemon : public policy::BacklightControllerObserver,
                public policy::InputController::Delegate,
-               public system::AudioObserver {
+               public system::AudioObserver,
+               public system::PowerSupplyObserver {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
@@ -131,21 +133,6 @@ class Daemon : public policy::BacklightControllerObserver,
       policy::BacklightController::BrightnessChangeCause cause,
       policy::BacklightController* source) OVERRIDE;
 
-  // Removes the current power supply polling timer.
-  void HaltPollPowerSupply();
-
-  // Removes the current power supply polling timer. It then schedules an
-  // immediate poll that knows the value is suspect and another in 5s once the
-  // battery state has settled.
-  void ResumePollPowerSupply();
-
-  // Flags the current information about the power supply as stale, so that if a
-  // delayed request comes in for data, we know to poll the power supply
-  // again. This is used in the case of Suspend/Resume, since we may have told
-  // Chrome there is new information before suspending and Chrome requests it on
-  // resume before we have updated.
-  void MarkPowerStatusStale();
-
   // Called by |suspender_| before other processes are informed that the
   // system will be suspending soon.
   void PrepareForSuspendAnnouncement();
@@ -175,6 +162,9 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Overridden from system::AudioObserver:
   virtual void OnAudioActivity(base::TimeTicks last_audio_time) OVERRIDE;
+
+  // Overridden from system::PowerSupplyObserver:
+  virtual void OnPowerStatusUpdate(const system::PowerStatus& status) OVERRIDE;
 
  private:
   friend class DaemonTest;
@@ -270,8 +260,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // starting with the state provided except the locking timeout.
   void SetIdleOffset(int64 offset_ms, IdleState state);
 
-  static void OnPowerEvent(void* object, const system::PowerStatus& info);
-
   // Handles power supply udev events.
   static gboolean UdevEventHandler(GIOChannel*,
                                    GIOCondition condition,
@@ -307,37 +295,6 @@ class Daemon : public policy::BacklightControllerObserver,
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
   DBusMessage* HandleSetPolicyMethod(DBusMessage* message);
-
-  // Removes the previous power supply polling timer and replaces it with one
-  // that fires every 5s and calls ShortPollPowerSupply. The nature of this
-  // callback will cause the timer to only fire once and then return to the
-  // regular PollPowerSupply.
-  void ScheduleShortPollPowerSupply();
-
-  // Removes the previous power supply polling timer and replaces it with one
-  // that fires every 30s and calls PollPowerSupply.
-  void SchedulePollPowerSupply();
-
-  // Handles polling the power supply due to change in its state. Reschedules
-  // the polling timer, so it doesn't fire too close to a state change. It then
-  // reads power supply status and sets is_calculating_battery_time to true to
-  // indicate that this value shouldn't be trusted to be accurate. It then calls
-  // a shared handler to signal chrome that fresh data is available.
-  gboolean EventPollPowerSupply();
-
-  // Read the power supply status once and then schedules the regular
-  // polling. This is done to allow for a one off short duration poll right
-  // after a power event.
-  SIGNAL_CALLBACK_0(Daemon, gboolean, ShortPollPowerSupply);
-
-  // Reads power supply status at regular intervals, and sends a signal to
-  // indicate that fresh power supply data is available.
-  SIGNAL_CALLBACK_0(Daemon, gboolean, PollPowerSupply);
-
-  // Shared handler used for servicing when we have polled the state of the
-  // battery. This method sends a signal to chrome about there being fresh data
-  // and generates related metrics.
-  gboolean HandlePollPowerSupply();
 
   // Update the averaged values in |power_status_| and add the battery time
   // estimate values from |power_status_| to the appropriate rolling
@@ -540,8 +497,6 @@ class Daemon : public policy::BacklightControllerObserver,
   bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
   guint clean_shutdown_timeout_id_;
-  int64 battery_poll_interval_ms_;
-  int64 battery_poll_short_interval_ms_;
   PluggedState plugged_state_;
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;
@@ -593,10 +548,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Persistent storage for metrics that need to exist for more then one session
   MetricsStore metrics_store_;
-
-  // Value returned when we add a timer for polling the power supply. This is
-  // needed for removing the timer when we want to interrupt polling.
-  guint32 poll_power_supply_timer_id_;
 
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;

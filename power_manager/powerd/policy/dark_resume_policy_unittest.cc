@@ -41,34 +41,6 @@ int ScaleDouble(double value) {
   return round(value * 1000000);
 }
 
-void SetBattery(base::FilePath& path,
-                double charge_percent,
-                bool ac_online) {
-  map<string, string> values;
-  values["ac/type"] = kACType;
-  values["battery/type"] = kBatteryType;
-  values["battery/present"] = kPresent;
-  values["battery/charge_full"] = base::IntToString(ScaleDouble(kChargeFull));
-  values["battery/charge_full_design"] =
-      base::IntToString(ScaleDouble(kChargeFull));
-  values["battery/charge_now"] = base::IntToString(ScaleDouble(charge_percent *
-                                                               kChargeFull /
-                                                               100.0));
-
-  if (ac_online)
-    values["ac/online"] = kOnline;
-  else
-    values["ac/online"] = kOffline;
-
-  for (map<string, string>::iterator iter = values.begin();
-       iter != values.end();
-       ++iter) {
-    file_util::WriteFile(path.Append(iter->first),
-                         iter->second.c_str(),
-                         iter->second.length());
-  }
-}
-
 }  // namespace
 
 namespace power_manager {
@@ -79,19 +51,47 @@ class DarkResumePolicyTest : public ::testing::Test {
   DarkResumePolicyTest() {}
 
   virtual void SetUp() {
-    // Create a temporary directory for the test files.
     temp_dir_generator_.reset(new base::ScopedTempDir());
     ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
     ASSERT_TRUE(temp_dir_generator_->IsValid());
     path_ = temp_dir_generator_->path();
     file_util::CreateDirectory(path_.Append("ac"));
     file_util::CreateDirectory(path_.Append("battery"));
-    power_supply_.reset(new system::PowerSupply(path_, NULL));
-    dark_resume_policy_.reset(new DarkResumePolicy(power_supply_.get(),
-                                                   &prefs_));
+    power_supply_.reset(new system::PowerSupply(path_, &prefs_));
+    dark_resume_policy_.reset(
+        new DarkResumePolicy(power_supply_.get(), &prefs_));
   }
 
  protected:
+  void SetBattery(double charge_percent, bool ac_online) {
+    map<string, string> values;
+    values["ac/type"] = kACType;
+    values["battery/type"] = kBatteryType;
+    values["battery/present"] = kPresent;
+    values["battery/charge_full"] = base::IntToString(ScaleDouble(kChargeFull));
+    values["battery/charge_full_design"] =
+        base::IntToString(ScaleDouble(kChargeFull));
+    values["battery/charge_now"] = base::IntToString(
+        ScaleDouble(charge_percent * kChargeFull / 100.0));
+
+    if (ac_online)
+      values["ac/online"] = kOnline;
+    else
+      values["ac/online"] = kOffline;
+
+    for (map<string, string>::iterator iter = values.begin();
+         iter != values.end();
+         ++iter) {
+      file_util::WriteFile(path_.Append(iter->first),
+                           iter->second.c_str(),
+                           iter->second.length());
+    }
+
+    ASSERT_TRUE(power_supply_->RefreshImmediately());
+    ASSERT_DOUBLE_EQ(charge_percent,
+                     power_supply_->power_status().battery_percentage);
+  }
+
   FakePrefs prefs_;
   scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
   base::FilePath path_;
@@ -101,48 +101,32 @@ class DarkResumePolicyTest : public ::testing::Test {
 
 // Test that GetAction will return SHUTDOWN if the preferences are correct.
 TEST_F(DarkResumePolicyTest, TestShutdown) {
-  system::PowerStatus power_status;
-  SetBattery(path_, 100.0, false);
-
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 -1.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   power_supply_->Init();
+  SetBattery(100.0, false);
   dark_resume_policy_->Init();
-
-  // GetPowerStatus needs to work for GetAction to work.
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(100.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(), DarkResumePolicy::SHUT_DOWN);
+  EXPECT_EQ(DarkResumePolicy::SHUT_DOWN, dark_resume_policy_->GetAction());
 }
 
 // Test that GetAction will first return SUSPEND_FOR_DURATION then SHUT_DOWN
 // after the battery charge changes and the power is unplugged.
 TEST_F(DarkResumePolicyTest, TestSuspendFirst) {
-  system::PowerStatus power_status;
-  SetBattery(path_, 100.0, false);
-
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   power_supply_->Init();
+  SetBattery(100.0, false);
   dark_resume_policy_->Init();
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
 
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(100.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-
-  SetBattery(path_, 50.0, false);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(50.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(), DarkResumePolicy::SHUT_DOWN);
+  SetBattery(50.0, false);
+  EXPECT_EQ(DarkResumePolicy::SHUT_DOWN, dark_resume_policy_->GetAction());
 }
 
 // Test that state is not maintained after a user resume and that the proper
 // suspend durations are returned.
 TEST_F(DarkResumePolicyTest, TestUserResumes) {
-  system::PowerStatus power_status;
-  SetBattery(path_, 100.0, false);
-
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0\n"
                                                   "20.0 2.0\n"
                                                   "50.0 5.0\n"
@@ -152,92 +136,75 @@ TEST_F(DarkResumePolicyTest, TestUserResumes) {
                                                     "50.0 100\n"
                                                     "80.0 500");
   power_supply_->Init();
+  SetBattery(100.0, false);
   dark_resume_policy_->Init();
-
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(100.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-  EXPECT_EQ(dark_resume_policy_->GetSuspendDuration().InSeconds(), 500);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
+  EXPECT_EQ(500, dark_resume_policy_->GetSuspendDuration().InSeconds());
 
   dark_resume_policy_->HandleResume();
-  SetBattery(path_, 80.0, false);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(80.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-  EXPECT_EQ(dark_resume_policy_->GetSuspendDuration().InSeconds(), 500);
+  SetBattery(80.0, false);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
+  EXPECT_EQ(500, dark_resume_policy_->GetSuspendDuration().InSeconds());
 
   dark_resume_policy_->HandleResume();
-  SetBattery(path_, 50.0, false);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(50.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-  EXPECT_EQ(dark_resume_policy_->GetSuspendDuration().InSeconds(), 100);
+  SetBattery(50.0, false);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
+  EXPECT_EQ(100, dark_resume_policy_->GetSuspendDuration().InSeconds());
 
   dark_resume_policy_->HandleResume();
-  SetBattery(path_, 20.0, false);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(20.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-  EXPECT_EQ(dark_resume_policy_->GetSuspendDuration().InSeconds(), 50);
+  SetBattery(20.0, false);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
+  EXPECT_EQ(50, dark_resume_policy_->GetSuspendDuration().InSeconds());
 
   dark_resume_policy_->HandleResume();
-  SetBattery(path_, 5.0, false);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(5.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-  EXPECT_EQ(dark_resume_policy_->GetSuspendDuration().InSeconds(), 10);
+  SetBattery(5.0, false);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
+  EXPECT_EQ(10, dark_resume_policy_->GetSuspendDuration().InSeconds());
 }
 
 // Check that we don't shutdown when the AC is online (regardless of battery
 // life).
 TEST_F(DarkResumePolicyTest, TestACOnline) {
-  system::PowerStatus power_status;
-  SetBattery(path_, 100.0, false);
-
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   power_supply_->Init();
+  SetBattery(100.0, false);
   dark_resume_policy_->Init();
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
 
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(100.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
-
-  SetBattery(path_, 50.0, true);
-  EXPECT_TRUE(power_supply_->GetPowerStatus(&power_status, false));
-  EXPECT_DOUBLE_EQ(50.0, power_status.battery_percentage);
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
+  SetBattery(50.0, true);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
 }
 
 // Check that setting the pref disable_dark_resume to 1 disables dark resume and
 // that setting it to 0 enables it.
 TEST_F(DarkResumePolicyTest, TestDisable) {
-  SetBattery(path_, 100.0, false);
-
   prefs_.SetInt64(kDisableDarkResumePref, 1);
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   power_supply_->Init();
+  SetBattery(100.0, false);
   dark_resume_policy_->Init();
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_INDEFINITELY,
+            dark_resume_policy_->GetAction());
+}
 
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_INDEFINITELY);
-
+TEST_F(DarkResumePolicyTest, TestEnable) {
   prefs_.SetInt64(kDisableDarkResumePref, 0);
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
   prefs_.SetString(kDarkResumeSuspendDurationsPref, "0.0 10");
   power_supply_->Init();
+  SetBattery(100.0, false);
   dark_resume_policy_->Init();
-
-  EXPECT_EQ(dark_resume_policy_->GetAction(),
-      DarkResumePolicy::SUSPEND_FOR_DURATION);
+  EXPECT_EQ(DarkResumePolicy::SUSPEND_FOR_DURATION,
+            dark_resume_policy_->GetAction());
 }
 
 }  // namespace policy

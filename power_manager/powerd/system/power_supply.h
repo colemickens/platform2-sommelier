@@ -11,7 +11,13 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
+#include "base/observer_list.h"
 #include "base/time.h"
+#include "power_manager/common/signal_callback.h"
+#include "power_manager/powerd/system/power_supply_observer.h"
+
+typedef int gboolean;
+typedef unsigned int guint;
 
 namespace power_manager {
 
@@ -79,6 +85,9 @@ struct PowerStatus {
 struct PowerInformation {
   PowerStatus power_status;
 
+  std::string line_power_path;
+  std::string battery_path;
+
   // Amount of energy, measured in Wh, in the battery when it's considered
   // empty.
   double battery_energy_empty;
@@ -102,28 +111,78 @@ struct PowerInformation {
 // charge and voltage level, current, etc.
 class PowerSupply {
  public:
-  explicit PowerSupply(const base::FilePath& power_supply_path,
-                       PrefsInterface *prefs);
+  // Helper class for testing PowerSupply.
+  class TestApi {
+   public:
+    explicit TestApi(PowerSupply* power_supply) : power_supply_(power_supply) {}
+    ~TestApi() {}
+
+    base::TimeDelta current_poll_delay() const {
+      return power_supply_->current_poll_delay_for_testing_;
+    }
+
+    void set_current_time(base::TimeTicks time) {
+      power_supply_->current_time_for_testing_ = time;
+    }
+
+    // Calls HandlePollTimeout() and returns true if |poll_timeout_id_| was
+    // set.  Returns false if the timeout was unset.
+    bool TriggerPollTimeout() WARN_UNUSED_RESULT;
+
+   private:
+    PowerSupply* power_supply_;  // not owned
+
+    DISALLOW_COPY_AND_ASSIGN(TestApi);
+  };
+
+  // Additional time beyond |short_poll_delay_| to wait before updating the
+  // status, in milliseconds.  This just ensures that the timer doesn't
+  // fire before it's safe to calculate the battery time.
+  static const int kCalculateBatterySlackMs;
+
+  PowerSupply(const base::FilePath& power_supply_path, PrefsInterface *prefs);
   ~PowerSupply();
 
+  const PowerStatus& power_status() const { return power_status_; }
+
+  // Initializes the object and begins polling.
   void Init();
 
-  // Read data from power supply sysfs and fill out all fields of the
-  // PowerStatus structure if possible.
-  bool GetPowerStatus(PowerStatus* status, bool is_calculating);
+  // Adds or removes an observer.
+  void AddObserver(PowerSupplyObserver* observer);
+  void RemoveObserver(PowerSupplyObserver* observer);
 
-  // Read data from power supply sysfs for PowerInformation structure.
+  // Updates |power_status_| synchronously, schedules a future poll, and
+  // returns true on success.  If successful, |observers_| will be notified
+  // asynchronously.
+  bool RefreshImmediately();
+
+  // Fills |info|.
   bool GetPowerInformation(PowerInformation* info);
 
-  const base::FilePath& line_power_path() const { return line_power_path_; }
-  const base::FilePath& battery_path() const { return battery_path_; }
+  // On suspend, stops polling.  On resume, updates |power_status_|
+  // immediately and schedules a poll for the near future.
+  void SetSuspended(bool suspended);
 
-  void SetSuspendState(bool state);
+  // Handles a power supply-related udev event.  Updates |power_status_|
+  // immediately and schedules a poll for the near future.
+  void HandleUdevEvent();
 
  private:
   friend class PowerSupplyTest;
   FRIEND_TEST(PowerSupplyTest, TestDischargingWithHysteresis);
   FRIEND_TEST(PowerSupplyTest, TestDischargingWithSuspendResume);
+
+  base::TimeTicks GetCurrentTime() const;
+
+  // Updates |done_calculating_battery_time_timestamp_| so PowerStatus's
+  // |is_calculating_battery_time| field will be set to true until
+  // |calculate_battery_time_delay_| has elapsed.
+  void SetCalculatingBatteryTime();
+
+  // Read data from power supply sysfs and fill out all fields of the
+  // PowerStatus structure if possible.
+  bool UpdatePowerStatus();
 
   // Find sysfs directories to read from.
   void GetPowerSupplyPaths();
@@ -139,8 +198,28 @@ class PowerSupply {
   // the hysteresis times.
   void AdjustHysteresisTimes(const base::TimeDelta& offset);
 
+  // Updates |poll_timeout_id_| to call HandlePollTimeout().  Removes any
+  // existing timeout.
+  void SchedulePoll(bool last_poll_succeeded);
+
+  // Handles |poll_timeout_id_| firing.  Updates |power_status_|, cancels
+  // the current timeout, and schedules a new timeout.
+  SIGNAL_CALLBACK_0(PowerSupply, gboolean, HandlePollTimeout);
+
+  // Handles |notify_observers_timeout_id_| firing.  Notifies |observers_|
+  // that |power_status_| has been updated and cancels the timeout.
+  SIGNAL_CALLBACK_0(PowerSupply, gboolean, HandleNotifyObserversTimeout);
+
   // Used to read power supply-related prefs.
   PrefsInterface* prefs_;
+
+  ObserverList<PowerSupplyObserver> observers_;
+
+  // Most-recently-computed status.
+  PowerStatus power_status_;
+
+  // If set, returned instead of the real time by GetCurrentTime().
+  base::TimeTicks current_time_for_testing_;
 
   // Paths to power supply base sysfs directory and battery and line power
   // subdirectories.
@@ -158,17 +237,34 @@ class PowerSupply {
   base::TimeTicks last_acceptable_range_time_;
   base::TimeTicks last_poll_time_;
   base::TimeTicks discharge_start_time_;
-  // Use a function pointer to get the current time.  This way
-  // base::TimeTicks::Now() can be mocked out by inserting an alternate
-  // function.
-  base::TimeTicks (*time_now_func)();
 
   base::TimeTicks suspend_time_;
   bool is_suspended_;
 
+  // Time at or after which it will be possible to calculate the battery's
+  // time-to-full and time-to-empty.
+  base::TimeTicks done_calculating_battery_time_timestamp_;
+
   // The fraction of full charge at which the battery can be considered "full"
   // if there is no more charging current.  Should be in the range (0, 100].
   double full_factor_;
+
+  // Amount of time to wait before updating |power_status_| after a
+  // successful update.
+  base::TimeDelta poll_delay_;
+
+  // Amount of time to wait before updating |power_status_| after an
+  // unsuccessful update and to wait before recalculating battery times.
+  base::TimeDelta short_poll_delay_;
+
+  // GLib timeout ID for invoking HandlePollTimeout().
+  guint poll_timeout_id_;
+
+  // Delay used when |poll_timeout_id_| was last set.
+  base::TimeDelta current_poll_delay_for_testing_;
+
+  // GLib timeout ID for invoking HandleNotifyObserversTimeout().
+  guint notify_observers_timeout_id_;
 
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };

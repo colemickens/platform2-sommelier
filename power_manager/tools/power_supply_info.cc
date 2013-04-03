@@ -107,14 +107,14 @@ int main(int, char*[]) {
   display.SetIndent(0, 0);
   display.PrintString("Device: Line Power");
   display.SetIndent(2, 20);
-  display.PrintValue("path", power_supply.line_power_path().value());
+  display.PrintValue("path", power_info.line_power_path);
   display.PrintStringValue("online",
                            BoolToString(power_status.line_power_on));
   if (power_status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");
     display.SetIndent(2, 20);
-    display.PrintValue("path", power_supply.battery_path().value());
+    display.PrintValue("path", power_info.battery_path);
     display.PrintStringValue("vendor", power_info.battery_vendor);
     display.PrintStringValue("model", power_info.battery_model);
     display.PrintStringValue("serial number", power_info.battery_serial);

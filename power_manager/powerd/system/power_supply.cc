@@ -12,6 +12,7 @@
 #include "base/string_util.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/util.h"
 
 namespace power_manager {
 namespace system {
@@ -38,6 +39,14 @@ const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
 // Report batteries as full if they're at or above this level (out of a max of
 // 1.0).
 const double kDefaultFullFactor = 0.98;
+
+// Default time interval between polls, in milliseconds.
+const int kDefaultPollMs = 30000;
+
+// Default shorter time interval used after a failed poll or to wait before
+// calculating the remaining battery time after suspend/resume or a udev
+// event, in milliseconds.
+const int kDefaultShortPollMs = 5000;
 
 // Converts time from hours to seconds.
 inline double HoursToSecondsDouble(double num_hours) {
@@ -81,6 +90,19 @@ double ReadScaledDouble(const base::FilePath& directory,
 
 }  // namespace
 
+bool PowerSupply::TestApi::TriggerPollTimeout() {
+  if (!power_supply_->poll_timeout_id_)
+    return false;
+
+  guint old_timeout_id = power_supply_->poll_timeout_id_;
+  CHECK(!power_supply_->HandlePollTimeout());
+  CHECK(power_supply_->poll_timeout_id_ != old_timeout_id);
+  util::RemoveTimeout(&old_timeout_id);
+  return true;
+}
+
+const int PowerSupply::kCalculateBatterySlackMs = 50;
+
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
     : prefs_(prefs),
@@ -88,195 +110,65 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTimeFast),
       found_acceptable_time_range_(false),
-      time_now_func(base::TimeTicks::Now),
       is_suspended_(false),
-      full_factor_(kDefaultFullFactor) {}
+      full_factor_(kDefaultFullFactor),
+      poll_timeout_id_(0),
+      notify_observers_timeout_id_(0) {
+  DCHECK(prefs);
+}
 
 PowerSupply::~PowerSupply() {
+  util::RemoveTimeout(&poll_timeout_id_);
+  util::RemoveTimeout(&notify_observers_timeout_id_);
 }
 
 void PowerSupply::Init() {
   GetPowerSupplyPaths();
-  if (prefs_)
-    prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
-  CHECK_GT(full_factor_, 0);
-  CHECK_LE(full_factor_, 1.);
+
+  int64 poll_ms = kDefaultPollMs;
+  prefs_->GetInt64(kBatteryPollIntervalPref, &poll_ms);
+  poll_delay_ = base::TimeDelta::FromMilliseconds(poll_ms);
+
+  int64 short_poll_ms = kDefaultShortPollMs;
+  prefs_->GetInt64(kBatteryPollShortIntervalPref, &short_poll_ms);
+  short_poll_delay_ = base::TimeDelta::FromMilliseconds(short_poll_ms);
+
+  prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
+  full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
+
+  SetCalculatingBatteryTime();
+  SchedulePoll(false);
 }
 
-bool PowerSupply::GetPowerStatus(PowerStatus* status, bool is_calculating) {
-  CHECK(status);
-  status->is_calculating_battery_time = is_calculating;
+void PowerSupply::AddObserver(PowerSupplyObserver* observer) {
+  DCHECK(observer);
+  observers_.AddObserver(observer);
+}
 
-  // Look for battery path if none has been found yet.
-  if (battery_path_.empty() || line_power_path_.empty())
-    GetPowerSupplyPaths();
-  // The line power path should have been found during initialization, so there
-  // is no need to look for it again.  However, check just to make sure the path
-  // is still valid.  Better safe than sorry.
-  if (!file_util::PathExists(line_power_path_) &&
-      !file_util::PathExists(battery_path_)) {
-#ifndef IS_DESKTOP
-    // A hack for situations like VMs where there is no power supply sysfs.
-    LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
-#endif
-    status->line_power_on = true;
-    status->battery_is_present = false;
-    return true;
+void PowerSupply::RemoveObserver(PowerSupplyObserver* observer) {
+  DCHECK(observer);
+  observers_.RemoveObserver(observer);
+}
+
+bool PowerSupply::RefreshImmediately() {
+  bool success = UpdatePowerStatus();
+  if (!is_suspended_)
+    SchedulePoll(success);
+  if (success && !notify_observers_timeout_id_) {
+    notify_observers_timeout_id_ =
+        g_timeout_add(0, HandleNotifyObserversTimeoutThunk, this);
   }
-  int64 value;
-  bool line_power_status_found = false;
-  if (file_util::PathExists(line_power_path_)) {
-    ReadInt64(line_power_path_, "online", &value);
-    // Return the line power status.
-    status->line_power_on = static_cast<bool>(value);
-    line_power_status_found = true;
-  }
-
-  // If no battery was found, or if the previously found path doesn't exist
-  // anymore, return true.  This is still an acceptable case since the battery
-  // could be physically removed.
-  if (!file_util::PathExists(battery_path_)) {
-    status->battery_is_present = false;
-    return true;
-  }
-
-  ReadInt64(battery_path_, "present", &value);
-  status->battery_is_present = static_cast<bool>(value);
-  // If there is no battery present, we can skip the rest of the readings.
-  if (!status->battery_is_present) {
-    // No battery but still running means AC power must be present.
-    if (!line_power_status_found)
-      status->line_power_on = true;
-    return true;
-  }
-
-  // Attempt to determine line power status from nominal battery status.
-  if (!line_power_status_found) {
-    std::string battery_status_string;
-    status->line_power_on = false;
-    if (ReadAndTrimString(battery_path_, "status", &battery_status_string) &&
-        (battery_status_string == "Charging" ||
-         battery_status_string == "Fully charged")) {
-      status->line_power_on = true;
-    }
-  }
-
-  double battery_voltage = ReadScaledDouble(battery_path_, "voltage_now");
-  status->battery_voltage = battery_voltage;
-
-  // Attempt to determine nominal voltage for time remaining calculations.
-  // The battery voltage used in calculating time remaining.  This may or may
-  // not be the same as the instantaneous voltage |battery_voltage|, as voltage
-  // levels vary over the time the battery is charged or discharged.
-  double nominal_voltage = -1.0;
-  if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
-    nominal_voltage = ReadScaledDouble(battery_path_, "voltage_min_design");
-  else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))
-    nominal_voltage = ReadScaledDouble(battery_path_, "voltage_max_design");
-
-  // Nominal voltage is not required to obtain charge level.  If it is missing,
-  // just log a message, set to |battery_voltage| so time remaining
-  // calculations will function, and proceed.
-  if (nominal_voltage <= 0) {
-    LOG(WARNING) << "Invalid voltage_min/max_design reading: "
-                 << nominal_voltage << "V."
-                 << " Time remaining calculations will not be available.";
-    nominal_voltage = battery_voltage;
-  }
-  status->nominal_voltage = nominal_voltage;
-
-  // ACPI has two different battery types: charge_battery and energy_battery.
-  // The main difference is that charge_battery type exposes
-  // 1. current_now in A
-  // 2. charge_{now, full, full_design} in Ah
-  // while energy_battery type exposes
-  // 1. power_now W
-  // 2. energy_{now, full, full_design} in Wh
-  // Change all the energy readings to charge format.
-  // If both energy and charge reading are present (some non-ACPI drivers
-  // expose both readings), read only the charge format.
-  double battery_charge_full = 0;
-  double battery_charge_full_design = 0;
-  double battery_charge = 0;
-
-  if (file_util::PathExists(battery_path_.Append("charge_full"))) {
-    battery_charge_full = ReadScaledDouble(battery_path_, "charge_full");
-    battery_charge_full_design =
-        ReadScaledDouble(battery_path_, "charge_full_design");
-    battery_charge = ReadScaledDouble(battery_path_, "charge_now");
-  } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
-    // Valid |battery_voltage| is required to determine the charge so return
-    // early if it is not present. In this case, we know nothing about
-    // battery state or remaining percentage, so set proper status.
-    if (battery_voltage <= 0) {
-      status->battery_state = BATTERY_STATE_UNKNOWN;
-      status->battery_percentage = -1;
-      LOG(WARNING) << "Invalid voltage_now reading for energy-to-charge"
-                   << " conversion: " << battery_voltage;
-      return false;
-    }
-    battery_charge_full =
-        ReadScaledDouble(battery_path_, "energy_full") / battery_voltage;
-    battery_charge_full_design =
-        ReadScaledDouble(battery_path_, "energy_full_design") / battery_voltage;
-    battery_charge =
-        ReadScaledDouble(battery_path_, "energy_now") / battery_voltage;
-  } else {
-    LOG(WARNING) << "No charge/energy readings for battery";
-    return false;
-  }
-  status->battery_charge_full = battery_charge_full;
-  status->battery_charge_full_design = battery_charge_full_design;
-  status->battery_charge = battery_charge;
-
-  // Sometimes current could be negative.  Ignore it and use |line_power_on| to
-  // determine whether it's charging or discharging.
-  double battery_current = 0;
-  if (file_util::PathExists(battery_path_.Append("power_now"))) {
-    battery_current = fabs(ReadScaledDouble(battery_path_, "power_now")) /
-        battery_voltage;
-  } else {
-    battery_current = fabs(ReadScaledDouble(battery_path_, "current_now"));
-  }
-  status->battery_current = battery_current;
-
-  // Perform calculations / interpretations of the data read from sysfs.
-  status->battery_energy = battery_charge * battery_voltage;
-  status->battery_energy_rate = battery_current * battery_voltage;
-
-  CalculateRemainingTime(status);
-
-  if (battery_charge_full > 0 && battery_charge_full_design > 0)
-    status->battery_percentage =
-        std::min(100., 100. * battery_charge / battery_charge_full);
-  else
-    status->battery_percentage = -1;
-
-  // Determine battery state from above readings.  Disregard the "status" field
-  // in sysfs, as that can be inconsistent with the numerical readings.
-  status->battery_state = BATTERY_STATE_UNKNOWN;
-  if (status->line_power_on) {
-    if (battery_charge >= battery_charge_full ||
-        (battery_charge >= battery_charge_full * full_factor_ &&
-         battery_current == 0)) {
-      status->battery_state = BATTERY_STATE_FULLY_CHARGED;
-    } else {
-      if (battery_current <= 0)
-        LOG(WARNING) << "Line power is on and battery is not fully charged "
-                     << "but battery current is " << battery_current << " A.";
-      status->battery_state = BATTERY_STATE_CHARGING;
-    }
-  } else {
-    status->battery_state = BATTERY_STATE_DISCHARGING;
-    if (battery_charge == 0)
-      status->battery_state = BATTERY_STATE_EMPTY;
-  }
-  return true;
+  return success;
 }
 
 bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   CHECK(info);
-  GetPowerStatus(&info->power_status, false);
+  if (!UpdatePowerStatus())
+    return false;
+
+  info->power_status = power_status_;
+  info->line_power_path = line_power_path_.value();
+  info->battery_path = battery_path_.value();
   if (!info->power_status.battery_is_present)
     return true;
 
@@ -315,22 +207,224 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   return true;
 }
 
-void PowerSupply::SetSuspendState(bool state) {
-  // Do not take any action if there is no change in suspend state.
-  if (is_suspended_ == state)
+void PowerSupply::SetSuspended(bool suspended) {
+  if (is_suspended_ == suspended)
     return;
-  is_suspended_ = state;
 
-  // Record the suspend time.
+  is_suspended_ = suspended;
+  SetCalculatingBatteryTime();
   if (is_suspended_) {
-    suspend_time_ = time_now_func();
-    return;
+    VLOG(1) << "Stopping polling due to suspend";
+    suspend_time_ = GetCurrentTime();
+    util::RemoveTimeout(&poll_timeout_id_);
+    current_poll_delay_for_testing_ = base::TimeDelta();
+  } else {
+    // If resuming, deduct the time suspended from the hysteresis state
+    // machine timestamps.
+    AdjustHysteresisTimes(GetCurrentTime() - suspend_time_);
+    RefreshImmediately();
+  }
+}
+
+void PowerSupply::HandleUdevEvent() {
+  VLOG(1) << "Heard about udev event";
+  SetCalculatingBatteryTime();
+  if (!is_suspended_)
+    RefreshImmediately();
+}
+
+base::TimeTicks PowerSupply::GetCurrentTime() const {
+  return current_time_for_testing_.is_null() ?
+      base::TimeTicks::Now() : current_time_for_testing_;
+}
+
+void PowerSupply::SetCalculatingBatteryTime() {
+  VLOG(1) << "Waiting " << short_poll_delay_.InMilliseconds() << " ms before "
+          << "calculating battery time";
+  done_calculating_battery_time_timestamp_ =
+      GetCurrentTime() + short_poll_delay_;
+}
+
+bool PowerSupply::UpdatePowerStatus() {
+  VLOG(1) << "Updating power status";
+  PowerStatus status;
+
+  status.is_calculating_battery_time =
+      !done_calculating_battery_time_timestamp_.is_null() &&
+      GetCurrentTime() < done_calculating_battery_time_timestamp_;
+
+  // Look for battery path if none has been found yet.
+  if (battery_path_.empty() || line_power_path_.empty())
+    GetPowerSupplyPaths();
+  // The line power path should have been found during initialization, so there
+  // is no need to look for it again.  However, check just to make sure the path
+  // is still valid.  Better safe than sorry.
+  if (!file_util::PathExists(line_power_path_) &&
+      !file_util::PathExists(battery_path_)) {
+#ifndef IS_DESKTOP
+    // A hack for situations like VMs where there is no power supply sysfs.
+    LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
+#endif
+    status.line_power_on = true;
+    status.battery_is_present = false;
+    power_status_ = status;
+    return true;
+  }
+  int64 value;
+  bool line_power_status_found = false;
+  if (file_util::PathExists(line_power_path_)) {
+    ReadInt64(line_power_path_, "online", &value);
+    // Return the line power status.
+    status.line_power_on = static_cast<bool>(value);
+    line_power_status_found = true;
   }
 
-  // If resuming, deduct the time suspended from the hysteresis state machine
-  // timestamps.
-  base::TimeDelta offset = time_now_func() - suspend_time_;
-  AdjustHysteresisTimes(offset);
+  // If no battery was found, or if the previously found path doesn't exist
+  // anymore, return true.  This is still an acceptable case since the battery
+  // could be physically removed.
+  if (!file_util::PathExists(battery_path_)) {
+    status.battery_is_present = false;
+    power_status_ = status;
+    return true;
+  }
+
+  ReadInt64(battery_path_, "present", &value);
+  status.battery_is_present = static_cast<bool>(value);
+  // If there is no battery present, we can skip the rest of the readings.
+  if (!status.battery_is_present) {
+    // No battery but still running means AC power must be present.
+    if (!line_power_status_found)
+      status.line_power_on = true;
+    power_status_ = status;
+    return true;
+  }
+
+  // Attempt to determine line power status from nominal battery status.
+  if (!line_power_status_found) {
+    std::string battery_status_string;
+    status.line_power_on = false;
+    if (ReadAndTrimString(battery_path_, "status", &battery_status_string) &&
+        (battery_status_string == "Charging" ||
+         battery_status_string == "Fully charged")) {
+      status.line_power_on = true;
+    }
+  }
+
+  double battery_voltage = ReadScaledDouble(battery_path_, "voltage_now");
+  status.battery_voltage = battery_voltage;
+
+  // Attempt to determine nominal voltage for time remaining calculations.
+  // The battery voltage used in calculating time remaining.  This may or may
+  // not be the same as the instantaneous voltage |battery_voltage|, as voltage
+  // levels vary over the time the battery is charged or discharged.
+  double nominal_voltage = -1.0;
+  if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
+    nominal_voltage = ReadScaledDouble(battery_path_, "voltage_min_design");
+  else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))
+    nominal_voltage = ReadScaledDouble(battery_path_, "voltage_max_design");
+
+  // Nominal voltage is not required to obtain charge level.  If it is missing,
+  // just log a message, set to |battery_voltage| so time remaining
+  // calculations will function, and proceed.
+  if (nominal_voltage <= 0) {
+    LOG(WARNING) << "Invalid voltage_min/max_design reading: "
+                 << nominal_voltage << "V."
+                 << " Time remaining calculations will not be available.";
+    nominal_voltage = battery_voltage;
+  }
+  status.nominal_voltage = nominal_voltage;
+
+  // ACPI has two different battery types: charge_battery and energy_battery.
+  // The main difference is that charge_battery type exposes
+  // 1. current_now in A
+  // 2. charge_{now, full, full_design} in Ah
+  // while energy_battery type exposes
+  // 1. power_now W
+  // 2. energy_{now, full, full_design} in Wh
+  // Change all the energy readings to charge format.
+  // If both energy and charge reading are present (some non-ACPI drivers
+  // expose both readings), read only the charge format.
+  double battery_charge_full = 0;
+  double battery_charge_full_design = 0;
+  double battery_charge = 0;
+
+  if (file_util::PathExists(battery_path_.Append("charge_full"))) {
+    battery_charge_full = ReadScaledDouble(battery_path_, "charge_full");
+    battery_charge_full_design =
+        ReadScaledDouble(battery_path_, "charge_full_design");
+    battery_charge = ReadScaledDouble(battery_path_, "charge_now");
+  } else if (file_util::PathExists(battery_path_.Append("energy_full"))) {
+    // Valid |battery_voltage| is required to determine the charge so return
+    // early if it is not present. In this case, we know nothing about
+    // battery state or remaining percentage, so set proper status.
+    if (battery_voltage <= 0) {
+      status.battery_state = BATTERY_STATE_UNKNOWN;
+      status.battery_percentage = -1;
+      LOG(WARNING) << "Invalid voltage_now reading for energy-to-charge"
+                   << " conversion: " << battery_voltage;
+      return false;
+    }
+    battery_charge_full =
+        ReadScaledDouble(battery_path_, "energy_full") / battery_voltage;
+    battery_charge_full_design =
+        ReadScaledDouble(battery_path_, "energy_full_design") / battery_voltage;
+    battery_charge =
+        ReadScaledDouble(battery_path_, "energy_now") / battery_voltage;
+  } else {
+    LOG(WARNING) << "No charge/energy readings for battery";
+    return false;
+  }
+  status.battery_charge_full = battery_charge_full;
+  status.battery_charge_full_design = battery_charge_full_design;
+  status.battery_charge = battery_charge;
+
+  // Sometimes current could be negative.  Ignore it and use |line_power_on| to
+  // determine whether it's charging or discharging.
+  double battery_current = 0;
+  if (file_util::PathExists(battery_path_.Append("power_now"))) {
+    battery_current = fabs(ReadScaledDouble(battery_path_, "power_now")) /
+        battery_voltage;
+  } else {
+    battery_current = fabs(ReadScaledDouble(battery_path_, "current_now"));
+  }
+  status.battery_current = battery_current;
+
+  // Perform calculations / interpretations of the data read from sysfs.
+  status.battery_energy = battery_charge * battery_voltage;
+  status.battery_energy_rate = battery_current * battery_voltage;
+
+  CalculateRemainingTime(&status);
+
+  if (battery_charge_full > 0 && battery_charge_full_design > 0) {
+    status.battery_percentage =
+        std::min(100., 100. * battery_charge / battery_charge_full);
+  } else {
+    status.battery_percentage = -1;
+  }
+
+  // Determine battery state from above readings.  Disregard the "status" field
+  // in sysfs, as that can be inconsistent with the numerical readings.
+  status.battery_state = BATTERY_STATE_UNKNOWN;
+  if (status.line_power_on) {
+    if (battery_charge >= battery_charge_full ||
+        (battery_charge >= battery_charge_full * full_factor_ &&
+         battery_current == 0)) {
+      status.battery_state = BATTERY_STATE_FULLY_CHARGED;
+    } else {
+      if (battery_current <= 0) {
+        LOG(WARNING) << "Line power is on and battery is not fully charged "
+                     << "but battery current is " << battery_current << " A.";
+      }
+      status.battery_state = BATTERY_STATE_CHARGING;
+    }
+  } else {
+    status.battery_state = BATTERY_STATE_DISCHARGING;
+    if (battery_charge == 0)
+      status.battery_state = BATTERY_STATE_EMPTY;
+  }
+
+  power_status_ = status;
+  return true;
 }
 
 void PowerSupply::GetPowerSupplyPaths() {
@@ -385,8 +479,7 @@ double PowerSupply::GetLinearTimeToEmpty(const PowerStatus& status) {
 }
 
 void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
-  CHECK(time_now_func);
-  base::TimeTicks time_now = time_now_func();
+  base::TimeTicks time_now = GetCurrentTime();
   // This function might be called due to a race condition between the suspend
   // process and the battery polling.  If that's the case, handle it gracefully
   // by updating the hysteresis times and suspend time.
@@ -499,6 +592,41 @@ void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
     last_acceptable_range_time_ += offset;
   if (!last_poll_time_.is_null())
     last_poll_time_ += offset;
+}
+
+void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
+  base::TimeDelta delay = last_poll_succeeded ? poll_delay_ : short_poll_delay_;
+  base::TimeTicks now = GetCurrentTime();
+  if (done_calculating_battery_time_timestamp_ > now) {
+    delay = std::min(delay,
+        done_calculating_battery_time_timestamp_ - now +
+        base::TimeDelta::FromMilliseconds(kCalculateBatterySlackMs));
+  }
+
+  VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";
+  util::RemoveTimeout(&poll_timeout_id_);
+  poll_timeout_id_ = g_timeout_add(
+      delay.InMilliseconds(), HandlePollTimeoutThunk, this);
+  current_poll_delay_for_testing_ = delay;
+}
+
+gboolean PowerSupply::HandlePollTimeout() {
+  poll_timeout_id_ = 0;
+  current_poll_delay_for_testing_ = base::TimeDelta();
+  bool success = UpdatePowerStatus();
+  SchedulePoll(success);
+  if (success) {
+    FOR_EACH_OBSERVER(PowerSupplyObserver, observers_,
+                      OnPowerStatusUpdate(power_status_));
+  }
+  return FALSE;
+}
+
+gboolean PowerSupply::HandleNotifyObserversTimeout() {
+  notify_observers_timeout_id_ = 0;
+  FOR_EACH_OBSERVER(PowerSupplyObserver, observers_,
+                    OnPowerStatusUpdate(power_status_));
+  return FALSE;
 }
 
 }  // namespace system

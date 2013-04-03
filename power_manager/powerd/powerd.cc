@@ -306,8 +306,6 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
       clean_shutdown_initiated_(false),
       low_battery_(false),
       clean_shutdown_timeout_id_(0),
-      battery_poll_interval_ms_(0),
-      battery_poll_short_interval_ms_(0),
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(base::FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
@@ -325,11 +323,11 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
       battery_discharge_rate_metric_last_(0),
       current_session_state_(SESSION_STOPPED),
       udev_(NULL),
-      poll_power_supply_timer_id_(0),
       shutdown_reason_(kShutdownReasonUnknown),
       battery_report_state_(BATTERY_REPORT_ADJUSTED),
       disable_dbus_for_testing_(false),
       state_controller_initialized_(false) {
+  power_supply_->AddObserver(this);
   backlight_controller_->AddObserver(this);
   audio_client_->AddObserver(this);
 }
@@ -337,6 +335,7 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
 Daemon::~Daemon() {
   audio_client_->RemoveObserver(this);
   backlight_controller_->RemoveObserver(this);
+  power_supply_->RemoveObserver(this);
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
@@ -357,12 +356,12 @@ void Daemon::Init() {
   RegisterDBusMessageHandler();
   RetrieveSessionState();
   power_supply_->Init();
+  power_supply_->RefreshImmediately();
   dark_resume_policy_->Init();
   suspender_.Init(prefs_);
   time_to_empty_average_.Init(sample_window_max_);
   time_to_full_average_.Init(sample_window_max_);
-  power_supply_->GetPowerStatus(&power_status_, false);
-  OnPowerEvent(this, power_status_);
+  OnPowerStatusUpdate(power_supply_->power_status());
   UpdateAveragedTimes(&time_to_empty_average_,
                       &time_to_full_average_);
   file_tagger_.Init();
@@ -417,9 +416,6 @@ void Daemon::ReadSettings() {
   CHECK(prefs_->GetInt64(kTaperTimeMinPref, &taper_time_min_s_));
   CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
-  CHECK(prefs_->GetInt64(kBatteryPollIntervalPref, &battery_poll_interval_ms_));
-  CHECK(prefs_->GetInt64(kBatteryPollShortIntervalPref,
-                         &battery_poll_short_interval_ms_));
 
   if ((low_battery_shutdown_time_s >= 0) &&
       (low_battery_shutdown_time_s <= 8 * 3600)) {
@@ -475,15 +471,10 @@ void Daemon::ReadSettings() {
   LOG(INFO) << "Using Taper Time Max(secs) = " << taper_time_max_s_
             << " and Min(secs) = " << taper_time_min_s_;
   taper_time_diff_s_ = taper_time_max_s_ - taper_time_min_s_;
-
-  LOG(INFO) << "Using battery polling interval of " << battery_poll_interval_ms_
-            << " mS and short interval of " << battery_poll_short_interval_ms_
-            << " mS";
 }
 
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
-  ResumePollPowerSupply();
   g_main_loop_run(loop);
 }
 
@@ -551,26 +542,6 @@ void Daemon::StartCleanShutdown() {
     backlight_controller_->SetShuttingDown(true);
     if (keyboard_controller_)
       keyboard_controller_->SetShuttingDown(true);
-  }
-}
-
-void Daemon::OnPowerEvent(void* object, const system::PowerStatus& info) {
-  Daemon* daemon = static_cast<Daemon*>(object);
-  daemon->SetPlugged(info.line_power_on);
-  daemon->GenerateMetricsOnPowerEvent(info);
-  // Do not emergency suspend if no battery exists.
-  if (info.battery_is_present) {
-    if (info.battery_percentage < 0) {
-      LOG(WARNING) << "Negative battery percent: " << info.battery_percentage
-                   << "%";
-    }
-    if (info.battery_time_to_empty < 0 && !info.line_power_on) {
-      LOG(WARNING) << "Negative battery time remaining: "
-                   << info.battery_time_to_empty << " seconds";
-    }
-    daemon->OnLowBattery(info.battery_time_to_empty,
-                         info.battery_time_to_full,
-                         info.battery_percentage);
   }
 }
 
@@ -653,19 +624,6 @@ void Daemon::OnBrightnessChanged(
   }
 }
 
-void Daemon::HaltPollPowerSupply() {
-  util::RemoveTimeout(&poll_power_supply_timer_id_);
-}
-
-void Daemon::ResumePollPowerSupply() {
-  ScheduleShortPollPowerSupply();
-  EventPollPowerSupply();
-}
-
-void Daemon::MarkPowerStatusStale() {
-  is_power_status_stale_ = true;
-}
-
 void Daemon::PrepareForSuspendAnnouncement() {
   // When going to suspend, notify the backlight controller so it can turn
   // the backlight off and tell the kernel to resume the current level
@@ -686,9 +644,8 @@ void Daemon::PrepareForSuspend() {
   util::RunSetuidHelper("lock_vt", "", true);
 #endif
 
-  power_supply_->SetSuspendState(true);
-  HaltPollPowerSupply();
-  MarkPowerStatusStale();
+  power_supply_->SetSuspended(true);
+  is_power_status_stale_ = true;
   file_tagger_.HandleSuspendEvent();
   audio_client_->MuteSystem();
 }
@@ -711,9 +668,8 @@ void Daemon::HandleResume(bool suspend_was_successful,
 
   time_to_empty_average_.Clear();
   time_to_full_average_.Clear();
-  ResumePollPowerSupply();
   file_tagger_.HandleResumeEvent();
-  power_supply_->SetSuspendState(false);
+  power_supply_->SetSuspended(false);
   state_controller_->HandleResume();
   if (suspend_was_successful)
     GenerateRetrySuspendMetric(num_suspend_retries, max_suspend_retries);
@@ -763,6 +719,31 @@ void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
   state_controller_->HandleAudioActivity();
 }
 
+void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
+  power_status_ = status;
+  SetPlugged(status.line_power_on);
+  GenerateMetricsOnPowerEvent(status);
+  // Do not emergency suspend if no battery exists.
+  if (status.battery_is_present) {
+    if (status.battery_percentage < 0)
+      LOG(WARNING) << "Battery is at " << status.battery_percentage << "%";
+    if (status.battery_time_to_empty < 0 && !status.line_power_on) {
+      LOG(WARNING) << "Battery time remaining is "
+                   << status.battery_time_to_empty << " seconds";
+    }
+    OnLowBattery(status.battery_time_to_empty,
+                 status.battery_time_to_full,
+                 status.battery_percentage);
+  }
+
+  if (UpdateAveragedTimes(&time_to_empty_average_, &time_to_full_average_)) {
+    dbus_sender_->EmitBareSignal(kPowerSupplyPollSignal);
+    is_power_status_stale_ = false;
+  } else {
+    LOG(ERROR) << "Unable to get averaged times!";
+  }
+}
+
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
                                   GIOCondition /* condition */,
                                   gpointer data) {
@@ -775,10 +756,7 @@ gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
     CHECK(std::string(udev_device_get_subsystem(dev)) ==
           kPowerSupplyUdevSubsystem);
     udev_device_unref(dev);
-
-    // Rescheduling the timer to fire 5s from now to make sure that it doesn't
-    // get a bogus value from being too close to this event.
-    daemon->ResumePollPowerSupply();
+    daemon->power_supply_->HandleUdevEvent();
   } else {
     LOG(ERROR) << "Can't get receive_device()";
     return FALSE;
@@ -1129,17 +1107,8 @@ DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
     DBusMessage* message) {
-  if (is_power_status_stale_) {
-    // Poll the power supply for status, but don't clear the stale bit. This
-    // case is an exceptional one, so we can't guarantee we want to start
-    // polling again yet from this context. The stale bit should only be set
-    // near the beginning of a session or around Suspend/Resume, so we are
-    // assuming that the battery time is untrustworthy, hence the
-    // |is_calculating| is true.
-    power_supply_->GetPowerStatus(&power_status_, true);
-    HandlePollPowerSupply();
-    is_power_status_stale_ = true;
-  }
+  if (is_power_status_stale_ && power_supply_->RefreshImmediately())
+    OnPowerStatusUpdate(power_supply_->power_status());
 
   PowerSupplyProperties protobuf;
   system::PowerStatus* status = &power_status_;
@@ -1212,61 +1181,6 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
   }
   state_controller_->HandlePolicyChange(policy);
   return NULL;
-}
-
-void Daemon::ScheduleShortPollPowerSupply() {
-  HaltPollPowerSupply();
-  poll_power_supply_timer_id_ = g_timeout_add(battery_poll_short_interval_ms_,
-                                              ShortPollPowerSupplyThunk,
-                                              this);
-}
-
-void Daemon::SchedulePollPowerSupply() {
-  HaltPollPowerSupply();
-  poll_power_supply_timer_id_ = g_timeout_add(battery_poll_interval_ms_,
-                                              PollPowerSupplyThunk,
-                                              this);
-}
-
-gboolean Daemon::EventPollPowerSupply() {
-  power_supply_->GetPowerStatus(&power_status_, true);
-  return HandlePollPowerSupply();
-}
-
-gboolean Daemon::ShortPollPowerSupply() {
-  SchedulePollPowerSupply();
-  power_supply_->GetPowerStatus(&power_status_, false);
-  HandlePollPowerSupply();
-  return false;
-}
-
-gboolean Daemon::PollPowerSupply() {
-  power_supply_->GetPowerStatus(&power_status_, false);
-  return HandlePollPowerSupply();
-}
-
-gboolean Daemon::HandlePollPowerSupply() {
-  OnPowerEvent(this, power_status_);
-  if (!UpdateAveragedTimes(&time_to_empty_average_,
-                           &time_to_full_average_)) {
-    LOG(ERROR) << "Unable to get averaged times!";
-    ScheduleShortPollPowerSupply();
-    return FALSE;
-  }
-
-  // Send a signal once the power supply status has been obtained.
-  DBusMessage* message = dbus_message_new_signal(kPowerManagerServicePath,
-                                                 kPowerManagerInterface,
-                                                 kPowerSupplyPollSignal);
-  CHECK(message != NULL);
-  DBusConnection* connection = dbus_g_connection_get_connection(
-      chromeos::dbus::GetSystemBusConnection().g_connection());
-  if (!dbus_connection_send(connection, message, NULL))
-    LOG(WARNING) << "Sending battery poll signal failed.";
-  dbus_message_unref(message);
-  is_power_status_stale_ = false;
-  // Always repeat polling.
-  return TRUE;
 }
 
 bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
@@ -1464,10 +1378,6 @@ void Daemon::OnSessionStateChange(const std::string& state_str,
 
     current_user_ = user;
     session_start_ = base::TimeTicks::Now();
-
-    // Sending up the PowerSupply information, so that the display gets it as
-    // soon as possible
-    ResumePollPowerSupply();
   } else if (current_session_state_ != state) {
     DLOG(INFO) << "Session " << state_str;
     // For states other then "started" we only want to take action if we have

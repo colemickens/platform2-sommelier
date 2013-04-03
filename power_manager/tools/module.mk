@@ -19,7 +19,8 @@ all: CXX_BINARY(tools/backlight-tool)
 CXX_BINARY(tools/power-supply-info): \
 	common/power_constants.o \
 	tools/power_supply_info.o \
-	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a)
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil.pie.a)
 CXX_BINARY(tools/power-supply-info): CPPFLAGS += $(GLIB_FLAGS)
 CXX_BINARY(tools/power-supply-info): LDLIBS += $(GLIB_LIBS)
 clean: CLEAN(tools/power-supply-info)

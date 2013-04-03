@@ -75,7 +75,8 @@ DarkResumePolicy::Action DarkResumePolicy::GetAction() {
   if (!enabled_)
     return SUSPEND_INDEFINITELY;
 
-  power_supply_->GetPowerStatus(&power_status_, true);
+  power_supply_->RefreshImmediately();
+  power_status_ = power_supply_->power_status();
   LOG(INFO) << "Current battery is " << power_status_.battery_percentage
             << "% with line power "
             << (power_status_.line_power_on ? "on" : "off");
