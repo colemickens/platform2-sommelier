@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SUSPEND_DELAY_OBSERVER_H_
-#define POWER_MANAGER_POWERD_SUSPEND_DELAY_OBSERVER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_OBSERVER_H_
+#define POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_OBSERVER_H_
 #pragma once
 
 namespace power_manager {
+namespace policy {
 
 class SuspendDelayObserver {
  public:
@@ -18,6 +19,7 @@ class SuspendDelayObserver {
   virtual void OnReadyForSuspend(int suspend_id) = 0;
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SUSPEND_DELAY_OBSERVER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_OBSERVER_H_

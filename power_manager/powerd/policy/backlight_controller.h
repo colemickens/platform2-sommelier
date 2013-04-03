@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_BACKLIGHT_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_BACKLIGHT_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
+#define POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
 #include "base/time.h"
@@ -11,6 +11,7 @@
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
+namespace policy {
 
 class BacklightControllerObserver;
 
@@ -114,6 +115,7 @@ class BacklightController {
   DISALLOW_COPY_AND_ASSIGN(BacklightController);
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_BACKLIGHT_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_BACKLIGHT_CONTROLLER_H_

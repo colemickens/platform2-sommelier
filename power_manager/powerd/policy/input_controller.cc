@@ -11,7 +11,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/input_event.pb.h"
-#include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/input.h"
 

@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SUSPENDER_H_
-#define POWER_MANAGER_POWERD_SUSPENDER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
+#define POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_
 
 #include <dbus/dbus.h>
 #include <dbus/dbus-glib-lowlevel.h>
@@ -12,8 +12,7 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/policy/dark_resume_policy.h"
-#include "power_manager/powerd/suspend_delay_observer.h"
+#include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
 namespace power_manager {
@@ -21,11 +20,15 @@ namespace power_manager {
 class Daemon;
 class DBusSenderInterface;
 class PrefsInterface;
-class SuspendDelayController;
 
 namespace system {
 class Input;
 }  // namespace system
+
+namespace policy {
+
+class DarkResumePolicy;
+class SuspendDelayController;
 
 // Suspender is responsible for suspending the system.  The typical flow is
 // as follows:
@@ -137,13 +140,9 @@ class Suspender : public SuspendDelayObserver {
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  // Creates a new delegate.  Ownership is passed to the caller.
-  static Delegate* CreateDefaultDelegate(Daemon* daemon,
-                                         system::Input* input);
-
   Suspender(Delegate* delegate,
             DBusSenderInterface* dbus_sender,
-            policy::DarkResumePolicy* dark_resume_policy);
+            DarkResumePolicy* dark_resume_policy);
   ~Suspender();
 
   void Init(PrefsInterface* prefs);
@@ -181,8 +180,6 @@ class Suspender : public SuspendDelayObserver {
   virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;
 
  private:
-  class RealDelegate;
-
   // Returns the current wall time or |current_wall_time_for_testing_| if set.
   base::Time GetCurrentWallTime() const;
 
@@ -203,7 +200,7 @@ class Suspender : public SuspendDelayObserver {
 
   Delegate* delegate_;  // not owned
   DBusSenderInterface* dbus_sender_;  // not owned
-  policy::DarkResumePolicy* dark_resume_policy_;  // not owned
+  DarkResumePolicy* dark_resume_policy_;  // not owned
 
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
@@ -241,6 +238,7 @@ class Suspender : public SuspendDelayObserver {
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SUSPENDER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_SUSPENDER_H_

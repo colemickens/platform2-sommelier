@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
-#define POWER_MANAGER_POWERD_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
+#define POWER_MANAGER_POWERD_POLICY_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
 
 #include <base/basictypes.h>
 
 #include <utility>
 #include <vector>
 
-#include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/backlight_controller_observer.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 
 namespace power_manager {
+namespace policy {
 
 // Simple helper class that logs backlight brightness changes.
 class MockBacklightControllerObserver : public BacklightControllerObserver {
@@ -54,6 +55,7 @@ class MockBacklightControllerObserver : public BacklightControllerObserver {
   DISALLOW_COPY_AND_ASSIGN(MockBacklightControllerObserver);
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_MOCK_BACKLIGHT_CONTROLLER_OBSERVER_H_

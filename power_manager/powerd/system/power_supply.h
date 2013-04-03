@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_POWER_SUPPLY_H_
-#define POWER_MANAGER_POWERD_POWER_SUPPLY_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
+#define POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -16,6 +16,8 @@
 namespace power_manager {
 
 class PrefsInterface;
+
+namespace system {
 
 enum BatteryState {
   BATTERY_STATE_UNKNOWN,
@@ -171,6 +173,7 @@ class PowerSupply {
   DISALLOW_COPY_AND_ASSIGN(PowerSupply);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_POWER_SUPPLY_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_POWER_SUPPLY_H_

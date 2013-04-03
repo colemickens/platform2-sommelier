@@ -2,17 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/suspender.h"
-
-#include <inttypes.h>
+#include "power_manager/powerd/policy/suspender.h"
 
 #include <algorithm>
 
 #include "base/file_util.h"
 #include "base/logging.h"
-#include "base/string_number_conversions.h"
-#include "base/string_util.h"
-#include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
@@ -20,118 +15,14 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
+#include "power_manager/powerd/policy/dark_resume_policy.h"
+#include "power_manager/powerd/policy/suspend_delay_controller.h"
 #include "power_manager/powerd/powerd.h"
-#include "power_manager/powerd/suspend_delay_controller.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/suspend.pb.h"
 
 namespace power_manager {
-
-namespace {
-
-const char kWakeupCountPath[] = "/sys/power/wakeup_count";
-
-}  // namespace
-
-// Real implementation of the Delegate interface.
-class Suspender::RealDelegate : public Suspender::Delegate {
- public:
-  RealDelegate(Daemon* daemon, system::Input* input)
-      : daemon_(daemon),
-        input_(input) {
-  }
-
-  virtual ~RealDelegate() {}
-
-  // Delegate implementation:
-  virtual bool IsLidClosed() OVERRIDE {
-    return input_->QueryLidState() == LID_CLOSED;
-  }
-
-  virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
-    DCHECK(wakeup_count);
-    base::FilePath path(kWakeupCountPath);
-    std::string buf;
-    if (file_util::ReadFileToString(path, &buf)) {
-      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
-      if (base::StringToUint64(buf, wakeup_count))
-        return true;
-
-      LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
-    } else {
-      LOG(ERROR) << "Could not read " << kWakeupCountPath;
-    }
-    return false;
-  }
-
-  virtual void PrepareForSuspendAnnouncement() OVERRIDE {
-    daemon_->PrepareForSuspendAnnouncement();
-  }
-
-  virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
-    daemon_->HandleCanceledSuspendAnnouncement();
-    SendPowerStateChangedSignal("on");
-  }
-
-  virtual void PrepareForSuspend() {
-    daemon_->PrepareForSuspend();
-    SendPowerStateChangedSignal("mem");
-  }
-
-  virtual bool Suspend(uint64 wakeup_count,
-                       bool wakeup_count_valid,
-                       base::TimeDelta duration) OVERRIDE {
-    std::string args;
-    if (wakeup_count_valid) {
-      args += StringPrintf(" --suspend_wakeup_count_valid"
-                           " --suspend_wakeup_count %" PRIu64, wakeup_count);
-    }
-    if (duration != base::TimeDelta()) {
-      args += StringPrintf(" --suspend_duration %" PRId64,
-                           duration.InSeconds());
-    }
-    return util::RunSetuidHelper("suspend", args, true) == 0;
-  }
-
-  virtual void HandleResume(bool suspend_was_successful,
-                            int num_suspend_retries,
-                            int max_suspend_retries) OVERRIDE {
-    SendPowerStateChangedSignal("on");
-    daemon_->HandleResume(suspend_was_successful,
-                          num_suspend_retries,
-                          max_suspend_retries);
-  }
-
-  virtual void ShutdownForFailedSuspend() OVERRIDE {
-    daemon_->ShutdownForFailedSuspend();
-  }
-
-  virtual void ShutdownForDarkResume() OVERRIDE {
-    daemon_->OnRequestShutdown();
-  }
-
- private:
-  void SendPowerStateChangedSignal(const std::string& power_state) {
-    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
-                                kPowerManagerServicePath,
-                                kPowerManagerInterface);
-    const char* state = power_state.c_str();
-    DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
-                                                  kPowerManagerInterface,
-                                                  kPowerStateChanged);
-    CHECK(signal);
-    dbus_message_append_args(signal,
-                             DBUS_TYPE_STRING, &state,
-                             DBUS_TYPE_INVALID);
-    dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
-    dbus_message_unref(signal);
-  }
-
-  Daemon* daemon_;  // not owned
-  system::Input* input_;  // not owned
-
-  DISALLOW_COPY_AND_ASSIGN(RealDelegate);
-};
+namespace policy {
 
 Suspender::TestApi::TestApi(Suspender* suspender) : suspender_(suspender) {}
 
@@ -149,15 +40,9 @@ bool Suspender::TestApi::TriggerRetryTimeout() {
   return true;
 }
 
-// static
-Suspender::Delegate* Suspender::CreateDefaultDelegate(Daemon* daemon,
-                                                      system::Input* input) {
-  return new RealDelegate(daemon, input);
-}
-
 Suspender::Suspender(Delegate* delegate,
                      DBusSenderInterface* dbus_sender,
-                     policy::DarkResumePolicy* dark_resume_policy)
+                     DarkResumePolicy* dark_resume_policy)
     : delegate_(delegate),
       dbus_sender_(dbus_sender),
       dark_resume_policy_(dark_resume_policy),
@@ -278,18 +163,18 @@ void Suspender::Suspend() {
 
   do {
     base::TimeDelta suspend_duration;
-    policy::DarkResumePolicy::Action action = dark_resume_policy_->GetAction();
+    DarkResumePolicy::Action action = dark_resume_policy_->GetAction();
     switch (action) {
-      case policy::DarkResumePolicy::SHUT_DOWN:
+      case DarkResumePolicy::SHUT_DOWN:
         LOG(INFO) << "Shutting down from dark resume";
         delegate_->ShutdownForDarkResume();
         return;
-      case policy::DarkResumePolicy::SUSPEND_FOR_DURATION:
+      case DarkResumePolicy::SUSPEND_FOR_DURATION:
         suspend_duration = dark_resume_policy_->GetSuspendDuration();
         LOG(INFO) << "Suspending for " << suspend_duration.InSeconds()
                   << " seconds";
         break;
-      case policy::DarkResumePolicy::SUSPEND_INDEFINITELY:
+      case DarkResumePolicy::SUSPEND_INDEFINITELY:
         suspend_duration = base::TimeDelta();
         break;
       default:
@@ -372,4 +257,5 @@ void Suspender::SendSuspendStateChangedSignal(SuspendState_Type type,
   dbus_sender_->EmitSignalWithProtocolBuffer(kSuspendStateChangedSignal, proto);
 }
 
+}  // namespace policy
 }  // namespace power_manager

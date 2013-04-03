@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/powerd.h"
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <stdint.h>
@@ -13,11 +15,10 @@
 #include "metrics/metrics_library_mock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/mock_metrics_store.h"
 #include "power_manager/powerd/mock_rolling_average.h"
-#include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -55,8 +56,8 @@ static const double kAdjustedBatteryPercentage = 98.0;
 static const double kTestPercentageThreshold = 2.0;
 static const int64 kTestTimeThreshold = 180;
 
-// BacklightController implementation that returns dummy values.
-class BacklightControllerStub : public BacklightController {
+// policy::BacklightController implementation that returns dummy values.
+class BacklightControllerStub : public policy::BacklightController {
  public:
   BacklightControllerStub()
       : percent_(100.0),
@@ -69,9 +70,11 @@ class BacklightControllerStub : public BacklightController {
   void set_num_als_adjustments(int num) { num_als_adjustments_ = num; }
   void set_num_user_adjustments(int num) { num_user_adjustments_ = num; }
 
-  // BacklightController implementation:
-  virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE {}
-  virtual void RemoveObserver(BacklightControllerObserver* observer) OVERRIDE {}
+  // policy::BacklightController implementation:
+  virtual void AddObserver(
+      policy::BacklightControllerObserver* observer) OVERRIDE {}
+  virtual void RemoveObserver(
+      policy::BacklightControllerObserver* observer) OVERRIDE {}
   virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE {}
   virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE {}
   virtual void HandleSessionStateChange(SessionState state) OVERRIDE {}
@@ -240,8 +243,8 @@ class DaemonTest : public Test {
   }
 
   // Resets all fields of |status| to 0.
-  void ResetPowerStatus(PowerStatus* status) {
-    memset(status, 0, sizeof(PowerStatus));
+  void ResetPowerStatus(system::PowerStatus* status) {
+    memset(status, 0, sizeof(system::PowerStatus));
   }
 
   // Adds a metrics library mock expectation for the number of ALS adjustments
@@ -318,7 +321,7 @@ class DaemonTest : public Test {
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
   Daemon daemon_;
-  PowerStatus* status_;
+  system::PowerStatus* status_;
 };
 
 TEST_F(DaemonTest, AdjustWindowSizeMax) {
@@ -916,28 +919,28 @@ TEST_F(DaemonTest, GetDisplayBatteryPercent) {
   daemon_.power_status_.battery_percentage = kAdjustedBatteryPercentage;
 
   // Return the adjusted value when charging.
-  daemon_.power_status_.battery_state = BATTERY_STATE_CHARGING;
+  daemon_.power_status_.battery_state = system::BATTERY_STATE_CHARGING;
   daemon_.UpdateBatteryReportState();
   EXPECT_EQ(kAdjustedBatteryPercentage, daemon_.GetDisplayBatteryPercent());
   EXPECT_EQ(BATTERY_REPORT_ADJUSTED, daemon_.battery_report_state_);
 
   // Return 0.0 when battery is empty.
   daemon_.power_status_.battery_percentage = 0.0;
-  daemon_.power_status_.battery_state = BATTERY_STATE_EMPTY;
+  daemon_.power_status_.battery_state = system::BATTERY_STATE_EMPTY;
   daemon_.UpdateBatteryReportState();
   EXPECT_EQ(0.0, daemon_.GetDisplayBatteryPercent());
   EXPECT_EQ(BATTERY_REPORT_ADJUSTED, daemon_.battery_report_state_);
 
   daemon_.power_status_.battery_percentage = kAdjustedBatteryPercentage;
   // Return 100% when battery is charged.
-  daemon_.power_status_.battery_state = BATTERY_STATE_FULLY_CHARGED;
+  daemon_.power_status_.battery_state = system::BATTERY_STATE_FULLY_CHARGED;
   daemon_.UpdateBatteryReportState();
   EXPECT_EQ(100.0, daemon_.GetDisplayBatteryPercent());
   EXPECT_EQ(BATTERY_REPORT_FULL, daemon_.battery_report_state_);
 
   // Pin the percentage at 100% right after going to charging.
   daemon_.battery_report_pinned_start_ = base::TimeTicks();
-  daemon_.power_status_.battery_state = BATTERY_STATE_DISCHARGING;
+  daemon_.power_status_.battery_state = system::BATTERY_STATE_DISCHARGING;
   daemon_.UpdateBatteryReportState();
   EXPECT_EQ(100.0, daemon_.GetDisplayBatteryPercent());
   EXPECT_EQ(BATTERY_REPORT_PINNED, daemon_.battery_report_state_);

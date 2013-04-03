@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/power_supply.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 #include <cmath>
 
@@ -12,6 +12,9 @@
 #include "base/string_util.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+
+namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -77,8 +80,6 @@ double ReadScaledDouble(const base::FilePath& directory,
 }
 
 }  // namespace
-
-namespace power_manager {
 
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
@@ -500,4 +501,5 @@ void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
     last_poll_time_ += offset;
 }
 
+}  // namespace system
 }  // namespace power_manager

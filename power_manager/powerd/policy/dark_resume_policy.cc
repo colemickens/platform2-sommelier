@@ -16,7 +16,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/power_supply.h"
 
 namespace power_manager {
 namespace policy {
@@ -41,7 +40,7 @@ const char kDisabled[] = "disabled";
 
 }  // namespace
 
-DarkResumePolicy::DarkResumePolicy(PowerSupply* power_supply,
+DarkResumePolicy::DarkResumePolicy(system::PowerSupply* power_supply,
                                    PrefsInterface* prefs)
     : power_supply_(power_supply),
       prefs_(prefs),
@@ -228,16 +227,16 @@ void DarkResumePolicy::SetStates(const std::vector<base::FilePath>& files,
 
 
 void DarkResumePolicy::SetThresholds() {
-    double battery = power_status_.battery_percentage;
-    MarginMap::iterator margin = battery_margins_.upper_bound(battery);
+  double battery = power_status_.battery_percentage;
+  MarginMap::iterator margin = battery_margins_.upper_bound(battery);
 
-    if (margin != battery_margins_.begin())
-      margin--;
+  if (margin != battery_margins_.begin())
+    margin--;
 
-    battery_shutdown_threshold_ = battery - margin->second;
-    battery_suspend_level_ = battery;
-    thresholds_set_ = true;
-    LOG(INFO) << "Current threshold is " << battery_shutdown_threshold_;
+  battery_shutdown_threshold_ = battery - margin->second;
+  battery_suspend_level_ = battery;
+  thresholds_set_ = true;
+  LOG(INFO) << "Current threshold is " << battery_shutdown_threshold_;
 }
 
 }  // namespace policy

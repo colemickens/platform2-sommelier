@@ -2,10 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_KEYBOARD_BACKLIGHT_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_KEYBOARD_BACKLIGHT_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_KEYBOARD_BACKLIGHT_CONTROLLER_H_
+#define POWER_MANAGER_POWERD_POLICY_KEYBOARD_BACKLIGHT_CONTROLLER_H_
 
-#include <glib.h>
 #include <vector>
 
 #include "base/compiler_specific.h"
@@ -13,12 +12,14 @@
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/policy/ambient_light_handler.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
+
+typedef int gboolean;
+typedef unsigned int guint;
 
 namespace power_manager {
 
-class KeyboardBacklightControllerTest;
 class PrefsInterface;
 
 namespace system {
@@ -26,10 +27,14 @@ class AmbientLightSensorInterface;
 class BacklightInterface;
 }  // namespace system
 
+namespace policy {
+
+class KeyboardBacklightControllerTest;
+
 // Controls the keyboard backlight for devices with such a backlight.
 class KeyboardBacklightController
     : public BacklightController,
-      public policy::AmbientLightHandler::Delegate {
+      public AmbientLightHandler::Delegate {
  public:
   // Helper class for tests that need to access internal state.
   class TestApi {
@@ -78,7 +83,7 @@ class KeyboardBacklightController
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
-  // policy::AmbientLightHandler::Delegate implementation:
+  // AmbientLightHandler::Delegate implementation:
   virtual void SetBrightnessPercentForAmbientLight(
       double brightness_percent) OVERRIDE;
 
@@ -137,7 +142,7 @@ class KeyboardBacklightController
   // Interface for saving preferences. Non-owned.
   PrefsInterface* prefs_;
 
-  scoped_ptr<policy::AmbientLightHandler> ambient_light_handler_;
+  scoped_ptr<AmbientLightHandler> ambient_light_handler_;
 
   // Observers to notify about changes.
   ObserverList<BacklightControllerObserver> observers_;
@@ -184,7 +189,7 @@ class KeyboardBacklightController
   bool ignore_ambient_light_;
 
   // GLib timeout ID for HandleVideoTimeout().
-  guint32 video_timeout_id_;
+  guint video_timeout_id_;
 
   // Counters for stat tracking.
   int num_als_adjustments_;
@@ -193,6 +198,7 @@ class KeyboardBacklightController
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
 };  // class KeyboardBacklightController
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_KEYBOARD_BACKLIGHT_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_KEYBOARD_BACKLIGHT_CONTROLLER_H_

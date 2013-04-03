@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/power_supply.h"
+
 #include <glib.h>
 #include <gtest/gtest.h>
 
@@ -14,10 +16,12 @@
 #include "base/memory/scoped_ptr.h"
 #include "base/string_number_conversions.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/power_supply.h"
 
 using std::map;
 using std::string;
+
+namespace power_manager {
+namespace system {
 
 namespace {
 
@@ -59,8 +63,6 @@ const int kVoltageNowInt = ScaleDouble(kVoltageNow);
 const int kCycleCount = 10000;
 
 }  // namespace
-
-namespace power_manager {
 
 class PowerSupplyTest : public ::testing::Test {
  public:
@@ -491,4 +493,5 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty, 30);
 }
 
+}  // namespace system
 }  // namespace power_manager

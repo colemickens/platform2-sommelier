@@ -21,8 +21,9 @@
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/external_backlight_controller.h"
-#include "power_manager/powerd/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/external_backlight_controller.h"
+#include "power_manager/powerd/policy/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/display_power_setter.h"
@@ -126,22 +127,23 @@ int main(int argc, char* argv[]) {
   power_manager::system::ExternalBacklight display_backlight;
   if (!display_backlight.Init())
     LOG(WARNING) << "Cannot initialize display backlight";
-  power_manager::ExternalBacklightController display_backlight_controller(
-      &display_backlight, &display_power_setter);
+  power_manager::policy::ExternalBacklightController
+      display_backlight_controller(&display_backlight, &display_power_setter);
 #else
   power_manager::system::InternalBacklight display_backlight;
   if (!display_backlight.Init(
           base::FilePath(power_manager::kInternalBacklightPath),
           power_manager::kInternalBacklightPattern))
     LOG(WARNING) << "Cannot initialize display backlight";
-  power_manager::InternalBacklightController display_backlight_controller(
-      &display_backlight, &prefs, light_sensor.get(), &display_power_setter);
+  power_manager::policy::InternalBacklightController
+      display_backlight_controller(&display_backlight, &prefs,
+          light_sensor.get(), &display_power_setter);
 #endif
 
   if (!display_backlight_controller.Init())
     LOG(WARNING) << "Cannot initialize display backlight controller";
 
-  scoped_ptr<power_manager::KeyboardBacklightController>
+  scoped_ptr<power_manager::policy::KeyboardBacklightController>
       keyboard_backlight_controller;
 #ifdef HAS_KEYBOARD_BACKLIGHT
   scoped_ptr<power_manager::system::InternalBacklight> keyboard_backlight(
@@ -150,7 +152,7 @@ int main(int argc, char* argv[]) {
           base::FilePath(power_manager::kKeyboardBacklightPath),
           power_manager::kKeyboardBacklightPattern)) {
     keyboard_backlight_controller.reset(
-        new power_manager::KeyboardBacklightController(
+        new power_manager::policy::KeyboardBacklightController(
             keyboard_backlight.get(), &prefs, light_sensor.get()));
     if (!keyboard_backlight_controller->Init()) {
       LOG(WARNING) << "Cannot initialize keyboard backlight controller!";

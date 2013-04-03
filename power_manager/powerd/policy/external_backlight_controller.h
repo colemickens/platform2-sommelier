@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_EXTERNAL_BACKLIGHT_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_EXTERNAL_BACKLIGHT_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_EXTERNAL_BACKLIGHT_CONTROLLER_H_
+#define POWER_MANAGER_POWERD_POLICY_EXTERNAL_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/observer_list.h"
-#include "power_manager/powerd/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
@@ -17,6 +17,8 @@ namespace system {
 class BacklightInterface;
 class DisplayPowerSetterInterface;
 }  // namespace system
+
+namespace policy {
 
 // Controls the brightness of an external display on machines that lack internal
 // displays.
@@ -94,6 +96,7 @@ class ExternalBacklightController : public BacklightController,
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklightController);
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_EXTERNAL_BACKLIGHT_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_EXTERNAL_BACKLIGHT_CONTROLLER_H_

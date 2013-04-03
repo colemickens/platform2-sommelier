@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/internal_backlight_controller.h"
+#include "power_manager/powerd/policy/internal_backlight_controller.h"
 
 #include <sys/time.h>
 
@@ -13,14 +13,14 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
-
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
-#include "power_manager/powerd/backlight_controller_observer.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -633,4 +633,5 @@ void InternalBacklightController::SetDisplayPower(
   display_power_state_ = state;
 }
 
+}  // namespace policy
 }  // namespace power_manager

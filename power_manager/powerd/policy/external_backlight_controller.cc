@@ -2,14 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/external_backlight_controller.h"
+#include "power_manager/powerd/policy/external_backlight_controller.h"
 
 #include <algorithm>
 #include <cmath>
 
-#include "power_manager/powerd/backlight_controller_observer.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/powerd/system/display_power_setter.h"
+
+namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -18,8 +21,6 @@ namespace {
 double kBrightnessAdjustmentPercent = 10.0;
 
 }  // namespace
-
-namespace power_manager {
 
 ExternalBacklightController::ExternalBacklightController(
     system::BacklightInterface* backlight,
@@ -205,4 +206,5 @@ void ExternalBacklightController::UpdateScreenPowerState() {
   }
 }
 
+}  // namespace policy
 }  // namespace power_manager

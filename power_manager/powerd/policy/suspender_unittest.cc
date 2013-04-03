@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/suspender.h"
+
 #include <gtest/gtest.h>
 
 #include "base/basictypes.h"
@@ -15,9 +17,9 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
-#include "power_manager/powerd/suspender.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -187,7 +189,7 @@ class SuspenderTest : public testing::Test {
   FakePrefs prefs_;
   TestDelegate delegate_;
   DBusSenderStub dbus_sender_;
-  policy::DarkResumePolicy dark_resume_policy_;
+  DarkResumePolicy dark_resume_policy_;
   Suspender suspender_;
   Suspender::TestApi test_api_;
 
@@ -432,4 +434,5 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
             delegate_.GetActions());
 }
 
+}  // namespace policy
 }  // namespace power_manager

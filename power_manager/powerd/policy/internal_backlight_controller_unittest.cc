@@ -2,19 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/internal_backlight_controller.h"
+
 #include <gtest/gtest.h>
 
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/internal_backlight_controller.h"
-#include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display_power_setter_stub.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -647,4 +649,5 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
+}  // namespace policy
 }  // namespace power_manager

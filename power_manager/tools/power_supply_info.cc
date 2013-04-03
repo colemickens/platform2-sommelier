@@ -15,7 +15,7 @@
 #include "base/string_util.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"
-#include "power_manager/powerd/power_supply.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 // power-supply-info: Displays info about battery and line power.
 
@@ -96,11 +96,11 @@ class InfoDisplay {
 
 int main(int, char*[]) {
   base::FilePath path(kPowerStatusPath);
-  power_manager::PowerSupply power_supply(path, NULL);
+  power_manager::system::PowerSupply power_supply(path, NULL);
   power_supply.Init();
 
-  power_manager::PowerInformation power_info;
-  power_manager::PowerStatus& power_status = power_info.power_status;
+  power_manager::system::PowerInformation power_info;
+  power_manager::system::PowerStatus& power_status = power_info.power_status;
   power_supply.GetPowerInformation(&power_info);
 
   InfoDisplay display;

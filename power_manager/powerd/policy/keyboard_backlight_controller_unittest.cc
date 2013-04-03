@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+
 #include <gtest/gtest.h>
 
 #include <string>
@@ -10,13 +12,13 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/keyboard_backlight_controller.h"
-#include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 
 namespace power_manager {
+namespace policy {
 
 class KeyboardBacklightControllerTest : public ::testing::Test {
  public:
@@ -471,4 +473,5 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
   EXPECT_EQ(0, backlight_.current_level());
 }
 
+}  // namespace policy
 }  // namespace power_manager

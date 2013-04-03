@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/dark_resume_policy.h"
+
 #include <glib.h>
 #include <gtest/gtest.h>
 
@@ -18,8 +20,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/policy/dark_resume_policy.h"
-#include "power_manager/powerd/power_supply.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 using std::map;
 using std::string;
@@ -85,7 +86,7 @@ class DarkResumePolicyTest : public ::testing::Test {
     path_ = temp_dir_generator_->path();
     file_util::CreateDirectory(path_.Append("ac"));
     file_util::CreateDirectory(path_.Append("battery"));
-    power_supply_.reset(new PowerSupply(path_, NULL));
+    power_supply_.reset(new system::PowerSupply(path_, NULL));
     dark_resume_policy_.reset(new DarkResumePolicy(power_supply_.get(),
                                                    &prefs_));
   }
@@ -94,13 +95,13 @@ class DarkResumePolicyTest : public ::testing::Test {
   FakePrefs prefs_;
   scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
   base::FilePath path_;
-  scoped_ptr<PowerSupply> power_supply_;
+  scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<DarkResumePolicy> dark_resume_policy_;
 };
 
 // Test that GetAction will return SHUTDOWN if the preferences are correct.
 TEST_F(DarkResumePolicyTest, TestShutdown) {
-  PowerStatus power_status;
+  system::PowerStatus power_status;
   SetBattery(path_, 100.0, false);
 
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 -1.0");
@@ -117,7 +118,7 @@ TEST_F(DarkResumePolicyTest, TestShutdown) {
 // Test that GetAction will first return SUSPEND_FOR_DURATION then SHUT_DOWN
 // after the battery charge changes and the power is unplugged.
 TEST_F(DarkResumePolicyTest, TestSuspendFirst) {
-  PowerStatus power_status;
+  system::PowerStatus power_status;
   SetBattery(path_, 100.0, false);
 
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");
@@ -139,7 +140,7 @@ TEST_F(DarkResumePolicyTest, TestSuspendFirst) {
 // Test that state is not maintained after a user resume and that the proper
 // suspend durations are returned.
 TEST_F(DarkResumePolicyTest, TestUserResumes) {
-  PowerStatus power_status;
+  system::PowerStatus power_status;
   SetBattery(path_, 100.0, false);
 
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0\n"
@@ -195,7 +196,7 @@ TEST_F(DarkResumePolicyTest, TestUserResumes) {
 // Check that we don't shutdown when the AC is online (regardless of battery
 // life).
 TEST_F(DarkResumePolicyTest, TestACOnline) {
-  PowerStatus power_status;
+  system::PowerStatus power_status;
   SetBattery(path_, 100.0, false);
 
   prefs_.SetString(kDarkResumeBatteryMarginsPref, "0.0 0.0");

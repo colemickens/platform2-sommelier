@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/external_backlight_controller.h"
+#include "power_manager/powerd/policy/external_backlight_controller.h"
 
 #include <gtest/gtest.h>
 
 #include "base/compiler_specific.h"
-#include "power_manager/powerd/mock_backlight_controller_observer.h"
+#include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_stub.h"
 #include "power_manager/powerd/system/display_power_setter_stub.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -207,4 +208,5 @@ TEST_F(ExternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
+}  // namespace policy
 }  // namespace power_manager

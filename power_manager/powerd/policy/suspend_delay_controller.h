@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_SUSPEND_DELAY_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_SUSPEND_DELAY_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_CONTROLLER_H_
+#define POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_CONTROLLER_H_
 #pragma once
 
 #include <map>
@@ -23,9 +23,12 @@ namespace power_manager {
 class DBusSenderInterface;
 class RegisterSuspendDelayReply;
 class RegisterSuspendDelayRequest;
-class SuspendDelayObserver;
 class SuspendReadinessInfo;
 class UnregisterSuspendDelayRequest;
+
+namespace policy {
+
+class SuspendDelayObserver;
 
 // Handles D-Bus requests to delay suspending until other processes have had
 // time to do last-minute cleanup.
@@ -130,6 +133,7 @@ class SuspendDelayController {
   DISALLOW_COPY_AND_ASSIGN(SuspendDelayController);
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_SUSPEND_DELAY_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_SUSPEND_DELAY_CONTROLLER_H_

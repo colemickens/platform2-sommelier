@@ -19,7 +19,6 @@ typedef unsigned int guint;
 
 namespace power_manager {
 
-class BacklightController;
 class DBusSenderInterface;
 class PrefsInterface;
 
@@ -29,6 +28,7 @@ class Input;
 
 namespace policy {
 
+class BacklightController;
 class StateController;
 
 // InputController responds to input events (e.g. lid open/close, power button,

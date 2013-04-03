@@ -4,6 +4,7 @@
 
 #include "power_manager/powerd/powerd.h"
 
+#include <inttypes.h>
 #include <libudev.h>
 #include <stdint.h>
 #include <sys/inotify.h>
@@ -16,8 +17,10 @@
 #include "base/bind.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/string_number_conversions.h"
 #include "base/string_split.h"
 #include "base/string_util.h"
+#include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
@@ -26,10 +29,9 @@
 #include "power_manager/common/util.h"
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/policy.pb.h"
-#include "power_manager/powerd/backlight_controller.h"
 #include "power_manager/powerd/metrics_constants.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
-#include "power_manager/powerd/power_supply.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_supply_properties.pb.h"
@@ -54,6 +56,9 @@ const char kSessionStopped[] = "stopped";
 // Upper limit to accept for raw battery times, in seconds. If the time of
 // interest is above this level assume something is wrong.
 const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
+
+// Path containing the number of wakeup events.
+const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
 }  // namespace
 
@@ -168,16 +173,111 @@ class Daemon::StateControllerDelegate
   Daemon* daemon_;  // not owned
 };
 
+// Performs actions on behalf of Suspender.
+class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
+ public:
+  SuspenderDelegate(Daemon* daemon) : daemon_(daemon) {}
+  virtual ~SuspenderDelegate() {}
+
+  // Delegate implementation:
+  virtual bool IsLidClosed() OVERRIDE {
+    return daemon_->input_->QueryLidState() == LID_CLOSED;
+  }
+
+  virtual bool GetWakeupCount(uint64* wakeup_count) OVERRIDE {
+    DCHECK(wakeup_count);
+    base::FilePath path(kWakeupCountPath);
+    std::string buf;
+    if (file_util::ReadFileToString(path, &buf)) {
+      TrimWhitespaceASCII(buf, TRIM_TRAILING, &buf);
+      if (base::StringToUint64(buf, wakeup_count))
+        return true;
+
+      LOG(ERROR) << "Could not parse wakeup count from \"" << buf << "\"";
+    } else {
+      LOG(ERROR) << "Could not read " << kWakeupCountPath;
+    }
+    return false;
+  }
+
+  virtual void PrepareForSuspendAnnouncement() OVERRIDE {
+    daemon_->PrepareForSuspendAnnouncement();
+  }
+
+  virtual void HandleCanceledSuspendAnnouncement() OVERRIDE {
+    daemon_->HandleCanceledSuspendAnnouncement();
+    SendPowerStateChangedSignal("on");
+  }
+
+  virtual void PrepareForSuspend() {
+    daemon_->PrepareForSuspend();
+    SendPowerStateChangedSignal("mem");
+  }
+
+  virtual bool Suspend(uint64 wakeup_count,
+                       bool wakeup_count_valid,
+                       base::TimeDelta duration) OVERRIDE {
+    std::string args;
+    if (wakeup_count_valid) {
+      args += StringPrintf(" --suspend_wakeup_count_valid"
+                           " --suspend_wakeup_count %" PRIu64, wakeup_count);
+    }
+    if (duration != base::TimeDelta()) {
+      args += StringPrintf(" --suspend_duration %" PRId64,
+                           duration.InSeconds());
+    }
+    return util::RunSetuidHelper("suspend", args, true) == 0;
+  }
+
+  virtual void HandleResume(bool suspend_was_successful,
+                            int num_suspend_retries,
+                            int max_suspend_retries) OVERRIDE {
+    SendPowerStateChangedSignal("on");
+    daemon_->HandleResume(suspend_was_successful,
+                          num_suspend_retries,
+                          max_suspend_retries);
+  }
+
+  virtual void ShutdownForFailedSuspend() OVERRIDE {
+    daemon_->ShutdownForFailedSuspend();
+  }
+
+  virtual void ShutdownForDarkResume() OVERRIDE {
+    daemon_->OnRequestShutdown();
+  }
+
+ private:
+  void SendPowerStateChangedSignal(const std::string& power_state) {
+    chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
+                                kPowerManagerServicePath,
+                                kPowerManagerInterface);
+    const char* state = power_state.c_str();
+    DBusMessage* signal = dbus_message_new_signal(kPowerManagerServicePath,
+                                                  kPowerManagerInterface,
+                                                  kPowerStateChanged);
+    CHECK(signal);
+    dbus_message_append_args(signal,
+                             DBUS_TYPE_STRING, &state,
+                             DBUS_TYPE_INVALID);
+    dbus_g_proxy_send(proxy.gproxy(), signal, NULL);
+    dbus_message_unref(signal);
+  }
+
+  Daemon* daemon_;  // not owned
+
+  DISALLOW_COPY_AND_ASSIGN(SuspenderDelegate);
+};
+
 // Daemon: Main power manager. Adjusts device status based on whether the
 //         user is idle and on video activity indicator from Chrome.
 //         This daemon is responsible for dimming of the backlight, turning
 //         the screen off, and suspending to RAM. The daemon also has the
 //         capability of shutting the system down.
 
-Daemon::Daemon(BacklightController* backlight_controller,
+Daemon::Daemon(policy::BacklightController* backlight_controller,
                PrefsInterface* prefs,
                MetricsLibraryInterface* metrics_lib,
-               KeyboardBacklightController* keyboard_controller,
+               policy::KeyboardBacklightController* keyboard_controller,
                const base::FilePath& run_dir)
     : state_controller_delegate_(new StateControllerDelegate(this)),
       backlight_controller_(backlight_controller),
@@ -211,10 +311,11 @@ Daemon::Daemon(BacklightController* backlight_controller,
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(base::FilePath(kTaggedFilePath)),
       shutdown_state_(SHUTDOWN_STATE_NONE),
-      power_supply_(new PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
+      power_supply_(
+          new system::PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
       dark_resume_policy_(
           new policy::DarkResumePolicy(power_supply_.get(), prefs)),
-      suspender_delegate_(Suspender::CreateDefaultDelegate(this, input_.get())),
+      suspender_delegate_(new SuspenderDelegate(this)),
       suspender_(suspender_delegate_.get(), dbus_sender_.get(),
                  dark_resume_policy_.get()),
       run_dir_(run_dir),
@@ -453,7 +554,7 @@ void Daemon::StartCleanShutdown() {
   }
 }
 
-void Daemon::OnPowerEvent(void* object, const PowerStatus& info) {
+void Daemon::OnPowerEvent(void* object, const system::PowerStatus& info) {
   Daemon* daemon = static_cast<Daemon*>(object);
   daemon->SetPlugged(info.line_power_on);
   daemon->GenerateMetricsOnPowerEvent(info);
@@ -504,17 +605,17 @@ void Daemon::AdjustKeyboardBrightness(int direction) {
 
 void Daemon::SendBrightnessChangedSignal(
     double brightness_percent,
-    BacklightController::BrightnessChangeCause cause,
+    policy::BacklightController::BrightnessChangeCause cause,
     const std::string& signal_name) {
   dbus_int32_t brightness_percent_int =
       static_cast<dbus_int32_t>(round(brightness_percent));
 
   dbus_bool_t user_initiated = FALSE;
   switch (cause) {
-    case BacklightController::BRIGHTNESS_CHANGE_AUTOMATED:
+    case policy::BacklightController::BRIGHTNESS_CHANGE_AUTOMATED:
       user_initiated = FALSE;
       break;
-    case BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED:
+    case policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED:
       user_initiated = TRUE;
       break;
     default:
@@ -538,8 +639,8 @@ void Daemon::SendBrightnessChangedSignal(
 
 void Daemon::OnBrightnessChanged(
     double brightness_percent,
-    BacklightController::BrightnessChangeCause cause,
-    BacklightController* source) {
+    policy::BacklightController::BrightnessChangeCause cause,
+    policy::BacklightController* source) {
   if (source == backlight_controller_) {
     SendBrightnessChangedSignal(brightness_percent, cause,
                                 kBrightnessChangedSignal);
@@ -803,17 +904,17 @@ void Daemon::RegisterDBusMessageHandler() {
   dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kRegisterSuspendDelayMethod,
-      base::Bind(&Suspender::RegisterSuspendDelay,
+      base::Bind(&policy::Suspender::RegisterSuspendDelay,
                  base::Unretained(&suspender_)));
   dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kUnregisterSuspendDelayMethod,
-      base::Bind(&Suspender::UnregisterSuspendDelay,
+      base::Bind(&policy::Suspender::UnregisterSuspendDelay,
                  base::Unretained(&suspender_)));
   dbus_handler_.AddMethodHandler(
       kPowerManagerInterface,
       kHandleSuspendReadinessMethod,
-      base::Bind(&Suspender::HandleSuspendReadiness,
+      base::Bind(&policy::Suspender::HandleSuspendReadiness,
                  base::Unretained(&suspender_)));
 
   dbus_handler_.Start();
@@ -927,7 +1028,7 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
   double percent = 0.0;
   if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
-        percent, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+        percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
   return NULL;
@@ -942,7 +1043,7 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
   double percent = 0.0;
   if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
-        percent, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
+        percent, policy::BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
         kBrightnessChangedSignal);
   }
   return NULL;
@@ -962,14 +1063,14 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
     dbus_error_free(&error);
     return util::CreateDBusInvalidArgsErrorReply(message);
   }
-  BacklightController::TransitionStyle style =
-      BacklightController::TRANSITION_FAST;
+  policy::BacklightController::TransitionStyle style =
+      policy::BacklightController::TRANSITION_FAST;
   switch (dbus_style) {
     case kBrightnessTransitionGradual:
-      style = BacklightController::TRANSITION_FAST;
+      style = policy::BacklightController::TRANSITION_FAST;
       break;
     case kBrightnessTransitionInstant:
-      style = BacklightController::TRANSITION_INSTANT;
+      style = policy::BacklightController::TRANSITION_INSTANT;
       break;
     default:
       LOG(WARNING) << "Invalid transition style passed ( " << dbus_style
@@ -1041,7 +1142,7 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   }
 
   PowerSupplyProperties protobuf;
-  PowerStatus* status = &power_status_;
+  system::PowerStatus* status = &power_status_;
 
   protobuf.set_line_power_on(status->line_power_on);
   protobuf.set_battery_energy(status->battery_energy);
@@ -1052,8 +1153,8 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   UpdateBatteryReportState();
   protobuf.set_battery_percentage(GetDisplayBatteryPercent());
   protobuf.set_battery_is_present(status->battery_is_present);
-  protobuf.set_battery_is_charged(status->battery_state ==
-                                  BATTERY_STATE_FULLY_CHARGED);
+  protobuf.set_battery_is_charged(
+      status->battery_state == system::BATTERY_STATE_FULLY_CHARGED);
   protobuf.set_is_calculating_battery_time(status->is_calculating_battery_time);
   protobuf.set_averaged_battery_time_to_empty(
       status->averaged_battery_time_to_empty);
@@ -1444,10 +1545,10 @@ void Daemon::SetBacklightsDocked(bool docked) {
 
 void Daemon::UpdateBatteryReportState() {
   switch (power_status_.battery_state) {
-    case BATTERY_STATE_FULLY_CHARGED:
+    case system::BATTERY_STATE_FULLY_CHARGED:
       battery_report_state_ = BATTERY_REPORT_FULL;
       break;
-    case BATTERY_STATE_DISCHARGING:
+    case system::BATTERY_STATE_DISCHARGING:
       switch (battery_report_state_) {
         case BATTERY_REPORT_FULL:
           battery_report_state_ = BATTERY_REPORT_PINNED;
@@ -1483,10 +1584,10 @@ void Daemon::UpdateBatteryReportState() {
 double Daemon::GetDisplayBatteryPercent() const {
   double battery_percentage = GetUsableBatteryPercent();
   switch (power_status_.battery_state) {
-    case BATTERY_STATE_FULLY_CHARGED:
+    case system::BATTERY_STATE_FULLY_CHARGED:
       battery_percentage = 100.0;
       break;
-    case BATTERY_STATE_DISCHARGING:
+    case system::BATTERY_STATE_DISCHARGING:
       switch (battery_report_state_) {
         case BATTERY_REPORT_FULL:
         case BATTERY_REPORT_PINNED:

@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/keyboard_backlight_controller.h"
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+
+#include <glib.h>
 
 #include <cmath>
 #include <cstdlib>
@@ -15,10 +17,11 @@
 #include "base/string_util.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/backlight_controller_observer.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -76,7 +79,7 @@ KeyboardBacklightController::KeyboardBacklightController(
     : backlight_(backlight),
       prefs_(prefs),
       ambient_light_handler_(
-          sensor ? new policy::AmbientLightHandler(sensor, this) : NULL),
+          sensor ? new AmbientLightHandler(sensor, this) : NULL),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       shutting_down_(false),
@@ -405,4 +408,5 @@ bool KeyboardBacklightController::ApplyBrightnessPercent(
   return true;
 }
 
+}  // namespace policy
 }  // namespace power_manager

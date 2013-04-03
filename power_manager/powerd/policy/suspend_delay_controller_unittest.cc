@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/policy/suspend_delay_controller.h"
+
 #include <gtest/gtest.h>
 
 #include "base/basictypes.h"
@@ -11,11 +13,11 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender_stub.h"
 #include "power_manager/common/test_main_loop_runner.h"
-#include "power_manager/powerd/suspend_delay_controller.h"
-#include "power_manager/powerd/suspend_delay_observer.h"
+#include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -101,6 +103,8 @@ class SuspendDelayControllerTest : public ::testing::Test {
 
   DISALLOW_COPY_AND_ASSIGN(SuspendDelayControllerTest);
 };
+
+}  // namespace
 
 TEST_F(SuspendDelayControllerTest, NoDelays) {
   // The controller should say that it's initially ready to suspend when no
@@ -310,6 +314,5 @@ TEST_F(SuspendDelayControllerTest, MultipleDelays) {
   EXPECT_TRUE(controller_.ready_for_suspend());
 }
 
-}  // namespace
-
+}  // namespace policy
 }  // namespace power_manager

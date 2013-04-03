@@ -26,17 +26,18 @@
 #include "power_manager/common/inotify.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/backlight_controller_observer.h"
 #include "power_manager/powerd/file_tagger.h"
-#include "power_manager/powerd/keyboard_backlight_controller.h"
 #include "power_manager/powerd/metrics_store.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/input_controller.h"
+#include "power_manager/powerd/policy/keyboard_backlight_controller.h"
+#include "power_manager/powerd/policy/suspender.h"
 #include "power_manager/powerd/rolling_average.h"
-#include "power_manager/powerd/suspender.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 // Forward declarations of structs from libudev.h.
 struct udev;
@@ -45,7 +46,6 @@ struct udev_monitor;
 namespace power_manager {
 
 class DBusSenderInterface;
-class PowerSupply;
 class Prefs;
 
 namespace policy {
@@ -85,20 +85,22 @@ enum BatteryReportState {
   BATTERY_REPORT_TAPERED,
 };
 
-class Daemon : public BacklightControllerObserver,
+class Daemon : public policy::BacklightControllerObserver,
                public policy::InputController::Delegate,
                public system::AudioObserver {
  public:
   // Note that keyboard_controller is an optional parameter (it can be NULL) and
   // that the memory is owned by the caller.
-  Daemon(BacklightController* ctl,
+  Daemon(policy::BacklightController* ctl,
          PrefsInterface* prefs,
          MetricsLibraryInterface* metrics_lib,
-         KeyboardBacklightController* keyboard_controller,
+         policy::KeyboardBacklightController* keyboard_controller,
          const base::FilePath& run_dir);
   ~Daemon();
 
-  BacklightController* backlight_controller() { return backlight_controller_; }
+  policy::BacklightController* backlight_controller() {
+    return backlight_controller_;
+  }
 
   const std::string& current_user() const { return current_user_; }
 
@@ -123,11 +125,11 @@ class Daemon : public BacklightControllerObserver,
   // Notify chrome that an idle event happened.
   void IdleEventNotify(int64 threshold);
 
-  // Overridden from BacklightControllerObserver:
+  // Overridden from policy::BacklightControllerObserver:
   virtual void OnBrightnessChanged(
       double brightness_percent,
-      BacklightController::BrightnessChangeCause cause,
-      BacklightController* source) OVERRIDE;
+      policy::BacklightController::BrightnessChangeCause cause,
+      policy::BacklightController* source) OVERRIDE;
 
   // Removes the current power supply polling timer.
   void HaltPollPowerSupply();
@@ -237,6 +239,7 @@ class Daemon : public BacklightControllerObserver,
   };
 
   class StateControllerDelegate;
+  class SuspenderDelegate;
 
   // Reads settings from disk
   void ReadSettings();
@@ -260,14 +263,14 @@ class Daemon : public BacklightControllerObserver,
   // Shared code between keyboard and screen brightness changed handling
   void SendBrightnessChangedSignal(
       double brightness_percent,
-      BacklightController::BrightnessChangeCause cause,
+      policy::BacklightController::BrightnessChangeCause cause,
       const std::string& signal_name);
 
   // Sets up idle timers, adding the provided offset to all timeouts
   // starting with the state provided except the locking timeout.
   void SetIdleOffset(int64 offset_ms, IdleState state);
 
-  static void OnPowerEvent(void* object, const PowerStatus& info);
+  static void OnPowerEvent(void* object, const system::PowerStatus& info);
 
   // Handles power supply udev events.
   static gboolean UdevEventHandler(GIOChannel*,
@@ -375,7 +378,7 @@ class Daemon : public BacklightControllerObserver,
 
   // Generates UMA metrics on every power event based on the current
   // power status.
-  void GenerateMetricsOnPowerEvent(const PowerStatus& info);
+  void GenerateMetricsOnPowerEvent(const system::PowerStatus& info);
 
   // Generates UMA metrics about the current backlight level.
   // Always returns true.
@@ -383,7 +386,7 @@ class Daemon : public BacklightControllerObserver,
 
   // Generates a battery discharge rate UMA metric sample. Returns
   // true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryDischargeRateMetric(const PowerStatus& info,
+  bool GenerateBatteryDischargeRateMetric(const system::PowerStatus& info,
                                           time_t now);
 
   // Generates a remaining battery charge and percent of full charge when charge
@@ -391,34 +394,36 @@ class Daemon : public BacklightControllerObserver,
   // sample was sent to UMA, false otherwise.
   void GenerateBatteryInfoWhenChargeStartsMetric(
       const PluggedState& plugged_state,
-      const PowerStatus& info);
+      const system::PowerStatus& info);
 
   // Calls all of the metric generation functions that need to be called at the
   // end of a session.
-  void GenerateEndOfSessionMetrics(const PowerStatus& info,
-                                   const BacklightController& backlight,
+  void GenerateEndOfSessionMetrics(const system::PowerStatus& info,
+                                   const policy::BacklightController& backlight,
                                    const base::TimeTicks& now,
                                    const base::TimeTicks& start);
 
   // Generates a remaining battery charge at end of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryRemainingAtEndOfSessionMetric(const PowerStatus& info);
+  bool GenerateBatteryRemainingAtEndOfSessionMetric(
+      const system::PowerStatus& info);
 
   // Generates a remaining battery charge at start of session UMA metric
   // sample. Returns true if a sample was sent to UMA, false otherwise.
-  bool GenerateBatteryRemainingAtStartOfSessionMetric(const PowerStatus& info);
+  bool GenerateBatteryRemainingAtStartOfSessionMetric(
+      const system::PowerStatus& info);
 
   // Generates a number of tiumes the ALS adjusted the backlight during a
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
   bool GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-    const BacklightController& backlight);
+    const policy::BacklightController& backlight);
 
   // Generates a number of tiumes the user adjusted the backlight during a
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
   bool GenerateUserBrightnessAdjustmentsPerSessionMetric(
-    const BacklightController& backlight);
+    const policy::BacklightController& backlight);
 
   // Generates length of session UMA metric sample. Returns true if a
   // sample was sent to UMA, false otherwise.
@@ -511,10 +516,10 @@ class Daemon : public BacklightControllerObserver,
 
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
 
-  BacklightController* backlight_controller_;
+  policy::BacklightController* backlight_controller_;
   PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
-  KeyboardBacklightController* keyboard_controller_;  // non-owned
+  policy::KeyboardBacklightController* keyboard_controller_;  // non-owned
 
   scoped_ptr<DBusSenderInterface> dbus_sender_;
   scoped_ptr<system::Input> input_;
@@ -540,10 +545,10 @@ class Daemon : public BacklightControllerObserver,
   PluggedState plugged_state_;
   FileTagger file_tagger_;
   ShutdownState shutdown_state_;
-  scoped_ptr<PowerSupply> power_supply_;
+  scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
-  scoped_ptr<Suspender::Delegate> suspender_delegate_;
-  Suspender suspender_;
+  scoped_ptr<SuspenderDelegate> suspender_delegate_;
+  policy::Suspender suspender_;
   base::FilePath run_dir_;
   base::TimeTicks session_start_;
   bool is_power_status_stale_;
@@ -580,7 +585,7 @@ class Daemon : public BacklightControllerObserver,
   // requests for each field of the power status can be read directly from
   // this struct.  Otherwise we'd have to read the whole struct from
   // power_supply since it doesn't support reading individual fields.
-  PowerStatus power_status_;
+  system::PowerStatus power_status_;
 
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;

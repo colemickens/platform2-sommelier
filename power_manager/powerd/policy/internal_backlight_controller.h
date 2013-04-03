@@ -2,25 +2,28 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_INTERNAL_BACKLIGHT_CONTROLLER_H_
-#define POWER_MANAGER_POWERD_INTERNAL_BACKLIGHT_CONTROLLER_H_
+#ifndef POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_
+#define POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
-#include "power_manager/powerd/backlight_controller.h"
-#include "power_manager/powerd/powerd.h"
+#include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 
 namespace power_manager {
+
+class PrefsInterface;
 
 namespace system {
 class AmbientLightSensorInterface;
 class BacklightInterface;
 class DisplayPowerSetterInterface;
 }  // namespace system
+
+namespace policy {
 
 // Controls the internal backlight on devices with built-in displays.
 //
@@ -229,6 +232,7 @@ class InternalBacklightController : public BacklightController,
   DISALLOW_COPY_AND_ASSIGN(InternalBacklightController);
 };
 
+}  // namespace policy
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_INTERNAL_BACKLIGHT_CONTROLLER_H_
+#endif  // POWER_MANAGER_POWERD_POLICY_INTERNAL_BACKLIGHT_CONTROLLER_H_

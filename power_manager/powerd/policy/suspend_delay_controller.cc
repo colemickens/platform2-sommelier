@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/suspend_delay_controller.h"
+#include "power_manager/powerd/policy/suspend_delay_controller.h"
 
 #include <glib.h>
 
@@ -11,10 +11,11 @@
 #include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/suspend_delay_observer.h"
+#include "power_manager/powerd/policy/suspend_delay_observer.h"
 #include "power_manager/suspend.pb.h"
 
 namespace power_manager {
+namespace policy {
 
 namespace {
 
@@ -208,4 +209,5 @@ gboolean SuspendDelayController::NotifyObservers(int suspend_id) {
   return FALSE;
 }
 
+}  // namespace policy
 }  // namespace power_manager

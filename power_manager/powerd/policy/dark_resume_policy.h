@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "base/file_path.h"
-#include "power_manager/powerd/power_supply.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 namespace power_manager {
 
@@ -29,7 +29,7 @@ class DarkResumePolicy {
     SUSPEND_INDEFINITELY
   };
 
-  DarkResumePolicy(PowerSupply* power_supply, PrefsInterface* prefs);
+  DarkResumePolicy(system::PowerSupply* power_supply, PrefsInterface* prefs);
   ~DarkResumePolicy();
 
   // Reads preferences on how long to suspend, what devices are affected by
@@ -78,10 +78,10 @@ class DarkResumePolicy {
 
   bool enabled_;
 
-  PowerSupply* power_supply_;
+  system::PowerSupply* power_supply_;
   PrefsInterface* prefs_;
 
-  PowerStatus power_status_;
+  system::PowerStatus power_status_;
 
   // Battery threshold which we use to tell if we should shut down after a dark
   // resume. This is set at the last suspend that was not from a dark resume.

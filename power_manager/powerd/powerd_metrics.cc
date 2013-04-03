@@ -73,7 +73,7 @@ void Daemon::GenerateMetricsOnLeavingIdle() {
   }
 }
 
-void Daemon::GenerateMetricsOnPowerEvent(const PowerStatus& info) {
+void Daemon::GenerateMetricsOnPowerEvent(const system::PowerStatus& info) {
   time_t now = time(NULL);
   GenerateBatteryDischargeRateMetric(info, now);
 }
@@ -88,7 +88,7 @@ gboolean Daemon::GenerateBacklightLevelMetric() {
   return TRUE;
 }
 
-bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
+bool Daemon::GenerateBatteryDischargeRateMetric(const system::PowerStatus& info,
                                                 time_t now) {
   // The battery discharge rate metric is relevant and collected only
   // when running on battery.
@@ -117,7 +117,7 @@ bool Daemon::GenerateBatteryDischargeRateMetric(const PowerStatus& info,
 
 void Daemon::GenerateBatteryInfoWhenChargeStartsMetric(
     const PluggedState& plugged_state,
-    const PowerStatus& power_status) {
+    const system::PowerStatus& power_status) {
   // Need to make sure that we are actually charging a battery
   if (plugged_state != PLUGGED_STATE_CONNECTED)
     return;
@@ -139,10 +139,11 @@ void Daemon::GenerateBatteryInfoWhenChargeStartsMetric(
       << "Unable to send battery charge health metric!";
 }
 
-void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
-                                         const BacklightController& backlight,
-                                         const base::TimeTicks& now,
-                                         const base::TimeTicks& start) {
+void Daemon::GenerateEndOfSessionMetrics(
+    const system::PowerStatus& info,
+    const policy::BacklightController& backlight,
+    const base::TimeTicks& now,
+    const base::TimeTicks& start) {
   LOG_IF(ERROR,
          (!GenerateBatteryRemainingAtEndOfSessionMetric(info)))
       << "Session Stopped : Unable to generate battery remaining metric!";
@@ -161,7 +162,7 @@ void Daemon::GenerateEndOfSessionMetrics(const PowerStatus& info,
 }
 
 bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
-    const PowerStatus& info) {
+    const system::PowerStatus& info) {
   int charge = static_cast<int>(round(info.battery_percentage));
   return SendEnumMetricWithPowerState(kMetricBatteryRemainingAtEndOfSessionName,
                                       charge,
@@ -169,7 +170,7 @@ bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
 }
 
 bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
-    const PowerStatus& info) {
+    const system::PowerStatus& info) {
   int charge = static_cast<int>(round(info.battery_percentage));
   return SendEnumMetricWithPowerState(
       kMetricBatteryRemainingAtStartOfSessionName,
@@ -178,7 +179,7 @@ bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
 }
 
 bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-    const BacklightController& backlight) {
+    const policy::BacklightController& backlight) {
   int num_of_adjustments = backlight.GetNumAmbientLightSensorAdjustments();
 
   if (num_of_adjustments < 0) {
@@ -199,7 +200,7 @@ bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
 }
 
 bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
-    const BacklightController& backlight) {
+    const policy::BacklightController& backlight) {
   int adjustment_count = backlight.GetNumUserAdjustments();
 
   if (adjustment_count < 0) {

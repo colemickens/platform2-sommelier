@@ -9,22 +9,35 @@ CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a): \
 	power_manager/policy.pb.o \
 	powerd/policy/ambient_light_handler.o \
 	powerd/policy/dark_resume_policy.o \
+	powerd/policy/external_backlight_controller.o \
 	powerd/policy/input_controller.o \
-	powerd/policy/state_controller.o
+	powerd/policy/internal_backlight_controller.o \
+	powerd/policy/keyboard_backlight_controller.o \
+	powerd/policy/state_controller.o \
+	powerd/policy/suspend_delay_controller.o \
+	powerd/policy/suspender.o \
+	power_manager/suspend.pb.o
 clean: CLEAN(powerd/libpolicy.pie.a)
 
 CXX_BINARY(powerd/policy_unittest): \
 	powerd/policy/dark_resume_policy_unittest.o \
+	powerd/policy/external_backlight_controller_unittest.o \
+	powerd/policy/internal_backlight_controller_unittest.o \
+	powerd/policy/keyboard_backlight_controller_unittest.o \
 	powerd/policy/state_controller_unittest.o \
+	powerd/policy/suspend_delay_controller_unittest.o \
+	powerd/policy/suspender_unittest.o \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
-	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
+	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a)
 CXX_BINARY(powerd/policy_unittest): \
-	CPPFLAGS += $(GLIB_FLAGS)
+	CPPFLAGS += $(GLIB_FLAGS) $(DBUS_FLAGS)
 CXX_BINARY(powerd/policy_unittest): \
-	LDLIBS += $(GLIB_LIBS) -lgtest -lprotobuf-lite
+	LDLIBS += $(GLIB_LIBS) $(DBUS_LIBS) -lgtest -lprotobuf-lite -ludev
 clean: CXX_BINARY(powerd/policy_unittest)
 tests: TEST(CXX_BINARY(powerd/policy_unittest))

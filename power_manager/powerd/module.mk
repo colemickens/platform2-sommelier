@@ -4,30 +4,6 @@
 
 include common.mk
 
-POWERSUPPLY_FLAGS = $(GLIB_FLAGS)
-POWERSUPPLY_LIBS = $(GLIB_LIBS) -lgflags
-LIBPOWER_SUPPLY_OBJS = \
-	common/inotify.o \
-	common/power_constants.o \
-	common/prefs.o \
-	powerd/power_supply.o
-CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): $(LIBPOWER_SUPPLY_OBJS)
-CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): \
-	CPPFLAGS += $(POWERSUPPLY_FLAGS)
-CXX_STATIC_LIBRARY(powerd/libpower_supply.pie.a): LDLIBS += $(POWERSUPPLY_LIBS)
-clean: CLEAN(powerd/libpower_supply.pie.a)
-
-LIBBACKLIGHTCTRL_OBJS = \
-	powerd/external_backlight_controller.o \
-	powerd/internal_backlight_controller.o
-CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \
-	$(LIBBACKLIGHTCTRL_OBJS)
-CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \
-	CPPFLAGS += $(GLIB_FLAGS)
-CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a): \
-	LDLIBS += $(GLIB_LIBS)
-clean: CLEAN(powerd/libbacklight_controller.pie.a)
-
 powerd/powerd.o.depends: power_supply_properties.pb.h
 powerd/powerd.o.depends: video_activity_update.pb.h
 LIBPOWERD_DEPS = libchromeos-$(BASE_VER) libcras
@@ -39,16 +15,11 @@ LIBPOWERD_LIBS = \
 	-lrt $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 LIBPOWERD_OBJS = \
 	powerd/file_tagger.o \
-	powerd/keyboard_backlight_controller.o \
 	powerd/metrics_constants.o \
 	powerd/metrics_store.o \
 	powerd/powerd_metrics.o \
 	powerd/powerd.o \
-	powerd/power_supply.o \
 	powerd/rolling_average.o \
-	powerd/suspend_delay_controller.o \
-	powerd/suspender.o \
-	power_manager/suspend.pb.o \
 	power_supply_properties.pb.o \
 	video_activity_update.pb.o
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): $(LIBPOWERD_OBJS)
@@ -62,7 +33,6 @@ POWERD_OBJS = powerd/powerd_main.o
 CXX_BINARY(powerd/powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
-	CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
@@ -84,20 +54,13 @@ POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
 TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
 POWERD_UNITTEST_OBJS = \
-	powerd/external_backlight_controller_unittest.o \
 	powerd/file_tagger_unittest.o \
-	powerd/internal_backlight_controller_unittest.o \
-	powerd/keyboard_backlight_controller_unittest.o \
 	powerd/metrics_store_unittest.o \
 	powerd/powerd_unittest.o \
-	powerd/power_supply_unittest.o \
-	powerd/rolling_average_unittest.o \
-	powerd/suspend_delay_controller_unittest.o \
-	powerd/suspender_unittest.o
+	powerd/rolling_average_unittest.o
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
-	CXX_STATIC_LIBRARY(powerd/libbacklight_controller.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
