@@ -406,6 +406,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   scoped_ptr<HomeDirs> default_homedirs_;
   HomeDirs* homedirs_;
 
+  std::string guest_user_;
+
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
 

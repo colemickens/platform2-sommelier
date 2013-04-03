@@ -58,6 +58,8 @@ extern const char kMountDir[];
 extern const char kKeyFile[];
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
+extern const char kEphemeralDir[];
+extern const char kGuestMountPath[];
 // Time delta of last user's activity to be considered as old.
 extern const base::TimeDelta kOldUserLastActivityTime;
 

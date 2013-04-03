@@ -65,6 +65,7 @@ const char kSkeletonDir[] = "skeleton";
 const char kKeyFile[] = "master.0";
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
+const char kGuestMountPath[] = "guestfs";
 const char kEphemeralMountPerms[] = "mode=0700";
 const base::TimeDelta kOldUserLastActivityTime = base::TimeDelta::FromDays(92);
 
@@ -493,12 +494,19 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
 bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   const string username = credentials.username();
-  const string path = GetUserEphemeralPath(
-      credentials.GetObfuscatedUsername(system_salt_));
+  string path = GetUserEphemeralPath(credentials.GetObfuscatedUsername(
+      system_salt_));
   const string user_multi_home =
       chromeos::cryptohome::home::GetUserPath(username).value();
   const string root_multi_home =
       chromeos::cryptohome::home::GetRootPath(username).value();
+
+  // If we're mounting as a guest, as source use just "guestfs" instead of an
+  // actual path. We don't want the guest cryptohome to persist even between
+  // logins during the same boot.
+  if (credentials.username() == chromeos::cryptohome::home::GetGuestUserName())
+    path = kGuestMountPath;
+
   if (!EnsureUserMountPoints(credentials))
     return false;
   if (!SetUpEphemeralCryptohome(path, user_multi_home))
@@ -1104,11 +1112,10 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::MountGuestCryptohome() {
+  std::string guest = chromeos::cryptohome::home::GetGuestUserName();
+  UsernamePasskey guest_creds(guest.c_str(), chromeos::Blob(0));
   current_user_->Reset();
-  // TODO(wad,ellyjones) Should we make a /home/user/guest/...
-  // It can use the legacy path since there is no user, but it might be easier
-  // to codify a separate location in libchromeos.
-  return SetUpEphemeralCryptohome("guestfs", kDefaultHomeDir);
+  return MountEphemeralCryptohome(guest_creds);
 }
 
 string Mount::GetUserDirectory(const Credentials& credentials) const {

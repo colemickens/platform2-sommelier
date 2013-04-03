@@ -2383,4 +2383,53 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
   MountError error;
   ASSERT_TRUE(mount_->MountCryptohome(up, mount_args, &error));
 }
+
+TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
+  struct stat fake_root_st;
+  fake_root_st.st_uid = 0;
+  fake_root_st.st_gid = 0;
+  fake_root_st.st_mode = S_IFDIR | S_IRWXU;
+  EXPECT_CALL(platform_, Stat("/home", _))
+    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
+                    Return(true)))
+    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
+                    Return(true)));
+  EXPECT_CALL(platform_, Stat("/home/root", _))
+    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
+                    Return(true)));
+  EXPECT_CALL(platform_, Stat(StartsWith("/home/root/"), _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, Stat("/home/user", _))
+    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
+                    Return(true)));
+  EXPECT_CALL(platform_, Stat(StartsWith("/home/user/"), _))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, CreateDirectory(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetOwnership(_, _, _))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, SetGroupAccessible(_, _, _))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, IsDirectoryMounted(_))
+    .WillOnce(Return(true))
+    .WillOnce(Return(false))
+    .WillOnce(Return(false));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, FileExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Mount("guestfs", "test_image_dir/skeleton", _, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Mount("guestfs", StartsWith("/home/root/"), _, _))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind("test_image_dir/skeleton",
+                              StartsWith("/home/user/")))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(StartsWith("/home/user/"),
+                              "/home/chronos/user"))
+    .WillOnce(Return(true));
+
+  ASSERT_TRUE(mount_->MountGuestCryptohome());
+}
+
 }  // namespace cryptohome

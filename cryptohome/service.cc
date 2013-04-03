@@ -54,8 +54,6 @@ namespace gobject {
 namespace cryptohome {
 
 const char* kSaltFilePath = "/home/.shadow/salt";
-// TODO(wad) Expand MountMap or make guest a special case.
-const char* kGuestUser = "Guest.User@...";
 
 // Encapsulates histogram parameters, for UMA reporting.
 struct HistogramParams {
@@ -236,7 +234,8 @@ Service::Service()
       default_mount_factory_(new cryptohome::MountFactory),
       mount_factory_(default_mount_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
-      homedirs_(default_homedirs_.get()) {
+      homedirs_(default_homedirs_.get()),
+      guest_user_(chromeos::cryptohome::home::GetGuestUserName()) {
 }
 
 Service::~Service() {
@@ -252,8 +251,8 @@ Service::~Service() {
 bool Service::GetExistingMounts(
     std::multimap<const std::string, const std::string>* mounts) {
   bool found = platform_->GetMountsBySourcePrefix("/home/.shadow/", mounts);
-  found |= platform_->GetMountsBySourcePrefix("ephemeralfs/", mounts);
-  found |= platform_->GetMountsBySourcePrefix("guestfs", mounts);
+  found |= platform_->GetMountsBySourcePrefix(kEphemeralDir, mounts);
+  found |= platform_->GetMountsBySourcePrefix(kGuestMountPath, mounts);
   return found;
 }
 
@@ -563,7 +562,7 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     } else if (result->guest()) {
       if (!result->return_status()) {
         DLOG(INFO) << "Dropping MountMap entry for failed Guest mount.";
-        RemoveMountForUser(kGuestUser);
+        RemoveMountForUser(guest_user_);
       }
       if (result->return_status() && !result->return_code()) {
         timer_collection_->UpdateTimer(TimerCollection::kAsyncGuestMountTimer,
@@ -861,7 +860,7 @@ gboolean Service::Mount(const gchar *userid,
 
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
 
-  scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(kGuestUser);
+  scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
   bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
   if (guest_mounted && !guest_mount->UnmountCryptohome()) {
     LOG(ERROR) << "Could not unmount cryptohome from Guest session";
@@ -969,7 +968,7 @@ gboolean Service::AsyncMount(const gchar *userid,
 
   UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
 
-  scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(kGuestUser);
+  scoped_refptr<cryptohome::Mount> guest_mount = GetMountForUser(guest_user_);
   bool guest_mounted = guest_mount.get() && guest_mount->IsMounted();
   // TODO(wad,ellyjones) Change this behavior to return failure even
   // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
@@ -1084,7 +1083,7 @@ gboolean Service::MountGuest(gint *OUT_error_code,
   }
 
   scoped_refptr<cryptohome::Mount> guest_mount =
-    GetOrCreateMountForUser(kGuestUser);
+    GetOrCreateMountForUser(guest_user_);
   timer_collection_->UpdateTimer(TimerCollection::kSyncGuestMountTimer, true);
   MountTaskResult result;
   base::WaitableEvent event(true, false);
@@ -1113,13 +1112,13 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   bool ok = RemoveAllMounts(true);
   // Create a ref-counted guest mount for async use and then throw it away.
   scoped_refptr<cryptohome::Mount> guest_mount =
-    GetOrCreateMountForUser(kGuestUser);
+    GetOrCreateMountForUser(guest_user_);
   if (!ok) {
     LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
     MountTaskObserverBridge* bridge =
         new MountTaskObserverBridge(guest_mount.get(), &event_source_);
     // Drop it from the map now that the MountTask has a ref.
-    if (!RemoveMountForUser(kGuestUser)) {
+    if (!RemoveMountForUser(guest_user_)) {
       LOG(ERROR) << "Unexpectedly cannot drop unused Guest mount from map.";
     }
     scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
