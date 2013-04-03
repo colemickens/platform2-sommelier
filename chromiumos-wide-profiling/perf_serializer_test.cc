@@ -49,13 +49,13 @@ void SerializeToFileAndBack(const string& input,
   PerfSerializer serializer;
   EXPECT_TRUE(serializer.SerializeFromFile(input, &input_perf_data_proto));
 
-  // Make sure the timestamp was properly recorded.
-  EXPECT_TRUE(input_perf_data_proto.has_timestamp());
+  // Make sure the timestamp_sec was properly recorded.
+  EXPECT_TRUE(input_perf_data_proto.has_timestamp_sec());
   // Check it against the current time.
   struct timeval post_serialize_time;
   gettimeofday(&post_serialize_time, NULL);
-  EXPECT_GE(input_perf_data_proto.timestamp(), pre_serialize_time.tv_sec);
-  EXPECT_LE(input_perf_data_proto.timestamp(), post_serialize_time.tv_sec);
+  EXPECT_GE(input_perf_data_proto.timestamp_sec(), pre_serialize_time.tv_sec);
+  EXPECT_LE(input_perf_data_proto.timestamp_sec(), post_serialize_time.tv_sec);
 
   // Now store the protobuf into a file.
   string input_filename, output_filename;

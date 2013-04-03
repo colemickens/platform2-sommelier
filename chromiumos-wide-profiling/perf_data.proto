@@ -147,6 +147,26 @@ message PerfDataProto {
     repeated uint64 ids = 2;
   }
 
+  // This message contains information about a perf sample itself, as opposed to
+  // a perf event captured by a sample.
+  // Next tag: 6
+  message SampleInfo {
+    // Process ID / thread ID from which this sample was taken.
+    optional uint32 pid = 1;
+    optional uint32 tid = 2;
+
+    // Time this sample was taken (NOT the same as an event time).
+    // It is the number of nanoseconds since bootup.
+    optional uint64 sample_time_ns = 3;
+
+    // The ID of the sample's event type (cycles, instructions, etc).
+    // The event type IDs are defined in PerfFileAttr.
+    optional uint64 id = 4;
+
+    // The CPU on which this sample was taken.
+    optional uint32 cpu = 5;
+  }
+
   // Next tag: 7
   message CommEvent {
     // Process id.
@@ -160,6 +180,10 @@ message PerfDataProto {
 
     // Comm string's md5 prefix
     optional uint64 comm_md5_prefix = 4;
+
+    // Time the sample was taken.
+    // Deprecated, use |sample_info| instead.
+    optional uint64 sample_time = 5 [deprecated=true];
 
     // Info about the perf sample containing this event.
     optional SampleInfo sample_info = 6;
@@ -197,8 +221,8 @@ message PerfDataProto {
     // Thread id.
     optional uint32 tid = 3;
 
-    // The time at which the sample was recorded.
-    optional uint64 sample_time = 4;
+    // The time after boot when the sample was recorded, in nanoseconds.
+    optional uint64 sample_time_ns = 4;
 
     // The address of the sample.
     optional uint64 addr = 5;
@@ -237,31 +261,11 @@ message PerfDataProto {
     // Parent process thread ID.
     optional uint32 ptid = 4;
 
-    // Time of fork event.
-    optional uint64 fork_time = 5;
+    // Time of fork event in nanoseconds since bootup.
+    optional uint64 fork_time_ns = 5;
 
     // Info about the perf sample containing this event.
     optional SampleInfo sample_info = 11;
-  }
-
-  // This message contains information about a perf sample itself, as opposed to
-  // a perf event captured by a sample.
-
-  // Next tag: 6
-  message SampleInfo {
-    // Process ID / thread ID from which this sample was taken.
-    optional uint32 pid = 1;
-    optional uint32 tid = 2;
-
-    // Time this sample was taken (NOT the same as an event time).
-    optional uint64 sample_time = 3;
-
-    // The ID of the sample's event type (cycles, instructions, etc).
-    // The event type IDs are defined in PerfFileAttr.
-    optional uint64 id = 4;
-
-    // The CPU on which this sample was taken.
-    optional uint32 cpu = 5;
   }
 
   // Next tag: 4
@@ -294,7 +298,10 @@ message PerfDataProto {
     optional uint32 num_fork_events = 4;
     optional uint32 num_exit_events = 5;
 
-    // Number of sample events that were successfully mapped by the mapper.
+    // Number of sample events that were successfully mapped by the address
+    // mapper, a quipper module that is used to obscure addresses and convert
+    // them to DSO name + offset.  Sometimes it fails to process sample events.
+    // This field allows us to track the success rate of the address mapper.
     optional uint32 num_sample_events_mapped = 6;
 
     // Whether address remapping was enabled.
@@ -305,8 +312,8 @@ message PerfDataProto {
   repeated PerfEvent events = 2;
 
   // Time when quipper generated this perf data / protobuf, given as seconds
-  // since the Epoch.
-  optional uint64 timestamp = 3;
+  // since the epoch.
+  optional uint64 timestamp_sec = 3;
 
   // Records some stats about the serialized perf events.
   optional PerfEventStats stats = 4;
