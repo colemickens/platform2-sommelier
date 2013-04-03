@@ -11,10 +11,13 @@
 
 #include <string>
 
+#include <base/bind.h>
+
 #include "shill/adaptor_interfaces.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/eap_listener.h"
 #include "shill/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -41,7 +44,15 @@ Ethernet::Ethernet(ControlInterface *control_interface,
              address,
              interface_index,
              Technology::kEthernet),
-      link_up_(false) {
+      link_up_(false),
+      is_eap_detected_(false),
+      eap_listener_(new EapListener(dispatcher, interface_index)) {
+  PropertyStore *store = this->mutable_store();
+  store->RegisterConstBool(kEapAuthenticatorDetectedProperty,
+                           &is_eap_detected_);
+  // Unretained() is okay here since eap_listener_ is owned by |this|.
+  eap_listener_->set_request_received_callback(
+      base::Bind(&Ethernet::OnEapDetected, base::Unretained(this)));
   SLOG(Ethernet, 2) << "Ethernet device " << link_name << " initialized.";
 }
 
@@ -56,8 +67,7 @@ void Ethernet::Start(Error *error,
                                  metrics(),
                                  manager(),
                                  this);
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
-                                                IFF_UP);
+  rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   OnEnabledStateChanged(EnabledStateChangedCallback(), Error());
   if (error)
     error->Reset();       // indicate immediate completion
@@ -82,12 +92,15 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
       // Manager will bring up L3 for us.
       manager()->RegisterService(service_);
     }
+    eap_listener_->Start();
   } else if ((flags & IFF_LOWER_UP) == 0 && link_up_) {
     link_up_ = false;
+    is_eap_detected_ = false;
     DestroyIPConfig();
     if (service_)
       manager()->DeregisterService(service_);
     SelectService(NULL);
+    eap_listener_->Stop();
   }
 }
 
@@ -107,6 +120,11 @@ void Ethernet::DisconnectFrom(EthernetService *service) {
   CHECK(service == service_.get()) << "Ethernet was asked to disconnect the "
                                    << "wrong service?";
   DropConnection();
+}
+
+void Ethernet::OnEapDetected() {
+  is_eap_detected_ = true;
+  eap_listener_->Stop();
 }
 
 }  // namespace shill

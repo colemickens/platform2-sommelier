@@ -403,6 +403,7 @@ class Device : public base::RefCounted<Device> {
   friend class DeviceByteCountTest;
   friend class DevicePortalDetectionTest;
   friend class DeviceTest;
+  friend class EthernetTest;
   friend class OpenVPNDriverTest;
   friend class WiFiObjectTest;
 

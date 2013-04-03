@@ -7,11 +7,15 @@
 
 #include <string>
 
+#include <base/memory/scoped_ptr.h>
+
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
+
+class EapListener;
 
 class Ethernet : public Device {
  public:
@@ -31,8 +35,16 @@ class Ethernet : public Device {
   virtual void DisconnectFrom(EthernetService *service);
 
  private:
+  friend class EthernetTest;
+
+  void OnEapDetected();
+
   ServiceRefPtr service_;
   bool link_up_;
+
+  // Track whether an EAP authenticator has been detected on this link.
+  bool is_eap_detected_;
+  scoped_ptr<EapListener> eap_listener_;
 
   DISALLOW_COPY_AND_ASSIGN(Ethernet);
 };
