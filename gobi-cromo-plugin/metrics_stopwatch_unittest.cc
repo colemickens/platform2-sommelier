@@ -5,6 +5,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <metrics/metrics_library_mock.h>
 
 #include "metrics_stopwatch.h"
 
@@ -14,17 +15,6 @@ using ::testing::Lt;
 using ::testing::StrEq;
 using ::testing::_;
 
-class MockMetricsServer : public MetricsLibraryInterface {
- public:
-  MOCK_METHOD0(Init,
-      void());
-  MOCK_METHOD5(SendToUMA,
-      bool(const std::string& name, int sample, int min, int max, int nbuckets));
-  MOCK_METHOD3(SendEnumToUMA,
-      bool(const std::string& name, int sample, int max));
-  MOCK_METHOD1(SendUserActionToUMA,
-      bool(const std::string& action));
-};
 
 class MetricsStopwatchTest : public ::testing::Test {
  public:
@@ -32,11 +22,11 @@ class MetricsStopwatchTest : public ::testing::Test {
       s("Test", 0, 2000, 5) {
   }
   void SetUp() {
-    metrics_ = new MockMetricsServer;
+    metrics_ = new MetricsLibraryMock;
     s.SetMetrics(metrics_);
   }
 
-  MockMetricsServer *metrics_;
+  MetricsLibraryMock *metrics_;
   MetricsStopwatch s;
 };
 
