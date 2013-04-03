@@ -386,6 +386,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --log-level=1 \
             --login-manager \
             --login-profile=user \
+            --max-unused-resource-memory-usage-percentage=5 \
             --no-protector \
             --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
