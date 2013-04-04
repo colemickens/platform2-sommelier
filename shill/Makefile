@@ -284,6 +284,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	shill_test_config.o \
 	shill_time.o \
 	socket_info.o \
+	socket_info_reader.o \
 	sockets.o \
 	static_ip_parameters.o \
 	supplicant_bss_proxy.o \
@@ -402,6 +403,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_routing_table.o \
 	mock_rtnl_handler.o \
 	mock_service.o \
+	mock_socket_info_reader.o \
 	mock_sockets.o \
 	mock_store.o \
 	mock_supplicant_bss_proxy.o \
@@ -445,6 +447,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	shims/certificates_unittest.o \
 	shims/netfilter_queue_processor_unittest.o \
 	socket_info_unittest.o \
+	socket_info_reader_unittest.o \
 	static_ip_parameters_unittest.o \
 	technology_unittest.o \
 	traffic_monitor_unittest.o \
