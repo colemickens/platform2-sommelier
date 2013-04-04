@@ -1337,6 +1337,17 @@ void WiFi::PendingTimeoutHandler() {
   CHECK(pending_service_);
   pending_service_->DisconnectWithFailure(
       Service::kFailureOutOfRange, &unused_error);
+
+  // A hidden service may have no endpoints, since wpa_supplicant
+  // failed to attain a CurrentBSS.  If so, the service has no
+  // reference to |this| device and cannot call WiFi::DisconnectFrom()
+  // to reset pending_service_.  In this case, we must perform the
+  // disconnect here ourselves.
+  if (pending_service_) {
+    CHECK(!pending_service_->HasEndpoints());
+    LOG(INFO) << "Hidden service was not found.";
+    DisconnectFrom(pending_service_);
+  }
 }
 
 void WiFi::StartReconnectTimer() {

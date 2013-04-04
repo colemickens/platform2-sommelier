@@ -274,6 +274,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ThrowDBusError() {
     throw DBus::Error("SomeDBusType", "A handy message");
   }
+  void ResetPendingService() {
+    SetPendingService(NULL);
+  }
 
  protected:
   typedef scoped_refptr<MockWiFiService> MockWiFiServiceRefPtr;
@@ -1241,7 +1244,7 @@ TEST_F(WiFiMainTest, DisconnectCurrentServiceWithPending) {
   EXPECT_FALSE(GetPendingTimeout().IsCancelled());
 }
 
-TEST_F(WiFiMainTest, TimeoutPendingService) {
+TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   StartWiFi();
   const base::CancelableClosure &pending_timeout = GetPendingTimeout();
   EXPECT_TRUE(pending_timeout.IsCancelled());
@@ -1249,8 +1252,34 @@ TEST_F(WiFiMainTest, TimeoutPendingService) {
       SetupConnectingService(DBus::Path(), NULL, NULL));
   EXPECT_FALSE(pending_timeout.IsCancelled());
   EXPECT_EQ(service, GetPendingService());
-  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _));
+  // Simulate a service with a wifi_ reference calling DisconnectFrom().
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _))
+      .WillOnce(InvokeWithoutArgs(this, &WiFiObjectTest::ResetPendingService));
+  EXPECT_CALL(*service, HasEndpoints()).Times(0);
+  // DisconnectFrom() should not be called directly from WiFi.
+  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect()).Times(0);
   pending_timeout.callback().Run();
+  Mock::VerifyAndClearExpectations(service);
+}
+
+TEST_F(WiFiMainTest, TimeoutPendingServiceWithoutEndpoints) {
+  StartWiFi();
+  const base::CancelableClosure &pending_timeout = GetPendingTimeout();
+  EXPECT_TRUE(pending_timeout.IsCancelled());
+  MockWiFiServiceRefPtr service(
+      SetupConnectingService(DBus::Path(), NULL, NULL));
+  EXPECT_FALSE(pending_timeout.IsCancelled());
+  EXPECT_EQ(service, GetPendingService());
+  // We expect the service to get a disconnect call, but in this scenario
+  // the service does nothing.
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureOutOfRange, _));
+  EXPECT_CALL(*service, HasEndpoints()).WillOnce(Return(false));
+  // DisconnectFrom() should be called directly from WiFi.
+  EXPECT_CALL(*service, SetState(Service::kStateIdle)).Times(AtLeast(1));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
+  pending_timeout.callback().Run();
+  EXPECT_EQ(NULL, GetPendingService().get());
 }
 
 TEST_F(WiFiMainTest, DisconnectInvalidService) {
