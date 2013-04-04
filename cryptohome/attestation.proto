@@ -248,6 +248,10 @@ message KeyInfo {
   optional bytes device_id = 3;
   // If the key is an EUK, this value is the PCA-issued certificate for the key.
   optional bytes certificate = 4;
+  // If the key is an EUK, this value may hold a SignedPublicKeyAndChallenge
+  // with a random challenge.  The SignedPublicKeyAndChallenge specification is
+  // here: https://developer.mozilla.org/en-US/docs/HTML/Element/keygen.
+  optional bytes signed_public_key_and_challenge = 5;
 }
 
 enum KeyType {
