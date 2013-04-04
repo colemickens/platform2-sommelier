@@ -7,22 +7,25 @@
 
 #include <base/callback.h>
 #include <base/cancelable_callback.h>
-#include <gtest/gtest_prod.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
+
+#include <map>
 
 #include "shill/refptr_types.h"
+#include "shill/socket_info.h"
 
 namespace shill {
 
 class EventDispatcher;
+class SocketInfoReader;
 
 // TrafficMonitor detects certain abnormal scenarios on a network interface
-// notifies an observer of various scenarios via callbacks.
+// and notifies an observer of various scenarios via callbacks.
 class TrafficMonitor {
  public:
-  typedef base::Closure NoIncomingTrafficCallback;
+  typedef base::Closure TcpOutTrafficNotRoutedCallback;
 
-  TrafficMonitor(const DeviceRefPtr &device,
-                 EventDispatcher *dispatcher);
+  TrafficMonitor(const DeviceRefPtr &device, EventDispatcher *dispatcher);
   virtual ~TrafficMonitor();
 
   // Starts traffic monitoring on the selected device.
@@ -31,15 +34,46 @@ class TrafficMonitor {
   // Stops traffic monitoring on the selected device.
   virtual void Stop();
 
-  void set_no_incoming_traffic_callback(
-      const NoIncomingTrafficCallback &callback) {
-    no_incoming_traffic_callback_ = callback;
+  // Sets the callback to invoke, if the traffic monitor detects that too many
+  // packets are failing to get transmitted over a TCP connection.
+  void set_tcp_out_traffic_not_routed_callback(
+      const TcpOutTrafficNotRoutedCallback &callback) {
+    outgoing_tcp_packets_not_routed_callback_ = callback;
   }
 
  private:
   friend class TrafficMonitorTest;
+  FRIEND_TEST(TrafficMonitorTest,
+      BuildIPPortToTxQueueLengthInvalidConnectionState);
+  FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidDevice);
+  FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthInvalidTimerState);
+  FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries);
+  FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid);
+  FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero);
+  FRIEND_TEST(TrafficMonitorTest,
+      SampleTrafficStuckTxQueueIncreasingQueueLength);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength);
+  FRIEND_TEST(TrafficMonitorTest,
+      SampleTrafficStuckTxQueueVariousQueueLengths);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueNoConnection);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueStateChanged);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficUnstuckTxQueueZeroQueueLength);
   FRIEND_TEST(TrafficMonitorTest, StartAndStop);
-  FRIEND_TEST(TrafficMonitorTest, SampleTraffic);
+
+  typedef std::map<std::string, uint64> IPPortToTxQueueLengthMap;
+
+  // The minimum number of samples that indicate an abnormal scenario
+  // required to trigger the callback.
+  static const int kMinimumFailedSamplesToTrigger;
+  // The frequency at which to sample the TCP connections.
+  static const int64 kSamplingIntervalMilliseconds;
+
+  // Builds map of IP address/port to tx queue lengths from socket info vector.
+  // Skips sockets not on device, tx queue length is 0, connection state is not
+  // established or does not have a pending retransmit timer.
+  void BuildIPPortToTxQueueLength(
+      const std::vector<SocketInfo> &socket_infos,
+      IPPortToTxQueueLengthMap *tx_queue_length);
 
   // Samples traffic (e.g. receive and transmit byte counts) on the
   // selected device and invokes appropriate callbacks when certain
@@ -48,30 +82,26 @@ class TrafficMonitor {
 
   // The device on which to perform traffic monitoring.
   DeviceRefPtr device_;
+
   // Dispatcher on which to create delayed tasks.
   EventDispatcher *dispatcher_;
+
   // Callback to invoke when TrafficMonitor needs to sample traffic
   // of the network interface.
   base::CancelableClosure sample_traffic_callback_;
 
-  // Receive byte count obtained in the last sample when SampleTraffic()
-  // was invoked.
-  uint64 last_receive_byte_count_;
-  // Transmit byte count obtained in the last sample when SampleTraffic()
-  // was invoked.
-  uint64 last_transmit_byte_count_;
-  // Number of samples where both the receive and transmit byte counts
-  // remain unchanged.
-  int no_traffic_count_;
-  // Number of samples where the transmit byte count changes but the
-  // receive byte count remains unchanged.
-  int no_incoming_traffic_count_;
-  // Callback to invoke when TrafficMonitor detects that there is
-  // outgoing traffic but no incoming traffic.
-  NoIncomingTrafficCallback no_incoming_traffic_callback_;
-  // Set to true after |no_incoming_traffic_callback_| is invoked
-  // and reset to false after |no_incoming_traffic_count_| is reset to 0.
-  bool no_incoming_traffic_callback_invoked_;
+  // Callback to invoke when we detect that the send queue has been increasing
+  // on an ESTABLISHED TCP connection through the network interface.
+  TcpOutTrafficNotRoutedCallback outgoing_tcp_packets_not_routed_callback_;
+
+  // Reads and parses socket information from the system.
+  scoped_ptr<SocketInfoReader> socket_info_reader_;
+
+  // Number of consecutive failure cases sampled.
+  int accummulated_failure_samples_;
+
+  // Map of tx queue lengths from previous sampling pass.
+  IPPortToTxQueueLengthMap old_tx_queue_lengths_;
 
   DISALLOW_COPY_AND_ASSIGN(TrafficMonitor);
 };

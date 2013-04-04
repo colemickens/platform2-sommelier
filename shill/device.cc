@@ -753,6 +753,7 @@ void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
 }
 
 bool Device::StartTrafficMonitor() {
+  SLOG(Device, 2) << __func__;
   if (!traffic_monitor_enabled_) {
     SLOG(Device, 2) << "Device " << FriendlyName()
                     << ": Traffic Monitoring is disabled.";
@@ -761,8 +762,8 @@ bool Device::StartTrafficMonitor() {
 
   if (!traffic_monitor_.get()) {
     traffic_monitor_.reset(new TrafficMonitor(this, dispatcher_));
-    traffic_monitor_->set_no_incoming_traffic_callback(
-        Bind(&Device::OnNoIncomingTraffic, weak_ptr_factory_.GetWeakPtr()));
+    traffic_monitor_->set_tcp_out_traffic_not_routed_callback(
+        Bind(&Device::OnNoNetworkRouting, weak_ptr_factory_.GetWeakPtr()));
   }
 
   SLOG(Device, 2) << "Device " << FriendlyName()
@@ -772,12 +773,13 @@ bool Device::StartTrafficMonitor() {
 }
 
 void Device::StopTrafficMonitor() {
+  SLOG(Device, 2) << __func__;
   SLOG(Device, 2) << "Device " << FriendlyName()
                   << ": Traffic Monitor stopping.";
   traffic_monitor_.reset();
 }
 
-void Device::OnNoIncomingTraffic() {
+void Device::OnNoNetworkRouting() {
   SLOG(Device, 2) << "Device " << FriendlyName()
                   << ": Traffic Monitor detects there is no incoming traffic.";
 }

@@ -82,7 +82,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
       const base::Callback<void(const IPConfigRefPtr&, bool)> &callback);
 
   void set_properties(const Properties &props) { properties_ = props; }
-  const Properties &properties() const { return properties_; }
+  virtual const Properties &properties() const { return properties_; }
 
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a

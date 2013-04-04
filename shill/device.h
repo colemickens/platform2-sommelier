@@ -154,7 +154,7 @@ class Device : public base::RefCounted<Device> {
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString(Error *error);
 
-  const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
+  virtual const IPConfigRefPtr &ipconfig() const { return ipconfig_; }
   void set_ipconfig(const IPConfigRefPtr &config) { ipconfig_ = config; }
 
   const std::string &FriendlyName() const;
@@ -347,9 +347,9 @@ class Device : public base::RefCounted<Device> {
   // Stops traffic monitoring if it is running.
   void StopTrafficMonitor();
 
-  // Responds to a TrafficMonitor no-incoming-traffic failure in a
+  // Responds to a TrafficMonitor no-network-routing failure in a
   // Device-specific manner.
-  virtual void OnNoIncomingTraffic();
+  virtual void OnNoNetworkRouting();
 
   // Set the state of the selected service, with checks to make sure
   // the service is already in a connected state before doing so.

@@ -20,6 +20,7 @@ class MockIPConfig : public IPConfig {
                const std::string &device_name);
   virtual ~MockIPConfig();
 
+  MOCK_CONST_METHOD0(properties, const Properties &(void));
   MOCK_METHOD0(RequestIP, bool(void));
   MOCK_METHOD0(RenewIP, bool(void));
   MOCK_METHOD0(ReleaseIP, bool(void));
@@ -30,6 +31,10 @@ class MockIPConfig : public IPConfig {
                           const std::string &id_suffix));
 
  private:
+  const Properties &real_properties() {
+    return IPConfig::properties();
+  }
+
   DISALLOW_COPY_AND_ASSIGN(MockIPConfig);
 };
 

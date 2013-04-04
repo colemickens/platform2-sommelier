@@ -5,41 +5,30 @@
 #include "shill/traffic_monitor.h"
 
 #include <base/bind.h>
+#include <base/stringprintf.h>
 
 #include "shill/device.h"
 #include "shill/device_info.h"
 #include "shill/event_dispatcher.h"
+#include "shill/logging.h"
+#include "shill/socket_info_reader.h"
+
+using base::StringPrintf;
+using std::string;
+using std::vector;
 
 namespace shill {
 
-namespace {
-
-// The sampling interval should be greater than or equal to the interval
-// at which DeviceInfo refreshes the receive and transmit byte counts.
-const int64 kSamplingIntervalMilliseconds =
-    DeviceInfo::kRequestLinkStatisticsIntervalMilliseconds;
-
-// When there are |kNoTrafficThreshold| consecutive samples where both
-// the receive and transmit byte counts remain unchanged, it resets
-// the detection of "no incoming traffic" scenario.
-const int kNoTrafficThreshold = 9;
-
-// When there are |kNoIncomingTrafficThreshold| samples where the
-// transmit byte count changes but the receive byte count remains
-// unchanged, a "no incoming traffic" scenario is flagged.
-const int kNoIncomingTrafficThreshold = 2;
-
-}  // namespace
+// static
+const int TrafficMonitor::kMinimumFailedSamplesToTrigger = 2;
+const int64 TrafficMonitor::kSamplingIntervalMilliseconds = 5000;
 
 TrafficMonitor::TrafficMonitor(const DeviceRefPtr &device,
                                EventDispatcher *dispatcher)
     : device_(device),
       dispatcher_(dispatcher),
-      last_receive_byte_count_(0),
-      last_transmit_byte_count_(0),
-      no_traffic_count_(0),
-      no_incoming_traffic_count_(0),
-      no_incoming_traffic_callback_invoked_(false) {
+      socket_info_reader_(new SocketInfoReader),
+      accummulated_failure_samples_(0) {
 }
 
 TrafficMonitor::~TrafficMonitor() {
@@ -47,10 +36,8 @@ TrafficMonitor::~TrafficMonitor() {
 }
 
 void TrafficMonitor::Start() {
+  SLOG(Link, 2) << __func__;
   Stop();
-
-  last_receive_byte_count_ = device_->GetReceiveByteCount();
-  last_transmit_byte_count_ = device_->GetTransmitByteCount();
 
   sample_traffic_callback_.Reset(base::Bind(&TrafficMonitor::SampleTraffic,
                                             base::Unretained(this)));
@@ -59,50 +46,66 @@ void TrafficMonitor::Start() {
 }
 
 void TrafficMonitor::Stop() {
+  SLOG(Link, 2) << __func__;
   sample_traffic_callback_.Cancel();
-  last_receive_byte_count_ = 0;
-  last_transmit_byte_count_ = 0;
-  no_traffic_count_ = 0;
-  no_incoming_traffic_count_ = 0;
-  no_incoming_traffic_callback_invoked_ = false;
+  accummulated_failure_samples_ = 0;
+}
+
+void TrafficMonitor::BuildIPPortToTxQueueLength(
+    const vector<SocketInfo> &socket_infos,
+    IPPortToTxQueueLengthMap *tx_queue_lengths) {
+  string device_ip_address = device_->ipconfig()->properties().address;
+  vector<SocketInfo>::const_iterator it;
+  for (it = socket_infos.begin(); it != socket_infos.end(); ++it) {
+    if (it->local_ip_address().ToString() != device_ip_address ||
+        it->transmit_queue_value() == 0 ||
+        it->connection_state() != SocketInfo::kConnectionStateEstablished ||
+        it->timer_state() != SocketInfo::kTimerStateRetransmitTimerPending)
+      continue;
+
+    string local_ip_port =
+        StringPrintf("%s:%d",
+                     it->local_ip_address().ToString().c_str(),
+                     it->local_port());
+    (*tx_queue_lengths)[local_ip_port] = it->transmit_queue_value();
+  }
 }
 
 void TrafficMonitor::SampleTraffic() {
-  uint64 current_receive_byte_count = device_->GetReceiveByteCount();
-  uint64 current_transmit_byte_count = device_->GetTransmitByteCount();
-
-  if (current_receive_byte_count != last_receive_byte_count_) {
-    // There is incoming traffic. Reset the "no incoming traffic" detection.
-    no_traffic_count_ = 0;
-    no_incoming_traffic_count_ = 0;
-    no_incoming_traffic_callback_invoked_ = false;
-  } else if (current_transmit_byte_count != last_transmit_byte_count_) {
-    // There is outgoing traffic but no incoming traffic.
-    no_traffic_count_ = 0;
-    no_incoming_traffic_count_++;
-  } else if (++no_traffic_count_ == kNoTrafficThreshold) {
-    // There is neither incoming nor outgoing traffic.
-    //
-    // If neither the receive nor transmit byte count has changed for
-    // |kNoTrafficThreshold| consecutive sampling periods, reset the
-    // "no incoming traffic" detection.
-    no_traffic_count_ = 1;
-    no_incoming_traffic_count_ = 0;
-    no_incoming_traffic_callback_invoked_ = false;
+  SLOG(Link, 2) << __func__;
+  vector<SocketInfo> socket_infos;
+  if (!socket_info_reader_->LoadTcpSocketInfo(&socket_infos) ||
+      socket_infos.empty()) {
+    SLOG(Link, 2) << __func__ << ": Empty socket info";
+    accummulated_failure_samples_ = 0;
+    return;
   }
-
-  // Only invoke the "no incoming traffic" callback once when we *start*
-  // to see the "no incoming traffic" scenario.
-  if (no_incoming_traffic_count_ == kNoIncomingTrafficThreshold) {
-    if (!no_incoming_traffic_callback_invoked_ &&
-        !no_incoming_traffic_callback_.is_null()) {
-      no_incoming_traffic_callback_.Run();
-      no_incoming_traffic_callback_invoked_ = true;
+  IPPortToTxQueueLengthMap curr_tx_queue_lengths;
+  BuildIPPortToTxQueueLength(socket_infos, &curr_tx_queue_lengths);
+  if (curr_tx_queue_lengths.empty()) {
+    SLOG(Link, 2) << __func__ << ": No interesting socket info";
+    accummulated_failure_samples_ = 0;
+  } else {
+    bool congested_tx_queues = true;
+    IPPortToTxQueueLengthMap::iterator old_tx_queue_it;
+    for (old_tx_queue_it = old_tx_queue_lengths_.begin();
+         old_tx_queue_it != old_tx_queue_lengths_.end();
+         ++old_tx_queue_it) {
+      IPPortToTxQueueLengthMap::iterator curr_tx_queue_it =
+          curr_tx_queue_lengths.find(old_tx_queue_it->first);
+      if (curr_tx_queue_it == curr_tx_queue_lengths.end() ||
+          curr_tx_queue_it->second < old_tx_queue_it->second) {
+        congested_tx_queues = false;
+        break;
+      }
+    }
+    if (congested_tx_queues &&
+        ++accummulated_failure_samples_ == kMinimumFailedSamplesToTrigger) {
+      LOG(WARNING) << "Congested tx queues detected, out-of-credits?";
+      outgoing_tcp_packets_not_routed_callback_.Run();
     }
   }
-
-  last_receive_byte_count_ = current_receive_byte_count;
-  last_transmit_byte_count_ = current_transmit_byte_count;
+  old_tx_queue_lengths_ = curr_tx_queue_lengths;
 
   dispatcher_->PostDelayedTask(sample_traffic_callback_.callback(),
                                kSamplingIntervalMilliseconds);
