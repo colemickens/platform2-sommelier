@@ -216,7 +216,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         dbus_manager_(new NiceMock<MockDBusManager>()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
-            new NiceMock<MockSupplicantInterfaceProxy>(wifi_)),
+            new NiceMock<MockSupplicantInterfaceProxy>()),
         proxy_factory_(this) {
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
 

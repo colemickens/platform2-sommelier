@@ -8,9 +8,7 @@
 
 namespace shill {
 
-MockSupplicantInterfaceProxy::MockSupplicantInterfaceProxy(
-    const WiFiRefPtr &wifi) : wifi_(wifi) {}
-
+MockSupplicantInterfaceProxy::MockSupplicantInterfaceProxy() {}
 MockSupplicantInterfaceProxy::~MockSupplicantInterfaceProxy() {}
 
 }  // namespace shill

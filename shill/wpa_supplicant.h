@@ -68,6 +68,7 @@ class WPASupplicant {
   static const char kInterfaceStateGroupHandshake[];
   static const char kInterfaceStateInactive[];
   static const char kInterfaceStateScanning[];
+  static const char kKeyManagementIeee8021X[];
   static const char kKeyManagementMethodSuffixEAP[];
   static const char kKeyManagementMethodSuffixPSK[];
   static const char kKeyModeNone[];
@@ -96,6 +97,7 @@ class WPASupplicant {
   static const char kNetworkPropertyEapCaCertId[];
   static const char kNetworkPropertyEapPin[];
   static const char kNetworkPropertyEapSubjectMatch[];
+  static const char kNetworkPropertyEapolFlags[];
   static const char kNetworkPropertyEngine[];
   static const char kNetworkPropertyEngineId[];
   static const char kNetworkPropertyFrequency[];

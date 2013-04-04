@@ -18,7 +18,7 @@ namespace shill {
 
 class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
  public:
-  explicit MockSupplicantInterfaceProxy(const WiFiRefPtr &wifi);
+  explicit MockSupplicantInterfaceProxy();
   virtual ~MockSupplicantInterfaceProxy();
 
   MOCK_METHOD1(AddNetwork, ::DBus::Path(
@@ -37,10 +37,6 @@ class MockSupplicantInterfaceProxy : public SupplicantInterfaceProxyInterface {
   MOCK_METHOD1(SetDisableHighBitrates, void(bool disable_high_bitrates));
 
  private:
-  // wifi_ is not used explicitly but its presence here tests that WiFi::Stop
-  // properly removes cyclic references.
-  WiFiRefPtr wifi_;
-
   DISALLOW_COPY_AND_ASSIGN(MockSupplicantInterfaceProxy);
 };
 

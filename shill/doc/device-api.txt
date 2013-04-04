@@ -430,6 +430,18 @@ Properties	string Address [readonly]
 				     of the localized name. If "localized_name" exists,
 				     then this property will always exist as well.
 
+		bool EapAuthenticatorDetected [readonly]
+
+			(Ethernet only) Indicates whether an EAP (802.1X)
+			authenticator has been detected on this link.
+			This may mean that EAP credentials are necessary
+			to gain full access to this network.
+
+		bool EapAuthenticationCompleted [readonly]
+
+			(Ethernet only) Indicates whether an EAP (802.1X)
+			authentication is currently valid on this interface.
+
 		string Interface [readonly]
 
 			The device interface (for example "eth0" etc.)

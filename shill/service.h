@@ -291,13 +291,13 @@ class Service : public base::RefCounted<Service> {
 
   // Examines the EAP credentials for the service and returns true if a
   // connection attempt can be made.
-  bool Is8021xConnectable() const;
+  virtual bool Is8021xConnectable() const;
 
   // Add an EAP certification id |name| at position |depth| in the stack.
   // Returns true if entry was added, false otherwise.
   virtual bool AddEAPCertification(const std::string &name, size_t depth);
   // Clear all EAP certification elements.
-  void ClearEAPCertification();
+  virtual void ClearEAPCertification();
 
   // The inherited class should register any custom metrics in this method.
   virtual void InitializeCustomMetrics() const {}

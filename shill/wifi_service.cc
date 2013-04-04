@@ -1017,7 +1017,7 @@ bool WiFiService::Is8021x() const {
 
   // Dynamic WEP + 802.1x.
   if (security_ == flimflam::kSecurityWep &&
-      GetEAPKeyManagement() == "IEEE8021X")
+      GetEAPKeyManagement() == WPASupplicant::kKeyManagementIeee8021X)
     return true;
   return false;
 }
