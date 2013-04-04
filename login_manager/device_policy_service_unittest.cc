@@ -927,4 +927,44 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
             settings.SerializeAsString());
 }
 
+TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
+  scoped_ptr<NssUtil> nss(new MockNssUtil);
+  InitService(nss.get());
+
+  em::ChromeDeviceSettingsProto settings;
+  // Some valid flags.
+  settings.mutable_start_up_flags()->add_flags("a");
+  settings.mutable_start_up_flags()->add_flags("bb");
+  settings.mutable_start_up_flags()->add_flags("-c");
+  settings.mutable_start_up_flags()->add_flags("--d");
+  // Some invalid ones.
+  settings.mutable_start_up_flags()->add_flags("");
+  settings.mutable_start_up_flags()->add_flags("-");
+  settings.mutable_start_up_flags()->add_flags("--");
+  ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
+  EXPECT_CALL(key_, Verify(_, _, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Persist())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*store_, Set(_)).Times(AnyNumber());
+  EXPECT_CALL(*store_, Get())
+      .WillRepeatedly(ReturnRef(policy_proto_));
+  EXPECT_CALL(completion_, Success()).Times(AnyNumber());
+  EXPECT_CALL(completion_, Failure(_)).Times(AnyNumber());
+  EXPECT_TRUE(
+      service_->Store(reinterpret_cast<const uint8*>(policy_str_.c_str()),
+                      policy_str_.size(), &completion_,
+                      PolicyService::KEY_CLOBBER));
+  base::RunLoop().RunUntilIdle();
+
+  std::vector<std::string> flags = service_->GetStartUpFlags();
+  EXPECT_EQ(6, flags.size());
+  EXPECT_EQ("--policy-switches-begin", flags[0]);
+  EXPECT_EQ("--a", flags[1]);
+  EXPECT_EQ("--bb", flags[2]);
+  EXPECT_EQ("-c", flags[3]);
+  EXPECT_EQ("--d", flags[4]);
+  EXPECT_EQ("--policy-switches-end", flags[5]);
+}
+
 }  // namespace login_manager

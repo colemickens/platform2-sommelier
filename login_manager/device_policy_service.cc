@@ -215,7 +215,14 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
     policy_args.push_back(kBeginPolicyFlagsFlag);
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
          it != flags.end(); ++it) {
-      policy_args.push_back(*it);
+      std::string flag(*it);
+      // Ignore empty flags.
+      if (flag.empty() || flag == "-" || flag == "--")
+        continue;
+      // Check if the flag doesn't start with proper prefix and add it.
+      if (flag.length() <= 1 || flag[0] != '-')
+        flag = std::string("--").append(flag);
+      policy_args.push_back(flag);
     }
     policy_args.push_back(kEndPolicyFlagsFlag);
   }
