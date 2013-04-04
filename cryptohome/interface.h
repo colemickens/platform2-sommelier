@@ -238,6 +238,18 @@ gboolean cryptohome_tpm_attestation_sign_simple_challenge(
     GArray* challenge,
     gint *OUT_async_id,
     GError **error);
+gboolean cryptohome_tpm_attestation_get_key_payload(Cryptohome *self,
+                                                    gboolean is_user_specific,
+                                                    gchar* key_name,
+                                                    GArray** OUT_payload,
+                                                    gboolean* OUT_success,
+                                                    GError **error);
+gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
+                                                    gboolean is_user_specific,
+                                                    gchar* key_name,
+                                                    GArray* payload,
+                                                    gboolean* OUT_success,
+                                                    GError **error);
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

@@ -572,24 +572,8 @@ bool Attestation::FinishCertRequest(const SecureBlob& pca_response,
       response_pb.certified_key_credential());
   certified_key_pb.set_intermediate_ca_cert(response_pb.intermediate_ca_cert());
   certified_key_pb.set_key_name(key_name);
-  if (is_user_specific) {
-    string tmp;
-    if (!certified_key_pb.SerializeToString(&tmp)) {
-      LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
-      return false;
-    }
-    SecureBlob certified_key = ConvertStringToBlob(tmp);
-    ClearString(&tmp);
-    if (!user_key_store_->Write(key_name, certified_key)) {
-      LOG(ERROR) << __func__ << ": Failed to store certified key for user.";
-      return false;
-    }
-  } else {
-    if (!AddDeviceKey(key_name, certified_key_pb)) {
-      LOG(ERROR) << __func__ << ": Failed to store certified key for device.";
-      return false;
-    }
-  }
+  if (!SaveKey(is_user_specific, key_name, certified_key_pb))
+    return false;
   LOG(INFO) << "Attestation: Certified key credential received and stored.";
   return CreatePEMCertificateChain(response_pb.certified_key_credential(),
                                    response_pb.intermediate_ca_cert(),
@@ -765,6 +749,31 @@ bool Attestation::RegisterKey(bool is_user_specific, const string& key_name) {
     LOG(WARNING) << __func__ << ": Failed to delete registered key.";
   }
   return true;
+}
+
+bool Attestation::GetKeyPayload(bool is_user_specific,
+                                const string& key_name,
+                                SecureBlob* payload) {
+  CertifiedKey key;
+  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+    LOG(ERROR) << __func__ << ": Key not found.";
+    return false;
+  }
+  SecureBlob tmp = ConvertStringToBlob(key.payload());
+  payload->swap(tmp);
+  return true;
+}
+
+bool Attestation::SetKeyPayload(bool is_user_specific,
+                                const string& key_name,
+                                const SecureBlob& payload) {
+  CertifiedKey key;
+  if (!FindKeyByName(is_user_specific, key_name, &key)) {
+    LOG(ERROR) << __func__ << ": Key not found.";
+    return false;
+  }
+  key.set_payload(ConvertBlobToString(payload));
+  return SaveKey(is_user_specific, key_name, key);
 }
 
 SecureBlob Attestation::ConvertStringToBlob(const string& s) {
@@ -1245,6 +1254,30 @@ bool Attestation::FindKeyByName(bool is_user_specific,
   }
   LOG(INFO) << "Key not found: " << key_name;
   return false;
+}
+
+bool Attestation::SaveKey(bool is_user_specific,
+                          const string& key_name,
+                          const CertifiedKey& key) {
+  if (is_user_specific) {
+    string tmp;
+    if (!key.SerializeToString(&tmp)) {
+      LOG(ERROR) << __func__ << ": Failed to serialize protobuf.";
+      return false;
+    }
+    SecureBlob blob = ConvertStringToBlob(tmp);
+    ClearString(&tmp);
+    if (!user_key_store_->Write(key_name, blob)) {
+      LOG(ERROR) << __func__ << ": Failed to store certified key for user.";
+      return false;
+    }
+  } else {
+    if (!AddDeviceKey(key_name, key)) {
+      LOG(ERROR) << __func__ << ": Failed to store certified key for device.";
+      return false;
+    }
+  }
+  return true;
 }
 
 bool Attestation::CreatePEMCertificateChain(const string& leaf_certificate,

@@ -210,6 +210,32 @@ class Attestation : public base::PlatformThread::Delegate {
   //              FinishCertRequest.
   virtual bool RegisterKey(bool is_user_specific, const std::string& key_name);
 
+  // Gets a payload previously set for a key.  If the key exists but no payload
+  // has been set, the payload will be empty.  Returns true on success.
+  //
+  // Parameters
+  //
+  //   is_user_specific - Whether the key is associated with the current user.
+  //   key_name - The key name; this is the same name previously passed to
+  //              FinishCertRequest.
+  //   payload - Receives the payload data.
+  virtual bool GetKeyPayload(bool is_user_specific,
+                             const std::string& key_name,
+                             chromeos::SecureBlob* payload);
+
+  // Sets a payload for a key; any previous payload will be overwritten.
+  // Returns true on success.
+  //
+  // Parameters
+  //
+  //   is_user_specific - Whether the key is associated with the current user.
+  //   key_name - The key name; this is the same name previously passed to
+  //              FinishCertRequest.
+  //   payload - The payload data.
+  virtual bool SetKeyPayload(bool is_user_specific,
+                             const std::string& key_name,
+                             const chromeos::SecureBlob& payload);
+
   // Sets an alternative attestation database location. Useful in testing.
   virtual void set_database_path(const char* path) {
     database_path_ = FilePath(path);
@@ -365,6 +391,11 @@ class Attestation : public base::PlatformThread::Delegate {
   bool FindKeyByName(bool is_user_specific,
                      const std::string& key_name,
                      CertifiedKey* key);
+
+  // Saves a key either in the device or user key store.
+  bool SaveKey(bool is_user_specific,
+               const std::string& key_name,
+               const CertifiedKey& key);
 
   // Assembles a certificate chain in PEM format given a leaf certificate and an
   // intermediate CA certificate.  By convention, the leaf certificate will be

@@ -268,7 +268,16 @@ class Service : public chromeos::dbus::AbstractDbusService,
       GArray* challenge,
       gint *OUT_async_id,
       GError** error);
-
+  virtual gboolean TpmAttestationGetKeyPayload(gboolean is_user_specific,
+                                               gchar* key_name,
+                                               GArray** OUT_payload,
+                                               gboolean* OUT_success,
+                                               GError** error);
+  virtual gboolean TpmAttestationSetKeyPayload(gboolean is_user_specific,
+                                               gchar* key_name,
+                                               GArray* payload,
+                                               gboolean* OUT_success,
+                                               GError** error);
   // Returns the label of the TPM token along with its user PIN.
   virtual gboolean Pkcs11GetTpmTokenInfo(gchar** OUT_label,
                                          gchar** OUT_user_pin,

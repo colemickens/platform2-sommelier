@@ -384,6 +384,30 @@ gboolean cryptohome_tpm_attestation_sign_simple_challenge(
                          challenge,
                          OUT_async_id);
 }
+gboolean cryptohome_tpm_attestation_get_key_payload(Cryptohome *self,
+                                                    gboolean is_user_specific,
+                                                    gchar* key_name,
+                                                    GArray** OUT_payload,
+                                                    gboolean* OUT_success,
+                                                    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationGetKeyPayload,
+                         is_user_specific,
+                         key_name,
+                         OUT_payload,
+                         OUT_success);
+}
+gboolean cryptohome_tpm_attestation_set_key_payload(Cryptohome *self,
+                                                    gboolean is_user_specific,
+                                                    gchar* key_name,
+                                                    GArray* payload,
+                                                    gboolean* OUT_success,
+                                                    GError **error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationSetKeyPayload,
+                         is_user_specific,
+                         key_name,
+                         payload,
+                         OUT_success);
+}
 gboolean cryptohome_pkcs11_get_tpm_token_info(Cryptohome *self,
                                               gchar **OUT_label,
                                               gchar **OUT_user_pin,

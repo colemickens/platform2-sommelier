@@ -1528,6 +1528,45 @@ gboolean Service::TpmAttestationSignSimpleChallenge(
   return TRUE;
 }
 
+gboolean Service::TpmAttestationGetKeyPayload(gboolean is_user_specific,
+                                              gchar* key_name,
+                                              GArray** OUT_payload,
+                                              gboolean* OUT_success,
+                                              GError** error) {
+  *OUT_payload = g_array_new(false, false, sizeof(SecureBlob::value_type));
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  chromeos::SecureBlob blob;
+  *OUT_success = attestation->GetKeyPayload(is_user_specific,
+                                            key_name,
+                                            &blob);
+  if (*OUT_success)
+    g_array_append_vals(*OUT_payload, &blob.front(), blob.size());
+  return TRUE;
+}
+
+gboolean Service::TpmAttestationSetKeyPayload(gboolean is_user_specific,
+                                              gchar* key_name,
+                                              GArray* payload,
+                                              gboolean* OUT_success,
+                                              GError** error) {
+  Attestation* attestation = tpm_init_->get_attestation();
+  if (!attestation) {
+    LOG(ERROR) << "Attestation is not available.";
+    *OUT_success = FALSE;
+    return TRUE;
+  }
+  chromeos::SecureBlob blob(payload->data, payload->len);
+  *OUT_success = attestation->SetKeyPayload(is_user_specific,
+                                            key_name,
+                                            blob);
+  return TRUE;
+}
+
 // Returns true if all Pkcs11 tokens are ready.
 gboolean Service::Pkcs11IsTpmTokenReady(gboolean* OUT_ready, GError** error) {
   // TODO(gauravsh): Give out more information here. The state of PKCS#11

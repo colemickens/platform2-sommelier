@@ -230,6 +230,8 @@ message CertifiedKey {
   optional bytes intermediate_ca_cert = 4;
   // A key name.  This is not necessarily a unique identifier.
   optional bytes key_name = 5;
+  // An arbitrary payload associated with the key.
+  optional bytes payload = 6;
 }
 
 // The data type of the message decrypted from

@@ -200,6 +200,18 @@
       <arg type="ay" name="challenge" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>
+    <method name="TpmAttestationGetKeyPayload">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="payload" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="TpmAttestationSetKeyPayload">
+      <arg type="b" name="is_user_specific" direction="in" />
+      <arg type="s" name="key_name" direction="in" />
+      <arg type="ay" name="payload" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
     <method name="Pkcs11IsTpmTokenReady">
       <arg type="b" name="ready" direction="out" />
     </method>
