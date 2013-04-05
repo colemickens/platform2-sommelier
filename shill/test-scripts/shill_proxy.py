@@ -48,6 +48,8 @@ class ShillProxy(object):
         'Service': ( self.DBUS_TYPE_SERVICE, self.MANAGER_PROPERTY_SERVICES )
     }
 
+    SERVICE_DISCONNECT_TIMEOUT = 5
+
     SERVICE_PROPERTY_GUID = 'GUID'
     SERVICE_PROPERTY_MODE = 'Mode'
     SERVICE_PROPERTY_NAME = 'Name'
@@ -263,6 +265,45 @@ class ShillProxy(object):
         logging.info('Connected to WiFi service.')
         return (True, discovery_time, association_time, configuration_time,
                 'SUCCESS(Connection successful)')
+
+
+    def disconnect_from_wifi_network(self, ssid, timeout=None):
+        """Disconnect from the specified WiFi network.
+
+        Method will succeed if it observes the specified network in the idle
+        state after calling Disconnect.
+
+        @param ssid string name of network to disconnect.
+        @param timeout float number of seconds to wait for idle.
+        @return tuple(success, duration, reason) where:
+            success is a bool (True on success).
+            duration is a float number of seconds the operation took.
+            reason is a string containing an informative error on failure.
+
+        """
+        if timeout is None:
+            timeout = self.SERVICE_DISCONNECT_TIMEOUT
+        service_description = {self.SERVICE_PROPERTY_TYPE: 'wifi',
+                               self.SERVICE_PROPERTY_NAME: ssid}
+        try:
+            service_path = self.manager.FindMatchingService(service_description)
+        except dbus.exceptions.DBusException, e:
+            return (False,
+                    0.0,
+                    'Failed to disconnect from %s, service not found.' % ssid)
+
+        service = self.get_dbus_object(self.DBUS_TYPE_SERVICE, service_path)
+        service.Disconnect()
+        result = self.wait_for_property_in(service,
+                                           self.SERVICE_PROPERTY_STATE,
+                                           ('idle',),
+                                           timeout)
+        (successful, final_state, duration) = result
+        message = 'Success.'
+        if not successful:
+            message = ('Failed to disconnect from %s, '
+                       'timed out in state: %s.' % (ssid, final_state))
+        return (successful, duration, message)
 
 
     def find_object(self, object_type, properties):

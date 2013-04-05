@@ -1,0 +1,109 @@
+#!/usr/bin/python
+
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import sys
+
+import shill_proxy
+
+def usage():
+    """ Prints a usage message and returns False. """
+    cmd = sys.argv[0]
+    print 'Usage:'
+    print cmd, 'connect <ssid> [passphrase] [security]'
+    print '    |security| defaults to "psk" when |passphrase|',
+    print 'is given without |security|'
+    print
+    print cmd, 'disconnect <ssid> [timeout seconds]'
+    return False
+
+
+def connect(ssid, security, passphrase, save_credentials):
+    """Attempt to connect to a WiFi network.
+
+    Blocks until we connect successfully to a WiFi network described
+    by the given parameters or time out while attempting to do so.
+
+    @param ssid string Name of the network to connect to.
+    @param security string security type of the network to connect to.
+    @param passphrase string password or key of the network.
+    @param save_credentials bool True if credentials should be saved.
+    @return True upon success, False otherwise.
+
+    """
+    shill = shill_proxy.ShillProxy()
+    result = shill.connect_to_wifi_network(ssid,
+                                           security,
+                                           passphrase,
+                                           save_credentials)
+    (successful, discovery, association, configuration, reason) = result
+    if successful:
+        print 'Operation succeeded.'
+    else:
+        print 'Operation failed. (%s)' % reason
+    print 'Discovery time: %f.' % discovery
+    print 'Association time: %f.' % association
+    print 'Configuration time: %f.' % configuration
+    return successful
+
+
+def disconnect(ssid, timeout=None):
+    """Disconnect from the specified network.
+
+    Disconnect from a network with name |ssid|.  Note that this
+    method will not fail if we're already disconnected.
+
+    @param ssid string Name of the network to disconnect from.
+    @param timeout float number of seconds to wait for transition
+            to idle state.
+    @return True upon seeing network is in idle state.
+
+    """
+    shill = shill_proxy.ShillProxy()
+    result = shill.disconnect_from_wifi_network(ssid, timeout)
+    (successful, duration, reason) = result
+    if successful:
+        print 'Operation succeeded.'
+    else:
+        print 'Operation failed: %s.' % reason
+    print 'Disconnect time: %f.' % duration
+    return successful
+
+
+def main(args):
+    """Main method for this script.
+
+    @param args list of arguments to the script, not including script name.
+    @return True on success, False otherwise.
+
+    """
+    if len(sys.argv) < 2:
+        return usage()
+    command = args[0]
+    ssid = args[1]
+
+    if command == 'connect':
+      security = 'none'
+      passphrase = ''
+      save_credentials = False
+      if len(args) > 2:
+          passphrase = args[2]
+          security = 'psk'
+      if len(args) > 3:
+          security = args[3]
+      return connect(ssid, security, passphrase, save_credentials)
+
+    if command == 'disconnect':
+        timeout=None
+        if len(args) > 2:
+            timeout = float(args[2])
+        return disconnect(ssid, timeout)
+
+    return usage()
+
+
+if __name__ == '__main__':
+    if not main(sys.argv[1:]):
+      sys.exit(1)
