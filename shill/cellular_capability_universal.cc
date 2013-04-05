@@ -1414,7 +1414,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   DBusPropertiesMap::const_iterator it =
       properties.find(MM_MODEM_PROPERTY_UNLOCKRETRIES);
   if (it != properties.end()) {
-    lock_retries = it->second;
+    lock_retries = it->second.operator LockRetryData();
     locks_changed = true;
   }
   if (locks_changed)
