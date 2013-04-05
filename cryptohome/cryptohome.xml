@@ -191,6 +191,7 @@
       <arg type="s" name="key_name" direction="in" />
       <arg type="s" name="domain" direction="in" />
       <arg type="ay" name="device_id" direction="in" />
+      <arg type="b" name="include_signed_public_key" direction="in" />
       <arg type="ay" name="challenge" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>

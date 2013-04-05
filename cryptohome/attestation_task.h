@@ -107,6 +107,7 @@ class SignChallengeTask : public AttestationTask {
                     const std::string& key_name,
                     const std::string& domain,
                     const chromeos::SecureBlob& device_id,
+                    bool include_signed_public_key,
                     const chromeos::SecureBlob& challenge);
   virtual ~SignChallengeTask();
 
@@ -118,6 +119,7 @@ class SignChallengeTask : public AttestationTask {
   std::string key_name_;
   std::string domain_;
   chromeos::SecureBlob device_id_;
+  bool include_signed_public_key_;
   chromeos::SecureBlob challenge_;
 
   DISALLOW_COPY_AND_ASSIGN(SignChallengeTask);

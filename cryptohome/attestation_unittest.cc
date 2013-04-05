@@ -375,6 +375,7 @@ TEST_F(AttestationTest, EMKChallenge) {
                                                     "test",
                                                     "test_domain",
                                                     SecureBlob("test_id"),
+                                                    false,
                                                     bad_prefix_challenge,
                                                     &blob));
   SecureBlob challenge = GetEnterpriseChallenge("EnterpriseKeyChallenge", true);
@@ -382,6 +383,7 @@ TEST_F(AttestationTest, EMKChallenge) {
                                                    "test",
                                                    "test_domain",
                                                    SecureBlob("test_id"),
+                                                   false,
                                                    challenge,
                                                    &blob));
   EXPECT_TRUE(VerifyEnterpriseChallenge(blob,
@@ -406,6 +408,7 @@ TEST_F(AttestationTest, EUKChallenge) {
                                                    "test",
                                                    "test_domain",
                                                    SecureBlob("test_id"),
+                                                   true,
                                                    challenge,
                                                    &blob));
   EXPECT_TRUE(VerifyEnterpriseChallenge(blob,

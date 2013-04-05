@@ -360,6 +360,7 @@ gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
     gchar* key_name,
     gchar* domain,
     GArray* device_id,
+    gboolean include_signed_public_key,
     GArray* challenge,
     gint *OUT_async_id,
     GError **error) {
@@ -368,6 +369,7 @@ gboolean cryptohome_tpm_attestation_sign_enterprise_challenge(
                          key_name,
                          domain,
                          device_id,
+                         include_signed_public_key,
                          challenge,
                          OUT_async_id);
 }

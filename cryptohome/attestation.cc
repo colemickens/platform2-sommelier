@@ -9,6 +9,7 @@
 
 #include <arpa/inet.h>
 #include <base/stl_util.h>
+#include <base/string_number_conversions.h>
 #include <base/time.h>
 #include <chromeos/secure_blob.h>
 #include <openssl/evp.h>
@@ -638,6 +639,7 @@ bool Attestation::SignEnterpriseChallenge(
       const string& key_name,
       const string& domain,
       const SecureBlob& device_id,
+      bool include_signed_public_key,
       const SecureBlob& challenge,
       SecureBlob* response) {
   CertifiedKey key;
@@ -683,6 +685,14 @@ bool Attestation::SignEnterpriseChallenge(
       return false;
     }
     key_info.set_certificate(ConvertBlobToString(certificate_chain));
+  }
+  if (is_user_specific && include_signed_public_key) {
+    SecureBlob spkac;
+    if (!CreateSignedPublicKey(key, &spkac)) {
+      LOG(ERROR) << __func__ << ": Failed to create signed public key.";
+      return false;
+    }
+    key_info.set_signed_public_key_and_challenge(ConvertBlobToString(spkac));
   }
   if (!EncryptEnterpriseKeyInfo(key_info,
                                 response_pb.mutable_encrypted_key_info())) {
@@ -1437,6 +1447,78 @@ scoped_ptr<RSA, Attestation::RSADeleter> Attestation::CreateRSAFromHexModulus(
   return rsa.Pass();
 }
 
+bool Attestation::CreateSignedPublicKey(
+    const CertifiedKey& key,
+    chromeos::SecureBlob* signed_public_key) {
+  // Get the certified public key as an EVP_PKEY.
+  const unsigned char* asn1_ptr =
+      reinterpret_cast<const unsigned char*>(key.public_key().data());
+  scoped_ptr<RSA, RSADeleter> rsa(
+      d2i_RSAPublicKey(NULL, &asn1_ptr, key.public_key().size()));
+  if (!rsa.get())
+    return false;
+  scoped_ptr<EVP_PKEY, EVP_PKEYDeleter> public_key(EVP_PKEY_new());
+  if (!public_key.get())
+    return false;
+  EVP_PKEY_assign_RSA(public_key.get(), rsa.release());
+
+  // Fill in the public key.
+  scoped_ptr<NETSCAPE_SPKI, NETSCAPE_SPKIDeleter> spki(NETSCAPE_SPKI_new());
+  if (!spki.get())
+    return false;
+  if (!NETSCAPE_SPKI_set_pubkey(spki.get(), public_key.get()))
+    return false;
+
+  // Fill in a random challenge.
+  SecureBlob challenge;
+  if (!tpm_->GetRandomData(kNonceSize, &challenge))
+    return false;
+  string challenge_hex = base::HexEncode(challenge.data(), challenge.size());
+  if (!ASN1_STRING_set(spki.get()->spkac->challenge,
+                       challenge_hex.data(),
+                       challenge_hex.size()))
+    return false;
+
+  // Generate the signature.
+  unsigned char* buffer = NULL;
+  int length = i2d_NETSCAPE_SPKAC(spki.get()->spkac, &buffer);
+  if (length <= 0)
+    return false;
+  SecureBlob data_to_sign(buffer, length);
+  OPENSSL_free(buffer);
+  SecureBlob der_header(kSha256DigestInfo, arraysize(kSha256DigestInfo));
+  SecureBlob der_encoded_input = SecureCat(der_header,
+                                           CryptoLib::Sha256(data_to_sign));
+  SecureBlob signature;
+  if (!tpm_->Sign(ConvertStringToBlob(key.key_blob()),
+                  der_encoded_input,
+                  &signature))
+    return false;
+
+  // Fill in the signature and algorithm.
+  buffer = reinterpret_cast<unsigned char*>(OPENSSL_malloc(signature.size()));
+  if (!buffer)
+    return false;
+  memcpy(buffer, signature.data(), signature.size());
+  spki.get()->signature->data = buffer;
+  spki.get()->signature->length = signature.size();
+  X509_ALGOR_set0(spki.get()->sig_algor,
+                  OBJ_nid2obj(NID_sha256WithRSAEncryption),
+                  V_ASN1_NULL,
+                  NULL);
+
+  // DER encode.
+  buffer = NULL;
+  length = i2d_NETSCAPE_SPKI(spki.get(), &buffer);
+  if (length <= 0)
+    return false;
+  SecureBlob tmp(buffer, length);
+  OPENSSL_free(buffer);
+  signed_public_key->swap(tmp);
+
+  return true;
+}
+
 void Attestation::RSADeleter::operator()(void* ptr) const {
   if (ptr)
     RSA_free(reinterpret_cast<RSA*>(ptr));
@@ -1450,6 +1532,11 @@ void Attestation::X509Deleter::operator()(void* ptr) const {
 void Attestation::EVP_PKEYDeleter::operator()(void* ptr) const {
   if (ptr)
     EVP_PKEY_free(reinterpret_cast<EVP_PKEY*>(ptr));
+}
+
+void Attestation::NETSCAPE_SPKIDeleter::operator()(void* ptr) const {
+  if (ptr)
+    NETSCAPE_SPKI_free(reinterpret_cast<NETSCAPE_SPKI*>(ptr));
 }
 
 }

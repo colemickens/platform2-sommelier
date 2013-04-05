@@ -131,6 +131,7 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
                                      const string& key_name,
                                      const string& domain,
                                      const SecureBlob& device_id,
+                                     bool include_signed_public_key,
                                      const SecureBlob& challenge)
     : AttestationTask(observer, attestation),
       is_enterprise_(true),
@@ -138,6 +139,7 @@ SignChallengeTask::SignChallengeTask(AttestationTaskObserver* observer,
       key_name_(key_name),
       domain_(domain),
       device_id_(device_id),
+      include_signed_public_key_(include_signed_public_key),
       challenge_(challenge) {
 }
 
@@ -156,6 +158,7 @@ void SignChallengeTask::Run() {
                                                    key_name_,
                                                    domain_,
                                                    device_id_,
+                                                   include_signed_public_key_,
                                                    challenge_,
                                                    &response);
   } else {

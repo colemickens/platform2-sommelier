@@ -173,6 +173,8 @@ class Attestation : public base::PlatformThread::Delegate {
   //            value is opaque to this class.
   //   device_id - A device identifier to be included in the challenge response.
   //               This value is opaque to this class.
+  //   include_signed_public_key - Whether the challenge response should include
+  //                               a SignedPublicKeyAndChallenge.
   //   challenge - The challenge to be signed.
   //   response - On success is populated with the challenge response.
   virtual bool SignEnterpriseChallenge(
@@ -180,6 +182,7 @@ class Attestation : public base::PlatformThread::Delegate {
       const std::string& key_name,
       const std::string& domain,
       const chromeos::SecureBlob& device_id,
+      bool include_signed_public_key,
       const chromeos::SecureBlob& challenge,
       chromeos::SecureBlob* response);
 
@@ -268,6 +271,9 @@ class Attestation : public base::PlatformThread::Delegate {
     inline void operator()(void* ptr) const;
   };
   struct EVP_PKEYDeleter {
+    inline void operator()(void* ptr) const;
+  };
+  struct NETSCAPE_SPKIDeleter {
     inline void operator()(void* ptr) const;
   };
   static const size_t kQuoteExternalDataSize;
@@ -431,6 +437,10 @@ class Attestation : public base::PlatformThread::Delegate {
   // to 65537.  If an error occurs, NULL is returned.
   scoped_ptr<RSA, RSADeleter> CreateRSAFromHexModulus(
       const std::string& hex_modulus);
+
+  // Creates a SignedPublicKeyAndChallenge with a random challenge.
+  bool CreateSignedPublicKey(const CertifiedKey& key,
+                             chromeos::SecureBlob* signed_public_key);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

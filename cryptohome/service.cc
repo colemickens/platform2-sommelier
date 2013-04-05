@@ -1483,6 +1483,7 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
       gchar* key_name,
       gchar* domain,
       GArray* device_id,
+      gboolean include_signed_public_key,
       GArray* challenge,
       gint *OUT_async_id,
       GError** error) {
@@ -1497,6 +1498,7 @@ gboolean Service::TpmAttestationSignEnterpriseChallenge(
                             key_name,
                             domain,
                             device_id_blob,
+                            include_signed_public_key,
                             challenge_blob);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
