@@ -54,8 +54,8 @@ namespace {
 }  // namespace
 
 MATCHER_P(IsCryptoUtilCommandLine, command, "") {
-  if (arg.size() != 2) {
-    LOG(ERROR) << "Expected 2 command line arguments, but got "
+  if (arg.size() != 3) {
+    LOG(ERROR) << "Expected 3 command line arguments, but got "
                << arg.size() << ".";
     return false;
   }
@@ -66,6 +66,10 @@ MATCHER_P(IsCryptoUtilCommandLine, command, "") {
 
   if (strcmp(arg[1], CryptoUtilProxy::kCommandVerify) &&
       strcmp(arg[1], CryptoUtilProxy::kCommandEncrypt)) {
+    return false;
+  }
+
+  if (arg[2] != NULL) {
     return false;
   }
 

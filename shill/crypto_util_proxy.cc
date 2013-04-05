@@ -158,6 +158,7 @@ bool CryptoUtilProxy::StartShimForCommand(
   vector<char *> args;
   args.push_back(const_cast<char *>(kCryptoUtilShimPath));
   args.push_back(const_cast<char *>(command.c_str()));
+  args.push_back(NULL);
   if (!minijail_->RunPipesAndDestroy(jail, args, &shim_pid_,
                                      &shim_stdin_, &shim_stdout_, NULL)) {
     LOG(ERROR) << "Minijail couldn't run our child process";
@@ -245,6 +246,7 @@ void CryptoUtilProxy::HandleShimStdinReady(int fd) {
   }
   next_input_byte_ += bytes_written;
   if (next_input_byte_ == input_buffer_.end()) {
+    LOG(INFO) << "Finished writing output buffer to shim.";
     // Done writing out the proto buffer, close the pipe so that the shim
     // knows that's all there is.  Close our handler first.
     shim_stdin_handler_.reset();
@@ -265,6 +267,8 @@ void CryptoUtilProxy::HandleShimOutput(InputData *data) {
     return;
   }
   // EOF -> we're done!
+  LOG(INFO) << "Finished reading " << output_buffer_.length()
+            << " bytes from shim.";
   shim_stdout_handler_.reset();
   file_io_->Close(shim_stdout_);
   shim_stdout_ = -1;
