@@ -32,12 +32,21 @@ def dbus2primitive(value):
 
 class ShillProxy(object):
     DBUS_INTERFACE = 'org.chromium.flimflam'
+    DBUS_TYPE_DEVICE = 'org.chromium.flimflam.Device'
     DBUS_TYPE_MANAGER = 'org.chromium.flimflam.Manager'
     DBUS_TYPE_PROFILE = 'org.chromium.flimflam.Profile'
     DBUS_TYPE_SERVICE = 'org.chromium.flimflam.Service'
 
     MANAGER_PROPERTY_ACTIVE_PROFILE = 'ActiveProfile'
+    MANAGER_PROPERTY_DEVICES = 'Devices'
     MANAGER_PROPERTY_PROFILES = 'Profiles'
+    MANAGER_PROPERTY_SERVICES = 'Services'
+
+    OBJECT_TYPE_PROPERTY_MAP = {
+        'Device': ( self.DBUS_TYPE_DEVICE, self.MANAGER_PROPERTY_DEVICES ),
+        'Profile': ( self.DBUS_TYPE_PROFILE, self.MANAGER_PROPERTY_PROFILES ),
+        'Service': ( self.DBUS_TYPE_SERVICE, self.MANAGER_PROPERTY_SERVICES )
+    }
 
     SERVICE_PROPERTY_GUID = 'GUID'
     SERVICE_PROPERTY_MODE = 'Mode'
@@ -254,3 +263,32 @@ class ShillProxy(object):
         logging.info('Connected to WiFi service.')
         return (True, discovery_time, association_time, configuration_time,
                 'SUCCESS(Connection successful)')
+
+
+    def find_object(self, object_type, properties):
+        """
+        Get a the first shill object of |object_type| whose properties match
+        that of |properties|.
+
+        @param object_type string representing the type of object to be
+            returned, eg "Service"
+        @param properties dict of strings understood by shill to describe
+            a service.
+        @return DBus object interface representing a the object found.
+
+        """
+        if object_type not in self.OBJECT_TYPE_PROPERTY_MAP:
+          return None
+
+        dbus_type, manager_property = self.OBJECT_TYPE_PROPERTY_MAP[object_type]
+        manager_properties = self.manager.GetProperties(utf8_strings=True)
+        for path in manager_properties[manager_property]:
+          test_object = self.get_dbus_object(dbus_type, path)
+          object_properties = test_object.GetProperties(utf8_strings=True)
+          for name, value in properties.iteritems():
+            if (name not in object_properties or
+                dbus2primitive(object_properties[name]) != value):
+              break
+          else:
+            return test_object
+        return None
