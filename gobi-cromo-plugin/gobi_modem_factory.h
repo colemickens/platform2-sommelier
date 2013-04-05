@@ -8,7 +8,7 @@
 
 namespace DBus {
 class Connection;
-class Path;
+struct Path;
 }
 namespace gobi {
 struct DeviceElement;

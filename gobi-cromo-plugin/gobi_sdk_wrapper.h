@@ -1028,7 +1028,8 @@ class Sdk {
 
  protected:
 
-  struct CallWrapper {
+  class CallWrapper {
+   public:
     CallWrapper(Sdk *sdk, const char *name);
     ULONG CheckReturn(ULONG rc);
     ~CallWrapper();

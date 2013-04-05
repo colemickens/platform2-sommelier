@@ -89,7 +89,7 @@ class SessionStarter;
 class InjectedFaults;
 class GobiModemHelper;
 
-struct PendingEnable;
+class PendingEnable;
 
 class ScopedGSource {
  public:

@@ -237,7 +237,8 @@ class SessionStarter {
 // operation waits for the PowerCallback, or because we cannot respond
 // immmediately (because a long-running connect is already in
 // progress)
-struct PendingEnable {
+class PendingEnable {
+ public:
   PendingEnable(bool enable) : enable_(enable) {}
   DBus::Tag tag_;
   // NB: contrary to our style guide, this throws an exception that

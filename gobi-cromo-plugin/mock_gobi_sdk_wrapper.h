@@ -142,10 +142,10 @@ class ErrorSdk : public gobi::Sdk {
 
   virtual ULONG StartDataSession(
       ULONG *                    pTechnology,
-      CHAR *                     pAPNName,
+      const CHAR *               pAPNName,
       ULONG *                    pAuthentication,
-      CHAR *                     pUsername,
-      CHAR *                     pPassword,
+      const CHAR *               pUsername,
+      const CHAR *               pPassword,
       ULONG *                    pSessionId,
       ULONG *                    pFailureReason) {
     if (strict_) {
@@ -372,7 +372,9 @@ class ErrorSdk : public gobi::Sdk {
       BYTE *                     pRadioIfaces,
       ULONG *                    pRoaming,
       WORD *                     pMCC,
-      WORD *                     pMNC) {
+      WORD *                     pMNC,
+      BYTE                       nameSize,
+      CHAR *                     pName) {
     if (strict_) {
       ADD_FAILURE() << kBadCall << __PRETTY_FUNCTION__;
     }
