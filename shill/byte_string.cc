@@ -10,6 +10,7 @@
 
 using std::distance;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -53,7 +54,16 @@ ByteString ByteString::CreateFromCPUUInt32(uint32 val) {
 
 // static
 ByteString ByteString::CreateFromNetUInt32(uint32 val) {
-  return CreateFromCPUUInt32(htonl(val));
+  return CreateFromCPUUInt32(ntohl(val));
+}
+
+// static
+ByteString ByteString::CreateFromHexString(const string &hex_string) {
+  vector<uint8> bytes;
+  if (!base::HexStringToBytes(hex_string, &bytes)) {
+    return ByteString();
+  }
+  return ByteString(&bytes.front(), bytes.size());
 }
 
 bool ByteString::ConvertToCPUUInt32(uint32 *val) const {
@@ -71,6 +81,30 @@ bool ByteString::ConvertToNetUInt32(uint32 *val) const {
   }
   *val = ntohl(*val);
   return true;
+}
+
+template <typename T>
+bool ByteString::ConvertByteOrderAsUIntArray(T (*converter)(T)) {
+  size_t length = GetLength();
+  if ((length % sizeof(T)) != 0) {
+    return false;
+  }
+  for (Vector::iterator i = begin_; i != data_.end(); i += sizeof(T)) {
+    // Take care of word alignment.
+    T val;
+    memcpy(&val, &(*i), sizeof(T));
+    val = converter(val);
+    memcpy(&(*i), &val, sizeof(T));
+  }
+  return true;
+}
+
+bool ByteString::ConvertFromNetToCPUUInt32Array() {
+  return ConvertByteOrderAsUIntArray(ntohl);
+}
+
+bool ByteString::ConvertFromCPUToNetUInt32Array() {
+  return ConvertByteOrderAsUIntArray(htonl);
 }
 
 bool ByteString::IsZero() const {

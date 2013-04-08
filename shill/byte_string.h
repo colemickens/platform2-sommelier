@@ -53,12 +53,29 @@ class ByteString {
   // Inserts a uint32 into a ByteString in network-order
   static ByteString CreateFromNetUInt32(uint32 val);
 
+  // Creates a ByteString from a string of hexadecimal digits where
+  // a pair of hexadecimal digits corresponds to a byte.
+  // Returns a default-constructed ByteString if |hex_string| is empty
+  // or not a valid string of hexadecimal digits representing a sequence
+  // of bytes.
+  static ByteString CreateFromHexString(const std::string &hex_string);
+
   // Converts to a uint32 from a host-order value stored in the ByteString
   // Returns true on success
   bool ConvertToCPUUInt32(uint32 *val) const;
   // Converts to a uint32 from a network-order value stored in the ByteString
   // Returns true on success
   bool ConvertToNetUInt32(uint32 *val) const;
+
+  // Converts the string of bytes stored in the ByteString from network order
+  // to host order in 32-bit chunks. Returns true on success or false if the
+  // length of ByteString is not a multiple of 4.
+  bool ConvertFromNetToCPUUInt32Array();
+
+  // Converts the string of bytes stored in the ByteString from host order
+  // to network order in 32-bit chunks. Returns true on success or false if the
+  // length of ByteString is not a multiple of 4.
+  bool ConvertFromCPUToNetUInt32Array();
 
   bool IsEmpty() const { return GetLength() == 0; }
 
@@ -93,6 +110,13 @@ class ByteString {
 
  private:
   typedef std::vector<unsigned char> Vector;
+
+  // Converts the string of bytes stored in the ByteString by treating it as
+  // an array of unsigned integer of type T and applying |converter| on each
+  // unsigned value of type T. Return true on success or false if the length
+  // ByteString is not a multiple of sizeof(T).
+  template <typename T> bool ConvertByteOrderAsUIntArray(T (*converter)(T));
+
   Vector data_;
 
   // Permit chopping-off the front part of the data without requiring a copy.

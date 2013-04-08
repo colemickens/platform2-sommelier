@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <arpa/inet.h>
 #include <endian.h>
 
 #include <gtest/gtest.h>
@@ -17,6 +18,9 @@ namespace shill {
 
 namespace {
 const unsigned char kTest1[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+const char kTest1HexString[] = "00010203040506070809";
+const char kTest1HexSubstring[] = "0203040506070809";
+const char kTest1HexSubstringReordered[] = "0504030209080706";
 const unsigned char kTest2[] = { 1, 2, 3, 0xa };
 const char kTest2HexString[] = "0102030A";
 const unsigned int kTest2Uint32 = 0x0102030a;
@@ -26,6 +30,11 @@ const char kTest4[] = "Hello world";
 
 class ByteStringTest : public Test {
  public:
+  bool IsCPUSameAsNetOrder() {
+    const uint32 kTestValue = 0x12345678;
+    return htonl(kTestValue) == kTestValue;
+  }
+
   void CalculateBitwiseAndResult(ByteString *bs,
                                  ByteString *mask,
                                  ByteString *expected_result,
@@ -371,6 +380,74 @@ TEST_F(ByteStringTest, ChopByteClear) {
   bs.Append(ByteString(kTest2, sizeof(kTest2)));
 
   EXPECT_TRUE(bs.Equals(expected_result));
+}
+
+TEST_F(ByteStringTest, CreateFromHexString) {
+  ByteString bs = ByteString::CreateFromHexString("");
+  EXPECT_TRUE(bs.IsEmpty());
+
+  ByteString bs1 = ByteString::CreateFromHexString("0");
+  EXPECT_TRUE(bs1.IsEmpty());
+
+  ByteString bs2 = ByteString::CreateFromHexString("0y");
+  EXPECT_TRUE(bs2.IsEmpty());
+
+  ByteString bs3 = ByteString::CreateFromHexString("ab");
+  EXPECT_EQ(1, bs3.GetLength());
+  EXPECT_EQ(0xab, bs3.GetData()[0]);
+
+  ByteString bs4 = ByteString::CreateFromHexString(kTest1HexString);
+  EXPECT_EQ(kTest1HexString, bs4.HexEncode());
+}
+
+TEST_F(ByteStringTest, ConvertFromNetToCPUUInt32Array) {
+  ByteString bs1;
+  EXPECT_TRUE(bs1.ConvertFromNetToCPUUInt32Array());
+  EXPECT_TRUE(bs1.IsEmpty());
+
+  // Conversion should fail when the length of ByteString is not a
+  // multiple of 4.
+  ByteString bs2(kTest1, sizeof(kTest1));
+  EXPECT_EQ(kTest1HexString, bs2.HexEncode());
+  EXPECT_FALSE(bs2.ConvertFromNetToCPUUInt32Array());
+  EXPECT_EQ(kTest1HexString, bs2.HexEncode());
+
+  // Conversion should succeed when the length of ByteString is a
+  // multiple of 4. Also test the case when bytes stored in ByteString
+  // is not word-aligned after calling RemovePrefix().
+  bs2.RemovePrefix(2);
+  EXPECT_EQ(kTest1HexSubstring, bs2.HexEncode());
+  EXPECT_TRUE(bs2.ConvertFromNetToCPUUInt32Array());
+  if (IsCPUSameAsNetOrder()) {
+    EXPECT_EQ(kTest1HexSubstring, bs2.HexEncode());
+  } else {
+    EXPECT_EQ(kTest1HexSubstringReordered, bs2.HexEncode());
+  }
+}
+
+TEST_F(ByteStringTest, ConvertFromCPUToNetUInt32Array) {
+  ByteString bs1;
+  EXPECT_TRUE(bs1.ConvertFromCPUToNetUInt32Array());
+  EXPECT_TRUE(bs1.IsEmpty());
+
+  // Conversion should fail when the length of ByteString is not a
+  // multiple of 4.
+  ByteString bs2(kTest1, sizeof(kTest1));
+  EXPECT_EQ(kTest1HexString, bs2.HexEncode());
+  EXPECT_FALSE(bs2.ConvertFromCPUToNetUInt32Array());
+  EXPECT_EQ(kTest1HexString, bs2.HexEncode());
+
+  // Conversion should succeed when the length of ByteString is a
+  // multiple of 4. Also test the case when bytes stored in ByteString
+  // is not word-aligned after calling RemovePrefix().
+  bs2.RemovePrefix(2);
+  EXPECT_EQ(kTest1HexSubstring, bs2.HexEncode());
+  EXPECT_TRUE(bs2.ConvertFromCPUToNetUInt32Array());
+  if (IsCPUSameAsNetOrder()) {
+    EXPECT_EQ(kTest1HexSubstring, bs2.HexEncode());
+  } else {
+    EXPECT_EQ(kTest1HexSubstringReordered, bs2.HexEncode());
+  }
 }
 
 }  // namespace shill
