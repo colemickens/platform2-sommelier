@@ -66,12 +66,12 @@ CXX_BINARY($(TEST_BIN)): $(TEST_OBJS) | CXX_BINARY($(KEYGEN_BIN))
 CXX_BINARY($(TEST_BIN)): CPPFLAGS += -DUNIT_TEST
 UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 CXX_BINARY($(TEST_BIN)): LDLIBS += $(UNITTEST_LIBS)
-clean: CLEAN(CXX_BINARY($(TEST_BIN)))
+clean: CLEAN($(TEST_BIN)))
 tests: TEST(CXX_BINARY($(TEST_BIN)))
 
 CC_BINARY(cros-xauth): cros-xauth.o
 CC_BINARY(cros-xauth): LDLIBS =
-clean: CC_BINARY(cros-xauth)
+clean: CLEAN(cros-xauth)
 
 all: login_manager CC_BINARY(cros-xauth)
 login_manager: \
