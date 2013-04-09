@@ -9,15 +9,10 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <gtest/gtest_prod.h>
 
 #include "shill/socket_info.h"
-
-namespace base {
-
-class FilePath;
-
-}  // namespace base
 
 namespace shill {
 
@@ -26,10 +21,23 @@ class SocketInfoReader {
   SocketInfoReader();
   virtual ~SocketInfoReader();
 
+  // Returns the file path (/proc/net/tcp by default) from where TCP/IPv4
+  // socket information are read. Overloadded by unit tests to return a
+  // different file path.
+  virtual base::FilePath GetTcpv4SocketInfoFilePath() const;
+
+  // Returns the file path (/proc/net/tcp6 by default) from where TCP/IPv6
+  // socket information are read. Overloadded by unit tests to return a
+  // different file path.
+  virtual base::FilePath GetTcpv6SocketInfoFilePath() const;
+
+  // Loads TCP socket information from /proc/net/tcp and /proc/net/tcp6.
+  // Existing entries in |info_list| are always discarded. Returns false
+  // if when neither /proc/net/tcp nor /proc/net/tcp6 can be read.
   virtual bool LoadTcpSocketInfo(std::vector<SocketInfo> *info_list);
 
  private:
-  FRIEND_TEST(SocketInfoReaderTest, LoadSocketInfo);
+  FRIEND_TEST(SocketInfoReaderTest, AppendSocketInfo);
   FRIEND_TEST(SocketInfoReaderTest, ParseConnectionState);
   FRIEND_TEST(SocketInfoReaderTest, ParseIPAddress);
   FRIEND_TEST(SocketInfoReaderTest, ParseIPAddressAndPort);
@@ -38,8 +46,8 @@ class SocketInfoReader {
   FRIEND_TEST(SocketInfoReaderTest, ParseTimerState);
   FRIEND_TEST(SocketInfoReaderTest, ParseTransimitAndReceiveQueueValues);
 
-  bool LoadSocketInfo(const base::FilePath &info_file_path,
-                      std::vector<SocketInfo> *info_list);
+  bool AppendSocketInfo(const base::FilePath &info_file_path,
+                        std::vector<SocketInfo> *info_list);
   bool ParseSocketInfo(const std::string &input, SocketInfo *socket_info);
   bool ParseIPAddressAndPort(
       const std::string &input, IPAddress *ip_address, uint16 *port);

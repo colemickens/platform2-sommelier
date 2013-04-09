@@ -7,24 +7,28 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stringprintf.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 using base::FilePath;
 using base::ScopedTempDir;
 using std::string;
 using std::vector;
-
-// TODO(benchan): Test IPv6 addresses.
+using testing::Return;
 
 namespace shill {
 
 namespace {
 
-const char kIPAddress_0_0_0_0[] = "0.0.0.0";
-const char kIPAddress_127_0_0_1[] = "127.0.0.1";
-const char kIPAddress_192_168_1_10[] = "192.168.1.10";
-const char kIPAddress_255_255_255_255[] = "255.255.255.255";
-const char *kSocketInfoLines[] = {
+const char kIPv4AddressAllZeros[] = "0.0.0.0";
+const char kIPv4AddressAllOnes[] = "255.255.255.255";
+const char kIPv4Address_127_0_0_1[] = "127.0.0.1";
+const char kIPv4Address_192_168_1_10[] = "192.168.1.10";
+const char kIPv6AddressAllZeros[] = "0000:0000:0000:0000:0000:0000:0000:0000";
+const char kIPv6AddressAllOnes[] = "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
+const char kIPv6AddressPattern1[] = "0123:4567:89ab:cdef:ffee:ddcc:bbaa:9988";
+
+const char *kIPv4SocketInfoLines[] = {
     "  sl  local_address rem_address   st tx_queue rx_queue tr tm->when "
     "retrnsmt   uid  timeout inode                                      ",
     "   0: 0100007F:0019 00000000:0000 0A 0000000A:00000005 00:00000000 "
@@ -32,13 +36,39 @@ const char *kSocketInfoLines[] = {
     "   1: 0A01A8C0:0050 0100007F:03FC 01 00000000:00000000 00:00000000 "
     "00000000 65534        0 2787034 1 0000000000000000 100 0 0 10 -1   ",
 };
+const char *kIPv6SocketInfoLines[] = {
+    "  sl  local_address                         "
+    "remote_address                        st tx_queue rx_queue tr tm->when "
+    "retrnsmt   uid  timeout inode",
+    "   0: 67452301EFCDAB89CCDDEEFF8899AABB:0019 "
+    "00000000000000000000000000000000:0000 0A 0000000A:00000005 00:00000000 "
+    "00000000     0        0 36412 1 0000000000000000 100 0 0 2 -1",
+    "   1: 00000000000000000000000000000000:0050 "
+    "67452301EFCDAB89CCDDEEFF8899AABB:03FC 01 00000000:00000000 00:00000000 "
+    "00000000     0        0 36412 1 0000000000000000 100 0 0 2 -1",
+};
 
 }  // namespace
+
+class SocketInfoReaderUnderTest : public SocketInfoReader {
+ public:
+  // Mock out GetTcpv4SocketInfoFilePath and GetTcpv6SocketInfoFilePath to
+  // use a temporary created socket info file instead of the actual path
+  // in procfs (i.e. /proc/net/tcp and /proc/net/tcp6).
+  MOCK_CONST_METHOD0(GetTcpv4SocketInfoFilePath, FilePath ());
+  MOCK_CONST_METHOD0(GetTcpv6SocketInfoFilePath, FilePath ());
+};
 
 class SocketInfoReaderTest : public testing::Test {
  protected:
   IPAddress StringToIPv4Address(const string &address_string) {
     IPAddress ip_address(IPAddress::kFamilyIPv4);
+    EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
+    return ip_address;
+  }
+
+  IPAddress StringToIPv6Address(const string &address_string) {
+    IPAddress ip_address(IPAddress::kFamilyIPv6);
     EXPECT_TRUE(ip_address.SetAddressFromString(address_string));
     return ip_address;
   }
@@ -65,58 +95,143 @@ class SocketInfoReaderTest : public testing::Test {
     EXPECT_EQ(info1.timer_state(), info2.timer_state());
   }
 
-  SocketInfoReader reader_;
+  SocketInfoReaderUnderTest reader_;
 };
 
-TEST_F(SocketInfoReaderTest, LoadSocketInfo) {
+TEST_F(SocketInfoReaderTest, LoadTcpSocketInfo) {
+  FilePath invalid_path("/non-existent-file"), v4_path, v6_path;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  CreateSocketInfoFile(kIPv4SocketInfoLines, 2, temp_dir.path(), &v4_path);
+  CreateSocketInfoFile(kIPv6SocketInfoLines, 2, temp_dir.path(), &v6_path);
+
+  SocketInfo v4_info(SocketInfo::kConnectionStateListen,
+                     StringToIPv4Address(kIPv4Address_127_0_0_1),
+                     25,
+                     StringToIPv4Address(kIPv4AddressAllZeros),
+                     0,
+                     10,
+                     5,
+                     SocketInfo::kTimerStateNoTimerPending);
+  SocketInfo v6_info(SocketInfo::kConnectionStateListen,
+                     StringToIPv6Address(kIPv6AddressPattern1),
+                     25,
+                     StringToIPv6Address(kIPv6AddressAllZeros),
+                     0,
+                     10,
+                     5,
+                     SocketInfo::kTimerStateNoTimerPending);
+
+  vector<SocketInfo> info_list;
+  EXPECT_CALL(reader_, GetTcpv4SocketInfoFilePath())
+      .WillOnce(Return(invalid_path));
+  EXPECT_CALL(reader_, GetTcpv6SocketInfoFilePath())
+      .WillOnce(Return(invalid_path));
+  EXPECT_FALSE(reader_.LoadTcpSocketInfo(&info_list));
+
+  EXPECT_CALL(reader_, GetTcpv4SocketInfoFilePath())
+      .WillOnce(Return(v4_path));
+  EXPECT_CALL(reader_, GetTcpv6SocketInfoFilePath())
+      .WillOnce(Return(invalid_path));
+  EXPECT_TRUE(reader_.LoadTcpSocketInfo(&info_list));
+  EXPECT_EQ(1, info_list.size());
+  ExpectSocketInfoEqual(v4_info, info_list[0]);
+
+  EXPECT_CALL(reader_, GetTcpv4SocketInfoFilePath())
+      .WillOnce(Return(invalid_path));
+  EXPECT_CALL(reader_, GetTcpv6SocketInfoFilePath())
+      .WillOnce(Return(v6_path));
+  EXPECT_TRUE(reader_.LoadTcpSocketInfo(&info_list));
+  EXPECT_EQ(1, info_list.size());
+  ExpectSocketInfoEqual(v6_info, info_list[0]);
+
+  EXPECT_CALL(reader_, GetTcpv4SocketInfoFilePath())
+      .WillOnce(Return(v4_path));
+  EXPECT_CALL(reader_, GetTcpv6SocketInfoFilePath())
+      .WillOnce(Return(v6_path));
+  EXPECT_TRUE(reader_.LoadTcpSocketInfo(&info_list));
+  EXPECT_EQ(2, info_list.size());
+  ExpectSocketInfoEqual(v4_info, info_list[0]);
+  ExpectSocketInfoEqual(v6_info, info_list[1]);
+}
+
+TEST_F(SocketInfoReaderTest, AppendSocketInfo) {
   FilePath file_path("/non-existent-file");
   vector<SocketInfo> info_list;
 
-  EXPECT_FALSE(reader_.LoadSocketInfo(file_path, &info_list));
+  EXPECT_FALSE(reader_.AppendSocketInfo(file_path, &info_list));
   EXPECT_TRUE(info_list.empty());
 
   ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
 
-  CreateSocketInfoFile(kSocketInfoLines, 1, temp_dir.path(), &file_path);
-  EXPECT_TRUE(reader_.LoadSocketInfo(file_path, &info_list));
+  CreateSocketInfoFile(kIPv4SocketInfoLines, 1, temp_dir.path(), &file_path);
+  EXPECT_TRUE(reader_.AppendSocketInfo(file_path, &info_list));
   EXPECT_TRUE(info_list.empty());
 
-  CreateSocketInfoFile(kSocketInfoLines, arraysize(kSocketInfoLines),
+  SocketInfo v4_info1(SocketInfo::kConnectionStateListen,
+                      StringToIPv4Address(kIPv4Address_127_0_0_1),
+                      25,
+                      StringToIPv4Address(kIPv4AddressAllZeros),
+                      0,
+                      10,
+                      5,
+                      SocketInfo::kTimerStateNoTimerPending);
+  SocketInfo v4_info2(SocketInfo::kConnectionStateEstablished,
+                      StringToIPv4Address(kIPv4Address_192_168_1_10),
+                      80,
+                      StringToIPv4Address(kIPv4Address_127_0_0_1),
+                      1020,
+                      0,
+                      0,
+                      SocketInfo::kTimerStateNoTimerPending);
+  SocketInfo v6_info1(SocketInfo::kConnectionStateListen,
+                      StringToIPv6Address(kIPv6AddressPattern1),
+                      25,
+                      StringToIPv6Address(kIPv6AddressAllZeros),
+                      0,
+                      10,
+                      5,
+                      SocketInfo::kTimerStateNoTimerPending);
+  SocketInfo v6_info2(SocketInfo::kConnectionStateEstablished,
+                      StringToIPv6Address(kIPv6AddressAllZeros),
+                      80,
+                      StringToIPv6Address(kIPv6AddressPattern1),
+                      1020,
+                      0,
+                      0,
+                      SocketInfo::kTimerStateNoTimerPending);
+
+  CreateSocketInfoFile(kIPv4SocketInfoLines, arraysize(kIPv4SocketInfoLines),
                        temp_dir.path(), &file_path);
-  EXPECT_TRUE(reader_.LoadSocketInfo(file_path, &info_list));
-  EXPECT_EQ(arraysize(kSocketInfoLines) - 1, info_list.size());
-  ExpectSocketInfoEqual(SocketInfo(SocketInfo::kConnectionStateListen,
-                                   StringToIPv4Address(kIPAddress_127_0_0_1),
-                                   25,
-                                   StringToIPv4Address(kIPAddress_0_0_0_0),
-                                   0,
-                                   10,
-                                   5,
-                                   SocketInfo::kTimerStateNoTimerPending),
-                        info_list[0]);
-  ExpectSocketInfoEqual(SocketInfo(SocketInfo::kConnectionStateEstablished,
-                                   StringToIPv4Address(kIPAddress_192_168_1_10),
-                                   80,
-                                   StringToIPv4Address(kIPAddress_127_0_0_1),
-                                   1020,
-                                   0,
-                                   0,
-                                   SocketInfo::kTimerStateNoTimerPending),
-                        info_list[1]);
+  EXPECT_TRUE(reader_.AppendSocketInfo(file_path, &info_list));
+  EXPECT_EQ(arraysize(kIPv4SocketInfoLines) - 1, info_list.size());
+  ExpectSocketInfoEqual(v4_info1, info_list[0]);
+  ExpectSocketInfoEqual(v4_info2, info_list[1]);
+
+  CreateSocketInfoFile(kIPv6SocketInfoLines, arraysize(kIPv6SocketInfoLines),
+                       temp_dir.path(), &file_path);
+  EXPECT_TRUE(reader_.AppendSocketInfo(file_path, &info_list));
+  EXPECT_EQ(
+      arraysize(kIPv4SocketInfoLines) + arraysize(kIPv6SocketInfoLines) - 2,
+      info_list.size());
+  ExpectSocketInfoEqual(v4_info1, info_list[0]);
+  ExpectSocketInfoEqual(v4_info2, info_list[1]);
+  ExpectSocketInfoEqual(v6_info1, info_list[2]);
+  ExpectSocketInfoEqual(v6_info2, info_list[3]);
 }
 
 TEST_F(SocketInfoReaderTest, ParseSocketInfo) {
   SocketInfo info;
 
   EXPECT_FALSE(reader_.ParseSocketInfo("", &info));
-  EXPECT_FALSE(reader_.ParseSocketInfo(kSocketInfoLines[0], &info));
+  EXPECT_FALSE(reader_.ParseSocketInfo(kIPv4SocketInfoLines[0], &info));
 
-  EXPECT_TRUE(reader_.ParseSocketInfo(kSocketInfoLines[1], &info));
+  EXPECT_TRUE(reader_.ParseSocketInfo(kIPv4SocketInfoLines[1], &info));
   ExpectSocketInfoEqual(SocketInfo(SocketInfo::kConnectionStateListen,
-                                   StringToIPv4Address(kIPAddress_127_0_0_1),
+                                   StringToIPv4Address(kIPv4Address_127_0_0_1),
                                    25,
-                                   StringToIPv4Address(kIPAddress_0_0_0_0),
+                                   StringToIPv4Address(kIPv4AddressAllZeros),
                                    0,
                                    10,
                                    5,
@@ -132,15 +247,30 @@ TEST_F(SocketInfoReaderTest, ParseIPAddressAndPort) {
   EXPECT_FALSE(reader_.ParseIPAddressAndPort("00000000", &ip_address, &port));
   EXPECT_FALSE(reader_.ParseIPAddressAndPort("00000000:", &ip_address, &port));
   EXPECT_FALSE(reader_.ParseIPAddressAndPort(":0000", &ip_address, &port));
-  EXPECT_FALSE(reader_.ParseIPAddressAndPort("0000000Y:0000",
-                                             &ip_address, &port));
-  EXPECT_FALSE(reader_.ParseIPAddressAndPort("00000000:000Y", &ip_address,
-                                             &port));
+  EXPECT_FALSE(reader_.ParseIPAddressAndPort(
+      "0000000Y:0000", &ip_address, &port));
+  EXPECT_FALSE(reader_.ParseIPAddressAndPort(
+      "00000000:000Y", &ip_address, &port));
 
-  EXPECT_TRUE(reader_.ParseIPAddressAndPort("0a01A8c0:0050",
-                                            &ip_address, &port));
-  EXPECT_TRUE(ip_address.Equals(StringToIPv4Address(kIPAddress_192_168_1_10)));
+  EXPECT_FALSE(reader_.ParseIPAddressAndPort(
+      "00000000000000000000000000000000", &ip_address, &port));
+  EXPECT_FALSE(reader_.ParseIPAddressAndPort(
+      "00000000000000000000000000000000:", &ip_address, &port));
+  EXPECT_FALSE(reader_.ParseIPAddressAndPort(
+      "00000000000000000000000000000000Y:0000", &ip_address, &port));
+  EXPECT_FALSE(reader_.ParseIPAddressAndPort(
+      "000000000000000000000000000000000:000Y", &ip_address, &port));
+
+  EXPECT_TRUE(reader_.ParseIPAddressAndPort(
+      "0a01A8c0:0050", &ip_address, &port));
+  EXPECT_TRUE(ip_address.Equals(
+      StringToIPv4Address(kIPv4Address_192_168_1_10)));
   EXPECT_EQ(80, port);
+
+  EXPECT_TRUE(reader_.ParseIPAddressAndPort(
+      "67452301efcdab89CCDDEEFF8899AABB:1F90", &ip_address, &port));
+  EXPECT_TRUE(ip_address.Equals(StringToIPv6Address(kIPv6AddressPattern1)));
+  EXPECT_EQ(8080, port);
 }
 
 TEST_F(SocketInfoReaderTest, ParseIPAddress) {
@@ -150,19 +280,34 @@ TEST_F(SocketInfoReaderTest, ParseIPAddress) {
   EXPECT_FALSE(reader_.ParseIPAddress("0", &ip_address));
   EXPECT_FALSE(reader_.ParseIPAddress("00", &ip_address));
   EXPECT_FALSE(reader_.ParseIPAddress("0000000Y", &ip_address));
+  EXPECT_FALSE(reader_.ParseIPAddress("0000000000000000000000000000000Y",
+                                      &ip_address));
 
   EXPECT_TRUE(reader_.ParseIPAddress("00000000", &ip_address));
-  EXPECT_TRUE(ip_address.Equals(StringToIPv4Address(kIPAddress_0_0_0_0)));
+  EXPECT_TRUE(ip_address.Equals(StringToIPv4Address(kIPv4AddressAllZeros)));
 
   EXPECT_TRUE(reader_.ParseIPAddress("0100007F", &ip_address));
-  EXPECT_TRUE(ip_address.Equals(StringToIPv4Address(kIPAddress_127_0_0_1)));
+  EXPECT_TRUE(ip_address.Equals(StringToIPv4Address(kIPv4Address_127_0_0_1)));
 
   EXPECT_TRUE(reader_.ParseIPAddress("0a01A8c0", &ip_address));
-  EXPECT_TRUE(ip_address.Equals(StringToIPv4Address(kIPAddress_192_168_1_10)));
+  EXPECT_TRUE(ip_address.Equals(
+      StringToIPv4Address(kIPv4Address_192_168_1_10)));
 
   EXPECT_TRUE(reader_.ParseIPAddress("ffffffff", &ip_address));
   EXPECT_TRUE(ip_address.Equals(
-      StringToIPv4Address(kIPAddress_255_255_255_255)));
+      StringToIPv4Address(kIPv4AddressAllOnes)));
+
+  EXPECT_TRUE(reader_.ParseIPAddress("00000000000000000000000000000000",
+                                     &ip_address));
+  EXPECT_TRUE(ip_address.Equals(StringToIPv6Address(kIPv6AddressAllZeros)));
+
+  EXPECT_TRUE(reader_.ParseIPAddress("67452301efcdab89CCDDEEFF8899AABB",
+                                     &ip_address));
+  EXPECT_TRUE(ip_address.Equals(StringToIPv6Address(kIPv6AddressPattern1)));
+
+  EXPECT_TRUE(reader_.ParseIPAddress("ffffffffffffffffffffffffffffffff",
+                                     &ip_address));
+  EXPECT_TRUE(ip_address.Equals(StringToIPv6Address(kIPv6AddressAllOnes)));
 }
 
 TEST_F(SocketInfoReaderTest, ParsePort) {

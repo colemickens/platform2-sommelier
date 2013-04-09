@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <limits>
 
-#include <base/file_path.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 
@@ -22,7 +21,8 @@ namespace shill {
 
 namespace {
 
-const char kTcpSocketInfoFilePath[] = "/proc/net/tcp";
+const char kTcpv4SocketInfoFilePath[] = "/proc/net/tcp";
+const char kTcpv6SocketInfoFilePath[] = "/proc/net/tcp6";
 
 }  // namespace
 
@@ -30,12 +30,25 @@ SocketInfoReader::SocketInfoReader() {}
 
 SocketInfoReader::~SocketInfoReader() {}
 
-bool SocketInfoReader::LoadTcpSocketInfo(vector<SocketInfo> *info_list) {
-  return LoadSocketInfo(FilePath(kTcpSocketInfoFilePath), info_list);
+FilePath SocketInfoReader::GetTcpv4SocketInfoFilePath() const {
+  return FilePath(kTcpv4SocketInfoFilePath);
 }
 
-bool SocketInfoReader::LoadSocketInfo(const FilePath &info_file_path,
-                                      vector<SocketInfo> *info_list) {
+FilePath SocketInfoReader::GetTcpv6SocketInfoFilePath() const {
+  return FilePath(kTcpv6SocketInfoFilePath);
+}
+
+bool SocketInfoReader::LoadTcpSocketInfo(vector<SocketInfo> *info_list) {
+  info_list->clear();
+  bool v4_loaded = AppendSocketInfo(GetTcpv4SocketInfoFilePath(), info_list);
+  bool v6_loaded = AppendSocketInfo(GetTcpv6SocketInfoFilePath(), info_list);
+  // Return true if we can load either /proc/net/tcp or /proc/net/tcp6
+  // successfully.
+  return v4_loaded || v6_loaded;
+}
+
+bool SocketInfoReader::AppendSocketInfo(const FilePath &info_file_path,
+                                        vector<SocketInfo> *info_list) {
   FileReader file_reader;
   if (!file_reader.Open(info_file_path)) {
     SLOG(Link, 2) << __func__ << ": Failed to open '"
@@ -43,7 +56,6 @@ bool SocketInfoReader::LoadSocketInfo(const FilePath &info_file_path,
     return false;
   }
 
-  info_list->clear();
   string line;
   while (file_reader.ReadLine(&line)) {
     SocketInfo socket_info;
@@ -116,24 +128,26 @@ bool SocketInfoReader::ParseIPAddressAndPort(
 
 bool SocketInfoReader::ParseIPAddress(const string &input,
                                       IPAddress *ip_address) {
-  vector<uint8> bytes;
-  if (!base::HexStringToBytes(input, &bytes))
+  ByteString byte_string = ByteString::CreateFromHexString(input);
+  if (byte_string.IsEmpty())
     return false;
 
   IPAddress::Family family;
-  if (bytes.size() == 4)
+  if (byte_string.GetLength() ==
+      IPAddress::GetAddressLength(IPAddress::kFamilyIPv4)) {
     family = IPAddress::kFamilyIPv4;
-  else if (bytes.size() == 6)
+  } else if (byte_string.GetLength() ==
+             IPAddress::GetAddressLength(IPAddress::kFamilyIPv6)) {
     family = IPAddress::kFamilyIPv6;
-  else
+  } else {
     return false;
+  }
 
-  // TODO(benchan): This doesn't work with IPv6 addresses. Fix it
-  // by introducing a proper method in ByteString to handle byte order
-  // conversion.
-  std::reverse(bytes.begin(), bytes.end());
+  // Linux kernel prints out IP addresses in network order via
+  // /proc/net/tcp{,6}.
+  byte_string.ConvertFromNetToCPUUInt32Array();
 
-  *ip_address = IPAddress(family, ByteString(&bytes[0], bytes.size()));
+  *ip_address = IPAddress(family, byte_string);
   return true;
 }
 
