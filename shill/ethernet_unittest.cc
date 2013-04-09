@@ -25,6 +25,7 @@
 
 using testing::_;
 using testing::AnyNumber;
+using testing::Eq;
 using testing::Mock;
 using testing::Return;
 using testing::StrictMock;
@@ -114,12 +115,12 @@ TEST_F(EthernetTest, Construct) {
 }
 
 TEST_F(EthernetTest, StartStop) {
-  EXPECT_CALL(rtnl_handler_,
-              SetInterfaceFlags(kInterfaceIndex, IFF_UP, IFF_UP));
-  ethernet_->Start(NULL, EnabledStateChangedCallback());
+  StartEthernet();
+
   EXPECT_FALSE(GetService().get() == NULL);
 
-  EXPECT_CALL(manager_, DeregisterService(GetService()));
+  Service* service = GetService().get();
+  EXPECT_CALL(manager_, DeregisterService(Eq(service)));
   ethernet_->Stop(NULL, EnabledStateChangedCallback());
   EXPECT_EQ(NULL, GetService().get());
 }
