@@ -108,4 +108,8 @@ bool CellularCapability::IsActivating() const {
   return false;
 }
 
+bool CellularCapability::ShouldEnableTrafficMonitoring() const {
+  return false;
+}
+
 }  // namespace shill

@@ -726,6 +726,10 @@ bool CellularCapabilityUniversal::AllowRoaming() {
   return provider_requires_roaming_ || allow_roaming_property();
 }
 
+bool CellularCapabilityUniversal::ShouldEnableTrafficMonitoring() const {
+  return model_id_ == kE362ModelId;
+}
+
 void CellularCapabilityUniversal::GetProperties() {
   SLOG(Cellular, 2) << __func__;
 

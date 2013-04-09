@@ -111,6 +111,7 @@ class CellularCapabilityUniversal : public CellularCapability {
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
   virtual bool AllowRoaming();
+  virtual bool ShouldEnableTrafficMonitoring() const;
 
  protected:
   virtual void InitProxies();
@@ -165,6 +166,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Scan);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              ShouldEnableTrafficMonitoring);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPropertiesChanged);
@@ -183,6 +186,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
   FRIEND_TEST(CellularCapabilityUniversalTimerTest,
               UpdateScanningPropertyTimeout);
+  FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);

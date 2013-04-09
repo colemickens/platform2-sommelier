@@ -257,6 +257,8 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback &callback,
     // Registration state updates may have been ignored while the
     // modem was not yet marked enabled.
     HandleNewRegistrationState();
+    if (capability_->ShouldEnableTrafficMonitoring())
+      set_traffic_monitor_enabled(true);
   }
   callback.Run(error);
 }
@@ -271,6 +273,7 @@ void Cellular::StopModemCallback(const EnabledStateChangedCallback &callback,
   DestroyService();
   if (state_ != kStateDisabled)
     SetState(kStateDisabled);
+  set_traffic_monitor_enabled(false);
   callback.Run(error);
 }
 
@@ -348,6 +351,12 @@ void Cellular::SetCarrier(const string &carrier,
                           Error *error, const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__ << "(" << carrier << ")";
   capability_->SetCarrier(carrier, error, callback);
+}
+
+void Cellular::OnNoNetworkRouting() {
+  SLOG(Cellular, 2) << __func__;
+  Device::OnNoNetworkRouting();
+  // TODO(armansito): Initiate active probing.
 }
 
 void Cellular::Scan(ScanType scan_type, Error *error) {

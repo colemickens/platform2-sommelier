@@ -822,6 +822,34 @@ TEST_F(CellularTest, ModemStateChangeLostRegistration) {
   EXPECT_FALSE(capability->IsRegistered());
 }
 
+TEST_F(CellularTest, EnableTrafficMonitor) {
+  SetCellularType(Cellular::kTypeUniversal);
+  CellularCapabilityUniversal *capability = GetCapabilityUniversal();
+  capability->model_id_.clear();
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kSuccess));
+  EXPECT_FALSE(device_->traffic_monitor_enabled());
+  testing::Mock::VerifyAndClearExpectations(this);
+
+  device_->state_ = Cellular::kStateDisabled;
+
+  capability->model_id_ = CellularCapabilityUniversal::kE362ModelId;
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kOperationFailed));
+  EXPECT_FALSE(device_->traffic_monitor_enabled());
+  testing::Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kSuccess));
+  EXPECT_TRUE(device_->traffic_monitor_enabled());
+}
+
 TEST_F(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);

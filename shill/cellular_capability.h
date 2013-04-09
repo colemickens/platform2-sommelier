@@ -198,6 +198,11 @@ class CellularCapability {
 
   virtual bool IsActivating() const;
 
+  // Returns true if the cellular device should initiate passive traffic
+  // monitoring to trigger active out-of-credit detection checks. This
+  // implementation returns false by default.
+  virtual bool ShouldEnableTrafficMonitoring() const;
+
  protected:
   // Releases all proxies held by the object.  This is most useful
   // during unit tests.

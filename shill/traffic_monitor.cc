@@ -54,14 +54,25 @@ void TrafficMonitor::Stop() {
 void TrafficMonitor::BuildIPPortToTxQueueLength(
     const vector<SocketInfo> &socket_infos,
     IPPortToTxQueueLengthMap *tx_queue_lengths) {
+  SLOG(Link, 3) << __func__;
   string device_ip_address = device_->ipconfig()->properties().address;
   vector<SocketInfo>::const_iterator it;
   for (it = socket_infos.begin(); it != socket_infos.end(); ++it) {
+    SLOG(Link, 4) << "SocketInfo(IP=" << it->local_ip_address().ToString()
+                  << ", TX=" << it->transmit_queue_value()
+                  << ", State=" << it->connection_state()
+                  << ", TimerState=" << it->timer_state();
     if (it->local_ip_address().ToString() != device_ip_address ||
         it->transmit_queue_value() == 0 ||
         it->connection_state() != SocketInfo::kConnectionStateEstablished ||
-        it->timer_state() != SocketInfo::kTimerStateRetransmitTimerPending)
+        (it->timer_state() != SocketInfo::kTimerStateRetransmitTimerPending &&
+         it->timer_state() !=
+            SocketInfo::kTimerStateZeroWindowProbeTimerPending)) {
+      SLOG(Link, 4) << "Connection Filtered.";
       continue;
+    }
+    SLOG(Link, 3) << "Monitoring connection: TX=" << it->transmit_queue_value()
+                  << " TimerState=" << it->timer_state();
 
     string local_ip_port =
         StringPrintf("%s:%d",
