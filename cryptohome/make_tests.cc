@@ -223,6 +223,11 @@ void TestUser::GenerateCredentials() {
                  chromeos::cryptohome::home::GetUserPath(username).value()),
            _))
     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform,
+      Stat(AnyOf("/home/chronos",
+                 mount->GetNewUserPath(username)),
+           _))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform, DirectoryExists(vault_path))
     .WillOnce(Return(false));
   EXPECT_CALL(platform, CreateDirectory(_))
@@ -243,8 +248,11 @@ void TestUser::InjectKeyset(MockPlatform* platform) {
 }
 
 void TestUser::InjectUserPaths(MockPlatform* platform,
-                               uid_t chronos_uid, gid_t chronos_access_gid,
+                               uid_t chronos_uid,
+                               gid_t chronos_gid,
+                               gid_t chronos_access_gid,
                                gid_t daemon_gid) {
+  scoped_refptr<Mount> temp_mount = new Mount();
   EXPECT_CALL(*platform, FileExists(image_path))
     .WillRepeatedly(Return(false));
   struct stat root_dir;
@@ -273,8 +281,18 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   user_dir.st_uid = chronos_uid;
   user_dir.st_gid = chronos_access_gid;
   EXPECT_CALL(*platform,
-      Stat(user_mount_path, _))
+      Stat(AnyOf(user_mount_path,
+                 temp_mount->GetNewUserPath(username)), _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(user_dir), Return(true)));
+  struct stat chronos_dir;
+  memset(&chronos_dir, 0, sizeof(chronos_dir));
+  chronos_dir.st_mode = S_IFDIR;
+  chronos_dir.st_uid = chronos_uid;
+  chronos_dir.st_gid = chronos_gid;
+  EXPECT_CALL(*platform,
+      Stat("/home/chronos", _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(chronos_dir),
+                            Return(true)));
   EXPECT_CALL(*platform,
       DirectoryExists(
         AnyOf(shadow_root,
@@ -286,11 +304,13 @@ void TestUser::InjectUserPaths(MockPlatform* platform,
   // TODO(wad) Bounce this out if needed elsewhere.
   std::string user_vault_mount = StringPrintf("%s/user",
                                               vault_mount_path.c_str());
+  std::string new_user_path = temp_mount->GetNewUserPath(username);
   EXPECT_CALL(*platform,
       FileExists(AnyOf(StartsWith(legacy_user_mount_path),
                        StartsWith(vault_mount_path),
                        StartsWith(user_mount_path),
-                       StartsWith(root_mount_path))))
+                       StartsWith(root_mount_path),
+                       StartsWith(new_user_path))))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, SetGroupAccessible(
                             AnyOf(StartsWith(legacy_user_mount_path),

@@ -466,7 +466,12 @@ TEST_F(MountTest, CreateCryptohomeTest) {
               user->user_mount_path,
               user->root_mount_prefix,
               user->root_mount_path)))
-    .Times(6)
+    .Times(7)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform,
+      CreateDirectory(
+        AnyOf("/home/chronos",
+              mount->GetNewUserPath(user->username))))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(false));
@@ -637,7 +642,8 @@ TEST_F(MountTest, MountCryptohome) {
   TestUser *user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
-  user->InjectUserPaths(&platform, chronos_uid_, shared_gid_, kDaemonGid);
+  user->InjectUserPaths(&platform, chronos_uid_, chronos_gid_, shared_gid_,
+                        kDaemonGid);
   user->InjectKeyset(&platform);
 
   EXPECT_CALL(platform, AddEcryptfsAuthToken(_, _, _))
@@ -647,6 +653,10 @@ TEST_F(MountTest, MountCryptohome) {
     .WillOnce(Return(0));
 
   EXPECT_CALL(platform, CreateDirectory(user->vault_mount_path))
+    .WillRepeatedly(Return(true));
+
+  EXPECT_CALL(platform,
+              CreateDirectory(mount->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
 
   EXPECT_CALL(platform, IsDirectoryMounted(user->vault_mount_path))
@@ -695,14 +705,18 @@ TEST_F(MountTest, MountCryptohomeNoChange) {
   ASSERT_TRUE(mount->DecryptVaultKeyset(up, true, &vault_keyset, &serialized,
                                        &error));
 
-  user->InjectUserPaths(&platform, chronos_uid_, shared_gid_, kDaemonGid);
+  user->InjectUserPaths(&platform, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
 
   EXPECT_CALL(platform, CreateDirectory(user->vault_mount_path))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform,
+              CreateDirectory(mount->GetNewUserPath(user->username)))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
-      .Times(3)
+      .Times(4)
       .WillRepeatedly(Return(true));
 
   ASSERT_TRUE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
@@ -783,7 +797,7 @@ TEST_F(MountTest, MountCryptohomeNoCreate) {
   EXPECT_CALL(platform, IsDirectoryMounted("/home/chronos/user"))
     .WillOnce(Return(false));  // bind precondition for first mount
   EXPECT_CALL(platform, Bind(_, _))
-      .Times(3)
+      .Times(4)
       .WillRepeatedly(Return(true));
 
   // Fake successful mount to /home/chronos/user/*
@@ -821,14 +835,21 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   TestUser* user = &helper_.users[0];
   UsernamePasskey up(user->username, user->passkey);
 
+  EXPECT_CALL(platform,
+              CreateDirectory(AnyOf(mount->GetNewUserPath(user->username),
+                                    StartsWith(kImageDir))))
+    .WillRepeatedly(Return(true));
+
   user->InjectKeyset(&platform);
-  user->InjectUserPaths(&platform, chronos_uid_, shared_gid_, kDaemonGid);
+  user->InjectUserPaths(&platform, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
+
   // Mount()
   MountError error;
   EXPECT_CALL(platform, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform, Bind(_, _))
-      .Times(3)
+      .Times(4)
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount->MountCryptohome(up, Mount::MountArgs(), &error));
 
@@ -855,7 +876,7 @@ TEST_F(MountTest, UserActivityTimestampUpdated) {
   EXPECT_CALL(platform, GetCurrentTime())
       .WillOnce(Return(base::Time::FromInternalValue(kMagicTimestamp2)));
   EXPECT_CALL(platform, Unmount(_, _, _))
-      .Times(4)
+      .Times(5)
       .WillRepeatedly(Return(true));
   mount->UnmountCryptohome();
   SerializedVaultKeyset serialized2;
@@ -1516,7 +1537,8 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   EXPECT_CALL(platform_, DirectoryExists(user->vault_path))
     .WillRepeatedly(Return(true));
 
-  user->InjectUserPaths(&platform_, chronos_uid_, shared_gid_, kDaemonGid);
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
   user->InjectKeyset(&platform_);
 
   EXPECT_CALL(platform_, AddEcryptfsAuthToken(_, _, _))
@@ -1527,11 +1549,14 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
 
   EXPECT_CALL(platform_, CreateDirectory(user->vault_mount_path))
     .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_,
+              CreateDirectory(mount_->GetNewUserPath(user->username)))
+    .WillRepeatedly(Return(true));
 
   EXPECT_CALL(platform_, Mount(_, _, _, _))
       .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(_, _))
-      .Times(3)
+      .Times(4)
       .WillRepeatedly(Return(true));
   ASSERT_TRUE(mount_->MountCryptohome(
       up, Mount::MountArgs(), &error));
@@ -1574,7 +1599,7 @@ TEST_F(DoAutomaticFreeDiskSpaceControlTest, OldUsersCleanupWhenMounted) {
   // Now unmount the user. So it (user[0]) should be cached and may be
   // deleted next when it becomes old.
   EXPECT_CALL(platform_, Unmount(_, _, _))
-      .Times(4)
+      .Times(5)
       .WillRepeatedly(Return(true));
   mount_->UnmountCryptohome();
 
@@ -1966,7 +1991,8 @@ TEST_F(EphemeralExistingUserSystemTest, OwnerUnknownMountNoRemoveTest) {
   // Mount().
   std::vector<TestUser>::iterator it;
   for (it = helper_.users.begin(); it != helper_.users.end(); ++it)
-    it->InjectUserPaths(&platform_, chronos_uid_, shared_gid_, kDaemonGid);
+    it->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
 
   std::vector<std::string> empty;
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(_, _, _))
@@ -2042,6 +2068,11 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
                                       "/home/user/"), _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
+      Stat(AnyOf("/home/chronos",
+                 mount_->GetNewUserPath(user->username)),
+           _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
                  chromeos::cryptohome::home::GetRootPath(
@@ -2052,7 +2083,8 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
            _))
     .WillRepeatedly(Return(false));
   helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
-  user->InjectUserPaths(&platform_, chronos_uid_, shared_gid_, kDaemonGid);
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
   // Only expect the mounted user to "exist".
   EXPECT_CALL(platform_, DirectoryExists(StartsWith(user->user_mount_path)))
     .WillRepeatedly(Return(true));
@@ -2114,6 +2146,11 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
                                       "/home/user/"), _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
+      Stat(AnyOf("/home/chronos",
+                 mount_->GetNewUserPath(user->username)),
+           _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
                  chromeos::cryptohome::home::GetRootPath(
@@ -2124,7 +2161,8 @@ TEST_F(EphemeralExistingUserSystemTest, MountRemoveTest) {
            _))
     .WillRepeatedly(Return(false));
   helper_.InjectEphemeralSkeleton(&platform_, kImageDir, false);
-  user->InjectUserPaths(&platform_, chronos_uid_, shared_gid_, kDaemonGid);
+  user->InjectUserPaths(&platform_, chronos_uid_, chronos_gid_,
+                        shared_gid_, kDaemonGid);
   // Only expect the mounted user to "exist".
   EXPECT_CALL(platform_, DirectoryExists(StartsWith(user->user_mount_path)))
     .WillRepeatedly(Return(true));
@@ -2256,6 +2294,12 @@ TEST_F(EphemeralExistingUserSystemTest, NonOwnerMountEnsureEphemeralTest) {
                                       "/home/user/"), _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
+      Stat(AnyOf("/home/chronos",
+                 mount_->GetNewUserPath(user->username)
+                ),
+           _))
+     .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
                  chromeos::cryptohome::home::GetRootPath(
@@ -2334,13 +2378,18 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountEnsureEphemeralTest) {
                                       "/home/user/"), _, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(true)));
   EXPECT_CALL(platform_,
+      Stat(AnyOf("/home/chronos",
+                 mount_->GetNewUserPath(user->username)),
+           _))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform_,
       Stat(AnyOf("/home",
                  "/home/root",
                  chromeos::cryptohome::home::GetRootPath(
-                   user->username).value(),
+                     user->username).value(),
                  "/home/user",
                  chromeos::cryptohome::home::GetUserPath(
-                   user->username).value()),
+                     user->username).value()),
            _))
     .WillRepeatedly(Return(false));
   // Only expect the mounted user to "exist".
@@ -2390,10 +2439,9 @@ TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
   fake_root_st.st_gid = 0;
   fake_root_st.st_mode = S_IFDIR | S_IRWXU;
   EXPECT_CALL(platform_, Stat("/home", _))
-    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
-                    Return(true)))
-    .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
-                    Return(true)));
+    .Times(3)
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(fake_root_st),
+                          Return(true)));
   EXPECT_CALL(platform_, Stat("/home/root", _))
     .WillOnce(DoAll(SetArgumentPointee<1>(fake_root_st),
                     Return(true)));
@@ -2404,6 +2452,13 @@ TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
                     Return(true)));
   EXPECT_CALL(platform_, Stat(StartsWith("/home/user/"), _))
     .WillOnce(Return(false));
+  struct stat fake_user_st;
+  fake_user_st.st_uid = chronos_uid_;
+  fake_user_st.st_gid = chronos_gid_;
+  fake_user_st.st_mode = S_IFDIR | S_IRWXU;
+  EXPECT_CALL(platform_, Stat("/home/chronos", _))
+    .WillOnce(DoAll(SetArgumentPointee<1>(fake_user_st),
+                    Return(true)));
   EXPECT_CALL(platform_, CreateDirectory(_))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(platform_, SetOwnership(_, _, _))
@@ -2427,6 +2482,9 @@ TEST_F(EphemeralNoUserSystemTest, MountGuestUserDir) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, Bind(StartsWith("/home/user/"),
                               "/home/chronos/user"))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, Bind(StartsWith("/home/user/"),
+                              StartsWith("/home/chronos/u-")))
     .WillOnce(Return(true));
 
   ASSERT_TRUE(mount_->MountGuestCryptohome());

@@ -265,6 +265,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     homedirs_->set_policy_provider(provider);
   }
 
+  // Returns the temporary user path while we're migrating for
+  // http://crbug.com/224291
+  std::string GetNewUserPath(const std::string& username) const;
+
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
@@ -569,6 +573,20 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   salt (OUT) - The user's salt
   void GetUserSalt(const Credentials& credentials, bool force_new,
                    chromeos::SecureBlob* salt) const;
+
+  // Ensures that the numth component of path is owned by uid/gid and is a
+  // directory.
+  bool EnsurePathComponent(const FilePath& fp, size_t num, uid_t uid,
+                           gid_t gid) const;
+
+
+  // Ensures that the permissions on every parent of NewUserDir are correct and
+  // that they are all directories. Since we're going to bind-mount over
+  // NewUserDir itself, we don't care what the permissions on it are, just that
+  // it exists.
+  // NewUserDir looks like: /home/chronos/u-$hash
+  // /home needs to be root:root, /home/chronos needs to be uid:gid.
+  bool EnsureNewUserDirExists(const FilePath& fp, uid_t uid, gid_t gid) const;
 
   // Ensures that a specified directory exists, with all path components but the
   // last one owned by kMountOwnerUid:kMountOwnerGid and the last component

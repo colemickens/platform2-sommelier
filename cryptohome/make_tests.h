@@ -67,7 +67,9 @@ class TestUser {
   void InjectKeyset(MockPlatform* platform);
   // Inject all the paths for a vault to exist.
   void InjectUserPaths(MockPlatform* platform,
-                       uid_t chronos_uid, gid_t chronos_access_gid,
+                       uid_t chronos_uid,
+                       gid_t chronos_gid,
+                       gid_t chronos_access_gid,
                        gid_t daemon_gid);
   // Completely public accessors like the TestUserInfo struct.
   const char* username;
