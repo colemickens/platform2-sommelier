@@ -72,6 +72,7 @@ namespace switches {
     "tpm_attestation_finish_cert_request",
     "tpm_attestation_key_status",
     "tpm_attestation_register_key",
+    "tpm_attestation_enterprise_challenge",
     NULL };
   enum ActionEnum {
     ACTION_MOUNT,
@@ -104,6 +105,7 @@ namespace switches {
     ACTION_TPM_ATTESTATION_FINISH_CERTREQ,
     ACTION_TPM_ATTESTATION_KEY_STATUS,
     ACTION_TPM_ATTESTATION_REGISTER_KEY,
+    ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE,
   };
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
@@ -1245,6 +1247,54 @@ int main(int argc, char **argv) {
       gboolean result = client_loop.get_return_status();
       printf("Result: %s\n", result ? "Success" : "Failure");
     }
+  } else if (!strcmp(
+      switches::kActions[switches::ACTION_TPM_ATTESTATION_ENTERPRISE_CHALLENGE],
+      action.c_str())) {
+    string key_name = cl->GetSwitchValueASCII(switches::kAttrNameSwitch);
+    if (key_name.length() == 0) {
+      printf("No key name specified (--%s=<name>)\n",
+             switches::kAttrNameSwitch);
+      return 1;
+    }
+    string contents;
+    if (!file_util::ReadFileToString(GetFile(cl), &contents)) {
+      printf("Failed to read input file: %s\n", GetFile(cl).value().c_str());
+      return 1;
+    }
+    chromeos::glib::ScopedArray challenge(g_array_new(FALSE, FALSE, 1));
+    g_array_append_vals(challenge.get(), contents.data(), contents.length());
+    chromeos::glib::ScopedArray device_id(g_array_new(FALSE, FALSE, 1));
+    string device_id_str = "fake_device_id";
+    g_array_append_vals(device_id.get(),
+                        device_id_str.data(),
+                        device_id_str.length());
+    chromeos::glib::ScopedError error;
+    ClientLoop client_loop;
+    client_loop.Initialize(&proxy);
+    gint async_id = -1;
+    if (!org_chromium_CryptohomeInterface_tpm_attestation_sign_enterprise_challenge(
+            proxy.gproxy(),
+            TRUE,
+            key_name.c_str(),
+            "fake_domain",
+            device_id.get(),
+            TRUE,
+            challenge.get(),
+            &async_id,
+            &chromeos::Resetter(&error).lvalue())) {
+      printf("AsyncTpmAttestationSignEnterpriseChallenge call failed: %s.\n",
+             error->message);
+      return 1;
+    }
+    client_loop.Run(async_id);
+    if (!client_loop.get_return_status()) {
+      printf("Attestation challenge response failed.\n");
+      return 1;
+    }
+    string response_data = client_loop.get_return_data();
+    file_util::WriteFileDescriptor(STDOUT_FILENO,
+                                   response_data.data(),
+                                   response_data.length());
   } else {
     printf("Unknown action or no action given.  Available actions:\n");
     for (int i = 0; switches::kActions[i]; i++)
