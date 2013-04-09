@@ -132,6 +132,10 @@ void SetSystemSalt(std::string* value) {
   salt = value;
 }
 
+std::string GetGuestUserName() {
+  return "$guest";
+}
+
 } // namespace home
 } // namespace cryptohome
 } // namespace chromeos

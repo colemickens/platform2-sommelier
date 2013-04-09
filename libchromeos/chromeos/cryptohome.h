@@ -61,6 +61,8 @@ void SetSystemSalt(std::string* salt);
 // Returns the system salt.
 std::string* GetSystemSalt();
 
+std::string GetGuestUserName();
+
 } // namespace home
 } // namespace cryptohome
 } // namespace chromeos
