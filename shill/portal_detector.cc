@@ -30,7 +30,7 @@ namespace shill {
 const int PortalDetector::kDefaultCheckIntervalSeconds = 30;
 const char PortalDetector::kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 const char PortalDetector::kDefaultURL[] =
-    "http://clients3.google.com/generate_204";
+    "http://www.gstatic.com/generate_204";
 const char PortalDetector::kResponseExpected[] = "HTTP/?.? 204";
 
 const int PortalDetector::kMaxRequestAttempts = 3;
