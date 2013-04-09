@@ -9,6 +9,7 @@
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 
+#include "chromeos/switches/chrome_switches.h"
 #include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/key_generator.h"
@@ -19,13 +20,6 @@
 #include "login_manager/policy_store.h"
 
 namespace em = enterprise_management;
-
-namespace {
-// Sentinel flags for separating flags introduced through the StartUpFlags
-// policy from the rest of the command line.
-const char kBeginPolicyFlagsFlag[] = "--policy-switches-begin";
-const char kEndPolicyFlagsFlag[] = "--policy-switches-end";
-}  // namespace
 
 namespace login_manager {
 using google::protobuf::RepeatedPtrField;
@@ -212,7 +206,8 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
   if (policy.has_start_up_flags()) {
     const em::StartUpFlagsProto& flags_proto = policy.start_up_flags();
     const RepeatedPtrField<std::string>& flags = flags_proto.flags();
-    policy_args.push_back(kBeginPolicyFlagsFlag);
+    policy_args.push_back(
+        std::string("--").append(chromeos::switches::kPolicySwitchesBegin));
     for (RepeatedPtrField<std::string>::const_iterator it = flags.begin();
          it != flags.end(); ++it) {
       std::string flag(*it);
@@ -224,7 +219,8 @@ std::vector<std::string> DevicePolicyService::GetStartUpFlags() {
         flag = std::string("--").append(flag);
       policy_args.push_back(flag);
     }
-    policy_args.push_back(kEndPolicyFlagsFlag);
+    policy_args.push_back(
+        std::string("--").append(chromeos::switches::kPolicySwitchesEnd));
   }
   return policy_args;
 }
