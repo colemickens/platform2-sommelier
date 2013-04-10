@@ -21,7 +21,7 @@ namespace policy {
 namespace {
 
 // Number of ambient light sensor samples that should be supplied in order to
-// trigger an update to InternalBacklightController's ALS offset.
+// trigger an update to InternalBacklightController's ALS brightness percent.
 const int kAlsSamplesToTriggerAdjustment = 2;
 
 }  // namespace
@@ -32,27 +32,26 @@ class InternalBacklightControllerTest : public ::testing::Test {
       : max_backlight_level_(1024),
         initial_backlight_level_(512),
         pass_light_sensor_(true),
-        initial_als_percent_(0.0),
         initial_als_lux_(0),
         report_initial_als_reading_(true),
         report_initial_power_source_(true),
-        default_plugged_offset_(70.0),
-        default_unplugged_offset_(30.0),
         default_min_visible_level_(1),
+        default_als_limits_("0.0\n30.0\n100.0"),
+        default_als_steps_("50.0 -1 400\n90.0 100 -1"),
         backlight_(max_backlight_level_, initial_backlight_level_),
-        light_sensor_(initial_als_percent_, initial_als_lux_) {
+        light_sensor_(initial_als_lux_) {
   }
 
   // Initializes |controller_| and sends it power source and ambient light
   // event such that it should make its first adjustment to the backlight
   // brightness.
   virtual void Init(PowerSource power_source) {
-    prefs_.SetDouble(kPluggedBrightnessOffsetPref, default_plugged_offset_);
-    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref, default_unplugged_offset_);
     prefs_.SetInt64(kMinVisibleBacklightLevelPref, default_min_visible_level_);
+    prefs_.SetString(kInternalBacklightAlsLimitsPref, default_als_limits_);
+    prefs_.SetString(kInternalBacklightAlsStepsPref, default_als_steps_);
     backlight_.set_max_level(max_backlight_level_);
     backlight_.set_current_level(initial_backlight_level_);
-    light_sensor_.set_values(initial_als_percent_, initial_als_lux_);
+    light_sensor_.set_lux(initial_als_lux_);
 
     controller_.reset(new InternalBacklightController(
         &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : NULL,
@@ -78,8 +77,7 @@ class InternalBacklightControllerTest : public ::testing::Test {
   // Should Init() pass |light_sensor_| to |controller_|?
   bool pass_light_sensor_;
 
-  // Initial percent and lux levels reported by |light_sensor_|.
-  double initial_als_percent_;
+  // Initial lux level reported by |light_sensor_|.
   int initial_als_lux_;
 
   // Should Init() tell |controller_| about an initial ambient light
@@ -88,9 +86,9 @@ class InternalBacklightControllerTest : public ::testing::Test {
   bool report_initial_power_source_;
 
   // Default values for prefs.  Applied when Init() is called.
-  double default_plugged_offset_;
-  double default_unplugged_offset_;
   int64 default_min_visible_level_;
+  std::string default_als_limits_;
+  std::string default_als_steps_;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;
@@ -101,16 +99,17 @@ class InternalBacklightControllerTest : public ::testing::Test {
 
 TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
   default_min_visible_level_ = 100;
+  default_als_steps_ = "50.0 -1 -1";
   Init(POWER_BATTERY);
   EXPECT_EQ(default_min_visible_level_,
             PercentToLevel(InternalBacklightController::kMinVisiblePercent));
-  const int64 kPrefLevel = PercentToLevel(default_unplugged_offset_);
-  EXPECT_EQ(kPrefLevel, backlight_.current_level());
+  const int64 kAlsLevel = PercentToLevel(50.0);
+  EXPECT_EQ(kAlsLevel, backlight_.current_level());
 
   // Check that the first step increases the brightness; within the loop
   // we'll just ensure that the brightness never decreases.
   controller_->IncreaseUserBrightness();
-  EXPECT_GT(backlight_.current_level(), kPrefLevel);
+  EXPECT_GT(backlight_.current_level(), kAlsLevel);
   for (int i = 0; i < InternalBacklightController::kMaxBrightnessSteps; ++i) {
     int64 old_level = backlight_.current_level();
     controller_->IncreaseUserBrightness();
@@ -150,13 +149,30 @@ TEST_F(InternalBacklightControllerTest, IncreaseAndDecreaseBrightness) {
 // Test that InternalBacklightController notifies its observer in response to
 // brightness changes.
 TEST_F(InternalBacklightControllerTest, NotifyObserver) {
+  default_min_visible_level_ = 100;
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
 
   MockBacklightControllerObserver observer;
   controller_->AddObserver(&observer);
 
+  // Send enough ambient light sensor samples to trigger a brightness change.
+  observer.Clear();
+  int64 old_level = backlight_.current_level();
+  light_sensor_.set_lux(300);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  ASSERT_NE(old_level, backlight_.current_level());
+  ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
+  EXPECT_EQ(backlight_.current_level(),
+            PercentToLevel(observer.changes()[0].percent));
+  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+            observer.changes()[0].cause);
+
   // Increase the brightness and check that the observer is notified.
-  controller_->IncreaseUserBrightness();
+  observer.Clear();
+  ASSERT_TRUE(controller_->IncreaseUserBrightness());
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
@@ -165,24 +181,22 @@ TEST_F(InternalBacklightControllerTest, NotifyObserver) {
 
   // Decrease the brightness.
   observer.Clear();
-  controller_->DecreaseUserBrightness(true /* allow_off */);
+  ASSERT_TRUE(controller_->DecreaseUserBrightness(true /* allow_off */));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
   EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
             observer.changes()[0].cause);
 
-  // Send enough ambient light sensor samples to trigger a brightness change.
+  // Set the brightness to a low level.
   observer.Clear();
-  int64 old_level = backlight_.current_level();
-  light_sensor_.set_values(32.0, 32);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
-    light_sensor_.NotifyObservers();
-  ASSERT_NE(old_level, backlight_.current_level());
+  const double kLowPercent = 10.0;
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      kLowPercent, BacklightController::TRANSITION_INSTANT));
   ASSERT_EQ(1, static_cast<int>(observer.changes().size()));
   EXPECT_EQ(backlight_.current_level(),
             PercentToLevel(observer.changes()[0].percent));
-  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_AUTOMATED,
+  EXPECT_EQ(BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED,
             observer.changes()[0].cause);
 
   // Plug the device in.
@@ -222,8 +236,7 @@ TEST_F(InternalBacklightControllerTest, MinBrightnessLevelMatchesMax) {
 // Test the saved brightness level before and after suspend.
 TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   Init(POWER_AC);
-  const int64 kDefaultLevel = PercentToLevel(default_plugged_offset_);
-  EXPECT_EQ(kDefaultLevel, backlight_.current_level());
+  const int64 initial_level = backlight_.current_level();
 
   // Test suspend and resume.  When suspending, the previously-current
   // brightness level should be saved as the resume level.
@@ -232,10 +245,10 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
-  EXPECT_EQ(kDefaultLevel, backlight_.resume_level());
+  EXPECT_EQ(initial_level, backlight_.resume_level());
 
   controller_->SetSuspended(false);
-  EXPECT_EQ(kDefaultLevel, backlight_.current_level());
+  EXPECT_EQ(initial_level, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
@@ -246,7 +259,7 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   // restore that level after resuming.
   backlight_.clear_resume_level();
   controller_->SetDimmedForInactivity(true);
-  EXPECT_LT(backlight_.current_level(), kDefaultLevel);
+  EXPECT_LT(backlight_.current_level(), initial_level);
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
 
   // The displays are turned off for the idle-off state.
@@ -262,13 +275,13 @@ TEST_F(InternalBacklightControllerTest, SuspendBrightnessLevel) {
   controller_->SetSuspended(true);
   EXPECT_EQ(0, display_power_setter_.num_power_calls());
   EXPECT_EQ(0, backlight_.current_level());
-  EXPECT_EQ(kDefaultLevel, backlight_.resume_level());
+  EXPECT_EQ(initial_level, backlight_.resume_level());
 
   // Test resume.
   controller_->SetDimmedForInactivity(false);
   controller_->SetOffForInactivity(false);
   controller_->SetSuspended(false);
-  EXPECT_EQ(kDefaultLevel, backlight_.current_level());
+  EXPECT_EQ(initial_level, backlight_.current_level());
   EXPECT_EQ(0, backlight_.current_interval().InMilliseconds());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
@@ -305,6 +318,7 @@ TEST_F(InternalBacklightControllerTest, NonLinearMapping) {
 
 TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   initial_backlight_level_ = max_backlight_level_;
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   report_initial_als_reading_ = false;
   Init(POWER_AC);
 
@@ -313,20 +327,18 @@ TEST_F(InternalBacklightControllerTest, AmbientLightTransitions) {
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // After getting the first reading from the sensor, we should do a slow
-  // transition to a lower level.
+  // transition to the lower level.
   light_sensor_.NotifyObservers();
-  EXPECT_EQ(PercentToLevel(default_plugged_offset_),
-            backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 
-  // Pass a bunch of 100% readings and check that we slowly increase the
+  // Pass a bunch of higher readings and check that we slowly increase the
   // brightness.
-  light_sensor_.set_values(100.0, 100);
+  light_sensor_.set_lux(400);
   for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
     light_sensor_.NotifyObservers();
-  EXPECT_GT(backlight_.current_level(),
-            PercentToLevel(default_plugged_offset_));
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 }
@@ -349,46 +361,53 @@ TEST_F(InternalBacklightControllerTest, TurnDisplaysOffWhenShuttingDown) {
 
 // Test that HandlePowerSourceChange() sets the brightness appropriately
 // when the computer is plugged and unplugged.
-TEST_F(InternalBacklightControllerTest, TestPlug) {
+TEST_F(InternalBacklightControllerTest, TestPlugAndUnplug) {
   Init(POWER_BATTERY);
-  const int64 kUnpluggedLevel = PercentToLevel(default_unplugged_offset_);
-  const int64 kPluggedLevel = PercentToLevel(default_plugged_offset_);
 
-  EXPECT_EQ(kUnpluggedLevel, backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(kPluggedLevel, backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(kUnpluggedLevel, backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(kPluggedLevel, backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(kPluggedLevel, backlight_.current_level());
-}
+  const double kUnpluggedPercent = 40.0;
+  EXPECT_TRUE(controller_->SetUserBrightnessPercent(
+      kUnpluggedPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kUnpluggedPercent), backlight_.current_level());
 
-// Test that HandlePowerSourceChange() sets the brightness appropriately
-// when the computer is unplugged and plugged.
-TEST_F(InternalBacklightControllerTest, TestUnplug) {
-  Init(POWER_AC);
-  const int64 kUnpluggedLevel = PercentToLevel(default_unplugged_offset_);
-  const int64 kPluggedLevel = PercentToLevel(default_plugged_offset_);
-
-  EXPECT_EQ(kPluggedLevel, backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(kUnpluggedLevel, backlight_.current_level());
+  const double kPluggedPercent = 60.0;
   controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(kPluggedLevel, backlight_.current_level());
+  EXPECT_TRUE(controller_->SetUserBrightnessPercent(
+      kPluggedPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kPluggedPercent), backlight_.current_level());
+
   controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(kUnpluggedLevel, backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(kUnpluggedPercent), backlight_.current_level());
+  controller_->HandlePowerSourceChange(POWER_AC);
+  EXPECT_EQ(PercentToLevel(kPluggedPercent), backlight_.current_level());
+
+  // After requesting a brightness lower than the battery brightness while
+  // on AC and then switching to battery, the screen should stay at the low
+  // level instead of being brightened.
+  const double kNewPluggedPercent = 20.0;
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      kNewPluggedPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kNewPluggedPercent), backlight_.current_level());
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(kNewPluggedPercent), backlight_.current_level());
+
+  // The screen also shouldn't be dimmed in response to a change to AC.
+  const double kNewUnpluggedPercent = 60.0;
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      kNewUnpluggedPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kNewUnpluggedPercent), backlight_.current_level());
+  controller_->HandlePowerSourceChange(POWER_AC);
+  EXPECT_EQ(PercentToLevel(kNewUnpluggedPercent), backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, TestDimming) {
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
   Init(POWER_AC);
-  const int64 kPluggedLevel = PercentToLevel(default_plugged_offset_);
-  EXPECT_EQ(kPluggedLevel, backlight_.current_level());
+  int64 bottom_als_level = PercentToLevel(50.0);
+  EXPECT_EQ(bottom_als_level, backlight_.current_level());
 
   controller_->SetDimmedForInactivity(true);
   int64 dimmed_level = backlight_.current_level();
-  EXPECT_LT(dimmed_level, kPluggedLevel);
+  EXPECT_LT(dimmed_level, bottom_als_level);
   EXPECT_GT(dimmed_level, 0);
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
@@ -397,32 +416,35 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   controller_->SetDimmedForInactivity(true);
   EXPECT_EQ(dimmed_level, backlight_.current_level());
 
-  // User requests and ambient light readings shouldn't change the
-  // backlight level while it's dimmed.
+  // Ambient light readings shouldn't change the backlight level while it's
+  // dimmed.
+  light_sensor_.set_lux(400);
+  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
+    light_sensor_.NotifyObservers();
+  EXPECT_EQ(dimmed_level, backlight_.current_level());
+
+  // After leaving the dimmed state, the updated ALS level should be used.
+  controller_->SetDimmedForInactivity(false);
+  EXPECT_EQ(PercentToLevel(75.0), backlight_.current_level());
+  EXPECT_EQ(kFastBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // User requests shouldn't change the brightness while dimmed either.
+  controller_->SetDimmedForInactivity(true);
+  EXPECT_EQ(dimmed_level, backlight_.current_level());
   const double kNewUserOffset = 67.0;
   EXPECT_FALSE(controller_->SetUserBrightnessPercent(
       kNewUserOffset, BacklightController::TRANSITION_INSTANT));
   EXPECT_EQ(dimmed_level, backlight_.current_level());
 
-  const double kNewAlsOffset = 12.0;
-  light_sensor_.set_values(kNewAlsOffset, 0);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
-    light_sensor_.NotifyObservers();
-  EXPECT_EQ(dimmed_level, backlight_.current_level());
-
-  // After leaving the dimmed state, the updated user plus ALS offset
-  // should be used.
+  // After leaving the dimmed state, the updated user level should be used.
   controller_->SetDimmedForInactivity(false);
-  EXPECT_EQ(PercentToLevel(kNewUserOffset + kNewAlsOffset),
-            backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(kNewUserOffset), backlight_.current_level());
   EXPECT_EQ(kFastBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 
   // If the brightness is already below the dimmed level, it shouldn't be
   // changed when dimming is requested.
-  light_sensor_.set_values(0.0, 0);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
-    light_sensor_.NotifyObservers();
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       InternalBacklightController::kMinVisiblePercent,
       BacklightController::TRANSITION_INSTANT));
@@ -432,80 +454,22 @@ TEST_F(InternalBacklightControllerTest, TestDimming) {
   EXPECT_EQ(new_undimmed_level, backlight_.current_level());
 }
 
-TEST_F(InternalBacklightControllerTest, UserOffsets) {
-  // Start out negative user offsets and 0% ambient light.  The backlight
-  // should be turned on at the minimum level after initialization.
-  default_plugged_offset_ = -4.0;
-  default_unplugged_offset_ = -10.0;
-  initial_als_percent_ = 0.0;
+TEST_F(InternalBacklightControllerTest, UserLevelOverridesAmbientLight) {
   Init(POWER_AC);
-  const int kMinVisibleLevel =
-      PercentToLevel(InternalBacklightController::kMinVisiblePercent);
-  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+  default_als_steps_ = "50.0 -1 200\n75.0 100 -1";
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
 
-  // The user offset prefs should stay at their initial values after Init()
-  // is called.
-  double pref_value;
-  ASSERT_TRUE(prefs_.GetDouble(kPluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(default_plugged_offset_, pref_value);
-  ASSERT_TRUE(prefs_.GetDouble(kUnpluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(default_unplugged_offset_, pref_value);
-
-  // Calling SetUserBrightnessPercent() while on AC power should update the
-  // plugged-offset pref but leave the unplugged pref untouched.
-  const double kNewPluggedOffset = 80.0;
+  const double kUserPercent = 80.0;
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kNewPluggedOffset, BacklightController::TRANSITION_INSTANT));
-  ASSERT_TRUE(prefs_.GetDouble(kPluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(kNewPluggedOffset, pref_value);
-  ASSERT_TRUE(prefs_.GetDouble(kUnpluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(default_unplugged_offset_, pref_value);
+      kUserPercent, BacklightController::TRANSITION_INSTANT));
+  EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
 
-  // Now check that the unplugged-offset pref is written.
-  const double kNewUnpluggedOffset = 70.0;
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kNewUnpluggedOffset, BacklightController::TRANSITION_INSTANT));
-  ASSERT_TRUE(prefs_.GetDouble(kPluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(kNewPluggedOffset, pref_value);
-  ASSERT_TRUE(prefs_.GetDouble(kUnpluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(kNewUnpluggedOffset, pref_value);
-
-  // Increase the ambient brightness.
-  const double kNewAlsPercent = 35.0;
-  light_sensor_.set_values(kNewAlsPercent, 0);
+  // Changes to the ambient light level shouldn't affect the backlight
+  // brightness after the user has manually set it.
+  light_sensor_.set_lux(400);
   for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
     light_sensor_.NotifyObservers();
-  EXPECT_EQ(max_backlight_level_, backlight_.current_level());
-
-  // Request a lower brightness than the ALS offset.  The request should be
-  // honored and the user offset pref should be updated correspondingly.
-  const double kLowBrightness = 10.0;
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kLowBrightness, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kLowBrightness), backlight_.current_level());
-  ASSERT_TRUE(prefs_.GetDouble(kUnpluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(kLowBrightness - kNewAlsPercent, pref_value);
-
-  // Set the ambient brightness to 0.  Even though the sum of the user
-  // offset and the ALS offset is negative, the backlight should stay on.
-  light_sensor_.set_values(0.0, 0);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
-    light_sensor_.NotifyObservers();
-  EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
-
-  // Request a brightness of 0% and check that the backlight is turned off.
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
-  ASSERT_TRUE(prefs_.GetDouble(kUnpluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(0.0, pref_value);
-  EXPECT_EQ(0, backlight_.current_level());
-
-  // The backlight should stay off even when the ambient light increases.
-  light_sensor_.set_values(25.0, 0);
-  for (int i = 0; i < kAlsSamplesToTriggerAdjustment; ++i)
-    light_sensor_.NotifyObservers();
-  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(kUserPercent), backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, DeferInitialAdjustment) {
@@ -513,6 +477,7 @@ TEST_F(InternalBacklightControllerTest, DeferInitialAdjustment) {
   // initial ambient light reading haven't been received.
   report_initial_power_source_ = false;
   report_initial_als_reading_ = false;
+  default_als_steps_ = "50.0 -1 -1";
   Init(POWER_AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
@@ -521,10 +486,9 @@ TEST_F(InternalBacklightControllerTest, DeferInitialAdjustment) {
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // After the ambient light level is also received, the backlight should
-  // slowly transition to the level from the pref.
+  // slowly transition to the ALS-derived level.
   light_sensor_.NotifyObservers();
-  EXPECT_EQ(PercentToLevel(default_plugged_offset_),
-            backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(50.0), backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
 }
@@ -537,48 +501,9 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensor) {
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
   // When no ambient light sensor was passed to the controller, it should
-  // update the brightness level immediately after getting the plugged
-  // state instead of waiting for an ambient light reading.
+  // stick to the initial brightness level.
   controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(PercentToLevel(default_plugged_offset_),
-            backlight_.current_level());
-  EXPECT_EQ(kFastBacklightTransitionMs,
-            backlight_.current_interval().InMilliseconds());
-}
-
-TEST_F(InternalBacklightControllerTest, AvoidStrangePowerSourceAdjustments) {
-  default_plugged_offset_ = 40.0;
-  default_unplugged_offset_ = 20.0;
-  Init(POWER_AC);
-  EXPECT_EQ(PercentToLevel(default_plugged_offset_),
-            backlight_.current_level());
-
-  // After requesting a brightness lower than the battery brightness while
-  // on AC and then switching to battery, the screen should stay at the low
-  // level instead of being brightened.
-  const double kNewPluggedPercent = 10.0;
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kNewPluggedPercent, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kNewPluggedPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_BATTERY);
-  EXPECT_EQ(PercentToLevel(kNewPluggedPercent), backlight_.current_level());
-
-  // The unplugged pref shouldn't be changed.
-  double pref_value = 0.0;
-  ASSERT_TRUE(prefs_.GetDouble(kUnpluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(default_unplugged_offset_, pref_value);
-
-  // The screen also shouldn't be dimmed in response to a change to AC.
-  const double kNewUnpluggedPercent = 60.0;
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      kNewUnpluggedPercent, BacklightController::TRANSITION_INSTANT));
-  EXPECT_EQ(PercentToLevel(kNewUnpluggedPercent), backlight_.current_level());
-  controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(PercentToLevel(kNewUnpluggedPercent), backlight_.current_level());
-
-  // The plugged pref shouldn't be changed.
-  ASSERT_TRUE(prefs_.GetDouble(kPluggedBrightnessOffsetPref, &pref_value));
-  EXPECT_DOUBLE_EQ(kNewPluggedPercent, pref_value);
+  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {

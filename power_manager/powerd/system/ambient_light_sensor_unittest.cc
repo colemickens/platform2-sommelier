@@ -115,14 +115,10 @@ TEST_F(AmbientLightSensorTest, Basic) {
   WriteLux(100);
   ASSERT_TRUE(observer_.RunUntilAmbientLightChanged());
   EXPECT_EQ(100, sensor_->GetAmbientLightLux());
-  double old_percent = sensor_->GetAmbientLightPercent();
-  EXPECT_GE(old_percent, 0.0);
 
   WriteLux(200);
   ASSERT_TRUE(observer_.RunUntilAmbientLightChanged());
   EXPECT_EQ(200, sensor_->GetAmbientLightLux());
-  double new_percent = sensor_->GetAmbientLightPercent();
-  EXPECT_GT(new_percent, old_percent);
 
   // When the lux value doesn't change, we shouldn't be called.
   WriteLux(200);

@@ -15,13 +15,10 @@ namespace system {
 // Stub implementation of AmbientLightSensorInterface for use by tests.
 class AmbientLightSensorStub : public AmbientLightSensorInterface {
  public:
-  AmbientLightSensorStub(double percent, int lux);
+  explicit AmbientLightSensorStub(int lux);
   virtual ~AmbientLightSensorStub();
 
-  void set_values(double percent, int lux) {
-    percent_ = percent;
-    lux_ = lux;
-  }
+  void set_lux(int lux) { lux_ = lux; }
 
   // Notifies |observers_| that the ambient light has changed.
   void NotifyObservers();
@@ -29,16 +26,10 @@ class AmbientLightSensorStub : public AmbientLightSensorInterface {
   // AmbientLightSensorInterface implementation:
   virtual void AddObserver(AmbientLightObserver* observer) OVERRIDE;
   virtual void RemoveObserver(AmbientLightObserver* observer) OVERRIDE;
-  virtual double GetAmbientLightPercent() OVERRIDE;
   virtual int GetAmbientLightLux() OVERRIDE;
-  virtual std::string DumpPercentHistory() OVERRIDE;
-  virtual std::string DumpLuxHistory() OVERRIDE;
 
  private:
   ObserverList<AmbientLightObserver> observers_;
-
-  // Value returned by GetAmbientLightPercent().
-  double percent_;
 
   // Value returned by GetAmbientLightLux().
   int lux_;

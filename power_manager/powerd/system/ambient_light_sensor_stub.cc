@@ -9,10 +9,7 @@
 namespace power_manager {
 namespace system {
 
-AmbientLightSensorStub::AmbientLightSensorStub(double percent, int lux)
-    : percent_(percent),
-      lux_(lux) {
-}
+AmbientLightSensorStub::AmbientLightSensorStub(int lux) : lux_(lux) {}
 
 AmbientLightSensorStub::~AmbientLightSensorStub() {}
 
@@ -31,15 +28,7 @@ void AmbientLightSensorStub::RemoveObserver(AmbientLightObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-double AmbientLightSensorStub::GetAmbientLightPercent() { return percent_; }
-
 int AmbientLightSensorStub::GetAmbientLightLux() { return lux_; }
-
-std::string AmbientLightSensorStub::DumpPercentHistory() {
-  return std::string();
-}
-
-std::string AmbientLightSensorStub::DumpLuxHistory() { return std::string(); }
 
 }  // namespace system
 }  // namespace power_manager

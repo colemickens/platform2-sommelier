@@ -128,8 +128,6 @@ class DaemonTest : public Test {
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-    prefs_.SetDouble(kPluggedBrightnessOffsetPref, 70);
-    prefs_.SetDouble(kUnpluggedBrightnessOffsetPref, 30);
     ResetPowerStatus(status_);
 
     // Setting up the window taper values, since they are needed in some of

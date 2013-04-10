@@ -16,7 +16,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
-#include "power_manager/powerd/system/ambient_light_sensor.h"
 #include "power_manager/powerd/system/display_power_setter.h"
 
 namespace power_manager {
@@ -92,8 +91,9 @@ InternalBacklightController::InternalBacklightController(
     system::DisplayPowerSetterInterface* display_power_setter)
     : backlight_(backlight),
       prefs_(prefs),
-      light_sensor_(sensor),
       display_power_setter_(display_power_setter),
+      ambient_light_handler_(
+          sensor ? new AmbientLightHandler(sensor, this) : NULL),
       power_source_(POWER_BATTERY),
       display_mode_(DISPLAY_NORMAL),
       dimmed_for_inactivity_(false),
@@ -101,20 +101,18 @@ InternalBacklightController::InternalBacklightController(
       suspended_(false),
       shutting_down_(false),
       docked_(false),
-      has_seen_als_event_(false),
-      has_seen_power_source_change_(false),
-      als_offset_percent_(0.0),
-      als_hysteresis_percent_(0.0),
-      als_temporal_state_(ALS_HYST_IMMEDIATE),
+      got_ambient_light_brightness_percent_(false),
+      got_power_source_(false),
       als_adjustment_count_(0),
       user_adjustment_count_(0),
-      plugged_offset_percent_(0.0),
-      unplugged_offset_percent_(0.0),
+      ambient_light_brightness_percent_(kMaxPercent),
+      plugged_user_brightness_percent_(kMaxPercent),
+      unplugged_user_brightness_percent_(kMaxPercent),
       user_requested_zero_(false),
       max_level_(0),
       min_visible_level_(0),
       instant_transitions_below_min_level_(false),
-      ignore_ambient_light_(false),
+      use_ambient_light_(true),
       step_percent_(1.0),
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
@@ -123,16 +121,9 @@ InternalBacklightController::InternalBacklightController(
   DCHECK(backlight_);
   DCHECK(prefs_);
   DCHECK(display_power_setter_);
-  if (light_sensor_)
-    light_sensor_->AddObserver(this);
 }
 
-InternalBacklightController::~InternalBacklightController() {
-  if (light_sensor_) {
-    light_sensor_->RemoveObserver(this);
-    light_sensor_ = NULL;
-  }
-}
+InternalBacklightController::~InternalBacklightController() {}
 
 bool InternalBacklightController::Init() {
   if (!backlight_->GetMaxBrightnessLevel(&max_level_) ||
@@ -143,8 +134,19 @@ bool InternalBacklightController::Init() {
 
   ReadPrefs();
 
+  const double initial_percent = LevelToPercent(current_level_);
+  plugged_user_brightness_percent_ = initial_percent;
+  unplugged_user_brightness_percent_ = initial_percent;
+
+  if (ambient_light_handler_) {
+    ambient_light_handler_->Init(prefs_, kInternalBacklightAlsLimitsPref,
+        kInternalBacklightAlsStepsPref, initial_percent);
+  } else {
+    use_ambient_light_ = false;
+  }
+
   if (max_level_ == min_visible_level_ || kMaxBrightnessSteps == 1) {
-    step_percent_ = 100.0;
+    step_percent_ = kMaxPercent;
   } else {
     // 1 is subtracted from kMaxBrightnessSteps to account for the step between
     // |min_brightness_level_| and 0.
@@ -217,23 +219,25 @@ void InternalBacklightController::RemoveObserver(
 }
 
 void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
-  if (has_seen_power_source_change_ && power_source_ == source)
+  if (got_power_source_ && power_source_ == source)
     return;
 
   VLOG(2) << "Power source changed to " << PowerSourceToString(source);
 
   // Ensure that the screen isn't dimmed in response to a transition to AC
   // or brightened in response to a transition to battery.
-  if (has_seen_power_source_change_) {
+  if (got_power_source_) {
     bool plugged = source == POWER_AC;
-    if (plugged && unplugged_offset_percent_ > plugged_offset_percent_)
-      plugged_offset_percent_ = unplugged_offset_percent_;
-    else if (!plugged && unplugged_offset_percent_ > plugged_offset_percent_)
-      unplugged_offset_percent_ = plugged_offset_percent_;
+    bool unplugged_exceeds_plugged =
+        unplugged_user_brightness_percent_ > plugged_user_brightness_percent_;
+    if (plugged && unplugged_exceeds_plugged)
+      plugged_user_brightness_percent_ = unplugged_user_brightness_percent_;
+    else if (!plugged && unplugged_exceeds_plugged)
+      unplugged_user_brightness_percent_ = plugged_user_brightness_percent_;
   }
 
   power_source_ = source;
-  has_seen_power_source_change_ = true;
+  got_power_source_ = true;
   UpdateState();
 }
 
@@ -322,12 +326,18 @@ bool InternalBacklightController::SetUserBrightnessPercent(
           << percent << "%";
   user_adjustment_count_++;
   user_requested_zero_ = percent <= kEpsilon;
-  return SetUndimmedBrightnessPercent(percent, style,
-                                      BRIGHTNESS_CHANGE_USER_INITIATED);
+  use_ambient_light_ = false;
+
+  percent = percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
+  double* user_percent = (power_source_ == POWER_AC) ?
+      &plugged_user_brightness_percent_ : &unplugged_user_brightness_percent_;
+  *user_percent = percent;
+
+  return UpdateUndimmedBrightness(style, BRIGHTNESS_CHANGE_USER_INITIATED);
 }
 
 bool InternalBacklightController::IncreaseUserBrightness() {
-  double old_percent = CalculateUndimmedBrightnessPercent();
+  double old_percent = GetUndimmedBrightnessPercent();
   double new_percent =
       (old_percent < kMinVisiblePercent - kEpsilon) ? kMinVisiblePercent :
       ClampPercentToVisibleRange(old_percent + step_percent_);
@@ -337,7 +347,7 @@ bool InternalBacklightController::IncreaseUserBrightness() {
 bool InternalBacklightController::DecreaseUserBrightness(bool allow_off) {
   // Lower the backlight to the next step, turning it off if it was already at
   // the minimum visible level.
-  double old_percent = CalculateUndimmedBrightnessPercent();
+  double old_percent = GetUndimmedBrightnessPercent();
   double new_percent = old_percent <= kMinVisiblePercent + kEpsilon ? 0.0 :
       ClampPercentToVisibleRange(old_percent - step_percent_);
 
@@ -357,85 +367,36 @@ int InternalBacklightController::GetNumUserAdjustments() const {
   return user_adjustment_count_;
 }
 
-void InternalBacklightController::OnAmbientLightChanged(
-    system::AmbientLightSensorInterface* sensor) {
-  DCHECK_EQ(sensor, light_sensor_);
-
-  if (ignore_ambient_light_)
-    return;
-
-  double percent = light_sensor_->GetAmbientLightPercent();
-  if (percent < 0.0) {
-    LOG(WARNING) << "ALS doesn't have valid value after sending "
-                 << "OnAmbientLightChanged";
-    return;
-  }
-
-  bool is_first_als_event = !has_seen_als_event_;
-  als_offset_percent_ = percent;
-  has_seen_als_event_ = true;
-
-  // Force a backlight refresh immediately after returning from dim or idle.
-  if (als_temporal_state_ == ALS_HYST_IMMEDIATE) {
-    als_temporal_state_ = ALS_HYST_IDLE;
-    als_adjustment_count_++;
-    VLOG(1) << "Immediate ALS-triggered brightness adjustment";
-    TransitionStyle transition =
-        is_first_als_event ? TRANSITION_SLOW : TRANSITION_FAST;
-    SetUndimmedBrightnessPercent(CalculateUndimmedBrightnessPercent(),
-                                 transition,
-                                 BRIGHTNESS_CHANGE_AUTOMATED);
-    return;
-  }
-
-  // Apply level and temporal hysteresis to light sensor readings to reduce
-  // backlight changes caused by minor and transient ambient light changes.
-  double diff = percent - als_hysteresis_percent_;
-  AlsHysteresisState new_state;
-
-  if (diff < -kAlsHystPercent) {
-    new_state = ALS_HYST_DOWN;
-  } else if (diff > kAlsHystPercent) {
-    new_state = ALS_HYST_UP;
-  } else {
-    als_temporal_state_ = ALS_HYST_IDLE;
-    return;
-  }
-  if (als_temporal_state_ == new_state) {
-    als_temporal_count_++;
-  } else {
-    als_temporal_state_ = new_state;
-    als_temporal_count_ = 1;
-  }
-  if (als_temporal_count_ >= kAlsHystResponse) {
-    als_temporal_count_ = 0;
-    als_adjustment_count_++;
-    VLOG(1) << "ALS-triggered adjustment; history (most recent first): "
-            << light_sensor_->DumpPercentHistory();
-    SetUndimmedBrightnessPercent(CalculateUndimmedBrightnessPercent(),
-                                 TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
-  }
+void InternalBacklightController::SetBrightnessPercentForAmbientLight(
+    double brightness_percent) {
+  ambient_light_brightness_percent_ = brightness_percent;
+  got_ambient_light_brightness_percent_ = true;
+  if (use_ambient_light_)
+    UpdateUndimmedBrightness(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
-double InternalBacklightController::CalculateUndimmedBrightnessPercent() const {
-  double percent = power_source_ == POWER_AC ?
-      plugged_offset_percent_ : unplugged_offset_percent_;
-  percent += als_offset_percent_;
-  return user_requested_zero_ ? 0.0 : ClampPercentToVisibleRange(percent);
+double InternalBacklightController::GetUndimmedBrightnessPercent() const {
+  if (use_ambient_light_)
+    return ClampPercentToVisibleRange(ambient_light_brightness_percent_);
+  if (user_requested_zero_)
+    return 0.0;
+  return ClampPercentToVisibleRange(power_source_ == POWER_AC ?
+      plugged_user_brightness_percent_ : unplugged_user_brightness_percent_);
 }
 
 void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
   // Avoid turning the backlight back on if an external display is
   // connected since doing so may result in the desktop being resized.
   if (display_mode_ == DISPLAY_NORMAL &&
-      CalculateUndimmedBrightnessPercent() < kMinVisiblePercent)
+      GetUndimmedBrightnessPercent() < kMinVisiblePercent)
     IncreaseUserBrightness();
 }
 
 void InternalBacklightController::UpdateState() {
   // Hold off on changing the brightness at startup until all the required
   // state has been received.
-  if (!has_seen_power_source_change_ || (light_sensor_ && !has_seen_als_event_))
+  if (!got_power_source_ ||
+      (use_ambient_light_ && !got_ambient_light_brightness_percent_))
     return;
 
   double brightness_percent = 100.0;
@@ -451,7 +412,7 @@ void InternalBacklightController::UpdateState() {
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
   } else if (suspended_) {
     brightness_percent = 0.0;
-    resume_percent = CalculateUndimmedBrightnessPercent();
+    resume_percent = GetUndimmedBrightnessPercent();
     // Chrome puts displays into the correct power state before suspend.
     set_display_power = false;
   } else if (off_for_inactivity_) {
@@ -460,7 +421,7 @@ void InternalBacklightController::UpdateState() {
     display_power = chromeos::DISPLAY_POWER_ALL_OFF;
     display_transition = TRANSITION_FAST;
   } else if (dimmed_for_inactivity_) {
-    brightness_percent = std::min(CalculateUndimmedBrightnessPercent(),
+    brightness_percent = std::min(GetUndimmedBrightnessPercent(),
                                   dimmed_brightness_percent_);
     brightness_transition = TRANSITION_FAST;
     display_power = (docked_ || brightness_percent <= kEpsilon) ?
@@ -468,7 +429,7 @@ void InternalBacklightController::UpdateState() {
         chromeos::DISPLAY_POWER_ALL_ON;
     display_transition = TRANSITION_INSTANT;
   } else {
-    brightness_percent = CalculateUndimmedBrightnessPercent();
+    brightness_percent = GetUndimmedBrightnessPercent();
     brightness_transition =
         (display_power_state_ != chromeos::DISPLAY_POWER_ALL_ON ||
          current_level_ == 0) ? TRANSITION_INSTANT : TRANSITION_FAST;
@@ -494,28 +455,10 @@ void InternalBacklightController::UpdateState() {
   }
 }
 
-bool InternalBacklightController::SetUndimmedBrightnessPercent(
-    double percent,
+bool InternalBacklightController::UpdateUndimmedBrightness(
     TransitionStyle style,
     BrightnessChangeCause cause) {
-  percent = percent <= kEpsilon ? 0.0 : ClampPercentToVisibleRange(percent);
-
-  if (cause == BRIGHTNESS_CHANGE_USER_INITIATED) {
-    // Update the (possibly negative) user-contributed portion of the new
-    // brightness by subtracting the ambient-light-sensor-contributed
-    // portion.
-    double* user_percent = (power_source_ == POWER_AC) ?
-        &plugged_offset_percent_ : &unplugged_offset_percent_;
-    *user_percent = percent - als_offset_percent_;
-    // TODO(derat): This can be called many times in quick succession when
-    // the user drags the brightness slider.  WritePrefs() should be called
-    // asynchronously with a short timeout instead: http://crbug.com/196308
-    WritePrefs();
-  }
-
-  // Use the current ambient light level as the benchmark for later readings.
-  als_hysteresis_percent_ = als_offset_percent_;
-
+  const double percent = GetUndimmedBrightnessPercent();
   if (suspended_)
     ApplyResumeBrightnessPercent(percent);
 
@@ -587,40 +530,17 @@ void InternalBacklightController::ReadPrefs() {
   CHECK_GT(min_visible_level_, 0);
   min_visible_level_ = std::min(min_visible_level_, max_level_);
 
-  CHECK(prefs_->GetDouble(kPluggedBrightnessOffsetPref,
-                          &plugged_offset_percent_));
-  CHECK(prefs_->GetDouble(kUnpluggedBrightnessOffsetPref,
-                          &unplugged_offset_percent_));
-  CHECK_GE(plugged_offset_percent_, -kMaxPercent);
-  CHECK_LE(plugged_offset_percent_, kMaxPercent);
-  CHECK_GE(unplugged_offset_percent_, -kMaxPercent);
-  CHECK_LE(unplugged_offset_percent_, kMaxPercent);
-
-  plugged_offset_percent_ =
-      std::max(kMinVisiblePercent, plugged_offset_percent_);
-  unplugged_offset_percent_ =
-      std::max(kMinVisiblePercent, unplugged_offset_percent_);
-
   prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
                   &instant_transitions_below_min_level_);
-  prefs_->GetBool(kDisableALSPref, &ignore_ambient_light_);
+
+  bool disable_als = false;
+  if (prefs_->GetBool(kDisableALSPref, &disable_als) && disable_als)
+    use_ambient_light_ = false;
 
   int64 turn_off_screen_timeout_ms = 0;
   prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);
   turn_off_screen_timeout_ =
       base::TimeDelta::FromMilliseconds(turn_off_screen_timeout_ms);
-}
-
-void InternalBacklightController::WritePrefs() {
-  switch (power_source_) {
-    case POWER_AC:
-      prefs_->SetDouble(kPluggedBrightnessOffsetPref, plugged_offset_percent_);
-      break;
-    case POWER_BATTERY:
-      prefs_->SetDouble(kUnpluggedBrightnessOffsetPref,
-                        unplugged_offset_percent_);
-      break;
-  }
 }
 
 void InternalBacklightController::SetDisplayPower(

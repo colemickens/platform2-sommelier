@@ -196,8 +196,7 @@ void AmbientLightHandler::OnAmbientLightChanged(
           << " (lux went from " << lux_level_ << " to " << new_lux << ")";
   if (hysteresis_count_ >= kHysteresisThreshold) {
     VLOG(1) << "Hysteresis overcome, transitioning step from "
-            << step_index_ << " to " << new_step_index << "; history "
-            << "(most recent first): " << sensor_->DumpLuxHistory();
+            << step_index_ << " to " << new_step_index;
     step_index_ = new_step_index;
     lux_level_ = new_lux;
     hysteresis_count_ = 1;

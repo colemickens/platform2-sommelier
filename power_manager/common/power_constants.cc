@@ -8,8 +8,6 @@
 
 namespace power_manager {
 
-const char kPluggedBrightnessOffsetPref[] = "plugged_brightness_offset";
-const char kUnpluggedBrightnessOffsetPref[] = "unplugged_brightness_offset";
 const char kLowBatteryShutdownTimePref[] = "low_battery_shutdown_time_s";
 const char kLowBatteryShutdownPercentPref[] = "low_battery_shutdown_percent";
 const char kCleanShutdownTimeoutMsPref[] = "clean_shutdown_timeout_ms";
@@ -37,6 +35,8 @@ const char kSampleWindowMinPref[] = "sample_window_min";
 const char kTaperTimeMaxPref[] = "taper_time_max_s";
 const char kTaperTimeMinPref[] = "taper_time_min_s";
 const char kPowerSupplyFullFactorPref[] = "power_supply_full_factor";
+const char kInternalBacklightAlsLimitsPref[] = "internal_backlight_als_limits";
+const char kInternalBacklightAlsStepsPref[] = "internal_backlight_als_steps";
 const char kKeyboardBacklightAlsLimitsPref[] = "keyboard_backlight_als_limits";
 const char kKeyboardBacklightAlsStepsPref[] = "keyboard_backlight_als_steps";
 const char kKeyboardBacklightUserLimitsPref[] =

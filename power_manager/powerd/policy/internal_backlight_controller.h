@@ -7,11 +7,12 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
-#include "power_manager/powerd/system/ambient_light_observer.h"
 
 namespace power_manager {
 
@@ -32,7 +33,7 @@ namespace policy {
 // fully-off backlight), while "level" refers to a 64-bit hardware-specific
 // brightness in the range [0, max-brightness-per-sysfs].
 class InternalBacklightController : public BacklightController,
-                                    public system::AmbientLightObserver {
+                                    public AmbientLightHandler::Delegate {
  public:
   // Maximum number of brightness adjustment steps.
   static const int64 kMaxBrightnessSteps;
@@ -76,25 +77,15 @@ class InternalBacklightController : public BacklightController,
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
-  // system::AmbientLightObserver implementation:
-  virtual void OnAmbientLightChanged(
-      system::AmbientLightSensorInterface* sensor) OVERRIDE;
+  // AmbientLightHandler::Delegate implementation:
+  virtual void SetBrightnessPercentForAmbientLight(double brightness_percent)
+      OVERRIDE;
 
  private:
-  // TODO(derat): Move this and the related code into a separate class,
-  // shared between InternalBacklightController and
-  // KeyboardBacklightController, that handles ambient light hysteresis.
-  enum AlsHysteresisState {
-    ALS_HYST_IDLE,
-    ALS_HYST_DOWN,
-    ALS_HYST_UP,
-    ALS_HYST_IMMEDIATE,
-  };
-
   // Returns the brightness percent that should be used when the system is
-  // in an undimmed state (which is typically just the appropriate
-  // user-set offset plus the current ambient-light-contributed offset).
-  double CalculateUndimmedBrightnessPercent() const;
+  // in an undimmed state (|ambient_light_brightness_percent_| if
+  // |use_ambient_light_| is true or a user-set level otherwise).
+  double GetUndimmedBrightnessPercent() const;
 
   // Increases the user-set brightness to the minimum visible level if it's
   // currently set to zero.  Note that the brightness is left unchanged if
@@ -106,13 +97,10 @@ class InternalBacklightController : public BacklightController,
   // called whenever the state changes.
   void UpdateState();
 
-  // Stores the brightness percent that should be used when the display is
-  // in the undimmed state.  If the display is currently in the undimmed
-  // state, additionally calls ApplyBrightnessPercent() to update the
-  // backlight brightness.  Returns true if the brightness was changed.
-  bool SetUndimmedBrightnessPercent(double percent,
-                                    TransitionStyle style,
-                                    BrightnessChangeCause);
+  // If the display is currently in the undimmed state, calls
+  // ApplyBrightnessPercent() to update the backlight brightness.  Returns
+  // true if the brightness was changed.
+  bool UpdateUndimmedBrightness(TransitionStyle style, BrightnessChangeCause);
 
   // Sets |backlight_|'s brightness to |percent| over |transition|.  If the
   // brightness changed, notifies |observers_| that the change was due to
@@ -125,7 +113,6 @@ class InternalBacklightController : public BacklightController,
   bool ApplyResumeBrightnessPercent(double resume_percent);
 
   void ReadPrefs();
-  void WritePrefs();
 
   // Updates displays to |state| after |delay| if |state| doesn't match
   // |display_power_state_|.  If another change has already been scheduled,
@@ -139,11 +126,10 @@ class InternalBacklightController : public BacklightController,
   // Interface for saving preferences. Non-owned.
   PrefsInterface* prefs_;
 
-  // Light sensor we need to register for updates from.  Non-owned.
-  system::AmbientLightSensorInterface* light_sensor_;
-
   // Used to turn displays on and off.
   system::DisplayPowerSetterInterface* display_power_setter_;
+
+  scoped_ptr<AmbientLightHandler> ambient_light_handler_;
 
   // Observers for changes to the brightness level.
   ObserverList<BacklightControllerObserver> observers_;
@@ -157,30 +143,22 @@ class InternalBacklightController : public BacklightController,
   bool shutting_down_;
   bool docked_;
 
-  // Indicates whether OnAmbientLightChanged() and
+  // Indicates whether SetBrightnessPercentForAmbientLight() and
   // HandlePowerSourceChange() have been called yet.
-  bool has_seen_als_event_;
-  bool has_seen_power_source_change_;
-
-  // The brightness offset recommended by the ambient light sensor.  Never
-  // negative.
-  double als_offset_percent_;
-
-  // Prevent small light sensor changes from updating the backlight.
-  double als_hysteresis_percent_;
-
-  // Also apply temporal hysteresis to light sensor responses.
-  AlsHysteresisState als_temporal_state_;
-  int als_temporal_count_;
+  bool got_ambient_light_brightness_percent_;
+  bool got_power_source_;
 
   // Number of ambient-light- and user-triggered brightness adjustments.
   int als_adjustment_count_;
   int user_adjustment_count_;
 
-  // User-adjustable brightness offset when AC is plugged or unplugged.
-  // Possibly negative.
-  double plugged_offset_percent_;
-  double unplugged_offset_percent_;
+  // Ambient-light-sensor-derived brightness percent supplied by
+  // |ambient_light_handler_|.
+  double ambient_light_brightness_percent_;
+
+  // User-set brightness percent when AC is plugged or unplugged.
+  double plugged_user_brightness_percent_;
+  double unplugged_user_brightness_percent_;
 
   // True if the user explicitly requested zero brightness for the undimmed
   // state.
@@ -202,9 +180,10 @@ class InternalBacklightController : public BacklightController,
   // levels.
   bool instant_transitions_below_min_level_;
 
-  // If true, we ignore readings from the ambient light sensor.  Controlled by
-  // kDisableALSPref.
-  bool ignore_ambient_light_;
+  // If true, then suggestions from |ambient_light_handler_| are used.
+  // False if |ambient_light_handler_| is NULL, kDisableALSPref was set, or
+  // the user has manually set the brightness.
+  bool use_ambient_light_;
 
   // Percentage by which we offset the brightness in response to increase and
   // decrease requests.

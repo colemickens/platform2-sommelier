@@ -25,14 +25,13 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   KeyboardBacklightControllerTest()
       : max_backlight_level_(100),
         initial_backlight_level_(50),
-        initial_als_percent_(0.0),
         initial_als_lux_(0),
         als_limits_pref_("0.0\n20.0\n75.0"),
         als_steps_pref_("20.0 -1 50\n50.0 35 75\n75.0 60 -1"),
         user_limits_pref_("0.0\n10.0\n100.0"),
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
         backlight_(max_backlight_level_, initial_backlight_level_),
-        light_sensor_(initial_als_percent_, initial_als_lux_),
+        light_sensor_(initial_als_lux_),
         controller_(&backlight_, &prefs_, &light_sensor_),
         test_api_(&controller_) {
   }
@@ -49,7 +48,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   virtual bool Init() {
     backlight_.set_max_level(max_backlight_level_);
     backlight_.set_current_level(initial_backlight_level_);
-    light_sensor_.set_values(initial_als_percent_, initial_als_lux_);
+    light_sensor_.set_lux(initial_als_lux_);
 
     prefs_.SetString(kKeyboardBacklightAlsLimitsPref, als_limits_pref_);
     prefs_.SetString(kKeyboardBacklightAlsStepsPref, als_steps_pref_);
@@ -65,8 +64,7 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   int64 max_backlight_level_;
   int64 initial_backlight_level_;
 
-  // Initial percent and lux levels reported by |light_sensor_|.
-  double initial_als_percent_;
+  // Initial lux level reported by |light_sensor_|.
   int initial_als_lux_;
 
   // Values for various preferences.  These can be changed by tests before
@@ -156,17 +154,17 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
   ASSERT_EQ(20, backlight_.current_level());
 
   // ALS returns bad value.
-  light_sensor_.set_values(0.0, -1);
+  light_sensor_.set_lux(-1);
   light_sensor_.NotifyObservers();
   EXPECT_EQ(20, backlight_.current_level());
 
   // ALS returns a value in the middle of the initial step.
-  light_sensor_.set_values(0.0, 25);
+  light_sensor_.set_lux(25);
   light_sensor_.NotifyObservers();
   EXPECT_EQ(20, backlight_.current_level());
 
   // First increase; hysteresis not overcome.
-  light_sensor_.set_values(0.0, 80);
+  light_sensor_.set_lux(80);
   light_sensor_.NotifyObservers();
   EXPECT_EQ(20, backlight_.current_level());
 
@@ -178,7 +176,7 @@ TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
             backlight_.current_interval().InMilliseconds());
 
   // First decrease; hysteresis not overcome.
-  light_sensor_.set_values(0.0, 50);
+  light_sensor_.set_lux(50);
   light_sensor_.NotifyObservers();
   EXPECT_EQ(75, backlight_.current_level());
 
@@ -250,7 +248,7 @@ TEST_F(KeyboardBacklightControllerTest, SkipBogusAlsStep) {
 
   // After two readings above the bottom step's increase threshold, the
   // backlight should go to the top step.
-  light_sensor_.set_values(0.0, 55);
+  light_sensor_.set_lux(55);
   light_sensor_.NotifyObservers();
   light_sensor_.NotifyObservers();
   EXPECT_EQ(75, backlight_.current_level());
@@ -262,7 +260,7 @@ TEST_F(KeyboardBacklightControllerTest, EmptyAlsStepsPref) {
   initial_backlight_level_ = 0;
   ASSERT_TRUE(Init());
 
-  light_sensor_.set_values(0.0, 20);
+  light_sensor_.set_lux(20);
   light_sensor_.NotifyObservers();
   EXPECT_EQ(90, backlight_.current_level());
 }
@@ -351,7 +349,7 @@ TEST_F(KeyboardBacklightControllerTest, DeferChangesWhileDimmed) {
   EXPECT_EQ(10, backlight_.current_level());
 
   // ALS-driven changes shouldn't be applied while the screen is dimmed.
-  light_sensor_.set_values(80.0, 80);
+  light_sensor_.set_lux(80);
   light_sensor_.NotifyObservers();
   light_sensor_.NotifyObservers();
   EXPECT_EQ(10, backlight_.current_level());

@@ -31,19 +31,6 @@ const base::FilePath::CharType kDefaultDeviceListPath[] =
 // Default interval for polling the ambient light sensor.
 const int kDefaultPollIntervalMs = 1000;
 
-// Lux level <= kLuxLo should return 0% response.
-const int kLuxLo = 12;
-
-// Lux level >= kLuxHi should return 100% response.
-const int kLuxHi = 1000;
-
-// A positive kLuxOffset gives us a flatter curve, particularly at lower lux.
-// Alternatively, we could use a higher kLuxLo.
-const int kLuxOffset = 4;
-
-// Max number of entries to have in the value histories.
-size_t kHistorySizeMax = 10;
-
 }  // namespace
 
 AmbientLightSensor::AmbientLightSensor()
@@ -57,12 +44,6 @@ AmbientLightSensor::AmbientLightSensor()
                           base::Unretained(this))),
       error_cb_(base::Bind(&AmbientLightSensor::ErrorCallback,
                            base::Unretained(this))) {
-  // Initialize factors used for LuxToPercent calculation.
-  // See comments in Tsl2563LuxToPercent() for a full description.
-  double hi = kLuxHi + kLuxOffset;
-  double lo = kLuxLo + kLuxOffset;
-  log_multiply_factor_ = 100 / log(hi / lo);
-  log_subtract_factor_ = log(lo) * log_multiply_factor_;
 }
 
 AmbientLightSensor::~AmbientLightSensor() {
@@ -83,36 +64,8 @@ void AmbientLightSensor::RemoveObserver(AmbientLightObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
-double AmbientLightSensor::GetAmbientLightPercent() {
-  return (lux_value_ != -1) ? Tsl2563LuxToPercent(lux_value_) : -1.0;
-}
-
 int AmbientLightSensor::GetAmbientLightLux() {
   return lux_value_;
-}
-
-std::string AmbientLightSensor::DumpPercentHistory() {
-  std::string buffer;
-  for (std::list<double>::const_reverse_iterator it = percent_history_.rbegin();
-       it != percent_history_.rend();
-       ++it) {
-    if (!buffer.empty())
-      buffer += ", ";
-    buffer += StringPrintf("%.1f", *it);
-  }
-  return "[" + buffer + "]";
-}
-
-std::string AmbientLightSensor::DumpLuxHistory() {
-  std::string buffer;
-  for (std::list<int>::const_reverse_iterator it = lux_history_.rbegin();
-       it != lux_history_.rend();
-       ++it) {
-    if (!buffer.empty())
-      buffer += ", ";
-    buffer += base::IntToString(*it);
-  }
-  return "[" + buffer + "]";
 }
 
 gboolean AmbientLightSensor::ReadAls() {
@@ -135,13 +88,7 @@ void AmbientLightSensor::ReadCallback(const std::string& data) {
   TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
   lux_value_ = -1;
   if (base::StringToInt(trimmed_data, &lux_value_)) {
-    // Update the history logs.
-    if (percent_history_.size() >= kHistorySizeMax)
-      percent_history_.pop_front();
-    percent_history_.push_back(Tsl2563LuxToPercent(lux_value_));
-    if (lux_history_.size() >= kHistorySizeMax)
-      lux_history_.pop_front();
-    lux_history_.push_back(lux_value_);
+    VLOG(1) << "Read lux " << lux_value_;
     if (lux_value_ != previous_lux_value) {
       FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
                         OnAmbientLightChanged(this));
@@ -190,36 +137,6 @@ bool AmbientLightSensor::DeferredInit() {
   LOG(WARNING) << "Deferring lux: " << strerror(errno);
   still_deferring_ = true;
   return false;
-}
-
-double AmbientLightSensor::Tsl2563LuxToPercent(int luxval) const {
-  // Notes on tsl2563 Ambient Light Response (_ALR) table:
-  //
-  // measurement location: lux file value, intended luma level
-  //            dark room: 0,              0
-  //               office: 75,             50
-  //  outside, day, shade: 1000-3000,      100
-  //  outside, day, direct sunlight: 10000, 100
-  //
-  // Give a natural logorithmic response of 0-100% for lux values 12-1000.
-  // What's a log?  If value=e^exponent, then log(value)=exponent.
-  //
-  // Multiply the log by log_multiply_factor_ to provide the 100% range.
-  // Calculated as: 100 / (log((kLuxHi + kLuxOffset) / (kLuxLo + kLuxOffset)))
-  //    hi = kLuxHi + kLuxOffset
-  //    lo = kLuxLo + kLuxOffset
-  //    (log(hi) - log(lo)) * log_multiply_factor_ = 100
-  //    So: log_multiply_factor_ = 100 / log(hi / lo)
-  //
-  // Subtract log_subtract_factor_ from the log product to normalize to 0.
-  // Calculated as: log_subtract_factor_ = log(lo) * log_multiply_factor_
-  //    lo = kLuxLo + kLuxOffset
-  //    log(lo) * log_multiply_factor_ - log_subtract_factor_ = 0
-  //    So: log_subtract_factor_ = log(lo) * log_multiply_factor_
-
-  int value = luxval + kLuxOffset;
-  double response = log(value) * log_multiply_factor_ - log_subtract_factor_;
-  return std::max(0.0, std::min(100.0, response));
 }
 
 }  // namespace system

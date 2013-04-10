@@ -12,8 +12,6 @@
 namespace power_manager {
 
 // Preference names.
-extern const char kPluggedBrightnessOffsetPref[];
-extern const char kUnpluggedBrightnessOffsetPref[];
 extern const char kLowBatteryShutdownTimePref[];
 extern const char kLowBatteryShutdownPercentPref[];
 extern const char kCleanShutdownTimeoutMsPref[];
@@ -38,6 +36,8 @@ extern const char kSampleWindowMinPref[];
 extern const char kTaperTimeMaxPref[];
 extern const char kTaperTimeMinPref[];
 extern const char kPowerSupplyFullFactorPref[];
+extern const char kInternalBacklightAlsLimitsPref[];
+extern const char kInternalBacklightAlsStepsPref[];
 extern const char kKeyboardBacklightAlsLimitsPref[];
 extern const char kKeyboardBacklightAlsStepsPref[];
 extern const char kKeyboardBacklightUserLimitsPref[];
