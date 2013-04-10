@@ -1760,11 +1760,11 @@ TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
             capability_->GetNetworkTechnologyString());
 }
 
-TEST_F(CellularCapabilityUniversalMainTest, ShouldEnableTrafficMonitoring) {
+TEST_F(CellularCapabilityUniversalMainTest, ShouldDetectOutOfCredit) {
   capability_->model_id_.clear();
-  EXPECT_FALSE(capability_->ShouldEnableTrafficMonitoring());
+  EXPECT_FALSE(capability_->ShouldDetectOutOfCredit());
   capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
-  EXPECT_TRUE(capability_->ShouldEnableTrafficMonitoring());
+  EXPECT_TRUE(capability_->ShouldDetectOutOfCredit());
 }
 
 }  // namespace shill

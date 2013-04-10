@@ -212,6 +212,10 @@ class Cellular : public Device {
   // Is the underlying device in the process of activating?
   bool IsActivating() const;
 
+  virtual void OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::Result result);
+  virtual void PortalDetectorCallback(const PortalDetector::Result &result);
+
  private:
   friend class CellularTest;
   friend class CellularCapabilityTest;
@@ -264,6 +268,7 @@ class Cellular : public Device {
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeStaleConnected);
   FRIEND_TEST(CellularTest, ModemStateChangeValidConnected);
+  FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);

@@ -63,11 +63,11 @@ class ConnectionHealthChecker {
 
   // A new ConnectionHealthChecker is created with a default URL to attempt the
   // TCP connection with. Add a URL to try.
-  void AddRemoteURL(const std::string &url_string);
+  virtual void AddRemoteURL(const std::string &url_string);
 
   // Name resolution can fail in conditions -(1)- and -(2)-. Add an IP address
   // to attempt the TCP connection with.
-  void AddRemoteIP(IPAddress ip);
+  virtual void AddRemoteIP(IPAddress ip);
 
   // Start a connection health check. The health check involves one or more
   // attempts at establishing and using a TCP connection. |result_callback_| is
@@ -87,6 +87,9 @@ class ConnectionHealthChecker {
   // Accessors.
   const IPAddressQueue &remote_ips() { return remote_ips_; }
   void set_run_data_test(bool val) { run_data_test_ = val; }
+  virtual bool health_check_in_progress() const {
+      return health_check_in_progress_;
+  }
 
  private:
   friend class ConnectionHealthCheckerTest;

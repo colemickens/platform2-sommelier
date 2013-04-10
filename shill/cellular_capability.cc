@@ -108,7 +108,7 @@ bool CellularCapability::IsActivating() const {
   return false;
 }
 
-bool CellularCapability::ShouldEnableTrafficMonitoring() const {
+bool CellularCapability::ShouldDetectOutOfCredit() const {
   return false;
 }
 

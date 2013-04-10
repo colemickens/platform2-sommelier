@@ -726,7 +726,7 @@ bool CellularCapabilityUniversal::AllowRoaming() {
   return provider_requires_roaming_ || allow_roaming_property();
 }
 
-bool CellularCapabilityUniversal::ShouldEnableTrafficMonitoring() const {
+bool CellularCapabilityUniversal::ShouldDetectOutOfCredit() const {
   return model_id_ == kE362ModelId;
 }
 

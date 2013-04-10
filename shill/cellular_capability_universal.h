@@ -111,7 +111,7 @@ class CellularCapabilityUniversal : public CellularCapability {
       const DBusPropertiesMap &changed_properties,
       const std::vector<std::string> &invalidated_properties);
   virtual bool AllowRoaming();
-  virtual bool ShouldEnableTrafficMonitoring() const;
+  virtual bool ShouldDetectOutOfCredit() const;
 
  protected:
   virtual void InitProxies();
@@ -167,7 +167,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ScanFailure);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SetHomeProvider);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
-              ShouldEnableTrafficMonitoring);
+              ShouldDetectOutOfCredit);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPropertiesChanged);

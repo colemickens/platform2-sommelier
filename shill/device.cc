@@ -18,15 +18,19 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/async_connection.h"
 #include "shill/connection.h"
+#include "shill/connection_health_checker.h"
 #include "shill/control_interface.h"
 #include "shill/device_dbus_adaptor.h"
 #include "shill/dhcp_config.h"
 #include "shill/dhcp_provider.h"
+#include "shill/dns_client.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/http_proxy.h"
+#include "shill/ip_address.h"
 #include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -35,6 +39,7 @@
 #include "shill/refptr_types.h"
 #include "shill/rtnl_handler.h"
 #include "shill/service.h"
+#include "shill/socket_info_reader.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 #include "shill/traffic_monitor.h"
@@ -160,6 +165,13 @@ Device::Device(ControlInterface *control_interface,
     HelpRegisterConstDerivedUint64(shill::kTransmitByteCountProperty,
                                    &Device::GetTransmitByteCountProperty);
   }
+
+  // TODO(armansito): Remove this hack once shill has support for caching DNS
+  // results.
+  health_check_ip_pool_.push_back("74.125.224.47");
+  health_check_ip_pool_.push_back("74.125.224.79");
+  health_check_ip_pool_.push_back("74.125.224.111");
+  health_check_ip_pool_.push_back("74.125.224.143");
 
   LOG(INFO) << "Device created: " << link_name_
             << " index " << interface_index_;
@@ -534,6 +546,26 @@ void Device::CreateConnection() {
                                  link_name_,
                                  technology_,
                                  manager_->device_info());
+    set_health_checker(
+        new ConnectionHealthChecker(
+            connection_,
+            dispatcher_,
+            Bind(&Device::OnConnectionHealthCheckerResult,
+                 weak_ptr_factory_.GetWeakPtr())));
+    InitializeHealthCheckIps();
+  }
+}
+
+void Device::InitializeHealthCheckIps() {
+  IPAddress ip(IPAddress::kFamilyIPv4);
+  for (size_t i = 0; i < health_check_ip_pool_.size(); ++i) {
+    // TODO(armansito): DNS resolution fails when we run out-of-credit
+    // and shill currently doesn't cache resolved IPs. The hardcoded IP
+    // here corresponds to gstatic.google.com/generate_204, however I do
+    // not know if it will remain static. We should implement some sort of
+    // caching after portal detection for this to work.
+    ip.SetAddressFromString(health_check_ip_pool_[i]);
+    health_checker_->AddRemoteIP(ip);
   }
 }
 
@@ -546,6 +578,7 @@ void Device::DestroyConnection() {
     selected_service_->SetConnection(NULL);
   }
   connection_ = NULL;
+  health_checker_.reset();
 }
 
 void Device::SelectService(const ServiceRefPtr &service) {
@@ -620,6 +653,25 @@ void Device::ResetByteCounters() {
   manager_->device_info()->GetByteCounts(
       interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
   manager_->UpdateDevice(this);
+}
+
+void Device::RequestConnectionHealthCheck() {
+  if (!health_checker_.get()) {
+    SLOG(Device, 2) << "No health checker exists, cannot request "
+                    << "health check.";
+    return;
+  }
+  if (health_checker_->health_check_in_progress()) {
+    SLOG(Device, 2) << "Health check already in progress.";
+    return;
+  }
+  health_checker_->Start();
+}
+
+void Device::OnConnectionHealthCheckerResult(
+    ConnectionHealthChecker::Result result) {
+  SLOG(Device, 2) << FriendlyName()
+      << ": ConnectionHealthChecker result: " << result;
 }
 
 bool Device::RestartPortalDetection() {
@@ -752,6 +804,10 @@ void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
   traffic_monitor_.reset(traffic_monitor);
 }
 
+void Device::set_health_checker(ConnectionHealthChecker *health_checker) {
+  health_checker_.reset(health_checker);
+}
+
 bool Device::StartTrafficMonitor() {
   SLOG(Device, 2) << __func__;
   if (!traffic_monitor_enabled_) {
@@ -781,7 +837,7 @@ void Device::StopTrafficMonitor() {
 
 void Device::OnNoNetworkRouting() {
   SLOG(Device, 2) << "Device " << FriendlyName()
-                  << ": Traffic Monitor detects there is no incoming traffic.";
+                  << ": Traffic Monitor detects network congestion.";
 }
 
 void Device::SetServiceConnectedState(Service::ConnectState state) {

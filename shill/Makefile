@@ -366,6 +366,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_async_connection.o \
 	mock_certificate_file.o \
 	mock_connection.o \
+	mock_connection_health_checker.o \
 	mock_control.o \
 	mock_dbus_manager.o \
 	mock_dbus_objectmanager_proxy.o \

@@ -133,6 +133,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
   FRIEND_TEST(CellularServiceTest, LastGoodApn);

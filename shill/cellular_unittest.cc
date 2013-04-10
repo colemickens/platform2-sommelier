@@ -44,6 +44,7 @@ using std::vector;
 using testing::_;
 using testing::AnyNumber;
 using testing::Invoke;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -384,7 +385,7 @@ class CellularTest : public testing::Test {
 
   // Different tests simulate a cellular service being set using a real /m mock
   // service.
-  CellularService* SetService() {
+  CellularService *SetService() {
     device_->service_ = new CellularService(
         modem_info_.control_interface(),
         modem_info_.dispatcher(),
@@ -393,14 +394,15 @@ class CellularTest : public testing::Test {
         device_);
     return device_->service_;
   }
-  CellularService* SetMockService() {
-    device_->service_ = new MockCellularService(
+  MockCellularService *SetMockService() {
+    MockCellularService *service = new MockCellularService(
         modem_info_.control_interface(),
         modem_info_.dispatcher(),
         modem_info_.metrics(),
         modem_info_.manager(),
         device_);
-    return device_->service_;
+    device_->service_ = service;
+    return service;
   }
 
   EventDispatcher dispatcher_;
@@ -831,7 +833,7 @@ TEST_F(CellularTest, EnableTrafficMonitor) {
                                    Unretained(this)),
                               Error(Error::kSuccess));
   EXPECT_FALSE(device_->traffic_monitor_enabled());
-  testing::Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(this);
 
   device_->state_ = Cellular::kStateDisabled;
 
@@ -841,7 +843,7 @@ TEST_F(CellularTest, EnableTrafficMonitor) {
                                    Unretained(this)),
                               Error(Error::kOperationFailed));
   EXPECT_FALSE(device_->traffic_monitor_enabled());
-  testing::Mock::VerifyAndClearExpectations(this);
+  Mock::VerifyAndClearExpectations(this);
 
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   device_->StartModemCallback(Bind(&CellularTest::TestCallback,
@@ -886,6 +888,38 @@ TEST_F(CellularTest, StopModemCallbackFail) {
                              Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state_, Cellular::kStateDisabled);
   EXPECT_FALSE(device_->service_.get());
+}
+
+TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
+  scoped_refptr<MockCellularService> service(SetMockService());
+  EXPECT_FALSE(service->out_of_credits_);
+
+  EXPECT_CALL(*service, Disconnect(_)).Times(0);
+  device_->OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::kResultUnknown);
+  EXPECT_FALSE(service->out_of_credits_);
+  device_->OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::kResultInProgress);
+  EXPECT_FALSE(service->out_of_credits_);
+  device_->OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::kResultConnectionFailure);
+  EXPECT_FALSE(service->out_of_credits_);
+  Mock::VerifyAndClearExpectations(service);
+
+  EXPECT_CALL(*service, Disconnect(_)).Times(1);
+  device_->OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::kResultElongatedTimeWait);
+  EXPECT_TRUE(service->out_of_credits_);
+  Mock::VerifyAndClearExpectations(service);
+
+  service->out_of_credits_ = false;
+  EXPECT_CALL(*service, Disconnect(_)).Times(1);
+  device_->OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::kResultCongestedTxQueue);
+  EXPECT_TRUE(service->out_of_credits_);
+
+  // Don't leak the service object.
+  device_->service_ = NULL;
 }
 
 // The following test crashes under Clang

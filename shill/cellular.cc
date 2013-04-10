@@ -257,7 +257,7 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback &callback,
     // Registration state updates may have been ignored while the
     // modem was not yet marked enabled.
     HandleNewRegistrationState();
-    if (capability_->ShouldEnableTrafficMonitoring())
+    if (capability_->ShouldDetectOutOfCredit())
       set_traffic_monitor_enabled(true);
   }
   callback.Run(error);
@@ -356,7 +356,36 @@ void Cellular::SetCarrier(const string &carrier,
 void Cellular::OnNoNetworkRouting() {
   SLOG(Cellular, 2) << __func__;
   Device::OnNoNetworkRouting();
-  // TODO(armansito): Initiate active probing.
+
+  SLOG(Cellular, 2) << "Requesting active probe for out-of-credit detection.";
+  RequestConnectionHealthCheck();
+}
+
+void Cellular::OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::Result result) {
+  SLOG(Cellular, 2) << __func__ << "(Result = " << result << ")";
+
+  if (result == ConnectionHealthChecker::kResultElongatedTimeWait ||
+      result == ConnectionHealthChecker::kResultCongestedTxQueue) {
+    SLOG(Cellular, 2) << "Active probe determined possible out-of-credits "
+                      << "scenario.";
+    if (service().get()) {
+      service()->SetOutOfCredits(true);
+      SLOG(Cellular, 2) << "Disconnecting due to out-of-credit scenario.";
+      Error error;
+      service()->Disconnect(&error);
+    }
+  }
+}
+
+void Cellular::PortalDetectorCallback(const PortalDetector::Result &result) {
+  Device::PortalDetectorCallback(result);
+  if (result.status != PortalDetector::kStatusSuccess &&
+      capability_->ShouldDetectOutOfCredit()) {
+    SLOG(Cellular, 2) << "Portal detection failed. Launching active probe for "
+                      << "out-of-credit detection.";
+    RequestConnectionHealthCheck();
+  }
 }
 
 void Cellular::Scan(ScanType scan_type, Error *error) {

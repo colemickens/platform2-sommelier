@@ -12,6 +12,10 @@
 #include <string>
 #include <vector>
 
+#include <base/basictypes.h>
+#include <base/bind.h>
+#include <base/callback.h>
+#include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
@@ -22,6 +26,7 @@
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
+#include "shill/mock_connection_health_checker.h"
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -43,12 +48,15 @@
 #include "shill/technology.h"
 #include "shill/traffic_monitor.h"
 
+using base::Bind;
+using base::Callback;
 using std::map;
 using std::string;
 using std::vector;
 using ::testing::_;
 using ::testing::AnyNumber;
 using ::testing::AtLeast;
+using ::testing::DefaultValue;
 using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::NiceMock;
@@ -1071,6 +1079,86 @@ TEST_F(DeviceByteCountTest, GetByteCounts) {
   EXPECT_CALL(manager_, UpdateDevice(device));
   device->ResetByteCounters();
   EXPECT_TRUE(ExpectByteCounts(device, 0, 0));
+}
+
+class DeviceHealthCheckerTest : public DeviceTest {
+ public:
+  DeviceHealthCheckerTest()
+      : connection_(new StrictMock<MockConnection>(&device_info_)),
+        weak_ptr_factory_(this) {}
+
+ protected:
+  void SetUp() {
+    DeviceTest::SetUp();
+
+    string default_str;
+    vector<string> default_vector;
+
+    ON_CALL(*connection_.get(), interface_name())
+        .WillByDefault(ReturnRef(default_str));
+    ON_CALL(*connection_.get(), dns_servers())
+        .WillByDefault(ReturnRef(default_vector));
+    EXPECT_CALL(*connection_.get(), interface_name())
+        .Times(AnyNumber());
+    EXPECT_CALL(*connection_.get(), dns_servers())
+        .Times(AnyNumber());
+
+    mock_health_checker_.reset(
+        new MockConnectionHealthChecker(
+            connection_,
+            NULL,
+            Bind(&DeviceHealthCheckerTest::OnConnectionHealthCheckerResult,
+                 weak_ptr_factory_.GetWeakPtr())));
+  }
+
+  void SetMockHealthChecker() {
+    device_->set_health_checker(mock_health_checker_.release());
+    EXPECT_TRUE(device_->health_checker_.get());
+  }
+
+  void OnConnectionHealthCheckerResult(
+    ConnectionHealthChecker::Result result) {
+  }
+
+  scoped_refptr<MockConnection> connection_;
+  scoped_ptr<MockConnectionHealthChecker> mock_health_checker_;
+  base::WeakPtrFactory<DeviceHealthCheckerTest> weak_ptr_factory_;
+};
+
+TEST_F(DeviceHealthCheckerTest, CreateConnectionCreatesHealthChecker) {
+  EXPECT_FALSE(device_->connection_.get());
+  EXPECT_FALSE(device_->health_checker_.get());
+  device_->CreateConnection();
+  EXPECT_TRUE(device_->connection_.get());
+  EXPECT_TRUE(device_->health_checker_.get());
+}
+
+TEST_F(DeviceHealthCheckerTest, InitializeHealthCheckIps) {
+  EXPECT_FALSE(device_->health_checker_.get());
+  MockConnectionHealthChecker *health_checker = mock_health_checker_.get();
+  SetMockHealthChecker();
+  EXPECT_CALL(*health_checker, AddRemoteIP(_)).Times(
+      device_->health_check_ip_pool_.size());
+  device_->InitializeHealthCheckIps();
+}
+
+TEST_F(DeviceHealthCheckerTest, RequestConnectionHealthCheck) {
+  EXPECT_FALSE(device_->health_checker_.get());
+  MockConnectionHealthChecker *health_checker = mock_health_checker_.get();
+  SetMockHealthChecker();
+  EXPECT_CALL(*health_checker, Start()).Times(0);
+  EXPECT_CALL(*health_checker, health_check_in_progress())
+      .Times(1)
+      .WillOnce(Return(true));
+  device_->RequestConnectionHealthCheck();
+  Mock::VerifyAndClearExpectations(health_checker);
+
+  EXPECT_CALL(*health_checker, Start()).Times(1);
+  EXPECT_CALL(*health_checker, health_check_in_progress())
+      .Times(1)
+      .WillOnce(Return(false));
+  device_->RequestConnectionHealthCheck();
+  Mock::VerifyAndClearExpectations(health_checker);
 }
 
 }  // namespace shill

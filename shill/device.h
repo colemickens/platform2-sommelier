@@ -16,6 +16,7 @@
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
+#include "shill/connection_health_checker.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ip_address.h"
 #include "shill/ipconfig.h"
@@ -214,11 +215,15 @@ class Device : public base::RefCounted<Device> {
 
  protected:
   friend class base::RefCounted<Device>;
+  friend class DeviceHealthCheckerTest;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
+  FRIEND_TEST(DeviceHealthCheckerTest, CreateConnectionCreatesHealthChecker);
+  FRIEND_TEST(DeviceHealthCheckerTest, InitializeHealthCheckIps);
+  FRIEND_TEST(DeviceHealthCheckerTest, RequestConnectionHealthCheck);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
@@ -330,6 +335,18 @@ class Device : public base::RefCounted<Device> {
   // Avoids showing a failure mole in the UI.
   void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
+  // Initializes the health checker's internal collection of remote IPs to try.
+  void InitializeHealthCheckIps();
+
+  // Checks the network connectivity status by creating a TCP connection, and
+  // optionally sending a small amout of data.
+  void RequestConnectionHealthCheck();
+
+  // Responds to the result from connection health checker in a device specific
+  // manner.
+  virtual void OnConnectionHealthCheckerResult(
+      ConnectionHealthChecker::Result result);
+
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.
@@ -406,6 +423,9 @@ class Device : public base::RefCounted<Device> {
   void set_traffic_monitor_enabled(bool traffic_monitor_enabled) {
     traffic_monitor_enabled_ = traffic_monitor_enabled;
   }
+
+  // Ownership of |health_checker_| is taken.
+  void set_health_checker(ConnectionHealthChecker *health_checker);
 
  private:
   friend class CellularCapabilityTest;
@@ -510,6 +530,7 @@ class Device : public base::RefCounted<Device> {
   scoped_ptr<PortalDetector> portal_detector_;
   scoped_ptr<LinkMonitor> link_monitor_;
   scoped_ptr<TrafficMonitor> traffic_monitor_;
+  scoped_ptr<ConnectionHealthChecker> health_checker_;
   bool traffic_monitor_enabled_;
   base::Callback<void(const PortalDetector::Result &)>
       portal_detector_callback_;
@@ -530,6 +551,10 @@ class Device : public base::RefCounted<Device> {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
   RTNLHandler *rtnl_handler_;
+
+  // TODO(armansito): List of static IPs for connection health check.
+  // These should be removed once shill has a DNS result caching mechanism.
+  std::vector<std::string> health_check_ip_pool_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

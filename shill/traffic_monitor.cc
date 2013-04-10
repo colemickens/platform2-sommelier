@@ -107,6 +107,10 @@ void TrafficMonitor::SampleTraffic() {
       if (curr_tx_queue_it == curr_tx_queue_lengths.end() ||
           curr_tx_queue_it->second < old_tx_queue_it->second) {
         congested_tx_queues = false;
+        // TODO(armansito): If we had a false positive earlier, we may
+        // want to correct it here by invoking a "connection back to normal
+        // callback", so that the OutOfCredits property can be set to
+        // false.
         break;
       }
     }

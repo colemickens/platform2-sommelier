@@ -121,6 +121,8 @@ void ConnectionHealthChecker::Stop() {
 
 void ConnectionHealthChecker::SetupTcpConnection() {
   IPAddress ip = remote_ips_.front();
+  SLOG(Connection, 3) << __func__ << ": Starting connection at "
+                      << ip.ToString();
   if (tcp_connection_->Start(ip, kRemotePort)) {
     // TCP connection successful, no need to try more.
     return;
