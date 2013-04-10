@@ -102,6 +102,8 @@ class WiFiEndpoint : public Endpoint {
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, Ieee80211w);
+   // for physical_mode_
+  FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, PhysicalMode);
 
   enum KeyManagement {
     kKeyManagement802_1x,

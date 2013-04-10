@@ -14,6 +14,7 @@
 
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/proxy_factory.h"
 #include "shill/supplicant_bss_proxy_interface.h"
 #include "shill/wifi.h"
@@ -32,6 +33,7 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
                            const string &rpc_id,
                            const map<string, ::DBus::Variant> &properties)
     : frequency_(0),
+      physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       ieee80211w_required_(false),
       proxy_factory_(proxy_factory),
       device_(device),

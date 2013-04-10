@@ -89,6 +89,7 @@ class WiFiService : public Service {
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }
   const std::string &bssid() const { return bssid_; }
+  uint16 physical_mode() const { return physical_mode_; }
 
   // Overrride Load and Save from parent Service class.  We will call
   // the parent method.
@@ -172,6 +173,7 @@ class WiFiService : public Service {
       const std::string *default_value);
 
   std::string GetDeviceRpcId(Error *error);
+
   void ClearPassphrase(Error *error);
   void UpdateConnectable();
   void UpdateFromEndpoints();
@@ -228,8 +230,6 @@ class WiFiService : public Service {
   std::string auth_mode_;
   bool hidden_ssid_;
   uint16 frequency_;
-  // TODO(quiche): I noticed this is not hooked up to anything.  In fact, it
-  // was undefined until now. crosbug.com/26490
   uint16 physical_mode_;
   // The raw dBm signal strength from the associated endpoint.
   int16 raw_signal_strength_;

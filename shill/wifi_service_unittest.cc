@@ -18,6 +18,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
+#include "shill/metrics.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_control.h"
@@ -1195,6 +1196,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
       flimflam::kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor, EmitUint8Changed(
       flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiPhyMode, Metrics::kWiFiNetworkPhyMode11b));
   service->AddEndpoint(ok_endpoint);
   EXPECT_EQ(1, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1206,6 +1209,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
       flimflam::kWifiBSsid, kGoodEndpointBssId));
   EXPECT_CALL(adaptor, EmitUint8Changed(
       flimflam::kSignalStrengthProperty, kGoodEndpointStrength));
+  // However, both endpoints are 11b.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(good_endpoint);
   EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1215,6 +1220,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
               EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(bad_endpoint);
   EXPECT_EQ(3, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1224,6 +1230,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _)).Times(0);
   EXPECT_CALL(adaptor,
               EmitUint8Changed(flimflam::kSignalStrengthProperty, _)).Times(0);
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(bad_endpoint);
   EXPECT_EQ(2, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1235,6 +1242,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
       flimflam::kWifiBSsid, kOkEndpointBssId));
   EXPECT_CALL(adaptor, EmitUint8Changed(
       flimflam::kSignalStrengthProperty, kOkEndpointStrength));
+  // However, both endpoints are 11b.
+  EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(good_endpoint);
   EXPECT_EQ(1, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1243,6 +1252,8 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint16Changed(flimflam::kWifiFrequency, _));
   EXPECT_CALL(adaptor, EmitStringChanged(flimflam::kWifiBSsid, _));
   EXPECT_CALL(adaptor, EmitUint8Changed(flimflam::kSignalStrengthProperty, _));
+  EXPECT_CALL(adaptor, EmitUint16Changed(
+      flimflam::kWifiPhyMode, Metrics::kWiFiNetworkPhyModeUndef));
   service->RemoveEndpoint(ok_endpoint);
   EXPECT_EQ(0, service->GetEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
@@ -1356,6 +1367,39 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Ieee80211w) {
   EXPECT_TRUE(service->ieee80211w_required());
   service->RemoveEndpoint(good_endpoint);
   EXPECT_TRUE(service->ieee80211w_required());
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, PhysicalMode) {
+  EXPECT_CALL(adaptor, EmitUint16Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitStringChanged(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitUint8Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
+
+  // No endpoints -> undef.
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+
+  // Endpoint has unknown physical mode -> undef.
+  ok_endpoint->physical_mode_ = Metrics::kWiFiNetworkPhyModeUndef;
+  service->AddEndpoint(ok_endpoint);
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+
+  // New endpoint with 802.11a -> 802.11a.
+  good_endpoint->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  service->AddEndpoint(good_endpoint);
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11a, service->physical_mode());
+
+  // Remove 802.11a endpoint -> undef.
+  service->RemoveEndpoint(good_endpoint);
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
+
+  // Change endpoint -> take endpoint's new value.
+  ok_endpoint->physical_mode_ = Metrics::kWiFiNetworkPhyMode11n;
+  service->NotifyEndpointUpdated(ok_endpoint);
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyMode11n, service->physical_mode());
+
+  // No endpoints -> undef.
+  service->RemoveEndpoint(ok_endpoint);
+  EXPECT_EQ(Metrics::kWiFiNetworkPhyModeUndef, service->physical_mode());
 }
 
 TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {

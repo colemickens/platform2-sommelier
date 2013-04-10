@@ -66,7 +66,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       mode_(mode),
       hidden_ssid_(hidden_ssid),
       frequency_(0),
-      physical_mode_(0),
+      physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
       cipher_8021x_(kCryptoNone),
       ssid_(ssid),
@@ -631,6 +631,7 @@ void WiFiService::UpdateFromEndpoints() {
   int16 signal = std::numeric_limits<int16>::min();
   string bssid;
   Stringmap vendor_information;
+  uint16 physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
   // Represent "unknown raw signal strength" as 0.
   raw_signal_strength_ = 0;
   if (representative_endpoint) {
@@ -639,6 +640,7 @@ void WiFiService::UpdateFromEndpoints() {
     raw_signal_strength_ = signal;
     bssid = representative_endpoint->bssid_string();
     vendor_information = representative_endpoint->GetVendorInformation();
+    physical_mode = representative_endpoint->physical_mode();
   }
 
   if (frequency_ != frequency) {
@@ -653,6 +655,10 @@ void WiFiService::UpdateFromEndpoints() {
     vendor_information_ = vendor_information;
     adaptor()->EmitStringmapChanged(kWifiVendorInformationProperty,
                                     vendor_information_);
+  }
+  if (physical_mode_ != physical_mode) {
+    physical_mode_ = physical_mode;
+    adaptor()->EmitUint16Changed(flimflam::kWifiPhyMode, physical_mode_);
   }
   SetStrength(SignalToStrength(signal));
   UpdateSecurity();

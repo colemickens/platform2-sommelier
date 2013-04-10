@@ -268,7 +268,7 @@ bool Device::IsConnectedToService(const ServiceRefPtr &service) const {
   return service == selected_service_ && IsConnected();
 }
 
-string Device::GetRpcIdentifier() {
+string Device::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
