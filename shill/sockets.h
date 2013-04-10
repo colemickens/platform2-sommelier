@@ -75,9 +75,6 @@ class Sockets {
   // setsockopt(SO_RCVBUFFORCE)
   virtual int SetReceiveBuffer(int sockfd, int size);
 
-  // shutdown
-  virtual int ShutDown(int sockfd, int how);
-
   // socket
   virtual int Socket(int domain, int type, int protocol);
 };

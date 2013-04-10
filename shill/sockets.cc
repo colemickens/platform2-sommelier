@@ -113,10 +113,6 @@ int Sockets::SetReceiveBuffer(int sockfd, int size) {
   return setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &size, sizeof(size));
 }
 
-int Sockets::ShutDown(int sockfd, int how) {
-  return HANDLE_EINTR(shutdown(sockfd, how));
-}
-
 int Sockets::Socket(int domain, int type, int protocol) {
   return socket(domain, type, protocol);
 }
