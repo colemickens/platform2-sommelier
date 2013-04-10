@@ -233,6 +233,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	event_dispatcher.o \
 	file_io.o \
 	file_reader.o \
+	generic_netlink_message.o \
 	geolocation_info.o \
 	glib.o \
 	glib_io_ready_handler.o \
@@ -253,8 +254,9 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	metrics.o \
 	minijail.o \
 	modem_info.o \
-	netlink_socket.o \
 	netlink_attribute.o \
+	netlink_message.o \
+	netlink_socket.o \
 	nl80211_attribute.o \
 	nl80211_message.o \
 	nss.o \

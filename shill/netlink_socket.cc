@@ -5,10 +5,11 @@
 #include "shill/netlink_socket.h"
 
 #include <linux/if_packet.h>
+#include <linux/netlink.h>
 #include <sys/socket.h>
 
 #include "shill/logging.h"
-#include "shill/nl80211_message.h"
+#include "shill/netlink_message.h"
 #include "shill/sockets.h"
 
 // This is from a version of linux/socket.h that we don't have.

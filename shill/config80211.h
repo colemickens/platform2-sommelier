@@ -70,7 +70,7 @@
 #include <base/bind.h>
 #include <base/lazy_instance.h>
 
-#include "shill/nl80211_message.h"
+#include "shill/netlink_message.h"
 
 struct nlmsghdr;
 
@@ -80,7 +80,6 @@ class Error;
 class EventDispatcher;
 struct InputData;
 class IOHandler;
-class NetlinkMessage;
 class NetlinkSocket;
 
 // Config80211 is a singleton that coordinates sending netlink messages to,
@@ -100,8 +99,7 @@ class Config80211 {
   typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
 
   // Encapsulates all the different things we know about a specific message
-  // type like its name, its id, and, eventually, a factory for creating
-  // messages of the designated type.
+  // type like its name, and its id.
   struct MessageType {
     MessageType();
 

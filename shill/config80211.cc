@@ -15,10 +15,11 @@
 #include "shill/attribute_list.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/generic_netlink_message.h"
 #include "shill/io_handler.h"
 #include "shill/logging.h"
 #include "shill/netlink_socket.h"
-#include "shill/nl80211_message.h"
+#include "shill/netlink_message.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 
