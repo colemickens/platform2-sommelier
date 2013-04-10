@@ -5,7 +5,7 @@
 #ifndef SHILL_CONNECTION_HEALTH_CHECKER_H_
 #define SHILL_CONNECTION_HEALTH_CHECKER_H_
 
-#include <queue>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/callback.h>
@@ -22,6 +22,7 @@ namespace shill {
 
 class AsyncConnection;
 class DNSClient;
+class DNSClientFactory;
 class Error;
 class EventDispatcher;
 class IPAddress;
@@ -37,7 +38,7 @@ class SocketInfoReader;
 //   -(3)- Connectivity OK (TCP connection established, is healthy)
 class ConnectionHealthChecker {
  public:
-  typedef std::queue<IPAddress> IPAddressQueue;
+  typedef std::vector<IPAddress> IPAddresses;
 
   // TODO(pprabhu): Rename kResultElongatedTimeWait to kResultTearDownFailure.
   enum Result {
@@ -88,7 +89,7 @@ class ConnectionHealthChecker {
   static const char *ResultToString(Result result);
 
   // Accessors.
-  const IPAddressQueue &remote_ips() { return remote_ips_; }
+  const IPAddresses &remote_ips() const { return remote_ips_; }
   void set_run_data_test(bool val) { run_data_test_ = val; }
   virtual bool health_check_in_progress() const {
       return health_check_in_progress_;
@@ -96,14 +97,17 @@ class ConnectionHealthChecker {
 
  private:
   friend class ConnectionHealthCheckerTest;
+  FRIEND_TEST(ConnectionHealthCheckerTest, GarbageCollectDNSClients);
   FRIEND_TEST(ConnectionHealthCheckerTest, GetSocketInfo);
   FRIEND_TEST(ConnectionHealthCheckerTest, SendData);
   FRIEND_TEST(ConnectionHealthCheckerTest, ShutDown);
 
   // Time to wait for DNS server.
-  static const int kDNSTimeoutSeconds;
+  static const int kDNSTimeoutMilliseconds;
   // Number of connection attempts before failure per health check request.
   static const int kMaxConnectionAttempts;
+  // Number of DNS queries to be spawned when a new remote URL is added.
+  static const int kNumDNSQueries;
   static const uint16 kRemotePort;
 
   // Start a new AsyncConnection with callback set to OnConnectionComplete().
@@ -120,12 +124,13 @@ class ConnectionHealthChecker {
   Result SendData(int sock_fd);
   Result ShutDown(int sock_fd);
   bool GetSocketInfo(int sock_fd, SocketInfo *sock_info);
+  void GarbageCollectDNSClients();
 
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
   base::Callback<void(Result)> result_callback_;
 
-  IPAddressQueue remote_ips_;
+  IPAddresses remote_ips_;
   scoped_ptr<SocketInfoReader> socket_info_reader_;
   scoped_ptr<Sockets> socket_;
   base::WeakPtrFactory<ConnectionHealthChecker> weak_ptr_factory_;
@@ -133,7 +138,8 @@ class ConnectionHealthChecker {
   const base::Callback<void(const Error&, const IPAddress&)>
       dns_client_callback_;
   scoped_ptr<AsyncConnection> tcp_connection_;
-  scoped_ptr<DNSClient> dns_client_;
+  DNSClientFactory *dns_client_factory_;
+  ScopedVector<DNSClient> dns_clients_;
   // If true, HealthChecker attempts to send a small amount of data over
   // the network during the test. Otherwise, the inference is based on
   // the connection open/close behaviour.

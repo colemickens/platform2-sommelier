@@ -151,6 +151,10 @@ void DNSClient::Stop() {
   resolver_state_.reset();
 }
 
+bool DNSClient::IsActive() const {
+  return running_;
+}
+
 // We delay our call to completion so that we exit all IOHandlers, and
 // can clean up all of our local state before calling the callback, or
 // during the process of the execution of the callee (which is free to

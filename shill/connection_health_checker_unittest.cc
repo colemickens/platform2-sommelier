@@ -11,12 +11,14 @@
 #include <base/bind.h>
 #include <base/callback.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/scoped_vector.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_async_connection.h"
 #include "shill/mock_connection.h"
 #include "shill/mock_control.h"
 #include "shill/mock_dns_client.h"
+#include "shill/mock_dns_client_factory.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_sockets.h"
@@ -66,7 +68,7 @@ class ConnectionHealthCheckerTest : public Test {
         device_info_(&control_, &dispatcher_,
                      reinterpret_cast<Metrics*>(NULL),
                      reinterpret_cast<Manager*>(NULL)),
-        connection_(new MockConnection(&device_info_)),
+        connection_(new NiceMock<MockConnection>(&device_info_)),
         socket_(NULL) {}
 
   // Invokes
@@ -99,12 +101,23 @@ class ConnectionHealthCheckerTest : public Test {
     health_checker_->OnConnectionComplete(success, sock_fd);
   }
 
+  void InvokeGetDNSResultFailure() {
+    Error error(Error::kOperationFailed, "");
+    IPAddress address(IPAddress::kFamilyUnknown);
+    health_checker_->GetDNSResult(error, address);
+  }
+
+  void InvokeGetDNSResultSuccess(const IPAddress &address) {
+    Error error;
+    health_checker_->GetDNSResult(error, address);
+  }
+
  protected:
   void SetUp() {
     EXPECT_CALL(*connection_.get(), interface_name())
         .WillRepeatedly(ReturnRef(interface_name_));
-    EXPECT_CALL(*connection_.get(), dns_servers())
-        .WillOnce(ReturnRef(dns_servers_));
+    ON_CALL(*connection_.get(), dns_servers())
+        .WillByDefault(ReturnRef(dns_servers_));
     health_checker_.reset(
         new ConnectionHealthChecker(
              connection_,
@@ -115,12 +128,11 @@ class ConnectionHealthCheckerTest : public Test {
     socket_ = new StrictMock<MockSockets>();
     tcp_connection_ = new StrictMock<MockAsyncConnection>();
     socket_info_reader_ = new StrictMock<MockSocketInfoReader>();
-    dns_client_ = new MockDNSClient();
     // Passes ownership for all of these.
     health_checker_->socket_.reset(socket_);
     health_checker_->tcp_connection_.reset(tcp_connection_);
     health_checker_->socket_info_reader_.reset(socket_info_reader_);
-    health_checker_->dns_client_.reset(dns_client_);
+    health_checker_->dns_client_factory_ = MockDNSClientFactory::GetInstance();
   }
 
   void TearDown() {
@@ -133,25 +145,30 @@ class ConnectionHealthCheckerTest : public Test {
     return health_checker_->socket_.get();
   }
   const AsyncConnection *tcp_connection() {
-    return health_checker_->tcp_connection_.get(); }
+    return health_checker_->tcp_connection_.get();
+  }
+  ScopedVector<DNSClient> &dns_clients() {
+    return health_checker_->dns_clients_;
+  }
   bool health_check_in_progress() {
     return health_checker_->health_check_in_progress_;
   }
   short num_connection_attempts() {
     return health_checker_->num_connection_attempts_;
   }
-  const ConnectionHealthChecker::IPAddressQueue &remote_ips() {
+  ConnectionHealthChecker::IPAddresses &remote_ips() {
     return health_checker_->remote_ips_;
   }
   int MaxConnectionAttempts() {
     return ConnectionHealthChecker::kMaxConnectionAttempts;
   }
+  int NumDNSQueries() {
+    return ConnectionHealthChecker::kNumDNSQueries;
+  }
 
   // Mock Callbacks
   MOCK_METHOD1(ResultCallbackTarget,
                void(ConnectionHealthChecker::Result result));
-
-
 
   // Helper methods
   IPAddress StringToIPv4Address(const string &address_string) {
@@ -197,15 +214,6 @@ class ConnectionHealthCheckerTest : public Test {
         transmit_queue_value,
         0,
         SocketInfo::kTimerStateUnknown);
-  }
-  void GetDNSResultFailure() {
-    Error error(Error::kOperationFailed, "");
-    IPAddress address(IPAddress::kFamilyUnknown);
-    health_checker_->GetDNSResult(error, address);
-  }
-  void GetDNSResultSuccess(const IPAddress &address) {
-    Error error;
-    health_checker_->GetDNSResult(error, address);
   }
   void VerifyAndClearAllExpectations() {
     Mock::VerifyAndClearExpectations(this);
@@ -338,13 +346,12 @@ class ConnectionHealthCheckerTest : public Test {
   NiceMock<MockDeviceInfo> device_info_;
   vector<string> dns_servers_;
 
-  scoped_refptr<MockConnection> connection_;
+  scoped_refptr<NiceMock<MockConnection>> connection_;
   StrictMock<MockEventDispatcher> dispatcher_;
   StrictMock<MockSockets> *socket_;
   StrictMock<MockSocketInfoReader> *socket_info_reader_;
   StrictMock<MockAsyncConnection> *tcp_connection_;
-  MockDNSClient *dns_client_;
-  // Exepctations inthe Expect* functions are put in this sequence.
+  // Expectations in the Expect* functions are put in this sequence.
   // This allows us to chain calls to Expect* functions.
   Sequence seq_;
 
@@ -361,43 +368,125 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteIP) {
   IPAddress ip = StringToIPv4Address(kIPAddress_0_0_0_0);
   health_checker_->AddRemoteIP(ip);
   EXPECT_EQ(1, remote_ips().size());
-  EXPECT_TRUE(remote_ips().front().Equals(ip));
+  EXPECT_TRUE(remote_ips().rbegin()->Equals(ip));
 
   health_checker_->AddRemoteIP(
       StringToIPv4Address(kIPAddress_0_0_0_0));
   EXPECT_EQ(2, remote_ips().size());
 }
 
+TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
+  dns_clients().clear();
+  health_checker_->GarbageCollectDNSClients();
+  EXPECT_TRUE(dns_clients().empty());
+
+  for (int i = 0; i < 3; ++i) {
+    MockDNSClient *dns_client = new MockDNSClient();
+    EXPECT_CALL(*dns_client, IsActive())
+        .WillOnce(Return(true))
+        .WillOnce(Return(true))
+        .WillOnce(Return(false));
+    // Takes ownership.
+    dns_clients().push_back(dns_client);
+  }
+  for (int i = 0; i < 2; ++i) {
+    MockDNSClient *dns_client = new MockDNSClient();
+    EXPECT_CALL(*dns_client, IsActive())
+        .WillOnce(Return(false));
+    // Takes ownership.
+    dns_clients().push_back(dns_client);
+  }
+
+  EXPECT_EQ(5, dns_clients().size());
+  health_checker_->GarbageCollectDNSClients();
+  EXPECT_EQ(3, dns_clients().size());
+  health_checker_->GarbageCollectDNSClients();
+  EXPECT_EQ(3, dns_clients().size());
+  health_checker_->GarbageCollectDNSClients();
+  EXPECT_TRUE(dns_clients().empty());
+}
+
 TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
-  ConnectionHealthChecker::IPAddressQueue::size_type num_old_ips;
-
-  // DNS query fails synchronously.
-  EXPECT_CALL(*dns_client_, Start(_,_))
-      .WillOnce(Return(false));
-  num_old_ips = remote_ips().size();
-  health_checker_->AddRemoteURL(kProxyURLRemote);
-  EXPECT_EQ(num_old_ips, remote_ips().size());
-  Mock::VerifyAndClearExpectations(dns_client_);
-
-  // DNS query fails asynchronously.
-  EXPECT_CALL(*dns_client_, Start(_,_))
-      .WillOnce(Return(true));
-  num_old_ips = remote_ips().size();
-  health_checker_->AddRemoteURL(kProxyURLRemote);
-  GetDNSResultFailure();
-  EXPECT_EQ(num_old_ips, remote_ips().size());
-  Mock::VerifyAndClearExpectations(dns_client_);
-
-  // Success
-  EXPECT_CALL(*dns_client_, Start(_,_))
-      .WillOnce(Return(true));
-  num_old_ips = remote_ips().size();
-  health_checker_->AddRemoteURL(kProxyURLRemote);
+  HTTPURL url;
+  url.ParseFromString(kProxyURLRemote);
+  string host = url.host();
   IPAddress remote_ip = StringToIPv4Address(kProxyIPAddressRemote);
-  GetDNSResultSuccess(remote_ip);
+  IPAddress remote_ip_2 = StringToIPv4Address(kIPAddress_8_8_8_8);
+
+  MockDNSClientFactory *dns_client_factory
+      = MockDNSClientFactory::GetInstance();
+  ConnectionHealthChecker::IPAddresses::size_type num_old_ips;
+  vector<MockDNSClient *> dns_client_buffer;
+
+  // All DNS queries fail.
+  for (int i = 0; i < NumDNSQueries(); ++i) {
+    MockDNSClient *dns_client = new MockDNSClient();
+    EXPECT_CALL(*dns_client, Start(host, _))
+        .WillOnce(Return(false));
+    dns_client_buffer.push_back(dns_client);
+  }
+  // Will pass ownership of dns_clients elements.
+  for (int i = 0; i < NumDNSQueries(); ++i) {
+    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+        .InSequence(seq_)
+        .WillOnce(Return(dns_client_buffer[i]));
+  }
+  num_old_ips = remote_ips().size();
+  health_checker_->AddRemoteURL(kProxyURLRemote);
+  EXPECT_EQ(num_old_ips, remote_ips().size());
+  Mock::VerifyAndClearExpectations(dns_client_factory);
+  dns_client_buffer.clear();
+  dns_clients().clear();
+
+  // All but one DNS queries fail, 1 succeeds.
+  for (int i = 0; i < NumDNSQueries(); ++i) {
+    MockDNSClient *dns_client = new MockDNSClient();
+    EXPECT_CALL(*dns_client, Start(host, _))
+        .WillOnce(Return(true));
+    dns_client_buffer.push_back(dns_client);
+  }
+  // Will pass ownership of dns_clients elements.
+  for (int i = 0; i < NumDNSQueries(); ++i) {
+    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+        .InSequence(seq_)
+        .WillOnce(Return(dns_client_buffer[i]));
+  }
+  num_old_ips = remote_ips().size();
+  health_checker_->AddRemoteURL(kProxyURLRemote);
+  for(int i = 0; i < NumDNSQueries() - 1; ++i) {
+    InvokeGetDNSResultFailure();
+  }
+  InvokeGetDNSResultSuccess(remote_ip);
   EXPECT_EQ(num_old_ips + 1, remote_ips().size());
-  EXPECT_TRUE(remote_ip.Equals(remote_ips().front()));
-  Mock::VerifyAndClearExpectations(dns_client_);
+  EXPECT_TRUE(remote_ip.Equals(*remote_ips().rbegin()));
+  Mock::VerifyAndClearExpectations(dns_client_factory);
+  dns_client_buffer.clear();
+  dns_clients().clear();
+
+  // Only 2 distinct IP addresses are returned.
+  for (int i = 0; i < NumDNSQueries(); ++i) {
+    MockDNSClient *dns_client = new MockDNSClient();
+    EXPECT_CALL(*dns_client, Start(host, _))
+        .WillOnce(Return(true));
+    dns_client_buffer.push_back(dns_client);
+  }
+  // Will pass ownership of dns_clients elements.
+  for (int i = 0; i < NumDNSQueries(); ++i) {
+    EXPECT_CALL(*dns_client_factory, CreateDNSClient(_,_,_,_,_,_))
+        .InSequence(seq_)
+        .WillOnce(Return(dns_client_buffer[i]));
+  }
+  remote_ips().clear();
+  num_old_ips = remote_ips().size();
+  health_checker_->AddRemoteURL(kProxyURLRemote);
+  for (int i = 0; i < NumDNSQueries() - 1; ++i) {
+    InvokeGetDNSResultSuccess(remote_ip);
+  }
+  InvokeGetDNSResultSuccess(remote_ip_2);
+  EXPECT_EQ(num_old_ips + 2, remote_ips().size());
+  Mock::VerifyAndClearExpectations(dns_client_factory);
+  dns_client_buffer.clear();
+  dns_clients().clear();
 }
 
 TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
@@ -792,7 +881,8 @@ TEST_F(ConnectionHealthCheckerTest, StartImmediateFailure) {
   EXPECT_CALL(*tcp_connection_,
               Start(IsSameIPAddress(StringToIPv4Address(kProxyIPAddressRemote)),
                     kProxyPortRemote))
-      .WillOnce(Return(false));
+      .Times(MaxConnectionAttempts())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*tcp_connection_, Stop())
       .Times(1);
   EXPECT_CALL(*this, ResultCallbackTarget(
@@ -803,14 +893,39 @@ TEST_F(ConnectionHealthCheckerTest, StartImmediateFailure) {
   Mock::VerifyAndClearExpectations(tcp_connection_);
 }
 
-// Precondition: len(|remote_ips_|) == 1
-// Flow: Start() -> asynchronous async_connection failure
+//
+// Flow: Start() -> Connection Successful
+//               -> Forever(SendData() returns kResultUnknown)
 // Expectation: call |result_callback| with kResultConnectionFailure
-TEST_F(ConnectionHealthCheckerTest, StartAsynchrnousFailure) {
+//              (2) Sockets::Close called |kMaxConnectionAttempts| times
+//
+TEST_F(ConnectionHealthCheckerTest, HealthCheckFailHitMaxConnectionAttempts) {
+  ExpectSuccessfulStart();
+  ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
+  for (int i = 0; i < MaxConnectionAttempts() - 1; ++i) {
+    ExpectRetry();
+    ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
+  }
+  ExpectCleanUp();
+  EXPECT_CALL(*this, ResultCallbackTarget(
+                           ConnectionHealthChecker::kResultConnectionFailure));
+  for (int i = 0; i < MaxConnectionAttempts() + 2; ++i)
+    health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
+  health_checker_->Start();
+  for (int i = 0; i < MaxConnectionAttempts(); ++i)
+    InvokeOnConnectionComplete(true, kProxyFD);
+  VerifyAndClearAllExpectations();
+}
+
+// Precondition: len(|remote_ips_|) == 1
+// Flow: Start() -> forever(asynchronous async_connection failure)
+// Expectation: call |result_callback| with kResultConnectionFailure
+TEST_F(ConnectionHealthCheckerTest, StartAsynchronousFailure) {
   EXPECT_CALL(*tcp_connection_,
               Start(IsSameIPAddress(StringToIPv4Address(kProxyIPAddressRemote)),
                     kProxyPortRemote))
-      .WillOnce(Return(true));
+      .Times(MaxConnectionAttempts())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*tcp_connection_, Stop())
       .Times(1);
   EXPECT_CALL(*this, ResultCallbackTarget(
@@ -818,7 +933,8 @@ TEST_F(ConnectionHealthCheckerTest, StartAsynchrnousFailure) {
       .Times(1);
   health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
   health_checker_->Start();
-  InvokeOnConnectionComplete(false, -1);  // second argument ignored.
+  for (int i = 0; i < MaxConnectionAttempts(); ++i)
+    InvokeOnConnectionComplete(false, -1);
   Mock::VerifyAndClearExpectations(this);
   Mock::VerifyAndClearExpectations(tcp_connection_);
 }
@@ -877,30 +993,6 @@ TEST_F(ConnectionHealthCheckerTest, HealthCheckElongatedTimeWait) {
 }
 
 // Precondition: len(|remote_ips_|) == 2
-// Flow: Start() -> Connection Successful ->
-//       SendData() returns kResultUnknown ->
-//       SendData() returns kResultUnknown
-// Expectation: (1) call |result_callback| with kResultConnectionFailure
-//              (2) Sockets::Close called twice
-TEST_F(ConnectionHealthCheckerTest, HealthCheckFailOutOfIPs) {
-  ExpectSuccessfulStart();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  ExpectRetry();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  ExpectCleanUp();
-  // Expectation:
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultConnectionFailure))
-      .Times(1);
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  InvokeOnConnectionComplete(true, kProxyFD);
-  InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
-
-// Precondition: len(|remote_ips_|) == 2
 // Flow: Start() -> Connection Successful -> SendData() returns kResultUnknown
 //       -> SendData() returns kResultSuccess
 // Expectation: call |result_callback| with kResultSuccess
@@ -920,33 +1012,6 @@ TEST_F(ConnectionHealthCheckerTest, HealthCheckSuccessSecondIP) {
   health_checker_->Start();
   InvokeOnConnectionComplete(true, kProxyFD);
   InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
-
-//
-// Precondition: len(|remote_ips_|) > |kMaxConnectionAttempts|
-// Flow: Start() -> Connection Successful
-//               -> Forever(SendData() returns kResultUnknown)
-// Expectation: call |result_callback| with kResultConnectionFailure
-//              (2) Sockets::Close called |kMaxConnectionAttempts| times
-//
-TEST_F(ConnectionHealthCheckerTest, HealthCheckFailHitMaxConnectionAttempts) {
-  ExpectSuccessfulStart();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  for (int i = 0; i < MaxConnectionAttempts()-1; ++i) {
-    ExpectRetry();
-    ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  }
-  ExpectCleanUp();
-  // Expectation:
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultConnectionFailure))
-      .Times(1);
-  for (int i = 0; i < MaxConnectionAttempts() + 2; ++i)
-    health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  for (int i = 0; i < MaxConnectionAttempts(); ++i)
-    InvokeOnConnectionComplete(true, kProxyFD);
   VerifyAndClearAllExpectations();
 }
 

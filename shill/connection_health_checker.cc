@@ -6,8 +6,11 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <stdlib.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <time.h>
+
 #include <vector>
 
 #include <base/bind.h>
@@ -15,6 +18,7 @@
 #include "shill/async_connection.h"
 #include "shill/connection.h"
 #include "shill/dns_client.h"
+#include "shill/dns_client_factory.h"
 #include "shill/error.h"
 #include "shill/http_url.h"
 #include "shill/ip_address.h"
@@ -29,8 +33,13 @@ using std::vector;
 
 namespace shill {
 
-const int ConnectionHealthChecker::kDNSTimeoutSeconds = 5;
+//static
+const int ConnectionHealthChecker::kDNSTimeoutMilliseconds = 5000;
+//static
 const int ConnectionHealthChecker::kMaxConnectionAttempts = 3;
+//static
+const int ConnectionHealthChecker::kNumDNSQueries = 5;
+//static
 const uint16 ConnectionHealthChecker::kRemotePort = 80;
 
 ConnectionHealthChecker::ConnectionHealthChecker(
@@ -52,12 +61,7 @@ ConnectionHealthChecker::ConnectionHealthChecker(
                                           dispatcher_,
                                           socket_.get(),
                                           connection_complete_callback_)),
-      dns_client_(new DNSClient(IPAddress::kFamilyIPv4,
-                                connection->interface_name(),
-                                connection->dns_servers(),
-                                kDNSTimeoutSeconds * 1000,
-                                dispatcher,
-                                dns_client_callback_)),
+      dns_client_factory_(DNSClientFactory::GetInstance()),
       run_data_test_(true),
       health_check_in_progress_(false),
       num_connection_attempts_(0) {}
@@ -67,10 +71,12 @@ ConnectionHealthChecker::~ConnectionHealthChecker() {
 }
 
 void ConnectionHealthChecker::AddRemoteIP(IPAddress ip) {
-  remote_ips_.push(ip);
+  remote_ips_.push_back(ip);
 }
 
 void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
+  GarbageCollectDNSClients();
+
   HTTPURL url;
   if (!url.ParseFromString(url_string)) {
     SLOG(Connection, 2) << __func__ << ": Malformed url: " << url_string << ".";
@@ -81,10 +87,21 @@ void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
                         << " to port 80, requested " << url.port() << ".";
     return;
   }
-  Error error;
-  if (!dns_client_->Start(url.host(), &error)) {
-    SLOG(Connection, 2) << __func__ << ": Failed to start DNS client: "
-                        << error.message();
+  for (int i = 0; i < kNumDNSQueries; ++i) {
+    Error error;
+    DNSClient *dns_client =
+      dns_client_factory_->CreateDNSClient(IPAddress::kFamilyIPv4,
+                                           connection_->interface_name(),
+                                           connection_->dns_servers(),
+                                           kDNSTimeoutMilliseconds,
+                                           dispatcher_,
+                                           dns_client_callback_);
+    dns_clients_.push_back(dns_client);
+    if (!dns_clients_[i]->Start(url.host(), &error)) {
+      SLOG(Connection, 2) << __func__ << ": Failed to start DNS client "
+                          << "(query #" << i << "): "
+                          << error.message();
+    }
   }
 }
 
@@ -140,14 +157,18 @@ const char *ConnectionHealthChecker::ResultToString(
 }
 
 void ConnectionHealthChecker::SetupTcpConnection() {
-  IPAddress ip = remote_ips_.front();
+  // Pick a random IP from the set of IPs.
+  // This guards against
+  //   (1) Repeated failed attempts for the same IP at start-up everytime.
+  //   (2) All users attempting to connect to the same IP.
+  int next_ip_index = rand() % remote_ips_.size();
+  const IPAddress &ip = remote_ips_[next_ip_index];
   SLOG(Connection, 3) << __func__ << ": Starting connection at "
                       << ip.ToString();
   if (tcp_connection_->Start(ip, kRemotePort)) {
     // TCP connection successful, no need to try more.
     return;
   }
-
   SLOG(Connection, 2) << __func__ << ": Connection attempt failed.";
   TryNextIP();
 }
@@ -183,15 +204,17 @@ void ConnectionHealthChecker::GetDNSResult(const Error &error,
                         << error.message();
     return;
   }
-  remote_ips_.push(ip);
+  // Insert ip into the list of cached IP addresses, if not already present.
+  for (IPAddresses::size_type i = 0; i < remote_ips_.size(); ++i)
+    if (remote_ips_[i].Equals(ip))
+      return;
+  remote_ips_.push_back(ip);
 }
 
 void ConnectionHealthChecker::TryNextIP() {
   ++num_connection_attempts_;
   // Check if enough attempts have been made already.
-  if (num_connection_attempts_ >= kMaxConnectionAttempts ||
-      static_cast<IPAddressQueue::size_type>(num_connection_attempts_)
-           >= remote_ips_.size()) {
+  if (num_connection_attempts_ >= kMaxConnectionAttempts) {
     LOG(INFO) << __func__
               << ": multiple failed attempts to established a TCP connection.";
     // Give up. Clean up and notify client.
@@ -199,10 +222,6 @@ void ConnectionHealthChecker::TryNextIP() {
     result_callback_.Run(kResultConnectionFailure);
     return;
   }
-  IPAddress recycle_addr = remote_ips_.front();
-  remote_ips_.pop();
-  remote_ips_.push(recycle_addr);
-
   SetupTcpConnection();
 }
 
@@ -336,6 +355,20 @@ bool ConnectionHealthChecker::GetSocketInfo(int sock_fd,
 
   SLOG(Connection, 2) << __func__ << ": No matching TCP socket info.";
   return false;
+}
+
+void ConnectionHealthChecker::GarbageCollectDNSClients() {
+  ScopedVector<DNSClient> keep;
+  ScopedVector<DNSClient> discard;
+  for (size_t i = 0; i < dns_clients_.size(); ++i) {
+    if (dns_clients_[i]->IsActive())
+      keep.push_back(dns_clients_[i]);
+    else
+      discard.push_back(dns_clients_[i]);
+  }
+  dns_clients_.weak_clear();
+  dns_clients_ = keep.Pass();  // Passes ownership of contents.
+  discard.clear();
 }
 
 }  // namespace shill

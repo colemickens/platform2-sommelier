@@ -62,6 +62,8 @@ class DNSClient {
   // invocation.
   virtual void Stop();
 
+  virtual bool IsActive() const;
+
  private:
   friend class DNSClientTest;
 
