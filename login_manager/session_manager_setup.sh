@@ -389,7 +389,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --max-unused-resource-memory-usage-percentage=5 \
             --no-protector \
             --ui-enable-per-tile-painting \
-            --ui-enable-threaded-compositing \
             --ui-prioritize-in-gpu-process \
             --ui-max-frames-pending=1 \
             --use-cras \
