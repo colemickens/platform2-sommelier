@@ -147,6 +147,8 @@ class KeyboardBacklightController
   // Observers to notify about changes.
   ObserverList<BacklightControllerObserver> observers_;
 
+  SessionState session_state_;
+
   bool dimmed_for_inactivity_;
   bool off_for_inactivity_;
   bool shutting_down_;

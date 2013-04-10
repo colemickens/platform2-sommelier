@@ -80,6 +80,7 @@ KeyboardBacklightController::KeyboardBacklightController(
       prefs_(prefs),
       ambient_light_handler_(
           sensor ? new AmbientLightHandler(sensor, this) : NULL),
+      session_state_(SESSION_STOPPED),
       dimmed_for_inactivity_(false),
       off_for_inactivity_(false),
       shutting_down_(false),
@@ -136,6 +137,11 @@ void KeyboardBacklightController::RemoveObserver(
 }
 
 void KeyboardBacklightController::HandleVideoActivity(bool is_fullscreen) {
+  // Ignore fullscreen video that's reported when the user isn't logged in;
+  // it may be triggered by animations on the login screen.
+  if (is_fullscreen && session_state_ == SESSION_STOPPED)
+    is_fullscreen = false;
+
   if (is_fullscreen != fullscreen_video_playing_) {
     VLOG(1) << "Fullscreen video "
             << (is_fullscreen ? "started" : "went non-fullscreen");
@@ -154,8 +160,9 @@ void KeyboardBacklightController::HandlePowerSourceChange(PowerSource source) {}
 
 void KeyboardBacklightController::HandleDisplayModeChange(DisplayMode mode) {}
 
-void KeyboardBacklightController::HandleSessionStateChange(
-    SessionState state) {}
+void KeyboardBacklightController::HandleSessionStateChange(SessionState state) {
+  session_state_ = state;
+}
 
 void KeyboardBacklightController::HandlePowerButtonPress() {}
 

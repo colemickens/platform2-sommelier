@@ -109,6 +109,7 @@ TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
   als_limits_pref_ = "0.0\n20.0\n75.0";
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
   ASSERT_TRUE(Init());
+  controller_.HandleSessionStateChange(SESSION_STARTED);
   light_sensor_.NotifyObservers();
   ASSERT_EQ(20, backlight_.current_level());
 
@@ -140,6 +141,11 @@ TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
   EXPECT_EQ(20, backlight_.current_level());
   EXPECT_EQ(kSlowBacklightTransitionMs,
             backlight_.current_interval().InMilliseconds());
+
+  // Fullscreen video should be ignored when the user isn't logged in.
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  controller_.HandleVideoActivity(true);
+  EXPECT_EQ(20, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, OnAmbientLightChanged) {
