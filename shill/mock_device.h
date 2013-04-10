@@ -47,7 +47,6 @@ class MockDevice : public Device {
   MOCK_METHOD0(GetTransmitByteCount, uint64());
   MOCK_CONST_METHOD1(IsConnectedToService, bool(const ServiceRefPtr &service));
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
-  MOCK_CONST_METHOD0(ipconfig, const IPConfigRefPtr &());
   MOCK_METHOD0(OnBeforeSuspend, void());
   MOCK_METHOD0(OnAfterResume, void());
   MOCK_METHOD0(OnConnectionUpdated, void());

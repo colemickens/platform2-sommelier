@@ -67,11 +67,10 @@ class TrafficMonitorTest : public Test {
     monitor_.socket_info_reader_.reset(
         mock_socket_info_reader_);  // Passes ownership
 
+    device_->set_ipconfig(ipconfig_);
     ipconfig_properties_.address = kLocalIpAddr;
     EXPECT_CALL(*ipconfig_.get(), properties())
         .WillRepeatedly(ReturnRef(ipconfig_properties_));
-    EXPECT_CALL(*device_.get(), ipconfig())
-        .WillRepeatedly(ReturnRef(ipconfig_));
   }
 
   void VerifyStopped() {
