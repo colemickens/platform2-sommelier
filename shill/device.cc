@@ -670,8 +670,10 @@ void Device::RequestConnectionHealthCheck() {
 
 void Device::OnConnectionHealthCheckerResult(
     ConnectionHealthChecker::Result result) {
-  SLOG(Device, 2) << FriendlyName()
-      << ": ConnectionHealthChecker result: " << result;
+  SLOG(Device, 2)
+      << FriendlyName()
+      << ": ConnectionHealthChecker result: "
+      << ConnectionHealthChecker::ResultToString(result);
 }
 
 bool Device::RestartPortalDetection() {

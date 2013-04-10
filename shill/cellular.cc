@@ -363,7 +363,8 @@ void Cellular::OnNoNetworkRouting() {
 
 void Cellular::OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::Result result) {
-  SLOG(Cellular, 2) << __func__ << "(Result = " << result << ")";
+  SLOG(Cellular, 2) << __func__ << "(Result = "
+                    << ConnectionHealthChecker::ResultToString(result) << ")";
 
   if (result == ConnectionHealthChecker::kResultElongatedTimeWait ||
       result == ConnectionHealthChecker::kResultCongestedTxQueue) {

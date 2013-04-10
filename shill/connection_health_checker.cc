@@ -119,6 +119,26 @@ void ConnectionHealthChecker::Stop() {
   health_check_in_progress_ = false;
 }
 
+const char *ConnectionHealthChecker::ResultToString(
+    ConnectionHealthChecker::Result result) {
+  switch(result) {
+    case kResultUnknown:
+      return "Unknown";
+    case kResultInProgress:
+      return "InProgress";
+    case kResultConnectionFailure:
+      return "ConnectionFailure";
+    case kResultElongatedTimeWait:
+      return "ElongatedTimeWait";
+    case kResultCongestedTxQueue:
+      return "CongestedTxQueue";
+    case kResultSuccess:
+      return "Success";
+    default:
+      return "Invalid";
+  }
+}
+
 void ConnectionHealthChecker::SetupTcpConnection() {
   IPAddress ip = remote_ips_.front();
   SLOG(Connection, 3) << __func__ << ": Starting connection at "

@@ -39,6 +39,7 @@ class ConnectionHealthChecker {
  public:
   typedef std::queue<IPAddress> IPAddressQueue;
 
+  // TODO(pprabhu): Rename kResultElongatedTimeWait to kResultTearDownFailure.
   enum Result {
     // There was some problem in the setup of ConnctionHealthChecker.
     // Could not attempt a tcp connection.
@@ -83,6 +84,8 @@ class ConnectionHealthChecker {
   //
   // Calling Stop() on a Stop()ed health check is a no-op.
   virtual void Stop();
+
+  static const char *ResultToString(Result result);
 
   // Accessors.
   const IPAddressQueue &remote_ips() { return remote_ips_; }
