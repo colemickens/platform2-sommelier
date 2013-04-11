@@ -362,8 +362,7 @@ void Daemon::Init() {
   time_to_empty_average_.Init(sample_window_max_);
   time_to_full_average_.Init(sample_window_max_);
   OnPowerStatusUpdate(power_supply_->power_status());
-  UpdateAveragedTimes(&time_to_empty_average_,
-                      &time_to_full_average_);
+  UpdateAveragedTimes();
   file_tagger_.Init();
 
   std::string wakeup_inputs_str;
@@ -736,7 +735,7 @@ void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
                  status.battery_percentage);
   }
 
-  if (UpdateAveragedTimes(&time_to_empty_average_, &time_to_full_average_)) {
+  if (UpdateAveragedTimes()) {
     dbus_sender_->EmitBareSignal(kPowerSupplyPollSignal);
     is_power_status_stale_ = false;
   } else {
@@ -1183,8 +1182,7 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
   return NULL;
 }
 
-bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
-                                 RollingAverage* full_average) {
+bool Daemon::UpdateAveragedTimes() {
   SendEnumMetric(kMetricBatteryInfoSampleName,
                  BATTERY_INFO_READ,
                  BATTERY_INFO_MAX);
@@ -1223,8 +1221,8 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
   if (power_status_.line_power_on) {
     battery_time = power_status_.battery_time_to_full;
     if (!power_status_.is_calculating_battery_time)
-      full_average->AddSample(battery_time);
-    empty_average->Clear();
+      time_to_full_average_.AddSample(battery_time);
+    time_to_empty_average_.Clear();
   } else {
     // If the time threshold is set use it, otherwise determine the time
     // equivalent of the percentage threshold
@@ -1237,18 +1235,20 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
         << "Calculated invalid negative time to empty value, trimming to 0!";
     battery_time = std::max(static_cast<int64>(0), battery_time);
     if (!power_status_.is_calculating_battery_time)
-      empty_average->AddSample(battery_time);
-    full_average->Clear();
+      time_to_empty_average_.AddSample(battery_time);
+    time_to_full_average_.Clear();
   }
 
   if (!power_status_.is_calculating_battery_time) {
     if (!power_status_.line_power_on)
-      AdjustWindowSize(battery_time, empty_average, full_average);
+      AdjustWindowSize(battery_time);
     else
-      empty_average->ChangeWindowSize(sample_window_max_);
+      time_to_empty_average_.ChangeWindowSize(sample_window_max_);
   }
-  power_status_.averaged_battery_time_to_full = full_average->GetAverage();
-  power_status_.averaged_battery_time_to_empty = empty_average->GetAverage();
+  power_status_.averaged_battery_time_to_full =
+      time_to_full_average_.GetAverage();
+  power_status_.averaged_battery_time_to_empty =
+      time_to_empty_average_.GetAverage();
   return true;
 }
 
@@ -1261,9 +1261,7 @@ bool Daemon::UpdateAveragedTimes(RollingAverage* empty_average,
 //   x = (t - t0)*(x1 - x0)/(t1 - t0) + x0
 // We let x be the size of the window and t be the battery time
 // remaining.
-void Daemon::AdjustWindowSize(int64 battery_time,
-                              RollingAverage* empty_average,
-                              RollingAverage* full_average) {
+void Daemon::AdjustWindowSize(int64 battery_time) {
   unsigned int window_size = sample_window_max_;
   if (battery_time >= taper_time_max_s_) {
     window_size = sample_window_max_;
@@ -1275,7 +1273,7 @@ void Daemon::AdjustWindowSize(int64 battery_time,
     window_size /= taper_time_diff_s_;
     window_size += sample_window_min_;
   }
-  empty_average->ChangeWindowSize(window_size);
+  time_to_empty_average_.ChangeWindowSize(window_size);
 }
 
 void Daemon::OnLowBattery(int64 time_remaining_s,

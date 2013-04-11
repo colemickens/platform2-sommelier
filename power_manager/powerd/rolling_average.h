@@ -7,57 +7,44 @@
 #pragma once
 
 #include <base/basictypes.h>
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include <queue>
 
 namespace power_manager {
 
+// This class tracks the rolling average from a continuous sequence of
+// samples.
 class RollingAverage {
  public:
   RollingAverage();
-  virtual ~RollingAverage();
+  ~RollingAverage();
 
-  virtual void Init(unsigned int window_size);
+  // Initializes the object to hold |window_size| samples.
+  void Init(size_t window_size);
 
-  virtual void ChangeWindowSize(unsigned int window_size);
-  virtual int64 AddSample(int64 sample);
-  virtual int64 GetAverage();
-  virtual void Clear();
+  // Changes the number of samples to hold.  Current samples are retained.
+  void ChangeWindowSize(size_t window_size);
 
- protected:
-  void DeleteSample();
-  bool IsFull();
+  // Adds a sample (which must be greater than or equal to zero) and
+  // returns the new average.
+  int64 AddSample(int64 sample);
+
+  // Returns the current average.
+  int64 GetAverage();
+
+  // Clears all samples.
+  void Clear();
 
  private:
-  friend class RollingAverageTest;
-  FRIEND_TEST(RollingAverageTest, InitSuccess);
-  FRIEND_TEST(RollingAverageTest, InitSamplePresent);
-  FRIEND_TEST(RollingAverageTest, InitTotalNonZero);
-  FRIEND_TEST(RollingAverageTest, InitCurrentWindowSizeSet);
-  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeSame);
-  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeGreater);
-  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeLesser);
-  FRIEND_TEST(RollingAverageTest, ChangeWindowSizeUnderflow);
-  FRIEND_TEST(RollingAverageTest, AddSampleFull);
-  FRIEND_TEST(RollingAverageTest, AddSampleEmpty);
-  FRIEND_TEST(RollingAverageTest, AddSampleNegativeValue);
-  FRIEND_TEST(RollingAverageTest, GetAverageFull);
-  FRIEND_TEST(RollingAverageTest, GetAverageEmpty);
-  FRIEND_TEST(RollingAverageTest, ClearSuccess);
-  FRIEND_TEST(RollingAverageTest, DeleteSampleSuccess);
-  FRIEND_TEST(RollingAverageTest, DeleteSampleEmpty);
-  FRIEND_TEST(RollingAverageTest, IsFullFalse);
-  FRIEND_TEST(RollingAverageTest, IsFullTrue);
-  FRIEND_TEST(RollingAverageTest, IsFullUninitialized);
-  FRIEND_TEST(RollingAverageTest, IsFullOverflow);
+  // Deletes the oldest sample.
+  void DeleteSample();
 
-  std::queue<int64> sample_window_;
+  std::queue<int64> samples_;
   int64 running_total_;
-  unsigned int current_window_size_;
+  size_t window_size_;
 
   DISALLOW_COPY_AND_ASSIGN(RollingAverage);
-};  // class RollingAverage
+};
 
 }  // namespace power_manager
 

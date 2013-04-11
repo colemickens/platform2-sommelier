@@ -168,10 +168,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
  private:
   friend class DaemonTest;
-  FRIEND_TEST(DaemonTest, AdjustWindowSizeMax);
-  FRIEND_TEST(DaemonTest, AdjustWindowSizeMin);
-  FRIEND_TEST(DaemonTest, AdjustWindowSizeCalc);
-  FRIEND_TEST(DaemonTest, ExtendTimeoutsWhenProjecting);
   FRIEND_TEST(DaemonTest, GenerateBacklightLevelMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetric);
   FRIEND_TEST(DaemonTest, GenerateBatteryDischargeRateMetricInterval);
@@ -299,14 +295,11 @@ class Daemon : public policy::BacklightControllerObserver,
   // Update the averaged values in |power_status_| and add the battery time
   // estimate values from |power_status_| to the appropriate rolling
   // averages. Returns false if the input to the function was invalid.
-  bool UpdateAveragedTimes(RollingAverage* empty_average,
-                           RollingAverage* full_average);
+  bool UpdateAveragedTimes();
 
   // Given the current battery time estimate adjust the rolling
   // average window sizes to give the desired linear tapering.
-  void AdjustWindowSize(int64 battery_time,
-                        RollingAverage* empty_average,
-                        RollingAverage* full_average);
+  void AdjustWindowSize(int64 battery_time);
 
   // Checks for extremely low battery condition.
   void OnLowBattery(int64 time_remaining_s,

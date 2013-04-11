@@ -17,7 +17,6 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/mock_metrics_store.h"
-#include "power_manager/powerd/mock_rolling_average.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 
 using ::testing::_;
@@ -132,6 +131,7 @@ class DaemonTest : public Test {
     prefs_.SetDouble(kPluggedBrightnessOffsetPref, 70);
     prefs_.SetDouble(kUnpluggedBrightnessOffsetPref, 30);
     ResetPowerStatus(status_);
+
     // Setting up the window taper values, since they are needed in some of
     // the tests.
     daemon_.sample_window_max_ = kSampleWindowMax;
@@ -140,6 +140,8 @@ class DaemonTest : public Test {
     daemon_.taper_time_max_s_ = kTaperTimeMax;
     daemon_.taper_time_min_s_ = kTaperTimeMin;
     daemon_.taper_time_diff_s_ = kTaperTimeDiff;
+    daemon_.time_to_empty_average_.Init(daemon_.sample_window_max_);
+    daemon_.time_to_full_average_.Init(daemon_.sample_window_max_);
   }
 
  protected:
@@ -315,31 +317,11 @@ class DaemonTest : public Test {
   FakePrefs prefs_;
   BacklightControllerStub backlight_ctl_;
 
-  StrictMock<MockRollingAverage> empty_average_;
-  StrictMock<MockRollingAverage> full_average_;
-
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
   Daemon daemon_;
   system::PowerStatus* status_;
 };
-
-TEST_F(DaemonTest, AdjustWindowSizeMax) {
-  empty_average_.ExpectChangeWindowSize(kSampleWindowMax);
-
-  daemon_.AdjustWindowSize(kTaperTimeMax, &empty_average_, &full_average_);
-}
-
-TEST_F(DaemonTest, AdjustWindowSizeMin) {
-  empty_average_.ExpectChangeWindowSize(kSampleWindowMin);
-  daemon_.AdjustWindowSize(kTaperTimeMin, &empty_average_, &full_average_);
-}
-
-TEST_F(DaemonTest, AdjustWindowSizeCalc) {
-  empty_average_.ExpectChangeWindowSize(kSampleWindowMid);
-  daemon_.AdjustWindowSize(
-      kTaperTimeMid, &empty_average_, &full_average_);
-}
 
 TEST_F(DaemonTest, CheckMetricInterval) {
   EXPECT_FALSE(CheckMetricInterval(29, 0, 30));
@@ -786,20 +768,15 @@ TEST_F(DaemonTest, PowerButtonDownMetric) {
   daemon_.SendPowerButtonMetric(false, up_time);
 }
 
-// TODO(derat): Rewrite these tests to not use GMock; they currently test all
-// kinds of unimportant things like whether GetAverage() was called or not.
 TEST_F(DaemonTest, UpdateAveragedTimesChargingAndCalculating) {
   status_->line_power_on = true;
   status_->is_calculating_battery_time = true;
+  status_->battery_time_to_full = kBatteryTime;
 
-  empty_average_.ExpectClear();
-  full_average_.ExpectGetAverage(kBatteryTime);
-  empty_average_.ExpectGetAverage(0);
   ExpectGoodBatteryInfoSample();
-
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average_, &full_average_));
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
   EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
+  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
@@ -807,14 +784,8 @@ TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
   status_->is_calculating_battery_time = false;
   status_->battery_time_to_full = kBatteryTime;
 
-  full_average_.ExpectAddSample(kBatteryTime, kBatteryTime);
-  empty_average_.ExpectClear();
-  empty_average_.ExpectChangeWindowSize(10);
-  full_average_.ExpectGetAverage(kBatteryTime);
-  empty_average_.ExpectGetAverage(0);
   ExpectGoodBatteryInfoSample();
-
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average_, &full_average_));
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
   EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
   EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
 }
@@ -823,13 +794,9 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndCalculating) {
   status_->line_power_on = false;
   status_->is_calculating_battery_time = true;
 
-  full_average_.ExpectClear();
-  full_average_.ExpectGetAverage(0);
-  empty_average_.ExpectGetAverage(kBatteryTime);
   ExpectGoodBatteryInfoSample();
-
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average_, &full_average_));
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
+  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 }
 
@@ -840,15 +807,10 @@ TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
   daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
   daemon_.low_battery_shutdown_percent_ = 0.0;
 
-  empty_average_.ExpectAddSample(kAdjustedBatteryTime, kAdjustedBatteryTime);
-  full_average_.ExpectClear();
-  empty_average_.ExpectChangeWindowSize(1);
-  full_average_.ExpectGetAverage(0);
-  empty_average_.ExpectGetAverage(kBatteryTime);
   ExpectGoodBatteryInfoSample();
-
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average_, &full_average_));
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
+  EXPECT_EQ(kBatteryTime - kThresholdTime,
+            status_->averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 }
 
@@ -859,15 +821,10 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
   daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
   daemon_.low_battery_shutdown_percent_ = 0.0;
 
-  empty_average_.ExpectAddSample(kAdjustedBatteryTime, kAdjustedBatteryTime);
-  full_average_.ExpectClear();
-  empty_average_.ExpectChangeWindowSize(1);
-  full_average_.ExpectGetAverage(0);
-  empty_average_.ExpectGetAverage(kBatteryTime);
   ExpectGoodBatteryInfoSample();
-
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average_, &full_average_));
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
+  EXPECT_EQ(kBatteryTime - kThresholdTime,
+            status_->averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 }
 
@@ -879,19 +836,13 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithBadStatus) {
   daemon_.low_battery_shutdown_percent_ = 0.0;
 
   ExpectBadBatteryInfoSample();
-  EXPECT_FALSE(daemon_.UpdateAveragedTimes(&empty_average_, &full_average_));
+  EXPECT_FALSE(daemon_.UpdateAveragedTimes());
   EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_->averaged_battery_time_to_full);
   EXPECT_TRUE(status_->is_calculating_battery_time);
 }
 
 TEST_F(DaemonTest, UpdateAveragedTimesWithBadIgnoredValues) {
-  const unsigned int kWindowSize = 10;
-  RollingAverage empty_average;
-  empty_average.Init(kWindowSize);
-  RollingAverage full_average;
-  full_average.Init(kWindowSize);
-
   // Bogus time-to-full values should be ignored while the battery is draining.
   status_->battery_percentage = 100.0;
   status_->line_power_on = false;
@@ -899,7 +850,7 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithBadIgnoredValues) {
   status_->battery_time_to_empty = kBatteryTime;
   status_->battery_time_to_full = kBatteryTimeTooLarge;
   ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average, &full_average));
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
   EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
   EXPECT_EQ(0, status_->averaged_battery_time_to_full);
 
@@ -908,7 +859,7 @@ TEST_F(DaemonTest, UpdateAveragedTimesWithBadIgnoredValues) {
   status_->battery_time_to_empty = kBatteryTimeTooLarge;
   status_->battery_time_to_full = kBatteryTime;
   ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes(&empty_average, &full_average));
+  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
   EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
   EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
 }
