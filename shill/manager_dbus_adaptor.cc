@@ -428,6 +428,7 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
 }
 
 void ManagerDBusAdaptor::ConnectToBestServices(::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
   Error e;
   manager_->ConnectToBestServices(&e);
   e.ToDBusError(&error);
