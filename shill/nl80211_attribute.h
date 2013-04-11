@@ -211,6 +211,39 @@ class Nl80211AttributeWiphyName : public NetlinkStringAttribute {
 
 // Nested.
 
+class Nl80211AttributeBss : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  // These are sorted alphabetically.
+  static const int kChallengeTextAttributeId;
+  static const int kChannelsAttributeId;
+  static const int kCountryInfoAttributeId;
+  static const int kDSParameterSetAttributeId;
+  static const int kErpAttributeId;
+  static const int kExtendedRatesAttributeId;
+  static const int kHtCapAttributeId;
+  static const int kHtInfoAttributeId;
+  static const int kPowerCapabilityAttributeId;
+  static const int kPowerConstraintAttributeId;
+  static const int kRequestAttributeId;
+  static const int kRsnAttributeId;
+  static const int kSsidAttributeId;
+  static const int kSupportedRatesAttributeId;
+  static const int kTcpReportAttributeId;
+  static const int kVendorSpecificAttributeId;
+
+  Nl80211AttributeBss();
+
+ private:
+  static bool ParseInformationElements(AttributeList *attribute_list,
+                                       size_t id,
+                                       const std::string &attribute_name,
+                                       ByteString data);
+
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeBss);
+};
+
 class Nl80211AttributeCqm : public NetlinkNestedAttribute {
  public:
   static const int kName;

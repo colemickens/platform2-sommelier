@@ -249,11 +249,25 @@ class NetlinkStringAttribute : public NetlinkAttribute {
   virtual bool SetStringValue(const std::string new_value);
   virtual bool ToString(std::string *value) const;
   virtual ByteString Encode() const;
+  std::string value() const { return value_; }
+  void set_value(const std::string &value) { value_ = value; }
 
  private:
   std::string value_;
-
   DISALLOW_COPY_AND_ASSIGN(NetlinkStringAttribute);
+};
+
+// SSID attributes are just string attributes with different output semantics.
+class NetlinkSsidAttribute : public NetlinkStringAttribute {
+ public:
+  NetlinkSsidAttribute(int id, const char *id_string)
+      : NetlinkStringAttribute(id, id_string) {}
+
+  // NOTE: |ToString| or |Print| must be used for logging to allow scrubbing.
+  virtual bool ToString(std::string *output) const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NetlinkSsidAttribute);
 };
 
 class NetlinkNestedAttribute : public NetlinkAttribute {

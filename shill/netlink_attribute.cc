@@ -15,6 +15,7 @@
 #include "shill/control_netlink_attribute.h"
 #include "shill/logging.h"
 #include "shill/nl80211_attribute.h"
+#include "shill/wifi.h"
 
 using std::map;
 using std::string;
@@ -42,6 +43,9 @@ NetlinkAttribute::NetlinkAttribute(int id,
 NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
   scoped_ptr<NetlinkAttribute> attr;
   switch (id) {
+    case NL80211_ATTR_BSS:
+      attr.reset(new Nl80211AttributeBss());
+      break;
     case NL80211_ATTR_COOKIE:
       attr.reset(new Nl80211AttributeCookie());
       break;
@@ -624,6 +628,21 @@ ByteString NetlinkStringAttribute::Encode() const {
   return NetlinkAttribute::EncodeGeneric(
       reinterpret_cast<const unsigned char *>(value_.c_str()),
       value_.size() + 1);
+}
+
+// SSID attribute.
+
+bool NetlinkSsidAttribute::ToString(string *output) const {
+  if (!output) {
+    LOG(ERROR) << "Null |output| parameter";
+    return false;
+  }
+  string value;
+  if (!GetStringValue(&value))
+    return false;
+
+  *output = WiFi::LogSSID(value);
+  return true;
 }
 
 // NetlinkNestedAttribute

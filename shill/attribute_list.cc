@@ -221,6 +221,16 @@ bool AttributeList::CreateStringAttribute(int id, const char *id_string) {
   return true;
 }
 
+bool AttributeList::CreateSsidAttribute(int id, const char *id_string) {
+  if (ContainsKey(attributes_, id)) {
+    LOG(ERROR) << "Trying to re-add attribute: " << id;
+    return false;
+  }
+  attributes_[id] = AttributePointer(
+      new NetlinkSsidAttribute(id, id_string));
+  return true;
+}
+
 bool AttributeList::SetStringAttributeValue(int id, string value) {
   NetlinkAttribute *attribute = GetAttribute(id);
   if (!attribute)

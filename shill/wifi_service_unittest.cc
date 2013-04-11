@@ -360,7 +360,7 @@ TEST_F(WiFiServiceTest, PassphraseWriteOnly) {
   WiFiServiceRefPtr wifi_service = MakeSimpleService(flimflam::kSecurityWpa);
   ReadablePropertyConstIterator<string> it =
       (wifi_service->store()).GetStringPropertiesIter();
-  for( ; !it.AtEnd(); it.Advance())
+  for ( ; !it.AtEnd(); it.Advance())
     EXPECT_NE(it.Key(), flimflam::kPassphraseProperty);
 }
 

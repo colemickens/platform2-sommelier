@@ -49,6 +49,9 @@ class AttributeList : public base::RefCounted<AttributeList> {
   // attributes exist).
   ByteString Encode() const;
 
+  // Create, get, and set attributes of the given types.  Attributes are
+  // accessed via an integer |id|.  |id_string| is a string used to describe
+  // the attribute in debug output.
   bool CreateU8Attribute(int id, const char *id_string);
   bool SetU8AttributeValue(int id, uint8_t value);
   bool GetU8AttributeValue(int id, uint8_t *value) const;
@@ -74,6 +77,8 @@ class AttributeList : public base::RefCounted<AttributeList> {
   bool IsFlagAttributeTrue(int id) const;
 
   bool CreateStringAttribute(int id, const char *id_string);
+  // SSID attributes are derived from string attributes.
+  bool CreateSsidAttribute(int id, const char *id_string);
   bool SetStringAttributeValue(int id, std::string value);
   bool GetStringAttributeValue(int id, std::string *value) const;
 
