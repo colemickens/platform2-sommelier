@@ -16,6 +16,7 @@
 #include "shill/logging.h"
 #include "shill/nl80211_attribute.h"
 
+using std::map;
 using std::string;
 
 using base::StringAppendF;
@@ -645,7 +646,7 @@ ByteString NetlinkNestedAttribute::Encode() const {
   result.Resize(NLA_HDRLEN);  // Add padding after the header.
 
   // Encode all nested attributes.
-  std::map<int, AttributeList::AttributePointer>::const_iterator attribute;
+  map<int, AttributeList::AttributePointer>::const_iterator attribute;
   for (attribute = value_->attributes_.begin();
        attribute != value_->attributes_.end();
        ++attribute) {
@@ -666,7 +667,7 @@ void NetlinkNestedAttribute::Print(int log_level, int indent) const {
   value_->Print(log_level, indent + 1);
 }
 
-bool NetlinkNestedAttribute::ToString(std::string *output) const {
+bool NetlinkNestedAttribute::ToString(string *output) const {
   if (!output) {
     LOG(ERROR) << "Null |output| parameter";
     return false;
@@ -678,6 +679,15 @@ bool NetlinkNestedAttribute::ToString(std::string *output) const {
   // accidentally.
   LOG(WARNING) << "It is unexpected for this method to be called.";
   output->append("<Nested Attribute>");
+  return true;
+}
+
+bool NetlinkNestedAttribute::InitFromNlAttr(const nlattr *const_data) {
+  if (!InitNestedFromNlAttr(value_.get(), nested_template_, const_data)) {
+    LOG(ERROR) << "InitNestedFromNlAttr() failed";
+    return false;
+  }
+  has_a_value_ = true;
   return true;
 }
 
@@ -709,21 +719,14 @@ bool NetlinkNestedAttribute::SetNestedHasAValue() {
   return true;
 }
 
-// static
 bool NetlinkNestedAttribute::InitNestedFromNlAttr(
     AttributeList *list,
-    const NestedData *nested_template,
-    size_t nested_template_size,
+    const NetlinkNestedAttribute::NestedData::NestedDataVector &templates,
     const nlattr *const_data) {
-  if (!nested_template) {
-    LOG(ERROR) << "Null |nested_template| parameter";
-    return false;
-  }
-  if ((nested_template_size == 1) && (nested_template[0].is_array)) {
-    return ParseNestedArray(list, *nested_template, const_data);
+  if (templates.size() == 1 && templates[0].is_array) {
+    return ParseNestedArray(list, templates[0], const_data);
   } else {
-    return ParseNestedStructure(list, nested_template, nested_template_size,
-                                const_data);
+    return ParseNestedStructure(list, templates, const_data);
   }
   return true;
 }
@@ -732,10 +735,9 @@ bool NetlinkNestedAttribute::InitNestedFromNlAttr(
 // data type.  Each array element may be a simple type or may be a structure.
 //
 // static
-bool NetlinkNestedAttribute::ParseNestedArray(
-    AttributeList *list,
-    const NestedData &array_template,
-    const nlattr *const_data) {
+bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
+                                              const NestedData &array_template,
+                                              const nlattr *const_data) {
   if (!list) {
     LOG(ERROR) << "NULL |list| parameter";
     return false;
@@ -756,42 +758,34 @@ bool NetlinkNestedAttribute::ParseNestedArray(
   // contiguous |id|, starting at 1 (note that, while nested structure
   // attributes may not have an |nlattr::nla_type| valued at zero, no such
   // restriction exists for nested array attributes -- this code starts the id
-  // at zero in order to be consistent with nested structures).
+  // at one in order to be consistent with nested structures).
   //
   // TODO(wdg): Determine whether any code depends on the value of
   // |nlattr::nla_type| for nested array attributes.
   int id = 1;
   nla_for_each_nested_type_corrected(attr, attrs, remaining) {
-    string attribute_name = StringPrintf("%s_%d",
-                                         array_template.attribute_name, id);
-    AddAttributeToNested(list, array_template.policy.type, id, attribute_name,
-                         *attr, array_template);
+    string attribute_name = StringPrintf(
+        "%s_%d", array_template.attribute_name.c_str(), id);
+    AddAttributeToNested(list, array_template.type, id, attribute_name, *attr,
+                         array_template);
     ++id;
   }
   return true;
 }
 
 // A nested structure provides a fixed set of child attributes (some of
-// which may be optional).  The caller provides the expectation of the members
-// and values of a nested structure in the supplied 'policy' template
-// (|struct_template|).
-//
+// which may be optional).
 // static
 bool NetlinkNestedAttribute::ParseNestedStructure(
     AttributeList *list,
-    const NestedData *struct_template,
-    size_t nested_template_size,
+    const NetlinkNestedAttribute::NestedData::NestedDataVector &templates,
     const nlattr *const_data) {
   if (!list) {
     LOG(ERROR) << "NULL |list| parameter";
     return false;
   }
-  if (!struct_template) {
-    LOG(ERROR) << "Null |struct_template| parameter";
-    return false;
-  }
-  if (nested_template_size == 0) {
-    LOG(ERROR) << "|nested_template_size| parameter is zero";
+  if (templates.empty()) {
+    LOG(ERROR) << "|templates| size is zero";
     return false;
   }
   if (!const_data) {
@@ -805,27 +799,28 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
   // |nla_parse_nested| requires an array of |nla_policy|. While an attribute id
   // of zero is illegal, we still need to fill that spot in the policy
   // array so the loop will start at zero.
-  scoped_array<nla_policy> policy(new nla_policy[nested_template_size]);
-  for (size_t id = 0; id < nested_template_size ; ++id) {
-    memcpy(&policy[id], &struct_template[id].policy, sizeof(nla_policy));
+  scoped_array<nla_policy> policy(new nla_policy[templates.size()]);
+  for (size_t id = 0; id < templates.size() ; ++id) {
+    memset(&policy[id], 0, sizeof(nla_policy));
+    policy[id].type = templates[id].type;
   }
 
   // |nla_parse_nested| builds an array of |nlattr| from the input message.
-  scoped_array<nlattr *>attr(new nlattr *[nested_template_size]);
-  if (nla_parse_nested(attr.get(), nested_template_size-1, attr_data,
+  scoped_array<nlattr *>attr(new nlattr *[templates.size()]);
+  if (nla_parse_nested(attr.get(), templates.size() - 1, attr_data,
                        policy.get())) {
     LOG(ERROR) << "nla_parse_nested failed";
     return false;
   }
 
   // Note that the attribute id of zero is illegal so we'll start with id=1.
-  for (size_t id = 1; id < nested_template_size; ++id) {
+  for (size_t id = 1; id < templates.size(); ++id) {
     // Add |attr[id]| if it exists, otherwise, it's a legally omitted optional
     // attribute.
     if (attr[id]) {
       AddAttributeToNested(list, policy[id].type, id,
-                           struct_template[id].attribute_name, *attr[id],
-                           struct_template[id]);
+                           templates[id].attribute_name, *attr[id],
+                           templates[id]);
     }
   }
   return true;
@@ -835,6 +830,17 @@ bool NetlinkNestedAttribute::ParseNestedStructure(
 void NetlinkNestedAttribute::AddAttributeToNested(
     AttributeList *list, uint16_t type, size_t id, const string &attribute_name,
     const nlattr &attr, const NestedData &nested_template) {
+  CHECK(list);
+  if (!nested_template.parse_attribute.is_null()) {
+    if (!nested_template.parse_attribute.Run(
+        list, id, attribute_name,
+        ByteString(reinterpret_cast<const char *>(nla_data(&attr)),
+                   nla_len(&attr)))) {
+      LOG(WARNING) << "Custom attribute parser returned |false| for "
+                   << attribute_name << "(" << id << ").";
+    }
+    return;
+  }
   switch (type) {
     case NLA_UNSPEC:
       list->CreateRawAttribute(id, attribute_name.c_str());
@@ -877,7 +883,7 @@ void NetlinkNestedAttribute::AddAttributeToNested(
       break;
     case NLA_NESTED:
       {
-        if (!nested_template.deeper_nesting) {
+        if (nested_template.deeper_nesting.empty()) {
           LOG(ERROR) << "No rules for nesting " << attribute_name
                      << ". Ignoring.";
           break;
@@ -895,7 +901,6 @@ void NetlinkNestedAttribute::AddAttributeToNested(
 
         if (!InitNestedFromNlAttr(nested_attribute.get(),
                                   nested_template.deeper_nesting,
-                                  nested_template.deeper_nesting_size,
                                   &attr)) {
           LOG(ERROR) << "Couldn't parse attribute " << attribute_name;
           break;
@@ -909,6 +914,19 @@ void NetlinkNestedAttribute::AddAttributeToNested(
       break;
   }
 }
+
+NetlinkNestedAttribute::NestedData::NestedData()
+    : type(NLA_UNSPEC), attribute_name("<UNKNOWN>"), is_array(false) {}
+NetlinkNestedAttribute::NestedData::NestedData(
+    uint16_t type_arg, string attribute_name_arg, bool is_array_arg)
+    : type(type_arg), attribute_name(attribute_name_arg),
+      is_array(is_array_arg) {}
+
+NetlinkNestedAttribute::NestedData::NestedData(
+    uint16_t type_arg, string attribute_name_arg, bool is_array_arg,
+    const AttributeParser &parse_attribute_arg)
+    : type(type_arg), attribute_name(attribute_name_arg),
+      is_array(is_array_arg), parse_attribute(parse_attribute_arg) {}
 
 // NetlinkRawAttribute
 

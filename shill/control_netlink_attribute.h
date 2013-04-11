@@ -70,7 +70,6 @@ class ControlAttributeAttrOps : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeAttrOps();
-  virtual bool InitFromNlAttr(const nlattr *data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ControlAttributeAttrOps);
@@ -81,7 +80,6 @@ class ControlAttributeMcastGroups : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   ControlAttributeMcastGroups();
-  virtual bool InitFromNlAttr(const nlattr *data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ControlAttributeMcastGroups);

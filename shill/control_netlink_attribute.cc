@@ -29,27 +29,16 @@ const int ControlAttributeAttrOps::kName = CTRL_ATTR_OPS;
 const char ControlAttributeAttrOps::kNameString[] = "CTRL_ATTR_OPS";
 
 ControlAttributeAttrOps::ControlAttributeAttrOps()
-      : NetlinkNestedAttribute(kName, kNameString) {}
+      : NetlinkNestedAttribute(kName, kNameString) {
+  NestedData array(NLA_NESTED, "FIRST", true);
+  array.deeper_nesting.push_back(
+      NestedData(NLA_U32, "CTRL_ATTR_OP_UNSPEC", false));
+  array.deeper_nesting.push_back(
+      NestedData(NLA_U32, "CTRL_ATTR_OP_ID", false));
+  array.deeper_nesting.push_back(
+      NestedData(NLA_U32, "CTRL_ATTR_OP_FLAGS", false));
 
-bool ControlAttributeAttrOps::InitFromNlAttr(const nlattr *const_data) {
-  static const NestedData kOps[CTRL_ATTR_OP_MAX  + 1] = {
-    {{NLA_U32, 0, 0}, "CTRL_ATTR_OP_UNSPEC", NULL, 0, false},
-    {{NLA_U32, 0, 0}, "CTRL_ATTR_OP_ID", NULL, 0, false},
-    {{NLA_U32, 0, 0}, "CTRL_ATTR_OP_FLAGS", NULL, 0, false},
-  };
-  static const NestedData kOpsList[] = {
-    {{NLA_NESTED, 0, 0 }, "FIRST", &kOps[0], arraysize(kOps), true},
-  };
-
-  if (!InitNestedFromNlAttr(value_.get(),
-                            kOpsList,
-                            arraysize(kOpsList),
-                            const_data)) {
-    LOG(ERROR) << "InitNestedFromNlAttr() failed";
-    return false;
-  }
-  has_a_value_ = true;
-  return true;
+  nested_template_.push_back(array);
 }
 
 const int ControlAttributeMcastGroups::kName = CTRL_ATTR_MCAST_GROUPS;
@@ -57,28 +46,16 @@ const char ControlAttributeMcastGroups::kNameString[] =
     "CTRL_ATTR_MCAST_GROUPS";
 
 ControlAttributeMcastGroups::ControlAttributeMcastGroups()
-      : NetlinkNestedAttribute(kName, kNameString) {}
+      : NetlinkNestedAttribute(kName, kNameString) {
+  NestedData array(NLA_NESTED, "FIRST", true);
+  array.deeper_nesting.push_back(
+      NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_UNSPEC", false));
+  array.deeper_nesting.push_back(
+      NestedData(NLA_STRING, "CTRL_ATTR_MCAST_GRP_NAME", false));
+  array.deeper_nesting.push_back(
+      NestedData(NLA_U32, "CTRL_ATTR_MCAST_GRP_ID", false));
 
-bool ControlAttributeMcastGroups::InitFromNlAttr(const nlattr *const_data) {
-  static const NestedData kMulticast[CTRL_ATTR_MCAST_GRP_MAX  + 1] = {
-    {{NLA_U32, 0, 0}, "CTRL_ATTR_MCAST_GRP_UNSPEC", NULL, 0, false},
-    {{NLA_STRING, 0, 0}, "CTRL_ATTR_MCAST_GRP_NAME", NULL, 0, false},
-    {{NLA_U32, 0, 0}, "CTRL_ATTR_MCAST_GRP_ID", NULL, 0, false},
-  };
-  static const NestedData kMulticastList[] = {
-    {{NLA_NESTED, 0, 0}, "FIRST", &kMulticast[0], arraysize(kMulticast),
-      true},
-  };
-
-  if (!InitNestedFromNlAttr(value_.get(),
-                            kMulticastList,
-                            arraysize(kMulticastList),
-                            const_data)) {
-    LOG(ERROR) << "InitNestedFromNlAttr() failed";
-    return false;
-  }
-  has_a_value_ = true;
-  return true;
+  nested_template_.push_back(array);
 }
 
 }  // namespace shill

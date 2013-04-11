@@ -216,7 +216,6 @@ class Nl80211AttributeCqm : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeCqm();
-  virtual bool InitFromNlAttr(const nlattr *data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCqm);
@@ -227,7 +226,6 @@ class Nl80211AttributeScanFrequencies : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   explicit Nl80211AttributeScanFrequencies();
-  virtual bool InitFromNlAttr(const nlattr *const_data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeScanFrequencies);
@@ -238,7 +236,6 @@ class Nl80211AttributeScanSsids : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   explicit Nl80211AttributeScanSsids();
-  virtual bool InitFromNlAttr(const nlattr *const_data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeScanSsids);
@@ -249,7 +246,6 @@ class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
   static const int kName;
   static const char kNameString[];
   Nl80211AttributeStaInfo();
-  virtual bool InitFromNlAttr(const nlattr *const_data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeStaInfo);

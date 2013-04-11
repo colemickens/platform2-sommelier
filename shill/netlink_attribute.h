@@ -261,10 +261,7 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   static const char kMyTypeString[];
   static const Type kType;
   NetlinkNestedAttribute(int id, const char *id_string);
-  virtual bool InitFromNlAttr(const nlattr *data) {
-    LOG(FATAL) << "Try initializing a _specific_ nested type, instead.";
-    return false;
-  }
+  virtual bool InitFromNlAttr(const nlattr *data);
   virtual bool GetNestedAttributeList(AttributeListRefPtr *value);
   virtual bool ConstGetNestedAttributeList(
       AttributeListConstRefPtr *value) const;
@@ -282,13 +279,26 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // set (note that one level of nesting either contains _only_ an array or
   // _no_ array).
   struct NestedData {
-    nla_policy policy;
-    const char *attribute_name;
-    const NestedData *deeper_nesting;
-    size_t deeper_nesting_size;
+    typedef base::Callback<bool (AttributeList *list, size_t id,
+                                 const std::string &attribute_name,
+                                 ByteString data)> AttributeParser;
+    typedef std::vector<NestedData> NestedDataVector;
+
+    NestedData();
+    NestedData(uint16_t type, std::string attribute_name, bool is_array);
+    NestedData(uint16_t type, std::string attribute_name, bool is_array,
+               const AttributeParser &parse_attribute);
+    uint16_t type;
+    std::string attribute_name;
+    NestedDataVector deeper_nesting;
     bool is_array;
-    // TODO(wdg): Add function pointer for a custom attribute parser.
+    // Closure that overrides the usual parsing of this attribute.  A non-NULL
+    // value for |parse_attribute| will cause the software to ignore the other
+    // members of the |NestedData| structure.
+    AttributeParser parse_attribute;
   };
+
+  NestedData::NestedDataVector nested_template_;
 
   // Builds an AttributeList (|list|) that contains all of the attriubtes in
   // |const_data|.  |const_data| should point to the enclosing nested attribute
@@ -304,19 +314,17 @@ class NetlinkNestedAttribute : public NetlinkAttribute {
   // The data is parsed using the expected configuration in |nested_template|.
   // If the code expects an array, it will pass a single template element and
   // mark that as an array.
-  static bool InitNestedFromNlAttr(AttributeList *list,
-                                   const NestedData *nested_template,
-                                   size_t nested_template_size,
-                                   const nlattr *const_data);
+  static bool InitNestedFromNlAttr(
+      AttributeList *list, const NestedData::NestedDataVector &templates,
+      const nlattr *const_data);
 
-  static bool ParseNestedArray(AttributeList *list,
-                               const NestedData &nested_template,
-                               const nlattr *const_data);
+  static bool ParseNestedArray(
+      AttributeList *list, const NestedData &templates,
+      const nlattr *const_data);
 
-  static bool ParseNestedStructure(AttributeList *list,
-                                   const NestedData *nested_template,
-                                   size_t nested_template_size,
-                                   const nlattr *const_data);
+  static bool ParseNestedStructure(
+      AttributeList *list, const NestedData::NestedDataVector &templates,
+      const nlattr *const_data);
 
   // Helper function used by InitNestedFromNlAttr to add a single child
   // attribute to a nested attribute.
