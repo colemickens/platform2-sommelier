@@ -817,7 +817,7 @@ bool Attestation::EncryptDatabase(const AttestationDatabase& db,
   }
   SecureBlob serial_data(serial_string.data(), serial_string.size());
   SecureBlob encrypted_data;
-  if (!CryptoLib::AesEncrypt(serial_data, database_key_, iv, &encrypted_data)) {
+  if (!AesEncrypt(serial_data, database_key_, iv, &encrypted_data)) {
     LOG(ERROR) << "Failed to encrypt db.";
     return false;
   }
@@ -850,13 +850,20 @@ bool Attestation::DecryptDatabase(const EncryptedData& encrypted_db,
   SecureBlob encrypted_data(encrypted_db.encrypted_data().data(),
                             encrypted_db.encrypted_data().length());
   SecureBlob serial_db;
-  if (!CryptoLib::AesDecrypt(encrypted_data, database_key_, iv, &serial_db)) {
+  if (!AesDecrypt(encrypted_data, database_key_, iv, &serial_db)) {
     LOG(ERROR) << "Failed to decrypt database.";
     return false;
   }
   if (!db->ParseFromArray(serial_db.data(), serial_db.size())) {
-    LOG(ERROR) << "Failed to parse database.";
-    return false;
+    // Previously the DB was encrypted with CryptoLib::AesEncrypt which appends
+    // a SHA-1.  This can be safely ignored.
+    const size_t kLegacyJunkSize = 20;
+    if (serial_db.size() < kLegacyJunkSize ||
+        !db->ParseFromArray(serial_db.data(),
+                            serial_db.size() - kLegacyJunkSize)) {
+      LOG(ERROR) << "Failed to parse database.";
+      return false;
+    }
   }
   return true;
 }
@@ -1405,7 +1412,7 @@ bool Attestation::EncryptData(const SecureBlob& input,
     return false;
   }
   SecureBlob encrypted;
-  if (!CryptoLib::AesEncrypt(input, aes_key, aes_iv, &encrypted)) {
+  if (!AesEncrypt(input, aes_key, aes_iv, &encrypted)) {
     LOG(ERROR) << "AesEncrypt failed.";
     return false;
   }
@@ -1517,6 +1524,28 @@ bool Attestation::CreateSignedPublicKey(
   signed_public_key->swap(tmp);
 
   return true;
+}
+
+bool Attestation::AesEncrypt(const chromeos::SecureBlob& plaintext,
+                const chromeos::SecureBlob& key,
+                const chromeos::SecureBlob& iv,
+                chromeos::SecureBlob* ciphertext) {
+  return CryptoLib::AesEncryptSpecifyBlockMode(plaintext, 0, plaintext.size(),
+                                               key, iv,
+                                               CryptoLib::kPaddingStandard,
+                                               CryptoLib::kCbc,
+                                               ciphertext);
+}
+
+bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
+                const chromeos::SecureBlob& key,
+                const chromeos::SecureBlob& iv,
+                chromeos::SecureBlob* plaintext) {
+  return CryptoLib::AesDecryptSpecifyBlockMode(ciphertext, 0, ciphertext.size(),
+                                               key, iv,
+                                               CryptoLib::kPaddingStandard,
+                                               CryptoLib::kCbc,
+                                               plaintext);
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

@@ -21,6 +21,9 @@ class CryptoLib {
 
   enum PaddingScheme {
     kPaddingNone = 0,
+    // Also called PKCS padding.
+    // See http://tools.ietf.org/html/rfc5652#section-6.3.
+    kPaddingStandard = 1,
     kPaddingCryptohomeDefault = 2,
   };
 
@@ -44,7 +47,7 @@ class CryptoLib {
                               chromeos::SecureBlob* key,
                               chromeos::SecureBlob* iv);
 
-  // AES decrypts the wrapped blob
+  // Decrypts data encrypted with AesEncrypt.
   //
   // Parameters
   //   wrapped - The blob containing the encrypted data
@@ -56,7 +59,9 @@ class CryptoLib {
                         const chromeos::SecureBlob& iv,
                         chromeos::SecureBlob* plaintext);
 
-  // AES encrypts the plain text data using the specified key
+  // AES encrypts the plain text data using the specified key and IV.  This
+  // method uses custom padding and is not inter-operable with other crypto
+  // systems.  The encrypted data can be decrypted with AesDecrypt.
   //
   // Parameters
   //   plaintext - The plain text data to encrypt
@@ -67,6 +72,7 @@ class CryptoLib {
                          const chromeos::SecureBlob& key,
                          const chromeos::SecureBlob& iv,
                          chromeos::SecureBlob* ciphertext);
+
   // Same as AesDecrypt, but allows using either CBC or ECB
   static bool AesDecryptSpecifyBlockMode(const chromeos::Blob& ciphertext,
                                          unsigned int start, unsigned int count,

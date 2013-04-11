@@ -242,7 +242,11 @@ class AttestationTest : public testing::Test {
     SecureBlob decrypted;
     SecureBlob encrypted = ConvertStringToBlob(input.encrypted_data());
     SecureBlob aes_iv = ConvertStringToBlob(input.iv());
-    if (!CryptoLib::AesDecrypt(encrypted, aes_key, aes_iv, &decrypted))
+    if (!CryptoLib::AesDecryptSpecifyBlockMode(encrypted, 0, encrypted.size(),
+                                               aes_key, aes_iv,
+                                               CryptoLib::kPaddingStandard,
+                                               CryptoLib::kCbc,
+                                               &decrypted))
       return false;
     *output = ConvertBlobToString(decrypted);
     return true;

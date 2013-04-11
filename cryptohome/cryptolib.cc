@@ -345,9 +345,11 @@ bool CryptoLib::AesDecryptSpecifyBlockMode(const chromeos::Blob& encrypted,
 //     password) into the encrypted blob storing the vault keyset when the TPM
 //     is used.  This is described in more detail in the README file.  There is
 //     no padding in this case, and the size of plain_text needs to be a
-//     multiple of the AES block size (16 bytes)
+//     multiple of the AES block size (16 bytes).
+//   - kPaddingStandard uses standard PKCS padding, which is the default for
+//     OpenSSL.
 //   - kPaddingCryptohomeDefault appends a SHA1 hash of the plaintext in
-//     plain_text before passing it to OpenSSL, which still uses PKCS#5 padding
+//     plain_text before passing it to OpenSSL, which still uses PKCS padding
 //     so that we do not have to re-implement block-multiple padding ourselves.
 //     This padding scheme allows us to strongly verify the plaintext on
 //     decryption, which is essential when, for example, test decrypting a nonce
@@ -379,9 +381,9 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
 
   // First set the output size based on the padding scheme.  No padding means
   // that the input needs to be a multiple of the block size, and the output
-  // size is equal to the input size.  Library default means we should allocate
-  // up to a full block additional for the PKCS#5 padding.  Cryptohome default
-  // means we should allocate a full block additional for the PKCS#5 padding and
+  // size is equal to the input size.  Standard padding means we should allocate
+  // up to a full block additional for the PKCS padding.  Cryptohome default
+  // means we should allocate a full block additional for the PKCS padding and
   // enough for a SHA1 hash.
   unsigned int block_size = GetAesBlockSize();
   unsigned int needed_size = count;
@@ -392,6 +394,9 @@ bool CryptoLib::AesEncryptSpecifyBlockMode(const chromeos::Blob& plain_text,
       // INT_MAX, but needed_size is itself an unsigned.  The block size and
       // digest length are fixed by the algorithm.
       needed_size += block_size + SHA_DIGEST_LENGTH;
+      break;
+    case kPaddingStandard:
+      needed_size += block_size;
       break;
     case kPaddingNone:
       if (count % block_size) {

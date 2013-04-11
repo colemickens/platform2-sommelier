@@ -442,6 +442,18 @@ class Attestation : public base::PlatformThread::Delegate {
   bool CreateSignedPublicKey(const CertifiedKey& key,
                              chromeos::SecureBlob* signed_public_key);
 
+  // Standard AES-256-CBC padded encryption.
+  bool AesEncrypt(const chromeos::SecureBlob& plaintext,
+                  const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& iv,
+                  chromeos::SecureBlob* ciphertext);
+
+  // Standard AES-256-CBC padded decryption.
+  bool AesDecrypt(const chromeos::SecureBlob& ciphertext,
+                  const chromeos::SecureBlob& key,
+                  const chromeos::SecureBlob& iv,
+                  chromeos::SecureBlob* plaintext);
+
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };
 
