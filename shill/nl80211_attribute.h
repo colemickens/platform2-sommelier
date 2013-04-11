@@ -27,6 +27,47 @@ class Nl80211AttributeKeyIdx : public NetlinkU8Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeKeyIdx);
 };
 
+class Nl80211AttributeMaxMatchSets : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxMatchSets() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxMatchSets);
+};
+
+class Nl80211AttributeMaxNumPmkids : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxNumPmkids() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxNumPmkids);
+};
+
+class Nl80211AttributeMaxNumScanSsids : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxNumScanSsids() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxNumScanSsids);
+};
+
+class Nl80211AttributeMaxNumSchedScanSsids : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxNumSchedScanSsids()
+      : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxNumSchedScanSsids);
+};
+
 class Nl80211AttributeRegType : public NetlinkU8Attribute {
  public:
   static const int kName;
@@ -37,7 +78,59 @@ class Nl80211AttributeRegType : public NetlinkU8Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRegType);
 };
 
+class Nl80211AttributeWiphyCoverageClass : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyCoverageClass()
+      : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyCoverageClass);
+};
+
+class Nl80211AttributeWiphyRetryLong : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyRetryLong() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyRetryLong);
+};
+
+class Nl80211AttributeWiphyRetryShort : public NetlinkU8Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyRetryShort() : NetlinkU8Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyRetryShort);
+};
+
 // U16.
+
+class Nl80211AttributeMaxScanIeLen : public NetlinkU16Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxScanIeLen() : NetlinkU16Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxScanIeLen);
+};
+
+class Nl80211AttributeMaxSchedScanIeLen : public NetlinkU16Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxSchedScanIeLen()
+      : NetlinkU16Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxSchedScanIeLen);
+};
 
 class Nl80211AttributeReasonCode : public NetlinkU16Attribute {
  public:
@@ -69,6 +162,26 @@ class Nl80211AttributeDuration : public NetlinkU32Attribute {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDuration);
+};
+
+class Nl80211AttributeDeviceApSme : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeDeviceApSme() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDeviceApSme);
+};
+
+class Nl80211AttributeFeatureFlags : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeFeatureFlags() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeFeatureFlags);
 };
 
 class Nl80211AttributeGeneration : public NetlinkU32Attribute {
@@ -111,6 +224,28 @@ class Nl80211AttributeKeyType : public NetlinkU32Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeKeyType);
 };
 
+class Nl80211AttributeMaxRemainOnChannelDuration : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeMaxRemainOnChannelDuration()
+      : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeMaxRemainOnChannelDuration);
+};
+
+class Nl80211AttributeProbeRespOffload : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeProbeRespOffload()
+      : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeProbeRespOffload);
+};
+
 class Nl80211AttributeRegInitiator : public NetlinkU32Attribute {
  public:
   static const int kName;
@@ -131,6 +266,59 @@ class Nl80211AttributeWiphy : public NetlinkU32Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphy);
 };
 
+class Nl80211AttributeWiphyAntennaAvailRx : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyAntennaAvailRx()
+      : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyAntennaAvailRx);
+};
+
+class Nl80211AttributeWiphyAntennaAvailTx : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyAntennaAvailTx()
+      : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyAntennaAvailTx);
+};
+
+class Nl80211AttributeWiphyAntennaRx : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyAntennaRx() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyAntennaRx);
+};
+
+class Nl80211AttributeWiphyAntennaTx : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyAntennaTx() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyAntennaTx);
+};
+
+class Nl80211AttributeWiphyFragThreshold : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyFragThreshold()
+      : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyFragThreshold);
+};
+
 class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
  public:
   static const int kName;
@@ -139,6 +327,17 @@ class Nl80211AttributeWiphyFreq : public NetlinkU32Attribute {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyFreq);
+};
+
+class Nl80211AttributeWiphyRtsThreshold : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyRtsThreshold()
+      : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyRtsThreshold);
 };
 
 // U64.
@@ -155,6 +354,17 @@ class Nl80211AttributeCookie : public NetlinkU64Attribute {
 
 // Flag.
 
+class Nl80211AttributeControlPortEthertype : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeControlPortEthertype()
+      : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeControlPortEthertype);
+};
+
 class Nl80211AttributeDisconnectedByAp : public NetlinkFlagAttribute {
  public:
   static const int kName;
@@ -166,6 +376,49 @@ class Nl80211AttributeDisconnectedByAp : public NetlinkFlagAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeDisconnectedByAp);
 };
 
+class Nl80211AttributeOffchannelTxOk : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeOffchannelTxOk()
+      : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeOffchannelTxOk);
+};
+
+class Nl80211AttributeRoamSupport : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeRoamSupport() : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeRoamSupport);
+};
+
+class Nl80211AttributeSupportApUapsd : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeSupportApUapsd()
+      : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportApUapsd);
+};
+
+class Nl80211AttributeSupportIbssRsn : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeSupportIbssRsn()
+      : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportIbssRsn);
+};
+
 class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
  public:
   static const int kName;
@@ -175,6 +428,27 @@ class Nl80211AttributeSupportMeshAuth : public NetlinkFlagAttribute {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeSupportMeshAuth);
+};
+
+class Nl80211AttributeTdlsExternalSetup : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeTdlsExternalSetup()
+      : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeTdlsExternalSetup);
+};
+
+class Nl80211AttributeTdlsSupport : public NetlinkFlagAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeTdlsSupport() : NetlinkFlagAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeTdlsSupport);
 };
 
 class Nl80211AttributeTimedOut : public NetlinkFlagAttribute {
@@ -284,7 +558,28 @@ class Nl80211AttributeStaInfo : public NetlinkNestedAttribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeStaInfo);
 };
 
+class Nl80211AttributeWiphyBands : public NetlinkNestedAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeWiphyBands();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeWiphyBands);
+};
+
+
 // Raw.
+
+class Nl80211AttributeCipherSuites : public NetlinkRawAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeCipherSuites() : NetlinkRawAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeCipherSuites);
+};
 
 class Nl80211AttributeFrame : public NetlinkRawAttribute {
  public:
@@ -294,6 +589,17 @@ class Nl80211AttributeFrame : public NetlinkRawAttribute {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeFrame);
+};
+
+class Nl80211AttributeHtCapabilityMask : public NetlinkRawAttribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeHtCapabilityMask()
+      : NetlinkRawAttribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeHtCapabilityMask);
 };
 
 class Nl80211AttributeKeySeq : public NetlinkRawAttribute {

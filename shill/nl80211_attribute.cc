@@ -150,6 +150,71 @@ bool Nl80211AttributeBss::ParseInformationElements(
   return true;
 }
 
+const int Nl80211AttributeWiphyBands::kName = NL80211_ATTR_WIPHY_BANDS;
+const char Nl80211AttributeWiphyBands::kNameString[] =
+  "NL80211_ATTR_WIPHY_BANDS";
+
+Nl80211AttributeWiphyBands::Nl80211AttributeWiphyBands()
+      : NetlinkNestedAttribute(kName, kNameString) {
+  // Frequencies
+  NestedData freq(NLA_NESTED, "NL80211_BAND_ATTR_FREQ", true);
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_U32, "__NL80211_FREQUENCY_ATTR_INVALID", false));
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_FREQ", false));
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_DISABLED", false));
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_PASSIVE_SCAN", false));
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_NO_IBSS", false));
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_FREQUENCY_ATTR_RADAR", false));
+  freq.deeper_nesting.push_back(
+      NestedData(NLA_U32, "NL80211_FREQUENCY_ATTR_MAX_TX_POWER", false));
+
+  NestedData freqs(NLA_NESTED, "NL80211_BAND_ATTR_FREQS", false);
+  freqs.deeper_nesting.push_back(freq);
+
+  // Rates
+  NestedData rate(NLA_NESTED, "NL80211_BAND_ATTR_RATE", true);
+  rate.deeper_nesting.push_back(
+      NestedData(NLA_U32, "__NL80211_BITRATE_ATTR_INVALID", false));
+  rate.deeper_nesting.push_back(
+      NestedData(NLA_U32, "NL80211_BITRATE_ATTR_RATE", false));
+  rate.deeper_nesting.push_back(
+      NestedData(NLA_FLAG, "NL80211_BITRATE_ATTR_2GHZ_SHORTPREAMBLE", false));
+
+  NestedData rates(NLA_NESTED, "NL80211_BAND_ATTR_RATES", true);
+  rates.deeper_nesting.push_back(rate);
+
+  // Main body of attribute
+  NestedData bands(NLA_NESTED, "NL80211_ATTR_BANDS", true);
+  bands.deeper_nesting.push_back(
+      NestedData(NLA_U32, "__NL80211_BAND_ATTR_INVALID,", false));
+  bands.deeper_nesting.push_back(freqs);
+  bands.deeper_nesting.push_back(rates);
+  bands.deeper_nesting.push_back(
+      NestedData(NLA_UNSPEC, "NL80211_BAND_ATTR_HT_MCS_SET", false));
+  bands.deeper_nesting.push_back(
+      NestedData(NLA_U16, "NL80211_BAND_ATTR_HT_CAPA", false));
+  bands.deeper_nesting.push_back(
+      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_FACTOR", false));
+  bands.deeper_nesting.push_back(
+      NestedData(NLA_U8, "NL80211_BAND_ATTR_HT_AMPDU_DENSITY", false));
+
+  nested_template_.push_back(bands);
+}
+
+const int Nl80211AttributeCipherSuites::kName = NL80211_ATTR_CIPHER_SUITES;
+const char Nl80211AttributeCipherSuites::kNameString[] =
+    "NL80211_ATTR_CIPHER_SUITES";
+
+const int Nl80211AttributeControlPortEthertype::kName =
+    NL80211_ATTR_CONTROL_PORT_ETHERTYPE;
+const char Nl80211AttributeControlPortEthertype::kNameString[] =
+    "NL80211_ATTR_CONTROL_PORT_ETHERTYPE";
+
 const int Nl80211AttributeCqm::kName = NL80211_ATTR_CQM;
 const char Nl80211AttributeCqm::kNameString[] = "NL80211_ATTR_CQM";
 
@@ -167,6 +232,10 @@ Nl80211AttributeCqm::Nl80211AttributeCqm()
       NestedData(NLA_U32, "NL80211_ATTR_CQM_PKT_LOSS_EVENT", false));
 }
 
+const int Nl80211AttributeDeviceApSme::kName = NL80211_ATTR_DEVICE_AP_SME;
+const char Nl80211AttributeDeviceApSme::kNameString[] =
+    "NL80211_ATTR_DEVICE_AP_SME";
+
 const int Nl80211AttributeDisconnectedByAp::kName =
     NL80211_ATTR_DISCONNECTED_BY_AP;
 const char Nl80211AttributeDisconnectedByAp::kNameString[] =
@@ -175,12 +244,21 @@ const char Nl80211AttributeDisconnectedByAp::kNameString[] =
 const int Nl80211AttributeDuration::kName = NL80211_ATTR_DURATION;
 const char Nl80211AttributeDuration::kNameString[] = "NL80211_ATTR_DURATION";
 
+const int Nl80211AttributeFeatureFlags::kName = NL80211_ATTR_FEATURE_FLAGS;
+const char Nl80211AttributeFeatureFlags::kNameString[] =
+    "NL80211_ATTR_FEATURE_FLAGS";
+
 const int Nl80211AttributeFrame::kName = NL80211_ATTR_FRAME;
 const char Nl80211AttributeFrame::kNameString[] = "NL80211_ATTR_FRAME";
 
 const int Nl80211AttributeGeneration::kName = NL80211_ATTR_GENERATION;
 const char Nl80211AttributeGeneration::kNameString[] =
     "NL80211_ATTR_GENERATION";
+
+const int Nl80211AttributeHtCapabilityMask::kName =
+    NL80211_ATTR_HT_CAPABILITY_MASK;
+const char Nl80211AttributeHtCapabilityMask::kNameString[] =
+    "NL80211_ATTR_HT_CAPABILITY_MASK";
 
 const int Nl80211AttributeIfindex::kName = NL80211_ATTR_IFINDEX;
 const char Nl80211AttributeIfindex::kNameString[] = "NL80211_ATTR_IFINDEX";
@@ -200,6 +278,47 @@ const char Nl80211AttributeKeyType::kNameString[] = "NL80211_ATTR_KEY_TYPE";
 const int Nl80211AttributeMac::kName = NL80211_ATTR_MAC;
 const char Nl80211AttributeMac::kNameString[] = "NL80211_ATTR_MAC";
 
+const int Nl80211AttributeMaxMatchSets::kName = NL80211_ATTR_MAX_MATCH_SETS;
+const char Nl80211AttributeMaxMatchSets::kNameString[] =
+    "NL80211_ATTR_MAX_MATCH_SETS";
+
+const int Nl80211AttributeMaxNumPmkids::kName = NL80211_ATTR_MAX_NUM_PMKIDS;
+const char Nl80211AttributeMaxNumPmkids::kNameString[] =
+    "NL80211_ATTR_MAX_NUM_PMKIDS";
+
+const int Nl80211AttributeMaxNumScanSsids::kName =
+    NL80211_ATTR_MAX_NUM_SCAN_SSIDS;
+const char Nl80211AttributeMaxNumScanSsids::kNameString[] =
+    "NL80211_ATTR_MAX_NUM_SCAN_SSIDS";
+
+const int Nl80211AttributeMaxNumSchedScanSsids::kName =
+    NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS;
+const char Nl80211AttributeMaxNumSchedScanSsids::kNameString[] =
+    "NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS";
+
+const int Nl80211AttributeMaxRemainOnChannelDuration::kName =
+    NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION;
+const char Nl80211AttributeMaxRemainOnChannelDuration::kNameString[] =
+    "NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION";
+
+const int Nl80211AttributeMaxScanIeLen::kName = NL80211_ATTR_MAX_SCAN_IE_LEN;
+const char Nl80211AttributeMaxScanIeLen::kNameString[] =
+    "NL80211_ATTR_MAX_SCAN_IE_LEN";
+
+const int Nl80211AttributeMaxSchedScanIeLen::kName =
+    NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN;
+const char Nl80211AttributeMaxSchedScanIeLen::kNameString[] =
+    "NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN";
+
+const int Nl80211AttributeOffchannelTxOk::kName = NL80211_ATTR_OFFCHANNEL_TX_OK;
+const char Nl80211AttributeOffchannelTxOk::kNameString[] =
+    "NL80211_ATTR_OFFCHANNEL_TX_OK";
+
+const int Nl80211AttributeProbeRespOffload::kName =
+    NL80211_ATTR_PROBE_RESP_OFFLOAD;
+const char Nl80211AttributeProbeRespOffload::kNameString[] =
+    "NL80211_ATTR_PROBE_RESP_OFFLOAD";
+
 const int Nl80211AttributeReasonCode::kName =
     NL80211_ATTR_REASON_CODE;
 const char Nl80211AttributeReasonCode::kNameString[] =
@@ -218,6 +337,10 @@ const char Nl80211AttributeRegType::kNameString[] = "NL80211_ATTR_REG_TYPE";
 
 const int Nl80211AttributeRespIe::kName = NL80211_ATTR_RESP_IE;
 const char Nl80211AttributeRespIe::kNameString[] = "NL80211_ATTR_RESP_IE";
+
+const int Nl80211AttributeRoamSupport::kName = NL80211_ATTR_ROAM_SUPPORT;
+const char Nl80211AttributeRoamSupport::kNameString[] =
+    "NL80211_ATTR_ROAM_SUPPORT";
 
 const int Nl80211AttributeScanFrequencies::kName =
     NL80211_ATTR_SCAN_FREQUENCIES;
@@ -244,7 +367,6 @@ const char Nl80211AttributeStaInfo::kNameString[] = "NL80211_ATTR_STA_INFO";
 
 Nl80211AttributeStaInfo::Nl80211AttributeStaInfo()
       : NetlinkNestedAttribute(kName, kNameString) {
-
   NestedData tx_rates(NLA_NESTED, "NL80211_STA_INFO_TX_BITRATE", false);
   tx_rates.deeper_nesting.push_back(
       NestedData(NLA_U32, "__NL80211_RATE_INFO_INVALID", false));
@@ -318,13 +440,58 @@ const int Nl80211AttributeStatusCode::kName =
 const char Nl80211AttributeStatusCode::kNameString[] =
     "NL80211_ATTR_STATUS_CODE";
 
+const int Nl80211AttributeSupportApUapsd::kName = NL80211_ATTR_SUPPORT_AP_UAPSD;
+const char Nl80211AttributeSupportApUapsd::kNameString[] =
+    "NL80211_ATTR_SUPPORT_AP_UAPSD";
+
+const int Nl80211AttributeSupportIbssRsn::kName = NL80211_ATTR_SUPPORT_IBSS_RSN;
+const char Nl80211AttributeSupportIbssRsn::kNameString[] =
+    "NL80211_ATTR_SUPPORT_IBSS_RSN";
+
 const int Nl80211AttributeSupportMeshAuth::kName =
     NL80211_ATTR_SUPPORT_MESH_AUTH;
 const char Nl80211AttributeSupportMeshAuth::kNameString[] =
     "NL80211_ATTR_SUPPORT_MESH_AUTH";
 
+const int Nl80211AttributeTdlsExternalSetup::kName =
+    NL80211_ATTR_TDLS_EXTERNAL_SETUP;
+const char Nl80211AttributeTdlsExternalSetup::kNameString[] =
+    "NL80211_ATTR_TDLS_EXTERNAL_SETUP";
+
+const int Nl80211AttributeTdlsSupport::kName = NL80211_ATTR_TDLS_SUPPORT;
+const char Nl80211AttributeTdlsSupport::kNameString[] =
+    "NL80211_ATTR_TDLS_SUPPORT";
+
 const int Nl80211AttributeTimedOut::kName = NL80211_ATTR_TIMED_OUT;
 const char Nl80211AttributeTimedOut::kNameString[] = "NL80211_ATTR_TIMED_OUT";
+
+const int Nl80211AttributeWiphyAntennaAvailRx::kName =
+    NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX;
+const char Nl80211AttributeWiphyAntennaAvailRx::kNameString[] =
+    "NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX";
+
+const int Nl80211AttributeWiphyAntennaAvailTx::kName =
+    NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX;
+const char Nl80211AttributeWiphyAntennaAvailTx::kNameString[] =
+    "NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX";
+
+const int Nl80211AttributeWiphyAntennaRx::kName = NL80211_ATTR_WIPHY_ANTENNA_RX;
+const char Nl80211AttributeWiphyAntennaRx::kNameString[] =
+    "NL80211_ATTR_WIPHY_ANTENNA_RX";
+
+const int Nl80211AttributeWiphyAntennaTx::kName = NL80211_ATTR_WIPHY_ANTENNA_TX;
+const char Nl80211AttributeWiphyAntennaTx::kNameString[] =
+    "NL80211_ATTR_WIPHY_ANTENNA_TX";
+
+const int Nl80211AttributeWiphyCoverageClass::kName =
+    NL80211_ATTR_WIPHY_COVERAGE_CLASS;
+const char Nl80211AttributeWiphyCoverageClass::kNameString[] =
+    "NL80211_ATTR_WIPHY_COVERAGE_CLASS";
+
+const int Nl80211AttributeWiphyFragThreshold::kName =
+    NL80211_ATTR_WIPHY_FRAG_THRESHOLD;
+const char Nl80211AttributeWiphyFragThreshold::kNameString[] =
+    "NL80211_ATTR_WIPHY_FRAG_THRESHOLD";
 
 const int Nl80211AttributeWiphyFreq::kName = NL80211_ATTR_WIPHY_FREQ;
 const char Nl80211AttributeWiphyFreq::kNameString[] = "NL80211_ATTR_WIPHY_FREQ";
@@ -334,5 +501,19 @@ const char Nl80211AttributeWiphy::kNameString[] = "NL80211_ATTR_WIPHY";
 
 const int Nl80211AttributeWiphyName::kName = NL80211_ATTR_WIPHY_NAME;
 const char Nl80211AttributeWiphyName::kNameString[] = "NL80211_ATTR_WIPHY_NAME";
+
+const int Nl80211AttributeWiphyRetryLong::kName = NL80211_ATTR_WIPHY_RETRY_LONG;
+const char Nl80211AttributeWiphyRetryLong::kNameString[] =
+    "NL80211_ATTR_WIPHY_RETRY_LONG";
+
+const int Nl80211AttributeWiphyRetryShort::kName =
+    NL80211_ATTR_WIPHY_RETRY_SHORT;
+const char Nl80211AttributeWiphyRetryShort::kNameString[] =
+    "NL80211_ATTR_WIPHY_RETRY_SHORT";
+
+const int Nl80211AttributeWiphyRtsThreshold::kName =
+    NL80211_ATTR_WIPHY_RTS_THRESHOLD;
+const char Nl80211AttributeWiphyRtsThreshold::kNameString[] =
+    "NL80211_ATTR_WIPHY_RTS_THRESHOLD";
 
 }  // namespace shill

@@ -562,6 +562,9 @@ const char FrameTxStatusMessage::kCommandString[] =
 const uint8_t GetRegMessage::kCommand = NL80211_CMD_GET_REG;
 const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 
+const uint8_t GetWiphyMessage::kCommand = NL80211_CMD_GET_WIPHY;
+const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
+
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
 const char JoinIbssMessage::kCommandString[] = "NL80211_CMD_JOIN_IBSS";
 
@@ -577,8 +580,8 @@ const char NewScanResultsMessage::kCommandString[] =
 const uint8_t NewStationMessage::kCommand = NL80211_CMD_NEW_STATION;
 const char NewStationMessage::kCommandString[] = "NL80211_CMD_NEW_STATION";
 
-const uint8_t NewWifiMessage::kCommand = NL80211_CMD_NEW_WIPHY;
-const char NewWifiMessage::kCommandString[] = "NL80211_CMD_NEW_WIPHY";
+const uint8_t NewWiphyMessage::kCommand = NL80211_CMD_NEW_WIPHY;
+const char NewWiphyMessage::kCommandString[] = "NL80211_CMD_NEW_WIPHY";
 
 const uint8_t NotifyCqmMessage::kCommand = NL80211_CMD_NOTIFY_CQM;
 const char NotifyCqmMessage::kCommandString[] = "NL80211_CMD_NOTIFY_CQM";
@@ -668,6 +671,8 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new GetInterfaceMessage();
     case GetRegMessage::kCommand:
       return new GetRegMessage();
+    case GetWiphyMessage::kCommand:
+      return new GetWiphyMessage();
     case JoinIbssMessage::kCommand:
       return new JoinIbssMessage();
     case MichaelMicFailureMessage::kCommand:
@@ -678,8 +683,8 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new NewScanResultsMessage();
     case NewStationMessage::kCommand:
       return new NewStationMessage();
-    case NewWifiMessage::kCommand:
-      return new NewWifiMessage();
+    case NewWiphyMessage::kCommand:
+      return new NewWiphyMessage();
     case NotifyCqmMessage::kCommand:
       return new NotifyCqmMessage();
     case PmksaCandidateMessage::kCommand:

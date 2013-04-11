@@ -46,11 +46,20 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_BSS:
       attr.reset(new Nl80211AttributeBss());
       break;
+    case NL80211_ATTR_CIPHER_SUITES:
+      attr.reset(new Nl80211AttributeCipherSuites());
+      break;
+    case NL80211_ATTR_CONTROL_PORT_ETHERTYPE:
+      attr.reset(new Nl80211AttributeControlPortEthertype());
+      break;
     case NL80211_ATTR_COOKIE:
       attr.reset(new Nl80211AttributeCookie());
       break;
     case NL80211_ATTR_CQM:
       attr.reset(new Nl80211AttributeCqm());
+      break;
+    case NL80211_ATTR_DEVICE_AP_SME:
+      attr.reset(new Nl80211AttributeDeviceApSme());
       break;
     case NL80211_ATTR_DISCONNECTED_BY_AP:
       attr.reset(new Nl80211AttributeDisconnectedByAp());
@@ -58,11 +67,17 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_DURATION:
       attr.reset(new Nl80211AttributeDuration());
       break;
+    case NL80211_ATTR_FEATURE_FLAGS:
+      attr.reset(new Nl80211AttributeFeatureFlags());
+      break;
     case NL80211_ATTR_FRAME:
       attr.reset(new Nl80211AttributeFrame());
       break;
     case NL80211_ATTR_GENERATION:
       attr.reset(new Nl80211AttributeGeneration());
+      break;
+    case NL80211_ATTR_HT_CAPABILITY_MASK:
+      attr.reset(new Nl80211AttributeHtCapabilityMask());
       break;
     case NL80211_ATTR_IFINDEX:
       attr.reset(new Nl80211AttributeIfindex());
@@ -82,6 +97,33 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_MAC:
       attr.reset(new Nl80211AttributeMac());
       break;
+    case NL80211_ATTR_MAX_MATCH_SETS:
+      attr.reset(new Nl80211AttributeMaxMatchSets());
+      break;
+    case NL80211_ATTR_MAX_NUM_PMKIDS:
+      attr.reset(new Nl80211AttributeMaxNumPmkids());
+      break;
+    case NL80211_ATTR_MAX_NUM_SCAN_SSIDS:
+      attr.reset(new Nl80211AttributeMaxNumScanSsids());
+      break;
+    case NL80211_ATTR_MAX_NUM_SCHED_SCAN_SSIDS:
+      attr.reset(new Nl80211AttributeMaxNumSchedScanSsids());
+      break;
+    case NL80211_ATTR_MAX_REMAIN_ON_CHANNEL_DURATION:
+      attr.reset(new Nl80211AttributeMaxRemainOnChannelDuration());
+      break;
+    case NL80211_ATTR_MAX_SCAN_IE_LEN:
+      attr.reset(new Nl80211AttributeMaxScanIeLen());
+      break;
+    case NL80211_ATTR_MAX_SCHED_SCAN_IE_LEN:
+      attr.reset(new Nl80211AttributeMaxSchedScanIeLen());
+      break;
+    case NL80211_ATTR_OFFCHANNEL_TX_OK:
+      attr.reset(new Nl80211AttributeOffchannelTxOk());
+      break;
+    case NL80211_ATTR_PROBE_RESP_OFFLOAD:
+      attr.reset(new Nl80211AttributeProbeRespOffload());
+      break;
     case NL80211_ATTR_REASON_CODE:
       attr.reset(new Nl80211AttributeReasonCode());
       break;
@@ -97,6 +139,9 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_RESP_IE:
       attr.reset(new Nl80211AttributeRespIe());
       break;
+    case NL80211_ATTR_ROAM_SUPPORT:
+      attr.reset(new Nl80211AttributeRoamSupport());
+      break;
     case NL80211_ATTR_SCAN_FREQUENCIES:
       attr.reset(new Nl80211AttributeScanFrequencies());
       break;
@@ -109,11 +154,44 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_STATUS_CODE:
       attr.reset(new Nl80211AttributeStatusCode());
       break;
+    case NL80211_ATTR_SUPPORT_AP_UAPSD:
+      attr.reset(new Nl80211AttributeSupportApUapsd());
+      break;
+    case NL80211_ATTR_SUPPORT_IBSS_RSN:
+      attr.reset(new Nl80211AttributeSupportIbssRsn());
+      break;
     case NL80211_ATTR_SUPPORT_MESH_AUTH:
       attr.reset(new Nl80211AttributeSupportMeshAuth());
       break;
+    case NL80211_ATTR_TDLS_EXTERNAL_SETUP:
+      attr.reset(new Nl80211AttributeTdlsExternalSetup());
+      break;
+    case NL80211_ATTR_TDLS_SUPPORT:
+      attr.reset(new Nl80211AttributeTdlsSupport());
+      break;
     case NL80211_ATTR_TIMED_OUT:
       attr.reset(new Nl80211AttributeTimedOut());
+      break;
+    case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_RX:
+      attr.reset(new Nl80211AttributeWiphyAntennaAvailRx());
+      break;
+    case NL80211_ATTR_WIPHY_ANTENNA_AVAIL_TX:
+      attr.reset(new Nl80211AttributeWiphyAntennaAvailTx());
+      break;
+    case NL80211_ATTR_WIPHY_ANTENNA_RX:
+      attr.reset(new Nl80211AttributeWiphyAntennaRx());
+      break;
+    case NL80211_ATTR_WIPHY_ANTENNA_TX:
+      attr.reset(new Nl80211AttributeWiphyAntennaTx());
+      break;
+    case NL80211_ATTR_WIPHY_BANDS:
+      attr.reset(new Nl80211AttributeWiphyBands());
+      break;
+    case NL80211_ATTR_WIPHY_COVERAGE_CLASS:
+      attr.reset(new Nl80211AttributeWiphyCoverageClass());
+      break;
+    case NL80211_ATTR_WIPHY_FRAG_THRESHOLD:
+      attr.reset(new Nl80211AttributeWiphyFragThreshold());
       break;
     case NL80211_ATTR_WIPHY_FREQ:
       attr.reset(new Nl80211AttributeWiphyFreq());
@@ -123,6 +201,15 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
       break;
     case NL80211_ATTR_WIPHY_NAME:
       attr.reset(new Nl80211AttributeWiphyName());
+      break;
+    case NL80211_ATTR_WIPHY_RETRY_LONG:
+      attr.reset(new Nl80211AttributeWiphyRetryLong());
+      break;
+    case NL80211_ATTR_WIPHY_RETRY_SHORT:
+      attr.reset(new Nl80211AttributeWiphyRetryShort());
+      break;
+    case NL80211_ATTR_WIPHY_RTS_THRESHOLD:
+      attr.reset(new Nl80211AttributeWiphyRtsThreshold());
       break;
     default:
       attr.reset(new NetlinkAttributeGeneric(id));

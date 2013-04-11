@@ -238,6 +238,17 @@ class GetRegMessage : public Nl80211Message {
   DISALLOW_COPY_AND_ASSIGN(GetRegMessage);
 };
 
+class GetWiphyMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetWiphyMessage);
+};
+
 
 class JoinIbssMessage : public Nl80211Message {
  public:
@@ -287,15 +298,15 @@ class NewStationMessage : public Nl80211Message {
 };
 
 
-class NewWifiMessage : public Nl80211Message {
+class NewWiphyMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  NewWifiMessage() : Nl80211Message(kCommand, kCommandString) {}
+  NewWiphyMessage() : Nl80211Message(kCommand, kCommandString) {}
 
  private:
-  DISALLOW_COPY_AND_ASSIGN(NewWifiMessage);
+  DISALLOW_COPY_AND_ASSIGN(NewWiphyMessage);
 };
 
 
