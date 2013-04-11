@@ -15,11 +15,17 @@
 #include "base/string_util.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/power_supply.h"
 
 // power-supply-info: Displays info about battery and line power.
 
 using base::TimeDelta;
+
+DEFINE_string(prefs_dir, "/var/lib/power_manager",
+              "Directory containing prefs that can be changed at runtime.");
+DEFINE_string(default_prefs_dir, "/usr/share/power_manager",
+              "Directory containing default prefs.");
 
 namespace {
 
@@ -94,9 +100,17 @@ class InfoDisplay {
 
 }  // namespace
 
-int main(int, char*[]) {
+int main(int argc, char** argv) {
+  google::ParseCommandLineFlags(&argc, &argv, true);
+
+  std::vector<base::FilePath> pref_paths;
+  pref_paths.push_back(base::FilePath(FLAGS_prefs_dir));
+  pref_paths.push_back(base::FilePath(FLAGS_default_prefs_dir));
+  power_manager::Prefs prefs;
+  CHECK(prefs.Init(pref_paths));
+
   base::FilePath path(kPowerStatusPath);
-  power_manager::system::PowerSupply power_supply(path, NULL);
+  power_manager::system::PowerSupply power_supply(path, &prefs);
   power_supply.Init();
 
   power_manager::system::PowerInformation power_info;
