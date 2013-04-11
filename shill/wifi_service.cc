@@ -259,7 +259,7 @@ bool WiFiService::Load(StoreInterface *storage) {
                  << " is not available in the persistent store";
     return false;
   }
-  if (groups.size() > 0) {
+  if (groups.size() > 1) {
     LOG(WARNING) << "More than one configuration for service "
                  << unique_name()
                  << " is available; choosing the first.";
@@ -284,7 +284,8 @@ bool WiFiService::Load(StoreInterface *storage) {
   if (storage->GetCryptedString(id, kStoragePassphrase, &passphrase)) {
     Error error;
     SetPassphrase(passphrase, &error);
-    if (!error.IsSuccess()) {
+    if (!error.IsSuccess() &&
+        !(passphrase.empty() && error.type() == Error::kNotSupported)) {
       LOG(ERROR) << "Passphrase could not be set: "
                  << Error::GetName(error.type());
     }

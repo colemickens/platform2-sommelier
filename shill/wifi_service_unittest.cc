@@ -711,6 +711,38 @@ TEST_F(WiFiServiceTest, LoadHidden) {
   EXPECT_TRUE(service->hidden_ssid_);
 }
 
+TEST_F(WiFiServiceTest, LoadPassphraseForNonPassphraseService) {
+  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityNone);
+  NiceMock<MockStore> mock_store;
+  const string storage_id = service->GetStorageIdentifier();
+  set<string> groups;
+  groups.insert(storage_id);
+  EXPECT_CALL(mock_store, ContainsGroup(StrEq(storage_id)))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_store, GetGroupsWithProperties(
+      ContainsWiFiProperties(
+          simple_ssid(), flimflam::kModeManaged, flimflam::kSecurityNone)))
+      .WillRepeatedly(Return(groups));
+  EXPECT_CALL(mock_store,
+              GetCryptedString(StrEq(storage_id),
+                               StrNe(WiFiService::kStoragePassphrase), _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(mock_store,
+              GetCryptedString(StrEq(storage_id),
+                               WiFiService::kStoragePassphrase, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(string("password")), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(string()), Return(true)));
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       EndsWith("Passphrase could not be set: "
+                                "org.chromium.flimflam.Error.NotSupported")))
+      .Times(1);
+  EXPECT_TRUE(service->Load(&mock_store));
+  Mock::VerifyAndClearExpectations(&log);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, _)).Times(0);
+  EXPECT_TRUE(service->Load(&mock_store));
+}
+
 TEST_F(WiFiServiceTest, LoadMultipleMatchingGroups) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurityNone);
   set<string> groups;
