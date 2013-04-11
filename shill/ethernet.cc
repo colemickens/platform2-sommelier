@@ -20,6 +20,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/eap_credentials.h"
 #include "shill/eap_listener.h"
 #include "shill/ethernet_service.h"
 #include "shill/event_dispatcher.h"
@@ -260,8 +261,8 @@ bool Ethernet::StartSupplicant() {
 bool Ethernet::StartEapAuthentication() {
   map<string, DBus::Variant> params;
   vector<char> nss_identifier(link_name().begin(), link_name().end());
-  WPASupplicant::Populate8021xProperties(
-      service_->eap(), &certificate_file_, nss_, nss_identifier, &params);
+  service_->eap()->PopulateSupplicantProperties(
+      &certificate_file_, nss_, nss_identifier, &params);
   params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
       append_string(WPASupplicant::kKeyManagementIeee8021X);
   params[WPASupplicant::kNetworkPropertyEapolFlags].writer().

@@ -11,6 +11,7 @@
 #include <metrics/timer_mock.h>
 
 #include "shill/mock_control.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
@@ -49,13 +50,14 @@ class MetricsTest : public Test {
                                           ssid_,
                                           flimflam::kModeManaged,
                                           flimflam::kSecurityNone,
-                                          false)) {
-  }
+                                          false)),
+        eap_(new MockEapCredentials()) {}
 
   virtual ~MetricsTest() {}
 
   virtual void SetUp() {
     metrics_.set_library(&library_);
+    wifi_service_->eap_.reset(eap_);  // Passes ownership.
     metrics_.collect_bootstats_ = false;
   }
 
@@ -90,6 +92,7 @@ class MetricsTest : public Test {
   scoped_refptr<MockService> service_;
   const std::vector<uint8_t> ssid_;
   scoped_refptr<MockWiFiService> wifi_service_;
+  MockEapCredentials *eap_;  // Owned by |wifi_service_|.
 };
 
 TEST_F(MetricsTest, TimeToConfig) {
@@ -205,20 +208,11 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWiFiSecurity8021x,
                         -kStrength);
-  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapOuterProtocol",
-                                      Metrics::kEapOuterProtocolPeap,
-                                      Metrics::kEapOuterProtocolMax));
-  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
-                                      Metrics::kEapInnerProtocolPeapMschapv2,
-                                      Metrics::kEapInnerProtocolMax));
   wifi_service_->frequency_ = 2412;
   wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
   wifi_service_->security_ = flimflam::kSecurity8021x;
   wifi_service_->raw_signal_strength_ = kStrength;
-  EapCredentials eap;
-  eap.eap = flimflam::kEapMethodPEAP;
-  eap.inner_eap = flimflam::kEapPhase2AuthPEAPMSCHAPV2;
-  wifi_service_->set_eap(eap);
+  EXPECT_CALL(*eap_, OutputConnectionMetrics(&metrics_, Technology::kWifi));
   metrics_.RegisterService(wifi_service_);
   metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
 }

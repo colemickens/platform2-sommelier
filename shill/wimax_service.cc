@@ -11,6 +11,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/eap_credentials.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
@@ -40,6 +41,8 @@ WiMaxService::WiMaxService(ControlInterface *control,
   store->RegisterBool(flimflam::kPassphraseRequiredProperty, &need_passphrase_);
   store->RegisterConstString(kNetworkIdProperty, &network_id_);
 
+  SetEapCredentials(new EapCredentials());
+
   IgnoreParameterForConfigure(kNetworkIdProperty);
 
   // Initialize a default storage identifier based on the service's unique
@@ -52,16 +55,7 @@ WiMaxService::~WiMaxService() {}
 
 void WiMaxService::GetConnectParameters(KeyValueStore *parameters) const {
   CHECK(parameters);
-  if (!eap().anonymous_identity.empty()) {
-    parameters->SetString(wimax_manager::kEAPAnonymousIdentity,
-                          eap().anonymous_identity);
-  }
-  if (!eap().identity.empty()) {
-    parameters->SetString(wimax_manager::kEAPUserIdentity, eap().identity);
-  }
-  if (!eap().password.empty()) {
-    parameters->SetString(wimax_manager::kEAPUserPassword, eap().password);
-  }
+  eap()->PopulateWiMaxProperties(parameters);
 }
 
 RpcIdentifier WiMaxService::GetNetworkObjectPath() const {
@@ -204,9 +198,8 @@ bool WiMaxService::Is8021x() const {
   return true;
 }
 
-void WiMaxService::set_eap(const EapCredentials &eap) {
-  Service::set_eap(eap);
-  need_passphrase_ = eap.identity.empty() || eap.password.empty();
+void WiMaxService::OnEapCredentialsChanged() {
+  need_passphrase_ = !eap()->IsConnectableUsingPassphrase();
   UpdateConnectable();
 }
 
@@ -226,6 +219,7 @@ bool WiMaxService::Save(StoreInterface *storage) {
   }
   const string id = GetStorageIdentifier();
   storage->SetString(id, kStorageNetworkId, network_id_);
+
   return true;
 }
 
@@ -267,10 +261,8 @@ string WiMaxService::CreateStorageIdentifier(const WiMaxNetworkId &id,
 }
 
 void WiMaxService::ClearPassphrase() {
-  EapCredentials creds = eap();
-  creds.password.clear();
-  // Updates the service credentials and connectability status.
-  set_eap(creds);
+  mutable_eap()->set_password("");
+  OnEapCredentialsChanged();
 }
 
 }  // namespace shill

@@ -11,6 +11,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "shill/dbus_adaptor.h"
+#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/service.h"
 #include "shill/store_interface.h"
@@ -66,11 +67,11 @@ bool ProfileDBusPropertyExporter::LoadServiceProperties(
 bool ProfileDBusPropertyExporter::LoadEapServiceProperties(
     PropertyList *properties,
     Error */*error*/) {
-  LoadString(properties, WiFiService::kStorageEapCACertID,
+  LoadString(properties, EapCredentials::kStorageEapCACertID,
              flimflam::kEapCaCertIDProperty);
-  LoadString(properties, WiFiService::kStorageEapCertID,
+  LoadString(properties, EapCredentials::kStorageEapCertID,
              flimflam::kEAPCertIDProperty);
-  LoadString(properties, WiFiService::kStorageEapKeyID,
+  LoadString(properties, EapCredentials::kStorageEapKeyID,
              flimflam::kEAPKeyIDProperty);
   return true;
 }

@@ -70,7 +70,7 @@ class WiMaxService : public Service {
   virtual void Disconnect(Error *error);
   virtual std::string GetStorageIdentifier() const;
   virtual bool Is8021x() const;
-  virtual void set_eap(const EapCredentials &eap);
+  virtual void OnEapCredentialsChanged();
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();
   virtual void SetState(ConnectState state);
@@ -80,7 +80,7 @@ class WiMaxService : public Service {
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
   FRIEND_TEST(WiMaxServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
-  FRIEND_TEST(WiMaxServiceTest, SetEAP);
+  FRIEND_TEST(WiMaxServiceTest, Connectable);
   FRIEND_TEST(WiMaxServiceTest, SetState);
   FRIEND_TEST(WiMaxServiceTest, StartStop);
 

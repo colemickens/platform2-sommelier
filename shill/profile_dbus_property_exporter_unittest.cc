@@ -10,6 +10,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/mock_store.h"
 #include "shill/service.h"
@@ -165,11 +166,11 @@ TEST_F(ProfileDBusPropertyExporterTest, AllWiFiServiceProperties) {
   const string security("unbreakablecrypto");
   ExpectStringProperty(WiFiService::kStorageSecurity, security);
   const string ca_cert_id("ca-cert-id");
-  ExpectStringProperty(WiFiService::kStorageEapCACertID, ca_cert_id);
+  ExpectStringProperty(EapCredentials::kStorageEapCACertID, ca_cert_id);
   const string cert_id("cert-id");
-  ExpectStringProperty(WiFiService::kStorageEapCertID, cert_id);
+  ExpectStringProperty(EapCredentials::kStorageEapCertID, cert_id);
   const string key_id("key-id");
-  ExpectStringProperty(WiFiService::kStorageEapKeyID, key_id);
+  ExpectStringProperty(EapCredentials::kStorageEapKeyID, key_id);
 
 
   ProfileDBusPropertyExporter::PropertyList props;

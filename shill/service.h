@@ -22,7 +22,6 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/accessor_interface.h"
 #include "shill/callbacks.h"
-#include "shill/eap_credentials.h"
 #include "shill/property_store.h"
 #include "shill/refptr_types.h"
 #include "shill/shill_time.h"
@@ -37,6 +36,7 @@ namespace shill {
 
 class ControlInterface;
 class DiagnosticsReporter;
+class EapCredentials;
 class Endpoint;
 class Error;
 class EventDispatcher;
@@ -66,23 +66,6 @@ class Service : public base::RefCounted<Service> {
   // crosbug.com/25813
   static const char kStorageAutoConnect[];
   static const char kStorageCheckPortal[];
-  static const char kStorageEapAnonymousIdentity[];
-  static const char kStorageEapCACert[];
-  static const char kStorageEapCACertID[];
-  static const char kStorageEapCACertNSS[];
-  static const char kStorageEapCACertPEM[];
-  static const char kStorageEapCertID[];
-  static const char kStorageEapClientCert[];
-  static const char kStorageEapEap[];
-  static const char kStorageEapIdentity[];
-  static const char kStorageEapInnerEap[];
-  static const char kStorageEapKeyID[];
-  static const char kStorageEapKeyManagement[];
-  static const char kStorageEapPIN[];
-  static const char kStorageEapPassword[];
-  static const char kStorageEapPrivateKey[];
-  static const char kStorageEapPrivateKeyPassword[];
-  static const char kStorageEapUseSystemCAs[];
   static const char kStorageError[];
   static const char kStorageFavorite[];
   static const char kStorageGUID[];
@@ -354,8 +337,8 @@ class Service : public base::RefCounted<Service> {
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString() const;
 
-  const EapCredentials &eap() const { return eap_; }
-  virtual void set_eap(const EapCredentials &eap);
+  const EapCredentials *eap() const { return eap_.get(); }
+  void SetEapCredentials(EapCredentials *eap);
 
   bool save_credentials() const { return save_credentials_; }
   void set_save_credentials(bool save) { save_credentials_ = save; }
@@ -407,8 +390,15 @@ class Service : public base::RefCounted<Service> {
   // the RPC adaptor.
   virtual void OnPropertyChanged(const std::string &property);
 
+  // Notification that occurs when an EAP credential property has been
+  // changed.  Some service subclasses can choose to respond to this
+  // event.
+  virtual void OnEapCredentialsChanged() {}
+
   // Called by the manager once after a resume.
   virtual void OnAfterResume();
+
+  EapCredentials *mutable_eap() { return eap_.get(); }
 
   PropertyStore *mutable_store() { return &store_; }
   const PropertyStore &store() const { return store_; }
@@ -418,6 +408,16 @@ class Service : public base::RefCounted<Service> {
   const StaticIPParameters &static_ip_parameters() const {
     return static_ip_parameters_;
   }
+
+  // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
+  // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
+  // value is encrypted.
+  static void SaveString(StoreInterface *storage,
+                         const std::string &id,
+                         const std::string &key,
+                         const std::string &value,
+                         bool crypted,
+                         bool save);
 
  protected:
   friend class base::RefCounted<Service>;
@@ -484,18 +484,6 @@ class Service : public base::RefCounted<Service> {
 
   ServiceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
-  // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
-  // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
-  // value is encrypted.
-  void SaveString(StoreInterface *storage,
-                  const std::string &id,
-                  const std::string &key,
-                  const std::string &value,
-                  bool crypted,
-                  bool save);
-
-  void LoadEapCredentials(StoreInterface *storage, const std::string &id);
-  void SaveEapCredentials(StoreInterface *storage, const std::string &id);
   void UnloadEapCredentials();
 
   // Ignore |parameter| when performing a Configure() operation.
@@ -512,8 +500,6 @@ class Service : public base::RefCounted<Service> {
   EventDispatcher *dispatcher() const { return dispatcher_; }
   const std::string &GetEAPKeyManagement() const;
   virtual void SetEAPKeyManagement(const std::string &key_management);
-  void SetEAPPassword(const std::string &password, Error *error);
-  void SetEAPPrivateKeyPassword(const std::string &password, Error *error);
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
@@ -548,8 +534,8 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, CalculateState);
   FRIEND_TEST(ServiceTest, CalculateTechnology);
   FRIEND_TEST(ServiceTest, Certification);
+  FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
-  FRIEND_TEST(ServiceTest, ConfigureStringProperty);
   FRIEND_TEST(ServiceTest, Constructor);
   FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
   FRIEND_TEST(ServiceTest, GetProperties);
@@ -682,7 +668,7 @@ class Service : public base::RefCounted<Service> {
   std::string ui_data_;
   std::string guid_;
   bool save_credentials_;
-  EapCredentials eap_;  // Only saved if |save_credentials_| is true.
+  scoped_ptr<EapCredentials> eap_;
   Technology::Identifier technology_;
   // The time of the most recent failure. Value is 0 if the service is
   // not currently failed.
@@ -709,6 +695,9 @@ class Service : public base::RefCounted<Service> {
   // it. WARNING: Don't log the friendly name at the default logging level due
   // to PII concerns.
   std::string friendly_name_;
+
+  // List of subject names reported by remote entity during TLS setup.
+  std::vector<std::string> remote_certification_;
 
   scoped_ptr<ServiceAdaptorInterface> adaptor_;
   scoped_ptr<HTTPProxy> http_proxy_;

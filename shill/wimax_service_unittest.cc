@@ -11,6 +11,7 @@
 #include "shill/error.h"
 #include "shill/nice_mock_control.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_store.h"
@@ -20,6 +21,7 @@
 
 using std::string;
 using testing::_;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using wimax_manager::kEAPAnonymousIdentity;
@@ -48,10 +50,12 @@ class WiMaxServiceTest : public testing::Test {
         device_(new MockWiMax(&control_, NULL, &metrics_, &manager_,
                               kTestLinkName, kTestAddress, kTestInterfaceIndex,
                               kTestPath)),
-        service_(new WiMaxService(&control_, NULL, &metrics_, &manager_)) {
+        service_(new WiMaxService(&control_, NULL, &metrics_, &manager_)),
+        eap_(new MockEapCredentials()) {
     service_->set_friendly_name(kTestName);
     service_->set_network_id(kTestNetworkId);
     service_->InitStorageIdentifier();
+    service_->eap_.reset(eap_);  // Passes ownership.
   }
 
   virtual ~WiMaxServiceTest() {}
@@ -76,32 +80,13 @@ class WiMaxServiceTest : public testing::Test {
   NiceMock<MockMetrics> metrics_;
   scoped_refptr<MockWiMax> device_;
   WiMaxServiceRefPtr service_;
+  MockEapCredentials *eap_;  // Owned by |service_|.
 };
 
 TEST_F(WiMaxServiceTest, GetConnectParameters) {
-  {
-    KeyValueStore parameters;
-    service_->GetConnectParameters(&parameters);
-
-    EXPECT_FALSE(parameters.ContainsString(kEAPAnonymousIdentity));
-    EXPECT_FALSE(parameters.ContainsString(kEAPUserIdentity));
-    EXPECT_FALSE(parameters.ContainsString(kEAPUserPassword));
-  }
-  {
-    EapCredentials eap;
-    eap.anonymous_identity = "TestAnonymousIdentity";
-    eap.identity = "TestUserIdentity";
-    eap.password = "TestPassword";
-    service_->set_eap(eap);
-
-    KeyValueStore parameters;
-    service_->GetConnectParameters(&parameters);
-
-    EXPECT_EQ(eap.anonymous_identity,
-              parameters.LookupString(kEAPAnonymousIdentity, ""));
-    EXPECT_EQ(eap.identity, parameters.LookupString(kEAPUserIdentity, ""));
-    EXPECT_EQ(eap.password, parameters.LookupString(kEAPUserPassword, ""));
-  }
+  KeyValueStore parameters;
+  EXPECT_CALL(*eap_, PopulateWiMaxProperties(&parameters));
+  service_->GetConnectParameters(&parameters);
 }
 
 TEST_F(WiMaxServiceTest, GetDeviceRpcId) {
@@ -152,38 +137,41 @@ TEST_F(WiMaxServiceTest, StartStop) {
   EXPECT_FALSE(service_->proxy_.get());
 }
 
-TEST_F(WiMaxServiceTest, SetEAP) {
-  ServiceRefPtr base_service = service_;
-  EXPECT_TRUE(base_service->Is8021x());
+TEST_F(WiMaxServiceTest, Connectable) {
+  EXPECT_TRUE(service_->Is8021x());
   EXPECT_TRUE(service_->need_passphrase_);
-  EXPECT_FALSE(base_service->connectable());
+  EXPECT_FALSE(service_->connectable());
 
-  // No password.
-  EapCredentials eap;
-  eap.identity = "TestIdentity";
-  base_service->set_eap(eap);
+  EXPECT_CALL(*eap_, IsConnectableUsingPassphrase())
+      .WillOnce(Return(false))
+      .WillRepeatedly(Return(true));
+
+  // No WiMaxCredentials.
+  service_->OnEapCredentialsChanged();
   EXPECT_TRUE(service_->need_passphrase_);
-  EXPECT_FALSE(base_service->connectable());
+  EXPECT_FALSE(service_->connectable());
 
-  // Not started.
-  eap.password = "TestPassword";
-  base_service->set_eap(eap);
+  // Not started (no proxy).
+  service_->OnEapCredentialsChanged();
   EXPECT_FALSE(service_->need_passphrase_);
-  EXPECT_FALSE(base_service->connectable());
+  EXPECT_FALSE(service_->connectable());
 
   // Connectable.
   service_->proxy_.reset(proxy_.release());
   ExpectUpdateService();
-  base_service->set_eap(eap);
+  service_->OnEapCredentialsChanged();
   EXPECT_FALSE(service_->need_passphrase_);
-  EXPECT_TRUE(base_service->connectable());
+  EXPECT_TRUE(service_->connectable());
 
-  // Reset password.
+  // Reset WimaxConnectable state.
+  Mock::VerifyAndClearExpectations(eap_);
+  EXPECT_CALL(*eap_, set_password(""));
+  EXPECT_CALL(*eap_, IsConnectableUsingPassphrase())
+      .WillRepeatedly(Return(false));
   ExpectUpdateService();
   service_->ClearPassphrase();
   EXPECT_TRUE(service_->need_passphrase_);
-  EXPECT_FALSE(base_service->connectable());
-  EXPECT_TRUE(base_service->eap().password.empty());
+  EXPECT_FALSE(service_->connectable());
 }
 
 TEST_F(WiMaxServiceTest, ConvertIdentifierToNetworkId) {
@@ -258,31 +246,33 @@ TEST_F(WiMaxServiceTest, Unload) {
   EXPECT_CALL(manager_, wimax_provider())
       .Times(2)
       .WillRepeatedly(Return(&provider));
-  EapCredentials eap;
-  eap.identity = "TestUserIdentity";
-  service_->set_eap(eap);
+  EXPECT_CALL(*eap_, Reset());
+  EXPECT_CALL(*eap_, set_password(""));
+  EXPECT_CALL(*eap_, IsConnectableUsingPassphrase())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(provider, OnServiceUnloaded(_)).WillOnce(Return(false));
   EXPECT_FALSE(service_->Unload());
-  EXPECT_TRUE(service_->eap().identity.empty());
-  eap.identity = "TestUserIdentity";
-  service_->set_eap(eap);
+  Mock::VerifyAndClearExpectations(eap_);
+
+  EXPECT_CALL(*eap_, Reset());
+  EXPECT_CALL(*eap_, set_password(""));
+  EXPECT_CALL(*eap_, IsConnectableUsingPassphrase())
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(provider, OnServiceUnloaded(_)).WillOnce(Return(true));
   EXPECT_TRUE(service_->Unload());
-  EXPECT_TRUE(service_->eap().identity.empty());
 }
 
 TEST_F(WiMaxServiceTest, SetState) {
   service_->device_ = device_;
-  ServiceRefPtr base_service = service_;
   EXPECT_EQ(Service::kStateIdle, service_->state());
 
   EXPECT_CALL(manager_, UpdateService(_));
-  base_service->SetState(Service::kStateAssociating);
+  service_->SetState(Service::kStateAssociating);
   EXPECT_EQ(Service::kStateAssociating, service_->state());
   EXPECT_TRUE(service_->device_);
 
   EXPECT_CALL(manager_, UpdateService(_));
-  base_service->SetState(Service::kStateFailure);
+  service_->SetState(Service::kStateFailure);
   EXPECT_EQ(Service::kStateFailure, service_->state());
   EXPECT_FALSE(service_->device_);
 }

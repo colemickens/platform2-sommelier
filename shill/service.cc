@@ -19,6 +19,7 @@
 #include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/diagnostics_reporter.h"
+#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/http_proxy.h"
 #include "shill/logging.h"
@@ -72,23 +73,6 @@ const char Service::kServiceSortUniqueName[] = "UniqueName";
 
 const char Service::kStorageAutoConnect[] = "AutoConnect";
 const char Service::kStorageCheckPortal[] = "CheckPortal";
-const char Service::kStorageEapAnonymousIdentity[] = "EAP.AnonymousIdentity";
-const char Service::kStorageEapCACert[] = "EAP.CACert";
-const char Service::kStorageEapCACertID[] = "EAP.CACertID";
-const char Service::kStorageEapCACertNSS[] = "EAP.CACertNSS";
-const char Service::kStorageEapCACertPEM[] = "EAP.CACertPEM";
-const char Service::kStorageEapCertID[] = "EAP.CertID";
-const char Service::kStorageEapClientCert[] = "EAP.ClientCert";
-const char Service::kStorageEapEap[] = "EAP.EAP";
-const char Service::kStorageEapIdentity[] = "EAP.Identity";
-const char Service::kStorageEapInnerEap[] = "EAP.InnerEAP";
-const char Service::kStorageEapKeyID[] = "EAP.KeyID";
-const char Service::kStorageEapKeyManagement[] = "EAP.KeyMgmt";
-const char Service::kStorageEapPIN[] = "EAP.PIN";
-const char Service::kStorageEapPassword[] = "EAP.Password";
-const char Service::kStorageEapPrivateKey[] = "EAP.PrivateKey";
-const char Service::kStorageEapPrivateKeyPassword[] = "EAP.PrivateKeyPassword";
-const char Service::kStorageEapUseSystemCAs[] = "EAP.UseSystemCAs";
 const char Service::kStorageError[] = "Error";
 const char Service::kStorageFavorite[] = "Favorite";
 const char Service::kStorageGUID[] = "GUID";
@@ -172,36 +156,9 @@ Service::Service(ControlInterface *control_interface,
   HelpRegisterDerivedRpcIdentifier(flimflam::kDeviceProperty,
                                    &Service::GetDeviceRpcId,
                                    NULL);
+  store_.RegisterConstStrings(kEapRemoteCertificationProperty,
+                              &remote_certification_);
   store_.RegisterString(flimflam::kGuidProperty, &guid_);
-
-  store_.RegisterString(flimflam::kEapIdentityProperty, &eap_.identity);
-  store_.RegisterString(flimflam::kEAPEAPProperty, &eap_.eap);
-  store_.RegisterString(flimflam::kEapPhase2AuthProperty, &eap_.inner_eap);
-  store_.RegisterString(flimflam::kEapAnonymousIdentityProperty,
-                        &eap_.anonymous_identity);
-  store_.RegisterString(flimflam::kEAPClientCertProperty, &eap_.client_cert);
-  store_.RegisterString(flimflam::kEAPCertIDProperty, &eap_.cert_id);
-  store_.RegisterString(flimflam::kEapPrivateKeyProperty, &eap_.private_key);
-  HelpRegisterWriteOnlyDerivedString(flimflam::kEapPrivateKeyPasswordProperty,
-                                     &Service::SetEAPPrivateKeyPassword,
-                                     NULL,
-                                     &eap_.private_key_password);
-  store_.RegisterString(flimflam::kEAPKeyIDProperty, &eap_.key_id);
-  store_.RegisterString(flimflam::kEapCaCertProperty, &eap_.ca_cert);
-  store_.RegisterString(flimflam::kEapCaCertIDProperty, &eap_.ca_cert_id);
-  store_.RegisterString(flimflam::kEapCaCertNssProperty, &eap_.ca_cert_nss);
-  store_.RegisterString(kEapCaCertPemProperty, &eap_.ca_cert_pem);
-  store_.RegisterString(flimflam::kEAPPINProperty, &eap_.pin);
-  HelpRegisterWriteOnlyDerivedString(flimflam::kEapPasswordProperty,
-                                     &Service::SetEAPPassword,
-                                     NULL,
-                                     &eap_.password);
-  store_.RegisterString(flimflam::kEapKeyMgmtProperty, &eap_.key_management);
-  store_.RegisterBool(flimflam::kEapUseSystemCAsProperty, &eap_.use_system_cas);
-  store_.RegisterConstStrings(shill::kEapRemoteCertificationProperty,
-                              &eap_.remote_certification);
-  store_.RegisterString(shill::kEapSubjectMatchProperty,
-                        &eap_.subject_match);
 
   // TODO(ers): in flimflam clearing Error has the side-effect of
   // setting the service state to IDLE. Is this important? I could
@@ -442,8 +399,13 @@ bool Service::Load(StoreInterface *storage) {
   storage->GetString(id, kStorageProxyConfig, &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
   storage->GetString(id, kStorageUIData, &ui_data_);
-  LoadEapCredentials(storage, id);
+
   static_ip_parameters_.Load(storage, id);
+
+  if (mutable_eap()) {
+    mutable_eap()->Load(storage, id);
+    OnEapCredentialsChanged();
+  }
 
   explicitly_disconnected_ = false;
   favorite_ = true;
@@ -462,8 +424,11 @@ bool Service::Unload() {
   proxy_config_ = "";
   save_credentials_ = true;
   ui_data_ = "";
+  if (mutable_eap()) {
+    mutable_eap()->Reset();
+  }
+  ClearEAPCertification();
 
-  UnloadEapCredentials();
   Error error;  // Ignored.
   Disconnect(&error);
   return false;
@@ -497,8 +462,10 @@ bool Service::Save(StoreInterface *storage) {
   storage->SetBool(id, kStorageSaveCredentials, save_credentials_);
   SaveString(storage, id, kStorageUIData, ui_data_, false, true);
 
-  SaveEapCredentials(storage, id);
   static_ip_parameters_.Save(storage, id);
+  if (eap()) {
+    eap()->Save(storage, id, save_credentials_);
+  }
   return true;
 }
 
@@ -644,52 +611,7 @@ void Service::SetConnection(const ConnectionRefPtr &connection) {
 }
 
 bool Service::Is8021xConnectable() const {
-  // We mirror all the flimflam checks (see service.c:is_connectable()).
-
-  // Identity is required.
-  if (eap_.identity.empty()) {
-    SLOG(Service, 2) << "Not connectable: Identity is empty.";
-    return false;
-  }
-
-  if (!eap_.client_cert.empty() || !eap_.cert_id.empty()) {
-    // If a client certificate is being used, we must have a private key.
-    if (eap_.private_key.empty() && eap_.key_id.empty()) {
-      SLOG(Service, 2)
-          << "Not connectable. Client certificate but no private key.";
-      return false;
-    }
-  }
-  if (!eap_.cert_id.empty() || !eap_.key_id.empty() ||
-      !eap_.ca_cert_id.empty()) {
-    // If PKCS#11 data is needed, a PIN is required.
-    if (eap_.pin.empty()) {
-      SLOG(Service, 2) << "Not connectable. PKCS#11 data but no PIN.";
-      return false;
-    }
-  }
-
-  // For EAP-TLS, a client certificate is required.
-  if (eap_.eap.empty() || eap_.eap == "TLS") {
-    if ((!eap_.client_cert.empty() || !eap_.cert_id.empty()) &&
-        (!eap_.private_key.empty() || !eap_.key_id.empty())) {
-      SLOG(Service, 2) << "Connectable. EAP-TLS with a client cert and key.";
-      return true;
-    }
-  }
-
-  // For EAP types other than TLS (e.g. EAP-TTLS or EAP-PEAP, password is the
-  // minimum requirement), at least an identity + password is required.
-  if (eap_.eap.empty() || eap_.eap != "TLS") {
-    if (!eap_.password.empty()) {
-      SLOG(Service, 2) << "Connectable. !EAP-TLS and has a password.";
-      return true;
-    }
-  }
-
-  SLOG(Service, 2)
-      << "Not connectable. No suitable EAP configuration was found.";
-  return false;
+  return eap() && eap()->IsConnectable();
 }
 
 bool Service::AddEAPCertification(const string &name, size_t depth) {
@@ -701,13 +623,13 @@ bool Service::AddEAPCertification(const string &name, size_t depth) {
     return false;
   }
 
-  if (depth >= eap_.remote_certification.size()) {
-    eap_.remote_certification.resize(depth + 1);
-  } else if (name == eap_.remote_certification[depth]) {
+  if (depth >= remote_certification_.size()) {
+    remote_certification_.resize(depth + 1);
+  } else if (name == remote_certification_[depth]) {
     return true;
   }
 
-  eap_.remote_certification[depth] = name;
+  remote_certification_[depth] = name;
   LOG(INFO) << "Received certification for "
             << name
             << " at depth "
@@ -716,13 +638,15 @@ bool Service::AddEAPCertification(const string &name, size_t depth) {
 }
 
 void Service::ClearEAPCertification() {
-  eap_.remote_certification.clear();
+  remote_certification_.clear();
 }
 
-void Service::set_eap(const EapCredentials &eap) {
-  eap_ = eap;
-  // Note: Connectability can only be updated by a subclass of Service
-  // with knowledge of whether the service actually uses 802.1x credentials.
+void Service::SetEapCredentials(EapCredentials *eap) {
+  // This operation must be done at most once for the lifetime of the service.
+  CHECK(eap && !eap_);
+
+  eap_.reset(eap);
+  eap_->InitPropertyStore(mutable_store());
 }
 
 // static
@@ -996,18 +920,8 @@ void Service::SetProfile(const ProfileRefPtr &p) {
 }
 
 void Service::OnPropertyChanged(const string &property) {
-  if (Is8021x() &&
-      (property == flimflam::kEAPCertIDProperty ||
-       property == flimflam::kEAPClientCertProperty ||
-       property == flimflam::kEAPKeyIDProperty ||
-       property == flimflam::kEAPPINProperty ||
-       property == flimflam::kEapCaCertIDProperty ||
-       property == flimflam::kEapIdentityProperty ||
-       property == flimflam::kEapKeyMgmtProperty ||
-       property == flimflam::kEapPasswordProperty ||
-       property == flimflam::kEapPrivateKeyProperty)) {
-    // This notifies subclassess that EAP parameters have been changed.
-    set_eap(eap_);
+  if (Is8021x() && EapCredentials::IsEapAuthenticationProperty(property)) {
+    OnEapCredentialsChanged();
   }
   SaveToProfile();
   if ((property == flimflam::kCheckPortalProperty ||
@@ -1175,18 +1089,7 @@ void Service::HelpRegisterConstDerivedStrings(
       StringsAccessor(new CustomAccessor<Service, Strings>(this, get, NULL)));
 }
 
-void Service::HelpRegisterWriteOnlyDerivedString(
-    const string &name,
-    void(Service::*set)(const string &, Error *),
-    void(Service::*clear)(Error *),
-    const string *default_value) {
-  store_.RegisterDerivedString(
-      name,
-      StringAccessor(
-          new CustomWriteOnlyAccessor<Service, string>(
-              this, set, clear, default_value)));
-}
-
+// static
 void Service::SaveString(StoreInterface *storage,
                          const string &id,
                          const string &key,
@@ -1204,95 +1107,18 @@ void Service::SaveString(StoreInterface *storage,
   storage->SetString(id, key, value);
 }
 
-void Service::LoadEapCredentials(StoreInterface *storage, const string &id) {
-  EapCredentials eap;
-  storage->GetCryptedString(id, kStorageEapIdentity, &eap.identity);
-  storage->GetString(id, kStorageEapEap, &eap.eap);
-  storage->GetString(id, kStorageEapInnerEap, &eap.inner_eap);
-  storage->GetCryptedString(id,
-                            kStorageEapAnonymousIdentity,
-                            &eap.anonymous_identity);
-  storage->GetString(id, kStorageEapClientCert, &eap.client_cert);
-  storage->GetString(id, kStorageEapCertID, &eap.cert_id);
-  storage->GetString(id, kStorageEapPrivateKey, &eap.private_key);
-  storage->GetCryptedString(id,
-                            kStorageEapPrivateKeyPassword,
-                            &eap.private_key_password);
-  storage->GetString(id, kStorageEapKeyID, &eap.key_id);
-  storage->GetString(id, kStorageEapCACert, &eap.ca_cert);
-  storage->GetString(id, kStorageEapCACertID, &eap.ca_cert_id);
-  storage->GetString(id, kStorageEapCACertNSS, &eap.ca_cert_nss);
-  storage->GetString(id, kStorageEapCACertPEM, &eap.ca_cert_pem);
-  storage->GetBool(id, kStorageEapUseSystemCAs, &eap.use_system_cas);
-  storage->GetString(id, kStorageEapPIN, &eap.pin);
-  storage->GetCryptedString(id, kStorageEapPassword, &eap.password);
-  storage->GetString(id, kStorageEapKeyManagement, &eap.key_management);
-  set_eap(eap);
-}
-
-void Service::SaveEapCredentials(StoreInterface *storage, const string &id) {
-  bool save = save_credentials_;
-  SaveString(storage, id, kStorageEapIdentity, eap_.identity, true, save);
-  SaveString(storage, id, kStorageEapEap, eap_.eap, false, true);
-  SaveString(storage, id, kStorageEapInnerEap, eap_.inner_eap, false, true);
-  SaveString(storage,
-             id,
-             kStorageEapAnonymousIdentity,
-             eap_.anonymous_identity,
-             true,
-             save);
-  SaveString(storage, id, kStorageEapClientCert, eap_.client_cert, false, save);
-  SaveString(storage, id, kStorageEapCertID, eap_.cert_id, false, save);
-  SaveString(storage, id, kStorageEapPrivateKey, eap_.private_key, false, save);
-  SaveString(storage,
-             id,
-             kStorageEapPrivateKeyPassword,
-             eap_.private_key_password,
-             true,
-             save);
-  SaveString(storage, id, kStorageEapKeyID, eap_.key_id, false, save);
-  SaveString(storage, id, kStorageEapCACert, eap_.ca_cert, false, true);
-  SaveString(storage, id, kStorageEapCACertID, eap_.ca_cert_id, false, true);
-  SaveString(storage, id, kStorageEapCACertNSS, eap_.ca_cert_nss, false, true);
-  SaveString(storage, id, kStorageEapCACertPEM, eap_.ca_cert_pem, false, true);
-  storage->SetBool(id, kStorageEapUseSystemCAs, eap_.use_system_cas);
-  SaveString(storage, id, kStorageEapPIN, eap_.pin, false, save);
-  SaveString(storage, id, kStorageEapPassword, eap_.password, true, save);
-  SaveString(storage,
-             id,
-             kStorageEapKeyManagement,
-             eap_.key_management,
-             false,
-             true);
-}
-
-void Service::UnloadEapCredentials() {
-  eap_.identity = "";
-  eap_.eap = "";
-  eap_.inner_eap = "";
-  eap_.anonymous_identity = "";
-  eap_.client_cert = "";
-  eap_.cert_id = "";
-  eap_.private_key = "";
-  eap_.private_key_password = "";
-  eap_.key_id = "";
-  eap_.ca_cert = "";
-  eap_.ca_cert_id = "";
-  eap_.use_system_cas = true;
-  eap_.pin = "";
-  eap_.password = "";
-}
-
 void Service::IgnoreParameterForConfigure(const string &parameter) {
   parameters_ignored_for_configure_.insert(parameter);
 }
 
 const string &Service::GetEAPKeyManagement() const {
-  return eap_.key_management;
+  CHECK(eap());
+  return eap()->key_management();
 }
 
 void Service::SetEAPKeyManagement(const string &key_management) {
-  eap_.key_management = key_management;
+  CHECK(mutable_eap());
+  mutable_eap()->SetKeyManagement(key_management, NULL);
 }
 
 bool Service::GetAutoConnect(Error */*error*/) {
@@ -1327,15 +1153,6 @@ void Service::SetCheckPortal(const string &check_portal, Error *error) {
     return;
   }
   check_portal_ = check_portal;
-}
-
-void Service::SetEAPPassword(const string &password, Error */*error*/) {
-  eap_.password = password;
-}
-
-void Service::SetEAPPrivateKeyPassword(const string &password,
-                                       Error */*error*/) {
-  eap_.private_key_password = password;
 }
 
 void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,

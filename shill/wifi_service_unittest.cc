@@ -22,6 +22,7 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_control.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
 #include "shill/mock_nss.h"
 #include "shill/mock_profile.h"
@@ -47,6 +48,7 @@ using ::testing::HasSubstr;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrNe;
@@ -72,15 +74,27 @@ class WiFiServiceTest : public PropertyStoreTest {
  protected:
   static const char fake_mac[];
 
+  MockEapCredentials *SetMockEap(
+      const WiFiServiceRefPtr &service) {
+    MockEapCredentials *eap = new MockEapCredentials();
+    service->eap_.reset(eap);  // Passes ownership.
+    return eap;
+  }
   bool CheckConnectable(const std::string &security, const char *passphrase,
-                        EapCredentials *eap) {
+                        bool is_1x_connectable) {
     Error error;
     WiFiServiceRefPtr service = MakeSimpleService(security);
     if (passphrase)
       service->SetPassphrase(passphrase, &error);
-    if (eap) {
-      service->set_eap(*eap);
+    MockEapCredentials *eap = SetMockEap(service);
+    EXPECT_CALL(*eap, IsConnectable())
+        .WillRepeatedly(Return(is_1x_connectable));
+    const string kKeyManagement8021x(WPASupplicant::kKeyManagementIeee8021X);
+    if (security == flimflam::kSecurityWep && is_1x_connectable) {
+      EXPECT_CALL(*eap, key_management())
+          .WillRepeatedly(ReturnRef(kKeyManagement8021x));
     }
+    service->OnEapCredentialsChanged();
     return service->connectable();
   }
   WiFiEndpoint *MakeEndpoint(const string &ssid, const string &bssid,
@@ -468,11 +482,22 @@ TEST_F(WiFiServiceTest, ConnectTaskPSK) {
 
 TEST_F(WiFiServiceTest, ConnectTask8021x) {
   WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurity8021x);
-  EapCredentials eap;
-  eap.identity = "identity";
-  eap.password = "mumble";
-  service->set_eap(eap);
+  service->mutable_eap()->set_identity("identity");
+  service->mutable_eap()->set_password("mumble");
+  service->OnEapCredentialsChanged();
   EXPECT_CALL(*wifi(), ConnectTo(service.get(), EAPSecurityArgs()));
+  service->Connect(NULL, "in test");
+}
+
+TEST_F(WiFiServiceTest, ConnectTask8021xWithMockEap) {
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(flimflam::kSecurity8021x);
+  MockEapCredentials *eap = SetMockEap(service);
+  EXPECT_CALL(*eap, IsConnectable()).WillOnce(Return(true));
+  service->OnEapCredentialsChanged();
+  EXPECT_CALL(*eap, PopulateSupplicantProperties(_, _, _, _));
+  // The mocked function does not actually set EAP parameters so we cannot
+  // expect them to be set.
+  EXPECT_CALL(*wifi(), ConnectTo(service.get(), _));
   service->Connect(NULL, "in test");
 }
 
@@ -619,11 +644,10 @@ MATCHER(DynamicWEPArgs, "") {
 TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityWep);
 
-  EapCredentials eap;
-  eap.key_management = "IEEE8021X";
-  eap.identity = "something";
-  eap.password = "mumble";
-  wifi_service->set_eap(eap);
+  wifi_service->mutable_eap()->SetKeyManagement("IEEE8021X", NULL);
+  wifi_service->mutable_eap()->set_identity("something");
+  wifi_service->mutable_eap()->set_password("mumble");
+  wifi_service->OnEapCredentialsChanged();
   EXPECT_CALL(*wifi(),
               ConnectTo(wifi_service.get(), DynamicWEPArgs()));
   wifi_service->Connect(NULL, "in test");
@@ -684,7 +708,7 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     // Any change to EAP parameters (including a null one) will trigger cache
     // removal.  This is a lot less granular than the passphrase checks above.
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
-    wifi_service->set_eap(EapCredentials());
+    wifi_service->OnEapCredentialsChanged();
     Mock::VerifyAndClearExpectations(wifi());
   }
 }
@@ -1068,52 +1092,33 @@ TEST_F(WiFiServiceFixupStorageTest, MissingSecurityClassProperty) {
 
 TEST_F(WiFiServiceTest, Connectable) {
   // Open network should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, NULL, NULL));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, NULL, false));
 
   // Open network should remain connectable if we try to set a password on it.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, "abcde", NULL));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityNone, "abcde", false));
 
   // WEP network with passphrase set should be connectable.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, "abcde", NULL));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, "abcde", false));
 
   // WEP network without passphrase set should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, NULL, NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, NULL, false));
 
   // A bad passphrase should not make a WEP network connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, "a", NULL));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWep, "a", false));
 
   // Similar to WEP, for WPA.
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWpa, "abcdefgh", NULL));
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, NULL, NULL));
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, "a", NULL));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWpa, "abcdefgh", false));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, NULL, false));
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurityWpa, "a", false));
 
-  // Unconfigured 802.1x should NOT be connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, NULL));
+  // 802.1x without connectable EAP credentials should NOT be connectable.
+  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, false));
 
-  EapCredentials eap;
-  // Empty EAP credentials should not make a 802.1x network connectable.
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
+  // 802.1x with connectable EAP credentials should be connectable.
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, true));
 
-  eap.identity = "something";
-  // If client certificate is being used, a private key must exist.
-  eap.client_cert = "some client cert";
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
-  eap.private_key = "some private key";
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
-
-  // Identity is always required.
-  eap.identity.clear();
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
-
-  eap.identity = "something";
-  // For non EAP-TLS types, a password is required.
-  eap.eap = "Non-TLS";
-  EXPECT_FALSE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
-  eap.password = "some password";
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurity8021x, NULL, &eap));
   // Dynamic WEP + 802.1X should be connectable under the same conditions.
-  eap.key_management = "IEEE8021X";
-  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, NULL, &eap));
+  EXPECT_TRUE(CheckConnectable(flimflam::kSecurityWep, NULL, true));
 }
 
 TEST_F(WiFiServiceTest, IsAutoConnectable) {

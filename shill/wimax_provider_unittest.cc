@@ -10,6 +10,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/eap_credentials.h"
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
 #include "shill/mock_dbus_manager.h"
@@ -515,12 +516,12 @@ TEST_F(WiMaxProviderTest, GetService) {
 
   // GetService should create a service with only identifying parameters set.
   EXPECT_EQ(kName, GetServiceFriendlyName(service));
-  EXPECT_EQ("", service->eap().identity);
+  EXPECT_EQ("", service->eap()->identity());
 
   // After configuring the service, other parameters should be set.
   service->Configure(args, &e);
   EXPECT_TRUE(e.IsSuccess());
-  EXPECT_EQ(kIdentity, service->eap().identity);
+  EXPECT_EQ(kIdentity, service->eap()->identity());
 }
 
 TEST_F(WiMaxProviderTest, SelectCarrier) {

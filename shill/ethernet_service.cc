@@ -17,6 +17,7 @@
 #include "shill/control_interface.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
+#include "shill/eap_credentials.h"
 #include "shill/ethernet.h"
 #include "shill/event_dispatcher.h"
 #include "shill/manager.h"
@@ -41,6 +42,7 @@ EthernetService::EthernetService(ControlInterface *control_interface,
   set_auto_connect(true);
   set_friendly_name("Ethernet");
   SetStrength(kStrengthMax);
+  SetEapCredentials(new EapCredentials());
 }
 
 EthernetService::~EthernetService() { }

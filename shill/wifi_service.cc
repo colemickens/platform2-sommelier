@@ -19,6 +19,7 @@
 #include "shill/certificate_file.h"
 #include "shill/control_interface.h"
 #include "shill/device.h"
+#include "shill/eap_credentials.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/ieee80211.h"
@@ -104,6 +105,8 @@ WiFiService::WiFiService(ControlInterface *control_interface,
     store->RegisterConstString(flimflam::kWifiHexSsid, &hex_ssid_);
   }
   set_friendly_name(ssid_string);
+
+  SetEapCredentials(new EapCredentials());
 
   // TODO(quiche): determine if it is okay to set EAP.KeyManagement for
   // a service that is not 802.1x.
@@ -366,21 +369,7 @@ void WiFiService::SendPostReadyStateMetrics(
       Metrics::kMetricNetworkSecurityMax);
 
   if (Is8021x()) {
-    Metrics::EapOuterProtocol outer_protocol =
-        Metrics::EapOuterProtocolStringToEnum(eap().eap);
-    metrics()->SendEnumToUMA(
-        metrics()->GetFullMetricName(Metrics::kMetricNetworkEapOuterProtocol,
-                                     technology()),
-        outer_protocol,
-        Metrics::kMetricNetworkEapOuterProtocolMax);
-
-    Metrics::EapInnerProtocol inner_protocol =
-        Metrics::EapInnerProtocolStringToEnum(eap().inner_eap);
-    metrics()->SendEnumToUMA(
-        metrics()->GetFullMetricName(Metrics::kMetricNetworkEapInnerProtocol,
-                                     technology()),
-        inner_protocol,
-        Metrics::kMetricNetworkEapInnerProtocolMax);
+    eap()->OutputConnectionMetrics(metrics(), technology());
   }
 
   // We invert the sign of the signal strength value, since UMA histograms
@@ -492,8 +481,8 @@ void WiFiService::Connect(Error *error, const char *reason) {
     if (GetEAPKeyManagement().empty())
       SetEAPKeyManagement("WPA-EAP");
     vector<char> nss_identifier(ssid_.begin(), ssid_.end());
-    WPASupplicant::Populate8021xProperties(
-        eap(), certificate_file_.get(), nss_, nss_identifier, &params);
+    eap()->PopulateSupplicantProperties(
+        certificate_file_.get(), nss_, nss_identifier, &params);
     ClearEAPCertification();
   } else if (security_ == flimflam::kSecurityPsk ||
              security_ == flimflam::kSecurityRsn ||
@@ -988,14 +977,7 @@ void WiFiService::ClearCachedCredentials() {
   }
 }
 
-void WiFiService::set_eap(const EapCredentials &new_eap) {
-  EapCredentials modified_eap = new_eap;
-
-  // An empty key_management field is invalid.  Prevent it, if possible.
-  if (modified_eap.key_management.empty()) {
-    modified_eap.key_management = eap().key_management;
-  }
-  Service::set_eap(modified_eap);
+void WiFiService::OnEapCredentialsChanged() {
   ClearCachedCredentials();
   UpdateConnectable();
 }

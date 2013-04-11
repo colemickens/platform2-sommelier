@@ -114,7 +114,7 @@ class WiFiService : public Service {
 
   // Override from parent Service class to correctly update connectability
   // when the EAP credentials change for 802.1x networks.
-  void set_eap(const EapCredentials &eap);
+  void OnEapCredentialsChanged();
 
   // Override from parent Service class to register hidden services once they
   // have been configured.

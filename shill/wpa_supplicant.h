@@ -14,10 +14,6 @@
 
 namespace shill {
 
-class CertificateFile;
-struct EapCredentials;
-class NSS;
-
 class WPASupplicant {
  public:
   static const char kBSSPropertyBSSID[];
@@ -136,14 +132,6 @@ class WPASupplicant {
   static const uint32_t kScanMaxSSIDsPerScan;
 
   static const char kSupplicantConfPath[];
-
-  // Populate the wpa_supplicant DBus parameter map |params| with the
-  // credentials in |eap|.  To do so, this function may use |certificate_file|
-  // or |nss| to export CA certificates to be passed to wpa_supplicant.
-  static void Populate8021xProperties(
-      const EapCredentials &eap, CertificateFile *certificate_file,
-      NSS *nss, const std::vector<char> nss_identifier,
-      std::map<std::string, DBus::Variant> *params);
 
   // Retrieve the |subject| and |depth| of an a remote certifying entity,
   // as contained the the |properties| to a Certification event from

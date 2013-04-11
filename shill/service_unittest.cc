@@ -23,6 +23,7 @@
 #include "shill/mock_connection.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_diagnostics_reporter.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
@@ -70,10 +71,12 @@ class ServiceTest : public PropertyStoreTest {
                                        metrics(),
                                        &mock_manager_)),
         storage_id_(ServiceUnderTest::kStorageId),
-        power_manager_(new MockPowerManager(NULL, &proxy_factory_)) {
+        power_manager_(new MockPowerManager(NULL, &proxy_factory_)),
+        eap_(new MockEapCredentials()) {
     service_->time_ = &time_;
     DefaultValue<Timestamp>::Set(Timestamp());
     service_->diagnostics_reporter_ = &diagnostics_reporter_;
+    service_->eap_.reset(eap_);  // Passes ownership.
     mock_manager_.running_ = true;
     mock_manager_.set_power_manager(power_manager_);  // Passes ownership.
   }
@@ -182,6 +185,7 @@ class ServiceTest : public PropertyStoreTest {
   string storage_id_;
   TestProxyFactory proxy_factory_;
   MockPowerManager *power_manager_;  // Owned by |mock_manager_|.
+  MockEapCredentials *eap_;  // Owned by |service_|.
 };
 
 class AllMockServiceTest : public testing::Test {
@@ -295,6 +299,22 @@ TEST_F(ServiceTest, SetProperty) {
   {
     ::DBus::Error error;
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                         flimflam::kGuidProperty,
+                                         PropertyStoreTest::kStringV,
+                                         &error));
+  }
+  // Ensure that EAP properties cannot be set on services with no EAP
+  // credentials.  Use service2_ here since we're have some code in
+  // ServiceTest::SetUp() that fiddles with service_->eap_.
+  {
+    ::DBus::Error error;
+    EXPECT_FALSE(DBusAdaptor::SetProperty(service2_->mutable_store(),
+                                          flimflam::kEAPEAPProperty,
+                                          PropertyStoreTest::kStringV,
+                                          &error));
+    EXPECT_EQ(invalid_prop(), error.name());
+    service2_->SetEapCredentials(new EapCredentials());
+    EXPECT_TRUE(DBusAdaptor::SetProperty(service2_->mutable_store(),
                                          flimflam::kEAPEAPProperty,
                                          PropertyStoreTest::kStringV,
                                          &error));
@@ -354,6 +374,7 @@ TEST_F(ServiceTest, Load) {
   EXPECT_CALL(storage, GetBool(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage,
               GetBool(storage_id_, Service::kStorageSaveCredentials, _));
+  EXPECT_CALL(*eap_, Load(&storage, storage_id_));
   EXPECT_TRUE(service_->Load(&storage));
 }
 
@@ -410,6 +431,7 @@ TEST_F(ServiceTest, Save) {
               SetBool(storage_id_,
                       Service::kStorageSaveCredentials,
                       service_->save_credentials()));
+  EXPECT_CALL(*eap_, Save(&storage, storage_id_, true));
   EXPECT_TRUE(service_->Save(&storage));
 }
 
@@ -426,6 +448,7 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_FALSE(service_->explicitly_disconnected_);
   service_->explicitly_disconnected_ = true;
   EXPECT_FALSE(service_->has_ever_connected_);
+  EXPECT_CALL(*eap_, Load(&storage, storage_id_));
   ASSERT_TRUE(service_->Load(&storage));
   // TODO(pstew): Only two string properties in the service are tested as
   // a sentinel that properties are being set and reset at the right times.
@@ -438,6 +461,7 @@ TEST_F(ServiceTest, Unload) {
   EXPECT_FALSE(service_->explicitly_disconnected_);
   EXPECT_TRUE(service_->has_ever_connected_);
   service_->explicitly_disconnected_ = true;
+  EXPECT_CALL(*eap_, Reset());
   service_->Unload();
   EXPECT_EQ(string(""), service_->ui_data_);
   EXPECT_EQ(string(""), service_->guid_);
@@ -589,6 +613,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
   // again.
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
+  EXPECT_CALL(*eap_, Load(&storage, storage_id_));
   EXPECT_TRUE(service_->Load(&storage));
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
@@ -741,16 +766,35 @@ TEST_F(ServiceTest, ConfigureBoolProperty) {
 }
 
 TEST_F(ServiceTest, ConfigureStringProperty) {
-  const string kEAPManagement0 = "management_zero";
-  const string kEAPManagement1 = "management_one";
-  service_->SetEAPKeyManagement(kEAPManagement0);
-  ASSERT_EQ(kEAPManagement0, service_->GetEAPKeyManagement());
+  const string kGuid0 = "guid_zero";
+  const string kGuid1 = "guid_one";
+  service_->set_guid(kGuid0);
+  ASSERT_EQ(kGuid0, service_->guid());
   KeyValueStore args;
-  args.SetString(flimflam::kEapKeyMgmtProperty, kEAPManagement1);
+  args.SetString(flimflam::kGuidProperty, kGuid1);
   Error error;
   service_->Configure(args, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kEAPManagement1, service_->GetEAPKeyManagement());
+  EXPECT_EQ(kGuid1, service_->guid());
+}
+
+TEST_F(ServiceTest, ConfigureEapStringProperty) {
+  MockEapCredentials *eap = new MockEapCredentials();
+  service2_->SetEapCredentials(eap);  // Passes ownership.
+
+  const string kEAPManagement0 = "management_zero";
+  const string kEAPManagement1 = "management_one";
+  service2_->SetEAPKeyManagement(kEAPManagement0);
+
+  EXPECT_CALL(*eap, key_management())
+      .WillOnce(ReturnRef(kEAPManagement0));
+  ASSERT_EQ(kEAPManagement0, service2_->GetEAPKeyManagement());
+  KeyValueStore args;
+  EXPECT_CALL(*eap, SetKeyManagement(kEAPManagement1, _));
+  args.SetString(flimflam::kEapKeyMgmtProperty, kEAPManagement1);
+  Error error;
+  service2_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 TEST_F(ServiceTest, ConfigureIntProperty) {
@@ -998,13 +1042,13 @@ TEST_F(ServiceTest, SetConnectable) {
   EXPECT_TRUE(service_->connectable());
 }
 
-// Make sure a property is registered as a write only property
-// by reading and comparing all string properties returned on the store.
-// Subtle: We need to convert the test argument back and forth between
-// string and ::DBus::Variant because this is the parameter type that
-// our supeclass (PropertyStoreTest) is declared with.
-class ReadOnlyServicePropertyTest : public ServiceTest {};
-TEST_P(ReadOnlyServicePropertyTest, PropertyWriteOnly) {
+class WriteOnlyServicePropertyTest : public ServiceTest {};
+TEST_P(WriteOnlyServicePropertyTest, PropertyWriteOnly) {
+  // Use a real EapCredentials instance since the base Service class
+  // contains no write-only properties.
+  EapCredentials eap;
+  eap.InitPropertyStore(service_->mutable_store());
+
   string property(GetParam().reader().get_string());
   Error error;
   EXPECT_FALSE(service_->store().GetStringProperty(property, NULL, &error));
@@ -1012,8 +1056,8 @@ TEST_P(ReadOnlyServicePropertyTest, PropertyWriteOnly) {
 }
 
 INSTANTIATE_TEST_CASE_P(
-    ReadOnlyServicePropertyTestInstance,
-    ReadOnlyServicePropertyTest,
+    WriteOnlyServicePropertyTestInstance,
+    WriteOnlyServicePropertyTest,
     Values(
         DBusAdaptor::StringToVariant(flimflam::kEapPrivateKeyPasswordProperty),
         DBusAdaptor::StringToVariant(flimflam::kEapPasswordProperty)));
@@ -1058,15 +1102,15 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
   mock_device_info.reset();
 }
 
-class ServiceWithMockSetEap : public ServiceUnderTest {
+class ServiceWithMockOnEapCredentialsChanged : public ServiceUnderTest {
  public:
-  ServiceWithMockSetEap(ControlInterface *control_interface,
-                        EventDispatcher *dispatcher,
-                        Metrics *metrics,
-                        Manager *manager)
+  ServiceWithMockOnEapCredentialsChanged(ControlInterface *control_interface,
+                                         EventDispatcher *dispatcher,
+                                         Metrics *metrics,
+                                         Manager *manager)
       : ServiceUnderTest(control_interface, dispatcher, metrics, manager),
         is_8021x_(false) {}
-  MOCK_METHOD1(set_eap, void(const EapCredentials &eap));
+  MOCK_METHOD0(OnEapCredentialsChanged, void());
   virtual bool Is8021x() const { return is_8021x_; }
   void set_is_8021x(bool is_8021x) { is_8021x_ = is_8021x; }
 
@@ -1075,32 +1119,32 @@ class ServiceWithMockSetEap : public ServiceUnderTest {
 };
 
 TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
-  scoped_refptr<ServiceWithMockSetEap> service(
-      new ServiceWithMockSetEap(control_interface(),
-                                dispatcher(),
-                                metrics(),
-                                &mock_manager_));
+  scoped_refptr<ServiceWithMockOnEapCredentialsChanged> service(
+      new ServiceWithMockOnEapCredentialsChanged(control_interface(),
+                                                 dispatcher(),
+                                                 metrics(),
+                                                 &mock_manager_));
   string eap_credential_properties[] = {
+      flimflam::kEapAnonymousIdentityProperty,
       flimflam::kEAPCertIDProperty,
       flimflam::kEAPClientCertProperty,
-      flimflam::kEAPKeyIDProperty,
-      flimflam::kEAPPINProperty,
-      flimflam::kEapCaCertIDProperty,
       flimflam::kEapIdentityProperty,
+      flimflam::kEAPKeyIDProperty,
       flimflam::kEapPasswordProperty,
-      flimflam::kEapPrivateKeyProperty
+      flimflam::kEAPPINProperty,
+      flimflam::kEapPrivateKeyProperty,
+      flimflam::kEapPrivateKeyPasswordProperty
   };
   string eap_non_credential_properties[] = {
+      flimflam::kEapCaCertIDProperty,
+      flimflam::kEapCaCertNssProperty,
       flimflam::kEAPEAPProperty,
       flimflam::kEapPhase2AuthProperty,
-      flimflam::kEapAnonymousIdentityProperty,
-      flimflam::kEapPrivateKeyPasswordProperty,
-      flimflam::kEapCaCertNssProperty,
       flimflam::kEapUseSystemCAsProperty
   };
   // While this is not an 802.1x-based service, none of these property
   // changes should cause a call to set_eap().
-  EXPECT_CALL(*service, set_eap(_)).Times(0);
+  EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(0);
   for (size_t i = 0; i < arraysize(eap_credential_properties); ++i)
     service->OnPropertyChanged(eap_credential_properties[i]);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
@@ -1112,7 +1156,7 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   // When this is an 802.1x-based service, set_eap should be called for
   // all credential-carrying properties.
   for (size_t i = 0; i < arraysize(eap_credential_properties); ++i) {
-    EXPECT_CALL(*service, set_eap(_)).Times(1);
+    EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(1);
     service->OnPropertyChanged(eap_credential_properties[i]);
     Mock::VerifyAndClearExpectations(service.get());
   }
@@ -1120,17 +1164,17 @@ TEST_F(ServiceTest, SetEAPCredentialsOverRPC) {
   // The key management property is a special case.  While not strictly
   // a credential, it can change which credentials are used.  Therefore it
   // should also trigger a call to set_eap();
-  EXPECT_CALL(*service, set_eap(_)).Times(1);
+  EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(1);
   service->OnPropertyChanged(flimflam::kEapKeyMgmtProperty);
   Mock::VerifyAndClearExpectations(service.get());
 
-  EXPECT_CALL(*service, set_eap(_)).Times(0);
+  EXPECT_CALL(*service, OnEapCredentialsChanged()).Times(0);
   for (size_t i = 0; i < arraysize(eap_non_credential_properties); ++i)
     service->OnPropertyChanged(eap_non_credential_properties[i]);
 }
 
 TEST_F(ServiceTest, Certification) {
-  EXPECT_FALSE(service_->eap_.remote_certification.size());
+  EXPECT_FALSE(service_->remote_certification_.size());
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
@@ -1140,7 +1184,7 @@ TEST_F(ServiceTest, Certification) {
       kSubject, Service::kEAPMaxCertificationElements));
   EXPECT_FALSE(service_->AddEAPCertification(
       kSubject, Service::kEAPMaxCertificationElements + 1));
-  EXPECT_FALSE(service_->eap_.remote_certification.size());
+  EXPECT_FALSE(service_->remote_certification_.size());
   Mock::VerifyAndClearExpectations(&log);
 
   EXPECT_CALL(log,
@@ -1150,11 +1194,11 @@ TEST_F(ServiceTest, Certification) {
       kSubject, Service::kEAPMaxCertificationElements - 1));
   Mock::VerifyAndClearExpectations(&log);
   EXPECT_EQ(Service::kEAPMaxCertificationElements,
-      service_->eap_.remote_certification.size());
+      service_->remote_certification_.size());
   for (size_t i = 0; i < Service::kEAPMaxCertificationElements - 1; ++i) {
-      EXPECT_TRUE(service_->eap_.remote_certification[i].empty());
+      EXPECT_TRUE(service_->remote_certification_[i].empty());
   }
-  EXPECT_EQ(kSubject, service_->eap_.remote_certification[
+  EXPECT_EQ(kSubject, service_->remote_certification_[
       Service::kEAPMaxCertificationElements - 1]);
 
   // Re-adding the same name in the same position should not generate a log.
@@ -1168,6 +1212,9 @@ TEST_F(ServiceTest, Certification) {
       .Times(1);
   EXPECT_TRUE(service_->AddEAPCertification(
       kSubject + "x", Service::kEAPMaxCertificationElements - 1));
+
+  service_->ClearEAPCertification();
+  EXPECT_TRUE(service_->remote_certification_.empty());
 }
 
 TEST_F(ServiceTest, NoteDisconnectEventIdle) {
