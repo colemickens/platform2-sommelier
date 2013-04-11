@@ -27,17 +27,31 @@
 
   <interface name="org.chromium.Chaps">
 
-    <!-- Event methods. -->
-    <method name="OnLogin">
+    <!-- Token management methods. -->
+    <method name="OpenIsolate">
+      <arg type="ay" name="isolate_credential_in" direction="in"/>
+      <arg type="ay" name="isolate_credential_out" direction="out"/>
+      <arg type="b" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+
+    <method name="CloseIsolate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+    </method>
+
+    <method name="LoadToken">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="s" name="path" direction="in"/>
       <arg type="ay" name="auth_data" direction="in"/>
     </method>
 
-    <method name="OnLogout">
+    <method name="UnloadToken">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="s" name="path" direction="in"/>
     </method>
 
-    <method name="OnChangeAuthData">
+    <method name="ChangeTokenAuthData">
       <arg type="s" name="path" direction="in"/>
       <arg type="ay" name="old_auth_data" direction="in"/>
       <arg type="ay" name="new_auth_data" direction="in"/>
@@ -68,6 +82,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 106. -->
     <method name="GetSlotList">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="b" name="token_present" direction="in"/>
       <arg type="at" name="slot_list" direction="out"/>
       <arg type="u" name="result" direction="out">
@@ -77,6 +92,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 108. -->
     <method name="GetSlotInfo">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="ay" name="slot_description" direction="out"/>
       <arg type="ay" name="manufacturer_id" direction="out"/>
@@ -92,6 +108,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 109. -->
     <method name="GetTokenInfo">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="ay" name="label" direction="out"/>
       <arg type="ay" name="manufacturer_id" direction="out"/>
@@ -119,6 +136,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 111. -->
     <method name="GetMechanismList">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="at" name="mechanism_list" direction="out"/>
       <arg type="u" name="result" direction="out">
@@ -128,6 +146,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 112. -->
     <method name="GetMechanismInfo">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="t" name="min_key_size" direction="out"/>
@@ -140,6 +159,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 113. -->
     <method name="InitToken">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
       <arg type="s" name="optional_so_pin" direction="in"/>
@@ -151,6 +171,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 115. -->
     <method name="InitPIN">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
       <arg type="s" name="optional_user_pin" direction="in"/>
@@ -161,6 +182,7 @@
 
     <!-- PKCS #11 v2.20 section 11.5 page 116. -->
     <method name="SetPIN">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="b" name="use_null_old_pin" direction="in"/>
       <arg type="s" name="optional_old_pin" direction="in"/>
@@ -173,6 +195,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 117. -->
     <method name="OpenSession">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="t" name="flags" direction="in"/>
       <arg type="t" name="session_id" direction="out"/>
@@ -183,6 +206,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 118. -->
     <method name="CloseSession">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -191,6 +215,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 120. -->
     <method name="CloseAllSessions">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="slot_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -199,6 +224,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 120. -->
     <method name="GetSessionInfo">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="slot_id" direction="out"/>
       <arg type="t" name="state" direction="out"/>
@@ -211,6 +237,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 121. -->
     <method name="GetOperationState">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="operation_state" direction="out"/>
       <arg type="u" name="result" direction="out">
@@ -220,6 +247,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 123. -->
     <method name="SetOperationState">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="operation_state" direction="in"/>
       <arg type="t" name="encryption_key_handle" direction="in"/>
@@ -231,6 +259,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 125. -->
     <method name="Login">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="user_type" direction="in"/>
       <arg type="b" name="use_null_pin" direction="in"/>
@@ -242,6 +271,7 @@
 
     <!-- PKCS #11 v2.20 section 11.6 page 127. -->
     <method name="Logout">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -250,6 +280,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 128. -->
     <method name="CreateObject">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
       <arg type="t" name="new_object_handle" direction="out"/>
@@ -260,6 +291,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 130. -->
     <method name="CopyObject">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="object_handle" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
@@ -271,6 +303,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 131. -->
     <method name="DestroyObject">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="object_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -280,6 +313,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 132. -->
     <method name="GetObjectSize">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="object_handle" direction="in"/>
       <arg type="t" name="object_size" direction="out"/>
@@ -290,6 +324,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 133. -->
     <method name="GetAttributeValue">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="object_handle" direction="in"/>
       <arg type="ay" name="attributes_in" direction="in"/>
@@ -301,6 +336,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 135. -->
     <method name="SetAttributeValue">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="object_handle" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
@@ -311,6 +347,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 136. -->
     <method name="FindObjectsInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="attributes" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -320,6 +357,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 137. -->
     <method name="FindObjects">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="max_object_count" direction="in"/>
       <arg type="at" name="object_list" direction="out"/>
@@ -330,6 +368,7 @@
 
     <!-- PKCS #11 v2.20 section 11.7 page 138. -->
     <method name="FindObjectsFinal">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="u" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
@@ -338,6 +377,7 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 139. -->
     <method name="EncryptInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -349,6 +389,7 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 140. -->
     <method name="Encrypt">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -361,6 +402,7 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 141. -->
     <method name="EncryptUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -373,6 +415,7 @@
 
     <!-- PKCS #11 v2.20 section 11.8 page 141. -->
     <method name="EncryptFinal">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
       <arg type="t" name="actual_out_length" direction="out"/>
@@ -384,6 +427,7 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 144. -->
     <method name="DecryptInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -395,6 +439,7 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 145. -->
     <method name="Decrypt">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -407,6 +452,7 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 146. -->
     <method name="DecryptUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -419,6 +465,7 @@
 
     <!-- PKCS #11 v2.20 section 11.9 page 146. -->
     <method name="DecryptFinal">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
       <arg type="t" name="actual_out_length" direction="out"/>
@@ -430,6 +477,7 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 148. -->
     <method name="DigestInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -440,6 +488,7 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 149. -->
     <method name="Digest">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -452,6 +501,7 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 150. -->
     <method name="DigestUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -461,6 +511,7 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 150. -->
     <method name="DigestKey">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="key_handle" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -470,6 +521,7 @@
 
     <!-- PKCS #11 v2.20 section 11.10 page 151. -->
     <method name="DigestFinal">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
       <arg type="t" name="actual_out_length" direction="out"/>
@@ -481,6 +533,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 152. -->
     <method name="SignInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -492,6 +545,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 153. -->
     <method name="Sign">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -504,6 +558,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 154. -->
     <method name="SignUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_part" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -513,6 +568,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 154. -->
     <method name="SignFinal">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
       <arg type="t" name="actual_out_length" direction="out"/>
@@ -524,6 +580,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 155. -->
     <method name="SignRecoverInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -535,6 +592,7 @@
 
     <!-- PKCS #11 v2.20 section 11.11 page 156. -->
     <method name="SignRecover">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -547,6 +605,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 157. -->
     <method name="VerifyInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -558,6 +617,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 158. -->
     <method name="Verify">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data" direction="in"/>
       <arg type="ay" name="signature" direction="in"/>
@@ -568,6 +628,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 159. -->
     <method name="VerifyUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_part" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -577,6 +638,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 159. -->
     <method name="VerifyFinal">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="signature" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -586,6 +648,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 161. -->
     <method name="VerifyRecoverInit">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -597,6 +660,7 @@
 
     <!-- PKCS #11 v2.20 section 11.12 page 161. -->
     <method name="VerifyRecover">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="signature" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -609,6 +673,7 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 163. -->
     <method name="DigestEncryptUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -621,6 +686,7 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 165. -->
     <method name="DecryptDigestUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -633,6 +699,7 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 169. -->
     <method name="SignEncryptUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -645,6 +712,7 @@
 
     <!-- PKCS #11 v2.20 section 11.13 page 171. -->
     <method name="DecryptVerifyUpdate">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="data_in" direction="in"/>
       <arg type="t" name="max_out_length" direction="in"/>
@@ -657,6 +725,7 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 175. -->
     <method name="GenerateKey">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -669,6 +738,7 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 176. -->
     <method name="GenerateKeyPair">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -683,6 +753,7 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 178. -->
     <method name="WrapKey">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -698,6 +769,7 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 180. -->
     <method name="UnwrapKey">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -712,6 +784,7 @@
 
     <!-- PKCS #11 v2.20 section 11.14 page 182. -->
     <method name="DeriveKey">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="mechanism_type" direction="in"/>
       <arg type="ay" name="mechanism_parameter" direction="in"/>
@@ -725,6 +798,7 @@
 
     <!-- PKCS #11 v2.20 section 11.15 page 184. -->
     <method name="SeedRandom">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="ay" name="seed" direction="in"/>
       <arg type="u" name="result" direction="out">
@@ -734,6 +808,7 @@
 
     <!-- PKCS #11 v2.20 section 11.15 page 184. -->
     <method name="GenerateRandom">
+      <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="t" name="session_id" direction="in"/>
       <arg type="t" name="num_bytes" direction="in"/>
       <arg type="ay" name="random_data" direction="out"/>

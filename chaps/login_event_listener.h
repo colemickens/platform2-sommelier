@@ -24,12 +24,18 @@ namespace chaps {
 //   password events.
 class LoginEventListener {
  public:
-  virtual void OnLogin(const FilePath& path,
-                       const chromeos::SecureBlob& auth_data) = 0;
-  virtual void OnLogout(const FilePath& path) = 0;
-  virtual void OnChangeAuthData(const FilePath& path,
-                                const chromeos::SecureBlob& old_auth_data,
-                                const chromeos::SecureBlob& new_auth_data) = 0;
+
+  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential) = 0;
+  virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential) = 0;
+  virtual void LoadToken(const chromeos::SecureBlob& isolate_credential,
+                         const FilePath& path,
+                         const chromeos::SecureBlob& auth_data) = 0;
+  virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
+                           const FilePath& path) = 0;
+  virtual void ChangeTokenAuthData(
+      const FilePath& path,
+      const chromeos::SecureBlob& old_auth_data,
+      const chromeos::SecureBlob& new_auth_data) = 0;
 };
 
 }  // namespace

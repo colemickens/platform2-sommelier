@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <chromeos/secure_blob.h>
 
 #include "chaps/chaps.h"
 
@@ -34,10 +35,12 @@ public:
   // to the corresponding PKCS #11 function name except for the "C_" prefix.
 
   // PKCS #11 v2.20 section 11.5 page 106.
-  virtual uint32_t GetSlotList(bool token_present,
+  virtual uint32_t GetSlotList(const chromeos::SecureBlob& isolate_credential,
+                               bool token_present,
                                std::vector<uint64_t>* slot_list) = 0;
   // PKCS #11 v2.20 section 11.5 page 108.
-  virtual uint32_t GetSlotInfo(uint64_t slot_id,
+  virtual uint32_t GetSlotInfo(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t slot_id,
                                std::vector<uint8_t>* slot_description,
                                std::vector<uint8_t>* manufacturer_id,
                                uint64_t* flags,
@@ -46,7 +49,8 @@ public:
                                uint8_t* firmware_version_major,
                                uint8_t* firmware_version_minor) = 0;
   // PKCS #11 v2.20 section 11.5 page 109.
-  virtual uint32_t GetTokenInfo(uint64_t slot_id,
+  virtual uint32_t GetTokenInfo(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t slot_id,
                                 std::vector<uint8_t>* label,
                                 std::vector<uint8_t>* manufacturer_id,
                                 std::vector<uint8_t>* model,
@@ -67,243 +71,308 @@ public:
                                 uint8_t* firmware_version_major,
                                 uint8_t* firmware_version_minor) = 0;
   // PKCS #11 v2.20 section 11.5 page 111.
-  virtual uint32_t GetMechanismList(uint64_t slot_id,
-                                    std::vector<uint64_t>* mechanism_list) = 0;
+  virtual uint32_t GetMechanismList(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t slot_id,
+      std::vector<uint64_t>* mechanism_list) = 0;
   // PKCS #11 v2.20 section 11.5 page 112.
-  virtual uint32_t GetMechanismInfo(uint64_t slot_id,
-                                    uint64_t mechanism_type,
-                                    uint64_t* min_key_size,
-                                    uint64_t* max_key_size,
-                                    uint64_t* flags) = 0;
+  virtual uint32_t GetMechanismInfo(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t slot_id,
+      uint64_t mechanism_type,
+      uint64_t* min_key_size,
+      uint64_t* max_key_size,
+      uint64_t* flags) = 0;
   // PKCS #11 v2.20 section 11.5 page 113.
-  virtual uint32_t InitToken(uint64_t slot_id,
+  virtual uint32_t InitToken(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t slot_id,
                              const std::string* so_pin,
                              const std::vector<uint8_t>& label) = 0;
   // PKCS #11 v2.20 section 11.5 page 115.
-  virtual uint32_t InitPIN(uint64_t session_id, const std::string* pin) = 0;
+  virtual uint32_t InitPIN(const chromeos::SecureBlob& isolate_credential,
+                           uint64_t session_id, const std::string* pin) = 0;
   // PKCS #11 v2.20 section 11.5 page 116.
-  virtual uint32_t SetPIN(uint64_t session_id,
+  virtual uint32_t SetPIN(const chromeos::SecureBlob& isolate_credential,
+                          uint64_t session_id,
                           const std::string* old_pin,
                           const std::string* new_pin) = 0;
   // PKCS #11 v2.20 section 11.6 page 117.
-  virtual uint32_t OpenSession(uint64_t slot_id, uint64_t flags,
+  virtual uint32_t OpenSession(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t slot_id, uint64_t flags,
                                uint64_t* session) = 0;
   // PKCS #11 v2.20 section 11.6 page 118.
-  virtual uint32_t CloseSession(uint64_t session) = 0;
+  virtual uint32_t CloseSession(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t session) = 0;
   // PKCS #11 v2.20 section 11.6 page 120.
-  virtual uint32_t CloseAllSessions(uint64_t slot_id) = 0;
+  virtual uint32_t CloseAllSessions(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t slot_id) = 0;
   // PKCS #11 v2.20 section 11.6 page 120.
-  virtual uint32_t GetSessionInfo(uint64_t session_id,
-                                  uint64_t* slot_id,
-                                  uint64_t* state,
-                                  uint64_t* flags,
-                                  uint64_t* device_error) = 0;
+  virtual uint32_t GetSessionInfo(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      uint64_t* slot_id,
+      uint64_t* state,
+      uint64_t* flags,
+      uint64_t* device_error) = 0;
   // PKCS #11 v2.20 section 11.6 page 121.
-  virtual uint32_t GetOperationState(uint64_t session_id,
-                                     std::vector<uint8_t>* operation_state) = 0;
+  virtual uint32_t GetOperationState(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      std::vector<uint8_t>* operation_state) = 0;
   // PKCS #11 v2.20 section 11.6 page 123.
   virtual uint32_t SetOperationState(
+      const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,
       const std::vector<uint8_t>& operation_state,
       uint64_t encryption_key_handle,
       uint64_t authentication_key_handle) = 0;
   // PKCS #11 v2.20 section 11.6 page 125.
-  virtual uint32_t Login(uint64_t session_id,
+  virtual uint32_t Login(const chromeos::SecureBlob& isolate_credential,
+                         uint64_t session_id,
                          uint64_t user_type,
                          const std::string* pin) = 0;
   // PKCS #11 v2.20 section 11.6 page 127.
-  virtual uint32_t Logout(uint64_t session_id) = 0;
+  virtual uint32_t Logout(const chromeos::SecureBlob& isolate_credential,
+                          uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.7 page 128.
-  virtual uint32_t CreateObject(uint64_t session_id,
+  virtual uint32_t CreateObject(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t session_id,
                                 const std::vector<uint8_t>& attributes,
                                 uint64_t* new_object_handle) = 0;
   // PKCS #11 v2.20 section 11.7 page 130.
-  virtual uint32_t CopyObject(uint64_t session_id,
+  virtual uint32_t CopyObject(const chromeos::SecureBlob& isolate_credential,
+                              uint64_t session_id,
                               uint64_t object_handle,
                               const std::vector<uint8_t>& attributes,
                               uint64_t* new_object_handle) = 0;
   // PKCS #11 v2.20 section 11.7 page 131.
-  virtual uint32_t DestroyObject(uint64_t session_id,
+  virtual uint32_t DestroyObject(const chromeos::SecureBlob& isolate_credential,
+                                 uint64_t session_id,
                                  uint64_t object_handle) = 0;
   // PKCS #11 v2.20 section 11.7 page 132.
-  virtual uint32_t GetObjectSize(uint64_t session_id,
+  virtual uint32_t GetObjectSize(const chromeos::SecureBlob& isolate_credential,
+                                 uint64_t session_id,
                                  uint64_t object_handle,
                                  uint64_t* object_size) = 0;
   // PKCS #11 v2.20 section 11.7 page 133.
-  virtual uint32_t GetAttributeValue(uint64_t session_id,
-                                     uint64_t object_handle,
-                                     const std::vector<uint8_t>& attributes_in,
-                                     std::vector<uint8_t>* attributes_out) = 0;
+  virtual uint32_t GetAttributeValue(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      uint64_t object_handle,
+      const std::vector<uint8_t>& attributes_in,
+      std::vector<uint8_t>* attributes_out) = 0;
   // PKCS #11 v2.20 section 11.7 page 135.
   virtual uint32_t SetAttributeValue(
+      const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,
       uint64_t object_handle,
       const std::vector<uint8_t>& attributes) = 0;
   // PKCS #11 v2.20 section 11.7 page 136.
-  virtual uint32_t FindObjectsInit(uint64_t session_id,
-                                   const std::vector<uint8_t>& attributes) = 0;
+  virtual uint32_t FindObjectsInit(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      const std::vector<uint8_t>& attributes) = 0;
   // PKCS #11 v2.20 section 11.7 page 137.
-  virtual uint32_t FindObjects(uint64_t session_id,
+  virtual uint32_t FindObjects(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                uint64_t max_object_count,
                                std::vector<uint64_t>* object_list) = 0;
   // PKCS #11 v2.20 section 11.7 page 138.
-  virtual uint32_t FindObjectsFinal(uint64_t session_id) = 0;
+  virtual uint32_t FindObjectsFinal(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id) = 0;
   // PKCS #11 v2.20 section 11.8 page 139.
-  virtual uint32_t EncryptInit(uint64_t session_id,
+  virtual uint32_t EncryptInit(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                uint64_t mechanism_type,
                                const std::vector<uint8_t>& mechanism_parameter,
                                uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.8 page 140.
-  virtual uint32_t Encrypt(uint64_t session_id,
+  virtual uint32_t Encrypt(const chromeos::SecureBlob& isolate_credential,
+                           uint64_t session_id,
                            const std::vector<uint8_t>& data_in,
                            uint64_t max_out_length,
                            uint64_t* actual_out_length,
                            std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.8 page 141.
-  virtual uint32_t EncryptUpdate(uint64_t session_id,
+  virtual uint32_t EncryptUpdate(const chromeos::SecureBlob& isolate_credential,
+                                 uint64_t session_id,
                                  const std::vector<uint8_t>& data_in,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.8 page 141.
-  virtual uint32_t EncryptFinal(uint64_t session_id,
+  virtual uint32_t EncryptFinal(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t session_id,
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.9 page 144.
-  virtual uint32_t DecryptInit(uint64_t session_id,
+  virtual uint32_t DecryptInit(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                uint64_t mechanism_type,
                                const std::vector<uint8_t>& mechanism_parameter,
                                uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.9 page 145.
-  virtual uint32_t Decrypt(uint64_t session_id,
+  virtual uint32_t Decrypt(const chromeos::SecureBlob& isolate_credential,
+                           uint64_t session_id,
                            const std::vector<uint8_t>& data_in,
                            uint64_t max_out_length,
                            uint64_t* actual_out_length,
                            std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.9 page 146.
-  virtual uint32_t DecryptUpdate(uint64_t session_id,
+  virtual uint32_t DecryptUpdate(const chromeos::SecureBlob& isolate_credential,
+                                 uint64_t session_id,
                                  const std::vector<uint8_t>& data_in,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.9 page 146.
-  virtual uint32_t DecryptFinal(uint64_t session_id,
+  virtual uint32_t DecryptFinal(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t session_id,
                                 uint64_t max_out_length,
                                 uint64_t* actual_out_length,
                                 std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.10 page 148.
   virtual uint32_t DigestInit(
+      const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,
       uint64_t mechanism_type,
       const std::vector<uint8_t>& mechanism_parameter) = 0;
   // PKCS #11 v2.20 section 11.10 page 149.
-  virtual uint32_t Digest(uint64_t session_id,
+  virtual uint32_t Digest(const chromeos::SecureBlob& isolate_credential,
+                          uint64_t session_id,
                           const std::vector<uint8_t>& data_in,
                           uint64_t max_out_length,
                           uint64_t* actual_out_length,
                           std::vector<uint8_t>* digest) = 0;
   // PKCS #11 v2.20 section 11.10 page 150.
-  virtual uint32_t DigestUpdate(uint64_t session_id,
+  virtual uint32_t DigestUpdate(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t session_id,
                                 const std::vector<uint8_t>& data_in) = 0;
   // PKCS #11 v2.20 section 11.10 page 150.
-  virtual uint32_t DigestKey(uint64_t session_id,
+  virtual uint32_t DigestKey(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id,
                              uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.10 page 151.
-  virtual uint32_t DigestFinal(uint64_t session_id,
+  virtual uint32_t DigestFinal(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                uint64_t max_out_length,
                                uint64_t* actual_out_length,
                                std::vector<uint8_t>* digest) = 0;
   // PKCS #11 v2.20 section 11.11 page 152.
-  virtual uint32_t SignInit(uint64_t session_id,
+  virtual uint32_t SignInit(const chromeos::SecureBlob& isolate_credential,
+                            uint64_t session_id,
                             uint64_t mechanism_type,
                             const std::vector<uint8_t>& mechanism_parameter,
                             uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.11 page 153.
-  virtual uint32_t Sign(uint64_t session_id,
+  virtual uint32_t Sign(const chromeos::SecureBlob& isolate_credential,
+                        uint64_t session_id,
                         const std::vector<uint8_t>& data,
                         uint64_t max_out_length,
                         uint64_t* actual_out_length,
                         std::vector<uint8_t>* signature) = 0;
   // PKCS #11 v2.20 section 11.11 page 154.
-  virtual uint32_t SignUpdate(uint64_t session_id,
+  virtual uint32_t SignUpdate(const chromeos::SecureBlob& isolate_credential,
+                              uint64_t session_id,
                               const std::vector<uint8_t>& data_part) = 0;
   // PKCS #11 v2.20 section 11.11 page 154.
-  virtual uint32_t SignFinal(uint64_t session_id,
+  virtual uint32_t SignFinal(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id,
                              uint64_t max_out_length,
                              uint64_t* actual_out_length,
                              std::vector<uint8_t>* signature) = 0;
   // PKCS #11 v2.20 section 11.11 page 155.
   virtual uint32_t SignRecoverInit(
-      uint64_t session_id,
+     const chromeos::SecureBlob& isolate_credential,
+     uint64_t session_id,
       uint64_t mechanism_type,
       const std::vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.11 page 156.
-  virtual uint32_t SignRecover(uint64_t session_id,
+  virtual uint32_t SignRecover(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                const std::vector<uint8_t>& data,
                                uint64_t max_out_length,
                                uint64_t* actual_out_length,
                                std::vector<uint8_t>* signature) = 0;
   // PKCS #11 v2.20 section 11.12 page 157.
-  virtual uint32_t VerifyInit(uint64_t session_id,
+  virtual uint32_t VerifyInit(const chromeos::SecureBlob& isolate_credential,
+                              uint64_t session_id,
                               uint64_t mechanism_type,
                               const std::vector<uint8_t>& mechanism_parameter,
                               uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.12 page 158.
-  virtual uint32_t Verify(uint64_t session_id,
+  virtual uint32_t Verify(const chromeos::SecureBlob& isolate_credential,
+                          uint64_t session_id,
                           const std::vector<uint8_t>& data,
                           const std::vector<uint8_t>& signature) = 0;
   // PKCS #11 v2.20 section 11.12 page 159.
-  virtual uint32_t VerifyUpdate(uint64_t session_id,
+  virtual uint32_t VerifyUpdate(const chromeos::SecureBlob& isolate_credential,
+                                uint64_t session_id,
                                 const std::vector<uint8_t>& data_part) = 0;
   // PKCS #11 v2.20 section 11.12 page 159.
-  virtual uint32_t VerifyFinal(uint64_t session_id,
+  virtual uint32_t VerifyFinal(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                const std::vector<uint8_t>& signature) = 0;
   // PKCS #11 v2.20 section 11.12 page 161.
   virtual uint32_t VerifyRecoverInit(
+      const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,
       uint64_t mechanism_type,
       const std::vector<uint8_t>& mechanism_parameter,
       uint64_t key_handle) = 0;
   // PKCS #11 v2.20 section 11.12 page 161.
-  virtual uint32_t VerifyRecover(uint64_t session_id,
+  virtual uint32_t VerifyRecover(const chromeos::SecureBlob& isolate_credential,
+                                 uint64_t session_id,
                                  const std::vector<uint8_t>& signature,
                                  uint64_t max_out_length,
                                  uint64_t* actual_out_length,
                                  std::vector<uint8_t>* data) = 0;
   // PKCS #11 v2.20 section 11.13 page 163.
-  virtual uint32_t DigestEncryptUpdate(uint64_t session_id,
-                                       const std::vector<uint8_t>& data_in,
-                                       uint64_t max_out_length,
-                                       uint64_t* actual_out_length,
-                                       std::vector<uint8_t>* data_out) = 0;
+  virtual uint32_t DigestEncryptUpdate(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      const std::vector<uint8_t>& data_in,
+      uint64_t max_out_length,
+      uint64_t* actual_out_length,
+      std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.13 page 165.
-  virtual uint32_t DecryptDigestUpdate(uint64_t session_id,
-                                       const std::vector<uint8_t>& data_in,
-                                       uint64_t max_out_length,
-                                       uint64_t* actual_out_length,
-                                       std::vector<uint8_t>* data_out) = 0;
+  virtual uint32_t DecryptDigestUpdate(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      const std::vector<uint8_t>& data_in,
+      uint64_t max_out_length,
+      uint64_t* actual_out_length,
+      std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.13 page 169.
-  virtual uint32_t SignEncryptUpdate(uint64_t session_id,
-                                     const std::vector<uint8_t>& data_in,
-                                     uint64_t max_out_length,
-                                     uint64_t* actual_out_length,
-                                     std::vector<uint8_t>* data_out) = 0;
+  virtual uint32_t SignEncryptUpdate(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      const std::vector<uint8_t>& data_in,
+      uint64_t max_out_length,
+      uint64_t* actual_out_length,
+      std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.13 page 171.
-  virtual uint32_t DecryptVerifyUpdate(uint64_t session_id,
-                                       const std::vector<uint8_t>& data_in,
-                                       uint64_t max_out_length,
-                                       uint64_t* actual_out_length,
-                                       std::vector<uint8_t>* data_out) = 0;
+  virtual uint32_t DecryptVerifyUpdate(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      const std::vector<uint8_t>& data_in,
+      uint64_t max_out_length,
+      uint64_t* actual_out_length,
+      std::vector<uint8_t>* data_out) = 0;
   // PKCS #11 v2.20 section 11.14 page 175.
-  virtual uint32_t GenerateKey(uint64_t session_id,
+  virtual uint32_t GenerateKey(const chromeos::SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                uint64_t mechanism_type,
                                const std::vector<uint8_t>& mechanism_parameter,
                                const std::vector<uint8_t>& attributes,
                                uint64_t* key_handle) = 0;
   // PKCS #11 v2.20 section 11.14 page 176.
   virtual uint32_t GenerateKeyPair(
+      const chromeos::SecureBlob& isolate_credential,
       uint64_t session_id,
       uint64_t mechanism_type,
       const std::vector<uint8_t>& mechanism_parameter,
@@ -312,7 +381,8 @@ public:
       uint64_t* public_key_handle,
       uint64_t* private_key_handle) = 0;
   // PKCS #11 v2.20 section 11.14 page 178.
-  virtual uint32_t WrapKey(uint64_t session_id,
+  virtual uint32_t WrapKey(const chromeos::SecureBlob& isolate_credential,
+                           uint64_t session_id,
                            uint64_t mechanism_type,
                            const std::vector<uint8_t>& mechanism_parameter,
                            uint64_t wrapping_key_handle,
@@ -321,7 +391,8 @@ public:
                            uint64_t* actual_out_length,
                            std::vector<uint8_t>* wrapped_key) = 0;
   // PKCS #11 v2.20 section 11.14 page 180.
-  virtual uint32_t UnwrapKey(uint64_t session_id,
+  virtual uint32_t UnwrapKey(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id,
                              uint64_t mechanism_type,
                              const std::vector<uint8_t>& mechanism_parameter,
                              uint64_t wrapping_key_handle,
@@ -329,19 +400,23 @@ public:
                              const std::vector<uint8_t>& attributes,
                              uint64_t* key_handle) = 0;
   // PKCS #11 v2.20 section 11.14 page 182.
-  virtual uint32_t DeriveKey(uint64_t session_id,
+  virtual uint32_t DeriveKey(const chromeos::SecureBlob& isolate_credential,
+                             uint64_t session_id,
                              uint64_t mechanism_type,
                              const std::vector<uint8_t>& mechanism_parameter,
                              uint64_t base_key_handle,
                              const std::vector<uint8_t>& attributes,
                              uint64_t* key_handle) = 0;
   // PKCS #11 v2.20 section 11.15 page 184.
-  virtual uint32_t SeedRandom(uint64_t session_id,
+  virtual uint32_t SeedRandom(const chromeos::SecureBlob& isolate_credential,
+                              uint64_t session_id,
                               const std::vector<uint8_t>& seed) = 0;
   // PKCS #11 v2.20 section 11.15 page 184.
-  virtual uint32_t GenerateRandom(uint64_t session_id,
-                                  uint64_t num_bytes,
-                                  std::vector<uint8_t>* random_data) = 0;
+  virtual uint32_t GenerateRandom(
+      const chromeos::SecureBlob& isolate_credential,
+      uint64_t session_id,
+      uint64_t num_bytes,
+      std::vector<uint8_t>* random_data) = 0;
 
 private:
   DISALLOW_COPY_AND_ASSIGN(ChapsInterface);

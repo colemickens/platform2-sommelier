@@ -241,6 +241,11 @@ inline void ClearString(const std::string& str) {
   chromeos::SecureMemset(const_cast<char*>(str.data()), 0, str.length());
 }
 
+inline void ClearVector(const std::vector<uint8_t>& vector) {
+  chromeos::SecureMemset(const_cast<uint8_t*>(&vector.front()), 0,
+                         vector.size());
+}
+
 }  // namespace chaps
 
 #endif  // CHAPS_CHAPS_UTILITY_H

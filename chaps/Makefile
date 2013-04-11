@@ -3,11 +3,20 @@
 # found in the LICENSE file.
 #
 # Top-level Makefile for chaps.
+#
+# Setting LINUX_BUILD=1 will build chaps for a standard (non-Chrome OS) linux
+# system.
 
 # Pull in chromium os defaults
 OUT ?= $(PWD)/build-opt-local
 
 include common.mk
+
+ifeq ($(LINUX_BUILD), 1)
+  PLATFORM = linux
+else
+  PLATFORM = chromeos
+endif
 
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
@@ -71,6 +80,7 @@ chapsd_OBJS = $(COMMON_OBJS) \
               chaps_service.o \
               chaps_service_redirect.o \
               chaps_adaptor.o \
+              isolate_${PLATFORM}.o \
               slot_manager_impl.o \
               session_impl.o \
               object_impl.o \
@@ -93,14 +103,15 @@ clean: CLEAN(chapsd)
 all: CXX_BINARY(chapsd)
 
 # Chaps Client Library
-libchaps_OBJS = $(COMMON_OBJS) chaps.o chaps_proxy.o login_event_client.o
+libchaps_OBJS = $(COMMON_OBJS) chaps.o chaps_proxy.o login_event_client.o \
+                isolate_${PLATFORM}.o
 CXX_LIBRARY(libchaps.so): $(libchaps_OBJS)
 clean: CLEAN(libchaps.so)
 all: CXX_LIBRARY(libchaps.so)
 
 # Chaps Client CLI App
 chaps_client_OBJS = $(COMMON_OBJS) chaps_client.o chaps_proxy.o \
-                    login_event_client.o
+                    login_event_client.o isolate_${PLATFORM}.o
 CXX_BINARY(chaps_client): $(chaps_client_OBJS)
 clean: CLEAN(chaps_client)
 all: CXX_BINARY(chaps_client)
@@ -140,7 +151,7 @@ qemu_test_filter := -$(subst $(space),:,$(strip $(qemu_test_exclusions)))
 tests: override GTEST_ARGS.qemu.arm := --gtest_filter=$(qemu_test_filter)
 
 # Unit Tests
-chaps_test_OBJS = $(COMMON_OBJS) chaps_test.o
+chaps_test_OBJS = $(COMMON_OBJS) isolate_${PLATFORM}.o chaps_test.o
 chaps_test_LIBS = $(GMOCK_LIBS)
 CXX_BINARY(chaps_test): $(chaps_test_OBJS) CXX_LIBRARY(libchaps.so)
 CXX_BINARY(chaps_test): LDLIBS += $(chaps_test_LIBS)
@@ -148,7 +159,8 @@ clean: CLEAN(chaps_test)
 tests: TEST(CXX_BINARY(chaps_test))
 
 chaps_service_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
-                          chaps_service_test.o chaps_service.o
+                          chaps_service_test.o chaps_service.o \
+                          isolate_${PLATFORM}.o
 chaps_service_test_LIBS = $(GMOCK_LIBS)
 CXX_BINARY(chaps_service_test): $(chaps_service_test_OBJS)
 CXX_BINARY(chaps_service_test): LDLIBS += $(chaps_service_test_LIBS)
@@ -156,7 +168,8 @@ clean: CLEAN(chaps_service_test)
 tests: TEST(CXX_BINARY(chaps_service_test))
 
 slot_manager_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
-                         slot_manager_test.o slot_manager_impl.o
+                         slot_manager_test.o slot_manager_impl.o \
+                         isolate_${PLATFORM}.o
 slot_manager_test_LIBS = $(GMOCK_LIBS)
 CXX_BINARY(slot_manager_test): $(slot_manager_test_OBJS)
 CXX_BINARY(slot_manager_test): LDLIBS += $(slot_manager_test_LIBS)

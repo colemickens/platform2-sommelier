@@ -6,10 +6,13 @@
 #define CHAPS_LOGIN_EVENT_CLIENT_H_
 
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 
 #include "pkcs11/cryptoki.h"
+#include "chromeos/secure_blob.h"
+#include "chaps/chaps.h"
 
 namespace chaps {
 
@@ -19,33 +22,58 @@ class ChapsProxyImpl;
 //   LoginEventClient client;
 //   if (!client.Init())
 //     ...
-//   client.FireLoginEvent(...);
+//   client.OpenIsolate(...);
+//   client.FireLoadTokenEvent(...);
 class EXPORT_SPEC LoginEventClient {
  public:
   LoginEventClient();
   virtual ~LoginEventClient();
 
-  // Sends a login event. The Chaps daemon will insert a token for the user.
+  // Open an isolate into which tokens can be loaded. To attempt to open an
+  // existing isolate, pass its isolate credential, otherwise pass be empty
+  // SecureBlob to create a new isolate.  Returns true if the given isolate
+  // credential is valid and available, returns false if a new isolate was
+  // created, and isolate_credential will be set to the new isolate's
+  // credential.
+  //
+  //  isolate_credential - The users isolate into which to login, or a empty if
+  //                 logging in to a new isolate. On return contains the isolate
+  //                 credential for the isolate the user is logged in on.
+  bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
+
+  // Close a given isolate. If all outstanding OpenIsolate calls have been
+  // closed, then all tokens will be unloaded from the isolate and the isolate
+  // will be destroyed.
+  //  isolate_credential - The isolate into which they are logging out from.
+  void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
+
+  // Sends a load token event. The Chaps daemon will insert a token into the
+  // given user's isolate.
+  //  isolate_credential - The isolate into which the token should be loaded.
   //  path - The path to the user's token directory.
   //  auth_data - Authorization data to unlock the token.
-  void FireLoginEvent(const std::string& path,
-                      const uint8_t* auth_data,
-                      size_t auth_data_length);
+  void LoadToken(const chromeos::SecureBlob& isolate_credential,
+                 const std::string& path,
+                 const uint8_t* auth_data,
+                 size_t auth_data_length);
 
-  // Sends a logout event. The Chaps daemon will remove the user's token.
+  // Sends an unload event. The Chaps daemon will remove the token from the
+  // given users isolate.
+  //  isolate_credential - The isolate into which the token should be unloaded.
   //  path - The path to the user's token directory.
-  void FireLogoutEvent(const std::string& path);
+  void UnloadToken(const chromeos::SecureBlob& isolate_credential,
+                   const std::string& path);
 
   // Notifies Chaps that a token's authorization data has been changed. The
   // Chaps daemon will re-protect the token with the new data.
   //  path - The path to the user's token directory.
   //  old_auth_data - Authorization data to unlock the token as it is.
   //  new_auth_data - The new authorization data.
-  void FireChangeAuthDataEvent(const std::string& path,
-                               const uint8_t* old_auth_data,
-                               size_t old_auth_data_length,
-                               const uint8_t* new_auth_data,
-                               size_t new_auth_data_length);
+  void ChangeTokenAuthData(const std::string& path,
+                           const uint8_t* old_auth_data,
+                           size_t old_auth_data_length,
+                           const uint8_t* new_auth_data,
+                           size_t new_auth_data_length);
  private:
   ChapsProxyImpl* proxy_;
   bool is_connected_;

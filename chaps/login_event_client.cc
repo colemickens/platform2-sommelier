@@ -26,35 +26,56 @@ LoginEventClient::~LoginEventClient() {
   delete proxy_;
 }
 
-void LoginEventClient::FireLoginEvent(const string& path,
-                                      const uint8_t* auth_data,
-                                      size_t auth_data_length) {
+bool LoginEventClient::OpenIsolate(SecureBlob* isolate_credential) {
   CHECK(proxy_);
   if (!Connect()) {
     LOG(WARNING) << "Failed to connect to the Chaps daemon. "
                  << "Login notification will not be sent.";
-    return;
+    return false;
   }
-  SecureBlob auth_data_blob(auth_data, auth_data_length);
-  proxy_->FireLoginEvent(path, auth_data_blob);
+  return proxy_->OpenIsolate(isolate_credential);
 }
 
-void LoginEventClient::FireLogoutEvent(const string& path) {
+void LoginEventClient::CloseIsolate(const SecureBlob& isolate_credential) {
   CHECK(proxy_);
   if (!Connect()) {
     LOG(WARNING) << "Failed to connect to the Chaps daemon. "
                  << "Logout notification will not be sent.";
     return;
   }
-  proxy_->FireLogoutEvent(path);
+  proxy_->CloseIsolate(isolate_credential);
 }
 
-void LoginEventClient::FireChangeAuthDataEvent(
-    const string& path,
-    const uint8_t* old_auth_data,
-    size_t old_auth_data_length,
-    const uint8_t* new_auth_data,
-    size_t new_auth_data_length) {
+void LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
+                                 const string& path,
+                                 const uint8_t* auth_data,
+                                 size_t auth_data_length) {
+  CHECK(proxy_);
+  if (!Connect()) {
+    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
+                 << "Load Token notification will not be sent.";
+    return;
+  }
+  SecureBlob auth_data_blob(auth_data, auth_data_length);
+  proxy_->LoadToken(isolate_credential, path, auth_data_blob);
+}
+
+void LoginEventClient::UnloadToken(const SecureBlob& isolate_credential,
+                                   const string& path) {
+  CHECK(proxy_);
+  if (!Connect()) {
+    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
+                 << "Unload Token notification will not be sent.";
+    return;
+  }
+  proxy_->UnloadToken(isolate_credential, path);
+}
+
+void LoginEventClient::ChangeTokenAuthData(const string& path,
+                                           const uint8_t* old_auth_data,
+                                           size_t old_auth_data_length,
+                                           const uint8_t* new_auth_data,
+                                           size_t new_auth_data_length) {
   CHECK(proxy_);
   if (!Connect()) {
     LOG(WARNING) << "Failed to connect to the Chaps daemon. "
@@ -63,9 +84,7 @@ void LoginEventClient::FireChangeAuthDataEvent(
   }
   SecureBlob old_auth_data_blob(old_auth_data, old_auth_data_length);
   SecureBlob new_auth_data_blob(new_auth_data, new_auth_data_length);
-  proxy_->FireChangeAuthDataEvent(path,
-                                  old_auth_data_blob,
-                                  new_auth_data_blob);
+  proxy_->ChangeTokenAuthData(path, old_auth_data_blob, new_auth_data_blob);
 }
 
 bool LoginEventClient::Connect() {

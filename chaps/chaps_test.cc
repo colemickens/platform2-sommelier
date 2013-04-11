@@ -50,7 +50,7 @@ TEST(TestInitialize, InitializeNULL) {
 }
 
 TEST(TestInitializeDeathTest, InitializeOutOfMem) {
-  EnableMockProxy(NULL, false);
+  EnableMockProxy(NULL, NULL, false);
   EXPECT_DEATH_IF_SUPPORTED(C_Initialize(NULL_PTR), "Check failed");
   DisableMockProxy();
 }
@@ -137,8 +137,8 @@ protected:
 
 TEST_F(TestSlotList, SlotListOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
+  EXPECT_CALL(proxy, GetSlotList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(slot_list_all_),
                       Return(CKR_OK)));
   CK_SLOT_ID slots[3];
   CK_ULONG num_slots = 3;
@@ -164,8 +164,8 @@ TEST_F(TestSlotList, SlotListNotInit) {
 
 TEST_F(TestSlotList, SlotListNoBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
+  EXPECT_CALL(proxy, GetSlotList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(slot_list_all_),
                       Return(CKR_OK)));
   CK_ULONG num_slots = 17;
   EXPECT_EQ(CKR_OK, C_GetSlotList(CK_FALSE, NULL, &num_slots));
@@ -174,8 +174,8 @@ TEST_F(TestSlotList, SlotListNoBuffer) {
 
 TEST_F(TestSlotList, SlotListSmallBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
+  EXPECT_CALL(proxy, GetSlotList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(slot_list_all_),
                       Return(CKR_OK)));
   CK_SLOT_ID slots[2];
   CK_ULONG num_slots = 2;
@@ -185,8 +185,8 @@ TEST_F(TestSlotList, SlotListSmallBuffer) {
 
 TEST_F(TestSlotList, SlotListLargeBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_all_),
+  EXPECT_CALL(proxy, GetSlotList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(slot_list_all_),
                       Return(CKR_OK)));
   CK_SLOT_ID slots[4];
   CK_ULONG num_slots = 4;
@@ -199,8 +199,8 @@ TEST_F(TestSlotList, SlotListLargeBuffer) {
 
 TEST_F(TestSlotList, SlotListPresentOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(true, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_present_),
+  EXPECT_CALL(proxy, GetSlotList(_, true, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(slot_list_present_),
                       Return(CKR_OK)));
   CK_SLOT_ID slots[4];
   CK_ULONG num_slots = 4;
@@ -212,8 +212,8 @@ TEST_F(TestSlotList, SlotListPresentOnly) {
 
 TEST_F(TestSlotList, SlotListFailure) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(slot_list_present_),
+  EXPECT_CALL(proxy, GetSlotList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(slot_list_present_),
                       Return(CKR_FUNCTION_FAILED)));
   CK_SLOT_ID slots[4];
   CK_ULONG num_slots = 4;
@@ -223,8 +223,9 @@ TEST_F(TestSlotList, SlotListFailure) {
 // Slot Info Tests
 TEST(TestSlotInfo, SlotInfoOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotInfo(1, _, _, _, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<3>(1), Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              GetSlotInfo(_, 1, _, _, _, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
   CK_SLOT_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetSlotInfo(1, &info));
@@ -249,7 +250,8 @@ TEST(TestSlotInfo, SlotInfoNotInit) {
 
 TEST(TestSlotInfo, SlotInfoFailure) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSlotInfo(1, _, _, _, _, _, _, _))
+  EXPECT_CALL(proxy,
+              GetSlotInfo(_, 1, _, _, _, _, _, _, _))
       .WillOnce(Return(CKR_FUNCTION_FAILED));
   CK_SLOT_INFO info;
   EXPECT_EQ(CKR_FUNCTION_FAILED, C_GetSlotInfo(1, &info));
@@ -330,8 +332,8 @@ protected:
 
 TEST_F(TestMechList, MechListOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+  EXPECT_CALL(proxy, GetMechanismList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(mech_list_all_),
                       Return(CKR_OK)));
   CK_SLOT_ID mechs[3];
   CK_ULONG num_mechs = 3;
@@ -357,8 +359,8 @@ TEST_F(TestMechList, MechListNotInit) {
 
 TEST_F(TestMechList, MechListNoBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+  EXPECT_CALL(proxy, GetMechanismList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(mech_list_all_),
                       Return(CKR_OK)));
   CK_ULONG num_mechs = 17;
   EXPECT_EQ(CKR_OK, C_GetMechanismList(CK_FALSE, NULL, &num_mechs));
@@ -367,8 +369,8 @@ TEST_F(TestMechList, MechListNoBuffer) {
 
 TEST_F(TestMechList, MechListSmallBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+  EXPECT_CALL(proxy, GetMechanismList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(mech_list_all_),
                       Return(CKR_OK)));
   CK_SLOT_ID mechs[2];
   CK_ULONG num_mechs = 2;
@@ -379,8 +381,8 @@ TEST_F(TestMechList, MechListSmallBuffer) {
 
 TEST_F(TestMechList, MechListLargeBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_all_),
+  EXPECT_CALL(proxy, GetMechanismList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(mech_list_all_),
                       Return(CKR_OK)));
   CK_SLOT_ID mechs[4];
   CK_ULONG num_mechs = 4;
@@ -393,8 +395,8 @@ TEST_F(TestMechList, MechListLargeBuffer) {
 
 TEST_F(TestMechList, MechListPresentOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(true, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_present_),
+  EXPECT_CALL(proxy, GetMechanismList(_, true, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(mech_list_present_),
                       Return(CKR_OK)));
   CK_SLOT_ID mechs[4];
   CK_ULONG num_mechs = 4;
@@ -406,8 +408,8 @@ TEST_F(TestMechList, MechListPresentOnly) {
 
 TEST_F(TestMechList, MechListFailure) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismList(false, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(mech_list_present_),
+  EXPECT_CALL(proxy, GetMechanismList(_, false, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(mech_list_present_),
                       Return(CKR_FUNCTION_FAILED)));
   CK_SLOT_ID mechs[4];
   CK_ULONG num_mechs = 4;
@@ -418,8 +420,8 @@ TEST_F(TestMechList, MechListFailure) {
 // Mechanism Info Tests
 TEST(TestMechInfo, MechInfoOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismInfo(1, 2, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetMechanismInfo(_, 1, 2, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(1), Return(CKR_OK)));
   CK_MECHANISM_INFO info;
   memset(&info, 0, sizeof(info));
   EXPECT_EQ(CKR_OK, C_GetMechanismInfo(1, 2, &info));
@@ -439,7 +441,7 @@ TEST(TestMechInfo, MechInfoNotInit) {
 
 TEST(TestMechInfo, MechInfoFailure) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetMechanismInfo(1, 2, _, _, _))
+  EXPECT_CALL(proxy, GetMechanismInfo(_, 1, 2, _, _, _))
       .WillOnce(Return(CKR_MECHANISM_INVALID));
   CK_MECHANISM_INFO info;
   EXPECT_EQ(CKR_MECHANISM_INVALID, C_GetMechanismInfo(1, 2, &info));
@@ -448,7 +450,7 @@ TEST(TestMechInfo, MechInfoFailure) {
 // Init Token Tests
 TEST(TestInitToken, InitTokenOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitToken(1, _, _))
+  EXPECT_CALL(proxy, InitToken(_, 1, _, _))
       .WillOnce(Return(CKR_OK));
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   CK_UTF8CHAR label[32];
@@ -472,7 +474,7 @@ TEST(TestInitToken, InitTokenNULLLabel) {
 
 TEST(TestInitToken, InitTokenNULLPin) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitToken(1, _, _))
+  EXPECT_CALL(proxy, InitToken(_, 1, _, _))
       .WillOnce(Return(CKR_OK));
   CK_UTF8CHAR label[32];
   memset(label, ' ', 32);
@@ -482,7 +484,7 @@ TEST(TestInitToken, InitTokenNULLPin) {
 
 TEST(TestInitToken, InitTokenFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitToken(1, _, _))
+  EXPECT_CALL(proxy, InitToken(_, 1, _, _))
       .WillOnce(Return(CKR_PIN_INVALID));
   CK_UTF8CHAR label[32];
   memset(label, ' ', 32);
@@ -493,7 +495,7 @@ TEST(TestInitToken, InitTokenFail) {
 // Init PIN Tests
 TEST(TestInitPIN, InitPINOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitPIN(1, _))
+  EXPECT_CALL(proxy, InitPIN(_, 1, _))
       .WillOnce(Return(CKR_OK));
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   EXPECT_EQ(CKR_OK, C_InitPIN(1, pin, 4));
@@ -506,14 +508,14 @@ TEST(TestInitPIN, InitPINNotInit) {
 
 TEST(TestInitPIN, InitPINNULLPin) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitPIN(1, _))
+  EXPECT_CALL(proxy, InitPIN(_, 1, _))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_InitPIN(1, NULL, 0));
 }
 
 TEST(TestInitPIN, InitPINFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, InitPIN(1, _))
+  EXPECT_CALL(proxy, InitPIN(_, 1, _))
       .WillOnce(Return(CKR_PIN_INVALID));
   EXPECT_EQ(CKR_PIN_INVALID, C_InitPIN(1, NULL, 0));
 }
@@ -521,7 +523,7 @@ TEST(TestInitPIN, InitPINFail) {
 // Set PIN Tests
 TEST(TestSetPIN, SetPINOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetPIN(1, _, _))
+  EXPECT_CALL(proxy, SetPIN(_, 1, _, _))
       .WillOnce(Return(CKR_OK));
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   EXPECT_EQ(CKR_OK, C_SetPIN(1, pin, 4, pin, 4));
@@ -534,14 +536,14 @@ TEST(TestSetPIN, SetPINNotInit) {
 
 TEST(TestSetPIN, SetPINNULLPin) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetPIN(1, _, _))
+  EXPECT_CALL(proxy, SetPIN(_, 1, _, _))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_SetPIN(1, NULL, 0, NULL, 0));
 }
 
 TEST(TestSetPIN, SetPINFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetPIN(1, _, _))
+  EXPECT_CALL(proxy, SetPIN(_, 1, _, _))
       .WillOnce(Return(CKR_PIN_INVALID));
   EXPECT_EQ(CKR_PIN_INVALID, C_SetPIN(1, NULL, 0, NULL, 0));
 }
@@ -549,8 +551,9 @@ TEST(TestSetPIN, SetPINFail) {
 // Open Session Tests
 TEST(TestOpenSession, OpenSessionOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, OpenSession(1, CKF_SERIAL_SESSION, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(3), Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              OpenSession(_, 1, CKF_SERIAL_SESSION, _))
+      .WillOnce(DoAll(SetArgumentPointee<3>(3), Return(CKR_OK)));
   CK_SESSION_HANDLE session;
   EXPECT_EQ(CKR_OK, C_OpenSession(1, CKF_SERIAL_SESSION, NULL, NULL, &session));
   EXPECT_EQ(session, 3);
@@ -571,7 +574,8 @@ TEST(TestOpenSession, OpenSessionNull) {
 
 TEST(TestOpenSession, OpenSessionFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, OpenSession(1, CKF_SERIAL_SESSION, _))
+  EXPECT_CALL(proxy,
+              OpenSession(_, 1, CKF_SERIAL_SESSION, _))
       .WillOnce(Return(CKR_SESSION_COUNT));
   CK_SESSION_HANDLE session;
   EXPECT_EQ(CKR_SESSION_COUNT,
@@ -581,7 +585,7 @@ TEST(TestOpenSession, OpenSessionFail) {
 // Close Session Tests
 TEST(TestCloseSession, CloseSessionOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CloseSession(1))
+  EXPECT_CALL(proxy, CloseSession(_, 1))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_CloseSession(1));
 }
@@ -593,14 +597,14 @@ TEST(TestCloseSession, CloseSessionNotInit) {
 
 TEST(TestCloseSession, CloseSessionFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CloseSession(1))
+  EXPECT_CALL(proxy, CloseSession(_, 1))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_CloseSession(1));
 }
 
 TEST(TestCloseSession, CloseAllSessionsOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CloseAllSessions(1))
+  EXPECT_CALL(proxy, CloseAllSessions(_, 1))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_CloseAllSessions(1));
 }
@@ -612,7 +616,7 @@ TEST(TestCloseSession, CloseAllSessionsNotInit) {
 
 TEST(TestCloseSession, CloseAllSessionsFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CloseAllSessions(1))
+  EXPECT_CALL(proxy, CloseAllSessions(_, 1))
       .WillOnce(Return(CKR_SLOT_ID_INVALID));
   EXPECT_EQ(CKR_SLOT_ID_INVALID, C_CloseAllSessions(1));
 }
@@ -620,8 +624,8 @@ TEST(TestCloseSession, CloseAllSessionsFail) {
 // Get Session Info Tests
 TEST(TestGetSessionInfo, GetSessionInfoOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSessionInfo(1, _, _, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(2), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetSessionInfo(_, 1, _, _, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(2), Return(CKR_OK)));
   CK_SESSION_INFO info;
   EXPECT_EQ(CKR_OK, C_GetSessionInfo(1, &info));
   EXPECT_EQ(2, info.slotID);
@@ -640,7 +644,7 @@ TEST(TestGetSessionInfo, GetSessionInfoNull) {
 
 TEST(TestGetSessionInfo, GetSessionInfoFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetSessionInfo(1, _, _, _, _))
+  EXPECT_CALL(proxy, GetSessionInfo(_, 1, _, _, _, _))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
   CK_SESSION_INFO info;
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_GetSessionInfo(1, &info));
@@ -658,8 +662,8 @@ protected:
 
 TEST_F(TestGetOperationState, GetOperationStateOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetOperationState(1, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetOperationState(_, 1, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(buffer_), Return(CKR_OK)));
   CK_BYTE buffer[3];
   CK_ULONG size = 3;
   EXPECT_EQ(CKR_OK, C_GetOperationState(1, buffer, &size));
@@ -684,8 +688,8 @@ TEST_F(TestGetOperationState, GetOperationStateNotInit) {
 
 TEST_F(TestGetOperationState, GetOperationStateNoBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetOperationState(1, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetOperationState(_, 1, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(buffer_), Return(CKR_OK)));
   CK_ULONG size = 17;
   EXPECT_EQ(CKR_OK, C_GetOperationState(1, NULL, &size));
   EXPECT_EQ(size, buffer_.size());
@@ -693,8 +697,8 @@ TEST_F(TestGetOperationState, GetOperationStateNoBuffer) {
 
 TEST_F(TestGetOperationState, GetOperationStateSmallBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetOperationState(1, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetOperationState(_, 1, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(buffer_), Return(CKR_OK)));
   CK_BYTE buffer[2];
   CK_ULONG size = 2;
   EXPECT_EQ(CKR_BUFFER_TOO_SMALL, C_GetOperationState(1, buffer, &size));
@@ -703,8 +707,8 @@ TEST_F(TestGetOperationState, GetOperationStateSmallBuffer) {
 
 TEST_F(TestGetOperationState, GetOperationStateLargeBuffer) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetOperationState(1, _))
-      .WillOnce(DoAll(SetArgumentPointee<1>(buffer_), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetOperationState(_, 1, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(buffer_), Return(CKR_OK)));
   CK_BYTE buffer[4];
   CK_ULONG size = 4;
   EXPECT_EQ(CKR_OK, C_GetOperationState(1, buffer, &size));
@@ -716,7 +720,7 @@ TEST_F(TestGetOperationState, GetOperationStateLargeBuffer) {
 
 TEST_F(TestGetOperationState, GetOperationStateFailure) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetOperationState(1, _))
+  EXPECT_CALL(proxy, GetOperationState(_, 1, _))
       .WillOnce(Return(CKR_STATE_UNSAVEABLE));
   CK_BYTE buffer[3];
   CK_ULONG size = 3;
@@ -726,7 +730,7 @@ TEST_F(TestGetOperationState, GetOperationStateFailure) {
 // Set Operation State Tests
 TEST(TestSetOperationState, SetOperationStateOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetOperationState(1, _, 2, 3))
+  EXPECT_CALL(proxy, SetOperationState(_, 1, _, 2, 3))
       .WillOnce(Return(CKR_OK));
   CK_BYTE buffer[3];
   CK_ULONG size = 3;
@@ -748,7 +752,7 @@ TEST(TestSetOperationState, SetOperationStateNull) {
 
 TEST(TestSetOperationState, SetOperationStateFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetOperationState(1, _, 2, 3))
+  EXPECT_CALL(proxy, SetOperationState(_, 1, _, 2, 3))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
   CK_BYTE buffer[3];
   CK_ULONG size = 3;
@@ -759,7 +763,7 @@ TEST(TestSetOperationState, SetOperationStateFail) {
 // Login Tests
 TEST(TestLogin, LoginOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Login(1, CKU_USER, _))
+  EXPECT_CALL(proxy, Login(_, 1, CKU_USER, _))
       .WillOnce(Return(CKR_OK));
   CK_UTF8CHAR_PTR pin = (CK_UTF8CHAR_PTR)"test";
   EXPECT_EQ(CKR_OK, C_Login(1, CKU_USER, pin, 4));
@@ -772,14 +776,14 @@ TEST(TestLogin, LoginNotInit) {
 
 TEST(TestLogin, LoginNULLPin) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Login(1, CKU_USER, _))
+  EXPECT_CALL(proxy, Login(_, 1, CKU_USER, _))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_Login(1, CKU_USER, NULL, 0));
 }
 
 TEST(TestLogin, LoginFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Login(1, CKU_USER, _))
+  EXPECT_CALL(proxy, Login(_, 1, CKU_USER, _))
       .WillOnce(Return(CKR_PIN_INVALID));
   EXPECT_EQ(CKR_PIN_INVALID, C_Login(1, CKU_USER, NULL, 0));
 }
@@ -787,7 +791,7 @@ TEST(TestLogin, LoginFail) {
 // Logout Tests
 TEST(TestLogout, LogoutOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Logout(1))
+  EXPECT_CALL(proxy, Logout(_, 1))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_Logout(1));
 }
@@ -799,7 +803,7 @@ TEST(TestLogout, LogoutNotInit) {
 
 TEST(TestLogout, LogoutFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Logout(1))
+  EXPECT_CALL(proxy, Logout(_, 1))
       .WillOnce(Return(CKR_SESSION_HANDLE_INVALID));
   EXPECT_EQ(CKR_SESSION_HANDLE_INVALID, C_Logout(1));
 }
@@ -858,8 +862,8 @@ protected:
 
 TEST_F(TestAttributes, CreateObjectOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CreateObject(1, attributes_, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(3), Return(CKR_OK)));
+  EXPECT_CALL(proxy, CreateObject(_, 1, attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<3>(3), Return(CKR_OK)));
   CK_OBJECT_HANDLE object_handle = 0;
   EXPECT_EQ(CKR_OK, C_CreateObject(1, attribute_template_, 2, &object_handle));
   EXPECT_EQ(3, object_handle);
@@ -880,7 +884,7 @@ TEST_F(TestAttributes, CreateObjectNULLHandle) {
 
 TEST_F(TestAttributes, CreateObjectFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CreateObject(1, attributes_, _))
+  EXPECT_CALL(proxy, CreateObject(_, 1, attributes_, _))
       .WillOnce(Return(CKR_ATTRIBUTE_TYPE_INVALID));
   CK_OBJECT_HANDLE object_handle = 0;
   EXPECT_EQ(CKR_ATTRIBUTE_TYPE_INVALID, C_CreateObject(1,
@@ -891,8 +895,9 @@ TEST_F(TestAttributes, CreateObjectFail) {
 // CopyObject Tests
 TEST_F(TestAttributes, CopyObjectOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CopyObject(1, 2, attributes_, _))
-      .WillOnce(DoAll(SetArgumentPointee<3>(3), Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              CopyObject(_, 1, 2, attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<4>(3), Return(CKR_OK)));
   CK_OBJECT_HANDLE object_handle = 0;
   EXPECT_EQ(CKR_OK, C_CopyObject(1, 2, attribute_template_, 2, &object_handle));
   EXPECT_EQ(3, object_handle);
@@ -915,7 +920,8 @@ TEST_F(TestAttributes, CopyObjectNULLHandle) {
 
 TEST_F(TestAttributes, CopyObjectFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, CopyObject(1, 2, attributes_, _))
+  EXPECT_CALL(proxy,
+              CopyObject(_, 1, 2, attributes_, _))
       .WillOnce(Return(CKR_ATTRIBUTE_TYPE_INVALID));
   CK_OBJECT_HANDLE object_handle = 0;
   EXPECT_EQ(CKR_ATTRIBUTE_TYPE_INVALID, C_CopyObject(1, 2,
@@ -1005,7 +1011,7 @@ TEST_F(TestAttributes, TestAttributesNested) {
 // DestroyObject Tests
 TEST(TestDestroyObject, DestroyObjectOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DestroyObject(1, 2))
+  EXPECT_CALL(proxy, DestroyObject(_, 1, 2))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_DestroyObject(1, 2));
 }
@@ -1017,7 +1023,7 @@ TEST(TestDestroyObject, DestroyObjectNotInit) {
 
 TEST(TestDestroyObject, DestroyObjectFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DestroyObject(1, 2))
+  EXPECT_CALL(proxy, DestroyObject(_, 1, 2))
       .WillOnce(Return(CKR_OBJECT_HANDLE_INVALID));
   EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID, C_DestroyObject(1, 2));
 }
@@ -1025,8 +1031,8 @@ TEST(TestDestroyObject, DestroyObjectFail) {
 // GetObjectSize Tests
 TEST(TestObjectSize, ObjectSizeOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetObjectSize(1, 2, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(20), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetObjectSize(_, 1, 2, _))
+      .WillOnce(DoAll(SetArgumentPointee<3>(20), Return(CKR_OK)));
   CK_ULONG size = 0;
   EXPECT_EQ(CKR_OK, C_GetObjectSize(1, 2, &size));
   EXPECT_EQ(size, 20);
@@ -1045,7 +1051,7 @@ TEST(TestObjectSize, ObjectSizeNotInit) {
 
 TEST(TestObjectSize, ObjectSizeFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetObjectSize(1, 2, _))
+  EXPECT_CALL(proxy, GetObjectSize(_, 1, 2, _))
       .WillOnce(Return(CKR_OBJECT_HANDLE_INVALID));
   CK_ULONG size = 0;
   EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID, C_GetObjectSize(1, 2, &size));
@@ -1054,16 +1060,17 @@ TEST(TestObjectSize, ObjectSizeFail) {
 // GetAttributeValue Tests
 TEST_F(TestAttributes, GetAttributeValueOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetAttributeValue(1, 2, attributes2_, _))
-      .WillOnce(DoAll(SetArgumentPointee<3>(attributes_), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetAttributeValue(_, 1, 2,
+                                       attributes2_, _))
+      .WillOnce(DoAll(SetArgumentPointee<4>(attributes_), Return(CKR_OK)));
   EXPECT_EQ(CKR_OK, C_GetAttributeValue(1, 2, attribute_template2_, 2));
   EXPECT_TRUE(CompareAttributes(attribute_template2_, attribute_template_, 2));
 }
 
 TEST_F(TestAttributes, GetAttributeValueSizeOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetAttributeValue(1, 2, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<3>(attributes3_), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetAttributeValue(_, 1, 2, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<4>(attributes3_), Return(CKR_OK)));
   attribute_template3_[0].ulValueLen = 0;
   attribute_template3_[1].ulValueLen = 0;
   EXPECT_EQ(CKR_OK, C_GetAttributeValue(1, 2, attribute_template3_, 2));
@@ -1073,8 +1080,9 @@ TEST_F(TestAttributes, GetAttributeValueSizeOnly) {
 
 TEST_F(TestAttributes, GetAttributeValueOKWithError) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetAttributeValue(1, 2, attributes2_, _))
-      .WillOnce(DoAll(SetArgumentPointee<3>(attributes_),
+  EXPECT_CALL(proxy, GetAttributeValue(_, 1, 2,
+                                        attributes2_, _))
+      .WillOnce(DoAll(SetArgumentPointee<4>(attributes_),
                       Return(CKR_ATTRIBUTE_SENSITIVE)));
   EXPECT_EQ(CKR_ATTRIBUTE_SENSITIVE,
       C_GetAttributeValue(1, 2, attribute_template2_, 2));
@@ -1094,7 +1102,7 @@ TEST_F(TestAttributes, GetAttributeValueNULL) {
 
 TEST_F(TestAttributes, GetAttributeValueFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GetAttributeValue(1, 2, _, _))
+  EXPECT_CALL(proxy, GetAttributeValue(_, 1, 2, _, _))
       .WillOnce(Return(CKR_OBJECT_HANDLE_INVALID));
   EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
       C_GetAttributeValue(1, 2, attribute_template2_, 2));
@@ -1103,8 +1111,8 @@ TEST_F(TestAttributes, GetAttributeValueFail) {
 TEST(GetAttributeValueDeathTest, GetAttributeValueFailFatal) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> invalid(20, 0);
-  EXPECT_CALL(proxy, GetAttributeValue(1, 2, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<3>(invalid), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GetAttributeValue(_, 1, 2, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<4>(invalid), Return(CKR_OK)));
   CK_ATTRIBUTE tmp;
   memset(&tmp, 0, sizeof(tmp));
   EXPECT_DEATH_IF_SUPPORTED(C_GetAttributeValue(1, 2, &tmp, 1), "Check failed");
@@ -1113,7 +1121,8 @@ TEST(GetAttributeValueDeathTest, GetAttributeValueFailFatal) {
 // SetAttributeValue Tests
 TEST_F(TestAttributes, SetAttributeValueOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetAttributeValue(1, 2, attributes_))
+  EXPECT_CALL(proxy,
+              SetAttributeValue(_, 1, 2, attributes_))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_SetAttributeValue(1, 2, attribute_template_, 2));
 }
@@ -1131,7 +1140,7 @@ TEST_F(TestAttributes, SetAttributeValueNULL) {
 
 TEST_F(TestAttributes, SetAttributeValueFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SetAttributeValue(1, 2, _))
+  EXPECT_CALL(proxy, SetAttributeValue(_, 1, 2, _))
       .WillOnce(Return(CKR_OBJECT_HANDLE_INVALID));
   EXPECT_EQ(CKR_OBJECT_HANDLE_INVALID,
       C_SetAttributeValue(1, 2, attribute_template2_, 2));
@@ -1140,7 +1149,7 @@ TEST_F(TestAttributes, SetAttributeValueFail) {
 // FindObjects Tests
 TEST_F(TestAttributes, FindObjectsInitOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, FindObjectsInit(1, attributes_))
+  EXPECT_CALL(proxy, FindObjectsInit(_, 1, attributes_))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_FindObjectsInit(1, attribute_template_, 2));
 }
@@ -1148,7 +1157,7 @@ TEST_F(TestAttributes, FindObjectsInitOK) {
 TEST(TestFindObjects, FindObjectsInitNULL) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> empty;
-  EXPECT_CALL(proxy, FindObjectsInit(1, empty))
+  EXPECT_CALL(proxy, FindObjectsInit(_, 1, empty))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_ARGUMENTS_BAD, C_FindObjectsInit(1, NULL, 1));
   EXPECT_EQ(CKR_OK, C_FindObjectsInit(1, NULL, 0));
@@ -1162,7 +1171,7 @@ TEST(TestFindObjects, FindObjectsInitNotInit) {
 TEST(TestFindObjects, FindObjectsInitFail) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> empty;
-  EXPECT_CALL(proxy, FindObjectsInit(1, empty))
+  EXPECT_CALL(proxy, FindObjectsInit(_, 1, empty))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjectsInit(1, NULL, 0));
 }
@@ -1172,8 +1181,8 @@ TEST(TestFindObjects, FindObjectsOK) {
   vector<uint64_t> object_list;
   object_list.push_back(20);
   object_list.push_back(21);
-  EXPECT_CALL(proxy, FindObjects(1, 7, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(object_list), Return(CKR_OK)));
+  EXPECT_CALL(proxy, FindObjects(_, 1, 7, _))
+      .WillOnce(DoAll(SetArgumentPointee<3>(object_list), Return(CKR_OK)));
   CK_OBJECT_HANDLE object_array[7];
   CK_ULONG size = 0;
   EXPECT_EQ(CKR_OK, C_FindObjects(1, object_array, 7, &size));
@@ -1193,8 +1202,8 @@ TEST(TestFindObjects, FindObjectsNULL) {
 TEST(TestFindObjects, FindObjectsOverflow) {
   ChapsProxyMock proxy(true);
   vector<uint64_t> object_list(8, 20);
-  EXPECT_CALL(proxy, FindObjects(1, 7, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(object_list), Return(CKR_OK)));
+  EXPECT_CALL(proxy, FindObjects(_, 1, 7, _))
+      .WillOnce(DoAll(SetArgumentPointee<3>(object_list), Return(CKR_OK)));
   CK_OBJECT_HANDLE object_array[7];
   CK_ULONG size = 0;
   EXPECT_EQ(CKR_GENERAL_ERROR, C_FindObjects(1, object_array, 7, &size));
@@ -1210,7 +1219,7 @@ TEST(TestFindObjects, FindObjectsNotInit) {
 
 TEST(TestFindObjects, FindObjectsFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, FindObjects(1, 7, _))
+  EXPECT_CALL(proxy, FindObjects(_, 1, 7, _))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   CK_OBJECT_HANDLE object_array[7];
   CK_ULONG size = 0;
@@ -1219,7 +1228,7 @@ TEST(TestFindObjects, FindObjectsFail) {
 
 TEST(TestFindObjects, FindObjectsFinalOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, FindObjectsFinal(1))
+  EXPECT_CALL(proxy, FindObjectsFinal(_, 1))
       .WillOnce(Return(CKR_OK));
   EXPECT_EQ(CKR_OK, C_FindObjectsFinal(1));
 }
@@ -1231,7 +1240,7 @@ TEST(TestFindObjects, FindObjectsFinalNotInit) {
 
 TEST(TestFindObjects, FindObjectsFinalFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, FindObjectsFinal(1))
+  EXPECT_CALL(proxy, FindObjectsFinal(_, 1))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   EXPECT_EQ(CKR_SESSION_CLOSED, C_FindObjectsFinal(1));
 }
@@ -1266,33 +1275,41 @@ class TestEncrypt : public ::testing::Test {
 // Encrypt / Decrypt Tests
 TEST_F(TestEncrypt, EncryptOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, EncryptInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy,
+              EncryptInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, DecryptInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy,
+              DecryptInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, Encrypt(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Encrypt(_, 1, data_in_,
+                             length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(_, 1, data_in_,
+                             length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptUpdate(_, 1, data_in_,
+                                   length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptUpdate(_, 1, data_in_,
+                                   length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptFinal(_, 1, length_out_max_,
+                                   _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
                      SetArgumentPointee<4>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, Decrypt(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DecryptFinal(_, 1, length_out_max_,
+                                   _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
                      SetArgumentPointee<4>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, EncryptFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
-                     SetArgumentPointee<3>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
-                     SetArgumentPointee<3>(data_out_),
                      Return(CKR_OK)));
 
   EXPECT_EQ(CKR_OK, C_EncryptInit(1, &mechanism_, 3));
@@ -1339,29 +1356,35 @@ TEST_F(TestEncrypt, EncryptBadOutput) {
   ChapsProxyMock proxy(true);
   // This should trigger an error because length_out_expected_ is still 10.
   length_out_max_ = 8;
-  EXPECT_CALL(proxy, Encrypt(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Encrypt(_, 1, data_in_,
+                             length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(_, 1, data_in_,
+                             length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptUpdate(_, 1, data_in_,
+                                   length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DecryptUpdate(_, 1, data_in_,
+                                   length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptFinal(_, 1,
+                                   length_out_max_, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
                      SetArgumentPointee<4>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, Decrypt(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DecryptFinal(_, 1, length_out_max_,
+                                  _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
                      SetArgumentPointee<4>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, EncryptFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
-                     SetArgumentPointee<3>(data_out_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
-                     SetArgumentPointee<3>(data_out_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -1392,21 +1415,29 @@ TEST_F(TestEncrypt, EncryptBadOutput) {
 
 TEST_F(TestEncrypt, EncryptFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, EncryptInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy,
+              EncryptInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DecryptInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy,
+              DecryptInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, Encrypt(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Encrypt(_, 1, data_in_,
+                             length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, Decrypt(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Decrypt(_, 1, data_in_,
+                             length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, EncryptUpdate(_, 1, data_in_,
+                                   length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DecryptUpdate(_, 1, data_in_,
+                                   length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, EncryptFinal(1, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, EncryptFinal(_, 1, length_out_max_,
+                                  _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DecryptFinal(1, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DecryptFinal(_, 1, length_out_max_,
+                                  _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
 
   EXPECT_EQ(CKR_SESSION_CLOSED, C_EncryptInit(1, &mechanism_, 3));
@@ -1439,23 +1470,25 @@ TEST_F(TestEncrypt, EncryptFail) {
 
 TEST_F(TestEncrypt, EncryptLengthOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Encrypt(1, data_in_, 0, _, _)).
+  EXPECT_CALL(proxy, Encrypt(_, 1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Decrypt(_, 1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              EncryptUpdate(_, 1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              DecryptUpdate(_, 1, data_in_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, EncryptFinal(_, 1, 0, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, Decrypt(1, data_in_, 0, _, _)).
+  EXPECT_CALL(proxy, DecryptFinal(_, 1, 0, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, EncryptUpdate(1, data_in_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptUpdate(1, data_in_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, EncryptFinal(1, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptFinal(1, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(length_out_expected_),
                      Return(CKR_OK)));
 
   length_out_ = 0;
@@ -1493,13 +1526,15 @@ TEST_F(TestEncrypt, EncryptLengthOnly) {
 TEST_F(TestEncrypt, EncryptNoInput) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> empty;
-  EXPECT_CALL(proxy, Encrypt(1, empty, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, Encrypt(_, 1, empty,
+                             length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, Decrypt(1, empty, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, Decrypt(_, 1, empty,
+                             length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -1574,19 +1609,21 @@ class TestDigest : public ::testing::Test {
 // Digest Tests
 TEST_F(TestDigest, DigestOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DigestInit(1, 2, parameter_)).
+  EXPECT_CALL(proxy, DigestInit(_, 1, 2, parameter_)).
       WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, Digest(1, data_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Digest(_, 1, data_,
+                            length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(digest_length_),
+                     SetArgumentPointee<5>(digest_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, DigestUpdate(_, 1, data_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, DigestKey(_, 1, 2)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy,
+              DigestFinal(_, 1, length_out_max_, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
                      SetArgumentPointee<4>(digest_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DigestUpdate(1, data_)).
-      WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, DigestKey(1, 2)).
-      WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, DigestFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(digest_length_),
-                     SetArgumentPointee<3>(digest_),
                      Return(CKR_OK)));
 
   EXPECT_EQ(CKR_OK, C_DigestInit(1, &mechanism_));
@@ -1607,13 +1644,15 @@ TEST_F(TestDigest, DigestBadOutput) {
   ChapsProxyMock proxy(true);
   // This should trigger an error because digest_length_ is still 10.
   length_out_max_ = 8;
-  EXPECT_CALL(proxy, Digest(1, data_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Digest(_, 1, data_,
+                            length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(digest_length_),
+                     SetArgumentPointee<5>(digest_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              DigestFinal(_, 1, length_out_max_, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
                      SetArgumentPointee<4>(digest_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, DigestFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(digest_length_),
-                     SetArgumentPointee<3>(digest_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -1626,15 +1665,17 @@ TEST_F(TestDigest, DigestBadOutput) {
 
 TEST_F(TestDigest, DigestFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DigestInit(1, 2, parameter_)).
+  EXPECT_CALL(proxy, DigestInit(_, 1, 2, parameter_)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, Digest(1, data_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, Digest(_, 1, data_,
+                            length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DigestUpdate(1, data_)).
+  EXPECT_CALL(proxy, DigestUpdate(_, 1, data_)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DigestKey(1, 2)).
+  EXPECT_CALL(proxy, DigestKey(_, 1, 2)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DigestFinal(1, length_out_max_, _, _)).
+  EXPECT_CALL(proxy,
+              DigestFinal(_, 1, length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
 
   EXPECT_EQ(CKR_SESSION_CLOSED, C_DigestInit(1, &mechanism_));
@@ -1650,11 +1691,11 @@ TEST_F(TestDigest, DigestFail) {
 
 TEST_F(TestDigest, DigestLengthOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Digest(1, data_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
+  EXPECT_CALL(proxy, Digest(_, 1, data_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(digest_length_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DigestFinal(1, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(digest_length_),
+  EXPECT_CALL(proxy, DigestFinal(_, 1, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
                      Return(CKR_OK)));
 
   length_out_ = 0;
@@ -1670,9 +1711,10 @@ TEST_F(TestDigest, DigestLengthOnly) {
 TEST_F(TestDigest, DigestNoInput) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> empty;
-  EXPECT_CALL(proxy, Digest(1, empty, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(digest_length_),
-                     SetArgumentPointee<4>(digest_),
+  EXPECT_CALL(proxy, Digest(_, 1, empty,
+                            length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(digest_length_),
+                     SetArgumentPointee<5>(digest_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -1734,25 +1776,28 @@ class TestSign : public ::testing::Test {
 // Sign / Verify Tests
 TEST_F(TestSign, SignOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SignInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy, SignInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, VerifyInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy,
+              VerifyInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, Sign(1, data_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy,
+              Sign(_, 1, data_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(signature_length_),
+                     SetArgumentPointee<5>(signature_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy, Verify(_, 1, data_, signature_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, SignUpdate(_, 1, data_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy, VerifyUpdate(_, 1, data_)).
+      WillOnce(Return(CKR_OK));
+  EXPECT_CALL(proxy,
+              SignFinal(_, 1, length_out_max_, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
                      SetArgumentPointee<4>(signature_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, Verify(1, data_, signature_)).
-      WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, SignUpdate(1, data_)).
-      WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, VerifyUpdate(1, data_)).
-      WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, SignFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(signature_length_),
-                     SetArgumentPointee<3>(signature_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, VerifyFinal(1, signature_)).
+  EXPECT_CALL(proxy, VerifyFinal(_, 1, signature_)).
       WillOnce(Return(CKR_OK));
 
   EXPECT_EQ(CKR_OK, C_SignInit(1, &mechanism_, 3));
@@ -1778,13 +1823,15 @@ TEST_F(TestSign, SignBadOutput) {
   ChapsProxyMock proxy(true);
   // This should trigger an error because signature_length_ is still 10.
   length_out_max_ = 8;
-  EXPECT_CALL(proxy, Sign(1, data_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy,
+              Sign(_, 1, data_, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(signature_length_),
+                     SetArgumentPointee<5>(signature_),
+                     Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              SignFinal(_, 1, length_out_max_, _, _)).
       WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
                      SetArgumentPointee<4>(signature_),
-                     Return(CKR_OK)));
-  EXPECT_CALL(proxy, SignFinal(1, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(signature_length_),
-                     SetArgumentPointee<3>(signature_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -1797,21 +1844,24 @@ TEST_F(TestSign, SignBadOutput) {
 
 TEST_F(TestSign, SignFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, SignInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy, SignInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, VerifyInit(1, 2, parameter_, 3)).
+  EXPECT_CALL(proxy,
+              VerifyInit(_, 1, 2, parameter_, 3)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, Sign(1, data_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy,
+              Sign(_, 1, data_, length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, Verify(1, data_, signature_)).
+  EXPECT_CALL(proxy, Verify(_, 1, data_, signature_)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, SignUpdate(1, data_)).
+  EXPECT_CALL(proxy, SignUpdate(_, 1, data_)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, VerifyUpdate(1, data_)).
+  EXPECT_CALL(proxy, VerifyUpdate(_, 1, data_)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, SignFinal(1, length_out_max_, _, _)).
+  EXPECT_CALL(proxy,
+              SignFinal(_, 1, length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, VerifyFinal(1, signature_)).
+  EXPECT_CALL(proxy, VerifyFinal(_, 1, signature_)).
       WillOnce(Return(CKR_SESSION_CLOSED));
 
   EXPECT_EQ(CKR_SESSION_CLOSED, C_SignInit(1, &mechanism_, 3));
@@ -1835,11 +1885,11 @@ TEST_F(TestSign, SignFail) {
 
 TEST_F(TestSign, SignLengthOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, Sign(1, data_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
+  EXPECT_CALL(proxy, Sign(_, 1, data_, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(signature_length_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, SignFinal(1, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<2>(signature_length_),
+  EXPECT_CALL(proxy, SignFinal(_, 1, 0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
                      Return(CKR_OK)));
 
   length_out_ = 0;
@@ -1855,11 +1905,12 @@ TEST_F(TestSign, SignLengthOnly) {
 TEST_F(TestSign, SignNoInput) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> empty;
-  EXPECT_CALL(proxy, Sign(1, empty, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(signature_length_),
-                     SetArgumentPointee<4>(signature_),
+  EXPECT_CALL(proxy,
+              Sign(_, 1, empty, length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(signature_length_),
+                     SetArgumentPointee<5>(signature_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, Verify(1, empty, signature_)).
+  EXPECT_CALL(proxy, Verify(_, 1, empty, signature_)).
       WillOnce(Return(CKR_OK));
 
   length_out_ = length_out_max_;
@@ -1907,21 +1958,25 @@ TEST_F(TestSign, SignNotInit) {
 // Dual-Function Tests
 TEST_F(TestEncrypt, DualOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, DigestEncryptUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, DecryptDigestUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, SignEncryptUpdate(_, 1, data_in_,
+                                       length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -1962,21 +2017,25 @@ TEST_F(TestEncrypt, DualBadOutput) {
   ChapsProxyMock proxy(true);
   // This should trigger an error because length_out_expected_ is still 10.
   length_out_max_ = 8;
-  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, DigestEncryptUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, DecryptDigestUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, SignEncryptUpdate(_, 1, data_in_,
+                                       length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, length_out_max_, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
-                     SetArgumentPointee<4>(data_out_),
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
+                     SetArgumentPointee<5>(data_out_),
                      Return(CKR_OK)));
 
   length_out_ = length_out_max_;
@@ -2007,13 +2066,17 @@ TEST_F(TestEncrypt, DualBadOutput) {
 
 TEST_F(TestEncrypt, DualFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DigestEncryptUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DecryptDigestUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, SignEncryptUpdate(_, 1, data_in_,
+                                       length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, length_out_max_, _, _)).
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(_, 1, data_in_,
+                                         length_out_max_, _, _)).
       WillOnce(Return(CKR_SESSION_CLOSED));
 
   length_out_ = length_out_max_;
@@ -2044,17 +2107,21 @@ TEST_F(TestEncrypt, DualFail) {
 
 TEST_F(TestEncrypt, DualLengthOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, DigestEncryptUpdate(1, data_in_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+  EXPECT_CALL(proxy, DigestEncryptUpdate(_, 1, data_in_,
+                                         0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptDigestUpdate(1, data_in_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+  EXPECT_CALL(proxy, DecryptDigestUpdate(_, 1, data_in_,
+                                         0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, SignEncryptUpdate(1, data_in_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+  EXPECT_CALL(proxy, SignEncryptUpdate(_, 1, data_in_,
+                                       0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
                      Return(CKR_OK)));
-  EXPECT_CALL(proxy, DecryptVerifyUpdate(1, data_in_, 0, _, _)).
-      WillOnce(DoAll(SetArgumentPointee<3>(length_out_expected_),
+  EXPECT_CALL(proxy, DecryptVerifyUpdate(_, 1, data_in_,
+                                         0, _, _)).
+      WillOnce(DoAll(SetArgumentPointee<4>(length_out_expected_),
                      Return(CKR_OK)));
 
   length_out_ = 0;
@@ -2133,15 +2200,17 @@ class TestGenKey : public TestAttributes {
 
 TEST_F(TestGenKey, GenKeyOK) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GenerateKey(1, 2, parameter_, attributes_, _))
-      .WillOnce(DoAll(SetArgumentPointee<4>(1), Return(CKR_OK)));
-  EXPECT_CALL(proxy, GenerateKeyPair(2, 2,
+  EXPECT_CALL(proxy, GenerateKey(_, 1, 2, parameter_,
+                                 attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<5>(1), Return(CKR_OK)));
+  EXPECT_CALL(proxy, GenerateKeyPair(_,
+                                     2, 2,
                                      parameter_,
                                      attributes2_,
                                      attributes3_,
                                      _, _))
-      .WillOnce(DoAll(SetArgumentPointee<5>(2),
-                      SetArgumentPointee<6>(3),
+      .WillOnce(DoAll(SetArgumentPointee<6>(2),
+                      SetArgumentPointee<7>(3),
                       Return(CKR_OK)));
 
   CK_OBJECT_HANDLE key;
@@ -2161,9 +2230,11 @@ TEST_F(TestGenKey, GenKeyOK) {
 
 TEST_F(TestGenKey, GenKeyFail) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, GenerateKey(1, 2, parameter_, attributes_, _))
+  EXPECT_CALL(proxy, GenerateKey(_, 1, 2, parameter_,
+                                 attributes_, _))
       .WillOnce(Return(CKR_MECHANISM_INVALID));
-  EXPECT_CALL(proxy, GenerateKeyPair(2, 2,
+  EXPECT_CALL(proxy, GenerateKeyPair(_,
+                                     2, 2,
                                      parameter_,
                                      attributes2_,
                                      attributes3_,
@@ -2242,14 +2313,17 @@ TEST_F(TestGenKey, GenKeyNotInit) {
 TEST_F(TestGenKey, WrapKeyOK) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> wrapped(10, 0xAA);
-  EXPECT_CALL(proxy, WrapKey(1, 2, parameter_, 3, 4, 10, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(10),
-                      SetArgumentPointee<7>(wrapped),
+  EXPECT_CALL(proxy, WrapKey(_, 1, 2, parameter_, 3,
+                             4, 10, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<7>(10),
+                      SetArgumentPointee<8>(wrapped),
                       Return(CKR_OK)));
-  EXPECT_CALL(proxy, UnwrapKey(1, 2, parameter_, 3, wrapped, attributes_, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(10), Return(CKR_OK)));
-  EXPECT_CALL(proxy, DeriveKey(1, 2, parameter_, 3, attributes_, _))
-      .WillOnce(DoAll(SetArgumentPointee<5>(11), Return(CKR_OK)));
+  EXPECT_CALL(proxy, UnwrapKey(_, 1, 2, parameter_, 3,
+                               wrapped, attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<7>(10), Return(CKR_OK)));
+  EXPECT_CALL(proxy, DeriveKey(_, 1, 2, parameter_, 3,
+                               attributes_, _))
+      .WillOnce(DoAll(SetArgumentPointee<6>(11), Return(CKR_OK)));
   CK_BYTE buffer[10];
   CK_ULONG length = 10;
   EXPECT_EQ(CKR_OK, C_WrapKey(1, &mechanism_, 3, 4, buffer, &length));
@@ -2275,11 +2349,14 @@ TEST_F(TestGenKey, WrapKeyOK) {
 TEST_F(TestGenKey, WrapKeyFail) {
   ChapsProxyMock proxy(true);
   vector<uint8_t> wrapped(10, 0xAA);
-  EXPECT_CALL(proxy, WrapKey(1, 2, parameter_, 3, 4, 10, _, _))
+  EXPECT_CALL(proxy, WrapKey(_, 1, 2, parameter_, 3,
+                             4, 10, _, _))
       .WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, UnwrapKey(1, 2, parameter_, 3, wrapped, attributes_, _))
+  EXPECT_CALL(proxy, UnwrapKey(_, 1, 2, parameter_, 3,
+                               wrapped, attributes_, _))
       .WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, DeriveKey(1, 2, parameter_, 3, attributes_, _))
+  EXPECT_CALL(proxy, DeriveKey(_, 1, 2, parameter_, 3,
+                               attributes_, _))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   CK_BYTE buffer[10];
   CK_ULONG length = 10;
@@ -2304,8 +2381,9 @@ TEST_F(TestGenKey, WrapKeyFail) {
 
 TEST_F(TestGenKey, WrapKeyLengthOnly) {
   ChapsProxyMock proxy(true);
-  EXPECT_CALL(proxy, WrapKey(1, 2, parameter_, 3, 4, 0, _, _))
-      .WillOnce(DoAll(SetArgumentPointee<6>(10),
+  EXPECT_CALL(proxy, WrapKey(_, 1, 2, parameter_, 3, 4,
+                             0, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<7>(10),
                       Return(CKR_OK)));
   CK_ULONG length = 5;
   EXPECT_EQ(CKR_OK, C_WrapKey(1, &mechanism_, 3, 4, NULL, &length));
@@ -2349,10 +2427,11 @@ TEST(TestRandom, RandomOK) {
   memset(data_buffer, 0xAA, 20);
   memset(data_buffer2, 0xBB, 20);
   vector<uint8_t> data(&data_buffer[0], &data_buffer[20]);
-  EXPECT_CALL(proxy, SeedRandom(1, data))
+  EXPECT_CALL(proxy, SeedRandom(_, 1, data))
       .WillOnce(Return(CKR_OK));
-  EXPECT_CALL(proxy, GenerateRandom(1, data_length, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(data), Return(CKR_OK)));
+  EXPECT_CALL(proxy,
+              GenerateRandom(_, 1, data_length, _))
+      .WillOnce(DoAll(SetArgumentPointee<3>(data), Return(CKR_OK)));
   EXPECT_EQ(CKR_OK, C_SeedRandom(1, data_buffer, data_length));
   EXPECT_EQ(CKR_OK, C_GenerateRandom(1, data_buffer2, data_length));
   EXPECT_EQ(0, memcmp(data_buffer, data_buffer2, data_length));
@@ -2366,9 +2445,10 @@ TEST(TestRandom, RandomFail) {
   memset(data_buffer, 0xAA, 20);
   memset(data_buffer2, 0xBB, 20);
   vector<uint8_t> data(&data_buffer[0], &data_buffer[20]);
-  EXPECT_CALL(proxy, SeedRandom(1, data))
+  EXPECT_CALL(proxy, SeedRandom(_, 1, data))
       .WillOnce(Return(CKR_SESSION_CLOSED));
-  EXPECT_CALL(proxy, GenerateRandom(1, data_length, _))
+  EXPECT_CALL(proxy,
+              GenerateRandom(_, 1, data_length, _))
       .WillOnce(Return(CKR_SESSION_CLOSED));
   EXPECT_EQ(CKR_SESSION_CLOSED, C_SeedRandom(1, data_buffer, data_length));
   EXPECT_EQ(CKR_SESSION_CLOSED, C_GenerateRandom(1, data_buffer2, data_length));

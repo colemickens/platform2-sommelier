@@ -8,6 +8,8 @@
 #include <map>
 #include <string>
 
+#include <chromeos/secure_blob.h>
+
 #include "pkcs11/cryptoki.h"
 
 namespace chaps {
@@ -30,16 +32,28 @@ class SlotManager {
   // based offset. I.e. If there are two slots, 0 and 1 are valid 'slot_id'
   // values.
   virtual int GetSlotCount() const = 0;
-  virtual bool IsTokenPresent(int slot_id) const = 0;
-  virtual void GetSlotInfo(int slot_id, CK_SLOT_INFO* slot_info) const = 0;
-  virtual void GetTokenInfo(int slot_id, CK_TOKEN_INFO* token_info) const = 0;
-  virtual const MechanismMap* GetMechanismInfo(int slot_id) const = 0;
+  virtual bool IsTokenAccessible(const chromeos::SecureBlob& isolate_credential,
+                                 int slot_id) const = 0;
+  virtual bool IsTokenPresent(const chromeos::SecureBlob& isolate_credential,
+                              int slot_id) const = 0;
+  virtual void GetSlotInfo(const chromeos::SecureBlob& isolate_credential,
+                           int slot_id, CK_SLOT_INFO* slot_info) const = 0;
+  virtual void GetTokenInfo(const chromeos::SecureBlob& isolate_credential,
+                            int slot_id, CK_TOKEN_INFO* token_info) const = 0;
+  virtual const MechanismMap* GetMechanismInfo(
+      const chromeos::SecureBlob& isolate_credential, int slot_id) const = 0;
   // Opens a new session with the token in the given slot. A token must be
   // present. A new and unique session identifier is returned.
-  virtual int OpenSession(int slot_id, bool is_read_only) = 0;
-  virtual bool CloseSession(int session_id) = 0;
-  virtual void CloseAllSessions(int slot_id) = 0;
-  virtual bool GetSession(int session_id, Session** session) const = 0;
+  virtual int OpenSession(
+      const chromeos::SecureBlob& isolate_credential,
+      int slot_id,
+      bool is_read_only) = 0;
+  virtual bool CloseSession(const chromeos::SecureBlob& isolate_credential,
+      int session_id) = 0;
+  virtual void CloseAllSessions(const chromeos::SecureBlob& isolate_credential,
+      int slot_id) = 0;
+  virtual bool GetSession(const chromeos::SecureBlob& isolate_credential,
+      int session_id, Session** session) const = 0;
 };
 
 }  // namespace

@@ -10,6 +10,7 @@
 #include "chaps/slot_manager.h"
 
 #include <map>
+#include <set>
 #include <string>
 #include <tr1/memory>
 #include <vector>
@@ -45,26 +46,54 @@ class SlotManagerImpl : public SlotManager,
 
   // SlotManager methods.
   virtual int GetSlotCount() const;
-  virtual bool IsTokenPresent(int slot_id) const;
-  virtual void GetSlotInfo(int slot_id, CK_SLOT_INFO* slot_info) const;
-  virtual void GetTokenInfo(int slot_id, CK_TOKEN_INFO* token_info) const;
-  virtual const MechanismMap* GetMechanismInfo(int slot_id) const;
-  virtual int OpenSession(int slot_id, bool is_read_only);
-  virtual bool CloseSession(int session_id);
-  virtual void CloseAllSessions(int slot_id);
-  virtual bool GetSession(int session_id, Session** session) const;
+  virtual bool IsTokenAccessible(const chromeos::SecureBlob& isolate_credential,
+                                 int slot_id) const;
+  virtual bool IsTokenPresent(const chromeos::SecureBlob& isolate_credential,
+                              int slot_id) const;
+  virtual void GetSlotInfo(const chromeos::SecureBlob& isolate_credential,
+                           int slot_id,
+                           CK_SLOT_INFO* slot_info) const;
+  virtual void GetTokenInfo(const chromeos::SecureBlob& isolate_credential,
+                            int slot_id,
+                            CK_TOKEN_INFO* token_info) const;
+  virtual const MechanismMap* GetMechanismInfo(
+                            const chromeos::SecureBlob& isolate_credential,
+                            int slot_id) const;
+  virtual int OpenSession(const chromeos::SecureBlob& isolate_credential,
+                          int slot_id,
+                          bool is_read_only);
+  virtual bool CloseSession(const chromeos::SecureBlob& isolate_credential,
+                            int session_id);
+  virtual void CloseAllSessions(const chromeos::SecureBlob& isolate_credential,
+                                int slot_id);
+  virtual bool GetSession(const chromeos::SecureBlob& isolate_credential,
+                          int session_id, Session** session) const;
 
   // LoginEventListener methods.
-  virtual void OnLogin(const FilePath& path,
-                       const chromeos::SecureBlob& auth_data);
-  virtual void OnLogout(const FilePath& path);
-  virtual void OnChangeAuthData(const FilePath& path,
-                                const chromeos::SecureBlob& old_auth_data,
-                                const chromeos::SecureBlob& new_auth_data);
+  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
+  virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
+  virtual void LoadToken(const chromeos::SecureBlob& isolate_credential,
+                         const FilePath& path,
+                         const chromeos::SecureBlob& auth_data);
+  virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
+                           const FilePath& path);
+  virtual void ChangeTokenAuthData(const FilePath& path,
+                                   const chromeos::SecureBlob& old_auth_data,
+                                   const chromeos::SecureBlob& new_auth_data);
+
   // HandleGenerator methods.
   virtual int CreateHandle();
 
  private:
+
+  // Holds all information associated with a particular isolate.
+  struct Isolate {
+    chromeos::SecureBlob credential;
+    int open_count;
+    // The set of slots accessible through this isolate.
+    std::set<int> slot_ids;
+  };
+
   // Holds all information associated with a particular slot.
   struct Slot {
     CK_SLOT_INFO slot_info;
@@ -76,6 +105,9 @@ class SlotManagerImpl : public SlotManager,
     std::tr1::shared_ptr<base::PlatformThread::Delegate> worker_thread;
     base::PlatformThreadHandle worker_thread_handle;
   };
+
+  // Internal token presence check without isolate_credential check.
+  bool IsTokenPresent(int slot_id) const;
 
   // Provides default PKCS #11 slot and token information. This method fills
   // the given information structures with constant default values formatted to
@@ -104,6 +136,15 @@ class SlotManagerImpl : public SlotManager,
   //  num_slots - The number of slots to be created.
   void AddSlots(int num_slots);
 
+  // Creates a new isolate with the given isolate credential.
+  void AddIsolate(const chromeos::SecureBlob& isolate_credential);
+
+  // Destroy isolate and unload any tokens in that isolate.
+  void DestroyIsolate(const Isolate& isolate);
+
+  // Get the path of the token loaded in the given slot.
+  bool PathFromSlotId(int slot_id, FilePath* path) const;
+
   ChapsFactory* factory_;
   int last_handle_;
   MechanismMap mechanism_info_;
@@ -114,6 +155,7 @@ class SlotManagerImpl : public SlotManager,
   // Key: A session identifier.
   // Value: The identifier of the associated slot.
   std::map<int, int> session_slot_map_;
+  std::map<chromeos::SecureBlob, Isolate> isolate_map_;
   TPMUtility* tpm_utility_;
   base::Lock handle_generator_lock_;
 

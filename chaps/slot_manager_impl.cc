@@ -22,6 +22,7 @@
 #include <openssl/sha.h>
 
 #include "chaps/chaps_utility.h"
+#include "chaps/isolate.h"
 #include "chaps/object_importer.h"
 #include "chaps/session.h"
 #include "chaps/tpm_utility.h"
@@ -291,6 +292,10 @@ bool SlotManagerImpl::Init() {
   } else {
     LOG(WARNING) << "TPM failed to generate random data.";
   }
+
+  // Add default isolate
+  AddIsolate(IsolateCredentialManager::GetDefaultIsolateCredential());
+
   // Default semantics are to always start with two slots.  One 'system' slot
   // which always has a token available, and one 'user' slot which will have no
   // token until a login event is received.
@@ -311,38 +316,56 @@ int SlotManagerImpl::GetSlotCount() const {
   return slot_list_.size();
 }
 
-bool SlotManagerImpl::IsTokenPresent(int slot_id) const {
-  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
-
-  return ((slot_list_[slot_id].slot_info.flags & CKF_TOKEN_PRESENT) ==
-      CKF_TOKEN_PRESENT);
+bool SlotManagerImpl::IsTokenAccessible(const SecureBlob& isolate_credential,
+                                        int slot_id) const {
+  map<SecureBlob, Isolate>::const_iterator isolate_iter =
+    isolate_map_.find(isolate_credential);
+  if (isolate_iter == isolate_map_.end()) {
+    return false;
+  }
+  const Isolate& isolate = isolate_iter->second;
+  return isolate.slot_ids.find(slot_id) != isolate.slot_ids.end();
 }
 
-void SlotManagerImpl::GetSlotInfo(int slot_id, CK_SLOT_INFO* slot_info) const {
+bool SlotManagerImpl::IsTokenPresent(const SecureBlob& isolate_credential,
+                                     int slot_id) const {
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
+  return IsTokenPresent(slot_id);
+}
+
+void SlotManagerImpl::GetSlotInfo(const SecureBlob& isolate_credential,
+                                  int slot_id, CK_SLOT_INFO* slot_info) const {
   CHECK(slot_info);
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
 
   *slot_info = slot_list_[slot_id].slot_info;
 }
 
-void SlotManagerImpl::GetTokenInfo(int slot_id,
+void SlotManagerImpl::GetTokenInfo(const SecureBlob& isolate_credential,
+                                   int slot_id,
                                    CK_TOKEN_INFO* token_info) const {
   CHECK(token_info);
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
   CHECK(IsTokenPresent(slot_id));
 
   *token_info = slot_list_[slot_id].token_info;
 }
 
-const MechanismMap* SlotManagerImpl::GetMechanismInfo(int slot_id) const {
+const MechanismMap* SlotManagerImpl::GetMechanismInfo(
+    const SecureBlob& isolate_credential, int slot_id) const {
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
   CHECK(IsTokenPresent(slot_id));
 
   return &mechanism_info_;
 }
 
-int SlotManagerImpl::OpenSession(int slot_id, bool is_read_only) {
+int SlotManagerImpl::OpenSession(const SecureBlob& isolate_credential,
+                                 int slot_id, bool is_read_only) {
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
   CHECK(IsTokenPresent(slot_id));
 
   shared_ptr<Session> session(factory_->CreateSession(
@@ -358,20 +381,24 @@ int SlotManagerImpl::OpenSession(int slot_id, bool is_read_only) {
   return session_id;
 }
 
-bool SlotManagerImpl::CloseSession(int session_id) {
+bool SlotManagerImpl::CloseSession(const SecureBlob& isolate_credential,
+                                   int session_id) {
   Session* session = NULL;
-  if (!GetSession(session_id, &session))
+  if (!GetSession(isolate_credential, session_id, &session))
     return false;
   CHECK(session);
   int slot_id = session_slot_map_[session_id];
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
   session_slot_map_.erase(session_id);
   slot_list_[slot_id].sessions.erase(session_id);
   return true;
 }
 
-void SlotManagerImpl::CloseAllSessions(int slot_id) {
+void SlotManagerImpl::CloseAllSessions(const SecureBlob& isolate_credential,
+                                       int slot_id) {
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  CHECK(IsTokenAccessible(isolate_credential, slot_id));
 
   for (map<int, shared_ptr<Session> >::iterator iter =
           slot_list_[slot_id].sessions.begin();
@@ -382,7 +409,8 @@ void SlotManagerImpl::CloseAllSessions(int slot_id) {
   slot_list_[slot_id].sessions.clear();
 }
 
-bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
+bool SlotManagerImpl::GetSession(const SecureBlob& isolate_credential,
+                                 int session_id, Session** session) const {
   CHECK(session);
 
   // Lookup which slot this session belongs to.
@@ -392,6 +420,9 @@ bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
     return false;
   int slot_id = session_slot_iter->second;
   CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+  if (!IsTokenAccessible(isolate_credential, slot_id)) {
+    return false;
+  }
 
   // Lookup the session instance.
   map<int, shared_ptr<Session> >::const_iterator session_iter =
@@ -402,17 +433,70 @@ bool SlotManagerImpl::GetSession(int session_id, Session** session) const {
   return true;
 }
 
-void SlotManagerImpl::OnLogin(const FilePath& path,
-                              const SecureBlob& auth_data) {
-  VLOG(1) << "SlotManagerImpl::OnLogin enter";
+bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential) {
+  VLOG(1) << "SlotManagerImpl::OpenIsolate enter";
+  bool isolate_valid =
+    isolate_map_.find(*isolate_credential) != isolate_map_.end();
+  if (isolate_valid) {
+    VLOG(1) << "Incrementing open count for existing isolate.";
+    Isolate& isolate = isolate_map_[*isolate_credential];
+    ++isolate.open_count;
+  } else {
+    VLOG(1) << "Creating new isolate.";
+    std::string credential_string;
+    tpm_utility_->GenerateRandom(kIsolateCredentialBytes, &credential_string);
+    SecureBlob new_isolate_credential(credential_string);
+    ClearString(credential_string);
+
+    if (isolate_map_.find(new_isolate_credential) != isolate_map_.end()) {
+      // A collision on 128 bits should be extremely unlikely if the random
+      // number generator is working properly. If there is a problem with the
+      // random number generator we want to get out.
+      LOG(FATAL) << "Collision when trying to create new isolate credential.";
+    }
+
+    AddIsolate(new_isolate_credential);
+    isolate_credential->swap(new_isolate_credential);
+  }
+  VLOG(1) << "SlotManagerImpl::OpenIsolate success";
+  return isolate_valid;
+}
+
+void SlotManagerImpl::CloseIsolate(const SecureBlob& isolate_credential) {
+  VLOG(1) << "SlotManagerImpl::CloseIsolate enter";
+  if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
+    LOG(ERROR) << "Attempted Close isolate with invalid isolate credential";
+    return;
+  }
+  Isolate& isolate = isolate_map_[isolate_credential];
+  CHECK(isolate.open_count > 0);
+  --isolate.open_count;
+  if (isolate.open_count == 0) {
+    DestroyIsolate(isolate);
+  }
+  VLOG(1) << "SlotManagerImpl::CloseIsolate success";
+}
+
+void SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
+                                const FilePath& path,
+                                const SecureBlob& auth_data) {
+  VLOG(1) << "SlotManagerImpl::LoadToken enter";
+  if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
+    LOG(ERROR) << "Invalid isolate credential for LoadToken.";
+    return;
+  }
+  Isolate& isolate = isolate_map_[isolate_credential];
+
   // If we're already managing this token, ignore the event.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
-    LOG(WARNING) << "Login event received for existing slot.";
+    // TODO(rmcilroy): Consider allowing tokens to be loaded in multiple
+    // isolates.
+    LOG(WARNING) << "Load token event received for existing token.";
     return;
   }
   // If there's something wrong with the TPM, don't attempt to load a token.
   if (!tpm_utility_->Init()) {
-    LOG(ERROR) << "Failed to initialize TPM, login event aborting.";
+    LOG(ERROR) << "Failed to initialize TPM, load token event aborting.";
     return;
   }
   // Setup the object pool.
@@ -447,18 +531,30 @@ void SlotManagerImpl::OnLogin(const FilePath& path,
   slot_list_[slot_id].token_object_pool = object_pool;
   slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = slot_id;
+  // Insert slot into the isolate.
+  isolate.slot_ids.insert(slot_id);
   LOG(INFO) << "Slot " << slot_id << " ready for token at " << path.value();
-  VLOG(1) << "SlotManagerImpl::OnLogin success";
+  VLOG(1) << "SlotManagerImpl::LoadToken success";
 }
 
-void SlotManagerImpl::OnLogout(const FilePath& path) {
-  VLOG(1) << "SlotManagerImpl::OnLogout enter";
+void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
+                                  const FilePath& path) {
+  VLOG(1) << "SlotManagerImpl::UnloadToken";
+  if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
+    LOG(WARNING) << "Invalid isolate credential for UnloadToken.";
+    return;
+  }
+  Isolate& isolate = isolate_map_[isolate_credential];
+
   // If we're not managing this token, ignore the event.
   if (path_slot_map_.find(path) == path_slot_map_.end()) {
-    LOG(WARNING) << "Logout event received for unknown path: " << path.value();
+    LOG(WARNING) << "Unload Token event received for unknown path: "
+                 << path.value();
     return;
   }
   int slot_id = path_slot_map_[path];
+  if (!IsTokenAccessible(isolate_credential, slot_id))
+    LOG(WARNING) << "Attempted to unload token with invalid isolate credential";
 
   // Wait for initialization to be finished before cleaning up.
   if (slot_list_[slot_id].worker_thread.get())
@@ -471,20 +567,22 @@ void SlotManagerImpl::OnLogout(const FilePath& path) {
                                slot_list_[slot_id].worker_thread.get(),
                                &slot_list_[slot_id].worker_thread_handle);
 
-  CloseAllSessions(slot_id);
+  CloseAllSessions(isolate_credential, slot_id);
   slot_list_[slot_id].token_object_pool.reset();
   slot_list_[slot_id].slot_info.flags &= ~CKF_TOKEN_PRESENT;
   path_slot_map_.erase(path);
+  // Remove slot from the isolate.
+  isolate.slot_ids.erase(slot_id);
   LOG(INFO) << "Token at " << path.value() << " has been removed from slot "
             << slot_id;
-  VLOG(1) << "SlotManagerImpl::OnLogout success";
+  VLOG(1) << "SlotManagerImpl::Unload token success";
 }
 
-void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
-                                       const SecureBlob& old_auth_data,
-                                       const SecureBlob& new_auth_data) {
+void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
+                                          const SecureBlob& old_auth_data,
+                                          const SecureBlob& new_auth_data) {
   // This event can be handled whether or not we are already managing the token
-  // but if we're not, we won't start until a Login event comes in.
+  // but if we're not, we won't start until a Load Token event comes in.
   ObjectPool* object_pool = NULL;
   scoped_ptr<ObjectPool> scoped_object_pool;
   int slot_id = 0;
@@ -529,6 +627,13 @@ void SlotManagerImpl::OnChangeAuthData(const FilePath& path,
   }
   if (unload)
     tpm_utility_->UnloadKeysForSlot(slot_id);
+}
+
+bool SlotManagerImpl::IsTokenPresent(int slot_id) const {
+  CHECK_LT(static_cast<size_t>(slot_id), slot_list_.size());
+
+  return ((slot_list_[slot_id].slot_info.flags & CKF_TOKEN_PRESENT) ==
+      CKF_TOKEN_PRESENT);
 }
 
 int SlotManagerImpl::CreateHandle() {
@@ -600,6 +705,40 @@ void SlotManagerImpl::AddSlots(int num_slots) {
     LOG(INFO) << "Adding slot: " << slot_list_.size();
     slot_list_.push_back(slot);
   }
+}
+
+void SlotManagerImpl::AddIsolate(const SecureBlob& isolate_credential) {
+  Isolate isolate;
+  isolate.credential = isolate_credential;
+  isolate.open_count = 1;
+  isolate_map_[isolate_credential] = isolate;
+}
+
+void SlotManagerImpl::DestroyIsolate(const Isolate& isolate) {
+  CHECK(isolate.open_count == 0);
+
+  // Unload any existing tokens in this isolate.
+  while (!isolate.slot_ids.empty()) {
+    int slot_id = *isolate.slot_ids.begin();
+    FilePath path;
+    CHECK(PathFromSlotId(slot_id, &path));
+    UnloadToken(isolate.credential, path);
+  }
+
+  isolate_map_.erase(isolate.credential);
+}
+
+bool SlotManagerImpl::PathFromSlotId(int slot_id, FilePath* path) const {
+  CHECK(path);
+  map<FilePath, int>::const_iterator path_iter;
+  for (path_iter = path_slot_map_.begin(); path_iter != path_slot_map_.end();
+       ++path_iter) {
+    if (path_iter->second == slot_id) {
+      *path = path_iter->first;
+      return true;
+    }
+  }
+  return false;
 }
 
 }  // namespace

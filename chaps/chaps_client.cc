@@ -19,10 +19,12 @@
 
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/isolate.h"
 #include "chaps/login_event_client.h"
 
 using std::string;
 using std::vector;
+using chaps::IsolateCredentialManager;
 
 namespace {
 
@@ -46,7 +48,10 @@ void Ping() {
   if (!proxy.Init())
     exit(-1);
   vector<uint64_t> slot_list;
-  uint32_t result = proxy.GetSlotList(true, &slot_list);
+  uint32_t result = proxy.GetSlotList(
+      IsolateCredentialManager::GetDefaultIsolateCredential(),
+      true,
+      &slot_list);
   if (result != 0) {
     LOG(ERROR) << "Chaps is available but failed to provide a token list.";
     exit(-1);
@@ -57,16 +62,18 @@ void Ping() {
 // Loads a token given a path and auth data.
 void LoadToken(const string& path, const string& auth) {
   chaps::LoginEventClient client;
-  client.FireLoginEvent(path,
-                        chaps::ConvertStringToByteBuffer(auth.data()),
-                        auth.length());
+  client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
+                   path,
+                   chaps::ConvertStringToByteBuffer(auth.data()),
+                   auth.length());
   LOG(INFO) << "Sent Event: Login: " << path;
 }
 
 // Unloads a token given a path.
 void UnloadToken(const string& path) {
   chaps::LoginEventClient client;
-  client.FireLogoutEvent(path);
+  client.UnloadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
+                     path);
   LOG(INFO) << "Sent Event: Logout: " << path;
 }
 
@@ -75,12 +82,11 @@ void ChangeAuthData(const string& path,
                     const string& auth_old,
                     const string& auth_new) {
   chaps::LoginEventClient client;
-  client.FireChangeAuthDataEvent(
-      path,
-      chaps::ConvertStringToByteBuffer(auth_old.data()),
-      auth_old.length(),
-      chaps::ConvertStringToByteBuffer(auth_new.data()),
-      auth_new.length());
+  client.ChangeTokenAuthData(path,
+                             chaps::ConvertStringToByteBuffer(auth_old.data()),
+                             auth_old.length(),
+                             chaps::ConvertStringToByteBuffer(auth_new.data()),
+                             auth_new.length());
   LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
 }
 
