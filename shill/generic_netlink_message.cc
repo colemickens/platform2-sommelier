@@ -115,7 +115,7 @@ bool ControlNetlinkMessage::InitFromNlmsg(const nlmsghdr *const_msg) {
 
   for (int i = 0; i < CTRL_ATTR_MAX + 1; ++i) {
     if (tb[i]) {
-      // TODO(wdg): When Nl80211Messages instantiate their own attributes,
+      // TODO(wdg): When NetlinkMessages instantiate their own attributes,
       // this call should, instead, call |SetAttributeFromNlAttr|.
       attributes_->CreateAndInitAttribute(
           i, tb[i], Bind(&NetlinkAttribute::NewControlAttributeFromId));

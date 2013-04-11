@@ -11,26 +11,26 @@
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
 
-#include "shill/config80211.h"
+#include "shill/netlink_manager.h"
 
 namespace shill {
 
-class Config80211;
 class Metrics;
+class NetlinkManager;
 class NetlinkMessage;
 
-// Config80211 callback object that sends stuff to UMA metrics.
+// NetlinkManager callback object that sends stuff to UMA metrics.
 class Callback80211Metrics :
   public base::SupportsWeakPtr<Callback80211Metrics> {
  public:
-  Callback80211Metrics(const Config80211 &config80211, Metrics *metrics);
+  Callback80211Metrics(const NetlinkManager &netlink_manager, Metrics *metrics);
 
   // This retrieves the numerical id for the "nl80211" family of messages.
   // Should only be called (once) at initialization time but must be called
-  // only after Config80211 knows about the "nl80211" family.
-  void InitNl80211FamilyId(const Config80211 &config80211);
+  // only after NetlinkManager knows about the "nl80211" family.
+  void InitNl80211FamilyId(const NetlinkManager &netlink_manager);
 
-  // Called with each broadcast netlink message that arrives to Config80211.
+  // Called with each broadcast netlink message that arrives to NetlinkManager.
   // If the message is a deauthenticate message, the method collects the reason
   // for the deauthentication and communicates those to UMA.
   void CollectDisconnectStatistics(const NetlinkMessage &msg);

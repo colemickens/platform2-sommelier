@@ -34,7 +34,7 @@ namespace shill {
 
 namespace {
 
-// These data blocks have been collected by shill using Config80211 while,
+// These data blocks have been collected by shill using NetlinkManager while,
 // simultaneously (and manually) comparing shill output with that of the 'iw'
 // code from which it was derived.  The test strings represent the raw packet
 // data coming from the kernel.  The comments above each of these strings is

@@ -20,7 +20,6 @@
 #include <chromeos/dbus/service_constants.h>
 #include <glib.h>
 
-#include "shill/config80211.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
 #include "shill/device.h"
@@ -31,6 +30,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/metrics.h"
+#include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -96,7 +96,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       supplicant_state_(kInterfaceStateUnknown),
       supplicant_bss_("(unknown)"),
       need_bss_flush_(false),
-      resumed_at_((struct timeval){0}),
+      resumed_at_((struct timeval) {0}),
       fast_scans_remaining_(kNumFastScanAttempts),
       has_already_completed_(false),
       is_debugging_connection_(false),
@@ -105,7 +105,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
-      config80211_(Config80211::GetInstance()) {
+      netlink_manager_(NetlinkManager::GetInstance()) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       flimflam::kBgscanMethodProperty,
@@ -140,7 +140,7 @@ WiFi::WiFi(ControlInterface *control_interface,
   ScopeLogger::GetInstance()->RegisterScopeEnableChangedCallback(
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
-  CHECK(config80211_);
+  CHECK(netlink_manager_);
   SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -170,14 +170,14 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   // it when it appears.
   ConnectToSupplicant();
   // Subscribe to multicast events.
-  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  Config80211::kEventTypeConfig);
-  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  Config80211::kEventTypeScan);
-  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  Config80211::kEventTypeRegulatory);
-  config80211_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  Config80211::kEventTypeMlme);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeConfig);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeScan);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeRegulatory);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeMlme);
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {

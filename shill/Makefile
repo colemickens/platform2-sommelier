@@ -201,7 +201,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	byte_string.o \
 	callback80211_metrics.o \
 	certificate_file.o \
-	config80211.o \
 	connection.o \
 	connection_health_checker.o \
 	control_netlink_attribute.o \
@@ -255,6 +254,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	minijail.o \
 	modem_info.o \
 	netlink_attribute.o \
+	netlink_manager.o \
 	netlink_message.o \
 	netlink_socket.o \
 	nl80211_attribute.o \
@@ -331,7 +331,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
 	crypto_util_proxy_unittest.o \
-	config80211_unittest.o \
 	connection_unittest.o \
 	connection_health_checker_unittest.o \
 	dbus_adaptor_unittest.o \
@@ -427,6 +426,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_wimax_provider.o \
 	mock_wimax_service.o \
 	modem_info_unittest.o \
+	netlink_manager_unittest.o \
 	netlink_message_unittest.o \
 	netlink_socket_unittest.o \
 	nice_mock_control.o \

@@ -4,23 +4,23 @@
 
 #include "shill/callback80211_metrics.h"
 
-#include "shill/config80211.h"
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
 #include "shill/metrics.h"
+#include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
 
 namespace shill {
 
-Callback80211Metrics::Callback80211Metrics(const Config80211 &config80211,
-                                           Metrics *metrics)
+Callback80211Metrics::Callback80211Metrics(
+    const NetlinkManager &netlink_manager, Metrics *metrics)
     : metrics_(metrics),
       nl80211_message_type_(NetlinkMessage::kIllegalMessageType) {}
 
 void Callback80211Metrics::InitNl80211FamilyId(
-    const Config80211 &config80211) {
+    const NetlinkManager &netlink_manager) {
   nl80211_message_type_ =
-      config80211.GetMessageType(Nl80211Message::kMessageTypeString);
+      netlink_manager.GetMessageType(Nl80211Message::kMessageTypeString);
 }
 
 void Callback80211Metrics::CollectDisconnectStatistics(

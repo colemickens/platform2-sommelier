@@ -18,12 +18,12 @@
 namespace shill {
 
 class Config;
-class Config80211;
 class ControlInterface;
 class DHCPProvider;
 class Error;
 class GLib;
 class Metrics;
+class NetlinkManager;
 class NSS;
 class ProxyFactory;
 class RoutingTable;
@@ -61,7 +61,7 @@ class Daemon {
   RTNLHandler *rtnl_handler_;
   RoutingTable *routing_table_;
   DHCPProvider *dhcp_provider_;
-  Config80211 *config80211_;
+  NetlinkManager *netlink_manager_;
   scoped_ptr<Manager> manager_;
   Callback80211Metrics callback80211_metrics_;
   EventDispatcher dispatcher_;

@@ -4,6 +4,8 @@
 
 #include "shill/netlink_socket.h"
 
+#include <linux/netlink.h>
+
 #include <algorithm>
 #include <string>
 
@@ -12,7 +14,7 @@
 
 #include "shill/byte_string.h"
 #include "shill/mock_sockets.h"
-#include "shill/nl80211_message.h"
+#include "shill/netlink_message.h"
 
 using std::min;
 using std::string;
@@ -54,7 +56,7 @@ class NetlinkSocketTest : public Test {
 
 class FakeSocketRead {
  public:
-  FakeSocketRead(const ByteString &next_read_string) {
+  explicit FakeSocketRead(const ByteString &next_read_string) {
     next_read_string_ = next_read_string;
   }
   // Copies |len| bytes of |next_read_string_| into |buf| and clears

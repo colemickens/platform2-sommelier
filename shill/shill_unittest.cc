@@ -212,8 +212,8 @@ class ShillDaemonTest : public Test {
     daemon_.Stop();
   }
 
-  void ResetConfig80211() {
-    daemon_.config80211_->Reset(true);
+  void ResetNetlinkManager() {
+    daemon_.netlink_manager_->Reset(true);
   }
 
   MOCK_METHOD0(TerminationAction, void());
@@ -316,9 +316,9 @@ TEST_F(ShillDaemonTest, Quit) {
   dispatcher_->PostTask(Bind(&Daemon::Quit, Unretained(&daemon_)));
 
   // TODO(wdg): crbug.com/224712 - Need fix for "GLib-WARNING **: Invalid file
-  // descriptor".  This requires support for config80211 interface tests.
+  // descriptor".  This requires support for netlink_manager interface tests.
   daemon_.Run();
-  ResetConfig80211();
+  ResetNetlinkManager();
 }
 
 }  // namespace shill

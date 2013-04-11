@@ -49,15 +49,15 @@
 //
 // - Then send the message, passing-in a closure to the handler you created:
 //
-//    Config80211 *config80211 = Config80211::GetInstance();
-//    config80211->SendMessage(&msg, Bind(&SomeClass::MyMessageHandler));
+//    NetlinkManager *netlink_manager = NetlinkManager::GetInstance();
+//    netlink_manager->SendMessage(&msg, Bind(&SomeClass::MyMessageHandler));
 //
-// Config80211 will then save your handler and send your message.  When a
+// NetlinkManager will then save your handler and send your message.  When a
 // response to your message arrives, it'll call your handler.
 //
 
-#ifndef SHILL_CONFIG80211_H_
-#define SHILL_CONFIG80211_H_
+#ifndef SHILL_NETLINK_MANAGER_H_
+#define SHILL_NETLINK_MANAGER_H_
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -82,19 +82,19 @@ struct InputData;
 class IOHandler;
 class NetlinkSocket;
 
-// Config80211 is a singleton that coordinates sending netlink messages to,
+// NetlinkManager is a singleton that coordinates sending netlink messages to,
 // and receiving netlink messages from, the kernel.  The first use of this is
 // to communicate between user-space and the cfg80211 module that manages wifi
-// drivers.  Bring Config80211 up as follows:
-//  Config80211 *config80211_ = Config80211::GetInstance();
+// drivers.  Bring NetlinkManager up as follows:
+//  NetlinkManager *netlink_manager_ = NetlinkManager::GetInstance();
 //  EventDispatcher dispatcher_;
-//  config80211_->Init();  // Initialize the socket.
+//  netlink_manager_->Init();  // Initialize the socket.
 //  // Get message types for all dynamic message types.
 //  Nl80211Message::SetMessageType(
-//      config80211_->GetFamily(Nl80211Message::kMessageTypeString,
+//      netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
 //                              Bind(&Nl80211Message::CreateMessage)));
-//  config80211_->Start(&dispatcher_);  // Leave event loop handling to others.
-class Config80211 {
+//  netlink_manager_->Start(&dispatcher_);
+class NetlinkManager {
  public:
   typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
 
@@ -117,10 +117,10 @@ class Config80211 {
   static const char kEventTypeRegulatory[];
   static const char kEventTypeMlme[];
 
-  // Config80211 is a singleton and this is the way to access it.
-  static Config80211 *GetInstance();
+  // NetlinkManager is a singleton and this is the way to access it.
+  static NetlinkManager *GetInstance();
 
-  // Performs non-trivial object initialization of the Config80211 singleton.
+  // Performs non-trivial object initialization of the NetlinkManager singleton.
   bool Init();
 
   // Passes the job of waiting for, and the subsequent reading from, the
@@ -145,7 +145,7 @@ class Config80211 {
   // the message family.
   uint16_t GetMessageType(std::string name) const;
 
-  // Install a Config80211 NetlinkMessageHandler.  The handler is a
+  // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
   // that do not have a corresponding messaage-specific callback.
   // |AddBroadcastHandler| should be called before |SubscribeToEvents| since
@@ -161,7 +161,7 @@ class Config80211 {
   // Uninstall all broadcast netlink message handlers.
   void ClearBroadcastHandlers();
 
-  // Sends a netlink message to the kernel using the Config80211 socket after
+  // Sends a netlink message to the kernel using the NetlinkManager socket after
   // installing a handler to deal with the kernel's response to the message.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
@@ -176,21 +176,21 @@ class Config80211 {
   bool SubscribeToEvents(const std::string &family, const std::string &group);
 
   // Gets the next sequence number for a NetlinkMessage to be sent over
-  // Config80211's netlink socket.
+  // NetlinkManager's netlink socket.
   uint32_t GetSequenceNumber();
 
  protected:
-  friend struct base::DefaultLazyInstanceTraits<Config80211>;
+  friend struct base::DefaultLazyInstanceTraits<NetlinkManager>;
 
-  explicit Config80211();
+  explicit NetlinkManager();
 
  private:
-  friend class Config80211Test;
+  friend class NetlinkManagerTest;
   friend class NetlinkMessageTest;
   friend class ShillDaemonTest;
-  FRIEND_TEST(Config80211Test, AddLinkTest);
-  FRIEND_TEST(Config80211Test, BroadcastHandlerTest);
-  FRIEND_TEST(Config80211Test, MessageHandlerTest);
+  FRIEND_TEST(NetlinkManagerTest, AddLinkTest);
+  FRIEND_TEST(NetlinkManagerTest, BroadcastHandlerTest);
+  FRIEND_TEST(NetlinkManagerTest, MessageHandlerTest);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION);
@@ -217,9 +217,9 @@ class Config80211 {
   void OnRawNlMessageReceived(InputData *data);
 
   // This method processes a message from |OnRawNlMessageReceived| by passing
-  // the message to either the Config80211 callback that matches the sequence
+  // the message to either the NetlinkManager callback that matches the sequence
   // number of the message or, if there isn't one, to all of the default
-  // Config80211 callbacks in |broadcast_handlers_|.
+  // NetlinkManager callbacks in |broadcast_handlers_|.
   void OnNlMessageReceived(nlmsghdr *msg);
 
   // Called by InputHandler on exceptional events.
@@ -232,7 +232,7 @@ class Config80211 {
   // Handles a CTRL_CMD_NEWFAMILY message from the kernel.
   void OnNewFamilyMessage(const NetlinkMessage &message);
 
-  // Config80211 Handlers, OnRawNlMessageReceived invokes each of these
+  // NetlinkManager Handlers, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.
   std::list<NetlinkMessageHandler> broadcast_handlers_;
 
@@ -241,7 +241,7 @@ class Config80211 {
 
   // Hooks needed to be called by shill's EventDispatcher.
   EventDispatcher *dispatcher_;
-  base::WeakPtrFactory<Config80211> weak_ptr_factory_;
+  base::WeakPtrFactory<NetlinkManager> weak_ptr_factory_;
   base::Callback<void(InputData *)> dispatcher_callback_;
   scoped_ptr<IOHandler> dispatcher_handler_;
 
@@ -249,9 +249,9 @@ class Config80211 {
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
 
-  DISALLOW_COPY_AND_ASSIGN(Config80211);
+  DISALLOW_COPY_AND_ASSIGN(NetlinkManager);
 };
 
 }  // namespace shill
 
-#endif  // SHILL_CONFIG80211_H_
+#endif  // SHILL_NETLINK_MANAGER_H_

@@ -32,7 +32,6 @@
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/mock_config80211.h"
 #include "shill/mock_dbus_manager.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
@@ -43,6 +42,7 @@
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_netlink_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_store.h"
@@ -195,7 +195,7 @@ MATCHER_P(EndpointMatch, endpoint, "") {
 
 class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
-  WiFiObjectTest(EventDispatcher *dispatcher)
+  explicit WiFiObjectTest(EventDispatcher *dispatcher)
       : event_dispatcher_(dispatcher),
         metrics_(NULL),
         manager_(&control_interface_, NULL, &metrics_, &glib_),
@@ -234,8 +234,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
     wifi_->provider_ = &wifi_provider_;
     wifi_->time_ = &time_;
-    // TODO(wdg): Flesh out the wifi tests to include config80211.
-    wifi_->config80211_ = &config80211_;
+    // TODO(wdg): Flesh out the wifi tests to include netlink_manager.
+    wifi_->netlink_manager_ = &netlink_manager_;
   }
 
   virtual void SetUp() {
@@ -325,16 +325,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // Simulate the course of events when the last enpoint of a service is
   // removed.
   class EndpointRemovalHandler {
-    public:
-      EndpointRemovalHandler(WiFiRefPtr wifi, const WiFiServiceRefPtr &service)
-          : wifi_(wifi), service_(service) {}
-      virtual ~EndpointRemovalHandler() {}
+   public:
+    EndpointRemovalHandler(WiFiRefPtr wifi, const WiFiServiceRefPtr &service)
+        : wifi_(wifi), service_(service) {}
+    virtual ~EndpointRemovalHandler() {}
 
-      WiFiServiceRefPtr OnEndpointRemoved(
-          const WiFiEndpointConstRefPtr &endpoint) {
-        wifi_->DisassociateFromService(service_);
-        return service_;
-      }
+    WiFiServiceRefPtr OnEndpointRemoved(
+        const WiFiEndpointConstRefPtr &endpoint) {
+      wifi_->DisassociateFromService(service_);
+      return service_;
+    }
 
    private:
     WiFiRefPtr wifi_;
@@ -342,7 +342,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   };
 
   EndpointRemovalHandler *MakeEndpointRemovalHandler(
-      WiFiServiceRefPtr &service) {
+      const WiFiServiceRefPtr &service) {
     return new EndpointRemovalHandler(wifi_, service);
   }
   void CancelScanTimer() {
@@ -730,7 +730,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   // and manager so we can perform expectations against them.
   MockDBusManager *dbus_manager_;
   MockSupplicantEAPStateHandler *eap_state_handler_;
-  MockConfig80211 config80211_;
+  MockNetlinkManager netlink_manager_;
 
  private:
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;

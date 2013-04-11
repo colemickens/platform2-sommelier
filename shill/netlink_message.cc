@@ -169,7 +169,7 @@ ByteString ErrorAckMessage::Encode(uint32_t sequence_number) {
 string ErrorAckMessage::ToString() const {
   string output;
   if (error()) {
-    StringAppendF(&output, "NL80211_ERROR 0x%" PRIx32 ": %s",
+    StringAppendF(&output, "NETLINK_ERROR 0x%" PRIx32 ": %s",
                   -error_, strerror(-error_));
   } else {
     StringAppendF(&output, "ACK");

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/config80211.h"
+#include "shill/netlink_manager.h"
 
 #include <netlink/netlink.h>
 #include <sys/select.h>
@@ -32,31 +32,31 @@ using std::string;
 namespace shill {
 
 namespace {
-LazyInstance<Config80211> g_config80211 = LAZY_INSTANCE_INITIALIZER;
+LazyInstance<NetlinkManager> g_netlink_manager = LAZY_INSTANCE_INITIALIZER;
 }  // namespace
 
-const char Config80211::kEventTypeConfig[] = "config";
-const char Config80211::kEventTypeScan[] = "scan";
-const char Config80211::kEventTypeRegulatory[] = "regulatory";
-const char Config80211::kEventTypeMlme[] = "mlme";
-const long Config80211::kMaximumNewFamilyWaitSeconds = 1;
-const long Config80211::kMaximumNewFamilyWaitMicroSeconds = 0;
+const char NetlinkManager::kEventTypeConfig[] = "config";
+const char NetlinkManager::kEventTypeScan[] = "scan";
+const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
+const char NetlinkManager::kEventTypeMlme[] = "mlme";
+const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;
+const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;
 
-Config80211::MessageType::MessageType() :
+NetlinkManager::MessageType::MessageType() :
   family_id(NetlinkMessage::kIllegalMessageType) {}
 
-Config80211::Config80211()
+NetlinkManager::NetlinkManager()
     : dispatcher_(NULL),
       weak_ptr_factory_(this),
-      dispatcher_callback_(Bind(&Config80211::OnRawNlMessageReceived,
+      dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
                                 weak_ptr_factory_.GetWeakPtr())),
       sock_(NULL) {}
 
-Config80211 *Config80211::GetInstance() {
-  return g_config80211.Pointer();
+NetlinkManager *NetlinkManager::GetInstance() {
+  return g_netlink_manager.Pointer();
 }
 
-void Config80211::Reset(bool full) {
+void NetlinkManager::Reset(bool full) {
   ClearBroadcastHandlers();
   message_types_.clear();
   if (full) {
@@ -66,7 +66,7 @@ void Config80211::Reset(bool full) {
   }
 }
 
-void Config80211::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
+void NetlinkManager::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
   uint16_t family_id;
   string family_name;
 
@@ -136,7 +136,7 @@ void Config80211::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
   message_types_[family_name].family_id = family_id;
 }
 
-bool Config80211::Init() {
+bool NetlinkManager::Init() {
   // Install message factory for control class of messages, which has
   // statically-known message type.
   message_factory_.AddFactoryMethod(
@@ -156,7 +156,7 @@ bool Config80211::Init() {
   return true;
 }
 
-void Config80211::Start(EventDispatcher *dispatcher) {
+void NetlinkManager::Start(EventDispatcher *dispatcher) {
   dispatcher_ = dispatcher;
   CHECK(dispatcher_);
   // Install ourselves in the shill mainloop so we receive messages on the
@@ -164,14 +164,14 @@ void Config80211::Start(EventDispatcher *dispatcher) {
   dispatcher_handler_.reset(dispatcher_->CreateInputHandler(
       file_descriptor(),
       dispatcher_callback_,
-      Bind(&Config80211::OnReadError, weak_ptr_factory_.GetWeakPtr())));
+      Bind(&NetlinkManager::OnReadError, weak_ptr_factory_.GetWeakPtr())));
 }
 
-int Config80211::file_descriptor() const {
+int NetlinkManager::file_descriptor() const {
   return (sock_ ? sock_->file_descriptor() : -1);
 }
 
-uint16_t Config80211::GetFamily(string name,
+uint16_t NetlinkManager::GetFamily(string name,
     const NetlinkMessageFactory::FactoryMethod &message_factory) {
   MessageType &message_type = message_types_[name];
   if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
@@ -192,7 +192,7 @@ uint16_t Config80211::GetFamily(string name,
     LOG(ERROR) << "Couldn't set string attribute";
     return false;
   }
-  SendMessage(&msg, Bind(&Config80211::OnNewFamilyMessage,
+  SendMessage(&msg, Bind(&NetlinkManager::OnNewFamilyMessage,
                          weak_ptr_factory_.GetWeakPtr()));
 
   // Wait for a response.  The code absolutely needs family_ids for its
@@ -256,7 +256,7 @@ uint16_t Config80211::GetFamily(string name,
   return NetlinkMessage::kIllegalMessageType;
 }
 
-uint16_t Config80211::GetMessageType(string name) const {
+uint16_t NetlinkManager::GetMessageType(string name) const {
   map<const string, MessageType>::const_iterator family =
       message_types_.find(name);
   if (family == message_types_.end()) {
@@ -266,7 +266,7 @@ uint16_t Config80211::GetMessageType(string name) const {
   return family->second.family_id;
 }
 
-bool Config80211::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
+bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
   list<NetlinkMessageHandler>::iterator i;
   if (FindBroadcastHandler(handler)) {
     LOG(WARNING) << "Trying to re-add a handler";
@@ -277,12 +277,12 @@ bool Config80211::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
     return false;
   }
   // And add the handler to the list.
-  SLOG(WiFi, 3) << "Config80211::" << __func__ << " - adding handler";
+  SLOG(WiFi, 3) << "NetlinkManager::" << __func__ << " - adding handler";
   broadcast_handlers_.push_back(handler);
   return true;
 }
 
-bool Config80211::RemoveBroadcastHandler(
+bool NetlinkManager::RemoveBroadcastHandler(
     const NetlinkMessageHandler &handler) {
   list<NetlinkMessageHandler>::iterator i;
   for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
@@ -297,7 +297,7 @@ bool Config80211::RemoveBroadcastHandler(
   return false;
 }
 
-bool Config80211::FindBroadcastHandler(const NetlinkMessageHandler &handler)
+bool NetlinkManager::FindBroadcastHandler(const NetlinkMessageHandler &handler)
     const {
   list<NetlinkMessageHandler>::const_iterator i;
   for (i = broadcast_handlers_.begin(); i != broadcast_handlers_.end(); ++i) {
@@ -308,11 +308,11 @@ bool Config80211::FindBroadcastHandler(const NetlinkMessageHandler &handler)
   return false;
 }
 
-void Config80211::ClearBroadcastHandlers() {
+void NetlinkManager::ClearBroadcastHandlers() {
   broadcast_handlers_.clear();
 }
 
-bool Config80211::SendMessage(NetlinkMessage *message,
+bool NetlinkManager::SendMessage(NetlinkMessage *message,
                               const NetlinkMessageHandler &handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
@@ -345,7 +345,7 @@ bool Config80211::SendMessage(NetlinkMessage *message,
   return true;
 }
 
-bool Config80211::RemoveMessageHandler(const NetlinkMessage &message) {
+bool NetlinkManager::RemoveMessageHandler(const NetlinkMessage &message) {
   if (!ContainsKey(message_handlers_, message.sequence_number())) {
     return false;
   }
@@ -353,13 +353,13 @@ bool Config80211::RemoveMessageHandler(const NetlinkMessage &message) {
   return true;
 }
 
-uint32_t Config80211::GetSequenceNumber() {
+uint32_t NetlinkManager::GetSequenceNumber() {
   return sock_ ?
       sock_->GetSequenceNumber() : NetlinkMessage::kBroadcastSequenceNumber;
 }
 
-bool Config80211::SubscribeToEvents(const string &family_id,
-                                    const string &group_name) {
+bool NetlinkManager::SubscribeToEvents(const string &family_id,
+                                       const string &group_name) {
   if (!ContainsKey(message_types_, family_id)) {
     LOG(ERROR) << "Family '" << family_id << "' doesn't exist";
     return false;
@@ -378,7 +378,7 @@ bool Config80211::SubscribeToEvents(const string &family_id,
   return sock_->SubscribeToEvents(group_id);
 }
 
-void Config80211::OnRawNlMessageReceived(InputData *data) {
+void NetlinkManager::OnRawNlMessageReceived(InputData *data) {
   if (!data) {
     LOG(ERROR) << __func__ << "() called with null header.";
     return;
@@ -404,7 +404,7 @@ void Config80211::OnRawNlMessageReceived(InputData *data) {
   }
 }
 
-void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
+void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   if (!msg) {
     LOG(ERROR) << __func__ << "() called with null header.";
     return;
@@ -459,11 +459,11 @@ void Config80211::OnNlMessageReceived(nlmsghdr *msg) {
   }
 }
 
-void Config80211::OnReadError(const Error &error) {
-  // TODO(wdg): When config80211 is used for scan, et al., this should either be
-  // LOG(FATAL) or the code should properly deal with errors, e.g., dropped
-  // messages due to the socket buffer being full.
-  LOG(ERROR) << "Config80211's netlink Socket read returns error: "
+void NetlinkManager::OnReadError(const Error &error) {
+  // TODO(wdg): When netlink_manager is used for scan, et al., this should
+  // either be LOG(FATAL) or the code should properly deal with errors,
+  // e.g., dropped messages due to the socket buffer being full.
+  LOG(ERROR) << "NetlinkManager's netlink Socket read returns error: "
              << error.message();
 }
 

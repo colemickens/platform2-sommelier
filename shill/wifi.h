@@ -96,10 +96,10 @@
 
 namespace shill {
 
-class Config80211;
 class Error;
 class GeolocationInfo;
 class KeyValueStore;
+class NetlinkManager;
 class ProxyFactory;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
@@ -401,7 +401,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool scan_pending_;
   uint16 scan_interval_seconds_;
 
-  Config80211 *config80211_;
+  NetlinkManager *netlink_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

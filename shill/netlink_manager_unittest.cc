@@ -7,9 +7,9 @@
 // tests the various NetlinkMessage types' ability to parse those
 // messages.
 
-// This file tests the public interface to Config80211.
+// This file tests the public interface to NetlinkManager.
 
-#include "shill/config80211.h"
+#include "shill/netlink_manager.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -28,7 +28,7 @@ namespace shill {
 
 namespace {
 
-// These data blocks have been collected by shill using Config80211 while,
+// These data blocks have been collected by shill using NetlinkManager while,
 // simultaneously (and manually) comparing shill output with that of the 'iw'
 // code from which it was derived.  The test strings represent the raw packet
 // data coming from the kernel.  The comments above each of these strings is
@@ -58,28 +58,28 @@ bool MockNetlinkSocket::SendMessage(const ByteString &out_string) {
   return true;
 }
 
-class Config80211Test : public Test {
+class NetlinkManagerTest : public Test {
  public:
-  Config80211Test() : config80211_(Config80211::GetInstance()) {
-    config80211_->message_types_[Nl80211Message::kMessageTypeString].family_id =
-        kNl80211FamilyId;
-    config80211_->message_factory_.AddFactoryMethod(
+  NetlinkManagerTest() : netlink_manager_(NetlinkManager::GetInstance()) {
+    netlink_manager_->message_types_[Nl80211Message::kMessageTypeString]
+        .family_id = kNl80211FamilyId;
+    netlink_manager_->message_factory_.AddFactoryMethod(
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(
-        config80211_->GetMessageType(Nl80211Message::kMessageTypeString));
+        netlink_manager_->GetMessageType(Nl80211Message::kMessageTypeString));
   }
 
-  ~Config80211Test() {
-    // Config80211 is a singleton, the sock_ field *MUST* be cleared
-    // before "Config80211Test::socket_" gets invalidated, otherwise
+  ~NetlinkManagerTest() {
+    // NetlinkManager is a singleton, the sock_ field *MUST* be cleared
+    // before "NetlinkManagerTest::socket_" gets invalidated, otherwise
     // later tests will refer to a corrupted memory.
-    config80211_->sock_ = NULL;
+    netlink_manager_->sock_ = NULL;
   }
 
-  void SetupConfig80211Object() {
-    EXPECT_NE(reinterpret_cast<Config80211 *>(NULL), config80211_);
-    config80211_->sock_ = &socket_;
-    EXPECT_TRUE(config80211_->Init());
+  void SetupNetlinkManagerObject() {
+    EXPECT_NE(reinterpret_cast<NetlinkManager *>(NULL), netlink_manager_);
+    netlink_manager_->sock_ = &socket_;
+    EXPECT_TRUE(netlink_manager_->Init());
   }
 
  protected:
@@ -89,15 +89,15 @@ class Config80211Test : public Test {
       on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
                                      base::Unretained(this))) {}
     MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage &msg));
-    const Config80211::NetlinkMessageHandler &on_netlink_message() const {
+    const NetlinkManager::NetlinkMessageHandler &on_netlink_message() const {
       return on_netlink_message_;
     }
    private:
-    Config80211::NetlinkMessageHandler on_netlink_message_;
+    NetlinkManager::NetlinkMessageHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandler80211);
   };
 
-  Config80211 *config80211_;
+  NetlinkManager *netlink_manager_;
   MockNetlinkSocket socket_;
 };
 
@@ -109,8 +109,8 @@ class Config80211Test : public Test {
 // appropriately, and that it calls NetlinkSocket::SubscribeToEvents if input
 // is good.)
 
-TEST_F(Config80211Test, BroadcastHandlerTest) {
-  SetupConfig80211Object();
+TEST_F(NetlinkManagerTest, BroadcastHandlerTest) {
+  SetupNetlinkManagerObject();
 
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
@@ -121,50 +121,50 @@ TEST_F(Config80211Test, BroadcastHandlerTest) {
   // Simple, 1 handler, case.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_FALSE(
-      config80211_->FindBroadcastHandler(handler1.on_netlink_message()));
-  config80211_->AddBroadcastHandler(handler1.on_netlink_message());
+      netlink_manager_->FindBroadcastHandler(handler1.on_netlink_message()));
+  netlink_manager_->AddBroadcastHandler(handler1.on_netlink_message());
   EXPECT_TRUE(
-      config80211_->FindBroadcastHandler(handler1.on_netlink_message()));
-  config80211_->OnNlMessageReceived(message);
+      netlink_manager_->FindBroadcastHandler(handler1.on_netlink_message()));
+  netlink_manager_->OnNlMessageReceived(message);
 
   // Add a second handler.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
-  config80211_->AddBroadcastHandler(handler2.on_netlink_message());
-  config80211_->OnNlMessageReceived(message);
+  netlink_manager_->AddBroadcastHandler(handler2.on_netlink_message());
+  netlink_manager_->OnNlMessageReceived(message);
 
   // Verify that a handler can't be added twice.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
-  config80211_->AddBroadcastHandler(handler1.on_netlink_message());
-  config80211_->OnNlMessageReceived(message);
+  netlink_manager_->AddBroadcastHandler(handler1.on_netlink_message());
+  netlink_manager_->OnNlMessageReceived(message);
 
   // Check that we can remove a handler.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
-  EXPECT_TRUE(config80211_->RemoveBroadcastHandler(
+  EXPECT_TRUE(netlink_manager_->RemoveBroadcastHandler(
       handler1.on_netlink_message()));
-  config80211_->OnNlMessageReceived(message);
+  netlink_manager_->OnNlMessageReceived(message);
 
   // Check that re-adding the handler goes smoothly.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(1);
-  config80211_->AddBroadcastHandler(handler1.on_netlink_message());
-  config80211_->OnNlMessageReceived(message);
+  netlink_manager_->AddBroadcastHandler(handler1.on_netlink_message());
+  netlink_manager_->OnNlMessageReceived(message);
 
   // Check that ClearBroadcastHandlers works.
-  config80211_->ClearBroadcastHandlers();
+  netlink_manager_->ClearBroadcastHandlers();
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(handler2, OnNetlinkMessage(_)).Times(0);
-  config80211_->OnNlMessageReceived(message);
+  netlink_manager_->OnNlMessageReceived(message);
 }
 
-TEST_F(Config80211Test, MessageHandlerTest) {
+TEST_F(NetlinkManagerTest, MessageHandlerTest) {
   // Setup.
-  SetupConfig80211Object();
+  SetupNetlinkManagerObject();
 
   MockHandler80211 handler_broadcast;
-  EXPECT_TRUE(config80211_->AddBroadcastHandler(
+  EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
       handler_broadcast.on_netlink_message()));
 
   Nl80211Message sent_message_1(CTRL_CMD_GETFAMILY, kGetFamilyCommandString);
@@ -186,42 +186,42 @@ TEST_F(Config80211Test, MessageHandlerTest) {
   // Verify that generic handler gets called for a message when no
   // message-specific handler has been installed.
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
-  config80211_->OnNlMessageReceived(received_message);
+  netlink_manager_->OnNlMessageReceived(received_message);
 
   // Send the message and give our handler.  Verify that we get called back.
-  EXPECT_TRUE(config80211_->SendMessage(&sent_message_1,
+  EXPECT_TRUE(netlink_manager_->SendMessage(&sent_message_1,
                                         handler_sent_1.on_netlink_message()));
   // Make it appear that this message is in response to our sent message.
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
-  config80211_->OnNlMessageReceived(received_message);
+  netlink_manager_->OnNlMessageReceived(received_message);
 
   // Verify that broadcast handler is called for the message after the
   // message-specific handler is called once.
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
-  config80211_->OnNlMessageReceived(received_message);
+  netlink_manager_->OnNlMessageReceived(received_message);
 
   // Install and then uninstall message-specific handler; verify broadcast
   // handler is called on message receipt.
-  EXPECT_TRUE(config80211_->SendMessage(&sent_message_1,
+  EXPECT_TRUE(netlink_manager_->SendMessage(&sent_message_1,
                                         handler_sent_1.on_netlink_message()));
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
-  EXPECT_TRUE(config80211_->RemoveMessageHandler(sent_message_1));
+  EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
-  config80211_->OnNlMessageReceived(received_message);
+  netlink_manager_->OnNlMessageReceived(received_message);
 
   // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
-  EXPECT_TRUE(config80211_->SendMessage(&sent_message_2,
+  EXPECT_TRUE(netlink_manager_->SendMessage(&sent_message_2,
                                         handler_sent_2.on_netlink_message()));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
-  config80211_->OnNlMessageReceived(received_message);
+  netlink_manager_->OnNlMessageReceived(received_message);
 
   // Change the ID for the message to that of the second handler; verify that
   // the appropriate handler is called for _that_ message.
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_2, OnNetlinkMessage(_)).Times(1);
-  config80211_->OnNlMessageReceived(received_message);
+  netlink_manager_->OnNlMessageReceived(received_message);
 }
 
 }  // namespace shill

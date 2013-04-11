@@ -13,11 +13,11 @@
 #include <base/file_path.h>
 
 #include "shill/callback80211_metrics.h"
-#include "shill/config80211.h"
 #include "shill/dhcp_provider.h"
 #include "shill/diagnostics_reporter.h"
 #include "shill/error.h"
 #include "shill/logging.h"
+#include "shill/netlink_manager.h"
 #include "shill/nl80211_message.h"
 #include "shill/nss.h"
 #include "shill/proxy_factory.h"
@@ -41,7 +41,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
       rtnl_handler_(RTNLHandler::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
       dhcp_provider_(DHCPProvider::GetInstance()),
-      config80211_(Config80211::GetInstance()),
+      netlink_manager_(NetlinkManager::GetInstance()),
       manager_(new Manager(control_,
                            &dispatcher_,
                            metrics_.get(),
@@ -49,7 +49,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())),
-      callback80211_metrics_(*config80211_, metrics_.get()) {
+      callback80211_metrics_(*netlink_manager_, metrics_.get()) {
 }
 
 Daemon::~Daemon() { }
@@ -102,22 +102,22 @@ void Daemon::Start() {
   routing_table_->Start();
   dhcp_provider_->Init(control_, &dispatcher_, &glib_);
 
-  if (config80211_) {
-    config80211_->Init();
-    uint16_t nl80211_family_id = config80211_->GetFamily(
+  if (netlink_manager_) {
+    netlink_manager_->Init();
+    uint16_t nl80211_family_id = netlink_manager_->GetFamily(
         Nl80211Message::kMessageTypeString,
         Bind(&Nl80211Message::CreateMessage));
     if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }
     Nl80211Message::SetMessageType(nl80211_family_id);
-    config80211_->Start(&dispatcher_);
+    netlink_manager_->Start(&dispatcher_);
 
-    callback80211_metrics_.InitNl80211FamilyId(*config80211_);
+    callback80211_metrics_.InitNl80211FamilyId(*netlink_manager_);
 
     // Install handlers for NetlinkMessages that don't have specific handlers
     // (which are registered by message sequence number).
-    config80211_->AddBroadcastHandler(Bind(
+    netlink_manager_->AddBroadcastHandler(Bind(
         &Callback80211Metrics::CollectDisconnectStatistics,
         callback80211_metrics_.AsWeakPtr()));
   }

@@ -54,9 +54,9 @@ namespace shill {
 //
 // Other message types ("nl80211", for example), are assigned by the kernel
 // dynamically.  To get the message type, pass a closure to assign the
-// message_type along with the sting to Config80211::GetFamily:
+// message_type along with the sting to NetlinkManager::GetFamily:
 //
-//  nl80211_type = config80211_->GetFamily(Nl80211Message::kMessageType);
+//  nl80211_type = netlink_manager->GetFamily(Nl80211Message::kMessageType);
 //
 // Do all of this before you start to create NetlinkMessages so that
 // NetlinkMessage can be instantiated with a valid |message_type_|.
@@ -91,8 +91,8 @@ class NetlinkMessage {
                          size_t num_bytes);
 
  protected:
-  friend class Config80211Test;
-  FRIEND_TEST(Config80211Test, NL80211_CMD_NOTIFY_CQM);
+  friend class NetlinkManagerTest;
+  FRIEND_TEST(NetlinkManagerTest, NL80211_CMD_NOTIFY_CQM);
 
   // Returns a string of bytes representing an |nlmsghdr|, filled-in, and its
   // padding.
