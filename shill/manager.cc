@@ -30,6 +30,8 @@
 #include "shill/device_info.h"
 #include "shill/ephemeral_profile.h"
 #include "shill/error.h"
+#include "shill/ethernet_eap_provider.h"
+#include "shill/ethernet_eap_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
@@ -91,6 +93,9 @@ Manager::Manager(ControlInterface *control_interface,
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
       modem_info_(control_interface, dispatcher, metrics, this, glib),
+      ethernet_eap_provider_(
+          new EthernetEapProvider(
+              control_interface, dispatcher, metrics, this)),
       vpn_provider_(
           new VPNProvider(control_interface, dispatcher, metrics, this)),
       wifi_provider_(
@@ -206,6 +211,7 @@ void Manager::Start() {
   adaptor_->UpdateRunning();
   device_info_.Start();
   modem_info_.Start();
+  ethernet_eap_provider_->Start();
   vpn_provider_->Start();
   wifi_provider_->Start();
   wimax_provider_.Start();
@@ -243,6 +249,7 @@ void Manager::Stop() {
   wimax_provider_.Stop();
   wifi_provider_->Stop();
   vpn_provider_->Stop();
+  ethernet_eap_provider_->Stop();
   modem_info_.Stop();
   device_info_.Stop();
   sort_services_task_.Cancel();
@@ -1600,6 +1607,10 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   }
 
   string type = args.GetString(flimflam::kTypeProperty);
+  if (type == kTypeEthernetEap) {
+    SLOG(Manager, 2) << __func__ << ": getting Ethernet EAP Service";
+    return ethernet_eap_provider_->service();
+  }
   if (type == flimflam::kTypeVPN) {
     SLOG(Manager, 2) << __func__ << ": getting VPN Service";
     return vpn_provider_->GetService(args, error);

@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
@@ -21,6 +22,7 @@ namespace shill {
 
 class CertificateFile;
 class EapListener;
+class EthernetEapProvider;
 class NSS;
 class ProxyFactory;
 class SupplicantEAPStateHandler;
@@ -67,6 +69,13 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
  private:
   friend class EthernetTest;
 
+  // Return a pointer to the EAP provider for Ethernet devices.
+  EthernetEapProvider *GetEapProvider();
+
+  // Return a reference to the shared service that contains EAP credentials
+  // for Ethernet.
+  ServiceConstRefPtr GetEapService();
+
   // Invoked by |eap_listener_| when an EAP authenticator is detected.
   void OnEapDetected();
 
@@ -84,6 +93,9 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void CertificationTask(const std::string &subject, uint32 depth);
   void EAPEventTask(const std::string &status, const std::string &parameter);
   void SupplicantStateChangedTask(const std::string &state);
+
+  // Callback task run as a result of TryEapAuthentication().
+  void TryEapAuthenticationTask();
 
   EthernetServiceRefPtr service_;
   bool link_up_;
@@ -108,6 +120,10 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // data for remote authentication.
   NSS *nss_;
   CertificateFile certificate_file_;
+
+  // Make sure TryEapAuthenticationTask is only queued for execution once
+  // at a time.
+  base::CancelableClosure try_eap_authentication_callback_;
 
   // Store cached copy of proxy factory singleton for speed/ease of testing.
   ProxyFactory *proxy_factory_;

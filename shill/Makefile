@@ -232,6 +232,8 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ephemeral_profile.o \
 	error.o \
 	ethernet.o \
+	ethernet_eap_provider.o \
+	ethernet_eap_service.o \
 	ethernet_service.o \
 	event_dispatcher.o \
 	file_io.o \
@@ -354,6 +356,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	eap_listener_unittest.o \
 	error_unittest.o \
 	ethernet_unittest.o \
+	ethernet_eap_provider_unittest.o \
 	ethernet_service_unittest.o \
 	file_reader_unittest.o \
 	hook_table_unittest.o \
@@ -393,6 +396,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_eap_credentials.o \
 	mock_eap_listener.o \
 	mock_ethernet.o \
+	mock_ethernet_eap_provider.o \
 	mock_ethernet_service.o \
 	mock_event_dispatcher.o \
 	mock_glib.o \

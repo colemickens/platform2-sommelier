@@ -337,7 +337,7 @@ class Service : public base::RefCounted<Service> {
   virtual Technology::Identifier technology() const { return technology_; }
   std::string GetTechnologyString() const;
 
-  const EapCredentials *eap() const { return eap_.get(); }
+  virtual const EapCredentials *eap() const { return eap_.get(); }
   void SetEapCredentials(EapCredentials *eap);
 
   bool save_credentials() const { return save_credentials_; }

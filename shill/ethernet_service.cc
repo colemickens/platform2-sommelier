@@ -42,7 +42,6 @@ EthernetService::EthernetService(ControlInterface *control_interface,
   set_auto_connect(true);
   set_friendly_name("Ethernet");
   SetStrength(kStrengthMax);
-  SetEapCredentials(new EapCredentials());
 }
 
 EthernetService::~EthernetService() { }

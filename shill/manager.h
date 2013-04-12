@@ -39,6 +39,7 @@ class ControlInterface;
 class DBusManager;
 class DefaultProfile;
 class Error;
+class EthernetEapProvider;
 class EventDispatcher;
 class ManagerAdaptorInterface;
 class Resolver;
@@ -249,6 +250,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual DeviceInfo *device_info() { return &device_info_; }
   virtual ModemInfo *modem_info() { return &modem_info_; }
   PowerManager *power_manager() const { return power_manager_.get(); }
+  virtual EthernetEapProvider *ethernet_eap_provider() const {
+    return ethernet_eap_provider_.get();
+  }
   VPNProvider *vpn_provider() const { return vpn_provider_.get(); }
   WiFiProvider *wifi_provider() const { return wifi_provider_.get(); }
   virtual WiMaxProvider *wimax_provider() { return &wimax_provider_; }
@@ -495,6 +499,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   scoped_ptr<DBusManager> dbus_manager_;
   DeviceInfo device_info_;
   ModemInfo modem_info_;
+  scoped_ptr<EthernetEapProvider> ethernet_eap_provider_;
   scoped_ptr<VPNProvider> vpn_provider_;
   scoped_ptr<WiFiProvider> wifi_provider_;
   WiMaxProvider wimax_provider_;

@@ -22,6 +22,7 @@
 #include "shill/device_info.h"
 #include "shill/eap_credentials.h"
 #include "shill/eap_listener.h"
+#include "shill/ethernet_eap_provider.h"
 #include "shill/ethernet_service.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -115,10 +116,11 @@ void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {
     link_up_ = false;
     is_eap_detected_ = false;
     DestroyIPConfig();
-    SetIsEapAuthenticated(false);
     if (service_)
       manager()->DeregisterService(service_);
     SelectService(NULL);
+    GetEapProvider()->ClearCredentialChangeCallback(this);
+    SetIsEapAuthenticated(false);
     StopSupplicant();
     eap_listener_->Stop();
   }
@@ -144,35 +146,11 @@ void Ethernet::DisconnectFrom(EthernetService *service) {
 }
 
 void Ethernet::TryEapAuthentication() {
-  if (!service_) {
-    LOG(INFO) << "Service is missing; not doing EAP authentication.";
-    return;
-  }
-
-  if (!service_->Is8021xConnectable()) {
-    if (is_eap_authenticated_) {
-      LOG(INFO) << "Service lost 802.1X credentials; "
-                << "terminating EAP authentication.";
-    } else {
-      LOG(INFO) << "Service lacks 802.1X credentials; "
-                << "not doing EAP authentication.";
-    }
-    StopSupplicant();
-    return;
-  }
-
-  if (!is_eap_detected_) {
-    LOG(INFO) << "EAP authenticator not detected; "
-              << "not doing EAP authentication.";
-    return;
-  }
-  if (!StartSupplicant()) {
-    LOG(ERROR) << "Failed to start supplicant.";
-    return;
-  }
-  StartEapAuthentication();
+  try_eap_authentication_callback_.Reset(
+      Bind(&Ethernet::TryEapAuthenticationTask,
+           weak_ptr_factory_.GetWeakPtr()));
+  dispatcher()->PostTask(try_eap_authentication_callback_.callback());
 }
-
 
 void Ethernet::BSSAdded(const ::DBus::Path &path,
                         const map<string, ::DBus::Variant> &properties) {
@@ -216,9 +194,25 @@ void Ethernet::ScanDone() {
   NOTREACHED() << __func__ << " is not implented for Ethernet";
 }
 
+EthernetEapProvider *Ethernet::GetEapProvider() {
+  EthernetEapProvider *eap_provider = manager()->ethernet_eap_provider();
+  CHECK(eap_provider);
+  return eap_provider;
+}
+
+ServiceConstRefPtr Ethernet::GetEapService() {
+  ServiceConstRefPtr eap_service = GetEapProvider()->service();
+  CHECK(eap_service);
+  return eap_service;
+}
+
 void Ethernet::OnEapDetected() {
   is_eap_detected_ = true;
   eap_listener_->Stop();
+  GetEapProvider()->SetCredentialChangeCallback(
+      this,
+      base::Bind(&Ethernet::TryEapAuthentication,
+                 weak_ptr_factory_.GetWeakPtr()));
   TryEapAuthentication();
 }
 
@@ -261,7 +255,7 @@ bool Ethernet::StartSupplicant() {
 bool Ethernet::StartEapAuthentication() {
   map<string, DBus::Variant> params;
   vector<char> nss_identifier(link_name().begin(), link_name().end());
-  service_->eap()->PopulateSupplicantProperties(
+  GetEapService()->eap()->PopulateSupplicantProperties(
       &certificate_file_, nss_, nss_identifier, &params);
   params[WPASupplicant::kNetworkPropertyEapKeyManagement].writer().
       append_string(WPASupplicant::kKeyManagementIeee8021X);
@@ -344,6 +338,36 @@ void Ethernet::EAPEventTask(const string &status, const string &parameter) {
 
 void Ethernet::SupplicantStateChangedTask(const string &state) {
   LOG(INFO) << "Supplicant state changed to " << state;
+}
+
+void Ethernet::TryEapAuthenticationTask() {
+  if (!service_) {
+    LOG(INFO) << "Service is missing; not doing EAP authentication.";
+    return;
+  }
+
+  if (!GetEapService()->Is8021xConnectable()) {
+    if (is_eap_authenticated_) {
+      LOG(INFO) << "EAP Service lost 802.1X credentials; "
+                << "terminating EAP authentication.";
+    } else {
+      LOG(INFO) << "EAP Service lacks 802.1X credentials; "
+                << "not doing EAP authentication.";
+    }
+    StopSupplicant();
+    return;
+  }
+
+  if (!is_eap_detected_) {
+    LOG(WARNING) << "EAP authenticator not detected; "
+                 << "not doing EAP authentication.";
+    return;
+  }
+  if (!StartSupplicant()) {
+    LOG(ERROR) << "Failed to start supplicant.";
+    return;
+  }
+  StartEapAuthentication();
 }
 
 }  // namespace shill

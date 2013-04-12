@@ -15,14 +15,17 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
+#include "shill/mock_eap_credentials.h"
 #include "shill/mock_eap_listener.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/mock_ethernet_eap_provider.h"
 #include "shill/mock_ethernet_service.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_rtnl_handler.h"
+#include "shill/mock_service.h"
 #include "shill/mock_supplicant_interface_proxy.h"
 #include "shill/mock_supplicant_process_proxy.h"
 #include "shill/nice_mock_control.h"
@@ -36,6 +39,7 @@ using testing::Eq;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
+using testing::ReturnRef;
 using testing::StrEq;
 using testing::StrictMock;
 using testing::Throw;
@@ -59,6 +63,10 @@ class EthernetTest : public testing::Test {
                                         kDeviceName)),
         eap_listener_(new MockEapListener()),
         mock_service_(new MockEthernetService(&control_interface_, &metrics_)),
+        mock_eap_service_(new MockService(&control_interface_,
+                                          &dispatcher_,
+                                          &metrics_,
+                                          &manager_)),
         proxy_factory_(this),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
@@ -73,9 +81,13 @@ class EthernetTest : public testing::Test {
     ethernet_->set_dhcp_provider(&dhcp_provider_);
     ON_CALL(manager_, device_info()).WillByDefault(Return(&device_info_));
     EXPECT_CALL(manager_, UpdateEnabledTechnologies()).Times(AnyNumber());
+    EXPECT_CALL(manager_, ethernet_eap_provider())
+        .WillRepeatedly(Return(&ethernet_eap_provider_));
+    ethernet_eap_provider_.set_service(mock_eap_service_);
   }
 
   virtual void TearDown() {
+    ethernet_eap_provider_.set_service(NULL);
     ethernet_->set_dhcp_provider(NULL);
     ethernet_->eap_listener_.reset();
   }
@@ -172,6 +184,9 @@ class EthernetTest : public testing::Test {
   void TriggerCertification(const string &subject, uint32 depth) {
     ethernet_->CertificationTask(subject, depth);
   }
+  void TriggerTryEapAuthentication() {
+    ethernet_->TryEapAuthenticationTask();
+  }
 
   StrictMock<MockEventDispatcher> dispatcher_;
   MockGLib glib_;
@@ -180,6 +195,7 @@ class EthernetTest : public testing::Test {
   MockManager manager_;
   MockDeviceInfo device_info_;
   EthernetRefPtr ethernet_;
+  MockEthernetEapProvider ethernet_eap_provider_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
 
@@ -188,6 +204,7 @@ class EthernetTest : public testing::Test {
 
   MockRTNLHandler rtnl_handler_;
   scoped_refptr<MockEthernetService> mock_service_;
+  scoped_refptr<MockService> mock_eap_service_;
   NiceMock<TestProxyFactory> proxy_factory_;
   scoped_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
@@ -248,6 +265,12 @@ TEST_F(EthernetTest, LinkEvent) {
 
   // Link-down event while up.
   SetIsEapDetected(true);
+  // This is done in SetUp, but we have to reestablish this after calling
+  // VerifyAndClearExpectations() above.
+  EXPECT_CALL(manager_, ethernet_eap_provider())
+      .WillRepeatedly(Return(&ethernet_eap_provider_));
+  EXPECT_CALL(ethernet_eap_provider_,
+              ClearCredentialChangeCallback(ethernet_.get()));
   EXPECT_CALL(manager_, DeregisterService(GetService()));
   EXPECT_CALL(*eap_listener_, Stop());
   ethernet_->LinkEvent(0, IFF_LOWER_UP);
@@ -293,49 +316,54 @@ TEST_F(EthernetTest, ConnectToSuccess) {
 TEST_F(EthernetTest, OnEapDetected) {
   EXPECT_FALSE(GetIsEapDetected());
   EXPECT_CALL(*eap_listener_, Stop());
+  EXPECT_CALL(ethernet_eap_provider_,
+              SetCredentialChangeCallback(ethernet_.get(), _));
+  EXPECT_CALL(dispatcher_, PostTask(_));  // Posts TryEapAuthenticationTask.
   TriggerOnEapDetected();
   EXPECT_TRUE(GetIsEapDetected());
 }
 
 TEST_F(EthernetTest, TryEapAuthenticationNoService) {
-  EXPECT_CALL(*mock_service_, Is8021xConnectable()).Times(0);
+  EXPECT_CALL(*mock_eap_service_, Is8021xConnectable()).Times(0);
   NiceScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        EndsWith("Service is missing; "
                                 "not doing EAP authentication.")));
-  ethernet_->TryEapAuthentication();
+  TriggerTryEapAuthentication();
 }
 
 TEST_F(EthernetTest, TryEapAuthenticationNotConnectableNotAuthenticated) {
   SetService(mock_service_);
-  EXPECT_CALL(*mock_service_, Is8021xConnectable()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_eap_service_, Is8021xConnectable()).WillOnce(Return(false));
   NiceScopedMockLog log;
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       EndsWith("Service lacks 802.1X credentials; "
+                       EndsWith("EAP Service lacks 802.1X credentials; "
                                 "not doing EAP authentication.")));
-  ethernet_->TryEapAuthentication();
+  TriggerTryEapAuthentication();
+  SetService(NULL);
 }
 
 TEST_F(EthernetTest, TryEapAuthenticationNotConnectableAuthenticated) {
   SetService(mock_service_);
   SetIsEapAuthenticated(true);
-  EXPECT_CALL(*mock_service_, Is8021xConnectable()).WillOnce(Return(false));
+  EXPECT_CALL(*mock_eap_service_, Is8021xConnectable()).WillOnce(Return(false));
   NiceScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
-                       EndsWith("Service lost 802.1X credentials; "
+                       EndsWith("EAP Service lost 802.1X credentials; "
                                 "terminating EAP authentication.")));
-  ethernet_->TryEapAuthentication();
+  TriggerTryEapAuthentication();
   EXPECT_FALSE(GetIsEapAuthenticated());
 }
 
 TEST_F(EthernetTest, TryEapAuthenticationEapNotDetected) {
   SetService(mock_service_);
-  EXPECT_CALL(*mock_service_, Is8021xConnectable()).WillOnce(Return(true));
+  EXPECT_CALL(*mock_eap_service_, Is8021xConnectable()).WillOnce(Return(true));
   NiceScopedMockLog log;
-  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _,
                        EndsWith("EAP authenticator not detected; "
                                 "not doing EAP authentication.")));
-  ethernet_->TryEapAuthentication();
+  TriggerTryEapAuthentication();
 }
 
 TEST_F(EthernetTest, StartSupplicant) {
@@ -395,6 +423,10 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   SetService(mock_service_);
 
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
+  MockEapCredentials mock_eap_credentials;
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _, _));
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Throw(DBus::Error(
@@ -403,22 +435,31 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
   EXPECT_FALSE(InvokeStartEapAuthentication());
   Mock::VerifyAndClearExpectations(mock_service_);
+  Mock::VerifyAndClearExpectations(mock_eap_service_);
   Mock::VerifyAndClearExpectations(interface_proxy);
   EXPECT_EQ("", GetSupplicantNetworkPath());
 
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
   EXPECT_CALL(*interface_proxy, RemoveNetwork(_)).Times(0);
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _, _));
   const char kFirstNetworkPath[] = "/network/first-path";
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Return(kFirstNetworkPath));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
   EXPECT_TRUE(InvokeStartEapAuthentication());
   Mock::VerifyAndClearExpectations(mock_service_);
+  Mock::VerifyAndClearExpectations(mock_eap_service_);
+  Mock::VerifyAndClearExpectations(&mock_eap_credentials);
   Mock::VerifyAndClearExpectations(interface_proxy);
   EXPECT_EQ(kFirstNetworkPath, GetSupplicantNetworkPath());
 
   EXPECT_CALL(*mock_service_, ClearEAPCertification());
   EXPECT_CALL(*interface_proxy, RemoveNetwork(StrEq(kFirstNetworkPath)));
+  EXPECT_CALL(*mock_eap_service_, eap())
+      .WillOnce(Return(&mock_eap_credentials));
+  EXPECT_CALL(mock_eap_credentials, PopulateSupplicantProperties(_, _, _, _));
   const char kSecondNetworkPath[] = "/network/second-path";
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Return(kSecondNetworkPath));

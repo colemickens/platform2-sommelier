@@ -30,6 +30,7 @@
 #include "shill/mock_crypto_util_proxy.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_ethernet_eap_provider.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_power_manager.h"
@@ -80,6 +81,7 @@ class ManagerTest : public PropertyStoreTest {
             reinterpret_cast<Metrics*>(NULL),
             reinterpret_cast<Manager*>(NULL))),
         manager_adaptor_(new NiceMock<ManagerMockAdaptor>()),
+        ethernet_eap_provider_(new NiceMock<MockEthernetEapProvider>()),
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
         crypto_util_proxy_(new NiceMock<MockCryptoUtilProxy>(dispatcher(),
                                                              glib())) {
@@ -117,6 +119,10 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's adaptor with a quieter one, and one
     // we can do EXPECT*() against.  Passes ownership.
     manager()->adaptor_.reset(manager_adaptor_);
+
+    // Replace the manager's Ethernet EAP provider with our mock.
+    // Passes ownership.
+    manager()->ethernet_eap_provider_.reset(ethernet_eap_provider_);
 
     // Replace the manager's WiFi provider with our mock.  Passes
     // ownership.
@@ -372,6 +378,10 @@ class ManagerTest : public PropertyStoreTest {
     return service;
   }
 
+  void SetEapProviderService(const ServiceRefPtr &service) {
+    ethernet_eap_provider_->set_service(service);
+  }
+
   TestProxyFactory proxy_factory_;
   scoped_ptr<MockPowerManager> power_manager_;
   vector<scoped_refptr<MockDevice> > mock_devices_;
@@ -385,6 +395,7 @@ class ManagerTest : public PropertyStoreTest {
   // These pointers are owned by the manager, and only tracked here for
   // EXPECT*()
   ManagerMockAdaptor *manager_adaptor_;
+  MockEthernetEapProvider *ethernet_eap_provider_;
   MockWiFiProvider *wifi_provider_;
   MockCryptoUtilProxy *crypto_util_proxy_;
 };
@@ -1472,6 +1483,16 @@ TEST_F(ManagerTest, GetServiceUnknownType) {
   manager()->GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_EQ("service type is unsupported", e.message());
+}
+
+TEST_F(ManagerTest, GetServiceEthernetEap) {
+  KeyValueStore args;
+  Error e;
+  ServiceRefPtr service;
+  args.SetString(flimflam::kTypeProperty, kTypeEthernetEap);
+  SetEapProviderService(service);
+  EXPECT_EQ(service, manager()->GetService(args, &e));
+  EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(ManagerTest, GetServiceWifi) {

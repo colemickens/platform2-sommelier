@@ -51,6 +51,7 @@ class MockService : public Service {
   MOCK_METHOD0(SaveToCurrentProfile, void());
   MOCK_METHOD2(Configure, void(const KeyValueStore &args, Error *error));
   MOCK_CONST_METHOD1(DoPropertiesMatch, bool(const KeyValueStore &args));
+  MOCK_CONST_METHOD0(Is8021xConnectable, bool());
   MOCK_CONST_METHOD0(IsPortalDetectionDisabled, bool());
   MOCK_CONST_METHOD0(IsPortalDetectionAuto, bool());
   MOCK_CONST_METHOD0(IsRemembered, bool());
@@ -58,6 +59,7 @@ class MockService : public Service {
   MOCK_METHOD1(SetConnection, void(const ConnectionRefPtr &connection));
   MOCK_CONST_METHOD0(connection, const ConnectionRefPtr &());
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
+  MOCK_CONST_METHOD0(eap, const EapCredentials *());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
