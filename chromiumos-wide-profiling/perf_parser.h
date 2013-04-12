@@ -14,14 +14,14 @@
 class AddressMapper;
 
 struct ParsedEvent {
-  // TODO(sque): to save space, |raw_event| should be a pointer.
-  event_t raw_event;                // Contains perf event info.
   struct perf_sample sample_info;   // Contains perf sample info.
 
   struct DSOAndOffset {
     string dso_name;
     uint64 offset;
   } dso_and_offset;
+  // TODO(sque): to save space, |raw_event| should be a pointer.
+  event_t raw_event;                // Contains perf event info.
 };
 
 struct PerfEventStats {
