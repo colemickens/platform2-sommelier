@@ -45,10 +45,19 @@ class PerfReader {
   bool ReadAttrs(const std::vector<char>& data);
   bool ReadEventTypes(const std::vector<char>& data);
   bool ReadData(const std::vector<char>& data);
+
+  // Read perf data from piped perf output data.
+  bool ReadPipedData(const std::vector<char>& data);
+
   bool WriteHeader(std::vector<char>* data) const;
   bool WriteAttrs(std::vector<char>* data) const;
   bool WriteEventTypes(std::vector<char>* data) const;
   bool WriteData(std::vector<char>* data) const;
+
+  // For reading event blocks within piped perf data.
+  bool ReadAttrEventBlock(const struct attr_event& attr_event);
+  bool ReadEventTypeEventBlock(const struct event_type_event& event_type_event);
+  bool ReadPerfEventBlock(const event_t& event);
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<event_t> events_;
@@ -56,7 +65,11 @@ class PerfReader {
   uint64 sample_type_;
 
  private:
-  struct perf_file_header header_;
+  // The file header is either a normal header or a piped header.
+  union {
+    struct perf_file_header header_;
+    struct perf_pipe_file_header piped_header_;
+  };
   struct perf_file_header out_header_;
 
   DISALLOW_COPY_AND_ASSIGN(PerfReader);

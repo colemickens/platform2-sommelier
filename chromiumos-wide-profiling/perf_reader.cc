@@ -57,10 +57,24 @@ bool PerfReader::ReadFile(const string& filename) {
 bool PerfReader::ReadFileData(const std::vector<char>& data) {
   if (data.empty())
     return false;
-  return (ReadHeader(data) &&
-          ReadAttrs(data) &&
-          ReadEventTypes(data) &&
-          ReadData(data));
+  if (!ReadHeader(data))
+    return false;
+
+  // Check if it is normal perf data.
+  if (header_.size == sizeof(header_)) {
+    LOG(INFO) << "Perf data is in normal format.";
+    return (ReadAttrs(data) && ReadEventTypes(data) && ReadData(data));
+  }
+
+  // Otherwise it is piped data.
+  if (piped_header_.size != sizeof(piped_header_)) {
+    LOG(ERROR) << "Expecting piped data format, but header size "
+               << piped_header_.size << " does not match expected size "
+               << sizeof(piped_header_);
+    return false;
+  }
+
+  return ReadPipedData(data);
 }
 
 bool PerfReader::WriteFile(const string& filename) {
@@ -132,11 +146,11 @@ bool PerfReader::ReadHeader(const std::vector<char>& data) {
                << " Got: " << header_.magic;
     return false;
   }
-  if (header_.size != sizeof(header_)) {
-    LOG(ERROR) << "header_.size: " << header_.size << " Expected: "
-               << sizeof(header_);
-    return false;
-  }
+
+  // Header can be a piped header.
+  if (header_.size != sizeof(header_))
+    return true;
+
   if (header_.attr_size != sizeof(perf_file_attr)) {
     LOG(ERROR) << "header_.attr_size: " << header_.attr_size << " Expected: "
                << sizeof(perf_file_attr);
@@ -213,34 +227,47 @@ bool PerfReader::ReadData(const std::vector<char>& data) {
     }
 
     const event_t* event_data = reinterpret_cast<const event_t*>(&data[offset]);
-    const perf_event_header& pe_header = event_data->header;
-
-    DLOG(INFO) << "Data remaining: " << data_remaining_bytes;
-    DLOG(INFO) << "Data type: " << pe_header.type;
-    DLOG(INFO) << "Data size: " << pe_header.size;
-    size_t remaining_size = pe_header.size - sizeof(pe_header);
-    DLOG(INFO) << "Seek size: " << remaining_size;
-    data_remaining_bytes -= pe_header.size;
-    offset += pe_header.size;
-
-    if (pe_header.size > sizeof(event_t)) {
-      LOG(INFO) << "Data size: " << pe_header.size << " sizeof(event_t): "
-                << sizeof(event_t);
+    if (!ReadPerfEventBlock(*event_data))
       return false;
-    }
-
-    events_.push_back(*event_data);
-
-    if (pe_header.type == PERF_RECORD_COMM) {
-      DLOG(INFO) << "len: " << pe_header.size;
-      DLOG(INFO) << "sizeof header: " << sizeof(pe_header);
-      DLOG(INFO) << "sizeof comm_event: " << sizeof(comm_event);
-    }
+    DLOG(INFO) << "Data remaining: " << data_remaining_bytes;
+    data_remaining_bytes -= event_data->header.size;
+    offset += event_data->header.size;
   }
 
   LOG(INFO) << "Number of events stored: "<< events_.size();
-
   return true;
+}
+
+bool PerfReader::ReadPipedData(const std::vector<char>& data) {
+  size_t offset = piped_header_.size;
+  bool result = true;
+  while (offset < data.size() && result) {
+    const union piped_data_block {
+      struct perf_event_header header;
+      struct attr_event attr_event;
+      struct event_type_event event_type_event;
+      event_t event;
+    } *block;
+    block = reinterpret_cast<const union piped_data_block*>(&data[offset]);
+    offset += block->header.size;
+    if (block->header.type < PERF_RECORD_MAX) {
+      result = ReadPerfEventBlock(block->event);
+      continue;
+    }
+    switch (block->header.type) {
+    case PERF_RECORD_HEADER_ATTR:
+      result = ReadAttrEventBlock(block->attr_event);
+      break;
+    case PERF_RECORD_HEADER_EVENT_TYPE:
+      result = ReadEventTypeEventBlock(block->event_type_event);
+      break;
+    default:
+      LOG(ERROR) << "Event type " << block->header.type
+                 << " is not yet supported!";
+      return false;
+    }
+  }
+  return result;
 }
 
 bool PerfReader::WriteHeader(std::vector<char>* data) const {
@@ -308,6 +335,46 @@ bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
       return false;
     }
     offset += sizeof(event_type);
+  }
+  return true;
+}
+
+bool PerfReader::ReadAttrEventBlock(const struct attr_event& attr_event) {
+  PerfFileAttr attr;
+  attr.attr = attr_event.attr;
+  size_t num_ids = (attr_event.header.size - sizeof(attr_event.header) -
+                    sizeof(attr_event.attr)) / sizeof(attr_event.id[0]);
+  for (size_t i = 0; i < num_ids; ++i)
+    attr.ids.push_back(attr_event.id[i]);
+  attrs_.push_back(attr);
+  return true;
+}
+
+bool PerfReader::ReadEventTypeEventBlock(
+    const struct event_type_event& event_type_event) {
+  event_types_.push_back(event_type_event.event_type);
+  return true;
+}
+
+bool PerfReader::ReadPerfEventBlock(const event_t& event) {
+  const perf_event_header& pe_header = event.header;
+
+  DLOG(INFO) << "Data type: " << pe_header.type;
+  DLOG(INFO) << "Data size: " << pe_header.size;
+  DLOG(INFO) << "Seek size: " << pe_header.size - sizeof(pe_header);
+
+  if (pe_header.size > sizeof(event_t)) {
+    LOG(INFO) << "Data size: " << pe_header.size << " sizeof(event_t): "
+              << sizeof(event_t);
+    return false;
+  }
+
+  events_.push_back(event);
+
+  if (pe_header.type == PERF_RECORD_COMM) {
+    DLOG(INFO) << "len: " << pe_header.size;
+    DLOG(INFO) << "sizeof header: " << sizeof(pe_header);
+    DLOG(INFO) << "sizeof comm_event: " << sizeof(comm_event);
   }
   return true;
 }

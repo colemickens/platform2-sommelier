@@ -53,6 +53,30 @@ enum {
 	HEADER_FEAT_BITS	= 256,
 };
 
+/* pseudo samples injected by perf-inject */
+enum perf_user_event_type { /* above any possible kernel type */
+        PERF_RECORD_USER_TYPE_START             = 64,
+        PERF_RECORD_HEADER_ATTR                 = 64,
+        PERF_RECORD_HEADER_EVENT_TYPE           = 65,
+        PERF_RECORD_HEADER_TRACING_DATA         = 66,
+        PERF_RECORD_HEADER_BUILD_ID             = 67,
+        PERF_RECORD_FINISHED_ROUND              = 68,
+        PERF_RECORD_HEADER_HOSTNAME             = 69,
+        PERF_RECORD_HEADER_OSRELEASE            = 70,
+        PERF_RECORD_HEADER_VERSION              = 71,
+        PERF_RECORD_HEADER_ARCH                 = 72,
+        PERF_RECORD_HEADER_NRCPUS               = 73,
+        PERF_RECORD_HEADER_CPUDESC              = 74,
+        PERF_RECORD_HEADER_CPUID                = 75,
+        PERF_RECORD_HEADER_TOTAL_MEM            = 76,
+        PERF_RECORD_HEADER_CMDLINE              = 77,
+        PERF_RECORD_HEADER_EVENT_DESC           = 78,
+        PERF_RECORD_HEADER_CPU_TOPOLOGY         = 79,
+        PERF_RECORD_HEADER_NUMA_TOPOLOGY        = 80,
+        PERF_RECORD_HEADER_PMU_MAPPINGS         = 81,
+        PERF_RECORD_HEADER_MAX
+};
+
 struct perf_file_section {
 	u64 offset;
 	u64 size;
@@ -76,6 +100,22 @@ struct perf_file_header {
 	struct perf_file_section	data;
 	struct perf_file_section	event_types;
 	DECLARE_BITMAP(adds_features, HEADER_FEAT_BITS);
+};
+
+struct perf_pipe_file_header {
+	u64				magic;
+	u64				size;
+};
+
+struct attr_event {
+	struct perf_event_header header;
+	struct perf_event_attr attr;
+	uint64_t id[];
+};
+
+struct event_type_event {
+	struct perf_event_header header;
+	struct perf_trace_event_type event_type;
 };
 
 enum {
