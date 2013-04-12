@@ -203,6 +203,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	certificate_file.o \
 	connection.o \
 	connection_health_checker.o \
+	connection_info.o \
 	control_netlink_attribute.o \
 	crypto_des_cbc.o \
 	crypto_provider.o \
@@ -334,6 +335,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_util_proxy_unittest.o \
 	connection_unittest.o \
 	connection_health_checker_unittest.o \
+	connection_info_unittest.o \
 	dbus_adaptor_unittest.o \
 	dbus_manager_unittest.o \
 	dbus_properties_unittest.o \
