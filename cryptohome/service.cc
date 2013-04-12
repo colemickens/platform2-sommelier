@@ -524,7 +524,7 @@ bool Service::Reset() {
 void Service::NotifyEvent(CryptohomeEventBase* event) {
   if (!strcmp(event->GetEventName(), kMountTaskResultEventType)) {
     MountTaskResult* result = static_cast<MountTaskResult*>(event);
-    if (result->return_data().size() == 0) {
+    if (!result->return_data()) {
       g_signal_emit(cryptohome_,
                     async_complete_signal_,
                     0,
@@ -538,8 +538,8 @@ void Service::NotifyEvent(CryptohomeEventBase* event) {
     } else {
       chromeos::glib::ScopedArray tmp_array(g_array_new(FALSE, FALSE, 1));
       g_array_append_vals(tmp_array.get(),
-                          result->return_data().data(),
-                          result->return_data().size());
+                          result->return_data()->const_data(),
+                          result->return_data()->size());
       g_signal_emit(cryptohome_,
                     async_data_complete_signal_,
                     0,

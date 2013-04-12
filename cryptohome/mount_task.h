@@ -76,11 +76,13 @@ class MountTaskResult : public CryptohomeEventBase {
       : sequence_id_(rhs.sequence_id_),
         return_status_(rhs.return_status_),
         return_code_(rhs.return_code_),
-        return_data_(rhs.return_data_),
         event_name_(rhs.event_name_),
         mount_(rhs.mount_),
         pkcs11_init_(rhs.pkcs11_init_),
-        guest_(rhs.guest_) { }
+        guest_(rhs.guest_) {
+    if (rhs.return_data())
+      set_return_data(*rhs.return_data());
+  }
 
   virtual ~MountTaskResult() { }
 
@@ -138,21 +140,21 @@ class MountTaskResult : public CryptohomeEventBase {
     guest_ = value;
   }
 
-  SecureBlob return_data() const {
-    return return_data_;
+  const SecureBlob* return_data() const {
+    return return_data_.get();
   }
 
   void set_return_data(const SecureBlob& data) {
-    return_data_.clear_contents();
-    return_data_ = data;
+    return_data_.reset(new SecureBlob(data.begin(), data.end()));
   }
 
   MountTaskResult& operator=(const MountTaskResult& rhs) {
     sequence_id_ = rhs.sequence_id_;
     return_status_ = rhs.return_status_;
     return_code_ = rhs.return_code_;
-    return_data_.clear_contents();
-    return_data_ = rhs.return_data_;
+    return_data_.reset();
+    if (rhs.return_data())
+      set_return_data(*rhs.return_data());
     event_name_ = rhs.event_name_;
     mount_ = rhs.mount_;
     pkcs11_init_ = rhs.pkcs11_init_;
@@ -168,7 +170,7 @@ class MountTaskResult : public CryptohomeEventBase {
   int sequence_id_;
   bool return_status_;
   MountError return_code_;
-  SecureBlob return_data_;
+  scoped_ptr<SecureBlob> return_data_;
   const char* event_name_;
   scoped_refptr<Mount> mount_;
   bool pkcs11_init_;
