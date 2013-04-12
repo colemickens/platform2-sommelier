@@ -151,6 +151,13 @@ HELP_ADVANCED='
   key.  If not specified, it affects global behavior.
 '
 
+INTRO_TEXT="Welcome to crosh, the ChromeOS developer shell.
+
+If you got here by mistake, don't panic!  Just close this tab and carry on.
+
+Type 'help' for a list of commands.
+"
+
 CHROMEOS_INSTALL=/usr/sbin/chromeos-install
 . "/usr/sbin/chromeos-common.sh" || exit 1
 SRC=$(get_block_dev_from_partition_dev $(rootdev -s))
@@ -1161,7 +1168,7 @@ check_digits() {
 trap '' HUP
 
 repl() {
-  echo "Welcome to crosh, type 'help' for a list of commands."
+  echo "${INTRO_TEXT}"
   if [ "$IS_BASH" != "1" ]; then
     echo "Sorry, line editing and command history disabled due to" \
       "shell limitations."
