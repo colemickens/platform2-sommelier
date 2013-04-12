@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <stdio.h>
-#include <stddef.h>
-
+#include <cstdio>
+#include <cstring>
 #include <sstream>
+#include <vector>
 
 #include "perf_recorder.h"
 #include "perf_serializer.h"
@@ -22,25 +22,15 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
     const string& perf_command,
     const int time,
     quipper::PerfDataProto* perf_data) {
-  string temp_file;
-  if (!CreateNamedTempFile(&temp_file))
-    return false;
-  // TODO(asharif): Use a pipe instead of a temporary file here.
-  string full_perf_command = perf_command + string(" -o ") +
-      temp_file + " -- " + GetSleepCommand(time);
+  string full_perf_command = perf_command + " -o - -- " + GetSleepCommand(time);
 
-  FILE* fp = popen(full_perf_command.c_str(), "r");
-  if (pclose(fp))
-    return false;
+  std::vector<char> raw_perf_data;
+  RunCommandAndGetStdout(full_perf_command, &raw_perf_data);
 
   // Now convert it into a protobuf.
   PerfSerializer perf_serializer;
   // Make sure to remap address for security reasons.
   perf_serializer.set_do_remap(true);
-  bool result = perf_serializer.SerializeFromFile(temp_file, perf_data);
-
-  if (remove(temp_file.c_str()))
-      return false;
-
-  return result;
+  return (perf_serializer.ReadFileData(raw_perf_data) &&
+          perf_serializer.Serialize(perf_data));
 }

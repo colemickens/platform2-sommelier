@@ -6,6 +6,7 @@
 #define PERF_SERIALIZER_H_
 
 #include <string>
+#include <vector>
 
 #include "base/basictypes.h"
 
@@ -17,9 +18,14 @@ class PerfSerializer : public PerfParser {
   PerfSerializer();
   ~PerfSerializer();
 
-  // Converts between raw perf data file and protobuf.
+  // Converts raw perf file to protobuf.
   bool SerializeFromFile(const string& filename,
                          quipper::PerfDataProto* perf_data_proto);
+
+  // Converts data inside PerfSerializer to protobuf.
+  bool Serialize(quipper::PerfDataProto* perf_data_proto);
+
+  // Converts perf data protobuf to perf data file.
   bool DeserializeToFile(const quipper::PerfDataProto& perf_data_proto,
                          const string& filename);
 

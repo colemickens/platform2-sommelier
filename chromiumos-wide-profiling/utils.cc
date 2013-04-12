@@ -21,9 +21,9 @@
 
 namespace {
 
-// Specify buffer size to be used to read the perf report.
+// Specify buffer size to be used to read files.
 // This is allocated on the stack, so make sure it's less than 16k.
-const int kPerfReportReadBufferSize = 1024;
+const int kFileReadSize = 1024;
 
 // Trim leading and trailing whitespace from |str|.
 void TrimWhitespace(string* str) {
@@ -48,6 +48,7 @@ const char kPerfReportCommand[] =
 bool GetPerfReport(const string& filename, string* output) {
   // Redirecting stderr does lose warnings and errors, but serious errors should
   // be caught by the return value of perf report.
+  // TODO(sque): Use RunCommandAndGetOutput().
   string cmd = string(kPerfReportCommand) + filename + " 2>/dev/null";
   FILE* file = popen(cmd.c_str(), "r");
   if (!file) {
@@ -55,7 +56,7 @@ bool GetPerfReport(const string& filename, string* output) {
     return false;
   }
 
-  char buffer[kPerfReportReadBufferSize];
+  char buffer[kFileReadSize];
   // Read line by line, discarding commented lines.  That should skip the
   // header metadata, which we are not including.
   output->clear();
@@ -195,4 +196,23 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename) {
   out.seekp(0, std::ios::beg);
   out.write(&data[0], data.size());
   return out.good();
+}
+
+bool RunCommandAndGetStdout(const string& command, std::vector<char>* output) {
+  FILE* fp = popen(command.c_str(), "r");
+  if (!fp)
+    return false;
+
+  output->clear();
+  char buf[kFileReadSize];
+  while (!feof(fp)) {
+    size_t size_read = fread(buf, 1, sizeof(buf), fp);
+    size_t prev_size = output->size();
+    output->resize(prev_size + size_read);
+    memcpy(&(*output)[prev_size], buf, size_read);
+  }
+  if (pclose(fp))
+    return false;
+
+  return true;
 }

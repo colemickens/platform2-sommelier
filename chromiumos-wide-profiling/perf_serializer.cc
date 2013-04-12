@@ -34,7 +34,10 @@ bool PerfSerializer::SerializeFromFile(const string& filename,
                                        PerfDataProto* perf_data_proto) {
   if (!ReadFile(filename))
     return false;
+  return Serialize(perf_data_proto);
+}
 
+bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
   SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs());
 
   if (!ParseRawEvents())
