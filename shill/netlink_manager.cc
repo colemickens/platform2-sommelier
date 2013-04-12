@@ -331,11 +331,11 @@ bool NetlinkManager::SendMessage(NetlinkMessage *message,
     message_handlers_[message->sequence_number()] = handler;
   }
 
-  SLOG(WiFi, 6) << "NL Message " << message->sequence_number()
+  SLOG(WiFi, 5) << "NL Message " << message->sequence_number()
                 << " Sending (" << message_string.GetLength()
                 << " bytes) ===>";
-  message->Print(6);
-  NetlinkMessage::PrintBytes(6, message_string.GetConstData(),
+  message->Print(6, 7);
+  NetlinkMessage::PrintBytes(8, message_string.GetConstData(),
                              message_string.GetLength());
 
   if (!sock_->SendMessage(message_string)) {
@@ -416,15 +416,15 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     SLOG(WiFi, 3) << __func__ << "(msg:NULL)";
     return;  // Skip current message, continue parsing buffer.
   }
-  SLOG(WiFi, 3) << "NL Message " << sequence_number
+  SLOG(WiFi, 5) << "NL Message " << sequence_number
                 << " Received (" << msg->nlmsg_len << " bytes) <===";
-  message->Print(6);
+  message->Print(6, 7);
   NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
                              msg->nlmsg_len);
 
   // Call (then erase) any message-specific handler.
   if (ContainsKey(message_handlers_, sequence_number)) {
-    SLOG(WiFi, 3) << "found message-specific handler";
+    SLOG(WiFi, 6) << "found message-specific handler";
     if (message_handlers_[sequence_number].is_null()) {
       LOG(ERROR) << "NetlinkMessageHandler exists but is NULL for ID "
                  << sequence_number;
@@ -443,16 +443,16 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
       }
     } else if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() != NLMSG_DONE)) {
-      SLOG(WiFi, 3) << "Multi-part message -- not removing callback";
+      SLOG(WiFi, 6) << "Multi-part message -- not removing callback";
     } else {
-      SLOG(WiFi, 3) << "Removing callback";
+      SLOG(WiFi, 6) << "Removing callback";
       message_handlers_.erase(sequence_number);
     }
   } else {
     list<NetlinkMessageHandler>::const_iterator i =
         broadcast_handlers_.begin();
     while (i != broadcast_handlers_.end()) {
-      SLOG(WiFi, 3) << __func__ << " - calling broadcast handler";
+      SLOG(WiFi, 6) << __func__ << " - calling broadcast handler";
       i->Run(*message);
       ++i;
     }

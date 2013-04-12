@@ -49,8 +49,6 @@ class WiFiProvider;
 
 class Manager : public base::SupportsWeakPtr<Manager> {
  public:
-  // Specifies whether a scan request is made from outside shill (ostensibly
-  // across dbus via RPC) or from within shill.
   typedef base::Callback<void(const ServiceRefPtr &service)> ServiceCallback;
 
   struct Properties {

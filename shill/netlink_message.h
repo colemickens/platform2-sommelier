@@ -84,7 +84,9 @@ class NetlinkMessage {
   void AddFlag(uint16_t new_flag) { flags_ |= new_flag; }
   uint16_t flags() const { return flags_; }
   uint32_t sequence_number() const { return sequence_number_; }
-  virtual void Print(int log_level) const = 0;
+  // Logs the message.  Allows a different log level (presumably more
+  // stringent) for the body of the message than the header.
+  virtual void Print(int header_log_level, int detail_log_level) const = 0;
 
   // Logs the message's raw bytes (with minimal interpretation).
   static void PrintBytes(int log_level, const unsigned char *buf,
@@ -123,7 +125,7 @@ class ErrorAckMessage : public NetlinkMessage {
   ErrorAckMessage() : NetlinkMessage(kMessageType), error_(0) {}
   virtual bool InitFromNlmsg(const nlmsghdr *const_msg);
   virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int log_level) const;
+  virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const;
   uint32_t error() const { return -error_; }
 
@@ -140,7 +142,7 @@ class NoopMessage : public NetlinkMessage {
 
   NoopMessage() : NetlinkMessage(kMessageType) {}
   virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int log_level) const;
+  virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const { return "<NOOP>"; }
 
  private:
@@ -154,7 +156,7 @@ class DoneMessage : public NetlinkMessage {
 
   DoneMessage() : NetlinkMessage(kMessageType) {}
   virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int log_level) const;
+  virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const { return "<DONE with multipart message>"; }
 
  private:
@@ -168,7 +170,7 @@ class OverrunMessage : public NetlinkMessage {
 
   OverrunMessage() : NetlinkMessage(kMessageType) {}
   virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int log_level) const;
+  virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const { return "<OVERRUN - data lost>"; }
 
  private:
@@ -181,7 +183,7 @@ class UnknownMessage : public NetlinkMessage {
   UnknownMessage(uint16_t message_type, ByteString message_body) :
       NetlinkMessage(message_type), message_body_(message_body) {}
   virtual ByteString Encode(uint32_t sequence_number);
-  virtual void Print(int log_level) const;
+  virtual void Print(int header_log_level, int detail_log_level) const;
 
  private:
   ByteString message_body_;

@@ -71,7 +71,7 @@ class GenericNetlinkMessage : public NetlinkMessage {
   AttributeListConstRefPtr const_attributes() const { return attributes_; }
   AttributeListRefPtr attributes() { return attributes_; }
 
-  virtual void Print(int log_level) const;
+  virtual void Print(int header_log_level, int detail_log_level) const;
 
  protected:
   // Returns a string of bytes representing _both_ an |nlmsghdr| and a

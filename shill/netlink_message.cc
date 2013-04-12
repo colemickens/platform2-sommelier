@@ -177,8 +177,9 @@ string ErrorAckMessage::ToString() const {
   return output;
 }
 
-void ErrorAckMessage::Print(int log_level) const {
-  SLOG(WiFi, log_level) << ToString();
+void ErrorAckMessage::Print(int header_log_level,
+                            int /*detail_log_level*/) const {
+  SLOG(WiFi, header_log_level) << ToString();
 }
 
 // NoopMessage.
@@ -190,8 +191,8 @@ ByteString NoopMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void NoopMessage::Print(int log_level) const {
-  SLOG(WiFi, log_level) << ToString();
+void NoopMessage::Print(int header_log_level, int /*detail_log_level*/) const {
+  SLOG(WiFi, header_log_level) << ToString();
 }
 
 // DoneMessage.
@@ -204,8 +205,8 @@ ByteString DoneMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void DoneMessage::Print(int log_level) const {
-  SLOG(WiFi, log_level) << ToString();
+void DoneMessage::Print(int header_log_level, int /*detail_log_level*/) const {
+  SLOG(WiFi, header_log_level) << ToString();
 }
 
 // OverrunMessage.
@@ -217,8 +218,9 @@ ByteString OverrunMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void OverrunMessage::Print(int log_level) const {
-  SLOG(WiFi, log_level) << ToString();
+void OverrunMessage::Print(int header_log_level,
+                           int /*detail_log_level*/) const {
+  SLOG(WiFi, header_log_level) << ToString();
 }
 
 // UnknownMessage.
@@ -228,7 +230,8 @@ ByteString UnknownMessage::Encode(uint32_t sequence_number) {
   return ByteString();
 }
 
-void UnknownMessage::Print(int log_level) const {
+void UnknownMessage::Print(int header_log_level,
+                           int /*detail_log_level*/) const {
   int total_bytes = message_body_.GetLength();
   const uint8_t *const_data = message_body_.GetConstData();
 
@@ -236,7 +239,7 @@ void UnknownMessage::Print(int log_level) const {
   for (int i = 0; i < total_bytes; ++i) {
     StringAppendF(&output, " 0x%02x", const_data[i]);
   }
-  SLOG(WiFi, log_level) << output;
+  SLOG(WiFi, header_log_level) << output;
 }
 
 //

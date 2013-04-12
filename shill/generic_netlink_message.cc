@@ -83,11 +83,12 @@ bool GenericNetlinkMessage::InitAndStripHeader(ByteString *input) {
   return true;
 }
 
-void GenericNetlinkMessage::Print(int log_level) const {
-  SLOG(WiFi, log_level) << StringPrintf("Message %s (%d)",
-                                        command_string(),
-                                        command());
-  attributes_->Print(log_level, 1);
+void GenericNetlinkMessage::Print(int header_log_level,
+                                  int detail_log_level) const {
+  SLOG(WiFi, header_log_level) << StringPrintf("Message %s (%d)",
+                                               command_string(),
+                                               command());
+  attributes_->Print(detail_log_level, 1);
 }
 
 // Control Message

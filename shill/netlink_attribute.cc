@@ -866,8 +866,9 @@ bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
   // restriction exists for nested array attributes -- this code starts the id
   // at one in order to be consistent with nested structures).
   //
-  // TODO(wdg): Determine whether any code depends on the value of
-  // |nlattr::nla_type| for nested array attributes.
+  // TODO(wdg): Need an iterator for arrays (and don't renumber their IDs) since
+  // some code depends on the value of |nlattr::nla_type| for nested array
+  // attributes.
   int id = 1;
   nla_for_each_nested_type_corrected(attr, attrs, remaining) {
     string attribute_name = StringPrintf(

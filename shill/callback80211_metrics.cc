@@ -37,10 +37,9 @@ void Callback80211Metrics::CollectDisconnectStatistics(
   const Nl80211Message &message =
       * reinterpret_cast<const Nl80211Message *>(&netlink_message);
 
-  SLOG(WiFi, 3) << "Received " << message.command_string()
-                << " (" << + message.command() << ")";
   if (metrics_ &&
       message.command() == DeauthenticateMessage::kCommand) {
+    SLOG(WiFi, 3) << "Handling Deauthenticate Message";
     Metrics::WiFiDisconnectByWhom by_whom =
         message.const_attributes()->IsFlagAttributeTrue(
             NL80211_ATTR_DISCONNECTED_BY_AP) ?
