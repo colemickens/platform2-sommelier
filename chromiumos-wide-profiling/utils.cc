@@ -8,7 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
-#include <istream>
+#include <fstream>
 #include <iomanip>
 #include <map>
 #include <sstream>
@@ -168,4 +168,31 @@ bool ComparePerfReports(const string& a, const string& b) {
 
 uint64 AlignSize(uint64 size, uint32 align_size) {
   return ((size + align_size - 1) / align_size) * align_size;
+}
+
+bool ReadFileToData(const string& filename, std::vector<char>* data) {
+  std::ifstream in(filename.c_str(), std::ios::binary);
+  if (!in.good()) {
+    LOG(ERROR) << "Failed to open file " << filename;
+    return false;
+  }
+  in.seekg(0, in.end);
+  size_t length = in.tellg();
+  in.seekg(0, in.beg);
+  data->resize(length);
+
+  in.read(&(*data)[0], length);
+
+  if (!in.good()) {
+    LOG(ERROR) << "Error reading from file " << filename;
+    return false;
+  }
+  return true;
+}
+
+bool WriteDataToFile(const std::vector<char>& data, const string& filename) {
+  std::ofstream out(filename.c_str(), std::ios::binary);
+  out.seekp(0, std::ios::beg);
+  out.write(&data[0], data.size());
+  return out.good();
 }

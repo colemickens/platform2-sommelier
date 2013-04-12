@@ -5,52 +5,88 @@
 #include <string.h>
 #include <assert.h>
 #include <cstdlib>
-#include <fstream>
+
+#include <vector>
 
 #include "base/logging.h"
 
 #include "perf_reader.h"
 #include "quipper_string.h"
+#include "utils.h"
 
 namespace {
 
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64 kPerfMagic = 0x32454c4946524550LL;
 
+bool ReadDataFromVector(const std::vector<char>& data,
+                        size_t src_offset,
+                        size_t length,
+                        const string& value_name,
+                        void* dest) {
+  if (data.size() < src_offset + length) {
+    LOG(ERROR) << "Not enough bytes to read " << value_name;
+    return false;
+  }
+  memcpy(dest, &data[src_offset], length);
+  return true;
+}
+
+bool WriteDataToVector(const void* data,
+                       size_t dest_offset,
+                       size_t length,
+                       const string& value_name,
+                       std::vector<char>* dest) {
+  if (dest->size() < dest_offset + length) {
+    LOG(ERROR) << "No space in buffer to write " << value_name;
+    return false;
+  }
+  memcpy(&(*dest)[dest_offset], data, length);
+  return true;
+}
+
 }  // namespace
 
 bool PerfReader::ReadFile(const string& filename) {
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (ReadFileFromHandle(&in) == false)
+  std::vector<char> data;
+  if (!ReadFileToData(filename, &data))
     return false;
-  return true;
+  return ReadFileData(data);
 }
 
-bool PerfReader::ReadFileFromHandle(std::ifstream* in) {
-  if (!in->good())
+bool PerfReader::ReadFileData(const std::vector<char>& data) {
+  if (data.empty())
     return false;
-  if (!ReadHeader(in) || !ReadAttrs(in) || !ReadEventTypes(in) || !ReadData(in))
-    return false;
-  return true;
+  return (ReadHeader(data) &&
+          ReadAttrs(data) &&
+          ReadEventTypes(data) &&
+          ReadData(data));
 }
 
 bool PerfReader::WriteFile(const string& filename) {
-  std::ofstream out(filename.c_str(), std::ios::binary);
-  return WriteFileFromHandle(&out);
-}
-
-bool PerfReader::WriteFileFromHandle(std::ofstream* out) {
-  if (!out->good())
-    return false;
   if (!RegenerateHeader())
-    return false;
-  if (!WriteHeader(out) ||
-      !WriteAttrs(out) ||
-      !WriteEventTypes(out) ||
-      !WriteData(out)) {
+    return false;;
+
+  // Compute the total perf file data to be written;
+  size_t total_size = 0;
+  total_size += out_header_.size;
+  total_size += out_header_.attrs.size;
+  total_size += out_header_.event_types.size;
+  total_size += out_header_.data.size;
+  // Add the ID info, whose size is not explicitly included in the header.
+  for (size_t i = 0; i < attrs_.size(); ++i)
+    total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
+
+  // Write all data into a vector.
+  std::vector<char> data;
+  data.resize(total_size);
+  if (!WriteHeader(&data) ||
+      !WriteAttrs(&data) ||
+      !WriteEventTypes(&data) ||
+      !WriteData(&data)) {
     return false;
   }
-  return true;
+  return WriteDataToFile(data, filename);
 }
 
 bool PerfReader::RegenerateHeader() {
@@ -88,10 +124,8 @@ bool PerfReader::RegenerateHeader() {
   return true;
 }
 
-bool PerfReader::ReadHeader(std::ifstream* in) {
-  in->seekg(0, std::ios::beg);
-  in->read(reinterpret_cast<char*>(&header_), sizeof(header_));
-  if (!in->good())
+bool PerfReader::ReadHeader(const std::vector<char>& data) {
+  if (!ReadDataFromVector(data, 0, sizeof(header_), "header data", &header_))
     return false;
   if (header_.magic != kPerfMagic) {
     LOG(ERROR) << "Read wrong magic. Expected: " << kPerfMagic
@@ -114,19 +148,18 @@ bool PerfReader::ReadHeader(std::ifstream* in) {
   return true;
 }
 
-bool PerfReader::ReadAttrs(std::ifstream* in) {
+bool PerfReader::ReadAttrs(const std::vector<char>& data) {
   size_t num_attrs = header_.attrs.size / header_.attr_size;
   assert(sizeof(struct perf_file_attr) == header_.attr_size);
   attrs_.resize(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
+    size_t offset = header_.attrs.offset + i * header_.attr_size;
     // Read each attr.
-    in->seekg(header_.attrs.offset + i * header_.attr_size, std::ios::beg);
     PerfFileAttr& current_attr = attrs_[i];
-
-    in->read(reinterpret_cast<char*>(&current_attr.attr),
-             sizeof(current_attr.attr));
-    if (!in->good())
+    struct perf_event_attr& attr = current_attr.attr;
+    if (!ReadDataFromVector(data, offset, sizeof(attr), "attribute", &attr))
       return false;
+    offset += sizeof(current_attr.attr);
 
     // Currently, all perf event types have the same sample format (same fields
     // present).  The following CHECK will catch any data that shows otherwise.
@@ -135,16 +168,15 @@ bool PerfReader::ReadAttrs(std::ifstream* in) {
         << "other event type samples.";
 
     struct perf_file_section ids;
-    in->read(reinterpret_cast<char*>(&ids), sizeof(ids));
-    if (!in->good())
+    if (!ReadDataFromVector(data, offset, sizeof(ids), "ID section info", &ids))
       return false;
+    offset += sizeof(ids);
 
     current_attr.ids.resize(ids.size / sizeof(current_attr.ids[0]));
     for (size_t j = 0; j < ids.size / sizeof(current_attr.ids[0]); j++) {
-      in->seekg(ids.offset + j * sizeof(current_attr.ids[0]), std::ios::beg);
-      in->read(reinterpret_cast<char*>(&current_attr.ids[j]),
-               sizeof(current_attr.ids[j]));
-      if (!in->good())
+      uint64& id = current_attr.ids[j];
+      offset = ids.offset + j * sizeof(id);
+      if (!ReadDataFromVector(data, offset, sizeof(id), "ID", &id))
         return false;
     }
   }
@@ -154,7 +186,7 @@ bool PerfReader::ReadAttrs(std::ifstream* in) {
   return true;
 }
 
-bool PerfReader::ReadEventTypes(std::ifstream* in) {
+bool PerfReader::ReadEventTypes(const std::vector<char>& data) {
   size_t num_event_types = header_.event_types.size /
       sizeof(struct perf_trace_event_type);
   assert(sizeof(struct perf_trace_event_type) * num_event_types ==
@@ -162,30 +194,26 @@ bool PerfReader::ReadEventTypes(std::ifstream* in) {
   event_types_.resize(num_event_types);
   for (size_t i = 0; i < num_event_types; ++i) {
     // Read each event type.
-    struct perf_trace_event_type& current_type = event_types_[i];
-    in->seekg(header_.event_types.offset + i * sizeof(current_type),
-              std::ios::beg);
-
-    in->read(reinterpret_cast<char*>(&current_type.event_id),
-             sizeof(current_type.event_id));
-    if (!in->good())
-      return false;
-    in->read(current_type.name, sizeof(current_type.name));
-    if (!in->good())
+    struct perf_trace_event_type& type = event_types_[i];
+    size_t offset = header_.event_types.offset + i * sizeof(type);
+    if (!ReadDataFromVector(data, offset, sizeof(type), "event type", &type))
       return false;
   }
 
   return true;
 }
 
-bool PerfReader::ReadData(std::ifstream* in) {
-  in->seekg(header_.data.offset, std::ios::beg);
+bool PerfReader::ReadData(const std::vector<char>& data) {
   u64 data_remaining_bytes = header_.data.size;
+  size_t offset = header_.data.offset;
   while (data_remaining_bytes != 0) {
-    perf_event_header pe_header;
-    in->read(reinterpret_cast<char*>(&pe_header), sizeof(pe_header));
-    if (!in->good())
+    if (data.size() < offset) {
+      LOG(ERROR) << "Not enough data to read a perf event.";
       return false;
+    }
+
+    const event_t* event_data = reinterpret_cast<const event_t*>(&data[offset]);
+    const perf_event_header& pe_header = event_data->header;
 
     DLOG(INFO) << "Data remaining: " << data_remaining_bytes;
     DLOG(INFO) << "Data type: " << pe_header.type;
@@ -193,6 +221,7 @@ bool PerfReader::ReadData(std::ifstream* in) {
     size_t remaining_size = pe_header.size - sizeof(pe_header);
     DLOG(INFO) << "Seek size: " << remaining_size;
     data_remaining_bytes -= pe_header.size;
+    offset += pe_header.size;
 
     if (pe_header.size > sizeof(event_t)) {
       LOG(INFO) << "Data size: " << pe_header.size << " sizeof(event_t): "
@@ -200,12 +229,7 @@ bool PerfReader::ReadData(std::ifstream* in) {
       return false;
     }
 
-    in->seekg(-1L * (long)(sizeof(pe_header)), std::ios::cur);
-    events_.resize(events_.size() + 1);
-
-    in->read(reinterpret_cast<char*>(&events_.back()), pe_header.size);
-    if (!in->good())
-      return false;
+    events_.push_back(*event_data);
 
     if (pe_header.type == PERF_RECORD_COMM) {
       DLOG(INFO) << "len: " << pe_header.size;
@@ -214,81 +238,76 @@ bool PerfReader::ReadData(std::ifstream* in) {
     }
   }
 
-  LOG(INFO) << "Number of events_ stored: "<< events_.size();
+  LOG(INFO) << "Number of events stored: "<< events_.size();
 
   return true;
 }
 
-bool PerfReader::WriteHeader(std::ofstream* out) const {
-  out->seekp(0, std::ios::beg);
-  out->write(reinterpret_cast<const char*>(&out_header_), sizeof(out_header_));
-  return out->good();
+bool PerfReader::WriteHeader(std::vector<char>* data) const {
+  size_t header_size = sizeof(out_header_);
+  return WriteDataToVector(&out_header_, 0, header_size, "file header", data);
 }
 
-bool PerfReader::WriteData(std::ofstream* out) const {
-  out->seekp(out_header_.data.offset, std::ios::beg);
-  for (std::vector<event_t>::const_iterator it = events_.begin();
-      it < events_.end();
-      ++it) {
-    bool event_written = WriteEventFull(out, *it);
-    if (!event_written) {
-      LOG(ERROR) << "Could not write event!";
-      return false;
-    }
-  }
-  return true;
-}
-
-bool PerfReader::WriteAttrs(std::ofstream* out) const {
+bool PerfReader::WriteAttrs(std::vector<char>* data) const {
   u64 ids_size = 0;
   for (size_t i = 0; i < attrs_.size(); i++) {
+    const PerfFileAttr& attr = attrs_[i];
+
     struct perf_file_section ids;
     ids.offset = out_header_.size + ids_size;
-    ids.size = attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
+    ids.size = attr.ids.size() * sizeof(attr.ids[0]);
 
-    out->seekp(ids.offset, std::ios::beg);
-    for (size_t j = 0; j < attrs_[i].ids.size(); j++) {
-      out->write(reinterpret_cast<const char*>(&attrs_[i].ids[j]),
-                 sizeof(attrs_[i].ids[j]));
-      if (!out->good())
+    for (size_t j = 0; j < attr.ids.size(); j++) {
+      const uint64& id = attr.ids[j];
+      size_t offset = ids.offset + j * sizeof(id);
+      if (!WriteDataToVector(&id, offset, sizeof(id), "ID info", data))
         return false;
     }
 
-    out->seekp(out_header_.attrs.offset + out_header_.attr_size * i,
-               std::ios::beg);
-    out->write(reinterpret_cast<const char*>(&attrs_[i].attr),
-               sizeof(attrs_[i].attr));
-    if (!out->good())
+    size_t offset = out_header_.attrs.offset + out_header_.attr_size * i;
+    if (!WriteDataToVector(&attr.attr,
+                           offset,
+                           sizeof(attr.attr),
+                           "attr info",
+                           data)) {
+      return false;
+    }
+
+    offset += sizeof(attr.attr);
+    if (!WriteDataToVector(&ids, offset, sizeof(ids), "ID section info", data))
       return false;
 
-    out->write(reinterpret_cast<const char*>(&ids), sizeof(ids));
-    if (!out->good())
-      return false;
     ids_size += ids.size;
   }
 
   return true;
 }
 
-bool PerfReader::WriteEventTypes(std::ofstream* out) const {
-  for (size_t i = 0; i < event_types_.size(); ++i) {
-    out->seekp(out_header_.event_types.offset +
-                  sizeof(struct perf_trace_event_type) * i,
-               std::ios::beg);
-    out->write(reinterpret_cast<const char*>(&event_types_[i].event_id),
-               sizeof(event_types_[i].event_id));
-    if (!out->good())
+bool PerfReader::WriteData(std::vector<char>* data) const {
+  size_t offset = out_header_.data.offset;
+  for (std::vector<event_t>::const_iterator it = events_.begin();
+      it < events_.end();
+      ++it) {
+    if (!WriteDataToVector(&(*it), offset, it->header.size, "event data", data))
       return false;
-    out->write(event_types_[i].name, sizeof(event_types_[i].name));
-    if (!out->good())
-      return false;
+    offset += it->header.size;
   }
-
   return true;
 }
 
-bool PerfReader::WriteEventFull(std::ofstream* out,
-                                const event_t& event) const {
-  out->write(reinterpret_cast<const char*>(&event), event.header.size);
-  return out->good();
+bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
+  for (size_t i = 0; i < event_types_.size(); ++i) {
+    size_t offset = out_header_.event_types.offset +
+                    sizeof(struct perf_trace_event_type) * i;
+    const struct perf_trace_event_type& event_type = event_types_[i];
+    if (!WriteDataToVector(&event_type,
+                           offset,
+                           sizeof(event_type),
+                           "event type info",
+                           data)) {
+      return false;
+    }
+    offset += sizeof(event_type);
+  }
+  return true;
 }

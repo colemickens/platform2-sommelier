@@ -23,9 +23,8 @@ class PerfReader {
   PerfReader() : sample_type_(0) {}
 
   bool ReadFile(const string& filename);
-  bool ReadFileFromHandle(std::ifstream* in);
+  bool ReadFileData(const std::vector<char>& data);
   bool WriteFile(const string& filename);
-  bool WriteFileFromHandle(std::ofstream* out);
   bool RegenerateHeader();
 
   // Accessor funcs.
@@ -42,15 +41,14 @@ class PerfReader {
   }
 
  protected:
-  bool ReadHeader(std::ifstream* in);
-  bool ReadAttrs(std::ifstream* in);
-  bool ReadEventTypes(std::ifstream* in);
-  bool ReadData(std::ifstream* in);
-  bool WriteHeader(std::ofstream* out) const;
-  bool WriteAttrs(std::ofstream* out) const;
-  bool WriteEventTypes(std::ofstream* out) const;
-  bool WriteData(std::ofstream* out) const;
-  bool WriteEventFull(std::ofstream* out, const event_t& event) const;
+  bool ReadHeader(const std::vector<char>& data);
+  bool ReadAttrs(const std::vector<char>& data);
+  bool ReadEventTypes(const std::vector<char>& data);
+  bool ReadData(const std::vector<char>& data);
+  bool WriteHeader(std::vector<char>* data) const;
+  bool WriteAttrs(std::vector<char>* data) const;
+  bool WriteEventTypes(std::vector<char>* data) const;
+  bool WriteData(std::vector<char>* data) const;
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<event_t> events_;

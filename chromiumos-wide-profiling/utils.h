@@ -34,4 +34,12 @@ bool ComparePerfReports(const string& a, const string& b);
 // of |align_size| that can fit |size|.
 uint64 AlignSize(uint64 size, uint32 align_size);
 
+// Reads the contents of a file into |data|.  Returns true on success, false if
+// it fails.
+bool ReadFileToData(const string& filename, std::vector<char>* data);
+
+// Writes contents of |data| to a file with name |filename|, overwriting any
+// existing file.  Returns true on success, false if it fails.
+bool WriteDataToFile(const std::vector<char>& data, const string& filename);
+
 #endif  // UTILS_H_
