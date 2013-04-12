@@ -15,6 +15,7 @@
 using base::FilePath;
 using ::testing::_;
 using ::testing::DoAll;
+using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 
@@ -62,11 +63,11 @@ TEST_F(ActivatingIccidStoreTest, FileInteractions) {
   EXPECT_TRUE(iccid_store_.SetActivationState(
       kIccid1, ActivatingIccidStore::kStateActivated));
   EXPECT_TRUE(iccid_store_.SetActivationState(
-      kIccid2, ActivatingIccidStore::kStatePending));
+      kIccid2, ActivatingIccidStore::kStatePendingTimeout));
 
   EXPECT_EQ(ActivatingIccidStore::kStateActivated,
             iccid_store_.GetActivationState(kIccid1));
-  EXPECT_EQ(ActivatingIccidStore::kStatePending,
+  EXPECT_EQ(ActivatingIccidStore::kStatePendingTimeout,
             iccid_store_.GetActivationState(kIccid2));
 
   // Close and reopen the file to verify that the entries persisted.
@@ -74,7 +75,7 @@ TEST_F(ActivatingIccidStoreTest, FileInteractions) {
 
   EXPECT_EQ(ActivatingIccidStore::kStateActivated,
             iccid_store_.GetActivationState(kIccid1));
-  EXPECT_EQ(ActivatingIccidStore::kStatePending,
+  EXPECT_EQ(ActivatingIccidStore::kStatePendingTimeout,
             iccid_store_.GetActivationState(kIccid2));
 
   EXPECT_TRUE(iccid_store_.RemoveEntry(kIccid1));
@@ -106,16 +107,18 @@ TEST_F(ActivatingIccidStoreTest, GetActivationState) {
       .WillOnce(Return(false));
   EXPECT_EQ(ActivatingIccidStore::kStateUnknown,
             iccid_store_.GetActivationState(kIccid));
+  Mock::VerifyAndClearExpectations(mock_store);
 
   // File contains invalid entry
   EXPECT_CALL(*mock_store, GetInt(ActivatingIccidStore::kGroupId, kIccid, _))
-      .WillOnce(DoAll(SetArgumentPointee<2>(3), Return(true)));
+      .WillOnce(DoAll(SetArgumentPointee<2>(4), Return(true)));
   EXPECT_EQ(ActivatingIccidStore::kStateUnknown,
             iccid_store_.GetActivationState(kIccid));
   EXPECT_CALL(*mock_store, GetInt(ActivatingIccidStore::kGroupId, kIccid, _))
       .WillOnce(DoAll(SetArgumentPointee<2>(0), Return(true)));
   EXPECT_EQ(ActivatingIccidStore::kStateUnknown,
             iccid_store_.GetActivationState(kIccid));
+  Mock::VerifyAndClearExpectations(mock_store);
 
   // All enum values
   EXPECT_CALL(*mock_store, GetInt(ActivatingIccidStore::kGroupId, kIccid, _))
@@ -126,6 +129,7 @@ TEST_F(ActivatingIccidStoreTest, GetActivationState) {
       .WillOnce(DoAll(SetArgumentPointee<2>(2), Return(true)));
   EXPECT_EQ(ActivatingIccidStore::kStateActivated,
             iccid_store_.GetActivationState(kIccid));
+  Mock::VerifyAndClearExpectations(mock_store);
 }
 
 TEST_F(ActivatingIccidStoreTest, SetActivationState) {
@@ -140,12 +144,16 @@ TEST_F(ActivatingIccidStoreTest, SetActivationState) {
   EXPECT_FALSE(iccid_store_.SetActivationState(
       kIccid, ActivatingIccidStore::kStateUnknown));
   EXPECT_FALSE(iccid_store_.SetActivationState(
-      kIccid, ActivatingIccidStore::kStateUnknown));
-  EXPECT_FALSE(iccid_store_.SetActivationState(
       kIccid, ActivatingIccidStore::kStatePending));
 
   EXPECT_CALL(*mock_store, SetInt(ActivatingIccidStore::kGroupId, kIccid, _))
       .WillRepeatedly(Return(true));
+  EXPECT_FALSE(iccid_store_.SetActivationState(
+      kIccid, static_cast<ActivatingIccidStore::State>(-1)));
+  EXPECT_FALSE(iccid_store_.SetActivationState(
+      kIccid, static_cast<ActivatingIccidStore::State>(4)));
+  EXPECT_FALSE(iccid_store_.SetActivationState(
+      kIccid, ActivatingIccidStore::kStateUnknown));
   EXPECT_TRUE(iccid_store_.SetActivationState(
       kIccid, ActivatingIccidStore::kStatePending));
   EXPECT_TRUE(iccid_store_.SetActivationState(

@@ -134,7 +134,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   // unknown.
   static const char kGenericServiceNamePrefix[];
 
-  static const unsigned int kDefaultScanningOrSearchingTimeoutMilliseconds;
+  static const int64 kActivationRegistrationTimeoutMilliseconds;
+  static const int64 kDefaultScanningOrSearchingTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
 
@@ -146,7 +147,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   friend class CellularCapabilityTest;
   friend class CellularCapabilityUniversalTest;
   FRIEND_TEST(CellularCapabilityUniversalMainTest, AllowRoaming);
-  FRIEND_TEST(CellularCapabilityUniversalMainTest, CompleteActivation);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              ActivationWaitForRegisterTimeout);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Connect);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
@@ -184,6 +186,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateOperatorInfoViaOperatorId);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
+  FRIEND_TEST(CellularCapabilityUniversalTimerTest, CompleteActivation);
   FRIEND_TEST(CellularCapabilityUniversalTimerTest,
               UpdateScanningPropertyTimeout);
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
@@ -328,6 +331,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   // gets enabled.
   void OnScanningOrSearchingTimeout();
 
+  // Timeout callback that is called if the modem takes too long to register to
+  // a network after online payment is complete. Resets the modem.
+  void OnActivationWaitForRegisterTimeout();
+
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
   // path is accepted to be valid, as long as it is not equal to one of ""
   // and "/".
@@ -408,7 +415,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   // the Device.Scanning property as |true| causes a bad user experience.
   // This callback sets it to |false| after a timeout period has passed.
   base::CancelableClosure scanning_or_searching_timeout_callback_;
-  unsigned int scanning_or_searching_timeout_milliseconds_;
+  int64 scanning_or_searching_timeout_milliseconds_;
+
+  base::CancelableClosure activation_wait_for_registration_callback_;
+  int64 activation_registration_timeout_milliseconds_;
 
   static unsigned int friendly_service_name_id_;
 

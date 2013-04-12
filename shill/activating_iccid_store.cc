@@ -22,6 +22,21 @@ string FormattedICCID(const string &iccid) {
   return "[ICCID=" + iccid + "]";
 }
 
+string StateToString(ActivatingIccidStore::State state) {
+  switch (state) {
+    case ActivatingIccidStore::kStateUnknown:
+      return "Unknown";
+    case ActivatingIccidStore::kStatePending:
+      return "Pending";
+    case ActivatingIccidStore::kStateActivated:
+      return "Activated";
+    case ActivatingIccidStore::kStatePendingTimeout:
+      return "PendingTimeout";
+    default:
+      return "Invalid";
+  }
+}
+
 }  // namespace
 
 ActivatingIccidStore::ActivatingIccidStore() {}
@@ -86,7 +101,7 @@ ActivatingIccidStore::State ActivatingIccidStore::
 bool ActivatingIccidStore::SetActivationState(
     const string &iccid,
     State state) {
-  SLOG(Cellular, 2) << __func__ << ": State=" << state << ", "
+  SLOG(Cellular, 2) << __func__ << ": State=" << StateToString(state) << ", "
                     << FormattedICCID(iccid);
   if (!storage_.get()) {
     LOG(ERROR) << "Underlying storage not initialized.";
@@ -94,6 +109,10 @@ bool ActivatingIccidStore::SetActivationState(
   }
   if (state == kStateUnknown) {
     SLOG(Cellular, 2) << "kStateUnknown cannot be used as a value.";
+    return false;
+  }
+  if (state < 0 || state >= kStateMax) {
+    SLOG(Cellular, 2) << "Cannot set state to \"" << state << "\"";
     return false;
   }
   if (!storage_->SetInt(kGroupId, iccid, static_cast<int>(state))) {
