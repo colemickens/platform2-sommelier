@@ -42,7 +42,7 @@ const char kLoggedInUserName[] = "chronos";
 }  // namespace
 
 const char MemoryLog::kDefaultLoggedInDumpPath[] =
-    "/home/chronos/user/log/connectivity.log";
+    "/var/run/shill/log/connectivity.log";
 
 const char MemoryLog::kDefaultLoggedOutDumpPath[] =
     "/var/log/connectivity.log";

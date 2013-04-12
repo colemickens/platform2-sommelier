@@ -30,8 +30,10 @@ script_name=$(basename $0)
 
 profile_user=chronos
 profile_name="~${profile_user}/shill"
-profile_link_root=/var/run/shill/user_profiles
+shill_state_root=/var/run/shill
+profile_link_root="${shill_state_root}/user_profiles"
 profile_link_dir="$profile_link_root/$profile_user"
+log_link_dir="${shill_state_root}/log"
 
 # For multiprofile: Choose a different link name if "chronos" exists.
 profile_user_suffix=0
@@ -62,7 +64,7 @@ if [ -n "$user" ] ; then
 else
   # If no user is given, create a temporary profile directory which will
   # be erased on logout.
-  profile_base="/var/run/shill/guest_user_profile"
+  profile_base="${shill_state_root}/guest_user_profile"
   rm -rf "$profile_base"
   flimflam_profile=""
   old_profile=""
@@ -70,6 +72,7 @@ fi
 
 profile_dir="$profile_base/shill"
 profile="$profile_dir/shill.profile"
+log_dir="$profile_base/shill_logs"
 
 if [ ! -d "$profile_dir" ]; then
   if ! mkdir -p --mode=700 $profile_dir ; then
@@ -87,6 +90,17 @@ fi
 ln -s "$profile_dir" "$profile_link_dir" ||
   logger -t "$script_name" \
     "Failed to create shill user cryptohome link $profile_link_dir"
+
+if ! mkdir -p --mode 0700 "$log_dir"; then
+  logger -t "$script_name" \
+    "Unable to create shill log directory"
+fi
+
+if [ ! -h "$log_link_dir" ]; then
+  ln -s "$log_dir" "$log_link_dir" ||
+    logger -t "$script_name" \
+      "Failed to create shill logs link $log_link_dir"
+fi
 
 if [ ! -f "$profile" ]; then
   if [ -f "$flimflam_profile" ]; then

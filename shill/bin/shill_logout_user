@@ -10,4 +10,4 @@ dbus-send --system --dest=org.chromium.flimflam --print-reply / \
   org.chromium.flimflam.Manager.PopAllUserProfiles ||
     logger -t "$script_name"  "Failed to pop shill user profiles"
 rm -rf /var/run/shill/user_profiles /var/run/shill/guest_user_profile
-
+rm -f /var/run/shill/log
