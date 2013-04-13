@@ -85,7 +85,8 @@ class KeyboardBacklightController
 
   // AmbientLightHandler::Delegate implementation:
   virtual void SetBrightnessPercentForAmbientLight(
-      double brightness_percent) OVERRIDE;
+      double brightness_percent,
+      AmbientLightHandler::BrightnessChangeCause cause) OVERRIDE;
 
  private:
   void ReadPrefs();

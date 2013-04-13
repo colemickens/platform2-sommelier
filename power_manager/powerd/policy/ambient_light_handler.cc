@@ -27,13 +27,15 @@ AmbientLightHandler::AmbientLightHandler(
     Delegate* delegate)
     : sensor_(sensor),
       delegate_(delegate),
+      power_source_(POWER_AC),
       min_brightness_percent_(0.0),
       dimmed_brightness_percent_(10.0),
       max_brightness_percent_(60.0),
       lux_level_(0),
       hysteresis_state_(HYSTERESIS_IMMEDIATE),
       hysteresis_count_(0),
-      step_index_(0) {
+      step_index_(0),
+      sent_initial_adjustment_(false) {
   DCHECK(sensor_);
   DCHECK(delegate_);
   sensor_->AddObserver(this);
@@ -79,14 +81,23 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
       base::SplitString(*iter, ' ', &segments);
       BrightnessStep new_step;
       if (segments.size() == 3 &&
-          base::StringToDouble(segments[0], &new_step.target_percent) &&
+          base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
           base::StringToInt(segments[1], &new_step.decrease_lux_threshold) &&
           base::StringToInt(segments[2], &new_step.increase_lux_threshold)) {
-        steps_.push_back(new_step);
+        new_step.battery_target_percent = new_step.ac_target_percent;
+      } else if (
+          segments.size() == 4 &&
+          base::StringToDouble(segments[0], &new_step.ac_target_percent) &&
+          base::StringToDouble(segments[1], &new_step.battery_target_percent) &&
+          base::StringToInt(segments[2], &new_step.decrease_lux_threshold) &&
+          base::StringToInt(segments[3], &new_step.increase_lux_threshold)) {
+        // Okay, we've read all the fields.
       } else {
         LOG(ERROR) << "Skipping line in steps pref " << steps_pref_name
                    << ": \"" << *iter << "\"";
+        continue;
       }
+      steps_.push_back(new_step);
     }
   } else {
     LOG(ERROR) << "Failed to read steps pref " << steps_pref_name;
@@ -95,7 +106,8 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
   // If we don't have any values in |steps_|, insert a default value.
   if (steps_.empty()) {
     BrightnessStep default_step;
-    default_step.target_percent = max_brightness_percent_;
+    default_step.ac_target_percent = max_brightness_percent_;
+    default_step.battery_target_percent = max_brightness_percent_;
     default_step.decrease_lux_threshold = -1;
     default_step.increase_lux_threshold = -1;
     steps_.push_back(default_step);
@@ -105,7 +117,7 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
   double percent_delta = std::numeric_limits<double>::max();
   for (size_t i = 0; i < steps_.size(); i++) {
     double temp_delta =
-        abs(initial_brightness_percent - steps_[i].target_percent);
+        abs(initial_brightness_percent - steps_[i].ac_target_percent);
     if (temp_delta < percent_delta) {
       percent_delta = temp_delta;
       step_index_ = i;
@@ -128,6 +140,21 @@ void AmbientLightHandler::Init(PrefsInterface* prefs,
     lux_level_ = steps_[step_index_].increase_lux_threshold;
   } else {
     lux_level_ = 0;
+  }
+}
+
+void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
+  if (source == power_source_)
+    return;
+
+  double old_percent = GetTargetPercent();
+  power_source_ = source;
+  double new_percent = GetTargetPercent();
+  if (new_percent != old_percent && sent_initial_adjustment_) {
+    VLOG(1) << "Going from " << old_percent << "% to " << new_percent
+            << "% for power source change";
+    delegate_->SetBrightnessPercentForAmbientLight(
+        new_percent, CAUSED_BY_POWER_SOURCE);
   }
 }
 
@@ -177,14 +204,16 @@ void AmbientLightHandler::OnAmbientLightChanged(
   DCHECK_LT(new_step_index, num_steps);
 
   if (hysteresis_state_ == HYSTERESIS_IMMEDIATE) {
-    VLOG(1) << "Immediately going to step " << new_step_index << " with lux "
-            << new_lux;
     step_index_ = new_step_index;
+    double target_percent = GetTargetPercent();
+    VLOG(1) << "Immediately going to " << target_percent << "% (step "
+            << step_index_ << ") for lux " << new_lux;
     lux_level_ = new_lux;
     hysteresis_state_ = HYSTERESIS_STABLE;
     hysteresis_count_ = 0;
     delegate_->SetBrightnessPercentForAmbientLight(
-        steps_[step_index_].target_percent);
+        target_percent, CAUSED_BY_AMBIENT_LIGHT);
+    sent_initial_adjustment_ = true;
     return;
   }
 
@@ -195,14 +224,23 @@ void AmbientLightHandler::OnAmbientLightChanged(
   VLOG(2) << "Incremented hysteresis count to " << hysteresis_count_
           << " (lux went from " << lux_level_ << " to " << new_lux << ")";
   if (hysteresis_count_ >= kHysteresisThreshold) {
-    VLOG(1) << "Hysteresis overcome, transitioning step from "
-            << step_index_ << " to " << new_step_index;
     step_index_ = new_step_index;
+    double target_percent = GetTargetPercent();
+    VLOG(1) << "Hysteresis overcome; transitioning to " << target_percent
+            << "% (step " << step_index_ << ") for lux " << new_lux;
     lux_level_ = new_lux;
     hysteresis_count_ = 1;
     delegate_->SetBrightnessPercentForAmbientLight(
-        steps_[step_index_].target_percent);
+        target_percent, CAUSED_BY_AMBIENT_LIGHT);
+    sent_initial_adjustment_ = true;
   }
+}
+
+double AmbientLightHandler::GetTargetPercent() const {
+  DCHECK_LT(step_index_, steps_.size());
+  return power_source_ == POWER_AC ?
+      steps_[step_index_].ac_target_percent :
+      steps_[step_index_].battery_target_percent;
 }
 
 }  // namespace policy

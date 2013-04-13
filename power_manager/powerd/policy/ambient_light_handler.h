@@ -10,6 +10,7 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/ambient_light_observer.h"
 
 namespace power_manager {
@@ -26,6 +27,11 @@ namespace policy {
 // and makes decisions about when backlight brightness should be adjusted.
 class AmbientLightHandler : public system::AmbientLightObserver {
  public:
+  enum BrightnessChangeCause {
+    CAUSED_BY_AMBIENT_LIGHT = 0,
+    CAUSED_BY_POWER_SOURCE,
+  };
+
   // Interface for classes that perform actions on behalf of
   // AmbientLightHandler.
   class Delegate {
@@ -36,7 +42,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     // Invoked when the backlight brightness should be adjusted in response
     // to a change in ambient light.
     virtual void SetBrightnessPercentForAmbientLight(
-        double brightness_percent) = 0;
+        double brightness_percent,
+        BrightnessChangeCause cause) = 0;
   };
 
   AmbientLightHandler(system::AmbientLightSensorInterface* sensor,
@@ -61,15 +68,22 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   //   <max-percentage>
   //
   // |steps_pref_name|'s value should contain one or more newline-separated
-  // brightness steps, each of the form:
+  // brightness steps, each containing three or four space-separated
+  // values:
   //
-  //   <backlight-percentage> <decrease-lux-threshold> <increase-lux-threshold>
+  //   <ac-backlight-percentage>
+  //     <battery-backlight-percentage> (optional)
+  //     <decrease-lux-threshold>
+  //     <increase-lux-threshold>
   //
   // These values' meanings are described in BrightnessStep.
   void Init(PrefsInterface* prefs,
             const std::string& limits_pref_name,
             const std::string& steps_pref_name,
             double initial_brightness_percent);
+
+  // Should be called when the power source changes.
+  void HandlePowerSourceChange(PowerSource source);
 
   // system::AmbientLightObserver implementation:
   virtual void OnAmbientLightChanged(
@@ -80,7 +94,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   struct BrightnessStep {
     // Backlight brightness in the range [0.0, 100.0] that corresponds to
     // this step.
-    double target_percent;
+    double ac_target_percent;
+    double battery_target_percent;
 
     // If the lux level reported by |sensor_| drops below this value, a
     // lower step should be used.  -1 represents negative infinity.
@@ -103,8 +118,14 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     HYSTERESIS_IMMEDIATE,
   };
 
+  // Returns the current target backlight brightness percent based on
+  // |step_index_| and |power_source_|.
+  double GetTargetPercent() const;
+
   system::AmbientLightSensorInterface* sensor_;  // not owned
   Delegate* delegate_;  // not owned
+
+  PowerSource power_source_;
 
   // Minimum, dimmed, and maximum brightness percentages that the backlight
   // should be set to.
@@ -130,6 +151,10 @@ class AmbientLightHandler : public system::AmbientLightObserver {
 
   // Current brightness step within |steps_|.
   size_t step_index_;
+
+  // Has |delegate_| been notified about an ambient-light-triggered change
+  // yet?
+  bool sent_initial_adjustment_;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightHandler);
 };

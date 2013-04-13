@@ -244,12 +244,16 @@ int KeyboardBacklightController::GetNumUserAdjustments() const {
 }
 
 void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
-    double brightness_percent) {
+    double brightness_percent,
+    AmbientLightHandler::BrightnessChangeCause cause) {
   if (ignore_ambient_light_)
     return;
   percent_for_ambient_light_ = brightness_percent;
   num_als_adjustments_++;
-  UpdateUndimmedBrightness(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+  TransitionStyle transition =
+      cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
+      TRANSITION_SLOW : TRANSITION_FAST;
+  UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
 void KeyboardBacklightController::ReadPrefs() {

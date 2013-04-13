@@ -78,8 +78,9 @@ class InternalBacklightController : public BacklightController,
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
   // AmbientLightHandler::Delegate implementation:
-  virtual void SetBrightnessPercentForAmbientLight(double brightness_percent)
-      OVERRIDE;
+  virtual void SetBrightnessPercentForAmbientLight(
+      double brightness_percent,
+      AmbientLightHandler::BrightnessChangeCause cause) OVERRIDE;
 
  private:
   // Returns the brightness percent that should be used when the system is

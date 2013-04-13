@@ -239,6 +239,8 @@ void InternalBacklightController::HandlePowerSourceChange(PowerSource source) {
   power_source_ = source;
   got_power_source_ = true;
   UpdateState();
+  if (ambient_light_handler_)
+    ambient_light_handler_->HandlePowerSourceChange(source);
 }
 
 void InternalBacklightController::HandleDisplayModeChange(DisplayMode mode) {
@@ -368,11 +370,16 @@ int InternalBacklightController::GetNumUserAdjustments() const {
 }
 
 void InternalBacklightController::SetBrightnessPercentForAmbientLight(
-    double brightness_percent) {
+    double brightness_percent,
+    AmbientLightHandler::BrightnessChangeCause cause) {
   ambient_light_brightness_percent_ = brightness_percent;
   got_ambient_light_brightness_percent_ = true;
-  if (use_ambient_light_)
-    UpdateUndimmedBrightness(TRANSITION_SLOW, BRIGHTNESS_CHANGE_AUTOMATED);
+  if (use_ambient_light_) {
+    TransitionStyle transition =
+        cause == AmbientLightHandler::CAUSED_BY_AMBIENT_LIGHT ?
+        TRANSITION_SLOW : TRANSITION_FAST;
+    UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
+  }
 }
 
 double InternalBacklightController::GetUndimmedBrightnessPercent() const {

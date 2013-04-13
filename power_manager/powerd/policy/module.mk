@@ -20,6 +20,7 @@ CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a): \
 clean: CLEAN(powerd/libpolicy.pie.a)
 
 CXX_BINARY(powerd/policy_unittest): \
+	powerd/policy/ambient_light_handler_unittest.o \
 	powerd/policy/dark_resume_policy_unittest.o \
 	powerd/policy/external_backlight_controller_unittest.o \
 	powerd/policy/internal_backlight_controller_unittest.o \
