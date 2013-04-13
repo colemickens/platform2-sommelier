@@ -82,10 +82,9 @@ void ModemInfo::Start() {
   provider_db_ = mobile_provider_open_db(provider_db_path_.c_str());
   PLOG_IF(WARNING, !provider_db_)
       << "Unable to load mobile provider database: ";
-  RegisterModemManager<ModemManagerClassic>(MM_MODEMMANAGER_SERVICE,
-                                            MM_MODEMMANAGER_PATH);
-  RegisterModemManager<ModemManagerClassic>(kCromoService, kCromoPath);
-  RegisterModemManager<ModemManager1>(MM_DBUS_SERVICE, MM_DBUS_PATH);
+  RegisterModemManager(
+      new ModemManagerClassic(kCromoService, kCromoPath, this));
+  RegisterModemManager(new ModemManager1(MM_DBUS_SERVICE, MM_DBUS_PATH, this));
 }
 
 void ModemInfo::Stop() {
@@ -114,10 +113,7 @@ void ModemInfo::set_cellular_operator_info(
   cellular_operator_info_.reset(cellular_operator_info);
 }
 
-template <class mm>
-void ModemInfo::RegisterModemManager(const string &service,
-                                     const string &path) {
-  ModemManager *manager = new mm(service, path, this);
+void ModemInfo::RegisterModemManager(ModemManager *manager) {
   modem_managers_.push_back(manager);  // Passes ownership.
   manager->Start();
 }

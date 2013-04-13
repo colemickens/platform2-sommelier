@@ -70,10 +70,6 @@ set_modem_manager_logging() {
         level=error
       fi
       ;;
-    org.freedesktop.ModemManager)
-      object_path=/org/freedesktop/ModemManager
-      method=org.freedesktop.ModemManager.SetLogging
-      ;;
     org.freedesktop.ModemManager1)
       object_path=/org/freedesktop/ModemManager1
       method=org.freedesktop.ModemManager1.SetLogging

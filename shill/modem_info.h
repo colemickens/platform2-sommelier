@@ -84,9 +84,8 @@ class ModemInfo {
 
   typedef ScopedVector<ModemManager> ModemManagers;
 
-  // Register and start new ModemManagers
-  template <class mm> void RegisterModemManager(const std::string &service,
-                                                const std::string &path);
+  // Registers and starts |manager|. Takes ownership of |manager|.
+  void RegisterModemManager(ModemManager *manager);
   ModemManagers modem_managers_;
 
   ControlInterface *control_interface_;

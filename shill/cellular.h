@@ -99,8 +99,7 @@ class Cellular : public Device {
   // |path| is the ModemManager.Modem DBus object path (e.g.,
   // "/org/chromium/ModemManager/Gobi/0").
   // |service| is the modem mananager service name (e.g.,
-  // /org/freeDesktop/ModemManager, /org/freedesktop/ModemManager1
-  // or /org/chromium/ModemManager).
+  // /org/chromium/ModemManager or /org/freedesktop/ModemManager1).
   Cellular(ModemInfo *modem_info,
            const std::string &link_name,
            const std::string &address,
