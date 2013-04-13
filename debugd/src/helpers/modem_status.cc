@@ -21,9 +21,6 @@
 const uint32_t kModemTypeGsm = 1;
 const uint32_t kModemTypeCdma = 2;
 
-const char* kMMPath = "/org/freedesktop/ModemManager";
-const char* kMMService = "org.freedesktop.ModemManager";
-
 const char* kCromoPath = "/org/chromium/ModemManager";
 const char* kCromoService = "org.chromium.ModemManager";
 
@@ -158,20 +155,12 @@ int main() {
   DBus::BusDispatcher dispatcher;
   DBus::default_dispatcher = &dispatcher;
   DBus::Connection conn = DBus::Connection::SystemBus();
-  ModemManagerProxy modemmanager(conn, kMMPath, kMMService);
   ModemManagerProxy cromo(conn, kCromoPath, kCromoService);
   std::vector<Modem> modems;
 
-  // These two try-catch blocks are to account for one of modemmanager or cromo
-  // not being present. We don't want to crash if one of them isn't running, so
-  // we swallow the DBus exception we get from the failed attempt to enumerate
-  // devices.
-  try {
-    std::vector<DBus::Path> mm_modems = modemmanager.EnumerateDevices();
-    for (size_t i = 0; i < mm_modems.size(); ++i)
-      modems.push_back(Modem(kMMService, mm_modems[i]));
-    // cpplint thinks this is a function call
-  } catch(DBus::Error e) { }
+  // The try-catch block is to account for cromo not being present.
+  // We don't want to crash if cromo isn't running, so we swallow the
+  // DBus exception we get from the failed attempt to enumerate devices.
   try {
     std::vector<DBus::Path> cromo_modems = cromo.EnumerateDevices();
     for (size_t i = 0; i < cromo_modems.size(); ++i)

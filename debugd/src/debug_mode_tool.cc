@@ -26,11 +26,8 @@ const char* const kSupplicantIface = "fi.w1.wpa_supplicant1";
 
 const char* const kModemManager = "ModemManager";
 
-const char* const kShillModemManagerPath = "/org/chromium/ModemManager";
-const char* const kShillModemManagerService = "org.chromium.ModemManager";
-
-const char* const kModemManagerPath = "/org/freedesktop/ModemManager";
-const char* const kModemManagerService = "org.freedesktop.ModemManager";
+const char* const kCromoModemManagerPath = "/org/chromium/ModemManager";
+const char* const kCromoModemManagerService = "org.chromium.ModemManager";
 
 const char* const kModemManager1Path = "/org/freedesktop/ModemManager1";
 const char* const kModemManager1Service = "org.freedesktop.ModemManager1";
@@ -137,14 +134,10 @@ void DebugModeTool::SetAllModemManagersLogging(const std::string& level) {
   GetAllModemManagers(&managers);
   for (size_t i = 0; i < managers.size(); ++i) {
     const std::string& manager = managers[i];
-    if (manager == kShillModemManagerService) {
-      ModemManagerProxy modemmanager(connection_, kShillModemManagerPath,
-                                     kShillModemManagerService);
+    if (manager == kCromoModemManagerService) {
+      ModemManagerProxy modemmanager(connection_, kCromoModemManagerPath,
+                                     kCromoModemManagerService);
       modemmanager.SetLogging(level == "err" ? "error" : level);
-    } else if (manager == kModemManagerService) {
-      ModemManagerProxy modemmanager(connection_, kModemManagerPath,
-                                     kModemManagerService);
-      modemmanager.SetLogging(level);
     } else if (manager == kModemManager1Service) {
       ModemManager1Proxy modemmanager(connection_, kModemManager1Path,
                                       kModemManager1Service);
