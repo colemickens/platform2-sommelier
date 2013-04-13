@@ -283,6 +283,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	rtnl_handler.o \
 	rtnl_listener.o \
 	rtnl_message.o \
+	scan_session.o \
 	scope_logger.o \
 	service.o \
 	service_dbus_adaptor.o \
@@ -462,6 +463,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	rtnl_handler_unittest.o \
 	rtnl_listener_unittest.o \
 	rtnl_message_unittest.o \
+	scan_session_unittest.o \
 	scope_logger_unittest.o \
 	service_property_change_test.o \
 	service_under_test.o \

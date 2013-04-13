@@ -5,6 +5,7 @@
 #ifndef SHILL_WIFI_PROVIDER_H_
 #define SHILL_WIFI_PROVIDER_H_
 
+#include <deque>
 #include <map>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
@@ -30,6 +31,15 @@ class WiFiService;
 class WiFiProvider {
  public:
   typedef std::map<uint16, int64> ConnectFrequencyMap;
+  struct FrequencyCount {
+    FrequencyCount() : frequency(0), connection_count(0) {}
+    FrequencyCount(uint16 freq, size_t conn)
+        : frequency(freq), connection_count(conn) {}
+    uint16 frequency;
+    size_t connection_count;  // Number of successful connections at this
+                              // frequency.
+  };
+  typedef std::deque<FrequencyCount> FrequencyCountList;
 
   WiFiProvider(ControlInterface *control_interface,
                EventDispatcher *dispatcher,
@@ -142,14 +152,14 @@ class WiFiProvider {
                                            Error *error);
 
   // Converts frequency profile information from a list of strings of the form
-  // "frequency:connections" to a form consistent with
+  // "frequency:connection_count" to a form consistent with
   // |connect_count_by_frequency_|
   static void StringListToFrequencyMap(const std::vector<std::string> &strings,
                                        ConnectFrequencyMap *numbers);
 
   // Converts frequency profile information from a form consistent with
   // |connect_count_by_frequency_| to a list of strings of the form
-  // "frequency:connections"
+  // "frequency:connection_count"
   static void FrequencyMapToStringList(const ConnectFrequencyMap &numbers,
                                        std::vector<std::string> *strings);
 
