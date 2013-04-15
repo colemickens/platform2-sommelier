@@ -283,8 +283,10 @@ class Attestation : public base::PlatformThread::Delegate {
   static const size_t kDigestSize;
   static const char kDefaultDatabasePath[];
   static const char kDefaultPCAPublicKey[];
+  static const char kDefaultPCAPublicKeyID[];
   static const char kEnterpriseSigningPublicKey[];
   static const char kEnterpriseEncryptionPublicKey[];
+  static const char kEnterpriseEncryptionPublicKeyID[];
   static const struct CertificateAuthority {
     const char* issuer;
     const char* modulus;  // In hex format.
@@ -431,6 +433,7 @@ class Attestation : public base::PlatformThread::Delegate {
   // with |wrapping_key|.
   bool EncryptData(const chromeos::SecureBlob& input,
                    RSA* wrapping_key,
+                   const std::string& wrapping_key_id,
                    EncryptedData* output);
 
   // Creates an RSA* given a modulus in hex format.  The exponent is always set

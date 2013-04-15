@@ -151,6 +151,8 @@ message EncryptedData {
   // MAC of (iv || encrypted_data).
   optional bytes mac = 4;
   optional bytes encrypted_data = 5;
+  // An identifier for the wrapping key to assist in decryption.
+  optional bytes wrapping_key_id = 6;
 }
 
 // The reset request to be sent to the attestation server.

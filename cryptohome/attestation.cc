@@ -49,6 +49,10 @@ const char Attestation::kDefaultPCAPublicKey[] =
     "4083FD98758745CBFFD6F55DA699B2EE983307C14C9990DDFB48897F26DF8FB2"
     "CFFF03E631E62FAE59CBF89525EDACD1F7BBE0BA478B5418E756FF3E14AC9970"
     "D334DB04A1DF267D2343C75E5D282A287060D345981ABDA0B2506AD882579FEF";
+
+// This value is opaque; it is proprietary to the system managing the private
+// key.  In this case the value has been supplied by the PCA maintainers.
+const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc7\x0e\x50\xb1";
 #else
 // The test instance uses different keys.
 const char Attestation::kDefaultPCAPublicKey[] =
@@ -60,6 +64,8 @@ const char Attestation::kDefaultPCAPublicKey[] =
     "D3C74E721ACA97F7ADBE2CCF7B4BCC165F7380F48065F2C8370F25F066091259"
     "D14EA362BAF236E3CD8771A94BDEDA3900577143A238AB92B6C55F11DEFAFB31"
     "7D1DC5B6AE210C52B008D87F2A7BFF6EB5C4FB32D6ECEC6505796173951A3167";
+
+const char Attestation::kDefaultPCAPublicKeyID[] = "\x00\xc2\xb0\x56\x2d";
 #endif
 
 const char Attestation::kEnterpriseSigningPublicKey[] =
@@ -81,6 +87,12 @@ const char Attestation::kEnterpriseEncryptionPublicKey[] =
     "eb08318611d44daf6044f8527687dc7ce5319b51eae6ab12bee6bd16e59c499e"
     "fa53d80232ae886c7ee9ad8bc1cbd6e4ac55cb8fa515671f7e7ad66e98769f52"
     "c3c309f98bf08a3b8fbb0166e97906151b46402217e65c5d01ddac8514340e8b";
+
+// This value is opaque; it is proprietary to the system managing the private
+// key.  In this case the value has been supplied by the enterprise server
+// maintainers.
+const char Attestation::kEnterpriseEncryptionPublicKeyID[] =
+    "\x00\x4a\xe2\xdc\xae";
 
 const Attestation::CertificateAuthority Attestation::kKnownEndorsementCA[] = {
   {"IFX TPM EK Intermediate CA 06",
@@ -873,6 +885,13 @@ string Attestation::ComputeHMAC(const EncryptedData& encrypted_data,
   SecureBlob hmac_input = SecureCat(
       ConvertStringToBlob(encrypted_data.iv()),
       ConvertStringToBlob(encrypted_data.encrypted_data()));
+  if (encrypted_data.has_wrapping_key_id()) {
+    // Mix in the wrapping key ID also.
+    SecureBlob tmp = SecureCat(
+        hmac_input,
+        ConvertStringToBlob(encrypted_data.wrapping_key_id()));
+    hmac_input.swap(tmp);
+  }
   return ConvertBlobToString(CryptoLib::HmacSha512(hmac_key, hmac_input));
 }
 
@@ -1229,7 +1248,8 @@ bool Attestation::EncryptEndorsementCredential(
       CreateRSAFromHexModulus(kDefaultPCAPublicKey);
   if (!rsa.get())
     return false;
-  return EncryptData(credential, rsa.get(), encrypted_credential);
+  string key_id(kDefaultPCAPublicKeyID, arraysize(kDefaultPCAPublicKeyID) - 1);
+  return EncryptData(credential, rsa.get(), key_id, encrypted_credential);
 }
 
 bool Attestation::AddDeviceKey(const string& key_name,
@@ -1390,8 +1410,11 @@ bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
     return false;
   }
   RSA* enterprise_key = enterprise_test_key_ ? enterprise_test_key_ : rsa.get();
+  string enterprise_key_id(kEnterpriseEncryptionPublicKeyID,
+                           arraysize(kEnterpriseEncryptionPublicKeyID) - 1);
   bool result = EncryptData(ConvertStringToBlob(serialized),
                             enterprise_key,
+                            enterprise_key_id,
                             encrypted_data);
   ClearString(&serialized);
   return result;
@@ -1399,6 +1422,7 @@ bool Attestation::EncryptEnterpriseKeyInfo(const KeyInfo& key_info,
 
 bool Attestation::EncryptData(const SecureBlob& input,
                               RSA* wrapping_key,
+                              const string& wrapping_key_id,
                               EncryptedData* output) {
   // Encrypt with a randomly generated AES key.
   SecureBlob aes_key;
@@ -1418,6 +1442,7 @@ bool Attestation::EncryptData(const SecureBlob& input,
   }
   output->set_encrypted_data(encrypted.data(), encrypted.size());
   output->set_iv(aes_iv.data(), aes_iv.size());
+  output->set_wrapping_key_id(wrapping_key_id);
   output->set_mac(ComputeHMAC(*output, aes_key));
 
   // Wrap the AES key with the given public key.
