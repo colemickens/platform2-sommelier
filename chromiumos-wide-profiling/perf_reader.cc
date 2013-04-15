@@ -2,10 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include <string.h>
-#include <assert.h>
 #include <cstdlib>
-
+#include <cstring>
 #include <vector>
 
 #include "base/logging.h"
@@ -166,7 +164,7 @@ bool PerfReader::ReadHeader(const std::vector<char>& data) {
 
 bool PerfReader::ReadAttrs(const std::vector<char>& data) {
   size_t num_attrs = header_.attrs.size / header_.attr_size;
-  assert(sizeof(struct perf_file_attr) == header_.attr_size);
+  CHECK_EQ(sizeof(struct perf_file_attr), header_.attr_size);
   attrs_.resize(num_attrs);
   for (size_t i = 0; i < num_attrs; i++) {
     size_t offset = header_.attrs.offset + i * header_.attr_size;
@@ -205,8 +203,8 @@ bool PerfReader::ReadAttrs(const std::vector<char>& data) {
 bool PerfReader::ReadEventTypes(const std::vector<char>& data) {
   size_t num_event_types = header_.event_types.size /
       sizeof(struct perf_trace_event_type);
-  assert(sizeof(struct perf_trace_event_type) * num_event_types ==
-         header_.event_types.size);
+  CHECK_EQ(sizeof(struct perf_trace_event_type) * num_event_types,
+           header_.event_types.size);
   event_types_.resize(num_event_types);
   for (size_t i = 0; i < num_event_types; ++i) {
     // Read each event type.
