@@ -6,9 +6,13 @@
 
 #include <string>
 
+#include <gtest/gtest.h>
+
 #include "shill/memory_log.h"
 
 using std::string;
+using testing::_;
+using testing::AnyNumber;
 
 namespace shill {
 
@@ -56,5 +60,11 @@ bool ScopedMockLog::HandleLogMessages(int severity,
   // Return false so that messages show up on stderr.
   return false;
 }
+
+NiceScopedMockLog::NiceScopedMockLog() : ScopedMockLog() {
+  EXPECT_CALL(*this, Log(_, _, _)).Times(AnyNumber());
+}
+
+NiceScopedMockLog::~NiceScopedMockLog() {}
 
 }  // namespace shill

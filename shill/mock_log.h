@@ -60,7 +60,7 @@ namespace shill {
 class ScopedMockLog {
  public:
   ScopedMockLog();
-  ~ScopedMockLog();
+  virtual ~ScopedMockLog();
 
   // Users set expecations on this method.  |severity| is defined in
   // base/logging.h, like logging:::LOG_INFO.  |file| is the filename which
@@ -88,6 +88,15 @@ class ScopedMockLog {
   // A pointer to any pre-existing message hander function in the logging
   // system.  It is invoked after calling ScopedMockLog::Log().
   ::logging::LogMessageHandlerFunction previous_handler_;
+};
+
+// A NiceScopedMockLog is the same as ScopedMockLog, except it creates an
+// implicit expectation on any Log() call.  This allows tests to avoid having
+// to explictly expect log messages they don't care about.
+class NiceScopedMockLog : public ScopedMockLog {
+ public:
+  NiceScopedMockLog();
+  virtual ~NiceScopedMockLog();
 };
 
 }  // namespace shill
