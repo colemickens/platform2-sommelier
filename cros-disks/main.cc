@@ -15,33 +15,62 @@
 #include <base/basictypes.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
+#include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/syslog_logging.h>
-#include <gflags/gflags.h>
 
 #include "cros-disks/daemon.h"
 
 using cros_disks::Daemon;
+using std::string;
 
-DEFINE_bool(foreground, false,
-            "Don't daemon()ize; run in foreground.");
-DEFINE_int32(minloglevel, logging::LOG_WARNING,
-             "Messages logged at a lower level than "
-             "this don't actually get logged anywhere");
+namespace {
 
-static const char kUsageMessage[] = "Chromium OS Disk Daemon";
+namespace switches {
 
-// Always logs to the syslog and logs to stderr if
-// we are running in the foreground.
-void SetupLogging() {
-  int log_flags = 0;
-  log_flags |= chromeos::kLogToSyslog;
-  if (FLAGS_foreground) {
-    log_flags |= chromeos::kLogToStderr;
+// Command line switch to run this daemon in foreground.
+const char kForeground[] = "foreground";
+// Command line switch to show the help message and exit.
+const char kHelp[] = "help";
+// Command line switch to set the logging level:
+//   0 = LOG(INFO), 1 = LOG(WARNING), 2 = LOG(ERROR)
+const char kLogLevel[] = "log-level";
+// Help message to show when the --help command line switch is specified.
+const char kHelpMessage[] =
+    "Chromium OS Disk Daemon\n"
+    "\n"
+    "Available Switches:\n"
+    "  --foreground\n"
+    "    Do not daemonize; run in foreground.\n"
+    "  --log-level=N\n"
+    "    Logging level:\n"
+    "      0: LOG(INFO), 1: LOG(WARNING), 2: LOG(ERROR)\n"
+    "      -1: VLOG(1), -2: VLOG(2), etc\n"
+    "  --help\n"
+    "    Show this help.\n"
+    "\n";
+
+}  // namespace switches
+
+int GetLogLevel(const string& log_level_value) {
+  int log_level = 0;
+  if (!base::StringToInt(log_level_value, &log_level)) {
+    LOG(WARNING) << "Invalid log level '" << log_level_value << "'";
+  } else if (log_level >= logging::LOG_NUM_SEVERITIES) {
+    log_level = logging::LOG_NUM_SEVERITIES;
   }
+  return log_level;
+}
+
+// Always logs to syslog and stderr when running in the foreground.
+void SetupLogging(bool foreground, int log_level) {
+  int log_flags = chromeos::kLogToSyslog;
+  if (foreground)
+    log_flags |= chromeos::kLogToStderr;
+
   chromeos::InitLog(log_flags);
-  logging::SetMinLogLevel(FLAGS_minloglevel);
+  logging::SetMinLogLevel(log_level);
 }
 
 // This callback will be invoked once there is a new device event that
@@ -66,19 +95,28 @@ gboolean TerminationSignalCallback(gpointer data) {
   return false;
 }
 
+}  // namespace
+
 int main(int argc, char** argv) {
-  ::g_type_init();
+  g_type_init();
   g_thread_init(NULL);
-  google::SetUsageMessage(kUsageMessage);
-  google::ParseCommandLineFlags(&argc, &argv, true);
+
   CommandLine::Init(argc, argv);
+  CommandLine* cl = CommandLine::ForCurrentProcess();
 
-  SetupLogging();
-
-  if (!FLAGS_foreground) {
-    LOG(INFO) << "Daemonizing";
-    PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "daemon() failed";
+  if (cl->HasSwitch(switches::kHelp)) {
+    LOG(INFO) << switches::kHelpMessage;
+    return 0;
   }
+
+  bool foreground = cl->HasSwitch(switches::kForeground);
+  int log_level = cl->HasSwitch(switches::kLogLevel) ?
+      GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel)) : 0;
+
+  SetupLogging(foreground, log_level);
+
+  if (!foreground)
+    PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
 
   LOG(INFO) << "Creating a GMainLoop";
   GMainLoop* loop = g_main_loop_new(g_main_context_default(), FALSE);
