@@ -11,6 +11,8 @@
 
 #include <map>
 
+#include "shill/connection_info.h"
+#include "shill/connection_info_reader.h"
 #include "shill/refptr_types.h"
 #include "shill/socket_info.h"
 
@@ -50,6 +52,15 @@ class TrafficMonitor {
   FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthMultipleEntries);
   FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthValid);
   FRIEND_TEST(TrafficMonitorTest, BuildIPPortToTxQueueLengthZero);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsFailureThenSuccess);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsOutstanding);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsStatsReset);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsSuccessful);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsTimedOut);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidProtocol);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsTimedOutInvalidSourceIp);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficDnsTimedOutOutsideTimeWindow);
+  FRIEND_TEST(TrafficMonitorTest, SampleTrafficNonDnsTimedOut);
   FRIEND_TEST(TrafficMonitorTest,
       SampleTrafficStuckTxQueueIncreasingQueueLength);
   FRIEND_TEST(TrafficMonitorTest, SampleTrafficStuckTxQueueSameQueueLength);
@@ -67,6 +78,15 @@ class TrafficMonitor {
   static const int kMinimumFailedSamplesToTrigger;
   // The frequency at which to sample the TCP connections.
   static const int64 kSamplingIntervalMilliseconds;
+  // DNS port.
+  static const uint16 kDnsPort;
+  // If a DNS "connection" time-to-expire falls below this threshold, then
+  // it's considered a timed out DNS request.
+  static const int64 kDnsTimedOutThresholdSeconds;
+
+  // Resets congested tx-queues tracking statistics.
+  void ResetCongestedTxQueuesStats();
+  void ResetCongestedTxQueuesStatsWithLogging();
 
   // Builds map of IP address/port to tx queue lengths from socket info vector.
   // Skips sockets not on device, tx queue length is 0, connection state is not
@@ -74,6 +94,17 @@ class TrafficMonitor {
   void BuildIPPortToTxQueueLength(
       const std::vector<SocketInfo> &socket_infos,
       IPPortToTxQueueLengthMap *tx_queue_length);
+
+  // Checks for congested tx-queue via network statistics.
+  // Returns |true| if tx-queue is congested.
+  bool IsCongestedTxQueues();
+
+  // Resets failing DNS queries tracking statistics.
+  void ResetDnsFailingStats();
+  void ResetDnsFailingStatsWithLogging();
+
+  // Checks to see for failed DNS queries.
+  bool IsDnsFailing();
 
   // Samples traffic (e.g. receive and transmit byte counts) on the
   // selected device and invokes appropriate callbacks when certain
@@ -97,11 +128,17 @@ class TrafficMonitor {
   // Reads and parses socket information from the system.
   scoped_ptr<SocketInfoReader> socket_info_reader_;
 
-  // Number of consecutive failure cases sampled.
-  int accummulated_failure_samples_;
+  // Number of consecutive congested tx-queue cases sampled.
+  int accummulated_congested_tx_queues_samples_;
 
   // Map of tx queue lengths from previous sampling pass.
   IPPortToTxQueueLengthMap old_tx_queue_lengths_;
+
+  // Reads and parses connection information from the system.
+  scoped_ptr<ConnectionInfoReader> connection_info_reader_;
+
+  // Number of consecutive sample intervals that contains failed DNS requests.
+  int accummulated_dns_failures_samples_;
 
   DISALLOW_COPY_AND_ASSIGN(TrafficMonitor);
 };

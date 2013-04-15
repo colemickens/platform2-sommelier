@@ -6,6 +6,7 @@
 
 #include <base/bind.h>
 #include <base/stringprintf.h>
+#include <netinet/in.h>
 
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -20,6 +21,8 @@ using std::vector;
 namespace shill {
 
 // static
+const uint16 TrafficMonitor::kDnsPort = 53;
+const int64 TrafficMonitor::kDnsTimedOutThresholdSeconds = 15;
 const int TrafficMonitor::kMinimumFailedSamplesToTrigger = 2;
 const int64 TrafficMonitor::kSamplingIntervalMilliseconds = 5000;
 
@@ -28,7 +31,9 @@ TrafficMonitor::TrafficMonitor(const DeviceRefPtr &device,
     : device_(device),
       dispatcher_(dispatcher),
       socket_info_reader_(new SocketInfoReader),
-      accummulated_failure_samples_(0) {
+      accummulated_congested_tx_queues_samples_(0),
+      connection_info_reader_(new ConnectionInfoReader),
+      accummulated_dns_failures_samples_(0) {
 }
 
 TrafficMonitor::~TrafficMonitor() {
@@ -48,7 +53,17 @@ void TrafficMonitor::Start() {
 void TrafficMonitor::Stop() {
   SLOG(Link, 2) << __func__;
   sample_traffic_callback_.Cancel();
-  accummulated_failure_samples_ = 0;
+  ResetCongestedTxQueuesStats();
+  ResetDnsFailingStats();
+}
+
+void TrafficMonitor::ResetCongestedTxQueuesStats() {
+  accummulated_congested_tx_queues_samples_ = 0;
+}
+
+void TrafficMonitor::ResetCongestedTxQueuesStatsWithLogging() {
+  SLOG(Link, 2) << __func__ << ": Tx-queues decongested";
+  ResetCongestedTxQueuesStats();
 }
 
 void TrafficMonitor::BuildIPPortToTxQueueLength(
@@ -82,22 +97,22 @@ void TrafficMonitor::BuildIPPortToTxQueueLength(
   }
 }
 
-void TrafficMonitor::SampleTraffic() {
-  SLOG(Link, 2) << __func__;
+bool TrafficMonitor::IsCongestedTxQueues() {
+  SLOG(Link, 4) << __func__;
   vector<SocketInfo> socket_infos;
   if (!socket_info_reader_->LoadTcpSocketInfo(&socket_infos) ||
       socket_infos.empty()) {
-    SLOG(Link, 2) << __func__ << ": Empty socket info";
-    accummulated_failure_samples_ = 0;
-    return;
+    SLOG(Link, 3) << __func__ << ": Empty socket info";
+    ResetCongestedTxQueuesStatsWithLogging();
+    return false;
   }
+  bool congested_tx_queues = true;
   IPPortToTxQueueLengthMap curr_tx_queue_lengths;
   BuildIPPortToTxQueueLength(socket_infos, &curr_tx_queue_lengths);
   if (curr_tx_queue_lengths.empty()) {
-    SLOG(Link, 2) << __func__ << ": No interesting socket info";
-    accummulated_failure_samples_ = 0;
+    SLOG(Link, 3) << __func__ << ": No interesting socket info";
+    ResetCongestedTxQueuesStatsWithLogging();
   } else {
-    bool congested_tx_queues = true;
     IPPortToTxQueueLengthMap::iterator old_tx_queue_it;
     for (old_tx_queue_it = old_tx_queue_lengths_.begin();
          old_tx_queue_it != old_tx_queue_lengths_.end();
@@ -114,13 +129,83 @@ void TrafficMonitor::SampleTraffic() {
         break;
       }
     }
-    if (congested_tx_queues &&
-        ++accummulated_failure_samples_ == kMinimumFailedSamplesToTrigger) {
-      LOG(WARNING) << "Congested tx queues detected, out-of-credits?";
-      outgoing_tcp_packets_not_routed_callback_.Run();
+    if (congested_tx_queues) {
+      ++accummulated_congested_tx_queues_samples_;
+      SLOG(Link, 2) << __func__
+                    << ": Congested tx-queues detected ("
+                    << accummulated_congested_tx_queues_samples_ << ")";
     }
   }
   old_tx_queue_lengths_ = curr_tx_queue_lengths;
+
+  return congested_tx_queues;
+}
+
+void TrafficMonitor::ResetDnsFailingStats() {
+  accummulated_dns_failures_samples_ = 0;
+}
+
+void TrafficMonitor::ResetDnsFailingStatsWithLogging() {
+  SLOG(Link, 2) << __func__ << ": DNS queries restored";
+  ResetDnsFailingStats();
+}
+
+bool TrafficMonitor::IsDnsFailing() {
+  SLOG(Link, 4) << __func__;
+  vector<ConnectionInfo> connection_infos;
+  if (!connection_info_reader_->LoadConnectionInfo(&connection_infos) ||
+      connection_infos.empty()) {
+    SLOG(Link, 3) << __func__ << ": Empty connection info";
+  } else {
+    // The time-to-expire counter is used to determine when a DNS request
+    // has timed out.  This counter is the number of seconds remaining until
+    // the entry is removed from the system IP connection tracker.  The
+    // default time is 30 seconds.  This is too long of a wait.  Instead, we
+    // want to time out at |kDnsTimedOutThresholdSeconds|.  Unfortunately,
+    // we cannot simply look for entries less than
+    // |kDnsTimedOutThresholdSeconds| because we will count the entry
+    // multiple times once its time-to-expire is less than
+    // |kDnsTimedOutThresholdSeconds|.  To ensure that we only count an
+    // entry once, we look for entries in this time window between
+    // |kDnsTimedOutThresholdSeconds| and |kDnsTimedOutLowerThresholdSeconds|.
+    const int64 kDnsTimedOutLowerThresholdSeconds =
+        kDnsTimedOutThresholdSeconds - kSamplingIntervalMilliseconds / 1000;
+    string device_ip_address = device_->ipconfig()->properties().address;
+    vector<ConnectionInfo>::const_iterator it;
+    for (it = connection_infos.begin(); it != connection_infos.end(); ++it) {
+      if (it->protocol() != IPPROTO_UDP ||
+          it->time_to_expire_seconds() > kDnsTimedOutThresholdSeconds ||
+          it->time_to_expire_seconds() <= kDnsTimedOutLowerThresholdSeconds ||
+          !it->is_unreplied() ||
+          it->original_source_ip_address().ToString() != device_ip_address ||
+          it->original_destination_port() != kDnsPort)
+        continue;
+
+      ++accummulated_dns_failures_samples_;
+      SLOG(Link, 2) << __func__
+                    << ": DNS failures detected ("
+                    << accummulated_dns_failures_samples_ << ")";
+      return true;
+    }
+  }
+  ResetDnsFailingStatsWithLogging();
+  return false;
+}
+
+void TrafficMonitor::SampleTraffic() {
+  SLOG(Link, 3) << __func__;
+
+  if (IsCongestedTxQueues() &&
+      accummulated_congested_tx_queues_samples_ ==
+          kMinimumFailedSamplesToTrigger) {
+    LOG(WARNING) << "Congested tx queues detected, out-of-credits?";
+    outgoing_tcp_packets_not_routed_callback_.Run();
+  } else if (IsDnsFailing() &&
+             accummulated_dns_failures_samples_ ==
+                 kMinimumFailedSamplesToTrigger) {
+    LOG(WARNING) << "DNS queries failing, out-of-credits?";
+    outgoing_tcp_packets_not_routed_callback_.Run();
+  }
 
   dispatcher_->PostDelayedTask(sample_traffic_callback_.callback(),
                                kSamplingIntervalMilliseconds);
