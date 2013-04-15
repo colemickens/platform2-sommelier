@@ -311,6 +311,9 @@ class StateController : public PrefsObserver {
   // |kSuspendAtLoginScreenPref| pref.
   bool suspend_at_login_screen_;
 
+  // Should |policy_| be ignored?  Used by tests and developers.
+  bool ignore_external_policy_;
+
   // Externally-requested idle notifications added via
   // AddIdleNotification() that haven't yet fired.  (Notifications are only
   // sent once.)

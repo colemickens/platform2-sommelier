@@ -183,6 +183,7 @@ class StateControllerTest : public testing::Test {
         default_require_usb_input_device_to_suspend_(0),
         default_keep_screen_on_for_audio_(0),
         default_suspend_at_login_screen_(0),
+        default_ignore_external_policy_(0),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
         initial_session_state_(SESSION_STARTED),
@@ -210,6 +211,7 @@ class StateControllerTest : public testing::Test {
                     default_keep_screen_on_for_audio_);
     prefs_.SetInt64(kSuspendAtLoginScreenPref,
                     default_suspend_at_login_screen_);
+    prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
 
     test_api_.SetCurrentTime(now_);
     controller_.Init(initial_power_source_, initial_lid_state_,
@@ -296,6 +298,7 @@ class StateControllerTest : public testing::Test {
   int64 default_require_usb_input_device_to_suspend_;
   int64 default_keep_screen_on_for_audio_;
   int64 default_suspend_at_login_screen_;
+  int64 default_ignore_external_policy_;
 
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
@@ -613,6 +616,13 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   policy.set_lid_closed_action(PowerManagementPolicy_Action_SHUT_DOWN);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kShutDown, delegate_.GetActions());
+
+  // After setting the "ignore external policy" pref, the defaults should
+  // be used.
+  prefs_.SetInt64(kIgnoreExternalPolicyPref, 1);
+  prefs_.NotifyObservers(kIgnoreExternalPolicyPref);
+  controller_.HandlePowerSourceChange(POWER_AC);
+  ASSERT_TRUE(TriggerDefaultAcTimeouts());
 }
 
 // Test that unset fields in a policy are ignored.

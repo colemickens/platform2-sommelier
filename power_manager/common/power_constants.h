@@ -54,6 +54,8 @@ extern const char kDarkResumeBatteryMarginsPref[];
 // Non-zero if the system should suspend instead of shutting down due to
 // user inactivity at the login screen.
 extern const char kSuspendAtLoginScreenPref[];
+// If true, policies sent by Chrome will be ignored.
+extern const char kIgnoreExternalPolicyPref[];
 
 // Miscellaneous constants.
 extern const char kInternalBacklightPath[];

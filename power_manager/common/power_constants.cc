@@ -53,6 +53,7 @@ const char kDarkResumeDevicesPref[] = "dark_resume_devices";
 const char kDarkResumeSourcesPref[] = "dark_resume_sources";
 const char kDarkResumeBatteryMarginsPref[] = "dark_resume_battery_margins";
 const char kSuspendAtLoginScreenPref[] = "suspend_at_login_screen";
+const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 
 // Miscellaneous constants.
 const char kInternalBacklightPath[] = "/sys/class/backlight";

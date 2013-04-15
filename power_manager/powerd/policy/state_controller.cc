@@ -161,6 +161,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
       suspend_at_login_screen_(false),
+      ignore_external_policy_(false),
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
       use_audio_activity_(true),
@@ -316,7 +317,8 @@ void StateController::AddIdleNotification(base::TimeDelta delay) {
 
 void StateController::OnPrefChanged(const std::string& pref_name) {
   DCHECK(initialized_);
-  if (pref_name == kDisableIdleSuspendPref) {
+  if (pref_name == kDisableIdleSuspendPref ||
+      pref_name == kIgnoreExternalPolicyPref) {
     VLOG(1) << "Reloading prefs for " << pref_name << " change";
     LoadPrefs();
     UpdateSettingsAndState();
@@ -509,6 +511,7 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kKeepBacklightOnForAudioPref, &keep_screen_on_for_audio_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
   prefs_->GetBool(kSuspendAtLoginScreenPref, &suspend_at_login_screen_);
+  prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
 
   CHECK(GetMillisecondPref(prefs_, kPluggedSuspendMsPref,
                            &pref_ac_delays_.idle));
@@ -536,41 +539,41 @@ void StateController::UpdateSettingsAndState() {
   idle_action_ =
       (session_state_ == SESSION_STARTED || suspend_at_login_screen_) ?
       SUSPEND : SHUT_DOWN;
-  lid_closed_action_ = display_mode_ == DISPLAY_PRESENTATION ? DO_NOTHING :
-      (session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN);
+  lid_closed_action_ = session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN;
   delays_ = power_source_ == POWER_AC ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;
   use_video_activity_ = true;
+  double presentation_factor = kDefaultPresentationIdleDelayFactor;
 
   // Now update them with values that were set in the policy.
-  if (policy_.has_idle_action())
-    idle_action_ = ProtoActionToAction(policy_.idle_action());
-  if (policy_.has_lid_closed_action())
-    lid_closed_action_ = ProtoActionToAction(policy_.lid_closed_action());
+  if (!ignore_external_policy_) {
+    if (policy_.has_idle_action())
+      idle_action_ = ProtoActionToAction(policy_.idle_action());
+    if (policy_.has_lid_closed_action())
+      lid_closed_action_ = ProtoActionToAction(policy_.lid_closed_action());
 
-  switch (power_source_) {
-    case POWER_AC:
-      if (policy_.has_ac_delays())
-        MergeDelaysFromPolicy(policy_.ac_delays(), &delays_);
-      break;
-    case POWER_BATTERY:
-      if (policy_.has_battery_delays())
-        MergeDelaysFromPolicy(policy_.battery_delays(), &delays_);
-      break;
-    default:
-      NOTREACHED() << "Unhandled power source " << power_source_;
+    switch (power_source_) {
+      case POWER_AC:
+        if (policy_.has_ac_delays())
+          MergeDelaysFromPolicy(policy_.ac_delays(), &delays_);
+        break;
+      case POWER_BATTERY:
+        if (policy_.has_battery_delays())
+          MergeDelaysFromPolicy(policy_.battery_delays(), &delays_);
+        break;
+      default:
+        NOTREACHED() << "Unhandled power source " << power_source_;
+    }
+
+    if (policy_.has_use_audio_activity())
+      use_audio_activity_ = policy_.use_audio_activity();
+    if (policy_.has_use_video_activity())
+      use_video_activity_ = policy_.use_video_activity();
+    if (policy_.has_presentation_idle_delay_factor())
+      presentation_factor = policy_.presentation_idle_delay_factor();
   }
 
-  if (policy_.has_use_audio_activity())
-    use_audio_activity_ = policy_.use_audio_activity();
-  if (policy_.has_use_video_activity())
-    use_video_activity_ = policy_.use_video_activity();
-
   if (display_mode_ == DISPLAY_PRESENTATION) {
-    double presentation_factor =
-        policy_.has_presentation_idle_delay_factor() ?
-        policy_.presentation_idle_delay_factor() :
-        kDefaultPresentationIdleDelayFactor;
     presentation_factor = std::max(presentation_factor, 1.0);
     base::TimeDelta orig_idle = delays_.idle;
     delays_.idle *= presentation_factor;
@@ -597,6 +600,10 @@ void StateController::UpdateSettingsAndState() {
   if (updater_state_ == UPDATER_UPDATING && power_source_ == POWER_AC &&
       (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
     idle_action_ = DO_NOTHING;
+
+  // Ignore the lid being closed while presenting to support docked mode.
+  if (display_mode_ == DISPLAY_PRESENTATION)
+    lid_closed_action_ = DO_NOTHING;
 
   // If the idle or lid-closed actions changed, make sure that we perform
   // the new actions in the event that the system is already idle or the
