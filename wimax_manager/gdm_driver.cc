@@ -243,8 +243,9 @@ bool GdmDriver::OpenDevice(GdmDevice *device) {
   if (ret != GCT_API_RET_SUCCESS)
     return CloseDevice(device);
 
-  device->SetMACAddress(ByteIdentifier(device_info.macAddress,
-                                       arraysize(device_info.macAddress)));
+  ByteIdentifier mac_address(device_info.macAddress,
+                             arraysize(device_info.macAddress));
+  device->SetMACAddress(mac_address);
 
   LOG(INFO) << "Opened device '" << device->name()
             << "': MAC address = " << device->mac_address().GetHexString();
@@ -283,8 +284,8 @@ bool GdmDriver::GetDeviceRFInfo(GdmDevice *device) {
   if (ret != GCT_API_RET_SUCCESS)
     return false;
 
-  device->SetBaseStationId(ByteIdentifier(rf_info.bsId,
-                                          arraysize(rf_info.bsId)));
+  ByteIdentifier base_station_id(rf_info.bsId, arraysize(rf_info.bsId));
+  device->SetBaseStationId(base_station_id);
   device->set_frequency(rf_info.Frequency);
 
   vector<int> cinr;
