@@ -44,7 +44,6 @@ const char kTrustedCAModulus[] =
     "2A92C51B";
 const char kCommandVerify[] = "verify";
 const char kCommandEncrypt[] = "encrypt";
-const char kKnownMacPrefix[] = "001a11";
 const size_t kMacLength = 12;
 
 // Encrypt |data| with |public_key|.  |public_key| is the raw bytes of a key in
@@ -137,10 +136,9 @@ bool EncryptByteString(const std::string &raw_input, std::string *output) {
 // Verify that the destination described by |certificate| is valid.
 //
 // 1) The MAC address listed in the certificate matches |connected_mac|.
-// 2) The MAC address listed in the certificate has a recognized prefix.
-// 3) The certificate is a valid PEM encoded certificate signed by our
+// 2) The certificate is a valid PEM encoded certificate signed by our
 //    trusted CA.
-// 4) |signed_data| matches the hashed |unsigned_data| encrypted with
+// 3) |signed_data| matches the hashed |unsigned_data| encrypted with
 //    the public key in |certificate|.
 //
 // All pointers should be valid, but point to NULL values.  Sets *ptr to
@@ -229,7 +227,10 @@ bool VerifyCredentialsImpl(const std::string &certificate,
     return false;
   }
 
-  const string device_mac(device_cn, space_idx + 1);
+  string device_mac;
+  for (size_t i = space_idx + 1; i < device_cn.length(); ++i) {
+    device_mac.push_back(tolower(device_cn[i]));
+  }
   if (connected_mac != device_mac) {
     LOG(ERROR) << "MAC addresses don't match.";
     return false;
@@ -299,11 +300,6 @@ bool VerifyCredentials(const std::string &raw_input, std::string *output) {
   }
   if (connected_mac.length() != kMacLength) {
     LOG(ERROR) << "shill gave us a bad MAC?";
-    return false;
-  }
-  if (connected_mac.compare(0, arraysize(kKnownMacPrefix),
-                            kKnownMacPrefix) == 0) {
-    LOG(ERROR) << "Forged device.";
     return false;
   }
 

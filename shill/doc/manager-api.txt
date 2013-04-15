@@ -388,7 +388,6 @@ Methods		dict GetProperties()
 			   being included in the |signed_data|.
 			4) A WiFi service is currently connected to the SSID
 			   and BSSID in |signed_data|,
-			5) The BSSID we're connected to is valid.
 
 			If all properties hold, this function will return true,
 			otherwise false.
