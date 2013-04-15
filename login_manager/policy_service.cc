@@ -69,7 +69,8 @@ bool PolicyService::Store(const uint8* policy_blob,
       !policy.has_policy_data_signature()) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    completion->Failure(Error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg));
+    Error error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    completion->Failure(error);
     return FALSE;
   }
 
@@ -140,7 +141,8 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
     if (!installed) {
       const char msg[] = "Failed to install policy key!";
       LOG(ERROR) << msg;
-      completion->Failure(Error(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg));
+      Error error(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
+      completion->Failure(error);
       return false;
     }
 
@@ -157,7 +159,8 @@ bool PolicyService::StorePolicy(const em::PolicyFetchResponse& policy,
                      sig.size())) {
     const char msg[] = "Signature could not be verified.";
     LOG(ERROR) << msg;
-    completion->Failure(Error(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg));
+    Error error(CHROMEOS_LOGIN_ERROR_VERIFY_FAIL, msg);
+    completion->Failure(error);
     return false;
   }
 
@@ -193,8 +196,10 @@ void PolicyService::OnPolicyPersisted(Completion* completion, bool status) {
   } else {
     std::string msg = "Failed to persist policy to disk.";
     LOG(ERROR) << msg;
-    if (completion)
-      completion->Failure(Error(CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg));
+    if (completion){
+      Error error(CHROMEOS_LOGIN_ERROR_ENCODE_FAIL, msg);
+      completion->Failure(error);
+    }
   }
 
   if (delegate_)

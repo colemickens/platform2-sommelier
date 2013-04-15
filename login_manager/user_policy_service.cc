@@ -69,7 +69,8 @@ bool UserPolicyService::Store(const uint8* policy_blob,
       !policy_data.ParseFromString(policy.policy_data())) {
     const char msg[] = "Unable to parse policy protobuf.";
     LOG(ERROR) << msg;
-    completion->Failure(Error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg));
+    Error error(CHROMEOS_LOGIN_ERROR_DECODE_FAIL, msg);
+    completion->Failure(error);
     return false;
   }
 

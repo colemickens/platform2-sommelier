@@ -46,8 +46,9 @@ bool DeviceLocalAccountPolicyService::Store(const std::string& account_id,
                                       PolicyService::Completion* completion) {
   PolicyService* service = GetPolicyService(account_id);
   if (!service) {
-    completion->Failure(PolicyService::Error(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
-                                             "Invalid device-local account"));
+    PolicyService::Error error(CHROMEOS_LOGIN_ERROR_INVALID_EMAIL,
+                               "Invalid device-local account");
+    completion->Failure(error);
     return false;
   }
 
