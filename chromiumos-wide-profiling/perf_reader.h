@@ -20,6 +20,11 @@ struct PerfFileAttr {
   std::vector<u64> ids;
 };
 
+struct PerfEventAndSampleInfo {
+  struct perf_sample sample_info;
+  event_t event;
+};
+
 class PerfReader {
  public:
   PerfReader() : sample_type_(0) {}
@@ -34,7 +39,7 @@ class PerfReader {
     return attrs_;
   }
 
-  const std::vector<event_t>& events() const {
+  const std::vector<PerfEventAndSampleInfo>& events() const {
     return events_;
   }
 
@@ -62,8 +67,8 @@ class PerfReader {
   bool ReadPerfEventBlock(const event_t& event);
 
   std::vector<PerfFileAttr> attrs_;
-  std::vector<event_t> events_;
   std::vector<perf_trace_event_type> event_types_;
+  std::vector<PerfEventAndSampleInfo> events_;
   uint64 sample_type_;
 
  private:
