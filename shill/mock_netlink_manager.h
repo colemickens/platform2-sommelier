@@ -15,6 +15,9 @@ class MockNetlinkManager : public NetlinkManager {
  public:
   MockNetlinkManager() {}
   ~MockNetlinkManager() {}
+
+  MOCK_METHOD2(SendMessage, bool(NetlinkMessage *message,
+                                 const NetlinkMessageHandler &message_handler));
 };
 
 }  // namespace shill

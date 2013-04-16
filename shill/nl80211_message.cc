@@ -66,6 +66,11 @@ map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
 uint16_t Nl80211Message::nl80211_message_type_ = kIllegalMessageType;
 
 // static
+uint16_t Nl80211Message::GetMessageType() {
+  return nl80211_message_type_;
+}
+
+// static
 void Nl80211Message::SetMessageType(uint16_t message_type) {
   if (message_type == NetlinkMessage::kIllegalMessageType) {
     LOG(FATAL) << "Absolutely need a legal message type for Nl80211 messages.";
@@ -615,6 +620,18 @@ const uint8_t UnprotDisassociateMessage::kCommand =
 const char UnprotDisassociateMessage::kCommandString[] =
     "NL80211_CMD_UNPROT_DISASSOCIATE";
 
+GetInterfaceMessage::GetInterfaceMessage()
+    : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+}
+
+const uint8_t GetInterfaceMessage::kCommand = NL80211_CMD_GET_INTERFACE;
+const char GetInterfaceMessage::kCommandString[] = "NL80211_CMD_GET_INTERFACE";
+
+const uint8_t NewInterfaceMessage::kCommand = NL80211_CMD_NEW_INTERFACE;
+const char NewInterfaceMessage::kCommandString[] = "NL80211_CMD_NEW_INTERFACE";
+
 // static
 NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
   if (!const_msg) {
@@ -647,12 +664,16 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
       return new DisconnectMessage();
     case FrameTxStatusMessage::kCommand:
       return new FrameTxStatusMessage();
+    case GetInterfaceMessage::kCommand:
+      return new GetInterfaceMessage();
     case GetRegMessage::kCommand:
       return new GetRegMessage();
     case JoinIbssMessage::kCommand:
       return new JoinIbssMessage();
     case MichaelMicFailureMessage::kCommand:
       return new MichaelMicFailureMessage();
+    case NewInterfaceMessage::kCommand:
+      return new NewInterfaceMessage();
     case NewScanResultsMessage::kCommand:
       return new NewScanResultsMessage();
     case NewStationMessage::kCommand:

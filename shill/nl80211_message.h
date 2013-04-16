@@ -30,6 +30,9 @@ class Nl80211Message : public GenericNetlinkMessage {
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
   virtual ~Nl80211Message() {}
 
+  // Gets the family_id / message_type for all Nl80211 messages.
+  static uint16_t GetMessageType();
+
   // Sets the family_id / message_type for all Nl80211 messages.
   static void SetMessageType(uint16_t message_type);
 
@@ -426,6 +429,29 @@ class UnprotDisassociateMessage : public Nl80211Message {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(UnprotDisassociateMessage);
+};
+
+
+class GetInterfaceMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  GetInterfaceMessage();
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(GetInterfaceMessage);
+};
+
+class NewInterfaceMessage : public Nl80211Message {
+ public:
+  static const uint8_t kCommand;
+  static const char kCommandString[];
+
+  NewInterfaceMessage() : Nl80211Message(kCommand, kCommandString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(NewInterfaceMessage);
 };
 
 // Nl80211MessageDataCollector - this class is used to collect data to be

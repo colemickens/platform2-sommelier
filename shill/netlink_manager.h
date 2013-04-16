@@ -165,8 +165,8 @@ class NetlinkManager {
   // installing a handler to deal with the kernel's response to the message.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
-  bool SendMessage(NetlinkMessage *message, const NetlinkMessageHandler
-                   &message_handler);
+  virtual bool SendMessage(NetlinkMessage *message,
+                           const NetlinkMessageHandler &message_handler);
 
   // Uninstall the handler for a specific netlink message.
   bool RemoveMessageHandler(const NetlinkMessage &message);

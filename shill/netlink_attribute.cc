@@ -62,6 +62,9 @@ NetlinkAttribute *NetlinkAttribute::NewNl80211AttributeFromId(int id) {
     case NL80211_ATTR_IFINDEX:
       attr.reset(new Nl80211AttributeIfindex());
       break;
+    case NL80211_ATTR_IFTYPE:
+      attr.reset(new Nl80211AttributeIftype());
+      break;
     case NL80211_ATTR_KEY_IDX:
       attr.reset(new Nl80211AttributeKeyIdx());
       break;

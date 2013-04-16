@@ -28,6 +28,8 @@ namespace shill {
 
 class Manager;
 class Metrics;
+class NetlinkManager;
+class NetlinkMessage;
 class RoutingTable;
 class RTNLHandler;
 class RTNLMessage;
@@ -216,6 +218,10 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   void RetrieveLinkStatistics(int interface_index, const RTNLMessage &msg);
   void RequestLinkStatistics();
 
+  // Use nl80211 to get information on |interface_index|.
+  void GetWiFiInterfaceInfo(int interface_index);
+  void OnWiFiInterfaceInfoReceived(const NetlinkMessage &raw_message);
+
   void set_sockets(Sockets* sockets) { sockets_.reset(sockets); }
 
   ControlInterface *control_interface_;
@@ -243,6 +249,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Cache copy of singleton pointers.
   RoutingTable *routing_table_;
   RTNLHandler *rtnl_handler_;
+  NetlinkManager *netlink_manager_;
 
   // A member of the class so that a mock can be injected for testing.
   scoped_ptr<Sockets> sockets_;

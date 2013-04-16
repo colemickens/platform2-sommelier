@@ -91,6 +91,16 @@ class Nl80211AttributeIfindex : public NetlinkU32Attribute {
   DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeIfindex);
 };
 
+class Nl80211AttributeIftype : public NetlinkU32Attribute {
+ public:
+  static const int kName;
+  static const char kNameString[];
+  Nl80211AttributeIftype() : NetlinkU32Attribute(kName, kNameString) {}
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Nl80211AttributeIftype);
+};
+
 class Nl80211AttributeKeyType : public NetlinkU32Attribute {
  public:
   static const int kName;

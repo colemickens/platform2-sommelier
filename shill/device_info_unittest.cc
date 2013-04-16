@@ -13,6 +13,7 @@
 #include <linux/sockios.h>
 #include <net/if_arp.h>
 
+#include <base/bind.h>
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
@@ -28,14 +29,18 @@
 #include "shill/mock_control.h"
 #include "shill/mock_device.h"
 #include "shill/mock_glib.h"
+#include "shill/mock_log.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_modem_info.h"
+#include "shill/mock_netlink_manager.h"
 #include "shill/mock_routing_table.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_vpn_provider.h"
 #include "shill/mock_wimax_provider.h"
+#include "shill/netlink_attribute.h"
+#include "shill/nl80211_message.h"
 #include "shill/rtnl_message.h"
 #include "shill/wimax.h"
 
@@ -46,9 +51,11 @@ using std::set;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::AnyNumber;
 using testing::ContainerEq;
 using testing::DoAll;
 using testing::ElementsAreArray;
+using testing::HasSubstr;
 using testing::Mock;
 using testing::NotNull;
 using testing::Return;
@@ -81,6 +88,7 @@ class DeviceInfoTest : public Test {
   virtual void SetUp() {
     device_info_.rtnl_handler_ = &rtnl_handler_;
     device_info_.routing_table_ = &routing_table_;
+    device_info_.netlink_manager_ = &netlink_manager_;
   }
 
   IPAddress CreateInterfaceAddress() {
@@ -153,6 +161,7 @@ class DeviceInfoTest : public Test {
   DeviceInfo device_info_;
   TestEventDispatcherForDeviceInfo dispatcher_;
   MockRoutingTable routing_table_;
+  MockNetlinkManager netlink_manager_;
   StrictMock<MockRTNLHandler> rtnl_handler_;
   MockSockets *mock_sockets_;  // Owned by DeviceInfo.
 };
@@ -442,14 +451,39 @@ TEST_F(DeviceInfoTest, CreateDeviceVirtioEthernet) {
   device = NULL;
 }
 
+MATCHER_P(IsGetInterfaceMessage, index, "") {
+  if (arg->message_type() != Nl80211Message::GetMessageType()) {
+    return false;
+  }
+  const Nl80211Message *msg = reinterpret_cast<const Nl80211Message *>(arg);
+  if (msg->command() != NL80211_CMD_GET_INTERFACE) {
+    return false;
+  }
+  uint32_t interface_index;
+  if (!msg->const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                                     &interface_index)) {
+    return false;
+  }
+  // kInterfaceIndex is signed, but the attribute as handed from the kernel
+  // is unsigned.  We're silently casting it away with this assignment.
+  uint32_t test_interface_index = index;
+  return interface_index == test_interface_index;
+}
+
 TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
   IPAddress address = CreateInterfaceAddress();
 
   // WiFi looks a lot like Ethernet too.
-  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex)).Times(1);
+  EXPECT_CALL(routing_table_, FlushRoutes(kTestDeviceIndex));
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(kTestDeviceIndex,
                                                     IsIPAddress(address)));
-  EXPECT_TRUE(CreateDevice(
+
+  // Set the nl80211 message type to some non-default value.
+  Nl80211Message::SetMessageType(1234);
+
+  EXPECT_CALL(netlink_manager_,
+              SendMessage(IsGetInterfaceMessage(kTestDeviceIndex), _));
+  EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kWifi));
 }
 
@@ -1064,6 +1098,10 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     GetDelayedDevices().insert(kTestDeviceIndex);
   }
 
+  void TriggerOnWiFiInterfaceInfoReceived(const NetlinkMessage &message) {
+    test_device_info_.OnWiFiInterfaceInfoReceived(message);
+  }
+
  protected:
   DeviceInfoForDelayedCreationTest test_device_info_;
 };
@@ -1094,6 +1132,75 @@ TEST_F(DeviceInfoDelayedCreationTest, CellularDevice) {
       .WillOnce(Return(DeviceRefPtr()));
   DelayedDeviceCreationTask();
   EXPECT_TRUE(GetDelayedDevices().empty());
+}
+
+TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
+  ScopedMockLog log;
+  EXPECT_CALL(manager_, RegisterDevice(_)).Times(0);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Unknown message type received")));
+  GenericNetlinkMessage non_nl80211_message(0, 0, "foo");
+  TriggerOnWiFiInterfaceInfoReceived(non_nl80211_message);
+  Mock::VerifyAndClearExpectations(&log);
+
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Message is not a new interface response")));
+  GetInterfaceMessage non_interface_response_message;
+  TriggerOnWiFiInterfaceInfoReceived(non_interface_response_message);
+  Mock::VerifyAndClearExpectations(&log);
+
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Message contains no interface index")));
+  NewInterfaceMessage message;
+  TriggerOnWiFiInterfaceInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&log);
+
+  message.attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, base::Bind(
+          &NetlinkAttribute::NewNl80211AttributeFromId));
+  message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                             kTestDeviceIndex);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Message contains no interface type")));
+  TriggerOnWiFiInterfaceInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&log);
+
+  message.attributes()->CreateAttribute(
+      NL80211_ATTR_IFTYPE, base::Bind(
+          &NetlinkAttribute::NewNl80211AttributeFromId));
+  message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
+                                             NL80211_IFTYPE_AP);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Could not find device info for interface")));
+  TriggerOnWiFiInterfaceInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&log);
+
+  // Use the AddDelayedDevice() method to create a device info entry with no
+  // associated device.
+  AddDelayedDevice();
+
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       HasSubstr("it is not in station mode")));
+  TriggerOnWiFiInterfaceInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  message.attributes()->SetU32AttributeValue(NL80211_ATTR_IFTYPE,
+                                             NL80211_IFTYPE_STATION);
+  EXPECT_CALL(manager_, RegisterDevice(_));
+  EXPECT_CALL(manager_, device_info())
+      .WillRepeatedly(Return(&test_device_info_));
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(logging::LOG_INFO, _,
+                       HasSubstr("Creating WiFi device")));
+  TriggerOnWiFiInterfaceInfoReceived(message);
+  Mock::VerifyAndClearExpectations(&log);
+  Mock::VerifyAndClearExpectations(&manager_);
+
+  EXPECT_CALL(manager_, RegisterDevice(_)).Times(0);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       HasSubstr("Device already created for interface")));
+  TriggerOnWiFiInterfaceInfoReceived(message);
 }
 
 }  // namespace shill

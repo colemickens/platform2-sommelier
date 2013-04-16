@@ -34,6 +34,9 @@
 #include "shill/ethernet.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/netlink_attribute.h"
+#include "shill/netlink_manager.h"
+#include "shill/nl80211_message.h"
 #include "shill/routing_table.h"
 #include "shill/rtnl_handler.h"
 #include "shill/rtnl_listener.h"
@@ -93,6 +96,7 @@ DeviceInfo::DeviceInfo(ControlInterface *control_interface,
       device_info_root_(kDeviceInfoRoot),
       routing_table_(RoutingTable::GetInstance()),
       rtnl_handler_(RTNLHandler::GetInstance()),
+      netlink_manager_(NetlinkManager::GetInstance()),
       sockets_(new Sockets()) {
 }
 
@@ -201,7 +205,7 @@ bool DeviceInfo::GetDeviceInfoSymbolicLink(const string &iface_name,
 Technology::Identifier DeviceInfo::GetDeviceTechnology(
     const string &iface_name) {
   string type_string;
-  int arp_type = ARPHRD_VOID;;
+  int arp_type = ARPHRD_VOID;
   if (GetDeviceInfoContents(iface_name, kInterfaceType, &type_string) &&
       TrimString(type_string, "\n", &type_string) &&
       !base::StringToInt(type_string, &arp_type)) {
@@ -414,9 +418,9 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       device->EnableIPv6Privacy();
       break;
     case Technology::kWifi:
-      device = new WiFi(control_interface_, dispatcher_, metrics_, manager_,
-                        link_name, address, interface_index);
-      device->EnableIPv6Privacy();
+      // Defer creating this device until we get information about the
+      // type of WiFi interface.
+      GetWiFiInterfaceInfo(interface_index);
       break;
     case Technology::kWiMax:
       // WiMax devices are managed by WiMaxProvider.
@@ -864,6 +868,79 @@ void DeviceInfo::RequestLinkStatistics() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
   dispatcher_->PostDelayedTask(request_link_statistics_callback_.callback(),
                                kRequestLinkStatisticsIntervalMilliseconds);
+}
+
+void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
+  GetInterfaceMessage msg;
+  if (!msg.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                              interface_index)) {
+    LOG(ERROR) << "Unable to set interface index attribute for "
+                  "GetInterface message.  Interface type cannot be "
+                  "determined!";
+    return;
+  }
+  netlink_manager_->SendMessage(&msg,
+                                Bind(&DeviceInfo::OnWiFiInterfaceInfoReceived,
+                                AsWeakPtr()));
+}
+
+void DeviceInfo::OnWiFiInterfaceInfoReceived(
+    const NetlinkMessage &raw_message) {
+  if (raw_message.message_type() != Nl80211Message::GetMessageType()) {
+    LOG(ERROR) << "Unknown message type received: "
+               << raw_message.message_type();
+    return;
+  }
+  // Due to the test above, this is guaranteed to be an NL80211Message type.
+  const Nl80211Message *msg =
+      reinterpret_cast<const Nl80211Message *>(&raw_message);
+
+  if (msg->command() != NL80211_CMD_NEW_INTERFACE) {
+    LOG(ERROR) << "Message is not a new interface response";
+    return;
+  }
+
+  uint32_t interface_index;
+  if (!msg->const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                                     &interface_index)) {
+    LOG(ERROR) << "Message contains no interface index";
+    return;
+  }
+  uint32_t interface_type;
+  if (!msg->const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFTYPE,
+                                                     &interface_type)) {
+    LOG(ERROR) << "Message contains no interface type";
+    return;
+  }
+  const Info *info = GetInfo(interface_index);
+  if (!info) {
+    LOG(ERROR) << "Could not find device info for interface index "
+               << interface_index;
+    return;
+  }
+  if (info->device) {
+    LOG(ERROR) << "Device already created for interface index "
+               << interface_index;
+    return;
+  }
+  if (interface_type != NL80211_IFTYPE_STATION) {
+    LOG(INFO) << "Ignoring WiFi device "
+              << info->name
+              << " at interface index "
+              << interface_index
+              << " since it is not in station mode.";
+    return;
+  }
+  LOG(INFO) << "Creating WiFi device for station mode interface "
+              << info->name
+              << " at interface index "
+              << interface_index;
+  string address = StringToLowerASCII(info->mac_address.HexEncode());
+  DeviceRefPtr device =
+      new WiFi(control_interface_, dispatcher_, metrics_, manager_,
+               info->name, address, interface_index);
+  device->EnableIPv6Privacy();
+  RegisterDevice(device);
 }
 
 }  // namespace shill

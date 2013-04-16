@@ -57,6 +57,9 @@ const char Nl80211AttributeGeneration::kNameString[]
 const int Nl80211AttributeIfindex::kName = NL80211_ATTR_IFINDEX;
 const char Nl80211AttributeIfindex::kNameString[] = "NL80211_ATTR_IFINDEX";
 
+const int Nl80211AttributeIftype::kName = NL80211_ATTR_IFTYPE;
+const char Nl80211AttributeIftype::kNameString[] = "NL80211_ATTR_IFTYPE";
+
 const int Nl80211AttributeKeyIdx::kName = NL80211_ATTR_KEY_IDX;
 const char Nl80211AttributeKeyIdx::kNameString[] = "NL80211_ATTR_KEY_IDX";
 
