@@ -885,13 +885,6 @@ string Attestation::ComputeHMAC(const EncryptedData& encrypted_data,
   SecureBlob hmac_input = SecureCat(
       ConvertStringToBlob(encrypted_data.iv()),
       ConvertStringToBlob(encrypted_data.encrypted_data()));
-  if (encrypted_data.has_wrapping_key_id()) {
-    // Mix in the wrapping key ID also.
-    SecureBlob tmp = SecureCat(
-        hmac_input,
-        ConvertStringToBlob(encrypted_data.wrapping_key_id()));
-    hmac_input.swap(tmp);
-  }
   return ConvertBlobToString(CryptoLib::HmacSha512(hmac_key, hmac_input));
 }
 
