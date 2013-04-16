@@ -20,6 +20,8 @@ class TechnologyTest : public Test {};
 
 TEST_F(TechnologyTest, IdentifierFromName) {
   EXPECT_EQ(Technology::kEthernet, Technology::IdentifierFromName("ethernet"));
+  EXPECT_EQ(Technology::kEthernetEap,
+            Technology::IdentifierFromName("etherneteap"));
   EXPECT_EQ(Technology::kWifi, Technology::IdentifierFromName("wifi"));
   EXPECT_EQ(Technology::kWiMax, Technology::IdentifierFromName("wimax"));
   EXPECT_EQ(Technology::kCellular, Technology::IdentifierFromName("cellular"));
@@ -34,6 +36,8 @@ TEST_F(TechnologyTest, IdentifierFromName) {
 
 TEST_F(TechnologyTest, NameFromIdentifier) {
   EXPECT_EQ("ethernet", Technology::NameFromIdentifier(Technology::kEthernet));
+  EXPECT_EQ("etherneteap",
+            Technology::NameFromIdentifier(Technology::kEthernetEap));
   EXPECT_EQ("wifi", Technology::NameFromIdentifier(Technology::kWifi));
   EXPECT_EQ("wimax", Technology::NameFromIdentifier(Technology::kWiMax));
   EXPECT_EQ("cellular", Technology::NameFromIdentifier(Technology::kCellular));

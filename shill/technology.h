@@ -18,6 +18,7 @@ class Technology {
  public:
   enum Identifier {
     kEthernet,
+    kEthernetEap,
     kWifi,
     kWiFiMonitor,
     kWiMax,

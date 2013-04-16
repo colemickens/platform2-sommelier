@@ -30,6 +30,8 @@ const char Technology::kUnknownName[] = "unknown";
 Technology::Identifier Technology::IdentifierFromName(const string &name) {
   if (name == flimflam::kTypeEthernet) {
     return kEthernet;
+  } else if (name == kTypeEthernetEap) {
+    return kEthernetEap;
   } else if (name == flimflam::kTypeWifi) {
     return kWifi;
   } else if (name == flimflam::kTypeWimax) {
@@ -53,6 +55,8 @@ Technology::Identifier Technology::IdentifierFromName(const string &name) {
 string Technology::NameFromIdentifier(Technology::Identifier id) {
   if (id == kEthernet) {
     return flimflam::kTypeEthernet;
+  } else if (id == kEthernetEap) {
+    return kTypeEthernetEap;
   } else if (id == kWifi) {
     return flimflam::kTypeWifi;
   } else if (id == kWiMax) {
