@@ -41,6 +41,7 @@ const char* kPerfDataFiles[] = {
 const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.host",
   "perf.data.piped.target",
+  "perf.data.piped.powerpc",
 };
 
 }  // namespace perf_test_files

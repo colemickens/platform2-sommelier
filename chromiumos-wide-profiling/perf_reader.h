@@ -27,7 +27,8 @@ struct PerfEventAndSampleInfo {
 
 class PerfReader {
  public:
-  PerfReader() : sample_type_(0) {}
+  PerfReader() : sample_type_(0),
+                 is_cross_endian_(0) {}
 
   bool ReadFile(const string& filename);
   bool ReadFileData(const std::vector<char>& data);
@@ -71,6 +72,10 @@ class PerfReader {
   std::vector<perf_trace_event_type> event_types_;
   std::vector<PerfEventAndSampleInfo> events_;
   uint64 sample_type_;
+
+  // Indicates that the perf data being read is from machine with a different
+  // endianness than the current machine.
+  bool is_cross_endian_;
 
  private:
   // The file header is either a normal header or a piped header.

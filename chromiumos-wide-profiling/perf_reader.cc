@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <byteswap.h>
+
 #include <cstdlib>
 #include <cstring>
 #include <vector>
@@ -18,6 +20,27 @@ namespace {
 
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64 kPerfMagic = 0x32454c4946524550LL;
+
+template <class T>
+void ByteSwap(T* input) {
+  switch(sizeof(T)) {
+  case sizeof(uint8):
+    LOG(WARNING) << "Attempting to byte swap on a single byte.";
+    break;
+  case sizeof(uint16):
+    *input = bswap_16(*input);
+    break;
+  case sizeof(uint32):
+    *input = bswap_32(*input);
+    break;
+  case sizeof(uint64):
+    *input = bswap_64(*input);
+    break;
+  default:
+    LOG(FATAL) << "Invalid size for byte swap: " << sizeof(T) << " bytes";
+    break;
+  }
+}
 
 bool ReadDataFromVector(const std::vector<char>& data,
                         size_t src_offset,
@@ -121,9 +144,11 @@ uint64 GetPerfSampleDataOffset(const event_t& event) {
   case PERF_RECORD_UNTHROTTLE:
   case PERF_RECORD_READ:
   case PERF_RECORD_MAX:
-    LOG(FATAL) << "Unsupported event type " << event.header.type;
+    offset = sizeof(event.header);
+    break;
   default:
     LOG(FATAL) << "Unknown event type " << event.header.type;
+    break;
   }
   // Make sure the offset was valid
   CHECK_NE(offset, kuint64max);
@@ -133,8 +158,11 @@ uint64 GetPerfSampleDataOffset(const event_t& event) {
 
 size_t ReadPerfSampleFromData(const uint64* array,
                               const uint64 sample_fields,
+                              bool swap_bytes,
                               struct perf_sample* sample) {
   size_t num_values_read = 0;
+  const uint64 k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
+
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
     uint64 sample_type = (1 << index);
     union {
@@ -146,12 +174,21 @@ size_t ReadPerfSampleFromData(const uint64* array,
 
     val64 = *array++;
     ++num_values_read;
+
+    if (swap_bytes) {
+      if (k32BitFields & sample_type) {
+        ByteSwap(&val32[0]);
+        ByteSwap(&val32[1]);
+      } else {
+        ByteSwap(&val64);
+      }
+    }
+
     switch (sample_type) {
     case PERF_SAMPLE_IP:
       sample->ip = val64;
       break;
     case PERF_SAMPLE_TID:
-      // TODO(sque): might have to check for endianness.
       sample->pid = val32[0];
       sample->tid = val32[1];
       break;
@@ -240,6 +277,7 @@ void CopyPerfEventSpecificInfo(const event_t& source, event_t* destination) {
 // the event.  Stores info in |sample|.
 bool ReadPerfSampleInfo(const event_t& event,
                         uint64 sample_type,
+                        bool swap_bytes,
                         struct perf_sample* sample) {
   CHECK(sample);
 
@@ -250,11 +288,16 @@ bool ReadPerfSampleInfo(const event_t& event,
   size_t size_read = ReadPerfSampleFromData(
       reinterpret_cast<const uint64*>(&event) + offset / sizeof(uint64),
       sample_format,
+      swap_bytes,
       sample);
 
   if (event.header.type == PERF_RECORD_SAMPLE) {
     sample->pid = event.ip.pid;
     sample->tid = event.ip.tid;
+    if (swap_bytes) {
+      ByteSwap(&sample->pid);
+      ByteSwap(&sample->tid);
+    }
   }
 
   size_t expected_size = event.header.size - offset;
@@ -386,11 +429,15 @@ bool PerfReader::RegenerateHeader() {
 bool PerfReader::ReadHeader(const std::vector<char>& data) {
   if (!ReadDataFromVector(data, 0, sizeof(header_), "header data", &header_))
     return false;
-  if (header_.magic != kPerfMagic) {
-    LOG(ERROR) << "Read wrong magic. Expected: " << kPerfMagic
-               << " Got: " << header_.magic;
+  if (header_.magic != kPerfMagic && header_.magic != bswap_64(kPerfMagic)) {
+    LOG(ERROR) << "Read wrong magic. Expected: 0x" << std::hex << kPerfMagic
+               << " or 0x" << std::hex << bswap_64(kPerfMagic)
+               << " Got: 0x" << std::hex << header_.magic;
     return false;
   }
+  is_cross_endian_ = (header_.magic != kPerfMagic);
+  if (is_cross_endian_)
+    ByteSwap(&header_.size);
 
   // Header can be a piped header.
   if (header_.size != sizeof(header_))
@@ -487,31 +534,51 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
   while (offset < data.size() && result) {
-    const union piped_data_block {
-      struct perf_event_header header;
+    union piped_data_block {
+      // Generic format of a piped perf data block, with header + more data.
+      struct {
+        struct perf_event_header header;
+        char more_data[];
+      };
+      // Specific types of data.
       struct attr_event attr_event;
       struct event_type_event event_type_event;
       struct event_desc_event event_desc_event;
       event_t event;
-    } *block;
-    block = reinterpret_cast<const union piped_data_block*>(&data[offset]);
-    offset += block->header.size;
-    if (block->header.type < PERF_RECORD_MAX) {
-      result = ReadPerfEventBlock(block->event);
+    };
+    const union piped_data_block *block_data
+        = reinterpret_cast<const union piped_data_block*>(&data[offset]);
+    union piped_data_block block;
+
+    // Copy the header and swap bytes if necessary.
+    memcpy(&block.header, block_data, sizeof(block.header));
+    if (is_cross_endian_) {
+      ByteSwap(&block.header.type);
+      ByteSwap(&block.header.misc);
+      ByteSwap(&block.header.size);
+    }
+    // Copy the rest of the data.
+    memcpy(&block.more_data,
+           block_data->more_data,
+           block.header.size - sizeof(block.header));
+
+    offset += block.header.size;
+    if (block.header.type < PERF_RECORD_MAX) {
+      result = ReadPerfEventBlock(block.event);
       continue;
     }
-    switch (block->header.type) {
+    switch (block.header.type) {
     case PERF_RECORD_HEADER_ATTR:
-      result = ReadAttrEventBlock(block->attr_event);
+      result = ReadAttrEventBlock(block.attr_event);
       break;
     case PERF_RECORD_HEADER_EVENT_TYPE:
-      result = ReadEventTypeEventBlock(block->event_type_event);
+      result = ReadEventTypeEventBlock(block.event_type_event);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
-      result = ReadEventDescEventBlock(block->event_desc_event);
+      result = ReadEventDescEventBlock(block.event_desc_event);
       break;
     default:
-      LOG(WARNING) << "Event type " << block->header.type
+      LOG(WARNING) << "Event type " << block.header.type
                    << " is not yet supported!";
       break;
     }
@@ -596,10 +663,28 @@ bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
 bool PerfReader::ReadAttrEventBlock(const struct attr_event& attr_event) {
   PerfFileAttr attr;
   attr.attr = attr_event.attr;
+  // Reverse bit order for big endian machine data.
+  if (is_cross_endian_) {
+    ByteSwap(&attr.attr.type);
+    ByteSwap(&attr.attr.size);
+    ByteSwap(&attr.attr.config);
+    ByteSwap(&attr.attr.sample_period);
+    ByteSwap(&attr.attr.sample_type);
+    ByteSwap(&attr.attr.read_format);
+    ByteSwap(&attr.attr.wakeup_events);
+    ByteSwap(&attr.attr.bp_type);
+    ByteSwap(&attr.attr.bp_addr);
+    ByteSwap(&attr.attr.bp_len);
+    ByteSwap(&attr.attr.branch_sample_type);
+  }
+
   size_t num_ids = (attr_event.header.size - sizeof(attr_event.header) -
                     sizeof(attr_event.attr)) / sizeof(attr_event.id[0]);
-  for (size_t i = 0; i < num_ids; ++i)
+  for (size_t i = 0; i < num_ids; ++i) {
     attr.ids.push_back(attr_event.id[i]);
+    if (is_cross_endian_)
+      ByteSwap(&attr.ids[i]);
+  }
   attrs_.push_back(attr);
   // Assign sample type if it hasn't been assigned, otherwise make sure all
   // subsequent attributes have the same sample type bits set.
@@ -613,19 +698,26 @@ bool PerfReader::ReadAttrEventBlock(const struct attr_event& attr_event) {
 bool PerfReader::ReadEventTypeEventBlock(
     const struct event_type_event& event_type_event) {
   event_types_.push_back(event_type_event.event_type);
+  if (is_cross_endian_)
+    ByteSwap(&event_types_.back().event_id);
   return true;
 }
 
 bool PerfReader::ReadEventDescEventBlock(
     const struct event_desc_event& desc_event) {
+  uint32_t num_events = desc_event.num_events;
+  uint32_t event_header_size = desc_event.event_header_size;
+  if (is_cross_endian_) {
+    ByteSwap(&num_events);
+    ByteSwap(&event_header_size);
+  }
   size_t offset = 0;
-  for (size_t i = 0; i < desc_event.num_events; ++i) {
+  for (size_t i = 0; i < num_events; ++i) {
     PerfFileAttr attr;
     memcpy(&attr.attr,
            &desc_event.more_data[offset],
-           desc_event.event_header_size);
-    offset += desc_event.event_header_size;
-
+           event_header_size);
+    offset += event_header_size;
     union {
       const struct {
         uint32 num_ids;
@@ -658,8 +750,49 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 
   PerfEventAndSampleInfo event_and_sample;
   event_and_sample.event = event;
-  if (!ReadPerfSampleInfo(event, sample_type_, &event_and_sample.sample_info))
+  if (!ReadPerfSampleInfo(event_and_sample.event,
+                          sample_type_,
+                          is_cross_endian_,
+                          &event_and_sample.sample_info)) {
     return false;
+  }
+
+  if (is_cross_endian_) {
+    event_t& event = event_and_sample.event;
+    switch (event.header.type) {
+    case PERF_RECORD_SAMPLE:
+      ByteSwap(&event.ip.ip);
+      ByteSwap(&event.ip.pid);
+      ByteSwap(&event.ip.tid);
+      break;
+    case PERF_RECORD_MMAP:
+      ByteSwap(&event.mmap.pid);
+      ByteSwap(&event.mmap.tid);
+      ByteSwap(&event.mmap.start);
+      ByteSwap(&event.mmap.len);
+      ByteSwap(&event.mmap.pgoff);
+      break;
+    case PERF_RECORD_FORK:
+    case PERF_RECORD_EXIT:
+      ByteSwap(&event.fork.pid);
+      ByteSwap(&event.fork.tid);
+      ByteSwap(&event.fork.ppid);
+      ByteSwap(&event.fork.ptid);
+      break;
+    case PERF_RECORD_COMM:
+      ByteSwap(&event.comm.pid);
+      ByteSwap(&event.comm.tid);
+      break;
+    case PERF_RECORD_LOST:
+    case PERF_RECORD_THROTTLE:
+    case PERF_RECORD_UNTHROTTLE:
+    case PERF_RECORD_READ:
+    case PERF_RECORD_MAX:
+      break;
+    default:
+      LOG(FATAL) << "Unknown event type: " << event.header.type;
+    }
+  }
 
   events_.push_back(event_and_sample);
 
