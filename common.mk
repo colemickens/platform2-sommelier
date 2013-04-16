@@ -271,15 +271,48 @@ else
 CXXDRIVER = gcc
 endif
 
+# Internal macro to support check_XXX macros below.
+# Usage: $(call check_compile, [code], [compiler], [code_type], [c_flags],
+#               [extra_c_flags], [library_flags], [success_ret], [fail_ret])
+# Return: [success_ret] if compile succeeded, otherwise [fail_ret]
+check_compile = $(shell printf '%b\n' $(1) | \
+  $($(2)) $($(4)) -x $(3) $(LDFLAGS) $(5) - $(6) -o /dev/null > /dev/null 2>&1 \
+  && echo "$(7)" || echo "$(8)")
+
+# Helper macro to check whether a test program will compile with the specified
+# compiler flags.
+# Usage: $(call check_compile_cc, [code], [flags], [alternate_flags])
+# Return: [flags] if compile succeeded, otherwise [alternate_flags]
+check_compile_cc = $(call check_compile,$(1),CC,c,CFLAGS,$(2),,$(2),$(3))
+check_compile_cxx = $(call check_compile,$(1),CXX,c++,CXXFLAGS,$(2),,$(2),$(3))
+
+# Helper macro to check whether a test program will compile with the specified
+# libraries.
+# Usage: $(call check_compile_cc, [code], [library_flags], [alternate_flags])
+# Return: [library_flags] if compile succeeded, otherwise [alternate_flags]
+check_libs_cc = $(call check_compile,$(1),CC,c,CFLAGS,,$(2),$(2),$(3))
+check_libs_cxx = $(call check_compile,$(1),CXX,c++,CXXFLAGS,,$(2),$(2),$(3))
+
+# Helper macro to check whether the compiler accepts the specified flags.
+# Usage: $(call check_compile_cc, [flags], [alternate_flags])
+# Return: [flags] if compile succeeded, otherwise [alternate_flags]
+check_cc = $(call check_compile_cc,'int main() { return 0; }',$(1),$(2))
+check_cxx = $(call check_compile_cxx,'int main() { return 0; }',$(1),$(2))
+
+# Choose the stack protector flags based on whats supported by the compiler.
+SSP_CFLAGS := $(call check_cc,-fstack-protector-strong)
+ifeq ($(SSP_CFLAGS),)
+ SSP_CFLAGS := $(call check_cc,-fstack-protector-all)
+endif
+
 # To update these from an including Makefile:
 #  CXXFLAGS += -mahflag  # Append to the list
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
-COMMON_CFLAGS-gcc := -fstack-protector-strong -fvisibility=internal -ggdb3 \
-  -Wa,--noexecstack
-COMMON_CFLAGS-clang := -fstack-protector-all -fvisibility=hidden -ggdb
-COMMON_CFLAGS := -Wall -Werror -fno-strict-aliasing -O1 -Wformat=2
+COMMON_CFLAGS-gcc := -fvisibility=internal -ggdb3 -Wa,--noexecstack
+COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb
+COMMON_CFLAGS := -Wall -Werror -fno-strict-aliasing $(SSP_CFLAGS) -O1 -Wformat=2
 CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
 CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
 CPPFLAGS += -D_FORTIFY_SOURCE=2
