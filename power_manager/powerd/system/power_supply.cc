@@ -48,6 +48,10 @@ const int kDefaultPollMs = 30000;
 // event, in milliseconds.
 const int kDefaultShortPollMs = 5000;
 
+// Upper limit to accept for raw battery times, in seconds. If the time of
+// interest is above this level assume something is wrong.
+const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
+
 // Converts time from hours to seconds.
 inline double HoursToSecondsDouble(double num_hours) {
   return num_hours * 3600.;
@@ -110,6 +114,13 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTimeFast),
       found_acceptable_time_range_(false),
+      discharge_started_with_full_battery_(false),
+      sample_window_max_(10),
+      sample_window_min_(1),
+      taper_time_max_(base::TimeDelta::FromSeconds(3600)),
+      taper_time_min_(base::TimeDelta::FromSeconds(600)),
+      low_battery_shutdown_time_(base::TimeDelta::FromSeconds(180)),
+      low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
       full_factor_(kDefaultFullFactor),
       poll_timeout_id_(0),
@@ -135,6 +146,32 @@ void PowerSupply::Init() {
 
   prefs_->GetDouble(kPowerSupplyFullFactorPref, &full_factor_);
   full_factor_ = std::min(std::max(kEpsilon, full_factor_), 1.0);
+
+  int64 shutdown_time_sec = 0;
+  if (prefs_->GetInt64(kLowBatteryShutdownTimePref, &shutdown_time_sec)) {
+    low_battery_shutdown_time_ =
+        base::TimeDelta::FromSeconds(shutdown_time_sec);
+  }
+
+  prefs_->GetDouble(kLowBatteryShutdownPercentPref,
+                    &low_battery_shutdown_percent_);
+
+  prefs_->GetInt64(kSampleWindowMaxPref, &sample_window_max_);
+  prefs_->GetInt64(kSampleWindowMinPref, &sample_window_min_);
+  CHECK(sample_window_min_ > 0);
+  CHECK(sample_window_max_ >= sample_window_min_);
+
+  int64 taper_time_max_sec = 0;
+  if (prefs_->GetInt64(kTaperTimeMaxPref, &taper_time_max_sec))
+    taper_time_max_ = base::TimeDelta::FromSeconds(taper_time_max_sec);
+  int64 taper_time_min_sec = taper_time_min_.InSeconds();
+  if (prefs_->GetInt64(kTaperTimeMinPref, &taper_time_min_sec))
+    taper_time_min_ = base::TimeDelta::FromSeconds(taper_time_min_sec);
+  CHECK(taper_time_min_ > base::TimeDelta());
+  CHECK(taper_time_max_ > taper_time_min_);
+
+  time_to_empty_average_.Init(sample_window_max_);
+  time_to_full_average_.Init(sample_window_max_);
 
   SetCalculatingBatteryTime();
   SchedulePoll(false);
@@ -219,6 +256,10 @@ void PowerSupply::SetSuspended(bool suspended) {
     util::RemoveTimeout(&poll_timeout_id_);
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
+    // Ensure that the reported battery level isn't pinned or tapered.
+    discharge_started_with_full_battery_ = false;
+    time_to_empty_average_.Clear();
+    time_to_full_average_.Clear();
     // If resuming, deduct the time suspended from the hysteresis state
     // machine timestamps.
     AdjustHysteresisTimes(GetCurrentTime() - suspend_time_);
@@ -358,8 +399,6 @@ bool PowerSupply::UpdatePowerStatus() {
     // early if it is not present. In this case, we know nothing about
     // battery state or remaining percentage, so set proper status.
     if (battery_voltage <= 0) {
-      status.battery_state = BATTERY_STATE_UNKNOWN;
-      status.battery_percentage = -1;
       LOG(WARNING) << "Invalid voltage_now reading for energy-to-charge"
                    << " conversion: " << battery_voltage;
       return false;
@@ -393,6 +432,16 @@ bool PowerSupply::UpdatePowerStatus() {
   status.battery_energy = battery_charge * battery_voltage;
   status.battery_energy_rate = battery_current * battery_voltage;
 
+  if (status.line_power_on) {
+    discharge_start_time_ = base::TimeTicks();
+  } else {
+    if (discharge_start_time_.is_null()) {
+      discharge_start_time_ = GetCurrentTime();
+      discharge_started_with_full_battery_ =
+          status.battery_charge >= status.battery_charge_full * full_factor_;
+    }
+  }
+
   CalculateRemainingTime(&status);
 
   if (battery_charge_full > 0 && battery_charge_full_design > 0) {
@@ -401,6 +450,8 @@ bool PowerSupply::UpdatePowerStatus() {
   } else {
     status.battery_percentage = -1;
   }
+
+  UpdateAveragedTimes(&status);
 
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
@@ -422,6 +473,9 @@ bool PowerSupply::UpdatePowerStatus() {
     if (battery_charge == 0)
       status.battery_state = BATTERY_STATE_EMPTY;
   }
+
+  CalculateDisplayBatteryPercentage(&status);
+  CheckForLowBattery(&status);
 
   power_status_ = status;
   return true;
@@ -463,10 +517,10 @@ void PowerSupply::GetPowerSupplyPaths() {
       // path can disappear if removed).  So this code should only be run once
       // for each power source.
       if (buf == "Battery" && battery_path_.empty()) {
-        DLOG(INFO) << "Battery path found: " << path.value();
+        VLOG(1) << "Battery path found: " << path.value();
         battery_path_ = path;
       } else if (buf == "Mains" && line_power_path_.empty()) {
-        DLOG(INFO) << "Line power path found: " << path.value();
+        VLOG(1) << "Line power path found: " << path.value();
         line_power_path_ = path;
       }
     }
@@ -530,7 +584,6 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
       // Reset the remaining-time-calculation state machine when AC plugged in.
       found_acceptable_time_range_ = false;
       last_poll_time_ = base::TimeTicks();
-      discharge_start_time_ = base::TimeTicks();
       last_acceptable_range_time_ = base::TimeTicks();
       // Make sure that when the system switches to battery power, the initial
       // hysteresis time will be very short, so it can find an acceptable
@@ -539,8 +592,6 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
     } else if (!found_acceptable_time_range_) {
       // No base range found, need to give it some time to stabilize.  For now,
       // use the simple linear calculation for time.
-      if (discharge_start_time_.is_null())
-        discharge_start_time_ = time_now;
       time_to_empty = GetLinearTimeToEmpty(*status);
       status->battery_time_to_empty = lround(time_to_empty);
       // Select an acceptable remaining time once the system has been
@@ -582,6 +633,165 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
   } else {
     status->battery_time_to_empty = 0;
     status->battery_time_to_full = 0;
+  }
+}
+
+void PowerSupply::UpdateAveragedTimes(PowerStatus* status) {
+  // Some devices give us bogus values for battery information right after boot
+  // or a power event. We attempt to avoid sampling at these times, but
+  // this guard is to save us when we do sample a bad value. After working
+  // out the time values, if we have a negative we know something is bad.
+  // If the time we are interested in (to empty or full) is beyond a day
+  // then we have a bad value since it is too high. For some devices the
+  // value for the uninteresting time, that we are not using, might be
+  // bizarre, so we cannot just check both times for overly high values.
+  if ((status->line_power_on &&
+       (status->battery_time_to_full < 0 ||
+        status->battery_time_to_full > kBatteryTimeMaxValidSec)) ||
+      (!status->line_power_on &&
+       (status->battery_time_to_empty < 0 ||
+        status->battery_time_to_empty > kBatteryTimeMaxValidSec))) {
+    LOG(ERROR) << "Battery time-to-"
+               << (status->line_power_on ? "full" : "empty") << " is "
+               << (status->line_power_on ?
+                   status->battery_time_to_full :
+                   status->battery_time_to_empty);
+    status->battery_times_are_bad = true;
+    status->averaged_battery_time_to_empty = 0;
+    status->averaged_battery_time_to_full = 0;
+    status->is_calculating_battery_time = true;
+    return;
+  }
+
+  int64 battery_time = 0;
+  if (status->line_power_on) {
+    battery_time = status->battery_time_to_full;
+    if (!status->is_calculating_battery_time)
+      time_to_full_average_.AddSample(battery_time);
+    time_to_empty_average_.Clear();
+  } else {
+    // If the time threshold is set use it, otherwise determine the time
+    // equivalent of the percentage threshold.
+    int64 time_threshold_s = low_battery_shutdown_time_ > base::TimeDelta() ?
+        low_battery_shutdown_time_.InSeconds() :
+        (status->battery_time_to_empty *
+         low_battery_shutdown_percent_ / status->battery_percentage);
+    battery_time = std::max(static_cast<int64>(0),
+        status->battery_time_to_empty - time_threshold_s);
+    if (!status->is_calculating_battery_time)
+      time_to_empty_average_.AddSample(battery_time);
+    time_to_full_average_.Clear();
+  }
+
+  if (!status->is_calculating_battery_time) {
+    if (!status->line_power_on)
+      AdjustWindowSize(base::TimeDelta::FromSeconds(battery_time));
+    else
+      time_to_empty_average_.ChangeWindowSize(sample_window_max_);
+  }
+  status->averaged_battery_time_to_full = time_to_full_average_.GetAverage();
+  status->averaged_battery_time_to_empty = time_to_empty_average_.GetAverage();
+}
+
+void PowerSupply::AdjustWindowSize(base::TimeDelta battery_time) {
+  // For the rolling averages we want the window size to taper off in a linear
+  // fashion from |sample_window_max| to |sample_window_min| on the battery time
+  // remaining interval from |taper_time_max_| to |taper_time_min_|. The two
+  // point equation for the line is:
+  //   (x - x0)/(x1 - x0) = (t - t0)/(t1 - t0)
+  // which solved for x is:
+  //   x = (t - t0)*(x1 - x0)/(t1 - t0) + x0
+  // We let x be the size of the window and t be the battery time
+  // remaining.
+  unsigned int window_size = sample_window_max_;
+  if (battery_time >= taper_time_max_) {
+    window_size = sample_window_max_;
+  } else if (battery_time <= taper_time_min_) {
+    window_size = sample_window_min_;
+  } else {
+    window_size = (battery_time - taper_time_min_).InSeconds();
+    window_size *= (sample_window_max_ - sample_window_min_);
+    window_size /= (taper_time_max_ - taper_time_min_).InSeconds();
+    window_size += sample_window_min_;
+  }
+  time_to_empty_average_.ChangeWindowSize(window_size);
+}
+
+void PowerSupply::CalculateDisplayBatteryPercentage(PowerStatus* status) const {
+  // If we are using a percentage based threshold adjust the reported percentage
+  // to account for the bit being trimmed off. If we are using a time-based
+  // threshold don't adjust the reported percentage. Adjusting the percentage
+  // due to a time threshold might break the monoticity of percentages since the
+  // time to empty/full is not guaranteed to be monotonic.
+  double usable_battery_percent = 100.0;
+  if (status->battery_percentage <= low_battery_shutdown_percent_) {
+    usable_battery_percent = 0.0;
+  } else if (status->battery_percentage > 100.0) {
+    LOG(WARNING) << "Before adjustment battery percentage was over 100%";
+    usable_battery_percent = 100.0;
+  } else if (low_battery_shutdown_time_ > base::TimeDelta()) {
+    usable_battery_percent = status->battery_percentage;
+  } else {  // Using percentage threshold
+    // x = current percentage
+    // y = adjusted percentage
+    // t = threshold percentage
+    // y = 100 *(x-t)/(100 - t)
+    double battery_percentage =
+        100.0 * (status->battery_percentage - low_battery_shutdown_percent_);
+    battery_percentage /= 100.0 - low_battery_shutdown_percent_;
+    usable_battery_percent = battery_percentage;
+  }
+
+  status->display_battery_percentage = usable_battery_percent;
+  switch (status->battery_state) {
+    case BATTERY_STATE_FULLY_CHARGED:
+      status->display_battery_percentage = 100.0;
+      break;
+    case BATTERY_STATE_DISCHARGING:
+      if (discharge_started_with_full_battery_) {
+        int64 elapsed_ms =
+            (GetCurrentTime() - discharge_start_time_).InMilliseconds();
+        if (elapsed_ms <= kBatteryPercentPinMs) {
+          status->display_battery_percentage = 100.0;
+        } else if (elapsed_ms <=
+                   kBatteryPercentPinMs + kBatteryPercentTaperMs) {
+          double elapsed_fraction = std::min(1.0,
+              static_cast<double>(elapsed_ms - kBatteryPercentPinMs) /
+              kBatteryPercentTaperMs);
+          status->display_battery_percentage =
+              usable_battery_percent + (1.0 - elapsed_fraction) *
+              (100.0 - usable_battery_percent);
+        }
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+void PowerSupply::CheckForLowBattery(PowerStatus* status) {
+  DCHECK(status);
+  status->battery_below_shutdown_threshold = false;
+
+  if (low_battery_shutdown_time_ == base::TimeDelta() &&
+      low_battery_shutdown_percent_ <= kEpsilon)
+    return;
+
+  // TODO(derat): Figure out what's causing http://crosbug.com/38912.
+  if (status->battery_percentage < 0.001) {
+    LOG(WARNING) << "Ignoring probably-bogus zero battery percentage "
+                 << "(time-to-empty is " << status->battery_time_to_empty
+                 << " sec, time-to-full is " << status->battery_time_to_full
+                 << " sec)";
+    return;
+  }
+
+  if (!status->line_power_on &&
+      ((status->battery_time_to_empty > 0 &&
+        status->battery_time_to_empty <=
+        low_battery_shutdown_time_.InSeconds()) ||
+       (status->battery_percentage <= low_battery_shutdown_percent_))) {
+    status->battery_below_shutdown_threshold = true;
   }
 }
 

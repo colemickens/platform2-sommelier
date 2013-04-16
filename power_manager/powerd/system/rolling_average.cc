@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "power_manager/powerd/system/rolling_average.h"
+
 #include <cmath>
 
 #include "base/logging.h"
 
-#include "power_manager/powerd/rolling_average.h"
-
 namespace power_manager {
+namespace system {
 
 RollingAverage::RollingAverage() : running_total_(0), window_size_(0) {}
 
@@ -57,4 +58,5 @@ void RollingAverage::DeleteSample() {
   }
 }
 
+}  // namespace system
 }  // namespace power_manager

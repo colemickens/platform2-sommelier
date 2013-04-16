@@ -74,8 +74,20 @@ void Daemon::GenerateMetricsOnLeavingIdle() {
 }
 
 void Daemon::GenerateMetricsOnPowerEvent(const system::PowerStatus& info) {
-  time_t now = time(NULL);
-  GenerateBatteryDischargeRateMetric(info, now);
+  GenerateBatteryDischargeRateMetric(info, time(NULL));
+
+  SendEnumMetric(kMetricBatteryInfoSampleName,
+                 BATTERY_INFO_READ,
+                 BATTERY_INFO_MAX);
+  if (info.battery_times_are_bad) {
+    SendEnumMetric(kMetricBatteryInfoSampleName,
+                   BATTERY_INFO_BAD,
+                   BATTERY_INFO_MAX);
+  } else {
+    SendEnumMetric(kMetricBatteryInfoSampleName,
+                   BATTERY_INFO_GOOD,
+                   BATTERY_INFO_MAX);
+  }
 }
 
 gboolean Daemon::GenerateBacklightLevelMetric() {

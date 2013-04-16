@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef POWER_MANAGER_POWERD_ROLLING_AVERAGE_H_
-#define POWER_MANAGER_POWERD_ROLLING_AVERAGE_H_
+#ifndef POWER_MANAGER_POWERD_SYSTEM_ROLLING_AVERAGE_H_
+#define POWER_MANAGER_POWERD_SYSTEM_ROLLING_AVERAGE_H_
 #pragma once
 
 #include <base/basictypes.h>
@@ -11,6 +11,7 @@
 #include <queue>
 
 namespace power_manager {
+namespace system {
 
 // This class tracks the rolling average from a continuous sequence of
 // samples.
@@ -46,6 +47,7 @@ class RollingAverage {
   DISALLOW_COPY_AND_ASSIGN(RollingAverage);
 };
 
+}  // namespace system
 }  // namespace power_manager
 
-#endif  // POWER_MANAGER_POWERD_ROLLING_AVERAGE_H_
+#endif  // POWER_MANAGER_POWERD_SYSTEM_ROLLING_AVERAGE_H_

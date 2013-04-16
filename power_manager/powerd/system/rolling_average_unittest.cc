@@ -2,13 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/rolling_average.h"
+#include "power_manager/powerd/system/rolling_average.h"
 
 #include <gtest/gtest.h>
 
 #include "base/basictypes.h"
 
 namespace power_manager {
+namespace system {
 
 TEST(RollingAverageTest, SingleSample) {
   RollingAverage average;
@@ -57,4 +58,5 @@ TEST(RollingAverageTest, Clear) {
   EXPECT_EQ(0, average.GetAverage());
 }
 
+}  // namespace system
 }  // namespace power_manager

@@ -34,7 +34,6 @@
 #include "power_manager/powerd/policy/input_controller.h"
 #include "power_manager/powerd/policy/keyboard_backlight_controller.h"
 #include "power_manager/powerd/policy/suspender.h"
-#include "power_manager/powerd/rolling_average.h"
 #include "power_manager/powerd/system/audio_observer.h"
 #include "power_manager/powerd/system/peripheral_battery_watcher.h"
 #include "power_manager/powerd/system/power_supply.h"
@@ -64,28 +63,6 @@ enum PluggedState {
   PLUGGED_STATE_UNKNOWN,
 };
 
-// The raw battery percentage value that we receive from the battery controller
-// is not fit for displaying to the user since it does not repersent the actual
-// usable percentage since we do a safe shutdown in low battery conditions and
-// the battery might not charge to full capacity under certain
-// circumstances. During regular operation we linearly scale the raw value so
-// that the low level cut off is 0%. This being done is indicated by
-// BATTERY_REPORT_ADJUSTED. Once the battery has ceased to charge and is marked
-// as full, 100% is displayed which is is indicated by the state
-// BATTERY_REPORT_FULL. When we start discharging from full the battery value is
-// held/pinned at 100% for a brief period to avoid an immediate drop in
-// percentage due to the difference between the adjusted/raw value and 100%,
-// which is indicated by BATTERY_REPORT_PINNED. After holding the percentage at
-// 100% is done the system linearly tapers from 100% to the true adjust value
-// over a period of time to eliminate any jumps, which is indicated by the state
-// BATTERY_REPORT_TAPERED.
-enum BatteryReportState {
-  BATTERY_REPORT_ADJUSTED,
-  BATTERY_REPORT_FULL,
-  BATTERY_REPORT_PINNED,
-  BATTERY_REPORT_TAPERED,
-};
-
 class Daemon : public policy::BacklightControllerObserver,
                public policy::InputController::Delegate,
                public system::AudioObserver,
@@ -105,10 +82,6 @@ class Daemon : public policy::BacklightControllerObserver,
   }
 
   const std::string& current_user() const { return current_user_; }
-
-  void set_disable_dbus_for_testing(bool disable) {
-    disable_dbus_for_testing_ = disable;
-  }
 
   void Init();
   void Run();
@@ -198,17 +171,6 @@ class Daemon : public policy::BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, SendMetric);
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
   FRIEND_TEST(DaemonTest, SendThermalMetrics);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndCalculating);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndCalculating);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithSetThreshold);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithBadStatus);
-  FRIEND_TEST(DaemonTest, UpdateAveragedTimesWithBadIgnoredValues);
-  FRIEND_TEST(DaemonTest, TurnBacklightOnForPowerButton);
-  FRIEND_TEST(DaemonTest, DetectUSBDevices);
-  FRIEND_TEST(DaemonTest, GetDisplayBatteryPercent);
-  FRIEND_TEST(DaemonTest, GetUsableBatteryPercent);
 
   enum IdleState {
     IDLE_STATE_UNKNOWN,
@@ -226,15 +188,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   class StateControllerDelegate;
   class SuspenderDelegate;
-
-  // Reads settings from disk
-  void ReadSettings();
-
-  // Reads lock screen settings
-  void ReadLockScreenSettings();
-
-  // Reads suspend disable/timeout settings
-  void ReadSuspendSettings();
 
   // Initializes metrics
   void MetricInit();
@@ -291,20 +244,6 @@ class Daemon : public policy::BacklightControllerObserver,
   DBusMessage* HandleUserActivityMethod(DBusMessage* message);
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
   DBusMessage* HandleSetPolicyMethod(DBusMessage* message);
-
-  // Update the averaged values in |power_status_| and add the battery time
-  // estimate values from |power_status_| to the appropriate rolling
-  // averages. Returns false if the input to the function was invalid.
-  bool UpdateAveragedTimes();
-
-  // Given the current battery time estimate adjust the rolling
-  // average window sizes to give the desired linear tapering.
-  void AdjustWindowSize(int64 battery_time);
-
-  // Checks for extremely low battery condition.
-  void OnLowBattery(int64 time_remaining_s,
-                    int64 time_full_s,
-                    double battery_percentage);
 
   // Timeout handler for clean shutdown. If we don't hear back from
   // clean shutdown because the stopping is taking too long or hung,
@@ -448,22 +387,6 @@ class Daemon : public policy::BacklightControllerObserver,
   void SetBacklightsSuspended(bool suspended);
   void SetBacklightsDocked(bool docked);
 
-  // Updates |battery_report_state_| to account for changes in the power state
-  // of the device and passage of time. This value is used to control the value
-  // we display to the user for battery time, so this should be called before
-  // making a call to GetDisplayBatteryPercent.
-  void UpdateBatteryReportState();
-
-  // Generates the battery percentage that will be sent to Chrome for display to
-  // the user. This value is an adjusted version of the raw value to be more
-  // useful to the end user.
-  double GetDisplayBatteryPercent() const;
-
-  // Generates an adjusted form of the raw battery percentage that accounts for
-  // the raw value being out of range and for the small bit lost due to low
-  // battery shutdown.
-  double GetUsableBatteryPercent() const;
-
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
 
   policy::BacklightController* backlight_controller_;
@@ -478,14 +401,6 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
 
-  int64 low_battery_shutdown_time_s_;
-  double low_battery_shutdown_percent_;
-  int64 sample_window_max_;
-  int64 sample_window_min_;
-  int64 sample_window_diff_;
-  int64 taper_time_max_s_;
-  int64 taper_time_min_s_;
-  int64 taper_time_diff_s_;
   bool clean_shutdown_initiated_;
   bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
@@ -545,24 +460,9 @@ class Daemon : public policy::BacklightControllerObserver,
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;
 
-  // Rolling averages used to iron out instabilities in the time estimates
-  RollingAverage time_to_empty_average_;
-  RollingAverage time_to_full_average_;
-
   // String that indicates reason for shutting down.  See power_constants.cc for
   // valid values.
   std::string shutdown_reason_;
-
-  // Variables used for pinning and tapering the battery after we have adjusted
-  // it to account for being near full but not charging. The state value tells
-  // use what we should be doing with the value and time values are used for
-  // controlling when to transition states and calculate values.
-  BatteryReportState battery_report_state_;
-  base::TimeTicks battery_report_pinned_start_;
-  base::TimeTicks battery_report_tapered_start_;
-
-  // Set by tests to disable emitting D-Bus signals.
-  bool disable_dbus_for_testing_;
 
   // Has |state_controller_| been initialized?  Daemon::Init() invokes a
   // bunch of event-handling functions directly, but events shouldn't be

@@ -19,7 +19,6 @@ LIBPOWERD_OBJS = \
 	powerd/metrics_store.o \
 	powerd/powerd_metrics.o \
 	powerd/powerd.o \
-	powerd/rolling_average.o \
 	power_supply_properties.pb.o \
 	video_activity_update.pb.o
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): $(LIBPOWERD_OBJS)
@@ -56,8 +55,7 @@ POWERD_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
 POWERD_UNITTEST_OBJS = \
 	powerd/file_tagger_unittest.o \
 	powerd/metrics_store_unittest.o \
-	powerd/powerd_unittest.o \
-	powerd/rolling_average_unittest.o
+	powerd/powerd_unittest.o
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \

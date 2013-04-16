@@ -15,6 +15,7 @@
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
+#include "power_manager/powerd/system/rolling_average.h"
 
 typedef int gboolean;
 typedef unsigned int guint;
@@ -35,6 +36,27 @@ enum BatteryState {
 
 // Structures used for passing power supply info.
 struct PowerStatus {
+  PowerStatus()
+      : line_power_on(false),
+        battery_energy(0.0),
+        battery_energy_rate(0.0),
+        battery_voltage(0.0),
+        battery_current(0.0),
+        battery_charge(0.0),
+        battery_charge_full(0.0),
+        nominal_voltage(0.0),
+        is_calculating_battery_time(false),
+        battery_time_to_empty(0),
+        battery_time_to_full(0),
+        averaged_battery_time_to_empty(0),
+        averaged_battery_time_to_full(0),
+        battery_percentage(-1.0),
+        display_battery_percentage(-1.0),
+        battery_is_present(false),
+        battery_state(BATTERY_STATE_UNKNOWN),
+        battery_below_shutdown_threshold(false),
+        battery_times_are_bad(false) {}
+
   bool line_power_on;
 
   // Amount of energy, measured in Wh, in the battery.
@@ -77,9 +99,17 @@ struct PowerStatus {
   int64 averaged_battery_time_to_full;
 
   double battery_percentage;
+  double display_battery_percentage;
   bool battery_is_present;
 
   BatteryState battery_state;
+
+  // Is the battery level so low that the machine should be shut down?
+  bool battery_below_shutdown_threshold;
+
+  // Does |battery_time_to_full| or |battery_time_to_empty| contain bogus
+  // data?
+  bool battery_times_are_bad;
 };
 
 struct PowerInformation {
@@ -190,8 +220,22 @@ class PowerSupply {
   // Computes time remaining based on energy drain rate.
   double GetLinearTimeToEmpty(const PowerStatus& status);
 
-  // Determine remaining time when charging or discharging.
+  // Determines remaining time when charging or discharging.
   void CalculateRemainingTime(PowerStatus* status);
+
+  // Updates the averaged values in |status| and adds the battery time
+  // estimate values to the appropriate rolling averages.
+  void UpdateAveragedTimes(PowerStatus* status);
+
+  // Given the current battery time estimate, adjusts the rolling average
+  // window sizes to give the desired linear tapering.
+  void AdjustWindowSize(base::TimeDelta battery_time);
+
+  // Updates |status->display_battery_percentage|.
+  void CalculateDisplayBatteryPercentage(PowerStatus* status) const;
+
+  // Updates |status->battery_below_shutdown_threshold|.
+  void CheckForLowBattery(PowerStatus* status);
 
   // Offsets the timestamps used in hysteresis calculations.  This is used when
   // suspending and resuming -- the time while suspended should not count toward
@@ -238,12 +282,29 @@ class PowerSupply {
   base::TimeTicks last_poll_time_;
   base::TimeTicks discharge_start_time_;
 
+  // Was the battery "full" (taking |full_factor_| into account) when
+  // |discharge_start_time_| was updated?
+  bool discharge_started_with_full_battery_;
+
+  int64 sample_window_max_;
+  int64 sample_window_min_;
+
+  base::TimeDelta taper_time_max_;
+  base::TimeDelta taper_time_min_;
+
+  base::TimeDelta low_battery_shutdown_time_;
+  double low_battery_shutdown_percent_;
+
   base::TimeTicks suspend_time_;
   bool is_suspended_;
 
   // Time at or after which it will be possible to calculate the battery's
   // time-to-full and time-to-empty.
   base::TimeTicks done_calculating_battery_time_timestamp_;
+
+  // Rolling averages used to iron out instabilities in the time estimates.
+  RollingAverage time_to_empty_average_;
+  RollingAverage time_to_full_average_;
 
   // The fraction of full charge at which the battery can be considered "full"
   // if there is no more charging current.  Should be in the range (0, 100].

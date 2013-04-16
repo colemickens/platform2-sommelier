@@ -37,23 +37,6 @@ static const int64 kPowerButtonInterval = 20;
 static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
 static const int kNumOfSessionsPerCharge = 100;
-static const int64 kBatteryTime = 23;
-static const int64 kBatteryTimeTooLarge = 72 * 60 * 60;  // 3 days of seconds
-static const int64 kThresholdTime = 7;
-static const int64 kAdjustedBatteryTime = kBatteryTime - kThresholdTime;
-static const unsigned int kSampleWindowMax = 10;
-static const unsigned int kSampleWindowMin = 1;
-static const unsigned int kSampleWindowDiff = kSampleWindowMax
-                                              - kSampleWindowMin;
-static const unsigned int kSampleWindowMid = kSampleWindowMin
-                                             + kSampleWindowDiff / 2;
-const unsigned int kTaperTimeMax = 60*60;
-const unsigned int kTaperTimeMin = 10*60;
-const unsigned int kTaperTimeDiff = kTaperTimeMax - kTaperTimeMin;
-static const int64 kTaperTimeMid = kTaperTimeMin + kTaperTimeDiff/2;
-static const double kAdjustedBatteryPercentage = 98.0;
-static const double kTestPercentageThreshold = 2.0;
-static const int64 kTestTimeThreshold = 180;
 
 // policy::BacklightController implementation that returns dummy values.
 class BacklightControllerStub : public policy::BacklightController {
@@ -124,22 +107,10 @@ class DaemonTest : public Test {
         status_(&daemon_.power_status_) {}
 
   virtual void SetUp() {
-    daemon_.set_disable_dbus_for_testing(true);
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
     ResetPowerStatus(status_);
-
-    // Setting up the window taper values, since they are needed in some of
-    // the tests.
-    daemon_.sample_window_max_ = kSampleWindowMax;
-    daemon_.sample_window_min_ = kSampleWindowMin;
-    daemon_.sample_window_diff_ = kSampleWindowDiff;
-    daemon_.taper_time_max_s_ = kTaperTimeMax;
-    daemon_.taper_time_min_s_ = kTaperTimeMin;
-    daemon_.taper_time_diff_s_ = kTaperTimeDiff;
-    daemon_.time_to_empty_average_.Init(daemon_.sample_window_max_);
-    daemon_.time_to_full_average_.Init(daemon_.sample_window_max_);
   }
 
  protected:
@@ -692,7 +663,14 @@ TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
   status_->battery_energy_rate = 4.9;
   status_->battery_percentage = 32.5;
   status_->battery_time_to_empty = 10 * 60;
+  status_->battery_times_are_bad = false;
   ExpectBatteryDischargeRateMetric(4900);
+  ExpectEnumMetric(kMetricBatteryInfoSampleName,
+                   BATTERY_INFO_READ,
+                   BATTERY_INFO_MAX);
+  ExpectEnumMetric(kMetricBatteryInfoSampleName,
+                   BATTERY_INFO_GOOD,
+                   BATTERY_INFO_MAX);
   daemon_.GenerateMetricsOnPowerEvent(*status_);
   EXPECT_LT(0, daemon_.battery_discharge_rate_metric_last_);
 }
@@ -764,197 +742,6 @@ TEST_F(DaemonTest, PowerButtonDownMetric) {
                kMetricPowerButtonDownTimeMax,
                kMetricPowerButtonDownTimeBuckets);
   daemon_.SendPowerButtonMetric(false, up_time);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesChargingAndCalculating) {
-  status_->line_power_on = true;
-  status_->is_calculating_battery_time = true;
-  status_->battery_time_to_full = kBatteryTime;
-
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesChargingAndNotCalculating) {
-  status_->line_power_on = true;
-  status_->is_calculating_battery_time = false;
-  status_->battery_time_to_full = kBatteryTime;
-
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndCalculating) {
-  status_->line_power_on = false;
-  status_->is_calculating_battery_time = true;
-
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesDischargingAndNotCalculating) {
-  status_->line_power_on = false;
-  status_->is_calculating_battery_time = false;
-  status_->battery_time_to_empty = kBatteryTime;
-  daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
-  daemon_.low_battery_shutdown_percent_ = 0.0;
-
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(kBatteryTime - kThresholdTime,
-            status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesWithSetThreshold) {
-  status_->line_power_on = false;
-  status_->is_calculating_battery_time = false;
-  status_->battery_time_to_empty = kBatteryTime;
-  daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
-  daemon_.low_battery_shutdown_percent_ = 0.0;
-
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(kBatteryTime - kThresholdTime,
-            status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesWithBadStatus) {
-  status_->line_power_on = false;
-  status_->is_calculating_battery_time = false;
-  status_->battery_time_to_empty = kBatteryTimeTooLarge;
-  daemon_.low_battery_shutdown_time_s_ = kThresholdTime;
-  daemon_.low_battery_shutdown_percent_ = 0.0;
-
-  ExpectBadBatteryInfoSample();
-  EXPECT_FALSE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
-  EXPECT_TRUE(status_->is_calculating_battery_time);
-}
-
-TEST_F(DaemonTest, UpdateAveragedTimesWithBadIgnoredValues) {
-  // Bogus time-to-full values should be ignored while the battery is draining.
-  status_->battery_percentage = 100.0;
-  status_->line_power_on = false;
-  status_->is_calculating_battery_time = false;
-  status_->battery_time_to_empty = kBatteryTime;
-  status_->battery_time_to_full = kBatteryTimeTooLarge;
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(0, status_->averaged_battery_time_to_full);
-
-  // Similarly, bogus times-to-empty should be ignored while charging.
-  status_->line_power_on = true;
-  status_->battery_time_to_empty = kBatteryTimeTooLarge;
-  status_->battery_time_to_full = kBatteryTime;
-  ExpectGoodBatteryInfoSample();
-  EXPECT_TRUE(daemon_.UpdateAveragedTimes());
-  EXPECT_EQ(0, status_->averaged_battery_time_to_empty);
-  EXPECT_EQ(kBatteryTime, status_->averaged_battery_time_to_full);
-}
-
-TEST_F(DaemonTest, GetDisplayBatteryPercent) {
-  daemon_.low_battery_shutdown_time_s_ = kTestTimeThreshold;
-  daemon_.low_battery_shutdown_percent_ = 0.0;
-  daemon_.power_status_.battery_percentage = kAdjustedBatteryPercentage;
-
-  // Return the adjusted value when charging.
-  daemon_.power_status_.battery_state = system::BATTERY_STATE_CHARGING;
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(kAdjustedBatteryPercentage, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_ADJUSTED, daemon_.battery_report_state_);
-
-  // Return 0.0 when battery is empty.
-  daemon_.power_status_.battery_percentage = 0.0;
-  daemon_.power_status_.battery_state = system::BATTERY_STATE_EMPTY;
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(0.0, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_ADJUSTED, daemon_.battery_report_state_);
-
-  daemon_.power_status_.battery_percentage = kAdjustedBatteryPercentage;
-  // Return 100% when battery is charged.
-  daemon_.power_status_.battery_state = system::BATTERY_STATE_FULLY_CHARGED;
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(100.0, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_FULL, daemon_.battery_report_state_);
-
-  // Pin the percentage at 100% right after going to charging.
-  daemon_.battery_report_pinned_start_ = base::TimeTicks();
-  daemon_.power_status_.battery_state = system::BATTERY_STATE_DISCHARGING;
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(100.0, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_PINNED, daemon_.battery_report_state_);
-  EXPECT_NE(0, (base::TimeTicks() -
-                daemon_.battery_report_pinned_start_).InMilliseconds());
-
-  // Percentage should still be pinned part way through the window.
-  daemon_.battery_report_pinned_start_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromMilliseconds(kBatteryPercentPinMs / 2);
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(100.0, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_PINNED, daemon_.battery_report_state_);
-
-  // Percentage should stay at 100 as we finish being pinned.
-  daemon_.battery_report_tapered_start_ = base::TimeTicks();
-  daemon_.battery_report_pinned_start_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromMilliseconds(2 * kBatteryPercentPinMs);
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(100.0, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_TAPERED, daemon_.battery_report_state_);
-  EXPECT_NE(0, (base::TimeTicks() -
-                daemon_.battery_report_tapered_start_).InMilliseconds());
-
-  // While tapering value should be between 100 and calculated adjusted value.
-  daemon_.battery_report_tapered_start_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromMilliseconds(kBatteryPercentTaperMs / 2);
-  daemon_.UpdateBatteryReportState();
-  double ret_val = daemon_.GetDisplayBatteryPercent();
-  EXPECT_GE(100.0, ret_val);
-  EXPECT_LE(kAdjustedBatteryPercentage, ret_val);
-  EXPECT_EQ(BATTERY_REPORT_TAPERED, daemon_.battery_report_state_);
-
-  // After tapering the adjusted values should be used.
-  daemon_.battery_report_tapered_start_ = base::TimeTicks::Now() -
-      base::TimeDelta::FromMilliseconds(2 * kBatteryPercentTaperMs);
-  daemon_.UpdateBatteryReportState();
-  EXPECT_EQ(kAdjustedBatteryPercentage, daemon_.GetDisplayBatteryPercent());
-  EXPECT_EQ(BATTERY_REPORT_ADJUSTED, daemon_.battery_report_state_);
-}
-
-TEST_F(DaemonTest, GetUsableBatteryPercent) {
-  // Out of bounds low.
-  daemon_.power_status_.battery_percentage = -1.0;
-  EXPECT_EQ(0.0, daemon_.GetUsableBatteryPercent());
-
-  // Out of bound high.
-  daemon_.power_status_.battery_percentage = 101.0;
-  EXPECT_EQ(100.0, daemon_.GetUsableBatteryPercent());
-
-  // Time based threshold being used.
-  daemon_.low_battery_shutdown_time_s_ = kTestTimeThreshold;
-  daemon_.low_battery_shutdown_percent_ = 0.0;
-  daemon_.power_status_.battery_percentage = kAdjustedBatteryPercentage;
-  EXPECT_EQ(kAdjustedBatteryPercentage, daemon_.GetUsableBatteryPercent());
-
-  // Percentage based threshold being used.
-  daemon_.low_battery_shutdown_time_s_ = 0;
-  daemon_.low_battery_shutdown_percent_ = kTestPercentageThreshold;
-  daemon_.power_status_.battery_percentage = 100.0;
-  EXPECT_EQ(100.0, daemon_.GetUsableBatteryPercent());
-  daemon_.power_status_.battery_percentage = kTestPercentageThreshold;
-  EXPECT_EQ(0.0, daemon_.GetUsableBatteryPercent());
-  daemon_.power_status_.battery_percentage =
-      100.0 - (100.0 - kTestPercentageThreshold) / 2;
-  EXPECT_EQ(50.0, daemon_.GetUsableBatteryPercent());
 }
 
 }  // namespace power_manager

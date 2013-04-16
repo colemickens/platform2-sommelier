@@ -53,10 +53,6 @@ const char kPowerSupplyUdevSubsystem[] = "power_supply";
 const char kSessionStarted[] = "started";
 const char kSessionStopped[] = "stopped";
 
-// Upper limit to accept for raw battery times, in seconds. If the time of
-// interest is above this level assume something is wrong.
-const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
-
 // Path containing the number of wakeup events.
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
@@ -295,14 +291,6 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
-      low_battery_shutdown_time_s_(0),
-      low_battery_shutdown_percent_(0.0),
-      sample_window_max_(0),
-      sample_window_min_(0),
-      sample_window_diff_(0),
-      taper_time_max_s_(0),
-      taper_time_min_s_(0),
-      taper_time_diff_s_(0),
       clean_shutdown_initiated_(false),
       low_battery_(false),
       clean_shutdown_timeout_id_(0),
@@ -324,8 +312,6 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
       current_session_state_(SESSION_STOPPED),
       udev_(NULL),
       shutdown_reason_(kShutdownReasonUnknown),
-      battery_report_state_(BATTERY_REPORT_ADJUSTED),
-      disable_dbus_for_testing_(false),
       state_controller_initialized_(false) {
   power_supply_->AddObserver(this);
   backlight_controller_->AddObserver(this);
@@ -346,11 +332,13 @@ Daemon::~Daemon() {
 }
 
 void Daemon::Init() {
-  ReadSettings();
   MetricInit();
   LOG_IF(ERROR, (!metrics_store_.Init()))
       << "Unable to initialize metrics store, so we are going to drop number of"
       << " sessions per charge data";
+
+  CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
+                         &clean_shutdown_timeout_ms_));
 
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
@@ -359,11 +347,8 @@ void Daemon::Init() {
   power_supply_->RefreshImmediately();
   dark_resume_policy_->Init();
   suspender_.Init(prefs_);
-  time_to_empty_average_.Init(sample_window_max_);
-  time_to_full_average_.Init(sample_window_max_);
-  OnPowerStatusUpdate(power_supply_->power_status());
-  UpdateAveragedTimes();
   file_tagger_.Init();
+  OnPowerStatusUpdate(power_supply_->power_status());
 
   std::string wakeup_inputs_str;
   std::vector<std::string> wakeup_inputs;
@@ -394,84 +379,6 @@ void Daemon::Init() {
   // Chrome, for instance.
 }
 
-void Daemon::ReadSettings() {
-  int64 low_battery_shutdown_time_s = 0;
-  double low_battery_shutdown_percent = 0.0;
-  if (!prefs_->GetInt64(kLowBatteryShutdownTimePref,
-                        &low_battery_shutdown_time_s)) {
-    LOG(INFO) << "No low battery shutdown time threshold perf found";
-    low_battery_shutdown_time_s = 0;
-  }
-  if (!prefs_->GetDouble(kLowBatteryShutdownPercentPref,
-                         &low_battery_shutdown_percent)) {
-    LOG(INFO) << "No low battery shutdown percent threshold perf found";
-    low_battery_shutdown_percent = 0.0;
-  }
-  CHECK(prefs_->GetInt64(kLowBatteryShutdownTimePref,
-                         &low_battery_shutdown_time_s));
-  CHECK(prefs_->GetInt64(kSampleWindowMaxPref, &sample_window_max_));
-  CHECK(prefs_->GetInt64(kSampleWindowMinPref, &sample_window_min_));
-  CHECK(prefs_->GetInt64(kTaperTimeMaxPref, &taper_time_max_s_));
-  CHECK(prefs_->GetInt64(kTaperTimeMinPref, &taper_time_min_s_));
-  CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
-                         &clean_shutdown_timeout_ms_));
-
-  if ((low_battery_shutdown_time_s >= 0) &&
-      (low_battery_shutdown_time_s <= 8 * 3600)) {
-    low_battery_shutdown_time_s_ = low_battery_shutdown_time_s;
-  } else {
-    LOG(INFO) << "Unreasonable low battery shutdown time threshold:"
-              << low_battery_shutdown_time_s;
-    LOG(INFO) << "Disabling time based low battery shutdown.";
-    low_battery_shutdown_time_s_ = 0;
-  }
-  if ((low_battery_shutdown_percent >= 0.0) &&
-      (low_battery_shutdown_percent <= 100.0)) {
-    low_battery_shutdown_percent_ = low_battery_shutdown_percent;
-  } else {
-    LOG(INFO) << "Unreasonable low battery shutdown percent threshold:"
-              << low_battery_shutdown_percent;
-    LOG(INFO) << "Disabling percent based low battery shutdown.";
-    low_battery_shutdown_percent_ = 0.0;
-  }
-
-  LOG_IF(WARNING, low_battery_shutdown_percent_ == 0.0 &&
-         low_battery_shutdown_time_s_ == 0) << "No low battery thresholds set!";
-  // We only want one of the thresholds to be in use
-  CHECK(low_battery_shutdown_percent_ == 0.0 ||
-        low_battery_shutdown_time_s_ == 0)
-      << "Both low battery thresholds set!";
-  LOG(INFO) << "Using low battery time threshold of "
-            << low_battery_shutdown_time_s_
-            << " secs and using low battery percent threshold of "
-            << low_battery_shutdown_percent_;
-
-  CHECK(sample_window_max_ > 0);
-  CHECK(sample_window_min_ > 0);
-  if (sample_window_max_ < sample_window_min_) {
-    LOG(WARNING) << "Sampling window minimum was greater then the maximum, "
-                 << "swapping!";
-    int64 sample_window_temp = sample_window_max_;
-    sample_window_max_ = sample_window_min_;
-    sample_window_min_ = sample_window_temp;
-  }
-  LOG(INFO) << "Using Sample Window Max = " << sample_window_max_
-            << " and Min = " << sample_window_min_;
-  sample_window_diff_ = sample_window_max_ - sample_window_min_;
-  CHECK(taper_time_max_s_ > 0);
-  CHECK(taper_time_min_s_ > 0);
-  if (taper_time_max_s_ < taper_time_min_s_) {
-    LOG(WARNING) << "Taper time minimum was greater then the maximum, "
-                 << "swapping!";
-    int64 taper_time_temp = taper_time_max_s_;
-    taper_time_max_s_ = taper_time_min_s_;
-    taper_time_min_s_ = taper_time_temp;
-  }
-  LOG(INFO) << "Using Taper Time Max(secs) = " << taper_time_max_s_
-            << " and Min(secs) = " << taper_time_min_s_;
-  taper_time_diff_s_ = taper_time_max_s_ - taper_time_min_s_;
-}
-
 void Daemon::Run() {
   GMainLoop* loop = g_main_loop_new(NULL, false);
   g_main_loop_run(loop);
@@ -480,8 +387,6 @@ void Daemon::Run() {
 void Daemon::SetPlugged(bool plugged) {
   if (plugged == plugged_state_)
     return;
-
-  LOG(INFO) << "SetPlugged: plugged=" << plugged;
 
   HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
                                            plugged ?
@@ -660,13 +565,6 @@ void Daemon::HandleResume(bool suspend_was_successful,
   util::RunSetuidHelper("unlock_vt", "", true);
 #endif
 
-  // The battery could've drained while the system was suspended; ensure
-  // that we don't leave the reported percentage pinned at 100% or slowly
-  // tapering down to the actual level: http://crosbug.com/38834
-  battery_report_state_ = BATTERY_REPORT_ADJUSTED;
-
-  time_to_empty_average_.Clear();
-  time_to_full_average_.Clear();
   file_tagger_.HandleResumeEvent();
   power_supply_->SetSuspended(false);
   state_controller_->HandleResume();
@@ -719,28 +617,34 @@ void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
 }
 
 void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
+  LOG(INFO) << "On " << (status.line_power_on ? "AC" : "battery") << " with "
+            << "battery at " << status.battery_percentage << "% (displayed as "
+            << status.display_battery_percentage << "%); "
+            << (status.line_power_on ? status.battery_time_to_full :
+                status.battery_time_to_empty) << " sec until "
+            << (status.line_power_on ? "full" : "empty");
+
   power_status_ = status;
   SetPlugged(status.line_power_on);
   GenerateMetricsOnPowerEvent(status);
-  // Do not emergency suspend if no battery exists.
+
   if (status.battery_is_present) {
-    if (status.battery_percentage < 0)
-      LOG(WARNING) << "Battery is at " << status.battery_percentage << "%";
-    if (status.battery_time_to_empty < 0 && !status.line_power_on) {
-      LOG(WARNING) << "Battery time remaining is "
-                   << status.battery_time_to_empty << " seconds";
+    if (status.battery_below_shutdown_threshold && !status.line_power_on) {
+      if (!low_battery_) {
+        low_battery_ = true;
+        file_tagger_.HandleLowBatteryEvent();
+        shutdown_reason_ = kShutdownReasonLowBattery;
+        LOG(INFO) << "Shutting down due to low battery";
+        OnRequestShutdown();
+      }
+    } else {
+      low_battery_ = false;
+      file_tagger_.HandleSafeBatteryEvent();
     }
-    OnLowBattery(status.battery_time_to_empty,
-                 status.battery_time_to_full,
-                 status.battery_percentage);
   }
 
-  if (UpdateAveragedTimes()) {
-    dbus_sender_->EmitBareSignal(kPowerSupplyPollSignal);
-    is_power_status_stale_ = false;
-  } else {
-    LOG(ERROR) << "Unable to get averaged times!";
-  }
+  dbus_sender_->EmitBareSignal(kPowerSupplyPollSignal);
+  is_power_status_stale_ = false;
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -1118,8 +1022,7 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   protobuf.set_battery_voltage(status->battery_voltage);
   protobuf.set_battery_time_to_empty(status->battery_time_to_empty);
   protobuf.set_battery_time_to_full(status->battery_time_to_full);
-  UpdateBatteryReportState();
-  protobuf.set_battery_percentage(GetDisplayBatteryPercent());
+  protobuf.set_battery_percentage(status->display_battery_percentage);
   protobuf.set_battery_is_present(status->battery_is_present);
   protobuf.set_battery_is_charged(
       status->battery_state == system::BATTERY_STATE_FULLY_CHARGED);
@@ -1180,161 +1083,6 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
   }
   state_controller_->HandlePolicyChange(policy);
   return NULL;
-}
-
-bool Daemon::UpdateAveragedTimes() {
-  SendEnumMetric(kMetricBatteryInfoSampleName,
-                 BATTERY_INFO_READ,
-                 BATTERY_INFO_MAX);
-  // Some devices give us bogus values for battery information right after boot
-  // or a power event. We attempt to avoid to do sampling at these times, but
-  // this guard is to save us when we do sample a bad value. After working out
-  // the time values, if we have a negative we know something is bad. If the
-  // time we are interested in (to empty or full) is beyond a day then we have a
-  // bad value since it is too high. For some devices the value for the
-  // uninteresting time, that we are not using, might be bizarre, so we cannot
-  // just check both times for overly high values.
-  if ((power_status_.line_power_on &&
-       (power_status_.battery_time_to_full < 0 ||
-        power_status_.battery_time_to_full > kBatteryTimeMaxValidSec)) ||
-      (!power_status_.line_power_on &&
-       (power_status_.battery_time_to_empty < 0 ||
-        power_status_.battery_time_to_empty > kBatteryTimeMaxValidSec))) {
-    LOG(ERROR) << "Battery time-to-"
-               << (power_status_.line_power_on ? "full" : "empty") << " is "
-               << (power_status_.line_power_on ?
-                   power_status_.battery_time_to_full :
-                   power_status_.battery_time_to_empty);
-    power_status_.averaged_battery_time_to_empty = 0;
-    power_status_.averaged_battery_time_to_full = 0;
-    power_status_.is_calculating_battery_time = true;
-    SendEnumMetric(kMetricBatteryInfoSampleName,
-                   BATTERY_INFO_BAD,
-                   BATTERY_INFO_MAX);
-    return false;
-  }
-  SendEnumMetric(kMetricBatteryInfoSampleName,
-                 BATTERY_INFO_GOOD,
-                 BATTERY_INFO_MAX);
-
-  int64 battery_time = 0;
-  if (power_status_.line_power_on) {
-    battery_time = power_status_.battery_time_to_full;
-    if (!power_status_.is_calculating_battery_time)
-      time_to_full_average_.AddSample(battery_time);
-    time_to_empty_average_.Clear();
-  } else {
-    // If the time threshold is set use it, otherwise determine the time
-    // equivalent of the percentage threshold
-    int64 time_threshold_s = low_battery_shutdown_time_s_ ?
-        low_battery_shutdown_time_s_ :
-        (power_status_.battery_time_to_empty *
-         low_battery_shutdown_percent_ / power_status_.battery_percentage);
-    battery_time = power_status_.battery_time_to_empty - time_threshold_s;
-    LOG_IF(WARNING, battery_time < 0)
-        << "Calculated invalid negative time to empty value, trimming to 0!";
-    battery_time = std::max(static_cast<int64>(0), battery_time);
-    if (!power_status_.is_calculating_battery_time)
-      time_to_empty_average_.AddSample(battery_time);
-    time_to_full_average_.Clear();
-  }
-
-  if (!power_status_.is_calculating_battery_time) {
-    if (!power_status_.line_power_on)
-      AdjustWindowSize(battery_time);
-    else
-      time_to_empty_average_.ChangeWindowSize(sample_window_max_);
-  }
-  power_status_.averaged_battery_time_to_full =
-      time_to_full_average_.GetAverage();
-  power_status_.averaged_battery_time_to_empty =
-      time_to_empty_average_.GetAverage();
-  return true;
-}
-
-// For the rolling averages we want the window size to taper off in a linear
-// fashion from |sample_window_max| to |sample_window_min| on the battery time
-// remaining interval from |taper_time_max_s_| to |taper_time_min_s_|. The two
-// point equation for the line is:
-//   (x - x0)/(x1 - x0) = (t - t0)/(t1 - t0)
-// which solved for x is:
-//   x = (t - t0)*(x1 - x0)/(t1 - t0) + x0
-// We let x be the size of the window and t be the battery time
-// remaining.
-void Daemon::AdjustWindowSize(int64 battery_time) {
-  unsigned int window_size = sample_window_max_;
-  if (battery_time >= taper_time_max_s_) {
-    window_size = sample_window_max_;
-  } else if (battery_time <= taper_time_min_s_) {
-    window_size = sample_window_min_;
-  } else {
-    window_size = (battery_time - taper_time_min_s_);
-    window_size *= sample_window_diff_;
-    window_size /= taper_time_diff_s_;
-    window_size += sample_window_min_;
-  }
-  time_to_empty_average_.ChangeWindowSize(window_size);
-}
-
-void Daemon::OnLowBattery(int64 time_remaining_s,
-                          int64 time_full_s,
-                          double battery_percentage) {
-  if (!low_battery_shutdown_time_s_ && !low_battery_shutdown_percent_) {
-    LOG(INFO) << "Battery time remaining : "
-              << time_remaining_s << " seconds";
-    low_battery_ = false;
-    return;
-  }
-
-  // TODO(derat): Figure out what's causing http://crosbug.com/38912.
-  if (battery_percentage < 0.001) {
-    LOG(WARNING) << "Ignoring probably-bogus zero battery percentage "
-                 << "(time-to-empty is " << time_remaining_s << " sec, "
-                 << "time-to-full is " << time_full_s << " sec)";
-    return;
-  }
-
-  if (PLUGGED_STATE_DISCONNECTED == plugged_state_ && !low_battery_ &&
-      ((time_remaining_s <= low_battery_shutdown_time_s_ &&
-        time_remaining_s > 0) ||
-       (battery_percentage <= low_battery_shutdown_percent_ &&
-        battery_percentage >= 0))) {
-    // Shut the system down when low battery condition is encountered.
-    LOG(INFO) << "Time remaining: " << time_remaining_s << " seconds.";
-    LOG(INFO) << "Percent remaining: " << battery_percentage << "%.";
-    LOG(INFO) << "Low battery condition detected. Shutting down immediately.";
-    low_battery_ = true;
-    file_tagger_.HandleLowBatteryEvent();
-    shutdown_reason_ = kShutdownReasonLowBattery;
-    OnRequestShutdown();
-  } else if (time_remaining_s < 0) {
-    LOG(INFO) << "Battery is at " << time_remaining_s << " seconds remaining, "
-              << "may not be fully initialized yet.";
-  } else if (PLUGGED_STATE_CONNECTED == plugged_state_ ||
-             time_remaining_s > low_battery_shutdown_time_s_) {
-    if (PLUGGED_STATE_CONNECTED == plugged_state_) {
-      LOG(INFO) << "Battery condition is safe (" << battery_percentage
-                << "%).  AC is plugged.  "
-                << time_full_s << " seconds to full charge.";
-    } else {
-      LOG(INFO) << "Battery condition is safe (" << battery_percentage
-                << "%).  AC is unplugged.  "
-                << time_remaining_s << " seconds remaining.";
-    }
-    low_battery_ = false;
-    file_tagger_.HandleSafeBatteryEvent();
-  } else if (time_remaining_s == 0) {
-    LOG(INFO) << "Battery is at 0 seconds remaining, either we are charging or "
-              << "not fully initialized yet.";
-  } else {
-    // Either a spurious reading after we have requested suspend, or the user
-    // has woken the system up intentionally without rectifying the battery
-    // situation (ie. user woke the system without attaching AC.)
-    // User is on his own from here until the system dies. We will not try to
-    // resuspend.
-    LOG(INFO) << "Spurious low battery condition, or user living on the edge.";
-    file_tagger_.HandleLowBatteryEvent();
-  }
 }
 
 gboolean Daemon::CleanShutdownTimedOut() {
@@ -1449,103 +1197,6 @@ void Daemon::SetBacklightsDocked(bool docked) {
   backlight_controller_->SetDocked(docked);
   if (keyboard_controller_)
     keyboard_controller_->SetDocked(docked);
-}
-
-void Daemon::UpdateBatteryReportState() {
-  switch (power_status_.battery_state) {
-    case system::BATTERY_STATE_FULLY_CHARGED:
-      battery_report_state_ = BATTERY_REPORT_FULL;
-      break;
-    case system::BATTERY_STATE_DISCHARGING:
-      switch (battery_report_state_) {
-        case BATTERY_REPORT_FULL:
-          battery_report_state_ = BATTERY_REPORT_PINNED;
-          battery_report_pinned_start_ = base::TimeTicks::Now();
-          break;
-        case BATTERY_REPORT_TAPERED:
-          {
-            int64 tapered_delta_ms =
-                (base::TimeTicks::Now() -
-                 battery_report_tapered_start_).InMilliseconds();
-            if (tapered_delta_ms >= kBatteryPercentTaperMs)
-              battery_report_state_ = BATTERY_REPORT_ADJUSTED;
-          }
-          break;
-        case BATTERY_REPORT_PINNED:
-          if ((base::TimeTicks::Now() -
-               battery_report_pinned_start_).InMilliseconds()
-              >= kBatteryPercentPinMs) {
-            battery_report_state_ = BATTERY_REPORT_TAPERED;
-            battery_report_tapered_start_ = base::TimeTicks::Now();
-          }
-          break;
-        default:
-          break;
-      }
-      break;
-    default:
-      battery_report_state_ = BATTERY_REPORT_ADJUSTED;
-      break;
-  }
-}
-
-double Daemon::GetDisplayBatteryPercent() const {
-  double battery_percentage = GetUsableBatteryPercent();
-  switch (power_status_.battery_state) {
-    case system::BATTERY_STATE_FULLY_CHARGED:
-      battery_percentage = 100.0;
-      break;
-    case system::BATTERY_STATE_DISCHARGING:
-      switch (battery_report_state_) {
-        case BATTERY_REPORT_FULL:
-        case BATTERY_REPORT_PINNED:
-          battery_percentage = 100.0;
-          break;
-        case BATTERY_REPORT_TAPERED:
-          {
-            int64 tapered_delta_ms =
-                (base::TimeTicks::Now() -
-                 battery_report_tapered_start_).InMilliseconds();
-            double elapsed_fraction =
-                std::min(1.0, (static_cast<double>(tapered_delta_ms) /
-                               kBatteryPercentTaperMs));
-            battery_percentage = battery_percentage + (1.0 - elapsed_fraction) *
-                (100.0 - battery_percentage);
-          }
-          break;
-        default:
-          break;
-      }
-      break;
-    default:
-      break;
-  }
-  return battery_percentage;
-}
-
-double Daemon::GetUsableBatteryPercent() const {
-  // If we are using a percentage based threshold adjust the reported percentage
-  // to account for the bit being trimmed off. If we are using a time-based
-  // threshold don't adjust the reported percentage. Adjusting the percentage
-  // due to a time threshold might break the monoticity of percentages since the
-  // time to empty/full is not guaranteed to be monotonic.
-  if (power_status_.battery_percentage <= low_battery_shutdown_percent_) {
-    return  0.0;
-  } else if (power_status_.battery_percentage > 100.0) {
-    LOG(WARNING) << "Before adjustment battery percentage was over 100%";
-    return 100.0;
-  } else if (low_battery_shutdown_time_s_) {
-    return power_status_.battery_percentage;
-  } else {  // Using percentage threshold
-    // x = current percentage
-    // y = adjusted percentage
-    // t = threshold percentage
-    // y = 100 *(x-t)/(100 - t)
-    double battery_percentage = 100.0 * (power_status_.battery_percentage
-                                         - low_battery_shutdown_percent_);
-    battery_percentage /= 100.0 - low_battery_shutdown_percent_;
-    return battery_percentage;
-  }
 }
 
 }  // namespace power_manager
