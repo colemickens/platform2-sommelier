@@ -92,6 +92,12 @@ double ReadScaledDouble(const base::FilePath& directory,
       kDoubleScaleFactor * value : -1.;
 }
 
+// Computes time remaining based on energy drain rate.
+double GetLinearTimeToEmpty(const PowerStatus& status) {
+  return HoursToSecondsDouble(status.nominal_voltage * status.battery_charge /
+      (status.battery_current * status.battery_voltage));
+}
+
 }  // namespace
 
 bool PowerSupply::TestApi::TriggerPollTimeout() {
@@ -107,6 +113,8 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
 
 const int PowerSupply::kCalculateBatterySlackMs = 50;
 
+const int PowerSupply::kRetainFullChargeSec = 60;
+
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
     : prefs_(prefs),
@@ -114,7 +122,7 @@ PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTimeFast),
       found_acceptable_time_range_(false),
-      discharge_started_with_full_battery_(false),
+      full_battery_percent_(100.0),
       sample_window_max_(10),
       sample_window_min_(1),
       taper_time_max_(base::TimeDelta::FromSeconds(3600)),
@@ -256,8 +264,9 @@ void PowerSupply::SetSuspended(bool suspended) {
     util::RemoveTimeout(&poll_timeout_id_);
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
-    // Ensure that the reported battery level isn't pinned or tapered.
-    discharge_started_with_full_battery_ = false;
+    // base::TimeTicks::Now() doesn't increase while the system is
+    // suspended; ensure that a stale timestamp isn't used.
+    last_fully_charged_line_power_time_ = base::TimeTicks();
     time_to_empty_average_.Clear();
     time_to_full_average_.Clear();
     // If resuming, deduct the time suspended from the hysteresis state
@@ -432,17 +441,12 @@ bool PowerSupply::UpdatePowerStatus() {
   status.battery_energy = battery_charge * battery_voltage;
   status.battery_energy_rate = battery_current * battery_voltage;
 
-  if (status.line_power_on) {
+  if (status.line_power_on)
     discharge_start_time_ = base::TimeTicks();
-  } else {
-    if (discharge_start_time_.is_null()) {
-      discharge_start_time_ = GetCurrentTime();
-      discharge_started_with_full_battery_ =
-          status.battery_charge >= status.battery_charge_full * full_factor_;
-    }
-  }
+  else if (discharge_start_time_.is_null())
+    discharge_start_time_ = GetCurrentTime();
 
-  CalculateRemainingTime(&status);
+  UpdateRemainingTime(&status);
 
   if (battery_charge_full > 0 && battery_charge_full_design > 0) {
     status.battery_percentage =
@@ -461,6 +465,7 @@ bool PowerSupply::UpdatePowerStatus() {
         (battery_charge >= battery_charge_full * full_factor_ &&
          battery_current == 0)) {
       status.battery_state = BATTERY_STATE_FULLY_CHARGED;
+      last_fully_charged_line_power_time_ = GetCurrentTime();
     } else {
       if (battery_current <= 0) {
         LOG(WARNING) << "Line power is on and battery is not fully charged "
@@ -474,8 +479,14 @@ bool PowerSupply::UpdatePowerStatus() {
       status.battery_state = BATTERY_STATE_EMPTY;
   }
 
-  CalculateDisplayBatteryPercentage(&status);
-  CheckForLowBattery(&status);
+  if (!last_fully_charged_line_power_time_.is_null() &&
+      (GetCurrentTime() - last_fully_charged_line_power_time_).InSeconds() <=
+      kRetainFullChargeSec)
+    full_battery_percent_ = status.battery_percentage;
+
+  status.display_battery_percentage = CalculateDisplayBatteryPercentage(status);
+  status.battery_below_shutdown_threshold =
+      IsBatteryBelowShutdownThreshold(status);
 
   power_status_ = status;
   return true;
@@ -527,12 +538,7 @@ void PowerSupply::GetPowerSupplyPaths() {
   }
 }
 
-double PowerSupply::GetLinearTimeToEmpty(const PowerStatus& status) {
-  return HoursToSecondsDouble(status.nominal_voltage * status.battery_charge /
-      (status.battery_current * status.battery_voltage));
-}
-
-void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
+void PowerSupply::UpdateRemainingTime(PowerStatus* status) {
   base::TimeTicks time_now = GetCurrentTime();
   // This function might be called due to a race condition between the suspend
   // process and the battery polling.  If that's the case, handle it gracefully
@@ -579,8 +585,8 @@ void PowerSupply::CalculateRemainingTime(PowerStatus* status) {
     double time_to_empty = 0;
     if (status->line_power_on) {
       status->battery_time_to_full =
-          HoursToSecondsInt((status->battery_charge_full -
-              status->battery_charge) / status->battery_current);
+          HoursToSecondsInt(std::max(status->battery_charge_full -
+              status->battery_charge, 0.0) / status->battery_current);
       // Reset the remaining-time-calculation state machine when AC plugged in.
       found_acceptable_time_range_ = false;
       last_poll_time_ = base::TimeTicks();
@@ -717,82 +723,41 @@ void PowerSupply::AdjustWindowSize(base::TimeDelta battery_time) {
   time_to_empty_average_.ChangeWindowSize(window_size);
 }
 
-void PowerSupply::CalculateDisplayBatteryPercentage(PowerStatus* status) const {
-  // If we are using a percentage based threshold adjust the reported percentage
-  // to account for the bit being trimmed off. If we are using a time-based
-  // threshold don't adjust the reported percentage. Adjusting the percentage
-  // due to a time threshold might break the monoticity of percentages since the
-  // time to empty/full is not guaranteed to be monotonic.
-  double usable_battery_percent = 100.0;
-  if (status->battery_percentage <= low_battery_shutdown_percent_) {
-    usable_battery_percent = 0.0;
-  } else if (status->battery_percentage > 100.0) {
-    LOG(WARNING) << "Before adjustment battery percentage was over 100%";
-    usable_battery_percent = 100.0;
-  } else if (low_battery_shutdown_time_ > base::TimeDelta()) {
-    usable_battery_percent = status->battery_percentage;
-  } else {  // Using percentage threshold
-    // x = current percentage
-    // y = adjusted percentage
-    // t = threshold percentage
-    // y = 100 *(x-t)/(100 - t)
-    double battery_percentage =
-        100.0 * (status->battery_percentage - low_battery_shutdown_percent_);
-    battery_percentage /= 100.0 - low_battery_shutdown_percent_;
-    usable_battery_percent = battery_percentage;
-  }
+double PowerSupply::CalculateDisplayBatteryPercentage(
+    const PowerStatus& status) const {
+  if (status.battery_state == BATTERY_STATE_FULLY_CHARGED)
+    return 100.0;
 
-  status->display_battery_percentage = usable_battery_percent;
-  switch (status->battery_state) {
-    case BATTERY_STATE_FULLY_CHARGED:
-      status->display_battery_percentage = 100.0;
-      break;
-    case BATTERY_STATE_DISCHARGING:
-      if (discharge_started_with_full_battery_) {
-        int64 elapsed_ms =
-            (GetCurrentTime() - discharge_start_time_).InMilliseconds();
-        if (elapsed_ms <= kBatteryPercentPinMs) {
-          status->display_battery_percentage = 100.0;
-        } else if (elapsed_ms <=
-                   kBatteryPercentPinMs + kBatteryPercentTaperMs) {
-          double elapsed_fraction = std::min(1.0,
-              static_cast<double>(elapsed_ms - kBatteryPercentPinMs) /
-              kBatteryPercentTaperMs);
-          status->display_battery_percentage =
-              usable_battery_percent + (1.0 - elapsed_fraction) *
-              (100.0 - usable_battery_percent);
-        }
-      }
-      break;
-    default:
-      break;
-  }
+  double display_percent =
+      (status.battery_percentage - low_battery_shutdown_percent_) /
+      (full_battery_percent_ - low_battery_shutdown_percent_) * 100.0;
+  return std::max(std::min(display_percent, 100.0), 0.0);
 }
 
-void PowerSupply::CheckForLowBattery(PowerStatus* status) {
-  DCHECK(status);
-  status->battery_below_shutdown_threshold = false;
-
+bool PowerSupply::IsBatteryBelowShutdownThreshold(
+    const PowerStatus& status) const {
   if (low_battery_shutdown_time_ == base::TimeDelta() &&
       low_battery_shutdown_percent_ <= kEpsilon)
-    return;
+    return false;
 
   // TODO(derat): Figure out what's causing http://crosbug.com/38912.
-  if (status->battery_percentage < 0.001) {
+  if (status.battery_percentage < 0.001) {
     LOG(WARNING) << "Ignoring probably-bogus zero battery percentage "
-                 << "(time-to-empty is " << status->battery_time_to_empty
-                 << " sec, time-to-full is " << status->battery_time_to_full
+                 << "(time-to-empty is " << status.battery_time_to_empty
+                 << " sec, time-to-full is " << status.battery_time_to_full
                  << " sec)";
-    return;
+    return false;
   }
 
-  if (!status->line_power_on &&
-      ((status->battery_time_to_empty > 0 &&
-        status->battery_time_to_empty <=
+  if (!status.line_power_on &&
+      ((status.battery_time_to_empty > 0 &&
+        status.battery_time_to_empty <=
         low_battery_shutdown_time_.InSeconds()) ||
-       (status->battery_percentage <= low_battery_shutdown_percent_))) {
-    status->battery_below_shutdown_threshold = true;
+       (status.battery_percentage <= low_battery_shutdown_percent_))) {
+    return true;
   }
+
+  return false;
 }
 
 void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {

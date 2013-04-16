@@ -170,6 +170,13 @@ class PowerSupply {
   // fire before it's safe to calculate the battery time.
   static const int kCalculateBatterySlackMs;
 
+  // Number of seconds after switching from line power with the battery
+  // fully charged to battery power over which the battery's charge should
+  // be reported as 100%.  Some batteries report a lower charge as soon as
+  // line power is disconnected, but the percentage that's displayed to the
+  // user shouldn't drop immediately.
+  static const int kRetainFullChargeSec;
+
   PowerSupply(const base::FilePath& power_supply_path, PrefsInterface *prefs);
   ~PowerSupply();
 
@@ -217,11 +224,8 @@ class PowerSupply {
   // Find sysfs directories to read from.
   void GetPowerSupplyPaths();
 
-  // Computes time remaining based on energy drain rate.
-  double GetLinearTimeToEmpty(const PowerStatus& status);
-
   // Determines remaining time when charging or discharging.
-  void CalculateRemainingTime(PowerStatus* status);
+  void UpdateRemainingTime(PowerStatus* status);
 
   // Updates the averaged values in |status| and adds the battery time
   // estimate values to the appropriate rolling averages.
@@ -231,11 +235,15 @@ class PowerSupply {
   // window sizes to give the desired linear tapering.
   void AdjustWindowSize(base::TimeDelta battery_time);
 
-  // Updates |status->display_battery_percentage|.
-  void CalculateDisplayBatteryPercentage(PowerStatus* status) const;
+  // Returns the battery percentage that should be displayed for |status|.
+  // |status|'s |battery_state| and |battery_percentage| fields must
+  // already be set.
+  double CalculateDisplayBatteryPercentage(const PowerStatus& status) const;
 
-  // Updates |status->battery_below_shutdown_threshold|.
-  void CheckForLowBattery(PowerStatus* status);
+  // Returns true if |status|'s battery level is so low that the system
+  // should be shut down.  |status|'s |battery_percentage|,
+  // |battery_time_to_*|, and |line_power_on| fields must already be set.
+  bool IsBatteryBelowShutdownThreshold(const PowerStatus& status) const;
 
   // Offsets the timestamps used in hysteresis calculations.  This is used when
   // suspending and resuming -- the time while suspended should not count toward
@@ -282,9 +290,13 @@ class PowerSupply {
   base::TimeTicks last_poll_time_;
   base::TimeTicks discharge_start_time_;
 
-  // Was the battery "full" (taking |full_factor_| into account) when
-  // |discharge_start_time_| was updated?
-  bool discharge_started_with_full_battery_;
+  // Last time at which the battery was considered to be fully charged
+  // while on line power.
+  base::TimeTicks last_fully_charged_line_power_time_;
+
+  // Charge percentage in the range [0.0, 100.0] from the last time at which
+  // the battery was considered full.
+  double full_battery_percent_;
 
   int64 sample_window_max_;
   int64 sample_window_min_;

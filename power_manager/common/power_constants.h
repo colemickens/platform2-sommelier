@@ -62,8 +62,6 @@ extern const char kInternalBacklightPath[];
 extern const char kInternalBacklightPattern[];
 extern const char kKeyboardBacklightPath[];
 extern const char kKeyboardBacklightPattern[];
-extern const int64 kBatteryPercentPinMs;
-extern const int64 kBatteryPercentTaperMs;
 
 // Broadcast signals.
 extern const char kPowerStateChanged[];

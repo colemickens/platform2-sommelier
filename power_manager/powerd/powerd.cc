@@ -617,12 +617,20 @@ void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
 }
 
 void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
-  LOG(INFO) << "On " << (status.line_power_on ? "AC" : "battery") << " with "
-            << "battery at " << status.battery_percentage << "% (displayed as "
-            << status.display_battery_percentage << "%); "
-            << (status.line_power_on ? status.battery_time_to_full :
-                status.battery_time_to_empty) << " sec until "
-            << (status.line_power_on ? "full" : "empty");
+  if (status.battery_is_present) {
+    long rounded_actual = lround(status.battery_percentage);
+    long rounded_display = lround(status.display_battery_percentage);
+    std::string percent_str = StringPrintf("%ld%%", rounded_actual);
+    if (rounded_actual != rounded_display)
+      percent_str += StringPrintf(" (displayed as %ld%%)", rounded_display);
+    if (status.line_power_on) {
+      LOG(INFO) << "On AC with battery at " << percent_str << "; "
+                << status.battery_time_to_full << " sec until full";
+    } else {
+      LOG(INFO) << "On battery at " << percent_str << "; "
+                << status.battery_time_to_empty << " sec until empty";
+    }
+  }
 
   power_status_ = status;
   SetPlugged(status.line_power_on);

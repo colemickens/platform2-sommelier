@@ -60,10 +60,6 @@ const char kInternalBacklightPath[] = "/sys/class/backlight";
 const char kInternalBacklightPattern[] = "*";
 const char kKeyboardBacklightPath[] = "/sys/class/leds";
 const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
-// Time to pin battery at full after going off AC.
-const int64 kBatteryPercentPinMs = 3 * 60 * 1000;
-// Time taken to taper from pinned percentage to actual percentage.
-const int64 kBatteryPercentTaperMs = 7 * 60 * 1000;
 
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";
