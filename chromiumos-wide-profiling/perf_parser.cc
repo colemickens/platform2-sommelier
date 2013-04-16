@@ -99,9 +99,6 @@ bool PerfParser::ProcessEvents() {
       case PERF_RECORD_EXIT:
         // EXIT events have the same structure as FORK events.
         DLOG(INFO) << "EXIT: " << event.fork.ppid << ":" << event.fork.ptid;
-        // In an EXIT event, ppid:ptid and pid:tid must be the same.
-        CHECK_EQ(event.fork.pid, event.fork.ppid);
-        CHECK_EQ(event.fork.tid, event.fork.ptid);
         ++stats_.num_exit_events;
         break;
       case PERF_RECORD_LOST:
