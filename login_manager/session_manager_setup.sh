@@ -388,7 +388,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --login-profile=user \
             --max-unused-resource-memory-usage-percentage=5 \
             --no-protector \
-            --ui-enable-partial-swap \
             --ui-enable-per-tile-painting \
             --ui-enable-threaded-compositing \
             --ui-prioritize-in-gpu-process \
