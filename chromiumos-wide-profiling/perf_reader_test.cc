@@ -28,6 +28,18 @@ TEST(PerfReaderTest, Test1Cycle) {
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
   }
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfPipedDataFiles);
+       ++i) {
+    PerfReader pr;
+    string input_perf_data = perf_test_files::kPerfPipedDataFiles[i];
+    LOG(INFO) << "Testing " << input_perf_data;
+    string output_perf_data = input_perf_data + ".pr.out";
+    ASSERT_TRUE(pr.ReadFile(input_perf_data));
+    ASSERT_TRUE(pr.WriteFile(output_perf_data));
+
+    // TODO(sque): compare perf reports for piped data.
+  }
 }
 
 }  // namespace quipper

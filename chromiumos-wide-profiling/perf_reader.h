@@ -64,6 +64,7 @@ class PerfReader {
   // For reading event blocks within piped perf data.
   bool ReadAttrEventBlock(const struct attr_event& attr_event);
   bool ReadEventTypeEventBlock(const struct event_type_event& event_type_event);
+  bool ReadEventDescEventBlock(const struct event_desc_event& event_desc_event);
   bool ReadPerfEventBlock(const event_t& event);
 
   std::vector<PerfFileAttr> attrs_;

@@ -491,6 +491,7 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       struct perf_event_header header;
       struct attr_event attr_event;
       struct event_type_event event_type_event;
+      struct event_desc_event event_desc_event;
       event_t event;
     } *block;
     block = reinterpret_cast<const union piped_data_block*>(&data[offset]);
@@ -506,10 +507,13 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     case PERF_RECORD_HEADER_EVENT_TYPE:
       result = ReadEventTypeEventBlock(block->event_type_event);
       break;
+    case PERF_RECORD_HEADER_EVENT_DESC:
+      result = ReadEventDescEventBlock(block->event_desc_event);
+      break;
     default:
-      LOG(ERROR) << "Event type " << block->header.type
-                 << " is not yet supported!";
-      return false;
+      LOG(WARNING) << "Event type " << block->header.type
+                   << " is not yet supported!";
+      break;
     }
   }
   return result;
@@ -609,6 +613,33 @@ bool PerfReader::ReadAttrEventBlock(const struct attr_event& attr_event) {
 bool PerfReader::ReadEventTypeEventBlock(
     const struct event_type_event& event_type_event) {
   event_types_.push_back(event_type_event.event_type);
+  return true;
+}
+
+bool PerfReader::ReadEventDescEventBlock(
+    const struct event_desc_event& desc_event) {
+  size_t offset = 0;
+  for (size_t i = 0; i < desc_event.num_events; ++i) {
+    PerfFileAttr attr;
+    memcpy(&attr.attr,
+           &desc_event.more_data[offset],
+           desc_event.event_header_size);
+    offset += desc_event.event_header_size;
+
+    union {
+      const struct {
+        uint32 num_ids;
+        uint32 name_string_length;
+        char name[];
+      } *more_data;
+      const void* ptr;
+    };
+    ptr = &desc_event.more_data[offset];
+    struct perf_trace_event_type event_type;
+    event_type.event_id = i;
+    strcpy(event_type.name, more_data->name);
+    event_types_.push_back(event_type);
+  }
   return true;
 }
 

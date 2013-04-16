@@ -18,6 +18,11 @@ const char* kPerfDataFiles[] = {
   "perf.data.forkexit",
 };
 
+const char* kPerfPipedDataFiles[] = {
+  "perf.data.piped.host",
+  "perf.data.piped.target",
+};
+
 }  // namespace perf_test_files
 
 #endif  // PERF_TEST_FILES_

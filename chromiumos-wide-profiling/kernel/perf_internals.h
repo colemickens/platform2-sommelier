@@ -120,6 +120,13 @@ struct event_type_event {
 	struct perf_trace_event_type event_type;
 };
 
+struct event_desc_event {
+  struct perf_event_header header;
+  uint32_t num_events;
+  uint32_t event_header_size;
+  uint8_t more_data[];
+};
+
 enum {
 	SHOW_KERNEL	= 1,
 	SHOW_USER	= 2,
