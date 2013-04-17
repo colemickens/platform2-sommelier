@@ -5,14 +5,12 @@
 #include "login_manager/nss_util.h"
 
 #include <string>
-#include <tr1/memory>
 #include <utility>
 
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
-#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
 #include <crypto/nss_util.h>
@@ -27,12 +25,11 @@
 #include <secmod.h>
 #include <secmodt.h>
 
+using crypto::RSAPrivateKey;
 using crypto::ScopedPK11Slot;
 using crypto::ScopedSECItem;
 using crypto::ScopedSECKEYPublicKey;
 using crypto::ScopedSECKEYPrivateKey;
-using crypto::RSAPrivateKey;
-using std::tr1::shared_ptr;
 
 namespace {
 // This should match the same constant in Chrome tree:
@@ -56,12 +53,15 @@ class NssUtilImpl : public NssUtil {
   NssUtilImpl();
   virtual ~NssUtilImpl();
 
-  virtual bool OpenUserDB(const base::FilePath& user_homedir) OVERRIDE;
+  virtual ScopedPK11Slot OpenUserDB(
+      const base::FilePath& user_homedir) OVERRIDE;
 
-  virtual RSAPrivateKey* GetPrivateKey(
-      const std::vector<uint8>& public_key_der) OVERRIDE;
+  virtual RSAPrivateKey* GetPrivateKeyForUser(
+      const std::vector<uint8>& public_key_der,
+      PK11SlotInfo* user_slot) OVERRIDE;
 
-  virtual RSAPrivateKey* GenerateKeyPair() OVERRIDE;
+  virtual RSAPrivateKey* GenerateKeyPairForUser(
+      PK11SlotInfo* user_slot) OVERRIDE;
 
   virtual base::FilePath GetOwnerKeyFilePath() OVERRIDE;
 
@@ -80,8 +80,6 @@ class NssUtilImpl : public NssUtil {
  private:
   static const uint16 kKeySizeInBits;
   static const char kNssdbSubpath[];
-
-  shared_ptr<ScopedPK11Slot> user_slot_;
 
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
@@ -112,7 +110,8 @@ NssUtilImpl::NssUtilImpl() {
 
 NssUtilImpl::~NssUtilImpl() {}
 
-bool NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
+ScopedPK11Slot NssUtilImpl::OpenUserDB(
+    const base::FilePath& user_homedir) {
   // TODO(cmasone): If we ever try to keep the session_manager alive across
   // user sessions, we'll need to close these persistent DBs.
   base::FilePath db_path(user_homedir.AppendASCII(kNssdbSubpath));
@@ -124,25 +123,26 @@ bool NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
   if (!db_slot.get()) {
     LOG(ERROR) << "Error opening persistent database (" << modspec
                << "): " << PR_GetError();
-    return false;
+    return ScopedPK11Slot();
   }
   if (PK11_NeedUserInit(db_slot.get()))
     PK11_InitPin(db_slot.get(), NULL, NULL);
 
   // If we opened successfully, we will have a non-default private key slot.
   if (PK11_IsInternalKeySlot(db_slot.get()))
-    return false;
+    return ScopedPK11Slot();
 
-  user_slot_.reset(new ScopedPK11Slot(db_slot.get()));
-  return true;
+  return ScopedPK11Slot(db_slot.get());
 }
 
-RSAPrivateKey* NssUtilImpl::GetPrivateKey(
-    const std::vector<uint8>& public_key_der) {
+RSAPrivateKey* NssUtilImpl::GetPrivateKeyForUser(
+    const std::vector<uint8>& public_key_der,
+    PK11SlotInfo* user_slot) {
   if (public_key_der.size() == 0) {
     LOG(ERROR) << "Not checking key because size is 0";
     return NULL;
   }
+
   // First, decode and save the public key.
   SECItem key_der;
   key_der.type = siBuffer;
@@ -176,7 +176,7 @@ RSAPrivateKey* NssUtilImpl::GetPrivateKey(
   }
 
   // Search in just the user slot for the key with the given ID.
-  ScopedSECKEYPrivateKey key(PK11_FindKeyByKeyID(user_slot_->get(),
+  ScopedSECKEYPrivateKey key(PK11_FindKeyByKeyID(user_slot,
                                                  ck_id.get(),
                                                  NULL));
   if (key.get())
@@ -186,12 +186,12 @@ RSAPrivateKey* NssUtilImpl::GetPrivateKey(
   return NULL;
 }
 
-RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
+RSAPrivateKey* NssUtilImpl::GenerateKeyPairForUser(PK11SlotInfo* user_slot) {
   PK11RSAGenParams param;
   param.keySizeInBits = kKeySizeInBits;
   param.pe = 65537L;
   SECKEYPublicKey* public_key_ptr = NULL;
-  ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(user_slot_->get(),
+  ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(user_slot,
                                                   CKM_RSA_PKCS_KEY_PAIR_GEN,
                                                   &param,
                                                   &public_key_ptr,

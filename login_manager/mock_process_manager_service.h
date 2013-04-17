@@ -7,9 +7,11 @@
 
 #include "login_manager/process_manager_service_interface.h"
 
+#include <base/memory/scoped_ptr.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {
+class ChildJobInterface;
 
 class MockProcessManagerService : public ProcessManagerServiceInterface {
  public:
@@ -23,7 +25,25 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
   MOCK_METHOD2(RestartBrowserWithArgs, void(const std::vector<std::string>&,
                                             bool));
   MOCK_METHOD1(SetBrowserSessionForUser, void(const std::string&));
-  MOCK_METHOD0(RunKeyGenerator, void());
+  MOCK_METHOD1(RunKeyGenerator, void(const std::string&));
+
+  // gmock can't handle methods that take scoped_ptrs, so we have to build
+  // something manually.
+  // Call ExpectAdoptAbandonKeyGenerator(pid_t) to make this mock expect:
+  //   1) Adoption of the provided pid, and
+  //   2) Abandonment.
+  void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+                            pid_t pid,
+                            guint watcher) OVERRIDE;
+
+  MOCK_METHOD0(AbandonKeyGeneratorJob, void());
+  MOCK_METHOD2(ProcessNewOwnerKey, void(const std::string&,
+                                        const base::FilePath&));
+
+  void ExpectAdoptAndAbandon(pid_t expected_generator_pid);
+
+ private:
+  pid_t generator_pid_;
 };
 }  // namespace login_manager
 

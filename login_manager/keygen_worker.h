@@ -4,14 +4,18 @@
 
 #include <string>
 
+#include <base/file_path.h>
+
 namespace login_manager {
 class NssUtil;
 
 namespace keygen {
 
-// Generates a keypair using the user's NSSDB, extracts the public half and
-// stores it at |filename|.
-int GenerateKey(const std::string& filename, NssUtil* nss);
+// Generates a keypair using the NSSDB under user_homedir, extracts
+// the public half and stores it at file_path.
+int GenerateKey(const base::FilePath& file_path,
+                const base::FilePath& user_homedir,
+                NssUtil* nss);
 
 }  // namespace keygen
 

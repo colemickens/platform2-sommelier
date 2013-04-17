@@ -4,13 +4,16 @@
 
 #include "device_policy_service.h"
 
+#include <secmodt.h>
+
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
+#include <chromeos/switches/chrome_switches.h>
 #include <crypto/rsa_private_key.h>
+#include <crypto/scoped_nss_types.h>
 
-#include "chromeos/switches/chrome_switches.h"
 #include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/key_generator.h"
@@ -25,7 +28,6 @@ namespace em = enterprise_management;
 namespace login_manager {
 using crypto::RSAPrivateKey;
 using google::protobuf::RepeatedPtrField;
-using std::string;
 
 // static
 const char DevicePolicyService::kPolicyPath[] = "/var/lib/whitelist/policy";
@@ -58,12 +60,13 @@ DevicePolicyService* DevicePolicyService::Create(
 
 bool DevicePolicyService::CheckAndHandleOwnerLogin(
     const std::string& current_user,
+    PK11SlotInfo* slot,
     bool* is_owner,
     Error* error) {
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
   scoped_ptr<RSAPrivateKey> signing_key(
-      GetOwnerKeyForGivenUser(current_user, key()->public_key_der(), error));
+      GetOwnerKeyForGivenUser(key()->public_key_der(), slot, error));
   if (signing_key.get()) {
     if (!StoreOwnerProperties(current_user, signing_key.get(), error))
       return false;
@@ -74,7 +77,7 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
   // public key, we must mitigate.
   *is_owner = GivenUserIsOwner(current_user);
   if (*is_owner && !signing_key.get()) {
-    if (!mitigator_->Mitigate(key()))
+    if (!mitigator_->Mitigate(current_user))
       return false;
   }
   return true;
@@ -82,13 +85,14 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
 
 bool DevicePolicyService::ValidateAndStoreOwnerKey(
     const std::string& current_user,
-    const std::string& buf) {
+    const std::string& buf,
+    PK11SlotInfo* slot) {
   std::vector<uint8> pub_key;
   NssUtil::BlobFromBuffer(buf, &pub_key);
 
   Error error;
   scoped_ptr<RSAPrivateKey> signing_key(
-      GetOwnerKeyForGivenUser(current_user, pub_key, &error));
+      GetOwnerKeyForGivenUser(pub_key, slot, &error));
   if (!signing_key.get())
    return false;
 
@@ -264,8 +268,9 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   // Update the UserWhitelistProto inside the ChromeDeviceSettingsProto we made.
   em::UserWhitelistProto* whitelist_proto = polval.mutable_user_whitelist();
   bool on_list = false;
-  const RepeatedPtrField<string>& whitelist = whitelist_proto->user_whitelist();
-  for (RepeatedPtrField<string>::const_iterator it = whitelist.begin();
+  const RepeatedPtrField<std::string>& whitelist =
+      whitelist_proto->user_whitelist();
+  for (RepeatedPtrField<std::string>::const_iterator it = whitelist.begin();
        it != whitelist.end();
        ++it) {
     if (current_user == *it) {
@@ -318,17 +323,10 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
 }
 
 RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
-    const std::string& user,
     const std::vector<uint8>& key,
+    PK11SlotInfo* slot,
     Error* error) {
-  if (!nss_->OpenUserDB(file_util::GetHomeDir())) {
-    const char msg[] = "Could not open the current user's NSS database.";
-    LOG(ERROR) << msg;
-    if (error)
-      error->Set(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
-    return NULL;
-  }
-  RSAPrivateKey* result = nss_->GetPrivateKey(key);  // TODO(cmasone): this too.
+  RSAPrivateKey* result = nss_->GetPrivateKeyForUser(key, slot);
   if (!result) {
     const char msg[] = "Could not verify that public key belongs to the owner.";
     LOG(WARNING) << msg;

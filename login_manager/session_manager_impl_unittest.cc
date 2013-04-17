@@ -25,6 +25,7 @@
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/glib/object.h>
+#include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -38,6 +39,7 @@
 #include "login_manager/mock_file_checker.h"
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_metrics.h"
+#include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_policy_service.h"
 #include "login_manager/mock_process_manager_service.h"
 #include "login_manager/mock_system_utils.h"
@@ -57,7 +59,6 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
 
-using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::Resetter;
 using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::cryptohome::home::SetSystemSalt;
@@ -77,6 +78,7 @@ class SessionManagerImplTest : public ::testing::Test {
         impl_(scoped_ptr<UpstartSignalEmitter>(upstart_),
               &manager_,
               &metrics_,
+              &nss_,
               &utils_),
         fake_salt_("fake salt") {
   }
@@ -115,33 +117,16 @@ class SessionManagerImplTest : public ::testing::Test {
     ExpectSessionBoilerplate(email_string, false, true);
   }
 
-  void ExpectStartSessionUnowned(const string& email_string,
-                                 bool mitigating) {
-    EXPECT_CALL(manager_, SetBrowserSessionForUser(email_string))
-        .Times(1);
+  void ExpectStartSessionUnowned(const string& email_string) {
+    ExpectStartSessionUnownedBoilerplate(email_string, false, false);
+  }
 
-    // Expect initialization of the device policy service, return success.
-    EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(false),
-                        Return(true)));
+  void ExpectStartSessionOwningInProcess(const string& email_string) {
+    ExpectStartSessionUnownedBoilerplate(email_string, false, true);
+  }
 
-    // Indicate that there is no owner key in order to trigger a new one to be
-    // generated.
-    EXPECT_CALL(*device_policy_service_, KeyMissing())
-        .WillOnce(Return(true));
-    EXPECT_CALL(*device_policy_service_, Mitigating())
-        .WillRepeatedly(Return(mitigating));
-    if (!mitigating)
-      EXPECT_CALL(manager_, RunKeyGenerator()).Times(1);
-
-    EXPECT_CALL(utils_,
-                EmitSignalWithStringArgs(
-                    StrEq(login_manager::kSessionStateChangedSignal),
-                    ElementsAre(SessionManagerImpl::kStarted)))
-        .Times(1);
-    EXPECT_CALL(utils_, IsDevMode())
-        .WillOnce(Return(false));
+  void ExpectStartSessionOwnerLost(const string& email_string) {
+    ExpectStartSessionUnownedBoilerplate(email_string, true, false);
   }
 
   void ExpectStorePolicy(MockDevicePolicyService* service,
@@ -189,6 +174,7 @@ class SessionManagerImplTest : public ::testing::Test {
     }
     Mock::VerifyAndClearExpectations(&manager_);
     Mock::VerifyAndClearExpectations(&metrics_);
+    Mock::VerifyAndClearExpectations(&nss_);
     Mock::VerifyAndClearExpectations(&utils_);
   }
 
@@ -208,6 +194,7 @@ class SessionManagerImplTest : public ::testing::Test {
 
   MockProcessManagerService manager_;
   MockMetrics metrics_;
+  MockNssUtil nss_;
   MockSystemUtils utils_;
 
   SessionManagerImpl impl_;
@@ -218,12 +205,12 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectSessionBoilerplate(const string& email_string,
                                 bool guest,
                                 bool for_owner) {
-    EXPECT_CALL(manager_, SetBrowserSessionForUser(email_string))
+    EXPECT_CALL(manager_, SetBrowserSessionForUser(StrEq(email_string)))
         .Times(1);
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
-                CheckAndHandleOwnerLogin(StrEq(email_string), _, _))
-        .WillOnce(DoAll(SetArgumentPointee<1>(for_owner),
+                CheckAndHandleOwnerLogin(StrEq(email_string), _, _, _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(for_owner),
                         Return(true)));
     // Confirm that the key is present.
     EXPECT_CALL(*device_policy_service_, KeyMissing())
@@ -239,6 +226,38 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(utils_,
                 AtomicFileWrite(FilePath(SessionManagerImpl::kLoggedInFlag),
                                 StrEq("1"), 1))
+        .Times(1);
+    EXPECT_CALL(utils_, IsDevMode())
+        .WillOnce(Return(false));
+  }
+
+  void ExpectStartSessionUnownedBoilerplate(const string& email_string,
+                                            bool mitigating,
+                                            bool owning_in_progress) {
+    EXPECT_CALL(manager_, SetBrowserSessionForUser(StrEq(email_string)))
+        .Times(1);
+
+    // Expect initialization of the device policy service, return success.
+    EXPECT_CALL(*device_policy_service_,
+                CheckAndHandleOwnerLogin(StrEq(email_string), _, _, _))
+        .WillOnce(DoAll(SetArgumentPointee<2>(false),
+                        Return(true)));
+
+    // Indicate that there is no owner key in order to trigger a new one to be
+    // generated.
+    EXPECT_CALL(*device_policy_service_, KeyMissing())
+        .WillOnce(Return(true));
+    EXPECT_CALL(*device_policy_service_, Mitigating())
+        .WillRepeatedly(Return(mitigating));
+    if (!mitigating && !owning_in_progress)
+      EXPECT_CALL(manager_, RunKeyGenerator(StrEq(email_string))).Times(1);
+    else
+      EXPECT_CALL(manager_, RunKeyGenerator(_)).Times(0);
+
+    EXPECT_CALL(utils_,
+                EmitSignalWithStringArgs(
+                    StrEq(login_manager::kSessionStateChangedSignal),
+                    ElementsAre(SessionManagerImpl::kStarted)))
         .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
@@ -316,7 +335,7 @@ TEST_F(SessionManagerImplTest, StartSession_New) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
-  ExpectStartSessionUnowned(email, false);
+  ExpectStartSessionUnowned(email);
 
   ScopedError error;
   EXPECT_EQ(TRUE, impl_.StartSession(email,
@@ -377,7 +396,49 @@ TEST_F(SessionManagerImplTest, StartSession_TwoUsers) {
                                       &Resetter(&error).lvalue()));
 }
 
-TEST_F(SessionManagerImplTest, StartSessionDevicePolicyFailure) {
+TEST_F(SessionManagerImplTest, StartSession_OwnerAndOther) {
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartSessionUnowned(email);
+
+  EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
+  VerifyAndClearExpectations();
+
+  gchar email2[] = "user2@somewhere";
+  ExpectStartSession(email2);
+  EXPECT_EQ(TRUE, impl_.StartSession(email2, nothing, &out, NULL));
+}
+
+TEST_F(SessionManagerImplTest, StartSession_OwnerRace) {
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ExpectStartSessionUnowned(email);
+
+  EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
+  VerifyAndClearExpectations();
+
+  gchar email2[] = "user2@somewhere";
+  ExpectStartSessionOwningInProcess(email2);
+  EXPECT_EQ(TRUE, impl_.StartSession(email2, nothing, &out, NULL));
+}
+
+TEST_F(SessionManagerImplTest, StartSession_BadNssDB) {
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+  ScopedError error;
+
+  nss_.MakeBadDB();
+  EXPECT_EQ(FALSE, impl_.StartSession(email,
+                                      nothing,
+                                      &out,
+                                      &Resetter(&error).lvalue()));
+  EXPECT_EQ(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, error->code);
+}
+
+TEST_F(SessionManagerImplTest, StartSession_DevicePolicyFailure) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
@@ -385,7 +446,7 @@ TEST_F(SessionManagerImplTest, StartSessionDevicePolicyFailure) {
 
   // Upon the owner login check, return an error.
   EXPECT_CALL(*device_policy_service_,
-              CheckAndHandleOwnerLogin(StrEq(email), _, _))
+              CheckAndHandleOwnerLogin(StrEq(email), _, _, _))
       .WillOnce(Return(false));
 
   EXPECT_EQ(FALSE, impl_.StartSession(email,
@@ -411,7 +472,7 @@ TEST_F(SessionManagerImplTest, StartSession_KeyMitigation) {
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
-  ExpectStartSessionUnowned(email, true);
+  ExpectStartSessionOwnerLost(email);
 
   ScopedError error;
   EXPECT_EQ(TRUE, impl_.StartSession(email,
@@ -658,6 +719,15 @@ TEST_F(SessionManagerImplTest, LockScreen) {
   EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
+TEST_F(SessionManagerImplTest, LockScreen_MultiSession) {
+  ExpectAndRunStartSession("user@somewhere");
+  ExpectAndRunStartSession("user2@somewhere");
+  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  GError *error = NULL;
+  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+}
+
 TEST_F(SessionManagerImplTest, LockScreen_NoSession) {
   EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(0);
   GError *error = NULL;
@@ -669,6 +739,15 @@ TEST_F(SessionManagerImplTest, LockScreen_Guest) {
   EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(0);
   GError *error = NULL;
   EXPECT_EQ(FALSE, impl_.LockScreen(&error));
+}
+
+TEST_F(SessionManagerImplTest, LockScreen_UserAndGuest) {
+  ExpectAndRunStartSession("user@somewhere");
+  ExpectAndRunGuestSession();
+  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  GError *error = NULL;
+  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockUnlockScreen) {
@@ -722,7 +801,7 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   ASSERT_EQ(file_util::WriteFile(key_file_path, key.c_str(), key.size()),
             key.size());
 
-  // Start a session, so that we have someone to import the key for.
+  // Start a session, to set up NSSDB for the user.
   gboolean out;
   gchar email[] = "user@somewhere";
   gchar nothing[] = "";
@@ -730,10 +809,12 @@ TEST_F(SessionManagerImplTest, ImportValidateAndStoreGeneratedKey) {
   ASSERT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
 
   EXPECT_CALL(*device_policy_service_,
-              ValidateAndStoreOwnerKey(_, StrEq(key)))
+              ValidateAndStoreOwnerKey(StrEq(email),
+                                       StrEq(key),
+                                       nss_.GetSlot()))
       .WillOnce(Return(true));
 
-  impl_.ImportValidateAndStoreGeneratedKey(key_file_path);
+  impl_.ImportValidateAndStoreGeneratedKey(email, key_file_path);
   EXPECT_FALSE(file_util::PathExists(key_file_path));
 }
 

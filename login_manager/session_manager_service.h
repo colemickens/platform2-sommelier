@@ -183,22 +183,17 @@ class SessionManagerService
   virtual bool IsBrowser(pid_t pid) OVERRIDE;
   virtual void RestartBrowserWithArgs(
       const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;
-  virtual void SetBrowserSessionForUser(const std::string& user) OVERRIDE;
-  virtual void RunKeyGenerator() OVERRIDE;
-
-  // Start tracking a new, potentially running key generation job.
-  void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
-                            pid_t pid,
-                            guint watcher);
-
-  // Stop tracking key generation job.
-  void AbandonKeyGeneratorJob();
+  virtual void SetBrowserSessionForUser(const std::string& username) OVERRIDE;
+  virtual void RunKeyGenerator(const std::string& username) OVERRIDE;
+  virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+                                    pid_t pid,
+                                    guint watcher) OVERRIDE;
+  virtual void AbandonKeyGeneratorJob() OVERRIDE;
+  virtual void ProcessNewOwnerKey(const std::string& username,
+                                  const base::FilePath& key_file) OVERRIDE;
 
   // Tell us that, if we want, we can cause a graceful exit from g_main_loop.
   void AllowGracefulExit();
-
-  // |data| is a SessionManagerService*.
-  static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
   // Ensures |args| is in the correct format, stripping "--" if needed.
   // No initial "--" is needed, but is allowed.
@@ -225,6 +220,8 @@ class SessionManagerService
   virtual GMainLoop* main_loop() { return main_loop_; }
 
  private:
+  typedef std::vector<std::pair<pid_t, uid_t> > PidUidPairList;
+
   static void do_nothing(int sig) {}
 
   // Common code between SIG{HUP, INT, TERM}Handler.
@@ -263,8 +260,7 @@ class SessionManagerService
 
   // Try to terminate the job represented by |spec|, but also remember it for
   // later.
-  void KillAndRemember(const ChildJob::Spec& spec,
-                       std::vector<std::pair<pid_t, uid_t> >* to_remember);
+  void KillAndRemember(const ChildJob::Spec& spec, PidUidPairList* to_remember);
 
   // Returns appropriate child-killing timeout, depending on flag file state.
   int GetKillTimeout();

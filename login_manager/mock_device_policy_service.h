@@ -5,10 +5,16 @@
 #ifndef LOGIN_MANAGER_MOCK_DEVICE_POLICY_SERVICE_H_
 #define LOGIN_MANAGER_MOCK_DEVICE_POLICY_SERVICE_H_
 
-#include "login_manager/chrome_device_policy.pb.h"
 #include "login_manager/device_policy_service.h"
 
+#include <crypto/scoped_nss_types.h>
+
+#include "login_manager/chrome_device_policy.pb.h"
+
 namespace login_manager {
+// Forward declaration.
+typedef struct PK11SlotInfoStr PK11SlotInfo;
+
 class MockDevicePolicyService : public DevicePolicyService {
  public:
   MockDevicePolicyService();
@@ -18,11 +24,13 @@ class MockDevicePolicyService : public DevicePolicyService {
   MOCK_METHOD0(PersistKey, void(void));
   MOCK_METHOD1(PersistPolicy, void(Completion*));
   MOCK_METHOD0(PersistPolicySync, bool(void));
-  MOCK_METHOD3(CheckAndHandleOwnerLogin, bool(const std::string&,
+  MOCK_METHOD4(CheckAndHandleOwnerLogin, bool(const std::string&,
+                                              PK11SlotInfo*,
                                               bool*,
                                               PolicyService::Error*));
-  MOCK_METHOD2(ValidateAndStoreOwnerKey, bool(const std::string&,
-                                              const std::string&));
+  MOCK_METHOD3(ValidateAndStoreOwnerKey, bool(const std::string&,
+                                              const std::string&,
+                                              PK11SlotInfo*));
   MOCK_METHOD0(KeyMissing, bool(void));
   MOCK_METHOD0(Mitigating, bool(void));
   MOCK_METHOD0(Initialize, bool(void));

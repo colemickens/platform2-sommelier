@@ -7,6 +7,7 @@
 
 #include <algorithm>
 
+#include <base/file_path.h>
 #include <gmock/gmock.h>
 
 namespace login_manager {
@@ -34,6 +35,10 @@ MATCHER_P(StatusEq, status, "") {
 
 MATCHER_P(PolicyEq, policy, "") {
   return arg.SerializeAsString() == policy.SerializeAsString();
+}
+
+MATCHER_P(PathStartsWith, path_prefix, "") {
+  return path_prefix.IsParent(arg);
 }
 
 }  // namespace login_manager

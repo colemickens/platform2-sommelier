@@ -492,26 +492,6 @@ TEST_F(SessionManagerProcessTest, MustStopChild) {
   SimpleRunManager();
 }
 
-TEST_F(SessionManagerProcessTest, KeygenExitTest) {
-  MockChildJob* normal_job = new MockChildJob;
-  InitManager(normal_job);
-
-  FilePath key_file_path("some/where/fake");
-  string key_file_name(key_file_path.value());
-
-  MockKeyGenerator* key_gen = new MockKeyGenerator;
-  manager_->test_api().set_keygen(key_gen);
-  EXPECT_CALL(*key_gen, temporary_key_filename())
-      .WillOnce(ReturnRef(key_file_name));
-  EXPECT_CALL(*session_manager_impl_,
-              ImportValidateAndStoreGeneratedKey(key_file_path))
-      .Times(1);
-
-  SessionManagerService::HandleKeygenExit(kDummyPid,
-                                          PackStatus(0),
-                                          manager_.get());
-}
-
 TEST_F(SessionManagerProcessTest, StatsRecorded) {
   MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
   ExpectChildJobBoilerplate(job);

@@ -32,10 +32,11 @@ class SessionManagerInterface {
   virtual void AnnounceSessionStopped() = 0;
 
   // Given a policy key stored at temp_key_file, pulls it off disk,
-  // validate that it is a correctly formed key pair, and ensure it is
-  // stored for the future.
+  // validates that it is a correctly formed key pair, and ensures it is
+  // stored for the future in the provided user's NSSDB.
   virtual void ImportValidateAndStoreGeneratedKey(
-      const FilePath& temp_key_file) = 0;
+      const std::string& username,
+      const base::FilePath& temp_key_file) = 0;
   virtual bool ScreenIsLocked() = 0;
 
   //////////////////////////////////////////////////////////////////////////////

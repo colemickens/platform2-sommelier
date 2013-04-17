@@ -11,11 +11,13 @@
 #include <base/callback.h>
 #include <base/command_line.h>
 #include <base/file_util.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
+#include <crypto/scoped_nss_types.h>
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib.h>
 
@@ -23,6 +25,7 @@
 #include "login_manager/device_management_backend.pb.h"
 #include "login_manager/device_policy_service.h"
 #include "login_manager/login_metrics.h"
+#include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_service.h"
 #include "login_manager/process_manager_service_interface.h"
@@ -34,9 +37,6 @@ using base::FilePath;
 using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::cryptohome::home::GetUserPath;
 using chromeos::cryptohome::home::SanitizeUserName;
-using std::map;
-using std::string;
-using std::vector;
 
 namespace login_manager {  // NOLINT
 
@@ -125,10 +125,12 @@ struct SessionManagerImpl::UserSession {
   UserSession(const std::string& username,
               const std::string& userhash,
               bool is_incognito,
+              crypto::ScopedPK11Slot slot,
               const scoped_refptr<PolicyService>& policy_service)
       : username(username),
         userhash(userhash),
         is_incognito(is_incognito),
+        slot(slot.Pass()),
         policy_service(policy_service) {
   }
   ~UserSession() {}
@@ -136,6 +138,7 @@ struct SessionManagerImpl::UserSession {
   const std::string username;
   const std::string userhash;
   const bool is_incognito;
+  crypto::ScopedPK11Slot slot;
   const scoped_refptr<PolicyService> policy_service;
 };
 
@@ -143,6 +146,7 @@ SessionManagerImpl::SessionManagerImpl(
     scoped_ptr<UpstartSignalEmitter> emitter,
     ProcessManagerServiceInterface* manager,
     LoginMetrics* metrics,
+    NssUtil* nss,
     SystemUtils* utils)
     : session_started_(false),
       session_stopping_(false),
@@ -150,6 +154,7 @@ SessionManagerImpl::SessionManagerImpl(
       upstart_signal_emitter_(emitter.Pass()),
       manager_(manager),
       login_metrics_(metrics),
+      nss_(nss),
       system_(utils) {
   // TODO(ellyjones): http://crosbug.com/6615
   // The intent was to use this cookie to authenticate RPC requests from the
@@ -180,7 +185,7 @@ void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
     session_stopping_ = true;
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:"
                << SessionManagerImpl::kStopping;
-    vector<string> args;
+    std::vector<std::string> args;
     args.push_back(SessionManagerImpl::kStopping);
     system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
                                       args);
@@ -190,7 +195,7 @@ void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
 void SessionManagerImpl::AnnounceSessionStopped() {
   DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:"
              << SessionManagerImpl::kStopped;
-  vector<string> args;
+  std::vector<std::string> args;
   args.push_back(SessionManagerImpl::kStopped);
   system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
                                     args);
@@ -207,7 +212,7 @@ bool SessionManagerImpl::Initialize() {
 
 void SessionManagerImpl::Finalize() {
   device_policy_->PersistPolicySync();
-  for (map<string, UserSession*>::const_iterator it = user_sessions_.begin();
+  for (UserSessionMap::const_iterator it = user_sessions_.begin();
        it != user_sessions_.end(); ++it) {
     if (it->second)
       it->second->policy_service->PersistPolicySync();
@@ -253,14 +258,14 @@ gboolean SessionManagerImpl::EnableChromeTesting(gboolean force_relaunch,
   // Delete testing channel file if it already exists.
   system_->RemoveFile(chrome_testing_path_);
 
-  vector<string> extra_argument_vector;
+  std::vector<std::string> extra_argument_vector;
   // Create extra argument vector.
   while (*extra_args != NULL) {
     extra_argument_vector.push_back(*extra_args);
     ++extra_args;
   }
   // Add testing channel argument to extra arguments.
-  string testing_argument = kTestingChannelFlag;
+  std::string testing_argument = kTestingChannelFlag;
   testing_argument.append(chrome_testing_path_.value());
   extra_argument_vector.push_back(testing_argument);
 
@@ -273,7 +278,8 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
                                           gboolean* OUT_done,
                                           GError** error) {
   // Validate the |email_address|.
-  const string email_string(StringToLowerASCII(GCharToString(email_address)));
+  const std::string email_string(
+      StringToLowerASCII(GCharToString(email_address)));
   const bool is_incognito =
       ((email_string == kGuestUserName) ||
        (email_string == kIncognitoUser) ||
@@ -305,6 +311,7 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
   bool user_is_owner = false;
   PolicyService::Error policy_error;
   if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
+                                                user_session->slot.get(),
                                                 &user_is_owner,
                                                 &policy_error)) {
     SetGError(error,
@@ -313,14 +320,14 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
     return *OUT_done = FALSE;
   }
 
+  // If all previous sessions were incognito (or no previous sessions exist).
+  bool is_first_real_user = AllSessionsAreIncognito() && !is_incognito;
+
   // Send each user login event to UMA (right before we start session
   // since the metrics library does not log events in guest mode).
   int dev_mode = system_->IsDevMode();
-  if (dev_mode > -1) {
-    login_metrics_->SendLoginUserType(dev_mode,
-                                      is_incognito,
-                                      user_is_owner);
-  }
+  if (dev_mode > -1)
+    login_metrics_->SendLoginUserType(dev_mode, is_incognito, user_is_owner);
 
   *OUT_done =
       upstart_signal_emitter_->EmitSignal(
@@ -333,15 +340,15 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
     session_started_ = true;
     user_sessions_[email_string] = user_session.release();
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
-    vector<string> args;
+    std::vector<std::string> args;
     args.push_back(kStarted);
     system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
                                       args);
     if (device_policy_->KeyMissing() &&
         !device_policy_->Mitigating() &&
-        !is_incognito) {
+        is_first_real_user) {
       // This is the first sign-in on this unmanaged device.  Take ownership.
-      manager_->RunKeyGenerator();
+      manager_->RunKeyGenerator(email_string);
     }
 
     // Record that a login has successfully completed on this boot.
@@ -379,7 +386,7 @@ gboolean SessionManagerImpl::StorePolicy(GArray* policy_blob,
 
 gboolean SessionManagerImpl::RetrievePolicy(GArray** OUT_policy_blob,
                                             GError** error) {
-  vector<uint8> policy_data;
+  std::vector<uint8> policy_data;
   return EncodeRetrievedPolicy(device_policy_->Retrieve(&policy_data),
                                policy_data,
                                OUT_policy_blob,
@@ -407,7 +414,7 @@ gboolean SessionManagerImpl::StoreUserPolicy(
 gboolean SessionManagerImpl::RetrieveUserPolicy(GArray** OUT_policy_blob,
                                                 GError** error) {
   if (user_sessions_.size() == 1) {
-    vector<uint8> policy_data;
+    std::vector<uint8> policy_data;
     return EncodeRetrievedPolicy(
         user_sessions_.begin()->second->policy_service->Retrieve(&policy_data),
         policy_data,
@@ -453,7 +460,7 @@ gboolean SessionManagerImpl::RetrievePolicyForUser(gchar* user_email,
     return FALSE;
   }
 
-  vector<uint8> policy_data;
+  std::vector<uint8> policy_data;
   return EncodeRetrievedPolicy(policy_service->Retrieve(&policy_data),
                                policy_data,
                                OUT_policy_blob,
@@ -475,7 +482,7 @@ gboolean SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
     gchar* account_id,
     GArray** OUT_policy_blob,
     GError** error) {
-  vector<uint8> policy_data;
+  std::vector<uint8> policy_data;
   return EncodeRetrievedPolicy(
       device_local_account_policy_->Retrieve(GCharToString(account_id),
                                              &policy_data),
@@ -497,11 +504,8 @@ gboolean SessionManagerImpl::LockScreen(GError** error) {
     LOG(WARNING) << "Attempt to lock screen outside of user session.";
     return FALSE;
   }
-  if (user_sessions_.size() != 1) {
-    LOG(WARNING) << "Multiple sessions are not yet supported.";
-    return FALSE;
-  }
-  if (user_sessions_.begin()->second->is_incognito) {
+  // If all sessions are incognito, then locking is not allowed.
+  if (AllSessionsAreIncognito()) {
     LOG(WARNING) << "Attempt to lock screen during Guest session.";
     return FALSE;
   }
@@ -608,18 +612,16 @@ void SessionManagerImpl::OnKeyPersisted(bool success) {
 }
 
 void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
+    const std::string& username,
     const FilePath& temp_key_file) {
-  string key;
+  std::string key;
   file_util::ReadFileToString(temp_key_file, &key);
   PLOG_IF(WARNING, !file_util::Delete(temp_key_file, false))
       << "Can't delete " << temp_key_file.value();
-
-  if (user_sessions_.size() == 1) {
-    device_policy_->ValidateAndStoreOwnerKey(
-        user_sessions_.begin()->second->username, key);
-  } else {
-    LOG(ERROR) << "Multiple sessions are not yet supported.";
-  }
+  device_policy_->ValidateAndStoreOwnerKey(
+      username,
+      key,
+      user_sessions_[username]->slot.get());
 }
 
 void SessionManagerImpl::InitiateDeviceWipe() {
@@ -631,7 +633,7 @@ void SessionManagerImpl::InitiateDeviceWipe() {
 
 gboolean SessionManagerImpl::EncodeRetrievedPolicy(
     bool success,
-    const vector<uint8>& policy_data,
+    const std::vector<uint8>& policy_data,
     GArray** policy_blob,
     GError** error) {
   if (success) {
@@ -655,10 +657,10 @@ gboolean SessionManagerImpl::EncodeRetrievedPolicy(
 }
 
 // static
-string SessionManagerImpl::GCharToString(const gchar* str) {
+std::string SessionManagerImpl::GCharToString(const gchar* str) {
   char buffer[kMaxGCharBufferSize + 1];
   int len = snprintf(buffer, sizeof(buffer), "%s", str);
-  return string(buffer, len);
+  return std::string(buffer, len);
 }
 
 // static
@@ -669,20 +671,31 @@ void SessionManagerImpl::SetGError(GError** error,
 }
 
 // static
-bool SessionManagerImpl::ValidateEmail(const string& email_address) {
-  if (email_address.find_first_not_of(kLegalCharacters) != string::npos)
+bool SessionManagerImpl::ValidateEmail(const std::string& email_address) {
+  if (email_address.find_first_not_of(kLegalCharacters) != std::string::npos)
     return false;
 
   size_t at = email_address.find(kEmailSeparator);
   // it has NO @.
-  if (at == string::npos)
+  if (at == std::string::npos)
     return false;
 
   // it has more than one @.
-  if (email_address.find(kEmailSeparator, at+1) != string::npos)
+  if (email_address.find(kEmailSeparator, at+1) != std::string::npos)
     return false;
 
   return true;
+}
+
+bool SessionManagerImpl::AllSessionsAreIncognito() {
+  size_t incognito_count = 0;
+  for (UserSessionMap::const_iterator it = user_sessions_.begin();
+       it != user_sessions_.end();
+       ++it) {
+    if (it->second)
+      incognito_count += it->second->is_incognito;
+  }
+  return incognito_count == user_sessions_.size();
 }
 
 bool SessionManagerImpl::IsValidCookie(const char *cookie) {
@@ -693,7 +706,7 @@ bool SessionManagerImpl::IsValidCookie(const char *cookie) {
 }
 
 SessionManagerImpl::UserSession*
-SessionManagerImpl::CreateUserSession(const string& username,
+SessionManagerImpl::CreateUserSession(const std::string& username,
                                       bool is_incognito,
                                       GError** error) {
   scoped_refptr<PolicyService> user_policy =
@@ -705,16 +718,25 @@ SessionManagerImpl::CreateUserSession(const string& username,
       SetGError(error, CHROMEOS_LOGIN_ERROR_POLICY_INIT_FAIL, msg);
     return NULL;
   }
+  crypto::ScopedPK11Slot slot(nss_->OpenUserDB(GetUserPath(username)));
+  if (!slot) {
+    const char msg[] = "Could not open the current user's NSS database.";
+    LOG(ERROR) << msg;
+    if (error)
+      SetGError(error, CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
+    return NULL;
+  }
   return new SessionManagerImpl::UserSession(username,
                                              SanitizeUserName(username),
                                              is_incognito,
+                                             slot.Pass(),
                                              user_policy);
 }
 
 scoped_refptr<PolicyService> SessionManagerImpl::GetPolicyService(
     gchar* user_email) {
-  const string username(StringToLowerASCII(GCharToString(user_email)));
-  map<string, UserSession*>::const_iterator it = user_sessions_.find(username);
+  const std::string username(StringToLowerASCII(GCharToString(user_email)));
+  UserSessionMap::const_iterator it = user_sessions_.find(username);
   return it == user_sessions_.end() ? NULL : it->second->policy_service;
 }
 

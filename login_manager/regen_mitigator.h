@@ -5,8 +5,11 @@
 #ifndef LOGIN_MANAGER_REGEN_MITIGATOR_H_
 #define LOGIN_MANAGER_REGEN_MITIGATOR_H_
 
-#include "base/basictypes.h"
-#include "base/memory/scoped_ptr.h"
+#include <string>
+
+#include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
+
 #include "login_manager/owner_key_loss_mitigator.h"
 
 namespace login_manager {
@@ -28,8 +31,8 @@ class RegenMitigator : public OwnerKeyLossMitigator {
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  bool Mitigate(PolicyKey* key);
-  bool Mitigating();
+  bool Mitigate(const std::string& ownername) OVERRIDE;
+  bool Mitigating() OVERRIDE;
 
  private:
   KeyGenerator* generator_;

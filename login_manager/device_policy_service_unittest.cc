@@ -16,6 +16,7 @@
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <base/run_loop.h>
+#include <crypto/scoped_nss_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -335,6 +336,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_TRUE(is_owner);
@@ -360,6 +362,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_TRUE(is_owner);
@@ -387,6 +390,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_TRUE(is_owner);
@@ -407,6 +411,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
   PolicyService::Error error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin("regular_user@somewhere",
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_FALSE(is_owner);
@@ -426,6 +431,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
   PolicyService::Error error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_FALSE(is_owner);
@@ -447,6 +453,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_TRUE(is_owner);
@@ -468,6 +475,7 @@ TEST_F(DevicePolicyServiceTest,
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_TRUE(is_owner);
@@ -487,6 +495,7 @@ TEST_F(DevicePolicyServiceTest,
   PolicyService::Error error;
   bool is_owner = true;
   EXPECT_TRUE(service_->CheckAndHandleOwnerLogin("other@somwhere",
+                                                 nss.GetSlot(),
                                                  &is_owner,
                                                  &error));
   EXPECT_FALSE(is_owner);
@@ -507,6 +516,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                  nss.GetSlot(),
                                                   &is_owner,
                                                   &error));
 }
@@ -538,6 +548,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
   PolicyService::Error error;
   bool is_owner = false;
   EXPECT_FALSE(service_->CheckAndHandleOwnerLogin(owner_,
+                                                  nss.GetSlot(),
                                                   &is_owner,
                                                   &error));
 }
@@ -556,7 +567,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s, &nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
   ExpectPersistKeyAndPolicy();
 }
@@ -578,7 +589,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
   EXPECT_CALL(*store_, Set(_)).Times(0);
   ExpectInstallNewOwnerPolicy(s, &nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
   ExpectPersistKeyAndPolicy();
 }
@@ -599,7 +610,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
       .WillOnce(Return(true));
   ExpectFailedInstallNewOwnerPolicy(s, &nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
   ExpectNoPersistKeyAndPolicy();
 }
@@ -622,7 +633,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
   EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
   ExpectInstallNewOwnerPolicy(s, &nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 
   ExpectPersistKeyAndPolicy();
 }
@@ -631,7 +642,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
   KeyFailUtil nss;
   InitService(&nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
@@ -646,7 +657,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
       .InSequence(s)
       .WillOnce(Return(false));
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
@@ -664,16 +675,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
       .InSequence(s)
       .WillOnce(Return(false));
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetSlot());
 }
-
-TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NssFailure) {
-  SadNssUtil nss;
-  InitService(&nss);
-
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
-}
-
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
   MockNssUtil nss;

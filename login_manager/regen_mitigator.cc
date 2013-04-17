@@ -23,8 +23,8 @@ RegenMitigator::RegenMitigator(KeyGenerator* generator,
 
 RegenMitigator::~RegenMitigator() {}
 
-bool RegenMitigator::Mitigate(PolicyKey* key) {
-  return mitigating_ = generator_->Start(set_uid_ ? uid_ : 0, manager_);
+bool RegenMitigator::Mitigate(const std::string& ownername) {
+  return mitigating_ = generator_->Start(ownername, set_uid_ ? uid_ : 0);
 }
 
 bool RegenMitigator::Mitigating() {

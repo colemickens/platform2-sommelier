@@ -5,7 +5,9 @@
 #ifndef LOGIN_MANAGER_OWNER_KEY_LOSS_MITIGATOR_H_
 #define LOGIN_MANAGER_OWNER_KEY_LOSS_MITIGATOR_H_
 
-#include "base/basictypes.h"
+#include <string>
+
+#include <base/basictypes.h>
 
 namespace login_manager {
 
@@ -23,7 +25,7 @@ class OwnerKeyLossMitigator {
   // Deal with loss of the owner's private key.
   // Returning true means that we can recover without user interaction.
   // Returning false means that we can't.
-  virtual bool Mitigate(PolicyKey* key) = 0;
+  virtual bool Mitigate(const std::string& ownername) = 0;
 
   virtual bool Mitigating() = 0;
 

@@ -66,11 +66,6 @@ namespace gobject {  // NOLINT
 namespace em = enterprise_management;
 namespace login_manager {
 
-using std::make_pair;
-using std::pair;
-using std::string;
-using std::vector;
-
 int g_shutdown_pipe_write_fd = -1;
 int g_shutdown_pipe_read_fd = -1;
 
@@ -166,7 +161,7 @@ SessionManagerService::SessionManagerService(
       loop_proxy_(NULL),
       system_(utils),
       nss_(NssUtil::Create()),
-      key_gen_(new KeyGenerator(utils)),
+      key_gen_(new KeyGenerator(utils, this)),
       login_metrics_(NULL),
       liveness_checker_(NULL),
       enable_browser_abort_on_hang_(enable_browser_abort_on_hang),
@@ -262,7 +257,7 @@ bool SessionManagerService::Initialize() {
   SessionManagerImpl* impl =
       new SessionManagerImpl(
           scoped_ptr<UpstartSignalEmitter>(new UpstartSignalEmitter),
-          this, login_metrics_.get(), system_);
+          this, login_metrics_.get(), nss_.get(), system_);
 
   // The below require loop_proxy_, created in Reset(), to be set already.
   liveness_checker_.reset(
@@ -309,7 +304,7 @@ bool SessionManagerService::Register(
     const chromeos::dbus::BusConnection &connection) {
   if (!chromeos::dbus::AbstractDbusService::Register(connection))
     return false;
-  const string filter =
+  const std::string filter =
       StringPrintf("type='method_call', interface='%s'", service_interface());
   DBusConnection* conn =
       ::dbus_g_connection_get_connection(connection.g_connection());
@@ -443,7 +438,7 @@ void SessionManagerService::AbortBrowser(int signal) {
 }
 
 void SessionManagerService::RestartBrowserWithArgs(
-    const vector<string>& args, bool args_are_extra) {
+    const std::vector<std::string>& args, bool args_are_extra) {
   // Waiting for Chrome to shutdown takes too much time.
   // We're killing it immediately hoping that data Chrome uses before
   // logging in is not corrupted.
@@ -456,12 +451,13 @@ void SessionManagerService::RestartBrowserWithArgs(
   RunBrowser();
 }
 
-void SessionManagerService::SetBrowserSessionForUser(const std::string& user) {
-  browser_.job->StartSession(user);
+void SessionManagerService::SetBrowserSessionForUser(
+    const std::string& username) {
+  browser_.job->StartSession(username);
 }
 
-void SessionManagerService::RunKeyGenerator() {
-  key_gen_->Start(set_uid_ ? uid_ : 0, this);
+void SessionManagerService::RunKeyGenerator(const std::string& username) {
+  key_gen_->Start(username, set_uid_ ? uid_ : 0);
 }
 
 void SessionManagerService::KillChild(const ChildJobInterface* child_job,
@@ -490,6 +486,12 @@ void SessionManagerService::AbandonKeyGeneratorJob() {
   }
   generator_.job.reset(NULL);
   generator_.pid = -1;
+}
+
+void SessionManagerService::ProcessNewOwnerKey(const std::string& username,
+                                               const FilePath& key_file) {
+  DLOG(INFO) << "Processing generated key at " << key_file.value();
+  impl_->ImportValidateAndStoreGeneratedKey(username, key_file);
 }
 
 bool SessionManagerService::IsBrowser(pid_t pid) {
@@ -561,23 +563,6 @@ void SessionManagerService::HandleBrowserExit(GPid pid,
     }
   } else {
     LOG(ERROR) << "Couldn't find pid of exiting child: " << pid;
-  }
-}
-
-void SessionManagerService::HandleKeygenExit(GPid pid,
-                                             gint status,
-                                             gpointer data) {
-  SessionManagerService* manager = static_cast<SessionManagerService*>(data);
-  manager->AbandonKeyGeneratorJob();
-
-  if (WIFEXITED(status) && WEXITSTATUS(status) == 0) {
-    FilePath key_file(manager->key_gen_->temporary_key_filename());
-    manager->impl_->ImportValidateAndStoreGeneratedKey(key_file);
-  } else {
-    if (WIFSIGNALED(status))
-      LOG(ERROR) << "keygen exited on signal " << WTERMSIG(status);
-    else
-      LOG(ERROR) << "keygen exited with exit code " << WEXITSTATUS(status);
   }
 }
 
@@ -691,9 +676,8 @@ void SessionManagerService::RevertHandlers() {
   CHECK(sigaction(SIGHUP, &action, NULL) == 0);
 }
 
-void SessionManagerService::KillAndRemember(
-    const ChildJob::Spec& spec,
-    vector<std::pair<pid_t, uid_t> >* to_remember) {
+void SessionManagerService::KillAndRemember(const ChildJob::Spec& spec,
+                                            PidUidPairList* to_remember) {
   const pid_t pid = spec.pid;
   if (pid < 0)
     return;
@@ -701,15 +685,15 @@ void SessionManagerService::KillAndRemember(
   const uid_t uid = (spec.job->IsDesiredUidSet() ?
                      spec.job->GetDesiredUid() : getuid());
   system_->kill(pid, uid, SIGTERM);
-  to_remember->push_back(make_pair(pid, uid));
+  to_remember->push_back(std::make_pair(pid, uid));
 }
 
 void SessionManagerService::CleanupChildren(int timeout) {
-  vector<pair<int, uid_t> > pids_to_abort;
+  PidUidPairList pids_to_abort;
   KillAndRemember(browser_, &pids_to_abort);
   KillAndRemember(generator_, &pids_to_abort);
 
-  for (vector<pair<int, uid_t> >::const_iterator it = pids_to_abort.begin();
+  for (PidUidPairList::const_iterator it = pids_to_abort.begin();
        it != pids_to_abort.end(); ++it) {
     const pid_t pid = it->first;
     const uid_t uid = it->second;
@@ -736,11 +720,12 @@ void SessionManagerService::DeregisterChildWatchers() {
 }
 
 // static
-vector<string> SessionManagerService::GetArgList(const vector<string>& args) {
-  vector<string>::const_iterator start_arg = args.begin();
+std::vector<std::string> SessionManagerService::GetArgList(
+    const std::vector<std::string>& args) {
+  std::vector<std::string>::const_iterator start_arg = args.begin();
   if (!args.empty() && *start_arg == "--")
     ++start_arg;
-  return vector<string>(start_arg, args.end());
+  return std::vector<std::string>(start_arg, args.end());
 }
 
 }  // namespace login_manager

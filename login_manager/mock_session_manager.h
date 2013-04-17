@@ -19,7 +19,8 @@ class MockSessionManager : public SessionManagerInterface {
 
   MOCK_METHOD0(AnnounceSessionStoppingIfNeeded, void());
   MOCK_METHOD0(AnnounceSessionStopped, void());
-  MOCK_METHOD1(ImportValidateAndStoreGeneratedKey, void(const FilePath&));
+  MOCK_METHOD2(ImportValidateAndStoreGeneratedKey, void(const std::string&,
+                                                        const base::FilePath&));
   MOCK_METHOD0(ScreenIsLocked, bool());
   MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD0(Finalize, void());

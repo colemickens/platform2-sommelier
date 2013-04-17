@@ -19,8 +19,7 @@ class MockKeyGenerator : public KeyGenerator {
  public:
   MockKeyGenerator();
   virtual ~MockKeyGenerator();
-  MOCK_METHOD2(Start, bool(uid_t, SessionManagerService*));
-  MOCK_CONST_METHOD0(temporary_key_filename, const std::string&(void));
+  MOCK_METHOD2(Start, bool(const std::string&, uid_t));
 };
 }  // namespace login_manager
 

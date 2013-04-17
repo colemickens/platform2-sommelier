@@ -8,18 +8,15 @@
 #include <base/at_exit.h>
 #include <base/basictypes.h>
 #include <base/command_line.h>
-#include <crypto/rsa_private_key.h>
+#include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <crypto/rsa_private_key.h>
 
 #include "login_manager/keygen_worker.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/system_utils.h"
-
-using std::string;
-using login_manager::NssUtil;
-using login_manager::PolicyKey;
 
 namespace switches {
 
@@ -34,7 +31,7 @@ int main(int argc, char* argv[]) {
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
-  string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
+  std::string log_file = cl->GetSwitchValueASCII(switches::kLogFile);
   if (log_file.empty())
     log_file.assign(switches::kDefaultLogFile);
   logging::InitLogging(log_file.c_str(),
@@ -43,9 +40,11 @@ int main(int argc, char* argv[]) {
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
 
-  if (cl->GetArgs().size() != 1) {
-    LOG(FATAL) << "Usage: keygen /path/to/output_file";
+  if (cl->GetArgs().size() != 2) {
+    LOG(FATAL) << "Usage: keygen /path/to/output_file /path/to/user/homedir";
   }
-  scoped_ptr<NssUtil> nss(NssUtil::Create());
-  return login_manager::keygen::GenerateKey(cl->GetArgs()[0], nss.get());
+  scoped_ptr<login_manager::NssUtil> nss(login_manager::NssUtil::Create());
+  return login_manager::keygen::GenerateKey(base::FilePath(cl->GetArgs()[0]),
+                                            base::FilePath(cl->GetArgs()[1]),
+                                            nss.get());
 }

@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <chromeos/dbus/abstract_dbus_service.h>
 
@@ -40,10 +41,22 @@ class ProcessManagerServiceInterface {
 
   // Set bookkeeping for the browser process to indicate that a session
   // has been started for the given user.
-  virtual void SetBrowserSessionForUser(const std::string& user) = 0;
+  virtual void SetBrowserSessionForUser(const std::string& username) = 0;
 
   // Kick off, and manage, the policy key generation process.
-  virtual void RunKeyGenerator() = 0;
+  virtual void RunKeyGenerator(const std::string& username) = 0;
+
+  // Start tracking a new, potentially running key generation job.
+  virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
+                                    pid_t pid,
+                                    guint watcher) = 0;
+
+  // Stop tracking key generation job.
+  virtual void AbandonKeyGeneratorJob() = 0;
+
+  // Process a newly-generated owner key for |username|, stored at |key_file|.
+  virtual void ProcessNewOwnerKey(const std::string& username,
+                                  const base::FilePath& key_file) = 0;
 };
 }  // namespace login_manager
 

@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <string>
+
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
@@ -21,6 +23,7 @@
 #include "login_manager/session_manager_service.h"
 
 using ::testing::Return;
+using ::testing::StrEq;
 
 namespace login_manager {
 
@@ -52,11 +55,11 @@ class RegenMitigatorTest : public ::testing::Test {
 
 TEST_F(RegenMitigatorTest, Mitigate) {
   MockKeyGenerator gen;
-  MockPolicyKey key;
-  EXPECT_CALL(gen, Start(getuid(), manager_.get()))
+  std::string fake_ownername("user");
+  EXPECT_CALL(gen, Start(StrEq(fake_ownername), getuid()))
       .WillOnce(Return(true));
   RegenMitigator mitigator(&gen, true, getuid(), manager_.get());
-  EXPECT_TRUE(mitigator.Mitigate(&key));
+  EXPECT_TRUE(mitigator.Mitigate(fake_ownername));
 }
 
 }  // namespace login_manager

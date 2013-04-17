@@ -1,4 +1,4 @@
- // Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+// Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -12,6 +12,7 @@
 #include <base/basictypes.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <crypto/scoped_nss_types.h>
 
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_service.h"
@@ -29,6 +30,8 @@ class KeyGenerator;
 class LoginMetrics;
 class NssUtil;
 class OwnerKeyLossMitigator;
+// Forward declaration.
+typedef struct PK11SlotInfoStr PK11SlotInfo;
 
 // A policy service specifically for device policy, adding in a few helpers for
 // generating a new key for the device owner, handling key loss mitigation,
@@ -52,16 +55,20 @@ class DevicePolicyService : public PolicyService {
   // - If policy claims |current_user| is the device owner but she doesn't
   //   appear to have the owner key, run key mitigation.
   // Returns true on success. Fills in |error| upon encountering an error.
-  virtual bool CheckAndHandleOwnerLogin(const std::string& current_user,
-                                        bool* is_owner,
-                                        Error* error);
+  virtual bool CheckAndHandleOwnerLogin(
+      const std::string& current_user,
+      PK11SlotInfo* module,
+      bool* is_owner,
+      Error* error);
 
   // Ensures that the public key in |buf| is legitimately paired with a private
   // key held by the current user, signs and stores some ownership-related
   // metadata, and then stores this key off as the new device owner key. Returns
   // true if successful, false otherwise
-  virtual bool ValidateAndStoreOwnerKey(const std::string& current_user,
-                                        const std::string& buf);
+  virtual bool ValidateAndStoreOwnerKey(
+      const std::string& current_user,
+      const std::string& buf,
+      PK11SlotInfo* module);
 
   // Checks whether the key is missing.
   virtual bool KeyMissing();
@@ -123,9 +130,10 @@ class DevicePolicyService : public PolicyService {
 
   // Checks the user's NSS database to see if she has the private key.
   // Returns a pointer to it if so.
-  crypto::RSAPrivateKey* GetOwnerKeyForGivenUser(const std::string& user,
-                                                 const std::vector<uint8>& key,
-                                                 Error* error);
+  crypto::RSAPrivateKey* GetOwnerKeyForGivenUser(
+      const std::vector<uint8>& key,
+      PK11SlotInfo* module,
+      Error* error);
 
   // Returns true if the |current_user| is listed in |policy_| as the
   // device owner.  Returns false if not, or if that cannot be determined.

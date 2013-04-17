@@ -5,9 +5,11 @@
 #ifndef LOGIN_MANAGER_NSS_UTIL_H_
 #define LOGIN_MANAGER_NSS_UTIL_H_
 
-#include <base/basictypes.h>
 #include <string>
 #include <vector>
+
+#include <base/memory/scoped_ptr.h>
+#include <crypto/scoped_nss_types.h>
 
 namespace base {
 class FilePath;
@@ -18,11 +20,12 @@ class RSAPrivateKey;
 }
 
 namespace login_manager {
+// Forward declaration.
+typedef struct PK11SlotInfoStr PK11SlotInfo;
 
 // An interface to wrap the usage of crypto/nss_util.h and allow for mocking.
 class NssUtil {
  public:
-
   NssUtil();
   virtual ~NssUtil();
 
@@ -32,14 +35,19 @@ class NssUtil {
 
   static void BlobFromBuffer(const std::string& buf, std::vector<uint8>* out);
 
-  virtual bool OpenUserDB(const base::FilePath& user_homedir) = 0;
+  // Returns empty ScopedPK11Slot in the event that the database
+  // cannot be opened.
+  virtual crypto::ScopedPK11Slot OpenUserDB(
+      const base::FilePath& user_homedir) = 0;
 
   // Caller takes ownership of returned key.
-  virtual crypto::RSAPrivateKey* GetPrivateKey(
-      const std::vector<uint8>& public_key_der) = 0;
+  virtual crypto::RSAPrivateKey* GetPrivateKeyForUser(
+      const std::vector<uint8>& public_key_der,
+      PK11SlotInfo* user_slot) = 0;
 
   // Caller takes ownership of returned key.
-  virtual crypto::RSAPrivateKey* GenerateKeyPair() = 0;
+  virtual crypto::RSAPrivateKey* GenerateKeyPairForUser(
+      PK11SlotInfo* user_slot) = 0;
 
   virtual base::FilePath GetOwnerKeyFilePath() = 0;
 

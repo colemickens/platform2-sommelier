@@ -48,7 +48,7 @@ MockFileChecker::MockFileChecker(std::string filename)
     : FileChecker(FilePath(filename)) {}
 MockFileChecker::~MockFileChecker() {}
 
-MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL) {}
+MockKeyGenerator::MockKeyGenerator() : KeyGenerator(NULL, NULL) {}
 MockKeyGenerator::~MockKeyGenerator() {}
 
 MockLivenessChecker::MockLivenessChecker() {}
@@ -75,10 +75,6 @@ MockPolicyServiceDelegate::~MockPolicyServiceDelegate() {}
 
 MockPolicyStore::MockPolicyStore() : PolicyStore(FilePath("")) {}
 MockPolicyStore::~MockPolicyStore() {}
-
-MockProcessManagerService::MockProcessManagerService()
-    : ProcessManagerServiceInterface() {}
-MockProcessManagerService::~MockProcessManagerService() {}
 
 MockSessionManager::MockSessionManager() {}
 MockSessionManager::~MockSessionManager() {}

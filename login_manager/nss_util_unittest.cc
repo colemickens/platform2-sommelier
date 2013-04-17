@@ -4,8 +4,6 @@
 
 #include "login_manager/nss_util.h"
 
-#include <string>
-
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
@@ -27,13 +25,14 @@ class NssUtilTest : public ::testing::Test {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(file_util::CreateDirectory(
         tmpdir_.path().Append(util_->GetNssdbSubpath())));
-    ASSERT_TRUE(util_->OpenUserDB(tmpdir_.path()));
+    slot_ = util_->OpenUserDB(tmpdir_.path());
   }
 
  protected:
   static const char kUsername[];
   base::ScopedTempDir tmpdir_;
   scoped_ptr<NssUtil> util_;
+  ScopedPK11Slot slot_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(NssUtilTest);
@@ -43,15 +42,15 @@ const char NssUtilTest::kUsername[] = "some.guy@nowhere.com";
 
 TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
-  scoped_ptr<RSAPrivateKey> key_pair(util_->GenerateKeyPair());
-  ASSERT_NE(key_pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
+  scoped_ptr<RSAPrivateKey> pair(util_->GenerateKeyPairForUser(slot_.get()));
+  ASSERT_NE(pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
 
   std::vector<uint8> public_key;
-  ASSERT_TRUE(key_pair->ExportPublicKey(&public_key));
+  ASSERT_TRUE(pair->ExportPublicKey(&public_key));
 
   EXPECT_TRUE(util_->CheckPublicKeyBlob(public_key));
 
-  EXPECT_NE(util_->GetPrivateKey(public_key),
+  EXPECT_NE(util_->GetPrivateKeyForUser(public_key, slot_.get()),
             reinterpret_cast<RSAPrivateKey*>(NULL));
 }
 

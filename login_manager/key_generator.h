@@ -5,45 +5,56 @@
 #ifndef LOGIN_MANAGER_KEY_GENERATOR_H_
 #define LOGIN_MANAGER_KEY_GENERATOR_H_
 
+#include <glib.h>
+
 #include <string>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
+#include <gtest/gtest.h>
 
 namespace login_manager {
 
 class ChildJobInterface;
 class MockChildJob;
-class SessionManagerService;
+class ProcessManagerServiceInterface;
 class SystemUtils;
 
 class KeyGenerator {
  public:
-  explicit KeyGenerator(SystemUtils *utils);  // |utils| is owned by the caller.
+  KeyGenerator(SystemUtils* utils, ProcessManagerServiceInterface* manager);
   virtual ~KeyGenerator();
 
-  // Use |key| to start the generation of a new Owner keypair as user |uid|.
-  // Upon success, hands off ownership of the key generation job to |manager|
+  // Start the generation of a new Owner keypair for |username| as |uid|.
+  // Upon success, hands off ownership of the key generation job to |manager_|
   // and returns true.
-  virtual bool Start(uid_t uid, SessionManagerService* manager);
+  // The username of the key owner and temporary storage location of the
+  // generated public key are stored internally until Reset() is called.
+  virtual bool Start(const std::string& username, uid_t uid);
 
   void InjectMockKeygenJob(MockChildJob* keygen);  // Takes ownership.
 
-  virtual const std::string& temporary_key_filename() const {
-    return temporary_key_filename_;
-  }
-
  private:
+  FRIEND_TEST(KeyGeneratorTest, KeygenEndToEndTest);
+  static const char kKeygenExecutable[];
   static const char kTemporaryKeyFilename[];
 
-  // Forks a process for |job| and returns the PID.
-  virtual int RunJob(ChildJobInterface* job);
+  // |data| is a KeyGenerator*.
+  static void HandleKeygenExit(GPid pid, gint status, gpointer data);
 
-  static const char kKeygenExecutable[];
+  // Clear per-generation state.
+  void Reset();
+
+  // Forks a process for |job| and returns the PID.
+  int RunJob(ChildJobInterface* job);
+
+  SystemUtils *utils_;
+  ProcessManagerServiceInterface* manager_;
 
   scoped_ptr<ChildJobInterface> keygen_job_;
-  SystemUtils *utils_;
-  const std::string temporary_key_filename_;
+  bool generating_;
+  std::string key_owner_username_;
+  std::string temporary_key_filename_;
   DISALLOW_COPY_AND_ASSIGN(KeyGenerator);
 };
 

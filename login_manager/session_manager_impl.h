@@ -24,6 +24,7 @@
 namespace login_manager {
 class DeviceLocalAccountPolicyService;
 class LoginMetrics;
+class NssUtil;
 class PolicyKey;
 class ProcessManagerServiceInterface;
 class SystemUtils;
@@ -39,6 +40,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   SessionManagerImpl(scoped_ptr<UpstartSignalEmitter> emitter,
                      ProcessManagerServiceInterface* manager,
                      LoginMetrics* metrics,
+                     NssUtil* nss,
                      SystemUtils* utils);
   virtual ~SessionManagerImpl();
 
@@ -50,7 +52,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   // SessionManagerInterface implementation.
   void AnnounceSessionStoppingIfNeeded() OVERRIDE;
   void AnnounceSessionStopped() OVERRIDE;
-  void ImportValidateAndStoreGeneratedKey(const FilePath& temp_key_file);
+  void ImportValidateAndStoreGeneratedKey(const std::string& username,
+                                          const base::FilePath& temp_key_file);
   bool ScreenIsLocked() OVERRIDE { return screen_locked_; }
   // Should set up policy stuff; if false DIE.
   bool Initialize() OVERRIDE;
@@ -144,6 +147,8 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   friend class SessionManagerImplStaticTest;
 
+  typedef std::map<std::string, UserSession*> UserSessionMap;
+
   // Encodes the result of a policy retrieve operation as specified in |success|
   // and |policy_data| into |policy_blob| and |error|. Returns TRUE if
   // successful, FALSE otherwise.
@@ -171,6 +176,8 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Check cookie against internally stored auth cookie.
   bool IsValidCookie(const char *cookie);
 
+  bool AllSessionsAreIncognito();
+
   UserSession* CreateUserSession(const std::string& username,
                                  bool is_incognito,
                                  GError** error);
@@ -188,6 +195,7 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   ProcessManagerServiceInterface* manager_;  // Owned by the caller.
   LoginMetrics* login_metrics_;  // Owned by the caller.
+  NssUtil* nss_;  // Owned by the caller.
   SystemUtils* system_;  // Owned by the caller.
 
   scoped_refptr<DevicePolicyService> device_policy_;
@@ -195,7 +203,7 @@ class SessionManagerImpl : public SessionManagerInterface,
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
 
   // Map of the currently signed-in users to their state.
-  std::map<std::string, UserSession*> user_sessions_;
+  UserSessionMap user_sessions_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImpl);
 };

@@ -5,10 +5,12 @@
 #ifndef LOGIN_MANAGER_MOCK_MITIGATOR_H_
 #define LOGIN_MANAGER_MOCK_MITIGATOR_H_
 
-#include "base/basictypes.h"
-#include "login_manager/owner_key_loss_mitigator.h"
+#include <string>
 
+#include <base/basictypes.h>
 #include <gmock/gmock.h>
+
+#include "login_manager/owner_key_loss_mitigator.h"
 
 namespace login_manager {
 class PolicyKey;
@@ -18,7 +20,7 @@ class MockMitigator : public OwnerKeyLossMitigator {
   MockMitigator();
   virtual ~MockMitigator();
 
-  MOCK_METHOD1(Mitigate, bool(PolicyKey*));
+  MOCK_METHOD1(Mitigate, bool(const std::string&));
   MOCK_METHOD0(Mitigating, bool());
  private:
   DISALLOW_COPY_AND_ASSIGN(MockMitigator);
