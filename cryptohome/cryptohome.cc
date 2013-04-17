@@ -1076,7 +1076,7 @@ int main(int argc, char **argv) {
       chromeos::glib::ScopedArray data;
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
           proxy.gproxy(),
-          TRUE,
+          FALSE,
           TRUE,
           &chromeos::Resetter(&data).lvalue(),
           &chromeos::Resetter(&error).lvalue())) {
@@ -1091,7 +1091,7 @@ int main(int argc, char **argv) {
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(
               proxy.gproxy(),
-              TRUE,
+              FALSE,
               TRUE,
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
@@ -1178,11 +1178,12 @@ int main(int argc, char **argv) {
              switches::kAttrNameSwitch);
       return 1;
     }
+    gboolean is_user_specific = (key_name != "attest-ent-machine");
     chromeos::glib::ScopedError error;
     gboolean exists = FALSE;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_does_key_exist(
           proxy.gproxy(),
-          TRUE,
+          is_user_specific,
           key_name.c_str(),
           &exists,
           &chromeos::Resetter(&error).lvalue())) {
@@ -1197,7 +1198,7 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedArray cert;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_certificate(
           proxy.gproxy(),
-          TRUE,
+          is_user_specific,
           key_name.c_str(),
           &chromeos::Resetter(&cert).lvalue(),
           &success,
@@ -1208,7 +1209,7 @@ int main(int argc, char **argv) {
     chromeos::glib::ScopedArray public_key;
     if (!org_chromium_CryptohomeInterface_tpm_attestation_get_public_key(
           proxy.gproxy(),
-          TRUE,
+          is_user_specific,
           key_name.c_str(),
           &chromeos::Resetter(&public_key).lvalue(),
           &success,
@@ -1276,7 +1277,7 @@ int main(int argc, char **argv) {
             proxy.gproxy(),
             TRUE,
             key_name.c_str(),
-            "fake_domain",
+            "cros@crosdmsregtest.com",
             device_id.get(),
             TRUE,
             challenge.get(),
