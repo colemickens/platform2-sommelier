@@ -129,6 +129,10 @@ void PerfSerializer::SerializeRecordSample(
     sample->set_cpu(perf_sample.cpu);
   if (sample_type_ & PERF_SAMPLE_PERIOD)
     sample->set_period(perf_sample.period);
+  if (sample_type_ & PERF_SAMPLE_CALLCHAIN) {
+    for (size_t i = 0; i < perf_sample.callchain->nr; ++i)
+      sample->add_callchain(perf_sample.callchain->ips[i]);
+  }
 }
 
 void PerfSerializer::DeserializeRecordSample(
@@ -157,6 +161,14 @@ void PerfSerializer::DeserializeRecordSample(
     perf_sample.cpu = sample.cpu();
   if (sample.has_period())
     perf_sample.period = sample.period();
+  if (sample.callchain_size() > 0) {
+    uint64 callchain_size = sample.callchain_size();
+    perf_sample.callchain =
+        reinterpret_cast<struct ip_callchain*>(new uint64[callchain_size + 1]);
+    perf_sample.callchain->nr = callchain_size;
+    for (size_t i = 0; i < callchain_size; ++i)
+      perf_sample.callchain->ips[i] = sample.callchain(i);
+  }
 }
 
 void PerfSerializer::SerializeCommSample(

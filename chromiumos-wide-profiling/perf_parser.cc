@@ -26,12 +26,35 @@ bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
   return (e1->sample_info.time < e2->sample_info.time);
 }
 
+// Copies one perf sample info struct to another, allocating new memory where
+// necessary.
+void CopyPerfSample(const struct perf_sample& src, struct perf_sample* dest) {
+  // First do a flat memory copy, to copy the value fields.
+  memcpy(dest, &src, sizeof(src));
+  // Copy over pointer fields.
+  if (src.callchain) {
+    // The "+ 1" is an extra field to store the callchain length.
+    dest->callchain =
+        reinterpret_cast<struct ip_callchain*>(
+            new uint64[src.callchain->nr + 1]);
+    memcpy(dest->callchain,
+           src.callchain,
+           (src.callchain->nr + 1) * sizeof(uint64));
+  }
+}
+
 }  // namespace
 
 PerfParser::PerfParser() : do_remap_(false),
                            kernel_mapper_(new AddressMapper) {}
 
 PerfParser::~PerfParser() {
+  // Free allocated memory.
+  for (size_t i = 0; i < events_.size(); ++i) {
+    if (parsed_events_[i].sample_info.callchain)
+      delete [] parsed_events_[i].sample_info.callchain;
+  }
+
   ResetAddressMappers();
   delete kernel_mapper_;
 }
@@ -43,7 +66,7 @@ bool PerfParser::ParseRawEvents() {
     const event_t& raw_event = events_[i].event;
     ParsedEvent& parsed_event = parsed_events_[i];
     parsed_event.raw_event = raw_event;
-    parsed_event.sample_info = events_[i].sample_info;
+    CopyPerfSample(events_[i].sample_info, &parsed_event.sample_info);
   }
   SortParsedEvents();
   ProcessEvents();
@@ -55,7 +78,7 @@ bool PerfParser::GenerateRawEvents() {
   for (size_t i = 0; i < events_.size(); ++i) {
     const ParsedEvent& parsed_event = parsed_events_[i];
     events_[i].event = parsed_event.raw_event;
-    events_[i].sample_info = parsed_event.sample_info;
+    CopyPerfSample(parsed_event.sample_info, &events_[i].sample_info);
   }
   return true;
 }
@@ -78,12 +101,9 @@ bool PerfParser::ProcessEvents() {
       case PERF_RECORD_SAMPLE:
         VLOG(1) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
         ++stats_.num_sample_events;
-        if (MapSampleEventAndGetNameAndOffset(
-                &event.ip,
-                &parsed_event.dso_and_offset.dso_name,
-                &parsed_event.dso_and_offset.offset)) {
+
+        if (MapSampleEvent(&parsed_event))
           ++stats_.num_sample_events_mapped;
-        }
         break;
       case PERF_RECORD_MMAP:
         VLOG(1) << "MMAP: " << event.mmap.filename;
@@ -127,13 +147,46 @@ bool PerfParser::ProcessEvents() {
   return true;
 }
 
-bool PerfParser::MapSampleEvent(struct ip_event* event) {
-  return MapSampleEventAndGetNameAndOffset(event, NULL, NULL);
+bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
+  bool mapping_failed = false;
+
+  struct ip_event& event = parsed_event->raw_event.ip;
+
+  // Map the event IP itself.
+  string& name = parsed_event->dso_and_offset.dso_name;
+  uint64& offset = parsed_event->dso_and_offset.offset;
+  if (!MapIPAndPidAndGetNameAndOffset(event.ip,
+                                      event.pid,
+                                      &event.ip,
+                                      &name,
+                                      &offset)) {
+    mapping_failed = true;
+  }
+
+  struct perf_sample& sample_info = parsed_event->sample_info;
+
+  // Map the callchain IPs, if any.
+  if (sample_info.callchain) {
+    parsed_event->callchain.resize(sample_info.callchain->nr);
+    for (unsigned int j = 0; j < sample_info.callchain->nr; ++j) {
+      if (!MapIPAndPidAndGetNameAndOffset(sample_info.callchain->ips[j],
+                                          event.pid,
+                                          &sample_info.callchain->ips[j],
+                                          &parsed_event->callchain[j].dso_name,
+                                          &parsed_event->callchain[j].offset)) {
+        mapping_failed = true;
+      }
+    }
+  }
+
+  return !mapping_failed;
 }
 
-bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
-                                                   string* name,
-                                                   uint64* offset) {
+bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
+                                                uint32 pid,
+                                                uint64* new_ip,
+                                                string* name,
+                                                uint64* offset) {
   // Attempt to find the synthetic address of the IP sample in this order:
   // 1. Address space of the kernel.
   // 2. Address space of its own process.
@@ -142,14 +195,13 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
   bool mapped = false;
   AddressMapper* mapper = NULL;
   CHECK(kernel_mapper_);
-  if (kernel_mapper_->GetMappedAddress(event->ip, &mapped_addr)) {
+  if (kernel_mapper_->GetMappedAddress(ip, &mapped_addr)) {
     mapped = true;
     mapper = kernel_mapper_;
   } else {
-    uint32 pid = event->pid;
     while (process_mappers_.find(pid) != process_mappers_.end()) {
       mapper = process_mappers_[pid];
-      if (mapper->GetMappedAddress(event->ip, &mapped_addr)) {
+      if (mapper->GetMappedAddress(ip, &mapped_addr)) {
         mapped = true;
         // For non-kernel addresses, the address is shifted to after where the
         // kernel objects are mapped.  Described more in MapMmapEvent().
@@ -163,9 +215,9 @@ bool PerfParser::MapSampleEventAndGetNameAndOffset(struct ip_event* event,
   }
   if (mapped) {
     if (name && offset)
-      CHECK(mapper->GetMappedNameAndOffset(event->ip, name, offset));
+      CHECK(mapper->GetMappedNameAndOffset(ip, name, offset));
     if (do_remap_)
-      event->ip = mapped_addr;
+      *new_ip = mapped_addr;
   }
   return mapped;
 }

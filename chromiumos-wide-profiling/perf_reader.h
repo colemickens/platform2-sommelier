@@ -29,6 +29,7 @@ class PerfReader {
  public:
   PerfReader() : sample_type_(0),
                  is_cross_endian_(0) {}
+  ~PerfReader();
 
   bool ReadFile(const string& filename);
   bool ReadFileData(const std::vector<char>& data);

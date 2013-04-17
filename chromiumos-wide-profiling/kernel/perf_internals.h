@@ -199,6 +199,11 @@ typedef union event_union {
 	struct sample_event		sample;
 } event_t;
 
+struct ip_callchain {
+	u64 nr;
+	u64 ips[0];
+};
+
 // All the possible fields of a perf sample.  This is not an actual data
 // structure found in raw perf data, as each field may or may not be present in
 // the data.

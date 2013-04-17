@@ -81,8 +81,9 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
   uint64 mask = kuint64max;
   switch (event_type) {
   case PERF_RECORD_SAMPLE:
-    mask = PERF_SAMPLE_TIME | PERF_SAMPLE_ID | PERF_SAMPLE_CPU |
-           PERF_SAMPLE_PERIOD;
+    // IP and pid/tid fields of sample events are read as part of event_t, so
+    // mask away those two fields.
+    mask = ~(PERF_SAMPLE_IP | PERF_SAMPLE_TID);
     break;
   case PERF_RECORD_MMAP:
   case PERF_RECORD_FORK:
@@ -162,6 +163,7 @@ size_t ReadPerfSampleFromData(const uint64* array,
                               struct perf_sample* sample) {
   size_t num_values_read = 0;
   const uint64 k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
+  bool read_callchain = false;
 
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
     uint64 sample_type = (1 << index);
@@ -210,10 +212,39 @@ size_t ReadPerfSampleFromData(const uint64* array,
     case PERF_SAMPLE_PERIOD:
       sample->period = val64;
       break;
+    case PERF_SAMPLE_CALLCHAIN:
+      // Call chain is a special case.  It comes after the other fields in the
+      // sample info data, regardless of the order of |sample_type| bits.
+      read_callchain = true;
+      --num_values_read;
+      --array;
+      break;
     default:
       LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
   }
+
+  if (read_callchain) {
+    // Make sure there is no existing allocated memory in |sample->callchain|.
+    CHECK_EQ(static_cast<void*>(NULL), sample->callchain);
+
+    // The callgraph data consists of a uint64 value |nr| followed by |nr|
+    // addresses.
+    uint64 callchain_size = *array++;
+    if (swap_bytes)
+      ByteSwap(&callchain_size);
+    struct ip_callchain* callchain =
+        reinterpret_cast<struct ip_callchain*>(new uint64[callchain_size + 1]);
+    callchain->nr = callchain_size;
+    for (size_t i = 0; i < callchain_size; ++i) {
+      callchain->ips[i] = *array++;
+      if (swap_bytes)
+        ByteSwap(&callchain->ips[i]);
+    }
+    num_values_read += callchain_size + 1;
+    sample->callchain = callchain;
+  }
+
   return num_values_read * sizeof(uint64);
 }
 
@@ -221,6 +252,8 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
                              const uint64 sample_fields,
                              uint64* array) {
   size_t num_values_written = 0;
+  bool write_callchain = false;
+
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
     uint64 sample_type = (1 << index);
     union {
@@ -256,12 +289,23 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     case PERF_SAMPLE_PERIOD:
       val64 = sample.period;
       break;
+    case PERF_SAMPLE_CALLCHAIN:
+      write_callchain = true;
+      continue;
     default:
       LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
     *array++ = val64;
     ++num_values_written;
   }
+
+  if (write_callchain) {
+    *array++ = sample.callchain->nr;
+    for (size_t i = 0; i < sample.callchain->nr; ++i)
+      *array++ = sample.callchain->ips[i];
+    num_values_written += sample.callchain->nr + 1;
+  }
+
   return num_values_written * sizeof(uint64);
 }
 
@@ -326,6 +370,14 @@ bool WritePerfSampleInfo(const perf_sample& sample,
 }
 
 }  // namespace
+
+PerfReader::~PerfReader() {
+  // Free allocated memory.
+  for (size_t i = 0; i < events_.size(); ++i) {
+    if (events_[i].sample_info.callchain)
+      delete [] events_[i].sample_info.callchain;
+  }
+}
 
 bool PerfReader::ReadFile(const string& filename) {
   std::vector<char> data;
@@ -737,7 +789,7 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 
   PerfEventAndSampleInfo event_and_sample;
   event_and_sample.event = event;
-  if (!ReadPerfSampleInfo(event_and_sample.event,
+  if (!ReadPerfSampleInfo(event,
                           sample_type_,
                           is_cross_endian_,
                           &event_and_sample.sample_info)) {

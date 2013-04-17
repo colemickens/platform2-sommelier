@@ -22,6 +22,10 @@ struct ParsedEvent {
     string dso_name;
     uint64 offset;
   } dso_and_offset;
+
+  // DSO+offset info for callchain.
+  std::vector<DSOAndOffset> callchain;
+
   // TODO(sque): to save space, |raw_event| should be a pointer.
   event_t raw_event;                // Contains perf event info.
 };
@@ -83,14 +87,17 @@ class PerfParser : public PerfReader {
 
   // Used for processing events.  e.g. remapping with synthetic addresses.
   bool ProcessEvents();
-  bool MapSampleEvent(struct ip_event*);
   bool MapMmapEvent(struct mmap_event*);
   bool MapForkEvent(const struct fork_event&);
 
   // Does a sample event remap and then returns DSO name and offset of sample.
-  bool MapSampleEventAndGetNameAndOffset(struct ip_event* event,
-                                         string* name,
-                                         uint64* offset);
+  bool MapSampleEvent(ParsedEvent* parsed_event);
+
+  bool MapIPAndPidAndGetNameAndOffset(uint64 ip,
+                                      uint32 pid,
+                                      uint64* new_ip,
+                                      string* name,
+                                      uint64* offset);
 
   void ResetAddressMappers();
 

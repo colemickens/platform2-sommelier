@@ -210,7 +210,7 @@ message PerfDataProto {
     optional SampleInfo sample_info = 8;
   }
 
-  // Next tag: 11
+  // Next tag: 12
   message SampleEvent {
     // Instruction pointer.
     optional uint64 ip = 1;
@@ -241,6 +241,9 @@ message PerfDataProto {
 
     // The raw size of the event in bytes.
     optional uint32 raw_size = 10;
+
+    // Sample callchain info.
+    repeated uint64 callchain = 11;
   }
 
   // ForkEvent is used for both FORK and EXIT events, which have the same data
