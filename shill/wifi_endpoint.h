@@ -75,6 +75,7 @@ class WiFiEndpoint : public Endpoint {
   const std::string &ssid_hex() const;
   const std::string &bssid_string() const;
   const std::string &bssid_hex() const;
+  const std::string &country_code() const;
   const WiFiRefPtr &device() const;
   int16_t signal_strength() const;
   uint16 frequency() const;
@@ -92,12 +93,9 @@ class WiFiEndpoint : public Endpoint {
   friend class WiFiServiceTest;  // for MakeOpenEndpoint
   // these test cases need access to the KeyManagement enum
   FRIEND_TEST(WiFiEndpointTest, DeterminePhyModeFromFrequency);
-  FRIEND_TEST(WiFiEndpointTest, ParseIEs);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAP);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsPSK);
   FRIEND_TEST(WiFiEndpointTest, ParseKeyManagementMethodsEAPAndPSK);
-  FRIEND_TEST(WiFiEndpointTest, ParseVendorIEs);
-  FRIEND_TEST(WiFiEndpointTest, ParseWPACapabilities);
   FRIEND_TEST(WiFiProviderTest, OnEndpointAddedWithSecurity);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskWPA80211w);
   FRIEND_TEST(WiFiServiceUpdateFromEndpointsTest, EndpointModified);
@@ -157,7 +155,7 @@ class WiFiEndpoint : public Endpoint {
   static bool ParseIEs(const std::map<std::string, ::DBus::Variant> &properties,
                        Metrics::WiFiNetworkPhyMode *phy_mode,
                        VendorInformation *vendor_information,
-                       bool *ieee80211w_required);
+                       bool *ieee80211w_required, std::string *country_code);
   // Parse a WPA information element and set *|ieee80211w_required| to true
   // if IEEE 802.11w is required by this AP.
   static void ParseWPACapabilities(std::vector<uint8_t>::const_iterator ie,
@@ -180,6 +178,7 @@ class WiFiEndpoint : public Endpoint {
   std::string ssid_hex_;
   std::string bssid_string_;
   std::string bssid_hex_;
+  std::string country_code_;
   int16 signal_strength_;
   uint16 frequency_;
   uint16 physical_mode_;

@@ -91,6 +91,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
   store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
+  store->RegisterConstString(flimflam::kCountryProperty, &country_code_);
   store->RegisterConstStringmap(kWifiVendorInformationProperty,
                                 &vendor_information_);
   store->RegisterConstBool(kWifiProtectedManagementFrameRequiredProperty,
@@ -620,6 +621,7 @@ void WiFiService::UpdateFromEndpoints() {
   uint16 frequency = 0;
   int16 signal = std::numeric_limits<int16>::min();
   string bssid;
+  string country_code;
   Stringmap vendor_information;
   uint16 physical_mode = Metrics::kWiFiNetworkPhyModeUndef;
   // Represent "unknown raw signal strength" as 0.
@@ -629,6 +631,7 @@ void WiFiService::UpdateFromEndpoints() {
     signal = representative_endpoint->signal_strength();
     raw_signal_strength_ = signal;
     bssid = representative_endpoint->bssid_string();
+    country_code = representative_endpoint->country_code();
     vendor_information = representative_endpoint->GetVendorInformation();
     physical_mode = representative_endpoint->physical_mode();
   }
@@ -640,6 +643,10 @@ void WiFiService::UpdateFromEndpoints() {
   if (bssid_ != bssid) {
     bssid_ = bssid;
     adaptor()->EmitStringChanged(flimflam::kWifiBSsid, bssid_);
+  }
+  if (country_code_ != country_code) {
+    country_code_ = country_code;
+    adaptor()->EmitStringChanged(flimflam::kCountryProperty, country_code_);
   }
   if (vendor_information_ != vendor_information) {
     vendor_information_ = vendor_information;

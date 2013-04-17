@@ -338,6 +338,12 @@ Properties	boolean AutoConnect [readwrite]
 			services or to mark them in some way to indicate
 			they are present but not usable.
 
+		string Country [readonly]
+
+			(WiFi only) Indicates the 2-letter country code
+			reported by the representative endpoint for this
+			service.
+
 		object Device [readonly]
 
 			The object path of the associated device.

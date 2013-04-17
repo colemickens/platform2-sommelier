@@ -55,7 +55,7 @@ WiFiEndpoint::WiFiEndpoint(ProxyFactory *proxy_factory,
 
   Metrics::WiFiNetworkPhyMode phy_mode = Metrics::kWiFiNetworkPhyModeUndef;
   if (!ParseIEs(properties, &phy_mode, &vendor_information_,
-                &ieee80211w_required_)) {
+                &ieee80211w_required_, &country_code_)) {
     phy_mode = DeterminePhyModeFromFrequency(properties, frequency_);
   }
   physical_mode_ = phy_mode;
@@ -189,6 +189,10 @@ const string &WiFiEndpoint::bssid_string() const {
 
 const string &WiFiEndpoint::bssid_hex() const {
   return bssid_hex_;
+}
+
+const string &WiFiEndpoint::country_code() const {
+  return country_code_;
 }
 
 const WiFiRefPtr &WiFiEndpoint::device() const {
@@ -400,7 +404,7 @@ bool WiFiEndpoint::ParseIEs(
     const map<string, ::DBus::Variant> &properties,
     Metrics::WiFiNetworkPhyMode *phy_mode,
     VendorInformation *vendor_information,
-    bool *ieee80211w_required) {
+    bool *ieee80211w_required, string *country_code) {
 
   map<string, ::DBus::Variant>::const_iterator ies_property =
       properties.find(WPASupplicant::kBSSPropertyIEs);
@@ -431,6 +435,11 @@ bool WiFiEndpoint::ParseIEs(
       break;
     }
     switch (*it) {
+      case IEEE_80211::kElemIdCountry:
+        // Retrieve 2-character country code from the beginning of the element.
+        if (ie_len >= 4) {
+          *country_code = string(it + 2, it + 4);
+        }
       case IEEE_80211::kElemIdErp:
         if (!found_ht) {
           *phy_mode = Metrics::kWiFiNetworkPhyMode11g;

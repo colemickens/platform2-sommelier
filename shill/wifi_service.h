@@ -237,6 +237,8 @@ class WiFiService : public Service {
   std::string storage_identifier_;
   std::string bssid_;
   Stringmap vendor_information_;
+  // The country code reported by the current endpoint.
+  std::string country_code_;
   // If |security_| == kSecurity8021x, the crypto algorithm being used.
   // (Otherwise, crypto algorithm is implied by |security_|.)
   CryptoAlgorithm cipher_8021x_;
