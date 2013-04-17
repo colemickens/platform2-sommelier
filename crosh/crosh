@@ -57,6 +57,10 @@ HELP='
 '
 
 HELP_ADVANCED='
+ battery_test [<test length>]
+  Tests battery discharge rate for given number of seconds. No argument will
+  default to 300s test.
+
  bt_console [<agent capability>]
   Enters a Bluetooth debugging console. Optional argument specifies the
   capability of a pairing agent the console will provide; see the Bluetooth
@@ -1089,6 +1093,69 @@ cmd_memory_test() {
     return 1
   fi
   rm -rf "$(dirname ${fifo})"
+}
+
+cmd_battery_test() {
+  test_length="$1"
+
+  if [ -z "$test_length" ]; then
+    echo "No test length specified. Defaulting to 300s"
+    test_length=300
+  fi
+
+  # Ensuring that the parameter is an int.
+  if [[ ! "$test_length" =~ ^[0-9]+$ ]]; then
+    echo "You provided invalid test length. Exiting..."
+    return 1
+  fi
+
+  bat="/sys/class/power_supply/BAT*" # It's either BATX ot BAT0.
+  ac="/sys/class/power_supply/AC"
+
+  # Checking if battery is present in the system.
+  if [ "$(ls ${bat} &> /dev/null; echo $?)" -ne 0 ]; then
+    echo "No battery found. Insert the battery and reboot the device."
+    return 1
+  fi
+
+  # Figuring out if battery gauge measures energy left or charge.
+  if [ "$(ls ${bat}/energy* &> /dev/null; echo $?)" -eq 0 ]; then
+    meter="energy"
+  elif [ "$(ls ${bat}/charge* &> /dev/null; echo $?)" -eq 0 ]; then
+    meter="charge"
+  else
+    echo "Could not figure out the way to get battery status"
+    return 1
+  fi
+
+  ac_online="$(cat ${ac}/online)"
+  bat_status="$(cat ${bat}/status)"
+  bat_now="$(cat ${bat}/${meter}_now)"
+  bat_full="$(cat ${bat}/${meter}_full)"
+  bat_full_design="$(cat ${bat}/${meter}_full_design)"
+
+  echo "Battery is $bat_status ($((${bat_now}*100/${bat_full}))% left)"
+  echo "Battery health: $((${bat_full}*100/${bat_full_design}))%"
+
+  if [ "$bat_status" != "Discharging" ]; then
+    echo "Please make sure the power supply is unplugged and retry the test"
+    return 1
+  fi
+
+  echo "Please wait.."
+
+  sleep "$test_length"
+
+  bat_after="$(cat ${bat}/${meter}_now)"
+  bat_diff="$((${bat_now}-${bat_after}))"
+  bat_diff="$((${bat_diff}*100))" #this allows to have only 2 decimal digits
+
+  bat_perc="$((${bat_diff}*100/${bat_full}))"
+
+  bat_perc_int="$((${bat_perc}/100))"
+  bat_perc_dec="$((${bat_perc}%100))"
+
+  echo "Battery discharged ${bat_perc_int}.${bat_perc_dec}% in ${test_length}s"
 }
 
 substr() {
