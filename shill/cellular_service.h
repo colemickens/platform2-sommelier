@@ -139,9 +139,11 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, LastGoodApn);
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsDetected);
-  FRIEND_TEST(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume);
   FRIEND_TEST(CellularServiceTest,
               OutOfCreditsDetectionNotSkippedAfterSlowResume);
+  FRIEND_TEST(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume);
+  FRIEND_TEST(CellularServiceTest,
+              OutOfCreditsDetectionSkippedAlreadyOutOfCredits);
   FRIEND_TEST(CellularServiceTest,
               OutOfCreditsDetectionSkippedExplicitDisconnect);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped);

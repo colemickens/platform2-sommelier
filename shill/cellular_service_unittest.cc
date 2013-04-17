@@ -458,6 +458,20 @@ TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedAfterResume) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedAlreadyOutOfCredits) {
+  service_->set_enforce_out_of_credits_detection(true);
+  EXPECT_CALL(*device_, Connect(_));
+  Error error;
+  service_->Connect(&error, "in test");
+  service_->out_of_credits_ = true;
+  service_->SetState(Service::kStateConnected);
+  service_->SetState(Service::kStateIdle);
+  EXPECT_FALSE(service_->out_of_credits_detection_in_progress_);
+  // There should not be any pending connect requests but dispatch pending
+  // events anyway to be sure.
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(CellularServiceTest, OutOfCreditsDetectionSkippedExplicitDisconnect) {
   service_->set_enforce_out_of_credits_detection(true);
   EXPECT_CALL(*device_, Connect(_));

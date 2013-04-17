@@ -278,6 +278,11 @@ void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
   // auto-connect until the next time the user manually connects.
   //
   // TODO(thieule): Remove this workaround (crosbug.com/p/18169).
+  if (out_of_credits_) {
+    SLOG(Cellular, 2) << __func__
+                      << ": Already out-of-credits, skipping check";
+    return;
+  }
   base::TimeDelta
       time_since_resume = base::Time::Now() - resume_start_time_;
   if (time_since_resume.InSeconds() < kOutOfCreditsResumeIgnoreSeconds) {
