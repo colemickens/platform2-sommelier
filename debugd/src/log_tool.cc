@@ -175,9 +175,9 @@ static const Log feedback_logs[] = {
 // debugd is running under a VFS namespace and does not have access to later
 // cryptohome mounts.
 static const Log user_logs[] = {
-  {"chrome_user_log", "/home/chronos/user/log/chrome"},
-  {"login-times", "/home/chronos/user/login-times"},
-  {"logout-times", "/home/chronos/user/logout-times"},
+  {"chrome_user_log", "log/chrome"},
+  {"login-times", "login-times"},
+  {"logout-times", "logout-times"},
   { NULL, NULL}
 };
 

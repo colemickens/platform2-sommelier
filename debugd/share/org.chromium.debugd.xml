@@ -228,6 +228,8 @@
     <method name="GetUserLogFiles">
       <tp:docstring>
         Returns list of User log file names that Chrome itself must collect.
+        These logfiles are relative to the user's profile path and must be
+        collected separately for each user.
       </tp:docstring>
       <arg name="user_log_files" type="a{ss}" direction="out" />
     </method>
