@@ -22,6 +22,7 @@
 #include "shill/error.h"
 #include "shill/http_url.h"
 #include "shill/ip_address.h"
+#include "shill/ip_address_store.h"
 #include "shill/logging.h"
 #include "shill/sockets.h"
 #include "shill/socket_info.h"
@@ -34,6 +35,13 @@ using std::vector;
 
 namespace shill {
 
+// static
+const char *ConnectionHealthChecker::kDefaultRemoteIPPool[] = {
+    "74.125.224.47",
+    "74.125.224.79",
+    "74.125.224.111",
+    "74.125.224.143"
+};
 // static
 const int ConnectionHealthChecker::kDNSTimeoutMilliseconds = 5000;
 // static
@@ -56,9 +64,11 @@ const uint16 ConnectionHealthChecker::kRemotePort = 80;
 ConnectionHealthChecker::ConnectionHealthChecker(
     ConnectionRefPtr connection,
     EventDispatcher *dispatcher,
+    IPAddressStore *remote_ips,
     const base::Callback<void(Result)> &result_callback)
     : connection_(connection),
       dispatcher_(dispatcher),
+      remote_ips_(remote_ips),
       result_callback_(result_callback),
       socket_(new Sockets()),
       weak_ptr_factory_(this),
@@ -80,7 +90,14 @@ ConnectionHealthChecker::ConnectionHealthChecker(
       health_check_in_progress_(false),
       num_connection_failures_(0),
       num_congested_queue_detected_(0),
-      num_successful_sends_(0) {}
+      num_successful_sends_(0) {
+  for (size_t i = 0; i < arraysize(kDefaultRemoteIPPool); ++i) {
+    const char *ip_string = kDefaultRemoteIPPool[i];
+    IPAddress ip(IPAddress::kFamilyIPv4);
+    ip.SetAddressFromString(ip_string);
+    remote_ips_->AddUnique(ip);
+  }
+}
 
 ConnectionHealthChecker::~ConnectionHealthChecker() {
   Stop();
@@ -91,7 +108,7 @@ bool ConnectionHealthChecker::health_check_in_progress() const {
 }
 
 void ConnectionHealthChecker::AddRemoteIP(IPAddress ip) {
-  remote_ips_.push_back(ip);
+  remote_ips_->AddUnique(ip);
 }
 
 void ConnectionHealthChecker::AddRemoteURL(const string &url_string) {
@@ -141,7 +158,7 @@ void ConnectionHealthChecker::Start() {
   num_congested_queue_detected_ = 0;
   num_successful_sends_ = 0;
 
-  if (remote_ips_.empty()) {
+  if (remote_ips_->Empty()) {
     // Nothing to try.
     Stop();
     SLOG(Connection, 2) << __func__ << ": Not enough IPs.";
@@ -192,11 +209,7 @@ void ConnectionHealthChecker::GetDNSResult(const Error &error,
                         << error.message();
     return;
   }
-  // Insert ip into the list of cached IP addresses, if not already present.
-  for (IPAddresses::size_type i = 0; i < remote_ips_.size(); ++i)
-    if (remote_ips_[i].Equals(ip))
-      return;
-  remote_ips_.push_back(ip);
+  remote_ips_->AddUnique(ip);
 }
 
 void ConnectionHealthChecker::GarbageCollectDNSClients() {
@@ -235,8 +248,7 @@ void ConnectionHealthChecker::NextHealthCheckSample() {
   // This guards against
   //   (1) Repeated failed attempts for the same IP at start-up everytime.
   //   (2) All users attempting to connect to the same IP.
-  int next_ip_index = rand() % remote_ips_.size();
-  const IPAddress &ip = remote_ips_[next_ip_index];
+  IPAddress ip = remote_ips_->GetRandomIP();
   SLOG(Connection, 3) << __func__ << ": Starting connection at "
                       << ip.ToString();
   if (!tcp_connection_->Start(ip, kRemotePort)) {
@@ -249,7 +261,9 @@ void ConnectionHealthChecker::NextHealthCheckSample() {
 void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
   if (!success) {
     SLOG(Connection, 2) << __func__
-                        << ": AsyncConnection connection attempt failed.";
+                        << ": AsyncConnection connection attempt failed "
+                        << "with error: "
+                        << tcp_connection_->error();
     ++num_connection_failures_;
     NextHealthCheckSample();
     return;

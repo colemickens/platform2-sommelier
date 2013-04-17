@@ -27,6 +27,7 @@ class DNSClientFactory;
 class Error;
 class EventDispatcher;
 class IPAddress;
+class IPAddressStore;
 class SocketInfoReader;
 
 // The ConnectionHealthChecker class implements the facilities to test
@@ -39,7 +40,6 @@ class SocketInfoReader;
 //   -(3)- Connectivity OK (TCP connection established, is healthy)
 class ConnectionHealthChecker {
  public:
-  typedef std::vector<IPAddress> IPAddresses;
 
   enum Result {
     // There was some problem in the setup of ConnctionHealthChecker.
@@ -64,6 +64,7 @@ class ConnectionHealthChecker {
 
   ConnectionHealthChecker(ConnectionRefPtr connection,
                           EventDispatcher *dispatcher,
+                          IPAddressStore *remote_ips,
                           const base::Callback<void(Result)> &result_callback);
   virtual ~ConnectionHealthChecker();
 
@@ -93,9 +94,8 @@ class ConnectionHealthChecker {
   static const char *ResultToString(Result result);
 
   // Accessors.
-  const IPAddresses &remote_ips() const { return remote_ips_; }
+  const IPAddressStore *remote_ips() const { return remote_ips_; }
   virtual bool health_check_in_progress() const;
-
 
  protected:
   // For unit-tests.
@@ -135,6 +135,8 @@ class ConnectionHealthChecker {
   FRIEND_TEST(ConnectionHealthCheckerTest, OnConnectionComplete);
   FRIEND_TEST(ConnectionHealthCheckerTest, VerifySentData);
 
+  // List of static IPs for connection health check.
+  static const char *kDefaultRemoteIPPool[];
   // Time to wait for DNS server.
   static const int kDNSTimeoutMilliseconds;
   static const int kInvalidSocket;
@@ -152,11 +154,10 @@ class ConnectionHealthChecker {
   static const int kMinSuccessfulSendAttempts;
   // Number of DNS queries to be spawned when a new remote URL is added.
   static const int kNumDNSQueries;
+  static const uint16 kRemotePort;
   // Time to wait before testing successful data transfer / disconnect after
   // request is made on the device.
   static const int kTCPStateUpdateWaitMilliseconds;
-
-  static const uint16 kRemotePort;
 
   // Callback for DnsClient
   void GetDNSResult(const Error &error, const IPAddress &ip);
@@ -179,15 +180,13 @@ class ConnectionHealthChecker {
   // The connection on which the health check is being run.
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
-
-  // The client function to call to report the result.
+  // Set of IPs to create TCP connection with for the health check.
+  IPAddressStore *remote_ips_;
   base::Callback<void(Result)> result_callback_;
 
   scoped_ptr<Sockets> socket_;
   base::WeakPtrFactory<ConnectionHealthChecker> weak_ptr_factory_;
 
-  // Set of IPs to create TCP connection with for the health check.
-  IPAddresses remote_ips_;
   // Callback passed to |tcp_connection_| to report an established TCP
   // connection.
   const base::Callback<void(bool, int)> connection_complete_callback_;

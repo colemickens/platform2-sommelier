@@ -71,9 +71,9 @@ const char Device::kIPFlagReversePathFilterEnabled[] = "1";
 // static
 const char Device::kIPFlagReversePathFilterLooseMode[] = "2";
 // static
-const char Device::kStoragePowered[] = "Powered";
-// static
 const char Device::kStorageIPConfigs[] = "IPConfigs";
+// static
+const char Device::kStoragePowered[] = "Powered";
 // static
 const char Device::kStorageReceiveByteCount[] = "ReceiveByteCount";
 // static
@@ -165,13 +165,6 @@ Device::Device(ControlInterface *control_interface,
     HelpRegisterConstDerivedUint64(shill::kTransmitByteCountProperty,
                                    &Device::GetTransmitByteCountProperty);
   }
-
-  // TODO(armansito): Remove this hack once shill has support for caching DNS
-  // results.
-  health_check_ip_pool_.push_back("74.125.224.47");
-  health_check_ip_pool_.push_back("74.125.224.79");
-  health_check_ip_pool_.push_back("74.125.224.111");
-  health_check_ip_pool_.push_back("74.125.224.143");
 
   LOG(INFO) << "Device created: " << link_name_
             << " index " << interface_index_;
@@ -492,6 +485,7 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     }
     StartLinkMonitor();
     StartTrafficMonitor();
+    SetupConnectionHealthChecker();
   } else {
     // TODO(pstew): This logic gets yet more complex when multiple
     // IPConfig types are run in parallel (e.g. DHCP and DHCP6)
@@ -546,26 +540,6 @@ void Device::CreateConnection() {
                                  link_name_,
                                  technology_,
                                  manager_->device_info());
-    set_health_checker(
-        new ConnectionHealthChecker(
-            connection_,
-            dispatcher_,
-            Bind(&Device::OnConnectionHealthCheckerResult,
-                 weak_ptr_factory_.GetWeakPtr())));
-    InitializeHealthCheckIps();
-  }
-}
-
-void Device::InitializeHealthCheckIps() {
-  IPAddress ip(IPAddress::kFamilyIPv4);
-  for (size_t i = 0; i < health_check_ip_pool_.size(); ++i) {
-    // TODO(armansito): DNS resolution fails when we run out-of-credit
-    // and shill currently doesn't cache resolved IPs. The hardcoded IP
-    // here corresponds to gstatic.google.com/generate_204, however I do
-    // not know if it will remain static. We should implement some sort of
-    // caching after portal detection for this to work.
-    ip.SetAddressFromString(health_check_ip_pool_[i]);
-    health_checker_->AddRemoteIP(ip);
   }
 }
 
@@ -653,6 +627,22 @@ void Device::ResetByteCounters() {
   manager_->device_info()->GetByteCounts(
       interface_index_, &receive_byte_offset_, &transmit_byte_offset_);
   manager_->UpdateDevice(this);
+}
+
+void Device::SetupConnectionHealthChecker() {
+  // TODO(pprabhu): There is an assumption here that the Connection or the
+  // IPConfig associated with it for a Device is never updated after creation.
+  // When we support multiple bearers, allow updating Connection in the
+  // IPAddressStore.
+  DCHECK(!health_checker_.get());
+  DCHECK(connection_);
+  health_checker_.reset(new ConnectionHealthChecker(
+      connection_,
+      dispatcher_,
+      manager_->health_checker_remote_ips(),
+      Bind(&Device::OnConnectionHealthCheckerResult,
+           weak_ptr_factory_.GetWeakPtr())));
+  health_checker_->AddRemoteURL(manager_->GetPortalCheckURL());
 }
 
 void Device::RequestConnectionHealthCheck() {
@@ -804,10 +794,6 @@ void Device::OnLinkMonitorFailure() {
 
 void Device::set_traffic_monitor(TrafficMonitor *traffic_monitor) {
   traffic_monitor_.reset(traffic_monitor);
-}
-
-void Device::set_health_checker(ConnectionHealthChecker *health_checker) {
-  health_checker_.reset(health_checker);
 }
 
 bool Device::StartTrafficMonitor() {
