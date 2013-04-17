@@ -16,6 +16,10 @@
 #include "login_manager/owner_key_loss_mitigator.h"
 #include "login_manager/policy_service.h"
 
+namespace crypto {
+class RSAPrivateKey;
+}
+
 namespace enterprise_management {
 class ChromeDeviceSettingsProto;
 }
@@ -107,20 +111,25 @@ class DevicePolicyService : public PolicyService {
                       scoped_ptr<OwnerKeyLossMitigator> mitigator,
                       NssUtil* nss);
 
-  // Assuming the current user has access to the owner private key (read: is the
-  // owner), this call whitelists |current_user| and sets a property indicating
+  // Given the private half of the owner keypair, this call whitelists
+  // |current_user| and sets a property indicating
   // |current_user| is the owner in the current policy and schedules a
   // PersistPolicy().
   // Returns false on failure, with |error| set appropriately. |error| can be
   // NULL, should you wish to ignore the particulars.
-  bool StoreOwnerProperties(const std::string& current_user, Error* error);
+  bool StoreOwnerProperties(const std::string& current_user,
+                            crypto::RSAPrivateKey* signing_key,
+                            Error* error);
 
   // Checks the user's NSS database to see if she has the private key.
-  bool CurrentUserHasOwnerKey(const std::vector<uint8>& key, Error* error);
+  // Returns a pointer to it if so.
+  crypto::RSAPrivateKey* GetOwnerKeyForGivenUser(const std::string& user,
+                                                 const std::vector<uint8>& key,
+                                                 Error* error);
 
-  // Returns true if the current user is listed in |policy_| as the
+  // Returns true if the |current_user| is listed in |policy_| as the
   // device owner.  Returns false if not, or if that cannot be determined.
-  bool CurrentUserIsOwner(const std::string& current_user);
+  bool GivenUserIsOwner(const std::string& current_user);
 
   // Checks the serial number recovery flag and updates the flag file.
   // TODO(mnissler): Remove once bogus enterprise serials are fixed.

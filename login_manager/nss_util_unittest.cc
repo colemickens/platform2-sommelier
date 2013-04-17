@@ -17,13 +17,12 @@ class NssUtilTest : public ::testing::Test {
   NssUtilTest() : util_(NssUtil::Create()) {}
   virtual ~NssUtilTest() {}
 
-  virtual void SetUp() {
-    ASSERT_TRUE(util_->OpenUserDB());
-  }
+  virtual void SetUp() {}
 
   scoped_ptr<NssUtil> util_;
 
  private:
+  crypto::ScopedTestNSSDB test_nssdb_;
   DISALLOW_COPY_AND_ASSIGN(NssUtilTest);
 };
 

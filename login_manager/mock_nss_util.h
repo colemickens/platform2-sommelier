@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <base/file_path.h>
+#include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
 #include <gmock/gmock.h>
 
@@ -39,6 +40,11 @@ class MockNssUtil : public NssUtil {
   MOCK_METHOD4(Sign, bool(const uint8* data, int data_len,
                           std::vector<uint8>* OUT_signature,
                           crypto::RSAPrivateKey* key));
+
+ protected:
+  crypto::ScopedTestNSSDB test_nssdb_;
+
+  static crypto::RSAPrivateKey* CreateShortKey();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNssUtil);
@@ -88,7 +94,6 @@ class ShortKeyGenerator : public MockNssUtil {
  public:
   ShortKeyGenerator();
   virtual ~ShortKeyGenerator();
-  static crypto::RSAPrivateKey* CreateFake();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(ShortKeyGenerator);

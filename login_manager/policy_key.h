@@ -80,13 +80,6 @@ class PolicyKey {
                       const uint8* signature,
                       uint32 sig_len);
 
-  // Generate |OUT_signature|, a valid sha1 w/ RSA signature over the data in
-  // |data| that can be verified with |key_|.
-  // Returns false if the sig is invalid, or there's an error.
-  virtual bool Sign(const uint8* data,
-                    uint32 data_len,
-                    std::vector<uint8>* OUT_signature);
-
   // Returned reference will be empty if we haven't populated |key_| yet.
   virtual const std::vector<uint8>& public_key_der() const {
     return key_;

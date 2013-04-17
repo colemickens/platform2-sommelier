@@ -190,7 +190,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         .WillRepeatedly(ReturnRef(policy));
   }
 
-  void ExpectInstallNewOwnerPolicy(Sequence sequence) {
+  void ExpectInstallNewOwnerPolicy(Sequence sequence, MockNssUtil* nss) {
     Expectation get_policy =
         EXPECT_CALL(*store_, Get())
             .WillRepeatedly(ReturnRef(policy_proto_));
@@ -198,7 +198,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         EXPECT_CALL(key_, Equals(_))
             .WillRepeatedly(Return(false));
     Expectation sign =
-        EXPECT_CALL(key_, Sign(_, _, _))
+        EXPECT_CALL(*nss, Sign(_, _, _, _))
             .After(get_policy)
             .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
                             Return(true)));
@@ -208,7 +208,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         .WillOnce(Invoke(this, &DevicePolicyServiceTest::RecordNewPolicy));
   }
 
-  void ExpectFailedInstallNewOwnerPolicy(Sequence sequence) {
+  void ExpectFailedInstallNewOwnerPolicy(Sequence sequence, MockNssUtil* nss) {
     Expectation get_policy =
         EXPECT_CALL(*store_, Get())
             .WillRepeatedly(ReturnRef(policy_proto_));
@@ -216,7 +216,7 @@ class DevicePolicyServiceTest : public ::testing::Test {
         EXPECT_CALL(key_, Equals(_))
             .WillRepeatedly(Return(false));
     Expectation sign =
-        EXPECT_CALL(key_, Sign(_, _, _))
+        EXPECT_CALL(*nss, Sign(_, _, _, _))
             .After(get_policy)
             .WillOnce(DoAll(WithArg<2>(AssignVector(new_fake_sig_)),
                             Return(false)));
@@ -315,20 +315,18 @@ class DevicePolicyServiceTest : public ::testing::Test {
   StrictMock<MockMitigator>* mitigator_;
   MockPolicyServiceCompletion completion_;
 
-  scoped_ptr<NssUtil> nss_;
-
   scoped_refptr<DevicePolicyService> service_;
 };
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  ExpectInstallNewOwnerPolicy(s);
+  ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
@@ -344,8 +342,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessEmptyPolicy) {
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
@@ -353,7 +351,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  ExpectInstallNewOwnerPolicy(s);
+  ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
@@ -369,8 +367,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessAddOwner) {
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
@@ -380,7 +378,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
 
   Sequence s;
   ExpectGetPolicy(s, policy_proto_);
-  ExpectInstallNewOwnerPolicy(s);
+  ExpectInstallNewOwnerPolicy(s, &nss);
   ExpectGetPolicy(s, new_policy_proto_);
   EXPECT_CALL(*mitigator_, Mitigate(_))
       .Times(0);
@@ -396,8 +394,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SuccessOwnerPresent) {
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -415,8 +413,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_NotOwner) {
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, "fake_token"));
 
   Sequence s;
@@ -435,8 +433,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_EnterpriseDevice) {
 
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -456,8 +454,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MissingKey) {
 
 TEST_F(DevicePolicyServiceTest,
        CheckAndHandleOwnerLogin_MissingPublicKeyOwner) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -477,8 +475,8 @@ TEST_F(DevicePolicyServiceTest,
 
 TEST_F(DevicePolicyServiceTest,
        CheckAndHandleOwnerLogin_MissingPublicKeyNonOwner) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -495,8 +493,8 @@ TEST_F(DevicePolicyServiceTest,
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
   ASSERT_NO_FATAL_FAILURE(InitEmptyPolicy(owner_, fake_sig_, ""));
 
   Sequence s;
@@ -514,8 +512,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_MitigationFailure) {
 }
 
 TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "", false));
 
@@ -528,7 +526,7 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
       EXPECT_CALL(key_, Equals(_))
           .WillRepeatedly(Return(false));
   Expectation sign =
-      EXPECT_CALL(key_, Sign(_, _, _))
+      EXPECT_CALL(nss, Sign(_, _, _, _))
           .After(compare_keys)
           .WillOnce(Return(false));
 
@@ -545,8 +543,8 @@ TEST_F(DevicePolicyServiceTest, CheckAndHandleOwnerLogin_SigningFailure) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
 
   ExpectMitigating(false);
 
@@ -556,7 +554,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
-  ExpectInstallNewOwnerPolicy(s);
+  ExpectInstallNewOwnerPolicy(s, &nss);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 
@@ -564,8 +562,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
 
   ExpectMitigating(true);
 
@@ -578,7 +576,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(_)).Times(0);
-  ExpectInstallNewOwnerPolicy(s);
+  ExpectInstallNewOwnerPolicy(s, &nss);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 
@@ -586,8 +584,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
 
   ExpectMitigating(true);
 
@@ -599,7 +597,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
   EXPECT_CALL(key_, ClobberCompromisedKey(fake_key_vector_))
       .InSequence(s)
       .WillOnce(Return(true));
-  ExpectFailedInstallNewOwnerPolicy(s);
+  ExpectFailedInstallNewOwnerPolicy(s, &nss);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 
@@ -607,8 +605,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
   settings.mutable_user_whitelist()->add_user_whitelist("a@b");
   settings.mutable_user_whitelist()->add_user_whitelist("c@d");
@@ -622,7 +620,7 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
       .InSequence(s)
       .WillOnce(Return(true));
   EXPECT_CALL(*store_, Set(PolicyEq(em::PolicyFetchResponse())));
-  ExpectInstallNewOwnerPolicy(s);
+  ExpectInstallNewOwnerPolicy(s, &nss);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 
@@ -630,15 +628,15 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessAddOwner) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NoPrivateKey) {
-  scoped_ptr<NssUtil> nss(new KeyFailUtil);
-  InitService(nss.get());
+  KeyFailUtil nss;
+  InitService(&nss);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
 
   ExpectMitigating(false);
 
@@ -652,8 +650,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NewKeyInstallFails) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
-  scoped_ptr<NssUtil> nss(new KeyCheckUtil);
-  InitService(nss.get());
+  KeyCheckUtil nss;
+  InitService(&nss);
 
   ExpectMitigating(true);
 
@@ -670,16 +668,16 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_KeyClobberFails) {
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_NssFailure) {
-  scoped_ptr<NssUtil> nss(new SadNssUtil);
-  InitService(nss.get());
+  SadNssUtil nss;
+  InitService(&nss);
 
   service_->ValidateAndStoreOwnerKey(owner_, fake_key_);
 }
 
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   ExpectKeyPopulated(true);
 
@@ -687,8 +685,8 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_Present) {
 }
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   EXPECT_CALL(key_, HaveCheckedDisk())
       .WillRepeatedly(Return(false));
@@ -699,8 +697,8 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_NoDiskCheck) {
 }
 
 TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   ExpectKeyPopulated(false);
 
@@ -708,8 +706,8 @@ TEST_F(DevicePolicyServiceTest, KeyMissing_CheckedAndMissing) {
 }
 
 TEST_F(DevicePolicyServiceTest, Metrics_NoKeyNoPolicyNoPrefs) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = SimulateNullOwnerKey();
@@ -722,8 +720,8 @@ TEST_F(DevicePolicyServiceTest, Metrics_NoKeyNoPolicyNoPrefs) {
 }
 
 TEST_F(DevicePolicyServiceTest, Metrics_UnloadableKeyNoPolicyNoPrefs) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
   status.owner_key_file_state = LoginMetrics::MALFORMED;
@@ -736,11 +734,11 @@ TEST_F(DevicePolicyServiceTest, Metrics_UnloadableKeyNoPolicyNoPrefs) {
 }
 
 TEST_F(DevicePolicyServiceTest, Metrics_BadKeyNoPolicyNoPrefs) {
-  scoped_ptr<MockNssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateBadOwnerKey(nss.get());
+  status.owner_key_file_state = SimulateBadOwnerKey(&nss);
   status.policy_file_state = SimulateNullPolicy();
   status.defunct_prefs_file_state = SimulateNullPrefs();
 
@@ -750,11 +748,11 @@ TEST_F(DevicePolicyServiceTest, Metrics_BadKeyNoPolicyNoPrefs) {
 }
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyNoPrefs) {
-  scoped_ptr<MockNssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(nss.get());
+  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
   status.policy_file_state = SimulateNullPolicy();
   status.defunct_prefs_file_state = SimulateNullPrefs();
 
@@ -764,11 +762,11 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyNoPrefs) {
 }
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyUnloadablePolicyNoPrefs) {
-  scoped_ptr<MockNssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(nss.get());
+  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
   status.policy_file_state = LoginMetrics::MALFORMED;
   status.defunct_prefs_file_state = SimulateNullPrefs();
 
@@ -778,11 +776,11 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyUnloadablePolicyNoPrefs) {
 }
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyGoodPolicyNoPrefs) {
-  scoped_ptr<MockNssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(nss.get());
+  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
   status.policy_file_state = SimulateGoodPolicy();
   status.defunct_prefs_file_state = SimulateNullPrefs();
 
@@ -793,11 +791,11 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyGoodPolicyNoPrefs) {
 
 TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyExtantPrefs) {
   // This is http://crosbug.com/24361
-  scoped_ptr<MockNssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   LoginMetrics::PolicyFilesStatus status;
-  status.owner_key_file_state = SimulateGoodOwnerKey(nss.get());
+  status.owner_key_file_state = SimulateGoodOwnerKey(&nss);
   status.policy_file_state = SimulateNullPolicy();
   status.defunct_prefs_file_state = SimulateExtantPrefs();
 
@@ -807,10 +805,10 @@ TEST_F(DevicePolicyServiceTest, Metrics_GoodKeyNoPolicyExtantPrefs) {
 }
 
 TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileInitialization) {
-  scoped_ptr<MockNssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
-  EXPECT_CALL(*nss, CheckPublicKeyBlob(fake_key_vector_))
+  EXPECT_CALL(nss, CheckPublicKeyBlob(fake_key_vector_))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(key_, PopulateFromDiskIfPossible())
       .WillRepeatedly(Return(true));
@@ -850,8 +848,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
   // Fake the policy file existence.
   file_util::WriteFile(policy_file_, ".", 1);
 
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
   em::ChromeDeviceSettingsProto settings;
   EXPECT_FALSE(file_util::PathExists(serial_recovery_flag_file_));
 
@@ -896,8 +894,8 @@ TEST_F(DevicePolicyServiceTest, SerialRecoveryFlagFileUpdating) {
 }
 
 TEST_F(DevicePolicyServiceTest, GetSettings) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   // No policy blob should result in an empty settings protobuf.
   em::ChromeDeviceSettingsProto settings;
@@ -928,8 +926,8 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
 }
 
 TEST_F(DevicePolicyServiceTest, StartUpFlagsSanitizer) {
-  scoped_ptr<NssUtil> nss(new MockNssUtil);
-  InitService(nss.get());
+  MockNssUtil nss;
+  InitService(&nss);
 
   em::ChromeDeviceSettingsProto settings;
   // Some valid flags.

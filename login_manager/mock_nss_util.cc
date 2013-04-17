@@ -7,27 +7,39 @@
 #include <unistd.h>
 
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <crypto/rsa_private_key.h>
 
 namespace login_manager {
 using ::testing::Invoke;
+using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::_;
 
 MockNssUtil::MockNssUtil() {}
 MockNssUtil::~MockNssUtil() {}
 
+// static
+crypto::RSAPrivateKey* MockNssUtil::CreateShortKey() {
+  crypto::RSAPrivateKey* ret = crypto::RSAPrivateKey::CreateSensitive(256);
+  LOG_IF(ERROR, ret == NULL) << "returning NULL!!!";
+  return ret;
+}
+
 CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {
   EXPECT_CALL(*this, CheckPublicKeyBlob(_)).WillOnce(Return(expected));
 }
+
 CheckPublicKeyUtil::~CheckPublicKeyUtil() {}
 
 KeyCheckUtil::KeyCheckUtil() {
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
-  EXPECT_CALL(*this, GetPrivateKey(_))
-      .WillOnce(Return(reinterpret_cast<crypto::RSAPrivateKey*>(7)));
+  ON_CALL(*this, GetPrivateKey(_))
+      .WillByDefault(InvokeWithoutArgs(CreateShortKey));
+  EXPECT_CALL(*this, GetPrivateKey(_)).Times(1);
 }
+
 KeyCheckUtil::~KeyCheckUtil() {}
 
 KeyFailUtil::KeyFailUtil() {
@@ -36,32 +48,27 @@ KeyFailUtil::KeyFailUtil() {
   EXPECT_CALL(*this, GetPrivateKey(_))
       .WillOnce(Return(reinterpret_cast<crypto::RSAPrivateKey*>(NULL)));
 }
+
 KeyFailUtil::~KeyFailUtil() {}
 
 SadNssUtil::SadNssUtil() {
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(false));
 }
+
 SadNssUtil::~SadNssUtil() {}
 
 EmptyNssUtil::EmptyNssUtil() {
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(false));
 }
+
 EmptyNssUtil::~EmptyNssUtil() {}
 
 ShortKeyGenerator::ShortKeyGenerator() {
-  crypto::EnsureNSSInit();
-  crypto::OpenPersistentNSSDB();
-  ON_CALL(*this, GenerateKeyPair()).WillByDefault(Invoke(CreateFake));
+  ON_CALL(*this, GenerateKeyPair()).WillByDefault(Invoke(CreateShortKey));
 }
-ShortKeyGenerator::~ShortKeyGenerator() {}
 
-// static
-crypto::RSAPrivateKey* ShortKeyGenerator::CreateFake() {
-  crypto::RSAPrivateKey* ret = crypto::RSAPrivateKey::CreateSensitive(512);
-  LOG_IF(INFO, ret == NULL) << "returning NULL!!!";
-  return ret;
-}
+ShortKeyGenerator::~ShortKeyGenerator() {}
 
 ShortKeyUtil::ShortKeyUtil() {
   EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));

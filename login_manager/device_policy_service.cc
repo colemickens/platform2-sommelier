@@ -8,6 +8,7 @@
 #include <base/file_util.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
+#include <crypto/rsa_private_key.h>
 
 #include "chromeos/switches/chrome_switches.h"
 #include "login_manager/chrome_device_policy.pb.h"
@@ -22,6 +23,7 @@
 namespace em = enterprise_management;
 
 namespace login_manager {
+using crypto::RSAPrivateKey;
 using google::protobuf::RepeatedPtrField;
 using std::string;
 
@@ -60,17 +62,18 @@ bool DevicePolicyService::CheckAndHandleOwnerLogin(
     Error* error) {
   // If the current user is the owner, and isn't whitelisted or set as the owner
   // in the settings blob, then do so.
-  bool can_access_key = CurrentUserHasOwnerKey(key()->public_key_der(), error);
-  if (can_access_key) {
-    if (!StoreOwnerProperties(current_user, error))
+  scoped_ptr<RSAPrivateKey> signing_key(
+      GetOwnerKeyForGivenUser(current_user, key()->public_key_der(), error));
+  if (signing_key.get()) {
+    if (!StoreOwnerProperties(current_user, signing_key.get(), error))
       return false;
   }
 
   // Now, the flip side...if we believe the current user to be the owner based
   // on the user field in policy, and she DOESN'T have the private half of the
   // public key, we must mitigate.
-  *is_owner = CurrentUserIsOwner(current_user);
-  if (*is_owner && !can_access_key) {
+  *is_owner = GivenUserIsOwner(current_user);
+  if (*is_owner && !signing_key.get()) {
     if (!mitigator_->Mitigate(key()))
       return false;
   }
@@ -84,7 +87,9 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   NssUtil::BlobFromBuffer(buf, &pub_key);
 
   Error error;
-  if (!CurrentUserHasOwnerKey(pub_key, &error))
+  scoped_ptr<RSAPrivateKey> signing_key(
+      GetOwnerKeyForGivenUser(current_user, pub_key, &error));
+  if (!signing_key.get())
    return false;
 
   if (mitigator_->Mitigating()) {
@@ -102,7 +107,7 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
     store()->Set(em::PolicyFetchResponse());
   }
 
-  if (StoreOwnerProperties(current_user, &error)) {
+  if (StoreOwnerProperties(current_user, signing_key.get(), &error)) {
     PersistKey();
     PersistPolicy();
   } else {
@@ -240,7 +245,9 @@ const em::ChromeDeviceSettingsProto& DevicePolicyService::GetSettings() {
 }
 
 bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
+                                               RSAPrivateKey* signing_key,
                                                Error* error) {
+  CHECK(signing_key);
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData poldata;
   if (policy.has_policy_data())
@@ -287,7 +294,7 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   std::string new_data = poldata.SerializeAsString();
   std::vector<uint8> sig;
   const uint8* data = reinterpret_cast<const uint8*>(new_data.c_str());
-  if (!key() || !key()->Sign(data, new_data.length(), &sig)) {
+  if (!nss_->Sign(data, new_data.length(), &sig, signing_key)) {
     const char err_msg[] = "Could not sign policy containing new owner data.";
     if (error) {
       LOG(WARNING) << err_msg;
@@ -310,28 +317,31 @@ bool DevicePolicyService::StoreOwnerProperties(const std::string& current_user,
   return true;
 }
 
-bool DevicePolicyService::CurrentUserHasOwnerKey(const std::vector<uint8>& key,
-                                                 Error* error) {
+RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
+    const std::string& user,
+    const std::vector<uint8>& key,
+    Error* error) {
   if (!nss_->MightHaveKeys())
-    return false;
-  if (!nss_->OpenUserDB()) {
+    return NULL;
+  if (!nss_->OpenUserDB()) {  // TODO(cmasone): make this call user-aware.
     const char msg[] = "Could not open the current user's NSS database.";
     LOG(ERROR) << msg;
     if (error)
       error->Set(CHROMEOS_LOGIN_ERROR_NO_USER_NSSDB, msg);
-    return false;
+    return NULL;
   }
-  if (!nss_->GetPrivateKey(key)) {
+  RSAPrivateKey* result = nss_->GetPrivateKey(key);  // TODO(cmasone): this too.
+  if (!result) {
     const char msg[] = "Could not verify that public key belongs to the owner.";
     LOG(WARNING) << msg;
     if (error)
       error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);
-    return false;
+    return NULL;
   }
-  return true;
+  return result;
 }
 
-bool DevicePolicyService::CurrentUserIsOwner(const std::string& current_user) {
+bool DevicePolicyService::GivenUserIsOwner(const std::string& current_user) {
   const em::PolicyFetchResponse& policy(store()->Get());
   em::PolicyData poldata;
   if (!policy.has_policy_data())

@@ -158,9 +158,9 @@ bool PolicyKey::ClobberCompromisedKey(
 }
 
 bool PolicyKey::Verify(const uint8* data,
-                      uint32 data_len,
-                      const uint8* signature,
-                      uint32 sig_len) {
+                       uint32 data_len,
+                       const uint8* signature,
+                       uint32 sig_len) {
   scoped_ptr<NssUtil> util(NssUtil::Create());
   if (!util->Verify(kAlgorithm,
                     sizeof(kAlgorithm),
@@ -171,20 +171,6 @@ bool PolicyKey::Verify(const uint8* data,
                     &key_[0],
                     key_.size())) {
     LOG(ERROR) << "Signature verification of " << data << " failed";
-    return false;
-  }
-  return true;
-}
-
-bool PolicyKey::Sign(const uint8* data,
-                    uint32 data_len,
-                    std::vector<uint8>* OUT_signature) {
-  scoped_ptr<NssUtil> util(NssUtil::Create());
-  scoped_ptr<crypto::RSAPrivateKey> private_key(util->GetPrivateKey(key_));
-  if (!private_key.get())
-    return false;
-  if (!util->Sign(data, data_len, OUT_signature, private_key.get())) {
-    LOG(ERROR) << "Signing of " << data << " failed";
     return false;
   }
   return true;

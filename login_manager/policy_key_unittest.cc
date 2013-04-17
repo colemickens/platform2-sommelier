@@ -175,11 +175,11 @@ TEST_F(PolicyKeyTest, RefuseToClobberOnDisk) {
 
 TEST_F(PolicyKeyTest, SignVerify) {
   NssUtil::set_factory(NULL);  // Use real NSS.
+  scoped_ptr<NssUtil> nss(NssUtil::Create());
   StartUnowned();
   PolicyKey key(tmpfile_);
+  crypto::ScopedTestNSSDB test_db;
 
-  crypto::EnsureNSSInit();
-  crypto::OpenPersistentNSSDB();
   scoped_ptr<crypto::RSAPrivateKey> pair(
       crypto::RSAPrivateKey::CreateSensitive(512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
@@ -197,7 +197,7 @@ TEST_F(PolicyKeyTest, SignVerify) {
   std::string data("whatever");
   const uint8* data_p = reinterpret_cast<const uint8*>(data.c_str());
   std::vector<uint8> signature;
-  EXPECT_TRUE(key.Sign(data_p, data.length(), &signature));
+  EXPECT_TRUE(nss->Sign(data_p, data.length(), &signature, pair.get()));
   EXPECT_TRUE(key.Verify(data_p,
                          data.length(),
                          &signature[0],
@@ -206,11 +206,11 @@ TEST_F(PolicyKeyTest, SignVerify) {
 
 TEST_F(PolicyKeyTest, RotateKey) {
   NssUtil::set_factory(NULL);  // Use real NSS.
+  scoped_ptr<NssUtil> nss(NssUtil::Create());
   StartUnowned();
   PolicyKey key(tmpfile_);
+  crypto::ScopedTestNSSDB test_db;
 
-  crypto::EnsureNSSInit();
-  crypto::OpenPersistentNSSDB();
   scoped_ptr<crypto::RSAPrivateKey> pair(
       crypto::RSAPrivateKey::CreateSensitive(512));
   ASSERT_NE(pair.get(), reinterpret_cast<crypto::RSAPrivateKey*>(NULL));
@@ -238,7 +238,8 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(new_pair->ExportPublicKey(&new_export));
 
   std::vector<uint8> signature;
-  ASSERT_TRUE(key2.Sign(&new_export[0], new_export.size(), &signature));
+  ASSERT_TRUE(nss->Sign(&new_export[0], new_export.size(),
+                        &signature, pair.get()));
   ASSERT_TRUE(key2.Rotate(new_export, signature));
   ASSERT_TRUE(key2.Persist());
 }
