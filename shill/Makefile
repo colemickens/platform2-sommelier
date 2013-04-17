@@ -249,6 +249,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	http_request.o \
 	http_url.o \
 	ip_address.o \
+	ip_address_store.o \
 	ipconfig.o \
 	ipconfig_dbus_adaptor.o \
 	key_file_store.o \
@@ -347,10 +348,10 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	crypto_provider_unittest.o \
 	crypto_rot47_unittest.o \
 	crypto_util_proxy_unittest.o \
-	connection_unittest.o \
 	connection_health_checker_unittest.o \
 	connection_info_reader_unittest.o \
 	connection_info_unittest.o \
+	connection_unittest.o \
 	dbus_adaptor_unittest.o \
 	dbus_manager_unittest.o \
 	dbus_properties_unittest.o \
@@ -375,6 +376,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	http_request_unittest.o \
 	http_url_unittest.o \
 	ip_address_unittest.o \
+	ip_address_store_unittest.o \
 	ipconfig_unittest.o \
 	key_file_store_unittest.o \
 	key_value_store_unittest.o \
@@ -412,6 +414,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_event_dispatcher.o \
 	mock_glib.o \
 	mock_http_request.o \
+	mock_ip_address_store.o \
 	mock_ipconfig.o \
 	mock_link_monitor.o \
 	mock_log.o \

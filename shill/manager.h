@@ -41,6 +41,7 @@ class DefaultProfile;
 class Error;
 class EthernetEapProvider;
 class EventDispatcher;
+class IPAddressStore;
 class ManagerAdaptorInterface;
 class Resolver;
 class StoreInterface;
@@ -261,6 +262,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   GLib *glib() const { return glib_; }
   virtual const base::FilePath &run_path() const { return run_path_; }
   const base::FilePath &storage_path() const { return storage_path_; }
+  IPAddressStore * health_checker_remote_ips() const {
+    return health_checker_remote_ips_.get();
+  }
 
   bool GetArpGateway() const { return props_.arp_gateway; }
   const std::string &GetHostName() const { return props_.host_name; }
@@ -557,6 +561,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // Delegate to handle destination verification operations for the manager.
   scoped_ptr<CryptoUtilProxy> crypto_util_proxy_;
+
+  // Stores IP addresses of some remote hosts that accept port 80 TCP
+  // connections. ConnectionHealthChecker uses these IPs.
+  // The store resides in Manager so that it persists across Device reset.
+  scoped_ptr<IPAddressStore> health_checker_remote_ips_;
 };
 
 }  // namespace shill
