@@ -26,7 +26,7 @@ using std::vector;
 namespace shill {
 
 const char CertificateFile::kDefaultRootDirectory[] =
-    "/var/run/shill/certificate_export";
+    RUNDIR "/certificate_export";
 const char CertificateFile::kPEMHeader[] = "-----BEGIN CERTIFICATE-----";
 const char CertificateFile::kPEMFooter[] = "-----END CERTIFICATE-----";
 

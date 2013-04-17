@@ -324,6 +324,76 @@ TEST_F(ProfileTest, EntryEnumeration) {
   ASSERT_EQ(0, profile_->EnumerateEntries(&error).size());
 }
 
+TEST_F(ProfileTest, LoadUserProfileList) {
+  FilePath list_path(FilePath(storage_path()).Append("test.profile"));
+  vector<Profile::Identifier> identifiers =
+      Profile::LoadUserProfileList(list_path);
+  EXPECT_TRUE(identifiers.empty());
+
+  const char kUser0[] = "scarecrow";
+  const char kUser1[] = "jeans";
+  const char kIdentifier0[] = "rattlesnake";
+  const char kIdentifier1[] = "ceiling";
+  const char kHash0[] = "neighbors";
+  string data(base::StringPrintf("\n"
+                                 "~userbut/nospacehere\n"
+                                 "defaultprofile notaccepted\n"
+                                 "~%s/%s %s\n"
+                                 "~userbutno/hash\n"
+                                 " ~dontaccept/leadingspaces hash\n"
+                                 "~this_username_fails_to_parse/id hash\n"
+                                 "~%s/%s \n\n",
+                                 kUser0, kIdentifier0, kHash0,
+                                 kUser1, kIdentifier1));
+  EXPECT_EQ(data.size(),
+            file_util::WriteFile(list_path, data.data(), data.size()));
+  identifiers = Profile::LoadUserProfileList(list_path);
+  EXPECT_EQ(2, identifiers.size());
+  EXPECT_EQ(kUser0, identifiers[0].user);
+  EXPECT_EQ(kIdentifier0, identifiers[0].identifier);
+  EXPECT_EQ(kHash0, identifiers[0].user_hash);
+  EXPECT_EQ(kUser1, identifiers[1].user);
+  EXPECT_EQ(kIdentifier1, identifiers[1].identifier);
+  EXPECT_EQ("", identifiers[1].user_hash);
+}
+
+TEST_F(ProfileTest, SaveUserProfileList) {
+  const char kUser0[] = "user0";
+  const char kIdentifier0[] = "id0";
+  Profile::Identifier id0(kUser0, kIdentifier0);
+  const char kHash0[] = "hash0";
+  id0.user_hash = kHash0;
+  vector<ProfileRefPtr> profiles;
+  profiles.push_back(new Profile(control_interface(), metrics(), manager(),
+                                 id0, "", false));
+
+  const char kUser1[] = "user1";
+  const char kIdentifier1[] = "id1";
+  Profile::Identifier id1(kUser1, kIdentifier1);
+  const char kHash1[] = "hash1";
+  id1.user_hash = kHash1;
+  profiles.push_back(new Profile(control_interface(), metrics(), manager(),
+                                 id1, "", false));
+
+
+  const char kIdentifier2[] = "id2";
+  Profile::Identifier id2("", kIdentifier2);
+  const char kHash2[] = "hash2";
+  id1.user_hash = kHash2;
+  profiles.push_back(new Profile(control_interface(), metrics(), manager(),
+                                 id2, "", false));
+
+  FilePath list_path(FilePath(storage_path()).Append("test.profile"));
+  EXPECT_TRUE(Profile::SaveUserProfileList(list_path, profiles));
+
+  string profile_data;
+  EXPECT_TRUE(file_util::ReadFileToString(list_path, &profile_data));
+  EXPECT_EQ(StringPrintf("~%s/%s %s\n~%s/%s %s\n",
+                         kUser0, kIdentifier0, kHash0,
+                         kUser1, kIdentifier1, kHash1),
+            profile_data);
+}
+
 TEST_F(ProfileTest, MatchesIdentifier) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";

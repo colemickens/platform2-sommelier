@@ -33,7 +33,8 @@ VPATH = $(BUILDDIR)
 
 LIBDIR = /usr/lib
 SHIMDIR = $(LIBDIR)/shill/shims
-CPPFLAGS += -DSHIMDIR=\"$(SHIMDIR)\"
+RUNDIR = /var/run/shill
+CPPFLAGS += -DSHIMDIR=\"$(SHIMDIR)\" -DRUNDIR=\"$(RUNDIR)\"
 
 BASE_VER ?= 180609
 COMMON_PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER)

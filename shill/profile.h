@@ -52,6 +52,10 @@ class Profile : public base::RefCounted<Profile> {
     std::string user_hash;
   };
 
+  // Path to the cached list of inserted user profiles to be loaded at
+  // startup.
+  static const char kUserProfileListPathname[];
+
   Profile(ControlInterface *control_interface,
           Metrics *metrics,
           Manager *manager,
@@ -152,6 +156,16 @@ class Profile : public base::RefCounted<Profile> {
   // "~user/identifier" depending on whether this profile has a user
   // component.
   static std::string IdentifierToString(const Identifier &name);
+
+  // Load a list of user profile identifiers from a cache file |path|.
+  // The profiles themselves are not loaded.
+  static std::vector<Identifier> LoadUserProfileList(
+      const base::FilePath &path);
+
+  // Save a list of user profile identifiers |profiles| to a cache file |path|.
+  // Returns true if successful, false otherwise.
+  static bool SaveUserProfileList(const base::FilePath &path,
+                                  const std::vector<ProfileRefPtr> &profiles);
 
   // Returns whether |name| matches this Profile's |name_|.
   virtual bool MatchesIdentifier(const Identifier &name) const;

@@ -11,6 +11,7 @@
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/stl_util.h>
+#include <base/string_split.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
@@ -30,6 +31,10 @@ using std::string;
 using std::vector;
 
 namespace shill {
+
+// static
+const char Profile::kUserProfileListPathname[] =
+    RUNDIR "/loaded_profile_list";
 
 Profile::Profile(ControlInterface *control_interface,
                  Metrics *metrics,
@@ -265,6 +270,62 @@ string Profile::IdentifierToString(const Identifier &name) {
   // Format: "~user/identifier".
   return base::StringPrintf(
       "~%s/%s", name.user.c_str(), name.identifier.c_str());
+}
+
+// static
+vector<Profile::Identifier> Profile::LoadUserProfileList(const FilePath &path) {
+  vector<Identifier> profile_identifiers;
+  string profile_data;
+  if (!file_util::ReadFileToString(path, &profile_data)) {
+    return profile_identifiers;
+  }
+
+  vector<string> profile_lines;
+  base::SplitStringDontTrim(profile_data, '\n', &profile_lines);
+  vector<string>::const_iterator it;
+  for (it = profile_lines.begin(); it != profile_lines.end(); ++it) {
+    const string &line = *it;
+    if (line.empty()) {
+      // This will be the case on the last line, so let's not complain about it.
+      continue;
+    }
+    size_t space = line.find(' ');
+    if (space == string::npos || space == 0) {
+      LOG(ERROR) << "Invalid line found in " << path.value()
+                 << ": " << line;
+      continue;
+    }
+    string name(line.begin(), line.begin() + space);
+    Identifier identifier;
+    if (!ParseIdentifier(name, &identifier) || identifier.user.empty()) {
+      LOG(ERROR) << "Invalid profile name found in " << path.value()
+                 << ": " << name;
+      continue;
+    }
+    identifier.user_hash = string(line.begin() + space + 1, line.end());
+    profile_identifiers.push_back(identifier);
+  }
+
+  return profile_identifiers;
+}
+
+// static
+bool Profile::SaveUserProfileList(const FilePath &path,
+                                  const vector<ProfileRefPtr> &profiles) {
+  vector<string> lines;
+  vector<ProfileRefPtr>::const_iterator it;
+  for (it = profiles.begin(); it != profiles.end(); ++it) {
+    Identifier &id = (*it)->name_;
+    if (id.user.empty()) {
+      continue;
+    }
+    lines.push_back(base::StringPrintf("%s %s\n",
+                                       IdentifierToString(id).c_str(),
+                                       id.user_hash.c_str()));
+  }
+  string content = JoinString(lines, "");
+  size_t ret = file_util::WriteFile(path, content.c_str(), content.length());
+  return ret == content.length();
 }
 
 bool Profile::MatchesIdentifier(const Identifier &name) const {

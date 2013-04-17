@@ -449,6 +449,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                            std::string *path,
                            Error *error);
   void PopProfileInternal();
+  void OnProfilesChanged();
+
   void SortServices();
   void SortServicesTask();
   bool MatchProfileWithService(const ServiceRefPtr &service);

@@ -278,9 +278,12 @@ void Manager::InitializeProfiles() {
   profiles_.push_back(default_profile);
   Error error;
   string path;
-  for (vector<string>::iterator it = startup_profiles_.begin();
-       it != startup_profiles_.end(); ++it)
-    PushProfile(*it, &path, &error);
+  vector<Profile::Identifier> identifiers =
+      Profile::LoadUserProfileList(FilePath(Profile::kUserProfileListPathname));
+  for (vector<Profile::Identifier>::const_iterator it = identifiers.begin();
+       it != identifiers.end(); ++it) {
+    PushProfileInternal(*it, &path, &error);
+  }
 }
 
 void Manager::CreateProfile(const string &name, string *path, Error *error) {
@@ -418,10 +421,7 @@ void Manager::PushProfileInternal(
 
   *path = profile->GetRpcIdentifier();
   SortServices();
-
-  Error unused_error;
-  adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
-                               EnumerateProfiles(&unused_error));
+  OnProfilesChanged();
 }
 
 void Manager::PushProfile(const string &name, string *path, Error *error) {
@@ -465,10 +465,16 @@ void Manager::PopProfileInternal() {
     }
   }
   SortServices();
+  OnProfilesChanged();
+}
 
+void Manager::OnProfilesChanged() {
   Error unused_error;
+
   adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
                                EnumerateProfiles(&unused_error));
+  Profile::SaveUserProfileList(FilePath(Profile::kUserProfileListPathname),
+                               profiles_);
 }
 
 void Manager::PopProfile(const string &name, Error *error) {

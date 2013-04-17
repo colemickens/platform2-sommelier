@@ -10,12 +10,11 @@ namespace shill {
 const char Config::kShillDefaultPrefsDir[] = "/var/lib/shill";
 
 // static
-const char Config::kDefaultRunDirectory[] = "/var/run/shill";
+const char Config::kDefaultRunDirectory[] = RUNDIR;
 // static
 const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
 // static
-const char Config::kDefaultUserStorageFormat[] =
-    "/var/run/shill/user_profiles/%s";
+const char Config::kDefaultUserStorageFormat[] = RUNDIR "/user_profiles/%s";
 // static
 const char Config::kFlimflamRunDirectory[] = "/var/run/flimflam";
 // static
