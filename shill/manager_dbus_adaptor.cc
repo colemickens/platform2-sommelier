@@ -125,7 +125,9 @@ string ManagerDBusAdaptor::GetState(::DBus::Error &/*error*/) {
   Error e;
   string path;
   manager_->CreateProfile(name, &path, &e);
-  e.ToDBusError(&error);
+  if (e.ToDBusError(&error)) {
+    return "/";
+  }
   return ::DBus::Path(path);
 }
 
@@ -143,7 +145,22 @@ void ManagerDBusAdaptor::RemoveProfile(const string &name,
   Error e;
   string path;
   manager_->PushProfile(name, &path, &e);
-  e.ToDBusError(&error);
+  if (e.ToDBusError(&error)) {
+    return "/";
+  }
+  return ::DBus::Path(path);
+}
+
+::DBus::Path ManagerDBusAdaptor::InsertUserProfile(const string &name,
+                                                   const string &user_hash,
+                                                   ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  Error e;
+  string path;
+  manager_->InsertUserProfile(name, user_hash, &path, &e);
+  if (e.ToDBusError(&error)) {
+    return "/";
+  }
   return ::DBus::Path(path);
 }
 

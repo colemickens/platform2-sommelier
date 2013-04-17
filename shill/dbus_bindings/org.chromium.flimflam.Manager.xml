@@ -30,6 +30,11 @@
 			<arg type="s" direction="in"/>
 			<arg type="o" direction="out"/>
 		</method>
+		<method name="InsertUserProfile">
+			<arg type="s" direction="in"/>
+			<arg type="s" direction="in"/>
+			<arg type="o" direction="out"/>
+		</method>
 		<method name="PopProfile">
 			<arg type="s" direction="in"/>
 		</method>

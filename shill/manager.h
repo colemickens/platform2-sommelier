@@ -27,6 +27,7 @@
 #include "shill/metrics.h"
 #include "shill/modem_info.h"
 #include "shill/power_manager.h"
+#include "shill/profile.h"
 #include "shill/property_store.h"
 #include "shill/service.h"
 #include "shill/wifi.h"
@@ -156,6 +157,13 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Pushes existing profile with name |name| onto stack of managed profiles.
   // Returns the RPC path of the pushed profile in |path|.
   void PushProfile(const std::string &name, std::string *path, Error *error);
+  // Insert an existing user profile with name |name| into the stack of
+  // managed profiles.  Associate |user_hash| with this profile entry.
+  // Returns the RPC path of the pushed profile in |path|.
+  void InsertUserProfile(const std::string &name,
+                         const std::string &user_hash,
+                         std::string *path,
+                         Error *error);
   // Pops profile named |name| off the top of the stack of managed profiles.
   void PopProfile(const std::string &name, Error *error);
   // Remove the active profile.
@@ -432,6 +440,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
       Strings(Manager::*get)(Error *),
       void(Manager::*set)(const Strings&, Error *));
 
+  bool HasProfile(const Profile::Identifier &ident);
+  void PushProfileInternal(const Profile::Identifier &ident,
+                           std::string *path,
+                           Error *error);
   void PopProfileInternal();
   void SortServices();
   void SortServicesTask();

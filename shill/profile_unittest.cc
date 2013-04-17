@@ -181,6 +181,16 @@ TEST_F(ProfileTest, ParseIdentifier) {
   EXPECT_EQ(kIdentifier2, identifier.identifier);
 }
 
+TEST_F(ProfileTest, IdentifierToString) {
+  Profile::Identifier identifier;
+  static const char kUser[] = "user";
+  static const char kIdentifier[] = "identifier";
+  identifier.user = kUser;
+  identifier.identifier = kIdentifier;
+  EXPECT_EQ(base::StringPrintf("~%s/%s", kUser, kIdentifier),
+            Profile::IdentifierToString(identifier));
+}
+
 TEST_F(ProfileTest, GetFriendlyName) {
   static const char kUser[] = "theUser";
   static const char kIdentifier[] = "theIdentifier";

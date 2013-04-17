@@ -49,6 +49,7 @@ class Profile : public base::RefCounted<Profile> {
     }
     std::string user;  // Empty for global.
     std::string identifier;
+    std::string user_hash;
   };
 
   Profile(ControlInterface *control_interface,
@@ -145,11 +146,21 @@ class Profile : public base::RefCounted<Profile> {
   // on success.
   static bool ParseIdentifier(const std::string &raw, Identifier *parsed);
 
+  // Returns the composite string identifier for a profile, as would have
+  // been used in an argument to Manager::PushProfile() in creating this
+  // profile.  It returns a string in the form "identifier", or
+  // "~user/identifier" depending on whether this profile has a user
+  // component.
+  static std::string IdentifierToString(const Identifier &name);
+
   // Returns whether |name| matches this Profile's |name_|.
   virtual bool MatchesIdentifier(const Identifier &name) const;
 
   // Returns the username component of the profile identifier.
   const std::string &GetUser() const { return name_.user; }
+
+  // Returns the user_hash component of the profile identifier.
+  const std::string &GetUserHash() const { return name_.user_hash; }
 
   // Returns a read-only copy of the backing storage of the profile.
   virtual const StoreInterface *GetConstStorage() const {

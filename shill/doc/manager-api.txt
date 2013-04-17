@@ -62,6 +62,20 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.AlreadyExists
 
+		object InsertUserProfile(string name, string user_hash)
+
+			Add the profile with the specified identifier
+			to the profile stack.  The profile must have
+			previously been created with CreateProfile.
+			The |user_hash| provided is assigned to the
+			profile and is made visible as a property of
+			the profile.
+
+			A profile may be inserted or pushed only once.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.AlreadyExists
+
 		object PopProfile(string name)
 
 			Pop the top-most profile on the profile stack.

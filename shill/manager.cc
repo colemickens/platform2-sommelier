@@ -285,15 +285,10 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
     return;
   }
 
-  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
-       it != profiles_.end();
-       ++it) {
-    if ((*it)->MatchesIdentifier(ident)) {
-      Error::PopulateAndLog(error, Error::kAlreadyExists,
-                            "Profile name " + name + " is already on stack");
-      *path = (*it)->GetRpcIdentifier();
-      return;
-    }
+  if (HasProfile(ident)) {
+    Error::PopulateAndLog(error, Error::kAlreadyExists,
+                          "Profile name " + name + " is already on stack");
+    return;
   }
 
   ProfileRefPtr profile;
@@ -328,23 +323,24 @@ void Manager::CreateProfile(const string &name, string *path, Error *error) {
   *path = profile->GetRpcIdentifier();
 }
 
-void Manager::PushProfile(const string &name, string *path, Error *error) {
-  SLOG(Manager, 2) << __func__ << " " << name;
-  Profile::Identifier ident;
-  if (!Profile::ParseIdentifier(name, &ident)) {
-    Error::PopulateAndLog(error, Error::kInvalidArguments,
-                          "Invalid profile name " + name);
-    return;
-  }
-
+bool Manager::HasProfile(const Profile::Identifier &ident) {
   for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
        it != profiles_.end();
        ++it) {
     if ((*it)->MatchesIdentifier(ident)) {
-      Error::PopulateAndLog(error, Error::kAlreadyExists,
-                            "Profile name " + name + " is already on stack");
-      return;
+      return true;
     }
+  }
+  return false;
+}
+
+void Manager::PushProfileInternal(
+    const Profile::Identifier &ident, string *path, Error *error) {
+  if (HasProfile(ident)) {
+    Error::PopulateAndLog(error, Error::kAlreadyExists,
+                          "Profile name " + Profile::IdentifierToString(ident) +
+                          " is already on stack");
+    return;
   }
 
   ProfileRefPtr profile;
@@ -354,7 +350,8 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     // also a machine-wide (non-user) profile.
     if (!profiles_.empty() && !profiles_.back()->GetUser().empty()) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            "Cannot load non-default global profile " + name +
+                            "Cannot load non-default global profile " +
+                            Profile::IdentifierToString(ident) +
                             " on top of a user profile");
       return;
     }
@@ -374,7 +371,7 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
     if (!LoadProperties(default_profile)) {
       Error::PopulateAndLog(error, Error::kInvalidArguments,
                             "Could not load Manager properties from profile " +
-                            name);
+                            Profile::IdentifierToString(ident));
       return;
     }
     profile = default_profile;
@@ -418,6 +415,33 @@ void Manager::PushProfile(const string &name, string *path, Error *error) {
   Error unused_error;
   adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
                                EnumerateProfiles(&unused_error));
+}
+
+void Manager::PushProfile(const string &name, string *path, Error *error) {
+  SLOG(Manager, 2) << __func__ << " " << name;
+  Profile::Identifier ident;
+  if (!Profile::ParseIdentifier(name, &ident)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid profile name " + name);
+    return;
+  }
+  PushProfileInternal(ident, path, error);
+}
+
+void Manager::InsertUserProfile(const string &name,
+                                const string &user_hash,
+                                string *path,
+                                Error *error) {
+  SLOG(Manager, 2) << __func__ << " " << name;
+  Profile::Identifier ident;
+  if (!Profile::ParseIdentifier(name, &ident) ||
+      ident.user.empty()) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Invalid user profile name " + name);
+    return;
+  }
+  ident.user_hash = user_hash;
+  PushProfileInternal(ident, path, error);
 }
 
 void Manager::PopProfileInternal() {
@@ -496,15 +520,11 @@ void Manager::RemoveProfile(const string &name, Error *error) {
     return;
   }
 
-  for (vector<ProfileRefPtr>::const_iterator it = profiles_.begin();
-       it != profiles_.end();
-       ++it) {
-    if ((*it)->MatchesIdentifier(ident)) {
-      Error::PopulateAndLog(error, Error::kInvalidArguments,
-                            "Cannot remove profile name " + name +
-                            " since it is on stack");
-      return;
-    }
+  if (HasProfile(ident)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments,
+                          "Cannot remove profile name " + name +
+                          " since it is on stack");
+    return;
   }
 
   ProfileRefPtr profile;

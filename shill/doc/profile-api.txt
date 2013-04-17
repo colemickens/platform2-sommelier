@@ -137,6 +137,11 @@ Properties	string CheckPortalList [readonly]
 			default profile as it affects all users and is
 			used pre-login.
 
+		array{object} Entries [readonly]
+
+			List of profile Entry objects.  Use the GetEntry
+			method to retrieve an Entry's contents.
+
 		string Name [readonly]
 
 			Name of this profile.
@@ -174,7 +179,7 @@ Properties	string CheckPortalList [readonly]
 			List of service objects.  This property is
 			provided only for the active profile.
 
-		array{object} Entries [readonly]
+		string UserHash [readonly]
 
-			List of profile Entry objects.  Use the GetEntry
-			method to retrieve an Entry's contents.
+			The hash of the username, provided by the
+			the libchromeos SanitizeUsername() method.

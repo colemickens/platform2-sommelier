@@ -47,6 +47,7 @@ Profile::Profile(ControlInterface *control_interface,
   // flimflam::kCheckPortalListProperty: Registered in DefaultProfile
   // flimflam::kCountryProperty: Registered in DefaultProfile
   store_.RegisterConstString(flimflam::kNameProperty, &name_.identifier);
+  store_.RegisterConstString(kUserHashProperty, &name_.user_hash);
 
   // flimflam::kOfflineModeProperty: Registered in DefaultProfile
   // flimflam::kPortalURLProperty: Registered in DefaultProfile
@@ -224,6 +225,7 @@ bool Profile::IsValidIdentifierToken(const string &token) {
   return true;
 }
 
+// static
 bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   if (raw.empty()) {
     return false;
@@ -251,6 +253,18 @@ bool Profile::ParseIdentifier(const string &raw, Identifier *parsed) {
   parsed->user = "";
   parsed->identifier = raw;
   return true;
+}
+
+// static
+string Profile::IdentifierToString(const Identifier &name) {
+  if (name.user.empty()) {
+    // Format: "identifier".
+    return name.identifier;
+  }
+
+  // Format: "~user/identifier".
+  return base::StringPrintf(
+      "~%s/%s", name.user.c_str(), name.identifier.c_str());
 }
 
 bool Profile::MatchesIdentifier(const Identifier &name) const {

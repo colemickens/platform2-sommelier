@@ -217,6 +217,15 @@ class ManagerTest : public PropertyStoreTest {
     return error.type();
   }
 
+  Error::Type TestInsertUserProfile(Manager *manager,
+                                    const string &name,
+                                    const string &user_hash) {
+    Error error;
+    string path;
+    manager->InsertUserProfile(name, user_hash, &path, &error);
+    return error.type();
+  }
+
   scoped_refptr<MockProfile> AddNamedMockProfileToManager(
       Manager *manager, const string &name) {
     scoped_refptr<MockProfile> profile(
@@ -984,6 +993,21 @@ TEST_F(ManagerTest, PushPopProfile) {
   EXPECT_EQ(2, profiles.size());
   EXPECT_TRUE(profiles[0]->GetUser().empty());
   EXPECT_TRUE(profiles[1]->GetUser().empty());
+
+  // Use InsertUserProfile() instead.  Although a machine profile is valid
+  // in this state, it cannot be added via InsertUserProfile.
+  EXPECT_EQ(Error::kSuccess, TestPopProfile(&manager, kMachineProfile1));
+  EXPECT_EQ(Error::kInvalidArguments,
+            TestInsertUserProfile(&manager, kMachineProfile1, "machinehash1"));
+  const char kUserHash0[] = "userhash0";
+  const char kUserHash1[] = "userhash1";
+  EXPECT_EQ(Error::kSuccess,
+            TestInsertUserProfile(&manager, kProfile0, kUserHash0));
+  EXPECT_EQ(Error::kSuccess,
+            TestInsertUserProfile(&manager, kProfile1, kUserHash1));
+  EXPECT_EQ(3, profiles.size());
+  EXPECT_EQ(kUserHash0, profiles[1]->GetUserHash());
+  EXPECT_EQ(kUserHash1, profiles[2]->GetUserHash());
 }
 
 TEST_F(ManagerTest, RemoveProfile) {
