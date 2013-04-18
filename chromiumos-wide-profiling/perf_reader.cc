@@ -265,14 +265,6 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
   return num_values_written * sizeof(uint64);
 }
 
-// Copies only the event-specific data from one event_t to another.  The sample
-// info is not copied.
-void CopyPerfEventSpecificInfo(const event_t& source, event_t* destination) {
-  // The sample info offset is equal to the amount of event-specific data that
-  // precedes it.
-  memcpy(destination, &source, GetPerfSampleDataOffset(source));
-}
-
 // Extracts from a perf event |event| info about the perf sample that contains
 // the event.  Stores info in |sample|.
 bool ReadPerfSampleInfo(const event_t& event,
