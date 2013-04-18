@@ -27,7 +27,7 @@ def usage():
     return False
 
 
-def print_profile_name(profile_path, active_path):
+def print_profile_path(profile_path, active_path):
     """ Print profile_path and indicate if it is the active profile. """
     if profile_path == active_path:
         print 'Profile: %s  <== active' % profile_path
