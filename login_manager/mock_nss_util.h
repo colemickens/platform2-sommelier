@@ -90,23 +90,6 @@ class EmptyNssUtil : public MockNssUtil {
   DISALLOW_COPY_AND_ASSIGN(EmptyNssUtil);
 };
 
-class ShortKeyGenerator : public MockNssUtil {
- public:
-  ShortKeyGenerator();
-  virtual ~ShortKeyGenerator();
-
- private:
-  DISALLOW_COPY_AND_ASSIGN(ShortKeyGenerator);
-};
-
-class ShortKeyUtil : public ShortKeyGenerator {
- public:
-  ShortKeyUtil();
-  virtual ~ShortKeyUtil();
- private:
-  DISALLOW_COPY_AND_ASSIGN(ShortKeyUtil);
-};
-
 }  // namespace login_manager
 
 #endif  // LOGIN_MANAGER_MOCK_NSS_UTIL_H_

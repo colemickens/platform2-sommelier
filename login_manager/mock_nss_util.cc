@@ -64,17 +64,4 @@ EmptyNssUtil::EmptyNssUtil() {
 
 EmptyNssUtil::~EmptyNssUtil() {}
 
-ShortKeyGenerator::ShortKeyGenerator() {
-  ON_CALL(*this, GenerateKeyPair()).WillByDefault(Invoke(CreateShortKey));
-}
-
-ShortKeyGenerator::~ShortKeyGenerator() {}
-
-ShortKeyUtil::ShortKeyUtil() {
-  EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
-  EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
-  EXPECT_CALL(*this, GenerateKeyPair()).Times(1);
-}
-ShortKeyUtil::~ShortKeyUtil() {}
-
 }  // namespace login_manager
