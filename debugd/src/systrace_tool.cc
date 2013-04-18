@@ -13,6 +13,8 @@
 
 namespace debugd {
 
+extern const char *kDebugfsGroup;
+
 SystraceTool::SystraceTool() { }
 SystraceTool::~SystraceTool() { }
 
@@ -37,6 +39,8 @@ static void add_category_args(ProcessWithOutput& p,
 std::string SystraceTool::Start(const std::string& categories,
                                 DBus::Error& error) {
   ProcessWithOutput p;
+  // this tool needs to reach into /sys/kernel/debug to enable/disable tracing
+  p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
   p.Init();
   p.AddArg(getpathname());
   p.AddArg("start");
@@ -50,6 +54,7 @@ std::string SystraceTool::Start(const std::string& categories,
 void SystraceTool::Stop(const DBus::FileDescriptor& outfd,
     DBus::Error& error) {
   ProcessWithOutput p;
+  p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
   p.Init();
   p.AddArg(getpathname());
   p.AddArg("stop");
@@ -60,6 +65,7 @@ void SystraceTool::Stop(const DBus::FileDescriptor& outfd,
 
 std::string SystraceTool::Status(DBus::Error& error) {
   ProcessWithOutput p;
+  p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
   p.Init();
   p.AddArg(getpathname());
   p.AddArg("status");

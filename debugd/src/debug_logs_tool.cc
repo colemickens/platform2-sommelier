@@ -18,13 +18,13 @@ DebugLogsTool::~DebugLogsTool() { }
 
 void DebugLogsTool::GetDebugLogs(const DBus::FileDescriptor& fd,
                                  DBus::Error& error) {
-  chromeos::ProcessImpl* p = new chromeos::ProcessImpl();
-  p->AddArg(kTar);
-  p->AddArg("-c");
-  p->AddArg("-z");
-  p->AddArg(kSystemLogs);
-  p->BindFd(fd.get(), STDOUT_FILENO);
-  p->Run();
+  chromeos::ProcessImpl p;
+  p.AddArg(kTar);
+  p.AddArg("-c");
+  p.AddArg("-z");
+  p.AddArg(kSystemLogs);
+  p.BindFd(fd.get(), STDOUT_FILENO);
+  p.Run();
 }
 
 };  // namespace debugd
