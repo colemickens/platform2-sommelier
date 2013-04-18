@@ -169,6 +169,7 @@ size_t ReadPerfSampleFromData(const uint64* array,
   size_t num_values_read = 0;
   const uint64 k32BitFields = PERF_SAMPLE_TID | PERF_SAMPLE_CPU;
   bool read_callchain = false;
+  bool read_branch_stack = false;
 
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
     uint64 sample_type = (1 << index);
@@ -224,6 +225,13 @@ size_t ReadPerfSampleFromData(const uint64* array,
       --num_values_read;
       --array;
       break;
+    case PERF_SAMPLE_BRANCH_STACK:
+      // Branch infois a special case just like call chain, and comes after the
+      // other sample info data and call chain data.
+      read_branch_stack = true;
+      --num_values_read;
+      --array;
+      break;
     default:
       LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
@@ -250,6 +258,34 @@ size_t ReadPerfSampleFromData(const uint64* array,
     sample->callchain = callchain;
   }
 
+  if (read_branch_stack) {
+    // Make sure there is no existing allocated memory in
+    // |sample->branch_stack|.
+    CHECK_EQ(static_cast<void*>(NULL), sample->branch_stack);
+
+    // The branch stack data consists of a uint64 value |nr| followed by |nr|
+    // branch_entry structs.
+    uint64 branch_stack_size = *array++;
+    if (swap_bytes)
+      ByteSwap(&branch_stack_size);
+    struct branch_stack* branch_stack =
+        reinterpret_cast<struct branch_stack*>(
+            new uint8[sizeof(uint64) +
+                      branch_stack_size * sizeof(struct branch_entry)]);
+    branch_stack->nr = branch_stack_size;
+    for (size_t i = 0; i < branch_stack_size; ++i) {
+      memcpy(&branch_stack->entries[i], array, sizeof(struct branch_entry));
+      array += sizeof(struct branch_entry) / sizeof(*array);
+      if (swap_bytes) {
+        ByteSwap(&branch_stack->entries[i].from);
+        ByteSwap(&branch_stack->entries[i].to);
+      }
+    }
+    num_values_read +=
+        branch_stack_size * sizeof(struct branch_entry) / sizeof(uint64) + 1;
+    sample->branch_stack = branch_stack;
+  }
+
   return num_values_read * sizeof(uint64);
 }
 
@@ -258,6 +294,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
                              uint64* array) {
   size_t num_values_written = 0;
   bool write_callchain = false;
+  bool write_branch_stack = false;
 
   for (int index = 0; (sample_fields >> index) > 0; ++index) {
     uint64 sample_type = (1 << index);
@@ -297,6 +334,9 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     case PERF_SAMPLE_CALLCHAIN:
       write_callchain = true;
       continue;
+    case PERF_SAMPLE_BRANCH_STACK:
+      write_branch_stack = true;
+      continue;
     default:
       LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
     }
@@ -309,6 +349,18 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
     for (size_t i = 0; i < sample.callchain->nr; ++i)
       *array++ = sample.callchain->ips[i];
     num_values_written += sample.callchain->nr + 1;
+  }
+
+  if (write_branch_stack) {
+    *array++ = sample.branch_stack->nr;
+    ++num_values_written;
+    for (size_t i = 0; i < sample.branch_stack->nr; ++i) {
+      *array++ = sample.branch_stack->entries[i].from;
+      *array++ = sample.branch_stack->entries[i].to;
+      *array++ =
+          *reinterpret_cast<uint64*>(&sample.branch_stack->entries[i].flags);
+      num_values_written += 3;
+    }
   }
 
   return num_values_written * sizeof(uint64);
@@ -368,7 +420,7 @@ bool WritePerfSampleInfo(const perf_sample& sample,
       reinterpret_cast<uint64*>(event) + offset / sizeof(uint64));
   if (size_written != expected_size) {
     LOG(ERROR) << "Wrote " << size_written << " bytes, expected "
-               << expected_size << "bytes.";
+               << expected_size << " bytes.";
   }
 
   return (size_written == expected_size);
@@ -381,6 +433,8 @@ PerfReader::~PerfReader() {
   for (size_t i = 0; i < events_.size(); ++i) {
     if (events_[i].sample_info.callchain)
       delete [] events_[i].sample_info.callchain;
+    if (events_[i].sample_info.branch_stack)
+      delete [] events_[i].sample_info.branch_stack;
   }
 }
 

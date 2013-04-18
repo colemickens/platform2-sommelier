@@ -134,6 +134,15 @@ void PerfSerializer::SerializeRecordSample(
     for (size_t i = 0; i < perf_sample.callchain->nr; ++i)
       sample->add_callchain(perf_sample.callchain->ips[i]);
   }
+  if (sample_type_ & PERF_SAMPLE_BRANCH_STACK) {
+    for (size_t i = 0; i < perf_sample.branch_stack->nr; ++i) {
+      sample->add_branch_stack();
+      const struct branch_entry& entry = perf_sample.branch_stack->entries[i];
+      sample->mutable_branch_stack(i)->set_from_ip(entry.from);
+      sample->mutable_branch_stack(i)->set_to_ip(entry.to);
+      sample->mutable_branch_stack(i)->set_mispredicted(entry.flags.mispred);
+    }
+  }
 }
 
 void PerfSerializer::DeserializeRecordSample(
@@ -169,6 +178,22 @@ void PerfSerializer::DeserializeRecordSample(
     perf_sample.callchain->nr = callchain_size;
     for (size_t i = 0; i < callchain_size; ++i)
       perf_sample.callchain->ips[i] = sample.callchain(i);
+  }
+  if (sample.branch_stack_size() > 0) {
+    uint64 branch_stack_size = sample.branch_stack_size();
+    perf_sample.branch_stack =
+        reinterpret_cast<struct branch_stack*>(
+            new uint8[sizeof(uint64) +
+                      branch_stack_size * sizeof(struct branch_entry)]);
+    perf_sample.branch_stack->nr = branch_stack_size;
+    for (size_t i = 0; i < branch_stack_size; ++i) {
+      struct branch_entry& entry = perf_sample.branch_stack->entries[i];
+      memset(&entry, 0, sizeof(entry));
+      entry.from = sample.branch_stack(i).from_ip();
+      entry.to = sample.branch_stack(i).to_ip();
+      entry.flags.mispred = sample.branch_stack(i).mispredicted();
+      entry.flags.predicted = !entry.flags.mispred;
+    }
   }
 }
 

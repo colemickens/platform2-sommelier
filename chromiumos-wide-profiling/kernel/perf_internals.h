@@ -204,6 +204,23 @@ struct ip_callchain {
 	u64 ips[0];
 };
 
+struct branch_flags {
+	u64 mispred:1;
+	u64 predicted:1;
+	u64 reserved:62;
+};
+
+struct branch_entry {
+	u64				from;
+	u64				to;
+	struct branch_flags flags;
+};
+
+struct branch_stack {
+	u64				nr;
+	struct branch_entry	entries[0];
+};
+
 // All the possible fields of a perf sample.  This is not an actual data
 // structure found in raw perf data, as each field may or may not be present in
 // the data.

@@ -176,6 +176,32 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     }
   }
 
+  // Map branch stack addresses.
+  struct branch_stack* branch_stack = parsed_event->sample_info->branch_stack;
+  if (branch_stack) {
+    parsed_event->branch_stack.resize(branch_stack->nr);
+    for (unsigned int i = 0; i < branch_stack->nr; ++i) {
+      struct branch_entry& entry = branch_stack->entries[i];
+      ParsedEvent::BranchEntry& parsed_entry = parsed_event->branch_stack[i];
+      if (!MapIPAndPidAndGetNameAndOffset(entry.from,
+                                          event.pid,
+                                          &entry.from,
+                                          &parsed_entry.from.dso_name,
+                                          &parsed_entry.from.offset)) {
+        mapping_failed = true;
+      }
+      if (!MapIPAndPidAndGetNameAndOffset(entry.to,
+                                          event.pid,
+                                          &entry.to,
+                                          &parsed_entry.to.dso_name,
+                                          &parsed_entry.to.offset)) {
+        mapping_failed = true;
+      }
+      parsed_entry.predicted = entry.flags.predicted;
+      CHECK_NE(entry.flags.predicted, entry.flags.mispred);
+    }
+  }
+
   return !mapping_failed;
 }
 

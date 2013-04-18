@@ -37,6 +37,8 @@ const char* kPerfDataFiles[] = {
   //   while true; do restart powerd; sleep .2; done
   "perf.data.forkexit",
   "perf.data.callgraph",
+  "perf.data.branch",
+  "perf.data.callgraph_and_branch",
 };
 
 const char* kPerfPipedDataFiles[] = {

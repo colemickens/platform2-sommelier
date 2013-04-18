@@ -30,6 +30,14 @@ struct ParsedEvent {
 
   // DSO+offset info for callchain.
   std::vector<DSOAndOffset> callchain;
+
+  // DSO + offset info for branch stack entries.
+  struct BranchEntry {
+    bool predicted;
+    DSOAndOffset from;
+    DSOAndOffset to;
+  };
+  std::vector<BranchEntry> branch_stack;
 };
 
 struct PerfEventStats {
