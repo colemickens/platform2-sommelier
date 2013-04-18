@@ -21,6 +21,11 @@ namespace {
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64 kPerfMagic = 0x32454c4946524550LL;
 
+// Eight bits in a byte.
+size_t BytesToBits(size_t num_bytes) {
+  return num_bytes * 8;
+}
+
 template <class T>
 void ByteSwap(T* input) {
   switch(sizeof(T)) {
@@ -466,6 +471,19 @@ bool PerfReader::RegenerateHeader() {
   current_offset += out_header_.event_types.size;
 
   out_header_.data.offset = current_offset;
+
+  // Construct the header feature bits.
+  memset(&out_header_.adds_features, 0, sizeof(out_header_.adds_features));
+  // The following code makes the assumption that all feature bits are in the
+  // first word of |adds_features|.  If the perf data format changes and the
+  // assumption is no longer valid, this CHECK will fail, at which point the
+  // below code needs to be updated.  For now, sticking to that assumption keeps
+  // the code simple.
+  CHECK_LE(static_cast<size_t>(HEADER_LAST_FEATURE),
+           BytesToBits(sizeof(out_header_.adds_features[0])));
+  // TODO(sque): Support header features other than HEADER_BRANCH_STACK.
+  if (sample_type_ & PERF_SAMPLE_BRANCH_STACK)
+    out_header_.adds_features[0] |= (1 << HEADER_BRANCH_STACK);
 
   return true;
 }
