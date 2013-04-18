@@ -23,37 +23,36 @@ class MockSessionManager : public SessionManagerInterface {
   MOCK_METHOD0(ScreenIsLocked, bool());
   MOCK_METHOD0(Initialize, bool());
   MOCK_METHOD0(Finalize, void());
-  MOCK_METHOD1(ValidateAndStoreOwnerKey, void(const std::string&)) OVERRIDE;
-  MOCK_METHOD2(EmitLoginPromptReady, gboolean(gboolean*, GError**)) OVERRIDE;
-  MOCK_METHOD1(EmitLoginPromptVisible, gboolean(GError**)) OVERRIDE;
+  MOCK_METHOD2(EmitLoginPromptReady, gboolean(gboolean*, GError**));
+  MOCK_METHOD1(EmitLoginPromptVisible, gboolean(GError**));
   MOCK_METHOD4(EnableChromeTesting, gboolean(gboolean,
                                              const gchar**,
                                              gchar**,
-                                             GError**)) OVERRIDE;
+                                             GError**));
   MOCK_METHOD4(StartSession,
-               gboolean(gchar*, gchar*, gboolean*, GError**)) OVERRIDE;
-  MOCK_METHOD3(StopSession, gboolean(gchar*, gboolean*, GError**)) OVERRIDE;
-  MOCK_METHOD2(StorePolicy, gboolean(GArray*, DBusGMethodInvocation*)) OVERRIDE;
-  MOCK_METHOD2(RetrievePolicy, gboolean(GArray**, GError**)) OVERRIDE;
+               gboolean(gchar*, gchar*, gboolean*, GError**));
+  MOCK_METHOD3(StopSession, gboolean(gchar*, gboolean*, GError**));
+  MOCK_METHOD2(StorePolicy, gboolean(GArray*, DBusGMethodInvocation*));
+  MOCK_METHOD2(RetrievePolicy, gboolean(GArray**, GError**));
   MOCK_METHOD2(StoreUserPolicy,
-               gboolean(GArray*, DBusGMethodInvocation*)) OVERRIDE;
-  MOCK_METHOD2(RetrieveUserPolicy, gboolean(GArray**, GError**)) OVERRIDE;
+               gboolean(GArray*, DBusGMethodInvocation*));
+  MOCK_METHOD2(RetrieveUserPolicy, gboolean(GArray**, GError**));
   MOCK_METHOD3(StoreDeviceLocalAccountPolicy,
-               gboolean(gchar*, GArray*, DBusGMethodInvocation*)) OVERRIDE;
+               gboolean(gchar*, GArray*, DBusGMethodInvocation*));
   MOCK_METHOD3(RetrieveDeviceLocalAccountPolicy,
-               gboolean(gchar*, GArray**, GError**)) OVERRIDE;
-  MOCK_METHOD2(RetrieveSessionState, gboolean(gchar**, gchar**)) OVERRIDE;
-  MOCK_METHOD1(LockScreen, gboolean(GError**)) OVERRIDE;
-  MOCK_METHOD1(HandleLockScreenShown, gboolean(GError**)) OVERRIDE;
+               gboolean(gchar*, GArray**, GError**));
+  MOCK_METHOD2(RetrieveSessionState, gboolean(gchar**, gchar**));
+  MOCK_METHOD1(LockScreen, gboolean(GError**));
+  MOCK_METHOD1(HandleLockScreenShown, gboolean(GError**));
 
-  MOCK_METHOD1(UnlockScreen, gboolean(GError**)) OVERRIDE;
-  MOCK_METHOD1(HandleLockScreenDismissed, gboolean(GError**)) OVERRIDE;
+  MOCK_METHOD1(UnlockScreen, gboolean(GError**));
+  MOCK_METHOD1(HandleLockScreenDismissed, gboolean(GError**));
 
   MOCK_METHOD4(RestartJob,
-               gboolean(gint, gchar*, gboolean*, GError**)) OVERRIDE;
+               gboolean(gint, gchar*, gboolean*, GError**));
   MOCK_METHOD5(RestartJobWithAuth,
-               gboolean(gint, gchar*, gchar*, gboolean*, GError**)) OVERRIDE;
-  MOCK_METHOD2(StartDeviceWipe, gboolean(gboolean*, GError**)) OVERRIDE;
+               gboolean(gint, gchar*, gchar*, gboolean*, GError**));
+  MOCK_METHOD2(StartDeviceWipe, gboolean(gboolean*, GError**));
 };
 }  // namespace login_manager
 
