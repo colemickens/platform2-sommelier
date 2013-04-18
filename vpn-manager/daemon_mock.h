@@ -21,7 +21,7 @@ class DaemonMock : public Daemon {
   MOCK_METHOD0(FindProcess, bool());
   MOCK_METHOD0(IsRunning, bool());
   MOCK_METHOD0(Terminate, bool());
-  MOCK_METHOD0(GetPid, pid_t());
+  MOCK_CONST_METHOD0(GetPid, pid_t());
 };
 
 }  // namespace vpn_manager
