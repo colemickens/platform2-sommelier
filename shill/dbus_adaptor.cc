@@ -25,15 +25,13 @@ using std::vector;
 
 namespace shill {
 
-// static
+// public static
+const char DBusAdaptor::kNullPath[] = "/";
+// private statics
 const char DBusAdaptor::kByteArraysSig[] = "aay";
-// static
 const char DBusAdaptor::kPathsSig[] = "ao";
-// static
 const char DBusAdaptor::kStringmapSig[] = "a{ss}";
-// static
 const char DBusAdaptor::kStringmapsSig[] = "aa{ss}";
-// static
 const char DBusAdaptor::kStringsSig[] = "as";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)

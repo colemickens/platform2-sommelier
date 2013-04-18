@@ -38,8 +38,8 @@ EthernetService::EthernetService(ControlInterface *control_interface,
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kEthernet),
       ethernet_(device) {
-  set_connectable(true);
-  set_auto_connect(true);
+  SetConnectable(true);
+  SetAutoConnect(true);
   set_friendly_name("Ethernet");
   SetStrength(kStrengthMax);
 }
@@ -64,14 +64,15 @@ string EthernetService::GetStorageIdentifier() const {
                             kServiceType, ethernet_->address().c_str());
 }
 
-void EthernetService::SetAutoConnect(const bool &connect, Error *error) {
+void EthernetService::SetAutoConnectFull(const bool &connect,
+                                         Error *error) {
   if (!connect) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments,
         "Auto-connect on Ethernet services must not be disabled.");
     return;
   }
-  Service::SetAutoConnect(connect, error);
+  Service::SetAutoConnectFull(connect, error);
 }
 
 void EthernetService::Remove(Error *error) {

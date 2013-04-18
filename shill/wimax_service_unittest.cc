@@ -18,6 +18,7 @@
 #include "shill/mock_wimax.h"
 #include "shill/mock_wimax_network_proxy.h"
 #include "shill/mock_wimax_provider.h"
+#include "shill/service_property_change_test.h"
 
 using std::string;
 using testing::_;
@@ -72,6 +73,14 @@ class WiMaxServiceTest : public testing::Test {
 
   void SetConnectable(bool connectable) {
     service_->connectable_ = connectable;
+  }
+
+  void SetDevice(WiMaxRefPtr device) {
+    service_->SetDevice(device);
+  }
+
+  ServiceMockAdaptor *GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
   }
 
   scoped_ptr<MockWiMaxNetworkProxy> proxy_;
@@ -300,6 +309,22 @@ TEST_F(WiMaxServiceTest, IsAutoConnectable) {
   reason = "";
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
   EXPECT_STREQ("", reason);
+}
+
+TEST_F(WiMaxServiceTest, PropertyChanges) {
+  ServiceMockAdaptor *adaptor = GetAdaptor();
+  TestCommonPropertyChanges(service_, adaptor);
+  TestAutoConnectPropertyChange(service_, adaptor);
+
+  EXPECT_CALL(*adaptor,
+              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+  SetDevice(device_);
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  EXPECT_CALL(*adaptor,
+              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+  SetDevice(NULL);
+  Mock::VerifyAndClearExpectations(adaptor);
 }
 
 }  // namespace shill

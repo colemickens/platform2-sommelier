@@ -19,6 +19,7 @@
 #include "shill/mock_store.h"
 #include "shill/nice_mock_control.h"
 #include "shill/proxy_factory.h"
+#include "shill/service_property_change_test.h"
 
 using std::string;
 using testing::_;
@@ -363,7 +364,7 @@ TEST_F(CellularServiceTest, IsAutoConnectable) {
 
   // The following test cases are copied from ServiceTest.IsAutoConnectable
 
-  service_->set_connectable(true);
+  service_->SetConnectable(true);
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
   // We should not auto-connect to a Service that a user has
@@ -531,6 +532,11 @@ TEST_F(CellularServiceTest, OutOfCreditsNotEnforced) {
   // There should not be any pending connect requests but dispatch pending
   // events anyway to be sure.
   dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(CellularServiceTest, PropertyChanges) {
+  TestCommonPropertyChanges(service_, adaptor_);
+  TestAutoConnectPropertyChange(service_, adaptor_);
 }
 
 }  // namespace shill

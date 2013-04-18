@@ -11,6 +11,7 @@
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 
+#include "shill/dbus_adaptor.h"
 #include "shill/eap_credentials.h"
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
@@ -26,7 +27,6 @@ namespace shill {
 
 const char WiMaxService::kStorageNetworkId[] = "NetworkId";
 const char WiMaxService::kNetworkIdProperty[] = "NetworkId";
-
 
 WiMaxService::WiMaxService(ControlInterface *control,
                            EventDispatcher *dispatcher,
@@ -72,7 +72,7 @@ void WiMaxService::Stop() {
   SetStrength(0);
   if (device_) {
     device_->OnServiceStopped(this);
-    device_ = NULL;
+    SetDevice(NULL);
   }
   UpdateConnectable();
 }
@@ -146,7 +146,7 @@ void WiMaxService::Connect(Error *error, const char *reason) {
   if (error->IsSuccess()) {
     // Associate with the carrier device if the connection process has been
     // initiated successfully.
-    device_ = carrier;
+    SetDevice(carrier);
   }
 }
 
@@ -158,7 +158,7 @@ void WiMaxService::Disconnect(Error *error) {
   }
   Service::Disconnect(error);
   device_->DisconnectFrom(this, error);
-  device_ = NULL;
+  SetDevice(NULL);
   // Set |need_passphrase_| to true so that after users explicitly disconnect
   // from the network, the UI will prompt for credentials when they try to
   // re-connect to the same network. This works around the fact that there is
@@ -176,7 +176,7 @@ string WiMaxService::GetStorageIdentifier() const {
 string WiMaxService::GetDeviceRpcId(Error *error) {
   if (!device_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
-    return "/";
+    return DBusAdaptor::kNullPath;
   }
   return device_->GetRpcIdentifier();
 }
@@ -204,12 +204,25 @@ void WiMaxService::OnEapCredentialsChanged() {
 }
 
 void WiMaxService::UpdateConnectable() {
-  SetConnectable(IsStarted() && !need_passphrase_);
+  SetConnectableFull(IsStarted() && !need_passphrase_);
 }
 
 void WiMaxService::OnSignalStrengthChanged(int strength) {
   SLOG(WiMax, 2) << __func__ << "(" << strength << ")";
   SetStrength(strength);
+}
+
+void WiMaxService::SetDevice(WiMaxRefPtr new_device) {
+  if (device_ == new_device)
+    return;
+  if (new_device) {
+    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+                                        new_device->GetRpcIdentifier());
+  } else {
+    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+                                        DBusAdaptor::kNullPath);
+  }
+  device_ = new_device;
 }
 
 bool WiMaxService::Save(StoreInterface *storage) {
@@ -236,7 +249,7 @@ void WiMaxService::SetState(ConnectState state) {
   Service::SetState(state);
   if (!IsConnecting() && !IsConnected()) {
     // Disassociate from any carrier device if it's not connected anymore.
-    device_ = NULL;
+    SetDevice(NULL);
   }
 }
 

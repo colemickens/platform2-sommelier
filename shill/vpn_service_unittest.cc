@@ -20,6 +20,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_vpn_driver.h"
 #include "shill/mock_vpn_provider.h"
+#include "shill/service_property_change_test.h"
 
 using std::string;
 using testing::_;
@@ -89,6 +90,10 @@ class VPNServiceTest : public testing::Test {
   // Takes ownership of |provider|.
   void SetVPNProvider(VPNProvider *provider) {
     manager_.vpn_provider_.reset(provider);
+  }
+
+  ServiceMockAdaptor *GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
   }
 
   std::string interface_name_;
@@ -198,7 +203,7 @@ TEST_F(VPNServiceTest, SaveCredentials) {
 }
 
 TEST_F(VPNServiceTest, Unload) {
-  service_->set_auto_connect(true);
+  service_->SetAutoConnect(true);
   service_->set_save_credentials(true);
   EXPECT_CALL(*driver_, Disconnect());
   EXPECT_CALL(*driver_, UnloadCredentials());
@@ -316,6 +321,18 @@ TEST_F(VPNServiceTest, SetNameProperty) {
                                        &error));
   EXPECT_NE(service_->GetStorageIdentifier(), kOldId);
   EXPECT_EQ(kName, service_->friendly_name());
+}
+
+TEST_F(VPNServiceTest, PropertyChanges) {
+  TestCommonPropertyChanges(service_, GetAdaptor());
+  TestAutoConnectPropertyChange(service_, GetAdaptor());
+
+  const string kHost = "1.2.3.4";
+  scoped_refptr<MockProfile> profile(
+      new NiceMock<MockProfile>(&control_, &metrics_, &manager_));
+  service_->set_profile(profile);
+  driver_->args()->SetString(flimflam::kProviderHostProperty, kHost);
+  TestNamePropertyChange(service_, GetAdaptor());
 }
 
 }  // namespace shill

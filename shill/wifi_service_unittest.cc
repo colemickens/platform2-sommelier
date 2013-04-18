@@ -24,6 +24,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_eap_credentials.h"
 #include "shill/mock_log.h"
+#include "shill/mock_manager.h"
 #include "shill/mock_nss.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_service.h"
@@ -32,6 +33,7 @@
 #include "shill/mock_wifi_provider.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
+#include "shill/service_property_change_test.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wpa_supplicant.h"
 
@@ -59,16 +61,17 @@ namespace shill {
 class WiFiServiceTest : public PropertyStoreTest {
  public:
   WiFiServiceTest()
-       : wifi_(new NiceMock<MockWiFi>(
-               control_interface(),
-               dispatcher(),
-               metrics(),
-               manager(),
-               "wifi",
-               fake_mac,
-               0)),
-         simple_ssid_(1, 'a'),
-         simple_ssid_string_("a") {}
+      : mock_manager_(control_interface(), dispatcher(), metrics(), glib()),
+        wifi_(
+            new NiceMock<MockWiFi>(control_interface(),
+                                   dispatcher(),
+                                   metrics(),
+                                   manager(),
+                                   "wifi",
+                                   fake_mac,
+                                   0)),
+        simple_ssid_(1, 'a'),
+        simple_ssid_string_("a") {}
   virtual ~WiFiServiceTest() {}
 
  protected:
@@ -124,6 +127,9 @@ class WiFiServiceTest : public PropertyStoreTest {
   WiFiServiceRefPtr MakeGenericService() {
     return MakeSimpleService(flimflam::kSecurityWep);
   }
+  void SetWiFi(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
+    service->SetWiFi(wifi);  // Has side-effects.
+  }
   void SetWiFiForService(WiFiServiceRefPtr service, WiFiRefPtr wifi) {
     service->wifi_ = wifi;
   }
@@ -131,6 +137,17 @@ class WiFiServiceTest : public PropertyStoreTest {
     WiFiServiceRefPtr service = MakeSimpleService(security);
     SetWiFiForService(service, wifi_);
     return service;
+  }
+  WiFiServiceRefPtr MakeServiceWithMockManager() {
+    return new WiFiService(control_interface(),
+                           dispatcher(),
+                           metrics(),
+                           &mock_manager_,
+                           &provider_,
+                           simple_ssid_,
+                           flimflam::kModeManaged,
+                           flimflam::kSecurityWep,
+                           false);
   }
   ServiceMockAdaptor *GetAdaptor(WiFiService *service) {
     return dynamic_cast<ServiceMockAdaptor *>(service->adaptor());
@@ -153,6 +170,7 @@ class WiFiServiceTest : public PropertyStoreTest {
   const string &simple_ssid_string() { return simple_ssid_string_; }
 
  private:
+  MockManager mock_manager_;
   scoped_refptr<MockWiFi> wifi_;
   MockWiFiProvider provider_;
   const vector<uint8_t> simple_ssid_;
@@ -882,7 +900,7 @@ TEST_F(WiFiServiceTest, ConfigureMakesConnectable) {
   WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurity8021x);
   // Hack the GUID in so that we don't have to mess about with WiFi to regsiter
   // our service.  This way, Manager will handle the lookup itself.
-  service->set_guid(guid);
+  service->SetGuid(guid, NULL);
   manager()->RegisterService(service);
   EXPECT_FALSE(service->connectable());
   EXPECT_EQ(service.get(), manager()->GetService(args, &error).get());
@@ -1638,5 +1656,21 @@ TEST_F(WiFiServiceTest, Unload) {
   service->Unload();
 }
 
+TEST_F(WiFiServiceTest, PropertyChanges) {
+  WiFiServiceRefPtr service = MakeServiceWithMockManager();
+  ServiceMockAdaptor *adaptor = GetAdaptor(service);
+  TestCommonPropertyChanges(service, adaptor);
+  TestAutoConnectPropertyChange(service, adaptor);
+
+  EXPECT_CALL(*adaptor,
+              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+  SetWiFi(service, wifi());
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  EXPECT_CALL(*adaptor,
+              EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
+  service->ResetWiFi();
+  Mock::VerifyAndClearExpectations(adaptor);
+}
 
 }  // namespace shill

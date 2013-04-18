@@ -106,7 +106,7 @@ CellularService::CellularService(ControlInterface *control_interface,
       num_connect_attempts_(0),
       out_of_credits_detection_in_progress_(false),
       out_of_credits_(false) {
-  set_connectable(true);
+  SetConnectable(true);
   PropertyStore *store = this->mutable_store();
   store->RegisterConstBool(kActivateOverNonCellularNetworkProperty,
                            &activate_over_non_cellular_network_);
@@ -461,7 +461,7 @@ void CellularService::SetActivationState(const string &state) {
   }
   activation_state_ = state;
   adaptor()->EmitStringChanged(flimflam::kActivationStateProperty, state);
-  SetConnectable(state != flimflam::kActivationStateNotActivated);
+  SetConnectableFull(state != flimflam::kActivationStateNotActivated);
 }
 
 void CellularService::SetOLP(const OLP &olp) {

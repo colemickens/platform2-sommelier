@@ -463,6 +463,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	rtnl_listener_unittest.o \
 	rtnl_message_unittest.o \
 	scope_logger_unittest.o \
+	service_property_change_test.o \
 	service_under_test.o \
 	service_unittest.o \
 	supplicant_eap_state_handler_unittest.o \

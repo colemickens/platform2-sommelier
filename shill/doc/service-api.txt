@@ -172,11 +172,6 @@ Properties	boolean AutoConnect [readwrite]
 			services are marked for auto-connect then the highest
 			priority available service will be selected.
 
-			For favorite services it is possible to change
-			this value to prevent or permit automatic
-			connection attempts. For non-favorite services, setting
-			AutoConnect to TRUE causes favorite to be set to TRUE.
-
 		boolean Cellular.ActivateOverNonCellularNetwork [readonly]
 
 			(Cellular only) If set to true, this service must be
@@ -349,6 +344,9 @@ Properties	boolean AutoConnect [readwrite]
 			The object path of the associated device.
 			This value may be used to retrieve and manipulate
 			Layer 3 configuration state.
+
+			A value of "/" indicates that the service is
+			not bound to any device.
 
 		array{string} Diagnostics.Disconnects [readonly]
 

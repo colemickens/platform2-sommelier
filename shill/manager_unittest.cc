@@ -378,7 +378,7 @@ class ManagerTest : public PropertyStoreTest {
                                                           metrics(),
                                                           manager());
     service->MakeFavorite();
-    service->set_connectable(true);
+    service->SetConnectable(true);
     return service;
   }
 
@@ -1917,7 +1917,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
                                 metrics(),
                                 manager()));
   const string kGUID = "a guid";
-  mock_service->set_guid(kGUID);
+  mock_service->SetGuid(kGUID, NULL);
   manager()->RegisterService(mock_service);
   ServiceRefPtr mock_service_generic(mock_service.get());
 
@@ -2254,7 +2254,7 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Priority.
-  mock_service0->set_priority(1);
+  mock_service0->SetPriority(1, NULL);
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
@@ -2264,9 +2264,9 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
   // Auto-connect.
-  mock_service0->set_auto_connect(true);
+  mock_service0->SetAutoConnect(true);
   manager()->UpdateService(mock_service0);
-  mock_service1->set_auto_connect(false);
+  mock_service1->SetAutoConnect(false);
   manager()->UpdateService(mock_service1);
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
@@ -2283,9 +2283,9 @@ TEST_F(ManagerTest, SortServices) {
   EXPECT_TRUE(ServiceOrderIs(mock_service0, mock_service1));
 
   // Connectable.
-  mock_service1->set_connectable(true);
+  mock_service1->SetConnectable(true);
   manager()->UpdateService(mock_service1);
-  mock_service0->set_connectable(false);
+  mock_service0->SetConnectable(false);
   manager()->UpdateService(mock_service0);
   EXPECT_TRUE(ServiceOrderIs(mock_service1, mock_service0));
 
@@ -2360,11 +2360,11 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
 
-  mock_service1->set_priority(1);
+  mock_service1->SetPriority(1, NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
 
-  mock_service1->set_priority(0);
+  mock_service1->SetPriority(0, NULL);
   EXPECT_CALL(mock_metrics, NotifyDefaultServiceChanged(NULL));
   manager()->SortServicesTask();
 
@@ -2382,7 +2382,7 @@ TEST_F(ManagerTest, SortServicesWithConnection) {
                service_watcher.AsWeakPtr()));
   EXPECT_EQ(1, tag);
 
-  mock_service1->set_priority(1);
+  mock_service1->SetPriority(1, NULL);
   EXPECT_CALL(*mock_connection0.get(), SetIsDefault(false));
   EXPECT_CALL(*mock_connection1.get(), SetIsDefault(true));
   EXPECT_CALL(service_watcher, OnDefaultServiceChanged(_));
@@ -2746,9 +2746,9 @@ TEST_F(ManagerTest, AutoConnectOnRegister) {
 
 TEST_F(ManagerTest, AutoConnectOnUpdate) {
   MockServiceRefPtr service1 = MakeAutoConnectableService();
-  service1->set_priority(1);
+  service1->SetPriority(1, NULL);
   MockServiceRefPtr service2 = MakeAutoConnectableService();
-  service2->set_priority(2);
+  service2->SetPriority(2, NULL);
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
   dispatcher()->DispatchPendingEvents();
@@ -2766,9 +2766,9 @@ TEST_F(ManagerTest, AutoConnectOnUpdate) {
 
 TEST_F(ManagerTest, AutoConnectOnDeregister) {
   MockServiceRefPtr service1 = MakeAutoConnectableService();
-  service1->set_priority(1);
+  service1->SetPriority(1, NULL);
   MockServiceRefPtr service2 = MakeAutoConnectableService();
-  service2->set_priority(2);
+  service2->SetPriority(2, NULL);
   manager()->RegisterService(service1);
   manager()->RegisterService(service2);
   dispatcher()->DispatchPendingEvents();
@@ -3034,8 +3034,8 @@ TEST_F(ManagerTest, GetServiceWithGUID) {
     EXPECT_FALSE(service);
   }
 
-  mock_service0->set_guid(kGUID0);
-  mock_service1->set_guid(kGUID1);
+  mock_service0->SetGuid(kGUID0, NULL);
+  mock_service1->SetGuid(kGUID1, NULL);
 
   {
     Error error;
@@ -3355,8 +3355,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*wifi_service0.get(), IsConnected())
       .WillRepeatedly(Return(false));
-  wifi_service0->set_connectable(true);
-  wifi_service0->set_auto_connect(true);
+  wifi_service0->SetConnectable(true);
+  wifi_service0->SetAutoConnect(true);
   wifi_service0->SetSecurity(Service::kCryptoAes, true, true);
   EXPECT_CALL(*wifi_service0.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
@@ -3370,8 +3370,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*wifi_service1.get(), IsConnected())
       .WillRepeatedly(Return(false));
-  wifi_service1->set_auto_connect(true);
-  wifi_service1->set_connectable(true);
+  wifi_service1->SetAutoConnect(true);
+  wifi_service1->SetConnectable(true);
   wifi_service1->SetSecurity(Service::kCryptoRc4, true, true);
   EXPECT_CALL(*wifi_service1.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
@@ -3385,8 +3385,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*wifi_service2.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  wifi_service2->set_auto_connect(true);
-  wifi_service2->set_connectable(true);
+  wifi_service2->SetAutoConnect(true);
+  wifi_service2->SetConnectable(true);
   wifi_service2->SetSecurity(Service::kCryptoNone, false, false);
   EXPECT_CALL(*wifi_service2.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
@@ -3408,8 +3408,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*cell_service.get(), IsConnected())
       .WillRepeatedly(Return(true));
-  wifi_service2->set_auto_connect(true);
-  cell_service->set_connectable(true);
+  wifi_service2->SetAutoConnect(true);
+  cell_service->SetConnectable(true);
   EXPECT_CALL(*cell_service.get(), technology())
       .WillRepeatedly(Return(Technology::kCellular));
   manager()->RegisterService(cell_service);
@@ -3424,8 +3424,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*vpn_service.get(), IsConnected())
       .WillRepeatedly(Return(false));
-  wifi_service2->set_auto_connect(false);
-  vpn_service->set_connectable(true);
+  wifi_service2->SetAutoConnect(false);
+  vpn_service->SetConnectable(true);
   EXPECT_CALL(*vpn_service.get(), technology())
       .WillRepeatedly(Return(Technology::kVPN));
   manager()->RegisterService(vpn_service);

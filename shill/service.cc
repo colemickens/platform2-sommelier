@@ -137,7 +137,7 @@ Service::Service(ControlInterface *control_interface,
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()) {
   HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
                           &Service::GetAutoConnect,
-                          &Service::SetAutoConnect);
+                          &Service::SetAutoConnectFull);
 
   // flimflam::kActivationStateProperty: Registered in CellularService
   // flimflam::kCellularApnProperty: Registered in CellularService
@@ -158,7 +158,9 @@ Service::Service(ControlInterface *control_interface,
                                    NULL);
   store_.RegisterConstStrings(kEapRemoteCertificationProperty,
                               &remote_certification_);
-  store_.RegisterString(flimflam::kGuidProperty, &guid_);
+  HelpRegisterDerivedString(flimflam::kGuidProperty,
+                            &Service::GetGuid,
+                            &Service::SetGuid);
 
   // TODO(ers): in flimflam clearing Error has the side-effect of
   // setting the service state to IDLE. Is this important? I could
@@ -182,7 +184,9 @@ Service::Service(ControlInterface *control_interface,
                             &Service::SetNameProperty);
   // flimflam::kPassphraseProperty: Registered in WiFiService
   // flimflam::kPassphraseRequiredProperty: Registered in WiFiService
-  store_.RegisterInt32(flimflam::kPriorityProperty, &priority_);
+  HelpRegisterDerivedInt32(flimflam::kPriorityProperty,
+                           &Service::GetPriority,
+                           &Service::SetPriority);
   HelpRegisterDerivedString(flimflam::kProfileProperty,
                             &Service::GetProfileRpcId,
                             &Service::SetProfileRpcId);
@@ -588,8 +592,8 @@ void Service::MakeFavorite() {
     return;
   }
 
-  auto_connect_ = true;
-  favorite_ = true;
+  MarkAsFavorite();
+  SetAutoConnect(true);
 }
 
 void Service::SetConnection(const ConnectionRefPtr &connection) {
@@ -639,6 +643,14 @@ bool Service::AddEAPCertification(const string &name, size_t depth) {
 
 void Service::ClearEAPCertification() {
   remote_certification_.clear();
+}
+
+void Service::SetAutoConnect(bool connect) {
+  if (auto_connect() == connect) {
+    return;
+  }
+  auto_connect_ = connect;
+  adaptor_->EmitBoolChanged(flimflam::kAutoConnectProperty, auto_connect());
 }
 
 void Service::SetEapCredentials(EapCredentials *eap) {
@@ -944,7 +956,7 @@ void Service::OnAfterResume() {
 string Service::GetIPConfigRpcIdentifier(Error *error) {
   if (!connection_) {
     error->Populate(Error::kNotFound);
-    return "/";
+    return DBusAdaptor::kNullPath;
   }
 
   string id = connection_->ipconfig_rpc_identifier();
@@ -952,23 +964,24 @@ string Service::GetIPConfigRpcIdentifier(Error *error) {
   if (id.empty()) {
     // Do not return an empty IPConfig.
     error->Populate(Error::kNotFound);
-    return "/";
+    return DBusAdaptor::kNullPath;
   }
 
   return id;
 }
 
-void Service::set_connectable(bool connectable) {
+void Service::SetConnectable(bool connectable) {
+  if (connectable_ == connectable)
+    return;
   connectable_ = connectable;
   adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
 }
 
-void Service::SetConnectable(bool connectable) {
+void Service::SetConnectableFull(bool connectable) {
   if (connectable_ == connectable) {
     return;
   }
-  connectable_ = connectable;
-  adaptor_->EmitBoolChanged(flimflam::kConnectableProperty, connectable_);
+  SetConnectable(connectable);
   if (manager_->HasService(this)) {
     manager_->UpdateService(this);
   }
@@ -1054,6 +1067,15 @@ void Service::HelpRegisterDerivedBool(
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set)));
 }
 
+void Service::HelpRegisterDerivedInt32(
+    const string &name,
+    int32(Service::*get)(Error *),
+    void(Service::*set)(const int32&, Error *)) {
+  store_.RegisterDerivedInt32(
+      name,
+      Int32Accessor(new CustomAccessor<Service, int32>(this, get, set)));
+}
+
 void Service::HelpRegisterDerivedString(
     const string &name,
     string(Service::*get)(Error *),
@@ -1125,13 +1147,13 @@ bool Service::GetAutoConnect(Error */*error*/) {
   return auto_connect();
 }
 
-void Service::SetAutoConnect(const bool &connect, Error */*error*/) {
+void Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
             << auto_connect() << "->" << connect;
   if (auto_connect() == connect) {
     return;
   }
-  set_auto_connect(connect);
+  SetAutoConnect(connect);
   manager_->UpdateService(this);
 }
 
@@ -1155,6 +1177,23 @@ void Service::SetCheckPortal(const string &check_portal, Error *error) {
   check_portal_ = check_portal;
 }
 
+string Service::GetGuid(Error *error) {
+  return guid_;
+}
+
+void Service::SetGuid(const string &guid, Error */*error*/) {
+  if (guid == guid_) {
+    return;
+  }
+  guid_ = guid;
+  adaptor_->EmitStringChanged(flimflam::kGuidProperty, guid_);
+}
+
+void Service::MarkAsFavorite() {
+  favorite_ = true;
+  adaptor_->EmitBoolChanged(flimflam::kFavoriteProperty, favorite_);
+}
+
 void Service::SetSecurity(CryptoAlgorithm crypto_algorithm, bool key_rotation,
                           bool endpoint_auth) {
   crypto_algorithm_ = crypto_algorithm;
@@ -1175,6 +1214,18 @@ void Service::SetNameProperty(const string &name, Error *error) {
   }
 }
 
+int32 Service::GetPriority(Error *error) {
+  return priority_;
+}
+
+void Service::SetPriority(const int32 &priority, Error *error) {
+  if (priority == priority_) {
+    return;
+  }
+  priority_ = priority;
+  adaptor_->EmitIntChanged(flimflam::kPriorityProperty, priority_);
+}
+
 string Service::GetProfileRpcId(Error *error) {
   if (!profile_) {
     // This happens in some unit tests where profile_ is not set.
@@ -1186,6 +1237,8 @@ string Service::GetProfileRpcId(Error *error) {
 
 void Service::SetProfileRpcId(const string &profile, Error *error) {
   manager_->SetProfileForService(this, profile, error);
+  // No need to Emit here, since SetProfileForService will call into
+  // SetProfile (if the profile actually changes).
 }
 
 uint16 Service::GetHTTPProxyPort(Error */*error*/) {

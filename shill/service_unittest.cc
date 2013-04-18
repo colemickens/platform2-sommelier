@@ -33,6 +33,7 @@
 #include "shill/mock_store.h"
 #include "shill/mock_time.h"
 #include "shill/property_store_unittest.h"
+#include "shill/service_property_change_test.h"
 #include "shill/service_under_test.h"
 
 using base::Bind;
@@ -173,8 +174,8 @@ class ServiceTest : public PropertyStoreTest {
     return service_->GetAutoConnect(error);
   }
 
-  void SetAutoConnect(bool connect, Error *error) {
-    service_->SetAutoConnect(connect, error);
+  void SetAutoConnectFull(bool connect, Error *error) {
+    service_->SetAutoConnectFull(connect, error);
   }
 
   MockManager mock_manager_;
@@ -246,7 +247,6 @@ TEST_F(ServiceTest, GetProperties) {
   {
     ::DBus::Error dbus_error;
     bool expected = true;
-    service_->set_favorite(true);
     service_->mutable_store()->SetBoolProperty(flimflam::kAutoConnectProperty,
                                                expected,
                                                &error);
@@ -330,7 +330,6 @@ TEST_F(ServiceTest, SetProperty) {
   }
   {
     ::DBus::Error error;
-    service_->set_favorite(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                          flimflam::kAutoConnectProperty,
                                          PropertyStoreTest::kBoolV,
@@ -338,7 +337,6 @@ TEST_F(ServiceTest, SetProperty) {
   }
   {
     ::DBus::Error error;
-    service_->set_favorite(false);
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                           flimflam::kAutoConnectProperty,
                                           PropertyStoreTest::kBoolV,
@@ -582,7 +580,7 @@ TEST_F(ServiceTest, ReMakeFavorite) {
   EXPECT_TRUE(service_->favorite());
   EXPECT_TRUE(service_->auto_connect());
 
-  service_->set_auto_connect(false);
+  service_->SetAutoConnect(false);
   service_->MakeFavorite();
   EXPECT_TRUE(service_->favorite());
   EXPECT_FALSE(service_->auto_connect());
@@ -590,7 +588,7 @@ TEST_F(ServiceTest, ReMakeFavorite) {
 
 TEST_F(ServiceTest, IsAutoConnectable) {
   const char *reason = NULL;
-  service_->set_connectable(true);
+  service_->SetConnectable(true);
 
   // Services with non-primary connectivity technologies should not auto-connect
   // when the system is offline.
@@ -645,7 +643,7 @@ TEST_F(ServiceTest, IsAutoConnectable) {
 TEST_F(ServiceTest, AutoConnectLogging) {
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _));
-  service_->set_connectable(true);
+  service_->SetConnectable(true);
 
   ScopeLogger::GetInstance()->EnableScopesByName("+service");
   ScopeLogger::GetInstance()->set_verbose_level(1);
@@ -657,14 +655,14 @@ TEST_F(ServiceTest, AutoConnectLogging) {
   ScopeLogger::GetInstance()->set_verbose_level(0);
   EXPECT_CALL(log, Log(logging::LOG_INFO, _,
                        HasSubstr(Service::kAutoConnNotConnectable)));
-  service_->set_connectable(false);
+  service_->SetConnectable(false);
   service_->AutoConnect();
 }
 
 
 TEST_F(AllMockServiceTest, AutoConnectWithFailures) {
   const char *reason;
-  service_->set_connectable(true);
+  service_->SetConnectable(true);
   service_->technology_ = Technology::kEthernet;
   EXPECT_TRUE(service_->IsAutoConnectable(&reason));
 
@@ -755,7 +753,7 @@ TEST_F(ServiceTest, ConfigureBadProperty) {
 
 TEST_F(ServiceTest, ConfigureBoolProperty) {
   service_->MakeFavorite();
-  service_->set_auto_connect(false);
+  service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
   args.SetBool(flimflam::kAutoConnectProperty, true);
@@ -768,7 +766,7 @@ TEST_F(ServiceTest, ConfigureBoolProperty) {
 TEST_F(ServiceTest, ConfigureStringProperty) {
   const string kGuid0 = "guid_zero";
   const string kGuid1 = "guid_one";
-  service_->set_guid(kGuid0);
+  service_->SetGuid(kGuid0, NULL);
   ASSERT_EQ(kGuid0, service_->guid());
   KeyValueStore args;
   args.SetString(flimflam::kGuidProperty, kGuid1);
@@ -800,7 +798,7 @@ TEST_F(ServiceTest, ConfigureEapStringProperty) {
 TEST_F(ServiceTest, ConfigureIntProperty) {
   const int kPriority0 = 100;
   const int kPriority1 = 200;
-  service_->set_priority(kPriority0);
+  service_->SetPriority(kPriority0, NULL);
   ASSERT_EQ(kPriority0, service_->priority());
   KeyValueStore args;
   args.SetInt(flimflam::kPriorityProperty, kPriority1);
@@ -812,7 +810,7 @@ TEST_F(ServiceTest, ConfigureIntProperty) {
 
 TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   service_->MakeFavorite();
-  service_->set_auto_connect(false);
+  service_->SetAutoConnect(false);
   ASSERT_FALSE(service_->auto_connect());
   KeyValueStore args;
   args.SetBool(flimflam::kAutoConnectProperty, true);
@@ -824,13 +822,13 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
 }
 
 TEST_F(ServiceTest, DoPropertiesMatch) {
-  service_->set_auto_connect(false);
+  service_->SetAutoConnect(false);
   const string kGUID0 = "guid_zero";
   const string kGUID1 = "guid_one";
-  service_->set_guid(kGUID0);
+  service_->SetGuid(kGUID0, NULL);
   const uint32 kPriority0 = 100;
   const uint32 kPriority1 = 200;
-  service_->set_priority(kPriority0);
+  service_->SetPriority(kPriority0, NULL);
 
   {
     KeyValueStore args;
@@ -1013,32 +1011,32 @@ TEST_F(ServiceTest, SetFriendlyName) {
   EXPECT_EQ("Test Name 2", service_->friendly_name_);
 }
 
-TEST_F(ServiceTest, SetConnectable) {
+TEST_F(ServiceTest, SetConnectableFull) {
   EXPECT_FALSE(service_->connectable());
 
   ServiceMockAdaptor *adaptor = GetAdaptor();
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(_, _)).Times(0);
   EXPECT_CALL(mock_manager_, HasService(_)).Times(0);
-  service_->SetConnectable(false);
+  service_->SetConnectableFull(false);
   EXPECT_FALSE(service_->connectable());
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, true));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(false));
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
-  service_->SetConnectable(true);
+  service_->SetConnectableFull(true);
   EXPECT_TRUE(service_->connectable());
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, false));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
   EXPECT_CALL(mock_manager_, UpdateService(_));
-  service_->SetConnectable(false);
+  service_->SetConnectableFull(false);
   EXPECT_FALSE(service_->connectable());
 
   EXPECT_CALL(*adaptor, EmitBoolChanged(flimflam::kConnectableProperty, true));
   EXPECT_CALL(mock_manager_, HasService(_)).WillOnce(Return(true));
               EXPECT_CALL(mock_manager_, UpdateService(_));
-  service_->SetConnectable(true);
+  service_->SetConnectableFull(true);
   EXPECT_TRUE(service_->connectable());
 }
 
@@ -1472,7 +1470,7 @@ TEST_F(ServiceTest, SetErrorDetails) {
   service_->SetErrorDetails(kDetails);
 }
 
-TEST_F(ServiceTest, SetAutoConnect) {
+TEST_F(ServiceTest, SetAutoConnectFull) {
   EXPECT_FALSE(service_->auto_connect());
   Error error;
   EXPECT_FALSE(GetAutoConnect(&error));
@@ -1480,7 +1478,7 @@ TEST_F(ServiceTest, SetAutoConnect) {
 
   // false -> false
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
-  SetAutoConnect(false, &error);
+  SetAutoConnectFull(false, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
@@ -1488,7 +1486,7 @@ TEST_F(ServiceTest, SetAutoConnect) {
 
   // false -> true
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
-  SetAutoConnect(true, &error);
+  SetAutoConnectFull(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
@@ -1496,7 +1494,7 @@ TEST_F(ServiceTest, SetAutoConnect) {
 
   // true -> true
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(0);
-  SetAutoConnect(true, &error);
+  SetAutoConnectFull(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(service_->auto_connect());
   EXPECT_TRUE(GetAutoConnect(NULL));
@@ -1504,11 +1502,16 @@ TEST_F(ServiceTest, SetAutoConnect) {
 
   // true -> false
   EXPECT_CALL(mock_manager_, UpdateService(_)).Times(1);
-  SetAutoConnect(false, &error);
+  SetAutoConnectFull(false, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_FALSE(service_->auto_connect());
   EXPECT_FALSE(GetAutoConnect(NULL));
   Mock::VerifyAndClearExpectations(&mock_manager_);
+}
+
+TEST_F(ServiceTest, PropertyChanges) {
+  TestCommonPropertyChanges(service_, GetAdaptor());
+  TestAutoConnectPropertyChange(service_, GetAdaptor());
 }
 
 }  // namespace shill

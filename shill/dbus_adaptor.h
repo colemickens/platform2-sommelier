@@ -32,6 +32,8 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
                     public DBus::IntrospectableAdaptor,
                     public base::SupportsWeakPtr<DBusAdaptor> {
  public:
+  static const char kNullPath[];
+
   DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
   virtual ~DBusAdaptor();
 

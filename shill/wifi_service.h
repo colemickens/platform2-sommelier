@@ -218,12 +218,12 @@ class WiFiService : public Service {
   // endpoints).
   WiFiRefPtr ChooseDevice();
 
-  void SetWiFi(const WiFiRefPtr &wifi);
+  void SetWiFi(const WiFiRefPtr &new_wifi);
 
   // Properties
   std::string passphrase_;
   bool need_passphrase_;
-  std::string security_;
+  const std::string security_;
   // TODO(cmasone): see if the below can be pulled from the endpoint associated
   // with this service instead.
   const std::string mode_;

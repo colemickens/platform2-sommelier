@@ -92,7 +92,10 @@ class WiMaxService : public Service {
 
   void UpdateConnectable();
 
-  WiMaxRefPtr device_;
+  // Update |device_|, and inform RPC listeners of the change.
+  void SetDevice(WiMaxRefPtr new_device);
+
+  WiMaxRefPtr device_;  // Update via SetDevice().
   scoped_ptr<WiMaxNetworkProxyInterface> proxy_;
   std::string storage_id_;
 

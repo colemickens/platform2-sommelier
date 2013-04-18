@@ -42,22 +42,40 @@ class MetricsTest : public Test {
                                  &dispatcher_,
                                  &metrics_,
                                  &manager_)),
-        wifi_service_(new MockWiFiService(&control_interface_,
-                                          &dispatcher_,
-                                          &metrics_,
-                                          &manager_,
-                                          manager_.wifi_provider(),
-                                          ssid_,
-                                          flimflam::kModeManaged,
-                                          flimflam::kSecurityNone,
-                                          false)),
+        open_wifi_service_(new MockWiFiService(&control_interface_,
+                                               &dispatcher_,
+                                               &metrics_,
+                                               &manager_,
+                                               manager_.wifi_provider(),
+                                               ssid_,
+                                               flimflam::kModeManaged,
+                                               flimflam::kSecurityNone,
+                                               false)),
+        wep_wifi_service_(new MockWiFiService(&control_interface_,
+                                              &dispatcher_,
+                                              &metrics_,
+                                              &manager_,
+                                              manager_.wifi_provider(),
+                                              ssid_,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurityWep,
+                                              false)),
+        eap_wifi_service_(new MockWiFiService(&control_interface_,
+                                              &dispatcher_,
+                                              &metrics_,
+                                              &manager_,
+                                              manager_.wifi_provider(),
+                                              ssid_,
+                                              flimflam::kModeManaged,
+                                              flimflam::kSecurity8021x,
+                                              false)),
         eap_(new MockEapCredentials()) {}
 
   virtual ~MetricsTest() {}
 
   virtual void SetUp() {
     metrics_.set_library(&library_);
-    wifi_service_->eap_.reset(eap_);  // Passes ownership.
+    eap_wifi_service_->eap_.reset(eap_);  // Passes ownership.
     metrics_.collect_bootstats_ = false;
   }
 
@@ -87,12 +105,14 @@ class MetricsTest : public Test {
   MockEventDispatcher dispatcher_;
   MockGLib glib_;
   MockManager manager_;
-  Metrics metrics_;  // This must be destroyed after service_ and wifi_service_
+  Metrics metrics_;  // This must be destroyed after all |service_|s.
   MetricsLibraryMock library_;
   scoped_refptr<MockService> service_;
   const std::vector<uint8_t> ssid_;
-  scoped_refptr<MockWiFiService> wifi_service_;
-  MockEapCredentials *eap_;  // Owned by |wifi_service_|.
+  scoped_refptr<MockWiFiService> open_wifi_service_;
+  scoped_refptr<MockWiFiService> wep_wifi_service_;
+  scoped_refptr<MockWiFiService> eap_wifi_service_;
+  MockEapCredentials *eap_;  // Owned by |eap_wifi_service_|.
 };
 
 TEST_F(MetricsTest, TimeToConfig) {
@@ -144,9 +164,11 @@ TEST_F(MetricsTest, WiFiServiceTimeToJoin) {
                                   Metrics::kTimerHistogramMillisecondsMin,
                                   Metrics::kTimerHistogramMillisecondsMax,
                                   Metrics::kTimerHistogramNumBuckets));
-  metrics_.RegisterService(wifi_service_);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateAssociating);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConfiguring);
+  metrics_.RegisterService(open_wifi_service_);
+  metrics_.NotifyServiceStateChanged(open_wifi_service_,
+                                     Service::kStateAssociating);
+  metrics_.NotifyServiceStateChanged(open_wifi_service_,
+                                     Service::kStateConfiguring);
 }
 
 TEST_F(MetricsTest, WiFiServicePostReady) {
@@ -166,12 +188,12 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                                        _, _)).Times(0);
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.EapInnerProtocol",
                                       _, _)).Times(0);
-  wifi_service_->frequency_ = 2412;
-  wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wifi_service_->security_ = flimflam::kSecurityWep;
-  wifi_service_->raw_signal_strength_ = kStrength;
-  metrics_.RegisterService(wifi_service_);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
+  wep_wifi_service_->frequency_ = 2412;
+  wep_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  wep_wifi_service_->raw_signal_strength_ = kStrength;
+  metrics_.RegisterService(wep_wifi_service_);
+  metrics_.NotifyServiceStateChanged(wep_wifi_service_,
+                                     Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);
 
   // Simulate a system suspend, resume and an AP reconnect.
@@ -188,7 +210,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
       WillOnce(DoAll(SetArgumentPointee<0>(non_zero_time_delta), Return(true)));
   metrics_.NotifyPowerStateChange(PowerManagerProxyDelegate::kMem);
   metrics_.NotifyPowerStateChange(PowerManagerProxyDelegate::kOn);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
+  metrics_.NotifyServiceStateChanged(wep_wifi_service_,
+                                     Service::kStateConnected);
   Mock::VerifyAndClearExpectations(&library_);
   Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
 
@@ -199,7 +222,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
                         -kStrength);
   EXPECT_CALL(library_, SendToUMA("Network.Shill.Wifi.TimeResumeToReady",
                                   _, _, _, _)).Times(0);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
+  metrics_.NotifyServiceStateChanged(wep_wifi_service_,
+                                     Service::kStateConnected);
 }
 
 TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
@@ -208,13 +232,13 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWiFiSecurity8021x,
                         -kStrength);
-  wifi_service_->frequency_ = 2412;
-  wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
-  wifi_service_->security_ = flimflam::kSecurity8021x;
-  wifi_service_->raw_signal_strength_ = kStrength;
+  eap_wifi_service_->frequency_ = 2412;
+  eap_wifi_service_->physical_mode_ = Metrics::kWiFiNetworkPhyMode11a;
+  eap_wifi_service_->raw_signal_strength_ = kStrength;
   EXPECT_CALL(*eap_, OutputConnectionMetrics(&metrics_, Technology::kWifi));
-  metrics_.RegisterService(wifi_service_);
-  metrics_.NotifyServiceStateChanged(wifi_service_, Service::kStateConnected);
+  metrics_.RegisterService(eap_wifi_service_);
+  metrics_.NotifyServiceStateChanged(eap_wifi_service_,
+                                     Service::kStateConnected);
 }
 
 TEST_F(MetricsTest, FrequencyToChannel) {
@@ -269,7 +293,7 @@ TEST_F(MetricsTest, TimeOnlineTimeToDrop) {
   EXPECT_CALL(*mock_time_online_timer, Start()).Times(2);
   EXPECT_CALL(*mock_time_to_drop_timer, Start());
   metrics_.NotifyDefaultServiceChanged(service_);
-  metrics_.NotifyDefaultServiceChanged(wifi_service_);
+  metrics_.NotifyDefaultServiceChanged(open_wifi_service_);
 
   EXPECT_CALL(*mock_time_online_timer, Start());
   EXPECT_CALL(*mock_time_to_drop_timer, Start()).Times(0);

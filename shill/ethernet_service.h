@@ -34,7 +34,7 @@ class EthernetService : public Service {
   // ethernet_<MAC>
   virtual std::string GetStorageIdentifier() const;
   virtual bool IsAutoConnectByDefault() const { return true; }
-  virtual void SetAutoConnect(const bool &connect, Error *error);
+  virtual void SetAutoConnectFull(const bool &connect, Error *error);
 
   virtual void Remove(Error *error);
 

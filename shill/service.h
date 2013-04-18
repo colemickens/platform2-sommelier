@@ -45,6 +45,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 class ServiceAdaptorInterface;
+class ServiceMockAdaptor;
 class Sockets;
 class StoreInterface;
 
@@ -295,14 +296,16 @@ class Service : public base::RefCounted<Service> {
       int64 /*time_resume_to_ready_milliseconds*/) const {}
 
   bool auto_connect() const { return auto_connect_; }
-  void set_auto_connect(bool connect) { auto_connect_ = connect; }
+  void SetAutoConnect(bool connect);
 
   bool connectable() const { return connectable_; }
-  // TODO(petkov): Remove this method in favor of SetConnectable.
-  void set_connectable(bool connectable);
-  // Sets the connectable property of the service. Broadcasts the new value and
-  // alerts the manager if necessary.
+  // Sets the connectable property of the service, and broadcast the
+  // new value. Does not update the manager.
+  // TODO(petkov): Remove this method in favor of SetConnectableFull.
   void SetConnectable(bool connectable);
+  // Sets the connectable property of the service, broadcasts the new
+  // value, and alerts the manager if necessary.
+  void SetConnectableFull(bool connectable);
 
   virtual bool explicitly_disconnected() const {
     return explicitly_disconnected_;
@@ -311,18 +314,18 @@ class Service : public base::RefCounted<Service> {
   bool favorite() const { return favorite_; }
   // Setter is deliberately omitted; use MakeFavorite.
 
-  // Sets the flimflam::kNameProperty
-  void SetFriendlyName(const std::string &friendly_name);
   void set_friendly_name(const std::string &n) { friendly_name_ = n; }
   const std::string &friendly_name() const { return friendly_name_; }
+  // Sets the flimflam::kNameProperty and broadcasts the change.
+  void SetFriendlyName(const std::string &friendly_name);
 
   const std::string &guid() const { return guid_; }
-  void set_guid(const std::string &guid) { guid_ = guid; }
+  void SetGuid(const std::string &guid, Error *error);
 
   bool has_ever_connected() const { return has_ever_connected_; }
 
   int32 priority() const { return priority_; }
-  void set_priority(int32 priority) { priority_ = priority; }
+  void SetPriority(const int32 &priority, Error *error);
 
   size_t crypto_algorithm() const { return crypto_algorithm_; }
   bool key_rotation() const { return key_rotation_; }
@@ -453,6 +456,10 @@ class Service : public base::RefCounted<Service> {
       const std::string &name,
       bool(Service::*get)(Error *error),
       void(Service::*set)(const bool &value, Error *error));
+  void HelpRegisterDerivedInt32(
+      const std::string &name,
+      int32(Service::*get)(Error *error),
+      void(Service::*set)(const int32 &value, Error *error));
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Service::*get)(Error *error),
@@ -493,8 +500,9 @@ class Service : public base::RefCounted<Service> {
   // failure_ enum.
   void UpdateErrorProperty();
 
-  // RPC setter for the the "AutoConnect" property.
-  virtual void SetAutoConnect(const bool &connect, Error *error);
+  // RPC setter for the the "AutoConnect" property. Updates the |manager_|.
+  // (cf. SetAutoConnect, which does not update the manager.)
+  virtual void SetAutoConnectFull(const bool &connect, Error *error);
 
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
@@ -503,7 +511,9 @@ class Service : public base::RefCounted<Service> {
   Manager *manager() const { return manager_; }
   Metrics *metrics() const { return metrics_; }
 
-  void set_favorite(bool favorite) { favorite_ = favorite; }
+  // Mark the serivce as a favorite, without affecting its auto_connect
+  // property. (cf. MakeFavorite)
+  void MarkAsFavorite();
   // Inform base class of the security properties for the service.
   //
   // NB: When adding a call to this function from a subclass, please check
@@ -521,6 +531,8 @@ class Service : public base::RefCounted<Service> {
   friend class WiFiServiceTest;
   friend class WiMaxProviderTest;
   friend class WiMaxServiceTest;
+  friend void TestCommonPropertyChanges(ServiceRefPtr, ServiceMockAdaptor *);
+  friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor *);
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
@@ -550,7 +562,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, SaveStringEmpty);
   FRIEND_TEST(ServiceTest, SecurityLevel);
   FRIEND_TEST(ServiceTest, SetCheckPortal);
-  FRIEND_TEST(ServiceTest, SetConnectable);
+  FRIEND_TEST(ServiceTest, SetConnectableFull);
   FRIEND_TEST(ServiceTest, SetFriendlyName);
   FRIEND_TEST(ServiceTest, SetProperty);
   FRIEND_TEST(ServiceTest, State);
@@ -596,14 +608,18 @@ class Service : public base::RefCounted<Service> {
   std::string GetCheckPortal(Error *error);
   void SetCheckPortal(const std::string &check_portal, Error *error);
 
+  std::string GetGuid(Error *error);
+
   virtual std::string GetDeviceRpcId(Error *error) = 0;
 
   std::string GetIPConfigRpcIdentifier(Error *error);
 
+  std::string GetNameProperty(Error *error);
   // The base implementation asserts that |name| matches the current Name
   // property value.
   virtual void SetNameProperty(const std::string &name, Error *error);
-  std::string GetNameProperty(Error *error);
+
+  int32 GetPriority(Error *error);
 
   std::string GetProfileRpcId(Error *error);
   void SetProfileRpcId(const std::string &profile, Error *error);

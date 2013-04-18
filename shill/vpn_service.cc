@@ -35,7 +35,7 @@ VPNService::VPNService(ControlInterface *control,
                        VPNDriver *driver)
     : Service(control, dispatcher, metrics, manager, Technology::kVPN),
       driver_(driver) {
-  set_connectable(true);
+  SetConnectable(true);
   set_save_credentials(false);
   mutable_store()->RegisterString(flimflam::kVPNDomainProperty, &vpn_domain_);
 }
@@ -116,7 +116,7 @@ void VPNService::InitDriverPropertyStore() {
 void VPNService::MakeFavorite() {
   // The base MakeFavorite method also sets auto_connect_ to true
   // which is not desirable for VPN services.
-  set_favorite(true);
+  MarkAsFavorite();
 }
 
 void VPNService::SetConnection(const ConnectionRefPtr &connection) {

@@ -7,9 +7,12 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_adaptors.h"
 #include "shill/mock_ethernet.h"
+#include "shill/mock_manager.h"
 #include "shill/property_store_unittest.h"
 #include "shill/refptr_types.h"
+#include "shill/service_property_change_test.h"
 
 using ::testing::NiceMock;
 
@@ -18,11 +21,12 @@ namespace shill {
 class EthernetServiceTest : public PropertyStoreTest {
  public:
   EthernetServiceTest()
-      : ethernet_(
+      : mock_manager_(control_interface(), dispatcher(), metrics(), glib()),
+        ethernet_(
             new NiceMock<MockEthernet>(control_interface(),
                                        dispatcher(),
                                        metrics(),
-                                       manager(),
+                                       &mock_manager_,
                                        "ethernet",
                                        fake_mac,
                                        0)),
@@ -30,7 +34,7 @@ class EthernetServiceTest : public PropertyStoreTest {
             new EthernetService(control_interface(),
                                 dispatcher(),
                                 metrics(),
-                                manager(),
+                                &mock_manager_,
                                 ethernet_)) {}
   virtual ~EthernetServiceTest() {}
 
@@ -42,9 +46,14 @@ class EthernetServiceTest : public PropertyStoreTest {
   }
 
   void SetAutoConnect(const bool connect, Error *error) {
-    return service_->SetAutoConnect(connect, error);
+    return service_->SetAutoConnectFull(connect, error);
   }
 
+  ServiceMockAdaptor *GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  }
+
+  MockManager mock_manager_;
   scoped_refptr<MockEthernet> ethernet_;
   EthernetServiceRefPtr service_;
 };
@@ -75,6 +84,10 @@ TEST_F(EthernetServiceTest, ConnectDisconnectDelegation) {
   EXPECT_CALL(*ethernet_, DisconnectFrom(service_.get()));
   Error error;
   service_->Disconnect(&error);
+}
+
+TEST_F(EthernetServiceTest, PropertyChanges) {
+  TestCommonPropertyChanges(service_, GetAdaptor());
 }
 
 }  // namespace shill

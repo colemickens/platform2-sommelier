@@ -38,10 +38,22 @@ Running unit tests
     (chroot)$ GTEST_ARGS="--v=1000 --gtest_filter=WiFiPropertyTest.*" \
       CXXFLAGS=-g cros_workon_make --board x86-generic --reconf --test shill
 
+- if you want to set a breakpoint in gdb, make sure to include the shill
+  namespace. e.g., run
+    (cros-gdb) b shill::EthernetService::GetStorageIdentifier
+    Breakpoint 2 at 0x5555563cc270: file ethernet_service.cc, line 63.
+  rather than
+    (cros-gdb) b EthernetService::GetStorageIdentifier
+    Function "EthernetService::GetStorageIdentifier" not defined.
+    Make breakpoint pending on future shared library load? (y or [n]) n
+
 - alternate build arguments:
-  to see the actual compiler commands that are run:
-  (chroot)$ CFLAGS="-print-cmdline" cros_workon_make --reconf \
-              --board=link shill
+  - to see the actual compiler commands that are run:
+    (chroot)$ CFLAGS="-print-cmdline" cros_workon_make --reconf \
+                --board=link shill
+  - to abort compilation on the first error
+    (chroot)$ MAKEFLAGS="--stop" cros_workon_make --test --board=link \
+                --reconf shill
 
 Running integration tests
 -------------------------

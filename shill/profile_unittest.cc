@@ -259,7 +259,8 @@ TEST_F(ProfileTest, ServiceConfigure) {
                                               dispatcher(),
                                               metrics(),
                                               manager()));
-  service1->set_priority(service1->priority() + 1);  // Change from default.
+  // Change prioirty from default.
+  service1->SetPriority(service1->priority() + 1, NULL);
   ASSERT_TRUE(profile_->AdoptService(service1));
   ASSERT_TRUE(profile_->ContainsService(service1));
 

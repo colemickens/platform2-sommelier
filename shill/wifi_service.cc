@@ -18,6 +18,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/certificate_file.h"
 #include "shill/control_interface.h"
+#include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
@@ -557,7 +558,7 @@ void WiFiService::Disconnect(Error *error) {
 string WiFiService::GetDeviceRpcId(Error *error) {
   if (!wifi_) {
     error->Populate(Error::kNotFound, "Not associated with a device");
-    return "/";
+    return DBusAdaptor::kNullPath;
   }
   return wifi_->GetRpcIdentifier();
 }
@@ -577,7 +578,7 @@ void WiFiService::UpdateConnectable() {
     need_passphrase_ = passphrase_.empty();
     is_connectable = !need_passphrase_;
   }
-  set_connectable(is_connectable);
+  SetConnectable(is_connectable);
 }
 
 void WiFiService::UpdateFromEndpoints() {
@@ -1022,15 +1023,22 @@ void WiFiService::ResetWiFi() {
   SetWiFi(NULL);
 }
 
-void WiFiService::SetWiFi(const WiFiRefPtr &wifi) {
-  if (wifi_ == wifi) {
+void WiFiService::SetWiFi(const WiFiRefPtr &new_wifi) {
+  if (wifi_ == new_wifi) {
     return;
   }
   ClearCachedCredentials();
   if (wifi_) {
     wifi_->DisassociateFromService(this);
   }
-  wifi_ = wifi;
+  if (new_wifi) {
+    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+                                        new_wifi->GetRpcIdentifier());
+  } else {
+    adaptor()->EmitRpcIdentifierChanged(flimflam::kDeviceProperty,
+                                        DBusAdaptor::kNullPath);
+  }
+  wifi_ = new_wifi;
 }
 
 }  // namespace shill
