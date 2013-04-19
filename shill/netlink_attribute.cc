@@ -293,15 +293,19 @@ string NetlinkAttribute::HeaderToPrint(int indent) const {
 
 ByteString NetlinkAttribute::EncodeGeneric(const unsigned char *data,
                                            size_t num_bytes) const {
-  nlattr header;
-  header.nla_type = id();
-  header.nla_len = nla_attr_size(num_bytes);
-  ByteString result(reinterpret_cast<unsigned char *>(&header), sizeof(header));
-  result.Resize(NLA_HDRLEN);  // Add padding after the header.
-  if (data && (num_bytes != 0)) {
-    result.Append(ByteString(data, num_bytes));
+  ByteString result;
+  if (has_a_value_) {
+    nlattr header;
+    header.nla_type = id();
+    header.nla_len = nla_attr_size(num_bytes);
+    result = ByteString(reinterpret_cast<unsigned char *>(&header),
+                        sizeof(header));
+    result.Resize(NLA_HDRLEN);  // Add padding after the header.
+    if (data && (num_bytes != 0)) {
+      result.Append(ByteString(data, num_bytes));
+    }
+    result.Resize(nla_total_size(num_bytes));  // Add padding.
   }
-  result.Resize(nla_total_size(num_bytes));  // Add padding.
   return result;
 }
 

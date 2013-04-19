@@ -642,6 +642,10 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_MAC,
       ByteString(kMacAddressBytes, arraysize(kMacAddressBytes))));
 
+  // In the middle, let's try adding an attribute without populating it.
+  EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_REG_TYPE,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
+
   EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_STATUS_CODE,
       Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
   EXPECT_TRUE(message.attributes()->SetU16AttributeValue(
