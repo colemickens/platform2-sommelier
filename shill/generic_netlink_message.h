@@ -101,6 +101,9 @@ class ControlNetlinkMessage : public GenericNetlinkMessage {
 
   // Message factory for all types of Control netlink message.
   static NetlinkMessage *CreateMessage(const nlmsghdr *const_msg);
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(ControlNetlinkMessage);
 };
 
 class NewFamilyMessage : public ControlNetlinkMessage {
@@ -123,6 +126,17 @@ class GetFamilyMessage : public ControlNetlinkMessage {
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GetFamilyMessage);
+};
+
+class UnknownControlMessage : public ControlNetlinkMessage {
+ public:
+  explicit UnknownControlMessage(uint8_t command)
+      : ControlNetlinkMessage(command, "<UNKNOWN CONTROL MESSAGE>"),
+        command_(command) {}
+
+ private:
+  uint8_t command_;
+  DISALLOW_COPY_AND_ASSIGN(UnknownControlMessage);
 };
 
 }  // namespace shill

@@ -418,6 +418,18 @@ class TriggerScanMessage : public Nl80211Message {
 };
 
 
+class UnknownNl80211Message : public Nl80211Message {
+ public:
+  explicit UnknownNl80211Message(uint8_t command)
+      : Nl80211Message(command, "<UNKNOWN NL80211 MESSAGE>"),
+        command_(command) {}
+
+ private:
+  uint8_t command_;
+  DISALLOW_COPY_AND_ASSIGN(UnknownNl80211Message);
+};
+
+
 class UnprotDeauthenticateMessage : public Nl80211Message {
  public:
   static const uint8_t kCommand;

@@ -723,7 +723,9 @@ NetlinkMessage *Nl80211Message::CreateMessage(const nlmsghdr *const_msg) {
     case UnprotDisassociateMessage::kCommand:
       return new UnprotDisassociateMessage();
     default:
-      LOG(WARNING) << "Unknown/unhandled netlink nl80211 message " << gnlh->cmd;
+      LOG(WARNING) << StringPrintf(
+          "Unknown/unhandled netlink nl80211 message 0x%02x", gnlh->cmd);
+      return new UnknownNl80211Message(gnlh->cmd);
       break;
   }
   return NULL;

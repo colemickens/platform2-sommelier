@@ -153,6 +153,7 @@ NetlinkMessage *ControlNetlinkMessage::CreateMessage(
       return new GetFamilyMessage();
     default:
       LOG(WARNING) << "Unknown/unhandled netlink control message " << gnlh->cmd;
+      return new UnknownControlMessage(gnlh->cmd);
       break;
   }
   return NULL;

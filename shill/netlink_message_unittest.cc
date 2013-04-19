@@ -14,18 +14,22 @@
 #include <string>
 #include <vector>
 
+#include <base/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_log.h"
 #include "shill/mock_netlink_socket.h"
 #include "shill/netlink_attribute.h"
 #include "shill/refptr_types.h"
 
 using base::Bind;
+using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::EndsWith;
 using testing::Invoke;
 using testing::Return;
 using testing::Test;
@@ -342,6 +346,20 @@ const unsigned char kNL80211_CMD_DISASSOCIATE[] = {
   0xe8, 0x7f, 0x48, 0x5d, 0x60, 0x77, 0x2d, 0xcf,
   0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f, 0x00, 0x00,
   0x03, 0x00, 0x00, 0x00,
+};
+
+// This is just a NL80211_CMD_NEW_STATION message with the command changed to
+// 0xfe (which is, intentionally, not a supported command).
+
+const unsigned char kCmdNL80211_CMD_UNKNOWN = 0xfe;
+const unsigned char kNL80211_CMD_UNKNOWN[] = {
+  0x34, 0x00, 0x00, 0x00, 0x13, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0xfe, 0x01, 0x00, 0x00, 0x08, 0x00, 0x03, 0x00,
+  0x04, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x06, 0x00,
+  0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f, 0x00, 0x00,
+  0x08, 0x00, 0x2e, 0x00, 0x13, 0x01, 0x00, 0x00,
+  0x04, 0x00, 0x15, 0x00,
 };
 
 const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
@@ -825,6 +843,24 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE) {
                                            sizeof(kDisassociateFrame)));
     EXPECT_TRUE(frame.IsEqual(expected_frame));
   }
+}
+
+// This test is to ensure that an unknown nl80211 message generates an
+// Nl80211UnknownMessage with all Nl80211 parts.
+TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_UNKNOWN) {
+  ScopedMockLog log;
+  string logmessage = StringPrintf(
+      "Unknown/unhandled netlink nl80211 message 0x%02x",
+      kCmdNL80211_CMD_UNKNOWN);
+  EXPECT_CALL(log, Log(logging::LOG_WARNING, _, EndsWith(logmessage.c_str())));
+  NetlinkMessage *netlink_message =
+      message_factory_.CreateMessage(
+          reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_UNKNOWN));
+  ASSERT_NE(reinterpret_cast<NetlinkMessage *>(NULL), netlink_message);
+  EXPECT_EQ(kNl80211FamilyId, netlink_message->message_type());
+  // The follwing is legal if the message_type is kNl80211FamilyId.
+  Nl80211Message *message = dynamic_cast<Nl80211Message *>(netlink_message);
+  EXPECT_EQ(kCmdNL80211_CMD_UNKNOWN, message->command());
 }
 
 }  // namespace shill
