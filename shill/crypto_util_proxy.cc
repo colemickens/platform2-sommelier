@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/posix/eintr_wrapper.h>
+#include <base/string_util.h>
 #include <base/stringprintf.h>
 
 #include "shill/event_dispatcher.h"
@@ -67,9 +68,10 @@ bool CryptoUtilProxy::VerifyDestination(
     Error *error) {
   string unsigned_data(reinterpret_cast<const char *>(&ssid[0]),
                        ssid.size());
+  string upper_case_bssid(StringToUpperASCII(bssid));
   unsigned_data.append(StringPrintf(",%s,%s,%s,%s",
                                     destination_udn.c_str(),
-                                    bssid.c_str(),
+                                    upper_case_bssid.c_str(),
                                     public_key.c_str(),
                                     nonce.c_str()));
   string decoded_signed_data;
