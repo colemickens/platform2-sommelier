@@ -34,6 +34,7 @@ shill_state_root=/var/run/shill
 profile_link_root="${shill_state_root}/user_profiles"
 profile_link_dir="$profile_link_root/$profile_user"
 log_link_dir="${shill_state_root}/log"
+username_hash=""
 
 # For multiprofile: Choose a different link name if "chronos" exists.
 profile_user_suffix=0
@@ -51,6 +52,7 @@ if [ -n "$user" ] ; then
       "User cryptohome dir $profile_base does not exist"
     exit 1
   fi
+  username_hash=$(basename $profile_base)
 
   # Make references to the older connection manager profiles that lived
   # in the user-owned home directory.
@@ -153,5 +155,6 @@ fi
 
 # Push user's network profile
 dbus-send --system --dest=org.chromium.flimflam --print-reply / \
-  org.chromium.flimflam.Manager.PushProfile string:$profile_name ||
+  org.chromium.flimflam.Manager.InsertUserProfile \
+      string:$profile_name string:$username_hash ||
     logger -t "$script_name" "Failed to push $profile_name profile"
