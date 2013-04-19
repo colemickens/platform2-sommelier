@@ -22,9 +22,7 @@ EthernetEapProvider::EthernetEapProvider(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager) {}
 
-EthernetEapProvider::~EthernetEapProvider() {
-  Stop();
-}
+EthernetEapProvider::~EthernetEapProvider() {}
 
 void EthernetEapProvider::Start() {
   if (!service_) {
