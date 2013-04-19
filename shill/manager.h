@@ -262,9 +262,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   virtual const base::FilePath &run_path() const { return run_path_; }
   const base::FilePath &storage_path() const { return storage_path_; }
 
-  void set_startup_profiles(const std::vector<std::string> &startup_profiles) {
-    startup_profiles_ = startup_profiles;
-  }
   bool GetArpGateway() const { return props_.arp_gateway; }
   const std::string &GetHostName() const { return props_.host_name; }
 
@@ -516,7 +513,6 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Service::Compare() for details of the sorting criteria.
   std::vector<ServiceRefPtr> services_;
   // List of startup profile names to push on the profile stack on startup.
-  std::vector<std::string> startup_profiles_;
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;
   ControlInterface *control_interface_;
