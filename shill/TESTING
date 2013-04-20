@@ -38,6 +38,11 @@ Running unit tests
     (chroot)$ GTEST_ARGS="--v=1000 --gtest_filter=WiFiPropertyTest.*" \
       CXXFLAGS=-g cros_workon_make --board x86-generic --reconf --test shill
 
+- alternate build arguments:
+  to see the actual compiler commands that are run:
+  (chroot)$ CFLAGS="-print-cmdline" cros_workon_make --reconf \
+              --board=link shill
+
 Running integration tests
 -------------------------
 - build a test image, suitable for a VM:

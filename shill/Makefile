@@ -6,11 +6,9 @@ AR ?= ar
 CC ?= gcc
 CXX ?= g++
 # -clang uses clang to syntax check, and then runs gcc/g++ to actually
-# generate binaries.
-# -print-cmdline outputs both the clang and gnu command lines.
-# For more, see www.chromium.org/chromium-os/developer-guide
+# generate binaries. See www.chromium.org/chromium-os/developer-guide
 CFLAGS += \
-	-clang -print-cmdline \
+	-clang \
 	-Wall \
 	-Werror \
 	-Wextra \
@@ -157,7 +155,8 @@ $(eval _TARGET = $(word 2,$(subst >, ,$(1))))
 DBUS_PROXY_HEADERS += $(_TARGET).h
 $(BUILD_DBUS_BINDINGS_DIR)/$(_TARGET).xml: \
 	$(SYSROOT)/usr/share/dbus-1/interfaces/$(_SOURCE).xml
-	cat $$< > $$@
+	echo "  CP " $$@
+	cp $$< $$@
 endef
 
 define ADD_LOCAL_BINDING
@@ -165,6 +164,7 @@ $(eval _SOURCE = $(word 1,$(subst >, ,$(1))))
 $(eval _TARGET = $(word 2,$(subst >, ,$(1))))
 DBUS_ADAPTOR_HEADERS += $(_TARGET).h
 $(BUILD_DBUS_BINDINGS_DIR)/$(_TARGET).xml: $(DBUS_BINDINGS_DIR)/$(_SOURCE).xml
+	echo "  CP " $$@
 	cp $$< $$@
 endef
 
@@ -589,6 +589,7 @@ SET_APN_HELPER_MAIN_OBJ = $(BUILD_SHIMS_DIR)/set_apn_helper.o
 SET_APN_HELPER_BIN = $(BUILD_SHIMS_DIR)/set-apn-helper
 
 $(SET_APN_HELPER_BIN): $(SET_APN_HELPER_MAIN_OBJ)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SET_APN_HELPER_LIBS) -o $@
 
 endif  # SHILL_CELLULAR=0
@@ -653,11 +654,13 @@ $(OPENVPN_SCRIPT_OBJS): $(DBUS_PROXY_BINDINGS)
 $(OPENVPN_SCRIPT_MAIN_OBJ): $(DBUS_PROXY_BINDINGS)
 
 $(OPENVPN_SCRIPT_BIN): $(OPENVPN_SCRIPT_MAIN_OBJ) $(OPENVPN_SCRIPT_OBJS)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(OPENVPN_SCRIPT_LIBS) -o $@
 
 $(PPPD_PLUGIN_OBJS): $(DBUS_PROXY_BINDINGS)
 
 $(PPPD_PLUGIN_SO): $(PPPD_PLUGIN_OBJS)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $^ $(PPPD_PLUGIN_LIBS) -o $@
 
 endif  # SHILL_VPN=0
@@ -697,40 +700,50 @@ shims: \
 
 $(BUILD_DBUS_BINDINGS_SHIMS_DIR)/flimflam-task.xml: \
 	$(BUILD_DBUS_BINDINGS_DIR)/flimflam-task.xml
+	echo "  CP " $@
 	cp $< $@
 
 $(BUILD_DBUS_BINDINGS_DIR)/%.xml: $(DBUS_BINDINGS_DIR)/%.xml
+	echo "  CP " $@
 	cp $< $@
 
 $(DBUS_PROXY_BINDINGS): %.h: %.xml
+	echo "  DBUSXX_XML2CPP " $@
 	$(DBUSXX_XML2CPP) $< --proxy=$@ --sync --async
 
 $(DBUS_ADAPTOR_BINDINGS): %.h: %.xml
+	echo "  DBUSXX_XML2CPP " $@
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
 
 $(PROTO_BINDINGS_H): %.h: %.cc ;
 
 $(SYSTEM_PROTO_BINDINGS_CC): \
 	$(BUILD_PROTO_BINDINGS_DIR)/%.pb.cc: $(SYSTEM_API_PROTO_PATH)/%.proto
+	echo "  PROTOC " $@
 	$(PROTOC) --proto_path=$(SYSTEM_API_PROTO_PATH) \
 		--cpp_out=$(BUILD_PROTO_BINDINGS_DIR) $<
 
 $(SHIM_PROTO_BINDINGS_CC): \
 	$(BUILD_PROTO_BINDINGS_DIR)/%.pb.cc: %.proto
+	echo "  PROTOC " $@
 	$(PROTOC) --proto_path=./ --cpp_out=$(BUILD_PROTO_BINDINGS_DIR) $<
 
 $(BUILDDIR)/%.o: %.c
+	echo "  CC " $@
 	$(CC) $(CPPFLAGS) $(CFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(PROTO_BINDINGS_OBJS): INCLUDE_DIRS += -iquote $(BUILD_PROTO_BINDINGS_DIR)
 
 $(BUILDDIR)/%.o: %.cc
+	echo "  CXX " $@
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(BUILDDIR)/%.pic.o: %.c
+	echo "  CC " $@
 	$(CC) $(CPPFLAGS) $(CFLAGS) -fPIC $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(BUILDDIR)/%.pic.o: %.cc
+	echo "  CXX " $@
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) -fPIC $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(SHILL_OBJS): \
@@ -739,26 +752,33 @@ $(SHILL_OBJS): \
 	$(PROTO_BINDINGS_H)
 
 $(SHILL_LIB): $(SHILL_OBJS)
+	echo "  AR " $@
 	$(AR) rcs $@ $^
 
 $(SHILL_BIN): $(SHILL_MAIN_OBJ) $(SHILL_LIB)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(SHILL_LIBS) -o $@
 
 $(CRYPTO_UTIL_BIN): $(CRYPTO_UTIL_MAIN_OBJ) $(CRYPTO_UTIL_PROTO_BINDINGS_OBJS)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(CRYPTO_UTIL_LIBS) -o $@
 
 $(NET_DIAGS_UPLOAD_BIN): $(NET_DIAGS_UPLOAD_MAIN_OBJ)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NET_DIAGS_UPLOAD_LIBS) -o $@
 
 $(NETFILTER_QUEUE_HELPER_BIN): \
 	$(NETFILTER_QUEUE_HELPER_MAIN_OBJ) \
 	$(NETFILTER_QUEUE_HELPER_OBJS)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NETFILTER_QUEUE_HELPER_LIBS) -o $@
 
 $(NSS_GET_CERT_BIN): $(NSS_GET_CERT_MAIN_OBJ) $(NSS_GET_CERT_OBJS) $(SHILL_LIB)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(NSS_GET_CERT_LIBS) -o $@
 
 $(WPA_SUPPLICANT_CONF): shims/wpa_supplicant.conf.in
+	echo "  SED " $@
 	sed s,@libdir@,$(LIBDIR), $^ > $@
 
 $(TEST_BIN): CPPFLAGS += -DUNIT_TEST -DSYSROOT=\"$(SYSROOT)\"
@@ -768,6 +788,7 @@ $(TEST_BIN): \
 	$(NSS_GET_CERT_OBJS) \
 	$(OPENVPN_SCRIPT_OBJS) \
 	$(SHILL_LIB)
+	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
@@ -775,5 +796,9 @@ clean:
 		$(BUILDDIR) \
 		$(SHILL_BIN) \
 		$(TEST_BIN)
+
+# Don't output build commands. When adding rules, please echo a short
+# form of the build command manually. E.g. 'echo "  CXX " $@'.
+.SILENT:
 
 -include $(OBJS:.o=.d)
