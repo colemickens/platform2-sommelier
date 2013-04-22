@@ -42,6 +42,10 @@ void EthernetEapService::OnEapCredentialsChanged() {
   manager()->ethernet_eap_provider()->OnCredentialsChanged();
 }
 
+bool EthernetEapService::Unload() {
+  Service::Unload();
+  manager()->ethernet_eap_provider()->OnCredentialsChanged();
+  return false;
+}
+
 }  // namespace shill
-
-

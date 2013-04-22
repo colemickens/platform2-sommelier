@@ -358,6 +358,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	error_unittest.o \
 	ethernet_unittest.o \
 	ethernet_eap_provider_unittest.o \
+	ethernet_eap_service_unittest.o \
 	ethernet_service_unittest.o \
 	file_reader_unittest.o \
 	hook_table_unittest.o \

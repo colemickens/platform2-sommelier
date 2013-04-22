@@ -41,6 +41,8 @@
     <method name="FlushBSS">
       <arg name="age" type="u" direction="in"/>
     </method>
+    <method name="EAPLogoff"/>
+    <method name="EAPLogon"/>
     <property name="Capabilities" type="a{sv}" access="read"/>
     <property name="State" type="s" access="read"/>
     <property name="Scanning" type="b" access="read"/>

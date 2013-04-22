@@ -48,6 +48,26 @@ void SupplicantInterfaceProxy::EnableHighBitrates() {
   }
 }
 
+void SupplicantInterfaceProxy::EAPLogoff() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.EAPLogoff();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
+void SupplicantInterfaceProxy::EAPLogon() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.EAPLogon();
+  } catch (const DBus::Error &e) {
+    LOG(ERROR) << "DBus exception: " << e.name() << ": " << e.what();
+    throw;  // Re-throw the exception.
+  }
+}
+
 void SupplicantInterfaceProxy::Disconnect() {
   SLOG(DBus, 2) << __func__;
   try {

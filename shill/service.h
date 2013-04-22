@@ -212,7 +212,7 @@ class Service : public base::RefCounted<Service> {
   virtual bool IsLoadableFrom(StoreInterface *storage) const;
 
   // Returns true if the service uses 802.1x for key management.
-  virtual bool Is8021x() const { return false; };
+  virtual bool Is8021x() const { return false; }
 
   // Loads the service from persistent |storage|. Returns true on success.
   virtual bool Load(StoreInterface *storage);

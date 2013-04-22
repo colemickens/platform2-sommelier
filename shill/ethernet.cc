@@ -278,10 +278,14 @@ bool Ethernet::StartEapAuthentication() {
   }
 
   supplicant_interface_proxy_->SelectNetwork(supplicant_network_path_);
+  supplicant_interface_proxy_->EAPLogon();
   return true;
 }
 
 void Ethernet::StopSupplicant() {
+  if (supplicant_interface_proxy_.get()) {
+    supplicant_interface_proxy_->EAPLogoff();
+  }
   supplicant_interface_proxy_.reset();
   if (!supplicant_interface_path_.empty() && supplicant_process_proxy_.get()) {
     try {

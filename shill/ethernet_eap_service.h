@@ -27,8 +27,10 @@ class EthernetEapService : public Service {
   // Inherited from Service.
   virtual std::string GetDeviceRpcId(Error *error);
   virtual std::string GetStorageIdentifier() const;
+  virtual bool Is8021x() const { return true; }
   virtual bool IsVisible() const { return false; }
   virtual void OnEapCredentialsChanged();
+  virtual bool Unload();
 };
 
 }  // namespace shill

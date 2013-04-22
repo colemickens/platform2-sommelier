@@ -433,6 +433,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
           "fi.w1.wpa_supplicant1.UnknownError",
           "test threw fi.w1.wpa_supplicant1.UnknownError")));
   EXPECT_CALL(*interface_proxy, SelectNetwork(_)).Times(0);
+  EXPECT_CALL(*interface_proxy, EAPLogon()).Times(0);
   EXPECT_FALSE(InvokeStartEapAuthentication());
   Mock::VerifyAndClearExpectations(mock_service_);
   Mock::VerifyAndClearExpectations(mock_eap_service_);
@@ -448,6 +449,7 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Return(kFirstNetworkPath));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kFirstNetworkPath)));
+  EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
   Mock::VerifyAndClearExpectations(mock_service_);
   Mock::VerifyAndClearExpectations(mock_eap_service_);
@@ -464,15 +466,19 @@ TEST_F(EthernetTest, StartEapAuthentication) {
   EXPECT_CALL(*interface_proxy, AddNetwork(_))
       .WillOnce(Return(kSecondNetworkPath));
   EXPECT_CALL(*interface_proxy, SelectNetwork(StrEq(kSecondNetworkPath)));
+  EXPECT_CALL(*interface_proxy, EAPLogon());
   EXPECT_TRUE(InvokeStartEapAuthentication());
   EXPECT_EQ(kSecondNetworkPath, GetSupplicantNetworkPath());
 }
 
 TEST_F(EthernetTest, StopSupplicant) {
   MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();
+  MockSupplicantInterfaceProxy *interface_proxy =
+      supplicant_interface_proxy_.get();
   StartSupplicant();
   SetIsEapAuthenticated(true);
   SetSupplicantNetworkPath("/network/1");
+  EXPECT_CALL(*interface_proxy, EAPLogoff());
   EXPECT_CALL(*process_proxy, RemoveInterface(StrEq(kInterfacePath)));
   InvokeStopSupplicant();
   EXPECT_EQ(NULL, GetSupplicantInterfaceProxy());
