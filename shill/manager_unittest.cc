@@ -131,6 +131,10 @@ class ManagerTest : public PropertyStoreTest {
     // Replace the manager's crypto util proxy with our mock.  Passes
     // ownership.
     manager()->crypto_util_proxy_.reset(crypto_util_proxy_);
+
+    // Reset service serial number so service sorting by unique_name()
+    // (and by extension, sorting by order of creation) is predictable.
+    Service::serial_number_ = 10000;
   }
   virtual ~ManagerTest() {}
 

@@ -513,6 +513,7 @@ class Service : public base::RefCounted<Service> {
  private:
   friend class EthernetServiceTest;
   friend class MetricsTest;
+  friend class ManagerTest;
   friend class ServiceAdaptorInterface;
   friend class ServiceTest;
   friend class VPNProviderTest;
