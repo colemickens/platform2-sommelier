@@ -15,6 +15,7 @@ SUMMARIZE_TIME='
     #  $1 = time since boot
     #  $2 = idle time since boot (normalized for NCPU)
     #  $3 = event name
+    # input lines are sorted by $1
     uptime = $1 ; idle = $2
     cum_util = (200 * (uptime - idle) / uptime + 1) / 2
     delta = uptime - prev
@@ -24,11 +25,22 @@ SUMMARIZE_TIME='
   }
 '
 
+# If there are no arguments on the command line, summarize all the
+# events.  If there are arguments, summarize only the named events.
+# Error checking is deliberately minimal, to keep this script simple.
+if [ $# -eq 0 ]; then
+  EVENTS="$(ls /tmp/uptime-*)"
+else
+  for EV in "$@"; do
+    EVENTS="$EVENTS /tmp/uptime-$EV"
+  done
+fi
+
 # Pipeline explained:
-#  1st awk program: extract raw time data, and perform some simple
-#    conversions.
-#  sort: sort the data by the uptime timestamp.
+#  1st awk program: print times as milliseconds and normalize idle time
+#     by NCPU.
+#  sort: sort the events by the uptime timestamp.
 #  sed: remove '/tmp/uptime-' from the event name.
 #  2nd awk program:  produce the summarized output
-awk '{print 1000*$1, 1000*$2/'$NCPU', FILENAME}' /tmp/uptime-* |
+awk '{print 1000*$1, 1000*$2/'$NCPU', FILENAME}' $EVENTS |
   sort -k 1n | sed 's=[^ ]*uptime-==' | awk "$SUMMARIZE_TIME"
