@@ -24,6 +24,7 @@
 using std::string;
 using testing::_;
 using testing::InSequence;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 
@@ -534,9 +535,43 @@ TEST_F(CellularServiceTest, OutOfCreditsNotEnforced) {
   dispatcher_.DispatchPendingEvents();
 }
 
+// Some of these tests duplicate signals tested above. However, it's
+// convenient to have all the property change notifications documented
+// (and tested) in one place.
 TEST_F(CellularServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, adaptor_);
   TestAutoConnectPropertyChange(service_, adaptor_);
+
+  bool activate_over_non_cellular =
+      service_->activate_over_non_cellular_network();
+  EXPECT_CALL(*adaptor_,
+              EmitBoolChanged(kActivateOverNonCellularNetworkProperty, _));
+  service_->SetActivateOverNonCellularNetwork(!activate_over_non_cellular);
+  Mock::VerifyAndClearExpectations(adaptor_);
+
+  EXPECT_NE(flimflam::kActivationStateNotActivated,
+            service_->activation_state());
+  EXPECT_CALL(*adaptor_,
+              EmitStringChanged(flimflam::kActivationStateProperty, _));
+  service_->SetActivationState(flimflam::kActivationStateNotActivated);
+  Mock::VerifyAndClearExpectations(adaptor_);
+
+  string network_technology = service_->network_technology();
+  EXPECT_CALL(*adaptor_,
+              EmitStringChanged(flimflam::kNetworkTechnologyProperty, _));
+  service_->SetNetworkTechnology(network_technology + "and some new stuff");
+  Mock::VerifyAndClearExpectations(adaptor_);
+
+  bool out_of_credits = service_->out_of_credits();
+  EXPECT_CALL(*adaptor_, EmitBoolChanged(kOutOfCreditsProperty, _));
+  service_->SetOutOfCredits(!out_of_credits);
+  Mock::VerifyAndClearExpectations(adaptor_);
+
+  string roaming_state = service_->roaming_state();
+  EXPECT_CALL(*adaptor_,
+              EmitStringChanged(flimflam::kRoamingStateProperty, _));
+  service_->SetRoamingState(roaming_state + "and some new stuff");
+  Mock::VerifyAndClearExpectations(adaptor_);
 }
 
 }  // namespace shill

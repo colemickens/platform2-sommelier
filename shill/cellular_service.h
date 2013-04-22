@@ -106,6 +106,7 @@ class CellularService : public Service {
   void set_enforce_out_of_credits_detection(bool state) {
     enforce_out_of_credits_detection_ = state;
   }
+  bool out_of_credits() const { return out_of_credits_; }
   void SetOutOfCredits(bool state);
 
   // Overrides Load and Save from parent Service class.  We will call
