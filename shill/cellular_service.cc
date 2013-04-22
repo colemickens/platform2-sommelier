@@ -340,6 +340,8 @@ void CellularService::PerformOutOfCreditsDetection(ConnectState curr_state,
     } else {
       LOG(ERROR) <<
           "Out-Of-Credits detection: Marking service as out-of-credits";
+      metrics()->NotifyCellularOutOfCredits(
+          Metrics::kCellularOutOfCreditsReasonConnectDisconnectLoop);
       SetOutOfCredits(true);
       ResetOutOfCreditsState();
     }

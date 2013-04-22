@@ -371,6 +371,12 @@ void Cellular::OnConnectionHealthCheckerResult(
     SLOG(Cellular, 2) << "Active probe determined possible out-of-credits "
                       << "scenario.";
     if (service().get()) {
+      Metrics::CellularOutOfCreditsReason reason =
+          (result == ConnectionHealthChecker::kResultCongestedTxQueue) ?
+              Metrics::kCellularOutOfCreditsReasonTxCongested :
+              Metrics::kCellularOutOfCreditsReasonElongatedTimeWait;
+      metrics()->NotifyCellularOutOfCredits(reason);
+
       service()->SetOutOfCredits(true);
       SLOG(Cellular, 2) << "Disconnecting due to out-of-credit scenario.";
       Error error;

@@ -564,6 +564,31 @@ TEST_F(MetricsTest, CellularDeviceFailure) {
   metrics_.NotifyCellularDeviceFailure(error);
 }
 
+TEST_F(MetricsTest, CellularOutOfCreditsReason) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
+                    Metrics::kCellularOutOfCreditsReasonConnectDisconnectLoop,
+                    Metrics::kCellularOutOfCreditsReasonMax));
+  metrics_.NotifyCellularOutOfCredits(
+      Metrics::kCellularOutOfCreditsReasonConnectDisconnectLoop);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
+                    Metrics::kCellularOutOfCreditsReasonTxCongested,
+                    Metrics::kCellularOutOfCreditsReasonMax));
+  metrics_.NotifyCellularOutOfCredits(
+      Metrics::kCellularOutOfCreditsReasonTxCongested);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricCellularOutOfCreditsReason,
+                    Metrics::kCellularOutOfCreditsReasonElongatedTimeWait,
+                    Metrics::kCellularOutOfCreditsReasonMax));
+  metrics_.NotifyCellularOutOfCredits(
+      Metrics::kCellularOutOfCreditsReasonElongatedTimeWait);
+}
+
 TEST_F(MetricsTest, CorruptedProfile) {
   EXPECT_CALL(library_, SendEnumToUMA(Metrics::kMetricCorruptedProfile,
                                       Metrics::kCorruptedProfile,

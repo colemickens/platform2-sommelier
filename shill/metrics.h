@@ -197,6 +197,13 @@ class Metrics {
     kCellularDropTechnologyMax
   };
 
+  enum CellularOutOfCreditsReason {
+    kCellularOutOfCreditsReasonConnectDisconnectLoop = 0,
+    kCellularOutOfCreditsReasonTxCongested = 1,
+    kCellularOutOfCreditsReasonElongatedTimeWait = 2,
+    kCellularOutOfCreditsReasonMax
+  };
+
   enum CorruptedProfile {
     kCorruptedProfile = 1,
     kCorruptedProfileMax
@@ -344,16 +351,6 @@ class Metrics {
   static const char kMetricServiceFixupEntries[];
 
   // Cellular specific statistics.
-  static const char kMetricCellularDrop[];
-  static const char kMetricCellularDropsPerHour[];
-  static const int kMetricCellularDropsPerHourMax;
-  static const int kMetricCellularDropsPerHourMin;
-  static const int kMetricCellularDropsPerHourNumBuckets;
-  static const char kMetricCellularFailureReason[];
-  static const char kMetricCellularSignalStrengthBeforeDrop[];
-  static const int kMetricCellularSignalStrengthBeforeDropMax;
-  static const int kMetricCellularSignalStrengthBeforeDropMin;
-  static const int kMetricCellularSignalStrengthBeforeDropNumBuckets;
   static const char kMetricCellularAutoConnectTries[];
   static const int kMetricCellularAutoConnectTriesMax;
   static const int kMetricCellularAutoConnectTriesMin;
@@ -362,6 +359,17 @@ class Metrics {
   static const int kMetricCellularAutoConnectTotalTimeMax;
   static const int kMetricCellularAutoConnectTotalTimeMin;
   static const int kMetricCellularAutoConnectTotalTimeNumBuckets;
+  static const char kMetricCellularDrop[];
+  static const char kMetricCellularDropsPerHour[];
+  static const int kMetricCellularDropsPerHourMax;
+  static const int kMetricCellularDropsPerHourMin;
+  static const int kMetricCellularDropsPerHourNumBuckets;
+  static const char kMetricCellularFailureReason[];
+  static const char kMetricCellularOutOfCreditsReason[];
+  static const char kMetricCellularSignalStrengthBeforeDrop[];
+  static const int kMetricCellularSignalStrengthBeforeDropMax;
+  static const int kMetricCellularSignalStrengthBeforeDropMin;
+  static const int kMetricCellularSignalStrengthBeforeDropNumBuckets;
 
   // Profile statistics.
   static const char kMetricCorruptedProfile[];
@@ -509,6 +517,10 @@ class Metrics {
 
   // Notifies this object about a cellular device failure code.
   void NotifyCellularDeviceFailure(const Error &error);
+
+  // Notifies this object that a cellular service has been marked as
+  // out-of-credits.
+  void NotifyCellularOutOfCredits(Metrics::CellularOutOfCreditsReason reason);
 
   // Notifies this object about a corrupted profile.
   virtual void NotifyCorruptedProfile();

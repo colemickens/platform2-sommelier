@@ -208,6 +208,17 @@ const char Metrics::kMetricLinkApDisconnectType[] =
     "Network.Shill.WiFi.ApDisconnectType";
 
 // static
+const char Metrics::kMetricCellularAutoConnectTries[] =
+    "Network.Shill.Cellular.AutoConnectTries";
+const int Metrics::kMetricCellularAutoConnectTriesMax = 20;
+const int Metrics::kMetricCellularAutoConnectTriesMin = 1;
+const int Metrics::kMetricCellularAutoConnectTriesNumBuckets = 20;
+const char Metrics::kMetricCellularAutoConnectTotalTime[] =
+    "Network.Shill.Cellular.AutoConnectTotalTime";
+const int Metrics::kMetricCellularAutoConnectTotalTimeMax =
+    60 * 1000;  // 60 seconds
+const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 0;
+const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 const char Metrics::kMetricCellularDrop[] =
     "Network.Shill.Cellular.Drop";
 const char Metrics::kMetricCellularDropsPerHour[] =
@@ -220,22 +231,13 @@ const int Metrics::kMetricCellularDropsPerHourNumBuckets = 10;
 // via SendUserActionToUMA.
 const char Metrics::kMetricCellularFailureReason[] =
     "Network.Shill.Cellular.FailureReason: ";
+const char Metrics::kMetricCellularOutOfCreditsReason[] =
+    "Network.Shill.Cellular.OutOfCreditsReason";
 const char Metrics::kMetricCellularSignalStrengthBeforeDrop[] =
     "Network.Shill.Cellular.SignalStrengthBeforeDrop";
 const int Metrics::kMetricCellularSignalStrengthBeforeDropMax = 100;
 const int Metrics::kMetricCellularSignalStrengthBeforeDropMin = 0;
 const int Metrics::kMetricCellularSignalStrengthBeforeDropNumBuckets = 10;
-const char Metrics::kMetricCellularAutoConnectTries[] =
-    "Network.Shill.Cellular.AutoConnectTries";
-const int Metrics::kMetricCellularAutoConnectTriesMax = 20;
-const int Metrics::kMetricCellularAutoConnectTriesMin = 1;
-const int Metrics::kMetricCellularAutoConnectTriesNumBuckets = 20;
-const char Metrics::kMetricCellularAutoConnectTotalTime[] =
-    "Network.Shill.Cellular.AutoConnectTotalTime";
-const int Metrics::kMetricCellularAutoConnectTotalTimeMax =
-    60 * 1000;  // 60 seconds
-const int Metrics::kMetricCellularAutoConnectTotalTimeMin = 0;
-const int Metrics::kMetricCellularAutoConnectTotalTimeNumBuckets = 60;
 
 // static
 const char Metrics::kMetricCorruptedProfile[] =
@@ -935,6 +937,13 @@ void Metrics::NotifyCellularDeviceDrop(int interface_index,
 void Metrics::NotifyCellularDeviceFailure(const Error &error) {
   library_->SendUserActionToUMA(
       kMetricCellularFailureReason + error.message());
+}
+
+void Metrics::NotifyCellularOutOfCredits(
+    Metrics::CellularOutOfCreditsReason reason) {
+  SendEnumToUMA(kMetricCellularOutOfCreditsReason,
+                reason,
+                kCellularOutOfCreditsReasonMax);
 }
 
 void Metrics::NotifyCorruptedProfile() {
