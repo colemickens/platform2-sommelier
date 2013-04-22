@@ -5,15 +5,20 @@
 #include "shill/ipconfig.h"
 
 #include <base/bind.h>
+#include <chromeos/dbus/service_constants.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_store.h"
+#include "shill/static_ip_parameters.h"
 
 using base::Bind;
 using base::Unretained;
 using std::string;
 using testing::_;
+using testing::Mock;
 using testing::Return;
 using testing::SaveArg;
 using testing::SetArgumentPointee;
@@ -31,6 +36,14 @@ class IPConfigTest : public Test {
   IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {}
 
  protected:
+  IPConfigMockAdaptor *GetAdaptor() {
+    return dynamic_cast<IPConfigMockAdaptor *>(ipconfig_->adaptor_.get());
+  }
+
+  void UpdateProperties(const IPConfig::Properties &properties, bool success) {
+    ipconfig_->UpdateProperties(properties, success);
+  }
+
   MockControl control_;
   IPConfigRefPtr ipconfig_;
 };
@@ -81,7 +94,7 @@ TEST_F(IPConfigTest, UpdateProperties) {
   properties.domain_search.push_back("zoo.com");
   properties.blackhole_ipv6 = true;
   properties.mtu = 700;
-  ipconfig_->UpdateProperties(properties, true);
+  UpdateProperties(properties, true);
   EXPECT_EQ("1.2.3.4", ipconfig_->properties().address);
   EXPECT_EQ(24, ipconfig_->properties().subnet_prefix);
   EXPECT_EQ("11.22.33.44", ipconfig_->properties().broadcast_address);
@@ -128,9 +141,30 @@ TEST_F(IPConfigTest, UpdateCallback) {
     ASSERT_FALSE(callback_test.called());
     ipconfig_->RegisterUpdateCallback(
         Bind(&UpdateCallbackTest::Callback, Unretained(&callback_test)));
-    ipconfig_->UpdateProperties(IPConfig::Properties(), success);
+    UpdateProperties(IPConfig::Properties(), success);
     EXPECT_TRUE(callback_test.called());
   }
+}
+
+TEST_F(IPConfigTest, PropertyChanges) {
+  IPConfigMockAdaptor *adaptor = GetAdaptor();
+
+  StaticIPParameters static_ip_params;
+  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(flimflam::kNameServersProperty, _));
+  ipconfig_->ApplyStaticIPParameters(&static_ip_params);
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  IPConfig::Properties ip_properties;
+  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(flimflam::kNameServersProperty, _));
+  UpdateProperties(ip_properties, true);
+  Mock::VerifyAndClearExpectations(adaptor);
+
+  EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kAddressProperty, _));
+  EXPECT_CALL(*adaptor, EmitStringsChanged(flimflam::kNameServersProperty, _));
+  UpdateProperties(ip_properties, false);
+  Mock::VerifyAndClearExpectations(adaptor);
 }
 
 }  // namespace shill

@@ -54,6 +54,8 @@ class IPConfigMockAdaptor : public IPConfigAdaptorInterface {
   MOCK_METHOD2(EmitUintChanged, void(const std::string&, uint32));
   MOCK_METHOD2(EmitIntChanged, void(const std::string&, int));
   MOCK_METHOD2(EmitStringChanged, void(const std::string&, const std::string&));
+  MOCK_METHOD2(EmitStringsChanged,
+               void(const std::string&, const std::vector<std::string>&));
 
  private:
   const std::string rpc_id_;

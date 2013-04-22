@@ -108,6 +108,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
   virtual bool Save(StoreInterface *storage, const std::string &id_suffix);
 
  protected:
+  // Inform RPC listeners of changes to our properties. MAY emit
+  // changes even on unchanged properties.
+  virtual void EmitChanges();
+
   // Updates the IP configuration properties and notifies registered listeners
   // about the event. |success| is set to false if the IP configuration failed.
   virtual void UpdateProperties(const Properties &properties, bool success);
@@ -118,6 +122,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
  private:
   friend class IPConfigAdaptorInterface;
+  friend class IPConfigTest;
   friend class ConnectionTest;
 
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
@@ -132,8 +137,10 @@ class IPConfig : public base::RefCounted<IPConfig> {
 
   static const char kStorageType[];
   static const char kType[];
-  static uint global_serial_;
 
+  void Init();
+
+  static uint global_serial_;
   PropertyStore store_;
   const std::string device_name_;
   const std::string type_;
@@ -141,8 +148,6 @@ class IPConfig : public base::RefCounted<IPConfig> {
   scoped_ptr<IPConfigAdaptorInterface> adaptor_;
   Properties properties_;
   base::Callback<void(const IPConfigRefPtr&, bool)> update_callback_;
-
-  void Init();
 
   DISALLOW_COPY_AND_ASSIGN(IPConfig);
 };

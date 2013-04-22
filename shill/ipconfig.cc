@@ -101,6 +101,7 @@ void IPConfig::Refresh(Error */*error*/) {
 void IPConfig::ApplyStaticIPParameters(
     StaticIPParameters *static_ip_parameters) {
   static_ip_parameters->ApplyTo(&properties_);
+  EmitChanges();
 }
 
 bool IPConfig::Load(StoreInterface *storage, const string &id_suffix) {
@@ -125,11 +126,19 @@ void IPConfig::UpdateProperties(const Properties &properties, bool success) {
   if (!update_callback_.is_null()) {
     update_callback_.Run(this, success);
   }
+  EmitChanges();
 }
 
 void IPConfig::RegisterUpdateCallback(
     const Callback<void(const IPConfigRefPtr&, bool)> &callback) {
   update_callback_ = callback;
+}
+
+void IPConfig::EmitChanges() {
+  adaptor_->EmitStringChanged(flimflam::kAddressProperty,
+                              properties_.address);
+  adaptor_->EmitStringsChanged(flimflam::kNameServersProperty,
+                               properties_.dns_servers);
 }
 
 }  // namespace shill

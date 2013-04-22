@@ -41,6 +41,8 @@ class IPConfigDBusAdaptor : public org::chromium::flimflam::IPConfig_adaptor,
   virtual void EmitIntChanged(const std::string &name, int value);
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value);
+  virtual void EmitStringsChanged(const std::string &name,
+                                  const std::vector<std::string> &value);
 
   // Implementation of IPConfig_adaptor
   virtual std::map<std::string, ::DBus::Variant> GetProperties(

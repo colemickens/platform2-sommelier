@@ -29,6 +29,7 @@ class MockIPConfig : public IPConfig {
                           const std::string &id_suffix));
   MOCK_METHOD2(Save, bool(StoreInterface *storage,
                           const std::string &id_suffix));
+  MOCK_METHOD0(EmitChanges, void(void));
 
  private:
   const Properties &real_properties() {

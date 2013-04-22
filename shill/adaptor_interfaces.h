@@ -56,6 +56,8 @@ class IPConfigAdaptorInterface {
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
   virtual void EmitStringChanged(const std::string &name,
                                  const std::string &value) = 0;
+  virtual void EmitStringsChanged(const std::string &name,
+                                  const std::vector<std::string> &value) = 0;
 };
 
 // These are the functions that a Manager adaptor must support

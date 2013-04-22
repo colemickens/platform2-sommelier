@@ -61,6 +61,12 @@ void IPConfigDBusAdaptor::EmitStringChanged(const string &name,
   PropertyChanged(name, DBusAdaptor::StringToVariant(value));
 }
 
+void IPConfigDBusAdaptor::EmitStringsChanged(const string &name,
+                                             const vector<string> &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::StringsToVariant(value));
+}
+
 map<string, ::DBus::Variant> IPConfigDBusAdaptor::GetProperties(
     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
