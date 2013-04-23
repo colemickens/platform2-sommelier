@@ -415,7 +415,7 @@ void EapCredentials::Reset() {
   client_cert_ = "";
   identity_ = "";
   key_id_ = "";
-  key_management_ = "";
+  // Do not reset key_management_, since it should never be emptied.
   password_ = "";
   pin_ = "";
   private_key_ = "";

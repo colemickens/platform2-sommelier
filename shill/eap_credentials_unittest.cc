@@ -93,7 +93,6 @@ class EapCredentialsTest : public testing::Test {
         eap_.client_cert_.empty() &&
         eap_.identity_.empty() &&
         eap_.key_id_.empty() &&
-        eap_.key_management_.empty() &&
         eap_.password_.empty() &&
         eap_.pin_.empty() &&
         eap_.private_key_.empty() &&
@@ -106,6 +105,10 @@ class EapCredentialsTest : public testing::Test {
         eap_.inner_eap_.empty() &&
         eap_.subject_match_.empty() &&
         eap_.use_system_cas_;
+  }
+
+  const string &GetKeyManagement() {
+    return eap_.key_management_;
   }
 
   EapCredentials eap_;
@@ -412,6 +415,7 @@ TEST_F(EapCredentialsTest, PopulateWiMaxProperties) {
 
 TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(IsReset());
+  EXPECT_TRUE(GetKeyManagement().empty());
   SetAnonymousIdentity("foo");
   SetCACertNSS("foo");
   SetCACertPEM("foo");
@@ -425,9 +429,26 @@ TEST_F(EapCredentialsTest, Reset) {
   SetPrivateKey("foo");
   SetPin("foo");
   SetUseSystemCAs(false);
+  eap_.SetKeyManagement("foo", NULL);
   EXPECT_FALSE(IsReset());
+  EXPECT_FALSE(GetKeyManagement().empty());
   eap_.Reset();
   EXPECT_TRUE(IsReset());
+  EXPECT_FALSE(GetKeyManagement().empty());
+}
+
+TEST_F(EapCredentialsTest, SetKeyManagement) {
+  const string kKeyManagement0("foo");
+  eap_.SetKeyManagement(kKeyManagement0, NULL);
+  EXPECT_EQ(kKeyManagement0, GetKeyManagement());
+
+  const string kKeyManagement1("bar");
+  eap_.SetKeyManagement(kKeyManagement1, NULL);
+  EXPECT_EQ(kKeyManagement1, GetKeyManagement());
+
+  // We should not be able to set the key management to an empty string.
+  eap_.SetKeyManagement("", NULL);
+  EXPECT_EQ(kKeyManagement1, GetKeyManagement());
 }
 
 }  // namespace shill
