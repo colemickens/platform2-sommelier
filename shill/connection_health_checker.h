@@ -9,6 +9,7 @@
 
 #include <base/basictypes.h>
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <base/memory/weak_ptr.h>
@@ -40,16 +41,19 @@ class ConnectionHealthChecker {
  public:
   typedef std::vector<IPAddress> IPAddresses;
 
-  // TODO(pprabhu): Rename kResultElongatedTimeWait to kResultTearDownFailure.
   enum Result {
     // There was some problem in the setup of ConnctionHealthChecker.
     // Could not attempt a tcp connection.
     kResultUnknown,
+    // TODO(pprabhu) Deprecated. Remove.
+    // crbug.com/234734
     // New health check request made successfully. The result of the health
     // check is returned asynchronously.
     kResultInProgress,
     // Failed to create TCP connection. Condition -(1)-.
     kResultConnectionFailure,
+    // TODO(pprabhu) Deprecated. Remove.
+    // crbug.com/234734
     // Failed to destroy TCP connection. Condition -(2)-.
     kResultElongatedTimeWait,
     // Failed to send data on TCP connection. Condition -(2)-.
@@ -90,63 +94,136 @@ class ConnectionHealthChecker {
 
   // Accessors.
   const IPAddresses &remote_ips() const { return remote_ips_; }
-  void set_run_data_test(bool val) { run_data_test_ = val; }
-  virtual bool health_check_in_progress() const {
-      return health_check_in_progress_;
-  }
+  virtual bool health_check_in_progress() const;
 
+
+ protected:
+  // For unit-tests.
+  void set_dispatcher(EventDispatcher *dispatcher) {
+    dispatcher_ = dispatcher;
+  }
+  void set_sock_fd(int sock_fd) { sock_fd_ = sock_fd; }
+  short num_connection_failures() const { return num_connection_failures_; }
+  void set_num_connection_failures(short val) {
+    num_connection_failures_ = val;
+  }
+  short num_tx_queue_polling_attempts() const {
+    return num_tx_queue_polling_attempts_;
+  }
+  void set_num_tx_queue_polling_attempts(short val) {
+    num_tx_queue_polling_attempts_ = val;
+  }
+  short num_congested_queue_detected() const {
+    return num_congested_queue_detected_;
+  }
+  void set_num_congested_queue_detected(short val) {
+    num_congested_queue_detected_ = val;
+  }
+  short num_successful_sends() const { return num_successful_sends_; }
+  void set_num_successful_sends(short val) {
+    num_successful_sends_ = val;
+  }
+  void set_old_transmit_queue_value(uint64 val) {
+    old_transmit_queue_value_ = val;
+  }
+  Result health_check_result() const { return health_check_result_; }
  private:
   friend class ConnectionHealthCheckerTest;
   FRIEND_TEST(ConnectionHealthCheckerTest, GarbageCollectDNSClients);
   FRIEND_TEST(ConnectionHealthCheckerTest, GetSocketInfo);
-  FRIEND_TEST(ConnectionHealthCheckerTest, SendData);
-  FRIEND_TEST(ConnectionHealthCheckerTest, ShutDown);
+  FRIEND_TEST(ConnectionHealthCheckerTest, NextHealthCheckSample);
+  FRIEND_TEST(ConnectionHealthCheckerTest, OnConnectionComplete);
+  FRIEND_TEST(ConnectionHealthCheckerTest, VerifySentData);
 
   // Time to wait for DNS server.
   static const int kDNSTimeoutMilliseconds;
-  // Number of connection attempts before failure per health check request.
-  static const int kMaxConnectionAttempts;
+  static const int kInvalidSocket;
+  // After |kMaxFailedConnectionAttempts| failed attempts to connect, give up
+  // health check and return failure.
+  static const int kMaxFailedConnectionAttempts;
+  // After sending a small amount of data, attempt |kMaxSentDataPollingAttempts|
+  // times to see if the data was sent successfully.
+  static const int kMaxSentDataPollingAttempts;
+  // After |kMinCongestedQueueAttempts| to send data indicate a congested tx
+  // queue, finish health check and report a congested queue.
+  static const int kMinCongestedQueueAttempts;
+  // After sending data |kMinSuccessfulAttempts| times succesfully, finish
+  // health check and report a healthy connection.
+  static const int kMinSuccessfulSendAttempts;
   // Number of DNS queries to be spawned when a new remote URL is added.
   static const int kNumDNSQueries;
+  // Time to wait before testing successful data transfer / disconnect after
+  // request is made on the device.
+  static const int kTCPStateUpdateWaitMilliseconds;
+
   static const uint16 kRemotePort;
 
+  // Callback for DnsClient
+  void GetDNSResult(const Error &error, const IPAddress &ip);
+  void GarbageCollectDNSClients();
+
   // Start a new AsyncConnection with callback set to OnConnectionComplete().
-  void SetupTcpConnection();
+  void NextHealthCheckSample();
+  void ReportResult();
 
   // Callback for AsyncConnection.
   // Observe the setup connection to test health state
   void OnConnectionComplete(bool success, int sock_fd);
 
-  // Callback for DnsClient
-  void GetDNSResult(const Error &error, const IPAddress &ip);
-
-  void TryNextIP();
-  Result SendData(int sock_fd);
-  Result ShutDown(int sock_fd);
+  void VerifySentData();
   bool GetSocketInfo(int sock_fd, SocketInfo *sock_info);
-  void GarbageCollectDNSClients();
 
+  void SetSocketDescriptor(int sock_fd);
+  void ClearSocketDescriptor();
+
+  // The connection on which the health check is being run.
   ConnectionRefPtr connection_;
   EventDispatcher *dispatcher_;
+
+  // The client function to call to report the result.
   base::Callback<void(Result)> result_callback_;
 
-  IPAddresses remote_ips_;
-  scoped_ptr<SocketInfoReader> socket_info_reader_;
   scoped_ptr<Sockets> socket_;
   base::WeakPtrFactory<ConnectionHealthChecker> weak_ptr_factory_;
+
+  // Set of IPs to create TCP connection with for the health check.
+  IPAddresses remote_ips_;
+  // Callback passed to |tcp_connection_| to report an established TCP
+  // connection.
   const base::Callback<void(bool, int)> connection_complete_callback_;
-  const base::Callback<void(const Error&, const IPAddress&)>
-      dns_client_callback_;
+  // Active TCP connection during health check.
   scoped_ptr<AsyncConnection> tcp_connection_;
+  const base::Callback<void(void)> report_result_;
+  // Active socket for |tcp_connection_| during an active health check.
+  int sock_fd_;
+  // Interface to read TCP connection information from the system.
+  scoped_ptr<SocketInfoReader> socket_info_reader_;
+
   DNSClientFactory *dns_client_factory_;
   ScopedVector<DNSClient> dns_clients_;
-  // If true, HealthChecker attempts to send a small amount of data over
-  // the network during the test. Otherwise, the inference is based on
-  // the connection open/close behaviour.
-  // Default: true
-  bool run_data_test_;
+  const base::Callback<void(const Error&, const IPAddress&)>
+      dns_client_callback_;
+
+  // Store the old value of the transmit queue to verify that data sent on the
+  // connection is actually transmitted.
+  uint64 old_transmit_queue_value_;
+  // Callback to post a delayed check on whether data sent on the TCP connection
+  // was successfully transmitted.
+  base::CancelableClosure verify_sent_data_callback_;
+
   bool health_check_in_progress_;
-  short num_connection_attempts_;
+  // Number of connection failures in currently active health check.
+  short num_connection_failures_;
+  // Number of times we have checked the tx-queue for the current send attempt.
+  short num_tx_queue_polling_attempts_;
+  // Number of out of credit scenarios detected in currentl health check.
+  short num_congested_queue_detected_;
+  // Number of successful send attempts currently active health check.
+  short num_successful_sends_;
+
+  // Temporarily store the result of health check so that |report_result_|
+  // can report it.
+  Result health_check_result_;
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionHealthChecker);
 };

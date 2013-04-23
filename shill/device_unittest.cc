@@ -1146,17 +1146,15 @@ TEST_F(DeviceHealthCheckerTest, RequestConnectionHealthCheck) {
   EXPECT_FALSE(device_->health_checker_.get());
   MockConnectionHealthChecker *health_checker = mock_health_checker_.get();
   SetMockHealthChecker();
-  EXPECT_CALL(*health_checker, Start()).Times(0);
   EXPECT_CALL(*health_checker, health_check_in_progress())
-      .Times(1)
       .WillOnce(Return(true));
+  EXPECT_CALL(*health_checker, Start()).Times(0);
   device_->RequestConnectionHealthCheck();
   Mock::VerifyAndClearExpectations(health_checker);
 
-  EXPECT_CALL(*health_checker, Start()).Times(1);
   EXPECT_CALL(*health_checker, health_check_in_progress())
-      .Times(1)
       .WillOnce(Return(false));
+  EXPECT_CALL(*health_checker, Start()).Times(1);
   device_->RequestConnectionHealthCheck();
   Mock::VerifyAndClearExpectations(health_checker);
 }

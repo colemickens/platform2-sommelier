@@ -10,6 +10,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
 #include <gtest/gtest.h>
@@ -26,6 +27,7 @@
 
 using base::Bind;
 using base::Callback;
+using base::Closure;
 using base::Unretained;
 using std::string;
 using std::vector;
@@ -36,6 +38,7 @@ using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::ReturnRef;
+using ::testing::SaveArg;
 using ::testing::Sequence;
 using ::testing::SetArgumentPointee;
 using ::testing::StrictMock;
@@ -55,6 +58,7 @@ const char kProxyURLRemote[] = "http://www.google.com";
 const int kProxyFD = 100;
 const short kProxyPortLocal = 5540;
 const short kProxyPortRemote = 80;
+const int kSocketError = 3000;
 }  // namespace {}
 
 MATCHER_P(IsSameIPAddress, ip_addr, "") {
@@ -150,20 +154,23 @@ class ConnectionHealthCheckerTest : public Test {
   ScopedVector<DNSClient> &dns_clients() {
     return health_checker_->dns_clients_;
   }
-  bool health_check_in_progress() {
-    return health_checker_->health_check_in_progress_;
-  }
-  short num_connection_attempts() {
-    return health_checker_->num_connection_attempts_;
-  }
   ConnectionHealthChecker::IPAddresses &remote_ips() {
     return health_checker_->remote_ips_;
   }
-  int MaxConnectionAttempts() {
-    return ConnectionHealthChecker::kMaxConnectionAttempts;
-  }
   int NumDNSQueries() {
     return ConnectionHealthChecker::kNumDNSQueries;
+  }
+  int MaxFailedConnectionAttempts() {
+    return ConnectionHealthChecker::kMaxFailedConnectionAttempts;
+  }
+  int MaxSentDataPollingAttempts() {
+    return ConnectionHealthChecker::kMaxSentDataPollingAttempts;
+  }
+  int MinCongestedQueueAttempts() {
+    return ConnectionHealthChecker::kMinCongestedQueueAttempts;
+  }
+  int MinSuccessfulSendAttempts() {
+    return ConnectionHealthChecker::kMinSuccessfulSendAttempts;
   }
 
   // Mock Callbacks
@@ -204,6 +211,7 @@ class ConnectionHealthCheckerTest : public Test {
         SocketInfo::kTimerStateUnknown);
   }
   SocketInfo CreateSocketInfoProxy(SocketInfo::ConnectionState state,
+                                   SocketInfo::TimerState timer_state,
                                    uint64 transmit_queue_value) {
     return SocketInfo(
         state,
@@ -213,14 +221,9 @@ class ConnectionHealthCheckerTest : public Test {
         kProxyPortRemote,
         transmit_queue_value,
         0,
-        SocketInfo::kTimerStateUnknown);
+        timer_state);
   }
-  void VerifyAndClearAllExpectations() {
-    Mock::VerifyAndClearExpectations(this);
-    Mock::VerifyAndClearExpectations(tcp_connection_);
-    Mock::VerifyAndClearExpectations(socket_);
-    Mock::VerifyAndClearExpectations(socket_info_reader_);
-  }
+
 
   // Expectations
   void ExpectReset() {
@@ -234,7 +237,6 @@ class ConnectionHealthCheckerTest : public Test {
     EXPECT_EQ(tcp_connection_, health_checker_->tcp_connection_.get());
     EXPECT_FALSE(tcp_connection_ == NULL);
     EXPECT_FALSE(health_checker_->health_check_in_progress_);
-    EXPECT_EQ(0, health_checker_->num_connection_attempts_);
   }
   // Setup ConnectionHealthChecker::GetSocketInfo to return sock_info.
   // This only works if GetSocketInfo is called with kProxyFD.
@@ -272,64 +274,9 @@ class ConnectionHealthCheckerTest : public Test {
         .InSequence(seq_)
         .WillOnce(Return(true));
   }
-  void ExpectSendDataReturns(ConnectionHealthChecker::Result result) {
-    // Turn on SendData
-    health_checker_->set_run_data_test(true);
-    // These scenarios are copied from the SendData unit-test, and must match
-    // those in the test.
-    switch(result) {
-      case ConnectionHealthChecker::kResultSuccess:
-        ExpectGetSocketInfoReturns(
-            CreateSocketInfoProxy(
-                SocketInfo::kConnectionStateEstablished, 0));
-        EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-            .InSequence(seq_)
-            .WillOnce(Return(0));
-        ExpectGetSocketInfoReturns(
-            CreateSocketInfoProxy(
-                SocketInfo::kConnectionStateEstablished, 0));
-        break;
-      case ConnectionHealthChecker::kResultConnectionFailure:
-        ExpectGetSocketInfoReturns(
-            CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished));
-        EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-            .InSequence(seq_)
-            .WillOnce(Return(-1));
-        EXPECT_CALL(*socket_, Error())
-            .InSequence(seq_)
-            .WillOnce(Return(0));
-        break;
-      case ConnectionHealthChecker::kResultUnknown:
-        ExpectGetSocketInfoReturns(CreateSocketInfoOther());
-        break;
-      case ConnectionHealthChecker::kResultCongestedTxQueue:
-        ExpectGetSocketInfoReturns(
-            CreateSocketInfoProxy(
-                SocketInfo::kConnectionStateEstablished, 1));
-        EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-            .InSequence(seq_)
-            .WillOnce(Return(0));
-        ExpectGetSocketInfoReturns(
-            CreateSocketInfoProxy(
-                SocketInfo::kConnectionStateEstablished, 2));
-        break;
-      default:
-        LOG(WARNING) << __func__ << "Unknown ConnectionHealthChecker::Result";
-    }
-  }
-  void ExpectShutDownReturns(ConnectionHealthChecker::Result result) {
-    // Turn on ShutDown
-    health_checker_->set_run_data_test(false);
-    if (result != ConnectionHealthChecker::kResultElongatedTimeWait) {
-      LOG(WARNING) << __func__ << ": Only implements expectation for "
-                   << "kResultElongatedTimeWait.";
-      return;
-    }
-    EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-        .InSequence(seq_)
-        .WillOnce(Return(0));
-    ExpectGetSocketInfoReturns(
-        CreateSocketInfoProxy(SocketInfo::kConnectionStateFinWait1));
+  void ExpectStop() {
+    EXPECT_CALL(*tcp_connection_, Stop())
+        .InSequence(seq_);
   }
   void ExpectCleanUp() {
     EXPECT_CALL(*socket_, Close(kProxyFD))
@@ -340,14 +287,21 @@ class ConnectionHealthCheckerTest : public Test {
         .InSequence(seq_);
   }
 
+  void VerifyAndClearAllExpectations() {
+    Mock::VerifyAndClearExpectations(this);
+    Mock::VerifyAndClearExpectations(tcp_connection_);
+    Mock::VerifyAndClearExpectations(socket_);
+    Mock::VerifyAndClearExpectations(socket_info_reader_);
+  }
+
   // Needed for other mocks, but not for the tests directly.
   const string interface_name_;
   NiceMock<MockControl> control_;
   NiceMock<MockDeviceInfo> device_info_;
   vector<string> dns_servers_;
 
-  scoped_refptr<NiceMock<MockConnection>> connection_;
-  StrictMock<MockEventDispatcher> dispatcher_;
+  scoped_refptr<NiceMock<MockConnection> > connection_;
+  EventDispatcher dispatcher_;
   StrictMock<MockSockets> *socket_;
   StrictMock<MockSocketInfoReader> *socket_info_reader_;
   StrictMock<MockAsyncConnection> *tcp_connection_;
@@ -594,248 +548,153 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_info_reader_);
 }
 
-TEST_F(ConnectionHealthCheckerTest, ShutDown) {
-  // Sockets::ShutDown fails.
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(-1));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
+TEST_F(ConnectionHealthCheckerTest, NextHealthCheckSample) {
+  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
 
-  // SocketInfo in different connection states.
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+  health_checker_->set_num_connection_failures(MaxFailedConnectionAttempts());
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultConnectionFailure));
+  health_checker_->NextHealthCheckSample();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
 
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateSynSent));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+  health_checker_->set_num_congested_queue_detected(
+      MinCongestedQueueAttempts());
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultCongestedTxQueue));
+  health_checker_->NextHealthCheckSample();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
 
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateSynRecv));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+  health_checker_->set_num_successful_sends(MinSuccessfulSendAttempts());
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultSuccess));
+  health_checker_->NextHealthCheckSample();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
 
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateFinWait1));
-  EXPECT_EQ(ConnectionHealthChecker::kResultElongatedTimeWait,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+  EXPECT_CALL(*tcp_connection_, Start(_,_)).WillOnce(Return(true));
+  health_checker_->NextHealthCheckSample();
+  VerifyAndClearAllExpectations();
 
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateFinWait2));
-  EXPECT_EQ(ConnectionHealthChecker::kResultElongatedTimeWait,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateTimeWait));
-  EXPECT_EQ(ConnectionHealthChecker::kResultElongatedTimeWait,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateClose));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateCloseWait));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateLastAck));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateListen));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateClosing));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->ShutDown(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  // ConnectionHealthChecker::GetSocketInfo returns false.
-  // Since there is no entry in /proc, the shutdown must have been
-  // successful.
-  // TODO(pprabhu) Verify this can't happen: We check /proc *before* the
-  // established connection is even put there.
-  EXPECT_CALL(*socket_, ShutDown(kProxyFD, _))
-      .WillOnce(Return(0));
-  ExpectGetSocketInfoReturns(CreateSocketInfoOther());
-  EXPECT_EQ(ConnectionHealthChecker::kResultSuccess,
-            health_checker_->ShutDown(kProxyFD));
+  // This test assumes that there are at least 2 connection attempts left
+  // before ConnectionHealthChecker gives up.
+  EXPECT_CALL(*tcp_connection_, Start(_,_))
+    .WillOnce(Return(false))
+    .WillOnce(Return(true));
+  short num_connection_failures = health_checker_->num_connection_failures();
+  health_checker_->NextHealthCheckSample();
+  EXPECT_EQ(num_connection_failures + 1,
+            health_checker_->num_connection_failures());
 }
 
-TEST_F(ConnectionHealthCheckerTest, SendData) {
-  // Connection doesn't exist.
-  ExpectGetSocketInfoReturns(CreateSocketInfoOther());
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+TEST_F(ConnectionHealthCheckerTest, OnConnectionComplete) {
+  // Test that num_connection_attempts is incremented on failure when
+  // (1) Async Connection fails.
+  health_checker_->set_num_connection_failures(
+      MaxFailedConnectionAttempts() - 1);
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultConnectionFailure));
+  health_checker_->OnConnectionComplete(false, -1);
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
 
-  // Connection in state other than Established
+  // (2) The connection state is garbled up.
+  health_checker_->set_num_connection_failures(
+      MaxFailedConnectionAttempts() - 1);
   ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateTimeWait));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+      CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown));
+  EXPECT_CALL(*socket_, Close(kProxyFD));
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultConnectionFailure));
+  health_checker_->OnConnectionComplete(true, kProxyFD);
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
 
-  // Connection established, send fails.
+  // (3) Send fails.
+  health_checker_->set_num_connection_failures(
+      MaxFailedConnectionAttempts() - 1);
   ExpectGetSocketInfoReturns(
       CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(-1));
-  EXPECT_CALL(*socket_, Error())
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultConnectionFailure,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  // Connection established, send succeeds, and
-  // Connection dissapears
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished));
-  ExpectGetSocketInfoReturns(CreateSocketInfoOther());
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  // Connection switches to bad state
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateClose));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultUnknown,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  // Connection remains good, data not sent
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 1));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultCongestedTxQueue,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 1));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 2));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultCongestedTxQueue,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 10));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultCongestedTxQueue,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  // Connection remains good, data sent.
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 0));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 0));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultSuccess,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 3));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 3));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultSuccess,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
-
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 10));
-  ExpectGetSocketInfoReturns(
-      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished, 0));
-  EXPECT_CALL(*socket_, Send(kProxyFD, _,Gt(0),_))
-      .WillOnce(Return(0));
-  EXPECT_EQ(ConnectionHealthChecker::kResultSuccess,
-            health_checker_->SendData(kProxyFD));
-  Mock::VerifyAndClearExpectations(socket_);
-  Mock::VerifyAndClearExpectations(socket_info_reader_);
+  EXPECT_CALL(*socket_, Send(kProxyFD, _, Gt(0), _)).WillOnce(Return(-1));
+  EXPECT_CALL(*socket_, Error()).WillOnce(Return(kSocketError));
+  EXPECT_CALL(*socket_, Close(kProxyFD));
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultConnectionFailure));
+  health_checker_->OnConnectionComplete(true, kProxyFD);
+  dispatcher_.DispatchPendingEvents();
 }
 
-// Scenario tests.
+TEST_F(ConnectionHealthCheckerTest, VerifySentData) {
+  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
+
+  // (1) Test that num_connection_attempts is incremented when the connection
+  // state is garbled up.
+  health_checker_->set_num_connection_failures(
+      MaxFailedConnectionAttempts() - 1);
+  ExpectGetSocketInfoReturns(
+      CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown));
+  EXPECT_CALL(*socket_, Close(kProxyFD));
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultConnectionFailure));
+  health_checker_->set_sock_fd(kProxyFD);
+  health_checker_->VerifySentData();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
+
+  // (2) Test that num_congested_queue_detected is incremented when all polling
+  // attempts have expired.
+  health_checker_->set_num_congested_queue_detected(
+      MinCongestedQueueAttempts() - 1);
+  health_checker_->set_num_tx_queue_polling_attempts(
+      MaxSentDataPollingAttempts());
+  health_checker_->set_old_transmit_queue_value(0);
+  ExpectGetSocketInfoReturns(
+      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished,
+                            SocketInfo::kTimerStateRetransmitTimerPending,
+                            1));
+  EXPECT_CALL(*socket_, Close(kProxyFD));
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultCongestedTxQueue));
+  health_checker_->set_sock_fd(kProxyFD);
+  health_checker_->VerifySentData();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
+
+  // (3) Test that num_successful_sends is incremented if everything goes fine.
+  health_checker_->set_num_successful_sends(MinSuccessfulSendAttempts() - 1);
+  health_checker_->set_old_transmit_queue_value(0);
+  ExpectGetSocketInfoReturns(
+      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished,
+                            SocketInfo::kTimerStateNoTimerPending,
+                            0));
+  EXPECT_CALL(*socket_, Close(kProxyFD));
+  ExpectStop();
+  EXPECT_CALL(
+      *this,
+      ResultCallbackTarget(ConnectionHealthChecker::kResultSuccess));
+  health_checker_->set_sock_fd(kProxyFD);
+  health_checker_->VerifySentData();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
+}
+
 // Flow: Start() -> Start()
 // Expectation: Only one AsyncConnection is setup
 TEST_F(ConnectionHealthCheckerTest, StartStartSkipsSecond) {
@@ -864,9 +723,6 @@ TEST_F(ConnectionHealthCheckerTest, StartStopNoCallback) {
 // Precondition: Empty remote_ips_
 // Flow: Start()
 // Expectation: call |result_callback| with kResultUnknown
-// Precondition: Non-empty remote_ips_
-// Flow: Start() -> synchronous async_connection failure
-// Expectation: call |result_callback| with kResultConnectionFailure
 TEST_F(ConnectionHealthCheckerTest, StartImmediateFailure) {
   EXPECT_CALL(*tcp_connection_, Stop())
       .Times(1);
@@ -881,7 +737,7 @@ TEST_F(ConnectionHealthCheckerTest, StartImmediateFailure) {
   EXPECT_CALL(*tcp_connection_,
               Start(IsSameIPAddress(StringToIPv4Address(kProxyIPAddressRemote)),
                     kProxyPortRemote))
-      .Times(MaxConnectionAttempts())
+      .Times(MaxFailedConnectionAttempts())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*tcp_connection_, Stop())
       .Times(1);
@@ -889,130 +745,10 @@ TEST_F(ConnectionHealthCheckerTest, StartImmediateFailure) {
                            ConnectionHealthChecker::kResultConnectionFailure))
       .Times(1);
   health_checker_->Start();
+  dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(this);
   Mock::VerifyAndClearExpectations(tcp_connection_);
 }
 
-//
-// Flow: Start() -> Connection Successful
-//               -> Forever(SendData() returns kResultUnknown)
-// Expectation: call |result_callback| with kResultConnectionFailure
-//              (2) Sockets::Close called |kMaxConnectionAttempts| times
-//
-TEST_F(ConnectionHealthCheckerTest, HealthCheckFailHitMaxConnectionAttempts) {
-  ExpectSuccessfulStart();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  for (int i = 0; i < MaxConnectionAttempts() - 1; ++i) {
-    ExpectRetry();
-    ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  }
-  ExpectCleanUp();
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultConnectionFailure));
-  for (int i = 0; i < MaxConnectionAttempts() + 2; ++i)
-    health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  for (int i = 0; i < MaxConnectionAttempts(); ++i)
-    InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
-
-// Precondition: len(|remote_ips_|) == 1
-// Flow: Start() -> forever(asynchronous async_connection failure)
-// Expectation: call |result_callback| with kResultConnectionFailure
-TEST_F(ConnectionHealthCheckerTest, StartAsynchronousFailure) {
-  EXPECT_CALL(*tcp_connection_,
-              Start(IsSameIPAddress(StringToIPv4Address(kProxyIPAddressRemote)),
-                    kProxyPortRemote))
-      .Times(MaxConnectionAttempts())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*tcp_connection_, Stop())
-      .Times(1);
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultConnectionFailure))
-      .Times(1);
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  for (int i = 0; i < MaxConnectionAttempts(); ++i)
-    InvokeOnConnectionComplete(false, -1);
-  Mock::VerifyAndClearExpectations(this);
-  Mock::VerifyAndClearExpectations(tcp_connection_);
-}
-
-// Precondition: len(|remote_ips_|) == 1
-// Flow: Start() -> Connection Successful -> SendData() returns kResultSucess
-// Expectation: call |result_callback| with kResultSuccess
-TEST_F(ConnectionHealthCheckerTest, HealthCheckSuccess) {
-  ExpectSuccessfulStart();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultSuccess);
-  ExpectCleanUp();
-  // Expectation:
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultSuccess))
-      .Times(1);
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
-
-// Precondition: len(|remote_ips_|) == 1
-// Flow: Start() -> Connection Successful
-//       -> SendData() returns kResultCongestedTxQueue
-// Expectation: call |result_callback| with kResultCongestedTxQueue
-TEST_F(ConnectionHealthCheckerTest, HealthCheckCongestedQueue) {
-  ExpectSuccessfulStart();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultCongestedTxQueue);
-  ExpectCleanUp();
-  // Expectation:
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultCongestedTxQueue))
-      .Times(1);
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
-
-// Precondition: len(|remote_ips_|) == 1
-// Flow: Start() -> Connection Successful
-//       -> ShutDown() returns kResultElongatedTimeWait
-// Expectation: call |result_callback| with kResultElongatedTimeWait
-TEST_F(ConnectionHealthCheckerTest, HealthCheckElongatedTimeWait) {
-  ExpectSuccessfulStart();
-  ExpectShutDownReturns(ConnectionHealthChecker::kResultElongatedTimeWait);
-  ExpectCleanUp();
-  // Expectation:
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultElongatedTimeWait))
-      .Times(1);
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
-
-// Precondition: len(|remote_ips_|) == 2
-// Flow: Start() -> Connection Successful -> SendData() returns kResultUnknown
-//       -> SendData() returns kResultSuccess
-// Expectation: call |result_callback| with kResultSuccess
-//              (2) Sockets::Close called twice
-TEST_F(ConnectionHealthCheckerTest, HealthCheckSuccessSecondIP) {
-  ExpectSuccessfulStart();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultUnknown);
-  ExpectRetry();
-  ExpectSendDataReturns(ConnectionHealthChecker::kResultSuccess);
-  ExpectCleanUp();
-  // Expectation:
-  EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultSuccess))
-      .Times(1);
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-  health_checker_->Start();
-  InvokeOnConnectionComplete(true, kProxyFD);
-  InvokeOnConnectionComplete(true, kProxyFD);
-  VerifyAndClearAllExpectations();
-}
 
 }  // namespace shill
