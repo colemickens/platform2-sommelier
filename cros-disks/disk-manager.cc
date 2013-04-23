@@ -88,7 +88,7 @@ bool DiskManager::Initialize() {
   return MountManager::Initialize();
 }
 
-bool DiskManager::StopSession(const string& user) {
+bool DiskManager::StopSession() {
   return UnmountAll();
 }
 

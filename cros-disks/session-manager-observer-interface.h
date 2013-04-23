@@ -23,10 +23,10 @@ class SessionManagerObserverInterface {
   virtual void OnScreenIsUnlocked() = 0;
 
   // This method is called when a session has started.
-  virtual void OnSessionStarted(const std::string& user) = 0;
+  virtual void OnSessionStarted() = 0;
 
   // This method is called when a session has stopped.
-  virtual void OnSessionStopped(const std::string& user) = 0;
+  virtual void OnSessionStopped() = 0;
 };
 
 }  // namespace cros_disks

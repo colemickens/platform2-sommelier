@@ -45,11 +45,11 @@ class DeviceEventModerator : public SessionManagerObserverInterface {
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been started.
-  virtual void OnSessionStarted(const std::string& user);
+  virtual void OnSessionStarted();
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been stopped.
-  virtual void OnSessionStopped(const std::string& user);
+  virtual void OnSessionStopped();
 
   // Process the available device events from the event source.
   void ProcessDeviceEvents();

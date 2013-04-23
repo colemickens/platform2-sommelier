@@ -17,12 +17,6 @@ using testing::Return;
 using testing::SetArgumentPointee;
 using testing::_;
 
-namespace {
-
-const char kSessionUser[] = "user";
-
-}  // namespace
-
 namespace cros_disks {
 
 class MockDeviceEventDispatcher : public DeviceEventDispatcherInterface {
@@ -128,7 +122,7 @@ TEST_F(DeviceEventModeratorTest, OnSessionStarted) {
       .RetiresOnSaturation();
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnSessionStarted(kSessionUser);
+  moderator_.OnSessionStarted();
   EXPECT_FALSE(moderator_.is_event_queued());
   moderator_.ProcessDeviceEvents();
   moderator_.ProcessDeviceEvents();
@@ -143,7 +137,7 @@ TEST_F(DeviceEventModeratorTest, OnSessionStopped) {
       .WillOnce(DoAll(SetArgumentPointee<0>(event_list2_), Return(true)));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(_)).Times(0);
 
-  moderator_.OnSessionStopped(kSessionUser);
+  moderator_.OnSessionStopped();
   moderator_.ProcessDeviceEvents();
   moderator_.ProcessDeviceEvents();
   moderator_.ProcessDeviceEvents();
@@ -159,12 +153,12 @@ TEST_F(DeviceEventModeratorTest, OnSessionStoppedAndThenStarted) {
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnSessionStopped(kSessionUser);
+  moderator_.OnSessionStopped();
   EXPECT_TRUE(moderator_.is_event_queued());
   moderator_.ProcessDeviceEvents();
   moderator_.ProcessDeviceEvents();
   moderator_.ProcessDeviceEvents();
-  moderator_.OnSessionStarted(kSessionUser);
+  moderator_.OnSessionStarted();
   EXPECT_FALSE(moderator_.is_event_queued());
 }
 
@@ -175,7 +169,7 @@ TEST_F(DeviceEventModeratorTest, GetDeviceEventsReturningMultipleEvents) {
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event1_));
   EXPECT_CALL(event_dispatcher_, DispatchDeviceEvent(event2_));
 
-  moderator_.OnSessionStarted(kSessionUser);
+  moderator_.OnSessionStarted();
   moderator_.ProcessDeviceEvents();
 }
 

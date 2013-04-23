@@ -83,7 +83,7 @@ bool ArchiveManager::Initialize() {
   return MountManager::Initialize();
 }
 
-bool ArchiveManager::StopSession(const string& user) {
+bool ArchiveManager::StopSession() {
   return StopAVFS();
 }
 

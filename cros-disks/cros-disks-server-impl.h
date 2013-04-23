@@ -118,11 +118,11 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been started.
-  virtual void OnSessionStarted(const std::string& user);
+  virtual void OnSessionStarted();
 
   // Implements the SessionManagerObserverInterface interface to handle
   // the event when the session has been stopped.
-  virtual void OnSessionStopped(const std::string& user);
+  virtual void OnSessionStopped();
 
  private:
   // Implements the DeviceEventDispatcherInterface to dispatch a device event

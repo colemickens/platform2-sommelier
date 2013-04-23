@@ -48,14 +48,14 @@ void SessionManagerProxy::OnScreenIsUnlocked(
 void SessionManagerProxy::OnSessionStateChanged(
     const DBus::SignalMessage& signal) {
   DBus::MessageIter reader = signal.reader();
-  string state, user;
-  reader >> state >> user;
+  string state;
+  reader >> state;
   if (state == "started") {
     FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
-                      OnSessionStarted(user));
+                      OnSessionStarted());
   } else if (state == "stopped") {
     FOR_EACH_OBSERVER(SessionManagerObserverInterface, observer_list_,
-                      OnSessionStopped(user));
+                      OnSessionStopped());
   }
 }
 

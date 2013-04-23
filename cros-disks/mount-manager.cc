@@ -71,11 +71,11 @@ bool MountManager::Initialize() {
                                    kMountRootDirectoryPermissions);
 }
 
-bool MountManager::StartSession(const string& user) {
+bool MountManager::StartSession() {
   return true;
 }
 
-bool MountManager::StopSession(const string& user) {
+bool MountManager::StopSession() {
   return true;
 }
 

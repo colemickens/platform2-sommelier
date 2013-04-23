@@ -55,26 +55,19 @@ class MountManager {
   // perform any necessary initialization.
   virtual bool Initialize();
 
-  // Starts a session for |user|. Returns true on success.
+  // Starts a session. Returns true on success.
   // This base class provides a default implementation that does nothing.
   // A derived class can override this method to perform any necessary
   // operations when a session starts. This method is called in response
   // to a SessionStateChanged event from the Chromium OS session manager.
-  // The implementation of this method needs to support multiple concurrent
-  // users but can assume that it is only called once per user. Only after
-  // a session is stopped by StopSession(), StartSession() may be called
-  // again for the same user.
-  virtual bool StartSession(const std::string& user);
+  virtual bool StartSession();
 
-  // Stops a session for |user|. Returns true on success.
+  // Stops a session. Returns true on success.
   // This base class provides a default implementation that does nothing.
   // A derived class can override this method to perform any necessary
   // operations when a session stops. This method is called in response
   // to a SessionStateChanged event from the Chromium OS session manager.
-  // The implementation of this method needs to support multiple concurrent
-  // users but can assume that it is always called once after a corresponding
-  // StartSession() is called for a user.
-  virtual bool StopSession(const std::string& user);
+  virtual bool StopSession();
 
   // Implemented by a derived class to return true if it supports mounting
   // |source_path|.

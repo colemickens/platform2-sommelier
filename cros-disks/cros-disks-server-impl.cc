@@ -194,19 +194,19 @@ void CrosDisksServer::OnScreenIsUnlocked() {
   // no-op
 }
 
-void CrosDisksServer::OnSessionStarted(const string& user) {
+void CrosDisksServer::OnSessionStarted() {
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
        manager_iter != mount_managers_.end(); ++manager_iter) {
     MountManager* manager = *manager_iter;
-    manager->StartSession(user);
+    manager->StartSession();
   }
 }
 
-void CrosDisksServer::OnSessionStopped(const string& user) {
+void CrosDisksServer::OnSessionStopped() {
   for (vector<MountManager*>::iterator manager_iter = mount_managers_.begin();
        manager_iter != mount_managers_.end(); ++manager_iter) {
     MountManager* manager = *manager_iter;
-    manager->StopSession(user);
+    manager->StopSession();
   }
 }
 

@@ -47,13 +47,13 @@ void DeviceEventModerator::OnScreenIsUnlocked() {
   is_event_queued_ = false;
 }
 
-void DeviceEventModerator::OnSessionStarted(const string& user) {
+void DeviceEventModerator::OnSessionStarted() {
   LOG(INFO) << "Session started. Queued device events are now dispatched.";
   DispatchQueuedDeviceEvents();
   is_event_queued_ = false;
 }
 
-void DeviceEventModerator::OnSessionStopped(const string& user) {
+void DeviceEventModerator::OnSessionStopped() {
   LOG(INFO) << "Session stopped. Device events are now queued.";
   is_event_queued_ = true;
 }
