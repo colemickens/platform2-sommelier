@@ -288,6 +288,8 @@ fi
 HIGHDPI_FLAGS=
 if use_flag_is_set highdpi; then
   HIGHDPI_FLAGS="$HIGHDPI_FLAGS --enable-webkit-text-subpixel-positioning"
+  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --default-tile-width=512"
+  HIGHDPI_FLAGS="$HIGHDPI_FLAGS --default-tile-height=512"
 fi
 
 TOUCHUI_FLAGS=
