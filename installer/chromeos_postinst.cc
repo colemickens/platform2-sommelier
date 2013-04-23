@@ -127,7 +127,7 @@ bool FirmwareUpdate(const string &install_dir, bool is_update) {
   command += mode;
 
   printf("Starting firmware updater (%s)\n", command.c_str());
-  result = system(command.c_str());
+  result = RunCommand(command);
 
   // Next step after postinst may take a lot of time (eg, disk wiping)
   // and people may confuse that as 'firmware update takes a long wait',

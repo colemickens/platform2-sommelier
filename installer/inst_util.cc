@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <time.h>
 #include <unistd.h>
 
 extern "C" {
@@ -86,12 +87,19 @@ void SplitString(const string& str,
 // If you are passing more than one command in cmdoptions you need it to be
 // space separated.
 int RunCommand(const string& command) {
+  time_t start_time;
+  time_t finish_time;
+
   printf("Command: %s\n", command.c_str());
 
   fflush(stdout);
   fflush(stderr);
 
+  time(&start_time);
   int result = system(command.c_str());
+  time(&finish_time);
+
+  printf("Finished after %.f seconds.\n", difftime(finish_time, start_time));
 
   if (result != 0)
     printf("Failed Command: %s - %d\n", command.c_str(), result);
