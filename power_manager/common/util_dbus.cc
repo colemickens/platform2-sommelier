@@ -20,14 +20,8 @@
 namespace power_manager {
 namespace util {
 
-bool IsSessionStarted() {
-  std::string state;
-  if (GetSessionState(&state, NULL))
-    return (state == "started");
-  return (access("/var/run/state/logged-in", F_OK) == 0);
-}
-
-bool GetSessionState(std::string* state, std::string* user) {
+bool GetSessionState(std::string* state) {
+  DCHECK(state);
   chromeos::dbus::Proxy proxy(chromeos::dbus::GetSystemBusConnection(),
                               login_manager::kSessionManagerServiceName,
                               login_manager::kSessionManagerServicePath,
@@ -35,22 +29,15 @@ bool GetSessionState(std::string* state, std::string* user) {
 
   GError* error = NULL;
   gchar* state_arg = NULL;
-  gchar* user_arg = NULL;
   if (dbus_g_proxy_call(proxy.gproxy(),
                         login_manager::kSessionManagerRetrieveSessionState,
                         &error,
                         G_TYPE_INVALID,
                         G_TYPE_STRING,
                         &state_arg,
-                        G_TYPE_STRING,
-                        &user_arg,
                         G_TYPE_INVALID)) {
-    if (state)
-      *state = state_arg;
-    if (user)
-      *user = user_arg;
+    *state = state_arg;
     g_free(state_arg);
-    g_free(user_arg);
     return true;
   }
   LOG(ERROR) << "Unable to retrieve session state from session manager: "

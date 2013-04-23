@@ -24,13 +24,9 @@ class MessageLite;
 namespace power_manager {
 namespace util {
 
-// Queries session manager to see if any user (including guest) has started a
-// session by logging into Chrome.
-bool IsSessionStarted();
-
 // Gets session state info.  Returns true if call to session manager was
-// successful.  |state| and |user| are both optional args and can be NULL.
-bool GetSessionState(std::string* state, std::string* user);
+// successful.
+bool GetSessionState(std::string* state);
 
 // Parses a single byte array argument from |message| into |protobuf_out|.
 // Returns false if the message lacks the argument or if parsing failed.

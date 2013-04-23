@@ -309,7 +309,7 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
       generate_backlight_metrics_timeout_id_(0),
       generate_thermal_metrics_timeout_id_(0),
       battery_discharge_rate_metric_last_(0),
-      current_session_state_(SESSION_STOPPED),
+      session_state_(SESSION_STOPPED),
       udev_(NULL),
       shutdown_reason_(kShutdownReasonUnknown),
       state_controller_initialized_(false) {
@@ -342,13 +342,19 @@ void Daemon::Init() {
 
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
-  RetrieveSessionState();
+
+  file_tagger_.Init();
+
+  std::string session_state;
+  if (util::GetSessionState(&session_state))
+    OnSessionStateChange(session_state);
+
   power_supply_->Init();
   power_supply_->RefreshImmediately();
+  OnPowerStatusUpdate(power_supply_->power_status());
+
   dark_resume_policy_->Init();
   suspender_.Init(prefs_);
-  file_tagger_.Init();
-  OnPowerStatusUpdate(power_supply_->power_status());
 
   std::string wakeup_inputs_str;
   std::vector<std::string> wakeup_inputs;
@@ -369,7 +375,7 @@ void Daemon::Init() {
   PowerSource power_source =
       plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
   state_controller_->Init(power_source, input_->QueryLidState(),
-                          current_session_state_, DISPLAY_NORMAL);
+                          session_state_, DISPLAY_NORMAL);
   state_controller_initialized_ = true;
 
   peripheral_battery_watcher_->Init();
@@ -713,8 +719,8 @@ void Daemon::RegisterDBusMessageHandler() {
       base::Bind(&Daemon::HandleCleanShutdownSignal, base::Unretained(this)));
   dbus_handler_.AddSignalHandler(
       login_manager::kSessionManagerInterface,
-      login_manager::kSessionManagerSessionStateChanged,
-      base::Bind(&Daemon::HandleSessionManagerSessionStateChangedSignal,
+      login_manager::kSessionStateChangedSignal,
+      base::Bind(&Daemon::HandleSessionStateChangedSignal,
                  base::Unretained(this)));
   dbus_handler_.AddSignalHandler(
       update_engine::kUpdateEngineInterface,
@@ -825,21 +831,17 @@ bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
   return true;
 }
 
-bool Daemon::HandleSessionManagerSessionStateChangedSignal(
-    DBusMessage* message) {
+bool Daemon::HandleSessionStateChangedSignal(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
   const char* state = NULL;
-  const char* user = NULL;
   if (dbus_message_get_args(message, &error,
                             DBUS_TYPE_STRING, &state,
-                            DBUS_TYPE_STRING, &user,
                             DBUS_TYPE_INVALID)) {
-    OnSessionStateChange(state ? state : "", user ? user : "");
+    OnSessionStateChange(state ? state : "");
   } else {
     LOG(WARNING) << "Unable to read "
-                 << login_manager::kSessionManagerSessionStateChanged
-                 << " args";
+                 << login_manager::kSessionStateChangedSignal << " args";
     dbus_error_free(&error);
   }
   return false;
@@ -1105,21 +1107,19 @@ gboolean Daemon::CleanShutdownTimedOut() {
   return FALSE;
 }
 
-void Daemon::OnSessionStateChange(const std::string& state_str,
-                                  const std::string& user) {
+void Daemon::OnSessionStateChange(const std::string& state_str) {
   SessionState state = (state_str == kSessionStarted) ?
       SESSION_STARTED : SESSION_STOPPED;
 
   if (state == SESSION_STARTED) {
-    DLOG(INFO) << "Session started for "
-               << (user.empty() ? "guest" : "non-guest user");
+    DLOG(INFO) << "Session started";
 
     // We always want to take action even if we were already "started", since we
     // want to record when the current session started.  If this warning is
     // appearing it means either we are querying the state of Session Manager
     // when already know it to be "started" or we missed a "stopped"
     // signal. Both of these cases are bad and should be investigated.
-    LOG_IF(WARNING, (current_session_state_ == state))
+    LOG_IF(WARNING, (session_state_ == state))
         << "Received message saying session started, when we were already in "
         << "the started state!";
 
@@ -1130,14 +1130,12 @@ void Daemon::OnSessionStateChange(const std::string& state_str,
     if (plugged_state_ == PLUGGED_STATE_DISCONNECTED)
       metrics_store_.IncrementNumOfSessionsPerChargeMetric();
 
-    current_user_ = user;
     session_start_ = base::TimeTicks::Now();
-  } else if (current_session_state_ != state) {
+  } else if (session_state_ != state) {
     DLOG(INFO) << "Session " << state_str;
     // For states other then "started" we only want to take action if we have
     // actually changed state, since the code we are calling assumes that we are
     // actually transitioning between states.
-    current_user_.clear();
     if (state_str == kSessionStopped) {
       // Don't generate metrics for intermediate states, e.g. "stopping".
       GenerateEndOfSessionMetrics(power_status_,
@@ -1147,7 +1145,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str,
     }
   }
 
-  current_session_state_ = state;
+  session_state_ = state;
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
   backlight_controller_->HandleSessionStateChange(state);
@@ -1172,15 +1170,6 @@ void Daemon::Suspend() {
     return;
   }
   suspender_.RequestSuspend();
-}
-
-void Daemon::RetrieveSessionState() {
-  std::string state;
-  std::string user;
-  if (!util::GetSessionState(&state, &user))
-    return;
-  LOG(INFO) << "Retrieved session state of " << state;
-  OnSessionStateChange(state, user);
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {

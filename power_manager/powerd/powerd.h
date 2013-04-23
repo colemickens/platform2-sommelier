@@ -81,8 +81,6 @@ class Daemon : public policy::BacklightControllerObserver,
     return backlight_controller_;
   }
 
-  const std::string& current_user() const { return current_user_; }
-
   void Init();
   void Run();
   void SetActive();
@@ -227,7 +225,7 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Callbacks for handling dbus messages.
   bool HandleCleanShutdownSignal(DBusMessage* message);
-  bool HandleSessionManagerSessionStateChangedSignal(DBusMessage* message);
+  bool HandleSessionStateChangedSignal(DBusMessage* message);
   bool HandleUpdateEngineStatusUpdateSignal(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
   DBusMessage* HandleRequestRestartMethod(DBusMessage* message);
@@ -251,10 +249,7 @@ class Daemon : public policy::BacklightControllerObserver,
   SIGNAL_CALLBACK_0(Daemon, gboolean, CleanShutdownTimedOut);
 
   // Handles information from the session manager about the session state.
-  // Invoked by RetrieveSessionState() and also in response to
-  // SessionStateChanged D-Bus signals.
-  void OnSessionStateChange(const std::string& state_str,
-                            const std::string& user);
+  void OnSessionStateChange(const std::string& state_str);
 
   void StartCleanShutdown();
   void Shutdown();
@@ -367,10 +362,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Always returns true.
   SIGNAL_CALLBACK_0(Daemon, gboolean, GenerateThermalMetrics);
 
-  // Sends a synchronous D-Bus request to the session manager to retrieve the
-  // session state and updates |current_user_| based on the response.
-  void RetrieveSessionState();
-
   // Sets idle timeouts based on whether the system is projecting to an
   // external display.
   void AdjustIdleTimeoutsForProjection();
@@ -437,12 +428,8 @@ class Daemon : public policy::BacklightControllerObserver,
   base::TimeTicks screen_dim_timestamp_;
   base::TimeTicks screen_off_timestamp_;
 
-  // User whose session is currently active, or empty if no session is
-  // active or we're in guest mode.
-  std::string current_user_;
-
   // Last session state that we have been informed of. Initialized as stopped.
-  SessionState current_session_state_;
+  SessionState session_state_;
 
   // Keep a local copy of power status reading from power_supply.  This way,
   // requests for each field of the power status can be read directly from
