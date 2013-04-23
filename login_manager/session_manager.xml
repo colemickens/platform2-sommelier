@@ -53,6 +53,8 @@
     <method name="RetrievePolicy">
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
+    <!-- TODO(joaodasilva): remove these 2 methods after porting Chrome to the
+                            newer versions. -->
     <method name="StoreUserPolicy">
       <!-- This method is implemented asynchronously. -->
       <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
@@ -63,6 +65,20 @@
       </arg>
     </method>
     <method name="RetrieveUserPolicy">
+      <arg type="ay" name="policy_blob" direction="out" />
+    </method>
+    <method name="StorePolicyForUser">
+      <!-- This method is implemented asynchronously. -->
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
+      <arg type="s" name="user_email" direction="in" />
+      <arg type="ay" name="policy_blob" direction="in" />
+      <arg type="b" direction="out">
+        <!-- This is the return value. -->
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
+    </method>
+    <method name="RetrievePolicyForUser">
+      <arg type="s" name="user_email" direction="in" />
       <arg type="ay" name="policy_blob" direction="out" />
     </method>
     <method name="StoreDeviceLocalAccountPolicy">

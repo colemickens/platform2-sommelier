@@ -421,6 +421,45 @@ gboolean SessionManagerImpl::RetrieveUserPolicy(GArray** OUT_policy_blob,
   return FALSE;
 }
 
+gboolean SessionManagerImpl::StorePolicyForUser(
+    gchar* user_email,
+    GArray* policy_blob,
+    DBusGMethodInvocation* context) {
+  scoped_refptr<PolicyService> policy_service = GetPolicyService(user_email);
+  if (!policy_service) {
+    const char msg[] = "Cannot store user policy before session is started.";
+    LOG(ERROR) << msg;
+    system_->SetAndSendGError(
+        CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, context, msg);
+    return FALSE;
+  }
+
+  const bool status = policy_service->Store(
+      reinterpret_cast<uint8*>(policy_blob->data),
+      policy_blob->len,
+      new DBusGMethodCompletion(context),
+      PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE);
+  return status ? TRUE : FALSE;
+}
+
+gboolean SessionManagerImpl::RetrievePolicyForUser(gchar* user_email,
+                                                   GArray** OUT_policy_blob,
+                                                   GError** error) {
+  scoped_refptr<PolicyService> policy_service = GetPolicyService(user_email);
+  if (!policy_service) {
+    const char msg[] = "Cannot retrieve user policy before session is started.";
+    LOG(ERROR) << msg;
+    SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
+    return FALSE;
+  }
+
+  vector<uint8> policy_data;
+  return EncodeRetrievedPolicy(policy_service->Retrieve(&policy_data),
+                               policy_data,
+                               OUT_policy_blob,
+                               error);
+}
+
 gboolean SessionManagerImpl::StoreDeviceLocalAccountPolicy(
     gchar* account_id,
     GArray* policy_blob,

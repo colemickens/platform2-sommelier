@@ -111,6 +111,20 @@ gboolean session_manager_retrieve_user_policy(SessionManager *self,
                                               GError **error) {
   SESSION_MANAGER_WRAP_METHOD(RetrieveUserPolicy, OUT_policy_blob, error);
 }
+gboolean session_manager_store_policy_for_user(SessionManager *self,
+                                               gchar* user_email,
+                                               GArray *policy_blob,
+                                               DBusGMethodInvocation* context) {
+  SESSION_MANAGER_WRAP_METHOD(StorePolicyForUser, user_email, policy_blob,
+                              context);
+}
+gboolean session_manager_retrieve_policy_for_user(SessionManager *self,
+                                                  gchar* user_email,
+                                                  GArray **OUT_policy_blob,
+                                                  GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(RetrievePolicyForUser, user_email,
+                              OUT_policy_blob, error);
+}
 gboolean session_manager_store_device_local_account_policy(
     SessionManager *self,
     gchar* account_id,

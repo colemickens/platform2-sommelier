@@ -51,6 +51,7 @@ using ::testing::ElementsAre;
 using ::testing::ElementsAreArray;
 using ::testing::HasSubstr;
 using ::testing::InvokeWithoutArgs;
+using ::testing::Mock;
 using ::testing::Return;
 using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
@@ -178,17 +179,17 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
   void VerifyAndClearExpectations() {
-    testing::Mock::VerifyAndClearExpectations(upstart_);
-    testing::Mock::VerifyAndClearExpectations(device_policy_service_);
+    Mock::VerifyAndClearExpectations(upstart_);
+    Mock::VerifyAndClearExpectations(device_policy_service_);
     for (map<string, scoped_refptr<MockPolicyService> >::iterator it =
              user_policy_services_.begin();
          it != user_policy_services_.end();
          ++it) {
-      testing::Mock::VerifyAndClearExpectations(it->second.get());
+      Mock::VerifyAndClearExpectations(it->second.get());
     }
-    testing::Mock::VerifyAndClearExpectations(&manager_);
-    testing::Mock::VerifyAndClearExpectations(&metrics_);
-    testing::Mock::VerifyAndClearExpectations(&utils_);
+    Mock::VerifyAndClearExpectations(&manager_);
+    Mock::VerifyAndClearExpectations(&metrics_);
+    Mock::VerifyAndClearExpectations(&utils_);
   }
 
   // Caller takes ownership.
@@ -490,6 +491,49 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
   g_array_free(policy_blob, TRUE);
 }
 
+TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
+  EXPECT_CALL(utils_, SetAndSendGError(_, _, _));
+
+  gchar user1[] = "user1@somewhere.com";
+  ExpectAndRunStartSession(user1);
+  ASSERT_TRUE(user_policy_services_[user1].get());
+
+  // Store policy for the signed-in user.
+  const std::string fake_policy("fake policy");
+  GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
+  EXPECT_CALL(*user_policy_services_[user1].get(),
+              Store(CastEq(fake_policy),
+                    fake_policy.size(),
+                    _,
+                    PolicyService::KEY_ROTATE |
+                    PolicyService::KEY_INSTALL_NEW))
+      .WillOnce(Return(true));
+  EXPECT_EQ(TRUE, impl_.StorePolicyForUser(user1, policy_blob, NULL));
+  Mock::VerifyAndClearExpectations(user_policy_services_[user1].get());
+
+  // Storing policy for another username fails before his session starts.
+  gchar user2[] = "user2@somewhere.com";
+  EXPECT_EQ(FALSE, impl_.StorePolicyForUser(user2, policy_blob, NULL));
+
+  // Now start another session for the 2nd user.
+  ExpectAndRunStartSession(user2);
+  ASSERT_TRUE(user_policy_services_[user2].get());
+
+  // Storing policy for that user now succeeds.
+  EXPECT_CALL(*user_policy_services_[user2].get(),
+              Store(CastEq(fake_policy),
+                    fake_policy.size(),
+                    _,
+                    PolicyService::KEY_ROTATE |
+                    PolicyService::KEY_INSTALL_NEW))
+      .WillOnce(Return(true));
+  EXPECT_EQ(TRUE, impl_.StorePolicyForUser(user2, policy_blob, NULL));
+  Mock::VerifyAndClearExpectations(user_policy_services_[user2].get());
+
+  // Cleanup.
+  g_array_free(policy_blob, TRUE);
+}
+
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
   GArray* out_blob = NULL;
   ScopedError error;
@@ -510,6 +554,56 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
   ScopedError error;
   EXPECT_EQ(TRUE, impl_.RetrieveUserPolicy(&out_blob,
                                            &Resetter(&error).lvalue()));
+  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  EXPECT_TRUE(
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
+  g_array_free(out_blob, TRUE);
+}
+
+TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
+  gchar user1[] = "user1@somewhere.com";
+  ExpectAndRunStartSession(user1);
+  ASSERT_TRUE(user_policy_services_[user1].get());
+
+  // Retrieve policy for the signed-in user.
+  const std::string fake_policy("fake policy");
+  const std::vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
+  EXPECT_CALL(*user_policy_services_[user1].get(), Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
+                      Return(true)));
+  GArray* out_blob = NULL;
+  ScopedError error;
+  EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(user1,
+                                              &out_blob,
+                                              &Resetter(&error).lvalue()));
+  Mock::VerifyAndClearExpectations(user_policy_services_[user1].get());
+  EXPECT_EQ(fake_policy.size(), out_blob->len);
+  EXPECT_TRUE(
+      std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
+  g_array_free(out_blob, TRUE);
+
+  // Retrieving policy for another username fails before his session starts.
+  gchar user2[] = "user2@somewhere.com";
+  out_blob = NULL;
+  error.reset();
+  EXPECT_EQ(FALSE, impl_.RetrievePolicyForUser(user2,
+                                               &out_blob,
+                                               &Resetter(&error).lvalue()));
+
+  // Now start another session for the 2nd user.
+  ExpectAndRunStartSession(user2);
+  ASSERT_TRUE(user_policy_services_[user2].get());
+
+  // Retrieving policy for that user now succeeds.
+  EXPECT_CALL(*user_policy_services_[user2].get(), Retrieve(_))
+      .WillOnce(DoAll(SetArgumentPointee<0>(policy_data),
+                      Return(true)));
+  out_blob = NULL;
+  error.reset();
+  EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(user2,
+                                              &out_blob,
+                                              &Resetter(&error).lvalue()));
+  Mock::VerifyAndClearExpectations(user_policy_services_[user2].get());
   EXPECT_EQ(fake_policy.size(), out_blob->len);
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));

@@ -99,10 +99,6 @@ class SessionManagerInterface {
   // installs the signing key for user policy. This key is used later to verify
   // policy updates pushed by Chrome.
   //
-  // TODO(mnissler): Revisit this for multi-profile support, in which case
-  // there may be multiple users logged in and thus potentially multiple policy
-  // blobs.
-  //
   // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
   // and reports the final result of the call asynchronously through |context|.
   virtual gboolean StoreUserPolicy(GArray* policy_blob,
@@ -112,6 +108,18 @@ class SessionManagerInterface {
   // |policy_blob|. Returns TRUE if the policy is available, FALSE otherwise.
   virtual gboolean RetrieveUserPolicy(GArray** OUT_policy_blob,
                                       GError** error) = 0;
+
+  // This will replace StoreUserPolicy. It adds the additional |user_email|
+  // parameter.
+  virtual gboolean StorePolicyForUser(gchar* user_email,
+                                      GArray* policy_blob,
+                                      DBusGMethodInvocation* context) = 0;
+
+  // This wil replace RetrieveUserPolicy. It adds the additional |user_email|
+  // parameter.
+  virtual gboolean RetrievePolicyForUser(gchar* user_email,
+                                         GArray** OUT_policy_blob,
+                                         GError** error) = 0;
 
   // Similar to StorePolicy above, but for device-local accounts. |policy_blob|
   // is a serialized PolicyFetchResponse protobuf which wraps the actual policy
