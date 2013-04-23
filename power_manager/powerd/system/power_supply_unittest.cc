@@ -204,6 +204,17 @@ TEST_F(PowerSupplyTest, TestCharging) {
   EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
 }
 
+// Tests that the line power source doesn't need to be named "Mains".
+TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
+  WriteDefaultValues(true, true);
+  WriteValue("ac/type", "ArbitraryName");
+  power_supply_->Init();
+  PowerStatus power_status;
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_TRUE(power_status.battery_is_present);
+}
+
 // Test battery discharging status.  Test both positive and negative current
 // values.
 TEST_F(PowerSupplyTest, TestDischarging) {

@@ -52,6 +52,9 @@ const int kDefaultShortPollMs = 5000;
 // interest is above this level assume something is wrong.
 const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
 
+// Name of power supply type for batteries
+const char kBatteryType[] = "Battery";
+
 // Converts time from hours to seconds.
 inline double HoursToSecondsDouble(double num_hours) {
   return num_hours * 3600.;
@@ -526,10 +529,10 @@ void PowerSupply::GetPowerSupplyPaths() {
       // already.  This makes the assumption that they don't change (but battery
       // path can disappear if removed).  So this code should only be run once
       // for each power source.
-      if (buf == "Battery" && battery_path_.empty()) {
+      if (buf == kBatteryType && battery_path_.empty()) {
         VLOG(1) << "Battery path found: " << path.value();
         battery_path_ = path;
-      } else if (buf == "Mains" && line_power_path_.empty()) {
+      } else if (buf != kBatteryType && line_power_path_.empty()) {
         VLOG(1) << "Line power path found: " << path.value();
         line_power_path_ = path;
       }
