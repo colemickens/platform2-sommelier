@@ -496,6 +496,7 @@ TEST_F(SessionManagerImplTest, LockScreen) {
   EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
   GError *error = NULL;
   EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, LockScreenNoSession) {
@@ -509,6 +510,28 @@ TEST_F(SessionManagerImplTest, LockScreenGuest) {
   EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(0);
   GError *error = NULL;
   EXPECT_EQ(FALSE, impl_.LockScreen(&error));
+}
+
+TEST_F(SessionManagerImplTest, LockUnlockScreen) {
+  ExpectAndRunStartSession("user@somewhere");
+  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kLockScreenSignal))).Times(1);
+  GError *error = NULL;
+  EXPECT_EQ(TRUE, impl_.LockScreen(&error));
+  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+
+  EXPECT_CALL(utils_, EmitSignal(StrEq(login_manager::kScreenIsLockedSignal)))
+      .Times(1);
+  EXPECT_EQ(TRUE, impl_.HandleLockScreenShown(&error));
+
+  EXPECT_CALL(utils_, EmitSignal(StrEq(chromium::kUnlockScreenSignal)))
+      .Times(1);
+  EXPECT_EQ(TRUE, impl_.UnlockScreen(&error));
+  EXPECT_EQ(TRUE, impl_.ScreenIsLocked());
+
+  EXPECT_CALL(utils_, EmitSignal(StrEq(login_manager::kScreenIsUnlockedSignal)))
+      .Times(1);
+  EXPECT_EQ(TRUE, impl_.HandleLockScreenDismissed(&error));
+  EXPECT_EQ(FALSE, impl_.ScreenIsLocked());
 }
 
 TEST_F(SessionManagerImplTest, StartDeviceWipeAlreadyLoggedIn) {

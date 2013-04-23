@@ -422,13 +422,13 @@ gboolean SessionManagerImpl::LockScreen(GError** error) {
                                        << " outside of user session.";
     return FALSE;
   }
+  screen_locked_ = true;
   system_->EmitSignal(chromium::kLockScreenSignal);
   LOG(INFO) << "LockScreen";
   return TRUE;
 }
 
 gboolean SessionManagerImpl::HandleLockScreenShown(GError** error) {
-  screen_locked_ = true;
   LOG(INFO) << "HandleLockScreenShown";
   system_->EmitSignal(login_manager::kScreenIsLockedSignal);
   return TRUE;
