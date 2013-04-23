@@ -217,6 +217,48 @@ TEST_F(DBusAdaptorTest, SetProperty) {
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e11));
 }
 
+// SetProperty method should propagate failures.  This should happen
+// even if error isn't set. (This is to accomodate the fact that, if
+// the property already has the desired value, the store will return
+// false, without setting an error.)
+TEST_F(DBusAdaptorTest, SetPropertyFailure) {
+  MockPropertyStore store;
+  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11;
+
+  EXPECT_CALL(store, Contains(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(store, SetBoolProperty("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetInt16Property("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetInt32Property("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetStringProperty("", _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(store, SetStringmapProperty("", _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(store, SetStringsProperty("", _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(store, SetUint8Property("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetUint16Property("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetUint32Property("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetUint64Property("", _, _)).WillOnce(Return(false));
+
+  string string_path("/false/path");
+  ::DBus::Path path(string_path);
+  ::DBus::Variant path_v = DBusAdaptor::PathToVariant(path);
+  EXPECT_CALL(store, SetStringProperty("", StrEq(string_path), _))
+      .WillOnce(Return(false));
+
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", bool_v_, &e1));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", path_v, &e2));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", string_v_, &e3));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", strings_v_, &e4));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", int16_v_, &e5));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", int32_v_, &e6));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint16_v_, &e7));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e8));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint64_v_, &e9));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e10));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e11));
+}
+
 void SetError(const string &/*name*/, Error *error) {
   error->Populate(Error::kInvalidProperty);
 }

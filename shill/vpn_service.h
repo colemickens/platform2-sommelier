@@ -34,7 +34,7 @@ class VPNService : public Service {
   virtual bool Unload();
   virtual void MakeFavorite();
   virtual void SetConnection(const ConnectionRefPtr &connection);
-  virtual void SetNameProperty(const std::string &name, Error *error);
+  virtual bool SetNameProperty(const std::string &name, Error *error);
 
   virtual void InitDriverPropertyStore();
 

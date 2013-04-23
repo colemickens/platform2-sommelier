@@ -215,7 +215,7 @@ string WiFiService::GetStorageIdentifier() const {
   return storage_identifier_;
 }
 
-void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
+bool WiFiService::SetPassphrase(const string &passphrase, Error *error) {
   if (security_ == flimflam::kSecurityWep) {
     ValidateWEPPassphrase(passphrase, error);
   } else if (security_ == flimflam::kSecurityPsk ||
@@ -226,13 +226,21 @@ void WiFiService::SetPassphrase(const string &passphrase, Error *error) {
     error->Populate(Error::kNotSupported);
   }
 
-  if (!error->IsSuccess() || passphrase == passphrase_) {
-    return;
+  if (!error->IsSuccess()) {
+    return false;
+  }
+  if (passphrase_ == passphrase) {
+    // After a user logs in, Chrome may reconfigure a Service with the
+    // same credentials as before login. When that occurs, we don't
+    // want to bump the user off the network. Hence, we MUST return
+    // early. (See crbug.com/231456#c17)
+    return false;
   }
 
   passphrase_ = passphrase;
   ClearCachedCredentials();
   UpdateConnectable();
+  return true;
 }
 
 // ClearPassphrase is separate from SetPassphrase, because the default
@@ -403,10 +411,19 @@ void WiFiService::SendPostReadyStateMetrics(
 }
 
 // private methods
+void WiFiService::HelpRegisterConstDerivedString(
+    const string &name,
+    string(WiFiService::*get)(Error *)) {
+  mutable_store()->RegisterDerivedString(
+      name,
+      StringAccessor(
+          new CustomAccessor<WiFiService, string>(this, get, NULL)));
+}
+
 void WiFiService::HelpRegisterDerivedString(
     const string &name,
-    string(WiFiService::*get)(Error *),
-    void(WiFiService::*set)(const string&, Error *)) {
+    string(WiFiService::*get)(Error *error),
+    bool(WiFiService::*set)(const string &, Error *)) {
   mutable_store()->RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<WiFiService, string>(this, get, set)));
@@ -414,7 +431,7 @@ void WiFiService::HelpRegisterDerivedString(
 
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
     const string &name,
-    void(WiFiService::*set)(const string &, Error *),
+    bool(WiFiService::*set)(const string &, Error *),
     void(WiFiService::*clear)(Error *),
     const string *default_value) {
   mutable_store()->RegisterDerivedString(

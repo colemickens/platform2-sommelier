@@ -130,10 +130,15 @@ string VPNDriver::GetMappedProperty(const size_t &index, Error *error) {
   return string();
 }
 
-void VPNDriver::SetMappedProperty(
+bool VPNDriver::SetMappedProperty(
     const size_t &index, const string &value, Error *error) {
   CHECK(index < property_count_);
+  if (args_.ContainsString(properties_[index].property) &&
+      args_.GetString(properties_[index].property) == value) {
+    return false;
+  }
   args_.SetString(properties_[index].property, value);
+  return true;
 }
 
 KeyValueStore VPNDriver::GetProvider(Error *error) {

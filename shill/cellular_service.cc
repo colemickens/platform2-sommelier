@@ -156,7 +156,7 @@ bool CellularService::IsAutoConnectable(const char **reason) const {
 void CellularService::HelpRegisterDerivedStringmap(
     const string &name,
     Stringmap(CellularService::*get)(Error *error),
-    void(CellularService::*set)(
+    bool(CellularService::*set)(
         const Stringmap &value, Error *error)) {
   mutable_store()->RegisterDerivedStringmap(
       name,
@@ -183,18 +183,23 @@ Stringmap CellularService::GetApn(Error */*error*/) {
   return apn_info_;
 }
 
-void CellularService::SetApn(const Stringmap &value, Error *error) {
+bool CellularService::SetApn(const Stringmap &value, Error *error) {
   // Only copy in the fields we care about, and validate the contents.
   // If the "apn" field is missing or empty, the APN is cleared.
   string str;
-  if (!GetNonEmptyField(value, flimflam::kApnProperty, &str)) {
-    apn_info_.clear();
-  } else {
-    apn_info_[flimflam::kApnProperty] = str;
+  Stringmap new_apn_info;
+  if (GetNonEmptyField(value, flimflam::kApnProperty, &str)) {
+    new_apn_info[flimflam::kApnProperty] = str;
     if (GetNonEmptyField(value, flimflam::kApnUsernameProperty, &str))
-      apn_info_[flimflam::kApnUsernameProperty] = str;
+      new_apn_info[flimflam::kApnUsernameProperty] = str;
     if (GetNonEmptyField(value, flimflam::kApnPasswordProperty, &str))
-      apn_info_[flimflam::kApnPasswordProperty] = str;
+      new_apn_info[flimflam::kApnPasswordProperty] = str;
+  }
+  if (apn_info_ == new_apn_info) {
+    return false;
+  }
+  apn_info_ = new_apn_info;
+  if (ContainsKey(apn_info_, flimflam::kApnProperty)) {
     // Clear the last good APN, otherwise the one the user just
     // set won't be used, since LastGoodApn comes first in the
     // search order when trying to connect. Only do this if a
@@ -204,6 +209,7 @@ void CellularService::SetApn(const Stringmap &value, Error *error) {
   }
   adaptor()->EmitStringmapChanged(flimflam::kCellularApnProperty, apn_info_);
   SaveToCurrentProfile();
+  return true;
 }
 
 void CellularService::SetLastGoodApn(const Stringmap &apn_info) {

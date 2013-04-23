@@ -131,6 +131,7 @@ TEST_F(WiFiPropertyTest, SetProperty) {
                                           flimflam::kScanningProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
+    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
     EXPECT_EQ(invalid_args(), error.name());
   }
 
@@ -589,8 +590,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void SetPendingService(const WiFiServiceRefPtr &service) {
     wifi_->pending_service_ = service;
   }
-  void SetScanInterval(uint16_t interval_seconds) {
-    wifi_->SetScanInterval(interval_seconds, NULL);
+  bool SetScanInterval(uint16_t interval_seconds, Error *error) {
+    return wifi_->SetScanInterval(interval_seconds, error);
   }
   uint16_t GetScanInterval() {
     return wifi_->GetScanInterval(NULL);
@@ -664,6 +665,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
   void OnLinkMonitorFailure() {
     wifi_->OnLinkMonitorFailure();
+  }
+
+  bool SetBgscanShortInterval(const uint16 &interval, Error *error) {
+    return wifi_->SetBgscanShortInterval(interval, error);
+  }
+
+  bool SetBgscanSignalThreshold(const int32 &threshold, Error *error) {
+    return wifi_->SetBgscanSignalThreshold(threshold, error);
   }
 
   NiceMockControl *control_interface() {
@@ -1783,7 +1792,7 @@ TEST_F(WiFiMainTest, ScanTimerReconfigured) {
   CancelScanTimer();
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 
-  SetScanInterval(1);
+  SetScanInterval(1, NULL);
   EXPECT_FALSE(GetScanTimer().IsCancelled());
 }
 
@@ -1800,7 +1809,7 @@ TEST_F(WiFiMainTest, ScanTimerStopOnZeroInterval) {
   StartWiFi();
   EXPECT_FALSE(GetScanTimer().IsCancelled());
 
-  SetScanInterval(0);
+  SetScanInterval(0, NULL);
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
@@ -2213,6 +2222,41 @@ TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
 TEST_F(WiFiMainTest, LogSSID) {
   EXPECT_EQ("[SSID=]", WiFi::LogSSID(""));
   EXPECT_EQ("[SSID=foo\\x5b\\x09\\x5dbar]", WiFi::LogSSID("foo[\t]bar"));
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(WiFiMainTest, CustomSetterNoopChange) {
+  // SetBgscanShortInterval
+  {
+    Error error;
+    static const uint16 kKnownScanInterval = 4;
+    // Set to known value.
+    EXPECT_TRUE(SetBgscanShortInterval(kKnownScanInterval, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(SetBgscanShortInterval(kKnownScanInterval, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetBgscanSignalThreshold
+  {
+    Error error;
+    static const int32 kKnownSignalThreshold = 4;
+    // Set to known value.
+    EXPECT_TRUE(SetBgscanSignalThreshold(kKnownSignalThreshold, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(SetBgscanSignalThreshold(kKnownSignalThreshold, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetScanInterval
+  {
+    Error error;
+    EXPECT_FALSE(SetScanInterval(GetScanInterval(), &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
 }
 
 }  // namespace shill

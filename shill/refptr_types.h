@@ -76,6 +76,7 @@ class DHCPConfig;
 typedef scoped_refptr<DHCPConfig> DHCPConfigRefPtr;
 
 class Profile;
+typedef scoped_refptr<const Profile> ProfileConstRefPtr;
 typedef scoped_refptr<Profile> ProfileRefPtr;
 
 class Connection;

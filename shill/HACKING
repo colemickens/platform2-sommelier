@@ -124,3 +124,11 @@ To keep the shill source code consistent, please follow the conventions below:
     2. Add the corresponding scope name to the kScopeNames array in
        scope_logger.cc.
     3. Update the GetAllScopeNames test in scope_logger_unittest.cc.
+
+- When adding externally visible (i.e. via RPC) properties to an object,
+  make sure that a) its setter emits any change notification required by
+  Chrome, and that b) its setter properly handles no-op changes.
+
+  Test that the property changes are handled correctly by adding test
+  cases similar to those in CellularServiceTest.PropertyChanges, and
+  CellularServiceTest.CustomSetterNoopChange.

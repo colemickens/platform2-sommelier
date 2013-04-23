@@ -97,7 +97,7 @@ class EapCredentials {
   virtual void Reset();
 
   // Setter that guards against emptying the "Key Management" value.
-  virtual void SetKeyManagement(const std::string &key_management,
+  virtual bool SetKeyManagement(const std::string &key_management,
                                 Error *error);
 
   // Getters and setters.
@@ -121,7 +121,7 @@ class EapCredentials {
       PropertyStore *store,
       const std::string &name,
       std::string(EapCredentials::*get)(Error *error),
-      void(EapCredentials::*set)(const std::string &value, Error *error));
+      bool(EapCredentials::*set)(const std::string &value, Error *error));
 
   // Expose a property in |store|, with the name |name|.
   //
@@ -134,7 +134,7 @@ class EapCredentials {
   void HelpRegisterWriteOnlyDerivedString(
       PropertyStore *store,
       const std::string &name,
-      void(EapCredentials::*set)(const std::string &value, Error *error),
+      bool(EapCredentials::*set)(const std::string &value, Error *error),
       void(EapCredentials::*clear)(Error *error),
       const std::string *default_value);
 
@@ -149,8 +149,8 @@ class EapCredentials {
                          bool save);
 
   // Setters for write-only RPC properties.
-  void SetEapPassword(const std::string &password, Error *error);
-  void SetEapPrivateKeyPassword(const std::string &password, Error *error);
+  bool SetEapPassword(const std::string &password, Error *error);
+  bool SetEapPrivateKeyPassword(const std::string &password, Error *error);
 
   // RPC getter for key_management_.
   std::string GetKeyManagement(Error *error);

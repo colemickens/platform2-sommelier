@@ -81,13 +81,13 @@ class StaticIPParameters {
   int32 GetMappedSavedInt32Property(const size_t &index, Error *error);
   std::string GetMappedStringProperty(const size_t &index, Error *error);
   std::string GetMappedSavedStringProperty(const size_t &index, Error *error);
-  void SetMappedInt32Property(
+  bool SetMappedInt32Property(
       const size_t &index, const int32 &value, Error *error);
-  void SetMappedSavedInt32Property(
+  bool SetMappedSavedInt32Property(
       const size_t &index, const int32 &value, Error *error);
-  void SetMappedStringProperty(
+  bool SetMappedStringProperty(
       const size_t &index, const std::string &value, Error *error);
-  void SetMappedSavedStringProperty(
+  bool SetMappedSavedStringProperty(
       const size_t &index, const std::string &value, Error *error);
 
   KeyValueStore args_;

@@ -110,6 +110,12 @@ class EapCredentialsTest : public testing::Test {
   const string &GetKeyManagement() {
     return eap_.key_management_;
   }
+  bool SetEapPassword(const string &password, Error *error) {
+    return eap_.SetEapPassword(password, error);
+  }
+  bool SetEapPrivateKeyPassword(const string &password, Error *error) {
+    return eap_.SetEapPrivateKeyPassword(password, error);
+  }
 
   EapCredentials eap_;
   MockCertificateFile certificate_file_;
@@ -449,6 +455,46 @@ TEST_F(EapCredentialsTest, SetKeyManagement) {
   // We should not be able to set the key management to an empty string.
   eap_.SetKeyManagement("", NULL);
   EXPECT_EQ(kKeyManagement1, GetKeyManagement());
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(EapCredentialsTest, CustomSetterNoopChange) {
+  // SetEapKeyManagement
+  {
+    const string kKeyManagement("foo");
+    Error error;
+    // Set to known value.
+    EXPECT_TRUE(eap_.SetKeyManagement(kKeyManagement, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(eap_.SetKeyManagement(kKeyManagement, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetEapPassword
+  {
+    const string kPassword("foo");
+    Error error;
+    // Set to known value.
+    EXPECT_TRUE(SetEapPassword(kPassword, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(SetEapPassword(kPassword, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetEapPrivateKeyPassword
+  {
+    const string kPrivateKeyPassword("foo");
+    Error error;
+    // Set to known value.
+    EXPECT_TRUE(SetEapPrivateKeyPassword(kPrivateKeyPassword, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(SetEapPrivateKeyPassword(kPrivateKeyPassword, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
 }
 
 }  // namespace shill

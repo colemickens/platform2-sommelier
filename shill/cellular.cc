@@ -119,9 +119,8 @@ Cellular::Cellular(ModemInfo *modem_info,
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
   store->RegisterConstString(flimflam::kDBusServiceProperty, &dbus_service_);
   store->RegisterConstString(flimflam::kDBusObjectProperty, &dbus_path_);
-  HelpRegisterDerivedString(flimflam::kTechnologyFamilyProperty,
-                            &Cellular::GetTechnologyFamily,
-                            NULL);
+  HelpRegisterConstDerivedString(flimflam::kTechnologyFamilyProperty,
+                                 &Cellular::GetTechnologyFamily);
   HelpRegisterDerivedBool(flimflam::kCellularAllowRoamingProperty,
                           &Cellular::GetAllowRoaming,
                           &Cellular::SetAllowRoaming);
@@ -180,20 +179,19 @@ void Cellular::SetState(State state) {
 void Cellular::HelpRegisterDerivedBool(
     const string &name,
     bool(Cellular::*get)(Error *error),
-    void(Cellular::*set)(const bool &value, Error *error)) {
+    bool(Cellular::*set)(const bool &value, Error *error)) {
   mutable_store()->RegisterDerivedBool(
       name,
       BoolAccessor(
           new CustomAccessor<Cellular, bool>(this, get, set)));
 }
 
-void Cellular::HelpRegisterDerivedString(
+void Cellular::HelpRegisterConstDerivedString(
     const string &name,
-    string(Cellular::*get)(Error *),
-    void(Cellular::*set)(const string&, Error *)) {
+    string(Cellular::*get)(Error *)) {
   mutable_store()->RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<Cellular, string>(this, get, set)));
+      StringAccessor(new CustomAccessor<Cellular, string>(this, get, NULL)));
 }
 
 void Cellular::Start(Error *error,
@@ -715,11 +713,11 @@ bool Cellular::IsActivating() const {
   return capability_->IsActivating();
 }
 
-void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
+bool Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
   SLOG(Cellular, 2) << __func__
                     << "(" << allow_roaming_ << "->" << value << ")";
   if (allow_roaming_ == value) {
-    return;
+    return false;
   }
   allow_roaming_ = value;
   manager()->UpdateDevice(this);
@@ -733,6 +731,7 @@ void Cellular::SetAllowRoaming(const bool &value, Error */*error*/) {
     Disconnect(&error);
   }
   adaptor()->EmitBoolChanged(flimflam::kCellularAllowRoamingProperty, value);
+  return true;
 }
 
 void Cellular::StartTermination() {

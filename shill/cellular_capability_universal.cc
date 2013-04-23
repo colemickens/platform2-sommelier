@@ -179,10 +179,9 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
   store->RegisterConstBool(flimflam::kScanningProperty,
                            &scanning_or_searching_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
-  HelpRegisterDerivedKeyValueStore(
+  HelpRegisterConstDerivedKeyValueStore(
       flimflam::kSIMLockStatusProperty,
-      &CellularCapabilityUniversal::SimLockStatusToProperty,
-      NULL);
+      &CellularCapabilityUniversal::SimLockStatusToProperty);
   store->RegisterConstString(shill::kSIMOperatorIdProperty, &operator_id_);
   store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
@@ -199,16 +198,14 @@ KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
   return status;
 }
 
-void CellularCapabilityUniversal::HelpRegisterDerivedKeyValueStore(
+void CellularCapabilityUniversal::HelpRegisterConstDerivedKeyValueStore(
     const string &name,
-    KeyValueStore(CellularCapabilityUniversal::*get)(Error *error),
-    void(CellularCapabilityUniversal::*set)(
-        const KeyValueStore &value, Error *error)) {
+    KeyValueStore(CellularCapabilityUniversal::*get)(Error *error)) {
   cellular()->mutable_store()->RegisterDerivedKeyValueStore(
       name,
       KeyValueStoreAccessor(
           new CustomAccessor<CellularCapabilityUniversal, KeyValueStore>(
-              this, get, set)));
+              this, get, NULL)));
 }
 
 void CellularCapabilityUniversal::InitProxies() {

@@ -86,9 +86,6 @@ void ServiceDBusAdaptor::SetProperty(const string &name,
                                      ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   DBusAdaptor::SetProperty(service_->mutable_store(), name, value, &error);
-  if (!error.is_set()) {
-    service_->OnPropertyChanged(name);
-  }
 }
 
 void ServiceDBusAdaptor::ClearProperty(const string &name,

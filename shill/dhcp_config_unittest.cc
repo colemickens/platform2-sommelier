@@ -586,6 +586,7 @@ TEST_F(DHCPConfigTest, SetProperty) {
                                         flimflam::kAddressProperty,
                                         PropertyStoreTest::kStringV,
                                         &error));
+  ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
   EXPECT_EQ(invalid_args(), error.name());
 }
 

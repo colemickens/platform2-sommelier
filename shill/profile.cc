@@ -57,12 +57,10 @@ Profile::Profile(ControlInterface *control_interface,
   // flimflam::kOfflineModeProperty: Registered in DefaultProfile
   // flimflam::kPortalURLProperty: Registered in DefaultProfile
 
-  HelpRegisterDerivedStrings(flimflam::kServicesProperty,
-                             &Profile::EnumerateAvailableServices,
-                             NULL);
-  HelpRegisterDerivedStrings(flimflam::kEntriesProperty,
-                             &Profile::EnumerateEntries,
-                             NULL);
+  HelpRegisterConstDerivedStrings(flimflam::kServicesProperty,
+                                  &Profile::EnumerateAvailableServices);
+  HelpRegisterConstDerivedStrings(flimflam::kEntriesProperty,
+                                  &Profile::EnumerateEntries);
 }
 
 Profile::~Profile() {}
@@ -380,13 +378,12 @@ bool Profile::UpdateWiFiProvider(const WiFiProvider &wifi_provider) {
   return false;
 }
 
-void Profile::HelpRegisterDerivedStrings(
+void Profile::HelpRegisterConstDerivedStrings(
     const string &name,
-    Strings(Profile::*get)(Error *),
-    void(Profile::*set)(const Strings&, Error *)) {
+    Strings(Profile::*get)(Error *)) {
   store_.RegisterDerivedStrings(
       name,
-      StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, set)));
+      StringsAccessor(new CustomAccessor<Profile, Strings>(this, get, NULL)));
 }
 
 }  // namespace shill

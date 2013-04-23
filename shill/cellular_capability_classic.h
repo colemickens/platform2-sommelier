@@ -177,11 +177,6 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
 
-  void HelpRegisterDerivedBool(
-      const std::string &name,
-      bool(CellularCapability::*get)(Error *error),
-      void(CellularCapability::*set)(const bool &value, Error *error));
-
   // Method reply and signal callbacks from Modem interface
   void OnModemStateChangedSignal(
       uint32 old_state, uint32 new_state, uint32 reason);

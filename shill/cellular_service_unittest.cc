@@ -572,4 +572,28 @@ TEST_F(CellularServiceTest, PropertyChanges) {
   Mock::VerifyAndClearExpectations(adaptor_);
 }
 
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(CellularServiceTest, CustomSetterNoopChange) {
+  // Test that we didn't break any setters provided by the base class.
+  TestCustomSetterNoopChange(service_, modem_info_.mock_manager());
+
+  // Test the new setter we added.
+  // First set up our environment...
+  static const char kApn[] = "TheAPN";
+  static const char kUsername[] = "commander.data";
+  Error error;
+  Stringmap testapn;
+  ProfileRefPtr profile(new NiceMock<MockProfile>(nullptr, nullptr, nullptr));
+  service_->set_profile(profile);
+  testapn[flimflam::kApnProperty] = kApn;
+  testapn[flimflam::kApnUsernameProperty] = kUsername;
+  // ... then set to a known value ...
+  EXPECT_TRUE(service_->SetApn(testapn, &error));
+  EXPECT_TRUE(error.IsSuccess());
+  // ... then set to same value.
+  EXPECT_FALSE(service_->SetApn(testapn, &error));
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 }  // namespace shill

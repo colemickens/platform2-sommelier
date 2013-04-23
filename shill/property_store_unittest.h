@@ -50,6 +50,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   virtual ~PropertyStoreTest();
 
   virtual void SetUp();
+  MOCK_METHOD1(TestCallback, void(const std::string &property_name));
 
  protected:
   Manager *manager() { return &manager_; }

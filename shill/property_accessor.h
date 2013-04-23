@@ -32,6 +32,16 @@ namespace shill {
 //   new_foo = accessors["foo"]->Get();  // new_foo == false
 //   // Clear resets |foo| to its value when the PropertyAccessor was created.
 //   accessors["foo"]->Clear();  // foo == true
+//
+// Generic accessors that provide write capability will check that the
+// new value differs from the present one. If the old and new values
+// are the same, the setter will not invoke the assignment operator, and
+// will return false.
+//
+// Custom accessors are responsible for handling set-to-same-value
+// themselves. It is not possible to handle that here, because some
+// custom getters return default values, rather than the actual
+// value. (I'm looking at you, WiFi::GetBgscanMethod.)
 template <class T>
 class PropertyAccessor : public AccessorInterface<T> {
  public:
@@ -43,8 +53,12 @@ class PropertyAccessor : public AccessorInterface<T> {
 
   void Clear(Error *error) { Set(default_value_, error); }
   T Get(Error */*error*/) { return *property_; }
-  void Set(const T &value, Error */*error*/) {
+  bool Set(const T &value, Error */*error*/) {
+    if (*property_ == value) {
+      return false;
+    }
     *property_ = value;
+    return true;
   }
 
  private:
@@ -67,10 +81,11 @@ class ConstPropertyAccessor : public AccessorInterface<T> {
     error->Populate(Error::kInvalidArguments, "Property is read-only");
   }
   T Get(Error */*error*/) { return *property_; }
-  void Set(const T &/*value*/, Error *error) {
+  bool Set(const T &/*value*/, Error *error) {
     // TODO(quiche): check if this is the right error.
     // (maybe Error::kPermissionDenied instead?)
     error->Populate(Error::kInvalidArguments, "Property is read-only");
+    return false;
   }
 
  private:
@@ -92,8 +107,12 @@ class WriteOnlyPropertyAccessor : public AccessorInterface<T> {
     error->Populate(Error::kPermissionDenied, "Property is write-only");
     return T();
   }
-  void Set(const T &value, Error */*error*/) {
+  bool Set(const T &value, Error */*error*/) {
+    if (*property_ == value) {
+      return false;
+    }
     *property_ = value;
+    return true;
   }
 
  private:
@@ -117,11 +136,12 @@ class CustomAccessor : public AccessorInterface<T> {
  public:
   // |target| is the object on which to call the methods |getter| and |setter|
   // |setter| is allowed to be NULL, in which case we will simply reject
-  // attempts to set via the accessor.
+  // attempts to set via the accessor. |setter| should return true if the
+  // value was changed, and false otherwise.
   // It is an error to pass NULL for either of the other two arguments.
   CustomAccessor(C *target,
                  T(C::*getter)(Error *error),
-                 void(C::*setter)(const T &value, Error *error))
+                 bool(C::*setter)(const T &value, Error *error))
       : target_(target),
         default_value_(),
         getter_(getter),
@@ -139,11 +159,12 @@ class CustomAccessor : public AccessorInterface<T> {
   T Get(Error *error) {
     return (target_->*getter_)(error);
   }
-  void Set(const T &value, Error *error) {
+  bool Set(const T &value, Error *error) {
     if (setter_) {
-      (target_->*setter_)(value, error);
+      return (target_->*setter_)(value, error);
     } else {
       error->Populate(Error::kInvalidArguments, "Property is read-only");
+      return false;
     }
   }
 
@@ -153,7 +174,7 @@ class CustomAccessor : public AccessorInterface<T> {
   // the initializer list.
   T default_value_;
   T(C::*const getter_)(Error *error);
-  void(C::*const setter_)(const T &value, Error *error);
+  bool(C::*const setter_)(const T &value, Error *error);
   DISALLOW_COPY_AND_ASSIGN(CustomAccessor);
 };
 
@@ -165,12 +186,13 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
  public:
   // |target| is the object on which to call |setter| and |clearer|.
   //
-  // |target| and |setter| must be non-NULL.
+  // |target| and |setter| must be non-NULL. |setter| should return true
+  // if the value was changed, and false otherwise.
   //
   // Either |clearer| or |default_value|, but not both, must be non-NULL.
   // Whichever is non-NULL is used to clear the property.
   CustomWriteOnlyAccessor(C *target,
-                          void(C::*setter)(const T &value, Error *error),
+                          bool(C::*setter)(const T &value, Error *error),
                           void(C::*clearer)(Error *error),
                           const T *default_value)
       : target_(target),
@@ -198,13 +220,13 @@ class CustomWriteOnlyAccessor : public AccessorInterface<T> {
     error->Populate(Error::kPermissionDenied, "Property is write-only");
     return T();
   }
-  void Set(const T &value, Error *error) {
-    (target_->*setter_)(value, error);
+  bool Set(const T &value, Error *error) {
+    return (target_->*setter_)(value, error);
   }
 
  private:
   C *const target_;
-  void(C::*const setter_)(const T &value, Error *error);
+  bool(C::*const setter_)(const T &value, Error *error);
   void(C::*const clearer_)(Error *error);
   // |default_value_| is non-const because it can't be initialized in
   // the initializer list.
@@ -220,14 +242,15 @@ class CustomMappedAccessor : public AccessorInterface<T> {
  public:
   // |target| is the object on which to call the methods |getter| and |setter|.
   // |setter| is allowed to be NULL, in which case we will simply reject
-  // attempts to set via the accessor.
+  // attempts to set via the accessor. |setter| should return true if the
+  // value was changed, and false otherwise.
   // |argument| is passed to the getter and setter methods to disambiguate
   // between different properties in |target|.
   // It is an error to pass NULL for any of |target|, |clearer| or |getter|.
   CustomMappedAccessor(C *target,
                        void(C::*clearer)(const A &argument, Error *error),
                        T(C::*getter)(const A &argument, Error *error),
-                       void(C::*setter)(const A &argument, const T &value,
+                       bool(C::*setter)(const A &argument, const T &value,
                                         Error *error),
                        const A &argument)
       : target_(target),
@@ -247,11 +270,12 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   T Get(Error *error) {
     return (target_->*getter_)(argument_, error);
   }
-  void Set(const T &value, Error *error) {
+  bool Set(const T &value, Error *error) {
     if (setter_) {
-      (target_->*setter_)(argument_, value, error);
+      return (target_->*setter_)(argument_, value, error);
     } else {
       error->Populate(Error::kInvalidArguments, "Property is read-only");
+      return false;
     }
   }
 
@@ -259,7 +283,7 @@ class CustomMappedAccessor : public AccessorInterface<T> {
   C *const target_;
   void(C::*const clearer_)(const A &argument, Error *error);
   T(C::*const getter_)(const A &argument, Error *error);
-  void(C::*const setter_)(const A &argument, const T &value, Error *error);
+  bool(C::*const setter_)(const A &argument, const T &value, Error *error);
   A argument_;
   DISALLOW_COPY_AND_ASSIGN(CustomMappedAccessor);
 };

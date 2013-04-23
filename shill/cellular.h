@@ -261,6 +261,7 @@ class Cellular : public Device {
   FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
+  FRIEND_TEST(CellularTest, CustomSetterNoopChange);
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
@@ -306,18 +307,17 @@ class Cellular : public Device {
   void HelpRegisterDerivedBool(
       const std::string &name,
       bool(Cellular::*get)(Error *error),
-      void(Cellular::*set)(const bool &value, Error *error));
-  void HelpRegisterDerivedString(
+      bool(Cellular::*set)(const bool &value, Error *error));
+  void HelpRegisterConstDerivedString(
       const std::string &name,
-      std::string(Cellular::*get)(Error *error),
-      void(Cellular::*set)(const std::string &value, Error *error));
+      std::string(Cellular::*get)(Error *error));
 
   void OnConnectReply(const Error &error);
   void OnDisconnectReply(const Error &error);
 
   // DBUS accessors to read/modify the allow roaming property
   bool GetAllowRoaming(Error */*error*/) { return allow_roaming_; }
-  void SetAllowRoaming(const bool &value, Error *error);
+  bool SetAllowRoaming(const bool &value, Error *error);
 
   // When shill terminates or ChromeOS suspends, this function is called to
   // disconnect from the cellular network.

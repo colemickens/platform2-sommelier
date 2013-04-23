@@ -23,6 +23,9 @@ namespace shill {
 
 PropertyStore::PropertyStore() {}
 
+PropertyStore::PropertyStore(PropertyChangeCallback on_property_changed) :
+    property_changed_callback_(on_property_changed) {}
+
 PropertyStore::~PropertyStore() {}
 
 bool PropertyStore::Contains(const string &prop) const {
@@ -155,6 +158,14 @@ bool PropertyStore::SetStringmapProperty(const string &name,
                      "a string map");
 }
 
+bool PropertyStore::SetStringmapsProperty(
+    const string &name,
+    const vector<map<string, string> > &values,
+    Error *error) {
+  return SetProperty(name, values, error, stringmaps_properties_,
+                     "a stringmaps");
+}
+
 bool PropertyStore::SetStringsProperty(const string &name,
                                        const vector<string> &values,
                                        Error *error) {
@@ -226,6 +237,11 @@ bool PropertyStore::ClearProperty(const string &name, Error *error) {
   } else {
     error->Populate(
         Error::kInvalidProperty, "Property " + name + " does not exist.");
+  }
+  if (error->IsSuccess()) {
+    if (!property_changed_callback_.is_null()) {
+      property_changed_callback_.Run(name);
+    }
   }
   return error->IsSuccess();
 }
@@ -618,10 +634,16 @@ bool PropertyStore::SetProperty(
     Error *error,
     map< string, std::tr1::shared_ptr< AccessorInterface<V> > >&collection,
     const string &value_type_english) {
+  bool ret = false;
   SLOG(Property, 2) << "Setting " << name << " as " << value_type_english
                     << ".";
   if (ContainsKey(collection, name)) {
-    collection[name]->Set(value, error);
+    ret = collection[name]->Set(value, error);
+    if (ret) {
+      if (!property_changed_callback_.is_null()) {
+        property_changed_callback_.Run(name);
+      }
+    }
   } else {
     if (Contains(name)) {
       error->Populate(
@@ -632,7 +654,7 @@ bool PropertyStore::SetProperty(
           Error::kInvalidProperty, "Property " + name + " does not exist.");
     }
   }
-  return error->IsSuccess();
+  return ret;
 };
 
 }  // namespace shill

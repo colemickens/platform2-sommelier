@@ -122,15 +122,13 @@ Manager::Manager(ControlInterface *control_interface,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
   store_.RegisterBool(flimflam::kArpGatewayProperty, &props_.arp_gateway);
-  HelpRegisterDerivedStrings(flimflam::kAvailableTechnologiesProperty,
-                             &Manager::AvailableTechnologies,
-                             NULL);
+  HelpRegisterConstDerivedStrings(flimflam::kAvailableTechnologiesProperty,
+                                  &Manager::AvailableTechnologies);
   HelpRegisterDerivedString(flimflam::kCheckPortalListProperty,
                             &Manager::GetCheckPortalList,
                             &Manager::SetCheckPortalList);
-  HelpRegisterDerivedStrings(flimflam::kConnectedTechnologiesProperty,
-                             &Manager::ConnectedTechnologies,
-                             NULL);
+  HelpRegisterConstDerivedStrings(flimflam::kConnectedTechnologiesProperty,
+                                  &Manager::ConnectedTechnologies);
   store_.RegisterString(flimflam::kCountryProperty, &props_.country);
   HelpRegisterDerivedString(flimflam::kDefaultTechnologyProperty,
                             &Manager::DefaultTechnology,
@@ -140,9 +138,8 @@ Manager::Manager(ControlInterface *control_interface,
       &Manager::GetDefaultServiceRpcIdentifier);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kDevicesProperty,
                                          &Manager::EnumerateDevices);
-  HelpRegisterDerivedStrings(flimflam::kEnabledTechnologiesProperty,
-                             &Manager::EnabledTechnologies,
-                             NULL);
+  HelpRegisterConstDerivedStrings(flimflam::kEnabledTechnologiesProperty,
+                                  &Manager::EnabledTechnologies);
   HelpRegisterDerivedString(shill::kIgnoredDNSSearchPathsProperty,
                             &Manager::GetIgnoredDNSSearchPaths,
                             &Manager::SetIgnoredDNSSearchPaths);
@@ -164,9 +161,8 @@ Manager::Manager(ControlInterface *control_interface,
                                          &Manager::EnumerateCompleteServices);
   HelpRegisterConstDerivedRpcIdentifiers(flimflam::kServiceWatchListProperty,
                                          &Manager::EnumerateWatchedServices);
-  HelpRegisterDerivedStrings(kUninitializedTechnologiesProperty,
-                             &Manager::UninitializedTechnologies,
-                             NULL);
+  HelpRegisterConstDerivedStrings(kUninitializedTechnologiesProperty,
+                                  &Manager::UninitializedTechnologies);
 
   // Set default technology order "by hand", to avoid invoking side
   // effects of SetTechnologyOrder.
@@ -1277,19 +1273,18 @@ void Manager::HelpRegisterConstDerivedRpcIdentifiers(
 void Manager::HelpRegisterDerivedString(
     const string &name,
     string(Manager::*get)(Error *),
-    void(Manager::*set)(const string&, Error *)) {
+    bool(Manager::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Manager, string>(this, get, set)));
 }
 
-void Manager::HelpRegisterDerivedStrings(
+void Manager::HelpRegisterConstDerivedStrings(
     const string &name,
-    Strings(Manager::*get)(Error *),
-    void(Manager::*set)(const Strings &, Error *)) {
+    Strings(Manager::*get)(Error *)) {
   store_.RegisterDerivedStrings(
       name,
-      StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, set)));
+      StringsAccessor(new CustomAccessor<Manager, Strings>(this, get, NULL)));
 }
 
 void Manager::SortServices() {
@@ -1587,23 +1582,31 @@ string Manager::GetCheckPortalList(Error */*error*/) {
       props_.check_portal_list;
 }
 
-void Manager::SetCheckPortalList(const string &portal_list, Error *error) {
-  props_.check_portal_list = portal_list;
+bool Manager::SetCheckPortalList(const string &portal_list, Error *error) {
   use_startup_portal_list_ = false;
+  if (props_.check_portal_list == portal_list) {
+    return false;
+  }
+  props_.check_portal_list = portal_list;
+  return true;
 }
 
 string Manager::GetIgnoredDNSSearchPaths(Error */*error*/) {
   return props_.ignored_dns_search_paths;
 }
 
-void Manager::SetIgnoredDNSSearchPaths(const string &ignored_paths,
+bool Manager::SetIgnoredDNSSearchPaths(const string &ignored_paths,
                                        Error */*error*/) {
-  props_.ignored_dns_search_paths = ignored_paths;
+  if (props_.ignored_dns_search_paths == ignored_paths) {
+    return false;
+  }
   vector<string> ignored_path_list;
   if (!ignored_paths.empty()) {
     base::SplitString(ignored_paths, ',', &ignored_path_list);
   }
+  props_.ignored_dns_search_paths = ignored_paths;
   resolver_->set_ignored_search_list(ignored_path_list);
+  return true;
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)

@@ -231,11 +231,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return bgscan_signal_threshold_dbm_;
   }
   uint16 GetScanInterval(Error */* error */) { return scan_interval_seconds_; }
-  void SetBgscanMethod(
+  bool SetBgscanMethod(
       const int &argument, const std::string &method, Error *error);
-  void SetBgscanShortInterval(const uint16 &seconds, Error *error);
-  void SetBgscanSignalThreshold(const int32 &dbm, Error *error);
-  void SetScanInterval(const uint16 &seconds, Error *error);
+  bool SetBgscanShortInterval(const uint16 &seconds, Error *error);
+  bool SetBgscanSignalThreshold(const int32 &dbm, Error *error);
+  bool SetScanInterval(const uint16 &seconds, Error *error);
   void ClearBgscanMethod(const int &argument, Error *error);
 
   void CurrentBSSChanged(const ::DBus::Path &new_bss);
@@ -267,12 +267,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       PropertyStore *store,
       const std::string &name,
       int32(WiFi::*get)(Error *error),
-      void(WiFi::*set)(const int32 &value, Error *error));
+      bool(WiFi::*set)(const int32 &value, Error *error));
   void HelpRegisterDerivedUint16(
       PropertyStore *store,
       const std::string &name,
       uint16(WiFi::*get)(Error *error),
-      void(WiFi::*set)(const uint16 &value, Error *error));
+      bool(WiFi::*set)(const uint16 &value, Error *error));
 
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.

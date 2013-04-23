@@ -44,6 +44,7 @@ class HTTPProxy;
 class KeyValueStore;
 class Manager;
 class Metrics;
+class MockManager;
 class ServiceAdaptorInterface;
 class ServiceMockAdaptor;
 class Sockets;
@@ -326,12 +327,12 @@ class Service : public base::RefCounted<Service> {
   void SetFriendlyName(const std::string &friendly_name);
 
   const std::string &guid() const { return guid_; }
-  void SetGuid(const std::string &guid, Error *error);
+  bool SetGuid(const std::string &guid, Error *error);
 
   bool has_ever_connected() const { return has_ever_connected_; }
 
   int32 priority() const { return priority_; }
-  void SetPriority(const int32 &priority, Error *error);
+  bool SetPriority(const int32 &priority, Error *error);
 
   size_t crypto_algorithm() const { return crypto_algorithm_; }
   bool key_rotation() const { return key_rotation_; }
@@ -466,23 +467,21 @@ class Service : public base::RefCounted<Service> {
   void HelpRegisterDerivedBool(
       const std::string &name,
       bool(Service::*get)(Error *error),
-      void(Service::*set)(const bool &value, Error *error));
+      bool(Service::*set)(const bool &value, Error *error));
   void HelpRegisterDerivedInt32(
       const std::string &name,
       int32(Service::*get)(Error *error),
-      void(Service::*set)(const int32 &value, Error *error));
+      bool(Service::*set)(const int32 &value, Error *error));
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Service::*get)(Error *error),
-      void(Service::*set)(const std::string &value, Error *error));
-  void HelpRegisterDerivedUint16(
+      bool(Service::*set)(const std::string &value, Error *error));
+  void HelpRegisterConstDerivedUint16(
       const std::string &name,
-      uint16(Service::*get)(Error *error),
-      void(Service::*set)(const uint16 &value, Error *error));
-  void HelpRegisterDerivedRpcIdentifier(
+      uint16(Service::*get)(Error *error));
+  void HelpRegisterConstDerivedRpcIdentifier(
       const std::string &name,
-      std::string(Service::*get)(Error *),
-      void(Service::*set)(const RpcIdentifier&, Error *));
+      std::string(Service::*get)(Error *));
   void HelpRegisterConstDerivedStrings(
       const std::string &name, Strings(Service::*get)(Error *error));
   // Expose a property over RPC, with the name |name|.
@@ -513,7 +512,7 @@ class Service : public base::RefCounted<Service> {
 
   // RPC setter for the the "AutoConnect" property. Updates the |manager_|.
   // (cf. SetAutoConnect, which does not update the manager.)
-  virtual void SetAutoConnectFull(const bool &connect, Error *error);
+  virtual bool SetAutoConnectFull(const bool &connect, Error *error);
 
   // Property accessors reserved for subclasses
   EventDispatcher *dispatcher() const { return dispatcher_; }
@@ -532,6 +531,7 @@ class Service : public base::RefCounted<Service> {
   void SetSecurity(CryptoAlgorithm crypt, bool rotation, bool endpoint_auth);
 
  private:
+  friend class EthernetEapServiceTest;
   friend class EthernetServiceTest;
   friend class MetricsTest;
   friend class ManagerTest;
@@ -543,6 +543,7 @@ class Service : public base::RefCounted<Service> {
   friend class WiMaxProviderTest;
   friend class WiMaxServiceTest;
   friend void TestCommonPropertyChanges(ServiceRefPtr, ServiceMockAdaptor *);
+  friend void TestCustomSetterNoopChange(ServiceRefPtr, MockManager *);
   friend void TestNamePropertyChange(ServiceRefPtr, ServiceMockAdaptor *);
   FRIEND_TEST(AllMockServiceTest, AutoConnectWithFailures);
   FRIEND_TEST(CellularCapabilityGSMTest, SetStorageIdentifier);
@@ -561,6 +562,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, ConfigureEapStringProperty);
   FRIEND_TEST(ServiceTest, ConfigureIgnoredProperty);
   FRIEND_TEST(ServiceTest, Constructor);
+  FRIEND_TEST(ServiceTest, CustomSetterNoopChange);
   FRIEND_TEST(ServiceTest, GetIPConfigRpcIdentifier);
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
@@ -617,7 +619,7 @@ class Service : public base::RefCounted<Service> {
   bool GetAutoConnect(Error *error);
 
   std::string GetCheckPortal(Error *error);
-  void SetCheckPortal(const std::string &check_portal, Error *error);
+  bool SetCheckPortal(const std::string &check_portal, Error *error);
 
   std::string GetGuid(Error *error);
 
@@ -628,18 +630,18 @@ class Service : public base::RefCounted<Service> {
   std::string GetNameProperty(Error *error);
   // The base implementation asserts that |name| matches the current Name
   // property value.
-  virtual void SetNameProperty(const std::string &name, Error *error);
+  virtual bool SetNameProperty(const std::string &name, Error *error);
 
   int32 GetPriority(Error *error);
 
   std::string GetProfileRpcId(Error *error);
-  void SetProfileRpcId(const std::string &profile, Error *error);
+  bool SetProfileRpcId(const std::string &profile, Error *error);
 
   // Returns TCP port of service's HTTP proxy in host order.
   uint16 GetHTTPProxyPort(Error *error);
 
   std::string GetProxyConfig(Error *error);
-  void SetProxyConfig(const std::string &proxy_config, Error *error);
+  bool SetProxyConfig(const std::string &proxy_config, Error *error);
 
   static Strings ExtractWallClockToStrings(
       const std::deque<Timestamp> &timestamps);
@@ -675,6 +677,9 @@ class Service : public base::RefCounted<Service> {
   // Linearize security parameters (crypto algorithm, key rotation, endpoint
   // authentication) for comparison.
   uint16 SecurityLevel();
+
+  // WeakPtrFactory comes first, so that other fields can use it.
+  base::WeakPtrFactory<Service> weak_ptr_factory_;
 
   ConnectState state_;
   ConnectState previous_state_;
@@ -734,7 +739,6 @@ class Service : public base::RefCounted<Service> {
   Metrics *metrics_;
   Manager *manager_;
   scoped_ptr<Sockets> sockets_;
-  base::WeakPtrFactory<Service> weak_ptr_factory_;
   Time *time_;
   DiagnosticsReporter *diagnostics_reporter_;
 

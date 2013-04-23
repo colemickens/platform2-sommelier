@@ -33,9 +33,13 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
     EXPECT_EQ(int_store, accessor->Get(&error));
 
     int32 expected_int32 = 127;
-    accessor->Set(expected_int32, &error);
+    EXPECT_TRUE(accessor->Set(expected_int32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_int32, accessor->Get(&error));
+    // Resetting to the same value should return false, but without
+    // an error.
+    EXPECT_FALSE(accessor->Set(expected_int32, &error));
+    EXPECT_TRUE(error.IsSuccess());
 
     accessor->Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
@@ -75,9 +79,14 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
     Error error;
     int32 expected_int32 = 127;
     WriteOnlyPropertyAccessor<int32> accessor(&int_store);
-    accessor.Set(expected_int32, &error);
+    EXPECT_TRUE(accessor.Set(expected_int32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_int32, *accessor.property_);
+    // Resetting to the same value should return false, but without
+    // an error.
+    EXPECT_FALSE(accessor.Set(expected_int32, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // As a write-only, the value can't be read.
     EXPECT_EQ(int32(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
@@ -89,7 +98,7 @@ TEST(PropertyAccessorTest, SignedIntCorrectness) {
     int32 orig_value = int_store = 0;
     WriteOnlyPropertyAccessor<int32> accessor(&int_store);
 
-    accessor.Set(127, &error);
+    EXPECT_TRUE(accessor.Set(127, &error));
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_value, *accessor.property_);
@@ -105,9 +114,13 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
     EXPECT_EQ(int_store, accessor->Get(&error));
 
     uint32 expected_uint32 = 127;
-    accessor->Set(expected_uint32, &error);
+    EXPECT_TRUE(accessor->Set(expected_uint32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_uint32, accessor->Get(&error));
+    // Resetting to the same value should return false, but without
+    // an error.
+    EXPECT_FALSE(accessor->Set(expected_uint32, &error));
+    EXPECT_TRUE(error.IsSuccess());
 
     accessor->Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
@@ -122,7 +135,7 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
     EXPECT_EQ(int_store, accessor->Get(&error));
 
     uint32 expected_uint32 = 127;
-    accessor->Set(expected_uint32, &error);
+    EXPECT_FALSE(accessor->Set(expected_uint32, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(int_store, accessor->Get(&error));
@@ -147,9 +160,14 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
     Error error;
     uint32 expected_uint32 = 127;
     WriteOnlyPropertyAccessor<uint32> accessor(&int_store);
-    accessor.Set(expected_uint32, &error);
+    EXPECT_TRUE(accessor.Set(expected_uint32, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_uint32, *accessor.property_);
+    // Resetting to the same value should return false, but without
+    // an error.
+    EXPECT_FALSE(accessor.Set(expected_uint32, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // As a write-only, the value can't be read.
     EXPECT_EQ(uint32(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
@@ -161,7 +179,7 @@ TEST(PropertyAccessorTest, UnsignedIntCorrectness) {
     uint32 orig_value = int_store = 0;
     WriteOnlyPropertyAccessor<uint32> accessor(&int_store);
 
-    accessor.Set(127, &error);
+    EXPECT_TRUE(accessor.Set(127, &error));
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_value, *accessor.property_);
@@ -177,9 +195,13 @@ TEST(PropertyAccessorTest, StringCorrectness) {
     EXPECT_EQ(storage, accessor->Get(&error));
 
     string expected_string("what");
-    accessor->Set(expected_string, &error);
+    EXPECT_TRUE(accessor->Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, accessor->Get(&error));
+    // Resetting to the same value should return false, but without
+    // an error.
+    EXPECT_FALSE(accessor->Set(expected_string, &error));
+    EXPECT_TRUE(error.IsSuccess());
 
     accessor->Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
@@ -194,7 +216,7 @@ TEST(PropertyAccessorTest, StringCorrectness) {
     EXPECT_EQ(storage, accessor->Get(&error));
 
     string expected_string("what");
-    accessor->Set(expected_string, &error);
+    EXPECT_FALSE(accessor->Set(expected_string, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(storage, accessor->Get(&error));
@@ -218,21 +240,26 @@ TEST(PropertyAccessorTest, StringCorrectness) {
   {
     Error error;
     string expected_string = "what";
-    WriteOnlyPropertyAccessor<string> accessor(&expected_string);
-    accessor.Set(expected_string, &error);
+    WriteOnlyPropertyAccessor<string> accessor(&storage);
+    EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, *accessor.property_);
+    // Resetting to the same value should return false, but without
+    // an error.
+    EXPECT_FALSE(accessor.Set(expected_string, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // As a write-only, the value can't be read.
     EXPECT_EQ(string(), accessor.Get(&error));
     ASSERT_FALSE(error.IsSuccess());
 
-    expected_string = "nooooo";
+    storage = "nooooo";
     EXPECT_EQ("nooooo", *accessor.property_);
   }
   {
     Error error;
     string orig_value = storage = "original value";
     WriteOnlyPropertyAccessor<string> accessor(&storage);
-    accessor.Set("new value", &error);
+    EXPECT_TRUE(accessor.Set("new value", &error));
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(orig_value, *accessor.property_);
@@ -244,8 +271,12 @@ class StringWrapper {
   string Get(Error */*error*/) {
     return value_;
   }
-  void Set(const string &value, Error */*error*/) {
+  bool Set(const string &value, Error */*error*/) {
+    if (value_ == value) {
+      return false;
+    }
     value_ = value;
+    return true;
   }
   void Clear(Error */*error*/) {
     value_.clear();
@@ -257,7 +288,9 @@ class StringWrapper {
 TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
   StringWrapper wrapper;
   {
-    // Custom accessor: read, write, clear, read-updated.
+    // Custom accessor: read, write, write-same, clear, read-updated.
+    // Together, write and write-same verify that the CustomAccessor
+    // template passes through the value from the called function.
     Error error;
     const string orig_value = wrapper.value_ = "original value";
     CustomAccessor<StringWrapper, string> accessor(&wrapper,
@@ -267,9 +300,12 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     EXPECT_TRUE(error.IsSuccess());
 
     const string expected_string = "new value";
-    accessor.Set(expected_string, &error);
+    EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, accessor.Get(&error));
+    // Set to same value.
+    EXPECT_FALSE(accessor.Set(expected_string, &error));
+    EXPECT_TRUE(error.IsSuccess());
 
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
@@ -287,7 +323,7 @@ TEST(PropertyAccessorTest, CustomAccessorCorrectness) {
     EXPECT_EQ(wrapper.value_, accessor.Get(&error));
 
     const string expected_string = "what";
-    accessor.Set(expected_string, &error);
+    EXPECT_FALSE(accessor.Set(expected_string, &error));
     ASSERT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(wrapper.value_, accessor.Get(&error));
@@ -326,9 +362,14 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithDefault) {
     const string expected_string = "what";
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
         &wrapper, &StringWrapper::Set, NULL, &default_value);
-    accessor.Set(expected_string, &error);
+    EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, wrapper.value_);
+    // Set to same value. With the above, this verifies that the
+    // CustomWriteOnlyAccessor template passes through the return
+    // value.
+    EXPECT_FALSE(accessor.Set(expected_string, &error));
+    EXPECT_TRUE(error.IsSuccess());
   }
   {
     // Test clearing.
@@ -362,16 +403,21 @@ TEST(PropertyAccessorTest, CustomWriteOnlyAccessorWithClear) {
     const string expected_string = "what";
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
         &wrapper, &StringWrapper::Set, &StringWrapper::Clear, NULL);
-    accessor.Set(expected_string, &error);
+    EXPECT_TRUE(accessor.Set(expected_string, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(expected_string, wrapper.value_);
+    // Set to same value. With the above, this verifies that the
+    // CustomWriteOnlyAccessor template passes through the return
+    // value.
+    EXPECT_FALSE(accessor.Set(expected_string, &error));
+    EXPECT_TRUE(error.IsSuccess());
   }
   {
     // Test clearing.
     Error error;
     CustomWriteOnlyAccessor<StringWrapper, string> accessor(
         &wrapper, &StringWrapper::Set, &StringWrapper::Clear, NULL);
-    accessor.Set("new value", &error);
+    EXPECT_TRUE(accessor.Set("new value", &error));
     EXPECT_EQ("new value", wrapper.value_);
     accessor.Clear(&error);
     EXPECT_TRUE(error.IsSuccess());
@@ -388,8 +434,12 @@ class StringMapWrapper {
     EXPECT_TRUE(ContainsKey(value_, key));
     return value_[key];
   }
-  void Set(const string &key, const string &value, Error */*error*/) {
+  bool Set(const string &key, const string &value, Error */*error*/) {
+    if (value_[key] == value) {
+      return false;
+    }
     value_[key] = value;
+    return true;
   }
 
   map<string,string> value_;
@@ -416,9 +466,14 @@ TEST(PropertyAccessorTest, CustomMappedAccessor) {
         &wrapper, &StringMapWrapper::Clear, &StringMapWrapper::Get,
         &StringMapWrapper::Set, kKey);
     Error error;
-    accessor.Set(kValue, &error);
+    EXPECT_TRUE(accessor.Set(kValue, &error));
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(kValue, wrapper.value_[kKey]);
+    // Set to same value. With the above, this verifies that the
+    // CustomMappedAccessor template passes through the return
+    // value.
+    EXPECT_FALSE(accessor.Set(kValue, &error));
+    EXPECT_TRUE(error.IsSuccess());
   }
   {
     // Test clearing.

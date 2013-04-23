@@ -297,11 +297,13 @@ TEST_F(VPNServiceTest, IsAutoConnectable) {
 
 TEST_F(VPNServiceTest, SetNamePropertyTrivial) {
   DBus::Error error;
-  EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                       flimflam::kNameProperty,
-                                       DBusAdaptor::StringToVariant(
-                                           service_->friendly_name()),
-                                       &error));
+  // A null change returns false, but with error set to success.
+  EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                        flimflam::kNameProperty,
+                                        DBusAdaptor::StringToVariant(
+                                            service_->friendly_name()),
+                                        &error));
+  EXPECT_FALSE(error.is_set());
 }
 
 TEST_F(VPNServiceTest, SetNameProperty) {
@@ -333,6 +335,12 @@ TEST_F(VPNServiceTest, PropertyChanges) {
   service_->set_profile(profile);
   driver_->args()->SetString(flimflam::kProviderHostProperty, kHost);
   TestNamePropertyChange(service_, GetAdaptor());
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(VPNServiceTest, CustomSetterNoopChange) {
+  TestCustomSetterNoopChange(service_, &manager_);
 }
 
 }  // namespace shill

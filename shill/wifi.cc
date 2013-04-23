@@ -486,7 +486,7 @@ string WiFi::GetBgscanMethod(const int &/*argument*/, Error */* error */) {
   return bgscan_method_.empty() ? kDefaultBgscanMethod : bgscan_method_;
 }
 
-void WiFi::SetBgscanMethod(
+bool WiFi::SetBgscanMethod(
     const int &/*argument*/, const string &method, Error *error) {
   if (method != WPASupplicant::kNetworkBgscanMethodSimple &&
       method != WPASupplicant::kNetworkBgscanMethodLearn &&
@@ -495,30 +495,44 @@ void WiFi::SetBgscanMethod(
         StringPrintf("Unrecognized bgscan method %s", method.c_str());
     LOG(WARNING) << error_message;
     error->Populate(Error::kInvalidArguments, error_message);
-    return;
+    return false;
   }
-
+  if (bgscan_method_ == method) {
+    return false;
+  }
   bgscan_method_ = method;
   // We do not update kNetworkPropertyBgscan for |pending_service_| or
   // |current_service_|, because supplicant does not allow for
   // reconfiguration without disconnect and reconnect.
+  return true;
 }
 
-void WiFi::SetBgscanShortInterval(const uint16 &seconds, Error */*error*/) {
+bool WiFi::SetBgscanShortInterval(const uint16 &seconds, Error */*error*/) {
+  if (bgscan_short_interval_seconds_ == seconds) {
+    return false;
+  }
   bgscan_short_interval_seconds_ = seconds;
   // We do not update kNetworkPropertyBgscan for |pending_service_| or
   // |current_service_|, because supplicant does not allow for
   // reconfiguration without disconnect and reconnect.
+  return true;
 }
 
-void WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
+bool WiFi::SetBgscanSignalThreshold(const int32 &dbm, Error */*error*/) {
+  if (bgscan_signal_threshold_dbm_ == dbm) {
+    return false;
+  }
   bgscan_signal_threshold_dbm_ = dbm;
   // We do not update kNetworkPropertyBgscan for |pending_service_| or
   // |current_service_|, because supplicant does not allow for
   // reconfiguration without disconnect and reconnect.
+  return true;
 }
 
-void WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
+bool WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
+  if (scan_interval_seconds_ == seconds) {
+    return false;
+  }
   scan_interval_seconds_ = seconds;
   if (running()) {
     StartScanTimer();
@@ -528,6 +542,7 @@ void WiFi::SetScanInterval(const uint16 &seconds, Error */*error*/) {
   // supplicant). However, we do not update |pending_service_| or
   // |current_service_|, because supplicant does not allow for
   // reconfiguration without disconnect and reconnect.
+  return true;
 }
 
 void WiFi::ClearBgscanMethod(const int &/*argument*/, Error */*error*/) {
@@ -1242,7 +1257,7 @@ void WiFi::HelpRegisterDerivedInt32(
     PropertyStore *store,
     const string &name,
     int32(WiFi::*get)(Error *error),
-    void(WiFi::*set)(const int32 &value, Error *error)) {
+    bool(WiFi::*set)(const int32 &value, Error *error)) {
   store->RegisterDerivedInt32(
       name,
       Int32Accessor(new CustomAccessor<WiFi, int32>(this, get, set)));
@@ -1252,7 +1267,7 @@ void WiFi::HelpRegisterDerivedUint16(
     PropertyStore *store,
     const string &name,
     uint16(WiFi::*get)(Error *error),
-    void(WiFi::*set)(const uint16 &value, Error *error)) {
+    bool(WiFi::*set)(const uint16 &value, Error *error)) {
   store->RegisterDerivedUint16(
       name,
       Uint16Accessor(new CustomAccessor<WiFi, uint16>(this, get, set)));

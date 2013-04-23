@@ -30,7 +30,7 @@ class MockEapCredentials : public EapCredentials {
   MOCK_CONST_METHOD3(Save, void(
       StoreInterface *store, const std::string &id, bool save_credentials));
   MOCK_METHOD0(Reset, void());
-  MOCK_METHOD2(SetKeyManagement, void(const std::string &key_management,
+  MOCK_METHOD2(SetKeyManagement, bool(const std::string &key_management,
                                       Error *error));
   MOCK_CONST_METHOD0(identity, const std::string &());
   MOCK_CONST_METHOD0(key_management, const std::string &());

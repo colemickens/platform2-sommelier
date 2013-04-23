@@ -64,15 +64,15 @@ string EthernetService::GetStorageIdentifier() const {
                             kServiceType, ethernet_->address().c_str());
 }
 
-void EthernetService::SetAutoConnectFull(const bool &connect,
+bool EthernetService::SetAutoConnectFull(const bool &connect,
                                          Error *error) {
   if (!connect) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments,
         "Auto-connect on Ethernet services must not be disabled.");
-    return;
+    return false;
   }
-  Service::SetAutoConnectFull(connect, error);
+  return Service::SetAutoConnectFull(connect, error);
 }
 
 void EthernetService::Remove(Error *error) {

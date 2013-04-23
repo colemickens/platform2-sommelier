@@ -37,6 +37,10 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   DBusAdaptor(DBus::Connection* conn, const std::string &object_path);
   virtual ~DBusAdaptor();
 
+  // Set the property with |name| through |store|. Returns true if and
+  // only if the property was changed. Updates |error| if a) an error
+  // was encountered, and b) |error| is non-NULL. Otherwise, |error| is
+  // unchanged.
   static bool SetProperty(PropertyStore *store,
                           const std::string &name,
                           const ::DBus::Variant &value,

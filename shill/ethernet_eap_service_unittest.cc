@@ -8,11 +8,13 @@
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
 #include "shill/mock_ethernet_eap_provider.h"
 #include "shill/mock_event_dispatcher.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/service_property_change_test.h"
 #include "shill/technology.h"
 
 using testing::Return;
@@ -31,6 +33,10 @@ class EthernetEapServiceTest : public testing::Test {
   virtual ~EthernetEapServiceTest() {}
 
  protected:
+  ServiceMockAdaptor *GetAdaptor() {
+    return dynamic_cast<ServiceMockAdaptor *>(service_->adaptor());
+  }
+
   MockControl control_;
   MockEventDispatcher dispatcher_;
   MockMetrics metrics_;
@@ -63,6 +69,16 @@ TEST_F(EthernetEapServiceTest, Unload) {
   EXPECT_CALL(manager_, ethernet_eap_provider()).WillOnce(Return(&provider_));
   EXPECT_CALL(provider_, OnCredentialsChanged());
   EXPECT_FALSE(service_->Unload());
+}
+
+TEST_F(EthernetEapServiceTest, PropertyChanges) {
+  TestCommonPropertyChanges(service_, GetAdaptor());
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(EthernetEapServiceTest, CustomSetterNoopChange) {
+  TestCustomSetterNoopChange(service_, &manager_);
 }
 
 }  // namespace shill

@@ -29,7 +29,7 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
  public:
   static const char kPath[];
 
-  ServiceDBusAdaptor(DBus::Connection* conn, Service *service);
+  ServiceDBusAdaptor(DBus::Connection *conn, Service *service);
   virtual ~ServiceDBusAdaptor();
 
   // Implementation of ServiceAdaptorInterface.

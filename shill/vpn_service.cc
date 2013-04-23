@@ -159,9 +159,9 @@ bool VPNService::IsAutoConnectable(const char **reason) const {
   return true;
 }
 
-void VPNService::SetNameProperty(const string &name, Error *error) {
+bool VPNService::SetNameProperty(const string &name, Error *error) {
   if (name == friendly_name()) {
-    return;
+    return false;
   }
   LOG(INFO) << "Renaming service " << unique_name() << ": "
             << friendly_name() << " -> " << name;
@@ -170,7 +170,7 @@ void VPNService::SetNameProperty(const string &name, Error *error) {
   args->SetString(flimflam::kNameProperty, name);
   string new_storage_id = CreateStorageIdentifier(*args, error);
   if (new_storage_id.empty()) {
-    return;
+    return false;
   }
   string old_storage_id = storage_id_;
   DCHECK_NE(old_storage_id, new_storage_id);
@@ -182,6 +182,7 @@ void VPNService::SetNameProperty(const string &name, Error *error) {
   storage_id_ = new_storage_id;
   profile()->DeleteEntry(old_storage_id, NULL);
   profile()->UpdateService(this);
+  return true;
 }
 
 }  // namespace shill

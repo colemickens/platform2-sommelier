@@ -327,4 +327,10 @@ TEST_F(WiMaxServiceTest, PropertyChanges) {
   Mock::VerifyAndClearExpectations(adaptor);
 }
 
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(WiMaxServiceTest, CustomSetterNoopChange) {
+  TestCustomSetterNoopChange(service_, &manager_);
+}
+
 }  // namespace shill

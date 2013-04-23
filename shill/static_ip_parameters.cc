@@ -293,26 +293,38 @@ string StaticIPParameters::GetMappedSavedStringProperty(
   return saved_args_.GetString(key);
 }
 
-void StaticIPParameters::SetMappedInt32Property(
+bool StaticIPParameters::SetMappedInt32Property(
     const size_t &index, const int32 &value, Error *error) {
   CHECK(index < arraysize(kProperties));
+  if (args_.ContainsInt(kProperties[index].name) &&
+      args_.GetInt(kProperties[index].name) == value) {
+    return false;
+  }
   args_.SetInt(kProperties[index].name, value);
+  return true;
 }
 
-void StaticIPParameters::SetMappedSavedInt32Property(
+bool StaticIPParameters::SetMappedSavedInt32Property(
     const size_t &index, const int32 &value, Error *error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
+  return false;
 }
 
-void StaticIPParameters::SetMappedStringProperty(
+bool StaticIPParameters::SetMappedStringProperty(
     const size_t &index, const string &value, Error *error) {
   CHECK(index < arraysize(kProperties));
+  if (args_.ContainsString(kProperties[index].name) &&
+      args_.GetString(kProperties[index].name) == value) {
+    return false;
+  }
   args_.SetString(kProperties[index].name, value);
+  return true;
 }
 
-void StaticIPParameters::SetMappedSavedStringProperty(
+bool StaticIPParameters::SetMappedSavedStringProperty(
     const size_t &index, const string &value, Error *error) {
   error->Populate(Error::kInvalidArguments, "Property is read-only");
+  return false;
 }
 
 }  // namespace shill

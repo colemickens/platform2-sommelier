@@ -392,15 +392,9 @@ class Device : public base::RefCounted<Device> {
 
   const ServiceRefPtr &selected_service() const { return selected_service_; }
 
-  void HelpRegisterDerivedString(
+  void HelpRegisterConstDerivedString(
       const std::string &name,
-      std::string(Device::*get)(Error *),
-      void(Device::*set)(const std::string&, Error *));
-
-  void HelpRegisterDerivedStrings(
-      const std::string &name,
-      Strings(Device::*get)(Error *error),
-      void(Device::*set)(const Strings &value, Error *error));
+      std::string(Device::*get)(Error *));
 
   void HelpRegisterConstDerivedRpcIdentifiers(
       const std::string &name,

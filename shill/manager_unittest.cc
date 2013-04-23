@@ -265,8 +265,12 @@ class ManagerTest : public PropertyStoreTest {
     manager()->resolver_ = resolver;
   }
 
-  void SetIgnoredDNSSearchPaths(const string &search_paths) {
-     manager()->SetIgnoredDNSSearchPaths(search_paths, NULL);
+  bool SetIgnoredDNSSearchPaths(const string &search_paths, Error *error) {
+    return manager()->SetIgnoredDNSSearchPaths(search_paths, error);
+  }
+
+  bool SetCheckPortalList(const string &check_portal_list, Error *error) {
+    return manager()->SetCheckPortalList(check_portal_list, error);
   }
 
   const string &GetIgnoredDNSSearchPaths() {
@@ -1411,16 +1415,20 @@ TEST_F(ManagerTest, PopProfileWithUnload) {
 TEST_F(ManagerTest, SetProperty) {
   {
     ::DBus::Error error;
+    ::DBus::Variant offline_mode;
+    offline_mode.writer().append_bool(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
                                          flimflam::kOfflineModeProperty,
-                                         PropertyStoreTest::kBoolV,
+                                         offline_mode,
                                          &error));
   }
   {
     ::DBus::Error error;
+    ::DBus::Variant country;
+    country.writer().append_string("a_country");
     EXPECT_TRUE(DBusAdaptor::SetProperty(manager()->mutable_store(),
                                          flimflam::kCountryProperty,
-                                         PropertyStoreTest::kStringV,
+                                         country,
                                          &error));
   }
   // Attempt to write with value of wrong type should return InvalidArgs.
@@ -3239,24 +3247,26 @@ TEST_F(ManagerTest, DisableTechnology) {
 
 TEST_F(ManagerTest, IgnoredSearchList) {
   scoped_ptr<MockResolver> resolver(new StrictMock<MockResolver>());
-  SetResolver(resolver.get());
   vector<string> ignored_paths;
-  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths("");
-  EXPECT_EQ("", GetIgnoredDNSSearchPaths());
+  SetResolver(resolver.get());
 
   const string kIgnored0 = "chromium.org";
   ignored_paths.push_back(kIgnored0);
   EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths(kIgnored0);
+  SetIgnoredDNSSearchPaths(kIgnored0, NULL);
   EXPECT_EQ(kIgnored0, GetIgnoredDNSSearchPaths());
 
   const string kIgnored1 = "google.com";
   const string kIgnoredSum = kIgnored0 + "," + kIgnored1;
   ignored_paths.push_back(kIgnored1);
   EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
-  SetIgnoredDNSSearchPaths(kIgnoredSum);
+  SetIgnoredDNSSearchPaths(kIgnoredSum, NULL);
   EXPECT_EQ(kIgnoredSum, GetIgnoredDNSSearchPaths());
+
+  ignored_paths.clear();
+  EXPECT_CALL(*resolver.get(), set_ignored_search_list(ignored_paths));
+  SetIgnoredDNSSearchPaths("", NULL);
+  EXPECT_EQ("", GetIgnoredDNSSearchPaths());
 
   SetResolver(Resolver::GetInstance());
 }
@@ -3767,6 +3777,40 @@ TEST_F(ManagerTest, InitializeProfiles) {
   EXPECT_CALL(*wifi_provider, CreateServicesFromProfile(_)).Times(3);
   manager.InitializeProfiles();
   Mock::VerifyAndClearExpectations(wifi_provider);
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(ManagerTest, CustomSetterNoopChange) {
+  // SetCheckPortalList
+  {
+    static const string kCheckPortalList = "weird-device,weirder-device";
+    Error error;
+    // Set to known value.
+    EXPECT_TRUE(SetCheckPortalList(kCheckPortalList, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(SetCheckPortalList(kCheckPortalList, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetIgnoredDNSSearchPaths
+  {
+    NiceMock<MockResolver> resolver;
+    static const string kIgnoredPaths = "example.com,example.org";
+    Error error;
+    SetResolver(&resolver);
+    // Set to known value.
+    EXPECT_CALL(resolver, set_ignored_search_list(_));
+    EXPECT_TRUE(SetIgnoredDNSSearchPaths(kIgnoredPaths, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(&resolver);
+    // Set to same value.
+    EXPECT_CALL(resolver, set_ignored_search_list(_)).Times(0);
+    EXPECT_FALSE(SetIgnoredDNSSearchPaths(kIgnoredPaths, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(&resolver);
+  }
 }
 
 }  // namespace shill

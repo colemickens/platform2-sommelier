@@ -411,8 +411,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   RpcIdentifier GetDefaultServiceRpcIdentifier(Error *error);
   std::string GetIgnoredDNSSearchPaths(Error *error);
   ServiceRefPtr GetServiceInner(const KeyValueStore &args, Error *error);
-  void SetCheckPortalList(const std::string &portal_list, Error *error);
-  void SetIgnoredDNSSearchPaths(const std::string &ignored_paths, Error *error);
+  bool SetCheckPortalList(const std::string &portal_list, Error *error);
+  bool SetIgnoredDNSSearchPaths(const std::string &ignored_paths, Error *error);
   void EmitDefaultService();
   bool IsTechnologyInList(const std::string &technology_list,
                           Technology::Identifier tech) const;
@@ -440,11 +440,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(Manager::*get)(Error *),
-      void(Manager::*set)(const std::string&, Error *));
-  void HelpRegisterDerivedStrings(
+      bool(Manager::*set)(const std::string&, Error *));
+  void HelpRegisterConstDerivedStrings(
       const std::string &name,
-      Strings(Manager::*get)(Error *),
-      void(Manager::*set)(const Strings&, Error *));
+      Strings(Manager::*get)(Error *));
 
   bool HasProfile(const Profile::Identifier &ident);
   void PushProfileInternal(const Profile::Identifier &ident,

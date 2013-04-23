@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/callback.h>
 
 #include "shill/accessor_interface.h"
 #include "shill/property_iterator.h"
@@ -20,7 +21,9 @@ class Error;
 
 class PropertyStore {
  public:
+  typedef base::Callback<void(const std::string &)> PropertyChangeCallback;
   PropertyStore();
+  explicit PropertyStore(PropertyChangeCallback property_change_callback);
   virtual ~PropertyStore();
 
   virtual bool Contains(const std::string& property) const;
@@ -59,9 +62,12 @@ class PropertyStore {
   // Methods to allow the setting, by name, of properties stored in this object.
   // The property names are declared in chromeos/dbus/service_constants.h,
   // so that they may be shared with libcros.
-  // Upon success, these methods return true and leave |error| untouched.
-  // Upon failure, they return false and set |error| appropriately, if it
-  // is non-NULL.
+  // If the property is successfully changed, these methods return true,
+  // and leave |error| untouched.
+  // If the property is unchanged because it already has the desired value,
+  // these methods return false, and leave |error| untouched.
+  // If the property change fails, these methods return false, and update
+  // |error|. However, updating |error| is skipped if |error| is NULL.
   virtual bool SetBoolProperty(const std::string &name,
                                bool value,
                                Error *error);
@@ -81,6 +87,11 @@ class PropertyStore {
   virtual bool SetStringmapProperty(
       const std::string &name,
       const std::map<std::string, std::string> &values,
+      Error *error);
+
+  virtual bool SetStringmapsProperty(
+      const std::string &name,
+      const std::vector<std::map<std::string, std::string> > &values,
       Error *error);
 
   virtual bool SetStringsProperty(const std::string &name,
@@ -240,6 +251,8 @@ class PropertyStore {
   std::map<std::string, Uint16Accessor> uint16_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;
   std::map<std::string, Uint64Accessor> uint64_properties_;
+
+  PropertyChangeCallback property_changed_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(PropertyStore);
 };

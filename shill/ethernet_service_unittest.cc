@@ -45,7 +45,7 @@ class EthernetServiceTest : public PropertyStoreTest {
     return service_->GetAutoConnect(NULL);
   }
 
-  void SetAutoConnect(const bool connect, Error *error) {
+  bool SetAutoConnect(const bool connect, Error *error) {
     return service_->SetAutoConnectFull(connect, error);
   }
 
@@ -88,6 +88,12 @@ TEST_F(EthernetServiceTest, ConnectDisconnectDelegation) {
 
 TEST_F(EthernetServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, GetAdaptor());
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(EthernetServiceTest, CustomSetterNoopChange) {
+  TestCustomSetterNoopChange(service_, &mock_manager_);
 }
 
 }  // namespace shill

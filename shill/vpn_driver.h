@@ -94,7 +94,7 @@ class VPNDriver {
 
   void ClearMappedProperty(const size_t &index, Error *error);
   std::string GetMappedProperty(const size_t &index, Error *error);
-  void SetMappedProperty(
+  bool SetMappedProperty(
       const size_t &index, const std::string &value, Error *error);
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;

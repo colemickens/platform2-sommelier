@@ -174,8 +174,8 @@ class ServiceTest : public PropertyStoreTest {
     return service_->GetAutoConnect(error);
   }
 
-  void SetAutoConnectFull(bool connect, Error *error) {
-    service_->SetAutoConnectFull(connect, error);
+  bool SetAutoConnectFull(bool connect, Error *error) {
+    return service_->SetAutoConnectFull(connect, error);
   }
 
   MockManager mock_manager_;
@@ -291,16 +291,20 @@ TEST_F(ServiceTest, SetProperty) {
   }
   {
     ::DBus::Error error;
+    ::DBus::Variant priority;
+    priority.writer().append_int32(1);
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                          flimflam::kPriorityProperty,
-                                         PropertyStoreTest::kInt32V,
+                                         priority,
                                          &error));
   }
   {
     ::DBus::Error error;
+    ::DBus::Variant guid;
+    guid.writer().append_string("not default");
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                          flimflam::kGuidProperty,
-                                         PropertyStoreTest::kStringV,
+                                         guid,
                                          &error));
   }
   // Ensure that EAP properties cannot be set on services with no EAP
@@ -308,15 +312,19 @@ TEST_F(ServiceTest, SetProperty) {
   // ServiceTest::SetUp() that fiddles with service_->eap_.
   {
     ::DBus::Error error;
+    ::DBus::Variant eap;
+    eap.writer().append_string("eap eep eip!");
     EXPECT_FALSE(DBusAdaptor::SetProperty(service2_->mutable_store(),
                                           flimflam::kEAPEAPProperty,
-                                          PropertyStoreTest::kStringV,
+                                          eap,
                                           &error));
+    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
     EXPECT_EQ(invalid_prop(), error.name());
+    // Now plumb in eap credentials, and try again.
     service2_->SetEapCredentials(new EapCredentials());
     EXPECT_TRUE(DBusAdaptor::SetProperty(service2_->mutable_store(),
                                          flimflam::kEAPEAPProperty,
-                                         PropertyStoreTest::kStringV,
+                                         eap,
                                          &error));
   }
   // Ensure that an attempt to write a R/O property returns InvalidArgs error.
@@ -326,32 +334,29 @@ TEST_F(ServiceTest, SetProperty) {
                                           flimflam::kFavoriteProperty,
                                           PropertyStoreTest::kBoolV,
                                           &error));
+    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
     EXPECT_EQ(invalid_args(), error.name());
   }
   {
     ::DBus::Error error;
+    ::DBus::Variant auto_connect;
+    auto_connect.writer().append_bool(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
                                          flimflam::kAutoConnectProperty,
-                                         PropertyStoreTest::kBoolV,
+                                         auto_connect,
                                          &error));
-  }
-  {
-    ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                          flimflam::kAutoConnectProperty,
-                                          PropertyStoreTest::kBoolV,
-                                          &error));
   }
   // Ensure that we can perform a trivial set of the Name property (to its
   // current value) but an attempt to set the property to a different value
   // fails.
   {
     ::DBus::Error error;
-    EXPECT_TRUE(DBusAdaptor::SetProperty(service_->mutable_store(),
-                                         flimflam::kNameProperty,
-                                         DBusAdaptor::StringToVariant(
-                                             GetFriendlyName()),
-                                         &error));
+    EXPECT_FALSE(DBusAdaptor::SetProperty(service_->mutable_store(),
+                                          flimflam::kNameProperty,
+                                          DBusAdaptor::StringToVariant(
+                                              GetFriendlyName()),
+                                          &error));
+    EXPECT_FALSE(error.is_set());
   }
   {
     ::DBus::Error error;
@@ -359,6 +364,7 @@ TEST_F(ServiceTest, SetProperty) {
                                           flimflam::kNameProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
+    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
     EXPECT_EQ(invalid_args(), error.name());
   }
 }
@@ -1530,6 +1536,12 @@ TEST_F(ServiceTest, SetAutoConnectFull) {
 TEST_F(ServiceTest, PropertyChanges) {
   TestCommonPropertyChanges(service_, GetAdaptor());
   TestAutoConnectPropertyChange(service_, GetAdaptor());
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(ServiceTest, CustomSetterNoopChange) {
+  TestCustomSetterNoopChange(service_, &mock_manager_);
 }
 
 }  // namespace shill

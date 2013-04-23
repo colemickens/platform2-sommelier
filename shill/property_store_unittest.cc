@@ -22,9 +22,12 @@
 #include "shill/property_accessor.h"
 #include "shill/property_store.h"
 
+using base::Bind;
+using base::Unretained;
 using std::map;
 using std::string;
 using std::vector;
+using ::testing::_;
 using ::testing::Values;
 
 namespace shill {
@@ -86,10 +89,13 @@ void PropertyStoreTest::SetUp() {
   ASSERT_FALSE(storage_path().empty());
 }
 
-TEST_P(PropertyStoreTest, TestProperty) {
-  // Ensure that an attempt to write unknown properties returns InvalidProperty.
-  PropertyStore store;
+TEST_P(PropertyStoreTest, SetPropertyNonexistent) {
+  // Ensure that an attempt to write unknown properties returns
+  // InvalidProperty, and does not yield a PropertyChange callback.
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
   ::DBus::Error error;
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", GetParam(), &error));
   EXPECT_EQ(invalid_prop(), error.name());
 }
@@ -113,20 +119,42 @@ class PropertyStoreTypedTest : public PropertyStoreTest {
  protected:
   void RegisterProperty(
       PropertyStore &store, const string &name, T *storage);
+  bool SetProperty(
+      PropertyStore &store, const string &name, Error *error);
 };
 
 typedef ::testing::Types<
-  bool, int16, int32, KeyValueStore, string, Stringmap, Stringmaps, Strings,
-  uint8, uint16, uint32> PropertyTypes;
+  bool, int16, int32, string, Stringmap, Stringmaps, Strings, uint8, uint16,
+  uint32> PropertyTypes;
 TYPED_TEST_CASE(PropertyStoreTypedTest, PropertyTypes);
 
 TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
-  PropertyStore store;
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
   Error error;
   TypeParam property;
+
   // |this| required due to two-phase lookup.
   this->RegisterProperty(store, "some property", &property);
+  EXPECT_CALL(*this, TestCallback(_));
   EXPECT_TRUE(store.ClearProperty("some property", &error));
+}
+
+TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
+  Error error;
+  TypeParam property = TypeParam();  // value-initialize primitives
+
+  // |this| required due to two-phase lookup.
+  this->RegisterProperty(store, "some property", &property);
+
+  // Change the value from the default (initialized above).  Should
+  // generate a change callback. The second SetProperty, however,
+  // should not. Hence, we should get exactly one callback.
+  EXPECT_CALL(*this, TestCallback(_)).Times(1);
+  EXPECT_TRUE(this->SetProperty(store, "some property", &error));
+  EXPECT_FALSE(this->SetProperty(store, "some property", &error));
 }
 
 template<> void PropertyStoreTypedTest<bool>::RegisterProperty(
@@ -142,16 +170,6 @@ template<> void PropertyStoreTypedTest<int16>::RegisterProperty(
 template<> void PropertyStoreTypedTest<int32>::RegisterProperty(
     PropertyStore &store, const string &name, int32 *storage) {
   store.RegisterInt32(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<KeyValueStore>::RegisterProperty(
-    PropertyStore &store, const string &name, KeyValueStore *storage) {
-  // We use |RegisterDerivedKeyValueStore|, because there is no non-derived
-  // version. (And it's not clear that we'll need one, outside of this
-  // test.)
-  store.RegisterDerivedKeyValueStore(
-      name, KeyValueStoreAccessor(
-          new PropertyAccessor<KeyValueStore>(storage)));
 }
 
 template<> void PropertyStoreTypedTest<string>::RegisterProperty(
@@ -189,6 +207,69 @@ template<> void PropertyStoreTypedTest<uint32>::RegisterProperty(
   store.RegisterUint32(name, storage);
 }
 
+template<> bool PropertyStoreTypedTest<bool>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  bool new_value = true;
+  return store.SetBoolProperty(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<int16>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  int16 new_value = 1;
+  return store.SetInt16Property(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<int32>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  int32 new_value = 1;
+  return store.SetInt32Property(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<string>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  string new_value = "new value";
+  return store.SetStringProperty(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<Stringmap>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  Stringmap new_value;
+  new_value["new key"] = "new value";
+  return store.SetStringmapProperty(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<Stringmaps>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  Stringmaps new_value(1);
+  new_value[0]["new key"] = "new value";
+  return store.SetStringmapsProperty(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<Strings>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  Strings new_value(1);
+  new_value[0] = "new value";
+  return store.SetStringsProperty(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<uint8>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  uint8 new_value = 1;
+  return store.SetUint8Property(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<uint16>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  uint16 new_value = 1;
+  return store.SetUint16Property(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<uint32>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  uint32 new_value = 1;
+  return store.SetUint32Property(name, new_value, error);
+}
+
 TEST_F(PropertyStoreTest, ClearBoolProperty) {
   // We exercise both possibilities for the default value here,
   // to ensure that Clear actually resets the property based on
@@ -209,24 +290,34 @@ TEST_F(PropertyStoreTest, ClearBoolProperty) {
 }
 
 TEST_F(PropertyStoreTest, ClearPropertyNonexistent) {
-  PropertyStore store;
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
   Error error;
 
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(store.ClearProperty("", &error));
   EXPECT_EQ(Error::kInvalidProperty, error.type());
 }
 
+// Separate from SetPropertyNonexistent, because
+// DBusAdaptor::SetProperty doesn't support Stringmaps.
 TEST_F(PropertyStoreTest, SetStringmapsProperty) {
-  PropertyStore store;
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
   ::DBus::Error error;
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(DBusAdaptor::SetProperty(
       &store, "", PropertyStoreTest::kStringmapsV, &error));
   EXPECT_EQ(internal_error(), error.name());
 }
 
+// Separate from SetPropertyNonexistent, because
+// DBusAdaptor::SetProperty doesn't support KeyValueStore.
 TEST_F(PropertyStoreTest, SetKeyValueStoreProperty) {
-  PropertyStore store;
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
   ::DBus::Error error;
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
   EXPECT_FALSE(DBusAdaptor::SetProperty(
       &store, "", PropertyStoreTest::kKeyValueStoreV, &error));
   EXPECT_EQ(internal_error(), error.name());

@@ -105,7 +105,8 @@ Service::Service(ControlInterface *control_interface,
                  Metrics *metrics,
                  Manager *manager,
                  Technology::Identifier technology)
-    : state_(kStateIdle),
+    : weak_ptr_factory_(this),
+      state_(kStateIdle),
       previous_state_(kStateIdle),
       failure_(kFailureUnknown),
       auto_connect_(false),
@@ -125,6 +126,9 @@ Service::Service(ControlInterface *control_interface,
       failed_time_(0),
       has_ever_connected_(false),
       auto_connect_cooldown_milliseconds_(0),
+      store_(PropertyStore::PropertyChangeCallback(
+          base::Bind(&Service::OnPropertyChanged,
+                     weak_ptr_factory_.GetWeakPtr()))),
       dispatcher_(dispatcher),
       unique_name_(base::UintToString(serial_number_++)),
       friendly_name_(unique_name_),
@@ -132,7 +136,6 @@ Service::Service(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager),
       sockets_(new Sockets()),
-      weak_ptr_factory_(this),
       time_(Time::GetInstance()),
       diagnostics_reporter_(DiagnosticsReporter::GetInstance()) {
   HelpRegisterDerivedBool(flimflam::kAutoConnectProperty,
@@ -153,9 +156,8 @@ Service::Service(ControlInterface *control_interface,
                             &Service::GetCheckPortal,
                             &Service::SetCheckPortal);
   store_.RegisterConstBool(flimflam::kConnectableProperty, &connectable_);
-  HelpRegisterDerivedRpcIdentifier(flimflam::kDeviceProperty,
-                                   &Service::GetDeviceRpcId,
-                                   NULL);
+  HelpRegisterConstDerivedRpcIdentifier(flimflam::kDeviceProperty,
+                                        &Service::GetDeviceRpcId);
   store_.RegisterConstStrings(kEapRemoteCertificationProperty,
                               &remote_certification_);
   HelpRegisterDerivedString(flimflam::kGuidProperty,
@@ -168,12 +170,10 @@ Service::Service(ControlInterface *control_interface,
   store_.RegisterConstString(flimflam::kErrorProperty, &error_);
   store_.RegisterConstString(shill::kErrorDetailsProperty, &error_details_);
   store_.RegisterConstBool(flimflam::kFavoriteProperty, &favorite_);
-  HelpRegisterDerivedUint16(shill::kHTTPProxyPortProperty,
-                            &Service::GetHTTPProxyPort,
-                            NULL);
-  HelpRegisterDerivedRpcIdentifier(shill::kIPConfigProperty,
-                                   &Service::GetIPConfigRpcIdentifier,
-                                   NULL);
+  HelpRegisterConstDerivedUint16(shill::kHTTPProxyPortProperty,
+                                 &Service::GetHTTPProxyPort);
+  HelpRegisterConstDerivedRpcIdentifier(shill::kIPConfigProperty,
+                                        &Service::GetIPConfigRpcIdentifier);
   HelpRegisterDerivedBool(flimflam::kIsActiveProperty,
                           &Service::IsActive,
                           NULL);
@@ -927,6 +927,9 @@ void Service::SetProfile(const ProfileRefPtr &p) {
   SLOG(Service, 2) << "SetProfile from "
                    << (profile_ ? profile_->GetFriendlyName() : "")
                    << " to " << (p ? p->GetFriendlyName() : "");
+  if (profile_ == p) {
+    return;
+  }
   profile_ = p;
   Error error;
   string profile_rpc_id = GetProfileRpcId(&error);
@@ -1066,7 +1069,7 @@ bool Service::IsPortalDetectionAuto() const {
 void Service::HelpRegisterDerivedBool(
     const string &name,
     bool(Service::*get)(Error *),
-    void(Service::*set)(const bool&, Error *)) {
+    bool(Service::*set)(const bool&, Error *)) {
   store_.RegisterDerivedBool(
       name,
       BoolAccessor(new CustomAccessor<Service, bool>(this, get, set)));
@@ -1075,7 +1078,7 @@ void Service::HelpRegisterDerivedBool(
 void Service::HelpRegisterDerivedInt32(
     const string &name,
     int32(Service::*get)(Error *),
-    void(Service::*set)(const int32&, Error *)) {
+    bool(Service::*set)(const int32&, Error *)) {
   store_.RegisterDerivedInt32(
       name,
       Int32Accessor(new CustomAccessor<Service, int32>(this, get, set)));
@@ -1084,29 +1087,27 @@ void Service::HelpRegisterDerivedInt32(
 void Service::HelpRegisterDerivedString(
     const string &name,
     string(Service::*get)(Error *),
-    void(Service::*set)(const string&, Error *)) {
+    bool(Service::*set)(const string&, Error *)) {
   store_.RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<Service, string>(this, get, set)));
 }
 
-void Service::HelpRegisterDerivedRpcIdentifier(
+void Service::HelpRegisterConstDerivedRpcIdentifier(
     const string &name,
-    RpcIdentifier(Service::*get)(Error *),
-    void(Service::*set)(const RpcIdentifier&, Error *)) {
+    RpcIdentifier(Service::*get)(Error *)) {
   store_.RegisterDerivedRpcIdentifier(
       name,
       RpcIdentifierAccessor(new CustomAccessor<Service, RpcIdentifier>(
-          this, get, set)));
+          this, get, NULL)));
 }
 
-void Service::HelpRegisterDerivedUint16(
+void Service::HelpRegisterConstDerivedUint16(
     const string &name,
-    uint16(Service::*get)(Error *),
-    void(Service::*set)(const uint16&, Error *)) {
+    uint16(Service::*get)(Error *)) {
   store_.RegisterDerivedUint16(
       name,
-      Uint16Accessor(new CustomAccessor<Service, uint16>(this, get, set)));
+      Uint16Accessor(new CustomAccessor<Service, uint16>(this, get, NULL)));
 }
 
 void Service::HelpRegisterConstDerivedStrings(
@@ -1156,24 +1157,22 @@ bool Service::GetAutoConnect(Error */*error*/) {
   return auto_connect();
 }
 
-void Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
+bool Service::SetAutoConnectFull(const bool &connect, Error */*error*/) {
   LOG(INFO) << "Service " << unique_name() << ": AutoConnect="
             << auto_connect() << "->" << connect;
   if (auto_connect() == connect) {
-    return;
+    return false;
   }
   SetAutoConnect(connect);
   manager_->UpdateService(this);
+  return true;
 }
 
 string Service::GetCheckPortal(Error *error) {
   return check_portal_;
 }
 
-void Service::SetCheckPortal(const string &check_portal, Error *error) {
-  if (check_portal == check_portal_) {
-    return;
-  }
+bool Service::SetCheckPortal(const string &check_portal, Error *error) {
   if (check_portal != kCheckPortalFalse &&
       check_portal != kCheckPortalTrue &&
       check_portal != kCheckPortalAuto) {
@@ -1181,21 +1180,26 @@ void Service::SetCheckPortal(const string &check_portal, Error *error) {
                           base::StringPrintf(
                               "Invalid Service CheckPortal property value: %s",
                               check_portal.c_str()));
-    return;
+    return false;
+  }
+  if (check_portal == check_portal_) {
+    return false;
   }
   check_portal_ = check_portal;
+  return true;
 }
 
 string Service::GetGuid(Error *error) {
   return guid_;
 }
 
-void Service::SetGuid(const string &guid, Error */*error*/) {
-  if (guid == guid_) {
-    return;
+bool Service::SetGuid(const string &guid, Error */*error*/) {
+  if (guid_ == guid) {
+    return false;
   }
   guid_ = guid;
   adaptor_->EmitStringChanged(flimflam::kGuidProperty, guid_);
+  return true;
 }
 
 void Service::MarkAsFavorite() {
@@ -1214,25 +1218,28 @@ string Service::GetNameProperty(Error */*error*/) {
   return friendly_name_;
 }
 
-void Service::SetNameProperty(const string &name, Error *error) {
+bool Service::SetNameProperty(const string &name, Error *error) {
   if (name != friendly_name_) {
     Error::PopulateAndLog(error, Error::kInvalidArguments,
                           base::StringPrintf(
                               "Service %s Name property cannot be modified.",
                               unique_name_.c_str()));
+    return false;
   }
+  return false;
 }
 
 int32 Service::GetPriority(Error *error) {
   return priority_;
 }
 
-void Service::SetPriority(const int32 &priority, Error *error) {
-  if (priority == priority_) {
-    return;
+bool Service::SetPriority(const int32 &priority, Error *error) {
+  if (priority_ == priority) {
+    return false;
   }
   priority_ = priority;
   adaptor_->EmitIntChanged(flimflam::kPriorityProperty, priority_);
+  return true;
 }
 
 string Service::GetProfileRpcId(Error *error) {
@@ -1244,10 +1251,17 @@ string Service::GetProfileRpcId(Error *error) {
   return profile_->GetRpcIdentifier();
 }
 
-void Service::SetProfileRpcId(const string &profile, Error *error) {
+bool Service::SetProfileRpcId(const string &profile, Error *error) {
+  if (profile_ && profile_->GetRpcIdentifier() == profile) {
+    return false;
+  }
+  ProfileConstRefPtr old_profile = profile_;
+  // No need to Emit afterwards, since SetProfileForService will call
+  // into SetProfile (if the profile actually changes).
   manager_->SetProfileForService(this, profile, error);
-  // No need to Emit here, since SetProfileForService will call into
-  // SetProfile (if the profile actually changes).
+  // Can't just use error.IsSuccess(), because that also requires saving
+  // the profile to succeed. (See Profile::AdoptService)
+  return (profile_ != old_profile);
 }
 
 uint16 Service::GetHTTPProxyPort(Error */*error*/) {
@@ -1261,9 +1275,12 @@ string Service::GetProxyConfig(Error *error) {
   return proxy_config_;
 }
 
-void Service::SetProxyConfig(const string &proxy_config, Error *error) {
+bool Service::SetProxyConfig(const string &proxy_config, Error *error) {
+  if (proxy_config_ == proxy_config)
+    return false;
   proxy_config_ = proxy_config;
   adaptor_->EmitStringChanged(flimflam::kProxyConfigProperty, proxy_config_);
+  return true;
 }
 
 // static

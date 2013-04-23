@@ -264,11 +264,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   void SetupApnTryList();
   void FillConnectPropertyMap(DBusPropertiesMap *properties);
 
-  void HelpRegisterDerivedKeyValueStore(
+  void HelpRegisterConstDerivedKeyValueStore(
       const std::string &name,
-      KeyValueStore(CellularCapabilityUniversal::*get)(Error *error),
-      void(CellularCapabilityUniversal::*set)(
-          const KeyValueStore &value, Error *error));
+      KeyValueStore(CellularCapabilityUniversal::*get)(Error *error));
 
   // Returns true if a connect error should be retried.  This function
   // abstracts modem specific behavior for modems which do a lousy job

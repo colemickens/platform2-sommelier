@@ -432,31 +432,44 @@ void EapCredentials::Reset() {
   use_system_cas_ = true;
 }
 
-void EapCredentials::SetEapPassword(const string &password, Error */*error*/) {
+bool EapCredentials::SetEapPassword(const string &password, Error */*error*/) {
+  if (password_ == password) {
+    return false;
+  }
   password_ = password;
+  return true;
 }
 
-void EapCredentials::SetEapPrivateKeyPassword(const string &password,
+bool EapCredentials::SetEapPrivateKeyPassword(const string &password,
                                               Error */*error*/) {
+  if (private_key_password_ == password) {
+    return false;
+  }
   private_key_password_ = password;
+  return true;
 }
 
 string EapCredentials::GetKeyManagement(Error */*error*/) {
   return key_management_;
 }
 
-void EapCredentials::SetKeyManagement(const std::string &key_management,
+bool EapCredentials::SetKeyManagement(const std::string &key_management,
                                       Error */*error*/) {
-  if (!key_management.empty()) {
-    key_management_ = key_management;
+  if (key_management.empty()) {
+    return false;
   }
+  if (key_management_ == key_management) {
+    return false;
+  }
+  key_management_ = key_management;
+  return true;
 }
 
 void EapCredentials::HelpRegisterDerivedString(
     PropertyStore *store,
     const string &name,
     string(EapCredentials::*get)(Error *),
-    void(EapCredentials::*set)(const string&, Error *)) {
+    bool(EapCredentials::*set)(const string&, Error *)) {
   store->RegisterDerivedString(
       name,
       StringAccessor(new CustomAccessor<EapCredentials, string>(
@@ -466,7 +479,7 @@ void EapCredentials::HelpRegisterDerivedString(
 void EapCredentials::HelpRegisterWriteOnlyDerivedString(
     PropertyStore *store,
     const string &name,
-    void(EapCredentials::*set)(const string &, Error *),
+    bool(EapCredentials::*set)(const string &, Error *),
     void(EapCredentials::*clear)(Error *),
     const string *default_value) {
   store->RegisterDerivedString(

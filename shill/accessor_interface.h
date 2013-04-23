@@ -34,8 +34,11 @@ class AccessorInterface {
   virtual void Clear(Error *error) = 0;
   // Provides read-only access. Sets |error| on failure.
   virtual T Get(Error *error) = 0;
-  // Attempts to set the wrapped value. Sets |error| on failure.
-  virtual void Set(const T &value, Error *error) = 0;
+  // Attempts to set the wrapped value. Sets |error| on failure.  The
+  // return value indicates whether or not the wrapped value was
+  // modified. If the new value is the same as the old value, Set
+  // returns false, but with |error| unchanged.
+  virtual bool Set(const T &value, Error *error) = 0;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(AccessorInterface);

@@ -174,11 +174,9 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   void SetupApnTryList();
   void FillConnectPropertyMap(DBusPropertiesMap *properties);
 
-  void HelpRegisterDerivedKeyValueStore(
+  void HelpRegisterConstDerivedKeyValueStore(
       const std::string &name,
-      KeyValueStore(CellularCapabilityGSM::*get)(Error *error),
-      void(CellularCapabilityGSM::*set)(
-          const KeyValueStore &value, Error *error));
+      KeyValueStore(CellularCapabilityGSM::*get)(Error *error));
 
   bool IsUnderlyingDeviceRegistered() const;
 

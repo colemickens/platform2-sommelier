@@ -164,6 +164,7 @@ class WiFiServiceTest : public PropertyStoreTest {
     return error.type();
   }
   scoped_refptr<MockWiFi> wifi() { return wifi_; }
+  MockManager *mock_manager() { return &mock_manager_; }
   MockWiFiProvider *provider() { return &provider_; }
   string GetAnyDeviceAddress() { return WiFiService::kAnyDeviceAddress; }
   const vector<uint8_t> &simple_ssid() { return simple_ssid_; }
@@ -675,7 +676,6 @@ TEST_F(WiFiServiceTest, ConnectTaskDynamicWEP) {
 }
 
 TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
-  vector<uint8_t> ssid(5);
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(flimflam::kSecurityRsn);
 
   const string kPassphrase = "abcdefgh";
@@ -731,6 +731,85 @@ TEST_F(WiFiServiceTest, SetPassphraseRemovesCachedCredentials) {
     EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
     wifi_service->OnEapCredentialsChanged();
     Mock::VerifyAndClearExpectations(wifi());
+  }
+}
+
+// This test is somewhat redundant, since:
+//
+// a) we test that generic property setters return false on a null
+//    change (e.g. in PropertyAccessorTest.SignedIntCorrectness)
+// b) we test that custom EAP property setters return false on a null
+//    change in EapCredentialsTest.CustomSetterNoopChange
+// c) we test that the various custom accessors pass through the
+//    return value of custom setters
+//    (e.g. PropertyAccessorTest.CustomAccessorCorrectness)
+// d) we test that PropertyStore skips the change callback when a
+//    property setter return false (PropertyStoreTypedTest.SetProperty)
+//
+// Nonetheless, I think it's worth testing the WiFi+EAP case directly.
+TEST_F(WiFiServiceTest, EapAuthPropertyChangeClearsCachedCredentials) {
+  WiFiServiceRefPtr wifi_service =
+      MakeServiceWithWiFi(flimflam::kSecurity8021x);
+  PropertyStore &property_store(*wifi_service->mutable_store());
+
+  // Property with custom accessor.
+  const string kPassword = "abcdefgh";
+  {
+    Error error;
+    // A changed passphrase should trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    EXPECT_TRUE(property_store.SetStringProperty(
+        flimflam::kEapPasswordProperty, kPassword, &error));
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    // An unchanged passphrase should not trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
+    EXPECT_FALSE(property_store.SetStringProperty(
+        flimflam::kEapPasswordProperty, kPassword, &error));
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    // A modified passphrase should trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    EXPECT_TRUE(property_store.SetStringProperty(
+        flimflam::kEapPasswordProperty, kPassword + "X", &error));
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // Property with generic accessor.
+  const string kCertId = "abcdefgh";
+  {
+    Error error;
+    // A changed cert id should trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    EXPECT_TRUE(property_store.SetStringProperty(
+        flimflam::kEapCertIdProperty, kCertId, &error));
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    // An unchanged cert id should not trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(_)).Times(0);
+    EXPECT_FALSE(property_store.SetStringProperty(
+        flimflam::kEapCertIdProperty, kCertId, &error));
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    // A modified cert id should trigger cache removal.
+    EXPECT_CALL(*wifi(), ClearCachedCredentials(wifi_service.get()));
+    EXPECT_TRUE(property_store.SetStringProperty(
+        flimflam::kEapCertIdProperty, kCertId + "X", &error));
+    Mock::VerifyAndClearExpectations(wifi());
+    EXPECT_TRUE(error.IsSuccess());
   }
 }
 
@@ -1674,6 +1753,13 @@ TEST_F(WiFiServiceTest, PropertyChanges) {
               EmitRpcIdentifierChanged(flimflam::kDeviceProperty, _));
   service->ResetWiFi();
   Mock::VerifyAndClearExpectations(adaptor);
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(WiFiServiceTest, CustomSetterNoopChange) {
+  WiFiServiceRefPtr service = MakeServiceWithMockManager();
+  TestCustomSetterNoopChange(service, mock_manager());
 }
 
 }  // namespace shill

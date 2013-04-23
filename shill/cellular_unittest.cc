@@ -92,10 +92,12 @@ TEST_F(CellularPropertyTest, Contains) {
 TEST_F(CellularPropertyTest, SetProperty) {
   {
     ::DBus::Error error;
+    ::DBus::Variant allow_roaming;
+    allow_roaming.writer().append_bool(true);
     EXPECT_TRUE(DBusAdaptor::SetProperty(
         device_->mutable_store(),
         flimflam::kCellularAllowRoamingProperty,
-        PropertyStoreTest::kBoolV,
+        allow_roaming,
         &error));
   }
   // Ensure that attempting to write a R/O property returns InvalidArgs error.
@@ -105,6 +107,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
                                           flimflam::kAddressProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
+    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
     EXPECT_EQ(invalid_args(), error.name());
   }
   {
@@ -113,6 +116,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
                                           flimflam::kCarrierProperty,
                                           PropertyStoreTest::kStringV,
                                           &error));
+    ASSERT_TRUE(error.is_set());  // name() may be invalid otherwise
     EXPECT_EQ(invalid_args(), error.name());
   }
 }
@@ -973,6 +977,15 @@ TEST_F(CellularTest, SetAllowRoaming) {
   device_->SetAllowRoaming(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(device_->allow_roaming_);
+}
+
+// Custom property setters should return false, and make no changes, if
+// the new value is the same as the old value.
+TEST_F(CellularTest, CustomSetterNoopChange) {
+  Error error;
+  EXPECT_FALSE(device_->allow_roaming_);
+  EXPECT_FALSE(device_->SetAllowRoaming(false, &error));
+  EXPECT_TRUE(error.IsSuccess());
 }
 
 }  // namespace shill

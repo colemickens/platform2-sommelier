@@ -9,6 +9,7 @@
 
 namespace shill {
 
+class MockManager;
 class ServiceMockAdaptor;
 
 // Test property change notifications that are implemented by all
@@ -23,7 +24,10 @@ void TestAutoConnectPropertyChange(ServiceRefPtr service,
 // changing the name property.
 void TestNamePropertyChange(ServiceRefPtr service,
                            ServiceMockAdaptor *adaptor);
-
+// Test that the common customer setters (for all Services) return
+// false if setting to the same as the current value.
+void TestCommonCustomSetterNoopChange(ServiceRefPtr service,
+                                      MockManager *mock_manager);
 }  // namespace shill
 
 #endif  // SHILL_TEST_COMMON_H_

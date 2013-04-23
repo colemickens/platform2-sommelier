@@ -63,6 +63,7 @@ class MockService : public Service {
   MOCK_CONST_METHOD0(explicitly_disconnected, bool());
   MOCK_CONST_METHOD0(eap, const EapCredentials *());
   MOCK_CONST_METHOD0(technology, Technology::Identifier());
+  MOCK_METHOD1(OnPropertyChanged, void(const std::string &property));
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.
   bool FauxSave(StoreInterface *store);

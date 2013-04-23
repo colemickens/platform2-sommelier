@@ -75,10 +75,9 @@ CellularCapabilityGSM::CellularCapabilityGSM(Cellular *cellular,
   store->RegisterConstBool(flimflam::kScanningProperty, &scanning_);
   store->RegisterUint16(flimflam::kScanIntervalProperty, &scan_interval_);
   store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
-  HelpRegisterDerivedKeyValueStore(
+  HelpRegisterConstDerivedKeyValueStore(
       flimflam::kSIMLockStatusProperty,
-      &CellularCapabilityGSM::SimLockStatusToProperty,
-      NULL);
+      &CellularCapabilityGSM::SimLockStatusToProperty);
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
                                  &apn_list_);
   scanning_supported_ = true;
@@ -109,16 +108,14 @@ KeyValueStore CellularCapabilityGSM::SimLockStatusToProperty(Error */*error*/) {
   return status;
 }
 
-void CellularCapabilityGSM::HelpRegisterDerivedKeyValueStore(
+void CellularCapabilityGSM::HelpRegisterConstDerivedKeyValueStore(
     const string &name,
-    KeyValueStore(CellularCapabilityGSM::*get)(Error *error),
-    void(CellularCapabilityGSM::*set)(
-        const KeyValueStore &value, Error *error)) {
+    KeyValueStore(CellularCapabilityGSM::*get)(Error *error)) {
   cellular()->mutable_store()->RegisterDerivedKeyValueStore(
       name,
       KeyValueStoreAccessor(
           new CustomAccessor<CellularCapabilityGSM, KeyValueStore>(
-              this, get, set)));
+              this, get, NULL)));
 }
 
 void CellularCapabilityGSM::InitProxies() {

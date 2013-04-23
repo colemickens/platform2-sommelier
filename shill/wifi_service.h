@@ -168,13 +168,16 @@ class WiFiService : public Service {
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
+  void HelpRegisterConstDerivedString(
+      const std::string &name,
+      std::string(WiFiService::*get)(Error *error));
   void HelpRegisterDerivedString(
       const std::string &name,
       std::string(WiFiService::*get)(Error *error),
-      void(WiFiService::*set)(const std::string &value, Error *error));
+      bool(WiFiService::*set)(const std::string &value, Error *error));
   void HelpRegisterWriteOnlyDerivedString(
       const std::string &name,
-      void(WiFiService::*set)(const std::string &value, Error *error),
+      bool(WiFiService::*set)(const std::string &value, Error *error),
       void(WiFiService::*clear)(Error *error),
       const std::string *default_value);
 
@@ -218,7 +221,7 @@ class WiFiService : public Service {
   KeyValueStore GetStorageProperties() const;
 
   // Validate then apply a passphrase for this service.
-  void SetPassphrase(const std::string &passphrase, Error *error);
+  bool SetPassphrase(const std::string &passphrase, Error *error);
 
   // Select a WiFi device (e.g, for connecting a hidden service with no
   // endpoints).

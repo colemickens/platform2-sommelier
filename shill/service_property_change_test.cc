@@ -12,12 +12,16 @@
 
 #include "shill/error.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_manager.h"
+#include "shill/mock_profile.h"
+#include "shill/refptr_types.h"
 #include "shill/service.h"
 
 using std::string;
 using testing::_;
 using testing::AnyNumber;
 using testing::Mock;
+using testing::NiceMock;
 
 namespace shill {
 
@@ -114,6 +118,57 @@ void TestNamePropertyChange(ServiceRefPtr service,
   EXPECT_CALL(*adaptor, EmitStringChanged(flimflam::kNameProperty, _));
   service->SetNameProperty(name + " and some new stuff", &error);
   Mock::VerifyAndClearExpectations(adaptor);
+}
+
+void TestCustomSetterNoopChange(ServiceRefPtr service,
+                                MockManager *mock_manager) {
+  // SetAutoConnectFull
+  {
+    Error error;
+    EXPECT_CALL(*mock_manager, UpdateService(_)).Times(0);
+    EXPECT_FALSE(service->SetAutoConnectFull(service->auto_connect(), &error));
+    EXPECT_TRUE(error.IsSuccess());
+    Mock::VerifyAndClearExpectations(mock_manager);
+  }
+
+  // SetCheckPortal
+  {
+    Error error;
+    EXPECT_FALSE(service->SetCheckPortal(service->check_portal_, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetNameProperty
+  {
+    Error error;
+    EXPECT_FALSE(service->SetNameProperty(service->friendly_name_, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetProfileRpcId
+  {
+    Error error;
+    scoped_refptr<MockProfile> profile(
+        new NiceMock<MockProfile>(static_cast<ControlInterface *>(NULL),
+                                  static_cast<Metrics *>(NULL),
+                                  static_cast<Manager *>(NULL)));
+    service->set_profile(profile);
+    EXPECT_FALSE(service->SetProfileRpcId(profile->GetRpcIdentifier(),
+                                           &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // SetProxyConfig
+  {
+    Error error;
+    static const string kProxyConfig = "some opaque blob";
+    // Set to known value.
+    EXPECT_TRUE(service->SetProxyConfig(kProxyConfig, &error));
+    EXPECT_TRUE(error.IsSuccess());
+    // Set to same value.
+    EXPECT_FALSE(service->SetProxyConfig(kProxyConfig, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
 }
 
 } // namespace shill

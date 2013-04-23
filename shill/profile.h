@@ -204,10 +204,9 @@ class Profile : public base::RefCounted<Profile> {
 
   static bool IsValidIdentifierToken(const std::string &token);
 
-  void HelpRegisterDerivedStrings(
+  void HelpRegisterConstDerivedStrings(
       const std::string &name,
-      Strings(Profile::*get)(Error *error),
-      void(Profile::*set)(const Strings&, Error *error));
+      Strings(Profile::*get)(Error *error));
 
   // Data members shared with subclasses via getter/setters above in the
   // protected: section

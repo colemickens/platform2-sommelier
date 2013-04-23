@@ -147,6 +147,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedConnectionNotDropped);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsNotDetectedIntermittentNetwork);
   FRIEND_TEST(CellularServiceTest, OutOfCreditsNotEnforced);
+  FRIEND_TEST(CellularServiceTest, CustomSetterNoopChange);
 
   static const char kAutoConnActivating[];
   static const char kAutoConnDeviceDisabled[];
@@ -159,12 +160,12 @@ class CellularService : public Service {
   void HelpRegisterDerivedStringmap(
       const std::string &name,
       Stringmap(CellularService::*get)(Error *error),
-      void(CellularService::*set)(const Stringmap &value, Error *error));
+      bool(CellularService::*set)(const Stringmap &value, Error *error));
 
   virtual std::string GetDeviceRpcId(Error *error);
 
   Stringmap GetApn(Error *error);
-  void SetApn(const Stringmap &value, Error *error);
+  bool SetApn(const Stringmap &value, Error *error);
   static void SaveApn(StoreInterface *storage,
                       const std::string &storage_group,
                       const Stringmap *apn_info,

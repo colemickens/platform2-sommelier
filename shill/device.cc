@@ -142,9 +142,8 @@ Device::Device(ControlInterface *control_interface,
                                          &Device::AvailableIPConfigs);
   store_.RegisterConstString(flimflam::kNameProperty, &link_name_);
   store_.RegisterConstBool(flimflam::kPoweredProperty, &enabled_);
-  HelpRegisterDerivedString(flimflam::kTypeProperty,
-                            &Device::GetTechnologyString,
-                            NULL);
+  HelpRegisterConstDerivedString(flimflam::kTypeProperty,
+                                 &Device::GetTechnologyString);
   HelpRegisterConstDerivedUint64(shill::kLinkMonitorResponseTimeProperty,
                                  &Device::GetLinkMonitorResponseTime);
 
@@ -400,22 +399,12 @@ void Device::DestroyIPConfigLease(const string &name) {
   dhcp_provider_->DestroyLease(name);
 }
 
-void Device::HelpRegisterDerivedString(
+void Device::HelpRegisterConstDerivedString(
     const string &name,
-    string(Device::*get)(Error *error),
-    void(Device::*set)(const string &value, Error *error)) {
+    string(Device::*get)(Error *error)) {
   store_.RegisterDerivedString(
       name,
-      StringAccessor(new CustomAccessor<Device, string>(this, get, set)));
-}
-
-void Device::HelpRegisterDerivedStrings(
-    const string &name,
-    Strings(Device::*get)(Error *error),
-    void(Device::*set)(const Strings &value, Error *error)) {
-  store_.RegisterDerivedStrings(
-      name,
-      StringsAccessor(new CustomAccessor<Device, Strings>(this, get, set)));
+      StringAccessor(new CustomAccessor<Device, string>(this, get, NULL)));
 }
 
 void Device::HelpRegisterConstDerivedRpcIdentifiers(
