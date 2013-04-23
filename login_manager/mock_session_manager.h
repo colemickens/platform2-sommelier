@@ -41,7 +41,7 @@ class MockSessionManager : public SessionManagerInterface {
                gboolean(gchar*, GArray*, DBusGMethodInvocation*));
   MOCK_METHOD3(RetrieveDeviceLocalAccountPolicy,
                gboolean(gchar*, GArray**, GError**));
-  MOCK_METHOD2(RetrieveSessionState, gboolean(gchar**, gchar**));
+  MOCK_METHOD1(RetrieveSessionState, gboolean(gchar**));
   MOCK_METHOD1(LockScreen, gboolean(GError**));
   MOCK_METHOD1(HandleLockScreenShown, gboolean(GError**));
 

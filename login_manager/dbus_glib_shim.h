@@ -76,8 +76,7 @@ gboolean session_manager_retrieve_device_local_account_policy(
     GArray **OUT_policy_blob,
     GError **error);
 gboolean session_manager_retrieve_session_state(SessionManager *self,
-                                                gchar** OUT_state,
-                                                gchar** OUT_user);
+                                                gchar** OUT_state);
 
 gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error);

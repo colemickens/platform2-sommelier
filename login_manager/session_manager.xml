@@ -82,8 +82,6 @@
     <method name="RetrieveSessionState">
       <!-- started, stopping, stopped -->
       <arg type="s" name="state" direction="out" />
-      <!-- user whose session is in-progress (empty for guest or stopped) -->
-      <arg type="s" name="user" direction="out" />
     </method>
     <signal name="SessionStateChanged">
       <!-- started, stopping, stopped -->

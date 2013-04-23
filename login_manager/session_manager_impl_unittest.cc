@@ -130,7 +130,7 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(utils_,
                 EmitSignalWithStringArgs(
                     StrEq(login_manager::kSessionStateChangedSignal),
-                    ElementsAre(SessionManagerImpl::kStarted, _)))
+                    ElementsAre(SessionManagerImpl::kStarted)))
         .Times(1);
     EXPECT_CALL(utils_, IsDevMode())
         .WillOnce(Return(false));
@@ -212,7 +212,7 @@ class SessionManagerImplTest : public ::testing::Test {
     EXPECT_CALL(utils_,
                 EmitSignalWithStringArgs(
                     StrEq(login_manager::kSessionStateChangedSignal),
-                    ElementsAre(SessionManagerImpl::kStarted, _)))
+                    ElementsAre(SessionManagerImpl::kStarted)))
         .Times(1);
     EXPECT_CALL(utils_,
                 AtomicFileWrite(FilePath(SessionManagerImpl::kLoggedInFlag),

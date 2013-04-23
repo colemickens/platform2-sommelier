@@ -155,7 +155,6 @@ void SessionManagerImpl::AnnounceSessionStoppingIfNeeded() {
                << SessionManagerImpl::kStopping;
     vector<string> args;
     args.push_back(SessionManagerImpl::kStopping);
-    args.push_back(current_user_);
     system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
                                       args);
   }
@@ -166,7 +165,6 @@ void SessionManagerImpl::AnnounceSessionStopped() {
              << SessionManagerImpl::kStopped;
   vector<string> args;
   args.push_back(SessionManagerImpl::kStopped);
-  args.push_back(current_user_);
   system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
                                     args);
 }
@@ -295,7 +293,6 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
     vector<string> args;
     args.push_back(kStarted);
-    args.push_back(current_user_);
     system_->EmitSignalWithStringArgs(login_manager::kSessionStateChangedSignal,
                                       args);
     if (device_policy_->KeyMissing() &&
@@ -403,14 +400,11 @@ gboolean SessionManagerImpl::RetrieveDeviceLocalAccountPolicy(
       error);
 }
 
-gboolean SessionManagerImpl::RetrieveSessionState(gchar** OUT_state,
-                                                     gchar** OUT_user) {
+gboolean SessionManagerImpl::RetrieveSessionState(gchar** OUT_state) {
   if (!session_started_)
     *OUT_state = g_strdup(kStopped);
   else
     *OUT_state = g_strdup(session_stopping_ ? kStopping : kStarted);
-  *OUT_user = g_strdup(session_started_ && !current_user_.empty() ?
-                       current_user_.c_str() : "");
   return TRUE;
 }
 

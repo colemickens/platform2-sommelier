@@ -90,8 +90,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                                             GArray** OUT_policy_blob,
                                             GError** error) OVERRIDE;
 
-  gboolean RetrieveSessionState(gchar** OUT_state,
-                                gchar** OUT_user) OVERRIDE;
+  gboolean RetrieveSessionState(gchar** OUT_state) OVERRIDE;
 
   gboolean LockScreen(GError** error) OVERRIDE;
   gboolean HandleLockScreenShown(GError** error) OVERRIDE;

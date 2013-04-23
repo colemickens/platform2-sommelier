@@ -140,8 +140,7 @@ class SessionManagerInterface {
                                                     GError** error) = 0;
 
   // Get information about the current session.
-  virtual gboolean RetrieveSessionState(gchar** OUT_state,
-                                        gchar** OUT_user) = 0;
+  virtual gboolean RetrieveSessionState(gchar** OUT_state) = 0;
 
   // Handles LockScreen request from Chromium or PowerManager. It emits
   // LockScreen signal to Chromium Browser to tell it to lock the screen. The
