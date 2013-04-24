@@ -14,6 +14,7 @@
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
 
@@ -25,14 +26,6 @@ namespace power_manager {
 class PrefsInterface;
 
 namespace system {
-
-enum BatteryState {
-  BATTERY_STATE_UNKNOWN,
-  BATTERY_STATE_CHARGING,
-  BATTERY_STATE_DISCHARGING,
-  BATTERY_STATE_EMPTY,
-  BATTERY_STATE_FULLY_CHARGED
-};
 
 // Structures used for passing power supply info.
 struct PowerStatus {
@@ -53,7 +46,7 @@ struct PowerStatus {
         battery_percentage(-1.0),
         display_battery_percentage(-1.0),
         battery_is_present(false),
-        battery_state(BATTERY_STATE_UNKNOWN),
+        battery_state(PowerSupplyProperties_BatteryState_CHARGING),
         battery_below_shutdown_threshold(false),
         battery_times_are_bad(false) {}
 
@@ -102,7 +95,7 @@ struct PowerStatus {
   double display_battery_percentage;
   bool battery_is_present;
 
-  BatteryState battery_state;
+  PowerSupplyProperties_BatteryState battery_state;
 
   // Is the battery level so low that the machine should be shut down?
   bool battery_below_shutdown_threshold;

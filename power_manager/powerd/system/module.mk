@@ -6,6 +6,7 @@ include common.mk
 
 CXX_STATIC_LIBRARY(powerd/libsystem.pie.a): \
 	power_manager/peripheral_battery_status.pb.o \
+	power_manager/power_supply_properties.pb.o \
 	powerd/system/ambient_light_sensor.o \
 	powerd/system/async_file_reader.o \
 	powerd/system/audio_client.o \

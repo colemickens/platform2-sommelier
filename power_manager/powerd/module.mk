@@ -4,7 +4,7 @@
 
 include common.mk
 
-powerd/powerd.o.depends: power_supply_properties.pb.h
+powerd/powerd.o.depends: power_manager/power_supply_properties.pb.h
 powerd/powerd.o.depends: video_activity_update.pb.h
 LIBPOWERD_DEPS = libchromeos-$(BASE_VER) libcras
 LIBPOWERD_FLAGS = \
@@ -14,12 +14,12 @@ LIBPOWERD_LIBS = \
 	$(GLIB_LIBS) $(DBUS_LIBS) -lgflags -lmetrics -ludev -lprotobuf-lite \
 	-lrt $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 LIBPOWERD_OBJS = \
+	power_manager/power_supply_properties.pb.o \
 	powerd/file_tagger.o \
 	powerd/metrics_constants.o \
 	powerd/metrics_store.o \
 	powerd/powerd_metrics.o \
 	powerd/powerd.o \
-	power_supply_properties.pb.o \
 	video_activity_update.pb.o
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)

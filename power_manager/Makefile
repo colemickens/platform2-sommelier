@@ -56,8 +56,8 @@ SYSTEM_API_PROTO_BINDINGS = \
 	power_manager/input_event.pb.cc \
 	power_manager/peripheral_battery_status.pb.cc \
 	power_manager/policy.pb.cc \
+	power_manager/power_supply_properties.pb.cc \
 	power_manager/suspend.pb.cc \
-	power_supply_properties.pb.cc \
 	video_activity_update.pb.cc
 SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus
 SYSTEM_API_PROTO_HEADERS = $(patsubst %.cc,%.h,$(SYSTEM_API_PROTO_BINDINGS))

@@ -18,6 +18,7 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
+#include "power_manager/power_supply_properties.pb.h"
 
 using std::map;
 using std::string;
@@ -195,6 +196,8 @@ TEST_F(PowerSupplyTest, TestCharging) {
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING,
+            power_status.battery_state);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToFull, power_status.battery_time_to_full);
@@ -209,6 +212,8 @@ TEST_F(PowerSupplyTest, TestDischarging) {
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
@@ -218,6 +223,8 @@ TEST_F(PowerSupplyTest, TestDischarging) {
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
@@ -231,6 +238,8 @@ TEST_F(PowerSupplyTest, TestEnergyDischarging) {
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
@@ -240,6 +249,8 @@ TEST_F(PowerSupplyTest, TestEnergyDischarging) {
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_FALSE(power_status.line_power_on);
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
@@ -382,6 +393,8 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   test_api_->set_current_time(current_time);
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
+            power_status.battery_state);
   EXPECT_DOUBLE_EQ(kEnergyNow, power_status.battery_energy);
   EXPECT_DOUBLE_EQ(kEnergyRate, power_status.battery_energy_rate);
   EXPECT_DOUBLE_EQ(kTimeToEmpty, power_status.battery_time_to_empty);
@@ -568,13 +581,13 @@ TEST_F(PowerSupplyTest, FullFactor) {
   power_supply_->Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(BATTERY_STATE_CHARGING, status.battery_state);
-  EXPECT_DOUBLE_EQ(100 * kFullFactor, status.display_battery_percentage);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state);
+  EXPECT_DOUBLE_EQ(100.0 * kFullFactor, status.display_battery_percentage);
 
   // After the current goes to zero, the battery is considered fully charged.
   WriteDoubleValue("battery/current_now", 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(BATTERY_STATE_FULLY_CHARGED, status.battery_state);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state);
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 }
 
@@ -674,6 +687,16 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   WriteDoubleValue("battery/charge_now", kShutdownCharge - 0.01);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.battery_below_shutdown_threshold);
+}
+
+TEST_F(PowerSupplyTest, NeitherChargingNorDischarging) {
+  WriteDefaultValues(true, true);
+  WriteDoubleValue("battery/current_now", 0.0);
+  power_supply_->Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING,
+            status.battery_state);
 }
 
 }  // namespace system

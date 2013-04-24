@@ -233,20 +233,18 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   ReadAndTrimString(battery_path_, "technology", &info->battery_technology);
 
   switch (info->power_status.battery_state) {
-    case BATTERY_STATE_CHARGING:
-      info->battery_state_string = "Charging";
+    case PowerSupplyProperties_BatteryState_CHARGING:
+      info->battery_state_string =
+          info->power_status.display_battery_percentage >= 100.0 - kEpsilon ?
+          "Fully charged" : "Charging";
       break;
-    case BATTERY_STATE_DISCHARGING:
-      info->battery_state_string = "Discharging";
+    case PowerSupplyProperties_BatteryState_DISCHARGING:
+      info->battery_state_string =
+          info->power_status.display_battery_percentage <= kEpsilon ?
+          "Empty" : "Discharging";
       break;
-    case BATTERY_STATE_EMPTY:
-      info->battery_state_string = "Empty";
-      break;
-    case BATTERY_STATE_FULLY_CHARGED:
-      info->battery_state_string = "Fully charged";
-      break;
-    default:
-      info->battery_state_string = "Unknown";
+    case PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING:
+      info->battery_state_string = "Neither charging nor discharging";
       break;
   }
   return true;
@@ -459,24 +457,22 @@ bool PowerSupply::UpdatePowerStatus() {
 
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
-  status.battery_state = BATTERY_STATE_UNKNOWN;
   if (status.line_power_on) {
     if (battery_charge >= battery_charge_full ||
         (battery_charge >= battery_charge_full * full_factor_ &&
-         battery_current == 0)) {
-      status.battery_state = BATTERY_STATE_FULLY_CHARGED;
+         battery_current <= kEpsilon)) {
+      status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
       last_fully_charged_line_power_time_ = GetCurrentTime();
+    } else if (battery_current > 0.0) {
+      status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
     } else {
-      if (battery_current <= 0) {
-        LOG(WARNING) << "Line power is on and battery is not fully charged "
-                     << "but battery current is " << battery_current << " A.";
-      }
-      status.battery_state = BATTERY_STATE_CHARGING;
+      LOG(WARNING) << "Line power is on and battery is not fully charged "
+                   << "but battery current is " << battery_current << " A.";
+      status.battery_state =
+          PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING;
     }
   } else {
-    status.battery_state = BATTERY_STATE_DISCHARGING;
-    if (battery_charge == 0)
-      status.battery_state = BATTERY_STATE_EMPTY;
+    status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
 
   if (!last_fully_charged_line_power_time_.is_null() &&
@@ -484,7 +480,10 @@ bool PowerSupply::UpdatePowerStatus() {
       kRetainFullChargeSec)
     full_battery_percent_ = status.battery_percentage;
 
-  status.display_battery_percentage = CalculateDisplayBatteryPercentage(status);
+  status.display_battery_percentage = std::max(0.0, std::min(100.0,
+      (status.battery_percentage - low_battery_shutdown_percent_) /
+      (full_battery_percent_ - low_battery_shutdown_percent_) * 100.0));
+
   status.battery_below_shutdown_threshold =
       IsBatteryBelowShutdownThreshold(status);
 
@@ -721,17 +720,6 @@ void PowerSupply::AdjustWindowSize(base::TimeDelta battery_time) {
     window_size += sample_window_min_;
   }
   time_to_empty_average_.ChangeWindowSize(window_size);
-}
-
-double PowerSupply::CalculateDisplayBatteryPercentage(
-    const PowerStatus& status) const {
-  if (status.battery_state == BATTERY_STATE_FULLY_CHARGED)
-    return 100.0;
-
-  double display_percent =
-      (status.battery_percentage - low_battery_shutdown_percent_) /
-      (full_battery_percent_ - low_battery_shutdown_percent_) * 100.0;
-  return std::max(std::min(display_percent, 100.0), 0.0);
 }
 
 bool PowerSupply::IsBatteryBelowShutdownThreshold(
