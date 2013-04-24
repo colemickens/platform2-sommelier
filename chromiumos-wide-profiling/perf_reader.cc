@@ -513,7 +513,6 @@ bool PerfReader::ReadData(const std::vector<char>& data) {
     const event_t* event_data = reinterpret_cast<const event_t*>(&data[offset]);
     if (!ReadPerfEventBlock(*event_data))
       return false;
-    DLOG(INFO) << "Data remaining: " << data_remaining_bytes;
     data_remaining_bytes -= event_data->header.size;
     offset += event_data->header.size;
   }
@@ -730,10 +729,6 @@ bool PerfReader::ReadEventDescEventBlock(
 bool PerfReader::ReadPerfEventBlock(const event_t& event) {
   const perf_event_header& pe_header = event.header;
 
-  DLOG(INFO) << "Data type: " << pe_header.type;
-  DLOG(INFO) << "Data size: " << pe_header.size;
-  DLOG(INFO) << "Seek size: " << pe_header.size - sizeof(pe_header);
-
   if (pe_header.size > sizeof(event_t)) {
     LOG(INFO) << "Data size: " << pe_header.size << " sizeof(event_t): "
               << sizeof(event_t);
@@ -788,11 +783,6 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 
   events_.push_back(event_and_sample);
 
-  if (pe_header.type == PERF_RECORD_COMM) {
-    DLOG(INFO) << "len: " << pe_header.size;
-    DLOG(INFO) << "sizeof header: " << sizeof(pe_header);
-    DLOG(INFO) << "sizeof comm_event: " << sizeof(comm_event);
-  }
   return true;
 }
 
