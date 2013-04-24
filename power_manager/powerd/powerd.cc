@@ -1023,26 +1023,14 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
   if (is_power_status_stale_ && power_supply_->RefreshImmediately())
     OnPowerStatusUpdate(power_supply_->power_status());
 
-  PowerSupplyProperties protobuf;
   const system::PowerStatus& s = power_status_;
-
+  PowerSupplyProperties protobuf;
   protobuf.set_battery_is_present(s.battery_is_present);
   protobuf.set_battery_state(s.battery_state);
   protobuf.set_battery_percent(s.display_battery_percentage);
   protobuf.set_battery_time_to_empty_sec(s.averaged_battery_time_to_empty);
   protobuf.set_battery_time_to_full_sec(s.averaged_battery_time_to_full);
   protobuf.set_is_calculating_battery_time(s.is_calculating_battery_time);
-
-  // TODO(derat): Stop setting these once Chrome is no longer reading them.
-  protobuf.set_line_power_on(s.line_power_on);
-  protobuf.set_battery_energy(s.battery_energy);
-  protobuf.set_battery_energy_rate(s.battery_energy_rate);
-  protobuf.set_battery_voltage(s.battery_voltage);
-  protobuf.set_battery_is_charged(
-      s.battery_state == PowerSupplyProperties_BatteryState_CHARGING &&
-      s.display_battery_percentage >= 100.0 - kEpsilon);
-  protobuf.set_averaged_battery_time_to_empty(s.averaged_battery_time_to_empty);
-  protobuf.set_averaged_battery_time_to_full(s.averaged_battery_time_to_full);
 
   return util::CreateDBusProtocolBufferReply(message, protobuf);
 }
