@@ -22,6 +22,19 @@ extern "C" {
 
 using std::string;
 
+// Used by LoggingTimerStart/Finish methods.
+static time_t START_TIME = 0;
+
+// Start a logging timer. There can only be one active at a time.
+void LoggingTimerStart() {
+  START_TIME = time(NULL);
+}
+
+// Log how long since the last call to LoggingTimerStart()
+void LoggingTimerFinish() {
+  time_t finish_time = time(NULL);
+  printf("Finished after %.f seconds.\n", difftime(finish_time, START_TIME));
+}
 
 string StringPrintf(const char* format, ...) {
   va_list ap;
@@ -87,19 +100,14 @@ void SplitString(const string& str,
 // If you are passing more than one command in cmdoptions you need it to be
 // space separated.
 int RunCommand(const string& command) {
-  time_t start_time;
-  time_t finish_time;
-
   printf("Command: %s\n", command.c_str());
 
   fflush(stdout);
   fflush(stderr);
 
-  time(&start_time);
+  LoggingTimerStart();
   int result = system(command.c_str());
-  time(&finish_time);
-
-  printf("Finished after %.f seconds.\n", difftime(finish_time, start_time));
+  LoggingTimerFinish();
 
   if (result != 0)
     printf("Failed Command: %s - %d\n", command.c_str(), result);

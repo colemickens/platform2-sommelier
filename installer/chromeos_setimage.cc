@@ -92,8 +92,7 @@ bool SetImage(const InstallConfig& install_config) {
   // Extract specific verity arguments
   string rootfs_sectors = ExtractKernelArg(verity_args, "hashstart");
   string verity_algorithm = ExtractKernelArg(verity_args, "alg");
-  string expected_hash = ExtractKernelArg(verity_args,
-                                               "root_hexdigest");
+  string expected_hash = ExtractKernelArg(verity_args, "root_hexdigest");
   string salt = ExtractKernelArg(verity_args, "salt");
 
   bool enable_rootfs_verification = IsReadonly(kernel_config_root);
@@ -101,13 +100,15 @@ bool SetImage(const InstallConfig& install_config) {
   if (!enable_rootfs_verification)
     MakeFileSystemRw(install_config.root.device(), true);
 
-  if (chromeos_verity(verity_algorithm.c_str(),
-                      install_config.root.device().c_str(),
-                      getpagesize(),
-                      (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
-                      salt.c_str(), expected_hash.c_str(),
-                      enable_rootfs_verification) != 0)
-    return false;
+  printf("Setting up verity.\n");
+  LoggingTimerStart();
+  int result = chromeos_verity(verity_algorithm.c_str(),
+                               install_config.root.device().c_str(),
+                               getpagesize(),
+                               (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
+                               salt.c_str(), expected_hash.c_str(),
+                               enable_rootfs_verification);
+  LoggingTimerFinish();
 
-  return true;
+  return result == 0;
 }

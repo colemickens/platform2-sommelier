@@ -171,6 +171,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     make_dev_readonly=true;
   }
 
+  // TODO(dgarrett): Remove when chromium:216338 is fixed.
   // If this FS was mounted read-write, we can't do deltas from it. Mark the
   // FS as such
   Touch(install_config.root.mount() + "/.nodelta");  // Ignore Error on purpse
@@ -193,7 +194,9 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   unlink(network_driver_cache.c_str());
 
   printf("Syncing filesystems before changing boot order...\n");
+  LoggingTimerStart();
   sync();
+  LoggingTimerFinish();
 
   printf("Updating Partition Table Attributes using CgptManager...\n");
 
