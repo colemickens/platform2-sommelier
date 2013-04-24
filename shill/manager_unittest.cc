@@ -3360,6 +3360,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   wifi_service0->SetSecurity(Service::kCryptoAes, true, true);
   EXPECT_CALL(*wifi_service0.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service0.get(), IsVisible())
+      .WillRepeatedly(Return(false));
 
   scoped_refptr<MockService> wifi_service1(
       new NiceMock<MockService>(control_interface(),
@@ -3368,6 +3370,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 manager()));
   EXPECT_CALL(*wifi_service1.get(), state())
       .WillRepeatedly(Return(Service::kStateIdle));
+  EXPECT_CALL(*wifi_service1.get(), IsVisible())
+      .WillRepeatedly(Return(true));
   EXPECT_CALL(*wifi_service1.get(), IsConnected())
       .WillRepeatedly(Return(false));
   wifi_service1->SetAutoConnect(true);
@@ -3384,6 +3388,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_CALL(*wifi_service2.get(), state())
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*wifi_service2.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wifi_service2.get(), IsVisible())
       .WillRepeatedly(Return(true));
   wifi_service2->SetAutoConnect(true);
   wifi_service2->SetConnectable(true);
@@ -3408,6 +3414,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*cell_service.get(), IsConnected())
       .WillRepeatedly(Return(true));
+  EXPECT_CALL(*cell_service.get(), IsVisible())
+      .WillRepeatedly(Return(true));
   wifi_service2->SetAutoConnect(true);
   cell_service->SetConnectable(true);
   EXPECT_CALL(*cell_service.get(), technology())
@@ -3424,6 +3432,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*vpn_service.get(), IsConnected())
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(*vpn_service.get(), IsVisible())
+      .WillRepeatedly(Return(true));
   wifi_service2->SetAutoConnect(false);
   vpn_service->SetConnectable(true);
   EXPECT_CALL(*vpn_service.get(), technology())
@@ -3433,8 +3443,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   // The connected services should be at the top.
   EXPECT_TRUE(ServiceOrderIs(wifi_service2, cell_service));
 
-  EXPECT_CALL(*wifi_service0.get(), Connect(_, _)).Times(1);
-  EXPECT_CALL(*wifi_service1.get(), Connect(_, _)).Times(0);  // Lower prio.
+  EXPECT_CALL(*wifi_service0.get(), Connect(_, _)).Times(0);  // Not visible.
+  EXPECT_CALL(*wifi_service1.get(), Connect(_, _));
   EXPECT_CALL(*wifi_service2.get(), Connect(_, _)).Times(0);  // Lower prio.
   EXPECT_CALL(*cell_service.get(), Connect(_, _)).Times(0);  // Is connected.
   EXPECT_CALL(*vpn_service.get(), Connect(_, _)).Times(0);  // Not autoconnect.

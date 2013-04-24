@@ -1407,7 +1407,7 @@ void Manager::ConnectToBestServicesTask() {
       // this one will be connectable either.
       break;
     }
-    if (!(*it)->auto_connect()) {
+    if (!(*it)->auto_connect() || !(*it)->IsVisible()) {
       continue;
     }
     Technology::Identifier technology = (*it)->technology();
