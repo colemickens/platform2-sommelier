@@ -46,5 +46,6 @@ int main(int argc, char* argv[]) {
   if (cl->GetArgs().size() != 1) {
     LOG(FATAL) << "Usage: keygen /path/to/output_file";
   }
-  return login_manager::keygen::generate(cl->GetArgs()[0]);
+  scoped_ptr<NssUtil> nss(NssUtil::Create());
+  return login_manager::keygen::GenerateKey(cl->GetArgs()[0], nss.get());
 }

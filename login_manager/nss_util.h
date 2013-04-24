@@ -22,21 +22,9 @@ namespace login_manager {
 // An interface to wrap the usage of crypto/nss_util.h and allow for mocking.
 class NssUtil {
  public:
-  class Factory {
-   public:
-    virtual NssUtil* CreateNssUtil() = 0;
-  };
 
   NssUtil();
   virtual ~NssUtil();
-
-  // Sets the factory used by the static method Create to create an
-  // NssUtil.  NssUtil does not take ownership of
-  // |factory|. A value of NULL results in an NssUtil being
-  // created directly.
-#if defined(UNIT_TEST)
-  static void set_factory(Factory* factory) { factory_ = factory; }
-#endif
 
   // Creates an NssUtil, ownership returns to the caller. If there is no
   // Factory (the default) this creates and returns a new NssUtil.
@@ -73,7 +61,6 @@ class NssUtil {
                     crypto::RSAPrivateKey* key) = 0;
 
  private:
-  static Factory* factory_;
   DISALLOW_COPY_AND_ASSIGN(NssUtil);
 };
 }  // namespace login_manager

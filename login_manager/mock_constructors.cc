@@ -60,7 +60,7 @@ MockMetrics::~MockMetrics() {}
 MockMitigator::MockMitigator() {}
 MockMitigator::~MockMitigator() {}
 
-MockPolicyKey::MockPolicyKey() : PolicyKey(FilePath("")) {}
+MockPolicyKey::MockPolicyKey() : PolicyKey(FilePath(""), NULL) {}
 MockPolicyKey::~MockPolicyKey() {}
 
 MockPolicyService::MockPolicyService()
@@ -84,7 +84,7 @@ MockSessionManager::MockSessionManager() {}
 MockSessionManager::~MockSessionManager() {}
 
 MockUserPolicyServiceFactory::MockUserPolicyServiceFactory()
-  : UserPolicyServiceFactory(0, NULL, NULL) {}
+    : UserPolicyServiceFactory(0, NULL, NULL, NULL) {}
 MockUserPolicyServiceFactory::~MockUserPolicyServiceFactory() {}
 
 }  // namespace login_manager

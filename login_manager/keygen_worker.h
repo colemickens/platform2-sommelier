@@ -5,10 +5,13 @@
 #include <string>
 
 namespace login_manager {
+class NssUtil;
 
 namespace keygen {
 
-int generate(const std::string& filename);
+// Generates a keypair using the user's NSSDB, extracts the public half and
+// stores it at |filename|.
+int GenerateKey(const std::string& filename, NssUtil* nss);
 
 }  // namespace keygen
 

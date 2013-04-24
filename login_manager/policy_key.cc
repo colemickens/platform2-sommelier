@@ -25,10 +25,11 @@ const uint8 PolicyKey::kAlgorithm[15] = {
   0xf7, 0x0d, 0x01, 0x01, 0x05, 0x05, 0x00
 };
 
-PolicyKey::PolicyKey(const FilePath& key_file)
+PolicyKey::PolicyKey(const FilePath& key_file, NssUtil* nss)
     : key_file_(key_file),
       have_checked_disk_(false),
       have_replaced_(false),
+      nss_(nss),
       utils_(new SystemUtils) {
 }
 
@@ -71,8 +72,7 @@ bool PolicyKey::PopulateFromDiskIfPossible() {
     return false;
   }
 
-  scoped_ptr<NssUtil> nss_util(NssUtil::Create());
-  if (!nss_util->CheckPublicKeyBlob(key_)) {
+  if (!nss_->CheckPublicKeyBlob(key_)) {
     LOG(ERROR) << "Policy key " << key_file_.value() << " is corrupted!";
     return false;
   }
@@ -161,8 +161,7 @@ bool PolicyKey::Verify(const uint8* data,
                        uint32 data_len,
                        const uint8* signature,
                        uint32 sig_len) {
-  scoped_ptr<NssUtil> util(NssUtil::Create());
-  if (!util->Verify(kAlgorithm,
+  if (!nss_->Verify(kAlgorithm,
                     sizeof(kAlgorithm),
                     signature,
                     sig_len,

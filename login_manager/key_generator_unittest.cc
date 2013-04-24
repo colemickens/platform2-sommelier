@@ -80,7 +80,7 @@ TEST_F(KeyGeneratorTest, KeygenTest) {
   const FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
   ASSERT_TRUE(file_util::CreateDirectory(
       key_file_path.DirName().Append(nss->GetNssdbSubpath())));
-  ASSERT_EQ(keygen::generate(key_file_path.value()), 0);
+  ASSERT_EQ(keygen::GenerateKey(key_file_path.value(), nss.get()), 0);
   ASSERT_TRUE(file_util::PathExists(key_file_path));
 
   SystemUtils utils;

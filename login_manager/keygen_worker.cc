@@ -23,13 +23,12 @@ namespace login_manager {
 
 namespace keygen {
 
-int generate(const std::string& filename) {
+int GenerateKey(const std::string& filename, NssUtil* nss) {
   FilePath key_file(filename);
-  scoped_ptr<NssUtil> nss(NssUtil::Create());
-  scoped_ptr<PolicyKey> key(new PolicyKey(key_file));
-  if (!key->PopulateFromDiskIfPossible())
+  PolicyKey key(key_file, nss);
+  if (!key.PopulateFromDiskIfPossible())
     LOG(FATAL) << "Corrupted key on disk at " << filename;
-  if (key->IsPopulated())
+  if (key.IsPopulated())
     LOG(FATAL) << "Existing owner key at " << filename;
   FilePath nssdb = key_file.DirName().Append(nss->GetNssdbSubpath());
   PLOG_IF(FATAL, !file_util::PathExists(nssdb)) << nssdb.value()
@@ -45,10 +44,10 @@ int generate(const std::string& filename) {
 
   scoped_ptr<crypto::RSAPrivateKey> pair(nss->GenerateKeyPair());
   if (pair.get()) {
-    if (!key->PopulateFromKeypair(pair.get()))
+    if (!key.PopulateFromKeypair(pair.get()))
       LOG(FATAL) << "Could not use generated keypair.";
     LOG(INFO) << "Writing Owner key to " << key_file.value();
-    return (key->Persist() ? 0 : 1);
+    return (key.Persist() ? 0 : 1);
   }
   LOG(FATAL) << "Could not generate owner key!";
   return 0;

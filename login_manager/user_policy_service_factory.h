@@ -17,6 +17,7 @@ class MessageLoopProxy;
 }  // namespace base
 
 namespace login_manager {
+class NssUtil;
 class PolicyService;
 class SystemUtils;
 
@@ -27,6 +28,7 @@ class UserPolicyServiceFactory {
   UserPolicyServiceFactory(
       uid_t uid,
       const scoped_refptr<base::MessageLoopProxy>& main_loop,
+      NssUtil* nss,
       SystemUtils* system_utils);
   virtual ~UserPolicyServiceFactory();
 
@@ -38,6 +40,7 @@ class UserPolicyServiceFactory {
   uid_t uid_;
 
   scoped_refptr<base::MessageLoopProxy> main_loop_;
+  NssUtil* nss_;
   SystemUtils* system_utils_;
 
   DISALLOW_COPY_AND_ASSIGN(UserPolicyServiceFactory);

@@ -272,7 +272,8 @@ bool SessionManagerService::Initialize() {
                               enable_browser_abort_on_hang_,
                               liveness_checking_interval_));
 
-  owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath()));
+
+  owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath(), nss_.get()));
   scoped_ptr<OwnerKeyLossMitigator> mitigator(
       new RegenMitigator(key_gen_.get(), set_uid_, uid_, this));
   device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
@@ -283,7 +284,7 @@ bool SessionManagerService::Initialize() {
   device_policy_->set_delegate(impl);
 
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory(
-      new UserPolicyServiceFactory(getuid(), loop_proxy_, system_));
+      new UserPolicyServiceFactory(getuid(), loop_proxy_, nss_.get(), system_));
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy(
       new DeviceLocalAccountPolicyService(FilePath(kDeviceLocalAccountStateDir),
                                           owner_key_.get(),

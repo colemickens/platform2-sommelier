@@ -29,9 +29,6 @@ namespace login_manager {
 ///////////////////////////////////////////////////////////////////////////
 // NssUtil
 
-// static
-NssUtil::Factory* NssUtil::factory_ = NULL;
-
 NssUtil::NssUtil() {}
 
 NssUtil::~NssUtil() {}
@@ -79,11 +76,7 @@ class NssUtilImpl : public NssUtil {
 // Defined here, instead of up above, because we need NssUtilImpl.
 // static
 NssUtil* NssUtil::Create() {
-  if (!factory_) {
-    return new NssUtilImpl;
-  } else {
-    return factory_->CreateNssUtil();
-  }
+  return new NssUtilImpl;
 }
 
 // static

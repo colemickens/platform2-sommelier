@@ -17,6 +17,7 @@ class RSAPrivateKey;
 
 namespace login_manager {
 class ChildJobInterface;
+class NssUtil;
 class SessionManagerService;
 class SystemUtils;
 
@@ -29,7 +30,7 @@ class SystemUtils;
 // before on-disk storage has been checked will be denied.
 class PolicyKey {
  public:
-  explicit PolicyKey(const FilePath& key_file);
+  PolicyKey(const FilePath& key_file, NssUtil* nss);
   virtual ~PolicyKey();
 
   virtual bool Equals(const std::string& key_der) const;
@@ -92,6 +93,7 @@ class PolicyKey {
   bool have_checked_disk_;
   bool have_replaced_;
   std::vector<uint8> key_;
+  NssUtil* nss_;
   scoped_ptr<SystemUtils> utils_;
 
   DISALLOW_COPY_AND_ASSIGN(PolicyKey);

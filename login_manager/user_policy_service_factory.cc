@@ -17,6 +17,7 @@
 
 #include "chromeos/cryptohome.h"
 
+#include "login_manager/nss_util.h"
 #include "login_manager/policy_key.h"
 #include "login_manager/policy_store.h"
 #include "login_manager/user_policy_service.h"
@@ -51,9 +52,11 @@ const FilePath::CharType kPolicyKeyCopyFile[] = FILE_PATH_LITERAL("policy.pub");
 UserPolicyServiceFactory::UserPolicyServiceFactory(
     uid_t uid,
     const scoped_refptr<base::MessageLoopProxy>& main_loop,
+    NssUtil* nss,
     SystemUtils* system_utils)
     : uid_(uid),
       main_loop_(main_loop),
+      nss_(nss),
       system_utils_(system_utils) {
 }
 
@@ -69,7 +72,7 @@ PolicyService* UserPolicyServiceFactory::Create(const std::string& username) {
   }
 
   scoped_ptr<PolicyKey> key(
-      new PolicyKey(policy_dir.Append(kPolicyKeyFile)));
+      new PolicyKey(policy_dir.Append(kPolicyKeyFile), nss_));
   bool key_load_success = key->PopulateFromDiskIfPossible();
   if (!key_load_success) {
     LOG(ERROR) << "Failed to load user policy key from disk.";

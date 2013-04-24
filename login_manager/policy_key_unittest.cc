@@ -20,33 +20,18 @@
 
 namespace login_manager {
 
-class CheckPublicKeyUtilFactory : public NssUtil::Factory {
- public:
-  CheckPublicKeyUtilFactory(bool expected) : expected_(expected) {}
-  virtual ~CheckPublicKeyUtilFactory() {}
-  NssUtil* CreateNssUtil() {
-    return new CheckPublicKeyUtil(expected_);
-  }
- private:
-  bool expected_;
-  DISALLOW_COPY_AND_ASSIGN(CheckPublicKeyUtilFactory);
-};
-
 class PolicyKeyTest : public ::testing::Test {
  public:
-  PolicyKeyTest() : factory_(true) {}
+  PolicyKeyTest() {}
   virtual ~PolicyKeyTest() {}
 
   virtual void SetUp() {
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     ASSERT_TRUE(file_util::CreateTemporaryFileInDir(tmpdir_.path(), &tmpfile_));
     ASSERT_EQ(2, file_util::WriteFile(tmpfile_, "a", 2));
-    NssUtil::set_factory(&factory_);
   }
 
-  virtual void TearDown() {
-    NssUtil::set_factory(NULL);
-  }
+  virtual void TearDown() {}
 
   void StartUnowned() {
     file_util::Delete(tmpfile_, false);
@@ -55,7 +40,6 @@ class PolicyKeyTest : public ::testing::Test {
   FilePath tmpfile_;
 
  private:
-  CheckPublicKeyUtilFactory factory_;
   base::ScopedTempDir tmpdir_;
   DISALLOW_COPY_AND_ASSIGN(PolicyKeyTest);
 };
@@ -63,7 +47,8 @@ class PolicyKeyTest : public ::testing::Test {
 TEST_F(PolicyKeyTest, Equals) {
   // Set up an empty key
   StartUnowned();
-  PolicyKey key(tmpfile_);
+  MockNssUtil noop_util;
+  PolicyKey key(tmpfile_, &noop_util);
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
@@ -85,7 +70,8 @@ TEST_F(PolicyKeyTest, Equals) {
 }
 
 TEST_F(PolicyKeyTest, LoadKey) {
-  PolicyKey key(tmpfile_);
+  CheckPublicKeyUtil good_key_util(true);
+  PolicyKey key(tmpfile_, &good_key_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -95,7 +81,8 @@ TEST_F(PolicyKeyTest, LoadKey) {
 
 TEST_F(PolicyKeyTest, NoKeyToLoad) {
   StartUnowned();
-  PolicyKey key(tmpfile_);
+  MockNssUtil noop_util;
+  PolicyKey key(tmpfile_, &noop_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -106,10 +93,9 @@ TEST_F(PolicyKeyTest, NoKeyToLoad) {
 TEST_F(PolicyKeyTest, EmptyKeyToLoad) {
   ASSERT_EQ(0, file_util::WriteFile(tmpfile_, "", 0));
   ASSERT_TRUE(file_util::PathExists(tmpfile_));
-  CheckPublicKeyUtilFactory factory(false);
-  NssUtil::set_factory(&factory);
+  CheckPublicKeyUtil bad_key_util(false);
 
-  PolicyKey key(tmpfile_);
+  PolicyKey key(tmpfile_, &bad_key_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_FALSE(key.PopulateFromDiskIfPossible());
@@ -119,7 +105,8 @@ TEST_F(PolicyKeyTest, EmptyKeyToLoad) {
 
 TEST_F(PolicyKeyTest, NoKeyOnDiskAllowSetting) {
   StartUnowned();
-  PolicyKey key(tmpfile_);
+  MockNssUtil noop_util;
+  PolicyKey key(tmpfile_, &noop_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
@@ -135,7 +122,8 @@ TEST_F(PolicyKeyTest, NoKeyOnDiskAllowSetting) {
 TEST_F(PolicyKeyTest, EnforceDiskCheckFirst) {
   std::vector<uint8> fake(1, 1);
 
-  PolicyKey key(tmpfile_);
+  MockNssUtil noop_util;
+  PolicyKey key(tmpfile_, &noop_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
   ASSERT_FALSE(key.PopulateFromBuffer(fake));
@@ -146,7 +134,8 @@ TEST_F(PolicyKeyTest, EnforceDiskCheckFirst) {
 TEST_F(PolicyKeyTest, RefuseToClobberInMemory) {
   std::vector<uint8> fake(1, 1);
 
-  PolicyKey key(tmpfile_);
+  CheckPublicKeyUtil good_key_util(true);
+  PolicyKey key(tmpfile_, &good_key_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
@@ -160,7 +149,8 @@ TEST_F(PolicyKeyTest, RefuseToClobberInMemory) {
 }
 
 TEST_F(PolicyKeyTest, RefuseToClobberOnDisk) {
-  PolicyKey key(tmpfile_);
+  CheckPublicKeyUtil good_key_util(true);
+  PolicyKey key(tmpfile_, &good_key_util);
   ASSERT_FALSE(key.HaveCheckedDisk());
   ASSERT_FALSE(key.IsPopulated());
 
@@ -174,10 +164,9 @@ TEST_F(PolicyKeyTest, RefuseToClobberOnDisk) {
 }
 
 TEST_F(PolicyKeyTest, SignVerify) {
-  NssUtil::set_factory(NULL);  // Use real NSS.
   scoped_ptr<NssUtil> nss(NssUtil::Create());
   StartUnowned();
-  PolicyKey key(tmpfile_);
+  PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
@@ -205,10 +194,9 @@ TEST_F(PolicyKeyTest, SignVerify) {
 }
 
 TEST_F(PolicyKeyTest, RotateKey) {
-  NssUtil::set_factory(NULL);  // Use real NSS.
   scoped_ptr<NssUtil> nss(NssUtil::Create());
   StartUnowned();
-  PolicyKey key(tmpfile_);
+  PolicyKey key(tmpfile_, nss.get());
   crypto::ScopedTestNSSDB test_db;
 
   scoped_ptr<crypto::RSAPrivateKey> pair(
@@ -226,7 +214,7 @@ TEST_F(PolicyKeyTest, RotateKey) {
   ASSERT_TRUE(key.IsPopulated());
   ASSERT_TRUE(key.Persist());
 
-  PolicyKey key2(tmpfile_);
+  PolicyKey key2(tmpfile_, nss.get());
   ASSERT_TRUE(key2.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key2.HaveCheckedDisk());
   ASSERT_TRUE(key2.IsPopulated());
@@ -245,7 +233,8 @@ TEST_F(PolicyKeyTest, RotateKey) {
 }
 
 TEST_F(PolicyKeyTest, ClobberKey) {
-  PolicyKey key(tmpfile_);
+  CheckPublicKeyUtil good_key_util(true);
+  PolicyKey key(tmpfile_, &good_key_util);
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
@@ -258,7 +247,8 @@ TEST_F(PolicyKeyTest, ClobberKey) {
 }
 
 TEST_F(PolicyKeyTest, ResetKey) {
-  PolicyKey key(tmpfile_);
+  CheckPublicKeyUtil good_key_util(true);
+  PolicyKey key(tmpfile_, &good_key_util);
 
   ASSERT_TRUE(key.PopulateFromDiskIfPossible());
   ASSERT_TRUE(key.HaveCheckedDisk());
