@@ -51,6 +51,7 @@
 #include "login_manager/login_metrics.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/policy_store.h"
+#include "login_manager/regen_mitigator.h"
 #include "login_manager/session_manager_impl.h"
 #include "login_manager/system_utils.h"
 
@@ -272,9 +273,11 @@ bool SessionManagerService::Initialize() {
                               liveness_checking_interval_));
 
   owner_key_.reset(new PolicyKey(nss_->GetOwnerKeyFilePath()));
+  scoped_ptr<OwnerKeyLossMitigator> mitigator(
+      new RegenMitigator(key_gen_.get(), set_uid_, uid_, this));
   device_policy_ = DevicePolicyService::Create(login_metrics_.get(),
                                                owner_key_.get(),
-                                               mitigator_.Pass(),
+                                               mitigator.Pass(),
                                                nss_.get(),
                                                loop_proxy_);
   device_policy_->set_delegate(impl);

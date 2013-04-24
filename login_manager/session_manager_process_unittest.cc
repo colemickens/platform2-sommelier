@@ -25,7 +25,6 @@
 #include "login_manager/mock_key_generator.h"
 #include "login_manager/mock_liveness_checker.h"
 #include "login_manager/mock_metrics.h"
-#include "login_manager/mock_mitigator.h"
 #include "login_manager/mock_session_manager.h"
 #include "login_manager/mock_system_utils.h"
 
@@ -54,7 +53,6 @@ class SessionManagerProcessTest : public ::testing::Test {
         file_checker_(new MockFileChecker(kCheckedFile)),
         liveness_checker_(new MockLivenessChecker),
         metrics_(new MockMetrics),
-        mitigator_(new MockMitigator),
         session_manager_impl_(new MockSessionManager),
         must_destroy_mocks_(true) {
   }
@@ -64,7 +62,6 @@ class SessionManagerProcessTest : public ::testing::Test {
       delete file_checker_;
       delete liveness_checker_;
       delete metrics_;
-      delete mitigator_;
       delete session_manager_impl_;
     }
   }
@@ -175,7 +172,6 @@ class SessionManagerProcessTest : public ::testing::Test {
                                          &real_utils_);
     manager_->Reset();
     manager_->set_file_checker(file_checker_);
-    manager_->set_mitigator(mitigator_);
     manager_->test_api().set_liveness_checker(liveness_checker_);
     manager_->test_api().set_login_metrics(metrics_);
     manager_->test_api().set_session_manager(session_manager_impl_);
@@ -226,7 +222,6 @@ class SessionManagerProcessTest : public ::testing::Test {
   MockFileChecker* file_checker_;
   MockLivenessChecker* liveness_checker_;
   MockMetrics* metrics_;
-  MockMitigator* mitigator_;
   MockSessionManager* session_manager_impl_;
 
  private:

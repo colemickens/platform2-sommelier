@@ -140,11 +140,6 @@ class SessionManagerService
     file_checker_.reset(file_checker);
   }
 
-  // Takes ownership of |mitigator|.
-  void set_mitigator(OwnerKeyLossMitigator* mitigator) {
-    mitigator_.reset(mitigator);
-  }
-
   // Can't be "unset".
   void set_uid(uid_t uid) {
     uid_ = uid;
@@ -321,7 +316,6 @@ class SessionManagerService
   scoped_ptr<PolicyKey> owner_key_;
 
   scoped_ptr<FileChecker> file_checker_;
-  scoped_ptr<OwnerKeyLossMitigator> mitigator_;
 
   scoped_ptr<SessionManagerInterface> impl_;
   scoped_refptr<DevicePolicyService> device_policy_;

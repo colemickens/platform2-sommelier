@@ -165,10 +165,7 @@ int main(int argc, char* argv[]) {
   if (magic_chrome_file.empty())
     magic_chrome_file.assign(switches::kDisableChromeRestartFileDefault);
   manager->set_file_checker(new FileChecker(FilePath(magic_chrome_file)));
-  manager->set_mitigator(new RegenMitigator(new KeyGenerator(&system),
-                                            uid_set,
-                                            uid,
-                                            manager));
+
   if (uid_set)
     manager->set_uid(uid);
 
