@@ -160,14 +160,6 @@ if is_lumpy && has_gobi_modem; then
     lumpy_with_gobi_modem=1
 fi
 
-# Disable USB-Persist to save 500ms
-# (by not waiting for USB devices to reset and resume)
-for i in /sys/bus/usb/devices/*/power/persist; do echo 0 > $i; done
-
-# - suspends the cryptohome device
-#CRYPTOHOME=/dev/mapper/cryptohome
-#/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup suspend $CRYPTOHOME
-
 enable_debug
 
 log_msg "Explicit sync"
@@ -247,9 +239,6 @@ initctl emit system-resumed &
 
 # - refresh mosys eventlog to help feedback reports pick up the latest snapshot
 /usr/share/userfeedback/scripts/eventlog &
-
-# - resumes cryptohome device
-#/usr/bin/test -b $CRYPTOHOME && /sbin/dmsetup resume $CRYPTOHOME
 
 log_msg "Resume finished"
 
