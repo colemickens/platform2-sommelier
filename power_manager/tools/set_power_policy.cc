@@ -46,9 +46,13 @@ DEFINE_int32(use_audio_activity, -1,
              "Honor audio activity (1 is true, 0 is false, -1 is unset");
 DEFINE_int32(use_video_activity, -1,
              "Honor video activity (1 is true, 0 is false, -1 is unset");
-DEFINE_double(presentation_idle_delay_factor, 0,
+DEFINE_double(presentation_idle_delay_factor, 0.0,
               "Factor by which idle delays are scaled while presenting "
               "(less than 1.0 means unset)");
+DEFINE_double(user_activity_screen_dim_delay_factor, 0.0,
+              "Factor by which the screen-dim delay is scaled if user activity "
+              "is observed while the screen is dimmed or soon after it's been "
+              "turned off (less than 1.0 means unset)");
 
 namespace {
 
@@ -120,6 +124,10 @@ int main(int argc, char* argv[]) {
   if (FLAGS_presentation_idle_delay_factor >= 1.0) {
     policy.set_presentation_idle_delay_factor(
         FLAGS_presentation_idle_delay_factor);
+  }
+  if (FLAGS_user_activity_screen_dim_delay_factor >= 1.0) {
+    policy.set_user_activity_screen_dim_delay_factor(
+        FLAGS_user_activity_screen_dim_delay_factor);
   }
 
   CHECK(power_manager::util::CallMethodInPowerD(power_manager::kSetPolicyMethod,

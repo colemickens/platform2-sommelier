@@ -1222,5 +1222,106 @@ TEST_F(StateControllerTest, DockedMode) {
   EXPECT_EQ(JoinActions(kUndocked, kSuspend, NULL), delegate_.GetActions());
 }
 
+// Tests that PowerManagementPolicy's
+// |user_activity_screen_dim_delay_factor| field is honored.
+TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
+  Init();
+
+  // Send a policy where delays are doubled if user activity is observed
+  // while the screen is dimmed or soon after it's turned off.
+  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(120);
+  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(200);
+  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(300);
+  const base::TimeDelta kIdleWarningDelay = base::TimeDelta::FromSeconds(320);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(330);
+  const double kDelayFactor = 2.0;
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_warning_ms(
+      kIdleWarningDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  policy.set_idle_action(PowerManagementPolicy_Action_SUSPEND);
+  policy.set_user_activity_screen_dim_delay_factor(kDelayFactor);
+  controller_.HandlePolicyChange(policy);
+
+  // Wait for the screen to dim and then immediately report user activity.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+
+  // This should result in the dimming delay being doubled and its distance
+  // to all of the other delays being held constant.
+  const base::TimeDelta kScaledDimDelay = kDelayFactor * kDimDelay;
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kScaledDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kOffDelay - kDimDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kLockDelay - kOffDelay));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleWarningDelay - kLockDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay - kIdleWarningDelay));
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+
+  // Stop the session, which should unscale the delays.  This time, wait
+  // for the screen to get turned off and check that the delays are again
+  // lengthened after user activity.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kScaledDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // Start another session (to again unscale the delays).  Let the screen
+  // get dimmed and turned off, but wait longer than the threshold before
+  // reporting user activity.  The delays should be unchanged.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, NULL), delegate_.GetActions());
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  AdvanceTime(base::TimeDelta::FromMilliseconds(
+      StateController::kUserActivityAfterScreenOffIncreaseDelaysMs + 1000));
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+
+  // Shorten the screen off delay after the screen is already off such that
+  // we're now outside the window in which user activity should scale the
+  // delays.  The delays should still be scaled.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, NULL), delegate_.GetActions());
+  controller_.HandleSessionStateChange(SESSION_STOPPED);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  const base::TimeDelta kShortOffDelay = kOffDelay -
+      base::TimeDelta::FromMilliseconds(
+          StateController::kUserActivityAfterScreenOffIncreaseDelaysMs + 1000);
+  policy.mutable_ac_delays()->set_screen_off_ms(
+      kShortOffDelay.InMilliseconds());
+  controller_.HandlePolicyChange(policy);
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kScaledDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+}
+
 }  // namespace policy
 }  // namespace power_manager

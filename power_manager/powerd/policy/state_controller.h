@@ -121,6 +121,11 @@ class StateController : public PrefsObserver {
   // display is connected.
   static const double kDefaultPresentationIdleDelayFactor;
 
+  // Delays are lengthened if user activity is observed while the screen is
+  // dimmed or within this many milliseconds of the screen being turned
+  // off.
+  static const int kUserActivityAfterScreenOffIncreaseDelaysMs;
+
   StateController(Delegate* delegate, PrefsInterface* prefs);
   ~StateController();
 
@@ -289,6 +294,17 @@ class StateController : public PrefsObserver {
   bool idle_action_performed_;
   bool lid_closed_action_performed_;
   bool turned_panel_off_for_docked_mode_;
+
+  // Time at which the screen was turned off, or null if
+  // |screen_turned_off_| is false.  Used for updating
+  // |saw_user_activity_soon_after_screen_dim_or_off_|.
+  base::TimeTicks screen_turned_off_time_;
+
+  // True if user activity was observed after the screen was dimmed or soon
+  // after it was turned off (which can result in delays being lengthened
+  // to not annoy the user the next time).  Reset when the session state
+  // changes.
+  bool saw_user_activity_soon_after_screen_dim_or_off_;
 
   // Should the system only idle-suspend if a USB input device is
   // connected?  This is controlled by the

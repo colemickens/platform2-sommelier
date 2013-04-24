@@ -139,6 +139,7 @@ void StateController::TestApi::TriggerTimeout() {
 }
 
 const double StateController::kDefaultPresentationIdleDelayFactor = 2.0;
+const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
 
 StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
     : delegate_(delegate),
@@ -157,6 +158,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       idle_action_performed_(false),
       lid_closed_action_performed_(false),
       turned_panel_off_for_docked_mode_(false),
+      saw_user_activity_soon_after_screen_dim_or_off_(false),
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
@@ -220,6 +222,7 @@ void StateController::HandleSessionStateChange(SessionState state) {
 
   VLOG(1) << "Session state changed to " << SessionStateToString(state);
   session_state_ = state;
+  saw_user_activity_soon_after_screen_dim_or_off_ = false;
   UpdateLastUserActivityTime();
   UpdateSettingsAndState();
 }
@@ -285,8 +288,25 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
 void StateController::HandleUserActivity() {
   DCHECK(initialized_);
   VLOG(1) << "Saw user activity";
+
+  const bool old_saw_user_activity =
+      saw_user_activity_soon_after_screen_dim_or_off_;
+  const bool screen_turned_off_recently =
+      delays_.screen_off > base::TimeDelta() && screen_turned_off_ &&
+      (GetCurrentTime() - screen_turned_off_time_).InMilliseconds() <=
+      kUserActivityAfterScreenOffIncreaseDelaysMs;
+  if (!saw_user_activity_soon_after_screen_dim_or_off_ &&
+      ((screen_dimmed_ && !screen_turned_off_) || screen_turned_off_recently)) {
+    VLOG(1) << "Scaling delays due to user activity while screen was dimmed "
+            << "or soon after it was turned off";
+    saw_user_activity_soon_after_screen_dim_or_off_ = true;
+  }
+
   UpdateLastUserActivityTime();
-  UpdateState();
+  if (old_saw_user_activity != saw_user_activity_soon_after_screen_dim_or_off_)
+    UpdateSettingsAndState();
+  else
+    UpdateState();
 }
 
 void StateController::HandleVideoActivity() {
@@ -385,12 +405,11 @@ std::string StateController::GetPolicyDebugString(
 
   if (policy.has_idle_action()) {
     str += "idle=" +
-           ActionToString(ProtoActionToAction(policy.idle_action())) + " ";
+        ActionToString(ProtoActionToAction(policy.idle_action())) + " ";
   }
   if (policy.has_lid_closed_action()) {
     str += "lid_closed=" +
-           ActionToString(ProtoActionToAction(policy.lid_closed_action())) +
-           " ";
+        ActionToString(ProtoActionToAction(policy.lid_closed_action())) + " ";
   }
   if (policy.has_use_audio_activity())
     str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
@@ -398,7 +417,11 @@ std::string StateController::GetPolicyDebugString(
     str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
   if (policy.has_presentation_idle_delay_factor()) {
     str += "presentation_factor=" +
-           base::DoubleToString(policy.presentation_idle_delay_factor()) + " ";
+        base::DoubleToString(policy.presentation_idle_delay_factor()) + " ";
+  }
+  if (policy.has_user_activity_screen_dim_delay_factor()) {
+    str += "user_activity_factor=" + base::DoubleToString(
+        policy.user_activity_screen_dim_delay_factor()) + " ";
   }
 
   if (policy.has_reason())
@@ -544,6 +567,7 @@ void StateController::UpdateSettingsAndState() {
   use_audio_activity_ = true;
   use_video_activity_ = true;
   double presentation_factor = kDefaultPresentationIdleDelayFactor;
+  double user_activity_factor = 1.0;
 
   // Now update them with values that were set in the policy.
   if (!ignore_external_policy_) {
@@ -571,8 +595,13 @@ void StateController::UpdateSettingsAndState() {
       use_video_activity_ = policy_.use_video_activity();
     if (policy_.has_presentation_idle_delay_factor())
       presentation_factor = policy_.presentation_idle_delay_factor();
+    if (policy_.has_user_activity_screen_dim_delay_factor())
+      user_activity_factor = policy_.user_activity_screen_dim_delay_factor();
   }
 
+  // TODO(derat): Replace this setting with one that behaves similarly to
+  // |user_activity_factor| (i.e. scaling the screen-dimming delay rather
+  // than the idle delay) and use shared code for both.
   if (display_mode_ == DISPLAY_PRESENTATION) {
     presentation_factor = std::max(presentation_factor, 1.0);
     base::TimeDelta orig_idle = delays_.idle;
@@ -585,6 +614,21 @@ void StateController::UpdateSettingsAndState() {
       delays_.screen_lock = delays_.idle - (orig_idle - delays_.screen_lock);
     if (delays_.idle_warning > base::TimeDelta())
       delays_.idle_warning = delays_.idle - (orig_idle - delays_.idle_warning);
+  } else if (saw_user_activity_soon_after_screen_dim_or_off_ &&
+             delays_.screen_dim > base::TimeDelta()) {
+    user_activity_factor = std::max(user_activity_factor, 1.0);
+    const base::TimeDelta orig_screen_dim = delays_.screen_dim;
+    delays_.screen_dim *= user_activity_factor;
+
+    const base::TimeDelta diff = delays_.screen_dim - orig_screen_dim;
+    if (delays_.screen_off > base::TimeDelta())
+      delays_.screen_off += diff;
+    if (delays_.screen_lock > base::TimeDelta())
+      delays_.screen_lock += diff;
+    if (delays_.idle_warning > base::TimeDelta())
+      delays_.idle_warning += diff;
+    if (delays_.idle > base::TimeDelta())
+      delays_.idle += diff;
   }
 
   // The disable-idle-suspend pref overrides |policy_|.  Note that it also
@@ -670,10 +714,17 @@ void StateController::UpdateState() {
               base::Bind(&Delegate::DimScreen, base::Unretained(delegate_)),
               base::Bind(&Delegate::UndimScreen, base::Unretained(delegate_)),
               "Dimming screen", "Undimming screen", &screen_dimmed_);
+
+  const bool screen_was_turned_off = screen_turned_off_;
   HandleDelay(delays_.screen_off, screen_off_duration,
               base::Bind(&Delegate::TurnScreenOff, base::Unretained(delegate_)),
               base::Bind(&Delegate::TurnScreenOn, base::Unretained(delegate_)),
               "Turning screen off", "Turning screen on", &screen_turned_off_);
+  if (screen_turned_off_ && !screen_was_turned_off)
+    screen_turned_off_time_ = now;
+  else if (!screen_turned_off_)
+    screen_turned_off_time_ = base::TimeTicks();
+
   HandleDelay(delays_.screen_lock, screen_dim_or_lock_duration,
               base::Bind(&Delegate::LockScreen, base::Unretained(delegate_)),
               base::Closure(), "Locking screen", "", &requested_screen_lock_);
