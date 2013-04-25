@@ -116,7 +116,7 @@ int main(int argc, char* argv[]) {
   g_type_init();
 
   scoped_ptr<power_manager::system::AmbientLightSensor> light_sensor;
-#ifndef IS_DESKTOP
+#ifdef HAS_ALS
   light_sensor.reset(new power_manager::system::AmbientLightSensor());
   light_sensor->Init();
 #endif
