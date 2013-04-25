@@ -38,3 +38,12 @@ olp:POST,https://quickaccess.verizonwireless.com/bbportal/chrome/start4g.do,oem=
 olp:POST,https://quickaccess.verizonwireless.com/bbportal/chrome/start.do,mdn=${mdn}&oem=GOG2&meid=${meid}
 apn:1,vzwinternet,,
 name:,4G LTE Contract
+
+# Test LTE Network
+provider:1,1,0,0
+identifier:test-lte
+name:,Test Lte Network
+mccmnc:001000,0
+olp:,,
+apn:1,testinternet,,
+name:,Test Network APN
