@@ -76,4 +76,12 @@ TEST_F(NetworkTest, GetSignalStrength) {
   }
 }
 
+TEST_F(NetworkTest, GetNameWithIdentifier) {
+  network_ = new Network(0xabcd, "", kNetworkHome, 0, 0);
+  EXPECT_EQ("network (0x0000abcd)", network_->GetNameWithIdentifier());
+
+  network_ = new Network(0xabcd, "My Net", kNetworkHome, 0, 0);
+  EXPECT_EQ("network 'My Net' (0x0000abcd)", network_->GetNameWithIdentifier());
+}
+
 }  // namespace wimax_manager

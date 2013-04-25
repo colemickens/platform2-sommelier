@@ -21,6 +21,7 @@ extern "C" {
 
 namespace wimax_manager {
 
+class EAPParameters;
 class GdmDriver;
 
 class GdmDevice : public Device {
@@ -46,9 +47,11 @@ class GdmDevice : public Device {
 
  private:
   friend class GdmDriver;
-  FRIEND_TEST(GdmDeviceTest, ConstructEAPParameters);
+  FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersUsingConnectParameters);
+  FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersUsingOperatorEAPParameters);
+  FRIEND_TEST(GdmDeviceTest,
+              ConstructEAPParametersWithAnonymousIdentityUpdated);
   FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersWithInvalidEAPParameters);
-  FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersWithoutAnonymousIdentity);
   FRIEND_TEST(GdmDeviceTest, ConstructEAPParametersWithoutEAPParameters);
 
   bool Open();
@@ -58,7 +61,10 @@ class GdmDevice : public Device {
 
   static bool ConstructEAPParameters(
       const base::DictionaryValue &connect_parameters,
+      const EAPParameters &operator_eap_parameters,
       GCT_API_EAP_PARAM *eap_parameters);
+
+  EAPParameters GetNetworkOperatorEAPParameters(const Network &network) const;
 
   void set_connection_progress(
       WIMAX_API_CONNECTION_PROGRESS_INFO connection_progress) {

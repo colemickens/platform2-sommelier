@@ -10,12 +10,16 @@
 #include <base/logging.h>
 #include <base/memory/scoped_vector.h>
 #include <base/stl_util.h>
+#include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "wimax_manager/device_dbus_adaptor.h"
 #include "wimax_manager/gdm_driver.h"
+#include "wimax_manager/manager.h"
 #include "wimax_manager/network.h"
 #include "wimax_manager/network_dbus_adaptor.h"
+#include "wimax_manager/proto_bindings/eap_parameters.pb.h"
+#include "wimax_manager/proto_bindings/network_operator.pb.h"
 #include "wimax_manager/utility.h"
 
 using base::DictionaryValue;
@@ -35,26 +39,25 @@ const int kInitialNetworkScanIntervalInSeconds = 1;
 // is connecting to a network.
 const int kStatusUpdateIntervalDuringConnectInSeconds = 1;
 
-string GetEAPUserIdentity(const DictionaryValue &parameters) {
-  string user_identity;
-  if (parameters.GetString(kEAPUserIdentity, &user_identity))
-    return user_identity;
+const char kRealmTag[] = "@${realm}";
 
-  return string();
-}
-
-template <size_t N>
-bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
-                                  const string &key, UINT8 (&uint8_array)[N]) {
+bool ExtractStringParameter(const DictionaryValue &parameters,
+                            const string &key,
+                            const string &default_value,
+                            string *value) {
   if (!parameters.HasKey(key)) {
-    uint8_array[0] = '\0';
+    *value = default_value;
     return true;
   }
 
-  string value;
-  if (!parameters.GetString(key, &value))
-    return false;
+  if (parameters.GetString(key, value))
+    return true;
 
+  return false;
+}
+
+template <size_t N>
+bool CopyStringToUInt8Array(const string &value, UINT8 (&uint8_array)[N]) {
   size_t value_length = value.length();
   if (value_length >= N)
     return false;
@@ -63,6 +66,29 @@ bool CopyEAPParameterToUInt8Array(const DictionaryValue &parameters,
   value.copy(char_array, value_length);
   char_array[value_length] = '\0';
   return true;
+}
+
+const char *GetEAPTypeString(GCT_API_EAP_TYPE eap_type) {
+  switch (eap_type) {
+    case GCT_WIMAX_NO_EAP:
+      return "No EAP";
+    case GCT_WIMAX_EAP_TLS:
+      return "TLS";
+    case GCT_WIMAX_EAP_TTLS_MD5:
+      return "TTLS/MD5";
+    case GCT_WIMAX_EAP_TTLS_MSCHAPV2:
+      return "TTLS/MS-CHAP v2";
+    case GCT_WIMAX_EAP_TTLS_CHAP:
+      return "TTLS/CHAP";
+    case GCT_WIMAX_EAP_AKA:
+      return "AKA";
+    default:
+      return "Unknown";
+  }
+}
+
+const char *MaskString(const char *value) {
+  return (value && value[0]) ? "<***>" : "";
 }
 
 gboolean OnInitialNetworkScan(gpointer data) {
@@ -403,8 +429,15 @@ bool GdmDevice::Connect(const Network &network,
     return false;
   }
 
+  EAPParameters operator_eap_parameters =
+      GetNetworkOperatorEAPParameters(network);
+
   // TODO(benchan): Refactor this code into Device base class.
-  string user_identity = GetEAPUserIdentity(parameters);
+  string user_identity;
+  ExtractStringParameter(parameters,
+                         kEAPUserIdentity,
+                         operator_eap_parameters.user_identity(),
+                         &user_identity);
   if (status() == kDeviceStatusConnecting ||
       status() == kDeviceStatusConnected) {
     if (current_network_identifier_ == network.identifier() &&
@@ -424,12 +457,25 @@ bool GdmDevice::Connect(const Network &network,
   }
 
   GCT_API_EAP_PARAM eap_parameters;
-  if (!ConstructEAPParameters(parameters, &eap_parameters))
+  if (!ConstructEAPParameters(parameters, operator_eap_parameters,
+                              &eap_parameters))
     return false;
 
-  // TODO(benchan): Remove this hack after testing.
-  if (network.identifier() == 0x00000002)
-    eap_parameters.type = GCT_WIMAX_EAP_TLS;
+  VLOG(1) << "Connect to " << network.GetNameWithIdentifier()
+          << " via EAP (Type: " << GetEAPTypeString(eap_parameters.type)
+          << ", Anonymous identity: '"
+          << MaskString(reinterpret_cast<const char *>(
+              eap_parameters.anonymousId))
+          << "', User identity: '"
+          << MaskString(reinterpret_cast<const char *>(eap_parameters.userId))
+          << "', User password: '"
+          << MaskString(reinterpret_cast<const char *>(
+              eap_parameters.userIdPwd))
+          << "', Bypass device certificate: "
+          << (eap_parameters.devCertNULL == 0 ? false : true)
+          << ", Bypass CA certificate: "
+          << (eap_parameters.caCertNULL == 0 ? false : true)
+          << ")";
 
   if (!driver_->SetDeviceEAPParameters(this, &eap_parameters)) {
     LOG(ERROR) << "Failed to set EAP parameters on device '" << name() << "'";
@@ -438,8 +484,7 @@ bool GdmDevice::Connect(const Network &network,
 
   if (!driver_->ConnectDeviceToNetwork(this, network)) {
     LOG(ERROR) << "Failed to connect device '" << name()
-               << "' to network '" << network.name() << "' ("
-               << network.identifier() << ")";
+               << "' to " << network.GetNameWithIdentifier();
     return false;
   }
 
@@ -504,53 +549,98 @@ void GdmDevice::ClearCurrentConnectionProfile() {
 // static
 bool GdmDevice::ConstructEAPParameters(
     const DictionaryValue &connect_parameters,
+    const EAPParameters &operator_eap_parameters,
     GCT_API_EAP_PARAM *eap_parameters) {
   CHECK(eap_parameters);
 
   memset(eap_parameters, 0, sizeof(GCT_API_EAP_PARAM));
-  // TODO(benchan): Allow selection between EAP-TLS and EAP-TTLS;
-  eap_parameters->type = GCT_WIMAX_EAP_TTLS_MSCHAPV2;
   eap_parameters->fragSize = 1300;
   eap_parameters->logEnable = 1;
 
-  if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPUserIdentity,
-                                    eap_parameters->userId)) {
+  switch (operator_eap_parameters.type()) {
+    case EAP_TYPE_TLS:
+      eap_parameters->type = GCT_WIMAX_EAP_TLS;
+      break;
+    case EAP_TYPE_TTLS_MD5:
+      eap_parameters->type = GCT_WIMAX_EAP_TTLS_MD5;
+      break;
+    case EAP_TYPE_TTLS_MSCHAPV2:
+      eap_parameters->type = GCT_WIMAX_EAP_TTLS_MSCHAPV2;
+      break;
+    case EAP_TYPE_TTLS_CHAP:
+      eap_parameters->type = GCT_WIMAX_EAP_TTLS_CHAP;
+      break;
+    case EAP_TYPE_AKA:
+      eap_parameters->type = GCT_WIMAX_EAP_AKA;
+      break;
+    default:
+      eap_parameters->type = GCT_WIMAX_NO_EAP;
+      break;
+  }
+
+  if (operator_eap_parameters.bypass_device_certificate())
+    eap_parameters->devCertNULL = 1;
+
+  if (operator_eap_parameters.bypass_ca_certificate())
+    eap_parameters->caCertNULL = 1;
+
+  string user_identity;
+  if (!ExtractStringParameter(connect_parameters,
+                              kEAPUserIdentity,
+                              operator_eap_parameters.user_identity(),
+                              &user_identity) ||
+      !CopyStringToUInt8Array(user_identity, eap_parameters->userId)) {
     LOG(ERROR) << "Invalid EAP user identity";
     return false;
   }
 
-  if (!CopyEAPParameterToUInt8Array(connect_parameters, kEAPUserPassword,
-                                    eap_parameters->userIdPwd)) {
+  string user_password;
+  if (!ExtractStringParameter(connect_parameters,
+                              kEAPUserPassword,
+                              operator_eap_parameters.user_password(),
+                              &user_password) ||
+      !CopyStringToUInt8Array(user_password, eap_parameters->userIdPwd)) {
     LOG(ERROR) << "Invalid EAP user password";
     return false;
   }
 
-  const DictionaryValue *connect_parameters_ptr = &connect_parameters;
-  DictionaryValue updated_connect_parameters;
-  string user_id;
-  // If no anonymous identity is given, extract <realm> from the user identity
-  // and use RANDOM@<realm> as the anonymous identity for EAP-TTLS.
-  //
-  // TODO(benchan): Not sure if this should be pushed via ONC as it seems to be
-  // GDM specific.
-  if (!connect_parameters.HasKey(kEAPAnonymousIdentity) &&
-      connect_parameters.GetString(kEAPUserIdentity, &user_id)) {
-    size_t realm_pos = user_id.find('@');
-    if (realm_pos != string::npos) {
-      string anonymous_id = "RANDOM" + user_id.substr(realm_pos);
-      updated_connect_parameters.SetString(kEAPAnonymousIdentity, anonymous_id);
-      connect_parameters_ptr = &updated_connect_parameters;
-    }
+  string anonymous_identity;
+  if (!ExtractStringParameter(connect_parameters,
+                              kEAPAnonymousIdentity,
+                              operator_eap_parameters.anonymous_identity(),
+                              &anonymous_identity)) {
+    LOG(ERROR) << "Invalid EAP anonymous identity";
+    return false;
   }
 
-  if (!CopyEAPParameterToUInt8Array(*connect_parameters_ptr,
-                                    kEAPAnonymousIdentity,
-                                    eap_parameters->anonymousId)) {
+  // If the anonymous identity contains a realm tag ('@${realm}'),
+  // replace it with the realm extracted from the user identity.
+  string realm;
+  size_t realm_pos = user_identity.find('@');
+  if (realm_pos != string::npos)
+    realm = user_identity.substr(realm_pos);
+
+  ReplaceSubstringsAfterOffset(&anonymous_identity, 0, kRealmTag, realm);
+
+  if (!CopyStringToUInt8Array(anonymous_identity,
+                              eap_parameters->anonymousId)) {
     LOG(ERROR) << "Invalid EAP anonymous identity";
     return false;
   }
 
   return true;
+}
+
+EAPParameters GdmDevice::GetNetworkOperatorEAPParameters(
+    const Network &network) const {
+  const NetworkOperator *network_operator =
+      manager()->GetNetworkOperator(network.identifier());
+  if (network_operator)
+    return network_operator->eap_parameters();
+
+  LOG(INFO) << "No network operator information specified for "
+            << network.GetNameWithIdentifier();
+  return EAPParameters();
 }
 
 }  // namespace wimax_manager

@@ -4,6 +4,8 @@
 
 #include "wimax_manager/network.h"
 
+#include <base/stringprintf.h>
+
 #include "wimax_manager/network_dbus_adaptor.h"
 
 using std::string;
@@ -104,6 +106,12 @@ int Network::GetSignalStrength() const {
   }
 
   return kSignalStrengthTable[row][column];
+}
+
+string Network::GetNameWithIdentifier() const {
+  return name_.empty() ?
+      base::StringPrintf("network (0x%08x)", identifier_) :
+      base::StringPrintf("network '%s' (0x%08x)", name_.c_str(), identifier_);
 }
 
 }  // namespace wimax_manager

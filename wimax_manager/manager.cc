@@ -19,6 +19,7 @@
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/manager_dbus_adaptor.h"
 #include "wimax_manager/proto_bindings/config.pb.h"
+#include "wimax_manager/proto_bindings/network_operator.pb.h"
 
 namespace wimax_manager {
 
@@ -27,6 +28,7 @@ namespace {
 const int kMaxNumberOfDeviceScans = 15;
 const int kDefaultDeviceScanIntervalInSeconds = 1;
 const int kDeviceScanDelayAfterResumeInSeconds = 3;
+const char kDefaultConfigFile[] = "/usr/share/wimax-manager/default.conf";
 
 gboolean OnDeviceScanNeeded(gpointer data) {
   CHECK(data);
@@ -52,6 +54,11 @@ Manager::~Manager() {
 bool Manager::Initialize() {
   if (driver_.get())
     return true;
+
+  if (!LoadConfig(base::FilePath(kDefaultConfigFile))) {
+    LOG(ERROR) << "Failed to load config";
+    return false;
+  }
 
   dbus_service_.CreateDBusProxy();
   dbus_service_.Initialize();
@@ -161,6 +168,20 @@ bool Manager::LoadConfig(const base::FilePath &file_path) {
 
   config_ = config.Pass();
   return true;
+}
+
+const NetworkOperator *Manager::GetNetworkOperator(
+    Network::Identifier network_id) const {
+  if (!config_.get())
+    return NULL;
+
+  for (int i = 0; i < config_->network_operator_size(); ++i) {
+    const NetworkOperator &network_operator = config_->network_operator(i);
+    if (network_operator.identifier() == network_id)
+      return &network_operator;
+  }
+
+  return NULL;
 }
 
 }  // namespace wimax_manager

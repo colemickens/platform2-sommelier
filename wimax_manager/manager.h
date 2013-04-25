@@ -17,6 +17,7 @@
 
 #include "wimax_manager/dbus_adaptable.h"
 #include "wimax_manager/dbus_service.h"
+#include "wimax_manager/network.h"
 
 namespace wimax_manager {
 
@@ -24,6 +25,7 @@ class Config;
 class Device;
 class Driver;
 class ManagerDBusAdaptor;
+class NetworkOperator;
 
 class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
  public:
@@ -38,9 +40,13 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   void Suspend();
   void Resume();
 
+  const NetworkOperator *GetNetworkOperator(
+      Network::Identifier network_id) const;
+
   const std::vector<Device *> &devices() const { return devices_.get(); }
 
  private:
+  FRIEND_TEST(ManagerTest, GetNetworkOperator);
   FRIEND_TEST(ManagerTest, LoadEmptyConfigFile);
   FRIEND_TEST(ManagerTest, LoadInvalidConfigFile);
   FRIEND_TEST(ManagerTest, LoadNonExistentConfigFile);

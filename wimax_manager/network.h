@@ -44,6 +44,11 @@ class Network : public base::RefCounted<Network>,
   void UpdateFrom(const Network &network);
   int GetSignalStrength() const;
 
+  // Returns a string description that comprises |name_| and |identifier_|.
+  // If |name_| is empty, returns "network (<8-digit hexadecimal identifier>)".
+  // Otherwise, returns "network '<name>' (<8-digit hexadecimal identifier>)".
+  std::string GetNameWithIdentifier() const;
+
   Identifier identifier() const { return identifier_; }
   const std::string &name() const { return name_; }
   NetworkType type() const { return type_; }
