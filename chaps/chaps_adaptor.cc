@@ -70,8 +70,7 @@ void ChapsAdaptor::OnLogout(const string& path,
 
 void ChapsAdaptor::OnChangeAuthData(const string& path,
                                     const vector<uint8_t>& old_auth_data,
-                                    const vector<uint8_t>& new_auth_data,
-                                    ::DBus::Error& /*error*/) {
+                                    const vector<uint8_t>& new_auth_data) {
   AutoLock lock(*lock_);
   VLOG(1) << "CALL: " << __func__;
   if (login_listener_)
@@ -87,7 +86,8 @@ void ChapsAdaptor::OnChangeAuthData(const string& path,
 
 void ChapsAdaptor::OnChangeAuthData(const string& path,
                                     const vector<uint8_t>& old_auth_data,
-                                    const vector<uint8_t>& new_auth_data) {
+                                    const vector<uint8_t>& new_auth_data,
+                                    ::DBus::Error& /*error*/) {
   OnChangeAuthData(path, old_auth_data, new_auth_data);
 }
 
