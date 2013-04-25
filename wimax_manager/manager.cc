@@ -4,14 +4,21 @@
 
 #include "wimax_manager/manager.h"
 
+#include <fcntl.h>
+
+#include <base/file_util.h>
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/stl_util.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/text_format.h>
 
 #include "wimax_manager/dbus_service_dbus_proxy.h"
 #include "wimax_manager/device.h"
 #include "wimax_manager/device_dbus_adaptor.h"
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/manager_dbus_adaptor.h"
+#include "wimax_manager/proto_bindings/config.pb.h"
 
 namespace wimax_manager {
 
@@ -69,7 +76,9 @@ bool Manager::Initialize() {
 bool Manager::Finalize() {
   CancelDeviceScan();
   devices_.clear();
-  dbus_adaptor()->UpdateDevices();
+
+  if (dbus_adaptor())
+    dbus_adaptor()->UpdateDevices();
 
   if (!driver_.get())
     return true;
@@ -133,6 +142,25 @@ void Manager::Resume() {
   // Delay the device scan to avoid getting the old device.
   g_timeout_add_seconds(kDeviceScanDelayAfterResumeInSeconds,
                         OnDeviceScanNeeded, this);
+}
+
+bool Manager::LoadConfig(const base::FilePath &file_path) {
+  int fd = HANDLE_EINTR(open(file_path.MaybeAsASCII().c_str(), O_RDONLY));
+  if (fd == -1) {
+    PLOG(ERROR) << "Failed to read config file '"
+                << file_path.MaybeAsASCII() << "'";
+    return false;
+  }
+
+  file_util::ScopedFD scoped_fd(&fd);
+  google::protobuf::io::FileInputStream file_stream(fd);
+
+  scoped_ptr<Config> config(new(std::nothrow) Config());
+  if (!google::protobuf::TextFormat::Parse(&file_stream, config.get()))
+    return false;
+
+  config_ = config.Pass();
+  return true;
 }
 
 }  // namespace wimax_manager

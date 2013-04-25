@@ -1,0 +1,129 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "wimax_manager/manager.h"
+
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
+#include <gtest/gtest.h>
+
+#include "wimax_manager/proto_bindings/config.pb.h"
+
+using base::FilePath;
+using std::string;
+
+namespace wimax_manager {
+
+namespace {
+
+const char kTestConfigFileContent[] =
+  "network_operator {\n"
+  "  identifier: 1\n"
+  "}\n"
+  "network_operator {\n"
+  "  identifier: 2\n"
+  "  eap_parameters {\n"
+  "    type: EAP_TYPE_TLS\n"
+  "  }\n"
+  "}\n"
+  "network_operator {\n"
+  "  identifier: 0x00000003\n"
+  "  eap_parameters {\n"
+  "    type: EAP_TYPE_TTLS_MSCHAPV2\n"
+  "    anonymous_identity: \"test\"\n"
+  "    user_identity: \"user\"\n"
+  "    user_password: \"password\"\n"
+  "    bypass_device_certificate: true\n"
+  "    bypass_ca_certificate: true\n"
+  "  }\n"
+  "}";
+
+}  // namespace
+
+class ManagerTest : public testing::Test {
+ protected:
+  bool CreateConfigFileInDir(const string &content, const FilePath &dir,
+                             FilePath *config_file) {
+    if (!file_util::CreateTemporaryFileInDir(dir, config_file))
+      return false;
+
+    if (file_util::WriteFile(*config_file, content.data(), content.size()) !=
+        static_cast<int>(content.size())) {
+      return false;
+    }
+
+    return true;
+  }
+
+  Manager manager_;
+  base::ScopedTempDir temp_dir_;
+};
+
+TEST_F(ManagerTest, LoadEmptyConfigFile) {
+  base::FilePath config_file;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  ASSERT_TRUE(CreateConfigFileInDir("", temp_dir_.path(), &config_file));
+
+  EXPECT_TRUE(manager_.LoadConfig(config_file));
+  Config *config = manager_.config_.get();
+  EXPECT_TRUE(config != NULL);
+  EXPECT_EQ(0, config->network_operator_size());
+}
+
+TEST_F(ManagerTest, LoadInvalidConfigFile) {
+  base::FilePath config_file;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  ASSERT_TRUE(CreateConfigFileInDir("<invalid config>", temp_dir_.path(),
+                                    &config_file));
+
+  EXPECT_FALSE(manager_.LoadConfig(config_file));
+  EXPECT_TRUE(manager_.config_.get() == NULL);
+}
+
+TEST_F(ManagerTest, LoadNonExistentConfigFile) {
+  EXPECT_FALSE(manager_.LoadConfig(FilePath("/non-existent-file")));
+  EXPECT_TRUE(manager_.config_.get() == NULL);
+}
+
+TEST_F(ManagerTest, LoadValidConfigFile) {
+  base::FilePath config_file;
+  ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
+  ASSERT_TRUE(CreateConfigFileInDir(kTestConfigFileContent, temp_dir_.path(),
+                                    &config_file));
+
+  EXPECT_TRUE(manager_.LoadConfig(config_file));
+  Config *config = manager_.config_.get();
+  EXPECT_TRUE(config != NULL);
+  EXPECT_EQ(3, config->network_operator_size());
+
+  const NetworkOperator &network_operator1 = config->network_operator(0);
+  EXPECT_EQ(1, network_operator1.identifier());
+  EXPECT_EQ(EAP_TYPE_NONE, network_operator1.eap_parameters().type());
+  EXPECT_EQ("", network_operator1.eap_parameters().anonymous_identity());
+  EXPECT_EQ("", network_operator1.eap_parameters().user_identity());
+  EXPECT_EQ("", network_operator1.eap_parameters().user_password());
+  EXPECT_FALSE(network_operator1.eap_parameters().bypass_device_certificate());
+  EXPECT_FALSE(network_operator1.eap_parameters().bypass_ca_certificate());
+
+  const NetworkOperator &network_operator2 = config->network_operator(1);
+  EXPECT_EQ(2, network_operator2.identifier());
+  EXPECT_EQ(EAP_TYPE_TLS, network_operator2.eap_parameters().type());
+  EXPECT_EQ("", network_operator2.eap_parameters().anonymous_identity());
+  EXPECT_EQ("", network_operator2.eap_parameters().user_identity());
+  EXPECT_EQ("", network_operator2.eap_parameters().user_password());
+  EXPECT_FALSE(network_operator2.eap_parameters().bypass_device_certificate());
+  EXPECT_FALSE(network_operator2.eap_parameters().bypass_ca_certificate());
+
+  const NetworkOperator &network_operator3 = config->network_operator(2);
+  EXPECT_EQ(3, network_operator3.identifier());
+  EXPECT_EQ(EAP_TYPE_TTLS_MSCHAPV2, network_operator3.eap_parameters().type());
+  EXPECT_EQ("test", network_operator3.eap_parameters().anonymous_identity());
+  EXPECT_EQ("user", network_operator3.eap_parameters().user_identity());
+  EXPECT_EQ("password", network_operator3.eap_parameters().user_password());
+  EXPECT_TRUE(network_operator3.eap_parameters().bypass_device_certificate());
+  EXPECT_TRUE(network_operator3.eap_parameters().bypass_ca_certificate());
+}
+
+}  // namespace wimax_manager

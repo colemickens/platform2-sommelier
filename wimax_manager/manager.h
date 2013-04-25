@@ -10,14 +10,17 @@
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/scoped_vector.h>
+#include <gtest/gtest_prod.h>
 
 #include "wimax_manager/dbus_adaptable.h"
 #include "wimax_manager/dbus_service.h"
 
 namespace wimax_manager {
 
+class Config;
 class Device;
 class Driver;
 class ManagerDBusAdaptor;
@@ -38,6 +41,14 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
   const std::vector<Device *> &devices() const { return devices_.get(); }
 
  private:
+  FRIEND_TEST(ManagerTest, LoadEmptyConfigFile);
+  FRIEND_TEST(ManagerTest, LoadInvalidConfigFile);
+  FRIEND_TEST(ManagerTest, LoadNonExistentConfigFile);
+  FRIEND_TEST(ManagerTest, LoadValidConfigFile);
+
+  bool LoadConfig(const base::FilePath &config_file);
+
+  scoped_ptr<Config> config_;
   scoped_ptr<Driver> driver_;
   ScopedVector<Device> devices_;
 

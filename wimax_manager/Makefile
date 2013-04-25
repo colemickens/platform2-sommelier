@@ -30,7 +30,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS)
-LDLIBS += -lmetrics -lgdmwimax -lprotobuf-lite $(PC_LIBS)
+LDLIBS += -lmetrics -lgdmwimax -lprotobuf $(PC_LIBS)
 
 # TODO(benchan): Generalize and refactor DBus-C++ header generation.
 GEN_DBUSXX_ADAPTOR(wimax_manager/dbus_bindings/manager.h): \
@@ -52,6 +52,25 @@ clean: CLEAN(wimax_manager/dbus_bindings/dbus_service.h)
 GEN_DBUSXX_PROXY(wimax_manager/dbus_bindings/power_manager.h): \
 	$(SRC)/dbus_bindings/org.chromium.PowerManager.xml
 clean: CLEAN(wimax_manager/dbus_bindings/power_manager.h)
+
+LOCAL_PROTO_BINDINGS_DIR = wimax_manager/proto_bindings
+LOCAL_PROTO_BINDINGS = \
+	$(LOCAL_PROTO_BINDINGS_DIR)/config.pb.cc \
+	$(LOCAL_PROTO_BINDINGS_DIR)/eap_parameters.pb.cc \
+	$(LOCAL_PROTO_BINDINGS_DIR)/network_operator.pb.cc
+LOCAL_PROTO_PATH = $(SRC)/proto
+LOCAL_PROTO_HEADERS = $(patsubst %.cc,%.h,$(LOCAL_PROTO_BINDINGS))
+LOCAL_PROTO_OBJS = $(patsubst %.cc,%.o,$(LOCAL_PROTO_BINDINGS))
+$(LOCAL_PROTO_HEADERS): %.h: %.cc ;
+$(LOCAL_PROTO_BINDINGS): \
+	$(LOCAL_PROTO_BINDINGS_DIR)/%.pb.cc: $(LOCAL_PROTO_PATH)/%.proto
+	$(call auto_mkdir,$@)
+	$(PROTOC) --proto_path=$(LOCAL_PROTO_PATH) \
+		--cpp_out=$(LOCAL_PROTO_BINDINGS_DIR) $<
+clean: CLEAN($(LOCAL_PROTO_BINDINGS))
+clean: CLEAN($(LOCAL_PROTO_HEADERS))
+clean: CLEAN($(LOCAL_PROTO_OBJS))
+$(eval $(call add_object_rules,$(LOCAL_PROTO_OBJS),CXX,cc))
 
 SYSTEM_API_PROTO_BINDINGS = power_manager/suspend.pb.cc
 SYSTEM_API_PROTO_PATH = $(SYSROOT)/usr/include/chromeos/dbus
@@ -75,10 +94,12 @@ $(patsubst %.o,%.o.depends,$(CXX_OBJECTS)): \
 
 CXX_BINARY(wimax-manager): \
 	$(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
-	$(SYSTEM_API_PROTO_OBJS)
+	$(LOCAL_PROTO_OBJS) $(SYSTEM_API_PROTO_OBJS)
 clean: CLEAN(wimax-manager)
 
-testrunner: $(filter-out %main.o,$(CXX_OBJECTS)) $(SYSTEM_API_PROTO_OBJS)
+testrunner: \
+	$(filter-out %main.o,$(CXX_OBJECTS)) \
+	$(LOCAL_PROTO_OBJS) $(SYSTEM_API_PROTO_OBJS)
 	$(call cxx_binary, -lgtest -lgmock)
 clean: CLEAN(testrunner)
 
