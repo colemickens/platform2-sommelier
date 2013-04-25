@@ -56,6 +56,9 @@ extern const char kDarkResumeBatteryMarginsPref[];
 extern const char kSuspendAtLoginScreenPref[];
 // If true, policies sent by Chrome will be ignored.
 extern const char kIgnoreExternalPolicyPref[];
+// Number of user sessions that have been active on the current charge.
+// Used to persist the count across reboots for metrics-reporting.
+extern const char kNumSessionsOnCurrentChargePref[];
 
 // Miscellaneous constants.
 extern const char kInternalBacklightPath[];

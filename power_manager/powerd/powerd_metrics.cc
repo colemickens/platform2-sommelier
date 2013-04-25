@@ -4,12 +4,13 @@
 
 #include "power_manager/powerd/powerd.h"
 
+#include <algorithm>
 #include <cmath>
 
 #include "base/logging.h"
+#include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/metrics_constants.h"
-#include "power_manager/powerd/metrics_store.h"
 
 using base::TimeDelta;
 using base::TimeTicks;
@@ -252,68 +253,27 @@ bool Daemon::GenerateLengthOfSessionMetric(const base::TimeTicks& now,
                     kMetricLengthOfSessionBuckets);
 }
 
-bool Daemon::GenerateNumOfSessionsPerChargeMetric(MetricsStore* store) {
-  if (store == NULL) {
-    LOG(ERROR) << "Attempted to generate NumOfSessionsPerCharge metric with "
-               << "NULL MetricsStore";
-    return false;
-  }
+void Daemon::IncrementNumOfSessionsPerChargeMetric() {
+  int64 num = 0;
+  prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &num);
+  num = std::max(num, static_cast<int64>(0));
+  prefs_->SetInt64(kNumSessionsOnCurrentChargePref, num + 1);
+}
 
-  if (!store->IsInitialized()) {
-    LOG(ERROR) << "Metrics store is not initialized, so could not generate "
-               << "NumOfSessionsPerCharge metric";
-    return false;
-  }
-
-  int sample = store->GetNumOfSessionsPerChargeMetric();
-  if (sample == -1) {
-    LOG(WARNING) << "Received -1 for NumOfSessionsPerCharge from MetricsStore";
-    return false;
-  }
-
-  if (sample == 0) {
-    LOG(INFO) << "A spurious call to GenerateNumOfSessionsPerChargeMetric has "
-              << "occurred or we changed state at the login screen";
+bool Daemon::GenerateNumOfSessionsPerChargeMetric() {
+  int64 sample = 0;
+  prefs_->GetInt64(kNumSessionsOnCurrentChargePref, &sample);
+  if (sample <= 0)
     return true;
-  }
 
-  if (sample > kMetricNumOfSessionsPerChargeMax) {
-    LOG(INFO) << "Clamping NumberOfSessionsPerCharge to "
-              << kMetricNumOfSessionsPerChargeMax;
-    sample = kMetricNumOfSessionsPerChargeMax;
-  }
-
-  store->ResetNumOfSessionsPerChargeMetric();
+  sample = std::min(
+      sample, static_cast<int64>(kMetricNumOfSessionsPerChargeMax));
+  prefs_->SetInt64(kNumSessionsOnCurrentChargePref, 0);
   return SendMetric(kMetricNumOfSessionsPerChargeName,
                     sample,
                     kMetricNumOfSessionsPerChargeMin,
                     kMetricNumOfSessionsPerChargeMax,
                     kMetricNumOfSessionsPerChargeBuckets);
-}
-
-void Daemon::HandleNumOfSessionsPerChargeOnSetPlugged(
-    MetricsStore* metrics_store,
-    const PluggedState& plugged_state) {
-  CHECK(metrics_store != NULL);
-  if (plugged_state == PLUGGED_STATE_CONNECTED) {
-    LOG_IF(ERROR, !GenerateNumOfSessionsPerChargeMetric(metrics_store))
-        << "Failed to send NumOfSessionsPerCharge metrics";
-  } else if (plugged_state == PLUGGED_STATE_DISCONNECTED) {
-    int count = metrics_store->GetNumOfSessionsPerChargeMetric();
-    switch (count) {
-      case 1:
-        break;
-      case 0:
-        metrics_store->IncrementNumOfSessionsPerChargeMetric();
-        break;
-      default:
-        LOG(ERROR) << "NumOfSessionPerCharge counter was in a weird state with "
-                   << "value " << count;
-        metrics_store->ResetNumOfSessionsPerChargeMetric();
-        metrics_store->IncrementNumOfSessionsPerChargeMetric();
-        break;
-    }
-  }
 }
 
 bool Daemon::SendMetric(const std::string& name, int sample,

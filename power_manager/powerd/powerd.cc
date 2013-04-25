@@ -333,9 +333,6 @@ Daemon::~Daemon() {
 
 void Daemon::Init() {
   MetricInit();
-  LOG_IF(ERROR, (!metrics_store_.Init()))
-      << "Unable to initialize metrics store, so we are going to drop number of"
-      << " sessions per charge data";
 
   CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
@@ -394,10 +391,10 @@ void Daemon::SetPlugged(bool plugged) {
   if (plugged == plugged_state_)
     return;
 
-  HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                           plugged ?
-                                           PLUGGED_STATE_CONNECTED :
-                                           PLUGGED_STATE_DISCONNECTED);
+  if (plugged)
+    GenerateNumOfSessionsPerChargeMetric();
+  else if (session_state_ == SESSION_STARTED)
+    IncrementNumOfSessionsPerChargeMetric();
 
   // If we are moving from kPowerUknown then we don't know how long the device
   // has been on AC for and thus our metric would not tell us anything about the
@@ -1118,7 +1115,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
         << "Start Started: Unable to generate battery remaining metric!";
 
     if (plugged_state_ == PLUGGED_STATE_DISCONNECTED)
-      metrics_store_.IncrementNumOfSessionsPerChargeMetric();
+      IncrementNumOfSessionsPerChargeMetric();
 
     session_start_ = base::TimeTicks::Now();
   } else if (session_state_ != state) {

@@ -17,7 +17,6 @@ LIBPOWERD_OBJS = \
 	power_manager/power_supply_properties.pb.o \
 	powerd/file_tagger.o \
 	powerd/metrics_constants.o \
-	powerd/metrics_store.o \
 	powerd/powerd_metrics.o \
 	powerd/powerd.o \
 	video_activity_update.pb.o
@@ -54,7 +53,6 @@ TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 POWERD_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
 POWERD_UNITTEST_OBJS = \
 	powerd/file_tagger_unittest.o \
-	powerd/metrics_store_unittest.o \
 	powerd/powerd_unittest.o
 CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \

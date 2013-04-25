@@ -27,7 +27,6 @@
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/file_tagger.h"
-#include "power_manager/powerd/metrics_store.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
@@ -301,30 +300,28 @@ class Daemon : public policy::BacklightControllerObserver,
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
   bool GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-    const policy::BacklightController& backlight);
+      const policy::BacklightController& backlight);
 
   // Generates a number of tiumes the user adjusted the backlight during a
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
   bool GenerateUserBrightnessAdjustmentsPerSessionMetric(
-    const policy::BacklightController& backlight);
+      const policy::BacklightController& backlight);
 
   // Generates length of session UMA metric sample. Returns true if a
   // sample was sent to UMA, false otherwise.
   bool GenerateLengthOfSessionMetric(const base::TimeTicks& now,
                                      const base::TimeTicks& start);
 
+  // Increments the number of user sessions that have been active on the
+  // current battery charge.
+  void IncrementNumOfSessionsPerChargeMetric();
+
   // Generates number of sessions per charge UMA metric sample if the current
   // stored value is greater then 0. The stored value being 0 are spurious and
   // shouldn't be occuring, since they indicate we are on AC. Returns true if
   // a sample was sent to UMA or a 0 is silently ignored, false otherwise.
-  bool GenerateNumOfSessionsPerChargeMetric(MetricsStore* store);
-
-  // Utility method used on plugged state change to do the right thing wrt to
-  // the NumberOfSessionsPerCharge Metric.
-  void HandleNumOfSessionsPerChargeOnSetPlugged(
-      MetricsStore* metrics_store,
-      const PluggedState& plugged_state);
+  bool GenerateNumOfSessionsPerChargeMetric();
 
   // Sends a regular (exponential) histogram sample to Chrome for
   // transport to UMA. Returns true on success. See
@@ -352,7 +349,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // metrics/metrics_library.h for a description of the arguments.
   bool SendEnumMetricWithPowerState(const std::string& name, int sample,
                                     int max);
-
 
   // Send Thermal metrics to Chrome UMA
   void SendThermalMetrics(unsigned int aborted, unsigned int turned_on,
@@ -440,9 +436,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;
   struct udev* udev_;
-
-  // Persistent storage for metrics that need to exist for more then one session
-  MetricsStore metrics_store_;
 
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;

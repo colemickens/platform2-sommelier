@@ -16,7 +16,6 @@
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
-#include "power_manager/powerd/mock_metrics_store.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 
 using ::testing::_;
@@ -36,7 +35,6 @@ namespace {
 static const int64 kPowerButtonInterval = 20;
 static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
-static const int kNumOfSessionsPerCharge = 100;
 
 // policy::BacklightController implementation that returns dummy values.
 class BacklightControllerStub : public policy::BacklightController {
@@ -281,7 +279,6 @@ class DaemonTest : public Test {
                      BATTERY_INFO_MAX);
   }
 
-  StrictMock<MockMetricsStore> metrics_store_;
   PluggedState plugged_state_;
   FakePrefs prefs_;
   BacklightControllerStub backlight_ctl_;
@@ -473,75 +470,34 @@ TEST_F(DaemonTest, GenerateLengthOfSessionMetricUnderflow) {
 }
 
 TEST_F(DaemonTest, GenerateNumOfSessionsPerChargeMetric) {
-  metrics_store_.ExpectIsInitialized(true);
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(0);
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric(&metrics_store_));
-  Mock::VerifyAndClearExpectations(&metrics_store_);
-
-  metrics_store_.ExpectIsInitialized(true);
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(
-      kNumOfSessionsPerCharge);
-  metrics_store_.ExpectResetNumOfSessionsPerChargeMetric();
-  ExpectNumOfSessionsPerChargeMetric(kNumOfSessionsPerCharge);
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric(&metrics_store_));
+  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
-  Mock::VerifyAndClearExpectations(&metrics_store_);
 
-  EXPECT_FALSE(daemon_.GenerateNumOfSessionsPerChargeMetric(NULL));
-}
-
-TEST_F(DaemonTest, HandleNumOfSessionsPerChargeOnSetPlugged) {
-  metrics_store_.ExpectIsInitialized(true);
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(
-      kNumOfSessionsPerCharge);
-  metrics_store_.ExpectResetNumOfSessionsPerChargeMetric();
-  ExpectNumOfSessionsPerChargeMetric(kNumOfSessionsPerCharge);
-  daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                                   PLUGGED_STATE_CONNECTED);
+  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  ExpectNumOfSessionsPerChargeMetric(1);
+  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
-  Mock::VerifyAndClearExpectations(&metrics_store_);
 
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(0);
-  metrics_store_.ExpectIncrementNumOfSessionsPerChargeMetric();
-  daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                                   PLUGGED_STATE_DISCONNECTED);
-  Mock::VerifyAndClearExpectations(&metrics_store_);
+  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  ExpectNumOfSessionsPerChargeMetric(3);
+  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(1);
-  daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                                   PLUGGED_STATE_DISCONNECTED);
-  Mock::VerifyAndClearExpectations(&metrics_store_);
+  // Check that the pref is used, so the count will persist across reboots.
+  prefs_.SetInt64(kNumSessionsOnCurrentChargePref, 5);
+  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  ExpectNumOfSessionsPerChargeMetric(6);
+  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(
-      kNumOfSessionsPerCharge);
-  metrics_store_.ExpectResetNumOfSessionsPerChargeMetric();
-  metrics_store_.ExpectIncrementNumOfSessionsPerChargeMetric();
-  daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                                   PLUGGED_STATE_DISCONNECTED);
-  Mock::VerifyAndClearExpectations(&metrics_store_);
-
-  metrics_store_.ExpectGetNumOfSessionsPerChargeMetric(-1);
-  metrics_store_.ExpectResetNumOfSessionsPerChargeMetric();
-  metrics_store_.ExpectIncrementNumOfSessionsPerChargeMetric();
-  daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                                   PLUGGED_STATE_DISCONNECTED);
-  Mock::VerifyAndClearExpectations(&metrics_store_);
-
-  daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(&metrics_store_,
-                                                   PLUGGED_STATE_UNKNOWN);
-
-  EXPECT_DEATH(daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(
-      NULL,
-      PLUGGED_STATE_CONNECTED),
-               ".*");
-  EXPECT_DEATH(daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(
-      NULL,
-      PLUGGED_STATE_DISCONNECTED),
-               ".*");
-  EXPECT_DEATH(daemon_.HandleNumOfSessionsPerChargeOnSetPlugged(
-      NULL,
-      PLUGGED_STATE_UNKNOWN),
-               ".*");
+  // Negative values in the pref should be ignored.
+  prefs_.SetInt64(kNumSessionsOnCurrentChargePref, -2);
+  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  ExpectNumOfSessionsPerChargeMetric(1);
+  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
