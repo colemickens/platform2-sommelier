@@ -118,4 +118,4 @@ TEST_F(GdmDeviceTest, ConstructEAPParametersWithoutEAPParameters) {
   EXPECT_STREQ("", reinterpret_cast<char *>(eap_parameters.userIdPwd));
 }
 
-}  // namespace shill
+}  // namespace wimax_manager

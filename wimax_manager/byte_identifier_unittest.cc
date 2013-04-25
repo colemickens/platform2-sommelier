@@ -45,4 +45,4 @@ TEST_F(ByteIdentifierTest, CopyFrom) {
   EXPECT_EQ(0, memcmp(&identifier1.data()[0], test_data2, sizeof(test_data2)));
 }
 
-}  // namespace shill
+}  // namespace wimax_manager

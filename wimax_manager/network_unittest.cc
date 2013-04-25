@@ -76,4 +76,4 @@ TEST_F(NetworkTest, GetSignalStrength) {
   }
 }
 
-}  // namespace shill
+}  // namespace wimax_manager

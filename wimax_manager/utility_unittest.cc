@@ -77,4 +77,4 @@ TEST_F(UtilityTest, RemoveKeysFromMap) {
   EXPECT_EQ('c', test_map[3]);
 }
 
-}  // namespace shill
+}  // namespace wimax_manager
