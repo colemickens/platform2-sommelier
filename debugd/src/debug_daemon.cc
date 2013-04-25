@@ -114,8 +114,13 @@ std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
 }
 
 std::vector<uint8> DebugDaemon::GetPerfData(const uint32_t& duration,
-                                                    DBus::Error& error) {
+                                            DBus::Error& error) {
   return perf_tool_->GetPerfData(duration, error);
+}
+
+std::vector<uint8> DebugDaemon::GetRichPerfData(const uint32_t& duration,
+                                                DBus::Error& error) {
+  return perf_tool_->GetRichPerfData(duration, error);
 }
 
 void DebugDaemon::GetDebugLogs(const DBus::FileDescriptor& fd,
