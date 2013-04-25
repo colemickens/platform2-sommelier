@@ -21,11 +21,12 @@ extern "C" {
 namespace wimax_manager {
 
 class GdmDevice;
+class Manager;
 
 class GdmDriver : public Driver,
                   public base::SupportsWeakPtr<GdmDriver> {
  public:
-  GdmDriver();
+  explicit GdmDriver(Manager *manager);
   virtual ~GdmDriver();
 
   virtual bool Initialize();

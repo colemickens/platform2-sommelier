@@ -139,7 +139,9 @@ bool ConvertWideCharacterArrayToUTF8String(const wchar_t (&wide_char_array)[N],
 
 }  // namespace
 
-GdmDriver::GdmDriver() : api_handle_(NULL) {
+GdmDriver::GdmDriver(Manager *manager)
+    : Driver(manager),
+      api_handle_(NULL) {
 }
 
 GdmDriver::~GdmDriver() {
@@ -219,8 +221,8 @@ bool GdmDriver::GetDevices(vector<Device *> *devices) {
                                   device_name.c_str(),
                                   device_index);
 
-    GdmDevice *device =
-        new(std::nothrow) GdmDevice(device_index, device_name, AsWeakPtr());
+    GdmDevice *device = new(std::nothrow) GdmDevice(
+        manager(), device_index, device_name, AsWeakPtr());
     CHECK(device);
     // The WiMAX device changes its MAC address to the actual value after the
     // firmware is loaded. Opening the device seems to be enough to trigger the

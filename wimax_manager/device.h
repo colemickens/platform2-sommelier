@@ -21,10 +21,11 @@
 namespace wimax_manager {
 
 class DeviceDBusAdaptor;
+class Manager;
 
 class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
  public:
-  Device(uint8 index, const std::string &name);
+  Device(Manager *manager, uint8 index, const std::string &name);
   virtual ~Device();
 
   virtual bool Enable() = 0;
@@ -54,6 +55,8 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   virtual void UpdateNetworkScanInterval(uint32 network_scan_interval) = 0;
   virtual void UpdateStatusUpdateInterval(uint32 status_update_interval) = 0;
 
+  Manager *manager() const { return manager_; }
+
   void UpdateNetworks();
   void UpdateRFInfo();
 
@@ -66,6 +69,7 @@ class Device : public DBusAdaptable<Device, DeviceDBusAdaptor> {
   void SetStatus(DeviceStatus status);
 
  private:
+  Manager *manager_;
   uint8 index_;
   std::string name_;
   ByteIdentifier mac_address_;

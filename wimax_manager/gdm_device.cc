@@ -121,9 +121,9 @@ gboolean OnDeferredRestoreStatusUpdateInterval(gpointer data) {
 
 }  // namespace
 
-GdmDevice::GdmDevice(uint8 index, const string &name,
+GdmDevice::GdmDevice(Manager *manager, uint8 index, const string &name,
                      const base::WeakPtr<GdmDriver> &driver)
-    : Device(index, name),
+    : Device(manager, index, name),
       driver_(driver),
       open_(false),
       connection_progress_(WIMAX_API_DEVICE_CONNECTION_PROGRESS_Ranging),

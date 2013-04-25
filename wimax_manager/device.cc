@@ -43,8 +43,9 @@ string GetDeviceStatusDescription(DeviceStatus device_status) {
 
 }  // namespace
 
-Device::Device(uint8 index, const string &name)
-    : index_(index),
+Device::Device(Manager *manager, uint8 index, const string &name)
+    : manager_(manager),
+      index_(index),
       name_(name),
       mac_address_(kMACAddressLength),
       base_station_id_(kBaseStationIdLength),

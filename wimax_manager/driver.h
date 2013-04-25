@@ -12,17 +12,23 @@
 namespace wimax_manager {
 
 class Device;
+class Manager;
 
 class Driver {
  public:
-  Driver();
+  explicit Driver(Manager *manager);
   virtual ~Driver();
 
   virtual bool Initialize() = 0;
   virtual bool Finalize() = 0;
   virtual bool GetDevices(std::vector<Device *> *devices) = 0;
 
+ protected:
+  Manager *manager() const { return manager_; }
+
  private:
+  Manager *manager_;
+
   DISALLOW_COPY_AND_ASSIGN(Driver);
 };
 

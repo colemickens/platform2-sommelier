@@ -49,7 +49,7 @@ bool Manager::Initialize() {
   dbus_service_.CreateDBusProxy();
   dbus_service_.Initialize();
 
-  driver_.reset(new(std::nothrow) GdmDriver());
+  driver_.reset(new(std::nothrow) GdmDriver(this));
   if (!driver_.get()) {
     LOG(ERROR) << "Failed to create driver";
     return false;

@@ -25,7 +25,7 @@ class GdmDriver;
 
 class GdmDevice : public Device {
  public:
-  GdmDevice(uint8 index, const std::string &name,
+  GdmDevice(Manager *manager, uint8 index, const std::string &name,
             const base::WeakPtr<GdmDriver> &driver);
   virtual ~GdmDevice();
 
