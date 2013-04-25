@@ -338,13 +338,12 @@ bool Nl80211Message::GetScanFrequenciesAttribute(
     return false;
   }
 
-  // Assume IDs for the nested attribute array are linear starting from 1.
-  // Currently, that is enforced in the input to the nested attribute.
-  uint32_t freq;
-  int i = 1;
-  while (frequency_list->GetU32AttributeValue(i, &freq)) {
-    value->push_back(freq);
-    ++i;
+  AttributeIdIterator freq_iter(*frequency_list);
+  for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
+    uint32_t freq = 0;
+    if (frequency_list->GetU32AttributeValue(freq_iter.GetId(), &freq)) {
+      value->push_back(freq);
+    }
   }
   return true;
 }
@@ -364,13 +363,12 @@ bool Nl80211Message::GetScanSsidsAttribute(
     return false;
   }
 
-  // Assume IDs for the nested attribute array are linear starting from 1.
-  // Currently, that is enforced in the input to the nested attribute.
-  string ssid;
-  int i = 1;
-  while (ssid_list->GetStringAttributeValue(i, &ssid)) {
-    value->push_back(ssid);
-    ++i;
+  AttributeIdIterator ssid_iter(*ssid_list);
+  for (; !ssid_iter.AtEnd(); ssid_iter.Advance()) {
+    string ssid;
+    if (ssid_list->GetStringAttributeValue(ssid_iter.GetId(), &ssid)) {
+      value->push_back(ssid);
+    }
   }
   return true;
 }

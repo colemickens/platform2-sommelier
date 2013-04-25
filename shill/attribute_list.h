@@ -28,6 +28,8 @@ class AttributeList : public base::RefCounted<AttributeList> {
   typedef std::tr1::shared_ptr<NetlinkAttribute> AttributePointer;
   typedef base::Callback<NetlinkAttribute *(int id)> NewFromIdMethod;
 
+  AttributeList() {}
+
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // and adds it to |attributes_|.
   bool CreateAttribute(int id, NewFromIdMethod factory);
@@ -99,12 +101,36 @@ class AttributeList : public base::RefCounted<AttributeList> {
   virtual ~AttributeList() {}
 
  private:
+  typedef std::map<int, AttributePointer> AttributeMap;
+  friend class AttributeIdIterator;
   friend class NetlinkNestedAttribute;
 
   // Using this to get around issues with const and operator[].
   NetlinkAttribute *GetAttribute(int id) const;
 
-  std::map<int, AttributePointer> attributes_;
+  AttributeMap attributes_;
+
+  DISALLOW_COPY_AND_ASSIGN(AttributeList);
+};
+
+// Provides a mechanism to iterate through the ids of all of the attributes
+// in an |AttributeList|.  This class is really only useful if the caller
+// knows the type of each attribute in advance (such as with a nested array).
+class AttributeIdIterator {
+ public:
+  explicit AttributeIdIterator(const AttributeList &list)
+      : iter_(list.attributes_.begin()),
+        end_(list.attributes_.end()) {
+  }
+  void Advance() { ++iter_; }
+  bool AtEnd() const { return iter_ == end_; }
+  int GetId() const { return iter_->first; }
+
+ private:
+  AttributeList::AttributeMap::const_iterator iter_;
+  const AttributeList::AttributeMap::const_iterator end_;
+
+  DISALLOW_COPY_AND_ASSIGN(AttributeIdIterator);
 };
 
 }  // namespace shill

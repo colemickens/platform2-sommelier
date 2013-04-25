@@ -858,24 +858,11 @@ bool NetlinkNestedAttribute::ParseNestedArray(AttributeList *list,
 
   struct nlattr *attr;
   int remaining;
-  // The |nlattr::nla_type| value for array elements in the provided data may
-  // start on any number and are allowed to be discontiguous.  In order to
-  // skirt writing an iterator, this code replaces the |nla_type| with a
-  // contiguous |id|, starting at 1 (note that, while nested structure
-  // attributes may not have an |nlattr::nla_type| valued at zero, no such
-  // restriction exists for nested array attributes -- this code starts the id
-  // at one in order to be consistent with nested structures).
-  //
-  // TODO(wdg): Need an iterator for arrays (and don't renumber their IDs) since
-  // some code depends on the value of |nlattr::nla_type| for nested array
-  // attributes.
-  int id = 1;
   nla_for_each_nested_type_corrected(attr, attrs, remaining) {
     string attribute_name = StringPrintf(
-        "%s_%d", array_template.attribute_name.c_str(), id);
-    AddAttributeToNested(list, array_template.type, id, attribute_name, *attr,
-                         array_template);
-    ++id;
+        "%s_%d", array_template.attribute_name.c_str(), attr->nla_type);
+    AddAttributeToNested(list, array_template.type, attr->nla_type,
+                         attribute_name, *attr, array_template);
   }
   return true;
 }
