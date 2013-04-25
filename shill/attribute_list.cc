@@ -29,10 +29,7 @@ namespace shill {
 
 bool AttributeList::CreateAttribute(
     int id, AttributeList::NewFromIdMethod factory) {
-  if (ContainsKey(attributes_, id)) {
-    LOG(ERROR) << "Trying to re-add attribute: " << id;
-    return false;
-  }
+  LOG_IF(INFO, ContainsKey(attributes_, id)) << "Re-adding attribute: " << id;
   attributes_[id] = AttributePointer(factory.Run(id));
   return true;
 }

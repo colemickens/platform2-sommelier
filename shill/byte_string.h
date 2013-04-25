@@ -108,6 +108,8 @@ class ByteString {
   // not cause a copy).
   void RemovePrefix(size_t offset);
 
+  static bool IsLessThan(const ByteString &lhs, const ByteString &rhs);
+
  private:
   typedef std::vector<unsigned char> Vector;
 

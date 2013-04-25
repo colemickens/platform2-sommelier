@@ -618,6 +618,18 @@ const char GetScanMessage::kCommandString[] = "NL80211_CMD_GET_SCAN";
 const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
 const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
+TriggerScanMessage::TriggerScanMessage()
+  : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_SCAN_FREQUENCIES,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+  attributes()->CreateAttribute(
+      NL80211_ATTR_SCAN_SSIDS,
+      Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+}
+
 const uint8_t UnprotDeauthenticateMessage::kCommand =
     NL80211_CMD_UNPROT_DEAUTHENTICATE;
 const char UnprotDeauthenticateMessage::kCommandString[] =

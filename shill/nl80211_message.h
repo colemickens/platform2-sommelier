@@ -411,7 +411,7 @@ class TriggerScanMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  TriggerScanMessage() : Nl80211Message(kCommand, kCommandString) {}
+  TriggerScanMessage();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TriggerScanMessage);

@@ -5,30 +5,26 @@
 #ifndef SHILL_SCAN_SESSION_H_
 #define SHILL_SCAN_SESSION_H_
 
+#include <deque>
+#include <set>
 #include <vector>
 
 #include <base/basictypes.h>
+#include <base/callback.h>
+#include <base/memory/weak_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/byte_string.h"
 #include "shill/wifi_provider.h"
 
 namespace shill {
 
-// Contains the state of a progressive wifi scan (for example, a list of the
-// requested frequencies and an indication of which of those still need to be
-// scanned).  A wifi scan using ScanSession can transpire across multiple
-// requests, each one encompassing a different set of frequencies.
-//
-// Use this as follows (note, this is shown as synchronous code for clarity
-// but it really should be implemented as asynchronous code):
-//
-// ScanSession scan_session(frequencies_seen_ever, all_scan_frequencies_);
-// while (scan_session.HasMoreFrequencies()) {
-//   scan_session.InitiateScan(scan_session.GetScanFrequencies(
-//      kScanFraction, kMinScanFrequencies, kMaxScanFrequencies));
-//  // Wait for scan results.
-// }
-//
-// The sequence for a single scan is:
+class EventDispatcher;
+class NetlinkManager;
+class NetlinkMessage;
+
+// |ScanSession| sends requests to the kernel to scan WiFi frequencies for
+// access points.  The sequence for a single scan is as follows:
 //
 //   +-------------+                                                +--------+
 //   | ScanSession |                                                | Kernel |
@@ -43,35 +39,103 @@ namespace shill {
 //       |<-- NL80211_CMD_NEW_SCAN_RESULTS (reply, unicast, NLM_F_MULTI) -|
 //       |                                                                |
 //
-// ScanSession::OnNewScanBroadcast handles the broadcast
-// NL80211_CMD_NEW_SCAN_RESULTS by issuing a NL80211_CMD_GET_SCAN and
-// installing OnNewScanUnicast to handle the unicast
-// NL80211_CMD_NEW_SCAN_RESULTS.
+// Scanning WiFi frequencies for access points takes a long time (on the order
+// of 100ms per frequency and the kernel doesn't return the result until the
+// answers are ready for all the frequencies in the batch).  Given this,
+// scanning all frequencies in one batch takes a very long time.
+//
+// A ScanSession is used to distribute a scan across multiple requests (hoping
+// that a successful connection will result from an early request thereby
+// obviating the need for the remainder of the scan).  A ScanSession can be
+// used as follows (note, this is shown as synchronous code for clarity
+// but it really should be implemented as asynchronous code):
+//
+// ScanSession::FractionList scan_fractions;
+// scan_fractions.push_back(<some value>);
+// ...
+// scan_fractions.push_back(<some value>);
+// ScanSession scan_session(netlink_manager_, dispatcher(),
+//                          frequencies_seen_ever, all_scan_frequencies_,
+//                          interface_index(), scan_fractions,
+//                          kMinScanFrequencies, kMaxScanFrequencies,
+//                          on_scan_failed);
+// while (scan_session.HasMoreFrequencies()) {
+//   scan_session.InitiateScan();
+//   // Wait for scan results.  In the current WiFi code, this means wait
+//   // until |WiFi::ScanDone| is called.
+// }
 
 class ScanSession {
  public:
-  // The frequency lists provide the frequencies that are returned by
-  // |GetScanFrequencies|.  Frequencies are taken, first, from the connected
-  // list (in order of the number of connections per frequency -- high before
-  // low) and then from the unconnected list (in the order provided).
-  ScanSession(const WiFiProvider::FrequencyCountList &connected_frequency_list,
-              const std::vector<uint16_t> &unconnected_frequency_list);
+  typedef base::Closure OnScanFailed;
+  typedef std::deque<float> FractionList;
+  // Used as a fraction in |FractionList| to indicate that future scans in
+  // this session should not be limited to a subset of the frequencies we've
+  // already seen.
+  static const float kAllFrequencies;
+
+  // Sets up a new progressive scan session.  Uses |netlink_manager| to send
+  // NL80211_CMD_TRIGGER_SCAN messages to the kernel (uses |dispatcher| to
+  // reissue those commands if a send request returns EBUSY).  Multiple scans
+  // for APs on wifi device |ifindex| are issued (one for each call to
+  // |InitiateScan|) on wifi frequencies taken from the union of unique
+  // frequencies in |previous_frequencies| and |available_frequencies| (most
+  // commonly seen frequencies before less commonly seen ones followed by
+  // never-before seen frequencies, the latter in an unspecified order).
+  //
+  // Each scan takes a greater percentile (described by the values in
+  // |fractions|) of the previously seen frequencies (but no less than
+  // |min_frequencies| and no more than |max_frequencies|).  After all
+  // previously seen frequencies have been requested, each |InitiateScan|
+  // scans the next |max_frequencies| until all |available_frequencies| have
+  // been exhausted.
+  //
+  // If a scan request to the kernel returns an error, |on_scan_failed| is
+  // called.  The caller can reissue the scan by calling |ReInitiateScan| or
+  // abort the scan session by deleting the |ScanSession| object.
+  ScanSession(NetlinkManager *netlink_manager,
+              EventDispatcher *dispatcher,
+              const WiFiProvider::FrequencyCountList &previous_frequencies,
+              const std::set<uint16_t> &available_frequencies,
+              uint32_t ifindex,
+              const FractionList &fractions,
+              int min_frequencies,
+              int max_frequencies,
+              OnScanFailed on_scan_failed);
 
   virtual ~ScanSession();
 
   // Returns true if |ScanSession| contains unscanned frequencies.
   bool HasMoreFrequencies() const;
 
-  // Scanning WiFi frequencies for access points takes a long time (on the
-  // order of 100ms per frequency and the kernel doesn't return the result until
-  // the answers are ready for all the frequencies in the batch).  Given this,
-  // scanning all frequencies in one batch takes a very long time.
-  // |GetScanFrequencies| is intended to be called multiple times in order to
-  // get a number of small batches of frequencies to scan.  Frequencies most
-  // likely to yield a successful connection (based on previous connections)
-  // are returned first followed by less-likely frequencies followed, finally,
-  // by frequencies to which this machine hasn't connected before.
-  //
+  // Adds an SSID to the list of things for which to scan.  Useful for hidden
+  // SSIDs.
+  void AddSsid(const ByteString &ssid);
+
+  // Start a wifi scan of the next set of frequencies (derived from the
+  // constructor's parameters) after saving those frequencies for the potential
+  // need to reinitiate a scan.
+  virtual void InitiateScan();
+
+  // Re-issues the previous scan (i.e., it uses the same frequency list as the
+  // previous scan).  Other classes may use this when |on_scan_failed| is
+  // called.  Called by |OnTriggerScanResponse| when the previous attempt to do
+  // a scan fails.
+  void ReInitiateScan();
+
+ private:
+  friend class ScanSessionTest;
+  // Milliseconds to wait before retrying a failed scan.
+  static const uint64_t kScanRetryDelayMilliseconds;
+  // Number of times to retry a failed scan before giving up and calling
+  // |on_scan_failed_|.
+  static const size_t kScanRetryCount;
+
+  // Assists with sorting the |previous_frequencies| passed to the
+  // constructor.
+  static bool CompareFrequencyCount(const WiFiProvider::FrequencyCount &first,
+                                    const WiFiProvider::FrequencyCount &second);
+
   // |GetScanFrequencies| gets the next set of WiFi scan frequencies.  Returns
   // at least |min_frequencies| (unless fewer frequencies remain from previous
   // calls) and no more than |max_frequencies|.  Inside these constraints,
@@ -97,13 +161,20 @@ class ScanSession {
                                                    size_t min_frequencies,
                                                    size_t max_frequencies);
 
- private:
-  friend class ScanSessionTest;
+  // Does the real work of initiating a scan by sending an
+  // NL80211_CMD_TRIGGER_SCAN message to the kernel and installing a handler for
+  // any response (which only happens in the error case).
+  void DoScan(const std::vector<uint16_t> &scan_frequencies);
 
-  // Assists with sorting the |connected_frequency_list| passed to the
-  // constructor.
-  static bool CompareFrequencyCount(const WiFiProvider::FrequencyCount &first,
-                                    const WiFiProvider::FrequencyCount &second);
+  // Handles any unicast response to NL80211_CMD_TRIGGER_SCAN (which is,
+  // likely, an error -- when things work, we get an
+  // NL80211_CMD_NEW_SCAN_RESULTS broadcast message).
+  void OnTriggerScanResponse(const NetlinkMessage &message);
+
+  base::WeakPtrFactory<ScanSession> weak_ptr_factory_;
+
+  NetlinkManager *netlink_manager_;
+  EventDispatcher *dispatcher_;
 
   // List of frequencies, sorted by the number of successful connections for
   // each frequency.
@@ -111,6 +182,14 @@ class ScanSession {
   size_t total_connections_;
   size_t total_connects_provided_;
   float total_fraction_wanted_;
+  std::vector<uint16_t> current_scan_frequencies_;
+  uint32_t wifi_interface_index_;
+  std::set<ByteString, bool(*)(const ByteString &, const ByteString &)> ssids_;
+  FractionList fractions_;
+  size_t min_frequencies_;
+  size_t max_frequencies_;
+  OnScanFailed on_scan_failed_;
+  size_t scan_tries_left_;
 
   DISALLOW_COPY_AND_ASSIGN(ScanSession);
 };

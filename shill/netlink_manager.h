@@ -59,8 +59,6 @@
 #ifndef SHILL_NETLINK_MANAGER_H_
 #define SHILL_NETLINK_MANAGER_H_
 
-#include <gtest/gtest_prod.h>  // for FRIEND_TEST
-
 #include <list>
 #include <map>
 #include <set>
@@ -69,7 +67,10 @@
 #include <base/basictypes.h>
 #include <base/bind.h>
 #include <base/lazy_instance.h>
+#include <base/memory/scoped_ptr.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/io_handler.h"
 #include "shill/netlink_message.h"
 
 struct nlmsghdr;
@@ -79,7 +80,6 @@ namespace shill {
 class Error;
 class EventDispatcher;
 struct InputData;
-class IOHandler;
 class NetlinkSocket;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,

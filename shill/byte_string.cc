@@ -5,10 +5,14 @@
 #include "shill/byte_string.h"
 
 #include <netinet/in.h>
+#include <string.h>
+
+#include <algorithm>
 
 #include <base/string_number_conversions.h>
 
 using std::distance;
+using std::min;
 using std::string;
 using std::vector;
 
@@ -191,6 +195,16 @@ void ByteString::RemovePrefix(size_t offset) {
   } else {
     begin_ += offset;
   }
+}
+
+// static
+bool ByteString::IsLessThan(const ByteString &lhs, const ByteString &rhs) {
+  size_t byte_count = min(lhs.GetLength(), rhs.GetLength());
+  int result = memcmp(lhs.GetConstData(), rhs.GetConstData(), byte_count);
+  if (result == 0) {
+    return byte_count == lhs.GetLength();
+  }
+  return result < 0;
 }
 
 }  // namespace shill
