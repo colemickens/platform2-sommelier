@@ -185,6 +185,7 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(kACType, power_status.line_power_type);
   EXPECT_FALSE(power_status.battery_is_present);
 }
 
@@ -195,6 +196,7 @@ TEST_F(PowerSupplyTest, TestCharging) {
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(kACType, power_status.line_power_type);
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING,
             power_status.battery_state);
@@ -204,14 +206,16 @@ TEST_F(PowerSupplyTest, TestCharging) {
   EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
 }
 
+const char kACArbType[] = "ArbitraryName";
 // Tests that the line power source doesn't need to be named "Mains".
 TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
   WriteDefaultValues(true, true);
-  WriteValue("ac/type", "ArbitraryName");
+  WriteValue("ac/type", kACArbType);
   power_supply_->Init();
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(kACArbType, power_status.line_power_type);
   EXPECT_TRUE(power_status.battery_is_present);
 }
 

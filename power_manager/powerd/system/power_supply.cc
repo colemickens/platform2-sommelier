@@ -317,6 +317,7 @@ bool PowerSupply::UpdatePowerStatus() {
     LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
 #endif
     status.line_power_on = true;
+    status.line_power_type = "Mains";
     status.battery_is_present = false;
     power_status_ = status;
     return true;
@@ -327,6 +328,7 @@ bool PowerSupply::UpdatePowerStatus() {
     ReadInt64(line_power_path_, "online", &value);
     // Return the line power status.
     status.line_power_on = static_cast<bool>(value);
+    ReadAndTrimString(line_power_path_, "type", &status.line_power_type);
     line_power_status_found = true;
   }
 

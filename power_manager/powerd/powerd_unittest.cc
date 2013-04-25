@@ -108,7 +108,7 @@ class DaemonTest : public Test {
     // Tests initialization done by the daemon's constructor.
     EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
 
-    ResetPowerStatus(status_);
+    *status_ = system::PowerStatus();
   }
 
  protected:
@@ -209,11 +209,6 @@ class DaemonTest : public Test {
     ExpectEnumMetricWithPowerState(kMetricBatteryRemainingAtStartOfSessionName,
                                    sample,
                                    kMetricBatteryRemainingAtStartOfSessionMax);
-  }
-
-  // Resets all fields of |status| to 0.
-  void ResetPowerStatus(system::PowerStatus* status) {
-    memset(status, 0, sizeof(system::PowerStatus));
   }
 
   // Adds a metrics library mock expectation for the number of ALS adjustments

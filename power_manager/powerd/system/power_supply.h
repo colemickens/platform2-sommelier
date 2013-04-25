@@ -51,6 +51,7 @@ struct PowerStatus {
         battery_times_are_bad(false) {}
 
   bool line_power_on;
+  std::string line_power_type;
 
   // Amount of energy, measured in Wh, in the battery.
   double battery_energy;

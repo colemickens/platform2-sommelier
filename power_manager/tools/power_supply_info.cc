@@ -124,6 +124,7 @@ int main(int argc, char** argv) {
   display.PrintValue("path", power_info.line_power_path);
   display.PrintStringValue("online",
                            BoolToString(power_status.line_power_on));
+  display.PrintStringValue("type", power_status.line_power_type);
   if (power_status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");
