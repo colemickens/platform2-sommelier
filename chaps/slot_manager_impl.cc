@@ -433,18 +433,24 @@ bool SlotManagerImpl::GetSession(const SecureBlob& isolate_credential,
   return true;
 }
 
-bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential) {
+bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential,
+                                  bool* new_isolate_created) {
   VLOG(1) << "SlotManagerImpl::OpenIsolate enter";
-  bool isolate_valid =
-    isolate_map_.find(*isolate_credential) != isolate_map_.end();
-  if (isolate_valid) {
+
+  CHECK(new_isolate_created);
+  if (isolate_map_.find(*isolate_credential) != isolate_map_.end()) {
     VLOG(1) << "Incrementing open count for existing isolate.";
     Isolate& isolate = isolate_map_[*isolate_credential];
     ++isolate.open_count;
+    *new_isolate_created = false;
   } else {
     VLOG(1) << "Creating new isolate.";
     std::string credential_string;
-    tpm_utility_->GenerateRandom(kIsolateCredentialBytes, &credential_string);
+    if (!tpm_utility_->GenerateRandom(kIsolateCredentialBytes,
+                                      &credential_string)) {
+      LOG(ERROR) << "Error generating random bytes for isolate credential";
+      return false;
+    }
     SecureBlob new_isolate_credential(credential_string);
     ClearString(credential_string);
 
@@ -453,13 +459,15 @@ bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential) {
       // number generator is working properly. If there is a problem with the
       // random number generator we want to get out.
       LOG(FATAL) << "Collision when trying to create new isolate credential.";
+      return false;
     }
 
     AddIsolate(new_isolate_credential);
     isolate_credential->swap(new_isolate_credential);
+    *new_isolate_created = true;
   }
   VLOG(1) << "SlotManagerImpl::OpenIsolate success";
-  return isolate_valid;
+  return true;
 }
 
 void SlotManagerImpl::CloseIsolate(const SecureBlob& isolate_credential) {

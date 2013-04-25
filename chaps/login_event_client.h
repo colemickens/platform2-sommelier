@@ -31,21 +31,23 @@ class EXPORT_SPEC LoginEventClient {
 
   // Open an isolate into which tokens can be loaded. To attempt to open an
   // existing isolate, pass its isolate credential, otherwise pass be empty
-  // SecureBlob to create a new isolate.  Returns true if the given isolate
-  // credential is valid and available, returns false if a new isolate was
-  // created, and isolate_credential will be set to the new isolate's
-  // credential.
+  // SecureBlob to create a new isolate.  Returns true if successful.
   //
   //  isolate_credential - The users isolate into which to login, or a empty if
   //                 logging in to a new isolate. On return contains the isolate
   //                 credential for the isolate the user is logged in on.
-  bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
+  //  new_isolate_created - Returns true if a new isolate was created (in which
+  //                        case isolate_credential will be set to the new
+  //                        isolate's credential), or false if the call
+  //                        succeeded in opening the existing isolate.
+  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
+                           bool* new_isolate_created);
 
   // Close a given isolate. If all outstanding OpenIsolate calls have been
   // closed, then all tokens will be unloaded from the isolate and the isolate
   // will be destroyed.
   //  isolate_credential - The isolate into which they are logging out from.
-  void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
+  virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
 
   // Sends a load token event. The Chaps daemon will insert a token into the
   // given user's isolate.  Returns true on success.
@@ -53,29 +55,26 @@ class EXPORT_SPEC LoginEventClient {
   //  path - The path to the user's token directory.
   //  auth_data - Authorization data to unlock the token.
   //  slot_id - On success, will be set to the loaded token's slot ID.
-  bool LoadToken(const chromeos::SecureBlob& isolate_credential,
-                 const std::string& path,
-                 const uint8_t* auth_data,
-                 size_t auth_data_length,
-                 int* slot_id);
+  virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
+                         const std::string& path,
+                         const chromeos::SecureBlob& auth_data,
+                         int* slot_id);
 
   // Sends an unload event. The Chaps daemon will remove the token from the
   // given users isolate.
   //  isolate_credential - The isolate into which the token should be unloaded.
   //  path - The path to the user's token directory.
-  void UnloadToken(const chromeos::SecureBlob& isolate_credential,
-                   const std::string& path);
+  virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
+                           const std::string& path);
 
   // Notifies Chaps that a token's authorization data has been changed. The
   // Chaps daemon will re-protect the token with the new data.
   //  path - The path to the user's token directory.
   //  old_auth_data - Authorization data to unlock the token as it is.
   //  new_auth_data - The new authorization data.
-  void ChangeTokenAuthData(const std::string& path,
-                           const uint8_t* old_auth_data,
-                           size_t old_auth_data_length,
-                           const uint8_t* new_auth_data,
-                           size_t new_auth_data_length);
+  virtual void ChangeTokenAuthData(const std::string& path,
+                                   const chromeos::SecureBlob& old_auth_data,
+                                   const chromeos::SecureBlob& new_auth_data);
  private:
   ChapsProxyImpl* proxy_;
   bool is_connected_;

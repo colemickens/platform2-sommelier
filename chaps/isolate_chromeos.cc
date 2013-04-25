@@ -7,6 +7,7 @@
 #include "chaps/isolate.h"
 
 #include <string>
+
 #include <chromeos/secure_blob.h>
 
 using std::string;
@@ -26,10 +27,18 @@ bool IsolateCredentialManager::GetCurrentUserIsolateCredential(
 }
 
 bool IsolateCredentialManager::GetUserIsolateCredential(
-    const string& user, SecureBlob* isolate_credential) {
+    const string& user,
+    SecureBlob* isolate_credential) {
   // On Chrome OS always use the default isolate credential.
   *isolate_credential = GetDefaultIsolateCredential();
   return true;
+}
+
+bool IsolateCredentialManager::SaveIsolateCredential(
+    const string& user,
+    const SecureBlob& isolate_credential) {
+  // On Chrome OS we don't save isolate credentials.
+  return false;
 }
 
 } // namespace chaps

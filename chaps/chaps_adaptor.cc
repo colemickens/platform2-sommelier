@@ -42,6 +42,7 @@ ChapsAdaptor::~ChapsAdaptor() {}
 void ChapsAdaptor::OpenIsolate(
       const std::vector<uint8_t>& isolate_credential_in,
       std::vector<uint8_t>& isolate_credential_out,
+      bool& new_isolate_created,
       bool& result) {
   VLOG(1) << "CALL: " << __func__;
   result = false;
@@ -49,16 +50,19 @@ void ChapsAdaptor::OpenIsolate(
                                 isolate_credential_in.size());
   ClearVector(isolate_credential_in);
   if (login_listener_)
-    result = login_listener_->OpenIsolate(&isolate_credential);
+    result = login_listener_->OpenIsolate(&isolate_credential,
+                                          &new_isolate_created);
   isolate_credential_out.swap(isolate_credential);
 }
 
 void ChapsAdaptor::OpenIsolate(
       const std::vector<uint8_t>& isolate_credential_in,
       std::vector<uint8_t>& isolate_credential_out,
+      bool& new_isolate_created,
       bool& result,
       ::DBus::Error& /*error*/) {
-  OpenIsolate(isolate_credential_in, isolate_credential_out, result);
+  OpenIsolate(isolate_credential_in, isolate_credential_out,
+              new_isolate_created, result);
 }
 
 void ChapsAdaptor::CloseIsolate(const vector<uint8_t>& isolate_credential) {

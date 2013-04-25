@@ -8,6 +8,7 @@
 # system.
 
 # Pull in chromium os defaults
+PWD ?= $(CURDIR)
 OUT ?= $(PWD)/build-opt-local
 
 include common.mk
@@ -21,6 +22,11 @@ endif
 PKG_CONFIG ?= pkg-config
 DBUSXX_XML2CPP = dbusxx-xml2cpp
 PROTOC = protoc
+INSTALL ?= install
+INSTALL_DATA = $(INSTALL) -m 0644
+BUILD_PAM_MODULE ?= $(LINUX_BUILD)
+LIB_DIR ?= /usr/lib
+PAM_MODULE_DIR ?= /lib/security
 
 BASE_VER ?= 180609
 PC_DEPS = dbus-c++-1 protobuf openssl \
@@ -123,12 +129,54 @@ CXX_BINARY(p11_replay): $(p11_replay_OBJS) CXX_LIBRARY(libchaps.so)
 clean: CLEAN(p11_replay)
 all: CXX_BINARY(p11_replay)
 
+ifeq ($(BUILD_PAM_MODULE), 1)
+# Chaps PAM Module
+pamchaps_OBJS = $(COMMON_OBJS) chaps_pam_module.o chaps.o chaps_proxy.o \
+                login_event_client.o isolate_login_client.o pam_helper.o \
+                token_file_manager_$(PLATFORM).o isolate_$(PLATFORM).o \
+                platform_globals_$(PLATFORM).o
+CXX_LIBRARY(pam_chaps.so): $(pamchaps_OBJS)
+clean: CLEAN(pam_chaps.so)
+all: CXX_LIBRARY(pam_chaps.so)
+endif
+
+ifeq ($(LINUX_BUILD), 1)
+# Install chaps files into their locations on Linux.
+install_files: all
+	$(INSTALL) -D $(OUT)/chapsd $(DESTDIR)/usr/sbin/chapsd
+	$(INSTALL) -D $(OUT)/chaps_client $(DESTDIR)/usr/bin/chaps_client
+	$(INSTALL) -D $(OUT)/libchaps.so $(DESTDIR)$(LIB_DIR)/libchaps.so
+	$(INSTALL_DATA) -D $(SRC)/org.chromium.Chaps.service \
+	  $(DESTDIR)/usr/share/dbus-1/system-services/org.chromium.Chaps.service
+	$(INSTALL_DATA) -D $(SRC)/org.chromium.Chaps.conf \
+	  $(DESTDIR)/etc/dbus-1/system.d/org.chromium.Chaps.conf
+ifeq ($(BUILD_PAM_MODULE), 1)
+	$(INSTALL) -D $(OUT)/pam_chaps.so \
+          $(DESTDIR)$(PAM_MODULE_DIR)/pam_chaps.so
+	$(INSTALL_DATA) -D $(SRC)/pam_chaps.cfg \
+	  $(DESTDIR)/usr/share/pam-configs/chaps
+endif
+
+# Perform all post-install operations for Chaps on Linux.
+install_ops: install_files
+	$(INSTALL) -m 700 -d $(DESTDIR)/var/lib/chaps/tokens/
+	$(INSTALL) -m 755 -d $(DESTDIR)/var/lib/chaps/isolates/
+ifeq ($(BUILD_PAM_MODULE), 1)
+ifeq ($(DESTDIR),)
+	pam-auth-update --package
+endif
+endif
+
+install: install_files install_ops
+endif
+
 # Common Test Dependencies
 MOCK_OBJS = chaps_factory_mock.o \
             object_mock.o \
             object_policy_mock.o \
             object_pool_mock.o \
             object_store_mock.o \
+            pam_helper_mock.o \
             session_mock.o \
             slot_manager_mock.o \
             tpm_utility_mock.o \
@@ -235,6 +283,39 @@ $(OUT)/opencryptoki_sample_token.tgz:
 	cp $(SRC)/opencryptoki_sample_token.tgz $@
 clean: CLEAN(opencryptoki_sample_token.tgz)
 tests: TEST(CXX_BINARY(opencryptoki_importer_test))
+
+isolate_login_client_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                                 isolate_$(PLATFORM).o \
+                                 token_file_manager_$(PLATFORM).o \
+                                 login_event_client.o \
+                                 chaps_proxy.o \
+                                 isolate_login_client.o \
+                                 isolate_login_client_test.o
+isolate_login_client_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(isolate_login_client_test): $(isolate_login_client_test_OBJS)
+CXX_BINARY(isolate_login_client_test): LDLIBS += \
+                                       $(isolate_login_client_test_LIBS)
+clean: CLEAN(isolate_login_client_test)
+tests: TEST(CXX_BINARY(isolate_login_client_test))
+
+ifeq ($(BUILD_PAM_MODULE), 1)
+chaps_pam_module_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
+                             isolate_$(PLATFORM).o \
+                             token_file_manager_$(PLATFORM).o \
+                             platform_globals_$(PLATFORM).o \
+                             login_event_client.o \
+                             isolate_login_client.o \
+                             chaps_proxy.o \
+                             pam_helper.o \
+                             chaps_pam_module_test.o \
+                             chaps_pam_module.o
+chaps_pam_module_test_LIBS = $(GMOCK_LIBS)
+CXX_BINARY(chaps_pam_module_test): $(chaps_pam_module_test_OBJS)
+CXX_BINARY(chaps_pam_module_test): LDLIBS += \
+                                   $(chaps_pam_module_test_LIBS)
+clean: CLEAN(chaps_pam_module_test)
+tests: TEST(CXX_BINARY(chaps_pam_module_test))
+endif
 
 import_random: override GTEST_ARGS := \
     --gtest_repeat=100 \

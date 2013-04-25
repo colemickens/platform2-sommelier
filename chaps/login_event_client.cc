@@ -26,14 +26,15 @@ LoginEventClient::~LoginEventClient() {
   delete proxy_;
 }
 
-bool LoginEventClient::OpenIsolate(SecureBlob* isolate_credential) {
+bool LoginEventClient::OpenIsolate(SecureBlob* isolate_credential,
+                                   bool* new_isolate_created) {
   CHECK(proxy_);
   if (!Connect()) {
     LOG(WARNING) << "Failed to connect to the Chaps daemon. "
                  << "Login notification will not be sent.";
     return false;
   }
-  return proxy_->OpenIsolate(isolate_credential);
+  return proxy_->OpenIsolate(isolate_credential, new_isolate_created);
 }
 
 void LoginEventClient::CloseIsolate(const SecureBlob& isolate_credential) {
@@ -48,8 +49,7 @@ void LoginEventClient::CloseIsolate(const SecureBlob& isolate_credential) {
 
 bool LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
                                  const string& path,
-                                 const uint8_t* auth_data,
-                                 size_t auth_data_length,
+                                 const SecureBlob& auth_data,
                                  int* slot_id) {
   CHECK(proxy_);
   if (!Connect()) {
@@ -57,8 +57,7 @@ bool LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
                  << "Load Token notification will not be sent.";
     return false;
   }
-  SecureBlob auth_data_blob(auth_data, auth_data_length);
-  return proxy_->LoadToken(isolate_credential, path, auth_data_blob, slot_id);
+  return proxy_->LoadToken(isolate_credential, path, auth_data, slot_id);
 }
 
 void LoginEventClient::UnloadToken(const SecureBlob& isolate_credential,
@@ -73,19 +72,15 @@ void LoginEventClient::UnloadToken(const SecureBlob& isolate_credential,
 }
 
 void LoginEventClient::ChangeTokenAuthData(const string& path,
-                                           const uint8_t* old_auth_data,
-                                           size_t old_auth_data_length,
-                                           const uint8_t* new_auth_data,
-                                           size_t new_auth_data_length) {
+                                           const SecureBlob&  old_auth_data,
+                                           const SecureBlob& new_auth_data) {
   CHECK(proxy_);
   if (!Connect()) {
     LOG(WARNING) << "Failed to connect to the Chaps daemon. "
                  << "Change authorization data notification will not be sent.";
     return;
   }
-  SecureBlob old_auth_data_blob(old_auth_data, old_auth_data_length);
-  SecureBlob new_auth_data_blob(new_auth_data, new_auth_data_length);
-  proxy_->ChangeTokenAuthData(path, old_auth_data_blob, new_auth_data_blob);
+  proxy_->ChangeTokenAuthData(path, old_auth_data, new_auth_data);
 }
 
 bool LoginEventClient::Connect() {

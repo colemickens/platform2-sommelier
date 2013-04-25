@@ -47,7 +47,8 @@ bool ChapsProxyImpl::Init() {
   return false;
 }
 
-bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential) {
+bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
+                                 bool* new_isolate_created) {
   AutoLock lock(lock_);
   bool result = false;
   if (!proxy_.get()) {
@@ -58,7 +59,8 @@ bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential) {
     SecureBlob isolate_credential_in;
     SecureBlob isolate_credential_out;
     isolate_credential_in.swap(*isolate_credential);
-    proxy_->OpenIsolate(isolate_credential_in, isolate_credential_out, result);
+    proxy_->OpenIsolate(isolate_credential_in, isolate_credential_out,
+                        *new_isolate_created, result);
     isolate_credential->swap(isolate_credential_out);
   } catch (DBus::Error err) {
     LOG(ERROR) << "DBus::Error - " << err.what();

@@ -47,7 +47,8 @@ bool IsolateCredentialManager::GetCurrentUserIsolateCredential(
 }
 
 bool IsolateCredentialManager::GetUserIsolateCredential(
-    const string& user, SecureBlob* isolate_credential) {
+    const string& user,
+    SecureBlob* isolate_credential) {
   CHECK(isolate_credential);
 
   string credential_string;
@@ -60,11 +61,49 @@ bool IsolateCredentialManager::GetUserIsolateCredential(
   }
   SecureBlob new_isolate_credential(credential_string);
   if (new_isolate_credential.size() != kIsolateCredentialBytes) {
+    LOG(ERROR) << "Isolate credential invalid for user " << user;
     return false;
   }
 
   *isolate_credential = new_isolate_credential;
   return true;
 }
+
+bool IsolateCredentialManager::SaveIsolateCredential(
+    const string& user,
+    const SecureBlob& isolate_credential) {
+  CHECK(isolate_credential.size() == kIsolateCredentialBytes);
+
+  // Look up user information.
+  struct passwd* pwd = getpwnam (user.c_str());
+  if (!pwd) {
+    LOG(ERROR) << "Failed to get user information.";
+    return false;
+  }
+
+  // Write the isolate credential file.
+  FilePath isolate_cred_file = FilePath(kIsolateFilePath).Append(user);
+  int bytes_written = file_util::WriteFile(
+      isolate_cred_file,
+      reinterpret_cast<const char *>(isolate_credential.const_data()),
+      kIsolateCredentialBytes);
+  if (bytes_written != static_cast<int>(kIsolateCredentialBytes)) {
+    LOG(ERROR) << "Failed to create isolate file for user " << user;
+    return false;
+  }
+
+  // Change permissions to be readable by (and only by) the user.
+  if (chmod(isolate_cred_file.value().c_str(), S_IRUSR)) {
+    LOG(ERROR) << "Failed to change permissions of isolate file.";
+    return false;
+  }
+  if (chown(isolate_cred_file.value().c_str(), pwd->pw_uid, pwd->pw_gid)) {
+    LOG(ERROR) << "Failed to change ownership of isolate file.";
+    return false;
+  }
+
+  return true;
+}
+
 
 } // namespace chaps

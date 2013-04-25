@@ -349,7 +349,9 @@ TEST_F(TestSlotManager, TestDefaultIsolate) {
   // Check default isolate is there by default.
   SecureBlob defaultIsolate =
       IsolateCredentialManager::GetDefaultIsolateCredential();
-  EXPECT_TRUE(slot_manager_->OpenIsolate(&defaultIsolate));
+  bool new_isolate = true;
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&defaultIsolate, &new_isolate));
+  EXPECT_FALSE(new_isolate);
   EXPECT_EQ(IsolateCredentialManager::GetDefaultIsolateCredential(),
             defaultIsolate);
 }
@@ -360,11 +362,14 @@ TEST_F(TestSlotManager, TestOpenIsolate) {
 
   // Check that trying to open an invalid isolate creates new isolate.
   SecureBlob isolate("invalid");
-  EXPECT_FALSE(slot_manager_->OpenIsolate(&isolate));
+  bool new_isolate_created = false;
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
   EXPECT_EQ(SecureBlob(string("567890")), isolate);
 
   // Check opening an existing isolate.
-  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate));
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_FALSE(new_isolate_created);
   EXPECT_EQ(SecureBlob(string("567890")), isolate);
 }
 
@@ -374,20 +379,26 @@ TEST_F(TestSlotManager, TestCloseIsolate) {
       .WillOnce(DoAll(SetArgumentPointee<1>(string("ghijkl")), Return(true)));
 
   SecureBlob isolate;
-  EXPECT_FALSE(slot_manager_->OpenIsolate(&isolate));
+  bool new_isolate_created;
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
   EXPECT_EQ(SecureBlob(string("abcdef")), isolate);
-  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate));
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_FALSE(new_isolate_created);
   EXPECT_EQ(SecureBlob(string("abcdef")), isolate);
   slot_manager_->CloseIsolate(isolate);
   slot_manager_->CloseIsolate(isolate);
   // Final logout, isolate should now be destroyed.
-  EXPECT_FALSE(slot_manager_->OpenIsolate(&isolate));
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
   EXPECT_EQ(SecureBlob(string("ghijkl")), isolate);
 }
 
 TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
   SecureBlob isolate;
-  EXPECT_FALSE(slot_manager_->OpenIsolate(&isolate));
+  bool new_isolate_created;
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&isolate, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(isolate, 0));
   int slot_id;
   EXPECT_TRUE(slot_manager_->LoadToken(isolate,
@@ -413,15 +424,18 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
       .WillOnce(DoAll(SetArgumentPointee<1>(string("123456")), Return(true)))
       .WillOnce(DoAll(SetArgumentPointee<1>(string("567890")), Return(true)));
 
-  EXPECT_FALSE(slot_manager_->OpenIsolate(&new_isolate_0));
+  bool new_isolate_created;
   int slot_id;
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&new_isolate_0, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
   EXPECT_TRUE(slot_manager_->LoadToken(new_isolate_0,
                                        FilePath("new_isolate"),
                                        MakeBlob(kAuthData),
                                        &slot_id));
   EXPECT_EQ(1, slot_manager_->GetSlotCount());
 
-  EXPECT_FALSE(slot_manager_->OpenIsolate(&new_isolate_1));
+  EXPECT_TRUE(slot_manager_->OpenIsolate(&new_isolate_1, &new_isolate_created));
+  EXPECT_TRUE(new_isolate_created);
   EXPECT_TRUE(slot_manager_->LoadToken(new_isolate_1,
                                        FilePath("another_new_isolate"),
                                        MakeBlob(kAuthData),

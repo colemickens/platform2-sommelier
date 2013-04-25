@@ -25,7 +25,8 @@ namespace chaps {
 class LoginEventListener {
  public:
 
-  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential) = 0;
+  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
+                           bool* new_isolate_created) = 0;
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential) = 0;
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const FilePath& path,

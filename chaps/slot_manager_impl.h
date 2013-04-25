@@ -70,7 +70,8 @@ class SlotManagerImpl : public SlotManager,
                           int session_id, Session** session) const;
 
   // LoginEventListener methods.
-  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
+  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
+                           bool* new_isolate_created);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const FilePath& path,

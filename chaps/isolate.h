@@ -38,6 +38,12 @@ class IsolateCredentialManager {
       const std::string& user,
       chromeos::SecureBlob* isolate_credential);
 
+  // Save the isolate credential such that it can be retrieved with
+  // GetUserIsolateCredential. Return true on success and false on failure.
+  virtual bool SaveIsolateCredential(
+      const std::string& user,
+      const chromeos::SecureBlob& isolate_credential);
+
  private:
   DISALLOW_COPY_AND_ASSIGN(IsolateCredentialManager);
 };

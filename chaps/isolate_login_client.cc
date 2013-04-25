@@ -1,0 +1,115 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+// A client which deals with logging a user onto a particular isolate in
+// Chaps.
+
+#include "chaps/isolate_login_client.h"
+
+#include <string>
+
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <chromeos/secure_blob.h>
+
+#include "chaps/chaps_utility.h"
+#include "chaps/isolate.h"
+#include "chaps/login_event_client.h"
+#include "chaps/token_file_manager.h"
+
+using std::string;
+using chromeos::SecureBlob;
+
+namespace chaps {
+
+IsolateLoginClient::IsolateLoginClient(
+    IsolateCredentialManager* isolate_manager,
+    TokenFileManager* token_manager,
+    LoginEventClient* login_client)
+    : isolate_manager_(isolate_manager),
+      token_manager_(token_manager),
+      login_client_(login_client) { }
+
+IsolateLoginClient::~IsolateLoginClient() { }
+
+bool IsolateLoginClient::LoginUser(const string& user,
+                                   const SecureBlob& auth_data) {
+  LOG(INFO) << "Login user " << user;
+  SecureBlob isolate_credential;
+
+  // Log into the user's isolate.
+  isolate_manager_->GetUserIsolateCredential(user, &isolate_credential);
+  bool new_isolate_created;
+  if (!login_client_->OpenIsolate(&isolate_credential, &new_isolate_created)) {
+    LOG(ERROR) << "Failed to open isolate for user " << user;
+    return false;
+  }
+
+  if (new_isolate_created) {
+    LOG(INFO) << "Created new isolate for user " << user;
+    // A new isolate was created, save the isolate credential passed back.
+    if (!isolate_manager_->SaveIsolateCredential(user, isolate_credential)) {
+      LOG(ERROR) << "Failed to write new isolate credential for users "
+                 << user;
+      return false;
+    }
+  }
+
+  // Load their token into the isolate.
+  FilePath token_path;
+  if (!(token_manager_->GetUserTokenPath(user, &token_path) ||
+        token_manager_->CreateUserTokenDirectory(token_path))) {
+    LOG(ERROR) << "Failed to find or locate token " << token_path.value();
+    return false;
+  }
+  if (!token_manager_->CheckUserTokenPermissions(token_path)) {
+    LOG(ERROR) << "Failed load token due to incorrect permissions "
+               << token_path.value();
+    return false;
+  }
+  // TODO(rmcilroy): Send a salted password, rather than the Sha512 hash.
+  int slot_id;
+  if (!login_client_->LoadToken(isolate_credential,
+                                token_path.value().c_str(),
+                                Sha512(auth_data),
+                                &slot_id)) {
+    return false;
+  }
+  return true;
+}
+
+bool IsolateLoginClient::LogoutUser(const string& user) {
+  LOG(INFO) << "Logout user " << user;
+  SecureBlob isolate_credential;
+
+  if (!isolate_manager_->GetUserIsolateCredential(user, &isolate_credential)) {
+    LOG(ERROR) << "Could not find isolate credential to logout "
+               << user;
+    return false;
+  }
+  login_client_->CloseIsolate(isolate_credential);
+  return true;
+}
+
+bool IsolateLoginClient::ChangeUserAuth(const string& user,
+                                        const SecureBlob& old_auth_data,
+                                        const SecureBlob& new_auth_data) {
+  LOG(INFO) << "Change token auth for user " << user;
+
+  FilePath token_path;
+  if (!(token_manager_->GetUserTokenPath(user, &token_path) &&
+        token_manager_->CheckUserTokenPermissions(token_path))) {
+    LOG(ERROR) << "Aborting change user auth due to invalid token "
+               << token_path.value();
+    return false;
+  }
+
+  login_client_->ChangeTokenAuthData(token_path.value(),
+                                     Sha512(old_auth_data),
+                                     Sha512(new_auth_data));
+
+  return true;
+}
+
+} // namespace chaps

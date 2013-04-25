@@ -28,7 +28,8 @@ public:
   virtual ~ChapsProxyImpl();
   virtual bool Init();
 
-  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
+  virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
+                           bool* new_isolate_created);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const std::string& path,

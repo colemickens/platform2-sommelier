@@ -25,6 +25,7 @@
 using std::string;
 using std::vector;
 using chaps::IsolateCredentialManager;
+using chromeos::SecureBlob;
 
 namespace {
 
@@ -65,8 +66,8 @@ void LoadToken(const string& path, const string& auth) {
   int slot_id = 0;
   client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
                    path,
-                   chaps::ConvertStringToByteBuffer(auth.data()),
-                   auth.length(),
+                   SecureBlob(chaps::ConvertStringToByteBuffer(auth.data()),
+                                                               auth.length()),
                    &slot_id);
   LOG(INFO) << "Sent Event: Login: " << path << " - slot = " << slot_id;
 }
@@ -84,11 +85,12 @@ void ChangeAuthData(const string& path,
                     const string& auth_old,
                     const string& auth_new) {
   chaps::LoginEventClient client;
-  client.ChangeTokenAuthData(path,
-                             chaps::ConvertStringToByteBuffer(auth_old.data()),
-                             auth_old.length(),
-                             chaps::ConvertStringToByteBuffer(auth_new.data()),
-                             auth_new.length());
+  client.ChangeTokenAuthData(
+      path,
+      SecureBlob(chaps::ConvertStringToByteBuffer(auth_old.data()),
+                 auth_old.length()),
+      SecureBlob(chaps::ConvertStringToByteBuffer(auth_new.data()),
+                 auth_new.length()));
   LOG(INFO) << "Sent Event: Change Authorization Data: " << path;
 }
 
