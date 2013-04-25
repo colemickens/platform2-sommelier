@@ -243,7 +243,7 @@ class GetWiphyMessage : public Nl80211Message {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {}
+  GetWiphyMessage();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GetWiphyMessage);

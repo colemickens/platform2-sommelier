@@ -76,6 +76,7 @@
 #include <time.h>
 
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -100,6 +101,7 @@ class Error;
 class GeolocationInfo;
 class KeyValueStore;
 class NetlinkManager;
+class NetlinkMessage;
 class ProxyFactory;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
@@ -221,6 +223,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kPendingTimeoutSeconds;
   static const int kReconnectTimeoutSeconds;
 
+  // Gets the list of frequencies supported by this device.
+  void ConfigureScanFrequencies();
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;
   std::string GetBgscanMethod(const int &argument, Error *error);
@@ -341,6 +345,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   std::string GetServiceLeaseName(const WiFiService &service);
 
+  // Netlink message handler for NL80211_CMD_NEW_WIPHY messages; copies
+  // device's supported frequencies from that message into
+  // |all_scan_frequencies_|.
+  void OnNewWiphy(const NetlinkMessage &netlink_message);
+
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
 
@@ -402,6 +411,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16 scan_interval_seconds_;
 
   NetlinkManager *netlink_manager_;
+  std::set<uint16_t> all_scan_frequencies_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

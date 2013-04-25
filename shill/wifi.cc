@@ -4,10 +4,10 @@
 
 #include "shill/wifi.h"
 
+#include <linux/if.h>  // Needs definitions from netinet/ether.h
+#include <netinet/ether.h>
 #include <stdio.h>
 #include <string.h>
-#include <netinet/ether.h>
-#include <linux/if.h>  // Needs definitions from netinet/ether.h
 
 #include <algorithm>
 #include <map>
@@ -178,6 +178,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
                                       NetlinkManager::kEventTypeRegulatory);
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
                                       NetlinkManager::kEventTypeMlme);
+  ConfigureScanFrequencies();
 }
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
@@ -1578,6 +1579,98 @@ void WiFi::Restart() {
   // directly so that the device can be configured with the profile.
   manager()->DeregisterDevice(me);
   manager()->RegisterDevice(me);
+}
+
+void WiFi::ConfigureScanFrequencies() {
+  GetWiphyMessage get_wiphy;
+  get_wiphy.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                               interface_index());
+  netlink_manager_->SendMessage(&get_wiphy,
+                                Bind(&WiFi::OnNewWiphy,
+                                     weak_ptr_factory_.GetWeakPtr()));
+}
+
+void WiFi::OnNewWiphy(const NetlinkMessage &netlink_message) {
+  // Note that we don't fail fatally from this routine because, while it
+  // provides frequencies for a progressive scan, a failed progressive scan is
+  // followed by a full scan (which doesn't use the frequency list provided by
+  // this call).
+  if (netlink_message.message_type() == ErrorAckMessage::kMessageType) {
+    const ErrorAckMessage *error_ack_message =
+        reinterpret_cast<const ErrorAckMessage *>(&netlink_message);
+    if (error_ack_message->error()) {
+      LOG(ERROR) << __func__ << ": Message (seq: "
+                 << netlink_message.sequence_number() << ") failed: "
+                 << error_ack_message->ToString();
+    } else {
+      SLOG(WiFi, 6) << __func__ << ": Message (seq: "
+                 << netlink_message.sequence_number() << ") ACKed";
+    }
+    return;
+  }
+
+  // We only handle a special set of messages, all of which are nl80211
+  // messages.
+  if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
+    LOG(ERROR) << "Received unexpected message type: "
+               << netlink_message.message_type();
+    return;
+  }
+
+  const Nl80211Message *nl80211_message =
+      dynamic_cast<const Nl80211Message *>(&netlink_message);
+  // Verify NL80211_CMD_NEW_WIPHY
+  if (nl80211_message->command() != NewWiphyMessage::kCommand) {
+    LOG(ERROR) << "Received unexpected command:"
+               << nl80211_message->command();
+    return;
+  }
+
+  // The attributes, for this message, are complicated.
+  // NL80211_ATTR_BANDS contains an array of bands...
+  AttributeListConstRefPtr wiphy_bands;
+  if (!nl80211_message->const_attributes()->ConstGetNestedAttributeList(
+      NL80211_ATTR_WIPHY_BANDS, &wiphy_bands)) {
+    LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_BANDS";
+    return;
+  }
+
+  AttributeIdIterator band_iter(*wiphy_bands);
+  for (; !band_iter.AtEnd(); band_iter.Advance()) {
+    AttributeListConstRefPtr wiphy_band;
+    if (!wiphy_bands->ConstGetNestedAttributeList(band_iter.GetId(),
+                                                  &wiphy_band)) {
+      LOG(WARNING) << "WiFi band " << band_iter.GetId() << " not found";
+      continue;
+    }
+
+    // ...Each band has a FREQS attribute...
+    AttributeListConstRefPtr frequencies;
+    if (!wiphy_band->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
+                                                 &frequencies)) {
+      LOG(ERROR) << "BAND " << band_iter.GetId()
+                 << " had no 'frequencies' attribute";
+      continue;
+    }
+
+    // ...And each FREQS attribute contains an array of information about the
+    // frequency...
+    AttributeIdIterator freq_iter(*frequencies);
+    for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
+      AttributeListConstRefPtr frequency;
+      if (frequencies->ConstGetNestedAttributeList(freq_iter.GetId(),
+                                                   &frequency)) {
+        // ...Including the frequency, itself (the part we want).
+        uint32_t frequency_value = 0;
+        if (frequency->GetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
+                                            &frequency_value)) {
+          SLOG(WiFi, 5) << "Found frequency[" << freq_iter.GetId()
+                        << "] = " << frequency_value;
+          all_scan_frequencies_.insert(frequency_value);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace shill

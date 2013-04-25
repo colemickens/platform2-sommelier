@@ -18,8 +18,8 @@
 #include "shill/generic_netlink_message.h"
 #include "shill/io_handler.h"
 #include "shill/logging.h"
-#include "shill/netlink_socket.h"
 #include "shill/netlink_message.h"
+#include "shill/netlink_socket.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 
@@ -313,7 +313,7 @@ void NetlinkManager::ClearBroadcastHandlers() {
 }
 
 bool NetlinkManager::SendMessage(NetlinkMessage *message,
-                              const NetlinkMessageHandler &handler) {
+                                 const NetlinkMessageHandler &handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;

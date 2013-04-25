@@ -8,7 +8,6 @@
 // messages.
 
 // This file tests the public interface to NetlinkManager.
-
 #include "shill/netlink_manager.h"
 
 #include <gmock/gmock.h>
@@ -189,8 +188,8 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
   netlink_manager_->OnNlMessageReceived(received_message);
 
   // Send the message and give our handler.  Verify that we get called back.
-  EXPECT_TRUE(netlink_manager_->SendMessage(&sent_message_1,
-                                        handler_sent_1.on_netlink_message()));
+  EXPECT_TRUE(netlink_manager_->SendMessage(
+      &sent_message_1, handler_sent_1.on_netlink_message()));
   // Make it appear that this message is in response to our sent message.
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -203,8 +202,8 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
 
   // Install and then uninstall message-specific handler; verify broadcast
   // handler is called on message receipt.
-  EXPECT_TRUE(netlink_manager_->SendMessage(&sent_message_1,
-                                        handler_sent_1.on_netlink_message()));
+  EXPECT_TRUE(netlink_manager_->SendMessage(
+      &sent_message_1, handler_sent_1.on_netlink_message()));
   received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
@@ -212,8 +211,8 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
 
   // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
-  EXPECT_TRUE(netlink_manager_->SendMessage(&sent_message_2,
-                                        handler_sent_2.on_netlink_message()));
+  EXPECT_TRUE(netlink_manager_->SendMessage(
+      &sent_message_2, handler_sent_2.on_netlink_message()));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 

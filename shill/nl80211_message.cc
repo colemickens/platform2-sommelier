@@ -24,10 +24,10 @@
 
 #include "shill/nl80211_message.h"
 
-#include <limits.h>
 #include <netlink/msg.h>
 #include <netlink/netlink.h>
 
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
@@ -425,7 +425,9 @@ string Nl80211Message::StringFromStatus(uint16_t status) {
 // Nl80211Frame
 
 Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
-  : frame_type_(kIllegalFrameType), reason_(UINT16_MAX), status_(UINT16_MAX),
+  : frame_type_(kIllegalFrameType),
+    reason_(std::numeric_limits<uint16_t>::max()),
+    status_(std::numeric_limits<uint16_t>::max()),
     frame_(raw_frame) {
   const IEEE_80211::ieee80211_frame *frame =
       reinterpret_cast<const IEEE_80211::ieee80211_frame *>(
@@ -562,6 +564,11 @@ const char GetRegMessage::kCommandString[] = "NL80211_CMD_GET_REG";
 
 const uint8_t GetWiphyMessage::kCommand = NL80211_CMD_GET_WIPHY;
 const char GetWiphyMessage::kCommandString[] = "NL80211_CMD_GET_WIPHY";
+
+GetWiphyMessage::GetWiphyMessage() : Nl80211Message(kCommand, kCommandString) {
+  attributes()->CreateAttribute(
+      NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
+}
 
 const uint8_t JoinIbssMessage::kCommand = NL80211_CMD_JOIN_IBSS;
 const char JoinIbssMessage::kCommandString[] = "NL80211_CMD_JOIN_IBSS";
