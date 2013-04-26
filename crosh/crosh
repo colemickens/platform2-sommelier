@@ -785,6 +785,39 @@ cmd_chaps() {
   fi
 }
 
+cmd_progressive_scan() {
+  local flag_file="/home/chronos/.progressive_scan"
+  local enabled=0
+  local changed=0
+  if [ -r ${flag_file} ]; then
+    enabled=1
+  fi
+  if [ -z "$1" ]; then
+    if [ ${enabled} -eq 1 ]; then
+      echo "Currently enabled"
+    else
+      echo "Currently disabled"
+    fi
+    return
+  fi
+  if [ "$1" = "on" ]; then
+    if [ $enabled -eq 0 ]; then
+      changed=1;
+    fi
+    touch "${flag_file}"
+  else
+    if [ $enabled -eq 1 ]; then
+      changed=1
+    fi
+    rm -f "${flag_file}"
+  fi
+  if [ $changed -eq 1 ]; then
+    echo "You must reboot (or restart shill) for this to take effect."
+  else
+    echo "No change."
+  fi
+}
+
 cmd_chaps_debug() {
   local level=${1:--2}
   if [ "$1" = "stop" ]; then
