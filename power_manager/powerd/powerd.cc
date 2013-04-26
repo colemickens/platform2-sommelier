@@ -639,7 +639,7 @@ void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
   GenerateMetricsOnPowerEvent(status);
 
   if (status.battery_is_present) {
-    if (status.battery_below_shutdown_threshold && !status.line_power_on) {
+    if (status.battery_below_shutdown_threshold) {
       if (!low_battery_) {
         low_battery_ = true;
         file_tagger_.HandleLowBatteryEvent();

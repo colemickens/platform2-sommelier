@@ -761,7 +761,10 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
     return false;
   }
 
-  if (!status.line_power_on &&
+  if (!(status.line_power_on &&
+        // If type != Mains then alternative power supply may not provide
+        // enough power to charge or even maintain current battery levels.
+        (status.line_power_type.compare("Mains") == 0)) &&
       ((status.battery_time_to_empty > 0 &&
         status.battery_time_to_empty <=
         low_battery_shutdown_time_.InSeconds()) ||
