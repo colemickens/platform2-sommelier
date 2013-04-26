@@ -363,6 +363,24 @@ TEST_F(ServiceTest, SetProperty) {
   }
 }
 
+TEST_F(ServiceTest, GetLoadableStorageIdentifier) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(storage_id_))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_EQ("", service_->GetLoadableStorageIdentifier(storage));
+  EXPECT_EQ(storage_id_, service_->GetLoadableStorageIdentifier(storage));
+}
+
+TEST_F(ServiceTest, IsLoadableFrom) {
+  NiceMock<MockStore> storage;
+  EXPECT_CALL(storage, ContainsGroup(storage_id_))
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_FALSE(service_->IsLoadableFrom(storage));
+  EXPECT_TRUE(service_->IsLoadableFrom(storage));
+}
+
 TEST_F(ServiceTest, Load) {
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));

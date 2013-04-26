@@ -91,9 +91,15 @@ class WiFiService : public Service {
   const std::string &bssid() const { return bssid_; }
   uint16 physical_mode() const { return physical_mode_; }
 
+  // WiFi services can load from profile entries other than their current
+  // storage identifier.  Override the methods from the parent Service
+  // class which pertain to whether this service may be loaded from |storage|.
+  virtual std::string GetLoadableStorageIdentifier(
+      const StoreInterface &storage) const;
+  virtual bool IsLoadableFrom(const StoreInterface &storage) const;
+
   // Overrride Load and Save from parent Service class.  We will call
   // the parent method.
-  virtual bool IsLoadableFrom(StoreInterface *storage) const;
   virtual bool Load(StoreInterface *storage);
   virtual bool Save(StoreInterface *storage);
   virtual bool Unload();

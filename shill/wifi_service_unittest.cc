@@ -246,10 +246,13 @@ class WiFiServiceSecurityTest : public WiFiServiceTest {
                                flimflam::kModeManaged,
                                storage_security)))
         .WillRepeatedly(Return(groups));
-    bool is_loadable = wifi_service->IsLoadableFrom(&mock_store);
+    bool is_loadable = wifi_service->IsLoadableFrom(mock_store);
     EXPECT_EQ(expectation, is_loadable);
     bool is_loaded = wifi_service->Load(&mock_store);
     EXPECT_EQ(expectation, is_loaded);
+    const string expected_identifier(expectation ? kStorageId : "");
+    EXPECT_EQ(expected_identifier,
+              wifi_service->GetLoadableStorageIdentifier(mock_store));
 
     if (expectation != is_loadable || expectation != is_loaded) {
       return false;

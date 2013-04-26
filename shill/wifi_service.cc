@@ -243,8 +243,25 @@ void WiFiService::ClearPassphrase(Error */*error*/) {
   UpdateConnectable();
 }
 
-bool WiFiService::IsLoadableFrom(StoreInterface *storage) const {
-  return !storage->GetGroupsWithProperties(GetStorageProperties()).empty();
+string WiFiService::GetLoadableStorageIdentifier(
+    const StoreInterface &storage) const {
+  set<string> groups = storage.GetGroupsWithProperties(GetStorageProperties());
+  if (groups.empty()) {
+    LOG(WARNING) << "Configuration for service "
+                 << unique_name()
+                 << " is not available in the persistent store";
+    return "";
+  }
+  if (groups.size() > 1) {
+    LOG(WARNING) << "More than one configuration for service "
+                 << unique_name()
+                 << " is available; choosing the first.";
+  }
+  return *groups.begin();
+}
+
+bool WiFiService::IsLoadableFrom(const StoreInterface &storage) const {
+  return !storage.GetGroupsWithProperties(GetStorageProperties()).empty();
 }
 
 bool WiFiService::IsVisible() const {
@@ -255,21 +272,10 @@ bool WiFiService::IsVisible() const {
 }
 
 bool WiFiService::Load(StoreInterface *storage) {
-  // First find out which storage identifier is available in priority order
-  // of specific, generic.
-  set<string> groups = storage->GetGroupsWithProperties(GetStorageProperties());
-  if (groups.empty()) {
-    LOG(WARNING) << "Configuration for service "
-                 << unique_name()
-                 << " is not available in the persistent store";
+  string id = GetLoadableStorageIdentifier(*storage);
+  if (id.empty()) {
     return false;
   }
-  if (groups.size() > 1) {
-    LOG(WARNING) << "More than one configuration for service "
-                 << unique_name()
-                 << " is available; choosing the first.";
-  }
-  string id = *groups.begin();
 
   // Set our storage identifier to match the storage name in the Profile.
   storage_identifier_ = id;
