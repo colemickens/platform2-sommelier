@@ -45,6 +45,8 @@ class MockService : public Service {
   MOCK_METHOD1(GetDeviceRpcId, std::string(Error *error));
   MOCK_CONST_METHOD0(GetRpcIdentifier, std::string());
   MOCK_CONST_METHOD0(GetStorageIdentifier, std::string());
+  MOCK_CONST_METHOD1(GetLoadableStorageIdentifier,
+                     std::string(const StoreInterface &store_interface));
   MOCK_METHOD1(Load, bool(StoreInterface *store_interface));
   MOCK_METHOD0(Unload, bool());
   MOCK_METHOD1(Save, bool(StoreInterface *store_interface));

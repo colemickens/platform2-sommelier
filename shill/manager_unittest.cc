@@ -63,6 +63,7 @@ using ::testing::InSequence;
 using ::testing::Mock;
 using ::testing::Ne;
 using ::testing::NiceMock;
+using ::testing::Ref;
 using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
@@ -3665,6 +3666,61 @@ TEST_F(ManagerTest, IsProfileBefore) {
   EXPECT_TRUE(manager()->IsProfileBefore(profile1, profile2));
   EXPECT_FALSE(manager()->IsProfileBefore(profile2, profile0));
   EXPECT_FALSE(manager()->IsProfileBefore(profile2, profile1));
+}
+
+TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
+  MockStore storage0;
+  MockStore storage1;
+  MockStore storage2;
+
+  scoped_refptr<MockProfile> profile0(
+      new NiceMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile1(
+      new NiceMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+  scoped_refptr<MockProfile> profile2(
+      new NiceMock<MockProfile>(
+          control_interface(), metrics(), manager(), ""));
+
+  AdoptProfile(manager(), profile0);
+  AdoptProfile(manager(), profile1);
+  AdoptProfile(manager(), profile2);
+
+  scoped_refptr<MockService> service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*profile0, GetConstStorage()).WillOnce(Return(&storage0));
+  EXPECT_CALL(*profile1, GetConstStorage()).WillOnce(Return(&storage1));
+  EXPECT_CALL(*profile2, GetConstStorage()).WillOnce(Return(&storage2));
+
+  const string kEntry0("aluminum_crutch");
+  const string kEntry2("rehashed_faces");
+
+  EXPECT_CALL(*service, GetLoadableStorageIdentifier(Ref(storage0)))
+      .WillOnce(Return(kEntry0));
+  EXPECT_CALL(*service, GetLoadableStorageIdentifier(Ref(storage1)))
+      .WillOnce(Return(""));
+  EXPECT_CALL(*service, GetLoadableStorageIdentifier(Ref(storage2)))
+      .WillOnce(Return(kEntry2));
+
+  const string kProfileRpc0("service_station");
+  const string kProfileRpc2("crystal_tiaras");
+
+  EXPECT_CALL(*profile0, GetRpcIdentifier()).WillOnce(Return(kProfileRpc0));
+  EXPECT_CALL(*profile1, GetRpcIdentifier()).Times(0);
+  EXPECT_CALL(*profile2, GetRpcIdentifier()).WillOnce(Return(kProfileRpc2));
+
+  map<string, string> entries =
+      manager()->GetLoadableProfileEntriesForService(service);
+  EXPECT_EQ(2, entries.size());
+  EXPECT_TRUE(ContainsKey(entries, kProfileRpc0));
+  EXPECT_TRUE(ContainsKey(entries, kProfileRpc2));
+  EXPECT_EQ(kEntry0, entries[kProfileRpc0]);
+  EXPECT_EQ(kEntry2, entries[kProfileRpc2]);
 }
 
 }  // namespace shill

@@ -62,6 +62,8 @@ class ServiceDBusAdaptor : public org::chromium::flimflam::Service_adaptor,
   void MoveAfter(const ::DBus::Path& , ::DBus::Error &error);
   void ActivateCellularModem(const std::string &carrier, ::DBus::Error &error);
   void CompleteCellularActivation(::DBus::Error &error);
+  std::map<::DBus::Path, std::string> GetLoadableProfileEntries(
+      ::DBus::Error &error);
 
  private:
   Service *service_;

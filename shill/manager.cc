@@ -584,6 +584,19 @@ bool Manager::HandleProfileEntryDeletion(const ProfileRefPtr &profile,
   return moved_services;
 }
 
+map<string, string> Manager::GetLoadableProfileEntriesForService(
+    const ServiceConstRefPtr &service) {
+  map<string, string> profile_entries;
+  for (const auto &profile : profiles_) {
+    string entry_name = service->GetLoadableStorageIdentifier(
+        *profile->GetConstStorage());
+    if (!entry_name.empty()) {
+      profile_entries[profile->GetRpcIdentifier()] = entry_name;
+    }
+  }
+  return profile_entries;
+}
+
 ServiceRefPtr Manager::GetServiceWithStorageIdentifier(
     const ProfileRefPtr &profile, const std::string &entry_name, Error *error) {
   for (vector<ServiceRefPtr>::iterator it = services_.begin();

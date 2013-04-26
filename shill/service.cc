@@ -1134,6 +1134,10 @@ void Service::SaveString(StoreInterface *storage,
   storage->SetString(id, key, value);
 }
 
+map<string, string> Service::GetLoadableProfileEntries() {
+  return manager_->GetLoadableProfileEntriesForService(this);
+}
+
 void Service::IgnoreParameterForConfigure(const string &parameter) {
   parameters_ignored_for_configure_.insert(parameter);
 }

@@ -126,6 +126,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   std::vector<std::string> EnumerateCompleteServices(Error *error);
 
   // called via RPC (e.g., from ManagerDBusAdaptor)
+  std::map<std::string, std::string> GetLoadableProfileEntriesForService(
+      const ServiceConstRefPtr &service);
   ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
   ServiceRefPtr ConfigureService(const KeyValueStore &args, Error *error);
   ServiceRefPtr ConfigureServiceForProfile(

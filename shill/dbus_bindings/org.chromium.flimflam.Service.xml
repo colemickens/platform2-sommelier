@@ -36,6 +36,9 @@
 			<arg type="s" direction="in"/>
 		</method>
 		<method name="CompleteCellularActivation"/>
+		<method name="GetLoadableProfileEntries">
+			<arg type="a{os}" direction="out"/>
+		</method>
 		<signal name="PropertyChanged">
 			<arg type="s"/>
 			<arg type="v"/>

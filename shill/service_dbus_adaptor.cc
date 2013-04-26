@@ -160,4 +160,16 @@ void ServiceDBusAdaptor::CompleteCellularActivation(::DBus::Error &error) {
   e.ToDBusError(&error);
 }
 
+map<::DBus::Path, string> ServiceDBusAdaptor::GetLoadableProfileEntries(
+    ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  map<string, string> profile_entry_strings =
+      service_->GetLoadableProfileEntries();
+  map<::DBus::Path, string> profile_entries;
+  for (const auto &entry : profile_entry_strings) {
+    profile_entries[::DBus::Path(entry.first)] = entry.second;
+  }
+  return profile_entries;
+}
+
 }  // namespace shill

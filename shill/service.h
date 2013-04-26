@@ -428,6 +428,11 @@ class Service : public base::RefCounted<Service> {
                          bool crypted,
                          bool save);
 
+  // Called via RPC to get a dict containing profile-to-entry_name mappings
+  // of all the profile entires which contain configuration applicable to
+  // this service.
+  std::map<std::string, std::string> GetLoadableProfileEntries();
+
  protected:
   friend class base::RefCounted<Service>;
 
