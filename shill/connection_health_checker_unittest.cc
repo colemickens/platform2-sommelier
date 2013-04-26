@@ -22,7 +22,6 @@
 #include "shill/mock_dns_client_factory.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_ip_address_store.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_socket_info_reader.h"
 
@@ -32,7 +31,6 @@ using base::Closure;
 using base::Unretained;
 using std::string;
 using std::vector;
-using ::testing::AtLeast;
 using ::testing::DoAll;
 using ::testing::Gt;
 using ::testing::Invoke;
@@ -124,16 +122,13 @@ class ConnectionHealthCheckerTest : public Test {
         .WillRepeatedly(ReturnRef(interface_name_));
     ON_CALL(*connection_.get(), dns_servers())
         .WillByDefault(ReturnRef(dns_servers_));
-    // ConnectionHealthChecker constructor should add some IPs
-    EXPECT_CALL(remote_ips_, AddUnique(_)).Times(AtLeast(1));
     health_checker_.reset(
         new ConnectionHealthChecker(
              connection_,
              &dispatcher_,
-             &remote_ips_,
              Bind(&ConnectionHealthCheckerTest::ResultCallbackTarget,
                   Unretained(this))));
-    Mock::VerifyAndClearExpectations(&remote_ips_);
+
     socket_ = new StrictMock<MockSockets>();
     tcp_connection_ = new StrictMock<MockAsyncConnection>();
     socket_info_reader_ = new StrictMock<MockSocketInfoReader>();
@@ -145,7 +140,8 @@ class ConnectionHealthCheckerTest : public Test {
   }
 
   void TearDown() {
-    EXPECT_CALL(*tcp_connection_, Stop());
+    EXPECT_CALL(*tcp_connection_, Stop())
+        .Times(1);
   }
 
   // Accessors for private data in ConnectionHealthChecker.
@@ -157,6 +153,9 @@ class ConnectionHealthCheckerTest : public Test {
   }
   ScopedVector<DNSClient> &dns_clients() {
     return health_checker_->dns_clients_;
+  }
+  ConnectionHealthChecker::IPAddresses &remote_ips() {
+    return health_checker_->remote_ips_;
   }
   int NumDNSQueries() {
     return ConnectionHealthChecker::kNumDNSQueries;
@@ -257,9 +256,6 @@ class ConnectionHealthCheckerTest : public Test {
 
   }
   void ExpectSuccessfulStart() {
-    EXPECT_CALL(remote_ips_, Empty()).WillRepeatedly(Return(false));
-    EXPECT_CALL(remote_ips_, GetRandomIP())
-        .WillRepeatedly(Return(StringToIPv4Address(kProxyIPAddressRemote)));
     EXPECT_CALL(
         *tcp_connection_,
         Start(IsSameIPAddress(StringToIPv4Address(kProxyIPAddressRemote)),
@@ -269,6 +265,7 @@ class ConnectionHealthCheckerTest : public Test {
   }
   void ExpectRetry() {
     EXPECT_CALL(*socket_, Close(kProxyFD))
+        .Times(1)
         .InSequence(seq_);
     EXPECT_CALL(
         *tcp_connection_,
@@ -283,8 +280,10 @@ class ConnectionHealthCheckerTest : public Test {
   }
   void ExpectCleanUp() {
     EXPECT_CALL(*socket_, Close(kProxyFD))
+        .Times(1)
         .InSequence(seq_);
     EXPECT_CALL(*tcp_connection_, Stop())
+        .Times(1)
         .InSequence(seq_);
   }
 
@@ -303,7 +302,6 @@ class ConnectionHealthCheckerTest : public Test {
 
   scoped_refptr<NiceMock<MockConnection> > connection_;
   EventDispatcher dispatcher_;
-  MockIPAddressStore remote_ips_;
   StrictMock<MockSockets> *socket_;
   StrictMock<MockSocketInfoReader> *socket_info_reader_;
   StrictMock<MockAsyncConnection> *tcp_connection_;
@@ -316,6 +314,19 @@ class ConnectionHealthCheckerTest : public Test {
 
 TEST_F(ConnectionHealthCheckerTest, Constructor) {
   ExpectReset();
+}
+
+TEST_F(ConnectionHealthCheckerTest, AddRemoteIP) {
+  EXPECT_EQ(0, remote_ips().size());
+
+  IPAddress ip = StringToIPv4Address(kIPAddress_0_0_0_0);
+  health_checker_->AddRemoteIP(ip);
+  EXPECT_EQ(1, remote_ips().size());
+  EXPECT_TRUE(remote_ips().rbegin()->Equals(ip));
+
+  health_checker_->AddRemoteIP(
+      StringToIPv4Address(kIPAddress_0_0_0_0));
+  EXPECT_EQ(2, remote_ips().size());
 }
 
 TEST_F(ConnectionHealthCheckerTest, GarbageCollectDNSClients) {
@@ -358,6 +369,7 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
 
   MockDNSClientFactory *dns_client_factory
       = MockDNSClientFactory::GetInstance();
+  ConnectionHealthChecker::IPAddresses::size_type num_old_ips;
   vector<MockDNSClient *> dns_client_buffer;
 
   // All DNS queries fail.
@@ -373,10 +385,10 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
         .InSequence(seq_)
         .WillOnce(Return(dns_client_buffer[i]));
   }
-  EXPECT_CALL(remote_ips_, AddUnique(_)).Times(0);
+  num_old_ips = remote_ips().size();
   health_checker_->AddRemoteURL(kProxyURLRemote);
+  EXPECT_EQ(num_old_ips, remote_ips().size());
   Mock::VerifyAndClearExpectations(dns_client_factory);
-  Mock::VerifyAndClearExpectations(&remote_ips_);
   dns_client_buffer.clear();
   dns_clients().clear();
 
@@ -393,14 +405,15 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
         .InSequence(seq_)
         .WillOnce(Return(dns_client_buffer[i]));
   }
-  EXPECT_CALL(remote_ips_, AddUnique(_));
+  num_old_ips = remote_ips().size();
   health_checker_->AddRemoteURL(kProxyURLRemote);
   for(int i = 0; i < NumDNSQueries() - 1; ++i) {
     InvokeGetDNSResultFailure();
   }
   InvokeGetDNSResultSuccess(remote_ip);
+  EXPECT_EQ(num_old_ips + 1, remote_ips().size());
+  EXPECT_TRUE(remote_ip.Equals(*remote_ips().rbegin()));
   Mock::VerifyAndClearExpectations(dns_client_factory);
-  Mock::VerifyAndClearExpectations(&remote_ips_);
   dns_client_buffer.clear();
   dns_clients().clear();
 
@@ -417,15 +430,15 @@ TEST_F(ConnectionHealthCheckerTest, AddRemoteURL) {
         .InSequence(seq_)
         .WillOnce(Return(dns_client_buffer[i]));
   }
-  EXPECT_CALL(remote_ips_, AddUnique(IsSameIPAddress(remote_ip))).Times(4);
-  EXPECT_CALL(remote_ips_, AddUnique(IsSameIPAddress(remote_ip_2)));
+  remote_ips().clear();
+  num_old_ips = remote_ips().size();
   health_checker_->AddRemoteURL(kProxyURLRemote);
   for (int i = 0; i < NumDNSQueries() - 1; ++i) {
     InvokeGetDNSResultSuccess(remote_ip);
   }
   InvokeGetDNSResultSuccess(remote_ip_2);
+  EXPECT_EQ(num_old_ips + 2, remote_ips().size());
   Mock::VerifyAndClearExpectations(dns_client_factory);
-  Mock::VerifyAndClearExpectations(&remote_ips_);
   dns_client_buffer.clear();
   dns_clients().clear();
 }
@@ -435,12 +448,14 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   vector<SocketInfo> info_list;
 
   // GetSockName fails.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::1";
   EXPECT_CALL(*socket_, GetSockName(_,_,_))
       .WillOnce(Return(-1));
   EXPECT_FALSE(health_checker_->GetSocketInfo(kProxyFD, &sock_info));
   Mock::VerifyAndClearExpectations(socket_);
 
   // GetSockName returns IPv6.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::2";
   EXPECT_CALL(*socket_, GetSockName(_,_,_))
       .WillOnce(
           Invoke(this,
@@ -449,6 +464,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_);
 
   // LoadTcpSocketInfo fails.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::3";
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
   EXPECT_CALL(*socket_info_reader_, LoadTcpSocketInfo(_))
@@ -458,6 +474,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_info_reader_);
 
   // LoadTcpSocketInfo returns empty list.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::4";
   info_list.clear();
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
       .WillOnce(Invoke(this, &ConnectionHealthCheckerTest::GetSockName));
@@ -469,6 +486,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_info_reader_);
 
   // LoadTcpSocketInfo returns a list without our socket.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::5";
   info_list.clear();
   info_list.push_back(CreateSocketInfoOther());
   EXPECT_CALL(*socket_, GetSockName(kProxyFD, _, _))
@@ -481,6 +499,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_info_reader_);
 
   // LoadTcpSocketInfo returns a list with only our socket.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::6";
   info_list.clear();
   info_list.push_back(
       CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown));
@@ -496,6 +515,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_info_reader_);
 
   // LoadTcpSocketInfo returns a list with two sockets, including ours.
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::7";
   info_list.clear();
   info_list.push_back(CreateSocketInfoOther());
   info_list.push_back(
@@ -511,6 +531,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
   Mock::VerifyAndClearExpectations(socket_);
   Mock::VerifyAndClearExpectations(socket_info_reader_);
 
+  LOG(INFO) << "ConnectionHealthCheckerTest::GetSocketInfo::8";
   info_list.clear();
   info_list.push_back(
       CreateSocketInfoProxy(SocketInfo::kConnectionStateUnknown));
@@ -528,9 +549,7 @@ TEST_F(ConnectionHealthCheckerTest, GetSocketInfo) {
 }
 
 TEST_F(ConnectionHealthCheckerTest, NextHealthCheckSample) {
-  IPAddress ip = StringToIPv4Address(kProxyIPAddressRemote);
-  ON_CALL(remote_ips_, GetRandomIP())
-      .WillByDefault(Return(ip));
+  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
 
   health_checker_->set_num_connection_failures(MaxFailedConnectionAttempts());
   ExpectStop();
@@ -681,9 +700,7 @@ TEST_F(ConnectionHealthCheckerTest, VerifySentData) {
 TEST_F(ConnectionHealthCheckerTest, StartStartSkipsSecond) {
   EXPECT_CALL(*tcp_connection_, Start(_,_))
       .WillOnce(Return(true));
-  EXPECT_CALL(remote_ips_, Empty()).WillRepeatedly(Return(false));
-  EXPECT_CALL(remote_ips_, GetRandomIP())
-      .WillOnce(Return(StringToIPv4Address(kProxyIPAddressRemote)));
+  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
   health_checker_->Start();
   health_checker_->Start();
 }
@@ -694,12 +711,11 @@ TEST_F(ConnectionHealthCheckerTest, StartStartSkipsSecond) {
 TEST_F(ConnectionHealthCheckerTest, StartStopNoCallback) {
   EXPECT_CALL(*tcp_connection_, Start(_,_))
       .WillOnce(Return(true));
-  EXPECT_CALL(*tcp_connection_, Stop());
+  EXPECT_CALL(*tcp_connection_, Stop())
+      .Times(1);
   EXPECT_CALL(*this, ResultCallbackTarget(_))
       .Times(0);
-  EXPECT_CALL(remote_ips_, Empty()).WillRepeatedly(Return(false));
-  EXPECT_CALL(remote_ips_, GetRandomIP())
-      .WillOnce(Return(StringToIPv4Address(kProxyIPAddressRemote)));
+  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
   health_checker_->Start();
   health_checker_->Stop();
 }
@@ -708,30 +724,31 @@ TEST_F(ConnectionHealthCheckerTest, StartStopNoCallback) {
 // Flow: Start()
 // Expectation: call |result_callback| with kResultUnknown
 TEST_F(ConnectionHealthCheckerTest, StartImmediateFailure) {
-  EXPECT_CALL(remote_ips_, Empty()).WillOnce(Return(true));
-  EXPECT_CALL(*tcp_connection_, Stop());
+  EXPECT_CALL(*tcp_connection_, Stop())
+      .Times(1);
   EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultUnknown));
+                           ConnectionHealthChecker::kResultUnknown))
+      .Times(1);
   health_checker_->Start();
   Mock::VerifyAndClearExpectations(this);
-  Mock::VerifyAndClearExpectations(&remote_ips_);
   Mock::VerifyAndClearExpectations(tcp_connection_);
 
-  EXPECT_CALL(remote_ips_, Empty()).WillRepeatedly(Return(false));
-  EXPECT_CALL(remote_ips_, GetRandomIP())
-      .WillRepeatedly(Return(StringToIPv4Address(kProxyIPAddressRemote)));
+  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
   EXPECT_CALL(*tcp_connection_,
               Start(IsSameIPAddress(StringToIPv4Address(kProxyIPAddressRemote)),
                     kProxyPortRemote))
       .Times(MaxFailedConnectionAttempts())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*tcp_connection_, Stop());
+  EXPECT_CALL(*tcp_connection_, Stop())
+      .Times(1);
   EXPECT_CALL(*this, ResultCallbackTarget(
-                           ConnectionHealthChecker::kResultConnectionFailure));
+                           ConnectionHealthChecker::kResultConnectionFailure))
+      .Times(1);
   health_checker_->Start();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(this);
   Mock::VerifyAndClearExpectations(tcp_connection_);
 }
+
 
 }  // namespace shill

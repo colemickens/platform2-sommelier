@@ -16,7 +16,6 @@ class MockConnectionHealthChecker : public ConnectionHealthChecker {
   MockConnectionHealthChecker(
       ConnectionRefPtr connection,
       EventDispatcher *dispatcher,
-      IPAddressStore *remote_ips,
       const base::Callback<void(Result)> &result_callback);
   virtual ~MockConnectionHealthChecker();
 

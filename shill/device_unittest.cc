@@ -33,7 +33,6 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_glib.h"
-#include "shill/mock_ip_address_store.h"
 #include "shill/mock_ipconfig.h"
 #include "shill/mock_link_monitor.h"
 #include "shill/mock_manager.h"
@@ -1086,7 +1085,6 @@ class DeviceHealthCheckerTest : public DeviceTest {
  public:
   DeviceHealthCheckerTest()
       : connection_(new StrictMock<MockConnection>(&device_info_)),
-        ip_address_store_(new MockIPAddressStore()),
         weak_ptr_factory_(this) {}
 
  protected:
@@ -1104,13 +1102,11 @@ class DeviceHealthCheckerTest : public DeviceTest {
         .Times(AnyNumber());
     EXPECT_CALL(*connection_.get(), dns_servers())
         .Times(AnyNumber());
-    EXPECT_CALL(*ip_address_store_.get(), AddUnique(_)).Times(AnyNumber());
 
     mock_health_checker_.reset(
         new MockConnectionHealthChecker(
             connection_,
             NULL,
-            ip_address_store_.get(),
             Bind(&DeviceHealthCheckerTest::OnConnectionHealthCheckerResult,
                  weak_ptr_factory_.GetWeakPtr())));
   }
@@ -1120,19 +1116,31 @@ class DeviceHealthCheckerTest : public DeviceTest {
     EXPECT_TRUE(device_->health_checker_.get());
   }
 
-  void SetMockConnection() {
-    device_->connection_ = connection_;
-  }
-
   void OnConnectionHealthCheckerResult(
     ConnectionHealthChecker::Result result) {
   }
 
   scoped_refptr<MockConnection> connection_;
   scoped_ptr<MockConnectionHealthChecker> mock_health_checker_;
-  scoped_ptr<MockIPAddressStore> ip_address_store_;
   base::WeakPtrFactory<DeviceHealthCheckerTest> weak_ptr_factory_;
 };
+
+TEST_F(DeviceHealthCheckerTest, CreateConnectionCreatesHealthChecker) {
+  EXPECT_FALSE(device_->connection_.get());
+  EXPECT_FALSE(device_->health_checker_.get());
+  device_->CreateConnection();
+  EXPECT_TRUE(device_->connection_.get());
+  EXPECT_TRUE(device_->health_checker_.get());
+}
+
+TEST_F(DeviceHealthCheckerTest, InitializeHealthCheckIps) {
+  EXPECT_FALSE(device_->health_checker_.get());
+  MockConnectionHealthChecker *health_checker = mock_health_checker_.get();
+  SetMockHealthChecker();
+  EXPECT_CALL(*health_checker, AddRemoteIP(_)).Times(
+      device_->health_check_ip_pool_.size());
+  device_->InitializeHealthCheckIps();
+}
 
 TEST_F(DeviceHealthCheckerTest, RequestConnectionHealthCheck) {
   EXPECT_FALSE(device_->health_checker_.get());

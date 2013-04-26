@@ -193,10 +193,6 @@ class Device : public base::RefCounted<Device> {
 
   DeviceAdaptorInterface *adaptor() const { return adaptor_.get(); }
 
-  void set_health_checker(ConnectionHealthChecker *health_checker) {
-    health_checker_.reset(health_checker);
-  }
-
   // Suspend event handler. Called by Manager before the system
   // suspends. For this callback to be useful, the device must specify
   // a suspend delay. Otherwise, there is no guarantee that the device
@@ -225,9 +221,9 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, UseNoArpGateway);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
-  FRIEND_TEST(DeviceHealthCheckerTest, HealthCheckerPersistsAcrossDeviceReset);
+  FRIEND_TEST(DeviceHealthCheckerTest, CreateConnectionCreatesHealthChecker);
+  FRIEND_TEST(DeviceHealthCheckerTest, InitializeHealthCheckIps);
   FRIEND_TEST(DeviceHealthCheckerTest, RequestConnectionHealthCheck);
-  FRIEND_TEST(DeviceHealthCheckerTest, SetupHealthChecker);
   FRIEND_TEST(DeviceTest, AcquireIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfig);
   FRIEND_TEST(DeviceTest, DestroyIPConfigNULL);
@@ -339,7 +335,8 @@ class Device : public base::RefCounted<Device> {
   // Avoids showing a failure mole in the UI.
   void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
-  virtual void SetupConnectionHealthChecker();
+  // Initializes the health checker's internal collection of remote IPs to try.
+  void InitializeHealthCheckIps();
 
   // Checks the network connectivity status by creating a TCP connection, and
   // optionally sending a small amout of data.
@@ -427,6 +424,9 @@ class Device : public base::RefCounted<Device> {
     traffic_monitor_enabled_ = traffic_monitor_enabled;
   }
 
+  // Ownership of |health_checker_| is taken.
+  void set_health_checker(ConnectionHealthChecker *health_checker);
+
  private:
   friend class CellularCapabilityTest;
   friend class CellularTest;
@@ -447,8 +447,8 @@ class Device : public base::RefCounted<Device> {
   static const char kIPFlagReversePathFilter[];
   static const char kIPFlagReversePathFilterEnabled[];
   static const char kIPFlagReversePathFilterLooseMode[];
-  static const char kStorageIPConfigs[];
   static const char kStoragePowered[];
+  static const char kStorageIPConfigs[];
   static const char kStorageReceiveByteCount[];
   static const char kStorageTransmitByteCount[];
 
@@ -551,6 +551,10 @@ class Device : public base::RefCounted<Device> {
   // Cache singleton pointers for performance and test purposes.
   DHCPProvider *dhcp_provider_;
   RTNLHandler *rtnl_handler_;
+
+  // TODO(armansito): List of static IPs for connection health check.
+  // These should be removed once shill has a DNS result caching mechanism.
+  std::vector<std::string> health_check_ip_pool_;
 
   DISALLOW_COPY_AND_ASSIGN(Device);
 };

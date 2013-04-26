@@ -14,12 +14,8 @@ namespace shill {
 MockConnectionHealthChecker::MockConnectionHealthChecker(
     ConnectionRefPtr connection,
     EventDispatcher *dispatcher,
-    IPAddressStore *remote_ips,
     const Callback<void(Result)> &result_callback)
-    : ConnectionHealthChecker(connection,
-                              dispatcher,
-                              remote_ips,
-                              result_callback) {}
+    : ConnectionHealthChecker(connection, dispatcher, result_callback) {}
 
 MockConnectionHealthChecker::~MockConnectionHealthChecker() {}
 

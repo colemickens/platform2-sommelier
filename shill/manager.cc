@@ -35,7 +35,6 @@
 #include "shill/event_dispatcher.h"
 #include "shill/geolocation_info.h"
 #include "shill/hook_table.h"
-#include "shill/ip_address_store.h"
 #include "shill/key_file_store.h"
 #include "shill/logging.h"
 #include "shill/profile.h"
@@ -115,8 +114,7 @@ Manager::Manager(ControlInterface *control_interface,
       suspend_delay_registered_(false),
       suspend_delay_id_(0),
       default_service_callback_tag_(0),
-      crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)),
-      health_checker_remote_ips_(new IPAddressStore()) {
+      crypto_util_proxy_(new CryptoUtilProxy(dispatcher, glib)) {
   HelpRegisterDerivedString(flimflam::kActiveProfileProperty,
                             &Manager::GetActiveProfileRpcIdentifier,
                             NULL);
