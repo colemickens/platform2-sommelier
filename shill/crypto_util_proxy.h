@@ -79,6 +79,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   FRIEND_TEST(CryptoUtilProxyTest, OnlyOneInstanceInFlightAtATime);
   FRIEND_TEST(CryptoUtilProxyTest, ShimLifeTime);
   FRIEND_TEST(CryptoUtilProxyTest, TimeoutsTriggerFailure);
+  FRIEND_TEST(CryptoUtilProxyTest, ShimCleanedBeforeCallback);
 
   static const char kDestinationVerificationUser[];
   static const int kShimJobTimeoutMilliseconds;

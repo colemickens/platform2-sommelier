@@ -30,6 +30,7 @@ using testing::Mock;
 using testing::NotNull;
 using testing::Return;
 using testing::StrEq;
+using testing::WithoutArgs;
 using testing::_;
 
 namespace shill {
@@ -121,7 +122,6 @@ class CryptoUtilProxyTest : public testing::Test {
 
   void StartAndCheckShim(const std::string &command,
                          const std::string &shim_stdin) {
-    // minijail sees RunPipesAndDestrokjkjkjy
     InSequence seq;
     // Delegate the start call to the real implementation just for this test.
     EXPECT_CALL(crypto_util_proxy_, StartShimForCommand(_, _, _))
@@ -178,6 +178,10 @@ class CryptoUtilProxyTest : public testing::Test {
           .WillOnce(Invoke(this,
                            &CryptoUtilProxyTest::HandleShimKill));
     }
+  }
+
+  void AssertShimDead() {
+    EXPECT_FALSE(crypto_util_proxy_.shim_pid_);
   }
 
   void HandleShimKill(int /*pid*/, const base::Closure &callback) {
@@ -257,6 +261,40 @@ TEST_F(CryptoUtilProxyTest, BasicAPIUsage) {
     EXPECT_TRUE(crypto_util_proxy_.EncryptData(kTestPublicKey, kTestData,
                                                result_callback, &error));
     EXPECT_TRUE(error.IsSuccess());
+  }
+}
+
+TEST_F(CryptoUtilProxyTest, ShimCleanedBeforeCallback) {
+  // Some operations, like VerifyAndEncryptData in the manager, chain two
+  // shim operations together.  Make sure that we don't call back with results
+  // before the shim state is clean.
+  {
+    StartAndCheckShim(CryptoUtilProxy::kCommandEncrypt,
+                      kTestSerializedCommandMessage);
+    ExpectCleanup();
+    EXPECT_CALL(crypto_util_proxy_,
+                TestResultHandlerCallback(
+                    StrEq(""), ErrorIsOfType(Error::kOperationFailed)))
+        .Times(1)
+        .WillOnce(WithoutArgs(Invoke(this,
+                                     &CryptoUtilProxyTest::AssertShimDead)));
+    Error e(Error::kOperationFailed);
+    crypto_util_proxy_.HandleShimError(e);
+  }
+  {
+    StartAndCheckShim(CryptoUtilProxy::kCommandEncrypt,
+                      kTestSerializedCommandMessage);
+    EXPECT_CALL(crypto_util_proxy_,
+                TestResultHandlerCallback(
+                    StrEq(""), ErrorIsOfType(Error::kSuccess)))
+        .Times(1)
+        .WillOnce(WithoutArgs(Invoke(this,
+                                     &CryptoUtilProxyTest::AssertShimDead)));
+    ExpectCleanup();
+    InputData data;
+    data.buf = NULL;
+    data.len = 0;
+    crypto_util_proxy_.HandleShimOutput(&data);
   }
 }
 

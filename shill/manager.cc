@@ -1134,9 +1134,9 @@ void Manager::VerifyToEncryptLink(string public_key,
   }
   Error encrypt_error;
   if (!crypto_util_proxy_->EncryptData(public_key, data, cb, &encrypt_error)) {
-    CHECK(error.IsFailure()) << "CryptoUtilProxy::EncryptData returned "
-                             << "inconsistently.";
-    cb.Run(error, "");
+    CHECK(encrypt_error.IsFailure()) << "CryptoUtilProxy::EncryptData returned "
+                                     << "inconsistently.";
+    cb.Run(encrypt_error, "");
   }
 }
 

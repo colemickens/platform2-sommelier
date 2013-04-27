@@ -239,11 +239,11 @@ void CryptoUtilProxy::HandleShimStdinReady(int fd) {
   size_t bytes_to_write = distance<string::const_iterator>(next_input_byte_,
                                                            input_buffer_.end());
   ssize_t bytes_written = file_io_->Write(shim_stdin_,
-                                                  &(*next_input_byte_),
-                                                  bytes_to_write);
+                                          &(*next_input_byte_),
+                                          bytes_to_write);
   if (bytes_written < 0) {
     HandleShimError(Error(Error::kOperationFailed,
-                                "Failed to write any bytes to output buffer"));
+                          "Failed to write any bytes to output buffer"));
     return;
   }
   next_input_byte_ += bytes_written;
@@ -275,17 +275,20 @@ void CryptoUtilProxy::HandleShimOutput(InputData *data) {
   file_io_->Close(shim_stdout_);
   shim_stdout_ = -1;
   Error no_error;
-  result_handler_.Run(output_buffer_, no_error);
-  output_buffer_.clear();
+  // Copy the result callback and arguments locally before calling CleanupShim.
+  string shim_output(output_buffer_);
+  StringCallback ret = result_handler_;
   CleanupShim();
+  ret.Run(shim_output, no_error);
 }
 
 void CryptoUtilProxy::HandleShimError(const Error &error) {
   CHECK(shim_pid_);
   CHECK(!result_handler_.is_null());
   // Abort abort abort.  There is very little we can do here.
-  result_handler_.Run("", error);
+  StringCallback ret = result_handler_;
   CleanupShim();
+  ret.Run("", error);
 }
 
 void CryptoUtilProxy::HandleShimTimeout() {
