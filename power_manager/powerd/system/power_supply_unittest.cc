@@ -714,5 +714,29 @@ TEST_F(PowerSupplyTest, NeitherChargingNorDischarging) {
             status.battery_state);
 }
 
+TEST_F(PowerSupplyTest, ConnectedToUsb) {
+  WriteDefaultValues(true, true);
+  power_supply_->Init();
+
+  // Check that the "connected to USB" status is reported for all
+  // USB-related strings used by the kernel.
+  PowerStatus status;
+  const char* kUsbTypes[] = { "USB", "USB_DCP", "USB_CDP", "USB_ACA", NULL };
+  for (int i = 0; kUsbTypes[i]; ++i) {
+    const char* kType = kUsbTypes[i];
+    WriteValue("ac/type", kType);
+    ASSERT_TRUE(UpdateStatus(&status)) << "failed for \"" << kType << "\"";
+    EXPECT_EQ(PowerSupplyProperties_BatteryState_CONNECTED_TO_USB,
+              status.battery_state) << "failed for \"" << kType << "\"";
+  }
+
+  // The USB type should be reported even when the current is 0.
+  WriteValue("ac/type", "USB");
+  WriteDoubleValue("battery/current_now", 0.0);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_CONNECTED_TO_USB,
+            status.battery_state);
+}
+
 }  // namespace system
 }  // namespace power_manager

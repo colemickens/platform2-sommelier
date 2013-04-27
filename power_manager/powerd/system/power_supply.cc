@@ -19,10 +19,6 @@ namespace system {
 
 namespace {
 
-// For passing string pointers when no data is available, and we don't want to
-// pass a NULL pointer.
-const char kUnknownString[] = "Unknown";
-
 // sysfs reports only integer values.  For non-integral values, it scales them
 // up by 10^6.  This factor scales them back down accordingly.
 const double kDoubleScaleFactor = 0.000001;
@@ -99,6 +95,14 @@ double ReadScaledDouble(const base::FilePath& directory,
 double GetLinearTimeToEmpty(const PowerStatus& status) {
   return HoursToSecondsDouble(status.nominal_voltage * status.battery_charge /
       (status.battery_current * status.battery_voltage));
+}
+
+// Returns true if |type|, a power supply type read from a "type" file in
+// sysfs, indicates USB.
+bool IsUsbType(const std::string& type) {
+  // These are defined in drivers/power/power_supply_sysfs.c in the kernel.
+  return type == "USB" || type == "USB_DCP" || type == "USB_CDP" ||
+      type == "USB_ACA";
 }
 
 }  // namespace
@@ -226,7 +230,7 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   info->battery_technology.clear();
 
   // POWER_SUPPLY_PROP_VENDOR does not seem to be a valid property
-  // defined in <linux/power_supply.y>.
+  // defined in <linux/power_supply.h>.
   if (file_util::PathExists(battery_path_.Append("manufacturer")))
     ReadAndTrimString(battery_path_, "manufacturer", &info->battery_vendor);
   else
@@ -249,6 +253,11 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
     case PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING:
       info->battery_state_string = "Neither charging nor discharging";
       break;
+    case PowerSupplyProperties_BatteryState_CONNECTED_TO_USB:
+      info->battery_state_string = "Connected to USB";
+      break;
+    default:
+      info->battery_state_string = "Unknown";
   }
   return true;
 }
@@ -449,8 +458,6 @@ bool PowerSupply::UpdatePowerStatus() {
   else if (discharge_start_time_.is_null())
     discharge_start_time_ = GetCurrentTime();
 
-  UpdateRemainingTime(&status);
-
   if (battery_charge_full > 0 && battery_charge_full_design > 0) {
     status.battery_percentage =
         std::min(100., 100. * battery_charge / battery_charge_full);
@@ -458,27 +465,30 @@ bool PowerSupply::UpdatePowerStatus() {
     status.battery_percentage = -1;
   }
 
-  UpdateAveragedTimes(&status);
+  const bool battery_is_full = battery_charge >= battery_charge_full ||
+      (battery_charge >= battery_charge_full * full_factor_ &&
+       battery_current <= kEpsilon);
 
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
   if (status.line_power_on) {
-    if (battery_charge >= battery_charge_full ||
-        (battery_charge >= battery_charge_full * full_factor_ &&
-         battery_current <= kEpsilon)) {
-      status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
-      last_fully_charged_line_power_time_ = GetCurrentTime();
-    } else if (battery_current > 0.0) {
+    if (IsUsbType(status.line_power_type)) {
+      status.battery_state =
+          PowerSupplyProperties_BatteryState_CONNECTED_TO_USB;
+    } else if (battery_is_full || battery_current > 0.0) {
       status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
     } else {
       LOG(WARNING) << "Line power is on and battery is not fully charged "
-                   << "but battery current is " << battery_current << " A.";
+                   << "but battery current is " << battery_current << " A";
       status.battery_state =
           PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING;
     }
   } else {
     status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
+
+  if (status.line_power_on && battery_is_full)
+    last_fully_charged_line_power_time_ = GetCurrentTime();
 
   if (!last_fully_charged_line_power_time_.is_null() &&
       (GetCurrentTime() - last_fully_charged_line_power_time_).InSeconds() <=
@@ -488,6 +498,9 @@ bool PowerSupply::UpdatePowerStatus() {
   status.display_battery_percentage = std::max(0.0, std::min(100.0,
       (status.battery_percentage - low_battery_shutdown_percent_) /
       (full_battery_percent_ - low_battery_shutdown_percent_) * 100.0));
+
+  UpdateRemainingTime(&status);
+  UpdateAveragedTimes(&status);
 
   status.battery_below_shutdown_threshold =
       IsBatteryBelowShutdownThreshold(status);
