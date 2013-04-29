@@ -100,7 +100,7 @@ bool CheckMetricInterval(time_t now, time_t last, time_t interval);
 class DaemonTest : public Test {
  public:
   DaemonTest()
-      : daemon_(&backlight_ctl_, &prefs_, &metrics_lib_, NULL,
+      : daemon_(&prefs_, &metrics_lib_, &backlight_ctl_, NULL,
                 base::FilePath(".")),
         status_(&daemon_.power_status_) {}
 
@@ -419,8 +419,7 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   for (size_t i = 0; i < num_counts; i++) {
     backlight_ctl_.set_num_als_adjustments(adjustment_counts[i]);
     ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
-    EXPECT_TRUE(
-        daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(backlight_ctl_));
+    EXPECT_TRUE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
@@ -430,14 +429,12 @@ TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
       kMetricNumberOfAlsAdjustmentsPerSessionMax + kAdjustmentsOffset);
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       kMetricNumberOfAlsAdjustmentsPerSessionMax);
-  EXPECT_TRUE(
-      daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(backlight_ctl_));
+  EXPECT_TRUE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
 }
 
 TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
   backlight_ctl_.set_num_als_adjustments(-kAdjustmentsOffset);
-  EXPECT_FALSE(
-      daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric(backlight_ctl_));
+  EXPECT_FALSE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
 }
 
 TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
@@ -511,7 +508,7 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   base::TimeTicks start = now - base::TimeDelta::FromSeconds(kSessionLength);
   ExpectLengthOfSessionMetric(kSessionLength);
 
-  daemon_.GenerateEndOfSessionMetrics(*status_, backlight_ctl_, now, start);
+  daemon_.GenerateEndOfSessionMetrics(*status_, now, start);
 }
 
 TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
@@ -578,18 +575,15 @@ TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
 
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
-  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
-      backlight_ctl_));
+  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 
   daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
-  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
-      backlight_ctl_));
+  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 
   daemon_.plugged_state_ = PLUGGED_STATE_UNKNOWN;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
-  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
-      backlight_ctl_));
+  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 }
 
 TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
@@ -598,15 +592,13 @@ TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
       kMetricUserBrightnessAdjustmentsPerSessionMax);
-  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
-      backlight_ctl_));
+  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 }
 
 TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
   backlight_ctl_.set_num_user_adjustments(-kAdjustmentsOffset);
   daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
-  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric(
-      backlight_ctl_));
+  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 }
 
 TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {

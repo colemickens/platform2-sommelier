@@ -35,9 +35,12 @@ void Daemon::GenerateRetrySuspendMetric(int num_retries, int max_retries) {
 }
 
 void Daemon::MetricInit() {
-  generate_backlight_metrics_timeout_id_ =
-      g_timeout_add(kMetricBacklightLevelIntervalMs,
-                    &Daemon::GenerateBacklightLevelMetricThunk, this);
+  if (backlight_controller_) {
+    generate_backlight_metrics_timeout_id_ =
+        g_timeout_add(kMetricBacklightLevelIntervalMs,
+                      &Daemon::GenerateBacklightLevelMetricThunk, this);
+  }
+
   // Run GenerateThermalMetrics once now as its a long interval
   GenerateThermalMetrics();
   generate_thermal_metrics_timeout_id_ =
@@ -94,6 +97,7 @@ void Daemon::GenerateMetricsOnPowerEvent(const system::PowerStatus& info) {
 gboolean Daemon::GenerateBacklightLevelMetric() {
   double percent = 0.0;
   if (screen_dim_timestamp_.is_null() && screen_off_timestamp_.is_null() &&
+      backlight_controller_ &&
       backlight_controller_->GetBrightnessPercent(&percent)) {
     SendEnumMetricWithPowerState(kMetricBacklightLevelName, lround(percent),
                                  kMetricBacklightLevelMax);
@@ -154,24 +158,16 @@ void Daemon::GenerateBatteryInfoWhenChargeStartsMetric(
 
 void Daemon::GenerateEndOfSessionMetrics(
     const system::PowerStatus& info,
-    const policy::BacklightController& backlight,
     const base::TimeTicks& now,
     const base::TimeTicks& start) {
-  LOG_IF(ERROR,
-         (!GenerateBatteryRemainingAtEndOfSessionMetric(info)))
-      << "Session Stopped : Unable to generate battery remaining metric!";
-  LOG_IF(ERROR,
-         (!GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-             backlight)))
-      << "Session Stopped: Unable to generate ALS adjustments per session!";
-  LOG_IF(ERROR,
-         (!GenerateUserBrightnessAdjustmentsPerSessionMetric(
-             backlight)))
-      << "Session Stopped: Unable to generate user brightness adjustments per"
-      << " session!";
-  LOG_IF(ERROR,
-         (!GenerateLengthOfSessionMetric(now, start)))
-      << "Session Stopped: Unable to generate length of session metric!";
+  if (!GenerateBatteryRemainingAtEndOfSessionMetric(info))
+    LOG(ERROR) << "Unable to generate battery remaining metric";
+  if (!GenerateNumberOfAlsAdjustmentsPerSessionMetric())
+    LOG(ERROR) << "Unable to generate ALS adjustments per session";
+  if (!GenerateUserBrightnessAdjustmentsPerSessionMetric())
+    LOG(ERROR) << "Unable to generate user brightness adjustments per session";
+  if (!GenerateLengthOfSessionMetric(now, start))
+    LOG(ERROR) << "Unable to generate length of session metric";
 }
 
 bool Daemon::GenerateBatteryRemainingAtEndOfSessionMetric(
@@ -191,9 +187,12 @@ bool Daemon::GenerateBatteryRemainingAtStartOfSessionMetric(
       kMetricBatteryRemainingAtStartOfSessionMax);
 }
 
-bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-    const policy::BacklightController& backlight) {
-  int num_of_adjustments = backlight.GetNumAmbientLightSensorAdjustments();
+bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric() {
+  if (!backlight_controller_)
+    return false;
+
+  int num_of_adjustments =
+      backlight_controller_->GetNumAmbientLightSensorAdjustments();
 
   if (num_of_adjustments < 0) {
     LOG(ERROR) <<
@@ -212,10 +211,11 @@ bool Daemon::GenerateNumberOfAlsAdjustmentsPerSessionMetric(
                     kMetricNumberOfAlsAdjustmentsPerSessionBuckets);
 }
 
-bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric(
-    const policy::BacklightController& backlight) {
-  int adjustment_count = backlight.GetNumUserAdjustments();
+bool Daemon::GenerateUserBrightnessAdjustmentsPerSessionMetric() {
+  if (!backlight_controller_)
+    return false;
 
+  int adjustment_count = backlight_controller_->GetNumUserAdjustments();
   if (adjustment_count < 0) {
     LOG(ERROR) << "Calculation for user brightness adjustments per session "
                << "returned a negative value";

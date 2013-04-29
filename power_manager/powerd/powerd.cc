@@ -264,15 +264,9 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
   DISALLOW_COPY_AND_ASSIGN(SuspenderDelegate);
 };
 
-// Daemon: Main power manager. Adjusts device status based on whether the
-//         user is idle and on video activity indicator from Chrome.
-//         This daemon is responsible for dimming of the backlight, turning
-//         the screen off, and suspending to RAM. The daemon also has the
-//         capability of shutting the system down.
-
-Daemon::Daemon(policy::BacklightController* backlight_controller,
-               PrefsInterface* prefs,
+Daemon::Daemon(PrefsInterface* prefs,
                MetricsLibraryInterface* metrics_lib,
+               policy::BacklightController* backlight_controller,
                policy::KeyboardBacklightController* keyboard_controller,
                const base::FilePath& run_dir)
     : state_controller_delegate_(new StateControllerDelegate(this)),
@@ -314,13 +308,15 @@ Daemon::Daemon(policy::BacklightController* backlight_controller,
       shutdown_reason_(kShutdownReasonUnknown),
       state_controller_initialized_(false) {
   power_supply_->AddObserver(this);
-  backlight_controller_->AddObserver(this);
+  if (backlight_controller_)
+    backlight_controller_->AddObserver(this);
   audio_client_->AddObserver(this);
 }
 
 Daemon::~Daemon() {
   audio_client_->RemoveObserver(this);
-  backlight_controller_->RemoveObserver(this);
+  if (backlight_controller_)
+    backlight_controller_->RemoveObserver(this);
   power_supply_->RemoveObserver(this);
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
@@ -409,7 +405,8 @@ void Daemon::SetPlugged(bool plugged) {
       PLUGGED_STATE_DISCONNECTED;
 
   PowerSource power_source = plugged ? POWER_AC : POWER_BATTERY;
-  backlight_controller_->HandlePowerSourceChange(power_source);
+  if (backlight_controller_)
+    backlight_controller_->HandlePowerSourceChange(power_source);
   if (keyboard_controller_)
     keyboard_controller_->HandlePowerSourceChange(power_source);
   if (state_controller_initialized_)
@@ -446,7 +443,8 @@ void Daemon::StartCleanShutdown() {
   // If we want to display a low-battery alert while shutting down, don't turn
   // the screen off immediately.
   if (shutdown_reason_ != kShutdownReasonLowBattery) {
-    backlight_controller_->SetShuttingDown(true);
+    if (backlight_controller_)
+      backlight_controller_->SetShuttingDown(true);
     if (keyboard_controller_)
       keyboard_controller_->SetShuttingDown(true);
   }
@@ -519,7 +517,7 @@ void Daemon::OnBrightnessChanged(
     double brightness_percent,
     policy::BacklightController::BrightnessChangeCause cause,
     policy::BacklightController* source) {
-  if (source == backlight_controller_) {
+  if (source == backlight_controller_ && backlight_controller_) {
     SendBrightnessChangedSignal(brightness_percent, cause,
                                 kBrightnessChangedSignal);
   } else if (source == keyboard_controller_ && keyboard_controller_) {
@@ -901,6 +899,9 @@ DBusMessage* Daemon::HandleRequestSuspendMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
     DBusMessage* message) {
+  if (!backlight_controller_)
+    return util::CreateDBusErrorReply(message, "Backlight uninitialized");
+
   dbus_bool_t allow_off = false;
   DBusError error;
   dbus_error_init(&error);
@@ -925,6 +926,9 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
 
 DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
     DBusMessage* message) {
+  if (!backlight_controller_)
+    return util::CreateDBusErrorReply(message, "Backlight uninitialized");
+
   bool changed = backlight_controller_->IncreaseUserBrightness();
   SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
                                BRIGHTNESS_ADJUST_UP,
@@ -973,6 +977,9 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
+  if (!backlight_controller_)
+    return util::CreateDBusErrorReply(message, "Backlight uninitialized");
+
   double percent = 0.0;
   if (!backlight_controller_->GetBrightnessPercent(&percent)) {
     return util::CreateDBusErrorReply(
@@ -1047,7 +1054,8 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
 DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
   suspender_.HandleUserActivity();
   state_controller_->HandleUserActivity();
-  backlight_controller_->HandleUserActivity();
+  if (backlight_controller_)
+    backlight_controller_->HandleUserActivity();
   return NULL;
 }
 
@@ -1063,7 +1071,8 @@ DBusMessage* Daemon::HandleSetIsProjectingMethod(DBusMessage* message) {
   if (args_ok) {
     DisplayMode mode = is_projecting ? DISPLAY_PRESENTATION : DISPLAY_NORMAL;
     state_controller_->HandleDisplayModeChange(mode);
-    backlight_controller_->HandleDisplayModeChange(mode);
+    if (backlight_controller_)
+      backlight_controller_->HandleDisplayModeChange(mode);
   } else {
     // The message was malformed so log this and return an error.
     LOG(WARNING) << kSetIsProjectingMethod << ": Error reading args: "
@@ -1127,7 +1136,6 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     if (state_str == kSessionStopped) {
       // Don't generate metrics for intermediate states, e.g. "stopping".
       GenerateEndOfSessionMetrics(power_status_,
-                                  *backlight_controller_,
                                   base::TimeTicks::Now(),
                                   session_start_);
     }
@@ -1136,7 +1144,8 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
   session_state_ = state;
   if (state_controller_initialized_)
     state_controller_->HandleSessionStateChange(state);
-  backlight_controller_->HandleSessionStateChange(state);
+  if (backlight_controller_)
+    backlight_controller_->HandleSessionStateChange(state);
 }
 
 void Daemon::Shutdown() {
@@ -1161,25 +1170,29 @@ void Daemon::Suspend() {
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
-  backlight_controller_->SetDimmedForInactivity(dimmed);
+  if (backlight_controller_)
+    backlight_controller_->SetDimmedForInactivity(dimmed);
   if (keyboard_controller_)
     keyboard_controller_->SetDimmedForInactivity(dimmed);
 }
 
 void Daemon::SetBacklightsOffForInactivity(bool off) {
-  backlight_controller_->SetOffForInactivity(off);
+  if (backlight_controller_)
+    backlight_controller_->SetOffForInactivity(off);
   if (keyboard_controller_)
     keyboard_controller_->SetOffForInactivity(off);
 }
 
 void Daemon::SetBacklightsSuspended(bool suspended) {
-  backlight_controller_->SetSuspended(suspended);
+  if (backlight_controller_)
+    backlight_controller_->SetSuspended(suspended);
   if (keyboard_controller_)
     keyboard_controller_->SetSuspended(suspended);
 }
 
 void Daemon::SetBacklightsDocked(bool docked) {
-  backlight_controller_->SetDocked(docked);
+  if (backlight_controller_)
+    backlight_controller_->SetDocked(docked);
   if (keyboard_controller_)
     keyboard_controller_->SetDocked(docked);
 }

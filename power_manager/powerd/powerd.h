@@ -62,27 +62,23 @@ enum PluggedState {
   PLUGGED_STATE_UNKNOWN,
 };
 
+// Main class within the powerd daemon that ties all other classes together.
 class Daemon : public policy::BacklightControllerObserver,
                public policy::InputController::Delegate,
                public system::AudioObserver,
                public system::PowerSupplyObserver {
  public:
-  // Note that keyboard_controller is an optional parameter (it can be NULL) and
-  // that the memory is owned by the caller.
-  Daemon(policy::BacklightController* ctl,
-         PrefsInterface* prefs,
+  // Ownership of pointers remains with the caller.  |backlight_controller|
+  // and |keyboard_controller| may be NULL.
+  Daemon(PrefsInterface* prefs,
          MetricsLibraryInterface* metrics_lib,
+         policy::BacklightController* backlight_controller,
          policy::KeyboardBacklightController* keyboard_controller,
          const base::FilePath& run_dir);
   ~Daemon();
 
-  policy::BacklightController* backlight_controller() {
-    return backlight_controller_;
-  }
-
   void Init();
   void Run();
-  void SetActive();
   void SetPlugged(bool plugged);
 
   void OnRequestRestart();
@@ -90,9 +86,6 @@ class Daemon : public policy::BacklightControllerObserver,
 
   // Shuts the system down in response to a failed suspend attempt.
   void ShutdownForFailedSuspend();
-
-  // Add an idle threshold to notify on.
-  void AddIdleThreshold(int64 threshold);
 
   // Notify chrome that an idle event happened.
   void IdleEventNotify(int64 threshold);
@@ -169,14 +162,6 @@ class Daemon : public policy::BacklightControllerObserver,
   FRIEND_TEST(DaemonTest, SendMetricWithPowerState);
   FRIEND_TEST(DaemonTest, SendThermalMetrics);
 
-  enum IdleState {
-    IDLE_STATE_UNKNOWN,
-    IDLE_STATE_NORMAL,
-    IDLE_STATE_DIM,
-    IDLE_STATE_SCREEN_OFF,
-    IDLE_STATE_SUSPEND
-  };
-
   enum ShutdownState {
     SHUTDOWN_STATE_NONE,
     SHUTDOWN_STATE_RESTARTING,
@@ -189,9 +174,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Initializes metrics
   void MetricInit();
 
-  // Updates our idle state based on the provided |idle_time_ms|
-  void SetIdleState(int64 idle_time_ms);
-
   // Decrease / increase the keyboard brightness; direction should be +1 for
   // increase and -1 for decrease.
   void AdjustKeyboardBrightness(int direction);
@@ -201,10 +183,6 @@ class Daemon : public policy::BacklightControllerObserver,
       double brightness_percent,
       policy::BacklightController::BrightnessChangeCause cause,
       const std::string& signal_name);
-
-  // Sets up idle timers, adding the provided offset to all timeouts
-  // starting with the state provided except the locking timeout.
-  void SetIdleOffset(int64 offset_ms, IdleState state);
 
   // Handles power supply udev events.
   static gboolean UdevEventHandler(GIOChannel*,
@@ -282,7 +260,6 @@ class Daemon : public policy::BacklightControllerObserver,
   // Calls all of the metric generation functions that need to be called at the
   // end of a session.
   void GenerateEndOfSessionMetrics(const system::PowerStatus& info,
-                                   const policy::BacklightController& backlight,
                                    const base::TimeTicks& now,
                                    const base::TimeTicks& start);
 
@@ -299,14 +276,12 @@ class Daemon : public policy::BacklightControllerObserver,
   // Generates a number of tiumes the ALS adjusted the backlight during a
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
-  bool GenerateNumberOfAlsAdjustmentsPerSessionMetric(
-      const policy::BacklightController& backlight);
+  bool GenerateNumberOfAlsAdjustmentsPerSessionMetric();
 
   // Generates a number of tiumes the user adjusted the backlight during a
   // session UMA metric sample. Returns true if a sample was sent to UMA, false
   // otherwise.
-  bool GenerateUserBrightnessAdjustmentsPerSessionMetric(
-      const policy::BacklightController& backlight);
+  bool GenerateUserBrightnessAdjustmentsPerSessionMetric();
 
   // Generates length of session UMA metric sample. Returns true if a
   // sample was sent to UMA, false otherwise.

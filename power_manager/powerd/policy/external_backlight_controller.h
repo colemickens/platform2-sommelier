@@ -9,12 +9,10 @@
 #include "base/compiler_specific.h"
 #include "base/observer_list.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
-#include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
 
 namespace system {
-class BacklightInterface;
 class DisplayPowerSetterInterface;
 }  // namespace system
 
@@ -22,16 +20,14 @@ namespace policy {
 
 // Controls the brightness of an external display on machines that lack internal
 // displays.
-class ExternalBacklightController : public BacklightController,
-                                    public system::BacklightInterfaceObserver {
+class ExternalBacklightController : public BacklightController {
  public:
-  ExternalBacklightController(
-      system::BacklightInterface* backlight,
+  explicit ExternalBacklightController(
       system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~ExternalBacklightController();
 
   // Initializes the object.
-  bool Init();
+  void Init();
 
   // BacklightController implementation:
   virtual void AddObserver(BacklightControllerObserver* observer) OVERRIDE;
@@ -54,26 +50,11 @@ class ExternalBacklightController : public BacklightController,
   virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE;
   virtual int GetNumUserAdjustments() const OVERRIDE;
 
-  // BacklightInterfaceObserver implementation:
-  virtual void OnBacklightDeviceChanged() OVERRIDE;
-
  private:
-  // For PercentToLevel().
-  friend class ExternalBacklightControllerTest;
-
-  double LevelToPercent(int64 level);
-  int64 PercentToLevel(double percent);
-
-  // Adjusts the user-requested brightness by |percent_offset|.
-  // |allow_off| corresponds to the identically-named parameter to
-  // DecreaseUserBrightness().
-  bool AdjustUserBrightnessByOffset(double percent_offset, bool allow_off);
-
   // Turns displays on or off via |monitor_reconfigure_| as needed for
   // |off_for_inactivity_|, |suspended_|, and |shutting_down_|.
   void UpdateScreenPowerState();
 
-  system::BacklightInterface* backlight_;  // not owned
   system::DisplayPowerSetterInterface* display_power_setter_;  // not owned
 
   ObserverList<BacklightControllerObserver> observers_;
@@ -83,15 +64,8 @@ class ExternalBacklightController : public BacklightController,
   bool suspended_;
   bool shutting_down_;
 
-  // Maximum brightness level exposed by the current display.
-  // 0 is always the minimum.
-  int64 max_level_;
-
   // Are the external displays currently turned off?
   bool currently_off_;
-
-  // Number of times that we've applied user-initiated brightness requests.
-  int num_user_adjustments_;
 
   DISALLOW_COPY_AND_ASSIGN(ExternalBacklightController);
 };

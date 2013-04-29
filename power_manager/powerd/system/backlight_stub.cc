@@ -16,21 +16,6 @@ BacklightStub::BacklightStub(int64 max_level, int64 current_level)
 
 BacklightStub::~BacklightStub() {}
 
-void BacklightStub::NotifyObservers() {
-  FOR_EACH_OBSERVER(BacklightInterfaceObserver, observers_,
-                    OnBacklightDeviceChanged());
-}
-
-void BacklightStub::AddObserver(BacklightInterfaceObserver* observer) {
-  DCHECK(observer);
-  observers_.AddObserver(observer);
-}
-
-void BacklightStub::RemoveObserver(BacklightInterfaceObserver* observer) {
-  DCHECK(observer);
-  observers_.RemoveObserver(observer);
-}
-
 bool BacklightStub::GetMaxBrightnessLevel(int64* max_level) {
   if (should_fail_)
     return false;

@@ -6,7 +6,7 @@
 #define POWER_MANAGER_POWERD_SYSTEM_BACKLIGHT_STUB_H_
 
 #include "base/basictypes.h"
-#include "base/observer_list.h"
+#include "base/compiler_specific.h"
 #include "base/time.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
@@ -28,12 +28,7 @@ class BacklightStub : public BacklightInterface {
   int64 resume_level() const { return resume_level_; }
   base::TimeDelta current_interval() const { return current_interval_; }
 
-  // Calls all observers' OnBacklightDeviceChanged() methods.
-  void NotifyObservers();
-
   // BacklightInterface implementation:
-  virtual void AddObserver(BacklightInterfaceObserver* observer) OVERRIDE;
-  virtual void RemoveObserver(BacklightInterfaceObserver* observer) OVERRIDE;
   virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE;
   virtual bool GetCurrentBrightnessLevel(int64* current_level) OVERRIDE;
   virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
@@ -41,8 +36,6 @@ class BacklightStub : public BacklightInterface {
   virtual bool SetResumeBrightnessLevel(int64 level) OVERRIDE;
 
  private:
-  ObserverList<BacklightInterfaceObserver> observers_;
-
   // Maximum backlight level.
   int64 max_level_;
 

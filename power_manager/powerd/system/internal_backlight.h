@@ -50,8 +50,6 @@ class InternalBacklight : public BacklightInterface {
   gboolean TriggerTransitionTimeoutForTesting();
 
   // Overridden from BacklightInterface:
-  virtual void AddObserver(BacklightInterfaceObserver* observer) OVERRIDE {}
-  virtual void RemoveObserver(BacklightInterfaceObserver* observer) OVERRIDE {}
   virtual bool GetMaxBrightnessLevel(int64* max_level) OVERRIDE;
   virtual bool GetCurrentBrightnessLevel(int64* current_level) OVERRIDE;
   virtual bool SetBrightnessLevel(int64 level, base::TimeDelta interval)
