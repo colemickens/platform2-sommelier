@@ -51,12 +51,14 @@ class ShillProxy(object):
     SERVICE_DISCONNECT_TIMEOUT = 5
 
     SERVICE_PROPERTY_GUID = 'GUID'
+    SERVICE_PROPERTY_HIDDEN = 'WiFi.HiddenSSID'
     SERVICE_PROPERTY_MODE = 'Mode'
     SERVICE_PROPERTY_NAME = 'Name'
     SERVICE_PROPERTY_PASSPHRASE = 'Passphrase'
     SERVICE_PROPERTY_SAVE_CREDENTIALS = 'SaveCredentials'
     SERVICE_PROPERTY_SECURITY = 'Security'
     SERVICE_PROPERTY_SSID = 'SSID'
+    SERVICE_PROPERTY_STRENGTH = 'Strength'
     SERVICE_PROPERTY_STATE = 'State'
     SERVICE_PROPERTY_TYPE = 'Type'
 
@@ -163,6 +165,7 @@ class ShillProxy(object):
                                 security,
                                 psk,
                                 save_credentials,
+                                hidden_network=False,
                                 discovery_timeout_seconds=15,
                                 association_timeout_seconds=15,
                                 configuration_timeout_seconds=15):
@@ -174,6 +177,7 @@ class ShillProxy(object):
         @param psk string password or pre shared key for appropriate security
                 types.
         @param save_credentials bool True if we should save EAP credentials.
+        @param hidden_network bool True when the SSID is not broadcasted.
         @param discovery_timeout_seconds float timeout for service discovery.
         @param association_timeout_seconds float timeout for service
             association.
@@ -193,6 +197,25 @@ class ShillProxy(object):
         discovery_time = -1.0
         association_time = -1.0
         configuration_time = -1.0
+        if hidden_network:
+            logging.info('Configuring %s as a hidden network.', ssid)
+            config_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
+                             self.SERVICE_PROPERTY_HIDDEN: True,
+                             self.SERVICE_PROPERTY_SSID: ssid,
+                             self.SERVICE_PROPERTY_SECURITY: security}
+            try:
+                self.manager.ConfigureService(config_params)
+            except dbus.exceptions.DBusException, e:
+                logging.error(
+                        'Caught an error while configuring a hidden SSID: %s',
+                        e.get_dbus_message())
+                return (False, discovery_time, association_time,
+                        configuration_time,
+                        'FAIL(Failed to configure hidden SSID)')
+
+            logging.info('Configured hidden service: %s', ssid)
+
+
         logging.info('Discovering...')
         while time.time() - start_time < discovery_timeout_seconds:
             discovery_time = time.time() - start_time
@@ -202,17 +225,24 @@ class ShillProxy(object):
             try:
                 service_path = self.manager.FindMatchingService(
                         discovery_params)
+                service_object = self.get_dbus_object(self.DBUS_TYPE_SERVICE,
+                                                      service_path)
+                service_properties = service_object.GetProperties(
+                        utf8_strings=True)
+                strength = dbus2primitive(
+                        service_properties[self.SERVICE_PROPERTY_STRENGTH])
+                if strength > 0:
+                    logging.info('Discovered service: %s. Strength: %r.',
+                                 ssid, strength)
+                    break
             except dbus.exceptions.DBusException, e:
                 # There really is not a better way to check the error type.
                 if e.get_dbus_message() != 'Matching service was not found':
                     logging.error('Caught an error while discovering: %s',
                                   e.get_dbus_message())
-                # This is spammy, but shill handles that for us.
-                self.manager.RequestScan('wifi')
-                time.sleep(self.POLLING_INTERVAL_SECONDS)
-                continue
-            logging.info('Discovered service: %s', ssid)
-            break
+            # This is spammy, but shill handles that for us.
+            self.manager.RequestScan('wifi')
+            time.sleep(self.POLLING_INTERVAL_SECONDS)
         else:
             return (False, discovery_time, association_time,
                     configuration_time, 'FAIL(Discovery timed out)')
@@ -221,8 +251,6 @@ class ShillProxy(object):
         # to connect it, and watch the states roll by.
         logging.info('Connecting...')
         try:
-            service_object = self.get_dbus_object(self.DBUS_TYPE_SERVICE,
-                                                  service_path)
             # Don't give a passphrase unless we actually have one.
             if psk:
                 service_object.SetProperty(self.SERVICE_PROPERTY_PASSPHRASE,
