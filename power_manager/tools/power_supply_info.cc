@@ -18,7 +18,7 @@
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/system/power_supply.h"
 
-// power-supply-info: Displays info about battery and line power.
+// Displays info about battery and line power.
 
 using base::TimeDelta;
 

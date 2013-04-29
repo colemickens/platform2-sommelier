@@ -145,7 +145,7 @@ cp /sys/class/rtc/rtc0/since_epoch $suspend_to_ram_time_file \
 rm -f $last_resume_timings_file
 
 # - stores the current power status
-power-supply-info 2> /dev/null \
+power_supply_info 2> /dev/null \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
     echo OnBattery > $power_status_on_suspend_file
