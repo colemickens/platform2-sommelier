@@ -1323,5 +1323,14 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
 
+// Tests that the system is suspended immediately if the lid is closed at
+// startup (e.g. due to powerd crashing during a suspend attempt and
+// getting restarted).
+TEST_F(StateControllerTest, SuspendImmediatelyIfLidClosedAtStartup) {
+  initial_lid_state_ = LID_CLOSED;
+  Init();
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+}
+
 }  // namespace policy
 }  // namespace power_manager
