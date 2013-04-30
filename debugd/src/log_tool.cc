@@ -125,7 +125,7 @@ static const Log common_logs[] = {
   { "net-diags.net.log", "/bin/cat /var/log/net-diags.net.log" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/net.log" },
-  { "power-supply-info", "/usr/bin/power-supply-info" },
+  { "power_supply_info", "/usr/bin/power_supply_info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
   // Changed from 'ps ux' to 'ps aux' since we're running as debugd, not chronos
