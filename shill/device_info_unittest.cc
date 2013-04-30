@@ -5,13 +5,13 @@
 #include "shill/device_info.h"
 
 #include <glib.h>
-#include <sys/socket.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <linux/rtnetlink.h>
 #include <linux/sockios.h>
 #include <net/if_arp.h>
+#include <sys/socket.h>
 
 #include <base/bind.h>
 #include <base/file_util.h>
@@ -169,7 +169,7 @@ class DeviceInfoTest : public Test {
 const int DeviceInfoTest::kTestDeviceIndex = 123456;
 const char DeviceInfoTest::kTestDeviceName[] = "test-device";
 const uint8_t DeviceInfoTest::kTestMACAddress[] = {
-   0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
+    0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff };
 const char DeviceInfoTest::kTestIPAddress0[] = "192.168.1.1";
 const int DeviceInfoTest::kTestIPAddressPrefix0 = 24;
 const char DeviceInfoTest::kTestIPAddress1[] = "fe80::1aa9:5ff:abcd:1234";
@@ -481,8 +481,9 @@ TEST_F(DeviceInfoTest, CreateDeviceWiFi) {
   // Set the nl80211 message type to some non-default value.
   Nl80211Message::SetMessageType(1234);
 
-  EXPECT_CALL(netlink_manager_,
-              SendMessage(IsGetInterfaceMessage(kTestDeviceIndex), _));
+  EXPECT_CALL(
+      netlink_manager_,
+      SendNl80211Message(IsGetInterfaceMessage(kTestDeviceIndex), _, _));
   EXPECT_FALSE(CreateDevice(
       kTestDeviceName, "address", kTestDeviceIndex, Technology::kWifi));
 }
@@ -1098,7 +1099,7 @@ class DeviceInfoDelayedCreationTest : public DeviceInfoTest {
     GetDelayedDevices().insert(kTestDeviceIndex);
   }
 
-  void TriggerOnWiFiInterfaceInfoReceived(const NetlinkMessage &message) {
+  void TriggerOnWiFiInterfaceInfoReceived(const Nl80211Message &message) {
     test_device_info_.OnWiFiInterfaceInfoReceived(message);
   }
 
@@ -1136,13 +1137,6 @@ TEST_F(DeviceInfoDelayedCreationTest, CellularDevice) {
 
 TEST_F(DeviceInfoDelayedCreationTest, WiFiDevice) {
   ScopedMockLog log;
-  EXPECT_CALL(manager_, RegisterDevice(_)).Times(0);
-  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
-                       HasSubstr("Unknown message type received")));
-  GenericNetlinkMessage non_nl80211_message(0, 0, "foo");
-  TriggerOnWiFiInterfaceInfoReceived(non_nl80211_message);
-  Mock::VerifyAndClearExpectations(&log);
-
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        HasSubstr("Message is not a new interface response")));
   GetInterfaceMessage non_interface_response_message;

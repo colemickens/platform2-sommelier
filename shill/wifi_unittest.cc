@@ -349,7 +349,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->progressive_scan_enabled_ = false;
   }
 
-  void OnTriggerScanResponse(const NetlinkMessage &message) {
+  void OnTriggerScanResponse(const Nl80211Message &message) {
     wifi_->scan_session_->OnTriggerScanResponse(message);
   }
 
@@ -1615,12 +1615,12 @@ TEST_F(WiFiMainTest, ScanHidden) {
   ByteArrays ssids;
   ssids.push_back(kSSID);
 
-  EXPECT_CALL(netlink_manager_, SendMessage(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _));
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList()).WillOnce(Return(ssids));
   StartWiFi();
   EXPECT_CALL(netlink_manager_,
-              SendMessage(HasHiddenSSID(kNl80211FamilyId), _));
+              SendNl80211Message(HasHiddenSSID(kNl80211FamilyId), _, _));
   dispatcher_.DispatchPendingEvents();
 }
 
@@ -1640,13 +1640,13 @@ TEST_F(WiFiMainTest, ScanNoHidden) {
   // instantiates a new ScanSession (and it won't instantiate a new ScanSession
   // if there's already one there).
   ClearScanSession();
-  EXPECT_CALL(netlink_manager_, SendMessage(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _));
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
       .WillOnce(Return(ByteArrays()));
   StartWiFi();
   EXPECT_CALL(netlink_manager_,
-              SendMessage(HasNoHiddenSSID(kNl80211FamilyId), _));
+              SendNl80211Message(HasNoHiddenSSID(kNl80211FamilyId), _, _));
   dispatcher_.DispatchPendingEvents();
 }
 
@@ -2485,8 +2485,8 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
     expected_info.AddField(kGeoChannelProperty, StringPrintf(
         "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency)));
     EXPECT_TRUE(objects[i].Equals(expected_info));
-  };
-};
+  }
+}
 
 TEST_F(WiFiMainTest, SetSupplicantDebugLevel) {
   MockSupplicantProcessProxy *process_proxy = supplicant_process_proxy_.get();

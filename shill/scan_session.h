@@ -22,6 +22,7 @@ namespace shill {
 class EventDispatcher;
 class NetlinkManager;
 class NetlinkMessage;
+class Nl80211Message;
 
 // |ScanSession| sends requests to the kernel to scan WiFi frequencies for
 // access points.  The sequence for a single scan is as follows:
@@ -174,7 +175,8 @@ class ScanSession {
   // Handles any unicast response to NL80211_CMD_TRIGGER_SCAN (which is,
   // likely, an error -- when things work, we get an
   // NL80211_CMD_NEW_SCAN_RESULTS broadcast message).
-  void OnTriggerScanResponse(const NetlinkMessage &message);
+  void OnTriggerScanResponse(const Nl80211Message &message);
+  void OnTriggerScanErrorResponse(const NetlinkMessage *netlink_message);
 
   base::WeakPtrFactory<ScanSession> weak_ptr_factory_;
 

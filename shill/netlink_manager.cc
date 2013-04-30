@@ -7,6 +7,7 @@
 #include <netlink/netlink.h>
 #include <sys/select.h>
 #include <sys/time.h>
+
 #include <map>
 
 #include <base/memory/weak_ptr.h>
@@ -20,6 +21,7 @@
 #include "shill/logging.h"
 #include "shill/netlink_message.h"
 #include "shill/netlink_socket.h"
+#include "shill/nl80211_message.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 #include "shill/sockets.h"
@@ -42,6 +44,80 @@ const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
 const char NetlinkManager::kEventTypeMlme[] = "mlme";
 const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;
 const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;
+
+NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
+    const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
+    : error_handler_(error_handler) {}
+
+NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() {}
+
+void NetlinkManager::NetlinkResponseHandler::HandleError(
+    const NetlinkMessage *netlink_message) const {
+  if (!error_handler_.is_null())
+    error_handler_.Run(netlink_message);
+}
+
+class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
+ public:
+  ControlResponseHandler(
+      const NetlinkManager::ControlNetlinkMessageHandler &handler,
+      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
+    : NetlinkManager::NetlinkResponseHandler(error_handler),
+      handler_(handler) {}
+
+  virtual bool HandleMessage(
+      const NetlinkMessage &netlink_message) const override {
+    if (netlink_message.message_type() !=
+        ControlNetlinkMessage::GetMessageType()) {
+      LOG(ERROR) << "Message is type " << netlink_message.message_type()
+                 << ", not " << ControlNetlinkMessage::GetMessageType()
+                 << " (Control).";
+      return false;
+    }
+    if (!handler_.is_null()) {
+      const ControlNetlinkMessage *message =
+          dynamic_cast<const ControlNetlinkMessage *>(&netlink_message);
+      handler_.Run(*message);
+    }
+    return true;
+  }
+
+ private:
+  NetlinkManager::ControlNetlinkMessageHandler handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(ControlResponseHandler);
+};
+
+class Nl80211ResponseHandler : public NetlinkManager::NetlinkResponseHandler {
+ public:
+  Nl80211ResponseHandler(
+      const NetlinkManager::Nl80211MessageHandler &handler,
+      const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
+    : NetlinkManager::NetlinkResponseHandler(error_handler),
+      handler_(handler) {}
+
+  virtual bool HandleMessage(
+      const NetlinkMessage &netlink_message) const override {
+    if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
+      LOG(ERROR) << "Message is type " << netlink_message.message_type()
+                 << ", not " << Nl80211Message::GetMessageType()
+                 << " (Nl80211).";
+      return false;
+    }
+    if (!handler_.is_null()) {
+      const Nl80211Message *message =
+          dynamic_cast<const Nl80211Message *>(&netlink_message);
+      handler_.Run(*message);
+    }
+    return true;
+  }
+
+ private:
+  NetlinkManager::Nl80211MessageHandler handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(Nl80211ResponseHandler);
+};
+
 
 NetlinkManager::MessageType::MessageType() :
   family_id(NetlinkMessage::kIllegalMessageType) {}
@@ -69,40 +145,17 @@ void NetlinkManager::Reset(bool full) {
   }
 }
 
-void NetlinkManager::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
+void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
   uint16_t family_id;
   string family_name;
 
-  if (raw_message.message_type() == ErrorAckMessage::kMessageType) {
-    const ErrorAckMessage *error_ack_message =
-        reinterpret_cast<const ErrorAckMessage *>(&raw_message);
-    if (error_ack_message->error()) {
-      LOG(ERROR) << __func__ << ": Message (seq: "
-                 << raw_message.sequence_number() << ") failed: "
-                 << error_ack_message->ToString();
-    } else {
-      SLOG(WiFi, 6) << __func__ << ": Message (seq: "
-                 << raw_message.sequence_number() << ") ACKed";
-    }
-    return;
-  }
-
-  if (raw_message.message_type() != ControlNetlinkMessage::kMessageType) {
-    LOG(ERROR) << "Received unexpected message type: "
-               << raw_message.message_type();
-    return;
-  }
-
-  const ControlNetlinkMessage *message =
-      reinterpret_cast<const ControlNetlinkMessage *>(&raw_message);
-
-  if (!message->const_attributes()->GetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
+  if (!message.const_attributes()->GetU16AttributeValue(CTRL_ATTR_FAMILY_ID,
                                                          &family_id)) {
     LOG(ERROR) << __func__ << ": Couldn't get family_id attribute";
     return;
   }
 
-  if (!message->const_attributes()->GetStringAttributeValue(
+  if (!message.const_attributes()->GetStringAttributeValue(
       CTRL_ATTR_FAMILY_NAME, &family_name)) {
     LOG(ERROR) << __func__ << ": Couldn't get family_name attribute";
     return;
@@ -112,7 +165,7 @@ void NetlinkManager::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
 
   // Extract the available multicast groups from the message.
   AttributeListConstRefPtr multicast_groups;
-  if (message->const_attributes()->ConstGetNestedAttributeList(
+  if (message.const_attributes()->ConstGetNestedAttributeList(
       CTRL_ATTR_MCAST_GROUPS, &multicast_groups)) {
     AttributeListConstRefPtr current_group;
 
@@ -137,6 +190,29 @@ void NetlinkManager::OnNewFamilyMessage(const NetlinkMessage &raw_message) {
   }
 
   message_types_[family_name].family_id = family_id;
+}
+
+// static
+void NetlinkManager::OnNetlinkMessageError(const NetlinkMessage *raw_message) {
+  if (!raw_message) {
+    LOG(ERROR) << "NetlinkManager error.";
+    return;
+  }
+  if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
+    const ErrorAckMessage *error_ack_message =
+        dynamic_cast<const ErrorAckMessage *>(raw_message);
+    if (error_ack_message->error()) {
+      LOG(ERROR) << __func__ << ": Message (seq: "
+                 << error_ack_message->sequence_number() << ") failed: "
+                 << error_ack_message->ToString();
+    } else {
+      SLOG(WiFi, 6) << __func__ << ": Message (seq: "
+                 << error_ack_message->sequence_number() << ") ACKed";
+    }
+    return;
+  }
+  LOG(ERROR) << "Not expecting this message:";
+  raw_message->Print(0, 0);
 }
 
 bool NetlinkManager::Init() {
@@ -190,8 +266,10 @@ uint16_t NetlinkManager::GetFamily(const string &name,
     LOG(ERROR) << "Couldn't set string attribute";
     return false;
   }
-  SendMessage(&msg, Bind(&NetlinkManager::OnNewFamilyMessage,
-                         weak_ptr_factory_.GetWeakPtr()));
+  SendControlMessage(&msg,
+                     Bind(&NetlinkManager::OnNewFamilyMessage,
+                          weak_ptr_factory_.GetWeakPtr()),
+                     Bind(&NetlinkManager::OnNetlinkMessageError));
 
   // Wait for a response.  The code absolutely needs family_ids for its
   // message types so we do a synchronous wait.  It's OK to do this because
@@ -302,8 +380,27 @@ void NetlinkManager::ClearBroadcastHandlers() {
   broadcast_handlers_.clear();
 }
 
-bool NetlinkManager::SendMessage(NetlinkMessage *message,
-                                 const NetlinkMessageHandler &handler) {
+bool NetlinkManager::SendControlMessage(
+    ControlNetlinkMessage *message,
+    const ControlNetlinkMessageHandler &message_handler,
+    const NetlinkAuxilliaryMessageHandler &error_handler) {
+  return SendMessageInternal(message,
+                             new ControlResponseHandler(message_handler,
+                                                        error_handler));
+}
+
+bool NetlinkManager::SendNl80211Message(
+    Nl80211Message *message,
+    const Nl80211MessageHandler &message_handler,
+    const NetlinkAuxilliaryMessageHandler &error_handler) {
+  return SendMessageInternal(message,
+                             new Nl80211ResponseHandler(message_handler,
+                                                        error_handler));
+}
+
+bool NetlinkManager::SendMessageInternal(
+    NetlinkMessage *message,
+    NetlinkManager::NetlinkResponseHandler *response_handler) {
   if (!message) {
     LOG(ERROR) << "Message is NULL.";
     return false;
@@ -311,14 +408,15 @@ bool NetlinkManager::SendMessage(NetlinkMessage *message,
 
   ByteString message_string = message->Encode(this->GetSequenceNumber());
 
-  if (handler.is_null()) {
+  if (!response_handler) {
     SLOG(WiFi, 3) << "Handler for message was null.";
   } else if (ContainsKey(message_handlers_, message->sequence_number())) {
     LOG(ERROR) << "A handler already existed for sequence: "
                << message->sequence_number();
     return false;
   } else {
-    message_handlers_[message->sequence_number()] = handler;
+    message_handlers_[message->sequence_number()] =
+        NetlinkResponseHandlerRefPtr(response_handler);
   }
 
   SLOG(WiFi, 5) << "NL Message " << message->sequence_number()
@@ -412,39 +510,44 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
   NetlinkMessage::PrintBytes(8, reinterpret_cast<const unsigned char *>(msg),
                              msg->nlmsg_len);
 
-  // Call (then erase) any message-specific handler.
-  if (ContainsKey(message_handlers_, sequence_number)) {
-    SLOG(WiFi, 6) << "found message-specific handler";
-    if (message_handlers_[sequence_number].is_null()) {
-      LOG(ERROR) << "NetlinkMessageHandler exists but is NULL for ID "
-                 << sequence_number;
-    } else {
-      message_handlers_[sequence_number].Run(*message);
-    }
-
-    if (message->message_type() == ErrorAckMessage::kMessageType) {
-      const ErrorAckMessage *error_ack_message =
-          reinterpret_cast<const ErrorAckMessage *>(message.get());
-      if (error_ack_message->error()) {
-        SLOG(WiFi, 3) << "Removing callback";
+  if (message->message_type() == ErrorAckMessage::GetMessageType()) {
+    SLOG(WiFi, 3) << "Error response to message " << sequence_number;
+    const ErrorAckMessage *error_ack_message =
+        dynamic_cast<const ErrorAckMessage *>(message.get());
+    if (error_ack_message->error()) {
+      if (ContainsKey(message_handlers_, sequence_number)) {
+        SLOG(WiFi, 6) << "Found message-specific error handler";
+        message_handlers_[sequence_number]->HandleError(message.get());
         message_handlers_.erase(sequence_number);
-      } else {
-        SLOG(WiFi, 3) << "ACK message -- not removing callback";
       }
-    } else if ((message->flags() & NLM_F_MULTI) &&
+    } else {
+      SLOG(WiFi, 3) << "ACK message -- not removing callback";
+    }
+    return;
+  }
+
+  if (ContainsKey(message_handlers_, sequence_number)) {
+    SLOG(WiFi, 6) << "Found message-specific handler";
+    if (!message_handlers_[sequence_number]->HandleMessage(*message)) {
+      LOG(ERROR) << "Couldn't call message handler for " << sequence_number;
+      // Call the error handler but, since we don't have an |ErrorAckMessage|,
+      // we'll have to pass a NULL pointer.
+      message_handlers_[sequence_number]->HandleError(NULL);
+    }
+    if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() != NLMSG_DONE)) {
       SLOG(WiFi, 6) << "Multi-part message -- not removing callback";
     } else {
-      SLOG(WiFi, 6) << "Removing callback";
+      SLOG(WiFi, 6) << "Removing callbacks";
       message_handlers_.erase(sequence_number);
     }
-  } else {
-    list<NetlinkMessageHandler>::const_iterator i =
-        broadcast_handlers_.begin();
-    while (i != broadcast_handlers_.end()) {
-      SLOG(WiFi, 6) << __func__ << " - calling broadcast handler";
-      i->Run(*message);
-      ++i;
+    return;
+  }
+
+  for (const auto &handler : broadcast_handlers_) {
+    SLOG(WiFi, 6) << "Calling broadcast handler";
+    if (!handler.is_null()) {
+      handler.Run(*message);
     }
   }
 }

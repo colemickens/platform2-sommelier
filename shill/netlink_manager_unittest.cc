@@ -140,10 +140,10 @@ class NetlinkManagerTest : public Test {
   }
 
  protected:
-  class MockHandler80211 {
+  class MockHandlerNetlink {
    public:
-    MockHandler80211() :
-      on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
+    MockHandlerNetlink() :
+      on_netlink_message_(base::Bind(&MockHandlerNetlink::OnNetlinkMessage,
                                      base::Unretained(this))) {}
     MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage &msg));
     const NetlinkManager::NetlinkMessageHandler &on_netlink_message() const {
@@ -151,6 +151,36 @@ class NetlinkManagerTest : public Test {
     }
    private:
     NetlinkManager::NetlinkMessageHandler on_netlink_message_;
+    DISALLOW_COPY_AND_ASSIGN(MockHandlerNetlink);
+  };
+
+  class MockHandlerNetlinkAuxilliary {
+   public:
+    MockHandlerNetlinkAuxilliary() :
+      on_netlink_message_(
+          base::Bind(&MockHandlerNetlinkAuxilliary::OnNetlinkMessage,
+                     base::Unretained(this))) {}
+    MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage *msg));
+    const NetlinkManager::NetlinkAuxilliaryMessageHandler &on_netlink_message()
+        const {
+      return on_netlink_message_;
+    }
+   private:
+    NetlinkManager::NetlinkAuxilliaryMessageHandler on_netlink_message_;
+    DISALLOW_COPY_AND_ASSIGN(MockHandlerNetlinkAuxilliary);
+  };
+
+  class MockHandler80211 {
+   public:
+    MockHandler80211() :
+      on_netlink_message_(base::Bind(&MockHandler80211::OnNetlinkMessage,
+                                     base::Unretained(this))) {}
+    MOCK_METHOD1(OnNetlinkMessage, void(const Nl80211Message &msg));
+    const NetlinkManager::Nl80211MessageHandler &on_netlink_message() const {
+      return on_netlink_message_;
+    }
+   private:
+    NetlinkManager::Nl80211MessageHandler on_netlink_message_;
     DISALLOW_COPY_AND_ASSIGN(MockHandler80211);
   };
 
@@ -303,8 +333,8 @@ TEST_F(NetlinkManagerTest, BroadcastHandler) {
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
 
-  MockHandler80211 handler1;
-  MockHandler80211 handler2;
+  MockHandlerNetlink handler1;
+  MockHandlerNetlink handler2;
 
   // Simple, 1 handler, case.
   EXPECT_CALL(handler1, OnNetlinkMessage(_)).Times(1);
@@ -349,7 +379,7 @@ TEST_F(NetlinkManagerTest, BroadcastHandler) {
 
 TEST_F(NetlinkManagerTest, MessageHandler) {
   Reset();
-  MockHandler80211 handler_broadcast;
+  MockHandlerNetlink handler_broadcast;
   EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
       handler_broadcast.on_netlink_message()));
 
@@ -375,9 +405,11 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
   netlink_manager_->OnNlMessageReceived(received_message);
 
   // Send the message and give our handler.  Verify that we get called back.
-  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
-  EXPECT_TRUE(netlink_manager_->SendMessage(
-      &sent_message_1, handler_sent_1.on_netlink_message()));
+  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message_1, handler_sent_1.on_netlink_message(),
+      null_error_handler));
   // Make it appear that this message is in response to our sent message.
   received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
@@ -390,9 +422,9 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
 
   // Install and then uninstall message-specific handler; verify broadcast
   // handler is called on message receipt.
-  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
-  EXPECT_TRUE(netlink_manager_->SendMessage(
-      &sent_message_1, handler_sent_1.on_netlink_message()));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message_1, handler_sent_1.on_netlink_message(),
+      null_error_handler));
   received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
@@ -400,9 +432,9 @@ TEST_F(NetlinkManagerTest, MessageHandler) {
 
   // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
-  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
-  EXPECT_TRUE(netlink_manager_->SendMessage(
-      &sent_message_2, handler_sent_2.on_netlink_message()));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &sent_message_2, handler_sent_2.on_netlink_message(),
+      null_error_handler));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 
@@ -417,16 +449,19 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
   Reset();
 
   // Install a broadcast handler.
-  MockHandler80211 broadcast_handler;
+  MockHandlerNetlink broadcast_handler;
   EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
       broadcast_handler.on_netlink_message()));
 
   // Build a message and send it in order to install a response handler.
   TriggerScanMessage trigger_scan_message;
   MockHandler80211 response_handler;
+  MockHandlerNetlinkAuxilliary auxilliary_handler;
   EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
-  EXPECT_TRUE(netlink_manager_->SendMessage(
-      &trigger_scan_message, response_handler.on_netlink_message()));
+  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &trigger_scan_message, response_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
 
   // Build a multi-part response (well, it's just one message but it'll be
   // received multiple times).
@@ -452,13 +487,14 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
       done_message.Encode(netlink_socket_.GetLastSequenceNumber()));
 
   // Verify that the message-specific handler is called for the done message.
-  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  EXPECT_CALL(auxilliary_handler, OnNetlinkMessage(_));
   netlink_manager_->OnNlMessageReceived(
       reinterpret_cast<nlmsghdr *>(done_message_bytes.GetData()));
 
   // Verify that broadcast handler is called now that the done message has
   // been seen.
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
+  EXPECT_CALL(auxilliary_handler, OnNetlinkMessage(_)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 }

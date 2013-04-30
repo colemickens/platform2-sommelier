@@ -879,36 +879,27 @@ void DeviceInfo::GetWiFiInterfaceInfo(int interface_index) {
                   "determined!";
     return;
   }
-  netlink_manager_->SendMessage(&msg,
-                                Bind(&DeviceInfo::OnWiFiInterfaceInfoReceived,
-                                AsWeakPtr()));
+  netlink_manager_->SendNl80211Message(
+      &msg,
+      Bind(&DeviceInfo::OnWiFiInterfaceInfoReceived, AsWeakPtr()),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-void DeviceInfo::OnWiFiInterfaceInfoReceived(
-    const NetlinkMessage &raw_message) {
-  if (raw_message.message_type() != Nl80211Message::GetMessageType()) {
-    LOG(ERROR) << "Unknown message type received: "
-               << raw_message.message_type();
-    return;
-  }
-  // Due to the test above, this is guaranteed to be an NL80211Message type.
-  const Nl80211Message *msg =
-      reinterpret_cast<const Nl80211Message *>(&raw_message);
-
-  if (msg->command() != NL80211_CMD_NEW_INTERFACE) {
+void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message &msg) {
+  if (msg.command() != NL80211_CMD_NEW_INTERFACE) {
     LOG(ERROR) << "Message is not a new interface response";
     return;
   }
 
   uint32_t interface_index;
-  if (!msg->const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFINDEX,
-                                                     &interface_index)) {
+  if (!msg.const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFINDEX,
+                                                    &interface_index)) {
     LOG(ERROR) << "Message contains no interface index";
     return;
   }
   uint32_t interface_type;
-  if (!msg->const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFTYPE,
-                                                     &interface_type)) {
+  if (!msg.const_attributes()->GetU32AttributeValue(NL80211_ATTR_IFTYPE,
+                                                    &interface_type)) {
     LOG(ERROR) << "Message contains no interface type";
     return;
   }

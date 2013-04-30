@@ -97,6 +97,8 @@ class ControlNetlinkMessage : public GenericNetlinkMessage {
   ControlNetlinkMessage(uint8 command, const char *command_string)
       : GenericNetlinkMessage(kMessageType, command, command_string) {}
 
+  static uint16_t GetMessageType() { return kMessageType; }
+
   virtual bool InitFromNlmsg(const nlmsghdr *msg);
 
   // Message factory for all types of Control netlink message.

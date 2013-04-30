@@ -29,7 +29,7 @@ namespace shill {
 class Manager;
 class Metrics;
 class NetlinkManager;
-class NetlinkMessage;
+class Nl80211Message;
 class RoutingTable;
 class RTNLHandler;
 class RTNLMessage;
@@ -220,7 +220,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
 
   // Use nl80211 to get information on |interface_index|.
   void GetWiFiInterfaceInfo(int interface_index);
-  void OnWiFiInterfaceInfoReceived(const NetlinkMessage &raw_message);
+  void OnWiFiInterfaceInfoReceived(const Nl80211Message &message);
 
   void set_sockets(Sockets* sockets) { sockets_.reset(sockets); }
 

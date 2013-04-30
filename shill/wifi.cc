@@ -34,6 +34,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/netlink_manager.h"
+#include "shill/netlink_message.h"
 #include "shill/nl80211_message.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -1677,51 +1678,24 @@ void WiFi::ConfigureScanFrequencies() {
   GetWiphyMessage get_wiphy;
   get_wiphy.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                interface_index());
-  netlink_manager_->SendMessage(&get_wiphy,
-                                Bind(&WiFi::OnNewWiphy,
-                                     weak_ptr_factory_.GetWeakPtr()));
+  netlink_manager_->SendNl80211Message(
+      &get_wiphy,
+      Bind(&WiFi::OnNewWiphy, weak_ptr_factory_.GetWeakPtr()),
+      Bind(&NetlinkManager::OnNetlinkMessageError));
 }
 
-void WiFi::OnNewWiphy(const NetlinkMessage &netlink_message) {
-  // Note that we don't fail fatally from this routine because, while it
-  // provides frequencies for a progressive scan, a failed progressive scan is
-  // followed by a full scan (which doesn't use the frequency list provided by
-  // this call).
-  if (netlink_message.message_type() == ErrorAckMessage::kMessageType) {
-    const ErrorAckMessage *error_ack_message =
-        reinterpret_cast<const ErrorAckMessage *>(&netlink_message);
-    if (error_ack_message->error()) {
-      LOG(ERROR) << __func__ << ": Message (seq: "
-                 << netlink_message.sequence_number() << ") failed: "
-                 << error_ack_message->ToString();
-    } else {
-      SLOG(WiFi, 6) << __func__ << ": Message (seq: "
-                 << netlink_message.sequence_number() << ") ACKed";
-    }
-    return;
-  }
-
-  // We only handle a special set of messages, all of which are nl80211
-  // messages.
-  if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
-    LOG(ERROR) << "Received unexpected message type: "
-               << netlink_message.message_type();
-    return;
-  }
-
-  const Nl80211Message *nl80211_message =
-      dynamic_cast<const Nl80211Message *>(&netlink_message);
+void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
   // Verify NL80211_CMD_NEW_WIPHY
-  if (nl80211_message->command() != NewWiphyMessage::kCommand) {
+  if (nl80211_message.command() != NewWiphyMessage::kCommand) {
     LOG(ERROR) << "Received unexpected command:"
-               << nl80211_message->command();
+               << nl80211_message.command();
     return;
   }
 
   // The attributes, for this message, are complicated.
   // NL80211_ATTR_BANDS contains an array of bands...
   AttributeListConstRefPtr wiphy_bands;
-  if (!nl80211_message->const_attributes()->ConstGetNestedAttributeList(
+  if (!nl80211_message.const_attributes()->ConstGetNestedAttributeList(
       NL80211_ATTR_WIPHY_BANDS, &wiphy_bands)) {
     LOG(ERROR) << "NL80211_CMD_NEW_WIPHY had no NL80211_ATTR_WIPHY_BANDS";
     return;

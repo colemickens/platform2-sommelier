@@ -178,21 +178,35 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
     ssid_list->CreateRawAttribute(i, attribute_name.c_str());
     ssid_list->SetRawAttributeValue(i, ByteString());
   }
-  netlink_manager_->SendMessage(&trigger_scan,
-                                Bind(&ScanSession::OnTriggerScanResponse,
-                                     weak_ptr_factory_.GetWeakPtr()));
+  netlink_manager_->SendNl80211Message(
+      &trigger_scan,
+      Bind(&ScanSession::OnTriggerScanResponse,
+           weak_ptr_factory_.GetWeakPtr()),
+      Bind(&ScanSession::OnTriggerScanErrorResponse,
+           weak_ptr_factory_.GetWeakPtr()));
 }
 
-void ScanSession::OnTriggerScanResponse(const NetlinkMessage &netlink_message) {
-  if (netlink_message.message_type() != NLMSG_ERROR) {
-    LOG(WARNING) << "Didn't expect _this_ message, here:";
-    netlink_message.Print(0, 0);
+void ScanSession::OnTriggerScanResponse(const Nl80211Message &netlink_message) {
+  LOG(WARNING) << "Didn't expect _this_ message, here:";
+  netlink_message.Print(0, 0);
+  on_scan_failed_.Run();
+  return;
+}
+
+void ScanSession::OnTriggerScanErrorResponse(
+    const NetlinkMessage *netlink_message) {
+  if (!netlink_message) {
+    LOG(ERROR) << __func__ << ": Message failed: NetlinkManager Error.";
     on_scan_failed_.Run();
     return;
   }
-
+  if (netlink_message->message_type() != ErrorAckMessage::GetMessageType()) {
+    LOG(ERROR) << __func__ << ": Message failed: Not an error.";
+    on_scan_failed_.Run();
+    return;
+  }
   const ErrorAckMessage *error_ack_message =
-      dynamic_cast<const ErrorAckMessage *>(&netlink_message);
+      dynamic_cast<const ErrorAckMessage *>(netlink_message);
   if (error_ack_message->error()) {
     LOG(ERROR) << __func__ << ": Message failed: "
                << error_ack_message->ToString();

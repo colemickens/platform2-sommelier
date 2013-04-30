@@ -66,6 +66,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/generic_netlink_message.h"
 #include "shill/io_handler.h"
 #include "shill/netlink_message.h"
 #include "shill/shill_time.h"
@@ -74,10 +75,12 @@ struct nlmsghdr;
 
 namespace shill {
 
+class ControlNetlinkMessage;
 class Error;
 class EventDispatcher;
 struct InputData;
 class NetlinkSocket;
+class Nl80211Message;
 
 // NetlinkManager is a singleton that coordinates sending netlink messages to,
 // and receiving netlink messages from, the kernel.  The first use of this is
@@ -94,6 +97,41 @@ class NetlinkSocket;
 class NetlinkManager {
  public:
   typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
+  typedef base::Callback<void(const ControlNetlinkMessage &)>
+      ControlNetlinkMessageHandler;
+  typedef base::Callback<void(const Nl80211Message &)> Nl80211MessageHandler;
+  // NetlinkAuxilliaryMessageHandler handles netlink error messages, things
+  // like the DoneMessage at the end of a multi-part message, and any errors
+  // discovered by |NetlinkManager| (which are passed as NULL pointers because
+  // there is no way to reserve a part of the ErrorAckMessage space for
+  // non-netlink errors).
+  typedef base::Callback<void(const NetlinkMessage *)>
+      NetlinkAuxilliaryMessageHandler;
+
+  // ResponseHandlers provide a polymorphic context for the base::Callback
+  // message handlers so that handlers for different types of messages can be
+  // kept in the same container (namely, |message_handlers_|).
+  class NetlinkResponseHandler :
+    public base::RefCounted<NetlinkResponseHandler> {
+   public:
+    explicit NetlinkResponseHandler(
+        const NetlinkAuxilliaryMessageHandler &error_handler);
+    virtual ~NetlinkResponseHandler();
+    // Calls wrapper-type-specific callback for |netlink_message|.  Returns
+    // false if |netlink_message| is not the correct type.  Calls callback
+    // (which is declared in the private area of derived classes) with
+    // properly cast version of |netlink_message|.
+    virtual bool HandleMessage(const NetlinkMessage &netlink_message) const = 0;
+    void HandleError(const NetlinkMessage *netlink_message) const;
+
+   protected:
+    NetlinkResponseHandler();
+
+   private:
+    NetlinkAuxilliaryMessageHandler error_handler_;
+
+    DISALLOW_COPY_AND_ASSIGN(NetlinkResponseHandler);
+  };
 
   // Encapsulates all the different things we know about a specific message
   // type like its name, and its id.
@@ -160,8 +198,17 @@ class NetlinkManager {
   // installing a handler to deal with the kernel's response to the message.
   // TODO(wdg): Eventually, this should also include a timeout and a callback
   // to call in case of timeout.
-  virtual bool SendMessage(NetlinkMessage *message,
-                           const NetlinkMessageHandler &message_handler);
+  virtual bool SendControlMessage(
+      ControlNetlinkMessage *message,
+      const ControlNetlinkMessageHandler &message_handler,
+      const NetlinkAuxilliaryMessageHandler &error_handler);
+  virtual bool SendNl80211Message(
+      Nl80211Message *message,
+      const Nl80211MessageHandler &message_handler,
+      const NetlinkAuxilliaryMessageHandler &error_handler);
+
+  // Generic erroneous message handler everyone can use.
+  static void OnNetlinkMessageError(const NetlinkMessage *raw_message);
 
   // Uninstall the handler for a specific netlink message.
   bool RemoveMessageHandler(const NetlinkMessage &message);
@@ -201,7 +248,7 @@ class NetlinkManager {
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE);
 
-  typedef std::map<uint32_t, NetlinkMessageHandler> MessageHandlers;
+  typedef scoped_refptr<NetlinkResponseHandler> NetlinkResponseHandlerRefPtr;
 
   static const long kMaximumNewFamilyWaitSeconds;
   static const long kMaximumNewFamilyWaitMicroSeconds;
@@ -229,14 +276,21 @@ class NetlinkManager {
   void Reset(bool full);
 
   // Handles a CTRL_CMD_NEWFAMILY message from the kernel.
-  void OnNewFamilyMessage(const NetlinkMessage &message);
+  void OnNewFamilyMessage(const ControlNetlinkMessage &message);
+
+  // Sends a netlink message to the kernel using the NetlinkManager socket after
+  // installing a handler to deal with the kernel's response to the message.
+  // Adds a serial number to |message| before it is sent.
+  bool SendMessageInternal(
+      NetlinkMessage *message,
+      NetlinkResponseHandler *message_wrapper);  // Passes ownership.
 
   // NetlinkManager Handlers, OnRawNlMessageReceived invokes each of these
   // User-supplied callback object when _it_ gets called to read libnl data.
   std::list<NetlinkMessageHandler> broadcast_handlers_;
 
   // Message-specific callbacks, mapped by message ID.
-  MessageHandlers message_handlers_;
+  std::map<uint32_t, NetlinkResponseHandlerRefPtr> message_handlers_;
 
   // Hooks needed to be called by shill's EventDispatcher.
   EventDispatcher *dispatcher_;

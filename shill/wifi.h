@@ -102,6 +102,7 @@ class GeolocationInfo;
 class KeyValueStore;
 class NetlinkManager;
 class NetlinkMessage;
+class Nl80211Message;
 class ProxyFactory;
 class ScanSession;
 class SupplicantEAPStateHandler;
@@ -355,7 +356,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Netlink message handler for NL80211_CMD_NEW_WIPHY messages; copies
   // device's supported frequencies from that message into
   // |all_scan_frequencies_|.
-  void OnNewWiphy(const NetlinkMessage &netlink_message);
+  void OnNewWiphy(const Nl80211Message &nl80211_message);
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;

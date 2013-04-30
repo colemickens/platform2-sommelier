@@ -436,8 +436,8 @@ TEST_F(ScanSessionTest, IndividualReads) {
 TEST_F(ScanSessionTest, OnTriggerScanResponse) {
   Nl80211Message::SetMessageType(kNl80211FamilyId);
 
-  EXPECT_CALL(*netlink_manager(), SendMessage(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+  EXPECT_CALL(*netlink_manager(), SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _));
   scan_session()->InitiateScan();
 
   EXPECT_CALL(*this, OnScanError());
@@ -453,14 +453,14 @@ TEST_F(ScanSessionTest, ExhaustFrequencies) {
   // Perform all the progressive scans until the frequencies are exhausted.
   for (size_t i = 0; i < GetScanFrequencyCount(); ++i) {
     EXPECT_TRUE(scan_session()->HasMoreFrequencies());
-    EXPECT_CALL(*netlink_manager(), SendMessage(
-        IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+    EXPECT_CALL(*netlink_manager(), SendNl80211Message(
+        IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _));
     scan_session()->InitiateScan();
   }
 
   EXPECT_FALSE(scan_session()->HasMoreFrequencies());
-  EXPECT_CALL(*netlink_manager(), SendMessage(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _))
+  EXPECT_CALL(*netlink_manager(), SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _))
       .Times(0);
   scan_session()->InitiateScan();
 }
@@ -468,13 +468,13 @@ TEST_F(ScanSessionTest, ExhaustFrequencies) {
 TEST_F(ScanSessionTest, OnError) {
   Nl80211Message::SetMessageType(kNl80211FamilyId);
 
-  EXPECT_CALL(*netlink_manager(), SendMessage(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+  EXPECT_CALL(*netlink_manager(), SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _));
   scan_session()->InitiateScan();
 
   EXPECT_CALL(*this, OnScanError());
   ErrorAckMessage error_message(-EINTR);
-  scan_session()->OnTriggerScanResponse(error_message);
+  scan_session()->OnTriggerScanErrorResponse(&error_message);
 }
 
 TEST_F(ScanSessionTest, EBusy) {
@@ -482,31 +482,31 @@ TEST_F(ScanSessionTest, EBusy) {
   Nl80211Message::SetMessageType(kNl80211FamilyId);
   scan_session()->scan_tries_left_ = kSmallRetryNumber;
 
-  EXPECT_CALL(*netlink_manager(), SendMessage(
-      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+  EXPECT_CALL(*netlink_manager(), SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _));
   scan_session()->InitiateScan();
 
   ErrorAckMessage error_message(-EBUSY);
   for (size_t i = 0; i < kSmallRetryNumber; ++i) {
     EXPECT_CALL(*this, OnScanError()).Times(0);
     EXPECT_CALL(*dispatcher(), PostDelayedTask(_, _));
-    scan_session()->OnTriggerScanResponse(error_message);
+    scan_session()->OnTriggerScanErrorResponse(&error_message);
   }
 
   EXPECT_CALL(*this, OnScanError());
-  scan_session()->OnTriggerScanResponse(error_message);
+  scan_session()->OnTriggerScanErrorResponse(&error_message);
 }
 
 TEST_F(ScanSessionTest, ScanHidden) {
   scan_session_->AddSsid(ByteString("a", 1));
   EXPECT_CALL(netlink_manager_,
-              SendMessage(HasHiddenSSID(kNl80211FamilyId), _));
+              SendNl80211Message(HasHiddenSSID(kNl80211FamilyId), _, _));
   scan_session()->InitiateScan();
 }
 
 TEST_F(ScanSessionTest, ScanNoHidden) {
   EXPECT_CALL(netlink_manager_,
-              SendMessage(HasNoHiddenSSID(kNl80211FamilyId), _));
+              SendNl80211Message(HasNoHiddenSSID(kNl80211FamilyId), _, _));
   scan_session()->InitiateScan();
 }
 

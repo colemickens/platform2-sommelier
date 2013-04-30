@@ -125,6 +125,7 @@ class ErrorAckMessage : public NetlinkMessage {
   ErrorAckMessage() : NetlinkMessage(kMessageType), error_(0) {}
   explicit ErrorAckMessage(uint32_t err)
       : NetlinkMessage(kMessageType), error_(err) {}
+  static uint16_t GetMessageType() { return kMessageType; }
   virtual bool InitFromNlmsg(const nlmsghdr *const_msg);
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
@@ -143,6 +144,7 @@ class NoopMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   NoopMessage() : NetlinkMessage(kMessageType) {}
+  static uint16_t GetMessageType() { return kMessageType; }
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const { return "<NOOP>"; }
@@ -157,6 +159,7 @@ class DoneMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   DoneMessage() : NetlinkMessage(kMessageType) {}
+  static uint16_t GetMessageType() { return kMessageType; }
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const { return "<DONE with multipart message>"; }
@@ -171,6 +174,7 @@ class OverrunMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   OverrunMessage() : NetlinkMessage(kMessageType) {}
+  static uint16_t GetMessageType() { return kMessageType; }
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
   std::string ToString() const { return "<OVERRUN - data lost>"; }
