@@ -106,6 +106,7 @@ class CellularOperatorInfoImpl {
     key_to_handler_["sid"] = new SidHandler(this);
     key_to_handler_["olp"] = new OlpHandler(this);
     key_to_handler_["identifier"] = new IdentifierHandler(this);
+    key_to_handler_["activation-code"] = new ActivationCodeHandler(this);
     key_to_handler_["country"] = new CountryHandler(this);
   }
 
@@ -211,6 +212,19 @@ class CellularOperatorInfoImpl {
 
    private:
     DISALLOW_COPY_AND_ASSIGN(IdentifierHandler);
+  };
+
+  class ActivationCodeHandler : public KeyHandler {
+   public:
+    ActivationCodeHandler(CellularOperatorInfoImpl *info_impl)
+       : KeyHandler(info_impl) {}
+
+    bool HandleKey(const string &value) {
+      return info_impl()->HandleActivationCode(value);
+    }
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(ActivationCodeHandler);
   };
 
   class ApnHandler : public KeyHandler {
@@ -352,6 +366,15 @@ class CellularOperatorInfoImpl {
       return false;
     }
     state_.provider->identifier_ = value;
+    return true;
+  }
+
+  bool HandleActivationCode(const string &value) {
+    if (!state_.provider) {
+      LOG(ERROR) << "Found \"activation-code\" entry without \"provider\".";
+      return false;
+    }
+    state_.provider->activation_code_ = value;
     return true;
   }
 

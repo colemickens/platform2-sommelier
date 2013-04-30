@@ -532,6 +532,23 @@ TEST_F(CellularOperatorInfoTest, HandleIdentifier) {
   EXPECT_EQ("test-id", info_.operators()[0]->identifier());
 }
 
+TEST_F(CellularOperatorInfoTest, HandleActivationCode) {
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "# No provider entry.\n"
+      "activation-code:test-code\n");
+  EXPECT_FALSE(info_.Load(info_file_path_));
+  EXPECT_TRUE(info_.operators().empty());
+
+  TruncateAndWriteToFile(
+      "serviceproviders:3.0\n"
+      "provider:1,1,0,0\n"
+      "activation-code:test-code\n");
+  EXPECT_TRUE(info_.Load(info_file_path_));
+  EXPECT_EQ(1, info_.operators().size());
+  EXPECT_EQ("test-code", info_.operators()[0]->activation_code());
+}
+
 TEST_F(CellularOperatorInfoTest, HandleOLP) {
   TruncateAndWriteToFile(
       "serviceproviders:3.0\n"

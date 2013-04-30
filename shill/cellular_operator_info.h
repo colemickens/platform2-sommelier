@@ -86,6 +86,9 @@ class CellularOperatorInfo {
     // access technology agnostic and should be the same across 3GPP and CDMA.
     const std::string &identifier() const { return identifier_; }
 
+    // The number to dial for automatic activation.
+    const std::string &activation_code() const { return activation_code_; }
+
     // MCCMNC or (MCC/MNC tuple) is the combination of a "Mobile Country Code"
     // and "Mobile Network Code" and is used to uniquely identify a carrier.
     // ModemManager currently return MCCMNC as the primary operator code for
@@ -135,6 +138,7 @@ class CellularOperatorInfo {
 
     std::string country_;
     std::string identifier_;
+    std::string activation_code_;
     std::vector<std::string> mccmnc_list_;
     std::vector<std::string> sid_list_;
     std::vector<LocalizedName> name_list_;
