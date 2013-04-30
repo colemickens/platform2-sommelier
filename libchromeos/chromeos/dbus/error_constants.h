@@ -32,6 +32,7 @@ typedef enum {
   CHROMEOS_LOGIN_ERROR_START_FAIL,      // service start failure.
   CHROMEOS_LOGIN_ERROR_STOP_FAIL,       // service stop failure.
   CHROMEOS_LOGIN_ERROR_ALREADY_SESSION,  // a session has already been started
+  CHROMEOS_LOGIN_ERROR_POLICY_INIT_FAIL,  // Policy service failed to init.
 } ChromeOSLoginError;
 
 }  // namespace login_manager
