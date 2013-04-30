@@ -5,19 +5,20 @@
 #ifndef SHILL_MOCK_METRICS_
 #define SHILL_MOCK_METRICS_
 
-#include <gmock/gmock.h>
-
 #include "shill/metrics.h"
+
+#include <gmock/gmock.h>
 
 namespace shill {
 
 class MockMetrics : public Metrics {
  public:
-  MockMetrics(EventDispatcher *dispatcher);
+  explicit MockMetrics(EventDispatcher *dispatcher);
   virtual ~MockMetrics();
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD1(NotifyDeviceScanFinished, void(int interface_index));
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
   MOCK_METHOD2(NotifyServiceStateChanged,
                void(const Service *service, Service::ConnectState new_state));
@@ -31,6 +32,6 @@ class MockMetrics : public Metrics {
   DISALLOW_COPY_AND_ASSIGN(MockMetrics);
 };
 
-}
+}  // namespace shill
 
 #endif  // SHILL_MOCK_METRICS_

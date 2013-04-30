@@ -4,10 +4,10 @@
 
 #include "shill/wifi.h"
 
-#include <netinet/ether.h>
 #include <linux/if.h>
-#include <sys/socket.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
+#include <netinet/ether.h>
+#include <sys/socket.h>
 
 #include <map>
 #include <string>
@@ -16,10 +16,10 @@
 #include <base/file_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
-#include <base/stringprintf.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus-c++/dbus.h>
 #include <gmock/gmock.h>
@@ -45,6 +45,7 @@
 #include "shill/mock_netlink_manager.h"
 #include "shill/mock_profile.h"
 #include "shill/mock_rtnl_handler.h"
+#include "shill/mock_scan_session.h"
 #include "shill/mock_store.h"
 #include "shill/mock_supplicant_bss_proxy.h"
 #include "shill/mock_supplicant_eap_state_handler.h"
@@ -54,9 +55,12 @@
 #include "shill/mock_time.h"
 #include "shill/mock_wifi_provider.h"
 #include "shill/mock_wifi_service.h"
+#include "shill/netlink_message_matchers.h"
 #include "shill/nice_mock_control.h"
+#include "shill/nl80211_message.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/scan_session.h"
 #include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
@@ -76,6 +80,10 @@ using ::testing::EndsWith;
 using ::testing::InSequence;
 using ::testing::Invoke;
 using ::testing::InvokeWithoutArgs;
+using ::testing::MakeMatcher;
+using ::testing::Matcher;
+using ::testing::MatcherInterface;
+using ::testing::MatchResultListener;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::NotNull;
@@ -90,6 +98,15 @@ using ::testing::Throw;
 using ::testing::Values;
 
 namespace shill {
+
+namespace {
+
+const uint16_t kNl80211FamilyId = 0x13;
+const uint16_t kRandomScanFrequency1 = 5600;
+const uint16_t kRandomScanFrequency2 = 5560;
+const uint16_t kRandomScanFrequency3 = 2422;
+
+}  // namespace
 
 class WiFiPropertyTest : public PropertyStoreTest {
  public:
@@ -187,13 +204,13 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
   EXPECT_TRUE(device_->bgscan_method_.empty());
 }
 
-
 MATCHER_P(EndpointMatch, endpoint, "") {
   return
       arg->ssid() == endpoint->ssid() &&
       arg->network_mode() == endpoint->network_mode() &&
       arg->security_mode() == endpoint->security_mode();
 }
+
 
 class WiFiObjectTest : public ::testing::TestWithParam<string> {
  public:
@@ -220,6 +237,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()),
         proxy_factory_(this) {
+    InstallMockScanSession();
     ::testing::DefaultValue< ::DBus::Path>::Set("/default/path");
 
     ON_CALL(dhcp_provider_, CreateConfig(_, _, _, _)).
@@ -229,6 +247,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(proxy_factory_, CreateSupplicantNetworkProxy(_, _)).
         WillByDefault(InvokeWithoutArgs(
             this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
+    ON_CALL(netlink_manager_,
+            GetMessageType(Nl80211Message::kMessageTypeString)).
+        WillByDefault(Return(kNl80211FamilyId));
 
     // Transfers ownership.
     manager_.dbus_manager_.reset(dbus_manager_);
@@ -236,8 +257,14 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
 
     wifi_->provider_ = &wifi_provider_;
     wifi_->time_ = &time_;
-    // TODO(wdg): Flesh out the wifi tests to include netlink_manager.
     wifi_->netlink_manager_ = &netlink_manager_;
+    wifi_->progressive_scan_enabled_ = true;
+
+    // The following is only useful when a real |ScanSession| is used; it is
+    // ignored by |MockScanSession|.
+    wifi_->all_scan_frequencies_.insert(kRandomScanFrequency1);
+    wifi_->all_scan_frequencies_.insert(kRandomScanFrequency2);
+    wifi_->all_scan_frequencies_.insert(kRandomScanFrequency3);
   }
 
   virtual void SetUp() {
@@ -281,6 +308,51 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
   void ResetPendingService() {
     SetPendingService(NULL);
+  }
+
+  size_t GetScanFrequencyCount() const {
+    return wifi_->all_scan_frequencies_.size();
+  }
+
+  void SetScanSize(int min, int max) {
+    wifi_->min_frequencies_to_scan_ = min;
+    wifi_->max_frequencies_to_scan_ = max;
+  }
+
+  // This clears WiFi::scan_session_, thereby allowing WiFi::Scan to create a
+  // real scan session.
+  void ClearScanSession() {
+    wifi_->scan_session_.reset();
+  }
+
+  bool IsScanSessionNull() {
+    return !wifi_->scan_session_;
+  }
+
+  void InstallMockScanSession() {
+    WiFiProvider::FrequencyCountList previous_frequencies;
+    std::set<uint16_t> available_frequencies;
+    ScanSession::FractionList fractions;
+    ScanSession::OnScanFailed null_callback;
+    scan_session_ = new MockScanSession(&netlink_manager_,
+                                        event_dispatcher_,
+                                        previous_frequencies,
+                                        available_frequencies,
+                                        0,
+                                        fractions,
+                                        0,
+                                        0,
+                                        null_callback);
+    wifi_->scan_session_.reset(scan_session_);
+  }
+
+  // Or DisableProgressiveScan()...
+  void EnableFullScan() {
+    wifi_->progressive_scan_enabled_ = false;
+  }
+
+  void OnTriggerScanResponse(const NetlinkMessage &message) {
+    wifi_->scan_session_->OnTriggerScanResponse(message);
   }
 
  protected:
@@ -502,7 +574,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void FireScanTimer() {
     wifi_->ScanTimerHandler();
   }
-  void TriggerScan() {
+  void TriggerFullScan() {
     wifi_->Scan(Device::kFullScan, NULL);
   }
   const WiFiServiceRefPtr &GetCurrentService() {
@@ -576,6 +648,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);
   }
   void ReportScanDone() {
+    // Eliminate |scan_session| so |ScanDoneTask| doesn't launch another scan.
+    wifi_->scan_session_.reset();
+    wifi_->ScanDoneTask();
+    // Make a new |scan_session| so that future scanning is done with the mock.
+    InstallMockScanSession();
+  }
+  void ReportScanDoneKeepScanSession() {
     wifi_->ScanDoneTask();
   }
   void ReportCurrentBSSChanged(const string &new_bss) {
@@ -708,6 +787,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   }
 
   EventDispatcher *event_dispatcher_;
+  MockScanSession *scan_session_;  // Owned by |wifi_|.
   NiceMock<MockRTNLHandler> rtnl_handler_;
   MockTime time_;
 
@@ -887,7 +967,8 @@ TEST_F(WiFiMainTest, OnSupplicantVanishedWhileConnected) {
   EXPECT_TRUE(GetCurrentService() == NULL);
 }
 
-TEST_F(WiFiMainTest, CleanStart) {
+TEST_F(WiFiMainTest, CleanStart_FullScan) {
+  EnableFullScan();
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_));
   EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_))
       .Times(AnyNumber())
@@ -898,6 +979,21 @@ TEST_F(WiFiMainTest, CleanStart) {
   EXPECT_TRUE(GetScanTimer().IsCancelled());
   StartWiFi();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());
+}
+
+TEST_F(WiFiMainTest, CleanStart) {
+  EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_));
+  EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_))
+      .Times(AnyNumber())
+      .WillRepeatedly(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.InterfaceUnknown",
+              "test threw fi.w1.wpa_supplicant1.InterfaceUnknown")));
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+  StartWiFi();
+  EXPECT_CALL(*scan_session_, InitiateScan());
   dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetScanTimer().IsCancelled());
 }
@@ -963,7 +1059,8 @@ TEST_F(WiFiMainTest, RemoveNetworkWhenSupplicantReturnsUnknownError) {
   EXPECT_FALSE(RemoveNetwork(network));
 }
 
-TEST_F(WiFiMainTest, Restart) {
+TEST_F(WiFiMainTest, Restart_FullScan) {
+  EnableFullScan();
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_))
       .Times(AnyNumber())
       .WillRepeatedly(Throw(
@@ -976,13 +1073,26 @@ TEST_F(WiFiMainTest, Restart) {
   dispatcher_.DispatchPendingEvents();
 }
 
+TEST_F(WiFiMainTest, Restart) {
+  EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_))
+      .Times(AnyNumber())
+      .WillRepeatedly(Throw(
+          DBus::Error(
+              "fi.w1.wpa_supplicant1.InterfaceExists",
+              "test threw fi.w1.wpa_supplicant1.InterfaceExists")));
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+}
+
 TEST_F(WiFiMainTest, StartClearsState) {
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), RemoveAllNetworks());
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), FlushBSS(_));
   StartWiFi();
 }
 
-TEST_F(WiFiMainTest, NoScansWhileConnecting) {
+TEST_F(WiFiMainTest, NoScansWhileConnecting_FullScan) {
+  EnableFullScan();
   StartWiFi();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
   dispatcher_.DispatchPendingEvents();
@@ -992,13 +1102,13 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   // If we're connecting, we ignore scan requests to stay on channel.
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  TriggerScan();
+  TriggerFullScan();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  TriggerScan();
+  TriggerFullScan();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
@@ -1007,20 +1117,63 @@ TEST_F(WiFiMainTest, NoScansWhileConnecting) {
   SetCurrentService(service);
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  TriggerScan();
+  TriggerFullScan();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
   // But otherwise we'll honor the request.
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  TriggerScan();
+  TriggerFullScan();
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
 }
 
-TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
+TEST_F(WiFiMainTest, NoScansWhileConnecting) {
+  StartWiFi();
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  SetPendingService(service);
+  // If we're connecting, we ignore scan requests to stay on channel.
+  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  TriggerFullScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  Mock::VerifyAndClearExpectations(service);
+  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  TriggerFullScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  Mock::VerifyAndClearExpectations(service);
+  // Similarly, ignore scans when our connected service is reconnecting.
+  SetPendingService(NULL);
+  SetCurrentService(service);
+  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  TriggerFullScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  Mock::VerifyAndClearExpectations(service);
+  // But otherwise we'll honor the request.
+  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  TriggerFullScan();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  Mock::VerifyAndClearExpectations(service);
+}
+
+TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle_FullScan) {
+  EnableFullScan();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
@@ -1032,7 +1185,21 @@ TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
+TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle) {
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  ReportScanDone();
+  ASSERT_TRUE(wifi()->IsIdle());
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  OnAfterResume();
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, SuspendDoesNotStartScan_FullScan) {
+  EnableFullScan();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
@@ -1043,7 +1210,20 @@ TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
+TEST_F(WiFiMainTest, SuspendDoesNotStartScan) {
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  ASSERT_TRUE(wifi()->IsIdle());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  OnBeforeSuspend();
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle_FullScan) {
+  EnableFullScan();
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
@@ -1054,6 +1234,22 @@ TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, EndsWith("already scanning or connected.")));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  OnAfterResume();
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ResumeDoesNotStartScanWhenNotIdle) {
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  WiFiServiceRefPtr service(SetupConnectedService(DBus::Path(), NULL, NULL));
+  EXPECT_FALSE(wifi()->IsIdle());
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith("already scanning or connected.")));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   OnAfterResume();
   dispatcher_.DispatchPendingEvents();
 }
@@ -1374,7 +1570,7 @@ TEST_F(WiFiMainTest, ReconnectTimer) {
 }
 
 
-MATCHER_P(HasHiddenSSID, ssid, "") {
+MATCHER_P(HasHiddenSSID_FullScan, ssid, "") {
   map<string, DBus::Variant>::const_iterator it =
       arg.find(WPASupplicant::kPropertyScanSSIDs);
   if (it == arg.end()) {
@@ -1391,28 +1587,68 @@ MATCHER_P(HasHiddenSSID, ssid, "") {
   return ssids.size() == 2 && ssids[0] == ssid && ssids[1].empty();
 }
 
-MATCHER(HasNoHiddenSSID, "") {
+MATCHER(HasNoHiddenSSID_FullScan, "") {
   map<string, DBus::Variant>::const_iterator it =
       arg.find(WPASupplicant::kPropertyScanSSIDs);
   return it == arg.end();
 }
 
-TEST_F(WiFiMainTest, ScanHidden) {
+TEST_F(WiFiMainTest, ScanHidden_FullScan) {
+  EnableFullScan();
   vector<uint8_t>kSSID(1, 'a');
   ByteArrays ssids;
   ssids.push_back(kSSID);
 
   StartWiFi();
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList()).WillOnce(Return(ssids));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(HasHiddenSSID(kSSID)));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(HasHiddenSSID_FullScan(kSSID)));
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(WiFiMainTest, ScanNoHidden) {
+// This test is slightly different from the test in scan_session_unittest.cc
+// because this tests the piece of WiFi that builds the SSID list.
+TEST_F(WiFiMainTest, ScanHidden) {
+  // Clear the Mock ScanSession because hidden SSIDs are added when wifi
+  // instantiates a new ScanSession (and it won't instantiate a new ScanSession
+  // if there's already one there).
+  ClearScanSession();
+  vector<uint8_t>kSSID(1, 'a');
+  ByteArrays ssids;
+  ssids.push_back(kSSID);
+
+  EXPECT_CALL(netlink_manager_, SendMessage(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList()).WillOnce(Return(ssids));
+  StartWiFi();
+  EXPECT_CALL(netlink_manager_,
+              SendMessage(HasHiddenSSID(kNl80211FamilyId), _));
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ScanNoHidden_FullScan) {
+  EnableFullScan();
   StartWiFi();
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
       .WillOnce(Return(ByteArrays()));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(HasNoHiddenSSID()));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(HasNoHiddenSSID_FullScan()));
+  dispatcher_.DispatchPendingEvents();
+}
+
+// This test is slightly different from the test in scan_session_unittest.cc
+// because this tests the piece of WiFi that builds the SSID list.
+TEST_F(WiFiMainTest, ScanNoHidden) {
+  // Clear the Mock ScanSession because hidden SSIDs are added when wifi
+  // instantiates a new ScanSession (and it won't instantiate a new ScanSession
+  // if there's already one there).
+  ClearScanSession();
+  EXPECT_CALL(netlink_manager_, SendMessage(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _));
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillOnce(Return(ByteArrays()));
+  StartWiFi();
+  EXPECT_CALL(netlink_manager_,
+              SendMessage(HasNoHiddenSSID(kNl80211FamilyId), _));
   dispatcher_.DispatchPendingEvents();
 }
 
@@ -1422,10 +1658,86 @@ TEST_F(WiFiMainTest, ScanWiFiDisabledAfterResume) {
   EXPECT_CALL(log, Log(_, _, EndsWith(
       "Ignoring scan request while device is not enabled."))).Times(1);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   StartWiFi();
   StopWiFi();
   // A scan is queued when WiFi resumes.
   OnAfterResume();
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ProgressiveScanFound) {
+  // Set min & max scan frequency count to 1 so each scan will be of a single
+  // frequency.
+  SetScanSize(1, 1);
+
+  // Do the first scan (finds nothing).
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDoneKeepScanSession();
+
+  // Do the second scan (connects afterwards).
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDoneKeepScanSession();
+
+  // Connect after second scan.
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
+  SetPendingService(service);
+
+  // Verify that the third scan aborts and there is no further scan.
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(log, Log(_, _, EndsWith(
+      "Ignoring scan request while connecting to an AP."))).Times(1);
+  EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
+  // Set min & max scan frequency count to 1 so each scan will be of a single
+  // frequency.
+  SetScanSize(1, 1);
+
+  // Do the first scan (finds nothing).
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDoneKeepScanSession();
+
+  // Do the second scan (finds nothing).
+  EXPECT_CALL(*scan_session_, InitiateScan());
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDoneKeepScanSession();
+
+  // Do the third scan. After (simulated) exhausting of search frequencies,
+  // verify that this scan uses supplicant rather than internal (progressive)
+  // scan.
+  EXPECT_CALL(*scan_session_, HasMoreFrequencies()).WillOnce(Return(false));
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  dispatcher_.DispatchPendingEvents();
+
+  // And verify that ScanDone reports a complete scan (i.e., the
+  // wifi_::scan_session_ has truly been cleared).
+  EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
+  ReportScanDoneKeepScanSession();
+}
+
+TEST_F(WiFiMainTest, ProgressiveScanError) {
+  // Clear the Mock ScanSession so I can get an actual ScanSession.
+  ClearScanSession();
+  StartWiFi();
+
+  // This should call |Scan| which posts |ScanTask|
+  NewScanResultsMessage not_supposed_to_get_this_message;
+  OnTriggerScanResponse(not_supposed_to_get_this_message);
+
+  EXPECT_TRUE(IsScanSessionNull());
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
   dispatcher_.DispatchPendingEvents();
 }
 
@@ -1746,7 +2058,8 @@ TEST_F(WiFiMainTest, FlushBSSOnResume) {
   ReportScanDone();
 }
 
-TEST_F(WiFiMainTest, ScanTimerIdle) {
+TEST_F(WiFiMainTest, ScanTimerIdle_FullScan) {
+  EnableFullScan();
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   ReportScanDone();
@@ -1754,6 +2067,18 @@ TEST_F(WiFiMainTest, ScanTimerIdle) {
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
+  FireScanTimer();
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
+}
+
+TEST_F(WiFiMainTest, ScanTimerIdle) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDone();
+  CancelScanTimer();
+  EXPECT_TRUE(GetScanTimer().IsCancelled());
+  EXPECT_CALL(*scan_session_, InitiateScan());
   FireScanTimer();
   dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
@@ -1768,6 +2093,7 @@ TEST_F(WiFiMainTest, ScanTimerScanning) {
   // Should not call Scan, since we're already scanning.
   // (Scanning is triggered by StartWiFi.)
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   FireScanTimer();
   dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
@@ -1782,6 +2108,7 @@ TEST_F(WiFiMainTest, ScanTimerConnecting) {
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   FireScanTimer();
   dispatcher_.DispatchPendingEvents();
   EXPECT_FALSE(GetScanTimer().IsCancelled());  // Automatically re-armed.
@@ -1813,7 +2140,8 @@ TEST_F(WiFiMainTest, ScanTimerStopOnZeroInterval) {
   EXPECT_TRUE(GetScanTimer().IsCancelled());
 }
 
-TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden) {
+TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden_FullScan) {
+  EnableFullScan();
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   SetupConnectedService(DBus::Path(), NULL, NULL);
@@ -1822,7 +2150,23 @@ TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden) {
   ssids.push_back(kSSID);
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
       .WillRepeatedly(Return(ssids));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(HasHiddenSSID(kSSID)));
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(),
+              Scan(HasHiddenSSID_FullScan(kSSID)));
+  ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
+  dispatcher_.DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ScanOnDisconnectWithHidden) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  ReportScanDone();
+  SetupConnectedService(DBus::Path(), NULL, NULL);
+  vector<uint8_t>kSSID(1, 'a');
+  ByteArrays ssids;
+  ssids.push_back(kSSID);
+  EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
+      .WillRepeatedly(Return(ssids));
+  EXPECT_CALL(*scan_session_, InitiateScan());
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);
   dispatcher_.DispatchPendingEvents();
 }
@@ -1832,6 +2176,7 @@ TEST_F(WiFiMainTest, NoScanOnDisconnectWithoutHidden) {
   dispatcher_.DispatchPendingEvents();
   SetupConnectedService(DBus::Path(), NULL, NULL);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
   EXPECT_CALL(*wifi_provider(), GetHiddenSSIDList())
       .WillRepeatedly(Return(ByteArrays()));
   ReportCurrentBSSChanged(WPASupplicant::kCurrentBSSNull);

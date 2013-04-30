@@ -4,15 +4,21 @@
 
 #include "shill/scan_session.h"
 
+#include <errno.h>
+
 #include <limits>
 #include <set>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_event_dispatcher.h"
 #include "shill/mock_netlink_manager.h"
 #include "shill/netlink_manager.h"
+#include "shill/netlink_message_matchers.h"
+#include "shill/nl80211_message.h"
 
 using std::set;
 using std::vector;
@@ -50,11 +56,13 @@ static uint16_t kUnconnectedFrequencies[] = {
   kExpectedFreq2412
 };
 
+static const uint16_t kNl80211FamilyId = 0x13;
+
 class ScanSessionTest : public Test {
  public:
   // Test set of "all the other frequencies this device can support" in
   // sorted order.
-  ScanSessionTest() {
+  ScanSessionTest() : weak_ptr_factory_(this) {
     WiFiProvider::FrequencyCountList connected_frequencies(
         kConnectedFrequencies,
         kConnectedFrequencies + arraysize(kConnectedFrequencies));
@@ -64,16 +72,16 @@ class ScanSessionTest : public Test {
         kUnconnectedFrequencies + arraysize(kUnconnectedFrequencies));
     const int kArbitraryMinimum = 1;
     const int kArbitraryMaximum = std::numeric_limits<int>::max();
-    ScanSession::OnScanFailed null_error_handler;
     scan_session_.reset(new ScanSession(&netlink_manager_,
-                                        NULL,
+                                        &dispatcher_,
                                         connected_frequencies,
                                         unconnected_frequencies,
                                         0,
                                         ScanSession::FractionList(),
                                         kArbitraryMinimum,
                                         kArbitraryMaximum,
-                                        null_error_handler));
+                                        Bind(&ScanSessionTest::OnScanError,
+                                             weak_ptr_factory_.GetWeakPtr())));
   }
 
   virtual std::vector<uint16_t> GetScanFrequencies(float scan_fraction,
@@ -84,13 +92,29 @@ class ScanSessionTest : public Test {
   }
   ScanSession *scan_session() { return scan_session_.get(); }
 
- private:
-  scoped_ptr<ScanSession> scan_session_;
+  void SetScanSize(size_t min_frequencies, size_t max_frequencies) {
+    scan_session_->min_frequencies_ = min_frequencies;
+    scan_session_->max_frequencies_ = max_frequencies;
+  }
+
+  size_t GetScanFrequencyCount() {
+    return arraysize(kConnectedFrequencies) +
+        arraysize(kUnconnectedFrequencies);
+  }
+
+ protected:
+  MOCK_METHOD0(OnScanError, void());
+  MockNetlinkManager *netlink_manager() { return &netlink_manager_; }
+  MockEventDispatcher *dispatcher() { return &dispatcher_; }
+
+  MockEventDispatcher dispatcher_;
   MockNetlinkManager netlink_manager_;
+  scoped_ptr<ScanSession> scan_session_;
+  base::WeakPtrFactory<ScanSessionTest> weak_ptr_factory_;
 };
 
 // Test that we can get a bunch of frequencies up to a specified fraction.
-TEST_F(ScanSessionTest, FractionTest) {
+TEST_F(ScanSessionTest, Fraction) {
   vector<uint16_t> result;
 
   // Get the first 83% of the connected values.
@@ -131,7 +155,7 @@ TEST_F(ScanSessionTest, FractionTest) {
 
 // Test that we can get a bunch of frequencies up to a specified fraction,
 // followed by another group up to a specified fraction.
-TEST_F(ScanSessionTest, TwoFractionsTest) {
+TEST_F(ScanSessionTest, TwoFractions) {
   vector<uint16_t> result;
 
   // Get the first 60% of the connected values.
@@ -173,7 +197,7 @@ TEST_F(ScanSessionTest, TwoFractionsTest) {
 
 // Test that we can get a bunch of frequencies up to a minimum count, even
 // when the requested fraction has already been reached.
-TEST_F(ScanSessionTest, MinTest) {
+TEST_F(ScanSessionTest, Min) {
   vector<uint16_t> result;
 
   // Get the first 3 previously seen values.
@@ -214,7 +238,7 @@ TEST_F(ScanSessionTest, MinTest) {
 }
 
 // Test that we can get up to a specified maximum number of frequencies.
-TEST_F(ScanSessionTest, MaxTest) {
+TEST_F(ScanSessionTest, Max) {
   vector<uint16_t> result;
 
   // Get the first 7 values (crosses seen/unseen boundary).
@@ -247,7 +271,7 @@ TEST_F(ScanSessionTest, MaxTest) {
 
 // Test that we can get exactly the seen frequencies and exactly the unseen
 // ones.
-TEST_F(ScanSessionTest, ExactTest) {
+TEST_F(ScanSessionTest, Exact) {
   vector<uint16_t> result;
 
   // Get the first 5 values -- exectly on the seen/unseen border.
@@ -278,8 +302,7 @@ TEST_F(ScanSessionTest, ExactTest) {
 }
 
 // Test that we can get everything in one read.
-TEST_F(ScanSessionTest, AllOneReadTest) {
-
+TEST_F(ScanSessionTest, AllOneRead) {
   vector<uint16_t> expected;
   expected.push_back(kExpectedFreq5640);
   expected.push_back(kExpectedFreq5600);
@@ -301,7 +324,7 @@ TEST_F(ScanSessionTest, AllOneReadTest) {
 
 // Test that we can get all the previously seen frequencies (and only the
 // previously seen frequencies) via the requested fraction.
-TEST_F(ScanSessionTest, EverythingFractionTest) {
+TEST_F(ScanSessionTest, EverythingFraction) {
   vector<uint16_t> result;
 
   // Get the first 100% of the connected values.
@@ -334,7 +357,7 @@ TEST_F(ScanSessionTest, EverythingFractionTest) {
 }
 
 // Test that we can get each value individually.
-TEST_F(ScanSessionTest, IndividualReadsTest) {
+TEST_F(ScanSessionTest, IndividualReads) {
   vector<uint16_t> result;
   static const float kArbitraryFraction = 0.83;
 
@@ -408,6 +431,83 @@ TEST_F(ScanSessionTest, IndividualReadsTest) {
     EXPECT_THAT(result, ContainerEq(expected));
     EXPECT_FALSE(scan_session()->HasMoreFrequencies());
   }
+}
+
+TEST_F(ScanSessionTest, OnTriggerScanResponse) {
+  Nl80211Message::SetMessageType(kNl80211FamilyId);
+
+  EXPECT_CALL(*netlink_manager(), SendMessage(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+  scan_session()->InitiateScan();
+
+  EXPECT_CALL(*this, OnScanError());
+  NewScanResultsMessage not_supposed_to_get_this_message;
+  scan_session()->OnTriggerScanResponse(not_supposed_to_get_this_message);
+}
+
+TEST_F(ScanSessionTest, ExhaustFrequencies) {
+  // Set min & max scan frequency count to 1 so each scan will be of a single
+  // frequency.
+  SetScanSize(1, 1);
+
+  // Perform all the progressive scans until the frequencies are exhausted.
+  for (size_t i = 0; i < GetScanFrequencyCount(); ++i) {
+    EXPECT_TRUE(scan_session()->HasMoreFrequencies());
+    EXPECT_CALL(*netlink_manager(), SendMessage(
+        IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+    scan_session()->InitiateScan();
+  }
+
+  EXPECT_FALSE(scan_session()->HasMoreFrequencies());
+  EXPECT_CALL(*netlink_manager(), SendMessage(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _))
+      .Times(0);
+  scan_session()->InitiateScan();
+}
+
+TEST_F(ScanSessionTest, OnError) {
+  Nl80211Message::SetMessageType(kNl80211FamilyId);
+
+  EXPECT_CALL(*netlink_manager(), SendMessage(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+  scan_session()->InitiateScan();
+
+  EXPECT_CALL(*this, OnScanError());
+  ErrorAckMessage error_message(-EINTR);
+  scan_session()->OnTriggerScanResponse(error_message);
+}
+
+TEST_F(ScanSessionTest, EBusy) {
+  const size_t kSmallRetryNumber = 3;
+  Nl80211Message::SetMessageType(kNl80211FamilyId);
+  scan_session()->scan_tries_left_ = kSmallRetryNumber;
+
+  EXPECT_CALL(*netlink_manager(), SendMessage(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _));
+  scan_session()->InitiateScan();
+
+  ErrorAckMessage error_message(-EBUSY);
+  for (size_t i = 0; i < kSmallRetryNumber; ++i) {
+    EXPECT_CALL(*this, OnScanError()).Times(0);
+    EXPECT_CALL(*dispatcher(), PostDelayedTask(_, _));
+    scan_session()->OnTriggerScanResponse(error_message);
+  }
+
+  EXPECT_CALL(*this, OnScanError());
+  scan_session()->OnTriggerScanResponse(error_message);
+}
+
+TEST_F(ScanSessionTest, ScanHidden) {
+  scan_session_->AddSsid(ByteString("a", 1));
+  EXPECT_CALL(netlink_manager_,
+              SendMessage(HasHiddenSSID(kNl80211FamilyId), _));
+  scan_session()->InitiateScan();
+}
+
+TEST_F(ScanSessionTest, ScanNoHidden) {
+  EXPECT_CALL(netlink_manager_,
+              SendMessage(HasNoHiddenSSID(kNl80211FamilyId), _));
+  scan_session()->InitiateScan();
 }
 
 }  // namespace shill

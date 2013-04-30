@@ -39,8 +39,8 @@ ScanSession::ScanSession(
     const set<uint16_t> &available_frequencies,
     uint32_t ifindex,
     const FractionList &fractions,
-    int min_frequencies,
-    int max_frequencies,
+    size_t min_frequencies,
+    size_t max_frequencies,
     OnScanFailed on_scan_failed)
     : weak_ptr_factory_(this),
       netlink_manager_(netlink_manager),
@@ -55,7 +55,7 @@ ScanSession::ScanSession(
       min_frequencies_(min_frequencies),
       max_frequencies_(max_frequencies),
       on_scan_failed_(on_scan_failed),
-      scan_tries_left_(kScanRetryCount + 1) {
+      scan_tries_left_(kScanRetryCount) {
   sort(frequency_list_.begin(), frequency_list_.end(),
        &ScanSession::CompareFrequencyCount);
   // Add to |frequency_list_| all the frequencies from |available_frequencies|
@@ -130,6 +130,10 @@ void ScanSession::ReInitiateScan() {
 }
 
 void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
+  if (scan_frequencies.empty()) {
+    LOG(INFO) << "Not sending empty frequency list";
+    return;
+  }
   TriggerScanMessage trigger_scan;
   trigger_scan.attributes()->SetU32AttributeValue(NL80211_ATTR_IFINDEX,
                                                   wifi_interface_index_);
@@ -193,14 +197,16 @@ void ScanSession::OnTriggerScanResponse(const NetlinkMessage &netlink_message) {
     LOG(ERROR) << __func__ << ": Message failed: "
                << error_ack_message->ToString();
     if (error_ack_message->error() == EBUSY) {
-      if (--scan_tries_left_ == 0) {
+      if (scan_tries_left_ == 0) {
         LOG(ERROR) << "Retried progressive scan " << kScanRetryCount
                    << " times and failed each time.  Giving up.";
         on_scan_failed_.Run();
-        scan_tries_left_ = kScanRetryCount + 1;
+        scan_tries_left_ = kScanRetryCount;
         return;
       }
-      SLOG(WiFi, 3) << __func__ << " - trying again";
+      --scan_tries_left_;
+      SLOG(WiFi, 3) << __func__ << " - trying again (" << scan_tries_left_
+                    << " remaining after this)";
       dispatcher_->PostDelayedTask(Bind(&ScanSession::ReInitiateScan,
                                         weak_ptr_factory_.GetWeakPtr()),
                                    kScanRetryDelayMilliseconds);

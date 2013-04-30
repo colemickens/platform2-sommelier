@@ -10,13 +10,16 @@
 #include <string.h>
 
 #include <algorithm>
+#include <limits>
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
+#include <base/file_path.h>
+#include <base/file_util.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <glib.h>
 
@@ -35,6 +38,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/rtnl_handler.h"
+#include "shill/scan_session.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
 #include "shill/supplicant_eap_state_handler.h"
@@ -49,6 +53,7 @@
 
 using base::Bind;
 using base::StringPrintf;
+using file_util::PathExists;
 using std::map;
 using std::string;
 using std::vector;
@@ -72,6 +77,8 @@ const int WiFi::kNumFastScanAttempts = 3;
 const int WiFi::kFastScanIntervalSeconds = 10;
 const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
+const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
+const char WiFi::kProgressiveScanFlagFile[] = "/home/chronos/.progressive_scan";
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -105,7 +112,10 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_pending_(false),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
-      netlink_manager_(NetlinkManager::GetInstance()) {
+      progressive_scan_enabled_(false),
+      netlink_manager_(NetlinkManager::GetInstance()),
+      min_frequencies_to_scan_(kMinumumFrequenciesToScan),
+      max_frequencies_to_scan_(std::numeric_limits<int>::max()) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       flimflam::kBgscanMethodProperty,
@@ -141,6 +151,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
+  progressive_scan_enabled_ = PathExists(FilePath(kProgressiveScanFlagFile));
   SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -224,14 +235,47 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
 
 void WiFi::Scan(ScanType scan_type, Error */*error*/) {
   LOG(INFO) << __func__;
-
-  if (scan_type == kProgressiveScan)
+  // Measure scans that are supposed to be "progressive" regardless of whether
+  // we are actually doing a progressive scan.
+  if (scan_type == kProgressiveScan) {
     metrics()->NotifyDeviceScanStarted(interface_index());
+  }
 
-  // Needs to send a D-Bus message, but may be called from D-Bus
-  // signal handler context (via Manager::RequestScan). So defer work
-  // to event loop.
-  dispatcher()->PostTask(Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
+  if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
+    SLOG(WiFi, 4) << "Doing progressive scan on " << link_name();
+    if (!scan_session_) {
+      // TODO(wdg): Perform in-depth testing to determine the best values for
+      // the different scans. chromium:235293
+      ScanSession::FractionList scan_fractions;
+      scan_fractions.push_back(.33);  // First scan gets 33 percentile.
+      scan_fractions.push_back(.33);  // Second scan gets 66th percentile.
+      scan_fractions.push_back(ScanSession::kAllFrequencies);
+      scan_session_.reset(
+          new ScanSession(netlink_manager_,
+                          dispatcher(),
+                          provider_->GetScanFrequencies(),
+                          all_scan_frequencies_,
+                          interface_index(),
+                          scan_fractions,
+                          min_frequencies_to_scan_,
+                          max_frequencies_to_scan_,
+                          Bind(&WiFi::OnFailedProgressiveScan,
+                               weak_ptr_factory_.GetWeakPtr())));
+      for (const auto &ssid : provider_->GetHiddenSSIDList()) {
+        scan_session_->AddSsid(ByteString(&ssid.front(), ssid.size()));
+      }
+    }
+    dispatcher()->PostTask(
+        Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    SLOG(WiFi, 4) << "Doing full scan - progressive scan "
+                  << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED");
+    // Needs to send a D-Bus message, but may be called from D-Bus
+    // signal handler context (via Manager::RequestScan). So defer work
+    // to event loop.
+    dispatcher()->PostTask(
+        Bind(&WiFi::ScanTask, weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 void WiFi::BSSAdded(const ::DBus::Path &path,
@@ -277,7 +321,6 @@ void WiFi::ScanDone() {
   // may require the the registration of new D-Bus objects. And such
   // registration can't be done in the context of a D-Bus signal
   // handler.
-  metrics()->NotifyDeviceScanFinished(interface_index());
   dispatcher()->PostTask(Bind(&WiFi::ScanDoneTask,
                               weak_ptr_factory_.GetWeakPtr()));
 }
@@ -989,6 +1032,16 @@ void WiFi::PropertiesChangedTask(
 
 void WiFi::ScanDoneTask() {
   SLOG(WiFi, 2) << __func__ << " need_bss_flush_ " << need_bss_flush_;
+
+  if (scan_session_) {
+    // Post |ProgressiveScanTask| so it runs after any |BSSAddedTask|s that have
+    // been posted.  This allows connections on new BSSes to be started before
+    // we decide whether to abort the progressive scan or continue scanning.
+    dispatcher()->PostTask(
+        Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
+  } else {
+    metrics()->NotifyDeviceScanFinished(interface_index());
+  }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_ != NULL);
     // Compute |max_age| relative to |resumed_at_|, to account for the
@@ -1049,6 +1102,45 @@ void WiFi::ScanTask() {
     // notification is posted after this task has already started running.
     LOG(WARNING) << "Scan failed: " << e.what();
   }
+}
+
+void WiFi::ProgressiveScanTask() {
+  SLOG(WiFi, 2) << __func__ << " - scan requested for " << link_name();
+  if (!enabled()) {
+    LOG(INFO) << "Ignoring scan request while device is not enabled.";
+    metrics()->NotifyDeviceScanFinished(interface_index());
+    return;
+  }
+  if (!scan_session_) {
+    SLOG(WiFi, 2) << "No scan session -- returning";
+    metrics()->NotifyDeviceScanFinished(interface_index());
+    return;
+  }
+  if (!IsIdle()) {
+    SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
+    scan_session_.reset();
+    metrics()->NotifyDeviceScanFinished(interface_index());
+    return;
+  }
+  if (scan_session_->HasMoreFrequencies()) {
+    SLOG(WiFi, 2) << "Initiating a scan -- returning";
+    SetScanPending(true);
+    // After us initiating a scan, supplicant will gather the scan results and
+    // send us zero or more |BSSAdded| events followed by a |ScanDone|.
+    scan_session_->InitiateScan();
+    return;
+  }
+  LOG(ERROR) << "A complete progressive scan turned-up nothing -- "
+             << "do a regular scan";
+  scan_session_.reset();
+  Scan(kFullScan, NULL);
+}
+
+void WiFi::OnFailedProgressiveScan() {
+  LOG(ERROR) << "Couldn't issue a scan on " << link_name()
+             << " -- doing a regular scan";
+  scan_session_.reset();
+  Scan(kFullScan, NULL);
 }
 
 void WiFi::SetScanPending(bool pending) {

@@ -508,9 +508,6 @@ void WiFiProvider::IncrementConnectCount(uint16 frequency_mhz) {
   // Freeze the accumulation of frequency counts when the total maxes-out.
   // This ensures that no count wraps and that the relative values are
   // consistent.
-  // TODO(wdg): In future CL, |total_frequency_connections_| is used to
-  // calculate percentiles for progressive scan.  This check needs to be in
-  // place so _that_ value doesn't wrap, either.
   // TODO(wdg): Replace this, simple, 'forever' collection of connection
   // statistics with a more clever 'aging' algorithm.  crbug.com/227233
   if (total_frequency_connections_ + 1 == std::numeric_limits<int64_t>::max()) {
@@ -535,6 +532,15 @@ void WiFiProvider::IncrementConnectCount(uint16 frequency_mhz) {
       Metrics::kMetricFrequenciesConnectedMin,
       Metrics::kMetricFrequenciesConnectedMax,
       Metrics::kMetricFrequenciesConnectedNumBuckets);
+}
+
+WiFiProvider::FrequencyCountList WiFiProvider::GetScanFrequencies() const {
+  FrequencyCountList freq_connects_list;
+  for (const auto freq_count : connect_count_by_frequency_) {
+    freq_connects_list.push_back(FrequencyCount(freq_count.first,
+                                                freq_count.second));
+  }
+  return freq_connects_list;
 }
 
 }  // namespace shill

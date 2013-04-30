@@ -422,6 +422,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_metrics.o \
 	mock_minijail.o \
 	mock_modem_info.o \
+	mock_netlink_manager.o \
 	mock_nss.o \
 	mock_pending_activation_store.o \
 	mock_portal_detector.o \
@@ -434,6 +435,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_resolver.o \
 	mock_routing_table.o \
 	mock_rtnl_handler.o \
+	mock_scan_session.o \
 	mock_service.o \
 	mock_socket_info_reader.o \
 	mock_sockets.o \

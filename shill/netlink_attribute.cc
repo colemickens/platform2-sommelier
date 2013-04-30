@@ -6,6 +6,7 @@
 
 #include <netlink/attr.h>
 
+#include <map>
 #include <string>
 
 #include <base/format_macros.h>

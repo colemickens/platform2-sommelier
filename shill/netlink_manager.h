@@ -143,17 +143,19 @@ class NetlinkManager {
 
   // Retrieves a family id (message type) given the |name| string describing
   // the message family.
-  uint16_t GetMessageType(std::string name) const;
+  virtual uint16_t GetMessageType(const std::string &name) const;
 
   // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
   // that do not have a corresponding messaage-specific callback.
   // |AddBroadcastHandler| should be called before |SubscribeToEvents| since
   // the result of this call are used for that call.
-  bool AddBroadcastHandler(const NetlinkMessageHandler &messge_handler);
+  virtual bool AddBroadcastHandler(
+      const NetlinkMessageHandler &message_handler);
 
   // Uninstall a NetlinkMessage Handler.
-  bool RemoveBroadcastHandler(const NetlinkMessageHandler &message_handler);
+  virtual bool RemoveBroadcastHandler(
+      const NetlinkMessageHandler &message_handler);
 
   // Determines whether a handler is in the list of broadcast handlers.
   bool FindBroadcastHandler(const NetlinkMessageHandler &message_handler) const;
@@ -173,7 +175,8 @@ class NetlinkManager {
 
   // Sign-up to receive and log multicast events of a specific type (once wifi
   // is up).
-  bool SubscribeToEvents(const std::string &family, const std::string &group);
+  virtual bool SubscribeToEvents(const std::string &family,
+                                 const std::string &group);
 
   // Gets the next sequence number for a NetlinkMessage to be sent over
   // NetlinkManager's netlink socket.

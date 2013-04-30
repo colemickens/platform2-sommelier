@@ -500,7 +500,7 @@ class Metrics {
   void NotifyDeviceScanStarted(int interface_index);
 
   // Notifies this object that a device has completed the scanning process.
-  void NotifyDeviceScanFinished(int interface_index);
+  virtual void NotifyDeviceScanFinished(int interface_index);
 
   // Notifies this object that a device has started the connect process.
   void NotifyDeviceConnectStarted(int interface_index,

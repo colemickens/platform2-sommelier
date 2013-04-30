@@ -99,18 +99,18 @@ class ScanSession {
               const std::set<uint16_t> &available_frequencies,
               uint32_t ifindex,
               const FractionList &fractions,
-              int min_frequencies,
-              int max_frequencies,
+              size_t min_frequencies,
+              size_t max_frequencies,
               OnScanFailed on_scan_failed);
 
   virtual ~ScanSession();
 
   // Returns true if |ScanSession| contains unscanned frequencies.
-  bool HasMoreFrequencies() const;
+  virtual bool HasMoreFrequencies() const;
 
   // Adds an SSID to the list of things for which to scan.  Useful for hidden
   // SSIDs.
-  void AddSsid(const ByteString &ssid);
+  virtual void AddSsid(const ByteString &ssid);
 
   // Start a wifi scan of the next set of frequencies (derived from the
   // constructor's parameters) after saving those frequencies for the potential
@@ -125,6 +125,11 @@ class ScanSession {
 
  private:
   friend class ScanSessionTest;
+  friend class WiFiObjectTest;  // OnTriggerScanResponse.
+  FRIEND_TEST(ScanSessionTest, EBusy);
+  FRIEND_TEST(ScanSessionTest, OnError);
+  FRIEND_TEST(ScanSessionTest, OnTriggerScanResponse);
+
   // Milliseconds to wait before retrying a failed scan.
   static const uint64_t kScanRetryDelayMilliseconds;
   // Number of times to retry a failed scan before giving up and calling

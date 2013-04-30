@@ -105,6 +105,10 @@ class WiFiProvider {
 
   virtual void IncrementConnectCount(uint16 frequency_mhz);
 
+  // Returns a list of all of the frequencies on which this device has
+  // connected.  This data is accumulated across multiple shill runs.
+  virtual FrequencyCountList GetScanFrequencies() const;
+
  private:
   friend class WiFiProviderTest;
   FRIEND_TEST(WiFiProviderTest, FrequencyMapToStringList);

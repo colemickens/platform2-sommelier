@@ -103,6 +103,7 @@ class KeyValueStore;
 class NetlinkManager;
 class NetlinkMessage;
 class ProxyFactory;
+class ScanSession;
 class SupplicantEAPStateHandler;
 class SupplicantInterfaceProxyInterface;
 class SupplicantProcessProxyInterface;
@@ -222,6 +223,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kFastScanIntervalSeconds;
   static const int kPendingTimeoutSeconds;
   static const int kReconnectTimeoutSeconds;
+  static const size_t kMinumumFrequenciesToScan;
+  static const char kProgressiveScanFlagFile[];
 
   // Gets the list of frequencies supported by this device.
   void ConfigureScanFrequencies();
@@ -300,6 +303,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // with the reason for failure.
   virtual bool RemoveNetworkForService(
       const WiFiService *service, Error *error);
+  // Perform the next in a series of progressive scans.
+  void ProgressiveScanTask();
+  // Recovers from failed progressive scan.
+  void OnFailedProgressiveScan();
   // Restart fast scanning after disconnection.
   void RestartFastScanAttempts();
   // Schedules a scan attempt at time |scan_interval_seconds_| in the
@@ -410,8 +417,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   bool scan_pending_;
   uint16 scan_interval_seconds_;
 
+  bool progressive_scan_enabled_;
   NetlinkManager *netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
+  scoped_ptr<ScanSession> scan_session_;
+  size_t min_frequencies_to_scan_;
+  size_t max_frequencies_to_scan_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

@@ -256,7 +256,7 @@ uint16_t NetlinkManager::GetFamily(string name,
   return NetlinkMessage::kIllegalMessageType;
 }
 
-uint16_t NetlinkManager::GetMessageType(string name) const {
+uint16_t NetlinkManager::GetMessageType(const string &name) const {
   map<const string, MessageType>::const_iterator family =
       message_types_.find(name);
   if (family == message_types_.end()) {

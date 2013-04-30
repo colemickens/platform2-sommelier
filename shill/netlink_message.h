@@ -123,6 +123,8 @@ class ErrorAckMessage : public NetlinkMessage {
   static const uint16_t kMessageType;
 
   ErrorAckMessage() : NetlinkMessage(kMessageType), error_(0) {}
+  explicit ErrorAckMessage(uint32_t err)
+      : NetlinkMessage(kMessageType), error_(err) {}
   virtual bool InitFromNlmsg(const nlmsghdr *const_msg);
   virtual ByteString Encode(uint32_t sequence_number);
   virtual void Print(int header_log_level, int detail_log_level) const;
