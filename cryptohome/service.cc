@@ -235,7 +235,7 @@ Service::Service()
       mount_factory_(default_mount_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
-      guest_user_(chromeos::cryptohome::home::GetGuestUserName()) {
+      guest_user_(chromeos::cryptohome::home::kGuestUserName) {
 }
 
 Service::~Service() {

@@ -504,7 +504,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
   // If we're mounting as a guest, as source use just "guestfs" instead of an
   // actual path. We don't want the guest cryptohome to persist even between
   // logins during the same boot.
-  if (credentials.username() == chromeos::cryptohome::home::GetGuestUserName())
+  if (credentials.username() == chromeos::cryptohome::home::kGuestUserName)
     path = kGuestMountPath;
 
   if (!EnsureUserMountPoints(credentials))
@@ -1112,7 +1112,7 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
 }
 
 bool Mount::MountGuestCryptohome() {
-  std::string guest = chromeos::cryptohome::home::GetGuestUserName();
+  std::string guest = chromeos::cryptohome::home::kGuestUserName;
   UsernamePasskey guest_creds(guest.c_str(), chromeos::Blob(0));
   current_user_->Reset();
   return MountEphemeralCryptohome(guest_creds);
