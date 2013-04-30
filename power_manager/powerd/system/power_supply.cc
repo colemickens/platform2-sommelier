@@ -450,7 +450,7 @@ bool PowerSupply::UpdatePowerStatus() {
   status.battery_current = battery_current;
 
   // Perform calculations / interpretations of the data read from sysfs.
-  status.battery_energy = battery_charge * battery_voltage;
+  status.battery_energy = battery_charge * nominal_voltage;
   status.battery_energy_rate = battery_current * battery_voltage;
 
   if (status.line_power_on)
