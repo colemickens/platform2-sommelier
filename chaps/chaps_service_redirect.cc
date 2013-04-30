@@ -14,6 +14,7 @@
 #include "chaps/attributes.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/platform_globals.h"
 
 using std::string;
 using std::vector;
@@ -56,12 +57,12 @@ bool ChapsServiceRedirect::Init() {
 }
 
 bool ChapsServiceRedirect::Init2() {
-  const char* kUser = "chronos";
-  const char* kGroup = "pkcs11";
   CHECK(functions_);
   if (is_initialized_)
     return true;
-  if (!SetProcessUserAndGroup(kUser, kGroup, false))
+  if (!SetProcessUserAndGroup(kServiceRedirectProcessUser,
+                              kServiceRedirectProcessGroup,
+                              false))
     return false;
   CK_RV result = functions_->C_Initialize(NULL);
   if (result != CKR_OK && result != CKR_CRYPTOKI_ALREADY_INITIALIZED) {

@@ -24,6 +24,7 @@
 #include "chaps/chaps_service.h"
 #include "chaps/chaps_service_redirect.h"
 #include "chaps/chaps_utility.h"
+#include "chaps/platform_globals.h"
 #include "chaps/slot_manager_impl.h"
 #include "chaps/tpm_utility_impl.h"
 
@@ -33,11 +34,6 @@ using base::PlatformThread;
 using base::PlatformThreadHandle;
 using base::WaitableEvent;
 using std::string;
-
-namespace {
-  const char kProcessUser[] = "chaps";
-  const char kProcessGroup[] = "chronos-access";
-}
 
 namespace chaps {
 
@@ -107,7 +103,9 @@ int main(int argc, char** argv) {
     // We're using chaps (i.e. not passing through to another PKCS #11 library).
     LOG(INFO) << "Starting PKCS #11 services.";
     // Run as 'chaps'.
-    chaps::SetProcessUserAndGroup(kProcessUser, kProcessGroup, true);
+    chaps::SetProcessUserAndGroup(chaps::kChapsdProcessUser,
+                                  chaps::kChapsdProcessGroup,
+                                  true);
     // Determine SRK authorization data from the command line.
     string srk_auth_data;
     if (cl->HasSwitch("srk_password"))
