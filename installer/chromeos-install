@@ -63,22 +63,25 @@ fi
 
 # Determine our architecture
 if [ -z "$FLAGS_arch" ]; then
-  # Is there a better x86 test?
-  if uname -m | grep -q "^i.86\$"; then
+  case $(uname -m) in
+  i?86|x86_64)
     ARCH="INTEL"
-  elif [ $(uname -m ) = "x86_64" ]; then
-    ARCH="INTEL"
-  elif [ $(uname -m ) = "armv7l" ]; then
+    ;;
+  arm*)
     ARCH="ARM"
-  else
+    ;;
+  *)
     echo "Error: Failed to auto detect architecture" >&2
     exit 1
-  fi
+  esac
 else
-  if ! echo "$FLAGS_arch" | grep -qE '^(INTEL|ARM)$'; then
+  case ${FLAGS_arch} in
+  INTEL|ARM)
+    ;;
+  *)
     echo "Error: Unknown architecture '$FLAGS_arch'." >& 2
     exit 1
-  fi
+  esac
   ARCH="$FLAGS_arch"
 fi
 
