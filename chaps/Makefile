@@ -109,6 +109,19 @@ CXX_BINARY(chapsd): LDLIBS += $(chapsd_LIBS)
 clean: CLEAN(chapsd)
 all: CXX_BINARY(chapsd)
 
+# Chaps DBus Configuration
+ifeq ($(LINUX_BUILD),1)
+DBUS_POLICY = "context=\"default\""
+else
+DBUS_POLICY = "group=\"pkcs11\""
+endif
+.PHONY: $(OUT)/org.chromium.Chaps.conf
+$(OUT)/org.chromium.Chaps.conf :
+	sed -e "s/@POLICY_PERMISSIONS@/$(DBUS_POLICY)/" \
+               $(SRC)/org.chromium.Chaps.conf.in > $@
+all: $(OUT)/org.chromium.Chaps.conf
+clean: CLEAN($(OUT)/org.chromium.Chaps.conf)
+
 # Chaps Client Library
 libchaps_OBJS = $(COMMON_OBJS) chaps.o chaps_proxy.o login_event_client.o \
                 isolate_$(PLATFORM).o
@@ -146,10 +159,10 @@ install_files: all
 	$(INSTALL) -D $(OUT)/chapsd $(DESTDIR)/usr/sbin/chapsd
 	$(INSTALL) -D $(OUT)/chaps_client $(DESTDIR)/usr/bin/chaps_client
 	$(INSTALL) -D $(OUT)/libchaps.so $(DESTDIR)$(LIB_DIR)/libchaps.so
+	$(INSTALL_DATA) -D $(OUT)/org.chromium.Chaps.conf \
+	  $(DESTDIR)/etc/dbus-1/system.d/org.chromium.Chaps.conf
 	$(INSTALL_DATA) -D $(SRC)/org.chromium.Chaps.service \
 	  $(DESTDIR)/usr/share/dbus-1/system-services/org.chromium.Chaps.service
-	$(INSTALL_DATA) -D $(SRC)/org.chromium.Chaps.conf \
-	  $(DESTDIR)/etc/dbus-1/system.d/org.chromium.Chaps.conf
 ifeq ($(BUILD_PAM_MODULE), 1)
 	$(INSTALL) -D $(OUT)/pam_chaps.so \
           $(DESTDIR)$(PAM_MODULE_DIR)/pam_chaps.so

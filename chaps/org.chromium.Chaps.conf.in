@@ -10,7 +10,7 @@
     <allow own="org.chromium.Chaps"/>
     <allow send_destination="org.chromium.Chaps"/>
   </policy>
-  <policy group="pkcs11">
+  <policy @POLICY_PERMISSIONS@>
     <!-- introspection denied -->
     <deny send_destination="org.chromium.Chaps"
           send_interface="org.freedesktop.DBus.Introspectable" />
