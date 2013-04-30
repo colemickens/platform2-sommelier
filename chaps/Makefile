@@ -22,12 +22,17 @@ PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG
 LDLIBS += $(PC_LIBS)
 
-# Test if libsnappy is required to compile LevelDB.
+# Test if libmemenv is available, and whether libsnappy is required to
+# compile LevelDB.
+MEMENV_LIB := $(call check_cxx,-lmemenv)
+ifneq ($(MEMENV_LIB), -lmemenv)
+  CPPFLAGS += -DNO_MEMENV
+endif
 LEVELDB_LIBS := $(call check_libs_cxx, \
 	'\#include<leveldb/db.h>\nint main(){\
 	 leveldb::Options options; leveldb::DB::Open(options, 0, 0);\
 	 return 0;}',\
-	 -lleveldb -lmemenv, -lleveldb -lmemenv -lsnappy)
+	 -lleveldb $(MEMENV_LIB), -lleveldb $(MEMENV_LIB) -lsnappy)
 
 # Rules for Generated Code
 chaps_proxy_generated.h: $(SRC)/chaps_interface.xml

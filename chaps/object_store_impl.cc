@@ -17,7 +17,9 @@
 #include <chromeos/utility.h>
 #include <leveldb/db.h>
 #include <leveldb/env.h>
+#ifndef NO_MEMENV
 #include <leveldb/memenv.h>
+#endif
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -56,10 +58,15 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
   options.create_if_missing = true;
   options.paranoid_checks = true;
   if (database_path.value() == ":memory:") {
+#ifndef NO_MEMENV
     // Memory only environment, useful for testing.
     LOG(INFO) << "Using memory-only environment.";
     env_.reset(leveldb::NewMemEnv(leveldb::Env::Default()));
     options.env = env_.get();
+#else
+    LOG(ERROR) << "Compiled without memory-only environment support.";
+    return false;
+#endif
   }
   FilePath database_name = database_path.Append(kDatabaseDirectory);
   leveldb::DB* db = NULL;

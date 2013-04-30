@@ -122,7 +122,7 @@ TEST_F(TestObjectStoreEncryption, CBCMode) {
 TEST(TestObjectStore, InsertLoad) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
-  store.Init(FilePath(database));
+  ASSERT_TRUE(store.Init(FilePath(database)));
   string tmp(32, 'A');
   SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -164,7 +164,7 @@ TEST(TestObjectStore, InsertLoad) {
 TEST(TestObjectStore, UpdateDelete) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
-  store.Init(FilePath(database));
+  ASSERT_TRUE(store.Init(FilePath(database)));
   string tmp(32, 'A');
   SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
@@ -190,7 +190,7 @@ TEST(TestObjectStore, UpdateDelete) {
 TEST(TestObjectStore, InternalBlobs) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
-  store.Init(FilePath(database));
+  ASSERT_TRUE(store.Init(FilePath(database)));
   string blob;
   EXPECT_FALSE(store.GetInternalBlob(1, &blob));
   EXPECT_TRUE(store.SetInternalBlob(1, "blob"));
@@ -201,7 +201,7 @@ TEST(TestObjectStore, InternalBlobs) {
 TEST(TestObjectStore, DeleteAll) {
   ObjectStoreImpl store;
   const FilePath::CharType database[] = FILE_PATH_LITERAL(":memory:");
-  store.Init(FilePath(database));
+  ASSERT_TRUE(store.Init(FilePath(database)));
   string tmp(32, 'A');
   SecureBlob key(tmp.data(), tmp.length());
   EXPECT_TRUE(store.SetEncryptionKey(key));
