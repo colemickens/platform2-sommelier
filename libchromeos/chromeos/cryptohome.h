@@ -12,6 +12,8 @@ namespace chromeos {
 namespace cryptohome {
 namespace home {
 
+const char kGuestUserName[] = "$guest";
+
 // Returns the common prefix under which the mount points for user homes are
 // created.
 FilePath GetUserPathPrefix();
@@ -60,8 +62,6 @@ void SetSystemSalt(std::string* salt);
 
 // Returns the system salt.
 std::string* GetSystemSalt();
-
-std::string GetGuestUserName();
 
 } // namespace home
 } // namespace cryptohome
