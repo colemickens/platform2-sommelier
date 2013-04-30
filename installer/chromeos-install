@@ -224,8 +224,14 @@ mkdir -p ${TMPMNT}
 # Clean any mounts that might be present to avoid
 # aliasing access to block devices.
 prepare_disk() {
-  sudo initctl stop cros-disks || true
-  sudo umount -f /media/*/* || true
+  if [ -e /etc/init/cros-disks.conf ]; then
+    sudo initctl stop cros-disks || true
+  fi
+  # Often times, nothing is mounted, so swallow the warnings.
+  sudo umount -f /media/*/* 2>&1 | \
+    grep -v -i \
+      -e 'No such file or directory' \
+      -e 'not found' || true
 }
 
 # Like mount but keeps track of the current mounts so that they can be cleaned
