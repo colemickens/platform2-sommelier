@@ -183,6 +183,7 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       flimflam::kSIMLockStatusProperty,
       &CellularCapabilityUniversal::SimLockStatusToProperty,
       NULL);
+  store->RegisterConstString(shill::kSIMOperatorIdProperty, &operator_id_);
   store->RegisterConstBool(shill::kSIMPresentProperty, &sim_present_);
   store->RegisterConstStringmaps(flimflam::kCellularApnListProperty,
                                  &apn_list_);
