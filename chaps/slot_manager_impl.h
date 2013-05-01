@@ -72,9 +72,10 @@ class SlotManagerImpl : public SlotManager,
   // LoginEventListener methods.
   virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
-  virtual void LoadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const FilePath& path,
-                         const chromeos::SecureBlob& auth_data);
+                         const chromeos::SecureBlob& auth_data,
+                         int* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
                            const FilePath& path);
   virtual void ChangeTokenAuthData(const FilePath& path,

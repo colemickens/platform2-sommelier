@@ -80,19 +80,23 @@ void ChapsProxyImpl::CloseIsolate(const SecureBlob& isolate_credential) {
   }
 }
 
-void ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
+bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                const string& path,
-                               const vector<uint8_t>& auth_data) {
+                               const vector<uint8_t>& auth_data,
+                               int* slot_id) {
   AutoLock lock(lock_);
   if (!proxy_.get()) {
     LOG(ERROR) << "Failed to fire event: proxy not initialized.";
-    return;
+    return false;
   }
+  bool result = false;;
   try {
-    proxy_->LoadToken(isolate_credential, path, auth_data);
+    proxy_->LoadToken(isolate_credential, path, auth_data, *slot_id, result);
   } catch (DBus::Error err) {
     LOG(ERROR) << "DBus::Error - " << err.what();
+    result = false;
   }
+  return result;
 }
 
 void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,

@@ -46,18 +46,19 @@ void LoginEventClient::CloseIsolate(const SecureBlob& isolate_credential) {
   proxy_->CloseIsolate(isolate_credential);
 }
 
-void LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
+bool LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
                                  const string& path,
                                  const uint8_t* auth_data,
-                                 size_t auth_data_length) {
+                                 size_t auth_data_length,
+                                 int* slot_id) {
   CHECK(proxy_);
   if (!Connect()) {
     LOG(WARNING) << "Failed to connect to the Chaps daemon. "
                  << "Load Token notification will not be sent.";
-    return;
+    return false;
   }
   SecureBlob auth_data_blob(auth_data, auth_data_length);
-  proxy_->LoadToken(isolate_credential, path, auth_data_blob);
+  return proxy_->LoadToken(isolate_credential, path, auth_data_blob, slot_id);
 }
 
 void LoginEventClient::UnloadToken(const SecureBlob& isolate_credential,

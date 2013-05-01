@@ -30,9 +30,10 @@ public:
 
   virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
-  virtual void LoadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const std::string& path,
-                         const std::vector<uint8_t>& auth_data);
+                         const std::vector<uint8_t>& auth_data,
+                         int* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
                            const std::string& path);
   virtual void ChangeTokenAuthData(const std::string& path,

@@ -62,11 +62,13 @@ void Ping() {
 // Loads a token given a path and auth data.
 void LoadToken(const string& path, const string& auth) {
   chaps::LoginEventClient client;
+  int slot_id = 0;
   client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
                    path,
                    chaps::ConvertStringToByteBuffer(auth.data()),
-                   auth.length());
-  LOG(INFO) << "Sent Event: Login: " << path;
+                   auth.length(),
+                   &slot_id);
+  LOG(INFO) << "Sent Event: Login: " << path << " - slot = " << slot_id;
 }
 
 // Unloads a token given a path.

@@ -140,9 +140,12 @@ class TestSlotManager: public ::testing::Test {
     ASSERT_TRUE(slot_manager_->Init());
   }
 #if GTEST_IS_THREADSAFE
-  void InsertToken() {
+  int InsertToken() {
+    int slot_id = 0;
     slot_manager_->LoadToken(ic_, FilePath("/var/lib/chaps"),
-                             MakeBlob(kAuthData));
+                             MakeBlob(kAuthData),
+                             &slot_id);
+    return slot_id;
   }
 #endif
 
@@ -225,10 +228,12 @@ TEST(DeathTest, OutOfMemoryInit) {
       .WillRepeatedly(Return(null_importer));
   SlotManagerImpl sm(&factory, &tpm);
   ASSERT_TRUE(sm.Init());
+  int slot_id;
   EXPECT_DEATH_IF_SUPPORTED(
       sm.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
                    FilePath("/var/lib/chaps"),
-                   MakeBlob(kAuthData)),
+                   MakeBlob(kAuthData),
+                   &slot_id),
       "Check failed");
 }
 
@@ -276,12 +281,24 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   InsertToken();
   // TODO(dkrahn): Enable once slot 1 exists (crosbug.com/27759).
   // EXPECT_FALSE(slot_manager_->IsTokenPresent(1));
-  slot_manager_->LoadToken(ic_, FilePath("some_path"), MakeBlob(kAuthData));
+  int slot_id;
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
+                                       FilePath("some_path"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
-  // Loat token with an existing path - should be ignored.
-  slot_manager_->LoadToken(ic_, FilePath("some_path"), MakeBlob(kAuthData));
+  // Load token with an existing path - should not result in a new slot.
+  int slot_id2;
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
+                                       FilePath("some_path"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id2));
+  EXPECT_EQ(slot_id, slot_id2);
   EXPECT_EQ(2, slot_manager_->GetSlotCount());
-  slot_manager_->LoadToken(ic_, FilePath("another_path"), MakeBlob(kAuthData));
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
+                                       FilePath("another_path"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
   slot_manager_->ChangeTokenAuthData(FilePath("some_path"),
                                        MakeBlob(kAuthData),
@@ -295,7 +312,10 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   slot_manager_->UnloadToken(ic_, FilePath("some_path"));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(ic_, 1));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
-  slot_manager_->LoadToken(ic_, FilePath("one_more_path"), MakeBlob(kAuthData));
+  EXPECT_TRUE(slot_manager_->LoadToken(ic_,
+                                       FilePath("one_more_path"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
   slot_manager_->UnloadToken(ic_, FilePath("another_path"));
 }
@@ -369,7 +389,11 @@ TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
   SecureBlob isolate;
   EXPECT_FALSE(slot_manager_->OpenIsolate(&isolate));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(isolate, 0));
-  slot_manager_->LoadToken(isolate, FilePath("some_path"), MakeBlob(kAuthData));
+  int slot_id;
+  EXPECT_TRUE(slot_manager_->LoadToken(isolate,
+                                       FilePath("some_path"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(isolate, 0));
   // Token should be unloaded by CloseIsolate call.
   slot_manager_->CloseIsolate(isolate);
@@ -390,16 +414,21 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
       .WillOnce(DoAll(SetArgumentPointee<1>(string("567890")), Return(true)));
 
   EXPECT_FALSE(slot_manager_->OpenIsolate(&new_isolate_0));
-  slot_manager_->LoadToken(new_isolate_0, FilePath("new_isolate"),
-                           MakeBlob(kAuthData));
+  int slot_id;
+  EXPECT_TRUE(slot_manager_->LoadToken(new_isolate_0,
+                                       FilePath("new_isolate"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id));
   EXPECT_EQ(1, slot_manager_->GetSlotCount());
 
   EXPECT_FALSE(slot_manager_->OpenIsolate(&new_isolate_1));
-  slot_manager_->LoadToken(new_isolate_1, FilePath("another_new_isolate"),
-                           MakeBlob(kAuthData));
+  EXPECT_TRUE(slot_manager_->LoadToken(new_isolate_1,
+                                       FilePath("another_new_isolate"),
+                                       MakeBlob(kAuthData),
+                                       &slot_id));
   EXPECT_EQ(2, slot_manager_->GetSlotCount());
 
-  // Ensure tokens are only accessable with the valid isolate cred.
+  // Ensure tokens are only accessible with the valid isolate cred.
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(new_isolate_0, 0));
   EXPECT_TRUE(slot_manager_->IsTokenAccessible(new_isolate_1, 1));
   EXPECT_FALSE(slot_manager_->IsTokenAccessible(new_isolate_1, 0));

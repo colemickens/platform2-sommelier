@@ -48,14 +48,16 @@ class EXPORT_SPEC LoginEventClient {
   void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
 
   // Sends a load token event. The Chaps daemon will insert a token into the
-  // given user's isolate.
+  // given user's isolate.  Returns true on success.
   //  isolate_credential - The isolate into which the token should be loaded.
   //  path - The path to the user's token directory.
   //  auth_data - Authorization data to unlock the token.
-  void LoadToken(const chromeos::SecureBlob& isolate_credential,
+  //  slot_id - On success, will be set to the loaded token's slot ID.
+  bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                  const std::string& path,
                  const uint8_t* auth_data,
-                 size_t auth_data_length);
+                 size_t auth_data_length,
+                 int* slot_id);
 
   // Sends an unload event. The Chaps daemon will remove the token from the
   // given users isolate.

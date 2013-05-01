@@ -27,9 +27,10 @@ class LoginEventListener {
 
   virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential) = 0;
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential) = 0;
-  virtual void LoadToken(const chromeos::SecureBlob& isolate_credential,
+  virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const FilePath& path,
-                         const chromeos::SecureBlob& auth_data) = 0;
+                         const chromeos::SecureBlob& auth_data,
+                         int* slot_id) = 0;
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
                            const FilePath& path) = 0;
   virtual void ChangeTokenAuthData(

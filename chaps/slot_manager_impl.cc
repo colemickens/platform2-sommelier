@@ -477,64 +477,69 @@ void SlotManagerImpl::CloseIsolate(const SecureBlob& isolate_credential) {
   VLOG(1) << "SlotManagerImpl::CloseIsolate success";
 }
 
-void SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
+bool SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
                                 const FilePath& path,
-                                const SecureBlob& auth_data) {
+                                const SecureBlob& auth_data,
+                                int* slot_id) {
+  CHECK(slot_id);
+
   VLOG(1) << "SlotManagerImpl::LoadToken enter";
   if (isolate_map_.find(isolate_credential) == isolate_map_.end()) {
     LOG(ERROR) << "Invalid isolate credential for LoadToken.";
-    return;
+    return false;
   }
   Isolate& isolate = isolate_map_[isolate_credential];
 
-  // If we're already managing this token, ignore the event.
+  // If we're already managing this token, just send back the existing slot.
   if (path_slot_map_.find(path) != path_slot_map_.end()) {
     // TODO(rmcilroy): Consider allowing tokens to be loaded in multiple
     // isolates.
     LOG(WARNING) << "Load token event received for existing token.";
-    return;
+    *slot_id = path_slot_map_[path];
+    return true;
   }
   // If there's something wrong with the TPM, don't attempt to load a token.
   if (!tpm_utility_->Init()) {
     LOG(ERROR) << "Failed to initialize TPM, load token event aborting.";
-    return;
+    return false;
   }
   // Setup the object pool.
-  int slot_id = FindEmptySlot();
+  *slot_id = FindEmptySlot();
   shared_ptr<ObjectPool> object_pool(
       factory_->CreateObjectPool(this,
                                  factory_->CreateObjectStore(path),
-                                 factory_->CreateObjectImporter(slot_id,
+                                 factory_->CreateObjectImporter(*slot_id,
                                                                 path,
                                                                 tpm_utility_)));
   CHECK(object_pool.get());
 
   // Wait for the termination of a previous token.
-  if (slot_list_[slot_id].worker_thread.get())
-    base::PlatformThread::Join(slot_list_[slot_id].worker_thread_handle);
+  if (slot_list_[*slot_id].worker_thread.get())
+    base::PlatformThread::Join(slot_list_[*slot_id].worker_thread_handle);
 
   // Decrypting (or creating) the master key requires the TPM so we'll put this
   // on a worker thread. This has the effect that queries for public objects
   // are responsive but queries for private objects will be waiting for the
   // master key to be ready.
-  slot_list_[slot_id].worker_thread.reset(
-      new TokenInitThread(slot_id,
+  slot_list_[*slot_id].worker_thread.reset(
+      new TokenInitThread(*slot_id,
                           path,
                           auth_data,
                           tpm_utility_,
                           object_pool.get()));
   base::PlatformThread::Create(0,
-                               slot_list_[slot_id].worker_thread.get(),
-                               &slot_list_[slot_id].worker_thread_handle);
+                               slot_list_[*slot_id].worker_thread.get(),
+                               &slot_list_[*slot_id].worker_thread_handle);
 
   // Insert the new token into the empty slot.
-  slot_list_[slot_id].token_object_pool = object_pool;
-  slot_list_[slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
-  path_slot_map_[path] = slot_id;
+  slot_list_[*slot_id].token_object_pool = object_pool;
+  slot_list_[*slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
+  path_slot_map_[path] = *slot_id;
   // Insert slot into the isolate.
-  isolate.slot_ids.insert(slot_id);
-  LOG(INFO) << "Slot " << slot_id << " ready for token at " << path.value();
+  isolate.slot_ids.insert(*slot_id);
+  LOG(INFO) << "Slot " << *slot_id << " ready for token at " << path.value();
   VLOG(1) << "SlotManagerImpl::LoadToken success";
+  return true;
 }
 
 void SlotManagerImpl::UnloadToken(const SecureBlob& isolate_credential,
