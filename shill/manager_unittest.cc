@@ -3723,4 +3723,50 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_EQ(kEntry2, entries[kProfileRpc2]);
 }
 
+TEST_F(ManagerTest, InitializeProfiles) {
+  // We need a real glib here, so that profiles are persisted.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  Manager manager(control_interface(),
+                  dispatcher(),
+                  metrics(),
+                  &glib,
+                  run_path(),
+                  storage_path(),
+                  temp_dir.path().value());
+  // Can't use |wifi_provider_|, because it's owned by the Manager
+  // object in the fixture.
+  MockWiFiProvider *wifi_provider = new NiceMock<MockWiFiProvider>();
+  manager.wifi_provider_.reset(wifi_provider);  // pass ownership
+  // Give manager a valid place to write the user profile list.
+  manager.user_profile_list_path_ = temp_dir.path().Append("user_profile_list");
+
+  // With no user profiles, the WiFiProvider should be called once
+  // (for the default profile).
+  EXPECT_CALL(*wifi_provider, CreateServicesFromProfile(_));
+  manager.InitializeProfiles();
+  Mock::VerifyAndClearExpectations(wifi_provider);
+
+  // With |n| user profiles, the WiFiProvider should be called |n+1|
+  // times. First, create 2 user profiles...
+  const char kProfile0[] = "~user/profile0";
+  const char kProfile1[] = "~user/profile1";
+  string profile_rpc_path;
+  Error error;
+  manager.CreateProfile(kProfile0, &profile_rpc_path, &error);
+  manager.PushProfile(kProfile0, &profile_rpc_path, &error);
+  manager.CreateProfile(kProfile1, &profile_rpc_path, &error);
+  manager.PushProfile(kProfile1, &profile_rpc_path, &error);
+
+  // ... then reset manager state ...
+  manager.profiles_.clear();
+
+  // ...then check that the WiFiProvider is notified about all three
+  // profiles (one default, two user).
+  EXPECT_CALL(*wifi_provider, CreateServicesFromProfile(_)).Times(3);
+  manager.InitializeProfiles();
+  Mock::VerifyAndClearExpectations(wifi_provider);
+}
+
 }  // namespace shill

@@ -91,6 +91,7 @@ Manager::Manager(ControlInterface *control_interface,
       run_path_(FilePath(run_directory)),
       storage_path_(FilePath(storage_directory)),
       user_storage_format_(user_storage_format),
+      user_profile_list_path_(FilePath(Profile::kUserProfileListPathname)),
       adaptor_(control_interface->CreateManagerAdaptor(this)),
       device_info_(control_interface, dispatcher, metrics, this),
       modem_info_(control_interface, dispatcher, metrics, this, glib),
@@ -260,9 +261,11 @@ void Manager::Stop() {
 }
 
 void Manager::InitializeProfiles() {
-  DCHECK(profiles_.empty());
-  // The default profile must go first on the stack.
+  DCHECK(profiles_.empty());  // The default profile must go first on stack.
   CHECK(file_util::CreateDirectory(storage_path_)) << storage_path_.value();
+
+  // Ensure that we have storage for the default profile, and that
+  // the persistent copy of the default profile is not corrupt.
   scoped_refptr<DefaultProfile>
       default_profile(new DefaultProfile(control_interface_,
                                          metrics_,
@@ -276,15 +279,27 @@ void Manager::InitializeProfiles() {
       glib_, Profile::kCreateOrOpenExisting, NULL))
     CHECK(default_profile->InitStorage(glib_, Profile::kCreateNew,
                                        NULL));
-  CHECK(LoadProperties(default_profile));
-  profiles_.push_back(default_profile);
+  default_profile->Save();
+  default_profile = NULL;  // PushProfileInternal will re-create.
+
+  // Read list of user profiles. This must be done before pushing the
+  // default profile, because modifying the profile stack updates the
+  // user profile list.
+  vector<Profile::Identifier> identifiers =
+      Profile::LoadUserProfileList(user_profile_list_path_);
+
+  // Push the default profile onto the stack.
   Error error;
   string path;
-  vector<Profile::Identifier> identifiers =
-      Profile::LoadUserProfileList(FilePath(Profile::kUserProfileListPathname));
-  for (vector<Profile::Identifier>::const_iterator it = identifiers.begin();
-       it != identifiers.end(); ++it) {
-    PushProfileInternal(*it, &path, &error);
+  Profile::Identifier default_profile_id;
+  CHECK(Profile::ParseIdentifier(
+      DefaultProfile::kDefaultId, &default_profile_id));
+  PushProfileInternal(default_profile_id, &path, &error);
+  CHECK(error.IsSuccess());  // Must have a default profile.
+
+  // Push user profiles onto the stack.
+  for (const auto &profile_id : identifiers)  {
+    PushProfileInternal(profile_id, &path, &error);
   }
 }
 
@@ -475,8 +490,7 @@ void Manager::OnProfilesChanged() {
 
   adaptor_->EmitStringsChanged(flimflam::kProfilesProperty,
                                EnumerateProfiles(&unused_error));
-  Profile::SaveUserProfileList(FilePath(Profile::kUserProfileListPathname),
-                               profiles_);
+  Profile::SaveUserProfileList(user_profile_list_path_, profiles_);
 }
 
 void Manager::PopProfile(const string &name, Error *error) {

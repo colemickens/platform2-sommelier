@@ -377,6 +377,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
+  FRIEND_TEST(ManagerTest, InitializeProfiles);  // for wifi_provider_
   FRIEND_TEST(ManagerTest, IsDefaultProfile);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);
@@ -498,6 +499,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   const base::FilePath run_path_;
   const base::FilePath storage_path_;
   const std::string user_storage_format_;
+  base::FilePath user_profile_list_path_;  // Changed in tests.
   scoped_ptr<ManagerAdaptorInterface> adaptor_;
   scoped_ptr<DBusManager> dbus_manager_;
   DeviceInfo device_info_;
