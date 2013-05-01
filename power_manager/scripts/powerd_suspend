@@ -68,19 +68,18 @@ is_lumpy() {
     crossystem hwid | grep -q "LUMPY"
 }
 
+# Checks if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
 has_gobi_modem() {
-    # Check if the system has a Novatel Wireless Gobi 3000 E396/E396U modem.
     lsusb -d 1410:a021 || lsusb -d 1410:a023
 }
 
+# Toggles the power and off GPIOs connected to gobi modem in order to
+# revive it.
 do_lumpy_gobi_modem_revive() {
-    # Toggle the power and off GPIOs connected to
-    # gobi modem in order to revive it.
-
     cd /sys/class/gpio
 
-    # TODO (snanda): get the gpio base from crossystem instead
-    # of assuming that it will always be 160 for lumpy.
+    # TODO(snanda): Get the gpio base from crossystem instead of assuming
+    # that it will always be 160 for lumpy.
     if [ ! -d gpio198 ]; then
         echo 198 > export
     fi
@@ -98,8 +97,10 @@ do_lumpy_gobi_modem_revive() {
     echo 1 > gpio198/value
 }
 
-# Check pm_wakeup_events status and return success to cancel the suspend
-suspend_pm_wakeup_cancel() {
+# Writes the wakeup count that was passed to this script to
+# /sys/power/wakeup_count.  Returns success if the write fails, indicating
+# that one or more wakeup events occurred in the meantime.
+saw_wakeup_event() {
     if [ "${FLAGS_wakeup_count}" -eq -1 ] ||
        echo "${FLAGS_wakeup_count}" > "/sys/power/wakeup_count"; then
         cancel=0
@@ -111,10 +112,10 @@ suspend_pm_wakeup_cancel() {
     fi
 }
 
-# Send suspend status to UMA.
+# Sends suspend status to UMA.
 #   0 - success
-#   1 - failure (in kernel)
-#   2 - cancelled
+#   1 - failure (in kernel when writing to /sys/power/state)
+#   2 - cancelled (wakeup event seen before write to /sys/power/wakeup_count)
 #   3 - attempted
 send_uma_status() {
   metrics_client -e Power.SuspendStatus $1 4 &
@@ -131,20 +132,20 @@ setup_dark_resume() {
 # send_metrics_on_resume.
 log_msg "Going to suspend-to-RAM state : args=$@"
 
-# Parse command line
+# Parse command line.
 FLAGS "$@" || exit 1
 eval set -- "$FLAGS_ARGV"
 
 send_uma_status 3
 
-# - logs the time going to suspend (no-op if no RTC).
+# Log the time before going to suspend (no-op if no RTC).
 cp /sys/class/rtc/rtc0/since_epoch $suspend_to_ram_time_file \
     2> /dev/null || true
 
-# - Remove last_resume_timings to ensure the file is fresh on resume
+# Remove last_resume_timings to ensure the file is fresh on resume.
 rm -f $last_resume_timings_file
 
-# - stores the current power status
+# Store the current power status.
 power_supply_info 2> /dev/null \
   | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
@@ -165,8 +166,9 @@ enable_debug
 log_msg "Explicit sync"
 sync
 
-suspend_rc=-1
-if suspend_pm_wakeup_cancel; then
+suspend_rc=1
+
+if saw_wakeup_event; then
     # Note: The client/cros/power_suspend.py module in autotest depends on
     # this message.
     log_msg "Cancel suspend at kernel"
@@ -175,8 +177,7 @@ if suspend_pm_wakeup_cancel; then
     # isn't run if the suspend attempt is unsuccessful.
     rm -f $suspend_to_ram_time_file
 
-    # Send suspend status: 2 (cancel)
-    send_uma_status 2
+    suspend_rc=2
 else
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
@@ -189,26 +190,26 @@ else
         /sbin/hwclock -V > /dev/null
     else
         # We don't want to overwrite the alarm for whatever test might be
-        # running
+        # running.
         setup_dark_resume
     fi
 
-    # - suspends to ram
+    # Suspend to RAM. This write will fail if additional wakeup events
+    # have been generated since the earlier write to /sys/power/wakeup_count.
     echo -n mem > /sys/power/state
     suspend_rc=$?
     if [ "${suspend_rc}" != 0 ]; then
         log_msg "Error writing to /sys/power/state"
         log_msg_from_file /sys/kernel/debug/suspend_stats
     fi
-
-    # Send suspend status: 0 (success) or 1 (failure)
-    send_uma_status $suspend_rc
 fi
+
+send_uma_status $suspend_rc
 
 if [ $cancel -eq 0 ]; then
     # On resume:
     if [ -f "${timestamp_file}" ]; then
-        # - records the hwclock time at resume. It is read by power_Resume test.
+        # Record the hwclock time at resume. It is read by power_Resume test.
         TIME=$(/sbin/hwclock --utc --debug)
         echo ${TIME} > "${timestamp_file}"
         log_msg "Recorded hwclock time for test"
@@ -223,7 +224,7 @@ if [ $cancel -eq 0 ]; then
         log_msg "wake source: ${wakeup_source}"
     fi
 
-    # - sends UMA metrics on resume
+    # Send UMA metrics.
     send_metrics_on_resume &
 
     # Revive the modem if it was present prior to suspending but is absent now.
@@ -237,7 +238,7 @@ fi
 
 initctl emit system-resumed &
 
-# - refresh mosys eventlog to help feedback reports pick up the latest snapshot
+# Refresh mosys eventlog to help feedback reports pick up the latest snapshot.
 /usr/share/userfeedback/scripts/eventlog &
 
 log_msg "Resume finished"
