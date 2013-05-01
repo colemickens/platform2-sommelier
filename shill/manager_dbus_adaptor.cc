@@ -391,12 +391,15 @@ bool ManagerDBusAdaptor::VerifyDestination(const string &certificate,
                                            const string &nonce,
                                            const string &signed_data,
                                            const string &destination_udn,
+                                           const string &hotspot_ssid,
+                                           const string &hotspot_bssid,
                                            ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
   Error e(Error::kOperationInitiated);
   DBus::Tag *tag = new DBus::Tag();
   manager_->VerifyDestination(certificate, public_key, nonce,
                               signed_data, destination_udn,
+                              hotspot_ssid, hotspot_bssid,
                               GetBoolMethodReplyCallback(tag), &e);
   ReturnResultOrDefer(tag, e, &error);
   CHECK(e.IsFailure()) << __func__ << " should only return directly on error.";
@@ -409,6 +412,8 @@ string ManagerDBusAdaptor::VerifyAndEncryptCredentials(
     const string &nonce,
     const string &signed_data,
     const string &destination_udn,
+    const string &hotspot_ssid,
+    const string &hotspot_bssid,
     const ::DBus::Path &network,
     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
@@ -416,6 +421,7 @@ string ManagerDBusAdaptor::VerifyAndEncryptCredentials(
   DBus::Tag *tag = new DBus::Tag();
   manager_->VerifyAndEncryptCredentials(certificate, public_key, nonce,
                                         signed_data, destination_udn,
+                                        hotspot_ssid, hotspot_bssid,
                                         network,
                                         GetStringMethodReplyCallback(tag),
                                         &e);
@@ -430,6 +436,8 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
     const string &nonce,
     const string &signed_data,
     const string &destination_udn,
+    const string &hotspot_ssid,
+    const string &hotspot_bssid,
     const string &data,
     ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__;
@@ -437,6 +445,7 @@ string ManagerDBusAdaptor::VerifyAndEncryptData(
   DBus::Tag *tag = new DBus::Tag();
   manager_->VerifyAndEncryptData(certificate, public_key, nonce,
                                  signed_data, destination_udn,
+                                 hotspot_ssid, hotspot_bssid,
                                  data, GetStringMethodReplyCallback(tag),
                                  &e);
     ReturnResultOrDefer(tag, e, &error);

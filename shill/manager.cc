@@ -1110,6 +1110,8 @@ void Manager::VerifyDestination(const string &certificate,
                                 const string &nonce,
                                 const string &signed_data,
                                 const string &destination_udn,
+                                const string &hotspot_ssid,
+                                const string &hotspot_bssid,
                                 const ResultBoolCallback &cb,
                                 Error *error) {
   vector<ServiceRefPtr>::iterator sit;
@@ -1127,9 +1129,23 @@ void Manager::VerifyDestination(const string &certificate,
     return;
   }
   WiFiService *service = reinterpret_cast<WiFiService *>(&(*(*sit)));
+  // If Chrome thinks this destination is already configured, service will
+  // be an AP that both we and the destination are connected to, and not
+  // the thing we should verify against.
+  string bssid(service->bssid());
+  vector<uint8_t> ssid(service->ssid());
+  if (hotspot_bssid.length() > 32) {
+    error->Populate(Error::kOperationFailed,
+                    "Invalid SSID given for verification.");
+    return;
+  }
+  if (hotspot_ssid.length() || hotspot_bssid.length()) {
+    ssid.assign(hotspot_ssid.begin(), hotspot_ssid.end());
+    bssid = hotspot_bssid;
+  }
   crypto_util_proxy_->VerifyDestination(certificate, public_key, nonce,
                                         signed_data, destination_udn,
-                                        service->ssid(), service->bssid(),
+                                        ssid, bssid,
                                         cb, error);
 }
 
@@ -1157,13 +1173,16 @@ void Manager::VerifyAndEncryptData(const string &certificate,
                                    const string &nonce,
                                    const string &signed_data,
                                    const string &destination_udn,
+                                   const string &hotspot_ssid,
+                                   const string &hotspot_bssid,
                                    const string &data,
                                    const ResultStringCallback &cb,
                                    Error *error) {
   ResultBoolCallback on_verification_success = Bind(
       &Manager::VerifyToEncryptLink, AsWeakPtr(), public_key, data, cb);
   VerifyDestination(certificate, public_key, nonce, signed_data,
-                    destination_udn, on_verification_success, error);
+                    destination_udn, hotspot_ssid, hotspot_bssid,
+                    on_verification_success, error);
 }
 
 void Manager::VerifyAndEncryptCredentials(const string &certificate,
@@ -1171,6 +1190,8 @@ void Manager::VerifyAndEncryptCredentials(const string &certificate,
                                           const string &nonce,
                                           const string &signed_data,
                                           const string &destination_udn,
+                                          const string &hotspot_ssid,
+                                          const string &hotspot_bssid,
                                           const string &network_path,
                                           const ResultStringCallback &cb,
                                           Error *error) {

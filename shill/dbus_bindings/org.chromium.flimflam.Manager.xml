@@ -113,6 +113,8 @@
 			<arg name="nonce" type="s" direction="in"/>
 			<arg name="signed_data" type="s" direction="in"/>
 			<arg name="destination_udn" type="s" direction="in"/>
+			<arg name="hotspot_ssid" type="s" direction="in"/>
+			<arg name="hotspot_bssid" type="s" direction="in"/>
 			<arg type="b" direction="out"/>
 		</method>
 		<method name="VerifyAndEncryptCredentials">
@@ -121,6 +123,8 @@
 			<arg name="nonce" type="s" direction="in"/>
 			<arg name="signed_data" type="s" direction="in"/>
 			<arg name="destination_udn" type="s" direction="in"/>
+			<arg name="hotspot_ssid" type="s" direction="in"/>
+			<arg name="hotspot_bssid" type="s" direction="in"/>
 			<arg name="network" type="o" direction="in"/>
 			<arg type="s" direction="out"/>
 		</method>
@@ -130,6 +134,8 @@
 			<arg name="nonce" type="s" direction="in"/>
 			<arg name="signed_data" type="s" direction="in"/>
 			<arg name="destination_udn" type="s" direction="in"/>
+			<arg name="hotspot_ssid" type="s" direction="in"/>
+			<arg name="hotspot_bssid" type="s" direction="in"/>
 			<arg name="data" type="s" direction="in"/>
 			<arg type="s" direction="out"/>
 		</method>

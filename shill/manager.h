@@ -326,6 +326,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                          const std::string &nonce,
                          const std::string &signed_data,
                          const std::string &destination_udn,
+                         const std::string &hotspot_ssid,
+                         const std::string &hotspot_bssid,
                          const ResultBoolCallback &cb,
                          Error *error);
 
@@ -339,6 +341,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                             const std::string &nonce,
                             const std::string &signed_data,
                             const std::string &destination_udn,
+                            const std::string &hotspot_ssid,
+                            const std::string &hotspot_bssid,
                             const std::string &data,
                             const ResultStringCallback &cb,
                             Error *error);
@@ -352,6 +356,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
                                    const std::string &nonce,
                                    const std::string &signed_data,
                                    const std::string &destination_udn,
+                                   const std::string &hotspot_ssid,
+                                   const std::string &hotspot_bssid,
                                    const std::string &network_path,
                                    const ResultStringCallback &cb,
                                    Error *error);

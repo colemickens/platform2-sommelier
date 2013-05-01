@@ -3477,6 +3477,10 @@ TEST_F(ManagerTest, VerifyDestination) {
   const string kFakeUdn("fake udn");
   const char kSSIDStr[] = "fake ssid";
   const vector<uint8_t> kSSID(kSSIDStr, kSSIDStr + arraysize(kSSIDStr));
+  const string kConfiguredSSID("AConfiguredDestination");
+  const vector<uint8_t> kConfiguredSSIDVector(kConfiguredSSID.begin(),
+                                              kConfiguredSSID.end());
+  const string kConfiguredBSSID("aa:bb:aa:bb:aa:bb");
   const string kFakeData("muffin man");
   scoped_refptr<MockWiFiService> mock_destination(
       new NiceMock<MockWiFiService>(control_interface(),
@@ -3493,16 +3497,9 @@ TEST_F(ManagerTest, VerifyDestination) {
 
   // Verify that if we're not connected to anything, verification fails.
   {
-    EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
-                                                       kFakePublicKey,
-                                                       kFakeNonce,
-                                                       kFakeSignedData,
-                                                       kFakeUdn,
-                                                       kSSID,
-                                                       _,
-                                                       _,
-                                                       _))
-        .Times(0);
+    LOG(INFO) << "Can't verify if not connected.";
+    EXPECT_CALL(*crypto_util_proxy_,
+                VerifyDestination(_, _, _, _, _, _, _, _, _)).Times(0);
     Error error(Error::kOperationInitiated);
     ResultBoolCallback cb = Bind(
         &DestinationVerificationTest::ResultBoolCallbackStub,
@@ -3512,6 +3509,19 @@ TEST_F(ManagerTest, VerifyDestination) {
                                  kFakeNonce,
                                  kFakeSignedData,
                                  kFakeUdn,
+                                 "",
+                                 "",
+                                 cb,
+                                 &error);
+    // Even if we're not expected to be connected to the destination, the call
+    // still fails.
+    manager()->VerifyDestination(kFakeCertificate,
+                                 kFakePublicKey,
+                                 kFakeNonce,
+                                 kFakeSignedData,
+                                 kFakeUdn,
+                                 kConfiguredSSID,
+                                 kConfiguredBSSID,
                                  cb,
                                  &error);
     EXPECT_TRUE(error.IsFailure());
@@ -3525,6 +3535,7 @@ TEST_F(ManagerTest, VerifyDestination) {
 
   // Lead off by verifying that the basic VerifyDestination flow works.
   {
+    LOG(INFO) << "Basic VerifyDestination flow.";
     ResultBoolCallback passed_down_callback;
     EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
                                                        kFakePublicKey,
@@ -3549,6 +3560,53 @@ TEST_F(ManagerTest, VerifyDestination) {
                                  kFakeNonce,
                                  kFakeSignedData,
                                  kFakeUdn,
+                                 // Ask to be verified against that service.
+                                 "", "",
+                                 cb,
+                                 &error);
+    // We assert here, because if the operation is not ongoing, it is
+    // inconsistent with shim behavior to call the callback anyway.
+    ASSERT_TRUE(error.IsOngoing());
+    Mock::VerifyAndClearExpectations(crypto_util_proxy_);
+    EXPECT_CALL(dv_test, ResultBoolCallbackStub(_, true)).Times(1);
+    // Call the callback passed into the CryptoUtilProxy, which
+    // should find its way into the callback passed into the manager.
+    // In real code, that callback passed into the manager is from the
+    // DBus adaptor.
+    Error e;
+    passed_down_callback.Run(e, true);
+    Mock::VerifyAndClearExpectations(&dv_test);
+  }
+
+  // Similarly, if we pass in a hotspot SSID and BSSID...
+  {
+    LOG(INFO) << "Configured AP VerifyDestination flow.";
+    ResultBoolCallback passed_down_callback;
+    EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
+                                                       kFakePublicKey,
+                                                       kFakeNonce,
+                                                       kFakeSignedData,
+                                                       kFakeUdn,
+                                                       kConfiguredSSIDVector,
+                                                       kConfiguredBSSID,
+                                                       _,
+                                                       _))
+        .Times(1)
+        .WillOnce(DoAll(SaveArg<7>(&passed_down_callback), Return(true)));
+    // Ask the manager to verify the current destination.  This should look
+    // up our previously registered service, and pass some metadata about
+    // that service down to the CryptoUtilProxy to verify.
+    Error error(Error::kOperationInitiated);
+    ResultBoolCallback cb = Bind(
+        &DestinationVerificationTest::ResultBoolCallbackStub,
+        dv_test.AsWeakPtr());
+    manager()->VerifyDestination(kFakeCertificate,
+                                 kFakePublicKey,
+                                 kFakeNonce,
+                                 kFakeSignedData,
+                                 kFakeUdn,
+                                 kConfiguredSSID,
+                                 kConfiguredBSSID,
                                  cb,
                                  &error);
     // We assert here, because if the operation is not ongoing, it is
@@ -3569,6 +3627,7 @@ TEST_F(ManagerTest, VerifyDestination) {
   // we do the same verification step but monkey with the callback to
   // link ourselves to an encrypt step afterward.
   {
+    LOG(INFO) << "Basic VerifyAndEncryptData";
     ResultBoolCallback passed_down_callback;
     EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
                                                        kFakePublicKey,
@@ -3590,6 +3649,7 @@ TEST_F(ManagerTest, VerifyDestination) {
                                     kFakeNonce,
                                     kFakeSignedData,
                                     kFakeUdn,
+                                    "", "",
                                     kFakeData,
                                     cb,
                                     &error);
@@ -3619,6 +3679,7 @@ TEST_F(ManagerTest, VerifyDestination) {
   // If verification fails on the way to trying to encrypt, we should ditch
   // without calling encrypt at all.
   {
+    LOG(INFO) << "Failed VerifyAndEncryptData";
     ResultBoolCallback passed_down_callback;
     EXPECT_CALL(*crypto_util_proxy_, VerifyDestination(kFakeCertificate,
                                                        kFakePublicKey,
@@ -3640,6 +3701,7 @@ TEST_F(ManagerTest, VerifyDestination) {
                                     kFakeNonce,
                                     kFakeSignedData,
                                     kFakeUdn,
+                                    "", "",
                                     kFakeData,
                                     cb,
                                     &error);

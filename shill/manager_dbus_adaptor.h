@@ -106,6 +106,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                          const std::string &nonce,
                          const std::string &signed_data,
                          const std::string &destination_udn,
+                         const std::string &hotspot_ssid,
+                         const std::string &hotspot_bssid,
                          ::DBus::Error &error);
 
   std::string VerifyAndEncryptCredentials(const std::string &certificate,
@@ -113,6 +115,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                                           const std::string &nonce,
                                           const std::string &signed_data,
                                           const std::string &destination_udn,
+                                          const std::string &hotspot_ssid,
+                                          const std::string &hotspot_bssid,
                                           const ::DBus::Path &path,
                                           ::DBus::Error &error);
 
@@ -121,6 +125,8 @@ class ManagerDBusAdaptor : public org::chromium::flimflam::Manager_adaptor,
                                    const std::string &nonce,
                                    const std::string &signed_data,
                                    const std::string &destination_udn,
+                                   const std::string &hotspot_ssid,
+                                   const std::string &hotspot_bssid,
                                    const std::string &data,
                                    ::DBus::Error &error);
 
