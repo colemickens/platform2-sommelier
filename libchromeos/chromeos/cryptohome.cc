@@ -60,11 +60,13 @@ std::string SanitizeUserName(const std::string& username) {
     return std::string();
 
   unsigned char binmd[SHA_DIGEST_LENGTH];
-  const char* name = username.c_str();
+  std::string lowercase(username);
+  std::transform(lowercase.begin(), lowercase.end(),
+                 lowercase.begin(), ::tolower);
   SHA_CTX ctx;
   SHA1_Init(&ctx);
   SHA1_Update(&ctx, salt->data(), salt->size());
-  SHA1_Update(&ctx, username.data(), username.size());
+  SHA1_Update(&ctx, lowercase.data(), lowercase.size());
   SHA1_Final(binmd, &ctx);
   std::string final = base::HexEncode(binmd, sizeof(binmd));
   // Stay compatible with CryptoLib::AsciiEncodeToBuffer()
