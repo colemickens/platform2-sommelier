@@ -41,8 +41,6 @@ class NssUtilImpl : public NssUtil {
   NssUtilImpl();
   virtual ~NssUtilImpl();
 
-  bool MightHaveKeys();
-
   bool OpenUserDB();
 
   RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
@@ -65,9 +63,6 @@ class NssUtilImpl : public NssUtil {
             RSAPrivateKey* key);
  private:
   static const uint16 kKeySizeInBits;
-  // Hardcoded path of the user's NSS key database.
-  // TODO(cmasone): get rid of this once http://crosbug.com/14007 is fixed.
-  static const char kUserDbPath[];
   static const char kNssdbSubpath[];
 
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
@@ -91,8 +86,6 @@ void NssUtil::BlobFromBuffer(const std::string& buf, std::vector<uint8>* out) {
 // static
 const uint16 NssUtilImpl::kKeySizeInBits = 2048;
 // static
-const char NssUtilImpl::kUserDbPath[] = "/home/chronos/user/.pki/nssdb/key4.db";
-// static
 const char NssUtilImpl::kNssdbSubpath[] = ".pki/nssdb";
 
 NssUtilImpl::NssUtilImpl() {
@@ -100,10 +93,6 @@ NssUtilImpl::NssUtilImpl() {
 }
 
 NssUtilImpl::~NssUtilImpl() {}
-
-bool NssUtilImpl::MightHaveKeys() {
-  return file_util::PathExists(base::FilePath(NssUtilImpl::kUserDbPath));
-}
 
 bool NssUtilImpl::OpenUserDB() {
   // TODO(cmasone): If we ever try to keep the session_manager alive across

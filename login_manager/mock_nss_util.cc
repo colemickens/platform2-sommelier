@@ -33,7 +33,6 @@ CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {
 CheckPublicKeyUtil::~CheckPublicKeyUtil() {}
 
 KeyCheckUtil::KeyCheckUtil() {
-  EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
   ON_CALL(*this, GetPrivateKey(_))
       .WillByDefault(InvokeWithoutArgs(CreateShortKey));
@@ -43,7 +42,6 @@ KeyCheckUtil::KeyCheckUtil() {
 KeyCheckUtil::~KeyCheckUtil() {}
 
 KeyFailUtil::KeyFailUtil() {
-  EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
   EXPECT_CALL(*this, GetPrivateKey(_))
       .WillOnce(Return(reinterpret_cast<crypto::RSAPrivateKey*>(NULL)));
@@ -52,16 +50,9 @@ KeyFailUtil::KeyFailUtil() {
 KeyFailUtil::~KeyFailUtil() {}
 
 SadNssUtil::SadNssUtil() {
-  EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(true));
   EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(false));
 }
 
 SadNssUtil::~SadNssUtil() {}
-
-EmptyNssUtil::EmptyNssUtil() {
-  EXPECT_CALL(*this, MightHaveKeys()).WillOnce(Return(false));
-}
-
-EmptyNssUtil::~EmptyNssUtil() {}
 
 }  // namespace login_manager

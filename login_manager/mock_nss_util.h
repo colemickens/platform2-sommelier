@@ -25,7 +25,6 @@ class MockNssUtil : public NssUtil {
   MockNssUtil();
   virtual ~MockNssUtil();
 
-  MOCK_METHOD0(MightHaveKeys, bool());
   MOCK_METHOD0(OpenUserDB, bool());
   MOCK_METHOD1(GetPrivateKey,
                crypto::RSAPrivateKey*(const std::vector<uint8>&));
@@ -80,14 +79,6 @@ class SadNssUtil : public MockNssUtil {
   virtual ~SadNssUtil();
  private:
   DISALLOW_COPY_AND_ASSIGN(SadNssUtil);
-};
-
-class EmptyNssUtil : public MockNssUtil {
- public:
-  EmptyNssUtil();
-  virtual ~EmptyNssUtil();
- private:
-  DISALLOW_COPY_AND_ASSIGN(EmptyNssUtil);
 };
 
 }  // namespace login_manager
