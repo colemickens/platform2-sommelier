@@ -41,11 +41,12 @@ olp:POST,https://quickaccess.verizonwireless.com/bbportal/chrome/start.do,mdn=${
 apn:1,vzwinternet,,
 name:,4G LTE Contract
 
-# Test LTE Network
+# Test Network
 provider:1,1,0,0
-identifier:test-lte
-name:,Test Lte Network
+identifier:test-network
+name:,Test Network
 mccmnc:001000,0
+sid:99998,0
 olp:,,
 apn:1,testinternet,,
 name:,Test Network APN
