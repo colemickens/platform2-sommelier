@@ -12,7 +12,8 @@ def usage():
     """ Print a usage message for this script. """
     cmd = sys.argv[0]
     common_args = ['<certificate>', '<public_key>', '<nonce>',
-                   '<signed_data>', '<destination_udn>']
+                   '<signed_data>', '<destination_udn>',
+                   '<hotspot_ssid>', '<hotspot_bssid>']
     print cmd, 'encrypt', ' '.join(common_args)
     print cmd, 'verify', ' '.join(common_args), '<data to encrypt>'
     return False
@@ -24,23 +25,26 @@ def main(args):
     @param args arguments to the script, not including the script name.
 
     """
+    NUM_VERIFY_ARGS = 7
+    NUM_ENCRYPT_ARGS = NUM_VERIFY_ARGS + 1
     if len(args) < 1:
         return usage()
     command = args[0]
+    args = args[1:]
     shill = shill_proxy.ShillProxy()
     if command == 'verify':
-        if len(args) < 6:
+        if len(args) < NUM_VERIFY_ARGS:
             return usage()
 
-        if shill.manager.VerifyDestination(*args[1:6]):
+        if shill.manager.VerifyDestination(*args[0:NUM_VERIFY_ARGS]):
             print 'Valid destination'
             return True
 
     if command == 'encrypt':
-        if len(args) < 7:
+        if len(args) < NUM_ENCRYPT_ARGS:
             return usage()
 
-        print shill.manager.VerifyAndEncryptData(*args[1:7])
+        print shill.manager.VerifyAndEncryptData(*args[0:NUM_ENCRYPT_ARGS])
         return True
 
     return usage()
