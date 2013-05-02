@@ -715,8 +715,10 @@ endif
 
 # TODO(wad) Move to -L $(SYSROOT) and fakechroot when qemu-user
 #           doesn't hang traversing /proc from SYSROOT.
+SUDO_CMD = sudo
+UNSHARE_CMD = unshare
 QEMU_CMD =
-ROOT_CMD = $(if $(filter 1,$(NEEDS_ROOT)),sudo , )
+ROOT_CMD = $(if $(filter 1,$(NEEDS_ROOT)),$(SUDO_CMD) , )
 MOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNTS)),$(ROOT_CMD) mount, \#)
 UMOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNTS)),$(ROOT_CMD) umount, \#)
 QEMU_LDPATH = $(SYSROOT_LDPATH):/lib64:/lib:/usr/lib64:/usr/lib
@@ -725,7 +727,7 @@ ROOT_CMD_LDPATH := $(ROOT_CMD_LDPATH):$(SYSROOT)/lib:$(SYSROOT)/usr/lib64:
 ROOT_CMD_LDPATH := $(ROOT_CMD_LDPATH):$(SYSROOT)/usr/lib
 ifeq ($(USE_QEMU),1)
   export QEMU_CMD = \
-   sudo chroot $(SYSROOT) $(SYSROOT_OUT)qemu-$(QEMU_ARCH) \
+   $(SUDO_CMD) chroot $(SYSROOT) $(SYSROOT_OUT)qemu-$(QEMU_ARCH) \
    -drop-ld-preload \
    -E LD_LIBRARY_PATH="$(QEMU_LDPATH):$(patsubst $(OUT),,$(LD_DIRS))" \
    -E HOME="$(HOME)" --
@@ -757,22 +759,20 @@ define TEST_setup
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_YELLOW)SETUP$(COLOR_RESET)]"
   $(QUIET)# Setup a target-specific results file
+  $(QUIET)(echo > $(OUT)$(TARGET_OR_MEMBER).setup.test)
   $(QUIET)(echo 1 > $(OUT)$(TARGET_OR_MEMBER).status.test)
   $(QUIET)(echo > $(OUT)$(TARGET_OR_MEMBER).cleanup.test)
   $(QUIET)# No setup if we are not using QEMU
   $(QUIET)# TODO(wad) this is racy until we use a vfs namespace
   $(call if_qemu,\
-    $(QUIET)sudo mkdir -p "$(SYSROOT)/proc" "$(SYSROOT)/dev")
+    $(QUIET)(echo "mkdir -p '$(SYSROOT)/proc' '$(SYSROOT)/dev'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).setup.test"))
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /proc "$(SYSROOT)/proc")
+    $(QUIET)(echo "$(MOUNT_CMD) --bind /proc '$(SYSROOT)/proc'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).setup.test"))
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /dev "$(SYSROOT)/dev")
-  $(call if_qemu,\
-    $(QUIET)(echo "$(UMOUNT_CMD) -l '$(SYSROOT)/proc'" \
-             >> "$(OUT)$(TARGET_OR_MEMBER).cleanup.test"))
-  $(call if_qemu,\
-    $(QUIET)(echo "$(UMOUNT_CMD) -l '$(SYSROOT)/dev'" \
-             >> "$(OUT)$(TARGET_OR_MEMBER).cleanup.test"))
+    $(QUIET)(echo "$(MOUNT_CMD) --bind /dev '$(SYSROOT)/dev'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).setup.test"))
 endef
 
 define TEST_teardown
@@ -789,11 +789,13 @@ define TEST_run
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_GREEN)RUN$(COLOR_RESET)]"
   $(QUIET)(echo 1 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
-  -($(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
+  $(QUIET)(echo $(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
     "$(strip $(call if_qemu, $(SYSROOT_OUT),$(OUT))$(TARGET_OR_MEMBER))" \
       $(if $(filter-out 0,$(words $(GTEST_ARGS.real))),$(GTEST_ARGS.real),\
-           $(GTEST_ARGS)) && \
-    echo 0 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
+           $(GTEST_ARGS)) >> "$(OUT)$(TARGET_OR_MEMBER).setup.test")
+  -$(QUIET)$(call if_qemu,$(SUDO_CMD) $(UNSHARE_CMD) -m) $(SHELL) \
+      $(OUT)$(TARGET_OR_MEMBER).setup.test \
+  && echo 0 > "$(OUT)$(TARGET_OR_MEMBER).status.test"
 endef
 
 # Recursive list reversal so that we get RMDIR_ON_CLEAN in reverse order.
