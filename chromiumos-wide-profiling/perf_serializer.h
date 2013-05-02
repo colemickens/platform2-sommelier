@@ -96,6 +96,10 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_PerfFileAttr& perf_file_attr_proto,
       PerfFileAttr* perf_file_attr);
 
+  // Populates |parsed_events_| with pointers event_t and perf_sample structs in
+  // each corresponding |events_| struct.
+  void SetRawEventsAndSampleInfos(size_t num_events);
+
 #define SERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
 bool name(const std::vector<vec_type>& from, \
           ::google::protobuf::RepeatedPtrField<proto_type>* to) { \

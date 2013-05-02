@@ -70,6 +70,7 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   CHECK_GT(attrs_.size(), 0U);
   sample_type_ = attrs_[0].attr.sample_type;
 
+  SetRawEventsAndSampleInfos(perf_data_proto.events().size());
   DeserializeEvents(perf_data_proto.events(), &parsed_events_);
 
   SortParsedEvents();
@@ -84,7 +85,7 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   stats_.did_remap = stats.did_remap();
   stats_.num_sample_events_mapped = stats.num_sample_events_mapped();
 
-  return GenerateRawEvents();
+  return true;
 }
 
 void PerfSerializer::SerializeEventHeader(
@@ -106,8 +107,8 @@ void PerfSerializer::DeserializeEventHeader(
 void PerfSerializer::SerializeRecordSample(
     const ParsedEvent& event,
     PerfDataProto_SampleEvent* sample) const {
-  const struct perf_sample& perf_sample = event.sample_info;
-  const struct ip_event& ip_event = event.raw_event.ip;
+  const struct perf_sample& perf_sample = *event.sample_info;
+  const struct ip_event& ip_event = event.raw_event->ip;
 
   if (sample_type_ & PERF_SAMPLE_IP)
     sample->set_ip(ip_event.ip);
@@ -138,8 +139,8 @@ void PerfSerializer::SerializeRecordSample(
 void PerfSerializer::DeserializeRecordSample(
     const PerfDataProto_SampleEvent& sample,
     ParsedEvent* event) const {
-  struct perf_sample& perf_sample = event->sample_info;
-  struct ip_event& ip_event = event->raw_event.ip;
+  struct perf_sample& perf_sample = *event->sample_info;
+  struct ip_event& ip_event = event->raw_event->ip;
   if (sample.has_ip())
     ip_event.ip = sample.ip();
   if (sample.has_pid()) {
@@ -174,7 +175,7 @@ void PerfSerializer::DeserializeRecordSample(
 void PerfSerializer::SerializeCommSample(
       const ParsedEvent& event,
       PerfDataProto_CommEvent* sample) const {
-  const struct comm_event& comm = event.raw_event.comm;
+  const struct comm_event& comm = event.raw_event->comm;
   sample->set_pid(comm.pid);
   sample->set_tid(comm.tid);
   sample->set_comm(comm.comm);
@@ -186,7 +187,7 @@ void PerfSerializer::SerializeCommSample(
 void PerfSerializer::DeserializeCommSample(
     const PerfDataProto_CommEvent& sample,
     ParsedEvent* event) const {
-  struct comm_event& comm = event->raw_event.comm;
+  struct comm_event& comm = event->raw_event->comm;
   comm.pid = sample.pid();
   comm.tid = sample.tid();
   snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
@@ -197,7 +198,7 @@ void PerfSerializer::DeserializeCommSample(
 void PerfSerializer::SerializeMMapSample(
     const ParsedEvent& event,
     PerfDataProto_MMapEvent* sample) const {
-  const struct mmap_event& mmap = event.raw_event.mmap;
+  const struct mmap_event& mmap = event.raw_event->mmap;
   sample->set_pid(mmap.pid);
   sample->set_tid(mmap.tid);
   sample->set_start(mmap.start);
@@ -212,7 +213,7 @@ void PerfSerializer::SerializeMMapSample(
 void PerfSerializer::DeserializeMMapSample(
     const PerfDataProto_MMapEvent& sample,
     ParsedEvent* event) const {
-  struct mmap_event& mmap = event->raw_event.mmap;
+  struct mmap_event& mmap = event->raw_event->mmap;
   mmap.pid = sample.pid();
   mmap.tid = sample.tid();
   mmap.start = sample.start();
@@ -226,7 +227,7 @@ void PerfSerializer::DeserializeMMapSample(
 void PerfSerializer::SerializeForkSample(
     const ParsedEvent& event,
     PerfDataProto_ForkEvent* sample) const {
-  const struct fork_event& fork = event.raw_event.fork;
+  const struct fork_event& fork = event.raw_event->fork;
   sample->set_pid(fork.pid);
   sample->set_ppid(fork.ppid);
   sample->set_tid(fork.tid);
@@ -239,7 +240,7 @@ void PerfSerializer::SerializeForkSample(
 void PerfSerializer::DeserializeForkSample(
     const PerfDataProto_ForkEvent& sample,
     ParsedEvent* event) const {
-  struct fork_event& fork = event->raw_event.fork;
+  struct fork_event& fork = event->raw_event->fork;
   fork.pid = sample.pid();
   fork.ppid = sample.ppid();
   fork.tid = sample.tid();
@@ -252,7 +253,7 @@ void PerfSerializer::DeserializeForkSample(
 void PerfSerializer::SerializeSampleInfo(
     const ParsedEvent& event,
     PerfDataProto_SampleInfo* sample_info) const {
-  const struct perf_sample perf_sample = event.sample_info;
+  const struct perf_sample perf_sample = *event.sample_info;
 
   if (sample_type_ & PERF_SAMPLE_TID) {
     sample_info->set_pid(perf_sample.pid);
@@ -269,7 +270,7 @@ void PerfSerializer::SerializeSampleInfo(
 void PerfSerializer::DeserializeSampleInfo(
     const PerfDataProto_SampleInfo& sample_info,
     ParsedEvent* event) const {
-  struct perf_sample& perf_sample = event->sample_info;
+  struct perf_sample& perf_sample = *event->sample_info;
   if (sample_info.has_tid()) {
     perf_sample.pid = sample_info.pid();
     perf_sample.tid = sample_info.tid();
@@ -285,7 +286,7 @@ void PerfSerializer::DeserializeSampleInfo(
 void PerfSerializer::DeserializeEvent(
     const PerfDataProto_PerfEvent& event_proto,
     ParsedEvent* event) const {
-  DeserializeEventHeader(event_proto.header(), &event->raw_event.header);
+  DeserializeEventHeader(event_proto.header(), &event->raw_event->header);
   switch (event_proto.header().type()) {
     case PERF_RECORD_SAMPLE:
       DeserializeRecordSample(event_proto.sample_event(), event);
@@ -313,8 +314,8 @@ void PerfSerializer::DeserializeEvent(
 void PerfSerializer::SerializeEvent(
     const ParsedEvent& event,
     PerfDataProto_PerfEvent* event_proto) const {
-  SerializeEventHeader(event.raw_event.header, event_proto->mutable_header());
-  switch (event.raw_event.header.type) {
+  SerializeEventHeader(event.raw_event->header, event_proto->mutable_header());
+  switch (event.raw_event->header.type) {
     case PERF_RECORD_SAMPLE:
       SerializeRecordSample(event, event_proto->mutable_sample_event());
       break;
@@ -440,6 +441,15 @@ void PerfSerializer::DeserializePerfFileAttr(
   DeserializePerfEventAttr(perf_file_attr_proto.attr(), &perf_file_attr->attr);
   for (int i = 0; i < perf_file_attr_proto.ids_size(); i++ )
     perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
+}
+
+void PerfSerializer::SetRawEventsAndSampleInfos(size_t num_events) {
+  events_.resize(num_events);
+  parsed_events_.resize(num_events);
+  for (size_t i = 0; i < num_events; ++i) {
+    parsed_events_[i].raw_event = &events_[i].event;
+    parsed_events_[i].sample_info = &events_[i].sample_info;
+  }
 }
 
 }  // namespace quipper

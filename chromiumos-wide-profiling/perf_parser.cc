@@ -23,24 +23,7 @@ const uint32 kKernelPid = kuint32max;
 // calling std::stable_sort.
 bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
                              const quipper::ParsedEvent* e2) {
-  return (e1->sample_info.time < e2->sample_info.time);
-}
-
-// Copies one perf sample info struct to another, allocating new memory where
-// necessary.
-void CopyPerfSample(const struct perf_sample& src, struct perf_sample* dest) {
-  // First do a flat memory copy, to copy the value fields.
-  memcpy(dest, &src, sizeof(src));
-  // Copy over pointer fields.
-  if (src.callchain) {
-    // The "+ 1" is an extra field to store the callchain length.
-    dest->callchain =
-        reinterpret_cast<struct ip_callchain*>(
-            new uint64[src.callchain->nr + 1]);
-    memcpy(dest->callchain,
-           src.callchain,
-           (src.callchain->nr + 1) * sizeof(uint64));
-  }
+  return (e1->sample_info->time < e2->sample_info->time);
 }
 
 }  // namespace
@@ -49,12 +32,6 @@ PerfParser::PerfParser() : do_remap_(false),
                            kernel_mapper_(new AddressMapper) {}
 
 PerfParser::~PerfParser() {
-  // Free allocated memory.
-  for (size_t i = 0; i < events_.size(); ++i) {
-    if (parsed_events_[i].sample_info.callchain)
-      delete [] parsed_events_[i].sample_info.callchain;
-  }
-
   ResetAddressMappers();
   delete kernel_mapper_;
 }
@@ -63,23 +40,12 @@ bool PerfParser::ParseRawEvents() {
   ResetAddressMappers();
   parsed_events_.resize(events_.size());
   for (size_t i = 0; i < events_.size(); ++i) {
-    const event_t& raw_event = events_[i].event;
     ParsedEvent& parsed_event = parsed_events_[i];
-    parsed_event.raw_event = raw_event;
-    CopyPerfSample(events_[i].sample_info, &parsed_event.sample_info);
+    parsed_event.raw_event = &events_[i].event;
+    parsed_event.sample_info = &events_[i].sample_info;
   }
   SortParsedEvents();
   ProcessEvents();
-  return true;
-}
-
-bool PerfParser::GenerateRawEvents() {
-  events_.resize(parsed_events_.size());
-  for (size_t i = 0; i < events_.size(); ++i) {
-    const ParsedEvent& parsed_event = parsed_events_[i];
-    events_[i].event = parsed_event.raw_event;
-    CopyPerfSample(parsed_event.sample_info, &events_[i].sample_info);
-  }
   return true;
 }
 
@@ -96,7 +62,7 @@ bool PerfParser::ProcessEvents() {
   memset(&stats_, 0, sizeof(stats_));
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
-    event_t& event = parsed_event.raw_event;
+    event_t& event = *parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
         VLOG(1) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
@@ -151,7 +117,7 @@ bool PerfParser::ProcessEvents() {
 bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
 
-  struct ip_event& event = parsed_event->raw_event.ip;
+  struct ip_event& event = parsed_event->raw_event->ip;
 
   // Map the event IP itself.
   string& name = parsed_event->dso_and_offset.dso_name;
@@ -164,15 +130,15 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     mapping_failed = true;
   }
 
-  struct perf_sample& sample_info = parsed_event->sample_info;
+  struct ip_callchain* callchain = parsed_event->sample_info->callchain;
 
   // Map the callchain IPs, if any.
-  if (sample_info.callchain) {
-    parsed_event->callchain.resize(sample_info.callchain->nr);
-    for (unsigned int j = 0; j < sample_info.callchain->nr; ++j) {
-      if (!MapIPAndPidAndGetNameAndOffset(sample_info.callchain->ips[j],
+  if (callchain) {
+    parsed_event->callchain.resize(callchain->nr);
+    for (unsigned int j = 0; j < callchain->nr; ++j) {
+      if (!MapIPAndPidAndGetNameAndOffset(callchain->ips[j],
                                           event.pid,
-                                          &sample_info.callchain->ips[j],
+                                          &callchain->ips[j],
                                           &parsed_event->callchain[j].dso_name,
                                           &parsed_event->callchain[j].offset)) {
         mapping_failed = true;
@@ -221,8 +187,8 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
       const ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
-      CHECK_EQ(parsed_event->raw_event.header.type, PERF_RECORD_MMAP);
-      *name = parsed_event->raw_event.mmap.filename;
+      CHECK_EQ(parsed_event->raw_event->header.type, PERF_RECORD_MMAP);
+      *name = parsed_event->raw_event->mmap.filename;
     }
     if (do_remap_)
       *new_ip = mapped_addr;

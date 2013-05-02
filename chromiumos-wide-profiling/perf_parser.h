@@ -16,7 +16,8 @@ class AddressMapper;
 namespace quipper {
 
 struct ParsedEvent {
-  struct perf_sample sample_info;   // Contains perf sample info.
+  struct perf_sample* sample_info;  // These point to entries stored elsewhere.
+  event_t* raw_event;
 
   struct DSOAndOffset {
     string dso_name;
@@ -25,9 +26,6 @@ struct ParsedEvent {
 
   // DSO+offset info for callchain.
   std::vector<DSOAndOffset> callchain;
-
-  // TODO(sque): to save space, |raw_event| should be a pointer.
-  event_t raw_event;                // Contains perf event info.
 };
 
 struct PerfEventStats {
@@ -54,9 +52,6 @@ class PerfParser : public PerfReader {
 
   // Gets parsed event/sample info from raw event data.
   bool ParseRawEvents();
-
-  // Composes raw event data from event/sample info.
-  bool GenerateRawEvents();
 
   const std::vector<ParsedEvent>& parsed_events() const {
     return parsed_events_;

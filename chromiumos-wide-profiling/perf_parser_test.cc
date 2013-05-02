@@ -20,8 +20,8 @@ namespace {
 
 void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
   for (unsigned int i = 1; i < events.size(); ++i) {
-    uint64 time = events[i]->sample_info.time;
-    uint64 prev_time = events[i - 1]->sample_info.time;
+    uint64 time = events[i]->sample_info->time;
+    uint64 prev_time = events[i - 1]->sample_info->time;
     CHECK_LE(prev_time, time);
   }
 }
@@ -49,8 +49,6 @@ TEST(PerfParserTest, Test1Cycle) {
     EXPECT_GT(stats.num_sample_events_mapped, 0U);
     EXPECT_FALSE(stats.did_remap);
 
-    parser.GenerateRawEvents();
-
     string output_perf_data = input_perf_data + ".parse.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
@@ -77,7 +75,6 @@ TEST(PerfParserTest, TestRemap) {
     EXPECT_GT(stats.num_sample_events_mapped, 0U);
     EXPECT_TRUE(stats.did_remap);
 
-    parser.GenerateRawEvents();
     string output_perf_data = input_perf_data + ".parse.remap.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
@@ -88,7 +85,6 @@ TEST(PerfParserTest, TestRemap) {
     remap_parser.set_do_remap(true);
     ASSERT_TRUE(remap_parser.ReadFile(output_perf_data));
     remap_parser.ParseRawEvents();
-    remap_parser.GenerateRawEvents();
     string output_perf_data2 = input_perf_data + ".parse.remap2.out";
     ASSERT_TRUE(remap_parser.WriteFile(output_perf_data2));
 
