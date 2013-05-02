@@ -167,11 +167,15 @@ class CryptoUtilProxyTest : public testing::Test {
     Mock::VerifyAndClearExpectations(&process_killer_);
   }
 
-  void ExpectCleanup() {
-    EXPECT_CALL(file_io_,
-                Close(crypto_util_proxy_.shim_stdin_)).Times(1);
-    EXPECT_CALL(file_io_,
-                Close(crypto_util_proxy_.shim_stdout_)).Times(1);
+  void ExpectCleanup(const Error &expected_result) {
+    if (crypto_util_proxy_.shim_stdin_ > -1) {
+      EXPECT_CALL(file_io_,
+                  Close(crypto_util_proxy_.shim_stdin_)).Times(1);
+    }
+    if (crypto_util_proxy_.shim_stdout_ > -1) {
+      EXPECT_CALL(file_io_,
+                  Close(crypto_util_proxy_.shim_stdout_)).Times(1);
+    }
     if (crypto_util_proxy_.shim_pid_) {
       EXPECT_CALL(process_killer_, Kill(crypto_util_proxy_.shim_pid_, _))
           .Times(1)
@@ -188,9 +192,9 @@ class CryptoUtilProxyTest : public testing::Test {
     callback.Run();
   }
 
-  void StopAndCheckShim() {
-    ExpectCleanup();
-    crypto_util_proxy_.CleanupShim();
+  void StopAndCheckShim(const Error &error) {
+    ExpectCleanup(error);
+    crypto_util_proxy_.CleanupShim(error);
     crypto_util_proxy_.OnShimDeath();
     EXPECT_EQ(crypto_util_proxy_.shim_pid_, 0);
     Mock::VerifyAndClearExpectations(&process_killer_);
@@ -271,14 +275,14 @@ TEST_F(CryptoUtilProxyTest, ShimCleanedBeforeCallback) {
   {
     StartAndCheckShim(CryptoUtilProxy::kCommandEncrypt,
                       kTestSerializedCommandMessage);
-    ExpectCleanup();
+    Error e(Error::kOperationFailed);
+    ExpectCleanup(e);
     EXPECT_CALL(crypto_util_proxy_,
                 TestResultHandlerCallback(
                     StrEq(""), ErrorIsOfType(Error::kOperationFailed)))
         .Times(1)
         .WillOnce(WithoutArgs(Invoke(this,
                                      &CryptoUtilProxyTest::AssertShimDead)));
-    Error e(Error::kOperationFailed);
     crypto_util_proxy_.HandleShimError(e);
   }
   {
@@ -290,7 +294,7 @@ TEST_F(CryptoUtilProxyTest, ShimCleanedBeforeCallback) {
         .Times(1)
         .WillOnce(WithoutArgs(Invoke(this,
                                      &CryptoUtilProxyTest::AssertShimDead)));
-    ExpectCleanup();
+    ExpectCleanup(Error(Error::kSuccess));
     InputData data;
     data.buf = NULL;
     data.len = 0;
@@ -306,8 +310,8 @@ TEST_F(CryptoUtilProxyTest, FailuresReturnValues) {
                     kTestSerializedCommandMessage);
   EXPECT_CALL(crypto_util_proxy_, TestResultHandlerCallback(
       StrEq(""), ErrorIsOfType(Error::kOperationFailed))).Times(1);
-  ExpectCleanup();
   Error e(Error::kOperationFailed);
+  ExpectCleanup(e);
   crypto_util_proxy_.HandleShimError(e);
 }
 
@@ -316,7 +320,7 @@ TEST_F(CryptoUtilProxyTest, TimeoutsTriggerFailure) {
                     kTestSerializedCommandMessage);
   EXPECT_CALL(crypto_util_proxy_, TestResultHandlerCallback(
       StrEq(""), ErrorIsOfType(Error::kOperationTimeout))).Times(1);
-  ExpectCleanup();
+  ExpectCleanup(Error(Error::kOperationTimeout));
   // This timeout is scheduled by StartShimForCommand.
   crypto_util_proxy_.HandleShimTimeout();
 }
@@ -331,12 +335,12 @@ TEST_F(CryptoUtilProxyTest, OnlyOneInstanceInFlightAtATime) {
            crypto_util_proxy_.
               base::SupportsWeakPtr<MockCryptoUtilProxy>::AsWeakPtr())));
   // But if some error (or completion) caused us to clean up the shim...
-  StopAndCheckShim();
+  StopAndCheckShim(Error(Error::kSuccess));
   // Then we could start the shim again.
   StartAndCheckShim(CryptoUtilProxy::kCommandEncrypt,
                     kTestSerializedCommandMessage);
   // Clean up after ourselves.
-  StopAndCheckShim();
+  StopAndCheckShim(Error(Error::kOperationFailed));
 }
 
 // This test walks the CryptoUtilProxy through the life time of a shim by
@@ -383,8 +387,9 @@ TEST_F(CryptoUtilProxyTest, ShimLifeTime) {
       crypto_util_proxy_,
       TestResultHandlerCallback(string(kTestSerializedCommandResponse),
                                 ErrorIsOfType(Error::kSuccess))).Times(1);
-  EXPECT_CALL(file_io_, Close(kTestStdoutFd));
+  ExpectCleanup(Error(Error::kSuccess));
   crypto_util_proxy_.HandleShimOutput(&data);
+
 }
 
 }  // namespace shill

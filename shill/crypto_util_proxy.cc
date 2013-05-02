@@ -53,7 +53,7 @@ CryptoUtilProxy::CryptoUtilProxy(EventDispatcher *dispatcher, GLib *glib)
 
 CryptoUtilProxy::~CryptoUtilProxy() {
   // Just in case we had a pending operation.
-  CleanupShim();
+  HandleShimError(Error(Error::kOperationAborted));
 }
 
 bool CryptoUtilProxy::VerifyDestination(
@@ -195,12 +195,15 @@ bool CryptoUtilProxy::StartShimForCommand(
   } while (false);
   // We've started a shim, but failed to set up the plumbing to communicate
   // with it.  Since we can't go forward, go backward and clean it up.
-  CleanupShim();
+  // Kill the callback, since we're signalling failure by returning false.
+  result_handler_.Reset();
+  HandleShimError(Error(Error::kOperationAborted));
   return false;
 }
 
-void CryptoUtilProxy::CleanupShim() {
+void CryptoUtilProxy::CleanupShim(const Error &shim_result) {
   LOG(INFO) << __func__;
+  shim_result_.CopyFrom(shim_result);
   if (shim_stdin_ > -1) {
     file_io_->Close(shim_stdin_);
     shim_stdin_ = -1;
@@ -209,14 +212,11 @@ void CryptoUtilProxy::CleanupShim() {
     file_io_->Close(shim_stdout_);
     shim_stdout_ = -1;
   }
-
+  // Leave the output buffer so that we use it with the result handler.
   input_buffer_.clear();
-  output_buffer_.clear();
 
   shim_stdout_handler_.reset();
   shim_stdin_handler_.reset();
-
-  result_handler_ = StringCallback();
 
   // TODO(wiley) Change dhcp_config.cc to use the process killer.  Change the
   //             process killer to send TERM before KILL a la dhcp_config.cc.
@@ -229,8 +229,20 @@ void CryptoUtilProxy::CleanupShim() {
 }
 
 void CryptoUtilProxy::OnShimDeath() {
+  // Make sure the proxy is completely clean before calling back out.  This
+  // requires we copy some state locally.
   shim_pid_ = 0;
   shim_job_timeout_callback_.Cancel();
+  StringCallback handler(result_handler_);
+  result_handler_.Reset();
+  string output(output_buffer_);
+  output_buffer_.clear();
+  Error result;
+  result.CopyFrom(shim_result_);
+  shim_result_.Reset();
+  if (!handler.is_null()) {
+    handler.Run(output, result);
+  }
 }
 
 void CryptoUtilProxy::HandleShimStdinReady(int fd) {
@@ -275,20 +287,13 @@ void CryptoUtilProxy::HandleShimOutput(InputData *data) {
   file_io_->Close(shim_stdout_);
   shim_stdout_ = -1;
   Error no_error;
-  // Copy the result callback and arguments locally before calling CleanupShim.
-  string shim_output(output_buffer_);
-  StringCallback ret = result_handler_;
-  CleanupShim();
-  ret.Run(shim_output, no_error);
+  CleanupShim(no_error);
 }
 
 void CryptoUtilProxy::HandleShimError(const Error &error) {
-  CHECK(shim_pid_);
-  CHECK(!result_handler_.is_null());
   // Abort abort abort.  There is very little we can do here.
-  StringCallback ret = result_handler_;
-  CleanupShim();
-  ret.Run("", error);
+  output_buffer_.clear();
+  CleanupShim(error);
 }
 
 void CryptoUtilProxy::HandleShimTimeout() {

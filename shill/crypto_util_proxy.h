@@ -98,7 +98,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
                                    const std::string &input,
                                    const StringCallback &result_handler);
   // This is the big hammer we use to clean up past shim state.
-  virtual void CleanupShim();
+  virtual void CleanupShim(const Error &shim_result);
   virtual void OnShimDeath();
 
   // Callbacks that handle IO operations between shill and the shim.  Called by
@@ -131,6 +131,7 @@ class CryptoUtilProxy : public base::SupportsWeakPtr<CryptoUtilProxy> {
   pid_t shim_pid_;
   scoped_ptr<IOHandler> shim_stdin_handler_;
   scoped_ptr<IOHandler> shim_stdout_handler_;
+  Error shim_result_;
   StringCallback result_handler_;
   base::CancelableClosure shim_job_timeout_callback_;
 
