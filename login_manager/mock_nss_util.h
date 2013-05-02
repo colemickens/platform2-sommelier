@@ -25,7 +25,9 @@ class MockNssUtil : public NssUtil {
   MockNssUtil();
   virtual ~MockNssUtil();
 
-  MOCK_METHOD0(OpenUserDB, bool());
+  static crypto::RSAPrivateKey* CreateShortKey();
+
+  MOCK_METHOD1(OpenUserDB, bool(const base::FilePath&));
   MOCK_METHOD1(GetPrivateKey,
                crypto::RSAPrivateKey*(const std::vector<uint8>&));
   MOCK_METHOD0(GenerateKeyPair, crypto::RSAPrivateKey*());
@@ -42,8 +44,6 @@ class MockNssUtil : public NssUtil {
 
  protected:
   crypto::ScopedTestNSSDB test_nssdb_;
-
-  static crypto::RSAPrivateKey* CreateShortKey();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockNssUtil);

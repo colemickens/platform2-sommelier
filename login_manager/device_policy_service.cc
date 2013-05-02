@@ -321,7 +321,7 @@ RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
     const std::string& user,
     const std::vector<uint8>& key,
     Error* error) {
-  if (!nss_->OpenUserDB()) {  // TODO(cmasone): make this call user-aware.
+  if (!nss_->OpenUserDB(file_util::GetHomeDir())) {
     const char msg[] = "Could not open the current user's NSS database.";
     LOG(ERROR) << msg;
     if (error)

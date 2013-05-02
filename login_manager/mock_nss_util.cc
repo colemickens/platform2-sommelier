@@ -6,6 +6,7 @@
 
 #include <unistd.h>
 
+#include <base/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/rsa_private_key.h>
@@ -16,7 +17,9 @@ using ::testing::InvokeWithoutArgs;
 using ::testing::Return;
 using ::testing::_;
 
-MockNssUtil::MockNssUtil() {}
+MockNssUtil::MockNssUtil() {
+  ON_CALL(*this, GetNssdbSubpath()).WillByDefault(Return(base::FilePath()));
+}
 MockNssUtil::~MockNssUtil() {}
 
 // static
@@ -33,7 +36,7 @@ CheckPublicKeyUtil::CheckPublicKeyUtil(bool expected) {
 CheckPublicKeyUtil::~CheckPublicKeyUtil() {}
 
 KeyCheckUtil::KeyCheckUtil() {
-  EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
+  EXPECT_CALL(*this, OpenUserDB(_)).WillOnce(Return(true));
   ON_CALL(*this, GetPrivateKey(_))
       .WillByDefault(InvokeWithoutArgs(CreateShortKey));
   EXPECT_CALL(*this, GetPrivateKey(_)).Times(1);
@@ -42,7 +45,7 @@ KeyCheckUtil::KeyCheckUtil() {
 KeyCheckUtil::~KeyCheckUtil() {}
 
 KeyFailUtil::KeyFailUtil() {
-  EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(true));
+  EXPECT_CALL(*this, OpenUserDB(_)).WillOnce(Return(true));
   EXPECT_CALL(*this, GetPrivateKey(_))
       .WillOnce(Return(reinterpret_cast<crypto::RSAPrivateKey*>(NULL)));
 }
@@ -50,7 +53,7 @@ KeyFailUtil::KeyFailUtil() {
 KeyFailUtil::~KeyFailUtil() {}
 
 SadNssUtil::SadNssUtil() {
-  EXPECT_CALL(*this, OpenUserDB()).WillOnce(Return(false));
+  EXPECT_CALL(*this, OpenUserDB(_)).WillOnce(Return(false));
 }
 
 SadNssUtil::~SadNssUtil() {}

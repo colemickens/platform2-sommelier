@@ -4,12 +4,18 @@
 
 #include "login_manager/nss_util.h"
 
+#include <string>
+
+#include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/scoped_ptr.h>
 #include <crypto/nss_util.h>
 #include <crypto/rsa_private_key.h>
+#include <crypto/scoped_nss_types.h>
 #include <gtest/gtest.h>
 
 using crypto::RSAPrivateKey;
+using crypto::ScopedPK11Slot;
 
 namespace login_manager {
 class NssUtilTest : public ::testing::Test {
@@ -17,18 +23,27 @@ class NssUtilTest : public ::testing::Test {
   NssUtilTest() : util_(NssUtil::Create()) {}
   virtual ~NssUtilTest() {}
 
-  virtual void SetUp() {}
+  virtual void SetUp() OVERRIDE {
+    ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
+    ASSERT_TRUE(file_util::CreateDirectory(
+        tmpdir_.path().Append(util_->GetNssdbSubpath())));
+    ASSERT_TRUE(util_->OpenUserDB(tmpdir_.path()));
+  }
 
+ protected:
+  static const char kUsername[];
+  base::ScopedTempDir tmpdir_;
   scoped_ptr<NssUtil> util_;
 
  private:
-  crypto::ScopedTestNSSDB test_nssdb_;
   DISALLOW_COPY_AND_ASSIGN(NssUtilTest);
 };
 
+const char NssUtilTest::kUsername[] = "some.guy@nowhere.com";
+
 TEST_F(NssUtilTest, FindFromPublicKey) {
   // Create a keypair, which will put the keys in the user's NSSDB.
-  scoped_ptr<RSAPrivateKey> key_pair(RSAPrivateKey::CreateSensitive(256));
+  scoped_ptr<RSAPrivateKey> key_pair(util_->GenerateKeyPair());
   ASSERT_NE(key_pair.get(), reinterpret_cast<RSAPrivateKey*>(NULL));
 
   std::vector<uint8> public_key;

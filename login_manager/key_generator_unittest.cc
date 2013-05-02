@@ -20,6 +20,7 @@
 #include "login_manager/keygen_worker.h"
 #include "login_manager/mock_child_job.h"
 #include "login_manager/mock_child_process.h"
+#include "login_manager/mock_nss_util.h"
 #include "login_manager/mock_system_utils.h"
 #include "login_manager/nss_util.h"
 #include "login_manager/session_manager_service.h"
@@ -76,11 +77,14 @@ TEST_F(KeyGeneratorTest, GenerateKey) {
 }
 
 TEST_F(KeyGeneratorTest, KeygenTest) {
-  scoped_ptr<NssUtil> nss(NssUtil::Create());
+  MockNssUtil nss;
+  EXPECT_CALL(nss, OpenUserDB(_)).WillOnce(Return(true));
+  ON_CALL(nss, GenerateKeyPair())
+      .WillByDefault(Invoke(MockNssUtil::CreateShortKey));
+  EXPECT_CALL(nss, GenerateKeyPair()).Times(1);
+
   const FilePath key_file_path(tmpdir_.path().AppendASCII("foo.pub"));
-  ASSERT_TRUE(file_util::CreateDirectory(
-      key_file_path.DirName().Append(nss->GetNssdbSubpath())));
-  ASSERT_EQ(keygen::GenerateKey(key_file_path.value(), nss.get()), 0);
+  ASSERT_EQ(keygen::GenerateKey(key_file_path.value(), &nss), 0);
   ASSERT_TRUE(file_util::PathExists(key_file_path));
 
   SystemUtils utils;

@@ -4,20 +4,35 @@
 
 #include "login_manager/nss_util.h"
 
+#include <string>
+#include <tr1/memory>
+#include <utility>
+
 #include <base/basictypes.h>
 #include <base/file_path.h>
 #include <base/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/stringprintf.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>
 #include <crypto/rsa_private_key.h>
+#include <crypto/scoped_nss_types.h>
 #include <crypto/signature_creator.h>
 #include <crypto/signature_verifier.h>
 #include <keyhi.h>
 #include <pk11pub.h>
+#include <prerror.h>
+#include <secmod.h>
+#include <secmodt.h>
 
+using crypto::ScopedPK11Slot;
+using crypto::ScopedSECItem;
+using crypto::ScopedSECKEYPublicKey;
+using crypto::ScopedSECKEYPrivateKey;
 using crypto::RSAPrivateKey;
+using std::tr1::shared_ptr;
 
 namespace {
 // This should match the same constant in Chrome tree:
@@ -41,29 +56,32 @@ class NssUtilImpl : public NssUtil {
   NssUtilImpl();
   virtual ~NssUtilImpl();
 
-  bool OpenUserDB();
+  virtual bool OpenUserDB(const base::FilePath& user_homedir) OVERRIDE;
 
-  RSAPrivateKey* GetPrivateKey(const std::vector<uint8>& public_key_der);
+  virtual RSAPrivateKey* GetPrivateKey(
+      const std::vector<uint8>& public_key_der) OVERRIDE;
 
-  RSAPrivateKey* GenerateKeyPair();
+  virtual RSAPrivateKey* GenerateKeyPair() OVERRIDE;
 
-  base::FilePath GetOwnerKeyFilePath();
+  virtual base::FilePath GetOwnerKeyFilePath() OVERRIDE;
 
-  base::FilePath GetNssdbSubpath();
+  virtual base::FilePath GetNssdbSubpath() OVERRIDE;
 
-  bool CheckPublicKeyBlob(const std::vector<uint8>& blob);
+  virtual bool CheckPublicKeyBlob(const std::vector<uint8>& blob) OVERRIDE;
 
-  bool Verify(const uint8* algorithm, int algorithm_len,
-              const uint8* signature, int signature_len,
-              const uint8* data, int data_len,
-              const uint8* public_key, int public_key_len);
+  virtual bool Verify(const uint8* algorithm, int algorithm_len,
+                      const uint8* signature, int signature_len,
+                      const uint8* data, int data_len,
+                      const uint8* public_key, int public_key_len) OVERRIDE;
 
-  bool Sign(const uint8* data, int data_len,
-            std::vector<uint8>* OUT_signature,
-            RSAPrivateKey* key);
+  virtual bool Sign(const uint8* data, int data_len,
+                    std::vector<uint8>* OUT_signature,
+                    RSAPrivateKey* key) OVERRIDE;
  private:
   static const uint16 kKeySizeInBits;
   static const char kNssdbSubpath[];
+
+  shared_ptr<ScopedPK11Slot> user_slot_;
 
   DISALLOW_COPY_AND_ASSIGN(NssUtilImpl);
 };
@@ -79,7 +97,7 @@ void NssUtil::BlobFromBuffer(const std::string& buf, std::vector<uint8>* out) {
   out->resize(buf.length());
   if (out->size() == 0)
     return;
-  memcpy(&(out->at(0)), buf.c_str(), out->size());
+  memcpy(&((*out)[0]), buf.c_str(), out->size());
 }
 
 // We're generating and using 2048-bit RSA keys.
@@ -94,19 +112,29 @@ NssUtilImpl::NssUtilImpl() {
 
 NssUtilImpl::~NssUtilImpl() {}
 
-bool NssUtilImpl::OpenUserDB() {
+bool NssUtilImpl::OpenUserDB(const base::FilePath& user_homedir) {
   // TODO(cmasone): If we ever try to keep the session_manager alive across
-  // user sessions, we'll need to deal with the fact that we have no way to
-  // close this persistent DB.
-  crypto::OpenPersistentNSSDB();
+  // user sessions, we'll need to close these persistent DBs.
+  base::FilePath db_path(user_homedir.AppendASCII(kNssdbSubpath));
+  const std::string modspec =
+      base::StringPrintf("configDir='sql:%s' tokenDescription='%s'",
+                         db_path.value().c_str(),
+                         user_homedir.value().c_str());
+  ScopedPK11Slot db_slot(SECMOD_OpenUserDB(modspec.c_str()));
+  if (!db_slot.get()) {
+    LOG(ERROR) << "Error opening persistent database (" << modspec
+               << "): " << PR_GetError();
+    return false;
+  }
+  if (PK11_NeedUserInit(db_slot.get()))
+    PK11_InitPin(db_slot.get(), NULL, NULL);
 
   // If we opened successfully, we will have a non-default private key slot.
-  PK11SlotInfo* private_slot = crypto::GetPrivateNSSKeySlot();
-  PK11SlotInfo* internal_slot = PK11_GetInternalKeySlot();
-  bool slots_are_different = (private_slot != internal_slot);
-  PK11_FreeSlot(private_slot);
-  PK11_FreeSlot(internal_slot);
-  return slots_are_different;
+  if (PK11_IsInternalKeySlot(db_slot.get()))
+    return false;
+
+  user_slot_.reset(new ScopedPK11Slot(db_slot.get()));
+  return true;
 }
 
 RSAPrivateKey* NssUtilImpl::GetPrivateKey(
@@ -115,11 +143,66 @@ RSAPrivateKey* NssUtilImpl::GetPrivateKey(
     LOG(ERROR) << "Not checking key because size is 0";
     return NULL;
   }
-  return RSAPrivateKey::FindFromPublicKeyInfo(public_key_der);
+  // First, decode and save the public key.
+  SECItem key_der;
+  key_der.type = siBuffer;
+  key_der.data = const_cast<unsigned char*>(&public_key_der[0]);
+  key_der.len = public_key_der.size();
+
+  CERTSubjectPublicKeyInfo* spki =
+      SECKEY_DecodeDERSubjectPublicKeyInfo(&key_der);
+  if (!spki) {
+    NOTREACHED();
+    return NULL;
+  }
+
+  ScopedSECKEYPublicKey public_key(SECKEY_ExtractPublicKey(spki));
+  SECKEY_DestroySubjectPublicKeyInfo(spki);
+  if (!public_key.get()) {
+    NOTREACHED();
+    return NULL;
+  }
+
+  // Make sure the key is an RSA key.  If not, that's an error
+  if (SECKEY_GetPublicKeyType(public_key.get()) != rsaKey) {
+    NOTREACHED();
+    return NULL;
+  }
+
+  ScopedSECItem ck_id(PK11_MakeIDFromPubKey(&(public_key->u.rsa.modulus)));
+  if (!ck_id.get()) {
+    NOTREACHED();
+    return NULL;
+  }
+
+  // Search in just the user slot for the key with the given ID.
+  ScopedSECKEYPrivateKey key(PK11_FindKeyByKeyID(user_slot_->get(),
+                                                 ck_id.get(),
+                                                 NULL));
+  if (key.get())
+    return RSAPrivateKey::CreateFromKey(key.get());
+
+  // We didn't find the key.
+  return NULL;
 }
 
 RSAPrivateKey* NssUtilImpl::GenerateKeyPair() {
-  return RSAPrivateKey::CreateSensitive(kKeySizeInBits);
+  PK11RSAGenParams param;
+  param.keySizeInBits = kKeySizeInBits;
+  param.pe = 65537L;
+  SECKEYPublicKey* public_key_ptr = NULL;
+  ScopedSECKEYPrivateKey key(PK11_GenerateKeyPair(user_slot_->get(),
+                                                  CKM_RSA_PKCS_KEY_PAIR_GEN,
+                                                  &param,
+                                                  &public_key_ptr,
+                                                  PR_TRUE /* permanent */,
+                                                  PR_TRUE /* sensitive */,
+                                                  NULL));
+  ScopedSECKEYPublicKey public_key(public_key_ptr);
+  if (!key.get())
+    return NULL;
+
+  return RSAPrivateKey::CreateFromKey(key.get());
 }
 
 base::FilePath NssUtilImpl::GetOwnerKeyFilePath() {
@@ -139,11 +222,11 @@ bool NssUtilImpl::CheckPublicKeyBlob(const std::vector<uint8>& blob) {
   spki = SECKEY_DecodeDERSubjectPublicKeyInfo(&spki_der);
   if (!spki)
     return false;
-  SECKEYPublicKey* public_key = SECKEY_ExtractPublicKey(spki);
+
+  ScopedSECKEYPublicKey public_key(SECKEY_ExtractPublicKey(spki));
   SECKEY_DestroySubjectPublicKeyInfo(spki);  // Done with spki.
-  if (!public_key)
-    return false;
-  SECKEY_DestroyPublicKey(public_key);
+  if (!public_key.get())
+   return false;
   return true;
 }
 

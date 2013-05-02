@@ -32,7 +32,7 @@ class NssUtil {
 
   static void BlobFromBuffer(const std::string& buf, std::vector<uint8>* out);
 
-  virtual bool OpenUserDB() = 0;
+  virtual bool OpenUserDB(const base::FilePath& user_homedir) = 0;
 
   // Caller takes ownership of returned key.
   virtual crypto::RSAPrivateKey* GetPrivateKey(

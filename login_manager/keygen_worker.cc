@@ -39,7 +39,8 @@ int GenerateKey(const std::string& filename, NssUtil* nss) {
                                              std::set<gid_t>())) {
     PLOG(FATAL) << nssdb.value() << " cannot be used by the user!";
   }
-  PLOG_IF(FATAL,!nss->OpenUserDB()) << "Could not open/create user NSS DB";
+  PLOG_IF(FATAL, !nss->OpenUserDB(file_util::GetHomeDir()))
+      << "Could not open/create user NSS DB";
   LOG(INFO) << "Generating Owner key.";
 
   scoped_ptr<crypto::RSAPrivateKey> pair(nss->GenerateKeyPair());
