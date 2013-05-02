@@ -1114,39 +1114,43 @@ void Manager::VerifyDestination(const string &certificate,
                                 const string &hotspot_bssid,
                                 const ResultBoolCallback &cb,
                                 Error *error) {
-  vector<ServiceRefPtr>::iterator sit;
-  // For now, we only support a single connected WiFi service.  If we change
-  // that, we'll need to revisit this.
-  for (sit = services_.begin(); sit != services_.end(); ++sit) {
-    if ((*sit)->technology() != Technology::kWifi || !(*sit)->IsConnected()) {
-      continue;
-    }
-    break;
-  }
-  if (sit == services_.end()) {
-    error->Populate(Error::kOperationFailed,
-                    "Unable to find connected WiFi service.");
-    return;
-  }
-  WiFiService *service = reinterpret_cast<WiFiService *>(&(*(*sit)));
-  // If Chrome thinks this destination is already configured, service will
-  // be an AP that both we and the destination are connected to, and not
-  // the thing we should verify against.
-  string bssid(service->bssid());
-  vector<uint8_t> ssid(service->ssid());
   if (hotspot_bssid.length() > 32) {
     error->Populate(Error::kOperationFailed,
                     "Invalid SSID given for verification.");
     return;
   }
+  vector<uint8_t> ssid;
+  string bssid;
   if (hotspot_ssid.length() || hotspot_bssid.length()) {
+    // If Chrome thinks this destination is already configured, service
+    // will be an AP that both we and the destination are connected
+    // to, and not the thing we should verify against.
     ssid.assign(hotspot_ssid.begin(), hotspot_ssid.end());
     bssid = hotspot_bssid;
+  } else {
+    // For now, we only support a single connected WiFi service.  If we change
+    // that, we'll need to revisit this.
+    bool found_one = false;
+    for (const auto &service : services_) {
+      if (service->technology() == Technology::kWifi &&
+          service->IsConnected()) {
+        WiFiService *wifi = reinterpret_cast<WiFiService *>(&(*service));
+        bssid = wifi->bssid();
+        ssid = wifi->ssid();
+        found_one = true;
+        break;
+      }
+    }
+    if (!found_one) {
+      error->Populate(Error::kOperationFailed,
+                      "Unable to find connected WiFi service.");
+      return;
+
+    }
   }
   crypto_util_proxy_->VerifyDestination(certificate, public_key, nonce,
                                         signed_data, destination_udn,
-                                        ssid, bssid,
-                                        cb, error);
+                                        ssid, bssid, cb, error);
 }
 
 void Manager::VerifyToEncryptLink(string public_key,
