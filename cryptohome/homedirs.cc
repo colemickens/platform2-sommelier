@@ -350,7 +350,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     return false;
   if (!crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data))
     return false;
-  chaps_event_client_.FireChangeAuthDataEvent(
+  chaps_event_client_.ChangeTokenAuthData(
       kChapsTokenDir,
       static_cast<const uint8_t*>(old_auth_data.const_data()),
       old_auth_data.size(),

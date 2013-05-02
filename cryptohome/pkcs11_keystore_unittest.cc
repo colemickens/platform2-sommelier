@@ -50,28 +50,29 @@ class KeyStoreTest : public testing::Test {
   virtual ~KeyStoreTest() {}
 
   void SetUp() {
-    ON_CALL(pkcs11_, OpenSession(0, _, _))
-        .WillByDefault(DoAll(SetArgumentPointee<2>(kDefaultHandle), Return(0)));
-    ON_CALL(pkcs11_, CloseSession(kDefaultHandle))
+    ON_CALL(pkcs11_, OpenSession(_, 0, _, _))
+        .WillByDefault(DoAll(SetArgumentPointee<3>(kDefaultHandle), Return(0)));
+    ON_CALL(pkcs11_, CloseSession(_, kDefaultHandle))
         .WillByDefault(Return(0));
-    ON_CALL(pkcs11_, CreateObject(kDefaultHandle, _, _))
+    ON_CALL(pkcs11_, CreateObject(_, kDefaultHandle, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::CreateObject));
-    ON_CALL(pkcs11_, DestroyObject(kDefaultHandle, _))
+    ON_CALL(pkcs11_, DestroyObject(_, kDefaultHandle, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::DestroyObject));
-    ON_CALL(pkcs11_, GetAttributeValue(kDefaultHandle, kDefaultHandle, _, _))
+    ON_CALL(pkcs11_, GetAttributeValue(_, kDefaultHandle, kDefaultHandle, _, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::GetAttributeValue));
-    ON_CALL(pkcs11_, SetAttributeValue(kDefaultHandle, kDefaultHandle, _))
+    ON_CALL(pkcs11_, SetAttributeValue(_, kDefaultHandle, kDefaultHandle, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::SetAttributeValue));
-    ON_CALL(pkcs11_, FindObjectsInit(kDefaultHandle, _))
+    ON_CALL(pkcs11_, FindObjectsInit(_, kDefaultHandle, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::FindObjectsInit));
-    ON_CALL(pkcs11_, FindObjects(kDefaultHandle, 1, _))
+    ON_CALL(pkcs11_, FindObjects(_, kDefaultHandle, 1, _))
         .WillByDefault(Invoke(this, &KeyStoreTest::FindObjects));
-    ON_CALL(pkcs11_, FindObjectsFinal(kDefaultHandle))
+    ON_CALL(pkcs11_, FindObjectsFinal(_, kDefaultHandle))
         .WillByDefault(Return(0));
   }
 
   // Stores a new labeled object, only CKA_LABEL and CKA_VALUE are relevant.
-  virtual uint32_t CreateObject(uint64_t session_id,
+  virtual uint32_t CreateObject(const SecureBlob& isolate_credential,
+                                uint64_t session_id,
                                 const vector<uint8_t>& attributes,
                                 uint64_t* new_object_handle) {
     *new_object_handle = kDefaultHandle;
@@ -80,13 +81,16 @@ class KeyStoreTest : public testing::Test {
   }
 
   // Deletes a labeled object.
-  virtual uint32_t DestroyObject(uint64_t session_id, uint64_t object_handle) {
+  virtual uint32_t DestroyObject(const SecureBlob& isolate_credential,
+                                 uint64_t session_id,
+                                 uint64_t object_handle) {
     objects_.erase(current_object_);
     return CKR_OK;
   }
 
   // Supports reading CKA_VALUE.
-  virtual uint32_t GetAttributeValue(uint64_t session_id,
+  virtual uint32_t GetAttributeValue(const SecureBlob& isolate_credential,
+                                     uint64_t session_id,
                                      uint64_t object_handle,
                                      const vector<uint8_t>& attributes_in,
                                      vector<uint8_t>* attributes_out) {
@@ -107,6 +111,7 @@ class KeyStoreTest : public testing::Test {
 
   // Supports writing CKA_VALUE.
   virtual uint32_t SetAttributeValue(
+      const SecureBlob& isolate_credential,
       uint64_t session_id,
       uint64_t object_handle,
       const std::vector<uint8_t>& attributes) {
@@ -116,7 +121,8 @@ class KeyStoreTest : public testing::Test {
 
   // Finds stored objects by CKA_LABEL.  Since we always use kDefaultHandle, the
   // only side-effect needs to be whether an object was found (find_status_).
-  virtual uint32_t FindObjectsInit(uint64_t session_id,
+  virtual uint32_t FindObjectsInit(const SecureBlob& isolate_credential,
+                                   uint64_t session_id,
                                    const vector<uint8_t>& attributes) {
     string label = GetValue(attributes, CKA_LABEL);
     find_status_ = (objects_.find(label) != objects_.end());
@@ -126,7 +132,8 @@ class KeyStoreTest : public testing::Test {
   }
 
   // Reports a 'found' object based on find_status_.
-  virtual uint32_t FindObjects(uint64_t session_id,
+  virtual uint32_t FindObjects(const SecureBlob& isolate_credential,
+                               uint64_t session_id,
                                uint64_t max_object_count,
                                vector<uint64_t>* object_list) {
     if (find_status_)
@@ -209,7 +216,7 @@ TEST_F(KeyStoreTest, Pkcs11Success) {
 
 // Tests the key store when PKCS #11 fails to open a session.
 TEST_F(KeyStoreTest, NoSession) {
-  EXPECT_CALL(pkcs11_, OpenSession(_, _, _))
+  EXPECT_CALL(pkcs11_, OpenSession(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store;
   SecureBlob blob;
@@ -219,7 +226,7 @@ TEST_F(KeyStoreTest, NoSession) {
 
 // Tests the key store when PKCS #11 fails to create an object.
 TEST_F(KeyStoreTest, CreateObjectFail) {
-  EXPECT_CALL(pkcs11_, CreateObject(_, _, _))
+  EXPECT_CALL(pkcs11_, CreateObject(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store;
   SecureBlob blob;
@@ -229,7 +236,7 @@ TEST_F(KeyStoreTest, CreateObjectFail) {
 
 // Tests the key store when PKCS #11 fails to read attribute values.
 TEST_F(KeyStoreTest, ReadValueFail) {
-  EXPECT_CALL(pkcs11_, GetAttributeValue(_, _, _, _))
+  EXPECT_CALL(pkcs11_, GetAttributeValue(_, _, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store;
   SecureBlob blob;
@@ -239,7 +246,7 @@ TEST_F(KeyStoreTest, ReadValueFail) {
 
 // Tests the key store when PKCS #11 fails to delete key data.
 TEST_F(KeyStoreTest, DeleteValueFail) {
-  EXPECT_CALL(pkcs11_, DestroyObject(_, _))
+  EXPECT_CALL(pkcs11_, DestroyObject(_, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store;
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
@@ -250,23 +257,23 @@ TEST_F(KeyStoreTest, DeleteValueFail) {
 // Tests the key store when PKCS #11 fails to find objects.  Tests each part of
 // the multi-part find operation individually.
 TEST_F(KeyStoreTest, FindFail) {
-  EXPECT_CALL(pkcs11_, FindObjectsInit(_, _))
+  EXPECT_CALL(pkcs11_, FindObjectsInit(_, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   Pkcs11KeyStore key_store;
   SecureBlob blob;
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
   EXPECT_FALSE(key_store.Read("test", &blob));
 
-  EXPECT_CALL(pkcs11_, FindObjectsInit(_, _))
+  EXPECT_CALL(pkcs11_, FindObjectsInit(_, _, _))
       .WillRepeatedly(Return(CKR_OK));
-  EXPECT_CALL(pkcs11_, FindObjects(_, _, _))
+  EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
   EXPECT_FALSE(key_store.Read("test", &blob));
 
-  EXPECT_CALL(pkcs11_, FindObjects(_, _, _))
+  EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
       .WillRepeatedly(Return(CKR_OK));
-  EXPECT_CALL(pkcs11_, FindObjectsFinal(_))
+  EXPECT_CALL(pkcs11_, FindObjectsFinal(_, _))
       .WillRepeatedly(Return(CKR_GENERAL_ERROR));
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));
   EXPECT_FALSE(key_store.Read("test", &blob));
@@ -275,8 +282,8 @@ TEST_F(KeyStoreTest, FindFail) {
 // Tests the key store when PKCS #11 successfully finds zero objects.
 TEST_F(KeyStoreTest, FindNoObjects) {
   vector<uint64_t> empty;
-  EXPECT_CALL(pkcs11_, FindObjects(_, _, _))
-      .WillRepeatedly(DoAll(SetArgumentPointee<2>(empty), Return(CKR_OK)));
+  EXPECT_CALL(pkcs11_, FindObjects(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<3>(empty), Return(CKR_OK)));
   Pkcs11KeyStore key_store;
   SecureBlob blob;
   EXPECT_TRUE(key_store.Write("test", SecureBlob("test_data")));

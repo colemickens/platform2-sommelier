@@ -15,6 +15,7 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 #include <base/values.h>
+#include <chaps/isolate.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <set>
@@ -28,6 +29,7 @@
 #include "vault_keyset.h"
 #include "vault_keyset.pb.h"
 
+using chaps::IsolateCredentialManager;
 using chromeos::SecureBlob;
 using std::string;
 
@@ -1323,7 +1325,7 @@ bool Mount::InsertPkcs11Token() {
                                          salt_file,
                                          &old_auth_data))
       return false;
-    chaps_event_client_.FireChangeAuthDataEvent(
+    chaps_event_client_.ChangeTokenAuthData(
         kChapsTokenDir,
         static_cast<const uint8_t*>(old_auth_data.const_data()),
         old_auth_data.size(),
@@ -1332,7 +1334,8 @@ bool Mount::InsertPkcs11Token() {
     is_pkcs11_passkey_migration_required_ = false;
     pkcs11_old_passkey_.clear_contents();
   }
-  chaps_event_client_.FireLoginEvent(
+  chaps_event_client_.LoadToken(
+      IsolateCredentialManager::GetDefaultIsolateCredential(),
       kChapsTokenDir,
       static_cast<const uint8_t*>(auth_data.const_data()),
       auth_data.size());
@@ -1341,7 +1344,9 @@ bool Mount::InsertPkcs11Token() {
 }
 
 void Mount::RemovePkcs11Token() {
-  chaps_event_client_.FireLogoutEvent(kChapsTokenDir);
+  chaps_event_client_.UnloadToken(
+      IsolateCredentialManager::GetDefaultIsolateCredential(),
+      kChapsTokenDir);
 }
 
 void Mount::MigrateToUserHome(const std::string& vault_path) const {
