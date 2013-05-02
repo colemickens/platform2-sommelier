@@ -1248,7 +1248,8 @@ bool Mount::CheckChapsDirectory(bool* permissions_status) {
   DCHECK(permissions_status);
   *permissions_status = true;
   // 0750: u + rwx, g + rx
-  mode_t chaps_perms = S_IRWXU | S_IRGRP | S_IXGRP;
+  const mode_t chaps_permissions = S_IRWXU | S_IRGRP | S_IXGRP;
+  const mode_t permissions_mask = S_IRWXU | S_IRWXG | S_IRWXO;
   if (!platform_->DirectoryExists(kChapsTokenDir)) {
     if (!platform_->CreateDirectory(kChapsTokenDir)) {
       LOG(ERROR) << "Failed to create " << kChapsTokenDir;
@@ -1261,7 +1262,7 @@ bool Mount::CheckChapsDirectory(bool* permissions_status) {
       *permissions_status = false;
       return false;
     }
-    if (!platform_->SetPermissions(kChapsTokenDir, chaps_perms)) {
+    if (!platform_->SetPermissions(kChapsTokenDir, chaps_permissions)) {
       LOG(ERROR) << "Couldn't set permissions for " << kChapsTokenDir;
       *permissions_status = false;
       return false;
@@ -1270,16 +1271,16 @@ bool Mount::CheckChapsDirectory(bool* permissions_status) {
   }
   // Directory already exists so check permissions and log a warning
   // if not as expected.
-  mode_t current_perms;
-  if (!platform_->GetPermissions(kChapsTokenDir, &current_perms)) {
+  mode_t current_permissions;
+  if (!platform_->GetPermissions(kChapsTokenDir, &current_permissions)) {
     LOG(ERROR) << "Couldn't get permissions for " << kChapsTokenDir;
     *permissions_status = false;
     return false;
   }
-  if (current_perms != chaps_perms) {
+  if ((current_permissions & permissions_mask) != chaps_permissions) {
     LOG(WARNING) << "Chaps directory had incorrect permissions: "
                  << StringPrintf("Expected: %o Found: %o",
-                                 chaps_perms, current_perms);
+                                 chaps_permissions, current_permissions);
     *permissions_status = false;
   }
   uid_t current_user;
@@ -1334,11 +1335,15 @@ bool Mount::InsertPkcs11Token() {
     is_pkcs11_passkey_migration_required_ = false;
     pkcs11_old_passkey_.clear_contents();
   }
-  chaps_event_client_.LoadToken(
+  int slot_id = 0;
+  if (!chaps_event_client_.LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       kChapsTokenDir,
       static_cast<const uint8_t*>(auth_data.const_data()),
-      auth_data.size());
+      auth_data.size(),
+      &slot_id)) {
+    LOG(ERROR) << "Failed to load PKCS #11 token.";
+  }
   pkcs11_passkey_.clear_contents();
   return permissions_status;
 }
