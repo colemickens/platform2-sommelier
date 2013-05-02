@@ -259,6 +259,7 @@ bool DHCPConfig::Restart() {
   return me->Start();
 }
 
+// static
 string DHCPConfig::GetIPv4AddressString(unsigned int address) {
   char str[INET_ADDRSTRLEN];
   if (inet_ntop(AF_INET, &address, str, arraysize(str))) {
@@ -336,6 +337,7 @@ bool DHCPConfig::ParseClasslessStaticRoutes(const string &classless_routes,
   return true;
 }
 
+// static
 bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
                                     IPConfig::Properties *properties) {
   SLOG(DHCP, 2) << __func__;

@@ -140,12 +140,12 @@ class DHCPConfig : public IPConfig {
 
   // Parses |configuration| into |properties|. Returns true on success, and
   // false otherwise.
-  bool ParseConfiguration(const Configuration &configuration,
-                          IPConfig::Properties *properties);
+  static bool ParseConfiguration(const Configuration &configuration,
+                                 IPConfig::Properties *properties);
 
   // Returns the string representation of the IP address |address|, or an
   // empty string on failure.
-  std::string GetIPv4AddressString(unsigned int address);
+  static std::string GetIPv4AddressString(unsigned int address);
 
   // Called when the dhcpcd client process exits.
   static void ChildWatchCallback(GPid pid, gint status, gpointer data);
