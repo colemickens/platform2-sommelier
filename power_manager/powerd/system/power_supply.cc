@@ -171,6 +171,12 @@ void PowerSupply::Init() {
   prefs_->GetDouble(kLowBatteryShutdownPercentPref,
                     &low_battery_shutdown_percent_);
 
+  // This log message is needed by power_LoadTest in autotest
+  LOG(INFO) << "Using low battery time threshold of "
+            << low_battery_shutdown_time_.InSeconds()
+            << " secs and using low battery percent threshold of "
+            << low_battery_shutdown_percent_;
+
   prefs_->GetInt64(kSampleWindowMaxPref, &sample_window_max_);
   prefs_->GetInt64(kSampleWindowMinPref, &sample_window_min_);
   CHECK(sample_window_min_ > 0);
