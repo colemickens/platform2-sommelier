@@ -13,10 +13,12 @@
 #include <base/string_number_conversions.h>
 #include <chromeos/syslog_logging.h>
 
+#include "wimax_manager/event_dispatcher.h"
 #include "wimax_manager/manager.h"
 #include "wimax_manager/manager_dbus_adaptor.h"
 
 using std::string;
+using wimax_manager::EventDispatcher;
 
 namespace {
 
@@ -68,11 +70,12 @@ void SetupLogging(bool foreground, int log_level) {
 
 // This callback will be inovked when this process receives SIGINT or SIGTERM.
 gboolean TerminationSignalCallback(gpointer data) {
-  GMainLoop *loop = reinterpret_cast<GMainLoop *>(data);
-  g_main_loop_quit(loop);
+  EventDispatcher *dispatcher = reinterpret_cast<EventDispatcher *>(data);
+  dispatcher->Stop();
+
   // This function can return false to remove this signal handler as we are
-  // quitting the main loop anyway.
-  return false;
+  // quitting the dispatcher loop anyway.
+  return FALSE;
 }
 
 }  // namespace
@@ -91,26 +94,25 @@ int main(int argc, char** argv) {
   }
 
   bool foreground = cl->HasSwitch(switches::kForeground);
+  int log_level = cl->HasSwitch(switches::kLogLevel) ?
+      GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel)) : 0;
+
+  SetupLogging(foreground, log_level);
+
   if (!foreground)
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Failed to create daemon";
 
-  int log_level = cl->HasSwitch(switches::kLogLevel) ?
-      GetLogLevel(cl->GetSwitchValueASCII(switches::kLogLevel)) : 0;
-  SetupLogging(foreground, log_level);
-
-  GMainLoop *loop = g_main_loop_new(g_main_context_default(), FALSE);
-  CHECK(loop) << "Failed to create GLib main loop";
+  EventDispatcher dispatcher;
 
   // Set up a signal handler for handling SIGINT and SIGTERM.
-  g_unix_signal_add(SIGINT, TerminationSignalCallback, loop);
-  g_unix_signal_add(SIGTERM, TerminationSignalCallback, loop);
+  g_unix_signal_add(SIGINT, TerminationSignalCallback, &dispatcher);
+  g_unix_signal_add(SIGTERM, TerminationSignalCallback, &dispatcher);
 
-  wimax_manager::Manager manager;
+  wimax_manager::Manager manager(&dispatcher);
   manager.CreateDBusAdaptor();
   CHECK(manager.Initialize()) << "Failed to initialize WiMAX manager";
 
-  g_main_loop_run(loop);
-  g_main_loop_unref(loop);
+  dispatcher.DispatchForever();
 
   return 0;
 }

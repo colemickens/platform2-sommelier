@@ -24,12 +24,13 @@ namespace wimax_manager {
 class Config;
 class Device;
 class Driver;
+class EventDispatcher;
 class ManagerDBusAdaptor;
 class NetworkOperator;
 
 class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
  public:
-  Manager();
+  explicit Manager(EventDispatcher *dispatcher);
   virtual ~Manager();
 
   bool Initialize();
@@ -54,6 +55,10 @@ class Manager : public DBusAdaptable<Manager, ManagerDBusAdaptor> {
 
   bool LoadConfig(const base::FilePath &config_file);
 
+  EventDispatcher *dispatcher() const { return dispatcher_; }
+
+ private:
+  EventDispatcher *dispatcher_;
   scoped_ptr<Config> config_;
   scoped_ptr<Driver> driver_;
   ScopedVector<Device> devices_;

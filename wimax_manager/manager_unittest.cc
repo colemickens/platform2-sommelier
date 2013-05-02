@@ -9,6 +9,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "wimax_manager/event_dispatcher.h"
 #include "wimax_manager/proto_bindings/config.pb.h"
 
 using base::FilePath;
@@ -53,6 +54,8 @@ const char kTestConfigFileContent[] =
 
 class ManagerTest : public testing::Test {
  protected:
+  ManagerTest() : manager_(&dispatcher_) {}
+
   bool CreateConfigFileInDir(const string &content, const FilePath &dir,
                              FilePath *config_file) {
     if (!file_util::CreateTemporaryFileInDir(dir, config_file))
@@ -66,6 +69,7 @@ class ManagerTest : public testing::Test {
     return true;
   }
 
+  EventDispatcher dispatcher_;
   Manager manager_;
   base::ScopedTempDir temp_dir_;
 };

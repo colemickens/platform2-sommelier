@@ -16,6 +16,7 @@
 #include "wimax_manager/dbus_service_dbus_proxy.h"
 #include "wimax_manager/device.h"
 #include "wimax_manager/device_dbus_adaptor.h"
+#include "wimax_manager/event_dispatcher.h"
 #include "wimax_manager/gdm_driver.h"
 #include "wimax_manager/manager_dbus_adaptor.h"
 #include "wimax_manager/proto_bindings/config.pb.h"
@@ -41,8 +42,9 @@ gboolean OnDeviceScanNeeded(gpointer data) {
 
 }  // namespace
 
-Manager::Manager()
-    : num_device_scans_(0),
+Manager::Manager(EventDispatcher *dispatcher)
+    : dispatcher_(dispatcher),
+      num_device_scans_(0),
       device_scan_timeout_id_(0),
       dbus_service_(this) {
 }
