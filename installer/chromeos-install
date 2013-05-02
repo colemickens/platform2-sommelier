@@ -179,18 +179,24 @@ if [ ! -b "$DST" ]; then
   exit 1
 fi
 
-DST_REMOVABLE=$(cat /sys/block/${DST#/dev/}/removable)
-if [ $? -ne 0 ]; then
-  echo "Error: Invalid destination device (must be whole device): $DST"
-  exit 1
-fi
+check_removable() {
+  if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
+    return
+  fi
 
-if [ "$FLAGS_skip_dst_removable" -eq "${FLAGS_FALSE}" ]; then
-  if [ "$DST_REMOVABLE" != "0" ]; then
+  local removable
+
+  if ! removable=$(cat /sys/block/${DST#/dev/}/removable); then
+    echo "Error: Invalid destination device (must be whole device): ${DST}"
+    exit 1
+  fi
+
+  if [ "${removable}" != "0" ]; then
     echo "Error: Attempt to install to a removeable device: $DST"
     exit 1
   fi
-fi
+}
+check_removable
 
 if [ "$DST" = "$SRC" ]; then
   echo "Error: src and dst the same: $SRC = $DST"
