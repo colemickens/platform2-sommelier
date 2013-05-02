@@ -30,7 +30,11 @@
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
 
+using base::FilePath;
 using chromeos::cryptohome::home::kGuestUserName;
+using chromeos::cryptohome::home::GetUserPath;
+using chromeos::cryptohome::home::SanitizeUserName;
+using std::map;
 using std::string;
 using std::vector;
 
@@ -116,6 +120,25 @@ void DBusGMethodCompletion::Failure(const PolicyService::Error& error) {
   delete this;
 }
 
+struct SessionManagerImpl::UserSession {
+ public:
+  UserSession(const std::string& username,
+              const std::string& userhash,
+              bool is_incognito,
+              const scoped_refptr<PolicyService>& policy_service)
+      : username(username),
+        userhash(userhash),
+        is_incognito(is_incognito),
+        policy_service(policy_service) {
+  }
+  ~UserSession() {}
+
+  const std::string username;
+  const std::string userhash;
+  const bool is_incognito;
+  const scoped_refptr<PolicyService> policy_service;
+};
+
 SessionManagerImpl::SessionManagerImpl(
     scoped_ptr<UpstartSignalEmitter> emitter,
     ProcessManagerServiceInterface* manager,
@@ -123,7 +146,6 @@ SessionManagerImpl::SessionManagerImpl(
     SystemUtils* utils)
     : session_started_(false),
       session_stopping_(false),
-      current_user_is_incognito_(false),
       screen_locked_(false),
       upstart_signal_emitter_(emitter.Pass()),
       manager_(manager),
@@ -140,7 +162,9 @@ SessionManagerImpl::SessionManagerImpl(
     LOG(FATAL) << "Can't generate auth cookie.";
 }
 
-SessionManagerImpl::~SessionManagerImpl() {}
+SessionManagerImpl::~SessionManagerImpl() {
+  STLDeleteValues(&user_sessions_);
+}
 
 void SessionManagerImpl::InjectPolicyServices(
     const scoped_refptr<DevicePolicyService>& device_policy,
@@ -183,8 +207,11 @@ bool SessionManagerImpl::Initialize() {
 
 void SessionManagerImpl::Finalize() {
   device_policy_->PersistPolicySync();
-  if (user_policy_.get())
-    user_policy_->PersistPolicySync();
+  for (map<string, UserSession*>::const_iterator it = user_sessions_.begin();
+       it != user_sessions_.end(); ++it) {
+    if (it->second)
+      it->second->policy_service->PersistPolicySync();
+  }
 }
 
 gboolean SessionManagerImpl::EmitLoginPromptReady(gboolean* OUT_emitted,
@@ -245,22 +272,39 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
                                           gchar* unique_identifier,
                                           gboolean* OUT_done,
                                           GError** error) {
-  if (session_started_) {
-    const char msg[] = "Can't start session while session is already active.";
+  // Validate the |email_address|.
+  const string email_string(StringToLowerASCII(GCharToString(email_address)));
+  const bool is_incognito =
+      ((email_string == kGuestUserName) ||
+       (email_string == kIncognitoUser) ||
+       (email_string == kDemoUser));
+  if (!is_incognito && !ValidateEmail(email_string)) {
+    const char msg[] = "Provided email address is not valid.  ASCII only.";
+    LOG(ERROR) << msg;
+    SetGError(error, CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, msg);
+    return *OUT_done = FALSE;
+  }
+
+  // Check if this user already started a session.
+  if (user_sessions_.count(email_string) > 0) {
+    const char msg[] = "Provided email address already started a session.";
     LOG(ERROR) << msg;
     SetGError(error, CHROMEOS_LOGIN_ERROR_SESSION_EXISTS, msg);
     return *OUT_done = FALSE;
   }
-  if (!ValidateAndCacheUserEmail(email_address, error)) {
-    *OUT_done = FALSE;
-    return FALSE;
-  }
+
+  // Create a UserSession object for this user.
+  scoped_ptr<UserSession> user_session(CreateUserSession(email_string,
+                                                         is_incognito,
+                                                         error));
+  if (!user_session.get())
+    return *OUT_done = FALSE;
 
   // Check whether the current user is the owner, and if so make sure she is
   // whitelisted and has an owner key.
   bool user_is_owner = false;
   PolicyService::Error policy_error;
-  if (!device_policy_->CheckAndHandleOwnerLogin(current_user_,
+  if (!device_policy_->CheckAndHandleOwnerLogin(user_session->username,
                                                 &user_is_owner,
                                                 &policy_error)) {
     SetGError(error,
@@ -269,30 +313,25 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
     return *OUT_done = FALSE;
   }
 
-  // Initialize user policy.
-  user_policy_ = user_policy_factory_->Create(current_user_);
-  if (!user_policy_.get()) {
-    LOG(ERROR) << "User policy failed to initialize.";
-    return *OUT_done = FALSE;
-  }
-
   // Send each user login event to UMA (right before we start session
   // since the metrics library does not log events in guest mode).
   int dev_mode = system_->IsDevMode();
   if (dev_mode > -1) {
     login_metrics_->SendLoginUserType(dev_mode,
-                                      current_user_is_incognito_,
+                                      is_incognito,
                                       user_is_owner);
   }
+
   *OUT_done =
       upstart_signal_emitter_->EmitSignal(
           "start-user-session",
-          StringPrintf("CHROMEOS_USER=%s", current_user_.c_str()),
+          StringPrintf("CHROMEOS_USER=%s", email_string.c_str()),
           error);
 
   if (*OUT_done) {
-    manager_->SetBrowserSessionForUser(current_user_);
+    manager_->SetBrowserSessionForUser(email_string);
     session_started_ = true;
+    user_sessions_[email_string] = user_session.release();
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
     vector<string> args;
     args.push_back(kStarted);
@@ -300,7 +339,8 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
                                       args);
     if (device_policy_->KeyMissing() &&
         !device_policy_->Mitigating() &&
-        !current_user_is_incognito_) {
+        !is_incognito) {
+      // This is the first sign-in on this unmanaged device.  Take ownership.
       manager_->RunKeyGenerator();
     }
 
@@ -312,8 +352,8 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
 }
 
 gboolean SessionManagerImpl::StopSession(gchar* unique_identifier,
-                                            gboolean* OUT_done,
-                                            GError** error) {
+                                         gboolean* OUT_done,
+                                         GError** error) {
   // Most calls to StopSession() will log the reason for the call.
   // If you don't see a log message saying the reason for the call, it is
   // likely a DBUS message. See dbus_glib_shim.cc for that call.
@@ -327,7 +367,7 @@ gboolean SessionManagerImpl::StopSession(gchar* unique_identifier,
 }
 
 gboolean SessionManagerImpl::StorePolicy(GArray* policy_blob,
-                                            DBusGMethodInvocation* context) {
+                                         DBusGMethodInvocation* context) {
   int flags = PolicyService::KEY_ROTATE;
   if (!session_started_)
     flags |= PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_CLOBBER;
@@ -338,7 +378,7 @@ gboolean SessionManagerImpl::StorePolicy(GArray* policy_blob,
 }
 
 gboolean SessionManagerImpl::RetrievePolicy(GArray** OUT_policy_blob,
-                                               GError** error) {
+                                            GError** error) {
   vector<uint8> policy_data;
   return EncodeRetrievedPolicy(device_policy_->Retrieve(&policy_data),
                                policy_data,
@@ -349,12 +389,13 @@ gboolean SessionManagerImpl::RetrievePolicy(GArray** OUT_policy_blob,
 gboolean SessionManagerImpl::StoreUserPolicy(
     GArray* policy_blob,
     DBusGMethodInvocation* context) {
-  if (session_started_ && user_policy_.get()) {
-    return user_policy_->Store(reinterpret_cast<uint8*>(policy_blob->data),
-                               policy_blob->len,
-                               new DBusGMethodCompletion(context),
-                               PolicyService::KEY_INSTALL_NEW |
-                               PolicyService::KEY_ROTATE) ? TRUE : FALSE;
+  if (user_sessions_.size() == 1) {
+    bool status = user_sessions_.begin()->second->policy_service->Store(
+        reinterpret_cast<uint8*>(policy_blob->data),
+        policy_blob->len,
+        new DBusGMethodCompletion(context),
+        PolicyService::KEY_INSTALL_NEW | PolicyService::KEY_ROTATE);
+    return status ? TRUE : FALSE;
   }
 
   const char msg[] = "Cannot store user policy before session is started.";
@@ -364,13 +405,14 @@ gboolean SessionManagerImpl::StoreUserPolicy(
 }
 
 gboolean SessionManagerImpl::RetrieveUserPolicy(GArray** OUT_policy_blob,
-                                                   GError** error) {
-  if (session_started_ && user_policy_.get()) {
+                                                GError** error) {
+  if (user_sessions_.size() == 1) {
     vector<uint8> policy_data;
-    return EncodeRetrievedPolicy(user_policy_->Retrieve(&policy_data),
-                                 policy_data,
-                                 OUT_policy_blob,
-                                 error);
+    return EncodeRetrievedPolicy(
+        user_sessions_.begin()->second->policy_service->Retrieve(&policy_data),
+        policy_data,
+        OUT_policy_blob,
+        error);
   }
 
   const char msg[] = "Cannot retrieve user policy before session is started.";
@@ -412,11 +454,16 @@ gboolean SessionManagerImpl::RetrieveSessionState(gchar** OUT_state) {
 }
 
 gboolean SessionManagerImpl::LockScreen(GError** error) {
-  if (current_user_is_incognito_ || !session_started_) {
-    LOG_IF(WARNING, current_user_is_incognito_) << "Attempt to lock screen"
-                                                << " during Guest session.";
-    LOG_IF(WARNING, !session_started_) << "Attempt to lock screen"
-                                       << " outside of user session.";
+  if (!session_started_) {
+    LOG(WARNING) << "Attempt to lock screen outside of user session.";
+    return FALSE;
+  }
+  if (user_sessions_.size() != 1) {
+    LOG(WARNING) << "Multiple sessions are not yet supported.";
+    return FALSE;
+  }
+  if (user_sessions_.begin()->second->is_incognito) {
+    LOG(WARNING) << "Attempt to lock screen during Guest session.";
     return FALSE;
   }
   screen_locked_ = true;
@@ -527,7 +574,13 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
   file_util::ReadFileToString(temp_key_file, &key);
   PLOG_IF(WARNING, !file_util::Delete(temp_key_file, false))
       << "Can't delete " << temp_key_file.value();
-  device_policy_->ValidateAndStoreOwnerKey(current_user_, key);
+
+  if (user_sessions_.size() == 1) {
+    device_policy_->ValidateAndStoreOwnerKey(
+        user_sessions_.begin()->second->username, key);
+  } else {
+    LOG(ERROR) << "Multiple sessions are not yet supported.";
+  }
 }
 
 void SessionManagerImpl::InitiateDeviceWipe() {
@@ -535,27 +588,6 @@ void SessionManagerImpl::InitiateDeviceWipe() {
   const FilePath reset_path(kResetFile);
   system_->AtomicFileWrite(reset_path, contents, strlen(contents));
   system_->CallMethodOnPowerManager(power_manager::kRequestRestartMethod);
-}
-
-gboolean SessionManagerImpl::ValidateAndCacheUserEmail(
-    const gchar* email_address,
-    GError** error) {
-  // basic validity checking; avoid buffer overflows here, and
-  // canonicalize the email address a little.
-  string email_string(GCharToString(email_address));
-  bool user_is_incognito =
-      ((email_string == kGuestUserName) ||
-       (email_string == kIncognitoUser) ||
-       (email_string == kDemoUser));
-  if (!user_is_incognito && !ValidateEmail(email_string)) {
-    const char msg[] = "Provided email address is not valid.  ASCII only.";
-    LOG(ERROR) << msg;
-    SetGError(error, CHROMEOS_LOGIN_ERROR_INVALID_EMAIL, msg);
-    return FALSE;
-  }
-  current_user_is_incognito_ = user_is_incognito;
-  current_user_ = StringToLowerASCII(email_string);
-  return TRUE;
 }
 
 gboolean SessionManagerImpl::EncodeRetrievedPolicy(
@@ -621,5 +653,30 @@ bool SessionManagerImpl::IsValidCookie(const char *cookie) {
   return chromeos::SafeMemcmp(cookie, cookie_.data(), len) == 0;
 }
 
+SessionManagerImpl::UserSession*
+SessionManagerImpl::CreateUserSession(const string& username,
+                                      bool is_incognito,
+                                      GError** error) {
+  scoped_refptr<PolicyService> user_policy =
+      user_policy_factory_->Create(username);
+  if (!user_policy) {
+    const char msg[] = "User policy failed to initialize.";
+    LOG(ERROR) << msg;
+    if (error)
+      SetGError(error, CHROMEOS_LOGIN_ERROR_POLICY_INIT_FAIL, msg);
+    return NULL;
+  }
+  return new SessionManagerImpl::UserSession(username,
+                                             SanitizeUserName(username),
+                                             is_incognito,
+                                             user_policy);
+}
 
-}  // namespace login_manager
+scoped_refptr<PolicyService> SessionManagerImpl::GetPolicyService(
+    gchar* user_email) {
+  const string username(StringToLowerASCII(GCharToString(user_email)));
+  map<string, UserSession*>::const_iterator it = user_sessions_.find(username);
+  return it == user_sessions_.end() ? NULL : it->second->policy_service;
+}
+
+}  // namespace login_manage

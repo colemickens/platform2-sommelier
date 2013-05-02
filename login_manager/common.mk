@@ -297,6 +297,12 @@ ifeq ($(MODE),opt)
   endif
 endif
 
+ifeq ($(MODE),dbg)
+  # Drop the optimizations.
+  CFLAGS := $(filter-out -O1,$(CFLAGS)) -O0
+  CXXFLAGS := $(filter-out -O1,$(CXXFLAGS)) -O0
+endif
+
 ifeq ($(MODE),profiling)
   CFLAGS := $(CFLAGS) -O0 -g  --coverage
   CXXFLAGS := $(CXXFLAGS) -O0 -g  --coverage

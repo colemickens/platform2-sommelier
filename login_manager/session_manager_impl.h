@@ -5,6 +5,8 @@
 #ifndef LOGIN_MANAGER_SESSION_MANAGER_IMPL_H_
 #define LOGIN_MANAGER_SESSION_MANAGER_IMPL_H_
 
+#include <map>
+
 #include <stdlib.h>
 
 #include <base/basictypes.h>
@@ -130,6 +132,9 @@ class SessionManagerImpl : public SessionManagerInterface,
   static const char kResetFile[];
 
  private:
+  // Holds the state related to one of the signed in users.
+  struct UserSession;
+
   friend class SessionManagerImplStaticTest;
 
   // Encodes the result of a policy retrieve operation as specified in |success|
@@ -146,10 +151,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   // for the gory details.
   void InitiateDeviceWipe();
 
-  // Cache |email_address| in |current_user_| and return true, if the address
-  // passes validation.  Otherwise, set |error| appropriately and return false.
-  gboolean ValidateAndCacheUserEmail(const gchar* email_address,
-                                     GError** error);
   // Safely converts a gchar* parameter from DBUS to a std::string.
   static std::string GCharToString(const gchar* str);
 
@@ -163,14 +164,18 @@ class SessionManagerImpl : public SessionManagerInterface,
   // Check cookie against internally stored auth cookie.
   bool IsValidCookie(const char *cookie);
 
+  UserSession* CreateUserSession(const std::string& username,
+                                 bool is_incognito,
+                                 GError** error);
+
+  scoped_refptr<PolicyService> GetPolicyService(gchar* user_email);
+
   bool session_started_;
   bool session_stopping_;
-  bool current_user_is_incognito_;
-  std::string current_user_;
   bool screen_locked_;
   std::string cookie_;
 
-  FilePath chrome_testing_path_;
+  base::FilePath chrome_testing_path_;
 
   scoped_ptr<UpstartSignalEmitter> upstart_signal_emitter_;
 
@@ -180,8 +185,10 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   scoped_refptr<DevicePolicyService> device_policy_;
   scoped_ptr<UserPolicyServiceFactory> user_policy_factory_;
-  scoped_refptr<PolicyService> user_policy_;
   scoped_ptr<DeviceLocalAccountPolicyService> device_local_account_policy_;
+
+  // Map of the currently signed-in users to their state.
+  std::map<std::string, UserSession*> user_sessions_;
 
   DISALLOW_COPY_AND_ASSIGN(SessionManagerImpl);
 };
