@@ -33,6 +33,8 @@ bool PerfRecorder::RecordAndConvertToProtobuf(
   PerfSerializer perf_serializer;
   // Make sure to remap address for security reasons.
   perf_serializer.set_do_remap(true);
+  // Discard unused perf events to reduce the protobuf size.
+  perf_serializer.set_discard_unused_events(true);
   return (perf_serializer.ReadFileData(raw_perf_data) &&
           perf_serializer.Serialize(perf_data));
 }

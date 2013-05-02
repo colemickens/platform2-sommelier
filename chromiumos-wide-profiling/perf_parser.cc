@@ -5,6 +5,7 @@
 #include "perf_parser.h"
 
 #include <algorithm>
+#include <list>
 
 #include "base/logging.h"
 
@@ -29,7 +30,8 @@ bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
 }  // namespace
 
 PerfParser::PerfParser() : do_remap_(false),
-                           kernel_mapper_(new AddressMapper) {}
+                           kernel_mapper_(new AddressMapper),
+                           discard_unused_events_(false) {}
 
 PerfParser::~PerfParser() {
   ResetAddressMappers();
@@ -46,6 +48,32 @@ bool PerfParser::ParseRawEvents() {
   }
   SortParsedEvents();
   ProcessEvents();
+
+  if (!discard_unused_events_)
+    return true;
+
+  // Some MMAP events' mapped regions will not have any samples.  These MMAP
+  // events should be dropped.  |parsed_events_| should be reconstructed without
+  // these events.
+  size_t write_index = 0;
+  size_t read_index;
+  for (read_index = 0; read_index < parsed_events_.size(); ++read_index) {
+    const ParsedEvent& event = parsed_events_[read_index];
+    if (event.raw_event->header.type == PERF_RECORD_MMAP &&
+        event.num_samples_in_mmap_region == 0) {
+      continue;
+    }
+    if (read_index != write_index)
+      parsed_events_[write_index] = event;
+    ++write_index;
+  }
+  CHECK_LE(write_index, parsed_events_.size());
+  parsed_events_.resize(write_index);
+
+  // Now regenerate the sorted event list again.  These are pointers to events
+  // so they must be regenerated after a resize() of the ParsedEvent vector.
+  SortParsedEvents();
+
   return true;
 }
 
@@ -76,6 +104,8 @@ bool PerfParser::ProcessEvents() {
         ++stats_.num_mmap_events;
         // Use the array index of the current mmap event as a unique identifier.
         CHECK(MapMmapEvent(&event.mmap, i)) << "Unable to map MMAP event!";
+        // No samples in this MMAP region yet, hopefully.
+        parsed_event.num_samples_in_mmap_region = 0;
         break;
       case PERF_RECORD_FORK:
         VLOG(1) << "FORK: " << event.fork.ppid << ":" << event.fork.ptid
@@ -186,9 +216,10 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
       CHECK(mapper->GetMappedIDAndOffset(ip, &id, offset));
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
-      const ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
+      ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
       CHECK_EQ(parsed_event->raw_event->header.type, PERF_RECORD_MMAP);
       *name = parsed_event->raw_event->mmap.filename;
+      ++parsed_event->num_samples_in_mmap_region;
     }
     if (do_remap_)
       *new_ip = mapped_addr;

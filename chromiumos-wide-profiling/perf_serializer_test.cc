@@ -22,14 +22,17 @@ namespace {
 
 void SerializeAndDeserialize(const string& input,
                              const string& output,
-                             bool do_remap) {
+                             bool do_remap,
+                             bool discard_unused_events) {
   quipper::PerfDataProto perf_data_proto;
   PerfSerializer serializer;
   serializer.set_do_remap(do_remap);
+  serializer.set_discard_unused_events(discard_unused_events);
   EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
 
   PerfSerializer deserializer;
   deserializer.set_do_remap(do_remap);
+  deserializer.set_discard_unused_events(discard_unused_events);
   EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
 
   // Check perf event stats.
@@ -88,6 +91,7 @@ TEST(PerfSerializerTest, Test1Cycle) {
   // Read perf data using the PerfReader class.
   // Dump it to a protobuf.
   // Read the protobuf, and reconstruct the perf data.
+  // TODO(sque): test exact number of events after discarding unused events.
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
@@ -102,9 +106,13 @@ TEST(PerfSerializerTest, Test1Cycle) {
     LOG(INFO) << "Testing " << input_perf_data;
     input_perf_reader.ReadFile(input_perf_data);
 
-    SerializeAndDeserialize(input_perf_data, output_perf_data, false);
+    // For every other perf data file, discard unused events.
+    bool discard = (i % 2 == 0);
+
+    SerializeAndDeserialize(input_perf_data, output_perf_data, false, discard);
     output_perf_reader.ReadFile(output_perf_data);
-    SerializeAndDeserialize(output_perf_data, output_perf_data1, false);
+    SerializeAndDeserialize(output_perf_data, output_perf_data1, false,
+                            discard);
     output_perf_reader1.ReadFile(output_perf_data1);
 
     ASSERT_TRUE(CompareFileContents(output_perf_data, output_perf_data1));
@@ -113,11 +121,17 @@ TEST(PerfSerializerTest, Test1Cycle) {
     SerializeToFileAndBack(input_perf_data, output_perf_data2);
     output_perf_reader2.ReadFile(output_perf_data2);
 
-    // Make sure the # of events do not change.
-    ASSERT_EQ(output_perf_reader.events().size(),
-              input_perf_reader.events().size());
+    // Make sure the # of events do not increase.  They can decrease because
+    // some unused non-sample events may be discarded.
+    if (discard) {
+      ASSERT_LE(output_perf_reader.events().size(),
+                input_perf_reader.events().size());
+    } else {
+      ASSERT_EQ(output_perf_reader.events().size(),
+                input_perf_reader.events().size());
+    }
     ASSERT_EQ(output_perf_reader1.events().size(),
-              input_perf_reader.events().size());
+              output_perf_reader.events().size());
     ASSERT_EQ(output_perf_reader2.events().size(),
               input_perf_reader.events().size());
 
@@ -136,7 +150,7 @@ TEST(PerfSerializerTest, TestRemap) {
     const string input_perf_data = perf_test_files::kPerfDataFiles[i];
     LOG(INFO) << "Testing " << input_perf_data;
     const string output_perf_data = input_perf_data + ".ser.remap.out";
-    SerializeAndDeserialize(input_perf_data, output_perf_data, true);
+    SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
 
   for (unsigned int i = 0;
@@ -145,7 +159,7 @@ TEST(PerfSerializerTest, TestRemap) {
     const string input_perf_data = perf_test_files::kPerfPipedDataFiles[i];
     LOG(INFO) << "Testing " << input_perf_data;
     const string output_perf_data = input_perf_data + ".ser.remap.out";
-    SerializeAndDeserialize(input_perf_data, output_perf_data, true);
+    SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
 }
 

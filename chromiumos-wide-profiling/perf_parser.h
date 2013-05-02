@@ -19,6 +19,10 @@ struct ParsedEvent {
   struct perf_sample* sample_info;  // These point to entries stored elsewhere.
   event_t* raw_event;
 
+  // For mmap events, use this to count the number of samples that are in this
+  // region.
+  uint32 num_samples_in_mmap_region;
+
   struct DSOAndOffset {
     string dso_name;
     uint64 offset;
@@ -71,6 +75,10 @@ class PerfParser : public PerfReader {
     do_remap_ = do_remap;
   }
 
+  void set_discard_unused_events(bool discard) {
+    discard_unused_events_ = discard;
+  }
+
   const PerfEventStats& stats() const {
     return stats_;
   }
@@ -104,6 +112,10 @@ class PerfParser : public PerfReader {
   AddressMapper* kernel_mapper_;
   std::map<uint32, AddressMapper*> process_mappers_;
   std::map<uint32, uint32> child_to_parent_pid_map_;
+
+  // Set this flag to discard non-sample events that don't have any associated
+  // sample events. e.g. MMAP regions with no samples in them.
+  bool discard_unused_events_;
 
   PerfEventStats stats_;
 
