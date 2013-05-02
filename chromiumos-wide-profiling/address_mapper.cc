@@ -9,18 +9,17 @@
 bool AddressMapper::Map(const uint64 real_addr,
                         const uint64 size,
                         const bool remove_existing_mappings) {
-  return MapWithName(real_addr, size, "", remove_existing_mappings);
+  return MapWithID(real_addr, size, kuint64max, remove_existing_mappings);
 }
 
-bool AddressMapper::MapWithName(const uint64 real_addr,
-                                const uint64 size,
-                                const string& name,
-                                bool remove_existing_mappings) {
+bool AddressMapper::MapWithID(const uint64 real_addr,
+                              const uint64 size,
+                              const uint64 id,
+                              bool remove_existing_mappings) {
   MappedRange range;
   range.real_addr = real_addr;
   range.size = size;
-  if (name.size())
-    range.name = name;
+  range.id = id;
 
   if (size == 0) {
     LOG(ERROR) << "Must allocate a nonzero-length address range.";
@@ -70,11 +69,16 @@ bool AddressMapper::MapWithName(const uint64 real_addr,
     uint64 gap_before = range.real_addr - old_range.real_addr;
     uint64 gap_after = (old_range.real_addr + old_range.size) -
                        (range.real_addr + range.size);
+
     if (gap_before)
-      CHECK(Map(old_range.real_addr, gap_before, false));
-    CHECK(Map(range.real_addr, range.size, false));
-    if (gap_after)
-      CHECK(Map(range.real_addr + range.size, gap_after, false));
+      CHECK(MapWithID(old_range.real_addr, gap_before, old_range.id, false));
+
+    CHECK(MapWithID(range.real_addr, range.size, id, false));
+
+    if (gap_after) {
+      CHECK(MapWithID(
+          range.real_addr + range.size, gap_after, old_range.id, false));
+    }
   }
 
   // Now search for a location for the new range.  It should be in the first
@@ -130,16 +134,16 @@ bool AddressMapper::GetMappedAddress(const uint64 real_addr,
   return false;
 }
 
-bool AddressMapper::GetMappedNameAndOffset(const uint64 real_addr,
-                                           string* name,
-                                           uint64* offset) const {
-  CHECK(name);
+bool AddressMapper::GetMappedIDAndOffset(const uint64 real_addr,
+                                         uint64* id,
+                                         uint64* offset) const {
+  CHECK(id);
   CHECK(offset);
   MappingList::const_iterator iter;
   for (iter = mappings_.begin(); iter != mappings_.end(); ++iter) {
     if (!iter->ContainsAddress(real_addr))
       continue;
-    *name = iter->name;
+    *id = iter->id;
     *offset = real_addr - iter->real_addr;
     return true;
   }

@@ -108,7 +108,8 @@ bool PerfParser::ProcessEvents() {
       case PERF_RECORD_MMAP:
         VLOG(1) << "MMAP: " << event.mmap.filename;
         ++stats_.num_mmap_events;
-        CHECK(MapMmapEvent(&event.mmap)) << "Unable to map MMAP event!";
+        // Use the array index of the current mmap event as a unique identifier.
+        CHECK(MapMmapEvent(&event.mmap, i)) << "Unable to map MMAP event!";
         break;
       case PERF_RECORD_FORK:
         VLOG(1) << "FORK: " << event.fork.ppid << ":" << event.fork.ptid
@@ -214,15 +215,22 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
     }
   }
   if (mapped) {
-    if (name && offset)
-      CHECK(mapper->GetMappedNameAndOffset(ip, name, offset));
+    if (name && offset) {
+      uint64 id = kuint64max;
+      CHECK(mapper->GetMappedIDAndOffset(ip, &id, offset));
+      // Make sure the ID points to a valid event.
+      CHECK_LE(id, parsed_events_sorted_by_time_.size());
+      const ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
+      CHECK_EQ(parsed_event->raw_event.header.type, PERF_RECORD_MMAP);
+      *name = parsed_event->raw_event.mmap.filename;
+    }
     if (do_remap_)
       *new_ip = mapped_addr;
   }
   return mapped;
 }
 
-bool PerfParser::MapMmapEvent(struct mmap_event* event) {
+bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
   AddressMapper* mapper = kernel_mapper_;
   CHECK(kernel_mapper_);
   uint32 pid = event->pid;
@@ -248,7 +256,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event) {
     start += event->pgoff;
     pgoff = 0;
   }
-  if (!mapper->MapWithName(start, len, event->filename, true))
+  if (!mapper->MapWithID(start, len, id, true))
     return false;
 
   uint64 mapped_addr;

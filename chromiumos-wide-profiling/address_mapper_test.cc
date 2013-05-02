@@ -16,7 +16,7 @@ namespace {
 struct Range {
   uint64 addr;
   uint64 size;
-  const char* name;
+  uint64 id;
   bool contains(const uint64 check_addr) const {
     return (check_addr >= addr && check_addr < addr + size);
   }
@@ -24,10 +24,10 @@ struct Range {
 
 // Some address ranges to map.
 const Range kMapRanges[] = {
-  { 0xff000000,   0x100000, "alpha" },
-  { 0x00a00000,    0x10000, "beta"  },
-  { 0x0c000000,  0x1000000, "gamma" },
-  { 0x00001000,    0x30000, "delta" },
+  { 0xff000000,   0x100000, 0xdeadbeef },
+  { 0x00a00000,    0x10000, 0xcafebabe },
+  { 0x0c000000,  0x1000000, 0x900df00d },
+  { 0x00001000,    0x30000, 0x9000091e },
 };
 
 // List of real addresses that are not in the above ranges.
@@ -102,19 +102,18 @@ class AddressMapperTest : public ::testing::Test {
     return mapper_->Map(range.addr, range.size, remove_old_mappings);
   }
 
-  // Tests address mapping without specifying a name.
-  void TestMappedRange(const Range& range,
-                       const uint64 expected_mapped_addr) {
-    TestMappedRangeWithName(range, expected_mapped_addr, "");
+  // Tests address mapping without checking for a particular ID.
+  void TestMappedRange(const Range& range, const uint64 expected_mapped_addr) {
+    TestMappedRangeWithID(range, expected_mapped_addr, kuint64max);
   }
 
   // Tests a range that has been mapped.  |expected_mapped_addr| is the starting
   // address that it should have been mapped to.  This mapper will test the
   // start and end addresses of the range, as well as a bunch of addresses
-  // inside it.  Also checks lookup of name and offset.
-  void TestMappedRangeWithName(const Range& range,
-                               const uint64 expected_mapped_addr,
-                               const string& expected_name) {
+  // inside it.  Also checks lookup of ID and offset.
+  void TestMappedRangeWithID(const Range& range,
+                             const uint64 expected_mapped_addr,
+                             const uint64 expected_id) {
     uint64 mapped_addr = kuint64max;
 
     LOG(INFO) << "Testing range at " << (void*) range.addr << " with length of "
@@ -129,11 +128,11 @@ class AddressMapperTest : public ::testing::Test {
       EXPECT_EQ((void*)(expected_mapped_addr + offset), (void*)mapped_addr);
 
       uint64 mapped_offset;
-      string mapped_name;
+      uint64 mapped_id;
       EXPECT_TRUE(
-          mapper_->GetMappedNameAndOffset(addr, &mapped_name, &mapped_offset));
+          mapper_->GetMappedIDAndOffset(addr, &mapped_id, &mapped_offset));
       EXPECT_EQ((void*)offset, (void*)mapped_offset);
-      EXPECT_EQ(expected_name, mapped_name);
+      EXPECT_EQ(expected_id, mapped_id);
     }
 
     // Check address at end of the range.
@@ -207,17 +206,17 @@ TEST_F(AddressMapperTest, MapAll) {
   }
 }
 
-// Map all the ranges at once and test looking up names and offsets.
-TEST_F(AddressMapperTest, MapAllWithNamesAndOffsets) {
+// Map all the ranges at once and test looking up IDs and offsets.
+TEST_F(AddressMapperTest, MapAllWithIDsAndOffsets) {
   unsigned int i;
   for (i = 0; i < arraysize(kMapRanges); ++i) {
     const Range& range = kMapRanges[i];
     LOG(INFO) << "Mapping range at " << (void*) range.addr
               << " with length of " << (void*) range.size;
-    ASSERT_TRUE(mapper_->MapWithName(kMapRanges[i].addr,
-                                     kMapRanges[i].size,
-                                     kMapRanges[i].name,
-                                     false));
+    ASSERT_TRUE(mapper_->MapWithID(kMapRanges[i].addr,
+                                   kMapRanges[i].size,
+                                   kMapRanges[i].id,
+                                   false));
   }
   EXPECT_EQ(arraysize(kMapRanges), mapper_->GetNumMappedRanges());
 
@@ -225,11 +224,11 @@ TEST_F(AddressMapperTest, MapAllWithNamesAndOffsets) {
   // Also test the address right before and after each range.
   for (i = 0; i < arraysize(kMapRanges); ++i) {
     const Range& range = kMapRanges[i];
-    TestMappedRangeWithName(range,
-                            GetMappedAddressFromRanges(kMapRanges,
-                                                       arraysize(kMapRanges),
-                                                       range.addr),
-                            range.name);
+    TestMappedRangeWithID(range,
+                          GetMappedAddressFromRanges(kMapRanges,
+                                                     arraysize(kMapRanges),
+                                                     range.addr),
+                          range.id);
   }
 }
 

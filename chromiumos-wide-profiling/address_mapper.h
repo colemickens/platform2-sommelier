@@ -6,11 +6,8 @@
 #define ADDRESS_MAPPER_
 
 #include <list>
-#include <string>
 
 #include "base/basictypes.h"
-
-#include "quipper_string.h"
 
 class AddressMapper {
  public:
@@ -25,21 +22,23 @@ class AddressMapper {
            const uint64 length,
            bool remove_existing_mappings);
 
-  // Like Map(real_addr, length, remove_existing_mappings).  |name| is a name
-  // string to be stored along with the mapping.
-  bool MapWithName(const uint64 real_addr,
-                   const uint64 length,
-                   const string& name,
-                   bool remove_existing_mappings);
+  // Like Map(real_addr, length, remove_existing_mappings).  |id| is an
+  // identifier value to be stored along with the mapping.  AddressMapper does
+  // not care whether it is unique compared to all other IDs passed in.  That is
+  // up to the caller to keep track of.
+  bool MapWithID(const uint64 real_addr,
+                 const uint64 length,
+                 const uint64 id,
+                 bool remove_existing_mappings);
 
   // Looks up |real_addr| and returns the mapped address.
   bool GetMappedAddress(const uint64 real_addr, uint64* mapped_addr) const;
 
-  // Looks up |real_addr| and returns the mapping's name and offset from the
+  // Looks up |real_addr| and returns the mapping's ID and offset from the
   // start of the mapped space.
-  bool GetMappedNameAndOffset(const uint64 real_addr,
-                              string* name,
-                              uint64* offset) const;
+  bool GetMappedIDAndOffset(const uint64 real_addr,
+                            uint64* id,
+                            uint64* offset) const;
 
   // Returns true if there are no mappings.
   bool IsEmpty() const {
@@ -63,7 +62,7 @@ class AddressMapper {
     uint64 mapped_addr;
     uint64 size;
 
-    string name;
+    uint64 id;
 
     // Length of unmapped space after this range.
     uint64 unmapped_space_after;
