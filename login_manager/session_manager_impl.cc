@@ -14,6 +14,7 @@
 #include <base/message_loop_proxy.h>
 #include <base/stl_util.h>
 #include <base/string_util.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/utility.h>
 #include <dbus/dbus-glib-bindings.h>
 #include <dbus/dbus-glib.h>
@@ -29,11 +30,13 @@
 #include "login_manager/upstart_signal_emitter.h"
 #include "login_manager/user_policy_service_factory.h"
 
+using chromeos::cryptohome::home::kGuestUserName;
 using std::string;
 using std::vector;
 
 namespace login_manager {  // NOLINT
 
+// DEPRECATED in favor of kGuestUserName from chromeos/cryptohome.h
 const char SessionManagerImpl::kIncognitoUser[] = "";
 const char SessionManagerImpl::kDemoUser[] = "demouser@";
 
@@ -471,7 +474,7 @@ gboolean SessionManagerImpl::RestartJob(gint pid,
   manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
 
   // To set "logged-in" state for BWSI mode.
-  return StartSession(const_cast<gchar*>(kIncognitoUser), NULL,
+  return StartSession(const_cast<gchar*>(kGuestUserName), NULL,
                       OUT_done, error);
 }
 
@@ -540,8 +543,10 @@ gboolean SessionManagerImpl::ValidateAndCacheUserEmail(
   // basic validity checking; avoid buffer overflows here, and
   // canonicalize the email address a little.
   string email_string(GCharToString(email_address));
-  bool user_is_incognito = ((email_string == kIncognitoUser) ||
-      (email_string == kDemoUser));
+  bool user_is_incognito =
+      ((email_string == kGuestUserName) ||
+       (email_string == kIncognitoUser) ||
+       (email_string == kDemoUser));
   if (!user_is_incognito && !ValidateEmail(email_string)) {
     const char msg[] = "Provided email address is not valid.  ASCII only.";
     LOG(ERROR) << msg;

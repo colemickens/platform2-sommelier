@@ -19,6 +19,7 @@
 #include <base/message_loop.h>
 #include <base/message_loop_proxy.h>
 #include <base/string_util.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/error_constants.h>
 #include <chromeos/dbus/service_constants.h>
@@ -53,6 +54,7 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::_;
 
+using chromeos::cryptohome::home::kGuestUserName;
 using chromeos::Resetter;
 using chromeos::glib::ScopedError;
 
@@ -100,7 +102,7 @@ class SessionManagerImplTest : public ::testing::Test {
   }
 
   void ExpectGuestSession() {
-    ExpectSessionBoilerplate(SessionManagerImpl::kIncognitoUser, true, false);
+    ExpectSessionBoilerplate(kGuestUserName, true, false);
   }
 
   void ExpectStartOwnerSession(const std::string& email_string) {
@@ -157,7 +159,7 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectAndRunGuestSession() {
     gboolean out;
     // Need a non-const gchar*.
-    gchar* incognito = g_strdup(SessionManagerImpl::kIncognitoUser);
+    gchar* incognito = g_strdup(kGuestUserName);
     gchar nothing[] = "";
 
     ExpectGuestSession();
