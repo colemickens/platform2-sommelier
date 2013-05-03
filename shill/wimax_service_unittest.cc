@@ -120,6 +120,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   const int kStrength = 66;
   EXPECT_FALSE(service_->connectable());
   EXPECT_FALSE(service_->IsStarted());
+  EXPECT_FALSE(service_->IsVisible());
   EXPECT_EQ(0, service_->strength());
   EXPECT_FALSE(service_->proxy_.get());
   EXPECT_CALL(*proxy_, Name(_)).WillOnce(Return(kName));
@@ -130,6 +131,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   service_->need_passphrase_ = false;
   EXPECT_TRUE(service_->Start(proxy_.release()));
   EXPECT_TRUE(service_->IsStarted());
+  EXPECT_TRUE(service_->IsVisible());
   EXPECT_EQ(kStrength, service_->strength());
   EXPECT_EQ(kName, service_->network_name());
   EXPECT_EQ(kTestName, service_->friendly_name());
@@ -142,6 +144,7 @@ TEST_F(WiMaxServiceTest, StartStop) {
   ExpectUpdateService();
   service_->Stop();
   EXPECT_FALSE(service_->IsStarted());
+  EXPECT_FALSE(service_->IsVisible());
   EXPECT_EQ(0, service_->strength());
   EXPECT_FALSE(service_->proxy_.get());
 }

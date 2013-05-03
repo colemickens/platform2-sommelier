@@ -198,6 +198,12 @@ bool WiMaxService::Is8021x() const {
   return true;
 }
 
+bool WiMaxService::IsVisible() const {
+  // WiMAX services should be displayed only if they are in range (i.e.
+  // a corresponding network is exposed by WiMAX manager).
+  return IsStarted();
+}
+
 void WiMaxService::OnEapCredentialsChanged() {
   need_passphrase_ = !eap()->IsConnectableUsingPassphrase();
   UpdateConnectable();
