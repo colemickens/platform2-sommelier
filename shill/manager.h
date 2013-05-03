@@ -383,7 +383,8 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   FRIEND_TEST(ManagerTest, EnableTechnology);
   FRIEND_TEST(ManagerTest, EnumerateProfiles);
   FRIEND_TEST(ManagerTest, HandleProfileEntryDeletionWithUnload);
-  FRIEND_TEST(ManagerTest, InitializeProfiles);  // for wifi_provider_
+  FRIEND_TEST(ManagerTest, InitializeProfilesInformsProviders);
+  FRIEND_TEST(ManagerTest, InitializeProfilesHandlesDefaults);
   FRIEND_TEST(ManagerTest, IsDefaultProfile);
   FRIEND_TEST(ManagerTest, LinkMonitorEnabled);
   FRIEND_TEST(ManagerTest, NotifyDefaultServiceChanged);

@@ -23,6 +23,7 @@
 #include "shill/glib.h"
 #include "shill/key_file_store.h"
 #include "shill/key_value_store.h"
+#include "shill/link_monitor.h"
 #include "shill/logging.h"
 #include "shill/mock_adaptors.h"
 #include "shill/mock_connection.h"
@@ -40,8 +41,10 @@
 #include "shill/mock_store.h"
 #include "shill/mock_wifi_provider.h"
 #include "shill/mock_wifi_service.h"
+#include "shill/portal_detector.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/resolver.h"
 #include "shill/service_under_test.h"
 #include "shill/wifi_service.h"
 #include "shill/wimax_service.h"
@@ -3764,7 +3767,7 @@ TEST_F(ManagerTest, GetLoadableProfileEntriesForService) {
   EXPECT_EQ(kEntry2, entries[kProfileRpc2]);
 }
 
-TEST_F(ManagerTest, InitializeProfiles) {
+TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   // We need a real glib here, so that profiles are persisted.
   GLib glib;
   ScopedTempDir temp_dir;
@@ -3808,6 +3811,71 @@ TEST_F(ManagerTest, InitializeProfiles) {
   EXPECT_CALL(*wifi_provider, CreateServicesFromProfile(_)).Times(3);
   manager.InitializeProfiles();
   Mock::VerifyAndClearExpectations(wifi_provider);
+}
+
+TEST_F(ManagerTest, InitializeProfilesHandlesDefaults) {
+  // We need a real glib here, so that profiles are persisted.
+  GLib glib;
+  ScopedTempDir temp_dir;
+  scoped_ptr<Manager> manager;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  // Instantiate a Manager with empty persistent storage. Check that
+  // defaults are set.
+  //
+  // Note that we use the same directory for default and user profiles.
+  // This doesn't affect the test results, because we don't push a
+  // user profile.
+  manager.reset(new Manager(control_interface(),
+                            dispatcher(),
+                            metrics(),
+                            &glib,
+                            run_path(),
+                            temp_dir.path().value(),
+                            temp_dir.path().value()));
+  manager->InitializeProfiles();
+  EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
+            manager->props_.check_portal_list);
+  EXPECT_EQ(Resolver::kDefaultIgnoredSearchList,
+            manager->props_.ignored_dns_search_paths);
+  EXPECT_EQ(LinkMonitor::kDefaultLinkMonitorTechnologies,
+            manager->props_.link_monitor_technologies);
+  EXPECT_EQ(PortalDetector::kDefaultURL,
+            manager->props_.portal_url);
+  EXPECT_EQ(PortalDetector::kDefaultCheckIntervalSeconds,
+            manager->props_.portal_check_interval_seconds);
+
+  // Change one of the settings.
+  static const string kCustomCheckPortalList = "fiber0";
+  Error error;
+  manager->SetCheckPortalList(kCustomCheckPortalList, &error);
+  manager->profiles_[0]->Save();
+
+  // Instantiate a new manager. It should have our settings for
+  // check_portal_list, rather than the default.
+  manager.reset(new Manager(control_interface(),
+                            dispatcher(),
+                            metrics(),
+                            &glib,
+                            run_path(),
+                            temp_dir.path().value(),
+                            temp_dir.path().value()));
+  manager->InitializeProfiles();
+  EXPECT_EQ(kCustomCheckPortalList, manager->props_.check_portal_list);
+
+  // If we clear the persistent storage, we again get the default value.
+  ASSERT_TRUE(temp_dir.Delete());
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  manager.reset(new Manager(control_interface(),
+                            dispatcher(),
+                            metrics(),
+                            &glib,
+                            run_path(),
+                            temp_dir.path().value(),
+                            temp_dir.path().value()));
+  manager->InitializeProfiles();
+  EXPECT_EQ(PortalDetector::kDefaultCheckPortalList,
+            manager->props_.check_portal_list);
 }
 
 // Custom property setters should return false, and make no changes, if

@@ -275,6 +275,10 @@ void Manager::InitializeProfiles() {
       glib_, Profile::kCreateOrOpenExisting, NULL))
     CHECK(default_profile->InitStorage(glib_, Profile::kCreateNew,
                                        NULL));
+  // In case we created a new profile, initialize its default values,
+  // and then save. This is required for properties such as
+  // PortalDetector::kDefaultCheckPortalList to be initialized correctly.
+  LoadProperties(default_profile);
   default_profile->Save();
   default_profile = NULL;  // PushProfileInternal will re-create.
 
