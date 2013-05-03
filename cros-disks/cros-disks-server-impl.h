@@ -17,7 +17,6 @@
 
 namespace cros_disks {
 
-class ArchiveManager;
 class DiskManager;
 class FormatManager;
 class MountManager;
@@ -36,8 +35,9 @@ struct DeviceEvent;
 // FormatManager format_manager;
 // CrosDisksServer* server = new(std::nothrow)
 //     CrosDisksServer(server_conn, &platform,
-//                     &archive_manager,
 //                     &disk_manager, &format_manager);
+// server.RegisterMountManager(&disk_manager);
+// server.RegisterMountManager(&archive_manager);
 //
 // At this point the server should be attached to the main loop.
 //
@@ -51,10 +51,12 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
  public:
   CrosDisksServer(DBus::Connection& connection,  // NOLINT
                   Platform* platform,
-                  ArchiveManager* archive_manager,
                   DiskManager* disk_manager,
                   FormatManager* format_manager);
   virtual ~CrosDisksServer();
+
+  // Registers a mount manager.
+  void RegisterMountManager(MountManager* mount_manager);
 
   // A method for formatting a device specified by |path|.
   // On completion, a FormatCompleted signal is emitted to indicate whether
@@ -146,8 +148,6 @@ class CrosDisksServer : public org::chromium::CrosDisks_adaptor,
   void DoUnmountAll();
 
   Platform* platform_;
-
-  ArchiveManager* archive_manager_;
 
   DiskManager* disk_manager_;
 

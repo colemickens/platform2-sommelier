@@ -18,8 +18,7 @@ Daemon::Daemon(DBus::Connection* dbus_connection)
     : archive_manager_(kArchiveMountRootDirectory, &platform_, &metrics_),
       disk_manager_(kDiskMountRootDirectory, &platform_, &metrics_,
                     &device_ejector_),
-      server_(*dbus_connection, &platform_, &archive_manager_,
-              &disk_manager_, &format_manager_),
+      server_(*dbus_connection, &platform_, &disk_manager_, &format_manager_),
       event_moderator_(&server_, &disk_manager_),
       session_manager_proxy_(dbus_connection) {
 }
@@ -28,6 +27,10 @@ Daemon::~Daemon() {
 }
 
 void Daemon::Initialize() {
+  // Register mount managers with the commonly used ones come first.
+  server_.RegisterMountManager(&disk_manager_);
+  server_.RegisterMountManager(&archive_manager_);
+
   CHECK(platform_.SetMountUser(kNonPrivilegedMountUser))
       << "'" << kNonPrivilegedMountUser
       << "' is not available for non-privileged mount operations.";

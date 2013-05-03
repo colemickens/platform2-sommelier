@@ -21,31 +21,26 @@ namespace cros_disks {
 
 CrosDisksServer::CrosDisksServer(DBus::Connection& connection,  // NOLINT
                                  Platform* platform,
-                                 ArchiveManager* archive_manager,
                                  DiskManager* disk_manager,
                                  FormatManager* format_manager)
     : DBus::ObjectAdaptor(connection, kCrosDisksServicePath),
       platform_(platform),
-      archive_manager_(archive_manager),
       disk_manager_(disk_manager),
       format_manager_(format_manager) {
   CHECK(platform_) << "Invalid platform object";
-  CHECK(archive_manager_) << "Invalid archive manager object";
   CHECK(disk_manager_) << "Invalid disk manager object";
   CHECK(format_manager_) << "Invalid format manager object";
-
-  // TODO(benchan): Refactor the code so that we don't have to pass
-  //                DiskManager, ArchiveManager, etc to the constructor
-  //                of CrosDisksServer, but instead pass a list of mount
-  //                managers.
-  mount_managers_.push_back(disk_manager_);
-  mount_managers_.push_back(archive_manager_);
 
   InitializeProperties();
   format_manager_->set_observer(this);
 }
 
 CrosDisksServer::~CrosDisksServer() {
+}
+
+void CrosDisksServer::RegisterMountManager(MountManager* mount_manager) {
+  CHECK(mount_manager) << "Invalid mount manager object";
+  mount_managers_.push_back(mount_manager);
 }
 
 bool CrosDisksServer::IsAlive(DBus::Error& error) {  // NOLINT
