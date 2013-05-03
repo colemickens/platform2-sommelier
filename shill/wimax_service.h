@@ -78,10 +78,11 @@ class WiMaxService : public Service {
 
  private:
   friend class WiMaxServiceTest;
+  FRIEND_TEST(WiMaxServiceTest, Connect);
+  FRIEND_TEST(WiMaxServiceTest, Connectable);
   FRIEND_TEST(WiMaxServiceTest, GetDeviceRpcId);
   FRIEND_TEST(WiMaxServiceTest, IsAutoConnectable);
   FRIEND_TEST(WiMaxServiceTest, OnSignalStrengthChanged);
-  FRIEND_TEST(WiMaxServiceTest, Connectable);
   FRIEND_TEST(WiMaxServiceTest, SetState);
   FRIEND_TEST(WiMaxServiceTest, StartStop);
 

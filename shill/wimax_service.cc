@@ -159,14 +159,13 @@ void WiMaxService::Disconnect(Error *error) {
   Service::Disconnect(error);
   device_->DisconnectFrom(this, error);
   SetDevice(NULL);
-  // Set |need_passphrase_| to true so that after users explicitly disconnect
+  // Clear the EAP passphrase so that after users explicitly disconnect
   // from the network, the UI will prompt for credentials when they try to
   // re-connect to the same network. This works around the fact that there is
   // currently no mechanism for changing credentials for WiMAX connections.
   // TODO(benchan,petkov): Find a better way to allow users to change the
   // EAP credentials.
-  need_passphrase_ = true;
-  UpdateConnectable();
+  ClearPassphrase();
 }
 
 string WiMaxService::GetStorageIdentifier() const {
