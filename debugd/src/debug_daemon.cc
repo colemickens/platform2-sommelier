@@ -25,6 +25,7 @@ bool DebugDaemon::Init() {
   modem_status_tool_ = new ModemStatusTool();
   netif_tool_ = new NetifTool();
   network_status_tool_ = new NetworkStatusTool();
+  packet_capture_tool_ = new PacketCaptureTool();
   ping_tool_ = new PingTool();
   route_tool_ = new RouteTool();
   systrace_tool_ = new SystraceTool();
@@ -187,4 +188,17 @@ void DebugDaemon::BadblocksStop(const std::string& handle, DBus::Error& error) {
   return storage_tool_->Stop(handle, error);
 }
 
+std::string DebugDaemon::PacketCaptureStart(const DBus::FileDescriptor& statfd,
+                                            const DBus::FileDescriptor& outfd,
+                                            const std::map<std::string,
+                                                            DBus::Variant>&
+                                                 options,
+                                            DBus::Error& error) {
+  return packet_capture_tool_->Start(statfd, outfd, options, error);
+}
+
+void DebugDaemon::PacketCaptureStop(const std::string& handle,
+                                    DBus::Error& error) {
+  return packet_capture_tool_->Stop(handle, error);
+}
 };  // namespace debugd

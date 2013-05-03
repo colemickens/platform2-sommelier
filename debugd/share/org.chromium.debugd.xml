@@ -329,5 +329,60 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="PacketCaptureStart">
+      <tp:docstring>
+        Starts a packet capture with the specified options, with diagnostic
+        status directed to the "statfd" file descriptor and packet capture
+        data sent to the "outfd" file descriptor.  The returned opaque string
+        functions as a handle for this particular packet capture.  Multiple
+        captures can be running at once.  Captures can be initiated on
+        Ethernet-like devices or WiFi devices in "client mode" (showing only
+        Ethernet frames) by specifying the "device" parameter (see below).
+        By specifying a channel, the script will find or create a "monitor
+        mode" interface if one is available and produce an "over the air"
+        packet capture.  The name of the output packet capture file is sent
+        to the output file descriptor.
+      </tp:docstring>
+      <arg name="statfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send status information to.
+        </tp:docstring>
+      </arg>
+      <arg name="outfd" type="h" direction="in">
+        <tp:docstring>
+          File descriptor to send packet capture output to.
+        </tp:docstring>
+      </arg>
+      <arg name="options" type="a{sv}" direction="in">
+        <tp:docstring>
+          Options to pass to the packet capture command. Accepted keys include:
+            device (string): An existing device to perform a packet capture on.
+            frequency (int): Radio frequency (in MHz) to perform capture on.
+            ht_location (string): The string "above" or "below", representing
+                the offset of any secondary channel used in a 40 MHz HT
+                (high throughput) caputre.
+            monitor_connection_on (string): Instead of providing the "frequency"
+                and "ht_location" parameters above, this paramter specifies the
+                name of a currently connected 802.11 interface.  A packet
+                capture is initated on the same channel as this connection.
+          Unrecognized keys return a DBus error and print no output to the
+          supplied file descriptor.
+        </tp:docstring>
+      </arg>
+      <arg name="handle" type="s" direction="out">
+        <tp:docstring>
+          Opaque handle for this packet capture.
+        </tp:docstring>
+      </arg>
+    </method>
+    <method name="PacketCaptureStop">
+      <tp:docstring>
+        Stops a running packet capture.
+      </tp:docstring>
+      <arg name="handle" type="s" direction="in">
+        Handle to the packet capture to stop. If an empty string is passed,
+        stops all running packet captures.
+      </arg>
+    </method>
   </interface>
 </node>

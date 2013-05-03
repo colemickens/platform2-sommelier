@@ -11,6 +11,7 @@
 #include <dbus-c++/dbus.h>
 
 #include "adaptors/org.chromium.debugd.h"
+#include "packet_capture_tool.h"
 #include "debug_logs_tool.h"
 #include "debug_mode_tool.h"
 #include "example_tool.h"
@@ -121,6 +122,14 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual std::string BadblocksStart(const DBus::FileDescriptor& outfd,
                                      DBus::Error& error);
   virtual void BadblocksStop(const std::string& handle, DBus::Error& error);
+  virtual std::string PacketCaptureStart(const DBus::FileDescriptor& statfd,
+                                         const DBus::FileDescriptor& outfd,
+                                         const std::map<std::string,
+                                                        DBus::Variant>&
+                                             options,
+                                         DBus::Error& error);
+  virtual void PacketCaptureStop(const std::string& handle,
+                                 DBus::Error& error);
 
  private:
   DBus::Connection* dbus_;
@@ -135,6 +144,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   ModemStatusTool* modem_status_tool_;
   NetifTool* netif_tool_;
   NetworkStatusTool* network_status_tool_;
+  PacketCaptureTool* packet_capture_tool_;
   PerfTool* perf_tool_;
   PingTool* ping_tool_;
   RouteTool* route_tool_;

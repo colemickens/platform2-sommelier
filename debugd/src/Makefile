@@ -23,10 +23,28 @@ all: CXX_BINARY(debugd)
 
 tests: override NEEDS_MOUNTS = 1
 tests: TEST(CXX_BINARY(testrunner))
+tests:
+	bash ../src/helpers/capture_utility_test.sh
 
-TOOLS := $(patsubst %,%_tool.o,anonymizer debug_logs debug_mode example icmp \
-           log memory modem_status netif network_status ping perf route \
-           storage subprocess systrace tracepath)
+TOOLS := $(patsubst %,%_tool.o, \
+	anonymizer \
+	debug_logs \
+	debug_mode \
+	example \
+	icmp \
+	log \
+	memory \
+	modem_status \
+	netif \
+	network_status \
+	packet_capture \
+	ping \
+	perf \
+	route \
+	storage \
+	subprocess \
+	systrace \
+	tracepath)
 OBJS := debug_daemon.o process_with_id.o process_with_output.o \
         random_selector.o sandboxed_process.o $(TOOLS)
 TESTOBJS := \
@@ -40,6 +58,9 @@ CXX_BINARY(debugd): main.o $(OBJS)
 	$(call cxx_binary,-lminijail $(PC_LIBS))
 CXX_BINARY(testrunner): testrunner.o $(OBJS) $(TESTOBJS)
 	$(call cxx_binary,-lgtest -lminijail $(PC_LIBS))
+CXX_BINARY(helpers/capture_packets): helpers/capture_packets.o
+	$(call cxx_binary,-lpcap -lminijail)
+
 clean: CXX_BINARY(debugd)
 
 adaptors/%.h: ../share/%.xml
