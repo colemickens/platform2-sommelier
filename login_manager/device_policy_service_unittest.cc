@@ -905,7 +905,7 @@ TEST_F(DevicePolicyServiceTest, GetSettings) {
   Mock::VerifyAndClearExpectations(store_);
 
   // Storing new policy should cause the settings to update as well.
-  settings.mutable_device_local_accounts()->add_account()->set_id(owner_);
+  settings.mutable_metrics_enabled()->set_metrics_enabled(true);
   ASSERT_NO_FATAL_FAILURE(InitPolicy(settings, owner_, fake_sig_, "t", true));
   EXPECT_CALL(key_, Verify(_, _, _, _))
       .WillRepeatedly(Return(true));

@@ -4,6 +4,8 @@
 
 #include "device_local_account_policy_service.h"
 
+#include <algorithm>
+
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/file_util.h>
@@ -62,8 +64,11 @@ class DeviceLocalAccountPolicyServiceTest : public ::testing::Test {
 
   void SetupAccount() {
     em::ChromeDeviceSettingsProto device_settings;
-    device_settings.mutable_device_local_accounts()->add_account()->set_id(
-        fake_account_);
+    em::DeviceLocalAccountInfoProto* account =
+        device_settings.mutable_device_local_accounts()->add_account();
+    account->set_type(
+        em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION);
+    account->set_account_id(fake_account_);
     service_->UpdateDeviceSettings(device_settings);
   }
 
@@ -235,6 +240,55 @@ TEST_F(DeviceLocalAccountPolicyServiceTest, MigrateUppercaseDirs) {
   EXPECT_FALSE(file_util::DirectoryExists(fp2));
   EXPECT_TRUE(file_util::DirectoryExists(fp2lower));
   EXPECT_TRUE(file_util::DirectoryExists(fpunrel));
+}
+
+TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdFallback) {
+  // Check that a legacy public session ID continues to work as long as the
+  // account_id / type fields are not present.
+  em::ChromeDeviceSettingsProto device_settings;
+  em::DeviceLocalAccountInfoProto* account =
+      device_settings.mutable_device_local_accounts()->add_account();
+  account->set_deprecated_public_session_id(fake_account_);
+  service_->UpdateDeviceSettings(device_settings);
+  SetupKey();
+
+  EXPECT_CALL(completion_, Success());
+  EXPECT_TRUE(
+      service_->Store(fake_account_,
+                      reinterpret_cast<const uint8*>(policy_blob_.c_str()),
+                      policy_blob_.size(), &completion_));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_TRUE(file_util::PathExists(fake_account_policy_path_));
+
+  std::vector<uint8> policy_data;
+  EXPECT_TRUE(service_->Retrieve(fake_account_, &policy_data));
+
+  ASSERT_EQ(policy_blob_.size(), policy_data.size());
+  EXPECT_TRUE(std::equal(policy_blob_.begin(), policy_blob_.end(),
+                         policy_data.begin()));
+}
+
+TEST_F(DeviceLocalAccountPolicyServiceTest, LegacyPublicSessionIdIgnored) {
+  // If there's a legacy public session ID and an account id / type pair, the
+  // former should get ignored.
+  const char kDeprecatedId[] = "deprecated";
+  em::ChromeDeviceSettingsProto device_settings;
+  em::DeviceLocalAccountInfoProto* account =
+      device_settings.mutable_device_local_accounts()->add_account();
+  account->set_deprecated_public_session_id(kDeprecatedId);
+  account->set_type(
+      em::DeviceLocalAccountInfoProto::ACCOUNT_TYPE_PUBLIC_SESSION);
+  account->set_account_id(fake_account_);
+  service_->UpdateDeviceSettings(device_settings);
+  SetupKey();
+
+  EXPECT_CALL(completion_, Failure(_));
+  EXPECT_FALSE(
+      service_->Store(kDeprecatedId,
+                      reinterpret_cast<const uint8*>(policy_blob_.c_str()),
+                      policy_blob_.size(), &completion_));
+  base::RunLoop().RunUntilIdle();
+  EXPECT_FALSE(file_util::PathExists(fake_account_policy_path_));
 }
 
 }  // namespace login_manager

@@ -76,10 +76,15 @@ void DeviceLocalAccountPolicyService::UpdateDeviceSettings(
       device_settings.device_local_accounts().account());
   for (DeviceLocalAccountList::const_iterator account(list.begin());
        account != list.end(); ++account) {
-    if (account->has_id()) {
-      const std::string account_key = GetAccountKey(account->id());
-      new_policy_map[account_key] = policy_map_[account_key];
+    std::string account_key;
+    if (account->has_account_id()) {
+      account_key = GetAccountKey(account->account_id());
+    } else if (!account->has_type() &&
+               account->has_deprecated_public_session_id()) {
+      account_key = GetAccountKey(account->deprecated_public_session_id());
     }
+    if (!account_key.empty())
+      new_policy_map[account_key] = policy_map_[account_key];
   }
   policy_map_.swap(new_policy_map);
 
