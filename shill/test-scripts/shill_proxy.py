@@ -335,29 +335,32 @@ class ShillProxy(object):
 
 
     def find_object(self, object_type, properties):
-        """
-        Get a the first shill object of |object_type| whose properties match
-        that of |properties|.
+        """Find a shill object with the specified type and properties.
+
+        Return the first shill object of |object_type| whose properties match
+        all that of |properties|.
 
         @param object_type string representing the type of object to be
-            returned, eg "Service"
+            returned. Valid values are those object types defined in
+            |OBJECT_TYPE_PROPERTY_MAP|.
         @param properties dict of strings understood by shill to describe
             a service.
-        @return DBus object interface representing a the object found.
+        @return DBus object interface representing the object found or None
+            if no matching object is found.
 
         """
         if object_type not in self.OBJECT_TYPE_PROPERTY_MAP:
-          return None
+            return None
 
         dbus_type, manager_property = self.OBJECT_TYPE_PROPERTY_MAP[object_type]
         manager_properties = self.manager.GetProperties(utf8_strings=True)
         for path in manager_properties[manager_property]:
-          test_object = self.get_dbus_object(dbus_type, path)
-          object_properties = test_object.GetProperties(utf8_strings=True)
-          for name, value in properties.iteritems():
-            if (name not in object_properties or
-                dbus2primitive(object_properties[name]) != value):
-              break
-          else:
-            return test_object
+            test_object = self.get_dbus_object(dbus_type, path)
+            object_properties = test_object.GetProperties(utf8_strings=True)
+            for name, value in properties.iteritems():
+                if (name not in object_properties or
+                    dbus2primitive(object_properties[name]) != value):
+                    break
+            else:
+                return test_object
         return None
