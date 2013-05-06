@@ -35,7 +35,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CXXFLAGS += -I$(SRC)/.. -I$(OUT) $(PC_CFLAGS) -DNDEBUG
-LDLIBS += $(PC_LIBS)
+LDLIBS += $(PC_LIBS) -lmetrics
 
 # Test if libmemenv is available, and whether libsnappy is required to
 # compile LevelDB.

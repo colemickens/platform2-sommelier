@@ -20,6 +20,7 @@
 #ifndef NO_MEMENV
 #include <leveldb/memenv.h>
 #endif
+#include <metrics/metrics_library.h>
 
 #include "chaps/chaps_utility.h"
 #include "pkcs11/cryptoki.h"
@@ -53,6 +54,9 @@ ObjectStoreImpl::ObjectStoreImpl() {}
 ObjectStoreImpl::~ObjectStoreImpl() {}
 
 bool ObjectStoreImpl::Init(const FilePath& database_path) {
+  MetricsLibrary metrics;
+  metrics.Init();
+
   LOG(INFO) << "Opening database in: " << database_path.value();
   leveldb::Options options;
   options.create_if_missing = true;
@@ -75,6 +79,16 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
                                              &db);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to open database: " << status.ToString();
+    metrics.SendCrosEventToUMA("Chaps.DatabaseCorrupted");
+    LOG(WARNING) << "Attempting to repair database.";
+    status = leveldb::RepairDB(database_name.value(), leveldb::Options());
+    if (status.ok())
+      status = leveldb::DB::Open(options, database_name.value(), &db);
+  }
+
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to repair database: " << status.ToString();
+    metrics.SendCrosEventToUMA("Chaps.DatabaseRepairFailure");
     // We don't want to risk using a database that has been corrupted. Recreate
     // the database from scratch but save the corrupted database for diagnostic
     // purposes.
@@ -86,13 +100,15 @@ bool ObjectStoreImpl::Init(const FilePath& database_path) {
       LOG(ERROR) << "Failed to move database." << status.ToString();
       return false;
     }
-    // Now retry the open.
     status = leveldb::DB::Open(options, database_name.value(), &db);
-    if (!status.ok()) {
-      LOG(ERROR) << "Failed to open database again: " << status.ToString();
-      return false;
-    }
   }
+
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to create new database: " << status.ToString();
+    metrics.SendCrosEventToUMA("Chaps.DatabaseCreateFailure");
+    return false;
+  }
+
   db_.reset(db);
   int version = 0;
   if (!ReadInt(kDatabaseVersionKey, &version)) {
