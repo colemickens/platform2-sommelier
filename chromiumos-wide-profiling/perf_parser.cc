@@ -5,7 +5,6 @@
 #include "perf_parser.h"
 
 #include <algorithm>
-#include <list>
 
 #include "base/logging.h"
 
