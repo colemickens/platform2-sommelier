@@ -27,7 +27,7 @@ CPPFLAGS += -I$(SRC)/include -I$(SRC)/.. -I$(SRC) -I$(OUT) \
 	-I$(OUT)cros-disks $(PC_CFLAGS)
 LDLIBS += -lblkid -lmetrics -lminijail -lparted -lrootdev -ludev $(PC_LIBS)
 
-GEN_DBUSXX(cros-disks/cros-disks-server.h): $(SRC)/cros-disks.xml
+GEN_DBUSXX(cros-disks/cros-disks-server.h): $(SRC)/cros-disks-server.xml
 cros-disks/cros-disks-server.h: GEN_DBUSXX(cros-disks/cros-disks-server.h)
 clean: CLEAN(cros-disks/cros-disks-server.h)
 
