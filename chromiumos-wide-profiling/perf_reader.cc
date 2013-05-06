@@ -596,10 +596,11 @@ bool PerfReader::ReadAttrs(const std::vector<char>& data) {
 
     current_attr.ids.resize(ids.size / sizeof(current_attr.ids[0]));
     for (size_t j = 0; j < ids.size / sizeof(current_attr.ids[0]); j++) {
-      uint64& id = current_attr.ids[j];
+      uint64 id = 0;
       offset = ids.offset + j * sizeof(id);
       if (!ReadDataFromVector(data, offset, sizeof(id), "ID", &id))
         return false;
+      current_attr.ids[j] = id;
     }
   }
   if (num_attrs > 0)
@@ -716,7 +717,7 @@ bool PerfReader::WriteAttrs(std::vector<char>* data) const {
     ids.size = attr.ids.size() * sizeof(attr.ids[0]);
 
     for (size_t j = 0; j < attr.ids.size(); j++) {
-      const uint64& id = attr.ids[j];
+      const uint64 id = attr.ids[j];
       size_t offset = ids.offset + j * sizeof(id);
       if (!WriteDataToVector(&id, offset, sizeof(id), "ID info", data))
         return false;
