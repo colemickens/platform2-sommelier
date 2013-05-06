@@ -9,9 +9,11 @@
 #include <errno.h>
 #include <grp.h>
 #include <limits.h>
+#include <mntent.h>
 #include <pwd.h>
 #include <signal.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
@@ -25,9 +27,9 @@
 #include <base/stringprintf.h>
 #include <base/sys_info.h>
 #include <base/time.h>
+#include <chromeos/process.h>
+#include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
-
-#include "process_information.h"
 
 using base::SplitString;
 using std::string;
@@ -40,17 +42,49 @@ const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
 const std::string kMtab = "/etc/mtab";
 const std::string kProcDir = "/proc";
+const std::string kPathDf = "/bin/df";
+const std::string kPathTune2fs = "/sbin/tune2fs";
 
-Platform::Platform() { }
+Platform::Platform()
+  : mtab_path_(kMtab) {
+}
 
-Platform::~Platform() { }
+Platform::~Platform() {
+}
+
+bool Platform::GetMountsBySourcePrefix(const std::string& from_prefix,
+                 std::multimap<const std::string, const std::string>* mounts) {
+  std::string contents;
+  if (!file_util::ReadFileToString(FilePath(mtab_path_), &contents))
+    return false;
+
+  std::vector<std::string> lines;
+  SplitString(contents, '\n', &lines);
+  for (std::vector<std::string>::iterator it = lines.begin();
+       it < lines.end();
+       ++it) {
+    if (it->substr(0, from_prefix.size()) != from_prefix)
+      continue;
+    // If there is no mounts pointer, we can return true right away.
+    if (!mounts)
+      return true;
+    size_t src_end = it->find(' ');
+    std::string source = it->substr(0, src_end);
+    size_t dst_start = src_end + 1;
+    size_t dst_end = it->find(' ', dst_start);
+    std::string destination = it->substr(dst_start, dst_end - dst_start);
+    mounts->insert(
+      std::pair<const std::string, const std::string>(source, destination));
+  }
+  return mounts && mounts->size();
+}
 
 bool Platform::IsDirectoryMounted(const std::string& directory) {
   // Trivial string match from /etc/mtab to see if the cryptohome mount point is
   // listed.  This works because Chrome OS is a controlled environment and the
   // only way /home/chronos/user should be mounted is if cryptohome mounted it.
   string contents;
-  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
+  if (file_util::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if (contents.find(StringPrintf(" %s ", directory.c_str()))
         != string::npos) {
       return true;
@@ -65,7 +99,7 @@ bool Platform::IsDirectoryMountedWith(const std::string& directory,
   // and the user's vault path are present.  Assumes this user is mounted if it
   // finds both.  This will need to change if simultaneous login is implemented.
   string contents;
-  if (file_util::ReadFileToString(FilePath(kMtab), &contents)) {
+  if (file_util::ReadFileToString(FilePath(mtab_path_), &contents)) {
     if ((contents.find(StringPrintf(" %s ", directory.c_str()))
          != string::npos)
         && (contents.find(StringPrintf("%s ",
@@ -369,8 +403,46 @@ bool Platform::DirectoryExists(const std::string& path) {
   return file_util::DirectoryExists(FilePath(path));
 }
 
+bool Platform::GetFileSize(const std::string& path, int64* size) {
+  return file_util::GetFileSize(FilePath(path), size);
+}
+
+FILE* Platform::CreateAndOpenTemporaryFile(std::string* path) {
+  FilePath created_path;
+  FILE* f = file_util::CreateAndOpenTemporaryFile(&created_path);
+  if (f)
+    path->assign(created_path.value());
+
+  return f;
+}
+
+FILE* Platform::OpenFile(const std::string& path, const char* mode) {
+  return file_util::OpenFile(FilePath(path), mode);
+}
+
+bool Platform::CloseFile(FILE* fp) {
+  return file_util::CloseFile(fp);
+}
+
+bool Platform::WriteOpenFile(FILE* fp, const chromeos::Blob& blob) {
+  return (fwrite(static_cast<const void*>(&blob.at(0)), 1, blob.size(), fp)
+            != blob.size());
+}
+
 bool Platform::WriteFile(const std::string& path,
                          const chromeos::Blob& blob) {
+  return WriteArrayToFile(path,
+                          reinterpret_cast<const char*>(&blob[0]),
+                          blob.size());
+}
+
+bool Platform::WriteStringToFile(const std::string& path,
+                                 const std::string& data) {
+  return WriteArrayToFile(path, data.data(), data.size());
+}
+
+bool Platform::WriteArrayToFile(const std::string& path, const char* data,
+                                size_t size) {
   FilePath file_path(path);
   if (!file_util::DirectoryExists(file_path.DirName())) {
     if (!file_util::CreateDirectory(file_path.DirName())) {
@@ -379,17 +451,14 @@ bool Platform::WriteFile(const std::string& path,
     }
   }
   // chromeos::Blob::size_type is std::vector::size_type and is unsigned.
-  if (blob.size() > static_cast<chromeos::Blob::size_type>(INT_MAX)) {
+  if (size > static_cast<std::string::size_type>(INT_MAX)) {
     LOG(ERROR) << "Cannot write to " << path
-               << ". Blob is too large: " << blob.size() << " bytes.";
+               << ". Data is too large: " << size << " bytes.";
     return false;
   }
 
-  int data_written = file_util::WriteFile(
-      file_path,
-      reinterpret_cast<const char*>(&blob[0]),
-      blob.size());
-  return data_written == static_cast<int>(blob.size());
+  int data_written = file_util::WriteFile(file_path, data, size);
+  return data_written == static_cast<int>(size);
 }
 
 bool Platform::ReadFile(const std::string& path, chromeos::Blob* blob) {
@@ -433,6 +502,10 @@ bool Platform::DeleteFile(const std::string& path, bool is_recursive) {
   return file_util::Delete(FilePath(path), is_recursive);
 }
 
+bool Platform::Move(const std::string& from, const std::string& to) {
+  return file_util::Move(FilePath(from), FilePath(to));
+}
+
 bool Platform::EnumerateDirectoryEntries(const std::string& path,
                                          bool recursive,
                                          std::vector<std::string>* ent_list) {
@@ -461,6 +534,142 @@ bool Platform::Copy(const std::string& from, const std::string& to) {
   FilePath from_path(from);
   FilePath to_path(to);
   return file_util::CopyDirectory(from_path, to_path, true);
+}
+
+bool Platform::GetFilesystemStats(const std::string& fs, struct statvfs *st) {
+  return statvfs(fs.c_str(), st) == 0;
+}
+
+bool Platform::FindFilesystemDevice(const std::string &filesystem_in,
+                                    std::string *device)
+{
+  /* Clear device to indicate failure case. */
+  device->clear();
+
+  /* Removing trailing slashes. */
+  std::string filesystem = filesystem_in;
+  size_t offset = filesystem.find_last_not_of('/');
+  if (offset != std::string::npos)
+    filesystem.erase(offset+1);
+
+  /* If we fail to open mtab, abort immediately. */
+  FILE *mtab_file = setmntent(mtab_path_.c_str(), "r");
+  if (!mtab_file)
+    return false;
+
+  /* Copy device of first matching filesystem location. */
+  struct mntent *entry;
+  while ((entry = getmntent(mtab_file)) != NULL) {
+    if (filesystem.compare(entry->mnt_dir) == 0) {
+      *device = entry->mnt_fsname;
+      break;
+    }
+  }
+  endmntent(mtab_file);
+
+  return (device->length() > 0);
+}
+
+bool Platform::ReportFilesystemDetails(const std::string &filesystem,
+                                       const std::string &logfile) {
+  chromeos::ProcessImpl process;
+  int rc;
+  std::string device;
+  if (!FindFilesystemDevice(filesystem, &device)) {
+    LOG(ERROR) << "Failed to find device for " << filesystem;
+    return false;
+  }
+
+  process.RedirectOutput(logfile);
+  process.AddArg(kPathTune2fs);
+  process.AddArg("-l");
+  process.AddArg(device);
+
+  rc = process.Run();
+  if (rc == 0)
+    return true;
+  LOG(ERROR) << "Failed to run tune2fs on " << device
+             << " (" << filesystem << ", exit " << rc << ")";
+  return false;
+}
+
+long Platform::ClearUserKeyring() {
+  CHECK(0 && "unimplemented stub called");
+  return 1;
+}
+
+long Platform::AddEcryptfsAuthToken(const chromeos::SecureBlob& key,
+                                    const std::string& key_sig,
+                                    const chromeos::SecureBlob& salt) {
+  CHECK(0 && "unimplemented stub called");
+  return 1;
+}
+
+FileEnumerator* Platform::GetFileEnumerator(const std::string& root_path,
+                                            bool recursive,
+                                            int file_type) {
+  return new FileEnumerator(root_path, recursive, file_type);
+}
+
+
+
+FileEnumerator::FileEnumerator(const std::string& root_path,
+                               bool recursive,
+                               int file_type) {
+  enumerator_ = new file_util::FileEnumerator(
+      FilePath(root_path),
+      recursive,
+      static_cast<file_util::FileEnumerator::FileType>(file_type));
+}
+
+FileEnumerator::FileEnumerator(const std::string& root_path,
+                               bool recursive,
+                               int file_type,
+                               const std::string& pattern) {
+  enumerator_ = new file_util::FileEnumerator(
+      FilePath(root_path),
+      recursive,
+      static_cast<file_util::FileEnumerator::FileType>(file_type),
+      pattern);
+}
+
+FileEnumerator::~FileEnumerator() {
+  if (enumerator_)
+    delete enumerator_;
+}
+
+std::string FileEnumerator::Next() {
+  if (!enumerator_)
+    return "";
+  return enumerator_->Next().value();
+}
+
+void FileEnumerator::GetFindInfo(FindInfo* info) {
+  DCHECK(info);
+  enumerator_->GetFindInfo(
+      reinterpret_cast<file_util::FileEnumerator::FindInfo*>(info));
+}
+
+// static
+bool FileEnumerator::IsDirectory(const FindInfo& info) {
+ return !!S_ISDIR(info.stat.st_mode);
+}
+
+//static
+std::string FileEnumerator::GetFilename(const FindInfo& find_info) {
+  return find_info.filename;
+}
+
+// static
+int64 FileEnumerator::GetFilesize(const FindInfo& info) {
+  return file_util::FileEnumerator::GetFilesize(
+    *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
+}
+
+// static
+base::Time FileEnumerator::GetLastModifiedTime(const FindInfo& info) {
+  return file_util::FileEnumerator::GetLastModifiedTime(
+    *(reinterpret_cast<const file_util::FileEnumerator::FindInfo*>(&info)));
 }
 
 }  // namespace chromeos
