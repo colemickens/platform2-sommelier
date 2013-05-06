@@ -64,7 +64,36 @@ class ShillProxy(object):
     SERVICE_PROPERTY_STATE = 'State'
     SERVICE_PROPERTY_TYPE = 'Type'
 
+    TECHNOLOGY_CELLULAR = 'cellular'
+    TECHNOLOGY_ETHERNET = 'ethernet'
+    TECHNOLOGY_VPN = 'vpn'
+    TECHNOLOGY_WIFI = 'wifi'
+    TECHNOLOGY_WIMAX = 'wimax'
+
     POLLING_INTERVAL_SECONDS = 0.2
+
+    # Default log level used in connectivity tests.
+    LOG_LEVEL_FOR_TEST = -4
+
+    # Default log scopes used in connectivity tests.
+    LOG_SCOPES_FOR_TEST_COMMON = [
+        'connection',
+        'dbus',
+        'device',
+        'link',
+        'manager',
+        'portal',
+        'service'
+    ]
+
+    # Default log scopes used in connectivity tests for specific technologies.
+    LOG_SCOPES_FOR_TEST = {
+        TECHNOLOGY_CELLULAR: LOG_SCOPES_FOR_TEST_COMMON + ['cellular'],
+        TECHNOLOGY_ETHERNET: LOG_SCOPES_FOR_TEST_COMMON + ['ethernet'],
+        TECHNOLOGY_VPN: LOG_SCOPES_FOR_TEST_COMMON + ['vpn'],
+        TECHNOLOGY_WIFI: LOG_SCOPES_FOR_TEST_COMMON + ['wifi'],
+        TECHNOLOGY_WIMAX: LOG_SCOPES_FOR_TEST_COMMON + ['wimax']
+    }
 
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 
@@ -160,6 +189,34 @@ class ShillProxy(object):
         """
         path = self.manager.GetService(params)
         return self.get_dbus_object(self.DBUS_TYPE_SERVICE, path)
+
+
+    def set_logging(self, level, scopes):
+        """Set the logging in shill to the specified |level| and |scopes|.
+
+        @param level int log level to set to in shill.
+        @param scopes list of strings of log scopes to set to in shill.
+
+        """
+        self.manager.SetDebugLevel(level)
+        self.manager.SetDebugTags('+'.join(scopes))
+
+
+    def set_logging_for_test(self, technology):
+        """Set the logging in shill for a test of the specified |technology|.
+
+        Set the log level to |LOG_LEVEL_FOR_TEST| and the log scopes to the
+        ones defined in |LOG_SCOPES_FOR_TEST| for |technology|. If |technology|
+        is not found in |LOG_SCOPES_FOR_TEST|, the log scopes are set to
+        |LOG_SCOPES_FOR_TEST_COMMON|.
+
+        @param technology string representing the technology type of a test
+            that the logging in shill is to be customized for.
+
+        """
+        scopes = self.LOG_SCOPES_FOR_TEST.get(technology,
+                                              self.LOG_SCOPES_FOR_TEST_COMMON)
+        self.set_logging(self.LOG_LEVEL_FOR_TEST, scopes)
 
 
     def connect_to_wifi_network(self,
