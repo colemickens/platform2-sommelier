@@ -330,15 +330,16 @@ cleanup_on_failure() {
   set +e
 
   # Generate the diagnostics log that can be used by a caller.
-  echo "Running a hw diagnostics test -- this will take a couple minutes."
-  badblocks -sv "$DST" 2>"${HARDWARE_DIAGNOSTICS_PATH}" 1>&2
-  cat "${HARDWARE_DIAGNOSTICS_PATH}"
+  echo "Running a hw diagnostics test -- this might take a couple minutes."
+  badblocks -sv "${DST}" 2>&1 | tee "${HARDWARE_DIAGNOSTICS_PATH}"
 
   # Run a few extra diagnostics and then them to stdout. These will be stored
   # as part of the recovery.log for recovery images.
-  smartctl -l error "$DST"
-  smartctl -l selftest "$DST"
-  smartctl -a "$DST"
+  if which smartctl >/dev/null 2>&1; then
+    smartctl -l error "${DST}"
+    smartctl -l selftest "${DST}"
+    smartctl -a "${DST}"
+  fi
 
   cleanup
 }
