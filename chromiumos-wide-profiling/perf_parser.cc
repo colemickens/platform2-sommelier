@@ -153,7 +153,7 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   uint64& offset = parsed_event->dso_and_offset.offset;
   if (!MapIPAndPidAndGetNameAndOffset(event.ip,
                                       event.pid,
-                                      &event.ip,
+                                      reinterpret_cast<uint64*>(&event.ip),
                                       &name,
                                       &offset)) {
     mapping_failed = true;
@@ -167,7 +167,8 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
     for (unsigned int j = 0; j < callchain->nr; ++j) {
       if (!MapIPAndPidAndGetNameAndOffset(callchain->ips[j],
                                           event.pid,
-                                          &callchain->ips[j],
+                                          reinterpret_cast<uint64*>(
+                                              &callchain->ips[j]),
                                           &parsed_event->callchain[j].dso_name,
                                           &parsed_event->callchain[j].offset)) {
         mapping_failed = true;
@@ -184,14 +185,15 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
       ParsedEvent::BranchEntry& parsed_entry = parsed_event->branch_stack[i];
       if (!MapIPAndPidAndGetNameAndOffset(entry.from,
                                           event.pid,
-                                          &entry.from,
+                                          reinterpret_cast<uint64*>(
+                                              &entry.from),
                                           &parsed_entry.from.dso_name,
                                           &parsed_entry.from.offset)) {
         mapping_failed = true;
       }
       if (!MapIPAndPidAndGetNameAndOffset(entry.to,
                                           event.pid,
-                                          &entry.to,
+                                          reinterpret_cast<uint64*>(&entry.to),
                                           &parsed_entry.to.dso_name,
                                           &parsed_entry.to.offset)) {
         mapping_failed = true;
