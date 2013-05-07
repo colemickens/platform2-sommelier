@@ -1,3 +1,6 @@
+# This file is included for every single target.
+# Use it to define Platform2 wide settings and defaults.
+
 {
   'variables': {
     # Set this to 1 if you'd like to enable -Werror.
