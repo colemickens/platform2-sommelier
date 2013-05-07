@@ -4,8 +4,6 @@
 
 #include "gobi_cdma_modem.h"
 #include "gobi_modem_handler.h"
-#include <cromo/carrier.h>
-#include <mm/mm-modem.h>
 
 extern "C" {
 #include <fcntl.h>
@@ -13,8 +11,20 @@ extern "C" {
 #include <sys/types.h>
 };
 
+#include <base/file_path.h>
+#include <base/file_util.h>
+#include <base/stringprintf.h>
+#include <cromo/carrier.h>
+#include <mm/mm-modem.h>
+
+using base::FilePath;
+using base::StringPrintf;
+using std::string;
 using utilities::DBusPropertyMap;
 
+// static
+static const char kExecPostActivationStepsCookieCrumbFormat[] =
+    "/tmp/cromo-modem-exec-post-activation-steps-%s";
 
 //======================================================================
 // Construct and destruct
@@ -31,6 +41,25 @@ GobiCdmaModem::GobiCdmaModem(DBus::Connection& connection,
 }
 
 GobiCdmaModem::~GobiCdmaModem() {
+}
+
+void GobiCdmaModem::Init() {
+  GobiModem::Init();
+
+  DBus::Error error;
+  ScopedApiConnection connection(*this);
+  connection.ApiConnect(error);
+  if (error.is_set()) {
+    LOG(ERROR) << "Failed to connect to Gobi modem, "
+               << "skipping post activation steps";
+    return;
+  }
+  int activation_state = GobiCdmaModem::GetMmActivationState();
+  if (activation_state == MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED &&
+      ShouldExecPostActivationSteps()) {
+    LOG(INFO) << "Executing post activation steps";
+    PerformPostActivationSteps();
+  }
 }
 
 void GobiCdmaModem::GetCdmaRegistrationState(ULONG* cdma_1x_state,
@@ -75,7 +104,11 @@ int GobiCdmaModem::GetMmActivationState() {
     LOG(ERROR) << "GetActivationState: " << rc;
     return -1;
   }
-  LOG(INFO) << "device activation state: " << device_activation_state;
+  LOG(INFO) << "Device activation state: " << device_activation_state;
+  if (activation_in_progress_ && !force_activated_status_) {
+    LOG(INFO) << "Device activation still in progress";
+    return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATING;
+  }
   if (device_activation_state == 1) {
     return MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;
   }
@@ -220,9 +253,10 @@ static void OMADMAlertCallback(ULONG type, USHORT id) {
   LOG(INFO) << "OMDADMAlertCallback type " << type << " id " << id;
 }
 
-gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
+gboolean GobiCdmaModem::OmadmStateDeviceConfigureCallback(gpointer data) {
   OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
-  LOG(INFO) << "OMA-DM State Callback: " << args->session_state;
+  LOG(INFO) << "OMA-DM State Device Configure Callback: "
+            << args->session_state;
   GobiCdmaModem* modem = LookupCdmaModem(handler_, *args->path);
   bool activation_done = true;
   if (modem != NULL) {
@@ -230,9 +264,13 @@ gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
       case gobi::kOmadmComplete:
         modem->SendActivationStateChanged(
             MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR);
+        // Activation completed successfully, the modem will reset.  Mark the
+        // modem to execute post activation steps when it's next seen.
+        modem->MarkForExecPostActivationStepsAfterReset();
         break;
       case gobi::kOmadmFailed:
-        LOG(INFO) << "OMA-DM failure reason: " << args->failure_reason;
+        LOG(INFO) << "OMA-DM device configuration failure reason: "
+                  << args->failure_reason;
         // fall through
       case gobi::kOmadmUpdateInformationUnavailable:
         modem->SendActivationStateChanged(
@@ -244,9 +282,43 @@ gboolean GobiCdmaModem::OmadmStateCallback(gpointer data) {
   }
 
   if (activation_done) {
+    modem->sdk_->SetOMADMStateCallback(NULL);
     modem->ActivationFinished();
   }
 
+  return FALSE;
+}
+
+gboolean GobiCdmaModem::OmadmStateClientPrlUpdateCallback(gpointer data) {
+  OmadmStateArgs* args = static_cast<OmadmStateArgs*>(data);
+  LOG(INFO) << "OMA-DM State Client PRL Update Callback: "
+            << args->session_state;
+  GobiCdmaModem* modem = LookupCdmaModem(handler_, *args->path);
+  bool done = true;
+  switch (args->session_state) {
+    case gobi::kOmadmComplete:
+      LOG(INFO) << "OMA-DM client initiated PRL completed, "
+                << "information updated.";
+      break;
+    case gobi::kOmadmUpdateInformationUnavailable:
+      LOG(INFO) << "OMA-DM client initiated PRL completed, "
+                << "update information unavailable (PRL up-to-date).";
+      break;
+    case gobi::kOmadmFailed:
+      LOG(INFO) << "OMA-DM client initiated PRL update failure reason: "
+                << args->failure_reason;
+      break;
+    case gobi::kOmadmPrlDownloaded:
+      LOG(INFO) << "OMA-DM client initiated PRL completed, PRL downloaded.";
+      break;
+    default:
+      done = false;
+      break;
+  }
+  if (done) {
+    modem->sdk_->SetOMADMStateCallback(NULL);
+    modem->activation_in_progress_ = false;
+  }
   return FALSE;
 }
 
@@ -273,7 +345,7 @@ void GobiCdmaModem::RegisterCallbacks() {
   GobiModem::RegisterCallbacks();
   sdk_->SetOMADMAlertCallback(OMADMAlertCallback);
   sdk_->SetActivationStatusCallback(ActivationStatusCallbackTrampoline);
-  sdk_->SetOMADMStateCallback(OmadmStateCallbackTrampoline);
+  sdk_->SetOMADMStateCallback(NULL);
 }
 
 //======================================================================
@@ -497,16 +569,18 @@ void GobiCdmaModem::ActivateManualDebug(
 
 uint32_t GobiCdmaModem::ActivateOmadm() {
   ULONG rc;
-  LOG(INFO) << "Activating OMA-DM";
+  LOG(INFO) << "Activating OMA-DM device configure";
 
   rc = sdk_->OMADMSetPRLUpdateFeature(TRUE);
   if (rc != 0) {
-    LOG(ERROR) << "OMA-DM activation failed to enable PRL update: " << rc;
+    LOG(ERROR) << "OMA-DM device configure activation failed to enable PRL "
+               << "update: " << rc;
     return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
   }
+  sdk_->SetOMADMStateCallback(OmadmStateDeviceConfigureCallbackTrampoline);
   rc = sdk_->OMADMStartSession(gobi::kConfigure);
   if (rc != 0) {
-    LOG(ERROR) << "OMA-DM activation failed: " << rc;
+    LOG(ERROR) << "OMA-DM device configure activation failed: " << rc;
     return MM_MODEM_CDMA_ACTIVATION_ERROR_START_FAILED;
   }
   return MM_MODEM_CDMA_ACTIVATION_ERROR_NO_ERROR;
@@ -527,6 +601,29 @@ uint32_t GobiCdmaModem::ActivateOtasp(const std::string& number) {
 void GobiCdmaModem::ActivationFinished(void) {
   activation_time_.StopIfStarted();
   activation_in_progress_ = false;
+}
+
+void GobiCdmaModem::PerformPostActivationSteps() {
+  activation_in_progress_ = true;
+  StartClientInitiatedPrlUpdate();
+}
+
+void GobiCdmaModem::StartClientInitiatedPrlUpdate() {
+  LOG(INFO) << "Activating OMA-DM client initiated PRL update";
+  sdk_->SetOMADMStateCallback(OmadmStateClientPrlUpdateCallbackTrampoline);
+  ULONG rc = sdk_->OMADMSetPRLUpdateFeature(TRUE);
+  if (rc != 0) {
+    LOG(ERROR) << "OMA-DM client initiated PRL update failed to enable PRL "
+               << "update: " << rc;
+    sdk_->SetOMADMStateCallback(NULL);
+    return;
+  }
+  rc = sdk_->OMADMStartSession(gobi::kPrlUpdate);
+  if (rc != 0) {
+    LOG(ERROR) << "OMA-DM client initiated PRL update failed to start: "
+               << rc;
+    sdk_->SetOMADMStateCallback(NULL);
+  }
 }
 
 std::string GobiCdmaModem::GetEsn(DBus::Error& error) {
@@ -673,7 +770,7 @@ void GobiCdmaModem::SetTechnologySpecificProperties() {
 }
 
 bool GobiCdmaModem::CheckEnableOk(DBus::Error &error) {
-  return true;
+  return !activation_in_progress_;
 }
 
 void GobiCdmaModem::SendActivationStateFailed() {
@@ -735,4 +832,26 @@ void GobiCdmaModem::SendActivationStateChanged(uint32_t mm_activation_error) {
   ActivationStateChanged(mm_activation_state,
                          mm_activation_error,
                          to_send);
+}
+
+FilePath GobiCdmaModem::GetExecPostActivationStepsCookieCrumbPath() const {
+  string path =
+      StringPrintf(kExecPostActivationStepsCookieCrumbFormat,
+                   device_.deviceKey);
+  return FilePath::FromUTF8Unsafe(path);
+}
+
+void GobiCdmaModem::MarkForExecPostActivationStepsAfterReset() {
+  // This is a best effort attempt to write out the cookie crumb so don't
+  // need to check for write failures.
+  file_util::WriteFile(GetExecPostActivationStepsCookieCrumbPath(), "", 0);
+}
+
+bool GobiCdmaModem::ShouldExecPostActivationSteps() const {
+  FilePath cookie_crumb_path = GetExecPostActivationStepsCookieCrumbPath();
+  if (file_util::PathExists(cookie_crumb_path)) {
+    file_util::Delete(cookie_crumb_path, false);
+    return true;
+  }
+  return false;
 }

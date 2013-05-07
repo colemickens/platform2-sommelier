@@ -8,7 +8,9 @@
 #define PLUGIN_GOBI_CDMA_MODEM_H_
 
 #include "gobi_modem.h"
+#include <base/file_path.h>
 #include <cromo/modem-cdma_server_glue.h>
+
 class GobiModem;
 
 class GobiCdmaModem
@@ -22,6 +24,8 @@ class GobiCdmaModem
                 gobi::Sdk *sdk,
                 GobiModemHelper *modem_helper);
   virtual ~GobiCdmaModem();
+
+  virtual void Init();
 
   // Modem methods
   virtual CdmaAdaptor *cdma_adaptor() {
@@ -94,13 +98,20 @@ class GobiCdmaModem
     ULONG session_state;
     ULONG failure_reason;
   };
-  static void OmadmStateCallbackTrampoline(ULONG session_state,
-                                           ULONG failure_reason) {
-    PostCallbackRequest(OmadmStateCallback,
+  static void OmadmStateDeviceConfigureCallbackTrampoline(
+      ULONG session_state, ULONG failure_reason) {
+    PostCallbackRequest(OmadmStateDeviceConfigureCallback,
                         new OmadmStateArgs(session_state,
                                            failure_reason));
   }
-  static gboolean OmadmStateCallback(gpointer data);
+  static gboolean OmadmStateDeviceConfigureCallback(gpointer data);
+  static void OmadmStateClientPrlUpdateCallbackTrampoline(
+      ULONG session_state, ULONG failure_reason) {
+    PostCallbackRequest(OmadmStateClientPrlUpdateCallback,
+                        new OmadmStateArgs(session_state,
+                                           failure_reason));
+  }
+  static gboolean OmadmStateClientPrlUpdateCallback(gpointer data);
 
   // ======================================================================
 
@@ -121,8 +132,22 @@ class GobiCdmaModem
   uint32_t ActivateOtasp(const std::string& number);
   // Perform actions necessary when activation as finished
   void ActivationFinished(void);
+  // Performs actions necessary when a modem is seen for the first time after
+  // it was activated and resetted.
+  void PerformPostActivationSteps();
+  // Starts a client initiated PRL update request.
+  void StartClientInitiatedPrlUpdate();
 
  private:
+  // Returns the path of the cookie crumb file used to indicate that post
+  // activation steps should be executed.
+  base::FilePath GetExecPostActivationStepsCookieCrumbPath() const;
+  // Writes a cookie crumb that signals post activation steps should be
+  // executed next time the modem appears to the system.
+  void MarkForExecPostActivationStepsAfterReset();
+  // Checks to see if post activation steps should be executed.
+  bool ShouldExecPostActivationSteps() const;
+
   DISALLOW_COPY_AND_ASSIGN(GobiCdmaModem);
 };
 
