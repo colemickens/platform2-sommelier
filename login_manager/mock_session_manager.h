@@ -35,9 +35,6 @@ class MockSessionManager : public SessionManagerInterface {
   MOCK_METHOD3(StopSession, gboolean(gchar*, gboolean*, GError**));
   MOCK_METHOD2(StorePolicy, gboolean(GArray*, DBusGMethodInvocation*));
   MOCK_METHOD2(RetrievePolicy, gboolean(GArray**, GError**));
-  MOCK_METHOD2(StoreUserPolicy,
-               gboolean(GArray*, DBusGMethodInvocation*));
-  MOCK_METHOD2(RetrieveUserPolicy, gboolean(GArray**, GError**));
   MOCK_METHOD3(StorePolicyForUser,
                gboolean(gchar*, GArray*, DBusGMethodInvocation*));
   MOCK_METHOD3(RetrievePolicyForUser, gboolean(gchar*, GArray**, GError**));

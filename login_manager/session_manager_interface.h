@@ -94,30 +94,20 @@ class SessionManagerInterface {
   // opaque to session manager, the exact definition is only relevant to client
   // code in Chrome.
   //
-  // Calling this function attempts to persist |policy_blob| for the currently
-  // logged in user. Policy is stored in a root-owned location within the user's
-  // cryptohome (for privacy reasons). The first attempt to store policy also
-  // installs the signing key for user policy. This key is used later to verify
-  // policy updates pushed by Chrome.
+  // Calling this function attempts to persist |policy_blob| for |user_email|.
+  // Policy is stored in a root-owned location within the user's cryptohome
+  // (for privacy reasons). The first attempt to store policy also installs the
+  // signing key for user policy. This key is used later to verify policy
+  // updates pushed by Chrome.
   //
   // Returns FALSE on immediate (synchronous) errors. Otherwise, returns TRUE
   // and reports the final result of the call asynchronously through |context|.
-  virtual gboolean StoreUserPolicy(GArray* policy_blob,
-                                   DBusGMethodInvocation* context) = 0;
-
-  // Retrieves user policy for the currently logged in user and returns it in
-  // |policy_blob|. Returns TRUE if the policy is available, FALSE otherwise.
-  virtual gboolean RetrieveUserPolicy(GArray** OUT_policy_blob,
-                                      GError** error) = 0;
-
-  // This will replace StoreUserPolicy. It adds the additional |user_email|
-  // parameter.
   virtual gboolean StorePolicyForUser(gchar* user_email,
                                       GArray* policy_blob,
                                       DBusGMethodInvocation* context) = 0;
 
-  // This wil replace RetrieveUserPolicy. It adds the additional |user_email|
-  // parameter.
+  // Retrieves user policy for |user_email| and returns it in |policy_blob|.
+  // Returns TRUE if the policy is available, FALSE otherwise.
   virtual gboolean RetrievePolicyForUser(gchar* user_email,
                                          GArray** OUT_policy_blob,
                                          GError** error) = 0;

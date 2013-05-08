@@ -532,14 +532,15 @@ TEST_F(SessionManagerImplTest, RetrievePolicy) {
 TEST_F(SessionManagerImplTest, StoreUserPolicy_NoSession) {
   EXPECT_CALL(utils_, SetAndSendGError(_, _, _));
 
+  gchar username[] = "user@somewhere.com";
   const string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
-  EXPECT_EQ(FALSE, impl_.StoreUserPolicy(policy_blob, NULL));
+  EXPECT_EQ(FALSE, impl_.StorePolicyForUser(username, policy_blob, NULL));
   g_array_free(policy_blob, TRUE);
 }
 
 TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
-  const string username("user@somewhere.com");
+  gchar username[] = "user@somewhere.com";
   ExpectAndRunStartSession(username);
   const string fake_policy("fake policy");
   GArray* policy_blob = CreateArray(fake_policy.c_str(), fake_policy.size());
@@ -550,7 +551,7 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SessionStarted) {
                     PolicyService::KEY_ROTATE |
                     PolicyService::KEY_INSTALL_NEW))
       .WillOnce(Return(true));
-  EXPECT_EQ(TRUE, impl_.StoreUserPolicy(policy_blob, NULL));
+  EXPECT_EQ(TRUE, impl_.StorePolicyForUser(username, policy_blob, NULL));
   g_array_free(policy_blob, TRUE);
 }
 
@@ -598,15 +599,17 @@ TEST_F(SessionManagerImplTest, StoreUserPolicy_SecondSession) {
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_NoSession) {
+  gchar username[] = "user@somewhere.com";
   GArray* out_blob = NULL;
   ScopedError error;
-  EXPECT_EQ(FALSE, impl_.RetrieveUserPolicy(&out_blob,
-                                            &Resetter(&error).lvalue()));
+  EXPECT_EQ(FALSE, impl_.RetrievePolicyForUser(username,
+                                               &out_blob,
+                                               &Resetter(&error).lvalue()));
   EXPECT_FALSE(out_blob);
 }
 
 TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
-  const string username("user@somewhere.com");
+  gchar username[] = "user@somewhere.com";
   ExpectAndRunStartSession(username);
   const string fake_policy("fake policy");
   const vector<uint8> policy_data(fake_policy.begin(), fake_policy.end());
@@ -615,8 +618,9 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SessionStarted) {
                       Return(true)));
   GArray* out_blob = NULL;
   ScopedError error;
-  EXPECT_EQ(TRUE, impl_.RetrieveUserPolicy(&out_blob,
-                                           &Resetter(&error).lvalue()));
+  EXPECT_EQ(TRUE, impl_.RetrievePolicyForUser(username,
+                                              &out_blob,
+                                              &Resetter(&error).lvalue()));
   EXPECT_EQ(fake_policy.size(), out_blob->len);
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));

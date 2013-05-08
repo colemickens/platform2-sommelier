@@ -59,12 +59,6 @@ gboolean session_manager_store_policy(SessionManager *self,
 gboolean session_manager_retrieve_policy(SessionManager *self,
                                          GArray **OUT_policy_blob,
                                          GError **error);
-gboolean session_manager_store_user_policy(SessionManager *self,
-                                           GArray *policy_blob,
-                                           DBusGMethodInvocation* context);
-gboolean session_manager_retrieve_user_policy(SessionManager *self,
-                                              GArray **OUT_policy_blob,
-                                              GError **error);
 gboolean session_manager_store_policy_for_user(SessionManager *self,
                                                gchar* user_email,
                                                GArray *policy_blob,

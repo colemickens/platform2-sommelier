@@ -82,11 +82,6 @@ class SessionManagerImpl : public SessionManagerInterface,
                        DBusGMethodInvocation* context) OVERRIDE;
   gboolean RetrievePolicy(GArray** OUT_policy_blob, GError** error) OVERRIDE;
 
-  gboolean StoreUserPolicy(GArray* policy_blob,
-                           DBusGMethodInvocation* context) OVERRIDE;
-  gboolean RetrieveUserPolicy(GArray** OUT_policy_blob,
-                              GError** error) OVERRIDE;
-
   gboolean StorePolicyForUser(gchar* user_email,
                               GArray* policy_blob,
                               DBusGMethodInvocation* context) OVERRIDE;
