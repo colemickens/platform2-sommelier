@@ -24,7 +24,8 @@ class MockProcessManagerService : public ProcessManagerServiceInterface {
   MOCK_METHOD1(IsBrowser, bool(pid_t));
   MOCK_METHOD2(RestartBrowserWithArgs, void(const std::vector<std::string>&,
                                             bool));
-  MOCK_METHOD1(SetBrowserSessionForUser, void(const std::string&));
+  MOCK_METHOD2(SetBrowserSessionForUser, void(const std::string&,
+                                              const std::string&));
   MOCK_METHOD1(RunKeyGenerator, void(const std::string&));
 
   // gmock can't handle methods that take scoped_ptrs, so we have to build

@@ -52,7 +52,7 @@ bool PolicyKey::IsPopulated() const { return !key_.empty(); }
 bool PolicyKey::PopulateFromDiskIfPossible() {
   have_checked_disk_ = true;
   if (!file_util::PathExists(key_file_)) {
-    LOG(INFO) << "No owner key on disk.";
+    LOG(INFO) << "No policy key on disk at " << key_file_.value();
     return true;
   }
 

@@ -63,6 +63,10 @@ static const int kKillTimeoutDefault = 3;
 static const char kEnableHangDetection[] = "enable-hang-detection";
 static const uint kHangDetectionIntervalDefaultSeconds = 60;
 
+// Name of the flag indicating the session_manager should enable support
+// for simultaneous active sessions.
+static const char kMultiProfile[] = "multi-profiles";
+
 // Flag that causes session manager to show the help message and exit.
 static const char kHelp[] = "help";
 // The help message shown if help flag is passed to the program.
@@ -143,11 +147,16 @@ int main(int argc, char* argv[]) {
     }
   }
 
+  // Check for simultaneous active session support.
+  bool support_multi_profile = cl->HasSwitch(switches::kMultiProfile);
+
   SystemUtils system;
   // We only support a single job with args, so grab all loose args
   vector<string> arg_list = SessionManagerService::GetArgList(cl->GetArgs());
 
-  scoped_ptr<ChildJobInterface> browser_job(new ChildJob(arg_list, &system));
+  scoped_ptr<ChildJobInterface> browser_job(new ChildJob(arg_list,
+                                                         support_multi_profile,
+                                                         &system));
   if (uid_set)
     browser_job->SetDesiredUid(uid);
 

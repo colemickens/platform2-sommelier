@@ -32,26 +32,42 @@ const int ChildJobInterface::kCantSetUid = 127;
 const int ChildJobInterface::kCantSetGid = 128;
 const int ChildJobInterface::kCantSetGroups = 129;
 const int ChildJobInterface::kCantExec = 255;
-const int ChildJobInterface::kBWSI = 1;
 
 // static
 const char ChildJob::kLoginManagerFlag[] = "--login-manager";
 // static
 const char ChildJob::kLoginUserFlag[] = "--login-user=";
 // static
-const char ChildJob::kBWSIFlag[] = "--bwsi";
+const char ChildJob::kLoginProfileFlag[] = "--login-profile=";
+// static
+const char ChildJob::kMultiProfileFlag[] = "--multi-profiles";
 
 // static
 const int ChildJob::kRestartWindow = 1;
 
 ChildJob::ChildJob(const std::vector<std::string>& arguments,
+                   bool support_multi_profile,
                    SystemUtils* utils)
       : arguments_(arguments),
         desired_uid_(0),
         is_desired_uid_set_(false),
         system(utils),
         last_start_(0),
-        removed_login_manager_flag_(false) {
+        removed_login_manager_flag_(false),
+        session_already_started_(false),
+        support_multi_profile_(support_multi_profile) {
+  if (support_multi_profile_)
+    arguments_.push_back(kMultiProfileFlag);
+
+  // Take over managing the kLoginManagerFlag.
+  std::vector<std::string>::iterator to_erase = std::remove(arguments_.begin(),
+                                                            arguments_.end(),
+                                                            kLoginManagerFlag);
+  if (to_erase != arguments_.end()) {
+    arguments_.erase(to_erase, arguments_.end());
+    removed_login_manager_flag_ = true;
+    login_arguments_.push_back(kLoginManagerFlag);
+  }
 }
 
 ChildJob::~ChildJob() {
@@ -82,28 +98,33 @@ void ChildJob::Run() {
   exit(kCantExec);
 }
 
-// When user logs in we want to restart chrome in browsing mode with user
-// signed in. Hence we remove --login-manager flag and add --login-user
-// flag. If it's BWSI mode, we add the corresponding flag as well.
-void ChildJob::StartSession(const std::string& email) {
-  std::vector<std::string>::iterator to_erase =
-      std::remove(arguments_.begin(),
-                  arguments_.end(),
-                  kLoginManagerFlag);
-  if (to_erase != arguments_.end()) {
-    arguments_.erase(to_erase, arguments_.end());
-    removed_login_manager_flag_ = true;
+// When user logs in we want to restart chrome in browsing mode with
+// user signed in. Hence we remove --login-manager flag and add
+// --login-user and --login-profile flags.
+// When supporting multiple simultaneous accounts, |userhash| is passed
+// as the value for the latter.  When not, then the magic string "user"
+// is passed.
+// Chrome requires that we always pass the email (and maybe hash) of the
+// first user who started a session, so this method handles that as well.
+void ChildJob::StartSession(const std::string& email,
+                            const std::string& userhash) {
+  if (!session_already_started_) {
+    login_arguments_.clear();
+    login_arguments_.push_back(kLoginUserFlag);
+    login_arguments_.back().append(email);
+    login_arguments_.push_back(kLoginProfileFlag);
+    if (support_multi_profile_)
+      login_arguments_.back().append(userhash);
+    else
+      login_arguments_.back().append("user");
   }
-
-  arguments_.push_back(kLoginUserFlag);
-  arguments_.back().append(email);
+  session_already_started_ = true;
 }
 
 void ChildJob::StopSession() {
-  // The last element for started session is always login user flag.
-  arguments_.pop_back();
+  login_arguments_.clear();
   if (removed_login_manager_flag_) {
-    arguments_.push_back(kLoginManagerFlag);
+    login_arguments_.push_back(kLoginManagerFlag);
     removed_login_manager_flag_ = false;
   }
 }
@@ -155,29 +176,43 @@ void ChildJob::ClearOneTimeArgument() {
   extra_one_time_argument_.clear();
 }
 
-void ChildJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
-                              char const** argv) const {
+std::vector<std::string> ChildJob::ExportArgv() {
+  std::vector<std::string> to_return;
+  char const** argv = CreateArgv();
+  for (size_t i = 0; argv[i]; ++i) {
+    to_return.push_back(argv[i]);
+    delete [] argv[i];
+  }
+  delete [] argv;
+  return to_return;
+}
+
+size_t ChildJob::CopyArgsToArgv(const std::vector<std::string>& arguments,
+                                char const** argv) const {
   for (size_t i = 0; i < arguments.size(); ++i) {
     size_t needed_space = arguments[i].length() + 1;
     char* space = new char[needed_space];
     strncpy(space, arguments[i].c_str(), needed_space);
     argv[i] = space;
   }
+  return arguments.size();
 }
 
 char const** ChildJob::CreateArgv() const {
-  size_t total_size = arguments_.size() + extra_arguments_.size();
+  size_t total_size = (arguments_.size() +
+                       login_arguments_.size() +
+                       extra_arguments_.size());
   if (!extra_one_time_argument_.empty())
     total_size++;
 
   char const** argv = new char const*[total_size + 1];
-  CopyArgsToArgv(arguments_, argv);
-  CopyArgsToArgv(extra_arguments_, argv + arguments_.size());
+  size_t index = CopyArgsToArgv(arguments_, argv);
+  index += CopyArgsToArgv(login_arguments_, argv + index);
+  index += CopyArgsToArgv(extra_arguments_, argv + index);
   if (!extra_one_time_argument_.empty()) {
     std::vector<std::string> one_time_argument;
     one_time_argument.push_back(extra_one_time_argument_);
-    CopyArgsToArgv(one_time_argument,
-                   argv + arguments_.size() + extra_arguments_.size());
+    CopyArgsToArgv(one_time_argument, argv + index);
   }
   // Need to append NULL at the end.
   argv[total_size] = NULL;

@@ -207,7 +207,9 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectSessionBoilerplate(const string& email_string,
                                 bool guest,
                                 bool for_owner) {
-    EXPECT_CALL(manager_, SetBrowserSessionForUser(StrEq(email_string)))
+    EXPECT_CALL(manager_,
+                SetBrowserSessionForUser(StrEq(email_string),
+                                         StrEq(SanitizeUserName(email_string))))
         .Times(1);
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_,
@@ -236,7 +238,9 @@ class SessionManagerImplTest : public ::testing::Test {
   void ExpectStartSessionUnownedBoilerplate(const string& email_string,
                                             bool mitigating,
                                             bool owning_in_progress) {
-    EXPECT_CALL(manager_, SetBrowserSessionForUser(StrEq(email_string)))
+    EXPECT_CALL(manager_,
+                SetBrowserSessionForUser(StrEq(email_string),
+                                         StrEq(SanitizeUserName(email_string))))
         .Times(1);
 
     // Expect initialization of the device policy service, return success.

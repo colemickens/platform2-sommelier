@@ -19,7 +19,7 @@ class MockChildJob : public ChildJobInterface {
   MOCK_CONST_METHOD0(ShouldStop, bool());
   MOCK_METHOD0(RecordTime, void());
   MOCK_METHOD0(Run, void());
-  MOCK_METHOD1(StartSession, void(const std::string&));
+  MOCK_METHOD2(StartSession, void(const std::string&, const std::string&));
   MOCK_METHOD0(StopSession, void());
   MOCK_CONST_METHOD0(GetDesiredUid, uid_t());
   MOCK_METHOD1(SetDesiredUid, void(uid_t));

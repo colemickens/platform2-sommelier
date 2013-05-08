@@ -328,7 +328,7 @@ RSAPrivateKey* DevicePolicyService::GetOwnerKeyForGivenUser(
     Error* error) {
   RSAPrivateKey* result = nss_->GetPrivateKeyForUser(key, slot);
   if (!result) {
-    const char msg[] = "Could not verify that public key belongs to the owner.";
+    const char msg[] = "Could not verify that owner key belongs to this user.";
     LOG(WARNING) << msg;
     if (error)
       error->Set(CHROMEOS_LOGIN_ERROR_ILLEGAL_PUBKEY, msg);

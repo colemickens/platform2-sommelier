@@ -336,7 +336,7 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
           error);
 
   if (*OUT_done) {
-    manager_->SetBrowserSessionForUser(email_string);
+    manager_->SetBrowserSessionForUser(email_string, user_session->userhash);
     session_started_ = true;
     user_sessions_[email_string] = user_session.release();
     DLOG(INFO) << "emitting D-Bus signal SessionStateChanged:" << kStarted;
@@ -542,11 +542,10 @@ gboolean SessionManagerImpl::RestartJob(gint pid,
   CommandLine new_command_line(argc, argv);
   g_strfreev(argv);
 
-  manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
-
   // To set "logged-in" state for BWSI mode.
-  return StartSession(const_cast<gchar*>(kGuestUserName), NULL,
-                      OUT_done, error);
+  StartSession(const_cast<gchar*>(kGuestUserName), NULL, OUT_done, error);
+  manager_->RestartBrowserWithArgs(new_command_line.argv(), false);
+  return *OUT_done;
 }
 
 gboolean SessionManagerImpl::RestartJobWithAuth(gint pid,

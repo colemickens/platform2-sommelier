@@ -6,6 +6,8 @@
 
 #include <unistd.h>
 
+#include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -18,9 +20,6 @@
 
 #include "login_manager/mock_system_utils.h"
 
-using std::string;
-using std::vector;
-
 namespace login_manager {
 
 using ::testing::Return;
@@ -32,16 +31,32 @@ class ChildJobTest : public ::testing::Test {
 
   virtual ~ChildJobTest() {}
 
-  virtual void SetUp();
-
-  virtual void TearDown() {
-  }
+  virtual void SetUp() OVERRIDE;
 
  protected:
   static const char* kArgv[];
   static const char kUser[];
+  static const char kHash[];
 
-  vector<string> argv_;
+  void ExpectArgsToContainFlag(const std::vector<std::string>& argv,
+                               const char name[],
+                               const char value[]) {
+    std::vector<std::string>::const_iterator user_flag =
+        std::find(argv.begin(), argv.end(), StringPrintf("%s%s", name, value));
+    EXPECT_NE(user_flag, argv.end()) << "argv should contain " << name << value;
+  }
+
+  void ExpectArgsToContainAll(const std::vector<std::string>& argv,
+                              const std::vector<std::string>& contained) {
+    std::set<std::string> argv_set(argv.begin(), argv.end());
+    for (std::vector<std::string>::const_iterator it = contained.begin();
+         it != contained.end();
+         ++it) {
+      EXPECT_EQ(argv_set.count(*it), 1) << "argv should contain " << *it;
+    }
+  }
+
+  std::vector<std::string> argv_;
   MockSystemUtils utils_;
   scoped_ptr<ChildJob> job_;
 
@@ -59,19 +74,21 @@ const char* ChildJobTest::kArgv[] = {
 
 // Normal username to test session for.
 const char ChildJobTest::kUser[] = "test@gmail.com";
+const char ChildJobTest::kHash[] = "fake_hash";
 
 void ChildJobTest::SetUp() {
-  vector<string> argv(kArgv, kArgv + arraysize(ChildJobTest::kArgv));
-  job_.reset(new ChildJob(argv, &utils_));
+  argv_ = std::vector<std::string>(kArgv,
+                                   kArgv + arraysize(ChildJobTest::kArgv));
+  job_.reset(new ChildJob(argv_, false, &utils_));
 }
 
 TEST_F(ChildJobTest, InitializationTest) {
   EXPECT_EQ(0, job_->last_start_);
   EXPECT_FALSE(job_->removed_login_manager_flag_);
-  ASSERT_EQ(arraysize(kArgv), job_->arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job_->arguments_[i]);
   EXPECT_FALSE(job_->IsDesiredUidSet());
+  std::vector<std::string> job_args = job_->ExportArgv();
+  ASSERT_EQ(argv_.size(), job_args.size());
+  ExpectArgsToContainAll(job_args, argv_);
 }
 
 TEST_F(ChildJobTest, DesiredUidSetTest) {
@@ -100,19 +117,46 @@ TEST_F(ChildJobTest, ShouldNotStopTest) {
 }
 
 TEST_F(ChildJobTest, StartStopSessionTest) {
-  job_->StartSession(kUser);
-  EXPECT_FALSE(job_->removed_login_manager_flag_);
-  ASSERT_EQ(arraysize(kArgv) + 1, job_->arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job_->arguments_[i]);
-  EXPECT_EQ(StringPrintf("%s%s", ChildJob::kLoginUserFlag, kUser),
-            job_->arguments_[arraysize(kArgv)]);
+  job_->StartSession(kUser, kHash);
+
+  std::vector<std::string> job_args = job_->ExportArgv();
+  ASSERT_LT(argv_.size(), job_args.size());
+  ExpectArgsToContainAll(job_args, argv_);
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, "user");
 
   // Should remove login user flag.
   job_->StopSession();
-  ASSERT_EQ(arraysize(kArgv), job_->arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job_->arguments_[i]);
+  job_args = job_->ExportArgv();
+  ASSERT_EQ(argv_.size(), job_args.size());
+  ExpectArgsToContainAll(job_args, argv_);
+}
+
+TEST_F(ChildJobTest, StartStopMultiSessionTest) {
+  ChildJob job(argv_, true, &utils_);
+  job.StartSession(kUser, kHash);
+
+  std::vector<std::string> job_args = job.ExportArgv();
+  ASSERT_EQ(argv_.size() + 3, job_args.size());
+  ExpectArgsToContainAll(job_args, argv_);
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, kHash);
+
+  // Start another session, expect the args to be unchanged.
+  job.StartSession(kUser, kHash);
+  job_args = job.ExportArgv();
+  ASSERT_EQ(argv_.size() + 3, job_args.size());
+  ExpectArgsToContainAll(job_args, argv_);
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginProfileFlag, kHash);
+
+
+  // Should remove login user and login profile flags.
+  job.StopSession();
+  job_args = job.ExportArgv();
+  ASSERT_EQ(argv_.size() + 1, job_args.size());
+  ExpectArgsToContainAll(job_args, argv_);
+  ExpectArgsToContainFlag(job_args, ChildJob::kMultiProfileFlag, "");
 }
 
 TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
@@ -122,24 +166,23 @@ TEST_F(ChildJobTest, StartStopSessionFromLoginTest) {
       "two",
       "--login-manager"
   };
-  vector<string> argv(kArgvWithLoginFlag,
-                      kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
-  ChildJob job(argv, &utils_);
+  std::vector<std::string> argv(
+      kArgvWithLoginFlag, kArgvWithLoginFlag + arraysize(kArgvWithLoginFlag));
+  ChildJob job(argv, false, &utils_);
 
-  job.StartSession(kUser);
-  EXPECT_TRUE(job.removed_login_manager_flag_);
-  ASSERT_EQ(arraysize(kArgvWithLoginFlag), job.arguments_.size());
-  for (size_t i = 0; i + 1 < arraysize(kArgvWithLoginFlag); ++i)
-    EXPECT_EQ(kArgvWithLoginFlag[i], job.arguments_[i]);
-  EXPECT_EQ(StringPrintf("%s%s", ChildJob::kLoginUserFlag, kUser),
-            job.arguments_.back());
+  job.StartSession(kUser, kHash);
 
-  // Should remove login user flag and append --login-manager flag back.
+  std::vector<std::string> job_args = job.ExportArgv();
+  ASSERT_EQ(argv.size() + 1, job_args.size());
+  ExpectArgsToContainAll(job_args,
+                         std::vector<std::string>(argv.begin(), argv.end()-1));
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
+
+  // Should remove login user/hash flags and append --login-manager flag back.
   job.StopSession();
-  EXPECT_FALSE(job.removed_login_manager_flag_);
-  ASSERT_EQ(arraysize(kArgvWithLoginFlag), job.arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgvWithLoginFlag); ++i)
-    EXPECT_EQ(kArgvWithLoginFlag[i], job.arguments_[i]);
+  job_args = job.ExportArgv();
+  ASSERT_EQ(argv.size(), job_args.size());
+  ExpectArgsToContainAll(job_args, argv);
 }
 
 TEST_F(ChildJobTest, SetArguments) {
@@ -148,50 +191,48 @@ TEST_F(ChildJobTest, SetArguments) {
     "--ni dfs",
     "--san"
   };
-  vector<string> new_args(kNewArgs, kNewArgs + arraysize(kNewArgs));
+  std::vector<std::string> new_args(kNewArgs, kNewArgs + arraysize(kNewArgs));
   job_->SetArguments(new_args);
 
-  ASSERT_EQ(arraysize(kNewArgs), job_->arguments_.size());
-  EXPECT_EQ(kArgv[0], job_->arguments_[0]);
+  std::vector<std::string> job_args = job_->ExportArgv();
+  ASSERT_EQ(new_args.size(), job_args.size());
+  EXPECT_EQ(kArgv[0], job_args[0]);
   for (size_t i = 1; i < arraysize(kNewArgs); ++i) {
-    EXPECT_EQ(kNewArgs[i], job_->arguments_[i]);
+    EXPECT_EQ(kNewArgs[i], job_args[i]);
   }
+
+  job_->StartSession(kUser, kHash);
+  job_args = job_->ExportArgv();
+  ExpectArgsToContainFlag(job_args, ChildJob::kLoginUserFlag, kUser);
 }
 
 TEST_F(ChildJobTest, SetExtraArguments) {
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
-  vector<string> extra_args(kExtraArgs, kExtraArgs + arraysize(kExtraArgs));
+  std::vector<std::string> extra_args(kExtraArgs,
+                                      kExtraArgs + arraysize(kExtraArgs));
   job_->SetExtraArguments(extra_args);
 
-  // Make sure regular arguments are untouched.
-  ASSERT_EQ(arraysize(kArgv), job_->arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job_->arguments_[i]);
-
-  ASSERT_EQ(extra_args.size(), job_->extra_arguments_.size());
-  for (size_t i = 0; i < extra_args.size(); ++i)
-    EXPECT_EQ(extra_args[i], job_->extra_arguments_[i]);
+  std::vector<std::string> job_args = job_->ExportArgv();
+  ExpectArgsToContainAll(job_args, argv_);
+  ExpectArgsToContainAll(job_args, extra_args);
 }
 
 TEST_F(ChildJobTest, AddExtraOneTimeArgument) {
   std::string argument("--san");
   job_->AddOneTimeArgument(argument);
 
-  // Make sure regular arguments are untouched.
-  ASSERT_EQ(arraysize(kArgv), job_->arguments_.size());
-  for (size_t i = 0; i < arraysize(kArgv); ++i)
-    EXPECT_EQ(kArgv[i], job_->arguments_[i]);
-
-  ASSERT_EQ(argument.size(), job_->extra_one_time_argument_.size());
-  EXPECT_EQ(argument, job_->extra_one_time_argument_);
+  std::vector<std::string> job_args = job_->ExportArgv();
+  ExpectArgsToContainAll(job_args, argv_);
+  ExpectArgsToContainFlag(job_args, argument.c_str(), "");
 }
 
 TEST_F(ChildJobTest, CreateArgv) {
-  vector<string> argv(kArgv, kArgv + arraysize(kArgv));
-  ChildJob job(argv, &utils_);
+  std::vector<std::string> argv(kArgv, kArgv + arraysize(kArgv));
+  ChildJob job(argv, false, &utils_);
 
   const char* kExtraArgs[] = { "--ichi", "--ni", "--san" };
-  vector<string> extra_args(kExtraArgs, kExtraArgs + arraysize(kExtraArgs));
+  std::vector<std::string> extra_args(kExtraArgs,
+                                      kExtraArgs + arraysize(kExtraArgs));
   job.SetExtraArguments(extra_args);
 
   const char** arg_array = job.CreateArgv();
@@ -203,8 +244,11 @@ TEST_F(ChildJobTest, CreateArgv) {
     ++arg_array_size;
 
   ASSERT_EQ(argv.size(), arg_array_size);
-  for (size_t i = 0; i < argv.size(); ++i)
+  for (size_t i = 0; i < argv.size(); ++i) {
     EXPECT_EQ(argv[i], arg_array[i]);
+    delete [] arg_array[i];
+  }
+  delete [] arg_array;
 }
 
 }  // namespace login_manager

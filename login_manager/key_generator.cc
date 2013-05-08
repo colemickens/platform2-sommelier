@@ -51,7 +51,7 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
     keygen_argv.push_back(kKeygenExecutable);
     keygen_argv.push_back(temporary_key_filename_);
     keygen_argv.push_back(user_path.value());
-    keygen_job_.reset(new ChildJob(keygen_argv, utils_));
+    keygen_job_.reset(new ChildJob(keygen_argv, false, utils_));
   }
 
   if (uid != 0)
@@ -59,6 +59,8 @@ bool KeyGenerator::Start(const string& username, uid_t uid) {
   pid_t pid = RunJob(keygen_job_.get());
   if (pid < 0)
     return false;
+  DLOG(INFO) << "Generating key at " << temporary_key_filename_
+             << " using nssdb under " << user_path.value();
 
   generating_ = true;
   guint watcher = g_child_watch_add_full(

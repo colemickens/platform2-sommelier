@@ -452,8 +452,9 @@ void SessionManagerService::RestartBrowserWithArgs(
 }
 
 void SessionManagerService::SetBrowserSessionForUser(
-    const std::string& username) {
-  browser_.job->StartSession(username);
+    const std::string& username,
+    const std::string& userhash) {
+  browser_.job->StartSession(username, userhash);
 }
 
 void SessionManagerService::RunKeyGenerator(const std::string& username) {

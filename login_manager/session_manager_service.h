@@ -183,7 +183,8 @@ class SessionManagerService
   virtual bool IsBrowser(pid_t pid) OVERRIDE;
   virtual void RestartBrowserWithArgs(
       const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;
-  virtual void SetBrowserSessionForUser(const std::string& username) OVERRIDE;
+  virtual void SetBrowserSessionForUser(const std::string& username,
+                                        const std::string& userhash) OVERRIDE;
   virtual void RunKeyGenerator(const std::string& username) OVERRIDE;
   virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
                                     pid_t pid,

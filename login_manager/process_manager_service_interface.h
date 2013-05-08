@@ -41,7 +41,8 @@ class ProcessManagerServiceInterface {
 
   // Set bookkeeping for the browser process to indicate that a session
   // has been started for the given user.
-  virtual void SetBrowserSessionForUser(const std::string& username) = 0;
+  virtual void SetBrowserSessionForUser(const std::string& username,
+                                        const std::string& userhash) = 0;
 
   // Kick off, and manage, the policy key generation process.
   virtual void RunKeyGenerator(const std::string& username) = 0;

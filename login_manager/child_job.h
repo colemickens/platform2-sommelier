@@ -37,8 +37,10 @@ class ChildJobInterface {
   // Wraps up all the logic of what the job is meant to do. Should NOT return.
   virtual void Run() = 0;
 
-  // Called when a session is started for a user with |email|.
-  virtual void StartSession(const std::string& email) = 0;
+  // Called when a session is started for a user, to update internal
+  // bookkeeping wrt command-line flags.
+  virtual void StartSession(const std::string& email,
+                            const std::string& userhash) = 0;
 
   // Called when the session is ended.
   virtual void StopSession() = 0;
@@ -73,7 +75,6 @@ class ChildJobInterface {
   static const int kCantSetGid;
   static const int kCantSetGroups;
   static const int kCantExec;
-  static const int kBWSI;
 };
 
 
@@ -92,32 +93,43 @@ class ChildJob : public ChildJobInterface {
     guint watcher;
   };
 
-  ChildJob(const std::vector<std::string>& arguments, SystemUtils* utils);
+  ChildJob(const std::vector<std::string>& arguments,
+           bool support_multi_profile,
+           SystemUtils* utils);
   virtual ~ChildJob();
 
   // Overridden from ChildJobInterface
-  virtual bool ShouldStop() const;
-  virtual void RecordTime();
-  virtual void Run();
-  virtual void StartSession(const std::string& email);
-  virtual void StopSession();
-  virtual uid_t GetDesiredUid() const;
-  virtual void SetDesiredUid(uid_t uid);
-  virtual bool IsDesiredUidSet() const;
-  virtual const std::string GetName() const;
-  virtual void SetArguments(const std::vector<std::string>& arguments);
-  virtual void SetExtraArguments(const std::vector<std::string>& arguments);
-  virtual void AddOneTimeArgument(const std::string& argument);
-  virtual void ClearOneTimeArgument();
+  virtual bool ShouldStop() const OVERRIDE;
+  virtual void RecordTime() OVERRIDE;
+  virtual void Run() OVERRIDE;
+  virtual void StartSession(const std::string& email,
+                            const std::string& userhash) OVERRIDE;
+  virtual void StopSession() OVERRIDE;
+  virtual uid_t GetDesiredUid() const OVERRIDE;
+  virtual void SetDesiredUid(uid_t uid) OVERRIDE;
+  virtual bool IsDesiredUidSet() const OVERRIDE;
+  virtual const std::string GetName() const OVERRIDE;
+  virtual void SetArguments(const std::vector<std::string>& arguments) OVERRIDE;
+  virtual void SetExtraArguments(
+      const std::vector<std::string>& arguments) OVERRIDE;
+  virtual void AddOneTimeArgument(const std::string& argument) OVERRIDE;
+  virtual void ClearOneTimeArgument() OVERRIDE;
+
+  // Export a copy of the current argv.
+  std::vector<std::string> ExportArgv();
 
   // The flag to pass to chrome to tell it to behave as the login manager.
   static const char kLoginManagerFlag[];
 
-  // The flag to pass to chrome to tell it which user has logged in.
+  // The flag to pass to chrome to tell it which user has signed in.
   static const char kLoginUserFlag[];
 
-  // The flag to pass to chrome when starting "Browse Without Sign In" mode.
-  static const char kBWSIFlag[];
+  // The flag to pass to chrome to tell it the hash of the user who's signed in.
+  static const char kLoginProfileFlag[];
+
+  // The flag to pass to chrome to tell it to support simultaneous active
+  // sessions.
+  static const char kMultiProfileFlag[];
 
   // Minimum amount of time (in seconds) that should pass since the job was
   // started for it to be restarted if it exits or crashes.
@@ -125,8 +137,8 @@ class ChildJob : public ChildJobInterface {
 
  private:
   // Helper for CreateArgV() that copies a vector of arguments into argv.
-  void CopyArgsToArgv(const std::vector<std::string>& arguments,
-                      char const** argv) const;
+  size_t CopyArgsToArgv(const std::vector<std::string>& arguments,
+                        char const** argv) const;
 
   // Allocates and populates array of C strings to pass to exec call.
   char const** CreateArgv() const;
@@ -142,6 +154,9 @@ class ChildJob : public ChildJobInterface {
 
   // Arguments to pass to exec.
   std::vector<std::string> arguments_;
+
+  // Login-related arguments to pass to exec.  Managed wholly by this class.
+  std::vector<std::string> login_arguments_;
 
   // Extra arguments to pass to exec.
   std::vector<std::string> extra_arguments_;
@@ -165,14 +180,19 @@ class ChildJob : public ChildJobInterface {
   // add it back when session stops.
   bool removed_login_manager_flag_;
 
+  // Indicates that we already started a session.  Needed because the
+  // browser requires us to track the _first_ user to start a session.
+  // There is no issue filed to address this.
+  bool session_already_started_;
+
+  // Support multi-profile behavior in the browser.  Currently, this means
+  // passing a user-hash instead of "user" for --login-profile when restarting
+  // the browser.
+  bool support_multi_profile_;
+
   FRIEND_TEST(ChildJobTest, InitializationTest);
   FRIEND_TEST(ChildJobTest, ShouldStopTest);
   FRIEND_TEST(ChildJobTest, ShouldNotStopTest);
-  FRIEND_TEST(ChildJobTest, StartStopSessionTest);
-  FRIEND_TEST(ChildJobTest, StartStopSessionFromLoginTest);
-  FRIEND_TEST(ChildJobTest, SetArguments);
-  FRIEND_TEST(ChildJobTest, SetExtraArguments);
-  FRIEND_TEST(ChildJobTest, AddExtraOneTimeArgument);
   FRIEND_TEST(ChildJobTest, CreateArgv);
   DISALLOW_COPY_AND_ASSIGN(ChildJob);
 };
