@@ -314,14 +314,6 @@ elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
   HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
 fi
 
-# Use the experimental Bluetooth backend if BlueZ 5 is installed instead
-# of BlueZ 4, detected by the path of the daemon.
-# TODO(keybuk): remove flag once BlueZ 5 is the default; crosbug/39716
-BLUETOOTH_FLAGS=
-if [ -x /usr/libexec/bluetooth/bluetoothd ]; then
-  BLUETOOTH_FLAGS="--enable-experimental-bluetooth"
-fi
-
 # TODO(derat): We're currently (2012Q4) swamped with locking-related bug
 # reports; remove this after they've been sorted out.
 add_vmodule_pattern "screen_locker=1,webui_screen_locker=1"
@@ -394,7 +386,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${HIGHDPI_FLAGS} \
             ${TOUCHPAD_FLAGS} \
             ${KEYBOARD_FLAGS} \
-            ${BLUETOOTH_FLAGS} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
