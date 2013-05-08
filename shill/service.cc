@@ -730,8 +730,6 @@ const char *Service::ConnectStateToString(const ConnectState &state) {
       return "Configuring";
     case kStateConnected:
       return "Connected";
-    case kStateDisconnected:
-      return "Disconnected";
     case kStatePortal:
       return "Portal";
     case kStateFailure:
@@ -1005,8 +1003,6 @@ string Service::GetStateString() const {
       return flimflam::kStateConfiguration;
     case kStateConnected:
       return flimflam::kStateReady;
-    case kStateDisconnected:
-      return flimflam::kStateDisconnect;
     case kStateFailure:
       return flimflam::kStateFailure;
     case kStatePortal:

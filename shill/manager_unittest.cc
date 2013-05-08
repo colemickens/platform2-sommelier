@@ -3345,7 +3345,6 @@ TEST_F(ManagerTest, EnumerateServices) {
       Service::kStateAssociating,
       Service::kStateConfiguring,
       Service::kStateConnected,
-      Service::kStateDisconnected,
       Service::kStatePortal,
       Service::kStateOnline
   };

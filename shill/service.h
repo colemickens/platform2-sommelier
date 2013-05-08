@@ -112,7 +112,6 @@ class Service : public base::RefCounted<Service> {
     kStateAssociating,
     kStateConfiguring,
     kStateConnected,
-    kStateDisconnected,
     kStatePortal,
     kStateFailure,
     kStateOnline

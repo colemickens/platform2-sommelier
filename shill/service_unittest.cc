@@ -502,7 +502,7 @@ TEST_F(ServiceTest, State) {
   ServiceRefPtr service_ref(service_);
 
   EXPECT_CALL(*GetAdaptor(),
-              EmitStringChanged(flimflam::kStateProperty, _)).Times(7);
+              EmitStringChanged(flimflam::kStateProperty, _)).Times(6);
   EXPECT_CALL(*GetAdaptor(),
               EmitStringChanged(flimflam::kErrorProperty, _)).Times(4);
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
@@ -514,10 +514,6 @@ TEST_F(ServiceTest, State) {
   EXPECT_EQ(Service::kStateIdle, GetPreviousState());
   EXPECT_EQ(Service::kFailureUnknown, service_->failure());
   EXPECT_TRUE(service_->has_ever_connected_);
-
-  EXPECT_CALL(mock_manager_, UpdateService(service_ref));
-  service_->SetState(Service::kStateDisconnected);
-  EXPECT_EQ(Service::kStateConnected, GetPreviousState());
 
   EXPECT_CALL(mock_manager_, UpdateService(service_ref));
   service_->SetFailure(Service::kFailureOutOfRange);
