@@ -34,6 +34,9 @@ const char kDeviceName[] = "testdevice";
 class IPConfigTest : public Test {
  public:
   IPConfigTest() : ipconfig_(new IPConfig(&control_, kDeviceName)) {}
+  void DropRef(const IPConfigRefPtr &/*ipconfig*/, bool /*config_success*/) {
+    ipconfig_ = NULL;
+  }
 
  protected:
   IPConfigMockAdaptor *GetAdaptor() {
@@ -144,6 +147,14 @@ TEST_F(IPConfigTest, UpdateCallback) {
     UpdateProperties(IPConfig::Properties(), success);
     EXPECT_TRUE(callback_test.called());
   }
+}
+
+TEST_F(IPConfigTest, UpdatePropertiesWithDropRef) {
+  // The UpdateCallback should be able to drop a reference to the
+  // IPConfig object without crashing.
+  ipconfig_->RegisterUpdateCallback(
+      Bind(&IPConfigTest::DropRef, Unretained(this)));
+  UpdateProperties(IPConfig::Properties(), true);
 }
 
 TEST_F(IPConfigTest, PropertyChanges) {

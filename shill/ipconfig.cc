@@ -122,6 +122,11 @@ bool IPConfig::Save(StoreInterface *storage, const string &id_suffix) {
 }
 
 void IPConfig::UpdateProperties(const Properties &properties, bool success) {
+  // Take a reference of this instance to make sure we don't get destroyed in
+  // the middle of this call. (The |update_callback_| may cause a reference
+  // to be dropped. See, e.g., EthernetService::Disconnect and
+  // Ethernet::DropConnection.)
+  IPConfigRefPtr me = this;
   properties_ = properties;
   if (!update_callback_.is_null()) {
     update_callback_.Run(this, success);
