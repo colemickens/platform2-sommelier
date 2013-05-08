@@ -201,12 +201,8 @@ const char *ConnectionHealthChecker::ResultToString(
   switch(result) {
     case kResultUnknown:
       return "Unknown";
-    case kResultInProgress:
-      return "InProgress";
     case kResultConnectionFailure:
       return "ConnectionFailure";
-    case kResultElongatedTimeWait:
-      return "ElongatedTimeWait";
     case kResultCongestedTxQueue:
       return "CongestedTxQueue";
     case kResultSuccess:

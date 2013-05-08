@@ -895,20 +895,10 @@ TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
       ConnectionHealthChecker::kResultUnknown);
   EXPECT_FALSE(service->out_of_credits_);
   device_->OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::kResultInProgress);
-  EXPECT_FALSE(service->out_of_credits_);
-  device_->OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::kResultConnectionFailure);
   EXPECT_FALSE(service->out_of_credits_);
   Mock::VerifyAndClearExpectations(service);
 
-  EXPECT_CALL(*service, Disconnect(_)).Times(1);
-  device_->OnConnectionHealthCheckerResult(
-      ConnectionHealthChecker::kResultElongatedTimeWait);
-  EXPECT_TRUE(service->out_of_credits_);
-  Mock::VerifyAndClearExpectations(service);
-
-  service->out_of_credits_ = false;
   EXPECT_CALL(*service, Disconnect(_)).Times(1);
   device_->OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::kResultCongestedTxQueue);

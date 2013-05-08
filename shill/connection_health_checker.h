@@ -45,17 +45,8 @@ class ConnectionHealthChecker {
     // There was some problem in the setup of ConnctionHealthChecker.
     // Could not attempt a tcp connection.
     kResultUnknown,
-    // TODO(pprabhu) Deprecated. Remove.
-    // crbug.com/234734
-    // New health check request made successfully. The result of the health
-    // check is returned asynchronously.
-    kResultInProgress,
     // Failed to create TCP connection. Condition -(1)-.
     kResultConnectionFailure,
-    // TODO(pprabhu) Deprecated. Remove.
-    // crbug.com/234734
-    // Failed to destroy TCP connection. Condition -(2)-.
-    kResultElongatedTimeWait,
     // Failed to send data on TCP connection. Condition -(2)-.
     kResultCongestedTxQueue,
     // Condition -(3)-.

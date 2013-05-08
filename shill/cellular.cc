@@ -371,8 +371,7 @@ void Cellular::OnConnectionHealthCheckerResult(
   SLOG(Cellular, 2) << __func__ << "(Result = "
                     << ConnectionHealthChecker::ResultToString(result) << ")";
 
-  if (result == ConnectionHealthChecker::kResultElongatedTimeWait ||
-      result == ConnectionHealthChecker::kResultCongestedTxQueue) {
+  if (result == ConnectionHealthChecker::kResultCongestedTxQueue) {
     SLOG(Cellular, 2) << "Active probe determined possible out-of-credits "
                       << "scenario.";
     if (service().get()) {
