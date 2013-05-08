@@ -143,9 +143,9 @@ class OpenVPNManagementServerTest : public testing::Test {
 
   GLib glib_;
   MockOpenVPNDriver driver_;
-  OpenVPNManagementServer server_;
   MockSockets sockets_;
   MockEventDispatcher dispatcher_;
+  OpenVPNManagementServer server_;  // Destroy before anything it references.
 };
 
 // static

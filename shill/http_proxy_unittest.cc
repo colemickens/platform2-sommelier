@@ -117,6 +117,16 @@ class HTTPProxyTest : public Test {
     if (proxy_.sockets_) {
       ExpectStop();
     }
+    const int proxy_fds[] = {
+      proxy_.client_socket_,
+      proxy_.server_socket_,
+      proxy_.proxy_socket_
+    };
+    for (const int fd : proxy_fds) {
+      if (fd != -1) {
+        EXPECT_CALL(sockets_, Close(fd));
+      }
+    }
   }
   string CreateRequest(const string &url, const string &http_version,
                        const string &extra_lines) {
@@ -450,8 +460,8 @@ class HTTPProxyTest : public Test {
   MockControl control_;
   scoped_ptr<MockDeviceInfo> device_info_;
   scoped_refptr<MockConnection> connection_;
-  HTTPProxy proxy_;
   StrictMock<MockSockets> sockets_;
+  HTTPProxy proxy_;  // Destroy first, before anything it references.
 };
 
 TEST_F(HTTPProxyTest, StartFailSocket) {
