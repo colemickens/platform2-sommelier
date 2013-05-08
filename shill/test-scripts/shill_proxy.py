@@ -32,6 +32,7 @@ def dbus2primitive(value):
 
 class ShillProxy(object):
     DBUS_INTERFACE = 'org.chromium.flimflam'
+    DBUS_SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
     DBUS_TYPE_DEVICE = 'org.chromium.flimflam.Device'
     DBUS_TYPE_MANAGER = 'org.chromium.flimflam.Manager'
     DBUS_TYPE_PROFILE = 'org.chromium.flimflam.Profile'
@@ -96,6 +97,46 @@ class ShillProxy(object):
     }
 
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
+
+
+    @staticmethod
+    def get_shill_proxy(timeout_seconds=10):
+        """Create a ShillProxy, retrying if necessary.
+
+        Connects to shill over D-Bus. If shill is not yet running,
+        retry until it is, or until |timeout_seconds| expires.
+
+        After connecting to shill, this method will verify that shill
+        is answering RPCs. No timeout is applied to the test RPC, so
+        this method _may_ block indefinitely.
+
+        @param timeout_seconds float number of seconds to try connecting
+            A value <= 0 will cause the method to return immediately,
+            without trying to connect.
+        @return a ShillProxy instance if we connected, or None otherwise
+        """
+        end_time = time.time() + timeout_seconds
+        connection = None
+        while connection is None and time.time() < end_time:
+            try:
+                connection = ShillProxy()
+            except dbus.exceptions.DBusException as e:
+                if e.get_dbus_name() != ShillProxy.DBUS_SERVICE_UNKNOWN:
+                    raise error.TestFail('Error connecting to shill')
+                else:
+                    # Wait a moment before retrying
+                    time.sleep(ShillProxy.POLLING_INTERVAL_SECONDS)
+
+        if connection is None:
+            return None
+
+        # Although shill is connected to D-Bus at this point, it may
+        # not have completed initialization just yet. Call into shill,
+        # and wait for the response, to make sure that it is truly up
+        # and running. (Shill will not service D-Bus requests until
+        # initialization is complete.)
+        connection.get_profiles()
+        return connection
 
 
     def wait_for_property_in(self, dbus_object, property_name,
