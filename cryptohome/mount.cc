@@ -1328,10 +1328,8 @@ bool Mount::InsertPkcs11Token() {
       return false;
     chaps_event_client_.ChangeTokenAuthData(
         kChapsTokenDir,
-        static_cast<const uint8_t*>(old_auth_data.const_data()),
-        old_auth_data.size(),
-        static_cast<const uint8_t*>(auth_data.const_data()),
-        auth_data.size());
+        old_auth_data,
+        auth_data);
     is_pkcs11_passkey_migration_required_ = false;
     pkcs11_old_passkey_.clear_contents();
   }
@@ -1339,8 +1337,7 @@ bool Mount::InsertPkcs11Token() {
   if (!chaps_event_client_.LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       kChapsTokenDir,
-      static_cast<const uint8_t*>(auth_data.const_data()),
-      auth_data.size(),
+      auth_data,
       &slot_id)) {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
   }

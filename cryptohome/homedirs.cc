@@ -352,10 +352,8 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     return false;
   chaps_event_client_.ChangeTokenAuthData(
       kChapsTokenDir,
-      static_cast<const uint8_t*>(old_auth_data.const_data()),
-      old_auth_data.size(),
-      static_cast<const uint8_t*>(auth_data.const_data()),
-      auth_data.size());
+      old_auth_data,
+      auth_data);
   return true;
 }
 
