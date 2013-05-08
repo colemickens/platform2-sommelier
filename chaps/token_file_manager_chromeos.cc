@@ -11,10 +11,13 @@
 #include <string>
 
 #include <base/logging.h>
+#include <chromeos/secure_blob.h>
 
 #include "chaps/chaps_utility.h"
 
 using std::string;
+using base::FilePath;
+using chromeos::SecureBlob;
 
 namespace chaps {
 
@@ -36,6 +39,13 @@ bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
 }
 
 bool TokenFileManager::CheckUserTokenPermissions(const FilePath& token_path) {
+  NOTREACHED();
+  return false;
+}
+
+bool TokenFileManager::SaltAuthData(const FilePath& token_path,
+                                    const SecureBlob& auth_data,
+                                    SecureBlob* salted_auth_data) {
   NOTREACHED();
   return false;
 }

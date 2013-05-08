@@ -68,11 +68,15 @@ bool IsolateLoginClient::LoginUser(const string& user,
                << token_path.value();
     return false;
   }
-  // TODO(rmcilroy): Send a salted password, rather than the Sha512 hash.
+  SecureBlob salted_auth_data;
+  if (!token_manager_->SaltAuthData(token_path, auth_data, &salted_auth_data)) {
+    LOG(ERROR) << "Failed to salt authorization data.";
+    return false;
+  }
   int slot_id;
   if (!login_client_->LoadToken(isolate_credential,
                                 token_path.value().c_str(),
-                                Sha512(auth_data),
+                                salted_auth_data,
                                 &slot_id)) {
     return false;
   }
@@ -105,9 +109,23 @@ bool IsolateLoginClient::ChangeUserAuth(const string& user,
     return false;
   }
 
+  SecureBlob salted_old_auth_data;
+  if (!token_manager_->SaltAuthData(token_path, old_auth_data,
+                                    &salted_old_auth_data)) {
+    LOG(ERROR) << "Failed to salt old authorization data.";
+    return false;
+  }
+
+  SecureBlob salted_new_auth_data;
+  if (!token_manager_->SaltAuthData(token_path, new_auth_data,
+                                    &salted_new_auth_data)) {
+    LOG(ERROR) << "Failed to salt new authorization data.";
+    return false;
+  }
+
   login_client_->ChangeTokenAuthData(token_path.value(),
-                                     Sha512(old_auth_data),
-                                     Sha512(new_auth_data));
+                                     salted_old_auth_data,
+                                     salted_new_auth_data);
 
   return true;
 }

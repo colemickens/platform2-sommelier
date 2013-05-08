@@ -11,6 +11,7 @@
 #include <string>
 
 #include <base/file_path.h>
+#include <chromeos/secure_blob.h>
 
 namespace chaps {
 
@@ -36,6 +37,14 @@ class TokenFileManager {
   // they are valid.
   //  token_path: The location of the token.
   virtual bool CheckUserTokenPermissions(const base::FilePath& token_path);
+
+  // Salts the authorization data using the token's stored salt value.
+  //  token_path: The location of the token.
+  //  auth_data: The authorization data to salt.
+  //  salted_auth_data: Returns the salted authorization data.
+  virtual bool SaltAuthData(const base::FilePath& token_path,
+                            const chromeos::SecureBlob& auth_data,
+                            chromeos::SecureBlob* salted_auth_data);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(TokenFileManager);

@@ -15,9 +15,15 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <chromeos/secure_blob.h>
+#include <openssl/evp.h>
+#include <openssl/rand.h>
+
+#include "chaps/chaps_utility.h"
 
 using std::string;
 using base::FilePath;
+using chromeos::SecureBlob;
 
 namespace chaps {
 
@@ -28,6 +34,12 @@ const FilePath::CharType kTokenFilePath[] =
 
 const mode_t kTokenDirectoryPermissions = (S_IRUSR | S_IWUSR | S_IXUSR);
 const mode_t kFilePermissionsMask = (S_IRWXU | S_IRWXG | S_IRWXO);
+
+const FilePath::CharType kSaltFileName[] = "salt";
+const uint32_t kSaltIterations = 4096;
+const size_t kSaltBytes = 32;
+const size_t kSaltedKeyBytes = 32;
+
 } // namespace
 
 TokenFileManager::TokenFileManager(uid_t chapsd_uid, gid_t chapsd_gid)
@@ -65,6 +77,28 @@ bool TokenFileManager::CreateUserTokenDirectory(const FilePath& token_path) {
                << token_path.value();
     return false;
   }
+
+  // Create random salt file.
+  string salt_string;
+  salt_string.resize(kSaltBytes);
+  if (1 != RAND_bytes(ConvertStringToByteBuffer(salt_string.data()),
+                      kSaltBytes)) {
+    LOG(ERROR) << "Failed to generate random salt for token directory "
+               << token_path.value();
+    return false;
+  }
+  SecureBlob salt(salt_string);
+  ClearString(salt_string);
+
+  FilePath salt_file = token_path.Append(kSaltFileName);
+  int bytes_written = file_util::WriteFile(
+      salt_file, reinterpret_cast<const char *>(salt.const_data()), kSaltBytes);
+  if (bytes_written != static_cast<int>(kSaltBytes)) {
+    LOG(ERROR) << "Failed to write salt file in token directory "
+               << token_path.value();
+    return false;
+  }
+
   return true;
 }
 
@@ -91,4 +125,39 @@ bool TokenFileManager::CheckUserTokenPermissions(const FilePath& token_path) {
   return true;
 }
 
+bool TokenFileManager::SaltAuthData(const FilePath& token_path,
+                                    const SecureBlob& auth_data,
+                                    SecureBlob* salted_auth_data) {
+  string salt_string;
+  FilePath salt_file = token_path.Append(kSaltFileName);
+  if (!file_util::ReadFileToString(salt_file, &salt_string)) {
+    LOG(ERROR) << "Failed to read salt file in token directory "
+               << token_path.value();
+    return false;
+  }
+  SecureBlob salt(salt_string);
+  ClearString(salt_string);
+  if (salt.size() != kSaltBytes) {
+    LOG(ERROR) << "Salt invalid for token directory " << token_path.value();
+    return false;
+  }
+
+  SecureBlob out_key(kSaltedKeyBytes);
+  if (1 != PKCS5_PBKDF2_HMAC(
+               reinterpret_cast<const char *>(auth_data.const_data()),
+               auth_data.size(),
+               reinterpret_cast<const unsigned char *>(salt.const_data()),
+               kSaltBytes,
+               kSaltIterations,
+               EVP_sha512(),
+               kSaltedKeyBytes,
+               reinterpret_cast<unsigned char *>(out_key.data()))) {
+    LOG(ERROR) << "Could not salt authorization data.";
+    return false;
+  }
+
+  salted_auth_data->swap(out_key);
+  return true;
 }
+
+}  // namespace chaps

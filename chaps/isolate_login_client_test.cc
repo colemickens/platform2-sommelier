@@ -12,7 +12,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "chaps/chaps_utility.h"
 #include "chaps/isolate_login_client.h"
 #include "chaps/isolate_mock.h"
 #include "chaps/login_event_client_mock.h"
@@ -35,6 +34,8 @@ protected:
     user_ = string("user");
     auth_old_ = SecureBlob("auth_old");
     auth_new_ = SecureBlob("auth_new");
+    salted_auth_old_ = SecureBlob("salted_auth_old");
+    salted_auth_new_ = SecureBlob("salted_auth_new");
     isolate_credential_ = SecureBlob("credential");
     token_path_ = FilePath("token_path");
     isolate_login_client_.reset(new IsolateLoginClient(&isolate_manager_mock_,
@@ -51,10 +52,18 @@ protected:
                                Return(true)));
     EXPECT_CALL(token_manager_mock_, CheckUserTokenPermissions(token_path_))
          .WillRepeatedly(Return(true));
+    EXPECT_CALL(token_manager_mock_, SaltAuthData(token_path_, auth_old_, _))
+         .WillRepeatedly(DoAll(SetArgumentPointee<2>(salted_auth_old_),
+                               Return(true)));
+    EXPECT_CALL(token_manager_mock_, SaltAuthData(token_path_, auth_new_, _))
+         .WillRepeatedly(DoAll(SetArgumentPointee<2>(salted_auth_new_),
+                               Return(true)));
   }
   string user_;
   SecureBlob auth_old_;
   SecureBlob auth_new_;
+  SecureBlob salted_auth_old_;
+  SecureBlob salted_auth_new_;
   SecureBlob isolate_credential_;
   FilePath token_path_;
   IsolateCredentialManagerMock isolate_manager_mock_;
@@ -66,7 +75,7 @@ protected:
 TEST_F(TestIsolateLoginClient, TestLoginUserSuccess) {
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
-                                            Sha512(auth_new_),
+                                            salted_auth_new_,
                                             _))
       .WillOnce(Return(true));
 
@@ -79,7 +88,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserFail) {
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(false), Return(true)));
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
-                                            Sha512(auth_new_),
+                                            salted_auth_new_,
                                             _))
       .WillOnce(Return(false));
 
@@ -100,7 +109,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserNewIsolate) {
       .WillOnce(Return(true));
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
-                                            Sha512(auth_new_),
+                                            salted_auth_new_,
                                             _))
       .WillOnce(Return(true));
 
@@ -114,7 +123,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserCreateToken) {
        .WillOnce(Return(true));
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
-                                            Sha512(auth_new_),
+                                            salted_auth_new_,
                                             _))
       .WillOnce(Return(true));
 
@@ -143,8 +152,8 @@ TEST_F(TestIsolateLoginClient, TestLogoutInvalid) {
 
 TEST_F(TestIsolateLoginClient, TestChangeUsersAuthSuccess) {
   EXPECT_CALL(login_client_mock_, ChangeTokenAuthData(token_path_.value(),
-                                                      Sha512(auth_old_),
-                                                      Sha512(auth_new_)));
+                                                      salted_auth_old_,
+                                                      salted_auth_new_));
 
   EXPECT_TRUE(isolate_login_client_->ChangeUserAuth(user_, auth_old_,
                                                     auth_new_));

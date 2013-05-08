@@ -12,6 +12,7 @@
 #include <string>
 
 #include <base/file_path.h>
+#include <chromeos/secure_blob.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -24,6 +25,9 @@ class TokenFileManagerMock : public TokenFileManager {
   MOCK_METHOD2(GetUserTokenPath, bool (const std::string&, base::FilePath*));
   MOCK_METHOD1(CreateUserTokenDirectory, bool (const base::FilePath&));
   MOCK_METHOD1(CheckUserTokenPermissions, bool (const base::FilePath&));
+  MOCK_METHOD3(SaltAuthData, bool (const base::FilePath&,
+                                   const chromeos::SecureBlob&,
+                                   chromeos::SecureBlob*));
 };
 
 }  // namespace chaps
