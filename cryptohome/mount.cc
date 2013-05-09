@@ -1338,6 +1338,7 @@ bool Mount::InsertPkcs11Token() {
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       kChapsTokenDir,
       auth_data,
+      current_user_->username(),
       &slot_id)) {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
   }

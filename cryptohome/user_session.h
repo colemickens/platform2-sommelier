@@ -63,6 +63,10 @@ class UserSession {
   //   username (OUT) - the username
   virtual void GetObfuscatedUsername(std::string* username) const;
 
+  std::string username() const {
+    return username_;
+  }
+
  private:
   std::string obfuscated_username_;
   std::string username_;
