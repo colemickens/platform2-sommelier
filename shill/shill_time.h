@@ -6,6 +6,7 @@
 #define SHILL_TIME_H_
 
 #include <sys/time.h>
+#include <time.h>
 
 #include <string>
 
@@ -18,7 +19,7 @@ namespace shill {
 // be used for presenting the time in human-readable format. Note that the
 // monotonic clock does not necessarily advance during suspend.
 struct Timestamp {
-  Timestamp() : monotonic((const struct timeval){ 0 }) {}
+  Timestamp() : monotonic((const struct timeval) { 0 }) {}
   Timestamp(const struct timeval &in_monotonic,
             const std::string &in_wall_clock)
       : monotonic(in_monotonic),
@@ -43,6 +44,8 @@ class Time {
 
   // Returns a snapshot of the current time.
   virtual Timestamp GetNow();
+
+  virtual time_t GetSecondsSinceEpoch() const;
 
  protected:
   Time();

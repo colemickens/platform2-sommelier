@@ -5,6 +5,8 @@
 #ifndef SHILL_WIFI_PROVIDER_H_
 #define SHILL_WIFI_PROVIDER_H_
 
+#include <time.h>
+
 #include <deque>
 #include <map>
 
@@ -22,6 +24,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 class StoreInterface;
+class Time;
 class WiFiEndpoint;
 class WiFiService;
 
@@ -30,7 +33,12 @@ class WiFiService;
 // (created due to user or storage configuration) Services.
 class WiFiProvider {
  public:
+  static const char kStorageFrequencies[];
+  static const int kMaxStorageFrequencies;
   typedef std::map<uint16, int64> ConnectFrequencyMap;
+  // The key to |ConnectFrequencyMapDated| is the number of days since the
+  // Epoch.
+  typedef std::map<time_t, ConnectFrequencyMap> ConnectFrequencyMapDated;
   struct FrequencyCount {
     FrequencyCount() : frequency(0), connection_count(0) {}
     FrequencyCount(uint16 freq, size_t conn)
@@ -111,10 +119,16 @@ class WiFiProvider {
 
  private:
   friend class WiFiProviderTest;
+  FRIEND_TEST(WiFiProviderTest, FrequencyMapAgingIllegalDay);
+  FRIEND_TEST(WiFiProviderTest, FrequencyMapBasicAging);
   FRIEND_TEST(WiFiProviderTest, FrequencyMapToStringList);
+  FRIEND_TEST(WiFiProviderTest, FrequencyMapToStringListEmpty);
+  FRIEND_TEST(WiFiProviderTest, IncrementConnectCount);
+  FRIEND_TEST(WiFiProviderTest, IncrementConnectCountCreateNew);
   FRIEND_TEST(WiFiProviderTest, LoadAndFixupServiceEntries);
   FRIEND_TEST(WiFiProviderTest, LoadAndFixupServiceEntriesNothingToDo);
   FRIEND_TEST(WiFiProviderTest, StringListToFrequencyMap);
+  FRIEND_TEST(WiFiProviderTest, StringListToFrequencyMapEmpty);
 
   typedef std::map<const WiFiEndpoint *, WiFiServiceRefPtr> EndpointServiceMap;
 
@@ -123,9 +137,12 @@ class WiFiProvider {
   static const char kManagerErrorSSIDRequired[];
   static const char kManagerErrorUnsupportedSecurityMode[];
   static const char kManagerErrorUnsupportedServiceMode[];
-  static const char kFrequencyDelimiter[];
+  static const char kFrequencyDelimiter;
+  static const char kStartWeekHeader[];
+  static const time_t kIllegalStartWeek;
   static const char kStorageId[];
-  static const char kStorageFrequencies[];
+  static const time_t kWeeksToKeepFrequencyCounts;
+  static const time_t kSecondsPerWeek;
 
   // Add a service to the service_ vector and register it with the Manager.
   WiFiServiceRefPtr AddService(const std::vector<uint8_t> &ssid,
@@ -157,14 +174,29 @@ class WiFiProvider {
 
   // Converts frequency profile information from a list of strings of the form
   // "frequency:connection_count" to a form consistent with
-  // |connect_count_by_frequency_|
-  static void StringListToFrequencyMap(const std::vector<std::string> &strings,
+  // |connect_count_by_frequency_|.  The first string must be of the form
+  // [nnn] where |nnn| is a positive integer that represents the creation time
+  // (number of days since the Epoch) of the data.
+  static time_t StringListToFrequencyMap(
+      const std::vector<std::string> &strings,
+      ConnectFrequencyMap *numbers);
+
+  // Extracts the start week from the first string in the StringList for
+  // |StringListToFrequencyMap|.
+  static time_t GetStringListStartWeek(const std::string &week_string);
+
+  // Extracts frequency and connection count from a string from the StringList
+  // for |StringListToFrequencyMap|.  Places those values in |numbers|.
+  static void ParseStringListFreqCount(const std::string &freq_count_string,
                                        ConnectFrequencyMap *numbers);
 
   // Converts frequency profile information from a form consistent with
   // |connect_count_by_frequency_| to a list of strings of the form
-  // "frequency:connection_count"
-  static void FrequencyMapToStringList(const ConnectFrequencyMap &numbers,
+  // "frequency:connection_count".  The |creation_day| is the day that the
+  // data was first createed (represented as the number of days since the
+  // Epoch).
+  static void FrequencyMapToStringList(time_t creation_day,
+                                       const ConnectFrequencyMap &numbers,
                                        std::vector<std::string> *strings);
 
   ControlInterface *control_interface_;
@@ -181,9 +213,13 @@ class WiFiProvider {
   // successful connection has been made at that frequency.  Absent frequencies
   // have not had a successful connection.
   ConnectFrequencyMap connect_count_by_frequency_;
+  // A number of entries of |ConnectFrequencyMap| stored by date of creation.
+  ConnectFrequencyMapDated connect_count_by_frequency_dated_;
 
   // Count of successful wifi connections we've made.
   int64_t total_frequency_connections_;
+
+  Time *time_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFiProvider);
 };

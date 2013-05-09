@@ -12,7 +12,10 @@
 #include <vector>
 
 #include <base/bind.h>
+#include <base/format_macros.h>
 #include <base/string_number_conversions.h>
+#include <base/string_split.h>
+#include <base/string_util.h>
 
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
@@ -22,12 +25,14 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/profile.h"
+#include "shill/shill_time.h"
 #include "shill/store_interface.h"
 #include "shill/technology.h"
 #include "shill/wifi_endpoint.h"
 #include "shill/wifi_service.h"
 
 using base::Bind;
+using base::SplitString;
 using std::set;
 using std::string;
 using std::vector;
@@ -45,9 +50,15 @@ const char WiFiProvider::kManagerErrorUnsupportedSecurityMode[] =
     "security mode is unsupported";
 const char WiFiProvider::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
-const char WiFiProvider::kFrequencyDelimiter[] = ":";
+const char WiFiProvider::kFrequencyDelimiter = ':';
+const char WiFiProvider::kStartWeekHeader[] = "@";
+const time_t WiFiProvider::kIllegalStartWeek =
+    std::numeric_limits<time_t>::max();
 const char WiFiProvider::kStorageId[] = "provider_of_wifi";
 const char WiFiProvider::kStorageFrequencies[] = "Frequencies";
+const int WiFiProvider::kMaxStorageFrequencies = 20;
+const time_t WiFiProvider::kWeeksToKeepFrequencyCounts = 3;
+const time_t WiFiProvider::kSecondsPerWeek = 60 * 60 * 24 * 7;
 
 WiFiProvider::WiFiProvider(ControlInterface *control_interface,
                            EventDispatcher *dispatcher,
@@ -58,7 +69,8 @@ WiFiProvider::WiFiProvider(ControlInterface *control_interface,
       metrics_(metrics),
       manager_(manager),
       running_(false),
-      total_frequency_connections_(-1L) {}
+      total_frequency_connections_(-1L),
+      time_(Time::GetInstance()) {}
 
 WiFiProvider::~WiFiProvider() {}
 
@@ -327,26 +339,61 @@ void WiFiProvider::LoadAndFixupServiceEntries(
   // default profile except for autotests where a test_profile is pushed.  This
   // may need to be modified for that case.
   if (is_default_profile) {
-    vector<string> frequencies;
-    if (storage->GetStringList(kStorageId,
-                               kStorageFrequencies,
-                               &frequencies)) {
-      StringListToFrequencyMap(frequencies, &connect_count_by_frequency_);
-      total_frequency_connections_ = 0L;
-      WiFiProvider::ConnectFrequencyMap::const_iterator i;
-      for (i = connect_count_by_frequency_.begin();
-           i != connect_count_by_frequency_.end();
-           ++i) {
-        total_frequency_connections_ += i->second;
+    COMPILE_ASSERT(kMaxStorageFrequencies > kWeeksToKeepFrequencyCounts,
+                   persistently_storing_more_frequencies_than_we_can_hold);
+    total_frequency_connections_ = 0L;
+    connect_count_by_frequency_.clear();
+    time_t this_week = time_->GetSecondsSinceEpoch() / kSecondsPerWeek;
+    for (int freq = 0; freq < kMaxStorageFrequencies; ++freq) {
+      ConnectFrequencyMap connect_count_by_frequency;
+      string freq_string = StringPrintf("%s%d", kStorageFrequencies, freq);
+      vector<string> frequencies;
+      if (!storage->GetStringList(kStorageId, freq_string, &frequencies)) {
+        SLOG(WiFi, 7) << "Frequency list " << freq_string << " not found";
+        break;
+      }
+      time_t start_week = StringListToFrequencyMap(frequencies,
+                                                  &connect_count_by_frequency);
+      if (start_week == kIllegalStartWeek) {
+        continue;  // |StringListToFrequencyMap| will have output an error msg.
+      }
+
+      if (start_week > this_week) {
+        LOG(WARNING) << "Discarding frequency count info from the future";
+        continue;
+      }
+      connect_count_by_frequency_dated_[start_week] =
+          connect_count_by_frequency;
+
+      for (const auto &freq_count :
+           connect_count_by_frequency_dated_[start_week]) {
+        connect_count_by_frequency_[freq_count.first] += freq_count.second;
+        total_frequency_connections_ += freq_count.second;
       }
     }
+    SLOG(WiFi, 7) << __func__ << " - total count="
+                  << total_frequency_connections_;
   }
 }
 
 bool WiFiProvider::Save(StoreInterface *storage) const {
-  vector<string> frequencies;
-  FrequencyMapToStringList(connect_count_by_frequency_, &frequencies);
-  storage->SetStringList(kStorageId, kStorageFrequencies, frequencies);
+  int freq = 0;
+  // Iterating backwards since I want to make sure that I get the newest data.
+  ConnectFrequencyMapDated::const_reverse_iterator freq_count;
+  for (freq_count = connect_count_by_frequency_dated_.crbegin();
+       freq_count != connect_count_by_frequency_dated_.crend();
+       ++freq_count) {
+    vector<string> frequencies;
+    FrequencyMapToStringList(freq_count->first, freq_count->second,
+                             &frequencies);
+    string freq_string = StringPrintf("%s%d", kStorageFrequencies, freq);
+    storage->SetStringList(kStorageId, freq_string, frequencies);
+    if (++freq >= kMaxStorageFrequencies) {
+      LOG(WARNING) << "Internal frequency count list has more entries than the "
+                   << "string list we had allocated for it.";
+      break;
+    }
+  }
   return true;
 }
 
@@ -464,68 +511,106 @@ bool WiFiProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
 }
 
 // static
-void WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
+time_t WiFiProvider::StringListToFrequencyMap(const vector<string> &strings,
                                             ConnectFrequencyMap *numbers) {
   if (!numbers) {
     LOG(ERROR) << "Null |numbers| parameter";
-    return;
+    return kIllegalStartWeek;
   }
 
-  vector<string>::const_iterator i;
-  for (i = strings.begin(); i != strings.end(); ++i) {
-    size_t delimiter = i->find(kFrequencyDelimiter);
-    if (delimiter == i->npos) {
-      LOG(WARNING) << "Found no '" << kFrequencyDelimiter << "' in '"
-                   << *i << "'";
-      continue;
-    }
-    uint16 freq = atoi(i->c_str());
-    uint64 connections = atoll(i->c_str() + delimiter + 1);
-    (*numbers)[freq] = connections;
+  // Extract the start week from the first string.
+  vector<string>::const_iterator strings_it = strings.begin();
+  if (strings_it == strings.end()) {
+    SLOG(WiFi, 7) << "Empty |strings|.";
+    return kIllegalStartWeek;
   }
+  time_t start_week = GetStringListStartWeek(*strings_it);
+  if (start_week == kIllegalStartWeek) {
+    return kIllegalStartWeek;
+  }
+
+  // Extract the frequency:count values from the remaining strings.
+  for (++strings_it; strings_it != strings.end(); ++strings_it) {
+    ParseStringListFreqCount(*strings_it, numbers);
+  }
+  return start_week;
 }
 
 // static
-void WiFiProvider::FrequencyMapToStringList(const ConnectFrequencyMap &numbers,
+time_t WiFiProvider::GetStringListStartWeek(const string &week_string) {
+  if (!StartsWithASCII(week_string, kStartWeekHeader, false)) {
+    LOG(ERROR) << "Found no leading '" << kStartWeekHeader << "' in '"
+               << week_string << "'";
+    return kIllegalStartWeek;
+  }
+  return atoll(week_string.c_str() + 1);
+}
+
+// static
+void WiFiProvider::ParseStringListFreqCount(const string &freq_count_string,
+                                            ConnectFrequencyMap *numbers) {
+  vector<string> freq_count;
+  SplitString(freq_count_string, kFrequencyDelimiter, &freq_count);
+  if (freq_count.size() != 2) {
+    LOG(WARNING) << "Found " << freq_count.size() - 1 << " '"
+                 << kFrequencyDelimiter << "' in '" << freq_count_string
+                 << "'.  Expected 1.";
+    return;
+  }
+  uint16 freq = atoi(freq_count[0].c_str());
+  uint64 connections = atoll(freq_count[1].c_str());
+  (*numbers)[freq] = connections;
+}
+
+// static
+void WiFiProvider::FrequencyMapToStringList(time_t start_week,
+                                            const ConnectFrequencyMap &numbers,
                                             vector<string> *strings) {
   if (!strings) {
     LOG(ERROR) << "Null |strings| parameter";
     return;
   }
 
-  ConnectFrequencyMap::const_iterator i;
-  for (i = numbers.begin(); i != numbers.end(); ++i) {
+  strings->push_back(StringPrintf("%s%" PRIu64, kStartWeekHeader,
+                                  static_cast<uint64_t>(start_week)));
+
+  for (const auto &freq_conn : numbers) {
     // Use base::Int64ToString() instead of using something like "%llu"
     // (not correct for native 64 bit architectures) or PRId64 (does not
     // work correctly using cros_workon_make due to include intricacies).
-    string result = StringPrintf("%u%s%s", i->first, kFrequencyDelimiter,
-                                  base::Int64ToString(i->second).c_str());
-    strings->push_back(result);
+    strings->push_back(StringPrintf("%u%c%s",
+        freq_conn.first, kFrequencyDelimiter,
+        base::Int64ToString(freq_conn.second).c_str()));
   }
 }
 
 void WiFiProvider::IncrementConnectCount(uint16 frequency_mhz) {
-  // Freeze the accumulation of frequency counts when the total maxes-out.
-  // This ensures that no count wraps and that the relative values are
-  // consistent.
-  // TODO(wdg): Replace this, simple, 'forever' collection of connection
-  // statistics with a more clever 'aging' algorithm.  crbug.com/227233
-  if (total_frequency_connections_ + 1 == std::numeric_limits<int64_t>::max()) {
-    LOG(ERROR) << "Shill has logged " << total_frequency_connections_
-               << " connections -- must be an error.  Resetting connection "
-               << "count.";
-    connect_count_by_frequency_.clear();
-  }
+  CHECK(total_frequency_connections_ < std::numeric_limits<int64_t>::max());
 
-  int64 previous_value = 0;
-  if (ContainsKey(connect_count_by_frequency_, frequency_mhz)) {
-    previous_value = connect_count_by_frequency_[frequency_mhz];
-  }
-
-  connect_count_by_frequency_[frequency_mhz] = ++previous_value;
+  ++connect_count_by_frequency_[frequency_mhz];
   ++total_frequency_connections_;
-  manager_->UpdateWiFiProvider();
 
+  time_t this_week = time_->GetSecondsSinceEpoch() / kSecondsPerWeek;
+  ++connect_count_by_frequency_dated_[this_week][frequency_mhz];
+
+  ConnectFrequencyMapDated::iterator oldest =
+      connect_count_by_frequency_dated_.begin();
+  time_t oldest_legal_week = this_week - kWeeksToKeepFrequencyCounts;
+  while (oldest->first < oldest_legal_week) {
+    SLOG(WiFi, 7) << "Discarding frequency count info that's "
+                  << this_week - oldest->first << " weeks old";
+    for (const auto &freq_count : oldest->second) {
+      connect_count_by_frequency_[freq_count.first] -= freq_count.second;
+      if (connect_count_by_frequency_[freq_count.first] <= 0) {
+        connect_count_by_frequency_.erase(freq_count.first);
+      }
+      total_frequency_connections_ -= freq_count.second;
+    }
+    connect_count_by_frequency_dated_.erase(oldest);
+    oldest = connect_count_by_frequency_dated_.begin();
+  }
+
+  manager_->UpdateWiFiProvider();
   metrics_->SendToUMA(
       Metrics::kMetricFrequenciesConnectedEver,
       connect_count_by_frequency_.size(),

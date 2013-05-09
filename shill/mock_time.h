@@ -5,10 +5,10 @@
 #ifndef SHILL_MOCK_TIME_H_
 #define SHILL_MOCK_TIME_H_
 
+#include "shill/shill_time.h"
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
-
-#include "shill/shill_time.h"
 
 namespace shill {
 
@@ -20,6 +20,7 @@ class MockTime : public Time {
   MOCK_METHOD1(GetTimeMonotonic, int(struct timeval *tv));
   MOCK_METHOD2(GetTimeOfDay, int(struct timeval *tv, struct timezone *tz));
   MOCK_METHOD0(GetNow, Timestamp());
+  MOCK_CONST_METHOD0(GetSecondsSinceEpoch, time_t());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockTime);
