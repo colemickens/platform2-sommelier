@@ -39,6 +39,8 @@ DEFINE_string gpt_layout "" "Path to a script for pre-defined GPT partition \
 layout"
 DEFINE_string pmbr_code "" "Path to PMBR code to be installed"
 DEFINE_string target_bios "" "Bios type to boot with (see postinst --bios)"
+DEFINE_boolean mtd_layout ${FLAGS_FALSE} "This system uses MTD for \
+partitioning rather than GPT"
 DEFINE_boolean debug ${FLAGS_FALSE} "Show debug output"
 DEFINE_boolean large_test_partitions ${FLAGS_FALSE} \
   "Make partitions 9 and 10 large (for filesystem testing)"
@@ -120,6 +122,86 @@ fast_dd() {
     $count_arg
 }
 
+get_format() {
+  local part=$1
+  eval echo \${FORMAT_${part}}
+}
+
+get_fs_format() {
+  local part=$1
+  eval echo \${FS_FORMAT_${part}}
+}
+
+# Update a specific partition in the destination device.
+write_partition() {
+  local user_part="$1"
+  local user_count="$2"
+  local user_seek="$3"
+  local user_skip="$4"
+  local src="$5"
+  local dst="$6"
+  local format fs_format
+
+  if [ ${user_count} -eq 0 ]; then
+    echo "Skipping partition as it does not exist"
+    return 0
+  fi
+
+  format=$(get_format ${user_part})
+  case ${format} in
+  nand)
+    nandwrite --input-skip $((user_skip * 512)) \
+      --input-size $((user_count * 512)) \
+      /dev/mtd${user_part} "${src}"
+    ;;
+
+  ubi)
+    local phy_ubi="/dev/ubi${user_part}"
+    local log_ubi="${phy_ubi}_0"
+    local sysfs_name="/sys/class/mtd/mtd${user_part}/name"
+
+    # Do we have to initialize it first?
+    if [ ! -e ${phy_ubi} ]; then
+      ubiformat -y -e 0 /dev/mtd${user_part}
+      ubiattach -d ${user_part} -m ${user_part}
+    fi
+    if [ ! -e ${log_ubi} ]; then
+      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
+    fi
+
+    fs_format=$(get_fs_format ${user_part})
+    case ${fs_format} in
+    ubifs)
+      local src_mnt="${TMPMNT}/src" dst_mnt="${TMPMNT}/dst"
+      mkdir -p "${src_mnt}" "${dst_mnt}"
+
+      mkfs.ubifs -y -x none -R 0 "${log_ubi}"
+      mount "${log_ubi}" "${dst_mnt}"
+
+      # Have to copy the files over by hand as the source partition is a
+      # different filesystem type (like ext4).
+      loop_offset_setup "${src}" "${user_seek}"
+      TMPMNT="${src_mnt}" mount_on_loop_dev
+      cp -a "${src_mnt}"/* "${dst_mnt}"/
+      TMPMNT="${src_mnt}" umount_from_loop_dev
+      loop_offset_cleanup
+
+      umount "${log_ubi}"
+      ;;
+    *)
+      ubiupdatevol --skip $((user_skip * 512)) --size $((user_count * 512)) \
+        ${log_ubi} "${src}"
+      ;;
+    esac
+    ;;
+
+  *)
+    fast_dd 512 "${user_count}" "${user_seek}" "${user_skip}" \
+      if="${src}" of="${dst}" conv=notrunc
+    ;;
+  esac
+}
+
 # Find root partition of the block device that we are installing from
 get_root_device() {
   rootdev -s
@@ -156,7 +238,13 @@ else
   ROOT="$(mktemp -d)"
 fi
 
-# Find our destination device
+# Load the GPT helper functions and the image settings.
+. "${ROOT}/usr/sbin/write_gpt.sh"
+load_base_vars
+
+# Find our destination device.  If the user hasn't selected one, and the
+# disk layout doesn't declare it for us, do some historical autoprobing.
+: ${FLAGS_dst:=${DEFAULT_ROOTDEV}}
 if [ -z "$FLAGS_dst" ]; then
   if [ "$ARCH" = "INTEL" ]; then
     # This finds the first ATA device listed by parted.
@@ -172,10 +260,15 @@ if [ -z "$FLAGS_dst" ]; then
 else
   DST="$FLAGS_dst"
 fi
+if [ "${DST}" = "/dev/ubi" ]; then
+  FLAGS_mtd_layout=${FLAGS_TRUE}
+fi
 
 # Check out the dst device.
-if [ ! -b "$DST" ]; then
-  echo "Error: Unable to find destination block device: $DST"
+if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  FLAGS_skip_dst_removable=${FLAGS_TRUE}
+elif [ ! -b "${DST}" ]; then
+  echo "Error: Unable to find destination block device: ${DST}"
   exit 1
 fi
 
@@ -423,6 +516,8 @@ fi
 
 if [ -n "${FLAGS_pmbr_code}" ]; then
   PMBRCODE="${FLAGS_pmbr_code}"
+elif [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  : nop it
 elif [ "$ARCH" = "ARM" ]; then
   # Store the existing PMBR from the destination in the temp pmbr file so we can
   # restore it when we're installing the GPT. This ensures that we preserve
@@ -435,10 +530,13 @@ else
 fi
 
 # Write the GPT using the board specific script.
-. "${ROOT}/usr/sbin/write_gpt.sh"
-write_base_table ${DST} ${PMBRCODE}
-/sbin/blockdev --rereadpt ${DST}
-legacy_offset_size_export "${DST}"
+if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+  write_base_table ${DST} ${PMBRCODE}
+  /sbin/blockdev --rereadpt ${DST}
+  legacy_offset_size_export "${DST}"
+else
+  legacy_offset_size_export "${SRC}"
+fi
 
 if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
   echo Done installing partitons.
@@ -447,8 +545,8 @@ fi
 
 # Install the content.
 echo "Copying kernel..."
-fast_dd 512 ${KERNEL_IMG_SECTORS} ${START_KERN_A} ${KERNEL_IMG_OFFSET} \
-  if=${KERNEL_IMG} of=${DST} conv=notrunc,fsync
+write_partition ${KERNEL_PART} ${KERNEL_IMG_SECTORS} ${START_KERN_A} \
+  ${KERNEL_IMG_OFFSET} ${KERNEL_IMG} ${DST}
 
 # Copy kernel verification block to target HD
 copy_kernel_vblock() {
@@ -482,26 +580,49 @@ echo "Copying rootfs..."
 # that will break both the delta updater and verified boot.  We must do a
 # straight copy now.  The GPT labels and UUIDs are the only mutable naming
 # areas we have after a build.
-fast_dd 512 ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} ${ROOTFS_IMG_OFFSET} \
-  if=${ROOTFS_IMG} of=${DST} conv=notrunc
+write_partition ${ROOTFS_PART} ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} \
+  ${ROOTFS_IMG_OFFSET} ${ROOTFS_IMG} ${DST}
 
 echo "Copying OEM customization..."
-fast_dd 512 ${OEM_IMG_SECTORS} ${START_OEM} ${OEM_IMG_OFFSET} \
-  if=${OEM_IMG} of=${DST} conv=notrunc
+write_partition ${OEM_PART} ${OEM_IMG_SECTORS} ${START_OEM} \
+  ${OEM_IMG_OFFSET} ${OEM_IMG} ${DST}
+
 echo "Copying ESP..."
-fast_dd 512 ${ESP_IMG_SECTORS} ${START_ESP} ${ESP_IMG_OFFSET} \
-  if=${ESP_IMG} of=${DST} conv=notrunc
+write_partition ${ESP_PART} ${ESP_IMG_SECTORS} ${START_ESP} \
+  ${ESP_IMG_OFFSET} ${ESP_IMG} ${DST}
 
 # If postinst fails, we should still clear stateful.
+STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
+STATEFUL_FS_FORMAT=$(get_fs_format ${STATEFUL_PART})
 if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   echo "Clearing the stateful partition..."
-  loop_offset_setup $DST $START_STATEFUL
-  mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
-    $(($NUM_STATEFUL_SECTORS / 8))
-  # Need to synchronize before releasing loop device, otherwise calling
-  # loop_offset_cleanup may return "device busy" error.
-  sync
-  loop_offset_cleanup
+
+  case ${STATEFUL_FORMAT} in
+  ubi) ;;
+  *)
+    loop_offset_setup ${DST} ${START_STATEFUL}
+    ;;
+  esac
+
+  case ${STATEFUL_FS_FORMAT} in
+  ext[234])
+    mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+      $((NUM_STATEFUL_SECTORS / 8))
+    ;;
+  ubifs)
+    mkfs.ubifs -y -x none -R 0 /dev/ubi${STATEFUL_PART}_0
+    ;;
+  esac
+
+  case ${STATEFUL_FORMAT} in
+  ubi) ;;
+  *)
+    # Need to synchronize before releasing loop device, otherwise calling
+    # loop_offset_cleanup may return "device busy" error.
+    sync
+    loop_offset_cleanup
+    ;;
+  esac
 fi
 
 POSTINST_BIOS_ARGS=""
@@ -545,7 +666,14 @@ fi
 # item you add here is well justified.
 #
 echo "Installing the stateful partition..."
-loop_offset_setup $DST $START_STATEFUL
+case ${STATEFUL_FORMAT} in
+ubi)
+  LOOP_DEV="/dev/ubi${STATEFUL_PART}_0"
+  ;;
+*)
+  loop_offset_setup ${DST} ${START_STATEFUL}
+  ;;
+esac
 mount_on_loop_dev readwrite
 
 # Whitelist files to copy onto the stateful partition.
@@ -592,7 +720,12 @@ for DIR in ${DIRLIST}; do
 done
 
 umount_from_loop_dev
-loop_offset_cleanup
+case ${STATEFUL_FORMAT} in
+ubi) ;;
+*)
+  loop_offset_cleanup
+  ;;
+esac
 
 # Force data to disk before we declare done.
 sync
