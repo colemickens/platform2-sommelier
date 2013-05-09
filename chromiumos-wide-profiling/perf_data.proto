@@ -18,14 +18,14 @@ message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
   // This data structure is defined in the linux kernel:
-  // $kernel/tools/perf/util/event.h.
+  // $kernel/include/linux/perf_event.h.
   // Next tag: 36
   message PerfEventAttr {
-    // Type of the event. Type is an enumeration and can be:
-    // IP: an instruction-pointer was stored in the event.
-    // MMAP: a DLL was loaded.
-    // FORK: a process was forked.
-    // etc.
+    // Type of the event. Type is an enumeration and can be one of the values
+    // described at: $kernel/include/linux/perf_event.h.
+    // Example types are:
+    // PERF_TYPE_HARDWARE
+    // PERF_TYPE_SOFTWARE, etc.
     optional uint32 type = 1;
 
     // Size of the event data in bytes.
@@ -178,7 +178,7 @@ message PerfDataProto {
     // Comm string.
     optional string comm = 3;
 
-    // Comm string's md5 prefix
+    // Comm string's md5 prefix.
     optional uint64 comm_md5_prefix = 4;
 
     // Time the sample was taken.
@@ -193,16 +193,22 @@ message PerfDataProto {
   message MMapEvent {
     // Process id.
     optional uint32 pid = 1;
+
     // Thread id.
     optional uint32 tid = 2;
+
     // Start address.
     optional uint64 start = 3;
+
     // Length.
     optional uint64 len = 4;
+
     // PG Offset.
     optional uint64 pgoff = 5;
+
     // Filename.
     optional string filename = 6;
+
     // Filename's md5 prefix.
     optional uint64 filename_md5_prefix = 7;
 
@@ -264,7 +270,6 @@ message PerfDataProto {
   // ForkEvent is used for both FORK and EXIT events, which have the same data
   // format.  We don't want to call this "ForkOrExitEvent", in case a separate
   // exit event is introduced in the future.
-
   // Next tag: 12
   message ForkEvent {
     // Forked process ID.
