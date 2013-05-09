@@ -371,9 +371,18 @@ trap cleanup_on_failure EXIT
 
 ##############################################################################
 
+# These partition numbers are hardcoded all over the system.  Changing them
+# here is only a small piece of the puzzle.  Recommend you not think about
+# trying to do that.
+STATEFUL_PART=1
+KERNEL_PART=2
 KERNEL_IMG_OFFSET=0
+KERNEL_B_PART=4
+ROOTFS_PART=3
 ROOTFS_IMG_OFFSET=0
+OEM_PART=8
 OEM_IMG_OFFSET=0
+ESP_PART=12
 ESP_IMG_OFFSET=0
 
 # Clean media browser mounts if they've popped up.
@@ -381,11 +390,11 @@ prepare_disk
 
 # What do we expect & require to have on the source device?
 if [ -z "$FLAGS_payload_image" ]; then
-  STATEFUL_IMG=$(make_partition_dev ${SRC} 1)
-  KERNEL_IMG=$(make_partition_dev ${SRC} 2)
-  ROOTFS_IMG=$(make_partition_dev ${SRC} 3)
-  OEM_IMG=$(make_partition_dev ${SRC} 8)
-  ESP_IMG=$(make_partition_dev ${SRC} 12)
+  STATEFUL_IMG=$(make_partition_dev ${SRC} ${STATEFUL_PART})
+  KERNEL_IMG=$(make_partition_dev ${SRC} ${KERNEL_PART})
+  ROOTFS_IMG=$(make_partition_dev ${SRC} ${ROOTFS_PART})
+  OEM_IMG=$(make_partition_dev ${SRC} ${OEM_PART})
+  ESP_IMG=$(make_partition_dev ${SRC} ${ESP_PART})
 else
   KERNEL_IMG=${FLAGS_payload_image}
   ROOTFS_IMG=${FLAGS_payload_image}
@@ -394,15 +403,15 @@ else
 
   locate_gpt
 
-  STATEFUL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 1)
-  KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 2)
-  ROOTFS_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 3)
-  OEM_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 8)
-  ESP_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 12)
+  STATEFUL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${STATEFUL_PART})
+  KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${KERNEL_PART})
+  ROOTFS_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${ROOTFS_PART})
+  OEM_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${OEM_PART})
+  ESP_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${ESP_PART})
 
   if [ ${FLAGS_use_payload_kern_b} -eq ${FLAGS_TRUE} ]; then
-    KERNEL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" 4)
-    KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" 4)
+    KERNEL_IMG_SECTORS=$(partsize "${FLAGS_payload_image}" ${KERNEL_B_PART})
+    KERNEL_IMG_OFFSET=$(partoffset "${FLAGS_payload_image}" ${KERNEL_B_PART})
   fi
 
   # Mount the src image
@@ -512,7 +521,8 @@ fi
 if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
   loop_offset_setup ${DST} ${START_ROOTFS_A}
   mount_on_loop_dev
-  sudo IS_INSTALL="1" ${TMPMNT}/postinst $(make_partition_dev ${DST} 3) \
+  sudo IS_INSTALL="1" ${TMPMNT}/postinst \
+    $(make_partition_dev ${DST} ${ROOTFS_PART}) \
     ${SUB_CMD_DEBUG_FLAG} "${POSTINST_BIOS_ARGS}"
   umount_from_loop_dev
   loop_offset_cleanup
