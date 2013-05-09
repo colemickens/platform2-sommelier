@@ -90,7 +90,8 @@ ConnectionHealthChecker::ConnectionHealthChecker(
       health_check_in_progress_(false),
       num_connection_failures_(0),
       num_congested_queue_detected_(0),
-      num_successful_sends_(0) {
+      num_successful_sends_(0),
+      tcp_state_update_wait_milliseconds_(kTCPStateUpdateWaitMilliseconds) {
   for (size_t i = 0; i < arraysize(kDefaultRemoteIPPool); ++i) {
     const char *ip_string = kDefaultRemoteIPPool[i];
     IPAddress ip(IPAddress::kFamilyIPv4);
@@ -312,7 +313,7 @@ void ConnectionHealthChecker::OnConnectionComplete(bool success, int sock_fd) {
   verify_sent_data_callback_.Reset(
       Bind(&ConnectionHealthChecker::VerifySentData, Unretained(this)));
   dispatcher_->PostDelayedTask(verify_sent_data_callback_.callback(),
-                               kTCPStateUpdateWaitMilliseconds);
+                               tcp_state_update_wait_milliseconds_);
 }
 
 void ConnectionHealthChecker::VerifySentData() {
@@ -343,7 +344,7 @@ void ConnectionHealthChecker::VerifySentData() {
       verify_sent_data_callback_.Reset(
           Bind(&ConnectionHealthChecker::VerifySentData, Unretained(this)));
       dispatcher_->PostDelayedTask(verify_sent_data_callback_.callback(),
-                                   kTCPStateUpdateWaitMilliseconds);
+                                   tcp_state_update_wait_milliseconds_);
       return;
     }
     SLOG(Connection, 2) << __func__ << ": Sampled congested Tx-Queue";

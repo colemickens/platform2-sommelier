@@ -220,6 +220,9 @@ class ConnectionHealthChecker {
   // Number of successful send attempts currently active health check.
   short num_successful_sends_;
 
+  // Snooze time while polling for updated /proc/tcpinfo
+  int tcp_state_update_wait_milliseconds_;
+
   // Temporarily store the result of health check so that |report_result_|
   // can report it.
   Result health_check_result_;

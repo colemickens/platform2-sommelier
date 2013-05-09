@@ -173,6 +173,9 @@ class ConnectionHealthCheckerTest : public Test {
   int MinSuccessfulSendAttempts() {
     return ConnectionHealthChecker::kMinSuccessfulSendAttempts;
   }
+  void SetTCPStateUpdateWaitMilliseconds(int new_wait) {
+    health_checker_->tcp_state_update_wait_milliseconds_ = new_wait;
+  }
 
   // Mock Callbacks
   MOCK_METHOD1(ResultCallbackTarget,
@@ -644,8 +647,6 @@ TEST_F(ConnectionHealthCheckerTest, OnConnectionComplete) {
 }
 
 TEST_F(ConnectionHealthCheckerTest, VerifySentData) {
-  health_checker_->AddRemoteIP(StringToIPv4Address(kProxyIPAddressRemote));
-
   // (1) Test that num_connection_attempts is incremented when the connection
   // state is garbled up.
   health_checker_->set_num_connection_failures(
@@ -697,6 +698,37 @@ TEST_F(ConnectionHealthCheckerTest, VerifySentData) {
       ResultCallbackTarget(ConnectionHealthChecker::kResultSuccess));
   health_checker_->set_sock_fd(kProxyFD);
   health_checker_->VerifySentData();
+  dispatcher_.DispatchPendingEvents();
+  VerifyAndClearAllExpectations();
+
+  // (4) Test that VerifySentData correctly polls the tcpinfo twice.
+  // We want to immediately dispatch posted tasks.
+  SetTCPStateUpdateWaitMilliseconds(0);
+  health_checker_->set_num_congested_queue_detected(
+      MinCongestedQueueAttempts() - 1);
+  health_checker_->set_num_tx_queue_polling_attempts(
+      MaxSentDataPollingAttempts() - 1);
+  health_checker_->set_old_transmit_queue_value(0);
+  ExpectGetSocketInfoReturns(
+      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished,
+                            SocketInfo::kTimerStateRetransmitTimerPending,
+                            1));
+  ExpectGetSocketInfoReturns(
+      CreateSocketInfoProxy(SocketInfo::kConnectionStateEstablished,
+                            SocketInfo::kTimerStateRetransmitTimerPending,
+                            1));
+  EXPECT_CALL(*socket_, Close(kProxyFD));
+  ExpectStop();
+  EXPECT_CALL(
+      *this, ResultCallbackTarget(
+          ConnectionHealthChecker::kResultCongestedTxQueue))
+      .InSequence(seq_);
+  health_checker_->set_sock_fd(kProxyFD);
+  health_checker_->VerifySentData();
+  dispatcher_.DispatchPendingEvents();
+  dispatcher_.DispatchPendingEvents();
+  // Force an extra dispatch to make sure that VerifySentData did not poll an
+  // extra time. This dispatch should be a no-op.
   dispatcher_.DispatchPendingEvents();
   VerifyAndClearAllExpectations();
 }
