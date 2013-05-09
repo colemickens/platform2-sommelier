@@ -43,6 +43,7 @@ public:
   virtual void LoadToken(const std::vector<uint8_t>& isolate_credential,
                          const std::string& path,
                          const std::vector<uint8_t>& auth_data,
+                         const std::string& label,
                          int32_t& slot_id,
                          bool& result,
                          ::DBus::Error& error);
@@ -483,6 +484,7 @@ public:
   virtual void LoadToken(const std::vector<uint8_t>& isolate_credential,
                          const std::string& path,
                          const std::vector<uint8_t>& auth_data,
+                         const std::string& label,
                          int32_t& slot_id,
                          bool& result);
   virtual void UnloadToken(const std::vector<uint8_t>& isolate_credential,

@@ -37,6 +37,7 @@ const char kAuthData[] = "000000";
 const char kNewAuthData[] = "111111";
 const char kDefaultPubExp[] = {1, 0, 1};
 const int kDefaultPubExpSize = 3;
+const char kTokenLabel[] = "test_label";
 
 SecureBlob MakeBlob(const char* auth_data_str) {
   return Sha1(SecureBlob(auth_data_str, strlen(auth_data_str)));
@@ -144,6 +145,7 @@ class TestSlotManager: public ::testing::Test {
     int slot_id = 0;
     slot_manager_->LoadToken(ic_, FilePath("/var/lib/chaps"),
                              MakeBlob(kAuthData),
+                             kTokenLabel,
                              &slot_id);
     return slot_id;
   }
@@ -233,6 +235,7 @@ TEST(DeathTest, OutOfMemoryInit) {
       sm.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
                    FilePath("/var/lib/chaps"),
                    MakeBlob(kAuthData),
+                   kTokenLabel,
                    &slot_id),
       "Check failed");
 }
@@ -252,6 +255,11 @@ TEST_F(TestSlotManager, QueryInfo) {
   memset(&token_info, 0xEE, sizeof(token_info));
   slot_manager_->GetTokenInfo(ic_, 0, &token_info);
   EXPECT_EQ(NULL, memchr(&token_info, 0xEE, sizeof(token_info)));
+  string expected_label(kTokenLabel);
+  expected_label.resize(arraysize(token_info.label), 0);
+  string actual_label(reinterpret_cast<char*>(token_info.label),
+                      arraysize(token_info.label));
+  EXPECT_EQ(expected_label, actual_label);
   const MechanismMap* mechanisms = slot_manager_->GetMechanismInfo(ic_, 0);
   ASSERT_TRUE(mechanisms != NULL);
   // Sanity check - we don't want to be strict on the mechanism list.
@@ -285,6 +293,7 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   EXPECT_TRUE(slot_manager_->LoadToken(ic_,
                                        FilePath("some_path"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
   // Load token with an existing path - should not result in a new slot.
@@ -292,12 +301,14 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   EXPECT_TRUE(slot_manager_->LoadToken(ic_,
                                        FilePath("some_path"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id2));
   EXPECT_EQ(slot_id, slot_id2);
   EXPECT_EQ(2, slot_manager_->GetSlotCount());
   EXPECT_TRUE(slot_manager_->LoadToken(ic_,
                                        FilePath("another_path"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 2));
   slot_manager_->ChangeTokenAuthData(FilePath("some_path"),
@@ -315,6 +326,7 @@ TEST_F(TestSlotManager, TestLoadTokenEvents) {
   EXPECT_TRUE(slot_manager_->LoadToken(ic_,
                                        FilePath("one_more_path"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(ic_, 1));
   slot_manager_->UnloadToken(ic_, FilePath("another_path"));
@@ -404,6 +416,7 @@ TEST_F(TestSlotManager, TestCloseIsolateUnloadToken) {
   EXPECT_TRUE(slot_manager_->LoadToken(isolate,
                                        FilePath("some_path"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id));
   EXPECT_TRUE(slot_manager_->IsTokenPresent(isolate, 0));
   // Token should be unloaded by CloseIsolate call.
@@ -431,6 +444,7 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
   EXPECT_TRUE(slot_manager_->LoadToken(new_isolate_0,
                                        FilePath("new_isolate"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id));
   EXPECT_EQ(1, slot_manager_->GetSlotCount());
 
@@ -439,6 +453,7 @@ TEST_F(TestSlotManager_DeathTest, TestIsolateTokens) {
   EXPECT_TRUE(slot_manager_->LoadToken(new_isolate_1,
                                        FilePath("another_new_isolate"),
                                        MakeBlob(kAuthData),
+                                       kTokenLabel,
                                        &slot_id));
   EXPECT_EQ(2, slot_manager_->GetSlotCount());
 

@@ -83,6 +83,7 @@ void ChapsAdaptor::CloseIsolate(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
                              const string& path,
                              const vector<uint8_t>& auth_data,
+                             const string& label,
                              int32_t& slot_id,
                              bool& result) {
   AutoLock lock(*lock_);
@@ -94,6 +95,7 @@ void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
     result = login_listener_->LoadToken(isolate_credential_blob,
                                         FilePath(path),
                                         auth_data_blob,
+                                        label,
                                         &slot_id);
   ClearVector(isolate_credential);
   ClearVector(auth_data);
@@ -102,10 +104,11 @@ void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
 void ChapsAdaptor::LoadToken(const vector<uint8_t>& isolate_credential,
                              const string& path,
                              const vector<uint8_t>& auth_data,
+                             const string& label,
                              int32_t& slot_id,
                              bool& result,
                              ::DBus::Error& /*error*/) {
-  LoadToken(isolate_credential, path, auth_data, slot_id, result);
+  LoadToken(isolate_credential, path, auth_data, label, slot_id, result);
 }
 
 void ChapsAdaptor::UnloadToken(const vector<uint8_t>& isolate_credential,

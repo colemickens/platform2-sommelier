@@ -50,6 +50,7 @@ void LoginEventClient::CloseIsolate(const SecureBlob& isolate_credential) {
 bool LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
                                  const string& path,
                                  const SecureBlob& auth_data,
+                                 const string& label,
                                  int* slot_id) {
   CHECK(proxy_);
   if (!Connect()) {
@@ -57,7 +58,7 @@ bool LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
                  << "Load Token notification will not be sent.";
     return false;
   }
-  return proxy_->LoadToken(isolate_credential, path, auth_data, slot_id);
+  return proxy_->LoadToken(isolate_credential, path, auth_data, label, slot_id);
 }
 
 void LoginEventClient::UnloadToken(const SecureBlob& isolate_credential,

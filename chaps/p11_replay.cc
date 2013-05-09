@@ -523,6 +523,33 @@ class DigestTestThread : public base::PlatformThread::Delegate {
   CK_SLOT_ID slot_;
 };
 
+void PrintTokens() {
+  CK_RV result = CKR_OK;
+  CK_SLOT_ID slot_list[10];
+  CK_ULONG slot_count = arraysize(slot_list);
+  result = C_GetSlotList(CK_TRUE, slot_list, &slot_count);
+  if (result != CKR_OK)
+    exit(-1);
+  for (CK_ULONG i = 0; i < slot_count; ++i) {
+    CK_SLOT_INFO slot_info;
+    result = C_GetSlotInfo(slot_list[i], &slot_info);
+    if (result != CKR_OK)
+      exit(-1);
+    printf("Slot %d: ", static_cast<int>(slot_list[i]));
+    if (slot_info.flags & CKF_TOKEN_PRESENT) {
+      CK_TOKEN_INFO token_info;
+      result = C_GetTokenInfo(slot_list[i], &token_info);
+      if (result != CKR_OK)
+        exit(-1);
+      string label(reinterpret_cast<char*>(token_info.label),
+                   arraysize(token_info.label));
+      printf("%s\n", label.c_str());
+    } else {
+      printf("No token present.\n");
+    }
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -545,8 +572,9 @@ int main(int argc, char** argv) {
       cl->HasSwitch("type") &&
       cl->HasSwitch("id");
   bool digest_test = cl->HasSwitch("digest_test");
+  bool list_tokens = cl->HasSwitch("list_tokens");
   if (!generate && !generate_delete && !vpn && !wifi && !logout && !cleanup &&
-      !inject && !list_objects && !import && !digest_test) {
+      !inject && !list_objects && !import && !digest_test && !list_tokens) {
     PrintHelp();
     return 0;
   }
@@ -643,6 +671,9 @@ int main(int argc, char** argv) {
       base::PlatformThread::Join(handles[i]);
       LOG(INFO) << "Joined thread " << i;
     }
+  }
+  if (list_tokens) {
+    PrintTokens();
   }
   if (cleanup)
     DeleteAllTestKeys(session);

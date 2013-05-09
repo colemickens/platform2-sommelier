@@ -34,6 +34,7 @@ public:
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const std::string& path,
                          const std::vector<uint8_t>& auth_data,
+                         const std::string& label,
                          int* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
                            const std::string& path);

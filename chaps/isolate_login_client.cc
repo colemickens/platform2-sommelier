@@ -77,6 +77,7 @@ bool IsolateLoginClient::LoginUser(const string& user,
   if (!login_client_->LoadToken(isolate_credential,
                                 token_path.value().c_str(),
                                 salted_auth_data,
+                                user,
                                 &slot_id)) {
     return false;
   }

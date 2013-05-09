@@ -488,6 +488,7 @@ void SlotManagerImpl::CloseIsolate(const SecureBlob& isolate_credential) {
 bool SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
                                 const FilePath& path,
                                 const SecureBlob& auth_data,
+                                const string& label,
                                 int* slot_id) {
   CHECK(slot_id);
 
@@ -543,6 +544,10 @@ bool SlotManagerImpl::LoadToken(const SecureBlob& isolate_credential,
   slot_list_[*slot_id].token_object_pool = object_pool;
   slot_list_[*slot_id].slot_info.flags |= CKF_TOKEN_PRESENT;
   path_slot_map_[path] = *slot_id;
+  CopyStringToCharBuffer(label,
+                         slot_list_[*slot_id].token_info.label,
+                         arraysize(slot_list_[*slot_id].token_info.label));
+
   // Insert slot into the isolate.
   isolate.slot_ids.insert(*slot_id);
   LOG(INFO) << "Slot " << *slot_id << " ready for token at " << path.value();
@@ -661,10 +666,10 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
   memset(slot_info, 0, sizeof(CK_SLOT_INFO));
   CopyStringToCharBuffer(kSlotDescription,
                          slot_info->slotDescription,
-                         sizeof(slot_info->slotDescription));
+                         arraysize(slot_info->slotDescription));
   CopyStringToCharBuffer(kManufacturerID,
                          slot_info->manufacturerID,
-                         sizeof(slot_info->manufacturerID));
+                         arraysize(slot_info->manufacturerID));
   slot_info->flags = CKF_HW_SLOT | CKF_REMOVABLE_DEVICE;
   slot_info->hardwareVersion = kDefaultVersion;
   slot_info->firmwareVersion = kDefaultVersion;
@@ -672,16 +677,16 @@ void SlotManagerImpl::GetDefaultInfo(CK_SLOT_INFO* slot_info,
   memset(token_info, 0, sizeof(CK_TOKEN_INFO));
   CopyStringToCharBuffer(kTokenLabel,
                          token_info->label,
-                         sizeof(token_info->label));
+                         arraysize(token_info->label));
   CopyStringToCharBuffer(kManufacturerID,
                          token_info->manufacturerID,
-                         sizeof(token_info->manufacturerID));
+                         arraysize(token_info->manufacturerID));
   CopyStringToCharBuffer(kTokenModel,
                          token_info->model,
-                         sizeof(token_info->model));
+                         arraysize(token_info->model));
   CopyStringToCharBuffer(kTokenSerialNumber,
                          token_info->serialNumber,
-                         sizeof(token_info->serialNumber));
+                         arraysize(token_info->serialNumber));
   token_info->flags = CKF_RNG |
                       CKF_USER_PIN_INITIALIZED |
                       CKF_PROTECTED_AUTHENTICATION_PATH |

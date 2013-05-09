@@ -76,6 +76,7 @@ class SlotManagerImpl : public SlotManager,
   virtual bool LoadToken(const chromeos::SecureBlob& isolate_credential,
                          const FilePath& path,
                          const chromeos::SecureBlob& auth_data,
+                         const std::string& label,
                          int* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
                            const FilePath& path);

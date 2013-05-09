@@ -33,7 +33,7 @@ void PrintHelp() {
   printf("Usage: chaps_client COMMAND [ARGUMENTS]\n");
   printf("Commands:\n");
   printf("  --ping : Checks that the Chaps daemon is available.\n");
-  printf("  --load --path=<path> --auth=<auth>"
+  printf("  --load --path=<path> --auth=<auth> [--label=<label>]"
          " : Loads the token at the given path.\n");
   printf("  --unload --path=<path> : Unloads the token at the given path.\n");
   printf("  --change_auth --path=<path> --auth=<old_auth> --new_auth=<new_auth>"
@@ -61,13 +61,14 @@ void Ping() {
 }
 
 // Loads a token given a path and auth data.
-void LoadToken(const string& path, const string& auth) {
+void LoadToken(const string& path, const string& auth, const string& label) {
   chaps::LoginEventClient client;
   int slot_id = 0;
   client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
                    path,
                    SecureBlob(chaps::ConvertStringToByteBuffer(auth.data()),
                                                                auth.length()),
+                   label,
                    &slot_id);
   LOG(INFO) << "Sent Event: Login: " << path << " - slot = " << slot_id;
 }
@@ -126,8 +127,12 @@ int main(int argc, char** argv) {
   if (ping) {
     Ping();
   } else if (load) {
+    string label = "Default Token";
+    if (cl->HasSwitch("label"))
+      label = cl->GetSwitchValueASCII("label");
     LoadToken(cl->GetSwitchValueASCII("path"),
-              cl->GetSwitchValueASCII("auth"));
+              cl->GetSwitchValueASCII("auth"),
+              label);
   } else if (change_auth) {
     ChangeAuthData(cl->GetSwitchValueASCII("path"),
                    cl->GetSwitchValueASCII("auth"),

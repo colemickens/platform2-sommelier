@@ -76,6 +76,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserSuccess) {
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
                                             salted_auth_new_,
+                                            user_,
                                             _))
       .WillOnce(Return(true));
 
@@ -89,6 +90,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserFail) {
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
                                             salted_auth_new_,
+                                            user_,
                                             _))
       .WillOnce(Return(false));
 
@@ -110,6 +112,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserNewIsolate) {
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
                                             salted_auth_new_,
+                                            user_,
                                             _))
       .WillOnce(Return(true));
 
@@ -124,6 +127,7 @@ TEST_F(TestIsolateLoginClient, TestLoginUserCreateToken) {
   EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
                                             token_path_.value(),
                                             salted_auth_new_,
+                                            user_,
                                             _))
       .WillOnce(Return(true));
 

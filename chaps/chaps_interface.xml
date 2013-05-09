@@ -45,6 +45,7 @@
       <arg type="ay" name="isolate_credential" direction="in"/>
       <arg type="s" name="path" direction="in"/>
       <arg type="ay" name="auth_data" direction="in"/>
+      <arg type="s" name="label" direction="in"/>
       <arg type="i" name="slot_id" direction="out" />
       <arg type="b" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>

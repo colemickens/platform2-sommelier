@@ -19,9 +19,10 @@ class LoginEventClientMock : public LoginEventClient {
  public:
   MOCK_METHOD2(OpenIsolate, bool (chromeos::SecureBlob*, bool*));
   MOCK_METHOD1(CloseIsolate, void (const chromeos::SecureBlob&));
-  MOCK_METHOD4(LoadToken, bool (const chromeos::SecureBlob&,
+  MOCK_METHOD5(LoadToken, bool (const chromeos::SecureBlob&,
                                 const std::string&,
                                 const chromeos::SecureBlob&,
+                                const std::string&,
                                 int*));
   MOCK_METHOD2(UnloadToken, void (const chromeos::SecureBlob&,
                                   const std::string&));
