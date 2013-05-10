@@ -58,8 +58,8 @@ bool IsolateLoginClient::LoginUser(const string& user,
 
   // Load their token into the isolate.
   FilePath token_path;
-  if (!(file_manager_->GetUserTokenPath(user, &token_path) ||
-        file_manager_->CreateUserTokenDirectory(token_path))) {
+  if (!file_manager_->GetUserTokenPath(user, &token_path) &&
+      !file_manager_->CreateUserTokenDirectory(token_path)) {
     LOG(ERROR) << "Failed to find or locate token " << token_path.value();
     return false;
   }
@@ -103,8 +103,8 @@ bool IsolateLoginClient::ChangeUserAuth(const string& user,
   LOG(INFO) << "Change token auth for user " << user;
 
   FilePath token_path;
-  if (!(file_manager_->GetUserTokenPath(user, &token_path) &&
-        file_manager_->CheckUserTokenPermissions(token_path))) {
+  if (!file_manager_->GetUserTokenPath(user, &token_path) ||
+      !file_manager_->CheckUserTokenPermissions(token_path)) {
     LOG(ERROR) << "Aborting change user auth due to invalid token "
                << token_path.value();
     return false;
@@ -131,4 +131,4 @@ bool IsolateLoginClient::ChangeUserAuth(const string& user,
   return true;
 }
 
-} // namespace chaps
+}  // namespace chaps

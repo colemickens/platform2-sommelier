@@ -36,7 +36,7 @@ extern void EnableMock(IsolateLoginClient* login_client, PamHelper* pam_helper);
 extern void DisableMock();
 
 class TestPamModule : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     user_ = string("user");
     password_old_ = SecureBlob("password_old");
@@ -133,7 +133,7 @@ TEST_F(TestPamModule, TestPamChangeAuthFail) {
   EXPECT_EQ(PAM_AUTH_ERR, pam_sm_chauthtok(NULL, PAM_UPDATE_AUTHTOK, 0, NULL));
 }
 
-} // namespace chaps
+}  // namespace chaps
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleMock(&argc, argv);

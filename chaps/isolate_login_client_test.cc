@@ -29,7 +29,7 @@ using ::testing::SetArgumentPointee;
 namespace chaps {
 
 class TestIsolateLoginClient : public ::testing::Test {
-protected:
+ protected:
   virtual void SetUp() {
     user_ = string("user");
     auth_old_ = SecureBlob("auth_old");
@@ -179,7 +179,7 @@ TEST_F(TestIsolateLoginClient, TestChangeUsersAuthBadTokenPerms) {
                                                      auth_new_));
 }
 
-} // namespace chaps
+}  // namespace chaps
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleMock(&argc, argv);

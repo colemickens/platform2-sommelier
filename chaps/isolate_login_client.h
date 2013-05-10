@@ -18,6 +18,14 @@
 
 namespace chaps {
 
+// Manage the loading / unloading of a user's token into per-user isolates
+// in Chaps when users login, logout or change their password. Sample usage:
+//   IsolateLoginClient isolate_login_client(...);
+//   isolate_login_client.LoginUser(...);
+//   ...
+//   isolate_login_client.LogoutUser(...);
+//
+// Only virtual to enable mocking in tests.
 class IsolateLoginClient {
  public:
   // Does not take ownership of arguments.
@@ -27,7 +35,7 @@ class IsolateLoginClient {
   virtual ~IsolateLoginClient();
 
   // Should be called whenever a user logs into a session. Will ensure that
-  // chaps has an open isolate for the user and that their token is load into
+  // chaps has an open isolate for the user and that their token is loaded into
   // this isolate, thus providing applications running in the users session
   // with access to their TPM protected keys.  Return true on success and
   // false on failure.

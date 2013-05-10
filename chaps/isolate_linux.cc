@@ -26,7 +26,7 @@ namespace {
 const FilePath::CharType kIsolateFilePath[] =
     FILE_PATH_LITERAL("/var/lib/chaps/isolates/");
 
-} // namespace
+}  // namespace
 
 IsolateCredentialManager::IsolateCredentialManager() { }
 
@@ -36,8 +36,8 @@ bool IsolateCredentialManager::GetCurrentUserIsolateCredential(
     SecureBlob* isolate_credential) {
   CHECK(isolate_credential);
 
-  uid_t uid = getuid();
-  struct passwd* pwd = getpwuid(uid);
+  const uid_t uid = getuid();
+  const struct passwd* pwd = getpwuid(uid);
   if (!pwd) {
     PLOG(ERROR) << "Failed to get user information for current user.";
     return false;
@@ -52,14 +52,14 @@ bool IsolateCredentialManager::GetUserIsolateCredential(
   CHECK(isolate_credential);
 
   string credential_string;
-  FilePath credential_file = FilePath(kIsolateFilePath).Append(user);
-  if (!(file_util::PathExists(credential_file) &&
-        file_util::ReadFileToString(credential_file, &credential_string))) {
+  const FilePath credential_file = FilePath(kIsolateFilePath).Append(user);
+  if (!file_util::PathExists(credential_file) ||
+      !file_util::ReadFileToString(credential_file, &credential_string)) {
     LOG(INFO) << "Failed to find or read isolate credential for user "
                << user;
     return false;
   }
-  SecureBlob new_isolate_credential(credential_string);
+  const SecureBlob new_isolate_credential(credential_string);
   if (new_isolate_credential.size() != kIsolateCredentialBytes) {
     LOG(ERROR) << "Isolate credential invalid for user " << user;
     return false;
@@ -72,17 +72,17 @@ bool IsolateCredentialManager::GetUserIsolateCredential(
 bool IsolateCredentialManager::SaveIsolateCredential(
     const string& user,
     const SecureBlob& isolate_credential) {
-  CHECK(isolate_credential.size() == kIsolateCredentialBytes);
+  CHECK_EQ(kIsolateCredentialBytes, isolate_credential.size());
 
   // Look up user information.
-  struct passwd* pwd = getpwnam (user.c_str());
+  const struct passwd* pwd = getpwnam(user.c_str());
   if (!pwd) {
     LOG(ERROR) << "Failed to get user information.";
     return false;
   }
 
   // Write the isolate credential file.
-  FilePath isolate_cred_file = FilePath(kIsolateFilePath).Append(user);
+  const FilePath isolate_cred_file = FilePath(kIsolateFilePath).Append(user);
   int bytes_written = file_util::WriteFile(
       isolate_cred_file,
       reinterpret_cast<const char *>(isolate_credential.const_data()),
@@ -105,5 +105,4 @@ bool IsolateCredentialManager::SaveIsolateCredential(
   return true;
 }
 
-
-} // namespace chaps
+}  // namespace chaps

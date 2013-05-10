@@ -33,18 +33,18 @@ using chromeos::SecureBlob;
 
 namespace {
 
-const char* kLogoutOnCloseSessionEnvName = "CHAPS_LOGOUT_ON_CLOSE_SESSION";
+const char kLogoutOnCloseSessionEnvName[] = "CHAPS_LOGOUT_ON_CLOSE_SESSION";
 
 // Isolate login client used to provide chaps login functionality.
-static chaps::IsolateLoginClient* g_login_client = NULL;
+chaps::IsolateLoginClient* g_login_client = NULL;
 
 // Pam helper used to get data passed via the pam_handle.
-static chaps::PamHelper* g_pam_helper = NULL;
+chaps::PamHelper* g_pam_helper = NULL;
 
 // Set to true when Init() is first called.
-static bool g_is_initialized = false;
+bool g_is_initialized = false;
 
-}
+}  // namespace
 
 namespace chaps {
 
@@ -54,7 +54,6 @@ EXPORT_SPEC void EnableMock(IsolateLoginClient* login_client,
   g_login_client = login_client;
   g_pam_helper = pam_helper;
   g_is_initialized = true;
-
 }
 
 EXPORT_SPEC void DisableMock() {
@@ -63,12 +62,12 @@ EXPORT_SPEC void DisableMock() {
   g_is_initialized = false;
 }
 
-} // namespace chaps
+}  // namespace chaps
 
 static bool GetChapsdUser(uid_t* uid, gid_t* gid) {
   CHECK(uid);
   CHECK(gid);
-  struct passwd* chaps_pwd = getpwnam(chaps::kChapsdProcessUser);
+  const struct passwd* chaps_pwd = getpwnam(chaps::kChapsdProcessUser);
   if (!chaps_pwd) {
     return false;
   }
@@ -95,8 +94,8 @@ static bool Init() {
   return true;
 }
 
-PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t *pam_handle, int flags,
-                                        int argc, const char **argv) {
+PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t* pam_handle, int flags,
+                                        int argc, const char** argv) {
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -114,8 +113,8 @@ PAM_EXPORT_SPEC int pam_sm_authenticate(pam_handle_t *pam_handle, int flags,
   return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t *pam_handle, int flags,
-                                        int argc, const char **argv) {
+PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t* pam_handle, int flags,
+                                        int argc, const char** argv) {
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -126,14 +125,16 @@ PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t *pam_handle, int flags,
   string saved_user;
   SecureBlob saved_password;
   if (!g_pam_helper->RetrieveUserAndPassword(pam_handle, &saved_user,
-                                             &saved_password))
+                                             &saved_password)) {
     // This can happen if pam_sm_authenticate wasn't called in this pam session.
     return PAM_IGNORE;
+  }
 
-  if (user.compare(saved_user) != 0)
+  if (user.compare(saved_user) != 0) {
     // User who authenticated is opening a session as a different user, this
     // can happen for example in when user sudo's.
     return PAM_IGNORE;
+  }
 
   if (!g_login_client->LoginUser(saved_user, saved_password))
     return PAM_SERVICE_ERR;
@@ -145,8 +146,8 @@ PAM_EXPORT_SPEC int pam_sm_open_session(pam_handle_t *pam_handle, int flags,
   return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_close_session(pam_handle_t *pam_handle, int flags,
-                                         int argc, const char **argv) {
+PAM_EXPORT_SPEC int pam_sm_close_session(pam_handle_t* pam_handle, int flags,
+                                         int argc, const char** argv) {
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -162,14 +163,14 @@ PAM_EXPORT_SPEC int pam_sm_close_session(pam_handle_t *pam_handle, int flags,
   if (!g_pam_helper->GetPamUser(pam_handle, &user))
     return PAM_SERVICE_ERR;
 
-  if (g_login_client->LogoutUser(user))
-    return PAM_SUCCESS;
-  else
+  if (!g_login_client->LogoutUser(user))
     return PAM_SERVICE_ERR;
+
+  return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_chauthtok(pam_handle_t *pam_handle, int flags,
-                                     int argc, const char **argv) {
+PAM_EXPORT_SPEC int pam_sm_chauthtok(pam_handle_t* pam_handle, int flags,
+                                     int argc, const char** argv) {
   if (!Init())
     return PAM_SERVICE_ERR;
 
@@ -188,18 +189,18 @@ PAM_EXPORT_SPEC int pam_sm_chauthtok(pam_handle_t *pam_handle, int flags,
   if (!g_pam_helper->GetPamPassword(pam_handle, false, &new_password))
     return PAM_AUTH_ERR;
 
-  if (g_login_client->ChangeUserAuth(user, old_password, new_password))
-    return PAM_SUCCESS;
-  else
+  if (!g_login_client->ChangeUserAuth(user, old_password, new_password))
     return PAM_SERVICE_ERR;
+
+  return PAM_SUCCESS;
 }
 
-PAM_EXPORT_SPEC int pam_sm_setcred(pam_handle_t *pam_handle, int flags,
-                                   int argc, const char **argv) {
+PAM_EXPORT_SPEC int pam_sm_setcred(pam_handle_t* pam_handle, int flags,
+                                   int argc, const char** argv) {
   return PAM_IGNORE;
 }
 
-PAM_EXPORT_SPEC int pam_sm_acct_mgmt(pam_handle_t *pam_handle, int flags,
-                                     int argc, const char **argv) {
+PAM_EXPORT_SPEC int pam_sm_acct_mgmt(pam_handle_t* pam_handle, int flags,
+                                     int argc, const char** argv) {
   return PAM_IGNORE;
 }

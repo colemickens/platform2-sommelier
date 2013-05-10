@@ -26,9 +26,9 @@ class IsolateLoginClientMock : public IsolateLoginClient {
   MOCK_METHOD3(ChangeUserAuth, bool (const std::string&,
                                      const chromeos::SecureBlob&,
                                      const chromeos::SecureBlob&));
-
 };
 
 }  // namespace chaps
 
 #endif  // CHAPS_ISOLATE_LOGIN_CLIENT_MOCK_H_
+

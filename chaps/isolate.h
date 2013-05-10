@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_CHAPS_ISOLATE_H_
-#define CHAPS_CHAPS_ISOLATE_H_
+#ifndef CHAPS_ISOLATE_H_
+#define CHAPS_ISOLATE_H_
 
 #include <string>
 
@@ -15,8 +15,14 @@ namespace chaps {
 
 const size_t kIsolateCredentialBytes = 16;
 
+// Manages a user's isolate credentials, including saving and retrieval of
+// isolate credentials. Sample usage:
+//   IsolateCredentialManager isolate_manager;
+//   SecureBlob isolate_credential;
+//   isolate_manager.GetCurrentUserIsolateCredential(&isolate_credential);
+//
+// Only virtual to enable mocking in tests.
 class IsolateCredentialManager {
-
  public:
   IsolateCredentialManager();
   virtual ~IsolateCredentialManager();
@@ -50,4 +56,5 @@ class IsolateCredentialManager {
 
 }  // namespace chaps
 
-#endif  // CHAPS_CHAPS_ISOLATE_H_
+#endif  // CHAPS_ISOLATE_H_
+
