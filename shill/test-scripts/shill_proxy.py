@@ -465,3 +465,37 @@ class ShillProxy(object):
             else:
                 return test_object
         return None
+
+
+    def configure_bgscan(self, interface, method=None, short_interval=None,
+                         long_interval=None, signal=None):
+        """Configures bgscan parameters for wpa_supplicant.
+
+        @param interface string name of interface to configure (e.g. 'mlan0').
+        @param method string bgscan method (e.g. 'none').
+        @param short_interval int short scanning interval.
+        @param long_interval int normal scanning interval.
+        @param signal int signal threshold.
+
+        """
+        device = self.find_object('Device', {'Name': interface})
+        if device is None:
+            logging.error('No device found with name: %s', interface)
+            return False
+
+        attributes = {'ScanInterval': (dbus.UInt16, long_interval),
+                      'BgscanMethod': (dbus.String, method),
+                      'BgscanShortInterval': (dbus.UInt16, short_interval),
+                      'BgscanSignalThreshold': (dbus.Int32, signal)}
+        for k, (type_cast, value) in attributes.iteritems():
+            if value is None:
+                continue
+
+            # 'default' is defined in:
+            # client/common_lib/cros/network/xmlrpc_datatypes.py
+            # but we don't have access to that file here.
+            if value == 'default':
+                device.ClearProperty(k)
+            else:
+                device.SetProperty(k, type_cast(value))
+        return True
