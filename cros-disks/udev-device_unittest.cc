@@ -48,12 +48,15 @@ class UdevDeviceTest : public ::testing::Test {
           boot_device_path == device_file) {
         udev_device_ref(device);
         boot_device_ = device;
-      }
 
-      vector<string> mount_paths = UdevDevice::GetMountPaths(device_file);
-      if (!mounted_device_ && !mount_paths.empty()) {
-        udev_device_ref(device);
-        mounted_device_ = device;
+        // Check if the boot device is also mounted. If so, use it for tests
+        // that expect a mounted device since the boot device is unlikely to
+        // be unmounted during the tests.
+        vector<string> mount_paths = UdevDevice::GetMountPaths(device_file);
+        if (!mounted_device_ && !mount_paths.empty()) {
+          udev_device_ref(device);
+          mounted_device_ = device;
+        }
       }
 
       if (!loop_device_ && strcmp(device_file, kLoopDeviceFile) == 0) {
