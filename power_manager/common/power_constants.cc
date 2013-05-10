@@ -55,6 +55,7 @@ const char kDarkResumeBatteryMarginsPref[] = "dark_resume_battery_margins";
 const char kSuspendAtLoginScreenPref[] = "suspend_at_login_screen";
 const char kIgnoreExternalPolicyPref[] = "ignore_external_policy";
 const char kNumSessionsOnCurrentChargePref[] = "num_sessions_on_current_charge";
+const char kAllowDockedModePref[] = "allow_docked_mode";
 
 // Miscellaneous constants.
 const char kInternalBacklightPath[] = "/sys/class/backlight";

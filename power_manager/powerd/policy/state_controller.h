@@ -327,6 +327,9 @@ class StateController : public PrefsObserver {
   // |kSuspendAtLoginScreenPref| pref.
   bool suspend_at_login_screen_;
 
+  // True if docked mode is allowed.
+  bool allow_docked_mode_;
+
   // Should |policy_| be ignored?  Used by tests and developers.
   bool ignore_external_policy_;
 

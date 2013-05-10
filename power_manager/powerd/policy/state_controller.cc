@@ -163,6 +163,7 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
       suspend_at_login_screen_(false),
+      allow_docked_mode_(false),
       ignore_external_policy_(false),
       idle_action_(DO_NOTHING),
       lid_closed_action_(DO_NOTHING),
@@ -535,6 +536,7 @@ void StateController::LoadPrefs() {
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
   prefs_->GetBool(kSuspendAtLoginScreenPref, &suspend_at_login_screen_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
+  prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
 
   CHECK(GetMillisecondPref(prefs_, kPluggedSuspendMsPref,
                            &pref_ac_delays_.idle));
@@ -646,7 +648,7 @@ void StateController::UpdateSettingsAndState() {
     idle_action_ = DO_NOTHING;
 
   // Ignore the lid being closed while presenting to support docked mode.
-  if (display_mode_ == DISPLAY_PRESENTATION)
+  if (allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION)
     lid_closed_action_ = DO_NOTHING;
 
   // If the idle or lid-closed actions changed, make sure that we perform
@@ -750,7 +752,7 @@ void StateController::UpdateState() {
     }
   }
 
-  bool docked = display_mode_ == DISPLAY_PRESENTATION &&
+  bool docked = allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION &&
       lid_state_ == LID_CLOSED;
   if (docked != turned_panel_off_for_docked_mode_) {
     VLOG(1) << "Turning panel " << (docked ? "off" : "on") << " after "

@@ -56,6 +56,8 @@ extern const char kDarkResumeBatteryMarginsPref[];
 extern const char kSuspendAtLoginScreenPref[];
 // If true, policies sent by Chrome will be ignored.
 extern const char kIgnoreExternalPolicyPref[];
+// Allow docked mode if external display present and lid is closed.
+extern const char kAllowDockedModePref[];
 // Number of user sessions that have been active on the current charge.
 // Used to persist the count across reboots for metrics-reporting.
 extern const char kNumSessionsOnCurrentChargePref[];
