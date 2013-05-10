@@ -151,6 +151,14 @@ class SessionManagerInterface {
   // Get information about the current session.
   virtual gboolean RetrieveSessionState(gchar** OUT_state) = 0;
 
+  // Enumerate active user sessions.
+  // The return value is a hash table, mapping {username: sanitized username},
+  // sometimes called the "user hash".
+  // The contents of the hash table are owned by the implementation of
+  // this interface, but the caller is responsible for unref'ing
+  // the GHashTable structure.
+  virtual GHashTable* RetrieveActiveSessions() = 0;
+
   // Handles LockScreen request from Chromium or PowerManager. It emits
   // LockScreen signal to Chromium Browser to tell it to lock the screen. The
   // browser should call the HandleScreenLocked method when the screen is

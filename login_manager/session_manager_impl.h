@@ -103,6 +103,7 @@ class SessionManagerImpl : public SessionManagerInterface,
                                             GError** error) OVERRIDE;
 
   gboolean RetrieveSessionState(gchar** OUT_state) OVERRIDE;
+  GHashTable* RetrieveActiveSessions() OVERRIDE;
 
   gboolean LockScreen(GError** error) OVERRIDE;
   gboolean HandleLockScreenShown(GError** error) OVERRIDE;

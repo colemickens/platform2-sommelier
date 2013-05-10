@@ -499,6 +499,22 @@ gboolean SessionManagerImpl::RetrieveSessionState(gchar** OUT_state) {
   return TRUE;
 }
 
+GHashTable* SessionManagerImpl::RetrieveActiveSessions() {
+  GHashTable* to_return = g_hash_table_new(g_str_hash, g_str_equal);
+  for (UserSessionMap::const_iterator it = user_sessions_.begin();
+       it != user_sessions_.end();
+       ++it) {
+    if (it->second) {
+      // glib doesn't actually touch the data put into tha hash, so removing
+      // const is OK here.
+      g_hash_table_insert(to_return,
+                          const_cast<char*>(it->second->username.c_str()),
+                          const_cast<char*>(it->second->userhash.c_str()));
+    }
+  }
+  return to_return;
+}
+
 gboolean SessionManagerImpl::LockScreen(GError** error) {
   if (!session_started_) {
     LOG(WARNING) << "Attempt to lock screen outside of user session.";

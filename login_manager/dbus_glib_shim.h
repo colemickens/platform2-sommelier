@@ -85,6 +85,7 @@ gboolean session_manager_retrieve_device_local_account_policy(
     GError **error);
 gboolean session_manager_retrieve_session_state(SessionManager *self,
                                                 gchar** OUT_state);
+GHashTable* session_manager_retrieve_active_sessions(SessionManager *self);
 
 gboolean session_manager_unlock_screen(SessionManager *self,
                                        GError **error);

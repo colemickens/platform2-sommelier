@@ -4,6 +4,7 @@
 
 #include "login_manager/session_manager_impl.h"
 
+#include <glib.h>
 #include <signal.h>
 #include <unistd.h>
 
@@ -61,6 +62,7 @@ using ::testing::_;
 
 using chromeos::Resetter;
 using chromeos::cryptohome::home::kGuestUserName;
+using chromeos::cryptohome::home::SanitizeUserName;
 using chromeos::cryptohome::home::SetSystemSalt;
 using chromeos::glib::ScopedError;
 
@@ -669,6 +671,32 @@ TEST_F(SessionManagerImplTest, RetrieveUserPolicy_SecondSession) {
   EXPECT_TRUE(
       std::equal(fake_policy.begin(), fake_policy.end(), out_blob->data));
   g_array_free(out_blob, TRUE);
+}
+
+TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
+  gboolean out;
+  gchar email[] = "user@somewhere";
+  gchar nothing[] = "";
+
+  ExpectStartSession(email);
+  EXPECT_EQ(TRUE, impl_.StartSession(email, nothing, &out, NULL));
+  GHashTable* active_users = impl_.RetrieveActiveSessions();
+  EXPECT_EQ(g_hash_table_size(active_users), 1);
+  EXPECT_EQ(reinterpret_cast<char*>(g_hash_table_lookup(active_users, email)),
+            SanitizeUserName(email));
+  g_hash_table_unref(active_users);
+  VerifyAndClearExpectations();
+
+  gchar email2[] = "user2@somewhere";
+  ExpectStartSession(email2);
+  EXPECT_EQ(TRUE, impl_.StartSession(email2, nothing, &out, NULL));
+  active_users = impl_.RetrieveActiveSessions();
+  EXPECT_EQ(g_hash_table_size(active_users), 2);
+  EXPECT_EQ(reinterpret_cast<char*>(g_hash_table_lookup(active_users, email)),
+            SanitizeUserName(email));
+  EXPECT_EQ(reinterpret_cast<char*>(g_hash_table_lookup(active_users, email2)),
+            SanitizeUserName(email2));
+  g_hash_table_unref(active_users);
 }
 
 TEST_F(SessionManagerImplTest, RestartJob_UnknownPid) {

@@ -145,6 +145,9 @@ gboolean session_manager_retrieve_session_state(SessionManager *self,
                                                 gchar** OUT_state) {
   SESSION_MANAGER_WRAP_METHOD(RetrieveSessionState, OUT_state);
 }
+GHashTable* session_manager_retrieve_active_sessions(SessionManager *self) {
+  SESSION_MANAGER_WRAP_METHOD(RetrieveActiveSessions);
+}
 gboolean session_manager_lock_screen(SessionManager *self,
                                      GError **error) {
   SESSION_MANAGER_WRAP_METHOD(LockScreen, error);
