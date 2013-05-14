@@ -52,6 +52,10 @@ mkdir -p /dev/shm /dev/pts
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
 mount -n -t devpts -o noexec,nosuid,gid=5,mode=0620 devpts /dev/pts
 
+# Initialize kernel sysctl settings early so that they take effect for boot
+# processes.
+sysctl -q -p /etc/sysctl.conf
+
 # Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
@@ -356,10 +360,6 @@ if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
     done
   fi
 fi
-
-# Enable crash reporting for all future exec'd processes, even those that have
-# gone through setuid.
-echo 2 > /proc/sys/fs/suid_dumpable
 
 # Check for extra steps needed for OOBE.  These steps are expensive
 # so they only happen once; when OOBE is complete the OOBE_COMPLETE
