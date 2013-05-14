@@ -2,13 +2,25 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "random_selector.h"
+
+#include <fstream>
 #include <map>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
+#include <base/string_number_conversions.h>
+#include <base/string_split.h>
+#include <base/string_util.h>
 
-#include "random_selector.h"
+namespace {
+
+// The space character.
+const char kWhitespace = ' ';
+
+}  // namespace
 
 namespace debugd {
 
@@ -18,6 +30,27 @@ float GetSumOfMapValues(const std::map<std::string, float> map_to_sum) {
   for (it = map_to_sum.begin(); it != map_to_sum.end(); ++it)
     sum += it->second;
   return sum;
+}
+
+void RandomSelector::SetOddsFromFile(const std::string& filename) {
+  odds_.clear();
+
+  std::ifstream infile(filename.c_str());
+  CHECK(infile.good());
+  std::string line;
+  while (std::getline(infile, line)) {
+    std::vector<std::string> tokens;
+    base::SplitString(line, kWhitespace, &tokens);
+    VLOG(1) << "line is: " << line;
+    VLOG(1) << "tokens[0] is: " << tokens[0] << "end";
+    VLOG(1) << "tokens[1] is: " << tokens[1] << "end";
+    CHECK_GT(tokens.size(), 1U);
+    double odd;
+    CHECK(base::StringToDouble(tokens[0], &odd));
+    tokens.erase(tokens.begin(), tokens.begin() + 1);
+    std::string value = JoinString(tokens, kWhitespace);
+    odds_[value] = static_cast<float>(odd);
+  }
 }
 
 void RandomSelector::SetOdds(const std::map<std::string, float>& odds) {

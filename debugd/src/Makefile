@@ -45,10 +45,11 @@ TOOLS := $(patsubst %,%_tool.o, \
 	subprocess \
 	systrace \
 	tracepath)
-OBJS := debug_daemon.o process_with_id.o process_with_output.o \
-        random_selector.o sandboxed_process.o $(TOOLS)
+OBJS := cpu_info_parser.o debug_daemon.o process_with_id.o \
+	process_with_output.o random_selector.o sandboxed_process.o $(TOOLS)
 TESTOBJS := \
 	anonymizer_tool_test.o \
+	cpu_info_parser_test.o \
 	log_tool_test.o \
 	modem_status_tool_test.o \
 	process_with_id_test.o \

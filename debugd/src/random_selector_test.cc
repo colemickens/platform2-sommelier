@@ -20,6 +20,9 @@ const int kLargeNumber = 1000;
 // to the odds set.
 const float kEpsilon = 0.01f;
 
+// A test file that contains some odds.
+const char kOddsFilename[] = "../src/testdata/simple_odds_file.txt";
+
 // This function tests whether the results are close enough to the odds (within
 // 1%).
 void CheckResultsAgainstOdds(const std::map<std::string, float> odds,
@@ -40,7 +43,6 @@ void CheckResultsAgainstOdds(const std::map<std::string, float> odds,
     float abs_diff = abs(results_ratio - odds_ratio);
     EXPECT_LT(abs_diff, kEpsilon);
   }
-
 }
 
 // A class that overrides GetFloatBetween to not use the rand() function. This
@@ -62,23 +64,32 @@ class RandomSelectorWithCustomRNG : public RandomSelector {
   int current_index_;
 };
 
+// Use the random_selector to generate some values. The number of values to
+// generate is |odds_size| * |kLargeNumber|.
+void GenerateResults(size_t odds_size,
+                     RandomSelector* random_selector,
+                     std::map<std::string, float>* results) {
+  for (size_t i = 0; i < kLargeNumber * odds_size; ++i) {
+    std::string next_value;
+    random_selector->GetNext(&next_value);
+    (*results)[next_value]++;
+  }
+}
+
 // Test the RandomSelector class given the odds in the |odds| map.
 void TestOdds(const std::map<std::string, float> odds) {
   RandomSelectorWithCustomRNG random_selector;
   random_selector.SetOdds(odds);
   // Generate a lot of values.
   std::map<std::string, float> results;
-  for (size_t i = 0; i < kLargeNumber * odds.size(); ++i) {
-    std::string next_value;
-    random_selector.GetNext(&next_value);
-    results[next_value]++;
-  }
+  GenerateResults(odds.size(), &random_selector, &results);
   // Ensure the values and odds are related.
   CheckResultsAgainstOdds(odds, results);
 }
 
 }  // namespace
 
+// Ensure RandomSelector is able to generate results from given odds.
 TEST(RandomSelector, GenerateTest) {
   std::map<std::string, float> odds;
   odds["a"] = 1;
@@ -87,3 +98,15 @@ TEST(RandomSelector, GenerateTest) {
   TestOdds(odds);
 }
 
+// Ensure RandomSelector is able to read odds from a file.
+TEST(RandomSelector, SetOddsFromFileTest) {
+  RandomSelector random_selector;
+  random_selector.SetOddsFromFile(std::string(kOddsFilename));
+  std::map<std::string, float> results;
+  std::map<std::string, float> odds;
+  odds["afile"] = 3;
+  odds["bfile"] = 2;
+  odds["cfile"] = 1;
+  GenerateResults(odds.size(), &random_selector, &results);
+  CheckResultsAgainstOdds(odds, results);
+}

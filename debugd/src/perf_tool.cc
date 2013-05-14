@@ -4,6 +4,11 @@
 
 #include "perf_tool.h"
 
+#include <fstream>
+
+#include <base/string_split.h>
+
+#include "cpu_info_parser.h"
 #include "process_with_output.h"
 
 namespace {
@@ -14,28 +19,35 @@ const char kQuipperLocation[] = "/usr/bin/quipper";
 // Base perf command line to be used.
 const char kPerfRecord[] = "/usr/sbin/perf record -a";
 
-// This flag enables perf to run in callgraph mode.
-const char kCallGraphMode[] = " -g";
+// This is the key in /proc/cpuinfo whose value is the model name of the CPU.
+const char kCPUModelNameKey[] = "model name";
 
-// This flag enables perf to run in branch mode.
-const char kBranchMode[] = " -b";
+// Processor model name substrings for which we have perf commands.
+const char* kCPUOddsFiles[] = {
+  "unknown",
+  "core",
+  "arm",
+};
 
-// This flag enables perf to record cycle events.
-const char kCyclesEvent[] = " -e cycles";
+// Prefix path to attach to the CPU odds file.
+const char kCPUOddsFilePrefix[] = "/etc/init/perf_commands/";
 
-// This flag enables perf to record iTLB-miss events.
-const char kITLBMissesEvent[] = " -e iTLB-misses";
+// Suffix to attach to the CPU odds file.
+const char kCPUOddsFileSuffix[] = ".txt";
 
-// This flag enables perf to record dTLB-miss events.
-const char kDTLBMissesEvent[] = " -e dTLB-misses";
-
-void PopulateOdds(std::map<std::string, float>* odds) {
-  std::string base_perf_command = kPerfRecord;
-  (*odds)[base_perf_command] = 80;
-  (*odds)[base_perf_command + kCallGraphMode] = 5;
-  (*odds)[base_perf_command + kBranchMode] = 5;
-  (*odds)[base_perf_command + kITLBMissesEvent] = 5;
-  (*odds)[base_perf_command + kDTLBMissesEvent] = 5;
+// Goes through the list of kCPUOddsFiles, and if the any of those strings is a
+// substring of the |cpu_model_name|, returns that string. If no matches are
+// found, returns the first string of |kCPUOddsFiles| ("unknown").
+void GetOddsFilenameForCPU(const std::string& cpu_model_name,
+                           std::string* odds_filename) {
+  std::string lowered_cpu_model_name = StringToLowerASCII(cpu_model_name);
+  for (size_t i = 0; i < arraysize(kCPUOddsFiles); ++i) {
+    if (lowered_cpu_model_name.find(kCPUOddsFiles[i]) != std::string::npos) {
+      *odds_filename = kCPUOddsFiles[i];
+      return;
+    }
+  }
+  *odds_filename = kCPUOddsFiles[0];
 }
 
 }  // namespace
@@ -43,9 +55,15 @@ void PopulateOdds(std::map<std::string, float>* odds) {
 namespace debugd {
 
 PerfTool::PerfTool() {
-  std::map<std::string, float> odds;
-  PopulateOdds(&odds);
-  random_selector_.SetOdds(odds);
+  std::string cpu_model_name;
+  debugd::CPUInfoParser cpu_info_parser;
+  cpu_info_parser.GetKey(kCPUModelNameKey, &cpu_model_name);
+  std::string odds_filename;
+  GetOddsFilenameForCPU(cpu_model_name, &odds_filename);
+  std::string odds_file_path = std::string(kCPUOddsFilePrefix) +
+      odds_filename +
+      kCPUOddsFileSuffix;
+  random_selector_.SetOddsFromFile(odds_file_path);
 }
 
 PerfTool::~PerfTool() { }

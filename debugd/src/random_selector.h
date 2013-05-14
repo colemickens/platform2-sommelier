@@ -33,13 +33,17 @@ float GetSumOfMapValues(const std::map<std::string, float> to_sum);
 // random_selector.GetNext(&selection);
 class RandomSelector {
  public:
+  // Read probabilities from a file. The file is a bunch of lines each with:
+  // <odds> <corresponding string>
+  void SetOddsFromFile(const std::string& filename);
+
   // Set the probabilities for various strings.
   void SetOdds(const std::map<std::string, float>& odds);
 
   // Get the next randomly picked string in |next|.
   void GetNext(std::string* next);
- private:
 
+ private:
   // Get a floating point number between |min| and |max|.
   virtual float GetFloatBetween(float min, float max);
 
