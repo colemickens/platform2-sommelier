@@ -14,7 +14,7 @@ libs:
 	$(CC) $(CFLAGS) -o lib/lib_smogcheck.o -c lib/lib_smogcheck.c
 
 shared_libs: libs
-	$(CC) -shared -fPIC -o ${SONAME} lib/lib_smogcheck.o -W1,-h${SONAME} \
+	$(CC) -shared -fPIC -o ${SONAME} lib/lib_smogcheck.o -Wl,-h${SONAME} \
 	 -lpthread -lrt
 
 binary: shared_libs
