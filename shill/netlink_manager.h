@@ -39,13 +39,9 @@
 //    #include "nl80211_message.h"
 //    GetFamilyMessage msg;
 //
-// - And add attributes:
+// - And set attributes:
 //
-//    if (msg.attributes()->CreateStringAttribute(CTRL_ATTR_FAMILY_NAME,
-//                                                "CTRL_ATTR_FAMILY_NAME")) {
-//      msg.attributes()->SetStringAttributeValue(CTRL_ATTR_FAMILY_NAME,
-//                                                "foo");
-//    }
+//    msg.attributes()->SetStringAttributeValue(CTRL_ATTR_FAMILY_NAME, "foo");
 //
 // - Then send the message, passing-in a closure to the handler you created:
 //

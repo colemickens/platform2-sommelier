@@ -186,11 +186,6 @@ uint16_t NetlinkManager::GetFamily(const string &name,
   }
 
   GetFamilyMessage msg;
-  if (!msg.attributes()->CreateStringAttribute(CTRL_ATTR_FAMILY_NAME,
-                                               "CTRL_ATTR_FAMILY_NAME")) {
-    LOG(ERROR) << "Couldn't create string attribute";
-    return false;
-  }
   if (!msg.attributes()->SetStringAttributeValue(CTRL_ATTR_FAMILY_NAME, name)) {
     LOG(ERROR) << "Couldn't set string attribute";
     return false;

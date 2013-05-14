@@ -619,7 +619,7 @@ const uint8_t TriggerScanMessage::kCommand = NL80211_CMD_TRIGGER_SCAN;
 const char TriggerScanMessage::kCommandString[] = "NL80211_CMD_TRIGGER_SCAN";
 
 TriggerScanMessage::TriggerScanMessage()
-  : Nl80211Message(kCommand, kCommandString) {
+    : Nl80211Message(kCommand, kCommandString) {
   attributes()->CreateAttribute(
       NL80211_ATTR_IFINDEX, Bind(&NetlinkAttribute::NewNl80211AttributeFromId));
   attributes()->CreateAttribute(

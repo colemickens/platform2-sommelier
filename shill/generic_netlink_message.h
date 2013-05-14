@@ -122,7 +122,7 @@ class GetFamilyMessage : public ControlNetlinkMessage {
   static const uint8_t kCommand;
   static const char kCommandString[];
 
-  GetFamilyMessage() : ControlNetlinkMessage(kCommand, kCommandString) {}
+  GetFamilyMessage();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(GetFamilyMessage);

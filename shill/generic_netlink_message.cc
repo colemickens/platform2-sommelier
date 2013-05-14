@@ -133,6 +133,12 @@ const char NewFamilyMessage::kCommandString[] = "CTRL_CMD_NEWFAMILY";
 const uint8_t GetFamilyMessage::kCommand = CTRL_CMD_GETFAMILY;
 const char GetFamilyMessage::kCommandString[] = "CTRL_CMD_GETFAMILY";
 
+GetFamilyMessage::GetFamilyMessage()
+    : ControlNetlinkMessage(kCommand, kCommandString) {
+  attributes()->CreateStringAttribute(CTRL_ATTR_FAMILY_NAME,
+                                      "CTRL_ATTR_FAMILY_NAME");
+}
+
 // static
 NetlinkMessage *ControlNetlinkMessage::CreateMessage(
     const nlmsghdr *const_msg) {
