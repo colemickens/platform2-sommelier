@@ -24,6 +24,7 @@
 #include "cryptohome_common.h"
 #include "cryptolib.h"
 #include "homedirs.h"
+#include "pkcs11_init.h"
 #include "platform.h"
 #include "username_passkey.h"
 #include "vault_keyset.h"
@@ -1334,12 +1335,13 @@ bool Mount::InsertPkcs11Token() {
     is_pkcs11_passkey_migration_required_ = false;
     pkcs11_old_passkey_.clear_contents();
   }
+  Pkcs11Init pkcs11init;
   int slot_id = 0;
   if (!chaps_event_client_.LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir,
       auth_data,
-      current_user_->username(),
+      pkcs11init.GetTpmTokenLabelForUser(current_user_->username()),
       &slot_id)) {
     LOG(ERROR) << "Failed to load PKCS #11 token.";
   }

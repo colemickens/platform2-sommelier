@@ -34,6 +34,9 @@ class Pkcs11Init {
                                       gchar **OUT_label,
                                       gchar **OUT_user_pin);
 
+  // Returns the same label as GetTpmTokenInfoForUser.
+  virtual std::string GetTpmTokenLabelForUser(const std::string& username);
+
   // Check if the user's PKCS #11 token is valid.
   virtual bool IsUserTokenBroken();
 

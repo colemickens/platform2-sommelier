@@ -40,6 +40,11 @@ void Pkcs11Init::GetTpmTokenInfoForUser(gchar *username,
   *OUT_user_pin = g_strdup(reinterpret_cast<const gchar *>(kDefaultUserPin));
 }
 
+std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
+  return std::string(reinterpret_cast<const char*>(kDefaultLabel));
+}
+
+
 bool Pkcs11Init::IsUserTokenBroken() {
   if (!platform_->FileExists(kTpmOwnedFile)) {
     LOG(WARNING) << "TPM is not owned, token can not be valid.";
