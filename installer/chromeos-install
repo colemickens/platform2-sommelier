@@ -103,7 +103,7 @@ fast_dd() {
       if [ "$user_count" -ne 0 ]; then
         count_arg="count=$(($user_count / $factor))"
       fi
-      sudo dd $* bs="$ideal_block_size" seek=$(($user_seek / $factor)) \
+      dd $* bs="$ideal_block_size" seek=$(($user_seek / $factor)) \
           skip=$(($user_skip / $factor)) $count_arg
       return
     fi
@@ -116,7 +116,7 @@ fast_dd() {
   if [ "$user_count" -ne 0 ]; then
     count_arg="count=$user_count"
   fi
-  sudo dd $* bs="$user_block_size" seek="$user_seek" skip="$user_skip" \
+  dd $* bs="$user_block_size" seek="$user_seek" skip="$user_skip" \
     $count_arg
 }
 
@@ -160,7 +160,7 @@ fi
 if [ -z "$FLAGS_dst" ]; then
   if [ "$ARCH" = "INTEL" ]; then
     # This finds the first ATA device listed by parted.
-    SD_INFO=$(sudo parted -l -s -m 2> /dev/null)
+    SD_INFO=$(parted -l -s -m 2> /dev/null)
     DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ ")
     if [ -z "$DST" ]; then
       # As a backup, install to /dev/sda
@@ -204,10 +204,7 @@ if [ "$DST" = "$SRC" ]; then
 fi
 
 # Ask for root password to be sure.
-echo "This will install from '$SRC' to '$DST'. If you are sure this is"
-echo "what you want then feel free to enter the root password to proceed."
-sudo -K
-
+echo "This will install from '$SRC' to '$DST'."
 echo "This will erase all data at this destination: $DST"
 if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
   read -p "Are you sure (y/N)? " SURE
@@ -231,10 +228,10 @@ mkdir -p ${TMPMNT}
 # aliasing access to block devices.
 prepare_disk() {
   if [ -e /etc/init/cros-disks.conf ]; then
-    sudo initctl stop cros-disks || true
+    initctl stop cros-disks || true
   fi
   # Often times, nothing is mounted, so swallow the warnings.
-  sudo umount -f /media/*/* 2>&1 | \
+  umount -f /media/*/* 2>&1 | \
     grep -v -i \
       -e 'No such file or directory' \
       -e 'not found' || true
@@ -246,7 +243,7 @@ tracked_mount() {
   local last_arg
   eval last_arg=\$$#
   MOUNTS="${last_arg}${MOUNTS:+ }${MOUNTS:-}"
-  sudo mount "$@"
+  mount "$@"
 }
 
 # Unmount with tracking.
@@ -260,7 +257,7 @@ tracked_umount() {
   done
   MOUNTS=${new_mounts:-}
 
-  sudo umount "$1"
+  umount "$1"
 }
 
 # Create a loop device on the given file at a specified (sector) offset.
@@ -271,12 +268,12 @@ loop_offset_setup() {
   local filename=$1
   local offset=$2
 
-  LOOP_DEV=$(sudo losetup -f)
+  LOOP_DEV=$(losetup -f)
   if [ -z "$LOOP_DEV" ]; then
     echo "No free loop device. Free up a loop device or reboot. Exiting."
     exit 1
   fi
-  sudo losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
+  losetup -o $(($offset * 512)) ${LOOP_DEV} ${filename}
 
   LOOPS="${LOOP_DEV}${LOOPS:+ }${LOOPS:-}"
 }
@@ -295,7 +292,7 @@ loop_offset_cleanup() {
   # losetup -a doesn't always show every active device, so we'll always try to
   # delete what we think is the active one without checking first. Report
   # success no matter what.
-  sudo losetup -d ${LOOP_DEV} || /bin/true
+  losetup -d ${LOOP_DEV} || /bin/true
 }
 
 # Mount the existing loop device at the mountpoint in $TMPMNT.
@@ -350,13 +347,13 @@ cleanup() {
 
   local mount_point
   for mount_point in ${MOUNTS:-}; do
-    sudo umount "$mount_point" || /bin/true
+    umount "$mount_point" || /bin/true
   done
   MOUNTS=""
 
   local loop_dev
   for loop_dev in ${LOOPS:-}; do
-    sudo losetup -d "$loop_dev" || /bin/true
+    losetup -d "$loop_dev" || /bin/true
   done
   LOOPS=""
 
@@ -430,17 +427,17 @@ elif [ "$ARCH" = "ARM" ]; then
   # Store the existing PMBR from the destination in the temp pmbr file so we can
   # restore it when we're installing the GPT. This ensures that we preserve
   # settings set by crossystem (such as dev_boot_usb).
-  sudo dd bs=512 count=1 if=$DST of=$PMBRCODE
+  dd bs=512 count=1 if=$DST of=$PMBRCODE
 else
   # Steal the PMBR code from the source MBR to put on the dest MBR, for booting
   # on legacy-BIOS devices.
-  sudo dd bs=512 count=1 if=$SRC of=$PMBRCODE
+  dd bs=512 count=1 if=$SRC of=$PMBRCODE
 fi
 
 # Write the GPT using the board specific script.
 . "/usr/sbin/write_gpt.sh"
 write_base_table ${DST} ${PMBRCODE}
-sudo /sbin/blockdev --rereadpt ${DST}
+/sbin/blockdev --rereadpt ${DST}
 legacy_offset_size_export "${DST}"
 
 # TODO(tgao): add support for arm recovery
@@ -501,7 +498,7 @@ fast_dd 512 ${ESP_IMG_SECTORS} ${START_ESP} ${ESP_IMG_OFFSET} \
 if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   echo "Clearing the stateful partition..."
   loop_offset_setup $DST $START_STATEFUL
-  sudo mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
+  mkfs.ext4 -F -b 4096 -L "H-STATE" ${LOOP_DEV} \
     $(($NUM_STATEFUL_SECTORS / 8))
   # Need to synchronize before releasing loop device, otherwise calling
   # loop_offset_cleanup may return "device busy" error.
@@ -521,7 +518,7 @@ fi
 if [ "${FLAGS_skip_postinstall}" -eq "${FLAGS_FALSE}" ]; then
   loop_offset_setup ${DST} ${START_ROOTFS_A}
   mount_on_loop_dev
-  sudo IS_INSTALL="1" ${TMPMNT}/postinst \
+  IS_INSTALL="1" ${TMPMNT}/postinst \
     $(make_partition_dev ${DST} ${ROOTFS_PART}) \
     ${SUB_CMD_DEBUG_FLAG} "${POSTINST_BIOS_ARGS}"
   umount_from_loop_dev
@@ -567,8 +564,8 @@ if [ -f "${ROOT}"/root/.dev_mode ]; then
       OPT_U="u"
     fi
     PARENT=$(dirname ${DIR})
-    sudo mkdir -p ${TMPMNT}/${PARENT}
-    sudo cp -a${OPT_U} "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
+    mkdir -p ${TMPMNT}/${PARENT}
+    cp -a${OPT_U} "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
   done
 elif crossystem 'devsw_boot?1' ; then
   # The dev switch was on when we booted; we assume it will be on
