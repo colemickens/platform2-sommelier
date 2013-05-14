@@ -44,6 +44,7 @@ class CellularCapabilityUniversalCDMA : public CellularCapabilityUniversal {
       const std::vector<std::string> &invalidated_properties);
   virtual void OnServiceCreated();
   virtual void SetUnregistered(bool searching);
+  virtual void SetupConnectProperties(DBusPropertiesMap *properties);
 
   // TODO(armansito): Remove once 3GPP is implemented in its own class
   virtual void Register(const ResultCallback &callback);

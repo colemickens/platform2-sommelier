@@ -506,6 +506,13 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, IsActivating) {
   EXPECT_FALSE(capability_->IsActivating());
 }
 
+TEST_F(CellularCapabilityUniversalCDMAMainTest, SetupConnectProperties) {
+  DBusPropertiesMap map;
+  capability_->SetupConnectProperties(&map);
+  EXPECT_EQ(1, map.size());
+  EXPECT_STREQ("#777", map["number"].reader().get_string());
+}
+
 TEST_F(CellularCapabilityUniversalCDMADispatcherTest,
        UpdatePendingActivationState) {
   capability_->activation_state_ = MM_MODEM_CDMA_ACTIVATION_STATE_ACTIVATED;

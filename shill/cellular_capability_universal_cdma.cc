@@ -29,6 +29,9 @@ namespace shill {
 
 namespace {
 
+const char kPhoneNumber[] = "#777";
+const char kPropertyConnectNumber[] = "number";
+
 string FormattedSID(const string &sid) {
   return "[SID=" + sid + "]";
 }
@@ -436,6 +439,12 @@ bool CellularCapabilityUniversalCDMA::IsRegistered() {
 void CellularCapabilityUniversalCDMA::SetUnregistered(bool /*searching*/) {
   cdma_1x_registration_state_ = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
   cdma_evdo_registration_state_ = MM_MODEM_CDMA_REGISTRATION_STATE_UNKNOWN;
+}
+
+void CellularCapabilityUniversalCDMA::SetupConnectProperties(
+    DBusPropertiesMap *properties) {
+  (*properties)[kPropertyConnectNumber].writer().append_string(
+      kPhoneNumber);
 }
 
 void CellularCapabilityUniversalCDMA::RequirePIN(
