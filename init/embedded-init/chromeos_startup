@@ -91,8 +91,8 @@ mount -n --bind /mnt/stateful_partition/home /home
 mount -n --bind /mnt/stateful_partition/var /var
 
 # Make sure required /var subdirectories exist.
-mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lib/ureadahead \
-                 /var/lock /var/log/metrics /var/run /var/tmp
+mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lock /var/log/metrics \
+                 /var/run /var/tmp
 
 # /var/tmp must be world-writable and sticky
 chmod 1777 /var/tmp

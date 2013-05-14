@@ -300,8 +300,8 @@ if [ $? -ne 0 ]; then
 fi
 
 # Make sure required /var subdirectories exist.
-mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lib/ureadahead \
-                 /var/lock /var/log/metrics /var/run /var/tmp
+mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lock /var/log/metrics \
+                 /var/run /var/tmp
 
 # /var/tmp must be world-writable and sticky
 chmod 1777 /var/tmp
@@ -394,14 +394,6 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a ! -e $OOBE_COMPLETE ]; then
     (/usr/sbin/activate_date ; /usr/sbin/dump_vpd_log --force) &
   fi
 fi
-
-#
-# Note that ureadahead depends on some of the operations above.
-# Notably, the command requires /var to be mounted, because the pack
-# file is located in /var/lib/ureadahead, and ureadahead tracing
-# requires /sys/kernel/debug be mounted.
-#
-ureadahead &
 
 bootstat post-startup
 
