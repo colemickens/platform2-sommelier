@@ -30,6 +30,7 @@
 namespace switches {
 // Keeps std* open for debugging
 static const char *kNoCloseOnDaemonize = "noclose";
+static const char *kNoLegacyMount = "nolegacymount";
 }  // namespace switches
 
 int main(int argc, char **argv) {
@@ -42,6 +43,7 @@ int main(int argc, char **argv) {
   // Allow the commands to be configurable.
   CommandLine *cl = CommandLine::ForCurrentProcess();
   int noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
+  bool nolegacymount = cl->HasSwitch(switches::kNoLegacyMount);
   PLOG_IF(FATAL, daemon(0, noclose) == -1) << "Failed to daemonize";
 
   // Setup threading. This needs to be called before other calls into glib and
@@ -54,6 +56,9 @@ int main(int argc, char **argv) {
 
   cryptohome::Platform platform;
   cryptohome::Service service;
+
+  service.set_legacy_mount(!nolegacymount);
+
   if (!service.Initialize()) {
     LOG(FATAL) << "Service initialization failed";
     return 1;

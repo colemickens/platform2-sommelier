@@ -235,7 +235,8 @@ Service::Service()
       mount_factory_(default_mount_factory_.get()),
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
-      guest_user_(chromeos::cryptohome::home::kGuestUserName) {
+      guest_user_(chromeos::cryptohome::home::kGuestUserName),
+      legacy_mount_(true) {
 }
 
 Service::~Service() {
@@ -1740,6 +1741,7 @@ scoped_refptr<cryptohome::Mount> Service::GetOrCreateMountForUser(
     m = mount_factory_->New();
     m->Init();
     m->set_enterprise_owned(enterprise_owned_);
+    m->set_legacy_mount(legacy_mount_);
     mounts_[username] = m;
   } else {
     m = mounts_[username];

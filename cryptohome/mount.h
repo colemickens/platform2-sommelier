@@ -265,6 +265,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // http://crbug.com/224291
   std::string GetNewUserPath(const std::string& username) const;
 
+  void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
+
  protected:
   FRIEND_TEST(ServiceInterfaceTest, CheckAsyncTestCredentials);
   friend class MakeTests;
@@ -676,6 +678,11 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   bool DeriveTokenAuthData(const chromeos::SecureBlob& passkey,
                            std::string* auth_data);
 
+  // Mount the legacy home directory.
+  // The legacy home directory is from before multiprofile and is mounted at
+  // /home/chronos/user.
+  bool MountLegacyHome(const std::string& from, MountError* mount_error);
+
   // The uid of the shared user.  Ownership of the user's vault is set to this
   // uid.
   uid_t default_user_;
@@ -760,6 +767,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Stack of mounts (in the mount(2) sense) that we've made.
   MountStack mounts_;
+
+  // Whether to mount the legacy homedir or not (see MountLegacyHome)
+  bool legacy_mount_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);

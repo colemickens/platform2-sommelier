@@ -119,7 +119,8 @@ Mount::Mount()
       enterprise_owned_(false),
       old_user_last_activity_time_(kOldUserLastActivityTime),
       pkcs11_state_(kUninitialized),
-      is_pkcs11_passkey_migration_required_(false) {
+      is_pkcs11_passkey_migration_required_(false),
+      legacy_mount_(true) {
 }
 
 Mount::~Mount() {
@@ -445,18 +446,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
     return false;
   }
 
-  // Multiple mounts can't live on the legacy mountpoint.
-  if (platform_->IsDirectoryMounted(kDefaultHomeDir)) {
-    LOG(INFO) << "Skipping binding to /home/chronos/user.";
-  } else if (!BindForUser(current_user_, user_home, kDefaultHomeDir)) {
-    PLOG(ERROR) << "Bind mount failed: " << user_home << " -> "
-                << kDefaultHomeDir;
-    UnmountAllForUser(current_user_);
-    if (mount_error) {
-      *mount_error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
+  if (legacy_mount_)
+    MountLegacyHome(user_home, mount_error);
 
   string user_multi_home =
       chromeos::cryptohome::home::GetUserPath(username).value();
@@ -536,14 +527,8 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     return false;
   }
 
-  if (platform_->IsDirectoryMounted(kDefaultHomeDir)) {
-    LOG(INFO) << "Skipping binding to /home/chronos/user.";
-  } else if (!BindForUser(current_user_, user_multi_home, kDefaultHomeDir)) {
-    LOG(ERROR) << "Bind mount of ephemeral user home from " << user_multi_home
-               << " to " << kDefaultHomeDir << " failed: " << errno;
-    UnmountAllForUser(current_user_);
-    return false;
-  }
+  if (legacy_mount_)
+    MountLegacyHome(user_multi_home, NULL);
 
   string temp_multi_home = GetNewUserPath(username);
   if (!BindForUser(current_user_, user_multi_home, temp_multi_home)) {
@@ -1659,6 +1644,23 @@ std::string Mount::GetNewUserPath(const std::string& username) const {
   std::string sanitized =
       chromeos::cryptohome::home::SanitizeUserName(username);
   return StringPrintf("/home/chronos/u-%s", sanitized.c_str());
+}
+
+bool Mount::MountLegacyHome(const std::string& from, MountError* mount_error) {
+  // Multiple mounts can't live on the legacy mountpoint.
+  if (platform_->IsDirectoryMounted(kDefaultHomeDir)) {
+    LOG(INFO) << "Skipping binding to /home/chronos/user.";
+  } else if (!BindForUser(current_user_, from, kDefaultHomeDir)) {
+    PLOG(ERROR) << "Bind mount failed: " << from << " -> "
+                << kDefaultHomeDir;
+    UnmountAllForUser(current_user_);
+    if (mount_error) {
+      *mount_error = MOUNT_ERROR_FATAL;
+    }
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace cryptohome

@@ -125,6 +125,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   //          if false, unmounts shadows mounts with no open files.
   virtual bool CleanUpStaleMounts(bool force);
 
+  void set_legacy_mount(bool legacy) { legacy_mount_ = legacy; }
+
   // Service implementation functions as wrapped in interface.cc
   // and defined in cryptohome.xml.
   virtual gboolean CheckKey(gchar *user,
@@ -408,6 +410,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   HomeDirs* homedirs_;
 
   std::string guest_user_;
+
+  bool legacy_mount_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };
