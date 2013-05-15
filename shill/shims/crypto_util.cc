@@ -53,10 +53,10 @@ const size_t kMacLength = 12;
 // set *|rsa_ptr| to an RSA object which should be freed in the caller.
 // Returns the encrypted result in |encrypted_output| and returns true on
 // success.  Returns false on failure.
-bool EncryptByteStringImpl(const std::string &public_key,
-                           const std::string &data,
+bool EncryptByteStringImpl(const string &public_key,
+                           const string &data,
                            RSA **rsa_ptr,
-                           std::string *encrypted_output) {
+                           string *encrypted_output) {
   CHECK(rsa_ptr);
   CHECK(!*rsa_ptr);
   CHECK(encrypted_output);
@@ -95,7 +95,7 @@ bool EncryptByteStringImpl(const std::string &public_key,
 // Parse the EncryptDataMessage contained in |raw_input| and return an
 // EncryptDataResponse in output on success.  Returns true on success and
 // false otherwise.
-bool EncryptByteString(const std::string &raw_input, std::string *output) {
+bool EncryptByteString(const string &raw_input, string *output) {
   EncryptDataMessage message;
   if (!message.ParseFromString(raw_input)) {
     LOG(ERROR) << "Failed to read VerifyCredentialsMessage from stdin.";
@@ -144,10 +144,10 @@ bool EncryptByteString(const std::string &raw_input, std::string *output) {
 // All pointers should be valid, but point to NULL values.  Sets *ptr to
 // NULL or a valid object which should be freed with the appropriate destructor
 // upon completion.
-bool VerifyCredentialsImpl(const std::string &certificate,
-                           const std::string &signed_data,
-                           const std::string &unsigned_data,
-                           const std::string &connected_mac,
+bool VerifyCredentialsImpl(const string &certificate,
+                           const string &signed_data,
+                           const string &unsigned_data,
+                           const string &connected_mac,
                            RSA **rsa_ptr,
                            EVP_PKEY **pkey_ptr,
                            BIO **raw_certificate_bio_ptr,
@@ -278,7 +278,7 @@ bool VerifyCredentialsImpl(const std::string &certificate,
 // a serialized VerifyCredentialsMessage protobuffer in |raw_input|, returns a
 // serialized VerifyCredentialsResponse protobuffer in |output| on success.
 // Returns false if the credentials fail to meet a check, and true on success.
-bool VerifyCredentials(const std::string &raw_input, std::string *output) {
+bool VerifyCredentials(const string &raw_input, string *output) {
   VerifyCredentialsMessage message;
   if (!message.ParseFromString(raw_input)) {
     LOG(ERROR) << "Failed to read VerifyCredentialsMessage from stdin.";
@@ -346,7 +346,7 @@ bool VerifyCredentials(const std::string &raw_input, std::string *output) {
 // Read the full stdin stream into a buffer, and execute the operation
 // described in |command| with the contends of the stdin buffer.  Write
 // the serialized protocol buffer output of the command to stdout.
-bool ParseAndExecuteCommand(const std::string &command) {
+bool ParseAndExecuteCommand(const string &command) {
   string raw_input;
   char input_buffer[512];
   LOG(INFO) << "Reading input for command " << command << ".";
