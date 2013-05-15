@@ -26,19 +26,23 @@ Sockets::~Sockets() {}
 // heading "Interruption of System Calls and Library Functions by Signal
 // Handlers".
 
-int Sockets::Accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen) {
+int Sockets::Accept(int sockfd,
+                    struct sockaddr *addr,
+                    socklen_t *addrlen) const {
   return HANDLE_EINTR(accept(sockfd, addr, addrlen));
 }
 
-int Sockets::AttachFilter(int sockfd, struct sock_fprog *pf) {
+int Sockets::AttachFilter(int sockfd, struct sock_fprog *pf) const {
   return setsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, pf, sizeof(*pf));
 }
 
-int Sockets::Bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+int Sockets::Bind(int sockfd,
+                  const struct sockaddr *addr,
+                  socklen_t addrlen) const {
   return bind(sockfd, addr, addrlen);
 }
 
-int Sockets::BindToDevice(int sockfd, const std::string &device) {
+int Sockets::BindToDevice(int sockfd, const std::string &device) const {
   char dev_name[IFNAMSIZ];
   CHECK_GT(sizeof(dev_name), device.length());
   memset(&dev_name, 0, sizeof(dev_name));
@@ -47,31 +51,32 @@ int Sockets::BindToDevice(int sockfd, const std::string &device) {
                                  sizeof(dev_name)));
 }
 
-int Sockets::Close(int fd) {
+int Sockets::Close(int fd) const {
   return HANDLE_EINTR(close(fd));
 }
 
-int Sockets::Connect(int sockfd, const struct sockaddr *addr,
-                     socklen_t addrlen) {
+int Sockets::Connect(int sockfd,
+                     const struct sockaddr *addr,
+                     socklen_t addrlen) const {
   return HANDLE_EINTR(connect(sockfd, addr, addrlen));
 }
 
-int Sockets::Error() {
+int Sockets::Error() const {
   return errno;
 }
 
-std::string Sockets::ErrorString() {
+std::string Sockets::ErrorString() const {
   return std::string(strerror(Error()));
 }
 
 int Sockets::GetSockName(int sockfd,
                          struct sockaddr *addr,
-                         socklen_t *addrlen) {
+                         socklen_t *addrlen) const {
   return getsockname(sockfd, addr, addrlen);
 }
 
 
-int Sockets::GetSocketError(int sockfd) {
+int Sockets::GetSocketError(int sockfd) const {
   int error;
   socklen_t optlen = sizeof(error);
   if (getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &optlen) == 0) {
@@ -81,43 +86,54 @@ int Sockets::GetSocketError(int sockfd) {
 }
 
 
-int Sockets::Ioctl(int d, int request, void *argp) {
+int Sockets::Ioctl(int d, int request, void *argp) const {
   return HANDLE_EINTR(ioctl(d, request, argp));
 }
 
-int Sockets::Listen(int sockfd, int backlog) {
+int Sockets::Listen(int sockfd, int backlog) const {
   return listen(sockfd, backlog);
 }
 
-ssize_t Sockets::RecvFrom(int sockfd, void *buf, size_t len, int flags,
-                          struct sockaddr *src_addr, socklen_t *addrlen) {
+ssize_t Sockets::RecvFrom(int sockfd,
+                          void *buf,
+                          size_t len,
+                          int flags,
+                          struct sockaddr *src_addr,
+                          socklen_t *addrlen) const {
   return HANDLE_EINTR(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
 }
 
-ssize_t Sockets::Send(int sockfd, const void *buf, size_t len, int flags) {
+ssize_t Sockets::Send(int sockfd,
+                      const void *buf,
+                      size_t len,
+                      int flags) const {
   return HANDLE_EINTR(send(sockfd, buf, len, flags));
 }
 
-ssize_t Sockets::SendTo(int sockfd, const void *buf, size_t len, int flags,
-                        const struct sockaddr *dest_addr, socklen_t addrlen) {
+ssize_t Sockets::SendTo(int sockfd,
+                        const void *buf,
+                        size_t len,
+                        int flags,
+                        const struct sockaddr *dest_addr,
+                        socklen_t addrlen) const {
   return HANDLE_EINTR(sendto(sockfd, buf, len, flags, dest_addr, addrlen));
 }
 
-int Sockets::SetNonBlocking(int sockfd) {
+int Sockets::SetNonBlocking(int sockfd) const {
   return HANDLE_EINTR(
       fcntl(sockfd, F_SETFL, fcntl(sockfd, F_GETFL) | O_NONBLOCK));
 }
 
-int Sockets::SetReceiveBuffer(int sockfd, int size) {
+int Sockets::SetReceiveBuffer(int sockfd, int size) const {
   // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead
   return setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &size, sizeof(size));
 }
 
-int Sockets::ShutDown(int sockfd, int how) {
+int Sockets::ShutDown(int sockfd, int how) const {
   return HANDLE_EINTR(shutdown(sockfd, how));
 }
 
-int Sockets::Socket(int domain, int type, int protocol) {
+int Sockets::Socket(int domain, int type, int protocol) const {
   return socket(domain, type, protocol);
 }
 

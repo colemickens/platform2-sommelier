@@ -21,65 +21,78 @@ class Sockets {
   virtual ~Sockets();
 
   // accept
-  virtual int Accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
+  virtual int Accept(int sockfd,
+                     struct sockaddr *addr,
+                     socklen_t *addrlen) const;
 
   // getsockopt(sockfd, SOL_SOCKET, SO_ATTACH_FILTER, ...)
-  virtual int AttachFilter(int sockfd, struct sock_fprog *pf);
+  virtual int AttachFilter(int sockfd, struct sock_fprog *pf) const;
 
   // bind
-  virtual int Bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+  virtual int Bind(int sockfd,
+                   const struct sockaddr *addr,
+                   socklen_t addrlen) const;
 
   // setsockopt(s, SOL_SOCKET, SO_BINDTODEVICE ...)
-  virtual int BindToDevice(int sockfd, const std::string &device);
+  virtual int BindToDevice(int sockfd, const std::string &device) const;
 
   // close
-  virtual int Close(int fd);
+  virtual int Close(int fd) const;
 
   // connect
-  virtual int Connect(int sockfd, const struct sockaddr *addr,
-                      socklen_t addrlen);
+  virtual int Connect(int sockfd,
+                      const struct sockaddr *addr,
+                      socklen_t addrlen) const;
 
   // errno
-  virtual int Error();
+  virtual int Error() const;
 
   // errno
-  virtual std::string ErrorString();
+  virtual std::string ErrorString() const;
 
   // getsockname
-  virtual int GetSockName(int sockfd, struct sockaddr *addr,
-                          socklen_t *addrlen);
+  virtual int GetSockName(int sockfd,
+                          struct sockaddr *addr,
+                          socklen_t *addrlen) const;
 
   // getsockopt(sockfd, SOL_SOCKET, SO_ERROR, ...)
-  virtual int GetSocketError(int sockfd);
+  virtual int GetSocketError(int sockfd) const;
 
   // ioctl
-  virtual int Ioctl(int d, int request, void *argp);
+  virtual int Ioctl(int d, int request, void *argp) const;
 
   // listen
-  virtual int Listen(int sockfd, int backlog);
+  virtual int Listen(int sockfd, int backlog) const;
 
   // recvfrom
   virtual ssize_t RecvFrom(int sockfd, void *buf, size_t len, int flags,
-                           struct sockaddr *src_addr, socklen_t *addrlen);
+                           struct sockaddr *src_addr, socklen_t *addrlen) const;
 
   // send
-  virtual ssize_t Send(int sockfd, const void *buf, size_t len, int flags);
+  virtual ssize_t Send(int sockfd,
+                       const void *buf,
+                       size_t len,
+                       int flags) const;
 
   // sendto
-  virtual ssize_t SendTo(int sockfd, const void *buf, size_t len, int flags,
-                         const struct sockaddr *dest_addr, socklen_t addrlen);
+  virtual ssize_t SendTo(int sockfd,
+                         const void *buf,
+                         size_t len,
+                         int flags,
+                         const struct sockaddr *dest_addr,
+                         socklen_t addrlen) const;
 
   // fcntl(sk, F_SETFL, fcntl(sk, F_GETFL) | O_NONBLOCK)
-  virtual int SetNonBlocking(int sockfd);
+  virtual int SetNonBlocking(int sockfd) const;
 
   // setsockopt(SO_RCVBUFFORCE)
-  virtual int SetReceiveBuffer(int sockfd, int size);
+  virtual int SetReceiveBuffer(int sockfd, int size) const;
 
   // shutdown
-  virtual int ShutDown(int sockfd, int how);
+  virtual int ShutDown(int sockfd, int how) const;
 
   // socket
-  virtual int Socket(int domain, int type, int protocol);
+  virtual int Socket(int domain, int type, int protocol) const;
 };
 
 class ScopedSocketCloser {
