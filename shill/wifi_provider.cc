@@ -46,7 +46,7 @@ const char WiFiProvider::kManagerErrorUnsupportedSecurityMode[] =
 const char WiFiProvider::kManagerErrorUnsupportedServiceMode[] =
     "service mode is unsupported";
 const char WiFiProvider::kFrequencyDelimiter[] = ":";
-const char WiFiProvider::kStorageId[] = "wifi_provider";
+const char WiFiProvider::kStorageId[] = "provider_of_wifi";
 const char WiFiProvider::kStorageFrequencies[] = "Frequencies";
 
 WiFiProvider::WiFiProvider(ControlInterface *control_interface,
