@@ -37,8 +37,6 @@ namespace cryptohome {
 
 const char kDefaultUserRoot[] = "/home/chronos";
 const char kDefaultHomeDir[] = "/home/chronos/user";
-const char kChapsTokenDir[] = "/home/chronos/user/.chaps";
-const char kTokenSaltFile[] = "/home/chronos/user/.chaps/auth_data_salt";
 const char kDefaultShadowRoot[] = "/home/.shadow";
 const char kDefaultSharedUser[] = "chronos";
 const char kChapsUserName[] = "chaps";
@@ -1243,27 +1241,27 @@ void Mount::ReloadDevicePolicy() {
   EnsureDevicePolicyLoaded(true);
 }
 
-bool Mount::CheckChapsDirectory(bool* permissions_status) {
+bool Mount::CheckChapsDirectory(const std::string& dir,
+                                bool* permissions_status) {
   // If the Chaps database directory does not exist, create it.
   DCHECK(permissions_status);
   *permissions_status = true;
   // 0750: u + rwx, g + rx
   const mode_t chaps_permissions = S_IRWXU | S_IRGRP | S_IXGRP;
   const mode_t permissions_mask = S_IRWXU | S_IRWXG | S_IRWXO;
-  if (!platform_->DirectoryExists(kChapsTokenDir)) {
-    if (!platform_->CreateDirectory(kChapsTokenDir)) {
-      LOG(ERROR) << "Failed to create " << kChapsTokenDir;
+  if (!platform_->DirectoryExists(dir)) {
+    if (!platform_->CreateDirectory(dir)) {
+      LOG(ERROR) << "Failed to create " << dir;
       *permissions_status = false;
       return false;
     }
-    if (!platform_->SetOwnership(kChapsTokenDir, chaps_user_,
-                                 default_access_group_)) {
-      LOG(ERROR) << "Couldn't set file ownership for " << kChapsTokenDir;
+    if (!platform_->SetOwnership(dir, chaps_user_, default_access_group_)) {
+      LOG(ERROR) << "Couldn't set file ownership for " << dir;
       *permissions_status = false;
       return false;
     }
-    if (!platform_->SetPermissions(kChapsTokenDir, chaps_permissions)) {
-      LOG(ERROR) << "Couldn't set permissions for " << kChapsTokenDir;
+    if (!platform_->SetPermissions(dir, chaps_permissions)) {
+      LOG(ERROR) << "Couldn't set permissions for " << dir;
       *permissions_status = false;
       return false;
     }
@@ -1272,8 +1270,8 @@ bool Mount::CheckChapsDirectory(bool* permissions_status) {
   // Directory already exists so check permissions and log a warning
   // if not as expected.
   mode_t current_permissions;
-  if (!platform_->GetPermissions(kChapsTokenDir, &current_permissions)) {
-    LOG(ERROR) << "Couldn't get permissions for " << kChapsTokenDir;
+  if (!platform_->GetPermissions(dir, &current_permissions)) {
+    LOG(ERROR) << "Couldn't get permissions for " << dir;
     *permissions_status = false;
     return false;
   }
@@ -1285,9 +1283,8 @@ bool Mount::CheckChapsDirectory(bool* permissions_status) {
   }
   uid_t current_user;
   gid_t current_group;
-  if (!platform_->GetOwnership(kChapsTokenDir, &current_user,
-                               &current_group)) {
-    LOG(ERROR) << "Couldn't get ownership for " << kChapsTokenDir;
+  if (!platform_->GetOwnership(dir, &current_user, &current_group)) {
+    LOG(ERROR) << "Couldn't get ownership for " << dir;
     *permissions_status = false;
     return false;
   }
@@ -1308,13 +1305,17 @@ bool Mount::CheckChapsDirectory(bool* permissions_status) {
 
 bool Mount::InsertPkcs11Token() {
   bool permissions_status = false;
-  if (!CheckChapsDirectory(&permissions_status))
+  std::string username = current_user_->username();
+  std::string token_dir = homedirs_->GetChapsTokenDir(username);
+
+  if (!CheckChapsDirectory(token_dir, &permissions_status))
      return false;
   // We may create a salt file and, if so, we want to restrict access to it.
   ScopedUmask scoped_umask(platform_, kDefaultUmask);
 
   // Derive authorization data for the token from the passkey.
-  FilePath salt_file(kTokenSaltFile);
+  std::string token_salt_file = homedirs_->GetChapsTokenSaltPath(username);
+  FilePath salt_file(token_salt_file);
   SecureBlob auth_data;
   if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
     return false;
@@ -1327,7 +1328,7 @@ bool Mount::InsertPkcs11Token() {
                                          &old_auth_data))
       return false;
     chaps_event_client_.ChangeTokenAuthData(
-        kChapsTokenDir,
+        token_dir,
         old_auth_data,
         auth_data);
     is_pkcs11_passkey_migration_required_ = false;
@@ -1336,7 +1337,7 @@ bool Mount::InsertPkcs11Token() {
   int slot_id = 0;
   if (!chaps_event_client_.LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
-      kChapsTokenDir,
+      token_dir,
       auth_data,
       current_user_->username(),
       &slot_id)) {
@@ -1347,9 +1348,11 @@ bool Mount::InsertPkcs11Token() {
 }
 
 void Mount::RemovePkcs11Token() {
+  std::string username = current_user_->username();
+  std::string token_dir = homedirs_->GetChapsTokenDir(username);
   chaps_event_client_.UnloadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
-      kChapsTokenDir);
+      token_dir);
 }
 
 void Mount::MigrateToUserHome(const std::string& vault_path) const {

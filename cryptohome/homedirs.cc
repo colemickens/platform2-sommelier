@@ -4,6 +4,7 @@
 
 #include <base/bind.h>
 #include <base/logging.h>
+#include <base/stringprintf.h>
 #include <chromeos/cryptohome.h>
 
 #include "credentials.h"
@@ -345,16 +346,34 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   }
   SecureBlob old_auth_data;
   SecureBlob auth_data;
-  FilePath salt_file(kTokenSaltFile);
+  std::string username = newcreds.username();
+  std::string token_salt_path = GetChapsTokenSaltPath(username);
+  FilePath salt_file(token_salt_path);
   if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data))
     return false;
   if (!crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data))
     return false;
+  std::string token_dir = GetChapsTokenDir(username);
   chaps_event_client_.ChangeTokenAuthData(
-      kChapsTokenDir,
+      token_dir,
       old_auth_data,
       auth_data);
   return true;
+}
+
+namespace {
+  const char *kChapsDirName = ".chaps";
+  const char *kChapsSaltName = "auth_data_salt";
+}
+
+std::string HomeDirs::GetChapsTokenDir(const std::string& user) const {
+  std::string user_path =
+      chromeos::cryptohome::home::GetUserPath(user).value();
+  return StringPrintf("%s/%s", user_path.c_str(), kChapsDirName);
+}
+
+std::string HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {
+  return StringPrintf("%s/%s", GetChapsTokenDir(user).c_str(), kChapsSaltName);
 }
 
 }  // namespace cryptohome

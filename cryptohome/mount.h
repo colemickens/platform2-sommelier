@@ -38,10 +38,6 @@
 
 namespace cryptohome {
 
-// The directory in which to create the user's PKCS #11 token database.
-extern const char kChapsTokenDir[];
-// The path to the PKCS #11 token salt file.
-extern const char kTokenSaltFile[];
 // Directories that we intend to track (make pass-through in cryptohome vault)
 extern const char kCacheDir[];
 extern const char kDownloadsDir[];
@@ -504,8 +500,9 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // returns false.
   //
   // Parameters
+  //   dir - directory to check
   //   permissions_check - set to false if permissions, uid or gid is incorrect
-  bool CheckChapsDirectory(bool* permissions_check);
+  bool CheckChapsDirectory(const std::string& dir, bool* permissions_check);
 
   // Ensures that the device policy is loaded.
   //

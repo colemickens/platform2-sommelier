@@ -284,14 +284,14 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir) {
   chaps_uid_ = 101010;
   shared_gid_ = 101010;
   EXPECT_TRUE(DoMountInit(mount.get()));
-  EXPECT_CALL(platform, DirectoryExists(_))
+  EXPECT_CALL(platform, DirectoryExists("/fake"))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetOwnership(_, _, _))
+  EXPECT_CALL(platform, GetOwnership("/fake", _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(chaps_uid_),
                             SetArgumentPointee<2>(shared_gid_),
                             Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_TRUE(permissions_status);
 }
 
@@ -307,12 +307,12 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms) {
   mount->set_use_tpm(false);
   mount->set_platform(&platform);
   EXPECT_TRUE(DoMountInit(mount.get()));
-  EXPECT_CALL(platform, DirectoryExists(_))
+  EXPECT_CALL(platform, DirectoryExists("/fake"))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetPermissions(_, _))
+  EXPECT_CALL(platform, GetPermissions("/fake", _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms), Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -334,7 +334,7 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
   EXPECT_CALL(platform, DirectoryExists(_))
       .WillRepeatedly(Return(true));
   mode_t expected_perms = S_IRWXU | S_IRGRP | S_IXGRP;
-  EXPECT_CALL(platform, GetPermissions("/home/chronos/user/.chaps", _))
+  EXPECT_CALL(platform, GetPermissions("/fake", _))
     .WillOnce(DoAll(SetArgumentPointee<1>(expected_perms), Return(true)));
   EXPECT_CALL(platform, GetOwnership(_, _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_uid),
@@ -342,7 +342,7 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
                             Return(true)));
 
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -361,14 +361,14 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID) {
   shared_gid_ = 101011;
   gid_t bad_gid = 0;
   EXPECT_TRUE(DoMountInit(mount.get()));
-  EXPECT_CALL(platform, DirectoryExists(_))
+  EXPECT_CALL(platform, DirectoryExists("/fake"))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetOwnership(_, _, _))
+  EXPECT_CALL(platform, GetOwnership("/fake", _, _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(chaps_uid_),
                             SetArgumentPointee<2>(bad_gid),
                             Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -384,24 +384,24 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
   mount->set_platform(&platform);
   helper_.InjectSystemSalt(&platform, kImageSaltFile);
   EXPECT_TRUE(mount->Init());
-  EXPECT_CALL(platform, DirectoryExists(_))
+  EXPECT_CALL(platform, DirectoryExists("/fake"))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform, CreateDirectory(_))
+  EXPECT_CALL(platform, CreateDirectory("/fake"))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, SetOwnership(_, _, _))
+  EXPECT_CALL(platform, SetOwnership("/fake", _, _))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, SetPermissions(_, _))
+  EXPECT_CALL(platform, SetPermissions("/fake", _))
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(platform, GetPermissions(_, _))
+  EXPECT_CALL(platform, GetPermissions("/fake", _))
       .WillRepeatedly(Return(false));
   bool permissions_status = false;
-  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -417,17 +417,17 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError) {
   mount->set_platform(&platform);
   helper_.InjectSystemSalt(&platform, kImageSaltFile);
   EXPECT_TRUE(mount->Init());
-  EXPECT_CALL(platform, DirectoryExists(_))
+  EXPECT_CALL(platform, DirectoryExists("/fake"))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetPermissions(_, _))
+  EXPECT_CALL(platform, GetPermissions("/fake", _))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(platform, GetOwnership(_, _, _))
+  EXPECT_CALL(platform, GetOwnership("/fake", _, _))
       .WillRepeatedly(Return(false));
   bool permissions_status = false;
-  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory(&permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 

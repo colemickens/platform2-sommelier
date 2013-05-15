@@ -74,6 +74,12 @@ class HomeDirs {
   virtual bool Migrate(const Credentials& newcreds,
                        const chromeos::SecureBlob& oldkey);
 
+  // Returns the path to the user's chaps token directory.
+  virtual std::string GetChapsTokenDir(const std::string& username) const;
+
+  // Returns the path to the user's token salt.
+  virtual std::string GetChapsTokenSaltPath(const std::string& username) const;
+
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
   // TODO(wad) Should this update default_crypto_.set_platform()?
