@@ -50,10 +50,11 @@ TEST(UtilTest, RunCommandTest) {
   // Note that RunCommand returns the raw system() result, including signal
   // values. WEXITSTATUS would be needed to check clean result codes.
   EXPECT_EQ(RunCommand("/bin/true"), 0);
-  EXPECT_EQ(RunCommand("/bin/false"), 256);
-  EXPECT_EQ(RunCommand("/bin/bogus"), 32512);
-  EXPECT_EQ(RunCommand("/bin/bash -c \"exit 2\""), 512);
+  EXPECT_EQ(RunCommand("/bin/false"), 1);
+  EXPECT_EQ(RunCommand("/bin/bogus"), 127);
+  EXPECT_EQ(RunCommand("/bin/bash -c \"exit 2\""), 2);
   EXPECT_EQ(RunCommand("/bin/echo RunCommand*Test"), 0);
+  EXPECT_EQ(RunCommand("kill -INT $$"), 1);
 }
 
 TEST(UtilTest, ReadFileToStringTest) {

@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/wait.h>
 #include <time.h>
 #include <unistd.h>
 
@@ -109,10 +110,22 @@ int RunCommand(const string& command) {
   int result = system(command.c_str());
   LoggingTimerFinish();
 
-  if (result != 0)
-    printf("Failed Command: %s - %d\n", command.c_str(), result);
+  if (WIFEXITED(result)) {
+    int exit_code = WEXITSTATUS(result);
+    if (exit_code)
+      printf("Failed Command: %s - Exit Code %d\n", command.c_str(), exit_code);
+    return exit_code;
+  }
 
-  return result;
+  if (WIFSIGNALED(result)) {
+    printf("Failed Command: %s - Signal %d\n",
+           command.c_str(), WTERMSIG(result));
+    return 1;
+  }
+
+  // This shouldn't be reachable.
+  printf("Failed Command for unknown reason.: %s\n", command.c_str());
+  return 1;
 }
 
 // Open a file and read it's contents into a string.
