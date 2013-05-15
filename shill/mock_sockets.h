@@ -5,10 +5,10 @@
 #ifndef SHILL_MOCK_SOCKETS_H_
 #define SHILL_MOCK_SOCKETS_H_
 
+#include "shill/sockets.h"
+
 #include <base/basictypes.h>
 #include <gmock/gmock.h>
-
-#include "shill/sockets.h"
 
 namespace shill {
 
@@ -38,6 +38,11 @@ class MockSockets : public Sockets {
                                        int flags,
                                        struct sockaddr *src_addr,
                                        socklen_t *addrlen));
+  MOCK_CONST_METHOD5(Select, int(int nfds,
+                                 fd_set *readfds,
+                                 fd_set *writefds,
+                                 fd_set *exceptfds,
+                                 struct timeval *timeout));
   MOCK_CONST_METHOD4(Send, ssize_t(int sockfd, const void *buf, size_t len,
                                    int flags));
   MOCK_CONST_METHOD6(SendTo, ssize_t(int sockfd,

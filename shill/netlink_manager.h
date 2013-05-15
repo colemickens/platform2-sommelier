@@ -72,6 +72,7 @@
 
 #include "shill/io_handler.h"
 #include "shill/netlink_message.h"
+#include "shill/shill_time.h"
 
 struct nlmsghdr;
 
@@ -138,7 +139,7 @@ class NetlinkManager {
   // |NetlinkMessage::kIllegalMessageType| if the message type could not be
   // determined.  May block so |GetFamily| should be called before entering the
   // event loop.
-  uint16_t GetFamily(std::string family_name,
+  virtual uint16_t GetFamily(const std::string &family_name,
       const NetlinkMessageFactory::FactoryMethod &message_factory);
 
   // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
@@ -189,6 +190,8 @@ class NetlinkManager {
   friend class ShillDaemonTest;
   FRIEND_TEST(NetlinkManagerTest, AddLinkTest);
   FRIEND_TEST(NetlinkManagerTest, BroadcastHandlerTest);
+  FRIEND_TEST(NetlinkManagerTest, GetFamilyOneInterstitialMessage);
+  FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);
   FRIEND_TEST(NetlinkManagerTest, MessageHandlerTest);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS);
@@ -247,6 +250,7 @@ class NetlinkManager {
   NetlinkSocket *sock_;
   std::map<const std::string, MessageType> message_types_;
   NetlinkMessageFactory message_factory_;
+  Time *time_;
 
   DISALLOW_COPY_AND_ASSIGN(NetlinkManager);
 };

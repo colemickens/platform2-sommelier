@@ -5,11 +5,11 @@
 #ifndef SHILL_SOCKETS_H_
 #define SHILL_SOCKETS_H_
 
-#include <string>
-
 #include <linux/filter.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+
+#include <string>
 
 #include <base/basictypes.h>
 
@@ -18,6 +18,7 @@ namespace shill {
 // A "sys/socket.h" abstraction allowing mocking in tests.
 class Sockets {
  public:
+  Sockets();
   virtual ~Sockets();
 
   // accept
@@ -68,6 +69,13 @@ class Sockets {
   virtual ssize_t RecvFrom(int sockfd, void *buf, size_t len, int flags,
                            struct sockaddr *src_addr, socklen_t *addrlen) const;
 
+  // select
+  virtual int Select(int nfds,
+                     fd_set *readfds,
+                     fd_set *writefds,
+                     fd_set *exceptfds,
+                     struct timeval *timeout) const;
+
   // send
   virtual ssize_t Send(int sockfd,
                        const void *buf,
@@ -93,6 +101,9 @@ class Sockets {
 
   // socket
   virtual int Socket(int domain, int type, int protocol) const;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(Sockets);
 };
 
 class ScopedSocketCloser {

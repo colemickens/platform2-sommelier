@@ -22,6 +22,7 @@
 #include "shill/netlink_socket.h"
 #include "shill/scope_logger.h"
 #include "shill/shill_time.h"
+#include "shill/sockets.h"
 
 using base::Bind;
 using base::LazyInstance;
@@ -50,7 +51,8 @@ NetlinkManager::NetlinkManager()
       weak_ptr_factory_(this),
       dispatcher_callback_(Bind(&NetlinkManager::OnRawNlMessageReceived,
                                 weak_ptr_factory_.GetWeakPtr())),
-      sock_(NULL) {}
+      sock_(NULL),
+      time_(Time::GetInstance()) {}
 
 NetlinkManager *NetlinkManager::GetInstance() {
   return g_netlink_manager.Pointer();
@@ -58,6 +60,7 @@ NetlinkManager *NetlinkManager::GetInstance() {
 
 void NetlinkManager::Reset(bool full) {
   ClearBroadcastHandlers();
+  message_handlers_.clear();
   message_types_.clear();
   if (full) {
     dispatcher_ = NULL;
@@ -171,7 +174,7 @@ int NetlinkManager::file_descriptor() const {
   return (sock_ ? sock_->file_descriptor() : -1);
 }
 
-uint16_t NetlinkManager::GetFamily(string name,
+uint16_t NetlinkManager::GetFamily(const string &name,
     const NetlinkMessageFactory::FactoryMethod &message_factory) {
   MessageType &message_type = message_types_[name];
   if (message_type.family_id != NetlinkMessage::kIllegalMessageType) {
@@ -207,8 +210,7 @@ uint16_t NetlinkManager::GetFamily(string name,
   struct timeval start_time, now, end_time;
   struct timeval maximum_wait_duration = {kMaximumNewFamilyWaitSeconds,
                                           kMaximumNewFamilyWaitMicroSeconds};
-  Time *time = Time::GetInstance();
-  time->GetTimeMonotonic(&start_time);
+  time_->GetTimeMonotonic(&start_time);
   now = start_time;
   timeradd(&start_time, &maximum_wait_duration, &end_time);
 
@@ -219,8 +221,11 @@ uint16_t NetlinkManager::GetFamily(string name,
     FD_SET(file_descriptor(), &read_fds);
     struct timeval wait_duration;
     timersub(&end_time, &now, &wait_duration);
-    int result = select(file_descriptor() + 1, &read_fds, NULL, NULL,
-                        &wait_duration);
+    int result = sock_->sockets()->Select(file_descriptor() + 1,
+                                          &read_fds,
+                                          NULL,
+                                          NULL,
+                                          &wait_duration);
     if (result < 0) {
       PLOG(ERROR) << "Select failed";
       return NetlinkMessage::kIllegalMessageType;
@@ -241,7 +246,7 @@ uint16_t NetlinkManager::GetFamily(string name,
       if (family_id != NetlinkMessage::kIllegalMessageType) {
         message_factory_.AddFactoryMethod(family_id, message_factory);
       }
-      time->GetTimeMonotonic(&now);
+      time_->GetTimeMonotonic(&now);
       timersub(&now, &start_time, &wait_duration);
       SLOG(WiFi, 5) << "Found id " << message_type.family_id
                     << " for name '" << name << "' in "
@@ -249,7 +254,7 @@ uint16_t NetlinkManager::GetFamily(string name,
                     << wait_duration.tv_usec << " usec.";
       return message_type.family_id;
     }
-    time->GetTimeMonotonic(&now);
+    time_->GetTimeMonotonic(&now);
   } while (timercmp(&now, &end_time, <));
 
   LOG(ERROR) << "Timed out waiting for family_id for family '" << name << "'.";

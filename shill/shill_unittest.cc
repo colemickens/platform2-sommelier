@@ -18,9 +18,11 @@
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
+#include "shill/mock_netlink_manager.h"
 #include "shill/mock_proxy_factory.h"
-#include "shill/mock_rtnl_handler.h"
 #include "shill/mock_routing_table.h"
+#include "shill/mock_rtnl_handler.h"
+#include "shill/nl80211_message.h"
 #include "shill/shill_daemon.h"
 #include "shill/shill_test_config.h"
 
@@ -202,7 +204,12 @@ class ShillDaemonTest : public Test {
     daemon_.dhcp_provider_ = &dhcp_provider_;
     daemon_.metrics_.reset(metrics_);  // Passes ownership
     daemon_.manager_.reset(manager_);  // Passes ownership
+    daemon_.netlink_manager_ = &netlink_manager_;
     dispatcher_test_.ScheduleFailSafe();
+
+    const uint16_t kNl80211MessageType = 42;  // Arbitrary.
+    ON_CALL(netlink_manager_, GetFamily(Nl80211Message::kMessageTypeString, _)).
+            WillByDefault(Return(kNl80211MessageType));
   }
   void StartDaemon() {
     daemon_.Start();
@@ -227,6 +234,7 @@ class ShillDaemonTest : public Test {
   MockDHCPProvider dhcp_provider_;
   MockMetrics *metrics_;
   MockManager *manager_;
+  MockNetlinkManager netlink_manager_;
   DeviceInfo device_info_;
   EventDispatcher *dispatcher_;
   StrictMock<MockEventDispatchTester> dispatcher_test_;

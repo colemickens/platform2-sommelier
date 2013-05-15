@@ -19,6 +19,11 @@ class MockNetlinkManager : public NetlinkManager {
  public:
   MockNetlinkManager();
   virtual ~MockNetlinkManager();
+
+  MOCK_METHOD2(
+      GetFamily,
+      uint16_t(const std::string &family_name,
+               const NetlinkMessageFactory::FactoryMethod &message_factory));
   MOCK_METHOD1(RemoveBroadcastHandler,
                bool(const NetlinkMessageHandler &message_handler));
   MOCK_METHOD1(AddBroadcastHandler,

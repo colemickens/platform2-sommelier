@@ -18,6 +18,8 @@
 
 namespace shill {
 
+Sockets::Sockets() {}
+
 Sockets::~Sockets() {}
 
 // Some system calls can be interrupted and return EINTR, but will succeed on
@@ -101,6 +103,14 @@ ssize_t Sockets::RecvFrom(int sockfd,
                           struct sockaddr *src_addr,
                           socklen_t *addrlen) const {
   return HANDLE_EINTR(recvfrom(sockfd, buf, len, flags, src_addr, addrlen));
+}
+
+int Sockets::Select(int nfds,
+                    fd_set *readfds,
+                    fd_set *writefds,
+                    fd_set *exceptfds,
+                    struct timeval *timeout) const {
+  return HANDLE_EINTR(select(nfds, readfds, writefds, exceptfds, timeout));
 }
 
 ssize_t Sockets::Send(int sockfd,

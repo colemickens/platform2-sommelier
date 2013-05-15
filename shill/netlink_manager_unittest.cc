@@ -10,14 +10,20 @@
 // This file tests the public interface to NetlinkManager.
 #include "shill/netlink_manager.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/mock_netlink_socket.h"
+#include "shill/mock_sockets.h"
+#include "shill/mock_time.h"
+#include "shill/netlink_attribute.h"
 #include "shill/nl80211_message.h"
 
 using base::Bind;
 using base::Unretained;
+using std::string;
 using testing::_;
 using testing::Invoke;
 using testing::Return;
@@ -53,18 +59,23 @@ const char kGetFamilyCommandString[] = "CTRL_CMD_GETFAMILY";
 
 }  // namespace
 
-bool MockNetlinkSocket::SendMessage(const ByteString &out_string) {
-  return true;
-}
-
 class NetlinkManagerTest : public Test {
  public:
-  NetlinkManagerTest() : netlink_manager_(NetlinkManager::GetInstance()) {
+  NetlinkManagerTest()
+      : netlink_manager_(NetlinkManager::GetInstance()),
+        sockets_(new MockSockets),
+        saved_sequence_number_(0) {
     netlink_manager_->message_types_[Nl80211Message::kMessageTypeString]
         .family_id = kNl80211FamilyId;
     netlink_manager_->message_factory_.AddFactoryMethod(
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
+    // Passes ownership.
+    netlink_socket_.sockets_.reset(sockets_);
+
+    EXPECT_NE(reinterpret_cast<NetlinkManager *>(NULL), netlink_manager_);
+    netlink_manager_->sock_ = &netlink_socket_;
+    EXPECT_TRUE(netlink_manager_->Init());
   }
 
   ~NetlinkManagerTest() {
@@ -74,10 +85,57 @@ class NetlinkManagerTest : public Test {
     netlink_manager_->sock_ = NULL;
   }
 
-  void SetupNetlinkManagerObject() {
-    EXPECT_NE(reinterpret_cast<NetlinkManager *>(NULL), netlink_manager_);
-    netlink_manager_->sock_ = &socket_;
-    EXPECT_TRUE(netlink_manager_->Init());
+  // |SaveReply|, |SendMessage|, and |ReplyToSentMessage| work together to
+  // enable a test to get a response to a sent message.  They must be called
+  // in the order, above, so that a) a reply message is available to b) have
+  // its sequence number replaced, and then c) sent back to the code.
+  void SaveReply(const ByteString &message) {
+    saved_message_ = message;
+  }
+
+  // Replaces the |saved_message_|'s sequence number with the sent value.
+  bool SendMessage(const ByteString &outgoing_message) {
+    if (outgoing_message.GetLength() < sizeof(nlmsghdr)) {
+      LOG(ERROR) << "Outgoing message is too short";
+      return false;
+    }
+    const nlmsghdr *outgoing_header =
+        reinterpret_cast<const nlmsghdr *>(outgoing_message.GetConstData());
+
+    if (saved_message_.GetLength() < sizeof(nlmsghdr)) {
+      LOG(ERROR) << "Saved message is too short; have you called |SaveReply|?";
+      return false;
+    }
+    nlmsghdr *reply_header =
+        reinterpret_cast<nlmsghdr *>(saved_message_.GetData());
+
+    reply_header->nlmsg_seq = outgoing_header->nlmsg_seq;
+    saved_sequence_number_ = reply_header->nlmsg_seq;
+    return true;
+  }
+
+  bool ReplyToSentMessage(ByteString *message) {
+    if (!message) {
+      return false;
+    }
+    *message = saved_message_;
+    return true;
+  }
+
+  bool ReplyWithRandomMessage(ByteString *message) {
+    GetFamilyMessage get_family_message;
+    // Any number that's not 0 or 1 is acceptable, here.  Zero is bad because
+    // we want to make sure that this message is different than the main
+    // send/receive pair.  One is bad becasue the default for
+    // |saved_sequence_number_| is zero and the likely default value for the
+    // first sequence number generated from the code is 1.
+    const uint32_t kRandomOffset = 1003;
+    if (!message) {
+      return false;
+    }
+    *message = get_family_message.Encode(saved_sequence_number_ +
+                                         kRandomOffset);
+    return true;
   }
 
  protected:
@@ -95,20 +153,153 @@ class NetlinkManagerTest : public Test {
     DISALLOW_COPY_AND_ASSIGN(MockHandler80211);
   };
 
+  void Reset() {
+    netlink_manager_->Reset(false);
+  }
+
   NetlinkManager *netlink_manager_;
-  MockNetlinkSocket socket_;
+  MockNetlinkSocket netlink_socket_;
+  MockSockets *sockets_;  // Owned by |netlink_socket_|.
+  ByteString saved_message_;
+  uint32_t saved_sequence_number_;
 };
 
+namespace {
+
+class TimeFunctor {
+ public:
+  TimeFunctor(time_t tv_sec, suseconds_t tv_usec) {
+    return_value_.tv_sec = tv_sec;
+    return_value_.tv_usec = tv_usec;
+  }
+
+  TimeFunctor() {
+    return_value_.tv_sec = 0;
+    return_value_.tv_usec = 0;
+  }
+
+  TimeFunctor(const TimeFunctor &other) {
+    return_value_.tv_sec = other.return_value_.tv_sec;
+    return_value_.tv_usec = other.return_value_.tv_usec;
+  }
+
+  TimeFunctor &operator=(const TimeFunctor &rhs) {
+    return_value_.tv_sec = rhs.return_value_.tv_sec;
+    return_value_.tv_usec = rhs.return_value_.tv_usec;
+    return *this;
+  }
+
+  // Replaces GetTimeMonotonic.
+  int operator()(struct timeval *answer) {
+    if (answer) {
+      *answer = return_value_;
+    }
+    return 0;
+  }
+
+ private:
+  struct timeval return_value_;
+
+  // No DISALLOW_COPY_AND_ASSIGN since testing::Invoke uses copy.
+};
+
+}  // namespace
+
 // TODO(wdg): Add a test for multi-part messages.  crbug.com/224652
-// TODO(wdg): Add a test for GetFaimily.  crbug.com/224649
-// TODO(wdg): Add a test for OnNewFamilyMessage.  crbug.com/222486
 // TODO(wdg): Add a test for SubscribeToEvents (verify that it handles bad input
 // appropriately, and that it calls NetlinkSocket::SubscribeToEvents if input
 // is good.)
 
-TEST_F(NetlinkManagerTest, BroadcastHandlerTest) {
-  SetupNetlinkManagerObject();
+TEST_F(NetlinkManagerTest, GetFamily) {
+  const uint16_t kSampleMessageType = 42;
+  const string kSampleMessageName("SampleMessageName");
+  const uint32_t kRandomSequenceNumber = 3;
 
+  NewFamilyMessage new_family_message;
+  new_family_message.attributes()->CreateAttribute(
+      CTRL_ATTR_FAMILY_ID,
+      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->SetU16AttributeValue(
+      CTRL_ATTR_FAMILY_ID, kSampleMessageType);
+  new_family_message.attributes()->CreateAttribute(
+      CTRL_ATTR_FAMILY_NAME,
+      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->SetStringAttributeValue(
+      CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
+
+  // The sequence number is immaterial since it'll be overwritten.
+  SaveReply(new_family_message.Encode(kRandomSequenceNumber));
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).
+      WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
+  EXPECT_CALL(netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillOnce(Return(1));
+  EXPECT_CALL(netlink_socket_, RecvMessage(_)).
+      WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
+  NetlinkMessageFactory::FactoryMethod null_factory;
+  EXPECT_EQ(kSampleMessageType, netlink_manager_->GetFamily(kSampleMessageName,
+                                                            null_factory));
+}
+
+TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
+  Reset();
+
+  const uint16_t kSampleMessageType = 42;
+  const string kSampleMessageName("SampleMessageName");
+  const uint32_t kRandomSequenceNumber = 3;
+
+  NewFamilyMessage new_family_message;
+  new_family_message.attributes()->CreateAttribute(
+      CTRL_ATTR_FAMILY_ID,
+      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->SetU16AttributeValue(
+      CTRL_ATTR_FAMILY_ID, kSampleMessageType);
+  new_family_message.attributes()->CreateAttribute(
+      CTRL_ATTR_FAMILY_NAME,
+      base::Bind(&NetlinkAttribute::NewControlAttributeFromId));
+  new_family_message.attributes()->SetStringAttributeValue(
+      CTRL_ATTR_FAMILY_NAME, kSampleMessageName);
+
+  // The sequence number is immaterial since it'll be overwritten.
+  SaveReply(new_family_message.Encode(kRandomSequenceNumber));
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).
+      WillOnce(Invoke(this, &NetlinkManagerTest::SendMessage));
+  EXPECT_CALL(netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillRepeatedly(Return(1));
+  EXPECT_CALL(netlink_socket_, RecvMessage(_)).
+      WillOnce(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage)).
+      WillOnce(Invoke(this, &NetlinkManagerTest::ReplyToSentMessage));
+  NetlinkMessageFactory::FactoryMethod null_factory;
+  EXPECT_EQ(kSampleMessageType, netlink_manager_->GetFamily(kSampleMessageName,
+                                                            null_factory));
+}
+
+TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
+  Reset();
+  MockTime time;
+  netlink_manager_->time_ = &time;
+
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  time_t kStartSeconds = 1234;  // Arbitrary.
+  suseconds_t kSmallUsec = 100;
+  EXPECT_CALL(time, GetTimeMonotonic(_)).
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0))).  // Initial time.
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec))).
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, 2 * kSmallUsec))).
+      WillOnce(Invoke(TimeFunctor(
+          kStartSeconds + NetlinkManager::kMaximumNewFamilyWaitSeconds + 1,
+          NetlinkManager::kMaximumNewFamilyWaitMicroSeconds)));
+  EXPECT_CALL(netlink_socket_, file_descriptor()).WillRepeatedly(Return(0));
+  EXPECT_CALL(*sockets_, Select(_, _, _, _, _)).WillRepeatedly(Return(1));
+  EXPECT_CALL(netlink_socket_, RecvMessage(_)).
+      WillRepeatedly(Invoke(this, &NetlinkManagerTest::ReplyWithRandomMessage));
+  NetlinkMessageFactory::FactoryMethod null_factory;
+
+  const string kSampleMessageName("SampleMessageName");
+  EXPECT_EQ(NetlinkMessage::kIllegalMessageType,
+            netlink_manager_->GetFamily(kSampleMessageName, null_factory));
+}
+
+TEST_F(NetlinkManagerTest, BroadcastHandlerTest) {
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
 
@@ -157,9 +348,7 @@ TEST_F(NetlinkManagerTest, BroadcastHandlerTest) {
 }
 
 TEST_F(NetlinkManagerTest, MessageHandlerTest) {
-  // Setup.
-  SetupNetlinkManagerObject();
-
+  Reset();
   MockHandler80211 handler_broadcast;
   EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
       handler_broadcast.on_netlink_message()));
@@ -186,10 +375,11 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
   netlink_manager_->OnNlMessageReceived(received_message);
 
   // Send the message and give our handler.  Verify that we get called back.
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   EXPECT_TRUE(netlink_manager_->SendMessage(
       &sent_message_1, handler_sent_1.on_netlink_message()));
   // Make it appear that this message is in response to our sent message.
-  received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
+  received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_1, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 
@@ -200,15 +390,17 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
 
   // Install and then uninstall message-specific handler; verify broadcast
   // handler is called on message receipt.
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   EXPECT_TRUE(netlink_manager_->SendMessage(
       &sent_message_1, handler_sent_1.on_netlink_message()));
-  received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
+  received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
   EXPECT_TRUE(netlink_manager_->RemoveMessageHandler(sent_message_1));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 
   // Install handler for different message; verify that broadcast handler is
   // called for _this_ message.
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
   EXPECT_TRUE(netlink_manager_->SendMessage(
       &sent_message_2, handler_sent_2.on_netlink_message()));
   EXPECT_CALL(handler_broadcast, OnNetlinkMessage(_)).Times(1);
@@ -216,7 +408,7 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
 
   // Change the ID for the message to that of the second handler; verify that
   // the appropriate handler is called for _that_ message.
-  received_message->nlmsg_seq = socket_.GetLastSequenceNumber();
+  received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_2, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 }
