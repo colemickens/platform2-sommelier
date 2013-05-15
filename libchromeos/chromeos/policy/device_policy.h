@@ -137,6 +137,10 @@ class DevicePolicy {
   // Returns true on success.
   virtual bool GetOwner(std::string* owner) const = 0;
 
+  // Write the value of http_downloads_enabled policy in
+  // |http_downloads_enabled|. Returns true on success.
+  virtual bool GetHttpDownloadsEnabled(bool* http_downloads_enabled) const = 0;
+
  private:
   // Verifies that the policy files are owned by root and exist.
   virtual bool VerifyPolicyFiles() = 0;

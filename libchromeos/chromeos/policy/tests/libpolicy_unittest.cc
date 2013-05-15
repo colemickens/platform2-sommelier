@@ -152,6 +152,10 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetOwner(&string_value));
   ASSERT_EQ("", string_value);
 
+  bool_value = true;
+  ASSERT_TRUE(policy.GetHttpDownloadsEnabled(&bool_value));
+  ASSERT_FALSE(bool_value);
+
   // Reloading the protobuf should succeed.
   ASSERT_TRUE(provider.Reload());
 }
@@ -199,6 +203,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   ASSERT_FALSE(policy.GetTargetVersionPrefix(&string_value));
   ASSERT_FALSE(policy.GetScatterFactorInSeconds(&int64_value));
   ASSERT_FALSE(policy.GetOpenNetworkConfiguration(&string_value));
+  ASSERT_FALSE(policy.GetHttpDownloadsEnabled(&bool_value));
 }
 
 // Verify that the library will correctly recognize and signal missing files.

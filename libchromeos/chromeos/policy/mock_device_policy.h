@@ -72,6 +72,7 @@ class MockDevicePolicy : public DevicePolicy {
                      bool(std::set<std::string>*));
   MOCK_CONST_METHOD1(GetOpenNetworkConfiguration, bool(std::string*));
   MOCK_CONST_METHOD1(GetOwner, bool(std::string*));
+  MOCK_CONST_METHOD1(GetHttpDownloadsEnabled, bool(bool*));
 
   MOCK_METHOD0(VerifyPolicyFiles, bool(void));
   MOCK_METHOD0(VerifyPolicySignature, bool(void));

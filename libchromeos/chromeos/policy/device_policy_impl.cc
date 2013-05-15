@@ -413,6 +413,18 @@ bool DevicePolicyImpl::GetOwner(std::string* owner) const {
   return true;
 }
 
+bool DevicePolicyImpl::GetHttpDownloadsEnabled(
+    bool* http_downloads_enabled) const {
+  if (!device_policy_.has_auto_update_settings())
+    return false;
+
+  const enterprise_management::AutoUpdateSettingsProto& proto =
+      device_policy_.auto_update_settings();
+
+  *http_downloads_enabled = proto.http_downloads_enabled();
+  return true;
+}
+
 bool DevicePolicyImpl::VerifyPolicyFiles() {
   // Both the policy and its signature have to exist.
   if (!file_util::PathExists(policy_path_) ||
