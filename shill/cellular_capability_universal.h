@@ -159,6 +159,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   static const int64 kActivationRegistrationTimeoutMilliseconds;
   static const int64 kDefaultScanningOrSearchingTimeoutMilliseconds;
+  static const int64 kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
 
@@ -179,6 +180,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, ConnectApns);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, CreateFriendlyServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, DisconnectNoProxy);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              DisconnectWithDeferredCallback);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               GetNetworkTechnologyStringOnE362);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
@@ -204,6 +207,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StopModemConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdatePendingActivationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdateRegistrationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
@@ -320,6 +327,10 @@ class CellularCapabilityUniversal : public CellularCapability {
   void On3GPPRegistrationChanged(MMModem3gppRegistrationState state,
                                  const std::string &operator_code,
                                  const std::string &operator_name);
+  void Handle3GPPRegistrationChange(
+      MMModem3gppRegistrationState updated_state,
+      std::string updated_operator_code,
+      std::string updated_operator_name);
   void OnFacilityLocksChanged(uint32 locks);
 
   // SIM property change handlers
@@ -369,6 +380,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   void ResetAfterActivation();
   void UpdateServiceActivationState();
   void OnResetAfterActivationReply(const Error &error);
+
+  static bool IsRegisteredState(MMModem3gppRegistrationState state);
 
   scoped_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;
   scoped_ptr<mm1::ModemProxyInterface> modem_proxy_;
@@ -435,6 +448,12 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   base::CancelableClosure activation_wait_for_registration_callback_;
   int64 activation_registration_timeout_milliseconds_;
+
+  // Sometimes flaky cellular network causes the 3GPP registration state to
+  // rapidly change from registered --> searching and back. Delay such updates
+  // a little to smooth over temporary registration loss.
+  base::CancelableClosure registration_dropped_update_callback_;
+  int64 registration_dropped_update_timeout_milliseconds_;
 
   static unsigned int friendly_service_name_id_;
 

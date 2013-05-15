@@ -53,11 +53,14 @@ const char CellularCapabilityUniversal::kConnectAllowRoaming[] =
     "allow-roaming";
 const char CellularCapabilityUniversal::kConnectRMProtocol[] = "rm-protocol";
 const int64
+CellularCapabilityUniversal::kActivationRegistrationTimeoutMilliseconds =
+    20000;
+const int64
 CellularCapabilityUniversal::kDefaultScanningOrSearchingTimeoutMilliseconds =
     60000;
 const int64
-CellularCapabilityUniversal::kActivationRegistrationTimeoutMilliseconds =
-    20000;
+CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
+    15000;
 const char CellularCapabilityUniversal::kGenericServiceNamePrefix[] =
     "Mobile Network";
 const char CellularCapabilityUniversal::kRootPath[] = "/";
@@ -150,7 +153,9 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
       scanning_or_searching_timeout_milliseconds_(
           kDefaultScanningOrSearchingTimeoutMilliseconds),
       activation_registration_timeout_milliseconds_(
-          kActivationRegistrationTimeoutMilliseconds) {
+          kActivationRegistrationTimeoutMilliseconds),
+      registration_dropped_update_timeout_milliseconds_(
+          kRegistrationDroppedUpdateTimeoutMilliseconds) {
   SLOG(Cellular, 2) << "Cellular capability constructed: Universal";
   PropertyStore *store = cellular->mutable_store();
 
@@ -306,6 +311,13 @@ void CellularCapabilityUniversal::StopModem(Error *error,
                                             const ResultCallback &callback) {
   CHECK(!callback.is_null());
   CHECK(error);
+  // If there is an outstanding registration change, simply ignore it since
+  // the service will be destroyed anyway.
+  if (!registration_dropped_update_callback_.IsCancelled()) {
+    registration_dropped_update_callback_.Cancel();
+    SLOG(Cellular, 2) << __func__ << " Cancelled delayed deregister.";
+  }
+
   Cellular::ModemState state = cellular()->modem_state();
   SLOG(Cellular, 2) << __func__ << "(" << state << ")";
 
@@ -412,6 +424,14 @@ void CellularCapabilityUniversal::Connect(const DBusPropertiesMap &properties,
 void CellularCapabilityUniversal::Disconnect(Error *error,
                                              const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
+  // If a deferred registration loss request exists, process it.
+  if (!registration_dropped_update_callback_.IsCancelled()) {
+    registration_dropped_update_callback_.callback().Run();
+    DCHECK(cellular()->state() != Cellular::kStateConnected &&
+           cellular()->state() != Cellular::kStateLinked);
+    SLOG(Cellular, 1) << "Processed deferred registration loss before "
+                      << "disconnect request.";
+  }
   if (bearer_path_.empty()) {
     LOG(WARNING) << "In " << __func__ << "(): "
                  << "Ignoring attempt to disconnect without bearer";
@@ -1185,8 +1205,13 @@ void CellularCapabilityUniversal::OnRegisterReply(
 }
 
 bool CellularCapabilityUniversal::IsRegistered() {
-  return (registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
-          registration_state_ == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
+  return IsRegisteredState(registration_state_);
+}
+
+bool CellularCapabilityUniversal::IsRegisteredState(
+    MMModem3gppRegistrationState state) {
+  return (state == MM_MODEM_3GPP_REGISTRATION_STATE_HOME ||
+          state == MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING);
 }
 
 void CellularCapabilityUniversal::SetUnregistered(bool searching) {
@@ -1785,9 +1810,54 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
   SLOG(Cellular, 2) << __func__ << ": regstate=" << state
                     << ", opercode=" << operator_code
                     << ", opername=" << operator_name;
-  registration_state_ = state;
-  serving_operator_.SetCode(operator_code);
-  serving_operator_.SetName(operator_name);
+
+  // While the modem is connected, if the state changed from a registered state
+  // to a non registered state, defer the state change by 15 seconds.
+  // TODO(pprabhu) [crbug.com/241231] Add UMA stat to determine whether this
+  // condition is specific to E362. If it is, guard the delayed update by E362
+  // specific flag.
+  if (cellular()->modem_state() == Cellular::kModemStateConnected &&
+      IsRegistered() && !IsRegisteredState(state)) {
+    if (!registration_dropped_update_callback_.IsCancelled()) {
+      LOG(WARNING) << "Modem reported consecutive 3GPP registration drops. "
+                   << "Ignoring earlier notifications.";
+      registration_dropped_update_callback_.Cancel();
+    }
+    SLOG(Cellular, 2) << "Posted deferred registration state update";
+    registration_dropped_update_callback_.Reset(
+        Bind(&CellularCapabilityUniversal::Handle3GPPRegistrationChange,
+             weak_ptr_factory_.GetWeakPtr(),
+             state,
+             operator_code,
+             operator_name));
+    cellular()->dispatcher()->PostDelayedTask(
+        registration_dropped_update_callback_.callback(),
+        registration_dropped_update_timeout_milliseconds_);
+  } else {
+    if (!registration_dropped_update_callback_.IsCancelled()) {
+      SLOG(Cellular, 2) << "Cancelled a deferred registration state update";
+      registration_dropped_update_callback_.Cancel();
+    }
+    Handle3GPPRegistrationChange(state, operator_code, operator_name);
+  }
+}
+
+void CellularCapabilityUniversal::Handle3GPPRegistrationChange(
+    MMModem3gppRegistrationState updated_state,
+    string updated_operator_code,
+    string updated_operator_name) {
+  // A finished callback does not qualify as a canceled callback.
+  // We test for a canceled callback to check for outstanding callbacks.
+  // So, explicitly cancel the callback here.
+  registration_dropped_update_callback_.Cancel();
+
+  SLOG(Cellular, 2) << __func__ << ": regstate=" << updated_state
+                    << ", opercode=" << updated_operator_code
+                    << ", opername=" << updated_operator_name;
+
+  registration_state_ = updated_state;
+  serving_operator_.SetCode(updated_operator_code);
+  serving_operator_.SetName(updated_operator_name);
 
   // Update the carrier name for |serving_operator_|.
   UpdateOperatorInfo();

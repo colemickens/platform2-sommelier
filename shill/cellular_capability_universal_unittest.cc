@@ -167,7 +167,20 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
     capability_->ReleaseProxies();
   }
 
+  void SetRegistrationDroppedUpdateTimeout(int64 timeout_milliseconds) {
+    capability_->registration_dropped_update_timeout_milliseconds_ =
+        timeout_milliseconds;
+  }
+
   MOCK_METHOD1(TestCallback, void(const Error &error));
+
+  MOCK_METHOD0(DummyCallback, void(void));
+
+  void SetMockRegistrationDroppedUpdateCallback() {
+    capability_->registration_dropped_update_callback_.Reset(
+        Bind(&CellularCapabilityUniversalTest::DummyCallback,
+             Unretained(this)));
+  }
 
  protected:
   static const char kActiveBearerPathPrefix[];
@@ -493,6 +506,18 @@ TEST_F(CellularCapabilityUniversalMainTest, DisconnectNoProxy) {
   capability_->Disconnect(&error, disconnect_callback);
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, DisconnectWithDeferredCallback) {
+  Error error;
+  ResultCallback disconnect_callback;
+  capability_->bearer_path_ = "/foo";
+  EXPECT_CALL(*modem_simple_proxy_,
+              Disconnect(_, _, _, CellularCapability::kTimeoutDisconnect));
+  SetSimpleProxy();
+  SetMockRegistrationDroppedUpdateCallback();
+  EXPECT_CALL(*this, DummyCallback());
+  capability_->Disconnect(&error, disconnect_callback);
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   // Set up mock SIM properties
   const char kImsi[] = "310100000001";
@@ -690,6 +715,160 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceName) {
   capability_->On3GPPRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME, "123", "");
   EXPECT_EQ("Test Home Provider", cellular_->service_->friendly_name());
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
+  SetUp();
+  InitProviderDB();
+  capability_->InitProxies();
+
+  SetService();
+  capability_->imsi_ = "310240123456789";
+  capability_->SetHomeProvider();
+  cellular_->set_modem_state(Cellular::kModemStateConnected);
+  SetRegistrationDroppedUpdateTimeout(0);
+
+  string home_provider = cellular_->home_provider().GetName();
+  string ota_name = cellular_->service_->friendly_name();
+
+  // Home --> Roaming should be effective immediately.
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
+            capability_->registration_state_);
+
+  // Idle --> Roaming should be effective immediately.
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
+      home_provider,
+      ota_name);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_ROAMING,
+            capability_->registration_state_);
+
+  // Idle --> Searching should be effective immediately.
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
+      home_provider,
+      ota_name);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_IDLE,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+            capability_->registration_state_);
+
+  // Home --> Searching --> Home should never see Searching.
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+
+  // Home --> Searching --> wait till dispatch should see Searching
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+            capability_->registration_state_);
+
+  // Home --> Searching --> Searching --> wait till dispatch should see
+  // Searching *and* the first callback should be cancelled.
+  EXPECT_CALL(*this, DummyCallback()).Times(0);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+      home_provider,
+      ota_name);
+  SetMockRegistrationDroppedUpdateCallback();
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  dispatcher_.DispatchPendingEvents();
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+            capability_->registration_state_);
+
+}
+
+TEST_F(CellularCapabilityUniversalMainTest,
+       UpdateRegistrationStateModemNotConnected) {
+  SetUp();
+  InitProviderDB();
+  capability_->InitProxies();
+  SetService();
+
+  capability_->imsi_ = "310240123456789";
+  capability_->SetHomeProvider();
+  cellular_->set_modem_state(Cellular::kModemStateRegistered);
+  SetRegistrationDroppedUpdateTimeout(0);
+
+  string home_provider = cellular_->home_provider().GetName();
+  string ota_name = cellular_->service_->friendly_name();
+
+  // Home --> Searching should be effective immediately.
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
+            capability_->registration_state_);
+  capability_->On3GPPRegistrationChanged(
+      MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+      home_provider,
+      ota_name);
+  EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
+            capability_->registration_state_);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, IsValidSimPath) {

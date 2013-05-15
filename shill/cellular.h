@@ -251,6 +251,10 @@ class Cellular : public Device {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateOperatorInfoViaOperatorId);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdateRegistrationState);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest,
+              UpdateRegistrationStateModemNotConnected);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateScanningProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               UpdateServiceActivationState);
