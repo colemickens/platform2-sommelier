@@ -1521,11 +1521,13 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(), GetOLPByMCCMNC(_))
       .WillRepeatedly(Return(&olp));
 
+  service_->SetAutoConnect(false);
   EXPECT_CALL(*service_,
               SetActivationState(flimflam::kActivationStateNotActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
+  EXPECT_FALSE(service_->auto_connect());
 
   capability_->mdn_ = "1231231122";
   EXPECT_CALL(*service_,
@@ -1533,7 +1535,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
       .Times(1);
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
+  EXPECT_TRUE(service_->auto_connect());
 
+  service_->SetAutoConnect(false);
   capability_->mdn_ = "0000000000";
   capability_->sim_identifier_ = kIccid;
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -1548,6 +1552,7 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
   capability_->UpdateServiceActivationState();
   Mock::VerifyAndClearExpectations(service_);
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  EXPECT_FALSE(service_->auto_connect());
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               GetActivationState(PendingActivationStore::kIdentifierICCID,
@@ -1558,6 +1563,9 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateServiceActivationState) {
               SetActivationState(flimflam::kActivationStateActivated))
       .Times(1);
   capability_->UpdateServiceActivationState();
+  Mock::VerifyAndClearExpectations(service_);
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+  EXPECT_TRUE(service_->auto_connect());
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, ActivationWaitForRegisterTimeout) {

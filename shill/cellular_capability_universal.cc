@@ -644,7 +644,7 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
   if (!cellular()->service().get())
     return;
   bool activation_required = IsServiceActivationRequired();
-  string activation_state = flimflam::kActivationStateActivated;
+  string activation_state;
   PendingActivationStore::State state =
       modem_info()->pending_activation_store()->GetActivationState(
           PendingActivationStore::kIdentifierICCID,
@@ -655,6 +655,14 @@ void CellularCapabilityUniversal::UpdateServiceActivationState() {
     activation_state = flimflam::kActivationStateActivating;
   else if (activation_required)
     activation_state = flimflam::kActivationStateNotActivated;
+  else {
+    activation_state = flimflam::kActivationStateActivated;
+
+    // Mark an activated service for auto-connect by default. Since data from
+    // the user profile will be loaded after the call to OnServiceCreated, this
+    // property will be corrected based on the user data at that time.
+    cellular()->service()->SetAutoConnect(true);
+  }
   cellular()->service()->SetActivationState(activation_state);
   // TODO(benchan): For now, assume the cellular service is activated over
   // a non-cellular network if service activation is required (i.e. a

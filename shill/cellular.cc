@@ -409,6 +409,8 @@ void Cellular::HandleNewRegistrationState() {
   SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
   if (capability_->IsServiceActivationRequired()) {
     if (state_ == kStateEnabled && !service_.get()) {
+      SLOG(Cellular, 2) << "Service activation required. Creating dummy "
+                        << "service.";
       CreateService();
     }
     return;
