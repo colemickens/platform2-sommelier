@@ -39,12 +39,27 @@ const char* kPerfDataFiles[] = {
   "perf.data.callgraph",
   "perf.data.branch",
   "perf.data.callgraph_and_branch",
+
+  // Same as above, obtained from a system running kernel-next.
+  "perf.data.singleprocess.next",
+  "perf.data.systemwide.0.next",
+  "perf.data.systemwide.1.next",
+  "perf.data.systemwide.5.next",
+  "perf.data.busy.0.next",
+  "perf.data.busy.1.next",
+  "perf.data.busy.5.next",
+  "perf.data.forkexit.next",
+  "perf.data.callgraph.next",
+  "perf.data.branch.next",
+  "perf.data.callgraph_and_branch.next",
 };
 
 const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.host",
   "perf.data.piped.target",
   "perf.data.piped.powerpc",
+  // From system running kernel-next.
+  "perf.data.piped.target.next",
 };
 
 }  // namespace perf_test_files
