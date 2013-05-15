@@ -20,17 +20,6 @@
 
 namespace shill {
 
-// Declared in the header to avoid linking unused code into shims.
-static const char kL2TPIPSecDNS1[] = "DNS1";
-static const char kL2TPIPSecDNS2[] = "DNS2";
-static const char kL2TPIPSecExternalIP4Address[] = "EXTERNAL_IP4_ADDRESS";
-static const char kL2TPIPSecGatewayAddress[] = "GATEWAY_ADDRESS";
-static const char kL2TPIPSecInterfaceName[] = "INTERNAL_IFNAME";
-static const char kL2TPIPSecInternalIP4Address[] = "INTERNAL_IP4_ADDRESS";
-static const char kL2TPIPSecLNSAddress[] = "LNS_ADDRESS";
-static const char kL2TPIPSecReasonConnect[] = "connect";
-static const char kL2TPIPSecReasonDisconnect[] = "disconnect";
-
 class CertificateFile;
 class ControlInterface;
 class DeviceInfo;
@@ -82,7 +71,6 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN);
   FRIEND_TEST(L2TPIPSecDriverTest, VerifyPaths);
 
-  static const char kPPPDPlugin[];
   static const char kL2TPIPSecVPNPath[];
   static const Property kProperties[];
 
@@ -122,11 +110,6 @@ class L2TPIPSecDriver : public VPNDriver,
                   const std::string &false_option,
                   std::vector<std::string> *options);
 
-  static void ParseIPConfiguration(
-      const std::map<std::string, std::string> &configuration,
-      IPConfig::Properties *properties,
-      std::string *interface_name);
-
   static Service::ConnectFailure TranslateExitStatusToFailure(int status);
 
   // Inherit from VPNDriver to add custom properties.
@@ -138,8 +121,6 @@ class L2TPIPSecDriver : public VPNDriver,
                       const std::map<std::string, std::string> &dict);
   // Called when the l2tpipsec_vpn process exits.
   void OnL2TPIPSecVPNDied(pid_t pid, int status);
-
-  static void DeleteExternalTask(ExternalTask *external_task);
 
   void ReportConnectionMetrics();
 
@@ -153,7 +134,7 @@ class L2TPIPSecDriver : public VPNDriver,
   scoped_ptr<ExternalTask> external_task_;
   base::FilePath psk_file_;
   scoped_ptr<CertificateFile> certificate_file_;
-  VPNRefPtr device_;
+  PPPDeviceRefPtr device_;
   base::WeakPtrFactory<L2TPIPSecDriver> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(L2TPIPSecDriver);

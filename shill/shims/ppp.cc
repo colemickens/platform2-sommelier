@@ -17,7 +17,7 @@ extern "C" {
 #include <chromeos/syslog_logging.h>
 #include <dbus-c++/eventloop-integration.h>
 
-#include "shill/l2tp_ipsec_driver.h"
+#include "shill/ppp_device.h"
 #include "shill/rpc_task.h"
 #include "shill/shims/environment.h"
 #include "shill/shims/task_proxy.h"
@@ -67,26 +67,25 @@ void PPP::OnConnect(const string &ifname) {
     return;
   }
   map<string, string> dict;
-  dict[kL2TPIPSecInterfaceName] = ifname;
-  dict[kL2TPIPSecInternalIP4Address] =
-      ConvertIPToText(&ipcp_gotoptions[0].ouraddr);
-  dict[kL2TPIPSecExternalIP4Address] =
-      ConvertIPToText(&ipcp_hisoptions[0].hisaddr);
+  dict[kPPPInterfaceName] = ifname;
+  dict[kPPPInternalIP4Address] = ConvertIPToText(&ipcp_gotoptions[0].ouraddr);
+  dict[kPPPExternalIP4Address] = ConvertIPToText(&ipcp_hisoptions[0].hisaddr);
   if (ipcp_gotoptions[0].default_route) {
-    dict[kL2TPIPSecGatewayAddress] = dict[kL2TPIPSecExternalIP4Address];
+    dict[kPPPGatewayAddress] = dict[kPPPExternalIP4Address];
   }
   if (ipcp_gotoptions[0].dnsaddr[0]) {
-    dict[kL2TPIPSecDNS1] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[0]);
+    dict[kPPPDNS1] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[0]);
   }
   if (ipcp_gotoptions[0].dnsaddr[1]) {
-    dict[kL2TPIPSecDNS2] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[1]);
+    dict[kPPPDNS2] = ConvertIPToText(&ipcp_gotoptions[0].dnsaddr[1]);
   }
   string lns_address;
   if (Environment::GetInstance()->GetVariable("LNS_ADDRESS", &lns_address)) {
-    dict[kL2TPIPSecLNSAddress] = lns_address;
+    // Really an L2TP/IPSec option rather than a PPP one. But oh well.
+    dict[kPPPLNSAddress] = lns_address;
   }
   if (CreateProxy()) {
-    proxy_->Notify(kL2TPIPSecReasonConnect, dict);
+    proxy_->Notify(kPPPReasonConnect, dict);
     DestroyProxy();
   }
 }
@@ -95,7 +94,7 @@ void PPP::OnDisconnect() {
   LOG(INFO) << __func__;
   if (CreateProxy()) {
     map<string, string> dict;
-    proxy_->Notify(kL2TPIPSecReasonDisconnect, dict);
+    proxy_->Notify(kPPPReasonDisconnect, dict);
     DestroyProxy();
   }
 }

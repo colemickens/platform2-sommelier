@@ -4,7 +4,11 @@
 
 #include "shill/external_task.h"
 
+#include <base/bind.h>
+#include <base/bind_helpers.h>
+
 #include "shill/error.h"
+#include "shill/event_dispatcher.h"
 #include "shill/process_killer.h"
 
 namespace shill {
@@ -31,6 +35,11 @@ ExternalTask::ExternalTask(
 
 ExternalTask::~ExternalTask() {
   ExternalTask::Stop();
+}
+
+void ExternalTask::DestroyLater(EventDispatcher *dispatcher) {
+  // Passes ownership of |this| to Destroy.
+  dispatcher->PostTask(base::Bind(&Destroy, this));
 }
 
 bool ExternalTask::Start(const FilePath &program,
@@ -111,6 +120,11 @@ void ExternalTask::OnTaskDied(GPid pid, gint status, gpointer data) {
   CHECK_EQ(pid, me->pid_);
   me->pid_ = 0;
   me->death_callback_.Run(pid, status);
+}
+
+// static
+void ExternalTask::Destroy(ExternalTask *task) {
+  delete task;
 }
 
 }  // namespace shill

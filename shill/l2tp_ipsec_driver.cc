@@ -36,7 +36,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/nss.h"
-#include "shill/vpn.h"
+#include "shill/ppp_device.h"
 #include "shill/vpn_service.h"
 
 using base::Bind;
@@ -60,8 +60,6 @@ const char kL2TPIPSecRequireChapProperty[] = "L2TPIPsec.RequireChap";
 const char kL2TPIPSecRightProtoPortProperty[] = "L2TPIPsec.RightProtoPort";
 }  // namespace
 
-// static
-const char L2TPIPSecDriver::kPPPDPlugin[] = SHIMDIR "/shill-pppd-plugin.so";
 // static
 const char L2TPIPSecDriver::kL2TPIPSecVPNPath[] = "/usr/sbin/l2tpipsec_vpn";
 // static
@@ -162,7 +160,7 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
   DeletePSKFile();
   external_task_.reset();
   if (device_) {
-    device_->OnDisconnected();
+    device_->DropConnection();
     device_->SetEnabled(false);
     device_ = NULL;
   }
@@ -200,7 +198,7 @@ bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
 
   if (external_task_local->Start(
           FilePath(kL2TPIPSecVPNPath), options, environment, error)) {
-    external_task_.reset(external_task_local.release());
+    external_task_ = external_task_local.Pass();
     return true;
   }
   return false;
@@ -221,7 +219,7 @@ bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
   options->push_back("--remote_host");
   options->push_back(vpnhost);
   options->push_back("--pppd_plugin");
-  options->push_back(kPPPDPlugin);
+  options->push_back(PPPDevice::kPluginPath);
   // Disable pppd from configuring IP addresses, routes, DNS.
   options->push_back("--nosystemconfig");
 
@@ -379,62 +377,21 @@ void L2TPIPSecDriver::GetLogin(string *user, string *password) {
   *password = password_property;
 }
 
-void L2TPIPSecDriver::ParseIPConfiguration(
-    const map<string, string> &configuration,
-    IPConfig::Properties *properties,
-    string *interface_name) {
-  properties->address_family = IPAddress::kFamilyIPv4;
-  properties->subnet_prefix = IPAddress::GetMaxPrefixLength(
-      properties->address_family);
-  for (map<string, string>::const_iterator it = configuration.begin();
-       it != configuration.end(); ++it) {
-    const string &key = it->first;
-    const string &value = it->second;
-    SLOG(VPN, 2) << "Processing: " << key << " -> " << value;
-    if (key == kL2TPIPSecInternalIP4Address) {
-      properties->address = value;
-    } else if (key == kL2TPIPSecExternalIP4Address) {
-      properties->peer_address = value;
-    } else if (key == kL2TPIPSecGatewayAddress) {
-      properties->gateway = value;
-    } else if (key == kL2TPIPSecDNS1) {
-      properties->dns_servers.insert(properties->dns_servers.begin(), value);
-    } else if (key == kL2TPIPSecDNS2) {
-      properties->dns_servers.push_back(value);
-    } else if (key == kL2TPIPSecInterfaceName) {
-      *interface_name = value;
-    } else if (key == kL2TPIPSecLNSAddress) {
-      properties->trusted_ip = value;
-    } else {
-      SLOG(VPN, 2) << "Key ignored.";
-    }
-  }
-
-  // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
-  // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
-  // TODO(benchan): Generalize this when IPv6 support is added.
-  properties->blackhole_ipv6 = true;
-}
-
 void L2TPIPSecDriver::Notify(
     const string &reason, const map<string, string> &dict) {
   LOG(INFO) << "IP configuration received: " << reason;
 
-  if (reason != kL2TPIPSecReasonConnect) {
-    DCHECK(reason == kL2TPIPSecReasonDisconnect);
-    // Avoid destroying the ExternalTask that called us (and is still on
-    // the stack), by deferring deletion to the main event loop.
-    dispatcher()->PostTask(Bind(&DeleteExternalTask, external_task_.release()));
+  if (reason != kPPPReasonConnect) {
+    DCHECK_EQ(kPPPReasonDisconnect, reason);
+    // DestroyLater, rather than while on stack.
+    external_task_.release()->DestroyLater(dispatcher());
     FailService(Service::kFailureUnknown);
     return;
   }
 
   DeletePSKFile();
 
-  IPConfig::Properties properties;
-  string interface_name;
-  ParseIPConfiguration(dict, &properties, &interface_name);
-
+  string interface_name = PPPDevice::GetInterfaceName(dict);
   int interface_index = device_info_->GetIndex(interface_name);
   if (interface_index < 0) {
     // TODO(petkov): Consider handling the race when the RTNL notification about
@@ -445,20 +402,20 @@ void L2TPIPSecDriver::Notify(
     return;
   }
 
+  // There is no IPv6 support for L2TP/IPsec VPN at this moment, so create a
+  // blackhole route for IPv6 traffic after establishing a IPv4 VPN.
+  // TODO(benchan): Generalize this when IPv6 support is added.
+  bool blackhole_ipv6 = true;
+
   if (!device_) {
-    device_ = new VPN(control_, dispatcher(), metrics_, manager(),
-                      interface_name, interface_index);
+    device_ = new PPPDevice(control_, dispatcher(), metrics_, manager(),
+                            interface_name, interface_index);
   }
   device_->SetEnabled(true);
   device_->SelectService(service_);
-  device_->UpdateIPConfig(properties);
+  device_->UpdateIPConfigFromPPP(dict, blackhole_ipv6);
   ReportConnectionMetrics();
   StopConnectTimeout();
-}
-
-// static
-void L2TPIPSecDriver::DeleteExternalTask(ExternalTask *external_task) {
-  delete external_task;
 }
 
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {

@@ -6,6 +6,7 @@
 
 #include <vector>
 
+#include <base/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mm/mm-modem.h>
@@ -170,7 +171,7 @@ TEST_F(ModemTest, PendingDevicePropertiesAndCreate) {
 
   EXPECT_TRUE(modem_->device_.get());
 
-  // Add expectations for the evental |modem_| destruction.
+  // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());
   EXPECT_CALL(device_info_, DeregisterDevice(_));
 }
@@ -195,11 +196,6 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
 
   properties[MM_MODEM_INTERFACE] = DBusPropertiesMap();
 
-  // No link name:  no device created
-  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(Return(false));
-  modem_->CreateDeviceFromModemProperties(properties);
-  EXPECT_FALSE(modem_->device_.get());
-
   // Link name, but no ifindex: no device created
   EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
       SetArgumentPointee<1>(string(kLinkName)),
@@ -208,6 +204,44 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
       Return(-1));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
+}
+
+TEST_F(ModemTest, CreateDevicePPP) {
+  DBusInterfaceToProperties properties;
+  properties[MM_MODEM_INTERFACE] = DBusPropertiesMap();
+
+  string dev_name(
+      base::StringPrintf(Modem::kFakeDevNameFormat, Modem::fake_dev_serial_));
+
+  // |modem_| will take ownership.
+  MockCellular *cellular = new MockCellular(
+      &modem_info_,
+      dev_name,
+      Modem::kFakeDevAddress,
+      Modem::kFakeDevInterfaceIndex,
+      Cellular::kTypeUniversal,
+      kOwner,
+      kService,
+      kPath,
+      ProxyFactory::GetInstance());
+
+  EXPECT_CALL(*modem_, GetModemInterface()).
+      WillRepeatedly(Return(MM_MODEM_INTERFACE));
+  // No link name: assumed to be a PPP dongle.
+  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(Return(false));
+  EXPECT_CALL(*modem_,
+              ConstructCellular(dev_name,
+                                StrEq(Modem::kFakeDevAddress),
+                                Modem::kFakeDevInterfaceIndex)).
+      WillOnce(Return(cellular));
+  EXPECT_CALL(device_info_, RegisterDevice(_));
+
+  modem_->CreateDeviceFromModemProperties(properties);
+  EXPECT_TRUE(modem_->device_.get());
+
+  // Add expectations for the eventual |modem_| destruction.
+  EXPECT_CALL(*cellular, DestroyService());
+  EXPECT_CALL(device_info_, DeregisterDevice(_));
 }
 
 TEST_F(ModemTest, RejectPPPModem) {

@@ -24,7 +24,6 @@
 #include "shill/mm1_modem_simple_proxy_interface.h"
 #include "shill/mm1_sim_proxy_interface.h"
 
-
 struct mobile_provider;
 
 namespace shill {
@@ -146,6 +145,9 @@ class CellularCapabilityUniversal : public CellularCapability {
   static const char kOperatorShortProperty[];
   static const char kOperatorCodeProperty[];
   static const char kOperatorAccessTechnologyProperty[];
+
+  // As above, consider having this in ModemManager-names.h.
+  static const char kIpConfigPropertyMethod[];
 
   // Modem Model ID strings.  From modem firmware via modemmanager.
   static const char kE362ModelId[];

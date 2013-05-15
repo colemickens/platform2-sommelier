@@ -272,6 +272,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	portal_detector.o \
 	power_manager.o \
 	power_manager_proxy.o \
+	ppp_device.o \
 	process_killer.o \
 	profile.o \
 	profile_dbus_adaptor.o \
@@ -306,7 +307,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	technology.o \
 	traffic_monitor.o \
 	virtio_ethernet.o \
-	vpn.o \
+	virtual_device.o \
 	vpn_driver.o \
 	vpn_provider.o \
 	vpn_service.o \
@@ -321,6 +322,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_provider.o \
 	wimax_service.o \
 	wpa_supplicant.o \
+	virtual_device_unittest.o \
 	) \
 	$(PROTO_BINDINGS_OBJS)
 
@@ -431,6 +433,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_portal_detector.o \
 	mock_power_manager.o \
 	mock_power_manager_proxy.o \
+	mock_ppp_device.o \
 	mock_process_killer.o \
 	mock_profile.o \
 	mock_property_store.o \
@@ -450,6 +453,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_supplicant_process_proxy.o \
 	mock_time.o \
 	mock_traffic_monitor.o \
+	mock_virtual_device.o \
 	mock_vpn_provider.o \
 	mock_wifi.o \
 	mock_wifi_provider.o \
@@ -469,6 +473,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	pending_activation_store_unittest.o \
 	portal_detector_unittest.o \
 	power_manager_unittest.o \
+	ppp_device_unittest.o \
 	process_killer_unittest.o \
 	profile_dbus_property_exporter_unittest.o \
 	profile_unittest.o \
@@ -662,7 +667,6 @@ TEST_OBJS += $(addprefix $(BUILDDIR)/, \
 	l2tp_ipsec_driver_unittest.o \
 	mock_openvpn_driver.o \
 	mock_openvpn_management_server.o \
-	mock_vpn.o \
 	mock_vpn_driver.o \
 	mock_vpn_service.o \
 	openvpn_driver_unittest.o \
@@ -671,7 +675,6 @@ TEST_OBJS += $(addprefix $(BUILDDIR)/, \
 	vpn_driver_unittest.o \
 	vpn_provider_unittest.o \
 	vpn_service_unittest.o \
-	vpn_unittest.o \
 	)
 
 $(OPENVPN_SCRIPT_OBJS): $(DBUS_PROXY_BINDINGS)

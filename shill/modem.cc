@@ -5,6 +5,7 @@
 #include "shill/modem.h"
 
 #include <base/bind.h>
+#include <base/stringprintf.h>
 
 #include "shill/cellular.h"
 #include "shill/logging.h"
@@ -23,6 +24,12 @@ namespace shill {
 const char Modem::kPropertyLinkName[] = "Device";
 const char Modem::kPropertyIPMethod[] = "IpMethod";
 const char Modem::kPropertyType[] = "Type";
+
+// statics
+const char Modem::kFakeDevNameFormat[] = "no_netdev_%zu";
+const char Modem::kFakeDevAddress[] = "00:00:00:00:00:00";
+const int Modem::kFakeDevInterfaceIndex = -1;
+size_t Modem::fake_dev_serial_ = 0;
 
 Modem::Modem(const string &owner,
              const string &service,
@@ -70,7 +77,7 @@ void Modem::OnDeviceInfoAvailable(const string &link_name) {
 Cellular *Modem::ConstructCellular(const string &link_name,
                                    const string &address,
                                    int interface_index) {
-  LOG(INFO) << "Creating a cellular device on link " << link_name_
+  LOG(INFO) << "Creating a cellular device on link " << link_name
             << " interface index " << interface_index << ".";
   return new Cellular(modem_info_,
                       link_name,
@@ -97,37 +104,40 @@ void Modem::CreateDeviceFromModemProperties(
     LOG(ERROR) << "Unable to find modem interface properties.";
     return;
   }
-  if (!GetLinkName(properties_it->second, &link_name_)) {
-    LOG(ERROR) << "Unable to create cellular device without a link name.";
-    return;
+
+  string mac_address;
+  int interface_index = -1;
+  if (GetLinkName(properties_it->second, &link_name_)) {
+    GetDeviceParams(&mac_address, &interface_index);
+    if (interface_index < 0) {
+      LOG(ERROR) << "Unable to create cellular device -- no interface index.";
+      return;
+    }
+    if (mac_address.empty()) {
+      // Save our properties, wait for OnDeviceInfoAvailable to be called.
+      LOG(WARNING)
+          << "No hardware address, device creation pending device info.";
+      initial_properties_ = properties;
+      pending_device_info_ = true;
+      return;
+    }
+    // Got the interface index and MAC address. Fall-through to actually
+    // creating the Cellular object.
+  } else {
+    // Probably a PPP dongle.
+    LOG(INFO) << "Cellular device without link name; assuming PPP dongle.";
+    link_name_ = base::StringPrintf(kFakeDevNameFormat, fake_dev_serial_++);
+    mac_address = kFakeDevAddress;
+    interface_index = kFakeDevInterfaceIndex;
   }
+
   if (modem_info_->manager()->device_info()->IsDeviceBlackListed(link_name_)) {
-    LOG(INFO) << "Do not create cellular device for blacklisted interface "
-              << link_name_;
-    return;
-  }
-  // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
-  // address below.
-  int interface_index =
-      rtnl_handler_->GetInterfaceIndex(link_name_);
-  if (interface_index < 0) {
-    LOG(ERROR) << "Unable to create cellular device -- no interface index.";
+    LOG(INFO) << "Not creating cellular device for blacklisted interface "
+              << link_name_ << ".";
     return;
   }
 
-  ByteString address_bytes;
-  if (!modem_info_->manager()->device_info()->GetMACAddress(interface_index,
-                                                            &address_bytes)) {
-    // Save our properties, wait for OnDeviceInfoAvailable to be called.
-    LOG(WARNING) << "No hardware address, device creation pending device info.";
-    initial_properties_ = properties;
-    pending_device_info_ = true;
-    return;
-  }
-
-  string address = address_bytes.HexEncode();
-  device_ = ConstructCellular(link_name_, address, interface_index);
-
+  device_ = ConstructCellular(link_name_, mac_address, interface_index);
   // Give the device a chance to extract any capability-specific properties.
   for (properties_it = properties.begin(); properties_it != properties.end();
        ++properties_it) {
@@ -136,6 +146,24 @@ void Modem::CreateDeviceFromModemProperties(
   }
 
   modem_info_->manager()->device_info()->RegisterDevice(device_);
+}
+
+bool Modem::GetDeviceParams(string *mac_address, int *interface_index) {
+  // TODO(petkov): Get the interface index from DeviceInfo, similar to the MAC
+  // address below.
+  *interface_index = rtnl_handler_->GetInterfaceIndex(link_name_);
+  if (*interface_index < 0) {
+    return false;
+  }
+
+  ByteString address_bytes;
+  if (!modem_info_->manager()->device_info()->GetMACAddress(*interface_index,
+                                                            &address_bytes)) {
+    return false;
+  }
+
+  *mac_address = address_bytes.HexEncode();
+  return true;
 }
 
 void Modem::OnDBusPropertiesChanged(

@@ -229,7 +229,7 @@ class OpenVPNDriver : public VPNDriver,
   VPNServiceRefPtr service_;
   scoped_ptr<RPCTask> rpc_task_;
   std::string tunnel_interface_;
-  VPNRefPtr device_;
+  VirtualDeviceRefPtr device_;
   base::FilePath tls_auth_file_;
   IPConfig::Properties ip_properties_;
 

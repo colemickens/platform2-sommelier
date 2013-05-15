@@ -21,9 +21,8 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
-#include "shill/mock_vpn.h"
+#include "shill/mock_ppp_device.h"
 #include "shill/mock_vpn_service.h"
-#include "shill/vpn.h"
 
 using base::FilePath;
 using std::find;
@@ -52,8 +51,8 @@ class L2TPIPSecDriverTest : public testing::Test,
                                     &manager_, &device_info_, &glib_)),
         service_(new MockVPNService(&control_, &dispatcher_, &metrics_,
                                     &manager_, driver_)),
-        device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
-                            kInterfaceName, kInterfaceIndex)),
+        device_(new MockPPPDevice(&control_, &dispatcher_, &metrics_, &manager_,
+                                  kInterfaceName, kInterfaceIndex)),
         certificate_file_(new MockCertificateFile()),
         weak_ptr_factory_(this) {
     driver_->nss_ = &nss_;
@@ -88,7 +87,7 @@ class L2TPIPSecDriverTest : public testing::Test,
     return driver_->GetProviderType();
   }
 
-  void SetDevice(const VPNRefPtr &device) {
+  void SetDevice(const PPPDeviceRefPtr &device) {
     driver_->device_ = device;
   }
 
@@ -137,7 +136,7 @@ class L2TPIPSecDriverTest : public testing::Test,
   MockManager manager_;
   L2TPIPSecDriver *driver_;  // Owned by |service_|.
   scoped_refptr<MockVPNService> service_;
-  scoped_refptr<MockVPN> device_;
+  scoped_refptr<MockPPPDevice> device_;
   MockNSS nss_;
   MockCertificateFile *certificate_file_;  // Owned by |driver_|.
   base::WeakPtrFactory<L2TPIPSecDriverTest> weak_ptr_factory_;
@@ -186,7 +185,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
                            &glib_,
                            weak_ptr_factory_.GetWeakPtr(),
                            base::Callback<void(pid_t, int)>()));
-  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetFailure(Service::kFailureBadPassphrase));
   FilePath psk_file = SetupPSKFile();
@@ -447,7 +446,7 @@ TEST_F(L2TPIPSecDriverTest, Connect) {
 TEST_F(L2TPIPSecDriverTest, Disconnect) {
   driver_->device_ = device_;
   driver_->service_ = service_;
-  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
   driver_->Disconnect();
@@ -512,31 +511,6 @@ TEST_F(L2TPIPSecDriverTest, GetProvider) {
   }
 }
 
-TEST_F(L2TPIPSecDriverTest, ParseIPConfiguration) {
-  map<string, string> config;
-  config[kL2TPIPSecInternalIP4Address] = "4.5.6.7";
-  config[kL2TPIPSecExternalIP4Address] = "33.44.55.66";
-  config[kL2TPIPSecGatewayAddress] = "192.168.1.1";
-  config[kL2TPIPSecDNS1] = "1.1.1.1";
-  config[kL2TPIPSecDNS2] = "2.2.2.2";
-  config[kL2TPIPSecInterfaceName] = "ppp0";
-  config[kL2TPIPSecLNSAddress] = "99.88.77.66";
-  config["foo"] = "bar";
-  IPConfig::Properties props;
-  string interface_name;
-  L2TPIPSecDriver::ParseIPConfiguration(config, &props, &interface_name);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
-  EXPECT_EQ("4.5.6.7", props.address);
-  EXPECT_EQ("33.44.55.66", props.peer_address);
-  EXPECT_EQ("192.168.1.1", props.gateway);
-  EXPECT_EQ("99.88.77.66", props.trusted_ip);
-  ASSERT_EQ(2, props.dns_servers.size());
-  EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
-  EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
-  EXPECT_EQ("ppp0", interface_name);
-  EXPECT_TRUE(props.blackhole_ipv6);
-}
-
 namespace {
 MATCHER_P(IsIPAddress, address, "") {
   IPAddress ip_address(IPAddress::kFamilyIPv4);
@@ -547,7 +521,7 @@ MATCHER_P(IsIPAddress, address, "") {
 
 TEST_F(L2TPIPSecDriverTest, Notify) {
   map<string, string> config;
-  config[kL2TPIPSecInterfaceName] = kInterfaceName;
+  config[kPPPInterfaceName] = kInterfaceName;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*device_, SetEnabled(true));
@@ -576,7 +550,7 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "y",
                           &unused_error);
 
-  InvokeNotify(kL2TPIPSecReasonConnect, config);
+  InvokeNotify(kPPPReasonConnect, config);
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(GetPSKFile().empty());
   EXPECT_FALSE(IsConnectTimeoutStarted());
@@ -590,11 +564,11 @@ TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
                            death_callback);
   driver_->device_ = device_;
   driver_->external_task_.reset(local_external_task);  // passes ownership
-  EXPECT_CALL(*device_, OnDisconnected());
+  EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*local_external_task, OnDelete())
       .Times(0);  // Not until event loop.
-  driver_->Notify(kL2TPIPSecReasonDisconnect, dict);
+  driver_->Notify(kPPPReasonDisconnect, dict);
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->external_task_.get());
   Mock::VerifyAndClearExpectations(local_external_task);
@@ -614,7 +588,7 @@ TEST_F(L2TPIPSecDriverTest, VerifyPaths) {
   // separators.  There's nothing built into FilePath to do so.
   static const char *kPaths[] = {
     L2TPIPSecDriver::kL2TPIPSecVPNPath,
-    L2TPIPSecDriver::kPPPDPlugin,
+    PPPDevice::kPluginPath,
   };
   for (size_t i = 0; i < arraysize(kPaths); i++) {
     string path(kPaths[i]);

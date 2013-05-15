@@ -68,6 +68,7 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
     "operator-code";
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
+const char CellularCapabilityUniversal::kIpConfigPropertyMethod[] = "method";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
@@ -1044,25 +1045,45 @@ void CellularCapabilityUniversal::OnListBearersReply(
   }
   // Look for the first active bearer and use its path as the connected
   // one. Right now, we don't allow more than one active bearer.
-  bool found_active = false;
+  DBus::Path new_bearer_path;
+  uint32 ipconfig_method(MM_BEARER_IP_METHOD_UNKNOWN);
+  string network_device;
   for (size_t i = 0; i < paths.size(); ++i) {
     const DBus::Path &path = paths[i];
     scoped_ptr<mm1::BearerProxyInterface> bearer_proxy(
         proxy_factory()->CreateBearerProxy(path, cellular()->dbus_owner()));
-    bool is_active = bearer_proxy->Connected();
-    if (is_active) {
-      if (!found_active) {
-        SLOG(Cellular, 2) << "Found active bearer \"" << path << "\".";
-        bearer_path_ = path;
-        found_active = true;
-      } else {
-        LOG(FATAL) << "Found more than one active bearer.";
+    if (!bearer_proxy->Connected()) {
+      continue;
+    }
+    CHECK(new_bearer_path.empty()) << "Found more than one active bearer.";
+    network_device = bearer_proxy->Interface();
+    SLOG(Cellular, 2) << "Found active bearer \"" << path << "\".";
+    SLOG(Cellular, 2) << "Bearer uses interface \"" << network_device << "\".";
+    // TODO(quiche): Add support for scenarios where the bearer is
+    // IPv6 only, or where there are conflicting configuration methods
+    // for IPv4 and IPv6. crbug.com/248360.
+    DBusPropertiesMap bearer_ip4config = bearer_proxy->Ip4Config();
+    if (ContainsKey(bearer_ip4config, kIpConfigPropertyMethod)) {
+      ipconfig_method = bearer_ip4config[kIpConfigPropertyMethod].reader().
+          get_uint32();
+      SLOG(Cellular, 2) << "Bearer has IPv4 config method " << ipconfig_method;
+    } else {
+      SLOG(Cellular, 2) << "Bearer does not specify IPv4 config method.";
+      for (const auto &i : bearer_ip4config) {
+        SLOG(Cellular, 5) << "Bearer IPv4 config has key \""
+                          << i.first
+                          << "\".";
       }
     }
+    new_bearer_path = path;
   }
-  if (!found_active) {
-    SLOG(Cellular, 2) << "No active bearer found, clearing bearer_path_.";
-    bearer_path_.clear();
+  bearer_path_ = new_bearer_path;
+  if (new_bearer_path.empty()) {
+    SLOG(Cellular, 2) << "No active bearer found.";
+    return;
+  }
+  if (ipconfig_method == MM_BEARER_IP_METHOD_PPP) {
+    cellular()->StartPPP(network_device);
   }
 }
 

@@ -13,6 +13,7 @@
 
 #include <base/bind.h>
 #include <base/callback.h>
+#include <base/file_path.h>
 #include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <mobile_provider.h>
@@ -28,8 +29,10 @@
 #include "shill/device_info.h"
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
+#include "shill/external_task.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/ppp_device.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -39,6 +42,8 @@
 
 using base::Bind;
 using base::Closure;
+using base::FilePath;
+using std::map;
 using std::string;
 using std::vector;
 
@@ -406,7 +411,8 @@ void Cellular::Scan(ScanType scan_type, Error *error) {
 }
 
 void Cellular::HandleNewRegistrationState() {
-  SLOG(Cellular, 2) << __func__ << ": " << GetStateString(state_);
+  SLOG(Cellular, 2) << __func__
+                    << ": (new state " << GetStateString(state_) << ")";
   if (capability_->IsServiceActivationRequired()) {
     if (state_ == kStateEnabled && !service_.get()) {
       SLOG(Cellular, 2) << "Service activation required. Creating dummy "
@@ -754,6 +760,89 @@ bool Cellular::DisconnectCleanup() {
   }
   capability_->DisconnectCleanup();
   return succeeded;
+}
+
+void Cellular::StartPPP(const string &serial_device) {
+  base::Callback<void(pid_t, int)> death_callback(
+      Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
+  vector<string> args;
+  map<string, string> environment;
+  Error error;
+  if (SLOG_IS_ON(PPP, 5)) {
+    args.push_back("debug");
+  }
+  args.push_back("nodetach");
+  args.push_back("nodefaultroute");  // Don't let pppd muck with routing table.
+  args.push_back("usepeerdns");  // Request DNS servers.
+  args.push_back("plugin");  // Goes with next arg.
+  args.push_back(PPPDevice::kPluginPath);
+  args.push_back(serial_device);
+  scoped_ptr<ExternalTask> new_ppp_task(
+      new ExternalTask(modem_info_->control_interface(),
+                       modem_info_->glib(),
+                       weak_ptr_factory_.GetWeakPtr(),
+                       death_callback));
+  if (new_ppp_task->Start(
+          FilePath(PPPDevice::kDaemonPath), args, environment, &error)) {
+    LOG(INFO) << "Forked pppd process.";
+    ppp_task_ = new_ppp_task.Pass();
+  }
+}
+
+// called by |ppp_task_|
+void Cellular::GetLogin(string *user, string *password) {
+  LOG(INFO) << __func__;
+  // TODO(quiche): Determine whether or not we need support for PPP
+  // username/password. (crbug.com/246443)
+}
+
+// Called by |ppp_task_|.
+void Cellular::Notify(const string &reason,
+                      const map<string, string> &dict) {
+  LOG(INFO) << __func__ << " " << reason << " on " << link_name();
+
+  if (reason != kPPPReasonConnect) {
+    DCHECK_EQ(kPPPReasonDisconnect, reason);
+    // DestroyLater, rather than while on stack.
+    ppp_task_.release()->DestroyLater(modem_info_->dispatcher());
+    // For now, assume PPP failures are due to authentication issues.
+    SetServiceFailure(Service::kFailurePPPAuth);
+    return;
+  }
+
+  string interface_name = PPPDevice::GetInterfaceName(dict);
+  DeviceInfo *device_info = modem_info_->manager()->device_info();
+  int interface_index = device_info->GetIndex(interface_name);
+  if (interface_index < 0) {
+    // TODO(quiche): Consider handling the race when the RTNL notification about
+    // the new PPP device has not been received yet. crbug.com/246832.
+    NOTIMPLEMENTED() << ": No device info for " << interface_name << ".";
+    return;
+  }
+
+  if (!ppp_device_ || ppp_device_->interface_index() != interface_index) {
+    ppp_device_ = new PPPDevice(modem_info_->control_interface(),
+                                modem_info_->dispatcher(),
+                                modem_info_->metrics(),
+                                modem_info_->manager(),
+                                interface_name,
+                                interface_index);
+    device_info->RegisterDevice(ppp_device_);
+  }
+
+  // TODO(quiche): Consider if we should have a separate Service for the
+  // PPPDevice. (crbug.com/246456)
+  CHECK(service_);
+  const bool kBlackholeIPv6 = false;
+  ppp_device_->SetEnabled(true);
+  ppp_device_->SelectService(service_);
+  ppp_device_->UpdateIPConfigFromPPP(dict, kBlackholeIPv6);
+}
+
+void Cellular::OnPPPDied(pid_t pid, int exit) {
+  LOG(INFO) << __func__ << " on " << link_name();
+  Error error;
+  Disconnect(&error);
 }
 
 }  // namespace shill

@@ -20,6 +20,7 @@
 #include "shill/modem_info.h"
 #include "shill/modem_proxy_interface.h"
 #include "shill/refptr_types.h"
+#include "shill/rpc_task.h"
 
 struct mobile_provider_db;
 
@@ -27,9 +28,10 @@ namespace shill {
 
 class CellularCapability;
 class Error;
+class ExternalTask;
 class ProxyFactory;
 
-class Cellular : public Device {
+class Cellular : public Device, public RPCTaskDelegate {
  public:
   enum Type {
     kTypeGSM,
@@ -216,6 +218,15 @@ class Cellular : public Device {
       ConnectionHealthChecker::Result result);
   virtual void PortalDetectorCallback(const PortalDetector::Result &result);
 
+  // Initiate PPP link. Called from capabilities.
+  virtual void StartPPP(const std::string &serial_device);
+  // Callback for |ppp_task_|.
+  virtual void OnPPPDied(pid_t pid, int exit);
+  // Implements RPCTaskDelegate, for |ppp_task_|.
+  virtual void GetLogin(std::string *user, std::string *password) override;
+  virtual void Notify(const std::string &reason,
+                      const std::map<std::string, std::string> &dict) override;
+
  private:
   friend class CellularTest;
   friend class CellularCapabilityTest;
@@ -357,6 +368,9 @@ class Cellular : public Device {
 
   // Flag indicating that a disconnect has been explicitly requested.
   bool explicit_disconnect_;
+
+  scoped_ptr<ExternalTask> ppp_task_;
+  PPPDeviceRefPtr ppp_device_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

@@ -194,7 +194,13 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
   class TestProxyFactory : public ProxyFactory {
    public:
     explicit TestProxyFactory(CellularCapabilityUniversalTest *test) :
-        test_(test) {}
+        test_(test) {
+      ::DBus::Variant ip_method_dhcp;
+      ip_method_dhcp.writer().append_uint32(MM_BEARER_IP_METHOD_DHCP);
+      bearer_ip4config_dhcp_[
+          CellularCapabilityUniversal::kIpConfigPropertyMethod] =
+          ip_method_dhcp;
+    }
 
     virtual mm1::BearerProxyInterface *CreateBearerProxy(
         const std::string &path,
@@ -204,6 +210,8 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
         ON_CALL(*bearer_proxy, Connected()).WillByDefault(Return(true));
       else
         ON_CALL(*bearer_proxy, Connected()).WillByDefault(Return(false));
+      ON_CALL(*bearer_proxy, Ip4Config()).WillByDefault(Return(
+          bearer_ip4config_dhcp_));
       test_->bearer_proxy_.reset(new mm1::MockBearerProxy());
       return bearer_proxy;
     }
@@ -250,6 +258,7 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
 
    private:
     CellularCapabilityUniversalTest *test_;
+    DBusPropertiesMap bearer_ip4config_dhcp_;
   };
 
   MockModemInfo modem_info_;

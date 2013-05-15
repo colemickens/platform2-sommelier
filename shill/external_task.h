@@ -24,6 +24,7 @@ namespace shill {
 
 class ControlInterface;
 class Error;
+class EventDispatcher;
 class ProcessKiller;
 
 class ExternalTask : public RPCTaskDelegate {
@@ -32,7 +33,26 @@ class ExternalTask : public RPCTaskDelegate {
                GLib *glib,
                const base::WeakPtr<RPCTaskDelegate> &task_delegate,
                const base::Callback<void(pid_t, int)> &death_callback);
-  virtual ~ExternalTask();
+  virtual ~ExternalTask();  // But consider DestroyLater...
+
+  // Schedule later deletion of the ExternalTask. Useful when in the
+  // middle of an ExternalTask callback. Note that the caller _must_
+  // release ownership of |this|. For example:
+  //
+  //   class Foo : public SupportsWeakPtr<Foo>, public RPCTaskDelegate {
+  //    public:
+  //      Foo() {
+  //        task_.reset(new ExternalTask(...));
+  //      }
+  //
+  //      void Notify(...) {
+  //        task_.release()->DestroyLater(...);  // Passes ownership.
+  //      }
+  //
+  //    private:
+  //      scoped_ptr<ExternalTask> task_;
+  //   }
+  void DestroyLater(EventDispatcher *dispatcher);
 
   // Forks off a process to run |program|, with the command-line
   // arguments |arguments|, and the environment variables specified in
@@ -67,6 +87,8 @@ class ExternalTask : public RPCTaskDelegate {
       const std::map<std::string, std::string> &details) override;
   // Called when the external process exits.
   static void OnTaskDied(GPid pid, gint status, gpointer data);
+
+  static void Destroy(ExternalTask *task);
 
   ControlInterface *control_;
   GLib *glib_;

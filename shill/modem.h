@@ -80,9 +80,21 @@ class Modem {
   FRIEND_TEST(ModemManagerClassicTest, Connect);
   FRIEND_TEST(ModemManagerCoreTest, ShouldAddModem);
   FRIEND_TEST(ModemTest, CreateDeviceEarlyFailures);
+  FRIEND_TEST(ModemTest, CreateDevicePPP);
   FRIEND_TEST(ModemTest, EarlyDeviceProperties);
   FRIEND_TEST(ModemTest, Init);
   FRIEND_TEST(ModemTest, PendingDevicePropertiesAndCreate);
+
+  // Constants associated with fake network devices for PPP dongles.
+  // See |fake_dev_serial_|, below, for more info.
+  static const char kFakeDevNameFormat[];
+  static const char kFakeDevAddress[];
+  static const int kFakeDevInterfaceIndex;
+
+  // Find the |mac_address| and |interface_index| for the kernel
+  // network device with name |link_name|. Returns true iff both
+  // |mac_address| and |interface_index| were found.
+  virtual bool GetDeviceParams(std::string *mac_address, int *interface_index);
 
   virtual void OnDBusPropertiesChanged(
       const std::string &interface,
@@ -112,6 +124,11 @@ class Modem {
 
   // Store cached copies of singletons for speed/ease of testing.
   ProxyFactory *proxy_factory_;
+
+  // Serial number used to uniquify fake device names for Cellular
+  // devices that don't have network devices. (Names must be unique
+  // for D-Bus, and PPP dongles don't have network devices.)
+  static size_t fake_dev_serial_;
 
   DISALLOW_COPY_AND_ASSIGN(Modem);
 };

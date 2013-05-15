@@ -55,6 +55,7 @@ TEST_F(ScopeLoggerTest, GetAllScopeNames) {
             "modem+"
             "portal+"
             "power+"
+            "ppp+"
             "profile+"
             "property+"
             "resolver+"

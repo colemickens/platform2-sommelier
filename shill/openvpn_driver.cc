@@ -24,7 +24,7 @@
 #include "shill/process_killer.h"
 #include "shill/rpc_task.h"
 #include "shill/sockets.h"
-#include "shill/vpn.h"
+#include "shill/virtual_device.h"
 #include "shill/vpn_service.h"
 
 using base::Closure;
@@ -195,7 +195,7 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   int interface_index = -1;
   if (device_) {
     interface_index = device_->interface_index();
-    device_->OnDisconnected();
+    device_->DropConnection();
     device_->SetEnabled(false);
     device_ = NULL;
   }
@@ -302,8 +302,8 @@ bool OpenVPNDriver::ClaimInterface(const string &link_name,
   SLOG(VPN, 2) << "Claiming " << link_name << " for OpenVPN tunnel";
 
   CHECK(!device_);
-  device_ = new VPN(control_, dispatcher(), metrics_, manager(),
-                    link_name, interface_index);
+  device_ = new VirtualDevice(control_, dispatcher(), metrics_, manager(),
+                              link_name, interface_index, Technology::kVPN);
   device_->SetEnabled(true);
 
   rpc_task_.reset(new RPCTask(control_, this));
@@ -325,7 +325,7 @@ void OpenVPNDriver::Notify(const string &reason,
                            const map<string, string> &dict) {
   LOG(INFO) << "IP configuration received: " << reason;
   if (reason != "up") {
-    device_->OnDisconnected();
+    device_->DropConnection();
     return;
   }
   // On restart/reconnect, update the existing IP configuration.
@@ -834,7 +834,7 @@ void OpenVPNDriver::OnReconnecting(ReconnectReason reason) {
   // new default service connects. This ensures that the client will use a fully
   // functional underlying connection to reconnect.
   if (device_) {
-    device_->OnDisconnected();
+    device_->DropConnection();
   }
   if (service_) {
     service_->SetState(Service::kStateAssociating);
