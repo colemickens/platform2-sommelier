@@ -60,6 +60,12 @@ const char kOpenVPNTLSAuthProperty[] = "OpenVPN.TLSAuth";
 const char kOpenVPNVerbProperty[] = "OpenVPN.Verb";
 const char kVPNMTUProperty[] = "VPN.MTU";
 
+// Some configurations pass the netmask in the ifconfig_remote property.
+// This is due to some servers not explicitly indicating that they are using
+// a "broadcast mode" network instead of peer-to-peer.  See
+// http://crbug.com/241264 for an example of this issue.
+const char kSuspectedNetmaskPrefix[] = "255.";
+
 }  // namespace
 
 // TODO(petkov): Move to chromeos/dbus/service_constants.h.
@@ -354,7 +360,21 @@ void OpenVPNDriver::ParseIPConfiguration(
       properties->subnet_prefix =
           IPAddress::GetPrefixLengthFromMask(properties->address_family, value);
     } else if (LowerCaseEqualsASCII(key, kOpenVPNIfconfigRemote)) {
-      properties->peer_address = value;
+      if (StartsWithASCII(value, kSuspectedNetmaskPrefix, false)) {
+        LOG(WARNING) << "Option " << key << " value " << value
+                     << " looks more like a netmask than a peer address; "
+                     << "assuming it is the former.";
+        // In this situation, the "peer_address" value will be left
+        // unset and Connection::UpdateFromIPConfig() will treat the
+        // interface as if it were a broadcast-style network.  The
+        // kernel will, automatically set the peer address equal to
+        // the local address.
+        properties->subnet_prefix =
+            IPAddress::GetPrefixLengthFromMask(properties->address_family,
+                                               value);
+      } else {
+        properties->peer_address = value;
+      }
     } else if (LowerCaseEqualsASCII(key, kOpenVPNRouteVPNGateway)) {
       properties->gateway = value;
     } else if (LowerCaseEqualsASCII(key, kOpenVPNTrustedIP)) {

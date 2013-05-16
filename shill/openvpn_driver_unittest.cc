@@ -509,6 +509,13 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   OpenVPNDriver::ParseIPConfiguration(config, &props);
   EXPECT_EQ(18, props.subnet_prefix);
 
+  // An "ifconfig_remote" parameter that looks like a netmask should be
+  // applied to the subnet prefix instead of to the peer address.
+  config["ifconfig_remotE"] = "255.255.0.0";
+  OpenVPNDriver::ParseIPConfiguration(config, &props);
+  EXPECT_EQ(16, props.subnet_prefix);
+  EXPECT_EQ("", props.peer_address);
+
   config["ifconfig_loCal"] = "4.5.6.7";
   config["ifconfiG_broadcast"] = "1.2.255.255";
   config["ifconFig_netmAsk"] = "255.255.255.0";
