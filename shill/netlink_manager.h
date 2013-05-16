@@ -141,10 +141,6 @@ class NetlinkManager {
   uint16_t GetFamily(std::string family_name,
       const NetlinkMessageFactory::FactoryMethod &message_factory);
 
-  // Retrieves a family id (message type) given the |name| string describing
-  // the message family.
-  virtual uint16_t GetMessageType(const std::string &name) const;
-
   // Install a NetlinkManager NetlinkMessageHandler.  The handler is a
   // user-supplied object to be called by the system for user-bound messages
   // that do not have a corresponding messaage-specific callback.

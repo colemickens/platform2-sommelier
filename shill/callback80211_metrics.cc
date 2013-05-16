@@ -14,24 +14,12 @@ namespace shill {
 
 Callback80211Metrics::Callback80211Metrics(
     const NetlinkManager &netlink_manager, Metrics *metrics)
-    : metrics_(metrics),
-      nl80211_message_type_(NetlinkMessage::kIllegalMessageType) {}
-
-void Callback80211Metrics::InitNl80211FamilyId(
-    const NetlinkManager &netlink_manager) {
-  nl80211_message_type_ =
-      netlink_manager.GetMessageType(Nl80211Message::kMessageTypeString);
-}
+    : metrics_(metrics) {}
 
 void Callback80211Metrics::CollectDisconnectStatistics(
     const NetlinkMessage &netlink_message) {
-  if (nl80211_message_type_ == NetlinkMessage::kIllegalMessageType) {
-    LOG(ERROR) << "Somehow, nl80211_message_type_ didn't get set correctly";
-    return;
-  }
-
   // We only handle deauthenticate messages, which are nl80211 messages.
-  if (netlink_message.message_type() != nl80211_message_type_) {
+  if (netlink_message.message_type() != Nl80211Message::GetMessageType()) {
     return;
   }
   const Nl80211Message &message =

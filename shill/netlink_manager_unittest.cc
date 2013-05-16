@@ -64,8 +64,7 @@ class NetlinkManagerTest : public Test {
         .family_id = kNl80211FamilyId;
     netlink_manager_->message_factory_.AddFactoryMethod(
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
-    Nl80211Message::SetMessageType(
-        netlink_manager_->GetMessageType(Nl80211Message::kMessageTypeString));
+    Nl80211Message::SetMessageType(kNl80211FamilyId);
   }
 
   ~NetlinkManagerTest() {
@@ -103,7 +102,6 @@ class NetlinkManagerTest : public Test {
 // TODO(wdg): Add a test for multi-part messages.  crbug.com/224652
 // TODO(wdg): Add a test for GetFaimily.  crbug.com/224649
 // TODO(wdg): Add a test for OnNewFamilyMessage.  crbug.com/222486
-// TODO(wdg): Add a test for GetMessageType
 // TODO(wdg): Add a test for SubscribeToEvents (verify that it handles bad input
 // appropriately, and that it calls NetlinkSocket::SubscribeToEvents if input
 // is good.)

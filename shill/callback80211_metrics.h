@@ -25,11 +25,6 @@ class Callback80211Metrics :
  public:
   Callback80211Metrics(const NetlinkManager &netlink_manager, Metrics *metrics);
 
-  // This retrieves the numerical id for the "nl80211" family of messages.
-  // Should only be called (once) at initialization time but must be called
-  // only after NetlinkManager knows about the "nl80211" family.
-  void InitNl80211FamilyId(const NetlinkManager &netlink_manager);
-
   // Called with each broadcast netlink message that arrives to NetlinkManager.
   // If the message is a deauthenticate message, the method collects the reason
   // for the deauthentication and communicates those to UMA.
@@ -39,7 +34,6 @@ class Callback80211Metrics :
   static const char kMetricLinkDisconnectCount[];
 
   Metrics *metrics_;
-  uint16_t nl80211_message_type_;
 
   DISALLOW_COPY_AND_ASSIGN(Callback80211Metrics);
 };

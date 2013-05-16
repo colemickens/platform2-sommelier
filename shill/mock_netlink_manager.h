@@ -28,15 +28,8 @@ class MockNetlinkManager : public NetlinkManager {
                     const NetlinkMessageHandler &message_handler));
   MOCK_METHOD2(SubscribeToEvents,
                bool(const std::string &family, const std::string &group));
-  MOCK_CONST_METHOD1(GetMessageType, uint16_t(const std::string &name));
-
-  void SetMessageType(std::string name, uint16_t type);
 
  private:
-  uint16_t DoGetMessageType(std::string name);
-
-  std::map<std::string, uint16_t> message_types_;
-
   DISALLOW_COPY_AND_ASSIGN(MockNetlinkManager);
 };
 

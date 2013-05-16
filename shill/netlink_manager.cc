@@ -256,16 +256,6 @@ uint16_t NetlinkManager::GetFamily(string name,
   return NetlinkMessage::kIllegalMessageType;
 }
 
-uint16_t NetlinkManager::GetMessageType(const string &name) const {
-  map<const string, MessageType>::const_iterator family =
-      message_types_.find(name);
-  if (family == message_types_.end()) {
-    LOG(WARNING) << "Family '" << name << "' is not in list.";
-    return NetlinkMessage::kIllegalMessageType;
-  }
-  return family->second.family_id;
-}
-
 bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
   list<NetlinkMessageHandler>::iterator i;
   if (FindBroadcastHandler(handler)) {

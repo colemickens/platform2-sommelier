@@ -108,8 +108,6 @@ void Daemon::Start() {
     Nl80211Message::SetMessageType(nl80211_family_id);
     netlink_manager_->Start(&dispatcher_);
 
-    callback80211_metrics_.InitNl80211FamilyId(*netlink_manager_);
-
     // Install handlers for NetlinkMessages that don't have specific handlers
     // (which are registered by message sequence number).
     netlink_manager_->AddBroadcastHandler(Bind(

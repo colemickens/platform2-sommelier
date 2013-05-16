@@ -247,9 +247,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     ON_CALL(proxy_factory_, CreateSupplicantNetworkProxy(_, _)).
         WillByDefault(InvokeWithoutArgs(
             this, &WiFiObjectTest::CreateSupplicantNetworkProxy));
-    ON_CALL(netlink_manager_,
-            GetMessageType(Nl80211Message::kMessageTypeString)).
-        WillByDefault(Return(kNl80211FamilyId));
+    Nl80211Message::SetMessageType(kNl80211FamilyId);
 
     // Transfers ownership.
     manager_.dbus_manager_.reset(dbus_manager_);
