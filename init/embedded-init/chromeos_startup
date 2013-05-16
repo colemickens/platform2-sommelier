@@ -9,8 +9,8 @@
 
 mount -n -t tmpfs -o nodev,noexec,nosuid tmp /tmp
 # Mount debugfs as crossystem requires chromeos_arm driver interface.
-mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugd debugfs \
-  /sys/kernel/debug
+mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
+  debugfs /sys/kernel/debug
 
 mkdir -p /dev/shm /dev/pts
 mount -n -t tmpfs -o nodev,noexec,nosuid shmfs /dev/shm
