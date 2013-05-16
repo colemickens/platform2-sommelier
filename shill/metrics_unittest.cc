@@ -547,6 +547,21 @@ TEST_F(MetricsTest, TimeToScanIgnore) {
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 }
 
+TEST_F(MetricsTest, Cellular3GPPRegistrationDelayedDropPosted) {
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                    Metrics::kCellular3GPPRegistrationDelayedDropPosted,
+                    Metrics::kCellular3GPPRegistrationDelayedDropMax));
+  metrics_.Notify3GPPRegistrationDelayedDropPosted();
+  Mock::VerifyAndClearExpectations(&library_);
+
+  EXPECT_CALL(library_,
+      SendEnumToUMA(Metrics::kMetricCellular3GPPRegistrationDelayedDrop,
+                    Metrics::kCellular3GPPRegistrationDelayedDropCanceled,
+                    Metrics::kCellular3GPPRegistrationDelayedDropMax));
+  metrics_.Notify3GPPRegistrationDelayedDropCanceled();
+}
+
 TEST_F(MetricsTest, CellularAutoConnect) {
   EXPECT_CALL(library_,
       SendToUMA("Network.Shill.Cellular.TimeToConnect",

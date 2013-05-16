@@ -1863,15 +1863,16 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
 
   // While the modem is connected, if the state changed from a registered state
   // to a non registered state, defer the state change by 15 seconds.
-  // TODO(pprabhu) [crbug.com/241231] Add UMA stat to determine whether this
-  // condition is specific to E362. If it is, guard the delayed update by E362
-  // specific flag.
   if (cellular()->modem_state() == Cellular::kModemStateConnected &&
       IsRegistered() && !IsRegisteredState(state)) {
     if (!registration_dropped_update_callback_.IsCancelled()) {
       LOG(WARNING) << "Modem reported consecutive 3GPP registration drops. "
                    << "Ignoring earlier notifications.";
       registration_dropped_update_callback_.Cancel();
+    } else {
+      // This is not a repeated post. So, count this instance of delayed drop
+      // posted.
+      modem_info()->metrics()->Notify3GPPRegistrationDelayedDropPosted();
     }
     SLOG(Cellular, 2) << "Posted deferred registration state update";
     registration_dropped_update_callback_.Reset(
@@ -1887,6 +1888,9 @@ void CellularCapabilityUniversal::On3GPPRegistrationChanged(
     if (!registration_dropped_update_callback_.IsCancelled()) {
       SLOG(Cellular, 2) << "Cancelled a deferred registration state update";
       registration_dropped_update_callback_.Cancel();
+      // If we cancelled the callback here, it means we had flaky network for a
+      // small duration.
+      modem_info()->metrics()->Notify3GPPRegistrationDelayedDropCanceled();
     }
     Handle3GPPRegistrationChange(state, operator_code, operator_name);
   }

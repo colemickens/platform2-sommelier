@@ -216,6 +216,8 @@ const char Metrics::kMetricLinkApDisconnectType[] =
     "Network.Shill.WiFi.ApDisconnectType";
 
 // static
+const char Metrics::kMetricCellular3GPPRegistrationDelayedDrop[] =
+    "Network.Shill.Cellular.3GPPRegistrationDelayedDrop";
 const char Metrics::kMetricCellularAutoConnectTries[] =
     "Network.Shill.Cellular.AutoConnectTries";
 const int Metrics::kMetricCellularAutoConnectTriesMax = 20;
@@ -932,6 +934,18 @@ void Metrics::ResetConnectTimer(int interface_index) {
     return;
   device_metrics->connect_timer->Reset();
   device_metrics->scan_connect_timer->Reset();
+}
+
+void Metrics::Notify3GPPRegistrationDelayedDropPosted() {
+  SendEnumToUMA(kMetricCellular3GPPRegistrationDelayedDrop,
+                kCellular3GPPRegistrationDelayedDropPosted,
+                kCellular3GPPRegistrationDelayedDropMax);
+}
+
+void Metrics::Notify3GPPRegistrationDelayedDropCanceled() {
+  SendEnumToUMA(kMetricCellular3GPPRegistrationDelayedDrop,
+                kCellular3GPPRegistrationDelayedDropCanceled,
+                kCellular3GPPRegistrationDelayedDropMax);
 }
 
 void Metrics::NotifyCellularDeviceDrop(int interface_index,

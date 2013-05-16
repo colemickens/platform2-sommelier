@@ -195,6 +195,12 @@ class Metrics {
     kTerminationActionReasonTerminate
   };
 
+  enum Cellular3GPPRegistrationDelayedDrop {
+    kCellular3GPPRegistrationDelayedDropPosted = 0,
+    kCellular3GPPRegistrationDelayedDropCanceled = 1,
+    kCellular3GPPRegistrationDelayedDropMax
+  };
+
   enum CellularDropTechnology {
     kCellularDropTechnology1Xrtt = 0,
     kCellularDropTechnologyEdge = 1,
@@ -367,6 +373,7 @@ class Metrics {
   static const char kMetricServiceFixupEntries[];
 
   // Cellular specific statistics.
+  static const char kMetricCellular3GPPRegistrationDelayedDrop[];
   static const char kMetricCellularAutoConnectTries[];
   static const int kMetricCellularAutoConnectTriesMax;
   static const int kMetricCellularAutoConnectTriesMin;
@@ -538,6 +545,10 @@ class Metrics {
   void NotifyCellularDeviceDrop(int interface_index,
                                 const std::string &network_technology,
                                 uint16 signal_strength);
+
+  // Notifies this object about 3GPP registration drop events.
+  virtual void Notify3GPPRegistrationDelayedDropPosted();
+  virtual void Notify3GPPRegistrationDelayedDropCanceled();
 
   // Notifies this object about a cellular device failure code.
   void NotifyCellularDeviceFailure(const Error &error);

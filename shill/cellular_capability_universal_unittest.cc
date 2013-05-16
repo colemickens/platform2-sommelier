@@ -785,6 +785,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
             capability_->registration_state_);
 
   // Home --> Searching --> Home should never see Searching.
+  EXPECT_CALL(*(modem_info_.mock_metrics()),
+      Notify3GPPRegistrationDelayedDropPosted());
+  EXPECT_CALL(*(modem_info_.mock_metrics()),
+      Notify3GPPRegistrationDelayedDropCanceled());
+
   capability_->On3GPPRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
@@ -806,8 +811,11 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
             capability_->registration_state_);
+  Mock::VerifyAndClearExpectations(modem_info_.mock_metrics());
 
   // Home --> Searching --> wait till dispatch should see Searching
+  EXPECT_CALL(*(modem_info_.mock_metrics()),
+      Notify3GPPRegistrationDelayedDropPosted());
   capability_->On3GPPRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
@@ -823,10 +831,14 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
             capability_->registration_state_);
+  Mock::VerifyAndClearExpectations(modem_info_.mock_metrics());
 
   // Home --> Searching --> Searching --> wait till dispatch should see
   // Searching *and* the first callback should be cancelled.
   EXPECT_CALL(*this, DummyCallback()).Times(0);
+  EXPECT_CALL(*(modem_info_.mock_metrics()),
+      Notify3GPPRegistrationDelayedDropPosted());
+
   capability_->On3GPPRegistrationChanged(
       MM_MODEM_3GPP_REGISTRATION_STATE_HOME,
       home_provider,
@@ -847,7 +859,6 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateRegistrationState) {
   dispatcher_.DispatchPendingEvents();
   EXPECT_EQ(MM_MODEM_3GPP_REGISTRATION_STATE_SEARCHING,
             capability_->registration_state_);
-
 }
 
 TEST_F(CellularCapabilityUniversalMainTest,
