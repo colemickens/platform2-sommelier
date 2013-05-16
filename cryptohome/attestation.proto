@@ -100,6 +100,12 @@ message AttestationEnrollmentResponse {
   optional EncryptedIdentityCredential encrypted_identity_credential = 3;
 }
 
+enum CertificateProfile {
+  ENTERPRISE_MACHINE_CERTIFICATE = 0;
+  ENTERPRISE_USER_CERTIFICATE = 1;
+  OUTPUT_PROTECTION_CERTIFICATE = 2;
+}
+
 // The certificate request to be sent to the attestation server.
 message AttestationCertificateRequest {
   // The AIK cert in X.509 format.
@@ -110,13 +116,22 @@ message AttestationCertificateRequest {
   optional bytes certified_key_info = 4;
   // The signature of the TPM_CERTIFY_INFO by the AIK.
   optional bytes certified_key_proof = 5;
+  // A message identifier to be included in the response.
+  optional bytes message_id = 10;
+  // The certificate profile defines the type of certificate to issue.
+  optional CertificateProfile profile = 11;
+  // Information about the origin of the request which may be used depending on
+  // the certificate profile.
+  optional string origin = 12;
+
+  // The following fields are deprecated.
+  // TODO(dkrahn): Remove these when they are no longer in use.
+
   // Set this field to true to include the stable ID in the issued certificate.
   optional bool include_stable_id = 8;
   // Set this field to true to include the device state in the issued
   // certificate.
   optional bool include_device_state = 9;
-  // A message identifier to be included in the response.
-  optional bytes message_id = 10;
 }
 
 // The response from the attestation server for the certificate request.
