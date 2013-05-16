@@ -46,6 +46,7 @@ class FlimFlam(object):
 
     SHILL_DBUS_INTERFACE = "org.chromium.flimflam"
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
+    UNKNOWN_OBJECT = 'org.freedesktop.DBus.Error.UnknownObject'
 
     DEVICE_WIMAX = 'wimax'
     DEVICE_CELLULAR = 'cellular'
@@ -307,7 +308,8 @@ class FlimFlam(object):
             try:
                 obj_properties = obj.GetProperties(utf8_strings = True)
             except dbus.exceptions.DBusException, error:
-                if error.get_dbus_name() == self.UNKNOWN_METHOD:
+                if (error.get_dbus_name() == self.UNKNOWN_METHOD or
+                    error.get_dbus_name() == self.UNKNOWN_OBJECT):
                     # object disappeared; ignore and keep looking
                     continue
                 else:
