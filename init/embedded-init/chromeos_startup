@@ -292,6 +292,40 @@ if [ "$CROS_DEBUG" = "1" -o -f /root/.dev_mode ]; then
   fi
 fi
 
+# Check for extra steps needed for OOBE.  These steps are expensive
+# so they only happen once; when OOBE is complete the OOBE_COMPLETE
+# file gets created to block this code from running again.
+#
+# We also skip the extra steps for factory images (check for
+# ROOTDEV).
+
+OOBE_COMPLETE=/home/chronos/.oobe_completed
+if [ "$ROOTDEV_RET_CODE" = "0" -a ! -e $OOBE_COMPLETE ]; then
+  # This script dumps VPD RO/RW data into /var/log/vpd_2.0.txt
+  # so that OOBE process can read the default locale setting
+  # from VPD.
+  if [ -x /usr/sbin/dump_vpd_log ]; then
+    /usr/sbin/dump_vpd_log
+  fi
+
+  # TODO(yjlou): We are developing a more generic hook mechanism
+  #              (i.e. pre-OOBE-oem.sh), and will move this block
+  #              to new hook point.
+  #
+  # The activate_date script is installed in partner's
+  # board-specific private overlay. Hence the vpd utility
+  # dependency is described in private overlay, instead of
+  # chromeos-init.
+  #
+  # If the activate date script is executable (installed from
+  # the private overlay), run it.
+  if [ -x /usr/sbin/activate_date ]; then
+    # Since this script will invoke flash read/write (around 20 secs),
+    # run it in background.
+    (/usr/sbin/activate_date ; /usr/sbin/dump_vpd_log --force) &
+  fi
+fi
+
 bootstat post-startup
 
 # Always return success to avoid killing init
