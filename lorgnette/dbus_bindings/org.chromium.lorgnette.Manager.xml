@@ -36,7 +36,8 @@ ns-v0">
           Accepted keys are.
 
             Mode (string): Capture mode (can be "Color", "Gray",
-                "BlackAndWhite".)
+                "Lineart".)
+            Resolution (uint32): Image resolution in DPI.
         </tp:docstring>
     </method>
   </interface>

@@ -45,6 +45,12 @@ class Manager
   static const char kScannerPropertyManufacturer[];
   static const char kScannerPropertyModel[];
   static const char kScannerPropertyType[];
+  static const char kScanPropertyMode[];
+  static const char kScanPropertyModeColor[];
+  static const char kScanPropertyModeGray[];
+  static const char kScanPropertyModeLineart[];
+  static const char kScanPropertyResolution[];
+  static const int kTimeoutAfterKillSeconds;
 
   static void SetError(const std::string &method,
                        const std::string &message,
