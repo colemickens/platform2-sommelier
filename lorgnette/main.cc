@@ -49,7 +49,9 @@ const char *kLoggerUser = "syslog";
 
 // Always logs to the syslog and logs to stderr if
 // we are running in the foreground.
-void SetupLogging(bool foreground, char *daemon_name) {
+void SetupLogging(lorgnette::Minijail *minijail,
+                  bool foreground,
+                  char *daemon_name) {
   int log_flags = 0;
   log_flags |= chromeos::kLogToSyslog;
   log_flags |= chromeos::kLogHeader;
@@ -68,7 +70,6 @@ void SetupLogging(bool foreground, char *daemon_name) {
     logger_command_line.push_back(daemon_name);
     logger_command_line.push_back(NULL);
 
-    lorgnette::Minijail *minijail = lorgnette::Minijail::GetInstance();
     struct minijail *jail = minijail->New();
     minijail->DropRoot(jail, kLoggerUser, kLoggerUser);
 
@@ -96,11 +97,27 @@ gboolean ExitSigHandler(gpointer data) {
   return TRUE;
 }
 
+// Enter a sanboxed vfs namespace.
+void EnterVFSNamespace(lorgnette::Minijail *minijail) {
+  struct minijail *jail = minijail->New();
+  minijail_namespace_vfs(jail);
+  minijail_enter(jail);
+  minijail->Destroy(jail);
+}
+
+void DropPrivileges(lorgnette::Minijail *minijail) {
+  struct minijail *jail = minijail->New();
+  minijail->DropRoot(jail, lorgnette::Daemon::kScanUserName,
+                     lorgnette::Daemon::kScanGroupName);
+  minijail_enter(jail);
+  minijail->Destroy(jail);
+}
 
 int main(int argc, char **argv) {
   base::AtExitManager exit_manager;
   CommandLine::Init(argc, argv);
   CommandLine *cl = CommandLine::ForCurrentProcess();
+  lorgnette::Minijail *minijail = lorgnette::Minijail::GetInstance();
 
   if (cl->HasSwitch(switches::kHelp)) {
     LOG(INFO) << switches::kHelpMessage;
@@ -111,7 +128,7 @@ int main(int argc, char **argv) {
   if (!cl->HasSwitch(switches::kForeground))
     PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
 
-  SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
+  SetupLogging(minijail, cl->HasSwitch(switches::kForeground), argv[0]);
 
   lorgnette::Daemon daemon;
 
@@ -120,12 +137,11 @@ int main(int argc, char **argv) {
 
   daemon.Start();
 
+  EnterVFSNamespace(minijail);
+
   // Now that the daemon has all the resources it needs to run, we can drop
   // privileges further.
-  struct minijail *jail = minijail_new();
-  minijail_change_user(jail, lorgnette::Daemon::kScanUserName);
-  minijail_change_group(jail, lorgnette::Daemon::kScanGroupName);
-  minijail_enter(jail);
+  DropPrivileges(minijail);
 
   daemon.Run();
 

@@ -37,12 +37,18 @@ class Manager
       ::DBus::Error &error);
 
  private:
+  static const char kDBusErrorName[];
   static const char kObjectPath[];
+  static const char kScanConverterPath[];
   static const char kScanImageFormattedDeviceListCmd[];
   static const char kScanImagePath[];
   static const char kScannerPropertyManufacturer[];
   static const char kScannerPropertyModel[];
   static const char kScannerPropertyType[];
+
+  static void SetError(const std::string &method,
+                       const std::string &message,
+                       ::DBus::Error *error);
 
   Minijail *minijail_;
 
