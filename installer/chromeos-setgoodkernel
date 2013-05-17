@@ -5,29 +5,28 @@
 #
 # A script to mark the current kernel partition as successfully booted.
 
+# If we're not running as root, restart as root.
+if [ $(id -u) -ne 0 ]; then
+  exec sudo "$0" "$@"
+fi
+
 # Load functions and constants for chromeos-install.
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
-
-if [ "0" = $(id -u) ]; then
-  local sudo=""
-else
-  local sudo=sudo
-fi
 
 # Extract the kernel partition's UniqueGuid from the command line.
 guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
 
 # Look through all the known devices to find that one partition.
-kern_dev=$($sudo cgpt find -1 -u $guid)
+kern_dev=$(cgpt find -1 -u $guid)
 
 # Split the kernel device in the base device and paritition number.
 base_dev=$(get_block_dev_from_partition_dev $kern_dev)
 kern_num=$(get_partition_number $kern_dev)
 
 # Mark the kernel as successfully booted (success=1, tries=0).
-$sudo cgpt add $base_dev -i $kern_num -S1 -T0
+cgpt add $base_dev -i $kern_num -S1 -T0
 # Mark the kernel as highest priority
-$sudo cgpt prioritize $base_dev -i $kern_num
+cgpt prioritize $base_dev -i $kern_num
 
 # Collect any startup time firmware updater logs (see chromeos_startup)
 FIRMWARE_UPDATE_LOG='/mnt/stateful_partition/update_firmware.log'
@@ -48,4 +47,4 @@ fi
 # Run the verified boot debugging tool now, because we won't be able to run it
 # manually if there's a problem (no root shell). It leaves a log file that we
 # can look at.
-$sudo dev_debug_vboot --cleanup > /dev/null 2>&1 &
+dev_debug_vboot --cleanup > /dev/null 2>&1 &
