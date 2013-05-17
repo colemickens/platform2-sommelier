@@ -15,10 +15,10 @@ LIBPOWERD_LIBS = \
 	-lrt $(shell $(PKG_CONFIG) --libs $(LIBPOWERD_DEPS))
 LIBPOWERD_OBJS = \
 	power_manager/power_supply_properties.pb.o \
+	powerd/daemon.o \
+	powerd/daemon_metrics.o \
 	powerd/file_tagger.o \
 	powerd/metrics_constants.o \
-	powerd/powerd_metrics.o \
-	powerd/powerd.o \
 	video_activity_update.pb.o
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
@@ -27,7 +27,7 @@ clean: CLEAN(powerd/libpowerd.pie.a)
 
 POWERD_FLAGS = $(LIBPOWERD_FLAGS)
 POWERD_LIBS = $(LIBPOWERD_LIBS)
-POWERD_OBJS = powerd/powerd_main.o
+POWERD_OBJS = powerd/main.o
 CXX_BINARY(powerd/powerd): $(POWERD_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
@@ -48,13 +48,13 @@ CXX_BINARY(powerd/powerd_setuid_helper): LDLIBS += \
 clean: CLEAN(powerd/powerd_setuid_helper)
 all: CXX_BINARY(powerd/powerd_setuid_helper)
 
-POWERD_UNITTEST_FLAGS = $(POWERD_FLAGS)
+DAEMON_UNITTEST_FLAGS = $(POWERD_FLAGS)
 TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
-POWERD_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
-POWERD_UNITTEST_OBJS = \
-	powerd/file_tagger_unittest.o \
-	powerd/powerd_unittest.o
-CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
+DAEMON_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
+DAEMON_UNITTEST_OBJS = \
+	powerd/daemon_unittest.o \
+	powerd/file_tagger_unittest.o
+CXX_BINARY(powerd/daemon_unittest): $(DAEMON_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
 	CXX_STATIC_LIBRARY(common/libprefs.pie.a) \
@@ -64,7 +64,7 @@ CXX_BINARY(powerd/powerd_unittest): $(POWERD_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a)
-CXX_BINARY(powerd/powerd_unittest): CPPFLAGS += $(POWERD_UNITTEST_FLAGS)
-CXX_BINARY(powerd/powerd_unittest): LDLIBS += $(POWERD_UNITTEST_LIBS)
-clean: CXX_BINARY(powerd/powerd_unittest)
-tests: TEST(CXX_BINARY(powerd/powerd_unittest))
+CXX_BINARY(powerd/daemon_unittest): CPPFLAGS += $(DAEMON_UNITTEST_FLAGS)
+CXX_BINARY(powerd/daemon_unittest): LDLIBS += $(DAEMON_UNITTEST_LIBS)
+clean: CXX_BINARY(powerd/daemon_unittest)
+tests: TEST(CXX_BINARY(powerd/daemon_unittest))

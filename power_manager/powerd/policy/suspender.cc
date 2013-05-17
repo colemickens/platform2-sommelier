@@ -17,7 +17,6 @@
 #include "power_manager/common/util_dbus.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
 #include "power_manager/powerd/policy/suspend_delay_controller.h"
-#include "power_manager/powerd/powerd.h"
 #include "power_manager/powerd/system/input.h"
 #include "power_manager/suspend.pb.h"
 
