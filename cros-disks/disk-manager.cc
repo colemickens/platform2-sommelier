@@ -211,9 +211,14 @@ void DiskManager::ProcessScsiDeviceEvents(
 }
 
 bool DiskManager::GetDeviceEvents(DeviceEventList* events) {
-  struct udev_device *dev = udev_monitor_receive_device(udev_monitor_);
-  CHECK(dev) << "Unknown udev device";
   CHECK(events) << "Invalid device event list";
+
+  struct udev_device *dev = udev_monitor_receive_device(udev_monitor_);
+  if (!dev) {
+    LOG(WARNING) << "Ignore device event with no associated udev device.";
+    return false;
+  }
+
   LOG(INFO) << "Got Device";
   LOG(INFO) << "   Syspath: " << udev_device_get_syspath(dev);
   LOG(INFO) << "   Node: " << udev_device_get_devnode(dev);
