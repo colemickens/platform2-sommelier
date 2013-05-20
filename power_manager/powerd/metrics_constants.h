@@ -10,6 +10,10 @@
 
 namespace power_manager {
 
+// Suffixes added to certain metric names when on different power sources.
+extern const char kMetricACSuffix[];
+extern const char kMetricBatterySuffix[];
+
 extern const char kMetricRetrySuspendCountName[];
 extern const int kMetricRetrySuspendCountMin;
 extern const int kMetricRetrySuspendCountBuckets;

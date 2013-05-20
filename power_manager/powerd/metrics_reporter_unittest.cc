@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "power_manager/powerd/daemon.h"
+#include "power_manager/powerd/metrics_reporter.h"
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -17,6 +17,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/system/power_supply.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -95,21 +96,10 @@ class BacklightControllerStub : public policy::BacklightController {
 
 }  // namespace
 
-bool CheckMetricInterval(time_t now, time_t last, time_t interval);
-
-class DaemonTest : public Test {
+class MetricsReporterTest : public Test {
  public:
-  DaemonTest()
-      : daemon_(&prefs_, &metrics_lib_, &backlight_ctl_, NULL,
-                base::FilePath(".")),
-        status_(&daemon_.power_status_) {}
-
-  virtual void SetUp() {
-    // Tests initialization done by the daemon's constructor.
-    EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
-    *status_ = system::PowerStatus();
-  }
+  MetricsReporterTest()
+      : metrics_reporter_(&prefs_, &metrics_lib_, &backlight_ctl_) {}
 
  protected:
   // Adds a metrics library mock expectation that the specified metric
@@ -122,59 +112,31 @@ class DaemonTest : public Test {
         .RetiresOnSaturation();
   }
 
+  void ExpectMetricWithPowerSource(const std::string& name,
+                                   int sample,
+                                   int min,
+                                   int max,
+                                   int buckets) {
+    ExpectMetric(MetricsReporter::AppendPowerSourceToEnumName(
+        name, metrics_reporter_.power_source()), sample, min, max, buckets);
+  }
+
   // Adds a metrics library mock expectation that the specified enum
   // metric will be generated.
-  void ExpectEnumMetric(const std::string& name, int sample, int max) {
+  void ExpectEnumMetric(const std::string& name,
+                        int sample,
+                        int max) {
     EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
         .Times(1)
         .WillOnce(Return(true))
         .RetiresOnSaturation();
   }
-  void ExpectEnumMetric2(const std::string& name, int sample, int max) {
-    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
-        .Times(1)
-        .WillOnce(Return(true))
-        .RetiresOnSaturation();
-  }
 
-  void ExpectMetricWithPowerState(const std::string& name,
-                                  int sample,
-                                  int min,
-                                  int max,
-                                  int buckets) {
-    std::string name_with_power_state = name;
-    if (daemon_.plugged_state_ == PLUGGED_STATE_DISCONNECTED) {
-      name_with_power_state += "OnBattery";
-    } else if (daemon_.plugged_state_ == PLUGGED_STATE_CONNECTED) {
-      name_with_power_state += "OnAC";
-    } else {
-      return;
-    }
-
-    EXPECT_CALL(metrics_lib_, SendToUMA(name_with_power_state,
-                                        sample,
-                                        min,
-                                        max,
-                                        buckets))
-        .WillOnce(Return(true))
-        .RetiresOnSaturation();
-  }
-
-  void ExpectEnumMetricWithPowerState(const std::string& name,
-                                      int sample,
-                                      int max) {
-    std::string name_with_power_state = name;
-    if (daemon_.plugged_state_ == PLUGGED_STATE_DISCONNECTED) {
-      name_with_power_state += "OnBattery";
-    } else if (daemon_.plugged_state_ == PLUGGED_STATE_CONNECTED) {
-      name_with_power_state += "OnAC";
-    } else {
-      return;
-    }
-
-    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name_with_power_state, sample, max))
-        .WillOnce(Return(true))
-        .RetiresOnSaturation();
+  void ExpectEnumMetricWithPowerSource(const std::string& name,
+                                       int sample,
+                                       int max) {
+    ExpectEnumMetric(MetricsReporter::AppendPowerSourceToEnumName(
+        name, metrics_reporter_.power_source()), sample, max);
   }
 
   // Adds a metrics library mock expectation for the battery discharge
@@ -198,17 +160,17 @@ class DaemonTest : public Test {
   // Adds a metrics library mock expectation for the remaining battery at end of
   // session metric with the given |sample|.
   void ExpectBatteryRemainingAtEndOfSessionMetric(int sample) {
-    ExpectEnumMetricWithPowerState(kMetricBatteryRemainingAtEndOfSessionName,
-                                   sample,
-                                   kMetricBatteryRemainingAtEndOfSessionMax);
+    ExpectEnumMetricWithPowerSource(kMetricBatteryRemainingAtEndOfSessionName,
+                                    sample,
+                                    kMetricBatteryRemainingAtEndOfSessionMax);
   }
 
   // Adds a metrics library mock expectation for the remaining battery at start
   // of session metric with the given |sample|.
   void ExpectBatteryRemainingAtStartOfSessionMetric(int sample) {
-    ExpectEnumMetricWithPowerState(kMetricBatteryRemainingAtStartOfSessionName,
-                                   sample,
-                                   kMetricBatteryRemainingAtStartOfSessionMax);
+    ExpectEnumMetricWithPowerSource(kMetricBatteryRemainingAtStartOfSessionName,
+                                    sample,
+                                    kMetricBatteryRemainingAtStartOfSessionMax);
   }
 
   // Adds a metrics library mock expectation for the number of ALS adjustments
@@ -224,7 +186,7 @@ class DaemonTest : public Test {
   // Adds a metrics library mock expectation for the number of ALS adjustments
   // per session metric with the given |sample|.
   void ExpectUserBrightnessAdjustmentsPerSessionMetric(int sample) {
-    ExpectMetricWithPowerState(
+    ExpectMetricWithPowerSource(
         kMetricUserBrightnessAdjustmentsPerSessionName,
         sample,
         kMetricUserBrightnessAdjustmentsPerSessionMin,
@@ -274,106 +236,94 @@ class DaemonTest : public Test {
                      BATTERY_INFO_MAX);
   }
 
-  PluggedState plugged_state_;
   FakePrefs prefs_;
   BacklightControllerStub backlight_ctl_;
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
-  Daemon daemon_;
-  system::PowerStatus* status_;
+  MetricsReporter metrics_reporter_;
 };
 
-TEST_F(DaemonTest, CheckMetricInterval) {
-  EXPECT_FALSE(CheckMetricInterval(29, 0, 30));
-  EXPECT_TRUE(CheckMetricInterval(30, 0, 30));
-  EXPECT_TRUE(CheckMetricInterval(29, 30, 100));
-  EXPECT_FALSE(CheckMetricInterval(39, 30, 10));
-  EXPECT_TRUE(CheckMetricInterval(40, 30, 10));
-  EXPECT_TRUE(CheckMetricInterval(41, 30, 10));
+TEST_F(MetricsReporterTest, CheckMetricInterval) {
+  EXPECT_FALSE(MetricsReporter::CheckMetricInterval(29, 0, 30));
+  EXPECT_TRUE(MetricsReporter::CheckMetricInterval(30, 0, 30));
+  EXPECT_TRUE(MetricsReporter::CheckMetricInterval(29, 30, 100));
+  EXPECT_FALSE(MetricsReporter::CheckMetricInterval(39, 30, 10));
+  EXPECT_TRUE(MetricsReporter::CheckMetricInterval(40, 30, 10));
+  EXPECT_TRUE(MetricsReporter::CheckMetricInterval(41, 30, 10));
 }
 
-TEST_F(DaemonTest, GenerateBacklightLevelMetric) {
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  daemon_.screen_dim_timestamp_ = base::TimeTicks::Now();
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+TEST_F(MetricsReporterTest, GenerateBacklightLevelMetric) {
+  metrics_reporter_.HandleScreenDimmedChange(true, base::TimeTicks::Now());
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
+  metrics_reporter_.GenerateBacklightLevelMetric();
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  daemon_.screen_dim_timestamp_ = base::TimeTicks();
   const int64 kCurrentPercent = 57;
   backlight_ctl_.set_percent(kCurrentPercent);
+  metrics_reporter_.HandleScreenDimmedChange(false, base::TimeTicks::Now());
   ExpectEnumMetric("Power.BacklightLevelOnBattery", kCurrentPercent,
                    kMetricBacklightLevelMax);
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+  metrics_reporter_.GenerateBacklightLevelMetric();
 
-  daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
+  metrics_reporter_.HandlePowerSourceChange(POWER_AC);
   ExpectEnumMetric("Power.BacklightLevelOnAC", kCurrentPercent,
                    kMetricBacklightLevelMax);
-  daemon_.GenerateBacklightLevelMetricThunk(&daemon_);
+  metrics_reporter_.GenerateBacklightLevelMetric();
 }
 
-TEST_F(DaemonTest, GenerateBatteryDischargeRateMetric) {
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  status_->battery_energy_rate = 5.0;
+TEST_F(MetricsReporterTest, GenerateBatteryDischargeRateMetric) {
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
+  system::PowerStatus status;
+  status.battery_energy_rate = 5.0;
   ExpectBatteryDischargeRateMetric(5000);
-  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(kMetricBatteryDischargeRateInterval,
-            daemon_.battery_discharge_rate_metric_last_);
+  EXPECT_TRUE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, kMetricBatteryDischargeRateInterval));
 
-  status_->battery_energy_rate = 4.5;
+  status.battery_energy_rate = 4.5;
   ExpectBatteryDischargeRateMetric(4500);
-  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, kMetricBatteryDischargeRateInterval - 1));
-  EXPECT_EQ(kMetricBatteryDischargeRateInterval - 1,
-            daemon_.battery_discharge_rate_metric_last_);
+  EXPECT_TRUE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, kMetricBatteryDischargeRateInterval - 1));
 
-  status_->battery_energy_rate = 6.4;
+  status.battery_energy_rate = 6.4;
   ExpectBatteryDischargeRateMetric(6400);
-  EXPECT_TRUE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, 2 * kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(2 * kMetricBatteryDischargeRateInterval,
-            daemon_.battery_discharge_rate_metric_last_);
+  EXPECT_TRUE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, 2 * kMetricBatteryDischargeRateInterval));
 }
 
-TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricInterval) {
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  status_->battery_energy_rate = 4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(*status_,
-                                                          /* now */ 0));
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, kMetricBatteryDischargeRateInterval - 1));
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
+TEST_F(MetricsReporterTest, GenerateBatteryDischargeRateMetricInterval) {
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
+  system::PowerStatus status;
+  status.battery_energy_rate = 4.0;
+  EXPECT_FALSE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, /* now */ 0));
+  EXPECT_FALSE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, kMetricBatteryDischargeRateInterval - 1));
 }
 
-TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
-  EXPECT_EQ(PLUGGED_STATE_UNKNOWN, daemon_.plugged_state_);
+TEST_F(MetricsReporterTest, GenerateBatteryDischargeRateMetricNotDisconnected) {
+  system::PowerStatus status;
+  status.battery_energy_rate = 4.0;
+  EXPECT_FALSE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, kMetricBatteryDischargeRateInterval));
 
-  status_->battery_energy_rate = 4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
-
-  daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, 2 * kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
+  metrics_reporter_.HandlePowerSourceChange(POWER_AC);
+  EXPECT_FALSE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, 2 * kMetricBatteryDischargeRateInterval));
 }
 
-TEST_F(DaemonTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
+TEST_F(MetricsReporterTest, GenerateBatteryDischargeRateMetricRateNonPositive) {
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
+  system::PowerStatus status;
+  EXPECT_FALSE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, kMetricBatteryDischargeRateInterval));
 
-  status_->battery_energy_rate = -4.0;
-  EXPECT_FALSE(daemon_.GenerateBatteryDischargeRateMetric(
-      *status_, 2 * kMetricBatteryDischargeRateInterval));
-  EXPECT_EQ(0, daemon_.battery_discharge_rate_metric_last_);
+  status.battery_energy_rate = -4.0;
+  EXPECT_FALSE(metrics_reporter_.GenerateBatteryDischargeRateMetric(
+      status, 2 * kMetricBatteryDischargeRateInterval));
 }
 
-TEST_F(DaemonTest, GenerateBatteryInfoWhenChargeStartsMetric) {
+TEST_F(MetricsReporterTest, GenerateBatteryInfoWhenChargeStartsMetric) {
   const double battery_percentages[] = { 10.1, 10.7,
                                          20.4, 21.6,
                                          60.4, 61.6,
@@ -381,120 +331,120 @@ TEST_F(DaemonTest, GenerateBatteryInfoWhenChargeStartsMetric) {
                                          102.4, 111.6};
   size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
-  status_->battery_is_present = true;
-  plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                    *status_);
+  system::PowerStatus status;
+  status.battery_is_present = true;
+  status.line_power_on = false;
+  metrics_reporter_.GenerateBatteryInfoWhenChargeStartsMetric(status);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  plugged_state_ = PLUGGED_STATE_UNKNOWN;
-  daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                    *status_);
+  status.battery_is_present = false;
+  status.line_power_on = true;
+  metrics_reporter_.GenerateBatteryInfoWhenChargeStartsMetric(status);
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  status_->battery_is_present = false;
-  plugged_state_ = PLUGGED_STATE_CONNECTED;
-  daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                    *status_);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  status_->battery_is_present = true;
-  status_->battery_charge_full_design = 100;
+  status.battery_is_present = true;
+  status.battery_charge_full_design = 100;
   for (size_t i = 0; i < num_percentages; i++) {
-    status_->battery_percentage = battery_percentages[i];
-    status_->battery_charge_full = battery_percentages[i];
-    int expected_percentage = round(status_->battery_percentage);
+    status.battery_percentage = battery_percentages[i];
+    status.battery_charge_full = battery_percentages[i];
+    int expected_percentage = round(status.battery_percentage);
 
     ExpectBatteryInfoWhenChargeStartsMetric(expected_percentage);
-    daemon_.GenerateBatteryInfoWhenChargeStartsMetric(plugged_state_,
-                                                      *status_);
+    metrics_reporter_.GenerateBatteryInfoWhenChargeStartsMetric(status);
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
-TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
+TEST_F(MetricsReporterTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   static const uint adjustment_counts[] = {0, 100, 500, 1000};
   size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
 
   for (size_t i = 0; i < num_counts; i++) {
     backlight_ctl_.set_num_als_adjustments(adjustment_counts[i]);
     ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
-    EXPECT_TRUE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
+    EXPECT_TRUE(
+        metrics_reporter_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
     Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
-TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
+TEST_F(MetricsReporterTest,
+       GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
   backlight_ctl_.set_num_als_adjustments(
       kMetricNumberOfAlsAdjustmentsPerSessionMax + kAdjustmentsOffset);
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       kMetricNumberOfAlsAdjustmentsPerSessionMax);
-  EXPECT_TRUE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
+  EXPECT_TRUE(
+      metrics_reporter_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
 }
 
-TEST_F(DaemonTest, GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
+TEST_F(MetricsReporterTest,
+       GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
   backlight_ctl_.set_num_als_adjustments(-kAdjustmentsOffset);
-  EXPECT_FALSE(daemon_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
 }
 
-TEST_F(DaemonTest, GenerateLengthOfSessionMetric) {
+TEST_F(MetricsReporterTest, GenerateLengthOfSessionMetric) {
   base::TimeTicks now = base::TimeTicks::Now();
   base::TimeTicks start = now - base::TimeDelta::FromSeconds(kSessionLength);
 
   ExpectLengthOfSessionMetric(kSessionLength);
-  EXPECT_TRUE(daemon_.GenerateLengthOfSessionMetric(now, start));
+  EXPECT_TRUE(metrics_reporter_.GenerateLengthOfSessionMetric(now, start));
 }
 
-TEST_F(DaemonTest, GenerateLengthOfSessionMetricOverflow) {
+TEST_F(MetricsReporterTest, GenerateLengthOfSessionMetricOverflow) {
   base::TimeTicks now = base::TimeTicks::Now();
   base::TimeTicks start = now - base::TimeDelta::FromSeconds(
       kMetricLengthOfSessionMax + kSessionLength);
 
   ExpectLengthOfSessionMetric(kMetricLengthOfSessionMax);
-  EXPECT_TRUE(daemon_.GenerateLengthOfSessionMetric(now, start));
+  EXPECT_TRUE(metrics_reporter_.GenerateLengthOfSessionMetric(now, start));
 }
 
-TEST_F(DaemonTest, GenerateLengthOfSessionMetricUnderflow) {
+TEST_F(MetricsReporterTest, GenerateLengthOfSessionMetricUnderflow) {
   base::TimeTicks now = base::TimeTicks::Now();
   base::TimeTicks start = now + base::TimeDelta::FromSeconds(kSessionLength);
 
-  EXPECT_FALSE(daemon_.GenerateLengthOfSessionMetric(now, start));
+  EXPECT_FALSE(metrics_reporter_.GenerateLengthOfSessionMetric(now, start));
 }
 
-TEST_F(DaemonTest, GenerateNumOfSessionsPerChargeMetric) {
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+TEST_F(MetricsReporterTest, GenerateNumOfSessionsPerChargeMetric) {
+  EXPECT_TRUE(metrics_reporter_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  metrics_reporter_.IncrementNumOfSessionsPerChargeMetric();
   ExpectNumOfSessionsPerChargeMetric(1);
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  EXPECT_TRUE(metrics_reporter_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  daemon_.IncrementNumOfSessionsPerChargeMetric();
-  daemon_.IncrementNumOfSessionsPerChargeMetric();
-  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  metrics_reporter_.IncrementNumOfSessionsPerChargeMetric();
+  metrics_reporter_.IncrementNumOfSessionsPerChargeMetric();
+  metrics_reporter_.IncrementNumOfSessionsPerChargeMetric();
   ExpectNumOfSessionsPerChargeMetric(3);
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  EXPECT_TRUE(metrics_reporter_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Check that the pref is used, so the count will persist across reboots.
   prefs_.SetInt64(kNumSessionsOnCurrentChargePref, 5);
-  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  metrics_reporter_.IncrementNumOfSessionsPerChargeMetric();
   ExpectNumOfSessionsPerChargeMetric(6);
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  EXPECT_TRUE(metrics_reporter_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Negative values in the pref should be ignored.
   prefs_.SetInt64(kNumSessionsOnCurrentChargePref, -2);
-  daemon_.IncrementNumOfSessionsPerChargeMetric();
+  metrics_reporter_.IncrementNumOfSessionsPerChargeMetric();
   ExpectNumOfSessionsPerChargeMetric(1);
-  EXPECT_TRUE(daemon_.GenerateNumOfSessionsPerChargeMetric());
+  EXPECT_TRUE(metrics_reporter_.GenerateNumOfSessionsPerChargeMetric());
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
-TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
-  status_->battery_percentage = 10.1;
-  int expected_percentage = round(status_->battery_percentage);
+TEST_F(MetricsReporterTest, GenerateEndOfSessionMetrics) {
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
+  system::PowerStatus status;
+  status.battery_percentage = 10.1;
+  int expected_percentage = round(status.battery_percentage);
   ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
 
   backlight_ctl_.set_num_als_adjustments(kAdjustmentsOffset);
@@ -508,105 +458,104 @@ TEST_F(DaemonTest, GenerateEndOfSessionMetrics) {
   base::TimeTicks start = now - base::TimeDelta::FromSeconds(kSessionLength);
   ExpectLengthOfSessionMetric(kSessionLength);
 
-  daemon_.GenerateEndOfSessionMetrics(*status_, now, start);
+  metrics_reporter_.GenerateEndOfSessionMetrics(status, now, start);
 }
 
-TEST_F(DaemonTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
+TEST_F(MetricsReporterTest, GenerateBatteryRemainingAtEndOfSessionMetric) {
   const double battery_percentages[] = {10.1, 10.7,
                                         20.4, 21.6,
                                         60.4, 61.6,
                                         82.4, 82.5};
   const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
+  system::PowerStatus status;
   for (size_t i = 0; i < num_percentages; i++) {
-    status_->battery_percentage = battery_percentages[i];
-    int expected_percentage = round(status_->battery_percentage);
+    status.battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status.battery_percentage);
 
-    daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
+    metrics_reporter_.HandlePowerSourceChange(POWER_AC);
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
-    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
-        *status_));
+    EXPECT_TRUE(metrics_reporter_.GenerateBatteryRemainingAtEndOfSessionMetric(
+        status));
 
-    daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
+    metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
     ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
-    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
-        *status_));
-
-    daemon_.plugged_state_ = PLUGGED_STATE_UNKNOWN;
-    ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
-    EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtEndOfSessionMetric(
-        *status_));
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
+    EXPECT_TRUE(metrics_reporter_.GenerateBatteryRemainingAtEndOfSessionMetric(
+        status));
   }
 }
 
-TEST_F(DaemonTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
+TEST_F(MetricsReporterTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
   const double battery_percentages[] = {10.1, 10.7,
                                         20.4, 21.6,
                                         60.4, 61.6,
                                         82.4, 82.5};
   const size_t num_percentages = ARRAYSIZE_UNSAFE(battery_percentages);
 
+  system::PowerStatus status;
   for (size_t i = 0; i < num_percentages; i++) {
-    status_->battery_percentage = battery_percentages[i];
-    int expected_percentage = round(status_->battery_percentage);
+    status.battery_percentage = battery_percentages[i];
+    int expected_percentage = round(status.battery_percentage);
 
-    daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
+    metrics_reporter_.HandlePowerSourceChange(POWER_AC);
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
-    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
-        *status_));
+    EXPECT_TRUE(
+        metrics_reporter_.GenerateBatteryRemainingAtStartOfSessionMetric(
+            status));
 
-    daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
+    metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
     ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
-    EXPECT_TRUE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
-        *status_));
-
-    daemon_.plugged_state_ = PLUGGED_STATE_UNKNOWN;
-    ExpectBatteryRemainingAtStartOfSessionMetric(expected_percentage);
-    EXPECT_FALSE(daemon_.GenerateBatteryRemainingAtStartOfSessionMetric(
-        *status_));
-    Mock::VerifyAndClearExpectations(&metrics_lib_);
+    EXPECT_TRUE(
+        metrics_reporter_.GenerateBatteryRemainingAtStartOfSessionMetric(
+            status));
   }
 }
 
-TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
+TEST_F(MetricsReporterTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
   const int kNumUserAdjustments = 10;
   backlight_ctl_.set_num_user_adjustments(kNumUserAdjustments);
 
-  daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
-  ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
-  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
+  metrics_reporter_.HandlePowerSourceChange(POWER_AC);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
-  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
+  EXPECT_TRUE(
+      metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 
-  daemon_.plugged_state_ = PLUGGED_STATE_UNKNOWN;
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
-  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
+  EXPECT_TRUE(
+      metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 }
 
-TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
+TEST_F(MetricsReporterTest,
+       GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
   backlight_ctl_.set_num_user_adjustments(
       kMetricUserBrightnessAdjustmentsPerSessionMax + kAdjustmentsOffset);
-  daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
+  metrics_reporter_.HandlePowerSourceChange(POWER_AC);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
       kMetricUserBrightnessAdjustmentsPerSessionMax);
-  EXPECT_TRUE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
+  EXPECT_TRUE(
+      metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 }
 
-TEST_F(DaemonTest, GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
+TEST_F(MetricsReporterTest,
+       GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
   backlight_ctl_.set_num_user_adjustments(-kAdjustmentsOffset);
-  daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
-  EXPECT_FALSE(daemon_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
+  metrics_reporter_.HandlePowerSourceChange(POWER_AC);
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
 }
 
-TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
-  status_->battery_energy_rate = 4.9;
-  status_->battery_percentage = 32.5;
-  status_->battery_time_to_empty = 10 * 60;
-  status_->battery_times_are_bad = false;
+TEST_F(MetricsReporterTest, GenerateMetricsOnPowerEvent) {
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
+  system::PowerStatus status;
+  status.battery_energy_rate = 4.9;
+  status.battery_percentage = 32.5;
+  status.battery_time_to_empty = 10 * 60;
+  status.battery_times_are_bad = false;
   ExpectBatteryDischargeRateMetric(4900);
   ExpectEnumMetric(kMetricBatteryInfoSampleName,
                    BATTERY_INFO_READ,
@@ -614,36 +563,35 @@ TEST_F(DaemonTest, GenerateMetricsOnPowerEvent) {
   ExpectEnumMetric(kMetricBatteryInfoSampleName,
                    BATTERY_INFO_GOOD,
                    BATTERY_INFO_MAX);
-  daemon_.GenerateMetricsOnPowerEvent(*status_);
-  EXPECT_LT(0, daemon_.battery_discharge_rate_metric_last_);
+  metrics_reporter_.GenerateMetricsOnPowerEvent(status);
 }
 
-TEST_F(DaemonTest, SendEnumMetric) {
+TEST_F(MetricsReporterTest, SendEnumMetric) {
   ExpectEnumMetric("Dummy.EnumMetric", 50, 200);
-  EXPECT_TRUE(daemon_.SendEnumMetric("Dummy.EnumMetric", /* sample */ 50,
-                                     /* max */ 200));
+  EXPECT_TRUE(metrics_reporter_.SendEnumMetric(
+      "Dummy.EnumMetric", /* sample */ 50, /* max */ 200));
 }
 
-TEST_F(DaemonTest, SendMetric) {
+TEST_F(MetricsReporterTest, SendMetric) {
   ExpectMetric("Dummy.Metric", 3, 1, 100, 50);
-  EXPECT_TRUE(daemon_.SendMetric("Dummy.Metric", /* sample */ 3,
-                                 /* min */ 1, /* max */ 100, /* buckets */ 50));
+  EXPECT_TRUE(metrics_reporter_.SendMetric("Dummy.Metric", /* sample */ 3,
+      /* min */ 1, /* max */ 100, /* buckets */ 50));
 }
 
-TEST_F(DaemonTest, SendMetricWithPowerState) {
-  EXPECT_FALSE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
-      /* min */ 1, /* max */ 100, /* buckets */ 50));
-  daemon_.plugged_state_ = PLUGGED_STATE_DISCONNECTED;
+TEST_F(MetricsReporterTest, SendMetricWithPowerSource) {
+  EXPECT_FALSE(metrics_reporter_.SendMetricWithPowerSource("Dummy.Metric",
+      /* sample */ 3, /* min */ 1, /* max */ 100, /* buckets */ 50));
+  metrics_reporter_.HandlePowerSourceChange(POWER_BATTERY);
   ExpectMetric("Dummy.MetricOnBattery", 3, 1, 100, 50);
-  EXPECT_TRUE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
-      /* min */ 1, /* max */ 100, /* buckets */ 50));
-  daemon_.plugged_state_ = PLUGGED_STATE_CONNECTED;
+  EXPECT_TRUE(metrics_reporter_.SendMetricWithPowerSource("Dummy.Metric",
+      /* sample */ 3, /* min */ 1, /* max */ 100, /* buckets */ 50));
+  metrics_reporter_.HandlePowerSourceChange(POWER_AC);
   ExpectMetric("Dummy.MetricOnAC", 3, 1, 100, 50);
-  EXPECT_TRUE(daemon_.SendMetricWithPowerState("Dummy.Metric", /* sample */ 3,
-      /* min */ 1, /* max */ 100, /* buckets */ 50));
+  EXPECT_TRUE(metrics_reporter_.SendMetricWithPowerSource("Dummy.Metric",
+      /* sample */ 3, /* min */ 1, /* max */ 100, /* buckets */ 50));
 }
 
-TEST_F(DaemonTest, SendThermalMetrics) {
+TEST_F(MetricsReporterTest, SendThermalMetrics) {
   int aborted = 5;
   int turned_on = 10;
   int multiple = 2;
@@ -655,18 +603,21 @@ TEST_F(DaemonTest, SendThermalMetrics) {
   ExpectEnumMetric(kMetricThermalMultipleFanTurnOnName,
                    static_cast<int>(round(100 * multiple / total)),
                    kMetricThermalMultipleFanTurnOnMax);
-  daemon_.SendThermalMetrics(aborted, turned_on, multiple);
+  metrics_reporter_.SendThermalMetrics(aborted, turned_on, multiple);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
   // The next call should fail and not send a metric.
-  // If it does, spurious SendEnumMetric calls will trigger a test failure
-  daemon_.SendThermalMetrics(0, 0, multiple);
+  metrics_reporter_.SendThermalMetrics(0, 0, multiple);
 }
 
-TEST_F(DaemonTest, PowerButtonDownMetric) {
+TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
   // We should ignore a button release that wasn't preceded by a press.
-  daemon_.SendPowerButtonMetric(false, base::TimeTicks::Now());
+  metrics_reporter_.GeneratePowerButtonMetric(false, base::TimeTicks::Now());
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Presses that are followed by additional presses should also be ignored.
-  daemon_.SendPowerButtonMetric(true, base::TimeTicks::Now());
+  metrics_reporter_.GeneratePowerButtonMetric(true, base::TimeTicks::Now());
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // We should ignore series of events with negative durations.
   const base::TimeTicks before_down_time = base::TimeTicks::Now();
@@ -674,17 +625,18 @@ TEST_F(DaemonTest, PowerButtonDownMetric) {
       base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
   const base::TimeTicks up_time = down_time +
       base::TimeDelta::FromMilliseconds(kPowerButtonInterval);
-  daemon_.SendPowerButtonMetric(true, down_time);
-  daemon_.SendPowerButtonMetric(false, before_down_time);
+  metrics_reporter_.GeneratePowerButtonMetric(true, down_time);
+  metrics_reporter_.GeneratePowerButtonMetric(false, before_down_time);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Send a regular sequence of events and check that the duration is reported.
-  daemon_.SendPowerButtonMetric(true, down_time);
+  metrics_reporter_.GeneratePowerButtonMetric(true, down_time);
   ExpectMetric(kMetricPowerButtonDownTimeName,
                (up_time - down_time).InMilliseconds(),
                kMetricPowerButtonDownTimeMin,
                kMetricPowerButtonDownTimeMax,
                kMetricPowerButtonDownTimeBuckets);
-  daemon_.SendPowerButtonMetric(false, up_time);
+  metrics_reporter_.GeneratePowerButtonMetric(false, up_time);
 }
 
 }  // namespace power_manager

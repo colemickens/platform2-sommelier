@@ -6,6 +6,9 @@
 
 namespace power_manager {
 
+const char kMetricACSuffix[] = "OnAC";
+const char kMetricBatterySuffix[] = "OnBattery";
+
 const char kMetricRetrySuspendCountName[] = "Power.RetrySuspendCount";
 const int kMetricRetrySuspendCountMin = 1;
 const int kMetricRetrySuspendCountBuckets = 10;

@@ -20,6 +20,7 @@
 #include "base/stringprintf.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "metrics/metrics_library.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/daemon.h"
 #include "power_manager/powerd/policy/external_backlight_controller.h"

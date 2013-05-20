@@ -31,6 +31,7 @@
 #include "power_manager/policy.pb.h"
 #include "power_manager/power_supply_properties.pb.h"
 #include "power_manager/powerd/metrics_constants.h"
+#include "power_manager/powerd/metrics_reporter.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/audio_client.h"
@@ -95,30 +96,18 @@ class Daemon::StateControllerDelegate
 
   virtual void DimScreen() OVERRIDE {
     daemon_->SetBacklightsDimmedForInactivity(true);
-    base::TimeTicks now = base::TimeTicks::Now();
-    daemon_->screen_dim_timestamp_ = now;
-    daemon_->last_idle_event_timestamp_ = now;
-    daemon_->last_idle_timedelta_ =
-        now - daemon_->state_controller_->last_user_activity_time();
   }
 
   virtual void UndimScreen() OVERRIDE {
     daemon_->SetBacklightsDimmedForInactivity(false);
-    daemon_->screen_dim_timestamp_ = base::TimeTicks();
   }
 
   virtual void TurnScreenOff() OVERRIDE {
     daemon_->SetBacklightsOffForInactivity(true);
-    base::TimeTicks now = base::TimeTicks::Now();
-    daemon_->screen_off_timestamp_ = now;
-    daemon_->last_idle_event_timestamp_ = now;
-    daemon_->last_idle_timedelta_ =
-        now - daemon_->state_controller_->last_user_activity_time();
   }
 
   virtual void TurnScreenOn() OVERRIDE {
     daemon_->SetBacklightsOffForInactivity(false);
-    daemon_->screen_off_timestamp_ = base::TimeTicks();
   }
 
   virtual void LockScreen() OVERRIDE {
@@ -161,8 +150,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual void ReportUserActivityMetrics() OVERRIDE {
-    if (!daemon_->last_idle_event_timestamp_.is_null())
-      daemon_->GenerateMetricsOnLeavingIdle();
+    daemon_->metrics_reporter_->GenerateUserActivityMetrics();
   }
 
  private:
@@ -272,8 +260,9 @@ Daemon::Daemon(PrefsInterface* prefs,
     : state_controller_delegate_(new StateControllerDelegate(this)),
       backlight_controller_(backlight_controller),
       prefs_(prefs),
-      metrics_lib_(metrics_lib),
       keyboard_controller_(keyboard_controller),
+      metrics_reporter_(
+          new MetricsReporter(prefs, metrics_lib, backlight_controller)),
       dbus_sender_(
           new DBusSender(kPowerManagerServicePath, kPowerManagerInterface)),
       input_(new system::Input),
@@ -300,9 +289,6 @@ Daemon::Daemon(PrefsInterface* prefs,
                  dark_resume_policy_.get()),
       run_dir_(run_dir),
       is_power_status_stale_(true),
-      generate_backlight_metrics_timeout_id_(0),
-      generate_thermal_metrics_timeout_id_(0),
-      battery_discharge_rate_metric_last_(0),
       session_state_(SESSION_STOPPED),
       udev_(NULL),
       shutdown_reason_(kShutdownReasonUnknown),
@@ -320,15 +306,13 @@ Daemon::~Daemon() {
   power_supply_->RemoveObserver(this);
 
   util::RemoveTimeout(&clean_shutdown_timeout_id_);
-  util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
-  util::RemoveTimeout(&generate_thermal_metrics_timeout_id_);
 
   if (udev_)
     udev_unref(udev_);
 }
 
 void Daemon::Init() {
-  MetricInit();
+  metrics_reporter_->Init();
 
   CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
                          &clean_shutdown_timeout_ms_));
@@ -387,24 +371,25 @@ void Daemon::SetPlugged(bool plugged) {
   if (plugged == plugged_state_)
     return;
 
+  // TODO(derat): Move all of this logic into MetricsReporter and make
+  // Daemon just notify it about session state changes, power source
+  // changes, and so on.
   if (plugged)
-    GenerateNumOfSessionsPerChargeMetric();
+    metrics_reporter_->GenerateNumOfSessionsPerChargeMetric();
   else if (session_state_ == SESSION_STARTED)
-    IncrementNumOfSessionsPerChargeMetric();
+    metrics_reporter_->IncrementNumOfSessionsPerChargeMetric();
 
-  // If we are moving from kPowerUknown then we don't know how long the device
-  // has been on AC for and thus our metric would not tell us anything about the
-  // battery state when the user decided to charge.
-  if (plugged_state_ != PLUGGED_STATE_UNKNOWN) {
-    GenerateBatteryInfoWhenChargeStartsMetric(
-        plugged ? PLUGGED_STATE_CONNECTED : PLUGGED_STATE_DISCONNECTED,
-        power_status_);
-  }
+  // If we are moving from PLUGGED_STATE_UNKNOWN then we don't know how
+  // long the device has been on AC for and thus our metric would not tell
+  // us anything about the battery state when the user decided to charge.
+  if (plugged_state_ != PLUGGED_STATE_UNKNOWN)
+    metrics_reporter_->GenerateBatteryInfoWhenChargeStartsMetric(power_status_);
 
   plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
       PLUGGED_STATE_DISCONNECTED;
 
   PowerSource power_source = plugged ? POWER_AC : POWER_BATTERY;
+  metrics_reporter_->HandlePowerSourceChange(power_source);
   if (backlight_controller_)
     backlight_controller_->HandlePowerSourceChange(power_source);
   if (keyboard_controller_)
@@ -569,8 +554,10 @@ void Daemon::HandleResume(bool suspend_was_successful,
   file_tagger_.HandleResumeEvent();
   power_supply_->SetSuspended(false);
   state_controller_->HandleResume();
-  if (suspend_was_successful)
-    GenerateRetrySuspendMetric(num_suspend_retries, max_suspend_retries);
+  if (suspend_was_successful) {
+    metrics_reporter_->GenerateRetrySuspendMetric(
+        num_suspend_retries, max_suspend_retries);
+  }
 }
 
 void Daemon::HandleLidClosed() {
@@ -585,32 +572,7 @@ void Daemon::HandleLidOpened() {
 }
 
 void Daemon::SendPowerButtonMetric(bool down, base::TimeTicks timestamp) {
-  // Just keep track of the time when the button was pressed.
-  if (down) {
-    if (!last_power_button_down_timestamp_.is_null())
-      LOG(ERROR) << "Got power-button-down event while button was already down";
-    last_power_button_down_timestamp_ = timestamp;
-    return;
-  }
-
-  // Metrics are sent after the button is released.
-  if (last_power_button_down_timestamp_.is_null()) {
-    LOG(ERROR) << "Got power-button-up event while button was already up";
-    return;
-  }
-  base::TimeDelta delta = timestamp - last_power_button_down_timestamp_;
-  if (delta.InMilliseconds() < 0) {
-    LOG(ERROR) << "Negative duration between power button events";
-    return;
-  }
-  last_power_button_down_timestamp_ = base::TimeTicks();
-  if (!SendMetric(kMetricPowerButtonDownTimeName,
-                  delta.InMilliseconds(),
-                  kMetricPowerButtonDownTimeMin,
-                  kMetricPowerButtonDownTimeMax,
-                  kMetricPowerButtonDownTimeBuckets)) {
-    LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
-  }
+  metrics_reporter_->GeneratePowerButtonMetric(down, timestamp);
 }
 
 void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
@@ -636,7 +598,7 @@ void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
 
   power_status_ = status;
   SetPlugged(status.line_power_on);
-  GenerateMetricsOnPowerEvent(status);
+  metrics_reporter_->GenerateMetricsOnPowerEvent(status);
 
   if (status.battery_is_present) {
     if (status.battery_below_shutdown_threshold) {
@@ -912,9 +874,9 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
     dbus_error_free(&error);
   }
   bool changed = backlight_controller_->DecreaseUserBrightness(allow_off);
-  SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               BRIGHTNESS_ADJUST_DOWN,
-                               BRIGHTNESS_ADJUST_MAX);
+  metrics_reporter_->SendEnumMetricWithPowerSource(kMetricBrightnessAdjust,
+                                                   BRIGHTNESS_ADJUST_DOWN,
+                                                   BRIGHTNESS_ADJUST_MAX);
   double percent = 0.0;
   if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
@@ -930,9 +892,9 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
     return util::CreateDBusErrorReply(message, "Backlight uninitialized");
 
   bool changed = backlight_controller_->IncreaseUserBrightness();
-  SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               BRIGHTNESS_ADJUST_UP,
-                               BRIGHTNESS_ADJUST_MAX);
+  metrics_reporter_->SendEnumMetricWithPowerSource(kMetricBrightnessAdjust,
+                                                   BRIGHTNESS_ADJUST_UP,
+                                                   BRIGHTNESS_ADJUST_MAX);
   double percent = 0.0;
   if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
@@ -970,9 +932,9 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
                   << " ).  Using default fast transition";
   }
   backlight_controller_->SetUserBrightnessPercent(percent, style);
-  SendEnumMetricWithPowerState(kMetricBrightnessAdjust,
-                               BRIGHTNESS_ADJUST_ABSOLUTE,
-                               BRIGHTNESS_ADJUST_MAX);
+  metrics_reporter_->SendEnumMetricWithPowerSource(kMetricBrightnessAdjust,
+                                                   BRIGHTNESS_ADJUST_ABSOLUTE,
+                                                   BRIGHTNESS_ADJUST_MAX);
   return NULL;
 }
 
@@ -1120,12 +1082,13 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
         << "Received message saying session started, when we were already in "
         << "the started state!";
 
-    LOG_IF(ERROR,
-           (!GenerateBatteryRemainingAtStartOfSessionMetric(power_status_)))
-        << "Start Started: Unable to generate battery remaining metric!";
+    if (!metrics_reporter_->GenerateBatteryRemainingAtStartOfSessionMetric(
+            power_status_)) {
+      LOG(ERROR) << "Unable to generate battery remaining metric";
+    }
 
     if (plugged_state_ == PLUGGED_STATE_DISCONNECTED)
-      IncrementNumOfSessionsPerChargeMetric();
+      metrics_reporter_->IncrementNumOfSessionsPerChargeMetric();
 
     session_start_ = base::TimeTicks::Now();
   } else if (session_state_ != state) {
@@ -1135,9 +1098,9 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     // actually transitioning between states.
     if (state_str == kSessionStopped) {
       // Don't generate metrics for intermediate states, e.g. "stopping".
-      GenerateEndOfSessionMetrics(power_status_,
-                                  base::TimeTicks::Now(),
-                                  session_start_);
+      metrics_reporter_->GenerateEndOfSessionMetrics(power_status_,
+                                                     base::TimeTicks::Now(),
+                                                     session_start_);
     }
   }
 
@@ -1174,6 +1137,8 @@ void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
     backlight_controller_->SetDimmedForInactivity(dimmed);
   if (keyboard_controller_)
     keyboard_controller_->SetDimmedForInactivity(dimmed);
+  metrics_reporter_->HandleScreenDimmedChange(
+      dimmed, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsOffForInactivity(bool off) {
@@ -1181,6 +1146,8 @@ void Daemon::SetBacklightsOffForInactivity(bool off) {
     backlight_controller_->SetOffForInactivity(off);
   if (keyboard_controller_)
     keyboard_controller_->SetOffForInactivity(off);
+  metrics_reporter_->HandleScreenOffChange(
+      off, state_controller_->last_user_activity_time());
 }
 
 void Daemon::SetBacklightsSuspended(bool suspended) {

@@ -16,9 +16,9 @@ LIBPOWERD_LIBS = \
 LIBPOWERD_OBJS = \
 	power_manager/power_supply_properties.pb.o \
 	powerd/daemon.o \
-	powerd/daemon_metrics.o \
 	powerd/file_tagger.o \
 	powerd/metrics_constants.o \
+	powerd/metrics_reporter.o \
 	video_activity_update.pb.o
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): $(LIBPOWERD_OBJS)
 CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a): CPPFLAGS += $(LIBPOWERD_FLAGS)
@@ -52,8 +52,8 @@ DAEMON_UNITTEST_FLAGS = $(POWERD_FLAGS)
 TEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 DAEMON_UNITTEST_LIBS = $(POWERD_LIBS) $(TEST_LIBS)
 DAEMON_UNITTEST_OBJS = \
-	powerd/daemon_unittest.o \
-	powerd/file_tagger_unittest.o
+	powerd/file_tagger_unittest.o \
+	powerd/metrics_reporter_unittest.o
 CXX_BINARY(powerd/daemon_unittest): $(DAEMON_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpowerd.pie.a) \
