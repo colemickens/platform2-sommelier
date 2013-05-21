@@ -458,25 +458,26 @@ void TearDown(CK_SESSION_HANDLE session, bool logout) {
 void PrintHelp() {
   printf("Usage: p11_replay [COMMAND]\n");
   printf("Commands:\n");
+  printf("  --cleanup : Deletes all test keys.\n");
   printf("  --generate [--label=<key_label> --key_size=<size_in_bits>]"
          " : Generates a key pair suitable for replay tests.\n");
+  printf("  --generate_delete : Generates a key pair and deletes it. This is "
+         "useful for comparing key generation on different TPM models.\n");
+  printf("  --import --path=<path to file> --type=<cert, privkey, pubkey>"
+         " --id=<token id str>"
+         " : Reads an object into the token.  Accepts DER formatted"
+         " certificates and DER formatted private keys.\n");
   printf("  --inject [--label=<key_label> --key_size=<size_in_bits>]"
          " : Locally generates a key pair suitable for replay tests and injects"
          " it into the token.\n");
-  printf("  --generate_delete : Generates a key pair and deletes it. This is "
-         "useful for comparing key generation on different TPM models.\n");
   printf("  --list_objects : Lists all token objects.\n");
+  printf("  --list_tokens: Lists token info for each loaded token.\n");
+  printf("  --logout : Logs out once all other commands have finished.\n");
   printf("  --replay_vpn [--label=<key_label>]"
          " : Replays a L2TP/IPSEC VPN negotiation.\n");
   printf("  --replay_wifi [--label=<key_label>]"
          " : Replays a EAP-TLS Wifi negotiation. This is the default command if"
          " no command is specified.\n");
-  printf("  --import --path=<path to file> --type=<cert, privkey, pubkey>"
-         " --id=<token id str>"
-         " : Reads an object into the token.  Accepts DER formatted"
-         " certificates and DER formatted private keys.\n");
-  printf("  --logout : Logs out once all other commands have finished.\n");
-  printf("  --cleanup : Deletes all test keys.\n");
 }
 
 void PrintTicks(base::TimeTicks* start_ticks) {
