@@ -26,6 +26,11 @@ FilePath GetRootPathPrefix();
 // Returns "" for failures.
 FilePath GetUserPath(const std::string& username);
 
+// Returns the path at which the user home for |hashed_username| will be
+// mounted. Useful when you already have the username hashed.
+// Returns "" for failures.
+FilePath GetHashedUserPath(const std::string& hashed_username);
+
 // Returns the path at which the root home for |username| will be mounted.
 // Returns "" for failures.
 FilePath GetRootPath(const std::string& username);

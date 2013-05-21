@@ -82,11 +82,15 @@ FilePath GetRootPathPrefix() {
   return FilePath(g_root_home_prefix);
 }
 
+FilePath GetHashedUserPath(const std::string& hashed_username) {
+  return FilePath(base::StringPrintf("%s%s", g_user_home_prefix,
+                                     hashed_username.c_str()));
+}
+
 FilePath GetUserPath(const std::string& username) {
   if (!EnsureSystemSaltIsLoaded())
     return FilePath("");
-  return FilePath(base::StringPrintf("%s%s", g_user_home_prefix,
-                                     SanitizeUserName(username).c_str()));
+  return GetHashedUserPath(SanitizeUserName(username));
 }
 
 FilePath GetRootPath(const std::string& username) {
