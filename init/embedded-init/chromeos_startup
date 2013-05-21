@@ -161,6 +161,31 @@ if [ ${DEV_MODE} -eq 1 ]; then
   fi
 fi
 
+# Transition to devmode
+if [ ${DEV_MODE} -eq 1 -a ! -O ${DEV_MODE_FILE} ]; then
+  # Delay the first developer mode boot by 5 minutes unless the images is a
+  # developer image.  We check the dev image here to avoid a stat(2) on normal
+  # boots
+  # TODO(wad) just have the dev_mode build stamp the stateful.
+  if [ ! -f /root/.dev_mode ]; then
+    # TODO(wad) Throw up a splash.
+    chromeos-boot-alert enter_dev /dev/tty1
+    # TODO(wad,wfrichar) Have user input sudo/vt2 password here.
+    echo "keepimg" > ${RESET_FILE}
+    clobber-log -- "Enter developer mode"
+  fi
+
+  # Transition from devmode
+elif [ ${DEV_MODE} -eq 0 -a -O ${DEV_MODE_FILE} ]; then
+  # When coming back from developer mode, we don't need to clobber
+  # as aggressively. Fast will do the trick.
+  if [ ! -f /root/.dev_mode ]; then
+    chromeos-boot-alert leave_dev /dev/tty1
+    echo "fast keepimg" > ${RESET_FILE}
+    clobber-log -- "Leave developer mode"
+  fi
+fi
+
 # Check if we have an update to stateful pending.
 # Note:  THIS MUST BE DONE BEFORE CLOBBER STATE.
 STATEFUL_UPDATE="/mnt/stateful_partition/.update_available"
