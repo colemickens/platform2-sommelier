@@ -200,9 +200,7 @@ void NoopMessage::Print(int header_log_level, int /*detail_log_level*/) const {
 const uint16_t DoneMessage::kMessageType = NLMSG_DONE;
 
 ByteString DoneMessage::Encode(uint32_t sequence_number) {
-  LOG(ERROR)
-      << "We're not supposed to send Done messages (are we?) to the kernel";
-  return ByteString();
+  return EncodeHeader(sequence_number);
 }
 
 void DoneMessage::Print(int header_log_level, int /*detail_log_level*/) const {

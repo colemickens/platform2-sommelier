@@ -189,10 +189,11 @@ class NetlinkManager {
   friend class NetlinkMessageTest;
   friend class ShillDaemonTest;
   FRIEND_TEST(NetlinkManagerTest, AddLinkTest);
-  FRIEND_TEST(NetlinkManagerTest, BroadcastHandlerTest);
+  FRIEND_TEST(NetlinkManagerTest, BroadcastHandler);
   FRIEND_TEST(NetlinkManagerTest, GetFamilyOneInterstitialMessage);
   FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);
-  FRIEND_TEST(NetlinkManagerTest, MessageHandlerTest);
+  FRIEND_TEST(NetlinkManagerTest, MessageHandler);
+  FRIEND_TEST(NetlinkManagerTest, MultipartMessageHandler);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION);

@@ -20,6 +20,7 @@
 #include "shill/mock_time.h"
 #include "shill/netlink_attribute.h"
 #include "shill/nl80211_message.h"
+#include "shill/scope_logger.h"
 
 using base::Bind;
 using base::Unretained;
@@ -205,7 +206,6 @@ class TimeFunctor {
 
 }  // namespace
 
-// TODO(wdg): Add a test for multi-part messages.  crbug.com/224652
 // TODO(wdg): Add a test for SubscribeToEvents (verify that it handles bad input
 // appropriately, and that it calls NetlinkSocket::SubscribeToEvents if input
 // is good.)
@@ -299,7 +299,7 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
 }
 
-TEST_F(NetlinkManagerTest, BroadcastHandlerTest) {
+TEST_F(NetlinkManagerTest, BroadcastHandler) {
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
 
@@ -347,7 +347,7 @@ TEST_F(NetlinkManagerTest, BroadcastHandlerTest) {
   netlink_manager_->OnNlMessageReceived(message);
 }
 
-TEST_F(NetlinkManagerTest, MessageHandlerTest) {
+TEST_F(NetlinkManagerTest, MessageHandler) {
   Reset();
   MockHandler80211 handler_broadcast;
   EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
@@ -410,6 +410,56 @@ TEST_F(NetlinkManagerTest, MessageHandlerTest) {
   // the appropriate handler is called for _that_ message.
   received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
   EXPECT_CALL(handler_sent_2, OnNetlinkMessage(_)).Times(1);
+  netlink_manager_->OnNlMessageReceived(received_message);
+}
+
+TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
+  Reset();
+
+  // Install a broadcast handler.
+  MockHandler80211 broadcast_handler;
+  EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
+      broadcast_handler.on_netlink_message()));
+
+  // Build a message and send it in order to install a response handler.
+  TriggerScanMessage trigger_scan_message;
+  MockHandler80211 response_handler;
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
+  EXPECT_TRUE(netlink_manager_->SendMessage(
+      &trigger_scan_message, response_handler.on_netlink_message()));
+
+  // Build a multi-part response (well, it's just one message but it'll be
+  // received multiple times).
+  const uint32_t kSequenceNumber = 32;  // Arbitrary (replaced, later).
+  NewScanResultsMessage new_scan_results;
+  new_scan_results.AddFlag(NLM_F_MULTI);
+  ByteString new_scan_results_bytes(new_scan_results.Encode(kSequenceNumber));
+  nlmsghdr *received_message =
+        reinterpret_cast<nlmsghdr *>(new_scan_results_bytes.GetData());
+  received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
+
+  // Verify that the message-specific handler is called.
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  netlink_manager_->OnNlMessageReceived(received_message);
+
+  // Verify that the message-specific handler is still called.
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  netlink_manager_->OnNlMessageReceived(received_message);
+
+  // Build a Done message with the sent-message sequence number.
+  DoneMessage done_message;
+  ByteString done_message_bytes(
+      done_message.Encode(netlink_socket_.GetLastSequenceNumber()));
+
+  // Verify that the message-specific handler is called for the done message.
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  netlink_manager_->OnNlMessageReceived(
+      reinterpret_cast<nlmsghdr *>(done_message_bytes.GetData()));
+
+  // Verify that broadcast handler is called now that the done message has
+  // been seen.
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
+  EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
 }
 
