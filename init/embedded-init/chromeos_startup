@@ -43,6 +43,10 @@ mount -n -t debugfs -o nodev,noexec,nosuid,mode=0750,uid=0,gid=debugfs-access \
 # bootstat writes timings to both tmpfs and debugfs.
 bootstat pre-startup
 
+# Some startup functions are split into a separate library which may be
+# different for different targets (e.g., regular Chrome OS vs. embedded).
+. /usr/share/cros/startup_utils.sh
+
 IS_FACTORY_MODE=
 if [ -f /root/.factory_test -o -f /root/.factory_installer ]; then
   IS_FACTORY_MODE=1
@@ -279,7 +283,10 @@ done
 # Mount /home.  This mount inherits nodev,noexec,nosuid from
 # /mnt/stateful_partition above.
 mount_or_fail -n --bind /mnt/stateful_partition/home /home
-mount -n --bind /mnt/stateful_partition/var /var
+
+remember_mount /var
+remember_mount /home/chronos
+mount_var_and_home_chronos ${IS_FACTORY_MODE:+factory} || cleanup_mounts
 
 # Make sure required /var subdirectories exist.
 mkdir -p -m 0755 /var/cache /var/db /var/empty /var/lock /var/log/metrics \
