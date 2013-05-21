@@ -2,10 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <chromeos/syslog_logging.h>
 #include <gflags/gflags.h>
 #include <glib-object.h>
 #include <linux/usb/ch9.h>
 
+#include "base/command_line.h"
 #include "base/logging.h"
 #include "permission_broker/allow_usb_device_rule.h"
 #include "permission_broker/deny_claimed_usb_device_rule.h"
@@ -26,6 +28,8 @@ static const uint16_t kLinuxFoundationUsbVendorId = 0x1d6b;
 int main(int argc, char **argv) {
   g_type_init();
   google::ParseCommandLineFlags(&argc, &argv, true);
+  CommandLine::Init(argc, argv);
+  chromeos::InitLog(chromeos::kLogToSyslog);
 
   PermissionBroker broker;
   broker.AddRule(new AllowUsbDeviceRule());
