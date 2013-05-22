@@ -538,6 +538,7 @@ void Daemon::PrepareForSuspend() {
   is_power_status_stale_ = true;
   file_tagger_.HandleSuspendEvent();
   audio_client_->MuteSystem();
+  metrics_reporter_->PrepareForSuspend(power_status_, base::Time::Now());
 }
 
 void Daemon::HandleResume(bool suspend_was_successful,
@@ -557,6 +558,7 @@ void Daemon::HandleResume(bool suspend_was_successful,
   if (suspend_was_successful) {
     metrics_reporter_->GenerateRetrySuspendMetric(
         num_suspend_retries, max_suspend_retries);
+    metrics_reporter_->HandleResume();
   }
 }
 

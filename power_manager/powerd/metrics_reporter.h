@@ -61,6 +61,8 @@ class MetricsReporter {
                                 base::TimeTicks last_user_activity_time);
   void HandleScreenOffChange(bool off, base::TimeTicks last_user_activity_time);
   void HandlePowerSourceChange(PowerSource power_source);
+  void PrepareForSuspend(const system::PowerStatus& status, base::Time now);
+  void HandleResume();
 
   // Sends a regular (exponential) histogram sample to Chrome for transport
   // to UMA. Returns true on success. See MetricsLibrary::SendToUMA in
@@ -115,6 +117,14 @@ class MetricsReporter {
   // true if a sample was sent to UMA, false otherwise.
   bool GenerateBatteryDischargeRateMetric(const system::PowerStatus& info,
                                           time_t now);
+
+  // Sends a histogram sample containing the rate at which the battery
+  // discharged while the system was suspended if the system was on battery
+  // power both before suspending and after resuming.  Called by
+  // GenerateMetricsOnPowerEvent().  Returns true if the sample was sent.
+  bool GenerateBatteryDischargeRateWhileSuspendedMetric(
+      const system::PowerStatus& status,
+      base::Time now);
 
   // Generates a remaining battery charge and percent of full charge when charge
   // starts UMA metric sample if the current state is correct. Returns true if a
@@ -205,6 +215,19 @@ class MetricsReporter {
   // Timestamps of the last idle-triggered power state transitions.
   base::TimeTicks screen_dim_timestamp_;
   base::TimeTicks screen_off_timestamp_;
+
+  // Information recorded by PrepareForSuspend() just before the system
+  // suspends.  |time_before_suspend_| is intentionally base::Time rather
+  // than base::TimeTicks because the latter doesn't increase while the
+  // system is suspended.
+  double battery_energy_before_suspend_;
+  bool on_line_power_before_suspend_;
+  base::Time time_before_suspend_;
+
+  // Set by HandleResume() to indicate that
+  // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
+  // sample when it is next called.
+  bool report_battery_discharge_rate_while_suspended_;
 };
 
 }  // namespace power_manager

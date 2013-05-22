@@ -17,6 +17,7 @@ const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
 const int kMetricBacklightLevelMax = 100;
 const time_t kMetricBacklightLevelIntervalMs = 30000;
 
+const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 const int kMetricIdleAfterScreenOffMin = 100;
 const int kMetricIdleAfterScreenOffMax = 10 * 60 * 1000;
 const int kMetricIdleAfterScreenOffBuckets = 50;
@@ -25,11 +26,11 @@ const char kMetricIdleName[] = "Power.IdleTime";
 const int kMetricIdleMin = 60 * 1000;
 const int kMetricIdleMax = 60 * 60 * 1000;
 const int kMetricIdleBuckets = 50;
+
 const char kMetricIdleAfterDimName[] = "Power.IdleTimeAfterDim";
 const int kMetricIdleAfterDimMin = 100;
 const int kMetricIdleAfterDimMax = 10 * 60 * 1000;
 const int kMetricIdleAfterDimBuckets = 50;
-const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 
 const char kMetricBatteryChargeHealthName[] =
     "Power.BatteryChargeHealth";  // %
@@ -42,6 +43,13 @@ const int kMetricBatteryDischargeRateMin = 1000;
 const int kMetricBatteryDischargeRateMax = 30000;
 const int kMetricBatteryDischargeRateBuckets = 50;
 const time_t kMetricBatteryDischargeRateInterval = 30;  // seconds
+
+const char kMetricBatteryDischargeRateWhileSuspendedName[] =
+    "Power.BatteryDischargeRateWhileSuspended";  // mW
+const int kMetricBatteryDischargeRateWhileSuspendedMin = 0;
+const int kMetricBatteryDischargeRateWhileSuspendedMax = 30000;
+const int kMetricBatteryDischargeRateWhileSuspendedBuckets = 50;
+const int kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec = 60;
 
 const char kMetricBatteryRemainingWhenChargeStartsName[] =
     "Power.BatteryRemainingWhenChargeStarts";  // %
@@ -78,13 +86,13 @@ const int kMetricNumOfSessionsPerChargeMin = 1;
 const int kMetricNumOfSessionsPerChargeMax = 10000;
 const int kMetricNumOfSessionsPerChargeBuckets = 50;
 
+const char kMetricBrightnessAdjust[] = "Power.BrightnessAdjust";
+
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms
 const int kMetricPowerButtonDownTimeMin = 1;
 const int kMetricPowerButtonDownTimeMax = 8 * 1000;
 const int kMetricPowerButtonDownTimeBuckets = 50;
-
-const char kMetricBrightnessAdjust[] = "Power.BrightnessAdjust";
 
 const int kMetricThermalAbortedFanTurnOnMax = 101;
 const char kMetricThermalAbortedFanTurnOnName[] =

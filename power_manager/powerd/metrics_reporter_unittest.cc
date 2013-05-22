@@ -639,4 +639,95 @@ TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
   metrics_reporter_.GeneratePowerButtonMetric(false, up_time);
 }
 
+TEST_F(MetricsReporterTest, BatteryDischargeRateWhileSuspended) {
+  const double kEnergyBeforeSuspend = 60;
+  const double kEnergyAfterResume = 50;
+
+  const base::Time kSuspendTime = base::Time::FromInternalValue(1000);
+  const base::Time kResumeTime = kSuspendTime + base::TimeDelta::FromHours(1);
+
+  // We shouldn't send a sample if we haven't suspended.
+  system::PowerStatus status;
+  status.line_power_on = false;
+  status.battery_energy = kEnergyAfterResume;
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kResumeTime));
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // Ditto if the system is on AC before suspending...
+  status.line_power_on = true;
+  status.battery_energy = kEnergyBeforeSuspend;
+  metrics_reporter_.PrepareForSuspend(status, kSuspendTime);
+  metrics_reporter_.HandleResume();
+  status.line_power_on = false;
+  status.battery_energy = kEnergyAfterResume;
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kResumeTime));
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // ... or after resuming...
+  status.line_power_on = false;
+  status.battery_energy = kEnergyBeforeSuspend;
+  metrics_reporter_.PrepareForSuspend(status, kSuspendTime);
+  metrics_reporter_.HandleResume();
+  status.line_power_on = true;
+  status.battery_energy = kEnergyAfterResume;
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kResumeTime));
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // ... or if the battery's energy increased while the system was
+  // suspended (i.e. it was temporarily connected to AC while suspended).
+  status.line_power_on = false;
+  status.battery_energy = kEnergyBeforeSuspend;
+  metrics_reporter_.PrepareForSuspend(status, kSuspendTime);
+  metrics_reporter_.HandleResume();
+  status.battery_energy = kEnergyBeforeSuspend + 5.0;
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kResumeTime));
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // The sample also shouldn't be reported if the system wasn't suspended
+  // for very long.
+  status.battery_energy = kEnergyBeforeSuspend;
+  metrics_reporter_.PrepareForSuspend(status, kSuspendTime);
+  metrics_reporter_.HandleResume();
+  status.battery_energy = kEnergyAfterResume;
+  const base::Time kShortResumeTime =
+      kSuspendTime + base::TimeDelta::FromSeconds(
+          kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec - 1);
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kShortResumeTime));
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // The sample should be reported if the energy decreased over a long
+  // enough time.
+  status.battery_energy = kEnergyBeforeSuspend;
+  metrics_reporter_.PrepareForSuspend(status, kSuspendTime);
+  metrics_reporter_.HandleResume();
+  status.battery_energy = kEnergyAfterResume;
+  int rate_mw = static_cast<int>(round(
+      1000 * (kEnergyBeforeSuspend - kEnergyAfterResume) /
+      ((kResumeTime - kSuspendTime).InSecondsF() / 3600)));
+  ExpectMetric(kMetricBatteryDischargeRateWhileSuspendedName, rate_mw,
+               kMetricBatteryDischargeRateWhileSuspendedMin,
+               kMetricBatteryDischargeRateWhileSuspendedMax,
+               kMetricBatteryDischargeRateWhileSuspendedBuckets);
+  EXPECT_TRUE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kResumeTime));
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
+
+  // A subsequent call to the method without another suspend/resume cycle
+  // shouldn't do anything, though.
+  EXPECT_FALSE(
+      metrics_reporter_.GenerateBatteryDischargeRateWhileSuspendedMetric(
+          status, kResumeTime));
+}
+
 }  // namespace power_manager

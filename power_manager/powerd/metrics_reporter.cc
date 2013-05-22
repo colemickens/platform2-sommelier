@@ -51,7 +51,10 @@ MetricsReporter::MetricsReporter(
       saw_initial_power_source_(false),
       generate_backlight_metrics_timeout_id_(0),
       generate_thermal_metrics_timeout_id_(0),
-      battery_discharge_rate_metric_last_(0) {
+      battery_discharge_rate_metric_last_(0),
+      battery_energy_before_suspend_(0.0),
+      on_line_power_before_suspend_(false),
+      report_battery_discharge_rate_while_suspended_(false) {
 }
 
 MetricsReporter::~MetricsReporter() {
@@ -102,6 +105,19 @@ void MetricsReporter::HandleScreenOffChange(
 void MetricsReporter::HandlePowerSourceChange(PowerSource power_source) {
   power_source_ = power_source;
   saw_initial_power_source_ = true;
+}
+
+void MetricsReporter::PrepareForSuspend(const system::PowerStatus& status,
+                                        base::Time now) {
+  battery_energy_before_suspend_ = status.battery_energy;
+  on_line_power_before_suspend_ = status.line_power_on;
+  time_before_suspend_ = now;
+}
+
+void MetricsReporter::HandleResume() {
+  // Report the discharge rate in response to the next
+  // GenerateMetricsOnPowerEvent() call.
+  report_battery_discharge_rate_while_suspended_ = true;
 }
 
 bool MetricsReporter::SendMetric(const std::string& name,
@@ -187,6 +203,7 @@ void MetricsReporter::GenerateUserActivityMetrics() {
 void MetricsReporter::GenerateMetricsOnPowerEvent(
     const system::PowerStatus& info) {
   GenerateBatteryDischargeRateMetric(info, time(NULL));
+  GenerateBatteryDischargeRateWhileSuspendedMetric(info, base::Time::Now());
 
   SendEnumMetric(kMetricBatteryInfoSampleName,
                  BATTERY_INFO_READ,
@@ -239,6 +256,39 @@ bool MetricsReporter::GenerateBatteryDischargeRateMetric(
 
   battery_discharge_rate_metric_last_ = now;
   return true;
+}
+
+bool MetricsReporter::GenerateBatteryDischargeRateWhileSuspendedMetric(
+    const system::PowerStatus& status,
+    base::Time now) {
+  // Do nothing unless this is the first time we're called after resuming.
+  if (!report_battery_discharge_rate_while_suspended_)
+    return false;
+  report_battery_discharge_rate_while_suspended_ = false;
+
+  if (on_line_power_before_suspend_ || status.line_power_on)
+    return false;
+
+  base::TimeDelta elapsed_time = now - time_before_suspend_;
+  if (elapsed_time.InSeconds() <
+      kMetricBatteryDischargeRateWhileSuspendedMinSuspendSec)
+    return false;
+
+  double discharged_watt_hours =
+      battery_energy_before_suspend_ - status.battery_energy;
+  double discharge_rate_watts =
+      discharged_watt_hours / (elapsed_time.InSecondsF() / 3600);
+
+  // Maybe the charger was connected while the system was suspended but
+  // disconnected before it resumed.
+  if (discharge_rate_watts < 0.0)
+    return false;
+
+  return SendMetric(kMetricBatteryDischargeRateWhileSuspendedName,
+                    static_cast<int>(round(discharge_rate_watts * 1000)),
+                    kMetricBatteryDischargeRateWhileSuspendedMin,
+                    kMetricBatteryDischargeRateWhileSuspendedMax,
+                    kMetricBatteryDischargeRateWhileSuspendedBuckets);
 }
 
 void MetricsReporter::GenerateBatteryInfoWhenChargeStartsMetric(
