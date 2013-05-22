@@ -340,6 +340,9 @@ add_vmodule_pattern "screen_locker=1,webui_screen_locker=1"
 # where shill was tested (crosbug.com/36622).
 add_vmodule_pattern "network_portal_detector_impl=1"
 
+# Turn on logging about external displays being connected and disconnected.
+add_vmodule_pattern "*output_configurator*=1"
+
 # The subshell that started the X server will terminate once X is
 # ready.  Wait here for that event before continuing.
 #
