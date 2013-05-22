@@ -18,8 +18,8 @@
 #include <chromeos/process.h>
 
 #include "lorgnette/daemon.h"
-#include "lorgnette/minijail.h"
 
+using file_util::ScopedFD;
 using std::map;
 using std::string;
 using std::vector;
@@ -27,8 +27,9 @@ using std::vector;
 namespace lorgnette {
 
 // static
+const char Manager::DBusAdaptor::kObjectPath[] =
+    "/org/chromium/lorgnette/Manager";
 const char Manager::kDBusErrorName[] = "org.chromium.lorgnette.Error";
-const char Manager::kObjectPath[] = "/org/chromium/lorgnette/Manager";
 const char Manager::kScanConverterPath[] = "/usr/bin/pnm2png";
 const char Manager::kScanImageFormattedDeviceListCmd[] =
     "--formatted-device-list=%d%%%v%%%m%%%t%n";
@@ -43,72 +44,102 @@ const char Manager::kScanPropertyModeLineart[] = "Lineart";
 const char Manager::kScanPropertyResolution[] = "Resolution";
 const int Manager::kTimeoutAfterKillSeconds = 1;
 
-Manager::Manager(DBus::Connection *conn)
+Manager::DBusAdaptor::DBusAdaptor(Manager *manager, DBus::Connection *conn)
     : DBus::ObjectAdaptor(*conn, kObjectPath),
-      minijail_(Minijail::GetInstance()) {}
+      manager_(manager) {}
+
+Manager::DBusAdaptor::~DBusAdaptor() {}
+
+Manager::ScannerInfo Manager::DBusAdaptor::ListScanners(::DBus::Error &error) {
+  return manager_->ListScanners(&error);
+}
+
+void Manager::DBusAdaptor::ScanImage(
+    const string &device_name,
+    const ::DBus::FileDescriptor &outfd,
+    const map<string, ::DBus::Variant> &scan_properties,
+    ::DBus::Error &error) {
+  manager_->ScanImage(device_name, outfd, scan_properties, &error);
+}
+
+Manager::Manager() {}
 
 Manager::~Manager() {}
 
-map<string, map<string, string>> Manager::ListScanners(::DBus::Error &error) {
-  map<string, map<string, string>> scanners;
+void Manager::InitDBus(::DBus::Connection *connection) {
+  dbus_adaptor_.reset(new DBusAdaptor(this, connection));
+}
 
+Manager::ScannerInfo Manager::ListScanners(::DBus::Error *error) {
   base::FilePath output_path;
   FILE *output_file_handle;
   output_file_handle = file_util::CreateAndOpenTemporaryFile(&output_path);
   if (!output_file_handle) {
-    SetError(__func__, "Unable to create temporary file.", &error);
-    return scanners;
+    SetError(__func__, "Unable to create temporary file.", error);
+    return ScannerInfo();
   }
 
   chromeos::ProcessImpl process;
-  process.AddArg(kScanImagePath);
-  process.AddArg(kScanImageFormattedDeviceListCmd);
-  process.BindFd(fileno(output_file_handle), STDOUT_FILENO);
-  process.Run();
+  RunListScannersProcess(fileno(output_file_handle), &process);
   fclose(output_file_handle);
-  const bool recursive_delete = false;
   string scanner_output_string;
   bool read_status = file_util::ReadFileToString(output_path,
                                                  &scanner_output_string);
+  const bool recursive_delete = false;
   file_util::Delete(output_path, recursive_delete);
   if (!read_status) {
-    SetError(__func__, "Unable to read scanner list output file", &error);
-    return scanners;
+    SetError(__func__, "Unable to read scanner list output file", error);
+    return ScannerInfo();
   }
-  vector<string> scanner_output_lines;
-  base::SplitString(scanner_output_string, '\n', &scanner_output_lines);
-
-  for (const auto &line : scanner_output_lines) {
-    vector<string> scanner_info_parts;
-    base::SplitString(line, '%', &scanner_info_parts);
-    if (scanner_info_parts.size() != 4) {
-      continue;
-    }
-    map<string, string> scanner_info;
-    scanner_info[kScannerPropertyManufacturer] = scanner_info_parts[1];
-    scanner_info[kScannerPropertyModel] = scanner_info_parts[2];
-    scanner_info[kScannerPropertyType] = scanner_info_parts[3];
-    scanners[scanner_info_parts[0]] = scanner_info;
-  }
-
-  return scanners;
+  return ScannerInfoFromString(scanner_output_string);
 }
 
 void Manager::ScanImage(
     const string &device_name,
     const ::DBus::FileDescriptor &outfd,
     const map<string, ::DBus::Variant> &scan_properties,
-    ::DBus::Error &error) {
+    ::DBus::Error *error) {
   int pipe_fds[2];
   if (pipe(pipe_fds) != 0) {
-    SetError(__func__, "Unable to create process pipe", &error);
+    SetError(__func__, "Unable to create process pipe", error);
     return;
   }
 
+  ScopedFD pipe_fd_input(&pipe_fds[0]);
+  ScopedFD pipe_fd_output(&pipe_fds[1]);
   chromeos::ProcessImpl scan_process;
-  scan_process.AddArg(kScanImagePath);
-  scan_process.AddArg("-d");
-  scan_process.AddArg(device_name);
+  chromeos::ProcessImpl convert_process;
+  RunScanImageProcess(device_name,
+                      outfd.get(),
+                      &pipe_fd_input,
+                      &pipe_fd_output,
+                      scan_properties,
+                      &scan_process,
+                      &convert_process,
+                      error);
+}
+
+// static
+void Manager::RunListScannersProcess(int fd, chromeos::ProcessImpl *process) {
+  process->AddArg(kScanImagePath);
+  process->AddArg(kScanImageFormattedDeviceListCmd);
+  process->BindFd(fd, STDOUT_FILENO);
+  process->Run();
+}
+
+// static
+void Manager::RunScanImageProcess(
+    const string &device_name,
+    int out_fd,
+    ScopedFD *pipe_fd_input,
+    ScopedFD *pipe_fd_output,
+    const map<string, ::DBus::Variant> &scan_properties,
+    chromeos::ProcessImpl *scan_process,
+    chromeos::ProcessImpl *convert_process,
+    ::DBus::Error *error) {
+  scan_process->AddArg(kScanImagePath);
+  scan_process->AddArg("-d");
+  scan_process->AddArg(device_name);
 
   for (const auto &property : scan_properties) {
     const string &property_name = property.first;
@@ -124,53 +155,75 @@ void Manager::ScanImage(
                  error);
         return;
       }
-      scan_process.AddArg("--mode");
-      scan_process.AddArg(property_value.reader().get_string());
+      scan_process->AddArg("--mode");
+      scan_process->AddArg(property_value.reader().get_string());
     } else if (property_name == kScanPropertyResolution &&
                property_value.signature() == ::DBus::type<uint32>::sig()) {
-      scan_process.AddArg("--resolution");
-      scan_process.AddArg(base::UintToString(
+      scan_process->AddArg("--resolution");
+      scan_process->AddArg(base::UintToString(
           property_value.reader().get_uint32()));
     } else {
       SetError(__func__,
                base::StringPrintf("Invalid scan parameter %s with signature %s",
                                   property_name.c_str(),
                                   property_value.signature().c_str()),
-               &error);
+               error);
       return;
     }
   }
-  scan_process.BindFd(pipe_fds[1], STDOUT_FILENO);
+  scan_process->BindFd(*pipe_fd_output->release(), STDOUT_FILENO);
 
-  chromeos::ProcessImpl converter_process;
-  converter_process.AddArg(kScanConverterPath);
-  converter_process.BindFd(pipe_fds[0], STDIN_FILENO);
-  converter_process.BindFd(outfd.get(), STDOUT_FILENO);
+  convert_process->AddArg(kScanConverterPath);
+  convert_process->BindFd(*pipe_fd_output->release(), STDIN_FILENO);
+  convert_process->BindFd(out_fd, STDOUT_FILENO);
 
-  converter_process.Start();
-  scan_process.Start();
+  convert_process->Start();
+  scan_process->Start();
 
-  int scan_result = scan_process.Wait();
+  int scan_result = scan_process->Wait();
   if (scan_result != 0) {
     SetError(__func__,
              StringPrintf("Scan process exited with result %d", scan_result),
-             &error);
+             error);
     // Explicitly kill and reap the converter since we may fail to successfully
     // reap the processes as it exits this scope.
-    converter_process.Kill(SIGKILL, kTimeoutAfterKillSeconds);
+    convert_process->Kill(SIGKILL, kTimeoutAfterKillSeconds);
     return;
   }
 
-  int converter_result = converter_process.Wait();
+  int converter_result = convert_process->Wait();
   if (converter_result != 0) {
     SetError(__func__,
              StringPrintf("Image converter process failed with result %d",
                           converter_result),
-             &error);
+             error);
     return;
   }
 
   LOG(INFO) << __func__ << ": completed image scan and conversion.";
+}
+
+// static
+Manager::ScannerInfo Manager::ScannerInfoFromString(
+    const string &scanner_info_string) {
+  vector<string> scanner_output_lines;
+  base::SplitString(scanner_info_string, '\n', &scanner_output_lines);
+
+  ScannerInfo scanners;
+  for (const auto &line : scanner_output_lines) {
+    vector<string> scanner_info_parts;
+    base::SplitString(line, '%', &scanner_info_parts);
+    if (scanner_info_parts.size() != 4) {
+      continue;
+    }
+    map<string, string> scanner_info;
+    scanner_info[kScannerPropertyManufacturer] = scanner_info_parts[1];
+    scanner_info[kScannerPropertyModel] = scanner_info_parts[2];
+    scanner_info[kScannerPropertyType] = scanner_info_parts[3];
+    scanners[scanner_info_parts[0]] = scanner_info;
+  }
+
+  return scanners;
 }
 
 // static

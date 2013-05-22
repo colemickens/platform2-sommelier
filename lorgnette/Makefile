@@ -83,7 +83,13 @@ LORGNETTE_BIN = lorgnette
 # shouldn't be linked into TEST_BIN.
 LORGNETTE_MAIN_OBJ = $(BUILDDIR)/main.o
 
-OBJS = $(LORGNETTE_MAIN_OBJ) $(LORGNETTE_OBJS)
+TEST_BIN = lorgnette_unittest
+TEST_OBJS = $(addprefix $(BUILDDIR)/, manager_unittest.o testrunner.o)
+
+OBJS = $(LORGNETTE_MAIN_OBJ) $(LORGNETTE_OBJS) $(TEST_OBJS)
+
+GTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
+TEST_LIBS = $(LORGNETTE_LIBS) $(GTEST_LIBS)
 
 .PHONY: all clean
 
@@ -102,6 +108,7 @@ $(BUILDDIR)/%.o: %.cc
 	$(CXX) $(CPPFLAGS) $(CXXFLAGS) $(INCLUDE_DIRS) -MMD -c $< -o $@
 
 $(LORGNETTE_OBJS): $(DBUS_ADAPTOR_BINDINGS)
+$(TEST_OBJS): $(DBUS_ADAPTOR_BINDINGS)
 
 $(LORGNETTE_LIB): $(LORGNETTE_OBJS)
 	echo "  AR " $@
@@ -110,6 +117,13 @@ $(LORGNETTE_LIB): $(LORGNETTE_OBJS)
 $(LORGNETTE_BIN): $(LORGNETTE_MAIN_OBJ) $(LORGNETTE_LIB)
 	echo "  CXX " $@
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LORGNETTE_LIBS) -o $@
+
+$(TEST_BIN): CPPFLAGS += -DUNIT_TEST
+$(TEST_BIN): \
+	$(TEST_OBJS) \
+	$(LORGNETTE_LIB)
+	echo "  CXX " $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(TEST_LIBS) -o $@
 
 clean:
 	rm -rf \

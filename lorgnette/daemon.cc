@@ -47,7 +47,8 @@ void Daemon::Start() {
   dispatcher_->attach(NULL);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   connection_->request_name(kInterfaceName);
-  manager_.reset(new Manager(connection_.get()));
+  manager_.reset(new Manager);
+  manager_->InitDBus(connection_.get());
 }
 
 }  // namespace lorgnette
