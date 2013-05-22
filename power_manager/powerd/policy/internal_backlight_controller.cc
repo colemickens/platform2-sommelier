@@ -121,6 +121,8 @@ InternalBacklightController::InternalBacklightController(
   DCHECK(backlight_);
   DCHECK(prefs_);
   DCHECK(display_power_setter_);
+  if (ambient_light_handler_)
+    ambient_light_handler_->set_name("panel");
 }
 
 InternalBacklightController::~InternalBacklightController() {}

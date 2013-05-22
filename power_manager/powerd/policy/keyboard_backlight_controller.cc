@@ -98,6 +98,8 @@ KeyboardBacklightController::KeyboardBacklightController(
       num_als_adjustments_(0),
       num_user_adjustments_(0) {
   DCHECK(backlight);
+  if (ambient_light_handler_)
+    ambient_light_handler_->set_name("keyboard");
 }
 
 KeyboardBacklightController::~KeyboardBacklightController() {

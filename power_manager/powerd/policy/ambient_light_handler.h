@@ -55,6 +55,8 @@ class AmbientLightHandler : public system::AmbientLightObserver {
     return dimmed_brightness_percent_;
   }
 
+  void set_name(const std::string& name) { name_ = name; }
+
   // Initializes the object based on the data in the preferences
   // |limits_pref_name| and |steps_pref_name| stored within |prefs|.
   // |lux_level_| is initialized to a synthetic value based on
@@ -155,6 +157,10 @@ class AmbientLightHandler : public system::AmbientLightObserver {
   // Has |delegate_| been notified about an ambient-light-triggered change
   // yet?
   bool sent_initial_adjustment_;
+
+  // Human-readable name included in logging messages.  Useful for
+  // distinguishing between different AmbientLightHandler instances.
+  std::string name_;
 
   DISALLOW_COPY_AND_ASSIGN(AmbientLightHandler);
 };
