@@ -262,7 +262,8 @@ Daemon::Daemon(PrefsInterface* prefs,
       prefs_(prefs),
       keyboard_controller_(keyboard_controller),
       metrics_reporter_(
-          new MetricsReporter(prefs, metrics_lib, backlight_controller)),
+          new MetricsReporter(
+              prefs, metrics_lib, backlight_controller, keyboard_controller)),
       dbus_sender_(
           new DBusSender(kPowerManagerServicePath, kPowerManagerInterface)),
       input_(new system::Input),
@@ -876,9 +877,6 @@ DBusMessage* Daemon::HandleDecreaseScreenBrightnessMethod(
     dbus_error_free(&error);
   }
   bool changed = backlight_controller_->DecreaseUserBrightness(allow_off);
-  metrics_reporter_->SendEnumMetricWithPowerSource(kMetricBrightnessAdjust,
-                                                   BRIGHTNESS_ADJUST_DOWN,
-                                                   BRIGHTNESS_ADJUST_MAX);
   double percent = 0.0;
   if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
@@ -894,9 +892,6 @@ DBusMessage* Daemon::HandleIncreaseScreenBrightnessMethod(
     return util::CreateDBusErrorReply(message, "Backlight uninitialized");
 
   bool changed = backlight_controller_->IncreaseUserBrightness();
-  metrics_reporter_->SendEnumMetricWithPowerSource(kMetricBrightnessAdjust,
-                                                   BRIGHTNESS_ADJUST_UP,
-                                                   BRIGHTNESS_ADJUST_MAX);
   double percent = 0.0;
   if (!changed && backlight_controller_->GetBrightnessPercent(&percent)) {
     SendBrightnessChangedSignal(
@@ -934,9 +929,6 @@ DBusMessage* Daemon::HandleSetScreenBrightnessMethod(DBusMessage* message) {
                   << " ).  Using default fast transition";
   }
   backlight_controller_->SetUserBrightnessPercent(percent, style);
-  metrics_reporter_->SendEnumMetricWithPowerSource(kMetricBrightnessAdjust,
-                                                   BRIGHTNESS_ADJUST_ABSOLUTE,
-                                                   BRIGHTNESS_ADJUST_MAX);
   return NULL;
 }
 
@@ -960,14 +952,12 @@ DBusMessage* Daemon::HandleGetScreenBrightnessMethod(DBusMessage* message) {
 DBusMessage* Daemon::HandleDecreaseKeyboardBrightnessMethod(
     DBusMessage* message) {
   AdjustKeyboardBrightness(-1);
-  // TODO(dianders): metric?
   return NULL;
 }
 
 DBusMessage* Daemon::HandleIncreaseKeyboardBrightnessMethod(
     DBusMessage* message) {
   AdjustKeyboardBrightness(1);
-  // TODO(dianders): metric?
   return NULL;
 }
 

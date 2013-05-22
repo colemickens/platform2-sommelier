@@ -22,6 +22,9 @@ extern const char kMetricBacklightLevelName[];
 extern const int kMetricBacklightLevelMax;
 extern const time_t kMetricBacklightLevelIntervalMs;
 
+extern const char kMetricKeyboardBacklightLevelName[];
+extern const int kMetricKeyboardBacklightLevelMax;
+
 extern const char kMetricIdleAfterScreenOffName[];
 extern const int kMetricIdleAfterScreenOffMin;
 extern const int kMetricIdleAfterScreenOffMax;
@@ -80,8 +83,6 @@ extern const int kMetricNumOfSessionsPerChargeMin;
 extern const int kMetricNumOfSessionsPerChargeMax;
 extern const int kMetricNumOfSessionsPerChargeBuckets;
 
-extern const char kMetricBrightnessAdjust[];
-
 extern const char kMetricPowerButtonDownTimeName[];
 extern const int kMetricPowerButtonDownTimeMin;
 extern const int kMetricPowerButtonDownTimeMax;
@@ -97,14 +98,6 @@ extern const char kMetricThermalTurnedOnFanFilename[];
 extern const time_t kMetricThermalIntervalMs;
 
 extern const char kMetricBatteryInfoSampleName[];
-
-// Enum for kMetricBrightnessAdjust.
-enum BrightnessAdjustType {
-  BRIGHTNESS_ADJUST_DOWN,
-  BRIGHTNESS_ADJUST_UP,
-  BRIGHTNESS_ADJUST_ABSOLUTE,
-  BRIGHTNESS_ADJUST_MAX,
-};
 
 // Enum for kMetricBatteryInfoSample.
 enum BatteryInfoSampleResult {

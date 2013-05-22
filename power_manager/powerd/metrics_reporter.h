@@ -48,7 +48,8 @@ class MetricsReporter {
   // Ownership of pointers remains with the caller.
   MetricsReporter(PrefsInterface* prefs,
                   MetricsLibraryInterface* metrics_lib,
-                  policy::BacklightController* backlight_controller);
+                  policy::BacklightController* display_backlight_controller,
+                  policy::BacklightController* keyboard_backlight_controller);
   ~MetricsReporter();
 
   PowerSource power_source() const { return power_source_; }
@@ -187,7 +188,8 @@ class MetricsReporter {
 
   PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
-  policy::BacklightController* backlight_controller_;
+  policy::BacklightController* display_backlight_controller_;
+  policy::BacklightController* keyboard_backlight_controller_;
 
   PowerSource power_source_;
 

@@ -17,6 +17,9 @@ const char kMetricBacklightLevelName[] = "Power.BacklightLevel";
 const int kMetricBacklightLevelMax = 100;
 const time_t kMetricBacklightLevelIntervalMs = 30000;
 
+const char kMetricKeyboardBacklightLevelName[] = "Power.KeyboardBacklightLevel";
+const int kMetricKeyboardBacklightLevelMax = 100;
+
 const char kMetricIdleAfterScreenOffName[] = "Power.IdleTimeAfterScreenOff";
 const int kMetricIdleAfterScreenOffMin = 100;
 const int kMetricIdleAfterScreenOffMax = 10 * 60 * 1000;
@@ -85,8 +88,6 @@ const char kMetricNumOfSessionsPerChargeName[] =
 const int kMetricNumOfSessionsPerChargeMin = 1;
 const int kMetricNumOfSessionsPerChargeMax = 10000;
 const int kMetricNumOfSessionsPerChargeBuckets = 50;
-
-const char kMetricBrightnessAdjust[] = "Power.BrightnessAdjust";
 
 const char kMetricPowerButtonDownTimeName[] =
     "Power.PowerButtonDownTime";  // ms

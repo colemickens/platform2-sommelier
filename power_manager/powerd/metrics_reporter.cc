@@ -43,10 +43,12 @@ std::string MetricsReporter::AppendPowerSourceToEnumName(
 MetricsReporter::MetricsReporter(
     PrefsInterface* prefs,
     MetricsLibraryInterface* metrics_lib,
-    policy::BacklightController* backlight_controller)
+    policy::BacklightController* display_backlight_controller,
+    policy::BacklightController* keyboard_backlight_controller)
     : prefs_(prefs),
       metrics_lib_(metrics_lib),
-      backlight_controller_(backlight_controller),
+      display_backlight_controller_(display_backlight_controller),
+      keyboard_backlight_controller_(keyboard_backlight_controller),
       power_source_(POWER_AC),
       saw_initial_power_source_(false),
       generate_backlight_metrics_timeout_id_(0),
@@ -63,7 +65,7 @@ MetricsReporter::~MetricsReporter() {
 }
 
 void MetricsReporter::Init() {
-  if (backlight_controller_) {
+  if (display_backlight_controller_ || keyboard_backlight_controller_) {
     generate_backlight_metrics_timeout_id_ = g_timeout_add(
         kMetricBacklightLevelIntervalMs,
         &MetricsReporter::GenerateBacklightLevelMetricThunk, this);
@@ -220,12 +222,18 @@ void MetricsReporter::GenerateMetricsOnPowerEvent(
 }
 
 gboolean MetricsReporter::GenerateBacklightLevelMetric() {
-  double percent = 0.0;
-  if (screen_dim_timestamp_.is_null() && screen_off_timestamp_.is_null() &&
-      backlight_controller_ &&
-      backlight_controller_->GetBrightnessPercent(&percent)) {
-    SendEnumMetricWithPowerSource(kMetricBacklightLevelName, lround(percent),
-                                  kMetricBacklightLevelMax);
+  if (screen_dim_timestamp_.is_null() && screen_off_timestamp_.is_null()) {
+    double percent = 0.0;
+    if (display_backlight_controller_ &&
+        display_backlight_controller_->GetBrightnessPercent(&percent)) {
+      SendEnumMetricWithPowerSource(kMetricBacklightLevelName, lround(percent),
+                                    kMetricBacklightLevelMax);
+    }
+    if (keyboard_backlight_controller_ &&
+        keyboard_backlight_controller_->GetBrightnessPercent(&percent)) {
+      SendEnumMetric(kMetricKeyboardBacklightLevelName, lround(percent),
+                     kMetricKeyboardBacklightLevelMax);
+    }
   }
   return TRUE;
 }
@@ -343,11 +351,11 @@ bool MetricsReporter::GenerateBatteryRemainingAtStartOfSessionMetric(
 }
 
 bool MetricsReporter::GenerateNumberOfAlsAdjustmentsPerSessionMetric() {
-  if (!backlight_controller_)
+  if (!display_backlight_controller_)
     return false;
 
   int num_of_adjustments =
-      backlight_controller_->GetNumAmbientLightSensorAdjustments();
+      display_backlight_controller_->GetNumAmbientLightSensorAdjustments();
 
   if (num_of_adjustments < 0) {
     LOG(ERROR) <<
@@ -367,10 +375,10 @@ bool MetricsReporter::GenerateNumberOfAlsAdjustmentsPerSessionMetric() {
 }
 
 bool MetricsReporter::GenerateUserBrightnessAdjustmentsPerSessionMetric() {
-  if (!backlight_controller_)
+  if (!display_backlight_controller_)
     return false;
 
-  int adjustment_count = backlight_controller_->GetNumUserAdjustments();
+  int adjustment_count = display_backlight_controller_->GetNumUserAdjustments();
   if (adjustment_count < 0) {
     LOG(ERROR) << "Calculation for user brightness adjustments per session "
                << "returned a negative value";

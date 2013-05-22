@@ -99,7 +99,9 @@ class BacklightControllerStub : public policy::BacklightController {
 class MetricsReporterTest : public Test {
  public:
   MetricsReporterTest()
-      : metrics_reporter_(&prefs_, &metrics_lib_, &backlight_ctl_) {}
+      : metrics_reporter_(&prefs_, &metrics_lib_,
+                          &display_backlight_controller_,
+                          &keyboard_backlight_controller_) {}
 
  protected:
   // Adds a metrics library mock expectation that the specified metric
@@ -237,7 +239,8 @@ class MetricsReporterTest : public Test {
   }
 
   FakePrefs prefs_;
-  BacklightControllerStub backlight_ctl_;
+  BacklightControllerStub display_backlight_controller_;
+  BacklightControllerStub keyboard_backlight_controller_;
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;
@@ -259,16 +262,23 @@ TEST_F(MetricsReporterTest, GenerateBacklightLevelMetric) {
   metrics_reporter_.GenerateBacklightLevelMetric();
   Mock::VerifyAndClearExpectations(&metrics_lib_);
 
-  const int64 kCurrentPercent = 57;
-  backlight_ctl_.set_percent(kCurrentPercent);
+  const int64 kCurrentDisplayPercent = 57;
+  display_backlight_controller_.set_percent(kCurrentDisplayPercent);
+  const int64 kCurrentKeyboardPercent = 43;
+  keyboard_backlight_controller_.set_percent(kCurrentKeyboardPercent);
+
   metrics_reporter_.HandleScreenDimmedChange(false, base::TimeTicks::Now());
-  ExpectEnumMetric("Power.BacklightLevelOnBattery", kCurrentPercent,
+  ExpectEnumMetric("Power.BacklightLevelOnBattery", kCurrentDisplayPercent,
                    kMetricBacklightLevelMax);
+  ExpectEnumMetric("Power.KeyboardBacklightLevel", kCurrentKeyboardPercent,
+                   kMetricKeyboardBacklightLevelMax);
   metrics_reporter_.GenerateBacklightLevelMetric();
 
   metrics_reporter_.HandlePowerSourceChange(POWER_AC);
-  ExpectEnumMetric("Power.BacklightLevelOnAC", kCurrentPercent,
+  ExpectEnumMetric("Power.BacklightLevelOnAC", kCurrentDisplayPercent,
                    kMetricBacklightLevelMax);
+  ExpectEnumMetric("Power.KeyboardBacklightLevel", kCurrentKeyboardPercent,
+                   kMetricKeyboardBacklightLevelMax);
   metrics_reporter_.GenerateBacklightLevelMetric();
 }
 
@@ -360,7 +370,7 @@ TEST_F(MetricsReporterTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
   size_t num_counts = ARRAYSIZE_UNSAFE(adjustment_counts);
 
   for (size_t i = 0; i < num_counts; i++) {
-    backlight_ctl_.set_num_als_adjustments(adjustment_counts[i]);
+    display_backlight_controller_.set_num_als_adjustments(adjustment_counts[i]);
     ExpectNumberOfAlsAdjustmentsPerSessionMetric(adjustment_counts[i]);
     EXPECT_TRUE(
         metrics_reporter_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
@@ -370,7 +380,7 @@ TEST_F(MetricsReporterTest, GenerateNumberOfAlsAdjustmentsPerSessionMetric) {
 
 TEST_F(MetricsReporterTest,
        GenerateNumberOfAlsAdjustmentsPerSessionMetricOverflow) {
-  backlight_ctl_.set_num_als_adjustments(
+  display_backlight_controller_.set_num_als_adjustments(
       kMetricNumberOfAlsAdjustmentsPerSessionMax + kAdjustmentsOffset);
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(
       kMetricNumberOfAlsAdjustmentsPerSessionMax);
@@ -380,7 +390,7 @@ TEST_F(MetricsReporterTest,
 
 TEST_F(MetricsReporterTest,
        GenerateNumberOfAlsAdjustmentsPerSessionMetricUnderflow) {
-  backlight_ctl_.set_num_als_adjustments(-kAdjustmentsOffset);
+  display_backlight_controller_.set_num_als_adjustments(-kAdjustmentsOffset);
   EXPECT_FALSE(
       metrics_reporter_.GenerateNumberOfAlsAdjustmentsPerSessionMetric());
 }
@@ -447,11 +457,11 @@ TEST_F(MetricsReporterTest, GenerateEndOfSessionMetrics) {
   int expected_percentage = round(status.battery_percentage);
   ExpectBatteryRemainingAtEndOfSessionMetric(expected_percentage);
 
-  backlight_ctl_.set_num_als_adjustments(kAdjustmentsOffset);
+  display_backlight_controller_.set_num_als_adjustments(kAdjustmentsOffset);
   ExpectNumberOfAlsAdjustmentsPerSessionMetric(kAdjustmentsOffset);
 
   const int kNumUserAdjustments = 10;
-  backlight_ctl_.set_num_user_adjustments(kNumUserAdjustments);
+  display_backlight_controller_.set_num_user_adjustments(kNumUserAdjustments);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(kNumUserAdjustments);
 
   base::TimeTicks now = base::TimeTicks::Now();
@@ -513,7 +523,7 @@ TEST_F(MetricsReporterTest, GenerateBatteryRemainingAtStartOfSessionMetric) {
 
 TEST_F(MetricsReporterTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
   const int kNumUserAdjustments = 10;
-  backlight_ctl_.set_num_user_adjustments(kNumUserAdjustments);
+  display_backlight_controller_.set_num_user_adjustments(kNumUserAdjustments);
 
   EXPECT_FALSE(
       metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
@@ -532,7 +542,7 @@ TEST_F(MetricsReporterTest, GenerateUserBrightnessAdjustmentsPerSessionMetric) {
 
 TEST_F(MetricsReporterTest,
        GenerateUserBrightnessAdjustmentsPerSessionMetricOverflow) {
-  backlight_ctl_.set_num_user_adjustments(
+  display_backlight_controller_.set_num_user_adjustments(
       kMetricUserBrightnessAdjustmentsPerSessionMax + kAdjustmentsOffset);
   metrics_reporter_.HandlePowerSourceChange(POWER_AC);
   ExpectUserBrightnessAdjustmentsPerSessionMetric(
@@ -543,7 +553,7 @@ TEST_F(MetricsReporterTest,
 
 TEST_F(MetricsReporterTest,
        GenerateUserBrightnessAdjustmentsPerSessionMetricUnderflow) {
-  backlight_ctl_.set_num_user_adjustments(-kAdjustmentsOffset);
+  display_backlight_controller_.set_num_user_adjustments(-kAdjustmentsOffset);
   metrics_reporter_.HandlePowerSourceChange(POWER_AC);
   EXPECT_FALSE(
       metrics_reporter_.GenerateUserBrightnessAdjustmentsPerSessionMetric());
