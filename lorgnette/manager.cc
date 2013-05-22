@@ -120,7 +120,7 @@ void Manager::ScanImage(
 }
 
 // static
-void Manager::RunListScannersProcess(int fd, chromeos::ProcessImpl *process) {
+void Manager::RunListScannersProcess(int fd, chromeos::Process *process) {
   process->AddArg(kScanImagePath);
   process->AddArg(kScanImageFormattedDeviceListCmd);
   process->BindFd(fd, STDOUT_FILENO);
@@ -134,8 +134,8 @@ void Manager::RunScanImageProcess(
     ScopedFD *pipe_fd_input,
     ScopedFD *pipe_fd_output,
     const map<string, ::DBus::Variant> &scan_properties,
-    chromeos::ProcessImpl *scan_process,
-    chromeos::ProcessImpl *convert_process,
+    chromeos::Process *scan_process,
+    chromeos::Process *convert_process,
     ::DBus::Error *error) {
   scan_process->AddArg(kScanImagePath);
   scan_process->AddArg("-d");
@@ -174,7 +174,7 @@ void Manager::RunScanImageProcess(
   scan_process->BindFd(*pipe_fd_output->release(), STDOUT_FILENO);
 
   convert_process->AddArg(kScanConverterPath);
-  convert_process->BindFd(*pipe_fd_output->release(), STDIN_FILENO);
+  convert_process->BindFd(*pipe_fd_input->release(), STDIN_FILENO);
   convert_process->BindFd(out_fd, STDOUT_FILENO);
 
   convert_process->Start();

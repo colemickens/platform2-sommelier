@@ -128,7 +128,8 @@ $(TEST_BIN): \
 clean:
 	rm -rf \
 		$(BUILDDIR) \
-		$(LORGNETTE_BIN)
+		$(LORGNETTE_BIN) \
+		$(TEST_BIN)
 
 # Don't output build commands. When adding rules, please echo a short
 # form of the build command manually. E.g. 'echo "  CXX " $@'.

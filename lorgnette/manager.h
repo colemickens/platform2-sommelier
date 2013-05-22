@@ -17,7 +17,7 @@
 
 #include "lorgnette/dbus_bindings/lorgnette-manager.h"
 namespace chromeos {
-  class ProcessImpl;
+  class Process;
 }  // namespace chromeos
 
 namespace lorgnette {
@@ -28,6 +28,23 @@ class Manager {
  public:
   typedef std::map< std::string,
                     std::map<std::string, std::string> > ScannerInfo;
+
+  Manager();
+  virtual ~Manager();
+
+  // Start DBus connection.
+  void InitDBus(DBus::Connection *connection);
+
+  // Implementation of org::chromium::lorgnette::Manager_adaptor.
+  virtual ScannerInfo ListScanners(::DBus::Error *error);
+  virtual void ScanImage(
+      const std::string &device_name,
+      const ::DBus::FileDescriptor &outfd,
+      const std::map<std::string, ::DBus::Variant> &scan_properties,
+      ::DBus::Error *error);
+
+ private:
+  friend class ManagerTest;
 
   class DBusAdaptor : public org::chromium::lorgnette::Manager_adaptor,
                       public DBus::ObjectAdaptor,
@@ -51,21 +68,6 @@ class Manager {
     Manager *manager_;
   };
 
-  Manager();
-  virtual ~Manager();
-
-  // Start DBus connection.
-  void InitDBus(DBus::Connection *connection);
-
-  // Implementation of org::chromium::lorgnette::Manager_adaptor.
-  virtual ScannerInfo ListScanners(::DBus::Error *error);
-  virtual void ScanImage(
-      const std::string &device_name,
-      const ::DBus::FileDescriptor &outfd,
-      const std::map<std::string, ::DBus::Variant> &scan_properties,
-      ::DBus::Error *error);
-
- private:
   static const char kDBusErrorName[];
   static const char kScanConverterPath[];
   static const char kScanImageFormattedDeviceListCmd[];
@@ -82,7 +84,7 @@ class Manager {
 
   // Sets arguments to scan listing |process|, and runs it, returning its
   // output to |fd|.
-  static void RunListScannersProcess(int fd, chromeos::ProcessImpl *process);
+  static void RunListScannersProcess(int fd, chromeos::Process *process);
 
   // Starts a scan on |device_name|, outputting PNG image data to |out_fd|.
   // Uses the |pipe_fd_input| and |pipe_fd_output| to transport image data
@@ -96,8 +98,8 @@ class Manager {
       file_util::ScopedFD *pipe_fd_input,
       file_util::ScopedFD *pipe_fd_output,
       const std::map<std::string, ::DBus::Variant> &scan_properties,
-      chromeos::ProcessImpl *scan_process,
-      chromeos::ProcessImpl *convert_process,
+      chromeos::Process *scan_process,
+      chromeos::Process *convert_process,
       ::DBus::Error *error);
 
   // Converts the formatted output of "scanimage" to a map of attribute-data
