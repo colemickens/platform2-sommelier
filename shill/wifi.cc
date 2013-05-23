@@ -27,6 +27,7 @@
 #include "shill/dbus_adaptor.h"
 #include "shill/device.h"
 #include "shill/error.h"
+#include "shill/file_reader.h"
 #include "shill/geolocation_info.h"
 #include "shill/ieee80211.h"
 #include "shill/link_monitor.h"
@@ -79,7 +80,10 @@ const int WiFi::kFastScanIntervalSeconds = 10;
 const int WiFi::kPendingTimeoutSeconds = 15;
 const int WiFi::kReconnectTimeoutSeconds = 10;
 const size_t WiFi::kMinumumFrequenciesToScan = 4;  // Arbitrary but > 0.
+const float WiFi::kDefaultFractionPerScan = 0.34;
 const char WiFi::kProgressiveScanFlagFile[] = "/home/chronos/.progressive_scan";
+const char WiFi::kProgressiveScanFieldTrialFlagFile[] =
+    "/home/chronos/.progressive_scan_variation";
 
 WiFi::WiFi(ControlInterface *control_interface,
            EventDispatcher *dispatcher,
@@ -116,7 +120,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       progressive_scan_enabled_(false),
       netlink_manager_(NetlinkManager::GetInstance()),
       min_frequencies_to_scan_(kMinumumFrequenciesToScan),
-      max_frequencies_to_scan_(std::numeric_limits<int>::max()) {
+      max_frequencies_to_scan_(std::numeric_limits<int>::max()),
+      fraction_per_scan_(kDefaultFractionPerScan) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       flimflam::kBgscanMethodProperty,
@@ -152,11 +157,69 @@ WiFi::WiFi(ControlInterface *control_interface,
       ScopeLogger::kWiFi,
       Bind(&WiFi::OnWiFiDebugScopeChanged, weak_ptr_factory_.GetWeakPtr()));
   CHECK(netlink_manager_);
-  progressive_scan_enabled_ = PathExists(FilePath(kProgressiveScanFlagFile));
+  if (PathExists(FilePath(kProgressiveScanFlagFile))) {
+    // Setup manually-enrolled progressive scan.
+    progressive_scan_enabled_ = true;
+  } else {
+    // TODO(wdg): Remove after progressive scan field trial is over.
+    // Only do the field trial if the user hasn't already enabled progressive
+    // scan manually.  crbug.com/250945
+    ParseFieldTrialFile(FilePath(kProgressiveScanFieldTrialFlagFile));
+  }
   SLOG(WiFi, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
 WiFi::~WiFi() {}
+
+void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
+  FileReader file_reader;
+  if (!file_reader.Open(info_file_path)) {
+    SLOG(WiFi, 7) << "Not enrolled in progressive scan field trial.";
+    return;
+  }
+  string line;
+  file_reader.ReadLine(&line);
+  switch (line[0]) {
+    case '1':
+      min_frequencies_to_scan_ = 4;
+      max_frequencies_to_scan_ = 4;
+      fraction_per_scan_ = .34;
+      progressive_scan_enabled_ = true;
+      break;
+    case '2':
+      min_frequencies_to_scan_ = 4;
+      max_frequencies_to_scan_ = 4;
+      fraction_per_scan_ = .51;
+      progressive_scan_enabled_ = true;
+      break;
+    case '3':
+      min_frequencies_to_scan_ = 8;
+      max_frequencies_to_scan_ = 8;
+      fraction_per_scan_ = .51;
+      progressive_scan_enabled_ = true;
+      break;
+    case '4':
+      min_frequencies_to_scan_ = 8;
+      max_frequencies_to_scan_ = 8;
+      fraction_per_scan_ = 1.1;
+      progressive_scan_enabled_ = true;
+      break;
+    case 'c':  // FALLTHROUGH.
+    case 'x':  // FALLTHROUGH.
+    default:
+      progressive_scan_enabled_ = false;
+      break;
+  }
+  LOG(INFO) << "Progressive scan (via field_trial) "
+            << (progressive_scan_enabled_ ? "enabled" : "disabled");
+  if (progressive_scan_enabled_) {
+    LOG(INFO) << "  min_frequencies_to_scan_ = " << min_frequencies_to_scan_;
+    LOG(INFO) << "  max_frequencies_to_scan_ = " << max_frequencies_to_scan_;
+    LOG(INFO) << "  fraction_per_scan_ = " << fraction_per_scan_;
+  }
+
+  file_reader.Close();
+}
 
 void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " starting.";
@@ -248,9 +311,11 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/) {
       // TODO(wdg): Perform in-depth testing to determine the best values for
       // the different scans. chromium:235293
       ScanSession::FractionList scan_fractions;
-      scan_fractions.push_back(.33);  // First scan gets 33 percentile.
-      scan_fractions.push_back(.33);  // Second scan gets 66th percentile.
-      scan_fractions.push_back(ScanSession::kAllFrequencies);
+      float total_fraction = 0.0;
+      do {
+        total_fraction += fraction_per_scan_;
+        scan_fractions.push_back(fraction_per_scan_);
+      } while (total_fraction < 1.0);
       scan_session_.reset(
           new ScanSession(netlink_manager_,
                           dispatcher(),
@@ -1731,7 +1796,7 @@ void WiFi::OnNewWiphy(const Nl80211Message &nl80211_message) {
         uint32_t frequency_value = 0;
         if (frequency->GetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
                                             &frequency_value)) {
-          SLOG(WiFi, 5) << "Found frequency[" << freq_iter.GetId()
+          SLOG(WiFi, 7) << "Found frequency[" << freq_iter.GetId()
                         << "] = " << frequency_value;
           all_scan_frequencies_.insert(frequency_value);
         }

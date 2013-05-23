@@ -82,6 +82,7 @@
 
 #include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
+#include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
@@ -225,9 +226,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   static const int kPendingTimeoutSeconds;
   static const int kReconnectTimeoutSeconds;
   static const size_t kMinumumFrequenciesToScan;
+  static const float kDefaultFractionPerScan;
   static const char kProgressiveScanFlagFile[];
+  // TODO(wdg): Remove after progressive scan field trial is over.
+  static const char kProgressiveScanFieldTrialFlagFile[];
 
   // Gets the list of frequencies supported by this device.
+  // TODO(wdg): Remove after progressive scan field trial is over.
+  void ParseFieldTrialFile(const FilePath &field_trial_file_path);
   void ConfigureScanFrequencies();
   void AppendBgscan(WiFiService *service,
                     std::map<std::string, DBus::Variant> *service_params) const;
@@ -424,6 +430,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   scoped_ptr<ScanSession> scan_session_;
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
+  // Fraction of previously seen scan frequencies to include in each
+  // progressive scan batch (since the frequencies are sorted, the sum of the
+  // fraction_per_scan_ over the scans in a session (* 100) is the percentile
+  // of the frequencies that have been scanned).
+  float fraction_per_scan_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
