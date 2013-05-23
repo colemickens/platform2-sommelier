@@ -290,6 +290,13 @@ void StateController::HandleUserActivity() {
   DCHECK(initialized_);
   VLOG(1) << "Saw user activity";
 
+  // Ignore user activity reported while the lid is closed unless we're in
+  // docked mode.
+  if (lid_state_ == LID_CLOSED && !in_docked_mode()) {
+    LOG(WARNING) << "Ignoring user activity received while lid is closed";
+    return;
+  }
+
   const bool old_saw_user_activity =
       saw_user_activity_soon_after_screen_dim_or_off_;
   const bool screen_turned_off_recently =
@@ -752,8 +759,7 @@ void StateController::UpdateState() {
     }
   }
 
-  bool docked = allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION &&
-      lid_state_ == LID_CLOSED;
+  bool docked = in_docked_mode();
   if (docked != turned_panel_off_for_docked_mode_) {
     VLOG(1) << "Turning panel " << (docked ? "off" : "on") << " after "
             << (docked ? "entering" : "leaving") << " docked mode";

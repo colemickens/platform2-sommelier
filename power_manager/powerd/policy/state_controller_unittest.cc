@@ -184,7 +184,7 @@ class StateControllerTest : public testing::Test {
         default_keep_screen_on_for_audio_(0),
         default_suspend_at_login_screen_(0),
         default_ignore_external_policy_(0),
-        default_allow_docked_mode_(0),
+        default_allow_docked_mode_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
         initial_session_state_(SESSION_STARTED),
@@ -1204,7 +1204,6 @@ TEST_F(StateControllerTest, SuspendAtLoginScreen) {
 // Tests that the system avoids suspending on lid-closed when an external
 // display is connected.
 TEST_F(StateControllerTest, DockedMode) {
-  default_allow_docked_mode_ = 1;
   Init();
 
   // Connect an external display and close the lid.  The internal panel
@@ -1347,6 +1346,46 @@ TEST_F(StateControllerTest, SuspendImmediatelyIfLidClosedAtStartup) {
   initial_lid_state_ = LID_CLOSED;
   Init();
   EXPECT_EQ(kSuspend, delegate_.GetActions());
+}
+
+// Tests that user activity is ignored while the lid is closed.  Spurious
+// events can apparently be reported as a result of the user closing the
+// lid (http://crbug.com/221228).
+TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
+  Init();
+  PowerManagementPolicy policy;
+  policy.set_presentation_idle_delay_factor(1.0);
+  controller_.HandlePolicyChange(policy);
+
+  // Wait for the screen to be dimmed and turned off.
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // User activity received while the lid is closed should be ignored.
+  delegate_.set_lid_state(LID_CLOSED);
+  controller_.HandleLidStateChange(LID_CLOSED);
+  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  controller_.HandleUserActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Resume and go through the same sequence as before, but this time while
+  // presenting so that docked mode will be used.
+  delegate_.set_lid_state(LID_OPEN);
+  controller_.HandleResume();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  controller_.HandleLidStateChange(LID_OPEN);
+  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, NULL), delegate_.GetActions());
+
+  // User activity while docked should turn the screen back on and undim it.
+  controller_.HandleLidStateChange(LID_CLOSED);
+  EXPECT_EQ(kDocked, delegate_.GetActions());
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
 }
 
 }  // namespace policy

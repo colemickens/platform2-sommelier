@@ -206,6 +206,13 @@ class StateController : public PrefsObserver {
       const PowerManagementPolicy::Delays& policy_delays,
       Delays* delays_out);
 
+  // Is the system currently in "docked mode", where it remains awake while
+  // the lid is closed because an external display is connected?
+  bool in_docked_mode() {
+    return allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION &&
+        lid_state_ == LID_CLOSED;
+  }
+
   // Returns the current time or |current_time_for_testing_| if set.
   base::TimeTicks GetCurrentTime() const;
 
