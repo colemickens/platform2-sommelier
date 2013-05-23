@@ -29,11 +29,6 @@ $sudo cgpt add $base_dev -i $kern_num -S1 -T0
 # Mark the kernel as highest priority
 $sudo cgpt prioritize $base_dev -i $kern_num
 
-# Run the verified boot debugging tool now, because we won't be able to run it
-# manually if there's a problem (no root shell). It leaves a log file that we
-# can look at.
-$sudo dev_debug_vboot --cleanup
-
 # Collect any startup time firmware updater logs (see chromeos_startup)
 FIRMWARE_UPDATE_LOG='/mnt/stateful_partition/update_firmware.log'
 if [ -f "$FIRMWARE_UPDATE_LOG" ]; then
@@ -50,3 +45,7 @@ if [ -x "$FIRMWARE_UPDATE_SCRIPT" ]; then
   "$FIRMWARE_UPDATE_SCRIPT" --mode=bootok
 fi
 
+# Run the verified boot debugging tool now, because we won't be able to run it
+# manually if there's a problem (no root shell). It leaves a log file that we
+# can look at.
+$sudo dev_debug_vboot --cleanup > /dev/null 2>&1 &
