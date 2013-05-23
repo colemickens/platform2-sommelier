@@ -537,7 +537,10 @@ void Cellular::OnConnected() {
                           weak_ptr_factory_.GetWeakPtr());
   manager()->AddTerminationAction(FriendlyName(), start_cb);
   SetState(kStateConnected);
-  if (!capability_->AllowRoaming() &&
+  if (!service_) {
+    LOG(INFO) << "Disconnecting due to no cellular service.";
+    Disconnect(NULL);
+  } else if (!capability_->AllowRoaming() &&
       service_->roaming_state() == flimflam::kRoamingStateRoaming) {
     LOG(INFO) << "Disconnecting due to roaming.";
     Disconnect(NULL);

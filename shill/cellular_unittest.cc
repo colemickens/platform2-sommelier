@@ -263,6 +263,12 @@ class CellularTest : public testing::Test {
     device_->service_ = NULL;
     callback.Run(Error(Error::kNotOnHomeNetwork));
   }
+  void InvokeConnectSuccessNoService(DBusPropertiesMap props, Error *error,
+                                     const ResultCallback &callback,
+                                     int timeout) {
+    device_->service_ = NULL;
+    callback.Run(Error());
+  }
   void InvokeDisconnect(Error *error, const ResultCallback &callback,
                         int timeout) {
     if (!callback.is_null())
@@ -690,6 +696,22 @@ TEST_F(CellularTest, ConnectFailureNoService) {
       *simple_proxy_,
       Connect(_, _, _, CellularCapability::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFailNoService));
+  EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
+  GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
+  Error error;
+  device_->Connect(&error);
+}
+
+TEST_F(CellularTest, ConnectSuccessNoService) {
+  // Make sure we don't crash if the connect succeeds but the service was
+  // destroyed before the connect request completes.
+  SetCellularType(Cellular::kTypeCDMA);
+  device_->state_ = Cellular::kStateRegistered;
+  SetService();
+  EXPECT_CALL(
+      *simple_proxy_,
+      Connect(_, _, _, CellularCapability::kTimeoutConnect))
+      .WillOnce(Invoke(this, &CellularTest::InvokeConnectSuccessNoService));
   EXPECT_CALL(*modem_info_.mock_manager(), UpdateService(_));
   GetCapabilityClassic()->simple_proxy_.reset(simple_proxy_.release());
   Error error;

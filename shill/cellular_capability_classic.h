@@ -171,6 +171,7 @@ class CellularCapabilityClassic : public CellularCapability {
   FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
+  FRIEND_TEST(CellularTest, ConnectSuccessNoService);
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
   FRIEND_TEST(CellularTest, DisconnectWithCallback);

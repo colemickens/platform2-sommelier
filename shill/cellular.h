@@ -266,6 +266,7 @@ class Cellular : public Device {
   FRIEND_TEST_ALL_PREFIXES(CellularTest, ConnectAddsTerminationAction);
   FRIEND_TEST(CellularTest, ConnectFailure);
   FRIEND_TEST(CellularTest, ConnectFailureNoService);
+  FRIEND_TEST(CellularTest, ConnectSuccessNoService);
   FRIEND_TEST(CellularTest, CustomSetterNoopChange);
   FRIEND_TEST(CellularTest, DisableModem);
   FRIEND_TEST(CellularTest, Disconnect);
