@@ -35,12 +35,16 @@ public:
                          const std::string& path,
                          const std::vector<uint8_t>& auth_data,
                          const std::string& label,
-                         int* slot_id);
+                         uint64_t* slot_id);
   virtual void UnloadToken(const chromeos::SecureBlob& isolate_credential,
                            const std::string& path);
   virtual void ChangeTokenAuthData(const std::string& path,
                                    const std::vector<uint8_t>& old_auth_data,
                                    const std::vector<uint8_t>& new_auth_data);
+  virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
+                            uint64_t slot_id,
+                            std::string* path);
+
   virtual void SetLogLevel(const int32_t& level);
 
   // ChapsInterface methods.

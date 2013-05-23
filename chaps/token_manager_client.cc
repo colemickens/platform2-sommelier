@@ -16,75 +16,88 @@ using std::string;
 
 namespace chaps {
 
-LoginEventClient::LoginEventClient()
+TokenManagerClient::TokenManagerClient()
   : proxy_(new ChapsProxyImpl()),
     is_connected_(false) {
   CHECK(proxy_);
 }
 
-LoginEventClient::~LoginEventClient() {
-  delete proxy_;
+TokenManagerClient::~TokenManagerClient() {
 }
 
-bool LoginEventClient::OpenIsolate(SecureBlob* isolate_credential,
+bool TokenManagerClient::OpenIsolate(SecureBlob* isolate_credential,
                                    bool* new_isolate_created) {
   CHECK(proxy_);
   if (!Connect()) {
-    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
-                 << "Login notification will not be sent.";
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return false;
   }
   return proxy_->OpenIsolate(isolate_credential, new_isolate_created);
 }
 
-void LoginEventClient::CloseIsolate(const SecureBlob& isolate_credential) {
+void TokenManagerClient::CloseIsolate(const SecureBlob& isolate_credential) {
   CHECK(proxy_);
   if (!Connect()) {
-    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
-                 << "Logout notification will not be sent.";
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return;
   }
   proxy_->CloseIsolate(isolate_credential);
 }
 
-bool LoginEventClient::LoadToken(const SecureBlob& isolate_credential,
-                                 const string& path,
-                                 const SecureBlob& auth_data,
-                                 const string& label,
-                                 int* slot_id) {
+bool TokenManagerClient::LoadToken(const SecureBlob& isolate_credential,
+                                   const FilePath& path,
+                                   const SecureBlob& auth_data,
+                                   const string& label,
+                                   int* slot_id) {
   CHECK(proxy_);
   if (!Connect()) {
-    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
-                 << "Load Token notification will not be sent.";
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return false;
   }
-  return proxy_->LoadToken(isolate_credential, path, auth_data, label, slot_id);
+  bool result = proxy_->LoadToken(isolate_credential,
+                                  path.value(),
+                                  auth_data,
+                                  label,
+                                  PreservedValue<int, uint64_t>(slot_id));
+  return result;
 }
 
-void LoginEventClient::UnloadToken(const SecureBlob& isolate_credential,
-                                   const string& path) {
+void TokenManagerClient::UnloadToken(const SecureBlob& isolate_credential,
+                                     const FilePath& path) {
   CHECK(proxy_);
   if (!Connect()) {
-    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
-                 << "Unload Token notification will not be sent.";
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return;
   }
-  proxy_->UnloadToken(isolate_credential, path);
+  proxy_->UnloadToken(isolate_credential, path.value());
 }
 
-void LoginEventClient::ChangeTokenAuthData(const string& path,
-                                           const SecureBlob&  old_auth_data,
-                                           const SecureBlob& new_auth_data) {
+void TokenManagerClient::ChangeTokenAuthData(const FilePath& path,
+                                             const SecureBlob&  old_auth_data,
+                                             const SecureBlob& new_auth_data) {
   CHECK(proxy_);
   if (!Connect()) {
-    LOG(WARNING) << "Failed to connect to the Chaps daemon. "
-                 << "Change authorization data notification will not be sent.";
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
     return;
   }
-  proxy_->ChangeTokenAuthData(path, old_auth_data, new_auth_data);
+  proxy_->ChangeTokenAuthData(path.value(), old_auth_data, new_auth_data);
 }
 
-bool LoginEventClient::Connect() {
+bool TokenManagerClient::GetTokenPath(const SecureBlob& isolate_credential,
+                                      int slot_id,
+                                      FilePath* path) {
+  CHECK(proxy_);
+  if (!Connect()) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
+    return false;
+  }
+  string tmp;
+  bool result = proxy_->GetTokenPath(isolate_credential, slot_id, &tmp);
+  *path = FilePath(tmp);
+  return result;
+}
+
+bool TokenManagerClient::Connect() {
   if (!is_connected_)
     is_connected_ = proxy_->Init();
   return is_connected_;

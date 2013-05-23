@@ -237,7 +237,7 @@ bool TPMUtilityImpl::Authenticate(int slot_id,
   if (!Unbind(key_handle, encrypted_master_key, &master_key_str))
     return false;
   *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
-  ClearString(master_key_str);
+  ClearString(&master_key_str);
   VLOG(1) << "TPMUtilityImpl::Authenticate success";
   return true;
 }

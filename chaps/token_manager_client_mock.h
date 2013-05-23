@@ -15,20 +15,23 @@
 
 namespace chaps {
 
-class LoginEventClientMock : public LoginEventClient {
+class TokenManagerClientMock : public TokenManagerClient {
  public:
   MOCK_METHOD2(OpenIsolate, bool (chromeos::SecureBlob*, bool*));
   MOCK_METHOD1(CloseIsolate, void (const chromeos::SecureBlob&));
   MOCK_METHOD5(LoadToken, bool (const chromeos::SecureBlob&,
-                                const std::string&,
+                                const FilePath&,
                                 const chromeos::SecureBlob&,
                                 const std::string&,
                                 int*));
   MOCK_METHOD2(UnloadToken, void (const chromeos::SecureBlob&,
-                                  const std::string&));
-  MOCK_METHOD3(ChangeTokenAuthData, void (const std::string&,
+                                  const FilePath&));
+  MOCK_METHOD3(ChangeTokenAuthData, void (const FilePath&,
                                           const chromeos::SecureBlob&,
                                           const chromeos::SecureBlob&));
+  MOCK_METHOD3(GetTokenPath, bool(const chromeos::SecureBlob&,
+                                  int,
+                                  FilePath*));
 };
 
 }  // namespace chaps

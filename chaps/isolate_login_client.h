@@ -13,8 +13,8 @@
 #include <chromeos/secure_blob.h>
 
 #include "chaps/isolate.h"
-#include "chaps/token_manager_client.h"
 #include "chaps/token_file_manager.h"
+#include "chaps/token_manager_client.h"
 
 namespace chaps {
 
@@ -22,8 +22,8 @@ class IsolateLoginClient {
  public:
   // Does not take ownership of arguments.
   IsolateLoginClient(IsolateCredentialManager* isolate_manager,
-                     TokenFileManager* token_manager,
-                     LoginEventClient* login_client);
+                     TokenFileManager* file_manager,
+                     TokenManagerClient* token_manager);
   virtual ~IsolateLoginClient();
 
   // Should be called whenever a user logs into a session. Will ensure that
@@ -47,8 +47,8 @@ class IsolateLoginClient {
 
  private:
   IsolateCredentialManager* isolate_manager_;
-  TokenFileManager* token_manager_;
-  LoginEventClient* login_client_;
+  TokenFileManager* file_manager_;
+  TokenManagerClient* token_manager_;
 
   DISALLOW_COPY_AND_ASSIGN(IsolateLoginClient);
 };

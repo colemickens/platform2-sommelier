@@ -39,23 +39,23 @@ protected:
     isolate_credential_ = SecureBlob("credential");
     token_path_ = FilePath("token_path");
     isolate_login_client_.reset(new IsolateLoginClient(&isolate_manager_mock_,
-                                                       &token_manager_mock_,
-                                                       &login_client_mock_));
+                                                       &file_manager_mock_,
+                                                       &token_manager_mock_));
 
     EXPECT_CALL(isolate_manager_mock_, GetUserIsolateCredential(user_, _))
         .WillRepeatedly(DoAll(SetArgumentPointee<1>(isolate_credential_),
                               Return(true)));
-    EXPECT_CALL(login_client_mock_, OpenIsolate(_, _))
+    EXPECT_CALL(token_manager_mock_, OpenIsolate(_, _))
          .WillRepeatedly(DoAll(SetArgumentPointee<1>(false), Return(true)));
-    EXPECT_CALL(token_manager_mock_, GetUserTokenPath(user_, _))
+    EXPECT_CALL(file_manager_mock_, GetUserTokenPath(user_, _))
          .WillRepeatedly(DoAll(SetArgumentPointee<1>(token_path_),
                                Return(true)));
-    EXPECT_CALL(token_manager_mock_, CheckUserTokenPermissions(token_path_))
+    EXPECT_CALL(file_manager_mock_, CheckUserTokenPermissions(token_path_))
          .WillRepeatedly(Return(true));
-    EXPECT_CALL(token_manager_mock_, SaltAuthData(token_path_, auth_old_, _))
+    EXPECT_CALL(file_manager_mock_, SaltAuthData(token_path_, auth_old_, _))
          .WillRepeatedly(DoAll(SetArgumentPointee<2>(salted_auth_old_),
                                Return(true)));
-    EXPECT_CALL(token_manager_mock_, SaltAuthData(token_path_, auth_new_, _))
+    EXPECT_CALL(file_manager_mock_, SaltAuthData(token_path_, auth_new_, _))
          .WillRepeatedly(DoAll(SetArgumentPointee<2>(salted_auth_new_),
                                Return(true)));
   }
@@ -67,28 +67,28 @@ protected:
   SecureBlob isolate_credential_;
   FilePath token_path_;
   IsolateCredentialManagerMock isolate_manager_mock_;
-  TokenFileManagerMock token_manager_mock_;
-  LoginEventClientMock login_client_mock_;
+  TokenFileManagerMock file_manager_mock_;
+  TokenManagerClientMock token_manager_mock_;
   scoped_ptr<IsolateLoginClient> isolate_login_client_;
 };
 
 TEST_F(TestIsolateLoginClient, TestLoginUserSuccess) {
-  EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
-                                            token_path_.value(),
-                                            salted_auth_new_,
-                                            user_,
-                                            _))
+  EXPECT_CALL(token_manager_mock_, LoadToken(isolate_credential_,
+                                             token_path_,
+                                             salted_auth_new_,
+                                             user_,
+                                             _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(isolate_login_client_->LoginUser(user_, auth_new_));
 }
 
 TEST_F(TestIsolateLoginClient, TestLoginUserFail) {
-  EXPECT_CALL(login_client_mock_, OpenIsolate(_, _))
+  EXPECT_CALL(token_manager_mock_, OpenIsolate(_, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(false), Return(false)))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(false), Return(true)));
-  EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
-                                            token_path_.value(),
+  EXPECT_CALL(token_manager_mock_, LoadToken(isolate_credential_,
+                                            token_path_,
                                             salted_auth_new_,
                                             user_,
                                             _))
@@ -102,47 +102,47 @@ TEST_F(TestIsolateLoginClient, TestLoginUserNewIsolate) {
   EXPECT_CALL(isolate_manager_mock_, GetUserIsolateCredential(user_, _))
       .WillOnce(DoAll(SetArgumentPointee<1>(SecureBlob("invalid")),
                       Return(true)));
-  EXPECT_CALL(login_client_mock_, OpenIsolate(_, _))
+  EXPECT_CALL(token_manager_mock_, OpenIsolate(_, _))
       .WillOnce(DoAll(SetArgumentPointee<0>(isolate_credential_),
                       SetArgumentPointee<1>(true),
                       Return(true)));
   EXPECT_CALL(isolate_manager_mock_,
               SaveIsolateCredential(user_, isolate_credential_))
       .WillOnce(Return(true));
-  EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
-                                            token_path_.value(),
-                                            salted_auth_new_,
-                                            user_,
-                                            _))
+  EXPECT_CALL(token_manager_mock_, LoadToken(isolate_credential_,
+                                             token_path_,
+                                             salted_auth_new_,
+                                             user_,
+                                             _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(isolate_login_client_->LoginUser(user_, auth_new_));
 }
 
 TEST_F(TestIsolateLoginClient, TestLoginUserCreateToken) {
-  EXPECT_CALL(token_manager_mock_, GetUserTokenPath(user_, _))
+  EXPECT_CALL(file_manager_mock_, GetUserTokenPath(user_, _))
        .WillOnce(DoAll(SetArgumentPointee<1>(token_path_), Return(false)));
-  EXPECT_CALL(token_manager_mock_, CreateUserTokenDirectory(token_path_))
+  EXPECT_CALL(file_manager_mock_, CreateUserTokenDirectory(token_path_))
        .WillOnce(Return(true));
-  EXPECT_CALL(login_client_mock_, LoadToken(isolate_credential_,
-                                            token_path_.value(),
-                                            salted_auth_new_,
-                                            user_,
-                                            _))
+  EXPECT_CALL(token_manager_mock_, LoadToken(isolate_credential_,
+                                             token_path_,
+                                             salted_auth_new_,
+                                             user_,
+                                             _))
       .WillOnce(Return(true));
 
   EXPECT_TRUE(isolate_login_client_->LoginUser(user_, auth_new_));
 }
 
 TEST_F(TestIsolateLoginClient, TestLoginUserBadTokenPerms) {
-  EXPECT_CALL(token_manager_mock_, CheckUserTokenPermissions(token_path_))
+  EXPECT_CALL(file_manager_mock_, CheckUserTokenPermissions(token_path_))
        .WillOnce(Return(false));
 
   EXPECT_FALSE(isolate_login_client_->LoginUser(user_, auth_new_));
 }
 
 TEST_F(TestIsolateLoginClient, TestLogoutSuccess) {
-  EXPECT_CALL(login_client_mock_, CloseIsolate(isolate_credential_));
+  EXPECT_CALL(token_manager_mock_, CloseIsolate(isolate_credential_));
 
   EXPECT_TRUE(isolate_login_client_->LogoutUser(user_));
 }
@@ -155,16 +155,16 @@ TEST_F(TestIsolateLoginClient, TestLogoutInvalid) {
 }
 
 TEST_F(TestIsolateLoginClient, TestChangeUsersAuthSuccess) {
-  EXPECT_CALL(login_client_mock_, ChangeTokenAuthData(token_path_.value(),
-                                                      salted_auth_old_,
-                                                      salted_auth_new_));
+  EXPECT_CALL(token_manager_mock_, ChangeTokenAuthData(token_path_,
+                                                       salted_auth_old_,
+                                                       salted_auth_new_));
 
   EXPECT_TRUE(isolate_login_client_->ChangeUserAuth(user_, auth_old_,
                                                     auth_new_));
 }
 
 TEST_F(TestIsolateLoginClient, TestChangeUsersAuthNoToken) {
-  EXPECT_CALL(token_manager_mock_, GetUserTokenPath(user_, _))
+  EXPECT_CALL(file_manager_mock_, GetUserTokenPath(user_, _))
        .WillOnce(DoAll(SetArgumentPointee<1>(token_path_), Return(false)));
 
   EXPECT_FALSE(isolate_login_client_->ChangeUserAuth(user_, auth_old_,
@@ -172,7 +172,7 @@ TEST_F(TestIsolateLoginClient, TestChangeUsersAuthNoToken) {
 }
 
 TEST_F(TestIsolateLoginClient, TestChangeUsersAuthBadTokenPerms) {
-  EXPECT_CALL(token_manager_mock_, CheckUserTokenPermissions(token_path_))
+  EXPECT_CALL(file_manager_mock_, CheckUserTokenPermissions(token_path_))
        .WillOnce(Return(false));
 
   EXPECT_FALSE(isolate_login_client_->ChangeUserAuth(user_, auth_old_,

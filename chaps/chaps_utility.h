@@ -11,6 +11,7 @@
 
 #include <base/basictypes.h>
 #include <base/logging.h>
+#include <base/stl_util.h>
 #include <chromeos/secure_blob.h>
 
 #include "chaps/chaps.h"
@@ -237,13 +238,12 @@ bool RunCipher(bool is_encrypt,
 // Returns true if the given attribute type has an integral value.
 bool IsIntegralAttribute(CK_ATTRIBUTE_TYPE type);
 
-inline void ClearString(const std::string& str) {
-  chromeos::SecureMemset(const_cast<char*>(str.data()), 0, str.length());
+inline void ClearString(std::string* str) {
+  chromeos::SecureMemset(string_as_array(str), 0, str->length());
 }
 
-inline void ClearVector(const std::vector<uint8_t>& vector) {
-  chromeos::SecureMemset(const_cast<uint8_t*>(&vector.front()), 0,
-                         vector.size());
+inline void ClearVector(std::vector<uint8_t>* vector) {
+  chromeos::SecureMemset(vector_as_array(vector), 0, vector->size());
 }
 
 }  // namespace chaps

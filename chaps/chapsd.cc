@@ -78,10 +78,10 @@ scoped_ptr<DBus::BusDispatcher> g_dispatcher;
 
 void RunDispatcher(Lock* lock,
                    chaps::ChapsInterface* service,
-                   chaps::LoginEventListener* login_listener) {
+                   chaps::TokenManagerInterface* token_manager) {
   CHECK(service) << "Failed to initialize service.";
   try {
-    ChapsAdaptor adaptor(lock, service, login_listener);
+    ChapsAdaptor adaptor(lock, service, token_manager);
     g_dispatcher->enter();
   } catch (DBus::Error err) {
     LOG(FATAL) << "DBus::Error - " << err.what();

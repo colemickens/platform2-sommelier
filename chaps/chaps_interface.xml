@@ -46,7 +46,7 @@
       <arg type="s" name="path" direction="in"/>
       <arg type="ay" name="auth_data" direction="in"/>
       <arg type="s" name="label" direction="in"/>
-      <arg type="i" name="slot_id" direction="out" />
+      <arg type="t" name="slot_id" direction="out" />
       <arg type="b" name="result" direction="out">
         <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
       </arg>
@@ -61,6 +61,15 @@
       <arg type="s" name="path" direction="in"/>
       <arg type="ay" name="old_auth_data" direction="in"/>
       <arg type="ay" name="new_auth_data" direction="in"/>
+    </method>
+
+    <method name="GetTokenPath">
+      <arg type="ay" name="isolate_credential" direction="in"/>
+      <arg type="t" name="slot_id" direction="in"/>
+      <arg type="s" name="path" direction="out"/>
+      <arg type="b" name="result" direction="out">
+        <annotation name="org.freedesktop.DBus.GLib.ReturnVal" value=""/>
+      </arg>
     </method>
 
     <!-- Logging methods. -->

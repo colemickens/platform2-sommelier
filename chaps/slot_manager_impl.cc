@@ -255,7 +255,7 @@ bool TokenInitThread::InitializeKeyHierarchy(SecureBlob* master_key) {
     LOG(ERROR) << "Failed to write key hierarchy blobs.";
     return false;
   }
-  ClearString(master_key_str);
+  ClearString(&master_key_str);
   return true;
 }
 
@@ -452,7 +452,7 @@ bool SlotManagerImpl::OpenIsolate(SecureBlob* isolate_credential,
       return false;
     }
     SecureBlob new_isolate_credential(credential_string);
-    ClearString(credential_string);
+    ClearString(&credential_string);
 
     if (isolate_map_.find(new_isolate_credential) != isolate_map_.end()) {
       // A collision on 128 bits should be extremely unlikely if the random
@@ -645,6 +645,16 @@ void SlotManagerImpl::ChangeTokenAuthData(const FilePath& path,
   }
   if (unload)
     tpm_utility_->UnloadKeysForSlot(slot_id);
+}
+
+bool SlotManagerImpl::GetTokenPath(const SecureBlob& isolate_credential,
+                                   int slot_id,
+                                   FilePath* path) {
+  if (!IsTokenAccessible(isolate_credential, slot_id))
+    return false;
+  if (!IsTokenPresent(slot_id))
+    return false;
+  return PathFromSlotId(slot_id, path);
 }
 
 bool SlotManagerImpl::IsTokenPresent(int slot_id) const {

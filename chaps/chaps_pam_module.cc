@@ -88,7 +88,7 @@ static bool Init() {
     g_login_client = new chaps::IsolateLoginClient(
         new chaps::IsolateCredentialManager(),
         new chaps::TokenFileManager(chapsd_uid, chapsd_gid),
-        new chaps::LoginEventClient());
+        new chaps::TokenManagerClient());
     g_pam_helper = new chaps::PamHelper();
     g_is_initialized = true;
   }

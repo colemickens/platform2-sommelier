@@ -52,7 +52,7 @@ bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
   AutoLock lock(lock_);
   bool result = false;
   if (!proxy_.get()) {
-    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    LOG(ERROR) << __func__ << ": Proxy not initialized.";
     return false;
   }
   try {
@@ -72,7 +72,7 @@ bool ChapsProxyImpl::OpenIsolate(SecureBlob* isolate_credential,
 void ChapsProxyImpl::CloseIsolate(const SecureBlob& isolate_credential) {
   AutoLock lock(lock_);
   if (!proxy_.get()) {
-    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    LOG(ERROR) << __func__ << ": Proxy not initialized.";
     return;
   }
   try {
@@ -86,10 +86,10 @@ bool ChapsProxyImpl::LoadToken(const SecureBlob& isolate_credential,
                                const string& path,
                                const vector<uint8_t>& auth_data,
                                const string& label,
-                               int* slot_id) {
+                               uint64_t* slot_id) {
   AutoLock lock(lock_);
   if (!proxy_.get()) {
-    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    LOG(ERROR) << __func__ << ": Proxy not initialized.";
     return false;
   }
   bool result = false;;
@@ -111,7 +111,7 @@ void ChapsProxyImpl::UnloadToken(const SecureBlob& isolate_credential,
                                  const string& path) {
   AutoLock lock(lock_);
   if (!proxy_.get()) {
-    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    LOG(ERROR) << __func__ << ": Proxy not initialized.";
     return;
   }
   try {
@@ -126,7 +126,7 @@ void ChapsProxyImpl::ChangeTokenAuthData(const string& path,
                                          const vector<uint8_t>& new_auth_data) {
   AutoLock lock(lock_);
   if (!proxy_.get()) {
-    LOG(ERROR) << "Failed to fire event: proxy not initialized.";
+    LOG(ERROR) << __func__ << ": Proxy not initialized.";
     return;
   }
   try {
@@ -134,6 +134,24 @@ void ChapsProxyImpl::ChangeTokenAuthData(const string& path,
   } catch (DBus::Error err) {
     LOG(ERROR) << "DBus::Error - " << err.what();
   }
+}
+
+bool ChapsProxyImpl::GetTokenPath(const SecureBlob& isolate_credential,
+                                  uint64_t slot_id,
+                                  string* path) {
+  AutoLock lock(lock_);
+  if (!proxy_.get()) {
+    LOG(ERROR) << __func__ << ": Proxy not initialized.";
+    return false;
+  }
+  bool result = false;;
+  try {
+    proxy_->GetTokenPath(isolate_credential, slot_id, *path, result);
+  } catch (DBus::Error err) {
+    LOG(ERROR) << "DBus::Error - " << err.what();
+    result = false;
+  }
+  return result;
 }
 
 void ChapsProxyImpl::SetLogLevel(const int32_t& level) {

@@ -326,7 +326,7 @@ bool OpencryptokiImporter::DecryptMasterKey(const string& encrypted_master_key,
     return false;
   }
   *master_key = SecureBlob(master_key_str.data(), master_key_str.length());
-  ClearString(master_key_str);
+  ClearString(&master_key_str);
   return true;
 }
 

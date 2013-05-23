@@ -42,6 +42,7 @@ void PrintHelp() {
          "    Levels: \n      2 - Errors Only\n      1 - Warnings and Errors\n"
          "      0 - Normal\n     -1 - Verbose (Logs PKCS #11 calls.)\n"
          "     -2 - More Verbose (Logs PKCS #11 calls and arguments.)\n");
+  printf("  --list : Lists all loaded token paths.\n");
 }
 
 void Ping() {
@@ -62,22 +63,22 @@ void Ping() {
 
 // Loads a token given a path and auth data.
 void LoadToken(const string& path, const string& auth, const string& label) {
-  chaps::LoginEventClient client;
-  int slot_id = 0;
+  chaps::TokenManagerClient client;
+  int slot_id = -1;
   client.LoadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                   path,
+                   FilePath(path),
                    SecureBlob(chaps::ConvertStringToByteBuffer(auth.data()),
                                                                auth.length()),
                    label,
                    &slot_id);
-  LOG(INFO) << "Sent Event: Login: " << path << " - slot = " << slot_id;
+  LOG(INFO) << "LoadToken: " << path << " - slot = " << slot_id;
 }
 
 // Unloads a token given a path.
 void UnloadToken(const string& path) {
-  chaps::LoginEventClient client;
+  chaps::TokenManagerClient client;
   client.UnloadToken(IsolateCredentialManager::GetDefaultIsolateCredential(),
-                     path);
+                     FilePath(path));
   LOG(INFO) << "Sent Event: Logout: " << path;
 }
 
@@ -85,9 +86,9 @@ void UnloadToken(const string& path) {
 void ChangeAuthData(const string& path,
                     const string& auth_old,
                     const string& auth_new) {
-  chaps::LoginEventClient client;
+  chaps::TokenManagerClient client;
   client.ChangeTokenAuthData(
-      path,
+      FilePath(path),
       SecureBlob(chaps::ConvertStringToByteBuffer(auth_old.data()),
                  auth_old.length()),
       SecureBlob(chaps::ConvertStringToByteBuffer(auth_new.data()),
@@ -101,6 +102,32 @@ void SetLogLevel(int level) {
   if (!proxy.Init())
     exit(-1);
   proxy.SetLogLevel(level);
+}
+
+void ListTokens() {
+  chaps::ChapsProxyImpl proxy;
+  if (!proxy.Init())
+    exit(-1);
+  vector<uint64_t> slot_list;
+  uint32_t result = proxy.GetSlotList(
+      IsolateCredentialManager::GetDefaultIsolateCredential(),
+      true,
+      &slot_list);
+  if (result != 0)
+    exit(-1);
+  chaps::TokenManagerClient client;
+  for (size_t i = 0; i < slot_list.size(); ++i) {
+    int slot = slot_list[i];
+    FilePath path;
+    if (client.GetTokenPath(
+        IsolateCredentialManager::GetDefaultIsolateCredential(),
+        slot,
+        &path)) {
+      LOG(INFO) << "Slot " << slot << ": " << path.value();
+    } else {
+      LOG(INFO) << "Slot " << slot << ": Empty";
+    }
+  }
 }
 
 }  // namespace
@@ -120,7 +147,8 @@ int main(int argc, char** argv) {
                       cl->HasSwitch("auth") &&
                       cl->HasSwitch("new_auth"));
   bool set_log_level = cl->HasSwitch("set_log_level");
-  if (ping + load + unload + change_auth + set_log_level != 1) {
+  bool list = cl->HasSwitch("list");
+  if (ping + load + unload + change_auth + set_log_level + list != 1) {
     PrintHelp();
     exit(-1);
   }
@@ -146,6 +174,8 @@ int main(int argc, char** argv) {
       exit(-1);
     }
     SetLogLevel(level);
+  } else if (list) {
+    ListTokens();
   }
   return 0;
 }

@@ -35,7 +35,7 @@ class TPMUtility;
 //    }
 //    // Ready for use by SlotManager and LoginEventListener clients.
 class SlotManagerImpl : public SlotManager,
-                        public LoginEventListener,
+                        public TokenManagerInterface,
                         public HandleGenerator {
  public:
   SlotManagerImpl(ChapsFactory* factory, TPMUtility* tpm_utility);
@@ -69,7 +69,7 @@ class SlotManagerImpl : public SlotManager,
   virtual bool GetSession(const chromeos::SecureBlob& isolate_credential,
                           int session_id, Session** session) const;
 
-  // LoginEventListener methods.
+  // TokenManagerInterface methods.
   virtual bool OpenIsolate(chromeos::SecureBlob* isolate_credential,
                            bool* new_isolate_created);
   virtual void CloseIsolate(const chromeos::SecureBlob& isolate_credential);
@@ -83,6 +83,9 @@ class SlotManagerImpl : public SlotManager,
   virtual void ChangeTokenAuthData(const FilePath& path,
                                    const chromeos::SecureBlob& old_auth_data,
                                    const chromeos::SecureBlob& new_auth_data);
+  virtual bool GetTokenPath(const chromeos::SecureBlob& isolate_credential,
+                            int slot_id,
+                            FilePath* path);
 
   // HandleGenerator methods.
   virtual int CreateHandle();
