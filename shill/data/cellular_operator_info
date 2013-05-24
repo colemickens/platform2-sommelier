@@ -45,6 +45,7 @@ name:,4G LTE Contract
 provider:1,1,0,0
 identifier:test-network
 name:,Test Network
+activation-code:99998
 mccmnc:001000,0
 sid:99998,0
 olp:,,

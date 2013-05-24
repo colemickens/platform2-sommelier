@@ -130,7 +130,7 @@ void CellularCapabilityUniversalCDMA::ActivateAutomatic() {
     Bind(&CellularCapabilityUniversalCDMA::OnActivateReply,
          weak_cdma_ptr_factory_.GetWeakPtr(),
          ResultCallback());
-  // TODO(armansito): Read the activation code from CellularOperatorInfo
+
   Error error;
   modem_cdma_proxy_->Activate(
       activation_code_, &error, activation_callback, kTimeoutActivate);
@@ -352,7 +352,12 @@ void CellularCapabilityUniversalCDMA::OnActivateReply(
         PendingActivationStore::kStateFailureRetry);
   }
   UpdatePendingActivationState();
-  callback.Run(error);
+
+  // CellularCapabilityUniversalCDMA::ActivateAutomatic passes a dummy
+  // ResultCallback when it calls Activate on the proxy object, in which case
+  // |callback.is_null()| will return true.
+  if (!callback.is_null())
+    callback.Run(error);
 }
 
 void CellularCapabilityUniversalCDMA::HandleNewActivationStatus(uint32 error) {
