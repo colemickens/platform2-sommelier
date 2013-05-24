@@ -1292,16 +1292,15 @@ bool Mount::CheckChapsDirectory(const std::string& dir,
 bool Mount::InsertPkcs11Token() {
   bool permissions_status = false;
   std::string username = current_user_->username();
-  std::string token_dir = homedirs_->GetChapsTokenDir(username);
+  FilePath token_dir = homedirs_->GetChapsTokenDir(username);
 
-  if (!CheckChapsDirectory(token_dir, &permissions_status))
+  if (!CheckChapsDirectory(token_dir.value(), &permissions_status))
      return false;
   // We may create a salt file and, if so, we want to restrict access to it.
   ScopedUmask scoped_umask(platform_, kDefaultUmask);
 
   // Derive authorization data for the token from the passkey.
-  std::string token_salt_file = homedirs_->GetChapsTokenSaltPath(username);
-  FilePath salt_file(token_salt_file);
+  FilePath salt_file = homedirs_->GetChapsTokenSaltPath(username);
   SecureBlob auth_data;
   if (!crypto_->PasskeyToTokenAuthData(pkcs11_passkey_, salt_file, &auth_data))
     return false;
@@ -1313,7 +1312,7 @@ bool Mount::InsertPkcs11Token() {
                                          salt_file,
                                          &old_auth_data))
       return false;
-    chaps_event_client_.ChangeTokenAuthData(
+    chaps_client_.ChangeTokenAuthData(
         token_dir,
         old_auth_data,
         auth_data);
@@ -1322,7 +1321,7 @@ bool Mount::InsertPkcs11Token() {
   }
   Pkcs11Init pkcs11init;
   int slot_id = 0;
-  if (!chaps_event_client_.LoadToken(
+  if (!chaps_client_.LoadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir,
       auth_data,
@@ -1336,8 +1335,8 @@ bool Mount::InsertPkcs11Token() {
 
 void Mount::RemovePkcs11Token() {
   std::string username = current_user_->username();
-  std::string token_dir = homedirs_->GetChapsTokenDir(username);
-  chaps_event_client_.UnloadToken(
+  FilePath token_dir = homedirs_->GetChapsTokenDir(username);
+  chaps_client_.UnloadToken(
       IsolateCredentialManager::GetDefaultIsolateCredential(),
       token_dir);
 }

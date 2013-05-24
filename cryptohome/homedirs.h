@@ -13,7 +13,7 @@
 #include <base/file_util.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/time.h>
-#include <chaps/login_event_client.h>
+#include <chaps/token_manager_client.h>
 #include <chromeos/secure_blob.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
@@ -75,10 +75,10 @@ class HomeDirs {
                        const chromeos::SecureBlob& oldkey);
 
   // Returns the path to the user's chaps token directory.
-  virtual std::string GetChapsTokenDir(const std::string& username) const;
+  virtual FilePath GetChapsTokenDir(const std::string& username) const;
 
   // Returns the path to the user's token salt.
-  virtual std::string GetChapsTokenSaltPath(const std::string& username) const;
+  virtual FilePath GetChapsTokenSaltPath(const std::string& username) const;
 
   // Accessors. Mostly used for unit testing. These do not take ownership of
   // passed-in pointers.
@@ -158,7 +158,7 @@ class HomeDirs {
   MountFactory* mount_factory_;
   base::TimeDelta old_user_last_activity_time_;
   chromeos::SecureBlob system_salt_;
-  chaps::LoginEventClient chaps_event_client_;
+  chaps::TokenManagerClient chaps_client_;
 
   friend class HomeDirsTest;
 

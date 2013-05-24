@@ -347,15 +347,13 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   SecureBlob old_auth_data;
   SecureBlob auth_data;
   std::string username = newcreds.username();
-  std::string token_salt_path = GetChapsTokenSaltPath(username);
-  FilePath salt_file(token_salt_path);
+  FilePath salt_file = GetChapsTokenSaltPath(username);
   if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data))
     return false;
   if (!crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data))
     return false;
-  std::string token_dir = GetChapsTokenDir(username);
-  chaps_event_client_.ChangeTokenAuthData(
-      token_dir,
+  chaps_client_.ChangeTokenAuthData(
+      GetChapsTokenDir(username),
       old_auth_data,
       auth_data);
   return true;
@@ -366,14 +364,12 @@ namespace {
   const char *kChapsSaltName = "auth_data_salt";
 }
 
-std::string HomeDirs::GetChapsTokenDir(const std::string& user) const {
-  std::string user_path =
-      chromeos::cryptohome::home::GetUserPath(user).value();
-  return StringPrintf("%s/%s", user_path.c_str(), kChapsDirName);
+FilePath HomeDirs::GetChapsTokenDir(const std::string& user) const {
+  return chromeos::cryptohome::home::GetUserPath(user).Append(kChapsDirName);
 }
 
-std::string HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {
-  return StringPrintf("%s/%s", GetChapsTokenDir(user).c_str(), kChapsSaltName);
+FilePath HomeDirs::GetChapsTokenSaltPath(const std::string& user) const {
+  return GetChapsTokenDir(user).Append(kChapsSaltName);
 }
 
 }  // namespace cryptohome
