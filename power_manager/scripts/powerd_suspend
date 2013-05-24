@@ -206,6 +206,7 @@ else
     # it will trigger an RTC interrupt that may count as a wakeup reason, abort
     # your suspend and cause you hours of pain and confusion!
     if [ -f "${TIMESTAMP_FILE}" ]; then
+        wake_rtc=$(ls -1 /dev/rtc* | tail -n 1)
         /sbin/hwclock -V > /dev/null
     else
         # We don't want to overwrite the alarm for whatever test might be
@@ -240,7 +241,7 @@ if [ $cancel -eq 0 ]; then
     # On resume:
     if [ -f "${TIMESTAMP_FILE}" ]; then
         # Record the hwclock time at resume. It is read by power_Resume test.
-        TIME=$(/sbin/hwclock --utc --debug)
+        TIME=$(/sbin/hwclock --rtc $wake_rtc --utc --debug)
         echo ${TIME} > "${TIMESTAMP_FILE}"
         log_msg "Recorded hwclock time for test"
     fi
