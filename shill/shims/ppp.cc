@@ -12,7 +12,6 @@ extern "C" {
 #include <pppd/ipcp.h>
 }
 
-#include <base/at_exit.h>
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <chromeos/syslog_logging.h>
@@ -30,26 +29,25 @@ namespace shill {
 
 namespace shims {
 
-base::AtExitManager *PPP::exit_manager_ = NULL;
+static base::LazyInstance<PPP> g_ppp = LAZY_INSTANCE_INITIALIZER;
 
-PPP::PPP() {}
+PPP::PPP() : running_(false) {}
 
 PPP::~PPP() {}
 
-void PPP::Start() {
-  if (exit_manager_) {
+// static
+PPP *PPP::GetInstance() {
+  return g_ppp.Pointer();
+}
+
+void PPP::Init() {
+  if (running_) {
     return;
   }
-  exit_manager_ = new base::AtExitManager();
+  running_ = true;
   CommandLine::Init(0, NULL);
   chromeos::InitLog(chromeos::kLogToSyslog | chromeos::kLogHeader);
   LOG(INFO) << "PPP started.";
-}
-
-void PPP::Stop() {
-  LOG(INFO) << "PPP stopped.";
-  delete exit_manager_;
-  exit_manager_ = NULL;
 }
 
 bool PPP::GetSecret(string *username, string *password) {

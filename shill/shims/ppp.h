@@ -8,11 +8,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/lazy_instance.h>
 #include <base/memory/scoped_ptr.h>
-
-namespace base {
-class AtExitManager;
-}  // namespace base
 
 namespace DBus {
 class BusDispatcher;
@@ -27,17 +24,23 @@ class TaskProxy;
 
 class PPP {
  public:
-  PPP();
   ~PPP();
 
-  void Start();
-  void Stop();
+  // This is a singleton -- use PPP::GetInstance()->Foo()
+  static PPP *GetInstance();
+
+  void Init();
 
   bool GetSecret(std::string *username, std::string *password);
   void OnConnect(const std::string &ifname);
   void OnDisconnect();
 
+ protected:
+  PPP();
+
  private:
+  friend struct base::DefaultLazyInstanceTraits<PPP>;
+
   bool CreateProxy();
   void DestroyProxy();
 
@@ -46,8 +49,7 @@ class PPP {
   scoped_ptr<DBus::BusDispatcher> dispatcher_;
   scoped_ptr<DBus::Connection> connection_;
   scoped_ptr<TaskProxy> proxy_;
-
-  static base::AtExitManager *exit_manager_;
+  bool running_;
 
   DISALLOW_COPY_AND_ASSIGN(PPP);
 };
