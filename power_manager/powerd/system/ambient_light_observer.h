@@ -16,8 +16,9 @@ class AmbientLightObserver {
  public:
   virtual ~AmbientLightObserver() {}
 
-  // Called when the light level changes.
-  virtual void OnAmbientLightChanged(AmbientLightSensorInterface* sensor) = 0;
+  // Called when the light level is measured. The measured level may be
+  // unchanged from the previously-observed level.
+  virtual void OnAmbientLightUpdated(AmbientLightSensorInterface* sensor) = 0;
 };
 
 }  // namespace system

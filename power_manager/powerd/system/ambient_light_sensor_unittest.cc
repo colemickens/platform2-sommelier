@@ -22,11 +22,7 @@ namespace {
 
 // Abort if it an expected brightness change hasn't been received after this
 // many milliseconds.
-const int kChangeTimeoutMs = 5000;
-
-// Shorter version of kChangeTimeoutMs for tests that expect a timeout and don't
-// want to slow things down.
-const int kChangeShortTimeoutMs = 500;
+const int kUpdateTimeoutMs = 5000;
 
 // Frequency with which the ambient light sensor file is polled.
 const int kPollIntervalMs = 100;
@@ -38,20 +34,14 @@ class TestObserver : public AmbientLightObserver {
   TestObserver() {}
   virtual ~TestObserver() {}
 
-  // Runs |loop_| until OnAmbientLightChanged() is called.
-  bool RunUntilAmbientLightChanged() {
+  // Runs |loop_| until OnAmbientLightUpdated() is called.
+  bool RunUntilAmbientLightUpdated() {
     return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kChangeTimeoutMs));
-  }
-
-  // Alternate version of RunUntilAmbientLightChanged() with a shorter timeout.
-  bool RunShortUntilAmbientLightChanged() {
-    return loop_runner_.StartLoop(
-        base::TimeDelta::FromMilliseconds(kChangeShortTimeoutMs));
+        base::TimeDelta::FromMilliseconds(kUpdateTimeoutMs));
   }
 
   // AmbientLightObserver implementation:
-  virtual void OnAmbientLightChanged(
+  virtual void OnAmbientLightUpdated(
       AmbientLightSensorInterface* sensor) OVERRIDE {
     loop_runner_.StopLoop();
   }
@@ -113,16 +103,16 @@ class AmbientLightSensorTest : public ::testing::Test {
 
 TEST_F(AmbientLightSensorTest, Basic) {
   WriteLux(100);
-  ASSERT_TRUE(observer_.RunUntilAmbientLightChanged());
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(100, sensor_->GetAmbientLightLux());
 
   WriteLux(200);
-  ASSERT_TRUE(observer_.RunUntilAmbientLightChanged());
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(200, sensor_->GetAmbientLightLux());
 
-  // When the lux value doesn't change, we shouldn't be called.
+  // When the lux value doesn't change, we should still be called.
   WriteLux(200);
-  EXPECT_FALSE(observer_.RunShortUntilAmbientLightChanged());
+  ASSERT_TRUE(observer_.RunUntilAmbientLightUpdated());
   EXPECT_EQ(200, sensor_->GetAmbientLightLux());
 }
 

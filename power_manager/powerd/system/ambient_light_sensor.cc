@@ -82,17 +82,14 @@ gboolean AmbientLightSensor::ReadAls() {
 }
 
 void AmbientLightSensor::ReadCallback(const std::string& data) {
-  int previous_lux_value = lux_value_;
-
   std::string trimmed_data;
   TrimWhitespaceASCII(data, TRIM_ALL, &trimmed_data);
-  lux_value_ = -1;
-  if (base::StringToInt(trimmed_data, &lux_value_)) {
+  int value = 0;
+  if (base::StringToInt(trimmed_data, &value)) {
+    lux_value_ = value;
     VLOG(1) << "Read lux " << lux_value_;
-    if (lux_value_ != previous_lux_value) {
-      FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
-                        OnAmbientLightChanged(this));
-    }
+    FOR_EACH_OBSERVER(AmbientLightObserver, observers_,
+                      OnAmbientLightUpdated(this));
   } else {
     LOG(ERROR) << "Could not read lux value from ALS file contents: ["
                << trimmed_data << "]";

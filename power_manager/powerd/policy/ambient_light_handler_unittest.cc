@@ -72,7 +72,7 @@ class AmbientLightHandlerTest : public ::testing::Test {
   // |handler_| about the change.
   void UpdateSensor(int64 lux) {
     light_sensor_.set_lux(lux);
-    handler_.OnAmbientLightChanged(&light_sensor_);
+    handler_.OnAmbientLightUpdated(&light_sensor_);
   }
 
   FakePrefs prefs_;

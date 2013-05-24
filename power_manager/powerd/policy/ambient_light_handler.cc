@@ -158,7 +158,7 @@ void AmbientLightHandler::HandlePowerSourceChange(PowerSource source) {
   }
 }
 
-void AmbientLightHandler::OnAmbientLightChanged(
+void AmbientLightHandler::OnAmbientLightUpdated(
     system::AmbientLightSensorInterface* sensor) {
   DCHECK_EQ(sensor, sensor_);
 
