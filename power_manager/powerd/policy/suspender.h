@@ -157,10 +157,16 @@ class Suspender : public SuspendDelayObserver {
 
   void Init(PrefsInterface* prefs);
 
-  // Starts the suspend process.  Notifies clients that have registered
-  // delays that the system is about to suspend.  Note that suspending
-  // happens asynchronously.
+  // Starts the suspend process. Note that suspending happens
+  // asynchronously.
   void RequestSuspend();
+
+  // Like RequestSuspend(), but aborts the suspend attempt immediately if
+  // the current wakeup count reported by the kernel exceeds
+  // |wakeup_count|. Autotests can pass an external wakeup count to ensure
+  // that machines in the test cluster don't sleep indefinitely (see
+  // http://crbug.com/218175).
+  void RequestSuspendWithExternalWakeupCount(uint64 wakeup_count);
 
   // Handles a RegisterSuspendDelay call and returns a reply that should be sent
   // (or NULL if an empty reply should be sent).
@@ -190,8 +196,14 @@ class Suspender : public SuspendDelayObserver {
   virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;
 
  private:
-  // Suspends the computer. Before this method is called, the system should be
-  // in a state where it's truly ready to suspend (i.e. no outstanding delays).
+  // Notifies clients that have registered delays that the system is about
+  // to suspend. Internal implementation shared by RequestSuspend() and
+  // RequestSuspendWithExternalWakeupCount().
+  void StartSuspendAttempt();
+
+  // Actually suspends the system. Before this method is called, the system
+  // should be in a state where it's truly ready to suspend (i.e. no
+  // outstanding delays).
   void Suspend();
 
   // Callback for |retry_suspend_timeout_id_|.
@@ -222,6 +234,13 @@ class Suspender : public SuspendDelayObserver {
   // Number of wakeup events received at start of current suspend operation.
   uint64 wakeup_count_;
   bool wakeup_count_valid_;
+
+  // Wakeup count optionally read by another process and passed to
+  // RequestSuspendWithExternalWakeupCount().
+  uint64 external_wakeup_count_;
+
+  // Is |external_wakeup_count_| set?
+  bool got_external_wakeup_count_;
 
   // The duration the machine should suspend for.
   int64 suspend_duration_;

@@ -52,6 +52,8 @@ Suspender::Suspender(Delegate* delegate,
       suspend_id_(0),
       wakeup_count_(0),
       wakeup_count_valid_(false),
+      external_wakeup_count_(0),
+      got_external_wakeup_count_(false),
       max_retries_(0),
       num_retries_(0),
       retry_suspend_timeout_id_(0),
@@ -73,22 +75,15 @@ void Suspender::Init(PrefsInterface* prefs) {
 }
 
 void Suspender::RequestSuspend() {
-  // RequestSuspend() shouldn't be called after the system has started
-  // shutting down, but if it is, avoid doing anything.
-  if (shutting_down_) {
-    LOG(ERROR) << "Not requesting suspend; shutdown in progress";
-    return;
-  }
+  got_external_wakeup_count_ = false;
+  external_wakeup_count_ = 0;
+  StartSuspendAttempt();
+}
 
-  if (waiting_for_readiness_)
-    return;
-
-  waiting_for_readiness_ = true;
-  util::RemoveTimeout(&retry_suspend_timeout_id_);
-  wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
-  suspend_id_++;
-  delegate_->PrepareForSuspendAnnouncement();
-  suspend_delay_controller_->PrepareForSuspend(suspend_id_);
+void Suspender::RequestSuspendWithExternalWakeupCount(uint64 wakeup_count) {
+  got_external_wakeup_count_ = true;
+  external_wakeup_count_ = wakeup_count;
+  StartSuspendAttempt();
 }
 
 DBusMessage* Suspender::RegisterSuspendDelay(DBusMessage* message) {
@@ -156,6 +151,36 @@ void Suspender::OnReadyForSuspend(int suspend_id) {
   }
 }
 
+void Suspender::StartSuspendAttempt() {
+  // Suspend shouldn't be requested after the system has started shutting
+  // down, but if it is, avoid doing anything.
+  if (shutting_down_) {
+    LOG(ERROR) << "Not starting suspend attempt; shutdown in progress";
+    return;
+  }
+
+  if (waiting_for_readiness_)
+    return;
+
+  util::RemoveTimeout(&retry_suspend_timeout_id_);
+  wakeup_count_valid_ = delegate_->GetWakeupCount(&wakeup_count_);
+
+  // If an external wakeup count was supplied and it's already been
+  // surpassed, don't bother trying to suspend.
+  if (got_external_wakeup_count_ && wakeup_count_valid_ &&
+      wakeup_count_ > external_wakeup_count_) {
+    LOG(WARNING) << "Canceling suspend attempt with external wakeup count "
+                 << external_wakeup_count_ << " since current wakeup count is "
+                 << wakeup_count_;
+    return;
+  }
+
+  suspend_id_++;
+  waiting_for_readiness_ = true;
+  delegate_->PrepareForSuspendAnnouncement();
+  suspend_delay_controller_->PrepareForSuspend(suspend_id_);
+}
+
 void Suspender::Suspend() {
   bool dark_resume = false;
   bool success = false;
@@ -194,6 +219,7 @@ void Suspender::Suspend() {
         wakeup_count_, wakeup_count_valid_ && !dark_resume, suspend_duration);
     success = result == Delegate::SUSPEND_SUCCESSFUL;
     dark_resume = dark_resume_policy_->IsDarkResume();
+
     // Failure handling for dark resume. We don't want to process events during
     // a dark resume, even if we fail to suspend. To solve this, instead of
     // scheduling a retry later, delay here and retry without returning from
@@ -224,6 +250,7 @@ void Suspender::Suspend() {
     retry_suspend_timeout_id_ =
         g_timeout_add(retry_delay_.InMilliseconds(), RetrySuspendThunk, this);
   }
+
   dark_resume_policy_->HandleResume();
   delegate_->HandleResume(success, num_retries_, max_retries_);
 }
@@ -237,7 +264,7 @@ gboolean Suspender::RetrySuspend() {
   } else {
     num_retries_++;
     LOG(WARNING) << "Retry #" << num_retries_;
-    RequestSuspend();
+    StartSuspendAttempt();
   }
   return FALSE;
 }

@@ -6,23 +6,34 @@
 // suspend, excercising the full path through the power manager.
 // The actual work to suspend the system is done by powerd_suspend.
 // This tool will block and only exit after it has received a DBus
-// resume signal from powerd_suspend.
+// resume signal from powerd.
 
 #include <cstdio>
 #include <cstdlib>
 #include <dbus/dbus.h>
 #include <gflags/gflags.h>
+#include <unistd.h>
 
 #include "base/logging.h"
 #include "base/stringprintf.h"
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
 
+DEFINE_int32(delay, 0, "Delay before suspending in seconds. Useful if running "
+             "interactively to ensure that typing this command isn't "
+             "recognized as user activity that cancels the suspend request.");
 DEFINE_int32(timeout, 0, "Timeout in seconds.");
+DEFINE_uint64(wakeup_count, 0, "Wakeup count.");
+
+namespace {
+const int kMicrosecondsInSecond = 1000 * 1000;
+}  // namespace
 
 int main(int argc, char* argv[]) {
   // Initialization
   google::ParseCommandLineFlags(&argc, &argv, true);
+  if (FLAGS_delay)
+    usleep(FLAGS_delay * kMicrosecondsInSecond);
   base::TimeDelta timeout = base::TimeDelta::FromMilliseconds(-1);
   base::TimeTicks end;
   if (FLAGS_timeout) {
@@ -49,6 +60,12 @@ int main(int argc, char* argv[]) {
       power_manager::kPowerManagerInterface,
       power_manager::kRequestSuspendMethod);
   CHECK(message);
+
+  if (FLAGS_wakeup_count) {
+    dbus_message_append_args(message, DBUS_TYPE_UINT64, &FLAGS_wakeup_count,
+                             DBUS_TYPE_INVALID);
+  }
+
   CHECK(dbus_connection_send(connection, message, NULL));
   dbus_message_unref(message);
 

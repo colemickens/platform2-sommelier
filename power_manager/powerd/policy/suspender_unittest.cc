@@ -438,5 +438,50 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
             delegate_.GetActions());
 }
 
+// Tests that expected wakeup counts passed to
+// RequestSuspendWithExternalWakeupCount() are honored.
+TEST_F(SuspenderTest, ExternalWakeupCount) {
+  Init();
+
+  // Pass a wakeup count less than the one that the delegate returns and
+  // check that the request is ignored.
+  const uint64 kFirstWakeupCount = 452;
+  delegate_.set_wakeup_count(kFirstWakeupCount);
+  suspender_.RequestSuspendWithExternalWakeupCount(kFirstWakeupCount - 1);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+
+  // If the external wakeup count matches the real wakeup count, the
+  // suspend attempt should start.
+  suspender_.RequestSuspendWithExternalWakeupCount(kFirstWakeupCount);
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+
+  // Increment the wakeup count returned by the delegate and make it report
+  // that powerd_suspend reported a wakeup count mismatch.
+  const uint64 kSecondWakeupCount = kFirstWakeupCount + 1;
+  delegate_.set_wakeup_count(kSecondWakeupCount);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
+  EXPECT_EQ(kFirstWakeupCount, delegate_.suspend_wakeup_count());
+
+  // When the suspend attempt is retried, it should be aborted immediately
+  // now that the external wakeup count has been surpassed.
+  EXPECT_TRUE(test_api_.TriggerRetryTimeout());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+
+  // Send another suspend request. This time, let the counts match and
+  // check that a retry isn't scheduled.
+  suspender_.RequestSuspendWithExternalWakeupCount(kSecondWakeupCount);
+  EXPECT_EQ(kAnnounce, delegate_.GetActions());
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
+  suspender_.OnReadyForSuspend(test_api_.suspend_id());
+  EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
+            delegate_.GetActions());
+  EXPECT_EQ(kSecondWakeupCount, delegate_.suspend_wakeup_count());
+  EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+}
+
 }  // namespace policy
 }  // namespace power_manager

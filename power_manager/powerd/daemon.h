@@ -184,9 +184,10 @@ class Daemon : public policy::BacklightControllerObserver,
   // system is shutting down; see power_constants.cc for valid values.
   void ShutDown(ShutdownMode mode, const std::string& reason);
 
-  void Suspend();
-  void SuspendDisable();
-  void SuspendEnable();
+  // Starts the suspend process. If |use_external_wakeup_count| is true,
+  // passes |external_wakeup_count| to
+  // policy::Suspender::RequestSuspendWithExternalWakeupCount();
+  void Suspend(bool use_external_wakeup_count, uint64 external_wakeup_count);
 
   // Updates state in |backlight_controller_| and |keyboard_controller_|
   // (if non-NULL).

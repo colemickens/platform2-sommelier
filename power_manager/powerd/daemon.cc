@@ -190,7 +190,7 @@ class Daemon::StateControllerDelegate
   }
 
   virtual void Suspend() OVERRIDE {
-    daemon_->Suspend();
+    daemon_->Suspend(false, 0);
   }
 
   virtual void StopSession() OVERRIDE {
@@ -864,17 +864,33 @@ bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
+  LOG(INFO) << "Got " << kRequestShutdownMethod << " message";
   ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
   return NULL;
 }
 
 DBusMessage* Daemon::HandleRequestRestartMethod(DBusMessage* message) {
+  LOG(INFO) << "Got " << kRequestRestartMethod << " message";
   ShutDown(SHUTDOWN_REBOOT, kShutdownReasonUserRequest);
   return NULL;
 }
 
 DBusMessage* Daemon::HandleRequestSuspendMethod(DBusMessage* message) {
-  Suspend();
+  // Read an optional uint64 argument specifying the wakeup count that is
+  // expected.
+  dbus_uint64_t external_wakeup_count = 0;
+  DBusError error;
+  dbus_error_init(&error);
+  const bool got_external_wakeup_count = dbus_message_get_args(
+      message, &error, DBUS_TYPE_UINT64, &external_wakeup_count,
+      DBUS_TYPE_INVALID);
+  dbus_error_free(&error);
+
+  LOG(INFO) << "Got " << kRequestSuspendMethod << " message"
+            << (got_external_wakeup_count ?
+                StringPrintf(" with external wakeup count %" PRIu64,
+                             external_wakeup_count).c_str() : "");
+  Suspend(got_external_wakeup_count, external_wakeup_count);
   return NULL;
 }
 
@@ -1135,12 +1151,17 @@ void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
   }
 }
 
-void Daemon::Suspend() {
+void Daemon::Suspend(bool use_external_wakeup_count,
+                     uint64 external_wakeup_count) {
   if (shutting_down_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;
   }
-  suspender_.RequestSuspend();
+
+  if (use_external_wakeup_count)
+    suspender_.RequestSuspendWithExternalWakeupCount(external_wakeup_count);
+  else
+    suspender_.RequestSuspend();
 }
 
 void Daemon::SetBacklightsDimmedForInactivity(bool dimmed) {
