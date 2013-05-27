@@ -151,19 +151,6 @@ if use_flag_is_set dangerous_sslkeylogfile &&
   export SSLKEYLOGFILE
 fi
 
-# For recovery image, do NOT display OOBE or login window
-if [ -f /mnt/stateful_partition/.recovery ]; then
-  # Verify recovery UI HTML file exists
-  if [ -f /usr/share/misc/recovery_ui.html ]; then
-    SKIP_OOBE="--login-screen=html file:///usr/share/misc/recovery_ui.html"
-  else
-    # Fall back to displaying a blank screen
-    # the magic string "test:nowindow" comes from
-    # src/chrome/browser/chromeos/login/wizard_controller.cc
-    SKIP_OOBE="--login-screen=test:nowindow"
-  fi
-fi
-
 # Enables gathering of chrome dumps.  In stateful partition so testers
 # can enable getting core dumps after build time.
 if [ -f /mnt/stateful_partition/etc/enable_chromium_coredumps ] ; then
