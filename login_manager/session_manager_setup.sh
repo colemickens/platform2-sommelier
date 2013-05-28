@@ -373,6 +373,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --enable-gpu-sandbox \
             --enable-logging \
             --enable-partial-swap \
+            --enable-impl-side-painting \
             --enterprise-enrollment-initial-modulus=6 \
             --enterprise-enrollment-modulus-limit=12 \
             --log-level=1 \
