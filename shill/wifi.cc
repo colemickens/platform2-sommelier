@@ -1114,7 +1114,6 @@ void WiFi::ScanDoneTask() {
     // started before we decide whether the scan was fruitful.
     dispatcher()->PostTask(Bind(&WiFi::UpdateScanStateAfterScanDone,
                                 weak_ptr_factory_.GetWeakPtr()));
-    metrics()->NotifyDeviceScanFinished(interface_index());
   }
   if (need_bss_flush_) {
     CHECK(supplicant_interface_proxy_ != NULL);
@@ -1200,20 +1199,17 @@ void WiFi::ProgressiveScanTask() {
   if (!enabled()) {
     LOG(INFO) << "Ignoring scan request while device is not enabled.";
     SetScanState(kScanIdle, kScanMethodNone);  // Probably redundant.
-    metrics()->NotifyDeviceScanFinished(interface_index());
     return;
   }
   if (!scan_session_) {
     SLOG(WiFi, 2) << "No scan session -- returning";
     SetScanState(kScanIdle, kScanMethodNone);
-    metrics()->NotifyDeviceScanFinished(interface_index());
     return;
   }
   if (!IsIdle()) {
     SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
     scan_session_.reset();
     SetScanState(kScanConnecting, scan_method_);
-    metrics()->NotifyDeviceScanFinished(interface_index());
     return;
   }
   if (scan_session_->HasMoreFrequencies()) {
@@ -1903,6 +1899,28 @@ void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
     Error error;
     adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
                                GetScanPending(&error));
+  }
+  switch (new_state) {
+    case kScanIdle:
+      metrics()->ResetScanTimer(interface_index());
+      break;
+    case kScanConnecting:
+      metrics()->NotifyDeviceScanFinished(interface_index());
+      // TODO(wdg): Provide |is_auto_connecting| to this interface.  For now,
+      // I'll lie (because I don't care about the auto-connect metrics).
+      metrics()->NotifyDeviceConnectStarted(interface_index(), false);
+      break;
+    case kScanConnected:
+      metrics()->NotifyDeviceConnectFinished(interface_index());
+      break;
+    case kScanFoundNothing:
+      // Note that finishing a scan that hasn't started (if, for example, we
+      // get here when we fail to complete a connection) does nothing.
+      metrics()->NotifyDeviceScanFinished(interface_index());
+      metrics()->ResetConnectTimer(interface_index());
+      break;
+    default:
+      break;
   }
   ReportScanResultToUma(new_state, old_method);
   if (is_terminal_state) {

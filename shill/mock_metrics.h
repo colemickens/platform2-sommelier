@@ -18,7 +18,13 @@ class MockMetrics : public Metrics {
 
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD1(NotifyDeviceScanStarted, void (int interface_index));
   MOCK_METHOD1(NotifyDeviceScanFinished, void(int interface_index));
+  MOCK_METHOD1(ResetScanTimer, void(int interface_index));
+  MOCK_METHOD2(NotifyDeviceConnectStarted, void(int interface_index,
+                                                bool is_auto_connecting));
+  MOCK_METHOD1(NotifyDeviceConnectFinished, void(int interface_index));
+  MOCK_METHOD1(ResetConnectTimer, void(int interface_index));
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
   MOCK_METHOD2(NotifyServiceStateChanged,
                void(const Service *service, Service::ConnectState new_state));

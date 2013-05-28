@@ -277,6 +277,7 @@ class Metrics {
   static const int kMetricTimeToConnectMillisecondsMax;
   static const int kMetricTimeToConnectMillisecondsMin;
   static const int kMetricTimeToConnectMillisecondsNumBuckets;
+  static const char kMetricTimeToScanAndConnectMilliseconds[];
   static const char kMetricTimeToDropSeconds[];
   static const int kMetricTimeToDropSecondsMax;
   static const int kMetricTimeToDropSecondsMin;
@@ -512,17 +513,25 @@ class Metrics {
   void NotifyDeviceDisableFinished(int interface_index);
 
   // Notifies this object that a device has started the scanning process.
-  void NotifyDeviceScanStarted(int interface_index);
+  virtual void NotifyDeviceScanStarted(int interface_index);
 
   // Notifies this object that a device has completed the scanning process.
   virtual void NotifyDeviceScanFinished(int interface_index);
 
+  // Terminates an underay scan (does nothing if a scan wasn't underay).
+  void ResetScanTimer(int interface_index);
+
   // Notifies this object that a device has started the connect process.
-  void NotifyDeviceConnectStarted(int interface_index,
-                                  bool is_auto_connecting);
+  virtual void NotifyDeviceConnectStarted(int interface_index,
+                                          bool is_auto_connecting);
 
   // Notifies this object that a device has completed the connect process.
-  void NotifyDeviceConnectFinished(int interface_index);
+  virtual void NotifyDeviceConnectFinished(int interface_index);
+
+  // Resets both the connect_timer and the scan_connect_timer the timer (the
+  // latter so that a future connect will not erroneously be associated with
+  // the previous scan).
+  virtual void ResetConnectTimer(int interface_index);
 
   // Notifies this object that a cellular device has been dropped by the
   // network.
@@ -551,6 +560,7 @@ class Metrics {
   friend class MetricsTest;
   FRIEND_TEST(MetricsTest, CellularDropsPerHour);
   FRIEND_TEST(MetricsTest, FrequencyToChannel);
+  FRIEND_TEST(MetricsTest, ResetConnectTimer);
   FRIEND_TEST(MetricsTest, ServiceFailure);
   FRIEND_TEST(MetricsTest, TimeOnlineTimeToDrop);
   FRIEND_TEST(MetricsTest, TimeToConfig);
@@ -588,6 +598,7 @@ class Metrics {
     scoped_ptr<chromeos_metrics::TimerReporter> disable_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> scan_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> connect_timer;
+    scoped_ptr<chromeos_metrics::TimerReporter> scan_connect_timer;
     scoped_ptr<chromeos_metrics::TimerReporter> auto_connect_timer;
     int auto_connect_tries;
     int num_drops;
@@ -641,6 +652,16 @@ class Metrics {
                               chromeos_metrics::TimerReporter *timer) {
     DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
     device_metrics->scan_timer.reset(timer);  // Passes ownership
+  }
+  void set_time_to_connect_timer(int interface_index,
+                                 chromeos_metrics::TimerReporter *timer) {
+    DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+    device_metrics->connect_timer.reset(timer);  // Passes ownership
+  }
+  void set_time_to_scan_connect_timer(int interface_index,
+                                      chromeos_metrics::TimerReporter *timer) {
+    DeviceMetrics *device_metrics = GetDeviceMetrics(interface_index);
+    device_metrics->scan_connect_timer.reset(timer);  // Passes ownership
   }
 
   // |library_| points to |metrics_library_| when shill runs normally.

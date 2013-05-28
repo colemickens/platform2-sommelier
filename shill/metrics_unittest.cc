@@ -448,6 +448,77 @@ TEST_F(MetricsTest, TimeToScan) {
   metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
 }
 
+TEST_F(MetricsTest, TimeToScanAndConnect) {
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Wifi.TimeToScan",
+                Ge(0),
+                Metrics::kMetricTimeToScanMillisecondsMin,
+                Metrics::kMetricTimeToScanMillisecondsMax,
+                Metrics::kMetricTimeToScanMillisecondsNumBuckets));
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
+  metrics_.NotifyDeviceScanStarted(kInterfaceIndex);
+  metrics_.NotifyDeviceScanFinished(kInterfaceIndex);
+
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Wifi.TimeToConnect",
+                Ge(0),
+                Metrics::kMetricTimeToConnectMillisecondsMin,
+                Metrics::kMetricTimeToConnectMillisecondsMax,
+                Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Wifi.TimeToScanAndConnect",
+                Ge(0),
+                Metrics::kMetricTimeToScanMillisecondsMin,
+                Metrics::kMetricTimeToScanMillisecondsMax +
+                    Metrics::kMetricTimeToConnectMillisecondsMax,
+                Metrics::kMetricTimeToScanMillisecondsNumBuckets +
+                    Metrics::kMetricTimeToConnectMillisecondsNumBuckets));
+  metrics_.NotifyDeviceConnectStarted(kInterfaceIndex, false);
+  metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
+}
+
+TEST_F(MetricsTest, SpontaneousConnect) {
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Wifi.TimeToConnect",
+                Ge(0),
+                Metrics::kMetricTimeToConnectMillisecondsMin,
+                Metrics::kMetricTimeToConnectMillisecondsMax,
+                Metrics::kMetricTimeToConnectMillisecondsNumBuckets)).Times(0);
+  EXPECT_CALL(library_,
+      SendToUMA("Network.Shill.Wifi.TimeToScanAndConnect",
+                Ge(0),
+                Metrics::kMetricTimeToScanMillisecondsMin,
+                Metrics::kMetricTimeToScanMillisecondsMax +
+                    Metrics::kMetricTimeToConnectMillisecondsMax,
+                Metrics::kMetricTimeToScanMillisecondsNumBuckets +
+                    Metrics::kMetricTimeToConnectMillisecondsNumBuckets)).
+      Times(0);
+  // This simulates a connection that is not scan-based.
+  metrics_.NotifyDeviceConnectFinished(kInterfaceIndex);
+}
+
+TEST_F(MetricsTest, ResetConnectTimer) {
+  const int kInterfaceIndex = 1;
+  metrics_.RegisterDevice(kInterfaceIndex, Technology::kWifi);
+  chromeos_metrics::TimerReporterMock *mock_scan_timer =
+      new chromeos_metrics::TimerReporterMock;
+  metrics_.set_time_to_scan_timer(kInterfaceIndex, mock_scan_timer);
+  chromeos_metrics::TimerReporterMock *mock_connect_timer =
+      new chromeos_metrics::TimerReporterMock;
+  metrics_.set_time_to_connect_timer(kInterfaceIndex, mock_connect_timer);
+  chromeos_metrics::TimerReporterMock *mock_scan_connect_timer =
+      new chromeos_metrics::TimerReporterMock;
+  metrics_.set_time_to_scan_connect_timer(kInterfaceIndex,
+                                          mock_scan_connect_timer);
+  EXPECT_CALL(*mock_scan_timer, Reset()).Times(0);
+  EXPECT_CALL(*mock_connect_timer, Reset());
+  EXPECT_CALL(*mock_scan_connect_timer, Reset());
+  metrics_.ResetConnectTimer(kInterfaceIndex);
+}
+
 TEST_F(MetricsTest, TimeToScanNoStart) {
   EXPECT_CALL(library_,
       SendToUMA("Network.Shill.Cellular.TimeToScan", _, _, _, _)).Times(0);
