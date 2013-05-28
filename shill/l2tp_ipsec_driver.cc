@@ -23,8 +23,6 @@
 
 #include "shill/l2tp_ipsec_driver.h"
 
-#include <sys/wait.h>
-
 #include <base/bind.h>
 #include <base/file_util.h>
 #include <base/string_util.h>
@@ -34,10 +32,10 @@
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"
 #include "shill/error.h"
+#include "shill/external_task.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/nss.h"
-#include "shill/process_killer.h"
 #include "shill/vpn.h"
 #include "shill/vpn_service.h"
 
@@ -105,10 +103,8 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       device_info_(device_info),
       glib_(glib),
       nss_(NSS::GetInstance()),
-      process_killer_(ProcessKiller::GetInstance()),
       certificate_file_(new CertificateFile(glib)),
-      pid_(0),
-      child_watch_tag_(0) {}
+      weak_ptr_factory_(this) {}
 
 L2TPIPSecDriver::~L2TPIPSecDriver() {
   IdleService();
@@ -125,7 +121,6 @@ void L2TPIPSecDriver::Connect(const VPNServiceRefPtr &service, Error *error) {
   StartConnectTimeout(kDefaultConnectTimeoutSeconds);
   service_ = service;
   service_->SetState(Service::kStateConfiguring);
-  rpc_task_.reset(new RPCTask(control_, this));
   if (!SpawnL2TPIPSecVPN(error)) {
     FailService(Service::kFailureInternal);
   }
@@ -165,20 +160,12 @@ void L2TPIPSecDriver::Cleanup(Service::ConnectState state,
                << Service::ConnectFailureToString(failure) << ")";
   StopConnectTimeout();
   DeletePSKFile();
-  if (child_watch_tag_) {
-    glib_->SourceRemove(child_watch_tag_);
-    child_watch_tag_ = 0;
-  }
-  if (pid_) {
-    process_killer_->Kill(pid_, Closure());
-    pid_ = 0;
-  }
+  external_task_.reset();
   if (device_) {
     device_->OnDisconnected();
     device_->SetEnabled(false);
     device_ = NULL;
   }
-  rpc_task_.reset();
   if (service_) {
     if (state == Service::kStateFailure) {
       service_->SetFailure(failure);
@@ -198,56 +185,25 @@ void L2TPIPSecDriver::DeletePSKFile() {
 
 bool L2TPIPSecDriver::SpawnL2TPIPSecVPN(Error *error) {
   SLOG(VPN, 2) << __func__;
+  scoped_ptr<ExternalTask> external_task_local(
+      new ExternalTask(control_, glib_,
+                       weak_ptr_factory_.GetWeakPtr(),
+                       Bind(&L2TPIPSecDriver::OnL2TPIPSecVPNDied,
+                            weak_ptr_factory_.GetWeakPtr())));
 
   vector<string> options;
+  map<string, string> environment;  // No env vars passed.
   if (!InitOptions(&options, error)) {
     return false;
   }
   LOG(INFO) << "L2TP/IPSec VPN process options: " << JoinString(options, ' ');
 
-  // TODO(petkov): This code needs to be abstracted away in a separate external
-  // process module (crosbug.com/27131).
-  vector<char *> process_args;
-  process_args.push_back(const_cast<char *>(kL2TPIPSecVPNPath));
-  for (vector<string>::const_iterator it = options.begin();
-       it != options.end(); ++it) {
-    process_args.push_back(const_cast<char *>(it->c_str()));
+  if (external_task_local->Start(
+          FilePath(kL2TPIPSecVPNPath), options, environment, error)) {
+    external_task_.reset(external_task_local.release());
+    return true;
   }
-  process_args.push_back(NULL);
-
-  vector<string> environment;
-  InitEnvironment(&environment);
-
-  vector<char *> process_env;
-  for (vector<string>::const_iterator it = environment.begin();
-       it != environment.end(); ++it) {
-    process_env.push_back(const_cast<char *>(it->c_str()));
-  }
-  process_env.push_back(NULL);
-
-  CHECK(!pid_);
-  if (!glib_->SpawnAsync(NULL,
-                         process_args.data(),
-                         process_env.data(),
-                         G_SPAWN_DO_NOT_REAP_CHILD,
-                         NULL,
-                         NULL,
-                         &pid_,
-                         NULL)) {
-    Error::PopulateAndLog(error, Error::kInternalError,
-                          string("Unable to spawn: ") + process_args[0]);
-    return false;
-  }
-  CHECK(!child_watch_tag_);
-  child_watch_tag_ = glib_->ChildWatchAdd(pid_, OnL2TPIPSecVPNDied, this);
-  return true;
-}
-
-void L2TPIPSecDriver::InitEnvironment(vector<string> *environment) {
-  environment->push_back(string(kRPCTaskServiceVariable) + "=" +
-                         rpc_task_->GetRpcConnectionIdentifier());
-  environment->push_back(string(kRPCTaskPathVariable) + "=" +
-                         rpc_task_->GetRpcIdentifier());
+  return false;
 }
 
 bool L2TPIPSecDriver::InitOptions(vector<string> *options, Error *error) {
@@ -375,14 +331,8 @@ bool L2TPIPSecDriver::AppendFlag(const string &property,
   return false;
 }
 
-// static
-void L2TPIPSecDriver::OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data) {
-  LOG(INFO) << __func__ << "(" << pid << ", "  << status << ")";
-  L2TPIPSecDriver *me = reinterpret_cast<L2TPIPSecDriver *>(data);
-  me->child_watch_tag_ = 0;
-  CHECK_EQ(pid, me->pid_);
-  me->pid_ = 0;
-  me->FailService(TranslateExitStatusToFailure(status));
+void L2TPIPSecDriver::OnL2TPIPSecVPNDied(pid_t /*pid*/, int status) {
+  FailService(TranslateExitStatusToFailure(status));
   // TODO(petkov): Figure if we need to restart the connection.
 }
 
@@ -472,9 +422,9 @@ void L2TPIPSecDriver::Notify(
 
   if (reason != kL2TPIPSecReasonConnect) {
     DCHECK(reason == kL2TPIPSecReasonDisconnect);
-    // Avoid destroying the RPC task inside the adaptor callback by doing it
-    // from the main event loop.
-    dispatcher()->PostTask(Bind(&DeleteRPCTask, rpc_task_.release()));
+    // Avoid destroying the ExternalTask that called us (and is still on
+    // the stack), by deferring deletion to the main event loop.
+    dispatcher()->PostTask(Bind(&DeleteExternalTask, external_task_.release()));
     FailService(Service::kFailureUnknown);
     return;
   }
@@ -507,8 +457,8 @@ void L2TPIPSecDriver::Notify(
 }
 
 // static
-void L2TPIPSecDriver::DeleteRPCTask(RPCTask *rpc_task) {
-  delete rpc_task;
+void L2TPIPSecDriver::DeleteExternalTask(ExternalTask *external_task) {
+  delete external_task;
 }
 
 KeyValueStore L2TPIPSecDriver::GetProvider(Error *error) {

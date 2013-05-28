@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 #include <base/memory/scoped_ptr.h>
@@ -40,7 +41,7 @@ class RPCTask {
   RPCTask(ControlInterface *control_interface, RPCTaskDelegate *delegate);
   virtual ~RPCTask();
 
-  virtual void GetLogin(std::string *user, std::string *password);
+  virtual void GetLogin(std::string *user, std::string *password) const;
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict);
 
@@ -48,8 +49,10 @@ class RPCTask {
   // instance.
   const std::string &UniqueName() const { return unique_name_; }
 
+  // Generates environment variable strings for a child process to
+  // communicate back to us over RPC.
+  virtual std::vector<std::string> GetEnvironment() const;
   std::string GetRpcIdentifier() const;
-  std::string GetRpcInterfaceIdentifier() const;
   std::string GetRpcConnectionIdentifier() const;
 
  private:

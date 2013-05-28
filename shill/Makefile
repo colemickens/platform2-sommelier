@@ -235,6 +235,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	ethernet_eap_provider.o \
 	ethernet_eap_service.o \
 	ethernet_service.o \
+	external_task.o \
 	event_dispatcher.o \
 	file_io.o \
 	file_reader.o \
@@ -369,6 +370,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	ethernet_eap_provider_unittest.o \
 	ethernet_eap_service_unittest.o \
 	ethernet_service_unittest.o \
+	external_task_unittest.o \
 	file_reader_unittest.o \
 	hook_table_unittest.o \
 	http_proxy_unittest.o \
@@ -411,6 +413,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_ethernet_eap_provider.o \
 	mock_ethernet_service.o \
 	mock_event_dispatcher.o \
+	mock_external_task.o \
 	mock_glib.o \
 	mock_http_request.o \
 	mock_ip_address_store.o \

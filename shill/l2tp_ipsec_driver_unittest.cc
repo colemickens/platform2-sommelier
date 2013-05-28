@@ -6,6 +6,7 @@
 
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/memory/weak_ptr.h>
 #include <base/string_util.h>
 #include <chromeos/vpn-manager/service_error.h>
 #include <gtest/gtest.h>
@@ -15,11 +16,11 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_certificate_file.h"
 #include "shill/mock_device_info.h"
+#include "shill/mock_external_task.h"
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
-#include "shill/mock_process_killer.h"
 #include "shill/mock_vpn.h"
 #include "shill/mock_vpn_service.h"
 #include "shill/vpn.h"
@@ -31,6 +32,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::ElementsAreArray;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
@@ -53,10 +55,9 @@ class L2TPIPSecDriverTest : public testing::Test,
         device_(new MockVPN(&control_, &dispatcher_, &metrics_, &manager_,
                             kInterfaceName, kInterfaceIndex)),
         certificate_file_(new MockCertificateFile()),
-        test_rpc_task_destroyed_(false) {
+        weak_ptr_factory_(this) {
     driver_->nss_ = &nss_;
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
-    driver_->process_killer_ = &process_killer_;
   }
 
   virtual ~L2TPIPSecDriverTest() {}
@@ -66,15 +67,9 @@ class L2TPIPSecDriverTest : public testing::Test,
   }
 
   virtual void TearDown() {
-    driver_->child_watch_tag_ = 0;
-    driver_->pid_ = 0;
     driver_->device_ = NULL;
     driver_->service_ = NULL;
     ASSERT_TRUE(temp_dir_.Delete());
-  }
-
-  void set_test_rpc_task_destroyed(bool destroyed) {
-    test_rpc_task_destroyed_ = destroyed;
   }
 
  protected:
@@ -145,33 +140,8 @@ class L2TPIPSecDriverTest : public testing::Test,
   scoped_refptr<MockVPN> device_;
   MockNSS nss_;
   MockCertificateFile *certificate_file_;  // Owned by |driver_|.
-  MockProcessKiller process_killer_;
-  bool test_rpc_task_destroyed_;
+  base::WeakPtrFactory<L2TPIPSecDriverTest> weak_ptr_factory_;
 };
-
-namespace {
-
-class TestRPCTask : public RPCTask {
- public:
-  TestRPCTask(ControlInterface *control, L2TPIPSecDriverTest *test);
-  virtual ~TestRPCTask();
-
- private:
-  L2TPIPSecDriverTest *test_;
-};
-
-TestRPCTask::TestRPCTask(ControlInterface *control, L2TPIPSecDriverTest *test)
-    : RPCTask(control, test),
-      test_(test) {
-  test_->set_test_rpc_task_destroyed(false);
-}
-
-TestRPCTask::~TestRPCTask() {
-  test_->set_test_rpc_task_destroyed(true);
-  test_ = NULL;
-}
-
-}  // namespace
 
 const char L2TPIPSecDriverTest::kInterfaceName[] = "ppp0";
 const int L2TPIPSecDriverTest::kInterfaceIndex = 123;
@@ -186,13 +156,10 @@ void L2TPIPSecDriverTest::ExpectInFlags(
   vector<string>::const_iterator it =
       find(options.begin(), options.end(), flag);
 
-  EXPECT_TRUE(it != options.end());
-  if (it != options.end())
-    return;  // Don't crash below.
+  ASSERT_TRUE(it != options.end());  // Don't crash below.
+  EXPECT_EQ(flag, *it);
   it++;
-  EXPECT_TRUE(it != options.end());
-  if (it != options.end())
-    return;  // Don't crash below.
+  ASSERT_TRUE(it != options.end());  // Don't crash below.
   EXPECT_EQ(value, *it);
 }
 
@@ -212,29 +179,25 @@ TEST_F(L2TPIPSecDriverTest, GetProviderType) {
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->IdleService();  // Ensure no crash.
 
-  const unsigned int kTag = 123;
-  driver_->child_watch_tag_ = kTag;
-  EXPECT_CALL(glib_, SourceRemove(kTag));
-  const int kPID = 123456;
-  driver_->pid_ = kPID;
-  EXPECT_CALL(process_killer_, Kill(kPID, _));
   driver_->device_ = device_;
   driver_->service_ = service_;
+  driver_->external_task_.reset(
+      new MockExternalTask(&control_,
+                           &glib_,
+                           weak_ptr_factory_.GetWeakPtr(),
+                           base::Callback<void(pid_t, int)>()));
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetFailure(Service::kFailureBadPassphrase));
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
   FilePath psk_file = SetupPSKFile();
   StartConnectTimeout(0);
-  driver_->FailService(Service::kFailureBadPassphrase);
+  driver_->FailService(Service::kFailureBadPassphrase);  // Trigger Cleanup.
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
-  EXPECT_EQ(0, driver_->child_watch_tag_);
-  EXPECT_EQ(0, driver_->pid_);
-  EXPECT_FALSE(driver_->rpc_task_.get());
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
+  EXPECT_FALSE(driver_->external_task_);
 
   driver_->service_ = service_;
   EXPECT_CALL(*service_, SetState(Service::kStateIdle));
@@ -247,18 +210,6 @@ TEST_F(L2TPIPSecDriverTest, DeletePSKFile) {
   driver_->DeletePSKFile();
   EXPECT_FALSE(file_util::PathExists(psk_file));
   EXPECT_TRUE(driver_->psk_file_.empty());
-}
-
-TEST_F(L2TPIPSecDriverTest, InitEnvironment) {
-  vector<string> env;
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
-  driver_->InitEnvironment(&env);
-  ASSERT_EQ(2, env.size());
-  EXPECT_EQ(
-      string(kRPCTaskServiceVariable) + "=" + RPCTaskMockAdaptor::kRpcConnId,
-      env[0]);
-  EXPECT_EQ(string(kRPCTaskPathVariable) + "=" + RPCTaskMockAdaptor::kRpcId,
-            env[1]);
 }
 
 TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
@@ -444,60 +395,49 @@ TEST_F(L2TPIPSecDriverTest, GetLogin) {
 }
 
 TEST_F(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied) {
-  const int kPID = 99999;
-  driver_->child_watch_tag_ = 333;
-  driver_->pid_ = kPID;
+  const int kPID = 123456;
   driver_->service_ = service_;
   EXPECT_CALL(*service_, SetFailure(Service::kFailureDNSLookup));
-  EXPECT_CALL(process_killer_, Kill(_, _)).Times(0);
-  L2TPIPSecDriver::OnL2TPIPSecVPNDied(
-      kPID, vpn_manager::kServiceErrorResolveHostnameFailed << 8, driver_);
-  EXPECT_EQ(0, driver_->child_watch_tag_);
-  EXPECT_EQ(0, driver_->pid_);
+  driver_->OnL2TPIPSecVPNDied(
+      kPID, vpn_manager::kServiceErrorResolveHostnameFailed << 8);
   EXPECT_FALSE(driver_->service_);
 }
 
-namespace {
-MATCHER(CheckEnv, "") {
-  if (!arg || !arg[0] || !arg[1] || arg[2]) {
-    return false;
-  }
-  return StartsWithASCII(arg[0], "SHILL_TASK_", true);
-}
-}  // namespace
-
 TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
   Error error;
+  // Fail without sufficient arguments.
   EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
   EXPECT_TRUE(error.IsFailure());
 
+  // Provide the required arguments.
   static const char kHost[] = "192.168.2.254";
   SetArg(flimflam::kProviderHostProperty, kHost);
-  driver_->rpc_task_.reset(new RPCTask(&control_, this));
 
-  const int kPID = 234678;
-  EXPECT_CALL(glib_, SpawnAsync(_, _, CheckEnv(), _, _, _, _, _))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<6>(kPID), Return(true)));
-  const int kTag = 6;
-  EXPECT_CALL(glib_, ChildWatchAdd(kPID, &driver_->OnL2TPIPSecVPNDied, driver_))
-      .WillOnce(Return(kTag));
-  error.Reset();
+  // TODO(quiche): Instead of setting expectations based on what
+  // ExternalTask will call, mock out ExternalTask. Non-trivial,
+  // though, because ExternalTask is constructed during the
+  // call to driver_->Connect.
+  EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).
+      WillOnce(Return(false)).
+      WillOnce(Return(true));
+  EXPECT_CALL(glib_, ChildWatchAdd(_, _, _));
+
   EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
-  EXPECT_EQ(Error::kInternalError, error.type());
-  error.Reset();
   EXPECT_TRUE(driver_->SpawnL2TPIPSecVPN(&error));
-  EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(kPID, driver_->pid_);
-  EXPECT_EQ(kTag, driver_->child_watch_tag_);
 }
 
 TEST_F(L2TPIPSecDriverTest, Connect) {
   EXPECT_CALL(*service_, SetState(Service::kStateConfiguring));
   static const char kHost[] = "192.168.2.254";
   SetArg(flimflam::kProviderHostProperty, kHost);
+
+  // TODO(quiche): Instead of setting expectations based on what
+  // ExternalTask will call, mock out ExternalTask. Non-trivial,
+  // though, because ExternalTask is constructed during the
+  // call to driver_->Connect.
   EXPECT_CALL(glib_, SpawnAsync(_, _, _, _, _, _, _, _)).WillOnce(Return(true));
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _)).WillOnce(Return(1));
+
   Error error;
   driver_->Connect(service_, &error);
   EXPECT_TRUE(error.IsSuccess());
@@ -644,18 +584,24 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
 
 TEST_F(L2TPIPSecDriverTest, NotifyDisconnected) {
   map<string, string> dict;
+  base::Callback<void(pid_t, int)> death_callback;
+  MockExternalTask *local_external_task =
+      new MockExternalTask(&control_, &glib_, weak_ptr_factory_.GetWeakPtr(),
+                           death_callback);
   driver_->device_ = device_;
-  driver_->rpc_task_.reset(new TestRPCTask(&control_, this));
-  EXPECT_FALSE(test_rpc_task_destroyed_);
+  driver_->external_task_.reset(local_external_task);  // passes ownership
   EXPECT_CALL(*device_, OnDisconnected());
   EXPECT_CALL(*device_, SetEnabled(false));
+  EXPECT_CALL(*local_external_task, OnDelete())
+      .Times(0);  // Not until event loop.
   driver_->Notify(kL2TPIPSecReasonDisconnect, dict);
   EXPECT_FALSE(driver_->device_);
-  EXPECT_FALSE(test_rpc_task_destroyed_);
-  EXPECT_FALSE(driver_->rpc_task_.get());
+  EXPECT_FALSE(driver_->external_task_.get());
+  Mock::VerifyAndClearExpectations(local_external_task);
+
+  EXPECT_CALL(*local_external_task, OnDelete());
   dispatcher_.PostTask(MessageLoop::QuitClosure());
   dispatcher_.DispatchForever();
-  EXPECT_TRUE(test_rpc_task_destroyed_);
 }
 
 TEST_F(L2TPIPSecDriverTest, VerifyPaths) {

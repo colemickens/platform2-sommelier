@@ -236,8 +236,8 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   }
   LOG(INFO) << "OpenVPN process options: " << JoinString(options, ' ');
 
-  // TODO(petkov): This code needs to be abstracted away in a separate external
-  // process module (crosbug.com/27131).
+  // TODO(quiche): This should be migrated to use ExternalTask.
+  // (crbug.com/246263).
   vector<char *> process_args;
   process_args.push_back(const_cast<char *>(kOpenVPNPath));
   for (vector<string>::const_iterator it = options.begin();

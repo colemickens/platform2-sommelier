@@ -11,6 +11,7 @@
 
 using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -51,10 +52,18 @@ void RPCTaskTest::Notify(const string &reason,
   last_notify_dict_ = dict;
 }
 
+TEST_F(RPCTaskTest, GetEnvironment) {
+  vector<string> env = task_.GetEnvironment();
+  ASSERT_EQ(2, env.size());
+  EXPECT_EQ(
+      string(kRPCTaskServiceVariable) + "=" + RPCTaskMockAdaptor::kRpcConnId,
+      env[0]);
+  EXPECT_EQ(string(kRPCTaskPathVariable) + "=" + RPCTaskMockAdaptor::kRpcId,
+            env[1]);
+}
+
 TEST_F(RPCTaskTest, GetRpcIdentifiers) {
   EXPECT_EQ(RPCTaskMockAdaptor::kRpcId, task_.GetRpcIdentifier());
-  EXPECT_EQ(RPCTaskMockAdaptor::kRpcInterfaceId,
-            task_.GetRpcInterfaceIdentifier());
   EXPECT_EQ(RPCTaskMockAdaptor::kRpcConnId, task_.GetRpcConnectionIdentifier());
 }
 

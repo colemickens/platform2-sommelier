@@ -176,6 +176,8 @@ void DHCPConfig::UpdateProperties(const Properties &properties, bool success) {
 bool DHCPConfig::Start() {
   SLOG(DHCP, 2) << __func__ << ": " << device_name();
 
+  // TODO(quiche): This should be migrated to use ExternalTask.
+  // (crbug.com/246263).
   vector<char *> args;
   args.push_back(const_cast<char *>(kDHCPCDPath));
   args.push_back(const_cast<char *>("-B"));  // Run in foreground.

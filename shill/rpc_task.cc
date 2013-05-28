@@ -12,6 +12,7 @@
 
 using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -30,7 +31,7 @@ RPCTask::~RPCTask() {
   LOG(INFO) << "RPCTask " + unique_name_ + " destroyed.";
 }
 
-void RPCTask::GetLogin(string *user, string *password) {
+void RPCTask::GetLogin(string *user, string *password) const {
   delegate_->GetLogin(user, password);
 }
 
@@ -38,14 +39,20 @@ void RPCTask::Notify(const string &reason, const map<string, string> &dict) {
   delegate_->Notify(reason, dict);
 }
 
+vector<string> RPCTask::GetEnvironment() const {
+  return vector<string>{
+    string(kRPCTaskServiceVariable) + "=" +
+        adaptor_->GetRpcConnectionIdentifier(),
+    string(kRPCTaskPathVariable) + "=" +
+        adaptor_->GetRpcIdentifier()};
+}
+
+// TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.
 string RPCTask::GetRpcIdentifier() const {
   return adaptor_->GetRpcIdentifier();
 }
 
-string RPCTask::GetRpcInterfaceIdentifier() const {
-  return adaptor_->GetRpcInterfaceIdentifier();
-}
-
+// TODO(quiche): remove after moving OpenVPNDriver over to ExternalTask.
 string RPCTask::GetRpcConnectionIdentifier() const {
   return adaptor_->GetRpcConnectionIdentifier();
 }

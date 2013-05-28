@@ -5,13 +5,14 @@
 #ifndef SHILL_L2TP_IPSEC_DRIVER_H_
 #define SHILL_L2TP_IPSEC_DRIVER_H_
 
+#include <sys/types.h>
+
 #include <vector>
 
 #include <base/file_path.h>
 #include <base/memory/scoped_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/glib.h"
 #include "shill/ipconfig.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"
@@ -33,10 +34,10 @@ static const char kL2TPIPSecReasonDisconnect[] = "disconnect";
 class CertificateFile;
 class ControlInterface;
 class DeviceInfo;
+class ExternalTask;
 class GLib;
 class Metrics;
 class NSS;
-class ProcessKiller;
 
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
@@ -87,8 +88,6 @@ class L2TPIPSecDriver : public VPNDriver,
 
   bool SpawnL2TPIPSecVPN(Error *error);
 
-  void InitEnvironment(std::vector<std::string> *environment);
-
   bool InitOptions(std::vector<std::string> *options, Error *error);
   bool InitPSKOptions(std::vector<std::string> *options, Error *error);
   void InitNSSOptions(std::vector<std::string> *options);
@@ -128,9 +127,6 @@ class L2TPIPSecDriver : public VPNDriver,
       IPConfig::Properties *properties,
       std::string *interface_name);
 
-  // Called when the l2tpipsec_vpn process exits.
-  static void OnL2TPIPSecVPNDied(GPid pid, gint status, gpointer data);
-
   static Service::ConnectFailure TranslateExitStatusToFailure(int status);
 
   // Inherit from VPNDriver to add custom properties.
@@ -140,8 +136,10 @@ class L2TPIPSecDriver : public VPNDriver,
   virtual void GetLogin(std::string *user, std::string *password);
   virtual void Notify(const std::string &reason,
                       const std::map<std::string, std::string> &dict);
+  // Called when the l2tpipsec_vpn process exits.
+  void OnL2TPIPSecVPNDied(pid_t pid, int status);
 
-  static void DeleteRPCTask(RPCTask *rpc_task);
+  static void DeleteExternalTask(ExternalTask *external_task);
 
   void ReportConnectionMetrics();
 
@@ -150,20 +148,13 @@ class L2TPIPSecDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   NSS *nss_;
-  ProcessKiller *process_killer_;
 
   VPNServiceRefPtr service_;
-  scoped_ptr<RPCTask> rpc_task_;
+  scoped_ptr<ExternalTask> external_task_;
   base::FilePath psk_file_;
   scoped_ptr<CertificateFile> certificate_file_;
   VPNRefPtr device_;
-
-  // The PID of the spawned l2tpipsec_vpn process. May be 0 if no process has
-  // been spawned yet or the process has died.
-  int pid_;
-
-  // Child exit watch callback source tag.
-  unsigned int child_watch_tag_;
+  base::WeakPtrFactory<L2TPIPSecDriver> weak_ptr_factory_;
 
   DISALLOW_COPY_AND_ASSIGN(L2TPIPSecDriver);
 };
