@@ -7,7 +7,8 @@
 #include <libusb.h>
 
 #include <base/logging.h>
-#include <base/memory/scoped_ptr.h>
+
+#include "mist/usb_device_descriptor.h"
 
 using std::string;
 
@@ -171,6 +172,18 @@ bool UsbDevice::ClearHalt(uint8 endpoint) {
 
   int result = libusb_clear_halt(device_handle_, endpoint);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
+}
+
+scoped_ptr<UsbDeviceDescriptor> UsbDevice::GetDeviceDescriptor() {
+  if (!device_descriptor_)
+    device_descriptor_.reset(new libusb_device_descriptor());
+
+  int result = libusb_get_device_descriptor(device_, device_descriptor_.get());
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
+    return scoped_ptr<UsbDeviceDescriptor>(
+        new UsbDeviceDescriptor(AsWeakPtr(), device_descriptor_.get()));
+  }
+  return scoped_ptr<UsbDeviceDescriptor>();
 }
 
 string UsbDevice::GetStringDescriptorAscii(uint8 index) {

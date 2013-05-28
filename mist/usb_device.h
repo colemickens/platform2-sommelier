@@ -8,6 +8,8 @@
 #include <string>
 
 #include <base/basictypes.h>
+#include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 
 #include "mist/usb_constants.h"
 #include "mist/usb_error.h"
@@ -18,9 +20,11 @@ struct libusb_device_handle;
 
 namespace mist {
 
+class UsbDeviceDescriptor;
+
 // A USB device, which wraps a libusb_device C struct from libusb 1.0 and
 // related libusb library functions into a C++ object.
-class UsbDevice {
+class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
  public:
   // Constructs a UsbDevice object by taking a raw pointer to a libusb_device
   // struct as |device|. The ownership of |device| is not transferred, but its
@@ -71,6 +75,12 @@ class UsbDevice {
 
   bool ClearHalt(uint8 endpoint_address);
 
+  // Returns a scoped pointer to a UsbDeviceDescriptor object for the descriptor
+  // of this device, or null scoped pointer on error. The returned object
+  // becomes invalid, and thus should not be held, beyond the lifetime of this
+  // object.
+  scoped_ptr<UsbDeviceDescriptor> GetDeviceDescriptor();
+
   // Returns a string value, in ASCII, of string descriptor indexed at |index|,
   // or an empty string if the index is invalid.
   std::string GetStringDescriptorAscii(uint8 index);
@@ -85,6 +95,7 @@ class UsbDevice {
 
   libusb_device* device_;
   libusb_device_handle* device_handle_;
+  scoped_ptr<libusb_device_descriptor> device_descriptor_;
   UsbError error_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDevice);
