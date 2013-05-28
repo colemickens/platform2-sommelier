@@ -50,46 +50,46 @@ TEST(UsbErrorTest, Clear) {
 TEST(UsbError, SetFromLibUsbError) {
   UsbError error;
 
-  error.SetFromLibUsbError(LIBUSB_SUCCESS);
+  EXPECT_TRUE(error.SetFromLibUsbError(LIBUSB_SUCCESS));
   EXPECT_EQ(UsbError::kSuccess, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_IO);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_IO));
   EXPECT_EQ(UsbError::kErrorIO, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_INVALID_PARAM);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_INVALID_PARAM));
   EXPECT_EQ(UsbError::kErrorInvalidParameter, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_ACCESS);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_ACCESS));
   EXPECT_EQ(UsbError::kErrorAccess, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_NO_DEVICE);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_NO_DEVICE));
   EXPECT_EQ(UsbError::kErrorNoDevice, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_NOT_FOUND);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_NOT_FOUND));
   EXPECT_EQ(UsbError::kErrorNotFound, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_BUSY);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_BUSY));
   EXPECT_EQ(UsbError::kErrorBusy, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_TIMEOUT);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_TIMEOUT));
   EXPECT_EQ(UsbError::kErrorTimeout, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_OVERFLOW);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_OVERFLOW));
   EXPECT_EQ(UsbError::kErrorOverflow, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_PIPE);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_PIPE));
   EXPECT_EQ(UsbError::kErrorPipe, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_INTERRUPTED);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_INTERRUPTED));
   EXPECT_EQ(UsbError::kErrorInterrupted, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_NO_MEM);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_NO_MEM));
   EXPECT_EQ(UsbError::kErrorNoMemory, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_NOT_SUPPORTED);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_NOT_SUPPORTED));
   EXPECT_EQ(UsbError::kErrorNotSupported, error.type());
 
-  error.SetFromLibUsbError(LIBUSB_ERROR_OTHER);
+  EXPECT_FALSE(error.SetFromLibUsbError(LIBUSB_ERROR_OTHER));
   EXPECT_EQ(UsbError::kErrorOther, error.type());
 }
 

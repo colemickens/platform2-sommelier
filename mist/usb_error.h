@@ -65,8 +65,9 @@ class UsbError {
   void Clear();
 
   // Sets the error type of this object to a value equivalent to the libusb
-  // error |error|.
-  void SetFromLibUsbError(libusb_error error);
+  // error |error|. Returns true if the error type of this object is set to
+  // UsbError::kSuccess, or false otherwise.
+  bool SetFromLibUsbError(libusb_error error);
 
   Type type() const { return type_; }
   void set_type(Type type) { type_ = type; }

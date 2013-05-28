@@ -103,8 +103,9 @@ void UsbError::Clear() {
   type_ = kSuccess;
 }
 
-void UsbError::SetFromLibUsbError(libusb_error error) {
+bool UsbError::SetFromLibUsbError(libusb_error error) {
   type_ = ConvertFromLibUsbErrorToUsbErrorType(error);
+  return type_ == kSuccess;
 }
 
 }  // namespace mist
