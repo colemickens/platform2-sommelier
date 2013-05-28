@@ -20,6 +20,7 @@ struct libusb_device_handle;
 
 namespace mist {
 
+class UsbConfigDescriptor;
 class UsbDeviceDescriptor;
 
 // A USB device, which wraps a libusb_device C struct from libusb 1.0 and
@@ -74,6 +75,26 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
   bool DetachKernelDriver(int interface_number);
 
   bool ClearHalt(uint8 endpoint_address);
+
+  // Returns a scoped pointer to a UsbConfigDescriptor object for the descriptor
+  // of the currently active configuration, or null scoped pointer on error.
+  // The returned object becomes invalid, and thus should not be held, beyond
+  // the lifetime of this object.
+  scoped_ptr<UsbConfigDescriptor> GetActiveConfigDescriptor();
+
+  // Returns a scoped pointer to a UsbConfigDescriptor object for the
+  // configuration descriptor indexed at |index|, or null scoped pointer if
+  // the index is invalid. The returned object becomes invalid, and thus should
+  // not be held, beyond the lifetime of this object.
+  scoped_ptr<UsbConfigDescriptor> GetConfigDescriptor(uint8 index);
+
+  // Returns a scoped pointer to a UsbConfigDescriptor object for the
+  // configuration descriptor with configuration value |configuration_value|,
+  // or null scoped pointer if the configuration value is invalid. The returned
+  // object becomes invalid, and thus should not be held, beyond the lifetime of
+  // this object.
+  scoped_ptr<UsbConfigDescriptor> GetConfigDescriptorByValue(
+      uint8 configuration_value);
 
   // Returns a scoped pointer to a UsbDeviceDescriptor object for the descriptor
   // of this device, or null scoped pointer on error. The returned object

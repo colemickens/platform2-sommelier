@@ -8,6 +8,7 @@
 
 #include <base/logging.h>
 
+#include "mist/usb_config_descriptor.h"
 #include "mist/usb_device_descriptor.h"
 
 using std::string;
@@ -172,6 +173,41 @@ bool UsbDevice::ClearHalt(uint8 endpoint) {
 
   int result = libusb_clear_halt(device_handle_, endpoint);
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
+}
+
+scoped_ptr<UsbConfigDescriptor> UsbDevice::GetActiveConfigDescriptor() {
+  libusb_config_descriptor* config_descriptor = NULL;
+
+  int result = libusb_get_active_config_descriptor(device_, &config_descriptor);
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
+    return scoped_ptr<UsbConfigDescriptor>(
+        new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true));
+  }
+  return scoped_ptr<UsbConfigDescriptor>();
+}
+
+scoped_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptor(uint8 index) {
+  libusb_config_descriptor* config_descriptor = NULL;
+
+  int result = libusb_get_config_descriptor(device_, index, &config_descriptor);
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
+    return scoped_ptr<UsbConfigDescriptor>(
+        new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true));
+  }
+  return scoped_ptr<UsbConfigDescriptor>();
+}
+
+scoped_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptorByValue(
+    uint8 configuration_value) {
+  libusb_config_descriptor* config_descriptor = NULL;
+
+  int result = libusb_get_config_descriptor_by_value(
+      device_, configuration_value, &config_descriptor);
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
+    return scoped_ptr<UsbConfigDescriptor>(
+        new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true));
+  }
+  return scoped_ptr<UsbConfigDescriptor>();
 }
 
 scoped_ptr<UsbDeviceDescriptor> UsbDevice::GetDeviceDescriptor() {
