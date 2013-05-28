@@ -13,7 +13,7 @@
 #include <chromeos/secure_blob.h>
 
 #include "chaps/isolate.h"
-#include "chaps/login_event_client.h"
+#include "chaps/token_manager_client.h"
 #include "chaps/token_file_manager.h"
 
 namespace chaps {

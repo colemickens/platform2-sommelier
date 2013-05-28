@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "chaps/login_event_client.h"
+#include "chaps/token_manager_client.h"
 
 #include <base/logging.h>
 #include <chromeos/secure_blob.h>

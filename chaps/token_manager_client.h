@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_LOGIN_EVENT_CLIENT_H_
-#define CHAPS_LOGIN_EVENT_CLIENT_H_
+#ifndef CHAPS_TOKEN_MANAGER_CLIENT_H_
+#define CHAPS_TOKEN_MANAGER_CLIENT_H_
 
 #include <string>
 #include <vector>
@@ -88,4 +88,4 @@ class EXPORT_SPEC LoginEventClient {
 
 }  // namespace chaps
 
-#endif  // CHAPS_LOGIN_EVENT_CLIENT_H_
+#endif  // CHAPS_TOKEN_MANAGER_CLIENT_H_

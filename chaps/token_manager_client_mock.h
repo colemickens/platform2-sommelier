@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef CHAPS_LOGIN_EVENT_CLIENT_MOCK_H_
-#define CHAPS_LOGIN_EVENT_CLIENT_MOCK_H_
+#ifndef CHAPS_TOKEN_MANAGER_CLIENT_MOCK_H_
+#define CHAPS_TOKEN_MANAGER_CLIENT_MOCK_H_
 
-#include "chaps/login_event_client.h"
+#include "chaps/token_manager_client.h"
 
 #include <string>
 
@@ -33,4 +33,4 @@ class LoginEventClientMock : public LoginEventClient {
 
 }  // namespace chaps
 
-#endif  // CHAPS_LOGIN_EVENT_CLIENT_MOCK_H_
+#endif  // CHAPS_TOKEN_MANAGER_CLIENT_MOCK_H_

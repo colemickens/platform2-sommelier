@@ -6,8 +6,8 @@
 #define CHAPS_SLOT_MANAGER_IMPL_H_
 
 #include "chaps/handle_generator.h"
-#include "chaps/login_event_listener.h"
 #include "chaps/slot_manager.h"
+#include "chaps/token_manager_interface.h"
 
 #include <map>
 #include <set>

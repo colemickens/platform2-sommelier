@@ -59,7 +59,7 @@ chaps_proxy.o.depends \
 chapsd_test.o.depends \
 chaps.o.depends \
 chaps_event_generator.o.depends \
-login_event_client.o.depends: chaps_proxy_generated.h
+token_manager_client.o.depends: chaps_proxy_generated.h
 
 chaps_adaptor_generated.h: $(SRC)/chaps_interface.xml
 	$(DBUSXX_XML2CPP) $< --adaptor=$@
@@ -123,7 +123,7 @@ all: $(OUT)/org.chromium.Chaps.conf
 clean: CLEAN($(OUT)/org.chromium.Chaps.conf)
 
 # Chaps Client Library
-libchaps_OBJS = $(COMMON_OBJS) chaps.o chaps_proxy.o login_event_client.o \
+libchaps_OBJS = $(COMMON_OBJS) chaps.o chaps_proxy.o token_manager_client.o \
                 isolate_$(PLATFORM).o
 CXX_LIBRARY(libchaps.so): $(libchaps_OBJS)
 clean: CLEAN(libchaps.so)
@@ -131,7 +131,7 @@ all: CXX_LIBRARY(libchaps.so)
 
 # Chaps Client CLI App
 chaps_client_OBJS = $(COMMON_OBJS) chaps_client.o chaps_proxy.o \
-                    login_event_client.o isolate_$(PLATFORM).o
+                    token_manager_client.o isolate_$(PLATFORM).o
 CXX_BINARY(chaps_client): $(chaps_client_OBJS)
 clean: CLEAN(chaps_client)
 all: CXX_BINARY(chaps_client)
@@ -145,7 +145,7 @@ all: CXX_BINARY(p11_replay)
 ifeq ($(BUILD_PAM_MODULE), 1)
 # Chaps PAM Module
 pamchaps_OBJS = $(COMMON_OBJS) chaps_pam_module.o chaps.o chaps_proxy.o \
-                login_event_client.o isolate_login_client.o pam_helper.o \
+                token_manager_client.o isolate_login_client.o pam_helper.o \
                 token_file_manager_$(PLATFORM).o isolate_$(PLATFORM).o \
                 platform_globals_$(PLATFORM).o
 CXX_LIBRARY(pam_chaps.so): $(pamchaps_OBJS)
@@ -300,7 +300,7 @@ tests: TEST(CXX_BINARY(opencryptoki_importer_test))
 isolate_login_client_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
                                  isolate_$(PLATFORM).o \
                                  token_file_manager_$(PLATFORM).o \
-                                 login_event_client.o \
+                                 token_manager_client.o \
                                  chaps_proxy.o \
                                  isolate_login_client.o \
                                  isolate_login_client_test.o
@@ -316,7 +316,7 @@ chaps_pam_module_test_OBJS = $(COMMON_OBJS) $(MOCK_OBJS) \
                              isolate_$(PLATFORM).o \
                              token_file_manager_$(PLATFORM).o \
                              platform_globals_$(PLATFORM).o \
-                             login_event_client.o \
+                             token_manager_client.o \
                              isolate_login_client.o \
                              chaps_proxy.o \
                              pam_helper.o \

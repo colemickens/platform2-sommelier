@@ -14,8 +14,8 @@
 
 #include "chaps/isolate_login_client.h"
 #include "chaps/isolate_mock.h"
-#include "chaps/login_event_client_mock.h"
 #include "chaps/token_file_manager_mock.h"
+#include "chaps/token_manager_client_mock.h"
 
 using std::string;
 using std::vector;

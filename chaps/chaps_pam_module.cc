@@ -21,10 +21,10 @@
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
 #include "chaps/isolate_login_client.h"
-#include "chaps/login_event_client.h"
 #include "chaps/pam_helper.h"
 #include "chaps/platform_globals.h"
 #include "chaps/token_file_manager.h"
+#include "chaps/token_manager_client.h"
 
 using std::string;
 using chromeos::SecureBlob;

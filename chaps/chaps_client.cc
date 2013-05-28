@@ -20,7 +20,7 @@
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 #include "chaps/isolate.h"
-#include "chaps/login_event_client.h"
+#include "chaps/token_manager_client.h"
 
 using std::string;
 using std::vector;
