@@ -30,7 +30,8 @@ class ManagerTest : public testing::Test {
      : input_pipe_fd_(kInputPipeFd),
        output_pipe_fd_(kOutputPipeFd),
        input_scoped_fd_(&input_pipe_fd_),
-       output_scoped_fd_(&output_pipe_fd_) {}
+       output_scoped_fd_(&output_pipe_fd_),
+       manager_(base::Callback<void()>()) {}
 
   virtual void TearDown() {
     // The fds that we have handed to these ScopedFD are not real, so we

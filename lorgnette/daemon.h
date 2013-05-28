@@ -7,6 +7,7 @@
 
 #include <string>
 
+#include <base/cancelable_callback.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <dbus-c++/glib-integration.h>
@@ -44,11 +45,18 @@ class Daemon {
  private:
   friend class DaemonTest;
 
+  // Daemon will automatically shutdown after this length of idle time.
+  static const int kShutdownTimeoutMilliseconds;
+
+  // Restarts a timer for the termination of the daemon process.
+  void PostponeShutdown();
+
   scoped_ptr<MessageLoop> dont_use_directly_;
   scoped_refptr<base::MessageLoopProxy> message_loop_proxy_;
   scoped_ptr<DBus::Glib::BusDispatcher> dispatcher_;
   scoped_ptr<DBus::Connection> connection_;
   scoped_ptr<Manager> manager_;
+  base::CancelableClosure shutdown_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

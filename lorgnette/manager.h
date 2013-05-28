@@ -29,7 +29,7 @@ class Manager {
   typedef std::map< std::string,
                     std::map<std::string, std::string> > ScannerInfo;
 
-  Manager();
+  Manager(base::Callback<void()> activity_callback);
   virtual ~Manager();
 
   // Start DBus connection.
@@ -114,6 +114,7 @@ class Manager {
                        ::DBus::Error *error);
 
   scoped_ptr<DBusAdaptor> dbus_adaptor_;
+  base::Callback<void()> activity_callback_;
 
   DISALLOW_COPY_AND_ASSIGN(Manager);
 };

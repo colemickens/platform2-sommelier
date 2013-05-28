@@ -62,7 +62,8 @@ void Manager::DBusAdaptor::ScanImage(
   manager_->ScanImage(device_name, outfd, scan_properties, &error);
 }
 
-Manager::Manager() {}
+Manager::Manager(base::Callback<void()> activity_callback)
+    : activity_callback_(activity_callback) {}
 
 Manager::~Manager() {}
 
@@ -91,6 +92,7 @@ Manager::ScannerInfo Manager::ListScanners(::DBus::Error *error) {
     SetError(__func__, "Unable to read scanner list output file", error);
     return ScannerInfo();
   }
+  activity_callback_.Run();
   return ScannerInfoFromString(scanner_output_string);
 }
 
@@ -117,6 +119,7 @@ void Manager::ScanImage(
                       &scan_process,
                       &convert_process,
                       error);
+  activity_callback_.Run();
 }
 
 // static

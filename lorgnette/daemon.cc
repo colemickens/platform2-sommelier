@@ -7,6 +7,7 @@
 #include <string>
 #include <vector>
 
+#include <base/bind.h>
 #include <base/logging.h>
 #include <base/message_loop_proxy.h>
 #include <base/run_loop.h>
@@ -22,6 +23,7 @@ namespace lorgnette {
 const char Daemon::kInterfaceName[] = "org.chromium.lorgnette";
 const char Daemon::kScanGroupName[] = "scanner";
 const char Daemon::kScanUserName[] = "saned";
+const int Daemon::kShutdownTimeoutMilliseconds = 20000;
 
 Daemon::Daemon()
     : dont_use_directly_(new MessageLoopForUI),
@@ -47,8 +49,18 @@ void Daemon::Start() {
   dispatcher_->attach(NULL);
   connection_.reset(new DBus::Connection(DBus::Connection::SystemBus()));
   connection_->request_name(kInterfaceName);
-  manager_.reset(new Manager);
+  manager_.reset(new Manager(
+      base::Bind(&Daemon::PostponeShutdown, base::Unretained(this))));
   manager_->InitDBus(connection_.get());
+  PostponeShutdown();
+}
+
+void Daemon::PostponeShutdown() {
+  shutdown_callback_.Reset(base::Bind(&Daemon::Quit, base::Unretained(this)));
+  message_loop_proxy_->PostDelayedTask(FROM_HERE,
+                                       shutdown_callback_.callback(),
+                                       base::TimeDelta::FromMilliseconds(
+                                           kShutdownTimeoutMilliseconds));
 }
 
 }  // namespace lorgnette
