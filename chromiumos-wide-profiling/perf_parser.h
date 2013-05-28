@@ -11,9 +11,9 @@
 
 #include "perf_reader.h"
 
-class AddressMapper;
-
 namespace quipper {
+
+class AddressMapper;
 
 struct ParsedEvent {
   struct perf_sample* sample_info;  // These point to entries stored elsewhere.

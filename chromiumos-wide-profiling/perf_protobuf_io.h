@@ -9,10 +9,14 @@
 #include "perf_data.pb.h"
 #include "quipper_string.h"
 
+namespace quipper {
+
 bool WriteProtobufToFile(const quipper::PerfDataProto& perf_data_proto,
                          const string& filename);
 
 bool ReadProtobufFromFile(quipper::PerfDataProto* perf_data_proto,
                           const string& filename);
+
+}  // namespace quipper
 
 #endif  // PERF_PROTOBUF_IO_H_

@@ -79,6 +79,8 @@ bool GetPerfReport(const string& filename, string* output) {
 
 }  // namespace
 
+namespace quipper {
+
 uint64 Md5Prefix(const string& input) {
   uint64 digest_prefix = 0;
   unsigned char digest[MD5_DIGEST_LENGTH + 1];
@@ -216,3 +218,5 @@ bool RunCommandAndGetStdout(const string& command, std::vector<char>* output) {
 
   return true;
 }
+
+}  // namespace quipper

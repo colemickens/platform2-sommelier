@@ -84,6 +84,8 @@ uint64 GetMappedAddressFromRanges(const Range* ranges,
 
 }  // namespace
 
+using quipper::AddressMapper;
+
 // The unit test class for AddressMapper.
 class AddressMapperTest : public ::testing::Test {
  public:

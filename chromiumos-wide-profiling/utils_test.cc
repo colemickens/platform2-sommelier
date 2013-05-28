@@ -10,6 +10,9 @@
 #include "perf_protobuf_io.h"
 #include "utils.h"
 
+using quipper::Md5Prefix;
+using quipper::AlignSize;
+
 TEST(UtilsTest, TestMD5) {
   ASSERT_EQ(Md5Prefix(""), 0xd41d8cd98f00b204LL);
   ASSERT_EQ(Md5Prefix("The quick brown fox jumps over the lazy dog."),

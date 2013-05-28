@@ -11,7 +11,7 @@
 #include "quipper_string.h"
 #include "utils.h"
 
-using quipper::PerfDataProto;
+namespace quipper {
 
 bool WriteProtobufToFile(const PerfDataProto& perf_data_proto,
                          const string& filename) {
@@ -35,3 +35,5 @@ bool ReadProtobufFromFile(PerfDataProto* perf_data_proto,
 
   return ret;
 }
+
+}  // namespace quipper

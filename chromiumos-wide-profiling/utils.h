@@ -11,7 +11,8 @@
 #include "base/basictypes.h"
 
 #include "quipper_string.h"
-#include "kernel/perf_internals.h"
+
+namespace quipper {
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
@@ -45,5 +46,7 @@ bool WriteDataToFile(const std::vector<char>& data, const string& filename);
 // Executes |command| and stores stdout output in |output|.  Returns true on
 // success, false otherwise.
 bool RunCommandAndGetStdout(const string& command, std::vector<char>* output);
+
+}  // namespace quipper
 
 #endif  // UTILS_H_

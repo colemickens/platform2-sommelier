@@ -6,6 +6,8 @@
 
 #include <base/logging.h>
 
+namespace quipper {
+
 bool AddressMapper::Map(const uint64 real_addr,
                         const uint64 size,
                         const bool remove_existing_mappings) {
@@ -184,3 +186,5 @@ bool AddressMapper::Unmap(const MappedRange& range) {
   }
   return false;
 }
+
+}  // namespace quipper

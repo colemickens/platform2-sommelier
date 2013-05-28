@@ -9,6 +9,8 @@
 
 #include "base/basictypes.h"
 
+namespace quipper {
+
 class AddressMapper {
  public:
   AddressMapper() {}
@@ -104,5 +106,7 @@ class AddressMapper {
 
   DISALLOW_COPY_AND_ASSIGN(AddressMapper);
 };
+
+}  // namespace quipper
 
 #endif  // ADDRESS_MAPPER_
