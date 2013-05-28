@@ -183,6 +183,9 @@ class ScanSession {
 
   void ReportEbusyTime(int log_level);
 
+  // Logs the results of the scan.
+  void ReportResults(int log_level);
+
   base::WeakPtrFactory<ScanSession> weak_ptr_factory_;
 
   NetlinkManager *netlink_manager_;
@@ -202,8 +205,10 @@ class ScanSession {
   size_t max_frequencies_;
   OnScanFailed on_scan_failed_;
   size_t scan_tries_left_;
+  bool found_error_;
 
   // Statistics gathering.
+  size_t original_frequency_count_;
   chromeos_metrics::Timer ebusy_timer_;
   Metrics *metrics_;
 

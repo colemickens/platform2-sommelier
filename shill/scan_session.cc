@@ -58,6 +58,7 @@ ScanSession::ScanSession(
       max_frequencies_(max_frequencies),
       on_scan_failed_(on_scan_failed),
       scan_tries_left_(kScanRetryCount),
+      found_error_(false),
       metrics_(metrics) {
   sort(frequency_list_.begin(), frequency_list_.end(),
        &ScanSession::CompareFrequencyCount);
@@ -80,12 +81,13 @@ ScanSession::ScanSession(
                   << freq_conn.connection_count;
   }
 
+  original_frequency_count_ = frequency_list_.size();
   ebusy_timer_.Pause();
 }
 
 ScanSession::~ScanSession() {
   const int kLogLevel = 6;
-  ReportEbusyTime(kLogLevel);
+  ReportResults(kLogLevel);
 }
 
 bool ScanSession::HasMoreFrequencies() const {
@@ -206,6 +208,7 @@ void ScanSession::OnTriggerScanErrorResponse(
     const NetlinkMessage *netlink_message) {
   if (!netlink_message) {
     LOG(ERROR) << __func__ << ": Message failed: NetlinkManager Error.";
+    found_error_ = true;
     on_scan_failed_.Run();
     return;
   }
@@ -223,6 +226,7 @@ void ScanSession::OnTriggerScanErrorResponse(
       if (scan_tries_left_ == 0) {
         LOG(ERROR) << "Retried progressive scan " << kScanRetryCount
                    << " times and failed each time.  Giving up.";
+        found_error_ = true;
         on_scan_failed_.Run();
         scan_tries_left_ = kScanRetryCount;
         return;
@@ -236,13 +240,27 @@ void ScanSession::OnTriggerScanErrorResponse(
                                    kScanRetryDelayMilliseconds);
       return;
     }
+    found_error_ = true;
     on_scan_failed_.Run();
   } else {
     SLOG(WiFi, 6) << __func__ << ": Message ACKed";
   }
 }
 
-void ScanSession::ReportEbusyTime(int log_level) {
+void ScanSession::ReportResults(int log_level) {
+  SLOG(WiFi, log_level) << "------ ScanSession finished ------";
+  SLOG(WiFi, log_level) << "Scanned "
+                        << original_frequency_count_ - frequency_list_.size()
+                        << " frequencies (" << frequency_list_.size()
+                        << " remaining)";
+  if (found_error_) {
+    SLOG(WiFi, log_level) << "ERROR encountered during scan ("
+                          << current_scan_frequencies_.size() << " frequencies"
+                          << " dangling - counted as scanned but, really, not)";
+  } else {
+    SLOG(WiFi, log_level) << "No error encountered during scan.";
+  }
+
   base::TimeDelta elapsed_time;
   ebusy_timer_.GetElapsedTime(&elapsed_time);
   if (metrics_) {
