@@ -267,9 +267,9 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
     SendPowerStateChangedSignal("mem");
   }
 
-  virtual bool Suspend(uint64 wakeup_count,
-                       bool wakeup_count_valid,
-                       base::TimeDelta duration) OVERRIDE {
+  virtual SuspendResult Suspend(uint64 wakeup_count,
+                                bool wakeup_count_valid,
+                                base::TimeDelta duration) OVERRIDE {
     std::string args;
     if (wakeup_count_valid) {
       args += StringPrintf(" --suspend_wakeup_count_valid"
@@ -279,7 +279,19 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
       args += StringPrintf(" --suspend_duration %" PRId64,
                            duration.InSeconds());
     }
-    return util::RunSetuidHelper("suspend", args, true) == 0;
+
+    // These exit codes are defined in scripts/powerd_suspend.
+    switch (util::RunSetuidHelper("suspend", args, true)) {
+      case 0:
+        return SUSPEND_SUCCESSFUL;
+      case 1:
+        return SUSPEND_FAILED;
+      case 2:
+        return SUSPEND_CANCELED;
+      default:
+        LOG(ERROR) << "Treating unexpected exit code as suspend failure";
+        return SUSPEND_FAILED;
+    }
   }
 
   virtual void HandleResume(bool suspend_was_successful,

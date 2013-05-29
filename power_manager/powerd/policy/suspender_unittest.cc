@@ -60,7 +60,7 @@ class TestDelegate : public Suspender::Delegate {
   TestDelegate()
       : lid_closed_(false),
         report_success_for_get_wakeup_count_(true),
-        report_success_for_suspend_(true),
+        suspend_result_(SUSPEND_SUCCESSFUL),
         wakeup_count_(0),
         suspend_wakeup_count_(0),
         suspend_wakeup_count_valid_(false),
@@ -71,8 +71,8 @@ class TestDelegate : public Suspender::Delegate {
   void set_report_success_for_get_wakeup_count(bool success) {
     report_success_for_get_wakeup_count_ = success;
   }
-  void set_report_success_for_suspend(bool success) {
-    report_success_for_suspend_ = success;
+  void set_suspend_result(SuspendResult result) {
+    suspend_result_ = result;
   }
   void set_wakeup_count(uint64 count) { wakeup_count_ = count; }
   void set_suspend_callback(base::Closure callback) {
@@ -110,9 +110,9 @@ class TestDelegate : public Suspender::Delegate {
     AppendAction(kCancel);
   }
 
-  virtual bool Suspend(uint64 wakeup_count,
-                       bool wakeup_count_valid,
-                       base::TimeDelta duration) OVERRIDE {
+  virtual SuspendResult Suspend(uint64 wakeup_count,
+                                bool wakeup_count_valid,
+                                base::TimeDelta duration) OVERRIDE {
     AppendAction(kSuspend);
     suspend_wakeup_count_ = wakeup_count;
     suspend_wakeup_count_valid_ = wakeup_count_valid;
@@ -121,7 +121,7 @@ class TestDelegate : public Suspender::Delegate {
       suspend_callback_.Run();
       suspend_callback_.Reset();
     }
-    return report_success_for_suspend_;
+    return suspend_result_;
   }
 
   virtual void PrepareForSuspend() { AppendAction(kPrepare); }
@@ -147,7 +147,7 @@ class TestDelegate : public Suspender::Delegate {
 
   // Should GetWakeupCount() and Suspend() report success?
   bool report_success_for_get_wakeup_count_;
-  bool report_success_for_suspend_;;
+  SuspendResult suspend_result_;
 
   // Count that should be returned by GetWakeupCount().
   uint64 wakeup_count_;
@@ -283,7 +283,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
 
   const uint64 kOrigWakeupCount = 46;
   delegate_.set_wakeup_count(kOrigWakeupCount);
-  delegate_.set_report_success_for_suspend(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   int orig_suspend_id = test_api_.suspend_id();
@@ -317,7 +317,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 
   // Report success this time and check that the timeout isn't registered.
-  delegate_.set_report_success_for_suspend(true);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
   suspender_.OnReadyForSuspend(final_suspend_id);
   EXPECT_EQ(JoinActions(kPrepare, kSuspend, kResume, NULL),
             delegate_.GetActions());
@@ -329,7 +329,7 @@ TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
   pref_num_retries_ = 5;
   Init();
 
-  delegate_.set_report_success_for_suspend(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
@@ -391,11 +391,11 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
-// Tests that the a suspend-canceling action after a failed suspend attempt
+// Tests that a suspend-canceling action after a failed suspend attempt
 // should remove the retry timeout.
 TEST_F(SuspenderTest, CancelAfterSuspend) {
   Init();
-  delegate_.set_report_success_for_suspend(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_FAILED);
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
@@ -422,7 +422,7 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
 
   // Report user activity after powerd_suspend fails and check that the
   // retry timeout isn't removed.
-  delegate_.set_report_success_for_suspend(false);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_CANCELED);
   suspender_.RequestSuspend();
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
@@ -430,7 +430,7 @@ TEST_F(SuspenderTest, DontCancelForUserActivityWhileLidClosed) {
             delegate_.GetActions());
   suspender_.HandleUserActivity();
 
-  delegate_.set_report_success_for_suspend(true);
+  delegate_.set_suspend_result(Suspender::Delegate::SUSPEND_SUCCESSFUL);
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
   EXPECT_EQ(kAnnounce, delegate_.GetActions());
   suspender_.OnReadyForSuspend(test_api_.suspend_id());

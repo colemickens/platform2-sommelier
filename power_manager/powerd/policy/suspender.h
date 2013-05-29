@@ -67,6 +67,16 @@ class Suspender : public SuspendDelayObserver {
   //   failed), HandleResume() is called.
   class Delegate {
    public:
+    // Outcomes for a suspend attempt.
+    enum SuspendResult {
+      // The system successfully suspended and resumed.
+      SUSPEND_SUCCESSFUL = 0,
+      // The kernel reported a (possibly transient) error while suspending.
+      SUSPEND_FAILED,
+      // The suspend attempt was canceled as a result of a wakeup event.
+      SUSPEND_CANCELED,
+    };
+
     virtual ~Delegate() {}
 
     // Is the lid currently closed?  Returns false if the query fails or if
@@ -101,9 +111,9 @@ class Suspender : public SuspendDelayObserver {
     // so it can avoid suspending if additional wakeup events occur.  After
     // the suspend/resume cycle is complete (and even if the system failed
     // to suspend), HandleResume() will be called.
-    virtual bool Suspend(uint64 wakeup_count,
-                         bool wakeup_count_valid,
-                         base::TimeDelta duration) = 0;
+    virtual SuspendResult Suspend(uint64 wakeup_count,
+                                  bool wakeup_count_valid,
+                                  base::TimeDelta duration) = 0;
 
     // Handles the system resuming (or recovering from a failed suspend
     // attempt).  This method should undo any work done by both

@@ -190,9 +190,9 @@ void Suspender::Suspend() {
     // kernel may not have initialized some of the devices to make the dark
     // resume as inconspicuous as possible, so allowing the user to use the
     // system in this state would be bad.
-    success = delegate_->Suspend(wakeup_count_,
-                                 wakeup_count_valid_ && !dark_resume,
-                                 suspend_duration);
+    Delegate::SuspendResult result = delegate_->Suspend(
+        wakeup_count_, wakeup_count_valid_ && !dark_resume, suspend_duration);
+    success = result == Delegate::SUSPEND_SUCCESSFUL;
     dark_resume = dark_resume_policy_->IsDarkResume();
     // Failure handling for dark resume. We don't want to process events during
     // a dark resume, even if we fail to suspend. To solve this, instead of
