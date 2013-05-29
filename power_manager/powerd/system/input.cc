@@ -229,19 +229,18 @@ bool Input::RegisterInputDevices() {
       }
     }
   } else {
-    LOG(ERROR) << "Cannot open input dir : " << input_path.value().c_str();
+    PLOG(ERROR) << "Cannot open input dir " << input_path.value().c_str();
     return false;
   }
 
-  LOG(INFO) << "Number of power key events registered : "
+  LOG(INFO) << "Number of power button events registered: "
             << num_power_key_events_;
 
-  // Allow max of one lid.
   if (num_lid_events_ > 1) {
-    LOG(ERROR) << "No lid events registered.";
+    LOG(ERROR) << "Saw multiple lid events; ignoring them all";
     return false;
   }
-  LOG(INFO) << "Number of lid events registered : " << num_lid_events_;
+  LOG(INFO) << "Number of lid events registered: " << num_lid_events_;
   return true;
 }
 
@@ -250,10 +249,11 @@ bool Input::RegisterInputWakeSources() {
   if (dir) {
     struct dirent entry;
     struct dirent* result;
-    while (readdir_r(dir, &entry, &result) == 0 && result)
+    while (readdir_r(dir, &entry, &result) == 0 && result) {
       if (result->d_name[0] &&
           strncmp(result->d_name, kInputBaseName, strlen(kInputBaseName)) == 0)
         AddWakeInput(result->d_name);
+    }
   }
   return true;
 }
@@ -288,17 +288,17 @@ bool Input::SetWakeupState(int input_num, bool enabled) {
   // wakeup sysfs is at /sys/class/input/inputX/device/power/wakeup
   base::FilePath wakeup_path = input_path.Append("device/power/wakeup");
   if (access(wakeup_path.value().c_str(), R_OK)) {
-    LOG(WARNING) << "Failed to access power/wakeup for : " << name;
+    LOG(WARNING) << "Failed to access power/wakeup for " << name;
     return false;
   }
 
   const char* wakeup_str = enabled ? kWakeupEnabled : kWakeupDisabled;
   if (!file_util::WriteFile(wakeup_path, wakeup_str, strlen(wakeup_str))) {
-    LOG(ERROR) << "Failed to write to power/wakeup.";
+    LOG(ERROR) << "Failed to write to power/wakeup";
     return false;
   }
 
-  LOG(INFO) << "Set power/wakeup for input" << input_num << " state: "
+  LOG(INFO) << "Set power/wakeup state for input" << input_num << ": "
             << wakeup_str;
   return true;
 }
@@ -308,45 +308,56 @@ void Input::CloseIOChannel(IOChannelWatch* channel) {
   // continue with the removal instead of failing or skipping.  We still want to
   // remove the IO channel itself even if the source is invalid.
   if (channel->source_id == 0)
-    LOG(WARNING) << "Attempting to remove invalid glib source.";
+    LOG(WARNING) << "Attempting to remove invalid glib source";
   else
     g_source_remove(channel->source_id);
   channel->source_id = 0;
 
   if (g_io_channel_shutdown(channel->channel, true, NULL) != G_IO_STATUS_NORMAL)
-    LOG(WARNING) << "Error shutting down GIO channel.";
+    LOG(WARNING) << "Error shutting down GIO channel";
   if (close(g_io_channel_unix_get_fd(channel->channel)) < 0)
-    LOG(ERROR) << "Error closing file handle.";
+    PLOG(ERROR) << "Error closing file handle";
   channel->channel = NULL;
 }
 
 bool Input::AddEvent(const char* name) {
+  // Avoid logging warnings for files that should be ignored.
+  const char* kEventsToSkip[] = {
+    ".",
+    "..",
+    "by-path",
+  };
+  for (size_t i = 0; i < arraysize(kEventsToSkip); ++i) {
+    if (strcmp(name, kEventsToSkip[i]) == 0)
+      return false;
+  }
+
   int event_num = -1;
   if (!GetSuffixNumber(name, kEventBaseName, &event_num)) {
-    LOG(WARNING) << name << " is not a valid event name, not adding as event.";
+    LOG(WARNING) << name << " is not a valid event name; not adding as event";
     return false;
   }
 
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter != registered_inputs_.end()) {
-    LOG(WARNING) << "Input event " << event_num << " already registered.";
+    LOG(WARNING) << "Input event " << event_num << " already registered";
     return false;
   }
 
   base::FilePath event_path = base::FilePath(kDevInputPath).Append(name);
   int event_fd;
   if (access(event_path.value().c_str(), R_OK)) {
-    LOG(WARNING) << "Failed to read from device.";
+    LOG(WARNING) << "Missing read access to " << event_path.value().c_str();
     return false;
   }
   if ((event_fd = open(event_path.value().c_str(), O_RDONLY)) < 0) {
-    LOG(ERROR) << "Failed to open - " << event_path.value().c_str();
+    PLOG(ERROR) << "open() failed for " << event_path.value().c_str();
     return false;
   }
 
   if (!RegisterInputEvent(event_fd, event_num)) {
     if (close(event_fd) < 0)  // event not registered, closing.
-      LOG(ERROR) << "Error closing file handle.";
+      PLOG(ERROR) << "close() failed for " << event_path.value().c_str();
     return false;
   }
   return true;
@@ -355,15 +366,14 @@ bool Input::AddEvent(const char* name) {
 bool Input::RemoveEvent(const char* name) {
   int event_num = -1;
   if (!GetSuffixNumber(name, kEventBaseName, &event_num)) {
-    LOG(WARNING) << name << " is not a valid event name, not removing event.";
+    LOG(WARNING) << name << " is not a valid event name; not removing event";
     return false;
   }
 
   InputMap::iterator iter = registered_inputs_.find(event_num);
   if (iter == registered_inputs_.end()) {
-    LOG(WARNING) << "Input event "
-                 << event_num
-                 << " not registered. Nothing to remove.";
+    LOG(WARNING) << "Input event " << name << " not registered; "
+                 << "nothing to remove";
     return false;
   }
 
@@ -381,13 +391,13 @@ bool Input::AddWakeInput(const char* name) {
   base::FilePath device_name_path =
       base::FilePath(kSysClassInputPath).Append(name).Append("name");
   if (access(device_name_path.value().c_str(), R_OK)) {
-    LOG(WARNING) << "Failed to access input name.";
+    LOG(WARNING) << "Failed to access input name";
     return false;
   }
 
   std::string input_name;
   if (!file_util::ReadFileToString(device_name_path, &input_name)) {
-    LOG(WARNING) << "Failed to read input name.";
+    LOG(WARNING) << "Failed to read input name";
     return false;
   }
   TrimWhitespaceASCII(input_name, TRIM_TRAILING, &input_name);
@@ -398,10 +408,11 @@ bool Input::AddWakeInput(const char* name) {
   }
 
   if (!SetWakeupState(input_num, wakeups_enabled_)) {
-    LOG(ERROR) << "Error Adding Wakeup source. Cannot write to power/wakeup.";
+    LOG(ERROR) << "Error adding wakeup source; cannot write to power/wakeup";
     return false;
   }
   wakeup_inputs_map_[input_name] = input_num;
+  LOG(INFO) << "Added wakeup source " << name << " (" << input_name << ")";
   return true;
 }
 
@@ -416,8 +427,8 @@ bool Input::RemoveWakeInput(const char* name) {
        iter != wakeup_inputs_map_.end(); iter++) {
     if ((*iter).second == input_num) {
       wakeup_inputs_map_[(*iter).first] = -1;
-      LOG(INFO) << "Remove wakeup source " << (*iter).first << " was:input"
-                << input_num;
+      LOG(INFO) << "Removed wakeup source " << name
+                << " (" << (*iter).first << ")";
     }
   }
   return false;
@@ -426,34 +437,36 @@ bool Input::RemoveWakeInput(const char* name) {
 bool Input::RegisterInputEvent(int fd, int event_num) {
   char name[256] = "Unknown";
   if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) < 0) {
-    LOG(ERROR) << "Could not get name of this device.";
+    PLOG(ERROR) << "Could not get name of device (FD " << fd << ", event "
+                << event_num << ")";
     return false;
   } else {
-    LOG(INFO) << "Device name : " << name;
+    VLOG(1) << "Device name: " << name;
   }
 
   char phys[256] = "Unknown";
   if (ioctl(fd, EVIOCGPHYS(sizeof(phys)), phys) < 0) {
-    LOG(ERROR) << "Could not get topo phys path of this device.";
+    PLOG(ERROR) << "Could not get topo phys path of device " << name;
     return false;
   } else {
-    LOG(INFO) << "Device topo phys : " << phys;
+    VLOG(1) << "Device topo phys: " << phys;
   }
 
 #ifdef NEW_POWER_BUTTON
   // Skip input events from the ACPI power button (identified as LNXPWRBN) if
   // a new power button is present. In that case, don't skip the built in
   // keyboard, which starts with isa in its topo phys path.
-  if (0 == strncmp("LNXPWRBN", phys, 8)) {
-    LOG(INFO) << "Skipping interface : " << phys;
+  if (strncmp("LNXPWRBN", phys, 8) == 0) {
+    VLOG(1) << "Skipping interface: " << phys;
     return false;
   }
 #else
-  // Skip input events that are on the built in keyboard.
-  // Many of these devices advertise a power key but do not physically have one.
-  // Skipping will reduce the wasteful waking of powerd due to keyboard events.
-  if (0 == strncmp("isa", phys, 3)) {
-    LOG(INFO) << "Skipping interface : " << phys;
+  // Skip input events that are on the built in keyboard. Many of these
+  // devices advertise a power button but do not physically have one.
+  // Skipping will reduce the wasteful waking of powerd due to keyboard
+  // events.
+  if (strncmp("isa", phys, 3) == 0) {
+    VLOG(1) << "Skipping interface: " << phys;
     return false;
   }
 #endif
@@ -461,7 +474,7 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   unsigned long events[NUM_BITS(EV_MAX)];
   memset(events, 0, sizeof(events));
   if (ioctl(fd, EVIOCGBIT(0, EV_MAX), events) < 0) {
-    LOG(ERROR) << "Error in ioctl - event list";
+    PLOG(ERROR) << "EV_MAX ioctl failed for device " << name;
     return false;
   }
 
@@ -471,11 +484,10 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   if (IS_BIT_SET(EV_KEY, events)) {
     unsigned long keys[NUM_BITS(KEY_MAX)];
     memset(keys, 0, sizeof(keys));
-    if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0) {
-      LOG(ERROR) << "Error in ioctl - key";
-    }
+    if (ioctl(fd, EVIOCGBIT(EV_KEY, KEY_MAX), keys) < 0)
+      PLOG(ERROR) << "KEY_MAX ioctl failed for device " << name;
     if (IS_BIT_SET(KEY_POWER, keys)) {
-      LOG(INFO) << "Watching this event for power button!";
+      LOG(INFO) << "Watching " << phys << " (" << name << ") for power button";
       channel = g_io_channel_unix_new(fd);
       watch_id = g_io_add_watch(
           channel, G_IO_IN, &Input::HandleInputEventThunk, this);
@@ -486,9 +498,8 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
   if (IS_BIT_SET(EV_SW, events)) {
     unsigned long switch_events[NUM_BITS(SW_LID + 1)];
     memset(switch_events, 0, sizeof(switch_events));
-    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0) {
-      LOG(ERROR) << "Error in ioctl - switch_events";
-    }
+    if (ioctl(fd, EVIOCGBIT(EV_SW, SW_LID + 1), switch_events) < 0)
+      PLOG(ERROR) << "SW_LID ioctl failed for device " << name;
     // An input event may have more than one kind of key or switch.
     // For example, if both the power button and the lid switch are handled
     // by the gpio_keys driver, both will share a single event in /dev/input.
@@ -497,16 +508,16 @@ bool Input::RegisterInputEvent(int fd, int event_num) {
     if (use_lid_ && IS_BIT_SET(SW_LID, switch_events)) {
       num_lid_events_++;
       if (!watch_added) {
-        LOG(INFO) << "Watching this event for lid switch!";
+        LOG(INFO) << "Watching " << phys << " (" << name << ") for lid switch";
         channel = g_io_channel_unix_new(fd);
         watch_id = g_io_add_watch(
             channel, G_IO_IN, &(Input::HandleInputEventThunk), this);
         watch_added = true;
       } else {
-        LOG(INFO) << "Watched event also has a lid!";
+        LOG(INFO) << "Watched event also has a lid";
       }
       if (lid_fd_ >= 0)
-        LOG(WARNING) << "Multiple lid events found on system!";
+        LOG(WARNING) << "Multiple lid events found on system";
       lid_fd_ = fd;
     }
   }
@@ -557,12 +568,12 @@ void Input::RegisterUdevEventHandler() {
   // Create the udev object.
   udev_ = udev_new();
   if (!udev_)
-    LOG(ERROR) << "Can't create udev object.";
+    LOG(ERROR) << "Can't create udev object";
 
   // Create the udev monitor structure.
   udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
   if (!udev_monitor_) {
-    LOG(ERROR) << "Can't create udev monitor.";
+    LOG(ERROR) << "Can't create udev monitor";
     udev_unref(udev_);
   }
   udev_monitor_filter_add_match_subsystem_devtype(udev_monitor_,
@@ -596,8 +607,8 @@ gboolean Input::HandleInputEvent(GIOChannel* source, GIOCondition condition) {
   }
   if ((num_events * sizeof(struct input_event)) !=
       static_cast<size_t>(read_size)) {
-    LOG(WARNING) << "Read size, not a discrete number of input_events in "
-                 << "Input::EventHandler";
+    LOG(WARNING) << "Read size " << read_size << " doesn't match expected size "
+                 << "for " << num_events << " events in Input::EventHandler";
   }
 
   for (ssize_t i = 0; i < num_events; i++) {
