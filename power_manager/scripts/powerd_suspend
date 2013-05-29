@@ -10,34 +10,51 @@
 . /usr/share/misc/shflags
 
 DEFINE_integer wakeup_count -1 \
-    "wakeup event count from start of shutdown. -1 to disable" w
+    "wakeup event count from start of suspend. -1 to disable" w
 DEFINE_integer suspend_duration -1 \
-    "indicates that the system should wakeup after this many seconds" d
+    "indicates that the system should wake up after this many seconds" d
+
+# Exit codes returned by this script and reported via the
+# Power.SuspendStatus histogram:
+
+# The system successfully suspended and resumed.
+readonly STATUS_SUCCESSFUL=0
+
+# A suspend failure occurred in the kernel after writing to /sys/power/state.
+readonly STATUS_FAILED=1
+
+# The suspend attempt was canceled as the result of a wakeup event
+# occurring either before the write to /sys/power/wakeup_count or before
+# the write to /sys/power/state.
+readonly STATUS_CANCELED=2
+
+# Histogram-only value used to report the total number of suspend attempts.
+readonly STATUS_ATTEMPTED=3
 
 # Directory where this script and send_metrics_on_resume (running as root)
 # write temporary state files.
-root_run_dir=/var/run/power_manager/root
+readonly ROOT_RUN_DIR=/var/run/power_manager/root
 
 # For testing: write RTC resume timestamp to this file if it exists
-timestamp_file=${root_run_dir}/hwclock-on-resume
+readonly TIMESTAMP_FILE=${ROOT_RUN_DIR}/hwclock-on-resume
 
 # File used to record the power status (AC vs. battery) before suspending.  Read
 # by send_metrics_on_resume (but only when run after resuming; this doesn't
 # need to persist across reboots).
-power_status_on_suspend_file=${root_run_dir}/power-status-on-suspend
+readonly POWER_STATUS_ON_SUSPEND_FILE=${ROOT_RUN_DIR}/power-status-on-suspend
 
 # File containing resume-related timing information.  Written by
 # send_metrics_on_resume and read by autotests; doesn't need to persist
 # across reboots.
-last_resume_timings_file=${root_run_dir}/last_resume_timings
+readonly LAST_RESUME_TIMINGS_FILE=${ROOT_RUN_DIR}/last_resume_timings
 
 # Directory where this script (running as root) writes files that must
 # persist across reboots.
-root_spool_dir=/var/spool/power_manager/root
+readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
 
 # File containing the time at which we started suspending.  Read by
 # send_metrics_on_resume.
-suspend_to_ram_time_file=${root_spool_dir}/suspend-to-ram-time
+readonly SUSPEND_TO_RAM_TIME_FILE=${ROOT_SPOOL_DIR}/suspend-to-ram-time
 
 log_msg() {
     logger -t "powerd_suspend[${PPID}]" -- $@
@@ -45,6 +62,10 @@ log_msg() {
 
 log_msg_from_file() {
     logger -t "powerd_suspend[${PPID}]" -f $1
+}
+
+log_wakeup_count() {
+    log_msg "wakeup_count is $(cat /sys/power/wakeup_count)"
 }
 
 enable_debug() {
@@ -107,18 +128,16 @@ saw_wakeup_event() {
         return 1
     else
         log_msg "Aborting suspend, wake event received"
+        log_wakeup_count
         cancel=1
         return 0
     fi
 }
 
-# Sends suspend status to UMA.
-#   0 - success
-#   1 - failure (in kernel when writing to /sys/power/state)
-#   2 - cancelled (wakeup event seen before write to /sys/power/wakeup_count)
-#   3 - attempted
+
+# Sends suspend status (one of the above SUSPEND_* values) to UMA.
 send_uma_status() {
-  metrics_client -e Power.SuspendStatus $1 4 &
+    metrics_client -e Power.SuspendStatus $1 4 &
 }
 
 setup_dark_resume() {
@@ -130,28 +149,28 @@ setup_dark_resume() {
 
 # Note: Don't change or remove this line without also updating
 # send_metrics_on_resume.
-log_msg "Going to suspend-to-RAM state : args=$@"
+log_msg "Going to suspend-to-RAM state: args=$@"
 
 # Parse command line.
 FLAGS "$@" || exit 1
 eval set -- "$FLAGS_ARGV"
 
-send_uma_status 3
+send_uma_status $STATUS_ATTEMPTED
 
 # Log the time before going to suspend (no-op if no RTC).
-cp /sys/class/rtc/rtc0/since_epoch $suspend_to_ram_time_file \
+cp /sys/class/rtc/rtc0/since_epoch $SUSPEND_TO_RAM_TIME_FILE \
     2> /dev/null || true
 
 # Remove last_resume_timings to ensure the file is fresh on resume.
-rm -f $last_resume_timings_file
+rm -f $LAST_RESUME_TIMINGS_FILE
 
 # Store the current power status.
 power_supply_info 2> /dev/null \
-  | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
+    | /bin/grep -Eq '^[[:space:]]+online:[[:space:]]+no$'
 if [ $? -eq 0 ]; then
-    echo OnBattery > $power_status_on_suspend_file
+    echo OnBattery > $POWER_STATUS_ON_SUSPEND_FILE
 else
-    echo OnAC > $power_status_on_suspend_file
+    echo OnAC > $POWER_STATUS_ON_SUSPEND_FILE
 fi
 
 # Is this a Lumpy system with Gobi modem?
@@ -166,7 +185,7 @@ enable_debug
 log_msg "Explicit sync"
 sync
 
-suspend_rc=1
+suspend_rc=$STATUS_FAILED
 
 if saw_wakeup_event; then
     # Note: The client/cros/power_suspend.py module in autotest depends on
@@ -175,9 +194,9 @@ if saw_wakeup_event; then
 
     # This file is usually removed by send_metrics_on_resume, but that script
     # isn't run if the suspend attempt is unsuccessful.
-    rm -f $suspend_to_ram_time_file
+    rm -f $SUSPEND_TO_RAM_TIME_FILE
 
-    suspend_rc=2
+    suspend_rc=$STATUS_CANCELED
 else
     log_msg "Finalizing suspend"
     # Make sure that hwclock is cached for when we wake up, this way we don't
@@ -186,7 +205,7 @@ else
     # making actual RTC accesses. Do *NOT* change this to a normal execution...
     # it will trigger an RTC interrupt that may count as a wakeup reason, abort
     # your suspend and cause you hours of pain and confusion!
-    if [ -f "${timestamp_file}" ]; then
+    if [ -f "${TIMESTAMP_FILE}" ]; then
         /sbin/hwclock -V > /dev/null
     else
         # We don't want to overwrite the alarm for whatever test might be
@@ -194,13 +213,24 @@ else
         setup_dark_resume
     fi
 
-    # Suspend to RAM. This write will fail if additional wakeup events
-    # have been generated since the earlier write to /sys/power/wakeup_count.
-    echo -n mem > /sys/power/state
-    suspend_rc=$?
-    if [ "${suspend_rc}" != 0 ]; then
-        log_msg "Error writing to /sys/power/state"
+    # Suspend to RAM. This is piped through cat since we want to determine
+    # the causes of failures -- dash's "echo" command appears to not print
+    # anything in response to write errors.
+    error=$( (echo -n mem | cat > /sys/power/state) 2>&1)
+    if [ $? = 0 ]; then
+        suspend_rc=$STATUS_SUCCESSFUL
+    else
+        log_msg "Error writing to /sys/power/state: ${error}"
         log_msg_from_file /sys/kernel/debug/suspend_stats
+
+        # The write will fail with EBUSY if additional wakeup events have
+        # occurred since the earlier write to /sys/power/wakeup_count.
+        if echo "${error}" | grep -q 'Device or resource busy'; then
+            log_wakeup_count
+            suspend_rc=$STATUS_CANCELED
+        else
+            suspend_rc=$STATUS_FAILED
+        fi
     fi
 fi
 
@@ -208,10 +238,10 @@ send_uma_status $suspend_rc
 
 if [ $cancel -eq 0 ]; then
     # On resume:
-    if [ -f "${timestamp_file}" ]; then
+    if [ -f "${TIMESTAMP_FILE}" ]; then
         # Record the hwclock time at resume. It is read by power_Resume test.
         TIME=$(/sbin/hwclock --utc --debug)
-        echo ${TIME} > "${timestamp_file}"
+        echo ${TIME} > "${TIMESTAMP_FILE}"
         log_msg "Recorded hwclock time for test"
     fi
 
