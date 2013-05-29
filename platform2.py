@@ -17,10 +17,13 @@ import sys
 _BASE_VER = '180609'
 
 class Platform2(object):
-  def __init__(self, use_flags, board = None, host = False):
+  def __init__(self, use_flags, board=None, host=False,
+               incremental=True, verbose=False):
     self.use_flags = use_flags
     self.board = board
     self.host = host
+    self.incremental = incremental
+    self.verbose = verbose
 
     if self.host:
       self.arch = self.get_portageq_envvars('ARCH')
@@ -59,6 +62,9 @@ class Platform2(object):
     """Returns the values of a given set of variables using portageq."""
     if isinstance(varnames, basestring):
       varnames = [varnames]
+
+    if board is None and not self.host:
+      board = self.board
 
     portageq_bin = 'portageq' if not board else 'portageq-' + board
     cmd = [portageq_bin, 'envvar', '-v']
@@ -122,7 +128,7 @@ class Platform2(object):
     if not os.path.isdir(self.get_buildroot()):
       os.makedirs(self.get_buildroot())
 
-    if not self.use('incremental') and os.path.isdir(self.get_products_path()):
+    if not self.incremental and os.path.isdir(self.get_products_path()):
       shutil.rmtree(self.get_products_path())
 
     gyp_files = {
@@ -169,7 +175,10 @@ class Platform2(object):
     env = os.environ.copy()
     env['PATH'] += ':/mnt/host/depot_tools'
 
-    ninja_args = ['ninja', '-C', self.get_products_path(), 'all', '-v']
+    ninja_args = ['ninja', '-C', self.get_products_path(), 'all']
+
+    if self.verbose:
+      ninja_args.append('-v')
 
     try:
       subprocess.check_call(ninja_args, env=env)
@@ -199,7 +208,6 @@ def main(argv):
   parser.add_argument('--action', default='deviterate',
                       choices=actions, help='action to run')
   parser.add_argument('--board',
-                      default=os.environ.get('BOARD'),
                       help='board to build for')
   parser.add_argument('--disable_incremental', action='store_false',
                       dest='incremental', help='disable incremental build')
@@ -211,19 +219,19 @@ def main(argv):
                       default=set(os.environ.get('USE', '').split()),
                       action=_ParseStringSetAction,
                       help='USE flags to enable')
+  parser.add_argument('--verbose', action='store_true',
+                      help='enable verbose log output')
 
   options = parser.parse_args(argv)
 
   if options.enable_tests:
     options.use_flags.add('test')
 
-  if not options.incremental:
-    options.use_flags.discard('incremental')
-
   if not (options.host ^ (options.board != None)):
     raise AssertionError('You must provide only one of --board or --host')
 
-  p2 = Platform2(options.use_flags, options.board, options.host)
+  p2 = Platform2(options.use_flags, options.board, options.host,
+                 options.incremental, options.verbose)
   getattr(p2, options.action)()
 
 
