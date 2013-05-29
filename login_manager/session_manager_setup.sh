@@ -369,10 +369,8 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
     $CHROME --allow-webui-compositing \
             --audio-buffer-size=2048 \
             --device-management-url="$DMSERVER" \
-            --disable-seccomp-sandbox \
             --enable-chrome-audio-switching \
             --enable-encrypted-media \
-            --enable-gpu-sandbox \
             --enable-logging \
             --enable-partial-swap \
             --enable-impl-side-painting \
