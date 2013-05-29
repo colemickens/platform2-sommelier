@@ -11,6 +11,7 @@
 #include <base/logging.h>
 #include <base/stringprintf.h>
 #include <base/string_util.h>
+#include <chromeos/cryptohome.h>
 
 #include "cros-disks/metrics.h"
 #include "cros-disks/mount-info.h"
@@ -30,17 +31,12 @@ namespace {
 struct AVFSPathMapping {
   const char* const base_path;
   const char* const avfs_path;
-  bool optional;
 };
 
 // Process capabilities required by the avfsd process:
 //   CAP_SYS_ADMIN for mounting/unmounting filesystem
 const uint64_t kAVFSMountProgramCapabilities = 1 << CAP_SYS_ADMIN;
 
-// Number of components in a mount directory path. A mount directory is always
-// created under /media/<sub type>/<mount dir>, so it always has 4 components
-// in the path: '/', 'media', '<sub type>', '<mount dir>'
-size_t kNumComponentsInMountDirectoryPath = 4;
 const char kAVFSMountGroup[] = "chronos-access";
 const char kAVFSMountUser[] = "avfs";
 // TODO(wad,benchan): Revisit the location of policy files once more system
@@ -51,15 +47,12 @@ const char kAVFSMountProgram[] = "/usr/bin/avfsd";
 const char kAVFSRootDirectory[] = "/var/run/avfsroot";
 const char kAVFSLogFile[] = "/var/run/avfsroot/avfs.log";
 const char kAVFSMediaDirectory[] = "/var/run/avfsroot/media";
-const char kAVFSUserFileDirectory[] = "/var/run/avfsroot/user";
-const char kAVFSUserGDataDirectory[] = "/var/run/avfsroot/gdata";
+const char kAVFSUsersDirectory[] = "/var/run/avfsroot/users";
 const char kMediaDirectory[] = "/media";
-const char kUserFileDirectory[] = "/home/chronos/user/Downloads";
-const char kUserGDataDirectory[] = "/home/chronos/user/GCache";
+const char kUserRootDirectory[] = "/home/chronos";
 const AVFSPathMapping kAVFSPathMapping[] = {
-  { kMediaDirectory, kAVFSMediaDirectory, false },
-  { kUserFileDirectory, kAVFSUserFileDirectory, false },
-  { kUserGDataDirectory, kAVFSUserGDataDirectory, true },
+  { kMediaDirectory, kAVFSMediaDirectory },
+  { kUserRootDirectory, kAVFSUsersDirectory },
 };
 
 }  // namespace
@@ -91,17 +84,38 @@ bool ArchiveManager::CanMount(const string& source_path) const {
   // The following paths can be mounted:
   //     /home/chronos/user/Downloads/...<file>
   //     /home/chronos/user/GCache/...<file>
+  //     /home/chronos/u-<user-id>/Downloads/...<file>
+  //     /home/chronos/u-<user-id>/GCache/...<file>
   //     /media/<dir>/<dir>/...<file>
+  //
+  // TODO(benchan): Deprecate the support of /home/chronos/user once
+  // multi-profile is fully enabled (crbug.com/244909)
   FilePath file_path(source_path);
-  if (FilePath(kUserFileDirectory).IsParent(file_path) ||
-      FilePath(kUserGDataDirectory).IsParent(file_path))
-    return true;
+  if (FilePath(kUserRootDirectory).IsParent(file_path)) {
+    vector<FilePath::StringType> components;
+    file_path.StripTrailingSeparators().GetComponents(&components);
+    // The file path of an archive file under a user's Downloads or GCache
+    // directory path is split into the following components:
+    //   '/', 'home', 'chronos', 'u-<userid>', 'Downloads', ..., 'doc.zip'
+    //   '/', 'home', 'chronos', 'u-<userid>', 'GCache', ..., 'doc.zip'
+    if (components.size() > 5 &&
+        (components[3] == "user" ||
+         (StartsWithASCII(components[3], "u-", false) &&
+          chromeos::cryptohome::home::IsSanitizedUserName(
+              components[3].substr(2)))) &&
+        (components[4] == "Downloads" || components[4] == "GCache")) {
+      return true;
+    }
+  }
 
   if (FilePath(kMediaDirectory).IsParent(file_path)) {
     vector<FilePath::StringType> components;
     file_path.StripTrailingSeparators().GetComponents(&components);
-    // e.g. components = { '/', 'media', 'removable', 'usb', 'doc.zip' }
-    if (components.size() > kNumComponentsInMountDirectoryPath)
+    // A mount directory is always created under /media/<sub type>/<mount dir>,
+    // so the file path of an archive file under a mount directory is split
+    // into more than 4 components:
+    //   '/', 'media', 'removable', 'usb', ..., 'doc.zip'
+    if (components.size() > 4)
       return true;
   }
   return false;
@@ -203,11 +217,11 @@ string ArchiveManager::GetAVFSPath(const string& path,
   // When mounting an archive within another mounted archive, we need to
   // resolve the virtual path of the inner archive to the "unfolded"
   // form within the AVFS mount, such as
-  //   "/var/run/avfsroot/user/layer2.zip#/test/doc/layer1.zip#"
+  //   "/var/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#"
   // instead of the "nested" form, such as
   //   "/var/run/avfsroot/media/archive/layer2.zip/test/doc/layer1.zip#"
   // where "/media/archive/layer2.zip" is a mount point to the virtual
-  // path "/var/run/avfsroot/user/layer2.zip#".
+  // path "/var/run/avfsroot/media/layer2.zip#".
   //
   // Mounting the inner archive using the nested form may cause problems
   // reading files from the inner archive. To avoid that, we first try to
@@ -218,9 +232,9 @@ string ArchiveManager::GetAVFSPath(const string& path,
   //
   // e.g. Given |path| is "/media/archive/layer2.zip/test/doc/layer1.zip",
   //      and "/media/archive/layer2.zip" is a mount point to the virtual
-  //      path "/var/run/avfsroot/user/layer2.zip#" within the AVFS mount.
+  //      path "/var/run/avfsroot/media/layer2.zip#" within the AVFS mount.
   //      The following code should return the virtual path of |path| as
-  //      "/var/run/avfsroot/user/layer2.zip#/test/doc/layer1.zip#".
+  //      "/var/run/avfsroot/media/layer2.zip#/test/doc/layer1.zip#".
   map<string, string>::const_iterator handler_iterator =
       extension_handlers_.find(extension);
   if (handler_iterator == extension_handlers_.end())
@@ -282,10 +296,6 @@ bool ArchiveManager::StartAVFS() {
   for (size_t i = 0; i < arraysize(kAVFSPathMapping); ++i) {
     bool base_path_exists =
         file_util::PathExists(FilePath(kAVFSPathMapping[i].base_path));
-    // Skip a non-existing but optional path.
-    if (!base_path_exists && kAVFSPathMapping[i].optional)
-      continue;
-
     const string& avfs_path = kAVFSPathMapping[i].avfs_path;
     if (!base_path_exists ||
         !platform()->CreateDirectory(avfs_path) ||

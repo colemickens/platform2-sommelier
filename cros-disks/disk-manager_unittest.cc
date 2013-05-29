@@ -234,6 +234,13 @@ TEST_F(DiskManagerTest, CanMount) {
   EXPECT_FALSE(manager_.CanMount("/media/removable/disk1/dir1/test.zip"));
   EXPECT_FALSE(manager_.CanMount("/media/removable/test.zip/test1.zip"));
   EXPECT_FALSE(manager_.CanMount("/home/chronos/user/Downloads/test1.zip"));
+  EXPECT_FALSE(manager_.CanMount("/home/chronos/user/GCache/test1.zip"));
+  EXPECT_FALSE(manager_.CanMount("/home/chronos"
+                                 "/u-0123456789abcdef0123456789abcdef01234567"
+                                 "/Downloads/test1.zip"));
+  EXPECT_FALSE(manager_.CanMount("/home/chronos"
+                                 "/u-0123456789abcdef0123456789abcdef01234567"
+                                 "/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanMount(""));
   EXPECT_FALSE(manager_.CanMount("/tmp"));
   EXPECT_FALSE(manager_.CanMount("/media/removable"));
@@ -259,6 +266,13 @@ TEST_F(DiskManagerTest, CanUnmount) {
   EXPECT_FALSE(manager_.CanUnmount("/media/removable/disk1/dir1/test.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/media/removable/test.zip/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/Downloads/test1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/home/chronos/user/GCache/test1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/home/chronos"
+                                   "/u-0123456789abcdef0123456789abcdef01234567"
+                                   "/Downloads/test1.zip"));
+  EXPECT_FALSE(manager_.CanUnmount("/home/chronos"
+                                   "/u-0123456789abcdef0123456789abcdef01234567"
+                                   "/GCache/test1.zip"));
   EXPECT_FALSE(manager_.CanUnmount(""));
   EXPECT_FALSE(manager_.CanUnmount("/tmp"));
   EXPECT_FALSE(manager_.CanUnmount("/media/removable"));
