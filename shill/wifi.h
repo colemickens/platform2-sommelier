@@ -87,6 +87,7 @@
 #include <base/memory/weak_ptr.h>
 #include <dbus-c++/dbus.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/timer.h>
 
 #include "shill/dbus_manager.h"
 #include "shill/device.h"
@@ -194,16 +195,40 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual void DestroyServiceLease(const WiFiService &service);
 
  private:
+  enum ScanMethod {
+    kScanMethodNone,
+    kScanMethodFull,
+    kScanMethodProgressive,
+    kScanMethodProgressiveErrorToFull,
+    kScanMethodProgressiveFinishedToFull
+  };
+  enum ScanState {
+    kScanIdle,
+    kScanScanning,
+    kScanConnecting,
+    kScanConnected,
+    kScanFoundNothing
+  };
+
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
+  FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiMainTest, DisconnectCurrentServiceWithErrors);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
+  FRIEND_TEST(WiFiMainTest, FullScanConnecting);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
+  FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
+  FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToConnected);
+  FRIEND_TEST(WiFiMainTest, ProgressiveScanError);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, ProgressiveScanFound);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, ProgressiveScanNotFound);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
+  FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiMainTest, VerifyPaths);
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   FRIEND_TEST(WiFiTimerTest, FastRescan);  // kFastScanIntervalSeconds
@@ -245,6 +270,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     return bgscan_signal_threshold_dbm_;
   }
   uint16 GetScanInterval(Error */* error */) { return scan_interval_seconds_; }
+  bool GetScanPending(Error */* error */);
   bool SetBgscanMethod(
       const int &argument, const std::string &method, Error *error);
   bool SetBgscanShortInterval(const uint16 &seconds, Error *error);
@@ -269,8 +295,20 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void PropertiesChangedTask(
       const std::map<std::string, ::DBus::Variant> &properties);
   void ScanDoneTask();
+  // UpdateScanStateAfterScanDone is spawned as a task from ScanDoneTask in
+  // order to guarantee that it is run after the start of any connections that
+  // result from a scan.  This works because supplicant sends all BSSAdded
+  // signals to shill before it sends a ScanDone signal.  The code that
+  // handles those signals launch tasks such that the tasks have the following
+  // dependencies (an arrow from X->Y indicates X is guaranteed to run before
+  // Y):
+  //
+  // [BSSAdded]-->[BssAddedTask]-->[SortServiceTask (calls ConnectTo)]
+  //     |              |                 |
+  //     V              V                 V
+  // [ScanDone]-->[ScanDoneTask]-->[UpdateScanStateAfterScanDone]
+  void UpdateScanStateAfterScanDone();
   void ScanTask();
-  void SetScanPending(bool pending);
   void StateChanged(const std::string &new_state);
   // Heuristic check if a connection failure was due to bad credentials.
   // Returns true and puts type of failure in |failure| if a credential
@@ -287,6 +325,10 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       const std::string &name,
       uint16(WiFi::*get)(Error *error),
       bool(WiFi::*set)(const uint16 &value, Error *error));
+  void HelpRegisterConstDerivedBool(
+      PropertyStore *store,
+      const std::string &name,
+      bool(WiFi::*get)(Error *error));
 
   // Disable a network entry in wpa_supplicant, and catch any exception
   // that occurs.  Returns false if an exception occurred, true otherwise.
@@ -323,6 +365,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void StopScanTimer();
   // Initiates a scan, if idle. Reschedules the scan timer regardless.
   void ScanTimerHandler();
+  // Abort any current scan (at the shill-level; let any request that's
+  // already gone out finish).
+  void AbortScan();
   // Starts a timer in order to limit the length of an attempt to
   // connect to a pending network.
   void StartPendingTimer();
@@ -363,6 +408,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // device's supported frequencies from that message into
   // |all_scan_frequencies_|.
   void OnNewWiphy(const Nl80211Message &nl80211_message);
+
+  void SetScanState(ScanState new_state, ScanMethod new_method);
+  static std::string ScanStateString(ScanState state, ScanMethod type);
 
   // Pointer to the provider object that maintains WiFiService objects.
   WiFiProvider *provider_;
@@ -421,7 +469,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   std::string bgscan_method_;
   uint16 bgscan_short_interval_seconds_;
   int32 bgscan_signal_threshold_dbm_;
-  bool scan_pending_;
   uint16 scan_interval_seconds_;
 
   bool progressive_scan_enabled_;
@@ -430,11 +477,16 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   scoped_ptr<ScanSession> scan_session_;
   size_t min_frequencies_to_scan_;
   size_t max_frequencies_to_scan_;
+
   // Fraction of previously seen scan frequencies to include in each
   // progressive scan batch (since the frequencies are sorted, the sum of the
   // fraction_per_scan_ over the scans in a session (* 100) is the percentile
   // of the frequencies that have been scanned).
   float fraction_per_scan_;
+
+  ScanState scan_state_;
+  ScanMethod scan_method_;
+  chromeos_metrics::Timer scan_timer_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };
