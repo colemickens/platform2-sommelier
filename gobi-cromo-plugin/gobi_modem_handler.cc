@@ -302,7 +302,8 @@ GobiModem* GobiModemHandler::LookupByDbusPath(const std::string& dbuspath)
 void GobiModemHandler::ExitLeavingModemsForCleanup() {
   clear_device_list_on_destroy_ = false;
   LOG(ERROR) << "Exiting without clearing device list.";
-  exit(1);
+  // Send a SIGTERM so cromo gets a chance to clean up before exiting.
+  kill(getpid(), SIGTERM);
 }
 
 static void onload(CromoServer* server) {
