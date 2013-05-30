@@ -94,6 +94,12 @@ const char* UsbError::ToString() const {
       return "ErrorTransferAlreadyAllocated";
     case kErrorTransferNotAllocated:
       return "ErrorTransferNotAllocated";
+    case kErrorTransferAlreadySubmitted:
+      return "ErrorTransferAlreadySubmitted";
+    case kErrorTransferNotSubmitted:
+      return "ErrorTransferNotSubmitted";
+    case kErrorTransferBeingCancelled:
+      return "ErrorTransferBeingCancelled";
     default:
       return "Unknown";
   }

@@ -38,7 +38,10 @@ class UsbError {
     // Additional errors.
     kErrorDeviceNotOpen,
     kErrorTransferAlreadyAllocated,
-    kErrorTransferNotAllocated
+    kErrorTransferNotAllocated,
+    kErrorTransferAlreadySubmitted,
+    kErrorTransferNotSubmitted,
+    kErrorTransferBeingCancelled
   };
 
   // Constructs a UsbError object with its error type set to UsbError::kSuccess.

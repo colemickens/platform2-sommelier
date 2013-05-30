@@ -48,6 +48,8 @@ const char* UsbTransferTypeToString(UsbTransferType transfer_type) {
       return "Bulk";
     case kUsbTransferTypeInterrupt:
       return "Interrupt";
+    case kUsbTransferTypeUnknown:
+      return "Unknown";
   }
   NOTREACHED();
   return NULL;

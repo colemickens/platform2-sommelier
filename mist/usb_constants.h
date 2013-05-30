@@ -39,7 +39,9 @@ enum UsbTransferType {
   kUsbTransferTypeControl = 0,
   kUsbTransferTypeIsochronous = 1,
   kUsbTransferTypeBulk = 2,
-  kUsbTransferTypeInterrupt = 3
+  kUsbTransferTypeInterrupt = 3,
+  // Additional enum value to indicate an uninitialized/unknown transfer type.
+  kUsbTransferTypeUnknown = -1
 };
 
 // USB endpoint transfer status, which is one-to-one equivalent to the
