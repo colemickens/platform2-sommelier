@@ -6,7 +6,9 @@
 #define MIST_USB_MANAGER_H_
 
 #include <base/basictypes.h>
+#include <base/compiler_specific.h>
 #include <base/memory/scoped_vector.h>
+#include <base/message_loop.h>
 
 #include "mist/usb_error.h"
 
@@ -14,13 +16,18 @@ struct libusb_context;
 
 namespace mist {
 
+class EventDispatcher;
 class UsbDevice;
 
 // A USB manager for managing a USB session created by libusb 1.0.
-class UsbManager {
+class UsbManager : public MessageLoopForIO::Watcher {
  public:
-  UsbManager();
-  ~UsbManager();
+  // Constructs a UsbManager object by taking a raw pointer to an
+  // EventDispatcher as |dispatcher|. The ownership of |dispatcher| is not
+  // transferred, and thus it should outlive this object.
+  explicit UsbManager(EventDispatcher* dispatcher);
+
+  virtual ~UsbManager();
 
   // Initializes a USB session via libusb. Returns true on success.
   bool Initialize();
@@ -37,6 +44,23 @@ class UsbManager {
   const UsbError& error() const { return error_; }
 
  private:
+  static void OnPollFileDescriptorAdded(int file_descriptor,
+                                        short events,  // NOLINT
+                                        void* user_data);
+  static void OnPollFileDescriptorRemoved(int file_descriptor, void* user_data);
+
+  // Starts watching the file descriptors for libusb events. Returns true on
+  // success.
+  bool StartWatchingPollFileDescriptors();
+
+  // Handles libusb events in non-blocking mode.
+  void HandleEventsNonBlocking();
+
+  // Implements MessageLoopForIO::Watcher.
+  virtual void OnFileCanReadWithoutBlocking(int file_descriptor) OVERRIDE;
+  virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
+
+  EventDispatcher* const dispatcher_;
   libusb_context* context_;
   UsbError error_;
 

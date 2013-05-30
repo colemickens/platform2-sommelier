@@ -5,14 +5,38 @@
 #include "mist/usb_manager.h"
 
 #include <libusb.h>
+#include <poll.h>
 
 #include <base/logging.h>
+#include <base/stringprintf.h>
 
+#include "mist/event_dispatcher.h"
 #include "mist/usb_device.h"
+
+using base::StringPrintf;
 
 namespace mist {
 
-UsbManager::UsbManager() : context_(NULL) {}
+namespace {
+
+MessageLoopForIO::Mode ConvertEventFlagsToWatchMode(short events) {  // NOLINT
+  if ((events & POLLIN) && (events & POLLOUT))
+    return MessageLoopForIO::WATCH_READ_WRITE;
+
+  if (events & POLLIN)
+    return MessageLoopForIO::WATCH_READ;
+
+  if (events & POLLOUT)
+    return MessageLoopForIO::WATCH_WRITE;
+
+  return MessageLoopForIO::WATCH_READ_WRITE;
+}
+
+}  // namespace
+
+UsbManager::UsbManager(EventDispatcher* dispatcher)
+    : dispatcher_(dispatcher),
+      context_(NULL) {}
 
 UsbManager::~UsbManager() {
   if (context_) {
@@ -29,6 +53,12 @@ bool UsbManager::Initialize() {
     LOG(ERROR) << "Could not initialize libusb: " << error_;
     return false;
   }
+
+  if (!StartWatchingPollFileDescriptors()) {
+    error_.set_type(UsbError::kErrorNotSupported);
+    return false;
+  }
+
   return true;
 }
 
@@ -58,6 +88,75 @@ bool UsbManager::GetDevices(ScopedVector<UsbDevice>* devices) {
   // one when freeing the list.
   libusb_free_device_list(device_list, 1);
   return true;
+}
+
+void UsbManager::OnPollFileDescriptorAdded(int file_descriptor,
+                                           short events,  // NOLINT
+                                           void* user_data) {
+  CHECK(user_data);
+
+  VLOG(2) << StringPrintf("Poll file descriptor %d on events 0x%016x added.",
+                          file_descriptor,
+                          events);
+  UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
+  manager->dispatcher_->StartWatchingFileDescriptor(
+      file_descriptor, ConvertEventFlagsToWatchMode(events), manager);
+}
+
+void UsbManager::OnPollFileDescriptorRemoved(int file_descriptor,
+                                             void* user_data) {
+  CHECK(user_data);
+
+  VLOG(2) << StringPrintf("Poll file descriptor %d removed.", file_descriptor);
+  UsbManager* manager = reinterpret_cast<UsbManager*>(user_data);
+  manager->dispatcher_->StopWatchingFileDescriptor(file_descriptor);
+}
+
+bool UsbManager::StartWatchingPollFileDescriptors() {
+  CHECK(context_);
+
+  libusb_set_pollfd_notifiers(
+      context_, &OnPollFileDescriptorAdded, &OnPollFileDescriptorRemoved, this);
+
+  scoped_ptr<const libusb_pollfd*, base::FreeDeleter> pollfd_list(
+      libusb_get_pollfds(context_));
+  if (!pollfd_list) {
+    LOG(ERROR) << "Could not get file descriptors for monitoring USB events.";
+    return false;
+  }
+
+  for (const libusb_pollfd** fd_ptr = pollfd_list.get(); *fd_ptr; ++fd_ptr) {
+    const libusb_pollfd& pollfd = *(*fd_ptr);
+    VLOG(2) << StringPrintf("Poll file descriptor %d for events 0x%016x added.",
+                            pollfd.fd,
+                            pollfd.events);
+    if (!dispatcher_->StartWatchingFileDescriptor(
+            pollfd.fd, ConvertEventFlagsToWatchMode(pollfd.events), this)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void UsbManager::HandleEventsNonBlocking() {
+  CHECK(context_);
+
+  timeval zero_tv = {0};
+  int result = libusb_handle_events_timeout_completed(context_, &zero_tv, NULL);
+  UsbError error(static_cast<libusb_error>(result));
+  LOG_IF(ERROR, !error.IsSuccess()) << "Could not handle USB events: " << error;
+}
+
+void UsbManager::OnFileCanReadWithoutBlocking(int file_descriptor) {
+  VLOG(3) << StringPrintf("File descriptor %d available for read.",
+                          file_descriptor);
+  HandleEventsNonBlocking();
+}
+
+void UsbManager::OnFileCanWriteWithoutBlocking(int file_descriptor) {
+  VLOG(3) << StringPrintf("File descriptor %d available for write.",
+                          file_descriptor);
+  HandleEventsNonBlocking();
 }
 
 }  // namespace mist
