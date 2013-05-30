@@ -38,6 +38,7 @@ CXXFLAGS="$CXXFLAGS -fpic -Wall -std=gnu++0x -fno-rtti"
 AC_CONFIG_FILES([Makefile
                  client/Makefile
                  common/Makefile
+                 data/Makefile
                  http_server/Makefile
                  server/Makefile])
 AC_OUTPUT

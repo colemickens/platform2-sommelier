@@ -1,5 +1,5 @@
 
-SUBDIRS = common http_server server client
+SUBDIRS = common data http_server server client
 
 clean-local :
 	rm -rf *~
