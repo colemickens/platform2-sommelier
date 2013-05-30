@@ -11,6 +11,7 @@
 #include <grp.h>
 #include <libudev.h>
 #include <poll.h>
+#include <stdint.h>
 #include <sys/inotify.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -93,13 +94,15 @@ void PermissionBroker::AddRule(Rule *rule) {
   rules_.push_back(rule);
 }
 
-bool PermissionBroker::ProcessPath(const string &path) {
+bool PermissionBroker::ProcessPath(const string &path,
+                                   int interface_id) {
   WaitForEmptyUdevQueue();
 
   LOG(INFO) << "ProcessPath(" << path << ")";
   Rule::Result result = Rule::IGNORE;
   for (unsigned int i = 0; i < rules_.size(); ++i) {
-    const Rule::Result rule_result = rules_[i]->Process(path);
+    const Rule::Result rule_result = rules_[i]->Process(path,
+                                                        interface_id);
     LOG(INFO) << "  " << rules_[i]->name() << ": "
               << Rule::ResultToString(rule_result);
     if (rule_result == Rule::DENY)
@@ -122,9 +125,10 @@ bool PermissionBroker::GrantAccess(const std::string &path) {
   return true;
 }
 
-bool PermissionBroker::ExpandUsbIdentifiersToPaths(const uint16_t vendor_id,
-                                                   const uint16_t product_id,
-                                                   vector<string> *paths) {
+bool PermissionBroker::ExpandUsbIdentifiersToPaths(
+    const uint16_t vendor_id,
+    const uint16_t product_id,
+    vector<string> *paths) {
   CHECK(paths) << "Cannot invoke ExpandUsbIdentifiersToPaths with NULL paths.";
   paths->clear();
 
@@ -213,22 +217,29 @@ DBusMessage *PermissionBroker::HandleRequestPathAccessMethod(
 
   dbus_bool_t success = false;
   char *path = NULL;
+  int interface_id = Rule::ANY_INTERFACE;
 
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error,
                              DBUS_TYPE_STRING, &path,
+                             DBUS_TYPE_INT32, &interface_id,
                              DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Error parsing arguments: " << error.message;
-    dbus_error_free(&error);
+    interface_id = Rule::ANY_INTERFACE;
+    if (!dbus_message_get_args(message, &error,
+                               DBUS_TYPE_STRING, &path,
+                               DBUS_TYPE_INVALID)) {
+      LOG(WARNING) << "Error parsing arguments: " << error.message;
+      dbus_error_free(&error);
 
-    dbus_message_append_args(reply,
-                             DBUS_TYPE_BOOLEAN, &success,
-                             DBUS_TYPE_INVALID);
-    return reply;
+      dbus_message_append_args(reply,
+                               DBUS_TYPE_BOOLEAN, &success,
+                               DBUS_TYPE_INVALID);
+      return reply;
+    }
   }
 
-  success = ProcessPath(path);
+  success = ProcessPath(path, interface_id);
   dbus_message_append_args(reply,
                            DBUS_TYPE_BOOLEAN, &success,
                            DBUS_TYPE_INVALID);
@@ -243,30 +254,40 @@ DBusMessage *PermissionBroker::HandleRequestUsbAccessMethod(
   dbus_bool_t success = false;
   uint16_t vendor_id;
   uint16_t product_id;
+  int interface_id = Rule::ANY_INTERFACE;
 
   DBusError error;
   dbus_error_init(&error);
   if (!dbus_message_get_args(message, &error,
                              DBUS_TYPE_UINT16, &vendor_id,
                              DBUS_TYPE_UINT16, &product_id,
+                             DBUS_TYPE_INT32, &interface_id,
                              DBUS_TYPE_INVALID)) {
-    LOG(WARNING) << "Error parsing arguments: " << error.message;
-    dbus_error_free(&error);
+    interface_id = Rule::ANY_INTERFACE;
+    if (!dbus_message_get_args(message, &error,
+                               DBUS_TYPE_UINT16, &vendor_id,
+                               DBUS_TYPE_UINT16, &product_id,
+                               DBUS_TYPE_INVALID)) {
+      LOG(WARNING) << "Error parsing arguments: " << error.message;
+      dbus_error_free(&error);
 
-    dbus_message_append_args(reply,
-                             DBUS_TYPE_BOOLEAN, &success,
-                             DBUS_TYPE_INVALID);
-    return reply;
+      dbus_message_append_args(reply,
+                               DBUS_TYPE_BOOLEAN, &success,
+                               DBUS_TYPE_INVALID);
+      return reply;
+    }
   }
 
   if (ContainsKey(usb_exceptions_, std::make_pair(vendor_id, product_id))) {
     success = true;
   } else {
     vector<string> paths;
-    if (ExpandUsbIdentifiersToPaths(vendor_id, product_id, &paths)) {
+    if (ExpandUsbIdentifiersToPaths(vendor_id,
+                                    product_id,
+                                    &paths)) {
       success = true;
       for (unsigned int i = 0; i < paths.size(); ++i)
-        success &= ProcessPath(paths[i]);
+        success &= ProcessPath(paths[i], interface_id);
     } else {
       LOG(INFO) << "Could not expand (" << vendor_id << ", " << product_id
                 << ") to a list of device nodes.";

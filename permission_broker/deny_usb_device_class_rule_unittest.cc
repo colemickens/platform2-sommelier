@@ -22,11 +22,13 @@ class DenyUsbDeviceClassRuleTest : public testing::Test {
 };
 
 TEST_F(DenyUsbDeviceClassRuleTest, IgnoreNonUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0"));
+  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/loop0",
+                                        Rule::ANY_INTERFACE));
 }
 
 TEST_F(DenyUsbDeviceClassRuleTest, DenyMatchingUsbDevice) {
-  ASSERT_EQ(Rule::DENY, rule_.Process("/dev/bus/usb/001/001"));
+  ASSERT_EQ(Rule::DENY, rule_.Process("/dev/bus/usb/001/001",
+                                      Rule::ANY_INTERFACE));
 }
 
 }  // namespace permission_broker

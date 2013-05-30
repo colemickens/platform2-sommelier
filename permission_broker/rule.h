@@ -20,13 +20,15 @@ namespace permission_broker {
 class Rule {
  public:
   enum Result { ALLOW, DENY, IGNORE };
+  enum SpecialInterfaces { ANY_INTERFACE = -1 };
 
   static const char *ResultToString(const Result &result);
 
   virtual ~Rule();
   const std::string &name();
 
-  virtual Result Process(const std::string &path) = 0;
+  virtual Result Process(const std::string &path,
+                         const int interface_id) = 0;
 
  protected:
   Rule(const std::string &name);

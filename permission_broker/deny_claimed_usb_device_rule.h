@@ -26,7 +26,8 @@ class DenyClaimedUsbDeviceRule : public Rule {
   DenyClaimedUsbDeviceRule();
   virtual ~DenyClaimedUsbDeviceRule();
 
-  virtual Result Process(const std::string &path);
+  virtual Result Process(const std::string &path,
+                         const int interface_id);
 
  private:
   struct udev *const udev_;

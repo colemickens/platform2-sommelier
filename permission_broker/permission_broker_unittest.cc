@@ -22,7 +22,7 @@ class MockRule : public Rule {
   MockRule() : Rule("MockRule") {}
   virtual ~MockRule() {}
 
-  MOCK_METHOD1(Process, Result(const string &path));
+  MOCK_METHOD2(Process, Result(const string &path, int interface_id));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockRule);
@@ -49,14 +49,14 @@ class PermissionBrokerTest : public testing::Test {
   PermissionBrokerTest() {}
   virtual ~PermissionBrokerTest() {}
 
-  bool ProcessPath(const string &path) {
-    return broker_.ProcessPath(path);
+  bool ProcessPath(const string &path, int interface_id) {
+    return broker_.ProcessPath(path, interface_id);
   }
 
  protected:
   Rule *CreateMockRule(const Rule::Result result) const {
     MockRule *rule = new MockRule();
-    EXPECT_CALL(*rule, Process(_))
+    EXPECT_CALL(*rule, Process(_, _))
         .WillOnce(Return(result));
     return rule;
   }
@@ -70,21 +70,21 @@ class PermissionBrokerTest : public testing::Test {
 TEST_F(PermissionBrokerTest, EmptyRuleChain) {
   EXPECT_CALL(broker_, MockGrantAccess(_))
       .Times(0);
-  ASSERT_FALSE(ProcessPath("/dev/foo"));
+  ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(PermissionBrokerTest, AllowAccess) {
   EXPECT_CALL(broker_, MockGrantAccess("/dev/foo"))
       .WillOnce(Return(true));
   broker_.AddRule(CreateMockRule(Rule::ALLOW));
-  ASSERT_TRUE(ProcessPath("/dev/foo"));
+  ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(PermissionBrokerTest, DenyAccess) {
   EXPECT_CALL(broker_, MockGrantAccess(_))
       .Times(0);
   broker_.AddRule(CreateMockRule(Rule::DENY));
-  ASSERT_FALSE(ProcessPath("/dev/foo"));
+  ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(PermissionBrokerTest, DenyPrecedence) {
@@ -93,7 +93,7 @@ TEST_F(PermissionBrokerTest, DenyPrecedence) {
   broker_.AddRule(CreateMockRule(Rule::ALLOW));
   broker_.AddRule(CreateMockRule(Rule::IGNORE));
   broker_.AddRule(CreateMockRule(Rule::DENY));
-  ASSERT_FALSE(ProcessPath("/dev/foo"));
+  ASSERT_FALSE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 TEST_F(PermissionBrokerTest, AllowPrecedence) {
@@ -102,7 +102,7 @@ TEST_F(PermissionBrokerTest, AllowPrecedence) {
   broker_.AddRule(CreateMockRule(Rule::IGNORE));
   broker_.AddRule(CreateMockRule(Rule::ALLOW));
   broker_.AddRule(CreateMockRule(Rule::IGNORE));
-  ASSERT_TRUE(ProcessPath("/dev/foo"));
+  ASSERT_TRUE(ProcessPath("/dev/foo", Rule::ANY_INTERFACE));
 }
 
 }  // namespace permission_broker

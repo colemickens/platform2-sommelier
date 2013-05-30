@@ -22,7 +22,7 @@ class UdevRule : public Rule {
 
   virtual Result ProcessDevice(struct udev_device *device) = 0;
 
-  virtual Result Process(const std::string& path);
+  virtual Result Process(const std::string& path, int interface_id);
 
  private:
   struct udev *const udev_;

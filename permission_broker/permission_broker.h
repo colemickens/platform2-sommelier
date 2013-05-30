@@ -64,7 +64,8 @@ class PermissionBroker {
   // executing all of the stored rules, no rule has explicitly allowed access to
   // the path then access is denied. If _any_ rule denies access to |path| then
   // processing the rules is aborted early and access is denied.
-  bool ProcessPath(const std::string &path);
+  bool ProcessPath(const std::string &path,
+                   int interface_id);
 
   // Grants access to |path|, which is accomplished by changing the owning group
   // on the path to the one specified numerically by the 'access_group' flag.

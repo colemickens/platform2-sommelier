@@ -59,7 +59,7 @@ class DenyClaimedUsbDeviceRuleTest : public testing::Test {
 };
 
 TEST_F(DenyClaimedUsbDeviceRuleTest, IgnoreNonUsbDevice) {
-  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/tty0"));
+  ASSERT_EQ(Rule::IGNORE, rule_.Process("/dev/tty0", Rule::ANY_INTERFACE));
 }
 
 TEST_F(DenyClaimedUsbDeviceRuleTest, DenyClaimedUsbDevice) {
@@ -74,7 +74,7 @@ TEST_F(DenyClaimedUsbDeviceRuleTest, DenyClaimedUsbDevice) {
 
   for (set<string>::const_iterator i = claimed_usb_devices.begin(); i !=
        claimed_usb_devices.end(); ++i)
-    ASSERT_EQ(Rule::DENY, rule_.Process(*i)) << *i;
+    ASSERT_EQ(Rule::DENY, rule_.Process(*i, Rule::ANY_INTERFACE)) << *i;
 }
 
 }  // namespace permission_broker
