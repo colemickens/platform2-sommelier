@@ -14,7 +14,7 @@ PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
 CPPFLAGS += -I$(SRC)/.. $(PC_CFLAGS)
-LDLIBS += $(PC_LIBS)
+LDLIBS += -ludev $(PC_LIBS)
 
 CXX_BINARY(mist): \
 	$(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS))
