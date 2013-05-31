@@ -13,6 +13,7 @@
 #include <base/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
+#include <metrics/timer.h>
 
 #include "shill/byte_string.h"
 #include "shill/wifi_provider.h"
@@ -20,6 +21,7 @@
 namespace shill {
 
 class EventDispatcher;
+class Metrics;
 class NetlinkManager;
 class NetlinkMessage;
 class Nl80211Message;
@@ -102,7 +104,8 @@ class ScanSession {
               const FractionList &fractions,
               size_t min_frequencies,
               size_t max_frequencies,
-              OnScanFailed on_scan_failed);
+              OnScanFailed on_scan_failed,
+              Metrics *metrics);
 
   virtual ~ScanSession();
 
@@ -178,6 +181,8 @@ class ScanSession {
   void OnTriggerScanResponse(const Nl80211Message &message);
   void OnTriggerScanErrorResponse(const NetlinkMessage *netlink_message);
 
+  void ReportEbusyTime(int log_level);
+
   base::WeakPtrFactory<ScanSession> weak_ptr_factory_;
 
   NetlinkManager *netlink_manager_;
@@ -197,6 +202,10 @@ class ScanSession {
   size_t max_frequencies_;
   OnScanFailed on_scan_failed_;
   size_t scan_tries_left_;
+
+  // Statistics gathering.
+  chromeos_metrics::Timer ebusy_timer_;
+  Metrics *metrics_;
 
   DISALLOW_COPY_AND_ASSIGN(ScanSession);
 };

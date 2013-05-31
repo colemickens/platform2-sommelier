@@ -20,7 +20,8 @@ MockScanSession::MockScanSession(NetlinkManager *netlink_manager,
                                  const FractionList &fractions,
                                  int min_frequencies,
                                  int max_frequencies,
-                                 OnScanFailed on_scan_failed)
+                                 OnScanFailed on_scan_failed,
+                                 Metrics *metrics)
     : ScanSession(netlink_manager,
                   dispatcher,
                   previous_frequencies,
@@ -29,7 +30,8 @@ MockScanSession::MockScanSession(NetlinkManager *netlink_manager,
                   fractions,
                   min_frequencies,
                   max_frequencies,
-                  on_scan_failed) {
+                  on_scan_failed,
+                  metrics) {
   ON_CALL(*this, HasMoreFrequencies()).WillByDefault(testing::Return(true));
 }
 

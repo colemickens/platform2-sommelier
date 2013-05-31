@@ -81,7 +81,8 @@ class ScanSessionTest : public Test {
                                         kArbitraryMinimum,
                                         kArbitraryMaximum,
                                         Bind(&ScanSessionTest::OnScanError,
-                                             weak_ptr_factory_.GetWeakPtr())));
+                                             weak_ptr_factory_.GetWeakPtr()),
+                                        NULL));
   }
 
   virtual std::vector<uint16_t> GetScanFrequencies(float scan_fraction,

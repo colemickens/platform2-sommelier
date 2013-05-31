@@ -16,6 +16,7 @@
 
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
+#include "shill/metrics.h"
 #include "shill/netlink_manager.h"
 #include "shill/nl80211_attribute.h"
 #include "shill/nl80211_message.h"
@@ -41,7 +42,8 @@ ScanSession::ScanSession(
     const FractionList &fractions,
     size_t min_frequencies,
     size_t max_frequencies,
-    OnScanFailed on_scan_failed)
+    OnScanFailed on_scan_failed,
+    Metrics *metrics)
     : weak_ptr_factory_(this),
       netlink_manager_(netlink_manager),
       dispatcher_(dispatcher),
@@ -55,7 +57,8 @@ ScanSession::ScanSession(
       min_frequencies_(min_frequencies),
       max_frequencies_(max_frequencies),
       on_scan_failed_(on_scan_failed),
-      scan_tries_left_(kScanRetryCount) {
+      scan_tries_left_(kScanRetryCount),
+      metrics_(metrics) {
   sort(frequency_list_.begin(), frequency_list_.end(),
        &ScanSession::CompareFrequencyCount);
   // Add to |frequency_list_| all the frequencies from |available_frequencies|
@@ -76,9 +79,14 @@ ScanSession::ScanSession(
     SLOG(WiFi, 7) << "    freq[" << freq_conn.frequency << "] = "
                   << freq_conn.connection_count;
   }
+
+  ebusy_timer_.Pause();
 }
 
-ScanSession::~ScanSession() {}
+ScanSession::~ScanSession() {
+  const int kLogLevel = 6;
+  ReportEbusyTime(kLogLevel);
+}
 
 bool ScanSession::HasMoreFrequencies() const {
   return !frequency_list_.empty();
@@ -126,6 +134,7 @@ void ScanSession::InitiateScan() {
 }
 
 void ScanSession::ReInitiateScan() {
+  ebusy_timer_.Pause();
   DoScan(current_scan_frequencies_);
 }
 
@@ -221,6 +230,7 @@ void ScanSession::OnTriggerScanErrorResponse(
       --scan_tries_left_;
       SLOG(WiFi, 3) << __func__ << " - trying again (" << scan_tries_left_
                     << " remaining after this)";
+      ebusy_timer_.Resume();
       dispatcher_->PostDelayedTask(Bind(&ScanSession::ReInitiateScan,
                                         weak_ptr_factory_.GetWeakPtr()),
                                    kScanRetryDelayMilliseconds);
@@ -230,6 +240,20 @@ void ScanSession::OnTriggerScanErrorResponse(
   } else {
     SLOG(WiFi, 6) << __func__ << ": Message ACKed";
   }
+}
+
+void ScanSession::ReportEbusyTime(int log_level) {
+  base::TimeDelta elapsed_time;
+  ebusy_timer_.GetElapsedTime(&elapsed_time);
+  if (metrics_) {
+    metrics_->SendToUMA(Metrics::kMetricWiFiScanTimeInEbusyMilliseconds,
+                        elapsed_time.InMilliseconds(),
+                        Metrics::kMetricTimeToScanMillisecondsMin,
+                        Metrics::kMetricTimeToScanMillisecondsMax,
+                        Metrics::kMetricTimeToScanMillisecondsNumBuckets);
+  }
+  SLOG(WiFi, log_level) << "Spent " << elapsed_time.InMillisecondsRoundedUp()
+                        << " milliseconds waiting for EBUSY.";
 }
 
 void ScanSession::AddSsid(const ByteString &ssid) {

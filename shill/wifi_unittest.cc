@@ -340,7 +340,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                                         fractions,
                                         0,
                                         0,
-                                        null_callback);
+                                        null_callback,
+                                        NULL);
     wifi_->scan_session_.reset(scan_session_);
   }
 

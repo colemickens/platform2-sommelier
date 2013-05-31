@@ -316,6 +316,8 @@ class Metrics {
   static const int kMetricFrequenciesConnectedMin;
   static const int kMetricFrequenciesConnectedNumBuckets;
 
+  static const char kMetricWiFiScanTimeInEbusyMilliseconds[];
+
   static const char kMetricPowerManagerKey[];
 
   // LinkMonitor statistics.

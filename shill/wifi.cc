@@ -261,7 +261,8 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/) {
                           min_frequencies_to_scan_,
                           max_frequencies_to_scan_,
                           Bind(&WiFi::OnFailedProgressiveScan,
-                               weak_ptr_factory_.GetWeakPtr())));
+                               weak_ptr_factory_.GetWeakPtr()),
+                          metrics()));
       for (const auto &ssid : provider_->GetHiddenSSIDList()) {
         scan_session_->AddSsid(ByteString(&ssid.front(), ssid.size()));
       }

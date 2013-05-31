@@ -17,6 +17,7 @@ namespace shill {
 
 class ByteString;
 class EventDispatcher;
+class Metrics;
 class NetlinkManager;
 
 class MockScanSession : public ScanSession {
@@ -29,7 +30,8 @@ class MockScanSession : public ScanSession {
                   const FractionList &fractions,
                   int min_frequencies,
                   int max_frequencies,
-                  OnScanFailed on_scan_failed);
+                  OnScanFailed on_scan_failed,
+                  Metrics *metrics);
   virtual ~MockScanSession();
 
   MOCK_CONST_METHOD0(HasMoreFrequencies, bool());
