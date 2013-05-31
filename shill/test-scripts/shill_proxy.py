@@ -66,6 +66,10 @@ class ShillProxy(object):
     SERVICE_PROPERTY_STATE = 'State'
     SERVICE_PROPERTY_TYPE = 'Type'
 
+    SUPPORTED_WIFI_STATION_TYPES = {'managed': 'managed',
+                                    'ibss': 'adhoc',
+                                    None: 'managed'}
+
     TECHNOLOGY_CELLULAR = 'cellular'
     TECHNOLOGY_ETHERNET = 'ethernet'
     TECHNOLOGY_VPN = 'vpn'
@@ -266,6 +270,7 @@ class ShillProxy(object):
                                 security,
                                 psk,
                                 save_credentials,
+                                station_type=None,
                                 hidden_network=False,
                                 discovery_timeout_seconds=15,
                                 association_timeout_seconds=15,
@@ -278,6 +283,7 @@ class ShillProxy(object):
         @param psk string password or pre shared key for appropriate security
                 types.
         @param save_credentials bool True if we should save EAP credentials.
+        @param station_type string one of SUPPORTED_WIFI_STATION_TYPES.
         @param hidden_network bool True when the SSID is not broadcasted.
         @param discovery_timeout_seconds float timeout for service discovery.
         @param association_timeout_seconds float timeout for service
@@ -291,19 +297,29 @@ class ShillProxy(object):
             which may contain a meaningful description of failures.
 
         """
-        # TODO(wiley) This doesn't work for hidden ssids
         logging.info('Attempting to conect to %s', ssid)
         service_proxy = None
         start_time = time.time()
         discovery_time = -1.0
         association_time = -1.0
         configuration_time = -1.0
+        if station_type not in self.SUPPORTED_WIFI_STATION_TYPES:
+            return (False, discovery_time, association_time,
+                    configuration_time,
+                    'FAIL(Invalid station type specified.)')
+
+        # mode is derived from the station type we're attempting to join.
+        # It does not refer to the 802.11x type.  It refers to a flimflam/shill
+        # connection mode.
+        mode = self.SUPPORTED_WIFI_STATION_TYPES[station_type]
+
         if hidden_network:
             logging.info('Configuring %s as a hidden network.', ssid)
             config_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
                              self.SERVICE_PROPERTY_HIDDEN: True,
                              self.SERVICE_PROPERTY_SSID: ssid,
-                             self.SERVICE_PROPERTY_SECURITY: security}
+                             self.SERVICE_PROPERTY_SECURITY: security,
+                             self.SERVICE_PROPERTY_MODE: mode}
             try:
                 self.manager.ConfigureService(config_params)
             except dbus.exceptions.DBusException, e:
@@ -318,11 +334,12 @@ class ShillProxy(object):
 
 
         logging.info('Discovering...')
+        discovery_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
+                            self.SERVICE_PROPERTY_NAME: ssid,
+                            self.SERVICE_PROPERTY_SECURITY: security,
+                            self.SERVICE_PROPERTY_MODE: mode}
         while time.time() - start_time < discovery_timeout_seconds:
             discovery_time = time.time() - start_time
-            discovery_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
-                                self.SERVICE_PROPERTY_NAME: ssid,
-                                self.SERVICE_PROPERTY_SECURITY: security}
             try:
                 service_path = self.manager.FindMatchingService(
                         discovery_params)
