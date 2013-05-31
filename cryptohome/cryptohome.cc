@@ -177,6 +177,7 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
   std::string password = cl->GetSwitchValueASCII(cl_switch);
 
   if (password.length() == 0) {
+    char buffer[256];
     struct termios original_attr;
     struct termios new_attr;
     tcgetattr(0, &original_attr);
@@ -185,7 +186,8 @@ bool GetPassword(const chromeos::dbus::Proxy& proxy,
     tcsetattr(0, TCSANOW, &new_attr);
     printf("%s: ", prompt.c_str());
     fflush(stdout);
-    std::cin >> password;
+    if (fgets(buffer, sizeof(buffer), stdin))
+      password = buffer;
     printf("\n");
     tcsetattr(0, TCSANOW, &original_attr);
   }
