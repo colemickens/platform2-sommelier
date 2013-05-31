@@ -139,6 +139,8 @@ const int Metrics::kMetricFrequenciesConnectedMax = 50;
 const int Metrics::kMetricFrequenciesConnectedMin = 1;
 const int Metrics::kMetricFrequenciesConnectedNumBuckets = 50;
 
+const char Metrics::kMetricScanResult[] =
+    "Network.Shill.WiFi.ScanResult";
 const char Metrics::kMetricWiFiScanTimeInEbusyMilliseconds[] =
     "Network.Shill.WiFi.ScanTimeInEbusy";
 

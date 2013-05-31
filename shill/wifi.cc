@@ -1855,6 +1855,12 @@ bool WiFi::GetScanPending(Error */* error */) {
 void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
   if (new_state == kScanIdle)
     new_method = kScanMethodNone;
+  if (new_state == kScanConnected) {
+    // The scan method shouldn't be changed by the connection process, so
+    // we'll put a CHECK, here, to verify.  NOTE: this assumption is also
+    // enforced by the parameters to the call to |ReportScanResultToUma|.
+    CHECK(new_method == scan_method_);
+  }
 
   int log_level = 6;
   bool state_changed = true;
@@ -1890,6 +1896,7 @@ void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
 
   // Actually change the state.
   ScanState old_state = scan_state_;
+  ScanMethod old_method = scan_method_;
   scan_state_ = new_state;
   scan_method_ = new_method;
   if (new_state == kScanScanning || old_state == kScanScanning) {
@@ -1897,6 +1904,7 @@ void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
     adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
                                GetScanPending(&error));
   }
+  ReportScanResultToUma(new_state, old_method);
   if (is_terminal_state) {
     // Now that we've logged a terminal state, let's call ourselves to
     // transistion to the idle state.
@@ -1974,6 +1982,50 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
       NOTREACHED();
   }
   return "";  // To shut up the compiler (that doesn't understand NOTREACHED).
+}
+
+void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
+  Metrics::WiFiScanResult result = Metrics::kScanResultMax;
+  if (state == kScanConnected) {
+    switch (method) {
+      case kScanMethodFull:
+        result = Metrics::kScanResultFullScanConnected;
+        break;
+      case kScanMethodProgressive:
+        result = Metrics::kScanResultProgressiveConnected;
+        break;
+      case kScanMethodProgressiveErrorToFull:
+        result = Metrics::kScanResultProgressiveErrorButFullConnected;
+        break;
+      case kScanMethodProgressiveFinishedToFull:
+        result = Metrics::kScanResultProgressiveAndFullConnected;
+        break;
+      default:
+        // OK: Connect resulting from something other than scan.
+        break;
+    }
+  } else if (state == kScanFoundNothing) {
+    switch (method) {
+      case kScanMethodFull:
+        result = Metrics::kScanResultFullScanFoundNothing;
+        break;
+      case kScanMethodProgressiveErrorToFull:
+        result = Metrics::kScanResultProgressiveErrorAndFullFoundNothing;
+        break;
+      case kScanMethodProgressiveFinishedToFull:
+        result = Metrics::kScanResultProgressiveAndFullFoundNothing;
+        break;
+      default:
+        // OK: Connect failed, not scan related.
+        break;
+    }
+  }
+
+  if (result != Metrics::kScanResultMax) {
+    metrics()->SendEnumToUMA(Metrics::kMetricScanResult,
+                             result,
+                             Metrics::kScanResultMax);
+  }
 }
 
 }  // namespace shill

@@ -92,6 +92,7 @@
 #include "shill/dbus_manager.h"
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"
+#include "shill/metrics.h"
 #include "shill/power_manager.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
@@ -227,6 +228,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ProgressiveScanNotFound);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
+  FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiMainTest, VerifyPaths);
@@ -410,6 +412,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void OnNewWiphy(const Nl80211Message &nl80211_message);
 
   void SetScanState(ScanState new_state, ScanMethod new_method);
+  void ReportScanResultToUma(ScanState state, ScanMethod method);
   static std::string ScanStateString(ScanState state, ScanMethod type);
 
   // Pointer to the provider object that maintains WiFiService objects.

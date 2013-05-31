@@ -358,6 +358,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->scan_session_->OnTriggerScanResponse(message);
   }
 
+  void SetScanState(WiFi::ScanState new_state, WiFi::ScanMethod new_method) {
+    wifi_->SetScanState(new_state, new_method);
+  }
+
   void VerifyScanState(WiFi::ScanState state, WiFi::ScanMethod method) {
     EXPECT_EQ(state, wifi_->scan_state_);
     EXPECT_EQ(method, wifi_->scan_method_);
@@ -2752,6 +2756,15 @@ TEST_F(WiFiMainTest, ProgressiveScanConnectingToConnected) {
 
   ScopeLogger::GetInstance()->set_verbose_level(0);
   ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
+}
+
+TEST_F(WiFiMainTest, ScanStateUma) {
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _)).
+      Times(0);
+  SetScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+
+  EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _));
+  SetScanState(WiFi::kScanConnected, WiFi::kScanMethodProgressive);
 }
 
 }  // namespace shill

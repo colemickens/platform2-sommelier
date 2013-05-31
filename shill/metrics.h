@@ -166,6 +166,18 @@ class Metrics {
     kDisconnectedNotByAp
   };
 
+  enum WiFiScanResult {
+    kScanResultProgressiveConnected,
+    kScanResultProgressiveErrorAndFullFoundNothing,
+    kScanResultProgressiveErrorButFullConnected,
+    kScanResultProgressiveAndFullFoundNothing,
+    kScanResultProgressiveAndFullConnected,
+    kScanResultFullScanFoundNothing,
+    kScanResultFullScanConnected,
+    kScanResultInternalError,
+    kScanResultMax
+  };
+
   enum ServiceFixupProfileType {
     kMetricServiceFixupDefaultProfile,
     kMetricServiceFixupUserProfile,
@@ -316,6 +328,7 @@ class Metrics {
   static const int kMetricFrequenciesConnectedMin;
   static const int kMetricFrequenciesConnectedNumBuckets;
 
+  static const char kMetricScanResult[];
   static const char kMetricWiFiScanTimeInEbusyMilliseconds[];
 
   static const char kMetricPowerManagerKey[];
