@@ -229,7 +229,7 @@ string UsbDevice::GetStringDescriptorAscii(uint8 index) {
   // libusb_get_string_descriptor_ascii uses an internal buffer that can only
   // hold up to 128 ASCII characters.
   int length = 128;
-  scoped_array<uint8> data(new uint8[length]);
+  scoped_ptr<uint8[]> data(new uint8[length]);
   int result = libusb_get_string_descriptor_ascii(
       device_handle_, index, data.get(), length);
   if (result < 0) {
