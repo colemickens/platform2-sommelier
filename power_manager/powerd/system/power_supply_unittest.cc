@@ -128,6 +128,7 @@ class PowerSupplyTest : public ::testing::Test {
     values["ac/type"] = kACType;
     values["battery/type"] = kBatteryType;
     values["battery/present"] = kPresent;
+    values["battery/status"] = on_ac ? "Charging" : "Discharging";
     if (report_charge) {
       values["battery/charge_full"] = base::IntToString(kChargeFullInt);
       values["battery/charge_full_design"] = base::IntToString(kChargeFullInt);
@@ -186,7 +187,26 @@ TEST_F(PowerSupplyTest, TestNoBattery) {
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_EQ(kACType, power_status.line_power_type);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
   EXPECT_FALSE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_NOT_PRESENT,
+            power_status.battery_state);
+}
+
+// When neither a line power source nor a battery is found, PowerSupply
+// should assume that AC power is being used.
+TEST_F(PowerSupplyTest, TestNoPowerSource) {
+  power_supply_->Init();
+  PowerStatus power_status;
+  ASSERT_TRUE(UpdateStatus(&power_status));
+  EXPECT_TRUE(power_status.line_power_on);
+  EXPECT_EQ(kACType, power_status.line_power_type);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
+  EXPECT_FALSE(power_status.battery_is_present);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_NOT_PRESENT,
+            power_status.battery_state);
 }
 
 // Test battery charging status.
@@ -197,6 +217,8 @@ TEST_F(PowerSupplyTest, TestCharging) {
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_EQ(kACType, power_status.line_power_type);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING,
             power_status.battery_state);
@@ -206,9 +228,9 @@ TEST_F(PowerSupplyTest, TestCharging) {
   EXPECT_DOUBLE_EQ(kPercentage, power_status.battery_percentage);
 }
 
-const char kACArbType[] = "ArbitraryName";
 // Tests that the line power source doesn't need to be named "Mains".
 TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
+  const char kACArbType[] = "ArbitraryName";
   WriteDefaultValues(true, true);
   WriteValue("ac/type", kACArbType);
   power_supply_->Init();
@@ -216,6 +238,8 @@ TEST_F(PowerSupplyTest, TestNonMainsLinePower) {
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.line_power_on);
   EXPECT_EQ(kACArbType, power_status.line_power_type);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            power_status.external_power);
   EXPECT_TRUE(power_status.battery_is_present);
 }
 
@@ -237,6 +261,8 @@ TEST_F(PowerSupplyTest, TestDischarging) {
   WriteValue("battery/current_now", base::IntToString(-kCurrentNowInt));
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_FALSE(power_status.line_power_on);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_DISCONNECTED,
+            power_status.external_power);
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
             power_status.battery_state);
@@ -602,7 +628,7 @@ TEST_F(PowerSupplyTest, FullFactor) {
   // After the current goes to zero, the battery is considered fully charged.
   WriteDoubleValue("battery/current_now", 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 }
 
@@ -710,7 +736,9 @@ TEST_F(PowerSupplyTest, NeitherChargingNorDischarging) {
   power_supply_->Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING,
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_AC,
+            status.external_power);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
             status.battery_state);
 }
 
@@ -721,21 +749,25 @@ TEST_F(PowerSupplyTest, ConnectedToUsb) {
   // Check that the "connected to USB" status is reported for all
   // USB-related strings used by the kernel.
   PowerStatus status;
-  const char* kUsbTypes[] = { "USB", "USB_DCP", "USB_CDP", "USB_ACA", NULL };
-  for (int i = 0; kUsbTypes[i]; ++i) {
+  const char* kUsbTypes[] = { "USB", "USB_DCP", "USB_CDP", "USB_ACA" };
+  for (size_t i = 0; i < arraysize(kUsbTypes); ++i) {
     const char* kType = kUsbTypes[i];
     WriteValue("ac/type", kType);
     ASSERT_TRUE(UpdateStatus(&status)) << "failed for \"" << kType << "\"";
-    EXPECT_EQ(PowerSupplyProperties_BatteryState_CONNECTED_TO_USB,
+    EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING,
               status.battery_state) << "failed for \"" << kType << "\"";
+    EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
+              status.external_power) << "failed for \"" << kType << "\"";
   }
 
   // The USB type should be reported even when the current is 0.
   WriteValue("ac/type", "USB");
   WriteDoubleValue("battery/current_now", 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_CONNECTED_TO_USB,
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
             status.battery_state);
+  EXPECT_EQ(PowerSupplyProperties_ExternalPower_USB,
+            status.external_power);
 }
 
 }  // namespace system

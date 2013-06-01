@@ -48,8 +48,14 @@ const int kDefaultShortPollMs = 5000;
 // interest is above this level assume something is wrong.
 const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
 
-// Name of power supply type for batteries
+// Different power supply types reported by the kernel.
 const char kBatteryType[] = "Battery";
+const char kMainsType[] = "Mains";
+
+// Battery states reported by the kernel. This is not the full set of
+// possible states; see drivers/power/power_supply_sysfs.c.
+const char kBatteryStatusCharging[] = "Charging";
+const char kBatteryStatusFull[] = "Full";
 
 // Converts time from hours to seconds.
 inline double HoursToSecondsDouble(double num_hours) {
@@ -244,27 +250,6 @@ bool PowerSupply::GetPowerInformation(PowerInformation* info) {
   ReadAndTrimString(battery_path_, "model_name", &info->battery_model);
   ReadAndTrimString(battery_path_, "serial_number", &info->battery_serial);
   ReadAndTrimString(battery_path_, "technology", &info->battery_technology);
-
-  switch (info->power_status.battery_state) {
-    case PowerSupplyProperties_BatteryState_CHARGING:
-      info->battery_state_string =
-          info->power_status.display_battery_percentage >= 100.0 - kEpsilon ?
-          "Fully charged" : "Charging";
-      break;
-    case PowerSupplyProperties_BatteryState_DISCHARGING:
-      info->battery_state_string =
-          info->power_status.display_battery_percentage <= kEpsilon ?
-          "Empty" : "Discharging";
-      break;
-    case PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING:
-      info->battery_state_string = "Neither charging nor discharging";
-      break;
-    case PowerSupplyProperties_BatteryState_CONNECTED_TO_USB:
-      info->battery_state_string = "Connected to USB";
-      break;
-    default:
-      info->battery_state_string = "Unknown";
-  }
   return true;
 }
 
@@ -315,67 +300,53 @@ bool PowerSupply::UpdatePowerStatus() {
   VLOG(1) << "Updating power status";
   PowerStatus status;
 
-  status.is_calculating_battery_time =
-      !done_calculating_battery_time_timestamp_.is_null() &&
-      GetCurrentTime() < done_calculating_battery_time_timestamp_;
-
-  // Look for battery path if none has been found yet.
   if (battery_path_.empty() || line_power_path_.empty())
     GetPowerSupplyPaths();
-  // The line power path should have been found during initialization, so there
-  // is no need to look for it again.  However, check just to make sure the path
-  // is still valid.  Better safe than sorry.
-  if (!file_util::PathExists(line_power_path_) &&
-      !file_util::PathExists(battery_path_)) {
-#ifndef IS_DESKTOP
-    // A hack for situations like VMs where there is no power supply sysfs.
-    LOG(INFO) << "No power supply sysfs path found, assuming line power on.";
-#endif
-    status.line_power_on = true;
-    status.line_power_type = "Mains";
+
+  std::string battery_status_string;
+  if (file_util::PathExists(battery_path_)) {
+    int64 present_value = 0;
+    ReadInt64(battery_path_, "present", &present_value);
+    status.battery_is_present = present_value != 0;
+    if (status.battery_is_present)
+      ReadAndTrimString(battery_path_, "status", &battery_status_string);
+  } else {
     status.battery_is_present = false;
-    power_status_ = status;
-    return true;
   }
-  int64 value;
-  bool line_power_status_found = false;
+
   if (file_util::PathExists(line_power_path_)) {
-    ReadInt64(line_power_path_, "online", &value);
-    // Return the line power status.
-    status.line_power_on = static_cast<bool>(value);
+    int64 online_value = 0;
+    ReadInt64(line_power_path_, "online", &online_value);
+    status.line_power_on = online_value != 0;
     ReadAndTrimString(line_power_path_, "type", &status.line_power_type);
-    line_power_status_found = true;
-  }
-
-  // If no battery was found, or if the previously found path doesn't exist
-  // anymore, return true.  This is still an acceptable case since the battery
-  // could be physically removed.
-  if (!file_util::PathExists(battery_path_)) {
-    status.battery_is_present = false;
-    power_status_ = status;
-    return true;
-  }
-
-  ReadInt64(battery_path_, "present", &value);
-  status.battery_is_present = static_cast<bool>(value);
-  // If there is no battery present, we can skip the rest of the readings.
-  if (!status.battery_is_present) {
-    // No battery but still running means AC power must be present.
-    if (!line_power_status_found)
-      status.line_power_on = true;
-    power_status_ = status;
-    return true;
-  }
-
-  // Attempt to determine line power status from nominal battery status.
-  if (!line_power_status_found) {
-    std::string battery_status_string;
-    status.line_power_on = false;
-    if (ReadAndTrimString(battery_path_, "status", &battery_status_string) &&
-        (battery_status_string == "Charging" ||
-         battery_status_string == "Fully charged")) {
-      status.line_power_on = true;
+    if (status.line_power_on) {
+      status.external_power = IsUsbType(status.line_power_type) ?
+          PowerSupplyProperties_ExternalPower_USB:
+          PowerSupplyProperties_ExternalPower_AC;
+    } else {
+      status.external_power = PowerSupplyProperties_ExternalPower_DISCONNECTED;
     }
+  } else if (!status.battery_is_present) {
+    // If there's no battery, assume that the system is on AC power.
+    status.line_power_on = true;
+    status.line_power_type = kMainsType;
+    status.external_power = PowerSupplyProperties_ExternalPower_AC;
+  } else {
+    // Otherwise, infer the external power source from the kernel-reported
+    // battery status.
+    status.line_power_on =
+        battery_status_string == kBatteryStatusCharging ||
+        battery_status_string == kBatteryStatusFull;
+    status.external_power = status.line_power_on ?
+        PowerSupplyProperties_ExternalPower_AC :
+        PowerSupplyProperties_ExternalPower_DISCONNECTED;
+  }
+
+  // The rest of the calculations all require a battery.
+  if (!status.battery_is_present) {
+    status.battery_state = PowerSupplyProperties_BatteryState_NOT_PRESENT;
+    power_status_ = status;
+    return true;
   }
 
   double battery_voltage = ReadScaledDouble(battery_path_, "voltage_now");
@@ -444,8 +415,9 @@ bool PowerSupply::UpdatePowerStatus() {
   status.battery_charge_full_design = battery_charge_full_design;
   status.battery_charge = battery_charge;
 
-  // Sometimes current could be negative.  Ignore it and use |line_power_on| to
-  // determine whether it's charging or discharging.
+  // The current can be reported as negative on some systems but not on
+  // others, so it can't be used to determine whether the battery is
+  // charging or discharging.
   double battery_current = 0;
   if (file_util::PathExists(battery_path_.Append("power_now"))) {
     battery_current = fabs(ReadScaledDouble(battery_path_, "power_now")) /
@@ -455,7 +427,6 @@ bool PowerSupply::UpdatePowerStatus() {
   }
   status.battery_current = battery_current;
 
-  // Perform calculations / interpretations of the data read from sysfs.
   status.battery_energy = battery_charge * nominal_voltage;
   status.battery_energy_rate = battery_current * battery_voltage;
 
@@ -475,22 +446,39 @@ bool PowerSupply::UpdatePowerStatus() {
       (battery_charge >= battery_charge_full * full_factor_ &&
        battery_current <= kEpsilon);
 
+  if (status.line_power_on) {
+    if (battery_is_full) {
+      status.battery_state = PowerSupplyProperties_BatteryState_FULL;
+    } else if (battery_current > 0.0 &&
+               (battery_status_string == kBatteryStatusCharging ||
+                battery_status_string == kBatteryStatusFull)) {
+      status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+    } else {
+      status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+    }
+  } else {
+    status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+  }
+
+  // TODO(derat): Remove this once Chrome is reading the new enums.
   // Determine battery state from above readings.  Disregard the "status" field
   // in sysfs, as that can be inconsistent with the numerical readings.
   if (status.line_power_on) {
     if (IsUsbType(status.line_power_type)) {
-      status.battery_state =
-          PowerSupplyProperties_BatteryState_CONNECTED_TO_USB;
+      status.old_battery_state =
+          PowerSupplyProperties_OldBatteryState_CONNECTED_TO_USB;
     } else if (battery_is_full || battery_current > 0.0) {
-      status.battery_state = PowerSupplyProperties_BatteryState_CHARGING;
+      status.old_battery_state =
+          PowerSupplyProperties_OldBatteryState_OLD_CHARGING;
     } else {
       LOG(WARNING) << "Line power is on and battery is not fully charged "
                    << "but battery current is " << battery_current << " A";
-      status.battery_state =
-          PowerSupplyProperties_BatteryState_NEITHER_CHARGING_NOR_DISCHARGING;
+      status.old_battery_state =
+          PowerSupplyProperties_OldBatteryState_NEITHER_CHARGING_NOR_DISCHARGING;
     }
   } else {
-    status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
+    status.old_battery_state =
+        PowerSupplyProperties_OldBatteryState_OLD_DISCHARGING;
   }
 
   if (status.line_power_on && battery_is_full)
@@ -504,6 +492,10 @@ bool PowerSupply::UpdatePowerStatus() {
   status.display_battery_percentage = std::max(0.0, std::min(100.0,
       (status.battery_percentage - low_battery_shutdown_percent_) /
       (full_battery_percent_ - low_battery_shutdown_percent_) * 100.0));
+
+  status.is_calculating_battery_time =
+      !done_calculating_battery_time_timestamp_.is_null() &&
+      GetCurrentTime() < done_calculating_battery_time_timestamp_;
 
   UpdateRemainingTime(&status);
   UpdateAveragedTimes(&status);
@@ -764,7 +756,7 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
   if (!(status.line_power_on &&
         // If type != Mains then alternative power supply may not provide
         // enough power to charge or even maintain current battery levels.
-        (status.line_power_type.compare("Mains") == 0)) &&
+        (status.line_power_type != kMainsType)) &&
       ((status.battery_time_to_empty > 0 &&
         status.battery_time_to_empty <=
         low_battery_shutdown_time_.InSeconds()) ||

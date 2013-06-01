@@ -46,9 +46,11 @@ struct PowerStatus {
         battery_percentage(-1.0),
         display_battery_percentage(-1.0),
         battery_is_present(false),
-        battery_state(PowerSupplyProperties_BatteryState_CHARGING),
         battery_below_shutdown_threshold(false),
-        battery_times_are_bad(false) {}
+        battery_times_are_bad(false),
+        external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
+        battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT),
+        old_battery_state(PowerSupplyProperties_OldBatteryState_OLD_CHARGING) {}
 
   bool line_power_on;
   std::string line_power_type;
@@ -96,14 +98,19 @@ struct PowerStatus {
   double display_battery_percentage;
   bool battery_is_present;
 
-  PowerSupplyProperties_BatteryState battery_state;
-
   // Is the battery level so low that the machine should be shut down?
   bool battery_below_shutdown_threshold;
 
   // Does |battery_time_to_full| or |battery_time_to_empty| contain bogus
   // data?
   bool battery_times_are_bad;
+
+  PowerSupplyProperties_ExternalPower external_power;
+  PowerSupplyProperties_BatteryState battery_state;
+
+  // TODO(derat): Remove this after switching to |battery_state| and
+  // |external_power|.
+  PowerSupplyProperties_OldBatteryState old_battery_state;
 };
 
 struct PowerInformation {
@@ -127,8 +134,6 @@ struct PowerInformation {
   std::string battery_model;
   std::string battery_serial;
   std::string battery_technology;
-
-  std::string battery_state_string;
 };
 
 // Used to read power supply status from sysfs, e.g. whether on AC or battery,

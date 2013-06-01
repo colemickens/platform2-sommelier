@@ -991,12 +991,14 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
 
   const system::PowerStatus& s = power_status_;
   PowerSupplyProperties protobuf;
-  protobuf.set_battery_is_present(s.battery_is_present);
+  protobuf.set_external_power(s.external_power);
   protobuf.set_battery_state(s.battery_state);
   protobuf.set_battery_percent(s.display_battery_percentage);
   protobuf.set_battery_time_to_empty_sec(s.averaged_battery_time_to_empty);
   protobuf.set_battery_time_to_full_sec(s.averaged_battery_time_to_full);
   protobuf.set_is_calculating_battery_time(s.is_calculating_battery_time);
+  protobuf.set_battery_is_present(s.battery_is_present);
+  protobuf.set_old_battery_state(s.old_battery_state);
 
   return util::CreateDBusProtocolBufferReply(message, protobuf);
 }

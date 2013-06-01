@@ -125,6 +125,20 @@ int main(int argc, char** argv) {
   display.PrintStringValue("online",
                            BoolToString(power_status.line_power_on));
   display.PrintStringValue("type", power_status.line_power_type);
+  switch (power_status.external_power) {
+    case power_manager::PowerSupplyProperties_ExternalPower_AC:
+      display.PrintStringValue("enum type", "AC");
+      break;
+    case power_manager::PowerSupplyProperties_ExternalPower_USB:
+      display.PrintStringValue("enum type", "USB");
+      break;
+    case power_manager::PowerSupplyProperties_ExternalPower_DISCONNECTED:
+      display.PrintStringValue("enum type", "Disconnected");
+      break;
+    default:
+      display.PrintStringValue("enum type", "Unknown");
+  }
+
   if (power_status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");
@@ -135,7 +149,24 @@ int main(int argc, char** argv) {
     display.PrintStringValue("serial number", power_info.battery_serial);
     display.PrintStringValue("present",
                              BoolToString(power_status.battery_is_present));
-    display.PrintValue("state", power_info.battery_state_string);
+
+    switch (power_status.battery_state) {
+      case power_manager::PowerSupplyProperties_BatteryState_FULL:
+        display.PrintStringValue("state", "Fully charged");
+        break;
+      case power_manager::PowerSupplyProperties_BatteryState_CHARGING:
+        display.PrintStringValue("state", "Charging");
+        break;
+      case power_manager::PowerSupplyProperties_BatteryState_DISCHARGING:
+        display.PrintStringValue("state", "Discharging");
+        break;
+      case power_manager::PowerSupplyProperties_BatteryState_NOT_PRESENT:
+        display.PrintStringValue("state", "Not present");
+        break;
+      default:
+        display.PrintStringValue("state", "Unknown");
+    }
+
     display.PrintValue("voltage (V)", power_status.battery_voltage);
     display.PrintValue("energy (Wh)", power_status.battery_energy);
     display.PrintValue("energy rate (W)", power_status.battery_energy_rate);
