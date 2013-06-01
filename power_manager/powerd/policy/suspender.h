@@ -235,6 +235,10 @@ class Suspender : public SuspendDelayObserver {
   // time is needed.
   base::Time current_wall_time_for_testing_;
 
+  // True after this class has received notification that the system is
+  // shutting down.
+  bool shutting_down_;
+
   DISALLOW_COPY_AND_ASSIGN(Suspender);
 };
 

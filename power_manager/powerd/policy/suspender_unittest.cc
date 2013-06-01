@@ -385,6 +385,10 @@ TEST_F(SuspenderTest, CancelBeforeSuspend) {
   suspender_.OnReadyForSuspend(test_api_.suspend_id());
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
+
+  // Subsequent requests after shutdown has started should be ignored.
+  suspender_.RequestSuspend();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 }
 
 // Tests that the a suspend-canceling action after a failed suspend attempt

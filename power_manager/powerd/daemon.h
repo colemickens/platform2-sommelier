@@ -217,7 +217,15 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
 
+  // True once the clean shutdown process (i.e. notifying other processes
+  // that the system is shutting down) has started. Remains true until the
+  // system has powered off.
   bool clean_shutdown_initiated_;
+
+  // True after the runlevel change to shut down or reboot has been sent to
+  // init. Remains true until the system has powered off.
+  bool shutdown_runlevel_change_requested_;
+
   bool low_battery_;
   int64 clean_shutdown_timeout_ms_;
   guint clean_shutdown_timeout_id_;

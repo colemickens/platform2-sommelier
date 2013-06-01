@@ -52,7 +52,8 @@ Suspender::Suspender(Delegate* delegate,
       wakeup_count_valid_(false),
       max_retries_(0),
       num_retries_(0),
-      retry_suspend_timeout_id_(0) {
+      retry_suspend_timeout_id_(0),
+      shutting_down_(false) {
   suspend_delay_controller_->AddObserver(this);
 }
 
@@ -70,6 +71,13 @@ void Suspender::Init(PrefsInterface* prefs) {
 }
 
 void Suspender::RequestSuspend() {
+  // RequestSuspend() shouldn't be called after the system has started
+  // shutting down, but if it is, avoid doing anything.
+  if (shutting_down_) {
+    LOG(ERROR) << "Not requesting suspend; shutdown in progress";
+    return;
+  }
+
   if (waiting_for_readiness_)
     return;
 
@@ -127,6 +135,7 @@ void Suspender::HandleUserActivity() {
 }
 
 void Suspender::HandleShutdown() {
+  shutting_down_ = true;
   CancelSuspend();
 }
 

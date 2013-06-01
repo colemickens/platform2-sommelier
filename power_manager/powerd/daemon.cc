@@ -276,6 +276,7 @@ Daemon::Daemon(PrefsInterface* prefs,
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
       clean_shutdown_initiated_(false),
+      shutdown_runlevel_change_requested_(false),
       low_battery_(false),
       clean_shutdown_timeout_id_(0),
       plugged_state_(PLUGGED_STATE_UNKNOWN),
@@ -420,6 +421,11 @@ void Daemon::ShutdownForFailedSuspend() {
 }
 
 void Daemon::StartCleanShutdown() {
+  if (clean_shutdown_initiated_) {
+    LOG(WARNING) << "Clean shutdown already in progress";
+    return;
+  }
+
   clean_shutdown_initiated_ = true;
   suspender_.HandleShutdown();
   util::RunSetuidHelper("clean_shutdown", "", false);
@@ -783,12 +789,13 @@ void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
 }
 
 bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
-  if (clean_shutdown_initiated_) {
-    clean_shutdown_initiated_ = false;
-    Shutdown();
-  } else {
-    LOG(WARNING) << "Unrequested " << kCleanShutdown << " signal";
+  if (!clean_shutdown_initiated_) {
+    LOG(WARNING) << "Ignoring unrequested " << kCleanShutdown << " signal";
+    return true;
   }
+
+  util::RemoveTimeout(&clean_shutdown_timeout_id_);
+  Shutdown();
   return true;
 }
 
@@ -1047,14 +1054,9 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
 }
 
 gboolean Daemon::CleanShutdownTimedOut() {
-  if (clean_shutdown_initiated_) {
-    clean_shutdown_initiated_ = false;
-    LOG(INFO) << "Timed out waiting for clean shutdown/restart.";
-    Shutdown();
-  } else {
-    LOG(INFO) << "Shutdown already handled. clean_shutdown_initiated_ == false";
-  }
+  LOG(WARNING) << "Timed out waiting for clean shutdown/restart";
   clean_shutdown_timeout_id_ = 0;
+  Shutdown();
   return FALSE;
 }
 
@@ -1104,21 +1106,32 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
 }
 
 void Daemon::Shutdown() {
-  if (shutdown_state_ == SHUTDOWN_STATE_POWER_OFF) {
-    LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
-    util::RunSetuidHelper(
-        "shutdown", "--shutdown_reason=" + shutdown_reason_, false);
-  } else if (shutdown_state_ == SHUTDOWN_STATE_RESTARTING) {
-    LOG(INFO) << "Restarting";
-    util::RunSetuidHelper("reboot", "", false);
-  } else {
-    LOG(ERROR) << "Shutdown : Improper System State!";
+  if (shutdown_runlevel_change_requested_) {
+    LOG(WARNING) << "Runlevel change for shutdown already requested";
+    return;
+  }
+
+  switch (shutdown_state_) {
+    case SHUTDOWN_STATE_POWER_OFF:
+      LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
+      util::RunSetuidHelper(
+         "shutdown", "--shutdown_reason=" + shutdown_reason_, false);
+      shutdown_runlevel_change_requested_ = true;
+      break;
+    case SHUTDOWN_STATE_RESTARTING:
+      LOG(INFO) << "Restarting";
+      util::RunSetuidHelper("reboot", "", false);
+      shutdown_runlevel_change_requested_ = true;
+      break;
+    case SHUTDOWN_STATE_NONE:
+      NOTREACHED() << "Shutdown state is unset";
+      break;
   }
 }
 
 void Daemon::Suspend() {
   if (clean_shutdown_initiated_) {
-    LOG(INFO) << "Ignoring request for suspend with outstanding shutdown.";
+    LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;
   }
   suspender_.RequestSuspend();
