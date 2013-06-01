@@ -597,7 +597,7 @@ void WiFiProvider::IncrementConnectCount(uint16 frequency_mhz) {
       connect_count_by_frequency_dated_.begin();
   time_t oldest_legal_week = this_week - kWeeksToKeepFrequencyCounts;
   while (oldest->first < oldest_legal_week) {
-    SLOG(WiFi, 7) << "Discarding frequency count info that's "
+    SLOG(WiFi, 6) << "Discarding frequency count info that's "
                   << this_week - oldest->first << " weeks old";
     for (const auto &freq_count : oldest->second) {
       connect_count_by_frequency_[freq_count.first] -= freq_count.second;

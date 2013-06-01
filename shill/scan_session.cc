@@ -30,8 +30,8 @@ using std::vector;
 namespace shill {
 
 const float ScanSession::kAllFrequencies = 1.1;
-const uint64_t ScanSession::kScanRetryDelayMilliseconds = 100;  // Arbitrary.
-const size_t ScanSession::kScanRetryCount = 10;
+const uint64_t ScanSession::kScanRetryDelayMilliseconds = 200;  // Arbitrary.
+const size_t ScanSession::kScanRetryCount = 50;
 
 ScanSession::ScanSession(
     NetlinkManager *netlink_manager,
@@ -74,9 +74,9 @@ ScanSession::ScanSession(
     }
   }
 
-  SLOG(WiFi, 7) << "Frequency connections vector:";
+  SLOG(WiFi, 6) << "Frequency connections vector:";
   for (const auto &freq_conn : frequency_list_) {
-    SLOG(WiFi, 7) << "    freq[" << freq_conn.frequency << "] = "
+    SLOG(WiFi, 6) << "    freq[" << freq_conn.frequency << "] = "
                   << freq_conn.connection_count;
   }
 
@@ -154,11 +154,11 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
   trigger_scan.attributes()->SetNestedAttributeHasAValue(
       NL80211_ATTR_SCAN_FREQUENCIES);
 
-  SLOG(WiFi, 7) << "We have requested scan frequencies:";
+  SLOG(WiFi, 6) << "We have requested scan frequencies:";
   string attribute_name;
   int i = 0;
   for (const auto freq : scan_frequencies) {
-    SLOG(WiFi, 7) << "  " << freq;
+    SLOG(WiFi, 6) << "  " << freq;
     attribute_name = StringPrintf("Frequency-%d", i);
     frequency_list->CreateU32Attribute(i, attribute_name.c_str());
     frequency_list->SetU32AttributeValue(i, freq);
