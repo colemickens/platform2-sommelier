@@ -43,15 +43,6 @@ class MockModemProxy : public ModemProxyInterface {
                                   Error *error,
                                   const ResultCallback &callback,
                                   int timeout));
-  MOCK_METHOD5(SetAllowedModes, void(const uint32_t &modes,
-                                     const uint32_t &preferred,
-                                     Error *error,
-                                     const ResultCallback &callback,
-                                     int timeout));
-  MOCK_METHOD4(SetBands, void(const std::vector< uint32_t > &bands,
-                              Error *error,
-                              const ResultCallback &callback,
-                              int timeout));
   MOCK_METHOD5(Command, void(const std::string &cmd,
                              const uint32_t &user_timeout,
                              Error *error,
@@ -66,7 +57,6 @@ class MockModemProxy : public ModemProxyInterface {
 
   // Inherited properties from ModemProxyInterface.
   MOCK_METHOD0(Sim, const ::DBus::Path());
-  MOCK_METHOD0(ModemCapabilities, uint32_t());
   MOCK_METHOD0(CurrentCapabilities, uint32_t());
   MOCK_METHOD0(MaxBearers, uint32_t());
   MOCK_METHOD0(MaxActiveBearers, uint32_t());
@@ -86,11 +76,7 @@ class MockModemProxy : public ModemProxyInterface {
   typedef ::DBus::Struct< uint32_t, bool > SignalQualityData;
   MOCK_METHOD0(SignalQuality, const SignalQualityData());
   MOCK_METHOD0(OwnNumbers, const std::vector< std::string >());
-  MOCK_METHOD0(SupportedModes, uint32_t());
-  MOCK_METHOD0(AllowedModes, uint32_t());
-  MOCK_METHOD0(PreferredMode, uint32_t());
   MOCK_METHOD0(SupportedBands, const std::vector< uint32_t >());
-  MOCK_METHOD0(Bands, const std::vector< uint32_t >());
   MOCK_METHOD0(PowerState, uint32_t());
 
  private:

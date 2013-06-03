@@ -39,11 +39,6 @@ namespace shill {
 // static
 const char CellularCapabilityUniversal::kConnectPin[] = "pin";
 const char CellularCapabilityUniversal::kConnectOperatorId[] = "operator-id";
-const char CellularCapabilityUniversal::kConnectBands[] = "bands";
-const char CellularCapabilityUniversal::kConnectAllowedModes[] =
-    "allowed-modes";
-const char CellularCapabilityUniversal::kConnectPreferredMode[] =
-    "preferred-mode";
 const char CellularCapabilityUniversal::kConnectApn[] = "apn";
 const char CellularCapabilityUniversal::kConnectIPType[] = "ip-type";
 const char CellularCapabilityUniversal::kConnectUser[] = "user";
@@ -135,12 +130,8 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
     : CellularCapability(cellular, proxy_factory, modem_info),
       weak_ptr_factory_(this),
       registration_state_(MM_MODEM_3GPP_REGISTRATION_STATE_UNKNOWN),
-      capabilities_(MM_MODEM_CAPABILITY_NONE),
       current_capabilities_(MM_MODEM_CAPABILITY_NONE),
       access_technologies_(MM_MODEM_ACCESS_TECHNOLOGY_UNKNOWN),
-      supported_modes_(MM_MODEM_MODE_NONE),
-      allowed_modes_(MM_MODEM_MODE_NONE),
-      preferred_mode_(MM_MODEM_MODE_NONE),
       home_provider_(NULL),
       provider_requires_roaming_(false),
       resetting_(false),
@@ -1467,10 +1458,6 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     OnSimPathChanged(string_value);
   uint32 uint_value;
   if (DBusProperties::GetUint32(properties,
-                                MM_MODEM_PROPERTY_MODEMCAPABILITIES,
-                                &uint_value))
-    OnModemCapabilitesChanged(uint_value);
-  if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
                                 &uint_value))
     OnModemCurrentCapabilitiesChanged(uint_value);
@@ -1530,15 +1517,6 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
       mdn = numbers[0];
     OnMdnChanged(mdn);
   }
-  if (DBusProperties::GetUint32(properties, MM_MODEM_PROPERTY_SUPPORTEDMODES,
-                                &uint_value))
-    OnSupportedModesChanged(uint_value);
-  if (DBusProperties::GetUint32(properties, MM_MODEM_PROPERTY_ALLOWEDMODES,
-                                &uint_value))
-    OnAllowedModesChanged(uint_value);
-  if (DBusProperties::GetUint32(properties, MM_MODEM_PROPERTY_PREFERREDMODE,
-                                &uint_value))
-    OnPreferredModeChanged(static_cast<MMModemMode>(uint_value));
   // au: MM_MODEM_PROPERTY_SUPPORTEDBANDS,
   // au: MM_MODEM_PROPERTY_BANDS
 }
@@ -1622,11 +1600,6 @@ void CellularCapabilityUniversal::OnSimPathChanged(
   }
 }
 
-void CellularCapabilityUniversal::OnModemCapabilitesChanged(
-    uint32 capabilities) {
-  capabilities_ = capabilities;
-}
-
 void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
     uint32 current_capabilities) {
   current_capabilities_ = current_capabilities;
@@ -1701,21 +1674,6 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
       cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
     }
   }
-}
-
-void CellularCapabilityUniversal::OnSupportedModesChanged(
-    uint32 supported_modes) {
-  supported_modes_ = supported_modes;
-}
-
-void CellularCapabilityUniversal::OnAllowedModesChanged(
-    uint32 allowed_modes) {
-  allowed_modes_ = allowed_modes;
-}
-
-void CellularCapabilityUniversal::OnPreferredModeChanged(
-    MMModemMode preferred_mode) {
-  preferred_mode_ = preferred_mode;
 }
 
 void CellularCapabilityUniversal::OnLockRetriesChanged(

@@ -46,15 +46,6 @@ class ModemProxy : public ModemProxyInterface {
                             Error *error,
                             const ResultCallback &callback,
                             int timeout);
-  virtual void SetAllowedModes(const uint32_t &modes,
-                               const uint32_t &preferred,
-                               Error *error,
-                               const ResultCallback &callback,
-                               int timeout);
-  virtual void SetBands(const std::vector< uint32_t > &bands,
-                        Error *error,
-                        const ResultCallback &callback,
-                        int timeout);
   virtual void Command(const std::string &cmd,
                        const uint32_t &user_timeout,
                        Error *error,
@@ -70,7 +61,6 @@ class ModemProxy : public ModemProxyInterface {
 
   // Inherited properties from ModemProxyInterface.
   virtual const ::DBus::Path Sim();
-  virtual uint32_t ModemCapabilities();
   virtual uint32_t CurrentCapabilities();
   virtual uint32_t MaxBearers();
   virtual uint32_t MaxActiveBearers();
@@ -88,11 +78,7 @@ class ModemProxy : public ModemProxyInterface {
   virtual uint32_t AccessTechnologies();
   virtual const ::DBus::Struct< uint32_t, bool > SignalQuality();
   virtual const std::vector< std::string > OwnNumbers();
-  virtual uint32_t SupportedModes();
-  virtual uint32_t AllowedModes();
-  virtual uint32_t PreferredMode();
   virtual const std::vector< uint32_t > SupportedBands();
-  virtual const std::vector< uint32_t > Bands();
   virtual uint32_t PowerState();
 
  private:
@@ -125,9 +111,6 @@ class ModemProxy : public ModemProxyInterface {
     virtual void DeleteBearerCallback(const ::DBus::Error &dberror, void *data);
     virtual void ResetCallback(const ::DBus::Error &dberror, void *data);
     virtual void FactoryResetCallback(const ::DBus::Error &dberror, void *data);
-    virtual void SetAllowedModesCallback(const ::DBus::Error &dberror,
-                                         void *data);
-    virtual void SetBandsCallback(const ::DBus::Error &dberror, void *data);
     virtual void CommandCallback(const std::string &response,
                                  const ::DBus::Error &dberror,
                                  void *data);

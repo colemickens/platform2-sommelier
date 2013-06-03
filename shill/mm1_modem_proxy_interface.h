@@ -49,15 +49,6 @@ class ModemProxyInterface {
                             Error *error,
                             const ResultCallback &callback,
                             int timeout) = 0;
-  virtual void SetAllowedModes(const uint32_t &modes,
-                               const uint32_t &preferred,
-                               Error *error,
-                               const ResultCallback &callback,
-                               int timeout) = 0;
-  virtual void SetBands(const std::vector< uint32_t > &bands,
-                        Error *error,
-                        const ResultCallback &callback,
-                        int timeout) = 0;
   virtual void Command(const std::string &cmd,
                        const uint32_t &user_timeout,
                        Error *error,
@@ -74,7 +65,6 @@ class ModemProxyInterface {
 
   // Properties.
   virtual const ::DBus::Path Sim() = 0;
-  virtual uint32_t ModemCapabilities() = 0;
   virtual uint32_t CurrentCapabilities() = 0;
   virtual uint32_t MaxBearers() = 0;
   virtual uint32_t MaxActiveBearers() = 0;
@@ -92,11 +82,7 @@ class ModemProxyInterface {
   virtual uint32_t AccessTechnologies() = 0;
   virtual const ::DBus::Struct< uint32_t, bool > SignalQuality() = 0;
   virtual const std::vector< std::string > OwnNumbers() = 0;
-  virtual uint32_t SupportedModes() = 0;
-  virtual uint32_t AllowedModes() = 0;
-  virtual uint32_t PreferredMode() = 0;
   virtual const std::vector< uint32_t > SupportedBands() = 0;
-  virtual const std::vector< uint32_t > Bands() = 0;
   virtual uint32_t PowerState() = 0;
 };
 

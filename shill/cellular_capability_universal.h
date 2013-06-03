@@ -46,9 +46,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   // See http://crosbug.com/30551.
   static const char kConnectPin[];
   static const char kConnectOperatorId[];
-  static const char kConnectBands[];
-  static const char kConnectAllowedModes[];
-  static const char kConnectPreferredMode[];
   static const char kConnectApn[];
   static const char kConnectIPType[];
   static const char kConnectUser[];
@@ -300,8 +297,6 @@ class CellularCapabilityUniversal : public CellularCapability {
       const std::vector<std::string> &invalidated_properties);
 
   void OnSignalQualityChanged(uint32 quality);
-
-  void OnModemCapabilitesChanged(uint32 capabilities);
   void OnModemCurrentCapabilitiesChanged(uint32 current_capabilities);
   void OnMdnChanged(const std::string &mdn);
   void OnModemManufacturerChanged(const std::string &manufacturer);
@@ -309,9 +304,6 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnModemRevisionChanged(const std::string &revision);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32 access_technologies);
-  void OnSupportedModesChanged(uint32 supported_modes);
-  void OnAllowedModesChanged(uint32 allowed_modes);
-  void OnPreferredModeChanged(MMModemMode preferred_mode);
   void OnLockRetriesChanged(MMModemLock unlock_required,
                             const LockRetryData &lock_retries);
   void OnSimLockStatusChanged();
@@ -393,12 +385,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   MMModem3gppRegistrationState registration_state_;
 
   // Bits based on MMModemCapabilities
-  uint32 capabilities_;          // technologies supported, may require reload
   uint32 current_capabilities_;  // technologies supportsed without a reload
   uint32 access_technologies_;   // Bits based on MMModemAccessTechnology
-  uint32 supported_modes_;       // Bits based on MMModemMode
-  uint32 allowed_modes_;         // Bits based on MMModemMode
-  MMModemMode preferred_mode_;   // A single MMModemMode bit
 
   Cellular::Operator serving_operator_;
   std::string spn_;
