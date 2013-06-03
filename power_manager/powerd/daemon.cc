@@ -141,9 +141,9 @@ class Daemon::StateControllerDelegate
 
   virtual void ShutDown() OVERRIDE {
     // TODO(derat): Maybe pass the shutdown reason (idle vs. lid-closed)
-    // and set it here.  This isn't necessary at the moment, since nothing
+    // and pass it here.  This isn't necessary at the moment, since nothing
     // special is done for any reason besides |kShutdownReasonLowBattery|.
-    daemon_->OnRequestShutdown();
+    daemon_->ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUnknown);
   }
 
   virtual void UpdatePanelForDockedMode(bool docked) OVERRIDE {
@@ -235,12 +235,12 @@ class Daemon::SuspenderDelegate : public policy::Suspender::Delegate {
                           max_suspend_retries);
   }
 
-  virtual void ShutdownForFailedSuspend() OVERRIDE {
-    daemon_->ShutdownForFailedSuspend();
+  virtual void ShutDownForFailedSuspend() OVERRIDE {
+    daemon_->ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonSuspendFailed);
   }
 
-  virtual void ShutdownForDarkResume() OVERRIDE {
-    daemon_->OnRequestShutdown();
+  virtual void ShutDownForDarkResume() OVERRIDE {
+    daemon_->ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonDarkResume);
   }
 
  private:
@@ -288,13 +288,10 @@ Daemon::Daemon(PrefsInterface* prefs,
       audio_client_(new system::AudioClient),
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
-      clean_shutdown_initiated_(false),
-      shutdown_runlevel_change_requested_(false),
+      shutting_down_(false),
       low_battery_(false),
-      clean_shutdown_timeout_id_(0),
       plugged_state_(PLUGGED_STATE_UNKNOWN),
       file_tagger_(base::FilePath(kTaggedFilePath)),
-      shutdown_state_(SHUTDOWN_STATE_NONE),
       power_supply_(
           new system::PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
       dark_resume_policy_(
@@ -305,7 +302,6 @@ Daemon::Daemon(PrefsInterface* prefs,
       run_dir_(run_dir),
       session_state_(SESSION_STOPPED),
       udev_(NULL),
-      shutdown_reason_(kShutdownReasonUnknown),
       state_controller_initialized_(false) {
   power_supply_->AddObserver(this);
   if (backlight_controller_)
@@ -319,17 +315,12 @@ Daemon::~Daemon() {
     backlight_controller_->RemoveObserver(this);
   power_supply_->RemoveObserver(this);
 
-  util::RemoveTimeout(&clean_shutdown_timeout_id_);
-
   if (udev_)
     udev_unref(udev_);
 }
 
 void Daemon::Init() {
   metrics_reporter_->Init();
-
-  CHECK(prefs_->GetInt64(kCleanShutdownTimeoutMsPref,
-                         &clean_shutdown_timeout_ms_));
 
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
@@ -412,48 +403,6 @@ void Daemon::SetPlugged(bool plugged) {
     keyboard_controller_->HandlePowerSourceChange(power_source);
   if (state_controller_initialized_)
     state_controller_->HandlePowerSourceChange(power_source);
-}
-
-void Daemon::OnRequestRestart() {
-  if (shutdown_state_ == SHUTDOWN_STATE_NONE) {
-    shutdown_state_ = SHUTDOWN_STATE_RESTARTING;
-    StartCleanShutdown();
-  }
-}
-
-void Daemon::OnRequestShutdown() {
-  if (shutdown_state_ == SHUTDOWN_STATE_NONE) {
-    shutdown_state_ = SHUTDOWN_STATE_POWER_OFF;
-    StartCleanShutdown();
-  }
-}
-
-void Daemon::ShutdownForFailedSuspend() {
-  shutdown_reason_ = kShutdownReasonSuspendFailed;
-  shutdown_state_ = SHUTDOWN_STATE_POWER_OFF;
-  StartCleanShutdown();
-}
-
-void Daemon::StartCleanShutdown() {
-  if (clean_shutdown_initiated_) {
-    LOG(WARNING) << "Clean shutdown already in progress";
-    return;
-  }
-
-  clean_shutdown_initiated_ = true;
-  suspender_.HandleShutdown();
-  util::RunSetuidHelper("clean_shutdown", "", false);
-  clean_shutdown_timeout_id_ = g_timeout_add(
-      clean_shutdown_timeout_ms_, CleanShutdownTimedOutThunk, this);
-
-  // If we want to display a low-battery alert while shutting down, don't turn
-  // the screen off immediately.
-  if (shutdown_reason_ != kShutdownReasonLowBattery) {
-    if (backlight_controller_)
-      backlight_controller_->SetShuttingDown(true);
-    if (keyboard_controller_)
-      keyboard_controller_->SetShuttingDown(true);
-  }
 }
 
 void Daemon::IdleEventNotify(int64 threshold) {
@@ -628,9 +577,8 @@ void Daemon::OnPowerStatusUpdate() {
       if (!low_battery_) {
         low_battery_ = true;
         file_tagger_.HandleLowBatteryEvent();
-        shutdown_reason_ = kShutdownReasonLowBattery;
         LOG(INFO) << "Shutting down due to low battery";
-        OnRequestShutdown();
+        ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonLowBattery);
       }
     } else {
       low_battery_ = false;
@@ -695,10 +643,6 @@ void Daemon::RegisterDBusMessageHandler() {
   dbus_handler_.SetNameOwnerChangedHandler(
       base::Bind(&Daemon::HandleDBusNameOwnerChanged, base::Unretained(this)));
 
-  dbus_handler_.AddSignalHandler(
-      kPowerManagerInterface,
-      kCleanShutdown,
-      base::Bind(&Daemon::HandleCleanShutdownSignal, base::Unretained(this)));
   dbus_handler_.AddSignalHandler(
       login_manager::kSessionManagerInterface,
       login_manager::kSessionStateChangedSignal,
@@ -803,17 +747,6 @@ void Daemon::HandleDBusNameOwnerChanged(const std::string& name,
   suspender_.HandleDBusNameOwnerChanged(name, old_owner, new_owner);
 }
 
-bool Daemon::HandleCleanShutdownSignal(DBusMessage*) {  // NOLINT
-  if (!clean_shutdown_initiated_) {
-    LOG(WARNING) << "Ignoring unrequested " << kCleanShutdown << " signal";
-    return true;
-  }
-
-  util::RemoveTimeout(&clean_shutdown_timeout_id_);
-  Shutdown();
-  return true;
-}
-
 bool Daemon::HandleSessionStateChangedSignal(DBusMessage* message) {
   DBusError error;
   dbus_error_init(&error);
@@ -869,13 +802,12 @@ bool Daemon::HandleUpdateEngineStatusUpdateSignal(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleRequestShutdownMethod(DBusMessage* message) {
-  shutdown_reason_ = kShutdownReasonUserRequest;
-  OnRequestShutdown();
+  ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonUserRequest);
   return NULL;
 }
 
 DBusMessage* Daemon::HandleRequestRestartMethod(DBusMessage* message) {
-  OnRequestRestart();
+  ShutDown(SHUTDOWN_REBOOT, kShutdownReasonUserRequest);
   return NULL;
 }
 
@@ -1058,13 +990,6 @@ DBusMessage* Daemon::HandleSetPolicyMethod(DBusMessage* message) {
   return NULL;
 }
 
-gboolean Daemon::CleanShutdownTimedOut() {
-  LOG(WARNING) << "Timed out waiting for clean shutdown/restart";
-  clean_shutdown_timeout_id_ = 0;
-  Shutdown();
-  return FALSE;
-}
-
 void Daemon::OnSessionStateChange(const std::string& state_str) {
   SessionState state = (state_str == kSessionStarted) ?
       SESSION_STARTED : SESSION_STOPPED;
@@ -1110,32 +1035,38 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     backlight_controller_->HandleSessionStateChange(state);
 }
 
-void Daemon::Shutdown() {
-  if (shutdown_runlevel_change_requested_) {
-    LOG(WARNING) << "Runlevel change for shutdown already requested";
+void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
+  if (shutting_down_) {
+    LOG(WARNING) << "Shutdown already initiated";
     return;
   }
 
-  switch (shutdown_state_) {
-    case SHUTDOWN_STATE_POWER_OFF:
-      LOG(INFO) << "Shutting down, reason: " << shutdown_reason_;
-      util::RunSetuidHelper(
-         "shutdown", "--shutdown_reason=" + shutdown_reason_, false);
-      shutdown_runlevel_change_requested_ = true;
+  shutting_down_ = true;
+  suspender_.HandleShutdown();
+
+  // If we want to display a low-battery alert while shutting down, don't turn
+  // the screen off immediately.
+  if (reason != kShutdownReasonLowBattery) {
+    if (backlight_controller_)
+      backlight_controller_->SetShuttingDown(true);
+    if (keyboard_controller_)
+      keyboard_controller_->SetShuttingDown(true);
+  }
+
+  switch (mode) {
+    case SHUTDOWN_POWER_OFF:
+      LOG(INFO) << "Shutting down, reason: " << reason;
+      util::RunSetuidHelper("shut_down", "--shutdown_reason=" + reason, false);
       break;
-    case SHUTDOWN_STATE_RESTARTING:
+    case SHUTDOWN_REBOOT:
       LOG(INFO) << "Restarting";
       util::RunSetuidHelper("reboot", "", false);
-      shutdown_runlevel_change_requested_ = true;
-      break;
-    case SHUTDOWN_STATE_NONE:
-      NOTREACHED() << "Shutdown state is unset";
       break;
   }
 }
 
 void Daemon::Suspend() {
-  if (clean_shutdown_initiated_) {
+  if (shutting_down_) {
     LOG(INFO) << "Ignoring request for suspend with outstanding shutdown";
     return;
   }

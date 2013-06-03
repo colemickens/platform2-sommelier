@@ -172,7 +172,7 @@ void Suspender::Suspend() {
     switch (action) {
       case DarkResumePolicy::SHUT_DOWN:
         LOG(INFO) << "Shutting down from dark resume";
-        delegate_->ShutdownForDarkResume();
+        delegate_->ShutDownForDarkResume();
         return;
       case DarkResumePolicy::SUSPEND_FOR_DURATION:
         suspend_duration = dark_resume_policy_->GetSuspendDuration();
@@ -203,7 +203,7 @@ void Suspender::Suspend() {
       if (num_retries_ >= max_retries_) {
         LOG(ERROR) << "Retried suspend from dark resume" << num_retries_
                    << " times; shutting down";
-        delegate_->ShutdownForFailedSuspend();
+        delegate_->ShutDownForFailedSuspend();
       }
       num_retries_++;
       LOG(WARNING) << "Retry #" << num_retries_
@@ -233,7 +233,7 @@ gboolean Suspender::RetrySuspend() {
 
   if (num_retries_ >= max_retries_) {
     LOG(ERROR) << "Retried suspend " << num_retries_ << " times; shutting down";
-    delegate_->ShutdownForFailedSuspend();
+    delegate_->ShutDownForFailedSuspend();
   } else {
     num_retries_++;
     LOG(WARNING) << "Retry #" << num_retries_;

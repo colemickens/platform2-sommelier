@@ -70,10 +70,9 @@ const char kKeyboardBacklightPattern[] = "*:kbd_backlight";
 // Broadcast signals.
 const char kPowerStateChanged[] = "PowerStateChanged";
 
-// Reasons for shutting down.
+// Unknown shutdown reason.
 const char kShutdownReasonUnknown[] = "unknown";
-// Explicit user request such as pressing the power key or the power button in
-// the Chrome UI.
+// Explicit user request such as pressing the power button in the Chrome UI.
 const char kShutdownReasonUserRequest[] = "user-request";
 // Closed the lid at login screen, resulting in shutdown instead of suspend.
 const char kShutdownReasonLidClosed[] = "lid-closed";
@@ -83,6 +82,8 @@ const char kShutdownReasonIdle[] = "idle";
 const char kShutdownReasonLowBattery[] = "low-battery";
 // Shutting down because suspend attempts failed.
 const char kShutdownReasonSuspendFailed[] = "suspend-failed";
+// Shutting down from dark resume.
+const char kShutdownReasonDarkResume[] = "dark-resume";
 
 const double kEpsilon = 0.001;
 

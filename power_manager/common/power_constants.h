@@ -73,13 +73,14 @@ extern const char kKeyboardBacklightPattern[];
 // Broadcast signals.
 extern const char kPowerStateChanged[];
 
-// Reasons for shutting down
+// Reasons for shutting down.
 extern const char kShutdownReasonUnknown[];
 extern const char kShutdownReasonUserRequest[];
 extern const char kShutdownReasonLidClosed[];
 extern const char kShutdownReasonIdle[];
 extern const char kShutdownReasonLowBattery[];
 extern const char kShutdownReasonSuspendFailed[];
+extern const char kShutdownReasonDarkResume[];
 
 // Small value used when comparing floating-point percentages.
 extern const double kEpsilon;

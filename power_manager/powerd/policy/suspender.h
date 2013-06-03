@@ -113,11 +113,11 @@ class Suspender : public SuspendDelayObserver {
                               int max_suspend_retries) = 0;
 
     // Shuts the system down in response to repeated failed suspend attempts.
-    virtual void ShutdownForFailedSuspend() = 0;
+    virtual void ShutDownForFailedSuspend() = 0;
 
     // Shuts the system down in response to the DarkResumePolicy determining the
     // system should shutdown.
-    virtual void ShutdownForDarkResume() = 0;
+    virtual void ShutDownForDarkResume() = 0;
   };
 
   // Helper class providing functionality needed by tests.

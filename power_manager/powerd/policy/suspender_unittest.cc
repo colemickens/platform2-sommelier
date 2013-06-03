@@ -29,7 +29,7 @@ const char kPrepare[] = "prepare";
 const char kCancel[] = "cancel";
 const char kSuspend[] = "suspend";
 const char kResume[] = "resume";
-const char kShutdown[] = "shutdown";
+const char kShutDown[] = "shut_down";
 const char kNoActions[] = "";
 
 // Joins a sequence of strings describing actions (e.g. kScreenDim) such
@@ -130,9 +130,9 @@ class TestDelegate : public Suspender::Delegate {
                             int num_retries,
                             int max_retries) OVERRIDE { AppendAction(kResume); }
 
-  virtual void ShutdownForFailedSuspend() OVERRIDE { AppendAction(kShutdown); }
+  virtual void ShutDownForFailedSuspend() OVERRIDE { AppendAction(kShutDown); }
 
-  virtual void ShutdownForDarkResume() OVERRIDE { AppendAction(kShutdown); }
+  virtual void ShutDownForDarkResume() OVERRIDE { AppendAction(kShutDown); }
 
  private:
   // Appends |action| to |actions_|.
@@ -325,7 +325,7 @@ TEST_F(SuspenderTest, RetryOnFailure) {
 }
 
 // Tests that the system is shut down after repeated suspend failures.
-TEST_F(SuspenderTest, ShutdownAfterRepeatedFailures) {
+TEST_F(SuspenderTest, ShutDownAfterRepeatedFailures) {
   pref_num_retries_ = 5;
   Init();
 
@@ -348,7 +348,7 @@ TEST_F(SuspenderTest, ShutdownAfterRepeatedFailures) {
 
   // On the last failed attempt, the system should shut down immediately.
   EXPECT_TRUE(test_api_.TriggerRetryTimeout());
-  EXPECT_EQ(kShutdown, delegate_.GetActions());
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
   EXPECT_FALSE(test_api_.TriggerRetryTimeout());
 }
 

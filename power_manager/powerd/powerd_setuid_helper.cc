@@ -20,9 +20,8 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 
-DEFINE_string(action, "", "Action to perform.  Must be one of "
-              "\"clean_shutdown\", \"lock_vt\", \"reboot\", \"shutdown\", "
-              "\"suspend\", and \"unlock_vt\".");
+DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
+              "\"reboot\", \"shut_down\", \"suspend\", and \"unlock_vt\".");
 DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
               "lowercase letter and consisting only of lowercase letters and "
               "dashes.");
@@ -87,13 +86,11 @@ void SetVTSwitchingAllowed(bool allowed) {
 int main(int argc, char* argv[]) {
   google::ParseCommandLineFlags(&argc, &argv, true);
 
-  if (FLAGS_action == "clean_shutdown") {
-    RunCommand(kInitctlPath, "emit", "power-manager-clean-shutdown", NULL);
-  } else if (FLAGS_action == "lock_vt") {
+  if (FLAGS_action == "lock_vt") {
     SetVTSwitchingAllowed(false);
   } else if (FLAGS_action == "reboot") {
     RunCommand(kShutdownPath, "-r", "now", NULL);
-  } else if (FLAGS_action == "shutdown") {
+  } else if (FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {
       for (size_t i = 0; i < FLAGS_shutdown_reason.size(); ++i) {

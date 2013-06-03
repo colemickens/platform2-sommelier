@@ -82,12 +82,6 @@ class Daemon : public policy::BacklightControllerObserver,
   void Run();
   void SetPlugged(bool plugged);
 
-  void OnRequestRestart();
-  void OnRequestShutdown();
-
-  // Shuts the system down in response to a failed suspend attempt.
-  void ShutdownForFailedSuspend();
-
   // Notify chrome that an idle event happened.
   void IdleEventNotify(int64 threshold);
 
@@ -127,14 +121,15 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void OnPowerStatusUpdate() OVERRIDE;
 
  private:
-  enum ShutdownState {
-    SHUTDOWN_STATE_NONE,
-    SHUTDOWN_STATE_RESTARTING,
-    SHUTDOWN_STATE_POWER_OFF
-  };
-
   class StateControllerDelegate;
   class SuspenderDelegate;
+
+  // Passed to ShutDown() to specify whether the system should power-off or
+  // reboot.
+  enum ShutdownMode {
+    SHUTDOWN_POWER_OFF,
+    SHUTDOWN_REBOOT,
+  };
 
   // Decrease / increase the keyboard brightness; direction should be +1 for
   // increase and -1 for decrease.
@@ -163,7 +158,6 @@ class Daemon : public policy::BacklightControllerObserver,
                                   const std::string& new_owner);
 
   // Callbacks for handling dbus messages.
-  bool HandleCleanShutdownSignal(DBusMessage* message);
   bool HandleSessionStateChangedSignal(DBusMessage* message);
   bool HandleUpdateEngineStatusUpdateSignal(DBusMessage* message);
   DBusMessage* HandleRequestShutdownMethod(DBusMessage* message);
@@ -182,16 +176,13 @@ class Daemon : public policy::BacklightControllerObserver,
   DBusMessage* HandleSetIsProjectingMethod(DBusMessage* message);
   DBusMessage* HandleSetPolicyMethod(DBusMessage* message);
 
-  // Timeout handler for clean shutdown. If we don't hear back from
-  // clean shutdown because the stopping is taking too long or hung,
-  // go through with the shutdown now.
-  SIGNAL_CALLBACK_0(Daemon, gboolean, CleanShutdownTimedOut);
-
   // Handles information from the session manager about the session state.
   void OnSessionStateChange(const std::string& state_str);
 
-  void StartCleanShutdown();
-  void Shutdown();
+  // Shuts the system down immediately. |reason| describes the why the
+  // system is shutting down; see power_constants.cc for valid values.
+  void ShutDown(ShutdownMode mode, const std::string& reason);
+
   void Suspend();
   void SuspendDisable();
   void SuspendEnable();
@@ -217,21 +208,13 @@ class Daemon : public policy::BacklightControllerObserver,
   scoped_ptr<system::AudioClient> audio_client_;
   scoped_ptr<system::PeripheralBatteryWatcher> peripheral_battery_watcher_;
 
-  // True once the clean shutdown process (i.e. notifying other processes
-  // that the system is shutting down) has started. Remains true until the
+  // True once the shutdown process has started. Remains true until the
   // system has powered off.
-  bool clean_shutdown_initiated_;
-
-  // True after the runlevel change to shut down or reboot has been sent to
-  // init. Remains true until the system has powered off.
-  bool shutdown_runlevel_change_requested_;
+  bool shutting_down_;
 
   bool low_battery_;
-  int64 clean_shutdown_timeout_ms_;
-  guint clean_shutdown_timeout_id_;
   PluggedState plugged_state_;
   FileTagger file_tagger_;
-  ShutdownState shutdown_state_;
   scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
   scoped_ptr<SuspenderDelegate> suspender_delegate_;
