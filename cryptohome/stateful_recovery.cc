@@ -13,6 +13,7 @@
 #include <string>
 
 #include "platform.h"
+#include "service.h"
 #include "stateful_recovery.h"
 
 using std::string;
@@ -34,8 +35,8 @@ const char *StatefulRecovery::kRecoverInodeUsage =
 const char *StatefulRecovery::kRecoverFilesystemDetails =
     MNT_STATEFUL_PARTITION "decrypted/filesystem-details.txt";
 
-StatefulRecovery::StatefulRecovery(Platform* platform)
-    : requested_(false), platform_(platform) { }
+StatefulRecovery::StatefulRecovery(Platform *platform, Service *service)
+    : requested_(false), platform_(platform), service_(service) { }
 StatefulRecovery::~StatefulRecovery() { }
 
 bool StatefulRecovery::Requested() {
@@ -57,6 +58,37 @@ bool StatefulRecovery::CopyPartitionInfo() {
   return true;
 }
 
+bool StatefulRecovery::CopyUserContents() {
+  int rc;
+  gint error_code;
+  gboolean result;
+  GError *error = NULL;
+  std::string path;
+
+  if (!service_->Mount(user_.c_str(), passkey_.c_str(), false, false,
+                       &error_code, &result, &error) || !result) {
+    LOG(ERROR) << "Could not authenticate user '" << user_
+               << "' for stateful recovery: "
+               << (error ? error->message : "[null]")
+               << " (code:" << error_code << ")";
+    return false;
+  }
+
+  if (!service_->GetMountPointForUser(user_.c_str(), &path)) {
+    LOG(ERROR) << "Mount point missing after successful mount call!?";
+    return false;
+  }
+
+  rc = platform_->Copy(path, kRecoverDestination);
+
+  service_->UnmountForUser(user_.c_str(), &result, &error);
+
+  if (rc)
+    return true;
+  LOG(ERROR) << "Failed to copy " << path;
+  return false;
+}
+
 bool StatefulRecovery::CopyPartitionContents() {
   int rc;
 
@@ -74,10 +106,17 @@ bool StatefulRecovery::Recover() {
     LOG(ERROR) << "Failed to mkdir " << kRecoverDestination;
     return false;
   }
-  if (!CopyPartitionContents())
+
+  if (version_ == "2" && !CopyUserContents())
     return false;
-  if (!CopyPartitionInfo())
-    return false;
+
+  // TODO(keescook): check WP bit here.
+  if (version_ == "1" || service_->IsOwner(user_)) {
+    if (!CopyPartitionContents())
+      return false;
+    if (!CopyPartitionInfo())
+      return false;
+  }
   return true;
 }
 
@@ -92,15 +131,44 @@ void StatefulRecovery::PerformReboot() {
 
 bool StatefulRecovery::ParseFlagFile() {
   std::string contents;
+  size_t delim, pos;
   if (!platform_->ReadFileToString(kFlagFile, &contents))
     return false;
-  // One field at present -- the version.
-  if (contents != "1") {
-    // TODO(ellyjones): UMA stat?
-    LOG(ERROR) << "Bogus stateful recovery request file: " << contents;
-    return false;
-  }
-  return true;
+
+  // Make sure there is a trailing newline.
+  contents += "\n";
+
+  do {
+    pos = 0;
+    delim = contents.find("\n", pos);
+    if (delim == std::string::npos)
+      break;
+    version_ = contents.substr(pos, delim);
+
+    if (version_ == "1")
+      return true;
+
+    if (version_ != "2")
+      break;
+
+    pos = delim + 1;
+    delim = contents.find("\n", pos);
+    if (delim == std::string::npos)
+      break;
+    user_ = contents.substr(pos, delim - pos);
+
+    pos = delim + 1;
+    delim = contents.find("\n", pos);
+    if (delim == std::string::npos)
+      break;
+    passkey_ = contents.substr(pos, delim - pos);
+
+    return true;
+  } while (0);
+
+  // TODO(ellyjones): UMA stat?
+  LOG(ERROR) << "Bogus stateful recovery request file:" << contents;
+  return false;
 }
 
 }  // namespace cryptohome

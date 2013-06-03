@@ -413,7 +413,7 @@ bool Service::Initialize() {
       base::Bind(&Service::AutoCleanupCallback, base::Unretained(this)));
 
   // TODO(keescook,ellyjones) Make this mock-able.
-  StatefulRecovery recovery(platform_);
+  StatefulRecovery recovery(platform_, this);
   if (recovery.Requested()) {
     if (recovery.Recover())
       LOG(INFO) << "A stateful recovery was performed successfully.";
@@ -421,6 +421,13 @@ bool Service::Initialize() {
   }
 
   return result;
+}
+
+bool Service::IsOwner(const std::string &userid) {
+  std::string owner;
+  if (homedirs_->GetPlainOwner(&owner) && userid == owner)
+    return true;
+  return false;
 }
 
 void Service::InitializeInstallAttributes(bool first_time) {
@@ -1153,7 +1160,7 @@ gboolean Service::Unmount(gboolean *OUT_result, GError **error) {
   return TRUE;
 }
 
-gboolean Service::UnmountForUser(gchar *userid, gboolean *OUT_result,
+gboolean Service::UnmountForUser(const gchar *userid, gboolean *OUT_result,
                                  GError **error) {
   // NOTE: it's not clear we ever want to allow a per-user unmount.
   return Unmount(OUT_result, error);
@@ -1801,6 +1808,17 @@ bool Service::RemoveAllMounts(bool unmount) {
   }
   mounts_lock_.Release();
   return ok;
+}
+
+bool Service::GetMountPointForUser(const std::string& username,
+                                   std::string* path) {
+  scoped_refptr<cryptohome::Mount> mount;
+
+  mount = GetMountForUser(username);
+  if (!mount.get() || !mount->IsMounted())
+    return false;
+  *path = mount->mount_point();
+  return true;
 }
 
 scoped_refptr<cryptohome::Mount> Service::GetMountForUser(

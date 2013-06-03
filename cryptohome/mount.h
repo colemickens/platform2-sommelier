@@ -189,6 +189,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
     return platform_;
   }
 
+  virtual const std::string& mount_point() const {
+    return mount_point_;
+  }
+
   // Used to override the default Platform handler (does not take ownership)
   void set_platform(Platform* value) {
     platform_ = value;

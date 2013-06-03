@@ -110,6 +110,14 @@ class Service : public chromeos::dbus::AbstractDbusService,
 
   virtual cryptohome::HomeDirs* homedirs() { return homedirs_; }
 
+  // Checks if the given user is the system owner.
+  virtual bool IsOwner(const std::string &userid);
+
+  // Returns the base directory of the eCryptfs destination, containing
+  // the "user" and "root" directories.
+  virtual bool GetMountPointForUser(const std::string& username,
+                                    std::string* path);
+
   // CryptohomeEventSourceSink
   virtual void NotifyEvent(CryptohomeEventBase* event);
 
@@ -182,7 +190,7 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean AsyncMountGuest(gint *OUT_async_id,
                                    GError **error);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
-  virtual gboolean UnmountForUser(gchar* userid, gboolean *OUT_result,
+  virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
                                   GError **error);
   virtual gboolean DoAutomaticFreeDiskSpaceControl(gboolean *OUT_result,
                                                    GError **error);

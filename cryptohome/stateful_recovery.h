@@ -2,9 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <string>
+
 namespace cryptohome {
 
 class Platform;
+class Service;
 
 // This class handles recovery of encrypted data from the stateful partition.
 // At present, it provides a simple way to export the encrypted data while the
@@ -19,7 +22,7 @@ class Platform;
 //
 class StatefulRecovery {
  public:
-  explicit StatefulRecovery(Platform* platform);
+  explicit StatefulRecovery(Platform *platform, Service *service);
   ~StatefulRecovery();
 
   // Returns true if recovery was requested by the device user.
@@ -46,8 +49,15 @@ class StatefulRecovery {
   // Copies encrypted partition contents to recovery directory.
   bool CopyPartitionContents();
 
+  // Copies the mounted user directory to recovery directory.
+  bool CopyUserContents();
+
   bool requested_;
-  Platform* platform_;
+  Platform *platform_;
+  Service *service_;
+  std::string version_;
+  std::string user_;
+  std::string passkey_;
 };
 
 }  // namespace cryptohome
