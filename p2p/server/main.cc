@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 
   FilePath path = cl->GetSwitchValuePath("path");
   if (path.empty()) {
-    path = FilePath("/mnt/stateful_partition/unencrypted/cache/p2p");
+    path = FilePath(p2p::constants::kP2PDir);
   }
   p2p::server::FileWatcher* file_watcher =
       p2p::server::FileWatcher::Construct(path, ".p2p");

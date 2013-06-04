@@ -31,6 +31,9 @@ constexpr char kHttpServerBinaryName[] = "p2p-http-server";
 // The default TCP port for the HTTP server ("AU").
 constexpr uint16 kHttpServerDefaultPort = 16725;
 
+// The path of the directory for peer to peer content.
+constexpr char kP2PDir[] = "/var/cache/p2p";
+
 }  // namespace constants
 
 }  // namespace p2p
