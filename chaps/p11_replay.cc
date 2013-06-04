@@ -392,13 +392,20 @@ void ReadInObject(CK_SESSION_HANDLE session,
     CreatePrivateKey(session, object_id, "testing_key", rsa);
     RSA_free(rsa);
   } else if (type == kPublicKey) {
+    // Try decoding a PKCS#1 RSAPublicKey structure.
     RSA* rsa = d2i_RSAPublicKey(NULL, &data_start, object_data.length());
     if (!rsa) {
-      LOG(ERROR) << "OpenSSL error in RSA public key parsing.";
-      exit(-1);
+      // Rewind the ptr just in case it was modified.
+      data_start = reinterpret_cast<const unsigned char*>(object_data.c_str());
+      // Try decoding a X.509 SubjectPublicKeyInfo structure.
+      rsa = d2i_RSA_PUBKEY(NULL, &data_start, object_data.length());
+      if (!rsa) {
+        LOG(ERROR) << "OpenSSL error in RSA public key parsing.";
+        exit(-1);
+      }
     }
     int key_size_bits = RSA_size(rsa) * 8;
-    // Round the key up to the nearest 256 bit boundary
+    // Round the key up to the nearest 256 bit boundary.
     key_size_bits = (key_size_bits / 256 + 1) * 256;
     CreatePublicKey(session, object_id, "testing_key", key_size_bits, rsa);
     RSA_free(rsa);
