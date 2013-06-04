@@ -26,6 +26,30 @@ void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
   }
 }
 
+void CheckMembership(string element_to_find, const std::vector<string>& list) {
+  std::vector<string>::const_iterator iter;
+  for (iter = list.begin(); iter != list.end(); ++iter)
+    if (element_to_find == *iter)
+      return;
+  ADD_FAILURE() << element_to_find << " is not present in the given list";
+}
+
+void CheckForElementWithSubstring(string substring_to_find,
+                                  const std::vector<string>& list) {
+  std::vector<string>::const_iterator iter;
+  for (iter = list.begin(); iter != list.end(); ++iter)
+    if (iter->find(substring_to_find) != string::npos)
+      return;
+  ADD_FAILURE() << substring_to_find
+                << " is not present in any of the elements of the given list";
+}
+
+void CheckNoDuplicates(const std::vector<string>& list) {
+  std::set<string> list_as_set(list.begin(), list.end());
+  if (list.size() != list_as_set.size())
+    ADD_FAILURE() << "Given list has at least one duplicate";
+}
+
 }  // namespace
 
 TEST(PerfParserTest, Test1Cycle) {
@@ -56,7 +80,7 @@ TEST(PerfParserTest, Test1Cycle) {
   }
 }
 
-TEST(PerfParserTest, TestRemap) {
+TEST(PerfParserTest, TestProcessing) {
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
@@ -74,6 +98,26 @@ TEST(PerfParserTest, TestRemap) {
     EXPECT_GT(stats.num_mmap_events, 0U);
     EXPECT_GT(stats.num_sample_events_mapped, 0U);
     EXPECT_TRUE(stats.did_remap);
+
+
+    // Check file names.
+    std::vector<string> filenames;
+    parser.GetFilenames(&filenames);
+    CheckNoDuplicates(filenames);
+
+    // Any run of perf should have MMAPs with the following substrings:
+    CheckForElementWithSubstring("perf", filenames);
+    CheckForElementWithSubstring("kernel", filenames);
+    CheckForElementWithSubstring(".ko", filenames);
+    CheckForElementWithSubstring("libc", filenames);
+
+    std::vector<ParsedEvent*> parsed_events = parser.GetEventsSortedByTime();
+    for (size_t i = 0; i < parsed_events.size(); i++) {
+      const event_t& event = *(parsed_events[i]->raw_event);
+      if (event.header.type == PERF_RECORD_MMAP)
+        CheckMembership(event.mmap.filename, filenames);
+    }
+
 
     string output_perf_data = input_perf_data + ".parse.remap.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));

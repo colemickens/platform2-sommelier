@@ -91,6 +91,10 @@ class PerfParser : public PerfReader {
     return stats_;
   }
 
+  // Stores a list of unique filenames found in MMAP events into
+  // |filenames|.  Any existing data in |filenames| will be lost.
+  void GetFilenames(std::vector<string>* filenames) const;
+
  protected:
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.

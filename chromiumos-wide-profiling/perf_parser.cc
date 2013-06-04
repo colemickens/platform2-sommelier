@@ -5,6 +5,7 @@
 #include "perf_parser.h"
 
 #include <algorithm>
+#include <set>
 
 #include "base/logging.h"
 
@@ -74,6 +75,20 @@ bool PerfParser::ParseRawEvents() {
   SortParsedEvents();
 
   return true;
+}
+
+void PerfParser::GetFilenames(std::vector<string>* filenames) const {
+  std::set<string> filename_set;
+  size_t read_index;
+  for (read_index = 0; read_index < parsed_events_.size(); ++read_index) {
+    const event_t& event = *parsed_events_[read_index].raw_event;
+    if (event.header.type == PERF_RECORD_MMAP)
+      filename_set.insert(event.mmap.filename);
+  }
+
+  filenames->clear();
+  filenames->insert(filenames->begin(), filename_set.begin(),
+                    filename_set.end());
 }
 
 void PerfParser::SortParsedEvents() {
