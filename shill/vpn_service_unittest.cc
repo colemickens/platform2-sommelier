@@ -125,7 +125,7 @@ TEST_F(VPNServiceTest, ConnectAlreadyConnected) {
   error.Reset();
   SetServiceState(Service::kStateConfiguring);
   service_->Connect(&error, "in test");
-  EXPECT_EQ(Error::kAlreadyConnected, error.type());
+  EXPECT_EQ(Error::kInProgress, error.type());
 }
 
 TEST_F(VPNServiceTest, Disconnect) {

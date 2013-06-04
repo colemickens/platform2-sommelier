@@ -43,9 +43,16 @@ VPNService::VPNService(ControlInterface *control,
 VPNService::~VPNService() {}
 
 void VPNService::Connect(Error *error, const char *reason) {
-  if (IsConnected() || IsConnecting()) {
-    Error::PopulateAndLog(
-        error, Error::kAlreadyConnected, "VPN service already connected.");
+  if (IsConnected()) {
+    Error::PopulateAndLog(error, Error::kAlreadyConnected,
+                          StringPrintf("VPN service %s already connected.",
+                                       unique_name().c_str()));
+    return;
+  }
+  if (IsConnecting()) {
+    Error::PopulateAndLog(error, Error::kInProgress,
+                          StringPrintf("VPN service %s already connecting.",
+                                       unique_name().c_str()));
     return;
   }
   Service::Connect(error, reason);
