@@ -574,5 +574,14 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
 }
 
+TEST_F(InternalBacklightControllerTest, TurnDisplaysOnAtInit) {
+  // Init() should ask Chrome to turn all displays on.
+  ASSERT_EQ(0, display_power_setter_.num_power_calls());
+  Init(POWER_AC);
+  EXPECT_EQ(1, display_power_setter_.num_power_calls());
+  EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
+  EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+}
+
 }  // namespace policy
 }  // namespace power_manager

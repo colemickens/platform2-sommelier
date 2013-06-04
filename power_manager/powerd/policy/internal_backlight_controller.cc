@@ -117,7 +117,8 @@ InternalBacklightController::InternalBacklightController(
       dimmed_brightness_percent_(kDimmedBrightnessFraction * 100.0),
       level_to_percent_exponent_(kDefaultLevelToPercentExponent),
       current_level_(0),
-      display_power_state_(chromeos::DISPLAY_POWER_ALL_ON) {
+      // Use all-off here to ensure that Init()'s all-on request is sent.
+      display_power_state_(chromeos::DISPLAY_POWER_ALL_OFF) {
   DCHECK(backlight_);
   DCHECK(prefs_);
   DCHECK(display_power_setter_);
