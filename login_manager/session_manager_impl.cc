@@ -40,8 +40,6 @@ using chromeos::cryptohome::home::SanitizeUserName;
 
 namespace login_manager {  // NOLINT
 
-// DEPRECATED in favor of kGuestUserName from chromeos/cryptohome.h
-const char SessionManagerImpl::kIncognitoUser[] = "";
 const char SessionManagerImpl::kDemoUser[] = "demouser@";
 
 const char SessionManagerImpl::kStarted[] = "started";
@@ -280,10 +278,8 @@ gboolean SessionManagerImpl::StartSession(gchar* email_address,
   // Validate the |email_address|.
   const std::string email_string(
       StringToLowerASCII(GCharToString(email_address)));
-  const bool is_incognito =
-      ((email_string == kGuestUserName) ||
-       (email_string == kIncognitoUser) ||
-       (email_string == kDemoUser));
+  const bool is_incognito = ((email_string == kGuestUserName) ||
+                             (email_string == kDemoUser));
   if (!is_incognito && !ValidateEmail(email_string)) {
     const char msg[] = "Provided email address is not valid.  ASCII only.";
     LOG(ERROR) << msg;

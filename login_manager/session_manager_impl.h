@@ -123,7 +123,6 @@ class SessionManagerImpl : public SessionManagerInterface,
   virtual void OnKeyPersisted(bool success) OVERRIDE;
 
   // Magic user name strings.
-  static const char kIncognitoUser[];
   static const char kDemoUser[];
 
   // Payloads for SessionStateChanged DBus signal.
