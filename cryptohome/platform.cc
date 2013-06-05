@@ -31,6 +31,11 @@
 #include <chromeos/secure_blob.h>
 #include <chromeos/utility.h>
 
+// Uses libvboot_host for accessing crossystem variables.
+extern "C" {
+#include <vboot/crossystem.h>
+}
+
 using base::SplitString;
 using std::string;
 
@@ -621,6 +626,10 @@ bool Platform::ReportFilesystemDetails(const std::string &filesystem,
   LOG(ERROR) << "Failed to run tune2fs on " << device
              << " (" << filesystem << ", exit " << rc << ")";
   return false;
+}
+
+bool Platform::FirmwareWriteProtected() {
+  return VbGetSystemPropertyInt("wpsw_boot") != 0;
 }
 
 // Encapsulate these helpers to avoid include conflicts.

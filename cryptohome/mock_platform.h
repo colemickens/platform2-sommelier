@@ -132,6 +132,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD3(GetFileEnumerator, FileEnumerator*(const std::string&,
                                                   bool,
                                                   int));
+  MOCK_METHOD0(FirmwareWriteProtected, bool(void));
 
   MockFileEnumerator* get_mock_enumerator() { return mock_enumerator_.get(); }
 

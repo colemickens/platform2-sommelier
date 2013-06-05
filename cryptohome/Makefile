@@ -22,7 +22,7 @@ CXXFLAGS += -Wall -Werror -fno-exceptions
 CPPFLAGS += -I$(OUT) $(PC_CFLAGS)
 LDLIBS += -lpolicy-$(BASE_VER) -lmetrics $(PC_LIBS) \
 	-lcrypto -lecryptfs -levent -lkeyutils -lchaps -lprotobuf \
-	-lpthread -lscrypt -ltspi
+	-lpthread -lscrypt -ltspi -lvboot_host -lm
 
 PROTOS := install_attributes tpm_status vault_keyset attestation
 PB_HDRS := $(patsubst %,%.pb.h,$(PROTOS))
@@ -86,8 +86,6 @@ CXX_BINARY(cryptohome): $(SHARED_OBJS) cryptohome.o
 CXX_BINARY(cryptohome-path): $(SHARED_OBJS) cryptohome-path.o
 CXX_BINARY(cryptohome_testrunner): LDLIBS += -lgtest -lgmock
 CXX_BINARY(cryptohome_testrunner): $(SHARED_OBJS) $(TEST_OBJS)
-$(ME_OBJS): CFLAGS += -I$(SYSROOT)/usr/include/vboot
-CC_BINARY(mount-encrypted): LDLIBS += -lvboot_host -lm
 CC_BINARY(mount-encrypted): $(ME_OBJS)
 
 CXX_BINARY(lockbox-cache): tpm_status.pb.o cryptolib.o platform.o tpm.o \

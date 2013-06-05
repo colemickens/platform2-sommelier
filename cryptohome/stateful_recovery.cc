@@ -100,6 +100,8 @@ bool StatefulRecovery::CopyPartitionContents() {
 }
 
 bool StatefulRecovery::Recover() {
+  bool write_protected;
+
   if (!requested_)
     return false;
   if (!platform_->CreateDirectory(kRecoverDestination)) {
@@ -110,8 +112,16 @@ bool StatefulRecovery::Recover() {
   if (version_ == "2" && !CopyUserContents())
     return false;
 
-  // TODO(keescook): check WP bit here.
-  if (version_ == "1" || service_->IsOwner(user_)) {
+  write_protected = platform_->FirmwareWriteProtected();
+
+  // Version 1 requires write protect being disabled.
+  if (version_ == "1" && write_protected) {
+    LOG(ERROR) << "Refusing recovery request; firmware is write protected.";
+    return false;
+  }
+
+  // Version 2 requires either write protect disabled or system owner.
+  if (!write_protected || service_->IsOwner(user_)) {
     if (!CopyPartitionContents())
       return false;
     if (!CopyPartitionInfo())

@@ -31,8 +31,8 @@
 #include <openssl/rand.h>
 
 #define CHROMEOS_ENVIRONMENT
-#include "tlcl.h"
-#include "crossystem.h"
+#include <vboot/tlcl.h>
+#include <vboot/crossystem.h>
 
 #include "mount-encrypted.h"
 #include "mount-helpers.h"

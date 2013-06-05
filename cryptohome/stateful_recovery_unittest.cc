@@ -30,6 +30,9 @@ TEST(StatefulRecovery, ValidRequestV1) {
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
                                          StatefulRecovery::kRecoverBlockUsage))
     .Times(1)
@@ -51,6 +54,25 @@ TEST(StatefulRecovery, ValidRequestV1) {
   StatefulRecovery recovery(&platform, &service);
   EXPECT_TRUE(recovery.Requested());
   EXPECT_TRUE(recovery.Recover());
+}
+
+TEST(StatefulRecovery, ValidRequestV1WriteProtected) {
+  MockPlatform platform;
+  MockService service;
+  std::string flag_content = "1";
+  EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
+    .Times(1)
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(true));
+
+  StatefulRecovery recovery(&platform, &service);
+  EXPECT_TRUE(recovery.Requested());
+  EXPECT_FALSE(recovery.Recover());
 }
 
 TEST(StatefulRecovery, ValidRequestV2) {
@@ -84,6 +106,9 @@ TEST(StatefulRecovery, ValidRequestV2) {
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<1>(result), Return(true)));
 
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(true));
   EXPECT_CALL(service, IsOwner(_))
     .Times(1)
     .WillOnce(Return(true));
@@ -145,9 +170,73 @@ TEST(StatefulRecovery, ValidRequestV2NotOwner) {
     .Times(1)
     .WillOnce(DoAll(SetArgumentPointee<1>(result), Return(true)));
 
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(true));
   EXPECT_CALL(service, IsOwner(_))
     .Times(1)
     .WillOnce(Return(false));
+
+  StatefulRecovery recovery(&platform, &service);
+  EXPECT_TRUE(recovery.Requested());
+  EXPECT_TRUE(recovery.Recover());
+}
+
+TEST(StatefulRecovery, ValidRequestV2NotOwnerNotWriteProtected) {
+  MockPlatform platform;
+  MockService service;
+  gboolean result = true;
+  std::string user = "user@example.com";
+  std::string passkey = "abcd1234";
+  std::string flag_content = "2\n" + user + "\n" + passkey;
+  std::string mount_path = "/home/.shadow/hashhashash/mount";
+  EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
+  EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
+    .Times(1)
+    .WillOnce(Return(true));
+
+  // CopyUserContents
+  EXPECT_CALL(service, Mount(StrEq(user), StrEq(passkey), false, false,
+                             _, _, _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<5>(result), Return(true)));
+  EXPECT_CALL(service, GetMountPointForUser(StrEq(user), _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(mount_path), Return(true)));
+  EXPECT_CALL(platform, Copy(StrEq(mount_path),
+                             StatefulRecovery::kRecoverDestination))
+    .Times(1)
+    .WillOnce(Return(true));
+  EXPECT_CALL(service, UnmountForUser(StrEq(user), _, _))
+    .Times(1)
+    .WillOnce(DoAll(SetArgumentPointee<1>(result), Return(true)));
+
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(false));
+
+  // CopyPartitionInfo
+  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
+                                         StatefulRecovery::kRecoverBlockUsage))
+    .Times(1)
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform, ReportInodeUsage(StatefulRecovery::kRecoverSource,
+                                         StatefulRecovery::kRecoverInodeUsage))
+    .Times(1)
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform,
+              ReportFilesystemDetails(StatefulRecovery::kRecoverSource,
+                StatefulRecovery::kRecoverFilesystemDetails))
+    .Times(1)
+    .WillOnce(Return(true));
+
+  // CopyPartitionContents
+  EXPECT_CALL(platform, Copy(StatefulRecovery::kRecoverSource,
+                             StatefulRecovery::kRecoverDestination))
+    .Times(1)
+    .WillOnce(Return(true));
 
   StatefulRecovery recovery(&platform, &service);
   EXPECT_TRUE(recovery.Requested());
@@ -187,6 +276,9 @@ TEST(StatefulRecovery, UncopyableData) {
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, Copy(StatefulRecovery::kRecoverSource,
                              StatefulRecovery::kRecoverDestination))
     .Times(1)
@@ -223,6 +315,9 @@ TEST(StatefulRecovery, BlockUsageFailure) {
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, Copy(StatefulRecovery::kRecoverSource,
                              StatefulRecovery::kRecoverDestination))
     .Times(1)
@@ -247,6 +342,9 @@ TEST(StatefulRecovery, InodeUsageFailure) {
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, Copy(StatefulRecovery::kRecoverSource,
                              StatefulRecovery::kRecoverDestination))
     .Times(1)
@@ -275,6 +373,9 @@ TEST(StatefulRecovery, FilesystemDetailsFailure) {
   EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
+  EXPECT_CALL(platform, FirmwareWriteProtected())
+    .Times(1)
+    .WillOnce(Return(false));
   EXPECT_CALL(platform, Copy(StatefulRecovery::kRecoverSource,
                              StatefulRecovery::kRecoverDestination))
     .Times(1)

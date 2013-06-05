@@ -425,7 +425,7 @@ bool Service::Initialize() {
 
 bool Service::IsOwner(const std::string &userid) {
   std::string owner;
-  if (homedirs_->GetPlainOwner(&owner) && userid == owner)
+  if (homedirs_->GetPlainOwner(&owner) && userid.length() && userid == owner)
     return true;
   return false;
 }

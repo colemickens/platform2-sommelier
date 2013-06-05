@@ -352,6 +352,9 @@ class Platform {
     mtab_path_ = mtab_path;
   }
 
+  // Report condition of the Firmware Write-Protect flag.
+  virtual bool FirmwareWriteProtected();
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path
