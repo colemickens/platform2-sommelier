@@ -11,6 +11,7 @@
 
 #include "base/basictypes.h"
 #include "base/compiler_specific.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/time.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs_observer.h"
@@ -22,6 +23,7 @@ typedef unsigned int guint;
 
 namespace power_manager {
 
+class Clock;
 class PrefsInterface;
 
 namespace policy {
@@ -213,9 +215,6 @@ class StateController : public PrefsObserver {
         lid_state_ == LID_CLOSED;
   }
 
-  // Returns the current time or |current_time_for_testing_| if set.
-  base::TimeTicks GetCurrentTime() const;
-
   // Returns the last time at which activity occurred that should defer
   // |idle_action_|, taking |on_ac_|, |use_audio_activity_|, and
   // |use_video_activity_| into account.
@@ -264,12 +263,10 @@ class StateController : public PrefsObserver {
 
   PrefsInterface* prefs_;  // not owned
 
+  scoped_ptr<Clock> clock_;
+
   // Has Init() been called?
   bool initialized_;
-
-  // If non-empty, used in place of base::TimeTicks::Now() whenever the
-  // current time is needed.
-  base::TimeTicks current_time_for_testing_;
 
   // GLib source ID for running HandleTimeout().  0 if unset.
   guint timeout_id_;

@@ -13,6 +13,7 @@
 #include "base/logging.h"
 #include "base/string_util.h"
 #include "base/stringprintf.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
@@ -83,6 +84,7 @@ double ClampPercentToVisibleRange(double percent) {
 const int64 InternalBacklightController::kMaxBrightnessSteps = 16;
 const double InternalBacklightController::kMinVisiblePercent =
     kMaxPercent / kMaxBrightnessSteps;
+const int InternalBacklightController::kAmbientLightSensorTimeoutSec = 10;
 
 InternalBacklightController::InternalBacklightController(
     system::BacklightInterface* backlight,
@@ -94,6 +96,7 @@ InternalBacklightController::InternalBacklightController(
       display_power_setter_(display_power_setter),
       ambient_light_handler_(
           sensor ? new AmbientLightHandler(sensor, this) : NULL),
+      clock_(new Clock),
       power_source_(POWER_BATTERY),
       display_mode_(DISPLAY_NORMAL),
       dimmed_for_inactivity_(false),
@@ -171,6 +174,7 @@ bool InternalBacklightController::Init() {
   // restarted for some reason.
   SetDisplayPower(chromeos::DISPLAY_POWER_ALL_ON, base::TimeDelta());
 
+  init_time_ = clock_->GetCurrentTime();
   LOG(INFO) << "Backlight has range [0, " << max_level_ << "] with "
             << step_percent_ << "% step and minimum-visible level of "
             << min_visible_level_ << "; current level is " << current_level_
@@ -403,6 +407,15 @@ void InternalBacklightController::EnsureUserBrightnessIsNonzero() {
 }
 
 void InternalBacklightController::UpdateState() {
+  // Give up on the ambient light sensor if it's not supplying readings.
+  if (use_ambient_light_ && !got_ambient_light_brightness_percent_ &&
+      clock_->GetCurrentTime() - init_time_ >=
+      base::TimeDelta::FromSeconds(kAmbientLightSensorTimeoutSec)) {
+    LOG(ERROR) << "Giving up on ambient light sensor after getting no reading "
+               << "within " << kAmbientLightSensorTimeoutSec << " seconds";
+    use_ambient_light_ = false;
+  }
+
   // Hold off on changing the brightness at startup until all the required
   // state has been received.
   if (!got_power_source_ ||

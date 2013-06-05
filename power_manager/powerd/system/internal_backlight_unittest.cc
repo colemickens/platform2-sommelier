@@ -13,6 +13,7 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/powerd/system/internal_backlight.h"
 
 using ::testing::Test;
@@ -207,7 +208,7 @@ TEST_F(InternalBacklightTest, Transitions) {
 
   InternalBacklight backlight;
   const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(10000);
-  backlight.set_current_time_for_testing(kStartTime);
+  backlight.clock()->set_current_time_for_testing(kStartTime);
   ASSERT_TRUE(backlight.Init(test_path_, "*"));
 
   // An instant transition to the maximum level shouldn't use a timer.
@@ -230,7 +231,7 @@ TEST_F(InternalBacklightTest, Transitions) {
 
   // Let half of the transition duration pass.
   const base::TimeTicks kMidpointTime = kStartTime + kDuration / 2;
-  backlight.set_current_time_for_testing(kMidpointTime);
+  backlight.clock()->set_current_time_for_testing(kMidpointTime);
   EXPECT_TRUE(backlight.TriggerTransitionTimeoutForTesting());
   const int64 kMidpointBrightness = (kMaxBrightness + kHalfBrightness) / 2;
   EXPECT_EQ(kMidpointBrightness, ReadBrightness(backlight_dir));
@@ -238,7 +239,7 @@ TEST_F(InternalBacklightTest, Transitions) {
 
   // At the end of the transition, we should return false to cancel the timeout.
   const base::TimeTicks kEndTime = kStartTime + kDuration;
-  backlight.set_current_time_for_testing(kEndTime);
+  backlight.clock()->set_current_time_for_testing(kEndTime);
   EXPECT_FALSE(backlight.TriggerTransitionTimeoutForTesting());
   EXPECT_FALSE(backlight.transition_timeout_is_set());
   EXPECT_EQ(kHalfBrightness, ReadBrightness(backlight_dir));

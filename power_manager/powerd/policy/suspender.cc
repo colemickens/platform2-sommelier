@@ -10,6 +10,7 @@
 #include "base/logging.h"
 #include "chromeos/dbus/dbus.h"
 #include "chromeos/dbus/service_constants.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/dbus_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -26,7 +27,7 @@ namespace policy {
 Suspender::TestApi::TestApi(Suspender* suspender) : suspender_(suspender) {}
 
 void Suspender::TestApi::SetCurrentWallTime(base::Time wall_time) {
-  suspender_->current_wall_time_for_testing_ = wall_time;
+  suspender_->clock_->set_current_wall_time_for_testing(wall_time);
 }
 
 bool Suspender::TestApi::TriggerRetryTimeout() {
@@ -45,6 +46,7 @@ Suspender::Suspender(Delegate* delegate,
     : delegate_(delegate),
       dbus_sender_(dbus_sender),
       dark_resume_policy_(dark_resume_policy),
+      clock_(new Clock),
       suspend_delay_controller_(new SuspendDelayController(dbus_sender)),
       waiting_for_readiness_(false),
       suspend_id_(0),
@@ -154,11 +156,6 @@ void Suspender::OnReadyForSuspend(int suspend_id) {
   }
 }
 
-base::Time Suspender::GetCurrentWallTime() const {
-  return !current_wall_time_for_testing_.is_null() ?
-      current_wall_time_for_testing_ : base::Time::Now();
-}
-
 void Suspender::Suspend() {
   bool dark_resume = false;
   bool success = false;
@@ -166,7 +163,7 @@ void Suspender::Suspend() {
   // must be updated.
   LOG(INFO) << "Starting suspend";
   SendSuspendStateChangedSignal(
-      SuspendState_Type_SUSPEND_TO_MEMORY, GetCurrentWallTime());
+      SuspendState_Type_SUSPEND_TO_MEMORY, clock_->GetCurrentWallTime());
   delegate_->PrepareForSuspend();
 
   do {
@@ -219,7 +216,7 @@ void Suspender::Suspend() {
     LOG(INFO) << "Resumed successfully from suspend attempt " << suspend_id_;
     num_retries_ = 0;
     SendSuspendStateChangedSignal(
-        SuspendState_Type_RESUME, GetCurrentWallTime());
+        SuspendState_Type_RESUME, clock_->GetCurrentWallTime());
   } else {
     LOG(INFO) << "Suspend attempt " << suspend_id_ << " failed; "
               << "will retry in " << retry_delay_.InMilliseconds() << " ms";

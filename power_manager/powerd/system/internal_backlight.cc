@@ -13,6 +13,7 @@
 #include "base/file_util.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager {
@@ -32,7 +33,8 @@ const char InternalBacklight::kActualBrightnessFilename[] = "actual_brightness";
 const char InternalBacklight::kResumeBrightnessFilename[] = "resume_brightness";
 
 InternalBacklight::InternalBacklight()
-    : max_brightness_level_(0),
+    : clock_(new Clock),
+      max_brightness_level_(0),
       current_brightness_level_(0),
       transition_timeout_id_(0),
       transition_start_level_(0),
@@ -139,7 +141,7 @@ bool InternalBacklight::SetBrightnessLevel(int64 level,
     return true;
   }
 
-  transition_start_time_ = GetCurrentTime();
+  transition_start_time_ = clock_->GetCurrentTime();
   transition_end_time_ = transition_start_time_ + interval;
   transition_start_level_ = current_brightness_level_;
   transition_end_level_ = level;
@@ -222,14 +224,8 @@ bool InternalBacklight::WriteBrightnessLevelToFile(const base::FilePath& path,
   return true;
 }
 
-base::TimeTicks InternalBacklight::GetCurrentTime() const {
-  return current_time_for_testing_.is_null() ?
-         base::TimeTicks::Now() :
-         current_time_for_testing_;
-}
-
 gboolean InternalBacklight::HandleTransitionTimeout() {
-  base::TimeTicks now = GetCurrentTime();
+  base::TimeTicks now = clock_->GetCurrentTime();
   int64 new_level = 0;
   gboolean should_repeat_timeout = TRUE;
 

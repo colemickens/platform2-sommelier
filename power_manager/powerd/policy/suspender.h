@@ -17,7 +17,7 @@
 
 namespace power_manager {
 
-class Daemon;
+class Clock;
 class DBusSenderInterface;
 class PrefsInterface;
 
@@ -127,7 +127,7 @@ class Suspender : public SuspendDelayObserver {
 
     int suspend_id() const { return suspender_->suspend_id_; }
 
-    // Sets the time returned by Suspender::GetCurrentTime().
+    // Sets the time used as "now".
     void SetCurrentWallTime(base::Time wall_time);
 
     // Runs Suspender::RetrySuspend() if |retry_suspend_timeout_id_| is set.
@@ -180,9 +180,6 @@ class Suspender : public SuspendDelayObserver {
   virtual void OnReadyForSuspend(int suspend_id) OVERRIDE;
 
  private:
-  // Returns the current wall time or |current_wall_time_for_testing_| if set.
-  base::Time GetCurrentWallTime() const;
-
   // Suspends the computer. Before this method is called, the system should be
   // in a state where it's truly ready to suspend (i.e. no outstanding delays).
   void Suspend();
@@ -202,6 +199,7 @@ class Suspender : public SuspendDelayObserver {
   DBusSenderInterface* dbus_sender_;  // not owned
   DarkResumePolicy* dark_resume_policy_;  // not owned
 
+  scoped_ptr<Clock> clock_;
   scoped_ptr<SuspendDelayController> suspend_delay_controller_;
 
   // Whether the system will be suspended soon.  This is set to true by
@@ -230,10 +228,6 @@ class Suspender : public SuspendDelayObserver {
 
   // ID of GLib timeout that will run RetrySuspend() or 0 if unset.
   guint retry_suspend_timeout_id_;
-
-  // If non-empty, used in place of base::Time::Now() whenever the current
-  // time is needed.
-  base::Time current_wall_time_for_testing_;
 
   // True after this class has received notification that the system is
   // shutting down.

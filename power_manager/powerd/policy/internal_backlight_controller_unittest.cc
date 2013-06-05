@@ -8,6 +8,7 @@
 
 #include "base/logging.h"
 #include "base/memory/scoped_ptr.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
@@ -56,7 +57,10 @@ class InternalBacklightControllerTest : public ::testing::Test {
     controller_.reset(new InternalBacklightController(
         &backlight_, &prefs_, pass_light_sensor_ ? &light_sensor_ : NULL,
         &display_power_setter_));
+    if (!init_time_.is_null())
+      controller_->clock()->set_current_time_for_testing(init_time_);
     CHECK(controller_->Init());
+
     if (report_initial_power_source_)
       controller_->HandlePowerSourceChange(power_source);
     if (pass_light_sensor_ && report_initial_als_reading_)
@@ -73,6 +77,10 @@ class InternalBacklightControllerTest : public ::testing::Test {
   // Max and initial brightness levels for |backlight_|.
   int64 max_backlight_level_;
   int64 initial_backlight_level_;
+
+  // Time that should be used as "now" when |controller_| is initialized.
+  // If unset, the real time will be used.
+  base::TimeTicks init_time_;
 
   // Should Init() pass |light_sensor_| to |controller_|?
   bool pass_light_sensor_;
@@ -581,6 +589,25 @@ TEST_F(InternalBacklightControllerTest, TurnDisplaysOnAtInit) {
   EXPECT_EQ(1, display_power_setter_.num_power_calls());
   EXPECT_EQ(chromeos::DISPLAY_POWER_ALL_ON, display_power_setter_.state());
   EXPECT_EQ(0, display_power_setter_.delay().InMilliseconds());
+}
+
+TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
+  // Don't report any ambient light readings. As before, the controller
+  // should avoid changing the backlight from its initial brightness.
+  init_time_ = base::TimeTicks::FromInternalValue(1000);
+  report_initial_als_reading_ = false;
+  Init(POWER_AC);
+  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
+  controller_->HandlePowerSourceChange(POWER_AC);
+  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
+
+  // After the timeout has elapsed, state changes (like dimming due to
+  // inactivity) should be honored.
+  const base::TimeTicks kUpdateTime = init_time_ + base::TimeDelta::FromSeconds(
+      InternalBacklightController::kAmbientLightSensorTimeoutSec);
+  controller_->clock()->set_current_time_for_testing(kUpdateTime);
+  controller_->SetDimmedForInactivity(true);
+  EXPECT_LT(backlight_.current_level(), initial_backlight_level_);
 }
 
 }  // namespace policy

@@ -16,6 +16,7 @@
 
 namespace power_manager {
 
+class Clock;
 class PrefsInterface;
 
 namespace system {
@@ -42,12 +43,19 @@ class InternalBacklightController : public BacklightController,
   // lowest brightness step before the screen is turned off.
   static const double kMinVisiblePercent;
 
+  // If an ambient light reading hasn't been seen after this many seconds,
+  // give up on waiting for the sensor to be initialized and just set
+  // |use_ambient_light_| to false.
+  static const int kAmbientLightSensorTimeoutSec;
+
   InternalBacklightController(
       system::BacklightInterface* backlight,
       PrefsInterface* prefs,
       system::AmbientLightSensorInterface* sensor,
       system::DisplayPowerSetterInterface* display_power_setter);
   virtual ~InternalBacklightController();
+
+  Clock* clock() { return clock_.get(); }
 
   // Initializes the object.
   bool Init();
@@ -132,6 +140,8 @@ class InternalBacklightController : public BacklightController,
 
   scoped_ptr<AmbientLightHandler> ambient_light_handler_;
 
+  scoped_ptr<Clock> clock_;
+
   // Observers for changes to the brightness level.
   ObserverList<BacklightControllerObserver> observers_;
 
@@ -143,6 +153,9 @@ class InternalBacklightController : public BacklightController,
   bool suspended_;
   bool shutting_down_;
   bool docked_;
+
+  // Time at which Init() was called.
+  base::TimeTicks init_time_;
 
   // Indicates whether SetBrightnessPercentForAmbientLight() and
   // HandlePowerSourceChange() have been called yet.

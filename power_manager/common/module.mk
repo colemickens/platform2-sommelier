@@ -13,7 +13,7 @@ CXX_STATIC_LIBRARY(common/libprefs.pie.a): \
 CXX_STATIC_LIBRARY(common/libprefs.pie.a): LDLIBS += $(LIBPREFS_LIBS)
 clean: CLEAN(common/libprefs.pie.a)
 
-LIBUTIL_OBJS = common/util.o common/inotify.o
+LIBUTIL_OBJS = common/clock.o common/util.o common/inotify.o
 LIBUTIL_FLAGS = $(GLIB_FLAGS)
 LIBUTIL_LIBS = $(GLIB_LIBS)
 CXX_STATIC_LIBRARY(common/libutil.pie.a): $(LIBUTIL_OBJS)

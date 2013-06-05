@@ -15,6 +15,7 @@
 #include "base/files/scoped_temp_dir.h"
 #include "base/memory/scoped_ptr.h"
 #include "base/string_number_conversions.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/signal_callback.h"
@@ -391,7 +392,7 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
   WriteValues(values);
 
   base::TimeTicks start_time = base::TimeTicks::Now();
-  test_api_->set_current_time(start_time);
+  test_api_->SetCurrentTime(start_time);
   power_supply_->Init();
 
   int num_entries = sizeof(kValueTable) / sizeof(kValueTable[0]);
@@ -409,7 +410,7 @@ TEST_F(PowerSupplyTest, TestDischargingWithHysteresis) {
     // doesn't take forever.  In this case, we want 4 seconds.
     power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
 
-    test_api_->set_current_time(start_time +
+    test_api_->SetCurrentTime(start_time +
         base::TimeDelta::FromMilliseconds(kPollIntervalMs * (i + 1)));
     EXPECT_TRUE(power_supply_->RefreshImmediately());
     EXPECT_EQ(current_values.time_to_empty,
@@ -424,14 +425,14 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   WriteDefaultValues(false, true);
 
   base::TimeTicks current_time = base::TimeTicks::Now();
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   power_supply_->Init();
   power_supply_->hysteresis_time_ = base::TimeDelta::FromSeconds(4);
 
   PowerStatus power_status;
   ASSERT_TRUE(UpdateStatus(&power_status));
   current_time += base::TimeDelta::FromSeconds(6);
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_TRUE(power_status.battery_is_present);
   EXPECT_EQ(PowerSupplyProperties_BatteryState_DISCHARGING,
@@ -447,13 +448,13 @@ TEST_F(PowerSupplyTest, TestDischargingWithSuspendResume) {
   power_supply_->SetSuspended(true);
   WriteValue("battery/current_now", base::IntToString(kCurrentNowInt / 10));
   current_time += base::TimeDelta::FromSeconds(8);
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   // Verify that the time remaining hasn't increased dramatically.
   ASSERT_TRUE(UpdateStatus(&power_status));
   EXPECT_NEAR(power_status.battery_time_to_empty, time_to_empty,
               time_to_empty * power_supply_->acceptable_variance_);
   current_time += base::TimeDelta::FromSeconds(2);
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   // Restore normal current reading.
   WriteValue("battery/current_now", base::IntToString(kCurrentNowInt));
   ASSERT_TRUE(UpdateStatus(&power_status));
@@ -473,7 +474,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
                    kShortPollDelay.InMilliseconds());
 
   base::TimeTicks current_time = base::TimeTicks::FromInternalValue(1000);
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   power_supply_->Init();
 
   // The battery times should be reported as "calculating" just after
@@ -487,7 +488,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // After enough time has elapsed, the battery times should be reported.
   current_time += kShortPollDelayPlusSlack;
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->power_status();
   EXPECT_TRUE(status.line_power_on);
@@ -502,7 +503,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
   // After resuming, the status should be updated immediately and the
   // battery times should be reported as "calculating" again.
   current_time += base::TimeDelta::FromSeconds(120);
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   WriteValue("ac/online", kOffline);
   power_supply_->SetSuspended(false);
   status = power_supply_->power_status();
@@ -513,7 +514,7 @@ TEST_F(PowerSupplyTest, PollDelays) {
 
   // Check that the updated times are returned after a delay.
   current_time += kShortPollDelayPlusSlack;
-  test_api_->set_current_time(current_time);
+  test_api_->SetCurrentTime(current_time);
   ASSERT_TRUE(test_api_->TriggerPollTimeout());
   status = power_supply_->power_status();
   EXPECT_FALSE(status.line_power_on);
@@ -537,7 +538,7 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
   WriteDoubleValue("battery/charge_now", 0.5);
   WriteDoubleValue("battery/current_now", 0.5);
   base::TimeTicks now = base::TimeTicks::Now();
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   power_supply_->Init();
 
   PowerStatus status;
@@ -550,7 +551,7 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
 
   // Let half an hour pass and report that the battery is 75% full.
   now += base::TimeDelta::FromMinutes(30);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   WriteDoubleValue("battery/charge_now", 0.75);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
@@ -564,7 +565,7 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
   // averaged-time-to-full should be halfway between the last reading and
   // the latest one.
   now += base::TimeDelta::FromMinutes(15);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   WriteDoubleValue("battery/charge_now", 0.875);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
@@ -577,7 +578,7 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
   // is currently on battery power, with a current such that it'll be empty
   // after an hour.
   now += base::TimeDelta::FromMinutes(30);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   WriteValue("ac/online", kOffline);
   WriteDoubleValue("battery/charge_now", 0.5);
   WriteDoubleValue("battery/current_now", -0.5);
@@ -591,7 +592,7 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
 
   // After thirty more minutes, report that the battery is at 25%.
   now += base::TimeDelta::FromMinutes(30);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   WriteDoubleValue("battery/charge_now", 0.25);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.is_calculating_battery_time);
@@ -603,7 +604,7 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
 
   // Give a bogusly-low current and check that the average time is left unset.
   now += base::TimeDelta::FromMinutes(10);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   WriteDoubleValue("battery/charge_now", 0.20);
   WriteDoubleValue("battery/current_now", -0.0002);
   ASSERT_TRUE(UpdateStatus(&status));
@@ -639,7 +640,7 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   WriteDoubleValue("battery/charge_now", 1.0);
   WriteDoubleValue("battery/current_now", 0.0);
   base::TimeTicks now = base::TimeTicks::Now();
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   power_supply_->Init();
 
   // 100% should be reported both on AC and battery power.
@@ -657,14 +658,14 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   const double kFullCharge = 0.96;
   WriteDoubleValue("battery/charge_now", kFullCharge);
   now += base::TimeDelta::FromSeconds(PowerSupply::kRetainFullChargeSec);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 
   // After the window has elapsed, a charge matching the last fully-charged
   // level should still be displayed as 100%.
   now += base::TimeDelta::FromSeconds(10);
-  test_api_->set_current_time(now);
+  test_api_->SetCurrentTime(now);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 

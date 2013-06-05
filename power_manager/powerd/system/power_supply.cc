@@ -10,6 +10,7 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -113,6 +114,10 @@ bool IsUsbType(const std::string& type) {
 
 }  // namespace
 
+void PowerSupply::TestApi::SetCurrentTime(base::TimeTicks now) {
+  power_supply_->clock_->set_current_time_for_testing(now);
+}
+
 bool PowerSupply::TestApi::TriggerPollTimeout() {
   if (!power_supply_->poll_timeout_id_)
     return false;
@@ -131,6 +136,7 @@ const int PowerSupply::kRetainFullChargeSec = 60;
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
     : prefs_(prefs),
+      clock_(new Clock),
       power_supply_path_(power_supply_path),
       acceptable_variance_(kAcceptableVariance),
       hysteresis_time_(kHysteresisTimeFast),
@@ -261,7 +267,7 @@ void PowerSupply::SetSuspended(bool suspended) {
   SetCalculatingBatteryTime();
   if (is_suspended_) {
     VLOG(1) << "Stopping polling due to suspend";
-    suspend_time_ = GetCurrentTime();
+    suspend_time_ = clock_->GetCurrentTime();
     util::RemoveTimeout(&poll_timeout_id_);
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
@@ -272,7 +278,7 @@ void PowerSupply::SetSuspended(bool suspended) {
     time_to_full_average_.Clear();
     // If resuming, deduct the time suspended from the hysteresis state
     // machine timestamps.
-    AdjustHysteresisTimes(GetCurrentTime() - suspend_time_);
+    AdjustHysteresisTimes(clock_->GetCurrentTime() - suspend_time_);
     RefreshImmediately();
   }
 }
@@ -284,16 +290,11 @@ void PowerSupply::HandleUdevEvent() {
     RefreshImmediately();
 }
 
-base::TimeTicks PowerSupply::GetCurrentTime() const {
-  return current_time_for_testing_.is_null() ?
-      base::TimeTicks::Now() : current_time_for_testing_;
-}
-
 void PowerSupply::SetCalculatingBatteryTime() {
   VLOG(1) << "Waiting " << short_poll_delay_.InMilliseconds() << " ms before "
           << "calculating battery time";
   done_calculating_battery_time_timestamp_ =
-      GetCurrentTime() + short_poll_delay_;
+      clock_->GetCurrentTime() + short_poll_delay_;
 }
 
 bool PowerSupply::UpdatePowerStatus() {
@@ -433,7 +434,7 @@ bool PowerSupply::UpdatePowerStatus() {
   if (status.line_power_on)
     discharge_start_time_ = base::TimeTicks();
   else if (discharge_start_time_.is_null())
-    discharge_start_time_ = GetCurrentTime();
+    discharge_start_time_ = clock_->GetCurrentTime();
 
   if (battery_charge_full > 0 && battery_charge_full_design > 0) {
     status.battery_percentage =
@@ -461,10 +462,11 @@ bool PowerSupply::UpdatePowerStatus() {
   }
 
   if (status.line_power_on && battery_is_full)
-    last_fully_charged_line_power_time_ = GetCurrentTime();
+    last_fully_charged_line_power_time_ = clock_->GetCurrentTime();
 
   if (!last_fully_charged_line_power_time_.is_null() &&
-      (GetCurrentTime() - last_fully_charged_line_power_time_).InSeconds() <=
+      (clock_->GetCurrentTime() -
+       last_fully_charged_line_power_time_).InSeconds() <=
       kRetainFullChargeSec)
     full_battery_percent_ = status.battery_percentage;
 
@@ -474,7 +476,7 @@ bool PowerSupply::UpdatePowerStatus() {
 
   status.is_calculating_battery_time =
       !done_calculating_battery_time_timestamp_.is_null() &&
-      GetCurrentTime() < done_calculating_battery_time_timestamp_;
+      clock_->GetCurrentTime() < done_calculating_battery_time_timestamp_;
 
   UpdateRemainingTime(&status);
   UpdateAveragedTimes(&status);
@@ -533,7 +535,7 @@ void PowerSupply::GetPowerSupplyPaths() {
 }
 
 void PowerSupply::UpdateRemainingTime(PowerStatus* status) {
-  base::TimeTicks time_now = GetCurrentTime();
+  base::TimeTicks time_now = clock_->GetCurrentTime();
   // This function might be called due to a race condition between the suspend
   // process and the battery polling.  If that's the case, handle it gracefully
   // by updating the hysteresis times and suspend time.
@@ -757,7 +759,7 @@ void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
 
 void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
   base::TimeDelta delay = last_poll_succeeded ? poll_delay_ : short_poll_delay_;
-  base::TimeTicks now = GetCurrentTime();
+  base::TimeTicks now = clock_->GetCurrentTime();
   if (done_calculating_battery_time_timestamp_ > now) {
     delay = std::min(delay,
         done_calculating_battery_time_timestamp_ - now +

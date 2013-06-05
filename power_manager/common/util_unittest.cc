@@ -17,20 +17,20 @@ const char kTestFilename[] = "test.file";
 
 namespace power_manager {
 
-  class UtilTest : public ::testing::Test {
-  public:
-    UtilTest() {}
+class UtilTest : public ::testing::Test {
+ public:
+  UtilTest() {}
 
-    virtual void SetUp() {
-      // Create a temporary directory for the test files
-      temp_dir_generator_.reset(new base::ScopedTempDir());
-      ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
-      EXPECT_TRUE(temp_dir_generator_->IsValid());
-    }
+  virtual void SetUp() {
+    // Create a temporary directory for the test files
+    temp_dir_generator_.reset(new base::ScopedTempDir());
+    ASSERT_TRUE(temp_dir_generator_->CreateUniqueTempDir());
+    EXPECT_TRUE(temp_dir_generator_->IsValid());
+  }
 
-  protected:
-    void WriteFileWrapper(const base::FilePath& file_path, const char* value);
-    scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
+ protected:
+  void WriteFileWrapper(const base::FilePath& file_path, const char* value);
+  scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
 };
 
 void UtilTest::WriteFileWrapper(const base::FilePath &path, const char* value) {

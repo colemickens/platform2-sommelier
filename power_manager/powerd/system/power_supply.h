@@ -11,6 +11,7 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
+#include "base/memory/scoped_ptr.h"
 #include "base/observer_list.h"
 #include "base/time.h"
 #include "power_manager/common/signal_callback.h"
@@ -23,6 +24,7 @@ typedef unsigned int guint;
 
 namespace power_manager {
 
+class Clock;
 class PrefsInterface;
 
 namespace system {
@@ -145,9 +147,8 @@ class PowerSupply {
       return power_supply_->current_poll_delay_for_testing_;
     }
 
-    void set_current_time(base::TimeTicks time) {
-      power_supply_->current_time_for_testing_ = time;
-    }
+    // Sets the time that will be used as "now".
+    void SetCurrentTime(base::TimeTicks now);
 
     // Calls HandlePollTimeout() and returns true if |poll_timeout_id_| was
     // set.  Returns false if the timeout was unset.
@@ -259,13 +260,12 @@ class PowerSupply {
   // Used to read power supply-related prefs.
   PrefsInterface* prefs_;
 
+  scoped_ptr<Clock> clock_;
+
   ObserverList<PowerSupplyObserver> observers_;
 
   // Most-recently-computed status.
   PowerStatus power_status_;
-
-  // If set, returned instead of the real time by GetCurrentTime().
-  base::TimeTicks current_time_for_testing_;
 
   // Paths to power supply base sysfs directory and battery and line power
   // subdirectories.

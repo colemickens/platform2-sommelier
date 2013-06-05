@@ -13,6 +13,7 @@
 #include "base/logging.h"
 #include "base/string_number_conversions.h"
 #include "base/stringprintf.h"
+#include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -120,7 +121,7 @@ StateController::TestApi::~TestApi() {
 }
 
 void StateController::TestApi::SetCurrentTime(base::TimeTicks current_time) {
-  controller_->current_time_for_testing_ = current_time;
+  controller_->clock_->set_current_time_for_testing(current_time);
 }
 
 base::TimeTicks StateController::TestApi::GetTimeoutTime() {
@@ -144,6 +145,7 @@ const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
 StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
     : delegate_(delegate),
       prefs_(prefs),
+      clock_(new Clock),
       initialized_(false),
       timeout_id_(0),
       power_source_(POWER_AC),
@@ -183,7 +185,7 @@ void StateController::Init(PowerSource power_source,
                            DisplayMode display_mode) {
   LoadPrefs();
 
-  last_user_activity_time_ = GetCurrentTime();
+  last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
   lid_state_ = lid_state;
   session_state_ = session_state;
@@ -301,7 +303,7 @@ void StateController::HandleUserActivity() {
       saw_user_activity_soon_after_screen_dim_or_off_;
   const bool screen_turned_off_recently =
       delays_.screen_off > base::TimeDelta() && screen_turned_off_ &&
-      (GetCurrentTime() - screen_turned_off_time_).InMilliseconds() <=
+      (clock_->GetCurrentTime() - screen_turned_off_time_).InMilliseconds() <=
       kUserActivityAfterScreenOffIncreaseDelaysMs;
   if (!saw_user_activity_soon_after_screen_dim_or_off_ &&
       ((screen_dimmed_ && !screen_turned_off_) || screen_turned_off_recently)) {
@@ -320,14 +322,14 @@ void StateController::HandleUserActivity() {
 void StateController::HandleVideoActivity() {
   DCHECK(initialized_);
   VLOG(1) << "Saw video activity";
-  last_video_activity_time_ = GetCurrentTime();
+  last_video_activity_time_ = clock_->GetCurrentTime();
   UpdateState();
 }
 
 void StateController::HandleAudioActivity() {
   DCHECK(initialized_);
   VLOG(1) << "Saw audio activity";
-  last_audio_activity_time_ = GetCurrentTime();
+  last_audio_activity_time_ = clock_->GetCurrentTime();
   UpdateState();
 }
 
@@ -501,11 +503,6 @@ void StateController::MergeDelaysFromPolicy(
   }
 }
 
-base::TimeTicks StateController::GetCurrentTime() const {
-  return !current_time_for_testing_.is_null() ?
-      current_time_for_testing_ : base::TimeTicks::Now();
-}
-
 base::TimeTicks StateController::GetLastActivityTimeForIdle() const {
   base::TimeTicks last_time = last_user_activity_time_;
   if (use_audio_activity_)
@@ -532,7 +529,7 @@ base::TimeTicks StateController::GetLastActivityTimeForScreenOff() const {
 }
 
 void StateController::UpdateLastUserActivityTime() {
-  last_user_activity_time_ = GetCurrentTime();
+  last_user_activity_time_ = clock_->GetCurrentTime();
   delegate_->ReportUserActivityMetrics();
 }
 
@@ -701,7 +698,7 @@ void StateController::PerformAction(Action action) {
 }
 
 void StateController::UpdateState() {
-  base::TimeTicks now = GetCurrentTime();
+  base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle();
   base::TimeDelta screen_dim_or_lock_duration =
       now - GetLastActivityTimeForScreenDimOrLock();

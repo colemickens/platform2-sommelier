@@ -7,6 +7,7 @@
 
 #include "base/basictypes.h"
 #include "base/file_path.h"
+#include "base/memory/scoped_ptr.h"
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
@@ -14,6 +15,9 @@ typedef int gboolean;
 typedef unsigned int guint;
 
 namespace power_manager {
+
+class Clock;
+
 namespace system {
 
 // Controls an LCD or keyboard backlight via sysfs.
@@ -41,9 +45,7 @@ class InternalBacklight : public BacklightInterface {
             const base::FilePath::StringType& pattern);
 
   bool transition_timeout_is_set() const { return transition_timeout_id_ != 0; }
-  void set_current_time_for_testing(base::TimeTicks now) {
-    current_time_for_testing_ = now;
-  }
+  Clock* clock() { return clock_.get(); }
 
   // Calls HandleTransitionTimeout() as if |transition_timeout_id_| had fired
   // and returns its return value.
@@ -77,9 +79,6 @@ class InternalBacklight : public BacklightInterface {
   static bool WriteBrightnessLevelToFile(const base::FilePath& path,
                                          int64 level);
 
-  // Returns the current time (or |current_time_for_testing_| if non-null).
-  base::TimeTicks GetCurrentTime() const;
-
   // Sets the brightness level appropriately for the current point in the
   // transition.  When the transition is done, clears |transition_timeout_id_|
   // and returns FALSE to cancel the timeout.
@@ -87,6 +86,8 @@ class InternalBacklight : public BacklightInterface {
 
   // Cancels |transition_timeout_id_| if set.
   void CancelTransition();
+
+  scoped_ptr<Clock> clock_;
 
   // Paths to the actual_brightness, brightness, max_brightness and
   // resume_brightness files under /sys/class/backlight.
@@ -109,10 +110,6 @@ class InternalBacklight : public BacklightInterface {
   // Start and end brightness level for the current transition.
   int64 transition_start_level_;
   int64 transition_end_level_;
-
-  // If non-null, used in place of base::TimeTicks::Now() when the current time
-  // is needed.
-  base::TimeTicks current_time_for_testing_;
 
   DISALLOW_COPY_AND_ASSIGN(InternalBacklight);
 };
