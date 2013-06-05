@@ -15,7 +15,7 @@ class PowerSupplyObserver {
   virtual ~PowerSupplyObserver() {}
 
   // Called when the power status has been updated.
-  virtual void OnPowerStatusUpdate(const PowerStatus& status) = 0;
+  virtual void OnPowerStatusUpdate() = 0;
 };
 
 }  // namespace system

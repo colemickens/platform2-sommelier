@@ -460,27 +460,6 @@ bool PowerSupply::UpdatePowerStatus() {
     status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
 
-  // TODO(derat): Remove this once Chrome is reading the new enums.
-  // Determine battery state from above readings.  Disregard the "status" field
-  // in sysfs, as that can be inconsistent with the numerical readings.
-  if (status.line_power_on) {
-    if (IsUsbType(status.line_power_type)) {
-      status.old_battery_state =
-          PowerSupplyProperties_OldBatteryState_CONNECTED_TO_USB;
-    } else if (battery_is_full || battery_current > 0.0) {
-      status.old_battery_state =
-          PowerSupplyProperties_OldBatteryState_OLD_CHARGING;
-    } else {
-      LOG(WARNING) << "Line power is on and battery is not fully charged "
-                   << "but battery current is " << battery_current << " A";
-      status.old_battery_state =
-          PowerSupplyProperties_OldBatteryState_NEITHER_CHARGING_NOR_DISCHARGING;
-    }
-  } else {
-    status.old_battery_state =
-        PowerSupplyProperties_OldBatteryState_OLD_DISCHARGING;
-  }
-
   if (status.line_power_on && battery_is_full)
     last_fully_charged_line_power_time_ = GetCurrentTime();
 
@@ -797,17 +776,14 @@ gboolean PowerSupply::HandlePollTimeout() {
   current_poll_delay_for_testing_ = base::TimeDelta();
   bool success = UpdatePowerStatus();
   SchedulePoll(success);
-  if (success) {
-    FOR_EACH_OBSERVER(PowerSupplyObserver, observers_,
-                      OnPowerStatusUpdate(power_status_));
-  }
+  if (success)
+    FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
   return FALSE;
 }
 
 gboolean PowerSupply::HandleNotifyObserversTimeout() {
   notify_observers_timeout_id_ = 0;
-  FOR_EACH_OBSERVER(PowerSupplyObserver, observers_,
-                    OnPowerStatusUpdate(power_status_));
+  FOR_EACH_OBSERVER(PowerSupplyObserver, observers_, OnPowerStatusUpdate());
   return FALSE;
 }
 

@@ -124,7 +124,7 @@ class Daemon : public policy::BacklightControllerObserver,
   virtual void OnAudioActivity(base::TimeTicks last_audio_time) OVERRIDE;
 
   // Overridden from system::PowerSupplyObserver:
-  virtual void OnPowerStatusUpdate(const system::PowerStatus& status) OVERRIDE;
+  virtual void OnPowerStatusUpdate() OVERRIDE;
 
  private:
   enum ShutdownState {
@@ -238,16 +238,9 @@ class Daemon : public policy::BacklightControllerObserver,
   policy::Suspender suspender_;
   base::FilePath run_dir_;
   base::TimeTicks session_start_;
-  bool is_power_status_stale_;
 
   // Last session state that we have been informed of. Initialized as stopped.
   SessionState session_state_;
-
-  // Keep a local copy of power status reading from power_supply.  This way,
-  // requests for each field of the power status can be read directly from
-  // this struct.  Otherwise we'd have to read the whole struct from
-  // power_supply since it doesn't support reading individual fields.
-  system::PowerStatus power_status_;
 
   // For listening to udev events.
   struct udev_monitor* udev_monitor_;

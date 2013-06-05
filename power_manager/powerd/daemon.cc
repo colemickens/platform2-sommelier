@@ -38,6 +38,8 @@
 #include "power_manager/powerd/system/input.h"
 #include "video_activity_update.pb.h"
 
+namespace power_manager {
+
 namespace {
 
 // Path for storing FileTagger files.
@@ -57,9 +59,20 @@ const char kSessionStopped[] = "stopped";
 // Path containing the number of wakeup events.
 const char kWakeupCountPath[] = "/sys/power/wakeup_count";
 
-}  // namespace
+// Copies fields from |status| into |proto|.
+void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
+                                     PowerSupplyProperties* proto) {
+  DCHECK(proto);
+  proto->Clear();
+  proto->set_external_power(status.external_power);
+  proto->set_battery_state(status.battery_state);
+  proto->set_battery_percent(status.display_battery_percentage);
+  proto->set_battery_time_to_empty_sec(status.averaged_battery_time_to_empty);
+  proto->set_battery_time_to_full_sec(status.averaged_battery_time_to_full);
+  proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
+}
 
-namespace power_manager {
+}  // namespace
 
 // Performs actions requested by |state_controller_|.  The reason that
 // this is a nested class of Daemon rather than just being implented as
@@ -290,7 +303,6 @@ Daemon::Daemon(PrefsInterface* prefs,
       suspender_(suspender_delegate_.get(), dbus_sender_.get(),
                  dark_resume_policy_.get()),
       run_dir_(run_dir),
-      is_power_status_stale_(true),
       session_state_(SESSION_STOPPED),
       udev_(NULL),
       shutdown_reason_(kShutdownReasonUnknown),
@@ -330,7 +342,7 @@ void Daemon::Init() {
 
   power_supply_->Init();
   power_supply_->RefreshImmediately();
-  OnPowerStatusUpdate(power_supply_->power_status());
+  OnPowerStatusUpdate();
 
   dark_resume_policy_->Init();
   suspender_.Init(prefs_);
@@ -384,8 +396,10 @@ void Daemon::SetPlugged(bool plugged) {
   // If we are moving from PLUGGED_STATE_UNKNOWN then we don't know how
   // long the device has been on AC for and thus our metric would not tell
   // us anything about the battery state when the user decided to charge.
-  if (plugged_state_ != PLUGGED_STATE_UNKNOWN)
-    metrics_reporter_->GenerateBatteryInfoWhenChargeStartsMetric(power_status_);
+  if (plugged_state_ != PLUGGED_STATE_UNKNOWN) {
+    metrics_reporter_->GenerateBatteryInfoWhenChargeStartsMetric(
+        power_supply_->power_status());
+  }
 
   plugged_state_ = plugged ? PLUGGED_STATE_CONNECTED :
       PLUGGED_STATE_DISCONNECTED;
@@ -542,10 +556,10 @@ void Daemon::PrepareForSuspend() {
 #endif
 
   power_supply_->SetSuspended(true);
-  is_power_status_stale_ = true;
   file_tagger_.HandleSuspendEvent();
   audio_client_->MuteSystem();
-  metrics_reporter_->PrepareForSuspend(power_status_, base::Time::Now());
+  metrics_reporter_->PrepareForSuspend(power_supply_->power_status(),
+                                       base::Time::Now());
 }
 
 void Daemon::HandleResume(bool suspend_was_successful,
@@ -588,7 +602,8 @@ void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
   state_controller_->HandleAudioActivity();
 }
 
-void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
+void Daemon::OnPowerStatusUpdate() {
+  const system::PowerStatus& status = power_supply_->power_status();
   if (status.battery_is_present) {
     long rounded_actual = lround(status.battery_percentage);
     long rounded_display = lround(status.display_battery_percentage);
@@ -605,7 +620,6 @@ void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
     }
   }
 
-  power_status_ = status;
   SetPlugged(status.line_power_on);
   metrics_reporter_->GenerateMetricsOnPowerEvent(status);
 
@@ -624,8 +638,9 @@ void Daemon::OnPowerStatusUpdate(const system::PowerStatus& status) {
     }
   }
 
-  dbus_sender_->EmitBareSignal(kPowerSupplyPollSignal);
-  is_power_status_stale_ = false;
+  PowerSupplyProperties protobuf;
+  CopyPowerStatusToProtocolBuffer(status, &protobuf);
+  dbus_sender_->EmitSignalWithProtocolBuffer(kPowerSupplyPollSignal, protobuf);
 }
 
 gboolean Daemon::UdevEventHandler(GIOChannel* /* source */,
@@ -986,20 +1001,8 @@ DBusMessage* Daemon::HandleRequestIdleNotificationMethod(DBusMessage* message) {
 
 DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
     DBusMessage* message) {
-  if (is_power_status_stale_ && power_supply_->RefreshImmediately())
-    OnPowerStatusUpdate(power_supply_->power_status());
-
-  const system::PowerStatus& s = power_status_;
   PowerSupplyProperties protobuf;
-  protobuf.set_external_power(s.external_power);
-  protobuf.set_battery_state(s.battery_state);
-  protobuf.set_battery_percent(s.display_battery_percentage);
-  protobuf.set_battery_time_to_empty_sec(s.averaged_battery_time_to_empty);
-  protobuf.set_battery_time_to_full_sec(s.averaged_battery_time_to_full);
-  protobuf.set_is_calculating_battery_time(s.is_calculating_battery_time);
-  protobuf.set_battery_is_present(s.battery_is_present);
-  protobuf.set_old_battery_state(s.old_battery_state);
-
+  CopyPowerStatusToProtocolBuffer(power_supply_->power_status(), &protobuf);
   return util::CreateDBusProtocolBufferReply(message, protobuf);
 }
 
@@ -1079,7 +1082,7 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
         << "the started state!";
 
     if (!metrics_reporter_->GenerateBatteryRemainingAtStartOfSessionMetric(
-            power_status_)) {
+            power_supply_->power_status())) {
       LOG(ERROR) << "Unable to generate battery remaining metric";
     }
 
@@ -1094,9 +1097,9 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     // actually transitioning between states.
     if (state_str == kSessionStopped) {
       // Don't generate metrics for intermediate states, e.g. "stopping".
-      metrics_reporter_->GenerateEndOfSessionMetrics(power_status_,
-                                                     base::TimeTicks::Now(),
-                                                     session_start_);
+      metrics_reporter_->GenerateEndOfSessionMetrics(
+          power_supply_->power_status(), base::TimeTicks::Now(),
+          session_start_);
     }
   }
 

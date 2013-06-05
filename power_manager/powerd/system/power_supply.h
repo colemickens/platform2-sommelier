@@ -49,8 +49,7 @@ struct PowerStatus {
         battery_below_shutdown_threshold(false),
         battery_times_are_bad(false),
         external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
-        battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT),
-        old_battery_state(PowerSupplyProperties_OldBatteryState_OLD_CHARGING) {}
+        battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT) {}
 
   bool line_power_on;
   std::string line_power_type;
@@ -107,10 +106,6 @@ struct PowerStatus {
 
   PowerSupplyProperties_ExternalPower external_power;
   PowerSupplyProperties_BatteryState battery_state;
-
-  // TODO(derat): Remove this after switching to |battery_state| and
-  // |external_power|.
-  PowerSupplyProperties_OldBatteryState old_battery_state;
 };
 
 struct PowerInformation {
