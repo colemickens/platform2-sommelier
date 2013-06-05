@@ -10,11 +10,15 @@
 // This file tests the public interface to NetlinkManager.
 #include "shill/netlink_manager.h"
 
+#include <map>
 #include <string>
 
+#include <base/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/mock_event_dispatcher.h"
+#include "shill/mock_log.h"
 #include "shill/mock_netlink_socket.h"
 #include "shill/mock_sockets.h"
 #include "shill/mock_time.h"
@@ -23,9 +27,13 @@
 #include "shill/scope_logger.h"
 
 using base::Bind;
+using base::StringPrintf;
 using base::Unretained;
+using std::map;
 using std::string;
 using testing::_;
+using testing::AnyNumber;
+using testing::EndsWith;
 using testing::Invoke;
 using testing::Return;
 using testing::Test;
@@ -43,6 +51,22 @@ namespace {
 // These constants are consistent throughout the packets, below.
 
 const uint16_t kNl80211FamilyId = 0x13;
+
+// Family and group Ids.
+const char kFamilyStoogesString[] = "stooges";  // Not saved as a legal family.
+const char kGroupMoeString[] = "moe";  // Not saved as a legal group.
+const char kFamilyMarxString[] = "marx";
+const uint16_t kFamilyMarxNumber = 20;
+const char kGroupGrouchoString[] = "groucho";
+const uint32_t kGroupGrouchoNumber = 21;
+const char kGroupHarpoString[] = "harpo";
+const uint32_t kGroupHarpoNumber = 22;
+const char kGroupChicoString[] = "chico";
+const uint32_t kGroupChicoNumber = 23;
+const char kGroupZeppoString[] = "zeppo";
+const uint32_t kGroupZeppoNumber = 24;
+const char kGroupGummoString[] = "gummo";
+const uint32_t kGroupGummoNumber = 25;
 
 // wlan0 (phy #0): disconnected (by AP) reason: 2: Previous authentication no
 // longer valid
@@ -66,8 +90,16 @@ class NetlinkManagerTest : public Test {
       : netlink_manager_(NetlinkManager::GetInstance()),
         sockets_(new MockSockets),
         saved_sequence_number_(0) {
-    netlink_manager_->message_types_[Nl80211Message::kMessageTypeString]
-        .family_id = kNl80211FamilyId;
+    netlink_manager_->message_types_[Nl80211Message::kMessageTypeString].
+       family_id = kNl80211FamilyId;
+    netlink_manager_->message_types_[kFamilyMarxString].family_id =
+        kFamilyMarxNumber;
+    netlink_manager_->message_types_[kFamilyMarxString].groups =
+      map<string, uint32_t> {{kGroupGrouchoString, kGroupGrouchoNumber},
+                             {kGroupHarpoString, kGroupHarpoNumber},
+                             {kGroupChicoString, kGroupChicoNumber},
+                             {kGroupZeppoString, kGroupZeppoNumber},
+                             {kGroupGummoString, kGroupGummoNumber}};
     netlink_manager_->message_factory_.AddFactoryMethod(
         kNl80211FamilyId, Bind(&Nl80211Message::CreateMessage));
     Nl80211Message::SetMessageType(kNl80211FamilyId);
@@ -236,9 +268,38 @@ class TimeFunctor {
 
 }  // namespace
 
-// TODO(wdg): Add a test for SubscribeToEvents (verify that it handles bad input
-// appropriately, and that it calls NetlinkSocket::SubscribeToEvents if input
-// is good.)
+TEST_F(NetlinkManagerTest, Start) {
+  MockEventDispatcher dispatcher;
+
+  EXPECT_CALL(dispatcher, CreateInputHandler(_, _, _));
+  netlink_manager_->Start(&dispatcher);
+}
+
+TEST_F(NetlinkManagerTest, SubscribeToEvents) {
+  ScopedMockLog log;
+  EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
+
+  // Family not registered.
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
+                       EndsWith("doesn't exist")));
+  EXPECT_CALL(netlink_socket_, SubscribeToEvents(_)).Times(0);
+  EXPECT_FALSE(netlink_manager_->SubscribeToEvents(kFamilyStoogesString,
+                                                   kGroupMoeString));
+
+  // Group not part of family
+  string in_family = StringPrintf("doesn't exist in family '%s'",
+                                  kFamilyMarxString);
+  EXPECT_CALL(log, Log(logging::LOG_ERROR, _, EndsWith(in_family)));
+  EXPECT_CALL(netlink_socket_, SubscribeToEvents(_)).Times(0);
+  EXPECT_FALSE(netlink_manager_->SubscribeToEvents(kFamilyMarxString,
+                                                   kGroupMoeString));
+
+  // Family registered and group part of family.
+  EXPECT_CALL(netlink_socket_, SubscribeToEvents(kGroupHarpoNumber)).
+      WillOnce(Return(true));
+  EXPECT_TRUE(netlink_manager_->SubscribeToEvents(kFamilyMarxString,
+                                                  kGroupHarpoString));
+}
 
 TEST_F(NetlinkManagerTest, GetFamily) {
   const uint16_t kSampleMessageType = 42;
