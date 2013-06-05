@@ -8,6 +8,28 @@ import sys
 
 import shill_proxy
 
+SERVICE_PROP_PARSERS = {
+    'EAP.AnonymousIdentity': unicode,
+    'EAP.CACertID': unicode,
+    'EAP.CACertNSS': unicode,
+    'EAP.CACertPEM': unicode,
+    'EAP.CACert': unicode,
+    'EAP.CertID': unicode,
+    'EAP.ClientCert': unicode,
+    'EAP.EAP': unicode,
+    'EAP.Identity': unicode,
+    'EAP.InnerEAP': unicode,
+    'EAP.KeyID': unicode,
+    'EAP.KeyMgmt': unicode,
+    'EAP.Password': unicode,
+    'EAP.PIN': unicode,
+    'EAP.PrivateKey': unicode,
+    'EAP.SubjectMatch': unicode,
+    'EAP.UseSystemCAs': bool,
+    shill_proxy.ShillProxy.SERVICE_PROPERTY_SECURITY: unicode,
+    }
+
+
 def usage():
     """ Prints a usage message and returns False. """
     cmd = sys.argv[0]
@@ -17,10 +39,15 @@ def usage():
     print 'is given without |security|'
     print
     print cmd, 'disconnect <ssid> [timeout seconds]'
+    print
+    print cmd, 'connect_with_props <ssid> <timeout seconds>'
+    print '    <Security=[none|psk|802_1x]> [Property=Value ...]'
+    print '    for Property in:'
+    print '\n'.join(['\t\t' + x for x in sorted(SERVICE_PROP_PARSERS.keys())])
     return False
 
 
-def connect(ssid, security, credentials, save_credentials):
+def connect(ssid, security, credentials, save_credentials, timeout=15):
     """Attempt to connect to a WiFi network.
 
     Blocks until we connect successfully to a WiFi network described
@@ -36,9 +63,12 @@ def connect(ssid, security, credentials, save_credentials):
     """
     shill = shill_proxy.ShillProxy()
     result = shill.connect_to_wifi_network(ssid,
-                                           security,
-                                           credentials,
-                                           save_credentials)
+            security,
+            credentials,
+            save_credentials,
+            discovery_timeout_seconds=timeout,
+            association_timeout_seconds=timeout,
+            configuration_timeout_seconds=timeout)
     (successful, discovery, association, configuration, reason) = result
     if successful:
         print 'Operation succeeded.'
@@ -73,6 +103,52 @@ def disconnect(ssid, timeout=None):
     return successful
 
 
+def parse_security_from_credentials(credentials):
+    """Parses SERVICE_PROPERTY_SECURITY from credentials.
+
+    @param credentials dict of service properties that includes credentials
+            like the passphrase for psk security.
+    @return SERVICE_PROPERTY_SECURITY value from credentials,
+            or exit if no such key/value in credentials.
+
+    """
+    security = credentials.pop(
+            shill_proxy.ShillProxy.SERVICE_PROPERTY_SECURITY, None)
+    if security is None:
+        print "Error: security type not provided"
+        usage()
+        sys.exit(1)
+
+    if security not in ['none', 'wep', 'psk', '802_1x']:
+        print "Error: invalid security type %s" % security
+        usage()
+        sys.exit(1)
+
+    return security
+
+
+def parse_service_property(property_string):
+    """Parses one commandline key=value string into a tuple.
+
+    @param property_string string to be parsed into (key,value).
+    @return parsed tuple of (key,value) or exit on parsing error.
+
+    """
+    property_name, raw_value = property_string.split('=', 1)
+
+    if not property_name in SERVICE_PROP_PARSERS:
+        print '%s is not a recognized service property' % property_name
+        usage()
+        sys.exit(1)
+
+    try:
+        return property_name, SERVICE_PROP_PARSERS[property_name](raw_value)
+    except:
+        print 'Failed parsing value from %s' % property_string
+        usage()
+        sys.exit(1)
+
+
 def main(args):
     """Main method for this script.
 
@@ -84,6 +160,7 @@ def main(args):
         return usage()
     command = args[0]
     ssid = args[1]
+    save_credentials = True
 
     if command == 'connect':
         security = 'none'
@@ -96,6 +173,15 @@ def main(args):
         if len(args) > 3:
             security = args[3]
         return connect(ssid, security, credentials, save_credentials)
+
+    if command == 'connect_with_props':
+        timeout = float(args[2])
+        credentials = {}
+        if len(args) > 3:
+            for i in xrange(3, len(args)):
+                credentials.update((parse_service_property(args[i]),))
+        security = parse_security_from_credentials(credentials)
+        return connect(ssid, security, credentials, save_credentials, timeout)
 
     if command == 'disconnect':
         timeout=None
