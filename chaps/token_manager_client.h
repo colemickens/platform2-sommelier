@@ -52,6 +52,12 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
                             int slot_id,
                             FilePath* path);
 
+  // Convenience method, not on TokenManagerInterface.
+  // Returns true on success, false on failure. If it succeeds, stores a list of
+  // the paths of all loaded tokens in |results|.
+  virtual bool GetTokenList(const chromeos::SecureBlob& isolate_credential,
+                            std::vector<std::string>* results);
+
  private:
   scoped_ptr<ChapsProxyImpl> proxy_;
   bool is_connected_;

@@ -12,6 +12,7 @@
 #include "chaps/chaps_utility.h"
 
 using chromeos::SecureBlob;
+using std::vector;
 using std::string;
 
 namespace chaps {
@@ -23,6 +24,34 @@ TokenManagerClient::TokenManagerClient()
 }
 
 TokenManagerClient::~TokenManagerClient() {
+}
+
+bool TokenManagerClient::GetTokenList(const SecureBlob& isolate_credential,
+                                      vector<string>* result) {
+  CHECK(proxy_);
+  if (!Connect()) {
+    LOG(ERROR) << __func__ << ": Failed to connect to the Chaps daemon.";
+    return false;
+  }
+
+  vector<uint64_t> slots;
+  if (proxy_->GetSlotList(isolate_credential, true, &slots) != CKR_OK) {
+    LOG(ERROR) << __func__ << ": GetSlotList failed.";
+    return false;
+  }
+
+  vector<string> temp_result;
+  for (size_t i = 0; i < slots.size(); ++i) {
+    FilePath path;
+    if (!GetTokenPath(isolate_credential, slots[i], &path)) {
+      LOG(ERROR) << __func__ << ": GetTokenPath failed.";
+      return false;
+    }
+    temp_result.push_back(path.value());
+  }
+
+  result->swap(temp_result);
+  return true;
 }
 
 bool TokenManagerClient::OpenIsolate(SecureBlob* isolate_credential,
