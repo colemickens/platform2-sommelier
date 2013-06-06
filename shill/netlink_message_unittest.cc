@@ -55,7 +55,7 @@ const uint8_t kMacAddressBytes[] = {
   0xc0, 0x3f, 0x0e, 0x77, 0xe8, 0x7f
 };
 
-const uint8_t kAssignedRespIeBytes[] = {
+const uint8_t kRespIeBytes[] = {
   0x01, 0x08, 0x82, 0x84,
   0x8b, 0x96, 0x0c, 0x12,
   0x18, 0x24, 0x32, 0x04,
@@ -686,11 +686,12 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
     EXPECT_EQ(kExpectedConnectStatus, value);
   }
 
-  // TODO(wdg): Need to check the value of this attribute.
   {
     ByteString rawdata;
     EXPECT_TRUE(message->const_attributes()->GetRawAttributeValue(
         NL80211_ATTR_RESP_IE, &rawdata));
+    EXPECT_TRUE(rawdata.Equals(
+        ByteString(kRespIeBytes, arraysize(kRespIeBytes))));
   }
 }
 
@@ -724,7 +725,7 @@ TEST_F(NetlinkMessageTest, Build_NL80211_CMD_CONNECT) {
   EXPECT_TRUE(message.attributes()->CreateAttribute(NL80211_ATTR_RESP_IE,
       Bind(&NetlinkAttribute::NewNl80211AttributeFromId)));
   EXPECT_TRUE(message.attributes()->SetRawAttributeValue(NL80211_ATTR_RESP_IE,
-      ByteString(kAssignedRespIeBytes, arraysize(kAssignedRespIeBytes))));
+      ByteString(kRespIeBytes, arraysize(kRespIeBytes))));
 
   // Encode the message to a ByteString and remove all the run-specific
   // values.

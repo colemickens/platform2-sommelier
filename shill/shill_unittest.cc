@@ -323,8 +323,6 @@ TEST_F(ShillDaemonTest, Quit) {
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(Bind(&Daemon::Quit, Unretained(&daemon_)));
 
-  // TODO(wdg): crbug.com/224712 - Need fix for "GLib-WARNING **: Invalid file
-  // descriptor".  This requires support for netlink_manager interface tests.
   daemon_.Run();
   ResetNetlinkManager();
 }

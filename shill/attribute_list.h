@@ -36,8 +36,6 @@ class AttributeList : public base::RefCounted<AttributeList> {
 
   // Instantiates an NetlinkAttribute of the appropriate type from |id|,
   // initializes it from |data|, and adds it to |attributes_|.
-  // TODO(wdg): This is a stop-gap for use before message constructors add
-  // their attributes as message templates.
   bool CreateAndInitAttribute(int id, const nlattr *data,
                               AttributeList::NewFromIdMethod factory);
 
