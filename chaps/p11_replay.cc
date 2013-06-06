@@ -339,6 +339,7 @@ void CreateCertificate(CK_SESSION_HANDLE session,
   string subject = name2bin(cert->cert_info->subject);
   string issuer = name2bin(cert->cert_info->issuer);
   string serial = asn1integer2bin(cert->cert_info->serialNumber);
+  string label = "testing_cert";
   CK_OBJECT_CLASS clazz = CKO_CERTIFICATE;
   CK_CERTIFICATE_TYPE cert_type = CKC_X_509;
   CK_BBOOL is_true = CK_TRUE;
@@ -351,6 +352,7 @@ void CreateCertificate(CK_SESSION_HANDLE session,
     {CKA_SUBJECT, const_cast<char*>(subject.c_str()), subject.length()},
     {CKA_ISSUER, const_cast<char*>(issuer.c_str()), issuer.length() },
     {CKA_SERIAL_NUMBER, const_cast<char*>(serial.c_str()), serial.length() },
+    {CKA_LABEL, const_cast<char*>(label.c_str()), label.length()},
   };
   CK_OBJECT_HANDLE handle = 0;
   CK_RV result = C_CreateObject(session,
