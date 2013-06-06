@@ -42,16 +42,6 @@ class Nl80211Message : public GenericNetlinkMessage {
   uint32_t sequence_number() const { return sequence_number_; }
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
-  // TODO(wdg): This needs to be moved to AttributeScanFrequencies.
-  // Helper function to provide a vector of scan frequencies for attributes
-  // that contain them (such as NL80211_ATTR_SCAN_FREQUENCIES).
-  bool GetScanFrequenciesAttribute(int id, std::vector<uint32_t> *value) const;
-
-  // TODO(wdg): This needs to be moved to AttributeScanSSids.
-  // Helper function to provide a vector of SSIDs for attributes that contain
-  // them (such as NL80211_ATTR_SCAN_SSIDS).
-  bool GetScanSsidsAttribute(int id, std::vector<std::string> *value) const;
-
   // Returns a string representing the passed-in |status| or |reason|, the
   // value of which has been acquired from libnl (for example, from the
   // NL80211_ATTR_STATUS_CODE or NL80211_ATTR_REASON_CODE attribute).

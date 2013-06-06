@@ -375,6 +375,60 @@ class NetlinkMessageTest : public Test {
   }
 
  protected:
+  // Helper function to provide an array of scan frequencies from a message's
+  // NL80211_ATTR_SCAN_FREQUENCIES attribute.
+  static bool GetScanFrequenciesFromMessage(const Nl80211Message &message,
+                                            vector<uint32_t> *value) {
+    if (!value) {
+      LOG(ERROR) << "Null |value| parameter";
+      return false;
+    }
+
+    AttributeListConstRefPtr frequency_list;
+    if (!message.const_attributes()->ConstGetNestedAttributeList(
+        NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) || !frequency_list) {
+      LOG(ERROR) << "Couldn't get NL80211_ATTR_SCAN_FREQUENCIES attribute";
+      return false;
+    }
+
+    AttributeIdIterator freq_iter(*frequency_list);
+    value->clear();
+    for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
+      uint32_t freq = 0;
+      if (frequency_list->GetU32AttributeValue(freq_iter.GetId(), &freq)) {
+        value->push_back(freq);
+      }
+    }
+    return true;
+  }
+
+  // Helper function to provide an array of SSIDs from a message's
+  // NL80211_ATTR_SCAN_SSIDS attribute.
+  static bool GetScanSsidsFromMessage(const Nl80211Message &message,
+                                      vector<string> *value) {
+    if (!value) {
+      LOG(ERROR) << "Null |value| parameter";
+      return false;
+    }
+
+    AttributeListConstRefPtr ssid_list;
+    if (!message.const_attributes()->ConstGetNestedAttributeList(
+        NL80211_ATTR_SCAN_SSIDS, &ssid_list) || !ssid_list) {
+      LOG(ERROR) << "Couldn't get NL80211_ATTR_SCAN_SSIDS attribute";
+      return false;
+    }
+
+    AttributeIdIterator ssid_iter(*ssid_list);
+    value->clear();
+    for (; !ssid_iter.AtEnd(); ssid_iter.Advance()) {
+      string ssid;
+      if (ssid_list->GetStringAttributeValue(ssid_iter.GetId(), &ssid)) {
+        value->push_back(ssid);
+      }
+    }
+    return true;
+  }
+
   NetlinkMessageFactory message_factory_;
 };
 
@@ -407,8 +461,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
   // Make sure the scan frequencies in the attribute are the ones we expect.
   {
     vector<uint32_t>list;
-    EXPECT_TRUE(message->GetScanFrequenciesAttribute(
-        NL80211_ATTR_SCAN_FREQUENCIES, &list));
+    EXPECT_TRUE(GetScanFrequenciesFromMessage(*message, &list));
     EXPECT_EQ(list.size(), arraysize(kScanFrequencyTrigger));
     int i = 0;
     vector<uint32_t>::const_iterator j = list.begin();
@@ -421,8 +474,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN) {
 
   {
     vector<string> ssids;
-    EXPECT_TRUE(message->GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS,
-                                               &ssids));
+    EXPECT_TRUE(GetScanSsidsFromMessage(*message, &ssids));
     EXPECT_EQ(1, ssids.size());
     EXPECT_EQ(0, ssids[0].compare(""));  // Expect a single, empty SSID.
   }
@@ -460,8 +512,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
   // Make sure the scan frequencies in the attribute are the ones we expect.
   {
     vector<uint32_t>list;
-    EXPECT_TRUE(message->GetScanFrequenciesAttribute(
-        NL80211_ATTR_SCAN_FREQUENCIES, &list));
+    EXPECT_TRUE(GetScanFrequenciesFromMessage(*message, &list));
     EXPECT_EQ(arraysize(kScanFrequencyResults), list.size());
     int i = 0;
     vector<uint32_t>::const_iterator j = list.begin();
@@ -474,8 +525,7 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS) {
 
   {
     vector<string> ssids;
-    EXPECT_TRUE(message->GetScanSsidsAttribute(NL80211_ATTR_SCAN_SSIDS,
-                                               &ssids));
+    EXPECT_TRUE(GetScanSsidsFromMessage(*message, &ssids));
     EXPECT_EQ(1, ssids.size());
     EXPECT_EQ(0, ssids[0].compare(""));  // Expect a single, empty SSID.
   }

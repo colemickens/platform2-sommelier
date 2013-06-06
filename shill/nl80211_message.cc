@@ -303,58 +303,6 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   return true;
 }
 
-// Helper function to provide a string for NL80211_ATTR_SCAN_FREQUENCIES.
-bool Nl80211Message::GetScanFrequenciesAttribute(
-    int id, vector<uint32_t> *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  value->clear();
-
-  AttributeListConstRefPtr frequency_list;
-  if (!const_attributes()->ConstGetNestedAttributeList(
-      NL80211_ATTR_SCAN_FREQUENCIES, &frequency_list) || !frequency_list) {
-    LOG(ERROR) << "Couldn't get NL80211_ATTR_SCAN_FREQUENCIES attribute";
-    return false;
-  }
-
-  AttributeIdIterator freq_iter(*frequency_list);
-  for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
-    uint32_t freq = 0;
-    if (frequency_list->GetU32AttributeValue(freq_iter.GetId(), &freq)) {
-      value->push_back(freq);
-    }
-  }
-  return true;
-}
-
-// Helper function to provide a string for NL80211_ATTR_SCAN_SSIDS.
-bool Nl80211Message::GetScanSsidsAttribute(
-    int id, vector<string> *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  AttributeListConstRefPtr ssid_list;
-  if (!const_attributes()->ConstGetNestedAttributeList(
-      NL80211_ATTR_SCAN_SSIDS, &ssid_list) || !ssid_list) {
-    LOG(ERROR) << "Couldn't get NL80211_ATTR_SCAN_SSIDS attribute";
-    return false;
-  }
-
-  AttributeIdIterator ssid_iter(*ssid_list);
-  for (; !ssid_iter.AtEnd(); ssid_iter.Advance()) {
-    string ssid;
-    if (ssid_list->GetStringAttributeValue(ssid_iter.GetId(), &ssid)) {
-      value->push_back(ssid);
-    }
-  }
-  return true;
-}
-
 // static
 string Nl80211Message::StringFromReason(uint16_t status) {
   map<uint16_t, string>::const_iterator match;
