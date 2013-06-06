@@ -684,10 +684,10 @@ bool Mount::UnmountCryptohome() {
     homedirs_->RemoveNonOwnerCryptohomes();
   else
     UpdateCurrentUserActivityTimestamp(0);
+
+  RemovePkcs11Token();
   current_user_->Reset();
   ephemeral_mount_ = false;
-
-  // Clear the user keyring if the unmount was successful
   crypto_->ClearKeyset();
 
   return true;

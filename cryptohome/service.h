@@ -373,6 +373,10 @@ class Service : public chromeos::dbus::AbstractDbusService,
   // true, the return value will reflect if all mounts unmounted cleanly or not.
   virtual bool RemoveAllMounts(bool unmount);
 
+  // Unload any pkcs11 tokens _not_ belonging to one of the mounts in |exclude|.
+  // This is used to clean up any stale loaded tokens after a cryptohome crash.
+  virtual bool UnloadPkcs11Tokens(const std::vector<std::string>& exclude);
+
  private:
   bool CreateSystemSaltIfNeeded();
   bool use_tpm_;

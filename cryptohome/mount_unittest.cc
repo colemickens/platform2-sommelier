@@ -1336,6 +1336,8 @@ TEST_F(EphemeralNoUserSystemTest, OwnerUnknownMountCreateTest) {
   ASSERT_TRUE(mount_->MountCryptohome(up,
                                      mount_args,
                                      &error));
+
+  ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 
 // TODO(wad) Duplicate these tests with multiple mounts instead of one.

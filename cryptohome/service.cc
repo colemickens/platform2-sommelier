@@ -19,6 +19,8 @@
 #include <base/string_util.h>
 #include <base/time.h>
 #include <base/values.h>
+#include <chaps/isolate.h>
+#include <chaps/token_manager_client.h>
 #include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/secure_blob.h>
@@ -257,6 +259,31 @@ bool Service::GetExistingMounts(
   return found;
 }
 
+static bool PrefixPresent(const std::vector<std::string>& prefixes,
+                          const std::string& path) {
+  std::vector<std::string>::const_iterator it;
+  for (it = prefixes.begin(); it != prefixes.end(); ++it)
+    if (StartsWithASCII(path, *it, false))
+      return true;
+  return false;
+}
+
+bool Service::UnloadPkcs11Tokens(const std::vector<std::string>& exclude) {
+  SecureBlob isolate =
+      chaps::IsolateCredentialManager::GetDefaultIsolateCredential();
+  chaps::TokenManagerClient chaps_client_;
+  std::vector<std::string> tokens;
+  if (!chaps_client_.GetTokenList(isolate, &tokens))
+    return false;
+  for (size_t i = 0; i < tokens.size(); ++i) {
+    if (!PrefixPresent(exclude, tokens[i])) {
+      LOG(INFO) << "Cleaning up: " << tokens[i];
+      chaps_client_.UnloadToken(isolate, FilePath(tokens[i]));
+    }
+  }
+  return true;
+}
+
 bool Service::CleanUpStaleMounts(bool force) {
   // This function is meant to aid in a clean recover from a crashed or
   // manually restarted cryptohomed.  Cryptohomed may restart:
@@ -278,8 +305,13 @@ bool Service::CleanUpStaleMounts(bool force) {
   // (*) Relies on the expectation that all processes have been killed off.
   bool skipped = false;
   std::multimap<const std::string, const std::string> matches;
-  if (!GetExistingMounts(&matches))
+  std::vector<std::string> exclude;
+  if (!GetExistingMounts(&matches)) {
+    // If there's no existing mounts, go ahead and unload all chaps tokens by
+    // passing an empty exclude list.
+    UnloadPkcs11Tokens(exclude);
     return skipped;
+  }
 
   std::multimap<const std::string, const std::string>::iterator match;
   for (match = matches.begin(); match != matches.end(); ) {
@@ -312,10 +344,12 @@ bool Service::CleanUpStaleMounts(bool force) {
 
     // Delete anything that shouldn't be unmounted.
     if (keep) {
+      exclude.push_back(match->second);
       --match;
       matches.erase(curr, ++match);
     }
   }
+  UnloadPkcs11Tokens(exclude);
   // Unmount anything left.
   for (match = matches.begin(); match != matches.end(); ++match) {
     LOG(WARNING) << "Lazily unmounting stale mount: " << match->second
@@ -455,13 +489,6 @@ void Service::InitializeInstallAttributes(bool first_time) {
 void Service::InitializePkcs11(cryptohome::Mount* mount) {
   if (!mount) {
     LOG(ERROR) << "InitializePkcs11 called with NULL mount!";
-    return;
-  }
-  // TODO(dkrahn,wad) Enabled PKCS#11 Initialize for more than the first mount.
-  // Note, this will still run on "first-mount" if cryptohomed is restarted.
-  if (mounts_.size() > 1 || mount != mounts_.begin()->second.get()) {
-    LOG(WARNING) << "PKCS#11 Initialization request for additional mounts. ("
-                 << mounts_.size() << ").";
     return;
   }
   // Wait for ownership if there is a working TPM.
