@@ -284,14 +284,6 @@ class PowerSupply {
   base::TimeTicks last_poll_time_;
   base::TimeTicks discharge_start_time_;
 
-  // Last time at which the battery was considered to be fully charged
-  // while on line power.
-  base::TimeTicks last_fully_charged_line_power_time_;
-
-  // Charge percentage in the range [0.0, 100.0] from the last time at which
-  // the battery was considered full.
-  double full_battery_percent_;
-
   int64 sample_window_max_;
   int64 sample_window_min_;
 

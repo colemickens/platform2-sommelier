@@ -108,5 +108,9 @@ void RemoveTimeout(guint* timeout_id) {
   }
 }
 
+double ClampPercent(double percent) {
+  return std::max(0.0, std::min(100.0, percent));
+}
+
 }  // namespace util
 }  // namespace power_manager

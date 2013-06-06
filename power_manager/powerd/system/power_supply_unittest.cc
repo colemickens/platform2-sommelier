@@ -614,8 +614,8 @@ TEST_F(PowerSupplyTest, UpdateAveragedTimes) {
 }
 
 TEST_F(PowerSupplyTest, FullFactor) {
-  // When the battery has reached the full factor but the current is
-  // non-zero, it shouldn't be reported as fully charged.
+  // When the battery has reached the full factor, it should be reported as
+  // fully charged regardless of the current.
   WriteDefaultValues(true, true);
   WriteDoubleValue("battery/charge_full", 1.0);
   WriteDoubleValue("battery/charge_now", kFullFactor);
@@ -623,10 +623,10 @@ TEST_F(PowerSupplyTest, FullFactor) {
   power_supply_->Init();
   PowerStatus status;
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_EQ(PowerSupplyProperties_BatteryState_CHARGING, status.battery_state);
-  EXPECT_DOUBLE_EQ(100.0 * kFullFactor, status.display_battery_percentage);
+  EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
+  EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 
-  // After the current goes to zero, the battery is considered fully charged.
+  // It should stay full when the current goes to zero.
   WriteDoubleValue("battery/current_now", 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_EQ(PowerSupplyProperties_BatteryState_FULL, status.battery_state);
@@ -634,13 +634,14 @@ TEST_F(PowerSupplyTest, FullFactor) {
 }
 
 TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
+  static const double kShutdownPercent = 5.0;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
+
   // Start out with a full battery on AC power.
   WriteDefaultValues(true, true);
   WriteDoubleValue("battery/charge_full", 1.0);
   WriteDoubleValue("battery/charge_now", 1.0);
   WriteDoubleValue("battery/current_now", 0.0);
-  base::TimeTicks now = base::TimeTicks::Now();
-  test_api_->SetCurrentTime(now);
   power_supply_->Init();
 
   // 100% should be reported both on AC and battery power.
@@ -652,20 +653,11 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 
-  // Decrease the battery charge within the "retain full charge" window.
-  // Batteries sometimes report a lower charge as soon as line power has
-  // been disconnected.
-  const double kFullCharge = 0.96;
+  // Decrease the battery charge, but keep it above the full-factor-derived
+  // "full" threshold. Batteries sometimes report a lower charge as soon
+  // as line power has been disconnected.
+  const double kFullCharge = kFullFactor;
   WriteDoubleValue("battery/charge_now", kFullCharge);
-  now += base::TimeDelta::FromSeconds(PowerSupply::kRetainFullChargeSec);
-  test_api_->SetCurrentTime(now);
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
-
-  // After the window has elapsed, a charge matching the last fully-charged
-  // level should still be displayed as 100%.
-  now += base::TimeDelta::FromSeconds(10);
-  test_api_->SetCurrentTime(now);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
 
@@ -673,45 +665,34 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   const double kLowerCharge = 0.92;
   WriteDoubleValue("battery/charge_now", kLowerCharge);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100.0 * kLowerCharge / kFullCharge,
+  EXPECT_DOUBLE_EQ(100.0 * (100.0 * kLowerCharge - kShutdownPercent) /
+                   (100.0 * kFullFactor - kShutdownPercent),
                    status.display_battery_percentage);
 
-  // Switch to AC and then back to battery and check that the charge is
-  // still scaled based on the earlier fully-charged percentage.
+  // Switch to AC and check that the scaling remains the same.
   WriteValue("ac/online", kOnline);
-  WriteDoubleValue("battery/current_now", 1.0);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100.0 * kLowerCharge / kFullCharge,
-                   status.display_battery_percentage);
-
-  WriteValue("ac/online", kOffline);
-  WriteDoubleValue("battery/current_now", -1.0);
-  ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100.0 * kLowerCharge / kFullCharge,
+  EXPECT_DOUBLE_EQ(100.0 * (100.0 * kLowerCharge - kShutdownPercent) /
+                   (100.0 * kFullFactor - kShutdownPercent),
                    status.display_battery_percentage);
 
   WriteDoubleValue("battery/charge_now", 0.85);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100 * 0.85 / kFullCharge, status.display_battery_percentage);
+  EXPECT_DOUBLE_EQ(100 * (85.0 - kShutdownPercent) /
+                   (100.0 * kFullFactor - kShutdownPercent),
+                   status.display_battery_percentage);
 
-  // After charging to 100%, suspending, going to battery power and
-  // discharging, and resuming immediately, the actual percentage should be
-  // reported.
-  WriteValue("ac/online", kOnline);
-  WriteDoubleValue("battery/charge_now", 1.0);
-  WriteDoubleValue("battery/current_now", 0.0);
+  WriteDoubleValue("battery/charge_now", kShutdownPercent / 100.0);
   ASSERT_TRUE(UpdateStatus(&status));
-  EXPECT_DOUBLE_EQ(100.0, status.display_battery_percentage);
+  EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
 
-  const double kSuspendCharge = 0.83;
-  power_supply_->SetSuspended(true);
-  WriteValue("ac/online", kOffline);
-  WriteDoubleValue("battery/charge_now", kSuspendCharge);
-  WriteDoubleValue("battery/current_now", -1.0);
+  WriteDoubleValue("battery/charge_now", 0.0);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
 
-  power_supply_->SetSuspended(false);
-  status = power_supply_->power_status();
-  EXPECT_DOUBLE_EQ(100 * kSuspendCharge, status.display_battery_percentage);
+  WriteDoubleValue("battery/charge_now", -0.1);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, CheckForLowBattery) {

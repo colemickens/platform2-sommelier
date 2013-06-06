@@ -47,6 +47,9 @@ bool GetUintFromFile(const char* filename, unsigned int* value);
 // containing it to 0.  Does nothing if |timeout_id| points at a non-zero ID.
 void RemoveTimeout(guint* timeout_id);
 
+// Clamps |percent| in the range [0.0, 100.0].
+double ClampPercent(double percent);
+
 }  // namespace util
 }  // namespace power_manager
 
