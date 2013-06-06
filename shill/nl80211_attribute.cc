@@ -15,6 +15,7 @@
 #include "shill/logging.h"
 
 using base::Bind;
+using base::StringAppendF;
 using base::StringPrintf;
 using std::string;
 
@@ -277,6 +278,30 @@ const char Nl80211AttributeKeyType::kNameString[] = "NL80211_ATTR_KEY_TYPE";
 
 const int Nl80211AttributeMac::kName = NL80211_ATTR_MAC;
 const char Nl80211AttributeMac::kNameString[] = "NL80211_ATTR_MAC";
+
+bool Nl80211AttributeMac::ToString(std::string *value) const {
+  if (!value) {
+    LOG(ERROR) << "Null |value| parameter";
+    return false;
+  }
+  *value = StringFromMacAddress(data_.GetConstData());
+  return true;
+}
+
+// static
+string Nl80211AttributeMac::StringFromMacAddress(const uint8_t *arg) {
+  string output;
+
+  if (!arg) {
+    static const char kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
+    output = kBogusMacAddress;
+    LOG(ERROR) << "|arg| parameter is NULL.";
+  } else {
+    output = StringPrintf("%02x:%02x:%02x:%02x:%02x:%02x",
+                          arg[0], arg[1], arg[2], arg[3], arg[4], arg[5]);
+  }
+  return output;
+}
 
 const int Nl80211AttributeMaxMatchSets::kName = NL80211_ATTR_MAX_MATCH_SETS;
 const char Nl80211AttributeMaxMatchSets::kNameString[] =

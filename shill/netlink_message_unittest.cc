@@ -504,7 +504,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION) {
 
   {
     string value;
-    EXPECT_TRUE(message->GetMacAttributeString(NL80211_ATTR_MAC, &value));
+    EXPECT_TRUE(message->const_attributes()->GetAttributeAsString(
+        NL80211_ATTR_MAC, &value));
     EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
   }
 
@@ -623,7 +624,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT) {
 
   {
     string value;
-    EXPECT_TRUE(message->GetMacAttributeString(NL80211_ATTR_MAC, &value));
+    EXPECT_TRUE(message->const_attributes()->GetAttributeAsString(
+        NL80211_ATTR_MAC, &value));
     EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
   }
 
@@ -789,7 +791,8 @@ TEST_F(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM) {
 
   {
     string value;
-    EXPECT_TRUE(message->GetMacAttributeString(NL80211_ATTR_MAC, &value));
+    EXPECT_TRUE(message->const_attributes()->GetAttributeAsString(
+        NL80211_ATTR_MAC, &value));
     EXPECT_EQ(0, strncmp(value.c_str(), kExpectedMacAddress, value.length()));
   }
 

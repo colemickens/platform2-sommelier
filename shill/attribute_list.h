@@ -96,6 +96,9 @@ class AttributeList : public base::RefCounted<AttributeList> {
   bool SetRawAttributeValue(int id, ByteString value);
   bool GetRawAttributeValue(int id, ByteString *output) const;
 
+  // This retrieves a string from any kind of attribute.
+  bool GetAttributeAsString(int id, std::string *value) const;
+
  protected:
   friend class base::RefCounted<AttributeList>;
   virtual ~AttributeList() {}

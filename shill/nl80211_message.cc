@@ -39,6 +39,7 @@
 #include "shill/ieee80211.h"
 #include "shill/logging.h"
 #include "shill/netlink_attribute.h"
+#include "shill/nl80211_attribute.h"  // For Nl80211AttributeMac
 #include "shill/refptr_types.h"
 
 using base::Bind;
@@ -58,8 +59,6 @@ LazyInstance<Nl80211MessageDataCollector> g_datacollector =
 const uint8_t Nl80211Frame::kMinimumFrameByteCount = 26;
 const uint8_t Nl80211Frame::kFrameTypeMask = 0xfc;
 
-const char Nl80211Message::kBogusMacAddress[] = "XX:XX:XX:XX:XX:XX";
-const unsigned int Nl80211Message::kEthernetAddressBytes = 6;
 const char Nl80211Message::kMessageTypeString[] = "nl80211";
 map<uint16_t, string> *Nl80211Message::reason_code_string_ = NULL;
 map<uint16_t, string> *Nl80211Message::status_code_string_ = NULL;
@@ -304,23 +303,6 @@ bool Nl80211Message::InitFromNlmsg(const nlmsghdr *const_msg) {
   return true;
 }
 
-// Helper function to provide a string for a MAC address.
-bool Nl80211Message::GetMacAttributeString(int id, string *value) const {
-  if (!value) {
-    LOG(ERROR) << "Null |value| parameter";
-    return false;
-  }
-
-  ByteString data;
-  if (!const_attributes()->GetRawAttributeValue(id, &data)) {
-    value->assign(kBogusMacAddress);
-    return false;
-  }
-  value->assign(StringFromMacAddress(data.GetConstData()));
-
-  return true;
-}
-
 // Helper function to provide a string for NL80211_ATTR_SCAN_FREQUENCIES.
 bool Nl80211Message::GetScanFrequenciesAttribute(
     int id, vector<uint32_t> *value) const {
@@ -374,23 +356,6 @@ bool Nl80211Message::GetScanSsidsAttribute(
 }
 
 // static
-string Nl80211Message::StringFromMacAddress(const uint8_t *arg) {
-  string output;
-
-  if (!arg) {
-    output = kBogusMacAddress;
-    LOG(ERROR) << "|arg| parameter is NULL.";
-  } else {
-    StringAppendF(&output, "%02x", arg[0]);
-
-    for (unsigned int i = 1; i < kEthernetAddressBytes ; ++i) {
-      StringAppendF(&output, ":%02x", arg[i]);
-    }
-  }
-  return output;
-}
-
-// static
 string Nl80211Message::StringFromReason(uint16_t status) {
   map<uint16_t, string>::const_iterator match;
   match = reason_code_string_->find(status);
@@ -436,8 +401,8 @@ Nl80211Frame::Nl80211Frame(const ByteString &raw_frame)
   // Now, let's populate the other stuff.
   if (frame_.GetLength() >= kMinimumFrameByteCount) {
     mac_from_ =
-        Nl80211Message::StringFromMacAddress(&frame->destination_mac[0]);
-    mac_to_ = Nl80211Message::StringFromMacAddress(&frame->source_mac[0]);
+        Nl80211AttributeMac::StringFromMacAddress(&frame->destination_mac[0]);
+    mac_to_ = Nl80211AttributeMac::StringFromMacAddress(&frame->source_mac[0]);
     frame_type_ = frame->frame_control & kFrameTypeMask;
 
     switch (frame_type_) {

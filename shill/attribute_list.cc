@@ -308,6 +308,14 @@ bool AttributeList::CreateRawAttribute(int id, const char *id_string) {
   return true;
 }
 
+bool AttributeList::GetAttributeAsString(int id, std::string *value) const {
+  NetlinkAttribute *attribute = GetAttribute(id);
+  if (!attribute)
+    return false;
+
+  return attribute->ToString(value);
+}
+
 NetlinkAttribute *AttributeList::GetAttribute(int id) const {
   map<int, AttributePointer>::const_iterator i;
   i = attributes_.find(id);

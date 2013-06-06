@@ -23,8 +23,6 @@ namespace shill {
 class Nl80211Message : public GenericNetlinkMessage {
  public:
   static const char kMessageTypeString[];
-  static const unsigned int kEthernetAddressBytes;
-  static const char kBogusMacAddress[];
 
   Nl80211Message(uint8 command, const char *command_string)
       : GenericNetlinkMessage(nl80211_message_type_, command, command_string) {}
@@ -44,12 +42,6 @@ class Nl80211Message : public GenericNetlinkMessage {
   uint32_t sequence_number() const { return sequence_number_; }
   void set_sequence_number(uint32_t seq) { sequence_number_ = seq; }
 
-  // TODO(wdg): This needs to be moved to AttributeMac.
-  // Helper function to provide a string for a MAC address.  If no attribute
-  // is found, this method returns 'false'.  On any error with a non-NULL
-  // |value|, this method sets |value| to a bogus MAC address.
-  bool GetMacAttributeString(int id, std::string *value) const;
-
   // TODO(wdg): This needs to be moved to AttributeScanFrequencies.
   // Helper function to provide a vector of scan frequencies for attributes
   // that contain them (such as NL80211_ATTR_SCAN_FREQUENCIES).
@@ -59,11 +51,6 @@ class Nl80211Message : public GenericNetlinkMessage {
   // Helper function to provide a vector of SSIDs for attributes that contain
   // them (such as NL80211_ATTR_SCAN_SSIDS).
   bool GetScanSsidsAttribute(int id, std::vector<std::string> *value) const;
-
-  // TODO(wdg): This needs to be moved to AttributeMac.
-  // Stringizes the MAC address found in 'arg'.  If there are problems (such
-  // as a NULL |arg|), |value| is set to a bogus MAC address.
-  static std::string StringFromMacAddress(const uint8_t *arg);
 
   // Returns a string representing the passed-in |status| or |reason|, the
   // value of which has been acquired from libnl (for example, from the
