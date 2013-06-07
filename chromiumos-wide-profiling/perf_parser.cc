@@ -288,8 +288,24 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
   uint64 len = AlignSize(event->len, sizeof(uint32));
   uint64 start = event->start;
   uint64 pgoff = event->pgoff;
-  if (pgoff < len) {
+  if (pgoff == start) {
+    // This handles the case where the mmap offset is the same as the start
+    // address.  This is the case for the kernel DSO on ARM and i686, as well
+    // as for some VDSO's.  e.g.
+    //   event.mmap.start = 0x80008200
+    //   event.mmap.len   = 0xffffffff7fff7dff
+    //   event.mmap.pgoff = 0x80008200
+    pgoff = 0;
+  } else if (pgoff < len) {
+    // This handles the case where the mmap offset somewhere between the start
+    // and the end of the mmap region.  This is the case for the kernel DSO on
+    // x86_64.  e.g.
+    //   event.mmap.start = 0x0
+    //   event.mmap.len   = 0xffffffff9fffffff
+    //   event.mmap.pgoff = 0xffffffff81000190
+
     // Sanity check to make sure pgoff is valid.
+    // TODO(sque): does not protect against wraparound.
     CHECK_GE((void*)(start + pgoff), (void*)start);
     len -= event->pgoff;
     start += event->pgoff;
