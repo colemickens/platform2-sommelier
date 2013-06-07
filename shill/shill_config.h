@@ -7,16 +7,14 @@
 
 #include <string>
 
+#include <base/basictypes.h>
+
 namespace shill {
 
 class Config {
  public:
-  static const char kShillDefaultPrefsDir[];
-
   Config();
   virtual ~Config();
-
-  void UseFlimflamDirs() { use_flimflam_ = true; }
 
   virtual std::string GetRunDirectory();
   virtual std::string GetStorageDirectory();
@@ -26,11 +24,8 @@ class Config {
   static const char kDefaultRunDirectory[];
   static const char kDefaultStorageDirectory[];
   static const char kDefaultUserStorageFormat[];
-  static const char kFlimflamRunDirectory[];
-  static const char kFlimflamStorageDirectory[];
-  static const char kFlimflamUserStorageFormat[];
 
-  bool use_flimflam_;
+  DISALLOW_COPY_AND_ASSIGN(Config);
 };
 
 }  // namespace shill

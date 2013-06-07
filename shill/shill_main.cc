@@ -32,10 +32,6 @@ namespace switches {
 
 // Don't daemon()ize; run in foreground.
 static const char kForeground[] = "foreground";
-// Directory to read confguration settings.
-static const char kConfigDir[] = "config-dir";
-// Directory to read default configuration settings (Read Only).
-static const char kDefaultConfigDir[] = "default-config-dir";
 // Don't attempt to manage these devices.
 static const char kDeviceBlackList[] = "device-black-list";
 // Technologies to enable for portal check at startup.
@@ -48,18 +44,12 @@ static const char kHelp[] = "help";
 static const char kLogLevel[] = "log-level";
 // Scopes to enable for SLOG()-based logging.
 static const char kLogScopes[] = "log-scopes";
-// Use the same directories flimflam uses (profiles, run dir...)
-static const char kUseFlimflamDirs[] = "use-flimflam-dirs";
 
 // The help message shown if help flag is passed to the program.
 static const char kHelpMessage[] = "\n"
     "Available Switches: \n"
     "  --foreground\n"
     "    Don\'t daemon()ize; run in foreground.\n"
-    "  --config-dir\n"
-    "    Directory to read confguration settings.\n"
-    "  --default-config-dir\n"
-    "    Directory to read default configuration settings (Read Only).\n"
     "  --device-black-list=device1,device2\n"
     "    Do not manage devices named device1 or device2\n"
     "  --log-level=N\n"
@@ -69,9 +59,7 @@ static const char kHelpMessage[] = "\n"
     "  --log-scopes=\"*scope1+scope2\".\n"
     "    Scopes to enable for SLOG()-based logging.\n"
     "  --portal-list=technology1,technology2\n"
-    "    Specify technologies to perform portal detection on at startup.\n"
-    "  --use-flimflam-dirs\n"
-    "    Use the same directories flimflam uses (profiles, run dir...).\n";
+    "    Specify technologies to perform portal detection on at startup.\n";
 }  // namespace switches
 
 namespace {
@@ -150,7 +138,7 @@ int main(int argc, char** argv) {
 
   const int nochdir = 0, noclose = 0;
   if (!cl->HasSwitch(switches::kForeground))
-    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1 ) << "Failed to daemonize";
+    PLOG_IF(FATAL, daemon(nochdir, noclose) == -1) << "Failed to daemonize";
 
   SetupLogging(cl->HasSwitch(switches::kForeground), argv[0]);
   if (cl->HasSwitch(switches::kLogLevel)) {
@@ -171,16 +159,6 @@ int main(int argc, char** argv) {
     shill::ScopeLogger::GetInstance()->EnableScopesByName(log_scopes);
   }
 
-  FilePath config_dir(cl->GetSwitchValueASCII(switches::kConfigDir));
-  FilePath default_config_dir(
-      !cl->HasSwitch(switches::kDefaultConfigDir) ?
-      shill::Config::kShillDefaultPrefsDir :
-      cl->GetSwitchValueASCII(switches::kDefaultConfigDir));
-
-  shill::Config config; /* (config_dir, default_config_dir) */
-  if (cl->HasSwitch(switches::kUseFlimflamDirs))
-    config.UseFlimflamDirs();
-
   // TODO(pstew): This should be chosen based on config
   // Make sure we delete the DBusControl object AFTER the LazyInstances
   // since some LazyInstances destructors rely on D-Bus being around.
@@ -188,6 +166,7 @@ int main(int argc, char** argv) {
   exit_manager.RegisterCallback(DeleteDBusControl, dbus_control);
   dbus_control->Init();
 
+  shill::Config config;
   shill::Daemon daemon(&config, dbus_control);
 
   if (cl->HasSwitch(switches::kDeviceBlackList)) {

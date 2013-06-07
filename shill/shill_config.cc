@@ -7,38 +7,26 @@
 namespace shill {
 
 // static
-const char Config::kShillDefaultPrefsDir[] = "/var/lib/shill";
-
-// static
 const char Config::kDefaultRunDirectory[] = RUNDIR;
 // static
 const char Config::kDefaultStorageDirectory[] = "/var/cache/shill";
 // static
 const char Config::kDefaultUserStorageFormat[] = RUNDIR "/user_profiles/%s";
-// static
-const char Config::kFlimflamRunDirectory[] = "/var/run/flimflam";
-// static
-const char Config::kFlimflamStorageDirectory[] = "/var/cache/flimflam";
-// static
-const char Config::kFlimflamUserStorageFormat[] = "/home/%s/user/flimflam";
 
-Config::Config() : use_flimflam_(false) {
-}
+Config::Config() {}
 
 Config::~Config() {}
 
 std::string Config::GetRunDirectory() {
-  return (use_flimflam_ ? kFlimflamRunDirectory : kDefaultRunDirectory);
+  return kDefaultRunDirectory;
 }
 
 std::string Config::GetStorageDirectory() {
-  return (use_flimflam_ ? kFlimflamStorageDirectory : kDefaultStorageDirectory);
+  return kDefaultStorageDirectory;
 }
 
 std::string Config::GetUserStorageDirectoryFormat() {
-  return (use_flimflam_ ?
-          kFlimflamUserStorageFormat :
-          kDefaultUserStorageFormat);
+  return kDefaultUserStorageFormat;
 }
 
 }  // namespace shill
