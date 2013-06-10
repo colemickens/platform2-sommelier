@@ -139,7 +139,6 @@ void StateController::TestApi::TriggerTimeout() {
   }
 }
 
-const double StateController::kDefaultPresentationIdleDelayFactor = 2.0;
 const int StateController::kUserActivityAfterScreenOffIncreaseDelaysMs = 60000;
 
 StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
@@ -441,6 +440,27 @@ std::string StateController::GetPolicyDebugString(
 }
 
 // static
+void StateController::ScaleDelays(Delays* delays,
+                                  double screen_dim_scale_factor) {
+  DCHECK(delays);
+  if (screen_dim_scale_factor <= 1.0 || delays->screen_dim <= base::TimeDelta())
+    return;
+
+  const base::TimeDelta orig_screen_dim = delays->screen_dim;
+  delays->screen_dim *= screen_dim_scale_factor;
+
+  const base::TimeDelta diff = delays->screen_dim - orig_screen_dim;
+  if (delays->screen_off > base::TimeDelta())
+    delays->screen_off += diff;
+  if (delays->screen_lock > base::TimeDelta())
+    delays->screen_lock += diff;
+  if (delays->idle_warning > base::TimeDelta())
+    delays->idle_warning += diff;
+  if (delays->idle > base::TimeDelta())
+    delays->idle += diff;
+}
+
+// static
 void StateController::SanitizeDelays(Delays* delays) {
   DCHECK(delays);
 
@@ -572,7 +592,7 @@ void StateController::UpdateSettingsAndState() {
   delays_ = power_source_ == POWER_AC ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;
   use_video_activity_ = true;
-  double presentation_factor = kDefaultPresentationIdleDelayFactor;
+  double presentation_factor = 1.0;
   double user_activity_factor = 1.0;
 
   // Now update them with values that were set in the policy.
@@ -599,43 +619,16 @@ void StateController::UpdateSettingsAndState() {
       use_audio_activity_ = policy_.use_audio_activity();
     if (policy_.has_use_video_activity())
       use_video_activity_ = policy_.use_video_activity();
-    if (policy_.has_presentation_idle_delay_factor())
-      presentation_factor = policy_.presentation_idle_delay_factor();
+    if (policy_.has_presentation_screen_dim_delay_factor())
+      presentation_factor = policy_.presentation_screen_dim_delay_factor();
     if (policy_.has_user_activity_screen_dim_delay_factor())
       user_activity_factor = policy_.user_activity_screen_dim_delay_factor();
   }
 
-  // TODO(derat): Replace this setting with one that behaves similarly to
-  // |user_activity_factor| (i.e. scaling the screen-dimming delay rather
-  // than the idle delay) and use shared code for both.
-  if (display_mode_ == DISPLAY_PRESENTATION) {
-    presentation_factor = std::max(presentation_factor, 1.0);
-    base::TimeDelta orig_idle = delays_.idle;
-    delays_.idle *= presentation_factor;
-    if (delays_.screen_off > base::TimeDelta())
-      delays_.screen_off = delays_.idle - (orig_idle - delays_.screen_off);
-    if (delays_.screen_dim > base::TimeDelta())
-      delays_.screen_dim = delays_.idle - (orig_idle - delays_.screen_dim);
-    if (delays_.screen_lock > base::TimeDelta())
-      delays_.screen_lock = delays_.idle - (orig_idle - delays_.screen_lock);
-    if (delays_.idle_warning > base::TimeDelta())
-      delays_.idle_warning = delays_.idle - (orig_idle - delays_.idle_warning);
-  } else if (saw_user_activity_soon_after_screen_dim_or_off_ &&
-             delays_.screen_dim > base::TimeDelta()) {
-    user_activity_factor = std::max(user_activity_factor, 1.0);
-    const base::TimeDelta orig_screen_dim = delays_.screen_dim;
-    delays_.screen_dim *= user_activity_factor;
-
-    const base::TimeDelta diff = delays_.screen_dim - orig_screen_dim;
-    if (delays_.screen_off > base::TimeDelta())
-      delays_.screen_off += diff;
-    if (delays_.screen_lock > base::TimeDelta())
-      delays_.screen_lock += diff;
-    if (delays_.idle_warning > base::TimeDelta())
-      delays_.idle_warning += diff;
-    if (delays_.idle > base::TimeDelta())
-      delays_.idle += diff;
-  }
+  if (display_mode_ == DISPLAY_PRESENTATION)
+    ScaleDelays(&delays_, presentation_factor);
+  else if (saw_user_activity_soon_after_screen_dim_or_off_)
+    ScaleDelays(&delays_, user_activity_factor);
 
   // The disable-idle-suspend pref overrides |policy_|.  Note that it also
   // overrides non-suspend actions; it should e.g. block the system from

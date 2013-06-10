@@ -473,36 +473,59 @@ TEST_F(StateControllerTest, ShutDownWhenSessionStopped) {
 // Tests that delays are scaled while presenting and that they return to
 // their original values when not presenting.
 TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
-  initial_display_mode_ = DISPLAY_PRESENTATION;
   Init();
 
-  // The suspend delay should be scaled; all others should be updated to
-  // retain the same difference from the suspend delay as before.
-  base::TimeDelta suspend_delay = default_ac_suspend_delay_ *
-      StateController::kDefaultPresentationIdleDelayFactor;
-  base::TimeDelta screen_off_delay = suspend_delay -
-      (default_ac_suspend_delay_ - default_ac_screen_off_delay_);
-  base::TimeDelta screen_dim_delay = suspend_delay -
-      (default_ac_suspend_delay_ - default_ac_screen_dim_delay_);
+  const double kScreenDimFactor = 3.0;
+  const base::TimeDelta kDimDelay = base::TimeDelta::FromSeconds(300);
+  const base::TimeDelta kOffDelay = base::TimeDelta::FromSeconds(310);
+  const base::TimeDelta kLockDelay = base::TimeDelta::FromSeconds(320);
+  const base::TimeDelta kWarnDelay = base::TimeDelta::FromSeconds(330);
+  const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(340);
 
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(screen_dim_delay));
-  EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(screen_off_delay));
-  EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(suspend_delay));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  const base::TimeDelta kScaledDimDelay = kDimDelay * kScreenDimFactor;
+  const base::TimeDelta kDelayDiff = kScaledDimDelay - kDimDelay;
+  const base::TimeDelta kScaledOffDelay = kOffDelay + kDelayDiff;
+  const base::TimeDelta kScaledLockDelay = kLockDelay + kDelayDiff;
+  const base::TimeDelta kScaledWarnDelay = kWarnDelay + kDelayDiff;
+  const base::TimeDelta kScaledIdleDelay = kIdleDelay + kDelayDiff;
 
-  controller_.HandleResume();
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  PowerManagementPolicy policy;
+  policy.mutable_ac_delays()->set_screen_dim_ms(kDimDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_warning_ms(kWarnDelay.InMilliseconds());
+  policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
+  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_presentation_screen_dim_delay_factor(kScreenDimFactor);
+  controller_.HandlePolicyChange(policy);
+
+  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledDimDelay));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledOffDelay));
   EXPECT_EQ(kScreenOff, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_suspend_delay_));
-  EXPECT_EQ(kSuspend, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledLockDelay));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledWarnDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kScaledIdleDelay));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
+
+  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kDimDelay));
+  EXPECT_EQ(kScreenDim, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kOffDelay));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kLockDelay));
+  EXPECT_EQ(kScreenLock, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kWarnDelay));
+  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
 }
 
 // Tests that the appropriate delays are used when switching between battery
@@ -575,14 +598,12 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   policy.set_lid_closed_action(PowerManagementPolicy_Action_DO_NOTHING);
   policy.set_use_audio_activity(false);
   policy.set_use_video_activity(false);
-  policy.set_presentation_idle_delay_factor(1.0);
   controller_.HandlePolicyChange(policy);
 
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
   controller_.HandleUserActivity();
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // Wait for half of the idle delay and then report user activity, which
@@ -1128,26 +1149,13 @@ TEST_F(StateControllerTest, IdleWarnings) {
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kHalfInterval));
   EXPECT_EQ(kStopSession, delegate_.GetActions());
 
-  // When the idle delay is scaled up as a result of presentation mode, the
-  // interval between the warning and the action should remain the same as
-  // before.
+  // Setting the idle action to "do nothing" should send an idle-deferred
+  // message if idle-imminent was already sent.
   policy.mutable_ac_delays()->set_idle_warning_ms(
       kIdleWarningDelay.InMilliseconds());
   controller_.HandlePolicyChange(policy);
-  controller_.HandleDisplayModeChange(DISPLAY_PRESENTATION);
-  const base::TimeDelta kPresentationIdleDelay = kIdleDelay *
-      StateController::kDefaultPresentationIdleDelayFactor;
-  const base::TimeDelta kPresentationIdleWarningDelay =
-      kPresentationIdleDelay - (kIdleDelay - kIdleWarningDelay);
-  ResetLastStepDelay();
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kPresentationIdleWarningDelay));
-  EXPECT_EQ(kIdleImminent, delegate_.GetActions());
-  ASSERT_TRUE(StepTimeAndTriggerTimeout(kPresentationIdleDelay));
-  EXPECT_EQ(kStopSession, delegate_.GetActions());
-
-  // Setting the idle action to "do nothing" should send a idle-deferred
-  // message if idle-imminent was already sent.
-  controller_.HandleDisplayModeChange(DISPLAY_NORMAL);
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  controller_.HandleUserActivity();
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
@@ -1353,9 +1361,6 @@ TEST_F(StateControllerTest, SuspendImmediatelyIfLidClosedAtStartup) {
 // lid (http://crbug.com/221228).
 TEST_F(StateControllerTest, IgnoreUserActivityWhileLidClosed) {
   Init();
-  PowerManagementPolicy policy;
-  policy.set_presentation_idle_delay_factor(1.0);
-  controller_.HandlePolicyChange(policy);
 
   // Wait for the screen to be dimmed and turned off.
   ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));

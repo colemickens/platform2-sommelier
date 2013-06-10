@@ -119,10 +119,6 @@ class StateController : public PrefsObserver {
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  // Delays loaded from prefs are scaled by this amount while an external
-  // display is connected.
-  static const double kDefaultPresentationIdleDelayFactor;
-
   // Delays are lengthened if user activity is observed while the screen is
   // dimmed or within this many milliseconds of the screen being turned
   // off.
@@ -198,6 +194,13 @@ class StateController : public PrefsObserver {
 
   // Returns a string describing |policy|.
   static std::string GetPolicyDebugString(const PowerManagementPolicy& policy);
+
+  // Scales the |screen_dim| delay within |delays| by
+  // |screen_dim_scale_factor| and lengthens the other delays to maintain
+  // their original distances from the screen-dim delay. Does nothing if
+  // |screen_dim_scale_factor| is less than or equal to one or if the
+  // dimming delay is unset.
+  static void ScaleDelays(Delays* delays, double screen_dim_scale_factor);
 
   // Adjusts values in |delays| to ensure they make sense.
   static void SanitizeDelays(Delays* delays);
