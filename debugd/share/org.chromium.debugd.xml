@@ -183,6 +183,25 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetRichPerfData">
+      <tp:docstring>
+        Returns perf event data. Does systemwide profiling. It can profile
+        events other than cycles (example: iTLB-misses), and can collect branch
+        profiles. The exact profile to be collected is chosen at random
+        and depends on what CPU is used by the system (certain CPUs do not
+        support certain profiling modes).
+      </tp:docstring>
+      <arg name="duration" type="u" direction="in">
+        <tp:docstring>
+          Duration to run perf.
+        </tp:docstring>
+      </arg>
+      <arg name="status" type="ay" direction="out">
+        <tp:docstring>
+          Perf event data as a protobuf.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="GetDebugLogs">
       <tp:docstring>
         Packages up system logs into a .tar.gz and returns it over the supplied
