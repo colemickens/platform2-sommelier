@@ -280,12 +280,11 @@ uint16_t NetlinkManager::GetFamily(const string &name,
   // GETFAMILY / NEWFAMILY transaction to transpire (this transaction was timed
   // over 20 times and found a maximum duration of 11.1 microseconds and an
   // average of 4.0 microseconds).
-  struct timeval start_time, now, end_time;
+  struct timeval now, end_time;
   struct timeval maximum_wait_duration = {kMaximumNewFamilyWaitSeconds,
                                           kMaximumNewFamilyWaitMicroSeconds};
-  time_->GetTimeMonotonic(&start_time);
-  now = start_time;
-  timeradd(&start_time, &maximum_wait_duration, &end_time);
+  time_->GetTimeMonotonic(&now);
+  timeradd(&now, &maximum_wait_duration, &end_time);
 
   do {
     // Wait with timeout for a message from the netlink socket.
@@ -319,12 +318,6 @@ uint16_t NetlinkManager::GetFamily(const string &name,
       if (family_id != NetlinkMessage::kIllegalMessageType) {
         message_factory_.AddFactoryMethod(family_id, message_factory);
       }
-      time_->GetTimeMonotonic(&now);
-      timersub(&now, &start_time, &wait_duration);
-      SLOG(WiFi, 5) << "Found id " << message_type.family_id
-                    << " for name '" << name << "' in "
-                    << wait_duration.tv_sec << " sec, "
-                    << wait_duration.tv_usec << " usec.";
       return message_type.family_id;
     }
     time_->GetTimeMonotonic(&now);
