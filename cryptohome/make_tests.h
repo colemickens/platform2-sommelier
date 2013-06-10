@@ -64,7 +64,7 @@ class TestUser {
   // Generate a valid vault keyset using scrypt.
   void GenerateCredentials();
   // Inject the keyset so it can be accessed via platform.
-  void InjectKeyset(MockPlatform* platform);
+  void InjectKeyset(MockPlatform* platform, bool enumerate=true);
   // Inject all the paths for a vault to exist.
   void InjectUserPaths(MockPlatform* platform,
                        uid_t chronos_uid,

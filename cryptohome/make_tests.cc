@@ -239,12 +239,26 @@ void TestUser::GenerateCredentials() {
   DCHECK(created && credentials.size());
 }
 
-void TestUser::InjectKeyset(MockPlatform* platform) {
+void TestUser::InjectKeyset(MockPlatform* platform, bool enumerate) {
+  // TODO(wad) Update to support multiple keys
   EXPECT_CALL(*platform, FileExists(keyset_path))
     .WillRepeatedly(Return(true));
   EXPECT_CALL(*platform, ReadFile(keyset_path, _))
     .WillRepeatedly(DoAll(SetArgumentPointee<1>(credentials),
                           Return(true)));
+  if (enumerate) {
+    MockFileEnumerator* files = new MockFileEnumerator();
+    EXPECT_CALL(*platform, GetFileEnumerator(base_path, false, _))
+      .WillOnce(Return(files));
+    {
+      InSequence s;
+      // Single key.
+      EXPECT_CALL(*files, Next())
+        .WillOnce(Return(keyset_path));
+      EXPECT_CALL(*files, Next())
+        .WillOnce(Return(""));
+    }
+  }
 }
 
 void TestUser::InjectUserPaths(MockPlatform* platform,

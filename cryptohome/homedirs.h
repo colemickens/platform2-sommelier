@@ -61,6 +61,11 @@ class HomeDirs {
   virtual bool GetOwner(std::string* owner);
   virtual bool GetPlainOwner(std::string* owner);
 
+  // Returns a list of present keyset indices for an obfuscated username.
+  // There is no guarantee the keysets are valid.
+  virtual bool GetVaultKeysets(const std::string& obfuscated,
+                               std::vector<int>* keysets) const;
+
   // Removes the cryptohome for the named user.
   virtual bool Remove(const std::string& username);
 
@@ -69,7 +74,8 @@ class HomeDirs {
   virtual bool AreCredentialsValid(const Credentials& credentials);
 
   // Returns the vault keyset path for the supplied obfuscated username.
-  virtual std::string GetVaultKeysetPath(const std::string& obfuscated) const;
+  virtual std::string GetVaultKeysetPath(const std::string& obfuscated,
+                                         int index) const;
 
   // Migrates the cryptohome for the supplied obfuscated username from the
   // supplied old key to the supplied new key.
@@ -143,6 +149,7 @@ class HomeDirs {
   // Loads the serialized vault keyset for the supplied obfuscated username.
   // Returns true for success, false for failure.
   bool LoadVaultKeysetForUser(const std::string& obfuscated_user,
+                              int index,
                               VaultKeyset* keyset) const;
 
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks

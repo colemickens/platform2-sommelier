@@ -35,6 +35,7 @@ using ::testing::StartsWith;
 
 using ::testing::_;
 
+extern const char kKeyFile[];
 
 ACTION_P2(SetOwner, owner_known, owner) {
   if (owner_known)
@@ -185,17 +186,27 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
               Return(true)));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
-  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+    .WillRepeatedly(Return(false));
+
+  // The master.* enumerators (wildcard matcher first)
   EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
-    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  // Empty enumerators per-user per-cache dirs plus
+  // enumerators for empty vaults.
+  EXPECT_CALL(platform_, GetFileEnumerator(HasSubstr("user/Cache"), false, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>));
-
+  EXPECT_CALL(platform_, GetFileEnumerator(HasSubstr("user/GCache"), false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
   // Now cover the actual initialization piece
   EXPECT_CALL(timestamp_cache_, initialized())
     .WillOnce(Return(false));
@@ -239,12 +250,19 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
               Return(true)));
   EXPECT_CALL(platform_, DirectoryExists(_))
     .WillRepeatedly(Return(true));
-  // Empty enumerators per-user per-cache dirs
+  // The master.* enumerators (wildcard matcher first)
   EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  // Empty enumerators per-user per-cache dirs plus
+  // enumerators for empty vaults.
+  EXPECT_CALL(platform_, GetFileEnumerator(HasSubstr("user/Cache"), false, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(platform_, GetFileEnumerator(HasSubstr("user/GCache"), false, _))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
     .WillOnce(Return(new NiceMock<MockFileEnumerator>))
@@ -271,6 +289,15 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
     EXPECT_CALL(*vk[i], Load(_))
       .WillRepeatedly(Return(false));
   }
+  // Owner will have a master.0
+  NiceMock<MockFileEnumerator> *master0;
+  EXPECT_CALL(platform_, GetFileEnumerator(homedir_paths_[3], false, _))
+    .WillOnce(Return(master0 = new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(*master0, Next())
+    .WillOnce(Return(StringPrintf("%s/%s0",
+                       homedir_paths_[3].c_str(), kKeyFile)))
+    .WillRepeatedly(Return(""));
+
   // The owner will have a time.
   EXPECT_CALL(*vk[i], Load(_))
     .WillOnce(Return(true));
@@ -280,7 +307,6 @@ TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
     .Times(2)
     .WillRepeatedly(ReturnRef(serialized));
   homedirs_.set_vault_keyset_factory(&vault_keyset_factory_);
-
 
   // Expect an addition for all users with no time.
   EXPECT_CALL(timestamp_cache_, AddExistingUserNotime(_))
@@ -397,20 +423,6 @@ TEST_F(FreeDiskSpaceTest, OldUsersCleanupNoTimestamp) {
   // may want to consider adding Stat() support to stop relying on this
   // assumption.
 
-  // TODO(wad) Add a NoTimeVaultKeyset helper
-  MockVaultKeyset* vk[arraysize(kHomedirs)];
-  EXPECT_CALL(vault_keyset_factory_, New(_, _))
-    .WillOnce(Return(vk[0] = new MockVaultKeyset()))
-    .WillOnce(Return(vk[1] = new MockVaultKeyset()))
-    .WillOnce(Return(vk[2] = new MockVaultKeyset()))
-    .WillOnce(Return(vk[3] = new MockVaultKeyset()));
-  for (size_t i = 0; i < arraysize(vk); ++i) {
-    EXPECT_CALL(*vk[i], Load(_))
-      .WillRepeatedly(Return(false));
-  }
-  homedirs_.set_vault_keyset_factory(&vault_keyset_factory_);
-
-
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgumentPointee<2>(homedir_paths_),
@@ -436,12 +448,7 @@ TEST_F(FreeDiskSpaceTest, OldUsersCleanupNoTimestamp) {
   EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
     .WillRepeatedly(Return(false));
   EXPECT_CALL(timestamp_cache_, initialized())
-    .WillOnce(Return(false));
-  EXPECT_CALL(timestamp_cache_, Initialize())
-    .Times(1);
-  // Expect an addition for all users with no time.
-  EXPECT_CALL(timestamp_cache_, AddExistingUserNotime(_))
-    .Times(4);
+    .WillRepeatedly(Return(true));
 
   // Now pretend that one user had a time, so that we have a non-0
   // oldest time.

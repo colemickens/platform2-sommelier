@@ -135,17 +135,59 @@ bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled() && GetOwner(&owner) && obfuscated != owner)
     return false;
+
+  std::vector<int> key_indices;
+  if (!GetVaultKeysets(obfuscated, &key_indices)) {
+    LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
+    return false;
+  }
+
   scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   SecureBlob passkey;
   creds.GetPasskey(&passkey);
-  std::string path = GetVaultKeysetPath(obfuscated);
-  return vk->Load(GetVaultKeysetPath(obfuscated)) &&
-         vk->Decrypt(passkey);
+
+  std::vector<int>::const_iterator iter = key_indices.begin();
+  for ( ;iter != key_indices.end(); ++iter) {
+    if (vk->Load(GetVaultKeysetPath(obfuscated, *iter)) &&
+        vk->Decrypt(passkey))
+      return true;
+  }
+  return false;
 }
 
-std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated) const {
-  FilePath path(shadow_root_);
-  return path.Append(obfuscated).Append(kKeyFile).value();
+// TODO(wad) Figure out how this might fit in with vault_keyset.cc
+bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
+                               std::vector<int>* keysets) const {
+  CHECK(keysets);
+  std::string user_dir = FilePath(shadow_root_).Append(obfuscated).value();
+
+  scoped_ptr<FileEnumerator> file_enumerator(
+      platform_->GetFileEnumerator(user_dir, false,
+                                   FileEnumerator::FILES));
+  std::string next_path;
+  while (!(next_path = file_enumerator->Next()).empty()) {
+    std::string file_name = FilePath(next_path).BaseName().value();
+    // Scan for "master." files.
+    if (file_name.find(kKeyFile, 0, strlen(kKeyFile) == std::string::npos))
+      continue;
+    long index = strtol(file_name.substr(strlen(kKeyFile)).c_str(), NULL, 10);
+    // The test below will catch all strtol(3) error conditions.
+    if (index < 0 || index > kKeyFileMax) {
+      LOG(ERROR) << "Invalid key file range: " << index;
+      continue;
+    }
+    keysets->push_back(static_cast<int>(index));
+  }
+  return keysets->size() != 0;
+}
+
+std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
+                                         int index) const {
+  return StringPrintf("%s/%s/%s%d",
+                      shadow_root_.c_str(),
+                      obfuscated.c_str(),
+                      kKeyFile,
+                      index);
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
@@ -251,22 +293,38 @@ void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
 void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
   const FilePath user_dir = vault.DirName();
   const std::string obfuscated_username = user_dir.BaseName().value();
+  //  Add a timestamp for every key.
+  std::vector<int> key_indices;
+  // Failure is okay since the loop falls through.
+  GetVaultKeysets(obfuscated_username, &key_indices);
   scoped_ptr<VaultKeyset> keyset(
       vault_keyset_factory()->New(platform_, crypto_));
-  if (LoadVaultKeysetForUser(obfuscated_username, keyset.get()) &&
-      keyset->serialized().has_last_activity_timestamp()) {
-    const base::Time timestamp = base::Time::FromInternalValue(
-        keyset->serialized().last_activity_timestamp());
-    timestamp_cache_->AddExistingUser(user_dir, timestamp);
+  std::vector<int>::const_iterator iter = key_indices.begin();
+  // Collect the most recent time for a given user by walking all
+  // vaults.  This avoids trying to keep them in sync atomically.
+  // TODO(wad,?) Move non-key vault metadata to a standalone file.
+  base::Time timestamp = base::Time();
+  for ( ;iter != key_indices.end(); ++iter) {
+    if (LoadVaultKeysetForUser(obfuscated_username, *iter, keyset.get()) &&
+        keyset->serialized().has_last_activity_timestamp()) {
+      const base::Time t = base::Time::FromInternalValue(
+          keyset->serialized().last_activity_timestamp());
+      if (t > timestamp)
+        timestamp = t;
+    }
+  }
+  if (!timestamp.is_null()) {
+      timestamp_cache_->AddExistingUser(user_dir, timestamp);
   } else {
-    timestamp_cache_->AddExistingUserNotime(user_dir);
+      timestamp_cache_->AddExistingUserNotime(user_dir);
   }
 }
 
 bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
+                                      int index,
                                       VaultKeyset* keyset) const {
   // Load the encrypted keyset
-  std::string user_key_file = GetVaultKeysetPath(obfuscated_user);
+  std::string user_key_file = GetVaultKeysetPath(obfuscated_user, index);
   // We don't have keys yet, so just load it.
   // TODO(wad) Move to passing around keysets and not serialized versions.
   if (!keyset->Load(user_key_file)) {
@@ -334,14 +392,21 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     // destructor.
     return false;
   }
+  int key_index = mount->CurrentKey();
+  if (key_index == -1) {
+    LOG(ERROR) << "Attempted migration of key-less mount.";
+    return false;
+  }
   scoped_ptr<VaultKeyset> keyset(
     vault_keyset_factory()->New(platform_, crypto_));
   std::string path = GetVaultKeysetPath(
-      newcreds.GetObfuscatedUsername(system_salt_));
+      newcreds.GetObfuscatedUsername(system_salt_), key_index);
   if (!keyset->Load(path) || !keyset->Decrypt(oldkey)) {
     LOG(ERROR) << "Can't load vault keyset at " << path;
     return false;
   }
+  // TODO(wad) mount->AddKey() .. migrate .. mount-->RemoveKey(oldkey);
+  //           Only replace the original key once migration is complete.
   if (!keyset->Encrypt(newkey) || !keyset->Save(path)) {
     LOG(ERROR) << "Can't save vault keyset at " << path;
     return false;
@@ -350,6 +415,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   SecureBlob auth_data;
   std::string username = newcreds.username();
   FilePath salt_file = GetChapsTokenSaltPath(username);
+  // TODO(dkrahn,wad) Failing here leaves users half migrated. Fix it.
   if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data))
     return false;
   if (!crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data))

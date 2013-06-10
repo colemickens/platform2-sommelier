@@ -52,6 +52,8 @@ extern const char kRootHomeSuffix[];
 extern const char kMountDir[];
 // Name of the key file.
 extern const char kKeyFile[];
+// Maximum number of key files.
+extern const int kKeyFileMax;
 // File system type for ephemeral mounts.
 extern const char kEphemeralMountType[];
 extern const char kEphemeralDir[];
@@ -147,6 +149,14 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Mounts a guest home directory to the cryptohome mount point
   virtual bool MountGuestCryptohome();
+
+
+  //
+  // virtual int AddKey(const Credentials& existing, const Credentials& new);
+  // virtual bool RemoveKey(const Credentials& existing, int index);
+
+  // Returns the current key index.  If there is no active key, -1 is returned.
+  virtual int CurrentKey(void) const { return current_user_->key_index(); }
 
   // Used to override the default shadow root
   void set_shadow_root(const std::string& value) {
@@ -320,19 +330,19 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // the cryptohome that need to be accessible by other system daemons
   virtual bool SetupGroupAccess(const FilePath& home_dir) const;
 
+
   virtual bool LoadVaultKeyset(const Credentials& credentials,
+                               int index,
                                SerializedVaultKeyset* encrypted_keyset) const;
 
   virtual bool LoadVaultKeysetForUser(
       const std::string& obfuscated_username,
+      int index,
       SerializedVaultKeyset* encrypted_keyset) const;
-
-  virtual bool StoreVaultKeyset(
-      const Credentials& credentials,
-      const SerializedVaultKeyset& encrypted_keyset) const;
 
   virtual bool StoreVaultKeysetForUser(
       const std::string& obfuscated_username,
+      int index,
       const SerializedVaultKeyset& encrypted_keyset) const;
 
   // Encrypts and adds the VaultKeyset to the serialized store
@@ -356,6 +366,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   serialized (IN/OUT) - The serialized container to be saved
   bool ReEncryptVaultKeyset(const Credentials& credentials,
                             const VaultKeyset& vault_keyset,
+                            int index,
                             SerializedVaultKeyset* serialized) const;
 
   // Attempt to decrypt the keyset for the specified user.  The method both
@@ -366,11 +377,13 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   credentials - The user credentials to use
   //   vault_keyset (OUT) - The unencrypted vault keyset on success
   //   serialized (OUT) - The keyset container as deserialized from disk
+  //   index (OUT) - The keyset index from disk
   //   error (OUT) - The specific error when decrypting
   bool DecryptVaultKeyset(const Credentials& credentials,
                           bool migrate_if_needed,
                           VaultKeyset* vault_keyset,
                           SerializedVaultKeyset* serialized,
+                          int* index,
                           MountError* error) const;
 
   // Cache the old key file and salt file during migration
@@ -394,21 +407,19 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Gets the user's salt file name
   //
   // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserSaltFile(const Credentials& credentials) const;
-
-  // Gets the user's key file name
-  //
-  // Parameters
-  //   credentials - The Credentials representing the user
-  std::string GetUserKeyFile(const Credentials& credentials) const;
+  //   obfuscated_username - Obfuscated username field of the Credentials
+  //   index - key index the salt is associated with
+  std::string GetUserSaltFileForUser(const std::string& obfuscated_username,
+                                     int index) const;
 
   // Gets the user's key file name
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the Credentials
+  //   index - which key file to load
   std::string GetUserKeyFileForUser(
-      const std::string& obfuscated_username) const;
+      const std::string& obfuscated_username,
+      int index) const;
 
   // Gets the directory in the shadow root where the user's salt, key, and vault
   // are stored.
@@ -566,9 +577,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // Parameters
   //   credentials - The Credentials representing the user
   //   force - Whether to force creation of a new salt
+  //   key_index - key index the salt is associated with
   //   salt (OUT) - The user's salt
   void GetUserSalt(const Credentials& credentials, bool force_new,
-                   chromeos::SecureBlob* salt) const;
+                   int key_index, chromeos::SecureBlob* salt) const;
 
   // Ensures that the numth component of path is owned by uid/gid and is a
   // directory.
@@ -748,6 +760,10 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
 
   // Whether to mount the legacy homedir or not (see MountLegacyHome)
   bool legacy_mount_;
+
+  // Indicates if the current mount is ephemeral.
+  // This is only valid when IsMounted() is true.
+  bool ephemeral_mount_;
 
   FRIEND_TEST(MountTest, MountForUserOrderingTest);
   FRIEND_TEST(MountTest, UserActivityTimestampUpdated);

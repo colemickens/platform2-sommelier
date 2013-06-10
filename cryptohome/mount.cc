@@ -63,7 +63,8 @@ const char kUserHomeSuffix[] = "user";
 const char kRootHomeSuffix[] = "root";
 const char kMountDir[] = "mount";
 const char kSkeletonDir[] = "skeleton";
-const char kKeyFile[] = "master.0";
+const char kKeyFile[] = "master.";
+const int kKeyFileMax = 100;  // master.0 ... master.99
 const char kEphemeralDir[] = "ephemeralfs";
 const char kEphemeralMountType[] = "tmpfs";
 const char kGuestMountPath[] = "guestfs";
@@ -120,7 +121,8 @@ Mount::Mount()
       old_user_last_activity_time_(kOldUserLastActivityTime),
       pkcs11_state_(kUninitialized),
       is_pkcs11_passkey_migration_required_(false),
-      legacy_mount_(true) {
+      legacy_mount_(true),
+      ephemeral_mount_(false) {
 }
 
 Mount::~Mount() {
@@ -230,6 +232,11 @@ bool Mount::DoesCryptohomeExist(const Credentials& credentials) const {
 bool Mount::MountCryptohome(const Credentials& credentials,
                             const Mount::MountArgs& mount_args,
                             MountError* mount_error) {
+  if (IsMounted()) {
+    *mount_error = MOUNT_ERROR_MOUNT_POINT_BUSY;
+    return false;
+  }
+
   MountError local_mount_error = MOUNT_ERROR_NONE;
   bool result = MountCryptohomeInner(credentials,
                                      mount_args,
@@ -289,6 +296,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
       return false;
     }
 
+    // Ephemeral and guest users will not have a key index.
     current_user_->SetUser(credentials);
     *mount_error = MOUNT_ERROR_NONE;
     return true;
@@ -326,8 +334,9 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   vault_keyset.Initialize(platform_, crypto_);
   SerializedVaultKeyset serialized;
   MountError local_mount_error = MOUNT_ERROR_NONE;
+  int index = -1;
   if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
-                         &local_mount_error)) {
+                          &index, &local_mount_error)) {
     if (mount_error) {
       *mount_error = local_mount_error;
     }
@@ -427,9 +436,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   // Set the current user here so we can rely on it in the helpers..
   // On failure, they will linger, but should be reset on a new MountCryptohome
   // request.
-  // TODO(wad): It seems like a Mount->Init(credentials) would be more
-  //            meaningful.
   current_user_->SetUser(credentials);
+  current_user_->set_key_index(index);
 
   // Move the tracked subdirectories from mount_point_/user to vault_path
   // as passthrough directories.
@@ -538,6 +546,7 @@ bool Mount::MountEphemeralCryptohome(const Credentials& credentials) {
     UnmountAllForUser(current_user_);
     return false;
   }
+  ephemeral_mount_ = true;
   return true;
 }
 
@@ -673,9 +682,10 @@ bool Mount::UnmountCryptohome() {
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
-  else
+  else if (!ephemeral_mount_)
     UpdateCurrentUserActivityTimestamp(0);
   current_user_->Reset();
+  ephemeral_mount_ = false;
 
   // Clear the user keyring if the unmount was successful
   crypto_->ClearKeyset();
@@ -715,7 +725,10 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
     LOG(ERROR) << "Failed to add vault keyset to new user";
     return false;
   }
-  if (!StoreVaultKeyset(credentials, serialized)) {
+  if (!StoreVaultKeysetForUser(
+       credentials.GetObfuscatedUsername(system_salt_),
+       0, // first key
+       serialized)) {
     platform_->SetMask(original_mask);
     LOG(ERROR) << "Failed to store vault keyset for new user";
     return false;
@@ -802,12 +815,15 @@ bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   current_user_->GetObfuscatedUsername(&obfuscated_username);
   if (!obfuscated_username.empty()) {
     SerializedVaultKeyset serialized;
-    LoadVaultKeysetForUser(obfuscated_username, &serialized);
+    LoadVaultKeysetForUser(obfuscated_username, current_user_->key_index(),
+                           &serialized);
     base::Time timestamp = platform_->GetCurrentTime();
     if (time_shift_sec > 0)
       timestamp -= base::TimeDelta::FromSeconds(time_shift_sec);
     serialized.set_last_activity_timestamp(timestamp.ToInternalValue());
-    StoreVaultKeysetForUser(obfuscated_username, serialized);
+    // Only update the key in use.
+    StoreVaultKeysetForUser(obfuscated_username, current_user_->key_index(),
+                            serialized);
     if (user_timestamp_->initialized()) {
       user_timestamp_->UpdateExistingUser(
           FilePath(GetUserDirectoryForUser(obfuscated_username)), timestamp);
@@ -893,15 +909,22 @@ bool Mount::AreValid(const Credentials& credentials) {
 }
 
 bool Mount::LoadVaultKeyset(const Credentials& credentials,
+                            int index,
                             SerializedVaultKeyset* serialized) const {
   return LoadVaultKeysetForUser(credentials.GetObfuscatedUsername(system_salt_),
+                                index,
                                 serialized);
 }
 
 bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
+                                   int index,
                                    SerializedVaultKeyset* serialized) const {
+  if (index < 0 || index > kKeyFileMax) {
+    LOG(ERROR) << "Attempted to load an invalid key index: " << index;
+    return false;
+  }
   // Load the encrypted keyset
-  std::string user_key_file = GetUserKeyFileForUser(obfuscated_username);
+  std::string user_key_file = GetUserKeyFileForUser(obfuscated_username, index);
   if (!platform_->FileExists(user_key_file)) {
     return false;
   }
@@ -919,20 +942,18 @@ bool Mount::LoadVaultKeysetForUser(const string& obfuscated_username,
   return true;
 }
 
-bool Mount::StoreVaultKeyset(const Credentials& credentials,
-                             const SerializedVaultKeyset& serialized) const {
-  return StoreVaultKeysetForUser(
-      credentials.GetObfuscatedUsername(system_salt_),
-      serialized);
-}
-
 bool Mount::StoreVaultKeysetForUser(
     const string& obfuscated_username,
+    int index,
     const SerializedVaultKeyset& serialized) const {
+  if (index < 0 || index > kKeyFileMax) {
+    LOG(ERROR) << "Attempted to store an invalid key index: " << index;
+    return false;
+  }
   SecureBlob final_blob(serialized.ByteSize());
   serialized.SerializeWithCachedSizesToArray(
       static_cast<google::protobuf::uint8*>(final_blob.data()));
-  return platform_->WriteFile(GetUserKeyFileForUser(obfuscated_username),
+  return platform_->WriteFile(GetUserKeyFileForUser(obfuscated_username, index),
                               final_blob);
 }
 
@@ -940,43 +961,70 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
                                bool migrate_if_needed,
                                VaultKeyset* vault_keyset,
                                SerializedVaultKeyset* serialized,
+                               int* index,
                                MountError* error) const {
   SecureBlob passkey;
   credentials.GetPasskey(&passkey);
+  *error = MOUNT_ERROR_FATAL;
 
-  // Load the encrypted keyset
-  if (!LoadVaultKeyset(credentials, serialized)) {
-    if (error) {
-      *error = MOUNT_ERROR_FATAL;
-    }
-    return false;
-  }
+  std::string obfuscated_username =
+    credentials.GetObfuscatedUsername(system_salt_);
 
-  // Attempt decrypt the master key with the passkey
+  // Most straightforward approach, try every key. We can optimize
+  // by walking the directory, but 100 failed open() calls isn't that
+  // many on a sign-in failure.
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
-  if (!crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
-                                   &crypto_error, vault_keyset)) {
+  *index = -1;
+  std::vector<int> key_indices;
+  if (!homedirs_->GetVaultKeysets(obfuscated_username, &key_indices)) {
+    LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
+  }
+  std::vector<int>::const_iterator iter = key_indices.begin();
+  for ( ;iter != key_indices.end(); ++iter) {
+    // Load the encrypted keyset
+    if (!LoadVaultKeysetForUser(obfuscated_username, *iter, serialized)) {
+      LOG(ERROR) << "Could not parse keyset " << *iter
+                 << " for " << obfuscated_username;
+      continue;
+    }
+
+    // Attempt decrypt the master key with the passkey
+    crypt_flags = 0;
+    crypto_error = Crypto::CE_NONE;
+    if (crypto_->DecryptVaultKeyset(*serialized, passkey, &crypt_flags,
+                                    &crypto_error, vault_keyset)) {
+      // Success!
+      *error = MOUNT_ERROR_NONE;
+      *index = *iter;
+      break;
+    }
+
     if (error) {
       switch (crypto_error) {
         case Crypto::CE_TPM_FATAL:
         case Crypto::CE_OTHER_FATAL:
           *error = MOUNT_ERROR_FATAL;
           break;
+        // Don't keep trying on TPM errors.
         case Crypto::CE_TPM_COMM_ERROR:
           *error = MOUNT_ERROR_TPM_COMM_ERROR;
-          break;
+          return false;
         case Crypto::CE_TPM_DEFEND_LOCK:
           *error = MOUNT_ERROR_TPM_DEFEND_LOCK;
-          break;
+          return false;
         case Crypto::CE_TPM_REBOOT:
           *error = MOUNT_ERROR_TPM_NEEDS_REBOOT;
-          break;
+          return false;
         default:
           *error = MOUNT_ERROR_KEY_FAILURE;
           break;
       }
     }
+  }
+  // Failed to decrypt any keyset.
+  if (*error != MOUNT_ERROR_NONE) {
+    LOG(ERROR) << "Failed to decrypt any keysets for " << obfuscated_username;
     return false;
   }
 
@@ -1028,7 +1076,8 @@ bool Mount::DecryptVaultKeyset(const Credentials& credentials,
     // protection is ideal, but not required.
     SerializedVaultKeyset new_serialized;
     new_serialized.CopyFrom(*serialized);
-    if (ReEncryptVaultKeyset(credentials, *vault_keyset, &new_serialized)) {
+    if (ReEncryptVaultKeyset(credentials, *vault_keyset, *index,
+                             &new_serialized)) {
       serialized->CopyFrom(new_serialized);
     }
   } while (false);
@@ -1058,10 +1107,13 @@ bool Mount::AddVaultKeyset(const Credentials& credentials,
 
 bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
                                  const VaultKeyset& vault_keyset,
+                                 int key_index,
                               SerializedVaultKeyset* serialized) const {
+  std::string obfuscated_username =
+    credentials.GetObfuscatedUsername(system_salt_);
   std::vector<std::string> files(2);
-  files[0] = GetUserSaltFile(credentials);
-  files[1] = GetUserKeyFile(credentials);
+  files[0] = GetUserSaltFileForUser(obfuscated_username, key_index);
+  files[1] = GetUserKeyFileForUser(obfuscated_username, key_index);
   if (!CacheOldFiles(files)) {
     LOG(ERROR) << "Couldn't cache old key material.";
     return false;
@@ -1071,7 +1123,8 @@ bool Mount::ReEncryptVaultKeyset(const Credentials& credentials,
     RevertCacheFiles(files);
     return false;
   }
-  if (!StoreVaultKeyset(credentials, *serialized)) {
+  if (!StoreVaultKeysetForUser(credentials.GetObfuscatedUsername(system_salt_),
+                               key_index, *serialized)) {
     LOG(ERROR) << "Write to master key failed";
     RevertCacheFiles(files);
     return false;
@@ -1098,21 +1151,23 @@ string Mount::GetUserDirectoryForUser(const string& obfuscated_username) const {
                       obfuscated_username.c_str());
 }
 
-string Mount::GetUserSaltFile(const Credentials& credentials) const {
-  return StringPrintf("%s/%s/master.0.salt",
-                      shadow_root_.c_str(),
-                      credentials.GetObfuscatedUsername(system_salt_).c_str());
-}
-
-string Mount::GetUserKeyFile(const Credentials& credentials) const {
-  return GetUserKeyFileForUser(credentials.GetObfuscatedUsername(system_salt_));
-}
-
-string Mount::GetUserKeyFileForUser(const string& obfuscated_username) const {
-  return StringPrintf("%s/%s/%s",
+string Mount::GetUserSaltFileForUser(const string& obfuscated_username,
+                                    int index) const {
+  DCHECK(index < kKeyFileMax && index >= 0);
+  return StringPrintf("%s/%s/master.%d.salt",
                       shadow_root_.c_str(),
                       obfuscated_username.c_str(),
-                      kKeyFile);
+                      index);
+}
+
+string Mount::GetUserKeyFileForUser(const string& obfuscated_username,
+                                    int index) const {
+  DCHECK(index < kKeyFileMax && index >= 0);
+  return StringPrintf("%s/%s/%s%d",
+                      shadow_root_.c_str(),
+                      obfuscated_username.c_str(),
+                      kKeyFile,
+                      index);
 }
 
 string Mount::GetUserEphemeralPath(const string& obfuscated_username) const {
@@ -1481,8 +1536,10 @@ bool Mount::DeleteCacheFiles(const std::vector<std::string>& files) const {
 }
 
 void Mount::GetUserSalt(const Credentials& credentials, bool force,
-                        SecureBlob* salt) const {
-  FilePath path(GetUserSaltFile(credentials));
+                        int key_index, SecureBlob* salt) const {
+  FilePath path(GetUserSaltFileForUser(
+                  credentials.GetObfuscatedUsername(system_salt_),
+                  key_index));
   crypto_->GetOrCreateSalt(path, CRYPTOHOME_DEFAULT_SALT_LENGTH, force, salt);
 }
 
@@ -1581,18 +1638,25 @@ Value* Mount::GetStatus() {
   DictionaryValue* dv = new DictionaryValue();
   current_user_->GetObfuscatedUsername(&user);
   ListValue* keysets = new ListValue();
-  if (user.length()) {
-    DictionaryValue* keyset0 = new DictionaryValue();
-    if (LoadVaultKeysetForUser(user, &keyset)) {
-      bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;
-      bool scrypt = keyset.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
-      keyset0->SetBoolean("tpm", tpm);
-      keyset0->SetBoolean("scrypt", scrypt);
-      keyset0->SetBoolean("ok", true);
-    } else {
-      keyset0->SetBoolean("ok", false);
+  std::vector<int> key_indices;
+  if (user.length() && homedirs_->GetVaultKeysets(user, &key_indices)) {
+    std::vector<int>::const_iterator iter = key_indices.begin();
+    for ( ;iter != key_indices.end(); ++iter) {
+      DictionaryValue* keyset_dict = new DictionaryValue();
+      if (LoadVaultKeysetForUser(user, *iter, &keyset)) {
+        bool tpm = keyset.flags() & SerializedVaultKeyset::TPM_WRAPPED;
+        bool scrypt = keyset.flags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
+        keyset_dict->SetBoolean("tpm", tpm);
+        keyset_dict->SetBoolean("scrypt", scrypt);
+        keyset_dict->SetBoolean("ok", true);
+      } else {
+        keyset_dict->SetBoolean("ok", false);
+      }
+      if (!ephemeral_mount_ && *iter == current_user_->key_index())
+        keyset_dict->SetBoolean("current", true);
+      keyset_dict->SetInteger("index", *iter);
+      keysets->Append(keyset_dict);
     }
-    keysets->Append(keyset0);
   }
   dv->Set("keysets", keysets);
   dv->SetBoolean("mounted", IsMounted());

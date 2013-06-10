@@ -8,6 +8,7 @@
 
 #include <openssl/evp.h>
 
+#include <base/logging.h>
 #include "cryptolib.h"
 
 using chromeos::SecureBlob;
@@ -28,6 +29,7 @@ void UserSession::Init(const SecureBlob& salt) {
 bool UserSession::SetUser(const Credentials& credentials) {
   obfuscated_username_ = credentials.GetObfuscatedUsername(username_salt_);
   username_ = credentials.username();
+  key_index_ = -1;  // Invalid key index.
 
   key_salt_.resize(PKCS5_SALT_LEN);
   CryptoLib::GetSecureRandom(static_cast<unsigned char*>(key_salt_.data()),
@@ -57,6 +59,7 @@ void UserSession::Reset() {
   obfuscated_username_ = "";
   key_salt_.resize(0);
   cipher_.resize(0);
+  key_index_ = -1;
 }
 
 bool UserSession::CheckUser(const Credentials& credentials) const {
@@ -90,5 +93,14 @@ bool UserSession::Verify(const Credentials& credentials) const {
 void UserSession::GetObfuscatedUsername(std::string* username) const {
   username->assign(obfuscated_username_);
 }
+
+int UserSession::key_index() const {
+  // Ensures a crash when persisting or retrieving a key.
+  CHECK(key_index_ >= 0) << "Attempt to access an uninitialized key_index."
+                         << "Guest mount? Ephemeral mount?";
+  return key_index_;
+}
+
+
 
 }  // namespace cryptohome

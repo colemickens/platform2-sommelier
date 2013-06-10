@@ -173,6 +173,7 @@ bool VaultKeyset::Load(const std::string& filename) {
     return false;
 
   unsigned char* data = static_cast<unsigned char*>(contents.data());
+  serialized_.Clear();  // Ensure a fresh start.
   loaded_ = serialized_.ParseFromArray(data, contents.size());
   // If it was parsed from file, consider it save-able too.
   if (loaded_)

@@ -67,12 +67,23 @@ class UserSession {
     return username_;
   }
 
+  // Assigns a key to the UserSession object.  This indicates which key on disk
+  // is associated to the UserSession.
+  //
+  // Parameters
+  //   index - index of the vault keyset
+  virtual void set_key_index(int index) { key_index_ = index; }
+
+  // Get the current key index of this session
+  int key_index() const;
+
  private:
   std::string obfuscated_username_;
   std::string username_;
   chromeos::SecureBlob username_salt_;
   chromeos::SecureBlob key_salt_;
   chromeos::SecureBlob cipher_;
+  int key_index_;
 
   DISALLOW_COPY_AND_ASSIGN(UserSession);
 };
