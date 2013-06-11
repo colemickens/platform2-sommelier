@@ -207,7 +207,9 @@ get_end_resume_time() {
 #   $1 - Path to messages for most recent resume onward.
 get_cpu_ready_time() {
   [ -n "${1}" ] || return
-  get_timestamp "${1}" 'CPU[0-9]+ is up'
+  get_timestamp "${1}" \
+    'CPU[0-9]+ is up' \
+    "Booted secondary processor"
 }
 
 # Sends to UMA the time it took to suspend and resume:
