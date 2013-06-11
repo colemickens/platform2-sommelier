@@ -4,7 +4,7 @@
 
 #include "mist/usb_device_event_notifier.h"
 
-#include <string>
+#include <limits>
 
 #include <libudev.h>
 
@@ -131,6 +131,10 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
 
   string syspath = ConvertNullToEmptyString(udev_device_get_syspath(device));
   string action = ConvertNullToEmptyString(udev_device_get_action(device));
+  string vendor_id_string = ConvertNullToEmptyString(
+      udev_device_get_sysattr_value(device, kAttributeIdVendor));
+  string product_id_string = ConvertNullToEmptyString(
+      udev_device_get_sysattr_value(device, kAttributeIdProduct));
   udev_device_unref(device);
 
   if (syspath.empty()) {
@@ -139,8 +143,6 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
   }
 
   if (action == "add") {
-    string vendor_id_string = ConvertNullToEmptyString(
-        udev_device_get_sysattr_value(device, kAttributeIdVendor));
     uint16 vendor_id = 0;
     if (!ConvertIdStringToValue(vendor_id_string, &vendor_id)) {
       LOG(WARNING) << StringPrintf("Invalid USB vendor ID '%s'.",
@@ -148,8 +150,6 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
       return;
     }
 
-    string product_id_string = ConvertNullToEmptyString(
-        udev_device_get_sysattr_value(device, kAttributeIdProduct));
     uint16 product_id = 0;
     if (!ConvertIdStringToValue(product_id_string, &product_id)) {
       LOG(WARNING) << StringPrintf("Invalid USB product ID '%s'.",

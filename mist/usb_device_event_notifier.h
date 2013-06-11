@@ -5,6 +5,8 @@
 #ifndef MIST_USB_DEVICE_EVENT_NOTIFIER_H_
 #define MIST_USB_DEVICE_EVENT_NOTIFIER_H_
 
+#include <string>
+
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
 #include <base/message_loop.h>
