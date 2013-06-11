@@ -44,6 +44,11 @@ class ProcessManagerServiceInterface {
   virtual void SetBrowserSessionForUser(const std::string& username,
                                         const std::string& userhash) = 0;
 
+  // Stores in memory the flags that session manager should apply the next time
+  // it restarts Chrome inside an existing session.
+  virtual void SetFlagsForUser(const std::string& username,
+                               const std::vector<std::string>& flags) = 0;
+
   // Kick off, and manage, the policy key generation process.
   virtual void RunKeyGenerator(const std::string& username) = 0;
 

@@ -104,6 +104,10 @@ gboolean session_manager_restart_job_with_auth(SessionManager *self,
 gboolean session_manager_start_device_wipe(SessionManager *self,
                                            gboolean *OUT_done,
                                            GError **error);
+gboolean session_manager_set_flags_for_user(SessionManager *self,
+                                            gchar* user_email,
+                                            const gchar** flags,
+                                            GError **error);
 }  // namespace gobject
 }  // namespace login_manager
 #endif  // LOGIN_MANAGER_DBUS_GLIB_SHIM_H_

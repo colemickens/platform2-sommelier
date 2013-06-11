@@ -185,6 +185,8 @@ class SessionManagerService
       const std::vector<std::string>& args, bool args_are_extra) OVERRIDE;
   virtual void SetBrowserSessionForUser(const std::string& username,
                                         const std::string& userhash) OVERRIDE;
+  virtual void SetFlagsForUser(const std::string& username,
+                               const std::vector<std::string>& flags) OVERRIDE;
   virtual void RunKeyGenerator(const std::string& username) OVERRIDE;
   virtual void AdoptKeyGeneratorJob(scoped_ptr<ChildJobInterface> job,
                                     pid_t pid,

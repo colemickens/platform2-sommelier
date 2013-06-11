@@ -75,6 +75,14 @@ class SessionManagerProcessTest : public ::testing::Test {
     manager_ = NULL;
   }
 
+  void SetUserFlags() {
+    // Prepare some flags to be appended.
+    std::vector<std::string> args;
+    args.push_back("--test");
+
+    manager_->SetFlagsForUser(kFakeEmail, args);
+  }
+
  protected:
   // kFakeEmail is NOT const so that it can be passed to methods that
   // implement dbus calls, which (of necessity) take bare gchar*.
@@ -522,6 +530,7 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
       .Times(AnyNumber());
   EXPECT_CALL(*session_manager_impl_, Initialize())
     .WillOnce(Return(false));
+  EXPECT_CALL(*liveness_checker_, Stop()).Times(AnyNumber());
   MockChildProcess proc(kDummyPid, 0, manager_->test_api());
 
   // Expect Powerwash to be triggered.
@@ -531,6 +540,37 @@ TEST_F(SessionManagerProcessTest, TestWipeOnBadState) {
   MockUtils();
 
   ASSERT_FALSE(manager_->Run());
+}
+
+TEST_F(SessionManagerProcessTest, InSessionFlagsSpecified) {
+  // job should run, die, and get run again.  On its first run, it should
+  // be fun with no flags and the second time with one extra flag.
+  MockChildJob* job = CreateMockJobWithRestartPolicy(ALWAYS);
+
+  EXPECT_CALL(*metrics_, HasRecordedChromeExec())
+      .Times(2).WillRepeatedly(Return(true));
+  EXPECT_CALL(*metrics_, RecordStats(StrEq(("chrome-exec"))))
+      .Times(2);
+  EXPECT_CALL(*job, ClearOneTimeArgument()).Times(2);
+  EXPECT_CALL(*job, SetExtraArguments(_)).Times(1);
+
+  ExpectLivenessChecking();
+  EXPECT_CALL(*job, RecordTime()).Times(2);
+  EXPECT_CALL(*job, ShouldStop())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*session_manager_impl_, ScreenIsLocked())
+      .WillRepeatedly(Return(false));
+
+  MockChildProcess proc(kDummyPid, PackStatus(kExit), manager_->test_api());
+  EXPECT_CALL(utils_, fork())
+      .WillOnce(DoAll(InvokeWithoutArgs(
+                          this, &SessionManagerProcessTest::SetUserFlags),
+                      Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())))
+      .WillOnce(DoAll(Invoke(&proc, &MockChildProcess::ScheduleExit),
+                      Return(proc.pid())));
+  SimpleRunManager();
 }
 
 }  // namespace login_manager

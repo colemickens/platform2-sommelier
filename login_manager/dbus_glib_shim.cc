@@ -178,6 +178,12 @@ gboolean session_manager_start_device_wipe(SessionManager *self,
   SESSION_MANAGER_WRAP_METHOD(StartDeviceWipe, OUT_done, error);
 }
 
+gboolean session_manager_set_flags_for_user(SessionManager *self,
+                                            gchar* user_email,
+                                            const gchar** flags,
+                                            GError **error) {
+  SESSION_MANAGER_WRAP_METHOD(SetFlagsForUser, user_email, flags, error);
+}
 #undef SESSION_MANAGER_WRAP_METHOD
 
 }  // namespace gobject

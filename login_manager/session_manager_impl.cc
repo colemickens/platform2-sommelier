@@ -576,6 +576,20 @@ gboolean SessionManagerImpl::StartDeviceWipe(gboolean* OUT_done,
   return TRUE;
 }
 
+gboolean SessionManagerImpl::SetFlagsForUser(gchar* user_email,
+                                             const gchar** flags,
+                                             GError** error) {
+  std::vector<std::string> session_user_flags;
+  // Create extra argument vector.
+  while (*flags != NULL) {
+    session_user_flags.push_back(*flags);
+    ++flags;
+  }
+  manager_->SetFlagsForUser(user_email, session_user_flags);
+
+  return TRUE;
+}
+
 void SessionManagerImpl::OnPolicyPersisted(bool success) {
   system_->EmitStatusSignal(login_manager::kPropertyChangeCompleteSignal,
                             success);

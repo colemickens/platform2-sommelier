@@ -136,5 +136,11 @@
       <!-- Initiates a wipe of the device's state -->
       <arg type="b" name="done" direction="out" />
     </method>
+    <method name="SetFlagsForUser">
+      <!--  Sets the flags to be applied on next in-session restart -->
+      <annotation name="org.freedesktop.DBus.GLib.Async" value="true" />
+      <arg type="s" name="user_email" direction="in" />
+      <arg type="as" name="flags" direction="in" />
+    </method>
   </interface>
 </node>

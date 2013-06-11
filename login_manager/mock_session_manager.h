@@ -55,6 +55,8 @@ class MockSessionManager : public SessionManagerInterface {
   MOCK_METHOD5(RestartJobWithAuth,
                gboolean(gint, gchar*, gchar*, gboolean*, GError**));
   MOCK_METHOD2(StartDeviceWipe, gboolean(gboolean*, GError**));
+  MOCK_METHOD3(SetFlagsForUser,
+               gboolean(gchar*, const gchar**, GError**));
 };
 }  // namespace login_manager
 

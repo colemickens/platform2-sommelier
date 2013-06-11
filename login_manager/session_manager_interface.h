@@ -187,6 +187,16 @@ class SessionManagerInterface {
 
   // Sets the device up to "Powerwash" on reboot, and then triggers a reboot.
   virtual gboolean StartDeviceWipe(gboolean *OUT_done, GError** error) = 0;
+
+  // Stores in memory the flags that session manager should apply the next time
+  // it restarts Chrome inside an existing session. The flags should be cleared
+  // on StopSession signal or when session manager itself is restarted. Chrome
+  // will wait on successful confirmation of this call and terminate itself to
+  // allow session manager to restart it and apply the necessary flag. All flag
+  // validation is to be done inside Chrome.
+  virtual gboolean SetFlagsForUser(gchar* user_email,
+                                   const gchar** flags,
+                                   GError** error) = 0;
 };
 
 }  // namespace login_manager

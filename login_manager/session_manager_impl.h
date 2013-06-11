@@ -118,6 +118,10 @@ class SessionManagerImpl : public SessionManagerInterface,
 
   gboolean StartDeviceWipe(gboolean *OUT_done, GError** error) OVERRIDE;
 
+  gboolean SetFlagsForUser(gchar* user_email,
+                           const gchar** flags,
+                           GError** error) OVERRIDE;
+
   // login_manager::PolicyService::Delegate implementation:
   virtual void OnPolicyPersisted(bool success) OVERRIDE;
   virtual void OnKeyPersisted(bool success) OVERRIDE;

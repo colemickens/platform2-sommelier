@@ -457,6 +457,12 @@ void SessionManagerService::SetBrowserSessionForUser(
   browser_.job->StartSession(username, userhash);
 }
 
+void SessionManagerService::SetFlagsForUser(
+    const std::string& username,
+    const std::vector<std::string>& flags) {
+  browser_.job->SetExtraArguments(flags);
+}
+
 void SessionManagerService::RunKeyGenerator(const std::string& username) {
   key_gen_->Start(username, set_uid_ ? uid_ : 0);
 }
