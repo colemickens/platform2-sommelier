@@ -8,20 +8,42 @@ include common.mk
 
 PKG_CONFIG ?= pkg-config
 
+PROTOC ?= protoc
 BASE_VER ?= 180609
 PC_DEPS = libchrome-$(BASE_VER) libchromeos-$(BASE_VER) libusb-1.0
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CPPFLAGS += -I$(SRC)/.. $(PC_CFLAGS)
-LDLIBS += -ludev $(PC_LIBS)
+GENERATED_DIR = generated
+CPPFLAGS += -I$(SRC)/.. -I$(OUT)/$(GENERATED_DIR) $(PC_CFLAGS)
+LDLIBS += -lprotobuf -lpthread -ludev $(PC_LIBS)
+
+MIST_PROTO_BINDINGS_DIR = $(GENERATED_DIR)/mist/proto_bindings
+MIST_PROTO_BINDINGS = \
+	$(MIST_PROTO_BINDINGS_DIR)/config.pb.cc \
+	$(MIST_PROTO_BINDINGS_DIR)/usb_modem_info.pb.cc
+MIST_PROTO_PATH = $(SRC)/proto
+MIST_PROTO_HEADERS = $(patsubst %.cc,%.h,$(MIST_PROTO_BINDINGS))
+MIST_PROTO_OBJS = $(patsubst %.cc,%.o,$(MIST_PROTO_BINDINGS))
+$(MIST_PROTO_HEADERS): %.h: %.cc ;
+$(MIST_PROTO_BINDINGS): \
+	$(MIST_PROTO_BINDINGS_DIR)/%.pb.cc: $(MIST_PROTO_PATH)/%.proto
+	$(call auto_mkdir,$@)
+	$(PROTOC) --proto_path=$(MIST_PROTO_PATH) \
+		--cpp_out=$(MIST_PROTO_BINDINGS_DIR) $<
+clean: CLEAN($(MIST_PROTO_BINDINGS))
+clean: CLEAN($(MIST_PROTO_HEADERS))
+clean: CLEAN($(MIST_PROTO_OBJS))
+$(eval $(call add_object_rules,$(MIST_PROTO_OBJS),CXX,cc))
 
 CXX_BINARY(mist): \
-	$(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS))
+	$(filter-out testrunner.o %_unittest.o,$(CXX_OBJECTS)) \
+	$(MIST_PROTO_OBJS)
 clean: CLEAN(mist)
 
 testrunner: \
-	$(filter-out %main.o,$(CXX_OBJECTS))
+	$(filter-out %main.o,$(CXX_OBJECTS)) \
+	$(MIST_PROTO_OBJS)
 	$(call cxx_binary, -lgtest -lgmock)
 clean: CLEAN(testrunner)
 
