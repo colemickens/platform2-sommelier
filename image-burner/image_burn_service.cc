@@ -96,7 +96,7 @@ bool ImageBurnService::Reset() {
 }
 
 bool ImageBurnService::Shutdown() {
-  chromeos::dbus::AbstractDbusService::Shutdown();
+  return chromeos::dbus::AbstractDbusService::Shutdown();
 }
 
 gboolean ImageBurnService::BurnImageAsync(gchar* from_path, gchar* to_path,
@@ -126,6 +126,7 @@ gboolean ImageBurnService::BurnImageAsync(gchar* from_path, gchar* to_path,
     g_error_free(error);
     return false;
   }
+  return true;
 }
 
 void ImageBurnService::Cleanup() {

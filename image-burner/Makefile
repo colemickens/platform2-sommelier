@@ -16,7 +16,7 @@ LDLIBS += -lrootdev $(PC_LIBS)
 
 COMMON_OBJS = image_burner_utils.o image_burner_impl.o
 IMAGEBURN_OBJS = $(COMMON_OBJS) image_burn_service.o image_burner.o
-BINS = image_burner image_burner_tester unittest_runner
+BINS = image_burner unittest_runner
 
 all: $(BINS)
 
@@ -40,10 +40,6 @@ clean:
 UNITTEST_LIBS := $(shell gmock-config --libs) $(shell gtest-config --libs)
 unittest_runner: unittest_runner.o image_burner_impl_unittest.o $(COMMON_OBJS)
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) $(UNITTEST_LIBS) -o $@
-
-image_burner_tester.o: bindings/client.h
-image_burner_tester: image_burner_tester.o
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $^ $(LDLIBS) -o $@
 
 bindings/client.h: image_burner.xml
 	dbus-binding-tool --mode=glib-client --prefix=$(basename $^) $^ > $@
