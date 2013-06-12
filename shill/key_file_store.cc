@@ -11,6 +11,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include "shill/key_value_store.h"
 #include "shill/logging.h"
@@ -103,6 +104,10 @@ bool KeyFileStore::Flush() {
         LOG(ERROR) << "Failed to store key file: " << path_.value();
         success = false;
       }
+      // Call fsync() on this fd so that this file is completely written out,
+      // since it is pivotal to our connectivity that these files remain
+      // intact.
+      fsync(fd);
       close(fd);
     }
   }
