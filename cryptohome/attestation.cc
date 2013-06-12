@@ -408,13 +408,20 @@ bool Attestation::Verify() {
 }
 
 bool Attestation::VerifyEK() {
+  base::AutoLock lock(lock_);
   SecureBlob ek_cert;
-  if (!tpm_->GetEndorsementCredential(&ek_cert)) {
-    LOG(ERROR) << __func__ << ": Failed to get EK cert.";
+  SecureBlob ek_public_key;
+  if (database_pb_.has_credentials()) {
+    const TPMCredentials& credentials = database_pb_.credentials();
+    ek_public_key = ConvertStringToBlob(credentials.endorsement_public_key());
+    ek_cert = ConvertStringToBlob(credentials.endorsement_credential());
+  }
+  if (ek_cert.size() == 0 && !tpm_->GetEndorsementCredential(&ek_cert)) {
+    LOG(ERROR) << __func__ << ": Failed to get EK certificate.";
     return false;
   }
-  SecureBlob ek_public_key;
-  if (!tpm_->GetEndorsementPublicKey(&ek_public_key)) {
+  if (ek_public_key.size() == 0 &&
+      !tpm_->GetEndorsementPublicKey(&ek_public_key)) {
     LOG(ERROR) << __func__ << ": Failed to get EK public key.";
     return false;
   }
