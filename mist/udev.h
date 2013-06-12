@@ -15,6 +15,7 @@ struct udev_device;
 namespace mist {
 
 class UdevDevice;
+class UdevEnumerate;
 class UdevMonitor;
 
 // A udev library context, which wraps a udev C struct from libudev and related
@@ -41,6 +42,10 @@ class Udev {
   // object is not managed and should be deleted by the caller after use.
   virtual UdevDevice* CreateDeviceFromSubsystemSysName(const char* subsystem,
                                                        const char* sys_name);
+
+  // Wraps udev_enumerate_new(). The returned UdevEnumerate object is not
+  // managed and should be deleted by the caller after use.
+  virtual UdevEnumerate* CreateEnumerate();
 
   // Wraps udev_monitor_new_from_netlink(). The returned UdevMonitor object is
   // not managed and should be deleted by the caller after use.

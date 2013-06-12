@@ -11,6 +11,7 @@
 #include <base/stringprintf.h>
 
 #include "mist/udev_device.h"
+#include "mist/udev_enumerate.h"
 #include "mist/udev_monitor.h"
 
 namespace mist {
@@ -90,18 +91,37 @@ UdevDevice* Udev::CreateDeviceFromSubsystemSysName(const char* subsystem,
   return NULL;
 }
 
+UdevEnumerate* Udev::CreateEnumerate() {
+  udev_enumerate* enumerate = udev_enumerate_new(udev_);
+  if (enumerate) {
+    UdevEnumerate* enumerate_to_return = new UdevEnumerate(enumerate);
+    CHECK(enumerate_to_return);
+
+    // UdevEnumerate increases the reference count of the udev_enumerate struct
+    // by one. Thus, decrease the reference count of the udev_enumerate struct
+    // by one before returning UdevEnumerate.
+    udev_enumerate_unref(enumerate);
+
+    return enumerate_to_return;
+  }
+
+  VLOG(2) << StringPrintf("udev_enumerate_new(%p) returned NULL.",
+                          udev_);
+  return NULL;
+}
+
 UdevMonitor* Udev::CreateMonitorFromNetlink(const char* name) {
-  udev_monitor* wrapped_monitor = udev_monitor_new_from_netlink(udev_, name);
-  if (wrapped_monitor) {
-    UdevMonitor* monitor = new UdevMonitor(wrapped_monitor);
-    CHECK(monitor);
+  udev_monitor* monitor = udev_monitor_new_from_netlink(udev_, name);
+  if (monitor) {
+    UdevMonitor* monitor_to_return = new UdevMonitor(monitor);
+    CHECK(monitor_to_return);
 
     // UdevMonitor increases the reference count of the udev_monitor struct by
     // one. Thus, decrease the reference count of the udev_monitor struct by one
     // before returning UdevMonitor.
-    udev_monitor_unref(wrapped_monitor);
+    udev_monitor_unref(monitor);
 
-    return monitor;
+    return monitor_to_return;
   }
 
   VLOG(2) << StringPrintf("udev_monitor_new_from_netlink"

@@ -23,6 +23,7 @@ class MockUdev : public Udev {
                UdevDevice*(char type, dev_t device_number));
   MOCK_METHOD2(CreateDeviceFromSubsystemSysName,
                UdevDevice*(const char* subsystem, const char* sys_name));
+  MOCK_METHOD0(CreateEnumerate, UdevEnumerate*());
   MOCK_METHOD1(CreateMonitorFromNetlink, UdevMonitor*(const char* name));
 
  private:
