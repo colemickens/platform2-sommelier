@@ -16,10 +16,10 @@ namespace mist {
 class UsbDeviceEventObserver {
  public:
   // Invoked when a USB device is added to the system.
-  virtual void OnUsbDeviceAdded(const std::string& syspath,
+  virtual void OnUsbDeviceAdded(const std::string& sys_path,
                                 uint16 vendor_id, uint16 product_id) = 0;
   // Invoked when a USB device is removed from the system.
-  virtual void OnUsbDeviceRemoved(const std::string& syspath) = 0;
+  virtual void OnUsbDeviceRemoved(const std::string& sys_path) = 0;
 
  protected:
   UsbDeviceEventObserver() {}

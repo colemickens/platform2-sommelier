@@ -6,13 +6,14 @@
 
 #include <limits>
 
-#include <libudev.h>
-
 #include <base/logging.h>
 #include <base/string_number_conversions.h>
 #include <base/stringprintf.h>
 
 #include "mist/event_dispatcher.h"
+#include "mist/udev.h"
+#include "mist/udev_device.h"
+#include "mist/udev_monitor.h"
 #include "mist/usb_device_event_observer.h"
 
 using base::StringPrintf;
@@ -29,60 +30,44 @@ const char kAttributeIdVendor[] = "idVendor";
 
 UsbDeviceEventNotifier::UsbDeviceEventNotifier(EventDispatcher* dispatcher)
     : dispatcher_(dispatcher),
-      udev_(NULL),
-      udev_monitor_(NULL),
-      udev_monitor_file_descriptor_(0) {
+      udev_monitor_file_descriptor_(UdevMonitor::kInvalidFileDescriptor) {
   CHECK(dispatcher_);
 }
 
 UsbDeviceEventNotifier::~UsbDeviceEventNotifier() {
-  if (udev_monitor_file_descriptor_ > 0) {
+  if (udev_monitor_file_descriptor_ != UdevMonitor::kInvalidFileDescriptor) {
     dispatcher_->StopWatchingFileDescriptor(udev_monitor_file_descriptor_);
-    udev_monitor_file_descriptor_ = 0;
-  }
-
-  if (udev_monitor_) {
-    udev_monitor_unref(udev_monitor_);
-    udev_monitor_ = NULL;
-  }
-
-  if (udev_) {
-    udev_unref(udev_);
-    udev_ = NULL;
+    udev_monitor_file_descriptor_ = UdevMonitor::kInvalidFileDescriptor;
   }
 }
 
 bool UsbDeviceEventNotifier::Initialize() {
-  udev_ = udev_new();
-  if (!udev_) {
+  udev_.reset(new Udev());
+  CHECK(udev_);
+  if (!udev_->Initialize()) {
     LOG(ERROR) << "Could not create udev library context.";
     return false;
   }
 
-  udev_monitor_ = udev_monitor_new_from_netlink(udev_, "udev");
+  udev_monitor_.reset(udev_->CreateMonitorFromNetlink("udev"));
   if (!udev_monitor_) {
     LOG(ERROR) << "Could not create udev monitor.";
     return false;
   }
 
-  int result = udev_monitor_filter_add_match_subsystem_devtype(
-      udev_monitor_, "usb", "usb_device");
-  if (result != 0) {
-    LOG(ERROR) << StringPrintf("Could not add udev monitor filter (error=%d).",
-                               result);
+  if (!udev_monitor_->FilterAddMatchSubsystemDeviceType("usb", "usb_device")) {
+    LOG(ERROR) << "Could not add udev monitor filter.";
     return false;
   }
 
-  result = udev_monitor_enable_receiving(udev_monitor_);
-  if (result != 0) {
-    LOG(ERROR) << StringPrintf("Could not enable udev monitoring (error=%d).",
-                               result);
+  if (!udev_monitor_->EnableReceiving()) {
+    LOG(ERROR) << "Could not enable udev monitoring.";
     return false;
   }
 
-  udev_monitor_file_descriptor_ = udev_monitor_get_fd(udev_monitor_);
-  if (udev_monitor_file_descriptor_ <= 0) {
-    LOG(ERROR) << StringPrintf("Could not get udev monitor file descriptor.");
+  udev_monitor_file_descriptor_ = udev_monitor_->GetFileDescriptor();
+  if (udev_monitor_file_descriptor_ == UdevMonitor::kInvalidFileDescriptor) {
+    LOG(ERROR) << "Could not get udev monitor file descriptor.";
     return false;
   }
 
@@ -111,7 +96,7 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
   VLOG(3) << StringPrintf("File descriptor %d available for read.",
                           file_descriptor);
 
-  udev_device* device = udev_monitor_receive_device(udev_monitor_);
+  scoped_ptr<UdevDevice> device(udev_monitor_->ReceiveDevice());
   if (!device) {
     LOG(WARNING) << "Ignore device event with no associated udev device.";
     return;
@@ -119,30 +104,24 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
 
   VLOG(1) << StringPrintf("udev (SysPath=%s, Node=%s, Subsystem=%s, "
                           "DevType=%s, Action=%s, VendorId=%s, ProductId=%s)",
-                          udev_device_get_syspath(device),
-                          udev_device_get_devnode(device),
-                          udev_device_get_subsystem(device),
-                          udev_device_get_devtype(device),
-                          udev_device_get_action(device),
-                          udev_device_get_sysattr_value(device,
-                                                        kAttributeIdVendor),
-                          udev_device_get_sysattr_value(device,
-                                                        kAttributeIdProduct));
+                          device->GetSysPath(),
+                          device->GetDeviceNode(),
+                          device->GetSubsystem(),
+                          device->GetDeviceType(),
+                          device->GetAction(),
+                          device->GetSysAttributeValue(kAttributeIdVendor),
+                          device->GetSysAttributeValue(kAttributeIdProduct));
 
-  string syspath = ConvertNullToEmptyString(udev_device_get_syspath(device));
-  string action = ConvertNullToEmptyString(udev_device_get_action(device));
-  string vendor_id_string = ConvertNullToEmptyString(
-      udev_device_get_sysattr_value(device, kAttributeIdVendor));
-  string product_id_string = ConvertNullToEmptyString(
-      udev_device_get_sysattr_value(device, kAttributeIdProduct));
-  udev_device_unref(device);
-
-  if (syspath.empty()) {
+  string sys_path = ConvertNullToEmptyString(device->GetSysPath());
+  if (sys_path.empty()) {
     LOG(WARNING) << "Ignore device event with no device sysfs path.";
     return;
   }
 
+  string action = ConvertNullToEmptyString(device->GetAction());
   if (action == "add") {
+    string vendor_id_string = ConvertNullToEmptyString(
+        device->GetSysAttributeValue(kAttributeIdVendor));
     uint16 vendor_id = 0;
     if (!ConvertIdStringToValue(vendor_id_string, &vendor_id)) {
       LOG(WARNING) << StringPrintf("Invalid USB vendor ID '%s'.",
@@ -150,6 +129,8 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
       return;
     }
 
+    string product_id_string = ConvertNullToEmptyString(
+        device->GetSysAttributeValue(kAttributeIdProduct));
     uint16 product_id = 0;
     if (!ConvertIdStringToValue(product_id_string, &product_id)) {
       LOG(WARNING) << StringPrintf("Invalid USB product ID '%s'.",
@@ -158,13 +139,13 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
     }
 
     FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
-                      OnUsbDeviceAdded(syspath, vendor_id, product_id));
+                      OnUsbDeviceAdded(sys_path, vendor_id, product_id));
     return;
   }
 
   if (action == "remove") {
     FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
-                      OnUsbDeviceRemoved(syspath));
+                      OnUsbDeviceRemoved(sys_path));
   }
 }
 

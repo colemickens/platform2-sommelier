@@ -9,16 +9,16 @@
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/message_loop.h>
 #include <base/observer_list.h>
 #include <gtest/gtest_prod.h>
 
-struct udev;
-struct udev_monitor;
-
 namespace mist {
 
 class EventDispatcher;
+class Udev;
+class UdevMonitor;
 class UsbDeviceEventObserver;
 
 // A USB device event notifier, which monitors udev events for USB devices and
@@ -52,6 +52,10 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
  private:
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertNullToEmptyString);
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertIdStringToValue);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEvents);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId);
 
   // Returns a string with value of |str| if |str| is not NULL, or an empty
   // string otherwise.
@@ -63,8 +67,8 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
 
   EventDispatcher* const dispatcher_;
   ObserverList<UsbDeviceEventObserver> observer_list_;
-  udev* udev_;
-  udev_monitor* udev_monitor_;
+  scoped_ptr<Udev> udev_;
+  scoped_ptr<UdevMonitor> udev_monitor_;
   int udev_monitor_file_descriptor_;
 
   DISALLOW_COPY_AND_ASSIGN(UsbDeviceEventNotifier);
