@@ -170,6 +170,8 @@ void Modem::OnDBusPropertiesChanged(
     const string &interface,
     const DBusPropertiesMap &changed_properties,
     const vector<string> &invalidated_properties) {
+  SLOG(Modem, 2) << __func__;
+  SLOG(Modem, 3) << "PropertiesChanged signal received.";
   if (device_.get()) {
     device_->OnDBusPropertiesChanged(interface,
                                       changed_properties,

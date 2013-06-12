@@ -53,6 +53,7 @@ CellularCapabilityUniversal::kActivationRegistrationTimeoutMilliseconds =
 const int64
 CellularCapabilityUniversal::kDefaultScanningOrSearchingTimeoutMilliseconds =
     60000;
+const int64 CellularCapabilityUniversal::kEnterPinTimeoutMilliseconds = 20000;
 const int64
 CellularCapabilityUniversal::kRegistrationDroppedUpdateTimeoutMilliseconds =
     15000;
@@ -1247,7 +1248,8 @@ void CellularCapabilityUniversal::EnterPIN(const string &pin,
                                            Error *error,
                                            const ResultCallback &callback) {
   CHECK(error);
-  sim_proxy_->SendPin(pin, error, callback, kTimeoutDefault);
+  SLOG(Cellular, 2) << __func__;
+  sim_proxy_->SendPin(pin, error, callback, kEnterPinTimeoutMilliseconds);
 }
 
 void CellularCapabilityUniversal::UnblockPIN(const string &unblock_code,
@@ -1722,6 +1724,7 @@ void CellularCapabilityUniversal::OnLockRetriesChanged(
 }
 
 void CellularCapabilityUniversal::OnSimLockStatusChanged() {
+  SLOG(Cellular, 2) << __func__;
   cellular()->adaptor()->EmitKeyValueStoreChanged(
       flimflam::kSIMLockStatusProperty, SimLockStatusToProperty(NULL));
 

@@ -158,6 +158,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   static const int64 kActivationRegistrationTimeoutMilliseconds;
   static const int64 kDefaultScanningOrSearchingTimeoutMilliseconds;
+  static const int64 kEnterPinTimeoutMilliseconds;
   static const int64 kRegistrationDroppedUpdateTimeoutMilliseconds;
   static const int kSetPowerStateTimeoutMilliseconds;
 
