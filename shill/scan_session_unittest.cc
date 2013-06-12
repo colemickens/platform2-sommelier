@@ -475,7 +475,8 @@ TEST_F(ScanSessionTest, OnError) {
 
   EXPECT_CALL(*this, OnScanError());
   ErrorAckMessage error_message(-EINTR);
-  scan_session()->OnTriggerScanErrorResponse(&error_message);
+  scan_session()->OnTriggerScanErrorResponse(NetlinkManager::kErrorFromKernel,
+                                             &error_message);
 }
 
 TEST_F(ScanSessionTest, EBusy) {
@@ -491,11 +492,13 @@ TEST_F(ScanSessionTest, EBusy) {
   for (size_t i = 0; i < kSmallRetryNumber; ++i) {
     EXPECT_CALL(*this, OnScanError()).Times(0);
     EXPECT_CALL(*dispatcher(), PostDelayedTask(_, _));
-    scan_session()->OnTriggerScanErrorResponse(&error_message);
+    scan_session()->OnTriggerScanErrorResponse(NetlinkManager::kErrorFromKernel,
+                                               &error_message);
   }
 
   EXPECT_CALL(*this, OnScanError());
-  scan_session()->OnTriggerScanErrorResponse(&error_message);
+  scan_session()->OnTriggerScanErrorResponse(NetlinkManager::kErrorFromKernel,
+                                             &error_message);
 }
 
 TEST_F(ScanSessionTest, ScanHidden) {

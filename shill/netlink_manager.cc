@@ -8,6 +8,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 
+#include <list>
 #include <map>
 
 #include <base/memory/weak_ptr.h>
@@ -42,8 +43,10 @@ const char NetlinkManager::kEventTypeConfig[] = "config";
 const char NetlinkManager::kEventTypeScan[] = "scan";
 const char NetlinkManager::kEventTypeRegulatory[] = "regulatory";
 const char NetlinkManager::kEventTypeMlme[] = "mlme";
-const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;
-const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;
+const long NetlinkManager::kMaximumNewFamilyWaitSeconds = 1;  // NOLINT
+const long NetlinkManager::kMaximumNewFamilyWaitMicroSeconds = 0;  // NOLINT
+const long NetlinkManager::kResponseTimeoutSeconds = 5;  // NOLINT
+const long NetlinkManager::kResponseTimeoutMicroSeconds = 0;  // NOLINT
 
 NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
     const NetlinkManager::NetlinkAuxilliaryMessageHandler &error_handler)
@@ -52,9 +55,9 @@ NetlinkManager::NetlinkResponseHandler::NetlinkResponseHandler(
 NetlinkManager::NetlinkResponseHandler::~NetlinkResponseHandler() {}
 
 void NetlinkManager::NetlinkResponseHandler::HandleError(
-    const NetlinkMessage *netlink_message) const {
+    AuxilliaryMessageType type, const NetlinkMessage *netlink_message) const {
   if (!error_handler_.is_null())
-    error_handler_.Run(netlink_message);
+    error_handler_.Run(type, netlink_message);
 }
 
 class ControlResponseHandler : public NetlinkManager::NetlinkResponseHandler {
@@ -193,26 +196,43 @@ void NetlinkManager::OnNewFamilyMessage(const ControlNetlinkMessage &message) {
 }
 
 // static
-void NetlinkManager::OnNetlinkMessageError(const NetlinkMessage *raw_message) {
-  if (!raw_message) {
-    LOG(ERROR) << "NetlinkManager error.";
-    return;
+void NetlinkManager::OnNetlinkMessageError(AuxilliaryMessageType type,
+                                           const NetlinkMessage *raw_message) {
+  switch (type) {
+    case kErrorFromKernel:
+      if (!raw_message) {
+        LOG(ERROR) << "Unknown error from kernel.";
+        break;
+      }
+      if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
+        const ErrorAckMessage *error_ack_message =
+            dynamic_cast<const ErrorAckMessage *>(raw_message);
+        if (error_ack_message->error()) {
+          LOG(ERROR) << __func__ << ": Message (seq: "
+                     << error_ack_message->sequence_number() << ") failed: "
+                     << error_ack_message->ToString();
+        } else {
+          SLOG(WiFi, 6) << __func__ << ": Message (seq: "
+                     << error_ack_message->sequence_number() << ") ACKed";
+        }
+      }
+      break;
+
+    case kUnexpectedResponseType:
+      LOG(ERROR) << "Message not handled by regular message handler:";
+      if (raw_message) {
+        raw_message->Print(0, 0);
+      }
+      break;
+
+    case kTimeoutWaitingForResponse:
+      LOG(WARNING) << "Timeout waiting for response";
+      break;
+
+    default:
+      LOG(ERROR) << "Unexpected auxilliary message type: " << type;
+      break;
   }
-  if (raw_message->message_type() == ErrorAckMessage::GetMessageType()) {
-    const ErrorAckMessage *error_ack_message =
-        dynamic_cast<const ErrorAckMessage *>(raw_message);
-    if (error_ack_message->error()) {
-      LOG(ERROR) << __func__ << ": Message (seq: "
-                 << error_ack_message->sequence_number() << ") failed: "
-                 << error_ack_message->ToString();
-    } else {
-      SLOG(WiFi, 6) << __func__ << ": Message (seq: "
-                 << error_ack_message->sequence_number() << ") ACKed";
-    }
-    return;
-  }
-  LOG(ERROR) << "Not expecting this message:";
-  raw_message->Print(0, 0);
 }
 
 bool NetlinkManager::Init() {
@@ -328,7 +348,6 @@ uint16_t NetlinkManager::GetFamily(const string &name,
 }
 
 bool NetlinkManager::AddBroadcastHandler(const NetlinkMessageHandler &handler) {
-  list<NetlinkMessageHandler>::iterator i;
   if (FindBroadcastHandler(handler)) {
     LOG(WARNING) << "Trying to re-add a handler";
     return false;  // Should only be one copy in the list.
@@ -399,6 +418,26 @@ bool NetlinkManager::SendMessageInternal(
     return false;
   }
 
+  // Clean out timed-out message handlers.  The list of outstanding messages
+  // should be small so the time wasted by looking through all of them should
+  // be small.
+  struct timeval now;
+  time_->GetTimeMonotonic(&now);
+  map<uint32_t, NetlinkResponseHandlerRefPtr>::iterator handler_it =
+      message_handlers_.begin();
+  while (handler_it != message_handlers_.end()) {
+    if (timercmp(&now, &handler_it->second->delete_after(), >)) {
+      // A timeout isn't always unexpected so this is not a warning.
+      SLOG(WiFi, 3) << "Removing timed-out handler for sequence number "
+                    << handler_it->first;
+      handler_it->second->HandleError(kTimeoutWaitingForResponse, NULL);
+      handler_it = message_handlers_.erase(handler_it);
+    } else {
+      ++handler_it;
+    }
+  }
+
+  // On to the business at hand...
   ByteString message_string = message->Encode(this->GetSequenceNumber());
 
   if (!response_handler) {
@@ -408,6 +447,12 @@ bool NetlinkManager::SendMessageInternal(
                << message->sequence_number();
     return false;
   } else {
+    struct timeval response_timeout = {kResponseTimeoutSeconds,
+                                       kResponseTimeoutMicroSeconds};
+    struct timeval delete_after;
+    timeradd(&now, &response_timeout, &delete_after);
+    response_handler->set_delete_after(delete_after);
+
     message_handlers_[message->sequence_number()] =
         NetlinkResponseHandlerRefPtr(response_handler);
   }
@@ -491,6 +536,7 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     return;
   }
   const uint32 sequence_number = msg->nlmsg_seq;
+
   scoped_ptr<NetlinkMessage> message(message_factory_.CreateMessage(msg));
   if (message == NULL) {
     SLOG(WiFi, 3) << "NL Message " << sequence_number << " <===";
@@ -510,7 +556,8 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
     if (error_ack_message->error()) {
       if (ContainsKey(message_handlers_, sequence_number)) {
         SLOG(WiFi, 6) << "Found message-specific error handler";
-        message_handlers_[sequence_number]->HandleError(message.get());
+        message_handlers_[sequence_number]->HandleError(kErrorFromKernel,
+                                                        message.get());
         message_handlers_.erase(sequence_number);
       }
     } else {
@@ -525,7 +572,8 @@ void NetlinkManager::OnNlMessageReceived(nlmsghdr *msg) {
       LOG(ERROR) << "Couldn't call message handler for " << sequence_number;
       // Call the error handler but, since we don't have an |ErrorAckMessage|,
       // we'll have to pass a NULL pointer.
-      message_handlers_[sequence_number]->HandleError(NULL);
+      message_handlers_[sequence_number]->HandleError(kUnexpectedResponseType,
+                                                      NULL);
     }
     if ((message->flags() & NLM_F_MULTI) &&
         (message->message_type() != NLMSG_DONE)) {

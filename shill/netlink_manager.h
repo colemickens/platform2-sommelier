@@ -96,6 +96,11 @@ class Nl80211Message;
 //  netlink_manager_->Start(&dispatcher_);
 class NetlinkManager {
  public:
+  enum AuxilliaryMessageType {
+    kErrorFromKernel,
+    kUnexpectedResponseType,
+    kTimeoutWaitingForResponse
+  };
   typedef base::Callback<void(const NetlinkMessage &)> NetlinkMessageHandler;
   typedef base::Callback<void(const ControlNetlinkMessage &)>
       ControlNetlinkMessageHandler;
@@ -105,7 +110,8 @@ class NetlinkManager {
   // discovered by |NetlinkManager| (which are passed as NULL pointers because
   // there is no way to reserve a part of the ErrorAckMessage space for
   // non-netlink errors).
-  typedef base::Callback<void(const NetlinkMessage *)>
+  typedef base::Callback<void(AuxilliaryMessageType type,
+                              const NetlinkMessage *)>
       NetlinkAuxilliaryMessageHandler;
 
   // ResponseHandlers provide a polymorphic context for the base::Callback
@@ -122,13 +128,17 @@ class NetlinkManager {
     // (which is declared in the private area of derived classes) with
     // properly cast version of |netlink_message|.
     virtual bool HandleMessage(const NetlinkMessage &netlink_message) const = 0;
-    void HandleError(const NetlinkMessage *netlink_message) const;
+    void HandleError(AuxilliaryMessageType type,
+                     const NetlinkMessage *netlink_message) const;
+    void set_delete_after(const timeval &time) { delete_after_ = time; }
+    const struct timeval &delete_after() const { return delete_after_; }
 
    protected:
     NetlinkResponseHandler();
 
    private:
     NetlinkAuxilliaryMessageHandler error_handler_;
+    struct timeval delete_after_;
 
     DISALLOW_COPY_AND_ASSIGN(NetlinkResponseHandler);
   };
@@ -208,7 +218,8 @@ class NetlinkManager {
       const NetlinkAuxilliaryMessageHandler &error_handler);
 
   // Generic erroneous message handler everyone can use.
-  static void OnNetlinkMessageError(const NetlinkMessage *raw_message);
+  static void OnNetlinkMessageError(AuxilliaryMessageType type,
+                                    const NetlinkMessage *raw_message);
 
   // Uninstall the handler for a specific netlink message.
   bool RemoveMessageHandler(const NetlinkMessage &message);
@@ -237,21 +248,26 @@ class NetlinkManager {
   FRIEND_TEST(NetlinkManagerTest, GetFamilyTimeout);
   FRIEND_TEST(NetlinkManagerTest, MessageHandler);
   FRIEND_TEST(NetlinkManagerTest, MultipartMessageHandler);
-  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
-  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS);
-  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION);
-  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE);
+  FRIEND_TEST(NetlinkManagerTest, TimeoutResponseHandlers);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_ASSOCIATE);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_AUTHENTICATE);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_CONNECT);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DEAUTHENTICATE);
-  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT);
-  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM);
   FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DISASSOCIATE);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_DISCONNECT);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_SCAN_RESULTS);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NEW_STATION);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_NOTIFY_CQM);
+  FRIEND_TEST(NetlinkMessageTest, Parse_NL80211_CMD_TRIGGER_SCAN);
 
   typedef scoped_refptr<NetlinkResponseHandler> NetlinkResponseHandlerRefPtr;
 
-  static const long kMaximumNewFamilyWaitSeconds;
-  static const long kMaximumNewFamilyWaitMicroSeconds;
+  // These need to be member variables, even though they're only used once in
+  // the code, since they're needed for unittests.
+  static const long kMaximumNewFamilyWaitSeconds;  // NOLINT
+  static const long kMaximumNewFamilyWaitMicroSeconds;  // NOLINT
+  static const long kResponseTimeoutSeconds;  // NOLINT
+  static const long kResponseTimeoutMicroSeconds;  // NOLINT
 
   // Returns the file descriptor of socket used to read wifi data.
   int file_descriptor() const;

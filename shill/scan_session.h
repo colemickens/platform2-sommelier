@@ -16,6 +16,7 @@
 #include <metrics/timer.h>
 
 #include "shill/byte_string.h"
+#include "shill/netlink_manager.h"
 #include "shill/wifi_provider.h"
 
 namespace shill {
@@ -179,8 +180,8 @@ class ScanSession {
   // likely, an error -- when things work, we get an
   // NL80211_CMD_NEW_SCAN_RESULTS broadcast message).
   void OnTriggerScanResponse(const Nl80211Message &message);
-  void OnTriggerScanErrorResponse(const NetlinkMessage *netlink_message);
-
+  void OnTriggerScanErrorResponse(NetlinkManager::AuxilliaryMessageType type,
+                                  const NetlinkMessage *netlink_message);
   void ReportEbusyTime(int log_level);
 
   // Logs the results of the scan.

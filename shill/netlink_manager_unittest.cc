@@ -159,7 +159,7 @@ class NetlinkManagerTest : public Test {
     GetFamilyMessage get_family_message;
     // Any number that's not 0 or 1 is acceptable, here.  Zero is bad because
     // we want to make sure that this message is different than the main
-    // send/receive pair.  One is bad becasue the default for
+    // send/receive pair.  One is bad because the default for
     // |saved_sequence_number_| is zero and the likely default value for the
     // first sequence number generated from the code is 1.
     const uint32_t kRandomOffset = 1003;
@@ -190,9 +190,11 @@ class NetlinkManagerTest : public Test {
    public:
     MockHandlerNetlinkAuxilliary() :
       on_netlink_message_(
-          base::Bind(&MockHandlerNetlinkAuxilliary::OnNetlinkMessage,
+          base::Bind(&MockHandlerNetlinkAuxilliary::OnErrorHandler,
                      base::Unretained(this))) {}
-    MOCK_METHOD1(OnNetlinkMessage, void(const NetlinkMessage *msg));
+    MOCK_METHOD2(OnErrorHandler,
+                 void(NetlinkManager::AuxilliaryMessageType type,
+                      const NetlinkMessage *msg));
     const NetlinkManager::NetlinkAuxilliaryMessageHandler &on_netlink_message()
         const {
       return on_netlink_message_;
@@ -367,6 +369,7 @@ TEST_F(NetlinkManagerTest, GetFamilyOneInterstitialMessage) {
 TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
   Reset();
   MockTime time;
+  Time *old_time = netlink_manager_->time_;
   netlink_manager_->time_ = &time;
 
   EXPECT_CALL(netlink_socket_, SendMessage(_)).WillOnce(Return(true));
@@ -388,9 +391,11 @@ TEST_F(NetlinkManagerTest, GetFamilyTimeout) {
   const string kSampleMessageName("SampleMessageName");
   EXPECT_EQ(NetlinkMessage::kIllegalMessageType,
             netlink_manager_->GetFamily(kSampleMessageName, null_factory));
+  netlink_manager_->time_ = old_time;
 }
 
 TEST_F(NetlinkManagerTest, BroadcastHandler) {
+  Reset();
   nlmsghdr *message = const_cast<nlmsghdr *>(
         reinterpret_cast<const nlmsghdr *>(kNL80211_CMD_DISCONNECT));
 
@@ -548,16 +553,93 @@ TEST_F(NetlinkManagerTest, MultipartMessageHandler) {
       done_message.Encode(netlink_socket_.GetLastSequenceNumber()));
 
   // Verify that the message-specific handler is called for the done message.
-  EXPECT_CALL(auxilliary_handler, OnNetlinkMessage(_));
+  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _));
   netlink_manager_->OnNlMessageReceived(
       reinterpret_cast<nlmsghdr *>(done_message_bytes.GetData()));
 
   // Verify that broadcast handler is called now that the done message has
   // been seen.
   EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
-  EXPECT_CALL(auxilliary_handler, OnNetlinkMessage(_)).Times(0);
+  EXPECT_CALL(auxilliary_handler, OnErrorHandler(_, _)).Times(0);
   EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_)).Times(1);
   netlink_manager_->OnNlMessageReceived(received_message);
+}
+
+TEST_F(NetlinkManagerTest, TimeoutResponseHandlers) {
+  Reset();
+  MockHandlerNetlink broadcast_handler;
+  EXPECT_TRUE(netlink_manager_->AddBroadcastHandler(
+      broadcast_handler.on_netlink_message()));
+
+  // Set up the received message as a response to the get_wiphi_message
+  // we're going to send.
+  NewWiphyMessage new_wiphy_message;
+  const uint32_t kRandomSequenceNumber = 3;
+  ByteString new_wiphy_message_bytes =
+      new_wiphy_message.Encode(kRandomSequenceNumber);
+  nlmsghdr *received_message =
+      reinterpret_cast<nlmsghdr *>(new_wiphy_message_bytes.GetData());
+
+  // Setup a random received message to trigger wiping out old messages.
+  NewScanResultsMessage new_scan_results;
+  ByteString new_scan_results_bytes =
+      new_scan_results.Encode(kRandomSequenceNumber);
+
+  // Setup the timestamps of various messages
+  MockTime time;
+  Time *old_time = netlink_manager_->time_;
+  netlink_manager_->time_ = &time;
+
+  time_t kStartSeconds = 1234;  // Arbitrary.
+  suseconds_t kSmallUsec = 100;
+  EXPECT_CALL(time, GetTimeMonotonic(_)).
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0))).  // Initial time.
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, kSmallUsec))).
+
+      WillOnce(Invoke(TimeFunctor(kStartSeconds, 0))).  // Initial time.
+      WillOnce(Invoke(TimeFunctor(
+          kStartSeconds + NetlinkManager::kResponseTimeoutSeconds + 1,
+          NetlinkManager::kResponseTimeoutMicroSeconds)));
+  EXPECT_CALL(netlink_socket_, SendMessage(_)).WillRepeatedly(Return(true));
+
+  GetWiphyMessage get_wiphi_message;
+  MockHandler80211 response_handler;
+  MockHandlerNetlinkAuxilliary auxilliary_handler;
+
+  GetRegMessage get_reg_message;  // Just a message to trigger timeout.
+  NetlinkManager::Nl80211MessageHandler null_message_handler;
+  NetlinkManager::NetlinkAuxilliaryMessageHandler null_error_handler;
+
+  // Send two messages within the message handler timeout; verify that we
+  // get called back (i.e., that the first handler isn't discarded).
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_wiphi_message, response_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_reg_message, null_message_handler, null_error_handler));
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_));
+  netlink_manager_->OnNlMessageReceived(received_message);
+
+  // Send two messages at an interval greater than the message handler timeout
+  // before the response to the first arrives.  Verify that the error handler
+  // for the first message is called (with a timeout flag) and that the
+  // broadcast handler gets called, instead of the message's handler.
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(
+      &get_wiphi_message, response_handler.on_netlink_message(),
+      auxilliary_handler.on_netlink_message()));
+  received_message->nlmsg_seq = netlink_socket_.GetLastSequenceNumber();
+  EXPECT_CALL(auxilliary_handler,
+              OnErrorHandler(NetlinkManager::kTimeoutWaitingForResponse, NULL));
+  EXPECT_TRUE(netlink_manager_->SendNl80211Message(&get_reg_message,
+                                                   null_message_handler,
+                                                   null_error_handler));
+  EXPECT_CALL(response_handler, OnNetlinkMessage(_)).Times(0);
+  EXPECT_CALL(broadcast_handler, OnNetlinkMessage(_));
+  netlink_manager_->OnNlMessageReceived(received_message);
+
+  // Put the state of the singleton back where it was.
+  netlink_manager_->time_ = old_time;
 }
 
 }  // namespace shill

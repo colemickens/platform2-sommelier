@@ -205,45 +205,73 @@ void ScanSession::OnTriggerScanResponse(const Nl80211Message &netlink_message) {
 }
 
 void ScanSession::OnTriggerScanErrorResponse(
+    NetlinkManager::AuxilliaryMessageType type,
     const NetlinkMessage *netlink_message) {
-  if (!netlink_message) {
-    LOG(ERROR) << __func__ << ": Message failed: NetlinkManager Error.";
-    found_error_ = true;
-    on_scan_failed_.Run();
-    return;
-  }
-  if (netlink_message->message_type() != ErrorAckMessage::GetMessageType()) {
-    LOG(ERROR) << __func__ << ": Message failed: Not an error.";
-    on_scan_failed_.Run();
-    return;
-  }
-  const ErrorAckMessage *error_ack_message =
-      dynamic_cast<const ErrorAckMessage *>(netlink_message);
-  if (error_ack_message->error()) {
-    LOG(ERROR) << __func__ << ": Message failed: "
-               << error_ack_message->ToString();
-    if (error_ack_message->error() == EBUSY) {
-      if (scan_tries_left_ == 0) {
-        LOG(ERROR) << "Retried progressive scan " << kScanRetryCount
-                   << " times and failed each time.  Giving up.";
-        found_error_ = true;
-        on_scan_failed_.Run();
-        scan_tries_left_ = kScanRetryCount;
-        return;
+  switch (type) {
+    case NetlinkManager::kErrorFromKernel: {
+        if (!netlink_message) {
+          LOG(ERROR) << __func__ << ": Message failed: NetlinkManager Error.";
+          found_error_ = true;
+          on_scan_failed_.Run();
+          break;
+        }
+        if (netlink_message->message_type() !=
+            ErrorAckMessage::GetMessageType()) {
+          LOG(ERROR) << __func__ << ": Message failed: Not an error.";
+          found_error_ = true;
+          on_scan_failed_.Run();
+          break;
+        }
+        const ErrorAckMessage *error_ack_message =
+            dynamic_cast<const ErrorAckMessage *>(netlink_message);
+        if (error_ack_message->error()) {
+          LOG(ERROR) << __func__ << ": Message failed: "
+                     << error_ack_message->ToString();
+          if (error_ack_message->error() == EBUSY) {
+            if (scan_tries_left_ == 0) {
+              LOG(ERROR) << "Retried progressive scan " << kScanRetryCount
+                         << " times and failed each time.  Giving up.";
+              found_error_ = true;
+              on_scan_failed_.Run();
+              scan_tries_left_ = kScanRetryCount;
+              return;
+            }
+            --scan_tries_left_;
+            SLOG(WiFi, 3) << __func__ << " - trying again (" << scan_tries_left_
+                          << " remaining after this)";
+            ebusy_timer_.Resume();
+            dispatcher_->PostDelayedTask(Bind(&ScanSession::ReInitiateScan,
+                                              weak_ptr_factory_.GetWeakPtr()),
+                                         kScanRetryDelayMilliseconds);
+            break;
+          }
+          found_error_ = true;
+          on_scan_failed_.Run();
+        } else {
+          SLOG(WiFi, 6) << __func__ << ": Message ACKed";
+        }
       }
-      --scan_tries_left_;
-      SLOG(WiFi, 3) << __func__ << " - trying again (" << scan_tries_left_
-                    << " remaining after this)";
-      ebusy_timer_.Resume();
-      dispatcher_->PostDelayedTask(Bind(&ScanSession::ReInitiateScan,
-                                        weak_ptr_factory_.GetWeakPtr()),
-                                   kScanRetryDelayMilliseconds);
-      return;
-    }
-    found_error_ = true;
-    on_scan_failed_.Run();
-  } else {
-    SLOG(WiFi, 6) << __func__ << ": Message ACKed";
+      break;
+
+    case NetlinkManager::kUnexpectedResponseType:
+      LOG(ERROR) << "Message not handled by regular message handler:";
+      if (netlink_message) {
+        netlink_message->Print(0, 0);
+      }
+      found_error_ = true;
+      on_scan_failed_.Run();
+      break;
+
+    case NetlinkManager::kTimeoutWaitingForResponse:
+      // This is actually expected since, in the working case, a trigger scan
+      // message gets its responses broadcast rather than unicast.
+      break;
+
+    default:
+      LOG(ERROR) << "Unexpected auxilliary message type: " << type;
+      found_error_ = true;
+      on_scan_failed_.Run();
+      break;
   }
 }
 
