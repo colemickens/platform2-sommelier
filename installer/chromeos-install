@@ -435,7 +435,7 @@ else
 fi
 
 # Write the GPT using the board specific script.
-. "/usr/sbin/write_gpt.sh"
+. "${ROOT}/usr/sbin/write_gpt.sh"
 write_base_table ${DST} ${PMBRCODE}
 /sbin/blockdev --rereadpt ${DST}
 legacy_offset_size_export "${DST}"
