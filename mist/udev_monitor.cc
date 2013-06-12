@@ -1,0 +1,135 @@
+// Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "mist/udev_monitor.h"
+
+#include <libudev.h>
+
+#include <base/logging.h>
+#include <base/stringprintf.h>
+
+#include "mist/udev_device.h"
+
+namespace mist {
+
+UdevMonitor::UdevMonitor() : monitor_(NULL) {}
+
+UdevMonitor::UdevMonitor(udev_monitor* monitor)
+    : monitor_(monitor) {
+  CHECK(monitor_);
+
+  udev_monitor_ref(monitor_);
+}
+
+UdevMonitor::~UdevMonitor() {
+  if (monitor_) {
+    udev_monitor_unref(monitor_);
+    monitor_ = NULL;
+  }
+}
+
+bool UdevMonitor::EnableReceiving() {
+  int result = udev_monitor_enable_receiving(monitor_);
+  if (result == 0)
+    return true;
+
+  VLOG(2) << StringPrintf("udev_monitor_enable_receiving(%p) returned %d.",
+                          monitor_,
+                          result);
+  return false;
+}
+
+bool UdevMonitor::SetReceiveBufferSize(int size) {
+  int result = udev_monitor_set_receive_buffer_size(monitor_, size);
+  if (result == 0)
+    return true;
+
+  VLOG(2) << StringPrintf("udev_monitor_set_receive_buffer_size"
+                          "(%p) returned %d.",
+                          monitor_,
+                          result);
+  return false;
+}
+
+int UdevMonitor::GetFileDescriptor() const {
+  int file_descriptor = udev_monitor_get_fd(monitor_);
+  if (file_descriptor >= 0)
+    return file_descriptor;
+
+  VLOG(2) << StringPrintf("udev_monitor_get_fd(%p) returned %d.",
+                          monitor_,
+                          file_descriptor);
+  return kInvalidFileDescriptor;
+}
+
+UdevDevice* UdevMonitor::ReceiveDevice() {
+  udev_device* received_device = udev_monitor_receive_device(monitor_);
+  if (received_device) {
+    UdevDevice* device = new UdevDevice(received_device);
+    CHECK(device);
+    // udev_monitor_receive_device increases the reference count of the returned
+    // udev_device struct, while UdevDevice also holds a reference count of the
+    // udev_device struct. Thus, decrease the reference count of the udev_device
+    // struct.
+    udev_device_unref(received_device);
+    return device;
+  }
+
+  VLOG(2) << StringPrintf("udev_monitor_receive_device(%p) returned NULL.",
+                          monitor_);
+  return NULL;
+}
+
+bool UdevMonitor::FilterAddMatchSubsystemDeviceType(const char* subsystem,
+                                                    const char* device_type) {
+  int result = udev_monitor_filter_add_match_subsystem_devtype(
+      monitor_, subsystem, device_type);
+  if (result == 0)
+    return true;
+
+  VLOG(2) << StringPrintf("udev_monitor_filter_add_match_subsystem_devtype"
+                          "(%p, \"%s\", \"%s\") returned %d.",
+                          monitor_,
+                          subsystem,
+                          device_type,
+                          result);
+  return false;
+}
+
+bool UdevMonitor::FilterAddMatchTag(const char* tag) {
+  int result = udev_monitor_filter_add_match_tag(monitor_, tag);
+  if (result == 0)
+    return true;
+
+  VLOG(2) << StringPrintf("udev_monitor_filter_add_tag"
+                          "(%p, \"%s\") returned %d.",
+                          monitor_,
+                          tag,
+                          result);
+  return false;
+}
+
+bool UdevMonitor::FilterUpdate() {
+  int result = udev_monitor_filter_update(monitor_);
+  if (result == 0)
+    return true;
+
+  VLOG(2) << StringPrintf("udev_monitor_filter_update(%p) returned %d.",
+                          monitor_,
+                          result);
+  return false;
+}
+
+bool UdevMonitor::FilterRemove() {
+  int result = udev_monitor_filter_remove(monitor_);
+  if (result == 0)
+    return true;
+
+  VLOG(2) << StringPrintf("udev_monitor_filter_remove(%p) returned %d.",
+                          monitor_,
+                          result);
+  return false;
+}
+
+}  // namespace mist
