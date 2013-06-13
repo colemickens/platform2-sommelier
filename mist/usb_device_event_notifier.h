@@ -27,9 +27,10 @@ class UsbDeviceEventObserver;
 class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
  public:
   // Constructs a UsbDeviceEventNotifier object by taking a raw pointer to an
-  // EventDispatcher as |dispatcher|. The ownership of |dispatcher| is not
-  // transferred, and thus it should outlive this object.
-  explicit UsbDeviceEventNotifier(EventDispatcher* dispatcher);
+  // EventDispatcher as |dispatcher| and a raw pointer to a Udev as |udev|. The
+  // ownership of |dispatcher| and |udev| is not transferred, and thus they
+  // should outlive this object.
+  UsbDeviceEventNotifier(EventDispatcher* dispatcher, Udev* udev);
 
   virtual ~UsbDeviceEventNotifier();
 
@@ -67,7 +68,7 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
 
   EventDispatcher* const dispatcher_;
   ObserverList<UsbDeviceEventObserver> observer_list_;
-  scoped_ptr<Udev> udev_;
+  Udev* const udev_;
   scoped_ptr<UdevMonitor> udev_monitor_;
   int udev_monitor_file_descriptor_;
 

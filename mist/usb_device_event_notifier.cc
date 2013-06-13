@@ -28,10 +28,13 @@ const char kAttributeIdVendor[] = "idVendor";
 
 }  // namespace
 
-UsbDeviceEventNotifier::UsbDeviceEventNotifier(EventDispatcher* dispatcher)
+UsbDeviceEventNotifier::UsbDeviceEventNotifier(EventDispatcher* dispatcher,
+                                               Udev* udev)
     : dispatcher_(dispatcher),
+      udev_(udev),
       udev_monitor_file_descriptor_(UdevMonitor::kInvalidFileDescriptor) {
   CHECK(dispatcher_);
+  CHECK(udev_);
 }
 
 UsbDeviceEventNotifier::~UsbDeviceEventNotifier() {
@@ -42,13 +45,6 @@ UsbDeviceEventNotifier::~UsbDeviceEventNotifier() {
 }
 
 bool UsbDeviceEventNotifier::Initialize() {
-  udev_.reset(new Udev());
-  CHECK(udev_);
-  if (!udev_->Initialize()) {
-    LOG(ERROR) << "Could not create udev library context.";
-    return false;
-  }
-
   udev_monitor_.reset(udev_->CreateMonitorFromNetlink("udev"));
   if (!udev_monitor_) {
     LOG(ERROR) << "Could not create udev monitor.";

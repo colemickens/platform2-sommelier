@@ -41,9 +41,10 @@ const char kFakeUsbDevice2ProductIdString[] = "cdef";
 
 class UsbDeviceEventNotifierTest : public testing::Test {
  protected:
-  UsbDeviceEventNotifierTest() : notifier_(&dispatcher_) {}
+  UsbDeviceEventNotifierTest() : notifier_(&dispatcher_, &udev_) {}
 
   EventDispatcher dispatcher_;
+  MockUdev udev_;
   MockUsbDeviceEventObserver observer_;
   UsbDeviceEventNotifier notifier_;
 };
