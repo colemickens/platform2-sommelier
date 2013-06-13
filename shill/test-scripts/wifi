@@ -79,7 +79,7 @@ def main(args):
     @return True on success, False otherwise.
 
     """
-    if len(sys.argv) < 2:
+    if len(args) < 2:
         return usage()
     command = args[0]
     ssid = args[1]
