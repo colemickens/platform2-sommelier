@@ -12,6 +12,7 @@
 
 #include "mist/event_dispatcher.h"
 #include "mist/usb_device.h"
+#include "mist/usb_device_descriptor.h"
 
 using base::StringPrintf;
 
@@ -66,6 +67,36 @@ void UsbManager::SetDebugLevel(int level) {
   CHECK(context_);
 
   libusb_set_debug(context_, level);
+}
+
+UsbDevice* UsbManager::GetDevice(uint8 bus_number,
+                                 uint8 device_address,
+                                 uint16 vendor_id,
+                                 uint16 product_id) {
+  ScopedVector<UsbDevice> devices;
+  if (!GetDevices(&devices))
+    return NULL;
+
+  for (ScopedVector<UsbDevice>::iterator it = devices.begin();
+       it != devices.end();
+       ++it) {
+    UsbDevice* device = *it;
+    if (device->GetBusNumber() != bus_number ||
+        device->GetDeviceAddress() != device_address)
+      continue;
+
+    scoped_ptr<UsbDeviceDescriptor> device_descriptor(
+        (*it)->GetDeviceDescriptor());
+    VLOG(2) << *device_descriptor;
+    if (device_descriptor->GetVendorId() == vendor_id &&
+        device_descriptor->GetProductId() == product_id) {
+      devices.weak_erase(it);
+      return device;
+    }
+  }
+
+  error_.set_type(UsbError::kErrorNotFound);
+  return NULL;
 }
 
 bool UsbManager::GetDevices(ScopedVector<UsbDevice>* devices) {

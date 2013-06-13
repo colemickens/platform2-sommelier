@@ -35,6 +35,18 @@ class UsbManager : public MessageLoopForIO::Watcher {
   // Sets the debug level of libusb to |level|.
   void SetDebugLevel(int level);
 
+  // Gets the USB device that is currently connected to the bus numbered
+  // |bus_number|, at the address |device_address| on the bus, with its vendor
+  // ID equal to |vendor_id|, and its product ID equal to |product_id|. Returns
+  // NULL if no such device is found. The returned UsbDevice object becomes
+  // invalid, and thus should not be held, beyond the lifetime of this object.
+  // The returned object is also not managed and should be deleted by the caller
+  // after use.
+  UsbDevice* GetDevice(uint8 bus_number,
+                       uint8 device_address,
+                       uint16 vendor_id,
+                       uint16 product_id);
+
   // Gets the list of USB devices currently attached to the system. Returns true
   // on success. |devices| is always cleared before being updated. The returned
   // UsbDevice objects become invalid, and thus should not be held, beyond the
