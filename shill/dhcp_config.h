@@ -54,7 +54,7 @@ class DHCPConfig : public IPConfig {
   // Inherited from IPConfig.
   virtual bool RequestIP();
   virtual bool RenewIP();
-  virtual bool ReleaseIP();
+  virtual bool ReleaseIP(ReleaseReason reason);
 
   // If |proxy_| is not initialized already, sets it to a new D-Bus proxy to
   // |service|.
@@ -79,6 +79,8 @@ class DHCPConfig : public IPConfig {
   FRIEND_TEST(DHCPConfigTest, ProcessEventSignalUnknown);
   FRIEND_TEST(DHCPConfigTest, ReleaseIP);
   FRIEND_TEST(DHCPConfigTest, ReleaseIPArpGW);
+  FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithLease);
+  FRIEND_TEST(DHCPConfigTest, ReleaseIPStaticIPWithoutLease);
   FRIEND_TEST(DHCPConfigTest, RenewIP);
   FRIEND_TEST(DHCPConfigTest, RequestIP);
   FRIEND_TEST(DHCPConfigTest, RequestIPTimeout);
@@ -189,6 +191,9 @@ class DHCPConfig : public IPConfig {
 
   // Child exit watch callback source tag.
   unsigned int child_watch_tag_;
+
+  // Whether a lease has been acquired from the DHCP server or gateway ARP.
+  bool is_lease_active_;
 
   // The proxy for communicating with the DHCP client.
   scoped_ptr<DHCPProxyInterface> proxy_;

@@ -445,7 +445,7 @@ TEST_F(DHCPConfigTest, ReleaseIP) {
   config_->arp_gateway_ = false;
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(1);
   config_->proxy_.reset(proxy_.release());
-  EXPECT_TRUE(config_->ReleaseIP());
+  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
   config_->pid_ = 0;
 }
 
@@ -454,7 +454,31 @@ TEST_F(DHCPConfigTest, ReleaseIPArpGW) {
   config_->arp_gateway_ = true;
   EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
   config_->proxy_.reset(proxy_.release());
-  EXPECT_TRUE(config_->ReleaseIP());
+  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithLease) {
+  config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
+  config_->arp_gateway_ = true;
+  config_->is_lease_active_ = true;
+  EXPECT_CALL(*proxy_, Release(kDeviceName));
+  config_->proxy_.reset(proxy_.release());
+  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
+  EXPECT_EQ(NULL, config_->proxy_.get());
+  config_->pid_ = 0;
+}
+
+TEST_F(DHCPConfigTest, ReleaseIPStaticIPWithoutLease) {
+  config_->pid_ = 1 << 18;  // Ensure unknown positive PID.
+  config_->arp_gateway_ = true;
+  config_->is_lease_active_ = false;
+  EXPECT_CALL(*proxy_, Release(kDeviceName)).Times(0);
+  MockDHCPProxy *proxy_pointer = proxy_.get();
+  config_->proxy_.reset(proxy_.release());
+  EXPECT_TRUE(config_->ReleaseIP(IPConfig::kReleaseReasonStaticIP));
+  // Expect that proxy has not been released.
+  EXPECT_EQ(proxy_pointer, config_->proxy_.get());
   config_->pid_ = 0;
 }
 

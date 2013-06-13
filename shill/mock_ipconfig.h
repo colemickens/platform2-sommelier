@@ -23,7 +23,7 @@ class MockIPConfig : public IPConfig {
   MOCK_CONST_METHOD0(properties, const Properties &(void));
   MOCK_METHOD0(RequestIP, bool(void));
   MOCK_METHOD0(RenewIP, bool(void));
-  MOCK_METHOD0(ReleaseIP, bool(void));
+  MOCK_METHOD1(ReleaseIP, bool(ReleaseReason reason));
 
   MOCK_METHOD2(Load, bool(StoreInterface *storage,
                           const std::string &id_suffix));

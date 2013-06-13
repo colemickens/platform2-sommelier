@@ -72,6 +72,7 @@ DHCPConfig::DHCPConfig(ControlInterface *control_interface,
       arp_gateway_(arp_gateway),
       pid_(0),
       child_watch_tag_(0),
+      is_lease_active_(false),
       lease_acquisition_timeout_seconds_(kDHCPTimeoutSeconds),
       root_("/"),
       weak_ptr_factory_(this),
@@ -117,14 +118,24 @@ bool DHCPConfig::RenewIP() {
   return true;
 }
 
-bool DHCPConfig::ReleaseIP() {
+bool DHCPConfig::ReleaseIP(ReleaseReason reason) {
   SLOG(DHCP, 2) << __func__ << ": " << device_name();
   if (!pid_) {
     return true;
   }
+
+  // If we are using static IP and haven't retrieved a lease yet, we should
+  // allow the DHCP process to continue until we have a lease.
+  if (!is_lease_active_ && reason == IPConfig::kReleaseReasonStaticIP) {
+    return true;
+  }
+
   // If we are using gateway unicast ARP to speed up re-connect, don't
   // give up our leases when we disconnect.
-  if (!arp_gateway_ && proxy_.get()) {
+  bool should_keep_lease =
+      reason == IPConfig::kReleaseReasonDisconnect && arp_gateway_;
+
+  if (!should_keep_lease && proxy_.get()) {
     proxy_->Release(device_name());
   }
   Stop(__func__);
@@ -156,6 +167,12 @@ void DHCPConfig::ProcessEventSignal(const string &reason,
   }
   IPConfig::Properties properties;
   CHECK(ParseConfiguration(configuration, &properties));
+
+  // This needs to be set before calling UpdateProperties() below since
+  // those functions may indirectly call other methods like ReleaseIP that
+  // depend on or change this value.
+  is_lease_active_ = true;
+
   if (reason == kReasonGatewayArp) {
     // This is a non-authoritative confirmation that we or on the same
     // network as the one we received a lease on previously.  The DHCP
@@ -444,6 +461,7 @@ void DHCPConfig::CleanupClientState() {
     // |this| instance may be destroyed after this call.
     provider_->UnbindPID(pid);
   }
+  is_lease_active_ = false;
 }
 
 void DHCPConfig::StartDHCPTimeout() {

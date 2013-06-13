@@ -366,7 +366,7 @@ void Device::DropConnection() {
 void Device::DestroyIPConfig() {
   DisableIPv6();
   if (ipconfig_.get()) {
-    ipconfig_->ReleaseIP();
+    ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect);
     ipconfig_ = NULL;
   }
   DestroyConnection();
@@ -453,6 +453,16 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
     if (selected_service_) {
       ipconfig->ApplyStaticIPParameters(
           selected_service_->mutable_static_ip_parameters());
+      if (selected_service_->static_ip_parameters().ContainsAddress()) {
+        // If we are using a statically configured IP address instead
+        // of a leased IP address, release any acquired lease so it may
+        // be used by others.  This allows us to merge other non-leased
+        // parameters (like DNS) when they're available from a DHCP server
+        // and not overridden by static parameters, but at the same time
+        // we avoid taking up a dynamic IP address the DHCP server could
+        // assign to someone else who might actually use it.
+        ipconfig->ReleaseIP(IPConfig::kReleaseReasonStaticIP);
+      }
     }
     connection_->UpdateFromIPConfig(ipconfig);
     // SetConnection must occur after the UpdateFromIPConfig so the

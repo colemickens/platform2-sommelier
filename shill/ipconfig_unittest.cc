@@ -64,7 +64,7 @@ TEST_F(IPConfigTest, RenewIP) {
 }
 
 TEST_F(IPConfigTest, ReleaseIP) {
-  EXPECT_FALSE(ipconfig_->ReleaseIP());
+  EXPECT_FALSE(ipconfig_->ReleaseIP(IPConfig::kReleaseReasonDisconnect));
 }
 
 TEST_F(IPConfigTest, SaveLoad) {

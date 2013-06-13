@@ -90,7 +90,7 @@ bool IPConfig::RenewIP() {
   return false;
 }
 
-bool IPConfig::ReleaseIP() {
+bool IPConfig::ReleaseIP(ReleaseReason reason) {
   return false;
 }
 

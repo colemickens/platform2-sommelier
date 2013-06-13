@@ -60,6 +60,11 @@ class IPConfig : public base::RefCounted<IPConfig> {
     std::vector<Route> routes;
   };
 
+  enum ReleaseReason {
+    kReleaseReasonDisconnect,
+    kReleaseReasonStaticIP
+  };
+
   IPConfig(ControlInterface *control_interface, const std::string &device_name);
   IPConfig(ControlInterface *control_interface,
            const std::string &device_name,
@@ -93,7 +98,7 @@ class IPConfig : public base::RefCounted<IPConfig> {
   // faster.
   virtual bool RequestIP();
   virtual bool RenewIP();
-  virtual bool ReleaseIP();
+  virtual bool ReleaseIP(ReleaseReason reason);
 
   // Refresh IP configuration.  Called by the DBus Adaptor "Refresh" call.
   void Refresh(Error *error);
