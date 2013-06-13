@@ -14,19 +14,27 @@
 #include "make_tests.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
+#include "mock_user_oldest_activity_timestamp_cache.h"
+#include "mock_vault_keyset.h"
+#include "mock_vault_keyset_factory.h"
 #include "username_passkey.h"
-#include "user_oldest_activity_timestamp_cache.h"
 
 namespace cryptohome {
 using chromeos::SecureBlob;
 using std::string;
 using ::testing::DoAll;
+using ::testing::EndsWith;
+using ::testing::HasSubstr;
 using ::testing::InSequence;
 using ::testing::NiceMock;
 using ::testing::Return;
+using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
+using ::testing::StartsWith;
+
 using ::testing::_;
+
 
 ACTION_P2(SetOwner, owner_known, owner) {
   if (owner_known)
@@ -48,6 +56,7 @@ struct homedir {
 };
 
 const char *kOwner = "<<OWNER>>";
+// Note, the order is important. These should be oldest to newest.
 const struct homedir kHomedirs[] = {
   { "d5510a8dda6d743c46dadd979a61ae5603529742", { 2011, 1, 6, 1 } },
   { "8f995cdee8f0711fd32e1cf6246424002c483d47", { 2011, 2, 2, 1 } },
@@ -60,6 +69,9 @@ const base::Time::Exploded feb1st2011_exploded = { 2011, 2, 2, 1 };
 const base::Time time_feb1 = base::Time::FromUTCExploded(feb1st2011_exploded);
 const base::Time::Exploded mar1st2011_exploded = { 2011, 3, 2, 1 };
 const base::Time time_mar1 = base::Time::FromUTCExploded(mar1st2011_exploded);
+const base::Time::Exploded apr5th2011_exploded = { 2011, 4, 5, 1 };
+const base::Time time_apr5 = base::Time::FromUTCExploded(apr5th2011_exploded);
+
 }  // namespace
 
 class HomeDirsTest : public ::testing::Test {
@@ -76,23 +88,24 @@ class HomeDirsTest : public ::testing::Test {
     test_helper_.InjectSystemSalt(&platform_,
                                   StringPrintf("%s/salt", kTestRoot));
     set_policy(true, kOwner, false);
-    homedirs_.timestamp_cache()->Initialize();
+
+    // Mount() normally sets this.
+    homedirs_.set_old_user_last_activity_time(kOldUserLastActivityTime);
+    homedirs_.set_timestamp_cache(&timestamp_cache_);
+
     homedirs_.Init();
     FilePath fp = FilePath(kTestRoot);
     for (unsigned int i = 0; i < arraysize(kHomedirs); i++) {
       const struct homedir *hd = &kHomedirs[i];
-      base::Time t = base::Time::FromUTCExploded(hd->time);
       FilePath path;
       std::string owner;
       homedirs_.GetOwner(&owner);
+      path = fp.Append(hd->name);
       if (!strcmp(hd->name, kOwner))
         path = fp.Append(owner);
-      else
-        path = fp.Append(hd->name);
-
-      homedirs_.timestamp_cache()->AddExistingUser(path, t);
-      LOG(ERROR) << "push: " << path.value();
       homedir_paths_.push_back(path.value());
+      base::Time t = base::Time::FromUTCExploded(hd->time);
+      homedir_times_.push_back(t);
     }
   }
 
@@ -118,6 +131,9 @@ class HomeDirsTest : public ::testing::Test {
   NiceMock<MockPlatform> platform_;
   std::vector<std::string> homedir_paths_;
   MakeTests test_helper_;
+  MockUserOldestActivityTimestampCache timestamp_cache_;
+  std::vector<base::Time> homedir_times_;
+  MockVaultKeysetFactory vault_keyset_factory_;
 
  private:
   DISALLOW_COPY_AND_ASSIGN(HomeDirsTest);
@@ -149,9 +165,372 @@ TEST_F(HomeDirsTest, RemoveNonOwnerCryptohomes) {
   homedirs_.RemoveNonOwnerCryptohomes();
 }
 
-TEST_F(HomeDirsTest, FreeDiskSpace) {
+class FreeDiskSpaceTest : public HomeDirsTest {
+ public:
+  FreeDiskSpaceTest() { }
+  virtual ~FreeDiskSpaceTest() { }
+};
+
+TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithNoTime) {
+  // To get to the init logic, we need to fail three kEnoughFreeSpace checks.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillOnce(Return(0))
+    .WillOnce(Return(kEnoughFreeSpace - 1));
+
+  // Expect cache clean ups.
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+
+  // Now cover the actual initialization piece
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillOnce(Return(false));
+  EXPECT_CALL(timestamp_cache_, Initialize())
+    .Times(1);
+
+  // It then walks the user vault to populate.
+  MockVaultKeyset* vk[arraysize(kHomedirs)];
+  EXPECT_CALL(vault_keyset_factory_, New(_, _))
+    .WillOnce(Return(vk[0] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[1] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[2] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[3] = new MockVaultKeyset()));
+  for (size_t i = 0; i < arraysize(vk); ++i) {
+    EXPECT_CALL(*vk[i], Load(_))
+      .WillRepeatedly(Return(false));
+  }
+  homedirs_.set_vault_keyset_factory(&vault_keyset_factory_);
+
+  // Expect an addition for all users with no time.
+  EXPECT_CALL(timestamp_cache_, AddExistingUserNotime(_))
+    .Times(4);
+
+  // Now skip the deletion steps by not having a legit owner.
+  set_policy(false, "", false);
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, InitializeTimeCacheWithOneTime) {
+  // To get to the init logic, we need to fail three kEnoughFreeSpace checks.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillOnce(Return(0))
+    .WillOnce(Return(kEnoughFreeSpace - 1));
+
+  // Expect cache clean ups.
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+
+  // Now cover the actual initialization piece
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillOnce(Return(false));
+  EXPECT_CALL(timestamp_cache_, Initialize())
+    .Times(1);
+  // Skip vault keyset loading to cause "Notime".
+  EXPECT_CALL(platform_, FileExists(StartsWith(homedir_paths_[0])))
+    .WillRepeatedly(Return(true));
+
+  MockVaultKeyset* vk[arraysize(kHomedirs)];
+  EXPECT_CALL(vault_keyset_factory_, New(_, _))
+    .WillOnce(Return(vk[0] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[1] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[2] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[3] = new MockVaultKeyset()));
+  // The first three will have no time.
+  size_t i;
+  for (i = 0; i < arraysize(vk) - 1; ++i) {
+    EXPECT_CALL(*vk[i], Load(_))
+      .WillRepeatedly(Return(false));
+  }
+  // The owner will have a time.
+  EXPECT_CALL(*vk[i], Load(_))
+    .WillOnce(Return(true));
+  SerializedVaultKeyset serialized;
+  serialized.set_last_activity_timestamp(homedir_times_[3].ToInternalValue());
+  EXPECT_CALL(*vk[i], serialized())
+    .Times(2)
+    .WillRepeatedly(ReturnRef(serialized));
+  homedirs_.set_vault_keyset_factory(&vault_keyset_factory_);
+
+
+  // Expect an addition for all users with no time.
+  EXPECT_CALL(timestamp_cache_, AddExistingUserNotime(_))
+    .Times(3);
+  // Adding the owner
+  EXPECT_CALL(timestamp_cache_,
+              AddExistingUser(FilePath(homedir_paths_[3]), homedir_times_[3]))
+    .Times(1);
+
+  // Now skip the deletion steps by not having a legit owner.
+  set_policy(false, "", false);
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, NoCacheCleanup) {
+  // Pretend we have lots of free space
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(kMinFreeSpace + 1));
+  EXPECT_FALSE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, OnlyCacheCleanup) {
+  // Only clean up the Cache data. Not GCache, etc.
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillOnce(Return(kEnoughFreeSpace + 1));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[2] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[3] = new NiceMock<MockFileEnumerator>));
+  // Exercise the delete file path.
+  for (size_t f = 0; f < arraysize(fe); ++f) {
+    EXPECT_CALL(*fe[f], Next())
+      .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[f].c_str(),
+                                             "Cache/foo")))
+      .WillRepeatedly(Return(""));
+  }
+  EXPECT_CALL(platform_, DeleteFile(EndsWith("/Cache/foo"), true))
+    .Times(4)
+    .WillRepeatedly(Return(true));
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, CacheAndGCacheCleanup) {
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillOnce(Return(0))
+    .WillOnce(Return(kEnoughFreeSpace + 1));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  NiceMock<MockFileEnumerator>* fe[arraysize(kHomedirs)];
+  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("/Cache"), false, _))
+    .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[2] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[3] = new NiceMock<MockFileEnumerator>));
+  // Exercise the delete file path.
+  for (size_t f = 0; f < arraysize(fe); ++f) {
+    EXPECT_CALL(*fe[f], Next())
+      .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[f].c_str(),
+                                             "Cache/foo")))
+      .WillRepeatedly(Return(""));
+  }
+  EXPECT_CALL(platform_, DeleteFile(EndsWith("/Cache/foo"), true))
+    .Times(4)
+    .WillRepeatedly(Return(true));
+  // Repeat for GCache
+  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("GCache/v1/tmp"), false, _))
+    .WillOnce(Return(fe[0] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[1] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[2] = new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(fe[3] = new NiceMock<MockFileEnumerator>));
+  // Exercise the delete file path.
+  for (size_t f = 0; f < arraysize(fe); ++f) {
+    EXPECT_CALL(*fe[f], Next())
+      .WillOnce(Return(StringPrintf("%s/%s", homedir_paths_[f].c_str(),
+                                             "GCache/v1/tmp/foo")))
+      .WillRepeatedly(Return(""));
+  }
+  EXPECT_CALL(platform_, DeleteFile(EndsWith("/GCache/v1/tmp/foo"), true))
+    .Times(4)
+    .WillRepeatedly(Return(true));
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, OldUsersCleanupNoTimestamp) {
+  // Removes old (except owner and the current one, if any) even if
+  // users had no oldest activity timestamp.
+  //
+  // This requires at least one user have a valid timestamp that is older than
+  // the delta. If not, all the NoTimestamp users will stick around.  I believe
+  // the supposition is that if there are no timestamps, the vault keysets are
+  // either invalid or predate timestamping.  If _any_ user has a timestamp
+  // that is old enough, then all unmarked ones must also be old enough.  We
+  // may want to consider adding Stat() support to stop relying on this
+  // assumption.
+
+  // TODO(wad) Add a NoTimeVaultKeyset helper
+  MockVaultKeyset* vk[arraysize(kHomedirs)];
+  EXPECT_CALL(vault_keyset_factory_, New(_, _))
+    .WillOnce(Return(vk[0] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[1] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[2] = new MockVaultKeyset()))
+    .WillOnce(Return(vk[3] = new MockVaultKeyset()));
+  for (size_t i = 0; i < arraysize(vk); ++i) {
+    EXPECT_CALL(*vk[i], Load(_))
+      .WillRepeatedly(Return(false));
+  }
+  homedirs_.set_vault_keyset_factory(&vault_keyset_factory_);
+
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Don't bother with files to delete.
+  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("/Cache"), false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(platform_, GetFileEnumerator(EndsWith("GCache/v1/tmp"), false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  // Nothing is mounted.
+  EXPECT_CALL(platform_, IsDirectoryMountedWith(_, _))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillOnce(Return(false));
+  EXPECT_CALL(timestamp_cache_, Initialize())
+    .Times(1);
+  // Expect an addition for all users with no time.
+  EXPECT_CALL(timestamp_cache_, AddExistingUserNotime(_))
+    .Times(4);
+
+  // Now pretend that one user had a time, so that we have a non-0
+  // oldest time.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time::Now() - kOldUserLastActivityTime))
+    .WillOnce(Return(base::Time())); // end with is_null()
+
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[0])))
+    .WillOnce(Return(FilePath(homedir_paths_[1])))
+    .WillOnce(Return(FilePath(homedir_paths_[2])))
+    .WillOnce(Return(FilePath(homedir_paths_[3])));
+
+  EXPECT_CALL(platform_, DeleteFile(_, true))
+    .Times(arraysize(kHomedirs)-1)  // All but the owner
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .Times(0);
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, CleanUpOneOldUser) {
+  // Ensure that the oldest user directory deleted, but not any
+  // others.
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillRepeatedly(Return(true));
+
+  // Move this loop to a helper just for these expects.
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[0])));
+  // All timestamps are walked but the last one fails the time
+  // test so no null time is needed.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0])); // Loop ends early.
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillOnce(Return(0))
+    .WillOnce(Return(kMinFreeSpace + 1))
+    .WillOnce(Return(kEnoughFreeSpace + 1));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache, per-gcache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true));
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, CleanUpMultipleOldUsers) {
   // Ensure that the two oldest user directories are deleted, but not any
   // others.
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillRepeatedly(Return(true));
+
+  // Move this loop to a helper just for these expects.
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[0])))
+    .WillOnce(Return(FilePath(homedir_paths_[1])));
+  // All timestamps are walked but the last one fails the time
+  // test so no null time is needed.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[1]))
+    .WillOnce(Return(homedir_times_[1]));
+
   EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
     .WillRepeatedly(
         DoAll(SetArgumentPointee<2>(homedir_paths_),
@@ -180,8 +559,320 @@ TEST_F(HomeDirsTest, FreeDiskSpace) {
   EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
     .WillOnce(Return(true));
 
-  homedirs_.FreeDiskSpace();
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
 }
+
+TEST_F(FreeDiskSpaceTest, EnterpriseCleanUpAllUsers) {
+   set_policy(true, "", false);
+   homedirs_.set_enterprise_owned(true);
+
+  // Ensure that the two oldest user directories are deleted, but not any
+  // others.
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillRepeatedly(Return(true));
+
+  // Move this loop to a helper just for these expects.
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[1])))
+    .WillOnce(Return(FilePath(homedir_paths_[2])))
+    .WillOnce(Return(FilePath(homedir_paths_[3])))
+    .WillOnce(Return(FilePath(homedir_paths_[0])));
+  // Pretend only user 0 has a timestamp. All the others
+  // will be deleted first.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(base::Time())); // No more users.
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[2], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true));
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, CleanUpMultipleNonadjacentOldUsers) {
+  // Ensure that the two oldest user directories are deleted, but not any
+  // others.  The owner is inserted in the middle.
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillRepeatedly(Return(true));
+
+  // Move this loop to a helper just for these expects.
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[0])))
+    .WillOnce(Return(FilePath(homedir_paths_[3])))
+    .WillOnce(Return(FilePath(homedir_paths_[1])));
+  // All timestamps are walked but the last one fails the time
+  // test so no null time is needed.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[1]))  // Treat the owner as having the
+    .WillOnce(Return(homedir_times_[1]))  // same time.
+    .WillOnce(Return(homedir_times_[1]))
+    .WillOnce(Return(homedir_times_[1]))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now())); // Stop looping with current time
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(0))
+    .WillOnce(Return(0))
+    .WillOnce(Return(kMinFreeSpace + 1))
+    .WillRepeatedly(Return(kEnoughFreeSpace - 1));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .WillOnce(Return(true));
+  // Ensure the owner isn't deleted!
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .Times(0);
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, NoOwnerNoEnterpriseNoCleanup) {
+  // Ensure that no users are deleted with no owner/enterprise-owner.
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillRepeatedly(Return(0));
+
+  // Expect cache clean ups.
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  // Empty enumerators per-user per-cache dirs.
+  // That means no Delete calls for (G)Cache.
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+
+  // Skip re-init
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillOnce(Return(true));
+
+  // No user deletions!
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .Times(0);
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .Times(0);
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[2], true))
+    .Times(0);
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .Times(0);
+
+  // Now skip the deletion steps by not having a legit owner.
+  set_policy(false, "", false);
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, ConsumerEphemeralUsers) {
+  // When ephemeral users are enabled, no cryptohomes are kept except the owner.
+  set_policy(true, kOwner, true);
+  // homedirs_.set_enterprise_owned(true);
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          chromeos::cryptohome::home::GetUserPathPrefix().value(),
+          false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          chromeos::cryptohome::home::GetRootPathPrefix().value(),
+          false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(kMinFreeSpace - 1));
+
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true))  // vault
+    .WillOnce(Return(true))  // user
+    .WillOnce(Return(true));  // root
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[2], true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
+  // Ensure the owner isn't deleted!
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .Times(0);
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+
+TEST_F(FreeDiskSpaceTest, EnterpriseEphemeralUsers) {
+  // When ephemeral users are enabled, no cryptohomes are kept except the owner.
+  set_policy(true, "", true);
+  homedirs_.set_enterprise_owned(true);
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          chromeos::cryptohome::home::GetUserPathPrefix().value(),
+          false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+  EXPECT_CALL(platform_,
+      EnumerateDirectoryEntries(
+          chromeos::cryptohome::home::GetRootPathPrefix().value(),
+          false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillOnce(Return(kMinFreeSpace - 1));
+
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[0], true))
+    .WillOnce(Return(true))  // vault
+    .WillOnce(Return(true))  // user
+    .WillOnce(Return(true));  // root
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[1], true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[2], true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
+  EXPECT_CALL(platform_, DeleteFile(homedir_paths_[3], true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true))
+    .WillOnce(Return(true));
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
+TEST_F(FreeDiskSpaceTest, DontCleanUpOneOldMountedUser) {
+  // Ensure that the oldest user isn't deleted because
+  // it appears to be mounted.
+  EXPECT_CALL(timestamp_cache_, initialized())
+    .WillRepeatedly(Return(true));
+
+  // This will only be called once (see time below).
+  EXPECT_CALL(timestamp_cache_, RemoveOldestUser())
+    .WillOnce(Return(FilePath(homedir_paths_[0])));
+  // Only mark user 0 as old.
+  EXPECT_CALL(timestamp_cache_, oldest_known_timestamp())
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(homedir_times_[0]))
+    .WillOnce(Return(base::Time::Now()))
+    .WillOnce(Return(base::Time::Now()));
+
+  EXPECT_CALL(platform_, EnumerateDirectoryEntries(kTestRoot, false, _))
+    .WillRepeatedly(
+        DoAll(SetArgumentPointee<2>(homedir_paths_),
+              Return(true)));
+
+  EXPECT_CALL(platform_, AmountOfFreeDiskSpace(kTestRoot))
+    .WillRepeatedly(Return(0));
+  EXPECT_CALL(platform_, DirectoryExists(_))
+    .WillRepeatedly(Return(true));
+
+  // Ensure the mounted user never has (G)Cache traversed!
+  EXPECT_CALL(platform_, GetFileEnumerator(
+      StartsWith(homedir_paths_[0]), false, _))
+    .Times(0);
+
+  // Empty enumerators per-user per-cache dirs
+  EXPECT_CALL(platform_, GetFileEnumerator(_, false, _))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>))
+    .WillOnce(Return(new NiceMock<MockFileEnumerator>));
+
+  EXPECT_CALL(platform_,
+      IsDirectoryMountedWith(StartsWith(homedir_paths_[0]), _))
+    .Times(3)  // Cache, GCache, user removal
+    .WillRepeatedly(Return(true));
+  for (size_t i = 1; i < arraysize(kHomedirs); ++i) {
+    EXPECT_CALL(platform_,
+        IsDirectoryMountedWith(StartsWith(homedir_paths_[i]), _))
+      .Times(2) // Cache, GCache
+      .WillRepeatedly(Return(false));
+  }
+
+  EXPECT_TRUE(homedirs_.FreeDiskSpace());
+}
+
 
 TEST_F(HomeDirsTest, GoodDecryptTest) {
   // create a HomeDirs instance that points to a good shadow root, test that it
@@ -219,5 +910,4 @@ TEST_F(HomeDirsTest, BadDecryptTest) {
 
   ASSERT_FALSE(homedirs_.AreCredentialsValid(up));
 }
-
 }  // namespace cryptohome

@@ -15,13 +15,16 @@ using chromeos::SecureBlob;
 
 namespace cryptohome {
 
-VaultKeyset::VaultKeyset(Platform* platform, Crypto* crypto)
-    : platform_(platform), crypto_(crypto) {
-  CHECK(platform);
-  CHECK(crypto);
+VaultKeyset::VaultKeyset()
+    : platform_(NULL), crypto_(NULL), loaded_(false), encrypted_(false) {
 }
 
 VaultKeyset::~VaultKeyset() {
+}
+
+void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
+  platform_ = platform;
+  crypto_ = crypto;
 }
 
 void VaultKeyset::FromVaultKeyset(const VaultKeyset& vault_keyset) {
@@ -163,17 +166,24 @@ const SecureBlob& VaultKeyset::FNEK_SALT() const {
   return fnek_salt_;
 }
 
-bool VaultKeyset::Load(const std::string& filename, const SecureBlob& key) {
+bool VaultKeyset::Load(const std::string& filename) {
   CHECK(platform_);
-  CHECK(crypto_);
   SecureBlob contents;
   if (!platform_->ReadFile(filename, &contents))
     return false;
 
   unsigned char* data = static_cast<unsigned char*>(contents.data());
-  if (!serialized_.ParseFromArray(data, contents.size()))
-    return false;
+  loaded_ = serialized_.ParseFromArray(data, contents.size());
+  // If it was parsed from file, consider it save-able too.
+  if (loaded_)
+    encrypted_ = true;
+  return loaded_;
+}
 
+bool VaultKeyset::Decrypt(const SecureBlob& key) {
+  CHECK(crypto_);
+  if (!loaded_)
+    return false;
   Crypto::CryptoError error;
   bool ok = crypto_->DecryptVaultKeyset(serialized_, key, NULL, &error, this);
   if (!ok && error == Crypto::CE_TPM_COMM_ERROR)
@@ -182,15 +192,19 @@ bool VaultKeyset::Load(const std::string& filename, const SecureBlob& key) {
   return ok;
 }
 
-bool VaultKeyset::Save(const std::string& filename, const SecureBlob& key) {
-  CHECK(platform_);
+bool VaultKeyset::Encrypt(const SecureBlob& key) {
   CHECK(crypto_);
   SecureBlob salt(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
   unsigned char* salt_buf = static_cast<unsigned char*>(salt.data());
   CryptoLib::GetSecureRandom(salt_buf, salt.size());
-  if (!crypto_->EncryptVaultKeyset(*this, key, salt, &serialized_))
-    return false;
+  encrypted_ = crypto_->EncryptVaultKeyset(*this, key, salt, &serialized_);
+  return encrypted_;
+}
 
+bool VaultKeyset::Save(const std::string& filename) {
+  CHECK(platform_);
+  if (!encrypted_)
+    return false;
   SecureBlob contents(serialized_.ByteSize());
   google::protobuf::uint8* buf =
       static_cast<google::protobuf::uint8*>(contents.data());

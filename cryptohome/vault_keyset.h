@@ -20,28 +20,37 @@ class Platform;
 // (FNEK) and their corresponding signatures.
 class VaultKeyset {
  public:
-  // Does not take ownership of platform and crypto. The objects pointed to by
-  // them must outlive this object.
-  VaultKeyset(Platform* platform, Crypto* crypto);
+  VaultKeyset();
   virtual ~VaultKeyset();
 
-  void FromVaultKeyset(const VaultKeyset& vault_keyset);
-  void FromKeys(const VaultKeysetKeys& keys);
-  bool FromKeysBlob(const chromeos::SecureBlob& keys_blob);
-  bool ToKeys(VaultKeysetKeys* keys) const;
-  bool ToKeysBlob(chromeos::SecureBlob* keys_blob) const;
+  // Does not take ownership of platform and crypto. The objects pointed to by
+  // them must outlive this object.
+  virtual void Initialize(Platform* platform, Crypto* crypto);
 
-  void CreateRandom();
+  virtual void FromVaultKeyset(const VaultKeyset& vault_keyset);
+  virtual void FromKeys(const VaultKeysetKeys& keys);
+  virtual bool FromKeysBlob(const chromeos::SecureBlob& keys_blob);
+  virtual bool ToKeys(VaultKeysetKeys* keys) const;
+  virtual bool ToKeysBlob(chromeos::SecureBlob* keys_blob) const;
 
-  const chromeos::SecureBlob& FEK() const;
-  const chromeos::SecureBlob& FEK_SIG() const;
-  const chromeos::SecureBlob& FEK_SALT() const;
-  const chromeos::SecureBlob& FNEK() const;
-  const chromeos::SecureBlob& FNEK_SIG() const;
-  const chromeos::SecureBlob& FNEK_SALT() const;
+  virtual void CreateRandom();
 
-  bool Load(const std::string& filename, const chromeos::SecureBlob& key);
-  bool Save(const std::string& filename, const chromeos::SecureBlob& key);
+  virtual const chromeos::SecureBlob& FEK() const;
+  virtual const chromeos::SecureBlob& FEK_SIG() const;
+  virtual const chromeos::SecureBlob& FEK_SALT() const;
+  virtual const chromeos::SecureBlob& FNEK() const;
+  virtual const chromeos::SecureBlob& FNEK_SIG() const;
+  virtual const chromeos::SecureBlob& FNEK_SALT() const;
+
+  virtual bool Load(const std::string& filename);
+  // Load must be called first.
+  virtual bool Decrypt(const chromeos::SecureBlob& key);
+  // Encrypt must be called first.
+  virtual bool Save(const std::string& filename);
+  virtual bool Encrypt(const chromeos::SecureBlob& key);
+  virtual const SerializedVaultKeyset& serialized() const {
+    return serialized_;
+  }
 
  private:
   chromeos::SecureBlob fek_;
@@ -55,6 +64,8 @@ class VaultKeyset {
   Crypto* crypto_;
 
   SerializedVaultKeyset serialized_;
+  bool loaded_;
+  bool encrypted_;
 
   DISALLOW_COPY_AND_ASSIGN(VaultKeyset);
 };

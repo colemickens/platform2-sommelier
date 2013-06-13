@@ -34,7 +34,9 @@ HomeDirs::HomeDirs()
       default_crypto_(new Crypto(platform_)),
       crypto_(default_crypto_.get()),
       default_mount_factory_(new MountFactory()),
-      mount_factory_(default_mount_factory_.get()) { }
+      mount_factory_(default_mount_factory_.get()),
+      default_vault_keyset_factory_(new VaultKeysetFactory()),
+      vault_keyset_factory_(default_vault_keyset_factory_.get()) { }
 
 HomeDirs::~HomeDirs() { }
 
@@ -133,11 +135,12 @@ bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
   if (AreEphemeralUsersEnabled() && GetOwner(&owner) && obfuscated != owner)
     return false;
-  VaultKeyset vk(platform_, crypto_);
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   SecureBlob passkey;
   creds.GetPasskey(&passkey);
   std::string path = GetVaultKeysetPath(obfuscated);
-  return vk.Load(GetVaultKeysetPath(obfuscated), passkey);
+  return vk->Load(GetVaultKeysetPath(obfuscated)) &&
+         vk->Decrypt(passkey);
 }
 
 std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated) const {
@@ -146,11 +149,16 @@ std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated) const {
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
-  std::string owner;
-  if (!GetOwner(&owner))
+  if (!enterprise_owned_) {  // Enterprise owned? Delete it all.
+    std::string owner;
+    if (!GetOwner(&owner) ||  // No owner? bail.
+        // Don't delete the owner's vault!
+        // TODO(wad,ellyjones) Add GetUser*Path-helpers
+        vault == FilePath(shadow_root_).Append(owner).Append(kVaultDir))
     return;
-  if (vault != FilePath(shadow_root_).Append(owner).Append(kVaultDir))
-    platform_->DeleteFile(vault.DirName().value(), true);
+  }
+  // Once we're sure this is not the owner vault, delete it.
+  platform_->DeleteFile(vault.DirName().value(), true);
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomes() {
@@ -166,7 +174,6 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
   RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetUserPathPrefix());
   RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetRootPathPrefix());
 }
-
 
 void HomeDirs::DoForEveryUnmountedCryptohome(
     const CryptohomeCallback& cryptohome_cb) {
@@ -211,13 +218,13 @@ void HomeDirs::RemoveNonOwnerDirectories(const FilePath& prefix) {
   if (!platform_->EnumerateDirectoryEntries(prefix.value(), false, &dirents))
     return;
   std::string owner;
-  if (!GetOwner(&owner))
+  if (!enterprise_owned_ && !GetOwner(&owner))
     return;
   for (std::vector<std::string>::iterator it = dirents.begin();
        it != dirents.end(); ++it) {
     FilePath path(*it);
     const std::string basename = path.BaseName().value();
-    if (!strcasecmp(basename.c_str(), owner.c_str()))
+    if (!enterprise_owned_ && !strcasecmp(basename.c_str(), owner.c_str()))
       continue;  // Skip the owner's directory.
     if (!chromeos::cryptohome::home::IsSanitizedUserName(basename))
       continue;  // Skip any directory whose name is not an obfuscated user
@@ -244,11 +251,12 @@ void HomeDirs::DeleteGCacheTmpCallback(const FilePath& vault) {
 void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
   const FilePath user_dir = vault.DirName();
   const std::string obfuscated_username = user_dir.BaseName().value();
-  SerializedVaultKeyset serialized;
-  LoadVaultKeysetForUser(obfuscated_username, &serialized);
-  if (serialized.has_last_activity_timestamp()) {
+  scoped_ptr<VaultKeyset> keyset(
+      vault_keyset_factory()->New(platform_, crypto_));
+  if (LoadVaultKeysetForUser(obfuscated_username, keyset.get()) &&
+      keyset->serialized().has_last_activity_timestamp()) {
     const base::Time timestamp = base::Time::FromInternalValue(
-        serialized.last_activity_timestamp());
+        keyset->serialized().last_activity_timestamp());
     timestamp_cache_->AddExistingUser(user_dir, timestamp);
   } else {
     timestamp_cache_->AddExistingUserNotime(user_dir);
@@ -256,20 +264,13 @@ void HomeDirs::AddUserTimestampToCacheCallback(const FilePath& vault) {
 }
 
 bool HomeDirs::LoadVaultKeysetForUser(const std::string& obfuscated_user,
-                                      SerializedVaultKeyset* serialized) const {
+                                      VaultKeyset* keyset) const {
   // Load the encrypted keyset
   std::string user_key_file = GetVaultKeysetPath(obfuscated_user);
-  if (!platform_->FileExists(user_key_file))
-    return false;
-  SecureBlob cipher_text;
-  if (!platform_->ReadFile(user_key_file, &cipher_text)) {
+  // We don't have keys yet, so just load it.
+  // TODO(wad) Move to passing around keysets and not serialized versions.
+  if (!keyset->Load(user_key_file)) {
     LOG(ERROR) << "Failed to read keyset file for user " << obfuscated_user;
-    return false;
-  }
-  if (!serialized->ParseFromArray(
-           static_cast<const unsigned char*>(cipher_text.data()),
-           cipher_text.size())) {
-    LOG(ERROR) << "Failed to parse keyset for user " << obfuscated_user;
     return false;
   }
   return true;
@@ -333,14 +334,15 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     // destructor.
     return false;
   }
-  VaultKeyset keyset(platform_, crypto_);
+  scoped_ptr<VaultKeyset> keyset(
+    vault_keyset_factory()->New(platform_, crypto_));
   std::string path = GetVaultKeysetPath(
       newcreds.GetObfuscatedUsername(system_salt_));
-  if (!keyset.Load(path, oldkey)) {
+  if (!keyset->Load(path) || !keyset->Decrypt(oldkey)) {
     LOG(ERROR) << "Can't load vault keyset at " << path;
     return false;
   }
-  if (!keyset.Save(path, newkey)) {
+  if (!keyset->Encrypt(newkey) || !keyset->Save(path)) {
     LOG(ERROR) << "Can't save vault keyset at " << path;
     return false;
   }

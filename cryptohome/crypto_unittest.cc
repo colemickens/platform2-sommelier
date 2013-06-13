@@ -165,7 +165,8 @@ TEST_F(CryptoTest, EncryptionTest) {
   // Check that EncryptVaultKeyset returns something other than the bytes passed
   Crypto crypto(&platform_);
 
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
@@ -192,7 +193,8 @@ TEST_F(CryptoTest, DecryptionTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
 
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
@@ -211,7 +213,8 @@ TEST_F(CryptoTest, DecryptionTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset(&platform_, &crypto);
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform_, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
@@ -313,7 +316,8 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   crypto.Init();
 
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
@@ -332,7 +336,8 @@ TEST_F(CryptoTest, TpmStepTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset(&platform, &crypto);
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
@@ -354,7 +359,8 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
   crypto.Init();
 
-  VaultKeyset vault_keyset(&platform, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
@@ -373,7 +379,8 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset(&platform, &crypto);
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,
@@ -404,7 +411,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   crypto.Init();
 
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob key(20);
@@ -423,7 +431,8 @@ TEST_F(CryptoTest, TpmScryptStepTest) {
 
   ASSERT_TRUE(CryptoTest::FromSerializedBlob(encrypted, &serialized));
 
-  VaultKeyset new_keyset(&platform_, &crypto);
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform_, &crypto);
   unsigned int crypt_flags = 0;
   Crypto::CryptoError crypto_error = Crypto::CE_NONE;
   ASSERT_TRUE(crypto.DecryptVaultKeyset(serialized, key, &crypt_flags,

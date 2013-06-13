@@ -56,7 +56,8 @@ class VaultKeysetTest : public ::testing::Test {
 TEST_F(VaultKeysetTest, AllocateRandom) {
   // Check that allocating a random VaultKeyset works
   Crypto crypto(&platform_);
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   EXPECT_EQ(CRYPTOHOME_DEFAULT_KEY_SIZE, vault_keyset.FEK().size());
@@ -73,7 +74,8 @@ TEST_F(VaultKeysetTest, AllocateRandom) {
 TEST_F(VaultKeysetTest, SerializeTest) {
   // Check that serialize works
   Crypto crypto(&platform_);
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob blob;
@@ -91,13 +93,14 @@ TEST_F(VaultKeysetTest, SerializeTest) {
 TEST_F(VaultKeysetTest, DeserializeTest) {
   // Check that deserialize works
   Crypto crypto(&platform_);
-  VaultKeyset vault_keyset(&platform_, &crypto);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto);
   vault_keyset.CreateRandom();
 
   SecureBlob blob;
   EXPECT_TRUE(vault_keyset.ToKeysBlob(&blob));
 
-  VaultKeyset new_vault_keyset(&platform_, &crypto);
+  VaultKeyset new_vault_keyset;
   new_vault_keyset.FromKeysBlob(blob);
 
   EXPECT_EQ(vault_keyset.FEK().size(), new_vault_keyset.FEK().size());
@@ -135,7 +138,9 @@ ACTION_P(CopyFromSecureBlob, b) {
 TEST_F(VaultKeysetTest, LoadSaveTest) {
   MockPlatform platform;
   Crypto crypto(&platform);
-  VaultKeyset keyset(&platform, &crypto);
+  VaultKeyset keyset;
+  keyset.Initialize(&platform, &crypto);
+
   keyset.CreateRandom();
   SecureBlob bytes;
 
@@ -147,10 +152,13 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   SecureBlob key("key", 3);
-  EXPECT_TRUE(keyset.Save("foo", key));
+  EXPECT_TRUE(keyset.Encrypt(key));
+  EXPECT_TRUE(keyset.Save("foo"));
 
-  VaultKeyset new_keyset(&platform, &crypto);
-  EXPECT_TRUE(new_keyset.Load("foo", key));
+  VaultKeyset new_keyset;
+  new_keyset.Initialize(&platform, &crypto);
+  EXPECT_TRUE(new_keyset.Load("foo"));
+  EXPECT_TRUE(new_keyset.Decrypt(key));
 }
 
 }  // namespace cryptohome

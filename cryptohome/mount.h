@@ -122,13 +122,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   virtual bool EnsureCryptohome(const Credentials& credentials,
                                 bool* created) const;
 
-  // Checks free disk space and if it falls below minimum
-  // (kMinFreeSpace), performs cleanup. Returns true if cleanup
-  // started (but maybe could not do anything), false if disk space
-  // was enough.
-  // TODO(ellyjones): delete this in favor of HomeDirs
-  virtual bool DoAutomaticFreeDiskSpaceControl();
-
   // Updates current user activity timestamp. This is called daily.
   // So we may not consider current user as old (and delete it soon after she
   // logs off). Returns true if current user is in and updated.
@@ -659,24 +652,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //   mount_point - Mount point to unmount
   void ForceUnmount(const std::string& mount_point);
 
-  // Deletes a given cryptohome unless it is currently mounted or belongs to the
-  // owner.
-  //
-  // Parameters
-  //   vault - The path to the vault inside the cryptohome to delete.
-  void RemoveNonOwnerCryptohomesCallback(const FilePath& vault);
-
-  // Deletes all directories under |prefix| whose names are obfuscated usernames
-  // except those currently mounted or matching the owner's obfuscated username.
-  //
-  // Parameters
-  //   prefix - The prefix under which to delete.
-  void RemoveNonOwnerDirectories(const FilePath& prefix);
-
-  // Removes the cryptohome directories and mount points except those currently
-  // mounted or belonging to the owner.
-  void RemoveNonOwnerCryptohomes();
-
   // Derives PKCS #11 token authorization data from a passkey. This may take up
   // to ~100ms (dependant on CPU / memory performance). Returns true on success.
   bool DeriveTokenAuthData(const chromeos::SecureBlob& passkey,
@@ -724,9 +699,8 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   scoped_ptr<Crypto> default_crypto_;
   Crypto *crypto_;
 
-  // Temporary; some of the methods on Mount (currently,
-  // DoAutomaticFreeDiskSpaceControl) are shims that call into this object
-  // instead. Please do not use this; it will go away once the shims are gone.
+  // TODO(wad,ellyjones) Require HomeDirs at Init().
+  // HomeDirs encapsulates operations on Cryptohomes at rest.
   scoped_ptr<HomeDirs> default_homedirs_;
   HomeDirs *homedirs_;
 
@@ -787,7 +761,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest,
               CheckChapsDirectoryCalledWithExistingDirWithFatalError);
   FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDir);
-  friend class DoAutomaticFreeDiskSpaceControlTest;
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

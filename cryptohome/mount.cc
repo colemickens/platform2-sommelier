@@ -267,7 +267,7 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
   bool ephemeral_users = AreEphemeralUsersEnabled();
   const string obfuscated_owner = GetObfuscatedOwner();
   if (ephemeral_users)
-    RemoveNonOwnerCryptohomes();
+    homedirs_->RemoveNonOwnerCryptohomes();
 
   bool non_owner = enterprise_owned_ || (!obfuscated_owner.empty() &&
       credentials.GetObfuscatedUsername(system_salt_) != obfuscated_owner);
@@ -322,7 +322,8 @@ bool Mount::MountCryptohomeInner(const Credentials& credentials,
 
 
   // Attempt to decrypt the vault keyset with the specified credentials
-  VaultKeyset vault_keyset(platform_, crypto_);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(platform_, crypto_);
   SerializedVaultKeyset serialized;
   MountError local_mount_error = MOUNT_ERROR_NONE;
   if (!DecryptVaultKeyset(credentials, true, &vault_keyset, &serialized,
@@ -667,47 +668,11 @@ void Mount::ForceUnmount(const std::string& mount_point) {
   }
 }
 
-void Mount::RemoveNonOwnerCryptohomesCallback(const FilePath& vault) {
-  if (vault != FilePath(GetUserVaultPath(GetObfuscatedOwner())))
-    platform_->DeleteFile(vault.DirName().value(), true);
-}
-
-void Mount::RemoveNonOwnerDirectories(const FilePath& prefix) {
-  std::vector<std::string> dirents;
-  if (!platform_->EnumerateDirectoryEntries(prefix.value(), false, &dirents))
-    return;
-  std::string owner(GetObfuscatedOwner());
-  for (std::vector<std::string>::iterator it = dirents.begin();
-       it != dirents.end(); ++it) {
-    FilePath path(*it);
-    const std::string basename = path.BaseName().value();
-    if (!strcasecmp(basename.c_str(), owner.c_str()))
-      continue;  // Skip the owner's directory.
-    if (!chromeos::cryptohome::home::IsSanitizedUserName(basename))
-      continue;  // Skip any directory whose name is not an obfuscated user
-                 // name.
-    if (platform_->IsDirectoryMounted(path.value()))
-      continue;  // Skip any directory that is currently mounted.
-    platform_->DeleteFile(path.value(), true);
-  }
-}
-
-void Mount::RemoveNonOwnerCryptohomes() {
-  if (!enterprise_owned_ && GetObfuscatedOwner().empty())
-    return;
-
-  DoForEveryUnmountedCryptohome(base::Bind(
-      &Mount::RemoveNonOwnerCryptohomesCallback,
-      base::Unretained(this)));
-  RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetUserPathPrefix());
-  RemoveNonOwnerDirectories(chromeos::cryptohome::home::GetRootPathPrefix());
-}
-
 bool Mount::UnmountCryptohome() {
   UnmountAllForUser(current_user_);
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
-    RemoveNonOwnerCryptohomes();
+    homedirs_->RemoveNonOwnerCryptohomes();
   else
     UpdateCurrentUserActivityTimestamp(0);
   current_user_->Reset();
@@ -741,7 +706,8 @@ bool Mount::CreateCryptohome(const Credentials& credentials) const {
   platform_->CreateDirectory(user_dir.value());
 
   // Generate a new master key
-  VaultKeyset vault_keyset(platform_, crypto_);
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(platform_, crypto_);
   vault_keyset.CreateRandom();
   SerializedVaultKeyset serialized;
   if (!AddVaultKeyset(credentials, vault_keyset, &serialized)) {
@@ -881,10 +847,6 @@ void Mount::DoForEveryUnmountedCryptohome(
     }
     cryptohome_cb.Run(FilePath(vault_path));
   }
-}
-
-bool Mount::DoAutomaticFreeDiskSpaceControl() {
-  return homedirs_->FreeDiskSpace();
 }
 
 bool Mount::SetupGroupAccess(const FilePath& home_dir) const {

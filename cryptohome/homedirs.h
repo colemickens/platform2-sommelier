@@ -22,6 +22,7 @@
 #include "crypto.h"
 #include "mount_factory.h"
 #include "vault_keyset.pb.h"
+#include "vault_keyset_factory.h"
 
 namespace cryptohome {
 
@@ -33,6 +34,7 @@ extern const base::TimeDelta kOldUserLastActivityTime;
 class Credentials;
 class Platform;
 class UserOldestActivityTimestampCache;
+class VaultKeyset;
 
 class HomeDirs {
  public:
@@ -109,6 +111,12 @@ class HomeDirs {
   Crypto* crypto() const { return crypto_; }
   void set_mount_factory(MountFactory* value) { mount_factory_ = value; }
   MountFactory* mount_factory() const { return mount_factory_; }
+  void set_vault_keyset_factory(VaultKeysetFactory* value) {
+    vault_keyset_factory_ = value;
+  }
+  VaultKeysetFactory* vault_keyset_factory() const {
+    return vault_keyset_factory_;
+  }
 
  private:
   bool AreEphemeralUsersEnabled();
@@ -135,7 +143,7 @@ class HomeDirs {
   // Loads the serialized vault keyset for the supplied obfuscated username.
   // Returns true for success, false for failure.
   bool LoadVaultKeysetForUser(const std::string& obfuscated_user,
-                              SerializedVaultKeyset* serialized) const;
+                              VaultKeyset* keyset) const;
 
   // Takes ownership of the supplied PolicyProvider. Used to avoid leaking mocks
   // in unit tests.
@@ -156,6 +164,10 @@ class HomeDirs {
   Crypto* crypto_;
   scoped_ptr<MountFactory> default_mount_factory_;
   MountFactory* mount_factory_;
+  // TODO(wad) Collapse all factories into a single manufacturing plant to save
+  //           some pointers.
+  scoped_ptr<VaultKeysetFactory> default_vault_keyset_factory_;
+  VaultKeysetFactory* vault_keyset_factory_;
   base::TimeDelta old_user_last_activity_time_;
   chromeos::SecureBlob system_salt_;
   chaps::TokenManagerClient chaps_client_;
