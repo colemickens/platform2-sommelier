@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/basictypes.h>
 
@@ -35,19 +36,24 @@ class KeyValueStore {
   bool ContainsBool(const std::string &name) const;
   bool ContainsInt(const std::string &name) const;
   bool ContainsString(const std::string &name) const;
+  bool ContainsStrings(const std::string &name) const;
   bool ContainsUint(const std::string &name) const;
 
   bool GetBool(const std::string &name) const;
   int32 GetInt(const std::string &name) const;
   const std::string &GetString(const std::string &name) const;
+  const std::vector<std::string> &GetStrings(const std::string &name) const;
   uint32 GetUint(const std::string &name) const;
 
   void SetBool(const std::string &name, bool value);
   void SetInt(const std::string &name, int32 value);
-  void SetString(const std::string& name, const std::string& value);
+  void SetString(const std::string &name, const std::string &value);
+  void SetStrings(const std::string &name,
+                  const std::vector<std::string> &value);
   void SetUint(const std::string &name, uint32 value);
 
   void RemoveString(const std::string &name);
+  void RemoveStrings(const std::string &name);
   void RemoveInt(const std::string &name);
 
   // If |name| is in this store returns its value, otherwise returns
@@ -65,6 +71,10 @@ class KeyValueStore {
   const std::map<std::string, std::string> &string_properties() const {
     return string_properties_;
   }
+  const std::map<std::string,
+                 std::vector<std::string>> &strings_properties() const {
+    return strings_properties_;
+  }
   const std::map<std::string, uint32> &uint_properties() const {
     return uint_properties_;
   }
@@ -73,6 +83,7 @@ class KeyValueStore {
   std::map<std::string, bool> bool_properties_;
   std::map<std::string, int32> int_properties_;
   std::map<std::string, std::string> string_properties_;
+  std::map<std::string, std::vector<std::string>> strings_properties_;
   std::map<std::string, uint32> uint_properties_;
 };
 

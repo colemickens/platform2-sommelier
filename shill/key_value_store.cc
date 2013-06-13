@@ -10,6 +10,7 @@
 
 using std::map;
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -41,6 +42,10 @@ bool KeyValueStore::ContainsString(const string &name) const {
   return ContainsKey(string_properties_, name);
 }
 
+bool KeyValueStore::ContainsStrings(const string &name) const {
+  return ContainsKey(strings_properties_, name);
+}
+
 bool KeyValueStore::ContainsUint(const string &name) const {
   return ContainsKey(uint_properties_, name);
 }
@@ -63,6 +68,12 @@ const string &KeyValueStore::GetString(const string &name) const {
   return it->second;
 }
 
+const vector<string> &KeyValueStore::GetStrings(const string &name) const {
+  const auto it(strings_properties_.find(name));
+  CHECK(it != strings_properties_.end()) << "for strings property " << name;
+  return it->second;
+}
+
 uint32 KeyValueStore::GetUint(const string &name) const {
   map<string, uint32>::const_iterator it(uint_properties_.find(name));
   CHECK(it != uint_properties_.end()) << "for uint property " << name;
@@ -81,12 +92,21 @@ void KeyValueStore::SetString(const string &name, const string &value) {
   string_properties_[name] = value;
 }
 
+void KeyValueStore::SetStrings(const string &name,
+                               const vector<string> &value) {
+  strings_properties_[name] = value;
+}
+
 void KeyValueStore::SetUint(const string &name, uint32 value) {
   uint_properties_[name] = value;
 }
 
 void KeyValueStore::RemoveString(const string &name) {
   string_properties_.erase(name);
+}
+
+void KeyValueStore::RemoveStrings(const string &name) {
+  strings_properties_.erase(name);
 }
 
 void KeyValueStore::RemoveInt(const string &name) {

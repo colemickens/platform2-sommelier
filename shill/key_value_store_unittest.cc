@@ -7,6 +7,7 @@
 #include <gtest/gtest.h>
 
 using std::string;
+using std::vector;
 using testing::Test;
 
 namespace shill {
@@ -60,6 +61,17 @@ TEST_F(KeyValueStoreTest, String) {
   store_.RemoveString(kKey);
   EXPECT_FALSE(store_.ContainsString(kKey));
   EXPECT_EQ(kDefaultValue, store_.LookupString(kKey, kDefaultValue));
+}
+
+TEST_F(KeyValueStoreTest, Strings) {
+  const string kKey("foo");
+  const vector<string> kValue{ "baz0", "baz1", "baz2" };
+  EXPECT_FALSE(store_.ContainsStrings(kKey));
+  store_.SetStrings(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsStrings(kKey));
+  EXPECT_EQ(kValue, store_.GetStrings(kKey));
+  store_.RemoveStrings(kKey);
+  EXPECT_FALSE(store_.ContainsStrings(kKey));
 }
 
 TEST_F(KeyValueStoreTest, Uint) {
