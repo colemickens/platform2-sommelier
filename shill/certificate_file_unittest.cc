@@ -5,6 +5,7 @@
 #include "shill/certificate_file.h"
 
 #include <string>
+#include <vector>
 
 #include <base/file_path.h>
 #include <base/file_util.h>
@@ -17,6 +18,7 @@
 using base::FilePath;
 using base::StringPrintf;
 using std::string;
+using std::vector;
 using testing::_;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -92,6 +94,27 @@ TEST_F(CertificateFileTest, CreatePEMFromString) {
   FilePath outfile2 = certificate_file_.CreatePEMFromString("");
   EXPECT_TRUE(outfile2.empty());
   EXPECT_TRUE(file_util::PathExists(outfile1));
+}
+
+TEST_F(CertificateFileTest, CreatePEMFromStrings) {
+  // Create a formatted PEM file from the inner HEX data.
+  const vector<string> kPEMVector0{ kPEMData, kPEMData };
+  FilePath outfile0 = certificate_file_.CreatePEMFromStrings(kPEMVector0);
+  EXPECT_FALSE(outfile0.empty());
+  EXPECT_TRUE(file_util::PathExists(outfile0));
+  EXPECT_TRUE(file_util::ContainsPath(certificate_directory_, outfile0));
+  string expected_output = StringPrintf(
+      "%s\n%s%s\n%s\n%s%s\n", GetPEMHeader(), kPEMData, GetPEMFooter(),
+      GetPEMHeader(), kPEMData, GetPEMFooter());
+  string file_string0;
+  EXPECT_TRUE(file_util::ReadFileToString(outfile0, &file_string0));
+  EXPECT_EQ(expected_output, file_string0);
+
+  // Fail to create a PEM file.  Old file should not have been deleted.
+  const vector<string> kPEMVector1{ kPEMData, "" };
+  FilePath outfile1 = certificate_file_.CreatePEMFromStrings(kPEMVector1);
+  EXPECT_TRUE(outfile1.empty());
+  EXPECT_TRUE(file_util::PathExists(outfile0));
 }
 
 TEST_F(CertificateFileTest, CreateDERFromString) {

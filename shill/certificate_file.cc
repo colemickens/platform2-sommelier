@@ -52,6 +52,20 @@ FilePath CertificateFile::CreatePEMFromString(const string &pem_contents) {
       "%s\n%s%s\n", kPEMHeader, hex_data.c_str(), kPEMFooter));
 }
 
+FilePath CertificateFile::CreatePEMFromStrings(
+    const vector<string> &pem_contents) {
+  vector<string> pem_output;
+  for (const auto &content : pem_contents) {
+    string hex_data = ExtractHexData(content);
+    if (hex_data.empty()) {
+      return FilePath();
+    }
+    pem_output.push_back(StringPrintf(
+      "%s\n%s%s\n", kPEMHeader, hex_data.c_str(), kPEMFooter));
+  }
+  return WriteFile(JoinString(pem_output, ""));
+}
+
 FilePath CertificateFile::CreateDERFromString(const string &pem_contents) {
   string hex_data = ExtractHexData(pem_contents);
   string der_contents;
