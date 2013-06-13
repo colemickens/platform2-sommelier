@@ -19,6 +19,10 @@ Context::~Context() {}
 bool Context::Initialize() {
   config_loader_.reset(new ConfigLoader());
   CHECK(config_loader_);
+  if (!config_loader_->LoadDefaultConfig()) {
+    LOG(ERROR) << "Could not load default config file.";
+    return false;
+  }
 
   event_dispatcher_.reset(new EventDispatcher());
   CHECK(event_dispatcher_);

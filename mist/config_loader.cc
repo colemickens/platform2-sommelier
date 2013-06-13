@@ -18,9 +18,19 @@ using base::FilePath;
 
 namespace mist {
 
+namespace {
+
+const char kDefaultConfigFile[] = "/usr/share/mist/default.conf";
+
+}  // namespace
+
 ConfigLoader::ConfigLoader() {}
 
 ConfigLoader::~ConfigLoader() {}
+
+bool ConfigLoader::LoadDefaultConfig() {
+  return LoadConfig(FilePath(kDefaultConfigFile));
+}
 
 bool ConfigLoader::LoadConfig(const FilePath& file_path) {
   int fd = HANDLE_EINTR(open(file_path.MaybeAsASCII().c_str(), O_RDONLY));

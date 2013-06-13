@@ -24,6 +24,9 @@ class ConfigLoader {
   ConfigLoader();
   ~ConfigLoader();
 
+  // Loads the default configuration. Returns true on success.
+  bool LoadDefaultConfig();
+
   // Loads a configuration from |config_file|. Returns true on success.
   bool LoadConfig(const base::FilePath& config_file);
 
