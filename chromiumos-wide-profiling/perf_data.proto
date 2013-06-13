@@ -13,7 +13,7 @@ option optimize_for = LITE_RUNTIME;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 5
+// Next tag: 7
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -331,6 +331,15 @@ message PerfDataProto {
     optional bool did_remap = 7;
   }
 
+  // Next tag: 3
+  message PerfStringMetadata {
+    // Type of metadata, such as hostname, osrelease, version, etc.
+    optional uint32 type = 1;
+
+    // String data.
+    optional string data = 2;
+  }
+
   repeated PerfFileAttr file_attrs = 1;
   repeated PerfEvent events = 2;
 
@@ -340,4 +349,11 @@ message PerfDataProto {
 
   // Records some stats about the serialized perf events.
   optional PerfEventStats stats = 4;
+
+  // Bit mask used to determine what metadata has been included.
+  // At the moment, only the first number is actually used.
+  // See adds_features in perf_reader.cc
+  repeated uint64 metadata_mask = 5;
+
+  repeated PerfStringMetadata string_metadata = 6;
 }

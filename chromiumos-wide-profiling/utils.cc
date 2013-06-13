@@ -44,6 +44,10 @@ void TrimWhitespace(string* str) {
 const char kPerfReportCommand[] =
     "/usr/sbin/perf report --symfs=/dev/null --stdio -n -i ";
 
+const char* kSupportedMetadata[] = {
+  "hostname", "os release", "perf version", "arch", "cpudesc"
+};
+
 // Given a perf report file, get the perf report and read it into a string.
 bool GetPerfReport(const string& filename, string* output) {
   // Redirecting stderr does lose warnings and errors, but serious errors should
@@ -57,15 +61,28 @@ bool GetPerfReport(const string& filename, string* output) {
   }
 
   char buffer[kFileReadSize];
-  // Read line by line, discarding commented lines.  That should skip the
-  // header metadata, which we are not including.
+  // Read line by line, discarding commented lines.
+  // Only keep commented lines of the form
+  // #<supported metadata>:
+  // Where <supported metadata> is any string in kSupportedMetadata.
   output->clear();
   while (fgets(buffer, sizeof(buffer), file)) {
-    if (buffer[0] == '#')
-      continue;
-    string str = buffer;
-    TrimWhitespace(&str);
-    *output += str + '\n';
+    bool use_line = false;
+    if (buffer[0] != '#')
+      use_line = true;
+
+    string buffer_string = buffer;
+    int length = arraysize(kSupportedMetadata);
+    for (int i = 0; i < length; i++) {
+      string valid_prefix = string("# ") + kSupportedMetadata[i] + " :";
+      if (buffer_string.find(valid_prefix) != string::npos)
+        use_line = true;
+    }
+
+    if (use_line) {
+      TrimWhitespace(&buffer_string);
+      *output += buffer_string + '\n';
+    }
   }
 
   int status = pclose(file);

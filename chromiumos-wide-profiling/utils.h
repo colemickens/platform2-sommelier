@@ -27,8 +27,8 @@ uint64 Md5Prefix(const string& input);
 
 bool CreateNamedTempFile(string* name);
 
-// Returns true if the perf reports show the same summary.  Metadata is not
-// compared.
+// Returns true if the perf reports show the same summary.  Metadata
+// is compared if it is present in kSupportedMetadata in utils.cc.
 bool ComparePerfReports(const string& a, const string& b);
 
 // Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple

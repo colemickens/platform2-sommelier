@@ -21,6 +21,14 @@ namespace {
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64 kPerfMagic = 0x32454c4946524550LL;
 
+// A mask that is applied to metadata_mask_ in order to get a mask for
+// only the metadata supported by quipper.
+// Currently, we support hostname, osrelease, version, arch, cpudesck,
+// and branchstack.
+// The mask is computed as (1 << HEADER_HOSTNAME) |
+// (1 << HEADER_OSRELEASE) | ... | (1 << HEADER_BRANCH_STACK)
+const uint32 kSupportedMetadataMask = 0x8178;
+
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
   return num_bytes * 8;
@@ -454,7 +462,9 @@ bool PerfReader::ReadFileData(const std::vector<char>& data) {
   // Check if it is normal perf data.
   if (header_.size == sizeof(header_)) {
     LOG(INFO) << "Perf data is in normal format.";
-    return (ReadAttrs(data) && ReadEventTypes(data) && ReadData(data));
+    metadata_mask_ = header_.adds_features[0];
+    return (ReadAttrs(data) && ReadEventTypes(data) && ReadData(data)
+            && ReadMetadata(data));
   }
 
   // Otherwise it is piped data.
@@ -482,13 +492,21 @@ bool PerfReader::WriteFile(const string& filename) {
   for (size_t i = 0; i < attrs_.size(); ++i)
     total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
 
+  // Add the sizes of the various metadata.
+  for (size_t i = 0; i < string_metadata_.size(); ++i)
+    total_size += string_metadata_[i].size;
+
+  // Additional info about metadata.  See WriteMetadata for explanation.
+  total_size += (string_metadata_.size() + 1) * 2 * sizeof(u64);
+
   // Write all data into a vector.
   std::vector<char> data;
   data.resize(total_size);
   if (!WriteHeader(&data) ||
       !WriteAttrs(&data) ||
       !WriteEventTypes(&data) ||
-      !WriteData(&data)) {
+      !WriteData(&data) ||
+      !WriteMetadata(&data)) {
     return false;
   }
   return WriteDataToFile(data, filename);
@@ -533,11 +551,13 @@ bool PerfReader::RegenerateHeader() {
   // assumption is no longer valid, this CHECK will fail, at which point the
   // below code needs to be updated.  For now, sticking to that assumption keeps
   // the code simple.
+  // This assumption is also used when reading metadata, so that code
+  // will also have to be updated if this CHECK starts to fail.
   CHECK_LE(static_cast<size_t>(HEADER_LAST_FEATURE),
            BytesToBits(sizeof(out_header_.adds_features[0])));
-  // TODO(sque): Support header features other than HEADER_BRANCH_STACK.
   if (sample_type_ & PERF_SAMPLE_BRANCH_STACK)
     out_header_.adds_features[0] |= (1 << HEADER_BRANCH_STACK);
+  out_header_.adds_features[0] |= metadata_mask_ & kSupportedMetadataMask;
 
   return true;
 }
@@ -643,6 +663,61 @@ bool PerfReader::ReadData(const std::vector<char>& data) {
   }
 
   LOG(INFO) << "Number of events stored: "<< events_.size();
+  return true;
+}
+
+bool PerfReader::ReadMetadata(const std::vector<char>& data) {
+  size_t offset = header_.data.offset + header_.data.size;
+
+  for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
+    if ((metadata_mask_ & (1 << type)) == 0)
+      continue;
+
+    if (data.size() < offset) {
+      LOG(ERROR) << "Not enough data to read offset and size of metadata.";
+      return false;
+    }
+
+    u64 metadata_offset = *(reinterpret_cast<const u64*>(&data[offset]));
+    offset += sizeof(metadata_offset) / sizeof(data[offset]);
+    u64 metadata_size = *(reinterpret_cast<const u64*>(&data[offset]));
+    offset += sizeof(metadata_size) / sizeof(data[offset]);
+
+    if (data.size() < metadata_offset + metadata_size) {
+      LOG(ERROR) << "Not enough data to read metadata.";
+      return false;
+    }
+
+    switch (type) {
+      case HEADER_HOSTNAME:
+      case HEADER_OSRELEASE:
+      case HEADER_VERSION:
+      case HEADER_ARCH:
+      case HEADER_CPUDESC:
+        if (!ReadStringMetadata(data, type, metadata_offset, metadata_size))
+          return false;
+        break;
+      case HEADER_BRANCH_STACK:
+        continue;
+      default: LOG(INFO) << "Unsupported metadata type: " << type;
+        break;
+    }
+  }
+
+  return true;
+}
+
+bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
+                                    size_t offset, size_t size) {
+  PerfStringMetadata str_data;
+  str_data.type = type;
+  str_data.size = size;
+
+  str_data.len = *(reinterpret_cast<const u32*>(&data[offset]));
+  offset += sizeof(str_data.len) / sizeof(data[offset]);
+  str_data.data = string(&data[offset]);
+
+  string_metadata_.push_back(str_data);
   return true;
 }
 
@@ -757,6 +832,101 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
     offset += event.header.size;
   }
   return true;
+}
+
+bool PerfReader::WriteMetadata(std::vector<char>* data) const {
+  //TODO: Remove once we support metadata for piped data
+  if (string_metadata_.size() == 0)
+    return true;
+  size_t header_offset = out_header_.data.offset + out_header_.data.size;
+  // Before writing the metadata, there is one header for each piece
+  // of metadata, and one extra showing the end of the file.
+  // Each header contains two 64-bit numbers (offset and size).
+  u64 metadata_offset =
+      header_offset + (string_metadata_.size() + 1) * 2 * sizeof(u64);
+
+  // Zero out the memory used by the headers
+  memset(&(*data)[header_offset], 0,
+         (metadata_offset - header_offset) * sizeof((*data)[header_offset]));
+
+  for (u32 type = HEADER_FIRST_FEATURE; type != HEADER_LAST_FEATURE; ++type) {
+    if ((out_header_.adds_features[0] & (1 << type)) == 0)
+      continue;
+
+    // metadata must be initialized by the method that writes the
+    // metadata to the data vector (for example, WriteStringMetadata).
+    const PerfMetadata* metadata = NULL;
+
+    // Write actual metadata to address metadata_offset
+    switch (type) {
+      case HEADER_HOSTNAME:
+      case HEADER_OSRELEASE:
+      case HEADER_VERSION:
+      case HEADER_ARCH:
+      case HEADER_CPUDESC:
+        if (!WriteStringMetadata(type, metadata_offset, &metadata, data))
+          return false;
+        break;
+      case HEADER_BRANCH_STACK:
+        continue;
+      default: LOG(ERROR) << "Unsupported metadata type: " << type;
+        return false;
+    }
+
+    // Write metadata offset and size to address header_offset.
+    if (!WriteDataToVector(&metadata_offset, header_offset,
+                           sizeof(metadata_offset), "metadata offset", data))
+      return false;
+    header_offset += sizeof(metadata_offset) / sizeof((*data)[header_offset]);
+
+    if (!WriteDataToVector(&metadata->size, header_offset,
+                           sizeof(metadata->size), "metadata size", data))
+      return false;
+    header_offset += sizeof(metadata_offset) / sizeof((*data)[header_offset]);
+
+    // Set up metadata_offset for next metadata event.
+    // metadata->size is given in units of char.
+    metadata_offset +=
+        metadata->size * sizeof((*data)[header_offset]) / sizeof(char);
+  }
+
+  // Write the last entry - a pointer to the end of the file
+  if (!WriteDataToVector(&metadata_offset, header_offset,
+                         sizeof(metadata_offset), "metadata offset", data))
+    return false;
+
+  return true;
+}
+
+bool PerfReader::WriteStringMetadata(u32 type, size_t offset,
+                                     const PerfMetadata** metadata_handle,
+                                     std::vector<char>* data) const {
+  for (size_t i = 0; i < string_metadata_.size(); ++i) {
+    const PerfStringMetadata& str_data = string_metadata_[i];
+    if (str_data.type == type) {
+      *metadata_handle = &str_data;
+
+      if (!WriteDataToVector(&str_data.len, offset, sizeof(str_data.len),
+                             "length of string metadata", data))
+        return false;
+      offset += sizeof(str_data.len) / sizeof((*data)[offset]);
+
+      memset(&(*data)[offset], 0, str_data.len * sizeof((*data)[offset]));
+
+      const char* data_to_write = str_data.data.c_str();
+      size_t length_using_strlen = strlen(data_to_write);
+      CHECK_LE(length_using_strlen, str_data.len);
+
+      if (!WriteDataToVector(data_to_write, offset,
+                             length_using_strlen * sizeof(char),
+                             "string metadata", data))
+        return false;
+
+      return true;
+    }
+  }
+  LOG(ERROR) << "String metadata of type " << type << " not present";
+  return false;
 }
 
 bool PerfReader::WriteEventTypes(std::vector<char>* data) const {

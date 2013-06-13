@@ -82,6 +82,13 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_SampleInfo& info,
       ParsedEvent* event) const;
 
+  void SerializeSingleStringMetadata(
+      const PerfStringMetadata& metadata,
+      PerfDataProto_PerfStringMetadata* proto_metadata) const;
+  void DeserializeSingleStringMetadata(
+      const PerfDataProto_PerfStringMetadata& proto_metadata,
+      PerfStringMetadata* metadata) const;
+
   void SerializePerfEventAttr(
       const perf_event_attr& perf_event_attr,
       quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
@@ -135,6 +142,13 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   SERIALIZEVECTORFUNCTION(SerializeEvents, ParsedEvent,
                           quipper::PerfDataProto_PerfEvent,
                           SerializeEvent)
+
+  SERIALIZEVECTORFUNCTION(SerializeStringMetadata, PerfStringMetadata,
+                          quipper::PerfDataProto_PerfStringMetadata,
+                          SerializeSingleStringMetadata)
+  DESERIALIZEVECTORFUNCTION(DeserializeStringMetadata, PerfStringMetadata,
+                            quipper::PerfDataProto_PerfStringMetadata,
+                            DeserializeSingleStringMetadata)
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

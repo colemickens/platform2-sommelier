@@ -25,6 +25,23 @@ struct PerfEventAndSampleInfo {
   event_t event;
 };
 
+struct PerfMetadata {
+  u32 type;
+  u64 size;
+
+  PerfMetadata() {}
+};
+
+// Based on code in tools/perf/util/header.c, the metadata for strings
+// (hostname, osrelease, etc.) is of the following format:
+struct PerfStringMetadata : public PerfMetadata {
+  u32 len;
+  string data;
+
+  PerfStringMetadata() : PerfMetadata() {}
+};
+
+
 class PerfReader {
  public:
   PerfReader() : sample_type_(0),
@@ -54,6 +71,12 @@ class PerfReader {
   bool ReadAttrs(const std::vector<char>& data);
   bool ReadEventTypes(const std::vector<char>& data);
   bool ReadData(const std::vector<char>& data);
+  // Reads metadata in normal mode.  Does not support cross endianness.
+  bool ReadMetadata(const std::vector<char>& data);
+
+  // For reading the various formats of metadata.
+  bool ReadStringMetadata(const std::vector<char>& data, u32 type,
+                          size_t offset, size_t size);
 
   // Read perf data from piped perf output data.
   bool ReadPipedData(const std::vector<char>& data);
@@ -62,6 +85,12 @@ class PerfReader {
   bool WriteAttrs(std::vector<char>* data) const;
   bool WriteEventTypes(std::vector<char>* data) const;
   bool WriteData(std::vector<char>* data) const;
+  bool WriteMetadata(std::vector<char>* data) const;
+
+  // For writing the various types of metadata.
+  bool WriteStringMetadata(u32 type, size_t offset,
+                           const PerfMetadata** metadata_handle,
+                           std::vector<char>* data) const;
 
   // For reading event blocks within piped perf data.
   bool ReadAttrEventBlock(const struct attr_event& attr_event);
@@ -72,7 +101,9 @@ class PerfReader {
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;
   std::vector<PerfEventAndSampleInfo> events_;
+  std::vector<PerfStringMetadata> string_metadata_;
   uint64 sample_type_;
+  uint64 metadata_mask_;
 
   // Indicates that the perf data being read is from machine with a different
   // endianness than the current machine.

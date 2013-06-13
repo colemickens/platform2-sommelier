@@ -14,6 +14,12 @@
 
 namespace quipper {
 
+namespace {
+
+const size_t kStringMetadataBufferSize = 64;
+
+}  // namespace
+
 PerfSerializer::PerfSerializer() {
 }
 
@@ -34,6 +40,11 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
     return false;
 
   SerializeEvents(parsed_events_, perf_data_proto->mutable_events());
+
+  perf_data_proto->add_metadata_mask(metadata_mask_);
+
+  SerializeStringMetadata(string_metadata_,
+                          perf_data_proto->mutable_string_metadata());
 
   // Add a timestamp_sec to the protobuf.
   struct timeval timestamp_sec;
@@ -72,6 +83,11 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
 
   SetRawEventsAndSampleInfos(perf_data_proto.events().size());
   DeserializeEvents(perf_data_proto.events(), &parsed_events_);
+
+  metadata_mask_ = perf_data_proto.metadata_mask(0);
+
+  DeserializeStringMetadata(perf_data_proto.string_metadata(),
+                            &string_metadata_);
 
   SortParsedEvents();
   ProcessEvents();
@@ -362,6 +378,22 @@ void PerfSerializer::SerializeEvent(
     default:
       break;
   }
+}
+
+void PerfSerializer::SerializeSingleStringMetadata(
+    const PerfStringMetadata& metadata,
+    PerfDataProto_PerfStringMetadata* proto_metadata) const {
+  proto_metadata->set_type(metadata.type);
+  proto_metadata->set_data(metadata.data);
+}
+
+void PerfSerializer::DeserializeSingleStringMetadata(
+    const PerfDataProto_PerfStringMetadata& proto_metadata,
+    PerfStringMetadata* metadata) const {
+  metadata->type = proto_metadata.type();
+  metadata->data = proto_metadata.data();
+  metadata->len = kStringMetadataBufferSize;
+  metadata->size = metadata->len + sizeof(metadata->len);
 }
 
 void PerfSerializer::DeserializePerfEventAttr(
