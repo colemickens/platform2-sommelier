@@ -20,8 +20,10 @@ class MockUsbDeviceEventObserver : public UsbDeviceEventObserver {
   MockUsbDeviceEventObserver();
   virtual ~MockUsbDeviceEventObserver() OVERRIDE;
 
-  MOCK_METHOD3(OnUsbDeviceAdded,
+  MOCK_METHOD5(OnUsbDeviceAdded,
                void(const std::string& sys_path,
+                    uint8 bus_number,
+                    uint8 device_address,
                     uint16 vendor_id,
                     uint16 product_id));
   MOCK_METHOD1(OnUsbDeviceRemoved, void(const std::string& sys_path));

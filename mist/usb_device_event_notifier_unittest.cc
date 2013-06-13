@@ -26,12 +26,20 @@ const char kUdevActionChange[] = "change";
 const char kUdevActionRemove[] = "remove";
 
 const char kFakeUsbDevice1SysPath[] = "/sys/devices/fake/1";
+const uint16 kFakeUsbDevice1BusNumber = 1;
+const char kFakeUsbDevice1BusNumberString[] = "1";
+const uint16 kFakeUsbDevice1DeviceAddress = 2;
+const char kFakeUsbDevice1DeviceAddressString[] = "2";
 const uint16 kFakeUsbDevice1VendorId = 0x0123;
 const char kFakeUsbDevice1VendorIdString[] = "0123";
 const uint16 kFakeUsbDevice1ProductId = 0x4567;
 const char kFakeUsbDevice1ProductIdString[] = "4567";
 
 const char kFakeUsbDevice2SysPath[] = "/sys/devices/fake/2";
+const uint16 kFakeUsbDevice2BusNumber = 3;
+const char kFakeUsbDevice2BusNumberString[] = "3";
+const uint16 kFakeUsbDevice2DeviceAddress = 4;
+const char kFakeUsbDevice2DeviceAddressString[] = "4";
 const uint16 kFakeUsbDevice2VendorId = 0x89ab;
 const char kFakeUsbDevice2VendorIdString[] = "89ab";
 const uint16 kFakeUsbDevice2ProductId = 0xcdef;
@@ -57,24 +65,98 @@ TEST_F(UsbDeviceEventNotifierTest, ConvertNullToEmptyString) {
             UsbDeviceEventNotifier::ConvertNullToEmptyString("test string"));
 }
 
-TEST_F(UsbDeviceEventNotifierTest, ConvertIdStringToValue) {
-  uint16 id = 0x0000;
+TEST_F(UsbDeviceEventNotifierTest, ConvertHexStringToUint16) {
+  uint16 value = 0x0000;
 
-  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertIdStringToValue("", &id));
-  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertIdStringToValue("0", &id));
-  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertIdStringToValue("00", &id));
-  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertIdStringToValue("000", &id));
-  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertIdStringToValue("00000", &id));
-  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertIdStringToValue("000z", &id));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("", &value));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("0", &value));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("00", &value));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertHexStringToUint16("000", &value));
+  EXPECT_FALSE(
+      UsbDeviceEventNotifier::ConvertHexStringToUint16("00000", &value));
+  EXPECT_FALSE(
+      UsbDeviceEventNotifier::ConvertHexStringToUint16("000z", &value));
 
-  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertIdStringToValue("abcd", &id));
-  EXPECT_EQ(0xabcd, id);
+  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertHexStringToUint16("abcd", &value));
+  EXPECT_EQ(0xabcd, value);
 
-  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertIdStringToValue("0000", &id));
-  EXPECT_EQ(0x0000, id);
+  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertHexStringToUint16("0000", &value));
+  EXPECT_EQ(0x0000, value);
 
-  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertIdStringToValue("ffff", &id));
-  EXPECT_EQ(0xffff, id);
+  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertHexStringToUint16("ffff", &value));
+  EXPECT_EQ(0xffff, value);
+}
+
+TEST_F(UsbDeviceEventNotifierTest, ConvertStringToUint8) {
+  uint8 value = 0;
+
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("", &value));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("z", &value));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("-1", &value));
+  EXPECT_FALSE(UsbDeviceEventNotifier::ConvertStringToUint8("256", &value));
+
+  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertStringToUint8("1", &value));
+  EXPECT_EQ(1, value);
+
+  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertStringToUint8("0", &value));
+  EXPECT_EQ(0, value);
+
+  EXPECT_TRUE(UsbDeviceEventNotifier::ConvertStringToUint8("255", &value));
+  EXPECT_EQ(255, value);
+}
+
+TEST_F(UsbDeviceEventNotifierTest, GetDeviceAttributes) {
+  uint8 bus_number;
+  uint8 device_address;
+  uint16 vendor_id;
+  uint16 product_id;
+
+  // Invalid bus number.
+  MockUdevDevice device1;
+  EXPECT_CALL(device1, GetSysAttributeValue(_)).WillOnce(Return(""));
+  EXPECT_FALSE(UsbDeviceEventNotifier::GetDeviceAttributes(
+      &device1, &bus_number, &device_address, &vendor_id, &product_id));
+
+  // Invalid device address.
+  MockUdevDevice device2;
+  EXPECT_CALL(device2, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(""));
+  EXPECT_FALSE(UsbDeviceEventNotifier::GetDeviceAttributes(
+      &device2, &bus_number, &device_address, &vendor_id, &product_id));
+
+  // Invalid vendor ID.
+  MockUdevDevice device3;
+  EXPECT_CALL(device3, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
+      .WillOnce(Return(""));
+  EXPECT_FALSE(UsbDeviceEventNotifier::GetDeviceAttributes(
+      &device3, &bus_number, &device_address, &vendor_id, &product_id));
+
+  // Invalid product ID.
+  MockUdevDevice device4;
+  EXPECT_CALL(device4, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
+      .WillOnce(Return(kFakeUsbDevice1VendorIdString))
+      .WillOnce(Return(""));
+  EXPECT_FALSE(UsbDeviceEventNotifier::GetDeviceAttributes(
+      &device4, &bus_number, &device_address, &vendor_id, &product_id));
+
+  // Valid bus number, device address, vendor ID, and product ID.
+  MockUdevDevice device5;
+  EXPECT_CALL(device5, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
+      .WillOnce(Return(kFakeUsbDevice1VendorIdString))
+      .WillOnce(Return(kFakeUsbDevice1ProductIdString));
+  EXPECT_TRUE(UsbDeviceEventNotifier::GetDeviceAttributes(
+      &device5, &bus_number, &device_address, &vendor_id, &product_id));
+  EXPECT_EQ(kFakeUsbDevice1BusNumber, bus_number);
+  EXPECT_EQ(kFakeUsbDevice1DeviceAddress, device_address);
+  EXPECT_EQ(kFakeUsbDevice1VendorId, vendor_id);
+  EXPECT_EQ(kFakeUsbDevice1ProductId, product_id);
 }
 
 TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
@@ -99,6 +181,8 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
   EXPECT_CALL(*device2, GetSysPath()).WillOnce(Return(kFakeUsbDevice2SysPath));
   EXPECT_CALL(*device2, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device2, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice2BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice2DeviceAddressString))
       .WillOnce(Return(kFakeUsbDevice2VendorIdString))
       .WillOnce(Return(kFakeUsbDevice2ProductIdString));
 
@@ -110,6 +194,8 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEvents) {
 
   EXPECT_CALL(observer_,
               OnUsbDeviceAdded(kFakeUsbDevice2SysPath,
+                               kFakeUsbDevice2BusNumber,
+                               kFakeUsbDevice2DeviceAddress,
                                kFakeUsbDevice2VendorId,
                                kFakeUsbDevice2ProductId));
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(kFakeUsbDevice1SysPath));
@@ -134,7 +220,49 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove) {
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionChange));
 
-  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _)).Times(0);
+  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
+
+  notifier_.AddObserver(&observer_);
+  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+}
+
+TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber) {
+  MockUdevMonitor* monitor = new MockUdevMonitor();
+  // Ownership of |monitor| is transferred.
+  notifier_.udev_monitor_.reset(monitor);
+
+  MockUdevDevice* device = new MockUdevDevice();
+  // Ownership of |device| is transferred.
+  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
+
+  EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
+  EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
+  EXPECT_CALL(*device, GetSysAttributeValue(_)).WillOnce(Return(""));
+
+  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
+
+  notifier_.AddObserver(&observer_);
+  notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+}
+
+TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidDeviceAddress) {
+  MockUdevMonitor* monitor = new MockUdevMonitor();
+  // Ownership of |monitor| is transferred.
+  notifier_.udev_monitor_.reset(monitor);
+
+  MockUdevDevice* device = new MockUdevDevice();
+  // Ownership of |device| is transferred.
+  EXPECT_CALL(*monitor, ReceiveDevice()).WillOnce(Return(device));
+
+  EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
+  EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
+  EXPECT_CALL(*device, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(""));
+
+  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
 
   notifier_.AddObserver(&observer_);
@@ -152,9 +280,12 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId) {
 
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
-  EXPECT_CALL(*device, GetSysAttributeValue(_)).WillOnce(Return(""));
+  EXPECT_CALL(*device, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
+      .WillOnce(Return(""));
 
-  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _)).Times(0);
+  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
 
   notifier_.AddObserver(&observer_);
@@ -173,10 +304,12 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
   EXPECT_CALL(*device, GetSysPath()).WillOnce(Return(kFakeUsbDevice1SysPath));
   EXPECT_CALL(*device, GetAction()).WillOnce(Return(kUdevActionAdd));
   EXPECT_CALL(*device, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
       .WillOnce(Return(kFakeUsbDevice1VendorIdString))
       .WillOnce(Return(""));
 
-  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _)).Times(0);
+  EXPECT_CALL(observer_, OnUsbDeviceAdded(_, _, _, _, _)).Times(0);
   EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
 
   notifier_.AddObserver(&observer_);

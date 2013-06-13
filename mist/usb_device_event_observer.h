@@ -17,7 +17,10 @@ class UsbDeviceEventObserver {
  public:
   // Invoked when a USB device is added to the system.
   virtual void OnUsbDeviceAdded(const std::string& sys_path,
-                                uint16 vendor_id, uint16 product_id) = 0;
+                                uint8 bus_number,
+                                uint8 device_address,
+                                uint16 vendor_id,
+                                uint16 product_id) = 0;
   // Invoked when a USB device is removed from the system.
   virtual void OnUsbDeviceRemoved(const std::string& sys_path) = 0;
 

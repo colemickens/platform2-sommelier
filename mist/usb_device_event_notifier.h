@@ -18,6 +18,7 @@ namespace mist {
 
 class EventDispatcher;
 class Udev;
+class UdevDevice;
 class UdevMonitor;
 class UsbDeviceEventObserver;
 
@@ -51,20 +52,37 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
   virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
 
  private:
+  FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertHexStringToUint16);
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertNullToEmptyString);
-  FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertIdStringToValue);
-  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEvents);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertStringToUint8);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, GetDeviceAttributes);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove);
-  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber);
+  FRIEND_TEST(UsbDeviceEventNotifierTest,
+              OnUsbDeviceEventWithInvalidDeviceAddress);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidVendorId);
+  FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEvents);
 
   // Returns a string with value of |str| if |str| is not NULL, or an empty
   // string otherwise.
   static std::string ConvertNullToEmptyString(const char* str);
 
-  // Converts a 4-digit hexadecimal ID string (e.g. USB vendor/product ID) into
-  // an unsigned 16-bit ID value. Return true on success.
-  static bool ConvertIdStringToValue(const std::string& id_string, uint16* id);
+  // Converts a 4-digit hexadecimal ID string without the 0x prefix (e.g. USB
+  // vendor/product ID) into an unsigned 16-bit value. Return true on success.
+  static bool ConvertHexStringToUint16(const std::string& str, uint16* value);
+
+  // Converts a decimal string, which denotes an integer between 0 and 255, into
+  // an unsigned 8-bit integer. Return true on success.
+  static bool ConvertStringToUint8(const std::string& str, uint8* value);
+
+  // Gets the bus number, device address, vendor ID, and product ID of |device|.
+  // Return true on success.
+  static bool GetDeviceAttributes(UdevDevice* device,
+                                  uint8* bus_number,
+                                  uint8* device_address,
+                                  uint16* vendor_id,
+                                  uint16* product_id);
 
   EventDispatcher* const dispatcher_;
   ObserverList<UsbDeviceEventObserver> observer_list_;

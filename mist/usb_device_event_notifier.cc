@@ -23,6 +23,8 @@ namespace mist {
 
 namespace {
 
+const char kAttributeBusNumber[] = "busnum";
+const char kAttributeDeviceAddress[] = "devnum";
 const char kAttributeIdProduct[] = "idProduct";
 const char kAttributeIdVendor[] = "idVendor";
 
@@ -98,13 +100,22 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
     return;
   }
 
-  VLOG(1) << StringPrintf("udev (SysPath=%s, Node=%s, Subsystem=%s, "
-                          "DevType=%s, Action=%s, VendorId=%s, ProductId=%s)",
+  VLOG(1) << StringPrintf("udev (SysPath=%s, "
+                          "Node=%s, "
+                          "Subsystem=%s, "
+                          "DevType=%s, "
+                          "Action=%s, "
+                          "BusNumber=%s, "
+                          "DeviceAddress=%s, "
+                          "VendorId=%s, "
+                          "ProductId=%s)",
                           device->GetSysPath(),
                           device->GetDeviceNode(),
                           device->GetSubsystem(),
                           device->GetDeviceType(),
                           device->GetAction(),
+                          device->GetSysAttributeValue(kAttributeBusNumber),
+                          device->GetSysAttributeValue(kAttributeDeviceAddress),
                           device->GetSysAttributeValue(kAttributeIdVendor),
                           device->GetSysAttributeValue(kAttributeIdProduct));
 
@@ -116,26 +127,26 @@ void UsbDeviceEventNotifier::OnFileCanReadWithoutBlocking(int file_descriptor) {
 
   string action = ConvertNullToEmptyString(device->GetAction());
   if (action == "add") {
-    string vendor_id_string = ConvertNullToEmptyString(
-        device->GetSysAttributeValue(kAttributeIdVendor));
-    uint16 vendor_id = 0;
-    if (!ConvertIdStringToValue(vendor_id_string, &vendor_id)) {
-      LOG(WARNING) << StringPrintf("Invalid USB vendor ID '%s'.",
-                                   vendor_id_string.c_str());
+    uint8 bus_number;
+    uint8 device_address;
+    uint16 vendor_id;
+    uint16 product_id;
+    if (!GetDeviceAttributes(device.get(),
+                             &bus_number,
+                             &device_address,
+                             &vendor_id,
+                             &product_id)) {
+      LOG(WARNING) << "Ignore device event of unidentifiable device.";
       return;
     }
 
-    string product_id_string = ConvertNullToEmptyString(
-        device->GetSysAttributeValue(kAttributeIdProduct));
-    uint16 product_id = 0;
-    if (!ConvertIdStringToValue(product_id_string, &product_id)) {
-      LOG(WARNING) << StringPrintf("Invalid USB product ID '%s'.",
-                                   product_id_string.c_str());
-      return;
-    }
-
-    FOR_EACH_OBSERVER(UsbDeviceEventObserver, observer_list_,
-                      OnUsbDeviceAdded(sys_path, vendor_id, product_id));
+    FOR_EACH_OBSERVER(UsbDeviceEventObserver,
+                      observer_list_,
+                      OnUsbDeviceAdded(sys_path,
+                                       bus_number,
+                                       device_address,
+                                       vendor_id,
+                                       product_id));
     return;
   }
 
@@ -156,17 +167,68 @@ std::string UsbDeviceEventNotifier::ConvertNullToEmptyString(const char* str) {
 }
 
 // static
-bool UsbDeviceEventNotifier::ConvertIdStringToValue(const string& id_string,
-                                                    uint16* id) {
-  int value = -1;
-  if (id_string.size() != 4 ||
-      !base::HexStringToInt(id_string, &value) ||
-      value < 0 ||
-      value > std::numeric_limits<uint16>::max()) {
+bool UsbDeviceEventNotifier::ConvertHexStringToUint16(const string& str,
+                                                      uint16* value) {
+  int temp_value = -1;
+  if (str.size() != 4 ||
+      !base::HexStringToInt(str, &temp_value) ||
+      temp_value < 0 ||
+      temp_value > std::numeric_limits<uint16>::max()) {
     return false;
   }
 
-  *id = static_cast<uint16>(value);
+  *value = static_cast<uint16>(temp_value);
+  return true;
+}
+
+// static
+bool UsbDeviceEventNotifier::ConvertStringToUint8(const string& str,
+                                                  uint8* value) {
+  unsigned temp_value = 0;
+  if (!base::StringToUint(str, &temp_value) ||
+      temp_value > std::numeric_limits<uint8>::max()) {
+    return false;
+  }
+
+  *value = static_cast<uint8>(temp_value);
+  return true;
+}
+
+// static
+bool UsbDeviceEventNotifier::GetDeviceAttributes(UdevDevice* device,
+                                                 uint8* bus_number,
+                                                 uint8* device_address,
+                                                 uint16* vendor_id,
+                                                 uint16* product_id) {
+  string bus_number_string = ConvertNullToEmptyString(
+      device->GetSysAttributeValue(kAttributeBusNumber));
+  if (!ConvertStringToUint8(bus_number_string, bus_number)) {
+    LOG(WARNING) << "Invalid USB bus number '" << bus_number_string << "'.";
+    return false;
+  }
+
+  string device_address_string = ConvertNullToEmptyString(
+      device->GetSysAttributeValue(kAttributeDeviceAddress));
+  if (!ConvertStringToUint8(device_address_string, device_address)) {
+    LOG(WARNING) << "Invalid USB device address '" << device_address_string
+                 << "'.";
+    return false;
+  }
+
+  string vendor_id_string = ConvertNullToEmptyString(
+      device->GetSysAttributeValue(kAttributeIdVendor));
+  if (!ConvertHexStringToUint16(vendor_id_string, vendor_id)) {
+    LOG(WARNING) << "Invalid USB vendor ID '" << vendor_id_string << "'.";
+    return false;
+  }
+
+  string product_id_string = ConvertNullToEmptyString(
+      device->GetSysAttributeValue(kAttributeIdProduct));
+  if (!ConvertHexStringToUint16(product_id_string, product_id)) {
+    LOG(WARNING) << "Invalid USB product ID '" << product_id_string << "'.";
+    return false;
+  }
+
   return true;
 }
 
