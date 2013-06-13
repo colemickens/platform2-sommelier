@@ -20,7 +20,7 @@ def usage():
     return False
 
 
-def connect(ssid, security, passphrase, save_credentials):
+def connect(ssid, security, credentials, save_credentials):
     """Attempt to connect to a WiFi network.
 
     Blocks until we connect successfully to a WiFi network described
@@ -28,7 +28,8 @@ def connect(ssid, security, passphrase, save_credentials):
 
     @param ssid string Name of the network to connect to.
     @param security string security type of the network to connect to.
-    @param passphrase string password or key of the network.
+    @param credentials dict of service properties that includes credentials
+            like the passphrase for psk security.
     @param save_credentials bool True if credentials should be saved.
     @return True upon success, False otherwise.
 
@@ -36,7 +37,7 @@ def connect(ssid, security, passphrase, save_credentials):
     shill = shill_proxy.ShillProxy()
     result = shill.connect_to_wifi_network(ssid,
                                            security,
-                                           passphrase,
+                                           credentials,
                                            save_credentials)
     (successful, discovery, association, configuration, reason) = result
     if successful:
@@ -86,14 +87,15 @@ def main(args):
 
     if command == 'connect':
       security = 'none'
-      passphrase = ''
-      save_credentials = False
+      credentials = {}
+      save_credentials = True
       if len(args) > 2:
-          passphrase = args[2]
+          credentials[shill_proxy.ShillProxy.SERVICE_PROPERTY_PASSPHRASE] = \
+                args[2]
           security = 'psk'
       if len(args) > 3:
           security = args[3]
-      return connect(ssid, security, passphrase, save_credentials)
+      return connect(ssid, security, credentials, save_credentials)
 
     if command == 'disconnect':
         timeout=None

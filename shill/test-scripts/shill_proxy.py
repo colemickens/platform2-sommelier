@@ -268,7 +268,7 @@ class ShillProxy(object):
     def connect_to_wifi_network(self,
                                 ssid,
                                 security,
-                                psk,
+                                security_parameters,
                                 save_credentials,
                                 station_type=None,
                                 hidden_network=False,
@@ -280,8 +280,9 @@ class ShillProxy(object):
 
         @param ssid string name of network to connect to.
         @param security string type of security used in network (e.g. psk)
-        @param psk string password or pre shared key for appropriate security
-                types.
+        @param security_parameters dict of service property/value pairs that
+                make up the credentials and settings for the given security
+                type (e.g. the passphrase for psk security).
         @param save_credentials bool True if we should save EAP credentials.
         @param station_type string one of SUPPORTED_WIFI_STATION_TYPES.
         @param hidden_network bool True when the SSID is not broadcasted.
@@ -369,10 +370,8 @@ class ShillProxy(object):
         # to connect it, and watch the states roll by.
         logging.info('Connecting...')
         try:
-            # Don't give a passphrase unless we actually have one.
-            if psk:
-                service_object.SetProperty(self.SERVICE_PROPERTY_PASSPHRASE,
-                                           psk)
+            for service_property, value in security_parameters.iteritems():
+                service_object.SetProperty(service_property, value)
             service_object.Connect()
             logging.info('Called connect on service')
         except dbus.exceptions.DBusException, e:
