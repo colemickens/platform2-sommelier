@@ -46,8 +46,8 @@ DEFINE_int32(use_audio_activity, -1,
              "Honor audio activity (1 is true, 0 is false, -1 is unset");
 DEFINE_int32(use_video_activity, -1,
              "Honor video activity (1 is true, 0 is false, -1 is unset");
-DEFINE_double(presentation_idle_delay_factor, 0.0,
-              "Factor by which idle delays are scaled while presenting "
+DEFINE_double(presentation_screen_dim_delay_factor, 0.0,
+              "Factor by which the screen-dim delay is scaled while presenting "
               "(less than 1.0 means unset)");
 DEFINE_double(user_activity_screen_dim_delay_factor, 0.0,
               "Factor by which the screen-dim delay is scaled if user activity "
@@ -121,9 +121,9 @@ int main(int argc, char* argv[]) {
     policy.set_use_audio_activity(FLAGS_use_audio_activity != 0);
   if (FLAGS_use_video_activity >= 0)
     policy.set_use_video_activity(FLAGS_use_video_activity != 0);
-  if (FLAGS_presentation_idle_delay_factor >= 1.0) {
-    policy.set_presentation_idle_delay_factor(
-        FLAGS_presentation_idle_delay_factor);
+  if (FLAGS_presentation_screen_dim_delay_factor >= 1.0) {
+    policy.set_presentation_screen_dim_delay_factor(
+        FLAGS_presentation_screen_dim_delay_factor);
   }
   if (FLAGS_user_activity_screen_dim_delay_factor >= 1.0) {
     policy.set_user_activity_screen_dim_delay_factor(

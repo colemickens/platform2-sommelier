@@ -424,9 +424,10 @@ std::string StateController::GetPolicyDebugString(
     str += "use_audio=" + base::IntToString(policy.use_audio_activity()) + " ";
   if (policy.has_use_video_activity())
     str += "use_video=" + base::IntToString(policy.use_video_activity()) + " ";
-  if (policy.has_presentation_idle_delay_factor()) {
+  if (policy.has_presentation_screen_dim_delay_factor()) {
     str += "presentation_factor=" +
-        base::DoubleToString(policy.presentation_idle_delay_factor()) + " ";
+        base::DoubleToString(policy.presentation_screen_dim_delay_factor()) +
+        " ";
   }
   if (policy.has_user_activity_screen_dim_delay_factor()) {
     str += "user_activity_factor=" + base::DoubleToString(
