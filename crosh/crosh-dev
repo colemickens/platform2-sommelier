@@ -10,9 +10,9 @@ if [ "$(basename $0)" = "crosh-dev" ]; then
 fi
 
 DEV_HELP='
- packet_capture [ --device <device> ] [ --frequency <frequency> ] "
-                [ --ht-location <above|below> ] "
-                [ --monitor-connection-on <monitored_device> ]"
+ packet_capture [ --device <device> ] [ --frequency <frequency> ]
+                [ --ht-location <above|below> ]
+                [ --monitor-connection-on <monitored_device> ]
   Start packet capture.  Start a device-based capture on <device>,
   or do an over-the-air capture on <frequency> with an optionally
   provided HT channel location.  An over-the-air capture can also
