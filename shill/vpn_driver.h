@@ -55,6 +55,7 @@ class VPNDriver {
       kEphemeral = 1 << 0,   // Never load or save.
       kCredential = 1 << 1,  // Save if saving credentials (crypted).
       kWriteOnly = 1 << 2,   // Never read over RPC.
+      kArray = 1 << 3,       // Property is an array of strings.
     };
 
     const char *property;
@@ -92,10 +93,15 @@ class VPNDriver {
  private:
   friend class VPNDriverTest;
 
-  void ClearMappedProperty(const size_t &index, Error *error);
-  std::string GetMappedProperty(const size_t &index, Error *error);
-  bool SetMappedProperty(
+  void ClearMappedStringProperty(const size_t &index, Error *error);
+  void ClearMappedStringsProperty(const size_t &index, Error *error);
+  std::string GetMappedStringProperty(const size_t &index, Error *error);
+  std::vector<std::string> GetMappedStringsProperty(
+      const size_t &index, Error *error);
+  bool SetMappedStringProperty(
       const size_t &index, const std::string &value, Error *error);
+  bool SetMappedStringsProperty(
+      const size_t &index, const std::vector<std::string> &value, Error *error);
 
   base::WeakPtrFactory<VPNDriver> weak_ptr_factory_;
   EventDispatcher *dispatcher_;

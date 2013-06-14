@@ -4,6 +4,9 @@
 
 #include "shill/vpn_driver.h"
 
+#include <string>
+#include <vector>
+
 #include <base/string_util.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -16,6 +19,7 @@
 #include "shill/store_interface.h"
 
 using std::string;
+using std::vector;
 
 namespace shill {
 
@@ -42,14 +46,25 @@ bool VPNDriver::Load(StoreInterface *storage, const string &storage_id) {
       continue;
     }
     const string property = properties_[i].property;
-    string value;
-    bool loaded = (properties_[i].flags & Property::kCredential) ?
-        storage->GetCryptedString(storage_id, property, &value) :
-        storage->GetString(storage_id, property, &value);
-    if (loaded) {
-      args_.SetString(property, value);
+    if (properties_[i].flags & Property::kArray) {
+      CHECK(!(properties_[i].flags & Property::kCredential))
+          << "Property cannot be both an array and a credential";
+      vector<string> value;
+      if (storage->GetStringList(storage_id, property, &value)) {
+        args_.SetStrings(property, value);
+      } else {
+        args_.RemoveStrings(property);
+      }
     } else {
-      args_.RemoveString(property);
+      string value;
+      bool loaded = (properties_[i].flags & Property::kCredential) ?
+          storage->GetCryptedString(storage_id, property, &value) :
+          storage->GetString(storage_id, property, &value);
+      if (loaded) {
+        args_.SetString(property, value);
+      } else {
+        args_.RemoveString(property);
+      }
     }
   }
   return true;
@@ -65,15 +80,27 @@ bool VPNDriver::Save(StoreInterface *storage,
     }
     bool credential = (properties_[i].flags & Property::kCredential);
     const string property = properties_[i].property;
-    if (!args_.ContainsString(property) || (credential && !save_credentials)) {
-      storage->DeleteKey(storage_id, property);
-      continue;
-    }
-    string value = args_.GetString(property);
-    if (credential) {
-      storage->SetCryptedString(storage_id, property, value);
+    if (properties_[i].flags & Property::kArray) {
+      CHECK(!credential)
+          << "Property cannot be both an array and a credential";
+      if (!args_.ContainsStrings(property)) {
+        storage->DeleteKey(storage_id, property);
+        continue;
+      }
+      Strings value = args_.GetStrings(property);
+      storage->SetStringList(storage_id, property, value);
     } else {
-      storage->SetString(storage_id, property, value);
+      if (!args_.ContainsString(property) ||
+          (credential && !save_credentials)) {
+        storage->DeleteKey(storage_id, property);
+        continue;
+      }
+      string value = args_.GetString(property);
+      if (credential) {
+        storage->SetCryptedString(storage_id, property, value);
+      } else {
+        storage->SetString(storage_id, property, value);
+      }
     }
   }
   return true;
@@ -92,15 +119,27 @@ void VPNDriver::UnloadCredentials() {
 void VPNDriver::InitPropertyStore(PropertyStore *store) {
   SLOG(VPN, 2) << __func__;
   for (size_t i = 0; i < property_count_; i++) {
-    store->RegisterDerivedString(
-        properties_[i].property,
-        StringAccessor(
-            new CustomMappedAccessor<VPNDriver, string, size_t>(
-                this,
-                &VPNDriver::ClearMappedProperty,
-                &VPNDriver::GetMappedProperty,
-                &VPNDriver::SetMappedProperty,
-                i)));
+    if (properties_[i].flags & Property::kArray) {
+      store->RegisterDerivedStrings(
+          properties_[i].property,
+          StringsAccessor(
+              new CustomMappedAccessor<VPNDriver, Strings, size_t>(
+                  this,
+                  &VPNDriver::ClearMappedStringsProperty,
+                  &VPNDriver::GetMappedStringsProperty,
+                  &VPNDriver::SetMappedStringsProperty,
+                  i)));
+    } else {
+      store->RegisterDerivedString(
+          properties_[i].property,
+          StringAccessor(
+              new CustomMappedAccessor<VPNDriver, string, size_t>(
+                  this,
+                  &VPNDriver::ClearMappedStringProperty,
+                  &VPNDriver::GetMappedStringProperty,
+                  &VPNDriver::SetMappedStringProperty,
+                  i)));
+    }
   }
 
   store->RegisterDerivedKeyValueStore(
@@ -110,7 +149,7 @@ void VPNDriver::InitPropertyStore(PropertyStore *store) {
               this, &VPNDriver::GetProvider, NULL)));
 }
 
-void VPNDriver::ClearMappedProperty(const size_t &index, Error *error) {
+void VPNDriver::ClearMappedStringProperty(const size_t &index, Error *error) {
   CHECK(index < property_count_);
   if (args_.ContainsString(properties_[index].property)) {
     args_.RemoveString(properties_[index].property);
@@ -119,7 +158,16 @@ void VPNDriver::ClearMappedProperty(const size_t &index, Error *error) {
   }
 }
 
-string VPNDriver::GetMappedProperty(const size_t &index, Error *error) {
+void VPNDriver::ClearMappedStringsProperty(const size_t &index, Error *error) {
+  CHECK(index < property_count_);
+  if (args_.ContainsStrings(properties_[index].property)) {
+    args_.RemoveStrings(properties_[index].property);
+  } else {
+    error->Populate(Error::kNotFound, "Property is not set");
+  }
+}
+
+string VPNDriver::GetMappedStringProperty(const size_t &index, Error *error) {
   // Provider properties are set via SetProperty calls to "Provider.XXX",
   // however, they are retrieved via a GetProperty call, which returns all
   // properties in a single "Provider" dict.  Therefore, none of the individual
@@ -130,7 +178,18 @@ string VPNDriver::GetMappedProperty(const size_t &index, Error *error) {
   return string();
 }
 
-bool VPNDriver::SetMappedProperty(
+Strings VPNDriver::GetMappedStringsProperty(const size_t &index, Error *error) {
+  // Provider properties are set via SetProperty calls to "Provider.XXX",
+  // however, they are retrieved via a GetProperty call, which returns all
+  // properties in a single "Provider" dict.  Therefore, none of the individual
+  // properties in the kProperties are available for enumeration in
+  // GetProperties.  Instead, they are retrieved via GetProvider below.
+  error->Populate(Error::kInvalidArguments,
+                  "Provider properties are not read back in this manner");
+  return Strings();
+}
+
+bool VPNDriver::SetMappedStringProperty(
     const size_t &index, const string &value, Error *error) {
   CHECK(index < property_count_);
   if (args_.ContainsString(properties_[index].property) &&
@@ -138,6 +197,17 @@ bool VPNDriver::SetMappedProperty(
     return false;
   }
   args_.SetString(properties_[index].property, value);
+  return true;
+}
+
+bool VPNDriver::SetMappedStringsProperty(
+    const size_t &index, const Strings &value, Error *error) {
+  CHECK(index < property_count_);
+  if (args_.ContainsStrings(properties_[index].property) &&
+      args_.GetStrings(properties_[index].property) == value) {
+    return false;
+  }
+  args_.SetStrings(properties_[index].property, value);
   return true;
 }
 
@@ -151,15 +221,28 @@ KeyValueStore VPNDriver::GetProvider(Error *error) {
       continue;
     }
     string prop = properties_[i].property;
-    if (!args_.ContainsString(prop)) {
-      continue;
-    }
-    string value = args_.GetString(prop);
+
     // Chomp off leading "Provider." from properties that have this prefix.
+    string chopped_prop;
     if (StartsWithASCII(prop, provider_prefix, false)) {
-      prop = prop.substr(provider_prefix.length());
+      chopped_prop = prop.substr(provider_prefix.length());
+    } else {
+      chopped_prop = prop;
     }
-    provider_properties.SetString(prop, value);
+
+    if (properties_[i].flags & Property::kArray) {
+      if (!args_.ContainsStrings(prop)) {
+        continue;
+      }
+      Strings value = args_.GetStrings(prop);
+      provider_properties.SetStrings(chopped_prop, value);
+    } else {
+      if (!args_.ContainsString(prop)) {
+        continue;
+      }
+      string value = args_.GetString(prop);
+      provider_properties.SetString(chopped_prop, value);
+    }
   }
 
   return provider_properties;
