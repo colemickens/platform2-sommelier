@@ -45,6 +45,23 @@ add_vmodule_pattern() {
   fi
 }
 
+# Takes a wallpaper name ("default", "guest") and size ("large", "small"),
+# checks if the file exists, and appends the appropriate flag to ASH_FLAGS
+# if it does.
+add_ash_wallpaper_flag() {
+  local NAME=$1
+  local SIZE=$2
+  local FILE="/usr/share/chromeos-assets/wallpaper/${NAME}_${SIZE}.jpg"
+  if [ -e "$FILE" ]; then
+    if [ "$NAME" = default ]; then
+      local FLAG="--ash-default-wallpaper-${SIZE}"
+    else
+      local FLAG="--ash-default-${NAME}-wallpaper-${SIZE}"
+    fi
+    ASH_FLAGS="${ASH_FLAGS} ${FLAG}=${FILE}"
+  fi
+}
+
 export USER=chronos
 export DATA_DIR=/home/${USER}
 export LOGIN_PROFILE_DIR=${DATA_DIR}/Default
@@ -245,15 +262,19 @@ if use_flag_is_set has_diamond_key; then
   KEYBOARD_FLAGS="$KEYBOARD_FLAGS --has-chromeos-diamond-key"
 fi
 
-AURA_FLAGS=
+ASH_FLAGS=
 if ! use_flag_is_set new_power_button; then
-  AURA_FLAGS="$AURA_FLAGS --aura-legacy-power-button"
+  ASH_FLAGS="$ASH_FLAGS --aura-legacy-power-button"
 fi
 if use_flag_is_set disable_login_animations; then
-  AURA_FLAGS="$AURA_FLAGS --disable-login-animations"
-  AURA_FLAGS="$AURA_FLAGS --disable-boot-animation"
-  AURA_FLAGS="$AURA_FLAGS --ash-copy-host-background-at-boot"
+  ASH_FLAGS="$ASH_FLAGS --disable-login-animations"
+  ASH_FLAGS="$ASH_FLAGS --disable-boot-animation"
+  ASH_FLAGS="$ASH_FLAGS --ash-copy-host-background-at-boot"
 fi
+add_ash_wallpaper_flag default large
+add_ash_wallpaper_flag default small
+add_ash_wallpaper_flag guest large
+add_ash_wallpaper_flag guest small
 
 # Setup GPU & acceleration flags which differ between SoCs that
 # use EGL/GLX rendering
@@ -382,7 +403,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --user-data-dir="$DATA_DIR" \
             "$REGISTER_PLUGINS" \
             ${ACCELERATED_FLAGS} \
-            ${AURA_FLAGS} \
+            ${ASH_FLAGS} \
             ${FLASH_FLAGS} \
             ${HIGHDPI_FLAGS} \
             ${TOUCHPAD_FLAGS} \
