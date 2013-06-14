@@ -21,52 +21,106 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void die(const char *why) {
-  printf("<%s>\n", why);
+#include <base/command_line.h>
+#include <base/string_number_conversions.h>
+#include <base/string_util.h>
+#include <base/stringprintf.h>
+
+using base::StringPrintf;
+using std::string;
+
+static const char kHelpMessage[] =
+    "Usage: icmp [<switches>] <ip>\n\n"
+    "Available switches:\n"
+    "  --count=<number of packets> (default: 4)\n"
+    "  --size=<packet size>\n"
+    "  --ttl=<IP Time to Live>\n"
+    "  --timeout=<time to wait for response>";
+
+static const char kIPv4v6Chars[] = "ABCDEFabcdef0123456789.:";
+
+static void Die(const string& why) {
+  printf("<%s>\n", why.c_str());
   exit(1);
 }
 
-static int is_ipaddr(const char *maybe) {
-  // Allow v4 or v6 addresses
-  const char *allowed = "ABCDEFabcdef0123456789.:";
-  while (*maybe)
-    if (!strchr(allowed, *maybe++))
-      return 0;
-  return 1;
+static int GetIntSwitch(const CommandLine* cl, const string& name,
+                        int default_value) {
+  int val = default_value;
+  if (cl->HasSwitch(name)) {
+    string switch_value = cl->GetSwitchValueASCII(name);
+    if (!base::StringToInt(switch_value, &val) || val <= 0) {
+      Die(StringPrintf("Invalid %s switch: %s", name.c_str(),
+                       switch_value.c_str()));
+    }
+  }
+  return val;
 }
 
 int main(int argc, char *argv[]) {
-  char cmdbuf[1024];
   char outbuf[1024];
+  char ipbuf[128] = {0};
   FILE *out;
-  int sent, recvd, loss, time;
+  int sent = -1, recvd = -1, loss = -1, errors = -1, time = -1;
   float min = 0.0, avg = 0.0, max = 0.0, mdev = 0.0;
-  int seen = 0;
 
-  if (argc != 2)
-    die("wrong number of args");
-  if (!is_ipaddr(argv[1]))
-    die("not ip address");
-  // Yeah. User input into a buffer that we then pass to /bin/sh. Time to be
-  // careful.
-  snprintf(cmdbuf, sizeof(cmdbuf), "/bin/ping -c 4 -w 10 -nq %s", argv[1]);
-  out = popen(cmdbuf, "r");
+  // Parse commandline switches.
+  CommandLine::Init(argc, argv);
+  CommandLine* cl = CommandLine::ForCurrentProcess();
+  int count = GetIntSwitch(cl, "count", 4);
+  int size = GetIntSwitch(cl, "size", 0);
+  int ttl = GetIntSwitch(cl, "ttl", 0);
+  int timeout = GetIntSwitch(cl, "timeout", 0);
+
+  // Parse out the IP address.
+  CommandLine::StringVector args = cl->GetArgs();
+  if (args.size() != 1)
+    Die(kHelpMessage);
+  string ip_addr = args[0];
+  if (!ContainsOnlyChars(ip_addr, kIPv4v6Chars))
+    Die("not ip address");
+
+  // Construct command.
+  string size_out = size ? StringPrintf("-s %d", size) : "";
+  string ttl_out = ttl ? StringPrintf("-t %d", ttl) : "";
+  string timeout_out = timeout ? StringPrintf("-W %d", timeout) : "";
+  string command = StringPrintf("/bin/ping -c %d -w 10 -n %s %s %s %s",
+                                count, ttl_out.c_str(), size_out.c_str(),
+                                timeout_out.c_str(), ip_addr.c_str());
+
+  // Execute!
+  out = popen(command.c_str(), "r");
   if (!out)
-    die("can't create subprocess");
+    Die("can't create subprocess");
+
+  // Parse output.
   while (fgets(outbuf, sizeof(outbuf), out)) {
-    if (sscanf(outbuf,
-               "%d packets transmitted, %d received, %d%% packet loss, time %dms",
-               &sent, &recvd, &loss, &time) == 4)
-      seen++;
-    if (sscanf(outbuf,
-               "rtt min/avg/max/mdev = %f/%f/%f/%f ms",
-               &min, &avg, &max, &mdev) == 4)
-      seen++;
+    if (sscanf(outbuf, "From %s icmp_seq=", ipbuf) == 1)
+      continue;
+
+    else if (sscanf(outbuf,
+                    "%d packets transmitted, %d received, %d%% packet loss,"
+                    " time %dms",
+                    &sent, &recvd, &loss, &time) == 4)
+      continue;
+
+    else if (sscanf(outbuf,
+                    "%d packets transmitted, %d received, +%d errors,"
+                    " %d%% packet loss, time %dms",
+                    &sent, &recvd, &errors, &loss, &time) == 5)
+      continue;
+
+    else if (sscanf(outbuf,
+                    "rtt min/avg/max/mdev = %f/%f/%f/%f ms",
+                    &min, &avg, &max, &mdev) == 4)
+      continue;
   }
   pclose(out);
-  if (seen != 2)
-    die("didn't get all output");
-  printf("{ \"%s\":\n", argv[1]);
+  if (time == -1)
+    Die("didn't get all output");
+  string ip_out = ipbuf[0] ? ipbuf : ip_addr;
+
+  printf("{ \"%s\":\n", ip_out.c_str());
   printf("    { \"sent\": %d,\n", sent);
   printf("      \"recvd\": %d,\n", recvd);
   printf("      \"time\": %d,\n", time);
