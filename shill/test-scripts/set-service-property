@@ -12,7 +12,7 @@ flim = flimflam.FlimFlam()
 service = flim.FindElementByNameSubstring('Service', name)
 if property_key in ["Priority"]:
     service.SetProperty(property_key, int(value))
-elif property_key in ["AutoConnect", "WiFi.HiddenSSID", "EAP.UseSystemCAS",
+elif property_key in ["AutoConnect", "WiFi.HiddenSSID", "EAP.UseSystemCAs",
   "SaveCredentials"]:
     service.SetProperty(property_key,
                         dbus.Boolean(value.lower() in ("true", "1")))
