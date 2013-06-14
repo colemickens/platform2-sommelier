@@ -113,6 +113,10 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual std::string GetExample(DBus::Error& error); // NOLINT
   virtual std::string GetInterfaces(DBus::Error& error); // NOLINT
   virtual std::string TestICMP(const std::string& host, DBus::Error& error); // NOLINT
+  virtual std::string TestICMPWithOptions(
+      const std::string& host,
+      const std::map<std::string, std::string>& options,
+      DBus::Error& error); // NOLINT
   virtual std::string Smartctl(const std::string& option,
                                DBus::Error& error); // NOLINT
   virtual std::string MemtesterStart(const DBus::FileDescriptor& outfd,

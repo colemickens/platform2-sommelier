@@ -18,6 +18,10 @@ class ICMPTool {
   ~ICMPTool();
 
   std::string TestICMP(const std::string& host, DBus::Error* error);
+  std::string TestICMPWithOptions(
+      const std::string& host,
+      const std::map<std::string, std::string>& options,
+      DBus::Error* error);
  private:
   DISALLOW_COPY_AND_ASSIGN(ICMPTool);
 };

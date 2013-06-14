@@ -9,24 +9,45 @@
 
 #include "process_with_output.h"
 
+using base::StringPrintf;
+using std::map;
+using std::string;
+
 namespace debugd {
 
 ICMPTool::ICMPTool() { }
 ICMPTool::~ICMPTool() { }
 
-std::string ICMPTool::TestICMP(const std::string& host, DBus::Error* error) {
+string ICMPTool::TestICMP(const string& host, DBus::Error* error) {
+  map<string, string> options;
+  return TestICMPWithOptions(host, options, error);
+}
+
+string ICMPTool::TestICMPWithOptions(const string& host,
+                                     const map<string, string>& options,
+                                     DBus::Error* error) {
   char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/icmp", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
+  string path = StringPrintf("%s/icmp", envvar ? envvar
+                             : "/usr/libexec/debugd/helpers");
   if (path.length() > PATH_MAX)
     return "<path too long>";
   ProcessWithOutput p;
   if (!p.Init())
     return "<can't create process>";
   p.AddArg(path);
+
+  for (map<string, string>::const_iterator it = options.begin();
+       it != options.end();
+       it++) {
+    // No need to quote here because chromeos:ProcessImpl (base class of
+    // ProcessWithOutput) passes arguments as is to helpers/icmp, which will
+    // check arguments before executing in the shell.
+    p.AddArg(StringPrintf("--%s=%s", it->first.c_str(), it->second.c_str()));
+  }
+
   p.AddArg(host);
   p.Run();
-  std::string out;
+  string out;
   p.GetOutput(&out);
   return out;
 }

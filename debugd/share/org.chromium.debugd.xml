@@ -271,6 +271,14 @@
       <arg name="host" type="s" direction="in" />
       <arg name="result" type="s" direction="out" />
     </method>
+    <method name="TestICMPWithOptions">
+      <tp:docstring>
+        Tests ICMP connectivity to a specified host (with options).
+      </tp:docstring>
+      <arg name="host" type="s" direction="in" />
+      <arg name="options" type="a{ss}" direction="in" />
+      <arg name="result" type="s" direction="out" />
+    </method>
     <method name="Smartctl">
       <tp:docstring>
         Runs Smartctl utility.

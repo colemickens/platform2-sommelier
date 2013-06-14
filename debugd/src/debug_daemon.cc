@@ -164,6 +164,13 @@ std::string DebugDaemon::TestICMP(const std::string& host, DBus::Error& error) {
   return icmp_tool_->TestICMP(host, &error);
 }
 
+std::string DebugDaemon::TestICMPWithOptions(
+    const std::string& host,
+    const std::map<std::string, std::string>& options,
+    DBus::Error& error) { // NOLINT dbuscxx
+  return icmp_tool_->TestICMPWithOptions(host, options, &error);
+}
+
 std::string DebugDaemon::Smartctl(const std::string& option,
                                   DBus::Error& error) { // NOLINT
   return storage_tool_->Smartctl(option, error);
