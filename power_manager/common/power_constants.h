@@ -38,6 +38,8 @@ extern const char kTaperTimeMinPref[];
 extern const char kPowerSupplyFullFactorPref[];
 extern const char kInternalBacklightAlsLimitsPref[];
 extern const char kInternalBacklightAlsStepsPref[];
+extern const char kInternalBacklightNoAlsAcBrightnessPref[];
+extern const char kInternalBacklightNoAlsBatteryBrightnessPref[];
 extern const char kKeyboardBacklightAlsLimitsPref[];
 extern const char kKeyboardBacklightAlsStepsPref[];
 extern const char kKeyboardBacklightUserLimitsPref[];

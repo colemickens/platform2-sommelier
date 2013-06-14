@@ -39,6 +39,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
         default_min_visible_level_(1),
         default_als_limits_("0.0\n30.0\n100.0"),
         default_als_steps_("50.0 -1 400\n90.0 100 -1"),
+        default_no_als_ac_brightness_(80.0),
+        default_no_als_battery_brightness_(60.0),
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_) {
   }
@@ -50,6 +52,10 @@ class InternalBacklightControllerTest : public ::testing::Test {
     prefs_.SetInt64(kMinVisibleBacklightLevelPref, default_min_visible_level_);
     prefs_.SetString(kInternalBacklightAlsLimitsPref, default_als_limits_);
     prefs_.SetString(kInternalBacklightAlsStepsPref, default_als_steps_);
+    prefs_.SetDouble(kInternalBacklightNoAlsAcBrightnessPref,
+                     default_no_als_ac_brightness_);
+    prefs_.SetDouble(kInternalBacklightNoAlsBatteryBrightnessPref,
+                     default_no_als_battery_brightness_);
     backlight_.set_max_level(max_backlight_level_);
     backlight_.set_current_level(initial_backlight_level_);
     light_sensor_.set_lux(initial_als_lux_);
@@ -97,6 +103,8 @@ class InternalBacklightControllerTest : public ::testing::Test {
   int64 default_min_visible_level_;
   std::string default_als_limits_;
   std::string default_als_steps_;
+  double default_no_als_ac_brightness_;
+  double default_no_als_battery_brightness_;
 
   FakePrefs prefs_;
   system::BacklightStub backlight_;
@@ -505,13 +513,20 @@ TEST_F(InternalBacklightControllerTest, NoAmbientLightSensor) {
   pass_light_sensor_ = false;
   report_initial_power_source_ = false;
   report_initial_als_reading_ = false;
+  default_no_als_ac_brightness_ = 95.0;
+  default_no_als_battery_brightness_ = 75.0;
   Init(POWER_AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
 
-  // When no ambient light sensor was passed to the controller, it should
-  // stick to the initial brightness level.
+  // The brightness percentages from the "no ALS" prefs should be used as
+  // starting points when there's no ALS.
   controller_->HandlePowerSourceChange(POWER_AC);
-  EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
+  EXPECT_EQ(PercentToLevel(default_no_als_ac_brightness_),
+            backlight_.current_level());
+
+  controller_->HandlePowerSourceChange(POWER_BATTERY);
+  EXPECT_EQ(PercentToLevel(default_no_als_battery_brightness_),
+            backlight_.current_level());
 }
 
 TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {

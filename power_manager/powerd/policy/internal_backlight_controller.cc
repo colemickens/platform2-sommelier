@@ -138,18 +138,39 @@ bool InternalBacklightController::Init() {
     return false;
   }
 
-  ReadPrefs();
+  if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
+    min_visible_level_ = 1;
+  min_visible_level_ = std::max(
+      static_cast<int64>(
+          lround(kDefaultMinVisibleBrightnessFraction * max_level_)),
+      min_visible_level_);
+  CHECK_GT(min_visible_level_, 0);
+  min_visible_level_ = std::min(min_visible_level_, max_level_);
 
   const double initial_percent = LevelToPercent(current_level_);
   plugged_user_brightness_percent_ = initial_percent;
   unplugged_user_brightness_percent_ = initial_percent;
+  prefs_->GetDouble(kInternalBacklightNoAlsAcBrightnessPref,
+                    &plugged_user_brightness_percent_);
+  prefs_->GetDouble(kInternalBacklightNoAlsBatteryBrightnessPref,
+                    &unplugged_user_brightness_percent_);
 
-  if (ambient_light_handler_) {
+  prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
+                  &instant_transitions_below_min_level_);
+
+  bool disable_als = false;
+  prefs_->GetBool(kDisableALSPref, &disable_als);
+  if (ambient_light_handler_ && !disable_als) {
     ambient_light_handler_->Init(prefs_, kInternalBacklightAlsLimitsPref,
         kInternalBacklightAlsStepsPref, initial_percent);
   } else {
     use_ambient_light_ = false;
   }
+
+  int64 turn_off_screen_timeout_ms = 0;
+  prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);
+  turn_off_screen_timeout_ =
+      base::TimeDelta::FromMilliseconds(turn_off_screen_timeout_ms);
 
   if (max_level_ == min_visible_level_ || kMaxBrightnessSteps == 1) {
     step_percent_ = kMaxPercent;
@@ -541,29 +562,6 @@ bool InternalBacklightController::ApplyResumeBrightnessPercent(
   VLOG(1) << "Setting resume brightness to " << level << " ("
           << resume_percent << "%)";
   return backlight_->SetResumeBrightnessLevel(level);
-}
-
-void InternalBacklightController::ReadPrefs() {
-  if (!prefs_->GetInt64(kMinVisibleBacklightLevelPref, &min_visible_level_))
-    min_visible_level_ = 1;
-  min_visible_level_ = std::max(
-      static_cast<int64>(
-          lround(kDefaultMinVisibleBrightnessFraction * max_level_)),
-      min_visible_level_);
-  CHECK_GT(min_visible_level_, 0);
-  min_visible_level_ = std::min(min_visible_level_, max_level_);
-
-  prefs_->GetBool(kInstantTransitionsBelowMinLevelPref,
-                  &instant_transitions_below_min_level_);
-
-  bool disable_als = false;
-  if (prefs_->GetBool(kDisableALSPref, &disable_als) && disable_als)
-    use_ambient_light_ = false;
-
-  int64 turn_off_screen_timeout_ms = 0;
-  prefs_->GetInt64(kTurnOffScreenTimeoutMsPref, &turn_off_screen_timeout_ms);
-  turn_off_screen_timeout_ =
-      base::TimeDelta::FromMilliseconds(turn_off_screen_timeout_ms);
 }
 
 void InternalBacklightController::SetDisplayPower(
