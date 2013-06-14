@@ -1711,14 +1711,20 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
 void CellularCapabilityUniversal::OnLockRetriesChanged(
     const LockRetryData &lock_retries) {
   SLOG(Cellular, 2) << __func__;
-  LockRetryData::const_iterator it =
-      lock_retries.find(sim_lock_status_.lock_type);
-  if (it != lock_retries.end()) {
+
+  // Look for the retries left for the current lock. If the SIM
+  // is not locked, then pick the first available value.
+  LockRetryData::const_iterator it;
+  if (sim_lock_status_.lock_type != MM_MODEM_LOCK_NONE &&
+      sim_lock_status_.lock_type != MM_MODEM_LOCK_UNKNOWN)
+      it = lock_retries.find(sim_lock_status_.lock_type);
+  else
+      it = lock_retries.begin();
+  if (it != lock_retries.end())
     sim_lock_status_.retries_left = it->second;
-  } else {
+  else
     // Unknown, use 999
     sim_lock_status_.retries_left = 999;
-  }
   OnSimLockStatusChanged();
 }
 
