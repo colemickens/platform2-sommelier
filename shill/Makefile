@@ -322,7 +322,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	wimax_provider.o \
 	wimax_service.o \
 	wpa_supplicant.o \
-	virtual_device_unittest.o \
 	) \
 	$(PROTO_BINDINGS_OBJS)
 
@@ -500,6 +499,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	technology_unittest.o \
 	traffic_monitor_unittest.o \
 	testrunner.o \
+	virtual_device_unittest.o \
 	wifi_endpoint_unittest.o \
 	wifi_provider_unittest.o \
 	wifi_service_unittest.o \

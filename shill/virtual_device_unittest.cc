@@ -15,6 +15,11 @@
 
 namespace shill {
 
+namespace {
+const char kTestDeviceName[] = "tun0";
+const int kTestInterfaceIndex = 5;
+}  // namespace {}
+
 class VirtualDeviceTest : public testing::Test {
  public:
   VirtualDeviceTest()
@@ -31,9 +36,6 @@ class VirtualDeviceTest : public testing::Test {
   virtual ~VirtualDeviceTest() {}
 
  protected:
-  static const char kTestDeviceName[];
-  static const int kTestInterfaceIndex;
-
   NiceMockControl control_;
   EventDispatcher dispatcher_;
   MockMetrics metrics_;
@@ -42,11 +44,6 @@ class VirtualDeviceTest : public testing::Test {
 
   VirtualDeviceRefPtr device_;
 };
-
-namespace {
-const char kTestDeviceName[] = "tun0";
-const int kTestInterfaceIndex = 5;
-}  // namespace {}
 
 TEST_F(VirtualDeviceTest, technology) {
   EXPECT_EQ(Technology::kVPN, device_->technology());
