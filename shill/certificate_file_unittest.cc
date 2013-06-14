@@ -70,51 +70,36 @@ TEST_F(CertificateFileTest, Construction) {
   EXPECT_TRUE(GetOutputFile().empty());
 }
 
-TEST_F(CertificateFileTest, CreatePEMFromString) {
+TEST_F(CertificateFileTest, CreatePEMFromStrings) {
   // Create a formatted PEM file from the inner HEX data.
-  FilePath outfile0 = certificate_file_.CreatePEMFromString(kPEMData);
+  const vector<string> kPEMVector0{ kPEMData };
+  FilePath outfile0 = certificate_file_.CreatePEMFromStrings(kPEMVector0);
   EXPECT_FALSE(outfile0.empty());
   EXPECT_TRUE(file_util::PathExists(outfile0));
   EXPECT_TRUE(file_util::ContainsPath(certificate_directory_, outfile0));
   string file_string0;
-  string expected_output = StringPrintf(
-      "%s\n%s%s\n", GetPEMHeader(), kPEMData, GetPEMFooter());
   EXPECT_TRUE(file_util::ReadFileToString(outfile0, &file_string0));
-  EXPECT_EQ(expected_output, file_string0);
+  string expected_output0 = StringPrintf(
+      "%s\n%s%s\n", GetPEMHeader(), kPEMData, GetPEMFooter());
+  EXPECT_EQ(expected_output0, file_string0);
+
   // Create a formatted PEM file from formatted PEM.
-  FilePath outfile1 = certificate_file_.CreatePEMFromString(expected_output);
+  const vector<string> kPEMVector1{ expected_output0, kPEMData };
+  FilePath outfile1 = certificate_file_.CreatePEMFromStrings(kPEMVector1);
   EXPECT_FALSE(outfile1.empty());
   EXPECT_TRUE(file_util::PathExists(outfile1));
   EXPECT_FALSE(file_util::PathExists(outfile0));  // Old file is deleted.
   string file_string1;
   EXPECT_TRUE(file_util::ReadFileToString(outfile1, &file_string1));
-  EXPECT_EQ(expected_output, file_string1);
+  string expected_output1 = StringPrintf(
+      "%s%s", expected_output0.c_str(), expected_output0.c_str());
+  EXPECT_EQ(expected_output1, file_string1);
 
   // Fail to create a PEM file.  Old file should not have been deleted.
-  FilePath outfile2 = certificate_file_.CreatePEMFromString("");
+  const vector<string> kPEMVector2{ kPEMData, "" };
+  FilePath outfile2 = certificate_file_.CreatePEMFromStrings(kPEMVector2);
   EXPECT_TRUE(outfile2.empty());
   EXPECT_TRUE(file_util::PathExists(outfile1));
-}
-
-TEST_F(CertificateFileTest, CreatePEMFromStrings) {
-  // Create a formatted PEM file from the inner HEX data.
-  const vector<string> kPEMVector0{ kPEMData, kPEMData };
-  FilePath outfile0 = certificate_file_.CreatePEMFromStrings(kPEMVector0);
-  EXPECT_FALSE(outfile0.empty());
-  EXPECT_TRUE(file_util::PathExists(outfile0));
-  EXPECT_TRUE(file_util::ContainsPath(certificate_directory_, outfile0));
-  string expected_output = StringPrintf(
-      "%s\n%s%s\n%s\n%s%s\n", GetPEMHeader(), kPEMData, GetPEMFooter(),
-      GetPEMHeader(), kPEMData, GetPEMFooter());
-  string file_string0;
-  EXPECT_TRUE(file_util::ReadFileToString(outfile0, &file_string0));
-  EXPECT_EQ(expected_output, file_string0);
-
-  // Fail to create a PEM file.  Old file should not have been deleted.
-  const vector<string> kPEMVector1{ kPEMData, "" };
-  FilePath outfile1 = certificate_file_.CreatePEMFromStrings(kPEMVector1);
-  EXPECT_TRUE(outfile1.empty());
-  EXPECT_TRUE(file_util::PathExists(outfile0));
 }
 
 TEST_F(CertificateFileTest, CreateDERFromString) {
@@ -159,7 +144,7 @@ TEST_F(CertificateFileTest, Destruction) {
   {
     CertificateFile certificate_file(&glib_);
     certificate_file.set_root_directory(temp_dir_.path());
-    outfile = certificate_file.CreatePEMFromString(kPEMData);
+    outfile = certificate_file.CreatePEMFromStrings(vector<string>{ kPEMData });
     EXPECT_TRUE(file_util::PathExists(outfile));
   }
   // The output file should be deleted when certificate_file goes out-of-scope.

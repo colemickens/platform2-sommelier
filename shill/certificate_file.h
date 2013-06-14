@@ -23,9 +23,8 @@ class CertificateFile {
   explicit CertificateFile(GLib *glib);
   virtual ~CertificateFile();
 
-  // Write out a PEM file from an input string (or vector of strings)
-  // in PEM format.  Returns an empty path on failure.
-  virtual base::FilePath CreatePEMFromString(const std::string &pem_contents);
+  // Write out a PEM file from an input vector of strings in PEM format.
+  // Returns an empty path on failure.
   virtual base::FilePath CreatePEMFromStrings(
       const std::vector<std::string> &pem_contents);
 

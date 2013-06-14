@@ -110,6 +110,10 @@ class OpenVPNDriverTest : public testing::Test,
     driver_->args()->SetString(arg, value);
   }
 
+  void SetArgArray(const string &arg, const vector<string> &value) {
+    driver_->args()->SetStrings(arg, value);
+  }
+
   KeyValueStore *GetArgs() {
     return driver_->args();
   }
@@ -666,8 +670,8 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   ExpectInFlags(options, "--ca", kNSSCertfile);
   EXPECT_TRUE(error.IsSuccess());
 
-  static const char kCaCertPEM[] = "---PEM CONTENTS---";
-  SetArg(kOpenVPNCaCertPemProperty, kCaCertPEM);
+  const vector<string> kCaCertPEM{ "---PEM CONTENTS---" };
+  SetArgArray(kOpenVPNCaCertPemProperty, kCaCertPEM);
   EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_EQ("Can't specify more than one of CACert, CACertNSS and CACertPEM.",
@@ -678,14 +682,14 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   SetArg(flimflam::kProviderHostProperty, "");
   static const char kPEMCertfile[] = "/tmp/pem-cert";
   FilePath pem_cert(kPEMCertfile);
-  EXPECT_CALL(*certificate_file_, CreatePEMFromString(kCaCertPEM))
+  EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(empty_cert))
       .WillOnce(Return(pem_cert));
 
   error.Reset();
   EXPECT_FALSE(driver_->InitCAOptions(&options, &error));
   EXPECT_EQ(Error::kInvalidArguments, error.type());
-  EXPECT_EQ("Unable to extract PEM CA certificate.", error.message());
+  EXPECT_EQ("Unable to extract PEM CA certificates.", error.message());
 
   error.Reset();
   options.clear();

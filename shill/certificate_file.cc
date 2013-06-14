@@ -43,15 +43,6 @@ CertificateFile::~CertificateFile() {
   }
 }
 
-FilePath CertificateFile::CreatePEMFromString(const string &pem_contents) {
-  string hex_data = ExtractHexData(pem_contents);
-  if (hex_data.empty()) {
-    return FilePath();
-  }
-  return WriteFile(StringPrintf(
-      "%s\n%s%s\n", kPEMHeader, hex_data.c_str(), kPEMFooter));
-}
-
 FilePath CertificateFile::CreatePEMFromStrings(
     const vector<string> &pem_contents) {
   vector<string> pem_output;

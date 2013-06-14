@@ -113,7 +113,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kOpenVPNUserProperty, 0 },
   { flimflam::kProviderHostProperty, 0 },
   { flimflam::kProviderTypeProperty, 0 },
-  { kOpenVPNCaCertPemProperty, 0 },
+  { kOpenVPNCaCertPemProperty, Property::kArray },
   { kOpenVPNCertProperty, 0 },
   { kOpenVPNKeyProperty, 0 },
   { kOpenVPNPingExitProperty, 0 },
@@ -663,7 +663,10 @@ bool OpenVPNDriver::InitCAOptions(vector<string> *options, Error *error) {
       args()->LookupString(flimflam::kOpenVPNCaCertProperty, "");
   string ca_cert_nss =
       args()->LookupString(flimflam::kOpenVPNCaCertNSSProperty, "");
-  string ca_cert_pem = args()->LookupString(kOpenVPNCaCertPemProperty, "");
+  vector<string> ca_cert_pem;
+  if (args()->ContainsStrings(kOpenVPNCaCertPemProperty)) {
+    ca_cert_pem = args()->GetStrings(kOpenVPNCaCertPemProperty);
+  }
 
   int num_ca_cert_types = 0;
   if (!ca_cert.empty())
@@ -699,12 +702,12 @@ bool OpenVPNDriver::InitCAOptions(vector<string> *options, Error *error) {
     return true;
   } else if (!ca_cert_pem.empty()) {
     DCHECK(ca_cert.empty() && ca_cert_nss.empty());
-    FilePath certfile = certificate_file_->CreatePEMFromString(ca_cert_pem);
+    FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_cert_pem);
     if (certfile.empty()) {
       Error::PopulateAndLog(
           error,
           Error::kInvalidArguments,
-          "Unable to extract PEM CA certificate.");
+          "Unable to extract PEM CA certificates.");
       return false;
     }
     options->push_back(certfile.value());
