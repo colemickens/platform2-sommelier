@@ -13,6 +13,7 @@
 #include "mist/event_dispatcher.h"
 #include "mist/udev.h"
 #include "mist/udev_device.h"
+#include "mist/udev_enumerate.h"
 #include "mist/udev_monitor.h"
 #include "mist/usb_device_event_observer.h"
 
@@ -75,6 +76,48 @@ bool UsbDeviceEventNotifier::Initialize() {
     return false;
   }
 
+  return true;
+}
+
+bool UsbDeviceEventNotifier::ScanExistingDevices() {
+  scoped_ptr<UdevEnumerate> enumerate(udev_->CreateEnumerate());
+  if (!enumerate ||
+      !enumerate->AddMatchSubsystem("usb") ||
+      !enumerate->AddMatchProperty("DEVTYPE", "usb_device") ||
+      !enumerate->ScanDevices()) {
+    LOG(ERROR) << "Could not enumerate USB devices on the system.";
+    return false;
+  }
+
+  for (scoped_ptr<UdevListEntry> list_entry(enumerate->GetListEntry());
+       list_entry;
+       list_entry.reset(list_entry->GetNext())) {
+    string sys_path = ConvertNullToEmptyString(list_entry->GetName());
+
+    scoped_ptr<UdevDevice> device(
+        udev_->CreateDeviceFromSysPath(sys_path.c_str()));
+    if (!device)
+      continue;
+
+    uint8 bus_number;
+    uint8 device_address;
+    uint16 vendor_id;
+    uint16 product_id;
+    if (!GetDeviceAttributes(device.get(),
+                             &bus_number,
+                             &device_address,
+                             &vendor_id,
+                             &product_id))
+      continue;
+
+    FOR_EACH_OBSERVER(UsbDeviceEventObserver,
+                      observer_list_,
+                      OnUsbDeviceAdded(sys_path,
+                                       bus_number,
+                                       device_address,
+                                       vendor_id,
+                                       product_id));
+  }
   return true;
 }
 

@@ -9,9 +9,12 @@
 #include "mist/event_dispatcher.h"
 #include "mist/mock_udev.h"
 #include "mist/mock_udev_device.h"
+#include "mist/mock_udev_enumerate.h"
+#include "mist/mock_udev_list_entry.h"
 #include "mist/mock_udev_monitor.h"
 #include "mist/mock_usb_device_event_observer.h"
 
+using testing::InSequence;
 using testing::Return;
 using testing::_;
 
@@ -314,6 +317,59 @@ TEST_F(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidProductId) {
 
   notifier_.AddObserver(&observer_);
   notifier_.OnFileCanReadWithoutBlocking(kFakeUdevMonitorFileDescriptor);
+}
+
+TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
+  // Ownership of |enumerate|, |list_entry*|, and |device*| is transferred
+  // to and managed inside ScanExistingDevices().
+  MockUdevEnumerate* enumerate = new MockUdevEnumerate();
+  MockUdevListEntry* list_entry1 = new MockUdevListEntry();
+  MockUdevListEntry* list_entry2 = new MockUdevListEntry();
+  MockUdevDevice* device1 = new MockUdevDevice();
+  MockUdevDevice* device2 = new MockUdevDevice();
+
+  EXPECT_CALL(udev_, CreateEnumerate()).WillOnce(Return(enumerate));
+  EXPECT_CALL(*enumerate, AddMatchSubsystem("usb")).WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, AddMatchProperty("DEVTYPE", "usb_device"))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
+  EXPECT_CALL(*enumerate, GetListEntry()).WillOnce(Return(list_entry1));
+  EXPECT_CALL(*list_entry1, GetName()).WillOnce(Return(kFakeUsbDevice1SysPath));
+  EXPECT_CALL(*list_entry1, GetNext()).WillOnce(Return(list_entry2));
+  EXPECT_CALL(*list_entry2, GetName()).WillOnce(Return(kFakeUsbDevice2SysPath));
+  EXPECT_CALL(*list_entry2, GetNext())
+      .WillOnce(Return(static_cast<UdevListEntry*>(NULL)));
+  EXPECT_CALL(udev_, CreateDeviceFromSysPath(_))
+      .WillOnce(Return(device1))
+      .WillOnce(Return(device2));
+  EXPECT_CALL(*device1, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice1BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice1DeviceAddressString))
+      .WillOnce(Return(kFakeUsbDevice1VendorIdString))
+      .WillOnce(Return(kFakeUsbDevice1ProductIdString));
+  EXPECT_CALL(*device2, GetSysAttributeValue(_))
+      .WillOnce(Return(kFakeUsbDevice2BusNumberString))
+      .WillOnce(Return(kFakeUsbDevice2DeviceAddressString))
+      .WillOnce(Return(kFakeUsbDevice2VendorIdString))
+      .WillOnce(Return(kFakeUsbDevice2ProductIdString));
+
+  InSequence sequence;
+  EXPECT_CALL(observer_,
+              OnUsbDeviceAdded(kFakeUsbDevice1SysPath,
+                               kFakeUsbDevice1BusNumber,
+                               kFakeUsbDevice1DeviceAddress,
+                               kFakeUsbDevice1VendorId,
+                               kFakeUsbDevice1ProductId));
+  EXPECT_CALL(observer_,
+              OnUsbDeviceAdded(kFakeUsbDevice2SysPath,
+                               kFakeUsbDevice2BusNumber,
+                               kFakeUsbDevice2DeviceAddress,
+                               kFakeUsbDevice2VendorId,
+                               kFakeUsbDevice2ProductId));
+  EXPECT_CALL(observer_, OnUsbDeviceRemoved(_)).Times(0);
+
+  notifier_.AddObserver(&observer_);
+  notifier_.ScanExistingDevices();
 }
 
 }  // namespace mist

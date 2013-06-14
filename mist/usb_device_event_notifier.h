@@ -39,6 +39,10 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
   // registered observers upon USB device events. Returns true on success.
   bool Initialize();
 
+  // Scans existing USB devices on the system and notify registered observers
+  // of these devices via UsbDeviceEventObserver::OnUsbDeviceAdded().
+  bool ScanExistingDevices();
+
   // Adds |observer| to the observer list such that |observer| will be notified
   // on USB device events.
   void AddObserver(UsbDeviceEventObserver* observer);
