@@ -1726,6 +1726,15 @@ void CellularCapabilityUniversal::OnLockTypeChanged(
     MMModemLock lock_type) {
   SLOG(Cellular, 2) << __func__ << ": " << lock_type;
   sim_lock_status_.lock_type = lock_type;
+
+  // If the SIM is in a locked state |sim_lock_status_.enabled| might be false.
+  // This is because the corresponding property 'EnabledFacilityLocks' is on
+  // the 3GPP interface and the 3GPP interface is not available while the Modem
+  // is in the 'LOCKED' state.
+  if (lock_type != MM_MODEM_LOCK_NONE &&
+      lock_type != MM_MODEM_LOCK_UNKNOWN &&
+      !sim_lock_status_.enabled)
+    sim_lock_status_.enabled = true;
   OnSimLockStatusChanged();
 }
 
@@ -1738,7 +1747,8 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   // carrier information, since a locked SIM prevents shill from obtaining
   // the necessary data to establish a connection later (e.g. IMSI).
   if (!sim_path_.empty() &&
-      sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE) {
+      (sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE ||
+       sim_lock_status_.lock_type == MM_MODEM_LOCK_UNKNOWN)) {
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path_,
                                                    cellular()->dbus_owner()));
@@ -1885,8 +1895,9 @@ void CellularCapabilityUniversal::OnSignalQualityChanged(uint32 quality) {
 }
 
 void CellularCapabilityUniversal::OnFacilityLocksChanged(uint32 locks) {
-  if (sim_lock_status_.enabled != (locks & MM_MODEM_3GPP_FACILITY_SIM)) {
-    sim_lock_status_.enabled = locks & MM_MODEM_3GPP_FACILITY_SIM;
+  bool sim_enabled = !!(locks & MM_MODEM_3GPP_FACILITY_SIM);
+  if (sim_lock_status_.enabled != sim_enabled) {
+    sim_lock_status_.enabled = sim_enabled;
     OnSimLockStatusChanged();
   }
 }

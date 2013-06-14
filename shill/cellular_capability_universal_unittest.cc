@@ -2132,12 +2132,16 @@ TEST_F(CellularCapabilityUniversalMainTest, OnLockTypeChanged) {
 
   capability_->OnLockTypeChanged(MM_MODEM_LOCK_NONE);
   EXPECT_EQ(MM_MODEM_LOCK_NONE, capability_->sim_lock_status_.lock_type);
+  EXPECT_FALSE(capability_->sim_lock_status_.enabled);
 
   capability_->OnLockTypeChanged(MM_MODEM_LOCK_SIM_PIN);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
+  EXPECT_TRUE(capability_->sim_lock_status_.enabled);
 
+  capability_->sim_lock_status_.enabled = false;
   capability_->OnLockTypeChanged(MM_MODEM_LOCK_SIM_PUK);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PUK, capability_->sim_lock_status_.lock_type);
+  EXPECT_TRUE(capability_->sim_lock_status_.enabled);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
