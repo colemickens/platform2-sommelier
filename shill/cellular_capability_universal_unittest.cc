@@ -565,7 +565,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   capability_->spn_ = "";
 
   // SIM is locked.
-  capability_->sim_lock_status_.lock_type = "sim-pin";
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
@@ -582,7 +582,7 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
               GetActivationState(PendingActivationStore::kIdentifierICCID, _))
       .Times(1);
 
-  capability_->sim_lock_status_.lock_type = "";
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_NONE;
   capability_->OnSimLockStatusChanged();
   Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
 
@@ -2077,6 +2077,112 @@ TEST_F(CellularCapabilityUniversalMainTest, ShouldDetectOutOfCredit) {
   EXPECT_FALSE(capability_->ShouldDetectOutOfCredit());
   capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
   EXPECT_TRUE(capability_->ShouldDetectOutOfCredit());
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusToProperty) {
+  Error error;
+  KeyValueStore store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_FALSE(store.GetBool(flimflam::kSIMLockEnabledProperty));
+  EXPECT_TRUE(store.GetString(flimflam::kSIMLockTypeProperty).empty());
+  EXPECT_EQ(0, store.GetUint(flimflam::kSIMLockRetriesLeftProperty));
+
+  capability_->sim_lock_status_.enabled = true;
+  capability_->sim_lock_status_.retries_left = 3;
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_TRUE(store.GetBool(flimflam::kSIMLockEnabledProperty));
+  EXPECT_EQ("sim-pin", store.GetString(flimflam::kSIMLockTypeProperty));
+  EXPECT_EQ(3, store.GetUint(flimflam::kSIMLockRetriesLeftProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_EQ("sim-puk", store.GetString(flimflam::kSIMLockTypeProperty));
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_TRUE(store.GetString(flimflam::kSIMLockTypeProperty).empty());
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK2;
+  store = capability_->SimLockStatusToProperty(&error);
+  EXPECT_TRUE(store.GetString(flimflam::kSIMLockTypeProperty).empty());
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {
+  CellularCapabilityUniversal::LockRetryData data;
+  const uint32 kDefaultRetries = 999;
+
+  capability_->OnLockRetriesChanged(data);
+  EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
+
+  data[MM_MODEM_LOCK_SIM_PIN] = 3;
+  capability_->OnLockRetriesChanged(data);
+  EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
+  capability_->OnLockRetriesChanged(data);
+  EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
+
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
+  capability_->OnLockRetriesChanged(data);
+  EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, OnLockTypeChanged) {
+  EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
+
+  capability_->OnLockTypeChanged(MM_MODEM_LOCK_NONE);
+  EXPECT_EQ(MM_MODEM_LOCK_NONE, capability_->sim_lock_status_.lock_type);
+
+  capability_->OnLockTypeChanged(MM_MODEM_LOCK_SIM_PIN);
+  EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
+
+  capability_->OnLockTypeChanged(MM_MODEM_LOCK_SIM_PUK);
+  EXPECT_EQ(MM_MODEM_LOCK_SIM_PUK, capability_->sim_lock_status_.lock_type);
+}
+
+TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
+  EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
+
+  DBusPropertiesMap changed;
+  vector<string> invalidated;
+
+  capability_->OnModemPropertiesChanged(changed, invalidated);
+  EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(0, capability_->sim_lock_status_.retries_left);
+
+  ::DBus::Variant variant;
+  ::DBus::MessageIter writer = variant.writer();
+
+  // Unlock retries changed, but the SIM wasn't locked.
+  CellularCapabilityUniversal::LockRetryData retry_data;
+  retry_data[MM_MODEM_LOCK_SIM_PIN] = 3;
+  writer << retry_data;
+  changed[MM_MODEM_PROPERTY_UNLOCKRETRIES] = variant;
+
+  capability_->OnModemPropertiesChanged(changed, invalidated);
+  EXPECT_EQ(MM_MODEM_LOCK_UNKNOWN, capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(999, capability_->sim_lock_status_.retries_left);
+
+  // Unlock retries changed and the SIM got locked.
+  variant.clear();
+  writer = variant.writer();
+  writer << static_cast<uint32>(MM_MODEM_LOCK_SIM_PIN);
+  changed[MM_MODEM_PROPERTY_UNLOCKREQUIRED] = variant;
+  capability_->OnModemPropertiesChanged(changed, invalidated);
+  EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
+
+  // Only unlock retries changed.
+  changed.erase(MM_MODEM_PROPERTY_UNLOCKREQUIRED);
+  retry_data[MM_MODEM_LOCK_SIM_PIN] = 2;
+  variant.clear();
+  writer = variant.writer();
+  writer << retry_data;
+  changed[MM_MODEM_PROPERTY_UNLOCKRETRIES] = variant;
+  capability_->OnModemPropertiesChanged(changed, invalidated);
+  EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
+  EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);
 }
 
 }  // namespace shill

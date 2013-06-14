@@ -125,6 +125,8 @@ class CellularCapabilityGSM : public CellularCapabilityClassic {
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(ModemTest, CreateDeviceFromProperties);
 
+  // SimLockStatus represents the fields in the Cellular.SIMLockStatus
+  // DBUS property of the shill device.
   struct SimLockStatus {
    public:
     SimLockStatus() : enabled(false), retries_left(0) {}

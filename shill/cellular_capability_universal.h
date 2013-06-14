@@ -190,8 +190,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsValidSimPath);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, NormalizeMdn);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, OnListBearersReply);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockRetriesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnLockTypeChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               OnModemCurrentCapabilitiesChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, PropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Reset);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, Scan);
@@ -200,6 +203,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               ShouldDetectOutOfCredit);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusChanged);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPathChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, StartModem);
@@ -227,6 +231,19 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
+
+  // SimLockStatus represents the fields in the Cellular.SIMLockStatus
+  // DBUS property of the shill device.
+  struct SimLockStatus {
+   public:
+    SimLockStatus() : enabled(false),
+                      lock_type(MM_MODEM_LOCK_UNKNOWN),
+                      retries_left(0) {}
+
+    bool enabled;
+    MMModemLock lock_type;
+    uint32 retries_left;
+  };
 
   // Methods used in starting a modem
   void EnableModem(Error *error, const ResultCallback &callback);
@@ -307,8 +324,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnModemRevisionChanged(const std::string &revision);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32 access_technologies);
-  void OnLockRetriesChanged(MMModemLock unlock_required,
-                            const LockRetryData &lock_retries);
+  void OnLockRetriesChanged(const LockRetryData &lock_retries);
+  void OnLockTypeChanged(MMModemLock unlock_required);
   void OnSimLockStatusChanged();
 
   // Returns false if the MDN is empty or if the MDN consists of all 0s.

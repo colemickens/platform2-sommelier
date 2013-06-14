@@ -57,16 +57,6 @@ class ProxyFactory;
 // capabilities.
 class CellularCapability {
  public:
-  // SimLockStatus represents the fields in the Cellular.SIMLockStatus
-  // DBUS property of the shill device.
-  struct SimLockStatus {
-    SimLockStatus() : enabled(false), retries_left(0) {}
-
-    bool enabled;
-    std::string lock_type;
-    uint32 retries_left;
-  };
-
   static const int kTimeoutActivate;
   static const int kTimeoutConnect;
   static const int kTimeoutDefault;

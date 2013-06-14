@@ -189,8 +189,20 @@ CellularCapabilityUniversal::CellularCapabilityUniversal(
 KeyValueStore CellularCapabilityUniversal::SimLockStatusToProperty(
     Error */*error*/) {
   KeyValueStore status;
+  string lock_type;
+  switch (sim_lock_status_.lock_type) {
+    case MM_MODEM_LOCK_SIM_PIN:
+      lock_type = "sim-pin";
+      break;
+    case MM_MODEM_LOCK_SIM_PUK:
+      lock_type = "sim-puk";
+      break;
+    default:
+      lock_type = "";
+      break;
+  }
   status.SetBool(flimflam::kSIMLockEnabledProperty, sim_lock_status_.enabled);
-  status.SetString(flimflam::kSIMLockTypeProperty, sim_lock_status_.lock_type);
+  status.SetString(flimflam::kSIMLockTypeProperty, lock_type);
   status.SetUint(flimflam::kSIMLockRetriesLeftProperty,
                  sim_lock_status_.retries_left);
   return status;
@@ -1505,23 +1517,20 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // not needed: MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER
 
   // Unlock required and SimLock
-  bool locks_changed = false;
   uint32_t unlock_required;  // This is really of type MMModemLock
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_UNLOCKREQUIRED,
-                                &unlock_required)) {
-    locks_changed = true;
-  }
-  LockRetryData lock_retries;
+                                &unlock_required))
+    OnLockTypeChanged(static_cast<MMModemLock>(unlock_required));
+
+  // Unlock retries
   DBusPropertiesMap::const_iterator it =
       properties.find(MM_MODEM_PROPERTY_UNLOCKRETRIES);
   if (it != properties.end()) {
-    lock_retries = it->second.operator LockRetryData();
-    locks_changed = true;
+    LockRetryData lock_retries = it->second.operator LockRetryData();
+    OnLockRetriesChanged(lock_retries);
   }
-  if (locks_changed)
-    OnLockRetriesChanged(static_cast<MMModemLock>(unlock_required),
-                         lock_retries);
+
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
                                 &uint_value))
@@ -1700,26 +1709,23 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
 }
 
 void CellularCapabilityUniversal::OnLockRetriesChanged(
-    MMModemLock unlock_required,
     const LockRetryData &lock_retries) {
-  switch (unlock_required) {
-    case MM_MODEM_LOCK_SIM_PIN:
-      sim_lock_status_.lock_type = "sim-pin";
-      break;
-    case MM_MODEM_LOCK_SIM_PUK:
-      sim_lock_status_.lock_type = "sim-puk";
-      break;
-    default:
-      sim_lock_status_.lock_type = "";
-      break;
-  }
-  LockRetryData::const_iterator it = lock_retries.find(unlock_required);
+  SLOG(Cellular, 2) << __func__;
+  LockRetryData::const_iterator it =
+      lock_retries.find(sim_lock_status_.lock_type);
   if (it != lock_retries.end()) {
     sim_lock_status_.retries_left = it->second;
   } else {
     // Unknown, use 999
     sim_lock_status_.retries_left = 999;
   }
+  OnSimLockStatusChanged();
+}
+
+void CellularCapabilityUniversal::OnLockTypeChanged(
+    MMModemLock lock_type) {
+  SLOG(Cellular, 2) << __func__ << ": " << lock_type;
+  sim_lock_status_.lock_type = lock_type;
   OnSimLockStatusChanged();
 }
 
@@ -1731,7 +1737,8 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   // If the SIM is currently unlocked, assume that we need to refresh
   // carrier information, since a locked SIM prevents shill from obtaining
   // the necessary data to establish a connection later (e.g. IMSI).
-  if (!sim_path_.empty() && sim_lock_status_.lock_type.empty()) {
+  if (!sim_path_.empty() &&
+      sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE) {
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
         proxy_factory()->CreateDBusPropertiesProxy(sim_path_,
                                                    cellular()->dbus_owner()));
