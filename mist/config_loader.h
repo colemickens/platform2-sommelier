@@ -22,21 +22,21 @@ class UsbModemInfo;
 class ConfigLoader {
  public:
   ConfigLoader();
-  ~ConfigLoader();
+  virtual ~ConfigLoader();
 
   // Loads the default configuration. Returns true on success.
-  bool LoadDefaultConfig();
+  virtual bool LoadDefaultConfig();
 
   // Loads a configuration from |config_file|. Returns true on success.
-  bool LoadConfig(const base::FilePath& config_file);
+  virtual bool LoadConfig(const base::FilePath& config_file);
 
   // Returns the info of the USB modem with its vendor ID equal to |vendor_id|
   // and its product ID equal to |product_id| from the loaded configuration.
   // Returns NULL if no matching USB modem is found. The returned UsbModemInfo
   // object becomes invalid, and thus should not be held, beyond the lifetime
   // of the loaded configuration held by |config_|.
-  const UsbModemInfo* GetUsbModemInfo(uint16 vendor_id,
-                                      uint16 product_id) const;
+  virtual const UsbModemInfo* GetUsbModemInfo(uint16 vendor_id,
+                                              uint16 product_id) const;
 
  private:
   FRIEND_TEST(ConfigLoaderTest, GetUsbModemInfo);
