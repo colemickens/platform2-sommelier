@@ -37,7 +37,7 @@ class CellularCapabilityUniversal : public CellularCapability {
  public:
   typedef std::vector<DBusPropertiesMap> ScanResults;
   typedef DBusPropertiesMap ScanResult;
-  typedef std::map< uint32_t, uint32_t > LockRetryData;
+  typedef std::map<uint32_t, uint32_t> LockRetryData;
 
   // Constants used in connect method call.  Make available to test matchers.
   // TODO(jglasgow): Generate from modem manager into
@@ -137,6 +137,19 @@ class CellularCapabilityUniversal : public CellularCapability {
   void set_esn(const std::string &esn) { esn_ = esn; }
 
  private:
+  struct ModemModes {
+    ModemModes()
+        : allowed_modes(MM_MODEM_MODE_NONE),
+          preferred_mode(MM_MODEM_MODE_NONE) {}
+
+    ModemModes(uint32 allowed, MMModemMode preferred)
+        : allowed_modes(allowed),
+          preferred_mode(preferred) {}
+
+    uint32 allowed_modes;        // Bits based on MMModemMode.
+    MMModemMode preferred_mode;  // A single MMModemMode bit.
+  };
+
   // Constants used in scan results.  Make available to unit tests.
   // TODO(jglasgow): Generate from modem manager into ModemManager-names.h.
   // See http://crosbug.com/30551.
@@ -317,6 +330,9 @@ class CellularCapabilityUniversal : public CellularCapability {
       const std::vector<std::string> &invalidated_properties);
 
   void OnSignalQualityChanged(uint32 quality);
+
+  void OnSupportedCapabilitesChanged(
+      const std::vector<uint32> &supported_capabilities);
   void OnModemCurrentCapabilitiesChanged(uint32 current_capabilities);
   void OnMdnChanged(const std::string &mdn);
   void OnModemManufacturerChanged(const std::string &manufacturer);
@@ -324,6 +340,8 @@ class CellularCapabilityUniversal : public CellularCapability {
   void OnModemRevisionChanged(const std::string &revision);
   void OnModemStateChanged(Cellular::ModemState state);
   void OnAccessTechnologiesChanged(uint32 access_technologies);
+  void OnSupportedModesChanged(const std::vector<ModemModes> &supported_modes);
+  void OnCurrentModesChanged(const ModemModes &current_modes);
   void OnLockRetriesChanged(const LockRetryData &lock_retries);
   void OnLockTypeChanged(MMModemLock unlock_required);
   void OnSimLockStatusChanged();
@@ -405,8 +423,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   MMModem3gppRegistrationState registration_state_;
 
   // Bits based on MMModemCapabilities
-  uint32 current_capabilities_;  // technologies supportsed without a reload
+  std::vector<uint32> supported_capabilities_;  // Technologies supported
+  uint32 current_capabilities_;  // Technologies supported without a reload
   uint32 access_technologies_;   // Bits based on MMModemAccessTechnology
+  std::vector<ModemModes> supported_modes_;
+  ModemModes current_modes_;
 
   Cellular::Operator serving_operator_;
   std::string spn_;

@@ -20,7 +20,7 @@ ModemProxy::ModemProxy(DBus::Connection *connection,
 ModemProxy::~ModemProxy() {}
 
 void ModemProxy::set_state_changed_callback(
-      const ModemStateChangedSignalCallback &callback) {
+    const ModemStateChangedSignalCallback &callback) {
   proxy_.set_state_changed_callback(callback);
 }
 
@@ -114,6 +114,52 @@ void ModemProxy::FactoryReset(const std::string &code,
   }
 }
 
+void ModemProxy::SetCurrentCapabilities(const uint32_t &capabilities,
+                                        Error *error,
+                                        const ResultCallback &callback,
+                                        int timeout) {
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    SLOG(DBus, 2) << __func__;
+    proxy_.SetCurrentCapabilities(capabilities, cb.get(), timeout);
+    cb.release();
+  } catch (const DBus::Error &e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void ModemProxy::SetCurrentModes(
+    const ::DBus::Struct<uint32_t, uint32_t> &modes,
+    Error *error,
+    const ResultCallback &callback,
+    int timeout) {
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    SLOG(DBus, 2) << __func__;
+    proxy_.SetCurrentModes(modes, cb.get(), timeout);
+    cb.release();
+  } catch (const DBus::Error &e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
+void ModemProxy::SetCurrentBands(const std::vector<uint32_t> &bands,
+                                 Error *error,
+                                 const ResultCallback &callback,
+                                 int timeout) {
+  scoped_ptr<ResultCallback> cb(new ResultCallback(callback));
+  try {
+    SLOG(DBus, 2) << __func__;
+    proxy_.SetCurrentBands(bands, cb.get(), timeout);
+    cb.release();
+  } catch (const DBus::Error &e) {
+    if (error)
+      CellularError::FromDBusError(e, error);
+  }
+}
+
 void ModemProxy::Command(const std::string &cmd,
                          const uint32_t &user_timeout,
                          Error *error,
@@ -155,6 +201,17 @@ const ::DBus::Path ModemProxy::Sim() {
     return ::DBus::Path();  // Make the compiler happy.
   }
 }
+
+const std::vector<uint32_t> ModemProxy::SupportedCapabilities() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.SupportedCapabilities();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::vector<uint32_t>();  // Make the compiler happy.
+  }
+}
+
 uint32_t ModemProxy::CurrentCapabilities() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -164,6 +221,7 @@ uint32_t ModemProxy::CurrentCapabilities() {
     return 0;  // Make the compiler happy.
   }
 }
+
 uint32_t ModemProxy::MaxBearers() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -173,6 +231,7 @@ uint32_t ModemProxy::MaxBearers() {
     return 0;  // Make the compiler happy.
   }
 }
+
 uint32_t ModemProxy::MaxActiveBearers() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -182,6 +241,7 @@ uint32_t ModemProxy::MaxActiveBearers() {
     return 0;  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::Manufacturer() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -191,6 +251,7 @@ const std::string ModemProxy::Manufacturer() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::Model() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -200,6 +261,7 @@ const std::string ModemProxy::Model() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::Revision() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -209,6 +271,7 @@ const std::string ModemProxy::Revision() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::DeviceIdentifier() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -218,6 +281,7 @@ const std::string ModemProxy::DeviceIdentifier() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::Device() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -227,6 +291,7 @@ const std::string ModemProxy::Device() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 const std::vector<std::string> ModemProxy::Drivers() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -236,6 +301,7 @@ const std::vector<std::string> ModemProxy::Drivers() {
     return std::vector<std::string>();  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::Plugin() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -245,6 +311,7 @@ const std::string ModemProxy::Plugin() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 const std::string ModemProxy::EquipmentIdentifier() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -254,6 +321,7 @@ const std::string ModemProxy::EquipmentIdentifier() {
     return std::string();  // Make the compiler happy.
   }
 }
+
 uint32_t ModemProxy::UnlockRequired() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -263,6 +331,7 @@ uint32_t ModemProxy::UnlockRequired() {
     return 0;  // Make the compiler happy.
   }
 }
+
 const std::map<uint32_t, uint32_t> ModemProxy::UnlockRetries() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -272,6 +341,7 @@ const std::map<uint32_t, uint32_t> ModemProxy::UnlockRetries() {
     return std::map<uint32_t, uint32_t>();  // Make the compiler happy.
   }
 }
+
 uint32_t ModemProxy::State() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -281,6 +351,7 @@ uint32_t ModemProxy::State() {
     return 0;  // Make the compiler happy.
   }
 }
+
 uint32_t ModemProxy::AccessTechnologies() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -290,6 +361,7 @@ uint32_t ModemProxy::AccessTechnologies() {
     return 0;  // Make the compiler happy.
   }
 }
+
 const ::DBus::Struct<uint32_t, bool> ModemProxy::SignalQuality() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -299,6 +371,7 @@ const ::DBus::Struct<uint32_t, bool> ModemProxy::SignalQuality() {
     return ::DBus::Struct<uint32_t, bool>();  // Make the compiler happy.
   }
 }
+
 const std::vector<string> ModemProxy::OwnNumbers() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -308,6 +381,29 @@ const std::vector<string> ModemProxy::OwnNumbers() {
     return std::vector<string>();  // Make the compiler happy.
   }
 }
+
+const std::vector<::DBus::Struct<uint32_t, uint32_t>>
+ModemProxy::SupportedModes() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.SupportedModes();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    // Make the compiler happy.
+    return std::vector<::DBus::Struct<uint32_t, uint32_t>>();
+  }
+}
+
+const ::DBus::Struct<uint32_t, uint32_t> ModemProxy::CurrentModes() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.CurrentModes();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return ::DBus::Struct<uint32_t, uint32_t>();  // Make the compiler happy.
+  }
+}
+
 const std::vector<uint32_t> ModemProxy::SupportedBands() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -317,6 +413,27 @@ const std::vector<uint32_t> ModemProxy::SupportedBands() {
     return std::vector<uint32_t>();  // Make the compiler happy.
   }
 }
+
+const std::vector<uint32_t> ModemProxy::CurrentBands() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.CurrentBands();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return std::vector<uint32_t>();  // Make the compiler happy.
+  }
+}
+
+uint32_t ModemProxy::SupportedIpFamilies() {
+  SLOG(DBus, 2) << __func__;
+  try {
+    return proxy_.SupportedIpFamilies();
+  } catch (const DBus::Error &e) {
+    LOG(FATAL) << "DBus exception: " << e.name() << ": " << e.what();
+    return 0;  // Make the compiler happy.
+  }
+}
+
 uint32_t ModemProxy::PowerState() {
   SLOG(DBus, 2) << __func__;
   try {
@@ -350,7 +467,7 @@ void ModemProxy::Proxy::StateChanged(const int32_t &old,
 
 // Method callbacks inherited from
 // org::freedesktop::ModemManager1::ModemProxy
-void ModemProxy::Proxy::EnableCallback(const ::DBus::Error& dberror,
+void ModemProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
                                        void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
@@ -361,7 +478,7 @@ void ModemProxy::Proxy::EnableCallback(const ::DBus::Error& dberror,
 
 void ModemProxy::Proxy::ListBearersCallback(
     const std::vector< ::DBus::Path> &bearers,
-    const ::DBus::Error& dberror,
+    const ::DBus::Error &dberror,
     void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<DBusPathsCallback> callback(
@@ -372,7 +489,7 @@ void ModemProxy::Proxy::ListBearersCallback(
 }
 
 void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,
-                                             const ::DBus::Error& dberror,
+                                             const ::DBus::Error &dberror,
                                              void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
@@ -381,7 +498,7 @@ void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,
   callback->Run(error);
 }
 
-void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error& dberror,
+void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error &dberror,
                                              void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
@@ -390,7 +507,7 @@ void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error& dberror,
   callback->Run(error);
 }
 
-void ModemProxy::Proxy::ResetCallback(const ::DBus::Error& dberror,
+void ModemProxy::Proxy::ResetCallback(const ::DBus::Error &dberror,
                                       void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
@@ -399,7 +516,7 @@ void ModemProxy::Proxy::ResetCallback(const ::DBus::Error& dberror,
   callback->Run(error);
 }
 
-void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error& dberror,
+void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error &dberror,
                                              void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
@@ -408,8 +525,36 @@ void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error& dberror,
   callback->Run(error);
 }
 
+void ModemProxy::Proxy::SetCurrentCapabilitesCallback(
+    const ::DBus::Error &dberror,
+    void *data) {
+  SLOG(DBus, 2) << __func__;
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+void ModemProxy::Proxy::SetCurrentModesCallback(const ::DBus::Error &dberror,
+                                                void *data) {
+  SLOG(DBus, 2) << __func__;
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
+void ModemProxy::Proxy::SetCurrentBandsCallback(const ::DBus::Error &dberror,
+                                                void *data) {
+  SLOG(DBus, 2) << __func__;
+  scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
+  Error error;
+  CellularError::FromDBusError(dberror, &error);
+  callback->Run(error);
+}
+
 void ModemProxy::Proxy::CommandCallback(const std::string &response,
-                                        const ::DBus::Error& dberror,
+                                        const ::DBus::Error &dberror,
                                         void *data) {
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));

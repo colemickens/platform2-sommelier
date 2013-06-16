@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MM1_MODEM_PROXY_INTERFACE_
-#define SHILL_MM1_MODEM_PROXY_INTERFACE_
+#ifndef SHILL_MM1_MODEM_PROXY_INTERFACE_H_
+#define SHILL_MM1_MODEM_PROXY_INTERFACE_H_
 
 #include <string>
 
@@ -49,6 +49,18 @@ class ModemProxyInterface {
                             Error *error,
                             const ResultCallback &callback,
                             int timeout) = 0;
+  virtual void SetCurrentCapabilities(const uint32_t &capabilities,
+                                      Error *error,
+                                      const ResultCallback &callback,
+                                      int timeout) = 0;
+  virtual void SetCurrentModes(const ::DBus::Struct<uint32_t, uint32_t> &modes,
+                               Error *error,
+                               const ResultCallback &callback,
+                               int timeout) = 0;
+  virtual void SetCurrentBands(const std::vector<uint32_t> &bands,
+                               Error *error,
+                               const ResultCallback &callback,
+                               int timeout) = 0;
   virtual void Command(const std::string &cmd,
                        const uint32_t &user_timeout,
                        Error *error,
@@ -65,6 +77,7 @@ class ModemProxyInterface {
 
   // Properties.
   virtual const ::DBus::Path Sim() = 0;
+  virtual const std::vector<uint32_t> SupportedCapabilities() = 0;
   virtual uint32_t CurrentCapabilities() = 0;
   virtual uint32_t MaxBearers() = 0;
   virtual uint32_t MaxActiveBearers() = 0;
@@ -77,16 +90,21 @@ class ModemProxyInterface {
   virtual const std::string Plugin() = 0;
   virtual const std::string EquipmentIdentifier() = 0;
   virtual uint32_t UnlockRequired() = 0;
-  virtual const std::map< uint32_t, uint32_t > UnlockRetries() = 0;
+  virtual const std::map<uint32_t, uint32_t> UnlockRetries() = 0;
   virtual uint32_t State() = 0;
   virtual uint32_t AccessTechnologies() = 0;
-  virtual const ::DBus::Struct< uint32_t, bool > SignalQuality() = 0;
-  virtual const std::vector< std::string > OwnNumbers() = 0;
-  virtual const std::vector< uint32_t > SupportedBands() = 0;
+  virtual const ::DBus::Struct<uint32_t, bool> SignalQuality() = 0;
+  virtual const std::vector<std::string> OwnNumbers() = 0;
+  virtual const std::vector<::DBus::Struct<uint32_t, uint32_t>>
+      SupportedModes() = 0;
+  virtual const ::DBus::Struct<uint32_t, uint32_t> CurrentModes() = 0;
+  virtual const std::vector<uint32_t> SupportedBands() = 0;
+  virtual const std::vector<uint32_t> CurrentBands() = 0;
+  virtual uint32_t SupportedIpFamilies() = 0;
   virtual uint32_t PowerState() = 0;
 };
 
 }  // namespace mm1
 }  // namespace shill
 
-#endif  // SHILL_MM1_MODEM_PROXY_INTERFACE_
+#endif  // SHILL_MM1_MODEM_PROXY_INTERFACE_H_

@@ -1491,6 +1491,14 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   if (DBusProperties::GetObjectPath(properties,
                                     MM_MODEM_PROPERTY_SIM, &string_value))
     OnSimPathChanged(string_value);
+
+  DBusPropertiesMap::const_iterator it =
+      properties.find(MM_MODEM_PROPERTY_SUPPORTEDCAPABILITIES);
+  if (it != properties.end()) {
+    const vector<uint32> &supported_capabilities = it->second;
+    OnSupportedCapabilitesChanged(supported_capabilities);
+  }
+
   uint32 uint_value;
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_CURRENTCAPABILITIES,
@@ -1517,15 +1525,14 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
   // not needed: MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER
 
   // Unlock required and SimLock
-  uint32_t unlock_required;  // This is really of type MMModemLock
+  uint32 unlock_required;  // This is really of type MMModemLock
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_UNLOCKREQUIRED,
                                 &unlock_required))
     OnLockTypeChanged(static_cast<MMModemLock>(unlock_required));
 
   // Unlock retries
-  DBusPropertiesMap::const_iterator it =
-      properties.find(MM_MODEM_PROPERTY_UNLOCKRETRIES);
+  it = properties.find(MM_MODEM_PROPERTY_UNLOCKRETRIES);
   if (it != properties.end()) {
     LockRetryData lock_retries = it->second.operator LockRetryData();
     OnLockRetriesChanged(lock_retries);
@@ -1549,6 +1556,25 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
       mdn = numbers[0];
     OnMdnChanged(mdn);
   }
+
+  it = properties.find(MM_MODEM_PROPERTY_SUPPORTEDMODES);
+  if (it != properties.end()) {
+    const vector<DBus::Struct<uint32, uint32>> &mm_supported_modes = it->second;
+    vector<ModemModes> supported_modes;
+    for (const auto &modes : mm_supported_modes) {
+      supported_modes.push_back(
+          ModemModes(modes._1, static_cast<MMModemMode>(modes._2)));
+    }
+    OnSupportedModesChanged(supported_modes);
+  }
+
+  it = properties.find(MM_MODEM_PROPERTY_CURRENTMODES);
+  if (it != properties.end()) {
+    const DBus::Struct<uint32, uint32> &current_modes = it->second;
+    OnCurrentModesChanged(ModemModes(
+        current_modes._1, static_cast<MMModemMode>(current_modes._2)));
+  }
+
   // au: MM_MODEM_PROPERTY_SUPPORTEDBANDS,
   // au: MM_MODEM_PROPERTY_BANDS
 }
@@ -1632,6 +1658,11 @@ void CellularCapabilityUniversal::OnSimPathChanged(
   }
 }
 
+void CellularCapabilityUniversal::OnSupportedCapabilitesChanged(
+    const vector<uint32> &supported_capabilities) {
+  supported_capabilities_ = supported_capabilities;
+}
+
 void CellularCapabilityUniversal::OnModemCurrentCapabilitiesChanged(
     uint32 current_capabilities) {
   current_capabilities_ = current_capabilities;
@@ -1706,6 +1737,16 @@ void CellularCapabilityUniversal::OnAccessTechnologiesChanged(
       cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
     }
   }
+}
+
+void CellularCapabilityUniversal::OnSupportedModesChanged(
+    const vector<ModemModes> &supported_modes) {
+  supported_modes_ = supported_modes;
+}
+
+void CellularCapabilityUniversal::OnCurrentModesChanged(
+    const ModemModes &current_modes) {
+  current_modes_ = current_modes;
 }
 
 void CellularCapabilityUniversal::OnLockRetriesChanged(
