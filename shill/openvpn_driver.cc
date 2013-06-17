@@ -104,6 +104,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { flimflam::kProviderTypeProperty, 0 },
   { kOpenVPNCaCertPemProperty, Property::kArray },
   { kOpenVPNCertProperty, 0 },
+  { kOpenVPNExtraCertPemProperty, Property::kArray },
   { kOpenVPNKeyProperty, 0 },
   { kOpenVPNPingExitProperty, 0 },
   { kOpenVPNPingProperty, 0 },
