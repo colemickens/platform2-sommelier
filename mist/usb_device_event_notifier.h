@@ -55,11 +55,18 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
   virtual void OnFileCanReadWithoutBlocking(int file_descriptor) OVERRIDE;
   virtual void OnFileCanWriteWithoutBlocking(int file_descriptor) OVERRIDE;
 
+  // Gets the bus number, device address, vendor ID, and product ID of |device|.
+  // Return true on success.
+  static bool GetDeviceAttributes(const UdevDevice* device,
+                                  uint8* bus_number,
+                                  uint8* device_address,
+                                  uint16* vendor_id,
+                                  uint16* product_id);
+
  private:
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertHexStringToUint16);
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertNullToEmptyString);
   FRIEND_TEST(UsbDeviceEventNotifierTest, ConvertStringToUint8);
-  FRIEND_TEST(UsbDeviceEventNotifierTest, GetDeviceAttributes);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventNotAddOrRemove);
   FRIEND_TEST(UsbDeviceEventNotifierTest, OnUsbDeviceEventWithInvalidBusNumber);
   FRIEND_TEST(UsbDeviceEventNotifierTest,
@@ -79,14 +86,6 @@ class UsbDeviceEventNotifier : public MessageLoopForIO::Watcher {
   // Converts a decimal string, which denotes an integer between 0 and 255, into
   // an unsigned 8-bit integer. Return true on success.
   static bool ConvertStringToUint8(const std::string& str, uint8* value);
-
-  // Gets the bus number, device address, vendor ID, and product ID of |device|.
-  // Return true on success.
-  static bool GetDeviceAttributes(UdevDevice* device,
-                                  uint8* bus_number,
-                                  uint8* device_address,
-                                  uint16* vendor_id,
-                                  uint16* product_id);
 
   EventDispatcher* const dispatcher_;
   ObserverList<UsbDeviceEventObserver> observer_list_;

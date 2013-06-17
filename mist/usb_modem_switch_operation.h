@@ -21,6 +21,7 @@ class Context;
 class UsbBulkTransfer;
 class UsbDevice;
 class UsbModemInfo;
+class UsbModemSwitchContext;
 class UsbTransfer;
 
 // A USB modem switch operation, which switches a USB modem from the mass
@@ -44,17 +45,13 @@ class UsbModemSwitchOperation : public UsbDeviceEventObserver {
       CompletionCallback;
 
   // Constructs a UsbModemSwitchOperation object by taking a raw pointer to a
-  // Context object as |context|, a UsbDevice object as |device| that
-  // corresponds to the device being switched, the device sysfs path as
-  // |device_sys_path|, and a raw pointer to a UsbModemInfo object as
-  // |modem_info| that contains the information about how to switch the device
-  // to the modem mode. The ownership of |context| and |modem_info| is not
-  // transferred, and thus they should outlive this object. The ownership of
-  // |device| is transferred.
+  // Context object as |context| and a raw pointer to a UsbModemSwitchContext
+  // object as |switch_context| that contains information about the device to
+  // be switched to the modem mode. The ownership of |context| is not
+  // transferred, and thus it should outlive this object. The ownership of
+  // |switch_context| is transferred.
   UsbModemSwitchOperation(Context* context,
-                          UsbDevice* device,
-                          const std::string& device_sys_path,
-                          const UsbModemInfo* modem_info);
+                          UsbModemSwitchContext* switch_context);
 
   ~UsbModemSwitchOperation();
 
@@ -103,9 +100,8 @@ class UsbModemSwitchOperation : public UsbDeviceEventObserver {
   virtual void OnUsbDeviceRemoved(const std::string& sys_path) OVERRIDE;
 
   Context* const context_;
+  scoped_ptr<UsbModemSwitchContext> switch_context_;
   scoped_ptr<UsbDevice> device_;
-  std::string device_sys_path_;
-  const UsbModemInfo* const modem_info_;
   CompletionCallback completion_callback_;
   bool interface_claimed_;
   uint8 interface_number_;

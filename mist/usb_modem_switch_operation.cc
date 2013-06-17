@@ -22,6 +22,8 @@
 #include "mist/usb_endpoint_descriptor.h"
 #include "mist/usb_interface.h"
 #include "mist/usb_interface_descriptor.h"
+#include "mist/usb_manager.h"
+#include "mist/usb_modem_switch_context.h"
 
 using base::Bind;
 using base::CancelableClosure;
@@ -48,20 +50,16 @@ const int64 kUsbMessageTransferTimeoutMilliseconds = 8000;
 
 UsbModemSwitchOperation::UsbModemSwitchOperation(
     Context* context,
-    UsbDevice* device,
-    const string& device_sys_path,
-    const UsbModemInfo* modem_info)
+    UsbModemSwitchContext* switch_context)
     : context_(context),
-      device_(device),
-      device_sys_path_(device_sys_path),
-      modem_info_(modem_info),
+      switch_context_(switch_context),
       interface_claimed_(false),
       interface_number_(0),
       endpoint_address_(0) {
   CHECK(context_);
-  CHECK(device_);
-  CHECK(!device_sys_path_.empty());
-  CHECK(modem_info_);
+  CHECK(switch_context_);
+  CHECK(!switch_context_->sys_path().empty());
+  CHECK(switch_context_->modem_info());
 }
 
 UsbModemSwitchOperation::~UsbModemSwitchOperation() {
@@ -76,7 +74,7 @@ void UsbModemSwitchOperation::Start(
 
   completion_callback_ = completion_callback;
   VLOG(1) << "Start modem switch operation for device '"
-          << device_sys_path_ << "'.";
+          << switch_context_->sys_path() << "'.";
 
   // Defer the execution of the first task as multiple UsbModemSwitchOperation
   // objects may be created and started in a tight loop.
@@ -93,7 +91,7 @@ void UsbModemSwitchOperation::Complete(bool success) {
   CHECK(!completion_callback_.is_null());
 
   if (!success) {
-    LOG(ERROR) << "Could not switch device '" << device_sys_path_
+    LOG(ERROR) << "Could not switch device '" << switch_context_->sys_path()
                << "' into the modem mode.";
   }
 
@@ -133,8 +131,26 @@ void UsbModemSwitchOperation::CloseDevice() {
 void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
   CHECK(!interface_claimed_);
 
+  device_.reset(
+      context_->usb_manager()->GetDevice(switch_context_->bus_number(),
+                                         switch_context_->device_address(),
+                                         switch_context_->vendor_id(),
+                                         switch_context_->product_id()));
+  if (!device_) {
+    LOG(ERROR) << StringPrintf("Could not find USB device '%s' "
+                               "(Bus %03d Address %03d ID %04x:%04x).",
+                               switch_context_->sys_path().c_str(),
+                               switch_context_->bus_number(),
+                               switch_context_->device_address(),
+                               switch_context_->vendor_id(),
+                               switch_context_->product_id());
+    Complete(false);
+    return;
+  }
+
   if (!device_->Open()) {
-    LOG(ERROR) << "Could not open device '" << device_sys_path_ << "'.";
+    LOG(ERROR) << "Could not open device '" << switch_context_->sys_path()
+               << "'.";
     Complete(false);
     return;
   }
@@ -209,16 +225,17 @@ void UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface() {
 }
 
 void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
+  const UsbModemInfo* modem_info = switch_context_->modem_info();
   // TODO(benchan): Remove this check when we support some modem that does not
   // require a special USB message for the switch operation.
-  CHECK_GT(modem_info_->usb_message_size(), 0);
+  CHECK_GT(modem_info->usb_message_size(), 0);
 
   context_->usb_device_event_notifier()->AddObserver(this);
 
   // TODO(benchan): Support sending multiple special USB messages.
   vector<uint8> bytes;
-  if (!base::HexStringToBytes(modem_info_->usb_message(0), &bytes)) {
-    LOG(ERROR) << "Invalid USB message: " << modem_info_->usb_message(0);
+  if (!base::HexStringToBytes(modem_info->usb_message(0), &bytes)) {
+    LOG(ERROR) << "Invalid USB message: " << modem_info->usb_message(0);
     Complete(false);
     return;
   }
@@ -289,24 +306,26 @@ void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
                                                uint8 device_address,
                                                uint16 vendor_id,
                                                uint16 product_id) {
-  if (sys_path != device_sys_path_)
+  if (sys_path != switch_context_->sys_path())
     return;
 
-  if (modem_info_->final_usb_id_size() == 0) {
+  const UsbModemInfo* modem_info = switch_context_->modem_info();
+  if (modem_info->final_usb_id_size() == 0) {
     VLOG(1) << "No final USB identifiers are specified. Assuming device '"
-            << device_sys_path_ << "' has been switched to the modem mode.";
+            << switch_context_->sys_path()
+            << "' has been switched to the modem mode.";
     Complete(true);
     return;
   }
 
-  for (int i = 0; i < modem_info_->final_usb_id_size(); ++i) {
-    const UsbId& final_usb_id = modem_info_->final_usb_id(i);
+  for (int i = 0; i < modem_info->final_usb_id_size(); ++i) {
+    const UsbId& final_usb_id = modem_info->final_usb_id(i);
     if (vendor_id == final_usb_id.vendor_id() &&
         product_id == final_usb_id.product_id()) {
-      const UsbId& initial_usb_id = modem_info_->initial_usb_id();
+      const UsbId& initial_usb_id = modem_info->initial_usb_id();
       LOG(INFO) << StringPrintf(
           "Successfully switched device '%s' from %04x:%04x to %04x:%04x.",
-          device_sys_path_.c_str(),
+          switch_context_->sys_path().c_str(),
           initial_usb_id.vendor_id(),
           initial_usb_id.product_id(),
           final_usb_id.vendor_id(),
@@ -318,8 +337,8 @@ void UsbModemSwitchOperation::OnUsbDeviceAdded(const string& sys_path,
 }
 
 void UsbModemSwitchOperation::OnUsbDeviceRemoved(const string& sys_path) {
-  if (sys_path == device_sys_path_) {
-    VLOG(1) << "Device '" << device_sys_path_
+  if (sys_path == switch_context_->sys_path()) {
+    VLOG(1) << "Device '" << switch_context_->sys_path()
             << "' has been removed and is switching to the modem mode.";
     // TODO(benchan): Investigate if the device will always be removed from
     // the bus before it reconnects. If so, add a check.

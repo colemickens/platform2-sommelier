@@ -5,19 +5,15 @@
 #include "mist/usb_modem_switcher.h"
 
 #include <base/bind.h>
-#include <base/stringprintf.h>
 
 #include "mist/config_loader.h"
 #include "mist/context.h"
-#include "mist/event_dispatcher.h"
 #include "mist/proto_bindings/usb_modem_info.pb.h"
-#include "mist/usb_device.h"
 #include "mist/usb_device_event_notifier.h"
-#include "mist/usb_manager.h"
+#include "mist/usb_modem_switch_context.h"
 #include "mist/usb_modem_switch_operation.h"
 
 using base::Bind;
-using base::StringPrintf;
 using base::Unretained;
 using std::string;
 
@@ -55,21 +51,12 @@ void UsbModemSwitcher::OnUsbDeviceAdded(const string& sys_path,
   if (!modem_info)
     return;  // Ignore an unsupported device.
 
-  UsbDevice* device = context_->usb_manager()->GetDevice(
-      bus_number, device_address, vendor_id, product_id);
-  if (!device) {
-    LOG(ERROR) << StringPrintf("Could not find USB device '%s' "
-                               "(Bus %03d Address %03d ID %04x:%04x).",
-                               sys_path.c_str(),
-                               bus_number,
-                               device_address,
-                               vendor_id,
-                               product_id);
-    return;
-  }
+  scoped_ptr<UsbModemSwitchContext> switch_context(new UsbModemSwitchContext(
+      sys_path, bus_number, device_address, vendor_id, product_id, modem_info));
+  CHECK(switch_context);
 
   UsbModemSwitchOperation* operation =
-      new UsbModemSwitchOperation(context_, device, sys_path, modem_info);
+      new UsbModemSwitchOperation(context_, switch_context.release());
   CHECK(operation);
 
   // The operation object will be deleted in OnSwitchOperationCompleted().

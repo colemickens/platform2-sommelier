@@ -238,7 +238,7 @@ bool UsbDeviceEventNotifier::ConvertStringToUint8(const string& str,
 }
 
 // static
-bool UsbDeviceEventNotifier::GetDeviceAttributes(UdevDevice* device,
+bool UsbDeviceEventNotifier::GetDeviceAttributes(const UdevDevice* device,
                                                  uint8* bus_number,
                                                  uint8* device_address,
                                                  uint16* vendor_id,

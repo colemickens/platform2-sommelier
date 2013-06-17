@@ -9,7 +9,6 @@
 
 #include <base/basictypes.h>
 #include <base/compiler_specific.h>
-#include <base/memory/scoped_ptr.h>
 
 #include "mist/usb_device_event_observer.h"
 
@@ -24,8 +23,8 @@ class UsbModemSwitchOperation;
 class UsbModemSwitcher : public UsbDeviceEventObserver {
  public:
   // Constructs a UsbModemSwitcher object by taking a raw pointer to a Context
-  // object as |context|. The ownership of |context| and |modem_info| is not
-  // transferred, and thus they should outlive this object.
+  // object as |context|. The ownership of |context| is not transferred, and
+  // thus it should outlive this object.
   explicit UsbModemSwitcher(Context* context);
 
   ~UsbModemSwitcher();
