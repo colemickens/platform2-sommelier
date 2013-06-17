@@ -52,14 +52,6 @@ const char kOpenVPNTunMTU[] = "tun_mtu";
 
 const char kDefaultPKCS11Provider[] = "libchaps.so";
 
-// TODO(petkov): Move to chromeos/dbus/service_constants.h.
-const char kOpenVPNPingProperty[] = "OpenVPN.Ping";
-const char kOpenVPNPingExitProperty[] = "OpenVPN.PingExit";
-const char kOpenVPNPingRestartProperty[] = "OpenVPN.PingRestart";
-const char kOpenVPNTLSAuthProperty[] = "OpenVPN.TLSAuth";
-const char kOpenVPNVerbProperty[] = "OpenVPN.Verb";
-const char kVPNMTUProperty[] = "VPN.MTU";
-
 // Some configurations pass the netmask in the ifconfig_remote property.
 // This is due to some servers not explicitly indicating that they are using
 // a "broadcast mode" network instead of peer-to-peer.  See
@@ -68,9 +60,6 @@ const char kSuspectedNetmaskPrefix[] = "255.";
 
 }  // namespace
 
-// TODO(petkov): Move to chromeos/dbus/service_constants.h.
-const char OpenVPNDriver::kOpenVPNCertProperty[] = "OpenVPN.Cert";
-const char OpenVPNDriver::kOpenVPNKeyProperty[] = "OpenVPN.Key";
 // static
 const char OpenVPNDriver::kDefaultCACertificates[] =
     "/etc/ssl/certs/ca-certificates.crt";

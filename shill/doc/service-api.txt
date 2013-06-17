@@ -601,6 +601,341 @@ Properties	boolean AutoConnect [readwrite]
 
 			See also the WiFi.HexSSID property.
 
+		string OpenVPN.Auth [writeonly]
+
+			(VPN services of type OpenVPN only) Specify the
+			authentication algorithm to OpenVPN.
+			See the "--auth" option in the OpenVPN documentation.
+			The current value of this property is readable
+			in the "Provider" property of this service.
+
+		string OpenVPN.AuthNoCache [writeonly]
+
+			(VPN services of type OpenVPN only) If this value
+			is set to anything, do not cache usernames or passwords
+			in the OpenVPN client.  See the "--auth" flag in the
+			OpenVPN documentation.  The current value of this
+			property is readable in the "Provider" property of this
+			service.
+
+		string OpenVPN.AuthRetry [writeonly]
+
+			(VPN services of type OpenVPN only) Specify how to
+			handle authentication failures.
+			See the "--auth-retry" option in the OpenVPN
+			documentation.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.AuthUserPass [writeonly]
+
+			(VPN services of type OpenVPN only) Authenticate
+			with username and password if this option is non-empty.
+			For this option to work, the "OpenVPN.User" property
+			must also be set.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.CACert [writeonly]
+
+			(VPN services of type OpenVPN only) Specify the
+			filename of the certificate to be used to verify the
+			OpenVPN server.  Only one of "OpenVPN.CACert",
+			"OpenVPN.CACertNSS" or "OpenVPN.CACertPEM" can be
+			specified.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.CACertNSS [writeonly]
+
+			(VPN services of type OpenVPN only) [Deprecated]
+			Specify the NSS nickname for the certificate to be used
+			to verify the OpenVPN server.  This certificate will
+			be retrieved from currently logged in user's NSS
+			database.  Only one of "OpenVPN.CACert",
+			"OpenVPN.CACertNSS" or "OpenVPN.CACertPEM" can be
+			specified.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		array{string} OpenVPN.CACertPEM [writeonly]
+
+			(VPN services of type OpenVPN only) The list of
+			x509 CA certificates to be used to verify the remote
+			server.  Any of these certificates can directly sign
+			the server certificate.  Each x509 CA certificate
+			must be in in PEM format; specifically
+			the base64 counterpart of the DER contents, optionally
+			surrounded by a "-----BEGIN CERTIFICATE-----" and
+			"-----END CERTIFICATE-----" line.  Only one of
+			"OpenVPN.CACert", "OpenVPN.CACertNSS" or
+			"OpenVPN.CACertPEM" can be specified.  The current
+			value of this property is readable in the "Provider"
+			property of this service.
+
+		string OpenVPN.Cert [writeonly]
+
+			(VPN services of type OpenVPN only) Specify a
+			filename of to use as the client certificate in
+			authentication.   See the "--cert" option in the
+			OpenVPN documentation.  The current value of this
+			property is readable in the "Provider" property of
+			this service.
+
+		string OpenVPN.Cipher [writeonly]
+
+			(VPN services of type OpenVPN only) Specify the
+			cipher algorithm for encrypted packets.  See the
+			"--cipher" option in the OpenVPN documentation.
+			The current value of this property is readable in
+			the "Provider" property of this service.
+
+		string OpenVPN.CompLZO [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			enable fast LZO compression.  See the
+			"--comp-lzo" option in the OpenVPN documentation.
+			The current value of this property is readable in
+			the "Provider" property of this service.
+
+		string OpenVPN.CompNoAdapt [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			don't use adaptive compression when fast LZO
+			is enabled compression.  See the "--comp-noadapt"
+			option in the OpenVPN documentation.  The current
+			value of this property is readable in the "Provider"
+			property of this service.
+
+		array{string} OpenVPN.ExtraCertPEM [writeonly]
+
+			(VPN services of type OpenVPN only) The list of
+			x509 CA certificates to be used to complete the
+			certificate authentication chain from the CA
+			certificates.  None of these certificates can directly
+			sign the server certificate.  Each x509 CA certificate
+			must be in in PEM format; specifically
+			the base64 counterpart of the DER contents, optionally
+			surrounded by a "-----BEGIN CERTIFICATE-----" and
+			"-----END CERTIFICATE-----" line.  The current
+			value of this property is readable in the "Provider"
+			property of this service.
+
+		string OpenVPN.Key [writeonly]
+
+			(VPN services of type OpenVPN only) Specify the
+			filename of the private key the client uses to
+			verify itself to the OpenVPN server.  See the
+			"--key" option in the OpenVPN documentation.  The
+			current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.KeyDirection [writeonly]
+
+			(VPN services of type OpenVPN only) [Deprecated]
+			This property is only provided for backwards
+			compatibility.
+
+		string OpenVPN.Mgmt.Enable [writeonly]
+
+			(VPN services of type OpenVPN only) [Deprecated]
+			This property is only provided for backwards
+			compatibility.
+
+		string OpenVPN.NsCertType [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			specifies that the peer certificate must be signed
+			with an explicit nsCertType designation.  The value
+			assigned to this property specified the role that
+			should be assigned to the certificate.  See the
+			"--ns-cert-type" option in the OpenVPN documentation.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.OTP [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies a
+			one-time-password (OTP) to be used during the
+			authentication phase.  The connection manager only
+			stores this value for the duration of a connection
+			attempt and will never persist this to a stored
+			profile.
+
+		string OpenVPN.Password [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies a
+			password to be used during the authentication phase.
+
+		string OpenVPN.Pkcs11.ID [writeonly]
+
+			(VPN services of type OpenVPN only) Specify the
+			PKCS11 certificate id when using a crypto token
+			to perform certificate authentication.
+
+		string OpenVPN.Pkcs11.PIN [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies a
+			PIN used to gain access to the cryptographic token
+			when using the "OpenVPN.Pkcs11.ID" property.
+
+		string OpenVPN.Pkcs11.Provider [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies a
+			the provider for the the cryptographic token
+			when using the "OpenVPN.Pkcs11.ID" property.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.Ping [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			this specifies the period in seconds between sending
+			pings to the OpenVPN server.  See the "--ping" option
+			in the OpenVPN documentation.  The current value of
+			this property is readable in the "Provider" property
+			of this service.
+
+		string OpenVPN.PingExit [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			exit if this many seconds pass without reception
+			of a ping reply from the OpenVPN server.  See the
+			"--ping-exit" option in the OpenVPN documentation.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.PingRestart [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			restart if this many seconds pass without reception
+			of a ping reply from the OpenVPN server.  See the
+			"--ping-restart" option in the OpenVPN documentation.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.Port [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			use this port for both the local and remote.
+			See the "--port" option in the OpenVPN documentation.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.Proto [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			sets the protocol ("udp", "tcp-client", "tcp-server)
+			for the OpenVPN connection.  See the "--proto" option
+			in the OpenVPN documentation.  The current value of
+			this property is readable in the "Provider" property
+			of this service.
+
+		string OpenVPN.PushPeerInfo [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			specifies that client information should be pushed
+			to the server.  See the "--push-peer-info" option
+			in the OpenVPN documentation.  The current value of
+			this property is readable in the "Provider" property
+			of this service.
+
+		string OpenVPN.RemoteCertEKU [writeonly]
+
+			(VPN services of type OpenVPN only) Require that
+			the remote peer certificate be signed with the
+			specified extended key usage OID.  See the
+			"--remote-cert-eku" option in the OpenVPN
+			documentation.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.RemoteCertKU [writeonly]
+
+			(VPN services of type OpenVPN only) Require that
+			the remote peer certificate be signed with the
+			specified key usage in hex format.  See the
+			"--remote-cert-ku" option in the OpenVPN
+			documentation.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.RemoteCertTLS [writeonly]
+
+			(VPN services of type OpenVPN only) Require that
+			the remote peer certificate be signed with the
+			specified key usage and extend key usage based on
+			RFC3280 TLS rules.  See the "--remote-cert-tls" option
+			in the OpenVPN documentation.  The current value of
+			this property is readable in the "Provider" property
+			of this service.
+
+		string OpenVPN.RenegSec [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies the
+			period (in seconds) to re-negotiate the data channel
+			key.  See the "--reneg-sec" option in the OpenVPN
+			documentation.  The current value of this property is
+			readable in the "Provider" property of this service.
+
+		string OpenVPN.ServerPollTimeout [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies the
+			period (in seconds) to wait to for a response from
+			the server.  See the "--server-poll-timeout" option
+			in the OpenVPN documentation.  The current value of
+			this property is readable in the "Provider" property
+			of this service.
+
+		string OpenVPN.Shaper [writeonly]
+
+			(VPN services of type OpenVPN only) Restricts the
+			number of bytes per second to be output to the peer.
+			See the "--shaper" option in the OpenVPN documentation.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.StaticChallenge [writeonly]
+
+			(VPN services of type OpenVPN only) Enable static
+			challenge/response protocol.  See the
+			"--static-challenge" option in the OpenVPN
+			documentation.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.TLSAuth [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			passes this as the "--tls-auth" argument to OpenVPN.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
+		string OpenVPN.TLSAuthContents [writeonly]
+
+			(VPN services of type OpenVPN only) Creates a
+			temporary file with the contents of this property
+			and passes it to OpenVPN using the "--tls-auth"
+			option.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.TLSRemote [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies
+			the only X509 name that is allowed for the peer.  See
+			the" --tls-remote" option in the OpenVPN
+			documentation.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.User [writeonly]
+
+			(VPN services of type OpenVPN only) Specifies
+			the username to be specified in authentication to
+			the OpenVPN server.  The current value of this property
+			is readable in the "Provider" property of this service.
+
+		string OpenVPN.Verb [writeonly]
+
+			(VPN services of type OpenVPN only) If non-empty,
+			passes this as the "--verb" argument to OpenVPN,
+			which sets the debug verbosity.  By default this
+			value is set based on shill's debugging level for VPN.
+			The current value of this property is readable in the
+			"Provider" property of this service.
+
 		string Passphrase [readwrite]
 
 			If the service type is "wifi", then this property
@@ -764,14 +1099,34 @@ Properties	boolean AutoConnect [readwrite]
 
 		dict Provider [readonly]
 
-			(VPN only) Provider data.  A provider is a service
-			that piggy-backs on top of a transport service.
-			This is presently used by VPN services.
+			(VPN only) Provider data.  The Provider is a container
+			which reports all of the VPN-specific properties of a
+			service.
 
 			string Host [readonly]
 				VPN host IP address.
 			string Type [readonly]
 				VPN provider type (e.g. openvpn).
+
+		string Provider.Host [writeonly]
+
+			(VPN only) Host name of the VPN server.  The current
+			value of this property is readable in the "Provider"
+			property of this service.
+
+		string Provider.Name [writeonly]
+
+			(VPN only) The name assigned to this VPN service.  The
+			current value of this property is readable in the
+			"Provider" property of this service.
+
+		string Provider.Type [writeonly]
+
+			(VPN only) The type of VPN service.  This value is
+			only settable when creating this service (via the
+			Manager GetService or ConfigureService methods).  The
+			current value of this property is readable in the
+			"Provider" property of this service.
 
 		boolean SaveCredentials [readwrite]
 

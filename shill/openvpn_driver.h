@@ -132,9 +132,6 @@ class OpenVPNDriver : public VPNDriver,
   typedef std::map<int, std::string> ForeignOptions;
   typedef std::map<int, IPConfig::Route> RouteOptions;
 
-  static const char kOpenVPNCertProperty[];
-  static const char kOpenVPNKeyProperty[];
-
   static const char kDefaultCACertificates[];
 
   static const char kOpenVPNPath[];

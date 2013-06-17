@@ -710,7 +710,7 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // Cert available, no user/password.
   options.clear();
-  SetArg(OpenVPNDriver::kOpenVPNCertProperty, kTestValue);
+  SetArg(kOpenVPNCertProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectNotInFlags(options, "--auth-user-pass");
   ExpectNotInFlags(options, "--key");
@@ -718,7 +718,7 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // Key available, no user/password.
   options.clear();
-  SetArg(OpenVPNDriver::kOpenVPNKeyProperty, kTestValue);
+  SetArg(kOpenVPNKeyProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
   ExpectNotInFlags(options, "--auth-user-pass");
   ExpectInFlags(options, "--key", kTestValue);
