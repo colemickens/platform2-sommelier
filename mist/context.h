@@ -23,10 +23,10 @@ class UsbManager;
 class Context {
  public:
   Context();
-  ~Context();
+  virtual ~Context();
 
   // Initializes all helper objects in the context. Returns true on success.
-  bool Initialize();
+  virtual bool Initialize();
 
   ConfigLoader* config_loader() const { return config_loader_.get(); }
   EventDispatcher* event_dispatcher() const { return event_dispatcher_.get(); }
@@ -37,6 +37,8 @@ class Context {
   UsbManager* usb_manager() const { return usb_manager_.get(); }
 
  private:
+  friend class MockContext;
+
   scoped_ptr<ConfigLoader> config_loader_;
   scoped_ptr<EventDispatcher> event_dispatcher_;
   scoped_ptr<Udev> udev_;
