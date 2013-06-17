@@ -1823,7 +1823,6 @@ TEST_F(EphemeralExistingUserSystemTest, EnterpriseMountRemoveTest) {
       .WillOnce(Return(true));  // legacy mount
   EXPECT_CALL(platform_, ClearUserKeyring())
       .WillRepeatedly(Return(0));
-  LOG(ERROR) << "NEW UNMOUNT HERE";
   ASSERT_TRUE(mount_->UnmountCryptohome());
 }
 

@@ -187,8 +187,11 @@ void TestUser::GenerateCredentials() {
   mount->set_shadow_root(shadow_root);
   mount->set_skel_source(skel_dir);
   mount->set_use_tpm(false);
-  mount->set_policy_provider(new policy::PolicyProvider(
-      new NiceMock<policy::MockDevicePolicy>));
+  NiceMock<policy::MockDevicePolicy>* device_policy =
+    new NiceMock<policy::MockDevicePolicy>;
+  mount->set_policy_provider(new policy::PolicyProvider(device_policy));
+  EXPECT_CALL(*device_policy, LoadPolicy())
+    .WillRepeatedly(Return(true));
   std::string salt_path = StringPrintf("%s/salt", shadow_root.c_str());
   int64 salt_size = salt.size();
   EXPECT_CALL(platform, FileExists(salt_path))

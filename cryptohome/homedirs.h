@@ -73,9 +73,33 @@ class HomeDirs {
   // pair.
   virtual bool AreCredentialsValid(const Credentials& credentials);
 
+  // Returns true if a valid keyset can be decrypted with |creds|.  If true,
+  // |vk| will contain the decrypted value. If false, |vk| will contain the
+  // last failed keyset attempt.
+  virtual bool GetValidKeyset(const Credentials& creds, VaultKeyset* vk);
+
   // Returns the vault keyset path for the supplied obfuscated username.
   virtual std::string GetVaultKeysetPath(const std::string& obfuscated,
                                          int index) const;
+
+  // Adds a new vault keyset for the user using the |existing_credentials| to
+  // unwrap the homedir key and the |new_credentials| to rewrap and persist to
+  // disk.  The key index is return in the |index| pointer if the function
+  // returns true.  |index| is not modified if the function returns false.
+  virtual bool AddKeyset(const Credentials& existing_credentials,
+                         const chromeos::SecureBlob& new_passkey,
+                         int* index);
+
+  // Removes the keyset specified by |index| from the list for the user
+  // vault identified by its |obfuscated| username.
+  // The caller should check credentials if the call is user-sourced.
+  // TODO(wad,ellyjones) Determine a better keyset priotization and management
+  //                     scheme than just integer indices, like fingerprints.
+  virtual bool ForceRemoveKeyset(const std::string& obfuscated, int index);
+
+  // Allows a keyset to be moved to a different index assuming the index can be
+  // claimed for a given |obfuscated| username.
+  virtual bool MoveKeyset(const std::string& obfuscated, int src, int dst);
 
   // Migrates the cryptohome for the supplied obfuscated username from the
   // supplied old key to the supplied new key.

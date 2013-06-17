@@ -92,6 +92,7 @@ class MockPlatform : public Platform {
   MOCK_CONST_METHOD3(SetGroupAccessible, bool(const std::string&,
                                               gid_t group_id,
                                               mode_t group_mode));
+  MOCK_CONST_METHOD1(SetMask, int(int));
   MOCK_CONST_METHOD3(GetUserId, bool(const std::string&, uid_t*, gid_t*));
   MOCK_CONST_METHOD2(GetGroupId, bool(const std::string&, gid_t*));
   MOCK_CONST_METHOD1(AmountOfFreeDiskSpace, int64(const std::string&));

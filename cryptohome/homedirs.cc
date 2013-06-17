@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
+
 #include <base/bind.h>
 #include <base/logging.h>
 #include <base/stringprintf.h>
@@ -130,6 +132,14 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
 }
 
 bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  return GetValidKeyset(creds, vk.get());
+}
+
+bool HomeDirs::GetValidKeyset(const Credentials& creds, VaultKeyset* vk) {
+  if (!vk)
+    return false;
+
   std::string owner;
   std::string obfuscated = creds.GetObfuscatedUsername(system_salt_);
   // |AreEphemeralUsers| will reload the policy to guarantee freshness.
@@ -142,7 +152,6 @@ bool HomeDirs::AreCredentialsValid(const Credentials& creds) {
     return false;
   }
 
-  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
   SecureBlob passkey;
   creds.GetPasskey(&passkey);
 
@@ -170,15 +179,110 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
     // Scan for "master." files.
     if (file_name.find(kKeyFile, 0, strlen(kKeyFile) == std::string::npos))
       continue;
-    long index = strtol(file_name.substr(strlen(kKeyFile)).c_str(), NULL, 10);
+    char *end = NULL;
+    long index = strtol(file_name.substr(strlen(kKeyFile)).c_str(), &end, 10);
+    // Ensure the entire suffix is consumed.
+    if (end && *end != '\0')
+      continue;
     // The test below will catch all strtol(3) error conditions.
-    if (index < 0 || index > kKeyFileMax) {
+    if (index < 0 || index >= kKeyFileMax) {
       LOG(ERROR) << "Invalid key file range: " << index;
       continue;
     }
     keysets->push_back(static_cast<int>(index));
   }
+
+  // Ensure it is sorted numerically and not lexigraphically.
+  std::sort(keysets->begin(), keysets->end());
+
   return keysets->size() != 0;
+}
+
+bool HomeDirs::AddKeyset(const Credentials& existing_credentials,
+                         const SecureBlob& new_passkey,
+                         int* index) {
+  // TODO(wad) Determine how to best bubble up the failures MOUNT_ERROR
+  //           encapsulate wrt the TPM behavior.
+  std::string obfuscated = existing_credentials.GetObfuscatedUsername(
+    system_salt_);
+
+  scoped_ptr<VaultKeyset> vk(vault_keyset_factory()->New(platform_, crypto_));
+  if (!GetValidKeyset(existing_credentials, vk.get())) {
+    LOG(WARNING) << "AddKeyset: authentication failed";
+    return false;
+  }
+
+  // Walk the namespace looking for the first free spot.
+  // Optimizations can come later.
+  // Note, nothing is stopping simultaenous access to these files
+  // or enforcing mandatory locking.
+  int new_index = 0;
+  FILE* vk_file = NULL;
+  std::string vk_path;
+  for ( ; new_index < kKeyFileMax; ++new_index) {
+    vk_path = GetVaultKeysetPath(obfuscated, new_index);
+    // Rely on fopen()'s O_EXCL|O_CREAT behavior to fail
+    // repeatedly until there is an opening.
+    // TODO(wad) Add a clean-up-0-byte-keysets helper to c-home startup
+    vk_file = platform_->OpenFile(vk_path, "wx");
+    if (vk_file)  // got one
+      break;
+  }
+
+  if (!vk_file) {
+    LOG(WARNING) << "Failed to find an available keyset slot";
+    return false;
+  }
+  // Once the file has been claimed, we can release the handle.
+  platform_->CloseFile(vk_file);
+
+  // Repersist the VK with the new creds.
+  bool added = true;
+  if (!vk->Encrypt(new_passkey) || !vk->Save(vk_path)) {
+    LOG(WARNING) << "Failed to encrypt or write the new keyset";
+    added = false;
+    platform_->DeleteFile(vk_path, false);
+  } else {
+    *index = new_index;
+  }
+  return added;
+}
+
+bool HomeDirs::ForceRemoveKeyset(const std::string& obfuscated, int index) {
+  // Note, external callers should check credentials.
+  if (index < 0 || index >= kKeyFileMax)
+    return false;
+
+  std::string path = GetVaultKeysetPath(obfuscated, index);
+  if (!platform_->FileExists(path)) {
+    LOG(WARNING) << "ForceRemoveKeyset: keyset " << index << " for "
+                 << obfuscated << " does not exist";
+    // Since it doesn't exist, then we're done.
+    return true;
+  }
+  // TODO(wad) Add file zeroing here or centralize with other code.
+  return platform_->DeleteFile(path, false);
+}
+
+bool HomeDirs::MoveKeyset(const std::string& obfuscated, int src, int dst) {
+  if (src < 0 || dst < 0 || src >= kKeyFileMax || dst >= kKeyFileMax)
+    return false;
+
+  std::string src_path = GetVaultKeysetPath(obfuscated, src);
+  std::string dst_path = GetVaultKeysetPath(obfuscated, dst);
+  if (!platform_->FileExists(src_path))
+    return false;
+  if (platform_->FileExists(dst_path))
+    return false;
+  // Grab the destination exclusively
+  FILE* vk_file = platform_->OpenFile(dst_path, "wx");
+  if (!vk_file)
+    return false;
+  // The creation occurred so there's no reason to keep the handle.
+  platform_->CloseFile(vk_file);
+  if (!platform_->Rename(src_path, dst_path))
+    return false;
+  return true;
 }
 
 std::string HomeDirs::GetVaultKeysetPath(const std::string& obfuscated,
@@ -385,6 +489,7 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
   mount->set_platform(platform_);
   mount->set_crypto(crypto_);
   mount->Init();
+  std::string obfuscated = newcreds.GetObfuscatedUsername(system_salt_);
   if (!mount->MountCryptohome(oldcreds, Mount::MountArgs(), NULL)) {
     LOG(ERROR) << "Migrate: Mount failed";
     // Fail as early as possible. Note that we don't have to worry about leaking
@@ -397,33 +502,55 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
     LOG(ERROR) << "Attempted migration of key-less mount.";
     return false;
   }
-  scoped_ptr<VaultKeyset> keyset(
-    vault_keyset_factory()->New(platform_, crypto_));
-  std::string path = GetVaultKeysetPath(
-      newcreds.GetObfuscatedUsername(system_salt_), key_index);
-  if (!keyset->Load(path) || !keyset->Decrypt(oldkey)) {
-    LOG(ERROR) << "Can't load vault keyset at " << path;
+  int new_key_index = -1;
+  if (!AddKeyset(oldcreds, newkey, &new_key_index)) {
+    LOG(ERROR) << "Failed to add the new keyset";
     return false;
   }
-  // TODO(wad) mount->AddKey() .. migrate .. mount-->RemoveKey(oldkey);
-  //           Only replace the original key once migration is complete.
-  if (!keyset->Encrypt(newkey) || !keyset->Save(path)) {
-    LOG(ERROR) << "Can't save vault keyset at " << path;
-    return false;
-  }
+
   SecureBlob old_auth_data;
   SecureBlob auth_data;
   std::string username = newcreds.username();
   FilePath salt_file = GetChapsTokenSaltPath(username);
-  // TODO(dkrahn,wad) Failing here leaves users half migrated. Fix it.
-  if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data))
+  if (!crypto_->PasskeyToTokenAuthData(newkey, salt_file, &auth_data) ||
+      !crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data)) {
+    // On failure, drop the newly added keyset so the user can try again.
+    ForceRemoveKeyset(obfuscated, new_key_index);
     return false;
-  if (!crypto_->PasskeyToTokenAuthData(oldkey, salt_file, &old_auth_data))
-    return false;
+  }
   chaps_client_.ChangeTokenAuthData(
       GetChapsTokenDir(username),
       old_auth_data,
       auth_data);
+
+  // Drop the old keyset
+  if (!ForceRemoveKeyset(obfuscated, key_index)) {
+    LOG(ERROR) << "Migrate: unable to delete the old keyset: " << key_index;
+    // TODO(wad) Should we zero it or move it into space?
+    // Fallthrough
+  }
+
+  // Put the new one in its slot.
+  if (!MoveKeyset(obfuscated, new_key_index, key_index)) {
+    LOG(ERROR) << "Migrate: failed to move the new key to the old slot";
+    // This is bad, but non-terminal since we have a valid, migrated key.
+    key_index = new_key_index;
+  }
+
+  // Remove all other keysets during a "migration".
+  std::vector<int> key_indices;
+  if (!GetVaultKeysets(obfuscated, &key_indices)) {
+    LOG(WARNING) << "Failed to enumerate keysets after adding one. Weird.";
+    // Fallthrough: The user is migrated, but something else changed keys.
+  }
+  std::vector<int>::const_iterator iter = key_indices.begin();
+  for ( ;iter != key_indices.end(); ++iter) {
+    if (*iter == key_index)
+      continue;
+    LOG(INFO) << "Removing keyset " << *iter << " due to migration.";
+    ForceRemoveKeyset(obfuscated, *iter);  // Failure is ok.
+  }
+
   return true;
 }
 

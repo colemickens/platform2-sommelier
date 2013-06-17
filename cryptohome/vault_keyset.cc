@@ -211,10 +211,19 @@ bool VaultKeyset::Save(const std::string& filename) {
       static_cast<google::protobuf::uint8*>(contents.data());
   serialized_.SerializeWithCachedSizesToArray(buf);
 
+  // Ensure keysets at 600.
+  int previous_mask = platform_->SetMask(S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
   std::string path = filename + ".new";
-  if (!platform_->WriteFile(path, contents))
-    return false;
-  return platform_->Rename(path, filename);
+  bool ok = true;
+  if (platform_->WriteFile(path, contents)) {
+   if (!platform_->Rename(path, filename)) {
+     ok = false;
+     // Delete the temporary file.
+     platform_->DeleteFile(path, false);
+   }
+  }
+  platform_->SetMask(previous_mask);
+  return ok;
 }
 
 }  // namespace cryptohome

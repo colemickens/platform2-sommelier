@@ -161,4 +161,29 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
   EXPECT_TRUE(new_keyset.Decrypt(key));
 }
 
+TEST_F(VaultKeysetTest, BadSavePerms) {
+  MockPlatform platform;
+  Crypto crypto(&platform);
+  VaultKeyset keyset;
+  keyset.Initialize(&platform, &crypto);
+
+  keyset.CreateRandom();
+  SecureBlob bytes;
+
+  EXPECT_CALL(platform, WriteFile("foo.new", _))
+      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
+  EXPECT_CALL(platform, SetMask(0066))
+    .WillOnce(Return(0022));
+  EXPECT_CALL(platform, SetMask(0022))
+    .WillOnce(Return(0066));
+  EXPECT_CALL(platform, DeleteFile("foo.new", false))
+      .WillOnce(Return(true));
+
+  SecureBlob key("key", 3);
+  EXPECT_TRUE(keyset.Encrypt(key));
+  EXPECT_FALSE(keyset.Save("foo"));
+}
+
+// TODO(wad) Mock crypto.cc to test En/decrypt failures.
+
 }  // namespace cryptohome

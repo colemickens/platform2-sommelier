@@ -155,6 +155,17 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                    gchar *to_key,
                                    gint *OUT_async_id,
                                    GError **error);
+  virtual gboolean AddKey(gchar *user,
+                              gchar *key,
+                              gchar *new_key,
+                              gint *OUT_key_id,
+                              gboolean *OUT_result,
+                              GError **error);
+  virtual gboolean AsyncAddKey(gchar *user,
+                                   gchar *key,
+                                   gchar *new_key,
+                                   gint *OUT_async_id,
+                                   GError **error);
   virtual gboolean Remove(gchar *user,
                           gboolean *OUT_result,
                           GError **error);

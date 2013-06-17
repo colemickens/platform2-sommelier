@@ -742,6 +742,45 @@ gboolean Service::AsyncMigrateKey(gchar *userid,
   return TRUE;
 }
 
+gboolean Service::AddKey(gchar *userid,
+                         gchar *key,
+                         gchar *new_key,
+                         gint *OUT_key_id,
+                         gboolean *OUT_result,
+                         GError **error) {
+  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+
+  MountTaskResult result;
+  base::WaitableEvent event(true, false);
+  scoped_refptr<MountTaskAddPasskey> mount_task =
+      new MountTaskAddPasskey(NULL, homedirs_, credentials, new_key);
+  mount_task->set_result(&result);
+  mount_task->set_complete_event(&event);
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
+  event.Wait();
+  *OUT_key_id = result.return_code();
+  *OUT_result = result.return_status();
+  return TRUE;
+}
+
+gboolean Service::AsyncAddKey(gchar *userid,
+                              gchar *key,
+                              gchar *new_key,
+                              gint *OUT_async_id,
+                              GError **error) {
+  UsernamePasskey credentials(userid, SecureBlob(key, strlen(key)));
+
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(NULL, &event_source_);
+  scoped_refptr<MountTaskAddPasskey> mount_task =
+      new MountTaskAddPasskey(bridge, homedirs_, credentials, new_key);
+  *OUT_async_id = mount_task->sequence_id();
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskAddPasskey::Run, mount_task.get()));
+  return TRUE;
+}
+
 gboolean Service::Remove(gchar *userid,
                          gboolean *OUT_result,
                          GError **error) {

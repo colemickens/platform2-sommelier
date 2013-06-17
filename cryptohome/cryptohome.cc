@@ -48,6 +48,7 @@ namespace switches {
     "is_mounted",
     "test_auth",
     "migrate_key",
+    "add_key",
     "remove",
     "obfuscate_user",
     "dump_keyset",
@@ -81,6 +82,7 @@ namespace switches {
     ACTION_MOUNTED,
     ACTION_TEST_AUTH,
     ACTION_MIGRATE_KEY,
+    ACTION_ADD_KEY,
     ACTION_REMOVE,
     ACTION_OBFUSCATE_USER,
     ACTION_DUMP_KEYSET,
@@ -110,6 +112,7 @@ namespace switches {
   static const char kUserSwitch[] = "user";
   static const char kPasswordSwitch[] = "password";
   static const char kOldPasswordSwitch[] = "old_password";
+  static const char kNewPasswordSwitch[] = "new_password";
   static const char kForceSwitch[] = "force";
   static const char kAsyncSwitch[] = "async";
   static const char kCreateSwitch[] = "create";
@@ -584,6 +587,57 @@ int main(int argc, char **argv) {
       printf("Key migration failed.\n");
     } else {
       printf("Key migration succeeded.\n");
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_ADD_KEY],
+                     action.c_str())) {
+    std::string user, password, new_password;
+
+    if (!GetUsername(cl, &user)) {
+      return 1;
+    }
+
+    GetPassword(proxy, cl, switches::kPasswordSwitch,
+                StringPrintf("Enter a current password for <%s>", user.c_str()),
+                &password);
+    GetPassword(proxy, cl, switches::kNewPasswordSwitch,
+                StringPrintf("Enter the new password for <%s>", user.c_str()),
+                &new_password);
+
+    gboolean done = false;
+    gint key_index = -1;
+    chromeos::glib::ScopedError error;
+
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_add_key(proxy.gproxy(),
+               user.c_str(),
+               password.c_str(),
+               new_password.c_str(),
+               &key_index,
+               &done,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("AddKey call failed: %s.\n", error->message);
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(&proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_add_key(proxy.gproxy(),
+               user.c_str(),
+               password.c_str(),
+               new_password.c_str(),
+               &async_id,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("AddKey call failed: %s.\n", error->message);
+      } else {
+        client_loop.Run(async_id);
+        done = client_loop.get_return_status();
+        key_index = client_loop.get_return_code();
+      }
+    }
+    if (!done) {
+      printf("Key addition failed.\n");
+    } else {
+      printf("Key %d was added.\n", key_index);
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
