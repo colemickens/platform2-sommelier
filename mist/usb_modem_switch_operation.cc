@@ -63,9 +63,20 @@ UsbModemSwitchOperation::UsbModemSwitchOperation(
 }
 
 UsbModemSwitchOperation::~UsbModemSwitchOperation() {
-  pending_task_.Cancel();
-  reconnect_timeout_callback_.Cancel();
+  Cancel();
   CloseDevice();
+
+  // If the USB bulk transfer is being cancelled, the UsbBulkTransfer object
+  // held by |bulk_transfer_| still need to survive until libusb notifies the
+  // cancellation of the underlying transfer via a callback as we have no way to
+  // cancel that calback. This should only happen when mist is about to
+  // terminate while the transfer is being cancelled. To avoid deferring the
+  // termination of mist, we intentionally leak the UsbBulkTransfer object held
+  // by |bulk_transfer_| and hope that either the callback is invoked (with an
+  // invalidated weak pointer to this object) before mist terminates or is
+  // discarded after mist terminates.
+  if (bulk_transfer_ && bulk_transfer_->state() == UsbTransfer::kCancelling)
+    ignore_result(bulk_transfer_.release());
 }
 
 void UsbModemSwitchOperation::Start(
@@ -80,6 +91,15 @@ void UsbModemSwitchOperation::Start(
   // objects may be created and started in a tight loop.
   ScheduleTask(
       &UsbModemSwitchOperation::OpenDeviceAndClaimMassStorageInterface);
+}
+
+void UsbModemSwitchOperation::Cancel() {
+  pending_task_.Cancel();
+  reconnect_timeout_callback_.Cancel();
+  context_->usb_device_event_notifier()->RemoveObserver(this);
+
+  if (bulk_transfer_)
+    bulk_transfer_->Cancel();
 }
 
 void UsbModemSwitchOperation::ScheduleTask(Task task) {
@@ -260,9 +280,12 @@ void UsbModemSwitchOperation::SendMessageToMassStorageEndpoint() {
   }
   memcpy(bulk_transfer->buffer(), &bytes[0], bytes.size());
 
-  if (!bulk_transfer->Submit(
-          Bind(&UsbModemSwitchOperation::OnUsbMessageTransferred,
-               Unretained(this)))) {
+  // Pass a weak pointer of this operation object to the completion callback
+  // of the USB bulk transfer. This avoids the need to defer the destruction
+  // of this object in order to wait for the completion callback of the
+  // transfer when the transfer is cancelled by this object.
+  if (!bulk_transfer->Submit(Bind(
+          &UsbModemSwitchOperation::OnUsbMessageTransferred, AsWeakPtr()))) {
     LOG(ERROR) << "Could not submit USB bulk transfer: "
                << bulk_transfer->error();
     Complete(false);

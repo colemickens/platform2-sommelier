@@ -12,6 +12,7 @@
 #include <base/cancelable_callback.h>
 #include <base/compiler_specific.h>
 #include <base/memory/scoped_ptr.h>
+#include <base/memory/weak_ptr.h>
 
 #include "mist/usb_device_event_observer.h"
 
@@ -39,7 +40,9 @@ class UsbTransfer;
 // maximize the overall concurrency, the modem switch operation is broken up
 // into the aforementioned tasks and each task is scheduled to execute in the
 // message loop via EventDispatcher.
-class UsbModemSwitchOperation : public UsbDeviceEventObserver {
+class UsbModemSwitchOperation
+    : public base::SupportsWeakPtr<UsbModemSwitchOperation>,
+      public UsbDeviceEventObserver {
  public:
   typedef base::Callback<void(UsbModemSwitchOperation* operation, bool success)>
       CompletionCallback;
@@ -59,6 +62,10 @@ class UsbModemSwitchOperation : public UsbDeviceEventObserver {
   // the completion callback |completion_callback| is invoked with the status
   // of the operation.
   void Start(const CompletionCallback& completion_callback);
+
+  // Cancels the modem switch operation and closes any open device. It is a
+  // no-op if the operation has not been started by Start().
+  void Cancel();
 
  private:
   typedef void (UsbModemSwitchOperation::*Task)();
