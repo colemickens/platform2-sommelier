@@ -66,6 +66,9 @@ const unsigned int kTpmPCRLocality = 1;
 const int kDelegateSecretSize = 20;
 const int kDelegateFamilyLabel = 1;
 const int kDelegateEntryLabel = 2;
+// This error is returned when an attempt is made to use the SRK but it does not
+// yet exist because the TPM has not been owned.
+const TSS_RESULT kKeyNotFoundError = (TSS_E_PS_KEY_NOTFOUND | TSS_LAYER_TCS);
 
 Tpm* Tpm::singleton_ = NULL;
 base::Lock Tpm::singleton_lock_;
@@ -194,7 +197,13 @@ bool Tpm::Connect(TpmRetryAction* retry_action) {
       key_handle_ = 0;
       *retry_action = HandleError(result);
       Tspi_Context_Close(context_handle);
-      TPM_LOG(ERROR, result) << "Error loading the cryptohome TPM key";
+      if (result == kKeyNotFoundError) {
+        TPM_LOG(WARNING, result)
+            << "Cannot load / create the cryptohome TPM key. "
+            << "This is normal when the TPM is not owned.";
+      } else {
+        TPM_LOG(ERROR, result) << "Error loading the cryptohome TPM key";
+      }
       return false;
     }
 
@@ -386,7 +395,9 @@ bool Tpm::CreateCryptohomeKey(TSS_HCONTEXT context_handle, bool create_in_tpm,
   // Load the Storage Root Key
   ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    TPM_LOG(INFO, *result) << "CreateCryptohomeKey: Cannot load SRK";
+    if (*result != kKeyNotFoundError) {
+      TPM_LOG(INFO, *result) << "CreateCryptohomeKey: Cannot load SRK";
+    }
     return false;
   }
 
@@ -520,7 +531,9 @@ bool Tpm::LoadCryptohomeKey(TSS_HCONTEXT context_handle,
   // Load the Storage Root Key
   ScopedTssKey srk_handle(context_handle);
   if (!LoadSrk(context_handle, srk_handle.ptr(), result)) {
-    TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load SRK";
+    if (*result != kKeyNotFoundError) {
+      TPM_LOG(INFO, *result) << "LoadCryptohomeKey: Cannot load SRK";
+    }
     return false;
   }
 
@@ -618,9 +631,6 @@ bool Tpm::LoadOrCreateCryptohomeKey(TSS_HCONTEXT context_handle,
       return true;
     }
   }
-
-  // Don't check the retry status, since we are returning false here anyway
-  TPM_LOG(INFO, *result) << "Unable to create or load cryptohome key";
   return false;
 }
 
