@@ -1,0 +1,27 @@
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# mist udev rules for switching supported USB devices into a modem.
+# Run after 50-udev-default.rules and before 60-persistent-*.rules.
+
+# TODO(benchan): Generate this file as part of the build process.
+# Extract the vendor/product IDs of supported devices from default.conf and
+# creates corresponding udev rules in this file.
+
+ACTION!="add", GOTO="mist_end"
+SUBSYSTEM!="usb", GOTO="mist_end"
+ENV{DEVTYPE}!="usb_device", GOTO="mist_end"
+
+# Supported USB devices
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1446", GOTO="mist_switch_device"
+
+GOTO="mist_end"
+
+# Invoke mist to switch a supported USB device into a modem.
+# Also set MIST_SUPPORTED_DEVICE to 1 to tell cros-disks to hide this device
+# from being auto-mounted.
+LABEL="mist_switch_device"
+ENV{MIST_SUPPORTED_DEVICE}="1", RUN+="/usr/bin/mist switch %S%p"
+
+LABEL="mist_end"
