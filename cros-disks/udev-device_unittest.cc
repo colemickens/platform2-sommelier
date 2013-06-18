@@ -115,14 +115,11 @@ TEST_F(UdevDeviceTest, EnsureUTF8String) {
 }
 
 TEST_F(UdevDeviceTest, IsValueBooleanTrue) {
-  if (mounted_device_) {
-    UdevDevice device(mounted_device_);
-    EXPECT_FALSE(device.IsValueBooleanTrue(NULL));
-    EXPECT_FALSE(device.IsValueBooleanTrue(""));
-    EXPECT_FALSE(device.IsValueBooleanTrue("0"));
-    EXPECT_FALSE(device.IsValueBooleanTrue("test"));
-    EXPECT_TRUE(device.IsValueBooleanTrue("1"));
-  }
+  EXPECT_FALSE(UdevDevice::IsValueBooleanTrue(NULL));
+  EXPECT_FALSE(UdevDevice::IsValueBooleanTrue(""));
+  EXPECT_FALSE(UdevDevice::IsValueBooleanTrue("0"));
+  EXPECT_FALSE(UdevDevice::IsValueBooleanTrue("test"));
+  EXPECT_TRUE(UdevDevice::IsValueBooleanTrue("1"));
 }
 
 TEST_F(UdevDeviceTest, IsAttributeTrueForNonexistentAttribute) {
@@ -244,6 +241,17 @@ TEST_F(UdevDeviceTest, IsMediaAvailable) {
   if (mounted_device_) {
     UdevDevice device(mounted_device_);
     EXPECT_TRUE(device.IsMediaAvailable());
+  }
+}
+
+TEST_F(UdevDeviceTest, IsMobileBroadbandDevice) {
+  if (boot_device_) {
+    UdevDevice device(boot_device_);
+    EXPECT_FALSE(device.IsMobileBroadbandDevice());
+  }
+  if (loop_device_) {
+    UdevDevice device(loop_device_);
+    EXPECT_FALSE(device.IsMobileBroadbandDevice());
   }
 }
 

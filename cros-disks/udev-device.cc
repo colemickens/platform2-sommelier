@@ -44,10 +44,12 @@ const char kPropertyCDROMMediaTrackCountData[] =
 const char kPropertyDeviceType[] = "DEVTYPE";
 const char kPropertyDeviceTypeUSBDevice[] = "usb_device";
 const char kPropertyFilesystemUsage[] = "ID_FS_USAGE";
+const char kPropertyMistSupportedDevice[] = "MIST_SUPPORTED_DEVICE";
 const char kPropertyModel[] = "ID_MODEL";
 const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
 const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
 const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
+const char kSubsystemUsb[] = "usb";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
 const char kUSBIdentifierDatabase[] = "/usr/share/misc/usb.ids";
@@ -74,11 +76,13 @@ UdevDevice::~UdevDevice() {
   udev_device_unref(dev_);
 }
 
+// static
 string UdevDevice::EnsureUTF8String(const string& str) {
   return IsStringUTF8(str) ? str : "";
 }
 
-bool UdevDevice::IsValueBooleanTrue(const char *value) const {
+// static
+bool UdevDevice::IsValueBooleanTrue(const char *value) {
   return value && strcmp(value, "1") == 0;
 }
 
@@ -250,6 +254,20 @@ bool UdevDevice::IsMediaAvailable() const {
   return is_media_available;
 }
 
+bool UdevDevice::IsMobileBroadbandDevice() const {
+  // Check if a parent device, which belongs to the "usb" subsystem and has a
+  // device type "usb_device", has a property "MIST_SUPPORTED_DEVICE=1". If so,
+  // it is a mobile broadband device supported by mist.
+  struct udev_device* parent = udev_device_get_parent_with_subsystem_devtype(
+      dev_, kSubsystemUsb, kPropertyDeviceTypeUSBDevice);
+  if (!parent)
+    return false;
+
+  const char* value =
+      udev_device_get_property_value(parent, kPropertyMistSupportedDevice);
+  return IsValueBooleanTrue(value);
+}
+
 bool UdevDevice::IsAutoMountable() const {
   // TODO(benchan): Find a reliable way to detect if a device is a removable
   // storage as the removable attribute in sysfs does not always tell the truth.
@@ -267,6 +285,11 @@ bool UdevDevice::IsHidden() {
       !HasProperty(kPropertyCDROMMediaTrackCountData)) {
     return true;
   }
+
+  // Hide a mobile broadband device, which may initially expose itself as a USB
+  // mass storage device and later be switched to a modem by mist.
+  if (IsMobileBroadbandDevice())
+    return true;
 
   // Hide a device that is neither marked as a partition nor a filesystem,
   // unless it has no valid partitions (e.g. the device is unformatted or

@@ -72,6 +72,9 @@ class UdevDevice {
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;
 
+  // Checks if the device is a mobile broadband device.
+  bool IsMobileBroadbandDevice() const;
+
   // Checks if the device is on the boot device.
   bool IsOnBootDevice() const;
 
@@ -103,7 +106,7 @@ class UdevDevice {
   bool IsOnMMCDevice() const;
 
   // Checks if a string contains a "1" (as Boolean true).
-  bool IsValueBooleanTrue(const char *value) const;
+  static bool IsValueBooleanTrue(const char *value);
 
   mutable struct udev_device *dev_;
 
