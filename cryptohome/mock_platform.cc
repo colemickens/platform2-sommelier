@@ -27,10 +27,8 @@ MockPlatform::MockPlatform() : mock_enumerator_(new MockFileEnumerator()) {
       .WillByDefault(Return(base::Time::NowFromSystemTime()));
   ON_CALL(*this, Copy(_, _))
       .WillByDefault(CallCopy());
-  ON_CALL(*this, ReportBlockUsage(_, _))
-      .WillByDefault(CallReportBlockUsage());
-  ON_CALL(*this, ReportInodeUsage(_, _))
-      .WillByDefault(CallReportInodeUsage());
+  ON_CALL(*this, StatVFS(_, _))
+      .WillByDefault(CallStatVFS());
   ON_CALL(*this, ReportFilesystemDetails(_, _))
       .WillByDefault(CallReportFilesystemDetails());
   ON_CALL(*this, FindFilesystemDevice(_, _))

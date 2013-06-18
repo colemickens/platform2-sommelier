@@ -61,8 +61,7 @@ ACTION(CallReadFile) { return Platform().ReadFile(arg0, arg1); }
 ACTION(CallReadFileToString) { return Platform().ReadFileToString(arg0, arg1); }
 ACTION(CallCopy) { return Platform().Copy(arg0, arg1); }
 ACTION(CallRename) { return Platform().Rename(arg0, arg1); }
-ACTION(CallReportBlockUsage) { return Platform().ReportBlockUsage(arg0, arg1); }
-ACTION(CallReportInodeUsage) { return Platform().ReportInodeUsage(arg0, arg1); }
+ACTION(CallStatVFS) { return Platform().StatVFS(arg0, arg1); }
 ACTION(CallReportFilesystemDetails) {
   return Platform().ReportFilesystemDetails(arg0, arg1);
 }
@@ -114,8 +113,7 @@ class MockPlatform : public Platform {
   MOCK_CONST_METHOD0(GetCurrentTime, base::Time());
   MOCK_METHOD2(Copy, bool(const std::string&, const std::string&));
   MOCK_METHOD2(Move, bool(const std::string&, const std::string&));
-  MOCK_METHOD2(ReportBlockUsage, bool(const std::string&, const std::string&));
-  MOCK_METHOD2(ReportInodeUsage, bool(const std::string&, const std::string&));
+  MOCK_METHOD2(StatVFS, bool(const std::string&, struct statvfs*));
   MOCK_METHOD2(ReportFilesystemDetails, bool(const std::string&,
                                              const std::string&));
   MOCK_METHOD2(FindFilesystemDevice, bool(const std::string&,

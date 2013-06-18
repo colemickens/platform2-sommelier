@@ -33,12 +33,11 @@ TEST(StatefulRecovery, ValidRequestV1) {
   EXPECT_CALL(platform, FirmwareWriteProtected())
     .Times(1)
     .WillOnce(Return(false));
-  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverBlockUsage))
+  EXPECT_CALL(platform, StatVFS(StatefulRecovery::kRecoverSource, _))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportInodeUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverInodeUsage))
+  EXPECT_CALL(platform, WriteStringToFile(StatefulRecovery::kRecoverBlockUsage,
+                                          _))
     .Times(1)
     .WillOnce(Return(true));
   EXPECT_CALL(platform,
@@ -114,12 +113,11 @@ TEST(StatefulRecovery, ValidRequestV2) {
     .WillOnce(Return(true));
 
   // CopyPartitionInfo
-  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverBlockUsage))
+  EXPECT_CALL(platform, StatVFS(StatefulRecovery::kRecoverSource, _))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportInodeUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverInodeUsage))
+  EXPECT_CALL(platform, WriteStringToFile(StatefulRecovery::kRecoverBlockUsage,
+                                          _))
     .Times(1)
     .WillOnce(Return(true));
   EXPECT_CALL(platform,
@@ -218,12 +216,11 @@ TEST(StatefulRecovery, ValidRequestV2NotOwnerNotWriteProtected) {
     .WillOnce(Return(false));
 
   // CopyPartitionInfo
-  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverBlockUsage))
+  EXPECT_CALL(platform, StatVFS(StatefulRecovery::kRecoverSource, _))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportInodeUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverInodeUsage))
+  EXPECT_CALL(platform, WriteStringToFile(StatefulRecovery::kRecoverBlockUsage,
+                                          _))
     .Times(1)
     .WillOnce(Return(true));
   EXPECT_CALL(platform,
@@ -305,7 +302,7 @@ TEST(StatefulRecovery, DirectoryCreationFailure) {
   EXPECT_FALSE(recovery.Recover());
 }
 
-TEST(StatefulRecovery, BlockUsageFailure) {
+TEST(StatefulRecovery, StatVFSFailure) {
   MockPlatform platform;
   MockService service;
   std::string flag_content = "1";
@@ -322,39 +319,7 @@ TEST(StatefulRecovery, BlockUsageFailure) {
                              StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverBlockUsage))
-    .Times(1)
-    .WillOnce(Return(false));
-
-  StatefulRecovery recovery(&platform, &service);
-  EXPECT_TRUE(recovery.Requested());
-  EXPECT_FALSE(recovery.Recover());
-}
-
-TEST(StatefulRecovery, InodeUsageFailure) {
-  MockPlatform platform;
-  MockService service;
-  std::string flag_content = "1";
-  EXPECT_CALL(platform, ReadFileToString(StatefulRecovery::kFlagFile, _))
-    .Times(1)
-    .WillOnce(DoAll(SetArgumentPointee<1>(flag_content), Return(true)));
-  EXPECT_CALL(platform, CreateDirectory(StatefulRecovery::kRecoverDestination))
-    .Times(1)
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform, FirmwareWriteProtected())
-    .Times(1)
-    .WillOnce(Return(false));
-  EXPECT_CALL(platform, Copy(StatefulRecovery::kRecoverSource,
-                             StatefulRecovery::kRecoverDestination))
-    .Times(1)
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverBlockUsage))
-    .Times(1)
-    .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportInodeUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverInodeUsage))
+  EXPECT_CALL(platform, StatVFS(StatefulRecovery::kRecoverSource, _))
     .Times(1)
     .WillOnce(Return(false));
 
@@ -380,12 +345,11 @@ TEST(StatefulRecovery, FilesystemDetailsFailure) {
                              StatefulRecovery::kRecoverDestination))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportBlockUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverBlockUsage))
+  EXPECT_CALL(platform, StatVFS(StatefulRecovery::kRecoverSource, _))
     .Times(1)
     .WillOnce(Return(true));
-  EXPECT_CALL(platform, ReportInodeUsage(StatefulRecovery::kRecoverSource,
-                                         StatefulRecovery::kRecoverInodeUsage))
+  EXPECT_CALL(platform, WriteStringToFile(StatefulRecovery::kRecoverBlockUsage,
+                                          _))
     .Times(1)
     .WillOnce(Return(true));
   EXPECT_CALL(platform,
@@ -442,37 +406,14 @@ TEST(StatefulRecovery, MountsParseOk) {
 
 TEST(StatefulRecovery, UsageReportOk) {
   Platform platform;
-  FilePath tempdir;
-  std::string output;
-  int64 size;
 
-  ASSERT_TRUE(file_util::CreateNewTempDirectory("unittestXXXXXX", &tempdir));
-  output = tempdir.value();
-  output += "/output.txt";
-
+  struct statvfs vfs;
   /* Reporting on a valid location produces output. */
-  EXPECT_FALSE(file_util::PathExists(FilePath(output)));
-  EXPECT_TRUE(platform.ReportBlockUsage("/", output));
-  EXPECT_TRUE(file_util::GetFileSize(FilePath(output), &size));
-  EXPECT_FALSE(size == 0);
-  EXPECT_TRUE(file_util::Delete(FilePath(output), false));
-
-  /* Reporting on a valid location produces output. */
-  EXPECT_FALSE(file_util::PathExists(FilePath(output)));
-  EXPECT_TRUE(platform.ReportInodeUsage("/", output));
-  EXPECT_TRUE(file_util::GetFileSize(FilePath(output), &size));
-  EXPECT_FALSE(size == 0);
-  EXPECT_TRUE(file_util::Delete(FilePath(output), false));
+  EXPECT_TRUE(platform.StatVFS("/", &vfs));
+  EXPECT_NE(vfs.f_blocks, 0);
 
   /* Reporting on an invalid location fails. */
-  EXPECT_FALSE(file_util::PathExists(FilePath(output)));
-  EXPECT_FALSE(platform.ReportBlockUsage("/this/is/very/wrong", output));
-  EXPECT_TRUE(file_util::Delete(FilePath(output), false));
-
-  /* Reporting on an invalid location fails. */
-  EXPECT_FALSE(file_util::PathExists(FilePath(output)));
-  EXPECT_FALSE(platform.ReportInodeUsage("/this/is/very/wrong", output));
-  EXPECT_TRUE(file_util::Delete(FilePath(output), false));
+  EXPECT_FALSE(platform.StatVFS("/this/is/very/wrong", &vfs));
 
   /* TODO(keescook): mockable tune2fs, since it's not installed in chroot. */
 }

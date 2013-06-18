@@ -8,7 +8,9 @@
 #include <linux/reboot.h>
 #include <sys/reboot.h>
 
+#include <base/json/json_writer.h>
 #include <base/string_util.h>
+#include <base/values.h>
 #include <chromeos/utility.h>
 #include <string>
 
@@ -30,8 +32,6 @@ const char *StatefulRecovery::kRecoverDestination =
     MNT_STATEFUL_PARTITION "decrypted";
 const char *StatefulRecovery::kRecoverBlockUsage =
     MNT_STATEFUL_PARTITION "decrypted/block-usage.txt";
-const char *StatefulRecovery::kRecoverInodeUsage =
-    MNT_STATEFUL_PARTITION "decrypted/inode-usage.txt";
 const char *StatefulRecovery::kRecoverFilesystemDetails =
     MNT_STATEFUL_PARTITION "decrypted/filesystem-details.txt";
 
@@ -45,10 +45,26 @@ bool StatefulRecovery::Requested() {
 }
 
 bool StatefulRecovery::CopyPartitionInfo() {
-  if (!platform_->ReportBlockUsage(kRecoverSource, kRecoverBlockUsage))
+  struct statvfs vfs;
+
+  if (!platform_->StatVFS(kRecoverSource, &vfs))
     return false;
 
-  if (!platform_->ReportInodeUsage(kRecoverSource, kRecoverInodeUsage))
+  DictionaryValue dv;
+  dv.SetString("filesystem", kRecoverSource);
+  dv.SetInteger("blocks-total", vfs.f_blocks);
+  dv.SetInteger("blocks-free", vfs.f_bfree);
+  dv.SetInteger("blocks-avail", vfs.f_bavail);
+  dv.SetInteger("inodes-total", vfs.f_files);
+  dv.SetInteger("inodes-free", vfs.f_ffree);
+  dv.SetInteger("inodes-avail", vfs.f_favail);
+
+  std::string output;
+  base::JSONWriter::WriteWithOptions(&dv,
+                                     base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                     &output);
+
+  if (!platform_->WriteStringToFile(kRecoverBlockUsage, output))
     return false;
 
   if (!platform_->ReportFilesystemDetails(kRecoverSource,

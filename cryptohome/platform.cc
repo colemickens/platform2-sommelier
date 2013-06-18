@@ -47,7 +47,6 @@ const int kDefaultUmask = S_IRGRP | S_IWGRP | S_IXGRP | S_IROTH | S_IWOTH
                                | S_IXOTH;
 const std::string kMtab = "/etc/mtab";
 const std::string kProcDir = "/proc";
-const std::string kPathDf = "/bin/df";
 const std::string kPathTune2fs = "/sbin/tune2fs";
 
 Platform::Platform()
@@ -541,38 +540,8 @@ bool Platform::Copy(const std::string& from, const std::string& to) {
   return file_util::CopyDirectory(from_path, to_path, true);
 }
 
-bool Platform::ReportInodeUsage(const std::string &filesystem,
-                                const std::string &logfile) {
-  chromeos::ProcessImpl process;
-  int rc;
-
-  process.RedirectOutput(logfile);
-  process.AddArg(kPathDf);
-  process.AddArg("-Pi");
-  process.AddArg(filesystem);
-  rc = process.Run();
-  if (rc == 0)
-    return true;
-  LOG(ERROR) << "Failed to run df -Pi on " << filesystem
-             << " (exit " << rc << ")";
-  return false;
-}
-
-bool Platform::ReportBlockUsage(const std::string &filesystem,
-                                const std::string &logfile) {
-  chromeos::ProcessImpl process;
-  int rc;
-
-  process.RedirectOutput(logfile);
-  process.AddArg(kPathDf);
-  process.AddArg("-Pk");
-  process.AddArg(filesystem);
-  rc = process.Run();
-  if (rc == 0)
-    return true;
-  LOG(ERROR) << "Failed to run df -Pk on " << filesystem
-             << " (exit " << rc << ")";
-  return false;
+bool Platform::StatVFS(const std::string& path, struct statvfs* vfs) {
+  return statvfs(path.c_str(), vfs) == 0;
 }
 
 bool Platform::FindFilesystemDevice(const std::string &filesystem_in,

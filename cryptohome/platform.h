@@ -6,6 +6,7 @@
 #define CRYPTOHOME_PLATFORM_H_
 
 #include <sys/stat.h>
+#include <sys/statvfs.h>
 
 #include <base/basictypes.h>
 #include <chromeos/secure_blob.h>
@@ -301,21 +302,12 @@ class Platform {
   //   to   - destination of the move
   virtual bool Move(const std::string& from, const std::string& to);
 
-  // Runs "df -Pk" with redirected output.
+  // Calls statvfs() on path.
   //
   // Parameters
-  //  filesystem - the filesystem to examine
-  //  lgofile - the path written with output
-  virtual bool ReportBlockUsage(const std::string &filesystem,
-                                const std::string &logfile);
-
-  // Runs "df -Pi" with redirected output.
-  //
-  // Parameters
-  //  filesystem - the filesystem to examine
-  //  logfile - the path written with output
-  virtual bool ReportInodeUsage(const std::string &filesystem,
-                                const std::string &logfile);
+  //   path - path to statvfs on
+  //   vfs - buffer to store result in
+  virtual bool StatVFS(const std::string& path, struct statvfs* vfs);
 
   // Find the device for a given filesystem.
   //

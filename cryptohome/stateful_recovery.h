@@ -35,7 +35,6 @@ class StatefulRecovery {
   static const char *kRecoverSource;
   static const char *kRecoverDestination;
   static const char *kRecoverBlockUsage;
-  static const char *kRecoverInodeUsage;
   static const char *kRecoverFilesystemDetails;
   static const char *kFlagFile;
  private:

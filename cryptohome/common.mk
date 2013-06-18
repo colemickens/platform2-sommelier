@@ -1,4 +1,4 @@
-# Copyright (c) 2011 The Chromium OS Authors. All rights reserved.
+# Copyright (c) 2012 The Chromium OS Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 #
@@ -64,7 +64,11 @@
 # Possible command line variables:
 #   - COLOR=[0|1] to set ANSI color output (default: 1)
 #   - VERBOSE=[0|1] to hide/show commands (default: 0)
-#   - MODE=dbg to turn down optimizations (default: opt)
+#   - MODE=[opt|dbg|profiling] (default: opt)
+#          opt - Enable optimizations for release builds
+#          dbg - Turn down optimization for debugging
+#          profiling - Turn off optimization and turn on profiling/coverage
+#                      support.
 #   - ARCH=[x86|arm|supported qemu name] (default: from portage or uname -m)
 #   - SPLITDEBUG=[0|1] splits debug info in target.debug (default: 0)
 #        If NOSTRIP=1, SPLITDEBUG will never strip the final emitted objects.
@@ -97,8 +101,6 @@ COLOR ?= 1
 VERBOSE ?= 0
 MODE ?= opt
 ARCH ?= $(shell uname -m)
-# TODO: profiling support not completed.
-PROFILING ?= 0
 NEEDS_ROOT = 0
 NEEDS_MOUNTS = 0
 
@@ -161,8 +163,7 @@ MAKECMDGOALS ?= all
 _all::
 %::
 	$(if $(filter 0,$(RUN_ONCE)), \
-	  $(QUIET)mkdir -p "$(OUT)" && \
-	  cd $(OUT) && \
+	  cd "$(OUT)" && \
 	  $(MAKE) -r -I "$(SRC)" -f "$(CURDIR)/Makefile" \
 	    SRC="$(CURDIR)" OUT="$(OUT)" $(foreach g,$(MAKECMDGOALS),"$(g)"),)
 	$(eval RUN_ONCE := 1)
@@ -182,10 +183,15 @@ ifeq ($(words $(filter-out Makefile common.mk %.d $(SRC)/Makefile \
 # Helper macros
 #
 
+# Create the directory if it doesn't yet exist.
+define auto_mkdir
+  $(if $(wildcard $(dir $1)),$2,$(QUIET)mkdir -p "$(dir $1)")
+endef
+
 # Creates the actual archive with an index.
 # The target $@ must end with .pic.a or .pie.a.
 define update_archive
-  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
+  $(call auto_mkdir,$(TARGET_OR_MEMBER))
   $(QUIET)# Create the archive in one step to avoid parallel use accessing it
   $(QUIET)# before all the symbols are present.
   @$(ECHO) "AR		$(subst \
@@ -235,24 +241,68 @@ endef
 # Default variable values
 #
 
-OBJCOPY ?= objcopy
-STRIP ?= strip
+# Only override toolchain vars if they are from make.
+CROSS_COMPILE ?=
+define override_var
+ifneq ($(filter undefined default,$(origin $1)),)
+$1 = $(CROSS_COMPILE)$2
+endif
+endef
+$(eval $(call override_var,AR,ar))
+$(eval $(call override_var,CC,gcc))
+$(eval $(call override_var,CXX,g++))
+$(eval $(call override_var,OBJCOPY,objcopy))
+$(eval $(call override_var,PKG_CONFIG,pkg-config))
+$(eval $(call override_var,RANLIB,ranlib))
+$(eval $(call override_var,STRIP,strip))
+
 RMDIR ?= rmdir
-# Only override CC and CXX if they are from make.
-ifeq ($(origin CC), default)
-  CC = gcc
-endif
-ifeq ($(origin CXX), default)
-  CXX = g++
-endif
-ifeq ($(origin RANLIB), default)
-  RANLIB = ranlib
-endif
-RANLIB ?= ranlib
 ECHO = /bin/echo -e
 
-ifeq ($(PROFILING),1)
-  $(warning PROFILING=1 disables relocatable executables.)
+ifeq ($(lastword $(subst /, ,$(CC))),clang)
+CDRIVER = clang
+else
+CDRIVER = gcc
+endif
+
+ifeq ($(lastword $(subst /, ,$(CXX))),clang++)
+CXXDRIVER = clang
+else
+CXXDRIVER = gcc
+endif
+
+# Internal macro to support check_XXX macros below.
+# Usage: $(call check_compile, [code], [compiler], [code_type], [c_flags],
+#               [extra_c_flags], [library_flags], [success_ret], [fail_ret])
+# Return: [success_ret] if compile succeeded, otherwise [fail_ret]
+check_compile = $(shell printf '%b\n' $(1) | \
+  $($(2)) $($(4)) -x $(3) $(LDFLAGS) $(5) - $(6) -o /dev/null > /dev/null 2>&1 \
+  && echo "$(7)" || echo "$(8)")
+
+# Helper macro to check whether a test program will compile with the specified
+# compiler flags.
+# Usage: $(call check_compile_cc, [code], [flags], [alternate_flags])
+# Return: [flags] if compile succeeded, otherwise [alternate_flags]
+check_compile_cc = $(call check_compile,$(1),CC,c,CFLAGS,$(2),,$(2),$(3))
+check_compile_cxx = $(call check_compile,$(1),CXX,c++,CXXFLAGS,$(2),,$(2),$(3))
+
+# Helper macro to check whether a test program will compile with the specified
+# libraries.
+# Usage: $(call check_compile_cc, [code], [library_flags], [alternate_flags])
+# Return: [library_flags] if compile succeeded, otherwise [alternate_flags]
+check_libs_cc = $(call check_compile,$(1),CC,c,CFLAGS,,$(2),$(2),$(3))
+check_libs_cxx = $(call check_compile,$(1),CXX,c++,CXXFLAGS,,$(2),$(2),$(3))
+
+# Helper macro to check whether the compiler accepts the specified flags.
+# Usage: $(call check_compile_cc, [flags], [alternate_flags])
+# Return: [flags] if compile succeeded, otherwise [alternate_flags]
+check_cc = $(call check_compile_cc,'int main() { return 0; }',$(1),$(2))
+check_cxx = $(call check_compile_cxx,'int main() { return 0; }',$(1),$(2))
+
+# Choose the stack protector flags based on whats supported by the compiler.
+SSP_CFLAGS := $(call check_cc,-fstack-protector-strong)
+ifeq ($(SSP_CFLAGS),)
+ SSP_CFLAGS := $(call check_cc,-fstack-protector-all)
 endif
 
 # To update these from an including Makefile:
@@ -260,17 +310,13 @@ endif
 #  CXXFLAGS := -mahflag $(CXXFLAGS) # Prepend to the list
 #  CXXFLAGS := $(filter-out badflag,$(CXXFLAGS)) # Filter out a value
 # The same goes for CFLAGS.
-# TODO(wad) Moving to -fvisibility=internal by default would be nice too.
-COMMON_CFLAGS := -Wall -Werror -fstack-protector-strong -fno-strict-aliasing \
-  -ggdb3 -Wa,--noexecstack -O1 -fvisibility=internal -Wformat=2
-CXXFLAGS += $(COMMON_CFLAGS)
-CFLAGS += $(COMMON_CFLAGS)
+COMMON_CFLAGS-gcc := -fvisibility=internal -ggdb3 -Wa,--noexecstack
+COMMON_CFLAGS-clang := -fvisibility=hidden -ggdb
+COMMON_CFLAGS := -Wall -Werror -fno-strict-aliasing $(SSP_CFLAGS) -O1 -Wformat=2
+CXXFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CXXDRIVER))
+CFLAGS += $(COMMON_CFLAGS) $(COMMON_CFLAGS-$(CDRIVER))
 CPPFLAGS += -D_FORTIFY_SOURCE=2
 
-ifeq ($(PROFILING),1)
-  CFLAGS := -pg
-  CXXFLAGS := -pg
-endif
 
 ifeq ($(MODE),opt)
   # Up the optimizations.
@@ -282,6 +328,12 @@ ifeq ($(MODE),opt)
     CFLAGS := $(filter-out -ggdb3,$(CFLAGS))
     CXXFLAGS := $(filter-out -ggdb3,$(CXXFLAGS))
   endif
+endif
+
+ifeq ($(MODE),profiling)
+  CFLAGS := $(CFLAGS) -O0 -g  --coverage
+  CXXFLAGS := $(CXXFLAGS) -O0 -g  --coverage
+  LDFLAGS := $(LDFLAGS) --coverage
 endif
 
 LDFLAGS := $(LDFLAGS) -Wl,-z,relro -Wl,-z,noexecstack -Wl,-z,now
@@ -323,7 +375,7 @@ TARGET_OR_MEMBER = $(lastword $(subst $(LP), ,$(subst $(RP),,$(or $%,$@))))
 # all non-.o files.
 define COMPILE_BINARY_implementation
   @$(ECHO) "LD$(1)		$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
-  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
+  $(call auto_mkdir,$(TARGET_OR_MEMBER))
   $(QUIET)$($(1)) $(COMPILE_PIE_FLAGS) -o $(TARGET_OR_MEMBER) \
     $(2) $(LDFLAGS) \
     $(filter %.o %.a,$(^:.o=.pie.o)) \
@@ -347,7 +399,7 @@ endef
 COMMA := ,
 define COMPILE_LIBRARY_implementation
   @$(ECHO) "SHARED$(1)	$(subst $(PWD)/,,$(TARGET_OR_MEMBER))"
-  $(QUIET)mkdir -p "$(dir $(TARGET_OR_MEMBER))"
+  $(call auto_mkdir,$(TARGET_OR_MEMBER))
   $(QUIET)$($(1)) -shared -Wl,-E -o $(TARGET_OR_MEMBER) \
     $(2) $(LDFLAGS) \
     $(if $(filter %.a,$^),-Wl$(COMMA)--whole-archive,) \
@@ -502,30 +554,30 @@ CXX_OBJECTS = $(patsubst $(SRC)/%.cc,%.o,$(wildcard $(SRC)/*.cc))
 # $(5) source dir: _only_ if $(SRC). Leave blank for obj tree.
 define add_object_rules
 $(patsubst %.o,%.pie.o,$(1)): %.pie.o: $(5)%.$(3) %.o.depends
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$($(4)) $$(CPPFLAGS) $$(OBJ_PIE_FLAG))
 
 $(patsubst %.o,%.pic.o,$(1)): %.pic.o: $(5)%.$(3) %.o.depends
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(call OBJECT_PATTERN_implementation,$(2),\
           $$(basename $$@),$$($(4)) $$(CPPFLAGS) -fPIC)
 
 # Placeholder for depends
 $(patsubst %.o,%.o.depends,$(1)):
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(QUIET)touch "$$@"
 
 $(1): %.o: %.pic.o %.pie.o
-	$$(QUIET)mkdir -p "$$(dir $$@)"
+	$$(call auto_mkdir,$$@)
 	$$(QUIET)touch "$$@"
 endef
 
 define OBJECT_PATTERN_implementation
   @$(ECHO) "$(1)		$(subst $(SRC)/,,$<) -> $(2).o"
-  $(QUIET)mkdir -p "$(dir $(2))"
+  $(call auto_mkdir,$@)
   $(QUIET)$($(1)) -c -MD -MF $(2).d $(3) -o $(2).o $<
-  $(QUIET)# Wrap all the deps in $(wildcard) so a missing header
+  $(QUIET)# Wrap all the deps in $$(wildcard) so a missing header
   $(QUIET)# won't cause weirdness.  First we remove newlines and \,
   $(QUIET)# then wrap it.
   $(QUIET)sed -i -e :j -e '$$!N;s|\\\s*\n| |;tj' \
@@ -628,7 +680,26 @@ all:
 
 # Builds and runs tests for the target arch
 # Run them in parallel
+# After the test have completed, if profiling, run coverage analysis
 tests:
+ifeq ($(MODE),profiling)
+	@$(ECHO) "COVERAGE [$(COLOR_YELLOW)STARTED$(COLOR_RESET)]"
+	$(QUIET)FILES="";						\
+		for GCNO in `find . -name "*.gcno"`; do			\
+			GCDA="$${GCNO%.gcno}.gcda";			\
+			if [ -e $${GCDA} ]; then			\
+				FILES="$${FILES} $${GCDA}";		\
+			fi						\
+		done;							\
+		if [ -n "$${FILES}" ]; then				\
+			gcov -l $${FILES};				\
+			lcov --capture --directory .			\
+				--output-file=lcov-coverage.info;	\
+			genhtml lcov-coverage.info			\
+				--output-directory lcov-html;		\
+		fi
+	@$(ECHO) "COVERAGE [$(COLOR_YELLOW)FINISHED$(COLOR_RESET)]"
+endif
 .PHONY: tests
 
 qemu_clean:
@@ -644,8 +715,10 @@ endif
 
 # TODO(wad) Move to -L $(SYSROOT) and fakechroot when qemu-user
 #           doesn't hang traversing /proc from SYSROOT.
+SUDO_CMD = sudo
+UNSHARE_CMD = unshare
 QEMU_CMD =
-ROOT_CMD = $(if $(filter 1,$(NEEDS_ROOT)),sudo , )
+ROOT_CMD = $(if $(filter 1,$(NEEDS_ROOT)),$(SUDO_CMD) , )
 MOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNTS)),$(ROOT_CMD) mount, \#)
 UMOUNT_CMD = $(if $(filter 1,$(NEEDS_MOUNTS)),$(ROOT_CMD) umount, \#)
 QEMU_LDPATH = $(SYSROOT_LDPATH):/lib64:/lib:/usr/lib64:/usr/lib
@@ -654,7 +727,7 @@ ROOT_CMD_LDPATH := $(ROOT_CMD_LDPATH):$(SYSROOT)/lib:$(SYSROOT)/usr/lib64:
 ROOT_CMD_LDPATH := $(ROOT_CMD_LDPATH):$(SYSROOT)/usr/lib
 ifeq ($(USE_QEMU),1)
   export QEMU_CMD = \
-   sudo chroot $(SYSROOT) $(SYSROOT_OUT)qemu-$(QEMU_ARCH) \
+   $(SUDO_CMD) chroot $(SYSROOT) $(SYSROOT_OUT)qemu-$(QEMU_ARCH) \
    -drop-ld-preload \
    -E LD_LIBRARY_PATH="$(QEMU_LDPATH):$(patsubst $(OUT),,$(LD_DIRS))" \
    -E HOME="$(HOME)" --
@@ -686,22 +759,20 @@ define TEST_setup
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_YELLOW)SETUP$(COLOR_RESET)]"
   $(QUIET)# Setup a target-specific results file
+  $(QUIET)(echo > $(OUT)$(TARGET_OR_MEMBER).setup.test)
   $(QUIET)(echo 1 > $(OUT)$(TARGET_OR_MEMBER).status.test)
   $(QUIET)(echo > $(OUT)$(TARGET_OR_MEMBER).cleanup.test)
   $(QUIET)# No setup if we are not using QEMU
   $(QUIET)# TODO(wad) this is racy until we use a vfs namespace
   $(call if_qemu,\
-    $(QUIET)sudo mkdir -p "$(SYSROOT)/proc" "$(SYSROOT)/dev")
+    $(QUIET)(echo "mkdir -p '$(SYSROOT)/proc' '$(SYSROOT)/dev'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).setup.test"))
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /proc "$(SYSROOT)/proc")
+    $(QUIET)(echo "$(MOUNT_CMD) --bind /proc '$(SYSROOT)/proc'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).setup.test"))
   $(call if_qemu,\
-    $(QUIET)$(MOUNT_CMD) --bind /dev "$(SYSROOT)/dev")
-  $(call if_qemu,\
-    $(QUIET)(echo "$(UMOUNT_CMD) -l '$(SYSROOT)/proc'" \
-             >> "$(OUT)$(TARGET_OR_MEMBER).cleanup.test"))
-  $(call if_qemu,\
-    $(QUIET)(echo "$(UMOUNT_CMD) -l '$(SYSROOT)/dev'" \
-             >> "$(OUT)$(TARGET_OR_MEMBER).cleanup.test"))
+    $(QUIET)(echo "$(MOUNT_CMD) --bind /dev '$(SYSROOT)/dev'" \
+             >> "$(OUT)$(TARGET_OR_MEMBER).setup.test"))
 endef
 
 define TEST_teardown
@@ -718,11 +789,13 @@ define TEST_run
   @$(ECHO) -n "TEST		$(TARGET_OR_MEMBER) "
   @$(ECHO) "[$(COLOR_GREEN)RUN$(COLOR_RESET)]"
   $(QUIET)(echo 1 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
-  -($(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
+  $(QUIET)(echo $(ROOT_CMD) $(QEMU_CMD) $(VALGRIND_CMD) \
     "$(strip $(call if_qemu, $(SYSROOT_OUT),$(OUT))$(TARGET_OR_MEMBER))" \
       $(if $(filter-out 0,$(words $(GTEST_ARGS.real))),$(GTEST_ARGS.real),\
-           $(GTEST_ARGS)) && \
-    echo 0 > "$(OUT)$(TARGET_OR_MEMBER).status.test")
+           $(GTEST_ARGS)) >> "$(OUT)$(TARGET_OR_MEMBER).setup.test")
+  -$(QUIET)$(call if_qemu,$(SUDO_CMD) $(UNSHARE_CMD) -m) $(SHELL) \
+      $(OUT)$(TARGET_OR_MEMBER).setup.test \
+  && echo 0 > "$(OUT)$(TARGET_OR_MEMBER).status.test"
 endef
 
 # Recursive list reversal so that we get RMDIR_ON_CLEAN in reverse order.
@@ -733,6 +806,8 @@ endef
 clean: qemu_clean
 clean: CLEAN($(OUT)*.d) CLEAN($(OUT)*.o) CLEAN($(OUT)*.debug)
 clean: CLEAN($(OUT)*.test) CLEAN($(OUT)*.depends)
+clean: CLEAN($(OUT)*.gcno) CLEAN($(OUT)*.gcda) CLEAN($(OUT)*.gcov)
+clean: CLEAN($(OUT)lcov-coverage.info) CLEAN($(OUT)lcov-html)
 
 clean:
 	$(QUIET)# Always delete the containing directory last.
@@ -776,6 +851,9 @@ $(eval LD_DIRS := $(LD_DIRS):$(OUT)$(MODULE))
 clean: CLEAN($(OUT)$(MODULE)/*.d) CLEAN($(OUT)$(MODULE)/*.o)
 clean: CLEAN($(OUT)$(MODULE)/*.debug) CLEAN($(OUT)$(MODULE)/*.test)
 clean: CLEAN($(OUT)$(MODULE)/*.depends)
+clean: CLEAN($(OUT)$(MODULE)/*.gcno) CLEAN($(OUT)$(MODULE)/*.gcda)
+clean: CLEAN($(OUT)$(MODULE)/*.gcov) CLEAN($(OUT)lcov-coverage.info)
+clean: CLEAN($(OUT)lcov-html)
 
 $(info + submodule: $(MODULE_NAME))
 # We must eval otherwise they may be dropped.
