@@ -61,6 +61,9 @@ const ::DBus::Variant PropertyStoreTest::kStringsV =
 const ::DBus::Variant PropertyStoreTest::kUint16V =
     DBusAdaptor::Uint16ToVariant(0);
 // static
+const ::DBus::Variant PropertyStoreTest::kUint16sV =
+    DBusAdaptor::Uint16sToVariant(Uint16s{0});
+// static
 const ::DBus::Variant PropertyStoreTest::kUint32V =
     DBusAdaptor::Uint32ToVariant(0);
 // static
@@ -111,31 +114,48 @@ INSTANTIATE_TEST_CASE_P(
            PropertyStoreTest::kStringmapV,
            PropertyStoreTest::kStringsV,
            PropertyStoreTest::kUint16V,
+           PropertyStoreTest::kUint16sV,
            PropertyStoreTest::kUint32V,
            PropertyStoreTest::kUint64V));
 
 template <typename T>
 class PropertyStoreTypedTest : public PropertyStoreTest {
  protected:
-  void RegisterProperty(
-      PropertyStore &store, const string &name, T *storage);
   bool SetProperty(
       PropertyStore &store, const string &name, Error *error);
 };
 
-typedef ::testing::Types<
-  bool, int16, int32, string, Stringmap, Stringmaps, Strings, uint8, uint16,
-  uint32> PropertyTypes;
-TYPED_TEST_CASE(PropertyStoreTypedTest, PropertyTypes);
+TYPED_TEST_CASE(PropertyStoreTypedTest, PropertyStoreTest::PropertyTypes);
+
+TYPED_TEST(PropertyStoreTypedTest, RegisterProperty) {
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
+  Error error;
+  TypeParam property;
+  PropertyStoreTest::RegisterProperty(&store, "some property", &property);
+  EXPECT_TRUE(store.Contains("some property"));
+}
+
+TYPED_TEST(PropertyStoreTypedTest, GetProperty) {
+  PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
+                           Unretained(this)));
+  Error error;
+  TypeParam property;
+  PropertyStoreTest::RegisterProperty(&store, "some property", &property);
+
+  TypeParam read_value;
+  EXPECT_CALL(*this, TestCallback(_)).Times(0);
+  EXPECT_TRUE(PropertyStoreTest::GetProperty(
+      store, "some property", &read_value, &error));
+  EXPECT_EQ(property, read_value);
+}
 
 TYPED_TEST(PropertyStoreTypedTest, ClearProperty) {
   PropertyStore store(Bind(&PropertyStoreTest::TestCallback,
                            Unretained(this)));
   Error error;
   TypeParam property;
-
-  // |this| required due to two-phase lookup.
-  this->RegisterProperty(store, "some property", &property);
+  PropertyStoreTest::RegisterProperty(&store, "some property", &property);
   EXPECT_CALL(*this, TestCallback(_));
   EXPECT_TRUE(store.ClearProperty("some property", &error));
 }
@@ -145,9 +165,7 @@ TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
                            Unretained(this)));
   Error error;
   TypeParam property = TypeParam();  // value-initialize primitives
-
-  // |this| required due to two-phase lookup.
-  this->RegisterProperty(store, "some property", &property);
+  PropertyStoreTest::RegisterProperty(&store, "some property", &property);
 
   // Change the value from the default (initialized above).  Should
   // generate a change callback. The second SetProperty, however,
@@ -155,56 +173,6 @@ TYPED_TEST(PropertyStoreTypedTest, SetProperty) {
   EXPECT_CALL(*this, TestCallback(_)).Times(1);
   EXPECT_TRUE(this->SetProperty(store, "some property", &error));
   EXPECT_FALSE(this->SetProperty(store, "some property", &error));
-}
-
-template<> void PropertyStoreTypedTest<bool>::RegisterProperty(
-    PropertyStore &store, const string &name, bool *storage) {
-  store.RegisterBool(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<int16>::RegisterProperty(
-    PropertyStore &store, const string &name, int16 *storage) {
-  store.RegisterInt16(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<int32>::RegisterProperty(
-    PropertyStore &store, const string &name, int32 *storage) {
-  store.RegisterInt32(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<string>::RegisterProperty(
-    PropertyStore &store, const string &name, string *storage) {
-  store.RegisterString(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<Stringmap>::RegisterProperty(
-    PropertyStore &store, const string &name, Stringmap *storage) {
-  store.RegisterStringmap(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<Stringmaps>::RegisterProperty(
-    PropertyStore &store, const string &name, Stringmaps *storage) {
-  store.RegisterStringmaps(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<Strings>::RegisterProperty(
-    PropertyStore &store, const string &name, Strings *storage) {
-  store.RegisterStrings(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<uint8>::RegisterProperty(
-    PropertyStore &store, const string &name, uint8 *storage) {
-  store.RegisterUint8(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<uint16>::RegisterProperty(
-    PropertyStore &store, const string &name, uint16 *storage) {
-  store.RegisterUint16(name, storage);
-}
-
-template<> void PropertyStoreTypedTest<uint32>::RegisterProperty(
-    PropertyStore &store, const string &name, uint32 *storage) {
-  store.RegisterUint32(name, storage);
 }
 
 template<> bool PropertyStoreTypedTest<bool>::SetProperty(
@@ -262,6 +230,12 @@ template<> bool PropertyStoreTypedTest<uint16>::SetProperty(
     PropertyStore &store, const string &name, Error *error) {
   uint16 new_value = 1;
   return store.SetUint16Property(name, new_value, error);
+}
+
+template<> bool PropertyStoreTypedTest<Uint16s>::SetProperty(
+    PropertyStore &store, const string &name, Error *error) {
+  Uint16s new_value{1};
+  return store.SetUint16sProperty(name, new_value, error);
 }
 
 template<> bool PropertyStoreTypedTest<uint32>::SetProperty(

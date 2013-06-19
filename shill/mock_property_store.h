@@ -34,6 +34,8 @@ class MockPropertyStore : public PropertyStore {
                                         Error*));
   MOCK_METHOD3(SetUint8Property, bool(const std::string&, uint8, Error*));
   MOCK_METHOD3(SetUint16Property, bool(const std::string&, uint16, Error*));
+  MOCK_METHOD3(SetUint16sProperty, bool(const std::string&,
+                                        const Uint16s &, Error*));
   MOCK_METHOD3(SetUint32Property, bool(const std::string&, uint32, Error*));
   MOCK_METHOD3(SetUint64Property, bool(const std::string&, uint64, Error*));
   MOCK_METHOD2(ClearProperty, bool(const std::string&, Error*));

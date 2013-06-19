@@ -41,22 +41,32 @@ class DBusAdaptorTest : public PropertyStoreTest {
   DBusAdaptorTest()
       : ex_bool_(true),
         ex_byte_(0xff),
+        ex_bytearrays_{ByteArray()},
         ex_uint16_(65535),
+        ex_uint16s_{ex_uint16_},
         ex_uint32_(2000000),
         ex_uint64_(8589934591LL),
         ex_int16_(-32768),
         ex_int32_(-65536),
         ex_path_("/"),
+        ex_paths_{ex_path_},
         ex_string_("something"),
+        ex_stringmap_{{ex_string_, ex_string_}},
+        ex_stringmaps_{ex_stringmap_},
         ex_strings_(1, ex_string_),
         bool_v_(DBusAdaptor::BoolToVariant(ex_bool_)),
         byte_v_(DBusAdaptor::ByteToVariant(ex_byte_)),
+        bytearrays_v_(DBusAdaptor::ByteArraysToVariant(ex_bytearrays_)),
         int16_v_(DBusAdaptor::Int16ToVariant(ex_int16_)),
         int32_v_(DBusAdaptor::Int32ToVariant(ex_int32_)),
         path_v_(DBusAdaptor::PathToVariant(ex_path_)),
+        paths_v_(DBusAdaptor::PathsToVariant(ex_paths_)),
         string_v_(DBusAdaptor::StringToVariant(ex_string_)),
+        stringmap_v_(DBusAdaptor::StringmapToVariant(ex_stringmap_)),
+        stringmaps_v_(DBusAdaptor::StringmapsToVariant(ex_stringmaps_)),
         strings_v_(DBusAdaptor::StringsToVariant(ex_strings_)),
         uint16_v_(DBusAdaptor::Uint16ToVariant(ex_uint16_)),
+        uint16s_v_(DBusAdaptor::Uint16sToVariant(ex_uint16s_)),
         uint32_v_(DBusAdaptor::Uint32ToVariant(ex_uint32_)),
         uint64_v_(DBusAdaptor::Uint64ToVariant(ex_uint64_)),
         device_(new MockDevice(control_interface(),
@@ -69,19 +79,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
         service_(new MockService(control_interface(),
                                  dispatcher(),
                                  metrics(),
-                                 manager())) {
-    ex_bytearrays_.push_back(ByteArray());
-    bytearrays_v_ = DBusAdaptor::ByteArraysToVariant(ex_bytearrays_);
-
-    ex_stringmap_[ex_string_] = ex_string_;
-    stringmap_v_ = DBusAdaptor::StringmapToVariant(ex_stringmap_);
-
-    ex_stringmaps_.push_back(ex_stringmap_);
-    stringmaps_v_ = DBusAdaptor::StringmapsToVariant(ex_stringmaps_);
-
-    ex_paths_.push_back(ex_path_);
-    paths_v_ = DBusAdaptor::PathsToVariant(ex_paths_);
-  }
+                                 manager())) {}
 
   virtual ~DBusAdaptorTest() {}
 
@@ -90,6 +88,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
   uint8 ex_byte_;
   ByteArrays ex_bytearrays_;
   uint16 ex_uint16_;
+  vector<uint16> ex_uint16s_;
   uint32 ex_uint32_;
   uint64 ex_uint64_;
   int16 ex_int16_;
@@ -113,6 +112,7 @@ class DBusAdaptorTest : public PropertyStoreTest {
   ::DBus::Variant stringmaps_v_;
   ::DBus::Variant strings_v_;
   ::DBus::Variant uint16_v_;
+  ::DBus::Variant uint16s_v_;
   ::DBus::Variant uint32_v_;
   ::DBus::Variant uint64_v_;
 
@@ -158,6 +158,8 @@ TEST_F(DBusAdaptorTest, Conversions) {
   EXPECT_THAT(
       ex_stringmaps_,
       ContainerEq(stringmaps_v_.operator vector<map<string, string> >()));
+  EXPECT_THAT(ex_uint16s_,
+              ContainerEq(uint16s_v_.operator vector<uint16>()));
 }
 
 TEST_F(DBusAdaptorTest, Signatures) {
@@ -172,6 +174,7 @@ TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_TRUE(DBusAdaptor::IsStringmap(stringmap_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsStrings(strings_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsUint16(uint16_v_.signature()));
+  EXPECT_TRUE(DBusAdaptor::IsUint16s(uint16s_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsUint32(uint32_v_.signature()));
   EXPECT_TRUE(DBusAdaptor::IsUint64(uint64_v_.signature()));
 
@@ -179,9 +182,36 @@ TEST_F(DBusAdaptorTest, Signatures) {
   EXPECT_FALSE(DBusAdaptor::IsStrings(string_v_.signature()));
 }
 
+template <typename T>
+class DBusAdaptorTypedTest : public DBusAdaptorTest {
+ public:
+  DBusAdaptorTypedTest()
+      : property_(T()) // value-initialize primitives
+  {}
+
+ protected:
+  T *property() { return &property_; }
+
+ private:
+  T property_;
+};
+
+TYPED_TEST_CASE(DBusAdaptorTypedTest, PropertyStoreTest::PropertyTypes);
+
+TYPED_TEST(DBusAdaptorTypedTest, GetProperties) {
+  MockPropertyStore store;
+  const string kPropertyName("some property");
+  PropertyStoreTest::RegisterProperty(&store, kPropertyName, this->property());
+
+  map<string, ::DBus::Variant> properties;
+  ::DBus::Error error;
+  EXPECT_TRUE(DBusAdaptor::GetProperties(store, &properties, &error));
+  EXPECT_TRUE(ContainsKey(properties, kPropertyName));
+}
+
 TEST_F(DBusAdaptorTest, SetProperty) {
   MockPropertyStore store;
-  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11;
+  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12;
 
   EXPECT_CALL(store, Contains(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(store, SetBoolProperty("", _, _)).WillOnce(Return(true));
@@ -195,6 +225,7 @@ TEST_F(DBusAdaptorTest, SetProperty) {
       .WillOnce(Return(true));
   EXPECT_CALL(store, SetUint8Property("", _, _)).WillOnce(Return(true));
   EXPECT_CALL(store, SetUint16Property("", _, _)).WillOnce(Return(true));
+  EXPECT_CALL(store, SetUint16sProperty("", _, _)).WillOnce(Return(true));
   EXPECT_CALL(store, SetUint32Property("", _, _)).WillOnce(Return(true));
   EXPECT_CALL(store, SetUint64Property("", _, _)).WillOnce(Return(true));
 
@@ -211,10 +242,11 @@ TEST_F(DBusAdaptorTest, SetProperty) {
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", int16_v_, &e5));
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", int32_v_, &e6));
   EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint16_v_, &e7));
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e8));
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint64_v_, &e9));
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e10));
-  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e11));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint16s_v_, &e8));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e9));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", uint64_v_, &e10));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e11));
+  EXPECT_TRUE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e12));
 }
 
 // SetProperty method should propagate failures.  This should happen
@@ -223,7 +255,7 @@ TEST_F(DBusAdaptorTest, SetProperty) {
 // false, without setting an error.)
 TEST_F(DBusAdaptorTest, SetPropertyFailure) {
   MockPropertyStore store;
-  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11;
+  ::DBus::Error e1, e2, e3, e4, e5, e6, e7, e8, e9, e10, e11, e12;
 
   EXPECT_CALL(store, Contains(_)).WillRepeatedly(Return(false));
   EXPECT_CALL(store, SetBoolProperty("", _, _)).WillOnce(Return(false));
@@ -237,6 +269,7 @@ TEST_F(DBusAdaptorTest, SetPropertyFailure) {
       .WillOnce(Return(false));
   EXPECT_CALL(store, SetUint8Property("", _, _)).WillOnce(Return(false));
   EXPECT_CALL(store, SetUint16Property("", _, _)).WillOnce(Return(false));
+  EXPECT_CALL(store, SetUint16sProperty("", _, _)).WillOnce(Return(false));
   EXPECT_CALL(store, SetUint32Property("", _, _)).WillOnce(Return(false));
   EXPECT_CALL(store, SetUint64Property("", _, _)).WillOnce(Return(false));
 
@@ -253,10 +286,11 @@ TEST_F(DBusAdaptorTest, SetPropertyFailure) {
   EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", int16_v_, &e5));
   EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", int32_v_, &e6));
   EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint16_v_, &e7));
-  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e8));
-  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint64_v_, &e9));
-  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e10));
-  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e11));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint16s_v_, &e8));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint32_v_, &e9));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", uint64_v_, &e10));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", stringmap_v_, &e11));
+  EXPECT_FALSE(DBusAdaptor::SetProperty(&store, "", byte_v_, &e12));
 }
 
 void SetError(const string &/*name*/, Error *error) {

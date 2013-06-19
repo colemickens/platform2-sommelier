@@ -77,6 +77,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static ::DBus::Variant StringmapsToVariant(const Stringmaps &value);
   static ::DBus::Variant StringsToVariant(const Strings &value);
   static ::DBus::Variant Uint16ToVariant(uint16 value);
+  static ::DBus::Variant Uint16sToVariant(const Uint16s &value);
   static ::DBus::Variant Uint32ToVariant(uint32 value);
   static ::DBus::Variant Uint64ToVariant(uint64 value);
 
@@ -92,6 +93,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static bool IsStringmaps(::DBus::Signature signature);
   static bool IsStrings(::DBus::Signature signature);
   static bool IsUint16(::DBus::Signature signature);
+  static bool IsUint16s(::DBus::Signature signature);
   static bool IsUint32(::DBus::Signature signature);
   static bool IsUint64(::DBus::Signature signature);
   static bool IsKeyValueStore(::DBus::Signature signature);
@@ -139,6 +141,7 @@ class DBusAdaptor : public DBus::ObjectAdaptor,
   static const char kStringmapSig[];
   static const char kStringmapsSig[];
   static const char kStringsSig[];
+  static const char kUint16sSig[];
 
   void MethodReplyCallback(const DBus::Tag *tag, const Error &error);
   void StringMethodReplyCallback(const DBus::Tag *tag, const Error &error,

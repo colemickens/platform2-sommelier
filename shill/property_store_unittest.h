@@ -28,6 +28,10 @@ namespace shill {
 
 class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
  public:
+  typedef ::testing::Types<bool, int16, int32, std::string, Stringmap,
+                           Stringmaps, Strings, uint8, uint16, Uint16s, uint32>
+      PropertyTypes;
+
   // In real code, it's frowned upon to have non-POD static members, as there
   // can be ordering issues if your constructors have side effects.
   // These constructors don't, and declaring these as static lets me
@@ -43,6 +47,7 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
   static const ::DBus::Variant kStringmapsV;
   static const ::DBus::Variant kStringsV;
   static const ::DBus::Variant kUint16V;
+  static const ::DBus::Variant kUint16sV;
   static const ::DBus::Variant kUint32V;
   static const ::DBus::Variant kUint64V;
 
@@ -51,6 +56,120 @@ class PropertyStoreTest : public testing::TestWithParam< ::DBus::Variant > {
 
   virtual void SetUp();
   MOCK_METHOD1(TestCallback, void(const std::string &property_name));
+
+  // Convenience overloads for GetProperty. Normally, we don't overload
+  // functions. But this is extremely useful for type-parameterized tests.
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          bool *storage, Error *error) {
+    return store.GetBoolProperty(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          int16 *storage, Error *error) {
+    return store.GetInt16Property(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          int32 *storage, Error *error) {
+    return store.GetInt32Property(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          std::string *storage, Error *error) {
+    return store.GetStringProperty(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          Stringmap *storage, Error *error) {
+    return store.GetStringmapProperty(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          Stringmaps *storage, Error *error) {
+    return store.GetStringmapsProperty(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          Strings *storage, Error *error) {
+    return store.GetStringsProperty(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          uint8 *storage, Error *error) {
+    return store.GetUint8Property(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          uint16 *storage, Error *error) {
+    return store.GetUint16Property(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          Uint16s *storage, Error *error) {
+    return store.GetUint16sProperty(name, storage, error);
+  }
+
+  static bool GetProperty(const PropertyStore &store, const std::string &name,
+                          uint32 *storage, Error *error) {
+    return store.GetUint32Property(name, storage, error);
+  }
+
+  // Convenience overloads for RegisterProperty. Normally, we don't overload
+  // functions. But this is extremely useful for type-parameterized tests.
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, bool *storage) {
+    store->RegisterBool(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, int16 *storage) {
+    store->RegisterInt16(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, int32 *storage) {
+    store->RegisterInt32(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, std::string *storage) {
+    store->RegisterString(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, Stringmap *storage) {
+    store->RegisterStringmap(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, Stringmaps *storage) {
+    store->RegisterStringmaps(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, Strings *storage) {
+    store->RegisterStrings(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, uint8 *storage) {
+    store->RegisterUint8(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, uint16 *storage) {
+    store->RegisterUint16(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, Uint16s *storage) {
+    store->RegisterUint16s(name, storage);
+  }
+
+  static void RegisterProperty(
+      PropertyStore *store, const std::string &name, uint32 *storage) {
+    store->RegisterUint32(name, storage);
+  }
 
  protected:
   Manager *manager() { return &manager_; }

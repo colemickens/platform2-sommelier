@@ -90,6 +90,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
   store->RegisterConstString(flimflam::kWifiAuthMode, &auth_mode_);
   store->RegisterBool(flimflam::kWifiHiddenSsid, &hidden_ssid_);
   store->RegisterConstUint16(flimflam::kWifiFrequency, &frequency_);
+  store->RegisterConstUint16s(kWifiFrequencyListProperty, &frequency_list_);
   store->RegisterConstUint16(flimflam::kWifiPhyMode, &physical_mode_);
   store->RegisterConstString(flimflam::kWifiBSsid, &bssid_);
   store->RegisterConstString(flimflam::kCountryProperty, &country_code_);
@@ -639,6 +640,12 @@ void WiFiService::UpdateFromEndpoints() {
     }
   }
 
+  set<uint16> frequency_set;
+  for (const auto &endpoint : endpoints_) {
+    frequency_set.insert(endpoint->frequency());
+  }
+  frequency_list_.assign(frequency_set.begin(), frequency_set.end());
+
   if (Is8021x())
     cipher_8021x_ = ComputeCipher8021x(endpoints_);
 
@@ -681,6 +688,7 @@ void WiFiService::UpdateFromEndpoints() {
     physical_mode_ = physical_mode;
     adaptor()->EmitUint16Changed(flimflam::kWifiPhyMode, physical_mode_);
   }
+  adaptor()->EmitUint16sChanged(kWifiFrequencyListProperty, frequency_list_);
   SetStrength(SignalToStrength(signal));
   UpdateSecurity();
 }

@@ -1549,6 +1549,65 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, WarningOnDisconnect) {
   service->RemoveEndpoint(ok_endpoint);
 }
 
+MATCHER_P(IsSetwiseEqual, expected_set, "") {
+  set<uint16> arg_set(arg.begin(), arg.end());
+  return arg_set == expected_set;
+}
+
+TEST_F(WiFiServiceUpdateFromEndpointsTest, FrequencyList) {
+  EXPECT_CALL(adaptor, EmitUint16Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitStringChanged(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitUint8Changed(_, _)).Times(AnyNumber());
+  EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
+
+  // No endpoints -> empty list.
+  EXPECT_EQ(vector<uint16>(), service->frequency_list());
+
+  // Add endpoint -> endpoint's frequency in list.
+  EXPECT_CALL(adaptor, EmitUint16sChanged(
+      kWifiFrequencyListProperty, vector<uint16>{kGoodEndpointFrequency}));
+  service->AddEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Add another endpoint -> both frequencies in list.
+  // Order doesn't matter.
+  set<uint16> expected_frequencies{kGoodEndpointFrequency,
+        kOkEndpointFrequency};
+  EXPECT_CALL(adaptor, EmitUint16sChanged(
+      kWifiFrequencyListProperty, IsSetwiseEqual(expected_frequencies)));
+  service->AddEndpoint(ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Remove endpoint -> other endpoint's frequency remains.
+  EXPECT_CALL(adaptor, EmitUint16sChanged(
+      kWifiFrequencyListProperty, vector<uint16>{kOkEndpointFrequency}));
+  service->RemoveEndpoint(good_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Endpoint with same frequency -> frequency remains.
+  // Notification may or may not occur -- don't care.
+  // Frequency may or may not be repeated in list -- don't care.
+  WiFiEndpointRefPtr same_freq_as_ok_endpoint = MakeOpenEndpoint(
+      simple_ssid_string(), "aa:bb:cc:dd:ee:ff", ok_endpoint->frequency(), 0);
+  service->AddEndpoint(same_freq_as_ok_endpoint);
+  EXPECT_THAT(service->frequency_list(),
+              IsSetwiseEqual(set<uint16>{kOkEndpointFrequency}));
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Remove endpoint with same frequency -> frequency remains.
+  // Notification may or may not occur -- don't care.
+  service->RemoveEndpoint(ok_endpoint);
+  EXPECT_EQ(vector<uint16>{same_freq_as_ok_endpoint->frequency()},
+            service->frequency_list());
+  Mock::VerifyAndClearExpectations(&adaptor);
+
+  // Remove last endpoint. Frequency list goes empty.
+  EXPECT_CALL(adaptor, EmitUint16sChanged(
+      kWifiFrequencyListProperty, vector<uint16>{}));
+  service->RemoveEndpoint(same_freq_as_ok_endpoint);
+  Mock::VerifyAndClearExpectations(&adaptor);
+}
+
 TEST_F(WiFiServiceTest, SecurityFromCurrentEndpoint) {
   WiFiServiceRefPtr service(MakeSimpleService(flimflam::kSecurityPsk));
   EXPECT_EQ(flimflam::kSecurityPsk, service->GetSecurity(NULL));

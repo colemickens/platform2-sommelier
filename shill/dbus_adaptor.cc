@@ -33,6 +33,7 @@ const char DBusAdaptor::kPathsSig[] = "ao";
 const char DBusAdaptor::kStringmapSig[] = "a{ss}";
 const char DBusAdaptor::kStringmapsSig[] = "aa{ss}";
 const char DBusAdaptor::kStringsSig[] = "as";
+const char DBusAdaptor::kUint16sSig[] = "aq";
 
 DBusAdaptor::DBusAdaptor(DBus::Connection* conn, const string &object_path)
     : DBus::ObjectAdaptor(*conn, object_path) {
@@ -73,6 +74,8 @@ bool DBusAdaptor::SetProperty(PropertyStore *store,
     ret = store->SetStringsProperty(name, value.operator vector<string>(), &e);
   else if (DBusAdaptor::IsUint16(value.signature()))
     ret = store->SetUint16Property(name, value.reader().get_uint16(), &e);
+  else if (DBusAdaptor::IsUint16s(value.signature()))
+    ret = store->SetUint16sProperty(name, value.operator vector<uint16>(), &e);
   else if (DBusAdaptor::IsUint32(value.signature()))
     ret = store->SetUint32Property(name, value.reader().get_uint32(), &e);
   else if (DBusAdaptor::IsUint64(value.signature()))
@@ -174,6 +177,13 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     ReadablePropertyConstIterator<uint16> it = store.GetUint16PropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
       (*out)[it.Key()] = Uint16ToVariant(it.value());
+    }
+  }
+  {
+    ReadablePropertyConstIterator<Uint16s> it =
+        store.GetUint16sPropertiesIter();
+    for ( ; !it.AtEnd(); it.Advance()) {
+      (*out)[it.Key()] = Uint16sToVariant(it.value());
     }
   }
   {
@@ -358,6 +368,14 @@ void DBusAdaptor::ArgsToKeyValueStore(
 }
 
 // static
+::DBus::Variant DBusAdaptor::Uint16sToVariant(const Uint16s &value) {
+  ::DBus::Variant v;
+  ::DBus::MessageIter writer = v.writer();
+  writer << value;
+  return v;
+}
+
+// static
 ::DBus::Variant DBusAdaptor::Uint32ToVariant(uint32 value) {
   ::DBus::Variant v;
   v.writer().append_uint32(value);
@@ -429,6 +447,11 @@ bool DBusAdaptor::IsStrings(::DBus::Signature signature) {
 // static
 bool DBusAdaptor::IsUint16(::DBus::Signature signature) {
   return signature == ::DBus::type<uint16>::sig();
+}
+
+// static
+bool DBusAdaptor::IsUint16s(::DBus::Signature signature) {
+  return signature == DBusAdaptor::kUint16sSig;
 }
 
 // static

@@ -1312,7 +1312,22 @@ Properties	boolean AutoConnect [readwrite]
 		uint16 WiFi.Frequency [readonly]
 
 			(WiFi only) The operating frequency in MHz of
-			the network.
+			the Service. If the Service is connected, this
+			is the frequency on which it is connected.
+			Otherwise, this is the frequency of the best
+			available BSS (roughly, AP) for this Service.
+
+		array{uint16} WiFi.FrequencyList [readonly]
+
+			(WiFi only) The operating frequencies in MHz of
+			the Service. This lists all of the frequencies
+			where this Service has recently been seen.
+
+			This list is not necessarily complete, as:
+			a) not all scans check every channel,
+			b) an AP may not have responded in time, and
+			c) some scan results may have expired from the
+                           cache.
 
 		string WiFi.PhyMode [readonly]
 

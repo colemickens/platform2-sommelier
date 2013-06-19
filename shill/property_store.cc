@@ -39,6 +39,7 @@ bool PropertyStore::Contains(const string &prop) const {
           ContainsKey(strings_properties_, prop) ||
           ContainsKey(uint8_properties_, prop) ||
           ContainsKey(uint16_properties_, prop) ||
+          ContainsKey(uint16s_properties_, prop) ||
           ContainsKey(uint32_properties_, prop) ||
           ContainsKey(uint64_properties_, prop) ||
           ContainsKey(rpc_identifier_properties_, prop) ||
@@ -115,6 +116,12 @@ bool PropertyStore::GetUint16Property(const string &name,
   return GetProperty(name, value, error, uint16_properties_, "a uint16");
 }
 
+bool PropertyStore::GetUint16sProperty(const string &name,
+                                       Uint16s *value,
+                                       Error *error) const {
+  return GetProperty(name, value, error, uint16s_properties_, "a uint16 list");
+}
+
 bool PropertyStore::GetUint32Property(const string &name,
                                       uint32 *value,
                                       Error *error) const {
@@ -184,6 +191,12 @@ bool PropertyStore::SetUint16Property(const string &name,
   return SetProperty(name, value, error, uint16_properties_, "a uint16");
 }
 
+bool PropertyStore::SetUint16sProperty(const string &name,
+                                       const vector<uint16> &value,
+                                       Error *error) {
+  return SetProperty(name, value, error, uint16s_properties_, "a uint16 list");
+}
+
 bool PropertyStore::SetUint32Property(const string &name,
                                       uint32 value,
                                       Error *error) {
@@ -226,6 +239,8 @@ bool PropertyStore::ClearProperty(const string &name, Error *error) {
     uint8_properties_[name]->Clear(error);
   } else if (ContainsKey(uint16_properties_, name)) {
     uint16_properties_[name]->Clear(error);
+  } else if (ContainsKey(uint16s_properties_, name)) {
+    uint16s_properties_[name]->Clear(error);
   } else if (ContainsKey(uint32_properties_, name)) {
     uint32_properties_[name]->Clear(error);
   } else if (ContainsKey(uint64_properties_, name)) {
@@ -308,6 +323,11 @@ ReadablePropertyConstIterator<uint8> PropertyStore::GetUint8PropertiesIter()
 ReadablePropertyConstIterator<uint16> PropertyStore::GetUint16PropertiesIter()
     const {
   return ReadablePropertyConstIterator<uint16>(uint16_properties_);
+}
+
+ReadablePropertyConstIterator<Uint16s> PropertyStore::GetUint16sPropertiesIter()
+    const {
+  return ReadablePropertyConstIterator<Uint16s>(uint16s_properties_);
 }
 
 ReadablePropertyConstIterator<uint32> PropertyStore::GetUint32PropertiesIter()
@@ -494,6 +514,13 @@ void PropertyStore::RegisterUint16(const string &name, uint16 *prop) {
   uint16_properties_[name] = Uint16Accessor(new PropertyAccessor<uint16>(prop));
 }
 
+void PropertyStore::RegisterUint16s(const string &name, Uint16s *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint16s_properties_, name))
+      << "(Already registered " << name << ")";
+  uint16s_properties_[name] =
+      Uint16sAccessor(new PropertyAccessor<Uint16s>(prop));
+}
+
 void PropertyStore::RegisterUint32(const std::string &name, uint32 *prop) {
   DCHECK(!Contains(name) || ContainsKey(uint32_properties_, name))
       << "(Already registered " << name << ")";
@@ -506,6 +533,14 @@ void PropertyStore::RegisterConstUint16(const string &name,
       << "(Already registered " << name << ")";
   uint16_properties_[name] =
       Uint16Accessor(new ConstPropertyAccessor<uint16>(prop));
+}
+
+void PropertyStore::RegisterConstUint16s(const string &name,
+                                         const Uint16s *prop) {
+  DCHECK(!Contains(name) || ContainsKey(uint16s_properties_, name))
+      << "(Already registered " << name << ")";
+  uint16s_properties_[name] =
+      Uint16sAccessor(new ConstPropertyAccessor<Uint16s>(prop));
 }
 
 void PropertyStore::RegisterWriteOnlyUint16(const string &name, uint16 *prop) {

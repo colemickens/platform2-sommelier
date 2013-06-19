@@ -45,6 +45,12 @@ void ServiceDBusAdaptor::EmitUint16Changed(const string &name, uint16 value) {
   PropertyChanged(name, DBusAdaptor::Uint16ToVariant(value));
 }
 
+void ServiceDBusAdaptor::EmitUint16sChanged(const string &name,
+                                            const Uint16s &value) {
+  SLOG(DBus, 2) << __func__ << ": " << name;
+  PropertyChanged(name, DBusAdaptor::Uint16sToVariant(value));
+}
+
 void ServiceDBusAdaptor::EmitUintChanged(const string &name, uint32 value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::Uint32ToVariant(value));

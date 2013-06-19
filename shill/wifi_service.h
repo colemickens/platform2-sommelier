@@ -89,6 +89,7 @@ class WiFiService : public Service {
   const std::string &key_management() const { return GetEAPKeyManagement(); }
   const std::vector<uint8_t> &ssid() const { return ssid_; }
   const std::string &bssid() const { return bssid_; }
+  const std::vector<uint16> &frequency_list() const { return frequency_list_; }
   uint16 physical_mode() const { return physical_mode_; }
 
   // WiFi services can load from profile entries other than their current
@@ -239,6 +240,7 @@ class WiFiService : public Service {
   std::string auth_mode_;
   bool hidden_ssid_;
   uint16 frequency_;
+  std::vector<uint16> frequency_list_;
   uint16 physical_mode_;
   // The raw dBm signal strength from the associated endpoint.
   int16 raw_signal_strength_;

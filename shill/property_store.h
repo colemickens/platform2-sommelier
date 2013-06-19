@@ -52,6 +52,8 @@ class PropertyStore {
                         Error *error) const;
   bool GetUint16Property(const std::string &name, uint16 *value,
                          Error *error) const;
+  bool GetUint16sProperty(const std::string &name, Uint16s *value,
+                          Error *error) const;
   bool GetUint32Property(const std::string &name, uint32 *value,
                          Error *error) const;
   bool GetUint64Property(const std::string &name, uint64 *value,
@@ -106,6 +108,10 @@ class PropertyStore {
                                  uint16 value,
                                  Error *error);
 
+  virtual bool SetUint16sProperty(const std::string &name,
+                                  const std::vector<uint16> &value,
+                                  Error *error);
+
   virtual bool SetUint32Property(const std::string &name,
                                  uint32 value,
                                  Error *error);
@@ -149,6 +155,7 @@ class PropertyStore {
   ReadablePropertyConstIterator<Strings> GetStringsPropertiesIter() const;
   ReadablePropertyConstIterator<uint8> GetUint8PropertiesIter() const;
   ReadablePropertyConstIterator<uint16> GetUint16PropertiesIter() const;
+  ReadablePropertyConstIterator<Uint16s> GetUint16sPropertiesIter() const;
   ReadablePropertyConstIterator<uint32> GetUint32PropertiesIter() const;
   ReadablePropertyConstIterator<uint64> GetUint64PropertiesIter() const;
 
@@ -191,7 +198,9 @@ class PropertyStore {
   void RegisterConstUint8(const std::string &name, const uint8 *prop);
   void RegisterWriteOnlyUint8(const std::string &name, uint8 *prop);
   void RegisterUint16(const std::string &name, uint16 *prop);
+  void RegisterUint16s(const std::string &name, Uint16s *prop);
   void RegisterConstUint16(const std::string &name, const uint16 *prop);
+  void RegisterConstUint16s(const std::string &name, const Uint16s *prop);
   void RegisterWriteOnlyUint16(const std::string &name, uint16 *prop);
 
   void RegisterDerivedBool(const std::string &name,
@@ -249,6 +258,7 @@ class PropertyStore {
   std::map<std::string, StringsAccessor> strings_properties_;
   std::map<std::string, Uint8Accessor> uint8_properties_;
   std::map<std::string, Uint16Accessor> uint16_properties_;
+  std::map<std::string, Uint16sAccessor> uint16s_properties_;
   std::map<std::string, Uint32Accessor> uint32_properties_;
   std::map<std::string, Uint64Accessor> uint64_properties_;
 
