@@ -104,6 +104,166 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   return true;
 }
 
+void PerfSerializer::SerializePerfFileAttr(
+    const PerfFileAttr& perf_file_attr,
+    PerfDataProto_PerfFileAttr* perf_file_attr_proto) {
+  SerializePerfEventAttr(perf_file_attr.attr,
+                         perf_file_attr_proto->mutable_attr());
+  for (size_t i = 0; i < perf_file_attr.ids.size(); i++ )
+    perf_file_attr_proto->add_ids(perf_file_attr.ids[i]);
+}
+
+void PerfSerializer::DeserializePerfFileAttr(
+    const PerfDataProto_PerfFileAttr& perf_file_attr_proto,
+    PerfFileAttr* perf_file_attr) {
+  DeserializePerfEventAttr(perf_file_attr_proto.attr(), &perf_file_attr->attr);
+  for (int i = 0; i < perf_file_attr_proto.ids_size(); i++ )
+    perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
+}
+
+void PerfSerializer::SerializePerfEventAttr(
+    const perf_event_attr& perf_event_attr,
+    PerfDataProto_PerfEventAttr* perf_event_attr_proto) {
+#define S(x) perf_event_attr_proto->set_##x(perf_event_attr.x)
+  S(type);
+  S(size);
+  S(config);
+  if (perf_event_attr_proto->freq())
+    S(sample_freq);
+  else
+    S(sample_period);
+  S(sample_type);
+  S(read_format);
+  S(disabled);
+  S(inherit);
+  S(pinned);
+  S(exclusive);
+  S(exclude_user);
+  S(exclude_kernel);
+  S(exclude_hv);
+  S(exclude_idle);
+  S(mmap);
+  S(comm);
+  S(freq);
+  S(inherit_stat);
+  S(enable_on_exec);
+  S(task);
+  S(watermark);
+  S(precise_ip);
+  S(mmap_data);
+  S(sample_id_all);
+  S(exclude_host);
+  S(exclude_guest);
+  if (perf_event_attr_proto->watermark())
+    S(wakeup_watermark);
+  else
+    S(wakeup_events);
+  S(bp_type);
+  S(bp_len);
+  S(branch_sample_type);
+#undef S
+}
+
+void PerfSerializer::DeserializePerfEventAttr(
+    const PerfDataProto_PerfEventAttr& perf_event_attr_proto,
+    perf_event_attr* perf_event_attr) {
+  memset(perf_event_attr, 0, sizeof(*perf_event_attr));
+#define S(x) perf_event_attr->x = perf_event_attr_proto.x()
+  S(type);
+  S(size);
+  S(config);
+  if (perf_event_attr->freq)
+    S(sample_freq);
+  else
+    S(sample_period);
+  S(sample_type);
+  S(read_format);
+  S(disabled);
+  S(inherit);
+  S(pinned);
+  S(exclusive);
+  S(exclude_user);
+  S(exclude_kernel);
+  S(exclude_hv);
+  S(exclude_idle);
+  S(mmap);
+  S(comm);
+  S(freq);
+  S(inherit_stat);
+  S(enable_on_exec);
+  S(task);
+  S(watermark);
+  S(precise_ip);
+  S(mmap_data);
+  S(sample_id_all);
+  S(exclude_host);
+  S(exclude_guest);
+  if (perf_event_attr->watermark)
+    S(wakeup_watermark);
+  else
+    S(wakeup_events);
+  S(bp_type);
+  S(bp_len);
+  S(branch_sample_type);
+#undef S
+}
+
+void PerfSerializer::SerializeEvent(
+    const ParsedEvent& event,
+    PerfDataProto_PerfEvent* event_proto) const {
+  SerializeEventHeader(event.raw_event->header, event_proto->mutable_header());
+  switch (event.raw_event->header.type) {
+    case PERF_RECORD_SAMPLE:
+      SerializeRecordSample(event, event_proto->mutable_sample_event());
+      break;
+    case PERF_RECORD_MMAP:
+      SerializeMMapSample(event, event_proto->mutable_mmap_event());
+      break;
+    case PERF_RECORD_COMM:
+      SerializeCommSample(event, event_proto->mutable_comm_event());
+      break;
+    case PERF_RECORD_EXIT:
+    case PERF_RECORD_FORK:
+      SerializeForkSample(event, event_proto->mutable_fork_event());
+      break;
+    case PERF_RECORD_LOST:
+    case PERF_RECORD_THROTTLE:
+    case PERF_RECORD_UNTHROTTLE:
+    case PERF_RECORD_READ:
+    case PERF_RECORD_MAX:
+    default:
+      break;
+  }
+}
+
+void PerfSerializer::DeserializeEvent(
+    const PerfDataProto_PerfEvent& event_proto,
+    ParsedEvent* event) const {
+  DeserializeEventHeader(event_proto.header(), &event->raw_event->header);
+  switch (event_proto.header().type()) {
+    case PERF_RECORD_SAMPLE:
+      DeserializeRecordSample(event_proto.sample_event(), event);
+      break;
+    case PERF_RECORD_MMAP:
+      DeserializeMMapSample(event_proto.mmap_event(), event);
+      break;
+    case PERF_RECORD_COMM:
+      DeserializeCommSample(event_proto.comm_event(), event);
+      break;
+    case PERF_RECORD_EXIT:
+    case PERF_RECORD_FORK:
+      DeserializeForkSample(event_proto.fork_event(), event);
+      break;
+    case PERF_RECORD_LOST:
+    case PERF_RECORD_THROTTLE:
+    case PERF_RECORD_UNTHROTTLE:
+    case PERF_RECORD_READ:
+    case PERF_RECORD_MAX:
+    default:
+      break;
+  }
+}
+
 void PerfSerializer::SerializeEventHeader(
     const perf_event_header& header,
     PerfDataProto_EventHeader* header_proto) const {
@@ -213,29 +373,6 @@ void PerfSerializer::DeserializeRecordSample(
   }
 }
 
-void PerfSerializer::SerializeCommSample(
-      const ParsedEvent& event,
-      PerfDataProto_CommEvent* sample) const {
-  const struct comm_event& comm = event.raw_event->comm;
-  sample->set_pid(comm.pid);
-  sample->set_tid(comm.tid);
-  sample->set_comm(comm.comm);
-  sample->set_comm_md5_prefix(Md5Prefix(comm.comm));
-
-  SerializeSampleInfo(event, sample->mutable_sample_info());
-}
-
-void PerfSerializer::DeserializeCommSample(
-    const PerfDataProto_CommEvent& sample,
-    ParsedEvent* event) const {
-  struct comm_event& comm = event->raw_event->comm;
-  comm.pid = sample.pid();
-  comm.tid = sample.tid();
-  snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
-
-  DeserializeSampleInfo(sample.sample_info(), event);
-}
-
 void PerfSerializer::SerializeMMapSample(
     const ParsedEvent& event,
     PerfDataProto_MMapEvent* sample) const {
@@ -261,6 +398,29 @@ void PerfSerializer::DeserializeMMapSample(
   mmap.len = sample.len();
   mmap.pgoff = sample.pgoff();
   snprintf(mmap.filename, PATH_MAX, "%s", sample.filename().c_str());
+
+  DeserializeSampleInfo(sample.sample_info(), event);
+}
+
+void PerfSerializer::SerializeCommSample(
+      const ParsedEvent& event,
+      PerfDataProto_CommEvent* sample) const {
+  const struct comm_event& comm = event.raw_event->comm;
+  sample->set_pid(comm.pid);
+  sample->set_tid(comm.tid);
+  sample->set_comm(comm.comm);
+  sample->set_comm_md5_prefix(Md5Prefix(comm.comm));
+
+  SerializeSampleInfo(event, sample->mutable_sample_info());
+}
+
+void PerfSerializer::DeserializeCommSample(
+    const PerfDataProto_CommEvent& sample,
+    ParsedEvent* event) const {
+  struct comm_event& comm = event->raw_event->comm;
+  comm.pid = sample.pid();
+  comm.tid = sample.tid();
+  snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
 
   DeserializeSampleInfo(sample.sample_info(), event);
 }
@@ -324,62 +484,6 @@ void PerfSerializer::DeserializeSampleInfo(
     perf_sample.cpu = sample_info.cpu();
 }
 
-void PerfSerializer::DeserializeEvent(
-    const PerfDataProto_PerfEvent& event_proto,
-    ParsedEvent* event) const {
-  DeserializeEventHeader(event_proto.header(), &event->raw_event->header);
-  switch (event_proto.header().type()) {
-    case PERF_RECORD_SAMPLE:
-      DeserializeRecordSample(event_proto.sample_event(), event);
-      break;
-    case PERF_RECORD_MMAP:
-      DeserializeMMapSample(event_proto.mmap_event(), event);
-      break;
-    case PERF_RECORD_COMM:
-      DeserializeCommSample(event_proto.comm_event(), event);
-      break;
-    case PERF_RECORD_EXIT:
-    case PERF_RECORD_FORK:
-      DeserializeForkSample(event_proto.fork_event(), event);
-      break;
-    case PERF_RECORD_LOST:
-    case PERF_RECORD_THROTTLE:
-    case PERF_RECORD_UNTHROTTLE:
-    case PERF_RECORD_READ:
-    case PERF_RECORD_MAX:
-    default:
-      break;
-  }
-}
-
-void PerfSerializer::SerializeEvent(
-    const ParsedEvent& event,
-    PerfDataProto_PerfEvent* event_proto) const {
-  SerializeEventHeader(event.raw_event->header, event_proto->mutable_header());
-  switch (event.raw_event->header.type) {
-    case PERF_RECORD_SAMPLE:
-      SerializeRecordSample(event, event_proto->mutable_sample_event());
-      break;
-    case PERF_RECORD_MMAP:
-      SerializeMMapSample(event, event_proto->mutable_mmap_event());
-      break;
-    case PERF_RECORD_COMM:
-      SerializeCommSample(event, event_proto->mutable_comm_event());
-      break;
-    case PERF_RECORD_EXIT:
-    case PERF_RECORD_FORK:
-      SerializeForkSample(event, event_proto->mutable_fork_event());
-      break;
-    case PERF_RECORD_LOST:
-    case PERF_RECORD_THROTTLE:
-    case PERF_RECORD_UNTHROTTLE:
-    case PERF_RECORD_READ:
-    case PERF_RECORD_MAX:
-    default:
-      break;
-  }
-}
-
 void PerfSerializer::SerializeSingleStringMetadata(
     const PerfStringMetadata& metadata,
     PerfDataProto_PerfStringMetadata* proto_metadata) const {
@@ -394,110 +498,6 @@ void PerfSerializer::DeserializeSingleStringMetadata(
   metadata->data = proto_metadata.data();
   metadata->len = kStringMetadataBufferSize;
   metadata->size = metadata->len + sizeof(metadata->len);
-}
-
-void PerfSerializer::DeserializePerfEventAttr(
-    const PerfDataProto_PerfEventAttr& perf_event_attr_proto,
-    perf_event_attr* perf_event_attr) {
-  memset(perf_event_attr, 0, sizeof(*perf_event_attr));
-#define S(x) perf_event_attr->x = perf_event_attr_proto.x()
-  S(type);
-  S(size);
-  S(config);
-  if (perf_event_attr->freq)
-    S(sample_freq);
-  else
-    S(sample_period);
-  S(sample_type);
-  S(read_format);
-  S(disabled);
-  S(inherit);
-  S(pinned);
-  S(exclusive);
-  S(exclude_user);
-  S(exclude_kernel);
-  S(exclude_hv);
-  S(exclude_idle);
-  S(mmap);
-  S(comm);
-  S(freq);
-  S(inherit_stat);
-  S(enable_on_exec);
-  S(task);
-  S(watermark);
-  S(precise_ip);
-  S(mmap_data);
-  S(sample_id_all);
-  S(exclude_host);
-  S(exclude_guest);
-  if (perf_event_attr->watermark)
-    S(wakeup_watermark);
-  else
-    S(wakeup_events);
-  S(bp_type);
-  S(bp_len);
-  S(branch_sample_type);
-#undef S
-}
-
-void PerfSerializer::SerializePerfEventAttr(
-    const perf_event_attr& perf_event_attr,
-    PerfDataProto_PerfEventAttr* perf_event_attr_proto) {
-#define S(x) perf_event_attr_proto->set_##x(perf_event_attr.x)
-  S(type);
-  S(size);
-  S(config);
-  if (perf_event_attr_proto->freq())
-    S(sample_freq);
-  else
-    S(sample_period);
-  S(sample_type);
-  S(read_format);
-  S(disabled);
-  S(inherit);
-  S(pinned);
-  S(exclusive);
-  S(exclude_user);
-  S(exclude_kernel);
-  S(exclude_hv);
-  S(exclude_idle);
-  S(mmap);
-  S(comm);
-  S(freq);
-  S(inherit_stat);
-  S(enable_on_exec);
-  S(task);
-  S(watermark);
-  S(precise_ip);
-  S(mmap_data);
-  S(sample_id_all);
-  S(exclude_host);
-  S(exclude_guest);
-  if (perf_event_attr_proto->watermark())
-    S(wakeup_watermark);
-  else
-    S(wakeup_events);
-  S(bp_type);
-  S(bp_len);
-  S(branch_sample_type);
-#undef S
-}
-
-void PerfSerializer::SerializePerfFileAttr(
-    const PerfFileAttr& perf_file_attr,
-    PerfDataProto_PerfFileAttr* perf_file_attr_proto) {
-  SerializePerfEventAttr(perf_file_attr.attr,
-                         perf_file_attr_proto->mutable_attr());
-  for (size_t i = 0; i < perf_file_attr.ids.size(); i++ )
-    perf_file_attr_proto->add_ids(perf_file_attr.ids[i]);
-}
-
-void PerfSerializer::DeserializePerfFileAttr(
-    const PerfDataProto_PerfFileAttr& perf_file_attr_proto,
-    PerfFileAttr* perf_file_attr) {
-  DeserializePerfEventAttr(perf_file_attr_proto.attr(), &perf_file_attr->attr);
-  for (int i = 0; i < perf_file_attr_proto.ids_size(); i++ )
-    perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
 }
 
 void PerfSerializer::SetRawEventsAndSampleInfos(size_t num_events) {

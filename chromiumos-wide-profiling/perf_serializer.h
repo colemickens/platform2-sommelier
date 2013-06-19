@@ -36,6 +36,20 @@ class PerfSerializer : public PerfParser {
   bool Deserialize(const quipper::PerfDataProto& perf_data_proto);
 
  private:
+  void SerializePerfFileAttr(
+      const PerfFileAttr& perf_file_attr,
+      quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
+  void DeserializePerfFileAttr(
+      const quipper::PerfDataProto_PerfFileAttr& perf_file_attr_proto,
+      PerfFileAttr* perf_file_attr);
+
+  void SerializePerfEventAttr(
+      const perf_event_attr& perf_event_attr,
+      quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
+  void DeserializePerfEventAttr(
+      const quipper::PerfDataProto_PerfEventAttr& perf_event_attr_proto,
+      perf_event_attr* perf_event_attr);
+
   void SerializeEvent(const ParsedEvent& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
   void DeserializeEvent(
@@ -61,18 +75,17 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_MMapEvent& sample,
       ParsedEvent* event) const;
 
+  void SerializeCommSample(
+      const ParsedEvent& event,
+      quipper::PerfDataProto_CommEvent* sample) const;
+  void DeserializeCommSample(
+      const quipper::PerfDataProto_CommEvent& sample,
+      ParsedEvent* event) const;
+
   void SerializeForkSample(const ParsedEvent& event,
                            quipper::PerfDataProto_ForkEvent* sample) const;
   void DeserializeForkSample(
       const quipper::PerfDataProto_ForkEvent& sample,
-      ParsedEvent* event) const;
-
-  void SerializeCommSample(
-      const ParsedEvent& event,
-      quipper::PerfDataProto_CommEvent* sample) const;
-
-  void DeserializeCommSample(
-      const quipper::PerfDataProto_CommEvent& sample,
       ParsedEvent* event) const;
 
   void SerializeSampleInfo(
@@ -88,20 +101,6 @@ class PerfSerializer : public PerfParser {
   void DeserializeSingleStringMetadata(
       const PerfDataProto_PerfStringMetadata& proto_metadata,
       PerfStringMetadata* metadata) const;
-
-  void SerializePerfEventAttr(
-      const perf_event_attr& perf_event_attr,
-      quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
-  void DeserializePerfEventAttr(
-      const quipper::PerfDataProto_PerfEventAttr& perf_event_attr_proto,
-      perf_event_attr* perf_event_attr);
-
-  void SerializePerfFileAttr(
-      const PerfFileAttr& perf_file_attr,
-      quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
-  void DeserializePerfFileAttr(
-      const quipper::PerfDataProto_PerfFileAttr& perf_file_attr_proto,
-      PerfFileAttr* perf_file_attr);
 
   // Populates |parsed_events_| with pointers event_t and perf_sample structs in
   // each corresponding |events_| struct.
@@ -129,19 +128,19 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   return true; \
 }
 
-  DESERIALIZEVECTORFUNCTION(DeserializePerfFileAttrs, PerfFileAttr,
-                            quipper::PerfDataProto_PerfFileAttr,
-                            DeserializePerfFileAttr)
   SERIALIZEVECTORFUNCTION(SerializePerfFileAttrs, PerfFileAttr,
                           quipper::PerfDataProto_PerfFileAttr,
                           SerializePerfFileAttr)
+  DESERIALIZEVECTORFUNCTION(DeserializePerfFileAttrs, PerfFileAttr,
+                            quipper::PerfDataProto_PerfFileAttr,
+                            DeserializePerfFileAttr)
 
-  DESERIALIZEVECTORFUNCTION(DeserializeEvents, ParsedEvent,
-                            quipper::PerfDataProto_PerfEvent,
-                            DeserializeEvent)
   SERIALIZEVECTORFUNCTION(SerializeEvents, ParsedEvent,
                           quipper::PerfDataProto_PerfEvent,
                           SerializeEvent)
+  DESERIALIZEVECTORFUNCTION(DeserializeEvents, ParsedEvent,
+                            quipper::PerfDataProto_PerfEvent,
+                            DeserializeEvent)
 
   SERIALIZEVECTORFUNCTION(SerializeStringMetadata, PerfStringMetadata,
                           quipper::PerfDataProto_PerfStringMetadata,
