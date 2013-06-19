@@ -18,10 +18,11 @@ ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1446", GOTO="mist_switch_device"
 
 GOTO="mist_end"
 
-# Invoke mist to switch a supported USB device into a modem.
-# Also set MIST_SUPPORTED_DEVICE to 1 to tell cros-disks to hide this device
-# from being auto-mounted.
+# Invoke mist to switch a supported USB device into a modem. mist needs to run
+# as a daemon in order to monitor udev events to determine when the device is
+# switched into a modem. Also set MIST_SUPPORTED_DEVICE to 1 to tell cros-disks
+# to hide this device from being auto-mounted.
 LABEL="mist_switch_device"
-ENV{MIST_SUPPORTED_DEVICE}="1", RUN+="/usr/bin/mist switch %S%p"
+ENV{MIST_SUPPORTED_DEVICE}="1", RUN+="/usr/bin/mist --daemon switch %S%p"
 
 LABEL="mist_end"

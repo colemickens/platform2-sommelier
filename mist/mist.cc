@@ -31,11 +31,11 @@ namespace {
 
 const int kDefaultLogLevel = 0;  // LOG(INFO)
 
-const char kCommandDaemon[] = "daemon";
-const char kCommandDebug[] = "debug";
 const char kCommandIsSupported[] = "is-supported";
+const char kCommandMonitor[] = "monitor";
 const char kCommandSwitch[] = "switch";
 
+const char kSwitchDaemon[] = "daemon";
 const char kSwitchLogLevel[] = "log-level";
 const char kSwitchHelp[] = "help";
 
@@ -45,12 +45,12 @@ const char kUsageMessage[] =
     "mist is a utility for switching 3G/4G USB dongles into the modem mode.\n"
     "\n"
     "Available commands:\n"
-    "  daemon                   Run mist in daemon mode.\n"
-    "  debug                    Run mist in foreground debug mode.\n"
     "  is-supported <sys-path>  Query if device on <sys-path> is supported.\n"
+    "  monitor                  Monitor and switch new devices to modem mode.\n"
     "  switch <sys-path>        Switch device on <sys-path> to modem mode.\n"
     "\n"
     "Available switches:\n"
+    "  --daemon                 Run in daemon mode.\n"
     "  --log-level=<level>      Set the logging level. Levels are:\n"
     "                              2: LOG(ERROR)\n"
     "                              1: LOG(WARNING)\n"
@@ -92,7 +92,7 @@ int Mist::Run(CommandLine* command_line) {
   const string& command = arguments[0];
 
   int log_flags = chromeos::kLogToSyslog;
-  if (command == kCommandDaemon) {
+  if (command_line->HasSwitch(kSwitchDaemon)) {
     PLOG_IF(FATAL, ::daemon(0, 0) == 1) << "Could not create a daemon.";
   } else {
     log_flags |= chromeos::kLogToStderr;
@@ -104,9 +104,8 @@ int Mist::Run(CommandLine* command_line) {
   if (!context.Initialize())
     return EXIT_FAILURE;
 
-  // Command: daemon
-  // Command: debug
-  if (command == kCommandDaemon || command == kCommandDebug) {
+  // Command: monitor
+  if (command == kCommandMonitor) {
     // TODO(benchan): Handle SIGINT and SIGTERM.
     UsbModemSwitcher switcher(&context);
     switcher.Start();
