@@ -23,7 +23,7 @@ const uint64 kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
-// Currently, we support hostname, osrelease, version, arch, cpudesck,
+// Currently, we support hostname, osrelease, version, arch, cpudesc,
 // and branchstack.
 // The mask is computed as (1 << HEADER_HOSTNAME) |
 // (1 << HEADER_OSRELEASE) | ... | (1 << HEADER_BRANCH_STACK)
@@ -500,7 +500,7 @@ bool PerfReader::ReadFileData(const std::vector<char>& data) {
 
 bool PerfReader::WriteFile(const string& filename) {
   if (!RegenerateHeader())
-    return false;;
+    return false;
 
   // Compute the total perf file data to be written;
   size_t total_size = 0;
@@ -533,12 +533,13 @@ bool PerfReader::WriteFile(const string& filename) {
 }
 
 bool PerfReader::RegenerateHeader() {
-  // This is the order of the input perf file contents:
+  // This is the order of the input perf file contents in normal mode:
   // 1. Header
   // 2. Attribute IDs (pointed to by attr.ids.offset)
   // 3. Attributes
   // 4. Event types
   // 5. Data
+  // 6. Metadata
 
   // Compute offsets in the above order.
   memset(&out_header_, 0, sizeof(out_header_));
@@ -744,6 +745,7 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
 bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
+  metadata_mask_ = 0;
   while (offset < data.size() && result) {
     union piped_data_block {
       // Generic format of a piped perf data block, with header + more data.
@@ -800,6 +802,31 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     case PERF_RECORD_HEADER_EVENT_DESC:
       result = ReadEventDescEventBlock(block.event_desc_event);
       break;
+    case PERF_RECORD_HEADER_HOSTNAME:
+      metadata_mask_ |= (1 << HEADER_HOSTNAME);
+      block.header.type = HEADER_HOSTNAME;
+      result = ReadPipedStringMetadata(block.header, block.more_data);
+      break;
+    case PERF_RECORD_HEADER_OSRELEASE:
+      metadata_mask_ |= (1 << HEADER_OSRELEASE);
+      block.header.type = HEADER_OSRELEASE;
+      result = ReadPipedStringMetadata(block.header, block.more_data);
+      break;
+    case PERF_RECORD_HEADER_VERSION:
+      metadata_mask_ |= (1 << HEADER_VERSION);
+      block.header.type = HEADER_VERSION;
+      result = ReadPipedStringMetadata(block.header, block.more_data);
+      break;
+    case PERF_RECORD_HEADER_ARCH:
+      metadata_mask_ |= (1 << HEADER_ARCH);
+      block.header.type = HEADER_ARCH;
+      result = ReadPipedStringMetadata(block.header, block.more_data);
+      break;
+    case PERF_RECORD_HEADER_CPUDESC:
+      metadata_mask_ |= (1 << HEADER_CPUDESC);
+      block.header.type = HEADER_CPUDESC;
+      result = ReadPipedStringMetadata(block.header, block.more_data);
+      break;
     default:
       LOG(WARNING) << "Event type " << block.header.type
                    << " is not yet supported!";
@@ -807,6 +834,23 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     }
   }
   return result;
+}
+
+bool PerfReader::ReadPipedStringMetadata(const perf_event_header& header,
+                                         const char* data) {
+  PerfStringMetadata str_data;
+  str_data.type = header.type;
+  str_data.size = header.size;
+
+  str_data.len = *(reinterpret_cast<const u32*>(data));
+  size_t offset = sizeof(str_data.len) / sizeof(data[offset]);
+  str_data.data = string(&data[offset]);
+
+  if (is_cross_endian_)
+    ByteSwap(&str_data.len);
+
+  string_metadata_.push_back(str_data);
+  return true;
 }
 
 bool PerfReader::WriteHeader(std::vector<char>* data) const {
@@ -869,9 +913,6 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
 }
 
 bool PerfReader::WriteMetadata(std::vector<char>* data) const {
-  //TODO: Remove once we support metadata for piped data
-  if (string_metadata_.size() == 0)
-    return true;
   size_t header_offset = out_header_.data.offset + out_header_.data.size;
   // Before writing the metadata, there is one header for each piece
   // of metadata, and one extra showing the end of the file.

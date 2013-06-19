@@ -29,7 +29,15 @@ bool CreateNamedTempFile(string* name);
 
 // Returns true if the perf reports show the same summary.  Metadata
 // is compared if it is present in kSupportedMetadata in utils.cc.
-bool ComparePerfReports(const string& a, const string& b);
+bool ComparePerfReports(const string& quipper_input,
+                        const string& quipper_output);
+
+// Similar to ComparePerfReports, but for piped perf data files.
+// Warning: This is not commutative - |quipper_input| must be the piped perf
+// data file passed to quipper, and |quipper_output| must be the file written
+// by quipper.
+bool ComparePipedPerfReports(const string& quipper_input,
+                             const string& quipper_output);
 
 // Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple
 // of |align_size| that can fit |size|.

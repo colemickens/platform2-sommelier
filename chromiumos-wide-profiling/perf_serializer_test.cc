@@ -161,6 +161,16 @@ TEST(PerfSerializerTest, TestRemap) {
     const string output_perf_data = input_perf_data + ".ser.remap.out";
     SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
+
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfPipedCrossEndianDataFiles);
+       ++i) {
+    const string input_perf_data =
+        perf_test_files::kPerfPipedCrossEndianDataFiles[i];
+    LOG(INFO) << "Testing " << input_perf_data;
+    const string output_perf_data = input_perf_data + ".ser.remap.out";
+    SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
+  }
 }
 
 }  // namespace quipper

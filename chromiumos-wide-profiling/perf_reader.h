@@ -81,6 +81,10 @@ class PerfReader {
   // Read perf data from piped perf output data.
   bool ReadPipedData(const std::vector<char>& data);
 
+  // For reading the various formats of piped metadata.
+  bool ReadPipedStringMetadata(const perf_event_header& header,
+                               const char* data);
+
   bool WriteHeader(std::vector<char>* data) const;
   bool WriteAttrs(std::vector<char>* data) const;
   bool WriteEventTypes(std::vector<char>* data) const;
