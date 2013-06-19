@@ -768,6 +768,18 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       ByteSwap(&block.header.misc);
       ByteSwap(&block.header.size);
     }
+
+    if (data.size() < offset + block.header.size) {
+      LOG(ERROR) << "Not enough bytes to read piped event";
+      return false;
+    }
+
+    // The code currently assumes that the event will never be larger
+    // than the largest event in the piped_data_block union.
+    // If this is not true (i.e. there is a larger event we don't deal
+    // with), the following CHECK will fail.
+    CHECK_LE(block.header.size, sizeof(block));
+
     // Copy the rest of the data.
     memcpy(&block.more_data,
            block_data->more_data,
