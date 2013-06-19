@@ -27,6 +27,7 @@ TEST(PerfReaderTest, Test1Cycle) {
     ASSERT_TRUE(pr.WriteFile(output_perf_data));
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
+    EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
   }
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);

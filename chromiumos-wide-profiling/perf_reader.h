@@ -37,6 +37,12 @@ struct PerfMetadata {
   PerfMetadata() {}
 };
 
+struct PerfBuildIDMetadata : public PerfMetadata {
+  std::vector<build_id_event*> events;
+
+  PerfBuildIDMetadata() : PerfMetadata() {}
+};
+
 // Based on code in tools/perf/util/header.c, the metadata for strings
 // (hostname, osrelease, etc.) is of the following format:
 struct PerfStringMetadata : public PerfMetadata {
@@ -80,6 +86,8 @@ class PerfReader {
   bool ReadMetadata(const std::vector<char>& data);
 
   // For reading the various formats of metadata.
+  bool ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
+                           size_t offset, size_t size);
   bool ReadStringMetadata(const std::vector<char>& data, u32 type,
                           size_t offset, size_t size);
 
@@ -97,6 +105,9 @@ class PerfReader {
   bool WriteMetadata(std::vector<char>* data) const;
 
   // For writing the various types of metadata.
+  bool WriteBuildIDMetadata(u32 type, size_t offset,
+                            const PerfMetadata** metadata_handle,
+                            std::vector<char>* data) const;
   bool WriteStringMetadata(u32 type, size_t offset,
                            const PerfMetadata** metadata_handle,
                            std::vector<char>* data) const;
@@ -107,9 +118,13 @@ class PerfReader {
   bool ReadEventDescEventBlock(const struct event_desc_event& event_desc_event);
   bool ReadPerfEventBlock(const event_t& event);
 
+  // Returns the number of types of metadata stored.
+  size_t GetNumMetadata() const;
+
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;
   std::vector<PerfEventAndSampleInfo> events_;
+  PerfBuildIDMetadata build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   uint64 sample_type_;
   uint64 metadata_mask_;

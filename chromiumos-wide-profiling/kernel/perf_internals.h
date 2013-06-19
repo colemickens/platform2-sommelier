@@ -188,6 +188,23 @@ struct sample_event{
 	u64 array[];
 };
 
+// Taken from tools/perf/util/include/linux/kernel.h
+#define ALIGN(x,a)		__ALIGN_MASK(x,(typeof(x))(a)-1)
+#define __ALIGN_MASK(x,mask)	(((x)+(mask))&~(mask))
+
+#define BUILD_ID_SIZE 20
+
+struct build_id_event {
+	struct perf_event_header header;
+	pid_t			 pid;
+	u8			 build_id[ALIGN(BUILD_ID_SIZE, sizeof(u64))];
+	char			 filename[];
+};
+
+#undef ALIGN
+#undef __ALIGN_MASK
+#undef BUILD_ID_SIZE
+
 typedef union event_union {
 	struct perf_event_header	header;
 	struct ip_event			ip;
@@ -197,6 +214,7 @@ typedef union event_union {
 	struct lost_event		lost;
 	struct read_event		read;
 	struct sample_event		sample;
+	struct build_id_event		build_id;
 } event_t;
 
 struct ip_callchain {

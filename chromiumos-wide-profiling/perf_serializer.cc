@@ -14,12 +14,6 @@
 
 namespace quipper {
 
-namespace {
-
-const size_t kStringMetadataBufferSize = 64;
-
-}  // namespace
-
 PerfSerializer::PerfSerializer() {
 }
 
@@ -43,6 +37,8 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
 
   perf_data_proto->add_metadata_mask(metadata_mask_);
 
+  SerializeBuildIDs(build_id_events_,
+                    perf_data_proto->mutable_build_ids());
   SerializeStringMetadata(string_metadata_,
                           perf_data_proto->mutable_string_metadata());
 
@@ -86,6 +82,8 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
 
   metadata_mask_ = perf_data_proto.metadata_mask(0);
 
+  DeserializeBuildIDs(perf_data_proto.build_ids(),
+                      &build_id_events_);
   DeserializeStringMetadata(perf_data_proto.string_metadata(),
                             &string_metadata_);
 
@@ -106,7 +104,7 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
 
 void PerfSerializer::SerializePerfFileAttr(
     const PerfFileAttr& perf_file_attr,
-    PerfDataProto_PerfFileAttr* perf_file_attr_proto) {
+    PerfDataProto_PerfFileAttr* perf_file_attr_proto) const {
   SerializePerfEventAttr(perf_file_attr.attr,
                          perf_file_attr_proto->mutable_attr());
   for (size_t i = 0; i < perf_file_attr.ids.size(); i++ )
@@ -115,7 +113,7 @@ void PerfSerializer::SerializePerfFileAttr(
 
 void PerfSerializer::DeserializePerfFileAttr(
     const PerfDataProto_PerfFileAttr& perf_file_attr_proto,
-    PerfFileAttr* perf_file_attr) {
+    PerfFileAttr* perf_file_attr) const {
   DeserializePerfEventAttr(perf_file_attr_proto.attr(), &perf_file_attr->attr);
   for (int i = 0; i < perf_file_attr_proto.ids_size(); i++ )
     perf_file_attr->ids.push_back(perf_file_attr_proto.ids(i));
@@ -123,7 +121,7 @@ void PerfSerializer::DeserializePerfFileAttr(
 
 void PerfSerializer::SerializePerfEventAttr(
     const perf_event_attr& perf_event_attr,
-    PerfDataProto_PerfEventAttr* perf_event_attr_proto) {
+    PerfDataProto_PerfEventAttr* perf_event_attr_proto) const {
 #define S(x) perf_event_attr_proto->set_##x(perf_event_attr.x)
   S(type);
   S(size);
@@ -166,7 +164,7 @@ void PerfSerializer::SerializePerfEventAttr(
 
 void PerfSerializer::DeserializePerfEventAttr(
     const PerfDataProto_PerfEventAttr& perf_event_attr_proto,
-    perf_event_attr* perf_event_attr) {
+    perf_event_attr* perf_event_attr) const {
   memset(perf_event_attr, 0, sizeof(*perf_event_attr));
 #define S(x) perf_event_attr->x = perf_event_attr_proto.x()
   S(type);
@@ -484,6 +482,57 @@ void PerfSerializer::DeserializeSampleInfo(
     perf_sample.cpu = sample_info.cpu();
 }
 
+void PerfSerializer::SerializeBuildIDs(
+    const PerfBuildIDMetadata& from,
+    ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
+  SerializeBuildIDEvents(from.events, to);
+}
+
+void PerfSerializer::DeserializeBuildIDs(
+    const ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
+    PerfBuildIDMetadata* to) const {
+  // Free any existing build id events.
+  for (size_t i = 0; i < to->events.size(); ++i)
+    free(to->events[i]);
+  to->events.clear();
+
+  to->type = HEADER_BUILD_ID;
+  DeserializeBuildIDEvents(from, &to->events);
+
+  to->size = 0;
+  for (size_t i = 0; i < to->events.size(); ++i)
+    to->size += to->events[i]->header.size;
+}
+
+void PerfSerializer::SerializeBuildIDEvent(
+    build_id_event* const& from,
+    PerfDataProto_PerfBuildID* to) const {
+  to->set_misc(from->header.misc);
+  to->set_pid(from->pid);
+  to->set_build_id(from->build_id, sizeof(from->build_id));
+  to->set_filename(from->filename);
+}
+
+void PerfSerializer::DeserializeBuildIDEvent(
+    const PerfDataProto_PerfBuildID& from,
+    build_id_event** to) const {
+  const string& filename = from.filename();
+  size_t size = sizeof(build_id_event) + GetUint64AlignedStringLength(filename);
+
+  build_id_event* event = (build_id_event*) malloc(size);
+  memset(event, 0, size);
+  *to = event;
+  event->header.type = PERF_RECORD_HEADER_BUILD_ID;
+  event->header.size = size;
+  event->header.misc = from.misc();
+  event->pid = from.pid();
+  memcpy(event->build_id, from.build_id().c_str(), sizeof(event->build_id));
+
+  CHECK_GT(snprintf(event->filename, filename.size() + 1, "%s",
+                    filename.c_str()),
+           0);
+}
+
 void PerfSerializer::SerializeSingleStringMetadata(
     const PerfStringMetadata& metadata,
     PerfDataProto_PerfStringMetadata* proto_metadata) const {
@@ -496,7 +545,7 @@ void PerfSerializer::DeserializeSingleStringMetadata(
     PerfStringMetadata* metadata) const {
   metadata->type = proto_metadata.type();
   metadata->data = proto_metadata.data();
-  metadata->len = kStringMetadataBufferSize;
+  metadata->len = GetUint64AlignedStringLength(metadata->data);
   metadata->size = metadata->len + sizeof(metadata->len);
 }
 

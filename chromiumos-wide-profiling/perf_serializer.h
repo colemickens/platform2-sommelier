@@ -38,17 +38,17 @@ class PerfSerializer : public PerfParser {
  private:
   void SerializePerfFileAttr(
       const PerfFileAttr& perf_file_attr,
-      quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto);
+      quipper::PerfDataProto_PerfFileAttr* perf_file_attr_proto) const;
   void DeserializePerfFileAttr(
       const quipper::PerfDataProto_PerfFileAttr& perf_file_attr_proto,
-      PerfFileAttr* perf_file_attr);
+      PerfFileAttr* perf_file_attr) const;
 
   void SerializePerfEventAttr(
       const perf_event_attr& perf_event_attr,
-      quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto);
+      quipper::PerfDataProto_PerfEventAttr* perf_event_attr_proto) const;
   void DeserializePerfEventAttr(
       const quipper::PerfDataProto_PerfEventAttr& perf_event_attr_proto,
-      perf_event_attr* perf_event_attr);
+      perf_event_attr* perf_event_attr) const;
 
   void SerializeEvent(const ParsedEvent& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
@@ -95,6 +95,20 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_SampleInfo& info,
       ParsedEvent* event) const;
 
+  void SerializeBuildIDs(
+      const PerfBuildIDMetadata& from,
+      ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
+      const;
+  void DeserializeBuildIDs(
+      const
+      ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
+      PerfBuildIDMetadata* to) const;
+
+  void SerializeBuildIDEvent(build_id_event* const& from,
+                             PerfDataProto_PerfBuildID* to) const;
+  void DeserializeBuildIDEvent(const PerfDataProto_PerfBuildID& from,
+                               build_id_event** to) const;
+
   void SerializeSingleStringMetadata(
       const PerfStringMetadata& metadata,
       PerfDataProto_PerfStringMetadata* proto_metadata) const;
@@ -108,7 +122,7 @@ class PerfSerializer : public PerfParser {
 
 #define SERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
 bool name(const std::vector<vec_type>& from, \
-          ::google::protobuf::RepeatedPtrField<proto_type>* to) { \
+          ::google::protobuf::RepeatedPtrField<proto_type>* to) const { \
   to->Reserve(from.size()); \
   for (size_t i = 0; i < from.size(); i++) { \
     proto_type* to_element = to->Add(); \
@@ -121,7 +135,7 @@ bool name(const std::vector<vec_type>& from, \
 
 #define DESERIALIZEVECTORFUNCTION(name, vec_type, proto_type, function) \
 bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
-          std::vector<vec_type>* to) { \
+          std::vector<vec_type>* to) const { \
   to->resize(from.size()); \
   for (int i = 0; i < from.size(); i++) \
     function(from.Get(i), &to->at(i)); \
@@ -141,6 +155,13 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   DESERIALIZEVECTORFUNCTION(DeserializeEvents, ParsedEvent,
                             quipper::PerfDataProto_PerfEvent,
                             DeserializeEvent)
+
+  SERIALIZEVECTORFUNCTION(SerializeBuildIDEvents, build_id_event*,
+                          quipper::PerfDataProto_PerfBuildID,
+                          SerializeBuildIDEvent)
+  DESERIALIZEVECTORFUNCTION(DeserializeBuildIDEvents, build_id_event*,
+                            quipper::PerfDataProto_PerfBuildID,
+                            DeserializeBuildIDEvent)
 
   SERIALIZEVECTORFUNCTION(SerializeStringMetadata, PerfStringMetadata,
                           quipper::PerfDataProto_PerfStringMetadata,

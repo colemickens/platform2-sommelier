@@ -24,11 +24,11 @@ const uint64 kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
-// Currently, we support hostname, osrelease, version, arch, cpudesc,
+// Currently, we support build ids, hostname, osrelease, version, arch, cpudesc,
 // and branchstack.
-// The mask is computed as (1 << HEADER_HOSTNAME) |
-// (1 << HEADER_OSRELEASE) | ... | (1 << HEADER_BRANCH_STACK)
-const uint32 kSupportedMetadataMask = 0x8178;
+// The mask is computed as (1 << HEADER_BUILD_ID) |
+// (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
+const uint32 kSupportedMetadataMask = 0x817c;
 
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
@@ -54,6 +54,16 @@ void ByteSwap(T* input) {
     LOG(FATAL) << "Invalid size for byte swap: " << sizeof(T) << " bytes";
     break;
   }
+}
+
+// The code currently assumes that the compiler will not add any padding to the
+// build_id_event struct.  If this is not true, this CHECK will fail.
+void CheckNoBuildIDEventPadding() {
+  build_id_event event;
+  CHECK_EQ(sizeof(event),
+           sizeof(event.header.type) + sizeof(event.header.misc) +
+           sizeof(event.header.size) + sizeof(event.pid) +
+           sizeof(event.build_id));
 }
 
 bool ShouldWriteSampleInfoForEvent(const event_t& event) {
@@ -137,21 +147,6 @@ uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type) {
     LOG(FATAL) << "Unknown event type " << event_type;
   }
   return sample_type & mask;
-}
-
-// In perf data, strings are packed into the smallest number of 8-byte blocks
-// possible, including the null terminator.
-// e.g.
-//    "0123"                ->  5 bytes -> packed into  8 bytes
-//    "0123456"             ->  8 bytes -> packed into  8 bytes
-//    "01234567"            ->  9 bytes -> packed into 16 bytes
-//    "0123456789abcd"      -> 15 bytes -> packed into 16 bytes
-//    "0123456789abcde"     -> 16 bytes -> packed into 16 bytes
-//    "0123456789abcdef"    -> 17 bytes -> packed into 24 bytes
-//
-// This function returns the length of the 8-byte-aligned for storing |string|.
-size_t GetUint64AlignedStringLength(const char* string) {
-  return AlignSize(strlen(string) + 1, sizeof(uint64));
 }
 
 // Returns the offset in bytes within a perf event structure at which the raw
@@ -465,6 +460,9 @@ PerfReader::~PerfReader() {
     if (events_[i].sample_info.branch_stack)
       delete [] events_[i].sample_info.branch_stack;
   }
+
+  for (size_t i = 0; i < build_id_events_.events.size(); ++i)
+    free(build_id_events_.events[i]);
 }
 
 bool PerfReader::ReadFile(const string& filename) {
@@ -514,11 +512,12 @@ bool PerfReader::WriteFile(const string& filename) {
     total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
 
   // Add the sizes of the various metadata.
+  total_size += build_id_events_.size;
   for (size_t i = 0; i < string_metadata_.size(); ++i)
     total_size += string_metadata_[i].size;
 
   // Additional info about metadata.  See WriteMetadata for explanation.
-  total_size += (string_metadata_.size() + 1) * 2 * sizeof(u64);
+  total_size += (GetNumMetadata() + 1) * 2 * sizeof(u64);
 
   // Write all data into a vector.
   std::vector<char> data;
@@ -711,19 +710,55 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
     }
 
     switch (type) {
-      case HEADER_HOSTNAME:
-      case HEADER_OSRELEASE:
-      case HEADER_VERSION:
-      case HEADER_ARCH:
-      case HEADER_CPUDESC:
-        if (!ReadStringMetadata(data, type, metadata_offset, metadata_size))
-          return false;
-        break;
-      case HEADER_BRANCH_STACK:
-        continue;
-      default: LOG(INFO) << "Unsupported metadata type: " << type;
-        break;
+    case HEADER_BUILD_ID:
+      if (!ReadBuildIDMetadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
+    case HEADER_HOSTNAME:
+    case HEADER_OSRELEASE:
+    case HEADER_VERSION:
+    case HEADER_ARCH:
+    case HEADER_CPUDESC:
+      if (!ReadStringMetadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
+    case HEADER_BRANCH_STACK:
+      continue;
+    default: LOG(INFO) << "Unsupported metadata type: " << type;
+      break;
     }
+  }
+
+  return true;
+}
+
+bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
+                                     size_t offset, size_t size) {
+  CheckNoBuildIDEventPadding();
+  build_id_events_.type = type;
+  build_id_events_.size = size;
+  while (size > 0) {
+    // Make sure there is enough data for everything but the filename.
+    if (data.size() < offset + sizeof(build_id_event) / sizeof(data[offset])) {
+      LOG(ERROR) << "Not enough bytes to read build id event";
+      return false;
+    }
+
+    const build_id_event* temp_ptr =
+        reinterpret_cast<const build_id_event*>(&data[offset]);
+
+    // Make sure there is enough data for the rest of the event.
+    if (data.size() < offset + temp_ptr->header.size) {
+      LOG(ERROR) << "Not enough bytes to read build id event";
+      return false;
+    }
+
+    // Allocate memory for the event and copy over the bytes.
+    build_id_event* event = (build_id_event*) malloc(temp_ptr->header.size);
+    memcpy(event, &data[offset], temp_ptr->header.size);
+    offset += event->header.size;
+    size -= event->header.size;
+    build_id_events_.events.push_back(event);
   }
 
   return true;
@@ -747,6 +782,9 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
   metadata_mask_ = 0;
+  build_id_events_.type = HEADER_BUILD_ID;
+  build_id_events_.size = 0;
+
   while (offset < data.size() && result) {
     union piped_data_block {
       // Generic format of a piped perf data block, with header + more data.
@@ -794,6 +832,7 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       continue;
     }
     switch (block.header.type) {
+    // TODO(rohinmshah): Support build ids in piped mode.
     case PERF_RECORD_HEADER_ATTR:
       result = ReadAttrEventBlock(block.attr_event);
       break;
@@ -915,11 +954,12 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
 
 bool PerfReader::WriteMetadata(std::vector<char>* data) const {
   size_t header_offset = out_header_.data.offset + out_header_.data.size;
+
   // Before writing the metadata, there is one header for each piece
   // of metadata, and one extra showing the end of the file.
   // Each header contains two 64-bit numbers (offset and size).
   u64 metadata_offset =
-      header_offset + (string_metadata_.size() + 1) * 2 * sizeof(u64);
+      header_offset + (GetNumMetadata() + 1) * 2 * sizeof(u64);
 
   // Zero out the memory used by the headers
   memset(&(*data)[header_offset], 0,
@@ -935,18 +975,22 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
 
     // Write actual metadata to address metadata_offset
     switch (type) {
-      case HEADER_HOSTNAME:
-      case HEADER_OSRELEASE:
-      case HEADER_VERSION:
-      case HEADER_ARCH:
-      case HEADER_CPUDESC:
-        if (!WriteStringMetadata(type, metadata_offset, &metadata, data))
-          return false;
-        break;
-      case HEADER_BRANCH_STACK:
-        continue;
-      default: LOG(ERROR) << "Unsupported metadata type: " << type;
+    case HEADER_BUILD_ID:
+      if (!WriteBuildIDMetadata(type, metadata_offset, &metadata, data))
         return false;
+      break;
+    case HEADER_HOSTNAME:
+    case HEADER_OSRELEASE:
+    case HEADER_VERSION:
+    case HEADER_ARCH:
+    case HEADER_CPUDESC:
+      if (!WriteStringMetadata(type, metadata_offset, &metadata, data))
+        return false;
+      break;
+    case HEADER_BRANCH_STACK:
+      continue;
+    default: LOG(ERROR) << "Unsupported metadata type: " << type;
+      return false;
     }
 
     // Write metadata offset and size to address header_offset.
@@ -971,6 +1015,23 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
                          sizeof(metadata_offset), "metadata offset", data))
     return false;
 
+  return true;
+}
+
+bool PerfReader::WriteBuildIDMetadata(u32 type, size_t offset,
+                                      const PerfMetadata** metadata_handle,
+                                      std::vector<char>* data) const {
+  CheckNoBuildIDEventPadding();
+  *metadata_handle = &build_id_events_;
+
+  for (size_t i = 0; i < build_id_events_.events.size(); ++i) {
+    const build_id_event* event = build_id_events_.events[i];
+
+    if (!WriteDataToVector(event, offset, event->header.size,
+                           "Build id metadata", data))
+      return false;
+    offset += event->header.size;
+  }
   return true;
 }
 
@@ -1157,6 +1218,11 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
   events_.push_back(event_and_sample);
 
   return true;
+}
+
+size_t PerfReader::GetNumMetadata() const {
+  // All of the string metadata, and the build id metadata.
+  return string_metadata_.size() + 1;
 }
 
 }  // namespace quipper

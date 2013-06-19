@@ -13,7 +13,7 @@ option optimize_for = LITE_RUNTIME;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 7
+// Next tag: 8
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -340,6 +340,21 @@ message PerfDataProto {
     optional string data = 2;
   }
 
+  // Next tag: 5
+  message PerfBuildID {
+    // Misc field in perf_event_header.
+    optional uint32 misc = 1;
+
+    // Process ID.
+    optional uint32 pid = 2;
+
+    // Build id.
+    optional bytes build_id = 3;
+
+    // Filename.
+    optional string filename = 4;
+  }
+
   repeated PerfFileAttr file_attrs = 1;
   repeated PerfEvent events = 2;
 
@@ -356,4 +371,6 @@ message PerfDataProto {
   repeated uint64 metadata_mask = 5;
 
   repeated PerfStringMetadata string_metadata = 6;
+
+  repeated PerfBuildID build_ids = 7;
 }

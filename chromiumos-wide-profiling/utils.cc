@@ -5,6 +5,7 @@
 #include <openssl/md5.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cctype>
 #include <cstdio>
 #include <cstdlib>
@@ -17,6 +18,7 @@
 
 #include "base/basictypes.h"
 #include "base/logging.h"
+#include "base/stringprintf.h"
 
 #include "utils.h"
 
@@ -25,6 +27,9 @@ namespace {
 // Specify buffer size to be used to read files.
 // This is allocated on the stack, so make sure it's less than 16k.
 const int kFileReadSize = 1024;
+
+// Newline character.
+const char kNewLineDelimiter = '\n';
 
 // Trim leading and trailing whitespace from |str|.
 void TrimWhitespace(string* str) {
@@ -65,6 +70,8 @@ enum {
   NUM_PERF_REPORT_FIELDS,
 };
 
+const char kPerfBuildIDCommand[] = "/usr/sbin/perf buildid-list -i ";
+
 const char* kSupportedMetadata[] = {
   "hostname", "os release", "perf version", "arch", "cpudesc"
 };
@@ -80,6 +87,18 @@ const double kPerfReportEntryErrorThreshold = 0.05;
 
 const char kPerfReportCommentCharacter = '#';
 
+void SeparateLines(const std::vector<char>& bytes, std::vector<string>* lines) {
+  // TODO(rohinmshah): Use something from base.
+  std::vector<char>::const_iterator start = bytes.begin();
+  std::vector<char>::const_iterator end =
+      std::find(start, bytes.end(), kNewLineDelimiter);
+  while (end != bytes.end()) {
+    lines->push_back(string(start, end));
+    start = end + 1;
+    end = std::find(start, bytes.end(), kNewLineDelimiter);
+  }
+}
+
 // Given a perf piped data file, get the perf report and read it into a string.
 // is_normal_mode should be true if the INPUT file to quipper was in normal
 // mode.  Note that a file written by quipper is always in normal mode, but if
@@ -89,9 +108,6 @@ const char kPerfReportCommentCharacter = '#';
 // writing a piped perf data file through quipper.
 bool GetPerfReport(const string& filename, std::vector<string>* output,
                    bool is_normal_mode, bool written_by_quipper) {
-  // Redirecting stderr does lose warnings and errors, but serious errors should
-  // be caught by the return value of perf report.
-  // TODO(sque): Use RunCommandAndGetOutput().
   string cmd;
   if (is_normal_mode)
     cmd = string(kPerfReportCommand);
@@ -99,44 +115,60 @@ bool GetPerfReport(const string& filename, std::vector<string>* output,
     cmd = string(kPipedPerfReportFromQuipperCommand);
   else
     cmd = string(kPipedPerfReportCommand);
+  // Redirecting stderr does lose warnings and errors, but serious errors should
+  // be caught by the return value of perf report.
   cmd += filename + " 2>/dev/null";
 
-  FILE* file = popen(cmd.c_str(), "r");
-  if (!file) {
-    LOG(ERROR) << "Could not execute '" << cmd << "'.";
+  std::vector<char> stdout;
+  if (!quipper::RunCommandAndGetStdout(cmd, &stdout))
     return false;
-  }
+  std::vector<string> lines;
+  SeparateLines(stdout, &lines);
 
-  char buffer[kFileReadSize];
   // Read line by line, discarding commented lines.
   // Only keep commented lines of the form
-  // #<supported metadata>:
+  // # <supported metadata> :
   // Where <supported metadata> is any string in kSupportedMetadata.
   output->clear();
-  while (fgets(buffer, sizeof(buffer), file)) {
+  for (size_t i = 0; i < lines.size(); ++i) {
+    string line = lines[i];
     bool use_line = false;
-    if (buffer[0] != kPerfReportCommentCharacter)
+    if (line[0] != kPerfReportCommentCharacter)
       use_line = true;
 
-    string buffer_string = buffer;
     int length = arraysize(kSupportedMetadata);
-    for (int i = 0; i < length; i++) {
-      string valid_prefix = string("# ") + kSupportedMetadata[i] + " :";
-      if (buffer_string.find(valid_prefix) != string::npos)
+    for (int j = 0; j < length; ++j) {
+      string valid_prefix = StringPrintf("# %s :", kSupportedMetadata[j]);
+      if (line.substr(0, valid_prefix.size()) == valid_prefix)
         use_line = true;
     }
 
     if (use_line) {
-      TrimWhitespace(&buffer_string);
-      output->push_back(buffer_string);
+      TrimWhitespace(&line);
+      output->push_back(line);
     }
   }
 
-  int status = pclose(file);
-  if (status) {
-    LOG(ERROR) << "Perf command: '" << cmd << "' returned status: " << status;
+  return true;
+}
+
+// Given a perf data file, get the list of build ids and read it into a string.
+bool GetPerfBuildIDList(const string& filename, string* output) {
+  // Redirecting stderr does lose warnings and errors, but serious errors should
+  // be caught by the return value of perf report.
+  string cmd = string(kPerfBuildIDCommand) + filename + " 2>/dev/null";
+  std::vector<char> stdout;
+  if (!quipper::RunCommandAndGetStdout(cmd, &stdout))
     return false;
-  };
+  std::vector<string> lines;
+  SeparateLines(stdout, &lines);
+
+  output->clear();
+  for (size_t i = 0; i < lines.size(); ++i) {
+    string line = lines[i];
+    TrimWhitespace(&line);
+    *output += line + kNewLineDelimiter;
+  }
 
   return true;
 }
@@ -298,14 +330,14 @@ bool FileToBuffer(const string& filename, std::vector<char>* contents) {
   return true;
 }
 
-bool CompareFileContents(const string& a, const string& b) {
+bool CompareFileContents(const string& file1, const string& file2) {
   struct FileInfo {
     string name;
     std::vector<char> contents;
   };
   FileInfo file_infos[2];
-  file_infos[0].name = a;
-  file_infos[1].name = b;
+  file_infos[0].name = file1;
+  file_infos[1].name = file2;
 
   for ( size_t i = 0 ; i < sizeof(file_infos)/sizeof(file_infos[0]) ; i++ ) {
     if(!FileToBuffer(file_infos[i].name, &file_infos[i].contents))
@@ -403,8 +435,35 @@ bool ComparePipedPerfReports(const string& quipper_input,
   return (input_index == input_size) && (output_index == output_size);
 }
 
+bool ComparePerfBuildIDLists(const string& file1, const string& file2) {
+  const string* files[] = { &file1, &file2 };
+  std::map<string, string> outputs;
+
+  // Generate a build id list for each file.
+  for (unsigned int i = 0; i < arraysize(files); ++i)
+    CHECK(GetPerfBuildIDList(*files[i], &outputs[*files[i]]));
+
+  // Compare the output strings.
+  return outputs[file1] == outputs[file2];
+}
+
 uint64 AlignSize(uint64 size, uint32 align_size) {
   return ((size + align_size - 1) / align_size) * align_size;
+}
+
+// In perf data, strings are packed into the smallest number of 8-byte blocks
+// possible, including the null terminator.
+// e.g.
+//    "0123"                ->  5 bytes -> packed into  8 bytes
+//    "0123456"             ->  8 bytes -> packed into  8 bytes
+//    "01234567"            ->  9 bytes -> packed into 16 bytes
+//    "0123456789abcd"      -> 15 bytes -> packed into 16 bytes
+//    "0123456789abcde"     -> 16 bytes -> packed into 16 bytes
+//    "0123456789abcdef"    -> 17 bytes -> packed into 24 bytes
+//
+// Returns the size of the 8-byte-aligned memory for storing |string|.
+size_t GetUint64AlignedStringLength(const string& str) {
+  return AlignSize(str.size() + 1, sizeof(uint64));
 }
 
 bool ReadFileToData(const string& filename, std::vector<char>* data) {

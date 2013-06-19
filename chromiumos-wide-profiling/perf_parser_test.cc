@@ -77,6 +77,7 @@ TEST(PerfParserTest, Test1Cycle) {
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
+    EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
   }
 }
 
@@ -134,6 +135,7 @@ TEST(PerfParserTest, TestProcessing) {
 
     // Remapping again should produce the same addresses.
     EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
+    EXPECT_TRUE(ComparePerfBuildIDLists(output_perf_data, output_perf_data2));
   }
 }
 

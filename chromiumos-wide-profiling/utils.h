@@ -19,7 +19,7 @@ bool BufferToFile(const string& filename, const std::vector<char>& contents);
 
 long int GetFileSize(const string& filename);
 
-bool CompareFileContents(const string& a, const string& b);
+bool CompareFileContents(const string& file1, const string& file2);
 
 uint64 Md5Prefix(const string& input);
 
@@ -37,9 +37,15 @@ bool ComparePerfReports(const string& quipper_input,
 bool ComparePipedPerfReports(const string& quipper_input,
                              const string& quipper_output);
 
+// Returns true if the perf buildid-lists are the same.
+bool ComparePerfBuildIDLists(const string& file1, const string& file2);
+
 // Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple
 // of |align_size| that can fit |size|.
 uint64 AlignSize(uint64 size, uint32 align_size);
+
+// Returns the size of the 8-byte-aligned memory for storing |string|.
+size_t GetUint64AlignedStringLength(const string& str);
 
 // Reads the contents of a file into |data|.  Returns true on success, false if
 // it fails.
