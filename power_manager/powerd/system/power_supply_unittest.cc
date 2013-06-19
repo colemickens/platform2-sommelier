@@ -35,6 +35,7 @@ const char kPresent[] = "1";
 const char kNotPresent[] = "0";
 const char kACType[] = "Mains";
 const char kBatteryType[] = "Battery";
+const char kUSBType[] = "USB";
 
 const double kChargeFull = 2.40;
 const double kChargeNow = 1.80;
@@ -696,10 +697,15 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
 }
 
 TEST_F(PowerSupplyTest, CheckForLowBattery) {
-  double kShutdownCharge = kLowBatteryShutdownTimeSec / 3600.0;
+  base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
+  test_api_->SetCurrentTime(kStartTime);
+
+  const double kShutdownPercent = 5.0;
+  prefs_.SetDouble(kLowBatteryShutdownPercentPref, kShutdownPercent);
+
   WriteDefaultValues(false, true);
   WriteDoubleValue("battery/charge_full", 1.0);
-  WriteDoubleValue("battery/charge_now", kShutdownCharge + 0.01);
+  WriteDoubleValue("battery/charge_now", (kShutdownPercent + 1.0) / 100.0);
   WriteDoubleValue("battery/current_now", -1.0);
   power_supply_->Init();
 
@@ -707,9 +713,26 @@ TEST_F(PowerSupplyTest, CheckForLowBattery) {
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_FALSE(status.battery_below_shutdown_threshold);
 
-  WriteDoubleValue("battery/charge_now", kShutdownCharge - 0.01);
+  WriteDoubleValue("battery/charge_now", (kShutdownPercent - 1.0) / 100.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_TRUE(status.battery_below_shutdown_threshold);
+
+  // Don't shut down when on AC power.
+  WriteValue("ac/online", kOnline);
+  WriteValue("ac/type", kACType);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
+
+  // Shut down when on other chargers, though.
+  WriteValue("ac/type", kUSBType);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_TRUE(status.battery_below_shutdown_threshold);
+
+  // If the charge is zero, assume that something is being misreported and
+  // avoid shutting down.
+  WriteDoubleValue("battery/charge_now", 0.0);
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_FALSE(status.battery_below_shutdown_threshold);
 }
 
 TEST_F(PowerSupplyTest, NeitherChargingNorDischarging) {

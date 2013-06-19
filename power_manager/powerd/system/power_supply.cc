@@ -720,18 +720,16 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
     return false;
   }
 
-  if (!(status.line_power_on &&
-        // If type != Mains then alternative power supply may not provide
-        // enough power to charge or even maintain current battery levels.
-        (status.line_power_type != kMainsType)) &&
-      ((status.battery_time_to_empty > 0 &&
-        status.battery_time_to_empty <=
-        low_battery_shutdown_time_.InSeconds()) ||
-       (status.battery_percentage <= low_battery_shutdown_percent_))) {
-    return true;
-  }
+  // If we're connected to an AC ("Mains") charger, don't shut down for a
+  // low battery charge. Other types of chargers may not be able to deliver
+  // enough current to prevent the battery from discharging, though.
+  if (status.line_power_on && status.line_power_type == kMainsType)
+    return false;
 
-  return false;
+  return (status.battery_time_to_empty > 0 &&
+          status.battery_time_to_empty <=
+          low_battery_shutdown_time_.InSeconds()) ||
+      status.battery_percentage <= low_battery_shutdown_percent_;
 }
 
 void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
