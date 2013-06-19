@@ -55,6 +55,26 @@ void ByteSwap(T* input) {
   }
 }
 
+bool ShouldWriteSampleInfoForEvent(const event_t& event) {
+  switch (event.header.type) {
+  case PERF_RECORD_SAMPLE:
+  case PERF_RECORD_MMAP:
+  case PERF_RECORD_FORK:
+  case PERF_RECORD_EXIT:
+  case PERF_RECORD_COMM:
+    return true;
+  case PERF_RECORD_LOST:
+  case PERF_RECORD_THROTTLE:
+  case PERF_RECORD_UNTHROTTLE:
+  case PERF_RECORD_READ:
+  case PERF_RECORD_MAX:
+    return false;
+  default:
+    LOG(FATAL) << "Unknown event type " << event.header.type;
+    return false;
+  }
+}
+
 bool ReadDataFromVector(const std::vector<char>& data,
                         size_t src_offset,
                         size_t length,
@@ -824,8 +844,10 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
     event_t event = events_[i].event;
     uint32 event_size = event.header.size;
     const struct perf_sample& sample_info = events_[i].sample_info;
-    if (!WritePerfSampleInfo(sample_info, sample_type_, &event))
+    if (ShouldWriteSampleInfoForEvent(event) &&
+        !WritePerfSampleInfo(sample_info, sample_type_, &event)) {
       return false;
+    }
     // Then write that local event object to the data buffer.
     if (!WriteDataToVector(&event, offset, event_size, "event data", data))
       return false;
@@ -1032,14 +1054,16 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 
   PerfEventAndSampleInfo event_and_sample;
   event_and_sample.event = event;
-  if (!ReadPerfSampleInfo(event,
+
+  if (ShouldWriteSampleInfoForEvent(event) &&
+      !ReadPerfSampleInfo(event,
                           sample_type_,
                           is_cross_endian_,
                           &event_and_sample.sample_info)) {
     return false;
   }
 
-  if (is_cross_endian_) {
+  if (ShouldWriteSampleInfoForEvent(event) && is_cross_endian_) {
     event_t& event = event_and_sample.event;
     switch (event.header.type) {
     case PERF_RECORD_SAMPLE:
