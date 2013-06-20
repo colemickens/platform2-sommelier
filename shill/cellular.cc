@@ -792,8 +792,14 @@ void Cellular::StartPPP(const string &serial_device) {
 // called by |ppp_task_|
 void Cellular::GetLogin(string *user, string *password) {
   LOG(INFO) << __func__;
-  // TODO(quiche): Determine whether or not we need support for PPP
-  // username/password. (crbug.com/246443)
+  if (!service()) {
+    LOG(ERROR) << __func__ << " with no service ";
+    return;
+  }
+  CHECK(user);
+  CHECK(password);
+  *user = service()->ppp_username();
+  *password = service()->ppp_password();
 }
 
 // Called by |ppp_task_|.

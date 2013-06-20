@@ -326,6 +326,14 @@ Properties	boolean AutoConnect [readwrite]
 			(Cellular only) Indicates whether a cellular service
 			has any remaining bandwidth credits with the carrier.
 
+		string Cellular.PPP.Username [readwrite]
+			(Cellular only) For cellular devices with a PPP
+			link-layer, the username for PPP authentication.
+
+		string Cellular.PPP.Password [writeonly]
+			(Cellular only) For cellular devices with a PPP
+			link-layer, the password for PPP authentication.
+
 		string CheckPortal [readwrite]
 
 			Control captive portal checking.  Possible values

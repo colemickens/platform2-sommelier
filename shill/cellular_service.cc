@@ -26,14 +26,21 @@ const char CellularService::kAutoConnOutOfCreditsDetectionInProgress[] =
 const int64 CellularService::kOutOfCreditsConnectionDropSeconds = 15;
 const int CellularService::kOutOfCreditsMaxConnectAttempts = 3;
 const int64 CellularService::kOutOfCreditsResumeIgnoreSeconds = 5;
-const char CellularService::kStorageAPN[] = "Cellular.APN";
-const char CellularService::kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
 
 // TODO(petkov): Add these to system_api/dbus/service_constants.h
 namespace {
 const char kKeyOLPURL[] = "url";
 const char kKeyOLPMethod[] = "method";
 const char kKeyOLPPostData[] = "postdata";
+const char kCellularPPPUsernameProperty[] = "Cellular.PPP.Username";
+const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
+}  // namespace
+
+namespace {
+const char kStorageAPN[] = "Cellular.APN";
+const char kStorageLastGoodAPN[] = "Cellular.LastGoodAPN";
+const char kStoragePPPUsername[] = "Cellular.PPP.Username";
+const char kStoragePPPPassword[] = "Cellular.PPP.Password";
 }  // namespace
 
 static bool GetNonEmptyField(const Stringmap &stringmap,
@@ -124,6 +131,8 @@ CellularService::CellularService(ModemInfo *modem_info,
   store->RegisterConstStringmap(flimflam::kServingOperatorProperty,
                                 &serving_operator_.ToDict());
   store->RegisterConstString(flimflam::kUsageURLProperty, &usage_url_);
+  store->RegisterString(kCellularPPPUsernameProperty, &ppp_username_);
+  store->RegisterWriteOnlyString(kCellularPPPPasswordProperty, &ppp_password_);
 
   string name = device->CreateFriendlyServiceName();
   set_friendly_name(name);
@@ -239,6 +248,8 @@ bool CellularService::Load(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   LoadApn(storage, id, kStorageAPN, &apn_info_);
   LoadApn(storage, id, kStorageLastGoodAPN, &last_good_apn_info_);
+  storage->GetString(id, kStoragePPPUsername, &ppp_username_);
+  storage->GetString(id, kStoragePPPPassword, &ppp_password_);
   return true;
 }
 
@@ -370,6 +381,8 @@ bool CellularService::Save(StoreInterface *storage) {
   const string id = GetStorageIdentifier();
   SaveApn(storage, id, GetUserSpecifiedApn(), kStorageAPN);
   SaveApn(storage, id, GetLastGoodApn(), kStorageLastGoodAPN);
+  SaveString(storage, id, kStoragePPPUsername, ppp_username_, false, true);
+  SaveString(storage, id, kStoragePPPPassword, ppp_password_, false, true);
   return true;
 }
 

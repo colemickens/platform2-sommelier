@@ -991,6 +991,22 @@ TEST_F(CellularTest, SetAllowRoaming) {
   EXPECT_TRUE(device_->allow_roaming_);
 }
 
+TEST_F(CellularTest, GetLogin) {
+  // Doesn't crash when there is no service.
+  string username_to_pppd;
+  string password_to_pppd;
+  EXPECT_FALSE(device_->service());
+  device_->GetLogin(&username_to_pppd, &password_to_pppd);
+
+  // Provides expected username and password in normal case.
+  const char kFakeUsername[] = "fake-user";
+  const char kFakePassword[] = "fake-password";
+  CellularService &service(*SetService());
+  service.ppp_username_ = kFakeUsername;
+  service.ppp_password_ = kFakePassword;
+  device_->GetLogin(&username_to_pppd, &password_to_pppd);
+}
+
 // Custom property setters should return false, and make no changes, if
 // the new value is the same as the old value.
 TEST_F(CellularTest, CustomSetterNoopChange) {

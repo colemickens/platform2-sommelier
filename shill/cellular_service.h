@@ -25,9 +25,6 @@ class Manager;
 
 class CellularService : public Service {
  public:
-  static const char kStorageAPN[];
-  static const char kStorageLastGoodAPN[];
-
   // Online payment portal.
   class OLP {
    public:
@@ -100,6 +97,9 @@ class CellularService : public Service {
     return is_auto_connecting_;
   }
 
+  const std::string &ppp_username() const { return ppp_username_; }
+  const std::string &ppp_password() const { return ppp_password_; }
+
   void set_enforce_out_of_credits_detection(bool state) {
     enforce_out_of_credits_detection_ = state;
   }
@@ -132,6 +132,7 @@ class CellularService : public Service {
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateServiceName);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier);
   FRIEND_TEST(CellularTest, Connect);
+  FRIEND_TEST(CellularTest, GetLogin);  // ppp_username_, ppp_password_
   FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularServiceTest, SetApn);
   FRIEND_TEST(CellularServiceTest, ClearApn);
@@ -201,9 +202,10 @@ class CellularService : public Service {
   std::string roaming_state_;
   OLP olp_;
   std::string usage_url_;
-
   Stringmap apn_info_;
   Stringmap last_good_apn_info_;
+  std::string ppp_username_;
+  std::string ppp_password_;
 
   std::string storage_identifier_;
 
