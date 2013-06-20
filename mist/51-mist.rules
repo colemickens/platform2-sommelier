@@ -16,6 +16,7 @@ ENV{DEVTYPE}!="usb_device", GOTO="mist_end"
 # Supported USB devices
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1446", GOTO="mist_switch_device"
 ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="14fe", GOTO="mist_switch_device"
+ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1505", GOTO="mist_switch_device"
 ATTRS{idVendor}=="19d2", ATTRS{idProduct}=="1201", GOTO="mist_switch_device"
 
 GOTO="mist_end"
