@@ -1,12 +1,6 @@
 <!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
 "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
 
-<!-- 
-     Introspection dump generated manually by poking flimflam with dbus-send
-     TODO(vlaviano): should be generated automatically during flimflam build
-     and installed somewhere where cashew and other clients can consume it.
--->
-
 <node>
 	<interface name="org.chromium.flimflam.Device">
 		<method name="GetProperties">

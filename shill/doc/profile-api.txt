@@ -101,7 +101,7 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.NotFound
 					 [service].Error.InvalidArguments
 
-		dict DeleteEntry(object path)
+		dict DeleteEntry(string entry_name)
 
 			Remove the entry from the profile.  Any associated
 			service has its security credentials revoked and
