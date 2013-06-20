@@ -10,6 +10,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_temp_dir.h>
+#include <base/logging.h>
 #include <base/stringprintf.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -76,15 +78,19 @@ const unsigned char kSampleAuthData[] = {
     29, 230, 13, 53, 202, 172, 136, 59, 83, 139, 43, 154, 175, 183, 163, 205,
     110, 117, 149, 144};
 
-const char kTokenBasePath[] = "/tmp/chaps_unit_test";
-const char kTokenPath[] = "/tmp/chaps_unit_test/.tpm";
-const char kTokenObjectPath[] = "/tmp/chaps_unit_test/.tpm/TOK_OBJ";
+const char kTokenPath[] = ".tpm";
+const char kTokenObjectPath[] = "TOK_OBJ";
 const char kSampleToken[] = "opencryptoki_sample_token.tgz";
 const int kPublicSampleObjects = 3;
 const int kPrivateSampleObjects = 2;
 
 string Bytes2String(const unsigned char* bytes, size_t num_bytes) {
   return string(reinterpret_cast<const char*>(bytes), num_bytes);
+}
+
+void RunCommand(string command) {
+  int status = system(command.c_str());
+  ASSERT_EQ(0, WEXITSTATUS(status));
 }
 
 // Performs hard-coded transformations as a TPM would do. These match the
@@ -138,7 +144,10 @@ Object* CreateObjectMock() {
 // A test fixture base class for testing the importer.
 class TestImporterBase {
  public:
-  TestImporterBase() : importer_(0, FilePath(kTokenPath), &tpm_, &factory_) {
+  TestImporterBase() {
+    CHECK(temp_dir_.CreateUniqueTempDir());
+    importer_.reset(new OpencryptokiImporter(
+        0, temp_dir_.path().Append(kTokenPath), &tpm_, &factory_));
     // Set expectations for the TPM utility mock.
     EXPECT_CALL(tpm_, Unbind(_, _, _)).WillRepeatedly(Invoke(MockUnbind));
     EXPECT_CALL(tpm_, LoadKey(_, _, _, _))
@@ -160,10 +169,18 @@ class TestImporterBase {
   }
 
  protected:
+  void PrepareSampleToken() {
+    CHECK(temp_dir_.IsValid());
+    RunCommand(base::StringPrintf("tar -xzf %s -C %s",
+                                  kSampleToken,
+                                  temp_dir_.path().value().c_str()));
+  }
+
   ChapsFactoryMock factory_;
   ObjectPoolMock pool_;
-  OpencryptokiImporter importer_;
+  scoped_ptr<OpencryptokiImporter> importer_;
   TPMUtilityMock tpm_;
+  base::ScopedTempDir temp_dir_;
 };
 
 // A function that returns the number of objects expected to be imported.
@@ -174,7 +191,7 @@ struct ModifierResult {
   int num_public_objects;
   int num_private_objects;
 };
-typedef ModifierResult (*ModifierCallback)();
+typedef ModifierResult (*ModifierCallback)(const char* object_path);
 
 const ModifierResult kModifierSuccess =
     {true, true, kPublicSampleObjects, kPrivateSampleObjects};
@@ -193,36 +210,21 @@ class TestImporterWithModifier
       public testing::TestWithParam<ModifierCallback> {
 };
 
-void RunCommand(string command) {
-  int status = system(command.c_str());
-  ASSERT_EQ(0, WEXITSTATUS(status));
-}
-
-void PrepareSampleToken() {
-  RunCommand(base::StringPrintf("mkdir -p %s", kTokenBasePath));
-  RunCommand(base::StringPrintf("tar -xzf %s -C %s",
-                                kSampleToken,
-                                kTokenBasePath));
-}
-
-void CleanupSampleToken() {
-  RunCommand(base::StringPrintf("rm -rf %s", kTokenBasePath));
-}
-
 // This test attempts to import a sample token after it has been modified by a
 // modifier function.
 TEST_P(TestImporterWithModifier, ImportSample) {
   PrepareSampleToken();
+  FilePath object_path =
+      temp_dir_.path().Append(kTokenPath).Append(kTokenObjectPath);
   ModifierCallback modifier = GetParam();
-  ModifierResult expected_result = modifier();
+  ModifierResult expected_result = modifier(object_path.value().c_str());
   EXPECT_EQ(expected_result.import_public_result,
-            importer_.ImportObjects(&pool_));
+            importer_->ImportObjects(&pool_));
   vector<const Object*> objects;
   pool_.Find(NULL, &objects);
   EXPECT_EQ(expected_result.num_public_objects, objects.size());
   EXPECT_EQ(expected_result.import_private_result,
-            importer_.FinishImportAsync(&pool_));
-  CleanupSampleToken();
+            importer_->FinishImportAsync(&pool_));
   objects.clear();
   pool_.Find(NULL, &objects);
   int total_objects = expected_result.num_public_objects +
@@ -230,83 +232,83 @@ TEST_P(TestImporterWithModifier, ImportSample) {
   EXPECT_EQ(total_objects, objects.size());
 }
 
-ModifierResult NoModify() {
+ModifierResult NoModify(const char* object_path) {
   // If we don't modify anything, the import should succeed.
   return kModifierSuccess;
 }
 
-ModifierResult DeleteAll() {
-  RunCommand(base::StringPrintf("rm -rf %s", kTokenPath));
+ModifierResult DeleteAll(const char* object_path) {
+  FilePath token_path = FilePath(object_path).DirName();
+  RunCommand(base::StringPrintf("rm -rf %s", token_path.value().c_str()));
   return kModifierNone;
 }
 
-ModifierResult DeleteAllObjectFiles() {
-  RunCommand(base::StringPrintf("rm -f %s/*", kTokenObjectPath));
+ModifierResult DeleteAllObjectFiles(const char* object_path) {
+  RunCommand(base::StringPrintf("rm -f %s/*", object_path));
   return kModifierNone;
 }
 
-ModifierResult DeleteMasterKey() {
-  RunCommand(base::StringPrintf("rm -f %s/MK_PRIVATE", kTokenPath));
+ModifierResult DeleteMasterKey(const char* object_path) {
+  FilePath token_path = FilePath(object_path).DirName();
+  RunCommand(base::StringPrintf("rm -f %s/MK_PRIVATE",
+                                token_path.value().c_str()));
   return kModifierPublicOnly;
 }
 
-ModifierResult DeleteObjectIndex() {
-  RunCommand(base::StringPrintf("rm -f %s/OBJ.IDX", kTokenObjectPath));
+ModifierResult DeleteObjectIndex(const char* object_path) {
+  RunCommand(base::StringPrintf("rm -f %s/OBJ.IDX", object_path));
   return kModifierNone;
 }
 
-ModifierResult DeleteAllButIndex() {
-  RunCommand(base::StringPrintf("rm -f %s/*0000", kTokenObjectPath));
+ModifierResult DeleteAllButIndex(const char* object_path) {
+  RunCommand(base::StringPrintf("rm -f %s/*0000", object_path));
   return kModifierNone;
 }
 
-ModifierResult DeleteHierarchyFile() {
-  RunCommand(base::StringPrintf("rm -f %s/50000000", kTokenObjectPath));
+ModifierResult DeleteHierarchyFile(const char* object_path) {
+  RunCommand(base::StringPrintf("rm -f %s/50000000", object_path));
   return kModifierPublicOnly;
 }
 
-ModifierResult TruncateFile0() {
-  RunCommand(base::StringPrintf(":> %s/B0000000", kTokenObjectPath));
+ModifierResult TruncateFile0(const char* object_path) {
+  RunCommand(base::StringPrintf(":> %s/B0000000", object_path));
   return kModifierOneBadPublic;
 }
 
-ModifierResult TruncateFile5() {
-  RunCommand(base::StringPrintf("truncate -s 5 %s/B0000000", kTokenObjectPath));
+ModifierResult TruncateFile5(const char* object_path) {
+  RunCommand(base::StringPrintf("truncate -s 5 %s/B0000000", object_path));
   return kModifierOneBadPublic;
 }
 
-ModifierResult TruncateFile21() {
-  RunCommand(base::StringPrintf("truncate -s 21 %s/B0000000",
-                                kTokenObjectPath));
+ModifierResult TruncateFile21(const char* object_path) {
+  RunCommand(base::StringPrintf("truncate -s 21 %s/B0000000", object_path));
   return kModifierOneBadPublic;
 }
 
-ModifierResult TruncateFile80() {
-  RunCommand(base::StringPrintf("truncate -s 80 %s/B0000000",
-                                kTokenObjectPath));
+ModifierResult TruncateFile80(const char* object_path) {
+  RunCommand(base::StringPrintf("truncate -s 80 %s/B0000000", object_path));
   return kModifierOneBadPublic;
 }
 
-ModifierResult TruncateEncrypted() {
-  RunCommand(base::StringPrintf("truncate -s 80 %s/C0000000",
-                                kTokenObjectPath));
+ModifierResult TruncateEncrypted(const char* object_path) {
+  RunCommand(base::StringPrintf("truncate -s 80 %s/C0000000", object_path));
   return kModifierOneBadPrivate;
 }
 
-ModifierResult AddNotIndexed() {
-  RunCommand(base::StringPrintf(":> %s/D0000000", kTokenObjectPath));
+ModifierResult AddNotIndexed(const char* object_path) {
+  RunCommand(base::StringPrintf(":> %s/D0000000", object_path));
   return kModifierSuccess;
 }
 
-ModifierResult AppendJunk() {
+ModifierResult AppendJunk(const char* object_path) {
   RunCommand(base::StringPrintf("head -c 100 < /dev/urandom >> %s/B0000000",
-                                kTokenObjectPath));
+                                object_path));
   return kModifierOneBadPublic;
 }
 
-ModifierResult AppendJunkEncrypted() {
+ModifierResult AppendJunkEncrypted(const char* object_path) {
   RunCommand(base::StringPrintf("head -c 100 < /dev/urandom >> %s/C0000000",
-                                kTokenObjectPath));
+                                object_path));
   return kModifierOneBadPrivate;
 }
 
@@ -329,21 +331,20 @@ INSTANTIATE_TEST_CASE_P(ModifierTests,
                                AppendJunk,
                                AppendJunkEncrypted));
 
-ModifierResult RandomizeFile() {
+ModifierResult RandomizeFile(const char* object_path) {
   RunCommand(base::StringPrintf("head -c 1000 < /dev/urandom > %s/C0000000",
-                                kTokenObjectPath));
+                                object_path));
   return kModifierOneBadPrivate;
 }
 
-ModifierResult RandomizeObjectAttributes() {
-  RunCommand(base::StringPrintf("truncate -s 21 %s/B0000000",
-                                kTokenObjectPath));
+ModifierResult RandomizeObjectAttributes(const char* object_path) {
+  RunCommand(base::StringPrintf("truncate -s 21 %s/B0000000", object_path));
   RunCommand(base::StringPrintf("head -c 1000 < /dev/urandom >> %s/B0000000",
-                                kTokenObjectPath));
+                                object_path));
   return kModifierOneBadPublic;
 }
 
-// List of test cases that involve randomization; these are listed seperately
+// List of test cases that involve randomization; these are listed separately
 // for easy filtering.
 INSTANTIATE_TEST_CASE_P(RandomizedTests,
                         TestImporterWithModifier,
