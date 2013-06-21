@@ -95,20 +95,6 @@ const int kMetricPowerButtonDownTimeMin = 1;
 const int kMetricPowerButtonDownTimeMax = 8 * 1000;
 const int kMetricPowerButtonDownTimeBuckets = 50;
 
-const int kMetricThermalAbortedFanTurnOnMax = 101;
-const char kMetricThermalAbortedFanTurnOnName[] =
-    "Power.ThermalAbortedFanTurnOn";  // %
-const char kMetricThermalAbortedFanFilename[] =
-    "/sys/kernel/debug/thermal/thermal_zone0/cdevs_aborted_turn_on";
-const int kMetricThermalMultipleFanTurnOnMax = 101;
-const char kMetricThermalMultipleFanTurnOnName[] =
-    "Power.ThermalMultipleFanTurnOn";  // %
-const char kMetricThermalMultipleFanFilename[] =
-    "/sys/kernel/debug/thermal/thermal_zone0/cdevs_multiple_trips";
-const char kMetricThermalTurnedOnFanFilename[] =
-    "/sys/kernel/debug/thermal/thermal_zone0/cdevs_turned_on";
-const time_t kMetricThermalIntervalMs = 15 * 60 * 1000;  // 15 minutes
-
 const char kMetricBatteryInfoSampleName[] = "Power.BatteryInfoSample";
 
 }  // namespace power_manager

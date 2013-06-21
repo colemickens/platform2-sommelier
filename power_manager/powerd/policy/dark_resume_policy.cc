@@ -56,11 +56,6 @@ DarkResumePolicy::~DarkResumePolicy() {
 
 void DarkResumePolicy::Init() {
   bool disable = false;
-  // Check if dark resume is disabled and make sure the suspend durations and
-  // battery margins are read in properly. This won't really work well with
-  // "default" preferences, at least not as well as preferences fine-tuned to
-  // the device. Because of this, just don't use the feature unless the
-  // preferences are there (for now).
   enabled_ = (!prefs_->GetBool(kDisableDarkResumePref, &disable) || !disable) &&
               ReadSuspendDurationsPref() &&
               ReadBatteryMarginsPref();
@@ -118,10 +113,10 @@ void DarkResumePolicy::HandleResume() {
   thresholds_set_ = false;
 }
 
-bool DarkResumePolicy::ExtractLines(const std::string& prefs_file,
+bool DarkResumePolicy::ExtractLines(const std::string& pref_name,
                                     std::vector<std::string>* lines) {
   std::string input_str;
-  if (prefs_->GetString(prefs_file.c_str(), &input_str)) {
+  if (prefs_->GetString(pref_name, &input_str)) {
     base::SplitString(input_str, '\n', lines);
     return true;
   }
@@ -131,13 +126,11 @@ bool DarkResumePolicy::ExtractLines(const std::string& prefs_file,
 bool DarkResumePolicy::ReadSuspendDurationsPref() {
   suspend_durations_.clear();
   std::vector<std::string> lines;
-  if (!ExtractLines(kDarkResumeSuspendDurationsPref, &lines)) {
-    LOG(ERROR) << "Failed to read dark resume suspend durations file! "
-               << "Not enabling dark resume";
+  if (!ExtractLines(kDarkResumeSuspendDurationsPref, &lines))
     return false;
-  }
+
   for (std::vector<std::string>::iterator iter = lines.begin();
-        iter != lines.end(); ++iter) {
+       iter != lines.end(); ++iter) {
     std::vector<std::string> segments;
     base::SplitString(*iter, ' ', &segments);
     if (segments.size() != 2) {
@@ -171,13 +164,11 @@ bool DarkResumePolicy::ReadSuspendDurationsPref() {
 bool DarkResumePolicy::ReadBatteryMarginsPref() {
   battery_margins_.clear();
   std::vector<std::string> lines;
-  if (!ExtractLines(kDarkResumeBatteryMarginsPref, &lines)) {
-    LOG(ERROR) << "Failed to read dark resume battery margins file! "
-               << "Not enabling dark resume";
+  if (!ExtractLines(kDarkResumeBatteryMarginsPref, &lines))
     return false;
-  }
+
   for (std::vector<std::string>::iterator iter = lines.begin();
-        iter != lines.end(); ++iter) {
+       iter != lines.end(); ++iter) {
     std::vector<std::string> segments;
     base::SplitString(*iter, ' ', &segments);
     if (segments.size() != 2) {
@@ -202,11 +193,11 @@ bool DarkResumePolicy::ReadBatteryMarginsPref() {
 }
 
 void DarkResumePolicy::GetFiles(std::vector<base::FilePath>* files,
-                                const std::string& prefs_file,
+                                const std::string& pref_name,
                                 const std::string& base_file) {
   files->clear();
   std::vector<std::string> lines;
-  if (!ExtractLines(prefs_file.c_str(), &lines))
+  if (!ExtractLines(pref_name, &lines))
     return;
 
   for (std::vector<std::string>::iterator iter = lines.begin();

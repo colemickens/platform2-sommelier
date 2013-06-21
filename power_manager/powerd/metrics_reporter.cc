@@ -52,7 +52,6 @@ MetricsReporter::MetricsReporter(
       power_source_(POWER_AC),
       saw_initial_power_source_(false),
       generate_backlight_metrics_timeout_id_(0),
-      generate_thermal_metrics_timeout_id_(0),
       battery_discharge_rate_metric_last_(0),
       battery_energy_before_suspend_(0.0),
       on_line_power_before_suspend_(false),
@@ -61,7 +60,6 @@ MetricsReporter::MetricsReporter(
 
 MetricsReporter::~MetricsReporter() {
   util::RemoveTimeout(&generate_backlight_metrics_timeout_id_);
-  util::RemoveTimeout(&generate_thermal_metrics_timeout_id_);
 }
 
 void MetricsReporter::Init() {
@@ -70,12 +68,6 @@ void MetricsReporter::Init() {
         kMetricBacklightLevelIntervalMs,
         &MetricsReporter::GenerateBacklightLevelMetricThunk, this);
   }
-
-  // Run GenerateThermalMetrics once now as it's a long interval.
-  GenerateThermalMetrics();
-  generate_thermal_metrics_timeout_id_ =
-      g_timeout_add(kMetricThermalIntervalMs,
-                    &MetricsReporter::GenerateThermalMetricsThunk, this);
 }
 
 void MetricsReporter::HandleScreenDimmedChange(
@@ -467,43 +459,6 @@ void MetricsReporter::GeneratePowerButtonMetric(bool down,
                   kMetricPowerButtonDownTimeBuckets)) {
     LOG(ERROR) << "Could not send " << kMetricPowerButtonDownTimeName;
   }
-}
-
-void MetricsReporter::SendThermalMetrics(unsigned int aborted,
-                                         unsigned int turned_on,
-                                         unsigned int multiple) {
-  unsigned int total = aborted + turned_on;
-  if (total == 0) {
-    LOG(WARNING) << "SendThermalMetrics: total is 0 (aborted = "
-                 << aborted << ", turnd_on = " << turned_on << ")";
-    return;
-  }
-
-  unsigned int aborted_percent = (100 * aborted) / total;
-  unsigned int multiple_percent = (100 * multiple) / total;
-
-  LOG_IF(ERROR, !SendEnumMetric(kMetricThermalAbortedFanTurnOnName,
-                                aborted_percent,
-                                kMetricThermalAbortedFanTurnOnMax))
-      << "Unable to send aborted fan turn on metric!";
-  LOG_IF(ERROR, !SendEnumMetric(kMetricThermalMultipleFanTurnOnName,
-                                multiple_percent,
-                                kMetricThermalMultipleFanTurnOnMax))
-      << "Unable to send multiple fan turn on metric!";
-}
-
-gboolean MetricsReporter::GenerateThermalMetrics() {
-  unsigned int aborted = 0, turned_on = 0, multiple = 0;
-  if (!util::GetUintFromFile(kMetricThermalAbortedFanFilename, &aborted) ||
-      !util::GetUintFromFile(kMetricThermalTurnedOnFanFilename, &turned_on) ||
-      !util::GetUintFromFile(kMetricThermalMultipleFanFilename, &multiple)) {
-    LOG(ERROR) << "Unable to read values from debugfs thermal files. "
-               << "UMA metrics not being sent this poll period.";
-    return TRUE;
-  }
-
-  SendThermalMetrics(aborted, turned_on, multiple);
-  return TRUE;
 }
 
 }  // namespace power_manager

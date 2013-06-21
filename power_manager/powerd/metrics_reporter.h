@@ -177,15 +177,7 @@ class MetricsReporter {
   // Generates a metric describing power button activity.
   void GeneratePowerButtonMetric(bool down, base::TimeTicks timestamp);
 
-  // Sends thermal metrics to Chrome UMA.
-  void SendThermalMetrics(unsigned int aborted, unsigned int turned_on,
-                          unsigned int multiple);
-
  private:
-  // Generates UMA metrics for fan thermal state transitions.
-  // Always returns true.
-  SIGNAL_CALLBACK_0(MetricsReporter, gboolean, GenerateThermalMetrics);
-
   PrefsInterface* prefs_;
   MetricsLibraryInterface* metrics_lib_;
   policy::BacklightController* display_backlight_controller_;
@@ -196,10 +188,8 @@ class MetricsReporter {
   // False until HandlePowerSourceChange() has been called.
   bool saw_initial_power_source_;
 
-  // GLib timeouts for running GenerateBacklightLevelMetric() and
-  // GenerateThermalMetricsThunk(), or 0 if unset.
+  // GLib timeout for running GenerateBacklightLevelMetric() or 0 if unset.
   guint generate_backlight_metrics_timeout_id_;
-  guint generate_thermal_metrics_timeout_id_;
 
   // Timestamp of the last generated battery discharge rate metric.
   time_t battery_discharge_rate_metric_last_;

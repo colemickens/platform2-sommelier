@@ -601,25 +601,6 @@ TEST_F(MetricsReporterTest, SendMetricWithPowerSource) {
       /* sample */ 3, /* min */ 1, /* max */ 100, /* buckets */ 50));
 }
 
-TEST_F(MetricsReporterTest, SendThermalMetrics) {
-  int aborted = 5;
-  int turned_on = 10;
-  int multiple = 2;
-  int total = aborted + turned_on;
-
-  ExpectEnumMetric(kMetricThermalAbortedFanTurnOnName,
-                   static_cast<int>(round(100 * aborted / total)),
-                   kMetricThermalAbortedFanTurnOnMax);
-  ExpectEnumMetric(kMetricThermalMultipleFanTurnOnName,
-                   static_cast<int>(round(100 * multiple / total)),
-                   kMetricThermalMultipleFanTurnOnMax);
-  metrics_reporter_.SendThermalMetrics(aborted, turned_on, multiple);
-  Mock::VerifyAndClearExpectations(&metrics_lib_);
-
-  // The next call should fail and not send a metric.
-  metrics_reporter_.SendThermalMetrics(0, 0, multiple);
-}
-
 TEST_F(MetricsReporterTest, PowerButtonDownMetric) {
   // We should ignore a button release that wasn't preceded by a press.
   metrics_reporter_.GeneratePowerButtonMetric(false, base::TimeTicks::Now());

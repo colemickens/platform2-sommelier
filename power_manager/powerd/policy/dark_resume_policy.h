@@ -51,9 +51,9 @@ class DarkResumePolicy {
   void HandleResume();
 
  private:
-  // Reads a string pref named |prefs_file| from |prefs_| and splits it on
-  // newlines into |lines|.
-  bool ExtractLines(const std::string& prefs_file,
+  // Reads a string pref named |pref_name| from |prefs_| and splits it on
+  // newlines into |lines|. Returns false if the pref doesn't exist.
+  bool ExtractLines(const std::string& pref_name,
                     std::vector<std::string>* lines);
 
   bool ReadSuspendDurationsPref();
@@ -66,7 +66,7 @@ class DarkResumePolicy {
   // device should do something different during a dark resume or whether it is
   // a wakeup source for dark resume.
   void GetFiles(std::vector<base::FilePath>* files,
-                const std::string& prefs_file,
+                const std::string& pref_name,
                 const std::string& base_file);
 
   void SetStates(const std::vector<base::FilePath>& files,
