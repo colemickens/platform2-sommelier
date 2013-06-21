@@ -42,8 +42,10 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
 
   // The verity config from the kernel contains short hand symbols for
   // partition names that we can't get away with.
-  // %U+1 -> PARTUUID=XXX-YYY-ZZZ
+  // %U+1 -> XXX-YYY-ZZZ
   ReplaceAll(kernel_config_dm, "%U+1", install_config.root.uuid());
+  // PARTUUID=%U/PARTNROFF=1 -> PARTUUID=XXX-YYY-ZZZ
+  ReplaceAll(kernel_config_dm, "PARTUUID=%U/PARTNROFF=1", root_uuid);
 
   // Prepare the new default.cfg
 
