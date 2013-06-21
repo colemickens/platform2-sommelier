@@ -553,7 +553,7 @@ TEST_F(DeviceInfoTest, CreateDeviceLoopback) {
 }
 
 TEST_F(DeviceInfoTest, CreateDeviceCDCEthernet) {
-  // A cdc_ether device should be postponed to a task.
+  // A cdc_ether / cdc_ncm device should be postponed to a task.
   EXPECT_CALL(manager_, modem_info()).Times(0);
   EXPECT_CALL(routing_table_, FlushRoutes(_)).Times(0);
   EXPECT_CALL(rtnl_handler_, RemoveInterfaceAddress(_, _)).Times(0);
@@ -932,7 +932,7 @@ void DeviceInfoTechnologyTest::CreateInfoSymLink(const string &name,
 TEST_F(DeviceInfoTechnologyTest, Unknown) {
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
   // Should still be unknown even without a uevent file.
-  EXPECT_TRUE(file_util::Delete(GetInfoPath("uevent"), FALSE));
+  EXPECT_TRUE(file_util::Delete(GetInfoPath("uevent"), false));
   EXPECT_EQ(Technology::kUnknown, GetDeviceTechnology());
 }
 
@@ -992,52 +992,76 @@ TEST_F(DeviceInfoTechnologyTest, CellularQmiWwan) {
 
 // Modem with absolute driver path with top-level tty file:
 //   /sys/class/net/dev0/device -> /sys/devices/virtual/0/00
-//   /sys/devices/virtual/0/00/driver -> /drivers/cdc_ether
+//   /sys/devices/virtual/0/00/driver -> /drivers/cdc_ether or /drivers/cdc_ncm
 //   /sys/devices/virtual/0/01/tty [empty directory]
-TEST_F(DeviceInfoTechnologyTest, CDCEtherModem1) {
+TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem1) {
   FilePath device_root(temp_dir_.path().Append("sys/devices/virtual/0"));
   FilePath device_path(device_root.Append("00"));
+  FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(file_util::CreateDirectory(device_path));
   CreateInfoSymLink("device", device_path.value());
   EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                            device_path.Append("driver")));
+                                            driver_symlink));
   EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/tty")));
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+
+  EXPECT_TRUE(file_util::Delete(driver_symlink, false));
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
+                                            driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
 // Modem with relative driver path with top-level tty file.
 //   /sys/class/net/dev0/device -> ../../../device_dir/0/00
-//   /sys/device_dir/0/00/driver -> /drivers/cdc_ether
+//   /sys/device_dir/0/00/driver -> /drivers/cdc_ether or /drivers/cdc_ncm
 //   /sys/device_dir/0/01/tty [empty directory]
-TEST_F(DeviceInfoTechnologyTest, CDCEtherModem2) {
+TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem2) {
   CreateInfoSymLink("device", "../../../device_dir/0/00");
   FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
   FilePath device_path(device_root.Append("00"));
+  FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(file_util::CreateDirectory(device_path));
   EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                            device_path.Append("driver")));
+                                            driver_symlink));
   EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/tty")));
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+
+  EXPECT_TRUE(file_util::Delete(driver_symlink, false));
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
+                                            driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
 // Modem with relative driver path with lower-level tty file.
 //   /sys/class/net/dev0/device -> ../../../device_dir/0/00
-//   /sys/device_dir/0/00/driver -> /drivers/cdc_ether
+//   /sys/device_dir/0/00/driver -> /drivers/cdc_ether or /drivers/cdc_ncm
 //   /sys/device_dir/0/01/yyy/tty [empty directory]
-TEST_F(DeviceInfoTechnologyTest, CDCEtherModem3) {
+TEST_F(DeviceInfoTechnologyTest, CDCEthernetModem3) {
   CreateInfoSymLink("device", "../../../device_dir/0/00");
   FilePath device_root(temp_dir_.path().Append("sys/device_dir/0"));
   FilePath device_path(device_root.Append("00"));
+  FilePath driver_symlink(device_path.Append("driver"));
   EXPECT_TRUE(file_util::CreateDirectory(device_path));
   EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ether"),
-                                            device_path.Append("driver")));
+                                            driver_symlink));
   EXPECT_TRUE(file_util::CreateDirectory(device_root.Append("01/yyy/tty")));
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+
+  EXPECT_TRUE(file_util::Delete(driver_symlink, false));
+  EXPECT_TRUE(file_util::CreateSymbolicLink(FilePath("/drivers/cdc_ncm"),
+                                            driver_symlink));
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
 TEST_F(DeviceInfoTechnologyTest, CDCEtherNonModem) {
   CreateInfoSymLink("device", "device_dir");
   CreateInfoSymLink("device_dir/driver", "cdc_ether");
+  EXPECT_EQ(Technology::kCDCEthernet, GetDeviceTechnology());
+}
+
+TEST_F(DeviceInfoTechnologyTest, CDCNcmNonModem) {
+  CreateInfoSymLink("device", "device_dir");
+  CreateInfoSymLink("device_dir/driver", "cdc_ncm");
   EXPECT_EQ(Technology::kCDCEthernet, GetDeviceTechnology());
 }
 

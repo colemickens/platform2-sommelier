@@ -63,6 +63,7 @@ const char DeviceInfo::kModemPseudoDeviceNamePrefix[] = "pseudomodem";
 const char DeviceInfo::kEthernetPseudoDeviceNamePrefix[] = "pseudoethernet";
 const char DeviceInfo::kDeviceInfoRoot[] = "/sys/class/net";
 const char DeviceInfo::kDriverCdcEther[] = "cdc_ether";
+const char DeviceInfo::kDriverCdcNcm[] = "cdc_ncm";
 const char DeviceInfo::kDriverGdmWiMax[] = "gdm_wimax";
 const char DeviceInfo::kDriverVirtioNet[] = "virtio_net";
 const char DeviceInfo::kInterfaceUevent[] = "uevent";
@@ -295,16 +296,16 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
     return Technology::kWiMax;
   }
 
-  // For cdc_ether devices, make sure it's a modem because this driver
+  // For cdc_ether / cdc_ncm devices, make sure it's a modem because this driver
   // can be used for other ethernet devices.
-  if (driver_name == kDriverCdcEther) {
-    if (IsCdcEtherModemDevice(iface_name)) {
-      LOG(INFO) << StringPrintf("%s: device %s is a modem cdc_ether "
-                                "device", __func__, iface_name.c_str());
+  if (driver_name == kDriverCdcEther || driver_name == kDriverCdcNcm) {
+    if (IsCdcEthernetModemDevice(iface_name)) {
+      LOG(INFO) << StringPrintf("%s: device %s is a %s modem device", __func__,
+                                driver_name.c_str(), iface_name.c_str());
       return Technology::kCellular;
     }
-    SLOG(Device, 2) << StringPrintf("%s: device %s is a cdc_ether "
-                                    "device", __func__, iface_name.c_str());
+    SLOG(Device, 2) << StringPrintf("%s: device %s is a %s device", __func__,
+                                    driver_name.c_str(), iface_name.c_str());
     return Technology::kCDCEthernet;
   }
 
@@ -323,13 +324,13 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   return Technology::kEthernet;
 }
 
-bool DeviceInfo::IsCdcEtherModemDevice(const std::string &iface_name) {
-  // A cdc_ether device is a modem device if it also exposes tty interfaces.
-  // To determine this, we look for the existence of the tty interface in the
-  // USB device sysfs tree.
+bool DeviceInfo::IsCdcEthernetModemDevice(const std::string &iface_name) {
+  // A cdc_ether / cdc_ncm device is a modem device if it also exposes tty
+  // interfaces. To determine this, we look for the existence of the tty
+  // interface in the USB device sysfs tree.
   //
-  // A typical sysfs dir hierarchy for a cdc_ether modem USB device is as
-  // follows:
+  // A typical sysfs dir hierarchy for a cdc_ether / cdc_ncm modem USB device is
+  // as follows:
   //
   //   /sys/devices/pci0000:00/0000:00:1d.7/usb1/1-2
   //     1-2:1.0
@@ -462,7 +463,7 @@ DeviceRefPtr DeviceInfo::CreateDevice(const string &link_name,
       rtnl_handler_->SetInterfaceFlags(interface_index, IFF_UP, IFF_UP);
       return NULL;
     case Technology::kCDCEthernet:
-      // CDCEnternet devices are of indeterminate type when they are
+      // CDCEthernet devices are of indeterminate type when they are
       // initially created.  Some time later, tty devices may or may
       // not appear under the same USB device root, which will identify
       // it as a modem.  Alternatively, ModemManager may discover the

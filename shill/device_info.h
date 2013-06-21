@@ -143,6 +143,9 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   // Name of the "cdc_ether" driver.  This driver is not included in the
   // kModemDrivers list because we need to do additional checking.
   static const char kDriverCdcEther[];
+  // Name of the "cdc_ncm" driver.  This driver is not included in the
+  // kModemDrivers list because we need to do additional checking.
+  static const char kDriverCdcNcm[];
   // Name of the GDM WiMAX driver.
   static const char kDriverGdmWiMax[];
   // Name of the virtio network driver.
@@ -198,8 +201,8 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
       const std::string &iface_name);
   // Checks the device specified by |iface_name| to see if it's a modem device.
   // This method assumes that |iface_name| has already been determined to be
-  // using the cdc_ether driver.
-  bool IsCdcEtherModemDevice(const std::string &iface_name);
+  // using the cdc_ether / cdc_ncm driver.
+  bool IsCdcEthernetModemDevice(const std::string &iface_name);
   // Returns true if |base_dir| has a subdirectory named |subdir|.
   // |subdir| can be an immediate subdirectory of |base_dir| or can be
   // several levels deep.
