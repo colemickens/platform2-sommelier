@@ -24,15 +24,6 @@ namespace {
 // up by 10^6.  This factor scales them back down accordingly.
 const double kDoubleScaleFactor = 0.000001;
 
-// How much the remaining time can vary, as a fraction of the baseline time.
-const double kAcceptableVariance = 0.02;
-
-// Initially, allow 10 seconds before deciding on an acceptable time.
-const base::TimeDelta kHysteresisTimeFast = base::TimeDelta::FromSeconds(10);
-
-// Allow three minutes before deciding on a new acceptable time.
-const base::TimeDelta kHysteresisTime = base::TimeDelta::FromMinutes(3);
-
 // Report batteries as full if they're at or above this level (out of a max of
 // 1.0).
 const double kDefaultFullFactor = 0.97;
@@ -40,14 +31,11 @@ const double kDefaultFullFactor = 0.97;
 // Default time interval between polls, in milliseconds.
 const int kDefaultPollMs = 30000;
 
-// Default shorter time interval used after a failed poll or to wait before
-// calculating the remaining battery time after suspend/resume or a udev
-// event, in milliseconds.
+// Default shorter time interval used after a failed poll, in milliseconds.
 const int kDefaultShortPollMs = 5000;
 
-// Upper limit to accept for raw battery times, in seconds. If the time of
-// interest is above this level assume something is wrong.
-const int64 kBatteryTimeMaxValidSec = 24 * 60 * 60;
+// Default value for |current_stabilized_delay_|, in milliseconds.
+const int kDefaultCurrentStabilizedDelayMs = 5000;
 
 // Different power supply types reported by the kernel.
 const char kBatteryType[] = "Battery";
@@ -57,15 +45,6 @@ const char kMainsType[] = "Mains";
 // possible states; see drivers/power/power_supply_sysfs.c.
 const char kBatteryStatusCharging[] = "Charging";
 const char kBatteryStatusFull[] = "Full";
-
-// Converts time from hours to seconds.
-inline double HoursToSecondsDouble(double num_hours) {
-  return num_hours * 3600.;
-}
-// Same as above, but rounds to nearest integer.
-inline int64 HoursToSecondsInt(double num_hours) {
-  return lround(HoursToSecondsDouble(num_hours));
-}
 
 // Reads the contents of |filename| within |directory| into |out|, trimming
 // trailing whitespace.  Returns true on success.
@@ -98,12 +77,6 @@ double ReadScaledDouble(const base::FilePath& directory,
       kDoubleScaleFactor * value : 0.0;
 }
 
-// Computes time remaining based on energy drain rate.
-double GetLinearTimeToEmpty(const PowerStatus& status) {
-  return HoursToSecondsDouble(status.nominal_voltage * status.battery_charge /
-      (status.battery_current * status.battery_voltage));
-}
-
 // Returns true if |type|, a power supply type read from a "type" file in
 // sysfs, indicates USB.
 bool IsUsbType(const std::string& type) {
@@ -129,23 +102,21 @@ bool PowerSupply::TestApi::TriggerPollTimeout() {
   return true;
 }
 
-const int PowerSupply::kCalculateBatterySlackMs = 50;
+const int PowerSupply::kMaxCurrentSamples = 5;
+
+const int PowerSupply::kCurrentStabilizedSlackMs = 50;
 
 PowerSupply::PowerSupply(const base::FilePath& power_supply_path,
                          PrefsInterface* prefs)
     : prefs_(prefs),
       clock_(new Clock),
+      power_status_initialized_(false),
       power_supply_path_(power_supply_path),
-      acceptable_variance_(kAcceptableVariance),
-      hysteresis_time_(kHysteresisTimeFast),
-      found_acceptable_time_range_(false),
-      sample_window_max_(10),
-      sample_window_min_(1),
-      taper_time_max_(base::TimeDelta::FromSeconds(3600)),
-      taper_time_min_(base::TimeDelta::FromSeconds(600)),
       low_battery_shutdown_time_(base::TimeDelta::FromSeconds(180)),
       low_battery_shutdown_percent_(0.0),
       is_suspended_(false),
+      current_stabilized_delay_(base::TimeDelta::FromMilliseconds(
+          kDefaultCurrentStabilizedDelayMs)),
       full_factor_(kDefaultFullFactor),
       poll_timeout_id_(0),
       notify_observers_timeout_id_(0) {
@@ -180,30 +151,17 @@ void PowerSupply::Init() {
   prefs_->GetDouble(kLowBatteryShutdownPercentPref,
                     &low_battery_shutdown_percent_);
 
-  // This log message is needed by power_LoadTest in autotest
+  // This log message is needed by the power_LoadTest autotest.
   LOG(INFO) << "Using low battery time threshold of "
             << low_battery_shutdown_time_.InSeconds()
             << " secs and using low battery percent threshold of "
             << low_battery_shutdown_percent_;
 
-  prefs_->GetInt64(kSampleWindowMaxPref, &sample_window_max_);
-  prefs_->GetInt64(kSampleWindowMinPref, &sample_window_min_);
-  CHECK(sample_window_min_ > 0);
-  CHECK(sample_window_max_ >= sample_window_min_);
+  current_samples_.Init(kMaxCurrentSamples);
 
-  int64 taper_time_max_sec = 0;
-  if (prefs_->GetInt64(kTaperTimeMaxPref, &taper_time_max_sec))
-    taper_time_max_ = base::TimeDelta::FromSeconds(taper_time_max_sec);
-  int64 taper_time_min_sec = taper_time_min_.InSeconds();
-  if (prefs_->GetInt64(kTaperTimeMinPref, &taper_time_min_sec))
-    taper_time_min_ = base::TimeDelta::FromSeconds(taper_time_min_sec);
-  CHECK(taper_time_min_ > base::TimeDelta());
-  CHECK(taper_time_max_ > taper_time_min_);
-
-  time_to_empty_average_.Init(sample_window_max_);
-  time_to_full_average_.Init(sample_window_max_);
-
-  SetCalculatingBatteryTime();
+  // This defers the initial recording of samples until the current has
+  // stabilized.
+  ResetCurrentSamples();
   SchedulePoll(false);
 }
 
@@ -261,36 +219,28 @@ void PowerSupply::SetSuspended(bool suspended) {
     return;
 
   is_suspended_ = suspended;
-  SetCalculatingBatteryTime();
   if (is_suspended_) {
     VLOG(1) << "Stopping polling due to suspend";
-    suspend_time_ = clock_->GetCurrentTime();
     util::RemoveTimeout(&poll_timeout_id_);
     current_poll_delay_for_testing_ = base::TimeDelta();
   } else {
-    // base::TimeTicks::Now() doesn't increase while the system is
-    // suspended; ensure that a stale timestamp isn't used.
-    time_to_empty_average_.Clear();
-    time_to_full_average_.Clear();
-    // If resuming, deduct the time suspended from the hysteresis state
-    // machine timestamps.
-    AdjustHysteresisTimes(clock_->GetCurrentTime() - suspend_time_);
+    ResetCurrentSamples();
     RefreshImmediately();
   }
 }
 
 void PowerSupply::HandleUdevEvent() {
   VLOG(1) << "Heard about udev event";
-  SetCalculatingBatteryTime();
   if (!is_suspended_)
     RefreshImmediately();
 }
 
-void PowerSupply::SetCalculatingBatteryTime() {
-  VLOG(1) << "Waiting " << short_poll_delay_.InMilliseconds() << " ms before "
-          << "calculating battery time";
-  done_calculating_battery_time_timestamp_ =
-      clock_->GetCurrentTime() + short_poll_delay_;
+void PowerSupply::ResetCurrentSamples() {
+  VLOG(1) << "Waiting " << current_stabilized_delay_.InMilliseconds()
+          << " ms for current to stabilize";
+  current_samples_.Clear();
+  current_stabilized_timestamp_ =
+      clock_->GetCurrentTime() + current_stabilized_delay_;
 }
 
 bool PowerSupply::UpdatePowerStatus() {
@@ -347,6 +297,7 @@ bool PowerSupply::UpdatePowerStatus() {
   if (!status.battery_is_present) {
     status.battery_state = PowerSupplyProperties_BatteryState_NOT_PRESENT;
     power_status_ = status;
+    power_status_initialized_ = true;
     return true;
   }
 
@@ -436,11 +387,6 @@ bool PowerSupply::UpdatePowerStatus() {
   status.battery_energy = battery_charge * nominal_voltage;
   status.battery_energy_rate = battery_current * battery_voltage;
 
-  if (status.line_power_on)
-    discharge_start_time_ = base::TimeTicks();
-  else if (discharge_start_time_.is_null())
-    discharge_start_time_ = clock_->GetCurrentTime();
-
   status.battery_percentage = util::ClampPercent(
       100.0 * battery_charge / battery_charge_full);
   status.display_battery_percentage = util::ClampPercent(
@@ -464,17 +410,21 @@ bool PowerSupply::UpdatePowerStatus() {
     status.battery_state = PowerSupplyProperties_BatteryState_DISCHARGING;
   }
 
-  status.is_calculating_battery_time =
-      !done_calculating_battery_time_timestamp_.is_null() &&
-      clock_->GetCurrentTime() < done_calculating_battery_time_timestamp_;
+  if (power_status_initialized_ &&
+      status.line_power_on != power_status_.line_power_on)
+    ResetCurrentSamples();
 
-  UpdateRemainingTime(&status);
-  UpdateAveragedTimes(&status);
+  if (clock_->GetCurrentTime() >= current_stabilized_timestamp_ &&
+      battery_current > 0.0)
+    current_samples_.AddSample(battery_current);
+
+  status.is_calculating_battery_time = !UpdateBatteryTimeEstimates(&status);
 
   status.battery_below_shutdown_threshold =
       IsBatteryBelowShutdownThreshold(status);
 
   power_status_ = status;
+  power_status_initialized_ = true;
   return true;
 }
 
@@ -524,189 +474,43 @@ void PowerSupply::GetPowerSupplyPaths() {
   }
 }
 
-void PowerSupply::UpdateRemainingTime(PowerStatus* status) {
-  base::TimeTicks time_now = clock_->GetCurrentTime();
-  // This function might be called due to a race condition between the suspend
-  // process and the battery polling.  If that's the case, handle it gracefully
-  // by updating the hysteresis times and suspend time.
-  //
-  // Since the time between suspend and now has been taken into account in the
-  // hysteresis times, the recorded suspend time should be updated to the
-  // current time, to compensate.
-  //
-  // Example:
-  // Hysteresis time = 3
-  // At time t=0, there is a read of the power supply.
-  // At time t=1, the system is suspended.
-  // At time t=4, the system is resumed.  There is a power supply read at t=4.
-  // At time t=4.5, SetSuspendState(false) is called (latency in resume process)
-  //
-  // At t=4, the remaining time could be set to something very high, based on
-  // the low suspend current, since the time since last read is greater than the
-  // hysteresis time.
-  //
-  // The solution is to shift the last read time forward by 3, which is the time
-  // elapsed between suspend (t=1) and the next reading (t=4).  Thus, the time
-  // of last read becomes t=3, and time since last read becomes 1 instead of 4.
-  // This avoids triggering the time hysteresis adjustment.
-  //
-  // At this point, the suspend time is also reset to the current time.  This is
-  // so that when AdjustHysteresisTimes() is called again (e.g. during resume),
-  // the previous period of t=1 to t=4 is not used again in the adjustment.
-  // Continuing the example:
-  // At t=4.5, SetSuspendState(false) is called, and it calls
-  //   AdjustHysteresisTimes().  Since suspend time has been adjusted from t=1
-  //   to t=4, the new offset is only 0.5.  So time of last read gets shifted
-  //   from t=3 to t=3.5.
-  // If suspend time was not reset to t=4, then we'd have an offset of 3.5
-  // instead of 0.5, and time of last read gets set from t=3 to t=6.5, which is
-  // invalid.
-  if (is_suspended_) {
-    AdjustHysteresisTimes(time_now - suspend_time_);
-    suspend_time_ = time_now;
-  }
+bool PowerSupply::UpdateBatteryTimeEstimates(PowerStatus* status) {
+  DCHECK(status);
+  status->battery_time_to_full = base::TimeDelta();
+  status->battery_time_to_empty = base::TimeDelta();
 
-  // Check to make sure there isn't a division by zero.
-  if (status->battery_current > 0) {
-    double time_to_empty = 0;
-    if (status->line_power_on) {
-      status->battery_time_to_full =
-          HoursToSecondsInt(std::max(status->battery_charge_full -
-              status->battery_charge, 0.0) / status->battery_current);
-      // Reset the remaining-time-calculation state machine when AC plugged in.
-      found_acceptable_time_range_ = false;
-      last_poll_time_ = base::TimeTicks();
-      last_acceptable_range_time_ = base::TimeTicks();
-      // Make sure that when the system switches to battery power, the initial
-      // hysteresis time will be very short, so it can find an acceptable
-      // battery remaining time as quickly as possible.
-      hysteresis_time_ = kHysteresisTimeFast;
-    } else if (!found_acceptable_time_range_) {
-      // No base range found, need to give it some time to stabilize.  For now,
-      // use the simple linear calculation for time.
-      time_to_empty = GetLinearTimeToEmpty(*status);
-      status->battery_time_to_empty = lround(time_to_empty);
-      // Select an acceptable remaining time once the system has been
-      // discharging for the necessary amount of time.
-      if (time_now - discharge_start_time_ >= hysteresis_time_) {
-        acceptable_time_ = time_to_empty;
-        found_acceptable_time_range_ = true;
-        last_poll_time_ = last_acceptable_range_time_ = time_now;
-        // Since an acceptable time has been found, start using the normal
-        // hysteresis time going forward.
-        hysteresis_time_ = kHysteresisTime;
-      }
-    } else {
-      double calculated_time = GetLinearTimeToEmpty(*status);
-      double allowed_time_variation = acceptable_time_ * acceptable_variance_;
-      // Reduce the acceptable time range as time goes by.
-      acceptable_time_ -= (time_now - last_poll_time_).InSecondsF();
-      if (fabs(calculated_time - acceptable_time_) <= allowed_time_variation) {
-        last_acceptable_range_time_ = time_now;
-        time_to_empty = calculated_time;
-      } else if (time_now - last_acceptable_range_time_ >= hysteresis_time_) {
-        // If the calculated time has been outside the acceptable range for a
-        // long enough period of time, make it the basis for a new acceptable
-        // range.
-        acceptable_time_ = calculated_time;
-        time_to_empty = calculated_time;
-        found_acceptable_time_range_ = true;
-        last_acceptable_range_time_ = time_now;
-      } else if (calculated_time < acceptable_time_ - allowed_time_variation) {
-        // Clip remaining time at lower bound if it is too low.
-        time_to_empty = acceptable_time_ - allowed_time_variation;
+  if (clock_->GetCurrentTime() < current_stabilized_timestamp_)
+    return false;
+
+  const double average_current = current_samples_.GetAverage();
+  switch (status->battery_state) {
+    case PowerSupplyProperties_BatteryState_CHARGING:
+      if (average_current <= kEpsilon) {
+        status->battery_time_to_full = base::TimeDelta::FromSeconds(-1);
       } else {
-        // Clip remaining time at upper bound if it is too high.
-        time_to_empty = acceptable_time_ + allowed_time_variation;
+        const double charge_to_full = std::max(0.0,
+            status->battery_charge_full * full_factor_ -
+            status->battery_charge);
+        status->battery_time_to_full = base::TimeDelta::FromSeconds(
+            roundl(3600 * charge_to_full / average_current));
       }
-      last_poll_time_ = time_now;
-    }
-    status->battery_time_to_empty = lround(time_to_empty);
-  } else {
-    status->battery_time_to_empty = 0;
-    status->battery_time_to_full = 0;
-  }
-}
-
-void PowerSupply::UpdateAveragedTimes(PowerStatus* status) {
-  // Some devices give us bogus values for battery information right after boot
-  // or a power event. We attempt to avoid sampling at these times, but
-  // this guard is to save us when we do sample a bad value. After working
-  // out the time values, if we have a negative we know something is bad.
-  // If the time we are interested in (to empty or full) is beyond a day
-  // then we have a bad value since it is too high. For some devices the
-  // value for the uninteresting time, that we are not using, might be
-  // bizarre, so we cannot just check both times for overly high values.
-  if ((status->line_power_on &&
-       (status->battery_time_to_full < 0 ||
-        status->battery_time_to_full > kBatteryTimeMaxValidSec)) ||
-      (!status->line_power_on &&
-       (status->battery_time_to_empty < 0 ||
-        status->battery_time_to_empty > kBatteryTimeMaxValidSec))) {
-    LOG(ERROR) << "Battery time-to-"
-               << (status->line_power_on ? "full" : "empty") << " is "
-               << (status->line_power_on ?
-                   status->battery_time_to_full :
-                   status->battery_time_to_empty);
-    status->battery_times_are_bad = true;
-    status->averaged_battery_time_to_empty = 0;
-    status->averaged_battery_time_to_full = 0;
-    status->is_calculating_battery_time = true;
-    return;
+      break;
+    case PowerSupplyProperties_BatteryState_DISCHARGING:
+      if (average_current <= kEpsilon) {
+        status->battery_time_to_empty = base::TimeDelta::FromSeconds(-1);
+      } else {
+        status->battery_time_to_empty = base::TimeDelta::FromSeconds(
+            roundl(3600 * (status->battery_charge * status->nominal_voltage) /
+                   (average_current * status->battery_voltage)));
+      }
+      break;
+    case PowerSupplyProperties_BatteryState_FULL:
+      break;
+    default:
+      NOTREACHED() << "Unhandled battery state " << status->battery_state;
   }
 
-  int64 battery_time = 0;
-  if (status->line_power_on) {
-    battery_time = status->battery_time_to_full;
-    if (!status->is_calculating_battery_time)
-      time_to_full_average_.AddSample(battery_time);
-    time_to_empty_average_.Clear();
-  } else {
-    // If the time threshold is set use it, otherwise determine the time
-    // equivalent of the percentage threshold.
-    int64 time_threshold_s = low_battery_shutdown_time_ > base::TimeDelta() ?
-        low_battery_shutdown_time_.InSeconds() :
-        (status->battery_time_to_empty *
-         low_battery_shutdown_percent_ / status->battery_percentage);
-    battery_time = std::max(static_cast<int64>(0),
-        status->battery_time_to_empty - time_threshold_s);
-    if (!status->is_calculating_battery_time)
-      time_to_empty_average_.AddSample(battery_time);
-    time_to_full_average_.Clear();
-  }
-
-  if (!status->is_calculating_battery_time) {
-    if (!status->line_power_on)
-      AdjustWindowSize(base::TimeDelta::FromSeconds(battery_time));
-    else
-      time_to_empty_average_.ChangeWindowSize(sample_window_max_);
-  }
-  status->averaged_battery_time_to_full = time_to_full_average_.GetAverage();
-  status->averaged_battery_time_to_empty = time_to_empty_average_.GetAverage();
-}
-
-void PowerSupply::AdjustWindowSize(base::TimeDelta battery_time) {
-  // For the rolling averages we want the window size to taper off in a linear
-  // fashion from |sample_window_max| to |sample_window_min| on the battery time
-  // remaining interval from |taper_time_max_| to |taper_time_min_|. The two
-  // point equation for the line is:
-  //   (x - x0)/(x1 - x0) = (t - t0)/(t1 - t0)
-  // which solved for x is:
-  //   x = (t - t0)*(x1 - x0)/(t1 - t0) + x0
-  // We let x be the size of the window and t be the battery time
-  // remaining.
-  unsigned int window_size = sample_window_max_;
-  if (battery_time >= taper_time_max_) {
-    window_size = sample_window_max_;
-  } else if (battery_time <= taper_time_min_) {
-    window_size = sample_window_min_;
-  } else {
-    window_size = (battery_time - taper_time_min_).InSeconds();
-    window_size *= (sample_window_max_ - sample_window_min_);
-    window_size /= (taper_time_max_ - taper_time_min_).InSeconds();
-    window_size += sample_window_min_;
-  }
-  time_to_empty_average_.ChangeWindowSize(window_size);
+  return true;
 }
 
 bool PowerSupply::IsBatteryBelowShutdownThreshold(
@@ -716,11 +520,8 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
     return false;
 
   // TODO(derat): Figure out what's causing http://crosbug.com/38912.
-  if (status.battery_percentage < 0.001) {
-    LOG(WARNING) << "Ignoring probably-bogus zero battery percentage "
-                 << "(time-to-empty is " << status.battery_time_to_empty
-                 << " sec, time-to-full is " << status.battery_time_to_full
-                 << " sec)";
+  if (status.battery_percentage <= kEpsilon) {
+    LOG(WARNING) << "Ignoring probably-bogus zero battery percentage";
     return false;
   }
 
@@ -730,28 +531,18 @@ bool PowerSupply::IsBatteryBelowShutdownThreshold(
   if (status.line_power_on && status.line_power_type == kMainsType)
     return false;
 
-  return (status.battery_time_to_empty > 0 &&
-          status.battery_time_to_empty <=
-          low_battery_shutdown_time_.InSeconds()) ||
+  return (status.battery_time_to_empty > base::TimeDelta() &&
+          status.battery_time_to_empty <= low_battery_shutdown_time_) ||
       status.battery_percentage <= low_battery_shutdown_percent_;
-}
-
-void PowerSupply::AdjustHysteresisTimes(const base::TimeDelta& offset) {
-  if (!discharge_start_time_.is_null())
-    discharge_start_time_ += offset;
-  if (!last_acceptable_range_time_.is_null())
-    last_acceptable_range_time_ += offset;
-  if (!last_poll_time_.is_null())
-    last_poll_time_ += offset;
 }
 
 void PowerSupply::SchedulePoll(bool last_poll_succeeded) {
   base::TimeDelta delay = last_poll_succeeded ? poll_delay_ : short_poll_delay_;
   base::TimeTicks now = clock_->GetCurrentTime();
-  if (done_calculating_battery_time_timestamp_ > now) {
+  if (current_stabilized_timestamp_ > now) {
     delay = std::min(delay,
-        done_calculating_battery_time_timestamp_ - now +
-        base::TimeDelta::FromMilliseconds(kCalculateBatterySlackMs));
+        current_stabilized_timestamp_ - now +
+        base::TimeDelta::FromMilliseconds(kCurrentStabilizedSlackMs));
   }
 
   VLOG(1) << "Scheduling update in " << delay.InMilliseconds() << " ms";

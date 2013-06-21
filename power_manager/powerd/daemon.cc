@@ -66,8 +66,10 @@ void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
   proto->set_external_power(status.external_power);
   proto->set_battery_state(status.battery_state);
   proto->set_battery_percent(status.display_battery_percentage);
-  proto->set_battery_time_to_empty_sec(status.averaged_battery_time_to_empty);
-  proto->set_battery_time_to_full_sec(status.averaged_battery_time_to_full);
+  proto->set_battery_time_to_empty_sec(
+      status.battery_time_to_empty.InSeconds());
+  proto->set_battery_time_to_full_sec(
+      status.battery_time_to_full.InSeconds());
   proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
 }
 
@@ -104,28 +106,27 @@ std::string GetPowerStatusBatteryDebugString(
   output += StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
       status.battery_charge_full, status.battery_current);
 
-  // TODO(derat): Change this to instead switch on |status.battery_state|
-  // and display time-to-full for CHARGING and time-to-empty for DISCHARGING
-  // after PowerSupply has been updated.
-  switch (status.external_power) {
-    case PowerSupplyProperties_ExternalPower_AC:
-    case PowerSupplyProperties_ExternalPower_USB:
-      if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
-        output += ", full";
-      } else {
-        output += ", " + util::TimeDeltaToString(
-            base::TimeDelta::FromSeconds(status.battery_time_to_full)) +
+  switch (status.battery_state) {
+    case PowerSupplyProperties_BatteryState_FULL:
+      output += ", full";
+      break;
+    case PowerSupplyProperties_BatteryState_CHARGING:
+      if (status.battery_time_to_full >= base::TimeDelta()) {
+        output += ", " + util::TimeDeltaToString(status.battery_time_to_full) +
             " until full";
         if (status.is_calculating_battery_time)
           output += " (calculating)";
       }
       break;
-    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
-      output += ", " + util::TimeDeltaToString(
-          base::TimeDelta::FromSeconds(status.battery_time_to_empty)) +
-          " until empty";
-      if (status.is_calculating_battery_time)
-        output += " (calculating)";
+    case PowerSupplyProperties_BatteryState_DISCHARGING:
+      if (status.battery_time_to_empty >= base::TimeDelta()) {
+        output += ", " + util::TimeDeltaToString(status.battery_time_to_empty) +
+            " until empty";
+        if (status.is_calculating_battery_time)
+          output += " (calculating)";
+      }
+      break;
+    case PowerSupplyProperties_BatteryState_NOT_PRESENT:
       break;
   }
 

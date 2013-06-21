@@ -43,19 +43,17 @@ struct PowerStatus {
         battery_charge_full(0.0),
         nominal_voltage(0.0),
         is_calculating_battery_time(false),
-        battery_time_to_empty(0),
-        battery_time_to_full(0),
-        averaged_battery_time_to_empty(0),
-        averaged_battery_time_to_full(0),
         battery_percentage(-1.0),
         display_battery_percentage(-1.0),
         battery_is_present(false),
         battery_below_shutdown_threshold(false),
-        battery_times_are_bad(false),
         external_power(PowerSupplyProperties_ExternalPower_DISCONNECTED),
         battery_state(PowerSupplyProperties_BatteryState_NOT_PRESENT) {}
 
+  // Is a non-battery power source connected?
   bool line_power_on;
+
+  // String read from sysfs describing the non-battery power source.
   std::string line_power_type;
 
   // Line power statistics. These may be unset even if line power is connected.
@@ -89,28 +87,26 @@ struct PowerStatus {
   // signal that the time value maybe inaccurate.
   bool is_calculating_battery_time;
 
-  // Time in seconds until the battery is considered empty, 0 for unknown.
-  int64 battery_time_to_empty;
-  // Time in seconds until the battery is considered full. 0 for unknown.
-  int64 battery_time_to_full;
+  // Time until the battery is empty (while discharging) or full (while
+  // charging).
+  base::TimeDelta battery_time_to_empty;
+  base::TimeDelta battery_time_to_full;
 
-  // Averaged time in seconds until the battery is considered empty, 0 for
-  // unknown.
-  int64 averaged_battery_time_to_empty;
-  // Average time in seconds until the battery is considered full. 0 for
-  // unknown.
-  int64 averaged_battery_time_to_full;
-
+  // Battery charge in the range [0.0, 100.0], i.e. |battery_charge| /
+  // |battery_charge_full| * 100.0.
   double battery_percentage;
+
+  // Battery charge in the range [0.0, 100.0] that should be displayed to
+  // the user. This takes other factors into consideration, such as the
+  // percentage at which point we shut down the device and the "full
+  // factor".
   double display_battery_percentage;
+
+  // Does the system have a battery?
   bool battery_is_present;
 
   // Is the battery level so low that the machine should be shut down?
   bool battery_below_shutdown_threshold;
-
-  // Does |battery_time_to_full| or |battery_time_to_empty| contain bogus
-  // data?
-  bool battery_times_are_bad;
 
   PowerSupplyProperties_ExternalPower external_power;
   PowerSupplyProperties_BatteryState battery_state;
@@ -166,22 +162,26 @@ class PowerSupply {
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  // Additional time beyond |short_poll_delay_| to wait before updating the
-  // status, in milliseconds.  This just ensures that the timer doesn't
-  // fire before it's safe to calculate the battery time.
-  static const int kCalculateBatterySlackMs;
+  // Maximum number of samples of the battery current to average when
+  // calculating the battery's time-to-full or -empty.
+  static const int kMaxCurrentSamples;
 
-  // Number of seconds after switching from line power with the battery
-  // fully charged to battery power over which the battery's charge should
-  // be reported as 100%.  Some batteries report a lower charge as soon as
-  // line power is disconnected, but the percentage that's displayed to the
-  // user shouldn't drop immediately.
-  static const int kRetainFullChargeSec;
+  // Additional time beyond |current_stabilized_delay_| to wait before
+  // updating the status, in milliseconds. This just ensures that the timer
+  // doesn't fire before it's safe to calculate the battery time.
+  static const int kCurrentStabilizedSlackMs;
 
   PowerSupply(const base::FilePath& power_supply_path, PrefsInterface *prefs);
   ~PowerSupply();
 
   const PowerStatus& power_status() const { return power_status_; }
+
+  const base::TimeDelta& current_stabilized_delay() const {
+    return current_stabilized_delay_;
+  }
+  void set_current_stabilized_delay(const base::TimeDelta& delay) {
+    current_stabilized_delay_ = delay;
+  }
 
   // Initializes the object and begins polling.
   void Init();
@@ -203,20 +203,14 @@ class PowerSupply {
   void SetSuspended(bool suspended);
 
   // Handles a power supply-related udev event.  Updates |power_status_|
-  // immediately and schedules a poll for the near future.
+  // immediately.
   void HandleUdevEvent();
 
  private:
   friend class PowerSupplyTest;
-  FRIEND_TEST(PowerSupplyTest, TestDischargingWithHysteresis);
-  FRIEND_TEST(PowerSupplyTest, TestDischargingWithSuspendResume);
 
-  base::TimeTicks GetCurrentTime() const;
-
-  // Updates |done_calculating_battery_time_timestamp_| so PowerStatus's
-  // |is_calculating_battery_time| field will be set to true until
-  // |calculate_battery_time_delay_| has elapsed.
-  void SetCalculatingBatteryTime();
+  // Clears |current_samples_| and sets |current_stabilized_timestamp_|.
+  void ResetCurrentSamples();
 
   // Read data from power supply sysfs and fill out all fields of the
   // PowerStatus structure if possible.
@@ -225,31 +219,20 @@ class PowerSupply {
   // Find sysfs directories to read from.
   void GetPowerSupplyPaths();
 
-  // Determines remaining time when charging or discharging.
-  void UpdateRemainingTime(PowerStatus* status);
-
-  // Updates the averaged values in |status| and adds the battery time
-  // estimate values to the appropriate rolling averages.
-  void UpdateAveragedTimes(PowerStatus* status);
-
-  // Given the current battery time estimate, adjusts the rolling average
-  // window sizes to give the desired linear tapering.
-  void AdjustWindowSize(base::TimeDelta battery_time);
-
-  // Returns the battery percentage that should be displayed for |status|.
-  // |status|'s |battery_state| and |battery_percentage| fields must
-  // already be set.
-  double CalculateDisplayBatteryPercentage(const PowerStatus& status) const;
+  // Updates |status|'s time-to-full and time-to-empty estimates or returns
+  // false if estimates can't be calculated yet. Negative values are used
+  // if the estimates would otherwise be extremely large (due to a very low
+  // current).
+  //
+  // The |battery_state|, |battery_charge|, |battery_charge_full|,
+  // |nominal_voltage|, and |battery_voltage| fields must already be
+  // initialized.
+  bool UpdateBatteryTimeEstimates(PowerStatus* status);
 
   // Returns true if |status|'s battery level is so low that the system
   // should be shut down.  |status|'s |battery_percentage|,
   // |battery_time_to_*|, and |line_power_on| fields must already be set.
   bool IsBatteryBelowShutdownThreshold(const PowerStatus& status) const;
-
-  // Offsets the timestamps used in hysteresis calculations.  This is used when
-  // suspending and resuming -- the time while suspended should not count toward
-  // the hysteresis times.
-  void AdjustHysteresisTimes(const base::TimeDelta& offset);
 
   // Updates |poll_timeout_id_| to call HandlePollTimeout().  Removes any
   // existing timeout.
@@ -273,42 +256,34 @@ class PowerSupply {
   // Most-recently-computed status.
   PowerStatus power_status_;
 
+  // True after |power_status_| has been successfully updated at least once.
+  bool power_status_initialized_;
+
   // Paths to power supply base sysfs directory and battery and line power
   // subdirectories.
   base::FilePath power_supply_path_;
   base::FilePath line_power_path_;
   base::FilePath battery_path_;
 
-  // These are used for using hysteresis to avoid large swings in calculated
-  // remaining battery time.
-  double acceptable_variance_;
-  base::TimeDelta hysteresis_time_;
-  bool found_acceptable_time_range_;
-  double acceptable_time_;
-  base::TimeDelta time_outside_of_acceptable_range_;
-  base::TimeTicks last_acceptable_range_time_;
-  base::TimeTicks last_poll_time_;
-  base::TimeTicks discharge_start_time_;
-
-  int64 sample_window_max_;
-  int64 sample_window_min_;
-
-  base::TimeDelta taper_time_max_;
-  base::TimeDelta taper_time_min_;
-
   base::TimeDelta low_battery_shutdown_time_;
   double low_battery_shutdown_percent_;
 
-  base::TimeTicks suspend_time_;
   bool is_suspended_;
 
-  // Time at or after which it will be possible to calculate the battery's
-  // time-to-full and time-to-empty.
-  base::TimeTicks done_calculating_battery_time_timestamp_;
+  // Amount of time to wait after startup, a power source change, or a
+  // resume event before assuming that the current can be used in battery
+  // time estimates.
+  base::TimeDelta current_stabilized_delay_;
 
-  // Rolling averages used to iron out instabilities in the time estimates.
-  RollingAverage time_to_empty_average_;
-  RollingAverage time_to_full_average_;
+  // Time at which the reported current is expected to have stabilized to
+  // the point where it can be recorded in |current_samples_| and the
+  // battery's time-to-full or time-to-empty estimates can be updated.
+  base::TimeTicks current_stabilized_timestamp_;
+
+  // A collection of recent current readings (in amperes) used to calculate
+  // time-to-full and time-to-empty estimates. Reset in response to changes
+  // such as resuming from suspend or the power source being changed.
+  RollingAverage current_samples_;
 
   // The fraction of full charge at which the battery can be considered "full"
   // if there is no more charging current.  Should be in the range (0, 100].

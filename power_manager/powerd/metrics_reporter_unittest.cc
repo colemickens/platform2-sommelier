@@ -564,8 +564,7 @@ TEST_F(MetricsReporterTest, GenerateMetricsOnPowerEvent) {
   system::PowerStatus status;
   status.battery_energy_rate = 4.9;
   status.battery_percentage = 32.5;
-  status.battery_time_to_empty = 10 * 60;
-  status.battery_times_are_bad = false;
+  status.battery_time_to_empty = base::TimeDelta::FromSeconds(10 * 60);
   ExpectBatteryDischargeRateMetric(4900);
   ExpectEnumMetric(kMetricBatteryInfoSampleName,
                    BATTERY_INFO_READ,

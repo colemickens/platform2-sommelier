@@ -27,13 +27,6 @@ const char kInstantTransitionsBelowMinLevelPref[] =
 const char kDisableALSPref[] = "disable_als";
 const char kKeepBacklightOnForAudioPref[] = "keep_backlight_on_for_audio";
 const char kWakeupInputPref[] = "wakeup_input_device_names";
-// The maximum duration in seconds the state machine can be disabled for
-const char kStateMaxDisabledDurationSecPref[] =
-    "state_max_disabled_duration_sec";
-const char kSampleWindowMaxPref[] = "sample_window_max";
-const char kSampleWindowMinPref[] = "sample_window_min";
-const char kTaperTimeMaxPref[] = "taper_time_max_s";
-const char kTaperTimeMinPref[] = "taper_time_min_s";
 const char kPowerSupplyFullFactorPref[] = "power_supply_full_factor";
 const char kInternalBacklightAlsLimitsPref[] = "internal_backlight_als_limits";
 const char kInternalBacklightAlsStepsPref[] = "internal_backlight_als_steps";

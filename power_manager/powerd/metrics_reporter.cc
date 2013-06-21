@@ -202,15 +202,11 @@ void MetricsReporter::GenerateMetricsOnPowerEvent(
   SendEnumMetric(kMetricBatteryInfoSampleName,
                  BATTERY_INFO_READ,
                  BATTERY_INFO_MAX);
-  if (info.battery_times_are_bad) {
-    SendEnumMetric(kMetricBatteryInfoSampleName,
-                   BATTERY_INFO_BAD,
-                   BATTERY_INFO_MAX);
-  } else {
-    SendEnumMetric(kMetricBatteryInfoSampleName,
-                   BATTERY_INFO_GOOD,
-                   BATTERY_INFO_MAX);
-  }
+  // TODO(derat): Continue sending BATTERY_INFO_BAD in some situations?
+  // Remove this metric entirely?
+  SendEnumMetric(kMetricBatteryInfoSampleName,
+                 BATTERY_INFO_GOOD,
+                 BATTERY_INFO_MAX);
 }
 
 gboolean MetricsReporter::GenerateBacklightLevelMetric() {

@@ -33,6 +33,9 @@ namespace {
 // Path to power supply info.
 const char kPowerStatusPath[] = "/sys/class/power_supply";
 
+// Number of columns that should be used to display field names.
+const int kFieldNameColumns = 22;
+
 std::string BoolToString(bool value) {
   return value ? "yes" : "no";
 }
@@ -114,6 +117,9 @@ int main(int argc, char** argv) {
 
   base::FilePath path(kPowerStatusPath);
   power_manager::system::PowerSupply power_supply(path, &prefs);
+  // Ensure that the battery's time-to-full or time-to-empty will be
+  // calculated immediately.
+  power_supply.set_current_stabilized_delay(base::TimeDelta());
   power_supply.Init();
 
   power_manager::system::PowerInformation power_info;
@@ -123,7 +129,7 @@ int main(int argc, char** argv) {
   InfoDisplay display;
   display.SetIndent(0, 0);
   display.PrintString("Device: Line Power");
-  display.SetIndent(2, 20);
+  display.SetIndent(2, kFieldNameColumns);
   display.PrintValue("path", power_info.line_power_path);
   display.PrintStringValue("online",
                            BoolToString(power_status.line_power_on));
@@ -147,7 +153,7 @@ int main(int argc, char** argv) {
   if (power_status.battery_is_present) {
     display.SetIndent(0, 0);
     display.PrintString("Device: Battery");
-    display.SetIndent(2, 20);
+    display.SetIndent(2, kFieldNameColumns);
     display.PrintValue("path", power_info.battery_path);
     display.PrintStringValue("vendor", power_info.battery_vendor);
     display.PrintStringValue("model", power_info.battery_model);
@@ -178,13 +184,18 @@ int main(int argc, char** argv) {
     display.PrintValue("current (A)", power_status.battery_current);
     display.PrintValue("charge (Ah)", power_status.battery_charge);
     display.PrintValue("full charge (Ah)", power_status.battery_charge_full);
-    if (power_status.line_power_on)
+    if (power_status.battery_state ==
+        power_manager::PowerSupplyProperties_BatteryState_CHARGING) {
       display.PrintValue("time to full",
-                         SecondsToString(power_status.battery_time_to_full));
-    else
+          SecondsToString(power_status.battery_time_to_full.InSeconds()));
+    } else if (power_status.battery_state ==
+               power_manager::PowerSupplyProperties_BatteryState_DISCHARGING) {
       display.PrintValue("time to empty",
-                         SecondsToString(power_status.battery_time_to_empty));
+          SecondsToString(power_status.battery_time_to_empty.InSeconds()));
+    }
     display.PrintValue("percentage", power_status.battery_percentage);
+    display.PrintValue("display percentage",
+        power_status.display_battery_percentage);
     display.PrintStringValue("technology", power_info.battery_technology);
   }
   return 0;

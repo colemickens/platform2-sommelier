@@ -26,12 +26,11 @@ class RollingAverage {
   // Changes the number of samples to hold.  Current samples are retained.
   void ChangeWindowSize(size_t window_size);
 
-  // Adds a sample (which must be greater than or equal to zero) and
-  // returns the new average.
-  int64 AddSample(int64 sample);
+  // Adds a sample and returns the new average.
+  double AddSample(double sample);
 
   // Returns the current average.
-  int64 GetAverage();
+  double GetAverage();
 
   // Clears all samples.
   void Clear();
@@ -40,8 +39,8 @@ class RollingAverage {
   // Deletes the oldest sample.
   void DeleteSample();
 
-  std::queue<int64> samples_;
-  int64 running_total_;
+  std::queue<double> samples_;
+  double running_total_;
   size_t window_size_;
 
   DISALLOW_COPY_AND_ASSIGN(RollingAverage);

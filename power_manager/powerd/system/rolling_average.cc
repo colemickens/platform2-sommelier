@@ -11,7 +11,7 @@
 namespace power_manager {
 namespace system {
 
-RollingAverage::RollingAverage() : running_total_(0), window_size_(0) {}
+RollingAverage::RollingAverage() : running_total_(0.0), window_size_(0) {}
 
 RollingAverage::~RollingAverage() {}
 
@@ -26,9 +26,9 @@ void RollingAverage::ChangeWindowSize(size_t window_size) {
   window_size_ = window_size;
 }
 
-int64 RollingAverage::AddSample(int64 sample) {
+double RollingAverage::AddSample(double sample) {
   DCHECK_GT(window_size_, static_cast<size_t>(0)) << "Must call Init()";
-  if (sample < 0) {
+  if (sample < 0.0) {
     LOG(WARNING) << "Ignoring invalid sample of " << sample;
     return GetAverage();
   }
@@ -40,13 +40,12 @@ int64 RollingAverage::AddSample(int64 sample) {
   return GetAverage();
 }
 
-int64 RollingAverage::GetAverage() {
-  return samples_.empty() ? 0 :
-      lround(static_cast<double>(running_total_ / samples_.size()));
+double RollingAverage::GetAverage() {
+  return samples_.empty() ? 0.0 : running_total_ / samples_.size();
 }
 
 void RollingAverage::Clear() {
-  running_total_ = 0;
+  running_total_ = 0.0;
   while (!samples_.empty())
     samples_.pop();
 }

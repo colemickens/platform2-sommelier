@@ -14,48 +14,48 @@ namespace system {
 TEST(RollingAverageTest, SingleSample) {
   RollingAverage average;
   average.Init(1);
-  EXPECT_EQ(0, average.AddSample(0));
-  EXPECT_EQ(5, average.AddSample(5));
-  EXPECT_EQ(4, average.AddSample(4));
-  EXPECT_EQ(0, average.AddSample(0));
-  EXPECT_EQ(8, average.AddSample(8));
-  EXPECT_EQ(8, average.GetAverage());
+  EXPECT_DOUBLE_EQ(0.0, average.AddSample(0.0));
+  EXPECT_DOUBLE_EQ(5.0, average.AddSample(5.0));
+  EXPECT_DOUBLE_EQ(4.0, average.AddSample(4.0));
+  EXPECT_DOUBLE_EQ(0.0, average.AddSample(0.0));
+  EXPECT_DOUBLE_EQ(8.0, average.AddSample(8.0));
+  EXPECT_DOUBLE_EQ(8.0, average.GetAverage());
 
   // Negative samples should be ignored.
-  EXPECT_EQ(8, average.AddSample(-1));
+  EXPECT_DOUBLE_EQ(8.0, average.AddSample(-1.0));
 }
 
 TEST(RollingAverageTest, MultipleSamples) {
   RollingAverage average;
   average.Init(3);
-  EXPECT_EQ(4, average.AddSample(4));
-  EXPECT_EQ(6, average.AddSample(8));
-  EXPECT_EQ(8, average.AddSample(12));
-  EXPECT_EQ(10, average.AddSample(10));
+  EXPECT_DOUBLE_EQ(4.0, average.AddSample(4.0));
+  EXPECT_DOUBLE_EQ(6.0, average.AddSample(8.0));
+  EXPECT_DOUBLE_EQ(8.0, average.AddSample(12.0));
+  EXPECT_DOUBLE_EQ(10.0, average.AddSample(10.0));
 }
 
 TEST(RollingAverageTest, ChangeWindowSize) {
   RollingAverage average;
   average.Init(2);
-  EXPECT_EQ(5, average.AddSample(5));
-  EXPECT_EQ(6, average.AddSample(7));
+  EXPECT_DOUBLE_EQ(5.0, average.AddSample(5.0));
+  EXPECT_DOUBLE_EQ(6.0, average.AddSample(7.0));
   average.ChangeWindowSize(4);
-  EXPECT_EQ(6, average.GetAverage());
-  EXPECT_EQ(7, average.AddSample(9));
-  EXPECT_EQ(8, average.AddSample(11));
+  EXPECT_DOUBLE_EQ(6.0, average.GetAverage());
+  EXPECT_DOUBLE_EQ(7.0, average.AddSample(9.0));
+  EXPECT_DOUBLE_EQ(8.0, average.AddSample(11.0));
   average.ChangeWindowSize(2);
-  EXPECT_EQ(10, average.GetAverage());
+  EXPECT_DOUBLE_EQ(10.0, average.GetAverage());
   average.ChangeWindowSize(1);
-  EXPECT_EQ(11, average.GetAverage());
+  EXPECT_DOUBLE_EQ(11.0, average.GetAverage());
 }
 
 TEST(RollingAverageTest, Clear) {
   RollingAverage average;
   average.Init(2);
-  EXPECT_EQ(3, average.AddSample(3));
-  EXPECT_EQ(2, average.AddSample(1));
+  EXPECT_DOUBLE_EQ(3.0, average.AddSample(3.0));
+  EXPECT_DOUBLE_EQ(2.5, average.AddSample(2.0));
   average.Clear();
-  EXPECT_EQ(0, average.GetAverage());
+  EXPECT_DOUBLE_EQ(0.0, average.GetAverage());
 }
 
 }  // namespace system
