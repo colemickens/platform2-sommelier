@@ -99,6 +99,11 @@ HELP_ADVANCED='
  rlz < status | enable | disable >
   Enable or disable RLZ.
 
+ rollback
+  Attempt to rollback to the previous update cached on your system. Only
+  available on non-stable channels and non-enterprise enrolled devices. Please
+  note that this will powerwash your device.
+
  route [-n] [-6]
   Display the routing tables.
 
@@ -942,6 +947,15 @@ cmd_autest() {
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
   /usr/bin/update_engine_client --omaha_url $omaha_url
+}
+
+cmd_rollback() {
+  if /usr/bin/update_engine_client --rollback; then
+    echo "Rollback attempt succeeded -- after a couple minutes you will" \
+         "get an update available and you should reboot to complete rollback."
+  else
+    echo "Rollback attempt failed. Check chrome://system for more information."
+  fi
 }
 
 cmd_tpcontrol() {
