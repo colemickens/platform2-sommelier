@@ -13,6 +13,12 @@ SCRIPT="$0"
 # stateful partition isn't around for logging, so dump to the screen:
 set -x
 
+# Log file to store the output of this run.
+CLOBBER_STATE_LOG="/tmp/clobber-state.log"
+
+# Redirect stdout to our log.
+exec > "$CLOBBER_STATE_LOG" 2>&1
+
 if [ $(id -u) -ne 0 ]; then
   echo 'You must run this as root'
   exit 1
@@ -29,6 +35,7 @@ FACTORY_WIPE_FIRMWARE_PID=""
 PRESERVED_FILES="
   unencrypted/preserve/attestation.epb
   unencrypted/preserve/powerwash_count
+  unencrypted/preserve/update_engine/prefs/rollback-version
   home/.shadow/install_attributes.pb
 "
 PRESERVED_TAR="/tmp/preserve.tar"
@@ -50,6 +57,9 @@ if [ "$SAFE_WIPE" = "safe" ]; then
   # parent directories. For example for home/.shadow/install_attributes.pb
   # we pass to tar home home/.shadow home/.shadow/install_attributes.pb
   for file in $PRESERVED_FILES; do
+    if [ ! -e "$STATE_PATH/$file" ]; then
+      continue
+    fi
     path=$file
     while [ "$path" != '.' ]; do
       PRESERVED_LIST="$path $PRESERVED_LIST"
@@ -255,6 +265,10 @@ if [ "$FACTORY_WIPE" = "factory" ]; then
     ${BOARD_WIPE} ${WIPE_OPTION}
   fi
 fi
+
+# Stop appending to the log and preserve it.
+exec > /dev/null 2>&1
+mv -f "$CLOBBER_STATE_LOG" "$STATE_PATH/unencrypted/clobber-state.log"
 
 /sbin/shutdown -r now
 sleep 1d  # Wait for shutdown
