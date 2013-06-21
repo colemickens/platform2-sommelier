@@ -5,10 +5,7 @@
 AR ?= ar
 CC ?= gcc
 CXX ?= g++
-# -clang uses clang to syntax check, and then runs gcc/g++ to actually
-# generate binaries. See www.chromium.org/chromium-os/developer-guide
 CFLAGS += \
-	-clang \
 	-Wall \
 	-Werror \
 	-Wextra \
