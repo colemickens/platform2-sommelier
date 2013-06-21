@@ -682,7 +682,7 @@ bool Mount::UnmountCryptohome() {
   ReloadDevicePolicy();
   if (AreEphemeralUsersEnabled())
     homedirs_->RemoveNonOwnerCryptohomes();
-  else if (!ephemeral_mount_)
+  else
     UpdateCurrentUserActivityTimestamp(0);
   current_user_->Reset();
   ephemeral_mount_ = false;
@@ -813,7 +813,7 @@ bool Mount::CreateTrackedSubdirectories(const Credentials& credentials,
 bool Mount::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
   string obfuscated_username;
   current_user_->GetObfuscatedUsername(&obfuscated_username);
-  if (!obfuscated_username.empty()) {
+  if (!obfuscated_username.empty() && !ephemeral_mount_) {
     SerializedVaultKeyset serialized;
     LoadVaultKeysetForUser(obfuscated_username, current_user_->key_index(),
                            &serialized);
