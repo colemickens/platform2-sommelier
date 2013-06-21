@@ -1,0 +1,145 @@
+#!/bin/dash
+
+# Copyright (c) 2013 The Chromium OS Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Set the PPP username and password to be used when making connections on
+# a cellular service.
+
+PROGRAM=$(basename $0)
+FLAGS_HELP="Usage:
+
+Show current PPP username
+  ${PROGRAM}
+
+Set PPP username and/or password
+  ${PROGRAM} [-u <username>] [-p <password>]
+
+Clear PPP username and password
+  ${PROGRAM} -c
+"
+
+. /usr/share/misc/shflags
+
+FLIMFLAM=org.chromium.flimflam
+IMANAGER=${FLIMFLAM}.Manager
+ISERVICE=${FLIMFLAM}.Service
+USERNAME_PROPERTY=Cellular.PPP.Username
+PASSWORD_PROPERTY=Cellular.PPP.Password
+
+usage() {
+  echo $*
+  echo
+  flags_help
+  exit 1
+}
+
+dbus() {
+  local object="$1"
+  local method="$2"
+  shift 2
+
+  dbus-send --system --print-reply --fixed --dest="${FLIMFLAM}" \
+    "${object}" "${method}" "$@"
+}
+
+get_service_property() {
+  local service="$1"
+  local property="$2"
+
+  dbus "${service}" "${ISERVICE}.GetProperties" 2>/dev/null \
+    | sed -n "/\/${property}/{s/.* //p}"
+}
+
+display_username() {
+  local service="$1"
+  local username="$(get_service_property ${service} ${USERNAME_PROPERTY})"
+
+  if [ -n "${username}" ]; then
+    echo "PPP username: " ${username}
+    exit 0
+  fi
+
+  echo "No PPP username."
+  exit 0
+}
+
+set_username() {
+  local service="$1"
+  local username="$2"
+
+  echo "Setting PPP username \"${username}\" for service ${service}"
+  dbus "${service}" "${ISERVICE}.SetProperty" \
+    "string:${USERNAME_PROPERTY}" "variant:string:${username}"
+}
+
+set_password() {
+  local service="$1"
+  local password="$2"
+
+  echo "Setting PPP pasword for service ${service}"
+  dbus "${service}" "${ISERVICE}.SetProperty" \
+    "string:${PASSWORD_PROPERTY}" "variant:string:${password}"
+}
+
+clear_property() {
+  local service="$1"
+  local property="$2"
+
+  echo "Clearing ${property} for service ${service}"
+  dbus "${service}" "${ISERVICE}.ClearProperty" "string:${property}"
+}
+
+get_services() {
+  dbus / "${IMANAGER}.GetProperties" 2>/dev/null \
+    | sed -n "/\/Services\//{s/.* //p}"
+}
+
+get_first_cellular_service() {
+  local service
+  local service_type
+
+  for service in $(get_services); do
+    service_type="$(get_service_property ${service} Type)"
+    if [ "${service_type}" = "cellular" ]; then
+      echo "${service}"
+      break
+    fi
+  done
+}
+
+service="$(get_first_cellular_service)"
+if [ -z "${service}" ]; then
+  echo "No cellular service exists."
+  exit 1
+fi
+
+if [ $# -lt 1 ]; then
+  display_username "${service}"
+fi
+
+DEFINE_string 'username' "" 'PPP username for the Service' 'u'
+DEFINE_string 'password' "" 'PPP password for the Service' 'p'
+DEFINE_boolean 'clear' false \
+  'clear any username and password that has been previously set' 'c'
+FLAGS "$@" || exit 1
+eval set -- "${FLAGS_ARGV}"
+
+if [ "${FLAGS_clear}" -ne 0 ]; then
+  if [ $# -ne 0 ]; then
+    usage "Too many arguments."
+  fi
+  if [ -n "${FLAGS_username}" ]; then
+    set_username "${service}" "${FLAGS_username}"
+  fi
+  if [ -n "${FLAGS_password}" ]; then
+    set_password "${service}" "${FLAGS_password}"
+  fi
+else
+  if [ $# -ne 0 ]; then
+    usage "Too many arguments."
+  fi
+  clear_property "${service}" "${USERNAME_PROPERTY}"
+  clear_property "${service}" "${PASSWORD_PROPERTY}"
+fi
