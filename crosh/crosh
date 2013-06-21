@@ -114,6 +114,15 @@ HELP_ADVANCED='
   Turn on extra network state checking to make sure the default gateway
   is reachable.
 
+ set_cellular_ppp [-u <username>] [-p <password>]
+  Set the PPP username and/or password for an existing cellular connection.
+  If neither -u nor -p is provided, show the existing PPP username for
+  the cellular connection.
+
+ set_cellular_ppp -c
+  Clear any existing PPP username and PPP password for an existing cellular
+  connection.
+
  sound <command> <argument>
   Low level sound configuration.  Can be used to play/record audio samples
   and enable beam forming on Pixel.
@@ -912,6 +921,10 @@ cmd_modem_set_carrier() {
 
 cmd_set_apn() {
   /usr/bin/set_apn "$@"
+}
+
+cmd_set_cellular_ppp() {
+  /usr/bin/set_cellular_ppp "$@"
 }
 
 cmd_connectivity() {
