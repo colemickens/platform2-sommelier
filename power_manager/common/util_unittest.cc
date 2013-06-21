@@ -29,13 +29,18 @@ class UtilTest : public ::testing::Test {
   }
 
  protected:
-  void WriteFileWrapper(const base::FilePath& file_path, const char* value);
+  void WriteFileWrapper(const base::FilePath& path, const char* value) {
+    ASSERT_EQ(file_util::WriteFile(path, value, strlen(value)), strlen(value));
+  }
+
+  // Creates a TimeDelta and returns TimeDeltaToString()'s output.
+  std::string RunTimeDeltaToString(int hours, int minutes, int seconds) {
+    return util::TimeDeltaToString(
+        base::TimeDelta::FromSeconds(hours * 3600 + minutes * 60 + seconds));
+  }
+
   scoped_ptr<base::ScopedTempDir> temp_dir_generator_;
 };
-
-void UtilTest::WriteFileWrapper(const base::FilePath &path, const char* value) {
-  ASSERT_EQ(file_util::WriteFile(path, value, strlen(value)), strlen(value));
-}
 
 TEST_F(UtilTest, GetUintFromFile) {
   unsigned int value;
@@ -62,6 +67,17 @@ TEST_F(UtilTest, GetUintFromFile) {
   // WriteFileWrapper(path, "-10");
   // EXPECT_TRUE(util::GetUintFromFile(path_str.c_str(), &value));
   // EXPECT_EQ(value, 10);
+}
+
+TEST_F(UtilTest, TimeDeltaToString) {
+  EXPECT_EQ("3h23m13s", RunTimeDeltaToString(3, 23, 13));
+  EXPECT_EQ("47m45s", RunTimeDeltaToString(0, 47, 45));
+  EXPECT_EQ("7s", RunTimeDeltaToString(0, 0, 7));
+  EXPECT_EQ("0s", RunTimeDeltaToString(0, 0, 0));
+  EXPECT_EQ("13h17s", RunTimeDeltaToString(13, 0, 17));
+  EXPECT_EQ("8h59m", RunTimeDeltaToString(8, 59, 0));
+  EXPECT_EQ("5m33s", RunTimeDeltaToString(0, 5, 33));
+  EXPECT_EQ("5h", RunTimeDeltaToString(5, 0, 0));
 }
 
 }  // namespace power_manager

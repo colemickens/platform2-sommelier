@@ -5,6 +5,7 @@
 #include "power_manager/common/util.h"
 
 #include <glib.h>
+#include <inttypes.h>
 #include <stdlib.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -15,6 +16,7 @@
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
+#include "base/stringprintf.h"
 #include "base/string_number_conversions.h"
 #include "base/string_util.h"
 
@@ -110,6 +112,28 @@ void RemoveTimeout(guint* timeout_id) {
 
 double ClampPercent(double percent) {
   return std::max(0.0, std::min(100.0, percent));
+}
+
+std::string TimeDeltaToString(base::TimeDelta delta) {
+  std::string output;
+  if (delta < base::TimeDelta())
+    output += "-";
+
+  int64 total_seconds = llabs(delta.InSeconds());
+
+  const int64 hours = total_seconds / 3600;
+  if (hours)
+    output += StringPrintf("%" PRId64 "h", hours);
+
+  const int64 minutes = (total_seconds % 3600) / 60;
+  if (minutes)
+    output += StringPrintf("%" PRId64 "m", minutes);
+
+  const int64 seconds = total_seconds % 60;
+  if (seconds || !total_seconds)
+    output += StringPrintf("%" PRId64 "s", seconds);
+
+  return output;
 }
 
 }  // namespace util

@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include "base/time.h"
+
 typedef unsigned int guint;
 
 namespace base {
@@ -49,6 +51,9 @@ void RemoveTimeout(guint* timeout_id);
 
 // Clamps |percent| in the range [0.0, 100.0].
 double ClampPercent(double percent);
+
+// Returns |delta| as a string of the format "4h3m45s".
+std::string TimeDeltaToString(base::TimeDelta delta);
 
 }  // namespace util
 }  // namespace power_manager

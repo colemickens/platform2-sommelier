@@ -4,8 +4,6 @@
 
 #include "power_manager/powerd/policy/state_controller.h"
 
-#include <inttypes.h>
-
 #include <cmath>
 
 #include "base/bind.h"
@@ -23,18 +21,10 @@ namespace policy {
 
 namespace {
 
-// Returns |delta| as a string of the format "3m45s".
-std::string TimeDeltaToString(base::TimeDelta delta) {
-  int64 seconds = llabs(delta.InSeconds());
-  return StringPrintf("%s%" PRId64 "m%" PRId64 "s",
-                      delta < base::TimeDelta() ? "-" : "",
-                      seconds / 60, seconds % 60);
-}
-
 // Returns |time_ms|, a time in milliseconds, as a
-// TimeDeltaToString()-style string.
+// util::TimeDeltaToString()-style string.
 std::string MsToString(int64 time_ms) {
-  return TimeDeltaToString(base::TimeDelta::FromMilliseconds(time_ms));
+  return util::TimeDeltaToString(base::TimeDelta::FromMilliseconds(time_ms));
 }
 
 // Returns the time until an event occurring |delay| after |start| will
@@ -81,7 +71,7 @@ void HandleDelay(base::TimeDelta delay,
   if (delay > base::TimeDelta() && inactivity_duration >= delay) {
     if (!*action_already_performed) {
       VLOG(1) << description << " after "
-              << TimeDeltaToString(inactivity_duration);
+              << util::TimeDeltaToString(inactivity_duration);
       callback.Run();
       *action_already_performed = true;
     }
@@ -336,10 +326,10 @@ void StateController::AddIdleNotification(base::TimeDelta delay) {
   DCHECK(initialized_);
   if (delay <= base::TimeDelta()) {
     LOG(WARNING) << "Ignoring idle notification request for "
-                 << TimeDeltaToString(delay);
+                 << util::TimeDeltaToString(delay);
     return;
   }
-  VLOG(1) << "Adding idle notification for " << TimeDeltaToString(delay);
+  VLOG(1) << "Adding idle notification for " << util::TimeDeltaToString(delay);
   pending_idle_notifications_.insert(delay);
   UpdateState();
 }
@@ -660,11 +650,11 @@ void StateController::UpdateSettingsAndState() {
   SanitizeDelays(&delays_);
 
   VLOG(1) << "Updated settings:"
-          << " dim=" << TimeDeltaToString(delays_.screen_dim)
-          << " screen_off=" << TimeDeltaToString(delays_.screen_off)
-          << " lock=" << TimeDeltaToString(delays_.screen_lock)
-          << " idle_warn=" << TimeDeltaToString(delays_.idle_warning)
-          << " idle=" << TimeDeltaToString(delays_.idle)
+          << " dim=" << util::TimeDeltaToString(delays_.screen_dim)
+          << " screen_off=" << util::TimeDeltaToString(delays_.screen_off)
+          << " lock=" << util::TimeDeltaToString(delays_.screen_lock)
+          << " idle_warn=" << util::TimeDeltaToString(delays_.idle_warning)
+          << " idle=" << util::TimeDeltaToString(delays_.idle)
           << " (" << ActionToString(idle_action_) << ")"
           << " lid_closed=" << ActionToString(lid_closed_action_)
           << " use_audio=" << use_audio_activity_
@@ -702,7 +692,8 @@ void StateController::UpdateState() {
            pending_idle_notifications_.begin();
        it != pending_idle_notifications_.end(); ) {
     if (*it <= idle_duration) {
-      VLOG(1) << "Emitting idle notification for " << TimeDeltaToString(*it);
+      VLOG(1) << "Emitting idle notification for "
+              << util::TimeDeltaToString(*it);
       delegate_->EmitIdleNotification(*it);
       pending_idle_notifications_.erase(it++);
     } else {
@@ -735,7 +726,7 @@ void StateController::UpdateState() {
       idle_action_ != DO_NOTHING) {
     if (!sent_idle_warning_) {
       VLOG(1) << "Emitting idle-imminent signal after "
-              << TimeDeltaToString(idle_duration);
+              << util::TimeDeltaToString(idle_duration);
       delegate_->EmitIdleActionImminent();
       sent_idle_warning_ = true;
     }
@@ -779,7 +770,7 @@ void StateController::UpdateState() {
       }
       VLOG(1) << "Ready to perform idle action ("
               << ActionToString(idle_action_to_perform) << ") after "
-              << TimeDeltaToString(idle_duration);
+              << util::TimeDeltaToString(idle_duration);
       idle_action_performed_ = true;
     }
   } else {
