@@ -8,9 +8,11 @@
 #include <base/rand_util.h>
 #include <base/stl_util.h>
 
+#include "build_config.h"
 #include "service_constants.h"
 
-// TODO(thestig) Merge these once libchrome catches up to Chromium's base.
+// TODO(thestig) Merge these once libchrome catches up to Chromium's base,
+// or when mtpd moves into its own repo. http://crbug.com/221123
 #if defined(CROS_BUILD)
 #include <base/string_number_conversions.h>
 #else

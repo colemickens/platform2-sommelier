@@ -16,6 +16,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 
+#include "build_config.h"
 #include "daemon.h"
 #include "service_constants.h"
 
@@ -23,7 +24,8 @@
 #include <chromeos/syslog_logging.h>
 #endif
 
-// TODO(thestig) Merge these once libchrome catches up to Chromium's base.
+// TODO(thestig) Merge these once libchrome catches up to Chromium's base,
+// or when mtpd moves into its own repo. http://crbug.com/221123
 #if defined(CROS_BUILD)
 #include <base/string_number_conversions.h>
 #else

@@ -4,7 +4,15 @@
 
 #include "string_helpers.h"
 
+#include "build_config.h"
+
+// TODO(thestig) Merge these once libchrome catches up to Chromium's base,
+// or when mtpd moves into its own repo. http://crbug.com/221123
+#if defined(CROS_BUILD)
 #include <base/string_util.h>
+#else
+#include <base/strings/string_util.h>
+#endif
 
 namespace mtpd {
 
