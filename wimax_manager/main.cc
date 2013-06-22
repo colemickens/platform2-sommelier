@@ -83,7 +83,6 @@ gboolean TerminationSignalCallback(gpointer data) {
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
   g_type_init();
-  g_thread_init(NULL);
 
   CommandLine::Init(argc, argv);
   CommandLine* cl = CommandLine::ForCurrentProcess();
