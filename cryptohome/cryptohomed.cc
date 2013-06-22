@@ -48,7 +48,6 @@ int main(int argc, char **argv) {
 
   // Setup threading. This needs to be called before other calls into glib and
   // before multiple threads are created that access dbus.
-  g_thread_init(NULL);
   dbus_threads_init_default();
 
   // Initialize OpenSSL.
