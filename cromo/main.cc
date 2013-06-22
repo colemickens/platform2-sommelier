@@ -160,7 +160,6 @@ int main(int argc, char* argv[]) {
   PluginManager::LoadPlugins(server, plugins);
 
   dispatcher.enter();
-  g_thread_init(NULL);
   main_loop = g_main_loop_new(NULL, false);
   g_idle_add(setup_signals, NULL);
   g_main_loop_run(main_loop);
