@@ -74,7 +74,16 @@ gboolean TerminationSignalCallback(GIOChannel* /* source */,
 
 int main(int argc, char** argv) {
   ::g_type_init();
+  // g_thread_init() is deprecated since glib 2.32 and the symbol is no longer
+  // exported since glib 2.34:
+  //
+  //   https://developer.gnome.org/glib/2.32/glib-Deprecated-Thread-APIs.html
+  //
+  // To be compatible with various versions of glib, only call g_thread_init()
+  // when using glib older than 2.32.0.
+#if !(GLIB_CHECK_VERSION(2, 32, 0))
   g_thread_init(NULL);
+#endif
 
   // Needed by base::RandBytes() and other Chromium bits that expects
   // an AtExitManager to exist.
