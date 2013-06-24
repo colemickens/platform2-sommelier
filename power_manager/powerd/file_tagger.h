@@ -9,6 +9,7 @@
 
 #include <map>
 
+#include "base/basictypes.h"
 #include "base/file_path.h"
 #include "power_manager/common/inotify.h"
 
@@ -68,6 +69,8 @@ class FileTagger {
   // the previous trace files.
   typedef std::map<base::FilePath, base::Time> FileCache;
   FileCache cached_files_;
+
+  DISALLOW_COPY_AND_ASSIGN(FileTagger);
 };
 
 }  // namespace power_manager

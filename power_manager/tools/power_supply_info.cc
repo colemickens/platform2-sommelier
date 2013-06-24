@@ -9,6 +9,7 @@
 #include <iostream>
 #include <string>
 
+#include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/file_util.h"
 #include "base/logging.h"
@@ -96,7 +97,9 @@ class InfoDisplay {
  private:
   int name_indent_;
   int value_indent_;
-};  // class InfoDisplay
+
+  DISALLOW_COPY_AND_ASSIGN(InfoDisplay);
+};
 
 }  // namespace
 

@@ -10,6 +10,7 @@
 #include <map>
 #include <string>
 
+#include "base/basictypes.h"
 #include "base/callback.h"
 #include "base/memory/scoped_ptr.h"
 
@@ -88,6 +89,8 @@ class DBusHandler {
   MethodHandlerTable method_handler_table_;
 
   NameOwnerChangedHandler name_owner_changed_handler_;
+
+  DISALLOW_COPY_AND_ASSIGN(DBusHandler);
 };
 
 }  // namespace util

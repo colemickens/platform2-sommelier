@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "base/basictypes.h"
 #include "base/file_path.h"
 #include "power_manager/powerd/system/power_supply.h"
 
@@ -108,6 +109,8 @@ class DarkResumePolicy {
 
   std::vector<base::FilePath> dark_resume_sources_;
   std::vector<base::FilePath> dark_resume_devices_;
+
+  DISALLOW_COPY_AND_ASSIGN(DarkResumePolicy);
 };
 
 }  // namespace policy

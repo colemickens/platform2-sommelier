@@ -56,6 +56,7 @@ class TestSender : public DBusSenderStub {
 
  private:
   TestMainLoopRunner loop_runner_;
+
   DISALLOW_COPY_AND_ASSIGN(TestSender);
 };
 

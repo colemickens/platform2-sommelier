@@ -220,6 +220,8 @@ class MetricsReporter {
   // GenerateBatteryDischargeRateWhileSuspendedMetric() should send a
   // sample when it is next called.
   bool report_battery_discharge_rate_while_suspended_;
+
+  DISALLOW_COPY_AND_ASSIGN(MetricsReporter);
 };
 
 }  // namespace power_manager

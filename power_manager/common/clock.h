@@ -5,6 +5,7 @@
 #ifndef POWER_MANAGER_COMMON_CLOCK_H_
 #define POWER_MANAGER_COMMON_CLOCK_H_
 
+#include "base/basictypes.h"
 #include "base/time.h"
 
 namespace power_manager {
@@ -39,6 +40,8 @@ class Clock {
  private:
   base::TimeTicks current_time_for_testing_;
   base::Time current_wall_time_for_testing_;
+
+  DISALLOW_COPY_AND_ASSIGN(Clock);
 };
 
 }  // namespace power_manager

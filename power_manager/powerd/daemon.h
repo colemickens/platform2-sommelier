@@ -16,6 +16,7 @@
 
 #include <ctime>
 
+#include "base/basictypes.h"
 #include "base/compiler_specific.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_ptr.h"
@@ -240,6 +241,8 @@ class Daemon : public policy::BacklightControllerObserver,
   // bunch of event-handling functions directly, but events shouldn't be
   // passed to |state_controller_| until it's been initialized.
   bool state_controller_initialized_;
+
+  DISALLOW_COPY_AND_ASSIGN(Daemon);
 };
 
 }  // namespace power_manager

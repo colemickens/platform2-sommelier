@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "base/basictypes.h"
 #include "base/file_path.h"
 #include "base/memory/scoped_vector.h"
 #include "base/observer_list.h"
@@ -74,6 +75,7 @@ class PeripheralBatteryWatcher {
   ScopedVector<ReadCallbackType> read_callbacks_;
   ScopedVector<ErrorCallbackType> error_callbacks_;
 
+  DISALLOW_COPY_AND_ASSIGN(PeripheralBatteryWatcher);
 };
 
 }  // namespace system

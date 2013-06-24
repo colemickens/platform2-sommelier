@@ -168,6 +168,8 @@ class Daemon::StateControllerDelegate
 
  private:
   Daemon* daemon_;  // not owned
+
+  DISALLOW_COPY_AND_ASSIGN(StateControllerDelegate);
 };
 
 // Performs actions on behalf of Suspender.

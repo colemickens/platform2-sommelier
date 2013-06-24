@@ -199,7 +199,7 @@ class KeyboardBacklightController
   int num_user_adjustments_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
-};  // class KeyboardBacklightController
+};
 
 }  // namespace policy
 }  // namespace power_manager
