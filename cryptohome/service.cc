@@ -1703,6 +1703,18 @@ gboolean Service::InstallAttributesCount(gint* OUT_count, GError** error) {
 gboolean Service::InstallAttributesIsReady(gboolean* OUT_ready,
                                            GError** error) {
   *OUT_ready = (install_attrs_->IsReady() == true);
+  // Don't return ready if the attestation blob isn't yet prepared.
+  // http://crbug.com/189681
+  if (*OUT_ready && tpm_ && !tpm_init_->IsAttestationPrepared()) {
+    // Don't block on attestation prep if the TPM Owner password has been
+    // cleared.  Without a password attestation preparation cannot be
+    // performed.
+    SecureBlob password;
+    if (tpm_init_->GetTpmPassword(&password)) {
+      LOG(WARNING) << "InstallAttributesIsReady: blocked on attestation";
+      *OUT_ready = false;
+    }
+  }
   return TRUE;
 }
 
