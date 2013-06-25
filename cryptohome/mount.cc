@@ -1245,28 +1245,44 @@ void Mount::ReloadDevicePolicy() {
 }
 
 bool Mount::CheckChapsDirectory(const std::string& dir,
+                                const std::string& legacy_dir,
                                 bool* permissions_status) {
-  // If the Chaps database directory does not exist, create it.
-  DCHECK(permissions_status);
-  *permissions_status = true;
   // 0750: u + rwx, g + rx
   const mode_t chaps_permissions = S_IRWXU | S_IRGRP | S_IXGRP;
   const mode_t permissions_mask = S_IRWXU | S_IRWXG | S_IRWXO;
+
+  DCHECK(permissions_status);
+  *permissions_status = true;
+  // If the Chaps database directory does not exist, create it.
   if (!platform_->DirectoryExists(dir)) {
-    if (!platform_->CreateDirectory(dir)) {
-      LOG(ERROR) << "Failed to create " << dir;
-      *permissions_status = false;
-      return false;
-    }
-    if (!platform_->SetOwnership(dir, chaps_user_, default_access_group_)) {
-      LOG(ERROR) << "Couldn't set file ownership for " << dir;
-      *permissions_status = false;
-      return false;
-    }
-    if (!platform_->SetPermissions(dir, chaps_permissions)) {
-      LOG(ERROR) << "Couldn't set permissions for " << dir;
-      *permissions_status = false;
-      return false;
+    if (platform_->DirectoryExists(legacy_dir)) {
+      LOG(INFO) << "Moving chaps directory from " << legacy_dir << " to "
+                << dir;
+      if (!platform_->CopyWithPermissions(legacy_dir, dir)) {
+        *permissions_status = false;
+        return false;
+      }
+      if (!platform_->DeleteFile(legacy_dir, true)) {
+        PLOG(WARNING) << "Failed to clean up " << legacy_dir;
+        *permissions_status = false;
+        return false;
+      }
+    } else {
+      if (!platform_->CreateDirectory(dir)) {
+        LOG(ERROR) << "Failed to create " << dir;
+        *permissions_status = false;
+        return false;
+      }
+      if (!platform_->SetOwnership(dir, chaps_user_, default_access_group_)) {
+        LOG(ERROR) << "Couldn't set file ownership for " << dir;
+        *permissions_status = false;
+        return false;
+      }
+      if (!platform_->SetPermissions(dir, chaps_permissions)) {
+        LOG(ERROR) << "Couldn't set permissions for " << dir;
+        *permissions_status = false;
+        return false;
+      }
     }
     return true;
   }
@@ -1310,9 +1326,12 @@ bool Mount::InsertPkcs11Token() {
   bool permissions_status = false;
   std::string username = current_user_->username();
   FilePath token_dir = homedirs_->GetChapsTokenDir(username);
+  FilePath legacy_token_dir = homedirs_->GetLegacyChapsTokenDir(username);
 
-  if (!CheckChapsDirectory(token_dir.value(), &permissions_status))
-     return false;
+  if (!CheckChapsDirectory(token_dir.value(),
+                           legacy_token_dir.value(),
+                           &permissions_status))
+    return false;
   // We may create a salt file and, if so, we want to restrict access to it.
   ScopedUmask scoped_umask(platform_, kDefaultUmask);
 

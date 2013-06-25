@@ -109,6 +109,9 @@ class HomeDirs {
   // Returns the path to the user's chaps token directory.
   virtual FilePath GetChapsTokenDir(const std::string& username) const;
 
+  // Returns the path to the user's legacy chaps token directory.
+  virtual FilePath GetLegacyChapsTokenDir(const std::string& username) const;
+
   // Returns the path to the user's token salt.
   virtual FilePath GetChapsTokenSaltPath(const std::string& username) const;
 

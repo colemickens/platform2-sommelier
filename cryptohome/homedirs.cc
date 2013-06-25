@@ -555,11 +555,16 @@ bool HomeDirs::Migrate(const Credentials& newcreds,
 }
 
 namespace {
+  const char *kChapsDaemonName = "chaps";
   const char *kChapsDirName = ".chaps";
   const char *kChapsSaltName = "auth_data_salt";
 }
 
 FilePath HomeDirs::GetChapsTokenDir(const std::string& user) const {
+  return chromeos::cryptohome::home::GetDaemonPath(user, kChapsDaemonName);
+}
+
+FilePath HomeDirs::GetLegacyChapsTokenDir(const std::string& user) const {
   return chromeos::cryptohome::home::GetUserPath(user).Append(kChapsDirName);
 }
 

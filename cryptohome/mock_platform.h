@@ -14,6 +14,7 @@
 namespace cryptohome {
 
 using ::testing::_;
+using ::testing::NiceMock;
 using ::testing::Invoke;
 using ::testing::Return;
 
@@ -134,7 +135,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD0(FirmwareWriteProtected, bool(void));
   MOCK_METHOD1(SyncFile, bool(const std::string&));
 
-  MockFileEnumerator* get_mock_enumerator() { return mock_enumerator_.get(); }
+  MockFileEnumerator* mock_enumerator() { return mock_enumerator_.get(); }
 
  private:
   bool MockGetOwnership(const std::string& path, uid_t* user_id,
@@ -164,7 +165,7 @@ class MockPlatform : public Platform {
                                         bool recursive,
                                         int file_type) {
     MockFileEnumerator* e = mock_enumerator_.release();
-    mock_enumerator_.reset(new MockFileEnumerator());
+    mock_enumerator_.reset(new NiceMock<MockFileEnumerator>());
     mock_enumerator_->entries_.assign(e->entries_.begin(), e->entries_.end());
     return e;
   }
