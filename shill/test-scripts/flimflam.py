@@ -6,6 +6,8 @@ import logging, time
 
 import dbus
 
+DEFAULT_CELLULAR_TIMEOUT = 60
+
 def make_dbus_boolean(value):
     value = value.upper()
     if value in ["ON", "TRUE"]:
@@ -133,7 +135,7 @@ class FlimFlam(object):
             time.sleep(1)
         return device_obj
 
-    def FindCellularDevice(self, timeout=30):
+    def FindCellularDevice(self, timeout=DEFAULT_CELLULAR_TIMEOUT):
         return self._FindDevice(self.DEVICE_CELLULAR, timeout)
 
     def FindWimaxDevice(self, timeout=30):
@@ -161,7 +163,7 @@ class FlimFlam(object):
             time.sleep(.5)
         return service
 
-    def FindCellularService(self, timeout=30):
+    def FindCellularService(self, timeout=DEFAULT_CELLULAR_TIMEOUT):
         return self._FindService(self.DEVICE_CELLULAR, timeout)
 
     def FindWimaxService(self, timeout=30):
