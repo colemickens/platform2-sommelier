@@ -58,6 +58,8 @@ class IPConfig : public base::RefCounted<IPConfig> {
     bool blackhole_ipv6;
     int32 mtu;
     std::vector<Route> routes;
+    // Web Proxy Auto Discovery (WPAD) URL gained from DHCP.
+    std::string web_proxy_auto_discovery;
   };
 
   enum ReleaseReason {

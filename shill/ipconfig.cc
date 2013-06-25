@@ -60,8 +60,10 @@ void IPConfig::Init() {
                              &properties_.peer_address);
   store_.RegisterConstInt32(flimflam::kPrefixlenProperty,
                             &properties_.subnet_prefix);
-  store_.RegisterConstStrings(shill::kSearchDomainsProperty,
+  store_.RegisterConstStrings(kSearchDomainsProperty,
                               &properties_.domain_search);
+  store_.RegisterConstString(kWebProxyAutoDiscoveryUrlProperty,
+                             &properties_.web_proxy_auto_discovery);
   SLOG(Inet, 2) << __func__ << " device: " << device_name();
 }
 

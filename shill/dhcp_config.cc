@@ -38,6 +38,8 @@ const char DHCPConfig::kConfigurationKeyIPAddress[] = "IPAddress";
 const char DHCPConfig::kConfigurationKeyMTU[] = "InterfaceMTU";
 const char DHCPConfig::kConfigurationKeyRouters[] = "Routers";
 const char DHCPConfig::kConfigurationKeySubnetCIDR[] = "SubnetCIDR";
+const char DHCPConfig::kConfigurationKeyWebProxyAutoDiscoveryUrl[] =
+    "WebProxyAutoDiscoveryUrl";
 const int DHCPConfig::kDHCPCDExitPollMilliseconds = 50;
 const int DHCPConfig::kDHCPCDExitWaitMilliseconds = 3000;
 const char DHCPConfig::kDHCPCDPath[] = "/sbin/dhcpcd";
@@ -415,6 +417,8 @@ bool DHCPConfig::ParseConfiguration(const Configuration &configuration,
       }
     } else if (key == kConfigurationKeyClasslessStaticRoutes) {
       classless_static_routes = value.reader().get_string();
+    } else if (key == kConfigurationKeyWebProxyAutoDiscoveryUrl) {
+      properties->web_proxy_auto_discovery = value.reader().get_string();
     } else {
       SLOG(DHCP, 2) << "Key ignored.";
     }
