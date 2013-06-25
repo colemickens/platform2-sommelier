@@ -7,6 +7,7 @@
 #include "platform.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
 #include <mntent.h>
@@ -19,8 +20,11 @@
 #include <sys/statvfs.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
+#include <base/basictypes.h>
 #include <base/file_util.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
@@ -599,6 +603,26 @@ bool Platform::ReportFilesystemDetails(const std::string &filesystem,
 
 bool Platform::FirmwareWriteProtected() {
   return VbGetSystemPropertyInt("wpsw_boot") != 0;
+}
+
+bool Platform::SyncFile(const std::string& path) {
+  // Sync both the file and its parent directory.
+  return (SyncPath(path) && SyncPath(FilePath(path).DirName().value()));
+}
+
+bool Platform::SyncPath(const std::string& path) {
+  int fd = HANDLE_EINTR(open(path.c_str(), O_WRONLY));
+  if (fd < 0) {
+    PLOG(WARNING) << "Could not open " << path << " for syncing";
+    return false;
+  }
+  int result = fsync(fd);
+  ignore_result(HANDLE_EINTR(close(fd)));
+  if (result < 0) {
+    PLOG(WARNING) << "Failed to sync " << path;
+    return false;
+  }
+  return true;
 }
 
 // Encapsulate these helpers to avoid include conflicts.

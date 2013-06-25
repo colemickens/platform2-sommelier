@@ -49,6 +49,8 @@ MockPlatform::MockPlatform() : mock_enumerator_(new MockFileEnumerator()) {
       .WillByDefault(CallReadFileToString());
   ON_CALL(*this, Rename(_, _))
       .WillByDefault(CallRename());
+  ON_CALL(*this, SyncFile(_))
+      .WillByDefault(Return(true));
 }
 
 MockPlatform::~MockPlatform() {}

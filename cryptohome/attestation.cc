@@ -901,7 +901,8 @@ bool Attestation::StoreDatabase(const EncryptedData& encrypted_db) {
     LOG(ERROR) << "Failed to serialize encrypted db.";
     return false;
   }
-  if (!platform_->WriteStringToFile(database_path_.value(), database_serial)) {
+  if (!platform_->WriteStringToFile(database_path_.value(), database_serial) ||
+      !platform_->SyncFile(database_path_.value())) {
     LOG(ERROR) << "Failed to write db.";
     return false;
   }

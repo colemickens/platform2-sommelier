@@ -347,6 +347,10 @@ class Platform {
   // Report condition of the Firmware Write-Protect flag.
   virtual bool FirmwareWriteProtected();
 
+  // Syncs file data and meta-data to disk for the given |path|.  This method is
+  // expensive and synchronous, use with care.  Returns true on success.
+  virtual bool SyncFile(const std::string& path);
+
  private:
   // Returns the process and open file information for the specified process id
   // with files open on the given path
@@ -378,6 +382,9 @@ class Platform {
   // Parameters
   //   link_path - The link to check
   std::string ReadLink(const std::string& link_path);
+
+  // Calls fsync() on |path|.  Returns true on success.
+  bool SyncPath(const std::string& path);
 
   std::string mtab_path_;
 

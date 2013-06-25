@@ -132,6 +132,7 @@ class MockPlatform : public Platform {
                                                   bool,
                                                   int));
   MOCK_METHOD0(FirmwareWriteProtected, bool(void));
+  MOCK_METHOD1(SyncFile, bool(const std::string&));
 
   MockFileEnumerator* get_mock_enumerator() { return mock_enumerator_.get(); }
 
