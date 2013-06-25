@@ -43,6 +43,27 @@ extern "C" {
 using base::SplitString;
 using std::string;
 
+namespace {
+
+class ScopedPath {
+ public:
+  ScopedPath(cryptohome::Platform* platform, const string& dir)
+      : platform_(platform), dir_(dir) {}
+  ~ScopedPath() {
+    if (!dir_.empty() && !platform_->DeleteFile(dir_, true)) {
+      PLOG(WARNING) << "Failed to clean up " << dir_;
+    }
+  }
+  void release() {
+    dir_.clear();
+  }
+ private:
+  cryptohome::Platform* platform_;
+  string dir_;
+};
+
+}  // namespace
+
 namespace cryptohome {
 
 const int kDefaultMountOptions = MS_NOEXEC | MS_NOSUID | MS_NODEV;
@@ -542,6 +563,71 @@ bool Platform::Copy(const std::string& from, const std::string& to) {
   FilePath from_path(from);
   FilePath to_path(to);
   return file_util::CopyDirectory(from_path, to_path, true);
+}
+
+bool Platform::CopyWithPermissions(const std::string& from_path,
+                                   const std::string& to_path) {
+  // Save stat for every file.
+  std::vector<FileEnumerator::FindInfo> entry_list;
+  FileEnumerator::FindInfo base_entry_info;
+  base_entry_info.filename = from_path;
+  if (!Stat(from_path, &base_entry_info.stat)) {
+    PLOG(ERROR) << "Failed to stat " << from_path;
+    return false;
+  }
+  entry_list.push_back(base_entry_info);
+  if (FileEnumerator::IsDirectory(base_entry_info)) {
+    int file_types = FileEnumerator::FILES | FileEnumerator::DIRECTORIES;
+    scoped_ptr<FileEnumerator> file_enumerator(
+        GetFileEnumerator(from_path, true, file_types));
+    string entry_path;
+    while (!(entry_path = file_enumerator->Next()).empty()) {
+      FileEnumerator::FindInfo entry_info;
+      file_enumerator->GetFindInfo(&entry_info);
+      // Keep the full path.
+      entry_info.filename = entry_path;
+      entry_list.push_back(entry_info);
+    }
+  }
+
+  if (!Copy(from_path, to_path)) {
+    PLOG(ERROR) << "Failed to copy " << from_path;
+    return false;
+  }
+
+  // If something goes wrong we want to blow away the half-baked path.
+  ScopedPath scoped_new_path(this, to_path);
+
+  // Unfortunately, ownership and permissions are not always retained.
+  // Apply the old ownership / permissions on a per-file basis.
+  const FilePath new_base(to_path);
+  const FilePath old_base(from_path);
+  for (size_t i = 0; i < entry_list.size(); ++i) {
+    FilePath old_path(entry_list[i].filename);
+    FilePath new_path(new_base);
+    if (old_path != old_base) {
+      if (old_path.IsAbsolute()) {
+        DCHECK(old_base.AppendRelativePath(old_path, &new_path));
+      } else {
+        new_path = new_base.Append(old_path);
+      }
+    }
+    if (!SetOwnership(new_path.value(),
+                      entry_list[i].stat.st_uid,
+                      entry_list[i].stat.st_gid)) {
+      PLOG(ERROR) << "Failed to set ownership for " << new_path.value();
+      return false;
+    }
+    const mode_t permissions_mask = 07777;
+    if (!SetPermissions(new_path.value(),
+                        entry_list[i].stat.st_mode & permissions_mask)) {
+      PLOG(ERROR) << "Failed to set permissions for " << new_path.value();
+      return false;
+    }
+  }
+  // The copy is done, keep the new path.
+  scoped_new_path.release();
+  return true;
 }
 
 bool Platform::StatVFS(const std::string& path, struct statvfs* vfs) {

@@ -300,7 +300,8 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDir) {
                             SetArgumentPointee<2>(shared_gid_),
                             Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                         &permissions_status));
   EXPECT_TRUE(permissions_status);
 }
 
@@ -327,7 +328,8 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadPerms) {
   EXPECT_CALL(platform, GetPermissions("/fake", _))
       .WillRepeatedly(DoAll(SetArgumentPointee<1>(bad_perms), Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                         &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -362,7 +364,8 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadUID) {
                             Return(true)));
 
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                         &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -393,7 +396,8 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithBadGID) {
                             SetArgumentPointee<2>(bad_gid),
                             Return(true)));
   bool permissions_status = false;
-  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                         &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -417,6 +421,8 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
   EXPECT_TRUE(mount->Init());
   EXPECT_CALL(platform, DirectoryExists("/fake"))
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform, DirectoryExists("/fake_legacy"))
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(platform, CreateDirectory("/fake"))
       .WillOnce(Return(false))
       .WillRepeatedly(Return(true));
@@ -428,11 +434,14 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithNonexistingDirWithFatalError) {
   EXPECT_CALL(platform, GetPermissions("/fake", _))
       .WillRepeatedly(Return(false));
   bool permissions_status = false;
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                          &permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                          &permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                          &permissions_status));
   EXPECT_FALSE(permissions_status);
 }
 
@@ -462,10 +471,72 @@ TEST_F(MountTest, CheckChapsDirectoryCalledWithExistingDirWithFatalError) {
   EXPECT_CALL(platform, GetOwnership("/fake", _, _))
       .WillRepeatedly(Return(false));
   bool permissions_status = false;
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                          &permissions_status));
   EXPECT_FALSE(permissions_status);
-  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", &permissions_status));
+  EXPECT_FALSE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                          &permissions_status));
   EXPECT_FALSE(permissions_status);
+}
+
+TEST_F(MountTest, CheckChapsDirectoryMigration) {
+  scoped_refptr<Mount> mount = new Mount();
+  NiceMock<MockPlatform> platform;
+  NiceMock<MockTpm> tpm;
+  mount->crypto()->set_tpm(&tpm);
+  mount->crypto()->set_platform(&platform);
+  mount->set_use_tpm(false);
+  mount->set_platform(&platform);
+
+  // Configure stub methods.
+  EXPECT_CALL(platform, Copy(_, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, DeleteFile(_, _))
+      .WillRepeatedly(Return(true));
+
+  // Stubs which will trigger the migration code path.
+  EXPECT_CALL(platform, DirectoryExists("/fake"))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(platform, DirectoryExists("/fake_legacy"))
+      .WillRepeatedly(Return(true));
+
+  // Configure stat for the base directory.
+  struct stat base_stat = {0};
+  base_stat.st_mode = 040123;
+  base_stat.st_uid = 1;
+  base_stat.st_gid = 2;
+  EXPECT_CALL(platform, Stat(_, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<1>(base_stat), Return(true)));
+
+  // Configure a fake enumerator.
+  MockFileEnumerator* enumerator = platform.mock_enumerator();
+  enumerator->entries_.push_back("/fake_legacy/test_file1");
+  enumerator->entries_.push_back("test_file2");
+  FileEnumerator::FindInfo find_info1 = {{0}, "/fake_legacy/test_file1"};
+  find_info1.stat.st_mode = 0555;
+  find_info1.stat.st_uid = 3;
+  find_info1.stat.st_gid = 4;
+  FileEnumerator::FindInfo find_info2 = {{0}, "test_file2"};
+  find_info2.stat.st_mode = 0777;
+  find_info2.stat.st_uid = 5;
+  find_info2.stat.st_gid = 6;
+  EXPECT_CALL(*enumerator, GetFindInfo(_))
+      .WillOnce(SetArgumentPointee<0>(find_info1))
+      .WillOnce(SetArgumentPointee<0>(find_info2));
+
+  // These expectations will ensure the ownership and permissions are being
+  // correctly applied after the directory has been moved.
+  EXPECT_CALL(platform, SetOwnership("/fake/test_file1", 3, 4)).Times(1);
+  EXPECT_CALL(platform, SetPermissions("/fake/test_file1", 0555)).Times(1);
+  EXPECT_CALL(platform, SetOwnership("/fake/test_file2", 5, 6)).Times(1);
+  EXPECT_CALL(platform, SetPermissions("/fake/test_file2", 0777)).Times(1);
+  EXPECT_CALL(platform, SetOwnership("/fake", 1, 2)).Times(1);
+  EXPECT_CALL(platform, SetPermissions("/fake", 0123)).Times(1);
+
+  bool permissions_status = false;
+  EXPECT_TRUE(mount->CheckChapsDirectory("/fake", "/fake_legacy",
+                                         &permissions_status));
+  EXPECT_TRUE(permissions_status);
 }
 
 TEST_F(MountTest, CreateCryptohomeTest) {
