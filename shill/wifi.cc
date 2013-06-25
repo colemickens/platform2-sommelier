@@ -308,7 +308,7 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/) {
     metrics()->NotifyDeviceScanStarted(interface_index());
   }
   if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
-    SLOG(WiFi, 4) << "Doing progressive scan on " << link_name();
+    LOG(INFO) << "Doing progressive scan on " << link_name();
     if (!scan_session_) {
       // TODO(wdg): Perform in-depth testing to determine the best values for
       // the different scans. chromium:235293
@@ -337,8 +337,8 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/) {
     dispatcher()->PostTask(
         Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
   } else {
-    SLOG(WiFi, 4) << "Doing full scan - progressive scan "
-                  << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED");
+    LOG(INFO) << "Doing full scan on " << link_name() << " - progressive scan "
+              << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED");
     // Needs to send a D-Bus message, but may be called from D-Bus
     // signal handler context (via Manager::RequestScan). So defer work
     // to event loop.
