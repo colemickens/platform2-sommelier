@@ -1526,17 +1526,24 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
 
   // Unlock required and SimLock
   uint32 unlock_required;  // This is really of type MMModemLock
+  bool lock_status_changed = false;
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_UNLOCKREQUIRED,
-                                &unlock_required))
+                                &unlock_required)) {
     OnLockTypeChanged(static_cast<MMModemLock>(unlock_required));
+    lock_status_changed = true;
+  }
 
   // Unlock retries
   it = properties.find(MM_MODEM_PROPERTY_UNLOCKRETRIES);
   if (it != properties.end()) {
     LockRetryData lock_retries = it->second.operator LockRetryData();
     OnLockRetriesChanged(lock_retries);
+    lock_status_changed = true;
   }
+
+  if (lock_status_changed)
+    OnSimLockStatusChanged();
 
   if (DBusProperties::GetUint32(properties,
                                 MM_MODEM_PROPERTY_ACCESSTECHNOLOGIES,
@@ -1753,20 +1760,18 @@ void CellularCapabilityUniversal::OnLockRetriesChanged(
     const LockRetryData &lock_retries) {
   SLOG(Cellular, 2) << __func__;
 
-  // Look for the retries left for the current lock. If the SIM
-  // is not locked, then pick the first available value.
-  LockRetryData::const_iterator it;
-  if (sim_lock_status_.lock_type != MM_MODEM_LOCK_NONE &&
-      sim_lock_status_.lock_type != MM_MODEM_LOCK_UNKNOWN)
-      it = lock_retries.find(sim_lock_status_.lock_type);
-  else
+  // Look for the retries left for the current lock. Try the obtain the count
+  // that matches the current count. If no count for the current lock is
+  // available, report the first one in the dictionary.
+  LockRetryData::const_iterator it =
+      lock_retries.find(sim_lock_status_.lock_type);
+  if (it == lock_retries.end())
       it = lock_retries.begin();
   if (it != lock_retries.end())
     sim_lock_status_.retries_left = it->second;
   else
     // Unknown, use 999
     sim_lock_status_.retries_left = 999;
-  OnSimLockStatusChanged();
 }
 
 void CellularCapabilityUniversal::OnLockTypeChanged(
@@ -1782,7 +1787,6 @@ void CellularCapabilityUniversal::OnLockTypeChanged(
       lock_type != MM_MODEM_LOCK_UNKNOWN &&
       !sim_lock_status_.enabled)
     sim_lock_status_.enabled = true;
-  OnSimLockStatusChanged();
 }
 
 void CellularCapabilityUniversal::OnSimLockStatusChanged() {

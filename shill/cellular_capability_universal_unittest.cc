@@ -2115,12 +2115,13 @@ TEST_F(CellularCapabilityUniversalMainTest, OnLockRetriesChanged) {
   EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
 
   data[MM_MODEM_LOCK_SIM_PIN] = 3;
+  data[MM_MODEM_LOCK_SIM_PUK] = 10;
   capability_->OnLockRetriesChanged(data);
   EXPECT_EQ(3, capability_->sim_lock_status_.retries_left);
 
-  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN2;
+  capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PUK;
   capability_->OnLockRetriesChanged(data);
-  EXPECT_EQ(kDefaultRetries, capability_->sim_lock_status_.retries_left);
+  EXPECT_EQ(10, capability_->sim_lock_status_.retries_left);
 
   capability_->sim_lock_status_.lock_type = MM_MODEM_LOCK_SIM_PIN;
   capability_->OnLockRetriesChanged(data);
@@ -2193,7 +2194,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);
 
   // Unlock retries changed with a value that doesn't match the current
-  // lock type. Default to 999.
+  // lock type. Default to whatever count is available.
   retry_data.clear();
   retry_data[MM_MODEM_LOCK_SIM_PIN2] = 2;
   variant.clear();
@@ -2202,7 +2203,7 @@ TEST_F(CellularCapabilityUniversalMainTest, OnSimLockPropertiesChanged) {
   changed[MM_MODEM_PROPERTY_UNLOCKRETRIES] = variant;
   capability_->OnModemPropertiesChanged(changed, invalidated);
   EXPECT_EQ(MM_MODEM_LOCK_SIM_PIN, capability_->sim_lock_status_.lock_type);
-  EXPECT_EQ(999, capability_->sim_lock_status_.retries_left);
+  EXPECT_EQ(2, capability_->sim_lock_status_.retries_left);
 }
 
 }  // namespace shill
