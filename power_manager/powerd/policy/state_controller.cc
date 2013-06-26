@@ -402,9 +402,13 @@ std::string StateController::GetPolicyDebugString(
   std::string str = GetPolicyDelaysDebugString(policy.ac_delays(), "ac");
   str += GetPolicyDelaysDebugString(policy.battery_delays(), "battery");
 
-  if (policy.has_idle_action()) {
-    str += "idle=" +
-        ActionToString(ProtoActionToAction(policy.idle_action())) + " ";
+  if (policy.has_ac_idle_action()) {
+    str += "ac_idle=" +
+        ActionToString(ProtoActionToAction(policy.ac_idle_action())) + " ";
+  }
+  if (policy.has_battery_idle_action()) {
+    str += "battery_idle=" +
+        ActionToString(ProtoActionToAction(policy.battery_idle_action())) + " ";
   }
   if (policy.has_lid_closed_action()) {
     str += "lid_closed=" +
@@ -575,12 +579,13 @@ void StateController::UpdateSettingsAndState() {
   Action old_idle_action = idle_action_;
   Action old_lid_closed_action = lid_closed_action_;
 
+  const bool on_ac = power_source_ == POWER_AC;
+  const bool presenting = display_mode_ == DISPLAY_PRESENTATION;
+
   // Start out with the defaults loaded from the power manager's prefs.
-  idle_action_ =
-      (session_state_ == SESSION_STARTED || suspend_at_login_screen_) ?
-      SUSPEND : SHUT_DOWN;
-  lid_closed_action_ = session_state_ == SESSION_STARTED ? SUSPEND : SHUT_DOWN;
-  delays_ = power_source_ == POWER_AC ? pref_ac_delays_ : pref_battery_delays_;
+  idle_action_ = SUSPEND;
+  lid_closed_action_ = SUSPEND;
+  delays_ = on_ac ? pref_ac_delays_ : pref_battery_delays_;
   use_audio_activity_ = true;
   use_video_activity_ = true;
   double presentation_factor = 1.0;
@@ -588,23 +593,17 @@ void StateController::UpdateSettingsAndState() {
 
   // Now update them with values that were set in the policy.
   if (!ignore_external_policy_) {
-    if (policy_.has_idle_action())
-      idle_action_ = ProtoActionToAction(policy_.idle_action());
+    if (on_ac && policy_.has_ac_idle_action())
+      idle_action_ = ProtoActionToAction(policy_.ac_idle_action());
+    else if (!on_ac && policy_.has_battery_idle_action())
+      idle_action_ = ProtoActionToAction(policy_.battery_idle_action());
     if (policy_.has_lid_closed_action())
       lid_closed_action_ = ProtoActionToAction(policy_.lid_closed_action());
 
-    switch (power_source_) {
-      case POWER_AC:
-        if (policy_.has_ac_delays())
-          MergeDelaysFromPolicy(policy_.ac_delays(), &delays_);
-        break;
-      case POWER_BATTERY:
-        if (policy_.has_battery_delays())
-          MergeDelaysFromPolicy(policy_.battery_delays(), &delays_);
-        break;
-      default:
-        NOTREACHED() << "Unhandled power source " << power_source_;
-    }
+    if (on_ac && policy_.has_ac_delays())
+        MergeDelaysFromPolicy(policy_.ac_delays(), &delays_);
+    else if (!on_ac && policy_.has_battery_delays())
+        MergeDelaysFromPolicy(policy_.battery_delays(), &delays_);
 
     if (policy_.has_use_audio_activity())
       use_audio_activity_ = policy_.use_audio_activity();
@@ -616,7 +615,19 @@ void StateController::UpdateSettingsAndState() {
       user_activity_factor = policy_.user_activity_screen_dim_delay_factor();
   }
 
-  if (display_mode_ == DISPLAY_PRESENTATION)
+  // If the system is at the login screen and a policy hasn't overridden
+  // the default suspend behavior, shut down instead.
+  // TODO(derat): Remove this once Chrome has been updated to send
+  // suspend/shut-down idle actions at the login screen for AC/battery and
+  // suspend/suspend actions after logging in.
+  if (session_state_ == SESSION_STOPPED) {
+    if (idle_action_ == SUSPEND && !suspend_at_login_screen_)
+      idle_action_ = SHUT_DOWN;
+    if (lid_closed_action_ == SUSPEND)
+      lid_closed_action_ = SHUT_DOWN;
+  }
+
+  if (presenting)
     ScaleDelays(&delays_, presentation_factor);
   else if (saw_user_activity_soon_after_screen_dim_or_off_)
     ScaleDelays(&delays_, user_activity_factor);
@@ -631,12 +642,12 @@ void StateController::UpdateSettingsAndState() {
   // update is being applied on AC power so users on slow connections can
   // get updates.  Continue suspending on lid-close so users don't get
   // confused, though.
-  if (updater_state_ == UPDATER_UPDATING && power_source_ == POWER_AC &&
+  if (updater_state_ == UPDATER_UPDATING && on_ac &&
       (idle_action_ == SUSPEND || idle_action_ == SHUT_DOWN))
     idle_action_ = DO_NOTHING;
 
   // Ignore the lid being closed while presenting to support docked mode.
-  if (allow_docked_mode_ && display_mode_ == DISPLAY_PRESENTATION)
+  if (allow_docked_mode_ && presenting)
     lid_closed_action_ = DO_NOTHING;
 
   // If the idle or lid-closed actions changed, make sure that we perform

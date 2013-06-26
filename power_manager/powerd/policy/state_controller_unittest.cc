@@ -495,7 +495,7 @@ TEST_F(StateControllerTest, ScaleDelaysWhilePresenting) {
   policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_idle_warning_ms(kWarnDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
-  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   policy.set_presentation_screen_dim_delay_factor(kScreenDimFactor);
   controller_.HandlePolicyChange(policy);
 
@@ -586,7 +586,8 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   Init();
 
   // Set an external policy that disables most delays and instructs the
-  // power manager to log the user out after 10 minutes of inactivity.
+  // power manager to shut the system down after 10 minutes of inactivity
+  // if on AC power or stop the session if on battery power.
   const base::TimeDelta kIdleDelay = base::TimeDelta::FromSeconds(600);
   PowerManagementPolicy policy;
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
@@ -594,14 +595,15 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   policy.mutable_ac_delays()->set_screen_dim_ms(0);
   policy.mutable_ac_delays()->set_screen_lock_ms(0);
   *policy.mutable_battery_delays() = policy.ac_delays();
-  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
+  policy.set_battery_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   policy.set_lid_closed_action(PowerManagementPolicy_Action_DO_NOTHING);
   policy.set_use_audio_activity(false);
   policy.set_use_video_activity(false);
   controller_.HandlePolicyChange(policy);
 
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay));
-  EXPECT_EQ(kStopSession, delegate_.GetActions());
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
 
   controller_.HandleUserActivity();
   EXPECT_EQ(kNoActions, delegate_.GetActions());
@@ -615,7 +617,7 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   controller_.HandleAudioActivity();
   controller_.HandleVideoActivity();
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(kIdleDelay / 2));
-  EXPECT_EQ(kStopSession, delegate_.GetActions());
+  EXPECT_EQ(kShutDown, delegate_.GetActions());
 
   // The policy's request to do nothing when the lid is closed should be
   // honored.
@@ -634,6 +636,11 @@ TEST_F(StateControllerTest, PolicySupercedesPrefs) {
   // delay.  The screen should undim immediately.
   controller_.HandlePowerSourceChange(POWER_BATTERY);
   EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+
+  // Wait for the idle timeout to be reached and check that the battery
+  // idle action is performed.
+  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(base::TimeDelta::FromSeconds(600)));
+  EXPECT_EQ(kStopSession, delegate_.GetActions());
 
   // Update the policy again to shut down if the lid is closed.  Since the
   // lid is already closed, the system should shut down immediately.
@@ -695,7 +702,7 @@ TEST_F(StateControllerTest, PolicyDisablingVideo) {
   policy.mutable_ac_delays()->set_screen_off_ms(kOffDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_screen_lock_ms(kLockDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
-  policy.set_idle_action(PowerManagementPolicy_Action_SUSPEND);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SUSPEND);
   policy.set_use_audio_activity(true);
   policy.set_use_video_activity(false);
   controller_.HandlePolicyChange(policy);
@@ -839,7 +846,7 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   // Even after explicitly setting a policy to suspend on idle, the system
   // should still stay up.
   PowerManagementPolicy policy;
-  policy.set_idle_action(PowerManagementPolicy_Action_SUSPEND);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SUSPEND);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
@@ -985,7 +992,7 @@ TEST_F(StateControllerTest, AvoidSuspendForHeadphoneJack) {
   delegate_.set_avoid_suspend_for_headphones(true);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   PowerManagementPolicy policy;
-  policy.set_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
@@ -1083,7 +1090,7 @@ TEST_F(StateControllerTest, AvoidSuspendDuringSystemUpdate) {
   // suspending or shutting down, it should still be performed while an
   // update is in-progress.
   PowerManagementPolicy policy;
-  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
   controller_.HandleUpdaterStateChange(UPDATER_UPDATING);
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
@@ -1106,7 +1113,7 @@ TEST_F(StateControllerTest, IdleWarnings) {
   policy.mutable_ac_delays()->set_idle_warning_ms(
       kIdleWarningDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
-  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
 
   // The idle-action-imminent notification should be sent at the requested
@@ -1159,16 +1166,16 @@ TEST_F(StateControllerTest, IdleWarnings) {
   ResetLastStepDelay();
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleWarningDelay));
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
-  policy.set_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
 
   // Setting the idle action back to "stop session" should cause
   // idle-imminent to get sent again.
-  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleImminent, delegate_.GetActions());
-  policy.set_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_DO_NOTHING);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kIdleDeferred, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
@@ -1192,7 +1199,7 @@ TEST_F(StateControllerTest, IdleWarnings) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(StepTimeAndTriggerTimeout(kIdleDelay));
   EXPECT_EQ(kNoActions, delegate_.GetActions());
-  policy.set_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(JoinActions(kIdleImminent, kStopSession, NULL),
             delegate_.GetActions());
@@ -1266,7 +1273,7 @@ TEST_F(StateControllerTest, IncreaseDelaysAfterUserActivity) {
   policy.mutable_ac_delays()->set_idle_warning_ms(
       kIdleWarningDelay.InMilliseconds());
   policy.mutable_ac_delays()->set_idle_ms(kIdleDelay.InMilliseconds());
-  policy.set_idle_action(PowerManagementPolicy_Action_SUSPEND);
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SUSPEND);
   policy.set_user_activity_screen_dim_delay_factor(kDelayFactor);
   controller_.HandlePolicyChange(policy);
 

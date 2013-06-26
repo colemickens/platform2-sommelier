@@ -16,8 +16,11 @@
 #include "power_manager/policy.pb.h"
 
 // These mirror the fields from the PowerManagementPolicy protocol buffer.
-DEFINE_string(idle_action, "",
-              "Action to perform when idle (one of "
+DEFINE_string(ac_idle_action, "",
+              "Action to perform when idle on AC power (one of "
+              "suspend, stop_session, shut_down, do_nothing)");
+DEFINE_string(battery_idle_action, "",
+              "Action to perform when idle on battery power (one of "
               "suspend, stop_session, shut_down, do_nothing)");
 DEFINE_string(lid_closed_action, "",
               "Action to perform when lid is closed (one of "
@@ -97,8 +100,10 @@ int main(int argc, char* argv[]) {
 
   power_manager::PowerManagementPolicy policy;
 
-  if (!FLAGS_idle_action.empty())
-    policy.set_idle_action(GetAction(FLAGS_idle_action));
+  if (!FLAGS_ac_idle_action.empty())
+    policy.set_ac_idle_action(GetAction(FLAGS_ac_idle_action));
+  if (!FLAGS_battery_idle_action.empty())
+    policy.set_battery_idle_action(GetAction(FLAGS_battery_idle_action));
   if (!FLAGS_lid_closed_action.empty())
     policy.set_lid_closed_action(GetAction(FLAGS_lid_closed_action));
 
