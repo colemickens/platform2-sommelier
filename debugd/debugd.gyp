@@ -85,6 +85,7 @@
         'src/sandboxed_process.cc',
         'src/storage_tool.cc',
         'src/subprocess_tool.cc',
+        'src/sysrq_tool.cc',
         'src/systrace_tool.cc',
         'src/tracepath_tool.cc',
       ],

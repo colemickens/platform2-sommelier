@@ -413,5 +413,11 @@
         stops all running packet captures.
       </arg>
     </method>
+    <method name="LogKernelTaskStates">
+      <tp:docstring>
+        Triggers show-task-states(T) SysRq.
+        See https://www.kernel.org/doc/Documentation/sysrq.txt.
+      </tp:docstring>
+    </method>
   </interface>
 </node>

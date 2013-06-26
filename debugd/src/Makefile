@@ -43,6 +43,7 @@ TOOLS := $(patsubst %,%_tool.o, \
 	route \
 	storage \
 	subprocess \
+	sysrq \
 	systrace \
 	tracepath)
 OBJS := cpu_info_parser.o debug_daemon.o process_with_id.o \

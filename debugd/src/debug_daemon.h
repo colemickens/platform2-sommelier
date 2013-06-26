@@ -25,6 +25,7 @@
 #include "ping_tool.h"
 #include "route_tool.h"
 #include "storage_tool.h"
+#include "sysrq_tool.h"
 #include "systrace_tool.h"
 #include "tracepath_tool.h"
 
@@ -134,6 +135,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
                                          DBus::Error& error);
   virtual void PacketCaptureStop(const std::string& handle,
                                  DBus::Error& error);
+  virtual void LogKernelTaskStates(DBus::Error& error); // NOLINT
 
  private:
   DBus::Connection* dbus_;
@@ -153,6 +155,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   PingTool* ping_tool_;
   RouteTool* route_tool_;
   StorageTool* storage_tool_;
+  SysrqTool* sysrq_tool_;
   SystraceTool* systrace_tool_;
   TracePathTool* tracepath_tool_;
 };

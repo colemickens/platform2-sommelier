@@ -28,6 +28,7 @@ bool DebugDaemon::Init() {
   packet_capture_tool_ = new PacketCaptureTool();
   ping_tool_ = new PingTool();
   route_tool_ = new RouteTool();
+  sysrq_tool_ = new SysrqTool();
   systrace_tool_ = new SystraceTool();
   tracepath_tool_ = new TracePathTool();
   log_tool_ = new LogTool();
@@ -207,5 +208,9 @@ std::string DebugDaemon::PacketCaptureStart(const DBus::FileDescriptor& statfd,
 void DebugDaemon::PacketCaptureStop(const std::string& handle,
                                     DBus::Error& error) {
   return packet_capture_tool_->Stop(handle, error);
+}
+
+void DebugDaemon::LogKernelTaskStates(DBus::Error& error) { // NOLINT dbuscxx
+  sysrq_tool_->LogKernelTaskStates(error);
 }
 };  // namespace debugd
