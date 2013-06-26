@@ -72,6 +72,61 @@ void CopyPowerStatusToProtocolBuffer(const system::PowerStatus& status,
   proto->set_is_calculating_battery_time(status.is_calculating_battery_time);
 }
 
+// Returns a string describing the battery status from |status|.
+std::string GetPowerStatusBatteryDebugString(
+    const system::PowerStatus& status) {
+  if (!status.battery_is_present)
+    return std::string();
+
+  std::string output;
+  switch (status.external_power) {
+    case PowerSupplyProperties_ExternalPower_AC:
+      output = "On AC (" + status.line_power_type + ") with battery at ";
+      break;
+    case PowerSupplyProperties_ExternalPower_USB:
+      output = "On USB (" + status.line_power_type + ") with battery at ";
+      break;
+    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
+      output = "On battery at ";
+      break;
+  }
+
+  long rounded_actual = lround(status.battery_percentage);
+  long rounded_display = lround(status.display_battery_percentage);
+  output += StringPrintf("%ld%%", rounded_actual);
+  if (rounded_actual != rounded_display)
+    output += StringPrintf(" (displayed as %ld%%)", rounded_display);
+  output += StringPrintf(", %.3f/%.3fAh at %.3fA", status.battery_charge,
+      status.battery_charge_full, status.battery_current);
+
+  // TODO(derat): Change this to instead switch on |status.battery_state|
+  // and display time-to-full for CHARGING and time-to-empty for DISCHARGING
+  // after PowerSupply has been updated.
+  switch (status.external_power) {
+    case PowerSupplyProperties_ExternalPower_AC:
+    case PowerSupplyProperties_ExternalPower_USB:
+      if (status.battery_state == PowerSupplyProperties_BatteryState_FULL) {
+        output += ", full";
+      } else {
+        output += ", " + util::TimeDeltaToString(
+            base::TimeDelta::FromSeconds(status.battery_time_to_full)) +
+            " until full";
+        if (status.is_calculating_battery_time)
+          output += " (calculating)";
+      }
+      break;
+    case PowerSupplyProperties_ExternalPower_DISCONNECTED:
+      output += ", " + util::TimeDeltaToString(
+          base::TimeDelta::FromSeconds(status.battery_time_to_empty)) +
+          " until empty";
+      if (status.is_calculating_battery_time)
+        output += " (calculating)";
+      break;
+  }
+
+  return output;
+}
+
 }  // namespace
 
 // Performs actions requested by |state_controller_|.  The reason that
@@ -555,21 +610,8 @@ void Daemon::OnAudioActivity(base::TimeTicks last_activity_time) {
 
 void Daemon::OnPowerStatusUpdate() {
   const system::PowerStatus& status = power_supply_->power_status();
-  if (status.battery_is_present) {
-    long rounded_actual = lround(status.battery_percentage);
-    long rounded_display = lround(status.display_battery_percentage);
-    std::string percent_str = StringPrintf("%ld%%", rounded_actual);
-    if (rounded_actual != rounded_display)
-      percent_str += StringPrintf(" (displayed as %ld%%)", rounded_display);
-    if (status.line_power_on) {
-       LOG(INFO) << "On AC (" << status.line_power_type << ") with battery at "
-                 << percent_str << "; " << status.battery_time_to_full
-                 << " sec until full";
-    } else {
-      LOG(INFO) << "On battery at " << percent_str << "; "
-                << status.battery_time_to_empty << " sec until empty";
-    }
-  }
+  if (status.battery_is_present)
+    LOG(INFO) << GetPowerStatusBatteryDebugString(status);
 
   SetPlugged(status.line_power_on);
   metrics_reporter_->GenerateMetricsOnPowerEvent(status);
