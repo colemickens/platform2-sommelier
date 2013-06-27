@@ -74,9 +74,9 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   for (size_t i = 0; i < attrs_.size(); ++i) {
     CHECK_EQ(attrs_[i].attr.sample_type, attrs_[0].attr.sample_type)
         << "Sample type for attribute #" << i
-        << " (" << (void*)attrs_[i].attr.sample_type << ")"
+        << " (" << std::hex << attrs_[i].attr.sample_type << ")"
         << " does not match that of attribute 0"
-        << " (" << (void*)attrs_[0].attr.sample_type << ")";
+        << " (" << std::hex << attrs_[0].attr.sample_type << ")";
   }
   CHECK_GT(attrs_.size(), 0U);
   sample_type_ = attrs_[0].attr.sample_type;

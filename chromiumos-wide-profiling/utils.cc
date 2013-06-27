@@ -231,6 +231,16 @@ bool CompareMapsAccountingForUnknownEntries(
          (difference > -kPerfReportEntryErrorThreshold);
 }
 
+// Given a valid open file handle |fp|, returns the size of the file.
+long int GetFileSizeFromHandle(FILE* fp) {
+  long int position = ftell(fp);
+  fseek(fp, 0, SEEK_END);
+  long int file_size = ftell(fp);
+  // Restore the original file handle position.
+  fseek(fp, position, SEEK_SET);
+  return file_size;
+}
+
 }  // namespace
 
 namespace quipper {
@@ -252,36 +262,40 @@ uint64 Md5Prefix(const string& input) {
   return digest_prefix;
 }
 
-std::ifstream::pos_type GetFileSize(const string& filename) {
-  std::ifstream in(filename.c_str(), std::ifstream::in | std::ifstream::binary);
-  in.seekg(0, std::ifstream::end);
-  return in.tellg();
+long int GetFileSize(const string& filename) {
+  FILE* fp = fopen(filename.c_str(), "rb");
+  if (!fp)
+    return -1;
+  long int file_size = GetFileSizeFromHandle(fp);
+  fclose(fp);
+  return file_size;
 }
 
-bool BufferToFile(const string& filename,
-                  const std::vector<char> & contents) {
-  std::ofstream out(filename.c_str(), std::ios::binary);
-  if (out.good())
-  {
-    out.write(&contents[0], contents.size() * sizeof(contents[0]));
-    out.close();
-    if (out.good())
-      return true;
+bool BufferToFile(const string& filename, const std::vector<char>& contents) {
+  FILE* fp = fopen(filename.c_str(), "wb");
+  if (!fp)
+    return false;
+  // Do not write anything if |contents| contains nothing.  fopen will create
+  // an empty file.
+  if (!contents.empty()) {
+    CHECK_GT(fwrite(&contents[0], contents.size() * sizeof(contents[0]), 1, fp),
+             0U);
   }
-  return false;
+  fclose(fp);
+  return true;
 }
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents) {
-  contents->reserve(GetFileSize(filename));
-  std::ifstream in(filename.c_str(), std::ios::binary);
-  if (in.good())
-  {
-    contents->assign(std::istreambuf_iterator<char>(in),
-                     std::istreambuf_iterator<char>());
-    if (in.good())
-      return true;
-  }
-  return false;
+  FILE* fp = fopen(filename.c_str(), "rb");
+  if (!fp)
+    return false;
+  long int file_size = GetFileSizeFromHandle(fp);
+  contents->resize(file_size);
+  // Do not read anything if the file exists but is empty.
+  if (file_size > 0)
+    CHECK_GT(fread(&(*contents)[0], file_size, 1, fp), 0U);
+  fclose(fp);
+  return true;
 }
 
 bool CompareFileContents(const string& a, const string& b) {

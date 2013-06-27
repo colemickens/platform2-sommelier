@@ -107,7 +107,7 @@ bool PerfParser::ProcessEvents() {
     event_t& event = *parsed_event.raw_event;
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
-        VLOG(1) << "IP: " << reinterpret_cast<void*>(event.ip.ip);
+        VLOG(1) << "IP: " << std::hex << event.ip.ip;
         ++stats_.num_sample_events;
 
         if (MapSampleEvent(&parsed_event))

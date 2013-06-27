@@ -99,8 +99,8 @@ class AddressMapperTest : public ::testing::Test {
  protected:
   // Maps a range using the AddressMapper and makes sure that it was successful.
   bool MapRange(const Range& range, bool remove_old_mappings) {
-    LOG(INFO) << "Mapping range at " << (void*) range.addr
-              << " with length of " << (void*) range.size;
+    LOG(INFO) << "Mapping range at " << std::hex << range.addr
+              << " with length of " << std::hex << range.size;
     return mapper_->Map(range.addr, range.size, remove_old_mappings);
   }
 
@@ -118,8 +118,8 @@ class AddressMapperTest : public ::testing::Test {
                              const uint64 expected_id) {
     uint64 mapped_addr = kuint64max;
 
-    LOG(INFO) << "Testing range at " << (void*) range.addr << " with length of "
-              << (void*) range.size;
+    LOG(INFO) << "Testing range at " << std::hex << range.addr
+              << " with length of " << std::hex << range.size;
 
     // Check address at the beginning of the range and at subsequent intervals.
     for (uint64 offset = 0;
@@ -213,8 +213,8 @@ TEST_F(AddressMapperTest, MapAllWithIDsAndOffsets) {
   unsigned int i;
   for (i = 0; i < arraysize(kMapRanges); ++i) {
     const Range& range = kMapRanges[i];
-    LOG(INFO) << "Mapping range at " << (void*) range.addr
-              << " with length of " << (void*) range.size;
+    LOG(INFO) << "Mapping range at " << std::hex << range.addr
+              << " with length of " << std::hex << range.size;
     ASSERT_TRUE(mapper_->MapWithID(kMapRanges[i].addr,
                                    kMapRanges[i].size,
                                    kMapRanges[i].id,

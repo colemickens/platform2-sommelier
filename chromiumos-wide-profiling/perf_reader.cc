@@ -4,6 +4,7 @@
 
 #include <byteswap.h>
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
@@ -36,7 +37,7 @@ size_t BytesToBits(size_t num_bytes) {
 
 template <class T>
 void ByteSwap(T* input) {
-  switch(sizeof(T)) {
+  switch (sizeof(T)) {
   case sizeof(uint8):
     LOG(WARNING) << "Attempting to byte swap on a single byte.";
     break;
@@ -261,7 +262,7 @@ size_t ReadPerfSampleFromData(const uint64* array,
       --array;
       break;
     default:
-      LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
+      LOG(FATAL) << "Invalid sample type " << std::hex << sample_type;
     }
   }
 
@@ -366,7 +367,7 @@ size_t WritePerfSampleToData(const struct perf_sample& sample,
       write_branch_stack = true;
       continue;
     default:
-      LOG(FATAL) << "Invalid sample type " << (void*)sample_type;
+      LOG(FATAL) << "Invalid sample type " << std::hex << sample_type;
     }
     *array++ = val64;
     ++num_values_written;
@@ -1090,7 +1091,7 @@ bool PerfReader::ReadEventDescEventBlock(
     ptr = &desc_event.more_data[offset];
     struct perf_trace_event_type event_type;
     event_type.event_id = i;
-    strcpy(event_type.name, more_data->name);
+    snprintf(event_type.name, sizeof(event_type.name), "%s", more_data->name);
     event_types_.push_back(event_type);
   }
   return true;

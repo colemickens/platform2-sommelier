@@ -31,8 +31,8 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
   // Check that this mapping does not overflow the address space.
   if (real_addr + size - 1 != kuint64max &&
       !(real_addr + size > real_addr)) {
-    LOG(ERROR) << "Address mapping at " << (void*)real_addr << " with size "
-               << (void*)size << " overflows.";
+    LOG(ERROR) << "Address mapping at " << std::hex << real_addr
+               << " with size " << std::hex << size << " overflows.";
     return false;
   }
 
@@ -118,8 +118,8 @@ bool AddressMapper::MapWithID(const uint64 real_addr,
 
   // If it still hasn't succeeded in mapping, it means there is no free space in
   // quipper space large enough for a mapping of this size.
-  LOG(ERROR) << "Could not find space to map addr=" << (void*) real_addr
-             << " with size " << (void*) size;
+  LOG(ERROR) << "Could not find space to map addr=" << std::hex << real_addr
+             << " with size " << std::hex << size;
   return false;
 }
 

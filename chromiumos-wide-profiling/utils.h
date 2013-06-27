@@ -5,7 +5,6 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
-#include <fstream>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -16,10 +15,9 @@ namespace quipper {
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
-bool BufferToFile(const string& filename,
-                  const std::vector<char>& contents);
+bool BufferToFile(const string& filename, const std::vector<char>& contents);
 
-std::ifstream::pos_type GetFileSize(const string& filename);
+long int GetFileSize(const string& filename);
 
 bool CompareFileContents(const string& a, const string& b);
 
