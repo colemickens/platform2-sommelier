@@ -14,7 +14,7 @@ namespace shill {
 
 // static
 const char ServiceUnderTest::kRpcId[] = "/mock_device_rpc";
-// static
+const char ServiceUnderTest::kStringsProperty[] = "strings";
 const char ServiceUnderTest::kStorageId[] = "service";
 
 ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
@@ -23,6 +23,7 @@ ServiceUnderTest::ServiceUnderTest(ControlInterface *control_interface,
                                    Manager *manager)
     : Service(control_interface, dispatcher, metrics, manager,
               Technology::kUnknown) {
+  this->mutable_store()->RegisterStrings(kStringsProperty, &strings_);
 }
 
 ServiceUnderTest::~ServiceUnderTest() {}

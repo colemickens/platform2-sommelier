@@ -240,6 +240,9 @@ void DBusAdaptor::ArgsToKeyValueStore(
     } else if (it->second.signature() == bool_type.sig()) {
       SLOG(DBus, 5) << "Got bool property " << key;
       out->SetBool(key, it->second.reader().get_bool());
+    } else if (DBusAdaptor::IsStrings(it->second.signature())) {
+      SLOG(DBus, 5) << "Got strings property " << key;
+      out->SetStrings(key, it->second.operator vector<string>());
     } else {
       Error::PopulateAndLog(error, Error::kInternalError,
                             "unsupported type for property " + key);

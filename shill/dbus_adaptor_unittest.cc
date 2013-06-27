@@ -316,12 +316,21 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   KeyValueStore args_kv;
   Error error;
 
-  args["string_arg"].writer().append_string("string");
-  args["bool_arg"].writer().append_bool(true);
+  const bool kBool = true;
+  const char kBoolKey[] = "bool_arg";
+  args[kBoolKey].writer().append_bool(kBool);
+  const char kString[] = "string";
+  const char kStringKey[] = "string_arg";
+  args[kStringKey].writer().append_string(kString);
+  const vector<string> kStrings{ "string0", "string1" };
+  const char kStringsKey[] = "strings_key";
+  DBus::MessageIter writer = args[kStringsKey].writer();
+  writer << kStrings;
   DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ("string", args_kv.GetString("string_arg"));
-  EXPECT_EQ(true, args_kv.GetBool("bool_arg"));
+  EXPECT_EQ(kBool, args_kv.GetBool(kBoolKey));
+  EXPECT_EQ(kString, args_kv.GetString(kStringKey));
+  EXPECT_EQ(kStrings, args_kv.GetStrings(kStringsKey));
 }
 
 TEST_F(DBusAdaptorTest, KeyValueStoreToVariant) {

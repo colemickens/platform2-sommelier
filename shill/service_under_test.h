@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <string>
+#include <vector>
 
 #include "shill/service.h"
 
@@ -14,10 +15,11 @@ class EventDispatcher;
 class Manager;
 class Metrics;
 
-// This is a simple Service subclass with all the pure-virutal methods stubbed.
+// This is a simple Service subclass with all the pure-virtual methods stubbed.
 class ServiceUnderTest : public Service {
  public:
   static const char kRpcId[];
+  static const char kStringsProperty[];
   static const char kStorageId[];
 
   ServiceUnderTest(ControlInterface *control_interface,
@@ -30,7 +32,17 @@ class ServiceUnderTest : public Service {
   virtual std::string GetDeviceRpcId(Error *error);
   virtual std::string GetStorageIdentifier() const;
 
+  // Getter and setter for a string array property for use in testing.
+  void set_strings(const std::vector<std::string> &strings) {
+    strings_ = strings;
+  }
+  const std::vector<std::string> &strings() const { return strings_; }
+
  private:
+  // The Service superclass has no string array properties but we need one
+  // in order to test Service::Configure.
+  std::vector<std::string> strings_;
+
   DISALLOW_COPY_AND_ASSIGN(ServiceUnderTest);
 };
 

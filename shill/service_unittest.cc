@@ -796,6 +796,19 @@ TEST_F(ServiceTest, ConfigureStringProperty) {
   EXPECT_EQ(kGuid1, service_->guid());
 }
 
+TEST_F(ServiceTest, ConfigureStringsProperty) {
+  const vector<string> kStrings0{ "string0", "string1" };
+  const vector<string> kStrings1{ "string2", "string3" };
+  service_->set_strings(kStrings0);
+  ASSERT_EQ(kStrings0, service_->strings());
+  KeyValueStore args;
+  args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings1);
+  Error error;
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_EQ(kStrings1, service_->strings());
+}
+
 TEST_F(ServiceTest, ConfigureEapStringProperty) {
   MockEapCredentials *eap = new MockEapCredentials();
   service2_->SetEapCredentials(eap);  // Passes ownership.
@@ -849,12 +862,16 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
   const uint32 kPriority0 = 100;
   const uint32 kPriority1 = 200;
   service_->SetPriority(kPriority0, NULL);
+  const vector<string> kStrings0{ "string0", "string1" };
+  const vector<string> kStrings1{ "string2", "string3" };
+  service_->set_strings(kStrings0);
 
   {
     KeyValueStore args;
     args.SetString(flimflam::kGuidProperty, kGUID0);
     args.SetBool(flimflam::kAutoConnectProperty, false);
     args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_TRUE(service_->DoPropertiesMatch(args));
   }
   {
@@ -862,6 +879,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetString(flimflam::kGuidProperty, kGUID1);
     args.SetBool(flimflam::kAutoConnectProperty, false);
     args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
@@ -869,6 +887,7 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetString(flimflam::kGuidProperty, kGUID0);
     args.SetBool(flimflam::kAutoConnectProperty, true);
     args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
   {
@@ -876,6 +895,15 @@ TEST_F(ServiceTest, DoPropertiesMatch) {
     args.SetString(flimflam::kGuidProperty, kGUID0);
     args.SetBool(flimflam::kAutoConnectProperty, false);
     args.SetInt(flimflam::kPriorityProperty, kPriority1);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings0);
+    EXPECT_FALSE(service_->DoPropertiesMatch(args));
+  }
+  {
+    KeyValueStore args;
+    args.SetString(flimflam::kGuidProperty, kGUID0);
+    args.SetBool(flimflam::kAutoConnectProperty, false);
+    args.SetInt(flimflam::kPriorityProperty, kPriority0);
+    args.SetStrings(ServiceUnderTest::kStringsProperty, kStrings1);
     EXPECT_FALSE(service_->DoPropertiesMatch(args));
   }
 }
