@@ -384,7 +384,6 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             --audio-buffer-size=2048 \
             --device-management-url="$DMSERVER" \
             --enable-chrome-audio-switching \
-            --enable-encrypted-media \
             --enable-logging \
             --enable-partial-swap \
             --max-tiles-for-interest-area=512 \
