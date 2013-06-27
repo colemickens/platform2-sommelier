@@ -245,8 +245,9 @@ void Service::AutoConnect() {
 void Service::Connect(Error */*error*/, const char *reason) {
   LOG(INFO) << "Connect to service " << unique_name() <<": " << reason;
   explicitly_disconnected_ = false;
-  // clear any failure state from a previous connect attempt
-  SetState(kStateIdle);
+  // Clear any failure state from a previous connect attempt.
+  if (state() == kStateFailure)
+    SetState(kStateIdle);
 }
 
 void Service::Disconnect(Error */*error*/) {

@@ -571,6 +571,19 @@ TEST_F(ServiceTest, State) {
   service_->set_profile(NULL);  // Break reference cycle.
 }
 
+TEST_F(ServiceTest, StateResetAfterFailure) {
+  service_->SetFailure(Service::kFailureOutOfRange);
+  EXPECT_EQ(Service::kStateFailure, service_->state());
+  Error error;
+  service_->Connect(&error, "in test");
+  EXPECT_EQ(Service::kStateIdle, service_->state());
+  EXPECT_EQ(Service::kFailureUnknown, service_->failure());
+
+  service_->SetState(Service::kStateConnected);
+  service_->Connect(&error, "in test");
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+}
+
 TEST_F(ServiceTest, ActivateCellularModem) {
   ResultCallback callback =
       Bind(&ServiceTest::TestCallback, Unretained(this));
