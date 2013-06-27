@@ -602,7 +602,7 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   ExpectInFlags(options, "--pkcs11-id", kID);
   ExpectInFlags(options, "--ca", OpenVPNDriver::kDefaultCACertificates);
   ExpectInFlags(options, "--syslog");
-  ExpectInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--auth-user-pass");
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
@@ -737,6 +737,45 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   driver_->InitClientAuthOptions(&options);
   ExpectInFlags(options, "--auth-user-pass");
   ExpectInFlags(options, "--key", kTestValue);
+
+  // Empty PKCS11 certificate id, no user/password/cert.
+  options.clear();
+  RemoveStringArg(kOpenVPNKeyProperty);
+  RemoveStringArg(kOpenVPNCertProperty);
+  RemoveStringArg(flimflam::kOpenVPNUserProperty);
+  SetArg(flimflam::kOpenVPNClientCertIdProperty, "");
+  driver_->InitClientAuthOptions(&options);
+  ExpectInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--key");
+  ExpectNotInFlags(options, "--cert");
+  ExpectNotInFlags(options, "--pkcs11-id");
+
+  // Non-empty PKCS11 certificate id, no user/password/cert.
+  options.clear();
+  SetArg(flimflam::kOpenVPNClientCertIdProperty, kTestValue);
+  driver_->InitClientAuthOptions(&options);
+  ExpectNotInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--key");
+  ExpectNotInFlags(options, "--cert");
+  // The "--pkcs11-id" option is added in InitPKCS11Options(), not here.
+  ExpectNotInFlags(options, "--pkcs11-id");
+
+  // PKCS11 certificate id available, AuthUserPass set.
+  options.clear();
+  SetArg(flimflam::kOpenVPNAuthUserPassProperty, kTestValue);
+  driver_->InitClientAuthOptions(&options);
+  ExpectInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--key");
+  ExpectNotInFlags(options, "--cert");
+
+  // PKCS11 certificate id available, User set.
+  options.clear();
+  RemoveStringArg(flimflam::kOpenVPNAuthUserPassProperty);
+  SetArg(flimflam::kOpenVPNUserProperty, "user");
+  driver_->InitClientAuthOptions(&options);
+  ExpectInFlags(options, "--auth-user-pass");
+  ExpectNotInFlags(options, "--key");
+  ExpectNotInFlags(options, "--cert");
 }
 
 TEST_F(OpenVPNDriverTest, InitPKCS11Options) {

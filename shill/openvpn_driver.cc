@@ -724,7 +724,8 @@ void OpenVPNDriver::InitPKCS11Options(vector<string> *options) {
 }
 
 void OpenVPNDriver::InitClientAuthOptions(vector<string> *options) {
-  bool has_cert = AppendValueOption(kOpenVPNCertProperty, "--cert", options);
+  bool has_cert = AppendValueOption(kOpenVPNCertProperty, "--cert", options) ||
+      !args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "").empty();
   bool has_key = AppendValueOption(kOpenVPNKeyProperty, "--key", options);
   // If the AuthUserPass property is set, or the User property is non-empty, or
   // there's neither a key, nor a cert available, specify user-password client
