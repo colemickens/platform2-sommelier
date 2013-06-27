@@ -94,6 +94,31 @@ if use_flag_is_set asan; then
   ASAN_FLAGS="--no-sandbox"
 fi
 
+# If used with Deep Memory Profiler, turn on the heap profiler.
+DMPROF_FLAGS=
+if use_flag_is_set deep_memory_profiler; then
+  if [ -f /var/tmp/deep_memory_profiler_time_interval.txt ] ; then
+    read dmprof_time_interval < /var/tmp/deep_memory_profiler_time_interval.txt
+  fi
+  if [ -f /var/tmp/deep_memory_profiler_prefix.txt ] ; then
+    read dmprof_prefix < /var/tmp/deep_memory_profiler_prefix.txt
+
+    # Dump heap profiles to /tmp/dmprof.*.
+    export HEAPPROFILE=${dmprof_prefix}
+
+    # Turn on profiling mmap.
+    export HEAP_PROFILE_MMAP=1
+
+    # Turn on Deep Memory Profiler.
+    export DEEP_HEAP_PROFILE=1
+
+    # Dump every ${dmprof_time_interval} seconds.
+    export HEAP_PROFILE_TIME_INTERVAL=${dmprof_time_interval}
+
+    DMPROF_FLAGS="--no-sandbox"
+  fi
+fi
+
 # Change the directory for ibus-daemon socket file from ~/.config/ibus/bus/ to
 # /tmp/.ibus-socket-<unique random string>/ to fix crosbug.com/16501 and 17270.
 # Every time when you change IBUS_ADDRESS_FILE, you should also update the
@@ -407,6 +432,7 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${SKIP_OOBE} \
             ${TOUCHUI_FLAGS} \
             ${ASAN_FLAGS} \
+            ${DMPROF_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
             ${PPAPI_OOP_FLAG} \
             ${EVDA_FLAGS} \
