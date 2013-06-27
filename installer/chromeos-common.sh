@@ -165,7 +165,7 @@ list_usb_disks() {
   local sd
   for sd in /sys/block/sd*; do
     if readlink -f ${sd}/device | grep -q usb &&
-      [ "$(cat ${sd}/removable)" = 1 ]; then
+      [ "$(cat ${sd}/removable)" = 1 -a "$(cat ${sd}/size)" != 0 ]; then
       echo ${sd##*/}
     fi
   done
