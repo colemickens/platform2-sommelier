@@ -748,7 +748,8 @@ void WiFi::HandleDisconnect() {
                     << affected_service->unique_name() << ", "
                     << "but could not find supplicant network to disable.";
     } else {
-      LOG(FATAL) << "DisableNetwork failed.";
+      LOG(FATAL) << "DisableNetwork failed on " << link_name()
+                 << "for service " << affected_service->unique_name() << ".";
     }
   }
 
