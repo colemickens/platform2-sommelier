@@ -985,6 +985,11 @@ TEST_F(DeviceInfoTechnologyTest, QCUSB) {
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
 }
 
+TEST_F(DeviceInfoTechnologyTest, CellularCdcMbim) {
+  CreateInfoSymLink("device/driver", "cdc_mbim");
+  EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());
+}
+
 TEST_F(DeviceInfoTechnologyTest, CellularQmiWwan) {
   CreateInfoSymLink("device/driver", "qmi_wwan");
   EXPECT_EQ(Technology::kCellular, GetDeviceTechnology());

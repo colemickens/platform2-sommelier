@@ -76,6 +76,7 @@ const char *DeviceInfo::kModemDrivers[] = {
     "gobi",
     "QCUSBNet2k",
     "GobiNet",
+    "cdc_mbim",
     "qmi_wwan"
 };
 const char DeviceInfo::kTunDeviceName[] = "/dev/net/tun";
