@@ -13,6 +13,7 @@
 #include <fstream>
 #include <iomanip>
 #include <map>
+#include <set>
 #include <sstream>
 #include <vector>
 
@@ -71,10 +72,6 @@ enum {
 };
 
 const char kPerfBuildIDCommand[] = "/usr/sbin/perf buildid-list -i ";
-
-const char* kSupportedMetadata[] = {
-  "hostname", "os release", "perf version", "arch", "cpudesc"
-};
 
 const int kPerfReportParseError = -1;
 
@@ -136,9 +133,9 @@ bool GetPerfReport(const string& filename, std::vector<string>* output,
     if (line[0] != kPerfReportCommentCharacter)
       use_line = true;
 
-    int length = arraysize(kSupportedMetadata);
-    for (int j = 0; j < length; ++j) {
-      string valid_prefix = StringPrintf("# %s :", kSupportedMetadata[j]);
+    for (size_t j = 0; quipper::kSupportedMetadata[j]; ++j) {
+      string valid_prefix =
+          StringPrintf("# %s :", quipper::kSupportedMetadata[j]);
       if (line.substr(0, valid_prefix.size()) == valid_prefix)
         use_line = true;
     }
@@ -277,6 +274,19 @@ long int GetFileSizeFromHandle(FILE* fp) {
 
 namespace quipper {
 
+const char* kSupportedMetadata[] = {
+  "hostname",
+  "os release",
+  "perf version",
+  "arch",
+  "nrcpus online",
+  "nrcpus avail",
+  "cpudesc",
+  "total memory",
+  "cmdline",
+  NULL,
+};
+
 uint64 Md5Prefix(const string& input) {
   uint64 digest_prefix = 0;
   unsigned char digest[MD5_DIGEST_LENGTH + 1];
@@ -379,7 +389,8 @@ bool ComparePerfReports(const string& quipper_input,
 }
 
 bool ComparePipedPerfReports(const string& quipper_input,
-                             const string& quipper_output) {
+                             const string& quipper_output,
+                             std::set<string>* seen_metadata) {
   // Generate a perf report for each file.
   std::vector<string> quipper_input_report, quipper_output_report;
   CHECK(GetPerfReport(quipper_input, &quipper_input_report, false, false));
@@ -394,6 +405,9 @@ bool ComparePipedPerfReports(const string& quipper_input,
     size_t index_of_colon = line.find(':');
     if (index_of_colon == string::npos)
       return false;
+
+    // Add the metadata to the set of seen metadata
+    seen_metadata->insert(line.substr(2, index_of_colon - 3));
 
     string field_value = line.substr(index_of_colon + 1);
 

@@ -41,6 +41,10 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
                     perf_data_proto->mutable_build_ids());
   SerializeStringMetadata(string_metadata_,
                           perf_data_proto->mutable_string_metadata());
+  SerializeUint32Metadata(uint32_metadata_,
+                          perf_data_proto->mutable_uint32_metadata());
+  SerializeUint64Metadata(uint64_metadata_,
+                          perf_data_proto->mutable_uint64_metadata());
 
   // Add a timestamp_sec to the protobuf.
   struct timeval timestamp_sec;
@@ -86,6 +90,10 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
                       &build_id_events_);
   DeserializeStringMetadata(perf_data_proto.string_metadata(),
                             &string_metadata_);
+  DeserializeUint32Metadata(perf_data_proto.uint32_metadata(),
+                            &uint32_metadata_);
+  DeserializeUint64Metadata(perf_data_proto.uint64_metadata(),
+                            &uint64_metadata_);
 
   SortParsedEvents();
   ProcessEvents();
@@ -537,16 +545,58 @@ void PerfSerializer::SerializeSingleStringMetadata(
     const PerfStringMetadata& metadata,
     PerfDataProto_PerfStringMetadata* proto_metadata) const {
   proto_metadata->set_type(metadata.type);
-  proto_metadata->set_data(metadata.data);
+  for (size_t i = 0; i < metadata.data.size(); ++i)
+    proto_metadata->add_data(metadata.data[i].str);
 }
 
 void PerfSerializer::DeserializeSingleStringMetadata(
     const PerfDataProto_PerfStringMetadata& proto_metadata,
     PerfStringMetadata* metadata) const {
   metadata->type = proto_metadata.type();
-  metadata->data = proto_metadata.data();
-  metadata->len = GetUint64AlignedStringLength(metadata->data);
-  metadata->size = metadata->len + sizeof(metadata->len);
+  metadata->size = 0;
+  for (int i = 0; i < proto_metadata.data_size(); ++i) {
+    CStringWithLength single_string;
+    single_string.str = proto_metadata.data(i);
+    single_string.len = GetUint64AlignedStringLength(single_string.str);
+    metadata->data.push_back(single_string);
+    metadata->size += sizeof(single_string.len) + single_string.len;
+  }
+  if (NeedsNumberOfStringData(metadata->type))
+    metadata->size += kNumberOfStringDataSize;
+}
+
+void PerfSerializer::SerializeSingleUint32Metadata(
+    const PerfUint32Metadata& metadata,
+    PerfDataProto_PerfUint32Metadata* proto_metadata) const {
+  proto_metadata->set_type(metadata.type);
+  for (size_t i = 0; i < metadata.data.size(); ++i)
+    proto_metadata->add_data(metadata.data[i]);
+}
+
+void PerfSerializer::DeserializeSingleUint32Metadata(
+    const PerfDataProto_PerfUint32Metadata& proto_metadata,
+    PerfUint32Metadata* metadata) const {
+  metadata->type = proto_metadata.type();
+  for (int i = 0; i < proto_metadata.data_size(); ++i)
+    metadata->data.push_back(proto_metadata.data(i));
+  metadata->size = metadata->data.size() * sizeof(metadata->data[0]);
+}
+
+void PerfSerializer::SerializeSingleUint64Metadata(
+    const PerfUint64Metadata& metadata,
+    PerfDataProto_PerfUint64Metadata* proto_metadata) const {
+  proto_metadata->set_type(metadata.type);
+  for (size_t i = 0; i < metadata.data.size(); ++i)
+    proto_metadata->add_data(metadata.data[i]);
+}
+
+void PerfSerializer::DeserializeSingleUint64Metadata(
+    const PerfDataProto_PerfUint64Metadata& proto_metadata,
+    PerfUint64Metadata* metadata) const {
+  metadata->type = proto_metadata.type();
+  for (int i = 0; i < proto_metadata.data_size(); ++i)
+    metadata->data.push_back(proto_metadata.data(i));
+  metadata->size = metadata->data.size() * sizeof(metadata->data[0]);
 }
 
 void PerfSerializer::SetRawEventsAndSampleInfos(size_t num_events) {

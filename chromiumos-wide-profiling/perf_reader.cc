@@ -24,11 +24,11 @@ const uint64 kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
-// Currently, we support build ids, hostname, osrelease, version, arch, cpudesc,
-// and branchstack.
+// Currently, we support build ids, hostname, osrelease, version, arch, nrcpus,
+// cpudesc, totalmem, cmdline, and branchstack.
 // The mask is computed as (1 << HEADER_BUILD_ID) |
 // (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
-const uint32 kSupportedMetadataMask = 0x817c;
+const uint32 kSupportedMetadataMask = 0x8dfc;
 
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
@@ -54,6 +54,12 @@ void ByteSwap(T* input) {
     LOG(FATAL) << "Invalid size for byte swap: " << sizeof(T) << " bytes";
     break;
   }
+}
+
+void CheckNoEventHeaderPadding() {
+  perf_event_header header;
+  CHECK_EQ(sizeof(header),
+           sizeof(header.type) + sizeof(header.misc) + sizeof(header.size));
 }
 
 // The code currently assumes that the compiler will not add any padding to the
@@ -515,6 +521,10 @@ bool PerfReader::WriteFile(const string& filename) {
   total_size += build_id_events_.size;
   for (size_t i = 0; i < string_metadata_.size(); ++i)
     total_size += string_metadata_[i].size;
+  for (size_t i = 0; i < uint32_metadata_.size(); ++i)
+    total_size += uint32_metadata_[i].size;
+  for (size_t i = 0; i < uint64_metadata_.size(); ++i)
+    total_size += uint64_metadata_[i].size;
 
   // Additional info about metadata.  See WriteMetadata for explanation.
   total_size += (GetNumMetadata() + 1) * 2 * sizeof(u64);
@@ -532,6 +542,11 @@ bool PerfReader::WriteFile(const string& filename) {
   return WriteDataToFile(data, filename);
 }
 
+// The size of the number of string data, found in the command line metadata in
+// the perf data file.
+// Note: If this is changed, WriteStringMetadata will also have to change.
+const size_t kNumberOfStringDataSize = sizeof(uint32);
+
 bool PerfReader::RegenerateHeader() {
   // This is the order of the input perf file contents in normal mode:
   // 1. Header
@@ -542,6 +557,7 @@ bool PerfReader::RegenerateHeader() {
   // 6. Metadata
 
   // Compute offsets in the above order.
+  CheckNoEventHeaderPadding();
   memset(&out_header_, 0, sizeof(out_header_));
   out_header_.magic = kPerfMagic;
   out_header_.size = sizeof(out_header_);
@@ -584,6 +600,7 @@ bool PerfReader::RegenerateHeader() {
 }
 
 bool PerfReader::ReadHeader(const std::vector<char>& data) {
+  CheckNoEventHeaderPadding();
   if (!ReadDataFromVector(data, 0, sizeof(header_), "header data", &header_))
     return false;
   if (header_.magic != kPerfMagic && header_.magic != bswap_64(kPerfMagic)) {
@@ -719,7 +736,16 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
     case HEADER_VERSION:
     case HEADER_ARCH:
     case HEADER_CPUDESC:
+    case HEADER_CMDLINE:
       if (!ReadStringMetadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
+    case HEADER_NRCPUS:
+      if (!ReadUint32Metadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
+    case HEADER_TOTAL_MEM:
+      if (!ReadUint64Metadata(data, type, metadata_offset, metadata_size))
         return false;
       break;
     case HEADER_BRANCH_STACK:
@@ -770,11 +796,53 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
   str_data.type = type;
   str_data.size = size;
 
-  str_data.len = *(reinterpret_cast<const u32*>(&data[offset]));
-  offset += sizeof(str_data.len) / sizeof(data[offset]);
-  str_data.data = string(&data[offset]);
+  size_t start_offset = offset;
+  // Skip the number of string data if it is present.
+  if (NeedsNumberOfStringData(type))
+    offset += kNumberOfStringDataSize / sizeof(data[offset]);
+
+  while ((offset - start_offset) < size) {
+    CStringWithLength single_string;
+    single_string.len = *reinterpret_cast<const u32*>(&data[offset]);
+    offset += sizeof(single_string.len) / sizeof(data[offset]);
+    single_string.str = string(&data[offset]);
+    offset += single_string.len / sizeof(data[offset]);
+    str_data.data.push_back(single_string);
+  }
 
   string_metadata_.push_back(str_data);
+  return true;
+}
+
+bool PerfReader::ReadUint32Metadata(const std::vector<char>& data, u32 type,
+                                    size_t offset, size_t size) {
+  PerfUint32Metadata uint32_data;
+  uint32_data.type = type;
+  uint32_data.size = size;
+
+  size_t start_offset = offset;
+  while (size > offset - start_offset) {
+    uint32_data.data.push_back(*(reinterpret_cast<const u32*>(&data[offset])));
+    offset += sizeof(uint32_data.data[0]) / sizeof(data[offset]);
+  }
+
+  uint32_metadata_.push_back(uint32_data);
+  return true;
+}
+
+bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
+                                    size_t offset, size_t size) {
+  PerfUint64Metadata uint64_data;
+  uint64_data.type = type;
+  uint64_data.size = size;
+
+  size_t start_offset = offset;
+  while (size > offset - start_offset) {
+    uint64_data.data.push_back(*(reinterpret_cast<const u64*>(&data[offset])));
+    offset += sizeof(uint64_data.data[0]) / sizeof(data[offset]);
+  }
+
+  uint64_metadata_.push_back(uint64_data);
   return true;
 }
 
@@ -803,6 +871,7 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     union piped_data_block block;
 
     // Copy the header and swap bytes if necessary.
+    CheckNoEventHeaderPadding();
     memcpy(&block.header, block_data, sizeof(block.header));
     if (is_cross_endian_) {
       ByteSwap(&block.header.type);
@@ -867,6 +936,21 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       block.header.type = HEADER_CPUDESC;
       result = ReadPipedStringMetadata(block.header, block.more_data);
       break;
+    case PERF_RECORD_HEADER_CMDLINE:
+      metadata_mask_ |= (1 << HEADER_CMDLINE);
+      block.header.type = HEADER_CMDLINE;
+      result = ReadPipedStringMetadata(block.header, block.more_data);
+      break;
+    case PERF_RECORD_HEADER_NRCPUS:
+      metadata_mask_ |= (1 << HEADER_NRCPUS);
+      block.header.type = HEADER_NRCPUS;
+      result = ReadPipedUint32Metadata(block.header, block.more_data);
+      break;
+    case PERF_RECORD_HEADER_TOTAL_MEM:
+      metadata_mask_ |= (1 << HEADER_TOTAL_MEM);
+      block.header.type = HEADER_TOTAL_MEM;
+      result = ReadPipedUint64Metadata(block.header, block.more_data);
+      break;
     default:
       LOG(WARNING) << "Event type " << block.header.type
                    << " is not yet supported!";
@@ -880,20 +964,75 @@ bool PerfReader::ReadPipedStringMetadata(const perf_event_header& header,
                                          const char* data) {
   PerfStringMetadata str_data;
   str_data.type = header.type;
-  str_data.size = header.size;
+  str_data.size = header.size - sizeof(header);
 
-  str_data.len = *(reinterpret_cast<const u32*>(data));
-  size_t offset = sizeof(str_data.len) / sizeof(data[offset]);
-  str_data.data = string(&data[offset]);
+  size_t offset = 0;
+  if (NeedsNumberOfStringData(header.type))
+    offset = kNumberOfStringDataSize / sizeof(data[offset]);
 
-  if (is_cross_endian_)
-    ByteSwap(&str_data.len);
+  while (offset < str_data.size) {
+    CStringWithLength single_string;
+    single_string.len = *reinterpret_cast<const u32*>(&data[offset]);
+    offset += sizeof(single_string.len) / sizeof(data[offset]);
+    single_string.str = string(&data[offset]);
+    offset += single_string.len / sizeof(data[offset]);
+
+    if (is_cross_endian_)
+      ByteSwap(&single_string.len);
+
+    str_data.data.push_back(single_string);
+  }
 
   string_metadata_.push_back(str_data);
   return true;
 }
 
+bool PerfReader::ReadPipedUint32Metadata(const perf_event_header& header,
+                                         const char* data) {
+  PerfUint32Metadata uint32_data;
+  uint32_data.type = header.type;
+
+  size_t size = header.size - sizeof(header);
+  uint32_data.size = size;
+
+  while (size > 0) {
+    uint32 item = *reinterpret_cast<const uint32*>(data);
+
+    if (is_cross_endian_)
+      ByteSwap(&item);
+
+    uint32_data.data.push_back(item);
+    size -= sizeof(item);
+  }
+
+  uint32_metadata_.push_back(uint32_data);
+  return true;
+}
+
+bool PerfReader::ReadPipedUint64Metadata(const perf_event_header& header,
+                                         const char* data) {
+  PerfUint64Metadata uint64_data;
+  uint64_data.type = header.type;
+
+  size_t size = header.size - sizeof(header);
+  uint64_data.size = size;
+
+  while (size > 0) {
+    uint64 item = *reinterpret_cast<const uint64*>(data);
+
+    if (is_cross_endian_)
+      ByteSwap(&item);
+
+    uint64_data.data.push_back(item);
+    size -= sizeof(item);
+  }
+
+  uint64_metadata_.push_back(uint64_data);
+  return true;
+}
+
 bool PerfReader::WriteHeader(std::vector<char>* data) const {
+  CheckNoEventHeaderPadding();
   size_t header_size = sizeof(out_header_);
   return WriteDataToVector(&out_header_, 0, header_size, "file header", data);
 }
@@ -984,7 +1123,16 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
     case HEADER_VERSION:
     case HEADER_ARCH:
     case HEADER_CPUDESC:
+    case HEADER_CMDLINE:
       if (!WriteStringMetadata(type, metadata_offset, &metadata, data))
+        return false;
+      break;
+    case HEADER_NRCPUS:
+      if (!WriteUint32Metadata(type, metadata_offset, &metadata, data))
+        return false;
+      break;
+    case HEADER_TOTAL_MEM:
+      if (!WriteUint64Metadata(type, metadata_offset, &metadata, data))
         return false;
       break;
     case HEADER_BRANCH_STACK:
@@ -1038,31 +1186,85 @@ bool PerfReader::WriteBuildIDMetadata(u32 type, size_t offset,
 bool PerfReader::WriteStringMetadata(u32 type, size_t offset,
                                      const PerfMetadata** metadata_handle,
                                      std::vector<char>* data) const {
+  const size_t kDataUnitSize = sizeof(data->at(offset));
   for (size_t i = 0; i < string_metadata_.size(); ++i) {
     const PerfStringMetadata& str_data = string_metadata_[i];
     if (str_data.type == type) {
       *metadata_handle = &str_data;
+      uint32 num_strings = str_data.data.size();
 
-      if (!WriteDataToVector(&str_data.len, offset, sizeof(str_data.len),
-                             "length of string metadata", data))
-        return false;
-      offset += sizeof(str_data.len) / sizeof((*data)[offset]);
+      if (NeedsNumberOfStringData(type)) {
+        if (!WriteDataToVector(&num_strings, offset, sizeof(num_strings),
+                               "number of string metadata", data))
+          return false;
+        offset += sizeof(num_strings) / kDataUnitSize;
+      }
 
-      memset(&(*data)[offset], 0, str_data.len * sizeof((*data)[offset]));
+      for (size_t j = 0; j < num_strings; ++j) {
+        const CStringWithLength& single_string = str_data.data[j];
+        if (!WriteDataToVector(&single_string.len, offset,
+                               sizeof(single_string.len),
+                               "length of string metadata", data))
+          return false;
+        offset += sizeof(single_string.len) / kDataUnitSize;
 
-      const char* data_to_write = str_data.data.c_str();
-      size_t length_using_strlen = strlen(data_to_write);
-      CHECK_LE(length_using_strlen, str_data.len);
-
-      if (!WriteDataToVector(data_to_write, offset,
-                             length_using_strlen * sizeof(char),
-                             "string metadata", data))
-        return false;
+        memset(&data->at(offset), 0, single_string.len * kDataUnitSize);
+        CHECK_GT(snprintf(&data->at(offset), single_string.len, "%s",
+                          single_string.str.c_str()),
+                 0);
+        offset += single_string.len / kDataUnitSize;
+      }
 
       return true;
     }
   }
   LOG(ERROR) << "String metadata of type " << type << " not present";
+  return false;
+}
+
+bool PerfReader::WriteUint32Metadata(u32 type, size_t offset,
+                                     const PerfMetadata** metadata_handle,
+                                     std::vector<char>* data) const {
+  for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
+    const PerfUint32Metadata& uint32_data = uint32_metadata_[i];
+    if (uint32_data.type == type) {
+      *metadata_handle = &uint32_data;
+      const std::vector<uint32>& int_vector = uint32_data.data;
+
+      for (size_t j = 0; j < int_vector.size(); ++j) {
+        if (!WriteDataToVector(&int_vector[j], offset, sizeof(int_vector[j]),
+                               "uint32 metadata", data))
+          return false;
+        offset += sizeof(int_vector[j]) / sizeof(data->at(offset));
+      }
+
+      return true;
+    }
+  }
+  LOG(ERROR) << "Uint32 metadata of type " << type << " not present";
+  return false;
+}
+
+bool PerfReader::WriteUint64Metadata(u32 type, size_t offset,
+                         const PerfMetadata** metadata_handle,
+                         std::vector<char>* data) const {
+  for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
+    const PerfUint64Metadata& uint64_data = uint64_metadata_[i];
+    if (uint64_data.type == type) {
+      *metadata_handle = &uint64_data;
+      const std::vector<uint64>& int_vector = uint64_data.data;
+
+      for (size_t j = 0; j < int_vector.size(); ++j) {
+        if (!WriteDataToVector(&int_vector[j], offset, sizeof(int_vector[j]),
+                               "uint64 metadata", data))
+          return false;
+        offset += sizeof(int_vector[j]) / sizeof(data->at(offset));
+      }
+
+      return true;
+    }
+  }
+  LOG(ERROR) << "Uint64 metadata of type " << type << " not present";
   return false;
 }
 
@@ -1221,8 +1423,14 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 }
 
 size_t PerfReader::GetNumMetadata() const {
-  // All of the string metadata, and the build id metadata.
-  return string_metadata_.size() + 1;
+  // Vectors: String metadata, uint32 metadata, uint64 metadata
+  // 1 for build ids.
+  return string_metadata_.size() + uint32_metadata_.size() +
+         uint64_metadata_.size() + 1;
+}
+
+bool PerfReader::NeedsNumberOfStringData(u32 type) const {
+  return type == HEADER_CMDLINE;
 }
 
 }  // namespace quipper

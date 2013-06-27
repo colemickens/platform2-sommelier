@@ -116,6 +116,20 @@ class PerfSerializer : public PerfParser {
       const PerfDataProto_PerfStringMetadata& proto_metadata,
       PerfStringMetadata* metadata) const;
 
+  void SerializeSingleUint32Metadata(
+      const PerfUint32Metadata& metadata,
+      PerfDataProto_PerfUint32Metadata* proto_metadata) const;
+  void DeserializeSingleUint32Metadata(
+      const PerfDataProto_PerfUint32Metadata& proto_metadata,
+      PerfUint32Metadata* metadata) const;
+
+  void SerializeSingleUint64Metadata(
+      const PerfUint64Metadata& metadata,
+      PerfDataProto_PerfUint64Metadata* proto_metadata) const;
+  void DeserializeSingleUint64Metadata(
+      const PerfDataProto_PerfUint64Metadata& proto_metadata,
+      PerfUint64Metadata* metadata) const;
+
   // Populates |parsed_events_| with pointers event_t and perf_sample structs in
   // each corresponding |events_| struct.
   void SetRawEventsAndSampleInfos(size_t num_events);
@@ -169,6 +183,20 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   DESERIALIZEVECTORFUNCTION(DeserializeStringMetadata, PerfStringMetadata,
                             quipper::PerfDataProto_PerfStringMetadata,
                             DeserializeSingleStringMetadata)
+
+  SERIALIZEVECTORFUNCTION(SerializeUint32Metadata, PerfUint32Metadata,
+                          quipper::PerfDataProto_PerfUint32Metadata,
+                          SerializeSingleUint32Metadata)
+  DESERIALIZEVECTORFUNCTION(DeserializeUint32Metadata, PerfUint32Metadata,
+                            quipper::PerfDataProto_PerfUint32Metadata,
+                            DeserializeSingleUint32Metadata)
+
+  SERIALIZEVECTORFUNCTION(SerializeUint64Metadata, PerfUint64Metadata,
+                          quipper::PerfDataProto_PerfUint64Metadata,
+                          SerializeSingleUint64Metadata)
+  DESERIALIZEVECTORFUNCTION(DeserializeUint64Metadata, PerfUint64Metadata,
+                            quipper::PerfDataProto_PerfUint64Metadata,
+                            DeserializeSingleUint64Metadata)
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

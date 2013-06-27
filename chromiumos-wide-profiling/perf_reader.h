@@ -37,21 +37,38 @@ struct PerfMetadata {
   PerfMetadata() {}
 };
 
+// Based on code in tools/perf/util/header.c, the metadata are of the following
+// formats:
 struct PerfBuildIDMetadata : public PerfMetadata {
   std::vector<build_id_event*> events;
 
   PerfBuildIDMetadata() : PerfMetadata() {}
 };
 
-// Based on code in tools/perf/util/header.c, the metadata for strings
-// (hostname, osrelease, etc.) is of the following format:
-struct PerfStringMetadata : public PerfMetadata {
+struct CStringWithLength {
   u32 len;
-  string data;
+  string str;
+};
+
+extern const size_t kNumberOfStringDataSize;
+
+struct PerfStringMetadata : public PerfMetadata {
+  std::vector<CStringWithLength> data;
 
   PerfStringMetadata() : PerfMetadata() {}
 };
 
+struct PerfUint32Metadata : public PerfMetadata {
+  std::vector<uint32> data;
+
+  PerfUint32Metadata() : PerfMetadata() {}
+};
+
+struct PerfUint64Metadata : public PerfMetadata {
+  std::vector<uint64> data;
+
+  PerfUint64Metadata() : PerfMetadata() {}
+};
 
 class PerfReader {
  public:
@@ -90,12 +107,20 @@ class PerfReader {
                            size_t offset, size_t size);
   bool ReadStringMetadata(const std::vector<char>& data, u32 type,
                           size_t offset, size_t size);
+  bool ReadUint32Metadata(const std::vector<char>& data, u32 type,
+                          size_t offset, size_t size);
+  bool ReadUint64Metadata(const std::vector<char>& data, u32 type,
+                          size_t offset, size_t size);
 
   // Read perf data from piped perf output data.
   bool ReadPipedData(const std::vector<char>& data);
 
   // For reading the various formats of piped metadata.
   bool ReadPipedStringMetadata(const perf_event_header& header,
+                               const char* data);
+  bool ReadPipedUint32Metadata(const perf_event_header& header,
+                               const char* data);
+  bool ReadPipedUint64Metadata(const perf_event_header& header,
                                const char* data);
 
   bool WriteHeader(std::vector<char>* data) const;
@@ -111,6 +136,12 @@ class PerfReader {
   bool WriteStringMetadata(u32 type, size_t offset,
                            const PerfMetadata** metadata_handle,
                            std::vector<char>* data) const;
+  bool WriteUint32Metadata(u32 type, size_t offset,
+                           const PerfMetadata** metadata_handle,
+                           std::vector<char>* data) const;
+  bool WriteUint64Metadata(u32 type, size_t offset,
+                           const PerfMetadata** metadata_handle,
+                           std::vector<char>* data) const;
 
   // For reading event blocks within piped perf data.
   bool ReadAttrEventBlock(const struct attr_event& attr_event);
@@ -121,11 +152,17 @@ class PerfReader {
   // Returns the number of types of metadata stored.
   size_t GetNumMetadata() const;
 
+  // Returns true if we should write the number of strings for the string
+  // metadata of type |type|.
+  bool NeedsNumberOfStringData(u32 type) const;
+
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;
   std::vector<PerfEventAndSampleInfo> events_;
   PerfBuildIDMetadata build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
+  std::vector<PerfUint32Metadata> uint32_metadata_;
+  std::vector<PerfUint64Metadata> uint64_metadata_;
   uint64 sample_type_;
   uint64 metadata_mask_;
 

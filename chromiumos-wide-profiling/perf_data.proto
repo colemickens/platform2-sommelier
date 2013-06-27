@@ -13,7 +13,7 @@ option optimize_for = LITE_RUNTIME;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 8
+// Next tag: 10
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -337,7 +337,25 @@ message PerfDataProto {
     optional uint32 type = 1;
 
     // String data.
-    optional string data = 2;
+    repeated string data = 2;
+  }
+
+  // Next tag: 3
+  message PerfUint32Metadata {
+    // Type of metadata, such as nrcpus.
+    optional uint32 type = 1;
+
+    // uint32 data.
+    repeated uint32 data = 2;
+  }
+
+  // Next tag: 3
+  message PerfUint64Metadata {
+    // Type of metadata, such as totalmem.
+    optional uint32 type = 1;
+
+    // uint64 data.
+    repeated uint64 data = 2;
   }
 
   // Next tag: 5
@@ -373,4 +391,8 @@ message PerfDataProto {
   repeated PerfStringMetadata string_metadata = 6;
 
   repeated PerfBuildID build_ids = 7;
+
+  repeated PerfUint32Metadata uint32_metadata = 8;
+
+  repeated PerfUint64Metadata uint64_metadata = 9;
 }

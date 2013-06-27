@@ -5,6 +5,7 @@
 #ifndef UTILS_H_
 #define UTILS_H_
 
+#include <set>
 #include <vector>
 
 #include "base/basictypes.h"
@@ -12,6 +13,8 @@
 #include "quipper_string.h"
 
 namespace quipper {
+
+extern const char* kSupportedMetadata[];
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents);
 
@@ -35,7 +38,8 @@ bool ComparePerfReports(const string& quipper_input,
 // data file passed to quipper, and |quipper_output| must be the file written
 // by quipper.
 bool ComparePipedPerfReports(const string& quipper_input,
-                             const string& quipper_output);
+                             const string& quipper_output,
+                             std::set<string>* seen_metadata);
 
 // Returns true if the perf buildid-lists are the same.
 bool ComparePerfBuildIDLists(const string& file1, const string& file2);

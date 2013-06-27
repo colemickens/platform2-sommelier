@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <set>
 #include <string>
 
 #include "base/logging.h"
@@ -29,6 +30,8 @@ TEST(PerfReaderTest, Test1Cycle) {
     EXPECT_TRUE(ComparePerfReports(input_perf_data, output_perf_data));
     EXPECT_TRUE(ComparePerfBuildIDLists(input_perf_data, output_perf_data));
   }
+
+  std::set<string> metadata;
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
@@ -39,8 +42,18 @@ TEST(PerfReaderTest, Test1Cycle) {
     ASSERT_TRUE(pr.ReadFile(input_perf_data));
     ASSERT_TRUE(pr.WriteFile(output_perf_data));
 
-    EXPECT_TRUE(ComparePipedPerfReports(input_perf_data, output_perf_data));
+    EXPECT_TRUE(ComparePipedPerfReports(input_perf_data, output_perf_data,
+                                        &metadata));
   }
+
+  // For piped data, perf report doesn't check metadata.
+  // Make sure that each metadata type is seen at least once.
+  for (size_t i = 0; kSupportedMetadata[i]; ++i) {
+    EXPECT_NE(metadata.find(kSupportedMetadata[i]), metadata.end())
+        << "No output file from piped input files had "
+        << kSupportedMetadata[i] << " metadata";
+  }
+
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedCrossEndianDataFiles);
        ++i) {
