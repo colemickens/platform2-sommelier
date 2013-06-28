@@ -74,7 +74,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       ssid_(ssid),
       ieee80211w_required_(false),
       nss_(NSS::GetInstance()),
-      certificate_file_(new CertificateFile(manager->glib())),
+      certificate_file_(new CertificateFile()),
       provider_(provider) {
   PropertyStore *store = this->mutable_store();
   store->RegisterConstString(flimflam::kModeProperty, &mode_);

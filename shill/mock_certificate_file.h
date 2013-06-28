@@ -20,8 +20,6 @@ class MockCertificateFile : public CertificateFile {
                base::FilePath(const std::string &pem_contents));
   MOCK_METHOD1(CreatePEMFromStrings,
                base::FilePath(const std::vector<std::string> &pem_contents));
-  MOCK_METHOD1(CreateDERFromString,
-               base::FilePath(const std::string &pem_contents));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockCertificateFile);

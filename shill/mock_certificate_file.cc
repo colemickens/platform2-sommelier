@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockCertificateFile::MockCertificateFile() : CertificateFile(NULL) {}
+MockCertificateFile::MockCertificateFile() : CertificateFile() {}
 
 MockCertificateFile::~MockCertificateFile() {}
 

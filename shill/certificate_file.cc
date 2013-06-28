@@ -14,7 +14,6 @@
 #include <base/string_util.h>
 #include <base/stringprintf.h>
 
-#include "shill/glib.h"
 #include "shill/logging.h"
 
 using base::FilePath;
@@ -30,9 +29,8 @@ const char CertificateFile::kDefaultRootDirectory[] =
 const char CertificateFile::kPEMHeader[] = "-----BEGIN CERTIFICATE-----";
 const char CertificateFile::kPEMFooter[] = "-----END CERTIFICATE-----";
 
-CertificateFile::CertificateFile(GLib *glib)
-    : root_directory_(FilePath(kDefaultRootDirectory)),
-      glib_(glib) {
+CertificateFile::CertificateFile()
+    : root_directory_(FilePath(kDefaultRootDirectory)) {
   SLOG(Crypto, 2) << __func__;
 }
 
@@ -55,17 +53,6 @@ FilePath CertificateFile::CreatePEMFromStrings(
       "%s\n%s%s\n", kPEMHeader, hex_data.c_str(), kPEMFooter));
   }
   return WriteFile(JoinString(pem_output, ""));
-}
-
-FilePath CertificateFile::CreateDERFromString(const string &pem_contents) {
-  string hex_data = ExtractHexData(pem_contents);
-  string der_contents;
-  if (!glib_->B64Decode(hex_data, &der_contents)) {
-    LOG(ERROR) << "Could not decode hex data from input PEM";
-    return FilePath();
-  }
-
-  return WriteFile(der_contents);
 }
 
 // static

@@ -76,7 +76,7 @@ const VPNDriver::Property L2TPIPSecDriver::kProperties[] = {
   { flimflam::kL2tpIpsecUserProperty, 0 },
   { flimflam::kProviderHostProperty, 0 },
   { flimflam::kProviderTypeProperty, 0 },
-  { kL2tpIpsecCaCertPemProperty, 0 },
+  { kL2tpIpsecCaCertPemProperty, Property::kArray },
   { kL2tpIpsecTunnelGroupProperty, 0 },
   { kL2TPIPSecIPSecTimeoutProperty, 0 },
   { kL2TPIPSecLeftProtoPortProperty, 0 },
@@ -101,7 +101,7 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       device_info_(device_info),
       glib_(glib),
       nss_(NSS::GetInstance()),
-      certificate_file_(new CertificateFile(glib)),
+      certificate_file_(new CertificateFile()),
       weak_ptr_factory_(this) {}
 
 L2TPIPSecDriver::~L2TPIPSecDriver() {
@@ -292,13 +292,16 @@ void L2TPIPSecDriver::InitNSSOptions(vector<string> *options) {
 }
 
 bool L2TPIPSecDriver::InitPEMOptions(vector<string> *options) {
-  string ca_cert = args()->LookupString(kL2tpIpsecCaCertPemProperty, "");
-  if (ca_cert.empty()) {
+  vector<string> ca_certs;
+  if (args()->ContainsStrings(kL2tpIpsecCaCertPemProperty)) {
+    ca_certs = args()->GetStrings(kL2tpIpsecCaCertPemProperty);
+  }
+  if (ca_certs.empty()) {
     return false;
   }
-  FilePath certfile = certificate_file_->CreateDERFromString(ca_cert);
+  FilePath certfile = certificate_file_->CreatePEMFromStrings(ca_certs);
   if (certfile.empty()) {
-    LOG(ERROR) << "Unable to extract certificate from PEM string.";
+    LOG(ERROR) << "Unable to extract certificates from PEM string.";
     return false;
   }
   options->push_back("--server_ca_file");

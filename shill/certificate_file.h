@@ -12,25 +12,19 @@
 
 namespace shill {
 
-class GLib;
-
 // Creates a scoped temporary file containing the DER or PEM
 // equivalent of an input PEM-format certificate.  When this object
 // is destroyed (or a different file is created from the same object)
 // the previous temporary file is destroyed.
 class CertificateFile {
  public:
-  explicit CertificateFile(GLib *glib);
+  CertificateFile();
   virtual ~CertificateFile();
 
   // Write out a PEM file from an input vector of strings in PEM format.
   // Returns an empty path on failure.
   virtual base::FilePath CreatePEMFromStrings(
       const std::vector<std::string> &pem_contents);
-
-  // Write out a DER file from an input string in PEM format.
-  // Returns an empty path on failure.
-  virtual base::FilePath CreateDERFromString(const std::string &pem_contents);
 
   // Setters.
   void set_root_directory(const base::FilePath &root_directory) {
@@ -63,9 +57,6 @@ class CertificateFile {
 
   // File path for the created temporary file.
   base::FilePath output_file_;
-
-  // GLib instance.
-  GLib *glib_;
 
   DISALLOW_COPY_AND_ASSIGN(CertificateFile);
 };

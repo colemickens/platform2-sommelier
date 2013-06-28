@@ -11,9 +11,8 @@
 #include <base/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/stringprintf.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "shill/mock_glib.h"
 
 using base::FilePath;
 using base::StringPrintf;
@@ -28,7 +27,7 @@ namespace shill {
 
 class CertificateFileTest : public testing::Test {
  public:
-  CertificateFileTest() : certificate_file_(&glib_) {}
+  CertificateFileTest() {}
 
   virtual void SetUp() {
     CHECK(temp_dir_.CreateUniqueTempDir());
@@ -51,7 +50,6 @@ class CertificateFileTest : public testing::Test {
   const char *GetPEMFooter() { return CertificateFile::kPEMFooter; }
 
   CertificateFile certificate_file_;
-  MockGLib glib_;
   base::ScopedTempDir temp_dir_;
   base::FilePath certificate_directory_;
 };
@@ -102,25 +100,6 @@ TEST_F(CertificateFileTest, CreatePEMFromStrings) {
   EXPECT_TRUE(file_util::PathExists(outfile1));
 }
 
-TEST_F(CertificateFileTest, CreateDERFromString) {
-  // Create a DER file from the inner HEX data.
-  const string kPEMString = kPEMData;
-  const string fake_data("this is a fake");
-
-  EXPECT_CALL(glib_, B64Decode(StrEq(kPEMString), _))
-      .WillOnce(Return(false))
-      .WillOnce(DoAll(SetArgumentPointee<1>(fake_data),
-                      Return(true)));
-  EXPECT_TRUE(certificate_file_.CreateDERFromString(kPEMData).empty());
-
-  FilePath outfile = certificate_file_.CreateDERFromString(kPEMData);
-  EXPECT_FALSE(outfile.empty());
-  EXPECT_TRUE(file_util::PathExists(outfile));
-  string file_string;
-  EXPECT_TRUE(file_util::ReadFileToString(outfile, &file_string));
-  EXPECT_EQ(fake_data, file_string);
-}
-
 TEST_F(CertificateFileTest, ExtractHexData) {
   EXPECT_EQ("", ExtractHexData(""));
   EXPECT_EQ("foo\n", ExtractHexData("foo"));
@@ -142,7 +121,7 @@ TEST_F(CertificateFileTest, ExtractHexData) {
 TEST_F(CertificateFileTest, Destruction) {
   FilePath outfile;
   {
-    CertificateFile certificate_file(&glib_);
+    CertificateFile certificate_file;
     certificate_file.set_root_directory(temp_dir_.path());
     outfile = certificate_file.CreatePEMFromStrings(vector<string>{ kPEMData });
     EXPECT_TRUE(file_util::PathExists(outfile));

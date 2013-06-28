@@ -79,6 +79,10 @@ class L2TPIPSecDriverTest : public testing::Test,
     driver_->args()->SetString(arg, value);
   }
 
+  void SetArgArray(const string &arg, const vector<string> &value) {
+    driver_->args()->SetStrings(arg, value);
+  }
+
   KeyValueStore *GetArgs() {
     return driver_->args();
   }
@@ -300,12 +304,12 @@ TEST_F(L2TPIPSecDriverTest, InitNSSOptions) {
 }
 
 TEST_F(L2TPIPSecDriverTest, InitPEMOptions) {
-  static const char kCaCertPEM[] = "Insert PEM encoded data here";
+  const vector<string> kCaCertPEM{ "Insert PEM encoded data here" };
   static const char kPEMCertfile[] = "/tmp/der-file-from-pem-cert";
   FilePath empty_cert;
   FilePath pem_cert(kPEMCertfile);
-  SetArg(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
-  EXPECT_CALL(*certificate_file_, CreateDERFromString(kCaCertPEM))
+  SetArgArray(kL2tpIpsecCaCertPemProperty, kCaCertPEM);
+  EXPECT_CALL(*certificate_file_, CreatePEMFromStrings(kCaCertPEM))
       .WillOnce(Return(empty_cert))
       .WillOnce(Return(pem_cert));
 

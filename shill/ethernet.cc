@@ -61,7 +61,6 @@ Ethernet::Ethernet(ControlInterface *control_interface,
       is_eap_detected_(false),
       eap_listener_(new EapListener(dispatcher, interface_index)),
       nss_(NSS::GetInstance()),
-      certificate_file_(manager->glib()),
       proxy_factory_(ProxyFactory::GetInstance()),
       weak_ptr_factory_(this) {
   PropertyStore *store = this->mutable_store();
