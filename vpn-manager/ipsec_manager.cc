@@ -20,6 +20,7 @@
 #include "base/string_util.h"
 #include "chromeos/process.h"
 #include "gflags/gflags.h"
+#include "openssl/pem.h"
 #include "openssl/x509.h"
 
 #include "vpn-manager/daemon.h"
@@ -184,6 +185,10 @@ bool IpsecManager::ReadCertificateSubject(const FilePath& filepath,
     return false;
   }
   X509* cert = d2i_X509_fp(fp, NULL);
+  if (cert == NULL) {
+    fseek(fp, 0, SEEK_SET);
+    cert = PEM_read_X509(fp, NULL, NULL, NULL);
+  }
   fclose(fp);
   if (!cert) {
     LOG(ERROR) << "Error parsing certificate";
