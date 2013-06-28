@@ -21,6 +21,7 @@ class MockDHCPConfig : public DHCPConfig {
   virtual ~MockDHCPConfig();
 
   MOCK_METHOD0(RequestIP, bool());
+  MOCK_METHOD1(ReleaseIP, bool(ReleaseReason));
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockDHCPConfig);

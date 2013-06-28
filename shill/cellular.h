@@ -286,6 +286,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
+  FRIEND_TEST(CellularTest, LinkEventUpWithPPP);
+  FRIEND_TEST(CellularTest, LinkEventUpWithoutPPP);
   FRIEND_TEST(CellularTest, LinkEventWontDestroyService);
   FRIEND_TEST(CellularTest, ModemStateChangeDisable);
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
@@ -301,6 +303,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
+  FRIEND_TEST(CellularTest, StartPPP);  // for |state_|
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
 
   // Names of properties in storage

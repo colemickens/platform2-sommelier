@@ -640,6 +640,11 @@ void Cellular::EstablishLink() {
 
 void Cellular::LinkEvent(unsigned int flags, unsigned int change) {
   Device::LinkEvent(flags, change);
+  if (ppp_task_) {
+    LOG(INFO) << "Ignoring LinkEvent on device with PPP interface.";
+    return;
+  }
+
   if ((flags & IFF_UP) != 0 && state_ == kStateConnected) {
     LOG(INFO) << link_name() << " is up.";
     SetState(kStateLinked);
@@ -763,6 +768,13 @@ bool Cellular::DisconnectCleanup() {
 }
 
 void Cellular::StartPPP(const string &serial_device) {
+  // Some PPP dongles also expose an Ethernet-like network device,
+  // using either cdc_ether, or cdc_ncm. dhcpcd may be running on that
+  // interface. If so, it will eventually time out, and cause us
+  // terminate the cellular connection. Avoid terminating the connection,
+  // by cancelling any such DHCP process.
+  DestroyIPConfig();
+
   base::Callback<void(pid_t, int)> death_callback(
       Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
   vector<string> args;

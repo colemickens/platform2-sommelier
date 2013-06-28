@@ -22,6 +22,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
+#include "shill/mock_external_task.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
@@ -31,6 +32,7 @@
 #include "shill/mock_rtnl_handler.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
+#include "shill/rpc_task.h"  // for RpcTaskDelegate
 
 // mm/mm-modem.h must be included after cellular_capability_universal.h
 // in order to allow MM_MODEM_CDMA_* to be defined properly.
@@ -989,6 +991,58 @@ TEST_F(CellularTest, SetAllowRoaming) {
   device_->SetAllowRoaming(true, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_TRUE(device_->allow_roaming_);
+}
+
+class TestRPCTaskDelegate :
+      public RPCTaskDelegate,
+      public base::SupportsWeakPtr<TestRPCTaskDelegate> {
+ public:
+  virtual void GetLogin(std::string *user, std::string *password) {}
+  virtual void Notify(const std::string &reason,
+                      const std::map<std::string, std::string> &dict) {}
+};
+
+TEST_F(CellularTest, LinkEventUpWithPPP) {
+  // If PPP is running, don't run DHCP as well.
+  TestRPCTaskDelegate task_delegate;
+  base::Callback<void(pid_t, int)> death_callback;
+  scoped_ptr<NiceMock<MockExternalTask>> mock_task(
+      new NiceMock<MockExternalTask>(modem_info_.control_interface(),
+                                     modem_info_.glib(),
+                                     task_delegate.AsWeakPtr(),
+                                     death_callback));
+  EXPECT_CALL(*mock_task, OnDelete()).Times(AnyNumber());
+  device_->ppp_task_ = mock_task.Pass();
+  device_->state_ = Cellular::kStateConnected;
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
+      .Times(0);
+  EXPECT_CALL(*dhcp_config_, RequestIP()).Times(0);
+  device_->LinkEvent(IFF_UP, 0);
+}
+
+TEST_F(CellularTest, LinkEventUpWithoutPPP) {
+  // If PPP is not running, fire up DHCP.
+  device_->state_ = Cellular::kStateConnected;
+  EXPECT_CALL(dhcp_provider_, CreateConfig(kTestDeviceName, _, _, _))
+      .WillOnce(Return(dhcp_config_));
+  EXPECT_CALL(*dhcp_config_, RequestIP());
+  EXPECT_CALL(*dhcp_config_, ReleaseIP(_)).Times(AnyNumber());
+  device_->LinkEvent(IFF_UP, 0);
+}
+
+TEST_F(CellularTest, StartPPP) {
+  device_->set_ipconfig(dhcp_config_);
+  device_->state_ = Cellular::kStateLinked;
+  EXPECT_CALL(*dhcp_config_, ReleaseIP(_))
+      .Times(AnyNumber())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*dynamic_cast<MockGLib *>(modem_info_.glib()),
+              SpawnAsync(_, _, _, _, _, _, _, _));
+  device_->StartPPP("fake_serial_device");
+  EXPECT_FALSE(device_->ipconfig());  // Any running DHCP client is stopped.
+  EXPECT_EQ(Cellular::kStateLinked, device_->state());
+  // TODO(quiche): test the rest of the functionality of this method.
+  // crbug.com/246826.
 }
 
 TEST_F(CellularTest, GetLogin) {
