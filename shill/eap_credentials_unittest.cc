@@ -50,7 +50,7 @@ class EapCredentialsTest : public testing::Test {
   void SetCACertNSS(const string &ca_cert_nss) {
     eap_.ca_cert_nss_ = ca_cert_nss;
   }
-  void SetCACertPEM(const string &ca_cert_pem) {
+  void SetCACertPEM(const vector<string> &ca_cert_pem) {
     eap_.ca_cert_pem_ = ca_cert_pem;
   }
   void SetClientCert(const string &client_cert) {
@@ -372,11 +372,11 @@ TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesNSS) {
 }
 
 TEST_F(EapCredentialsTest, PopulateSupplicantPropertiesPEM) {
-  const string kPemCert("-pem-certificate-here-");
+  const vector<string> kPemCert{ "-pem-certificate-here-" };
   SetCACertPEM(kPemCert);
   const string kPEMCertfile("/tmp/pem-cert");
   FilePath pem_cert(kPEMCertfile);
-  EXPECT_CALL(certificate_file_, CreateDERFromString(kPemCert))
+  EXPECT_CALL(certificate_file_, CreatePEMFromStrings(kPemCert))
       .WillOnce(Return(pem_cert));
 
   PopulateSupplicantProperties();
@@ -424,7 +424,7 @@ TEST_F(EapCredentialsTest, Reset) {
   EXPECT_TRUE(GetKeyManagement().empty());
   SetAnonymousIdentity("foo");
   SetCACertNSS("foo");
-  SetCACertPEM("foo");
+  SetCACertPEM(vector<string>{ "foo" });
   SetClientCert("foo");
   SetCertId("foo");
   SetEap("foo");

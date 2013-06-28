@@ -66,7 +66,7 @@ void EapCredentials::PopulateSupplicantProperties(
   string ca_cert = ca_cert_;
   if (!ca_cert_pem_.empty()) {
     FilePath certfile =
-        certificate_file->CreateDERFromString(ca_cert_pem_);
+        certificate_file->CreatePEMFromStrings(ca_cert_pem_);
     if (certfile.empty()) {
       LOG(ERROR) << "Unable to extract PEM certificate.";
     } else {
@@ -183,7 +183,7 @@ void EapCredentials::InitPropertyStore(PropertyStore *store) {
                                      &private_key_password_);
 
   // Non-authentication properties.
-  store->RegisterString(kEapCaCertPemProperty, &ca_cert_pem_);
+  store->RegisterStrings(kEapCaCertPemProperty, &ca_cert_pem_);
   store->RegisterString(flimflam::kEapCaCertIDProperty, &ca_cert_id_);
   store->RegisterString(flimflam::kEapCaCertNssProperty, &ca_cert_nss_);
   store->RegisterString(flimflam::kEapCaCertProperty, &ca_cert_);
@@ -282,7 +282,7 @@ void EapCredentials::Load(StoreInterface *storage, const string &id) {
   storage->GetString(id, kStorageEapCACert, &ca_cert_);
   storage->GetString(id, kStorageEapCACertID, &ca_cert_id_);
   storage->GetString(id, kStorageEapCACertNSS, &ca_cert_nss_);
-  storage->GetString(id, kStorageEapCACertPEM, &ca_cert_pem_);
+  storage->GetStringList(id, kStorageEapCACertPEM, &ca_cert_pem_);
   storage->GetString(id, kStorageEapEap, &eap_);
   storage->GetString(id, kStorageEapInnerEap, &inner_eap_);
   storage->GetString(id, kStorageEapSubjectMatch, &subject_match_);
@@ -386,12 +386,11 @@ void EapCredentials::Save(StoreInterface *storage, const string &id,
                       ca_cert_nss_,
                       false,
                       true);
-  Service::SaveString(storage,
-                      id,
-                      kStorageEapCACertPEM,
-                      ca_cert_pem_,
-                      false,
-                      true);
+  if (ca_cert_pem_.empty()) {
+      storage->DeleteKey(id, kStorageEapCACertPEM);
+  } else {
+      storage->SetStringList(id, kStorageEapCACertPEM, ca_cert_pem_);
+  }
   Service::SaveString(storage, id, kStorageEapEap, eap_, false, true);
   Service::SaveString(storage,
                       id,
@@ -425,7 +424,7 @@ void EapCredentials::Reset() {
   ca_cert_ = "";
   ca_cert_id_ = "";
   ca_cert_nss_ = "";
-  ca_cert_pem_ = "";
+  ca_cert_pem_.clear();
   eap_ = "";
   inner_eap_ = "";
   subject_match_ = "";

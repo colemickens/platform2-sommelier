@@ -183,7 +183,7 @@ class EapCredentials {
   // Locator for the CA certificate within the user NSS database.
   std::string ca_cert_nss_;
   // Raw PEM contents of the CA certificate.
-  std::string ca_cert_pem_;
+  std::vector<std::string> ca_cert_pem_;
   // The outer or only EAP authetnication type.
   std::string eap_;
   // The inner EAP authentication type.
