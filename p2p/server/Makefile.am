@@ -42,6 +42,8 @@ p2p_server_LDADD = 					\
 
 # ------------------------------------------------------------------------
 
+if ENABLE_TESTS
+
 noinst_PROGRAMS = p2p-server-unittests
 TESTS = p2p-server-unittests
 
@@ -69,6 +71,8 @@ p2p_server_unittests_LDADD = 				\
 	-lattr						\
 	$(top_builddir)/common/libp2p-testutil.la	\
 	$(NULL)
+
+endif # ENABLE_TESTS
 
 clean-local :
 	rm -rf *~

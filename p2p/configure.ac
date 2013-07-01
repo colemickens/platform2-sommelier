@@ -33,7 +33,13 @@ if test "x$GCC" = "xyes"; then
 fi
 AC_SUBST(GCC_CFLAGS)
 
-CXXFLAGS="$CXXFLAGS -fpic -Wall -std=gnu++0x -fno-rtti"
+CXXFLAGS="$CXXFLAGS -Wall -std=gnu++0x -fno-rtti"
+
+AC_ARG_ENABLE(tests,
+              AS_HELP_STRING([--enable-tests],
+              [build and run unit tests]))
+
+AM_CONDITIONAL([ENABLE_TESTS], [test "$enable_tests" != no])
 
 AC_CONFIG_FILES([Makefile
                  client/Makefile

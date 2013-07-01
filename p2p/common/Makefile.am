@@ -8,7 +8,7 @@ INCLUDES = 						\
 	-DTOP_BUILDDIR=\""$(top_builddir)"\" 		\
 	$(NULL)
 
-noinst_LTLIBRARIES = libp2p-util.la libp2p-testutil.la
+noinst_LTLIBRARIES = libp2p-util.la
 
 # ------------------------------------------------------------------------
 
@@ -24,6 +24,10 @@ libp2p_util_la_CXXFLAGS = 				\
 
 # ------------------------------------------------------------------------
 
+if ENABLE_TESTS
+
+noinst_LTLIBRARIES += libp2p-testutil.la
+
 libp2p_testutil_la_SOURCES =				\
 	testutil.h		testutil.cc		\
 	$(NULL)
@@ -33,7 +37,11 @@ libp2p_testutil_la_CXXFLAGS = 				\
 	$(GLIB_CFLAGS)					\
 	$(NULL)
 
+endif # ENABLE_TESTS
+
 # ------------------------------------------------------------------------
+
+if ENABLE_TESTS
 
 noinst_PROGRAMS = libp2p-unittests
 TESTS = libp2p-unittests
@@ -55,6 +63,8 @@ libp2p_unittests_LDADD = 				\
 	-lgmock						\
 	libp2p-testutil.la				\
 	$(NULL)
+
+endif # ENABLE_TESTS
 
 clean-local :
 	rm -rf *~

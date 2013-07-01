@@ -35,6 +35,8 @@ p2p_http_server_LDADD = 				\
 
 # ----------------------------------------------------------------------------
 
+if ENABLE_TESTS
+
 noinst_PROGRAMS = p2p-http-server-unittests
 TESTS = p2p-http-server-unittests
 
@@ -56,6 +58,8 @@ p2p_http_server_unittests_LDADD = 			\
 	-lattr						\
 	$(top_builddir)/common/libp2p-testutil.la	\
 	$(NULL)
+
+endif # ENABLE_TESTS
 
 # ----------------------------------------------------------------------------
 
