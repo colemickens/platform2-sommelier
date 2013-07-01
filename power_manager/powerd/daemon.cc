@@ -983,12 +983,24 @@ DBusMessage* Daemon::HandleGetPowerSupplyPropertiesMethod(
 }
 
 DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
-  VideoActivityUpdate protobuf;
-  if (!util::ParseProtocolBufferFromDBusMessage(message, &protobuf))
-    return util::CreateDBusInvalidArgsErrorReply(message);
+  DBusError error;
+  dbus_error_init(&error);
+  gboolean is_fullscreen = false;
+  if (!dbus_message_get_args(message, &error,
+                             DBUS_TYPE_BOOLEAN, &is_fullscreen,
+                             DBUS_TYPE_INVALID)) {
+    dbus_error_free(&error);
+
+    // TODO(derat): Remove this protobuf after Chrome is sending a bool.
+    VideoActivityUpdate protobuf;
+    if (util::ParseProtocolBufferFromDBusMessage(message, &protobuf))
+      is_fullscreen = protobuf.is_fullscreen();
+    else
+      LOG(WARNING) << "Unable to read " << kHandleVideoActivityMethod << "args";
+  }
 
   if (keyboard_controller_)
-    keyboard_controller_->HandleVideoActivity(protobuf.is_fullscreen());
+    keyboard_controller_->HandleVideoActivity(is_fullscreen);
   state_controller_->HandleVideoActivity();
   return NULL;
 }
@@ -1077,6 +1089,8 @@ void Daemon::OnSessionStateChange(const std::string& state_str) {
     state_controller_->HandleSessionStateChange(state);
   if (backlight_controller_)
     backlight_controller_->HandleSessionStateChange(state);
+  if (keyboard_controller_)
+    keyboard_controller_->HandleSessionStateChange(state);
 }
 
 void Daemon::ShutDown(ShutdownMode mode, const std::string& reason) {
