@@ -14,6 +14,7 @@
 #include "power_manager/common/signal_callback.h"
 #include "power_manager/powerd/policy/ambient_light_handler.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller_observer.h"
 
 typedef int gboolean;
 typedef unsigned int guint;
@@ -34,7 +35,8 @@ class KeyboardBacklightControllerTest;
 // Controls the keyboard backlight for devices with such a backlight.
 class KeyboardBacklightController
     : public BacklightController,
-      public AmbientLightHandler::Delegate {
+      public AmbientLightHandler::Delegate,
+      public BacklightControllerObserver {
  public:
   // Helper class for tests that need to access internal state.
   class TestApi {
@@ -51,9 +53,11 @@ class KeyboardBacklightController
     DISALLOW_COPY_AND_ASSIGN(TestApi);
   };
 
-  KeyboardBacklightController(system::BacklightInterface* backlight,
-                              PrefsInterface* prefs,
-                              system::AmbientLightSensorInterface* sensor);
+  KeyboardBacklightController(
+      system::BacklightInterface* backlight,
+      PrefsInterface* prefs,
+      system::AmbientLightSensorInterface* sensor,
+      BacklightController* display_backlight_controller);
   virtual ~KeyboardBacklightController();
 
   // Initializes the object.
@@ -87,6 +91,12 @@ class KeyboardBacklightController
   virtual void SetBrightnessPercentForAmbientLight(
       double brightness_percent,
       AmbientLightHandler::BrightnessChangeCause cause) OVERRIDE;
+
+  // BacklightControllerObserver implementation:
+  virtual void OnBrightnessChanged(
+      double brightness_percent,
+      BacklightController::BrightnessChangeCause cause,
+      BacklightController* source) OVERRIDE;
 
  private:
   void ReadPrefs();
@@ -143,6 +153,9 @@ class KeyboardBacklightController
   // Interface for saving preferences. Non-owned.
   PrefsInterface* prefs_;
 
+  // Controller responsible for the display's brightness. Non-owned.
+  BacklightController* display_backlight_controller_;
+
   scoped_ptr<AmbientLightHandler> ambient_light_handler_;
 
   // Observers to notify about changes.
@@ -197,6 +210,10 @@ class KeyboardBacklightController
   // Counters for stat tracking.
   int num_als_adjustments_;
   int num_user_adjustments_;
+
+  // Did |display_backlight_controller_| indicate that the display
+  // backlight brightness is currently zero?
+  bool display_brightness_is_zero_;
 
   DISALLOW_COPY_AND_ASSIGN(KeyboardBacklightController);
 };

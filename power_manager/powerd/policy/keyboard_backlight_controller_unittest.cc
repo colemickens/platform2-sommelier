@@ -13,6 +13,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/policy/mock_backlight_controller_observer.h"
 #include "power_manager/powerd/system/ambient_light_sensor_stub.h"
 #include "power_manager/powerd/system/backlight_stub.h"
@@ -32,7 +33,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
         user_steps_pref_("0.0\n10.0\n40.0\n60.0\n100.0"),
         backlight_(max_backlight_level_, initial_backlight_level_),
         light_sensor_(initial_als_lux_),
-        controller_(&backlight_, &prefs_, &light_sensor_),
+        controller_(&backlight_, &prefs_, &light_sensor_,
+                    &display_backlight_controller_),
         test_api_(&controller_) {
   }
 
@@ -60,6 +62,8 @@ class KeyboardBacklightControllerTest : public ::testing::Test {
   }
 
  protected:
+  BacklightControllerStub display_backlight_controller_;
+
   // Max and initial brightness levels for |backlight_|.
   int64 max_backlight_level_;
   int64 initial_backlight_level_;
@@ -106,6 +110,8 @@ TEST_F(KeyboardBacklightControllerTest, GetBrightnessPercent) {
 TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
   als_limits_pref_ = "0.0\n20.0\n75.0";
   als_steps_pref_ = "20.0 -1 50\n50.0 35 75\n75.0 60 -1";
+  user_limits_pref_ = "0.0\n10.0\n100.0";
+  user_steps_pref_ = "0.0\n100.0";
   ASSERT_TRUE(Init());
   controller_.HandleSessionStateChange(SESSION_STARTED);
   light_sensor_.NotifyObservers();
@@ -144,6 +150,13 @@ TEST_F(KeyboardBacklightControllerTest, DimForFullscreenVideo) {
   controller_.HandleSessionStateChange(SESSION_STOPPED);
   controller_.HandleVideoActivity(true);
   EXPECT_EQ(20, backlight_.current_level());
+
+  // It should also be ignored after the brightness has been set by the user.
+  controller_.HandleSessionStateChange(SESSION_STARTED);
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  EXPECT_EQ(100, backlight_.current_level());
+  controller_.HandleVideoActivity(true);
+  EXPECT_EQ(100, backlight_.current_level());
 }
 
 TEST_F(KeyboardBacklightControllerTest, OnAmbientLightUpdated) {
@@ -475,6 +488,44 @@ TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDocked) {
   // User requests to increase the brightness shouldn't turn the backlight on.
   EXPECT_FALSE(controller_.IncreaseUserBrightness());
   EXPECT_EQ(0, backlight_.current_level());
+}
+
+TEST_F(KeyboardBacklightControllerTest, TurnOffWhenDisplayBacklightIsOff) {
+  als_limits_pref_ = "0.0\n20.0\n100.0";
+  als_steps_pref_ = "50.0 -1 -1";
+  user_limits_pref_ = "0.0\n10.0\n100.0";
+  user_steps_pref_ = "0.0\n100.0";
+  initial_backlight_level_ = 50;
+  ASSERT_TRUE(Init());
+  light_sensor_.set_lux(100);
+  light_sensor_.NotifyObservers();
+
+  display_backlight_controller_.NotifyObservers(
+      10.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_EQ(50, backlight_.current_level());
+
+  // When the display backlight's brightness goes to zero while the
+  // keyboard backlight is using an ambient-light-derived brightness, the
+  // keyboard backlight should be turned off automatically.
+  display_backlight_controller_.NotifyObservers(
+      0.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_EQ(0, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  display_backlight_controller_.NotifyObservers(
+      20.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_EQ(50, backlight_.current_level());
+  EXPECT_EQ(kSlowBacklightTransitionMs,
+            backlight_.current_interval().InMilliseconds());
+
+  // After switching to user control of the brightness, the keyboard
+  // backlight shouldn't be turned off automatically.
+  EXPECT_TRUE(controller_.IncreaseUserBrightness());
+  EXPECT_EQ(100, backlight_.current_level());
+  display_backlight_controller_.NotifyObservers(
+      0.0, BacklightController::BRIGHTNESS_CHANGE_USER_INITIATED);
+  EXPECT_EQ(100, backlight_.current_level());
 }
 
 }  // namespace policy

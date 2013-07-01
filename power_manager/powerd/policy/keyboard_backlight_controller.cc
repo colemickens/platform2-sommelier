@@ -17,7 +17,6 @@
 #include "base/string_util.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
-#include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
 namespace power_manager {
@@ -75,9 +74,11 @@ void KeyboardBacklightController::TestApi::TriggerVideoTimeout() {
 KeyboardBacklightController::KeyboardBacklightController(
     system::BacklightInterface* backlight,
     PrefsInterface* prefs,
-    system::AmbientLightSensorInterface* sensor)
+    system::AmbientLightSensorInterface* sensor,
+    BacklightController* display_backlight_controller)
     : backlight_(backlight),
       prefs_(prefs),
+      display_backlight_controller_(display_backlight_controller),
       ambient_light_handler_(
           sensor ? new AmbientLightHandler(sensor, this) : NULL),
       session_state_(SESSION_STOPPED),
@@ -96,14 +97,18 @@ KeyboardBacklightController::KeyboardBacklightController(
       ignore_ambient_light_(false),
       video_timeout_id_(0),
       num_als_adjustments_(0),
-      num_user_adjustments_(0) {
+      num_user_adjustments_(0),
+      display_brightness_is_zero_(false) {
   DCHECK(backlight);
+  DCHECK(display_backlight_controller_);
+  display_backlight_controller_->AddObserver(this);
   if (ambient_light_handler_)
     ambient_light_handler_->set_name("keyboard");
 }
 
 KeyboardBacklightController::~KeyboardBacklightController() {
   util::RemoveTimeout(&video_timeout_id_ );
+  display_backlight_controller_->RemoveObserver(this);
 }
 
 bool KeyboardBacklightController::Init() {
@@ -258,6 +263,19 @@ void KeyboardBacklightController::SetBrightnessPercentForAmbientLight(
   UpdateUndimmedBrightness(transition, BRIGHTNESS_CHANGE_AUTOMATED);
 }
 
+void KeyboardBacklightController::OnBrightnessChanged(
+    double brightness_percent,
+    BacklightController::BrightnessChangeCause cause,
+    BacklightController* source) {
+  DCHECK_EQ(source, display_backlight_controller_);
+
+  bool zero = brightness_percent <= kEpsilon;
+  if (zero != display_brightness_is_zero_) {
+    display_brightness_is_zero_ = zero;
+    UpdateState();
+  }
+}
+
 void KeyboardBacklightController::ReadPrefs() {
   ReadLimitsPrefs(kKeyboardBacklightUserLimitsPref,
                   &user_percent_min_, &user_percent_dim_, &user_percent_max_);
@@ -384,7 +402,9 @@ bool KeyboardBacklightController::UpdateState() {
   if (shutting_down_ || docked_) {
     percent = 0.0;
     transition = TRANSITION_INSTANT;
-  } else if (fullscreen_video_playing_ || off_for_inactivity_) {
+  } else if ((!use_user && fullscreen_video_playing_) ||
+             (!use_user && display_brightness_is_zero_) ||
+             off_for_inactivity_) {
     percent = use_user ? user_percent_min_ :
         ambient_light_handler_->min_brightness_percent();
   } else if (dimmed_for_inactivity_) {

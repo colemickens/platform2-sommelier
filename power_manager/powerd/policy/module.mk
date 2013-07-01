@@ -19,6 +19,10 @@ CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a): \
 	power_manager/suspend.pb.o
 clean: CLEAN(powerd/libpolicy.pie.a)
 
+CXX_STATIC_LIBRARY(powerd/libpolicy_test.pie.a): \
+	powerd/policy/backlight_controller_stub.o
+clean: CLEAN(powerd/libpolicy_test.pie.a)
+
 CXX_BINARY(powerd/policy_unittest): \
 	powerd/policy/ambient_light_handler_unittest.o \
 	powerd/policy/dark_resume_policy_unittest.o \
@@ -29,6 +33,7 @@ CXX_BINARY(powerd/policy_unittest): \
 	powerd/policy/suspend_delay_controller_unittest.o \
 	powerd/policy/suspender_unittest.o \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libpolicy_test.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a) \
 	CXX_STATIC_LIBRARY(common/libtestrunner.pie.a) \

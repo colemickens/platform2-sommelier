@@ -4,13 +4,8 @@
 
 #include <gflags/gflags.h>
 #include <glib.h>
-#include <syslog.h>
 
 #include <string>
-
-// Defines from syslog.h that conflict with base/logging.h. Ugh.
-#undef LOG_INFO
-#undef LOG_WARNING
 
 #include "base/command_line.h"
 #include "base/file_path.h"
@@ -77,12 +72,6 @@ string GetTimeAsString(time_t utime) {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // Sadly we can't use LOG() here - we always want this message logged, even
-  // when other logging is turned off.
-  openlog("powerd", LOG_PID, LOG_DAEMON);
-  syslog(LOG_NOTICE, "vcsid %s", VCSID);
-  closelog();
-
   // gflags rewrites argv; give base::CommandLine first crack at it.
   CommandLine::Init(argc, argv);
   google::ParseCommandLineFlags(&argc, &argv, true);
@@ -102,6 +91,7 @@ int main(int argc, char* argv[]) {
                        logging::DONT_LOCK_LOG_FILE,
                        logging::APPEND_TO_OLD_LOG_FILE,
                        logging::DISABLE_DCHECK_FOR_NON_OFFICIAL_RELEASE_BUILDS);
+  LOG(INFO) << "vcsid " << VCSID;
 
   base::FilePath prefs_dir(FLAGS_prefs_dir);
   base::FilePath default_prefs_dir(FLAGS_default_prefs_dir.empty() ?
@@ -142,11 +132,11 @@ int main(int argc, char* argv[]) {
             display_backlight.get(), &prefs, light_sensor.get(),
             &display_power_setter));
     if (!display_backlight_controller->Init()) {
-      LOG(WARNING) << "Cannot initialize display backlight controller";
+      LOG(ERROR) << "Cannot initialize display backlight controller";
       display_backlight_controller.reset();
     }
   } else {
-    LOG(WARNING) << "Cannot initialize display backlight";
+    LOG(ERROR) << "Cannot initialize display backlight";
     display_backlight.reset();
   }
 #endif
@@ -166,13 +156,14 @@ int main(int argc, char* argv[]) {
 #endif
     keyboard_backlight_controller.reset(
         new power_manager::policy::KeyboardBacklightController(
-            keyboard_backlight.get(), &prefs, light_sensor.get()));
+            keyboard_backlight.get(), &prefs, light_sensor.get(),
+            display_backlight_controller.get()));
     if (!keyboard_backlight_controller->Init()) {
-      LOG(WARNING) << "Cannot initialize keyboard backlight controller";
+      LOG(ERROR) << "Cannot initialize keyboard backlight controller";
       keyboard_backlight_controller.reset();
     }
   } else {
-    LOG(WARNING) << "Cannot initialize keyboard backlight!";
+    LOG(ERROR) << "Cannot initialize keyboard backlight";
     keyboard_backlight.reset();
   }
 #endif

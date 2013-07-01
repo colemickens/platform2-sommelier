@@ -62,6 +62,7 @@ CXX_BINARY(powerd/daemon_unittest): $(DAEMON_UNITTEST_OBJS) \
 	CXX_STATIC_LIBRARY(common/libutil_dbus.pie.a) \
 	CXX_STATIC_LIBRARY(common/libutil_test.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libpolicy.pie.a) \
+	CXX_STATIC_LIBRARY(powerd/libpolicy_test.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem.pie.a) \
 	CXX_STATIC_LIBRARY(powerd/libsystem_test.pie.a)
 CXX_BINARY(powerd/daemon_unittest): CPPFLAGS += $(DAEMON_UNITTEST_FLAGS)
