@@ -31,6 +31,10 @@ namespace server {
 // may end up generate a lot of unnecessary traffic.
 const int kFileChangedDelayMSec = 10000;
 
+// The encoding of the D-Bus machine-id plus a NUL terminator is 33
+// bytes. See http://dbus.freedesktop.org/doc/dbus-specification.html
+const size_t kDBusMachineIdPlusNulSize = 33;
+
 class ServicePublisherAvahi : public ServicePublisher {
  public:
   explicit ServicePublisherAvahi(uint16_t http_port);
@@ -113,11 +117,15 @@ ServicePublisherAvahi::~ServicePublisherAvahi() {
     avahi_glib_poll_free(poll_);
 }
 
-// Reads the machine_id into |buf|.
-static void
-ReadMachineId(char *buf, size_t buf_size) {
+// Reads the D-Bus machine-id into |buf| and ensures that it's
+// NUL-terminated. It is a programming error to pass a |buf|
+// that is not at least |kDBusMachineIdPlusNulSize| bytes long.
+static void ReadMachineId(char *buf) {
   size_t num_read = 0;
   FILE* f = NULL;
+
+  // NUL-terminate ahead of time.
+  buf[kDBusMachineIdPlusNulSize - 1] = '\0';
 
   f = fopen("/var/lib/dbus/machine-id", "r");
   if (f == NULL) {
@@ -125,8 +133,9 @@ ReadMachineId(char *buf, size_t buf_size) {
     return;
   }
 
-  num_read = fread(buf, 1, buf_size, f);
-  if (num_read != 32) {
+  // The machine-id file may include a newline so only request 32 bytes.
+  num_read = fread(buf, 1, kDBusMachineIdPlusNulSize - 1, f);
+  if (num_read != kDBusMachineIdPlusNulSize - 1) {
     LOG(ERROR) << "Error reading from /var/lib/dbus/machine-id, num_read="
                << num_read;
     fclose(f);
@@ -143,10 +152,12 @@ ReadMachineId(char *buf, size_t buf_size) {
 // This is not thread safe and blocks the calling thread the first
 // time it is called.
 static const char* GetDBusMachineId(void) {
-  static char machine_id[33] = { 0 };
+  static char machine_id[kDBusMachineIdPlusNulSize] = { 0 };
 
-  if (machine_id[0] == '\0')
-    ReadMachineId(machine_id, sizeof machine_id);
+  if (machine_id[0] == '\0') {
+    G_STATIC_ASSERT(sizeof machine_id == kDBusMachineIdPlusNulSize);
+    ReadMachineId(machine_id);
+  }
 
   return const_cast<const char *>(machine_id);
 }
