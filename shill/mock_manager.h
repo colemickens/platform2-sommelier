@@ -29,6 +29,9 @@ class MockManager : public Manager {
   MOCK_CONST_METHOD0(run_path, const base::FilePath &());
   MOCK_METHOD0(Start, void());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD3(SetProfileForService, void(const ServiceRefPtr &to_set,
+                                          const std::string &profile,
+                                          Error *error));
   MOCK_METHOD1(RegisterDevice, void(const DeviceRefPtr &to_manage));
   MOCK_METHOD1(DeregisterDevice, void(const DeviceRefPtr &to_forget));
   MOCK_METHOD1(HasService, bool(const ServiceRefPtr &to_manage));

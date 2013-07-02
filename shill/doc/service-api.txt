@@ -22,6 +22,22 @@ Methods		dict GetProperties()
 					 [service].Error.InvalidService
 					 [service].Error.InvalidPassphrase
 
+		void SetProperties(dict properties)
+
+			Set multiple properties in a Service at once.
+			Each property from the dict is applied, excluding
+			the "Profile" property and all properties intrinsic
+			to the service including "Type" for all services,
+			as well as "Mode", "SSID" and "Security" for WiFi
+			services.  In the event of multiple errors while
+			applying properties to the service, the first error
+			code is returned by this call.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.InvalidProperty
+					 [service].Error.InvalidService
+					 [service].Error.InvalidPassphrase
+
 		void ClearProperty(string name)
 
 			Clear the value of the specified property. Only

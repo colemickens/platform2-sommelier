@@ -10,6 +10,9 @@
 			<arg type="s" direction="in"/>
 			<arg type="v" direction="in"/>
 		</method>
+		<method name="SetProperties">
+			<arg type="a{sv}" direction="in"/>
+		</method>
 		<method name="ClearProperty">
 			<arg type="s" direction="in"/>
 		</method>

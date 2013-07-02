@@ -94,6 +94,21 @@ void ServiceDBusAdaptor::SetProperty(const string &name,
   DBusAdaptor::SetProperty(service_->mutable_store(), name, value, &error);
 }
 
+void ServiceDBusAdaptor::SetProperties(
+    const map<string, ::DBus::Variant> &args,
+    ::DBus::Error &error) {
+  SLOG(DBus, 2) << __func__;
+  KeyValueStore args_store;
+  Error key_value_store_error;
+  DBusAdaptor::ArgsToKeyValueStore(args, &args_store, &key_value_store_error);
+  if (key_value_store_error.ToDBusError(&error)) {
+    return;
+  }
+  Error configure_error;
+  service_->Configure(args_store, &configure_error);
+  configure_error.ToDBusError(&error);
+}
+
 void ServiceDBusAdaptor::ClearProperty(const string &name,
                                        ::DBus::Error &error) {
   SLOG(DBus, 2) << __func__ << ": " << name;

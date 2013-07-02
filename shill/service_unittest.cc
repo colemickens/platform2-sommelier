@@ -867,6 +867,16 @@ TEST_F(ServiceTest, ConfigureIgnoredProperty) {
   EXPECT_FALSE(service_->auto_connect());
 }
 
+TEST_F(ServiceTest, ConfigureProfileProperty) {
+  // Ensure that the Profile property is always ignored.
+  KeyValueStore args;
+  args.SetString(flimflam::kProfileProperty, "profile");
+  Error error;
+  EXPECT_CALL(mock_manager_, SetProfileForService(_, _, _)).Times(0);
+  service_->Configure(args, &error);
+  EXPECT_TRUE(error.IsSuccess());
+}
+
 TEST_F(ServiceTest, DoPropertiesMatch) {
   service_->SetAutoConnect(false);
   const string kGUID0 = "guid_zero";

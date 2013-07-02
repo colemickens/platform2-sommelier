@@ -96,9 +96,9 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   ProfileRefPtr LookupProfileByRpcIdentifier(const std::string &profile_rpcid);
 
   // Called via RPC call on Service (|to_set|) to set the "Profile" property.
-  void SetProfileForService(const ServiceRefPtr &to_set,
-                            const std::string &profile,
-                            Error *error);
+  virtual void SetProfileForService(const ServiceRefPtr &to_set,
+                                    const std::string &profile,
+                                    Error *error);
 
   virtual void RegisterDevice(const DeviceRefPtr &to_manage);
   virtual void DeregisterDevice(const DeviceRefPtr &to_forget);
