@@ -154,6 +154,10 @@ HELP_ADVANCED='
  tracepath [-n] <destination>[/port]
   Trace the path/route to a network host.
 
+ update_over_cellular [enable|disable]
+  Enables or disables the auto updates over cellular networks. Run without
+  arguments to see the current state.
+
  wpa_debug [<debug_level>] [--help] [--list_valid_level] [--reset]
   Set wpa_supplicant debugging level.
 
@@ -956,6 +960,30 @@ cmd_rollback() {
   else
     echo "Rollback attempt failed. Check chrome://system for more information."
   fi
+}
+
+cmd_update_over_cellular() {
+  case "$1" in
+    "enable")
+      param="-update_over_cellular=yes"
+      ;;
+
+    "disable")
+      param="-update_over_cellular=no"
+      ;;
+
+    "")
+      param=""
+      ;;
+
+    *)
+      echo "Usage: update_over_cellular [enable|disable]
+  Enables or disables the auto updates over cellular networks. Run without
+  arguments to see the current state."
+      return 1
+      ;;
+  esac
+  /usr/bin/update_engine_client $param -show_update_over_cellular
 }
 
 cmd_tpcontrol() {
