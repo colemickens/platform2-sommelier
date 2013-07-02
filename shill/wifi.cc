@@ -299,16 +299,13 @@ void WiFi::Start(Error *error,
   if (error) {
     error->Reset();       // indicate immediate completion
   }
-  if (on_supplicant_appear_.IsCancelled()) {
+  if (!supplicant_name_watcher_) {
     // Registers the WPA supplicant appear/vanish callbacks only once per WiFi
     // device instance.
-    on_supplicant_appear_.Reset(
-        Bind(&WiFi::OnSupplicantAppear, Unretained(this)));
-    on_supplicant_vanish_.Reset(
-        Bind(&WiFi::OnSupplicantVanish, Unretained(this)));
-    manager()->dbus_manager()->WatchName(WPASupplicant::kDBusAddr,
-                                         on_supplicant_appear_.callback(),
-                                         on_supplicant_vanish_.callback());
+    supplicant_name_watcher_.reset(manager()->dbus_manager()->CreateNameWatcher(
+        WPASupplicant::kDBusAddr,
+        Bind(&WiFi::OnSupplicantAppear, Unretained(this)),
+        Bind(&WiFi::OnSupplicantVanish, Unretained(this))));
   }
   // Subscribe to multicast events.
   netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
@@ -327,6 +324,7 @@ void WiFi::Start(Error *error,
 
 void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
+  supplicant_name_watcher_.reset();
   DropConnection();
   StopScanTimer();
   for (EndpointMap::iterator it = endpoint_by_rpcid_.begin();
@@ -1789,7 +1787,7 @@ void WiFi::ReconnectTimeoutHandler() {
   DisconnectFrom(current_service_);
 }
 
-void WiFi::OnSupplicantAppear(const string &/*owner*/) {
+void WiFi::OnSupplicantAppear(const string &/*name*/, const string &/*owner*/) {
   LOG(INFO) << "WPA supplicant appeared.";
   if (supplicant_present_) {
     // Restart the WiFi device if it's started already. This will reset the
@@ -1803,7 +1801,7 @@ void WiFi::OnSupplicantAppear(const string &/*owner*/) {
   ConnectToSupplicant();
 }
 
-void WiFi::OnSupplicantVanish() {
+void WiFi::OnSupplicantVanish(const string &/*name*/) {
   LOG(INFO) << "WPA supplicant vanished.";
   if (!supplicant_present_) {
     return;

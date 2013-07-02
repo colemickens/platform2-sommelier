@@ -45,27 +45,20 @@ WiMaxProvider::~WiMaxProvider() {}
 
 void WiMaxProvider::Start() {
   SLOG(WiMax, 2) << __func__;
-  if (!on_wimax_manager_appear_.IsCancelled()) {
+  if (wimax_manager_name_watcher_) {
     return;
   }
   // Registers a watcher for the WiMaxManager service. This provider will
   // connect to it if/when the OnWiMaxManagerAppear callback is invoked.
-  on_wimax_manager_appear_.Reset(
-      Bind(&WiMaxProvider::OnWiMaxManagerAppear, Unretained(this)));
-  on_wimax_manager_vanish_.Reset(
-      Bind(&WiMaxProvider::DisconnectFromWiMaxManager, Unretained(this)));
-  manager_->dbus_manager()->WatchName(
+  wimax_manager_name_watcher_.reset(manager_->dbus_manager()->CreateNameWatcher(
       wimax_manager::kWiMaxManagerServiceName,
-      on_wimax_manager_appear_.callback(),
-      on_wimax_manager_vanish_.callback());
+      Bind(&WiMaxProvider::OnWiMaxManagerAppear, Unretained(this)),
+      Bind(&WiMaxProvider::OnWiMaxManagerVanish, Unretained(this))));
 }
 
 void WiMaxProvider::Stop() {
   SLOG(WiMax, 2) << __func__;
-  // TODO(petkov): Deregister the watcher from DBusManager to avoid potential
-  // memory leaks (crbug.com/214476).
-  on_wimax_manager_appear_.Cancel();
-  on_wimax_manager_vanish_.Cancel();
+  wimax_manager_name_watcher_.reset();
   DisconnectFromWiMaxManager();
   DestroyAllServices();
 }
@@ -90,10 +83,16 @@ void WiMaxProvider::DisconnectFromWiMaxManager() {
   OnDevicesChanged(RpcIdentifiers());
 }
 
-void WiMaxProvider::OnWiMaxManagerAppear(const string &owner) {
-  SLOG(WiMax, 2) << __func__ << "(" << owner << ")";
+void WiMaxProvider::OnWiMaxManagerAppear(const string &name,
+                                         const string &owner) {
+  SLOG(WiMax, 2) << __func__ << "(" << name << ", " << owner << ")";
   DisconnectFromWiMaxManager();
   ConnectToWiMaxManager();
+}
+
+void WiMaxProvider::OnWiMaxManagerVanish(const string &name) {
+  SLOG(WiMax, 2) << __func__ << "(" << name << ")";
+  DisconnectFromWiMaxManager();
 }
 
 void WiMaxProvider::OnDeviceInfoAvailable(const string &link_name) {

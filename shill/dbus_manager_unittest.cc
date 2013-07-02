@@ -14,20 +14,38 @@
 #include "shill/proxy_factory.h"
 
 using base::Bind;
+using base::Unretained;
 using std::string;
+using testing::Invoke;
+using testing::SaveArg;
+using testing::WithArg;
 using testing::_;
 
 namespace shill {
+
+namespace {
+
+const char kName1[] = "org.chromium.Service1";
+const char kOwner1[] = ":1.17";
+const char kName2[] = "org.chromium.Service2";
+const char kOwner2[] = ":1.27";
+
+void SetErrorOperationFailed(Error *error) {
+  error->Populate(Error::kOperationFailed);
+}
+
+}  // namespace
 
 class DBusManagerTest : public testing::Test {
  public:
   DBusManagerTest()
       : proxy_(new MockDBusServiceProxy()),
-        proxy_factory_(this) {}
+        proxy_factory_(this),
+        manager_(new DBusManager()) {}
 
   virtual void SetUp() {
     // Replaces the real proxy factory with a local one providing mock proxies.
-    dbus_manager_.proxy_factory_ = &proxy_factory_;
+    manager_->proxy_factory_ = &proxy_factory_;
   }
 
  protected:
@@ -45,148 +63,193 @@ class DBusManagerTest : public testing::Test {
     DISALLOW_COPY_AND_ASSIGN(TestProxyFactory);
   };
 
-  class NameWatcher : public base::SupportsWeakPtr<NameWatcher> {
+  class DBusNameWatcherCallbackObserver {
    public:
-    NameWatcher(const string &name)
-        : on_appear_(Bind(&NameWatcher::OnAppear, AsWeakPtr(), name)),
-          on_vanish_(Bind(&NameWatcher::OnVanish, AsWeakPtr(), name)) {}
-    virtual ~NameWatcher() {}
+    DBusNameWatcherCallbackObserver()
+        : name_appeared_callback_(
+              Bind(&DBusNameWatcherCallbackObserver::OnNameAppeared,
+                   Unretained(this))),
+          name_vanished_callback_(
+              Bind(&DBusNameWatcherCallbackObserver::OnNameVanished,
+                   Unretained(this))) {}
 
-    MOCK_METHOD2(OnAppear, void(const string &name, const string &owner));
-    MOCK_METHOD1(OnVanish, void(const string &name));
+    virtual ~DBusNameWatcherCallbackObserver() {}
 
-    const DBusManager::AppearedCallback &on_appear() const {
-      return on_appear_;
+    MOCK_CONST_METHOD2(OnNameAppeared, void(const string &name,
+                                            const string &owner));
+    MOCK_CONST_METHOD1(OnNameVanished, void(const string &name));
+
+    const DBusNameWatcher::NameAppearedCallback &name_appeared_callback()
+        const {
+      return name_appeared_callback_;
     }
 
-    const DBusManager::VanishedCallback &on_vanish() const {
-      return on_vanish_;
-    }
-
-    DBusManager::NameWatcher GetWatcher() const {
-      return DBusManager::NameWatcher(on_appear_, on_vanish_);
-    }
-
-    DBusManager::NameWatcher GetAppearWatcher() const {
-      return DBusManager::NameWatcher(on_appear_,
-                                      DBusManager::VanishedCallback());
-    }
-
-    DBusManager::NameWatcher GetVanishWatcher() const {
-      return DBusManager::NameWatcher(DBusManager::AppearedCallback(),
-                                      on_vanish_);
+    const DBusNameWatcher::NameVanishedCallback &name_vanished_callback()
+        const {
+      return name_vanished_callback_;
     }
 
    private:
-    DBusManager::AppearedCallback on_appear_;
-    DBusManager::VanishedCallback on_vanish_;
+    DBusNameWatcher::NameAppearedCallback name_appeared_callback_;
+    DBusNameWatcher::NameVanishedCallback name_vanished_callback_;
 
-    DISALLOW_COPY_AND_ASSIGN(NameWatcher);
+    DISALLOW_COPY_AND_ASSIGN(DBusNameWatcherCallbackObserver);
   };
 
   scoped_ptr<MockDBusServiceProxy> proxy_;
   TestProxyFactory proxy_factory_;
-  DBusManager dbus_manager_;
+  scoped_ptr<DBusManager> manager_;
 };
 
-TEST_F(DBusManagerTest, NameWatchers) {
-  static const char kName1[] = "org.chromium.Service1";
-  static const char kOwner1[] = ":1.17";
-  static const char kName2[] = "org.chromium.Service2";
-  static const char kOwner2[] = ":1.27";
+TEST_F(DBusManagerTest, GetNameOwnerFails) {
+  MockDBusServiceProxy *proxy = proxy_.get();
 
+  EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
+  manager_->Start();
+
+  EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorOperationFailed)));
+
+  DBusNameWatcherCallbackObserver observer;
+  EXPECT_CALL(observer, OnNameAppeared(_, _)).Times(0);
+  EXPECT_CALL(observer, OnNameVanished(kName1));
+
+  scoped_ptr<DBusNameWatcher> watcher(
+      manager_->CreateNameWatcher(kName1,
+                                  observer.name_appeared_callback(),
+                                  observer.name_vanished_callback()));
+}
+
+TEST_F(DBusManagerTest,
+       GetNameOwnerReturnsAfterDBusManagerAndNameWatcherDestroyed)
+{
+  MockDBusServiceProxy *proxy = proxy_.get();
+
+  EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
+  manager_->Start();
+
+  StringCallback get_name_owner_callback;
+  EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
+  scoped_ptr<DBusNameWatcher> watcher(
+      manager_->CreateNameWatcher(kName1,
+                                  DBusNameWatcher::NameAppearedCallback(),
+                                  DBusNameWatcher::NameVanishedCallback()));
+
+  // Expect no crash if the GetNameOwner callback is invoked after the
+  // DBusNameWatcher object is destroyed.
+  watcher.reset();
+  get_name_owner_callback.Run(kOwner1, Error());
+
+  // Expect no crash if the GetNameOwner callback is invoked after the
+  // DBusManager object is destroyed.
+  manager_.reset();
+  get_name_owner_callback.Run(kOwner1, Error());
+}
+
+TEST_F(DBusManagerTest, NameWatchers) {
   MockDBusServiceProxy *proxy = proxy_.get();
 
   // Start the DBus service manager.
   EXPECT_CALL(*proxy, set_name_owner_changed_callback(_));
-  dbus_manager_.Start();
-  EXPECT_TRUE(dbus_manager_.proxy_.get());
+  manager_->Start();
+  EXPECT_TRUE(manager_->proxy_.get());
 
-  // Expect no crash.
-  dbus_manager_.Start();
+  // Expect no crash when DBusManager::Start() is invoked again.
+  manager_->Start();
 
-  // Register a name watcher 1A for kName1.
-  scoped_ptr<NameWatcher> watcher1a(new NameWatcher(kName1));
-  EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _));
-  dbus_manager_.WatchName(
-      kName1, watcher1a->on_appear(), watcher1a->on_vanish());
+  StringCallback get_name_owner_callback;
 
-  // 1A should be notified on the initial owner.
-  EXPECT_CALL(*watcher1a, OnAppear(kName1, kOwner1));
-  EXPECT_CALL(*watcher1a, OnVanish(_)).Times(0);
-  dbus_manager_.OnGetNameOwnerComplete(
-      watcher1a->GetWatcher(), kOwner1, Error());
+  // Register a name watcher 1a for kName1.
+  EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
+  DBusNameWatcherCallbackObserver observer1a;
+  scoped_ptr<DBusNameWatcher> watcher1a(
+      manager_->CreateNameWatcher(kName1,
+                                  observer1a.name_appeared_callback(),
+                                  observer1a.name_vanished_callback()));
 
-  // Register an appear-only watcher 1B for kName1.
-  scoped_ptr<NameWatcher> watcher1b(new NameWatcher(kName1));
-  EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _));
-  dbus_manager_.WatchName(
-      kName1, watcher1b->on_appear(), DBusManager::VanishedCallback());
+  // Observer 1a should be notified on the initial owner.
+  EXPECT_CALL(observer1a, OnNameAppeared(kName1, kOwner1));
+  EXPECT_CALL(observer1a, OnNameVanished(_)).Times(0);
+  get_name_owner_callback.Run(kOwner1, Error());
 
-  // 1B should be notified on the initial owner. 1A should not get any
-  // notification.
-  EXPECT_CALL(*watcher1a, OnAppear(_, _)).Times(0);
-  EXPECT_CALL(*watcher1b, OnAppear(kName1, kOwner1));
-  dbus_manager_.OnGetNameOwnerComplete(
-      watcher1b->GetAppearWatcher(), kOwner1, Error());
+  // Register an appear-only watcher 1b for kName1.
+  EXPECT_CALL(*proxy, GetNameOwner(kName1, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
+  DBusNameWatcherCallbackObserver observer1b;
+  scoped_ptr<DBusNameWatcher> watcher1b(
+      manager_->CreateNameWatcher(kName1,
+                                  observer1b.name_appeared_callback(),
+                                  DBusNameWatcher::NameVanishedCallback()));
 
-  // Register a name watcher 2A for kName2.
-  scoped_ptr<NameWatcher> watcher2a(new NameWatcher(kName2));
-  EXPECT_CALL(*proxy, GetNameOwner(kName2, _, _, _));
-  dbus_manager_.WatchName(
-      kName2, watcher2a->on_appear(), watcher2a->on_vanish());
+  // Observer 1b should be notified on the initial owner. Observer 1a should
+  // not get any notification.
+  EXPECT_CALL(observer1a, OnNameAppeared(_, _)).Times(0);
+  EXPECT_CALL(observer1b, OnNameAppeared(kName1, kOwner1));
+  get_name_owner_callback.Run(kOwner1, Error());
 
-  // 2A should be notified on the lack of initial owner.
-  EXPECT_CALL(*watcher2a, OnAppear(_, _)).Times(0);
-  EXPECT_CALL(*watcher2a, OnVanish(kName2));
-  dbus_manager_.OnGetNameOwnerComplete(
-      watcher2a->GetWatcher(), string(), Error());
+  // Register a name watcher 2a for kName2.
+  EXPECT_CALL(*proxy, GetNameOwner(kName2, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
+  DBusNameWatcherCallbackObserver observer2a;
+  scoped_ptr<DBusNameWatcher> watcher2a(
+      manager_->CreateNameWatcher(kName2,
+                                  observer2a.name_appeared_callback(),
+                                  observer2a.name_vanished_callback()));
 
-  // Register a vanish-only watcher 2B for kName2.
-  scoped_ptr<NameWatcher> watcher2b(new NameWatcher(kName2));
-  EXPECT_CALL(*proxy, GetNameOwner(kName2, _, _, _));
-  dbus_manager_.WatchName(
-      kName2, DBusManager::AppearedCallback(), watcher2b->on_vanish());
+  // Observer 2a should be notified on the lack of initial owner.
+  EXPECT_CALL(observer2a, OnNameAppeared(_, _)).Times(0);
+  EXPECT_CALL(observer2a, OnNameVanished(kName2));
+  get_name_owner_callback.Run(string(), Error());
 
-  // 2B should be notified on the lack of initial owner. 2A should not get any
-  // notification.
-  EXPECT_CALL(*watcher2a, OnVanish(_)).Times(0);
-  EXPECT_CALL(*watcher2b, OnVanish(kName2));
-  dbus_manager_.OnGetNameOwnerComplete(
-      watcher2b->GetVanishWatcher(), string(), Error());
+  // Register a vanish-only watcher 2b for kName2.
+  EXPECT_CALL(*proxy, GetNameOwner(kName2, _, _, _))
+      .WillOnce(SaveArg<2>(&get_name_owner_callback));
+  DBusNameWatcherCallbackObserver observer2b;
+  scoped_ptr<DBusNameWatcher> watcher2b(
+      manager_->CreateNameWatcher(kName2,
+                                  DBusNameWatcher::NameAppearedCallback(),
+                                  observer2b.name_vanished_callback()));
 
-  EXPECT_EQ(2, dbus_manager_.name_watchers_[kName1].size());
-  EXPECT_EQ(2, dbus_manager_.name_watchers_[kName2].size());
+  // Observer 2b should be notified on the lack of initial owner. Observer 2a
+  // should not get any notification.
+  EXPECT_CALL(observer2a, OnNameVanished(_)).Times(0);
+  EXPECT_CALL(observer2b, OnNameVanished(kName2));
+  get_name_owner_callback.Run(string(), Error());
+
+  EXPECT_EQ(2, manager_->name_watchers_[kName1].size());
+  EXPECT_EQ(2, manager_->name_watchers_[kName2].size());
 
   // Toggle kName1 owner.
-  EXPECT_CALL(*watcher1a, OnVanish(kName1));
-  EXPECT_CALL(*watcher1b, OnVanish(_)).Times(0);
-  dbus_manager_.OnNameOwnerChanged(kName1, kOwner1, string());
-  EXPECT_CALL(*watcher1a, OnAppear(kName1, kOwner1));
-  EXPECT_CALL(*watcher1b, OnAppear(kName1, kOwner1));
-  dbus_manager_.OnNameOwnerChanged(kName1, string(), kOwner1);
+  EXPECT_CALL(observer1a, OnNameVanished(kName1));
+  EXPECT_CALL(observer1b, OnNameVanished(_)).Times(0);
+  manager_->OnNameOwnerChanged(kName1, kOwner1, string());
+  EXPECT_CALL(observer1a, OnNameAppeared(kName1, kOwner1));
+  EXPECT_CALL(observer1b, OnNameAppeared(kName1, kOwner1));
+  manager_->OnNameOwnerChanged(kName1, string(), kOwner1);
 
   // Toggle kName2 owner.
-  EXPECT_CALL(*watcher2a, OnAppear(kName2, kOwner2));
-  EXPECT_CALL(*watcher2b, OnAppear(_, _)).Times(0);
-  dbus_manager_.OnNameOwnerChanged(kName2, string(), kOwner2);
-  EXPECT_CALL(*watcher2a, OnVanish(kName2));
-  EXPECT_CALL(*watcher2b, OnVanish(kName2));
-  dbus_manager_.OnNameOwnerChanged(kName2, kOwner2, string());
+  EXPECT_CALL(observer2a, OnNameAppeared(kName2, kOwner2));
+  EXPECT_CALL(observer2b, OnNameAppeared(_, _)).Times(0);
+  manager_->OnNameOwnerChanged(kName2, string(), kOwner2);
+  EXPECT_CALL(observer2a, OnNameVanished(kName2));
+  EXPECT_CALL(observer2b, OnNameVanished(kName2));
+  manager_->OnNameOwnerChanged(kName2, kOwner2, string());
 
   // Invalidate kName1 callbacks, ensure no crashes.
   watcher1a.reset();
   watcher1b.reset();
-  dbus_manager_.OnNameOwnerChanged(kName1, kOwner1, string());
-  dbus_manager_.OnNameOwnerChanged(kName1, string(), kOwner1);
+  manager_->OnNameOwnerChanged(kName1, kOwner1, string());
+  manager_->OnNameOwnerChanged(kName1, string(), kOwner1);
 
   // Stop the DBus service manager.
-  dbus_manager_.Stop();
-  EXPECT_FALSE(dbus_manager_.proxy_.get());
-  EXPECT_TRUE(dbus_manager_.name_watchers_.empty());
+  manager_->Stop();
+  EXPECT_FALSE(manager_->proxy_.get());
+  EXPECT_TRUE(manager_->name_watchers_.empty());
 
-  // Ensure no crash.
-  dbus_manager_.Stop();
+  // Ensure no crash if DBusManager::Stop() is inovked again.
+  manager_->Stop();
 }
 
 }  // namespace shill

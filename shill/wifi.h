@@ -438,8 +438,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // to "Associating", otherwise it is stopped.
   void SetPendingService(const WiFiServiceRefPtr &service);
 
-  void OnSupplicantAppear(const std::string &owner);
-  void OnSupplicantVanish();
+  void OnSupplicantAppear(const std::string &name, const std::string &owner);
+  void OnSupplicantVanish(const std::string &name);
   // Called by ScopeLogger when WiFi debug scope is enabled/disabled.
   void OnWiFiDebugScopeChanged(bool enabled);
   // Enable or disable debugging for the current connection attempt.
@@ -487,8 +487,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   ProxyFactory *proxy_factory_;
   Time *time_;
 
-  DBusManager::CancelableAppearedCallback on_supplicant_appear_;
-  DBusManager::CancelableVanishedCallback on_supplicant_vanish_;
+  scoped_ptr<DBusNameWatcher> supplicant_name_watcher_;
   bool supplicant_present_;
 
   scoped_ptr<SupplicantProcessProxyInterface> supplicant_process_proxy_;

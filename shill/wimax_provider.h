@@ -88,7 +88,8 @@ class WiMaxProvider : public ProviderInterface {
 
   void ConnectToWiMaxManager();
   void DisconnectFromWiMaxManager();
-  void OnWiMaxManagerAppear(const std::string &owner);
+  void OnWiMaxManagerAppear(const std::string &name, const std::string &owner);
+  void OnWiMaxManagerVanish(const std::string &name);
 
   void OnDevicesChanged(const RpcIdentifiers &devices);
 
@@ -141,8 +142,7 @@ class WiMaxProvider : public ProviderInterface {
   Manager *manager_;
 
   // Monitor WiMaxManager DBus name ownership to detect daemon presence.
-  DBusManager::CancelableAppearedCallback on_wimax_manager_appear_;
-  DBusManager::CancelableVanishedCallback on_wimax_manager_vanish_;
+  scoped_ptr<DBusNameWatcher> wimax_manager_name_watcher_;
 
   scoped_ptr<WiMaxManagerProxyInterface> wimax_manager_proxy_;
 

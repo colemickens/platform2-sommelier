@@ -213,6 +213,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	dbus_adaptor.o \
 	dbus_control.o \
 	dbus_manager.o \
+	dbus_name_watcher.o \
 	dbus_properties.o \
 	dbus_properties_proxy.o \
 	dbus_service_proxy.o \
@@ -344,6 +345,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	connection_unittest.o \
 	dbus_adaptor_unittest.o \
 	dbus_manager_unittest.o \
+	dbus_name_watcher_unittest.o \
 	dbus_properties_unittest.o \
 	dbus_variant_gmock_printer.o \
 	default_profile_unittest.o \
@@ -385,7 +387,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_connection_info_reader.o \
 	mock_control.o \
 	mock_crypto_util_proxy.o \
-	mock_dbus_manager.o \
 	mock_dbus_objectmanager_proxy.o \
 	mock_dbus_properties_proxy.o \
 	mock_dbus_service_proxy.o \

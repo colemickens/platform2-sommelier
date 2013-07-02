@@ -33,7 +33,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/mock_adaptors.h"
-#include "shill/mock_dbus_manager.h"
+#include "shill/mock_dbus_service_proxy.h"
 #include "shill/mock_device.h"
 #include "shill/mock_device_info.h"
 #include "shill/mock_dhcp_config.h"
@@ -231,12 +231,13 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
                        kDeviceAddress,
                        kInterfaceIndex)),
         bss_counter_(0),
+        dbus_service_proxy_(new MockDBusServiceProxy()),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_bss_proxy_(
             new NiceMock<MockSupplicantBSSProxy>()),
         dhcp_config_(new MockDHCPConfig(&control_interface_,
                                         kDeviceName)),
-        dbus_manager_(new NiceMock<MockDBusManager>()),
+        dbus_manager_(new DBusManager()),
         adaptor_(new DeviceMockAdaptor()),
         eap_state_handler_(new NiceMock<MockSupplicantEAPStateHandler>()),
         supplicant_interface_proxy_(
@@ -275,6 +276,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     // EnableScopes... so that we can EXPECT_CALL for scoped log messages.
     ScopeLogger::GetInstance()->EnableScopesByName("wifi");
     ScopeLogger::GetInstance()->set_verbose_level(3);
+    dbus_manager_->proxy_factory_ = &proxy_factory_;
     wifi_->proxy_factory_ = &proxy_factory_;
     static_cast<Device *>(wifi_)->rtnl_handler_ = &rtnl_handler_;
     wifi_->set_dhcp_provider(&dhcp_provider_);
@@ -296,6 +298,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     // services reference a WiFi instance, creating a cycle.)
     wifi_->Stop(NULL, ResultCallback());
     wifi_->set_dhcp_provider(NULL);
+    dbus_manager_->Stop();
+    dbus_manager_->proxy_factory_ = NULL;
     // Reset scope logging, to avoid interfering with other tests.
     ScopeLogger::GetInstance()->EnableScopesByName("-wifi");
     ScopeLogger::GetInstance()->set_verbose_level(0);
@@ -389,6 +393,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   class TestProxyFactory : public ProxyFactory {
    public:
     explicit TestProxyFactory(WiFiObjectTest *test);
+
+    virtual DBusServiceProxyInterface *CreateDBusServiceProxy() {
+      return test_->dbus_service_proxy_.release();
+    }
 
     virtual SupplicantProcessProxyInterface *CreateSupplicantProcessProxy(
         const char */*dbus_path*/, const char */*dbus_addr*/) {
@@ -750,6 +758,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     EXPECT_CALL(netlink_manager_, SendNl80211Message(
         IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _));
 
+    dbus_manager_->Start();
     wifi_->supplicant_present_ = supplicant_present;
     wifi_->SetEnabled(true);  // Start(NULL, ResultCallback());
   }
@@ -763,11 +772,11 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->OnBeforeSuspend();
   }
   void OnSupplicantAppear() {
-    wifi_->OnSupplicantAppear(":1.7");
+    wifi_->OnSupplicantAppear(WPASupplicant::kDBusAddr, ":1.7");
     EXPECT_TRUE(wifi_->supplicant_present_);
   }
   void OnSupplicantVanish() {
-    wifi_->OnSupplicantVanish();
+    wifi_->OnSupplicantVanish(WPASupplicant::kDBusAddr);
     EXPECT_FALSE(wifi_->supplicant_present_);
   }
   bool GetSupplicantPresent() {
@@ -912,14 +921,15 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   static const char kSSIDName[];
   static const uint16 kRoamThreshold;
 
+  scoped_ptr<MockDBusServiceProxy> dbus_service_proxy_;
   scoped_ptr<MockSupplicantProcessProxy> supplicant_process_proxy_;
   scoped_ptr<MockSupplicantBSSProxy> supplicant_bss_proxy_;
   MockDHCPProvider dhcp_provider_;
   scoped_refptr<MockDHCPConfig> dhcp_config_;
+  DBusManager *dbus_manager_;
 
   // These pointers track mock objects owned by the WiFi device instance
   // and manager so we can perform expectations against them.
-  MockDBusManager *dbus_manager_;
   DeviceMockAdaptor *adaptor_;
   MockSupplicantEAPStateHandler *eap_state_handler_;
   MockNetlinkManager netlink_manager_;
@@ -1109,7 +1119,8 @@ TEST_F(WiFiMainTest, RoamThresholdProperty) {
 TEST_F(WiFiMainTest, OnSupplicantAppearStarted) {
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
 
-  EXPECT_CALL(*dbus_manager_, WatchName(WPASupplicant::kDBusAddr, _, _));
+  EXPECT_CALL(*dbus_service_proxy_.get(),
+              GetNameOwner(WPASupplicant::kDBusAddr, _, _, _));
   StartWiFi(false);  // No supplicant present.
   EXPECT_TRUE(GetSupplicantProcessProxy() == NULL);
 
