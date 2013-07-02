@@ -36,7 +36,7 @@ void ModemProxy::Enable(bool enable,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -50,7 +50,7 @@ void ModemProxy::ListBearers(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -66,7 +66,7 @@ void ModemProxy::CreateBearer(
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -81,7 +81,7 @@ void ModemProxy::DeleteBearer(const ::DBus::Path &bearer,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -95,7 +95,7 @@ void ModemProxy::Reset(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -110,7 +110,7 @@ void ModemProxy::FactoryReset(const std::string &code,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -125,7 +125,7 @@ void ModemProxy::SetCurrentCapabilities(const uint32_t &capabilities,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -141,7 +141,7 @@ void ModemProxy::SetCurrentModes(
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -156,7 +156,7 @@ void ModemProxy::SetCurrentBands(const std::vector<uint32_t> &bands,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -172,7 +172,7 @@ void ModemProxy::Command(const std::string &cmd,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -187,7 +187,7 @@ void ModemProxy::SetPowerState(const uint32_t &power_state,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -472,7 +472,7 @@ void ModemProxy::Proxy::EnableCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -484,7 +484,7 @@ void ModemProxy::Proxy::ListBearersCallback(
   scoped_ptr<DBusPathsCallback> callback(
       reinterpret_cast<DBusPathsCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(bearers, error);
 }
 
@@ -494,7 +494,7 @@ void ModemProxy::Proxy::CreateBearerCallback(const ::DBus::Path &path,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -503,7 +503,7 @@ void ModemProxy::Proxy::DeleteBearerCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -512,7 +512,7 @@ void ModemProxy::Proxy::ResetCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -521,7 +521,7 @@ void ModemProxy::Proxy::FactoryResetCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -531,7 +531,7 @@ void ModemProxy::Proxy::SetCurrentCapabilitesCallback(
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -540,7 +540,7 @@ void ModemProxy::Proxy::SetCurrentModesCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -549,7 +549,7 @@ void ModemProxy::Proxy::SetCurrentBandsCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -559,7 +559,7 @@ void ModemProxy::Proxy::CommandCallback(const std::string &response,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -568,7 +568,7 @@ void ModemProxy::Proxy::SetPowerStateCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 

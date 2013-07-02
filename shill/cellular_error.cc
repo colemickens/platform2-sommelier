@@ -26,7 +26,7 @@ static const char *kErrorGprsNotSubscribed =
 
 // static
 void CellularError::FromDBusError(const DBus::Error &dbus_error,
-                                   Error *error) {
+                                  Error *error) {
   if (!error)
     return;
 

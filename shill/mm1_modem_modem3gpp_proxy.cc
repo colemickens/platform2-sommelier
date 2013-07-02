@@ -31,7 +31,7 @@ void ModemModem3gppProxy::Register(const std::string &operator_id,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -46,7 +46,7 @@ void ModemModem3gppProxy::Scan(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -112,7 +112,7 @@ void ModemModem3gppProxy::Proxy::RegisterCallback(const ::DBus::Error& dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -123,7 +123,7 @@ void ModemModem3gppProxy::Proxy::ScanCallback(
   scoped_ptr<DBusPropertyMapsCallback> callback(
       reinterpret_cast<DBusPropertyMapsCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(results, error);
 }
 

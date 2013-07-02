@@ -35,7 +35,7 @@ void ModemTimeProxy::GetNetworkTime(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -76,7 +76,7 @@ void ModemTimeProxy::Proxy::GetNetworkTimeCallback(const string &time,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<StringCallback> callback(reinterpret_cast<StringCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(time, error);
 }
 

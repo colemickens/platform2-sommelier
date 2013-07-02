@@ -553,6 +553,7 @@ SHILL_OBJS += $(addprefix $(BUILDDIR)/, \
 	cellular_capability_universal.o \
 	cellular_capability_universal_cdma.o \
 	cellular_error.o \
+	cellular_error_mm1.o \
 	cellular_operator_info.o \
 	cellular_service.o \
 	dbus_objectmanager_proxy.o \
@@ -584,6 +585,7 @@ TEST_OBJS += $(addprefix $(BUILDDIR)/, \
 	cellular_capability_gsm_unittest.o \
 	cellular_capability_universal_cdma_unittest.o \
 	cellular_capability_universal_unittest.o \
+	cellular_error_unittest.o \
 	cellular_operator_info_unittest.o \
 	cellular_service_unittest.o \
 	cellular_unittest.o \

@@ -30,7 +30,7 @@ void ModemModemCdmaProxy::Activate(const std::string &carrier,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -46,7 +46,7 @@ void ModemModemCdmaProxy::ActivateManual(
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -151,7 +151,7 @@ void ModemModemCdmaProxy::Proxy::ActivateCallback(const ::DBus::Error& dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -161,7 +161,7 @@ void ModemModemCdmaProxy::Proxy::ActivateManualCallback(
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 

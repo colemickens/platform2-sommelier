@@ -32,7 +32,7 @@ void ModemLocationProxy::Setup(uint32_t sources,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -48,7 +48,7 @@ void ModemLocationProxy::GetLocation(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -106,7 +106,7 @@ void ModemLocationProxy::Proxy::SetupCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -118,7 +118,7 @@ void ModemLocationProxy::Proxy::GetLocationCallback(
   scoped_ptr<DBusEnumValueMapCallback> callback(
       reinterpret_cast<DBusEnumValueMapCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(location, error);
 }
 

@@ -32,7 +32,7 @@ void BearerProxy::Connect(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -47,7 +47,7 @@ void BearerProxy::Disconnect(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -137,7 +137,7 @@ void BearerProxy::Proxy::ConnectCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -146,7 +146,7 @@ void BearerProxy::Proxy::DisconnectCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 

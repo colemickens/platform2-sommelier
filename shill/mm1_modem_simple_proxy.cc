@@ -31,7 +31,7 @@ void ModemSimpleProxy::Connect(
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -46,7 +46,7 @@ void ModemSimpleProxy::Disconnect(const ::DBus::Path &bearer,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -60,7 +60,7 @@ void ModemSimpleProxy::GetStatus(Error *error,
     cb.release();
   } catch (const DBus::Error &e) {
     if (error)
-      CellularError::FromDBusError(e, error);
+      CellularError::FromMM1DBusError(e, error);
   }
 }
 
@@ -82,7 +82,7 @@ void ModemSimpleProxy::Proxy::ConnectCallback(const ::DBus::Path &bearer,
   scoped_ptr<DBusPathCallback> callback(
       reinterpret_cast<DBusPathCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(bearer, error);
 }
 
@@ -91,7 +91,7 @@ void ModemSimpleProxy::Proxy::DisconnectCallback(const ::DBus::Error &dberror,
   SLOG(DBus, 2) << __func__;
   scoped_ptr<ResultCallback> callback(reinterpret_cast<ResultCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(error);
 }
 
@@ -103,7 +103,7 @@ void ModemSimpleProxy::Proxy::GetStatusCallback(
   scoped_ptr<DBusPropertyMapCallback> callback(
       reinterpret_cast<DBusPropertyMapCallback *>(data));
   Error error;
-  CellularError::FromDBusError(dberror, &error);
+  CellularError::FromMM1DBusError(dberror, &error);
   callback->Run(properties, error);
 }
 
