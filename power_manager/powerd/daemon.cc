@@ -80,11 +80,17 @@ std::string GetPowerStatusBatteryDebugString(
   std::string output;
   switch (status.external_power) {
     case PowerSupplyProperties_ExternalPower_AC:
-      output = "On AC (" + status.line_power_type + ") with battery at ";
+    case PowerSupplyProperties_ExternalPower_USB: {
+      const char* type = (status.external_power ==
+          PowerSupplyProperties_ExternalPower_AC) ? "AC" : "USB";
+      output = StringPrintf("On %s (%s", type, status.line_power_type.c_str());
+      if (status.line_power_current || status.line_power_voltage) {
+        output += StringPrintf(", %.3fA at %.1fV",
+            status.line_power_current, status.line_power_voltage);
+      }
+      output += ") with battery at ";
       break;
-    case PowerSupplyProperties_ExternalPower_USB:
-      output = "On USB (" + status.line_power_type + ") with battery at ";
-      break;
+    }
     case PowerSupplyProperties_ExternalPower_DISCONNECTED:
       output = "On battery at ";
       break;

@@ -90,12 +90,12 @@ bool ReadInt64(const base::FilePath& directory,
 }
 
 // Reads an integer value and scales it to a double (see |kDoubleScaleFactor|.
-// Returns -1.0 on failure.
+// Returns 0.0 on failure.
 double ReadScaledDouble(const base::FilePath& directory,
                         const std::string& filename) {
   int64 value = 0;
   return ReadInt64(directory, filename, &value) ?
-      kDoubleScaleFactor * value : -1.;
+      kDoubleScaleFactor * value : 0.0;
 }
 
 // Computes time remaining based on energy drain rate.
@@ -320,6 +320,10 @@ bool PowerSupply::UpdatePowerStatus() {
       status.external_power = IsUsbType(status.line_power_type) ?
           PowerSupplyProperties_ExternalPower_USB:
           PowerSupplyProperties_ExternalPower_AC;
+      status.line_power_voltage =
+          ReadScaledDouble(line_power_path_, "voltage_now");
+      status.line_power_current =
+          ReadScaledDouble(line_power_path_, "current_now");
     } else {
       status.external_power = PowerSupplyProperties_ExternalPower_DISCONNECTED;
     }
@@ -353,7 +357,7 @@ bool PowerSupply::UpdatePowerStatus() {
   // The battery voltage used in calculating time remaining.  This may or may
   // not be the same as the instantaneous voltage |battery_voltage|, as voltage
   // levels vary over the time the battery is charged or discharged.
-  double nominal_voltage = -1.0;
+  double nominal_voltage = 0.0;
   if (file_util::PathExists(battery_path_.Append("voltage_min_design")))
     nominal_voltage = ReadScaledDouble(battery_path_, "voltage_min_design");
   else if (file_util::PathExists(battery_path_.Append("voltage_max_design")))

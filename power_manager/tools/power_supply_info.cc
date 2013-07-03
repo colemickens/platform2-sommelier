@@ -141,6 +141,8 @@ int main(int argc, char** argv) {
     default:
       display.PrintStringValue("enum type", "Unknown");
   }
+  display.PrintValue("voltage (V)", power_status.line_power_voltage);
+  display.PrintValue("current (A)", power_status.line_power_current);
 
   if (power_status.battery_is_present) {
     display.SetIndent(0, 0);

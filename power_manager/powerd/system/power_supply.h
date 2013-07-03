@@ -33,6 +33,8 @@ namespace system {
 struct PowerStatus {
   PowerStatus()
       : line_power_on(false),
+        line_power_voltage(0.0),
+        line_power_current(0.0),
         battery_energy(0.0),
         battery_energy_rate(0.0),
         battery_voltage(0.0),
@@ -56,6 +58,10 @@ struct PowerStatus {
   bool line_power_on;
   std::string line_power_type;
 
+  // Line power statistics. These may be unset even if line power is connected.
+  double line_power_voltage;  // In volts.
+  double line_power_current;  // In amperes.
+
   // Amount of energy, measured in Wh, in the battery.
   double battery_energy;
 
@@ -64,9 +70,9 @@ struct PowerStatus {
   double battery_energy_rate;
 
   // Current battery levels.
-  double battery_voltage;  // in volts.
-  double battery_current;  // in amperes.
-  double battery_charge;  // in ampere-hours.
+  double battery_voltage;  // In volts.
+  double battery_current;  // In amperes.
+  double battery_charge;   // In ampere-hours.
 
   // Battery full charge level in ampere-hours.
   double battery_charge_full;
