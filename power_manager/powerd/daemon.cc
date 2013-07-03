@@ -36,7 +36,6 @@
 #include "power_manager/powerd/policy/state_controller.h"
 #include "power_manager/powerd/system/audio_client.h"
 #include "power_manager/powerd/system/input.h"
-#include "video_activity_update.pb.h"
 
 namespace power_manager {
 
@@ -989,14 +988,8 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
   if (!dbus_message_get_args(message, &error,
                              DBUS_TYPE_BOOLEAN, &is_fullscreen,
                              DBUS_TYPE_INVALID)) {
+    LOG(WARNING) << "Unable to read " << kHandleVideoActivityMethod << "args";
     dbus_error_free(&error);
-
-    // TODO(derat): Remove this protobuf after Chrome is sending a bool.
-    VideoActivityUpdate protobuf;
-    if (util::ParseProtocolBufferFromDBusMessage(message, &protobuf))
-      is_fullscreen = protobuf.is_fullscreen();
-    else
-      LOG(WARNING) << "Unable to read " << kHandleVideoActivityMethod << "args";
   }
 
   if (keyboard_controller_)
