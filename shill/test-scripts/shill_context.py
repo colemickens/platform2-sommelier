@@ -46,7 +46,7 @@ class ServiceAutoConnectContext(object):
             raise ContextError('Could not obtain a service object.')
 
         service_properties = service.GetProperties()
-        self._initial_autoconnect = shill_proxy.dbus2primitive(
+        self._initial_autoconnect = shill_proxy.ShillProxy.dbus2primitive(
             service_properties[
                 shill_proxy.ShillProxy.SERVICE_PROPERTY_AUTOCONNECT])
         if self._initial_autoconnect != self._autoconnect:
