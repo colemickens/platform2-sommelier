@@ -6,8 +6,7 @@
 
 namespace cryptohome {
 
-MockPlatform::MockPlatform()
-    : mock_enumerator_(new NiceMock<MockFileEnumerator>()) {
+MockPlatform::MockPlatform() : mock_enumerator_(new MockFileEnumerator()) {
   ON_CALL(*this, GetOwnership(_, _, _))
       .WillByDefault(Invoke(this, &MockPlatform::MockGetOwnership));
   ON_CALL(*this, SetOwnership(_, _, _))

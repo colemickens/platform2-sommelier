@@ -507,16 +507,12 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   // does not exist, it is created and initialzed with the correct
   // values. If the directory or its attributes cannot be checked,
   // set or created, a fatal error has occured and the function
-  // returns false.  If the directory does not exist and a legacy directory
-  // exists, the legacy directory will be moved to the new location.
+  // returns false.
   //
   // Parameters
   //   dir - directory to check
-  //   legacy_dir - legacy directory location
   //   permissions_check - set to false if permissions, uid or gid is incorrect
-  bool CheckChapsDirectory(const std::string& dir,
-                           const std::string& legacy_dir,
-                           bool* permissions_check);
+  bool CheckChapsDirectory(const std::string& dir, bool* permissions_check);
 
   // Ensures that the device policy is loaded.
   //
@@ -781,7 +777,6 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   FRIEND_TEST(MountTest,
               CheckChapsDirectoryCalledWithExistingDirWithFatalError);
   FRIEND_TEST(MountTest, CheckChapsDirectoryCalledWithExistingDir);
-  FRIEND_TEST(MountTest, CheckChapsDirectoryMigration);
 
   DISALLOW_COPY_AND_ASSIGN(Mount);
 };

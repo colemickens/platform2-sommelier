@@ -295,10 +295,6 @@ class Platform {
   // Copies from to to.
   virtual bool Copy(const std::string& from, const std::string& to);
 
-  // Copies and retains permissions and ownership.
-  virtual bool CopyWithPermissions(const std::string& from,
-                                   const std::string& to);
-
   // Moves a given path on the filesystem
   //
   // Parameters
