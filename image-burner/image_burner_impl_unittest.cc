@@ -93,6 +93,17 @@ class ImageBurnerImplTest : public ::testing::Test {
         .WillOnce(Return(true));
   }
 
+  virtual void SetUpOpenAndCloseMocksForSDCard() {
+    EXPECT_CALL(reader_, Open("some_path"))
+       .WillOnce(Return(true));
+    EXPECT_CALL(writer_, Close())
+        .WillOnce(Return(true));
+    EXPECT_CALL(reader_, Close())
+        .WillOnce(Return(true));
+    EXPECT_CALL(writer_, Open("/dev/mmcblk0"))
+        .WillOnce(Return(true));
+  }
+
  protected:
   scoped_ptr<BurnerImpl> burner_;
   MockFileSystemWriter writer_;
@@ -137,6 +148,24 @@ TEST_F(ImageBurnerImplTest, TargetNotAParent1) {
 TEST_F(ImageBurnerImplTest, TargetNotAParent2) {
   SetFinishedSignalExpectation("/dev/sdb1", false);
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb1"),
+            imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
+}
+
+TEST_F(ImageBurnerImplTest, TargetNotAParent3) {
+  SetFinishedSignalExpectation("/dev/mmcblk0p1", false);
+  EXPECT_EQ(burner_->BurnImage("some_path", "/dev/mmcblk0p1"),
+            imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
+}
+
+TEST_F(ImageBurnerImplTest, TargetEqualsPrefix1) {
+  SetFinishedSignalExpectation("/dev/sd", false);
+  EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sd"),
+            imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
+}
+
+TEST_F(ImageBurnerImplTest, TargetEqualsPrefix2) {
+  SetFinishedSignalExpectation("/dev/mmcblk", false);
+  EXPECT_EQ(burner_->BurnImage("some_path", "/dev/mmcblk"),
             imageburn::IMAGEBURN_ERROR_INVALID_TARGET_PATH);
 }
 
@@ -534,6 +563,43 @@ TEST_F(ImageBurnerImplTest, FileSizeNotDivisibleByDAtaBlockSize) {
       .RetiresOnSaturation();
 
   EXPECT_EQ(burner_->BurnImage("some_path", "/dev/sdb"),
+            imageburn::IMAGEBURN_OK);
+}
+
+TEST_F(ImageBurnerImplTest, FileSizeNotDivisibleByDAtaBlockSizeSDCard) {
+  SetFinishedSignalExpectation("/dev/mmcblk0", true);
+  SetUpOpenAndCloseMocksForSDCard();
+
+  EXPECT_CALL(reader_, GetSize())
+      .WillOnce(Return(17));
+  EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
+      .WillOnce(Return(0));
+  EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
+      .WillOnce(DoAll(SetArgCharString(kDataBlockLength1),
+                      Return(1)))
+      .RetiresOnSaturation();;
+  EXPECT_CALL(reader_, Read(_, kTestDataBlockSize))
+      .Times(2)
+      .WillRepeatedly(DoAll(SetArgCharString(kDataBlockLength8),
+                            Return(kTestDataBlockSize)))
+      .RetiresOnSaturation();
+  EXPECT_CALL(writer_, Write(StrEq(kDataBlockLength1), 1))
+      .WillOnce(Return(1));
+  EXPECT_CALL(writer_, Write(StrEq(kDataBlockLength8), kTestDataBlockSize))
+      .Times(2)
+      .WillRepeatedly(Return(kTestDataBlockSize))
+      .RetiresOnSaturation();
+  EXPECT_CALL(signal_sender_, SendProgressSignal(17, 17, "/dev/mmcblk0"))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(signal_sender_, SendProgressSignal(16, 17, "/dev/mmcblk0"))
+      .Times(1)
+      .RetiresOnSaturation();
+  EXPECT_CALL(signal_sender_, SendProgressSignal(8, 17, "/dev/mmcblk0"))
+      .Times(1)
+      .RetiresOnSaturation();
+
+  EXPECT_EQ(burner_->BurnImage("some_path", "/dev/mmcblk0"),
             imageburn::IMAGEBURN_OK);
 }
 

@@ -6,13 +6,16 @@
 
 #include <cstring>
 #include <ctype.h>
+#include <regex.h>
 #include <base/basictypes.h>
 #include <base/logging.h>
 
 namespace imageburn {
 const int kBurningBlockSize = 4 * 1024;  // 4 KiB
 
-const char* kFilePathPrefix = "/dev/sd";
+const char* kFilePathPatterns[] =
+    { "/dev/sd[a-z]+$", "/dev/mmcblk[0-9]+$" };
+const int kFilePathPatternCount = 2;
 
 BurnerImpl::BurnerImpl(FileSystemWriter* writer,
                        FileSystemReader* reader,
@@ -57,22 +60,24 @@ bool BurnerImpl::ValidateTargetPath(const char* path, ErrorCode* error) {
     return false;
   }
 
-  int file_prefix_len = strlen(kFilePathPrefix);
-  if (strncmp(path, kFilePathPrefix, file_prefix_len) != 0 ||
-      strlen(path) == file_prefix_len) {
-    *error = IMAGEBURN_ERROR_INVALID_TARGET_PATH;
-    LOG(ERROR) << "Target path is not valid file path.";
-    return false;
+  // Check if path conforms to a valid regex.
+  bool is_pattern_valid = false;
+  for (int i = 0; i < kFilePathPatternCount; ++i) {
+    regex_t re;
+    int status = regcomp(&re, kFilePathPatterns[i], REG_EXTENDED);
+    DCHECK(status == 0);
+    status = regexec(&re, path, 0, NULL, 0);
+    regfree(&re);
+    if (status == 0) {
+      is_pattern_valid = true;
+      break;
+    }
   }
 
-  int i = file_prefix_len;
-  while (path[i]) {
-    if (!islower(path[i])) {
-      *error = IMAGEBURN_ERROR_INVALID_TARGET_PATH;
-      LOG(ERROR) << "Target path is not valid file path.";
-      return false;
-    }
-    i++;
+  if (!is_pattern_valid) {
+    *error = IMAGEBURN_ERROR_INVALID_TARGET_PATH;
+    LOG(ERROR) << "Target path does not have a valid file path pattern.";
+    return false;
   }
 
   std::string root_path;
