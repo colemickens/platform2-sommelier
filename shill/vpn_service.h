@@ -52,11 +52,17 @@ class VPNService : public Service {
   friend class VPNServiceTest;
   FRIEND_TEST(VPNServiceTest, GetDeviceRpcId);
   FRIEND_TEST(VPNServiceTest, SetConnection);
+  FRIEND_TEST(VPNServiceTest, GetPhysicalTechologyPropertyFailsIfNoCarrier);
+  FRIEND_TEST(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi);
 
   static const char kAutoConnNeverConnected[];
   static const char kAutoConnVPNAlreadyActive[];
 
   virtual std::string GetDeviceRpcId(Error *error);
+
+  // Returns the Type name of the lowest connection (presumably the "physical"
+  // connection) that this service depends on.
+  std::string GetPhysicalTechologyProperty(Error *error);
 
   std::string storage_id_;
   scoped_ptr<VPNDriver> driver_;

@@ -17,6 +17,7 @@ using base::Bind;
 using base::Closure;
 using base::Unretained;
 using std::deque;
+using std::set;
 using std::string;
 using std::vector;
 
@@ -506,6 +507,26 @@ void Connection::DetachBinder(Binder *binder) {
       return;
     }
   }
+}
+
+ConnectionRefPtr Connection::GetCarrierConnection() {
+  SLOG(Connection, 2) << __func__ << " @ " << interface_name_;
+  set<Connection *> visited;
+  ConnectionRefPtr carrier = this;
+  while (carrier->GetLowerConnection()) {
+    if (ContainsKey(visited, carrier.get())) {
+      LOG(ERROR) << "Circular connection chain starting at: "
+                 << carrier->interface_name();
+      // If a loop is detected return a NULL value to signal that the carrier
+      // connection is unknown.
+      return NULL;
+    }
+    visited.insert(carrier.get());
+    carrier = carrier->GetLowerConnection();
+  }
+  SLOG(Connection, 2) << "Carrier connection: " << carrier->interface_name()
+                      << " @ " << interface_name_;
+  return carrier;
 }
 
 }  // namespace shill

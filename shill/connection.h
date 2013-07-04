@@ -102,7 +102,11 @@ class Connection : public base::RefCounted<Connection> {
 
   virtual const IPAddress &local() const { return local_; }
   virtual const IPAddress &gateway() const { return gateway_; }
-  Technology::Identifier technology() const { return technology_; }
+  virtual Technology::Identifier technology() const { return technology_; }
+
+  // Return the lowest connection on which this connection depends. In case of
+  // error, a NULL is returned.
+  virtual ConnectionRefPtr GetCarrierConnection();
 
  protected:
   friend class base::RefCounted<Connection>;
@@ -117,6 +121,7 @@ class Connection : public base::RefCounted<Connection> {
   FRIEND_TEST(ConnectionTest, Binders);
   FRIEND_TEST(ConnectionTest, Destructor);
   FRIEND_TEST(ConnectionTest, FixGatewayReachability);
+  FRIEND_TEST(ConnectionTest, GetCarrierConnection);
   FRIEND_TEST(ConnectionTest, InitState);
   FRIEND_TEST(ConnectionTest, OnRouteQueryResponse);
   FRIEND_TEST(ConnectionTest, RequestHostRoute);

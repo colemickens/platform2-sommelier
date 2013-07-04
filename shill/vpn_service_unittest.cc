@@ -24,6 +24,7 @@
 
 using std::string;
 using testing::_;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::ReturnRef;
@@ -341,6 +342,53 @@ TEST_F(VPNServiceTest, PropertyChanges) {
 // the new value is the same as the old value.
 TEST_F(VPNServiceTest, CustomSetterNoopChange) {
   TestCustomSetterNoopChange(service_, &manager_);
+}
+
+TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyFailsIfNoCarrier) {
+  scoped_refptr<Connection> null_connection;
+
+  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
+  service_->SetConnection(connection_);
+  EXPECT_EQ(connection_.get(), service_->connection().get());
+
+  // Simulate an error in the GetCarrierConnection() returning a NULL reference.
+  EXPECT_CALL(*connection_, GetCarrierConnection())
+      .WillOnce(Return(null_connection));
+
+  Error error;
+  EXPECT_EQ("", service_->GetPhysicalTechologyProperty(&error));
+  EXPECT_EQ(Error::kOperationFailed, error.type());
+}
+
+TEST_F(VPNServiceTest, GetPhysicalTechologyPropertyOverWifi) {
+  scoped_refptr<NiceMock<MockConnection>> lower_connection_ =
+      new NiceMock<MockConnection>(&device_info_);
+
+  EXPECT_CALL(*connection_, technology())
+      .Times(0);
+  EXPECT_CALL(*connection_, GetCarrierConnection())
+      .WillOnce(Return(lower_connection_));
+
+  EXPECT_CALL(*sockets_, Socket(_, _, _)).WillOnce(Return(-1));
+  service_->SetConnection(connection_);
+  EXPECT_EQ(connection_.get(), service_->connection().get());
+
+  // Set the type of the lower connection to "wifi" and expect that type to be
+  // returned by GetPhysical TechnologyProperty().
+  EXPECT_CALL(*lower_connection_, technology())
+      .WillOnce(Return(Technology::kWifi));
+
+  Error error;
+  EXPECT_EQ(flimflam::kTypeWifi,
+            service_->GetPhysicalTechologyProperty(&error));
+  EXPECT_TRUE(error.IsSuccess());
+
+  // Clear expectations now, so the Return(lower_connection_) action releases
+  // the reference to |lower_connection_| allowing it to be destroyed now.
+  Mock::VerifyAndClearExpectations(connection_);
+  // Destroying the |lower_connection_| at function exit will also call an extra
+  // FlushAddresses on the |device_info_| object.
+  EXPECT_CALL(device_info_, FlushAddresses(0));
 }
 
 }  // namespace shill

@@ -870,4 +870,34 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
   connection = NULL;
 }
 
+TEST_F(ConnectionTest, GetCarrierConnection) {
+  EXPECT_EQ(connection_.get(), connection_->GetCarrierConnection().get());
+
+  ConnectionRefPtr connection1 = GetNewConnection();
+  ConnectionRefPtr connection2 = GetNewConnection();
+  ConnectionRefPtr connection3 = GetNewConnection();
+
+  connection_->lower_binder_.Attach(connection1);
+  EXPECT_EQ(connection1.get(), connection_->GetCarrierConnection().get());
+
+  connection1->lower_binder_.Attach(connection2);
+  EXPECT_EQ(connection2.get(), connection_->GetCarrierConnection().get());
+
+  connection2->lower_binder_.Attach(connection3);
+  EXPECT_EQ(connection3.get(), connection_->GetCarrierConnection().get());
+
+  // Create a cycle back to |connection1|.
+  connection3->lower_binder_.Attach(connection1);
+  EXPECT_EQ(NULL, connection_->GetCarrierConnection().get());
+
+  AddDestructorExpectations();
+  connection3 = NULL;
+
+  AddDestructorExpectations();
+  connection2 = NULL;
+
+  AddDestructorExpectations();
+  connection1 = NULL;
+}
+
 }  // namespace shill

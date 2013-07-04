@@ -13,6 +13,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/profile.h"
+#include "shill/property_accessor.h"
 #include "shill/technology.h"
 #include "shill/vpn_driver.h"
 #include "shill/vpn_provider.h"
@@ -38,6 +39,13 @@ VPNService::VPNService(ControlInterface *control,
   SetConnectable(true);
   set_save_credentials(false);
   mutable_store()->RegisterString(flimflam::kVPNDomainProperty, &vpn_domain_);
+  mutable_store()->RegisterDerivedString(
+          kPhysicalTechnologyProperty,
+          StringAccessor(
+              new CustomAccessor<VPNService, string>(
+                  this,
+                  &VPNService::GetPhysicalTechologyProperty,
+                  NULL)));
 }
 
 VPNService::~VPNService() {}
@@ -190,6 +198,21 @@ bool VPNService::SetNameProperty(const string &name, Error *error) {
   profile()->DeleteEntry(old_storage_id, NULL);
   profile()->UpdateService(this);
   return true;
+}
+
+string VPNService::GetPhysicalTechologyProperty(Error *error) {
+  ConnectionRefPtr conn = connection();
+  if (conn)
+    conn = conn->GetCarrierConnection();
+
+  if (!conn) {
+    Error::PopulateAndLog(error,
+                          Error::kOperationFailed,
+                          Error::GetDefaultMessage(Error::kOperationFailed));
+    return "";
+  }
+
+  return Technology::NameFromIdentifier(conn->technology());
 }
 
 }  // namespace shill

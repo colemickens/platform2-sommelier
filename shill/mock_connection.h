@@ -29,7 +29,9 @@ class MockConnection : public Connection {
   MOCK_METHOD1(RequestHostRoute, bool(const IPAddress &destination));
   MOCK_CONST_METHOD0(local, const IPAddress &());
   MOCK_CONST_METHOD0(gateway, const IPAddress &());
+  MOCK_CONST_METHOD0(technology, Technology::Identifier());
   MOCK_METHOD0(CreateGatewayRoute, bool());
+  MOCK_METHOD0(GetCarrierConnection, ConnectionRefPtr());
 
  private:
   DISALLOW_COPY_AND_ASSIGN(MockConnection);

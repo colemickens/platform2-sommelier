@@ -111,6 +111,8 @@ class LinkMonitorTest : public Test {
     EXPECT_CALL(*connection_, local()).WillRepeatedly(ReturnRef(local_ip_));
     EXPECT_TRUE(gateway_ip_.SetAddressFromString(kRemoteIPAddress));
     EXPECT_CALL(*connection_, gateway()).WillRepeatedly(ReturnRef(gateway_ip_));
+    EXPECT_CALL(*connection_, technology())
+        .WillRepeatedly(Return(Technology::kEthernet));
   }
 
   virtual void TearDown() {

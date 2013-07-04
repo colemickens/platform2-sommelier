@@ -1003,6 +1003,13 @@ Properties	boolean AutoConnect [readwrite]
 
                         [We will be supporting this soon for VPN]
 
+		string PhysicalTechnology [readonly, optional]
+
+			If the service type is "vpn" and the service is
+			connected, this property is present and exposes the
+			Type property of the underliying physical service used.
+			Otherwise the property is not present.
+
 		int32 Priority [readwrite]
 
 			An optional value used to calculate the priority order
