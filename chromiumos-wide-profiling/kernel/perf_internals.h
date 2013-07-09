@@ -192,6 +192,7 @@ struct sample_event{
 #define ALIGN(x,a)		__ALIGN_MASK(x,(typeof(x))(a)-1)
 #define __ALIGN_MASK(x,mask)	(((x)+(mask))&~(mask))
 
+// If this is changed, kBuildIDArraySize in perf_reader.h must also be changed.
 #define BUILD_ID_SIZE 20
 
 struct build_id_event {

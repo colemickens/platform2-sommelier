@@ -32,6 +32,9 @@ const int kFileReadSize = 1024;
 // Newline character.
 const char kNewLineDelimiter = '\n';
 
+// Number of hex digits in a byte.
+const int kNumHexDigitsInByte = 2;
+
 // Trim leading and trailing whitespace from |str|.
 void TrimWhitespace(string* str) {
   const char kWhitespaceCharacters[] = " \t\n\r";
@@ -144,27 +147,6 @@ bool GetPerfReport(const string& filename, std::vector<string>* output,
       TrimWhitespace(&line);
       output->push_back(line);
     }
-  }
-
-  return true;
-}
-
-// Given a perf data file, get the list of build ids and read it into a string.
-bool GetPerfBuildIDList(const string& filename, string* output) {
-  // Redirecting stderr does lose warnings and errors, but serious errors should
-  // be caught by the return value of perf report.
-  string cmd = string(kPerfBuildIDCommand) + filename + " 2>/dev/null";
-  std::vector<char> stdout;
-  if (!quipper::RunCommandAndGetStdout(cmd, &stdout))
-    return false;
-  std::vector<string> lines;
-  SeparateLines(stdout, &lines);
-
-  output->clear();
-  for (size_t i = 0; i < lines.size(); ++i) {
-    string line = lines[i];
-    TrimWhitespace(&line);
-    *output += line + kNewLineDelimiter;
   }
 
   return true;
@@ -286,6 +268,12 @@ const char* kSupportedMetadata[] = {
   "cmdline",
   NULL,
 };
+
+build_id_event* CallocMemoryForBuildID(size_t size) {
+  build_id_event* event = reinterpret_cast<build_id_event*>(calloc(1, size));
+  CHECK(event);
+  return event;
+}
 
 uint64 Md5Prefix(const string& input) {
   uint64 digest_prefix = 0;
@@ -449,16 +437,73 @@ bool ComparePipedPerfReports(const string& quipper_input,
   return (input_index == input_size) && (output_index == output_size);
 }
 
+bool GetPerfBuildIDMap(const string& filename,
+                       std::map<string, string>* output) {
+  // Redirecting stderr does lose warnings and errors, but serious errors should
+  // be caught by the return value of perf report.
+  string cmd = string(kPerfBuildIDCommand) + filename + " 2>/dev/null";
+  std::vector<char> stdout;
+  if (!quipper::RunCommandAndGetStdout(cmd, &stdout))
+    return false;
+  std::vector<string> lines;
+  SeparateLines(stdout, &lines);
+
+  /* The output now looks like the following:
+     cff4586f322eb113d59f54f6e0312767c6746524 [kernel.kallsyms]
+     c099914666223ff6403882604c96803f180688f5 /lib64/libc-2.15.so
+     7ac2d19f88118a4970adb48a84ed897b963e3fb7 /lib64/libpthread-2.15.so
+  */
+  output->clear();
+  for (size_t i = 0; i < lines.size(); ++i) {
+    string line = lines[i];
+    TrimWhitespace(&line);
+    size_t separator = line.find(' ');
+    string build_id = line.substr(0, separator);
+    string filename = line.substr(separator + 1);
+    (*output)[filename] = build_id;
+  }
+
+  return true;
+}
+
 bool ComparePerfBuildIDLists(const string& file1, const string& file2) {
   const string* files[] = { &file1, &file2 };
-  std::map<string, string> outputs;
+  std::map<string, std::map<string, string> > outputs;
 
   // Generate a build id list for each file.
   for (unsigned int i = 0; i < arraysize(files); ++i)
-    CHECK(GetPerfBuildIDList(*files[i], &outputs[*files[i]]));
+    CHECK(GetPerfBuildIDMap(*files[i], &outputs[*files[i]]));
 
   // Compare the output strings.
   return outputs[file1] == outputs[file2];
+}
+
+string HexToString(const u8* array, size_t length) {
+  // Convert the bytes to hex digits one at a time.
+  // There will be kNumHexDigitsInByte hex digits, and 1 char for NUL.
+  char buffer[kNumHexDigitsInByte + 1];
+  string result = "";
+  for (size_t i = 0; i < length; ++i) {
+    snprintf(buffer, sizeof(buffer), "%02x", array[i]);
+    result += buffer;
+  }
+  return result;
+}
+
+bool StringToHex(const string& str, u8* array, size_t length) {
+  const int kHexRadix = 16;
+  char* err;
+  // Loop through kNumHexDigitsInByte characters at a time (to get one byte)
+  // Stop when there are no more characters, or the array has been filled.
+  for (size_t i = 0;
+       (i + 1) * kNumHexDigitsInByte <= str.size() && i < length;
+       ++i) {
+    string one_byte = str.substr(i * kNumHexDigitsInByte, kNumHexDigitsInByte);
+    array[i] = strtol(one_byte.c_str(), &err, kHexRadix);
+    if (*err)
+      return false;
+  }
+  return true;
 }
 
 uint64 AlignSize(uint64 size, uint32 align_size) {

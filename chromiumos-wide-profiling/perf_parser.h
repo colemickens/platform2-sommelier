@@ -95,6 +95,19 @@ class PerfParser : public PerfReader {
   // |filenames|.  Any existing data in |filenames| will be lost.
   void GetFilenames(std::vector<string>* filenames) const;
 
+  // Stores the mapping from filenames to build ids in build_id_events_.
+  // Returns true on success.
+  // Note: If |filenames_to_build_ids| contains a mapping for a filename for
+  // which there is already a build_id_event in build_id_events_, a duplicate
+  // build_id_event will be created, and the old build_id_event will NOT be
+  // deleted.
+  bool InjectBuildIDs(const std::map<string, string>& filenames_to_build_ids);
+
+  // Replaces existing filenames with filenames from |build_ids_to_filenames|
+  // by joining on build ids.  If a build id in |build_ids_to_filenames| is not
+  // present in this parser, it is ignored.
+  bool Localize(const std::map<string, string>& build_ids_to_filenames);
+
  protected:
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.
@@ -115,6 +128,10 @@ class PerfParser : public PerfReader {
                                       uint64* offset);
 
   void ResetAddressMappers();
+
+  // Replaces existing filenames based on |filename_map|.  Used by Localize.
+  // This method does not change |build_id_events_|.
+  bool LocalizeUsingFilenames(const std::map<string, string>& filename_map);
 
   std::vector<ParsedEvent> parsed_events_;
   std::vector<ParsedEvent*> parsed_events_sorted_by_time_;

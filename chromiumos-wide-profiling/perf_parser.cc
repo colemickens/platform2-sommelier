@@ -5,6 +5,7 @@
 #include "perf_parser.h"
 
 #include <algorithm>
+#include <cstdio>
 #include <set>
 
 #include "base/logging.h"
@@ -89,6 +90,86 @@ void PerfParser::GetFilenames(std::vector<string>* filenames) const {
   filenames->clear();
   filenames->insert(filenames->begin(), filename_set.begin(),
                     filename_set.end());
+}
+
+bool PerfParser::InjectBuildIDs(
+    const std::map<string, string>& filenames_to_build_ids) {
+  if (!build_id_events_.events.empty()) {
+    LOG(WARNING) << "Build ids are already present, ignoring new build ids.";
+    return false;
+  }
+  // Since build ids were not present before, metadata mask has to be updated.
+  metadata_mask_ |= (1 << HEADER_BUILD_ID);
+  build_id_events_.type = HEADER_BUILD_ID;
+  build_id_events_.size = 0;
+
+  std::map<string, string>::const_iterator it;
+  for (it = filenames_to_build_ids.begin();
+       it != filenames_to_build_ids.end();
+       ++it) {
+    // Figure out amount of memory needed and allocate it.
+    size_t len = GetUint64AlignedStringLength(it->first);
+    size_t size = sizeof(build_id_event) + len;
+    build_id_event* event = CallocMemoryForBuildID(size);
+
+    // Fill in the fields appropriately.
+    // Misc and pid fields are currently not important, so ignore them.
+    // However, perf expects a non-zero misc, so always set it to kernel.
+    event->header.type = HEADER_BUILD_ID;
+    event->header.misc = PERF_RECORD_MISC_KERNEL;
+    event->header.size = size;
+    if (!StringToHex(it->second, event->build_id, arraysize(event->build_id)))
+      return false;
+    CHECK_GT(snprintf(event->filename, len, "%s", it->first.c_str()), 0);
+
+    build_id_events_.events.push_back(event);
+    build_id_events_.size += size;
+  }
+
+  return true;
+}
+
+bool PerfParser::Localize(
+    const std::map<string, string>& build_ids_to_filenames) {
+  std::map<string, string> filename_map;
+  std::map<string, string>::const_iterator it;
+  for (it = build_ids_to_filenames.begin();
+       it != build_ids_to_filenames.end();
+       ++it) {
+    // Search for the corresponding build id event
+    for (size_t i = 0; i < build_id_events_.events.size(); ++i) {
+      build_id_event* event = build_id_events_.events[i];
+      string build_id = HexToString(event->build_id, kBuildIDArraySize);
+      if (build_id != it->first.substr(0, kBuildIDStringLength))
+        continue;
+
+      // We have found the build id event.
+      filename_map[string(event->filename)] = it->second;
+      size_t new_len = GetUint64AlignedStringLength(it->second);
+      size_t new_size = sizeof(*event) + new_len;
+
+      // If we don't have enough memory, allocate more memory, and switch the
+      // new pointer with the existing pointer.
+      if (new_size > event->header.size) {
+        build_id_event* new_event = CallocMemoryForBuildID(new_size);
+        build_id_events_.events[i] = new_event;
+        build_id_events_.size += (new_size - event->header.size);
+        // Copy everything but the filename.
+        *new_event = *event;
+        free(event);
+        event = new_event;
+      }
+      // Here, event is the pointer to the build_id_event that we are keeping.
+      // Copy the new filename and fix the size.
+      event->header.size = new_size;
+      CHECK_GT(snprintf(event->filename, new_len, "%s", it->second.c_str()),
+               0);
+      break;
+    }
+  }
+
+  LocalizeUsingFilenames(filename_map);
+  return true;
 }
 
 void PerfParser::SortParsedEvents() {
@@ -357,6 +438,32 @@ void PerfParser::ResetAddressMappers() {
     delete iter->second;
   process_mappers_.clear();
   child_to_parent_pid_map_.clear();
+}
+
+
+bool PerfParser::LocalizeUsingFilenames(
+    const std::map<string, string>& filename_map) {
+  // Search for mmap events for which the filename needs to be updated.
+  for (size_t i = 0; i < parsed_events_.size(); ++i) {
+    event_t* event = parsed_events_[i].raw_event;
+    if (event->header.type != PERF_RECORD_MMAP)
+      continue;
+
+    string key = string(event->mmap.filename);
+    if (filename_map.find(key) == filename_map.end())
+      continue;
+
+    // Copy over the new filename.
+    string new_filename = filename_map.at(key);
+    size_t old_len = GetUint64AlignedStringLength(key);
+    size_t new_len = GetUint64AlignedStringLength(new_filename);
+    event->header.size += (new_len - old_len);
+    CHECK_GT(snprintf(event->mmap.filename, new_filename.size() + 1, "%s",
+                      new_filename.c_str()),
+             0);
+  }
+
+  return true;
 }
 
 }  // namespace quipper

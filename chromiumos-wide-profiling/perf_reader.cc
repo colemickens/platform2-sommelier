@@ -780,7 +780,7 @@ bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
     }
 
     // Allocate memory for the event and copy over the bytes.
-    build_id_event* event = (build_id_event*) malloc(temp_ptr->header.size);
+    build_id_event* event = CallocMemoryForBuildID(temp_ptr->header.size);
     memcpy(event, &data[offset], temp_ptr->header.size);
     offset += event->header.size;
     size -= event->header.size;
@@ -901,7 +901,6 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       continue;
     }
     switch (block.header.type) {
-    // TODO(rohinmshah): Support build ids in piped mode.
     case PERF_RECORD_HEADER_ATTR:
       result = ReadAttrEventBlock(block.attr_event);
       break;

@@ -45,6 +45,10 @@ struct PerfBuildIDMetadata : public PerfMetadata {
   PerfBuildIDMetadata() : PerfMetadata() {}
 };
 
+// Based on kernel/perf_internals.h
+const size_t kBuildIDArraySize = 20;
+const size_t kBuildIDStringLength = kBuildIDArraySize * 2;
+
 struct CStringWithLength {
   u32 len;
   string str;

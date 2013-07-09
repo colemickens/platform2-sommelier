@@ -527,8 +527,7 @@ void PerfSerializer::DeserializeBuildIDEvent(
   const string& filename = from.filename();
   size_t size = sizeof(build_id_event) + GetUint64AlignedStringLength(filename);
 
-  build_id_event* event = (build_id_event*) malloc(size);
-  memset(event, 0, size);
+  build_id_event* event = CallocMemoryForBuildID(size);
   *to = event;
   event->header.type = PERF_RECORD_HEADER_BUILD_ID;
   event->header.size = size;
