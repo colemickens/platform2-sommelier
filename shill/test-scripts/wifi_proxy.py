@@ -240,3 +240,44 @@ class WifiProxy(shill_proxy.ShillProxy):
             else:
                 device.SetProperty(k, type_cast(value))
         return True
+
+
+    def wait_for_service_states(self, ssid, states, timeout_seconds):
+        """Wait for a service (ssid) to achieve one of a number of states.
+
+        @param ssid string name of network for whose state we're waiting.
+        @param states tuple states for which to wait.
+        @param timeout_seconds seconds to wait for property to be achieved
+        @return tuple(successful, final_value, duration)
+            where successful is True iff we saw one of |states|, final_value
+            is the final state we saw, and duration is how long we waited to
+            see that value.
+
+        """
+        discovery_params = {self.SERVICE_PROPERTY_TYPE: 'wifi',
+                            self.SERVICE_PROPERTY_NAME: ssid}
+        start_time = time.time()
+        service_object = None
+        while not service_object:
+            try:
+                service_path = self.manager.FindMatchingService(
+                        discovery_params)
+                service_object = self.get_dbus_object(self.DBUS_TYPE_SERVICE,
+                                                      service_path)
+            except dbus.exceptions.DBusException, e:
+                if e.get_dbus_message() == 'Matching service was not found':
+                    time.sleep(self.POLLING_INTERVAL_SECONDS)
+                else:
+                    logging.error('Caught an error while discovering: %s',
+                                  e.get_dbus_message())
+                    return False, 'unknown', timeout_seconds
+
+                if time.time() - start_time >= timeout_seconds:
+                    logging.error('Timed out waiting for %s states' % ssid)
+                    return False, 'unknown', timeout_seconds
+
+        return self.wait_for_property_in(
+                service_object,
+                self.SERVICE_PROPERTY_STATE,
+                states,
+                timeout_seconds - (time.time() - start_time))

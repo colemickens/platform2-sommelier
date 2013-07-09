@@ -220,7 +220,7 @@ class ShillProxy(object):
                 break
             time.sleep(self.POLLING_INTERVAL_SECONDS)
         duration = time.time() - start_time
-        return (successful, self.dbus2primitive(value), duration)
+        return successful, self.dbus2primitive(value), duration
 
 
     @property
