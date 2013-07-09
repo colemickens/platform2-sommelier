@@ -5,6 +5,7 @@
 #define CRYPTOHOME_SERVICE_H_
 
 #include <base/logging.h>
+#include <base/gtest_prod_util.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_ptr.h>
 #include <base/threading/thread.h>
@@ -200,6 +201,17 @@ class Service : public chromeos::dbus::AbstractDbusService,
                               GError **error);
   virtual gboolean AsyncMountGuest(gint *OUT_async_id,
                                    GError **error);
+  virtual gboolean MountPublic(const gchar* public_mount_id,
+                               gboolean create_if_missing,
+                               gboolean ensure_ephemeral,
+                               gint* OUT_error_code,
+                               gboolean* OUT_result,
+                               GError** error);
+  virtual gboolean AsyncMountPublic(const gchar* public_mount_id,
+                                    gboolean create_if_missing,
+                                    gboolean ensure_ephemeral,
+                                    gint* OUT_async_id,
+                                    GError** error);
   virtual gboolean Unmount(gboolean *OUT_result, GError **error);
   virtual gboolean UnmountForUser(const gchar* userid, gboolean *OUT_result,
                                   GError **error);
@@ -378,7 +390,29 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual bool UnloadPkcs11Tokens(const std::vector<std::string>& exclude);
 
  private:
+  FRIEND_TEST_ALL_PREFIXES(ServiceInterfaceTest, GetPublicMountPassKey);
+
   bool CreateSystemSaltIfNeeded();
+  bool CreatePublicMountSaltIfNeeded();
+
+  // Gets passkey for |public_mount_id|. Returns true if a passkey is generated
+  // successfully. Otherwise, returns false.
+  bool GetPublicMountPassKey(const std::string& public_mount_id,
+                             std::string* public_mount_passkey);
+
+  // Creates a MountTaskNop that uses |bridge| to return |return_code| and
+  // |return_status| for async calls. Returns the sequence id of the created
+  // MountTaskNop.
+  int PostAsyncCallResult(MountTaskObserver* bridge,
+                          MountError return_code,
+                          bool return_status);
+
+  // Creates a MountTaskObserverBridge for |user_id| and calls
+  // PostAsyncCallResult above to post async call result.
+  int PostAsyncCallResultForUser(const std::string& user_id,
+                                 MountError return_code,
+                                 bool return_status);
+
   bool use_tpm_;
 
   GMainLoop* loop_;
@@ -435,6 +469,8 @@ class Service : public chromeos::dbus::AbstractDbusService,
   std::string guest_user_;
 
   bool legacy_mount_;
+
+  chromeos::SecureBlob public_mount_salt_;
 
   DISALLOW_COPY_AND_ASSIGN(Service);
 };

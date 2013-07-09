@@ -168,6 +168,47 @@ TEST_F(ServiceInterfaceTest, CheckAsyncTestCredentials) {
   EXPECT_TRUE(out);
 }
 
+TEST_F(ServiceInterfaceTest, GetPublicMountPassKey) {
+  NiceMock<MockPlatform> platform;
+
+  const char kPublicMountSaltPath[] = "/var/lib/public_mount_salt";
+  chromeos::Blob public_mount_salt(CRYPTOHOME_DEFAULT_SALT_LENGTH, 'P');
+  EXPECT_CALL(platform, FileExists(kPublicMountSaltPath))
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform, GetFileSize(kPublicMountSaltPath, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(public_mount_salt.size()),
+                          Return(true)));
+  EXPECT_CALL(platform, ReadFile(kPublicMountSaltPath, _))
+    .WillRepeatedly(DoAll(SetArgumentPointee<1>(public_mount_salt),
+                          Return(true)));
+
+  MockHomeDirs homedirs;
+  ServiceSubclass service;
+  service.set_platform(&platform);
+  service.set_homedirs(&homedirs);
+  service.crypto()->set_platform(&platform);
+  NiceMock<MockInstallAttributes> attrs;
+  service.set_install_attrs(&attrs);
+  service.set_initialize_tpm(false);
+  service.Initialize();
+
+  const char kPublicUser1[] = "public_user_1";
+  const char kPublicUser2[] = "public_user_2";
+
+  std::string public_user1_passkey;
+  service.GetPublicMountPassKey(kPublicUser1, &public_user1_passkey);
+
+  std::string public_user2_passkey;
+  service.GetPublicMountPassKey(kPublicUser2, &public_user2_passkey);
+  // The passkey should be different for different user.
+  EXPECT_NE(public_user1_passkey, public_user2_passkey);
+
+  std::string public_user1_passkey2;
+  service.GetPublicMountPassKey(kPublicUser1, &public_user1_passkey2);
+  // The passkey should be the same for the same user.
+  EXPECT_EQ(public_user1_passkey, public_user1_passkey2);
+}
+
 TEST_F(ServiceInterfaceTest, GetSanitizedUsername) {
   Service service;
   char username[] = "chromeos-user";

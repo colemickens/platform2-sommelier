@@ -56,6 +56,7 @@ namespace gobject {
 namespace cryptohome {
 
 const char* kSaltFilePath = "/home/.shadow/salt";
+const char* kPublicMountSaltFilePath = "/var/lib/public_mount_salt";
 
 // Encapsulates histogram parameters, for UMA reporting.
 struct HistogramParams {
@@ -238,7 +239,8 @@ Service::Service()
       default_homedirs_(new cryptohome::HomeDirs()),
       homedirs_(default_homedirs_.get()),
       guest_user_(chromeos::cryptohome::home::kGuestUserName),
-      legacy_mount_(true) {
+      legacy_mount_(true),
+      public_mount_salt_() {
 }
 
 Service::~Service() {
@@ -713,12 +715,7 @@ gboolean Service::AsyncCheckKey(gchar *userid,
     // asynchronously.
     if (it->second->AreSameUser(credentials)) {
       bool ok = it->second->AreValid(credentials);
-      scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
-      mount_task->result()->set_return_code(MOUNT_ERROR_NONE);
-      mount_task->result()->set_return_status(ok);
-      *OUT_async_id = mount_task->sequence_id();
-      mount_thread_.message_loop()->PostTask(FROM_HERE,
-          base::Bind(&MountTaskNop::Run, mount_task.get()));
+      *OUT_async_id = PostAsyncCallResult(bridge, MOUNT_ERROR_NONE, ok);
       return TRUE;
     }
   }
@@ -1048,16 +1045,11 @@ gboolean Service::AsyncMount(const gchar *userid,
   // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
   if (guest_mounted && !guest_mount->UnmountCryptohome()) {
     LOG(ERROR) << "Could not unmount cryptohome from Guest session";
-    // TODO(wad,ellyjones) extract this mount task pattern into a helper.
     MountTaskObserverBridge* bridge =
         new MountTaskObserverBridge(guest_mount.get(), &event_source_);
-    scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
-    mount_task->result()->set_return_code(
-        MOUNT_ERROR_MOUNT_POINT_BUSY);
-    mount_task->result()->set_return_status(false);
-     *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.message_loop()->PostTask(FROM_HERE,
-        base::Bind(&MountTaskNop::Run, mount_task.get()));
+    *OUT_async_id = PostAsyncCallResult(bridge,
+                                        MOUNT_ERROR_MOUNT_POINT_BUSY,
+                                        false);
     return TRUE;
   }
 
@@ -1070,13 +1062,9 @@ gboolean Service::AsyncMount(const gchar *userid,
       LOG(ERROR) << "Could not unmount vault before an ephemeral mount.";
       MountTaskObserverBridge* bridge =
            new MountTaskObserverBridge(user_mount.get(), &event_source_);
-      scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
-      mount_task->result()->set_return_code(
-          MOUNT_ERROR_MOUNT_POINT_BUSY);
-      mount_task->result()->set_return_status(false);
-      *OUT_async_id = mount_task->sequence_id();
-      mount_thread_.message_loop()->PostTask(FROM_HERE,
-          base::Bind(&MountTaskNop::Run, mount_task.get()));
+      *OUT_async_id = PostAsyncCallResult(bridge,
+                                          MOUNT_ERROR_MOUNT_POINT_BUSY,
+                                          false);
       return TRUE;
     }
   }
@@ -1088,12 +1076,7 @@ gboolean Service::AsyncMount(const gchar *userid,
     // Attempt a short-circuited credential test.
     if (user_mount->AreSameUser(credentials) &&
         user_mount->AreValid(credentials)) {
-      scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
-      mount_task->result()->set_return_code(MOUNT_ERROR_NONE);
-      mount_task->result()->set_return_status(true);
-      *OUT_async_id = mount_task->sequence_id();
-      mount_thread_.message_loop()->PostTask(FROM_HERE,
-          base::Bind(&MountTaskNop::Run, mount_task.get()));
+      *OUT_async_id = PostAsyncCallResult(bridge, MOUNT_ERROR_NONE, true);
       return TRUE;
     }
     // TODO(wad) This should really hang off of the MountTaskTestCredentials
@@ -1195,13 +1178,9 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
     if (!RemoveMountForUser(guest_user_)) {
       LOG(ERROR) << "Unexpectedly cannot drop unused Guest mount from map.";
     }
-    scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
-    mount_task->result()->set_return_code(
-        MOUNT_ERROR_MOUNT_POINT_BUSY);
-    mount_task->result()->set_return_status(false);
-    *OUT_async_id = mount_task->sequence_id();
-    mount_thread_.message_loop()->PostTask(FROM_HERE,
-        base::Bind(&MountTaskNop::Run, mount_task.get()));
+    *OUT_async_id = PostAsyncCallResult(bridge,
+                                        MOUNT_ERROR_MOUNT_POINT_BUSY,
+                                        false);
     return TRUE;
   }
 
@@ -1215,6 +1194,68 @@ gboolean Service::AsyncMountGuest(gint *OUT_async_id,
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMountGuest::Run, mount_task.get()));
   return TRUE;
+}
+
+gboolean Service::MountPublic(const gchar* public_mount_id,
+                              gboolean create_if_missing,
+                              gboolean ensure_ephemeral,
+                              gint* OUT_error_code,
+                              gboolean* OUT_result,
+                              GError** error) {
+  // Don't proceed if there is any existing mount or stale mount.
+  if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
+    LOG(ERROR) << "Public mount requested with other mounts active.";
+    *OUT_error_code = MOUNT_ERROR_MOUNT_POINT_BUSY;
+    *OUT_result = FALSE;
+    return TRUE;
+  }
+
+  std::string public_mount_passkey;
+  if (!GetPublicMountPassKey(public_mount_id, &public_mount_passkey)) {
+    LOG(ERROR) << "Could not get public mount passkey.";
+    *OUT_error_code = MOUNT_ERROR_KEY_FAILURE;
+    *OUT_result = FALSE;
+    return FALSE;
+  }
+
+  return Mount(public_mount_id,
+               public_mount_passkey.c_str(),
+               create_if_missing,
+               ensure_ephemeral,
+               OUT_error_code,
+               OUT_result,
+               error);
+}
+
+gboolean Service::AsyncMountPublic(const gchar* public_mount_id,
+                                   gboolean create_if_missing,
+                                   gboolean ensure_ephemeral,
+                                   gint* OUT_async_id,
+                                   GError** error) {
+  // Don't proceed if there is any existing mount or stale mount.
+  if (mounts_.size() != 0 || CleanUpStaleMounts(false))  {
+    LOG(ERROR) << "Public mount requested with other mounts active.";
+
+    *OUT_async_id = PostAsyncCallResultForUser(
+        public_mount_id, MOUNT_ERROR_MOUNT_POINT_BUSY, false);
+    return TRUE;
+  }
+
+  std::string public_mount_passkey;
+  if (!GetPublicMountPassKey(public_mount_id, &public_mount_passkey)) {
+    LOG(ERROR) << "Could not get public mount passkey.";
+
+    *OUT_async_id = PostAsyncCallResultForUser(
+        public_mount_id, MOUNT_ERROR_KEY_FAILURE, false);
+    return TRUE;
+  }
+
+  return AsyncMount(public_mount_id,
+                    public_mount_passkey.c_str(),
+                    create_if_missing,
+                    ensure_ephemeral,
+                    OUT_async_id,
+                    error);
 }
 
 // Unmount all mounted cryptohomes.
@@ -1912,6 +1953,54 @@ bool Service::CreateSystemSaltIfNeeded() {
   FilePath saltfile(kSaltFilePath);
   return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
                                   false, &system_salt_);
+}
+
+bool Service::CreatePublicMountSaltIfNeeded() {
+  if (!public_mount_salt_.empty())
+    return true;
+  FilePath saltfile(kPublicMountSaltFilePath);
+  return crypto_->GetOrCreateSalt(saltfile, CRYPTOHOME_DEFAULT_SALT_LENGTH,
+                                  false, &public_mount_salt_);
+}
+
+bool Service::GetPublicMountPassKey(const std::string& public_mount_id,
+                                    std::string* public_mount_passkey) {
+  if (!CreatePublicMountSaltIfNeeded())
+    return false;
+
+  SecureBlob passkey;
+  Crypto::PasswordToPasskey(public_mount_id.c_str(),
+                            public_mount_salt_,
+                            &passkey);
+  public_mount_passkey->assign(static_cast<char*>(passkey.data()),
+                               passkey.size());
+  return true;
+}
+
+int Service::PostAsyncCallResult(MountTaskObserver* bridge,
+                                 MountError return_code,
+                                 bool return_status) {
+  scoped_refptr<MountTaskNop> mount_task = new MountTaskNop(bridge);
+  mount_task->result()->set_return_code(return_code);
+  mount_task->result()->set_return_status(return_status);
+  mount_thread_.message_loop()->PostTask(FROM_HERE,
+      base::Bind(&MountTaskNop::Run, mount_task.get()));
+
+  return mount_task->sequence_id();
+}
+
+int Service::PostAsyncCallResultForUser(const std::string& user_id,
+                                        MountError return_code,
+                                        bool return_status) {
+  // Create a ref-counted mount for async use and then throw it away.
+  scoped_refptr<cryptohome::Mount> mount = GetOrCreateMountForUser(user_id);
+  MountTaskObserverBridge* bridge =
+      new MountTaskObserverBridge(mount.get(), &event_source_);
+  // Drop it from the map now that the MountTask has a ref.
+  if (!RemoveMountForUser(user_id))
+    LOG(ERROR) << "Unexpectedly cannot drop unused mount from map.";
+
+  return PostAsyncCallResult(bridge, return_code, return_status);
 }
 
 void Service::DispatchEvents() {

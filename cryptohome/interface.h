@@ -115,6 +115,19 @@ gboolean cryptohome_mount_guest(Cryptohome *self,
 gboolean cryptohome_async_mount_guest(Cryptohome *self,
                                       gint *OUT_async_id,
                                       GError **error);
+gboolean cryptohome_mount_public(Cryptohome* self,
+                                 gchar* public_mount_id,
+                                 gboolean create_if_missing,
+                                 gboolean ensure_ephemeral,
+                                 gint* OUT_error_code,
+                                 gboolean* OUT_result,
+                                 GError** error);
+gboolean cryptohome_async_mount_public(Cryptohome* self,
+                                       gchar* public_mount_id,
+                                       gboolean create_if_missing,
+                                       gboolean ensure_ephemeral,
+                                       gint* OUT_async_id,
+                                       GError** error);
 gboolean cryptohome_unmount(Cryptohome *self,
                             gboolean *OUT_result,
                             GError **error);

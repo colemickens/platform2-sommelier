@@ -45,6 +45,7 @@ namespace switches {
   static const char *kActions[] = {
     "mount",
     "mount_guest",
+    "mount_public",
     "unmount",
     "is_mounted",
     "test_auth",
@@ -80,6 +81,7 @@ namespace switches {
   enum ActionEnum {
     ACTION_MOUNT,
     ACTION_MOUNT_GUEST,
+    ACTION_MOUNT_PUBLIC,
     ACTION_UNMOUNT,
     ACTION_MOUNTED,
     ACTION_TEST_AUTH,
@@ -486,6 +488,51 @@ int main(int argc, char **argv) {
       client_loop.Initialize(&proxy);
       gint async_id = -1;
       if (!org_chromium_CryptohomeInterface_async_mount_guest(proxy.gproxy(),
+               &async_id,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("Mount call failed: %s.\n", error->message);
+      } else {
+        client_loop.Run(async_id);
+        done = client_loop.get_return_status();
+      }
+    }
+    if (!done) {
+      printf("Mount failed.\n");
+    } else {
+      printf("Mount succeeded.\n");
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_MOUNT_PUBLIC],
+                     action.c_str())) {
+    std::string user;
+
+    if (!GetUsername(cl, &user)) {
+      printf("No username specified.\n");
+      return 1;
+    }
+
+    gboolean done = false;
+    gint mount_error = 0;
+    chromeos::glib::ScopedError error;
+
+    if (!cl->HasSwitch(switches::kAsyncSwitch)) {
+      if (!org_chromium_CryptohomeInterface_mount_public(proxy.gproxy(),
+               user.c_str(),
+               cl->HasSwitch(switches::kCreateSwitch),
+               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
+               &mount_error,
+               &done,
+               &chromeos::Resetter(&error).lvalue())) {
+        printf("Mount call failed: %s, with reason code: %d.\n", error->message,
+               mount_error);
+      }
+    } else {
+      ClientLoop client_loop;
+      client_loop.Initialize(&proxy);
+      gint async_id = -1;
+      if (!org_chromium_CryptohomeInterface_async_mount_public(proxy.gproxy(),
+               user.c_str(),
+               cl->HasSwitch(switches::kCreateSwitch),
+               cl->HasSwitch(switches::kEnsureEphemeralSwitch),
                &async_id,
                &chromeos::Resetter(&error).lvalue())) {
         printf("Mount call failed: %s.\n", error->message);
