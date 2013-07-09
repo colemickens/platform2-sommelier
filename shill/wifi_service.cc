@@ -43,6 +43,7 @@ namespace shill {
 
 const char WiFiService::kAutoConnNoEndpoint[] = "no endpoints";
 const char WiFiService::kAnyDeviceAddress[] = "any";
+const int WiFiService::kSuspectedCredentialFailureThreshold = 3;
 
 const char WiFiService::kStorageHiddenSSID[] = "WiFi.HiddenSSID";
 const char WiFiService::kStorageMode[] = "WiFi.Mode";
@@ -71,6 +72,7 @@ WiFiService::WiFiService(ControlInterface *control_interface,
       physical_mode_(Metrics::kWiFiNetworkPhyModeUndef),
       raw_signal_strength_(0),
       cipher_8021x_(kCryptoNone),
+      suspected_credential_failures_(0),
       ssid_(ssid),
       ieee80211w_required_(false),
       nss_(NSS::GetInstance()),
@@ -338,6 +340,7 @@ bool WiFiService::Unload() {
     wifi_->DestroyServiceLease(*this);
   }
   hidden_ssid_ = false;
+  ResetSuspectedCredentialFailures();
   Error unused_error;
   ClearPassphrase(&unused_error);
   return provider_->OnServiceUnloaded(this);
@@ -345,6 +348,18 @@ bool WiFiService::Unload() {
 
 bool WiFiService::IsSecurityMatch(const string &security) const {
   return GetSecurityClass(security) == GetSecurityClass(security_);
+}
+
+bool WiFiService::AddSuspectedCredentialFailure() {
+  if (!has_ever_connected()) {
+    return true;
+  }
+  ++suspected_credential_failures_;
+  return suspected_credential_failures_ >= kSuspectedCredentialFailureThreshold;
+}
+
+void WiFiService::ResetSuspectedCredentialFailures() {
+  suspected_credential_failures_ = 0;
 }
 
 void WiFiService::InitializeCustomMetrics() const {

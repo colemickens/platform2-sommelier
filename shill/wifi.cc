@@ -757,7 +757,7 @@ void WiFi::HandleDisconnect() {
                 << " (or failed to connect to) service "
                 << affected_service->unique_name();
   Service::ConnectFailure failure;
-  if (SuspectCredentials(*affected_service, &failure)) {
+  if (SuspectCredentials(affected_service, &failure)) {
     // If we suspect bad credentials, set failure, to trigger an error
     // mole in Chrome.
     affected_service->SetFailure(failure);
@@ -1278,6 +1278,7 @@ void WiFi::StateChanged(const string &new_state) {
                    GetServiceLeaseName(*affected_service))) {
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       affected_service->SetState(Service::kStateConfiguring);
+      affected_service->ResetSuspectedCredentialFailures();
     } else {
       LOG(ERROR) << "Unable to acquire DHCP config.";
     }
@@ -1315,18 +1316,18 @@ void WiFi::StateChanged(const string &new_state) {
 }
 
 bool WiFi::SuspectCredentials(
-    const WiFiService &service, Service::ConnectFailure *failure) const {
-  if (service.IsSecurityMatch(flimflam::kSecurityPsk)) {
+    WiFiServiceRefPtr service, Service::ConnectFailure *failure) const {
+  if (service->IsSecurityMatch(flimflam::kSecurityPsk)) {
     if (supplicant_state_ == WPASupplicant::kInterfaceState4WayHandshake &&
-        !service.has_ever_connected()) {
+        service->AddSuspectedCredentialFailure()) {
       if (failure) {
         *failure = Service::kFailureBadPassphrase;
       }
       return true;
     }
-  } else if (service.IsSecurityMatch(flimflam::kSecurity8021x)) {
+  } else if (service->IsSecurityMatch(flimflam::kSecurity8021x)) {
     if (eap_state_handler_->is_eap_in_progress() &&
-        !service.has_ever_connected()) {
+        service->AddSuspectedCredentialFailure()) {
       if (failure) {
         *failure = Service::kFailureEAPAuthentication;
       }
@@ -1545,6 +1546,7 @@ void WiFi::StartPendingTimer() {
 }
 
 void WiFi::StopPendingTimer() {
+  SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
   pending_timeout_callback_.Cancel();
 }
 

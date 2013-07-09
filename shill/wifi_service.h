@@ -108,6 +108,17 @@ class WiFiService : public Service {
   virtual bool HasEndpoints() const { return !endpoints_.empty(); }
   virtual bool IsVisible() const;
   bool IsSecurityMatch(const std::string &security) const;
+
+  // Used by WiFi objects to indicate that the credentials for this network
+  // have been called into question.  This method returns true if given this
+  // suspicion, if it is probable that indeed these credentials are likely
+  // to be incorrect.  Credentials that have never been used before are
+  // considered suspect by default, while those which have been used
+  // successfully in the past must have this method called a number of times
+  // since the last time ResetSuspectedCredentialsFailures() was called.
+  virtual bool AddSuspectedCredentialFailure();
+  virtual void ResetSuspectedCredentialFailures();
+
   bool hidden_ssid() const { return hidden_ssid_; }
   bool ieee80211w_required() const { return ieee80211w_required_; }
 
@@ -162,10 +173,12 @@ class WiFiService : public Service {
   FRIEND_TEST(WiFiServiceTest, SecurityFromCurrentEndpoint);  // GetSecurity
   FRIEND_TEST(WiFiServiceTest, SetPassphraseRemovesCachedCredentials);
   FRIEND_TEST(WiFiServiceTest, SignalToStrength);  // SignalToStrength
+  FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiServiceTest, UpdateSecurity);  // SetEAPKeyManagement
 
   static const char kAutoConnNoEndpoint[];
   static const char kAnyDeviceAddress[];
+  static const int kSuspectedCredentialFailureThreshold;
 
   // Override the base clase implementation, because we need to allow
   // arguments that aren't base class methods.
@@ -254,9 +267,14 @@ class WiFiService : public Service {
   // (Otherwise, crypto algorithm is implied by |security_|.)
   CryptoAlgorithm cipher_8021x_;
 
+  // Track the number of consecutive times our current credentials have
+  // been called into question.
+  int suspected_credential_failures_;
+
   // Track whether or not we've warned about large signal values.
   // Used to avoid spamming the log.
   static bool logged_signal_warning;
+
   WiFiRefPtr wifi_;
   std::set<WiFiEndpointConstRefPtr> endpoints_;
   WiFiEndpointConstRefPtr current_endpoint_;

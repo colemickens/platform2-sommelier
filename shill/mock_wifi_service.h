@@ -34,6 +34,8 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD2(AddEAPCertification, bool(const std::string &name,
                                          size_t depth));
   MOCK_METHOD0(HasRecentConnectionIssues, bool());
+  MOCK_METHOD0(AddSuspectedCredentialFailure, bool());
+  MOCK_METHOD0(ResetSuspectedCredentialFailures, void());
   MOCK_METHOD1(AddEndpoint,
                void(const WiFiEndpointConstRefPtr &endpoint));
   MOCK_METHOD1(RemoveEndpoint,

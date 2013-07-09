@@ -580,8 +580,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, State);
   FRIEND_TEST(ServiceTest, StateResetAfterFailure);
   FRIEND_TEST(ServiceTest, Unload);
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsEAPInProgress);
-  FRIEND_TEST(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected);
+  FRIEND_TEST(WiFiServiceTest, SuspectedCredentialFailure);
   FRIEND_TEST(WiFiTimerTest, ReconnectTimer);
 
   static const char kAutoConnConnected[];

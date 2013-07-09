@@ -1821,4 +1821,33 @@ TEST_F(WiFiServiceTest, CustomSetterNoopChange) {
   TestCustomSetterNoopChange(service, mock_manager());
 }
 
+TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
+  WiFiServiceRefPtr service = MakeSimpleService(flimflam::kSecurityWpa);
+  EXPECT_FALSE(service->has_ever_connected());
+  EXPECT_EQ(0, service->suspected_credential_failures_);
+
+  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  EXPECT_EQ(0, service->suspected_credential_failures_);
+
+  service->has_ever_connected_ = true;
+  for (int i = 0; i < WiFiService::kSuspectedCredentialFailureThreshold - 1;
+       ++i) {
+    EXPECT_FALSE(service->AddSuspectedCredentialFailure());
+    EXPECT_EQ(i + 1, service->suspected_credential_failures_);
+  }
+
+  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  // Make sure the failure state does not reset just because we ask again.
+  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  // Make sure the failure state does not reset because of a credential change.
+  Error error;
+  service->SetPassphrase("Panchromatic Resonance", &error);
+  EXPECT_TRUE(error.IsSuccess());
+  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+
+  service->ResetSuspectedCredentialFailures();
+  EXPECT_EQ(0, service->suspected_credential_failures_);
+  EXPECT_FALSE(service->AddSuspectedCredentialFailure());
+}
+
 }  // namespace shill

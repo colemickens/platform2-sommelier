@@ -575,6 +575,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     Mock::VerifyAndClearExpectations(service);
 
     EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+    EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
     EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
     EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
     ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
@@ -749,7 +750,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->set_link_monitor(link_monitor);
   }
 
-  bool SuspectCredentials(const WiFiService &service,
+  bool SuspectCredentials(const WiFiServiceRefPtr &service,
                           Service::ConnectFailure *failure) {
     return wifi_->SuspectCredentials(service, failure);
   }
@@ -1848,8 +1849,9 @@ TEST_F(WiFiMainTest, StateChangeBackwardsWithService) {
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
-  EXPECT_CALL(*service.get(), SetState(Service::kStateAssociating));
-  EXPECT_CALL(*service.get(), SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
   InitiateConnect(service);
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   ReportStateChanged(WPASupplicant::kInterfaceStateAuthenticating);
@@ -1932,6 +1934,7 @@ TEST_F(WiFiMainTest, CurrentBSSChangeConnectedToConnectedNewService) {
   EXPECT_CALL(*service0, SetState(Service::kStateIdle)).Times(AtLeast(1));
   ReportCurrentBSSChanged(bss_path1);
   EXPECT_CALL(*service1, SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*service1, ResetSuspectedCredentialFailures());
   ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
   EXPECT_EQ(service1.get(), GetCurrentService().get());
   Mock::VerifyAndClearExpectations(service0);
@@ -2291,25 +2294,20 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
 
 TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityNone);
-  ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
-  EXPECT_FALSE(service->has_ever_connected());
-  EXPECT_FALSE(SuspectCredentials(*service, NULL));
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
+  EXPECT_FALSE(SuspectCredentials(service, NULL));
 }
 
-TEST_F(WiFiMainTest, SuspectCredentialsWPANeverConnected) {
+TEST_F(WiFiMainTest, SuspectCredentialsWPA) {
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWpa);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
-  EXPECT_FALSE(service->has_ever_connected());
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+      .WillOnce(Return(false))
+      .WillOnce(Return(true));
+  EXPECT_FALSE(SuspectCredentials(service, NULL));
   Service::ConnectFailure failure;
-  EXPECT_TRUE(SuspectCredentials(*service, &failure));
+  EXPECT_TRUE(SuspectCredentials(service, &failure));
   EXPECT_EQ(Service::kFailureBadPassphrase, failure);
-}
-
-TEST_F(WiFiMainTest, SuspectCredentialsWPAPreviouslyConnected) {
-  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWpa);
-  ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
-  service->has_ever_connected_ = true;
-  EXPECT_FALSE(SuspectCredentials(*service, NULL));
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
@@ -2319,22 +2317,31 @@ TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
       .WillOnce(Return(true))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  service->has_ever_connected_ = false;
-  EXPECT_FALSE(SuspectCredentials(*service, NULL));
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
+  EXPECT_FALSE(SuspectCredentials(service, NULL));
+  Mock::VerifyAndClearExpectations(service);
+
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
   Service::ConnectFailure failure;
-  EXPECT_TRUE(SuspectCredentials(*service, &failure));
+  EXPECT_TRUE(SuspectCredentials(service, &failure));
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure);
-  service->has_ever_connected_ = true;
-  EXPECT_FALSE(SuspectCredentials(*service, NULL));
-  EXPECT_FALSE(SuspectCredentials(*service, NULL));
+  Mock::VerifyAndClearExpectations(service);
+
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
+  EXPECT_FALSE(SuspectCredentials(service, NULL));
+  Mock::VerifyAndClearExpectations(service);
+
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+      .WillOnce(Return(false));
+  EXPECT_FALSE(SuspectCredentials(service, NULL));
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureWPA) {
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWpa);
   SetPendingService(service);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
-  EXPECT_FALSE(service->has_ever_connected());
 
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
   EXPECT_CALL(*service, SetFailure(Service::kFailureBadPassphrase));
   EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
   EXPECT_CALL(*service, SetState(_)).Times(0);
@@ -2348,7 +2355,6 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureWPA) {
 TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
   MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurity8021x);
   SetCurrentService(service);
-  EXPECT_FALSE(service->has_ever_connected());
 
   ScopedMockLog log;
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
@@ -2359,6 +2365,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
   InSequence seq;
   EXPECT_CALL(*eap_state_handler_, is_eap_in_progress())
       .WillOnce(Return(true));
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
   EXPECT_CALL(*service, SetFailure(Service::kFailureEAPAuthentication));
   EXPECT_CALL(log, Log(logging::LOG_ERROR, _,
                        EndsWith(shill::kErrorEapAuthenticationFailed)));

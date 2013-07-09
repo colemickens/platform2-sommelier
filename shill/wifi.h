@@ -315,7 +315,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // Heuristic check if a connection failure was due to bad credentials.
   // Returns true and puts type of failure in |failure| if a credential
   // problem is detected.
-  bool SuspectCredentials(const WiFiService &service,
+  bool SuspectCredentials(WiFiServiceRefPtr service,
                           Service::ConnectFailure *failure) const;
   void HelpRegisterDerivedInt32(
       PropertyStore *store,
