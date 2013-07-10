@@ -13,8 +13,18 @@ fi
 # Load functions and constants for chromeos-install.
 . "$(dirname "$0")/chromeos-common.sh" || exit 1
 
+if grep -q 'cros_efi' /proc/cmdline ; then
+  is_efi=1
+else
+  is_efi=0
+fi
+
 # Extract the kernel partition's UniqueGuid from the command line.
-guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+if [ $is_efi -eq 1 ]; then
+  guid=$(sed 's/.*root=PARTUUID=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+else
+  guid=$(sed 's/.*kern_guid=\([0-9a-fA-F-]\+\).*/\1/' /proc/cmdline)
+fi
 
 # Look through all the known devices to find that one partition.
 kern_dev=$(cgpt find -1 -u $guid)
@@ -22,6 +32,11 @@ kern_dev=$(cgpt find -1 -u $guid)
 # Split the kernel device in the base device and paritition number.
 base_dev=$(get_block_dev_from_partition_dev $kern_dev)
 kern_num=$(get_partition_number $kern_dev)
+
+# EFI BIOS boots the ROOT-x partition which is KERN-x + 1
+if [ $is_efi -eq 1 ]; then
+  kern_num=$(($kern_num - 1))
+fi
 
 # Mark the kernel as successfully booted (success=1, tries=0).
 cgpt add $base_dev -i $kern_num -S1 -T0
