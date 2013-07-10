@@ -1063,22 +1063,50 @@ void CellularCapabilityUniversal::OnListBearersReply(
   string network_device;
   for (size_t i = 0; i < paths.size(); ++i) {
     const DBus::Path &path = paths[i];
-    scoped_ptr<mm1::BearerProxyInterface> bearer_proxy(
-        proxy_factory()->CreateBearerProxy(path, cellular()->dbus_owner()));
-    if (!bearer_proxy->Connected()) {
+
+    scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(
+        proxy_factory()->CreateDBusPropertiesProxy(path,
+                                                   cellular()->dbus_owner()));
+    DBusPropertiesMap properties(
+        properties_proxy->GetAll(MM_DBUS_INTERFACE_BEARER));
+    if (properties.empty()) {
+      LOG(WARNING) << "Could not get properties of bearer \"" << path
+                   << "\". Bearer is likely gone and thus ignored.";
       continue;
     }
-    CHECK(new_bearer_path.empty()) << "Found more than one active bearer.";
-    network_device = bearer_proxy->Interface();
+
+    bool connected = false;
+    if (!DBusProperties::GetBool(
+            properties, MM_BEARER_PROPERTY_CONNECTED, &connected)) {
+      SLOG(Cellular, 2) << "Bearer does not indicate whether it is connected "
+                           "or not. Assume it is not connected.";
+      continue;
+    }
+
+    if (!connected) {
+      continue;
+    }
+
     SLOG(Cellular, 2) << "Found active bearer \"" << path << "\".";
-    SLOG(Cellular, 2) << "Bearer uses interface \"" << network_device << "\".";
+    CHECK(new_bearer_path.empty()) << "Found more than one active bearer.";
+
+    if (DBusProperties::GetString(
+            properties, MM_BEARER_PROPERTY_INTERFACE, &network_device)) {
+      SLOG(Cellular, 2) << "Bearer uses network interface \"" << network_device
+                        << "\".";
+    } else {
+      SLOG(Cellular, 2) << "Bearer does not specify network interface.";
+    }
+
     // TODO(quiche): Add support for scenarios where the bearer is
     // IPv6 only, or where there are conflicting configuration methods
     // for IPv4 and IPv6. crbug.com/248360.
-    DBusPropertiesMap bearer_ip4config = bearer_proxy->Ip4Config();
-    if (ContainsKey(bearer_ip4config, kIpConfigPropertyMethod)) {
-      ipconfig_method = bearer_ip4config[kIpConfigPropertyMethod].reader().
-          get_uint32();
+    DBusPropertiesMap bearer_ip4config;
+    DBusProperties::GetDBusPropertiesMap(
+        properties, MM_BEARER_PROPERTY_IP4CONFIG, &bearer_ip4config);
+
+    if (DBusProperties::GetUint32(
+            bearer_ip4config, kIpConfigPropertyMethod, &ipconfig_method)) {
       SLOG(Cellular, 2) << "Bearer has IPv4 config method " << ipconfig_method;
     } else {
       SLOG(Cellular, 2) << "Bearer does not specify IPv4 config method.";

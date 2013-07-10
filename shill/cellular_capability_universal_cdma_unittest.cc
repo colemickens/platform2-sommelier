@@ -22,7 +22,6 @@
 #include "shill/mock_glib.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_mm1_bearer_proxy.h"
 #include "shill/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/mock_mm1_modem_proxy.h"
@@ -51,7 +50,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
       : capability_(NULL),
         device_adaptor_(NULL),
         modem_info_(NULL, dispatcher, NULL, NULL, NULL),
-        bearer_proxy_(new mm1::MockBearerProxy()),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -117,12 +115,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
 
     // TODO(armansito): Some of these methods won't be necessary after 3GPP
     // gets refactored out of CellularCapabilityUniversal.
-    virtual mm1::BearerProxyInterface *CreateBearerProxy(
-        const std::string &path,
-        const std::string &/*service*/) {
-      return test_->bearer_proxy_.release();
-    }
-
     virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
         const std::string &/*path*/,
         const std::string &/*service*/) {
@@ -168,7 +160,6 @@ class CellularCapabilityUniversalCDMATest : public testing::Test {
   NiceMock<DeviceMockAdaptor> *device_adaptor_;
   MockModemInfo modem_info_;
   MockGLib glib_;
-  scoped_ptr<mm1::MockBearerProxy> bearer_proxy_;
   // TODO(armansito): Remove |modem_3gpp_proxy_| after refactor.
   scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;

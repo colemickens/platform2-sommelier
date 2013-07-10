@@ -26,7 +26,6 @@
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
 #include "shill/mock_event_dispatcher.h"
-#include "shill/mock_mm1_bearer_proxy.h"
 #include "shill/mock_mm1_modem_modem3gpp_proxy.h"
 #include "shill/mock_mm1_modem_modemcdma_proxy.h"
 #include "shill/mock_mm1_modem_proxy.h"
@@ -72,7 +71,6 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
  public:
   CellularCapabilityUniversalTest(EventDispatcher *dispatcher)
       : modem_info_(NULL, dispatcher, NULL, NULL, NULL),
-        bearer_proxy_(new mm1::MockBearerProxy()),
         modem_3gpp_proxy_(new mm1::MockModemModem3gppProxy()),
         modem_cdma_proxy_(new mm1::MockModemModemCdmaProxy()),
         modem_proxy_(new mm1::MockModemProxy()),
@@ -195,25 +193,20 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
    public:
     explicit TestProxyFactory(CellularCapabilityUniversalTest *test) :
         test_(test) {
-      ::DBus::Variant ip_method_dhcp;
-      ip_method_dhcp.writer().append_uint32(MM_BEARER_IP_METHOD_DHCP);
-      bearer_ip4config_dhcp_[
-          CellularCapabilityUniversal::kIpConfigPropertyMethod] =
-          ip_method_dhcp;
-    }
+      active_bearer_properties_[MM_BEARER_PROPERTY_CONNECTED].writer()
+          .append_bool(true);
+      active_bearer_properties_[MM_BEARER_PROPERTY_INTERFACE].writer()
+          .append_string("/dev/fake");
 
-    virtual mm1::BearerProxyInterface *CreateBearerProxy(
-        const std::string &path,
-        const std::string &/*service*/) {
-      mm1::MockBearerProxy *bearer_proxy = test_->bearer_proxy_.release();
-      if (path.find(kActiveBearerPathPrefix) != std::string::npos)
-        ON_CALL(*bearer_proxy, Connected()).WillByDefault(Return(true));
-      else
-        ON_CALL(*bearer_proxy, Connected()).WillByDefault(Return(false));
-      ON_CALL(*bearer_proxy, Ip4Config()).WillByDefault(Return(
-          bearer_ip4config_dhcp_));
-      test_->bearer_proxy_.reset(new mm1::MockBearerProxy());
-      return bearer_proxy;
+      DBusPropertiesMap ip4config;
+      ip4config[CellularCapabilityUniversal::kIpConfigPropertyMethod].writer()
+          .append_uint32(MM_BEARER_IP_METHOD_DHCP);
+      DBus::MessageIter writer =
+          active_bearer_properties_[MM_BEARER_PROPERTY_IP4CONFIG].writer();
+      writer << ip4config;
+
+      inactive_bearer_properties_[MM_BEARER_PROPERTY_CONNECTED].writer()
+          .append_bool(false);
     }
 
     virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
@@ -248,21 +241,42 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       return sim_proxy;
     }
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
-        const std::string &/*path*/,
+        const std::string &path,
         const std::string &/*service*/) {
       MockDBusPropertiesProxy *properties_proxy =
           test_->properties_proxy_.release();
+      if (path.find(kActiveBearerPathPrefix) != std::string::npos) {
+        ON_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
+            .WillByDefault(Return(active_bearer_properties_));
+      } else {
+        ON_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
+            .WillByDefault(Return(inactive_bearer_properties_));
+      }
       test_->properties_proxy_.reset(new MockDBusPropertiesProxy());
       return properties_proxy;
     }
 
    private:
+    DBusPropertiesMap GetActiveBearerProperties(
+        const string &/*interface_name*/) {
+      DBusPropertiesMap properties;
+      properties[MM_BEARER_PROPERTY_CONNECTED].writer().append_bool(true);
+      return properties;
+    }
+
+    DBusPropertiesMap GetInactiveBearerProperties(
+        const string &/*interface_name*/) {
+      DBusPropertiesMap properties;
+      properties[MM_BEARER_PROPERTY_CONNECTED].writer().append_bool(false);
+      return properties;
+    }
+
     CellularCapabilityUniversalTest *test_;
-    DBusPropertiesMap bearer_ip4config_dhcp_;
+    DBusPropertiesMap active_bearer_properties_;
+    DBusPropertiesMap inactive_bearer_properties_;
   };
 
   MockModemInfo modem_info_;
-  scoped_ptr<mm1::MockBearerProxy> bearer_proxy_;
   scoped_ptr<mm1::MockModemModem3gppProxy> modem_3gpp_proxy_;
   scoped_ptr<mm1::MockModemModemCdmaProxy> modem_cdma_proxy_;
   scoped_ptr<mm1::MockModemProxy> modem_proxy_;
