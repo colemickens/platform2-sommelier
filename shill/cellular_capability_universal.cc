@@ -1487,10 +1487,10 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     Cellular::ModemState state = static_cast<Cellular::ModemState>(istate);
     OnModemStateChanged(state);
   }
-  string string_value;
+  DBus::Path object_path_value;
   if (DBusProperties::GetObjectPath(properties,
-                                    MM_MODEM_PROPERTY_SIM, &string_value))
-    OnSimPathChanged(string_value);
+                                    MM_MODEM_PROPERTY_SIM, &object_path_value))
+    OnSimPathChanged(object_path_value);
 
   DBusPropertiesMap::const_iterator it =
       properties.find(MM_MODEM_PROPERTY_SUPPORTEDCAPABILITIES);
@@ -1506,6 +1506,7 @@ void CellularCapabilityUniversal::OnModemPropertiesChanged(
     OnModemCurrentCapabilitiesChanged(uint_value);
   // not needed: MM_MODEM_PROPERTY_MAXBEARERS
   // not needed: MM_MODEM_PROPERTY_MAXACTIVEBEARERS
+  string string_value;
   if (DBusProperties::GetString(properties,
                                 MM_MODEM_PROPERTY_MANUFACTURER,
                                 &string_value))
