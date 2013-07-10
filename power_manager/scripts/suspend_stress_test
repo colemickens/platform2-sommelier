@@ -12,12 +12,14 @@ DEFINE_integer suspend_min 5 "Min seconds to suspend"
 DEFINE_integer wake_max 10 "Max seconds to stay awake for"
 DEFINE_integer wake_min 5 "Min seconds to stay awake for"
 DEFINE_boolean backup_rtc ${FLAGS_FALSE} "Use second rtc if present for backup"
-DEFINE_boolean dbus_suspend ${FLAGS_FALSE} "Use dbus signal to suspend"
 DEFINE_boolean bug_fatal ${FLAGS_TRUE} "Abort on BUG dmesg lines"
 DEFINE_boolean crc_fatal ${FLAGS_TRUE} "Abort on CRC error dmesg lines"
 DEFINE_boolean warn_fatal ${FLAGS_FALSE} "Abort on WARNING dmesg lines"
 DEFINE_boolean errors_fatal ${FLAGS_TRUE} "Abort on errors"
 DEFINE_boolean memory_check ${FLAGS_FALSE} "Use memory_suspend_test to suspend"
+
+# Minimum value for --suspend_min when --memory_check is true.
+MEMORY_TEST_SUSPEND_MIN_DELAY=10
 
 get_failed_count() {
   awk '$1 == "fail:" { print $2 }' /sys/kernel/debug/suspend_stats
@@ -35,17 +37,27 @@ boolean_value() {
   fi
 }
 
+# Restarts powerd and blocks until it's re-registered its D-Bus name.
+restart_powerd() {
+  restart powerd
+  while ! dbus-send --system --print-reply --dest=org.freedesktop.DBus \
+      /org/freedesktop/DBus org.freedesktop.DBus.NameHasOwner \
+      string:org.chromium.PowerManager | grep -q true; do
+    sleep 0.1
+  done
+}
+
 disable_dark_resume() {
   temp_prefs=$(mktemp -d /tmp/power_manager.XXXXXXXXXXXX)
   echo 1 > ${temp_prefs}/disable_dark_resume
   mount --bind /var/lib/power_manager ${temp_prefs}
-  restart powerd
+  restart_powerd
 }
 
 restore_dark_resume_state() {
   umount ${temp_prefs}
   rm -rf ${temp_prefs}
-  restart powerd
+  restart_powerd
 }
 
 dump_stats_and_exit() {
@@ -60,6 +72,11 @@ dump_stats_and_exit() {
 
 FLAGS "$@" || exit 1
 
+if [ "$USER" != root ]; then
+  echo "This script must be run as root." 1>&2
+  exit 1
+fi
+
 if [ ${FLAGS_backup_rtc} -eq ${FLAGS_TRUE} ] &&
   [ ! -e /sys/class/rtc/rtc1/wakealarm ]; then
   echo "rtc1 not present, not setting second wakealarm"
@@ -71,14 +88,17 @@ if [ ${FLAGS_memory_check} -eq ${FLAGS_TRUE} ]; then
   inactive_kb=$(grep Inactive: /proc/meminfo | awk '{ print $2}')
   slack_kb=100000
   bytes=$(((free_kb + inactive_kb - slack_kb) * 1024))
-  suspend_cmd="memory_suspend_test --size ${bytes}"
-  if [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
-    suspend_cmd="${suspend_cmd} --use_dbus"
+  suspend_cmd="memory_suspend_test --size=${bytes}"
+
+  # Writing to memory can take a while. Make it less likely that the
+  # wake alarm will fire before the system has suspended.
+  if [ $FLAGS_suspend_min -lt $MEMORY_TEST_SUSPEND_MIN_DELAY ]; then
+    local orig_diff=$(($FLAGS_suspend_max - $FLAGS_suspend_min))
+    FLAGS_suspend_min=$MEMORY_TEST_SUSPEND_MIN_DELAY
+    FLAGS_suspend_max=$(($FLAGS_suspend_min + $orig_diff))
   fi
-elif [ ${FLAGS_dbus_suspend} -eq ${FLAGS_TRUE} ]; then
-  suspend_cmd=powerd_dbus_suspend
 else
-  suspend_cmd=powerd_suspend
+  suspend_cmd="powerd_dbus_suspend --delay=0"
 fi
 
 echo "Running ${FLAGS_count} iterations with:"
@@ -117,7 +137,7 @@ while true; do
     echo "+$(( sus_time + 5 ))" > /sys/class/rtc/rtc1/wakealarm
   fi
 
-  if ! $suspend_cmd; then
+  if ! eval $suspend_cmd; then
     echo "Suspend command failed"
     : $(( suspend_cmd_failures += 1))
     if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then

@@ -19,11 +19,11 @@
 #include "base/time.h"
 #include "chromeos/dbus/service_constants.h"
 
-DEFINE_int32(delay, 0, "Delay before suspending in seconds. Useful if running "
+DEFINE_int32(delay, 1, "Delay before suspending in seconds. Useful if running "
              "interactively to ensure that typing this command isn't "
              "recognized as user activity that cancels the suspend request.");
 DEFINE_int32(timeout, 0, "Timeout in seconds.");
-DEFINE_uint64(wakeup_count, 0, "Wakeup count.");
+DEFINE_uint64(wakeup_count, 0, "Wakeup count to pass to powerd or 0 if unset.");
 
 namespace {
 const int kMicrosecondsInSecond = 1000 * 1000;

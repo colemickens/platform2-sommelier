@@ -16,9 +16,8 @@
 
 #define PATTERN(i) ((i % 1) ? 0x55555555 : 0xAAAAAAAA)
 
-DEFINE_bool(use_dbus, false, "Use DBus RequestSuspend (must be logged in)");
 DEFINE_int64(size, 1024*1024*1024, "Amount of memory to allocate");
-DEFINE_int32(wakeup_count, -1, "Value read from /sys/power/wakeup_count");
+DEFINE_uint64(wakeup_count, 0, "Value read from /sys/power/wakeup_count");
 
 void PrintAddrMap(void *vaddr) {
   int fd;
@@ -35,12 +34,8 @@ void PrintAddrMap(void *vaddr) {
 }
 
 int Suspend(void) {
-  if (FLAGS_use_dbus) {
-    return system("powerd_dbus_suspend");
-  } else {
-    return system(StringPrintf("powerd_suspend -w %d",
-                               FLAGS_wakeup_count).c_str());
-  }
+  return system(StringPrintf("powerd_dbus_suspend --delay=0 --wakeup_count=%"
+                             PRIu64, FLAGS_wakeup_count).c_str());
 }
 
 uint32* Allocate(size_t size) {
