@@ -477,6 +477,7 @@
             'arp_packet_unittest.cc',
             'async_connection_unittest.cc',
             'byte_string_unittest.cc',
+            'callback80211_metrics_unittest.cc',
             'certificate_file_unittest.cc',
             'connection_health_checker_unittest.cc',
             'connection_info_reader_unittest.cc',

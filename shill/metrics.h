@@ -507,8 +507,8 @@ class Metrics {
       int response_time_milliseconds);
 
   // Notifies this object of WiFi disconnect.
-  void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
-                             IEEE_80211::WiFiReasonCode reason);
+  virtual void Notify80211Disconnect(WiFiDisconnectByWhom by_whom,
+                                     IEEE_80211::WiFiReasonCode reason);
 
   // Registers a device with this object so the device can use the timers to
   // track state transition metrics.

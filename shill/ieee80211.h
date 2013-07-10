@@ -80,7 +80,7 @@ struct ieee80211_frame {
 // Status/reason code returned by nl80211 messages: Authenticate,
 // Deauthenticate, Associate, and Reassociate.
 enum WiFiReasonCode {
-  // 0 is reserved.
+  kReasonCodeReserved0 = 0,  // 0 is reserved.
   kReasonCodeUnspecified = 1,
   kReasonCodePreviousAuthenticationInvalid = 2,
   kReasonCodeSenderHasLeft = 3,
@@ -92,7 +92,7 @@ enum WiFiReasonCode {
   kReasonCodeReassociationNotAuthenticated = 9,
   kReasonCodeUnacceptablePowerCapability = 10,
   kReasonCodeUnacceptableSupportedChannelInfo = 11,
-  // 12 is reserved.
+  kReasonCodeReserved12 = 12,  // 12 is reserved.
   kReasonCodeInvalidInfoElement = 13,
   kReasonCodeMICFailure = 14,
   kReasonCode4WayTimeout = 15,
@@ -105,7 +105,8 @@ enum WiFiReasonCode {
   kReasonCodeInvalidRsnIeCaps = 22,
   kReasonCode8021XAuth = 23,
   kReasonCodeCipherSuiteRejected = 24,
-  // 25-31 are reserved.
+  kReasonCodeReservedBegin25 = 25,   // 25-31 are reserved.
+  kReasonCodeReservedEnd31 = 31,
   kReasonCodeUnspecifiedQoS = 32,
   kReasonCodeQoSBandwidth = 33,
   kReasonCodeiPoorConditions = 34,
@@ -114,6 +115,8 @@ enum WiFiReasonCode {
   kReasonCodeUnacceptableMechanism = 37,
   kReasonCodeSetupRequired = 38,
   kReasonCodeTimeout = 39,
+  kReasonCodeReservedBegin40 = 40,  // 40-44 are reserved.
+  kReasonCodeReservedEnd44 = 44,
   kReasonCodeCipherSuiteNotSupported = 45,
   kReasonCodeMax,
   kReasonCodeInvalid = UINT16_MAX

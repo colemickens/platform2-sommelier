@@ -22,7 +22,7 @@ class MockMetrics : public Metrics {
                void(const Service &service, const std::string &histogram_name,
                     Service::ConnectState start_state,
                     Service::ConnectState stop_state));
-  MOCK_METHOD1(NotifyDeviceScanStarted, void (int interface_index));
+  MOCK_METHOD1(NotifyDeviceScanStarted, void(int interface_index));
   MOCK_METHOD1(NotifyDeviceScanFinished, void(int interface_index));
   MOCK_METHOD1(ResetScanTimer, void(int interface_index));
   MOCK_METHOD2(NotifyDeviceConnectStarted, void(int interface_index,
@@ -32,6 +32,8 @@ class MockMetrics : public Metrics {
   MOCK_METHOD1(NotifyDefaultServiceChanged, void(const Service *service));
   MOCK_METHOD2(NotifyServiceStateChanged,
                void(const Service &service, Service::ConnectState new_state));
+  MOCK_METHOD2(Notify80211Disconnect, void(WiFiDisconnectByWhom by_whom,
+                                           IEEE_80211::WiFiReasonCode reason));
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropPosted, void());
   MOCK_METHOD0(Notify3GPPRegistrationDelayedDropCanceled, void());
   MOCK_METHOD0(NotifyCorruptedProfile, void());

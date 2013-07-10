@@ -49,7 +49,7 @@ Daemon::Daemon(Config *config, ControlInterface *control)
                            config->GetRunDirectory(),
                            config->GetStorageDirectory(),
                            config->GetUserStorageDirectoryFormat())),
-      callback80211_metrics_(*netlink_manager_, metrics_.get()) {
+      callback80211_metrics_(metrics_.get()) {
 }
 
 Daemon::~Daemon() { }

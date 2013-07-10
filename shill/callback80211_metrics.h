@@ -11,6 +11,7 @@
 #include <base/basictypes.h>
 #include <base/memory/weak_ptr.h>
 
+#include "shill/ieee80211.h"
 #include "shill/netlink_manager.h"
 
 namespace shill {
@@ -23,7 +24,7 @@ class NetlinkMessage;
 class Callback80211Metrics :
   public base::SupportsWeakPtr<Callback80211Metrics> {
  public:
-  Callback80211Metrics(const NetlinkManager &netlink_manager, Metrics *metrics);
+  explicit Callback80211Metrics(Metrics *metrics);
 
   // Called with each broadcast netlink message that arrives to NetlinkManager.
   // If the message is a deauthenticate message, the method collects the reason
@@ -32,6 +33,8 @@ class Callback80211Metrics :
 
  private:
   static const char kMetricLinkDisconnectCount[];
+
+  IEEE_80211::WiFiReasonCode WiFiReasonCodeFromUint16(uint16_t reason) const;
 
   Metrics *metrics_;
 
