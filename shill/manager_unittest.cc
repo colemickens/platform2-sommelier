@@ -63,6 +63,7 @@ using ::testing::AnyNumber;
 using ::testing::ContainerEq;
 using ::testing::DoAll;
 using ::testing::InSequence;
+using ::testing::Invoke;
 using ::testing::Mock;
 using ::testing::Ne;
 using ::testing::NiceMock;
@@ -74,6 +75,7 @@ using ::testing::SetArgumentPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
+using ::testing::WithArg;
 
 class ManagerTest : public PropertyStoreTest {
  public:
@@ -348,6 +350,18 @@ class ManagerTest : public PropertyStoreTest {
     DISALLOW_COPY_AND_ASSIGN(DestinationVerificationTest);
   };
 
+  class DisableTechnologyReplyHandler :
+      public base::SupportsWeakPtr<DisableTechnologyReplyHandler> {
+   public:
+    DisableTechnologyReplyHandler() {}
+    virtual ~DisableTechnologyReplyHandler() {}
+
+    MOCK_METHOD1(ReportResult, void(const Error &));
+
+   private:
+    DISALLOW_COPY_AND_ASSIGN(DisableTechnologyReplyHandler);
+  };
+
   void SetPowerState(PowerManagerProxyDelegate::SuspendState state) {
     power_manager_->power_state_ = state;
   }
@@ -420,6 +434,10 @@ bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
   }
   return (svc0.get() == manager()->services_[0].get() &&
           svc1.get() == manager()->services_[1].get());
+}
+
+void SetErrorPermissionDenied(Error *error) {
+  error->Populate(Error::kPermissionDenied);
 }
 
 TEST_F(ManagerTest, Contains) {
@@ -3199,53 +3217,105 @@ TEST_F(ManagerTest, IsDefaultProfile) {
   EXPECT_FALSE(manager()->IsDefaultProfile(store1.get()));
 }
 
-TEST_F(ManagerTest, EnableTechnology) {
+TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   Error error(Error::kOperationInitiated);
-  ResultCallback callback;
-  manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
+  DisableTechnologyReplyHandler disable_technology_reply_handler;
+  ResultCallback disable_technology_callback(
+      Bind(&DisableTechnologyReplyHandler::ReportResult,
+           disable_technology_reply_handler.AsWeakPtr()));
+  EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(0);
+
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
+                                          &error, disable_technology_callback);
   EXPECT_TRUE(error.IsSuccess());
 
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
+  ON_CALL(*mock_devices_[1], technology())
+      .WillByDefault(Return(Technology::kCellular));
+  ON_CALL(*mock_devices_[2], technology())
+      .WillByDefault(Return(Technology::kCellular));
 
   manager()->RegisterDevice(mock_devices_[0]);
+  manager()->RegisterDevice(mock_devices_[1]);
 
-  // Device is enabled, so expect operation is successful.
-  mock_devices_[0]->enabled_ = true;
+  // Ethernet Device is disabled, so disable succeeds immediately.
   error.Populate(Error::kOperationInitiated);
-  manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
+                                          &error, disable_technology_callback);
   EXPECT_TRUE(error.IsSuccess());
 
-  // Device is disabled, so expect operation in progress.
-  mock_devices_[0]->enabled_ = false;
-  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _));
-  error.Populate(Error::kOperationInitiated);
-  manager()->EnableTechnology(flimflam::kTypeEthernet, &error, callback);
-  EXPECT_TRUE(error.IsOngoing());
-}
-
-TEST_F(ManagerTest, DisableTechnology) {
-  Error error(Error::kOperationInitiated);
-  ResultCallback callback;
-  manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
-  EXPECT_TRUE(error.IsSuccess());
-
-  ON_CALL(*mock_devices_[0], technology())
-      .WillByDefault(Return(Technology::kEthernet));
-
-  manager()->RegisterDevice(mock_devices_[0]);
-
-  // Device is disabled, so expect operation is successful.
-  error.Populate(Error::kOperationInitiated);
-  manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
-  EXPECT_TRUE(error.IsSuccess());
-
-  // Device is enabled, so expect operation in progress.
+  // Ethernet Device is enabled, and mock doesn't change error from
+  // kOperationInitiated, so expect disable to say operation in progress.
   EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(false, _, _));
   mock_devices_[0]->enabled_ = true;
   error.Populate(Error::kOperationInitiated);
-  manager()->DisableTechnology(flimflam::kTypeEthernet, &error, callback);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, false,
+                                          &error, disable_technology_callback);
   EXPECT_TRUE(error.IsOngoing());
+
+  // Ethernet Device is disabled, and mock doesn't change error from
+  // kOperationInitiated, so expect enable to say operation in progress.
+  EXPECT_CALL(*mock_devices_[0], SetEnabledPersistent(true, _, _));
+  mock_devices_[0]->enabled_ = false;
+  error.Populate(Error::kOperationInitiated);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeEthernet, true,
+                                          &error, disable_technology_callback);
+  EXPECT_TRUE(error.IsOngoing());
+
+  // Cellular Device is enabled, but disable failed.
+  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
+  mock_devices_[1]->enabled_ = true;
+  error.Populate(Error::kOperationInitiated);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+                                          &error, disable_technology_callback);
+  EXPECT_EQ(Error::kPermissionDenied, error.type());
+
+  // Multiple Cellular Devices in enabled state. Should indicate IsOngoing
+  // if one is in progress (even if the other completed immediately).
+  manager()->RegisterDevice(mock_devices_[2]);
+  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _));
+  mock_devices_[1]->enabled_ = true;
+  mock_devices_[2]->enabled_ = true;
+  error.Populate(Error::kOperationInitiated);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+                                          &error, disable_technology_callback);
+  EXPECT_TRUE(error.IsOngoing());
+
+  // ...and order doesn't matter.
+  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _))
+      .WillOnce(WithArg<1>(Invoke(SetErrorPermissionDenied)));
+  mock_devices_[1]->enabled_ = true;
+  mock_devices_[2]->enabled_ = true;
+  error.Populate(Error::kOperationInitiated);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+                                          &error, disable_technology_callback);
+  EXPECT_TRUE(error.IsOngoing());
+  Mock::VerifyAndClearExpectations(&disable_technology_reply_handler);
+
+  // Multiple Cellular Devices in enabled state. Even if all disable
+  // operations complete asynchronously, we only get one call to the
+  // DisableTechnologyReplyHandler::ReportResult.
+  ResultCallback device1_result_callback;
+  ResultCallback device2_result_callback;
+  EXPECT_CALL(*mock_devices_[1], SetEnabledPersistent(false, _, _))
+      .WillOnce(SaveArg<2>(&device1_result_callback));
+  EXPECT_CALL(*mock_devices_[2], SetEnabledPersistent(false, _, _))
+      .WillOnce(DoAll(WithArg<1>(Invoke(SetErrorPermissionDenied)),
+                      SaveArg<2>(&device2_result_callback)));
+  EXPECT_CALL(disable_technology_reply_handler, ReportResult(_));
+  mock_devices_[1]->enabled_ = true;
+  mock_devices_[2]->enabled_ = true;
+  error.Populate(Error::kOperationInitiated);
+  manager()->SetEnabledStateForTechnology(flimflam::kTypeCellular, false,
+                                          &error, disable_technology_callback);
+  EXPECT_TRUE(error.IsOngoing());
+  device1_result_callback.Run(Error(Error::kSuccess));
+  device2_result_callback.Run(Error(Error::kSuccess));
 }
 
 TEST_F(ManagerTest, IgnoredSearchList) {

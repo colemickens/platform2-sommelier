@@ -478,14 +478,14 @@ void DBusAdaptor::DeferReply(const DBus::Tag *tag) {
 
 void DBusAdaptor::ReplyNow(const DBus::Tag *tag) {
   Continuation *cont = find_continuation(tag);
-  CHECK(cont);
+  CHECK(cont) << "Failed to find continuation.";
   return_now(cont);
 }
 
 template <typename T>
 void DBusAdaptor::TypedReplyNow(const DBus::Tag *tag, const T &value) {
   Continuation *cont = find_continuation(tag);
-  CHECK(cont);
+  CHECK(cont) << "Failed to find continuation.";
   cont->writer() << value;
   return_now(cont);
 }
@@ -493,7 +493,7 @@ void DBusAdaptor::TypedReplyNow(const DBus::Tag *tag, const T &value) {
 void DBusAdaptor::ReplyNowWithError(const DBus::Tag *tag,
                                     const DBus::Error &error) {
   Continuation *cont = find_continuation(tag);
-  CHECK(cont);
+  CHECK(cont) << "Failed to find continuation.";
   return_error(cont, error);
 }
 

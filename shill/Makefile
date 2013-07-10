@@ -278,6 +278,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	proxy_factory.o \
 	routing_table.o \
 	resolver.o \
+	result_aggregator.o \
 	rpc_task.o \
 	rpc_task_dbus_adaptor.o \
 	rtnl_handler.o \
@@ -476,6 +477,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	property_accessor_unittest.o \
 	property_store_unittest.o \
 	resolver_unittest.o \
+	result_aggregator_unittest.o \
 	routing_table_unittest.o \
 	rpc_task_unittest.o \
 	rtnl_handler_unittest.o \

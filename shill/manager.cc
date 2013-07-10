@@ -21,6 +21,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "shill/adaptor_interfaces.h"
+#include "shill/callbacks.h"
 #include "shill/connection.h"
 #include "shill/control_interface.h"
 #include "shill/dbus_adaptor.h"
@@ -42,6 +43,7 @@
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
 #include "shill/resolver.h"
+#include "shill/result_aggregator.h"
 #include "shill/service.h"
 #include "shill/service_sorter.h"
 #include "shill/vpn_provider.h"
@@ -794,9 +796,10 @@ void Manager::SetProfileForService(const ServiceRefPtr &to_set,
   }
 }
 
-void Manager::EnableTechnology(const std::string &technology_name,
-                               Error *error,
-                               const ResultCallback &callback) {
+void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
+                                           bool enabled_state,
+                                           Error *error,
+                                           const ResultCallback &callback) {
   CHECK(error != NULL);
   DCHECK(error->IsOngoing());
   Technology::Identifier id = Technology::IdentifierFromName(technology_name);
@@ -805,53 +808,32 @@ void Manager::EnableTechnology(const std::string &technology_name,
     return;
   }
   bool deferred = false;
-  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
-       it != devices_.end(); ++it) {
-    DeviceRefPtr device = *it;
-    if (device->technology() == id && !device->enabled()) {
-      device->SetEnabledPersistent(true, error, callback);
-      // Continue with other devices even if one fails
-      // TODO(ers): Decide whether an error should be returned
-      // for the overall EnableTechnology operation if some
-      // devices succeed and some fail.
-      if (error->IsOngoing())
-        deferred = true;
-    }
-  }
-  // If no device has deferred work, then clear the error to
-  // communicate to the caller that all work is done.
-  if (!deferred)
-    error->Reset();
-}
+  auto result_aggregator(make_scoped_refptr<>(new ResultAggregator(callback)));
+  for (auto &device : devices_) {
+    if (device->technology() != id || device->enabled() == enabled_state)
+      continue;
 
-void Manager::DisableTechnology(const std::string &technology_name,
-                                Error *error,
-                                const ResultCallback &callback) {
-  CHECK(error != NULL);
-  DCHECK(error->IsOngoing());
-  Technology::Identifier id = Technology::IdentifierFromName(technology_name);
-  if (id == Technology::kUnknown) {
-    error->Populate(Error::kInvalidArguments, "Unknown technology");
-    return;
-  }
-  bool deferred = false;
-  for (vector<DeviceRefPtr>::iterator it = devices_.begin();
-       it != devices_.end(); ++it) {
-    DeviceRefPtr device = *it;
-    if (device->technology() == id && device->enabled()) {
-      device->SetEnabledPersistent(false, error, callback);
-      // Continue with other devices even if one fails
-      // TODO(ers): Decide whether an error should be returned
-      // for the overall DisableTechnology operation if some
-      // devices succeed and some fail.
-      if (error->IsOngoing())
-        deferred = true;
+    Error device_error(Error::kOperationInitiated);
+    ResultCallback aggregator_callback(
+        Bind(&ResultAggregator::ReportResult, result_aggregator));
+    device->SetEnabledPersistent(
+        enabled_state, &device_error, aggregator_callback);
+    if (device_error.IsOngoing()) {
+      deferred = true;
+    } else if (!error->IsFailure()) {  // Report first failure.
+      error->CopyFrom(device_error);
     }
   }
-  // If no device has deferred work, then clear the error to
-  // communicate to the caller that all work is done.
-  if (!deferred)
+  if (deferred) {
+    // Some device is handling this change asynchronously. Clobber any error
+    // from another device, so that we can indicate the operation is still in
+    // progress.
+    error->Populate(Error::kOperationInitiated);
+  } else if (error->IsOngoing()) {
+    // |error| IsOngoing at entry to this method, but no device
+    // |deferred|. Reset |error|, to indicate we're done.
     error->Reset();
+  }
 }
 
 void Manager::UpdateEnabledTechnologies() {

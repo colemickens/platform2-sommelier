@@ -970,7 +970,10 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 // callback
 void Device::OnEnabledStateChanged(const ResultCallback &callback,
                                    const Error &error) {
-  SLOG(Device, 2) << __func__ << "(" << enabled_pending_ << ")";
+  SLOG(Device, 2) << __func__
+                  << " (target: " << enabled_pending_ << ","
+                  << " success: " << error.IsSuccess() << ")"
+                  << " on " << link_name_;
   if (error.IsSuccess()) {
     enabled_ = enabled_pending_;
     manager_->UpdateEnabledTechnologies();

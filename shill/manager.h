@@ -197,14 +197,11 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // If there is no such connection, this function returns a reference to NULL.
   virtual ServiceRefPtr GetDefaultService() const;
 
-  // Enable all devices for the named technology.
-  void EnableTechnology(const std::string &technology_name,
-                        Error *error,
-                        const ResultCallback &callback);
-  // Disable all devices for the named technology.
-  void DisableTechnology(const std::string &technology_name,
-                         Error *error,
-                         const ResultCallback &callback);
+  // Set enabled state of all |technology_name| devices to |enabled_state|.
+  void SetEnabledStateForTechnology(const std::string &technology_name,
+                                    bool enabled_state,
+                                    Error *error,
+                                    const ResultCallback &callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology::Identifier tech);
   // Set the start-up value for the portal detection list.  This list will
