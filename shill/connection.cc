@@ -450,6 +450,12 @@ bool Connection::CreateGatewayRoute() {
   if (!has_broadcast_domain_) {
     return false;
   }
+
+  // If there is no gateway, don't try to create a route to it.
+  if (!gateway_.IsValid()) {
+    return false;
+  }
+
   // It is not worth keeping track of this route, since it is benign,
   // and only pins persistent state that was already true of the connection.
   // If DHCP parameters change later (without the connection having been
