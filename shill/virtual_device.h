@@ -9,6 +9,7 @@
 
 #include "shill/device.h"
 #include "shill/ipconfig.h"
+#include "shill/service.h"
 #include "shill/technology.h"
 
 namespace shill {
@@ -44,6 +45,9 @@ class VirtualDevice : public Device {
   // (E.g. Cellular, L2TPIPSecDriver, OpenVPNDriver.)
   virtual void DropConnection();
   virtual void SelectService(const ServiceRefPtr &service);
+  virtual void SetServiceState(Service::ConnectState state);
+  virtual void SetServiceFailure(Service::ConnectFailure failure_state);
+  virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
  private:
   DISALLOW_COPY_AND_ASSIGN(VirtualDevice);

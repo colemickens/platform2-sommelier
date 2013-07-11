@@ -333,16 +333,16 @@ class Device : public base::RefCounted<Device> {
   void SelectService(const ServiceRefPtr &service);
 
   // Set the state of the selected service
-  void SetServiceState(Service::ConnectState state);
+  virtual void SetServiceState(Service::ConnectState state);
 
   // Set the failure of the selected service (implicitly sets the state to
   // "failure")
-  void SetServiceFailure(Service::ConnectFailure failure_state);
+  virtual void SetServiceFailure(Service::ConnectFailure failure_state);
 
   // Records the failure mode and time of the selected service, and
   // sets the Service state of the selected service to "Idle".
   // Avoids showing a failure mole in the UI.
-  void SetServiceFailureSilent(Service::ConnectFailure failure_state);
+  virtual void SetServiceFailureSilent(Service::ConnectFailure failure_state);
 
   virtual void SetupConnectionHealthChecker();
 

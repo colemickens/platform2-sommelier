@@ -25,6 +25,9 @@ class MockPPPDevice : public PPPDevice {
                void(Error *error, const EnabledStateChangedCallback &callback));
   MOCK_METHOD1(UpdateIPConfig, void(const IPConfig::Properties &properties));
   MOCK_METHOD0(DropConnection, void());
+  MOCK_METHOD1(SetServiceState, void(Service::ConnectState));
+  MOCK_METHOD1(SetServiceFailure, void(Service::ConnectFailure));
+  MOCK_METHOD1(SetServiceFailureSilent, void(Service::ConnectFailure));
   MOCK_METHOD1(SetEnabled, void(bool));
 
  private:

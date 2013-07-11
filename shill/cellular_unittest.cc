@@ -166,6 +166,9 @@ class CellularTest : public testing::Test {
     device_->state_ = Cellular::kStateDisabled;
     device_->capability_->ReleaseProxies();
     device_->set_dhcp_provider(NULL);
+    // Break cycle between Cellular and CellularService.
+    device_->service_ = NULL;
+    device_->SelectService(NULL);
   }
 
   void InitProviderDB() {
@@ -928,9 +931,6 @@ TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
   device_->OnConnectionHealthCheckerResult(
       ConnectionHealthChecker::kResultCongestedTxQueue);
   EXPECT_TRUE(service->out_of_credits_);
-
-  // Don't leak the service object.
-  device_->service_ = NULL;
 }
 
 // The following test crashes under Clang
@@ -1077,6 +1077,41 @@ TEST_F(CellularTest, DropConnectionPPP) {
   EXPECT_CALL(*ppp_device, DropConnection());
   device_->ppp_device_ = ppp_device;
   device_->DropConnection();
+}
+
+TEST_F(CellularTest, ChangeServiceState) {
+  MockCellularService *service(SetMockService());
+  EXPECT_CALL(*service, SetState(_));
+  EXPECT_CALL(*service, SetFailure(_));
+  EXPECT_CALL(*service, SetFailureSilent(_));
+
+  // Without PPP, these should be handled by our selected_service().
+  device_->SelectService(service);
+  device_->SetServiceState(Service::kStateConfiguring);
+  device_->SetServiceFailure(Service::kFailurePPPAuth);
+  device_->SetServiceFailureSilent(Service::kFailureUnknown);
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, ChangeServiceStatePPP) {
+  MockCellularService *service(SetMockService());
+  scoped_refptr<MockPPPDevice> ppp_device(
+      new MockPPPDevice(modem_info_.control_interface(),
+                        NULL, NULL, NULL, "fake_ppp0", -1));
+  EXPECT_CALL(*ppp_device, SetServiceState(_));
+  EXPECT_CALL(*ppp_device, SetServiceFailure(_));
+  EXPECT_CALL(*ppp_device, SetServiceFailureSilent(_));
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+  EXPECT_CALL(*service, SetFailure(_)).Times(0);
+  EXPECT_CALL(*service, SetFailureSilent(_)).Times(0);
+  device_->ppp_device_ = ppp_device;
+
+  // With PPP, these should all be punted over to the |ppp_device|.
+  // Note in particular that Cellular does not manipulate |service| in
+  // this case.
+  device_->SetServiceState(Service::kStateConfiguring);
+  device_->SetServiceFailure(Service::kFailurePPPAuth);
+  device_->SetServiceFailureSilent(Service::kFailureUnknown);
 }
 
 // Custom property setters should return false, and make no changes, if

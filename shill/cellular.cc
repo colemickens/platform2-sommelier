@@ -373,6 +373,30 @@ void Cellular::DropConnection() {
   }
 }
 
+void Cellular::SetServiceState(Service::ConnectState state) {
+  if (ppp_device_) {
+    ppp_device_->SetServiceState(state);
+  } else {
+    Device::SetServiceState(state);
+  }
+}
+
+void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
+  if (ppp_device_) {
+    ppp_device_->SetServiceFailure(failure_state);
+  } else {
+    Device::SetServiceFailure(failure_state);
+  }
+}
+
+void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
+  if (ppp_device_) {
+    ppp_device_->SetServiceFailureSilent(failure_state);
+  } else {
+    Device::SetServiceFailureSilent(failure_state);
+  }
+}
+
 void Cellular::OnNoNetworkRouting() {
   SLOG(Cellular, 2) << __func__;
   Device::OnNoNetworkRouting();

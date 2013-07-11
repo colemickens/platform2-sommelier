@@ -71,4 +71,17 @@ void VirtualDevice::SelectService(const ServiceRefPtr &service) {
   Device::SelectService(service);
 }
 
+void VirtualDevice::SetServiceState(Service::ConnectState state) {
+  Device::SetServiceState(state);
+}
+
+void VirtualDevice::SetServiceFailure(Service::ConnectFailure failure_state) {
+  Device::SetServiceFailure(failure_state);
+}
+
+void VirtualDevice::SetServiceFailureSilent(
+    Service::ConnectFailure failure_state) {
+  Device::SetServiceFailureSilent(failure_state);
+}
+
 }  // namespace shill
