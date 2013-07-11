@@ -142,10 +142,10 @@ static std::map<std::pair<uint8_t, uint8_t>,char> Utf8ToGsm7Map;
 std::string Gsm7ToUtf8String(const uint8_t* gsm7,
                              size_t num_septets,
                              uint8_t bit_offset) {
-  uint8_t* septets = new uint8_t[num_septets];
+  std::vector<uint8_t> septets(num_septets);
   uint8_t saved_bits = 0;
   size_t written = 0;
-  uint8_t* cp = septets;
+  uint8_t* cp = &septets[0];
   int i = 0;
 
   // unpack
@@ -169,8 +169,8 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
     }
     saved_bits = 0;
   }
-  int nseptets = cp - septets;
-  cp = septets;
+  int nseptets = cp - &septets[0];
+  cp = &septets[0];
 
   // now map the septets into their corresponding UTF-8 characters
   std::string str;
@@ -194,7 +194,6 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
         str += *mp++;
   }
 
-  delete septets;
   return str;
 }
 
