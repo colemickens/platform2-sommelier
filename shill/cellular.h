@@ -193,6 +193,7 @@ class Cellular : public Device, public RPCTaskDelegate {
   virtual void Reset(Error *error, const ResultCallback &callback);
   virtual void SetCarrier(const std::string &carrier,
                           Error *error, const ResultCallback &callback);
+  virtual void DropConnection() override;
   virtual void OnNoNetworkRouting();
 
   void StartModemCallback(const EnabledStateChangedCallback &callback,
@@ -283,6 +284,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, Disconnect);
   FRIEND_TEST(CellularTest, DisconnectFailure);
   FRIEND_TEST(CellularTest, DisconnectWithCallback);
+  FRIEND_TEST(CellularTest, DropConnection);
+  FRIEND_TEST(CellularTest, DropConnectionPPP);
   FRIEND_TEST(CellularTest, EnableTrafficMonitor);
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);

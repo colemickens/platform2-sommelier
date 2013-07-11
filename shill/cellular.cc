@@ -363,6 +363,16 @@ void Cellular::SetCarrier(const string &carrier,
   capability_->SetCarrier(carrier, error, callback);
 }
 
+void Cellular::DropConnection() {
+  if (ppp_device_) {
+    // For PPP dongles, IP configuration is handled on the |ppp_device_|,
+    // rather than the netdev plumbed into |this|.
+    ppp_device_->DropConnection();
+  } else {
+    Device::DropConnection();
+  }
+}
+
 void Cellular::OnNoNetworkRouting() {
   SLOG(Cellular, 2) << __func__;
   Device::OnNoNetworkRouting();
@@ -849,9 +859,9 @@ void Cellular::Notify(const string &reason,
     device_info->RegisterDevice(ppp_device_);
   }
 
-  // TODO(quiche): Consider if we should have a separate Service for the
-  // PPPDevice. (crbug.com/246456)
   CHECK(service_);
+  // For PPP, we only SelectService on the |ppp_device_|.
+  CHECK(!selected_service());
   const bool kBlackholeIPv6 = false;
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);

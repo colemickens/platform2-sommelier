@@ -294,7 +294,7 @@ class Device : public base::RefCounted<Device> {
 
   // Drops the currently selected service along with its IP configuration and
   // connection, if any.
-  void DropConnection();
+  virtual void DropConnection();
 
   // If there's an IP configuration in |ipconfig_|, releases the IP address and
   // destroys the configuration instance.

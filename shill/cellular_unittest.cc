@@ -29,6 +29,7 @@
 #include "shill/mock_modem_info.h"
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
+#include "shill/mock_ppp_device.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
@@ -1059,6 +1060,23 @@ TEST_F(CellularTest, GetLogin) {
   service.ppp_username_ = kFakeUsername;
   service.ppp_password_ = kFakePassword;
   device_->GetLogin(&username_to_pppd, &password_to_pppd);
+}
+
+TEST_F(CellularTest, DropConnection) {
+  device_->set_ipconfig(dhcp_config_);
+  EXPECT_CALL(*dhcp_config_, ReleaseIP(_));
+  device_->DropConnection();
+  Mock::VerifyAndClearExpectations(dhcp_config_);  // verify before dtor
+  EXPECT_FALSE(device_->ipconfig());
+}
+
+TEST_F(CellularTest, DropConnectionPPP) {
+  scoped_refptr<MockPPPDevice> ppp_device(
+      new MockPPPDevice(modem_info_.control_interface(),
+                        NULL, NULL, NULL, "fake_ppp0", -1));
+  EXPECT_CALL(*ppp_device, DropConnection());
+  device_->ppp_device_ = ppp_device;
+  device_->DropConnection();
 }
 
 // Custom property setters should return false, and make no changes, if
