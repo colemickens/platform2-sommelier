@@ -87,7 +87,7 @@ static const Log common_logs[] = {
   { "eventlog", "/bin/cat /var/log/eventlog.txt" },
   {
     "exynos_gem_objects",
-    "/bin/cat /sys/kernel/debug/dri/0/exynos_gem_objects",
+    "/bin/cat /sys/kernel/debug/dri/0/exynos_gem_objects 2> /dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
@@ -97,19 +97,19 @@ static const Log common_logs[] = {
   { "hw_platform", "/usr/bin/uname -i" },
   {
     "i915_gem_gtt",
-    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_gtt",
+    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_gtt 2> /dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
   {
     "i915_gem_objects",
-    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_objects",
+    "/bin/cat /sys/kernel/debug/dri/0/i915_gem_objects 2> /dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup
   },
   {
     "i915_error_state",
-    "/bin/cat /sys/kernel/debug/dri/0/i915_error_state",
+    "/bin/cat /sys/kernel/debug/dri/0/i915_error_state 2> /dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
@@ -118,7 +118,10 @@ static const Log common_logs[] = {
   { "lsmod", "lsmod" },
   { "lspci", "/usr/sbin/lspci" },
   { "lsusb", "lsusb" },
-  { "mali_memory", "/bin/cat /sys/devices/platform/mali.0/memory" },
+  {
+      "mali_memory",
+      "/bin/cat /sys/devices/platform/mali.0/memory 2> /dev/null"
+  },
   { "meminfo", "cat /proc/meminfo" },
   { "memory_spd_info", "/bin/cat /var/log/memory_spd_info.txt" },
   { "mount-encrypted", "/bin/cat /var/log/mount-encrypted.log" },
