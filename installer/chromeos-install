@@ -150,9 +150,9 @@ write_partition() {
   format=$(get_format ${user_part})
   case ${format} in
   nand)
-    nandwrite --input-skip $((user_skip * 512)) \
-      --input-size $((user_count * 512)) \
-      /dev/mtd${user_part} "${src}"
+    flash_erase "/dev/mtd${user_part}" 0 0
+    fast_dd 512 "${user_count}" "0" "${user_skip}" \
+      if="${src}" of="/dev/mtdblock${user_part} " conv=notrunc
     ;;
 
   ubi)
@@ -553,8 +553,22 @@ copy_kernel_vblock() {
   local ret=0
 
   if [ -s $VERIFY_BLOB ]; then
-    fast_dd 512 0 ${START_KERN_A} 0 if=${VERIFY_BLOB} of=${DST} conv=notrunc
-    fast_dd 512 0 ${START_KERN_B} 0 if=${VERIFY_BLOB} of=${DST} conv=notrunc
+    if [ ${FLAGS_mtd_layout} -eq ${FLAGS_FALSE} ]; then
+      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
+        of="${DST}" conv=notrunc
+      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
+        of="${DST}" conv=notrunc
+    else
+      # We have to erase before we write else you get a boatload of I/O errors
+      flash_erase "/dev/mtd${KERNEL_PART}" 0 0
+      flash_erase "/dev/mtd${KERNEL_B_PART}" 0 0
+
+      fast_dd 512 0 ${START_KERN_A} 0 if="${VERIFY_BLOB}" \
+        of="/dev/mtdblock${KERNEL_PART}" conv=notrunc
+      fast_dd 512 0 ${START_KERN_B} 0 if="${VERIFY_BLOB}" \
+        of="/dev/mtdblock${KERNEL_B_PART}" conv=notrunc
+    fi
+
     ret=1
   fi
   echo ${ret}
@@ -583,13 +597,17 @@ echo "Copying rootfs..."
 write_partition ${ROOTFS_PART} ${ROOTFS_IMG_SECTORS} ${START_ROOTFS_A} \
   ${ROOTFS_IMG_OFFSET} ${ROOTFS_IMG} ${DST}
 
-echo "Copying OEM customization..."
-write_partition ${OEM_PART} ${OEM_IMG_SECTORS} ${START_OEM} \
-  ${OEM_IMG_OFFSET} ${OEM_IMG} ${DST}
+if [ ${OEM_IMG_SECTORS} -gt 0 ]; then
+  echo "Copying OEM customization..."
+  write_partition ${OEM_PART} ${OEM_IMG_SECTORS} ${START_OEM} \
+    ${OEM_IMG_OFFSET} ${OEM_IMG} ${DST}
+fi
 
-echo "Copying ESP..."
-write_partition ${ESP_PART} ${ESP_IMG_SECTORS} ${START_ESP} \
-  ${ESP_IMG_OFFSET} ${ESP_IMG} ${DST}
+if [ ${ESP_IMG_SECTORS} -gt 0 ]; then
+  echo "Copying ESP..."
+  write_partition ${ESP_PART} ${ESP_IMG_SECTORS} ${START_ESP} \
+    ${ESP_IMG_OFFSET} ${ESP_IMG} ${DST}
+fi
 
 # If postinst fails, we should still clear stateful.
 STATEFUL_FORMAT=$(get_format ${STATEFUL_PART})
@@ -598,7 +616,20 @@ if [ "${FLAGS_preserve_stateful}" -eq "${FLAGS_FALSE}" ]; then
   echo "Clearing the stateful partition..."
 
   case ${STATEFUL_FORMAT} in
-  ubi) ;;
+  ubi)
+    local phy_ubi="/dev/ubi${STATEFUL_PART}"
+    local log_ubi="${phy_ubi}_0"
+    local sysfs_name="/sys/class/mtd/mtd${STATEFUL_PART}/name"
+
+    # Do we have to initialize it first?
+    if [ ! -e ${phy_ubi} ]; then
+      ubiformat -y -e 0 /dev/mtd${STATEFUL_PART}
+      ubiattach -d ${STATEFUL_PART} -m ${STATEFUL_PART}
+    fi
+    if [ ! -e ${log_ubi} ]; then
+      ubimkvol -m ${phy_ubi} -N "$(cat "${sysfs_name}")"
+    fi
+    ;;
   *)
     loop_offset_setup ${DST} ${START_STATEFUL}
     ;;
