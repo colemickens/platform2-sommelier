@@ -29,6 +29,7 @@ bool PerfSerializer::SerializeFromFile(const string& filename,
 
 bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
   SerializePerfFileAttrs(attrs_, perf_data_proto->mutable_file_attrs());
+  SerializePerfEventTypes(event_types_, perf_data_proto->mutable_event_types());
 
   if (!ParseRawEvents())
     return false;
@@ -69,6 +70,7 @@ bool PerfSerializer::DeserializeToFile(const PerfDataProto& perf_data_proto,
 
 bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
   DeserializePerfFileAttrs(perf_data_proto.file_attrs(), &attrs_);
+  DeserializePerfEventTypes(perf_data_proto.event_types(), &event_types_);
 
   // Make sure all event types (attrs) have the same sample type.
   for (size_t i = 0; i < attrs_.size(); ++i) {
@@ -212,6 +214,22 @@ void PerfSerializer::DeserializePerfEventAttr(
   S(bp_len);
   S(branch_sample_type);
 #undef S
+}
+
+void PerfSerializer::SerializePerfEventType(
+    const perf_trace_event_type& event_type,
+    quipper::PerfDataProto_PerfEventType* event_type_proto) const {
+  event_type_proto->set_id(event_type.event_id);
+  event_type_proto->set_name(event_type.name);
+  event_type_proto->set_name_md5_prefix(Md5Prefix(event_type.name));
+}
+
+void PerfSerializer::DeserializePerfEventType(
+    const quipper::PerfDataProto_PerfEventType& event_type_proto,
+    perf_trace_event_type* event_type) const {
+  event_type->event_id = event_type_proto.id();
+  snprintf(event_type->name, arraysize(event_type->name), "%s",
+           event_type_proto.name().c_str());
 }
 
 void PerfSerializer::SerializeEvent(

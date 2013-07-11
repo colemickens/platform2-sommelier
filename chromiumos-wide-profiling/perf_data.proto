@@ -13,7 +13,7 @@ option optimize_for = LITE_RUNTIME;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 10
+// Next tag: 11
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -145,6 +145,19 @@ message PerfDataProto {
 
     // List of perf file attribute ids. Each id describes an event.
     repeated uint64 ids = 2;
+  }
+
+  // Describes a perf event type.
+  // Next tag: 4
+  message PerfEventType {
+    // Event id.
+    optional uint64 id = 1;
+
+    // Event name.
+    optional string name = 2;
+
+    // Event name's md5 prefix.
+    optional uint64 name_md5_prefix = 3;
   }
 
   // This message contains information about a perf sample itself, as opposed to
@@ -375,6 +388,8 @@ message PerfDataProto {
 
   repeated PerfFileAttr file_attrs = 1;
   repeated PerfEvent events = 2;
+
+  repeated PerfEventType event_types = 10;
 
   // Time when quipper generated this perf data / protobuf, given as seconds
   // since the epoch.

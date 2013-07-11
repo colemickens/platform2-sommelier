@@ -42,10 +42,6 @@ struct CStringWithLength {
   string str;
 };
 
-// The type of the number of string data, found in the command line metadata in
-// the perf data file.
-typedef u32 num_string_data_type;
-
 struct PerfStringMetadata {
   u32 type;
   std::vector<CStringWithLength> data;
@@ -87,13 +83,21 @@ class PerfReader {
 
  protected:
   bool ReadHeader(const std::vector<char>& data);
-  bool ReadAttrs(const std::vector<char>& data);
-  bool ReadEventTypes(const std::vector<char>& data);
-  bool ReadData(const std::vector<char>& data);
-  // Reads metadata in normal mode.  Does not support cross endianness.
-  bool ReadMetadata(const std::vector<char>& data);
 
-  // For reading the various formats of metadata.
+  bool ReadAttrs(const std::vector<char>& data);
+  bool ReadAttr(const std::vector<char>& data, size_t* offset);
+  bool ReadEventAttr(const std::vector<char>& data, size_t* offset,
+                     perf_event_attr* attr);
+  bool ReadUniqueIDs(const std::vector<char>& data, size_t num_ids,
+                     size_t* offset, std::vector<u64>* ids);
+
+  bool ReadEventTypes(const std::vector<char>& data);
+  bool ReadEventType(const std::vector<char>& data, size_t* offset);
+
+  bool ReadData(const std::vector<char>& data);
+
+  // Reads metadata in normal mode.
+  bool ReadMetadata(const std::vector<char>& data);
   bool ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
                            size_t offset, size_t size);
   bool ReadStringMetadata(const std::vector<char>& data, u32 type,
@@ -102,6 +106,8 @@ class PerfReader {
                           size_t offset, size_t size);
   bool ReadUint64Metadata(const std::vector<char>& data, u32 type,
                           size_t offset, size_t size);
+  bool ReadEventDescMetadata(const std::vector<char>& data, u32 type,
+                             size_t offset, size_t size);
 
   // Read perf data from piped perf output data.
   bool ReadPipedData(const std::vector<char>& data);
@@ -121,11 +127,12 @@ class PerfReader {
                            std::vector<char>* data) const;
   bool WriteUint64Metadata(u32 type, size_t* offset,
                            std::vector<char>* data) const;
+  bool WriteEventDescMetadata(u32 type, size_t* offset,
+                              std::vector<char>* data) const;
 
   // For reading event blocks within piped perf data.
-  bool ReadAttrEventBlock(const struct attr_event& attr_event);
-  bool ReadEventTypeEventBlock(const struct event_type_event& event_type_event);
-  bool ReadEventDescEventBlock(const struct event_desc_event& event_desc_event);
+  bool ReadAttrEventBlock(const std::vector<char>& data, size_t offset,
+                          size_t size);
   bool ReadPerfEventBlock(const event_t& event);
 
   // Returns the number of types of metadata stored.
@@ -136,6 +143,7 @@ class PerfReader {
   size_t GetStringMetadataSize() const;
   size_t GetUint32MetadataSize() const;
   size_t GetUint64MetadataSize() const;
+  size_t GetEventDescMetadataSize() const;
 
   // Returns true if we should write the number of strings for the string
   // metadata of type |type|.

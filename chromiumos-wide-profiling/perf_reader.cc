@@ -4,6 +4,7 @@
 
 #include <byteswap.h>
 
+#include <bitset>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -19,16 +20,25 @@ namespace quipper {
 
 namespace {
 
+// The type of the number of string data, found in the command line metadata in
+// the perf data file.
+typedef u32 num_string_data_type;
+
+// Types of the event desc fields that are not found in other structs.
+typedef u32 event_desc_num_events;
+typedef u32 event_desc_attr_size;
+typedef u32 event_desc_num_unique_ids;
+
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64 kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
 // Currently, we support build ids, hostname, osrelease, version, arch, nrcpus,
-// cpudesc, totalmem, cmdline, and branchstack.
+// cpudesc, totalmem, cmdline, eventdesc, and branchstack.
 // The mask is computed as (1 << HEADER_BUILD_ID) |
 // (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
-const uint32 kSupportedMetadataMask = 0x8dfc;
+const uint64 kSupportedMetadataMask = 0x9dfc;
 
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
@@ -56,14 +66,28 @@ void ByteSwap(T* input) {
   }
 }
 
+// The code currently assumes that the compiler will not add any padding to the
+// various structs.  These CHECKs make sure that this is true.
 void CheckNoEventHeaderPadding() {
   perf_event_header header;
   CHECK_EQ(sizeof(header),
            sizeof(header.type) + sizeof(header.misc) + sizeof(header.size));
 }
 
-// The code currently assumes that the compiler will not add any padding to the
-// build_id_event struct.  If this is not true, this CHECK will fail.
+void CheckNoPerfEventAttrPadding() {
+  perf_event_attr attr;
+  CHECK_EQ(sizeof(attr),
+           (reinterpret_cast<u64>(&attr.branch_sample_type) -
+            reinterpret_cast<u64>(&attr)) +
+           sizeof(attr.branch_sample_type));
+}
+
+void CheckNoEventTypePadding() {
+  perf_trace_event_type event_type;
+  CHECK_EQ(sizeof(event_type),
+           sizeof(event_type.event_id) + sizeof(event_type.name));
+}
+
 void CheckNoBuildIDEventPadding() {
   build_id_event event;
   CHECK_EQ(sizeof(event),
@@ -121,6 +145,46 @@ bool WriteDataToVector(const void* data,
   }
   memcpy(&(*dest)[*dest_offset], data, size);
   *dest_offset = end_offset;
+  return true;
+}
+
+// Reads a CStringWithLength from |data| into |dest|, and advances the offset.
+bool ReadStringFromVector(const std::vector<char>& data, bool is_cross_endian,
+                          size_t* offset, CStringWithLength* dest) {
+  if (!ReadDataFromVector(data, sizeof(dest->len), "string length",
+                          offset, &dest->len)) {
+    return false;
+  }
+  if (is_cross_endian)
+    ByteSwap(&dest->len);
+
+  if (data.size() < *offset + dest->len) {
+    LOG(ERROR) << "Not enough bytes to read string";
+    return false;
+  }
+  dest->str = string(&data[*offset]);
+  *offset += dest->len / sizeof(data[*offset]);
+  return true;
+}
+
+// Writes a CStringWithLength from |src| to |dest|, and advances the offset.
+bool WriteStringToVector(const CStringWithLength& src, std::vector<char>* dest,
+                         size_t* offset) {
+  const size_t kDestUnitSize = sizeof(dest->at(*offset));
+  size_t final_offset = *offset + src.len + sizeof(src.len) / kDestUnitSize;
+  if (dest->size() < final_offset) {
+    LOG(ERROR) << "Not enough space to write string";
+    return false;
+  }
+
+  if (!WriteDataToVector(&src.len, sizeof(src.len), "length of string metadata",
+                         offset, dest)) {
+    return false;
+  }
+
+  memset(&dest->at(*offset), 0, src.len * kDestUnitSize);
+  CHECK_GT(snprintf(&dest->at(*offset), src.len, "%s", src.str.c_str()), 0);
+  *offset += src.len;
   return true;
 }
 
@@ -531,6 +595,7 @@ bool PerfReader::WriteFile(const string& filename) {
   total_size += GetStringMetadataSize();
   total_size += GetUint32MetadataSize();
   total_size += GetUint64MetadataSize();
+  total_size += GetEventDescMetadataSize();
 
   // Write all data into a vector.
   std::vector<char> data;
@@ -563,10 +628,7 @@ bool PerfReader::RegenerateHeader() {
   out_header_.attrs.size = out_header_.attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
     out_header_.data.size += events_[i].event.header.size;
-  if (!event_types_.empty()) {
-    out_header_.event_types.size =
-        event_types_.size() * sizeof(event_types_[0]);
-  }
+  out_header_.event_types.size = event_types_.size() * sizeof(event_types_[0]);
 
   u64 current_offset = 0;
   current_offset += out_header_.size;
@@ -632,54 +694,123 @@ bool PerfReader::ReadHeader(const std::vector<char>& data) {
 bool PerfReader::ReadAttrs(const std::vector<char>& data) {
   size_t num_attrs = header_.attrs.size / header_.attr_size;
   CHECK_EQ(sizeof(struct perf_file_attr), header_.attr_size);
-  attrs_.resize(num_attrs);
+  size_t offset = header_.attrs.offset;
   for (size_t i = 0; i < num_attrs; i++) {
-    size_t offset = header_.attrs.offset + i * header_.attr_size;
-    // Read each attr.
-    PerfFileAttr& current_attr = attrs_[i];
-    struct perf_event_attr& attr = current_attr.attr;
-    if (!ReadDataFromVector(data, sizeof(attr), "attribute", &offset, &attr))
+    if (!ReadAttr(data, &offset))
       return false;
+  }
+  return true;
+}
 
-    // Currently, all perf event types have the same sample format (same fields
-    // present).  The following CHECK will catch any data that shows otherwise.
-    CHECK_EQ(attrs_[i].attr.sample_type, attrs_[0].attr.sample_type)
-        << "Event type #" << i << " sample format does not match format of "
+bool PerfReader::ReadAttr(const std::vector<char>& data, size_t* offset) {
+  PerfFileAttr attr;
+  if (!ReadEventAttr(data, offset, &attr.attr))
+    return false;
+
+  perf_file_section ids;
+  if (!ReadDataFromVector(data, sizeof(ids), "ID section info", offset, &ids))
+    return false;
+  if (is_cross_endian_) {
+    ByteSwap(&ids.offset);
+    ByteSwap(&ids.size);
+  }
+
+  size_t num_ids = ids.size / sizeof(attr.ids[0]);
+  // Convert the offset from u64 to size_t.
+  size_t ids_offset = ids.offset;
+  if (!ReadUniqueIDs(data, num_ids, &ids_offset, &attr.ids))
+    return false;
+
+  // Event types are found many times in the perf data file.
+  // Only add this event type if it is not already present.
+  for (size_t i = 0; i < attrs_.size(); ++i) {
+    if (attrs_[i].ids[0] == attr.ids[0])
+      return true;
+  }
+  attrs_.push_back(attr);
+  // Even if eventdesc metadata was not present in the input file, we can
+  // construct it from attrs_ and event_types_.
+  if (event_types_.size() != 0)
+    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+  return true;
+}
+
+bool PerfReader::ReadEventAttr(const std::vector<char>& data, size_t* offset,
+                               perf_event_attr* attr) {
+  CheckNoPerfEventAttrPadding();
+  if (!ReadDataFromVector(data, sizeof(*attr), "attribute", offset, attr))
+    return false;
+
+  if (is_cross_endian_) {
+    ByteSwap(&attr->type);
+    ByteSwap(&attr->size);
+    ByteSwap(&attr->config);
+    ByteSwap(&attr->sample_period);
+    ByteSwap(&attr->sample_type);
+    ByteSwap(&attr->read_format);
+    ByteSwap(&attr->wakeup_events);
+    ByteSwap(&attr->bp_type);
+    ByteSwap(&attr->bp_addr);
+    ByteSwap(&attr->bp_len);
+    ByteSwap(&attr->branch_sample_type);
+  }
+
+  // Assign sample type if it hasn't been assigned, otherwise make sure all
+  // subsequent attributes have the same sample type bits set.
+  if (sample_type_ == 0)
+    sample_type_ = attr->sample_type;
+  else
+    CHECK_EQ(sample_type_, attr->sample_type)
+        << "Event type sample format does not match format of "
         << "other event type samples.";
 
-    struct perf_file_section ids;
-    if (!ReadDataFromVector(data, sizeof(ids), "ID offset+size", &offset, &ids))
+  return true;
+}
+
+bool PerfReader::ReadUniqueIDs(const std::vector<char>& data, size_t num_ids,
+                               size_t* offset, std::vector<u64>* ids) {
+  ids->resize(num_ids);
+  for (size_t j = 0; j < num_ids; j++) {
+    if (!ReadDataFromVector(data, sizeof(ids->at(j)), "ID", offset,
+                            &ids->at(j))) {
       return false;
-
-    current_attr.ids.resize(ids.size / sizeof(current_attr.ids[0]));
-    offset = ids.offset;
-    for (size_t j = 0; j < ids.size / sizeof(current_attr.ids[0]); j++) {
-      uint64 id = 0;
-      if (!ReadDataFromVector(data, sizeof(id), "ID", &offset, &id))
-        return false;
-      current_attr.ids[j] = id;
     }
+    if (is_cross_endian_)
+      ByteSwap(&ids->at(j));
   }
-  if (num_attrs > 0)
-    sample_type_ = attrs_[0].attr.sample_type;
-
   return true;
 }
 
 bool PerfReader::ReadEventTypes(const std::vector<char>& data) {
   size_t num_event_types = header_.event_types.size /
       sizeof(struct perf_trace_event_type);
-  CHECK_EQ(sizeof(struct perf_trace_event_type) * num_event_types,
+  CHECK_EQ(sizeof(perf_trace_event_type) * num_event_types,
            header_.event_types.size);
-  event_types_.resize(num_event_types);
   size_t offset = header_.event_types.offset;
   for (size_t i = 0; i < num_event_types; ++i) {
-    // Read each event type.
-    struct perf_trace_event_type& type = event_types_[i];
-    if (!ReadDataFromVector(data, sizeof(type), "event type", &offset, &type))
+    if (!ReadEventType(data, &offset))
       return false;
   }
+  return true;
+}
 
+bool PerfReader::ReadEventType(const std::vector<char>& data, size_t* offset) {
+  CheckNoEventTypePadding();
+  perf_trace_event_type type;
+  if (!ReadDataFromVector(data, sizeof(type), "event type", offset, &type))
+    return false;
+
+  // Event types are found many times in the perf data file.
+  // Only add this event type if it is not already present.
+  for (size_t i = 0; i < event_types_.size(); ++i) {
+    if (event_types_[i].event_id == type.event_id)
+      return true;
+  }
+  event_types_.push_back(type);
+  // Even if eventdesc metadata was not present in the input file, we can
+  // construct it from attrs_ and event_types_.
+  if (attrs_.size() != 0)
+    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   return true;
 }
 
@@ -750,6 +881,10 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
       if (!ReadUint64Metadata(data, type, metadata_offset, metadata_size))
         return false;
       break;
+    case HEADER_EVENT_DESC:
+      if (!ReadEventDescMetadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
     case HEADER_BRANCH_STACK:
       continue;
     default: LOG(INFO) << "Unsupported metadata type: " << type;
@@ -804,13 +939,8 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
 
   while ((offset - start_offset) < size) {
     CStringWithLength single_string;
-    single_string.len = *reinterpret_cast<const u32*>(&data[offset]);
-    offset += sizeof(single_string.len) / sizeof(data[offset]);
-    single_string.str = string(&data[offset]);
-    offset += single_string.len / sizeof(data[offset]);
-
-    if (is_cross_endian_)
-      ByteSwap(&single_string.len);
+    if (!ReadStringFromVector(data, is_cross_endian_, &offset, &single_string))
+      return false;
     str_data.data.push_back(single_string);
   }
 
@@ -856,6 +986,54 @@ bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
   return true;
 }
 
+bool PerfReader::ReadEventDescMetadata(const std::vector<char>& data, u32 type,
+                                       size_t offset, size_t size) {
+  // In normal mode, eventdesc just contains duplicate data, so don't bother.
+  bool has_attrs = !attrs_.empty();
+  bool has_event_types = !event_types_.empty();
+  if (has_attrs && has_event_types)
+    return true;
+
+  const size_t kDataUnitSize = sizeof(data[offset]);
+  size_t start_offset = offset;
+  // Skip number of events and size of perf_event_attr struct
+  offset += sizeof(event_desc_num_events) / kDataUnitSize;
+  offset += sizeof(event_desc_attr_size) / kDataUnitSize;
+
+  for (size_t i = 0; (offset - start_offset) < size; ++i) {
+    PerfFileAttr attr;
+    if (!ReadEventAttr(data, &offset, &attr.attr))
+      return false;
+
+    event_desc_num_unique_ids num_ids;
+    if (!ReadDataFromVector(data, sizeof(num_ids), "number of unique ids",
+                            &offset, &num_ids)) {
+      return false;
+    }
+    if (is_cross_endian_)
+      ByteSwap(&num_ids);
+
+    CStringWithLength event_name;
+    if (!ReadStringFromVector(data, is_cross_endian_, &offset, &event_name))
+      return false;
+
+    if (!has_event_types) {
+      struct perf_trace_event_type event_type;
+      event_type.event_id = i;
+      snprintf(event_type.name, sizeof(event_type.name), "%s",
+               event_name.str.c_str());
+      event_types_.push_back(event_type);
+    }
+
+    if (!ReadUniqueIDs(data, num_ids, &offset, &attr.ids))
+      return false;
+
+    if (!has_attrs)
+      attrs_.push_back(attr);
+  }
+  return true;
+}
+
 bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
@@ -869,9 +1047,6 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
         char more_data[];
       };
       // Specific types of data.
-      struct attr_event attr_event;
-      struct event_type_event event_type_event;
-      struct event_desc_event event_desc_event;
       event_t event;
     };
     const union piped_data_block *block_data
@@ -892,32 +1067,28 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       return false;
     }
 
-    // The code currently assumes that the event will never be larger
-    // than the largest event in the piped_data_block union.
-    // If this is not true (i.e. there is a larger event we don't deal
-    // with), the following CHECK will fail.
-    CHECK_LE(block.header.size, sizeof(block));
-
     size_t new_offset = offset + sizeof(block.header);
     size_t size_without_header = block.header.size - sizeof(block.header);
-
-    // Copy the rest of the data.
-    memcpy(&block.more_data, block_data->more_data, size_without_header);
-
     offset += block.header.size;
+
     if (block.header.type < PERF_RECORD_MAX) {
+      // Copy the rest of the data.
+      memcpy(&block.more_data, block_data->more_data, size_without_header);
       result = ReadPerfEventBlock(block.event);
       continue;
     }
+
     switch (block.header.type) {
     case PERF_RECORD_HEADER_ATTR:
-      result = ReadAttrEventBlock(block.attr_event);
+      result = ReadAttrEventBlock(data, new_offset, size_without_header);
       break;
     case PERF_RECORD_HEADER_EVENT_TYPE:
-      result = ReadEventTypeEventBlock(block.event_type_event);
+      result = ReadEventType(data, &new_offset);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
-      result = ReadEventDescEventBlock(block.event_desc_event);
+      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
+      result = ReadEventDescMetadata(data, HEADER_EVENT_DESC, new_offset,
+                                     size_without_header);
       break;
     case PERF_RECORD_HEADER_HOSTNAME:
       metadata_mask_ |= (1 << HEADER_HOSTNAME);
@@ -976,6 +1147,7 @@ bool PerfReader::WriteHeader(std::vector<char>* data) const {
 }
 
 bool PerfReader::WriteAttrs(std::vector<char>* data) const {
+  CheckNoPerfEventAttrPadding();
   size_t offset = out_header_.attrs.offset;
   size_t id_offset = out_header_.size;
 
@@ -997,7 +1169,6 @@ bool PerfReader::WriteAttrs(std::vector<char>* data) const {
       return false;
     }
   }
-
   return true;
 }
 
@@ -1060,6 +1231,10 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
       if (!WriteUint64Metadata(type, &metadata_offset, data))
         return false;
       break;
+    case HEADER_EVENT_DESC:
+      if (!WriteEventDescMetadata(type, &metadata_offset, data))
+        return false;
+      break;
     case HEADER_BRANCH_STACK:
       continue;
     default: LOG(ERROR) << "Unsupported metadata type: " << type;
@@ -1100,12 +1275,10 @@ bool PerfReader::WriteBuildIDMetadata(u32 type, size_t* offset,
 
 bool PerfReader::WriteStringMetadata(u32 type, size_t* offset,
                                      std::vector<char>* data) const {
-  const size_t kDataUnitSize = sizeof(data->at(*offset));
   for (size_t i = 0; i < string_metadata_.size(); ++i) {
     const PerfStringMetadata& str_data = string_metadata_[i];
     if (str_data.type == type) {
       num_string_data_type num_strings = str_data.data.size();
-
       if (NeedsNumberOfStringData(type) &&
           !WriteDataToVector(&num_strings, sizeof(num_strings),
                              "number of string metadata", offset, data)) {
@@ -1114,16 +1287,8 @@ bool PerfReader::WriteStringMetadata(u32 type, size_t* offset,
 
       for (size_t j = 0; j < num_strings; ++j) {
         const CStringWithLength& single_string = str_data.data[j];
-        if (!WriteDataToVector(&single_string.len, sizeof(single_string.len),
-                               "length of string metadata", offset, data)) {
+        if (!WriteStringToVector(single_string, data, offset))
           return false;
-        }
-
-        memset(&data->at(*offset), 0, single_string.len * kDataUnitSize);
-        CHECK_GT(snprintf(&data->at(*offset), single_string.len, "%s",
-                          single_string.str.c_str()),
-                 0);
-        *offset += single_string.len / kDataUnitSize;
       }
 
       return true;
@@ -1175,7 +1340,53 @@ bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
   return false;
 }
 
+bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
+                                        std::vector<char>* data) const {
+  CheckNoPerfEventAttrPadding();
+  // There should be an attribute for each event type.
+  CHECK_EQ(event_types_.size(), attrs_.size());
+
+  event_desc_num_events num_events = event_types_.size();
+  if (!WriteDataToVector(&num_events, sizeof(num_events),
+                         "event_desc num_events", offset, data)) {
+    return false;
+  }
+  event_desc_attr_size attr_size = sizeof(perf_event_attr);
+  if (!WriteDataToVector(&attr_size, sizeof(attr_size),
+                         "event_desc attr_size", offset, data)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_events; ++i) {
+    const perf_trace_event_type event_type = event_types_[i];
+    const PerfFileAttr& attr = attrs_[i];
+    if (!WriteDataToVector(&attr.attr, sizeof(attr.attr),
+                           "event_desc attribute", offset, data)) {
+      return false;
+    }
+
+    event_desc_num_unique_ids num_ids = attr.ids.size();
+    if (!WriteDataToVector(&num_ids, sizeof(num_ids),
+                           "event_desc num_unique_ids", offset, data)) {
+      return false;
+    }
+
+    CStringWithLength container;
+    container.len = GetUint64AlignedStringLength(event_type.name);
+    container.str = string(event_type.name);
+    if (!WriteStringToVector(container, data, offset))
+      return false;
+
+    if (!WriteDataToVector(&attr.ids[0], num_ids * sizeof(attr.ids[0]),
+                           "event_desc unique_ids", offset, data)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
+  CheckNoEventTypePadding();
   size_t offset = out_header_.event_types.offset;
   for (size_t i = 0; i < event_types_.size(); ++i) {
     const struct perf_trace_event_type& event_type = event_types_[i];
@@ -1187,78 +1398,23 @@ bool PerfReader::WriteEventTypes(std::vector<char>* data) const {
   return true;
 }
 
-bool PerfReader::ReadAttrEventBlock(const struct attr_event& attr_event) {
+bool PerfReader::ReadAttrEventBlock(const std::vector<char>& data,
+                                    size_t offset, size_t size) {
   PerfFileAttr attr;
-  attr.attr = attr_event.attr;
-  // Reverse bit order for big endian machine data.
-  if (is_cross_endian_) {
-    ByteSwap(&attr.attr.type);
-    ByteSwap(&attr.attr.size);
-    ByteSwap(&attr.attr.config);
-    ByteSwap(&attr.attr.sample_period);
-    ByteSwap(&attr.attr.sample_type);
-    ByteSwap(&attr.attr.read_format);
-    ByteSwap(&attr.attr.wakeup_events);
-    ByteSwap(&attr.attr.bp_type);
-    ByteSwap(&attr.attr.bp_addr);
-    ByteSwap(&attr.attr.bp_len);
-    ByteSwap(&attr.attr.branch_sample_type);
-  }
+  if (!ReadEventAttr(data, &offset, &attr.attr))
+    return false;
 
-  size_t num_ids = (attr_event.header.size - sizeof(attr_event.header) -
-                    sizeof(attr_event.attr)) / sizeof(attr_event.id[0]);
-  for (size_t i = 0; i < num_ids; ++i) {
-    attr.ids.push_back(attr_event.id[i]);
-    if (is_cross_endian_)
-      ByteSwap(&attr.ids[i]);
+  size_t num_ids = (size - sizeof(attr.attr)) / sizeof(attr.ids[0]);
+  if (!ReadUniqueIDs(data, num_ids, &offset, &attr.ids))
+    return false;
+
+  // Event types are found many times in the perf data file.
+  // Only add this event type if it is not already present.
+  for (size_t i = 0; i < attrs_.size(); ++i) {
+    if (attrs_[i].ids[0] == attr.ids[0])
+      return true;
   }
   attrs_.push_back(attr);
-  // Assign sample type if it hasn't been assigned, otherwise make sure all
-  // subsequent attributes have the same sample type bits set.
-  if (sample_type_ == 0)
-    sample_type_ = attr.attr.sample_type;
-  else
-    CHECK_EQ(sample_type_, attr.attr.sample_type);
-  return true;
-}
-
-bool PerfReader::ReadEventTypeEventBlock(
-    const struct event_type_event& event_type_event) {
-  event_types_.push_back(event_type_event.event_type);
-  if (is_cross_endian_)
-    ByteSwap(&event_types_.back().event_id);
-  return true;
-}
-
-bool PerfReader::ReadEventDescEventBlock(
-    const struct event_desc_event& desc_event) {
-  uint32_t num_events = desc_event.num_events;
-  uint32_t event_header_size = desc_event.event_header_size;
-  if (is_cross_endian_) {
-    ByteSwap(&num_events);
-    ByteSwap(&event_header_size);
-  }
-  size_t offset = 0;
-  for (size_t i = 0; i < num_events; ++i) {
-    PerfFileAttr attr;
-    memcpy(&attr.attr,
-           &desc_event.more_data[offset],
-           event_header_size);
-    offset += event_header_size;
-    union {
-      const struct {
-        uint32 num_ids;
-        uint32 name_string_length;
-        char name[];
-      } *more_data;
-      const void* ptr;
-    };
-    ptr = &desc_event.more_data[offset];
-    struct perf_trace_event_type event_type;
-    event_type.event_id = i;
-    snprintf(event_type.name, sizeof(event_type.name), "%s", more_data->name);
-    event_types_.push_back(event_type);
-  }
   return true;
 }
 
@@ -1325,10 +1481,29 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 }
 
 size_t PerfReader::GetNumMetadata() const {
-  // Vectors: String metadata, uint32 metadata, uint64 metadata
-  // 1 for build ids.
-  return string_metadata_.size() + uint32_metadata_.size() +
-         uint64_metadata_.size() + 1;
+  // This is just the number of 1s in the binary representation of the metadata
+  // mask.  However, make sure to only use supported metadata, and don't include
+  // branch stack (since it doesn't have an entry in the metadata section).
+  uint64 new_mask = metadata_mask_;
+  new_mask &= kSupportedMetadataMask & ~(1 << HEADER_BRANCH_STACK);
+  std::bitset<sizeof(new_mask) * CHAR_BIT> bits(new_mask);
+  return bits.count();
+}
+
+size_t PerfReader::GetEventDescMetadataSize() const {
+  size_t size = 0;
+  if (metadata_mask_ & (1 << HEADER_EVENT_DESC)) {
+    CHECK_EQ(event_types_.size(), attrs_.size());
+    size += sizeof(event_desc_num_events) + sizeof(event_desc_attr_size);
+    CStringWithLength dummy;
+    for (size_t i = 0; i < attrs_.size(); ++i) {
+      size += sizeof(perf_event_attr) + sizeof(dummy.len);
+      size += sizeof(event_desc_num_unique_ids);
+      size += GetUint64AlignedStringLength(event_types_[i].name) * sizeof(char);
+      size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
+    }
+  }
+  return size;
 }
 
 size_t PerfReader::GetBuildIDMetadataSize() const {

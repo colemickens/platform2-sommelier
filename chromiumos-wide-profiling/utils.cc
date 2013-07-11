@@ -266,6 +266,7 @@ const char* kSupportedMetadata[] = {
   "cpudesc",
   "total memory",
   "cmdline",
+  "event",
   NULL,
 };
 

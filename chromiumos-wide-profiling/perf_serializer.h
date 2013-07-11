@@ -50,6 +50,13 @@ class PerfSerializer : public PerfParser {
       const quipper::PerfDataProto_PerfEventAttr& perf_event_attr_proto,
       perf_event_attr* perf_event_attr) const;
 
+  void SerializePerfEventType(
+      const perf_trace_event_type& event_type,
+      quipper::PerfDataProto_PerfEventType* event_type_proto) const;
+  void DeserializePerfEventType(
+      const quipper::PerfDataProto_PerfEventType& event_type_proto,
+      perf_trace_event_type* event_type) const;
+
   void SerializeEvent(const ParsedEvent& event,
                       quipper::PerfDataProto_PerfEvent* event_proto) const;
   void DeserializeEvent(
@@ -162,6 +169,13 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   DESERIALIZEVECTORFUNCTION(DeserializePerfFileAttrs, PerfFileAttr,
                             quipper::PerfDataProto_PerfFileAttr,
                             DeserializePerfFileAttr)
+
+  SERIALIZEVECTORFUNCTION(SerializePerfEventTypes, perf_trace_event_type,
+                          quipper::PerfDataProto_PerfEventType,
+                          SerializePerfEventType)
+  DESERIALIZEVECTORFUNCTION(DeserializePerfEventTypes, perf_trace_event_type,
+                            quipper::PerfDataProto_PerfEventType,
+                            DeserializePerfEventType)
 
   SERIALIZEVECTORFUNCTION(SerializeEvents, ParsedEvent,
                           quipper::PerfDataProto_PerfEvent,
