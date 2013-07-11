@@ -540,7 +540,8 @@ void DeviceInfo::AddLinkMsgHandler(const RTNLMessage &msg) {
                       << infos_[dev_index].mac_address.HexEncode();
     } else if (technology != Technology::kTunnel &&
                technology != Technology::kPPP) {
-      LOG(ERROR) << "Add Link message does not have IFLA_ADDRESS!";
+      LOG(ERROR) << "Add Link message for link '" << link_name
+                 << "' does not have IFLA_ADDRESS!";
       return;
     }
     metrics_->RegisterDevice(dev_index, technology);

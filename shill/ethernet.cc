@@ -78,7 +78,7 @@ Ethernet::~Ethernet() {
 }
 
 void Ethernet::Start(Error *error,
-                     const EnabledStateChangedCallback &callback) {
+                     const EnabledStateChangedCallback &/*callback*/) {
   service_ = new EthernetService(control_interface(),
                                  dispatcher(),
                                  metrics(),
@@ -90,7 +90,8 @@ void Ethernet::Start(Error *error,
     error->Reset();       // indicate immediate completion
 }
 
-void Ethernet::Stop(Error *error, const EnabledStateChangedCallback &callback) {
+void Ethernet::Stop(Error *error,
+                    const EnabledStateChangedCallback &/*callback*/) {
   if (service_) {
     manager()->DeregisterService(service_);
     service_ = NULL;

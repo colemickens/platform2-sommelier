@@ -474,6 +474,7 @@ void Cellular::CreateService() {
 }
 
 void Cellular::DestroyService() {
+  SLOG(Cellular, 2) << __func__;
   DropConnection();
   if (service_) {
     LOG(INFO) << "Deregistering cellular service " << service_->unique_name()

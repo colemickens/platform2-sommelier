@@ -41,7 +41,7 @@ bool VirtualDevice::Save(StoreInterface */*storage*/) {
 }
 
 void VirtualDevice::Start(Error *error,
-                          const EnabledStateChangedCallback &callback) {
+                          const EnabledStateChangedCallback &/*callback*/) {
   RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
                                                 IFF_UP);
   if (error)
@@ -49,7 +49,7 @@ void VirtualDevice::Start(Error *error,
 }
 
 void VirtualDevice::Stop(Error *error,
-                         const EnabledStateChangedCallback &callback) {
+                         const EnabledStateChangedCallback &/*callback*/) {
   if (error)
     error->Reset();
 }

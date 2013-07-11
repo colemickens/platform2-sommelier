@@ -957,10 +957,11 @@ void Manager::RegisterService(const ServiceRefPtr &to_manage) {
 }
 
 void Manager::DeregisterService(const ServiceRefPtr &to_forget) {
-  vector<ServiceRefPtr>::iterator it;
-  for (it = services_.begin(); it != services_.end(); ++it) {
+  for (auto it = services_.begin(); it != services_.end(); ++it) {
     if (to_forget->unique_name() == (*it)->unique_name()) {
-      DCHECK(!(*it)->connection());
+      DLOG_IF(FATAL, (*it)->connection())
+          << "Service " << (*it)->unique_name()
+          << " still has a connection (in call to " << __func__ << ")";
       (*it)->Unload();
       (*it)->SetProfile(NULL);
       services_.erase(it);

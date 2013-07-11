@@ -224,7 +224,8 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
   file_reader.Close();
 }
 
-void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
+void WiFi::Start(Error *error,
+                 const EnabledStateChangedCallback &/*callback*/) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " starting.";
   if (enabled()) {
     return;
@@ -259,7 +260,7 @@ void WiFi::Start(Error *error, const EnabledStateChangedCallback &callback) {
   ConnectToSupplicant();
 }
 
-void WiFi::Stop(Error *error, const EnabledStateChangedCallback &callback) {
+void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " stopping.";
   DropConnection();
   StopScanTimer();

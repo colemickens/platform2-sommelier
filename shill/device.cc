@@ -543,11 +543,13 @@ void Device::CreateConnection() {
 }
 
 void Device::DestroyConnection() {
-  SLOG(Device, 2) << __func__;
+  SLOG(Device, 2) << __func__ << " on " << link_name_;
   StopPortalDetection();
   StopLinkMonitor();
   StopTrafficMonitor();
   if (selected_service_.get()) {
+    SLOG(Device, 3) << "Clearing connection of service "
+                    << selected_service_->unique_name();
     selected_service_->SetConnection(NULL);
   }
   connection_ = NULL;
@@ -556,7 +558,8 @@ void Device::DestroyConnection() {
 
 void Device::SelectService(const ServiceRefPtr &service) {
   SLOG(Device, 2) << __func__ << ": service "
-                  << (service ? service->unique_name() : "*reset*");
+                  << (service ? service->unique_name() : "*reset*")
+                  << " on " << link_name_;
 
   if (selected_service_.get() == service.get()) {
     // No change to |selected_service_|. Return early to avoid
