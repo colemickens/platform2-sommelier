@@ -7,6 +7,7 @@
 
 #include "base/basictypes.h"
 #include "base/time.h"
+#include "chromeos/dbus/service_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 
@@ -58,7 +59,7 @@ class BacklightController {
   // response to user inactivity/activity are controlled via
   // SetDimmingForInactivity(); this method should only be used for e.g.
   // ensuring that the user-set brightness is nonzero.
-  virtual void HandleUserActivity() = 0;
+  virtual void HandleUserActivity(UserActivityType type) = 0;
 
   // Sets whether the backlight should be immediately dimmed in response to
   // user inactivity.  Note that other states take precedence over this

@@ -1034,10 +1034,20 @@ DBusMessage* Daemon::HandleVideoActivityMethod(DBusMessage* message) {
 }
 
 DBusMessage* Daemon::HandleUserActivityMethod(DBusMessage* message) {
+  DBusError error;
+  dbus_error_init(&error);
+  dbus_int32_t type_int = USER_ACTIVITY_OTHER;
+  dbus_message_get_args(
+      message, &error, DBUS_TYPE_INT32, &type_int, DBUS_TYPE_INVALID);
+  dbus_error_free(&error);
+  UserActivityType type = static_cast<UserActivityType>(type_int);
+
   suspender_.HandleUserActivity();
   state_controller_->HandleUserActivity();
   if (backlight_controller_)
-    backlight_controller_->HandleUserActivity();
+    backlight_controller_->HandleUserActivity(type);
+  if (keyboard_controller_)
+    keyboard_controller_->HandleUserActivity(type);
   return NULL;
 }
 

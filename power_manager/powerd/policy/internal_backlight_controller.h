@@ -71,7 +71,7 @@ class InternalBacklightController : public BacklightController,
   virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE;
   virtual void HandleSessionStateChange(SessionState state) OVERRIDE;
   virtual void HandlePowerButtonPress() OVERRIDE;
-  virtual void HandleUserActivity() OVERRIDE;
+  virtual void HandleUserActivity(UserActivityType type) OVERRIDE;
   virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE;
   virtual void SetOffForInactivity(bool off) OVERRIDE;
   virtual void SetSuspended(bool suspended) OVERRIDE;

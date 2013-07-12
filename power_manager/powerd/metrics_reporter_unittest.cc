@@ -17,6 +17,7 @@
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/metrics_constants.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
+#include "power_manager/powerd/policy/backlight_controller_stub.h"
 #include "power_manager/powerd/system/power_supply.h"
 
 using ::testing::_;
@@ -36,63 +37,6 @@ namespace {
 static const int64 kPowerButtonInterval = 20;
 static const int kSessionLength = 5;
 static const int kAdjustmentsOffset = 100;
-
-// policy::BacklightController implementation that returns dummy values.
-class BacklightControllerStub : public policy::BacklightController {
- public:
-  BacklightControllerStub()
-      : percent_(100.0),
-        num_als_adjustments_(0),
-        num_user_adjustments_(0) {
-  }
-  virtual ~BacklightControllerStub() {}
-
-  void set_percent(double percent) { percent_ = percent; }
-  void set_num_als_adjustments(int num) { num_als_adjustments_ = num; }
-  void set_num_user_adjustments(int num) { num_user_adjustments_ = num; }
-
-  // policy::BacklightController implementation:
-  virtual void AddObserver(
-      policy::BacklightControllerObserver* observer) OVERRIDE {}
-  virtual void RemoveObserver(
-      policy::BacklightControllerObserver* observer) OVERRIDE {}
-  virtual void HandlePowerSourceChange(PowerSource source) OVERRIDE {}
-  virtual void HandleDisplayModeChange(DisplayMode mode) OVERRIDE {}
-  virtual void HandleSessionStateChange(SessionState state) OVERRIDE {}
-  virtual void HandlePowerButtonPress() OVERRIDE {}
-  virtual void HandleUserActivity() OVERRIDE {}
-  virtual void SetDimmedForInactivity(bool dimmed) OVERRIDE {}
-  virtual void SetOffForInactivity(bool off) OVERRIDE {}
-  virtual void SetSuspended(bool suspended) OVERRIDE {}
-  virtual void SetShuttingDown(bool shutting_down) OVERRIDE {}
-  virtual void SetDocked(bool docked) OVERRIDE {}
-  virtual bool GetBrightnessPercent(double* percent) OVERRIDE {
-    *percent = percent_;
-    return true;
-  }
-  virtual bool SetUserBrightnessPercent(double percent, TransitionStyle style)
-      OVERRIDE {
-    return true;
-  }
-  virtual bool IncreaseUserBrightness() OVERRIDE { return true; }
-  virtual bool DecreaseUserBrightness(bool allow_off) OVERRIDE { return true; }
-  virtual int GetNumAmbientLightSensorAdjustments() const OVERRIDE {
-    return num_als_adjustments_;
-  }
-  virtual int GetNumUserAdjustments() const OVERRIDE {
-    return num_user_adjustments_;
-  }
-
- private:
-  // Percent to be returned by GetBrightnessPercent().
-  double percent_;
-
-  // Counts to be returned by GetNum*Adjustments().
-  int num_als_adjustments_;
-  int num_user_adjustments_;
-
-  DISALLOW_COPY_AND_ASSIGN(BacklightControllerStub);
-};
 
 }  // namespace
 
@@ -239,8 +183,8 @@ class MetricsReporterTest : public Test {
   }
 
   FakePrefs prefs_;
-  BacklightControllerStub display_backlight_controller_;
-  BacklightControllerStub keyboard_backlight_controller_;
+  policy::BacklightControllerStub display_backlight_controller_;
+  policy::BacklightControllerStub keyboard_backlight_controller_;
 
   // StrictMock turns all unexpected calls into hard failures.
   StrictMock<MetricsLibraryMock> metrics_lib_;

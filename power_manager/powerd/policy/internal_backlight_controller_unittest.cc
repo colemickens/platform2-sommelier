@@ -548,25 +548,33 @@ TEST_F(InternalBacklightControllerTest, ForceBacklightOn) {
   controller_->HandlePowerButtonPress();
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
 
-  // Ditto for any user activity.
+  // Ditto for most user activity.
   ASSERT_TRUE(controller_->SetUserBrightnessPercent(
       0.0, BacklightController::TRANSITION_INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
-  controller_->HandleUserActivity();
+  controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(kMinVisibleLevel, backlight_.current_level());
+
+  // User activity corresponding to brightness-up and brightness-down key
+  // presses shouldn't increase the brightness, though.
+  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
+      0.0, BacklightController::TRANSITION_INSTANT));
+  ASSERT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_UP_KEY_PRESS);
+  EXPECT_EQ(0, backlight_.current_level());
+  controller_->HandleUserActivity(USER_ACTIVITY_BRIGHTNESS_DOWN_KEY_PRESS);
+  EXPECT_EQ(0, backlight_.current_level());
 
   // Enter presentation mode.  The same actions that forced the backlight
   // on before shouldn't do anything now; turning the panel back on while a
   // second display is connected would resize the desktop.
   controller_->HandleDisplayModeChange(DISPLAY_PRESENTATION);
-  ASSERT_TRUE(controller_->SetUserBrightnessPercent(
-      0.0, BacklightController::TRANSITION_INSTANT));
   ASSERT_EQ(0, backlight_.current_level());
   controller_->HandleSessionStateChange(SESSION_STOPPED);
   EXPECT_EQ(0, backlight_.current_level());
   controller_->HandlePowerButtonPress();
   EXPECT_EQ(0, backlight_.current_level());
-  controller_->HandleUserActivity();
+  controller_->HandleUserActivity(USER_ACTIVITY_OTHER);
   EXPECT_EQ(0, backlight_.current_level());
 
   // The backlight should be turned on after exiting presentation mode.
