@@ -807,6 +807,9 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
     offset += sizeof(single_string.len) / sizeof(data[offset]);
     single_string.str = string(&data[offset]);
     offset += single_string.len / sizeof(data[offset]);
+
+    if (is_cross_endian_)
+      ByteSwap(&single_string.len);
     str_data.data.push_back(single_string);
   }
 
@@ -822,7 +825,10 @@ bool PerfReader::ReadUint32Metadata(const std::vector<char>& data, u32 type,
 
   size_t start_offset = offset;
   while (size > offset - start_offset) {
-    uint32_data.data.push_back(*(reinterpret_cast<const u32*>(&data[offset])));
+    uint32 item = *reinterpret_cast<const uint32*>(&data[offset]);
+    if (is_cross_endian_)
+      ByteSwap(&item);
+    uint32_data.data.push_back(item);
     offset += sizeof(uint32_data.data[0]) / sizeof(data[offset]);
   }
 
@@ -838,7 +844,10 @@ bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
 
   size_t start_offset = offset;
   while (size > offset - start_offset) {
-    uint64_data.data.push_back(*(reinterpret_cast<const u64*>(&data[offset])));
+    uint64 item = *reinterpret_cast<const uint64*>(&data[offset]);
+    if (is_cross_endian_)
+      ByteSwap(&item);
+    uint64_data.data.push_back(item);
     offset += sizeof(uint64_data.data[0]) / sizeof(data[offset]);
   }
 
@@ -890,10 +899,11 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     // with), the following CHECK will fail.
     CHECK_LE(block.header.size, sizeof(block));
 
+    size_t new_offset = offset + sizeof(block.header);
+    size_t size_without_header = block.header.size - sizeof(block.header);
+
     // Copy the rest of the data.
-    memcpy(&block.more_data,
-           block_data->more_data,
-           block.header.size - sizeof(block.header));
+    memcpy(&block.more_data, block_data->more_data, size_without_header);
 
     offset += block.header.size;
     if (block.header.type < PERF_RECORD_MAX) {
@@ -912,43 +922,43 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       break;
     case PERF_RECORD_HEADER_HOSTNAME:
       metadata_mask_ |= (1 << HEADER_HOSTNAME);
-      block.header.type = HEADER_HOSTNAME;
-      result = ReadPipedStringMetadata(block.header, block.more_data);
+      result = ReadStringMetadata(data, HEADER_HOSTNAME, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_OSRELEASE:
       metadata_mask_ |= (1 << HEADER_OSRELEASE);
-      block.header.type = HEADER_OSRELEASE;
-      result = ReadPipedStringMetadata(block.header, block.more_data);
+      result = ReadStringMetadata(data, HEADER_OSRELEASE, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_VERSION:
       metadata_mask_ |= (1 << HEADER_VERSION);
-      block.header.type = HEADER_VERSION;
-      result = ReadPipedStringMetadata(block.header, block.more_data);
+      result = ReadStringMetadata(data, HEADER_VERSION, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_ARCH:
       metadata_mask_ |= (1 << HEADER_ARCH);
-      block.header.type = HEADER_ARCH;
-      result = ReadPipedStringMetadata(block.header, block.more_data);
+      result = ReadStringMetadata(data, HEADER_ARCH, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_CPUDESC:
       metadata_mask_ |= (1 << HEADER_CPUDESC);
-      block.header.type = HEADER_CPUDESC;
-      result = ReadPipedStringMetadata(block.header, block.more_data);
+      result = ReadStringMetadata(data, HEADER_CPUDESC, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_CMDLINE:
       metadata_mask_ |= (1 << HEADER_CMDLINE);
-      block.header.type = HEADER_CMDLINE;
-      result = ReadPipedStringMetadata(block.header, block.more_data);
+      result = ReadStringMetadata(data, HEADER_CMDLINE, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_NRCPUS:
       metadata_mask_ |= (1 << HEADER_NRCPUS);
-      block.header.type = HEADER_NRCPUS;
-      result = ReadPipedUint32Metadata(block.header, block.more_data);
+      result = ReadUint32Metadata(data, HEADER_NRCPUS, new_offset,
+                                  size_without_header);
       break;
     case PERF_RECORD_HEADER_TOTAL_MEM:
       metadata_mask_ |= (1 << HEADER_TOTAL_MEM);
-      block.header.type = HEADER_TOTAL_MEM;
-      result = ReadPipedUint64Metadata(block.header, block.more_data);
+      result = ReadUint64Metadata(data, HEADER_TOTAL_MEM, new_offset,
+                                  size_without_header);
       break;
     default:
       LOG(WARNING) << "Event type " << block.header.type
@@ -957,77 +967,6 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     }
   }
   return result;
-}
-
-bool PerfReader::ReadPipedStringMetadata(const perf_event_header& header,
-                                         const char* data) {
-  PerfStringMetadata str_data;
-  str_data.type = header.type;
-  str_data.size = header.size - sizeof(header);
-
-  size_t offset = 0;
-  if (NeedsNumberOfStringData(header.type))
-    offset = kNumberOfStringDataSize / sizeof(data[offset]);
-
-  while (offset < str_data.size) {
-    CStringWithLength single_string;
-    single_string.len = *reinterpret_cast<const u32*>(&data[offset]);
-    offset += sizeof(single_string.len) / sizeof(data[offset]);
-    single_string.str = string(&data[offset]);
-    offset += single_string.len / sizeof(data[offset]);
-
-    if (is_cross_endian_)
-      ByteSwap(&single_string.len);
-
-    str_data.data.push_back(single_string);
-  }
-
-  string_metadata_.push_back(str_data);
-  return true;
-}
-
-bool PerfReader::ReadPipedUint32Metadata(const perf_event_header& header,
-                                         const char* data) {
-  PerfUint32Metadata uint32_data;
-  uint32_data.type = header.type;
-
-  size_t size = header.size - sizeof(header);
-  uint32_data.size = size;
-
-  while (size > 0) {
-    uint32 item = *reinterpret_cast<const uint32*>(data);
-
-    if (is_cross_endian_)
-      ByteSwap(&item);
-
-    uint32_data.data.push_back(item);
-    size -= sizeof(item);
-  }
-
-  uint32_metadata_.push_back(uint32_data);
-  return true;
-}
-
-bool PerfReader::ReadPipedUint64Metadata(const perf_event_header& header,
-                                         const char* data) {
-  PerfUint64Metadata uint64_data;
-  uint64_data.type = header.type;
-
-  size_t size = header.size - sizeof(header);
-  uint64_data.size = size;
-
-  while (size > 0) {
-    uint64 item = *reinterpret_cast<const uint64*>(data);
-
-    if (is_cross_endian_)
-      ByteSwap(&item);
-
-    uint64_data.data.push_back(item);
-    size -= sizeof(item);
-  }
-
-  uint64_metadata_.push_back(uint64_data);
-  return true;
 }
 
 bool PerfReader::WriteHeader(std::vector<char>* data) const {
