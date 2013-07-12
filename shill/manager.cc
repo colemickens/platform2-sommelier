@@ -1645,7 +1645,7 @@ ServiceRefPtr Manager::GetService(const KeyValueStore &args, Error *error) {
       args.GetString(flimflam::kTypeProperty) == flimflam::kTypeVPN) {
      // GetService on a VPN service should actually perform ConfigureService.
      // TODO(pstew): Remove this hack and change Chrome to use ConfigureService
-     // instead, when we no longer need to support flimflam.  crosbug.com/31523
+     // instead, when we no longer need to support flimflam.  crbug.com/213802
      return ConfigureService(args, error);
   }
 
@@ -1877,7 +1877,7 @@ map<string, GeolocationInfos> Manager::GetNetworksForGeolocation() {
   for (vector<DeviceRefPtr>::iterator it = devices_.begin();
        it != devices_.end(); ++it) {
     switch ((*it)->technology()) {
-      // TODO(gauravsh): crosbug.com/35736 Need a strategy for combining
+      // TODO(gauravsh): crbug.com/217833 Need a strategy for combining
       // geolocation objects from multiple devices of the same technolgy.
       // Currently, we just pick the geolocation objects from the first found
       // device of each supported technology type.

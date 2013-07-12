@@ -25,7 +25,7 @@ const char kNameServer0[] = "8.8.8.8";
 const char kNameServer1[] = "8.8.9.9";
 const char kSearchDomain0[] = "chromium.org";
 const char kSearchDomain1[] = "google.com";
-const char kSearchDomain2[] = "crosbug.com";
+const char kSearchDomain2[] = "crbug.com";
 const char kExpectedOutput[] =
   "nameserver 8.8.8.8\n"
   "nameserver 8.8.9.9\n"

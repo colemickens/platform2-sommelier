@@ -563,7 +563,7 @@ void WiFiService::Connect(Error *error, const char *reason) {
   if (ieee80211w_required_) {
     // TODO(pstew): We should also enable IEEE 802.11w if the user
     // explicitly enables support for this through a service / device
-    // property.  crosbug.com/37800
+    // property.  crbug.com/219950
     params[WPASupplicant::kNetworkPropertyIeee80211w].writer().
         append_uint32(WPASupplicant::kNetworkIeee80211wEnabled);
   }
@@ -1059,7 +1059,7 @@ bool WiFiService::Is8021x() const {
 }
 
 WiFiRefPtr WiFiService::ChooseDevice() {
-  // TODO(pstew): Style frowns on dynamic_cast.  crosbug.com/38237
+  // TODO(pstew): Style frowns on dynamic_cast.  crbug.com/220387
   DeviceRefPtr device =
       manager()->GetEnabledDeviceWithTechnology(Technology::kWifi);
   return dynamic_cast<WiFi *>(device.get());

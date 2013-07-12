@@ -403,7 +403,7 @@ void WiFi::ConnectTo(WiFiService *service,
 
   // TODO(quiche): Handle cases where already connected.
   if (pending_service_ && pending_service_ == service) {
-    // TODO(quiche): Return an error to the caller. crosbug.com/23832
+    // TODO(quiche): Return an error to the caller. crbug.com/206812
     LOG(INFO) << "WiFi " << link_name() << " ignoring ConnectTo service "
               << service->unique_name()
               << ", which is already pending.";
@@ -443,14 +443,14 @@ void WiFi::ConnectTo(WiFiService *service,
   //
   // TODO(quiche): When we add code for dealing with connection failures,
   // reconsider if this is the right place to change the selected service.
-  // see discussion in crosbug.com/20191.
+  // see discussion in crbug.com/203282.
   SelectService(service);
 }
 
 void WiFi::DisconnectFrom(WiFiService *service) {
   if (service != current_service_ &&  service != pending_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
-    // generate a D-Bus error here. (crosbug.com/23832)
+    // generate a D-Bus error here. (crbug.com/206812)
     LOG(WARNING) << "In " << __func__ << "(): "
                  << " ignoring request to disconnect from service "
                  << service->unique_name()
@@ -460,7 +460,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 
   if (pending_service_ && service != pending_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
-    // generate a D-Bus error here. (crosbug.com/23832)
+    // generate a D-Bus error here. (crbug.com/206812)
     LOG(WARNING) << "In " << __func__ << "(): "
                  << " ignoring request to disconnect from service "
                  << service->unique_name()
@@ -470,7 +470,7 @@ void WiFi::DisconnectFrom(WiFiService *service) {
 
   if (!pending_service_ && service != current_service_) {
     // TODO(quiche): Once we have asynchronous reply support, we should
-    // generate a D-Bus error here. (crosbug.com/23832)
+    // generate a D-Bus error here. (crbug.com/206812)
     LOG(WARNING) << "In " << __func__ << "(): "
                  << " ignoring request to disconnect from service "
                  << service->unique_name()
@@ -1307,7 +1307,7 @@ void WiFi::StateChanged(const string &new_state) {
     // a timeout for getting back into the completed state. At present,
     // we depend on wpa_supplicant eventually reporting that CurrentBSS
     // has changed. But there may be cases where that signal is not sent.
-    // (crosbug.com/23207)
+    // (crbug.com/206208)
   } else if (new_state == WPASupplicant::kInterfaceStateDisconnected &&
              affected_service == current_service_ &&
              affected_service->IsConnected()) {
@@ -1437,7 +1437,7 @@ vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
         kGeoChannelProperty,
         StringPrintf("%d",
                      Metrics::WiFiFrequencyToChannel(endpoint->frequency())));
-    // TODO(gauravsh): Include age field. crosbug.com/35445
+    // TODO(gauravsh): Include age field. crbug.com/217554
     objects.push_back(geoinfo);
   }
   return objects;
@@ -1777,7 +1777,7 @@ void WiFi::ConnectToSupplicant() {
   try {
     // TODO(pstew): Disable fast_reauth until supplicant can properly deal
     // with RADIUS servers that respond strangely to such requests.
-    // crosbug.com/25630
+    // crbug.com/208561
     supplicant_interface_proxy_->SetFastReauth(false);
   } catch (const DBus::Error &e) {  // NOLINT
     LOG(ERROR) << "Failed to disable fast_reauth. "

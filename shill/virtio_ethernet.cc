@@ -48,7 +48,7 @@ void VirtioEthernet::Start(Error *error,
   // though virtnet_probe has not completed.
   //
   // When that happens, the device gets stuck in a state where it cannot
-  // transmit any frames. (See crosbug.com/29494)
+  // transmit any frames. (See crbug.com/212041)
   //
   // To avoid this, we sleep to let the device setup function complete.
   SLOG(Ethernet, 2) << "Sleeping to let virtio initialize.";

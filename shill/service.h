@@ -65,7 +65,7 @@ class Service : public base::RefCounted<Service> {
   static const char kErrorDetailsNone[];
 
   // TODO(pstew): Storage constants shouldn't need to be public
-  // crosbug.com/25813
+  // crbug.com/208736
   static const char kStorageAutoConnect[];
   static const char kStorageCheckPortal[];
   static const char kStorageError[];
@@ -552,7 +552,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ManagerTest, ConnectToBestServices);
   // TODO(quiche): The SortServices test should probably move into
   // service_unittest.cc. Then the following line should be removed.
-  // (crosbug.com/23370)
+  // (crbug.com/206367)
   FRIEND_TEST(ManagerTest, SortServices);
   FRIEND_TEST(ServiceTest, AutoConnectLogging);
   FRIEND_TEST(ServiceTest, CalculateState);

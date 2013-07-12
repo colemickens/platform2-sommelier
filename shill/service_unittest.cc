@@ -477,7 +477,7 @@ TEST_F(ServiceTest, Unload) {
   // However, since property load/store is essentially a manual process,
   // it is error prone and should either be exhaustively unit-tested or
   // a generic framework for registering loaded/stored properties should
-  // be created. crosbug.com/24859
+  // be created. crbug.com/207798
   EXPECT_EQ(string_value, service_->ui_data_);
   EXPECT_EQ(string_value, service_->guid_);
   EXPECT_FALSE(service_->explicitly_disconnected_);

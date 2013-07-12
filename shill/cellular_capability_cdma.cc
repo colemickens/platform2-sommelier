@@ -233,7 +233,7 @@ string CellularCapabilityCDMA::GetActivationErrorString(uint32 error) {
 void CellularCapabilityCDMA::GetMEID(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
   if (meid_.empty()) {
-    // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+    // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
     meid_ = proxy_->MEID();
     SLOG(Cellular, 2) << "MEID: " << meid_;
   }

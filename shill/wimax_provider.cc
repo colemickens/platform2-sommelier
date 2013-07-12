@@ -63,7 +63,7 @@ void WiMaxProvider::Start() {
 void WiMaxProvider::Stop() {
   SLOG(WiMax, 2) << __func__;
   // TODO(petkov): Deregister the watcher from DBusManager to avoid potential
-  // memory leaks (crosbug.com/32226).
+  // memory leaks (crbug.com/214476).
   on_wimax_manager_appear_.Cancel();
   on_wimax_manager_vanish_.Cancel();
   DisconnectFromWiMaxManager();

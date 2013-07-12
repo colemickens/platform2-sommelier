@@ -68,7 +68,7 @@ class VPNService : public Service {
   scoped_ptr<VPNDriver> driver_;
   scoped_ptr<Connection::Binder> connection_binder_;
 
-  // Provided only for compatibility.  crosbug.com/29286
+  // Provided only for compatibility.  crbug.com/211858
   std::string vpn_domain_;
 
   DISALLOW_COPY_AND_ASSIGN(VPNService);

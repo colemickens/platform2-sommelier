@@ -58,7 +58,7 @@
 #define SLOG_IF(scope, verbose_level, condition) \
     LAZY_STREAM(MLOG_SCOPE_STREAM(scope, verbose_level), condition)
 
-// TODO(wiley) Add SLOG macros (crosbug.com/33416)
+// TODO(wiley) Add SLOG macros (crbug.com/215586)
 
 // Redefine these macros to route messages through the MemoryLog
 #undef LOG
@@ -73,6 +73,6 @@
 // This lets us catch things like CHECK
 #define LOG_STREAM(severity) MLOG_SEVERITY_STREAM(severity)
 
-// TODO(wiley) Add MPLOG macros (crosbug.com/33416)
+// TODO(wiley) Add MPLOG macros (crbug.com/215586)
 
 #endif  // SHILL_LOGGING_H_

@@ -31,7 +31,7 @@ class WiFiProvider;
 class WiFiService : public Service {
  public:
   // TODO(pstew): Storage constants shouldn't need to be public
-  // crosbug.com/25813
+  // crbug.com/208736
   static const char kStorageHiddenSSID[];
   static const char kStorageMode[];
   static const char kStoragePassphrase[];

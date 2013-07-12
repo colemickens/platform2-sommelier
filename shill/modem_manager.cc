@@ -123,7 +123,7 @@ ModemManagerClassic::~ModemManagerClassic() {}
 void ModemManagerClassic::Connect(const string &supplied_owner) {
   ModemManager::Connect(supplied_owner);
   proxy_.reset(proxy_factory()->CreateModemManagerProxy(this, path(), owner()));
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
   vector<DBus::Path> devices = proxy_->EnumerateDevices();
 
   for (vector<DBus::Path>::const_iterator it = devices.begin();
@@ -150,7 +150,7 @@ void ModemManagerClassic::Disconnect() {
 }
 
 void ModemManagerClassic::InitModemClassic(shared_ptr<ModemClassic> modem) {
-  // TODO(rochberg): Switch to asynchronous calls (crosbug.com/17583).
+  // TODO(rochberg): Switch to asynchronous calls (crbug.com/200687).
   if (modem == NULL) {
     return;
   }

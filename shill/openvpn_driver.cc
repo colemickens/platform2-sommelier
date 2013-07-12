@@ -113,7 +113,7 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNVerbProperty, 0 },
   { kVPNMTUProperty, 0 },
 
-  // Provided only for compatibility.  crosbug.com/29286
+  // Provided only for compatibility.  crbug.com/211858
   { flimflam::kOpenVPNMgmtEnableProperty, 0 },
 };
 

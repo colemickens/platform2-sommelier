@@ -42,7 +42,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Constants used in connect method call.  Make available to test matchers.
   // TODO(jglasgow): Generate from modem manager into
   // ModemManager-names.h.
-  // See http://crosbug.com/30551.
+  // See http://crbug.com/212909.
   static const char kConnectPin[];
   static const char kConnectOperatorId[];
   static const char kConnectApn[];
@@ -152,7 +152,7 @@ class CellularCapabilityUniversal : public CellularCapability {
 
   // Constants used in scan results.  Make available to unit tests.
   // TODO(jglasgow): Generate from modem manager into ModemManager-names.h.
-  // See http://crosbug.com/30551.
+  // See http://crbug.com/212909.
   static const char kStatusProperty[];
   static const char kOperatorLongProperty[];
   static const char kOperatorShortProperty[];

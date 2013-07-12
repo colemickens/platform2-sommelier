@@ -23,7 +23,7 @@ class StoreInterface;
 // because it needs to duplicate (and stay in sync with) the way
 // properties are loaded and presented in a real service.
 //
-// TODO(pstew): Get rid of this.  It's nasty.  crosbug.com/25813
+// TODO(pstew): Get rid of this.  It's nasty.  crbug.com/208736
 class ProfileDBusPropertyExporter {
  public:
   typedef std::map<std::string, ::DBus::Variant> PropertyList;

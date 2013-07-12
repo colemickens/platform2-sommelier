@@ -22,7 +22,7 @@ class ControlInterface;
 class RPCTaskAdaptorInterface;
 
 // TODO(petkov): Switch from delegate interface to registered callbacks
-// (crosbug.com/29766).
+// (crbug.com/212273).
 class RPCTaskDelegate {
  public:
   virtual ~RPCTaskDelegate() {}

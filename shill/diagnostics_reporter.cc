@@ -76,7 +76,7 @@ void DiagnosticsReporter::OnConnectivityEvent() {
 
 bool DiagnosticsReporter::IsReportingEnabled() {
   // TODO(petkov): Implement this when there's a way to control reporting
-  // through policy. crosbug.com/35946.
+  // through policy. crbug.com/218045.
   return false;
 }
 

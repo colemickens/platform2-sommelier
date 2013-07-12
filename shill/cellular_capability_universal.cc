@@ -1486,7 +1486,7 @@ string CellularCapabilityUniversal::GetRoamingStateString() const {
 }
 
 void CellularCapabilityUniversal::GetSignalQuality() {
-  // TODO(njw): Switch to asynchronous calls (crosbug.com/17583).
+  // TODO(njw): Switch to asynchronous calls (crbug.com/200687).
   const DBus::Struct<unsigned int, bool> quality =
       modem_proxy_->SignalQuality();
   OnSignalQualityChanged(quality._1);

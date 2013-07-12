@@ -934,7 +934,7 @@ TEST_F(CellularTest, OnConnectionHealthCheckerResult) {
 }
 
 // The following test crashes under Clang
-// Disabling it for now (crosbug.com/39351)
+// Disabling it for now (crbug.com/221452)
 #if defined(__clang__)
   #define MAYBE_ConnectAddsTerminationAction \
     DISABLED_ConnectAddsTerminationAction

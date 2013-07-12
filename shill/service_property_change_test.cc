@@ -38,7 +38,7 @@ void TestCommonPropertyChanges(ServiceRefPtr service,
   service->SetState(Service::kStateConnected);
   Mock::VerifyAndClearExpectations(adaptor);
 
-  // TODO(quiche): Once crosbug.com/34528 is resolved, add a test
+  // TODO(quiche): Once crbug.com/216664 is resolved, add a test
   // that service->SetConnection emits kIPConfigProperty changed.
 
   bool connectable = service->connectable();

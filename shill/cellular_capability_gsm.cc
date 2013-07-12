@@ -426,12 +426,12 @@ void CellularCapabilityGSM::GetRegistrationState() {
 void CellularCapabilityGSM::GetProperties(const ResultCallback &callback) {
   SLOG(Cellular, 2) << __func__;
 
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
   uint32 tech = network_proxy_->AccessTechnology();
   SetAccessTechnology(tech);
   SLOG(Cellular, 2) << "GSM AccessTechnology: " << tech;
 
-  // TODO(petkov): Switch to asynchronous calls (crosbug.com/17583).
+  // TODO(petkov): Switch to asynchronous calls (crbug.com/200687).
   uint32 locks = card_proxy_->EnabledFacilityLocks();
   sim_lock_status_.enabled = locks & MM_MODEM_GSM_FACILITY_SIM;
   SLOG(Cellular, 2) << "GSM EnabledFacilityLocks: " << locks;

@@ -252,7 +252,7 @@ void Device::EnableIPv6Privacy() {
 
 void Device::DisableReversePathFilter() {
   // TODO(pstew): Current kernel doesn't offer reverse-path filtering flag
-  // for IPv6.  crosbug.com/24228
+  // for IPv6.  crbug.com/207193
   SetIPFlag(IPAddress::kFamilyIPv4, kIPFlagReversePathFilter,
             kIPFlagReversePathFilterLooseMode);
 }

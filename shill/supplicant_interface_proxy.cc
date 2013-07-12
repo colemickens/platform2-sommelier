@@ -228,7 +228,7 @@ void SupplicantInterfaceProxy::Proxy::NetworkRemoved(
     const ::DBus::Path &/*network*/) {
   SLOG(DBus, 2) << __func__;
   // TODO(quiche): Pass this up to the delegate, so that it can clean its
-  // rpcid_by_service_ map. crosbug.com/24699
+  // rpcid_by_service_ map. crbug.com/207648
 }
 
 void SupplicantInterfaceProxy::Proxy::NetworkSelected(

@@ -110,7 +110,7 @@ L2TPIPSecDriver::~L2TPIPSecDriver() {
 
 bool L2TPIPSecDriver::ClaimInterface(const string &link_name,
                                      int interface_index) {
-  // TODO(petkov): crosbug.com/29970.
+  // TODO(petkov): crbug.com/212446.
   NOTIMPLEMENTED();
   return false;
 }
@@ -400,7 +400,7 @@ void L2TPIPSecDriver::Notify(
     // TODO(petkov): Consider handling the race when the RTNL notification about
     // the new PPP device has not been received yet. We can keep the IP
     // configuration and apply it when ClaimInterface is
-    // invoked. crosbug.com/29970.
+    // invoked. crbug.com/212446.
     NOTIMPLEMENTED() << ": No device info for " << interface_name << ".";
     return;
   }

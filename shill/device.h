@@ -203,7 +203,7 @@ class Device : public base::RefCounted<Device> {
   // will have time to complete its suspend actions, before the system
   // is suspended.
   //
-  // TODO(quiche): Add support for suspend delays. crosbug.com/33412
+  // TODO(quiche): Add support for suspend delays. crbug.com/215582
   virtual void OnBeforeSuspend();
 
   // Resume event handler. Called by Manager as the system resumes.

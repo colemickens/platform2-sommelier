@@ -102,7 +102,7 @@ class WPASupplicant {
   static const char kNetworkPropertySSID[];
   static const char kNetworkPropertyScanSSID[];
 // TODO(quiche): Make the naming scheme more consistent, by adding the
-// object type to the property names below. (crosbug.com/23656)
+// object type to the property names below. (crbug.com/206642)
   static const char kPropertyAuthAlg[];
   static const char kPropertyBSSID[];
   static const char kPropertyMode[];

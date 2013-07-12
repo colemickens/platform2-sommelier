@@ -525,7 +525,7 @@ TEST_F(ManagerTest, ServiceRegistration) {
       .WillRepeatedly(Return(service1_name));
   EXPECT_CALL(*mock_service2.get(), GetRpcIdentifier())
       .WillRepeatedly(Return(service2_name));
-  // TODO(quiche): make this EXPECT_CALL work (crosbug.com/20154)
+  // TODO(quiche): make this EXPECT_CALL work (crbug.com/203247)
   // EXPECT_CALL(*dynamic_cast<ManagerMockAdaptor *>(manager.adaptor_.get()),
   //             EmitRpcIdentifierArrayChanged(flimflam::kServicesProperty, _));
 
@@ -2216,7 +2216,7 @@ TEST_F(ManagerTest, TechnologyOrder) {
 TEST_F(ManagerTest, SortServices) {
   // TODO(quiche): Some of these tests would probably fit better in
   // service_unittest, since the actual comparison of Services is
-  // implemented in Service. (crosbug.com/23370)
+  // implemented in Service. (crbug.com/206367)
 
   scoped_refptr<MockService> mock_service0(
       new NiceMock<MockService>(control_interface(),
@@ -2646,7 +2646,7 @@ TEST_F(ManagerTest, UpdateServiceConnected) {
   manager()->UpdateService(mock_service);
   // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
   // to mock out MakeFavorite. And mocking that out would break the
-  // SortServices test. (crosbug.com/23370)
+  // SortServices test. (crbug.com/206367)
   EXPECT_TRUE(mock_service->favorite());
   EXPECT_TRUE(mock_service->auto_connect());
 }
@@ -2677,7 +2677,7 @@ TEST_F(ManagerTest, UpdateServiceConnectedPersistFavorite) {
   manager()->UpdateService(mock_service);
   // We can't EXPECT_CALL(..., MakeFavorite), because that requires us
   // to mock out MakeFavorite. And mocking that out would break the
-  // SortServices test. (crosbug.com/23370)
+  // SortServices test. (crbug.com/206367)
   EXPECT_TRUE(mock_service->favorite());
   EXPECT_TRUE(mock_service->auto_connect());
   // This releases the ref on the mock profile.

@@ -38,7 +38,7 @@ bool NetlinkSocket::Init() {
 
   // The following is stolen directly from RTNLHandler.
   // TODO(wdg): refactor this and RTNLHandler together to use common code.
-  // crosbug.com/39842
+  // crbug.com/221940
 
   file_descriptor_ = sockets_->Socket(PF_NETLINK, SOCK_DGRAM, NETLINK_GENERIC);
   if (file_descriptor_ < 0) {

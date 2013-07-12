@@ -610,7 +610,7 @@ void Service::MakeFavorite() {
 void Service::SetConnection(const ConnectionRefPtr &connection) {
   if (connection.get()) {
     // TODO(pstew): Make this function testable by using a factory here.
-    // http://crosbug.com/34528
+    // http://crbug.com/216664
     http_proxy_.reset(new HTTPProxy(connection));
     http_proxy_->Start(dispatcher_, sockets_.get());
   } else {
