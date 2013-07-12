@@ -657,6 +657,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void ReportIPConfigComplete() {
     wifi_->OnIPConfigUpdated(dhcp_config_, true);
   }
+  void ReportIPConfigFailure() {
+    wifi_->OnIPConfigFailure();
+  }
+  void ReportConnected() {
+    wifi_->OnConnected();
+  }
   void ReportLinkUp() {
     wifi_->LinkEvent(IFF_LOWER_UP, IFF_LOWER_UP);
   }
@@ -2308,6 +2314,62 @@ TEST_F(WiFiMainTest, SuspectCredentialsWPA) {
   Service::ConnectFailure failure;
   EXPECT_TRUE(SuspectCredentials(service, &failure));
   EXPECT_EQ(Service::kFailureBadPassphrase, failure);
+}
+
+TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
+  StartWiFi();
+  dispatcher_.DispatchPendingEvents();
+  MockWiFiServiceRefPtr service = MakeMockService(flimflam::kSecurityWep);
+  InitiateConnect(service);
+  SetCurrentService(service);
+
+  // These expectations are very much like SetupConnectedService except
+  // that we verify that ResetSupsectCredentialFailures() is not called
+  // on the service just because supplicant entered the Completed state.
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+  EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
+  EXPECT_CALL(*dhcp_provider(), CreateConfig(_, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(*dhcp_config_.get(), RequestIP()).Times(AnyNumber());
+  EXPECT_CALL(*manager(), device_info()).WillRepeatedly(Return(device_info()));
+  EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(0LL), Return(true)));
+  ReportStateChanged(WPASupplicant::kInterfaceStateCompleted);
+
+  Mock::VerifyAndClearExpectations(device_info());
+  Mock::VerifyAndClearExpectations(service);
+
+  // Successful connect.
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), EnableHighBitrates()).Times(1);
+  EXPECT_CALL(*service, ResetSuspectedCredentialFailures());
+  ReportConnected();
+
+  EXPECT_CALL(*device_info(), GetByteCounts(_, _, _))
+      .WillOnce(DoAll(SetArgumentPointee<2>(1LL), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(0LL), Return(true)))
+      .WillOnce(DoAll(SetArgumentPointee<2>(0LL), Return(true)));
+
+  // If there was an increased byte-count while we were timing out DHCP,
+  // this should be considered a DHCP failure and not a credential failure.
+  EXPECT_CALL(*service, ResetSuspectedCredentialFailures()).Times(0);
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
+  ReportIPConfigFailure();
+  Mock::VerifyAndClearExpectations(service);
+
+  // Connection failed during DHCP but service does not (yet) believe this is
+  // due to a passphrase issue.
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+      .WillOnce(Return(false));
+  EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _));
+  ReportIPConfigFailure();
+  Mock::VerifyAndClearExpectations(service);
+
+  // Connection failed during DHCP and service believes this is due to a
+  // passphrase issue.
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+      .WillOnce(Return(true));
+  EXPECT_CALL(*service,
+              DisconnectWithFailure(Service::kFailureBadPassphrase, _));
+  ReportIPConfigFailure();
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {

@@ -317,6 +317,11 @@ class Device : public base::RefCounted<Device> {
   // Callback invoked on every IP configuration update.
   void OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success);
 
+  // Called by Device so that subclasses can run hooks on the selected service
+  // failing to get an IP.  The default implementation disconnects the selected
+  // service with Service::kFailureDHCP.
+  virtual void OnIPConfigFailure();
+
   // Maintain connection state (Routes, IP Addresses and DNS) in the OS.
   void CreateConnection();
 

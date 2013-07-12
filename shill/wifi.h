@@ -135,6 +135,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   virtual void OnAfterResume();
   // Callback for when a service is configured with an IP.
   virtual void OnConnected();
+  // Callback for when a service fails to configure with an IP.
+  virtual void OnIPConfigFailure() override;
 
   // Implementation of SupplicantEventDelegateInterface.  These methods
   // are called by SupplicantInterfaceProxy, in response to events from
@@ -490,6 +492,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   ScanState scan_state_;
   ScanMethod scan_method_;
   chromeos_metrics::Timer scan_timer_;
+
+  // Used to compute the number of bytes received since the link went up.
+  uint64 receive_byte_count_at_connect_;
 
   DISALLOW_COPY_AND_ASSIGN(WiFi);
 };

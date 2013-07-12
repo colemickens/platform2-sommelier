@@ -516,11 +516,15 @@ void Device::OnIPConfigUpdated(const IPConfigRefPtr &ipconfig, bool success) {
       return;
     }
 
-    if (selected_service_) {
-      Error error;
-      selected_service_->DisconnectWithFailure(Service::kFailureDHCP, &error);
-    }
+    OnIPConfigFailure();
     DestroyConnection();
+  }
+}
+
+void Device::OnIPConfigFailure() {
+  if (selected_service_) {
+    Error error;
+    selected_service_->DisconnectWithFailure(Service::kFailureDHCP, &error);
   }
 }
 

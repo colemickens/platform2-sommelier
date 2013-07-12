@@ -122,7 +122,8 @@ WiFi::WiFi(ControlInterface *control_interface,
       max_frequencies_to_scan_(std::numeric_limits<int>::max()),
       fraction_per_scan_(kDefaultFractionPerScan),
       scan_state_(kScanIdle),
-      scan_method_(kScanMethodNone) {
+      scan_method_(kScanMethodNone),
+      receive_byte_count_at_connect_(0) {
   PropertyStore *store = this->mutable_store();
   store->RegisterDerivedString(
       flimflam::kBgscanMethodProperty,
@@ -1279,7 +1280,15 @@ void WiFi::StateChanged(const string &new_state) {
                    GetServiceLeaseName(*affected_service))) {
       LOG(INFO) << link_name() << " is up; started L3 configuration.";
       affected_service->SetState(Service::kStateConfiguring);
-      affected_service->ResetSuspectedCredentialFailures();
+      if (affected_service->IsSecurityMatch(flimflam::kSecurityWep)) {
+        // With the overwhelming majority of WEP networks, we cannot assume
+        // our credentials are correct just because we have successfully
+        // connected.  It is more useful to track received data as the L3
+        // configuration proceeds to see if we can decrypt anything.
+        receive_byte_count_at_connect_ = GetReceiveByteCount();
+      } else {
+        affected_service->ResetSuspectedCredentialFailures();
+      }
     } else {
       LOG(ERROR) << "Unable to acquire DHCP config.";
     }
@@ -1503,6 +1512,35 @@ void WiFi::AbortScan() {
 void WiFi::OnConnected() {
   Device::OnConnected();
   EnableHighBitrates();
+  if (current_service_ &&
+      current_service_->IsSecurityMatch(flimflam::kSecurityWep)) {
+    // With a WEP network, we are now reasonably certain the credentials are
+    // correct, whereas with other network types we were able to determine
+    // this earlier when the association process succeeded.
+    current_service_->ResetSuspectedCredentialFailures();
+  }
+}
+
+void WiFi::OnIPConfigFailure() {
+  if (!current_service_) {
+    LOG(ERROR) << "WiFi " << link_name() << " " << __func__
+               << " with no current service.";
+    return;
+  }
+  if (current_service_->IsSecurityMatch(flimflam::kSecurityWep) &&
+      GetReceiveByteCount() == receive_byte_count_at_connect_ &&
+      current_service_->AddSuspectedCredentialFailure()) {
+    // If we've connected to a WEP network and haven't successfully
+    // decrypted any bytes at all during the configuration process,
+    // it is fair to suspect that our credentials to this network
+    // may not be correct.
+    Error error;
+    current_service_->DisconnectWithFailure(Service::kFailureBadPassphrase,
+                                            &error);
+    return;
+  }
+
+  Device::OnIPConfigFailure();
 }
 
 void WiFi::RestartFastScanAttempts() {
