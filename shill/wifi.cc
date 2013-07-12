@@ -281,7 +281,7 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
   current_service_ = NULL;            // breaks a reference cycle
   pending_service_ = NULL;            // breaks a reference cycle
   is_debugging_connection_ = false;
-  SetScanState(kScanIdle, kScanMethodNone);
+  SetScanState(kScanIdle, kScanMethodNone, __func__);
   StopPendingTimer();
   StopReconnectTimer();
 
@@ -304,11 +304,6 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
 
 void WiFi::Scan(ScanType scan_type, Error */*error*/) {
   LOG(INFO) << __func__;
-  // Measure scans that are supposed to be "progressive" regardless of whether
-  // we are actually doing a progressive scan.
-  if (scan_type == kProgressiveScan) {
-    metrics()->NotifyDeviceScanStarted(interface_index());
-  }
   if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
     LOG(INFO) << "Doing progressive scan on " << link_name();
     if (!scan_session_) {
@@ -870,7 +865,7 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // for. Simply update |current_service_| and |pending_service_|.
     current_service_ = service;
     SetPendingService(NULL);
-    SetScanState(kScanConnected, scan_method_);
+    SetScanState(kScanConnected, scan_method_, __func__);
     return;
   }
 
@@ -1135,9 +1130,9 @@ void WiFi::ScanDoneTask() {
 void WiFi::UpdateScanStateAfterScanDone() {
   if (scan_state_ != kScanIdle) {
     if (IsIdle()) {
-      SetScanState(kScanFoundNothing, scan_method_);
+      SetScanState(kScanFoundNothing, scan_method_, __func__);
     } else {
-      SetScanState(kScanConnecting, scan_method_);
+      SetScanState(kScanConnecting, scan_method_, __func__);
     }
   }
 }
@@ -1146,18 +1141,18 @@ void WiFi::ScanTask() {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " scan requested.";
   if (!enabled()) {
     SLOG(WiFi, 2) << "Ignoring scan request while device is not enabled.";
-    SetScanState(kScanIdle, kScanMethodNone);  // Probably redundant.
+    SetScanState(kScanIdle, kScanMethodNone, __func__);  // Probably redundant.
     return;
   }
   if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
     SLOG(WiFi, 2) << "Ignoring scan request while supplicant is not present.";
-    SetScanState(kScanIdle, kScanMethodNone);
+    SetScanState(kScanIdle, kScanMethodNone, __func__);
     return;
   }
   if ((pending_service_.get() && pending_service_->IsConnecting()) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
-    SetScanState(kScanConnecting, scan_method_);
+    SetScanState(kScanConnecting, scan_method_, __func__);
     return;
   }
   map<string, DBus::Variant> scan_args;
@@ -1183,13 +1178,13 @@ void WiFi::ScanTask() {
   }
 
   try {
-    supplicant_interface_proxy_->Scan(scan_args);
     // Only set the scan state/method if we are starting a full scan from
     // scratch.  Keep the existing method if this is a failover from a
     // progressive scan.
     if (scan_state_ != kScanScanning) {
-      SetScanState(kScanScanning, kScanMethodFull);
+      SetScanState(kScanScanning, kScanMethodFull, __func__);
     }
+    supplicant_interface_proxy_->Scan(scan_args);
   } catch (const DBus::Error &e) {  // NOLINT
     // A scan may fail if, for example, the wpa_supplicant vanishing
     // notification is posted after this task has already started running.
@@ -1201,23 +1196,28 @@ void WiFi::ProgressiveScanTask() {
   SLOG(WiFi, 2) << __func__ << " - scan requested for " << link_name();
   if (!enabled()) {
     LOG(INFO) << "Ignoring scan request while device is not enabled.";
-    SetScanState(kScanIdle, kScanMethodNone);  // Probably redundant.
+    SetScanState(kScanIdle, kScanMethodNone, __func__);  // Probably redundant.
     return;
   }
   if (!scan_session_) {
     SLOG(WiFi, 2) << "No scan session -- returning";
-    SetScanState(kScanIdle, kScanMethodNone);
+    SetScanState(kScanIdle, kScanMethodNone, __func__);
     return;
   }
+  // TODO(wdg): We don't currently support progressive background scans.  If
+  // we did, we couldn't bail out, here, if we're connected. Progressive scan
+  // state will have to be modified to include whether there was a connection
+  // when the scan started. Then, this code would only bail out if we didn't
+  // start with a connection but one exists at this point.
   if (!IsIdle()) {
     SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
     scan_session_.reset();
-    SetScanState(kScanConnecting, scan_method_);
+    SetScanState(kScanConnecting, scan_method_, __func__);
     return;
   }
   if (scan_session_->HasMoreFrequencies()) {
     SLOG(WiFi, 2) << "Initiating a scan -- returning";
-    SetScanState(kScanScanning, kScanMethodProgressive);
+    SetScanState(kScanScanning, kScanMethodProgressive, __func__);
     // After us initiating a scan, supplicant will gather the scan results and
     // send us zero or more |BSSAdded| events followed by a |ScanDone|.
     scan_session_->InitiateScan();
@@ -1226,7 +1226,7 @@ void WiFi::ProgressiveScanTask() {
   LOG(ERROR) << "A complete progressive scan turned-up nothing -- "
              << "do a regular scan";
   scan_session_.reset();
-  SetScanState(kScanScanning, kScanMethodProgressiveFinishedToFull);
+  SetScanState(kScanScanning, kScanMethodProgressiveFinishedToFull, __func__);
   Scan(kFullScan, NULL);
 }
 
@@ -1234,7 +1234,7 @@ void WiFi::OnFailedProgressiveScan() {
   LOG(ERROR) << "Couldn't issue a scan on " << link_name()
              << " -- doing a regular scan";
   scan_session_.reset();
-  SetScanState(kScanScanning, kScanMethodProgressiveErrorToFull);
+  SetScanState(kScanScanning, kScanMethodProgressiveErrorToFull, __func__);
   Scan(kFullScan, NULL);
 }
 
@@ -1506,7 +1506,7 @@ void WiFi::AbortScan() {
   if (scan_session_) {
     scan_session_.reset();
   }
-  SetScanState(kScanIdle, kScanMethodNone);
+  SetScanState(kScanIdle, kScanMethodNone, __func__);
 }
 
 void WiFi::OnConnected() {
@@ -1618,7 +1618,7 @@ void WiFi::PendingTimeoutHandler() {
     LOG(INFO) << "Hidden service was not found.";
     DisconnectFrom(pending_service_);
   }
-  SetScanState(kScanFoundNothing, scan_method_);
+  SetScanState(kScanFoundNothing, scan_method_, __func__);
 }
 
 void WiFi::StartReconnectTimer() {
@@ -1890,7 +1890,9 @@ bool WiFi::GetScanPending(Error */* error */) {
   return scan_state_ == kScanScanning;
 }
 
-void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
+void WiFi::SetScanState(ScanState new_state,
+                        ScanMethod new_method,
+                        const char *reason) {
   if (new_state == kScanIdle)
     new_method = kScanMethodNone;
   if (new_state == kScanConnected) {
@@ -1923,7 +1925,8 @@ void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
       LOG(ERROR) << "Scan time unreliable";
     }
   }
-  SLOG(WiFi, log_level) << link_name()
+  SLOG(WiFi, log_level) << (reason ? reason : "<unknown>")
+                        << " - " << link_name()
                         << ": Scan state: "
                         << ScanStateString(scan_state_, scan_method_)
                         << " -> " << ScanStateString(new_state, new_method)
@@ -1946,6 +1949,9 @@ void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
     case kScanIdle:
       metrics()->ResetScanTimer(interface_index());
       break;
+    case kScanScanning:
+      metrics()->NotifyDeviceScanStarted(interface_index());
+      break;
     case kScanConnecting:
       metrics()->NotifyDeviceScanFinished(interface_index());
       // TODO(wdg): Provide |is_auto_connecting| to this interface.  For now,
@@ -1964,11 +1970,11 @@ void WiFi::SetScanState(ScanState new_state, ScanMethod new_method) {
     default:
       break;
   }
-  ReportScanResultToUma(new_state, old_method);
   if (is_terminal_state) {
+    ReportScanResultToUma(new_state, old_method);
     // Now that we've logged a terminal state, let's call ourselves to
     // transistion to the idle state.
-    SetScanState(kScanIdle, kScanMethodNone);
+    SetScanState(kScanIdle, kScanMethodNone, reason);
   }
 }
 

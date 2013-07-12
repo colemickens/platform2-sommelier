@@ -358,8 +358,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->scan_session_->OnTriggerScanResponse(message);
   }
 
-  void SetScanState(WiFi::ScanState new_state, WiFi::ScanMethod new_method) {
-    wifi_->SetScanState(new_state, new_method);
+  void SetScanState(WiFi::ScanState new_state,
+                    WiFi::ScanMethod new_method,
+                    const char *reason) {
+    wifi_->SetScanState(new_state, new_method, reason);
   }
 
   void VerifyScanState(WiFi::ScanState state, WiFi::ScanMethod method) {
@@ -1781,6 +1783,7 @@ TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (finds nothing).
+  EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
   EXPECT_CALL(*scan_session_, InitiateScan());
   dispatcher_.DispatchPendingEvents();
   VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
@@ -2857,10 +2860,10 @@ TEST_F(WiFiMainTest, ProgressiveScanConnectingToConnected) {
 TEST_F(WiFiMainTest, ScanStateUma) {
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _)).
       Times(0);
-  SetScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+  SetScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive, __func__);
 
   EXPECT_CALL(*metrics(), SendEnumToUMA(Metrics::kMetricScanResult, _, _));
-  SetScanState(WiFi::kScanConnected, WiFi::kScanMethodProgressive);
+  SetScanState(WiFi::kScanConnected, WiFi::kScanMethodProgressive, __func__);
 }
 
 }  // namespace shill

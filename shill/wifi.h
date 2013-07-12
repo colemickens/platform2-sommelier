@@ -413,7 +413,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // |all_scan_frequencies_|.
   void OnNewWiphy(const Nl80211Message &nl80211_message);
 
-  void SetScanState(ScanState new_state, ScanMethod new_method);
+  void SetScanState(ScanState new_state,
+                    ScanMethod new_method,
+                    const char *reason);
   void ReportScanResultToUma(ScanState state, ScanMethod method);
   static std::string ScanStateString(ScanState state, ScanMethod type);
 
