@@ -1826,7 +1826,7 @@ void CellularCapabilityUniversal::OnSimLockStatusChanged() {
   // If the SIM is currently unlocked, assume that we need to refresh
   // carrier information, since a locked SIM prevents shill from obtaining
   // the necessary data to establish a connection later (e.g. IMSI).
-  if (!sim_path_.empty() &&
+  if (IsValidSimPath(sim_path_) &&
       (sim_lock_status_.lock_type == MM_MODEM_LOCK_NONE ||
        sim_lock_status_.lock_type == MM_MODEM_LOCK_UNKNOWN)) {
     scoped_ptr<DBusPropertiesProxyInterface> properties_proxy(

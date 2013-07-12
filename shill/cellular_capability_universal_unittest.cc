@@ -604,6 +604,38 @@ TEST_F(CellularCapabilityUniversalMainTest, SimLockStatusChanged) {
   EXPECT_EQ(kSimIdentifier, capability_->sim_identifier_);
   EXPECT_EQ(kOperatorIdentifier, capability_->operator_id_);
   EXPECT_EQ(kOperatorName, capability_->spn_);
+
+  // SIM is missing and SIM path is "/".
+  capability_->OnSimPathChanged(CellularCapabilityUniversal::kRootPath);
+  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ(CellularCapabilityUniversal::kRootPath, capability_->sim_path_);
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_, _)).Times(0);
+  capability_->OnSimLockStatusChanged();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+
+  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
+
+  // SIM is missing and SIM path is empty.
+  capability_->OnSimPathChanged("");
+  EXPECT_FALSE(capability_->sim_present_);
+  EXPECT_TRUE(capability_->sim_proxy_ == NULL);
+  EXPECT_EQ("", capability_->sim_path_);
+
+  EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
+              GetActivationState(_, _)).Times(0);
+  capability_->OnSimLockStatusChanged();
+  Mock::VerifyAndClearExpectations(modem_info_.mock_pending_activation_store());
+
+  EXPECT_EQ("", capability_->imsi_);
+  EXPECT_EQ("", capability_->sim_identifier_);
+  EXPECT_EQ("", capability_->operator_id_);
+  EXPECT_EQ("", capability_->spn_);
 }
 
 TEST_F(CellularCapabilityUniversalMainTest, PropertiesChanged) {
