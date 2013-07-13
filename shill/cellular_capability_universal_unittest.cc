@@ -1668,7 +1668,29 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateStorageIdentifier) {
             cellular_->service()->storage_identifier_);
 }
 
+TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
+  CellularOperatorInfo::CellularOperator cellular_operator;
+
+  cellular_operator.identifier_ = "vzw";
+  capability_->mdn_ = "";
+  EXPECT_EQ("", capability_->GetMdnForOLP(cellular_operator));
+  capability_->mdn_ = "0123456789";
+  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+  capability_->mdn_ = "10123456789";
+  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+
+  cellular_operator.identifier_ = "foo";
+  capability_->mdn_ = "";
+  EXPECT_EQ("", capability_->GetMdnForOLP(cellular_operator));
+  capability_->mdn_ = "0123456789";
+  EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
+  capability_->mdn_ = "10123456789";
+  EXPECT_EQ("10123456789", capability_->GetMdnForOLP(cellular_operator));
+}
+
 TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
+  CellularOperatorInfo::CellularOperator cellular_operator;
+
   CellularService::OLP test_olp;
   test_olp.SetURL("http://testurl");
   test_olp.SetMethod("POST");
@@ -1677,21 +1699,33 @@ TEST_F(CellularCapabilityUniversalMainTest, UpdateOLP) {
 
   capability_->imei_ = "1";
   capability_->imsi_ = "2";
-  capability_->mdn_ = "3";
+  capability_->mdn_ = "10123456789";
   capability_->min_ = "5";
   capability_->sim_identifier_ = "6";
   capability_->operator_id_ = "123456";
 
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
+      GetCellularOperatorByMCCMNC(capability_->operator_id_))
+      .WillRepeatedly(Return(&cellular_operator));
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
       GetOLPByMCCMNC(capability_->operator_id_))
       .WillRepeatedly(Return(&test_olp));
 
   SetService();
+  cellular_operator.identifier_ = "vzw";
+  capability_->UpdateOLP();
+  const CellularService::OLP &vzw_olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", vzw_olp.GetURL());
+  EXPECT_EQ("POST", vzw_olp.GetMethod());
+  EXPECT_EQ("imei=1&imsi=2&mdn=0123456789&min=5&iccid=6",
+            vzw_olp.GetPostData());
+
+  cellular_operator.identifier_ = "foo";
   capability_->UpdateOLP();
   const CellularService::OLP &olp = cellular_->service()->olp();
   EXPECT_EQ("http://testurl", olp.GetURL());
   EXPECT_EQ("POST", olp.GetMethod());
-  EXPECT_EQ("imei=1&imsi=2&mdn=3&min=5&iccid=6",
+  EXPECT_EQ("imei=1&imsi=2&mdn=10123456789&min=5&iccid=6",
             olp.GetPostData());
 }
 

@@ -18,6 +18,7 @@
 #include "shill/accessor_interface.h"
 #include "shill/cellular.h"
 #include "shill/cellular_capability.h"
+#include "shill/cellular_operator_info.h"
 #include "shill/mm1_bearer_proxy_interface.h"
 #include "shill/mm1_modem_modem3gpp_proxy_interface.h"
 #include "shill/mm1_modem_proxy_interface.h"
@@ -124,6 +125,11 @@ class CellularCapabilityUniversal : public CellularCapability {
   // Post-payment activation handlers.
   virtual void UpdatePendingActivationState();
 
+  // Returns the operator-specific form of |mdn_|, which is passed to the online
+  // payment portal of a cellular operator.
+  std::string GetMdnForOLP(
+      const CellularOperatorInfo::CellularOperator &cellular_operator) const;
+
   const std::string &mdn() const { return mdn_; }
   void set_mdn(const std::string &mdn) { mdn_ = mdn; }
 
@@ -197,6 +203,7 @@ class CellularCapabilityUniversal : public CellularCapability {
               DisconnectWithDeferredCallback);
   FRIEND_TEST(CellularCapabilityUniversalMainTest,
               GetNetworkTechnologyStringOnE362);
+  FRIEND_TEST(CellularCapabilityUniversalMainTest, GetMdnForOLP);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, GetTypeString);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsMdnValid);
   FRIEND_TEST(CellularCapabilityUniversalMainTest, IsServiceActivationRequired);

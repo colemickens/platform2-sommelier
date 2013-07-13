@@ -349,26 +349,40 @@ TEST_F(CellularCapabilityUniversalCDMAMainTest, CreateFriendlyServiceName) {
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, UpdateOLP) {
+  CellularOperatorInfo::CellularOperator cellular_operator;
   CellularService::OLP test_olp;
   test_olp.SetURL("http://testurl");
   test_olp.SetMethod("POST");
   test_olp.SetPostData("esn=${esn}&mdn=${mdn}&meid=${meid}");
 
   capability_->esn_ = "0";
-  capability_->mdn_ = "3";
+  capability_->mdn_ = "10123456789";
   capability_->meid_= "4";
   capability_->sid_ = 1;
 
+  string sid_string = base::StringPrintf("%u", capability_->sid_);
   EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
-      GetOLPBySID(base::StringPrintf("%u", capability_->sid_)))
+              GetCellularOperatorBySID(sid_string))
+      .WillRepeatedly(Return(&cellular_operator));
+  EXPECT_CALL(*modem_info_.mock_cellular_operator_info(),
+              GetOLPBySID(sid_string))
       .WillRepeatedly(Return(&test_olp));
 
   SetService();
+
+  cellular_operator.identifier_ = "vzw";
+  capability_->UpdateOLP();
+  const CellularService::OLP &vzw_olp = cellular_->service()->olp();
+  EXPECT_EQ("http://testurl", vzw_olp.GetURL());
+  EXPECT_EQ("POST", vzw_olp.GetMethod());
+  EXPECT_EQ("esn=0&mdn=0123456789&meid=4", vzw_olp.GetPostData());
+
+  cellular_operator.identifier_ = "foo";
   capability_->UpdateOLP();
   const CellularService::OLP &olp = cellular_->service()->olp();
   EXPECT_EQ("http://testurl", olp.GetURL());
   EXPECT_EQ("POST", olp.GetMethod());
-  EXPECT_EQ("esn=0&mdn=3&meid=4", olp.GetPostData());
+  EXPECT_EQ("esn=0&mdn=10123456789&meid=4", olp.GetPostData());
 }
 
 TEST_F(CellularCapabilityUniversalCDMAMainTest, ActivateAutomatic) {

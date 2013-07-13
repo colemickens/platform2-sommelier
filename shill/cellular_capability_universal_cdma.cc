@@ -213,13 +213,21 @@ void CellularCapabilityUniversalCDMA::UpdateServiceActivationStateProperty() {
 }
 
 void CellularCapabilityUniversalCDMA::UpdateOLP() {
-  SLOG(Cellular,2) << __func__;
-  if (!modem_info()->cellular_operator_info())
+  SLOG(Cellular, 2) << __func__;
+
+  const CellularOperatorInfo *cellular_operator_info =
+      modem_info()->cellular_operator_info();
+  if (!cellular_operator_info)
+    return;
+
+  string sid_string = UintToString(sid_);
+  const CellularOperatorInfo::CellularOperator *cellular_operator =
+      cellular_operator_info->GetCellularOperatorBySID(sid_string);
+  if (!cellular_operator)
     return;
 
   const CellularService::OLP *result =
-      modem_info()->cellular_operator_info()->GetOLPBySID(
-          UintToString(sid_));
+      cellular_operator_info->GetOLPBySID(sid_string);
   if (!result)
     return;
 
@@ -227,7 +235,8 @@ void CellularCapabilityUniversalCDMA::UpdateOLP() {
   olp.CopyFrom(*result);
   string post_data = olp.GetPostData();
   ReplaceSubstringsAfterOffset(&post_data, 0, "${esn}", esn());
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}", mdn());
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
+                               GetMdnForOLP(*cellular_operator));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${meid}", meid());
   olp.SetPostData(post_data);
   if (cellular()->service().get())

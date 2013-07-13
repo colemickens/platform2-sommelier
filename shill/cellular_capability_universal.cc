@@ -16,7 +16,6 @@
 #include <vector>
 
 #include "shill/adaptor_interfaces.h"
-#include "shill/cellular_operator_info.h"
 #include "shill/cellular_service.h"
 #include "shill/dbus_properties_proxy_interface.h"
 #include "shill/error.h"
@@ -75,10 +74,15 @@ const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
 unsigned int CellularCapabilityUniversal::friendly_service_name_id_ = 0;
 
+namespace {
 
-static const char kPhoneNumber[] = "*99#";
+const char kPhoneNumber[] = "*99#";
 
-static string AccessTechnologyToString(uint32 access_technologies) {
+// This identifier is specified in the cellular_operator_info file.
+const char kVzwIdentifier[] = "vzw";
+const size_t kVzwMdnLength = 10;
+
+string AccessTechnologyToString(uint32 access_technologies) {
   if (access_technologies & MM_MODEM_ACCESS_TECHNOLOGY_LTE)
     return flimflam::kNetworkTechnologyLte;
   if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_EVDO0 |
@@ -105,7 +109,7 @@ static string AccessTechnologyToString(uint32 access_technologies) {
   return "";
 }
 
-static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
+string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
   if (access_technologies & (MM_MODEM_ACCESS_TECHNOLOGY_LTE |
                              MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS |
                              MM_MODEM_ACCESS_TECHNOLOGY_HSPA |
@@ -124,6 +128,8 @@ static string AccessTechnologyToTechnologyFamily(uint32 access_technologies) {
     return flimflam::kTechnologyFamilyCdma;
   return "";
 }
+
+}  // namespace
 
 CellularCapabilityUniversal::CellularCapabilityUniversal(
     Cellular *cellular,
@@ -632,6 +638,17 @@ void CellularCapabilityUniversal::UpdatePendingActivationState() {
   }
 }
 
+string CellularCapabilityUniversal::GetMdnForOLP(
+    const CellularOperatorInfo::CellularOperator &cellular_operator) const {
+  // TODO(benchan): This is ugly. Remove carrier specific code once we move
+  // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
+  if (cellular_operator.identifier() == kVzwIdentifier &&
+      mdn_.length() > kVzwMdnLength) {
+    return mdn_.substr(mdn_.length() - kVzwMdnLength);
+  }
+  return mdn_;
+}
+
 void CellularCapabilityUniversal::ReleaseProxies() {
   SLOG(Cellular, 2) << __func__;
   modem_3gpp_proxy_.reset();
@@ -967,11 +984,20 @@ void CellularCapabilityUniversal::OnScanningOrSearchingTimeout() {
 }
 
 void CellularCapabilityUniversal::UpdateOLP() {
-  if (!modem_info()->cellular_operator_info())
+  SLOG(Cellular, 2) << __func__;
+
+  const CellularOperatorInfo *cellular_operator_info =
+      modem_info()->cellular_operator_info();
+  if (!cellular_operator_info)
+    return;
+
+  const CellularOperatorInfo::CellularOperator *cellular_operator =
+      cellular_operator_info->GetCellularOperatorByMCCMNC(operator_id_);
+  if (!cellular_operator)
     return;
 
   const CellularService::OLP *result =
-      modem_info()->cellular_operator_info()->GetOLPByMCCMNC(operator_id_);
+      cellular_operator_info->GetOLPByMCCMNC(operator_id_);
   if (!result)
     return;
 
@@ -981,7 +1007,8 @@ void CellularCapabilityUniversal::UpdateOLP() {
   ReplaceSubstringsAfterOffset(&post_data, 0, "${iccid}", sim_identifier_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imei}", imei_);
   ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}", imsi_);
-  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}", mdn_);
+  ReplaceSubstringsAfterOffset(&post_data, 0, "${mdn}",
+                               GetMdnForOLP(*cellular_operator));
   ReplaceSubstringsAfterOffset(&post_data, 0, "${min}", min_);
   olp.SetPostData(post_data);
   cellular()->service()->SetOLP(olp);
