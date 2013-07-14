@@ -570,6 +570,14 @@ void Daemon::HandleCanceledSuspendAnnouncement() {
 }
 
 void Daemon::PrepareForSuspend() {
+#ifdef MOSYS_EVENTLOG
+  // This command is run synchronously to ensure that it finishes before
+  // the system is suspended.
+  // TODO(derat): Remove this once it's logged by the kernel:
+  // http://crosbug.com/p/16132
+  util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa7", true);
+#endif
+
 #ifdef SUSPEND_LOCK_VT
   // Do not let suspend change the console terminal.
   util::RunSetuidHelper("lock_vt", "", true);
@@ -617,6 +625,12 @@ void Daemon::HandleResume(bool suspend_was_successful,
         num_suspend_retries, max_suspend_retries);
     metrics_reporter_->HandleResume();
   }
+
+#ifdef MOSYS_EVENTLOG
+  // TODO(derat): Remove this once it's logged by the kernel:
+  // http://crosbug.com/p/16132
+  util::RunSetuidHelper("mosys_eventlog", "--mosys_eventlog_code=0xa8", false);
+#endif
 }
 
 void Daemon::HandleLidClosed() {

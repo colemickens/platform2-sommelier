@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <cctype>
 #include <cstdarg>
 #include <cstdlib>
 #include <string>
@@ -21,7 +22,14 @@
 #include "base/string_number_conversions.h"
 
 DEFINE_string(action, "", "Action to perform.  Must be one of \"lock_vt\", "
+#ifdef MOSYS_EVENTLOG
+              "\"mosys_eventlog\", "
+#endif
               "\"reboot\", \"shut_down\", \"suspend\", and \"unlock_vt\".");
+#ifdef MOSYS_EVENTLOG
+DEFINE_string(mosys_eventlog_code, "", "Hexadecimal byte, e.g. \"0xa7\", "
+              "describing the event being logged.");
+#endif
 DEFINE_string(shutdown_reason, "", "Optional shutdown reason starting with a "
               "lowercase letter and consisting only of lowercase letters and "
               "dashes.");
@@ -36,22 +44,21 @@ DEFINE_bool(suspend_wakeup_count_valid, false,
 // Maximum number of arguments supported for internally-defined commands.
 const size_t kMaxArgs = 64;
 
+// Value for the PATH environment variable. This is both used to search for
+// binaries that are executed by this program and inherited by those binaries.
+const char kPathEnvironment[] = "/usr/sbin:/usr/bin:/sbin:/bin";
+
 // Path to device on which VT_UNLOCKSWITCH and VT_LOCKSWITCH ioctls can be made
 // to enable or disable VT switching.
 const char kConsolePath[] = "/dev/tty0";
 
-// Paths to various binaries that are executed.
-const char kInitctlPath[] = "/sbin/initctl";
-const char kPowerdSuspendPath[] = "/usr/bin/powerd_suspend";
-const char kShutdownPath[] = "/sbin/shutdown";
-
 // Runs a command with the supplied arguments.  The argument list must be
 // NULL-terminated.  This method calls exec() without forking, so it will never
 // return.
-void RunCommand(const char* path, const char* arg, ...) {
+void RunCommand(const char* command, const char* arg, ...) {
   char* argv[kMaxArgs + 1];
   size_t num_args = 1;
-  argv[0] = const_cast<char*>(path);
+  argv[0] = const_cast<char*>(command);
 
   va_list list;
   va_start(list, arg);
@@ -68,7 +75,8 @@ void RunCommand(const char* path, const char* arg, ...) {
   PCHECK(setuid(0) == 0) << "setuid() failed";
   PCHECK(clearenv() == 0) << "clearenv() failed";
   PCHECK(setenv("POWERD_SETUID_HELPER", "1", 1) == 0) << "setenv() failed";
-  PCHECK(execv(path, argv) != -1) << "execv() failed";
+  PCHECK(setenv("PATH", kPathEnvironment, 1) == 0) << "setenv() failed";
+  PCHECK(execvp(command, argv) != -1) << "execv() failed";
 }
 
 // Locks or unlocks VT switching.  In a perfect world this would live in powerd,
@@ -89,8 +97,18 @@ int main(int argc, char* argv[]) {
 
   if (FLAGS_action == "lock_vt") {
     SetVTSwitchingAllowed(false);
+#ifdef MOSYS_EVENTLOG
+  } else if (FLAGS_action == "mosys_eventlog") {
+    CHECK(FLAGS_mosys_eventlog_code.size() == 4 &&
+          FLAGS_mosys_eventlog_code[0] == '0' &&
+          FLAGS_mosys_eventlog_code[1] == 'x' &&
+          isxdigit(FLAGS_mosys_eventlog_code[2]) &&
+          isxdigit(FLAGS_mosys_eventlog_code[3])) << "Invalid event code";
+    RunCommand("mosys", "eventlog", "add", FLAGS_mosys_eventlog_code.c_str(),
+               NULL);
+#endif
   } else if (FLAGS_action == "reboot") {
-    RunCommand(kShutdownPath, "-r", "now", NULL);
+    RunCommand("shutdown", "-r", "now", NULL);
   } else if (FLAGS_action == "shut_down") {
     std::string reason_arg;
     if (!FLAGS_shutdown_reason.empty()) {
@@ -101,7 +119,7 @@ int main(int argc, char* argv[]) {
       }
       reason_arg = "SHUTDOWN_REASON=" + FLAGS_shutdown_reason;
     }
-    RunCommand(kInitctlPath, "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
+    RunCommand("initctl", "emit", "--no-wait", "runlevel", "RUNLEVEL=0",
                (reason_arg.empty() ? NULL : reason_arg.c_str()), NULL);
   } else if (FLAGS_action == "suspend") {
     std::string duration_flag = "--suspend_duration=" +
@@ -111,7 +129,7 @@ int main(int argc, char* argv[]) {
       wakeup_flag = "--wakeup_count=" +
           base::Uint64ToString(FLAGS_suspend_wakeup_count);
     }
-    RunCommand(kPowerdSuspendPath, duration_flag.c_str(),
+    RunCommand("powerd_suspend", duration_flag.c_str(),
                wakeup_flag.empty() ? NULL : wakeup_flag.c_str(), NULL);
   } else if (FLAGS_action == "unlock_vt") {
     SetVTSwitchingAllowed(true);
