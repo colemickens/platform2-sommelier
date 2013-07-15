@@ -2,6 +2,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# DEPRECATED
+# Do not use flimflam.py in future development.
+# Extend / migrate to shill_proxy suite of scripts instead.
+
 import logging, time
 
 import dbus
@@ -22,6 +26,7 @@ def make_dbus_boolean(value):
 # to print properties returned via DBus
 #
 def convert_dbus_value(value, indent=0):
+    # DEPRECATED
     spacer = ' ' * indent
     if value.__class__ == dbus.Byte:
         return int(value)
@@ -45,6 +50,7 @@ def convert_dbus_value(value, indent=0):
         return str(value)
 
 class FlimFlam(object):
+    # DEPRECATED
 
     SHILL_DBUS_INTERFACE = "org.chromium.flimflam"
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
@@ -422,6 +428,7 @@ class FlimFlam(object):
 
 
 class DeviceManager(object):
+    # DEPRECATED
     """Use flimflam to isolate a given interface for testing.
 
     DeviceManager can be used to turn off network devices that are not
