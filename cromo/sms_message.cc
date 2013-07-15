@@ -80,7 +80,7 @@ static std::string DecodeAddress(const uint8_t* octets,
       addr = "+" + addr;
   } else {
     const size_t datalen = (num_octets * 8) / 7;
-    addr = utilities::Gsm7ToUtf8String(octets, datalen, 0);
+    addr = utilities::Gsm7ToUtf8String(octets, num_octets, datalen, 0);
   }
   return addr;
 }
@@ -321,6 +321,7 @@ static bool parse_text(Bytes* bytes,
       return false;
     }
     *text = utilities::Gsm7ToUtf8String(bytes->NextBytes(user_data_octets),
+                                        user_data_octets,
                                         user_data_len,
                                         bit_offset);
   } else if (scheme == kDcsUcs2) {

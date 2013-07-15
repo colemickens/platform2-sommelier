@@ -48,6 +48,9 @@ bool HexEsnToDecimal(const std::string& esn_hex, std::string* out);
 // GSM-7 is a 7-bit character set, and in SMS messages, the 7-bit
 // septets are packed into an array of 8-bit octets.
 //
+// The |gsm7_length| argument gives the length of the input data |gsm7|
+// in octets.
+//
 // The |num_septets| argument gives the length of the input data
 // in septets, i.e., it is the number of GSM-7 septets that will
 // result after the array is unpacked. This may be greater than
@@ -57,6 +60,7 @@ bool HexEsnToDecimal(const std::string& esn_hex, std::string* out);
 // The bit_offset argument gives the starting bit offset within the
 // first octet of the first 7-bit character.
 std::string Gsm7ToUtf8String(const uint8_t* gsm7,
+                             size_t gsm7_length,
                              size_t num_septets,
                              uint8_t bit_offset);
 

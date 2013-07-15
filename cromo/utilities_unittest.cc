@@ -133,7 +133,9 @@ TEST(Utilities, Gsm7ToUtf8) {
 
   for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
     out = Gsm7ToUtf8String(&gsm7_test_data[i].packed_gsm7[1],
-                           gsm7_test_data[i].packed_gsm7[0], 0);
+                           gsm7_test_data[i].packed_gsm7_size - 1,
+                           gsm7_test_data[i].packed_gsm7[0],
+                           0);
     EXPECT_EQ(gsm7_test_data[i].utf8_string, out);
   }
 
@@ -158,7 +160,10 @@ TEST(Utilities, Utf8Gsm7RoundTrip) {
 
   for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
     gsm7_out = Utf8StringToGsm7(gsm7_test_data[i].utf8_string);
-    utf8_out = Gsm7ToUtf8String(&gsm7_out[1], gsm7_out[0], 0);
+    utf8_out = Gsm7ToUtf8String(&gsm7_out[1],
+                                gsm7_out.size() - 1,
+                                gsm7_out[0],
+                                0);
     EXPECT_EQ(gsm7_test_data[i].utf8_string, utf8_out);
   }
 }
@@ -171,6 +176,7 @@ TEST(Utilities, Gsm7Utf8RoundTrip) {
 
   for (int i = 0; gsm7_test_data[i].packed_gsm7 != NULL; ++i) {
     utf8_out = Gsm7ToUtf8String(&gsm7_test_data[i].packed_gsm7[1],
+                                gsm7_test_data[i].packed_gsm7_size - 1,
                                 gsm7_test_data[i].packed_gsm7[0],
                                 0);
     gsm7_out = Utf8StringToGsm7(utf8_out);
@@ -191,7 +197,10 @@ TEST(Utilities, Gsm7ToUtf8BitOffset) {
   using utilities::Gsm7ToUtf8String;
   std::string out;
 
-  out = Gsm7ToUtf8String(&gsm1_bit_offset_3[1], gsm1_bit_offset_3[0], 3);
+  out = Gsm7ToUtf8String(&gsm1_bit_offset_3[1],
+                         sizeof(gsm1_bit_offset_3) - 1,
+                         gsm1_bit_offset_3[0],
+                         3);
   EXPECT_EQ("hellohello", out);
 }
 
@@ -207,7 +216,10 @@ TEST(Utilities, Gsm7ToUtf8BitOffset1) {
   using utilities::Gsm7ToUtf8String;
   std::string out;
 
-  out = Gsm7ToUtf8String(&gsm1_bit_offset_1[1], gsm1_bit_offset_1[0], 1);
+  out = Gsm7ToUtf8String(&gsm1_bit_offset_1[1],
+                         sizeof(gsm1_bit_offset_1) - 1,
+                         gsm1_bit_offset_1[0],
+                         1);
   EXPECT_EQ("lohellohellohello", out);
 }
 
@@ -220,7 +232,10 @@ TEST(Utilities, Gsm7InvalidCharacter) {
 
   utf8_input = "This |±| text '©' has |½| non-GSM7 characters";
   gsm7_out = Utf8StringToGsm7(utf8_input);
-  utf8_out = Gsm7ToUtf8String(&gsm7_out[1], gsm7_out[0], 0);
+  utf8_out = Gsm7ToUtf8String(&gsm7_out[1],
+                              gsm7_out.size() - 1,
+                              gsm7_out[0],
+                              0);
   // Expect the text to have spaces where the invalid characters were.
   EXPECT_EQ("This | | text ' ' has | | non-GSM7 characters", utf8_out);
 }

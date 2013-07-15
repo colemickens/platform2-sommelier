@@ -140,22 +140,32 @@ static std::map<std::pair<uint8_t, uint8_t>,char> Utf8ToGsm7Map;
  * equivalent.
  */
 std::string Gsm7ToUtf8String(const uint8_t* gsm7,
+                             size_t gsm7_length,
                              size_t num_septets,
                              uint8_t bit_offset) {
   std::vector<uint8_t> septets(num_septets);
   uint8_t saved_bits = 0;
   size_t written = 0;
-  uint8_t* cp = &septets[0];
-  int i = 0;
+  uint8_t* const septets_start = &septets[0];
+  uint8_t* cp = septets_start;
+  size_t i = 0;
 
   // unpack
   while (written < num_septets) {
     for (int j = 0; written < num_septets && j < 7; j++) {
       uint8_t octet;
-      if (bit_offset == 0)
+      if (bit_offset == 0) {
         octet = gsm7[i];
-      else
-        octet = (gsm7[i] >> bit_offset) | gsm7[i+1] << (8 - bit_offset);
+      } else {
+        octet = (gsm7[i] >> bit_offset);
+        // The following check prevents the code from accessing beyond the array
+        // boundary of |gsm7|. This is ok because the |mask| applied to |octet|
+        // will discard the bits that are supposed to be taken from gsm7[i + 1],
+        // which means there is no need to get bits from gsm7[i + 1] at all.
+        if (i + 1 < gsm7_length) {
+          octet |= (gsm7[i + 1] << (8 - bit_offset));
+        }
+      }
       uint8_t mask = 0xff >> (j + 1);
       uint8_t c = ((octet & mask) << j) | saved_bits;
       *cp++ = c;
@@ -169,8 +179,8 @@ std::string Gsm7ToUtf8String(const uint8_t* gsm7,
     }
     saved_bits = 0;
   }
-  int nseptets = cp - &septets[0];
-  cp = &septets[0];
+  size_t nseptets = cp - septets_start;
+  cp = septets_start;
 
   // now map the septets into their corresponding UTF-8 characters
   std::string str;
