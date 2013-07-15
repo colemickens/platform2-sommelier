@@ -17,13 +17,20 @@ import sys
 _BASE_VER = '180609'
 
 class Platform2(object):
-  def __init__(self, use_flags, board=None, host=False,
-               incremental=True, verbose=False):
-    self.use_flags = use_flags
+  def __init__(self, use_flags, board=None, host=False, libdir=None,
+               incremental=True, verbose=False, enable_tests=False):
     self.board = board
     self.host = host
     self.incremental = incremental
     self.verbose = verbose
+
+    if use_flags:
+      self.use_flags = use_flags
+    else:
+      self.use_flags = self.get_platform2_use_flags()
+
+    if enable_tests:
+      self.use_flags.add('test')
 
     if self.host:
       self.arch = self.get_portageq_envvars('ARCH')
@@ -36,6 +43,11 @@ class Platform2(object):
       self.arch = board_vars['ARCH']
       self.sysroot = board_vars['SYSROOT']
       self.pkgconfig = board_vars['PKG_CONFIG']
+
+    if libdir:
+      self.libdir = libdir
+    else:
+      self.libdir = '/usr/lib64' if self.arch == 'amd64' else '/usr/lib'
 
   def get_src_dir(self):
     """Return the path to build tools and common GYP files"""
@@ -83,6 +95,21 @@ class Platform2(object):
     board_vars = dict(dict([(k, v[1:-1]) for k, v in output_items]))
 
     return board_vars if len(board_vars) > 1 else board_vars.values()[0]
+
+  def get_platform2_use_flags(self):
+    """Returns the set of USE flags set for the Platform2 package."""
+    equery_bin = 'equery' if not self.board else 'equery-' + self.board
+    cmd = [equery_bin, 'u', 'platform2']
+
+    try:
+      p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+      output, errors = p.communicate()
+    except UnboundLocalError:
+      raise AssertionError('Error running ' + equery_bin)
+    except OSError:
+      raise AssertionError('Error running equery: ' + errors)
+
+    return set([x for x in output.splitlines() if x])
 
   def get_build_environment(self):
     """Returns a dict containing environment variables we will use to run GYP.
@@ -147,6 +174,7 @@ class Platform2(object):
       '--generator-output=' + self.get_buildroot(),
       '-Dpkg-config=' + self.pkgconfig,
       '-Dsysroot=' + self.sysroot,
+      '-Dlibdir=' + self.libdir,
       '-Dplatform_root=' + self.get_platform_root(),
       '-Dlibbase_ver=' + os.environ.get('BASE_VER', _BASE_VER),
       '-Dexternal_cflags=' + os.environ.get('CFLAGS', ''),
@@ -215,23 +243,21 @@ def main(argv):
                       help='build and run tests')
   parser.add_argument('--host', action='store_true',
                       help='specify that we\'re building for the host')
+  parser.add_argument('--libdir',
+                      help='the libdir for the specific board, eg /usr/lib64')
   parser.add_argument('--use_flags',
-                      default=set(os.environ.get('USE', '').split()),
-                      action=_ParseStringSetAction,
-                      help='USE flags to enable')
+                      action=_ParseStringSetAction, help='USE flags to enable')
   parser.add_argument('--verbose', action='store_true',
                       help='enable verbose log output')
 
   options = parser.parse_args(argv)
 
-  if options.enable_tests:
-    options.use_flags.add('test')
-
   if not (options.host ^ (options.board != None)):
     raise AssertionError('You must provide only one of --board or --host')
 
   p2 = Platform2(options.use_flags, options.board, options.host,
-                 options.incremental, options.verbose)
+                 options.libdir, options.incremental, options.verbose,
+                 options.enable_tests)
   getattr(p2, options.action)()
 
 

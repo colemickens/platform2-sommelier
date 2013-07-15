@@ -11,15 +11,19 @@
 
     # DON'T EDIT BELOW THIS LINE.
     # These arguments shouldn't be changed here.
-    'USE_test%': 0,
+    'USE_cellular%': 0,
     'USE_cros_host%': 0,
-    'USE_wimax%': 0,
+    'USE_gdmwimax%': 0,
+    'USE_test%': 0,
+    'USE_tpm%': 0,
+    'USE_vpn%': 0,
 
     'external_cflags%': '',
     'external_cxxflags%': '',
     'external_ldflags%': '',
 
     'deps%': '',
+    'libdir%': '/usr/lib',
   },
   'conditions': [
     ['USE_cros_host == 1', {

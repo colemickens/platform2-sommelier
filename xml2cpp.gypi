@@ -18,6 +18,8 @@
         '<(dbusxx-xml2cpp)',
         '<(RULE_INPUT_PATH)',
         '--<(xml2cpp_type)=<(h_dir)/<(RULE_INPUT_ROOT).h',
+        '--sync',
+        '--async',
       ],
       'msvs_cygwin_shell': 0,
       'message': 'Generating C++ header from <(RULE_INPUT_PATH)',
