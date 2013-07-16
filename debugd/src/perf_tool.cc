@@ -30,7 +30,7 @@ const char* kCPUOddsFiles[] = {
 };
 
 // Prefix path to attach to the CPU odds file.
-const char kCPUOddsFilePrefix[] = "/etc/init/perf_commands/";
+const char kCPUOddsFilePrefix[] = "/etc/perf_commands/";
 
 // Suffix to attach to the CPU odds file.
 const char kCPUOddsFileSuffix[] = ".txt";
