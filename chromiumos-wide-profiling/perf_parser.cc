@@ -94,14 +94,12 @@ void PerfParser::GetFilenames(std::vector<string>* filenames) const {
 
 bool PerfParser::InjectBuildIDs(
     const std::map<string, string>& filenames_to_build_ids) {
-  if (!build_id_events_.events.empty()) {
+  if (!build_id_events_.empty()) {
     LOG(WARNING) << "Build ids are already present, ignoring new build ids.";
     return false;
   }
   // Since build ids were not present before, metadata mask has to be updated.
   metadata_mask_ |= (1 << HEADER_BUILD_ID);
-  build_id_events_.type = HEADER_BUILD_ID;
-  build_id_events_.size = 0;
 
   std::map<string, string>::const_iterator it;
   for (it = filenames_to_build_ids.begin();
@@ -122,8 +120,7 @@ bool PerfParser::InjectBuildIDs(
       return false;
     CHECK_GT(snprintf(event->filename, len, "%s", it->first.c_str()), 0);
 
-    build_id_events_.events.push_back(event);
-    build_id_events_.size += size;
+    build_id_events_.push_back(event);
   }
 
   return true;
@@ -137,8 +134,8 @@ bool PerfParser::Localize(
        it != build_ids_to_filenames.end();
        ++it) {
     // Search for the corresponding build id event
-    for (size_t i = 0; i < build_id_events_.events.size(); ++i) {
-      build_id_event* event = build_id_events_.events[i];
+    for (size_t i = 0; i < build_id_events_.size(); ++i) {
+      build_id_event* event = build_id_events_[i];
       string build_id = HexToString(event->build_id, kBuildIDArraySize);
       if (build_id != it->first.substr(0, kBuildIDStringLength))
         continue;
@@ -152,8 +149,7 @@ bool PerfParser::Localize(
       // new pointer with the existing pointer.
       if (new_size > event->header.size) {
         build_id_event* new_event = CallocMemoryForBuildID(new_size);
-        build_id_events_.events[i] = new_event;
-        build_id_events_.size += (new_size - event->header.size);
+        build_id_events_[i] = new_event;
         // Copy everything but the filename.
         *new_event = *event;
         free(event);

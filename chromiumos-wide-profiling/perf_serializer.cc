@@ -491,25 +491,20 @@ void PerfSerializer::DeserializeSampleInfo(
 }
 
 void PerfSerializer::SerializeBuildIDs(
-    const PerfBuildIDMetadata& from,
+    const std::vector<build_id_event*>& from,
     ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>* to) const {
-  SerializeBuildIDEvents(from.events, to);
+  SerializeBuildIDEvents(from, to);
 }
 
 void PerfSerializer::DeserializeBuildIDs(
     const ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
-    PerfBuildIDMetadata* to) const {
+    std::vector<build_id_event*>* to) const {
   // Free any existing build id events.
-  for (size_t i = 0; i < to->events.size(); ++i)
-    free(to->events[i]);
-  to->events.clear();
+  for (size_t i = 0; i < to->size(); ++i)
+    free(to->at(i));
+  to->clear();
 
-  to->type = HEADER_BUILD_ID;
-  DeserializeBuildIDEvents(from, &to->events);
-
-  to->size = 0;
-  for (size_t i = 0; i < to->events.size(); ++i)
-    to->size += to->events[i]->header.size;
+  DeserializeBuildIDEvents(from, to);
 }
 
 void PerfSerializer::SerializeBuildIDEvent(
@@ -552,16 +547,12 @@ void PerfSerializer::DeserializeSingleStringMetadata(
     const PerfDataProto_PerfStringMetadata& proto_metadata,
     PerfStringMetadata* metadata) const {
   metadata->type = proto_metadata.type();
-  metadata->size = 0;
   for (int i = 0; i < proto_metadata.data_size(); ++i) {
     CStringWithLength single_string;
     single_string.str = proto_metadata.data(i);
     single_string.len = GetUint64AlignedStringLength(single_string.str);
     metadata->data.push_back(single_string);
-    metadata->size += sizeof(single_string.len) + single_string.len;
   }
-  if (NeedsNumberOfStringData(metadata->type))
-    metadata->size += kNumberOfStringDataSize;
 }
 
 void PerfSerializer::SerializeSingleUint32Metadata(
@@ -578,7 +569,6 @@ void PerfSerializer::DeserializeSingleUint32Metadata(
   metadata->type = proto_metadata.type();
   for (int i = 0; i < proto_metadata.data_size(); ++i)
     metadata->data.push_back(proto_metadata.data(i));
-  metadata->size = metadata->data.size() * sizeof(metadata->data[0]);
 }
 
 void PerfSerializer::SerializeSingleUint64Metadata(
@@ -595,7 +585,6 @@ void PerfSerializer::DeserializeSingleUint64Metadata(
   metadata->type = proto_metadata.type();
   for (int i = 0; i < proto_metadata.data_size(); ++i)
     metadata->data.push_back(proto_metadata.data(i));
-  metadata->size = metadata->data.size() * sizeof(metadata->data[0]);
 }
 
 void PerfSerializer::SetRawEventsAndSampleInfos(size_t num_events) {

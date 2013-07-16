@@ -30,20 +30,8 @@ struct PerfEventAndSampleInfo {
   }
 };
 
-struct PerfMetadata {
-  u32 type;
-  u64 size;
-
-  PerfMetadata() {}
-};
-
 // Based on code in tools/perf/util/header.c, the metadata are of the following
 // formats:
-struct PerfBuildIDMetadata : public PerfMetadata {
-  std::vector<build_id_event*> events;
-
-  PerfBuildIDMetadata() : PerfMetadata() {}
-};
 
 // Based on kernel/perf_internals.h
 const size_t kBuildIDArraySize = 20;
@@ -54,24 +42,23 @@ struct CStringWithLength {
   string str;
 };
 
-extern const size_t kNumberOfStringDataSize;
+// The type of the number of string data, found in the command line metadata in
+// the perf data file.
+typedef u32 num_string_data_type;
 
-struct PerfStringMetadata : public PerfMetadata {
+struct PerfStringMetadata {
+  u32 type;
   std::vector<CStringWithLength> data;
-
-  PerfStringMetadata() : PerfMetadata() {}
 };
 
-struct PerfUint32Metadata : public PerfMetadata {
+struct PerfUint32Metadata {
+  u32 type;
   std::vector<uint32> data;
-
-  PerfUint32Metadata() : PerfMetadata() {}
 };
 
-struct PerfUint64Metadata : public PerfMetadata {
+struct PerfUint64Metadata {
+  u32 type;
   std::vector<uint64> data;
-
-  PerfUint64Metadata() : PerfMetadata() {}
 };
 
 class PerfReader {
@@ -126,17 +113,13 @@ class PerfReader {
   bool WriteMetadata(std::vector<char>* data) const;
 
   // For writing the various types of metadata.
-  bool WriteBuildIDMetadata(u32 type, size_t offset,
-                            const PerfMetadata** metadata_handle,
+  bool WriteBuildIDMetadata(u32 type, size_t* offset,
                             std::vector<char>* data) const;
-  bool WriteStringMetadata(u32 type, size_t offset,
-                           const PerfMetadata** metadata_handle,
+  bool WriteStringMetadata(u32 type, size_t* offset,
                            std::vector<char>* data) const;
-  bool WriteUint32Metadata(u32 type, size_t offset,
-                           const PerfMetadata** metadata_handle,
+  bool WriteUint32Metadata(u32 type, size_t* offset,
                            std::vector<char>* data) const;
-  bool WriteUint64Metadata(u32 type, size_t offset,
-                           const PerfMetadata** metadata_handle,
+  bool WriteUint64Metadata(u32 type, size_t* offset,
                            std::vector<char>* data) const;
 
   // For reading event blocks within piped perf data.
@@ -148,6 +131,12 @@ class PerfReader {
   // Returns the number of types of metadata stored.
   size_t GetNumMetadata() const;
 
+  // For computing the sizes of the various types of metadata.
+  size_t GetBuildIDMetadataSize() const;
+  size_t GetStringMetadataSize() const;
+  size_t GetUint32MetadataSize() const;
+  size_t GetUint64MetadataSize() const;
+
   // Returns true if we should write the number of strings for the string
   // metadata of type |type|.
   bool NeedsNumberOfStringData(u32 type) const;
@@ -155,7 +144,7 @@ class PerfReader {
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;
   std::vector<PerfEventAndSampleInfo> events_;
-  PerfBuildIDMetadata build_id_events_;
+  std::vector<build_id_event*> build_id_events_;
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;
   std::vector<PerfUint64Metadata> uint64_metadata_;

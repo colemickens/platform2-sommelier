@@ -96,13 +96,13 @@ class PerfSerializer : public PerfParser {
       ParsedEvent* event) const;
 
   void SerializeBuildIDs(
-      const PerfBuildIDMetadata& from,
+      const std::vector<build_id_event*>& from,
       ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>* to)
       const;
   void DeserializeBuildIDs(
       const
       ::google::protobuf::RepeatedPtrField<PerfDataProto_PerfBuildID>& from,
-      PerfBuildIDMetadata* to) const;
+      std::vector<build_id_event*>* to) const;
 
   void SerializeBuildIDEvent(build_id_event* const& from,
                              PerfDataProto_PerfBuildID* to) const;

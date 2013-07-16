@@ -473,8 +473,8 @@ PerfReader::~PerfReader() {
       delete [] events_[i].sample_info.branch_stack;
   }
 
-  for (size_t i = 0; i < build_id_events_.events.size(); ++i)
-    free(build_id_events_.events[i]);
+  for (size_t i = 0; i < build_id_events_.size(); ++i)
+    free(build_id_events_[i]);
 }
 
 bool PerfReader::ReadFile(const string& filename) {
@@ -523,17 +523,14 @@ bool PerfReader::WriteFile(const string& filename) {
   for (size_t i = 0; i < attrs_.size(); ++i)
     total_size += attrs_[i].ids.size() * sizeof(attrs_[i].ids[0]);
 
-  // Add the sizes of the various metadata.
-  total_size += build_id_events_.size;
-  for (size_t i = 0; i < string_metadata_.size(); ++i)
-    total_size += string_metadata_[i].size;
-  for (size_t i = 0; i < uint32_metadata_.size(); ++i)
-    total_size += uint32_metadata_[i].size;
-  for (size_t i = 0; i < uint64_metadata_.size(); ++i)
-    total_size += uint64_metadata_[i].size;
-
   // Additional info about metadata.  See WriteMetadata for explanation.
   total_size += (GetNumMetadata() + 1) * 2 * sizeof(u64);
+
+  // Add the sizes of the various metadata.
+  total_size += GetBuildIDMetadataSize();
+  total_size += GetStringMetadataSize();
+  total_size += GetUint32MetadataSize();
+  total_size += GetUint64MetadataSize();
 
   // Write all data into a vector.
   std::vector<char> data;
@@ -547,11 +544,6 @@ bool PerfReader::WriteFile(const string& filename) {
   }
   return WriteDataToFile(data, filename);
 }
-
-// The size of the number of string data, found in the command line metadata in
-// the perf data file.
-// Note: If this is changed, WriteStringMetadata will also have to change.
-const size_t kNumberOfStringDataSize = sizeof(uint32);
 
 bool PerfReader::RegenerateHeader() {
   // This is the order of the input perf file contents in normal mode:
@@ -771,8 +763,6 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
 bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
                                      size_t offset, size_t size) {
   CheckNoBuildIDEventPadding();
-  build_id_events_.type = type;
-  build_id_events_.size = size;
   while (size > 0) {
     // Make sure there is enough data for everything but the filename.
     if (data.size() < offset + sizeof(build_id_event) / sizeof(data[offset])) {
@@ -796,7 +786,7 @@ bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
       return false;
     }
     size -= event->header.size;
-    build_id_events_.events.push_back(event);
+    build_id_events_.push_back(event);
   }
 
   return true;
@@ -806,12 +796,11 @@ bool PerfReader::ReadStringMetadata(const std::vector<char>& data, u32 type,
                                     size_t offset, size_t size) {
   PerfStringMetadata str_data;
   str_data.type = type;
-  str_data.size = size;
 
   size_t start_offset = offset;
   // Skip the number of string data if it is present.
   if (NeedsNumberOfStringData(type))
-    offset += kNumberOfStringDataSize / sizeof(data[offset]);
+    offset += sizeof(num_string_data_type) / sizeof(data[offset]);
 
   while ((offset - start_offset) < size) {
     CStringWithLength single_string;
@@ -833,7 +822,6 @@ bool PerfReader::ReadUint32Metadata(const std::vector<char>& data, u32 type,
                                     size_t offset, size_t size) {
   PerfUint32Metadata uint32_data;
   uint32_data.type = type;
-  uint32_data.size = size;
 
   size_t start_offset = offset;
   while (size > offset - start_offset) {
@@ -853,7 +841,6 @@ bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
                                     size_t offset, size_t size) {
   PerfUint64Metadata uint64_data;
   uint64_data.type = type;
-  uint64_data.size = size;
 
   size_t start_offset = offset;
   while (size > offset - start_offset) {
@@ -873,8 +860,6 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
   metadata_mask_ = 0;
-  build_id_events_.type = HEADER_BUILD_ID;
-  build_id_events_.size = 0;
 
   while (offset < data.size() && result) {
     union piped_data_block {
@@ -1040,7 +1025,7 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
   // Before writing the metadata, there is one header for each piece
   // of metadata, and one extra showing the end of the file.
   // Each header contains two 64-bit numbers (offset and size).
-  u64 metadata_offset =
+  size_t metadata_offset =
       header_offset + (GetNumMetadata() + 1) * 2 * sizeof(u64);
 
   // Zero out the memory used by the headers
@@ -1051,14 +1036,11 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
     if ((out_header_.adds_features[0] & (1 << type)) == 0)
       continue;
 
-    // metadata must be initialized by the method that writes the
-    // metadata to the data vector (for example, WriteStringMetadata).
-    const PerfMetadata* metadata = NULL;
-
+    u64 start_offset = metadata_offset;
     // Write actual metadata to address metadata_offset
     switch (type) {
     case HEADER_BUILD_ID:
-      if (!WriteBuildIDMetadata(type, metadata_offset, &metadata, data))
+      if (!WriteBuildIDMetadata(type, &metadata_offset, data))
         return false;
       break;
     case HEADER_HOSTNAME:
@@ -1067,15 +1049,15 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
     case HEADER_ARCH:
     case HEADER_CPUDESC:
     case HEADER_CMDLINE:
-      if (!WriteStringMetadata(type, metadata_offset, &metadata, data))
+      if (!WriteStringMetadata(type, &metadata_offset, data))
         return false;
       break;
     case HEADER_NRCPUS:
-      if (!WriteUint32Metadata(type, metadata_offset, &metadata, data))
+      if (!WriteUint32Metadata(type, &metadata_offset, data))
         return false;
       break;
     case HEADER_TOTAL_MEM:
-      if (!WriteUint64Metadata(type, metadata_offset, &metadata, data))
+      if (!WriteUint64Metadata(type, &metadata_offset, data))
         return false;
       break;
     case HEADER_BRANCH_STACK:
@@ -1085,16 +1067,13 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
     }
 
     // Write metadata offset and size to address header_offset.
-    if (!WriteDataToVector(&metadata_offset, sizeof(metadata_offset),
+    u64 metadata_size = metadata_offset - start_offset;
+    if (!WriteDataToVector(&start_offset, sizeof(start_offset),
                            "metadata offset", &header_offset, data) ||
-        !WriteDataToVector(&metadata->size, sizeof(metadata->size),
+        !WriteDataToVector(&metadata_size, sizeof(metadata_size),
                            "metadata size", &header_offset, data)) {
       return false;
     }
-
-    // Set up metadata_offset for next metadata event.
-    // metadata->size is given in units of char.
-    metadata_offset += metadata->size;
   }
 
   // Write the last entry - a pointer to the end of the file
@@ -1106,50 +1085,45 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
   return true;
 }
 
-bool PerfReader::WriteBuildIDMetadata(u32 type, size_t offset,
-                                      const PerfMetadata** metadata_handle,
+bool PerfReader::WriteBuildIDMetadata(u32 type, size_t* offset,
                                       std::vector<char>* data) const {
   CheckNoBuildIDEventPadding();
-  *metadata_handle = &build_id_events_;
-
-  for (size_t i = 0; i < build_id_events_.events.size(); ++i) {
-    const build_id_event* event = build_id_events_.events[i];
+  for (size_t i = 0; i < build_id_events_.size(); ++i) {
+    const build_id_event* event = build_id_events_[i];
     if (!WriteDataToVector(event, event->header.size, "Build ID metadata",
-                           &offset, data)) {
+                           offset, data)) {
       return false;
     }
   }
   return true;
 }
 
-bool PerfReader::WriteStringMetadata(u32 type, size_t offset,
-                                     const PerfMetadata** metadata_handle,
+bool PerfReader::WriteStringMetadata(u32 type, size_t* offset,
                                      std::vector<char>* data) const {
-  const size_t kDataUnitSize = sizeof(data->at(offset));
+  const size_t kDataUnitSize = sizeof(data->at(*offset));
   for (size_t i = 0; i < string_metadata_.size(); ++i) {
     const PerfStringMetadata& str_data = string_metadata_[i];
     if (str_data.type == type) {
-      *metadata_handle = &str_data;
-      uint32 num_strings = str_data.data.size();
+      num_string_data_type num_strings = str_data.data.size();
 
       if (NeedsNumberOfStringData(type) &&
           !WriteDataToVector(&num_strings, sizeof(num_strings),
-                             "number of string metadata", &offset, data)) {
+                             "number of string metadata", offset, data)) {
         return false;
       }
 
       for (size_t j = 0; j < num_strings; ++j) {
         const CStringWithLength& single_string = str_data.data[j];
         if (!WriteDataToVector(&single_string.len, sizeof(single_string.len),
-                               "length of string metadata", &offset, data)) {
+                               "length of string metadata", offset, data)) {
           return false;
         }
 
-        memset(&data->at(offset), 0, single_string.len * kDataUnitSize);
-        CHECK_GT(snprintf(&data->at(offset), single_string.len, "%s",
+        memset(&data->at(*offset), 0, single_string.len * kDataUnitSize);
+        CHECK_GT(snprintf(&data->at(*offset), single_string.len, "%s",
                           single_string.str.c_str()),
                  0);
-        offset += single_string.len / kDataUnitSize;
+        *offset += single_string.len / kDataUnitSize;
       }
 
       return true;
@@ -1159,18 +1133,16 @@ bool PerfReader::WriteStringMetadata(u32 type, size_t offset,
   return false;
 }
 
-bool PerfReader::WriteUint32Metadata(u32 type, size_t offset,
-                                     const PerfMetadata** metadata_handle,
+bool PerfReader::WriteUint32Metadata(u32 type, size_t* offset,
                                      std::vector<char>* data) const {
   for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
     const PerfUint32Metadata& uint32_data = uint32_metadata_[i];
     if (uint32_data.type == type) {
-      *metadata_handle = &uint32_data;
       const std::vector<uint32>& int_vector = uint32_data.data;
 
       for (size_t j = 0; j < int_vector.size(); ++j) {
         if (!WriteDataToVector(&int_vector[j], sizeof(int_vector[j]),
-                               "uint32 metadata", &offset, data)) {
+                               "uint32 metadata", offset, data)) {
           return false;
         }
       }
@@ -1182,18 +1154,16 @@ bool PerfReader::WriteUint32Metadata(u32 type, size_t offset,
   return false;
 }
 
-bool PerfReader::WriteUint64Metadata(u32 type, size_t offset,
-                         const PerfMetadata** metadata_handle,
-                         std::vector<char>* data) const {
+bool PerfReader::WriteUint64Metadata(u32 type, size_t* offset,
+                                     std::vector<char>* data) const {
   for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
     const PerfUint64Metadata& uint64_data = uint64_metadata_[i];
     if (uint64_data.type == type) {
-      *metadata_handle = &uint64_data;
       const std::vector<uint64>& int_vector = uint64_data.data;
 
       for (size_t j = 0; j < int_vector.size(); ++j) {
         if (!WriteDataToVector(&int_vector[j], sizeof(int_vector[j]),
-                               "uint64 metadata", &offset, data)) {
+                               "uint64 metadata", offset, data)) {
           return false;
         }
       }
@@ -1359,6 +1329,46 @@ size_t PerfReader::GetNumMetadata() const {
   // 1 for build ids.
   return string_metadata_.size() + uint32_metadata_.size() +
          uint64_metadata_.size() + 1;
+}
+
+size_t PerfReader::GetBuildIDMetadataSize() const {
+  size_t size = 0;
+  for (size_t i = 0; i < build_id_events_.size(); ++i)
+    size += build_id_events_[i]->header.size;
+  return size;
+}
+
+size_t PerfReader::GetStringMetadataSize() const {
+  size_t size = 0;
+  for (size_t i = 0; i < string_metadata_.size(); ++i) {
+    const PerfStringMetadata& metadata = string_metadata_[i];
+    if (NeedsNumberOfStringData(metadata.type))
+      size += sizeof(num_string_data_type);
+
+    for (size_t j = 0; j < metadata.data.size(); ++j) {
+      const CStringWithLength& str = metadata.data[j];
+      size += sizeof(str.len) + (str.len * sizeof(char));
+    }
+  }
+  return size;
+}
+
+size_t PerfReader::GetUint32MetadataSize() const {
+  size_t size = 0;
+  for (size_t i = 0; i < uint32_metadata_.size(); ++i) {
+    const PerfUint32Metadata& metadata = uint32_metadata_[i];
+    size += metadata.data.size() * sizeof(metadata.data[0]);
+  }
+  return size;
+}
+
+size_t PerfReader::GetUint64MetadataSize() const {
+  size_t size = 0;
+  for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
+    const PerfUint64Metadata& metadata = uint64_metadata_[i];
+    size += metadata.data.size() * sizeof(metadata.data[0]);
+  }
+  return size;
 }
 
 bool PerfReader::NeedsNumberOfStringData(u32 type) const {
