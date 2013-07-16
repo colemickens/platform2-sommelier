@@ -258,7 +258,8 @@ TEST(CreateSmsMessage, NationalSenderNumber) {
 #define CC(x) static_cast<char>(x)
 static const char kExpected8bitData[] = {
   CC(0xe8), CC(0x32), CC(0x9b), CC(0xfd), CC(0x46),
-  CC(0x97), CC(0xd9), CC(0xec), CC(0x37), CC(0xde)
+  CC(0x97), CC(0xd9), CC(0xec), CC(0x37), CC(0xde),
+  CC('\0')
 };
 #undef CC
 
