@@ -808,7 +808,7 @@ void Manager::SetEnabledStateForTechnology(const std::string &technology_name,
     return;
   }
   bool deferred = false;
-  auto result_aggregator(make_scoped_refptr<>(new ResultAggregator(callback)));
+  auto result_aggregator(make_scoped_refptr(new ResultAggregator(callback)));
   for (auto &device : devices_) {
     if (device->technology() != id || device->enabled() == enabled_state)
       continue;
