@@ -424,6 +424,12 @@ void WiFiService::SendPostReadyStateMetrics(
         Metrics::kTimerHistogramMillisecondsMax,
         Metrics::kTimerHistogramNumBuckets);
   }
+
+  Metrics::WiFiApMode ap_mode_uma = Metrics::WiFiApModeStringToEnum(mode_);
+  metrics()->SendEnumToUMA(
+      metrics()->GetFullMetricName(Metrics::kMetricNetworkApMode, technology()),
+      ap_mode_uma,
+      Metrics::kWiFiApModeMax);
 }
 
 // private methods

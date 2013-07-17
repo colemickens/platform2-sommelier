@@ -37,6 +37,7 @@ const int Metrics::kMetricDisconnectMax = 2;
 const int Metrics::kMetricDisconnectMin = 1;
 const int Metrics::kMetricDisconnectNumBuckets = 3;
 
+const char Metrics::kMetricNetworkApMode[] = "Network.Shill.%s.ApMode";
 const char Metrics::kMetricNetworkChannel[] = "Network.Shill.%s.Channel";
 const int Metrics::kMetricNetworkChannelMax = Metrics::kWiFiChannelMax;
 const char Metrics::kMetricNetworkEapInnerProtocol[] =
@@ -337,7 +338,7 @@ Metrics::WiFiChannel Metrics::WiFiFrequencyToChannel(uint16 frequency) {
 
 // static
 Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
-    const std::string &security) {
+    const string &security) {
   if (security == flimflam::kSecurityNone) {
     return kWiFiSecurityNone;
   } else if (security == flimflam::kSecurityWep) {
@@ -356,8 +357,19 @@ Metrics::WiFiSecurity Metrics::WiFiSecurityStringToEnum(
 }
 
 // static
+Metrics::WiFiApMode Metrics::WiFiApModeStringToEnum(const string &ap_mode) {
+  if (ap_mode == flimflam::kModeManaged) {
+    return kWiFiApModeManaged;
+  } else if (ap_mode == flimflam::kModeAdhoc) {
+    return kWiFiApModeAdHoc;
+  } else {
+    return kWiFiApModeUnknown;
+  }
+}
+
+// static
 Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
-    const std::string &outer) {
+    const string &outer) {
   if (outer == flimflam::kEapMethodPEAP) {
     return kEapOuterProtocolPeap;
   } else if (outer == flimflam::kEapMethodTLS) {
@@ -373,7 +385,7 @@ Metrics::EapOuterProtocol Metrics::EapOuterProtocolStringToEnum(
 
 // static
 Metrics::EapInnerProtocol Metrics::EapInnerProtocolStringToEnum(
-    const std::string &inner) {
+    const string &inner) {
   if (inner.empty()) {
     return kEapInnerProtocolNone;
   } else if (inner == flimflam::kEapPhase2AuthPEAPMD5) {

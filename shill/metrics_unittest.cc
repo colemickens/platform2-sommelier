@@ -80,10 +80,14 @@ class MetricsTest : public Test {
   }
 
  protected:
-  void ExpectCommonPostReady(Metrics::WiFiChannel channel,
+  void ExpectCommonPostReady(Metrics::WiFiApMode ap_mode,
+                             Metrics::WiFiChannel channel,
                              Metrics::WiFiNetworkPhyMode mode,
                              Metrics::WiFiSecurity security,
                              int signal_strength) {
+    EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.ApMode",
+                                        ap_mode,
+                                        Metrics::kWiFiApModeMax));
     EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Wifi.Channel",
                                         channel,
                                         Metrics::kMetricNetworkChannelMax));
@@ -178,7 +182,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   metrics_.set_time_resume_to_ready_timer(mock_time_resume_to_ready_timer);
 
   const int kStrength = -42;
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
+  ExpectCommonPostReady(Metrics::kWiFiApModeManaged,
+                        Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWiFiSecurityWep,
                         -kStrength);
@@ -197,7 +202,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   Mock::VerifyAndClearExpectations(&library_);
 
   // Simulate a system suspend, resume and an AP reconnect.
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
+  ExpectCommonPostReady(Metrics::kWiFiApModeManaged,
+                        Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWiFiSecurityWep,
                         -kStrength);
@@ -216,7 +222,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
   Mock::VerifyAndClearExpectations(mock_time_resume_to_ready_timer);
 
   // Make sure subsequent connects do not count towards TimeResumeToReady.
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
+  ExpectCommonPostReady(Metrics::kWiFiApModeManaged,
+                        Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWiFiSecurityWep,
                         -kStrength);
@@ -228,7 +235,8 @@ TEST_F(MetricsTest, WiFiServicePostReady) {
 
 TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   const int kStrength = -42;
-  ExpectCommonPostReady(Metrics::kWiFiChannel2412,
+  ExpectCommonPostReady(Metrics::kWiFiApModeManaged,
+                        Metrics::kWiFiChannel2412,
                         Metrics::kWiFiNetworkPhyMode11a,
                         Metrics::kWiFiSecurity8021x,
                         -kStrength);
@@ -238,6 +246,31 @@ TEST_F(MetricsTest, WiFiServicePostReadyEAP) {
   EXPECT_CALL(*eap_, OutputConnectionMetrics(&metrics_, Technology::kWifi));
   metrics_.RegisterService(eap_wifi_service_);
   metrics_.NotifyServiceStateChanged(eap_wifi_service_,
+                                     Service::kStateConnected);
+}
+
+TEST_F(MetricsTest, WiFiServicePostReadyAdHoc) {
+  auto adhoc_wifi_service(
+      make_scoped_refptr(new MockWiFiService(&control_interface_,
+                                             &dispatcher_,
+                                             &metrics_,
+                                             &manager_,
+                                             manager_.wifi_provider(),
+                                             ssid_,
+                                             flimflam::kModeAdhoc,
+                                             flimflam::kSecurityNone,
+                                             false)));
+  const int kStrength = -42;
+  ExpectCommonPostReady(Metrics::kWiFiApModeAdHoc,
+                        Metrics::kWiFiChannel2412,
+                        Metrics::kWiFiNetworkPhyMode11b,
+                        Metrics::kWiFiSecurityNone,
+                        -kStrength);
+  adhoc_wifi_service->frequency_ = 2412;
+  adhoc_wifi_service->physical_mode_ = Metrics::kWiFiNetworkPhyMode11b;
+  adhoc_wifi_service->raw_signal_strength_ = kStrength;
+  metrics_.RegisterService(adhoc_wifi_service);
+  metrics_.NotifyServiceStateChanged(adhoc_wifi_service,
                                      Service::kStateConnected);
 }
 
