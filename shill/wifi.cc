@@ -315,6 +315,8 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/) {
         total_fraction += fraction_per_scan_;
         scan_fractions.push_back(fraction_per_scan_);
       } while (total_fraction < 1.0);
+      DCHECK(scan_state_ == kScanIdle);
+      DCHECK(scan_method_ == kScanMethodNone);
       scan_session_.reset(
           new ScanSession(netlink_manager_,
                           dispatcher(),
@@ -406,6 +408,13 @@ void WiFi::ConnectTo(WiFiService *service,
   }
 
   if (pending_service_ && pending_service_ != service) {
+    // This is a signal to SetPendingService(NULL) to not modify the scan
+    // state since the overall story arc isn't reflected by the disconnect.
+    // It is, instead, described by the transition to either kScanFoundNothing
+    // or kScanConnecting (made by |SetPendingService|, below).
+    if (scan_method_ != kScanMethodNone) {
+      SetScanState(kScanTransitionToConnecting, scan_method_, __func__);
+    }
     DisconnectFrom(pending_service_);
   }
 
@@ -422,6 +431,7 @@ void WiFi::ConnectTo(WiFiService *service,
       rpcid_by_service_[service] = network_path;
     } catch (const DBus::Error &e) {  // NOLINT
       LOG(ERROR) << "exception while adding network: " << e.what();
+      SetScanState(kScanIdle, scan_method_, __func__);
       return;
     }
   }
@@ -864,8 +874,8 @@ void WiFi::HandleRoam(const ::DBus::Path &new_bss) {
     // Boring case: we've connected to the service we asked
     // for. Simply update |current_service_| and |pending_service_|.
     current_service_ = service;
-    SetPendingService(NULL);
     SetScanState(kScanConnected, scan_method_, __func__);
+    SetPendingService(NULL);
     return;
   }
 
@@ -1128,12 +1138,8 @@ void WiFi::ScanDoneTask() {
 }
 
 void WiFi::UpdateScanStateAfterScanDone() {
-  if (scan_state_ != kScanIdle) {
-    if (IsIdle()) {
-      SetScanState(kScanFoundNothing, scan_method_, __func__);
-    } else {
-      SetScanState(kScanConnecting, scan_method_, __func__);
-    }
+  if (scan_state_ != kScanIdle && IsIdle()) {
+    SetScanState(kScanFoundNothing, scan_method_, __func__);
   }
 }
 
@@ -1152,7 +1158,6 @@ void WiFi::ScanTask() {
   if ((pending_service_.get() && pending_service_->IsConnecting()) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
-    SetScanState(kScanConnecting, scan_method_, __func__);
     return;
   }
   map<string, DBus::Variant> scan_args;
@@ -1212,7 +1217,6 @@ void WiFi::ProgressiveScanTask() {
   if (!IsIdle()) {
     SLOG(WiFi, 2) << "Ignoring scan request while connecting to an AP.";
     scan_session_.reset();
-    SetScanState(kScanConnecting, scan_method_, __func__);
     return;
   }
   if (scan_session_->HasMoreFrequencies()) {
@@ -1593,10 +1597,29 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr &service) {
   SLOG(WiFi, 2) << "WiFi " << link_name() << " setting pending service to "
                 << (service ? service->unique_name(): "NULL");
   if (service) {
+    SetScanState(kScanConnecting, scan_method_, __func__);
     service->SetState(Service::kStateAssociating);
     StartPendingTimer();
-  } else if (pending_service_) {
-    StopPendingTimer();
+  } else {
+    // SetPendingService(NULL) is called in the following cases:
+    //  a) |ConnectTo|->|DisconnectFrom|.  Connecting to a service, disconnect
+    //     the old service (scan_state_ == kScanTransitionToConnecting).  No
+    //     state transition is needed here.
+    //  b) |HandleRoam|.  Connected to a service, it's no longer pending
+    //     (scan_state_ == kScanIdle).  No state transition is needed here.
+    //  c) |DisconnectFrom| and |HandleDisconnect|. Disconnected/disconnecting
+    //     from a service not during a scan (scan_state_ == kScanIdle).  No
+    //     state transition is needed here.
+    //  d) |DisconnectFrom| and |HandleDisconnect|. Disconnected/disconnecting
+    //     from a service during a scan (scan_state_ == kScanScanning or
+    //     kScanConnecting).  This is an odd case -- let's discard any
+    //     statistics we're gathering by transitioning directly into kScanIdle.
+    if (scan_state_ == kScanScanning || scan_state_ == kScanConnecting) {
+      SetScanState(kScanIdle, kScanMethodNone, __func__);
+    }
+    if (pending_service_) {
+      StopPendingTimer();
+    }
   }
   pending_service_ = service;
 }
@@ -1605,6 +1628,7 @@ void WiFi::PendingTimeoutHandler() {
   Error unused_error;
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   CHECK(pending_service_);
+  SetScanState(kScanFoundNothing, scan_method_, __func__);
   pending_service_->DisconnectWithFailure(
       Service::kFailureOutOfRange, &unused_error);
 
@@ -1618,7 +1642,6 @@ void WiFi::PendingTimeoutHandler() {
     LOG(INFO) << "Hidden service was not found.";
     DisconnectFrom(pending_service_);
   }
-  SetScanState(kScanFoundNothing, scan_method_, __func__);
 }
 
 void WiFi::StartReconnectTimer() {
@@ -1948,6 +1971,10 @@ void WiFi::SetScanState(ScanState new_state,
   switch (new_state) {
     case kScanIdle:
       metrics()->ResetScanTimer(interface_index());
+      metrics()->ResetConnectTimer(interface_index());
+      if (scan_session_) {
+        scan_session_.reset();
+      }
       break;
     case kScanScanning:
       metrics()->NotifyDeviceScanStarted(interface_index());
@@ -1967,6 +1994,7 @@ void WiFi::SetScanState(ScanState new_state,
       metrics()->NotifyDeviceScanFinished(interface_index());
       metrics()->ResetConnectTimer(interface_index());
       break;
+    case kScanTransitionToConnecting:  // FALLTHROUGH
     default:
       break;
   }
@@ -1997,6 +2025,8 @@ string WiFi::ScanStateString(ScanState state, ScanMethod method) {
         default:
           NOTREACHED();
       }
+    case kScanTransitionToConnecting:
+      return "TRANSITION_TO_CONNECTING";
     case kScanConnecting:
       switch (method) {
         case kScanMethodNone:

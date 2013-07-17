@@ -208,6 +208,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   enum ScanState {
     kScanIdle,
     kScanScanning,
+    kScanTransitionToConnecting,
     kScanConnecting,
     kScanConnected,
     kScanFoundNothing
@@ -216,6 +217,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;  // kNumFastScanAttempts, kFastScanIntervalSeconds
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
+  FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ConnectToWithError);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiMainTest, DisconnectCurrentServiceWithErrors);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
@@ -225,11 +229,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, LinkMonitorFailure);  // set_link_monitor()
   FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToConnected);
+  FRIEND_TEST(WiFiMainTest, ProgressiveScanConnectingToNotFound);
   FRIEND_TEST(WiFiMainTest, ProgressiveScanError);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ProgressiveScanFound);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ProgressiveScanNotFound);  // ScanMethod, ScanState
   FRIEND_TEST(WiFiMainTest, ScanResults);             // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanResultsWithUpdates);  // EndpointMap
+  FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
   FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
