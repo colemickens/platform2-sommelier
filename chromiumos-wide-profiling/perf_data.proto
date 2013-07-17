@@ -13,7 +13,7 @@ option optimize_for = LITE_RUNTIME;
 //
 // See $kernel/tools/perf/design.txt for more details.
 
-// Next tag: 11
+// Next tag: 13
 message PerfDataProto {
 
   // Perf event attribute. Stores the event description.
@@ -386,6 +386,39 @@ message PerfDataProto {
     optional string filename = 4;
   }
 
+  // Next tag: 5
+  message PerfCPUTopologyMetadata {
+    // Core siblings.
+    repeated string core_siblings = 1;
+
+    // Core siblings' md5 prefix.
+    repeated uint64 core_siblings_md5_prefix = 2;
+
+    // Thread siblings.
+    repeated string thread_siblings = 3;
+
+    // Thread siblings' md5 prefix.
+    repeated uint64 thread_siblings_md5_prefix = 4;
+  }
+
+  // Next tag: 6
+  message PerfNodeTopologyMetadata {
+    // Node id.
+    optional uint32 id = 1;
+
+    // Total memory of the node.
+    optional uint64 total_memory = 2;
+
+    // Free memory of the node.
+    optional uint64 free_memory = 3;
+
+    // List of CPUs in the node.
+    optional string cpu_list = 4;
+
+    // CPU list's md5 prefix.
+    optional uint64 cpu_list_md5_prefix = 5;
+  }
+
   repeated PerfFileAttr file_attrs = 1;
   repeated PerfEvent events = 2;
 
@@ -410,4 +443,8 @@ message PerfDataProto {
   repeated PerfUint32Metadata uint32_metadata = 8;
 
   repeated PerfUint64Metadata uint64_metadata = 9;
+
+  optional PerfCPUTopologyMetadata cpu_topology = 11;
+
+  repeated PerfNodeTopologyMetadata numa_topology = 12;
 }

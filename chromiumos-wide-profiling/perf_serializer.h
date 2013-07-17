@@ -137,6 +137,20 @@ class PerfSerializer : public PerfParser {
       const PerfDataProto_PerfUint64Metadata& proto_metadata,
       PerfUint64Metadata* metadata) const;
 
+  void SerializeCPUTopologyMetadata(
+      const PerfCPUTopologyMetadata& metadata,
+      PerfDataProto_PerfCPUTopologyMetadata* proto_metadata) const;
+  void DeserializeCPUTopologyMetadata(
+      const PerfDataProto_PerfCPUTopologyMetadata& proto_metadata,
+      PerfCPUTopologyMetadata* metadata) const;
+
+  void SerializeNodeTopologyMetadata(
+      const PerfNodeTopologyMetadata& metadata,
+      PerfDataProto_PerfNodeTopologyMetadata* proto_metadata) const;
+  void DeserializeNodeTopologyMetadata(
+      const PerfDataProto_PerfNodeTopologyMetadata& proto_metadata,
+      PerfNodeTopologyMetadata* metadata) const;
+
   // Populates |parsed_events_| with pointers event_t and perf_sample structs in
   // each corresponding |events_| struct.
   void SetRawEventsAndSampleInfos(size_t num_events);
@@ -211,6 +225,15 @@ bool name(const ::google::protobuf::RepeatedPtrField<proto_type>& from, \
   DESERIALIZEVECTORFUNCTION(DeserializeUint64Metadata, PerfUint64Metadata,
                             quipper::PerfDataProto_PerfUint64Metadata,
                             DeserializeSingleUint64Metadata)
+
+  SERIALIZEVECTORFUNCTION(SerializeNUMATopologyMetadata,
+                          PerfNodeTopologyMetadata,
+                          quipper::PerfDataProto_PerfNodeTopologyMetadata,
+                          SerializeNodeTopologyMetadata)
+  DESERIALIZEVECTORFUNCTION(DeserializeNUMATopologyMetadata,
+                            PerfNodeTopologyMetadata,
+                            quipper::PerfDataProto_PerfNodeTopologyMetadata,
+                            DeserializeNodeTopologyMetadata)
 
   DISALLOW_COPY_AND_ASSIGN(PerfSerializer);
 };

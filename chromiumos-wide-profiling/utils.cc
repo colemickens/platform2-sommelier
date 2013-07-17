@@ -54,15 +54,16 @@ void TrimWhitespace(string* str) {
 // Don't show offsets:          --sort comm,dso
 // Use comma as a separator:    -t ,
 // Show event count:            -n
+// Show topology metadata:      -I
 // Use subsequent input file:   -i
 const char kPerfReportCommand[] =
-    "/usr/sbin/perf report --symfs=/dev/null --stdio -n -i ";
+    "/usr/sbin/perf report --symfs=/dev/null --stdio -n -I -i ";
 const char kPipedPerfReportCommand[] =
     "/usr/sbin/perf report --symfs=/dev/null --stdio --sort comm,dso -t , "
-    "-n -i - < ";
+    "-n -I -i - < ";
 const char kPipedPerfReportFromQuipperCommand[] =
     "/usr/sbin/perf report --symfs=/dev/null --stdio --sort comm,dso -t , "
-    "-n -i ";
+    "-n -I -i ";
 
 // The piped commands above produce comma-separated lines with the following
 // fields:
@@ -138,7 +139,7 @@ bool GetPerfReport(const string& filename, std::vector<string>* output,
 
     for (size_t j = 0; quipper::kSupportedMetadata[j]; ++j) {
       string valid_prefix =
-          StringPrintf("# %s :", quipper::kSupportedMetadata[j]);
+          StringPrintf("# %s", quipper::kSupportedMetadata[j]);
       if (line.substr(0, valid_prefix.size()) == valid_prefix)
         use_line = true;
     }
@@ -264,9 +265,13 @@ const char* kSupportedMetadata[] = {
   "nrcpus online",
   "nrcpus avail",
   "cpudesc",
+  "cpuid",
   "total memory",
   "cmdline",
   "event",
+  "sibling cores  ", // CPU topology
+  "sibling threads", // CPU topology
+  "node", // NUMA topology
   NULL,
 };
 
@@ -396,7 +401,13 @@ bool ComparePipedPerfReports(const string& quipper_input,
       return false;
 
     // Add the metadata to the set of seen metadata
-    seen_metadata->insert(line.substr(2, index_of_colon - 3));
+    for (size_t i = 0; i < arraysize(quipper::kSupportedMetadata); ++i) {
+      string prefix_to_check = string("# ") + quipper::kSupportedMetadata[i];
+      if (line.substr(0, prefix_to_check.size()) == prefix_to_check) {
+        seen_metadata->insert(quipper::kSupportedMetadata[i]);
+        break;
+      }
+    }
 
     string field_value = line.substr(index_of_colon + 1);
 

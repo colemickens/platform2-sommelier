@@ -57,6 +57,20 @@ struct PerfUint64Metadata {
   std::vector<uint64> data;
 };
 
+typedef u32 num_siblings_type;
+
+struct PerfCPUTopologyMetadata {
+  std::vector<CStringWithLength> core_siblings;
+  std::vector<CStringWithLength> thread_siblings;
+};
+
+struct PerfNodeTopologyMetadata {
+  u32 id;
+  u64 total_memory;
+  u64 free_memory;
+  CStringWithLength cpu_list;
+};
+
 class PerfReader {
  public:
   PerfReader() : sample_type_(0),
@@ -79,6 +93,10 @@ class PerfReader {
 
   const std::vector<perf_trace_event_type>& event_types() const {
     return event_types_;
+  }
+
+  const std::vector<build_id_event*>& build_id_events() const {
+    return build_id_events_;
   }
 
  protected:
@@ -108,6 +126,10 @@ class PerfReader {
                           size_t offset, size_t size);
   bool ReadEventDescMetadata(const std::vector<char>& data, u32 type,
                              size_t offset, size_t size);
+  bool ReadCPUTopologyMetadata(const std::vector<char>& data, u32 type,
+                               size_t offset, size_t size);
+  bool ReadNUMATopologyMetadata(const std::vector<char>& data, u32 type,
+                                size_t offset, size_t size);
 
   // Read perf data from piped perf output data.
   bool ReadPipedData(const std::vector<char>& data);
@@ -129,6 +151,10 @@ class PerfReader {
                            std::vector<char>* data) const;
   bool WriteEventDescMetadata(u32 type, size_t* offset,
                               std::vector<char>* data) const;
+  bool WriteCPUTopologyMetadata(u32 type, size_t* offset,
+                                std::vector<char>* data) const;
+  bool WriteNUMATopologyMetadata(u32 type, size_t* offset,
+                                 std::vector<char>* data) const;
 
   // For reading event blocks within piped perf data.
   bool ReadAttrEventBlock(const std::vector<char>& data, size_t offset,
@@ -144,6 +170,8 @@ class PerfReader {
   size_t GetUint32MetadataSize() const;
   size_t GetUint64MetadataSize() const;
   size_t GetEventDescMetadataSize() const;
+  size_t GetCPUTopologyMetadataSize() const;
+  size_t GetNUMATopologyMetadataSize() const;
 
   // Returns true if we should write the number of strings for the string
   // metadata of type |type|.
@@ -156,6 +184,8 @@ class PerfReader {
   std::vector<PerfStringMetadata> string_metadata_;
   std::vector<PerfUint32Metadata> uint32_metadata_;
   std::vector<PerfUint64Metadata> uint64_metadata_;
+  PerfCPUTopologyMetadata cpu_topology_;
+  std::vector<PerfNodeTopologyMetadata> numa_topology_;
   uint64 sample_type_;
   uint64 metadata_mask_;
 

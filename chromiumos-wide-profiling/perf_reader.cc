@@ -29,16 +29,20 @@ typedef u32 event_desc_num_events;
 typedef u32 event_desc_attr_size;
 typedef u32 event_desc_num_unique_ids;
 
+// The type of the number of nodes field in NUMA topology.
+typedef u32 numa_topology_num_nodes_type;
+
 // The first 64 bits of the perf header, used as a perf data file ID tag.
 const uint64 kPerfMagic = 0x32454c4946524550LL;
 
 // A mask that is applied to metadata_mask_ in order to get a mask for
 // only the metadata supported by quipper.
 // Currently, we support build ids, hostname, osrelease, version, arch, nrcpus,
-// cpudesc, totalmem, cmdline, eventdesc, and branchstack.
+// cpudesc, cpuid, totalmem, cmdline, eventdesc, cputopology, numatopology, and
+// branchstack.
 // The mask is computed as (1 << HEADER_BUILD_ID) |
 // (1 << HEADER_HOSTNAME) | ... | (1 << HEADER_BRANCH_STACK)
-const uint64 kSupportedMetadataMask = 0x9dfc;
+const uint32 kSupportedMetadataMask = 0xfffc;
 
 // Eight bits in a byte.
 size_t BytesToBits(size_t num_bytes) {
@@ -596,6 +600,8 @@ bool PerfReader::WriteFile(const string& filename) {
   total_size += GetUint32MetadataSize();
   total_size += GetUint64MetadataSize();
   total_size += GetEventDescMetadataSize();
+  total_size += GetCPUTopologyMetadataSize();
+  total_size += GetNUMATopologyMetadataSize();
 
   // Write all data into a vector.
   std::vector<char> data;
@@ -869,6 +875,7 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
     case HEADER_VERSION:
     case HEADER_ARCH:
     case HEADER_CPUDESC:
+    case HEADER_CPUID:
     case HEADER_CMDLINE:
       if (!ReadStringMetadata(data, type, metadata_offset, metadata_size))
         return false;
@@ -883,6 +890,14 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
       break;
     case HEADER_EVENT_DESC:
       if (!ReadEventDescMetadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
+    case HEADER_CPU_TOPOLOGY:
+      if (!ReadCPUTopologyMetadata(data, type, metadata_offset, metadata_size))
+        return false;
+      break;
+    case HEADER_NUMA_TOPOLOGY:
+      if (!ReadNUMATopologyMetadata(data, type, metadata_offset, metadata_size))
         return false;
       break;
     case HEADER_BRANCH_STACK:
@@ -907,20 +922,29 @@ bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
 
     const build_id_event* temp_ptr =
         reinterpret_cast<const build_id_event*>(&data[offset]);
+    u16 event_size = temp_ptr->header.size;
+    if (is_cross_endian_)
+      ByteSwap(&event_size);
 
     // Make sure there is enough data for the rest of the event.
-    if (data.size() < offset + temp_ptr->header.size) {
+    if (data.size() < offset + event_size / sizeof(data[offset])) {
       LOG(ERROR) << "Not enough bytes to read build id event";
       return false;
     }
 
     // Allocate memory for the event and copy over the bytes.
-    build_id_event* event = CallocMemoryForBuildID(temp_ptr->header.size);
-    if (!ReadDataFromVector(data, temp_ptr->header.size, "build id event",
+    build_id_event* event = CallocMemoryForBuildID(event_size);
+    if (!ReadDataFromVector(data, event_size, "build id event",
                             &offset, event)) {
       return false;
     }
-    size -= event->header.size;
+    if (is_cross_endian_) {
+      ByteSwap(&event->header.type);
+      ByteSwap(&event->header.misc);
+      ByteSwap(&event->header.size);
+      ByteSwap(&event->pid);
+    }
+    size -= event_size;
     build_id_events_.push_back(event);
   }
 
@@ -1034,6 +1058,75 @@ bool PerfReader::ReadEventDescMetadata(const std::vector<char>& data, u32 type,
   return true;
 }
 
+bool PerfReader::ReadCPUTopologyMetadata(
+    const std::vector<char>& data, u32 type, size_t offset, size_t size) {
+  num_siblings_type num_core_siblings;
+  if (!ReadDataFromVector(data, sizeof(num_core_siblings), "num cores",
+                          &offset, &num_core_siblings)) {
+    return false;
+  }
+  if (is_cross_endian_)
+    ByteSwap(&num_core_siblings);
+
+  cpu_topology_.core_siblings.resize(num_core_siblings);
+  for (size_t i = 0; i < num_core_siblings; ++i) {
+    if (!ReadStringFromVector(data, is_cross_endian_, &offset,
+                              &cpu_topology_.core_siblings[i])) {
+      return false;
+    }
+  }
+
+  num_siblings_type num_thread_siblings;
+  if (!ReadDataFromVector(data, sizeof(num_thread_siblings), "num threads",
+                          &offset, &num_thread_siblings)) {
+    return false;
+  }
+  if (is_cross_endian_)
+    ByteSwap(&num_thread_siblings);
+
+  cpu_topology_.thread_siblings.resize(num_thread_siblings);
+  for (size_t i = 0; i < num_thread_siblings; ++i) {
+    if (!ReadStringFromVector(data, is_cross_endian_, &offset,
+                              &cpu_topology_.thread_siblings[i])) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+bool PerfReader::ReadNUMATopologyMetadata(
+    const std::vector<char>& data, u32 type, size_t offset, size_t size) {
+  numa_topology_num_nodes_type num_nodes;
+  if (!ReadDataFromVector(data, sizeof(num_nodes), "num nodes",
+                          &offset, &num_nodes)) {
+    return false;
+  }
+  if (is_cross_endian_)
+    ByteSwap(&num_nodes);
+
+  for (size_t i = 0; i < num_nodes; ++i) {
+    PerfNodeTopologyMetadata node;
+    if (!ReadDataFromVector(data, sizeof(node.id), "node id",
+                            &offset, &node.id) ||
+        !ReadDataFromVector(data, sizeof(node.total_memory),
+                            "node total memory", &offset, &node.total_memory) ||
+        !ReadDataFromVector(data, sizeof(node.free_memory),
+                            "node free memory", &offset, &node.free_memory) ||
+        !ReadStringFromVector(data, is_cross_endian_, &offset,
+                              &node.cpu_list)) {
+      return false;
+    }
+    if (is_cross_endian_) {
+      ByteSwap(&node.id);
+      ByteSwap(&node.total_memory);
+      ByteSwap(&node.free_memory);
+    }
+    numa_topology_.push_back(node);
+  }
+  return true;
+}
+
 bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
@@ -1069,12 +1162,12 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
 
     size_t new_offset = offset + sizeof(block.header);
     size_t size_without_header = block.header.size - sizeof(block.header);
-    offset += block.header.size;
 
     if (block.header.type < PERF_RECORD_MAX) {
       // Copy the rest of the data.
       memcpy(&block.more_data, block_data->more_data, size_without_header);
       result = ReadPerfEventBlock(block.event);
+      offset += block.header.size;
       continue;
     }
 
@@ -1089,6 +1182,10 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       metadata_mask_ |= (1 << HEADER_EVENT_DESC);
       result = ReadEventDescMetadata(data, HEADER_EVENT_DESC, new_offset,
                                      size_without_header);
+      break;
+    case PERF_RECORD_HEADER_BUILD_ID:
+      result = ReadBuildIDMetadata(data, HEADER_BUILD_ID, offset,
+                                   block.header.size);
       break;
     case PERF_RECORD_HEADER_HOSTNAME:
       metadata_mask_ |= (1 << HEADER_HOSTNAME);
@@ -1115,6 +1212,11 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       result = ReadStringMetadata(data, HEADER_CPUDESC, new_offset,
                                   size_without_header);
       break;
+    case PERF_RECORD_HEADER_CPUID:
+      metadata_mask_ |= (1 << HEADER_CPUID);
+      result = ReadStringMetadata(data, HEADER_CPUID, new_offset,
+                                  size_without_header);
+      break;
     case PERF_RECORD_HEADER_CMDLINE:
       metadata_mask_ |= (1 << HEADER_CMDLINE);
       result = ReadStringMetadata(data, HEADER_CMDLINE, new_offset,
@@ -1130,11 +1232,22 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       result = ReadUint64Metadata(data, HEADER_TOTAL_MEM, new_offset,
                                   size_without_header);
       break;
+    case PERF_RECORD_HEADER_CPU_TOPOLOGY:
+      metadata_mask_ |= (1 << HEADER_CPU_TOPOLOGY);
+      result = ReadCPUTopologyMetadata(data, HEADER_CPU_TOPOLOGY, new_offset,
+                                       size_without_header);
+      break;
+    case PERF_RECORD_HEADER_NUMA_TOPOLOGY:
+      metadata_mask_ |= (1 << HEADER_NUMA_TOPOLOGY);
+      result = ReadNUMATopologyMetadata(data, HEADER_NUMA_TOPOLOGY, new_offset,
+                                        size_without_header);
+      break;
     default:
       LOG(WARNING) << "Event type " << block.header.type
                    << " is not yet supported!";
       break;
     }
+    offset += block.header.size;
   }
   return result;
 }
@@ -1219,6 +1332,7 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
     case HEADER_VERSION:
     case HEADER_ARCH:
     case HEADER_CPUDESC:
+    case HEADER_CPUID:
     case HEADER_CMDLINE:
       if (!WriteStringMetadata(type, &metadata_offset, data))
         return false;
@@ -1233,6 +1347,14 @@ bool PerfReader::WriteMetadata(std::vector<char>* data) const {
       break;
     case HEADER_EVENT_DESC:
       if (!WriteEventDescMetadata(type, &metadata_offset, data))
+        return false;
+      break;
+    case HEADER_CPU_TOPOLOGY:
+      if (!WriteCPUTopologyMetadata(type, &metadata_offset, data))
+        return false;
+      break;
+    case HEADER_NUMA_TOPOLOGY:
+      if (!WriteNUMATopologyMetadata(type, &metadata_offset, data))
         return false;
       break;
     case HEADER_BRANCH_STACK:
@@ -1379,6 +1501,56 @@ bool PerfReader::WriteEventDescMetadata(u32 type, size_t* offset,
 
     if (!WriteDataToVector(&attr.ids[0], num_ids * sizeof(attr.ids[0]),
                            "event_desc unique_ids", offset, data)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool PerfReader::WriteCPUTopologyMetadata(u32 type, size_t* offset,
+                                          std::vector<char>* data) const {
+  const std::vector<CStringWithLength>& cores = cpu_topology_.core_siblings;
+  num_siblings_type num_cores = cores.size();
+  if (!WriteDataToVector(&num_cores, sizeof(num_cores), "num cores",
+                         offset, data)) {
+    return false;
+  }
+  for (size_t i = 0; i < num_cores; ++i) {
+    if (!WriteStringToVector(cores[i], data, offset))
+      return false;
+  }
+
+  const std::vector<CStringWithLength>& threads = cpu_topology_.thread_siblings;
+  num_siblings_type num_threads = threads.size();
+  if (!WriteDataToVector(&num_threads, sizeof(num_threads), "num threads",
+                         offset, data)) {
+    return false;
+  }
+  for (size_t i = 0; i < num_threads; ++i) {
+    if (!WriteStringToVector(threads[i], data, offset))
+      return false;
+  }
+
+  return true;
+}
+
+bool PerfReader::WriteNUMATopologyMetadata(u32 type, size_t* offset,
+                                           std::vector<char>* data) const {
+  numa_topology_num_nodes_type num_nodes = numa_topology_.size();
+  if (!WriteDataToVector(&num_nodes, sizeof(num_nodes), "num nodes",
+                           offset, data)) {
+    return false;
+  }
+
+  for (size_t i = 0; i < num_nodes; ++i) {
+    const PerfNodeTopologyMetadata& node = numa_topology_[i];
+    if (!WriteDataToVector(&node.id, sizeof(node.id), "node id",
+                           offset, data) ||
+        !WriteDataToVector(&node.total_memory, sizeof(node.total_memory),
+                           "node total memory", offset, data) ||
+        !WriteDataToVector(&node.free_memory, sizeof(node.free_memory),
+                           "node free memory", offset, data) ||
+        !WriteStringToVector(node.cpu_list, data, offset)) {
       return false;
     }
   }
@@ -1542,6 +1714,35 @@ size_t PerfReader::GetUint64MetadataSize() const {
   for (size_t i = 0; i < uint64_metadata_.size(); ++i) {
     const PerfUint64Metadata& metadata = uint64_metadata_[i];
     size += metadata.data.size() * sizeof(metadata.data[0]);
+  }
+  return size;
+}
+
+size_t PerfReader::GetCPUTopologyMetadataSize() const {
+  // Core siblings.
+  size_t size = sizeof(num_siblings_type);
+  for (size_t i = 0; i < cpu_topology_.core_siblings.size(); ++i) {
+    const CStringWithLength& str = cpu_topology_.core_siblings[i];
+    size += sizeof(str.len) + (str.len * sizeof(char));
+  }
+
+  // Thread siblings.
+  size += sizeof(num_siblings_type);
+  for (size_t i = 0; i < cpu_topology_.thread_siblings.size(); ++i) {
+    const CStringWithLength& str = cpu_topology_.thread_siblings[i];
+    size += sizeof(str.len) + (str.len * sizeof(char));
+  }
+
+  return size;
+}
+
+size_t PerfReader::GetNUMATopologyMetadataSize() const {
+  size_t size = sizeof(numa_topology_num_nodes_type);
+  for (size_t i = 0; i < numa_topology_.size(); ++i) {
+    const PerfNodeTopologyMetadata& node = numa_topology_[i];
+    size += sizeof(node.id);
+    size += sizeof(node.total_memory) + sizeof(node.free_memory);
+    size += sizeof(node.cpu_list.len) + node.cpu_list.len * sizeof(char);
   }
   return size;
 }

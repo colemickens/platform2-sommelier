@@ -56,10 +56,14 @@ const char* kPerfDataFiles[] = {
   "perf.data.callgraph.next",
   "perf.data.branch.next",
   "perf.data.callgraph_and_branch.next",
+
+  // Obtained from a system that uses NUMA topology.
+  "perf.data.numatopology",
 };
 
 const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.host",
+  "perf.data.piped.production",
   "perf.data.piped.target",
   "perf.data.piped.target.throttled",
   // From system running kernel-next.

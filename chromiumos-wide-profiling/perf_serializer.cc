@@ -46,6 +46,10 @@ bool PerfSerializer::Serialize(PerfDataProto* perf_data_proto) {
                           perf_data_proto->mutable_uint32_metadata());
   SerializeUint64Metadata(uint64_metadata_,
                           perf_data_proto->mutable_uint64_metadata());
+  SerializeCPUTopologyMetadata(cpu_topology_,
+                               perf_data_proto->mutable_cpu_topology());
+  SerializeNUMATopologyMetadata(numa_topology_,
+                                perf_data_proto->mutable_numa_topology());
 
   // Add a timestamp_sec to the protobuf.
   struct timeval timestamp_sec;
@@ -96,6 +100,10 @@ bool PerfSerializer::Deserialize(const PerfDataProto& perf_data_proto) {
                             &uint32_metadata_);
   DeserializeUint64Metadata(perf_data_proto.uint64_metadata(),
                             &uint64_metadata_);
+  DeserializeCPUTopologyMetadata(perf_data_proto.cpu_topology(),
+                                 &cpu_topology_);
+  DeserializeNUMATopologyMetadata(perf_data_proto.numa_topology(),
+                                  &numa_topology_);
 
   SortParsedEvents();
   ProcessEvents();
@@ -603,6 +611,60 @@ void PerfSerializer::DeserializeSingleUint64Metadata(
   metadata->type = proto_metadata.type();
   for (int i = 0; i < proto_metadata.data_size(); ++i)
     metadata->data.push_back(proto_metadata.data(i));
+}
+
+void PerfSerializer::SerializeCPUTopologyMetadata(
+    const PerfCPUTopologyMetadata& metadata,
+    PerfDataProto_PerfCPUTopologyMetadata* proto_metadata) const {
+  for (size_t i = 0; i < metadata.core_siblings.size(); ++i) {
+    const string& str = metadata.core_siblings[i].str;
+    proto_metadata->add_core_siblings(str);
+    proto_metadata->add_core_siblings_md5_prefix(Md5Prefix(str));
+  }
+
+  for (size_t i = 0; i < metadata.thread_siblings.size(); ++i) {
+    const string& str = metadata.thread_siblings[i].str;
+    proto_metadata->add_thread_siblings(str);
+    proto_metadata->add_thread_siblings_md5_prefix(Md5Prefix(str));
+  }
+}
+
+void PerfSerializer::DeserializeCPUTopologyMetadata(
+    const PerfDataProto_PerfCPUTopologyMetadata& proto_metadata,
+    PerfCPUTopologyMetadata* metadata) const {
+  for (int i = 0; i < proto_metadata.core_siblings_size(); ++i) {
+    CStringWithLength core;
+    core.str = proto_metadata.core_siblings(i);
+    core.len = GetUint64AlignedStringLength(core.str);
+    metadata->core_siblings.push_back(core);
+  }
+
+  for (int i = 0; i < proto_metadata.thread_siblings_size(); ++i) {
+    CStringWithLength thread;
+    thread.str = proto_metadata.thread_siblings(i);
+    thread.len = GetUint64AlignedStringLength(thread.str);
+    metadata->thread_siblings.push_back(thread);
+  }
+}
+
+void PerfSerializer::SerializeNodeTopologyMetadata(
+    const PerfNodeTopologyMetadata& metadata,
+    PerfDataProto_PerfNodeTopologyMetadata* proto_metadata) const {
+  proto_metadata->set_id(metadata.id);
+  proto_metadata->set_total_memory(metadata.total_memory);
+  proto_metadata->set_free_memory(metadata.free_memory);
+  proto_metadata->set_cpu_list(metadata.cpu_list.str);
+  proto_metadata->set_cpu_list_md5_prefix(Md5Prefix(metadata.cpu_list.str));
+}
+
+void PerfSerializer::DeserializeNodeTopologyMetadata(
+    const PerfDataProto_PerfNodeTopologyMetadata& proto_metadata,
+    PerfNodeTopologyMetadata* metadata) const {
+  metadata->id = proto_metadata.id();
+  metadata->total_memory = proto_metadata.total_memory();
+  metadata->free_memory = proto_metadata.free_memory();
+  metadata->cpu_list.str = proto_metadata.cpu_list();
+  metadata->cpu_list.len = GetUint64AlignedStringLength(metadata->cpu_list.str);
 }
 
 void PerfSerializer::SetRawEventsAndSampleInfos(size_t num_events) {

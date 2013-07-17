@@ -158,6 +158,7 @@ TEST(PerfParserTest, TestProcessing) {
 }
 
 TEST(PerfParserTest, TestBuildIDInjection) {
+  bool injected_at_least_once = false;
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
@@ -167,11 +168,17 @@ TEST(PerfParserTest, TestBuildIDInjection) {
     PerfParser parser;
     ReadFileAndCheckInternals(input_perf_data, &parser);
 
+    if (!parser.build_id_events().empty())
+      continue;
+
     std::vector<string> filenames;
     parser.GetFilenames(&filenames);
+    ASSERT_FALSE(filenames.empty());
+
     std::map<string, string> filenames_to_build_ids;
     CreateFilenameToBuildIDMap(filenames, i, &filenames_to_build_ids);
     ASSERT_TRUE(parser.InjectBuildIDs(filenames_to_build_ids));
+    injected_at_least_once = true;
 
     string output_perf_data = input_perf_data + ".parse.remap.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
@@ -210,6 +217,8 @@ TEST(PerfParserTest, TestBuildIDInjection) {
     ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data2, &perf_build_id_map));
     EXPECT_EQ(filenames_to_build_ids, perf_build_id_map);
   }
+
+  EXPECT_TRUE(injected_at_least_once);
 }
 
 }  // namespace quipper
