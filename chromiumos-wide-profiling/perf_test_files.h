@@ -40,6 +40,10 @@ const char* kPerfDataFiles[] = {
   "perf.data.branch",
   "perf.data.callgraph_and_branch",
 
+  // Data from other architectures.
+  "perf.data.i686",     // 32-bit x86
+  "perf.data.armv7",    // ARM v7
+
   // Same as above, obtained from a system running kernel-next.
   "perf.data.singleprocess.next",
   "perf.data.systemwide.0.next",
