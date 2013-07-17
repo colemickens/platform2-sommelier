@@ -148,7 +148,16 @@ static const Log common_logs[] = {
   { "verified boot", "/bin/cat /var/log/debug_vboot_noisy.log" },
   { "vpd_2.0", "/bin/cat /var/log/vpd_2.0.txt" },
   { "wifi_status", "/usr/bin/network_diagnostics --wifi-internal --no-log" },
-
+  { "zram compressed data size",
+    "/bin/cat /sys/block/zram0/compr_data_size 2> /dev/null" },
+  { "zram original data size",
+    "/bin/cat /sys/block/zram0/orig_data_size 2> /dev/null" },
+  { "zram total memory used",
+    "/bin/cat /sys/block/zram0/mem_used_total 2> /dev/null" },
+  { "zram total reads",
+    "/bin/cat /sys/block/zram0/num_reads 2> /dev/null" },
+  { "zram total writes",
+    "/bin/cat /sys/block/zram0/num_writes 2> /dev/null" },
 
   // Stuff pulled out of the original list. These need access to the running X
   // session, which we'd rather not give to debugd, or return info specific to
