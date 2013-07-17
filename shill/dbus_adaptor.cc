@@ -130,12 +130,9 @@ bool DBusAdaptor::GetProperties(const PropertyStore &store,
     ReadablePropertyConstIterator<RpcIdentifiers> it =
         store.GetRpcIdentifiersPropertiesIter();
     for ( ; !it.AtEnd(); it.Advance()) {
-      const Strings &rpc_identifiers_as_strings  = it.value();
       vector < ::DBus::Path> rpc_identifiers_as_paths;
-      for (Strings::const_iterator in = rpc_identifiers_as_strings.begin();
-           in != rpc_identifiers_as_strings.end();
-           ++in) {
-        rpc_identifiers_as_paths.push_back(*in);
+      for (const auto &path : it.value()) {
+        rpc_identifiers_as_paths.push_back(path);
       }
       (*out)[it.Key()] = PathsToVariant(rpc_identifiers_as_paths);
     }
@@ -227,22 +224,24 @@ void DBusAdaptor::ArgsToKeyValueStore(
     const map<string, ::DBus::Variant> &args,
     KeyValueStore *out,
     Error *error) {  // TODO(quiche): Should be ::DBus::Error?
-  for (map<string, ::DBus::Variant>::const_iterator it = args.begin();
-       it != args.end();
-       ++it) {
-    string key = it->first;
+  for (const auto &key_value_pair : args) {
+    string key = key_value_pair.first;
     DBus::type<string> string_type;
     DBus::type<bool> bool_type;
+    DBus::type<int32> int32_type;
 
-    if (it->second.signature() == string_type.sig()) {
-      SLOG(DBus, 5) << "Got string property " << key;
-      out->SetString(key, it->second.reader().get_string());
-    } else if (it->second.signature() == bool_type.sig()) {
+    if (key_value_pair.second.signature() == bool_type.sig()) {
       SLOG(DBus, 5) << "Got bool property " << key;
-      out->SetBool(key, it->second.reader().get_bool());
-    } else if (DBusAdaptor::IsStrings(it->second.signature())) {
+      out->SetBool(key, key_value_pair.second.reader().get_bool());
+    } else if (key_value_pair.second.signature() == int32_type.sig()) {
+      SLOG(DBus, 5) << "Got int32 property " << key;
+      out->SetInt(key, key_value_pair.second.reader().get_int32());
+    } else if (key_value_pair.second.signature() == string_type.sig()) {
+      SLOG(DBus, 5) << "Got string property " << key;
+      out->SetString(key, key_value_pair.second.reader().get_string());
+    } else if (DBusAdaptor::IsStrings(key_value_pair.second.signature())) {
       SLOG(DBus, 5) << "Got strings property " << key;
-      out->SetStrings(key, it->second.operator vector<string>());
+      out->SetStrings(key, key_value_pair.second.operator vector<string>());
     } else {
       Error::PopulateAndLog(error, Error::kInternalError,
                             "unsupported type for property " + key);

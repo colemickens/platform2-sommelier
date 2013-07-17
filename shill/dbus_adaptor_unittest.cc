@@ -319,6 +319,9 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   const bool kBool = true;
   const char kBoolKey[] = "bool_arg";
   args[kBoolKey].writer().append_bool(kBool);
+  const int32 kInt32 = 123;
+  const char kInt32Key[] = "int32_arg";
+  args[kInt32Key].writer().append_int32(kInt32);
   const char kString[] = "string";
   const char kStringKey[] = "string_arg";
   args[kStringKey].writer().append_string(kString);
@@ -329,6 +332,7 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kBool, args_kv.GetBool(kBoolKey));
+  EXPECT_EQ(kInt32, args_kv.GetInt(kInt32Key));
   EXPECT_EQ(kString, args_kv.GetString(kStringKey));
   EXPECT_EQ(kStrings, args_kv.GetStrings(kStringsKey));
 }
