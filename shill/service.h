@@ -418,6 +418,14 @@ class Service : public base::RefCounted<Service> {
     return static_ip_parameters_;
   }
 
+  // Retrieves |key| from |id| in |storage| to |value|.  If this key does
+  // not exist, assign |default_value| to |value|.
+  static void LoadString(StoreInterface *storage,
+                         const std::string &id,
+                         const std::string &key,
+                         const std::string &default_value,
+                         std::string *value);
+
   // Assigns |value| to |key| in |storage| if |value| is non-empty and |save| is
   // true. Otherwise, removes |key| from |storage|. If |crypted| is true, the
   // value is encrypted.
@@ -566,6 +574,7 @@ class Service : public base::RefCounted<Service> {
   FRIEND_TEST(ServiceTest, GetProperties);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
   FRIEND_TEST(ServiceTest, IsDependentOn);
+  FRIEND_TEST(ServiceTest, Load);
   FRIEND_TEST(ServiceTest, RecheckPortal);
   FRIEND_TEST(ServiceTest, Save);
   FRIEND_TEST(ServiceTest, SaveString);

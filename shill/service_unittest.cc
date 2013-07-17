@@ -390,14 +390,52 @@ TEST_F(ServiceTest, IsLoadableFrom) {
 TEST_F(ServiceTest, Load) {
   NiceMock<MockStore> storage;
   EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
-  EXPECT_CALL(storage, GetString(storage_id_, _, _))
-      .Times(AtLeast(1))
-      .WillRepeatedly(Return(true));
+  const string kCheckPortal("check-portal");
+  const string kGUID("guid");
+  const int kPriority = 20;
+  const string kProxyConfig("proxy-config");
+  const string kUIData("ui-data");
+  EXPECT_CALL(storage, GetString(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(storage, GetInt(storage_id_, _, _)).Times(AnyNumber());
+  EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageCheckPortal, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kCheckPortal), Return(true)));
+  EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageGUID, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kGUID), Return(true)));
+  EXPECT_CALL(storage, GetInt(storage_id_, Service::kStoragePriority, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kPriority), Return(true)));
+  EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageProxyConfig, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kProxyConfig), Return(true)));
+  EXPECT_CALL(storage, GetString(storage_id_, Service::kStorageUIData, _))
+      .WillRepeatedly(DoAll(SetArgumentPointee<2>(kUIData), Return(true)));
   EXPECT_CALL(storage, GetBool(storage_id_, _, _)).Times(AnyNumber());
   EXPECT_CALL(storage,
               GetBool(storage_id_, Service::kStorageSaveCredentials, _));
   EXPECT_CALL(*eap_, Load(&storage, storage_id_));
   EXPECT_TRUE(service_->Load(&storage));
+
+  EXPECT_EQ(kCheckPortal, service_->check_portal_);
+  EXPECT_EQ(kGUID, service_->guid_);
+  EXPECT_EQ(kProxyConfig, service_->proxy_config_);
+  EXPECT_EQ(kUIData, service_->ui_data_);
+
+  Mock::VerifyAndClearExpectations(&storage);
+  Mock::VerifyAndClearExpectations(eap_);
+
+  // Assure that parameters are set to default if not available in the profile.
+  EXPECT_CALL(storage, ContainsGroup(storage_id_)).WillOnce(Return(true));
+  EXPECT_CALL(storage, GetBool(storage_id_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetString(storage_id_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(storage, GetInt(storage_id_, _, _))
+      .WillRepeatedly(Return(false));
+  EXPECT_CALL(*eap_, Load(&storage, storage_id_));
+  EXPECT_TRUE(service_->Load(&storage));
+
+  EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
+  EXPECT_EQ("", service_->guid_);
+  EXPECT_EQ("", service_->proxy_config_);
+  EXPECT_EQ("", service_->ui_data_);
 }
 
 TEST_F(ServiceTest, LoadFail) {

@@ -401,14 +401,17 @@ bool Service::Load(StoreInterface *storage) {
     return false;
   }
   storage->GetBool(id, kStorageAutoConnect, &auto_connect_);
-  storage->GetString(id, kStorageCheckPortal, &check_portal_);
+  LoadString(storage, id, kStorageCheckPortal, kCheckPortalAuto,
+             &check_portal_);
   storage->GetBool(id, kStorageFavorite, &favorite_);
-  storage->GetString(id, kStorageGUID, &guid_);
+  LoadString(storage, id, kStorageGUID, "", &guid_);
   storage->GetBool(id, kStorageHasEverConnected, &has_ever_connected_);
-  storage->GetInt(id, kStoragePriority, &priority_);
-  storage->GetString(id, kStorageProxyConfig, &proxy_config_);
+  if (!storage->GetInt(id, kStoragePriority, &priority_)) {
+    priority_ = kPriorityNone;
+  }
+  LoadString(storage, id, kStorageProxyConfig, "", &proxy_config_);
   storage->GetBool(id, kStorageSaveCredentials, &save_credentials_);
-  storage->GetString(id, kStorageUIData, &ui_data_);
+  LoadString(storage, id, kStorageUIData, "", &ui_data_);
 
   static_ip_parameters_.Load(storage, id);
 
@@ -1117,6 +1120,17 @@ void Service::HelpRegisterConstDerivedStrings(
   store_.RegisterDerivedStrings(
       name,
       StringsAccessor(new CustomAccessor<Service, Strings>(this, get, NULL)));
+}
+
+// static
+void Service::LoadString(StoreInterface *storage,
+                         const string &id,
+                         const string &key,
+                         const string &default_value,
+                         string *value) {
+  if (!storage->GetString(id, key, value)) {
+    *value = default_value;
+  }
 }
 
 // static
