@@ -358,6 +358,11 @@ elif [ -f ${HANG_DETECTION_FLAG_FILE} ]; then
   HANG_DETECTION_FLAG="--enable-hang-detection=5"  # And do it FASTER!
 fi
 
+GPU_FLAGS=
+if use_flag_is_set gpu_sandbox_allow_sysv_shm; then
+  GPU_FLAGS="--gpu-sandbox-allow-sysv-shm"
+fi
+
 # TODO(derat): We're currently (2012Q4) swamped with locking-related bug
 # reports; remove this after they've been sorted out.
 add_vmodule_pattern "screen_locker=1,webui_screen_locker=1"
@@ -434,4 +439,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${PPAPI_FLASH_FLAGS} \
             ${PPAPI_OOP_FLAG} \
             ${VMODULE_FLAG} \
-            ${UPLOAD_FLAG}
+            ${UPLOAD_FLAG} \
+            ${GPU_FLAGS}
