@@ -189,7 +189,7 @@ const char Metrics::kMetricLinkMonitorResponseTimeSample[] =
     "Network.Shill.%s.LinkMonitorResponseTimeSample";
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMin = 0;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleMax =
-    LinkMonitor::kTestPeriodMilliseconds;
+    LinkMonitor::kDefaultTestPeriodMilliseconds;
 const int Metrics::kMetricLinkMonitorResponseTimeSampleNumBuckets = 50;
 const char Metrics::kMetricLinkMonitorSecondsToFailure[] =
     "Network.Shill.%s.LinkMonitorSecondsToFailure";

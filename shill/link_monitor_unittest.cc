@@ -68,11 +68,33 @@ class LinkMonitorForTest : public LinkMonitor {
 };
 
 MATCHER_P4(IsArpRequest, local_ip, remote_ip, local_mac, remote_mac, "") {
-  return
-      local_ip.Equals(arg.local_ip_address()) &&
+  if (local_ip.Equals(arg.local_ip_address()) &&
       remote_ip.Equals(arg.remote_ip_address()) &&
       local_mac.Equals(arg.local_mac_address()) &&
-      remote_mac.Equals(arg.remote_mac_address());
+      remote_mac.Equals(arg.remote_mac_address()))
+    return true;
+
+  if (!local_ip.Equals(arg.local_ip_address())) {
+    *result_listener << "Local IP '" << arg.local_ip_address().ToString()
+                     << "' (wanted '" << local_ip.ToString() << "').";
+  }
+
+  if (!remote_ip.Equals(arg.remote_ip_address())) {
+    *result_listener << "Remote IP '" << arg.remote_ip_address().ToString()
+                     << "' (wanted '" << remote_ip.ToString() << "').";
+  }
+
+  if (!local_mac.Equals(arg.local_mac_address())) {
+    *result_listener << "Local MAC '" << arg.local_mac_address().HexEncode()
+                     << "' (wanted " << local_mac.HexEncode() << ")'.";
+  }
+
+  if (!remote_mac.Equals(arg.remote_mac_address())) {
+    *result_listener << "Remote MAC '" << arg.remote_mac_address().HexEncode()
+                     << "' (wanted " << remote_mac.HexEncode() << ")'.";
+  }
+
+  return false;
 }
 
 class LinkMonitorTest : public Test {
@@ -153,6 +175,8 @@ class LinkMonitorTest : public Test {
     EXPECT_TRUE(GetSendRequestCallback().IsCancelled());
     EXPECT_EQ(0, GetBroadcastFailureCount());
     EXPECT_EQ(0, GetUnicastFailureCount());
+    EXPECT_EQ(0, GetBroadcastSuccessCount());
+    EXPECT_EQ(0, GetUnicastSuccessCount());
     EXPECT_FALSE(IsUnicast());
   }
   const ArpClient *GetArpClient() { return monitor_.arp_client_.get(); }
@@ -168,17 +192,29 @@ class LinkMonitorTest : public Test {
   int GetUnicastFailureCount() {
     return monitor_.unicast_failure_count_;
   }
-  bool IsUnicast() { return monitor_.is_unicast_; }
-  int GetTestPeriodMilliseconds() {
-    return LinkMonitor::kTestPeriodMilliseconds;
+  int GetBroadcastSuccessCount() {
+    return monitor_.broadcast_success_count_;
   }
-  int GetFailureThreshold() {
+  int GetUnicastSuccessCount() {
+    return monitor_.unicast_success_count_;
+  }
+  bool IsUnicast() { return monitor_.is_unicast_; }
+  int GetCurrentTestPeriodMilliseconds() {
+    return monitor_.test_period_milliseconds_;
+  }
+  int GetDefaultTestPeriodMilliseconds() {
+    return LinkMonitor::kDefaultTestPeriodMilliseconds;
+  }
+  size_t GetFailureThreshold() {
     return LinkMonitor::kFailureThreshold;
+  }
+  int GetFastTestPeriodMilliseconds() {
+    return LinkMonitor::kFastTestPeriodMilliseconds;
   }
   int GetMaxResponseSampleFilterDepth() {
     return LinkMonitor::kMaxResponseSampleFilterDepth;
   }
-  void ExpectTransmit(bool is_unicast) {
+  void ExpectTransmit(bool is_unicast, int transmit_period_milliseconds) {
     const ByteString &destination_mac = is_unicast ? gateway_mac_ : zero_mac_;
     if (monitor_.arp_client_.get()) {
       EXPECT_EQ(client_, monitor_.arp_client_.get());
@@ -192,13 +228,15 @@ class LinkMonitorTest : public Test {
           IsArpRequest(local_ip_, gateway_ip_, local_mac_, destination_mac)))
           .WillOnce(Return(true));
     }
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, GetTestPeriodMilliseconds()));
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(_, transmit_period_milliseconds));
   }
   void SendNextRequest() {
     EXPECT_CALL(monitor_, CreateClient())
         .WillOnce(Invoke(this, &LinkMonitorTest::CreateMockClient));
     EXPECT_CALL(*next_client_, TransmitRequest(_)).WillOnce(Return(true));
-    EXPECT_CALL(dispatcher_, PostDelayedTask(_, GetTestPeriodMilliseconds()));
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(_, GetCurrentTestPeriodMilliseconds()));
     TriggerRequestTimer();
   }
   void ExpectNoTransmit() {
@@ -206,14 +244,30 @@ class LinkMonitorTest : public Test {
       monitor_.arp_client_.get() ? client_ : next_client_;
     EXPECT_CALL(*client, TransmitRequest(_)).Times(0);
   }
+  void ExpectRestart(int transmit_period_milliseconds) {
+    EXPECT_CALL(device_info_, GetMACAddress(0, _))
+        .WillOnce(DoAll(SetArgumentPointee<1>(local_mac_), Return(true)));
+    // Can't just use ExpectTransmit, because that depends on state
+    // that changes during Stop.
+    EXPECT_CALL(monitor_, CreateClient())
+        .WillOnce(Invoke(this, &LinkMonitorTest::CreateMockClient));
+    EXPECT_CALL(*next_client_, TransmitRequest(
+        IsArpRequest(local_ip_, gateway_ip_, local_mac_, zero_mac_)))
+        .WillOnce(Return(true));
+    EXPECT_CALL(dispatcher_,
+                PostDelayedTask(_, transmit_period_milliseconds));
+  }
   void StartMonitor() {
     EXPECT_CALL(device_info_, GetMACAddress(0, _))
         .WillOnce(DoAll(SetArgumentPointee<1>(local_mac_), Return(true)));
-    ExpectTransmit(false);
+    ExpectTransmit(false, GetDefaultTestPeriodMilliseconds());
     EXPECT_TRUE(monitor_.Start());
     EXPECT_TRUE(GetArpClient());
     EXPECT_FALSE(IsUnicast());
     EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
+  }
+  void ReportResume() {
+    monitor_.OnAfterResume();
   }
   bool SimulateReceiveReply(ArpPacket *packet, ByteString *sender) {
     packet->set_local_ip_address(rx_packet_.local_ip_address());
@@ -237,6 +291,9 @@ class LinkMonitorTest : public Test {
   }
   void ReceiveCorrectResponse() {
     ReceiveResponse(gateway_ip_, gateway_mac_, local_ip_, local_mac_);
+  }
+  bool IsGatewayFound() {
+    return monitor_.IsGatewayFound();
   }
 
   MockEventDispatcher dispatcher_;
@@ -359,22 +416,25 @@ TEST_F(LinkMonitorTest, ReplyReception) {
 
 TEST_F(LinkMonitorTest, TimeoutBroadcast) {
   EXPECT_CALL(metrics_, SendToUMA(
-      HasSubstr("LinkMonitorResponseTimeSample"), GetTestPeriodMilliseconds(),
+      HasSubstr("LinkMonitorResponseTimeSample"),
+      GetDefaultTestPeriodMilliseconds(),
       _, _, _)).Times(GetFailureThreshold());
   StartMonitor();
-  // This value doesn't match real life (the timer in this scenario should
-  // advance by LinkMonitor::kTestPeriodMilliseconds), but this demonstrates
-  // the LinkMonitorSecondsToFailure independent from the response-time
-  // figures.
+  // This value doesn't match real life (the timer in this scenario
+  // should advance by LinkMonitor::kDefaultTestPeriodMilliseconds),
+  // but this demonstrates the LinkMonitorSecondsToFailure independent
+  // from the response-time figures.
   const int kTimeIncrement = 1000;
-  for (int i = 1; i < GetFailureThreshold(); ++i) {
-    ExpectTransmit(false);
+  for (size_t i = 1; i < GetFailureThreshold(); ++i) {
+    ExpectTransmit(false, GetDefaultTestPeriodMilliseconds());
     AdvanceTime(kTimeIncrement);
     TriggerRequestTimer();
     EXPECT_FALSE(IsUnicast());
     EXPECT_EQ(i, GetBroadcastFailureCount());
     EXPECT_EQ(0, GetUnicastFailureCount());
-    EXPECT_EQ(GetTestPeriodMilliseconds(),
+    EXPECT_EQ(0, GetBroadcastSuccessCount());
+    EXPECT_EQ(0, GetUnicastSuccessCount());
+    EXPECT_EQ(GetDefaultTestPeriodMilliseconds(),
               monitor_.GetResponseTimeMilliseconds());
   }
   ScopedMockLog log;
@@ -408,24 +468,27 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
       .Times(GetFailureThreshold());
   // Unsuccessful unicast receptions.
   EXPECT_CALL(metrics_, SendToUMA(
-      HasSubstr("LinkMonitorResponseTimeSample"), GetTestPeriodMilliseconds(),
+      HasSubstr("LinkMonitorResponseTimeSample"),
+      GetDefaultTestPeriodMilliseconds(),
       _, _, _)).Times(GetFailureThreshold());
   ReceiveCorrectResponse();
-  for (int i = 1; i < GetFailureThreshold(); ++i) {
+  for (size_t i = 1; i < GetFailureThreshold(); ++i) {
     // Failed unicast ARP.
-    ExpectTransmit(true);
+    ExpectTransmit(true, GetDefaultTestPeriodMilliseconds());
     TriggerRequestTimer();
 
     // Successful broadcast ARP.
-    ExpectTransmit(false);
+    ExpectTransmit(false, GetDefaultTestPeriodMilliseconds());
     TriggerRequestTimer();
     ReceiveCorrectResponse();
 
     EXPECT_EQ(0, GetBroadcastFailureCount());
     EXPECT_EQ(i, GetUnicastFailureCount());
+    EXPECT_EQ(i+1, GetBroadcastSuccessCount());  // One before loop.
+    EXPECT_EQ(0, GetUnicastSuccessCount());
   }
   // Last unicast ARP transmission.
-  ExpectTransmit(true);
+  ExpectTransmit(true, GetDefaultTestPeriodMilliseconds());
   TriggerRequestTimer();
 
   ScopedMockLog log;
@@ -445,6 +508,83 @@ TEST_F(LinkMonitorTest, TimeoutUnicast) {
   EXPECT_FALSE(GetSendRequestCallback().IsCancelled());
   ExpectNoTransmit();
   EXPECT_CALL(monitor_, FailureCallbackHandler());
+  TriggerRequestTimer();
+  ExpectReset();
+}
+
+TEST_F(LinkMonitorTest, OnAfterResume) {
+  const int kFastTestPeriodMilliseconds = GetFastTestPeriodMilliseconds();
+  StartMonitor();
+  Mock::VerifyAndClearExpectations(&monitor_);
+
+  // Resume should preserve the fact that we haven't resolved the gateway's MAC.
+  EXPECT_FALSE(IsGatewayFound());
+  ExpectRestart(kFastTestPeriodMilliseconds);
+  ReportResume();
+  EXPECT_FALSE(IsGatewayFound());
+
+  // After resume, we should use the fast test period...
+  ExpectRestart(kFastTestPeriodMilliseconds);
+  ReportResume();
+  EXPECT_EQ(kFastTestPeriodMilliseconds, GetCurrentTestPeriodMilliseconds());
+
+  // ...and the fast period should be used for reporting failure to UMA...
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), kFastTestPeriodMilliseconds,
+      _, _, _));
+  ExpectTransmit(false, kFastTestPeriodMilliseconds);
+  TriggerRequestTimer();
+
+  // ...and the period should be reset after correct responses on both
+  // broadcast and unicast.
+  const int kResponseTime = 12;
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), kResponseTime,  _, _, _))
+      .Times(2);
+  AdvanceTime(kResponseTime);
+  ReceiveCorrectResponse();
+  EXPECT_EQ(GetFastTestPeriodMilliseconds(),
+            GetCurrentTestPeriodMilliseconds());  // Don't change yet.
+  ExpectTransmit(true, kFastTestPeriodMilliseconds);
+  TriggerRequestTimer();
+  AdvanceTime(kResponseTime);
+  ReceiveCorrectResponse();
+  EXPECT_EQ(1, GetBroadcastSuccessCount());
+  EXPECT_EQ(1, GetUnicastSuccessCount());
+  EXPECT_EQ(GetDefaultTestPeriodMilliseconds(),
+            GetCurrentTestPeriodMilliseconds());
+
+  // Resume should preserve the fact that we _have_ resolved the gateway's MAC.
+  EXPECT_TRUE(IsGatewayFound());
+  ExpectRestart(kFastTestPeriodMilliseconds);
+  ReportResume();
+  EXPECT_TRUE(IsGatewayFound());
+
+  // Failure should happen just like normal.
+  ExpectRestart(kFastTestPeriodMilliseconds);
+  ReportResume();
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorResponseTimeSample"), kFastTestPeriodMilliseconds,
+      _, _, _))
+      .Times(GetFailureThreshold());
+  EXPECT_CALL(metrics_, SendEnumToUMA(
+      HasSubstr("LinkMonitorFailure"),
+      Metrics::kLinkMonitorFailureThresholdReached, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("LinkMonitorSecondsToFailure"), _, _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("BroadcastErrorsAtFailure"), GetFailureThreshold() / 2 + 1,
+      _, _, _));
+  EXPECT_CALL(metrics_, SendToUMA(
+      HasSubstr("UnicastErrorsAtFailure"), GetFailureThreshold() / 2,
+      _, _, _));
+  EXPECT_CALL(monitor_, FailureCallbackHandler());
+  bool unicast_probe = true;
+  for (size_t i = 1 ; i < GetFailureThreshold(); ++i) {
+    ExpectTransmit(unicast_probe, GetFastTestPeriodMilliseconds());
+    TriggerRequestTimer();
+    unicast_probe = !unicast_probe;
+  }
   TriggerRequestTimer();
   ExpectReset();
 }

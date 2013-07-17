@@ -461,6 +461,19 @@ TEST_F(DeviceTest, ResumeWithoutIPConfig) {
   device_->OnAfterResume();
 }
 
+TEST_F(DeviceTest, ResumeWithLinkMonitor) {
+  MockLinkMonitor *link_monitor = new StrictMock<MockLinkMonitor>();
+  SetLinkMonitor(link_monitor);  // Passes ownership.
+  EXPECT_CALL(*link_monitor, OnAfterResume());
+  device_->OnAfterResume();
+}
+
+TEST_F(DeviceTest, ResumeWithoutLinkMonitor) {
+  // Just test that we don't crash in this case.
+  EXPECT_FALSE(HasLinkMonitor());
+  device_->OnAfterResume();
+}
+
 TEST_F(DeviceTest, LinkMonitor) {
   scoped_refptr<MockConnection> connection(
       new StrictMock<MockConnection>(&device_info_));

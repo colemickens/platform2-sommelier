@@ -18,6 +18,7 @@ class MockLinkMonitor : public LinkMonitor {
 
   MOCK_METHOD0(Start, bool());
   MOCK_METHOD0(Stop, void());
+  MOCK_METHOD0(OnAfterResume, void());
   MOCK_CONST_METHOD0(GetResponseTimeMilliseconds, int());
   MOCK_CONST_METHOD0(IsGatewayFound, bool());
 

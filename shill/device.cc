@@ -356,6 +356,10 @@ void Device::OnAfterResume() {
     SLOG(Device, 3) << "Renewing IP address on resume.";
     ipconfig_->RenewIP();
   }
+  if (link_monitor_) {
+    SLOG(Device, 3) << "Informing Link Monitor of resume.";
+    link_monitor_->OnAfterResume();
+  }
 }
 
 void Device::DropConnection() {
@@ -762,7 +766,7 @@ bool Device::StartPortalDetection() {
 
 void Device::StopPortalDetection() {
   SLOG(Device, 2) << "Device " << FriendlyName()
-                  << ": Portal detection has stopped.";
+                  << ": Portal detection stopping.";
   portal_detector_.reset();
 }
 

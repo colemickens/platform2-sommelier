@@ -37,10 +37,11 @@ class LinkMonitor {
   // are reset, and the link monitoring quiesces.  Needed by Metrics.
   static const int kFailureThreshold;
 
-  // The number of milliseconds between ARP requests.  Needed by Metrics.
-  static const int kTestPeriodMilliseconds;
+  // The default number of milliseconds between ARP requests. Needed by Metrics.
+  static const int kDefaultTestPeriodMilliseconds;
 
   // The default list of technologies for which link monitoring is enabled.
+  // Needed by DefaultProfile.
   static const char kDefaultLinkMonitorTechnologies[];
 
   LinkMonitor(const ConnectionRefPtr &connection,
@@ -53,7 +54,14 @@ class LinkMonitor {
   // Starts link-monitoring on the selected connection.  Returns
   // true if successful, false otherwise.
   virtual bool Start();
+  // Stop link-monitoring on the selected connection. Clears any
+  // accumulated statistics.
   virtual void Stop();
+
+  // Inform LinkMonitor that the system is resuming from sleep.
+  // LinkMonitor will immediately probe the gateway, using a lower
+  // timeout than normal.
+  virtual void OnAfterResume();
 
   // Return modified cumulative average of the gateway ARP response
   // time.  Returns zero if no samples are available.  For each
@@ -69,11 +77,20 @@ class LinkMonitor {
   friend class LinkMonitorForTest;
   friend class LinkMonitorTest;
 
+  // The number of milliseconds between ARP requests when running a quick test.
+  // Needed by unit tests.
+  static const int kFastTestPeriodMilliseconds;
+
   // The number of samples to compute a "strict" average over.  When
   // more samples than this number arrive, this determines how "slow"
   // our simple low-pass filter works.
   static const int kMaxResponseSampleFilterDepth;
 
+  // Similar to Start, except that the initial probes use
+  // |probe_period_milliseconds|. After successfully probing with both
+  // broadcast and unicast ARPs (at least one of each), LinkMonitor
+  // switches itself to kDefaultTestPeriodMilliseconds.
+  virtual bool StartInternal(int probe_period_milliseconds);
   // Add a response time sample to the buffer.
   void AddResponseTimeSample(int response_time_milliseconds);
   // Create an ArpClient instance so we can receive and transmit ARP
@@ -109,12 +126,21 @@ class LinkMonitor {
   // ArpClient instance used for performing link tests.
   scoped_ptr<ArpClient> arp_client_;
 
+  // How frequently we send an ARP request. This is also the timeout
+  // for a pending request.
+  int test_period_milliseconds_;
   // The number of consecutive times we have failed in receiving
   // responses to broadcast ARP requests.
   int broadcast_failure_count_;
   // The number of consecutive times we have failed in receiving
   // responses to unicast ARP requests.
   int unicast_failure_count_;
+  // The number of consecutive times we have succeeded in receiving
+  // responses to broadcast ARP requests.
+  int broadcast_success_count_;
+  // The number of consecutive times we have succeeded in receiving
+  // responses to unicast ARP requests.
+  int unicast_success_count_;
 
   // Whether this iteration of the test was a unicast request
   // to the gateway instead of broadcast.  The link monitor

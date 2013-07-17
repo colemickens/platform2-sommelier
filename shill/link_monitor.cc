@@ -28,9 +28,10 @@ using std::string;
 
 namespace shill {
 
-const int LinkMonitor::kTestPeriodMilliseconds = 5000;
+const int LinkMonitor::kDefaultTestPeriodMilliseconds = 5000;
 const char LinkMonitor::kDefaultLinkMonitorTechnologies[] = "wifi";
 const int LinkMonitor::kFailureThreshold = 5;
+const int LinkMonitor::kFastTestPeriodMilliseconds = 200;
 const int LinkMonitor::kMaxResponseSampleFilterDepth = 5;
 
 LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
@@ -43,8 +44,11 @@ LinkMonitor::LinkMonitor(const ConnectionRefPtr &connection,
       metrics_(metrics),
       device_info_(device_info),
       failure_callback_(failure_callback),
+      test_period_milliseconds_(kDefaultTestPeriodMilliseconds),
       broadcast_failure_count_(0),
       unicast_failure_count_(0),
+      broadcast_success_count_(0),
+      unicast_success_count_(0),
       is_unicast_(false),
       response_sample_count_(0),
       response_sample_bucket_(0),
@@ -57,9 +61,17 @@ LinkMonitor::~LinkMonitor() {
 
 bool LinkMonitor::Start() {
   Stop();
+  return StartInternal(kDefaultTestPeriodMilliseconds);
+}
+
+bool LinkMonitor::StartInternal(int probe_period_milliseconds) {
+  test_period_milliseconds_ = probe_period_milliseconds;
+  if (test_period_milliseconds_ > kDefaultTestPeriodMilliseconds) {
+    LOG(WARNING) << "Long test period; UMA stats will be truncated.";
+  }
 
   if (!device_info_->GetMACAddress(
-           connection_->interface_index(), &local_mac_address_)) {
+          connection_->interface_index(), &local_mac_address_)) {
     LOG(ERROR) << "Could not get local MAC address.";
     metrics_->NotifyLinkMonitorFailure(
         connection_->technology(),
@@ -68,7 +80,9 @@ bool LinkMonitor::Start() {
     Stop();
     return false;
   }
-  gateway_mac_address_ = ByteString(local_mac_address_.GetLength());
+  if (gateway_mac_address_.IsEmpty()) {
+    gateway_mac_address_ = ByteString(local_mac_address_.GetLength());
+  }
   send_request_callback_.Reset(
       Bind(base::IgnoreResult(&LinkMonitor::SendRequest), Unretained(this)));
   time_->GetTimeMonotonic(&started_monitoring_at_);
@@ -82,6 +96,8 @@ void LinkMonitor::Stop() {
   arp_client_.reset();
   broadcast_failure_count_ = 0;
   unicast_failure_count_ = 0;
+  broadcast_success_count_ = 0;
+  unicast_success_count_ = 0;
   is_unicast_ = false;
   response_sample_bucket_ = 0;
   response_sample_count_ = 0;
@@ -89,6 +105,13 @@ void LinkMonitor::Stop() {
   send_request_callback_.Cancel();
   timerclear(&started_monitoring_at_);
   timerclear(&sent_request_at_);
+}
+
+void LinkMonitor::OnAfterResume() {
+  ByteString prior_gateway_mac_address(gateway_mac_address_);
+  Stop();
+  gateway_mac_address_ = prior_gateway_mac_address;
+  StartInternal(kFastTestPeriodMilliseconds);
 }
 
 int LinkMonitor::GetResponseTimeMilliseconds() const {
@@ -139,12 +162,14 @@ bool LinkMonitor::CreateClient() {
 
 bool LinkMonitor::AddMissedResponse() {
   SLOG(Link, 2) << "In " << __func__ << ".";
-  AddResponseTimeSample(kTestPeriodMilliseconds);
+  AddResponseTimeSample(test_period_milliseconds_);
 
   if (is_unicast_) {
     ++unicast_failure_count_;
+    unicast_success_count_ = 0;
   } else {
     ++broadcast_failure_count_;
+    broadcast_success_count_ = 0;
   }
 
   if (unicast_failure_count_ + broadcast_failure_count_ >= kFailureThreshold) {
@@ -213,8 +238,10 @@ void LinkMonitor::ReceiveResponse(int fd) {
   arp_client_.reset();
 
   if (is_unicast_) {
+    ++unicast_success_count_;
     unicast_failure_count_ = 0;
   } else {
+    ++broadcast_success_count_;
     broadcast_failure_count_ = 0;
   }
 
@@ -230,6 +257,9 @@ void LinkMonitor::ReceiveResponse(int fd) {
   }
 
   is_unicast_ = !is_unicast_;
+  if (unicast_success_count_ && broadcast_success_count_) {
+    test_period_milliseconds_ = kDefaultTestPeriodMilliseconds;
+  }
 }
 
 bool LinkMonitor::SendRequest() {
@@ -284,7 +314,7 @@ bool LinkMonitor::SendRequest() {
   time_->GetTimeMonotonic(&sent_request_at_);
 
   dispatcher_->PostDelayedTask(send_request_callback_.callback(),
-                               kTestPeriodMilliseconds);
+                               test_period_milliseconds_);
   return true;
 }
 
