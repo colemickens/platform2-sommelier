@@ -28,6 +28,7 @@
 #include "sysrq_tool.h"
 #include "systrace_tool.h"
 #include "tracepath_tool.h"
+#include "wimax_status_tool.h"
 
 namespace debugd {
 
@@ -65,6 +66,9 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   void set_network_status_tool(NetworkStatusTool* tool) {
     network_status_tool_ = tool;
   }
+  void set_wimax_status_tool(WiMaxStatusTool* tool) {
+    wimax_status_tool_ = tool;
+  }
   void set_log_tool(LogTool* tool) {
     log_tool_ = tool;
   }
@@ -96,6 +100,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   virtual std::string RunModemCommand(const std::string& command,
                                       DBus::Error& error); // NOLINT
   virtual std::string GetNetworkStatus(DBus::Error& error); // NOLINT
+  virtual std::string GetWiMaxStatus(DBus::Error& error); // NOLINT
   virtual std::vector<uint8> GetPerfData(const uint32_t& duration,
                                          DBus::Error& error); // NOLINT
   virtual std::vector<uint8> GetRichPerfData(const uint32_t& duration,
@@ -158,6 +163,7 @@ class DebugDaemon : public org::chromium::debugd_adaptor,
   SysrqTool* sysrq_tool_;
   SystraceTool* systrace_tool_;
   TracePathTool* tracepath_tool_;
+  WiMaxStatusTool* wimax_status_tool_;
 };
 
 };  // namespace debugd

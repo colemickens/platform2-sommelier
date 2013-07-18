@@ -88,6 +88,7 @@
         'src/sysrq_tool.cc',
         'src/systrace_tool.cc',
         'src/tracepath_tool.cc',
+        'src/wimax_status_tool.cc',
       ],
     },
     {
@@ -138,6 +139,14 @@
       'dependencies': ['debugd-proxies'],
       'sources': [
         'src/helpers/network_status.cc',
+      ]
+    },
+    {
+      'target_name': 'wimax_status',
+      'type': 'executable',
+      'dependencies': ['debugd-proxies'],
+      'sources': [
+        'src/helpers/wimax_status.cc',
       ]
     },
   ],

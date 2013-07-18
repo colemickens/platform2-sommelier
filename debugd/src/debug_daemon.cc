@@ -35,6 +35,7 @@ bool DebugDaemon::Init() {
   perf_tool_ = new PerfTool();
   storage_tool_ = new StorageTool();
   memory_tool_ = new MemtesterTool();
+  wimax_status_tool_ = new WiMaxStatusTool();
   try {
     // TODO(ellyjones): Remove this when crosbug.com/23964 is fixed
     dbus_->request_name(kDebugDaemonService);
@@ -113,6 +114,10 @@ std::string DebugDaemon::RunModemCommand(
 
 std::string DebugDaemon::GetNetworkStatus(DBus::Error& error) { // NOLINT
   return network_status_tool_->GetNetworkStatus(error);
+}
+
+std::string DebugDaemon::GetWiMaxStatus(DBus::Error& error) { // NOLINT
+  return wimax_status_tool_->GetWiMaxStatus(error);
 }
 
 std::vector<uint8> DebugDaemon::GetPerfData(const uint32_t& duration,

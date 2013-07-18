@@ -168,6 +168,17 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="GetWiMaxStatus">
+      <tp:docstring>
+        Returns WiMAX information as a JSON string. See the design document for
+        a rationale.
+      </tp:docstring>
+      <arg name="status" type="s" direction="out">
+        <tp:docstring>
+          WiMAX information as a JSON string.
+        </tp:docstring>
+      </arg>
+    </method>
     <method name="GetPerfData">
       <tp:docstring>
         Returns perf event data. Does systemwide profiling.

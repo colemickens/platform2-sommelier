@@ -45,7 +45,8 @@ TOOLS := $(patsubst %,%_tool.o, \
 	subprocess \
 	sysrq \
 	systrace \
-	tracepath)
+	tracepath \
+	wimax_status)
 OBJS := cpu_info_parser.o debug_daemon.o process_with_id.o \
 	process_with_output.o random_selector.o sandboxed_process.o $(TOOLS)
 TESTOBJS := \
