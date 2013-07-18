@@ -159,17 +159,29 @@
     {{ experiment.device }}</font> please do not participate.
   </div>
 
-  <p>
-    To try out this experiment, simply press Ctrl + Alt + t to open a terminal
-    and paste in the cryptic command below.  (Note that to paste into the
-    terminal you must either right click and press paste or use Ctrl + Shift
-    + v on your keyboard)
-  </p>
+  {% if experiment.experiment_type == "chrome-gestures" %}
+    <p>
+      To try out this experiment, simply Copy/Paste the following cryptic url
+      into your address bar.
+    </p>
 
-  <div class="command rectangle">
-    try_touch_experiment
-    {{ experiment|encode_experiment(treatments, properties) }}
-  </div>
+    <div class="command rectangle">
+      chrome://salsa/#
+      {{- experiment|encode_experiment(treatments, properties) }}
+    </div>
+  {% else %}
+    <p>
+      To try out this experiment, simply press Ctrl + Alt + t to open a terminal
+      and paste in the cryptic command below.  (Note that to paste into the
+      terminal you must either right click and press paste or use Ctrl + Shift
+      + v on your keyboard)
+    </p>
+
+    <div class="command rectangle">
+      try_touch_experiment
+      {{ experiment|encode_experiment(treatments, properties) }}
+    </div>
+  {% endif %}
 
   <p>
     This will allow you to switch between the treatments and see which you

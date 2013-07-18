@@ -15,10 +15,12 @@ class CreateNewExperiment(webapp2.RequestHandler):
             'description': self.request.get('exp_description'),
             'instructions': self.request.get('exp_instructions'),
             'device': self.request.get('exp_device'),
-            'owner': users.get_current_user()
+            'owner': users.get_current_user(),
+            'experiment_type': self.request.get('exp_type')
         }
 
-        required_keys = ['name', 'owner', 'device', 'instructions']
+        required_keys = ['name', 'owner', 'device', 'instructions',
+                         'experiment_type']
         if not all(exp.get(key) for key in required_keys):
             return None
         return exp
@@ -99,6 +101,7 @@ class CreateNewExperiment(webapp2.RequestHandler):
             exp.instructions = experiment.get('instructions')
             exp.device = experiment.get('device')
             exp.owner = experiment.get('owner')
+            exp.experiment_type = experiment.get('experiment_type')
             exp.put()
 
             # Adding each treatment in turn

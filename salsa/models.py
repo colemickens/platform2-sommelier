@@ -14,6 +14,7 @@ class Experiment(db.Model):
     created = db.DateTimeProperty(auto_now_add=True)
     participants = db.ListProperty(str)
     feedback = db.ListProperty(db.Text)
+    experiment_type = db.StringProperty()
 
 class Treatment(db.Model):
     """ Models a single treament for experimentation """
