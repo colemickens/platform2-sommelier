@@ -6,8 +6,17 @@ import dbus
 import logging
 import time
 
+class ShillProxyError(Exception):
+    """Exceptions raised by ShillProxy and it's children."""
+    pass
+
 
 class ShillProxy(object):
+    # Core DBus error names
+    DBUS_ERROR_UNKNOWN_OBJECT = 'org.freedesktop.DBus.Error.UnknownObject'
+    # Shill error names
+    ERROR_FAILURE = 'org.chromium.flimflam.Error.Failure'
+
     DBUS_INTERFACE = 'org.chromium.flimflam'
     DBUS_SERVICE_UNKNOWN = 'org.freedesktop.DBus.Error.ServiceUnknown'
     DBUS_TYPE_DEVICE = 'org.chromium.flimflam.Device'
@@ -31,6 +40,7 @@ class ShillProxy(object):
     SERVICE_DISCONNECT_TIMEOUT = 5
 
     SERVICE_PROPERTY_AUTOCONNECT = 'AutoConnect'
+    SERVICE_PROPERTY_DEVICE = 'Device'
     SERVICE_PROPERTY_GUID = 'GUID'
     SERVICE_PROPERTY_HIDDEN = 'WiFi.HiddenSSID'
     SERVICE_PROPERTY_MODE = 'Mode'
@@ -47,11 +57,25 @@ class ShillProxy(object):
                                     'ibss': 'adhoc',
                                     None: 'managed'}
 
+    DEVICE_PROPERTY_ADDRESS = 'Address'
+    DEVICE_PROPERTY_EAP_AUTHENTICATION_COMPLETED = 'EapAuthenticationCompleted'
+    DEVICE_PROPERTY_EAP_AUTHENTICATOR_DETECTED = 'EapAuthenticatorDetected'
+    DEVICE_PROPERTY_IP_CONFIG = 'IpConfig'
+    DEVICE_PROPERTY_INTERFACE = 'Interface'
+    DEVICE_PROPERTY_NAME = 'Name'
+    DEVICE_PROPERTY_POWERED = 'Powered'
+    DEVICE_PROPERTY_RECEIVE_BYTE_COUNT = 'ReceiveByteCount'
+    DEVICE_PROPERTY_TRANSMIT_BYTE_COUNT = 'TransmitByteCount'
+    DEVICE_PROPERTY_TYPE = 'Type'
+
     TECHNOLOGY_CELLULAR = 'cellular'
     TECHNOLOGY_ETHERNET = 'ethernet'
     TECHNOLOGY_VPN = 'vpn'
     TECHNOLOGY_WIFI = 'wifi'
     TECHNOLOGY_WIMAX = 'wimax'
+
+    VALUE_POWERED_ON = 'on'
+    VALUE_POWERED_OFF = 'off'
 
     POLLING_INTERVAL_SECONDS = 0.2
 
@@ -88,6 +112,8 @@ class ShillProxy(object):
             return bool(value)
         elif isinstance(value, int):
             return int(value)
+        elif isinstance(value, dbus.UInt32):
+            return long(value)
         elif isinstance(value, float):
             return float(value)
         elif isinstance(value, str):
@@ -191,7 +217,8 @@ class ShillProxy(object):
 
     def wait_for_property_in(self, dbus_object, property_name,
                              expected_values, timeout_seconds):
-        """
+        """Wait till a property is in a list of expected values.
+
         Block until the property |property_name| in |dbus_object| is in
         |expected_values|, or |timeout_seconds|.
 
@@ -230,8 +257,7 @@ class ShillProxy(object):
 
 
     def get_active_profile(self):
-        """
-        Get the active profile in shill.
+        """Get the active profile in shill.
 
         @return dbus object representing the active profile.
 
@@ -243,8 +269,7 @@ class ShillProxy(object):
 
 
     def get_dbus_object(self, type_str, path):
-        """
-        Return the DBus object of type |type_str| at |path| in shill.
+        """Return the DBus object of type |type_str| at |path| in shill.
 
         @param type_str string (e.g. self.DBUS_TYPE_SERVICE).
         @param path path to object in shill (e.g. '/service/12').
@@ -273,6 +298,31 @@ class ShillProxy(object):
         """
         path = self.manager.GetService(params)
         return self.get_dbus_object(self.DBUS_TYPE_SERVICE, path)
+
+
+    def get_service_for_device(self, device):
+        """Attempt to find a service that manages |device|.
+
+        @param device a dbus object interface representing a device.
+        @return Dbus object interface representing a service if found. None
+                otherwise.
+
+        """
+        properties = self.manager.GetProperties(utf8_strings=True)
+        all_services = properties.get(self.MANAGER_PROPERTY_ALL_SERVICES,
+                                      None)
+        if not all_services:
+            return None
+
+        for service_path in all_services:
+            service = self.get_dbus_object(self.DBUS_TYPE_SERVICE,
+                                           service_path)
+            properties = service.GetProperties(utf8_strings=True)
+            device_path = properties.get(self.SERVICE_PROPERTY_DEVICE, None)
+            if device_path == device.object_path:
+                return service
+
+        return None
 
 
     def find_object(self, object_type, properties):
@@ -305,4 +355,3 @@ class ShillProxy(object):
             else:
                 return test_object
         return None
-
