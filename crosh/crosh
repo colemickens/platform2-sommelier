@@ -96,6 +96,12 @@ HELP_ADVANCED='
   A function that enables a predefined set of tags useful for
   debugging the specified device.
 
+ p2p_update [enable|disable]
+  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
+  network. This will both, attempt to get updates from other peers in the
+  network and share the downloaded updates with them. Run this command without
+  arguments to see the current state.
+
  rlz < status | enable | disable >
   Enable or disable RLZ.
 
@@ -954,6 +960,32 @@ cmd_autest() {
 
   echo "Calling update_engine_client with omaha_url = $omaha_url"
   /usr/bin/update_engine_client --omaha_url $omaha_url
+}
+
+cmd_p2p_update() {
+  case "$1" in
+    "enable")
+      param="-p2p_update=yes"
+      ;;
+
+    "disable")
+      param="-p2p_update=no"
+      ;;
+
+    "")
+      param=""
+      ;;
+
+    *)
+      echo "Usage: p2p_update [enable|disable]
+  Enables or disables the peer-to-peer (P2P) sharing of updates over the local
+  network. This will both, attempt to get updates from other peers in the
+  network and share the downloaded updates with them. Run this command without
+  arguments to see the current state."
+      return 1
+      ;;
+  esac
+  /usr/bin/update_engine_client $param -show_p2p_update
 }
 
 cmd_rollback() {
