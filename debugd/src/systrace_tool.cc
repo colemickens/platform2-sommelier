@@ -15,16 +15,16 @@ using base::StringPrintf;
 
 namespace debugd {
 
+namespace {
+
+const char kSystraceHelper[] = "systrace.sh";
+
+}  // namespace
+
 extern const char *kDebugfsGroup;
 
 SystraceTool::SystraceTool() { }
 SystraceTool::~SystraceTool() { }
-
-static std::string getpathname(void) {
-  char *envvar = getenv("DEBUGD_HELPERS");
-  return StringPrintf("%s/systrace.sh", envvar ? envvar
-                      : "/usr/libexec/debugd/helpers");
-}
 
 static void add_category_args(ProcessWithOutput& p,
     const std::string& categories)
@@ -40,11 +40,15 @@ static void add_category_args(ProcessWithOutput& p,
 
 std::string SystraceTool::Start(const std::string& categories,
                                 DBus::Error& error) {
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
+    return "";
+
   ProcessWithOutput p;
   // this tool needs to reach into /sys/kernel/debug to enable/disable tracing
   p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
   p.Init();
-  p.AddArg(getpathname());
+  p.AddArg(path);
   p.AddArg("start");
   add_category_args(p, categories);
   p.Run();
@@ -55,10 +59,14 @@ std::string SystraceTool::Start(const std::string& categories,
 
 void SystraceTool::Stop(const DBus::FileDescriptor& outfd,
     DBus::Error& error) {
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
+    return;
+
   ProcessWithOutput p;
   p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
   p.Init();
-  p.AddArg(getpathname());
+  p.AddArg(path);
   p.AddArg("stop");
   // trace data is sent to stdout and not across dbus
   p.BindFd(outfd.get(), STDOUT_FILENO);
@@ -66,10 +74,14 @@ void SystraceTool::Stop(const DBus::FileDescriptor& outfd,
 }
 
 std::string SystraceTool::Status(DBus::Error& error) {
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath(kSystraceHelper, &path))
+    return "";
+
   ProcessWithOutput p;
   p.SandboxAs(SandboxedProcess::kDefaultUser, kDebugfsGroup);
   p.Init();
-  p.AddArg(getpathname());
+  p.AddArg(path);
   p.AddArg("status");
   p.Run();
   std::string out;

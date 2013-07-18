@@ -19,11 +19,10 @@ std::string WiMaxStatusTool::GetWiMaxStatus(DBus::Error& error) {  // NOLINT
   if (!USE_WIMAX)
     return "";
 
-  char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/wimax_status", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath("wimax_status", &path))
     return "";
+
   ProcessWithOutput p;
   p.Init();
   p.AddArg(path);

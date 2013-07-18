@@ -19,11 +19,10 @@ NetifTool::NetifTool() { }
 NetifTool::~NetifTool() { }
 
 std::string NetifTool::GetInterfaces(DBus::Error* error) {
-  char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/netif", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath("netif", &path))
     return "<path too long>";
+
   ProcessWithOutput p;
   if (!p.Init())
     return "<can't create process>";

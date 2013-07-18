@@ -21,11 +21,10 @@ std::string PacketCaptureTool::Start(
     const DBus::FileDescriptor& output_fd,
     const std::map<std::string, DBus::Variant>& options,
     DBus::Error& error) {
-  char* envvar = getenv("DEBUGD_HELPERS");
-  std::string exec_path = StringPrintf("%s/capture_utility.sh", envvar ? envvar
-                                       : "/usr/libexec/debugd/helpers");
-  if (exec_path.length() > PATH_MAX)
+  std::string exec_path;
+  if (!SandboxedProcess::GetHelperPath("capture_utility.sh", &exec_path))
     return "<path too long>";
+
   ProcessWithId* p = CreateProcess(false);
   if (!p)
     return "<create process failed>";

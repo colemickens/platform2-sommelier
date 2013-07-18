@@ -16,11 +16,10 @@ NetworkStatusTool::NetworkStatusTool() { }
 NetworkStatusTool::~NetworkStatusTool() { }
 
 std::string NetworkStatusTool::GetNetworkStatus(DBus::Error& error) { // NOLINT
-  char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/network_status", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath("network_status", &path))
     return "";
+
   ProcessWithOutput p;
   p.Init();
   p.AddArg(path);

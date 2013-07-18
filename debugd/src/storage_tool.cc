@@ -20,10 +20,8 @@ StorageTool::~StorageTool() { }
 
 std::string StorageTool::Smartctl(const std::string& option,
                                   DBus::Error& error) {
-  char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/storage", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath("storage", &path))
     return "<path too long>";
 
   ProcessWithOutput process;

@@ -12,7 +12,13 @@ namespace debugd {
 class SandboxedProcess : public chromeos::ProcessImpl {
  public:
   SandboxedProcess();
-  ~SandboxedProcess();
+  virtual ~SandboxedProcess();
+
+  // Get the full path of a helper executable located at the |relative_path|
+  // relative to the debugd helpers directory. Return false if the full path
+  // is too long.
+  static bool GetHelperPath(const std::string& relative_path,
+                            std::string* full_path);
 
   virtual bool Init();
 

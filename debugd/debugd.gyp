@@ -160,6 +160,7 @@
             'src/modem_status_tool_test.cc',
             'src/process_with_id_test.cc',
             'src/random_selector_test.cc',
+            'src/sandboxed_process_test.cc',
             'src/testrunner.cc',
           ]
         },

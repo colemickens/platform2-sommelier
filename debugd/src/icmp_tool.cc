@@ -26,11 +26,10 @@ string ICMPTool::TestICMP(const string& host, DBus::Error* error) {
 string ICMPTool::TestICMPWithOptions(const string& host,
                                      const map<string, string>& options,
                                      DBus::Error* error) {
-  char *envvar = getenv("DEBUGD_HELPERS");
-  string path = StringPrintf("%s/icmp", envvar ? envvar
-                             : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  string path;
+  if (!SandboxedProcess::GetHelperPath("icmp", &path))
     return "<path too long>";
+
   ProcessWithOutput p;
   if (!p.Init())
     return "<can't create process>";

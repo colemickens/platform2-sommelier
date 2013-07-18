@@ -25,12 +25,8 @@ ExampleTool::~ExampleTool() { }
 // user; instead of returning a DBus exception, we tend to return a string
 // indicating what went wrong.
 std::string ExampleTool::GetExample(DBus::Error& error) { // NOLINT
-  // This environment var controls the root for debugd helpers, which lets
-  // people develop helpers even when verified root is on.
-  char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/example", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  std::string path;
+  if (!SandboxedProcess::GetHelperPath("example", &path))
     return "<path too long>";
   // This whole method is synchronous, so we create a subprocess, let it run to
   // completion, then gather up its output to return it.

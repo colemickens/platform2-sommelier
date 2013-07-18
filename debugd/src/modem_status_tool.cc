@@ -20,11 +20,10 @@ std::string ModemStatusTool::GetModemStatus(DBus::Error& error) { // NOLINT
   if (!USE_CELLULAR)
     return "";
 
-  char *envvar = getenv("DEBUGD_HELPERS");
-  std::string path = StringPrintf("%s/modem_status", envvar ? envvar
-                                  : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  string path;
+  if (!SandboxedProcess::GetHelperPath("modem_status", &path))
     return "";
+
   ProcessWithOutput p;
   p.Init();
   p.AddArg(path);
@@ -64,11 +63,10 @@ string ModemStatusTool::SendATCommand(const string& command) {
   if (!USE_CELLULAR)
     return "";
 
-  char *envvar = getenv("DEBUGD_HELPERS");
-  string path = StringPrintf("%s/send_at_command.sh",
-                             envvar ? envvar : "/usr/libexec/debugd/helpers");
-  if (path.length() > PATH_MAX)
+  string path;
+  if (!SandboxedProcess::GetHelperPath("send_at_command.sh", &path))
     return "";
+
   ProcessWithOutput p;
   p.SandboxAs("root", "root");
   p.Init();
@@ -99,4 +97,4 @@ string ModemStatusTool::CollapseNewLines(const string& input) {
   return out;
 }
 
-};  // namespace debugd
+}  // namespace debugd
