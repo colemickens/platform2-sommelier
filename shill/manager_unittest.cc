@@ -1522,7 +1522,10 @@ TEST_F(ManagerTest, GetServiceUnknownType) {
 TEST_F(ManagerTest, GetServiceEthernetEap) {
   KeyValueStore args;
   Error e;
-  ServiceRefPtr service;
+  ServiceRefPtr service = new NiceMock<MockService>(control_interface(),
+                                                    dispatcher(),
+                                                    metrics(),
+                                                    manager());
   args.SetString(flimflam::kTypeProperty, kTypeEthernetEap);
   SetEapProviderService(service);
   EXPECT_EQ(service, manager()->GetService(args, &e));
