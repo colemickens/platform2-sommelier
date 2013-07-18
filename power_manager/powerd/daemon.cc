@@ -41,8 +41,11 @@ namespace power_manager {
 
 namespace {
 
-// Path for storing FileTagger files.
-const char kTaggedFilePath[] = "/var/lib/power_manager";
+// Path to file that's touched before the system suspends and unlinked
+// after it resumes. Used by crash-reporter to avoid reporting unclean
+// shutdowns that occur while the system is suspended (i.e. probably due to
+// the battery charge reaching zero).
+const char kSuspendedStatePath[] = "/var/lib/power_manager/powerd_suspended";
 
 // Path to power supply info.
 const char kPowerStatusPath[] = "/sys/class/power_supply";
@@ -364,9 +367,7 @@ Daemon::Daemon(PrefsInterface* prefs,
       peripheral_battery_watcher_(new system::PeripheralBatteryWatcher(
           dbus_sender_.get())),
       shutting_down_(false),
-      low_battery_(false),
       plugged_state_(PLUGGED_STATE_UNKNOWN),
-      file_tagger_(base::FilePath(kTaggedFilePath)),
       power_supply_(
           new system::PowerSupply(base::FilePath(kPowerStatusPath), prefs)),
       dark_resume_policy_(
@@ -377,7 +378,8 @@ Daemon::Daemon(PrefsInterface* prefs,
       run_dir_(run_dir),
       session_state_(SESSION_STOPPED),
       udev_(NULL),
-      state_controller_initialized_(false) {
+      state_controller_initialized_(false),
+      created_suspended_state_file_(false) {
   power_supply_->AddObserver(this);
   if (backlight_controller_)
     backlight_controller_->AddObserver(this);
@@ -399,8 +401,6 @@ void Daemon::Init() {
 
   RegisterUdevEventHandler();
   RegisterDBusMessageHandler();
-
-  file_tagger_.Init();
 
   std::string session_state;
   if (util::GetSessionState(&session_state))
@@ -579,8 +579,20 @@ void Daemon::PrepareForSuspend() {
   util::RunSetuidHelper("lock_vt", "", true);
 #endif
 
+  // Touch a file that crash-reporter can inspect later to determine
+  // whether the system was suspended while an unclean shutdown occurred.
+  // If the file already exists, assume that crash-reporter hasn't seen it
+  // yet and avoid unlinking it after resume.
+  created_suspended_state_file_ = false;
+  const base::FilePath kStatePath(kSuspendedStatePath);
+  if (!file_util::PathExists(kStatePath)) {
+    if (file_util::WriteFile(kStatePath, NULL, 0) == 0)
+      created_suspended_state_file_ = true;
+    else
+      LOG(WARNING) << "Unable to create " << kSuspendedStatePath;
+  }
+
   power_supply_->SetSuspended(true);
-  file_tagger_.HandleSuspendEvent();
   audio_client_->MuteSystem();
   metrics_reporter_->PrepareForSuspend(power_supply_->power_status(),
                                        base::Time::Now());
@@ -591,15 +603,19 @@ void Daemon::HandleResume(bool suspend_was_successful,
                           int max_suspend_retries) {
   SetBacklightsSuspended(false);
   audio_client_->RestoreMutedState();
+  power_supply_->SetSuspended(false);
+  state_controller_->HandleResume();
 
 #ifdef SUSPEND_LOCK_VT
   // Allow virtual terminal switching again.
   util::RunSetuidHelper("unlock_vt", "", true);
 #endif
 
-  file_tagger_.HandleResumeEvent();
-  power_supply_->SetSuspended(false);
-  state_controller_->HandleResume();
+  if (created_suspended_state_file_) {
+    if (!file_util::Delete(base::FilePath(kSuspendedStatePath), false))
+      LOG(ERROR) << "Failed to delete " << kSuspendedStatePath;
+  }
+
   if (suspend_was_successful) {
     metrics_reporter_->GenerateRetrySuspendMetric(
         num_suspend_retries, max_suspend_retries);
@@ -634,18 +650,9 @@ void Daemon::OnPowerStatusUpdate() {
   SetPlugged(status.line_power_on);
   metrics_reporter_->GenerateMetricsOnPowerEvent(status);
 
-  if (status.battery_is_present) {
-    if (status.battery_below_shutdown_threshold) {
-      if (!low_battery_) {
-        low_battery_ = true;
-        file_tagger_.HandleLowBatteryEvent();
-        LOG(INFO) << "Shutting down due to low battery";
-        ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonLowBattery);
-      }
-    } else {
-      low_battery_ = false;
-      file_tagger_.HandleSafeBatteryEvent();
-    }
+  if (status.battery_is_present && status.battery_below_shutdown_threshold) {
+    LOG(INFO) << "Shutting down due to low battery";
+    ShutDown(SHUTDOWN_POWER_OFF, kShutdownReasonLowBattery);
   }
 
   PowerSupplyProperties protobuf;

@@ -25,7 +25,6 @@
 #include "power_manager/common/inotify.h"
 #include "power_manager/common/prefs_observer.h"
 #include "power_manager/common/signal_callback.h"
-#include "power_manager/powerd/file_tagger.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/policy/backlight_controller_observer.h"
 #include "power_manager/powerd/policy/dark_resume_policy.h"
@@ -198,8 +197,8 @@ class Daemon : public policy::BacklightControllerObserver,
 
   scoped_ptr<StateControllerDelegate> state_controller_delegate_;
 
-  policy::BacklightController* backlight_controller_;
-  PrefsInterface* prefs_;
+  policy::BacklightController* backlight_controller_;  // non-owned
+  PrefsInterface* prefs_;  // non-owned
   policy::KeyboardBacklightController* keyboard_controller_;  // non-owned
 
   scoped_ptr<MetricsReporter> metrics_reporter_;
@@ -214,9 +213,8 @@ class Daemon : public policy::BacklightControllerObserver,
   // system has powered off.
   bool shutting_down_;
 
-  bool low_battery_;
   PluggedState plugged_state_;
-  FileTagger file_tagger_;
+
   scoped_ptr<system::PowerSupply> power_supply_;
   scoped_ptr<policy::DarkResumePolicy> dark_resume_policy_;
   scoped_ptr<SuspenderDelegate> suspender_delegate_;
@@ -234,14 +232,14 @@ class Daemon : public policy::BacklightControllerObserver,
   // This is the DBus helper object that dispatches DBus messages to handlers
   util::DBusHandler dbus_handler_;
 
-  // String that indicates reason for shutting down.  See power_constants.cc for
-  // valid values.
-  std::string shutdown_reason_;
-
   // Has |state_controller_| been initialized?  Daemon::Init() invokes a
   // bunch of event-handling functions directly, but events shouldn't be
   // passed to |state_controller_| until it's been initialized.
   bool state_controller_initialized_;
+
+  // Set to true if powerd touched a file for crash-reporter before
+  // suspending. If true, the file will be unlinked after resuming.
+  bool created_suspended_state_file_;
 
   DISALLOW_COPY_AND_ASSIGN(Daemon);
 };

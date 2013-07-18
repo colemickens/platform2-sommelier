@@ -11,10 +11,6 @@
 
 typedef unsigned int guint;
 
-namespace base {
-class FilePath;
-}
-
 namespace power_manager {
 namespace util {
 
@@ -34,10 +30,6 @@ int Run(const char* command);
 int RunSetuidHelper(const std::string& action,
                     const std::string& additional_args,
                     bool wait_for_completion);
-
-// Status file creation and removal.
-void CreateStatusFile(const base::FilePath& file);
-void RemoveStatusFile(const base::FilePath& file);
 
 // Read an unsigned int from a file.  Return true on success
 // Due to crbug.com/128596 this function does not handle negative values
