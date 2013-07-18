@@ -133,7 +133,6 @@ class StateController : public PrefsObserver {
 
   void Init(PowerSource power_source,
             LidState lid_state,
-            SessionState session_state,
             DisplayMode display_mode);
 
   // Handles various changes to external state.
@@ -283,9 +282,6 @@ class StateController : public PrefsObserver {
   // Current state of the lid.
   LidState lid_state_;
 
-  // Current session state.
-  SessionState session_state_;
-
   // Current system update state.
   UpdaterState updater_state_;
 
@@ -328,11 +324,6 @@ class StateController : public PrefsObserver {
   // inactivity?  This is controlled by the |kDisableIdleSuspendPref| pref
   // and overrides |policy_|.
   bool disable_idle_suspend_;
-
-  // When the user is inactive at the login screen, should the system
-  // suspend rather than shutting down?  This is controlled by the
-  // |kSuspendAtLoginScreenPref| pref.
-  bool suspend_at_login_screen_;
 
   // True if docked mode is allowed.
   bool allow_docked_mode_;

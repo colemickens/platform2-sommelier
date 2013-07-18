@@ -139,7 +139,6 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       timeout_id_(0),
       power_source_(POWER_AC),
       lid_state_(LID_NOT_PRESENT),
-      session_state_(SESSION_STOPPED),
       updater_state_(UPDATER_IDLE),
       display_mode_(DISPLAY_NORMAL),
       screen_dimmed_(false),
@@ -153,7 +152,6 @@ StateController::StateController(Delegate* delegate, PrefsInterface* prefs)
       require_usb_input_device_to_suspend_(false),
       keep_screen_on_for_audio_(false),
       disable_idle_suspend_(false),
-      suspend_at_login_screen_(false),
       allow_docked_mode_(false),
       ignore_external_policy_(false),
       idle_action_(DO_NOTHING),
@@ -170,14 +168,12 @@ StateController::~StateController() {
 
 void StateController::Init(PowerSource power_source,
                            LidState lid_state,
-                           SessionState session_state,
                            DisplayMode display_mode) {
   LoadPrefs();
 
   last_user_activity_time_ = clock_->GetCurrentTime();
   power_source_ = power_source;
   lid_state_ = lid_state;
-  session_state_ = session_state;
   display_mode_ = display_mode;
 
   UpdateSettingsAndState();
@@ -209,11 +205,7 @@ void StateController::HandleLidStateChange(LidState state) {
 
 void StateController::HandleSessionStateChange(SessionState state) {
   DCHECK(initialized_);
-  if (state == session_state_)
-    return;
-
   VLOG(1) << "Session state changed to " << SessionStateToString(state);
-  session_state_ = state;
   saw_user_activity_soon_after_screen_dim_or_off_ = false;
   UpdateLastUserActivityTime();
   UpdateSettingsAndState();
@@ -553,7 +545,6 @@ void StateController::LoadPrefs() {
                   &require_usb_input_device_to_suspend_);
   prefs_->GetBool(kKeepBacklightOnForAudioPref, &keep_screen_on_for_audio_);
   prefs_->GetBool(kDisableIdleSuspendPref, &disable_idle_suspend_);
-  prefs_->GetBool(kSuspendAtLoginScreenPref, &suspend_at_login_screen_);
   prefs_->GetBool(kIgnoreExternalPolicyPref, &ignore_external_policy_);
   prefs_->GetBool(kAllowDockedModePref, &allow_docked_mode_);
 
@@ -613,18 +604,6 @@ void StateController::UpdateSettingsAndState() {
       presentation_factor = policy_.presentation_screen_dim_delay_factor();
     if (policy_.has_user_activity_screen_dim_delay_factor())
       user_activity_factor = policy_.user_activity_screen_dim_delay_factor();
-  }
-
-  // If the system is at the login screen and a policy hasn't overridden
-  // the default suspend behavior, shut down instead.
-  // TODO(derat): Remove this once Chrome has been updated to send
-  // suspend/shut-down idle actions at the login screen for AC/battery and
-  // suspend/suspend actions after logging in.
-  if (session_state_ == SESSION_STOPPED) {
-    if (idle_action_ == SUSPEND && !suspend_at_login_screen_)
-      idle_action_ = SHUT_DOWN;
-    if (lid_closed_action_ == SUSPEND)
-      lid_closed_action_ = SHUT_DOWN;
   }
 
   if (presenting)

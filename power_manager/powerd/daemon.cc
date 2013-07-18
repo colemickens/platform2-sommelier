@@ -432,14 +432,10 @@ void Daemon::Init() {
   PowerSource power_source =
       plugged_state_ == PLUGGED_STATE_DISCONNECTED ? POWER_BATTERY : POWER_AC;
   state_controller_->Init(power_source, input_->QueryLidState(),
-                          session_state_, DISPLAY_NORMAL);
+                          DISPLAY_NORMAL);
   state_controller_initialized_ = true;
 
   peripheral_battery_watcher_->Init();
-
-  // TODO(crosbug.com/31927): Send a signal to announce that powerd has started.
-  // This is necessary for receiving external display projection status from
-  // Chrome, for instance.
 }
 
 void Daemon::Run() {

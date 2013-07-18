@@ -182,12 +182,10 @@ class StateControllerTest : public testing::Test {
         default_disable_idle_suspend_(0),
         default_require_usb_input_device_to_suspend_(0),
         default_keep_screen_on_for_audio_(0),
-        default_suspend_at_login_screen_(0),
         default_ignore_external_policy_(0),
         default_allow_docked_mode_(1),
         initial_power_source_(POWER_AC),
         initial_lid_state_(LID_OPEN),
-        initial_session_state_(SESSION_STARTED),
         initial_display_mode_(DISPLAY_NORMAL) {
   }
 
@@ -210,14 +208,12 @@ class StateControllerTest : public testing::Test {
                     default_require_usb_input_device_to_suspend_);
     prefs_.SetInt64(kKeepBacklightOnForAudioPref,
                     default_keep_screen_on_for_audio_);
-    prefs_.SetInt64(kSuspendAtLoginScreenPref,
-                    default_suspend_at_login_screen_);
     prefs_.SetInt64(kIgnoreExternalPolicyPref, default_ignore_external_policy_);
     prefs_.SetInt64(kAllowDockedModePref, default_allow_docked_mode_);
 
     test_api_.SetCurrentTime(now_);
     controller_.Init(initial_power_source_, initial_lid_state_,
-                     initial_session_state_, initial_display_mode_);
+                     initial_display_mode_);
   }
 
   // Advances |now_| by |interval_|.
@@ -299,14 +295,12 @@ class StateControllerTest : public testing::Test {
   int64 default_disable_idle_suspend_;
   int64 default_require_usb_input_device_to_suspend_;
   int64 default_keep_screen_on_for_audio_;
-  int64 default_suspend_at_login_screen_;
   int64 default_ignore_external_policy_;
   int64 default_allow_docked_mode_;
 
   // Values passed by Init() to StateController::Init().
   PowerSource initial_power_source_;
   LidState initial_lid_state_;
-  SessionState initial_session_state_;
   DisplayMode initial_display_mode_;
 };
 
@@ -436,38 +430,6 @@ TEST_F(StateControllerTest, SessionStateChangeResetsTimeouts) {
   // The screen should be dimmed again after the usual delay.
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
-}
-
-// Tests the controller shuts the system down instead of suspending when no
-// user is logged in.
-TEST_F(StateControllerTest, ShutDownWhenSessionStopped) {
-  initial_session_state_ = SESSION_STOPPED;
-  Init();
-
-  // The screen should be dimmed and turned off, but the system should shut
-  // down instead of suspending.
-  ASSERT_TRUE(TriggerDefaultAcTimeouts());
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kShutDown, NULL),
-            delegate_.GetActions());
-
-  // Send a session-started notification (which is a bit unrealistic given
-  // that the system was just shut down).
-  controller_.HandleSessionStateChange(SESSION_STARTED);
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-
-  // The system should suspend now.
-  ASSERT_TRUE(TriggerDefaultAcTimeouts());
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
-            delegate_.GetActions());
-
-  // After resuming and stopping the session, lid-close should shut the
-  // system down.
-  controller_.HandleResume();
-  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
-  controller_.HandleSessionStateChange(SESSION_STOPPED);
-  EXPECT_EQ(kNoActions, delegate_.GetActions());
-  controller_.HandleLidStateChange(LID_CLOSED);
-  EXPECT_EQ(kShutDown, delegate_.GetActions());
 }
 
 // Tests that delays are scaled while presenting and that they return to
@@ -850,9 +812,9 @@ TEST_F(StateControllerTest, DisableIdleSuspend) {
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // The pref should also override the shutdown-on-idle action that's the
-  // default when the session is stopped.
-  controller_.HandlePolicyChange(PowerManagementPolicy());
+  // The pref should also override shutdown-on-idle actions.
+  policy.set_ac_idle_action(PowerManagementPolicy_Action_SHUT_DOWN);
+  controller_.HandlePolicyChange(policy);
   controller_.HandleSessionStateChange(SESSION_STOPPED);
   EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
   ASSERT_TRUE(TriggerDefaultAcTimeouts());
@@ -1202,17 +1164,6 @@ TEST_F(StateControllerTest, IdleWarnings) {
   policy.set_ac_idle_action(PowerManagementPolicy_Action_STOP_SESSION);
   controller_.HandlePolicyChange(policy);
   EXPECT_EQ(JoinActions(kIdleImminent, kStopSession, NULL),
-            delegate_.GetActions());
-}
-
-// Tests that when the suspend_at_login_screen pref is set, the system
-// suspends instead of shutting down due to user inactivity.
-TEST_F(StateControllerTest, SuspendAtLoginScreen) {
-  initial_session_state_ = SESSION_STOPPED;
-  default_suspend_at_login_screen_ = 1;
-  Init();
-  ASSERT_TRUE(TriggerDefaultAcTimeouts());
-  EXPECT_EQ(JoinActions(kScreenDim, kScreenOff, kSuspend, NULL),
             delegate_.GetActions());
 }
 
