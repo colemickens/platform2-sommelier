@@ -313,7 +313,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
-  FRIEND_TEST(CellularTest, StartPPP);  // for |state_|
+  FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
+  FRIEND_TEST(CellularTest, StartPPPWithoutEthernet);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
 
   // Names of properties in storage

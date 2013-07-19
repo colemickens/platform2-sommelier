@@ -1031,20 +1031,31 @@ TEST_F(CellularTest, LinkEventUpWithoutPPP) {
   device_->LinkEvent(IFF_UP, 0);
 }
 
-TEST_F(CellularTest, StartPPP) {
-  device_->set_ipconfig(dhcp_config_);
+TEST_F(CellularTest, StartPPPAfterEthernetUp) {
+  CellularService *service(SetService());
   device_->state_ = Cellular::kStateLinked;
+  device_->set_ipconfig(dhcp_config_);
+  device_->SelectService(service);
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_))
       .Times(AnyNumber())
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*dynamic_cast<MockGLib *>(modem_info_.glib()),
               SpawnAsync(_, _, _, _, _, _, _, _));
   device_->StartPPP("fake_serial_device");
-  EXPECT_FALSE(device_->ipconfig());  // Any running DHCP client is stopped.
+  EXPECT_FALSE(device_->ipconfig());  // The DHCP client was stopped.
+  EXPECT_FALSE(device_->selected_service());
   EXPECT_EQ(Cellular::kStateLinked, device_->state());
-  // TODO(quiche): test the rest of the functionality of this method.
-  // crbug.com/246826.
 }
+
+TEST_F(CellularTest, StartPPPWithoutEthernet) {
+  EXPECT_CALL(*dynamic_cast<MockGLib *>(modem_info_.glib()),
+              SpawnAsync(_, _, _, _, _, _, _, _));
+  device_->StartPPP("fake_serial_device");
+  EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
+  EXPECT_FALSE(device_->selected_service());
+}
+
+// TODO(quiche): test the common bits of StartPPP. crbug.com/246826.
 
 TEST_F(CellularTest, GetLogin) {
   // Doesn't crash when there is no service.

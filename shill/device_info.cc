@@ -302,11 +302,11 @@ Technology::Identifier DeviceInfo::GetDeviceTechnology(
   if (driver_name == kDriverCdcEther || driver_name == kDriverCdcNcm) {
     if (IsCdcEthernetModemDevice(iface_name)) {
       LOG(INFO) << StringPrintf("%s: device %s is a %s modem device", __func__,
-                                driver_name.c_str(), iface_name.c_str());
+                                iface_name.c_str(), driver_name.c_str());
       return Technology::kCellular;
     }
     SLOG(Device, 2) << StringPrintf("%s: device %s is a %s device", __func__,
-                                    driver_name.c_str(), iface_name.c_str());
+                                    iface_name.c_str(), driver_name.c_str());
     return Technology::kCDCEthernet;
   }
 

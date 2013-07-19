@@ -803,12 +803,23 @@ bool Cellular::DisconnectCleanup() {
 }
 
 void Cellular::StartPPP(const string &serial_device) {
-  // Some PPP dongles also expose an Ethernet-like network device,
-  // using either cdc_ether, or cdc_ncm. dhcpcd may be running on that
-  // interface. If so, it will eventually time out, and cause us
-  // terminate the cellular connection. Avoid terminating the connection,
-  // by cancelling any such DHCP process.
-  DestroyIPConfig();
+  // Detach any SelectedService from this device. It will be grafted onto
+  // the PPPDevice after PPP is up (in Cellular::Notify).
+  //
+  // This has two important effects: 1) kills dhcpcd if it is running.
+  // 2) stops Cellular::LinkEvent from driving changes to the
+  // SelectedService.
+  if (selected_service()) {
+    CHECK_EQ(service_.get(), selected_service().get());
+    // Save and restore |service_| state, as DropConnection calls
+    // SelectService, and SelectService will move selected_service()
+    // to kStateIdle.
+    Service::ConnectState original_state(service_->state());
+    Device::DropConnection();  // Don't redirect to PPPDevice.
+    service_->SetState(original_state);
+  } else {
+    CHECK(!ipconfig());  // Shouldn't have ipconfig without selected_service().
+  }
 
   base::Callback<void(pid_t, int)> death_callback(
       Bind(&Cellular::OnPPPDied, weak_ptr_factory_.GetWeakPtr()));
