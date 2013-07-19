@@ -12,11 +12,11 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
+#include "attestation.pb.h"
+#include "cryptolib.h"
 #include "mock_keystore.h"
 #include "mock_platform.h"
 #include "mock_tpm.h"
-
-#include "cryptolib.h"
 
 using chromeos::SecureBlob;
 using std::string;
@@ -280,11 +280,14 @@ TEST_F(AttestationTest, CertRequest) {
       .WillRepeatedly(DoAll(SetArgumentPointee<3>(GetPKCS1PublicKey()),
                             Return(true)));
   SecureBlob blob;
-  EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_FALSE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                              &blob));
   attestation_.PrepareForEnrollment();
-  EXPECT_FALSE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_FALSE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                              &blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                             &blob));
   EXPECT_FALSE(attestation_.DoesKeyExist(false, "test"));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
@@ -312,13 +315,15 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                             &blob));
   // Expect storage failure here.
   EXPECT_FALSE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                               true,
                                               "test",
                                               &blob));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                             &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              true,
                                              "test",
@@ -344,7 +349,8 @@ TEST_F(AttestationTest, SimpleChallenge) {
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                             &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",
@@ -369,7 +375,8 @@ TEST_F(AttestationTest, EMKChallenge) {
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                             &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",
@@ -437,7 +444,8 @@ TEST_F(AttestationTest, Payload) {
   SecureBlob blob;
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
-  EXPECT_TRUE(attestation_.CreateCertRequest(false, false, &blob));
+  EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
+                                             &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",

@@ -27,8 +27,9 @@
 #include <chromeos/utility.h>
 
 #include "bindings/client.h"
-#include "marshal.glibmarshal.h"
+#include "attestation.pb.h"
 #include "crypto.h"
+#include "marshal.glibmarshal.h"
 #include "mount.h"
 #include "pkcs11_init.h"
 #include "platform.h"
@@ -1229,10 +1230,10 @@ int main(int argc, char **argv) {
     string response_data;
     if (!cl->HasSwitch(switches::kAsyncSwitch)) {
       chromeos::glib::ScopedArray data;
-      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request(
+      if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request_by_profile(
           proxy.gproxy(),
-          FALSE,
-          TRUE,
+          cryptohome::ENTERPRISE_USER_CERTIFICATE,
+          "",
           &chromeos::Resetter(&data).lvalue(),
           &chromeos::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateCertRequest call failed: %s.\n",
@@ -1244,10 +1245,10 @@ int main(int argc, char **argv) {
       ClientLoop client_loop;
       client_loop.Initialize(&proxy);
       gint async_id = -1;
-      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request(
+      if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request_by_profile(
               proxy.gproxy(),
-              FALSE,
-              TRUE,
+              cryptohome::ENTERPRISE_USER_CERTIFICATE,
+              "",
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationCreateCertRequest call failed: %s.\n",

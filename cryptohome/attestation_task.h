@@ -4,6 +4,7 @@
 //
 // Asynchronous attestation tasks.
 
+#include "attestation.pb.h"
 #include "mount_task.h"
 
 namespace cryptohome {
@@ -58,15 +59,15 @@ class CreateCertRequestTask : public AttestationTask {
  public:
   CreateCertRequestTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
-                        bool include_stable_id,
-                        bool include_device_state);
+                        CertificateProfile profile,
+                        const std::string& origin);
   virtual ~CreateCertRequestTask();
 
   virtual void Run();
 
  private:
-  bool include_stable_id_;
-  bool include_device_state_;
+  CertificateProfile profile_;
+  std::string origin_;
 
   DISALLOW_COPY_AND_ASSIGN(CreateCertRequestTask);
 };

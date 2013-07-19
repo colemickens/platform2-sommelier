@@ -246,13 +246,13 @@ class Service : public chromeos::dbus::AbstractDbusService,
                                              gint* OUT_async_id,
                                              GError** error);
   virtual gboolean TpmAttestationCreateCertRequest(
-      gboolean include_stable_id,
-      gboolean include_device_state,
+      gint certificate_profile,
+      gchar* request_origin,
       GArray** OUT_pca_request,
       GError** error);
   virtual gboolean AsyncTpmAttestationCreateCertRequest(
-      gboolean include_stable_id,
-      gboolean include_device_state,
+      gint certificate_profile,
+      gchar* request_origin,
       gint* OUT_async_id,
       GError** error);
   virtual gboolean TpmAttestationFinishCertRequest(GArray* pca_response,

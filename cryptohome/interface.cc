@@ -297,9 +297,13 @@ gboolean cryptohome_tpm_attestation_create_cert_request(
     gboolean include_device_state,
     GArray** OUT_pca_request,
     GError** error) {
+  CertificateProfile profile = ENTERPRISE_MACHINE_CERTIFICATE;
+  if (!include_stable_id)
+    profile = ENTERPRISE_USER_CERTIFICATE;
+  gchar origin[] = "";
   CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateCertRequest,
-                         include_stable_id,
-                         include_device_state,
+                         profile,
+                         origin,
                          OUT_pca_request);
 }
 gboolean cryptohome_async_tpm_attestation_create_cert_request(
@@ -308,9 +312,35 @@ gboolean cryptohome_async_tpm_attestation_create_cert_request(
     gboolean include_device_state,
     gint *OUT_async_id,
     GError** error) {
+  CertificateProfile profile = ENTERPRISE_MACHINE_CERTIFICATE;
+  if (!include_stable_id)
+    profile = ENTERPRISE_USER_CERTIFICATE;
+  gchar origin[] = "";
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
-                         include_stable_id,
-                         include_device_state,
+                         profile,
+                         origin,
+                         OUT_async_id);
+}
+gboolean cryptohome_tpm_attestation_create_cert_request_by_profile(
+    Cryptohome *self,
+    gint certificate_profile,
+    gchar* request_origin,
+    GArray** OUT_pca_request,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateCertRequest,
+                         certificate_profile,
+                         request_origin,
+                         OUT_pca_request);
+}
+gboolean cryptohome_async_tpm_attestation_create_cert_request_by_profile(
+    Cryptohome *self,
+    gint certificate_profile,
+    gchar* request_origin,
+    gint *OUT_async_id,
+    GError** error) {
+  CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
+                         certificate_profile,
+                         request_origin,
                          OUT_async_id);
 }
 gboolean cryptohome_tpm_attestation_finish_cert_request(

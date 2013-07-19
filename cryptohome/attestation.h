@@ -93,16 +93,14 @@ class Attestation : public base::PlatformThread::Delegate {
   // method can only succeed if IsEnrolled() returns true.
   //
   // Parameters
-  //   include_stable_id - Whether the PCA should include a stable identifier in
-  //                       the certificate.  A stable identifier will remain the
-  //                       same even if the TPM owner is cleared.
-  //   include_device_state - Whether the PCA should include device state
-  //                          information in the certificate.
+  //   profile - Specifies the type of certificate to be requested.
+  //   origin - Some certificate requests require information about the origin
+  //            of the request.  If no origin is needed, this can be empty.
   //   pca_request - The request to be sent to the Privacy CA.
   //
   // Returns true on success.
-  virtual bool CreateCertRequest(bool include_stable_id,
-                                 bool include_device_state,
+  virtual bool CreateCertRequest(CertificateProfile profile,
+                                 const std::string& origin,
                                  chromeos::SecureBlob* pca_request);
 
   // Finishes the certificate request process.  The |pca_response| from the PCA

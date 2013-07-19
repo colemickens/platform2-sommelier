@@ -105,9 +105,23 @@ message AttestationEnrollmentResponse {
 }
 
 enum CertificateProfile {
+  // A certificate intended for enterprise-owned devices.  It has the following
+  // subjectName fields:
+  //   CN=<stable device identifier>
+  //   OU=state:[verified|developer]
+  //   O=Chrome Device
   ENTERPRISE_MACHINE_CERTIFICATE = 0;
+  // A certificate intended for enterprise-owned user accounts.  It has the
+  // following subjectName fields:
+  //   OU=state:[verified|developer]
+  //   O=Chrome Device
   ENTERPRISE_USER_CERTIFICATE = 1;
-  OUTPUT_PROTECTION_CERTIFICATE = 2;
+  // A certificate intended for platform verification by providers of protected
+  // content.  It has the following subjectName fields:
+  //   CN=<origin-specific device identifier>
+  //   OU=<origin>
+  //   O=Chrome Device Content Protection
+  CONTENT_PROTECTION_CERTIFICATE = 2;
 }
 
 // The certificate request to be sent to the attestation server.
@@ -129,7 +143,6 @@ message AttestationCertificateRequest {
   optional string origin = 12;
 
   // The following fields are deprecated.
-  // TODO(dkrahn): Remove these when they are no longer in use.
 
   // Set this field to true to include the stable ID in the issued certificate.
   optional bool include_stable_id = 8;

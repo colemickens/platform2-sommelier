@@ -153,6 +153,14 @@ const char* kDefaultEntropySource = "/dev/urandom";
 // PKCS#11.
 const char* kMetricNamePkcs11InitFail = "Cryptohome.PKCS11InitFail";
 
+// A helper function which maps an integer to a valid CertificateProfile.
+CertificateProfile GetProfile(int profile_value) {
+  const int kMaxProfileEnum = 2;
+  if (profile_value < 0 || profile_value > kMaxProfileEnum)
+    profile_value = kMaxProfileEnum;
+  return static_cast<CertificateProfile>(profile_value);
+};
+
 class TpmInitStatus : public CryptohomeEventBase {
  public:
   TpmInitStatus()
@@ -1427,8 +1435,8 @@ gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
   return TRUE;
 }
 
-gboolean Service::TpmAttestationCreateCertRequest(gboolean include_stable_id,
-                                                  gboolean include_device_state,
+gboolean Service::TpmAttestationCreateCertRequest(gint certificate_profile,
+                                                  gchar* request_origin,
                                                   GArray** OUT_pca_request,
                                                   GError** error) {
   *OUT_pca_request = g_array_new(false, false, sizeof(SecureBlob::value_type));
@@ -1438,16 +1446,16 @@ gboolean Service::TpmAttestationCreateCertRequest(gboolean include_stable_id,
     return TRUE;
   }
   chromeos::SecureBlob blob;
-  if (attestation->CreateCertRequest(include_stable_id,
-                                     include_device_state,
+  if (attestation->CreateCertRequest(GetProfile(certificate_profile),
+                                     request_origin,
                                      &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
   return TRUE;
 }
 
 gboolean Service::AsyncTpmAttestationCreateCertRequest(
-    gboolean include_stable_id,
-    gboolean include_device_state,
+    gint certificate_profile,
+    gchar* request_origin,
     gint* OUT_async_id,
     GError** error) {
   AttestationTaskObserver* observer =
@@ -1455,8 +1463,8 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
   scoped_refptr<CreateCertRequestTask> task =
       new CreateCertRequestTask(observer,
                                 tpm_init_->get_attestation(),
-                                include_stable_id,
-                                include_device_state);
+                                GetProfile(certificate_profile),
+                                request_origin);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(
       FROM_HERE,

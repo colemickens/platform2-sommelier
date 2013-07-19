@@ -495,8 +495,8 @@ bool Attestation::Enroll(const SecureBlob& pca_response) {
   return true;
 }
 
-bool Attestation::CreateCertRequest(bool include_stable_id,
-                                    bool include_device_state,
+bool Attestation::CreateCertRequest(CertificateProfile profile,
+                                    const string& origin,
                                     SecureBlob* pca_request) {
   if (!IsEnrolled()) {
     LOG(ERROR) << __func__ << ": Device is not enrolled for attestation.";
@@ -511,8 +511,9 @@ bool Attestation::CreateCertRequest(bool include_stable_id,
   request_pb.set_message_id(message_id);
   request_pb.set_identity_credential(
       database_pb_.identity_key().identity_credential());
-  request_pb.set_include_stable_id(include_stable_id);
-  request_pb.set_include_device_state(include_device_state);
+  request_pb.set_profile(profile);
+  if (!origin.empty())
+    request_pb.set_origin(origin);
   SecureBlob nonce;
   if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": GetRandomData failed.";

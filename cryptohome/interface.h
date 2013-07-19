@@ -208,6 +208,18 @@ gboolean cryptohome_async_tpm_attestation_create_cert_request(
     gboolean include_device_state,
     gint *OUT_async_id,
     GError** error);
+gboolean cryptohome_tpm_attestation_create_cert_request_by_profile(
+    Cryptohome *self,
+    gint certificate_profile,
+    gchar* request_origin,
+    GArray** OUT_pca_request,
+    GError** error);
+gboolean cryptohome_async_tpm_attestation_create_cert_request_by_profile(
+    Cryptohome *self,
+    gint certificate_profile,
+    gchar* request_origin,
+    gint *OUT_async_id,
+    GError** error);
 gboolean cryptohome_tpm_attestation_finish_cert_request(
     Cryptohome *self,
     GArray* pca_response,
