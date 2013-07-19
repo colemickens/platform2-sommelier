@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include <string>
+#include <queue>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -131,9 +132,10 @@ class ChildJob : public ChildJobInterface {
   // sessions.
   static const char kMultiProfileFlag[];
 
-  // Minimum amount of time (in seconds) that should pass since the job was
-  // started for it to be restarted if it exits or crashes.
-  static const int kRestartWindow;
+  // After kRestartTries in kRestartWindowSeconds, the ChildJob will indicate
+  // that it should be stopped.
+  static const uint kRestartTries;
+  static const time_t kRestartWindowSeconds;
 
  private:
   // Helper for CreateArgV() that copies a vector of arguments into argv.
@@ -173,8 +175,9 @@ class ChildJob : public ChildJobInterface {
   // Wrapper for system library calls.  Owned by the owner of this object.
   SystemUtils* system;
 
-  // The last time the job was run.
-  time_t last_start_;
+  // FIFO of job-start timestamps. Used to determine if we've restarted too many
+  // times too quickly.
+  std::queue<time_t> start_times_;
 
   // Indicates if we removed login manager flag when session started so we
   // add it back when session stops.

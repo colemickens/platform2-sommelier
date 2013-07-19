@@ -83,7 +83,7 @@ void ChildJobTest::SetUp() {
 }
 
 TEST_F(ChildJobTest, InitializationTest) {
-  EXPECT_EQ(0, job_->last_start_);
+
   EXPECT_FALSE(job_->removed_login_manager_flag_);
   EXPECT_FALSE(job_->IsDesiredUidSet());
   std::vector<std::string> job_args = job_->ExportArgv();
@@ -100,19 +100,23 @@ TEST_F(ChildJobTest, DesiredUidSetTest) {
 
 TEST_F(ChildJobTest, ShouldStopTest) {
   EXPECT_CALL(utils_, time(NULL))
-      .WillOnce(Return(ChildJob::kRestartWindow))
-      .WillOnce(Return(ChildJob::kRestartWindow));
+      .WillRepeatedly(Return(ChildJob::kRestartWindowSeconds));
+  for (uint i = 0; i < ChildJob::kRestartTries - 1; ++i)
+    job_->RecordTime();
+  // We haven't yet saturated the list of start times, so...
+  EXPECT_FALSE(job_->ShouldStop());
+
+  // Go ahead and saturate.
   job_->RecordTime();
-  EXPECT_NE(0, job_->last_start_);
+  EXPECT_NE(0, job_->start_times_.front());
   EXPECT_TRUE(job_->ShouldStop());
 }
 
 TEST_F(ChildJobTest, ShouldNotStopTest) {
   EXPECT_CALL(utils_, time(NULL))
-      .WillOnce(Return(ChildJob::kRestartWindow))
-      .WillOnce(Return(3 * ChildJob::kRestartWindow));
+      .WillOnce(Return(ChildJob::kRestartWindowSeconds))
+      .WillOnce(Return(3 * ChildJob::kRestartWindowSeconds));
   job_->RecordTime();
-  EXPECT_NE(0, job_->last_start_);
   EXPECT_FALSE(job_->ShouldStop());
 }
 

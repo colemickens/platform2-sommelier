@@ -16,7 +16,9 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <deque>
 #include <string>
+#include <queue>
 #include <vector>
 
 #include <base/basictypes.h>
@@ -26,7 +28,6 @@
 #include "login_manager/system_utils.h"
 
 namespace login_manager {
-
 // static
 const int ChildJobInterface::kCantSetUid = 127;
 const int ChildJobInterface::kCantSetGid = 128;
@@ -43,7 +44,9 @@ const char ChildJob::kLoginProfileFlag[] = "--login-profile=";
 const char ChildJob::kMultiProfileFlag[] = "--multi-profiles";
 
 // static
-const int ChildJob::kRestartWindow = 1;
+const uint ChildJob::kRestartTries = 4;
+// static
+const time_t ChildJob::kRestartWindowSeconds = 60;
 
 ChildJob::ChildJob(const std::vector<std::string>& arguments,
                    bool support_multi_profile,
@@ -52,7 +55,7 @@ ChildJob::ChildJob(const std::vector<std::string>& arguments,
         desired_uid_(0),
         is_desired_uid_set_(false),
         system(utils),
-        last_start_(0),
+        start_times_(std::deque<time_t>(kRestartTries, 0)),
         removed_login_manager_flag_(false),
         session_already_started_(false),
         support_multi_profile_(support_multi_profile) {
@@ -74,11 +77,13 @@ ChildJob::~ChildJob() {
 }
 
 bool ChildJob::ShouldStop() const {
-  return (system->time(NULL) - last_start_ < kRestartWindow);
+  return (system->time(NULL) - start_times_.front() < kRestartWindowSeconds);
 }
 
 void ChildJob::RecordTime() {
-  last_start_ = system->time(NULL);
+  start_times_.push(system->time(NULL));
+  start_times_.pop();
+  DCHECK(start_times_.size() == kRestartTries);
 }
 
 void ChildJob::Run() {
