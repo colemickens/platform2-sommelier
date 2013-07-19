@@ -109,7 +109,7 @@ static const Log common_logs[] = {
   },
   {
     "i915_error_state",
-    "/bin/cat /sys/kernel/debug/dri/0/i915_error_state 2> /dev/null",
+    "/usr/bin/xz -c /sys/kernel/debug/dri/0/i915_error_state 2> /dev/null",
     SandboxedProcess::kDefaultUser,
     kDebugfsGroup,
   },
