@@ -303,6 +303,10 @@ void StateController::HandleUserActivity() {
 void StateController::HandleVideoActivity() {
   DCHECK(initialized_);
   VLOG(1) << "Saw video activity";
+  if (screen_dimmed_ || screen_turned_off_) {
+    VLOG(1) << "Ignoring video since screen is dimmed or off";
+    return;
+  }
   last_video_activity_time_ = clock_->GetCurrentTime();
   UpdateState();
 }

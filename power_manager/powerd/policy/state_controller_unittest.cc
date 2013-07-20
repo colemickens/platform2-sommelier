@@ -352,14 +352,24 @@ TEST_F(StateControllerTest, VideoDefersDimming) {
   EXPECT_EQ(kNoActions, delegate_.GetActions());
 
   // After the video stops, the dimming delay should happen as expected.
-  ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
+  ResetLastStepDelay();
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 
-  // Video activity should undim the screen at this point.
+  // Video activity should be ignored while the screen is dimmed or off.
   controller_.HandleVideoActivity();
-  EXPECT_EQ(kScreenUndim, delegate_.GetActions());
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
+  ASSERT_TRUE(StepTimeAndTriggerTimeout(default_ac_screen_off_delay_));
+  EXPECT_EQ(kScreenOff, delegate_.GetActions());
+  controller_.HandleVideoActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
 
-  // The dimming delay should fire again after the video stops.
+  // After the user starts another video, the dimming delay should fire
+  // again after the video stops.
+  controller_.HandleUserActivity();
+  EXPECT_EQ(JoinActions(kScreenUndim, kScreenOn, NULL), delegate_.GetActions());
+  controller_.HandleVideoActivity();
+  EXPECT_EQ(kNoActions, delegate_.GetActions());
   ASSERT_TRUE(AdvanceTimeAndTriggerTimeout(default_ac_screen_dim_delay_));
   EXPECT_EQ(kScreenDim, delegate_.GetActions());
 }
