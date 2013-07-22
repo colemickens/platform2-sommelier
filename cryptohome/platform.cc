@@ -7,6 +7,7 @@
 #include "platform.h"
 
 #include <errno.h>
+#include <dirent.h>
 #include <fcntl.h>
 #include <grp.h>
 #include <limits.h>
@@ -611,13 +612,28 @@ bool Platform::SyncFile(const std::string& path) {
 }
 
 bool Platform::SyncPath(const std::string& path) {
-  int fd = HANDLE_EINTR(open(path.c_str(), O_WRONLY));
+  int fd = -1;
+  DIR* dir = NULL;
+  if (file_util::DirectoryExists(FilePath(path))) {
+    dir = opendir(path.c_str());
+    if (!dir) {
+      PLOG(WARNING) << "Could not open directory " << path << " for syncing";
+      return false;
+    }
+    fd = dirfd(dir);
+  } else {
+    fd = HANDLE_EINTR(open(path.c_str(), O_WRONLY));
+  }
   if (fd < 0) {
     PLOG(WARNING) << "Could not open " << path << " for syncing";
     return false;
   }
   int result = fsync(fd);
-  ignore_result(HANDLE_EINTR(close(fd)));
+  if (dir) {
+    ignore_result(closedir(dir));
+  } else {
+    ignore_result(HANDLE_EINTR(close(fd)));
+  }
   if (result < 0) {
     PLOG(WARNING) << "Failed to sync " << path;
     return false;
