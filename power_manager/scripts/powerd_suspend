@@ -147,6 +147,14 @@ setup_dark_resume() {
     fi
 }
 
+# Encourage people to use powerd_dbus_suspend instead of running this
+# script directly so that e.g. suspend delays and VT locking will happen.
+if ! ps -ocommand= -p $PPID | grep -q powerd_setuid_helper; then
+  echo "This script is called by powerd. Please run powerd_dbus_suspend" 1>&2
+  echo "to manually exercise the full suspend path." 1>&2
+  exit 1
+fi
+
 # Note: Don't change or remove this line without also updating
 # send_metrics_on_resume.
 log_msg "Going to suspend-to-RAM state: args=$@"
