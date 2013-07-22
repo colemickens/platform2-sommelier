@@ -28,6 +28,9 @@ bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
   return (e1->sample_info->time < e2->sample_info->time);
 }
 
+// Name of the kernel swapper process.
+const char kSwapperCommandName[] = "swapper";
+
 }  // namespace
 
 PerfParser::PerfParser() : do_remap_(false),
@@ -209,8 +212,14 @@ bool PerfParser::ProcessEvents() {
         VLOG(1) << "EXIT: " << event.fork.ppid << ":" << event.fork.ptid;
         ++stats_.num_exit_events;
         break;
-      case PERF_RECORD_LOST:
       case PERF_RECORD_COMM:
+        VLOG(1) << "COMM: " << event.comm.pid << ":" << event.comm.tid << ": "
+                << event.comm.comm;
+        ++stats_.num_comm_events;
+        pidtid_to_comm_map_[std::make_pair(event.comm.pid, event.comm.tid)] =
+            event.comm.comm;
+        break;
+      case PERF_RECORD_LOST:
       case PERF_RECORD_THROTTLE:
       case PERF_RECORD_UNTHROTTLE:
       case PERF_RECORD_READ:
@@ -226,6 +235,7 @@ bool PerfParser::ProcessEvents() {
   // Print stats collected from parsing.
   LOG(INFO) << "Parser processed: ";
   LOG(INFO) << "  " << stats_.num_mmap_events << " MMAP events";
+  LOG(INFO) << "  " << stats_.num_comm_events << " COMM events";
   LOG(INFO) << "  " << stats_.num_fork_events << " FORK events";
   LOG(INFO) << "  " << stats_.num_exit_events << " EXIT events";
   LOG(INFO) << "  " << stats_.num_sample_events << " SAMPLE events";
@@ -237,6 +247,20 @@ bool PerfParser::ProcessEvents() {
 
 bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   bool mapping_failed = false;
+
+  // Find the associated command.
+  uint32 pid = parsed_event->sample_info->pid;
+  uint32 tid = parsed_event->sample_info->tid;
+  PidTid pidtid = std::make_pair(pid, tid);
+  if (pidtid_to_comm_map_.find(pidtid) != pidtid_to_comm_map_.end()) {
+    parsed_event->command = pidtid_to_comm_map_[pidtid];
+  } else if (pid == 0) {
+    parsed_event->command = kSwapperCommandName;
+  } else {  // If no command found, use the pid as command.
+    char string_buf[sizeof(parsed_event->raw_event->comm.comm)];
+    snprintf(string_buf, arraysize(string_buf), "%u", pid);
+    parsed_event->command = string_buf;
+  }
 
   struct ip_event& event = parsed_event->raw_event->ip;
 
@@ -409,10 +433,6 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
 
 bool PerfParser::MapForkEvent(const struct fork_event& event) {
   uint32 pid = event.pid;
-  if (pid == event.ppid) {
-    DLOG(INFO) << "Forked process should not have the same pid as the parent.";
-    return true;
-  }
   if (process_mappers_.find(pid) != process_mappers_.end()) {
     DLOG(INFO) << "Found an existing process mapper with the new process's ID.";
     return true;
@@ -421,6 +441,13 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
     LOG(ERROR) << "Forked process ID has previously been mapped to a parent "
                << "process.";
     return false;
+  }
+
+  PidTid parent = std::make_pair(event.ppid, event.ptid);
+  PidTid child = std::make_pair(event.pid, event.tid);
+  if (parent != child &&
+      pidtid_to_comm_map_.find(parent) != pidtid_to_comm_map_.end()) {
+    pidtid_to_comm_map_[child] = pidtid_to_comm_map_[parent];
   }
 
   process_mappers_[pid] = new AddressMapper;

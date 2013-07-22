@@ -6,6 +6,7 @@
 #define PERF_PARSER_H_
 
 #include <map>
+#include <utility>
 
 #include "base/basictypes.h"
 
@@ -22,6 +23,8 @@ struct ParsedEvent {
   // For mmap events, use this to count the number of samples that are in this
   // region.
   uint32 num_samples_in_mmap_region;
+
+  string command;  // Command associated with this sample.
 
   struct DSOAndOffset {
     string dso_name;
@@ -44,6 +47,7 @@ struct PerfEventStats {
   // Number of each type of event.
   uint32 num_sample_events;
   uint32 num_mmap_events;
+  uint32 num_comm_events;
   uint32 num_fork_events;
   uint32 num_exit_events;
 
@@ -109,6 +113,9 @@ class PerfParser : public PerfReader {
   bool Localize(const std::map<string, string>& build_ids_to_filenames);
 
  protected:
+  // Defines a type for a pid:tid pair.
+  typedef std::pair<uint32, uint32> PidTid;
+
   // Sort |parsed_events_| by time, storing the results in
   // |parsed_events_sorted_by_time_|.
   void SortParsedEvents();
@@ -141,6 +148,9 @@ class PerfParser : public PerfReader {
   AddressMapper* kernel_mapper_;
   std::map<uint32, AddressMapper*> process_mappers_;
   std::map<uint32, uint32> child_to_parent_pid_map_;
+
+  // Maps pid/tid to commands.
+  std::map<PidTid, string> pidtid_to_comm_map_;
 
   // Set this flag to discard non-sample events that don't have any associated
   // sample events. e.g. MMAP regions with no samples in them.
