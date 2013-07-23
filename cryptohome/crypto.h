@@ -138,7 +138,8 @@ class Crypto {
 
   // Note the following 4 methods are only to be used if there is a strong
   // reason to avoid talking to the TPM e.g. needing to flush some encrypted
-  // data periodically to disk and you don't want to reseal a key each time.
+  // data periodically to disk and you don't want to seal a key each time.
+  // Otherwise, a user should use Encrypt/DecryptWithTpm.
 
   // Creates a randomly generated aes key and seals it to the TPM's PCR0.
   bool CreateSealedKey(chromeos::SecureBlob* aes_key,

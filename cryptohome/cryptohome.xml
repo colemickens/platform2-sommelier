@@ -302,6 +302,14 @@
     <method name="InstallAttributesIsFirstInstall">
       <arg type="b" name="is_first_install" direction="out" />
     </method>
+    <method name="StoreEnrollmentState">
+      <arg type="ay" name="enrollment_state" direction="in" />
+      <arg type="b" name="success" direction="out" />
+    </method>
+    <method name="LoadEnrollmentState">
+      <arg type="ay" name="enrollment_state" direction="out" />
+      <arg type="b" name="success" direction="out" />
+    </method>
     <signal name="TpmInitStatus">
       <arg type="b" name="ready" />
       <arg type="b" name="owned" />

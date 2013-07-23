@@ -356,7 +356,17 @@ class Service : public chromeos::dbus::AbstractDbusService,
   virtual gboolean InstallAttributesIsFirstInstall(gboolean* OUT_first_install,
                                                    GError** error);
 
+  virtual gboolean StoreEnrollmentState(GArray* enrollment_state,
+                                        gboolean* OUT_success,
+                                        GError** error);
+
+  virtual gboolean LoadEnrollmentState(GArray** OUT_enrollment_state,
+                                       gboolean* OUT_success,
+                                       GError** error);
+
  protected:
+  FRIEND_TEST(Standalone, StoreEnrollmentState);
+  FRIEND_TEST(Standalone, LoadEnrollmentState);
   virtual GMainLoop *main_loop() { return loop_; }
 
   // Called periodically on Mount thread to initiate automatic disk

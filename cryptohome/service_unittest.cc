@@ -15,9 +15,11 @@
 #include <gtest/gtest.h>
 #include <policy/libpolicy.h>
 #include <policy/mock_device_policy.h>
+#include <string>
 
 #include "crypto.h"
 #include "make_tests.h"
+#include "mock_crypto.h"
 #include "mock_homedirs.h"
 #include "mock_install_attributes.h"
 #include "mock_mount.h"
@@ -419,6 +421,98 @@ TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
 
   // Expect that CleanUpStaleMounts() tells us it skipped no mounts.
   EXPECT_FALSE(service_.CleanUpStaleMounts(false));
+}
+
+TEST(Standalone, StoreEnrollmentState) {
+  NiceMock<MockInstallAttributes> attrs;
+  MockPlatform platform;
+  MockCrypto crypto;
+  Service service;
+  service.set_crypto(&crypto);
+  service.set_install_attrs(&attrs);
+  service.set_platform(&platform);
+
+  chromeos::glib::ScopedArray test_array(g_array_new(FALSE, FALSE, 1));
+  std::string data = "123456";
+  g_array_append_vals(test_array.get(), data.data(), data.length());
+
+  // Helper strings for setting install attributes.
+  static const char true_str[] = "true";
+  const chromeos::Blob true_value(true_str, true_str + arraysize(true_str));
+
+  static const char false_str[] = "false";
+  const chromeos::Blob false_value(false_str, false_str + arraysize(false_str));
+
+  gboolean success;
+  GError* error = NULL;
+
+  // Set us as non-enterprise enrolled.
+  EXPECT_CALL(attrs, Get("enterprise.owned", _)).WillOnce(
+      DoAll(SetArgumentPointee<1>(false_value), Return(true)));
+  service.DetectEnterpriseOwnership();
+
+  // Should not enterprise-enroll this device.
+  EXPECT_TRUE(service.StoreEnrollmentState(test_array.get(), &success, &error));
+  EXPECT_FALSE(success);
+
+  // Set us as enterprise enrolled.
+  EXPECT_CALL(attrs, Get("enterprise.owned", _)).WillOnce(
+      DoAll(SetArgumentPointee<1>(true_value), Return(true)));
+  service.DetectEnterpriseOwnership();
+
+  std::string encrypted_data = "so_encrypted";
+
+  // Test successful encryption.
+  EXPECT_CALL(crypto, EncryptWithTpm(_,_)).WillOnce(DoAll(
+      SetArgumentPointee<1>(encrypted_data), Return(true)));
+
+  // Should write file as this device is enterprise enrolled.
+  EXPECT_CALL(platform, WriteStringToFile(
+      "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
+      encrypted_data)).WillOnce(Return(true));
+  EXPECT_TRUE(service.StoreEnrollmentState(test_array.get(), &success, &error));
+  EXPECT_TRUE(success);
+}
+
+TEST(Standalone, LoadEnrollmentState) {
+  MockPlatform platform;
+  MockCrypto crypto;
+  Service service;
+  service.set_crypto(&crypto);
+  service.set_platform(&platform);
+
+  gboolean success;
+  GError* error = NULL;
+  GArray* output = NULL;
+
+  // Convert to blob -- this is what we're reading from the file.
+  std::string data = "123456";
+  const chromeos::Blob data_blob(data.c_str(), data.c_str() + data.length());
+  std::string decrypted_data = "decrypted";
+  SecureBlob decrypted_blob(decrypted_data.data(), decrypted_data.size());
+
+  // Assume the data is there, we should return the value and success.
+  EXPECT_CALL(platform, ReadFile(
+      "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
+      _)).WillOnce(DoAll(SetArgumentPointee<1>(data_blob), Return(true)));
+
+  EXPECT_CALL(crypto, DecryptWithTpm(_, _)).WillOnce(DoAll(
+      SetArgumentPointee<1>(decrypted_blob), Return(TRUE)));
+
+  EXPECT_TRUE(service.LoadEnrollmentState(&output, &success, &error));
+  EXPECT_TRUE(success);
+
+  // Convert output array to a blob for comparison.
+  SecureBlob output_blob(output->data, output->len);
+  EXPECT_EQ(decrypted_blob, output_blob);
+
+  // Assume we fail to read the data, we should not return success.
+  EXPECT_CALL(platform, ReadFile(
+      "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb",
+      _)).WillOnce(Return(false));
+
+  EXPECT_TRUE(service.LoadEnrollmentState(&output, &success, &error));
+  EXPECT_FALSE(success);
 }
 
 }  // namespace cryptohome

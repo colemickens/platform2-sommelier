@@ -342,6 +342,16 @@ gboolean cryptohome_install_attributes_is_first_install(
                                                 Cryptohome *self,
                                                 gboolean* OUT_is_first_install,
                                                 GError** error);
+gboolean cryptohome_store_enrollment_state(
+    Cryptohome *self,
+    GArray* enrollment_state,
+    gboolean* OUT_success,
+    GError** error);
+gboolean cryptohome_load_enrollment_state(
+    Cryptohome *self,
+    GArray** OUT_enrollment_state,
+    gboolean* OUT_success,
+    GError** error);
 
 }  // namespace gobject
 }  // namespace cryptohome

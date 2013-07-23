@@ -153,6 +153,11 @@ const char* kDefaultEntropySource = "/dev/urandom";
 // PKCS#11.
 const char* kMetricNamePkcs11InitFail = "Cryptohome.PKCS11InitFail";
 
+// Location of the path to store basic device enrollment information that
+// will persist across powerwashes.
+const char* kPreservedEnrollmentStatePath =
+    "/mnt/stateful_partition/unencrypted/preserve/enrollment_state.epb";
+
 // A helper function which maps an integer to a valid CertificateProfile.
 CertificateProfile GetProfile(int profile_value) {
   const int kMaxProfileEnum = 2;
@@ -1818,6 +1823,56 @@ gboolean Service::InstallAttributesIsFirstInstall(
     gboolean* OUT_is_first_install,
     GError** error) {
   *OUT_is_first_install = (install_attrs_->is_first_install() == true);
+  return TRUE;
+}
+
+gboolean Service::StoreEnrollmentState(GArray* enrollment_state,
+                                       gboolean* OUT_success,
+                                       GError** error) {
+  *OUT_success = false;
+  if (!enterprise_owned_) {
+    LOG(ERROR) << "Not preserving enrollment state as we are not enrolled.";
+    return TRUE;
+  }
+  SecureBlob data_blob(enrollment_state->data, enrollment_state->len);
+  std::string encrypted_data;
+  if (!crypto_->EncryptWithTpm(data_blob, &encrypted_data)) {
+    return TRUE;
+  }
+  if (!platform_->WriteStringToFile(kPreservedEnrollmentStatePath,
+                                    encrypted_data)) {
+    LOG(ERROR) << "Failed to write out enrollment state to "
+               << kPreservedEnrollmentStatePath;
+    return TRUE;
+  }
+  *OUT_success = true;
+  return TRUE;
+}
+
+gboolean Service::LoadEnrollmentState(GArray** OUT_enrollment_state,
+                                      gboolean* OUT_success,
+                                      GError** error) {
+  *OUT_success = false;
+  chromeos::Blob enrollment_blob;
+  if (!platform_->ReadFile(kPreservedEnrollmentStatePath,
+                           &enrollment_blob)) {
+    LOG(ERROR) << "Failed to read out enrollment state from "
+               << kPreservedEnrollmentStatePath;
+    return TRUE;
+  }
+  std::string enrollment_string(
+      reinterpret_cast<const char*>(&enrollment_blob.front()),
+      enrollment_blob.size());
+  SecureBlob secure_data;
+  if (!crypto_->DecryptWithTpm(enrollment_string,
+                               &secure_data)) {
+    return TRUE;
+  }
+  *OUT_enrollment_state = g_array_new(false, false, 1);
+  g_array_append_vals(*OUT_enrollment_state,
+                      reinterpret_cast<const char*>(&secure_data[0]),
+                      secure_data.size());
+  *OUT_success = true;
   return TRUE;
 }
 
