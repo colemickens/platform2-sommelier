@@ -9,15 +9,60 @@
 CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
 NUM_DAYS_TO_PRESERVE=7
 STATEFUL="/mnt/stateful_partition"
+# Threshold for additional histogram reporting (in 1KB blocks), 1GB in total.
+ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
+SHADOW="/home/.shadow"
 
 # Get the percentage of space used on the stateful partition.
-get_stateful_space() {
+get_stateful_usage_percent() {
   local stateful_space="$(df -P ${STATEFUL} | grep -m 1 ${STATEFUL})"
   # Remove everything after and including the "%"
   stateful_space="${stateful_space%%%*}"
   # Remove all fields except the last one.
   stateful_space="${stateful_space##* }"
   echo $stateful_space
+}
+
+# Get the free space on the stateful partition, in 1KB blocks.
+get_stateful_free_space_blocks() {
+  df -P ${STATEFUL} | grep -m 1 ${STATEFUL} | awk '{print $4}'
+}
+
+report_additional_statistics() {
+  # Number of users on device.
+  local user_count="$(find $SHADOW -maxdepth 1 -mindepth  1 -type d | wc -l)"
+  metrics_client -s Platform.DiskUsage.UsersOnDevice "${user_count}"
+
+  # Handle case when there are no users on device.
+  if [ "${user_count}" -le 0 ]; then
+    return 0
+  fi
+
+  local users_category=${user_count}Users
+  if [ "${user_count}" -eq 1 ]; then
+    users_category=1User
+  fi
+  if [ "${user_count}" -ge 7 ]; then
+    users_category=7OrMoreUsers
+  fi
+
+  local stats
+  local sum_and_max_prog='{ sum += $1;
+                            if (max < $1) max = $1;
+                          }
+                          END { print sum, max }'
+  # All pass-through directories.
+  for dir in Cache Downloads GCache; do
+    # Calculate sum and maximum over all user_count for each directory.
+    stats=$(du -sk $SHADOW/*/vault/user/$dir 2> /dev/null |
+            awk "${sum_and_max_prog}")
+    metrics_client Platform.DiskUsage.${dir}_Max.${users_category} \
+                   ${stats##* } $METRICS_ARGS
+    # Since disk usage is several orders higher that number of users, it is safe
+    # to use integer division here.
+    metrics_client Platform.DiskUsage.${dir}_Avg.${users_category} \
+                   $(( ${stats%% *} / ${user_count} )) $METRICS_ARGS
+  done
 }
 
 remove_old_dated_files() {
@@ -85,4 +130,10 @@ metrics_client Platform.DiskUsageChronos \
                $(du -sxk /home/chronos | awk '{print $1}') $METRICS_ARGS
 
 # Report overall stateful usage.
-metrics_client -e Platform.StatefulUsage "$(get_stateful_space)" 101
+metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
+
+# Report additional metrics if we are low on free space.
+if [ "$(get_stateful_free_space_blocks)" -le \
+     "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
+  report_additional_statistics
+fi
