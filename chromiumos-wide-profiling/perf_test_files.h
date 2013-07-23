@@ -68,6 +68,10 @@ const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.target.throttled",
   // From system running kernel-next.
   "perf.data.piped.target.next",
+
+  // Piped data with extra data at end.
+  "perf.data.piped.extrabyte",
+  "perf.data.piped.extradata",
 };
 
 const char* kPerfPipedCrossEndianDataFiles[] = {

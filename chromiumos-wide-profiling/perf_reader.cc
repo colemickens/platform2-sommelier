@@ -1146,8 +1146,16 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
         = reinterpret_cast<const union piped_data_block*>(&data[offset]);
     union piped_data_block block;
 
-    // Copy the header and swap bytes if necessary.
     CheckNoEventHeaderPadding();
+
+    if (offset + sizeof(block.header) > data.size()) {
+      LOG(ERROR) << "Not enough bytes left in data to read header.  Required: "
+                 << sizeof(block.header) << " bytes.  Available: "
+                 << data.size() - offset << " bytes.";
+      return true;
+    }
+
+    // Copy the header and swap bytes if necessary.
     memcpy(&block.header, block_data, sizeof(block.header));
     if (is_cross_endian_) {
       ByteSwap(&block.header.type);
@@ -1156,8 +1164,10 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     }
 
     if (data.size() < offset + block.header.size) {
-      LOG(ERROR) << "Not enough bytes to read piped event";
-      return false;
+      LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
+                 << block.header.size << " bytes.  Available: "
+                 << data.size() - offset << " bytes.";
+      return true;
     }
 
     size_t new_offset = offset + sizeof(block.header);
