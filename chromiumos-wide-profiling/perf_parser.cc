@@ -407,7 +407,7 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
 
     // Sanity check to make sure pgoff is valid.
     // TODO(sque): does not protect against wraparound.
-    CHECK_GE((void*)(start + pgoff), (void*)start);
+    CHECK_GE(start + pgoff, start);
     len -= event->pgoff;
     start += event->pgoff;
     pgoff = 0;
@@ -432,6 +432,13 @@ bool PerfParser::MapMmapEvent(struct mmap_event* event, uint64 id) {
 }
 
 bool PerfParser::MapForkEvent(const struct fork_event& event) {
+  PidTid parent = std::make_pair(event.ppid, event.ptid);
+  PidTid child = std::make_pair(event.pid, event.tid);
+  if (parent != child &&
+      pidtid_to_comm_map_.find(parent) != pidtid_to_comm_map_.end()) {
+    pidtid_to_comm_map_[child] = pidtid_to_comm_map_[parent];
+  }
+
   uint32 pid = event.pid;
   if (process_mappers_.find(pid) != process_mappers_.end()) {
     DLOG(INFO) << "Found an existing process mapper with the new process's ID.";
@@ -441,13 +448,6 @@ bool PerfParser::MapForkEvent(const struct fork_event& event) {
     LOG(ERROR) << "Forked process ID has previously been mapped to a parent "
                << "process.";
     return false;
-  }
-
-  PidTid parent = std::make_pair(event.ppid, event.ptid);
-  PidTid child = std::make_pair(event.pid, event.tid);
-  if (parent != child &&
-      pidtid_to_comm_map_.find(parent) != pidtid_to_comm_map_.end()) {
-    pidtid_to_comm_map_[child] = pidtid_to_comm_map_[parent];
   }
 
   process_mappers_[pid] = new AddressMapper;
