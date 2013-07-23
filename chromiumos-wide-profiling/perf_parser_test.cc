@@ -86,13 +86,13 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
 }
 
 void CreateFilenameToBuildIDMap(
-    const std::vector<string>& filenames, int seed,
+    const std::vector<string>& filenames, unsigned int seed,
     std::map<string, string>* filenames_to_build_ids) {
   srand(seed);
   for (size_t i = 0; i < filenames.size(); ++i) {
     u8 build_id[kBuildIDArraySize];
     for (size_t j = 0; j < kBuildIDArraySize; ++j)
-      build_id[j] = rand();
+      build_id[j] = rand_r(&seed);
 
     (*filenames_to_build_ids)[filenames[i]] =
         HexToString(build_id, kBuildIDArraySize);

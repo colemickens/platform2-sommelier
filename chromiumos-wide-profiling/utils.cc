@@ -269,9 +269,9 @@ const char* kSupportedMetadata[] = {
   "total memory",
   "cmdline",
   "event",
-  "sibling cores  ", // CPU topology
-  "sibling threads", // CPU topology
-  "node", // NUMA topology
+  "sibling cores  ",      // CPU topology.
+  "sibling threads",      // CPU topology.
+  "node",                 // NUMA topology.
   NULL,
 };
 
