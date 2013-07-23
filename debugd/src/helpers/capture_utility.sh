@@ -321,7 +321,7 @@ start_capture ()
 # usage displays a help message explaining the available options.
 usage ()
 {
-  echo "Usage: $0 [ --device <device> ] [ --channel <channel> ] "
+  echo "Usage: $0 [ --device <device> ] [ --frequency <frequency> ] "
   echo "        [ --ht-location <above|below> ] "
   echo "        [ --monitor-connection-on <monitored_device> ]"
   echo "        [ --help ]"
