@@ -40,10 +40,6 @@ static bool g_is_initialized = false;
 // to provide access to the user's private slots.
 static chromeos::SecureBlob* g_user_isolate = NULL;
 
-// This event is not signaled until C_Finalize is called and then becomes
-// signaled.
-static WaitableEvent* g_finalize_event = NULL;
-
 // Tear down helper.
 static void TearDown() {
   if (g_is_initialized && !g_is_using_mock && g_proxy) {
@@ -149,11 +145,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   CHECK(g_proxy);
   CHECK(g_user_isolate);
 
-  if (g_finalize_event)
-    delete g_finalize_event;
-  g_finalize_event = new WaitableEvent(true, false);
-  CHECK(g_finalize_event);
-
   g_is_initialized = true;
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -164,8 +155,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   LOG_CK_RV_AND_RETURN_IF(pReserved, CKR_ARGUMENTS_BAD);
   LOG_CK_RV_AND_RETURN_IF(!g_is_initialized, CKR_CRYPTOKI_NOT_INITIALIZED);
-  if (g_finalize_event)
-    g_finalize_event->Signal();
   TearDown();
   VLOG(1) << __func__ << " - CKR_OK";
   return CKR_OK;
@@ -317,9 +306,13 @@ CK_RV C_WaitForSlotEvent(CK_FLAGS flags,
   // Currently, all supported tokens are not removable - i.e. no slot events.
   if (CKF_DONT_BLOCK & flags)
     return CKR_NO_EVENT;
-  // Block until C_Finalize.
-  CHECK(g_finalize_event);
-  g_finalize_event->Wait();
+  // Block until C_Finalize.  A simple mechanism is used here because any
+  // synchronization primitive will be a problem if C_Finalize is called in a
+  // signal handler.
+  while (g_is_initialized) {
+    const useconds_t kPollInterval = 3000000;  // 3 seconds
+    usleep(kPollInterval);
+  }
   return CKR_CRYPTOKI_NOT_INITIALIZED;
 }
 
