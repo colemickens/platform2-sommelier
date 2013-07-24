@@ -124,8 +124,6 @@ class PerfReader {
                           size_t offset, size_t size);
   bool ReadUint64Metadata(const std::vector<char>& data, u32 type,
                           size_t offset, size_t size);
-  bool ReadEventDescMetadata(const std::vector<char>& data, u32 type,
-                             size_t offset, size_t size);
   bool ReadCPUTopologyMetadata(const std::vector<char>& data, u32 type,
                                size_t offset, size_t size);
   bool ReadNUMATopologyMetadata(const std::vector<char>& data, u32 type,

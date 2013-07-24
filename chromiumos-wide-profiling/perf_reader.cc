@@ -726,18 +726,7 @@ bool PerfReader::ReadAttr(const std::vector<char>& data, size_t* offset) {
   size_t ids_offset = ids.offset;
   if (!ReadUniqueIDs(data, num_ids, &ids_offset, &attr.ids))
     return false;
-
-  // Event types are found many times in the perf data file.
-  // Only add this event type if it is not already present.
-  for (size_t i = 0; i < attrs_.size(); ++i) {
-    if (attrs_[i].ids[0] == attr.ids[0])
-      return true;
-  }
   attrs_.push_back(attr);
-  // Even if eventdesc metadata was not present in the input file, we can
-  // construct it from attrs_ and event_types_.
-  if (event_types_.size() != 0)
-    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   return true;
 }
 
@@ -805,18 +794,7 @@ bool PerfReader::ReadEventType(const std::vector<char>& data, size_t* offset) {
   perf_trace_event_type type;
   if (!ReadDataFromVector(data, sizeof(type), "event type", offset, &type))
     return false;
-
-  // Event types are found many times in the perf data file.
-  // Only add this event type if it is not already present.
-  for (size_t i = 0; i < event_types_.size(); ++i) {
-    if (event_types_[i].event_id == type.event_id)
-      return true;
-  }
   event_types_.push_back(type);
-  // Even if eventdesc metadata was not present in the input file, we can
-  // construct it from attrs_ and event_types_.
-  if (attrs_.size() != 0)
-    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   return true;
 }
 
@@ -889,8 +867,6 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
         return false;
       break;
     case HEADER_EVENT_DESC:
-      if (!ReadEventDescMetadata(data, type, metadata_offset, metadata_size))
-        return false;
       break;
     case HEADER_CPU_TOPOLOGY:
       if (!ReadCPUTopologyMetadata(data, type, metadata_offset, metadata_size))
@@ -907,6 +883,9 @@ bool PerfReader::ReadMetadata(const std::vector<char>& data) {
     }
   }
 
+  CHECK_EQ(event_types_.size(), attrs_.size());
+  if (event_types_.size() > 0)
+    metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   return true;
 }
 
@@ -1007,54 +986,6 @@ bool PerfReader::ReadUint64Metadata(const std::vector<char>& data, u32 type,
   }
 
   uint64_metadata_.push_back(uint64_data);
-  return true;
-}
-
-bool PerfReader::ReadEventDescMetadata(const std::vector<char>& data, u32 type,
-                                       size_t offset, size_t size) {
-  // In normal mode, eventdesc just contains duplicate data, so don't bother.
-  bool has_attrs = !attrs_.empty();
-  bool has_event_types = !event_types_.empty();
-  if (has_attrs && has_event_types)
-    return true;
-
-  const size_t kDataUnitSize = sizeof(data[offset]);
-  size_t start_offset = offset;
-  // Skip number of events and size of perf_event_attr struct
-  offset += sizeof(event_desc_num_events) / kDataUnitSize;
-  offset += sizeof(event_desc_attr_size) / kDataUnitSize;
-
-  for (size_t i = 0; (offset - start_offset) < size; ++i) {
-    PerfFileAttr attr;
-    if (!ReadEventAttr(data, &offset, &attr.attr))
-      return false;
-
-    event_desc_num_unique_ids num_ids;
-    if (!ReadDataFromVector(data, sizeof(num_ids), "number of unique ids",
-                            &offset, &num_ids)) {
-      return false;
-    }
-    if (is_cross_endian_)
-      ByteSwap(&num_ids);
-
-    CStringWithLength event_name;
-    if (!ReadStringFromVector(data, is_cross_endian_, &offset, &event_name))
-      return false;
-
-    if (!has_event_types) {
-      struct perf_trace_event_type event_type;
-      event_type.event_id = i;
-      snprintf(event_type.name, sizeof(event_type.name), "%s",
-               event_name.str.c_str());
-      event_types_.push_back(event_type);
-    }
-
-    if (!ReadUniqueIDs(data, num_ids, &offset, &attr.ids))
-      return false;
-
-    if (!has_attrs)
-      attrs_.push_back(attr);
-  }
   return true;
 }
 
@@ -1189,9 +1120,6 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       result = ReadEventType(data, &new_offset);
       break;
     case PERF_RECORD_HEADER_EVENT_DESC:
-      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
-      result = ReadEventDescMetadata(data, HEADER_EVENT_DESC, new_offset,
-                                     size_without_header);
       break;
     case PERF_RECORD_HEADER_BUILD_ID:
       result = ReadBuildIDMetadata(data, HEADER_BUILD_ID, offset,
@@ -1258,6 +1186,12 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       break;
     }
     offset += block.header.size;
+  }
+
+  if (result) {
+    CHECK_EQ(event_types_.size(), attrs_.size());
+    if (event_types_.size() > 0)
+      metadata_mask_ |= (1 << HEADER_EVENT_DESC);
   }
   return result;
 }

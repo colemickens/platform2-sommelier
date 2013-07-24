@@ -59,6 +59,10 @@ const char* kPerfDataFiles[] = {
 
   // Obtained from a system that uses NUMA topology.
   "perf.data.numatopology",
+
+  // Data which contains events with non-consecutive event ids.
+  // Events are cycles (id 0) and branch-misses (id 5).
+  "perf.data.cycles_and_branch",
 };
 
 const char* kPerfPipedDataFiles[] = {
@@ -67,6 +71,10 @@ const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.target.throttled",
   // From system running kernel-next.
   "perf.data.piped.target.next",
+
+  // Piped data that contains hardware and software events.
+  // HW events are cycles and branch-misses, SW event is cpu-clock.
+  "perf.data.piped.hw_and_sw",
 
   // Piped data with extra data at end.
   "perf.data.piped.extrabyte",

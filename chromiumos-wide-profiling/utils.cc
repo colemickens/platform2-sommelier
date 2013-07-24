@@ -180,7 +180,7 @@ int ParsePerfReportSection(const std::vector<string>& report, size_t index,
     double overhead = atof(tokens[PERF_REPORT_OVERHEAD].c_str());
     int num_samples = atoi(tokens[PERF_REPORT_SAMPLES].c_str());
 
-    if (overhead == 0.0 || num_samples == 0)
+    if (num_samples == 0)
       return kPerfReportParseError;
 
     CHECK(dso_to_overhead->find(key) == dso_to_overhead->end())
