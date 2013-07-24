@@ -63,7 +63,6 @@ const char* kPerfDataFiles[] = {
 
 const char* kPerfPipedDataFiles[] = {
   "perf.data.piped.host",
-  "perf.data.piped.production",
   "perf.data.piped.target",
   "perf.data.piped.target.throttled",
   // From system running kernel-next.
@@ -72,10 +71,6 @@ const char* kPerfPipedDataFiles[] = {
   // Piped data with extra data at end.
   "perf.data.piped.extrabyte",
   "perf.data.piped.extradata",
-};
-
-const char* kPerfPipedCrossEndianDataFiles[] = {
-  "perf.data.piped.powerpc",
 };
 
 }  // namespace perf_test_files

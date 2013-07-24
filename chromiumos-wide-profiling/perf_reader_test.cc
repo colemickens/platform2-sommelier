@@ -53,17 +53,6 @@ TEST(PerfReaderTest, Test1Cycle) {
         << "No output file from piped input files had "
         << kSupportedMetadata[i] << " metadata";
   }
-
-  for (unsigned int i = 0;
-       i < arraysize(perf_test_files::kPerfPipedCrossEndianDataFiles);
-       ++i) {
-    PerfReader pr;
-    string input_perf_data = perf_test_files::kPerfPipedCrossEndianDataFiles[i];
-    LOG(INFO) << "Testing " << input_perf_data;
-    string output_perf_data = input_perf_data + ".pr.out";
-    ASSERT_TRUE(pr.ReadFile(input_perf_data));
-    ASSERT_TRUE(pr.WriteFile(output_perf_data));
-  }
 }
 
 }  // namespace quipper
