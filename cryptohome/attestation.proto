@@ -141,6 +141,9 @@ message AttestationCertificateRequest {
   // Information about the origin of the request which may be used depending on
   // the certificate profile.
   optional string origin = 12;
+  // The index of a temporal value.  This may be used or ignored depending on
+  // the certificate profile.
+  optional int32 temporal_index = 13;
 
   // The following fields are deprecated.
 

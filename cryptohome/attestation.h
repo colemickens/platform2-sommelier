@@ -455,6 +455,12 @@ class Attestation : public base::PlatformThread::Delegate {
                   const chromeos::SecureBlob& iv,
                   chromeos::SecureBlob* plaintext);
 
+  // Chooses a temporal index which will be used by the PCA to create a
+  // certificate.  This decision factors in the currently signed-in user and the
+  // |origin| of the certificate request.  The strategy is to find an index
+  // which is has not already been used by another user for the same origin.
+  int ChooseTemporalIndex(const std::string& origin);
+
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };
 

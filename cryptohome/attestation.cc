@@ -512,8 +512,10 @@ bool Attestation::CreateCertRequest(CertificateProfile profile,
   request_pb.set_identity_credential(
       database_pb_.identity_key().identity_credential());
   request_pb.set_profile(profile);
-  if (!origin.empty())
+  if (!origin.empty()) {
     request_pb.set_origin(origin);
+    request_pb.set_temporal_index(ChooseTemporalIndex(origin));
+  }
   SecureBlob nonce;
   if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
     LOG(ERROR) << __func__ << ": GetRandomData failed.";
@@ -1573,6 +1575,11 @@ bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
                                                CryptoLib::kPaddingStandard,
                                                CryptoLib::kCbc,
                                                plaintext);
+}
+
+int Attestation::ChooseTemporalIndex(const std::string& origin) {
+  // TODO(dkrahn): crbug.com/260504 - Implement this properly.
+  return 0;
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {
