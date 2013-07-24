@@ -304,54 +304,61 @@ bool StaleShadowMounts(const std::string& from_prefix,
   return false;
 }
 
-TEST(Standalone, CleanUpStaleMounts_EmptyMap_NoOpenFiles_ShadowOnly) {
-  // Checks that AutoCleanupCallback() is called first right after init.
-  NiceMock<MockHomeDirs> homedirs;
-  NiceMock<MockInstallAttributes> attrs;
-  MockPlatform platform;
-  Service service;
-  service.set_homedirs(&homedirs);
-  service.set_install_attrs(&attrs);
-  service.set_initialize_tpm(false);
-  service.set_platform(&platform);
+class CleanUpStaleTest : public ::testing::Test {
+ public:
+  CleanUpStaleTest() { }
+  virtual ~CleanUpStaleTest() { }
 
-  EXPECT_CALL(platform, GetMountsBySourcePrefix(_, _))
+  void SetUp() {
+    service_.set_homedirs(&homedirs_);
+    service_.set_install_attrs(&attrs_);
+    service_.set_initialize_tpm(false);
+    service_.set_platform(&platform_);
+  }
+
+  void TearDown() { }
+
+ protected:
+  NiceMock<MockHomeDirs> homedirs_;
+  NiceMock<MockInstallAttributes> attrs_;
+  MockPlatform platform_;
+  Service service_;
+
+ private:
+  DISALLOW_COPY_AND_ASSIGN(CleanUpStaleTest);
+};
+
+TEST_F(CleanUpStaleTest, EmptyMap_NoOpenFiles_ShadowOnly) {
+  // Checks that AutoCleanupCallback() is called first right after init.
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
     .WillRepeatedly(Invoke(StaleShadowMounts));
-  EXPECT_CALL(platform, GetProcessesWithOpenFiles(_, _))
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
     .Times(kShadowMountsCount);
-  EXPECT_CALL(platform, Unmount(_, true, _))
+  EXPECT_CALL(platform_, Unmount(_, true, _))
     .Times(kShadowMountsCount)
     .WillRepeatedly(Return(true));
-  EXPECT_FALSE(service.CleanUpStaleMounts(false));
+  EXPECT_FALSE(service_.CleanUpStaleMounts(false));
 }
 
-TEST(Standalone, CleanUpStaleMounts_EmptyMap_OpenLegacy_ShadowOnly) {
+TEST_F(CleanUpStaleTest, EmptyMap_OpenLegacy_ShadowOnly) {
   // Checks that AutoCleanupCallback() is called first right after init.
-  NiceMock<MockHomeDirs> homedirs;
-  NiceMock<MockInstallAttributes> attrs;
-  MockPlatform platform;
-  Service service;
-  service.set_homedirs(&homedirs);
-  service.set_install_attrs(&attrs);
-  service.set_initialize_tpm(false);
-  service.set_platform(&platform);
-
-  EXPECT_CALL(platform, GetMountsBySourcePrefix(_, _))
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
     .WillRepeatedly(Invoke(StaleShadowMounts));
   std::vector<ProcessInformation> processes(1);
   processes[0].set_process_id(1);
-  EXPECT_CALL(platform, GetProcessesWithOpenFiles(_, _))
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
     .Times(kShadowMountsCount - 1);
-  EXPECT_CALL(platform, GetProcessesWithOpenFiles(
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(
       "/home/chronos/user", _))
     .Times(1)
     .WillRepeatedly(SetArgumentPointee<1>(processes));
-  EXPECT_CALL(platform, Unmount(EndsWith("/1"), true, _))
+  EXPECT_CALL(platform_, Unmount(EndsWith("/1"), true, _))
     .Times(2)
     .WillRepeatedly(Return(true));
-  EXPECT_TRUE(service.CleanUpStaleMounts(false));
+  EXPECT_TRUE(service_.CleanUpStaleMounts(false));
 }
 
 }  // namespace cryptohome
