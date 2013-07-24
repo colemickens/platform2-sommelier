@@ -16,6 +16,7 @@
 
 using testing::InSequence;
 using testing::Return;
+using testing::StrEq;
 using testing::_;
 
 namespace mist {
@@ -329,8 +330,10 @@ TEST_F(UsbDeviceEventNotifierTest, ScanExistingDevices) {
   MockUdevDevice* device2 = new MockUdevDevice();
 
   EXPECT_CALL(udev_, CreateEnumerate()).WillOnce(Return(enumerate));
-  EXPECT_CALL(*enumerate, AddMatchSubsystem("usb")).WillOnce(Return(true));
-  EXPECT_CALL(*enumerate, AddMatchProperty("DEVTYPE", "usb_device"))
+  EXPECT_CALL(*enumerate,
+              AddMatchSubsystem(StrEq("usb"))).WillOnce(Return(true));
+  EXPECT_CALL(*enumerate,
+              AddMatchProperty(StrEq("DEVTYPE"), StrEq("usb_device")))
       .WillOnce(Return(true));
   EXPECT_CALL(*enumerate, ScanDevices()).WillOnce(Return(true));
   EXPECT_CALL(*enumerate, GetListEntry()).WillOnce(Return(list_entry1));
