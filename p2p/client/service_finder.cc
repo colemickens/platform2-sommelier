@@ -34,9 +34,9 @@ class ServiceFinderAvahi : public ServiceFinder {
   ServiceFinderAvahi();
   virtual ~ServiceFinderAvahi();
 
-  vector<Peer*> GetPeersForFile(const string& file) const;
+  vector<const Peer*> GetPeersForFile(const string& file) const;
 
-  map<string, size_t> AvailableFiles() const;
+  vector<string> AvailableFiles() const;
 
   int NumTotalConnections() const;
 
@@ -116,15 +116,10 @@ ServiceFinderAvahi::~ServiceFinderAvahi() {
     avahi_glib_poll_free(poll_);
 }
 
-map<string, size_t> ServiceFinderAvahi::AvailableFiles() const {
-  map<string, size_t> ret;
-
-  for (auto const& i : file_to_servers_) {
-    string file_name = i.first;
-    const vector<Peer*> peers = i.second;
-
-    ret[file_name] = peers[0]->files[file_name];
-  }
+vector<string> ServiceFinderAvahi::AvailableFiles() const {
+  vector<string> ret;
+  for (auto const& i : file_to_servers_)
+    ret.push_back(i.first);
   return ret;
 }
 
@@ -135,13 +130,13 @@ int ServiceFinderAvahi::NumTotalConnections() const {
   return sum;
 }
 
-vector<Peer*> ServiceFinderAvahi::GetPeersForFile(
+vector<const Peer*> ServiceFinderAvahi::GetPeersForFile(
     const string& file) const {
   map<string, vector<Peer*> >::const_iterator it =
     file_to_servers_.find(file);
   if (it == file_to_servers_.end())
-    return vector<Peer*>();
-  return it->second;
+    return vector<const Peer*>();
+  return vector<const Peer*>(it->second.begin(), it->second.end());
 }
 
 void ServiceFinderAvahi::HandleResolverEvent(const AvahiAddress* a,

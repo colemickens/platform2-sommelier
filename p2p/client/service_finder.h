@@ -28,13 +28,13 @@ class ServiceFinder {
   // of peers that can serve it.
   //
   // This should only be called after calling Lookup(). Does no I/O.
-  virtual std::vector<Peer*> GetPeersForFile(const std::string& file) const = 0;
+  virtual std::vector<const Peer*> GetPeersForFile(
+      const std::string& file) const = 0;
 
-  // Gets a list of available files served by peers on
-  // network.
+  // Gets a list of available files served by peers on the network.
   //
   // This should only be called after calling Lookup(). Does no I/O.
-  virtual std::map<std::string, size_t> AvailableFiles() const = 0;
+  virtual std::vector<std::string> AvailableFiles() const = 0;
 
   // Gets the total number of p2p downloads on the local network. This
   // is defined as the sum of the "num-connections" TXT entries for
