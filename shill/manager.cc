@@ -1913,7 +1913,7 @@ void Manager::RequestScan(Device::ScanType scan_type,
     for (vector<DeviceRefPtr>::iterator it = wifi_devices.begin();
          it != wifi_devices.end();
          ++it) {
-      (*it)->Scan(scan_type, error);
+      (*it)->Scan(scan_type, error, __func__);
     }
   } else {
     // TODO(quiche): support scanning for other technologies?

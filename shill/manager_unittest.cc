@@ -1488,10 +1488,10 @@ TEST_F(ManagerTest, RequestScan) {
     manager()->RegisterDevice(mock_devices_[1].get());
     EXPECT_CALL(*mock_devices_[0], technology())
         .WillRepeatedly(Return(Technology::kWifi));
-    EXPECT_CALL(*mock_devices_[0], Scan(Device::kFullScan, _));
+    EXPECT_CALL(*mock_devices_[0], Scan(Device::kFullScan, _, _));
     EXPECT_CALL(*mock_devices_[1], technology())
         .WillRepeatedly(Return(Technology::kUnknown));
-    EXPECT_CALL(*mock_devices_[1], Scan(_, _)).Times(0);
+    EXPECT_CALL(*mock_devices_[1], Scan(_, _, _)).Times(0);
     manager()->RequestScan(Device::kFullScan, flimflam::kTypeWifi, &error);
   }
 

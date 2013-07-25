@@ -84,7 +84,8 @@ class Device : public base::RefCounted<Device> {
   virtual void LinkEvent(unsigned flags, unsigned change);
 
   // The default implementation sets |error| to kNotSupported.
-  virtual void Scan(ScanType scan_type, Error *error);
+  virtual void Scan(ScanType scan_type, Error *error,
+                    const std::string &reason);
   virtual void RegisterOnNetwork(const std::string &network_id, Error *error,
                                  const ResultCallback &callback);
   virtual void RequirePIN(const std::string &pin, bool require,

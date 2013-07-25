@@ -590,7 +590,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->ScanTimerHandler();
   }
   void TriggerFullScan() {
-    wifi_->Scan(Device::kFullScan, NULL);
+    wifi_->Scan(Device::kFullScan, NULL, __func__);
   }
   const WiFiServiceRefPtr &GetCurrentService() {
     return wifi_->current_service_;

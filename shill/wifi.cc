@@ -302,10 +302,10 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 }
 
-void WiFi::Scan(ScanType scan_type, Error */*error*/) {
-  LOG(INFO) << __func__;
+void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
   if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
-    LOG(INFO) << "Doing progressive scan on " << link_name();
+    LOG(INFO) << __func__ << " [progressive] on " << link_name() << " from "
+              << reason;
     if (!scan_session_) {
       // TODO(wdg): Perform in-depth testing to determine the best values for
       // the different scans. chromium:235293
@@ -336,8 +336,10 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/) {
     dispatcher()->PostTask(
         Bind(&WiFi::ProgressiveScanTask, weak_ptr_factory_.GetWeakPtr()));
   } else {
-    LOG(INFO) << "Doing full scan on " << link_name() << " - progressive scan "
-              << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED");
+    LOG(INFO) << __func__ << " [full] on " << link_name()
+              << " (progressive scan "
+              << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED")
+              << ") from " << reason;
     // Needs to send a D-Bus message, but may be called from D-Bus
     // signal handler context (via Manager::RequestScan). So defer work
     // to event loop.
@@ -697,7 +699,7 @@ void WiFi::CurrentBSSChanged(const ::DBus::Path &new_bss) {
       // We may want to reconsider this immediate scan, if/when shill
       // takes greater responsibility for scanning (vs. letting
       // supplicant handle most of it).
-      Scan(kProgressiveScan, NULL);
+      Scan(kProgressiveScan, NULL, __func__);
     }
   } else {
     HandleRoam(new_bss);
@@ -1231,7 +1233,7 @@ void WiFi::ProgressiveScanTask() {
              << "do a regular scan";
   scan_session_.reset();
   SetScanState(kScanScanning, kScanMethodProgressiveFinishedToFull, __func__);
-  Scan(kFullScan, NULL);
+  Scan(kFullScan, NULL, __func__);
 }
 
 void WiFi::OnFailedProgressiveScan() {
@@ -1239,7 +1241,7 @@ void WiFi::OnFailedProgressiveScan() {
              << " -- doing a regular scan";
   scan_session_.reset();
   SetScanState(kScanScanning, kScanMethodProgressiveErrorToFull, __func__);
-  Scan(kFullScan, NULL);
+  Scan(kFullScan, NULL, __func__);
 }
 
 string WiFi::GetServiceLeaseName(const WiFiService &service) {
@@ -1498,7 +1500,7 @@ void WiFi::OnAfterResume() {
 
   if (IsIdle()) {
     // Not scanning/connecting/connected, so let's get things rolling.
-    Scan(kProgressiveScan, NULL);
+    Scan(kProgressiveScan, NULL, __func__);
     RestartFastScanAttempts();
   } else {
     SLOG(WiFi, 1) << __func__
@@ -1573,7 +1575,7 @@ void WiFi::StopScanTimer() {
 void WiFi::ScanTimerHandler() {
   SLOG(WiFi, 2) << "WiFi Device " << link_name() << ": " << __func__;
   if (scan_state_ == kScanIdle && IsIdle()) {
-    Scan(kProgressiveScan, NULL);
+    Scan(kProgressiveScan, NULL, __func__);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
@@ -1822,7 +1824,7 @@ void WiFi::ConnectToSupplicant() {
                << "May be running an older version of wpa_supplicant.";
   }
 
-  Scan(kProgressiveScan, NULL);
+  Scan(kProgressiveScan, NULL, __func__);
   StartScanTimer();
 }
 

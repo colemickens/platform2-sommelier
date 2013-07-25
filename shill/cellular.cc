@@ -438,7 +438,8 @@ void Cellular::PortalDetectorCallback(const PortalDetector::Result &result) {
   }
 }
 
-void Cellular::Scan(ScanType scan_type, Error *error) {
+void Cellular::Scan(ScanType /*scan_type*/, Error *error,
+                    const string &/*reason*/) {
   // |scan_type| is ignored because Cellular only does a full scan.
   // TODO(ers): for now report immediate success or failure.
   capability_->Scan(error, ResultCallback());

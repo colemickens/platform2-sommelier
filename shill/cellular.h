@@ -176,7 +176,8 @@ class Cellular : public Device, public RPCTaskDelegate {
   virtual void Start(Error *error, const EnabledStateChangedCallback &callback);
   virtual void Stop(Error *error, const EnabledStateChangedCallback &callback);
   virtual void LinkEvent(unsigned int flags, unsigned int change);
-  virtual void Scan(ScanType scan_type, Error *error);
+  virtual void Scan(ScanType /*scan_type*/, Error *error,
+                    const std::string &/*reason*/);
   virtual void RegisterOnNetwork(const std::string &network_id,
                                  Error *error,
                                  const ResultCallback &callback);

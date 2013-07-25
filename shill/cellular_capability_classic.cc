@@ -314,7 +314,7 @@ void CellularCapabilityClassic::SetCarrier(const string &carrier,
 }
 
 void CellularCapabilityClassic::Scan(Error *error,
-                              const ResultCallback &callback) {
+                                     const ResultCallback &callback) {
   OnUnsupportedOperation(__func__, error);
 }
 
