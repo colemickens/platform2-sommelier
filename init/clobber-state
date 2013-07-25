@@ -35,6 +35,7 @@ FACTORY_WIPE_FIRMWARE_PID=""
 PRESERVED_FILES="
   unencrypted/preserve/attestation.epb
   unencrypted/preserve/powerwash_count
+  unencrypted/preserve/enrollment_state.epb
   unencrypted/preserve/update_engine/prefs/rollback-version
   home/.shadow/install_attributes.pb
 "
