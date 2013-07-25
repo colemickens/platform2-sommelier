@@ -173,7 +173,7 @@ HELP_ADVANCED='
   key.  If not specified, it affects global behavior.
 '
 
-INTRO_TEXT="Welcome to crosh, the ChromeOS developer shell.
+INTRO_TEXT="Welcome to crosh, the Chrome OS developer shell.
 
 If you got here by mistake, don't panic!  Just close this tab and carry on.
 
