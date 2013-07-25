@@ -117,6 +117,7 @@ WiFi::WiFi(ControlInterface *control_interface,
       bgscan_signal_threshold_dbm_(kDefaultBgscanSignalThresholdDbm),
       scan_interval_seconds_(kDefaultScanIntervalSeconds),
       progressive_scan_enabled_(false),
+      scan_configuration_("Full scan"),
       netlink_manager_(NetlinkManager::GetInstance()),
       min_frequencies_to_scan_(kMinumumFrequenciesToScan),
       max_frequencies_to_scan_(std::numeric_limits<int>::max()),
@@ -164,6 +165,10 @@ WiFi::WiFi(ControlInterface *control_interface,
   if (PathExists(FilePath(kProgressiveScanFlagFile))) {
     // Setup manually-enrolled progressive scan.
     progressive_scan_enabled_ = true;
+    scan_configuration_ = "Progressive scan (manual: min=4/max=MAX, 33%)";
+    min_frequencies_to_scan_ = 4;
+    max_frequencies_to_scan_ = std::numeric_limits<int>::max();
+    fraction_per_scan_ = .34;
   } else {
     // TODO(wdg): Remove after progressive scan field trial is over.
     // Only do the field trial if the user hasn't already enabled progressive
@@ -189,28 +194,39 @@ void WiFi::ParseFieldTrialFile(const FilePath &info_file_path) {
       max_frequencies_to_scan_ = 4;
       fraction_per_scan_ = .34;
       progressive_scan_enabled_ = true;
+      scan_configuration_ = "Progressive scan (field trial 1: min/max=4, 33%)";
       break;
     case '2':
       min_frequencies_to_scan_ = 4;
       max_frequencies_to_scan_ = 4;
       fraction_per_scan_ = .51;
       progressive_scan_enabled_ = true;
+      scan_configuration_ = "Progressive scan (field trial 2: min/max=4, 50%)";
       break;
     case '3':
       min_frequencies_to_scan_ = 8;
       max_frequencies_to_scan_ = 8;
       fraction_per_scan_ = .51;
       progressive_scan_enabled_ = true;
+      scan_configuration_ = "Progressive scan (field trial 3: min/max=8, 50%)";
       break;
     case '4':
       min_frequencies_to_scan_ = 8;
       max_frequencies_to_scan_ = 8;
       fraction_per_scan_ = 1.1;
       progressive_scan_enabled_ = true;
+      scan_configuration_ = "Progressive scan (field trial 4: min/max=8, 100%)";
       break;
-    case 'c':  // FALLTHROUGH.
-    case 'x':  // FALLTHROUGH.
+    case 'c':
+      progressive_scan_enabled_ = false;
+      scan_configuration_ = "Full scan (field trial c: control group)";
+      break;
+    case 'x':
+      progressive_scan_enabled_ = false;
+      scan_configuration_ = "Full scan (field trial x: default/disabled group)";
+      break;
     default:
+      scan_configuration_ = "Full scan (field trial unknown)";
       progressive_scan_enabled_ = false;
       break;
   }
@@ -306,6 +322,7 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
   if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
     LOG(INFO) << __func__ << " [progressive] on " << link_name() << " from "
               << reason;
+    LOG(INFO) << scan_configuration_;
     if (!scan_session_) {
       // TODO(wdg): Perform in-depth testing to determine the best values for
       // the different scans. chromium:235293
@@ -340,6 +357,7 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
               << " (progressive scan "
               << (progressive_scan_enabled_ ? "ENABLED" : "DISABLED")
               << ") from " << reason;
+    LOG(INFO) << scan_configuration_;
     // Needs to send a D-Bus message, but may be called from D-Bus
     // signal handler context (via Manager::RequestScan). So defer work
     // to event loop.

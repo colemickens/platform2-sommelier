@@ -487,6 +487,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16 scan_interval_seconds_;
 
   bool progressive_scan_enabled_;
+  std::string scan_configuration_;
   NetlinkManager *netlink_manager_;
   std::set<uint16_t> all_scan_frequencies_;
   scoped_ptr<ScanSession> scan_session_;
