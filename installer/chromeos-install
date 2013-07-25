@@ -440,8 +440,6 @@ write_base_table ${DST} ${PMBRCODE}
 /sbin/blockdev --rereadpt ${DST}
 legacy_offset_size_export "${DST}"
 
-# TODO(tgao): add support for arm recovery
-
 if [ "$FLAGS_skip_rootfs" -eq "$FLAGS_TRUE" ]; then
   echo Done installing partitons.
   exit 0
@@ -549,24 +547,21 @@ fi
 echo "Installing the stateful partition..."
 loop_offset_setup $DST $START_STATEFUL
 mount_on_loop_dev readwrite
+
+# Whitelist files to copy onto the stateful partition.
+#
+# When adding to the whitelist, consider the need for related changes in
+# src/platform/init/chromeos_startup, and in src/platform/dev/stateful_update.
+#
+DIRLIST=""
+
 if [ -f "${ROOT}"/root/.dev_mode ]; then
   DIRLIST="
-      var_overlay/db/pkg
-      var_overlay/lib/portage
-      dev_image
+    ${DIRLIST}
+    var_overlay/db/pkg
+    var_overlay/lib/portage
+    dev_image
   "
-  for DIR in ${DIRLIST}; do
-    if [ ! -d "${ROOT}/mnt/stateful_partition/${DIR}" ]; then
-      continue
-    fi
-    OPT_U=""
-    if cp -u /dev/null /dev/zero 2>/dev/null; then
-      OPT_U="u"
-    fi
-    PARENT=$(dirname ${DIR})
-    mkdir -p ${TMPMNT}/${PARENT}
-    cp -a${OPT_U} "${ROOT}/mnt/stateful_partition/${DIR}" ${TMPMNT}/${DIR}
-  done
 elif crossystem 'devsw_boot?1' ; then
   # The dev switch was on when we booted; we assume it will be on
   # for the next boot.  We touch ".developer_mode" to avoid a
@@ -578,6 +573,24 @@ elif crossystem 'devsw_boot?1' ; then
   #
   touch ${TMPMNT}/.developer_mode
 fi
+
+# Does our copy of 'cp' support -u? Not sure why -u is desired, but
+# may be related to --preserve_stateful.
+#
+OPT_U=""
+if cp -u /dev/null /dev/zero 2>/dev/null; then
+  OPT_U="u"
+fi
+
+for DIR in ${DIRLIST}; do
+  if [ ! -d "${ROOT}/mnt/stateful_partition/${DIR}" ]; then
+    continue
+  fi
+  PARENT=$(dirname "${DIR}")
+  mkdir -p "${TMPMNT}/${PARENT}"
+  cp -a${OPT_U} "${ROOT}/mnt/stateful_partition/${DIR}" "${TMPMNT}/${DIR}"
+done
+
 umount_from_loop_dev
 loop_offset_cleanup
 
