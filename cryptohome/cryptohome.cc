@@ -19,6 +19,7 @@
 #include <base/string_number_conversions.h>
 #include <base/string_util.h>
 #include <base/stringprintf.h>
+#include <chromeos/cryptohome.h>
 #include <chromeos/dbus/dbus.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/secure_blob.h>
@@ -52,6 +53,7 @@ namespace switches {
     "remove",
     "obfuscate_user",
     "dump_keyset",
+    "dump_last_activity",
     "tpm_status",
     "status",
     "set_current_user_old",
@@ -86,6 +88,7 @@ namespace switches {
     ACTION_REMOVE,
     ACTION_OBFUSCATE_USER,
     ACTION_DUMP_KEYSET,
+    ACTION_DUMP_LAST_ACTIVITY,
     ACTION_TPM_STATUS,
     ACTION_STATUS,
     ACTION_SET_CURRENT_USER_OLD,
@@ -769,6 +772,55 @@ int main(int argc, char **argv) {
           base::Time::FromInternalValue(serialized.last_activity_timestamp());
       printf("  Last activity (days ago):\n");
       printf("    %d\n", (base::Time::Now() - last_activity).InDays());
+    }
+  } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_LAST_ACTIVITY],
+                     action.c_str())) {
+    std::vector<std::string> user_dirs;
+    if (!platform.
+            EnumerateDirectoryEntries("/home/.shadow/", false, &user_dirs)) {
+      LOG(ERROR) << "Can not list shadow root.";
+      return 1;
+    }
+    for (std::vector<std::string>::iterator it = user_dirs.begin();
+         it != user_dirs.end(); ++it) {
+      FilePath path(*it);
+      const std::string dir_name = path.BaseName().value();
+      if (!chromeos::cryptohome::home::IsSanitizedUserName(dir_name))
+        continue;
+      // TODO(wad): change it so that it uses GetVaultKeysets().
+      scoped_ptr<cryptohome::FileEnumerator> file_enumerator(
+          platform.GetFileEnumerator(path.value(), false,
+                                     cryptohome::FileEnumerator::FILES));
+      base::Time max_activity = base::Time::UnixEpoch();
+      std::string next_path;
+      while (!(next_path = file_enumerator->Next()).empty()) {
+        std::string file_name = FilePath(next_path).BaseName().value();
+        // Scan for "master." files.
+        if (file_name.find(cryptohome::kKeyFile, 0,
+                           strlen(cryptohome::kKeyFile) == std::string::npos))
+          continue;
+        SecureBlob contents;
+        if (!platform.ReadFile(next_path, &contents)) {
+          LOG(ERROR) << "Couldn't load keyset contents: " << next_path;
+          continue;
+        }
+        cryptohome::SerializedVaultKeyset keyset;
+        if (!keyset.ParseFromArray(
+            static_cast<const unsigned char*>(&contents[0]), contents.size())) {
+          LOG(ERROR) << "Couldn't parse keyset contents: " << next_path;
+          continue;
+        }
+        if (keyset.has_last_activity_timestamp()) {
+          const base::Time last_activity =
+              base::Time::FromInternalValue(keyset.last_activity_timestamp());
+          if (last_activity > max_activity)
+            max_activity = last_activity;
+        }
+      }
+      if (max_activity > base::Time::UnixEpoch()) {
+        printf("%s %3d\n", dir_name.c_str(),
+                           (base::Time::Now() - max_activity).InDays());
+      }
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_TPM_STATUS],
                      action.c_str())) {
