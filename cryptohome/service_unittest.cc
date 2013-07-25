@@ -329,7 +329,8 @@ class CleanUpStaleTest : public ::testing::Test {
 };
 
 TEST_F(CleanUpStaleTest, EmptyMap_NoOpenFiles_ShadowOnly) {
-  // Checks that AutoCleanupCallback() is called first right after init.
+  // Check that when we have a bunch of stale shadow mounts, no active mounts,
+  // and no open filehandles, all stale mounts are unmounted.
 
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
@@ -343,7 +344,9 @@ TEST_F(CleanUpStaleTest, EmptyMap_NoOpenFiles_ShadowOnly) {
 }
 
 TEST_F(CleanUpStaleTest, EmptyMap_OpenLegacy_ShadowOnly) {
-  // Checks that AutoCleanupCallback() is called first right after init.
+  // Check that when we have a bunch of stale shadow mounts, no active mounts,
+  // and some open filehandles to the legacy homedir, all mounts without
+  // filehandles are unmounted.
   EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
     .Times(3)
     .WillRepeatedly(Invoke(StaleShadowMounts));
@@ -359,6 +362,63 @@ TEST_F(CleanUpStaleTest, EmptyMap_OpenLegacy_ShadowOnly) {
     .Times(2)
     .WillRepeatedly(Return(true));
   EXPECT_TRUE(service_.CleanUpStaleMounts(false));
+}
+
+TEST_F(CleanUpStaleTest, FilledMap_NoOpenFiles_ShadowOnly) {
+  // Checks that when we have a bunch of stale shadow mounts, some active
+  // mounts, and no open filehandles, all inactive mounts are unmounted.
+
+  // ownership handed off to the Service MountMap
+  MockMountFactory f;
+  MockMount *m = new MockMount();
+
+  EXPECT_CALL(f, New())
+    .WillOnce(Return(m));
+
+  service_.set_mount_factory(&f);
+
+  EXPECT_CALL(homedirs_, Init())
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+    .Times(3)
+    .WillRepeatedly(Return(false));
+
+  ASSERT_TRUE(service_.Initialize());
+
+  EXPECT_CALL(*m, Init())
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+    .Times(3)
+    .WillRepeatedly(Return(false));
+
+  gint error_code = 0;
+  gboolean result = FALSE;
+  ASSERT_TRUE(service_.Mount("foo@bar.net", "key", true, false,
+                             &error_code, &result, NULL));
+
+  EXPECT_CALL(platform_, GetMountsBySourcePrefix(_, _))
+    .Times(3)
+    .WillRepeatedly(Invoke(StaleShadowMounts));
+  EXPECT_CALL(platform_, GetProcessesWithOpenFiles(_, _))
+    .Times(kShadowMountsCount);
+
+  EXPECT_CALL(*m, OwnsMountPoint(_))
+    .WillRepeatedly(Return(false));
+  EXPECT_CALL(*m, OwnsMountPoint("/home/user/1"))
+    .WillOnce(Return(true));
+  EXPECT_CALL(*m, OwnsMountPoint("/home/root/1"))
+    .WillOnce(Return(true));
+
+  EXPECT_CALL(platform_, Unmount(EndsWith("/0"), true, _))
+    .Times(2)
+    .WillRepeatedly(Return(true));
+  EXPECT_CALL(platform_, Unmount("/home/chronos/user", true, _))
+    .WillOnce(Return(true));
+
+  // Expect that CleanUpStaleMounts() tells us it skipped no mounts.
+  EXPECT_FALSE(service_.CleanUpStaleMounts(false));
 }
 
 }  // namespace cryptohome

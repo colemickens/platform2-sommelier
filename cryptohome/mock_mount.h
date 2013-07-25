@@ -28,6 +28,7 @@ class MockMount : public Mount {
   MOCK_METHOD1(RemoveCryptohome, bool(const Credentials&));
   MOCK_METHOD1(UpdateCurrentUserActivityTimestamp, bool(int)); // NOLINT
   MOCK_CONST_METHOD0(mount_point, const std::string&());
+  MOCK_CONST_METHOD1(OwnsMountPoint, bool(const std::string&));
 };
 }  // namespace cryptohome
 

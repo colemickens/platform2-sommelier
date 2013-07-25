@@ -354,8 +354,8 @@ bool Service::CleanUpStaleMounts(bool force) {
 
     // Delete anything that shouldn't be unmounted.
     if (keep) {
-      exclude.push_back(match->second);
       --match;
+      exclude.push_back(match->second);
       matches.erase(curr, ++match);
     }
   }
@@ -401,6 +401,7 @@ bool Service::Initialize() {
       LOG(ERROR) << "FAILED TO SEED /dev/urandom AT START";
     }
   }
+
   // Install the type-info for the service with dbus.
   dbus_g_object_type_install_info(gobject::cryptohome_get_type(),
                                   &gobject::dbus_glib_cryptohome_object_info);
@@ -974,6 +975,7 @@ gboolean Service::Mount(const gchar *userid,
   // for instance, cryptohomed crashed, the MountMap would not contain the
   // entry.
   // TODO(wad) Can we get rid of this code path?
+
   if (user_mount->IsMounted()) {
     // TODO(wad) This tests against the stored credentials, not the TPM.
     // If mounts are "repopulated", then a trip through the TPM would be needed.
@@ -1020,6 +1022,7 @@ gboolean Service::Mount(const gchar *userid,
                                                             mount_args);
   mount_task->set_result(&result);
   mount_task->set_complete_event(&event);
+
   mount_thread_.message_loop()->PostTask(FROM_HERE,
       base::Bind(&MountTaskMount::Run, mount_task.get()));
   event.Wait();
