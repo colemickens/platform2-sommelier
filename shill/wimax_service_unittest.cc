@@ -242,21 +242,12 @@ TEST_F(WiMaxServiceTest, Connect) {
   service_->Connect(&error, "in test");
 
   // Successful disconnect.
+  EXPECT_CALL(*eap_, set_password(_)).Times(0);
   EXPECT_CALL(*device_, DisconnectFrom(_, _));
-  EXPECT_CALL(*eap_, set_password(""));
-  EXPECT_CALL(*eap_, IsConnectableUsingPassphrase())
-      .WillRepeatedly(Return(false));
   error.Reset();
-  ExpectUpdateService();
   service_->Disconnect(&error);
   EXPECT_TRUE(error.IsSuccess());
-
-  // Verify that the EAP passphrase is cleared after the service is explicitly
-  // disconnected.
-  // TODO(benchan): Remove this check once WiMaxService no longer uses this
-  // workaroud to prompt the user for EAP credentials.
-  EXPECT_TRUE(service_->need_passphrase_);
-  EXPECT_FALSE(service_->connectable());
+  EXPECT_TRUE(service_->connectable());
 
   // Disconnect while not connected.
   service_->Disconnect(&error);
