@@ -33,6 +33,7 @@ using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::SetArgumentPointee;
 using ::testing::StartsWith;
+using ::testing::StrEq;
 
 using ::testing::_;
 
@@ -985,9 +986,9 @@ TEST_F(KeysetManagementTest, AddKeysetSuccess) {
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
@@ -1028,7 +1029,7 @@ TEST_F(KeysetManagementTest, AddKeyset0Available) {
   cryptohome::SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
@@ -1050,10 +1051,10 @@ TEST_F(KeysetManagementTest, AddKeyset10Available) {
   cryptohome::SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..$"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..$"), StrEq("wx")))
     .Times(10)
     .WillRepeatedly(Return(reinterpret_cast<FILE*>(NULL)));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.10"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.10"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(platform_, DeleteFile(_, _))
     .Times(0);
@@ -1075,7 +1076,7 @@ TEST_F(KeysetManagementTest, AddKeysetNoFreeIndices) {
   cryptohome::SecureBlob newkey;
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
 
-  EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..*$"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(MatchesRegex(".*/master\\..*$"), StrEq("wx")))
     .Times(kKeyFileMax)
     .WillRepeatedly(Return(reinterpret_cast<FILE*>(NULL)));
   EXPECT_CALL(platform_, DeleteFile(_, _))
@@ -1094,7 +1095,7 @@ TEST_F(KeysetManagementTest, AddKeysetEncryptFail) {
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(false));
@@ -1113,7 +1114,7 @@ TEST_F(KeysetManagementTest, AddKeysetSaveFail) {
   cryptohome::Crypto::PasswordToPasskey("why not", system_salt_, &newkey);
   int index = -1;
   // The injected keyset in the fixture handles the up_ validation.
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.0"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(*active_vk_, Encrypt(newkey))
     .WillOnce(Return(true));
@@ -1163,7 +1164,7 @@ TEST_F(KeysetManagementTest, MoveKeysetSuccess_0_to_1) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(platform_, Rename(EndsWith("master.0"), EndsWith("master.1")))
     .WillOnce(Return(true));
@@ -1178,7 +1179,7 @@ TEST_F(KeysetManagementTest, MoveKeysetSuccess_1_to_99) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, FileExists(EndsWith("master.99")))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.99"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.99"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(platform_, Rename(EndsWith("master.1"), EndsWith("master.99")))
     .WillOnce(Return(true));
@@ -1229,7 +1230,7 @@ TEST_F(KeysetManagementTest, MoveKeysetExclusiveOpenFailed) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(NULL)));
   ASSERT_FALSE(homedirs_.MoveKeyset(obfuscated, 0, 1));
 }
@@ -1240,7 +1241,7 @@ TEST_F(KeysetManagementTest, MoveKeysetRenameFailed) {
     .WillOnce(Return(true));
   EXPECT_CALL(platform_, FileExists(EndsWith("master.1")))
     .WillOnce(Return(false));
-  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), "wx"))
+  EXPECT_CALL(platform_, OpenFile(EndsWith("master.1"), StrEq("wx")))
     .WillOnce(Return(reinterpret_cast<FILE*>(0xbeefbeef)));
   EXPECT_CALL(platform_, Rename(EndsWith("master.0"), EndsWith("master.1")))
     .WillOnce(Return(false));
