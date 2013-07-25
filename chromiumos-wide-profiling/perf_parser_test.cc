@@ -74,7 +74,6 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
   // Any run of perf should have MMAPs with the following substrings:
   CheckForElementWithSubstring("perf", filenames);
   CheckForElementWithSubstring("kernel", filenames);
-  CheckForElementWithSubstring(".ko", filenames);
   CheckForElementWithSubstring("libc", filenames);
 
   std::vector<ParsedEvent*> parsed_events = parser->GetEventsSortedByTime();
