@@ -244,6 +244,44 @@ update_prl() {
   rm -f "${tmpfile}"
 }
 
+ussd() {
+  local modem
+  local operation="$1"
+  local data="$2"
+
+  $(arg_or_default modem $(default_modem))
+  [ -z "${modem}" ] && error_exit "No modem found."
+
+  if ! is_mm1_modem "${modem}"; then
+    error_exit "USSD is not supported on this modem."
+  fi
+
+  if [ -z "${operation}" ]; then
+    echo "Valid USSD operations are: status, initiate, respond, cancel"
+    return
+  fi
+
+  case "${operation}" in
+    status)
+      mmcli -m "${modem}" --3gpp-ussd-status
+      ;;
+    initiate)
+      [ -z "${data}" ] && error_exit "Missing USSD data."
+      mmcli -m "${modem}" --3gpp-ussd-initiate="${data}"
+      ;;
+    respond)
+      [ -z "${data}" ] && error_exit "Missing USSD data."
+      mmcli -m "${modem}" --3gpp-ussd-respond="${data}"
+      ;;
+    cancel)
+      mmcli -m "${modem}" --3gpp-ussd-cancel
+      ;;
+    *)
+      error_exit "'${operation}' is not valid USSD operation."
+      ;;
+  esac
+}
+
 set_carrier() {
   local modem
 
@@ -332,7 +370,7 @@ run_modem_command() {
 }
 
 usage() {
-  echo "Usage: $0 <command> [args...]"
+  echo "Usage: $(basename $0) <command> [args...]"
   echo "  activate [-modem <modem>] [<carrier>]        Activate modem"
   echo "  activate-manual [-modem <modem>] [args...]   Activate modem manually"
   echo "  ciprl-update                                " \
@@ -352,6 +390,13 @@ usage() {
     "Enable and launch OMA session"
   echo "  status                                       Display modem status"
   echo "  update-prl [-modem <modem>] <prl-file-name>  Install a PRL file"
+  echo "  ussd [-modem <modem>] status                " \
+    "Show status of ongoing USSD session"
+  echo "  ussd [-modem <modem>] initiate <command>     Initiate a USSD session"
+  echo "  ussd [-modem <modem>] respond <response>    " \
+    "Respond to a USSD request"
+  echo "  ussd [-modem <modem>] cancel                " \
+    "Cancel ongoing USSD session"
   exit 0
 }
 
@@ -404,6 +449,9 @@ case "${cmd}" in
     ;;
   update-prl)
     update_prl "$@"
+    ;;
+  ussd)
+    ussd "$@"
     ;;
   *)
     usage
