@@ -11,6 +11,7 @@
 #include <sys/statvfs.h>
 
 #include <base/logging.h>
+#include <base/sha1.h>
 #include <base/string_number_conversions.h>
 #include <base/string_split.h>
 #include <base/string_util.h>
@@ -49,6 +50,7 @@ const char kPropertyModel[] = "ID_MODEL";
 const char kPropertyPartitionSize[] = "UDISKS_PARTITION_SIZE";
 const char kPropertyPresentationHide[] = "UDISKS_PRESENTATION_HIDE";
 const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
+const char kPropertySerial[] = "ID_SERIAL";
 const char kSubsystemUsb[] = "usb";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
 const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
@@ -403,7 +405,6 @@ Disk UdevDevice::ToDisk() {
   disk.set_is_virtual(IsVirtual());
   disk.set_media_type(GetDeviceMediaType());
   disk.set_filesystem_type(GetPropertyFromBlkId(kPropertyBlkIdFilesystemType));
-  disk.set_uuid(GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
   disk.set_native_path(NativePath());
 
   // Drive model and filesystem label may not be UTF-8 encoded, so we
@@ -427,6 +428,12 @@ Disk UdevDevice::ToDisk() {
       disk.set_product_name(EnsureUTF8String(product_name));
     }
   }
+
+  // TODO(benchan): Add a proper unit test when fixing crbug.com/221380.
+  string uuid_hash = base::SHA1HashString(
+      vendor_id + product_id + GetProperty(kPropertySerial) +
+      GetPropertyFromBlkId(kPropertyBlkIdFilesystemUUID));
+  disk.set_uuid(base::HexEncode(uuid_hash.data(), uuid_hash.size()));
 
   const char *dev_file = udev_device_get_devnode(dev_);
   if (dev_file)
