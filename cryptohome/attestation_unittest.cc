@@ -281,13 +281,13 @@ TEST_F(AttestationTest, CertRequest) {
                             Return(true)));
   SecureBlob blob;
   EXPECT_FALSE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                              &blob));
+                                              "", &blob));
   attestation_.PrepareForEnrollment();
   EXPECT_FALSE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                              &blob));
+                                              "", &blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                             &blob));
+                                             "", &blob));
   EXPECT_FALSE(attestation_.DoesKeyExist(false, "test"));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
@@ -316,14 +316,14 @@ TEST_F(AttestationTest, CertRequestStorageFailure) {
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                             &blob));
+                                             "", &blob));
   // Expect storage failure here.
   EXPECT_FALSE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                               true,
                                               "test",
                                               &blob));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                             &blob));
+                                             "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              true,
                                              "test",
@@ -350,7 +350,7 @@ TEST_F(AttestationTest, SimpleChallenge) {
   EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                             &blob));
+                                             "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",
@@ -376,7 +376,7 @@ TEST_F(AttestationTest, EMKChallenge) {
   EXPECT_TRUE(attestation_.CreateEnrollRequest(&blob));
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                             &blob));
+                                             "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",
@@ -445,7 +445,7 @@ TEST_F(AttestationTest, Payload) {
   attestation_.PrepareForEnrollment();
   EXPECT_TRUE(attestation_.Enroll(GetEnrollBlob()));
   EXPECT_TRUE(attestation_.CreateCertRequest(ENTERPRISE_USER_CERTIFICATE, "",
-                                             &blob));
+                                             "", &blob));
   EXPECT_TRUE(attestation_.FinishCertRequest(GetCertRequestBlob(blob),
                                              false,
                                              "test",

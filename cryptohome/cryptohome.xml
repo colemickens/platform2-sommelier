@@ -177,11 +177,13 @@
     </method>
     <method name="TpmAttestationCreateCertRequestByProfile">
       <arg type="i" name="certificate_profile" direction="in" />
+      <arg type="s" name="username" direction="in" />
       <arg type="s" name="request_origin" direction="in" />
       <arg type="ay" name="pca_request" direction="out" />
     </method>
     <method name="AsyncTpmAttestationCreateCertRequestByProfile">
       <arg type="i" name="certificate_profile" direction="in" />
+      <arg type="s" name="username" direction="in" />
       <arg type="s" name="request_origin" direction="in" />
       <arg type="i" name="async_id" direction="out" />
     </method>

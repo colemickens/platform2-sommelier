@@ -211,12 +211,14 @@ gboolean cryptohome_async_tpm_attestation_create_cert_request(
 gboolean cryptohome_tpm_attestation_create_cert_request_by_profile(
     Cryptohome *self,
     gint certificate_profile,
+    gchar* username,
     gchar* request_origin,
     GArray** OUT_pca_request,
     GError** error);
 gboolean cryptohome_async_tpm_attestation_create_cert_request_by_profile(
     Cryptohome *self,
     gint certificate_profile,
+    gchar* username,
     gchar* request_origin,
     gint *OUT_async_id,
     GError** error);

@@ -12,6 +12,7 @@
 #include <base/synchronization/lock.h>
 #include <base/threading/platform_thread.h>
 #include <chromeos/secure_blob.h>
+#include <metrics/metrics_library.h>
 #include <openssl/evp.h>
 
 #include "attestation.pb.h"
@@ -94,12 +95,14 @@ class Attestation : public base::PlatformThread::Delegate {
   //
   // Parameters
   //   profile - Specifies the type of certificate to be requested.
+  //   username - The user requesting the certificate.
   //   origin - Some certificate requests require information about the origin
   //            of the request.  If no origin is needed, this can be empty.
   //   pca_request - The request to be sent to the Privacy CA.
   //
   // Returns true on success.
   virtual bool CreateCertRequest(CertificateProfile profile,
+                                 const std::string& username,
                                  const std::string& origin,
                                  chromeos::SecureBlob* pca_request);
 
@@ -296,6 +299,7 @@ class Attestation : public base::PlatformThread::Delegate {
   } kKnownPCRValues[];
   // ASN.1 DigestInfo header for SHA-256 (see PKCS #1 v2.1 section 9.2).
   static const unsigned char kSha256DigestInfo[];
+  static const int kNumTemporalValues;
 
   Tpm* tpm_;
   Platform* platform_;
@@ -312,6 +316,7 @@ class Attestation : public base::PlatformThread::Delegate {
   // If set, this will be used to sign / encrypt enterprise challenge-response
   // data instead of using kEnterprise*PublicKey.
   RSA* enterprise_test_key_;
+  MetricsLibrary metrics_;
 
   // Moves data from a std::string container to a SecureBlob container.
   chromeos::SecureBlob ConvertStringToBlob(const std::string& s);
@@ -456,10 +461,10 @@ class Attestation : public base::PlatformThread::Delegate {
                   chromeos::SecureBlob* plaintext);
 
   // Chooses a temporal index which will be used by the PCA to create a
-  // certificate.  This decision factors in the currently signed-in user and the
-  // |origin| of the certificate request.  The strategy is to find an index
-  // which is has not already been used by another user for the same origin.
-  int ChooseTemporalIndex(const std::string& origin);
+  // certificate.  This decision factors in the currently signed-in |user| and
+  // the |origin| of the certificate request.  The strategy is to find an index
+  // which has not already been used by another user for the same origin.
+  int ChooseTemporalIndex(const std::string& user, const std::string& origin);
 
   DISALLOW_COPY_AND_ASSIGN(Attestation);
 };

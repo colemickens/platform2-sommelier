@@ -60,6 +60,7 @@ class CreateCertRequestTask : public AttestationTask {
   CreateCertRequestTask(AttestationTaskObserver* observer,
                         Attestation* attestation,
                         CertificateProfile profile,
+                        const std::string& username,
                         const std::string& origin);
   virtual ~CreateCertRequestTask();
 
@@ -67,6 +68,7 @@ class CreateCertRequestTask : public AttestationTask {
 
  private:
   CertificateProfile profile_;
+  std::string username_;
   std::string origin_;
 
   DISALLOW_COPY_AND_ASSIGN(CreateCertRequestTask);

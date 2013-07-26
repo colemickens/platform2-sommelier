@@ -175,6 +175,13 @@ message AttestationDatabase {
   optional Quote pcr0_quote = 5;
   optional Delegation delegate = 6;
   repeated CertifiedKey device_keys = 7;
+
+  message TemporalIndexRecord {
+    optional bytes user_hash = 1;
+    optional bytes origin_hash = 2;
+    optional int32 temporal_index = 3;
+  }
+  repeated TemporalIndexRecord temporal_index_record = 8;
 }
 
 // Holds encrypted data and information required to decrypt it.

@@ -65,9 +65,11 @@ void EnrollTask::Run() {
 CreateCertRequestTask::CreateCertRequestTask(AttestationTaskObserver* observer,
                                              Attestation* attestation,
                                              CertificateProfile profile,
+                                             const string& username,
                                              const string& origin)
     : AttestationTask(observer, attestation),
       profile_(profile),
+      username_(username),
       origin_(origin) {
 }
 
@@ -78,6 +80,7 @@ void CreateCertRequestTask::Run() {
   if (attestation_) {
     SecureBlob pca_request;
     bool status = attestation_->CreateCertRequest(profile_,
+                                                  username_,
                                                   origin_,
                                                   &pca_request);
     result()->set_return_status(status);

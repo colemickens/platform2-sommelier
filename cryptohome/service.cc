@@ -1436,6 +1436,7 @@ gboolean Service::AsyncTpmAttestationEnroll(GArray* pca_response,
 }
 
 gboolean Service::TpmAttestationCreateCertRequest(gint certificate_profile,
+                                                  gchar* username,
                                                   gchar* request_origin,
                                                   GArray** OUT_pca_request,
                                                   GError** error) {
@@ -1447,6 +1448,7 @@ gboolean Service::TpmAttestationCreateCertRequest(gint certificate_profile,
   }
   chromeos::SecureBlob blob;
   if (attestation->CreateCertRequest(GetProfile(certificate_profile),
+                                     "",
                                      request_origin,
                                      &blob))
     g_array_append_vals(*OUT_pca_request, &blob.front(), blob.size());
@@ -1455,6 +1457,7 @@ gboolean Service::TpmAttestationCreateCertRequest(gint certificate_profile,
 
 gboolean Service::AsyncTpmAttestationCreateCertRequest(
     gint certificate_profile,
+    gchar* username,
     gchar* request_origin,
     gint* OUT_async_id,
     GError** error) {
@@ -1464,6 +1467,7 @@ gboolean Service::AsyncTpmAttestationCreateCertRequest(
       new CreateCertRequestTask(observer,
                                 tpm_init_->get_attestation(),
                                 GetProfile(certificate_profile),
+                                username,
                                 request_origin);
   *OUT_async_id = task->sequence_id();
   mount_thread_.message_loop()->PostTask(

@@ -300,9 +300,11 @@ gboolean cryptohome_tpm_attestation_create_cert_request(
   CertificateProfile profile = ENTERPRISE_MACHINE_CERTIFICATE;
   if (!include_stable_id)
     profile = ENTERPRISE_USER_CERTIFICATE;
+  gchar username[] = "";
   gchar origin[] = "";
   CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateCertRequest,
                          profile,
+                         username,
                          origin,
                          OUT_pca_request);
 }
@@ -315,31 +317,37 @@ gboolean cryptohome_async_tpm_attestation_create_cert_request(
   CertificateProfile profile = ENTERPRISE_MACHINE_CERTIFICATE;
   if (!include_stable_id)
     profile = ENTERPRISE_USER_CERTIFICATE;
+  gchar username[] = "";
   gchar origin[] = "";
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
                          profile,
+                         username,
                          origin,
                          OUT_async_id);
 }
 gboolean cryptohome_tpm_attestation_create_cert_request_by_profile(
     Cryptohome *self,
     gint certificate_profile,
+    gchar* username,
     gchar* request_origin,
     GArray** OUT_pca_request,
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(TpmAttestationCreateCertRequest,
                          certificate_profile,
+                         username,
                          request_origin,
                          OUT_pca_request);
 }
 gboolean cryptohome_async_tpm_attestation_create_cert_request_by_profile(
     Cryptohome *self,
     gint certificate_profile,
+    gchar* username,
     gchar* request_origin,
     gint *OUT_async_id,
     GError** error) {
   CRYPTOHOME_WRAP_METHOD(AsyncTpmAttestationCreateCertRequest,
                          certificate_profile,
+                         username,
                          request_origin,
                          OUT_async_id);
 }

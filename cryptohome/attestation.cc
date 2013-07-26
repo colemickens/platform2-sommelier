@@ -176,6 +176,8 @@ const unsigned char Attestation::kSha256DigestInfo[] = {
     0x04, 0x02, 0x01, 0x05, 0x00, 0x04, 0x20
 };
 
+const int Attestation::kNumTemporalValues = 5;
+
 Attestation::Attestation(Tpm* tpm, Platform* platform)
     : tpm_(tpm),
       platform_(platform),
@@ -183,7 +185,9 @@ Attestation::Attestation(Tpm* tpm, Platform* platform)
       thread_(base::kNullThreadHandle),
       pkcs11_key_store_(new Pkcs11KeyStore()),
       user_key_store_(pkcs11_key_store_.get()),
-      enterprise_test_key_(NULL) {}
+      enterprise_test_key_(NULL) {
+  metrics_.Init();
+}
 
 Attestation::~Attestation() {
   if (thread_ != base::kNullThreadHandle)
@@ -496,6 +500,7 @@ bool Attestation::Enroll(const SecureBlob& pca_response) {
 }
 
 bool Attestation::CreateCertRequest(CertificateProfile profile,
+                                    const string& username,
                                     const string& origin,
                                     SecureBlob* pca_request) {
   if (!IsEnrolled()) {
@@ -514,7 +519,7 @@ bool Attestation::CreateCertRequest(CertificateProfile profile,
   request_pb.set_profile(profile);
   if (!origin.empty()) {
     request_pb.set_origin(origin);
-    request_pb.set_temporal_index(ChooseTemporalIndex(origin));
+    request_pb.set_temporal_index(ChooseTemporalIndex(username, origin));
   }
   SecureBlob nonce;
   if (!tpm_->GetRandomData(kNonceSize, &nonce)) {
@@ -1577,9 +1582,47 @@ bool Attestation::AesDecrypt(const chromeos::SecureBlob& ciphertext,
                                                plaintext);
 }
 
-int Attestation::ChooseTemporalIndex(const std::string& origin) {
-  // TODO(dkrahn): crbug.com/260504 - Implement this properly.
-  return 0;
+int Attestation::ChooseTemporalIndex(const std::string& user,
+                                     const std::string& origin) {
+  string user_hash = ConvertBlobToString(CryptoLib::Sha256(
+      ConvertStringToBlob(user)));
+  string origin_hash = ConvertBlobToString(CryptoLib::Sha256(
+      ConvertStringToBlob(origin)));
+  int histogram[kNumTemporalValues] = {0};
+  for (int i = 0; i < database_pb_.temporal_index_record_size(); ++i) {
+    const AttestationDatabase::TemporalIndexRecord& record =
+        database_pb_.temporal_index_record(i);
+    // Ignore out-of-range index values.
+    if (record.temporal_index() < 0 ||
+        record.temporal_index() >= kNumTemporalValues)
+      continue;
+    if (record.origin_hash() == origin_hash) {
+      if (record.user_hash() == user_hash) {
+        // We've previously chosen this index for this user, reuse it.
+        return record.temporal_index();
+      } else {
+        // We've previously chosen this index for another user.
+        ++histogram[record.temporal_index()];
+      }
+    }
+  }
+  int least_used_index = 0;
+  for (int i = 1; i < kNumTemporalValues; ++i) {
+    if (histogram[i] < histogram[least_used_index])
+      least_used_index = i;
+  }
+  if (histogram[least_used_index] > 0) {
+    LOG(WARNING) << "Unique origin-specific identifiers have been exhausted.";
+    metrics_.SendCrosEventToUMA("Attestation.OriginSpecificExhausted");
+  }
+  // Record our choice for later reference.
+  AttestationDatabase::TemporalIndexRecord* new_record =
+      database_pb_.add_temporal_index_record();
+  new_record->set_origin_hash(origin_hash);
+  new_record->set_user_hash(user_hash);
+  new_record->set_temporal_index(least_used_index);
+  PersistDatabaseChanges();
+  return least_used_index;
 }
 
 void Attestation::RSADeleter::operator()(void* ptr) const {

@@ -1233,7 +1233,7 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_tpm_attestation_create_cert_request_by_profile(
           proxy.gproxy(),
           cryptohome::ENTERPRISE_USER_CERTIFICATE,
-          "",
+          "", "",
           &chromeos::Resetter(&data).lvalue(),
           &chromeos::Resetter(&error).lvalue())) {
         printf("TpmAttestationCreateCertRequest call failed: %s.\n",
@@ -1248,7 +1248,7 @@ int main(int argc, char **argv) {
       if (!org_chromium_CryptohomeInterface_async_tpm_attestation_create_cert_request_by_profile(
               proxy.gproxy(),
               cryptohome::ENTERPRISE_USER_CERTIFICATE,
-              "",
+              "", "",
               &async_id,
               &chromeos::Resetter(&error).lvalue())) {
         printf("AsyncTpmAttestationCreateCertRequest call failed: %s.\n",
