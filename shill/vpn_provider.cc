@@ -39,8 +39,8 @@ void VPNProvider::Start() {}
 
 void VPNProvider::Stop() {}
 
-VPNServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
-                                         Error *error) {
+ServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
+                                      Error *error) {
   SLOG(VPN, 2) << __func__;
   string type = args.LookupString(flimflam::kProviderTypeProperty, "");
   if (type.empty()) {
@@ -92,7 +92,7 @@ void VPNProvider::RemoveService(VPNServiceRefPtr service) {
   }
 }
 
-void VPNProvider::CreateServicesFromProfile(ProfileRefPtr profile) {
+void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   SLOG(VPN, 2) << __func__;
   const StoreInterface *storage = profile->GetConstStorage();
   set<string> groups =

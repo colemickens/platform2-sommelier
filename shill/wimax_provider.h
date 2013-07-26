@@ -13,6 +13,7 @@
 
 #include "shill/accessor_interface.h"
 #include "shill/dbus_manager.h"
+#include "shill/provider.h"
 #include "shill/refptr_types.h"
 #include "shill/wimax_network_proxy_interface.h"
 
@@ -26,7 +27,7 @@ class Metrics;
 class ProxyFactory;
 class WiMaxManagerProxyInterface;
 
-class WiMaxProvider {
+class WiMaxProvider : public Provider {
  public:
   WiMaxProvider(ControlInterface *control,
                 EventDispatcher *dispatcher,
@@ -34,8 +35,14 @@ class WiMaxProvider {
                 Manager *manager);
   virtual ~WiMaxProvider();
 
-  void Start();
-  void Stop();
+  // Called by Manager as a part of the Provider interface.  The attributes
+  // used for matching services for the WiMax provider are the NetworkId,
+  // mode and Name parameters.
+  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  virtual ServiceRefPtr GetService(const KeyValueStore &args,
+                                   Error *error) override;
+  void Start() override;
+  void Stop() override;
 
   // Signaled by DeviceInfo when a new WiMAX device becomes available.
   virtual void OnDeviceInfoAvailable(const std::string &link_name);
@@ -46,14 +53,6 @@ class WiMaxProvider {
   // Signaled by |service| when it's been unloaded by Manager. Returns true if
   // this provider has released ownership of the service, and false otherwise.
   virtual bool OnServiceUnloaded(const WiMaxServiceRefPtr &service);
-
-  // Creates if necessary and configures a WiMAX service with the given
-  // parameters. Used by Manager::GetService.
-  WiMaxServiceRefPtr GetService(const KeyValueStore &args, Error *error);
-
-  // Creates and registers all WiMAX services available in |profile|. Used by
-  // Manager::PushProfile.
-  void CreateServicesFromProfile(const ProfileRefPtr &profile);
 
   // Selects and returns a WiMAX device to connect |service| through.
   virtual WiMaxRefPtr SelectCarrier(const WiMaxServiceConstRefPtr &service);

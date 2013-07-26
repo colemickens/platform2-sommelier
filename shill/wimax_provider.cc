@@ -147,8 +147,8 @@ bool WiMaxProvider::OnServiceUnloaded(const WiMaxServiceRefPtr &service) {
   return true;
 }
 
-WiMaxServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
-                                             Error *error) {
+ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
+                                        Error *error) {
   SLOG(WiMax, 2) << __func__;
   CHECK_EQ(args.GetString(flimflam::kTypeProperty), flimflam::kTypeWimax);
   WiMaxNetworkId id = args.LookupString(WiMaxService::kNetworkIdProperty, "");

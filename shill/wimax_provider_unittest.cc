@@ -491,7 +491,7 @@ TEST_F(WiMaxProviderTest, GetService) {
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeWimax);
 
   // No network id property.
-  WiMaxServiceRefPtr service = provider_.GetService(args, &e);
+  ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kInvalidArguments, e.type());
   EXPECT_FALSE(service);
 

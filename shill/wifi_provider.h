@@ -13,6 +13,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"  // for ByteArrays
+#include "shill/provider.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -31,7 +32,7 @@ class WiFiService;
 // The WiFi Provider is the holder of all WiFi Services.  It holds both
 // visible (created due to an Endpoint becoming visible) and invisible
 // (created due to user or storage configuration) Services.
-class WiFiProvider {
+class WiFiProvider : public Provider {
  public:
   static const char kStorageFrequencies[];
   static const int kMaxStorageFrequencies;
@@ -55,25 +56,18 @@ class WiFiProvider {
                Manager *manager);
   virtual ~WiFiProvider();
 
-  virtual void Start();
-  virtual void Stop();
-
-  // Called by Manager.
-  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile);
-  virtual WiFiServiceRefPtr GetService(const KeyValueStore &args, Error *error);
-
-  // Find a Service with the same SSID, mode and security as provided
-  // in |args|.  Returns a reference to a matching service if one
-  // exists.  Otherwise it returns a NULL reference and populates |error|.
-  virtual WiFiServiceRefPtr FindSimilarService(
-      const KeyValueStore &args, Error *error) const;
-
-  // Create a temporary WiFiService with the mode, ssid, security and
-  // hidden properties populated from |args|.  Callers outside of the
-  // WiFiProvider must must never register this service with the Manager
-  // or connect it since it was never added to the provider's service list.
-  virtual WiFiServiceRefPtr CreateTemporaryService(
-      const KeyValueStore &args, Error *error);
+  // Called by Manager as a part of the Provider interface.  The attributes
+  // used for matching services for the WiFi provider are the SSID, mode and
+  // security parameters.
+  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  virtual ServiceRefPtr GetService(const KeyValueStore &args,
+                                   Error *error) override;
+  virtual ServiceRefPtr FindSimilarService(
+      const KeyValueStore &args, Error *error) const override;
+  virtual ServiceRefPtr CreateTemporaryService(
+      const KeyValueStore &args, Error *error) override;
+  virtual void Start() override;
+  virtual void Stop() override;
 
   // Find a Service this Endpoint should be associated with.
   virtual WiFiServiceRefPtr FindServiceForEndpoint(
@@ -154,6 +148,10 @@ class WiFiProvider {
   WiFiServiceRefPtr FindService(const std::vector<uint8_t> &ssid,
                                 const std::string &mode,
                                 const std::string &security) const;
+
+  // Returns a WiFiServiceRefPtr for unit tests and for down-casting to a
+  // ServiceRefPtr in GetService().
+  WiFiServiceRefPtr GetWiFiService(const KeyValueStore &args, Error *error);
 
   // Disassociate the service from its WiFi device and remove it from the
   // services_ vector.

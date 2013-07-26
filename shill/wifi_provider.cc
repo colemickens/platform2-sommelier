@@ -158,7 +158,7 @@ void WiFiProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   }
 }
 
-WiFiServiceRefPtr WiFiProvider::FindSimilarService(
+ServiceRefPtr WiFiProvider::FindSimilarService(
     const KeyValueStore &args, Error *error) const {
   vector<uint8_t> ssid;
   string mode;
@@ -178,7 +178,7 @@ WiFiServiceRefPtr WiFiProvider::FindSimilarService(
   return service;
 }
 
-WiFiServiceRefPtr WiFiProvider::CreateTemporaryService(
+ServiceRefPtr WiFiProvider::CreateTemporaryService(
     const KeyValueStore &args, Error *error) {
   vector<uint8_t> ssid;
   string mode;
@@ -201,7 +201,12 @@ WiFiServiceRefPtr WiFiProvider::CreateTemporaryService(
                          hidden_ssid);
 }
 
-WiFiServiceRefPtr WiFiProvider::GetService(
+ServiceRefPtr WiFiProvider::GetService(
+    const KeyValueStore &args, Error *error) {
+  return GetWiFiService(args, error);
+}
+
+WiFiServiceRefPtr WiFiProvider::GetWiFiService(
     const KeyValueStore &args, Error *error) {
   vector<uint8_t> ssid_bytes;
   string mode;

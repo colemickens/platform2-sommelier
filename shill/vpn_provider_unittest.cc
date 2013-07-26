@@ -72,7 +72,7 @@ TEST_F(VPNProviderTest, GetServiceNoType) {
   KeyValueStore args;
   Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
-  VPNServiceRefPtr service = provider_.GetService(args, &e);
+  ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
 }
@@ -84,7 +84,7 @@ TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
   args.SetString(flimflam::kProviderTypeProperty, "unknown-vpn-type");
   args.SetString(flimflam::kProviderHostProperty, kHost);
   args.SetString(flimflam::kNameProperty, kName);
-  VPNServiceRefPtr service = provider_.GetService(args, &e);
+  ServiceRefPtr service = provider_.GetService(args, &e);
   EXPECT_EQ(Error::kNotSupported, e.type());
   EXPECT_FALSE(service);
 }
@@ -98,7 +98,7 @@ TEST_F(VPNProviderTest, GetService) {
   args.SetString(flimflam::kNameProperty, kName);
   EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
   EXPECT_CALL(manager_, RegisterService(_));
-  VPNServiceRefPtr service0 = provider_.GetService(args, &e);
+  ServiceRefPtr service0 = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   ASSERT_TRUE(service0);
   EXPECT_EQ("vpn_10_8_0_1_vpn_name", service0->GetStorageIdentifier());
@@ -109,7 +109,7 @@ TEST_F(VPNProviderTest, GetService) {
   EXPECT_TRUE(e.IsSuccess());
 
   // A second call should return the same service.
-  VPNServiceRefPtr service1 = provider_.GetService(args, &e);
+  ServiceRefPtr service1 = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   ASSERT_EQ(service0.get(), service1.get());
 }

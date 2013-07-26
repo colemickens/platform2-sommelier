@@ -11,6 +11,7 @@
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/provider.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -22,7 +23,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 
-class VPNProvider {
+class VPNProvider : public Provider {
  public:
   VPNProvider(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
@@ -30,10 +31,14 @@ class VPNProvider {
               Manager *manager);
   virtual ~VPNProvider();
 
-  virtual void Start();
-  virtual void Stop();
-
-  VPNServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+  // Called by Manager as a part of the Provider interface.  The attributes
+  // used for matching services for the VPN provider are the ProviderType,
+  // ProviderHost mode and Name parameters.
+  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  virtual ServiceRefPtr GetService(const KeyValueStore &args,
+                                   Error *error) override;
+  virtual void Start() override;
+  virtual void Stop() override;
 
   // Offers an unclaimed interface to VPN services.  Returns true if this
   // device has been accepted by a service.
@@ -44,8 +49,6 @@ class VPNProvider {
   // This removes the VPN provider's reference to this service in its
   // services_ vector.
   void RemoveService(VPNServiceRefPtr service);
-
-  void CreateServicesFromProfile(ProfileRefPtr profile);
 
   // Returns true if any of the managed VPN services is connecting or connected.
   virtual bool HasActiveService() const;

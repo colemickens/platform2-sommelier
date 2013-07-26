@@ -24,6 +24,13 @@ EthernetEapProvider::EthernetEapProvider(ControlInterface *control_interface,
 
 EthernetEapProvider::~EthernetEapProvider() {}
 
+ServiceRefPtr EthernetEapProvider::GetService(const KeyValueStore &args,
+                                              Error *error) {
+  CHECK_EQ(kTypeEthernetEap, args.LookupString(flimflam::kTypeProperty, ""))
+      << "Service type must be Ethernet EAP!";
+  return service();
+}
+
 void EthernetEapProvider::Start() {
   if (!service_) {
     service_ = new EthernetEapService(control_interface_,

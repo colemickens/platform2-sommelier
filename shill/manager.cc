@@ -1659,7 +1659,7 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   string type = args.GetString(flimflam::kTypeProperty);
   if (type == kTypeEthernetEap) {
     SLOG(Manager, 2) << __func__ << ": getting Ethernet EAP Service";
-    return ethernet_eap_provider_->service();
+    return ethernet_eap_provider_->GetService(args, error);
   }
   if (type == flimflam::kTypeVPN) {
     SLOG(Manager, 2) << __func__ << ": getting VPN Service";

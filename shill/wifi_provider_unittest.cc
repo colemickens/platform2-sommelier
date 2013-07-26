@@ -211,12 +211,12 @@ class WiFiProviderTest : public testing::Test {
     }
   }
 
-  WiFiServiceRefPtr CreateTemporaryService(const char *ssid,
-                                           const char *mode,
-                                           const char *security,
-                                           bool is_hidden,
-                                           bool provide_hidden,
-                                           Error *error) {
+  ServiceRefPtr CreateTemporaryService(const char *ssid,
+                                       const char *mode,
+                                       const char *security,
+                                       bool is_hidden,
+                                       bool provide_hidden,
+                                       Error *error) {
     KeyValueStore args;
     SetServiceParameters(
         ssid, mode, security, is_hidden, provide_hidden, &args);
@@ -232,7 +232,11 @@ class WiFiProviderTest : public testing::Test {
     KeyValueStore args;
     SetServiceParameters(
         ssid, mode, security, is_hidden, provide_hidden, &args);
-    return provider_.GetService(args, error);
+    return provider_.GetWiFiService(args, error);
+  }
+
+  WiFiServiceRefPtr GetWiFiService(const KeyValueStore &args, Error *error) {
+    return provider_.GetWiFiService(args, error);
   }
 
   WiFiServiceRefPtr FindService(const vector<uint8_t> &ssid,
@@ -716,12 +720,12 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
       true, true, &args);
   EXPECT_CALL(manager_, RegisterService(_)).Times(1);
   Error get_service_error;
-  WiFiServiceRefPtr service = provider_.GetService(args, &get_service_error);
+  WiFiServiceRefPtr service = GetWiFiService(args, &get_service_error);
   EXPECT_EQ(1, GetServices().size());
 
   {
     Error error;
-    WiFiServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
     EXPECT_EQ(service.get(), find_service.get());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -730,7 +734,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
 
   {
     Error error;
-    WiFiServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
     EXPECT_EQ(service.get(), find_service.get());
     EXPECT_TRUE(error.IsSuccess());
   }
@@ -739,7 +743,7 @@ TEST_F(WiFiProviderTest, FindSimilarService) {
 
   {
     Error error;
-    WiFiServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
+    ServiceRefPtr find_service = provider_.FindSimilarService(args, &error);
     EXPECT_EQ(NULL, find_service.get());
     EXPECT_EQ(Error::kNotFound, error.type());
   }
@@ -758,7 +762,7 @@ TEST_F(WiFiProviderTest, CreateTemporaryService) {
   Mock::VerifyAndClearExpectations(&manager_);
 
   EXPECT_CALL(manager_, RegisterService(_)).Times(0);
-  WiFiServiceRefPtr service1 =
+  ServiceRefPtr service1 =
       CreateTemporaryService(kSSID.c_str(), flimflam::kModeManaged,
                              flimflam::kSecurityNone, true, true, &error);
 

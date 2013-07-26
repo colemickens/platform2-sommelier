@@ -9,17 +9,20 @@
 
 #include <base/callback.h>
 
+#include "shill/provider.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
 
 class ControlInterface;
+class Error;
 class Ethernet;
 class EventDispatcher;
+class KeyValueStore;
 class Manager;
 class Metrics;
 
-class EthernetEapProvider {
+class EthernetEapProvider : public Provider {
  public:
   typedef base::Callback<void()> CredentialChangeCallback;
 
@@ -29,8 +32,11 @@ class EthernetEapProvider {
                       Manager *manager);
   virtual ~EthernetEapProvider();
 
-  virtual void Start();
-  virtual void Stop();
+  // Called by Manager as a part of the Provider interface.
+  virtual ServiceRefPtr GetService(const KeyValueStore &args,
+                                   Error *error) override;
+  virtual void Start() override;
+  virtual void Stop() override;
 
   virtual const ServiceRefPtr &service() const { return service_; }
 
