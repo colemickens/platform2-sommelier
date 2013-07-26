@@ -95,6 +95,16 @@ void PerfParser::GetFilenames(std::vector<string>* filenames) const {
                     filename_set.end());
 }
 
+void PerfParser::GetFilenamesToBuildIDs(
+    std::map<string, string>* filenames_to_build_ids) const {
+  filenames_to_build_ids->clear();
+  for (size_t i = 0; i < build_id_events_.size(); ++i) {
+    const build_id_event& event = *build_id_events_[i];
+    string build_id = HexToString(event.build_id, kBuildIDArraySize);
+    (*filenames_to_build_ids)[event.filename] = build_id;
+  }
+}
+
 bool PerfParser::InjectBuildIDs(
     const std::map<string, string>& filenames_to_build_ids) {
   if (!build_id_events_.empty()) {

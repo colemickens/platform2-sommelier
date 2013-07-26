@@ -167,21 +167,33 @@ TEST(PerfParserTest, TestBuildIDInjection) {
     PerfParser parser;
     ReadFileAndCheckInternals(input_perf_data, &parser);
 
-    if (!parser.build_id_events().empty())
-      continue;
-
     std::vector<string> filenames;
     parser.GetFilenames(&filenames);
     ASSERT_FALSE(filenames.empty());
 
+    // Can only inject build ids in files which don't already have build ids.
+    if (!parser.build_id_events().empty())
+      continue;
+
+    // Initially there are no build ids.
+    std::map<string, string> parser_map;
+    parser.GetFilenamesToBuildIDs(&parser_map);
+    EXPECT_TRUE(parser_map.empty());
+
+    // Inject some made up build ids.
     std::map<string, string> filenames_to_build_ids;
     CreateFilenameToBuildIDMap(filenames, i, &filenames_to_build_ids);
     ASSERT_TRUE(parser.InjectBuildIDs(filenames_to_build_ids));
     injected_at_least_once = true;
 
+    // Parser should now correctly populate the filenames to build ids map.
+    parser.GetFilenamesToBuildIDs(&parser_map);
+    EXPECT_EQ(filenames_to_build_ids, parser_map);
+
     string output_perf_data = input_perf_data + ".parse.remap.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data));
 
+    // Perf should find the same build ids.
     std::map<string, string> perf_build_id_map;
     ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data, &perf_build_id_map));
     EXPECT_EQ(filenames_to_build_ids, perf_build_id_map);
@@ -202,12 +214,18 @@ TEST(PerfParserTest, TestBuildIDInjection) {
 
     // Add a build id that is too short and make sure it doesn't break things
     filename_localizer["fecba9876543210"] = "hello_world.cc";
-
     parser.Localize(filename_localizer);
+
+    // Filenames should be the same.
     std::vector<string> new_filenames;
     parser.GetFilenames(&new_filenames);
     std::sort(filenames.begin(), filenames.end());
     EXPECT_EQ(filenames, new_filenames);
+
+    // Build ids should be updated.
+    parser_map.clear();
+    parser.GetFilenamesToBuildIDs(&parser_map);
+    EXPECT_EQ(filenames_to_build_ids, parser_map);
 
     string output_perf_data2 = input_perf_data + ".parse.remap2.out";
     ASSERT_TRUE(parser.WriteFile(output_perf_data2));
