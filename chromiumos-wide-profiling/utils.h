@@ -34,6 +34,12 @@ bool CreateNamedTempFile(string* name);
 
 // Returns true if the perf reports show the same summary.  Metadata
 // is compared if it is present in kSupportedMetadata in utils.cc.
+bool ComparePerfReportsByFields(const string& quipper_input,
+                                const string& quipper_output,
+                                const string& sort_fields);
+
+// Default implementation of ComparePerfReportsByFields(), where |sort_fields|
+// is set to a default value.
 bool ComparePerfReports(const string& quipper_input,
                         const string& quipper_output);
 
@@ -64,6 +70,21 @@ bool StringToHex(const string& str, u8* array, size_t length);
 // Adjust |size| to blocks of |align_size|.  i.e. returns the smallest multiple
 // of |align_size| that can fit |size|.
 uint64 AlignSize(uint64 size, uint32 align_size);
+
+// Given a general perf sample format |sample_type|, return the fields of that
+// format that are present in a sample for an event of type |event_type|.
+//
+// e.g. FORK and EXIT events have the fields {time, pid/tid, cpu, id}.
+// Given a sample type with fields {ip, time, pid/tid, and period}, return
+// the intersection of these two field sets: {time, pid/tid}.
+//
+// All field formats are bitfields, as defined by enum perf_event_sample_format
+// in kernel/perf_event.h.
+uint64 GetSampleFieldsForEventType(uint32 event_type, uint64 sample_type);
+
+// Returns the offset in bytes within a perf event structure at which the raw
+// perf sample data is located.
+uint64 GetPerfSampleDataOffset(const event_t& event);
 
 // Returns the size of the 8-byte-aligned memory for storing |string|.
 size_t GetUint64AlignedStringLength(const string& str);

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <gtest/gtest.h>
+#include <inttypes.h>
 #include <sys/time.h>
 
 #include <string>
@@ -163,7 +164,48 @@ TEST(PerfSerializerTest, TestRemap) {
     const string output_perf_data = input_perf_data + ".ser.remap.out";
     SerializeAndDeserialize(input_perf_data, output_perf_data, true, true);
   }
+}
 
+TEST(PerfSerializeTest, TestCommMd5s) {
+  // Replace command strings with their Md5sums.  Test size adjustment for
+  // command strings.
+  for (unsigned int i = 0;
+       i < arraysize(perf_test_files::kPerfDataFiles);
+       ++i) {
+    const string input_perf_data = perf_test_files::kPerfDataFiles[i];
+    LOG(INFO) << "Testing " << input_perf_data;
+
+    quipper::PerfDataProto perf_data_proto;
+    PerfSerializer serializer;
+    EXPECT_TRUE(serializer.SerializeFromFile(input_perf_data,
+                                             &perf_data_proto));
+
+    for (int j = 0; j < perf_data_proto.events_size(); ++j) {
+      quipper::PerfDataProto_PerfEvent& event =
+          *perf_data_proto.mutable_events(j);
+      if (event.header().type() != PERF_RECORD_COMM)
+        continue;
+      CHECK(event.has_comm_event());
+
+      struct comm_event dummy;
+      char comm_name[arraysize(dummy.comm)];
+
+      quipper::PerfDataProto_CommEvent& comm_event =
+          *event.mutable_comm_event();
+      snprintf(comm_name, sizeof(comm_name), "%" PRIx64,
+               comm_event.comm_md5_prefix());
+      comm_event.set_comm(comm_name);
+    }
+
+    PerfSerializer deserializer;
+    const string output_perf_data = input_perf_data + ".ser.comm.out";
+    EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto,
+                                               output_perf_data));
+    // Compare only DSO names, since the commands will not match.
+    EXPECT_TRUE(ComparePerfReportsByFields(input_perf_data,
+                                           output_perf_data,
+                                           "dso,sym"));
+  }
 }
 
 }  // namespace quipper

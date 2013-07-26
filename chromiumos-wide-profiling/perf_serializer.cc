@@ -4,6 +4,8 @@
 
 #include "perf_serializer.h"
 
+#include <bitset>
+
 #include <stdio.h>
 #include <sys/time.h>
 
@@ -455,6 +457,17 @@ void PerfSerializer::DeserializeCommSample(
   snprintf(comm.comm, sizeof(comm.comm), "%s", sample.comm().c_str());
 
   DeserializeSampleInfo(sample.sample_info(), event);
+
+  // Sometimes the command string will be modified.  e.g. if the original comm
+  // string is not recoverable from the Md5sum prefix, then use the latter as a
+  // replacement comm string.  However, if the original was < 8 bytes (fit into
+  // |sizeof(uint64)|), then the size is no longer correct.  This section checks
+  // for the size difference and updates the size in the header.
+  uint64 sample_fields =
+      GetSampleFieldsForEventType(comm.header.type, sample_type_);
+  std::bitset<sizeof(sample_fields) * CHAR_BIT> sample_type_bits(sample_fields);
+  comm.header.size = GetPerfSampleDataOffset(*event->raw_event) +
+                     sample_type_bits.count() * sizeof(uint64);
 }
 
 void PerfSerializer::SerializeForkSample(

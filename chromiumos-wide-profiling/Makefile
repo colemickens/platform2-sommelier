@@ -9,7 +9,7 @@ PC_DEPS = openssl protobuf libchrome-$(BASE_VER)
 PC_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PC_DEPS))
 PC_LIBS := $(shell $(PKG_CONFIG) --libs $(PC_DEPS))
 
-CPPFLAGS += -Iperf $(PC_CFLAGS)
+CPPFLAGS += -Iperf $(PC_CFLAGS) -D__STDC_FORMAT_MACROS
 LDLIBS += $(PC_LIBS)
 
 TEST_SOURCES = address_mapper_test.cc perf_parser_test.cc perf_reader_test.cc \
