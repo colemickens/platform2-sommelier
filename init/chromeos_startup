@@ -274,9 +274,11 @@ if [ -O "$RESET_FILE" ]; then
   exec clobber-state "$ARGS"
 fi
 
-# Make sure unencrypted stateful partition has the needed directories.
+# Make sure unencrypted stateful partition has the needed common directories.
+# Any non-common directories should be created in the device implementation of
+# "mount_var_and_home_chronos".
 for d in home home/chronos home/root home/user \
-         unencrypted/cache unencrypted/preserve var; do
+         unencrypted/cache unencrypted/preserve; do
   mkdir -p -m 0755 /mnt/stateful_partition/$d
 done
 

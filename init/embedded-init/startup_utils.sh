@@ -4,6 +4,7 @@
 
 # Bind mount /var and /home/chronos. All function arguments are ignored.
 mount_var_and_home_chronos() {
+  mkdir -p /mnt/stateful_partition/var || return 1
   mount -n --bind /mnt/stateful_partition/var /var || return 1
   mount -n --bind /mnt/stateful_partition/home/chronos /home/chronos
 }
