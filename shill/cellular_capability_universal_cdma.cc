@@ -318,6 +318,7 @@ void CellularCapabilityUniversalCDMA::UpdateServingOperator() {
   SLOG(Cellular, 2) << __func__;
   if (cellular()->service().get()) {
     cellular()->service()->SetServingOperator(cellular()->home_provider());
+    cellular()->service()->SetFriendlyName(CreateFriendlyServiceName());
   }
 }
 
