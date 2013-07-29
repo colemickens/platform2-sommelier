@@ -1847,8 +1847,8 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithNoType) {
   Error error;
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("", args, &error);
-  EXPECT_EQ(Error::kNotSupported, error.type());
-  EXPECT_EQ("This method only supports WiFi services", error.message());
+  EXPECT_EQ(Error::kInvalidArguments, error.type());
+  EXPECT_EQ("must specify service type", error.message());
   EXPECT_EQ(NULL, service.get());
 }
 
@@ -1859,7 +1859,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileWithWrongType) {
   ServiceRefPtr service =
       manager()->ConfigureServiceForProfile("", args, &error);
   EXPECT_EQ(Error::kNotSupported, error.type());
-  EXPECT_EQ("This method only supports WiFi services", error.message());
+  EXPECT_EQ("service type is unsupported", error.message());
   EXPECT_EQ(NULL, service.get());
 }
 
@@ -1982,7 +1982,7 @@ TEST_F(ManagerTest, ConfigureServiceForProfileMatchingServiceByGUID) {
         manager()->ConfigureServiceForProfile(kProfileName, args, &error);
     EXPECT_EQ(NULL, service.get());
     EXPECT_EQ(Error::kNotSupported, error.type());
-    EXPECT_EQ("This GUID matches a non-WiFi service", error.message());
+    EXPECT_EQ("This GUID matches a non-wifi service", error.message());
   }
 
   EXPECT_CALL(*mock_service, Configure(_, _)).Times(1);

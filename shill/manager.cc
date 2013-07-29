@@ -1742,11 +1742,21 @@ ServiceRefPtr Manager::ConfigureService(const KeyValueStore &args,
 // called via RPC (e.g., from ManagerDBusAdaptor)
 ServiceRefPtr Manager::ConfigureServiceForProfile(
     const string &profile_rpcid, const KeyValueStore &args, Error *error) {
-  if (args.LookupString(flimflam::kTypeProperty, "") != flimflam::kTypeWifi) {
-    Error::PopulateAndLog(error, Error::kNotSupported,
-                          "This method only supports WiFi services");
+  if (!args.ContainsString(flimflam::kTypeProperty)) {
+    Error::PopulateAndLog(error, Error::kInvalidArguments, kErrorTypeRequired);
     return NULL;
   }
+
+  string type = args.GetString(flimflam::kTypeProperty);
+  Technology::Identifier technology = Technology::IdentifierFromName(type);
+
+  if (!ContainsKey(providers_, technology)) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kErrorUnsupportedServiceType);
+    return NULL;
+  }
+
+  ProviderInterface *provider = providers_[technology];
 
   ProfileRefPtr profile = LookupProfileByRpcIdentifier(profile_rpcid);
   if (!profile) {
@@ -1766,16 +1776,17 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   if (args.ContainsString(flimflam::kGuidProperty)) {
     SLOG(Manager, 2) << __func__ << ": searching by GUID";
     service = GetServiceWithGUID(args.GetString(flimflam::kGuidProperty), NULL);
-    if (service && service->technology() != Technology::kWifi) {
+    if (service && service->technology() != technology) {
       Error::PopulateAndLog(error, Error::kNotSupported,
-                            "This GUID matches a non-WiFi service");
+                            StringPrintf("This GUID matches a non-%s service",
+                                         type.c_str()));
       return NULL;
     }
   }
 
   if (!service) {
     Error find_error;
-    service = wifi_provider_->FindSimilarService(args, &find_error);
+    service = provider->FindSimilarService(args, &find_error);
   }
 
   // If no matching service exists, create a new service in the specified
@@ -1806,7 +1817,7 @@ ServiceRefPtr Manager::ConfigureServiceForProfile(
   // the task of creating configuration data.  This service will
   // neither inherit properties from the visible service, nor will
   // it exist after this function returns.
-  service = wifi_provider_->CreateTemporaryService(args, error);
+  service = provider->CreateTemporaryService(args, error);
   if (!service || !error->IsSuccess()) {
     // Service::CreateTemporaryService() failed, and has set the error
     // appropriately.
