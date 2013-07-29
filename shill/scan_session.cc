@@ -198,7 +198,7 @@ void ScanSession::DoScan(const vector<uint16_t> &scan_frequencies) {
 }
 
 void ScanSession::OnTriggerScanResponse(const Nl80211Message &netlink_message) {
-  LOG(WARNING) << "Didn't expect _this_ message, here:";
+  LOG(WARNING) << "Didn't expect _this_ netlink message, here:";
   netlink_message.Print(0, 0);
   on_scan_failed_.Run();
   return;
@@ -268,7 +268,7 @@ void ScanSession::OnTriggerScanErrorResponse(
       break;
 
     default:
-      LOG(ERROR) << "Unexpected auxilliary message type: " << type;
+      LOG(ERROR) << "Unexpected auxiliary message type: " << type;
       found_error_ = true;
       on_scan_failed_.Run();
       break;

@@ -359,6 +359,11 @@ void WiFi::Stop(Error *error, const EnabledStateChangedCallback &/*callback*/) {
 }
 
 void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
+  if ((scan_state_ != kScanIdle) ||
+      (current_service_.get() && current_service_->IsConnecting())) {
+    SLOG(WiFi, 2) << "Ignoring scan request while scanning or connecting.";
+    return;
+  }
   if (progressive_scan_enabled_ && scan_type == kProgressiveScan) {
     LOG(INFO) << __func__ << " [progressive] on " << link_name() << " from "
               << reason;
@@ -372,8 +377,6 @@ void WiFi::Scan(ScanType scan_type, Error */*error*/, const string &reason) {
         total_fraction += fraction_per_scan_;
         scan_fractions.push_back(fraction_per_scan_);
       } while (total_fraction < 1.0);
-      DCHECK(scan_state_ == kScanIdle);
-      DCHECK(scan_method_ == kScanMethodNone);
       scan_session_.reset(
           new ScanSession(netlink_manager_,
                           dispatcher(),
@@ -1308,7 +1311,9 @@ void WiFi::ProgressiveScanTask() {
              << "do a regular scan";
   scan_session_.reset();
   SetScanState(kScanScanning, kScanMethodProgressiveFinishedToFull, __func__);
-  Scan(kFullScan, NULL, __func__);
+  LOG(INFO) << "Scan [full] on " << link_name()
+            << " (connected to nothing on progressive scan) from " << __func__;
+  ScanTask();
 }
 
 void WiFi::OnFailedProgressiveScan() {
@@ -1316,7 +1321,9 @@ void WiFi::OnFailedProgressiveScan() {
              << " -- doing a regular scan";
   scan_session_.reset();
   SetScanState(kScanScanning, kScanMethodProgressiveErrorToFull, __func__);
-  Scan(kFullScan, NULL, __func__);
+  LOG(INFO) << "Scan [full] on " << link_name()
+            << " (failover from progressive scan) from " << __func__;
+  ScanTask();
 }
 
 string WiFi::GetServiceLeaseName(const WiFiService &service) {

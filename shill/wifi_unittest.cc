@@ -409,7 +409,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     WiFiObjectTest *test_;
   };
 
-  // Simulate the course of events when the last enpoint of a service is
+  // Simulate the course of events when the last endpoint of a service is
   // removed.
   class EndpointRemovalHandler {
    public:
@@ -589,8 +589,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
   void FireScanTimer() {
     wifi_->ScanTimerHandler();
   }
-  void TriggerFullScan() {
-    wifi_->Scan(Device::kFullScan, NULL, __func__);
+  void TriggerScan(WiFi::ScanMethod method) {
+    if (method == WiFi::kScanMethodFull) {
+      wifi_->Scan(Device::kFullScan, NULL, __func__);
+    } else {
+      wifi_->Scan(Device::kProgressiveScan, NULL, __func__);
+    }
   }
   const WiFiServiceRefPtr &GetCurrentService() {
     return wifi_->current_service_;
@@ -941,6 +945,7 @@ class WiFiMainTest : public WiFiObjectTest {
   // different batch of frequencies/channels.
   enum WhichBatchOfProgressiveScan {
     kFirstProgressiveScanBatch,
+    kOnlyFullScanBatch,
     kNotFirstProgressiveScanBatch
   };
   void StartScan(WiFi::ScanMethod method) {
@@ -950,7 +955,9 @@ class WiFiMainTest : public WiFiObjectTest {
     VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
     EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _)).
         Times(AnyNumber());
-    ExpectScanStart(kFirstProgressiveScanBatch, method);
+    // Using kFirstProgressiveScanBatch regardless of the method since
+    // kFOnlyFullScanBatch does exactly the same thing.
+    ExpectScanStart(method, false);
     StartWiFi();
     dispatcher_.DispatchPendingEvents();
     VerifyScanState(WiFi::kScanScanning, method);
@@ -980,13 +987,15 @@ class WiFiMainTest : public WiFiObjectTest {
     return service;
   }
 
-  void ExpectScanStart(WhichBatchOfProgressiveScan which_batch,
-                       WiFi::ScanMethod method) {
+  void ExpectScanStart(WiFi::ScanMethod method, bool is_continued) {
     if (method == WiFi::kScanMethodProgressive) {
+      ASSERT_FALSE(IsScanSessionNull());
       EXPECT_CALL(*scan_session_, HasMoreFrequencies());
       EXPECT_CALL(*scan_session_, InitiateScan());
+    } else {
+      EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
     }
-    if (which_batch == kFirstProgressiveScanBatch) {
+    if (!is_continued) {
       EXPECT_CALL(*adaptor_, EmitBoolChanged(kScanningProperty,
                                              true));
       EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
@@ -1230,84 +1239,111 @@ TEST_F(WiFiMainTest, StartClearsState) {
 }
 
 TEST_F(WiFiMainTest, NoScansWhileConnecting_FullScan) {
-  EnableFullScan();
-  StartWiFi();
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  dispatcher_.DispatchPendingEvents();
+  // Setup 'connecting' state.
+  StartScan(WiFi::kScanMethodFull);
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+
+  ExpectScanStop();
+  ExpectConnecting();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
-  SetPendingService(service);
-  // If we're connecting, we ignore scan requests to stay on channel.
-  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
+  InitiateConnect(service);
+  VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodFull);
+
+  // If we're connecting, we ignore scan requests and stay on channel.
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  TriggerFullScan();
+  TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
-  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  TriggerFullScan();
+
+  // Terminate the scan.
+  ExpectFoundNothing();
+  TimeoutPendingConnection();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Start a fresh scan.
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
+
   // Similarly, ignore scans when our connected service is reconnecting.
+  ExpectScanStop();
+  ExpectScanIdle();
   SetPendingService(NULL);
   SetCurrentService(service);
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  TriggerFullScan();
+  TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
+
   // But otherwise we'll honor the request.
-  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  TriggerFullScan();
+  EXPECT_CALL(*service, IsConnecting()).Times(AtLeast(2)).
+      WillRepeatedly(Return(false));
+  ExpectScanStart(WiFi::kScanMethodFull, false);
+  TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
+
+  // Silence messages from the destructor.
+  ExpectScanStop();
+  ExpectScanIdle();
 }
 
 TEST_F(WiFiMainTest, NoScansWhileConnecting) {
-  StartWiFi();
-  EXPECT_CALL(*scan_session_, InitiateScan());
-  dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
+  // Setup 'connecting' state.
+  StartScan(WiFi::kScanMethodProgressive);
+  ExpectScanStop();
+  ExpectConnecting();
   MockWiFiServiceRefPtr service = MakeMockService(kSecurityNone);
-  SetPendingService(service);
-  // If we're connecting, we ignore scan requests to stay on channel.
-  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  InitiateConnect(service);
+  VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodProgressive);
+
+  // If we're connecting, we ignore scan requests and stay on channel.
   EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
-  TriggerFullScan();
+  TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
-  EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
-  TriggerFullScan();
+  Mock::VerifyAndClearExpectations(scan_session_);
+
+  // Terminate the scan.
+  ExpectFoundNothing();
+  TimeoutPendingConnection();
+  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+
+  // Start a fresh scan.
+  InstallMockScanSession();
+  ExpectScanStart(WiFi::kScanMethodProgressive, false);
+  TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(scan_session_);
+
   // Similarly, ignore scans when our connected service is reconnecting.
+  ExpectScanStop();
+  ExpectScanIdle();
   SetPendingService(NULL);
   SetCurrentService(service);
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(true));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
-  EXPECT_TRUE(IsScanSessionNull());
-  TriggerFullScan();
+  InstallMockScanSession();
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
-  // But otherwise we'll honor the request.
+  Mock::VerifyAndClearExpectations(scan_session_);
+
+  // Unlike Full scan, Progressive scan will reject attempts to scan while
+  // we're connected.
   EXPECT_CALL(*service, IsConnecting()).WillOnce(Return(false));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  EXPECT_TRUE(IsScanSessionNull());
-  TriggerFullScan();
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  TriggerScan(WiFi::kScanMethodProgressive);
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(GetSupplicantInterfaceProxy());
   Mock::VerifyAndClearExpectations(service);
+  Mock::VerifyAndClearExpectations(scan_session_);
 }
 
 TEST_F(WiFiMainTest, ResumeStartsScanWhenIdle_FullScan) {
@@ -1829,7 +1865,7 @@ TEST_F(WiFiMainTest, ProgressiveScanFound) {
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (connects afterwards).
-  ExpectScanStart(kNotFirstProgressiveScanBatch, WiFi::kScanMethodProgressive);
+  ExpectScanStart(WiFi::kScanMethodProgressive, true);
   dispatcher_.DispatchPendingEvents();
   VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
   ReportScanDoneKeepScanSession();
@@ -1865,7 +1901,7 @@ TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (finds nothing).
-  ExpectScanStart(kNotFirstProgressiveScanBatch, WiFi::kScanMethodProgressive);
+  ExpectScanStart(WiFi::kScanMethodProgressive, true);
   EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_)).Times(0);
   dispatcher_.DispatchPendingEvents();
   VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
@@ -1893,20 +1929,23 @@ TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
 TEST_F(WiFiMainTest, ProgressiveScanError) {
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
   ClearScanSession();  // Clear Mock ScanSession to get an actual ScanSession.
-  StartWiFi();
+  StartWiFi();  // Posts |ProgressiveScanTask|.
 
-  // This should call |Scan| which posts |ScanTask|
+  EXPECT_CALL(netlink_manager_, SendNl80211Message(
+      IsNl80211Command(kNl80211FamilyId, NL80211_CMD_TRIGGER_SCAN), _, _));
+  dispatcher_.DispatchPendingEvents();  // Executes |ProgressiveScanTask|.
+
+  // Calls |WiFi::OnFailedProgressiveScan| which calls |ScanTask|
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
   NewScanResultsMessage not_supposed_to_get_this_message;
   OnTriggerScanResponse(not_supposed_to_get_this_message);
   VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressiveErrorToFull);
 
   EXPECT_TRUE(IsScanSessionNull());
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  dispatcher_.DispatchPendingEvents();
 
+  // Post and execute |UpdateScanStateAfterScanDone|.
   ReportScanDoneKeepScanSession();
-  EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
-  dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
+  dispatcher_.DispatchPendingEvents();
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 }
 
@@ -1990,7 +2029,7 @@ TEST_F(WiFiMainTest, ConnectToServiceWithRecentIssues) {
   SetCurrentService(service);
 
   // When we disconnect from the troubled service, we should reduce the
-  // level of supplciant debugging.
+  // level of supplicant debugging.
   EXPECT_CALL(*process_proxy, GetDebugLevel())
       .WillOnce(Return(WPASupplicant::kDebugLevelDebug));
   EXPECT_CALL(*process_proxy, SetDebugLevel(WPASupplicant::kDebugLevelInfo))
@@ -2642,7 +2681,7 @@ TEST_F(WiFiTimerTest, RequestStationInfo) {
   SetCurrentService(NULL);
   RequestStationInfo();
 
-  // current_service_ is not connnected.
+  // current_service_ is not connected.
   EXPECT_CALL(*service, IsConnected()).WillOnce(Return(false));
   SetCurrentService(service);
   EXPECT_CALL(log, Log(_, _, HasSubstr("we are not connected")));
@@ -3191,7 +3230,7 @@ TEST_F(WiFiMainTest, ConnectWhileNotScanning) {
   EXPECT_CALL(*adaptor_, EmitBoolChanged(kPoweredProperty, _)).
       Times(AnyNumber());
 
-  ExpectScanStart(kFirstProgressiveScanBatch, WiFi::kScanMethodProgressive);
+  ExpectScanStart(WiFi::kScanMethodProgressive, false);
   StartWiFi();
   dispatcher_.DispatchPendingEvents();
 
@@ -3231,7 +3270,7 @@ TEST_F(WiFiMainTest, BackgroundScan) {
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(1);
-  TriggerFullScan();
+  TriggerScan(WiFi::kScanMethodFull);
   dispatcher_.DispatchPendingEvents();
   VerifyScanState(WiFi::kScanBackgroundScanning, WiFi::kScanMethodFull);
 
@@ -3239,6 +3278,36 @@ TEST_F(WiFiMainTest, BackgroundScan) {
   EXPECT_CALL(*manager(), OnDeviceGeolocationInfoUpdated(_));
   dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
   VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+}
+
+TEST_F(WiFiMainTest, ProgressiveScanDuringFull) {
+  StartScan(WiFi::kScanMethodFull);
+
+  // Now, try to slam-in a progressive scan.
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  TriggerScan(WiFi::kScanMethodProgressive);
+  dispatcher_.DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
+
+  // And, for the destructor.
+  ExpectScanStop();
+  ExpectScanIdle();
+}
+
+TEST_F(WiFiMainTest, FullScanDuringProgressive) {
+  StartScan(WiFi::kScanMethodProgressive);
+
+  // Now, try to slam-in a full scan.
+  EXPECT_CALL(*scan_session_, InitiateScan()).Times(0);
+  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_)).Times(0);
+  TriggerScan(WiFi::kScanMethodFull);
+  dispatcher_.DispatchPendingEvents();
+  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+
+  // And, for the destructor.
+  ExpectScanStop();
+  ExpectScanIdle();
 }
 
 }  // namespace shill
