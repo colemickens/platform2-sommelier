@@ -69,6 +69,14 @@ class UdevDevice {
   // Checks if a device should be hidden from the file browser.
   bool IsHidden();
 
+  // Checks if the device is completely ignored by cros-disks. Unlike
+  // IsAutoMountable() or IsHidden(), IsIgnored() prevents a device from being
+  // reported by cros-disks during device enumeration and udev events, such that
+  // the system does not even gather properties of the device. Currently, all
+  // virtual devices, except loop devices, are ignored. Loop devices are used
+  // by automated tests to simulate removable devices and thus not ignored.
+  bool IsIgnored() const;
+
   // Checks if any media is available in the device.
   bool IsMediaAvailable() const;
 
@@ -83,6 +91,9 @@ class UdevDevice {
 
   // Checks if the device is a virtual device.
   bool IsVirtual() const;
+
+  // Checks if the device is a loop device.
+  bool IsLoopDevice() const;
 
   // Gets the native sysfs path of the device.
   std::string NativePath() const;

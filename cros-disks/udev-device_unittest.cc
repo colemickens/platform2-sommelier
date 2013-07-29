@@ -16,6 +16,8 @@ using std::vector;
 namespace {
 
 const char kLoopDeviceFile[] = "/dev/loop0";
+const char kRamDeviceFile[] = "/dev/ram0";
+const char kZRamDeviceFile[] = "/dev/zram0";
 
 }  // namespace
 
@@ -64,6 +66,13 @@ class UdevDeviceTest : public ::testing::Test {
         loop_device_ = device;
       }
 
+      if (!ram_device_ &&
+          (strcmp(device_file, kRamDeviceFile) == 0 ||
+           strcmp(device_file, kZRamDeviceFile) == 0)) {
+        udev_device_ref(device);
+        ram_device_ = device;
+      }
+
       udev_device_unref(device);
     }
     udev_enumerate_unref(enumerate);
@@ -77,6 +86,10 @@ class UdevDeviceTest : public ::testing::Test {
     if (loop_device_) {
       udev_device_unref(loop_device_);
       loop_device_ = NULL;
+    }
+    if (ram_device_) {
+      udev_device_unref(ram_device_);
+      ram_device_ = NULL;
     }
     if (mounted_device_) {
       udev_device_unref(mounted_device_);
@@ -98,12 +111,14 @@ class UdevDeviceTest : public ::testing::Test {
   static struct udev* udev_;
   static struct udev_device* boot_device_;
   static struct udev_device* loop_device_;
+  static struct udev_device* ram_device_;
   static struct udev_device* mounted_device_;
 };
 
 struct udev* UdevDeviceTest::udev_ = NULL;
 struct udev_device* UdevDeviceTest::boot_device_ = NULL;
 struct udev_device* UdevDeviceTest::loop_device_ = NULL;
+struct udev_device* UdevDeviceTest::ram_device_ = NULL;
 struct udev_device* UdevDeviceTest::mounted_device_ = NULL;
 
 TEST_F(UdevDeviceTest, EnsureUTF8String) {
@@ -219,6 +234,21 @@ TEST_F(UdevDeviceTest, IsAutoMountable) {
   }
 }
 
+TEST_F(UdevDeviceTest, IsIgnored) {
+  if (boot_device_) {
+    UdevDevice device(boot_device_);
+    EXPECT_FALSE(device.IsIgnored());
+  }
+  if (loop_device_) {
+    UdevDevice device(loop_device_);
+    EXPECT_FALSE(device.IsIgnored());
+  }
+  if (ram_device_) {
+    UdevDevice device(ram_device_);
+    EXPECT_TRUE(device.IsIgnored());
+  }
+}
+
 TEST_F(UdevDeviceTest, IsOnBootDevice) {
   if (boot_device_) {
     UdevDevice device(boot_device_);
@@ -259,6 +289,21 @@ TEST_F(UdevDeviceTest, IsVirtual) {
   if (loop_device_) {
     UdevDevice device(loop_device_);
     EXPECT_TRUE(device.IsVirtual());
+  }
+  if (ram_device_) {
+    UdevDevice device(ram_device_);
+    EXPECT_TRUE(device.IsVirtual());
+  }
+}
+
+TEST_F(UdevDeviceTest, IsLoopDevice) {
+  if (loop_device_) {
+    UdevDevice device(loop_device_);
+    EXPECT_TRUE(device.IsLoopDevice());
+  }
+  if (ram_device_) {
+    UdevDevice device(ram_device_);
+    EXPECT_FALSE(device.IsLoopDevice());
   }
 }
 

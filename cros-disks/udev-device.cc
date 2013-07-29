@@ -53,6 +53,7 @@ const char kPropertyRotationRate[] = "ID_ATA_ROTATION_RATE_RPM";
 const char kPropertySerial[] = "ID_SERIAL";
 const char kSubsystemUsb[] = "usb";
 const char kVirtualDevicePathPrefix[] = "/sys/devices/virtual/";
+const char kLoopDevicePathPrefix[] = "/sys/devices/virtual/block/loop";
 const char kUSBDeviceInfoFile[] = "/opt/google/cros-disks/usb-device-info";
 const char kUSBIdentifierDatabase[] = "/usr/share/misc/usb.ids";
 const char* kNonAutoMountableFilesystemLabels[] = {
@@ -317,6 +318,10 @@ bool UdevDevice::IsHidden() {
   return false;
 }
 
+bool UdevDevice::IsIgnored() const {
+  return IsVirtual() && !IsLoopDevice();
+}
+
 bool UdevDevice::IsOnBootDevice() const {
   // Obtain the boot device path, e.g. /dev/sda
   char boot_device_path[PATH_MAX];
@@ -369,6 +374,14 @@ bool UdevDevice::IsVirtual() const {
   }
   // To be safe, mark it as virtual device if sys path cannot be determined.
   return true;
+}
+
+bool UdevDevice::IsLoopDevice() const {
+  const char *sys_path = udev_device_get_syspath(dev_);
+  if (sys_path) {
+    return StartsWithASCII(sys_path, kLoopDevicePathPrefix, true);
+  }
+  return false;
 }
 
 string UdevDevice::NativePath() const {

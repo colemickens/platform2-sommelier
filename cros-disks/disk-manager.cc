@@ -122,7 +122,10 @@ vector<Disk> DiskManager::EnumerateDisks() const {
       LOG(INFO) << "      " << key << " = " << value;
     }
 
-    disks.push_back(UdevDevice(dev).ToDisk());
+    UdevDevice device(dev);
+    if (!device.IsIgnored()) {
+      disks.push_back(device.ToDisk());
+    }
     udev_device_unref(dev);
   }
 
@@ -134,6 +137,8 @@ vector<Disk> DiskManager::EnumerateDisks() const {
 void DiskManager::ProcessBlockDeviceEvents(
     struct udev_device* dev, const char* action, DeviceEventList* events) {
   UdevDevice device(dev);
+  if (device.IsIgnored())
+    return;
 
   bool disk_added = false;
   bool disk_removed = false;
