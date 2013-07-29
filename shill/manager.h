@@ -253,7 +253,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   }
   VPNProvider *vpn_provider() const { return vpn_provider_.get(); }
   WiFiProvider *wifi_provider() const { return wifi_provider_.get(); }
-  virtual WiMaxProvider *wimax_provider() { return &wimax_provider_; }
+  virtual WiMaxProvider *wimax_provider() { return wimax_provider_.get(); }
   PropertyStore *mutable_store() { return &store_; }
   virtual const PropertyStore &store() const { return store_; }
   GLib *glib() const { return glib_; }
@@ -491,6 +491,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
 
   // For unit testing.
   void set_metrics(Metrics *metrics) { metrics_ = metrics; }
+  void UpdateProviderMapping();
 
   // Used by tests to set a mock PowerManager.  Takes ownership of
   // power_manager.
@@ -510,7 +511,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   scoped_ptr<EthernetEapProvider> ethernet_eap_provider_;
   scoped_ptr<VPNProvider> vpn_provider_;
   scoped_ptr<WiFiProvider> wifi_provider_;
-  WiMaxProvider wimax_provider_;
+  scoped_ptr<WiMaxProvider> wimax_provider_;
   // Hold pointer to singleton Resolver instance for testing purposes.
   Resolver *resolver_;
   bool running_;
@@ -521,6 +522,10 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Services that are connected appear first in the vector.  See
   // Service::Compare() for details of the sorting criteria.
   std::vector<ServiceRefPtr> services_;
+  // Map of technologies to Provider instances.  These pointers are owned
+  // by the respective scoped_reptr objects that are held over the lifetime
+  // of the Manager object.
+  std::map<Technology::Identifier, Provider *> providers_;
   // List of startup profile names to push on the profile stack on startup.
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;

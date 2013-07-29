@@ -128,6 +128,7 @@ class DeviceInfoTest : public Test {
   // Takes ownership of |provider|.
   void SetVPNProvider(VPNProvider *provider) {
     manager_.vpn_provider_.reset(provider);
+    manager_.UpdateProviderMapping();
   }
 
  protected:

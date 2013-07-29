@@ -134,6 +134,9 @@ class ManagerTest : public PropertyStoreTest {
     // ownership.
     manager()->wifi_provider_.reset(wifi_provider_);
 
+    // Update the manager's map from technology to provider.
+    manager()->UpdateProviderMapping();
+
     // Replace the manager's crypto util proxy with our mock.  Passes
     // ownership.
     manager()->crypto_util_proxy_.reset(crypto_util_proxy_);
@@ -3855,6 +3858,7 @@ TEST_F(ManagerTest, InitializeProfilesInformsProviders) {
   // object in the fixture.
   MockWiFiProvider *wifi_provider = new NiceMock<MockWiFiProvider>();
   manager.wifi_provider_.reset(wifi_provider);  // pass ownership
+  manager.UpdateProviderMapping();
   // Give manager a valid place to write the user profile list.
   manager.user_profile_list_path_ = temp_dir.path().Append("user_profile_list");
 

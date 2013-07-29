@@ -91,6 +91,7 @@ class VPNServiceTest : public testing::Test {
   // Takes ownership of |provider|.
   void SetVPNProvider(VPNProvider *provider) {
     manager_.vpn_provider_.reset(provider);
+    manager_.UpdateProviderMapping();
   }
 
   ServiceMockAdaptor *GetAdaptor() {

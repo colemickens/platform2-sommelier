@@ -104,7 +104,8 @@ Manager::Manager(ControlInterface *control_interface,
           new VPNProvider(control_interface, dispatcher, metrics, this)),
       wifi_provider_(
           new WiFiProvider(control_interface, dispatcher, metrics, this)),
-      wimax_provider_(control_interface, dispatcher, metrics, this),
+      wimax_provider_(
+          new WiMaxProvider(control_interface, dispatcher, metrics, this)),
       resolver_(Resolver::GetInstance()),
       running_(false),
       connect_profiles_to_rpc_(true),
@@ -179,6 +180,8 @@ Manager::Manager(ControlInterface *control_interface,
   technology_order_.push_back(
       Technology::IdentifierFromName(flimflam::kTypeCellular));
 
+  UpdateProviderMapping();
+
   SLOG(Manager, 2) << "Manager initialized.";
 }
 
@@ -212,10 +215,9 @@ void Manager::Start() {
   adaptor_->UpdateRunning();
   device_info_.Start();
   modem_info_.Start();
-  ethernet_eap_provider_->Start();
-  vpn_provider_->Start();
-  wifi_provider_->Start();
-  wimax_provider_.Start();
+  for (auto provider_mapping : providers_) {
+    provider_mapping.second->Start();
+  }
 }
 
 void Manager::Stop() {
@@ -247,10 +249,9 @@ void Manager::Stop() {
   }
 
   adaptor_->UpdateRunning();
-  wimax_provider_.Stop();
-  wifi_provider_->Stop();
-  vpn_provider_->Stop();
-  ethernet_eap_provider_->Stop();
+  for (auto provider_mapping : providers_) {
+    provider_mapping.second->Stop();
+  }
   modem_info_.Stop();
   device_info_.Stop();
   sort_services_task_.Cancel();
@@ -432,11 +433,11 @@ void Manager::PushProfileInternal(
     profile->ConfigureDevice(*it);
   }
 
-  // Offer the Profile contents to the service/device providers which will
+  // Offer the Profile contents to the service providers which will
   // create new services if necessary.
-  vpn_provider_->CreateServicesFromProfile(profile);
-  wifi_provider_->CreateServicesFromProfile(profile);
-  wimax_provider_.CreateServicesFromProfile(profile);
+  for (auto provider_mapping : providers_) {
+    provider_mapping.second->CreateServicesFromProfile(profile);
+  }
 
   *path = profile->GetRpcIdentifier();
   SortServices();
@@ -1657,25 +1658,15 @@ ServiceRefPtr Manager::GetServiceInner(const KeyValueStore &args,
   }
 
   string type = args.GetString(flimflam::kTypeProperty);
-  if (type == kTypeEthernetEap) {
-    SLOG(Manager, 2) << __func__ << ": getting Ethernet EAP Service";
-    return ethernet_eap_provider_->GetService(args, error);
+  Technology::Identifier technology = Technology::IdentifierFromName(type);
+  if (!ContainsKey(providers_, technology)) {
+    Error::PopulateAndLog(error, Error::kNotSupported,
+                          kErrorUnsupportedServiceType);
+    return NULL;
   }
-  if (type == flimflam::kTypeVPN) {
-    SLOG(Manager, 2) << __func__ << ": getting VPN Service";
-    return vpn_provider_->GetService(args, error);
-  }
-  if (type == flimflam::kTypeWifi) {
-    SLOG(Manager, 2) << __func__ << ": getting WiFi Service";
-    return wifi_provider_->GetService(args, error);
-  }
-  if (type == flimflam::kTypeWimax) {
-    SLOG(Manager, 2) << __func__ << ": getting WiMAX Service";
-    return wimax_provider_.GetService(args, error);
-  }
-  Error::PopulateAndLog(error, Error::kNotSupported,
-                        kErrorUnsupportedServiceType);
-  return NULL;
+
+  SLOG(Manager, 2) << __func__ << ": getting " << type << " Service";
+  return providers_[technology]->GetService(args, error);
 }
 
 // called via RPC (e.g., from ManagerDBusAdaptor)
@@ -1942,6 +1933,13 @@ void Manager::SetTechnologyOrder(const string &order, Error *error) {
 
   technology_order_ = new_order;
   SortServices();
+}
+
+void Manager::UpdateProviderMapping() {
+  providers_[Technology::kEthernetEap] = ethernet_eap_provider_.get();
+  providers_[Technology::kVPN] = vpn_provider_.get();
+  providers_[Technology::kWifi] = wifi_provider_.get();
+  providers_[Technology::kWiMax] = wimax_provider_.get();
 }
 
 }  // namespace shill
