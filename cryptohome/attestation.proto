@@ -90,6 +90,10 @@ enum ResponseStatus {
   BAD_REQUEST = 2;
   // The server rejects the request.
   REJECT = 3;
+  // Only appears in enrollment response. The server returns the same generated
+  // id and reports the quota limit exceeded status when the number of reset
+  // action in a specified time window is more than self reset limitation.
+  QUOTA_LIMIT_EXCEEDED = 4;
 }
 
 // The response from the attestation server for the enrollment request.
