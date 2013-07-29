@@ -364,7 +364,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<string> {
     wifi_->SetScanState(new_state, new_method, reason);
   }
 
-  void VerifyScanState(WiFi::ScanState state, WiFi::ScanMethod method) {
+  void VerifyScanState(WiFi::ScanState state, WiFi::ScanMethod method) const {
     EXPECT_EQ(state, wifi_->scan_state_);
     EXPECT_EQ(method, wifi_->scan_method_);
   }
@@ -907,6 +907,46 @@ class WiFiMainTest : public WiFiObjectTest {
   WiFiMainTest() : WiFiObjectTest(&dispatcher_) {}
 
  protected:
+  void StartScan(WiFi::ScanMethod method) {
+    if (method == WiFi::kScanMethodFull) {
+      EnableFullScan();
+    } else {
+      EXPECT_CALL(*scan_session_, InitiateScan());
+    }
+    VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
+    EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
+    StartWiFi();
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
+    dispatcher_.DispatchPendingEvents();
+    VerifyScanState(WiFi::kScanScanning, method);
+  }
+
+  MockWiFiServiceRefPtr AttemptConnection(WiFi::ScanMethod method,
+                                          WiFiEndpointRefPtr *endpoint,
+                                          ::DBus::Path *bss_path) {
+    WiFiEndpointRefPtr dummy_endpoint;
+    if (!endpoint) {
+      endpoint = &dummy_endpoint;  // If caller doesn't care about endpoint.
+    }
+
+    ::DBus::Path dummy_bss_path;
+    if (!bss_path) {
+      bss_path = &dummy_bss_path;  // If caller doesn't care about bss_path.
+    }
+
+    EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
+    EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
+    EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
+    MockWiFiServiceRefPtr service =
+        SetupConnectingService(DBus::Path(), endpoint, bss_path);
+    ReportScanDoneKeepScanSession();
+    dispatcher_.DispatchPendingEvents();
+    VerifyScanState(WiFi::kScanConnecting, method);
+
+    return service;
+  }
+
   EventDispatcher dispatcher_;
 };
 
@@ -1487,29 +1527,11 @@ TEST_F(WiFiMainTest, TimeoutPendingServiceWithEndpoints) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(10);
 
-  // Scan.
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
-  StartWiFi();
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
-  dispatcher_.DispatchPendingEvents();
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
-
+  StartScan(WiFi::kScanMethodProgressive);
   const base::CancelableClosure &pending_timeout = GetPendingTimeout();
   EXPECT_TRUE(pending_timeout.IsCancelled());
-
-  // Initiate a connection.
-  WiFiEndpointRefPtr endpoint;
-  ::DBus::Path bss_path;
-  EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
-  MockWiFiServiceRefPtr service =
-      SetupConnectingService(DBus::Path(), &endpoint, &bss_path);
-  ReportScanDoneKeepScanSession();
-  dispatcher_.DispatchPendingEvents();
-  VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodProgressive);
+  MockWiFiServiceRefPtr service = AttemptConnection(
+      WiFi::kScanMethodProgressive, nullptr, nullptr);
 
   // Timeout the connection attempt.
   EXPECT_FALSE(pending_timeout.IsCancelled());
@@ -1736,13 +1758,7 @@ TEST_F(WiFiMainTest, ProgressiveScanFound) {
   SetScanSize(1, 1);
 
   // Do the first scan (finds nothing).
-  EXPECT_CALL(*scan_session_, InitiateScan());
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  StartWiFi();
-  dispatcher_.DispatchPendingEvents();
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+  StartScan(WiFi::kScanMethodProgressive);
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (connects afterwards).
@@ -1778,12 +1794,7 @@ TEST_F(WiFiMainTest, ProgressiveScanNotFound) {
   EXPECT_CALL(*metrics(), NotifyDeviceConnectFinished(_)).Times(0);
 
   // Do the first scan (finds nothing).
-  EXPECT_CALL(*scan_session_, InitiateScan());
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
-  StartWiFi();
-  dispatcher_.DispatchPendingEvents();  // Launch ProgressiveScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+  StartScan(WiFi::kScanMethodProgressive);
   ReportScanDoneKeepScanSession();
 
   // Do the second scan (finds nothing).
@@ -2770,16 +2781,9 @@ TEST_F(WiFiMainTest, FullScanFindsNothing) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(10);
 
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  EnableFullScan();
-  StartWiFi();
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
-  EXPECT_CALL(*GetSupplicantInterfaceProxy(), Scan(_));
-  dispatcher_.DispatchPendingEvents();
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
-
+  StartScan(WiFi::kScanMethodFull);
   ReportScanDone();
+
   EXPECT_CALL(log, Log(_, _, _)).Times(AnyNumber());
   EXPECT_CALL(log, Log(_, _, HasSubstr("FULL_NOCONNECTION ->")));
   EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
@@ -2795,24 +2799,12 @@ TEST_F(WiFiMainTest, FullScanConnectingToConnected) {
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(10);
 
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  EnableFullScan();
-  StartWiFi();
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
-  dispatcher_.DispatchPendingEvents();  // Launch ScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodFull);
-
-  // Setup a service and ask to connect to it.
+  StartScan(WiFi::kScanMethodFull);
   WiFiEndpointRefPtr endpoint;
   ::DBus::Path bss_path;
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
-  MockWiFiServiceRefPtr service =
-      SetupConnectingService(DBus::Path(), &endpoint, &bss_path);
-
-  ReportScanDoneKeepScanSession();
-  dispatcher_.DispatchPendingEvents();  // Launch UpdateScanStateAfterScanDone
-  VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodFull);
+  MockWiFiServiceRefPtr service = AttemptConnection(WiFi::kScanMethodFull,
+                                                    &endpoint,
+                                                    &bss_path);
 
   // Complete the connection.
   EXPECT_CALL(*service, NotifyCurrentEndpoint(EndpointMatch(endpoint)));
@@ -2826,30 +2818,15 @@ TEST_F(WiFiMainTest, FullScanConnectingToConnected) {
 }
 
 TEST_F(WiFiMainTest, ProgressiveScanConnectingToConnected) {
-  ScopedMockLog log;
+  NiceScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(10);
 
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  StartWiFi();
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
-  dispatcher_.DispatchPendingEvents();  // Runs ProgressiveScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
-
-  // Setup a service and ask to connect to it.
+  StartScan(WiFi::kScanMethodProgressive);
   WiFiEndpointRefPtr endpoint;
   ::DBus::Path bss_path;
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
-  EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
-  MockWiFiServiceRefPtr service =
-      SetupConnectingService(DBus::Path(), &endpoint, &bss_path);
-
-  ReportScanDoneKeepScanSession();
-  dispatcher_.DispatchPendingEvents();  // Launch ProgressiveScanTask
-  VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodProgressive);
+  MockWiFiServiceRefPtr service = AttemptConnection(
+      WiFi::kScanMethodProgressive, &endpoint, &bss_path);
 
   // Complete the connection.
   EXPECT_CALL(*service, NotifyCurrentEndpoint(EndpointMatch(endpoint)));
@@ -2864,30 +2841,13 @@ TEST_F(WiFiMainTest, ProgressiveScanConnectingToConnected) {
 }
 
 TEST_F(WiFiMainTest, ProgressiveScanConnectingToNotFound) {
-  NiceScopedMockLog log;
-
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(_, _)).Times(AnyNumber());
-  EXPECT_CALL(*metrics(), NotifyDeviceScanStarted(_));
-  VerifyScanState(WiFi::kScanIdle, WiFi::kScanMethodNone);
-  StartWiFi();
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, true));
-  dispatcher_.DispatchPendingEvents();  // Runs ProgressiveScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
-
-  // Setup a service and ask to connect to it.
+  StartScan(WiFi::kScanMethodProgressive);
   WiFiEndpointRefPtr endpoint;
-  ::DBus::Path bss_path;
-  EXPECT_CALL(*adaptor_, EmitBoolChanged(flimflam::kScanningProperty, false));
-  EXPECT_CALL(*metrics(), NotifyDeviceScanFinished(_));
-  EXPECT_CALL(*metrics(), NotifyDeviceConnectStarted(_, _));
-  MockWiFiServiceRefPtr service =
-      SetupConnectingService(DBus::Path(), &endpoint, &bss_path);
-
-  ReportScanDoneKeepScanSession();
-  dispatcher_.DispatchPendingEvents();  // Launch ProgressiveScanTask
-  VerifyScanState(WiFi::kScanConnecting, WiFi::kScanMethodProgressive);
+  MockWiFiServiceRefPtr service = AttemptConnection(
+      WiFi::kScanMethodProgressive, &endpoint, nullptr);
 
   // Simulate connection timeout.
+  NiceScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(10);
   EXPECT_CALL(*service,
@@ -2933,12 +2893,7 @@ TEST_F(WiFiMainTest, ScanStateNotScanningNoUma) {
 TEST_F(WiFiMainTest, ConnectToServiceNotPending) {
   // Test for SetPendingService(NULL), condition a)
   // |ConnectTo|->|DisconnectFrom|.
-  NiceScopedMockLog log;
-
-  // Start scanning.
-  StartWiFi();
-  dispatcher_.DispatchPendingEvents();  // Runs ProgressiveScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+  StartScan(WiFi::kScanMethodProgressive);
 
   // Setup pending service.
   MockWiFiServiceRefPtr service_pending(
@@ -2946,6 +2901,7 @@ TEST_F(WiFiMainTest, ConnectToServiceNotPending) {
   EXPECT_EQ(service_pending.get(), GetPendingService().get());
 
   // ConnectTo a different service than the pending one.
+  NiceScopedMockLog log;
   ScopeLogger::GetInstance()->EnableScopesByName("wifi");
   ScopeLogger::GetInstance()->set_verbose_level(10);
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), Disconnect());
@@ -2962,9 +2918,7 @@ TEST_F(WiFiMainTest, ConnectToServiceNotPending) {
 }
 
 TEST_F(WiFiMainTest, ConnectToWithError) {
-  StartWiFi();
-  dispatcher_.DispatchPendingEvents();  // Runs ProgressiveScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+  StartScan(WiFi::kScanMethodProgressive);
 
   EXPECT_CALL(*GetSupplicantInterfaceProxy(), AddNetwork(_)).
       WillOnce(Throw(
@@ -2983,9 +2937,7 @@ TEST_F(WiFiMainTest, ConnectToWithError) {
 TEST_F(WiFiMainTest, ScanStateHandleDisconnect) {
   // Test for SetPendingService(NULL), condition d) Disconnect while scanning.
   // Start scanning.
-  StartWiFi();
-  dispatcher_.DispatchPendingEvents();  // Runs ProgressiveScanTask
-  VerifyScanState(WiFi::kScanScanning, WiFi::kScanMethodProgressive);
+  StartScan(WiFi::kScanMethodProgressive);
 
   // Set the pending service.
   ReportScanDoneKeepScanSession();

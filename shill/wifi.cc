@@ -1946,11 +1946,11 @@ void WiFi::SetScanState(ScanState new_state,
   }
 
   int log_level = 6;
-  bool state_changed = true;
+  bool state_or_method_changed = true;
   bool is_terminal_state = false;
   if (new_state == scan_state_ && new_method == scan_method_) {
     log_level = 7;
-    state_changed = false;
+    state_or_method_changed = false;
   } else if (new_state == kScanConnected || new_state == kScanFoundNothing) {
     // These 'terminal' states are slightly more interesting than the
     // intermediate states.
@@ -1975,7 +1975,7 @@ void WiFi::SetScanState(ScanState new_state,
                         << " -> " << ScanStateString(new_state, new_method)
                         << " @ " << elapsed_time.InMillisecondsF()
                         << " ms into scan.";
-  if (!state_changed)
+  if (!state_or_method_changed)
     return;
 
   // Actually change the state.
@@ -1983,7 +1983,8 @@ void WiFi::SetScanState(ScanState new_state,
   ScanMethod old_method = scan_method_;
   scan_state_ = new_state;
   scan_method_ = new_method;
-  if (new_state == kScanScanning || old_state == kScanScanning) {
+  if (new_state != old_state &&
+      (new_state == kScanScanning || old_state == kScanScanning)) {
     Error error;
     adaptor()->EmitBoolChanged(flimflam::kScanningProperty,
                                GetScanPending(&error));
