@@ -95,17 +95,6 @@ class PerfParser : public PerfReader {
     return stats_;
   }
 
-  // Stores a list of unique filenames found in MMAP events into
-  // |filenames|.  Any existing data in |filenames| will be lost.
-  void GetFilenames(std::vector<string>* filenames) const;
-
-  // Uses build id events to populate |filenames_to_build_ids|.
-  // Any existing data in |filenames_to_build_ids| will be lost.
-  // Note:  A filename returned by GetFilenames need not be present in this map,
-  // since there may be no build id event corresponding to the MMAP.
-  void GetFilenamesToBuildIDs(
-      std::map<string, string>* filenames_to_build_ids) const;
-
   // Stores the mapping from filenames to build ids in build_id_events_.
   // Returns true on success.
   // Note: If |filenames_to_build_ids| contains a mapping for a filename for

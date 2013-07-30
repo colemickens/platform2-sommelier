@@ -591,6 +591,33 @@ bool PerfReader::RegenerateHeader() {
   return true;
 }
 
+void PerfReader::GetFilenames(std::vector<string>* filenames) const {
+  std::set<string> filename_set;
+  GetFilenamesAsSet(&filename_set);
+  filenames->clear();
+  filenames->insert(filenames->begin(), filename_set.begin(),
+                    filename_set.end());
+}
+
+void PerfReader::GetFilenamesAsSet(std::set<string>* filenames) const {
+  filenames->clear();
+  for (size_t i = 0; i < events_.size(); ++i) {
+    const event_t& event = events_[i].event;
+    if (event.header.type == PERF_RECORD_MMAP)
+      filenames->insert(event.mmap.filename);
+  }
+}
+
+void PerfReader::GetFilenamesToBuildIDs(
+    std::map<string, string>* filenames_to_build_ids) const {
+  filenames_to_build_ids->clear();
+  for (size_t i = 0; i < build_id_events_.size(); ++i) {
+    const build_id_event& event = *build_id_events_[i];
+    string build_id = HexToString(event.build_id, kBuildIDArraySize);
+    (*filenames_to_build_ids)[event.filename] = build_id;
+  }
+}
+
 bool PerfReader::ReadHeader(const std::vector<char>& data) {
   CheckNoEventHeaderPadding();
   size_t offset = 0;

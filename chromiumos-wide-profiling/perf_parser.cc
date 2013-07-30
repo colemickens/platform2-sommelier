@@ -81,30 +81,6 @@ bool PerfParser::ParseRawEvents() {
   return true;
 }
 
-void PerfParser::GetFilenames(std::vector<string>* filenames) const {
-  std::set<string> filename_set;
-  size_t read_index;
-  for (read_index = 0; read_index < parsed_events_.size(); ++read_index) {
-    const event_t& event = *parsed_events_[read_index].raw_event;
-    if (event.header.type == PERF_RECORD_MMAP)
-      filename_set.insert(event.mmap.filename);
-  }
-
-  filenames->clear();
-  filenames->insert(filenames->begin(), filename_set.begin(),
-                    filename_set.end());
-}
-
-void PerfParser::GetFilenamesToBuildIDs(
-    std::map<string, string>* filenames_to_build_ids) const {
-  filenames_to_build_ids->clear();
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    const build_id_event& event = *build_id_events_[i];
-    string build_id = HexToString(event.build_id, kBuildIDArraySize);
-    (*filenames_to_build_ids)[event.filename] = build_id;
-  }
-}
-
 bool PerfParser::InjectBuildIDs(
     const std::map<string, string>& filenames_to_build_ids) {
   if (!build_id_events_.empty()) {

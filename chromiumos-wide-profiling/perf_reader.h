@@ -5,6 +5,8 @@
 #ifndef PERF_READER_H_
 #define PERF_READER_H_
 
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -81,6 +83,18 @@ class PerfReader {
   bool ReadFileData(const std::vector<char>& data);
   bool WriteFile(const string& filename);
   bool RegenerateHeader();
+
+  // Stores a list of unique filenames found in MMAP events into
+  // |filenames|.  Any existing data in |filenames| will be lost.
+  void GetFilenames(std::vector<string>* filenames) const;
+  void GetFilenamesAsSet(std::set<string>* filenames) const;
+
+  // Uses build id events to populate |filenames_to_build_ids|.
+  // Any existing data in |filenames_to_build_ids| will be lost.
+  // Note:  A filename returned by GetFilenames need not be present in this map,
+  // since there may be no build id event corresponding to the MMAP.
+  void GetFilenamesToBuildIDs(
+      std::map<string, string>* filenames_to_build_ids) const;
 
   // Accessor funcs.
   const std::vector<PerfFileAttr>& attrs() const {
