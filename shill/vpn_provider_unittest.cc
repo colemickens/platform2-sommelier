@@ -58,6 +58,10 @@ class VPNProviderTest : public testing::Test {
     return provider_.services_[idx];
   }
 
+  size_t GetServiceCount() const {
+    return provider_.services_.size();
+  }
+
   NiceMockControl control_;
   MockMetrics metrics_;
   MockManager manager_;
@@ -91,27 +95,77 @@ TEST_F(VPNProviderTest, GetServiceUnsupportedType) {
 
 TEST_F(VPNProviderTest, GetService) {
   KeyValueStore args;
-  Error e;
   args.SetString(flimflam::kTypeProperty, flimflam::kTypeVPN);
   args.SetString(flimflam::kProviderTypeProperty, flimflam::kProviderOpenVpn);
   args.SetString(flimflam::kProviderHostProperty, kHost);
   args.SetString(flimflam::kNameProperty, kName);
-  EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
-  EXPECT_CALL(manager_, RegisterService(_));
-  ServiceRefPtr service0 = provider_.GetService(args, &e);
-  EXPECT_TRUE(e.IsSuccess());
-  ASSERT_TRUE(service0);
-  EXPECT_EQ("vpn_10_8_0_1_vpn_name", service0->GetStorageIdentifier());
-  EXPECT_EQ(kName, GetServiceFriendlyName(service0));
+
+  {
+    Error error;
+    ServiceRefPtr service = provider_.FindSimilarService(args, &error);
+    EXPECT_EQ(Error::kNotFound, error.type());
+    EXPECT_EQ(NULL, service.get());
+  }
+
+  EXPECT_EQ(0, GetServiceCount());
+
+  ServiceRefPtr service;
+  {
+    Error error;
+    EXPECT_CALL(manager_, device_info()).WillOnce(Return(&device_info_));
+    EXPECT_CALL(manager_, RegisterService(_));
+    service = provider_.GetService(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    ASSERT_TRUE(service);
+    testing::Mock::VerifyAndClearExpectations(&manager_);
+  }
+
+  EXPECT_EQ("vpn_10_8_0_1_vpn_name", service->GetStorageIdentifier());
+  EXPECT_EQ(kName, GetServiceFriendlyName(service));
+
+  EXPECT_EQ(1, GetServiceCount());
 
   // Configure the service to set its properties (including Provider.Host).
-  service0->Configure(args, &e);
-  EXPECT_TRUE(e.IsSuccess());
+  {
+    Error error;
+    service->Configure(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+  }
+
+  // None of the calls below should cause a new service to be registered.
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
 
   // A second call should return the same service.
-  ServiceRefPtr service1 = provider_.GetService(args, &e);
-  EXPECT_TRUE(e.IsSuccess());
-  ASSERT_EQ(service0.get(), service1.get());
+  {
+    Error error;
+    ServiceRefPtr get_service = provider_.GetService(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    ASSERT_EQ(service, get_service);
+  }
+
+  EXPECT_EQ(1, GetServiceCount());
+
+  // FindSimilarService should also return this service.
+  {
+    Error error;
+    ServiceRefPtr similar_service = provider_.FindSimilarService(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_EQ(service, similar_service);
+  }
+
+  EXPECT_EQ(1, GetServiceCount());
+
+  // However, CreateTemporaryService should create a different service.
+  {
+    Error error;
+    ServiceRefPtr temporary_service =
+        provider_.CreateTemporaryService(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    EXPECT_NE(service, temporary_service);
+
+    // However this service will not be part of the provider.
+    EXPECT_EQ(1, GetServiceCount());
+  }
 }
 
 TEST_F(VPNProviderTest, OnDeviceInfoAvailable) {

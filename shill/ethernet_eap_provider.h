@@ -9,7 +9,7 @@
 
 #include <base/callback.h>
 
-#include "shill/provider.h"
+#include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -22,7 +22,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 
-class EthernetEapProvider : public Provider {
+class EthernetEapProvider : public ProviderInterface {
  public:
   typedef base::Callback<void()> CredentialChangeCallback;
 
@@ -33,8 +33,13 @@ class EthernetEapProvider : public Provider {
   virtual ~EthernetEapProvider();
 
   // Called by Manager as a part of the Provider interface.
+  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
   virtual ServiceRefPtr GetService(const KeyValueStore &args,
                                    Error *error) override;
+  virtual ServiceRefPtr FindSimilarService(
+      const KeyValueStore &args, Error *error) const override;
+  virtual ServiceRefPtr CreateTemporaryService(
+      const KeyValueStore &args, Error *error) override;
   virtual void Start() override;
   virtual void Stop() override;
 

@@ -525,7 +525,7 @@ class Manager : public base::SupportsWeakPtr<Manager> {
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.
-  std::map<Technology::Identifier, Provider *> providers_;
+  std::map<Technology::Identifier, ProviderInterface *> providers_;
   // List of startup profile names to push on the profile stack on startup.
   std::vector<ProfileRefPtr> profiles_;
   ProfileRefPtr ephemeral_profile_;

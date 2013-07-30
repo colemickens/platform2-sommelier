@@ -8,6 +8,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/key_value_store.h"
 #include "shill/mock_control.h"
 #include "shill/mock_ethernet.h"
 #include "shill/mock_event_dispatcher.h"
@@ -116,6 +117,34 @@ TEST_F(EthernetEapProviderTest, CredentialChangeCallback) {
   EXPECT_CALL(*this, Callback0()).Times(0);
   EXPECT_CALL(*this, Callback1()).Times(0);
   provider_.OnCredentialsChanged();
+}
+
+TEST_F(EthernetEapProviderTest, ServiceConstructors) {
+  ServiceRefPtr service;
+  EXPECT_CALL(manager_, RegisterService(_)).WillOnce(SaveArg<0>(&service));
+  provider_.Start();
+  KeyValueStore args;
+  args.SetString(flimflam::kTypeProperty, kTypeEthernetEap);
+  {
+    Error error;
+    EXPECT_EQ(service, provider_.GetService(args, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    EXPECT_EQ(service, provider_.FindSimilarService(args, &error));
+    EXPECT_TRUE(error.IsSuccess());
+  }
+  {
+    Error error;
+    Mock::VerifyAndClearExpectations(&manager_);
+    EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+    ServiceRefPtr temp_service = provider_.CreateTemporaryService(args, &error);
+    EXPECT_TRUE(error.IsSuccess());
+    // Returned service should be non-NULL but not the provider's own service.
+    EXPECT_NE(ServiceRefPtr(), temp_service);
+    EXPECT_NE(service, temp_service);
+  }
 }
 
 }  // namespace shill

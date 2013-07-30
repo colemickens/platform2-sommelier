@@ -12,49 +12,39 @@ namespace shill {
 class Error;
 class KeyValueStore;
 
-// This is an object that creates and manages service objects.  It provides
-// default implementations for each provider method so sublcasses do not
-// need to implement boilerplate unimplemented methods.
-class Provider {
+// This is an interface for objects that creates and manages service objects.
+class ProviderInterface {
  public:
-  virtual ~Provider() {}
+  virtual ~ProviderInterface() {}
 
   // Creates services from the entries within |profile|.
-  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile);
+  virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) = 0;
 
-  // Find a Service with similar properties to |args|.  The criteria
+  // Finds a Service with similar properties to |args|.  The criteria
   // used are specific to the provider subclass.  Returns a reference
   // to a matching service if one exists.  Otherwise it returns a NULL
   // reference and populates |error|.
   virtual ServiceRefPtr FindSimilarService(
-      const KeyValueStore &args, Error *error) const;
+      const KeyValueStore &args, Error *error) const = 0;
 
   // Retrieves (see FindSimilarService) or creates a service with the
   // unique attributes in |args|.  The remaining attributes will be
   // populated (by Manager) via a later call to Service::Configure().
   // Returns a NULL reference and populates |error| on failure.
-  virtual ServiceRefPtr GetService(const KeyValueStore &args, Error *error);
+  virtual ServiceRefPtr GetService(const KeyValueStore &args, Error *error) = 0;
 
-  // Create a temporary service with the identifying properties populated
+  // Creates a temporary service with the identifying properties populated
   // from |args|.  Callers outside of the Provider must never register
   // this service with the Manager or connect it since it was never added
   // to the provider's service list.
   virtual ServiceRefPtr CreateTemporaryService(
-      const KeyValueStore &args, Error *error);
+      const KeyValueStore &args, Error *error) = 0;
 
-  // Start the provider.
-  virtual void Start();
+  // Starts the provider.
+  virtual void Start() = 0;
 
-  // Stop the provider (will de-register all services).
-  virtual void Stop();
-
- protected:
-  Provider();
-
- private:
-  friend class ProviderTest;
-
-  DISALLOW_COPY_AND_ASSIGN(Provider);
+  // Stops the provider (will de-register all services).
+  virtual void Stop() = 0;
 };
 
 }  // namespace shill

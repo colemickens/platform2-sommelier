@@ -39,20 +39,42 @@ void VPNProvider::Start() {}
 
 void VPNProvider::Stop() {}
 
-ServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
-                                      Error *error) {
+// static
+bool VPNProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
+                                               string *type_ptr,
+                                               string *name_ptr,
+                                               string *host_ptr,
+                                               Error *error) {
   SLOG(VPN, 2) << __func__;
   string type = args.LookupString(flimflam::kProviderTypeProperty, "");
   if (type.empty()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Missing VPN type property.");
-    return NULL;
+    return false;
   }
 
   string host = args.LookupString(flimflam::kProviderHostProperty, "");
   if (host.empty()) {
     Error::PopulateAndLog(
         error, Error::kNotSupported, "Missing VPN host property.");
+    return false;
+  }
+
+  *type_ptr = type,
+  *host_ptr = host,
+  *name_ptr = args.LookupString(flimflam::kNameProperty, "");
+
+  return true;
+}
+
+ServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
+                                      Error *error) {
+  SLOG(VPN, 2) << __func__;
+  string type;
+  string name;
+  string host;
+
+  if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
     return NULL;
   }
 
@@ -61,13 +83,31 @@ ServiceRefPtr VPNProvider::GetService(const KeyValueStore &args,
     return NULL;
   }
 
-  string name = args.LookupString(flimflam::kNameProperty, "");
-
   // Find a service in the provider list which matches these parameters.
   VPNServiceRefPtr service = FindService(type, name, host);
   if (service == NULL) {
     service = CreateService(type, name, storage_id, error);
   }
+  return service;
+}
+
+ServiceRefPtr VPNProvider::FindSimilarService(const KeyValueStore &args,
+                                              Error *error) const {
+  SLOG(VPN, 2) << __func__;
+  string type;
+  string name;
+  string host;
+
+  if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
+    return NULL;
+  }
+
+  // Find a service in the provider list which matches these parameters.
+  VPNServiceRefPtr service = FindService(type, name, host);
+  if (!service) {
+    error->Populate(Error::kNotFound, "Matching service was not found");
+  }
+
   return service;
 }
 
@@ -146,10 +186,10 @@ void VPNProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
   }
 }
 
-VPNServiceRefPtr VPNProvider::CreateService(const string &type,
-                                            const string &name,
-                                            const string &storage_id,
-                                            Error *error) {
+VPNServiceRefPtr VPNProvider::CreateServiceInner(const string &type,
+                                                 const string &name,
+                                                 const string &storage_id,
+                                                 Error *error) {
   SLOG(VPN, 2) << __func__ << " type " << type << " name " << name
                << " storage id " << storage_id;
 #if defined(DISABLE_VPN)
@@ -181,17 +221,27 @@ VPNServiceRefPtr VPNProvider::CreateService(const string &type,
   if (!name.empty()) {
     service->set_friendly_name(name);
   }
-  services_.push_back(service);
-  manager_->RegisterService(service);
-
   return service;
 
 #endif  // DISABLE_VPN
 }
 
+VPNServiceRefPtr VPNProvider::CreateService(const string &type,
+                                            const string &name,
+                                            const string &storage_id,
+                                            Error *error) {
+  VPNServiceRefPtr service = CreateServiceInner(type, name, storage_id, error);
+  if (service) {
+    services_.push_back(service);
+    manager_->RegisterService(service);
+  }
+
+  return service;
+}
+
 VPNServiceRefPtr VPNProvider::FindService(const string &type,
                                           const string &name,
-                                          const string &host) {
+                                          const string &host) const {
   for (vector<VPNServiceRefPtr>::const_iterator it = services_.begin();
        it != services_.end();
        ++it) {
@@ -202,6 +252,24 @@ VPNServiceRefPtr VPNProvider::FindService(const string &type,
     }
   }
   return NULL;
+}
+
+ServiceRefPtr VPNProvider::CreateTemporaryService(
+      const KeyValueStore &args, Error *error) {
+  string type;
+  string name;
+  string host;
+
+  if (!GetServiceParametersFromArgs(args, &type, &name, &host, error)) {
+    return NULL;
+  }
+
+  string storage_id = VPNService::CreateStorageIdentifier(args, error);
+  if (storage_id.empty()) {
+    return NULL;
+  }
+
+  return CreateServiceInner(type, name, storage_id, error);
 }
 
 bool VPNProvider::HasActiveService() const {

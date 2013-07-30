@@ -275,7 +275,6 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	profile_dbus_adaptor.o \
 	profile_dbus_property_exporter.o \
 	property_store.o \
-	provider.o \
 	proxy_factory.o \
 	routing_table.o \
 	resolver.o \
@@ -477,7 +476,6 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	profile_unittest.o \
 	property_accessor_unittest.o \
 	property_store_unittest.o \
-	provider_unittest.o \
 	resolver_unittest.o \
 	result_aggregator_unittest.o \
 	routing_table_unittest.o \

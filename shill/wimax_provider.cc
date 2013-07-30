@@ -147,20 +147,37 @@ bool WiMaxProvider::OnServiceUnloaded(const WiMaxServiceRefPtr &service) {
   return true;
 }
 
-ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
-                                        Error *error) {
-  SLOG(WiMax, 2) << __func__;
-  CHECK_EQ(args.GetString(flimflam::kTypeProperty), flimflam::kTypeWimax);
+// static
+bool WiMaxProvider::GetServiceParametersFromArgs(const KeyValueStore &args,
+                                                 WiMaxNetworkId *id_ptr,
+                                                 string *name_ptr,
+                                                 Error *error) {
   WiMaxNetworkId id = args.LookupString(WiMaxService::kNetworkIdProperty, "");
   if (id.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "Missing WiMAX network id.");
-    return NULL;
+    return false;
   }
   string name = args.LookupString(flimflam::kNameProperty, "");
   if (name.empty()) {
     Error::PopulateAndLog(
         error, Error::kInvalidArguments, "Missing WiMAX service name.");
+    return false;
+  }
+
+  *id_ptr = id;
+  *name_ptr = name;
+
+  return true;
+}
+
+ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
+                                        Error *error) {
+  SLOG(WiMax, 2) << __func__;
+  CHECK_EQ(flimflam::kTypeWimax, args.GetString(flimflam::kTypeProperty));
+  WiMaxNetworkId id;
+  string name;
+  if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
     return NULL;
   }
   WiMaxServiceRefPtr service = GetUniqueService(id, name);
@@ -168,6 +185,35 @@ ServiceRefPtr WiMaxProvider::GetService(const KeyValueStore &args,
   // Starts the service if there's a matching live network.
   StartLiveServices();
   return service;
+}
+
+ServiceRefPtr WiMaxProvider::FindSimilarService(const KeyValueStore &args,
+                                                Error *error) const {
+  SLOG(WiMax, 2) << __func__;
+  CHECK_EQ(flimflam::kTypeWimax, args.GetString(flimflam::kTypeProperty));
+  WiMaxNetworkId id;
+  string name;
+  if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
+    return NULL;
+  }
+  string storage_id = WiMaxService::CreateStorageIdentifier(id, name);
+  WiMaxServiceRefPtr service = FindService(storage_id);
+  if (!service) {
+    error->Populate(Error::kNotFound, "Matching service was not found");
+  }
+  return service;
+}
+
+ServiceRefPtr WiMaxProvider::CreateTemporaryService(const KeyValueStore &args,
+                                                    Error *error) {
+  SLOG(WiMax, 2) << __func__;
+  CHECK_EQ(flimflam::kTypeWimax, args.GetString(flimflam::kTypeProperty));
+  WiMaxNetworkId id;
+  string name;
+  if (!GetServiceParametersFromArgs(args, &id, &name, error)) {
+    return NULL;
+  }
+  return CreateService(id, name);
 }
 
 void WiMaxProvider::CreateServicesFromProfile(const ProfileRefPtr &profile) {
@@ -329,7 +375,7 @@ void WiMaxProvider::RetrieveNetworkInfo(const RpcIdentifier &path) {
   networks_[path] = info;
 }
 
-WiMaxServiceRefPtr WiMaxProvider::FindService(const string &storage_id) {
+WiMaxServiceRefPtr WiMaxProvider::FindService(const string &storage_id) const {
   SLOG(WiMax, 2) << __func__ << "(" << storage_id << ")";
   map<string, WiMaxServiceRefPtr>::const_iterator find_it =
       services_.find(storage_id);
@@ -350,13 +396,20 @@ WiMaxServiceRefPtr WiMaxProvider::GetUniqueService(const WiMaxNetworkId &id,
     SLOG(WiMax, 2) << "Service already exists.";
     return service;
   }
-  service = new WiMaxService(control_, dispatcher_, metrics_, manager_);
-  service->set_network_id(id);
-  service->set_friendly_name(name);
-  service->InitStorageIdentifier();
+  service = CreateService(id, name);
   services_[service->GetStorageIdentifier()] = service;
   manager_->RegisterService(service);
   LOG(INFO) << "Registered WiMAX service: " << service->GetStorageIdentifier();
+  return service;
+}
+
+WiMaxServiceRefPtr WiMaxProvider::CreateService(const WiMaxNetworkId &id,
+                                                const string &name) {
+  WiMaxServiceRefPtr service =
+      new WiMaxService(control_, dispatcher_, metrics_, manager_);
+  service->set_network_id(id);
+  service->set_friendly_name(name);
+  service->InitStorageIdentifier();
   return service;
 }
 

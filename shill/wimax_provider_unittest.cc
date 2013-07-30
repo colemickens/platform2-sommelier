@@ -508,20 +508,39 @@ TEST_F(WiMaxProviderTest, GetService) {
   args.SetString(flimflam::kNameProperty, kName);
   static const char kIdentity[] = "joe";
   args.SetString(flimflam::kEapIdentityProperty, kIdentity);
-  EXPECT_CALL(manager_, RegisterService(_));
+
   e.Reset();
+  service = provider_.FindSimilarService(args, &e);
+  EXPECT_EQ(ServiceRefPtr(), service);
+  EXPECT_EQ(Error::kNotFound, e.type());
+
+  e.Reset();
+  EXPECT_CALL(manager_, RegisterService(_));
   service = provider_.GetService(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   ASSERT_TRUE(service);
+  testing::Mock::VerifyAndClearExpectations(&manager_);
 
   // GetService should create a service with only identifying parameters set.
   EXPECT_EQ(kName, GetServiceFriendlyName(service));
   EXPECT_EQ("", service->eap()->identity());
 
+  e.Reset();
+  ServiceRefPtr similar_service = provider_.FindSimilarService(args, &e);
+  EXPECT_EQ(service, similar_service);
+  EXPECT_TRUE(e.IsSuccess());
+
   // After configuring the service, other parameters should be set.
   service->Configure(args, &e);
   EXPECT_TRUE(e.IsSuccess());
   EXPECT_EQ(kIdentity, service->eap()->identity());
+
+  e.Reset();
+  EXPECT_CALL(manager_, RegisterService(_)).Times(0);
+  ServiceRefPtr temporary_service = provider_.CreateTemporaryService(args, &e);
+  EXPECT_NE(ServiceRefPtr(), temporary_service);
+  EXPECT_NE(service, temporary_service);
+  EXPECT_TRUE(e.IsSuccess());
 }
 
 TEST_F(WiMaxProviderTest, SelectCarrier) {

@@ -13,7 +13,7 @@
 
 #include "shill/accessor_interface.h"
 #include "shill/dbus_manager.h"
-#include "shill/provider.h"
+#include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/wimax_network_proxy_interface.h"
 
@@ -27,7 +27,7 @@ class Metrics;
 class ProxyFactory;
 class WiMaxManagerProxyInterface;
 
-class WiMaxProvider : public Provider {
+class WiMaxProvider : public ProviderInterface {
  public:
   WiMaxProvider(ControlInterface *control,
                 EventDispatcher *dispatcher,
@@ -39,8 +39,12 @@ class WiMaxProvider : public Provider {
   // used for matching services for the WiMax provider are the NetworkId,
   // mode and Name parameters.
   virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  virtual ServiceRefPtr FindSimilarService(
+      const KeyValueStore &args, Error *error) const override;
   virtual ServiceRefPtr GetService(const KeyValueStore &args,
                                    Error *error) override;
+  virtual ServiceRefPtr CreateTemporaryService(
+      const KeyValueStore &args, Error *error) override;
   void Start() override;
   void Stop() override;
 
@@ -99,12 +103,25 @@ class WiMaxProvider : public Provider {
 
   // Finds and returns the service identified by |storage_id|. Returns NULL if
   // the service is not found.
-  WiMaxServiceRefPtr FindService(const std::string &storage_id);
+  WiMaxServiceRefPtr FindService(const std::string &storage_id) const;
 
   // Finds or creates a service with the given parameters. The parameters
   // uniquely identify a service so no duplicate services will be created.
+  // The service will be registered and a memeber of the provider's
+  // |services_| map.
   WiMaxServiceRefPtr GetUniqueService(const WiMaxNetworkId &id,
                                       const std::string &name);
+
+  // Allocates a service with the given parameters.
+  WiMaxServiceRefPtr CreateService(const WiMaxNetworkId &id,
+                                   const std::string &name);
+
+  // Populates the |id_ptr| and |name_ptr| from the parameters in |args|.
+  // Returns true on success, otheriwse populates |error| and returns false.
+  static bool GetServiceParametersFromArgs(const KeyValueStore &args,
+                                           WiMaxNetworkId *id_ptr,
+                                           std::string *name_ptr,
+                                           Error *error);
 
   // Starts all services with network ids in the current set of live
   // networks. This method also creates, registers and starts the default

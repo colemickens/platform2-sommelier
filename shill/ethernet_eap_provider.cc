@@ -24,11 +24,31 @@ EthernetEapProvider::EthernetEapProvider(ControlInterface *control_interface,
 
 EthernetEapProvider::~EthernetEapProvider() {}
 
-ServiceRefPtr EthernetEapProvider::GetService(const KeyValueStore &args,
-                                              Error *error) {
+void EthernetEapProvider::CreateServicesFromProfile(
+    const ProfileRefPtr &profile) {
+  // Since the EthernetEapProvider's service is created during Start(),
+  // there is no need to do anything in this method.
+}
+
+ServiceRefPtr EthernetEapProvider::FindSimilarService(const KeyValueStore &args,
+                                                      Error *error) const {
   CHECK_EQ(kTypeEthernetEap, args.LookupString(flimflam::kTypeProperty, ""))
       << "Service type must be Ethernet EAP!";
   return service();
+}
+
+ServiceRefPtr EthernetEapProvider::GetService(const KeyValueStore &args,
+                                              Error *error) {
+  return FindSimilarService(args, error);
+}
+
+ServiceRefPtr EthernetEapProvider::CreateTemporaryService(
+    const KeyValueStore &args,
+    Error *error) {
+  return new EthernetEapService(control_interface_,
+                                dispatcher_,
+                                metrics_,
+                                manager_);
 }
 
 void EthernetEapProvider::Start() {

@@ -11,7 +11,7 @@
 #include <base/basictypes.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
-#include "shill/provider.h"
+#include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -23,7 +23,7 @@ class KeyValueStore;
 class Manager;
 class Metrics;
 
-class VPNProvider : public Provider {
+class VPNProvider : public ProviderInterface {
  public:
   VPNProvider(ControlInterface *control_interface,
               EventDispatcher *dispatcher,
@@ -35,8 +35,12 @@ class VPNProvider : public Provider {
   // used for matching services for the VPN provider are the ProviderType,
   // ProviderHost mode and Name parameters.
   virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
+  virtual ServiceRefPtr FindSimilarService(
+      const KeyValueStore &args, Error *error) const override;
   virtual ServiceRefPtr GetService(const KeyValueStore &args,
                                    Error *error) override;
+  virtual ServiceRefPtr CreateTemporaryService(
+      const KeyValueStore &args, Error *error) override;
   virtual void Start() override;
   virtual void Stop() override;
 
@@ -62,8 +66,15 @@ class VPNProvider : public Provider {
 
   // Create a service of type |type| and storage identifier |storage_id|
   // and initial parameters |args|.  Returns a service reference pointer
-  // to the newly created service, or popuplates |error| with an the error
+  // to the newly created service, or populates |error| with an the error
   // that caused this to fail.
+  VPNServiceRefPtr CreateServiceInner(const std::string &type,
+                                      const std::string &name,
+                                      const std::string &storage_id,
+                                      Error *error);
+
+  // Calls CreateServiceInner above, and on success registers and adds this
+  // service to the provider's list.
   VPNServiceRefPtr CreateService(const std::string &type,
                                  const std::string &name,
                                  const std::string &storage_id,
@@ -73,7 +84,17 @@ class VPNProvider : public Provider {
   // Provider.Host property set to |host|.
   VPNServiceRefPtr FindService(const std::string &type,
                                const std::string &name,
-                               const std::string &host);
+                               const std::string &host) const;
+
+  // Populates |type_ptr|, |name_ptr| and |host_ptr| with the appropriate
+  // values from |args|.  Returns True on success, otherwise if any of
+  // these arguments are not available, |error| is populated and False is
+  // returned.
+  static bool GetServiceParametersFromArgs(const KeyValueStore &args,
+                                           std::string *type_ptr,
+                                           std::string *name_ptr,
+                                           std::string *host_ptr,
+                                           Error *error);
 
   ControlInterface *control_interface_;
   EventDispatcher *dispatcher_;

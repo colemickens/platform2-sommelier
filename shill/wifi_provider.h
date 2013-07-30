@@ -13,7 +13,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/accessor_interface.h"  // for ByteArrays
-#include "shill/provider.h"
+#include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 
 namespace shill {
@@ -32,7 +32,7 @@ class WiFiService;
 // The WiFi Provider is the holder of all WiFi Services.  It holds both
 // visible (created due to an Endpoint becoming visible) and invisible
 // (created due to user or storage configuration) Services.
-class WiFiProvider : public Provider {
+class WiFiProvider : public ProviderInterface {
  public:
   static const char kStorageFrequencies[];
   static const int kMaxStorageFrequencies;
@@ -60,10 +60,10 @@ class WiFiProvider : public Provider {
   // used for matching services for the WiFi provider are the SSID, mode and
   // security parameters.
   virtual void CreateServicesFromProfile(const ProfileRefPtr &profile) override;
-  virtual ServiceRefPtr GetService(const KeyValueStore &args,
-                                   Error *error) override;
   virtual ServiceRefPtr FindSimilarService(
       const KeyValueStore &args, Error *error) const override;
+  virtual ServiceRefPtr GetService(const KeyValueStore &args,
+                                   Error *error) override;
   virtual ServiceRefPtr CreateTemporaryService(
       const KeyValueStore &args, Error *error) override;
   virtual void Start() override;
