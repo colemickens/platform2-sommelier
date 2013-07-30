@@ -28,6 +28,60 @@ bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
   return (e1->sample_info->time < e2->sample_info->time);
 }
 
+// Creates/updates a build id event with |build_id| and |filename|.
+// Passing "" to |build_id| or |filename| will leave the corresponding field
+// unchanged (in which case |event| must be non-null).
+// If |event| is null or is not large enough, a new event will be created.
+// In this case, if |event| is non-null, it will be freed.
+// Otherwise, updates the fields of the existing event.
+// In either case, returns a pointer to the event containing the updated data,
+// or NULL in the case of a failure.
+build_id_event* CreateOrUpdateBuildID(const string& build_id,
+                                      const string& filename,
+                                      build_id_event* event) {
+  // When creating an event from scratch, build id and filename must be present.
+  if (!event && (build_id.empty() || filename.empty()))
+    return NULL;
+  size_t new_len = GetUint64AlignedStringLength(
+      filename.empty() ? event->filename : filename);
+
+  // If event is null, or we don't have enough memory, allocate more memory, and
+  // switch the new pointer with the existing pointer.
+  size_t new_size = sizeof(*event) + new_len;
+  if (!event || new_size > event->header.size) {
+    build_id_event* new_event = CallocMemoryForBuildID(new_size);
+
+    if (event) {
+      // Copy over everything except the filename and free the event.
+      // It is guaranteed that we are changing the filename - otherwise, the old
+      // size and the new size would be equal.
+      *new_event = *event;
+      free(event);
+    } else {
+      // Fill in the fields appropriately.
+      // Misc and pid fields are currently not important, so ignore them.
+      // However, perf expects a non-zero misc, so always set it to kernel.
+      new_event->header.type = HEADER_BUILD_ID;
+      new_event->header.misc = PERF_RECORD_MISC_KERNEL;
+    }
+    event = new_event;
+  }
+
+  // Here, event is the pointer to the build_id_event that we are keeping.
+  // Update the event's size, build id, and filename.
+  if (!build_id.empty() &&
+      !StringToHex(build_id, event->build_id, arraysize(event->build_id))) {
+    free(event);
+    return NULL;
+  }
+
+  if (!filename.empty())
+    CHECK_GT(snprintf(event->filename, new_len, "%s", filename.c_str()), 0);
+
+  event->header.size = new_size;
+  return event;
+}
+
 // Name of the kernel swapper process.
 const char kSwapperCommandName[] = "swapper";
 
@@ -83,32 +137,29 @@ bool PerfParser::ParseRawEvents() {
 
 bool PerfParser::InjectBuildIDs(
     const std::map<string, string>& filenames_to_build_ids) {
-  if (!build_id_events_.empty()) {
-    LOG(WARNING) << "Build ids are already present, ignoring new build ids.";
-    return false;
-  }
-  // Since build ids were not present before, metadata mask has to be updated.
   metadata_mask_ |= (1 << HEADER_BUILD_ID);
+  std::set<string> updated_filenames;
+  for (size_t i = 0; i < build_id_events_.size(); ++i) {
+    build_id_event* event = build_id_events_[i];
+    string filename = event->filename;
+    if (filenames_to_build_ids.find(filename) == filenames_to_build_ids.end())
+      continue;
+
+    string build_id = filenames_to_build_ids.at(filename);
+    // Changing a build id should always result in an update, never creation.
+    CHECK_EQ(event, CreateOrUpdateBuildID(build_id, "", event));
+    updated_filenames.insert(filename);
+  }
 
   std::map<string, string>::const_iterator it;
   for (it = filenames_to_build_ids.begin();
        it != filenames_to_build_ids.end();
        ++it) {
-    // Figure out amount of memory needed and allocate it.
-    size_t len = GetUint64AlignedStringLength(it->first);
-    size_t size = sizeof(build_id_event) + len;
-    build_id_event* event = CallocMemoryForBuildID(size);
+    if (updated_filenames.find(it->first) != updated_filenames.end())
+      continue;
 
-    // Fill in the fields appropriately.
-    // Misc and pid fields are currently not important, so ignore them.
-    // However, perf expects a non-zero misc, so always set it to kernel.
-    event->header.type = HEADER_BUILD_ID;
-    event->header.misc = PERF_RECORD_MISC_KERNEL;
-    event->header.size = size;
-    if (!StringToHex(it->second, event->build_id, arraysize(event->build_id)))
-      return false;
-    CHECK_GT(snprintf(event->filename, len, "%s", it->first.c_str()), 0);
-
+    build_id_event* event = CreateOrUpdateBuildID(it->second, it->first, NULL);
+    CHECK(event);
     build_id_events_.push_back(event);
   }
 
@@ -118,39 +169,17 @@ bool PerfParser::InjectBuildIDs(
 bool PerfParser::Localize(
     const std::map<string, string>& build_ids_to_filenames) {
   std::map<string, string> filename_map;
-  std::map<string, string>::const_iterator it;
-  for (it = build_ids_to_filenames.begin();
-       it != build_ids_to_filenames.end();
-       ++it) {
-    // Search for the corresponding build id event
-    for (size_t i = 0; i < build_id_events_.size(); ++i) {
-      build_id_event* event = build_id_events_[i];
-      string build_id = HexToString(event->build_id, kBuildIDArraySize);
-      if (build_id != it->first.substr(0, kBuildIDStringLength))
-        continue;
+  for (size_t i = 0; i < build_id_events_.size(); ++i) {
+    build_id_event* event = build_id_events_[i];
+    string build_id = HexToString(event->build_id, kBuildIDArraySize);
+    if (build_ids_to_filenames.find(build_id) == build_ids_to_filenames.end())
+      continue;
 
-      // We have found the build id event.
-      filename_map[string(event->filename)] = it->second;
-      size_t new_len = GetUint64AlignedStringLength(it->second);
-      size_t new_size = sizeof(*event) + new_len;
-
-      // If we don't have enough memory, allocate more memory, and switch the
-      // new pointer with the existing pointer.
-      if (new_size > event->header.size) {
-        build_id_event* new_event = CallocMemoryForBuildID(new_size);
-        build_id_events_[i] = new_event;
-        // Copy everything but the filename.
-        *new_event = *event;
-        free(event);
-        event = new_event;
-      }
-      // Here, event is the pointer to the build_id_event that we are keeping.
-      // Copy the new filename and fix the size.
-      event->header.size = new_size;
-      CHECK_GT(snprintf(event->filename, new_len, "%s", it->second.c_str()),
-               0);
-      break;
-    }
+    string new_name = build_ids_to_filenames.at(build_id);
+    filename_map[string(event->filename)] = new_name;
+    build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
+    CHECK(new_event);
+    build_id_events_[i] = new_event;
   }
 
   LocalizeUsingFilenames(filename_map);

@@ -29,6 +29,21 @@ void CheckChronologicalOrderOfEvents(const std::vector<ParsedEvent*>& events) {
   }
 }
 
+void CreateFilenameToBuildIDMap(
+    const std::vector<string>& filenames, unsigned int seed,
+    std::map<string, string>* filenames_to_build_ids) {
+  srand(seed);
+  // Only use every other filename, so that half the filenames are unused.
+  for (size_t i = 0; i < filenames.size(); i += 2) {
+    u8 build_id[kBuildIDArraySize];
+    for (size_t j = 0; j < kBuildIDArraySize; ++j)
+      build_id[j] = rand_r(&seed);
+
+    (*filenames_to_build_ids)[filenames[i]] =
+        HexToString(build_id, kBuildIDArraySize);
+  }
+}
+
 void ReadFileAndCheckInternals(const string& input_perf_data,
                                PerfParser* parser) {
   parser->set_do_remap(true);
@@ -43,18 +58,75 @@ void ReadFileAndCheckInternals(const string& input_perf_data,
   EXPECT_TRUE(stats.did_remap);
 }
 
-void CreateFilenameToBuildIDMap(
-    const std::vector<string>& filenames, unsigned int seed,
-    std::map<string, string>* filenames_to_build_ids) {
-  srand(seed);
-  for (size_t i = 0; i < filenames.size(); ++i) {
-    u8 build_id[kBuildIDArraySize];
-    for (size_t j = 0; j < kBuildIDArraySize; ++j)
-      build_id[j] = rand_r(&seed);
+void CheckInjectionAndLocalization(const string& input_perf_data,
+                                   unsigned int seed,
+                                   PerfParser* parser) {
+    std::vector<string> filenames;
+    parser->GetFilenames(&filenames);
+    ASSERT_FALSE(filenames.empty());
 
-    (*filenames_to_build_ids)[filenames[i]] =
-        HexToString(build_id, kBuildIDArraySize);
-  }
+    std::map<string, string> expected_map;
+    parser->GetFilenamesToBuildIDs(&expected_map);
+
+    // Inject some made up build ids.
+    std::map<string, string> filenames_to_build_ids;
+    CreateFilenameToBuildIDMap(filenames, seed, &filenames_to_build_ids);
+    ASSERT_TRUE(parser->InjectBuildIDs(filenames_to_build_ids));
+
+    // Parser should now correctly populate the filenames to build ids map.
+    std::map<string, string>::const_iterator it;
+    for (it = filenames_to_build_ids.begin();
+         it != filenames_to_build_ids.end();
+         ++it) {
+      expected_map[it->first] = it->second;
+    }
+    std::map<string, string> parser_map;
+    parser->GetFilenamesToBuildIDs(&parser_map);
+    EXPECT_EQ(expected_map, parser_map);
+
+    string output_perf_data = input_perf_data + ".parse.inject.out";
+    if (input_perf_data == "perf.data.singleprocess")
+      output_perf_data = "/tmp/singleprocess.injected";
+    ASSERT_TRUE(parser->WriteFile(output_perf_data));
+
+    // Perf should find the same build ids.
+    std::map<string, string> perf_build_id_map;
+    ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data, &perf_build_id_map));
+    EXPECT_EQ(expected_map, perf_build_id_map);
+
+    std::map<string, string> filename_localizer;
+    // Only localize the first half of the files which have build ids.
+    for (size_t j = 0; j < filenames.size() / 2; ++j) {
+      string old_filename = filenames[j];
+      if (expected_map.find(old_filename) == expected_map.end())
+        continue;
+      string build_id = expected_map[old_filename];
+
+      string new_filename = old_filename + ".local";
+      filenames[j] = new_filename;
+      filename_localizer[build_id] = new_filename;
+      expected_map[new_filename] = build_id;
+      expected_map.erase(old_filename);
+    }
+    parser->Localize(filename_localizer);
+
+    // Filenames should be the same.
+    std::vector<string> new_filenames;
+    parser->GetFilenames(&new_filenames);
+    std::sort(filenames.begin(), filenames.end());
+    EXPECT_EQ(filenames, new_filenames);
+
+    // Build ids should be updated.
+    parser_map.clear();
+    parser->GetFilenamesToBuildIDs(&parser_map);
+    EXPECT_EQ(expected_map, parser_map);
+
+    string output_perf_data2 = input_perf_data + ".parse.localize.out";
+    ASSERT_TRUE(parser->WriteFile(output_perf_data2));
+
+    perf_build_id_map.clear();
+    ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data2, &perf_build_id_map));
+    EXPECT_EQ(expected_map, perf_build_id_map);
 }
 
 }  // namespace
@@ -88,7 +160,7 @@ TEST(PerfParserTest, Test1Cycle) {
   }
 }
 
-TEST(PerfParserTest, TestProcessing) {
+TEST(PerfParserTest, TestNormalProcessing) {
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfDataFiles);
        ++i) {
@@ -112,11 +184,12 @@ TEST(PerfParserTest, TestProcessing) {
     // Remapping again should produce the same addresses.
     EXPECT_TRUE(ComparePerfReports(output_perf_data, output_perf_data2));
     EXPECT_TRUE(ComparePerfBuildIDLists(output_perf_data, output_perf_data2));
+
+    CheckInjectionAndLocalization(input_perf_data, i, &parser);
   }
 }
 
-TEST(PerfParserTest, TestBuildIDInjection) {
-  bool injected_at_least_once = false;
+TEST(PerfParserTest, TestPipedProcessing) {
   for (unsigned int i = 0;
        i < arraysize(perf_test_files::kPerfPipedDataFiles);
        ++i) {
@@ -125,76 +198,8 @@ TEST(PerfParserTest, TestBuildIDInjection) {
 
     PerfParser parser;
     ReadFileAndCheckInternals(input_perf_data, &parser);
-
-    std::vector<string> filenames;
-    parser.GetFilenames(&filenames);
-    ASSERT_FALSE(filenames.empty());
-
-    // Can only inject build ids in files which don't already have build ids.
-    if (!parser.build_id_events().empty())
-      continue;
-
-    // Initially there are no build ids.
-    std::map<string, string> parser_map;
-    parser.GetFilenamesToBuildIDs(&parser_map);
-    EXPECT_TRUE(parser_map.empty());
-
-    // Inject some made up build ids.
-    std::map<string, string> filenames_to_build_ids;
-    CreateFilenameToBuildIDMap(filenames, i, &filenames_to_build_ids);
-    ASSERT_TRUE(parser.InjectBuildIDs(filenames_to_build_ids));
-    injected_at_least_once = true;
-
-    // Parser should now correctly populate the filenames to build ids map.
-    parser.GetFilenamesToBuildIDs(&parser_map);
-    EXPECT_EQ(filenames_to_build_ids, parser_map);
-
-    string output_perf_data = input_perf_data + ".parse.remap.out";
-    ASSERT_TRUE(parser.WriteFile(output_perf_data));
-
-    // Perf should find the same build ids.
-    std::map<string, string> perf_build_id_map;
-    ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data, &perf_build_id_map));
-    EXPECT_EQ(filenames_to_build_ids, perf_build_id_map);
-
-    std::map<string, string> filename_localizer;
-    // Only localize some files, and skip some.
-    // One simple way is to replace indexes at powers of 2.
-    for (size_t j = 1; j < filenames.size(); j = j << 1) {
-      string old_filename = filenames[j];
-      string new_filename = old_filename + ".local";
-      filenames[j] = new_filename;
-
-      string build_id = filenames_to_build_ids[old_filename];
-      filename_localizer[build_id] = new_filename;
-      filenames_to_build_ids[new_filename] = build_id;
-      filenames_to_build_ids.erase(old_filename);
-    }
-
-    // Add a build id that is too short and make sure it doesn't break things
-    filename_localizer["fecba9876543210"] = "hello_world.cc";
-    parser.Localize(filename_localizer);
-
-    // Filenames should be the same.
-    std::vector<string> new_filenames;
-    parser.GetFilenames(&new_filenames);
-    std::sort(filenames.begin(), filenames.end());
-    EXPECT_EQ(filenames, new_filenames);
-
-    // Build ids should be updated.
-    parser_map.clear();
-    parser.GetFilenamesToBuildIDs(&parser_map);
-    EXPECT_EQ(filenames_to_build_ids, parser_map);
-
-    string output_perf_data2 = input_perf_data + ".parse.remap2.out";
-    ASSERT_TRUE(parser.WriteFile(output_perf_data2));
-
-    perf_build_id_map.clear();
-    ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data2, &perf_build_id_map));
-    EXPECT_EQ(filenames_to_build_ids, perf_build_id_map);
+    CheckInjectionAndLocalization(input_perf_data, i, &parser);
   }
-
-  EXPECT_TRUE(injected_at_least_once);
 }
 
 }  // namespace quipper
