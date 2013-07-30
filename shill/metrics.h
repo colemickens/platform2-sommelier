@@ -537,7 +537,7 @@ class Metrics {
   virtual void NotifyDeviceScanFinished(int interface_index);
 
   // Terminates an underay scan (does nothing if a scan wasn't underay).
-  void ResetScanTimer(int interface_index);
+  virtual void ResetScanTimer(int interface_index);
 
   // Notifies this object that a device has started the connect process.
   virtual void NotifyDeviceConnectStarted(int interface_index,
