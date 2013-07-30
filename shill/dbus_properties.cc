@@ -99,6 +99,13 @@ bool DBusProperties::GetString(const DBusPropertiesMap &properties,
 }
 
 // static
+bool DBusProperties::GetStringmap(const DBusPropertiesMap &properties,
+                                  const string &key,
+                                  map<string, string> *value) {
+  return GetValue<map<string, string>>(properties, key, value);
+}
+
+// static
 bool DBusProperties::GetStrings(const DBusPropertiesMap &properties,
                                 const string &key,
                                 vector<string> *value) {
@@ -160,6 +167,10 @@ void DBusProperties::ConvertKeyValueStoreToMap(
   for (const auto &key_value_pair : store.string_properties()) {
     (*properties)[key_value_pair.first].writer()
         .append_string(key_value_pair.second.c_str());
+  }
+  for (const auto &key_value_pair : store.stringmap_properties()) {
+    DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();
+    writer << key_value_pair.second;
   }
   for (const auto &key_value_pair : store.strings_properties()) {
     DBus::MessageIter writer = (*properties)[key_value_pair.first].writer();

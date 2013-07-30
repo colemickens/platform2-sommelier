@@ -325,31 +325,49 @@ TEST_F(DBusAdaptorTest, ArgsToKeyValueStore) {
   const char kString[] = "string";
   const char kStringKey[] = "string_arg";
   args[kStringKey].writer().append_string(kString);
+  const map<string, string> kStringmap{ { "key0", "value0" } };
+  const char kStringmapKey[] = "stringmap_key";
+  DBus::MessageIter writer = args[kStringmapKey].writer();
+  writer << kStringmap;
   const vector<string> kStrings{ "string0", "string1" };
   const char kStringsKey[] = "strings_key";
-  DBus::MessageIter writer = args[kStringsKey].writer();
+  writer = args[kStringsKey].writer();
   writer << kStrings;
   DBusAdaptor::ArgsToKeyValueStore(args, &args_kv, &error);
   EXPECT_TRUE(error.IsSuccess());
   EXPECT_EQ(kBool, args_kv.GetBool(kBoolKey));
   EXPECT_EQ(kInt32, args_kv.GetInt(kInt32Key));
   EXPECT_EQ(kString, args_kv.GetString(kStringKey));
+  EXPECT_EQ(kStringmap, args_kv.GetStringmap(kStringmapKey));
   EXPECT_EQ(kStrings, args_kv.GetStrings(kStringsKey));
 }
 
 TEST_F(DBusAdaptorTest, KeyValueStoreToVariant) {
-  static const char kStringKey[] = "StringKey";
-  static const char kStringValue[] = "StringValue";
-  static const char kBoolKey[] = "BoolKey";
+  const char kStringmapKey[] = "StringmapKey";
+  const map<string, string> kStringmapValue{ { "key", "value" } };
+  const char kStringsKey[] = "StringsKey";
+  const vector<string> kStringsValue{ "string0", "string1" };
+  const char kStringKey[] = "StringKey";
+  const char kStringValue[] = "StringValue";
+  const char kBoolKey[] = "BoolKey";
   const bool kBoolValue = true;
   KeyValueStore store;
+  store.SetStringmap(kStringmapKey, kStringmapValue);
+  store.SetStrings(kStringsKey, kStringsValue);
   store.SetString(kStringKey, kStringValue);
   store.SetBool(kBoolKey, kBoolValue);
   DBus::Variant var = DBusAdaptor::KeyValueStoreToVariant(store);
   ASSERT_TRUE(DBusAdaptor::IsKeyValueStore(var.signature()));
   DBusPropertiesMap props = var.operator DBusPropertiesMap();
   // Sanity test the result.
-  EXPECT_EQ(2, props.size());
+  EXPECT_EQ(4, props.size());
+  map<string, string> stringmap_value;
+  EXPECT_TRUE(
+      DBusProperties::GetStringmap(props, kStringmapKey, &stringmap_value));
+  EXPECT_EQ(kStringmapValue, stringmap_value);
+  vector<string> strings_value;
+  EXPECT_TRUE(DBusProperties::GetStrings(props, kStringsKey, &strings_value));
+  EXPECT_EQ(kStringsValue, strings_value);
   string string_value;
   EXPECT_TRUE(DBusProperties::GetString(props, kStringKey, &string_value));
   EXPECT_EQ(kStringValue, string_value);

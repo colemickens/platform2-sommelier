@@ -8,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+using std::map;
 using std::numeric_limits;
 using std::string;
 using std::vector;
@@ -35,6 +36,8 @@ TEST_F(DBusPropertiesTest, ConvertPathsToRpcIdentifiers) {
 TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   static const char kStringKey[] = "StringKey";
   static const char kStringValue[] = "StringValue";
+  static const char kStringmapKey[] = "StringmapKey";
+  const map<string, string> kStringmapValue = { { "key", "value" } };
   static const char kStringsKey[] = "StringsKey";
   const vector<string> kStringsValue = {"StringsValue1", "StringsValue2"};
   static const char kBoolKey[] = "BoolKey";
@@ -45,6 +48,7 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   const uint32 kUint32Value = 654;
   KeyValueStore store;
   store.SetString(kStringKey, kStringValue);
+  store.SetStringmap(kStringmapKey, kStringmapValue);
   store.SetStrings(kStringsKey, kStringsValue);
   store.SetBool(kBoolKey, kBoolValue);
   store.SetInt(kInt32Key, kInt32Value);
@@ -52,10 +56,14 @@ TEST_F(DBusPropertiesTest, ConvertKeyValueStoreToMap) {
   DBusPropertiesMap props;
   props["RandomKey"].writer().append_string("RandomValue");
   DBusProperties::ConvertKeyValueStoreToMap(store, &props);
-  EXPECT_EQ(5, props.size());
+  EXPECT_EQ(6, props.size());
   string string_value;
   EXPECT_TRUE(DBusProperties::GetString(props, kStringKey, &string_value));
   EXPECT_EQ(kStringValue, string_value);
+  map<string, string> stringmap_value;
+  EXPECT_TRUE(
+      DBusProperties::GetStringmap(props, kStringmapKey, &stringmap_value));
+  EXPECT_EQ(kStringmapValue, stringmap_value);
   vector<string> strings_value;
   EXPECT_TRUE(DBusProperties::GetStrings(props, kStringsKey, &strings_value));
   EXPECT_EQ(kStringsValue, strings_value);
@@ -138,6 +146,17 @@ struct StringTestTraits : public TestTraits<StringTestTraits, string> {
   static string GetOldValue() { return "old"; }
   static string GetNewValue() { return "new"; }
   static constexpr GetterType kMethodUnderTest = &DBusProperties::GetString;
+};
+
+struct StringmapTestTraits
+    : public TestTraits<StringmapTestTraits, map<string, string>> {
+  static map<string, string> GetOldValue() {
+    return { { "oldKey", "oldValue" } };
+  }
+  static map<string, string> GetNewValue() {
+    return { { "newKey", "newValue" } };
+  }
+  static constexpr GetterType kMethodUnderTest = &DBusProperties::GetStringmap;
 };
 
 struct StringsTestTraits
@@ -259,6 +278,7 @@ typedef testing::Types<BoolTestTraits,
                        Uint64TestTraits,
                        DoubleTestTraits,
                        StringTestTraits,
+                       StringmapTestTraits,
                        StringsTestTraits,
                        ObjectPathTestTraits,
                        RpcIdentifiersTestTraits,

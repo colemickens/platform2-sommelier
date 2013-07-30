@@ -242,6 +242,10 @@ void DBusAdaptor::ArgsToKeyValueStore(
     } else if (DBusAdaptor::IsStrings(key_value_pair.second.signature())) {
       SLOG(DBus, 5) << "Got strings property " << key;
       out->SetStrings(key, key_value_pair.second.operator vector<string>());
+    } else if (DBusAdaptor::IsStringmap(key_value_pair.second.signature())) {
+      SLOG(DBus, 5) << "Got stringmap property " << key;
+      out->SetStringmap(
+          key, key_value_pair.second.operator map<string, string>());
     } else {
       Error::PopulateAndLog(error, Error::kInternalError,
                             "unsupported type for property " + key);

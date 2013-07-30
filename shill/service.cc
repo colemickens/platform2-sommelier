@@ -542,6 +542,20 @@ void Service::Configure(const KeyValueStore &args, Error *error) {
       error->CopyFrom(set_error);
     }
   }
+  SLOG(Service, 5) << "Configuring string map properties:";
+  for (const auto &stringmap_it : args.stringmap_properties()) {
+    if (ContainsKey(parameters_ignored_for_configure_, stringmap_it.first)) {
+      continue;
+    }
+    SLOG(Service, 5) << "   " << stringmap_it.first;
+    Error set_error;
+    store_.SetStringmapProperty(
+        stringmap_it.first, stringmap_it.second, &set_error);
+    OnPropertyChanged(stringmap_it.first);
+    if (error->IsSuccess() && set_error.IsFailure()) {
+      error->CopyFrom(set_error);
+    }
+  }
 }
 
 bool Service::DoPropertiesMatch(const KeyValueStore &args) const {

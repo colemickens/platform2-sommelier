@@ -20,6 +20,8 @@ void KeyValueStore::Clear() {
   bool_properties_.clear();
   int_properties_.clear();
   string_properties_.clear();
+  stringmap_properties_.clear();
+  strings_properties_.clear();
   uint_properties_.clear();
 }
 
@@ -27,6 +29,8 @@ void KeyValueStore::CopyFrom(const KeyValueStore &b) {
   bool_properties_ = b.bool_properties_;
   int_properties_ = b.int_properties_;
   string_properties_ = b.string_properties_;
+  stringmap_properties_ = b.stringmap_properties_;
+  strings_properties_ = b.strings_properties_;
   uint_properties_ = b.uint_properties_;
 }
 
@@ -40,6 +44,10 @@ bool KeyValueStore::ContainsInt(const string &name) const {
 
 bool KeyValueStore::ContainsString(const string &name) const {
   return ContainsKey(string_properties_, name);
+}
+
+bool KeyValueStore::ContainsStringmap(const std::string &name) const {
+  return ContainsKey(stringmap_properties_, name);
 }
 
 bool KeyValueStore::ContainsStrings(const string &name) const {
@@ -68,6 +76,14 @@ const string &KeyValueStore::GetString(const string &name) const {
   return it->second;
 }
 
+const map<string, string> &KeyValueStore::GetStringmap(
+    const string &name) const {
+  const auto it(stringmap_properties_.find(name));
+  CHECK(it != stringmap_properties_.end()) << "for stringmap property "
+                                           << name;
+  return it->second;
+}
+
 const vector<string> &KeyValueStore::GetStrings(const string &name) const {
   const auto it(strings_properties_.find(name));
   CHECK(it != strings_properties_.end()) << "for strings property " << name;
@@ -92,6 +108,11 @@ void KeyValueStore::SetString(const string &name, const string &value) {
   string_properties_[name] = value;
 }
 
+void KeyValueStore::SetStringmap(const string &name,
+                                 const map<string, string> &value) {
+  stringmap_properties_[name] = value;
+}
+
 void KeyValueStore::SetStrings(const string &name,
                                const vector<string> &value) {
   strings_properties_[name] = value;
@@ -103,6 +124,10 @@ void KeyValueStore::SetUint(const string &name, uint32 value) {
 
 void KeyValueStore::RemoveString(const string &name) {
   string_properties_.erase(name);
+}
+
+void KeyValueStore::RemoveStringmap(const string &name) {
+  stringmap_properties_.erase(name);
 }
 
 void KeyValueStore::RemoveStrings(const string &name) {

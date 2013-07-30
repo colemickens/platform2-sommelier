@@ -54,6 +54,10 @@ class DBusProperties {
                         const std::string &key,
                         std::string *value);
 
+  static bool GetStringmap(const DBusPropertiesMap &properties,
+                           const std::string &key,
+                           std::map<std::string, std::string> *value);
+
   static bool GetStrings(const DBusPropertiesMap &properties,
                          const std::string &key,
                          std::vector<std::string> *value);

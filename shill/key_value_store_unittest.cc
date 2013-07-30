@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 
+using std::map;
 using std::string;
 using std::vector;
 using testing::Test;
@@ -63,6 +64,17 @@ TEST_F(KeyValueStoreTest, String) {
   EXPECT_EQ(kDefaultValue, store_.LookupString(kKey, kDefaultValue));
 }
 
+TEST_F(KeyValueStoreTest, Stringmap) {
+  const string kKey("foo");
+  const map<string, string> kValue{ { "bar0", "baz0" }, { "bar1", "baz1" } };
+  EXPECT_FALSE(store_.ContainsStringmap(kKey));
+  store_.SetStringmap(kKey, kValue);
+  EXPECT_TRUE(store_.ContainsStringmap(kKey));
+  EXPECT_EQ(kValue, store_.GetStringmap(kKey));
+  store_.RemoveStringmap(kKey);
+  EXPECT_FALSE(store_.ContainsStringmap(kKey));
+}
+
 TEST_F(KeyValueStoreTest, Strings) {
   const string kKey("foo");
   const vector<string> kValue{ "baz0", "baz1", "baz2" };
@@ -103,6 +115,12 @@ TEST_F(KeyValueStoreTest, Clear) {
   const string kStringKey("baz");
   const string kStringValue("string");
   store_.SetString(kStringKey, kStringValue);
+  const string kStringmapKey("stringMapKey");
+  const map<string, string> kStringmapValue;
+  store_.SetStringmap(kStringmapKey, kStringmapValue);
+  const string kStringsKey("stringsKey");
+  const vector<string> kStringsValue;
+  store_.SetStrings(kStringsKey, kStringsValue);
   const string kUintKey("bun");
   const uint32 kUintValue = 456;
   store_.SetUint(kUintKey, kUintValue);
@@ -110,11 +128,15 @@ TEST_F(KeyValueStoreTest, Clear) {
   EXPECT_TRUE(store_.ContainsBool(kBoolKey));
   EXPECT_TRUE(store_.ContainsInt(kIntKey));
   EXPECT_TRUE(store_.ContainsString(kStringKey));
+  EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
+  EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
   EXPECT_TRUE(store_.ContainsUint(kUintKey));
   store_.Clear();
   EXPECT_FALSE(store_.ContainsBool(kBoolKey));
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
   EXPECT_FALSE(store_.ContainsString(kStringKey));
+  EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
+  EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
   EXPECT_FALSE(store_.ContainsUint(kUintKey));
 }
 
@@ -129,6 +151,12 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   const string kStringKey("baz");
   const string kStringValue("string");
   donor.SetString(kStringKey, kStringValue);
+  const string kStringmapKey("stringMapKey");
+  const map<string, string> kStringmapValue{ { "key", "value" } };
+  donor.SetStringmap(kStringmapKey, kStringmapValue);
+  const string kStringsKey("stringsKey");
+  const vector<string> kStringsValue{ "string0", "string1" };
+  donor.SetStrings(kStringsKey, kStringsValue);
   const string kUintKey("bun");
   const uint32 kUintValue = 456;
   donor.SetUint(kUintKey, kUintValue);
@@ -136,6 +164,8 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   EXPECT_FALSE(store_.ContainsBool(kBoolKey));
   EXPECT_FALSE(store_.ContainsInt(kIntKey));
   EXPECT_FALSE(store_.ContainsString(kStringKey));
+  EXPECT_FALSE(store_.ContainsStringmap(kStringmapKey));
+  EXPECT_FALSE(store_.ContainsStrings(kStringsKey));
   EXPECT_FALSE(store_.ContainsUint(kUintKey));
   store_.CopyFrom(donor);
   EXPECT_TRUE(store_.ContainsBool(kBoolKey));
@@ -144,6 +174,10 @@ TEST_F(KeyValueStoreTest, CopyFrom) {
   EXPECT_EQ(kIntValue, store_.GetInt(kIntKey));
   EXPECT_TRUE(store_.ContainsString(kStringKey));
   EXPECT_EQ(kStringValue, store_.GetString(kStringKey));
+  EXPECT_TRUE(store_.ContainsStringmap(kStringmapKey));
+  EXPECT_EQ(kStringmapValue, store_.GetStringmap(kStringmapKey));
+  EXPECT_TRUE(store_.ContainsStrings(kStringsKey));
+  EXPECT_EQ(kStringsValue, store_.GetStrings(kStringsKey));
   EXPECT_TRUE(store_.ContainsUint(kUintKey));
   EXPECT_EQ(kUintValue, store_.GetUint(kUintKey));
 }
