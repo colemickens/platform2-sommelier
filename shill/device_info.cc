@@ -136,13 +136,20 @@ void DeviceInfo::Stop() {
 
 vector<string> DeviceInfo::GetUninitializedTechnologies() const {
   set<string> unique_technologies;
+  set<Technology::Identifier> initialized_technologies;
   for (map<int, Info>::const_iterator it = infos_.begin(); it != infos_.end();
        ++it) {
-    if (it->second.device)
-      continue;
-
     Technology::Identifier technology = it->second.technology;
-    if (Technology::IsPrimaryConnectivityTechnology(technology))
+    if (it->second.device) {
+      // If there is more than one device for a technology and at least
+      // one of them has been initialized, make sure that it doesn't get
+      // listed as uninitialized.
+      initialized_technologies.insert(technology);
+      unique_technologies.erase(Technology::NameFromIdentifier(technology));
+      continue;
+    }
+    if (Technology::IsPrimaryConnectivityTechnology(technology) &&
+        !ContainsKey(initialized_technologies, technology))
       unique_technologies.insert(Technology::NameFromIdentifier(technology));
   }
   return vector<string>(unique_technologies.begin(), unique_technologies.end());

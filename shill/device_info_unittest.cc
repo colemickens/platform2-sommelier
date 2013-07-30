@@ -335,8 +335,12 @@ TEST_F(DeviceInfoTest, GetUninitializedTechnologies) {
 
   device_info_.infos_[3].technology = Technology::kCellular;
   technologies = device_info_.GetUninitializedTechnologies();
-  expected_technologies.insert(Technology::NameFromIdentifier(
-      Technology::kCellular));
+  EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
+              ContainerEq(expected_technologies));
+
+  device_info_.infos_[3].device = device;
+  device_info_.infos_[1].device = NULL;
+  technologies = device_info_.GetUninitializedTechnologies();
   EXPECT_THAT(set<string>(technologies.begin(), technologies.end()),
               ContainerEq(expected_technologies));
 }
