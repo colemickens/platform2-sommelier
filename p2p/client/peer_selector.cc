@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "client/clock_interface.h"
 #include "client/peer.h"
 #include "client/peer_selector.h"
 #include "common/constants.h"
@@ -26,6 +27,10 @@ namespace p2p {
 
 namespace client {
 
+PeerSelector::PeerSelector(ServiceFinder* finder, ClockInterface* clock)
+    : finder_(finder), clock_(clock) {
+}
+
 // Type used for std::sort()
 struct SortPeerBySize {
   explicit SortPeerBySize(const std::string& id) : id_(id) {}
@@ -45,12 +50,12 @@ struct SortPeerBySize {
   string id_;
 };
 
-string PickUrlForId(ServiceFinder* finder, const string& id) {
-  vector<string> files = finder->AvailableFiles();
+string PeerSelector::PickUrlForId(const string& id) {
+  vector<string> files = finder_->AvailableFiles();
 
   for (auto const& file_name : files) {
     if (file_name == id) {
-      vector<const Peer*> peers = finder->GetPeersForFile(id);
+      vector<const Peer*> peers = finder_->GetPeersForFile(id);
 
       if (peers.size() > 0) {
         // Sort according to size (largest file size first)
@@ -86,10 +91,10 @@ string PickUrlForId(ServiceFinder* finder, const string& id) {
   return "";
 }
 
-string GetUrlAndWait(ServiceFinder* finder, const string& id) {
+string PeerSelector::GetUrlAndWait(const string& id) {
   LOG(INFO) << "Requesting URL in the LAN for ID " << id;
 
-  string url = PickUrlForId(finder, id);
+  string url = PickUrlForId(id);
   int num_retries = 0;
 
   do {
@@ -101,7 +106,7 @@ string GetUrlAndWait(ServiceFinder* finder, const string& id) {
 
     // Only return the peer if the number of connections in the LAN
     // is below the threshold
-    int num_total_conn = finder->NumTotalConnections();
+    int num_total_conn = finder_->NumTotalConnections();
     if (num_total_conn < constants::kMaxSimultaneousDownloads) {
       LOG(INFO) << "Returning URL " << url << " after " << num_retries
                 << " retries.";
@@ -116,12 +121,12 @@ string GetUrlAndWait(ServiceFinder* finder, const string& id) {
               << constants::kMaxSimultaneousDownloadsPollTimeSeconds
               << " seconds until retrying.";
 
-    sleep(constants::kMaxSimultaneousDownloadsPollTimeSeconds);
+    clock_->Sleep(constants::kMaxSimultaneousDownloadsPollTimeSeconds);
 
     // OK, now that we've slept for a while, the URL may not be
     // valid anymore... so we do the lookup again
-    finder->Lookup();
-    url = PickUrlForId(finder, id);
+    finder_->Lookup();
+    url = PickUrlForId(id);
     num_retries++;
   } while (true);
 }

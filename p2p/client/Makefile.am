@@ -10,6 +10,8 @@ INCLUDES = 						\
 	$(NULL)
 
 p2p_client_sources =					\
+	clock_interface.h				\
+	clock.h						\
 	peer.h						\
 	peer_selector.h		peer_selector.cc	\
 	service_finder.h	service_finder.cc	\
@@ -48,7 +50,8 @@ TESTS = p2p-client-unittests
 
 p2p_client_unittests_SOURCES = 				\
 	testrunner.cc					\
-	fake_service_finder.cc				\
+	fake_clock.h					\
+	fake_service_finder.cc	fake_service_finder.h	\
 	peer_selector_unittest.cc			\
 	$(p2p_client_sources)				\
 	$(NULL)

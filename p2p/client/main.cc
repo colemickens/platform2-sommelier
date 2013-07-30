@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "client/clock.h"
 #include "client/peer_selector.h"
 #include "client/service_finder.h"
 #include "common/constants.h"
@@ -94,6 +95,9 @@ int main(int argc, char* argv[]) {
   if (finder == NULL)
     return 1;
 
+  p2p::client::Clock clock;
+  p2p::client::PeerSelector peer_selector(finder, &clock);
+
   if (cl->HasSwitch("list-all")) {
     finder->Lookup();
     ListUrls(finder, "");
@@ -104,7 +108,7 @@ int main(int argc, char* argv[]) {
   } else if (cl->HasSwitch("get-url")) {
     string id = cl->GetSwitchValueNative("get-url");
     finder->Lookup();
-    string url = GetUrlAndWait(finder, id);
+    string url = peer_selector.GetUrlAndWait(id);
     if (url == "") {
       return 1;
     }
