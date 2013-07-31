@@ -43,10 +43,23 @@ class ServiceFinder {
   // This should only be called after calling Lookup(). Does no I/O.
   virtual int NumTotalConnections() const = 0;
 
+  // Gets the number of peers implementing p2p on the local network, although
+  // not all of them are sharing a file.
+  //
+  // This should only be called after calling Lookup(). Does no I/O.
+  virtual int NumTotalPeers() const = 0;
+
   // Looks up services on the local network. This method does blocking
   // I/O and it can take many seconds before it returns. May be called
   // multiple times to refresh the results.
-  virtual void Lookup() = 0;
+  // If the service discovery is filtered (blocked) on the local network
+  // returns false. Otherwise returns true.
+  virtual bool Lookup() = 0;
+
+  // Abort() cancels any ongoing and future call to Lookup() making it
+  // return as soon as possible. This function is Async-Signal-Safe and can
+  // be called several times.
+  virtual void Abort() = 0;
 
   // Constructs a suitable implementation of ServiceFinder and
   // initializes it. This does blocking I/O. Returns NULL if

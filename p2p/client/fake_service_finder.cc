@@ -18,7 +18,8 @@ namespace p2p {
 namespace client {
 
 FakeServiceFinder::FakeServiceFinder()
-    : num_lookup_calls_(0) {
+    : num_lookup_calls_(0),
+    service_filtered_(false) {
 }
 
 FakeServiceFinder::~FakeServiceFinder() {
@@ -27,6 +28,9 @@ FakeServiceFinder::~FakeServiceFinder() {
 vector<const Peer*> FakeServiceFinder::GetPeersForFile(
     const string& file) const {
   vector<const Peer*> res;
+  if (service_filtered_)
+    return res;
+
   for(auto const& peer : peers_) {
     if (peer.files.find(file) != peer.files.end())
       res.push_back(&peer);
@@ -35,6 +39,9 @@ vector<const Peer*> FakeServiceFinder::GetPeersForFile(
 }
 
 vector<string> FakeServiceFinder::AvailableFiles() const {
+  if (service_filtered_)
+    return vector<string>();
+
   set<string> retset;
   for(auto const& peer : peers_) {
     for(auto const& file : peer.files) {
@@ -46,12 +53,21 @@ vector<string> FakeServiceFinder::AvailableFiles() const {
 
 int FakeServiceFinder::NumTotalConnections() const {
   int res = 0;
+  if (service_filtered_)
+    return res;
+
   for(auto const& peer : peers_)
     res += peer.num_connections;
   return res;
 }
 
-void FakeServiceFinder::Lookup() {
+int FakeServiceFinder::NumTotalPeers() const {
+  if (service_filtered_)
+    return 0;
+  return peers_.size();
+}
+
+bool FakeServiceFinder::Lookup() {
   num_lookup_calls_++;
 
   // Execute scheduled calls.
@@ -75,10 +91,19 @@ void FakeServiceFinder::Lookup() {
       PeerShareFile(params.peer_id, params.file, params.size);
     peer_share_file_calls_.erase(num_lookup_calls_);
   }
+
+  return !service_filtered_;
+}
+
+void FakeServiceFinder::Abort() {
 }
 
 int FakeServiceFinder::GetNumLookupCalls() {
   return num_lookup_calls_;
+}
+
+void FakeServiceFinder::SetServiceFiltered(bool filtered) {
+  service_filtered_ = filtered;
 }
 
 int FakeServiceFinder::NewPeer(string address, bool is_ipv6, uint16 port) {

@@ -17,6 +17,9 @@
 #include <base/bind.h>
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <metrics/metrics_library_mock.h>
+
+using testing::_;
 
 namespace p2p {
 
@@ -30,6 +33,7 @@ class PeerSelectorTest : public ::testing::Test {
   FakeClock clock_;
   FakeServiceFinder sf_;
   PeerSelector ps_; // The PeerSelector under test.
+  testing::StrictMock<MetricsLibraryMock> mock_metrics_lib_;
 };
 
 TEST_F(PeerSelectorTest, PickUrlForNonExistantId) {
@@ -67,7 +71,7 @@ TEST_F(PeerSelectorTest, PickUrlForIdWithMinimumSize) {
 }
 
 TEST_F(PeerSelectorTest, PickUrlFromTheFirstThird) {
-  int peer1 = sf_.NewPeer("10.0.0.1", false, 1111);
+  int peer1 = sf_.NewPeer("2001:db8:85a3:0:0:8a2e:370:7334", true, 1111);
   int peer2 = sf_.NewPeer("10.0.0.2", false, 2222);
   int peer3 = sf_.NewPeer("10.0.0.3", false, 3333);
   int peer4 = sf_.NewPeer("10.0.0.4", false, 4444);
@@ -75,14 +79,15 @@ TEST_F(PeerSelectorTest, PickUrlFromTheFirstThird) {
   ASSERT_TRUE(sf_.PeerShareFile(peer2, "some-file", 500));
   ASSERT_TRUE(sf_.PeerShareFile(peer3, "some-file", 300));
   ASSERT_TRUE(sf_.PeerShareFile(peer4, "some-file", 0));
-  EXPECT_EQ(ps_.PickUrlForId("some-file", 1), "http://10.0.0.1:1111/some-file");
+  EXPECT_EQ(ps_.PickUrlForId("some-file", 1),
+      "http://[2001:db8:85a3:0:0:8a2e:370:7334]:1111/some-file");
 }
 
 TEST_F(PeerSelectorTest, GetUrlAndWaitWithNoPeers) {
   EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1), "");
 
-  // GetUrlAndWait() should only call Lookup() if it needs to wait.
-  EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
+  // GetUrlAndWait() should call Lookup() once, since doesn't need to wait.
+  EXPECT_EQ(sf_.GetNumLookupCalls(), 1);
 }
 
 TEST_F(PeerSelectorTest, GetUrlAndWaitWithUnknownFile) {
@@ -93,8 +98,8 @@ TEST_F(PeerSelectorTest, GetUrlAndWaitWithUnknownFile) {
 
   EXPECT_EQ(ps_.GetUrlAndWait("unknown-file", 1), "");
 
-  // GetUrlAndWait() should only call Lookup() if it needs to wait.
-  EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
+  // GetUrlAndWait() should call Lookup() once, since doesn't need to wait.
+  EXPECT_EQ(sf_.GetNumLookupCalls(), 1);
 }
 
 TEST_F(PeerSelectorTest, GetUrlAndWaitOnBusyNetwork) {
@@ -126,7 +131,7 @@ TEST_F(PeerSelectorTest, GetUrlAndWaitOnBusyNetwork) {
       "http://10.0.0.1:1111/some-file");
 
   EXPECT_EQ(sf_.GetNumLookupCalls(), 4);
-  EXPECT_EQ(clock_.GetSleptTime(), 4 * 30);
+  EXPECT_EQ(clock_.GetSleptTime(), 3 * 30);
 }
 
 TEST_F(PeerSelectorTest, GetUrlAndWaitWhenThePeerGoesAway) {
@@ -154,7 +159,19 @@ TEST_F(PeerSelectorTest, GetUrlAndWaitWhenThePeerGoesAway) {
   EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1), "");
 
   EXPECT_EQ(sf_.GetNumLookupCalls(), 5);
-  EXPECT_EQ(clock_.GetSleptTime(), 5 * 30);
+  EXPECT_EQ(clock_.GetSleptTime(), 4 * 30);
+
+  // Check the metrics. The Lookup should be kVanished.
+  EXPECT_CALL(mock_metrics_lib_, SendEnumToUMA(
+      "P2P.Client.LookupResult",
+      PeerSelector::kVanished,
+      PeerSelector::kNumLookupResults));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.NumPeers", 2, _, _, _));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.Vanished.WaitingTimeSeconds", 4 * 30, _, _, _));
+
+  EXPECT_TRUE(ps_.ReportMetrics(&mock_metrics_lib_));
 }
 
 TEST_F(PeerSelectorTest, GetUrlDoesntWaitForSmallFiles) {
@@ -168,8 +185,88 @@ TEST_F(PeerSelectorTest, GetUrlDoesntWaitForSmallFiles) {
 
   EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1000), "");
 
-  EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
+  EXPECT_EQ(sf_.GetNumLookupCalls(), 1);
   EXPECT_EQ(clock_.GetSleptTime(), 0);
+
+  // Check the metrics. The Lookup should be kVanished.
+  EXPECT_CALL(mock_metrics_lib_, SendEnumToUMA(
+      "P2P.Client.LookupResult",
+      PeerSelector::kNotFound,
+      PeerSelector::kNumLookupResults));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.NumPeers", 1, _, _, _));
+
+  EXPECT_TRUE(ps_.ReportMetrics(&mock_metrics_lib_));
+}
+
+TEST_F(PeerSelectorTest, ReportMetricsFailsWhenNoLookup) {
+  // This is to ensure that the check for calling ReportMetrics without calling
+  // GetUrlAndWait() before works.
+  EXPECT_FALSE(ps_.ReportMetrics(&mock_metrics_lib_));
+}
+
+TEST_F(PeerSelectorTest, ReportMetricsOnFilteredNetwork) {
+  sf_.SetServiceFiltered(true);
+
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1000), "");
+
+  EXPECT_CALL(mock_metrics_lib_, SendEnumToUMA(
+      "P2P.Client.LookupResult", PeerSelector::kFiltered, _));
+
+  EXPECT_TRUE(ps_.ReportMetrics(&mock_metrics_lib_));
+}
+
+TEST_F(PeerSelectorTest, ReportMetricsWhenFound) {
+  int peer1 = sf_.NewPeer("10.0.0.1", false, 1111);
+  int peer2 = sf_.NewPeer("10.0.0.2", false, 2222);
+  int peer3 = sf_.NewPeer("10.0.0.3", false, 3333);
+  int peer4 = sf_.NewPeer("10.0.0.4", false, 4444);
+  ASSERT_TRUE(sf_.PeerShareFile(peer1, "some-file", 2000));
+  ASSERT_TRUE(sf_.PeerShareFile(peer2, "some-file", 500));
+  ASSERT_TRUE(sf_.PeerShareFile(peer3, "other-file", 500));
+  ASSERT_TRUE(sf_.PeerShareFile(peer4, "some-file", 0));
+  ASSERT_TRUE(sf_.SetPeerConnections(peer1, 1));
+
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1),
+      "http://10.0.0.1:1111/some-file");
+
+  EXPECT_EQ(sf_.GetNumLookupCalls(), 1);
+
+  // Check the metrics.
+  EXPECT_CALL(mock_metrics_lib_, SendEnumToUMA(
+      "P2P.Client.LookupResult",
+      PeerSelector::kFound,
+      PeerSelector::kNumLookupResults));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.NumPeers", 4, _, _, _));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.Found.ConnectionCount", 1, _, _, _));
+  // Only two peers are sharing a non-empty file.
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.Found.CandidateCount", 2, _, _, _));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.Found.WaitingTimeSeconds", 0, _, _, _));
+
+  EXPECT_TRUE(ps_.ReportMetrics(&mock_metrics_lib_));
+}
+
+TEST_F(PeerSelectorTest, ReportMetricsWhenCanceled) {
+  // Technically speaking, the call to Abort should be made *while*
+  // GetUrlAndWait() is running, but we could also call it right before.
+  ps_.Abort();
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1), "");
+
+  EXPECT_EQ(sf_.GetNumLookupCalls(), 1);
+
+  // Check the metrics.
+  EXPECT_CALL(mock_metrics_lib_, SendEnumToUMA(
+      "P2P.Client.LookupResult",
+      PeerSelector::kCanceled,
+      PeerSelector::kNumLookupResults));
+  EXPECT_CALL(mock_metrics_lib_, SendToUMA(
+      "P2P.Client.Canceled.WaitingTimeSeconds", 0, _, _, _));
+
+  EXPECT_TRUE(ps_.ReportMetrics(&mock_metrics_lib_));
 }
 
 }  // namespace client

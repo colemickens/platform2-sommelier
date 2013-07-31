@@ -20,16 +20,26 @@ class FakeServiceFinder : public ServiceFinder {
   FakeServiceFinder();
   virtual ~FakeServiceFinder();
 
+  // ServiceFinder interface methods.
   std::vector<const Peer*> GetPeersForFile(const std::string& file) const;
 
   std::vector<std::string> AvailableFiles() const;
 
   int NumTotalConnections() const;
 
-  void Lookup();
+  int NumTotalPeers() const;
+
+  bool Lookup();
+
+  void Abort();
+
+  // FakeServiceFinder methods.
 
   // Returns the number of times Lookup() was called since the object creation.
   int GetNumLookupCalls();
+
+  // Sets if the service is filtered to |filtered|.
+  void SetServiceFiltered(bool filtered);
 
   // NewPeer() creates a new Peer object with the given properties. The return
   // value is a peer_id used only in the context of the fake implementation.
@@ -92,6 +102,9 @@ class FakeServiceFinder : public ServiceFinder {
 
   // Number of times Lookup() was called.
   int num_lookup_calls_;
+
+  // Whether the service is filtered (blocked) in the local network.
+  bool service_filtered_;
 
   // The scheduled calls for PeerShareFile on Lookup().
   struct SetPeerConnectionsCall {

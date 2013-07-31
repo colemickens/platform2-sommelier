@@ -9,8 +9,6 @@
 
 #include <base/basictypes.h>
 
-#include <unistd.h>
-
 namespace p2p {
 
 namespace client {
@@ -19,9 +17,9 @@ class Clock : public ClockInterface {
  public:
   Clock() {}
 
-  virtual unsigned int Sleep(unsigned int seconds) {
-    return sleep(seconds);
-  }
+  virtual unsigned int Sleep(unsigned int seconds);
+
+  virtual base::Time GetMonotonicTime();
 
  private:
   DISALLOW_COPY_AND_ASSIGN(Clock);

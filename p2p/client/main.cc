@@ -25,6 +25,7 @@
 #include <base/memory/scoped_ptr.h>
 #include <base/rand_util.h>
 #include <base/string_number_conversions.h>
+#include <metrics/metrics_library.h>
 
 using std::cout;
 using std::cerr;
@@ -33,6 +34,17 @@ using std::map;
 using std::ostream;
 using std::string;
 using std::vector;
+
+/* Global pointer to the PeerSelector being used. Only used from the signal
+ * handler of SIGTERM. */
+static p2p::client::PeerSelector* volatile global_peer_selector = NULL;
+
+static void sigterm_handler(int signum) {
+  /* This function is non-reentrant since is only used to handle SIGTERM.
+   * A second SIGTERM signal will wait until this call finishes. */
+  if (global_peer_selector)
+    global_peer_selector->Abort();
+}
 
 static void Usage(ostream& ostream) {
   ostream << "Usage:\n"
@@ -101,6 +113,7 @@ int main(int argc, char* argv[]) {
 
   p2p::client::Clock clock;
   p2p::client::PeerSelector peer_selector(finder.get(), &clock);
+  // The Metrics Library interface for reporting UMA stats.
 
   if (cl->HasSwitch("list-all")) {
     finder->Lookup();
@@ -119,11 +132,25 @@ int main(int argc, char* argv[]) {
         return 1;
       }
     }
-    finder->Lookup();
+
+    // Register the SIGTERM signal handler in order to abort the
+    // GetUrlAndWait() call, but reporting the metric.
+    global_peer_selector = &peer_selector;
+    signal(SIGTERM, sigterm_handler);
+
     string url = peer_selector.GetUrlAndWait(id, minimum_size);
-    if (url == "") {
+
+    // Remove the global pointer reference to avoid a Abort() call due a
+    // SIGTERM after the pointed object is destroyed.
+    global_peer_selector = NULL;
+
+    // Report the metrics.
+    MetricsLibrary metrics_lib;
+    metrics_lib.Init();
+    peer_selector.ReportMetrics(&metrics_lib);
+
+    if (url == "")
       return 1;
-    }
     cout << url << endl;
   } else if (cl->HasSwitch("list-urls")) {
     string id = cl->GetSwitchValueNative("list-urls");

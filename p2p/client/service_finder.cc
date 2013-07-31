@@ -9,17 +9,18 @@
 #include "common/util.h"
 #include "client/service_finder.h"
 
-#include <glib.h>
 #include <avahi-client/client.h>
 #include <avahi-glib/glib-watch.h>
 #include <avahi-common/error.h>
 #include <avahi-client/lookup.h>
+#include <fcntl.h>
+#include <glib.h>
+#include <unistd.h>
 
 #include <stdexcept>
 #include <set>
 
 #include <base/logging.h>
-#include <base/memory/ref_counted.h>
 
 using std::vector;
 using std::map;
@@ -41,11 +42,19 @@ class ServiceFinderAvahi : public ServiceFinder {
 
   int NumTotalConnections() const;
 
-  void Lookup();
+  int NumTotalPeers() const;
+
+  bool Lookup();
+
+  void Abort();
 
   static ServiceFinderAvahi* Construct();
 
  private:
+  static gboolean quit_lookup_loop(GIOChannel *channel,
+                                   GIOCondition cond,
+                                   gpointer user_data);
+
   static void on_avahi_changed(AvahiClient* client,
                                AvahiClientState state,
                                void* user_data);
@@ -93,6 +102,19 @@ class ServiceFinderAvahi : public ServiceFinder {
   set<AvahiServiceResolver*> lookup_pending_resolvers_;
   GMainLoop* lookup_loop_;
 
+  // Flag used to signal the request was canceled.
+  volatile bool must_exit_now_;
+
+  // A pipe used to wake up the |lookup_loop_| when Abort() is called.
+  int abort_pipe_[2];
+
+  // A GIOChannel on top of |abort_pipe_[0]| in order to watch it from the main
+  // loop.
+  GIOChannel *abort_io_channel_;
+
+  // The source tag for the |abort_io_channel_| watch on the main loop.
+  guint abort_source_;
+
   DISALLOW_COPY_AND_ASSIGN(ServiceFinderAvahi);
 };
 
@@ -102,16 +124,47 @@ ServiceFinderAvahi::ServiceFinderAvahi()
       running_(false),
       lookup_browser_(NULL),
       lookup_all_for_now_(false),
-      lookup_loop_(NULL) {}
+      lookup_loop_(NULL),
+      must_exit_now_(false),
+      abort_io_channel_(NULL) {
+  // Create and attach a pipe used from the signal handler to wake up the
+  // glib main loop.
+  if (pipe2(abort_pipe_, O_NONBLOCK) != 0) {
+    PLOG(ERROR) << "Creating a pipe(). Aborting now.";
+    must_exit_now_ = true;
+    abort_pipe_[0] = abort_pipe_[1] = -1;
+    return;
+  }
+
+  abort_io_channel_ = g_io_channel_unix_new(abort_pipe_[0]);
+  abort_source_ = g_io_add_watch(
+      abort_io_channel_, G_IO_IN, quit_lookup_loop, this);
+}
 
 ServiceFinderAvahi::~ServiceFinderAvahi() {
   for (auto const& i : peers_) {
     delete i;
   }
 
+  if (abort_io_channel_) {
+    g_source_remove(abort_source_);
+    g_io_channel_unref(abort_io_channel_);
+  }
+
+  close(abort_pipe_[0]);
+  close(abort_pipe_[1]);
+
   CHECK(lookup_browser_ == NULL);
-  CHECK(lookup_pending_resolvers_.size() == 0);
   CHECK(lookup_loop_ == NULL);
+
+  // If the process was canceled with Abort() there can be some resolvers
+  // pending on |lookup_pending_resolvers_|. Release them now.
+  if (must_exit_now_) {
+    for (auto const resolver : lookup_pending_resolvers_)
+      avahi_service_resolver_free(resolver);
+    lookup_pending_resolvers_.clear();
+  }
+  CHECK(lookup_pending_resolvers_.size() == 0);
 
   if (client_ != NULL)
     avahi_client_free(client_);
@@ -131,6 +184,10 @@ int ServiceFinderAvahi::NumTotalConnections() const {
   for (auto const& peer : peers_)
     sum += peer->num_connections;
   return sum;
+}
+
+int ServiceFinderAvahi::NumTotalPeers() const {
+  return peers_.size();
 }
 
 vector<const Peer*> ServiceFinderAvahi::GetPeersForFile(
@@ -235,6 +292,17 @@ bool ServiceFinderAvahi::IsOwnService(const char *name) {
   return g_strcmp0(name, p2p::util::GetDBusMachineId()) == 0;
 }
 
+static string ToString(AvahiBrowserEvent event) {
+  switch (event) {
+    case AVAHI_BROWSER_FAILURE: return "AVAHI_BROWSER_FAILURE";
+    case AVAHI_BROWSER_NEW: return "AVAHI_BROWSER_NEW";
+    case AVAHI_BROWSER_REMOVE: return "AVAHI_BROWSER_REMOVE";
+    case AVAHI_BROWSER_CACHE_EXHAUSTED: return "AVAHI_BROWSER_CACHE_EXHAUSTED";
+    case AVAHI_BROWSER_ALL_FOR_NOW: return "AVAHI_BROWSER_ALL_FOR_NOW";
+  }
+  return "Unknown";
+}
+
 void ServiceFinderAvahi::on_service_browser_changed(
     AvahiServiceBrowser* b,
     AvahiIfIndex interface,
@@ -252,7 +320,7 @@ void ServiceFinderAvahi::on_service_browser_changed(
   if (finder->lookup_browser_ == NULL)
     finder->lookup_browser_ = b;
 
-  VLOG(1) << "on_browser_changed: event=" << event
+  VLOG(1) << "on_browser_changed: event=" << ToString(event)
           << " name=" << (name != NULL ? name : "(nil)") << " type=" << type
           << " domain=" << (domain != NULL ? domain : "(nil)")
           << " flags=" << flags;
@@ -308,10 +376,14 @@ void ServiceFinderAvahi::BrowserCheckIfDone() {
   g_main_loop_quit(lookup_loop_);
 }
 
-void ServiceFinderAvahi::Lookup() {
+bool ServiceFinderAvahi::Lookup() {
+  // Prevent new calls to Lookup() once Abort() was called.
+  if (must_exit_now_)
+    return true;
+
   CHECK(lookup_loop_ == NULL);
 
-  // Clear existing data, if any
+  // Clear existing data, if any.
   peers_.clear();
   file_to_servers_.clear();
   lookup_all_for_now_ = false;
@@ -331,6 +403,35 @@ void ServiceFinderAvahi::Lookup() {
 
   avahi_service_browser_free(lookup_browser_);
   lookup_browser_ = NULL;
+
+  // TODO(deymo): Detect if the mDNS is filtered and return false if it is.
+  // See crbug.com/267082 for details.
+  return true;
+}
+
+gboolean ServiceFinderAvahi::quit_lookup_loop(GIOChannel *channel,
+                                              GIOCondition cond,
+                                              gpointer user_data) {
+  LOG(INFO) << "Abort() processed, quiting main loop.";
+
+  ServiceFinderAvahi* finder = reinterpret_cast<ServiceFinderAvahi*>(user_data);
+  CHECK(finder->lookup_loop_ != NULL);
+  g_main_loop_quit(finder->lookup_loop_);
+  return TRUE;
+}
+
+void ServiceFinderAvahi::Abort() {
+  // Allow several calls to this function.
+  if (must_exit_now_)
+    return;
+  must_exit_now_ = true;
+
+  // Wake up the main loop if we are running it. In case of an error, we
+  // can't log the result since this is running in the signal handler. In the
+  // case we can't write to this pipe, which should never happen, we abort the
+  // process excecution without returning from the handler.
+  if (write(abort_pipe_[1], "*", 1) != 1)
+    abort();
 }
 
 // -----------------------------------------------------------------------------

@@ -11,7 +11,7 @@ INCLUDES = 						\
 
 p2p_client_sources =					\
 	clock_interface.h				\
-	clock.h						\
+	clock.h			clock.cc		\
 	peer.h						\
 	peer_selector.h		peer_selector.cc	\
 	service_finder.h	service_finder.cc	\
@@ -38,6 +38,8 @@ p2p_client_LDADD = 					\
 	$(AVAHI_CLIENT_LIBS)				\
 	$(AVAHI_GLIB_LIBS)				\
 	$(LIBCHROME_LIBS)				\
+	-lmetrics					\
+	-lrt						\
 	$(top_builddir)/common/libp2p-util.la		\
 	$(NULL)
 
@@ -70,6 +72,7 @@ p2p_client_unittests_LDADD = 				\
 	$(AVAHI_GLIB_LIBS)				\
 	$(LIBCHROME_LIBS)				\
 	-lgtest -lgtest_main -lgmock			\
+	-lrt						\
 	$(top_builddir)/common/libp2p-util.la		\
 	$(NULL)
 
