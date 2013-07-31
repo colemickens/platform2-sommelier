@@ -139,6 +139,10 @@ int FirmwareUpdate(const string &install_dir, bool is_update) {
     printf("Firmware can't be updated. Booted from RW Firmware B"
            " (error code: %d)\n",
            result);
+  } else if (result == 4) {
+    printf("RO Firmware needs update, but is really marked RO."
+           " (error code: %d)\n",
+           result);
   } else {
     printf("Firmware update failed (error code: %d).\n", result);
   }
