@@ -63,14 +63,35 @@ sysctl -q -p /etc/sysctl.conf
 # Prepare to mount stateful partition
 ROOT_DEV=$(rootdev -s)
 ROOTDEV_RET_CODE=$?
-ROOTDEV_TYPE=${ROOT_DEV%[0-9]*}
+# Example root dev types we need to handle: /dev/sda2 -> /dev/sda,
+# /dev/mmcblk0p0 -> /dev/mmcblk0p, /dev/ubi2_1 -> /dev/ubi
+ROOTDEV_TYPE=$(echo $ROOT_DEV | sed 's/[0-9_]*$//')
+ROOTDEV_NAME=${ROOTDEV_TYPE##/dev/}
+ROOTDEV_REMOVABLE=$(cat "/sys/block/${ROOTDEV_NAME}/removable")
+
+# Load the GPT helper functions and the image settings.
+. "/usr/sbin/write_gpt.sh"
+if [ "${ROOTDEV_REMOVABLE}" = "1" ]; then
+  load_partition_vars
+else
+  load_base_vars
+fi
+
 # Check if we are booted on physical media. rootdev will fail if we are in
 # an initramfs or tmpfs rootfs (used for x86 factory images). When using
 # initrd+tftpboot (used for ARM factory images), ROOTDEV_TYPE will be
 # /dev/ram.
 if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Find our stateful partition. It's always partition 1.
-  STATE_DEV=${ROOTDEV_TYPE}1
+  # Unless we're on UBI, when it's ubi1_0.
+
+  STATE_FLAGS="nodev,noexec,nosuid"
+  if [ "${FORMAT_STATE}" = "ubi" ]; then
+    STATE_DEV="/dev/ubi1_0"
+  else
+    STATE_DEV=${ROOTDEV_TYPE}1
+    STATE_FLAGS="${STATE_FLAGS},commit=600"
+  fi
 
   # For factory install shim, we never want to write to the SDCard.
   # In some cases, we boot the factory install shim directly from removable
@@ -84,7 +105,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     TMP_STATEFUL="$(mktemp -d)"
     FACTORY_LSB_REL="dev_image/etc/lsb-factory"
     mkdir -p /mnt/stateful_partition/dev_image/etc
-    mount -n -t ext4 -o nodev,noexec,nosuid,commit=600 \
+    mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
       "$STATE_DEV" "$TMP_STATEFUL"
     if [ -f "${TMP_STATEFUL}/${FACTORY_LSB_REL}" ]; then
       cp -a "${TMP_STATEFUL}/${FACTORY_LSB_REL}" \
@@ -94,7 +115,7 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
     rmdir "$TMP_STATEFUL"
 
   # For all other cases, mount stateful partition from STATE_DEV.
-  elif ! mount -n -t ext4 -o nodev,noexec,nosuid,commit=600 \
+  elif ! mount -n -t ${FS_FORMAT_STATE} -o ${STATE_FLAGS} \
          "$STATE_DEV" /mnt/stateful_partition; then
     # Try to rebuild the stateful partition by  clobber-state
     # (for security concern, we don't use fast mode)
@@ -106,9 +127,15 @@ if [ "$ROOTDEV_RET_CODE" = "0" -a "$ROOTDEV_TYPE" != "/dev/ram" ]; then
   # Mount the OEM partition.
   # mount_or_fail isn't used since this partition only has a filesystem
   # on some boards.
-  OEM_DEV=${ROOTDEV_TYPE}8
-  mount -n -t ext4 -o nodev,noexec,nosuid,commit=600,ro \
-    "$OEM_DEV" /usr/share/oem
+
+  OEM_FLAGS="ro,nodev,noexec,nosuid"
+  if [ "${FORMAT_OEM}" = "ubi" ]; then
+    OEM_DEV="/dev/ubi8_0"
+  else
+    OEM_DEV=${ROOTDEV_TYPE}8
+    OEM_FLAGS="${OEM_FLAGS},commit=600"
+  fi
+  mount -n -t ${FS_FORMAT_OEM} -o ${OEM_FLAGS} ${OEM_DEV} /usr/share/oem
 fi
 
 # Sanity check the date (crosbug.com/13200)
