@@ -22,6 +22,7 @@
 #include <base/bind.h>
 #include <base/command_line.h>
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/rand_util.h>
 #include <base/string_number_conversions.h>
 
@@ -73,7 +74,7 @@ static void ListUrls(p2p::client::ServiceFinder* finder,
 }
 
 int main(int argc, char* argv[]) {
-  p2p::client::ServiceFinder* finder = NULL;
+  scoped_ptr<p2p::client::ServiceFinder> finder;
 
   g_type_init();
   CommandLine::Init(argc, argv);
@@ -94,16 +95,16 @@ int main(int argc, char* argv[]) {
 
   // Get us a ServiceFinder and look up all peers - this takes a couple
   // of seconds. This can fail if e.g. avahi-daemon is not running.
-  finder = p2p::client::ServiceFinder::Construct();
+  finder.reset(p2p::client::ServiceFinder::Construct());
   if (finder == NULL)
     return 1;
 
   p2p::client::Clock clock;
-  p2p::client::PeerSelector peer_selector(finder, &clock);
+  p2p::client::PeerSelector peer_selector(finder.get(), &clock);
 
   if (cl->HasSwitch("list-all")) {
     finder->Lookup();
-    ListUrls(finder, "");
+    ListUrls(finder.get(), "");
   } else if (cl->HasSwitch("num-connections")) {
     finder->Lookup();
     int num_connections = finder->NumTotalConnections();
@@ -127,7 +128,7 @@ int main(int argc, char* argv[]) {
   } else if (cl->HasSwitch("list-urls")) {
     string id = cl->GetSwitchValueNative("list-urls");
     finder->Lookup();
-    ListUrls(finder, id);
+    ListUrls(finder.get(), id);
   } else {
     Usage(cerr);
     return 1;
