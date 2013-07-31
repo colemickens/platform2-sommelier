@@ -983,7 +983,6 @@ void Device::OnEnabledStateChanged(const ResultCallback &callback,
     enabled_ = enabled_pending_;
     manager_->UpdateEnabledTechnologies();
     adaptor_->EmitBoolChanged(flimflam::kPoweredProperty, enabled_);
-    adaptor_->UpdateEnabled();
   }
   enabled_pending_ = enabled_;
   if (!callback.is_null())

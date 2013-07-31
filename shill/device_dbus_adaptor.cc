@@ -39,8 +39,6 @@ const std::string &DeviceDBusAdaptor::GetRpcConnectionIdentifier() {
   return connection_name_;
 }
 
-void DeviceDBusAdaptor::UpdateEnabled() {}
-
 void DeviceDBusAdaptor::EmitBoolChanged(const std::string& name, bool value) {
   SLOG(DBus, 2) << __func__ << ": " << name;
   PropertyChanged(name, DBusAdaptor::BoolToVariant(value));

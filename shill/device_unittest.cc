@@ -429,8 +429,6 @@ TEST_F(DeviceTest, Stop) {
   EXPECT_CALL(*service.get(), state()).
       WillRepeatedly(Return(Service::kStateConnected));
   EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
-              UpdateEnabled());
-  EXPECT_CALL(*dynamic_cast<DeviceMockAdaptor *>(device_->adaptor_.get()),
               EmitBoolChanged(flimflam::kPoweredProperty, false));
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, 0, IFF_UP));
   device_->SetEnabled(false);

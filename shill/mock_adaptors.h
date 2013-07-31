@@ -25,7 +25,6 @@ class DeviceMockAdaptor : public DeviceAdaptorInterface {
   virtual const std::string &GetRpcIdentifier();
   virtual const std::string &GetRpcConnectionIdentifier();
 
-  MOCK_METHOD0(UpdateEnabled, void());
   MOCK_METHOD2(EmitBoolChanged, void(const std::string &name, bool value));
   MOCK_METHOD2(EmitUintChanged, void(const std::string &name, uint32 value));
   MOCK_METHOD2(EmitIntChanged, void(const std::string &name, int value));

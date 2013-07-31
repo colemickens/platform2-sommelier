@@ -34,7 +34,6 @@ class DeviceDBusAdaptor : public org::chromium::flimflam::Device_adaptor,
   // Implementation of DeviceAdaptorInterface.
   virtual const std::string &GetRpcIdentifier();
   virtual const std::string &GetRpcConnectionIdentifier();
-  virtual void UpdateEnabled();
   virtual void EmitBoolChanged(const std::string& name, bool value);
   virtual void EmitUintChanged(const std::string& name, uint32 value);
   virtual void EmitIntChanged(const std::string& name, int value);

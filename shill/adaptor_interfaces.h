@@ -29,8 +29,6 @@ class DeviceAdaptorInterface {
   // connection to the RPC interface to which the implementation is adapting.
   virtual const std::string &GetRpcConnectionIdentifier() = 0;
 
-  virtual void UpdateEnabled() = 0;
-
   virtual void EmitBoolChanged(const std::string &name, bool value) = 0;
   virtual void EmitUintChanged(const std::string &name, uint32 value) = 0;
   virtual void EmitIntChanged(const std::string &name, int value) = 0;
