@@ -98,11 +98,8 @@ class WifiProxy(shill_proxy.ShillProxy):
                             self.SERVICE_PROPERTY_MODE: mode}
         while time.time() - start_time < discovery_timeout_seconds:
             discovery_time = time.time() - start_time
-            try:
-                service_path = self.manager.FindMatchingService(
-                        discovery_params)
-                service_object = self.get_dbus_object(self.DBUS_TYPE_SERVICE,
-                                                      service_path)
+            service_object = self.find_matching_service(discovery_params)
+            if service_object:
                 service_properties = service_object.GetProperties(
                         utf8_strings=True)
                 strength = self.dbus2primitive(
@@ -111,11 +108,7 @@ class WifiProxy(shill_proxy.ShillProxy):
                     logging.info('Discovered service: %s. Strength: %r.',
                                  ssid, strength)
                     break
-            except dbus.exceptions.DBusException, e:
-                # There really is not a better way to check the error type.
-                if e.get_dbus_message() != 'Matching service was not found':
-                    logging.error('Caught an error while discovering: %s',
-                                  e.get_dbus_message())
+
             # This is spammy, but shill handles that for us.
             self.manager.RequestScan('wifi')
             time.sleep(self.POLLING_INTERVAL_SECONDS)
@@ -187,14 +180,12 @@ class WifiProxy(shill_proxy.ShillProxy):
             timeout = self.SERVICE_DISCONNECT_TIMEOUT
         service_description = {self.SERVICE_PROPERTY_TYPE: 'wifi',
                                self.SERVICE_PROPERTY_NAME: ssid}
-        try:
-            service_path = self.manager.FindMatchingService(service_description)
-        except dbus.exceptions.DBusException, e:
+        service = self.find_matching_service(service_description)
+        if service is None:
             return (False,
                     0.0,
                     'Failed to disconnect from %s, service not found.' % ssid)
 
-        service = self.get_dbus_object(self.DBUS_TYPE_SERVICE, service_path)
         service.Disconnect()
         result = self.wait_for_property_in(service,
                                            self.SERVICE_PROPERTY_STATE,
@@ -258,23 +249,15 @@ class WifiProxy(shill_proxy.ShillProxy):
                             self.SERVICE_PROPERTY_NAME: ssid}
         start_time = time.time()
         service_object = None
-        while not service_object:
-            try:
-                service_path = self.manager.FindMatchingService(
-                        discovery_params)
-                service_object = self.get_dbus_object(self.DBUS_TYPE_SERVICE,
-                                                      service_path)
-            except dbus.exceptions.DBusException, e:
-                if e.get_dbus_message() == 'Matching service was not found':
-                    time.sleep(self.POLLING_INTERVAL_SECONDS)
-                else:
-                    logging.error('Caught an error while discovering: %s',
-                                  e.get_dbus_message())
-                    return False, 'unknown', timeout_seconds
+        while time.time() - start_time < timeout_seconds:
+            service_object = self.find_matching_service(discovery_params)
+            if service_object:
+                break
 
-                if time.time() - start_time >= timeout_seconds:
-                    logging.error('Timed out waiting for %s states' % ssid)
-                    return False, 'unknown', timeout_seconds
+            time.sleep(self.POLLING_INTERVAL_SECONDS)
+        else:
+            logging.error('Timed out waiting for %s states' % ssid)
+            return False, 'unknown', timeout_seconds
 
         return self.wait_for_property_in(
                 service_object,

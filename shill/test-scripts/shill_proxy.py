@@ -355,3 +355,17 @@ class ShillProxy(object):
             else:
                 return test_object
         return None
+
+
+    def find_matching_service(self, properties):
+        """Find a service object that matches the given properties.
+
+        This re-implements the manager DBus method FindMatchingService.
+        The advantage of doing this here is that FindMatchingServices does
+        not exist on older images, which will cause tests to fail.
+
+        @param properties dict of strings understood by shill to describe
+            a service.
+
+        """
+        return self.find_object('Service', properties)
