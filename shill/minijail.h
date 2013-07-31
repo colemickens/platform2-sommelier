@@ -21,7 +21,7 @@ class Minijail {
  public:
   virtual ~Minijail();
 
-  // This is a singleton -- use Minijail::GetInstance()->Foo()
+  // This is a singleton -- use Minijail::GetInstance()->Foo().
   static Minijail *GetInstance();
 
   // minijail_new

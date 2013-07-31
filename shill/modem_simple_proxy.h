@@ -14,9 +14,11 @@
 
 namespace shill {
 
-// A proxy to ModemManager.Modem.Simple.
+// A proxy to (old) ModemManager.Modem.Simple.
 class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
+  // Constructs a ModemManager.Modem.Simple DBus object proxy at
+  // |path| owned by |service|.
   ModemSimpleProxy(DBus::Connection *connection,
                    const std::string &path,
                    const std::string &service);

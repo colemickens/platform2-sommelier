@@ -26,7 +26,7 @@ class PPP {
  public:
   ~PPP();
 
-  // This is a singleton -- use PPP::GetInstance()->Foo()
+  // This is a singleton -- use PPP::GetInstance()->Foo().
   static PPP *GetInstance();
 
   void Init();

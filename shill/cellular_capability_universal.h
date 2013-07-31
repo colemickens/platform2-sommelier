@@ -251,6 +251,7 @@ class CellularCapabilityUniversal : public CellularCapability {
   FRIEND_TEST(CellularTest,
               HandleNewRegistrationStateForServiceRequiringActivation);
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
+  FRIEND_TEST(CellularTest, OnPPPDied);
 
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
   // DBUS property of the shill device.

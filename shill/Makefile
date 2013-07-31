@@ -270,6 +270,7 @@ SHILL_OBJS = $(addprefix $(BUILDDIR)/, \
 	power_manager.o \
 	power_manager_proxy.o \
 	ppp_device.o \
+	ppp_device_factory.o \
 	process_killer.o \
 	profile.o \
 	profile_dbus_adaptor.o \
@@ -431,6 +432,7 @@ TEST_OBJS = $(addprefix $(BUILDDIR)/, \
 	mock_power_manager.o \
 	mock_power_manager_proxy.o \
 	mock_ppp_device.o \
+	mock_ppp_device_factory.o \
 	mock_process_killer.o \
 	mock_profile.o \
 	mock_property_store.o \

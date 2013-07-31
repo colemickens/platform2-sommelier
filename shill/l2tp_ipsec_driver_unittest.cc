@@ -529,8 +529,10 @@ TEST_F(L2TPIPSecDriverTest, Notify) {
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
   EXPECT_CALL(*device_, SetEnabled(true));
-  EXPECT_CALL(*device_, UpdateIPConfig(_));
+  EXPECT_CALL(*device_, SelectService(static_cast<ServiceRefPtr>(service_)));
+  EXPECT_CALL(*device_, UpdateIPConfigFromPPP(config, _));
   SetDevice(device_);
+  SetService(service_);
   FilePath psk_file = SetupPSKFile();
   StartConnectTimeout(0);
 

@@ -13,6 +13,7 @@
 
 namespace shill {
 
+// A proxy to (old) ModemManager.Modem.CDMA.
 class ModemCDMAProxy : public ModemCDMAProxyInterface {
  public:
   // Constructs a ModemManager.Modem.CDMA DBus object proxy at |path| owned by

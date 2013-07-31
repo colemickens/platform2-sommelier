@@ -20,7 +20,7 @@ class ProcessKiller {
  public:
   virtual ~ProcessKiller();
 
-  // This is a singleton -- use ProcessKiller::GetInstance()->Foo()
+  // This is a singleton -- use ProcessKiller::GetInstance()->Foo().
   static ProcessKiller *GetInstance();
 
   // Uses GLib to wait asynchronously for the process to exit and reap it. GLib

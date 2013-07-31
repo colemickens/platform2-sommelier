@@ -20,7 +20,7 @@ class DNSClientFactory {
  public:
   virtual ~DNSClientFactory();
 
-  // This is a singleton. Use DNSClientFactory::GetInstance()->Foo()
+  // This is a singleton. Use DNSClientFactory::GetInstance()->Foo().
   static DNSClientFactory *GetInstance();
 
   virtual DNSClient *CreateDNSClient(

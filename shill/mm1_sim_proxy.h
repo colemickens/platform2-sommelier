@@ -14,9 +14,10 @@
 namespace shill {
 namespace mm1 {
 
+// A proxy to org.freedesktop.ModemManager1.Sim.
 class SimProxy : public SimProxyInterface {
  public:
-  // Constructs a org.freedesktop.ModemManager1.Modem DBus object
+  // Constructs an org.freedesktop.ModemManager1.Sim DBus object
   // proxy at |path| owned by |service|.
   SimProxy(DBus::Connection *connection,
            const std::string &path,

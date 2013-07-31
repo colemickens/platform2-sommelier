@@ -14,8 +14,11 @@
 namespace shill {
 namespace mm1 {
 
+// A proxy to org.freedesktop.ModemManager1.Modem.Time.
 class ModemTimeProxy : public ModemTimeProxyInterface {
  public:
+  // Constructs an org.freedesktop.ModemManager1.Modem.Time DBus object
+  // proxy at |path| owned by |service|.
   ModemTimeProxy(DBus::Connection *connection,
                  const std::string &path,
                  const std::string &service);

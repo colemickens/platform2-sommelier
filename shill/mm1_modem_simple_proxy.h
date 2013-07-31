@@ -14,6 +14,7 @@
 namespace shill {
 namespace mm1 {
 
+// A proxy to org.freedesktop.ModemManager1.Modem.Simple.
 class ModemSimpleProxy : public ModemSimpleProxyInterface {
  public:
   // Constructs a org.freedesktop.ModemManager1.Modem.Simple DBus

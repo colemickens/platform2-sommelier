@@ -33,6 +33,7 @@
 #include "shill/logging.h"
 #include "shill/manager.h"
 #include "shill/ppp_device.h"
+#include "shill/ppp_device_factory.h"
 #include "shill/profile.h"
 #include "shill/property_accessor.h"
 #include "shill/proxy_factory.h"
@@ -117,6 +118,7 @@ Cellular::Cellular(ModemInfo *modem_info,
       dbus_path_(path),
       modem_info_(modem_info),
       proxy_factory_(proxy_factory),
+      ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       allow_roaming_(false),
       explicit_disconnect_(false) {
   PropertyStore *store = this->mutable_store();
@@ -886,12 +888,16 @@ void Cellular::Notify(const string &reason,
   }
 
   if (!ppp_device_ || ppp_device_->interface_index() != interface_index) {
-    ppp_device_ = new PPPDevice(modem_info_->control_interface(),
-                                modem_info_->dispatcher(),
-                                modem_info_->metrics(),
-                                modem_info_->manager(),
-                                interface_name,
-                                interface_index);
+    if (ppp_device_) {
+      ppp_device_->SelectService(NULL);  // No longer drives |service_|.
+    }
+    ppp_device_ = ppp_device_factory_->CreatePPPDevice(
+        modem_info_->control_interface(),
+        modem_info_->dispatcher(),
+        modem_info_->metrics(),
+        modem_info_->manager(),
+        interface_name,
+        interface_index);
     device_info->RegisterDevice(ppp_device_);
   }
 

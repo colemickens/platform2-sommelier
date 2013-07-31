@@ -20,7 +20,7 @@ class NSS {
  public:
   virtual ~NSS();
 
-  // This is a singleton -- use NSS::GetInstance()->Foo()
+  // This is a singleton -- use NSS::GetInstance()->Foo().
   static NSS *GetInstance();
 
   // Returns an empty path on failure.

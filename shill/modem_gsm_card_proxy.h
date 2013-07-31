@@ -14,6 +14,7 @@
 
 namespace shill {
 
+// A proxy to (old) ModemManager.Modem.Gsm.Card.
 class ModemGSMCardProxy : public ModemGSMCardProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gsm.Card DBus

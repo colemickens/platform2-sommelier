@@ -246,6 +246,7 @@ class Device : public base::RefCounted<Device> {
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, SetEnabledStateForTechnology);
+  FRIEND_TEST(PPPDeviceTest, UpdateIPConfigFromPPP);
   FRIEND_TEST(WiFiMainTest, Connect);
   FRIEND_TEST(WiFiMainTest, UseArpGateway);
   FRIEND_TEST(WiMaxTest, ConnectTimeout);

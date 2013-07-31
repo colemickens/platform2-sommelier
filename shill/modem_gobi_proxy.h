@@ -12,6 +12,7 @@
 
 namespace shill {
 
+// A proxy to (old) ModemManager.Modem.Gobi.
 class ModemGobiProxy : public ModemGobiProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gobi DBus object proxy at |path| owned by

@@ -14,9 +14,10 @@
 namespace shill {
 namespace mm1 {
 
+// A proxy to org.freedesktop.ModemManager1.Modem.Modem3gpp.
 class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
  public:
-  // Constructs a org.freedesktop.ModemManager1.Modem.Modem3gpp DBus
+  // Constructs an org.freedesktop.ModemManager1.Modem.Modem3gpp DBus
   // object proxy at |path| owned by |service|.
   ModemModem3gppProxy(DBus::Connection *connection,
                       const std::string &path,

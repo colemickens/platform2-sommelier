@@ -21,7 +21,7 @@ class MockDNSClientFactory : public DNSClientFactory {
  public:
   virtual ~MockDNSClientFactory();
 
-  // This is a singleton. Use MockDNSClientFactory::GetInstance()->Foo()
+  // This is a singleton. Use MockDNSClientFactory::GetInstance()->Foo().
   static MockDNSClientFactory *GetInstance();
 
   MOCK_METHOD6(CreateDNSClient,

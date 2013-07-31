@@ -12,6 +12,7 @@
 
 namespace shill {
 
+// A proxy to (old) ModemManager.Modem.Gsm.Network.
 class ModemGSMNetworkProxy : public ModemGSMNetworkProxyInterface {
  public:
   // Constructs a ModemManager.Modem.Gsm.Network DBus object proxy at |path|

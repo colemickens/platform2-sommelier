@@ -57,7 +57,7 @@ class ProxyFactory {
  public:
   virtual ~ProxyFactory();
 
-  // Since this is a singleton, use ProxyFactory::GetInstance()->Foo()
+  // Since this is a singleton, use ProxyFactory::GetInstance()->Foo().
   static ProxyFactory *GetInstance();
 
   virtual void Init();

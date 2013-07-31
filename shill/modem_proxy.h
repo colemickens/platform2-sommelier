@@ -14,7 +14,7 @@
 
 namespace shill {
 
-// A proxy to ModemManager.Modem.
+// A proxy to (old) ModemManager.Modem.
 class ModemProxy : public ModemProxyInterface {
  public:
   // Constructs a ModemManager.Modem DBus object proxy at |path| owned by

@@ -17,8 +17,8 @@ namespace shill {
 
 class ModemManagerClassic;
 
-// There's a single proxy per ModemManager service identified by its DBus |path|
-// and owner name |service|.
+// There's a single proxy per (old) ModemManager service identified by
+// its DBus |path| and owner name |service|.
 class ModemManagerProxy : public ModemManagerProxyInterface {
  public:
   ModemManagerProxy(DBus::Connection *connection,

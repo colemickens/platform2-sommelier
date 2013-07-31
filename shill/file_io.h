@@ -14,7 +14,7 @@ class FileIO {
  public:
   virtual ~FileIO();
 
-  // This is a singleton -- use FileIO::GetInstance()->Foo()
+  // This is a singleton -- use FileIO::GetInstance()->Foo().
   static FileIO *GetInstance();
 
   virtual ssize_t Write(int fd, const void *buf, size_t count);

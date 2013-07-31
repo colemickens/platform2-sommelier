@@ -18,7 +18,7 @@ class DiagnosticsReporter {
  public:
   virtual ~DiagnosticsReporter();
 
-  // This is a singleton -- use DiagnosticsReporter::GetInstance()->Foo()
+  // This is a singleton -- use DiagnosticsReporter::GetInstance()->Foo().
   static DiagnosticsReporter *GetInstance();
 
   // Handle a connectivity event -- collect and stash diagnostics data, possibly

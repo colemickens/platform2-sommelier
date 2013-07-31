@@ -38,7 +38,7 @@ class DHCPProvider {
 
   virtual ~DHCPProvider();
 
-  // This is a singleton -- use DHCPProvider::GetInstance()->Foo()
+  // This is a singleton -- use DHCPProvider::GetInstance()->Foo().
   static DHCPProvider *GetInstance();
 
   // Initializes the provider singleton. This method hooks up a D-Bus signal

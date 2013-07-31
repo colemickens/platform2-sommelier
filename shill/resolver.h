@@ -30,7 +30,7 @@ class Resolver {
 
   virtual ~Resolver();
 
-  // Since this is a singleton, use Resolver::GetInstance()->Foo()
+  // Since this is a singleton, use Resolver::GetInstance()->Foo().
   static Resolver *GetInstance();
 
   virtual void set_path(const base::FilePath &path) { path_ = path; }

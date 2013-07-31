@@ -839,7 +839,7 @@ TEST_F(ConnectionTest, OnRouteQueryResponse) {
       kTestDeviceInterfaceIndex1, RoutingTableEntry());
   EXPECT_FALSE(binder->IsBound());
 
-  // Create a mock connection that will be used fo binding.
+  // Create a mock connection that will be used for binding.
   scoped_refptr<MockConnection> mock_connection(
       new StrictMock<MockConnection>(device_info_.get()));
   EXPECT_CALL(*device_info_.get(),

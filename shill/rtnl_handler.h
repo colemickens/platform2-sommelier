@@ -47,7 +47,7 @@ class RTNLHandler {
 
   virtual ~RTNLHandler();
 
-  // Since this is a singleton, use RTNHandler::GetInstance()->Foo()
+  // Since this is a singleton, use RTNHandler::GetInstance()->Foo().
   static RTNLHandler *GetInstance();
 
   // This starts the event-monitoring function of the RTNL handler. This

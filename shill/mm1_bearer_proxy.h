@@ -14,6 +14,7 @@
 namespace shill {
 namespace mm1 {
 
+// A proxy to org.freedesktop.ModemManager1.Bearer.
 class BearerProxy : public BearerProxyInterface {
  public:
   // Constructs an org.freedesktop.ModemManager1.Bearer DBus object

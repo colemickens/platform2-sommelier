@@ -16,6 +16,8 @@ using std::string;
 
 namespace shill {
 
+// TODO(quiche): Add test for UpdateIPConfigFromPPP. crbug.com/266404
+
 TEST(PPPDeviceTest, GetInterfaceName) {
   map<string, string> config;
   config[kPPPInterfaceName] = "ppp0";

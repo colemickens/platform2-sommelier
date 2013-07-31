@@ -23,6 +23,7 @@
 #include "shill/mock_dhcp_config.h"
 #include "shill/mock_dhcp_provider.h"
 #include "shill/mock_external_task.h"
+#include "shill/mock_mm1_modem_simple_proxy.h"
 #include "shill/mock_modem_cdma_proxy.h"
 #include "shill/mock_modem_gsm_card_proxy.h"
 #include "shill/mock_modem_gsm_network_proxy.h"
@@ -30,6 +31,7 @@
 #include "shill/mock_modem_proxy.h"
 #include "shill/mock_modem_simple_proxy.h"
 #include "shill/mock_ppp_device.h"
+#include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_rtnl_handler.h"
 #include "shill/property_store_unittest.h"
 #include "shill/proxy_factory.h"
@@ -46,6 +48,7 @@ using std::string;
 using std::vector;
 using testing::_;
 using testing::AnyNumber;
+using testing::DoAll;
 using testing::Invoke;
 using testing::Mock;
 using testing::NiceMock;
@@ -138,6 +141,7 @@ class CellularTest : public testing::Test {
         cdma_proxy_(new MockModemCDMAProxy()),
         gsm_card_proxy_(new MockModemGSMCardProxy()),
         gsm_network_proxy_(new MockModemGSMNetworkProxy()),
+        mm1_simple_proxy_(new mm1::MockModemSimpleProxy()),
         proxy_factory_(this),
         device_(new Cellular(&modem_info_,
                              kTestDeviceName,
@@ -286,6 +290,11 @@ class CellularTest : public testing::Test {
     if (!callback.is_null())
       callback.Run(*error);
   }
+  void InvokeDisconnectMM1(const ::DBus::Path &bearer, Error *error,
+                           const ResultCallback &callback, int timeout) {
+    if (!callback.is_null())
+      callback.Run(Error());
+  }
 
   void ExpectCdmaStartModem(string network_technology) {
     if (!device_->IsUnderlyingDeviceEnabled())
@@ -309,6 +318,18 @@ class CellularTest : public testing::Test {
         .WillRepeatedly(Invoke(this, &CellularTest::InvokeGetSignalQuality));
     EXPECT_CALL(*this, TestCallback(IsSuccess()));
     EXPECT_CALL(*modem_info_.mock_manager(), RegisterService(_));
+  }
+
+  void StartPPP(int pid) {
+    MockGLib &mock_glib(*dynamic_cast<MockGLib *>(modem_info_.glib()));
+    EXPECT_CALL(mock_glib, ChildWatchAdd(pid, _, _));
+    EXPECT_CALL(mock_glib, SpawnAsync(_, _, _, _, _, _, _, _))
+        .WillOnce(DoAll(SetArgumentPointee<6>(pid), Return(true)));
+    device_->StartPPP("fake_serial_device");
+    EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
+    EXPECT_FALSE(device_->selected_service());
+    EXPECT_TRUE(device_->ppp_task_);
+    Mock::VerifyAndClearExpectations(&mock_glib);
   }
 
   MOCK_METHOD1(TestCallback, void(const Error &error));
@@ -424,6 +445,7 @@ class CellularTest : public testing::Test {
   scoped_ptr<MockModemCDMAProxy> cdma_proxy_;
   scoped_ptr<MockModemGSMCardProxy> gsm_card_proxy_;
   scoped_ptr<MockModemGSMNetworkProxy> gsm_network_proxy_;
+  scoped_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
   TestProxyFactory proxy_factory_;
   CellularRefPtr device_;
 };
@@ -1031,6 +1053,20 @@ TEST_F(CellularTest, LinkEventUpWithoutPPP) {
   device_->LinkEvent(IFF_UP, 0);
 }
 
+TEST_F(CellularTest, StartPPP) {
+  const int kPID = 234;
+  EXPECT_FALSE(device_->ppp_task_);
+  StartPPP(kPID);
+}
+
+TEST_F(CellularTest, StartPPPAlreadyStarted) {
+  const int kPID = 234;
+  StartPPP(kPID);
+
+  const int kPID2 = 235;
+  StartPPP(kPID2);
+}
+
 TEST_F(CellularTest, StartPPPAfterEthernetUp) {
   CellularService *service(SetService());
   device_->state_ = Cellular::kStateLinked;
@@ -1039,23 +1075,11 @@ TEST_F(CellularTest, StartPPPAfterEthernetUp) {
   EXPECT_CALL(*dhcp_config_, ReleaseIP(_))
       .Times(AnyNumber())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*dynamic_cast<MockGLib *>(modem_info_.glib()),
-              SpawnAsync(_, _, _, _, _, _, _, _));
-  device_->StartPPP("fake_serial_device");
-  EXPECT_FALSE(device_->ipconfig());  // The DHCP client was stopped.
-  EXPECT_FALSE(device_->selected_service());
+  const int kPID = 234;
+  EXPECT_FALSE(device_->ppp_task_);
+  StartPPP(kPID);
   EXPECT_EQ(Cellular::kStateLinked, device_->state());
 }
-
-TEST_F(CellularTest, StartPPPWithoutEthernet) {
-  EXPECT_CALL(*dynamic_cast<MockGLib *>(modem_info_.glib()),
-              SpawnAsync(_, _, _, _, _, _, _, _));
-  device_->StartPPP("fake_serial_device");
-  EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
-  EXPECT_FALSE(device_->selected_service());
-}
-
-// TODO(quiche): test the common bits of StartPPP. crbug.com/246826.
 
 TEST_F(CellularTest, GetLogin) {
   // Doesn't crash when there is no service.
@@ -1071,6 +1095,94 @@ TEST_F(CellularTest, GetLogin) {
   service.ppp_username_ = kFakeUsername;
   service.ppp_password_ = kFakePassword;
   device_->GetLogin(&username_to_pppd, &password_to_pppd);
+}
+
+TEST_F(CellularTest, Notify) {
+  // Common setup.
+  MockPPPDeviceFactory *ppp_device_factory =
+      MockPPPDeviceFactory::GetInstance();
+  device_->ppp_device_factory_ = ppp_device_factory;
+  SetMockService();
+
+  // Normal connect.
+  const string kInterfaceName("fake-device");
+  const int kInterfaceIndex = 1;
+  scoped_refptr<MockPPPDevice> ppp_device;
+  map<string, string> ppp_config;
+  ppp_device =
+      new MockPPPDevice(modem_info_.control_interface(),
+                        NULL, NULL, NULL, kInterfaceName, kInterfaceIndex);
+  ppp_config[kPPPInterfaceName] = kInterfaceName;
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
+      .WillOnce(Return(kInterfaceIndex));
+  EXPECT_CALL(device_info_, RegisterDevice(_));
+  EXPECT_CALL(*ppp_device_factory,
+              CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
+      .WillOnce(Return(ppp_device));
+  EXPECT_CALL(*ppp_device, SetEnabled(true));
+  EXPECT_CALL(*ppp_device, SelectService(_));
+  EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config, false));
+  device_->Notify(kPPPReasonConnect, ppp_config);
+  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(ppp_device);
+
+  // Re-connect on same network device: if pppd sends us multiple connect
+  // events, we behave sanely.
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
+      .WillOnce(Return(kInterfaceIndex));
+  EXPECT_CALL(*ppp_device, SetEnabled(true));
+  EXPECT_CALL(*ppp_device, SelectService(_));
+  EXPECT_CALL(*ppp_device, UpdateIPConfigFromPPP(ppp_config, false));
+  device_->Notify(kPPPReasonConnect, ppp_config);
+  Mock::VerifyAndClearExpectations(&device_info_);
+  Mock::VerifyAndClearExpectations(ppp_device);
+
+  // Re-connect on new network device: if we still have the PPPDevice
+  // from a prior connect, this new connect should DTRT. This is
+  // probably an unlikely case.
+  const string kInterfaceName2("fake-device2");
+  const int kInterfaceIndex2 = 2;
+  scoped_refptr<MockPPPDevice> ppp_device2;
+  map<string, string> ppp_config2;
+  ppp_device2 =
+      new MockPPPDevice(modem_info_.control_interface(),
+                        NULL, NULL, NULL, kInterfaceName2, kInterfaceIndex2);
+  ppp_config2[kPPPInterfaceName] = kInterfaceName2;
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName2))
+      .WillOnce(Return(kInterfaceIndex2));
+  EXPECT_CALL(device_info_,
+              RegisterDevice(static_cast<DeviceRefPtr>(ppp_device2)));
+  EXPECT_CALL(*ppp_device_factory,
+              CreatePPPDevice(_, _, _, _, kInterfaceName2, kInterfaceIndex2))
+      .WillOnce(Return(ppp_device2));
+  EXPECT_CALL(*ppp_device, SelectService(ServiceRefPtr(nullptr)));
+  EXPECT_CALL(*ppp_device2, SetEnabled(true));
+  EXPECT_CALL(*ppp_device2, SelectService(_));
+  EXPECT_CALL(*ppp_device2, UpdateIPConfigFromPPP(ppp_config2, false));
+  device_->Notify(kPPPReasonConnect, ppp_config2);
+  Mock::VerifyAndClearExpectations(&device_info_);
+  //  Mock::VerifyAndClearExpectations(ppp_device);
+  Mock::VerifyAndClearExpectations(ppp_device2);
+
+  map<string, string> empty_ppp_config;
+  EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailurePPPAuth));
+  device_->Notify(kPPPReasonDisconnect, empty_ppp_config);
+  EXPECT_FALSE(device_->ppp_task_);
+}
+
+TEST_F(CellularTest, OnPPPDied) {
+  const int kPID = 1234;
+  const int kExitStatus = 5;
+  SetCellularType(Cellular::kTypeUniversal);
+  device_->state_ = Cellular::kStateConnected;
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _, _))
+      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnectMM1));
+  GetCapabilityUniversal()->modem_simple_proxy_.reset(
+      mm1_simple_proxy_.release());
+  GetCapabilityUniversal()->bearer_path_ = "/fake/path";
+
+  device_->OnPPPDied(kPID, kExitStatus);
+  EXPECT_EQ(Cellular::kStateRegistered, device_->state_);
 }
 
 TEST_F(CellularTest, DropConnection) {

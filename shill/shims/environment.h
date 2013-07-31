@@ -19,7 +19,7 @@ class Environment {
  public:
   virtual ~Environment();
 
-  // This is a singleton -- use Environment::GetInstance()->Foo()
+  // This is a singleton -- use Environment::GetInstance()->Foo().
   static Environment *GetInstance();
 
   // Sets |value| to the value of environment variable |name| and returns

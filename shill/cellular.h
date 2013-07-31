@@ -29,6 +29,7 @@ namespace shill {
 class CellularCapability;
 class Error;
 class ExternalTask;
+class PPPDeviceFactory;
 class ProxyFactory;
 
 class Cellular : public Device, public RPCTaskDelegate {
@@ -304,7 +305,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, ModemStateChangeEnable);
   FRIEND_TEST(CellularTest, ModemStateChangeStaleConnected);
   FRIEND_TEST(CellularTest, ModemStateChangeValidConnected);
+  FRIEND_TEST(CellularTest, Notify);
   FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
+  FRIEND_TEST(CellularTest, OnPPPDied);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);
@@ -314,8 +317,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, StartCDMARegister);
   FRIEND_TEST(CellularTest, StartGSMRegister);
   FRIEND_TEST(CellularTest, StartLinked);
+  FRIEND_TEST(CellularTest, StartPPP);
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
-  FRIEND_TEST(CellularTest, StartPPPWithoutEthernet);
+  FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
   FRIEND_TEST(Modem1Test, CreateDeviceMM1);
 
   // Names of properties in storage
@@ -372,6 +376,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   ModemInfo *modem_info_;
   ProxyFactory *proxy_factory_;
+  PPPDeviceFactory *ppp_device_factory_;
 
   CellularServiceRefPtr service_;
 
