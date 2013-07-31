@@ -23,6 +23,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
+#include <base/string_number_conversions.h>
 
 using std::cout;
 using std::cerr;
@@ -43,6 +44,8 @@ static void Usage(ostream& ostream) {
           << " --get-url=ID       Scan for ID and pick a suitable peer\n"
           << " --num-connections  Show total number of connections in the LAN\n"
           << " -v=NUMBER          Verbosity level (default: 0)\n"
+          << " --minimum-size=NUM When used with --get-url, scans for files\n"
+          << "                    with at least NUM bytes (default: 1).\n"
           << "\n";
 }
 
@@ -107,8 +110,16 @@ int main(int argc, char* argv[]) {
     cout << num_connections << endl;
   } else if (cl->HasSwitch("get-url")) {
     string id = cl->GetSwitchValueNative("get-url");
+    uint64 minimum_size = 1;
+    if (cl->HasSwitch("minimum-size")) {
+      string minimum_size_str = cl->GetSwitchValueNative("minimum-size");
+      if (!base::StringToUint64(minimum_size_str, &minimum_size)) {
+        LOG(ERROR) << "Invalid --minimum-size argument";
+        return 1;
+      }
+    }
     finder->Lookup();
-    string url = peer_selector.GetUrlAndWait(id);
+    string url = peer_selector.GetUrlAndWait(id, minimum_size);
     if (url == "") {
       return 1;
     }

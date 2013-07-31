@@ -22,21 +22,24 @@ class PeerSelector {
   // Constructs the PeerSelector with the provided interfaces.
   PeerSelector(ServiceFinder* finder, ClockInterface* clock);
 
-  // Finds a URL using |id| and waits until the number of connections in
-  // the LAN has dropped below the required threshold. Returns "" if the
-  // URL could not be found.
-  std::string GetUrlAndWait(const std::string& id);
+  // Finds an URL for the file |id| with at least |minimum_size| bytes and
+  // waits until the number of connections in the LAN has dropped below the
+  // required threshold. If there are no peers sharing this file with at least
+  // |minimum_size| bytes returns "" regardless of the number of connections in
+  // the LAN. On success, returns the URL found.
+  std::string GetUrlAndWait(const std::string& id, size_t minimum_size);
 
  private:
   friend class PeerSelectorTest;
   FRIEND_TEST(PeerSelectorTest, PickUrlForNonExistantId);
   FRIEND_TEST(PeerSelectorTest, PickUrlForIdWithZeroBytes);
+  FRIEND_TEST(PeerSelectorTest, PickUrlForIdWithMinimumSize);
   FRIEND_TEST(PeerSelectorTest, PickUrlFromTheFirstThird);
 
-  // PickUrlForId() chooses a peer from the ServiceFinder |finder| sharing the
-  // file |id|. If no peer is found an empty string is returned. Otherwise, the
-  // URL of the provided file is returned.
-  std::string PickUrlForId(const std::string& id);
+  // file |id| with at least |minimum_size| bytes. If no peer is found meeting
+  // those conditions, an empty string is returned. Otherwise, the URL of the
+  // provided file is returned.
+  std::string PickUrlForId(const std::string& id, size_t minimum_size);
 
   // The underlying service finder class used.
   ServiceFinder* finder_;

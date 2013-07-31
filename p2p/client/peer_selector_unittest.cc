@@ -33,13 +33,13 @@ class PeerSelectorTest : public ::testing::Test {
 };
 
 TEST_F(PeerSelectorTest, PickUrlForNonExistantId) {
-  EXPECT_EQ(ps_.PickUrlForId("non-existant"), "");
+  EXPECT_EQ(ps_.PickUrlForId("non-existant", 1), "");
 
   // Share some *other* files on the network.
   int peer = sf_.NewPeer("10.0.0.1", false, 1111);
   ASSERT_TRUE(sf_.PeerShareFile(peer, "some-file", 10240));
   ASSERT_TRUE(sf_.PeerShareFile(peer, "other-file", 10240));
-  EXPECT_EQ(ps_.PickUrlForId("non-existant"), "");
+  EXPECT_EQ(ps_.PickUrlForId("non-existant", 1), "");
 
   // PickUrlForId should not call Lookup().
   EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
@@ -51,7 +51,19 @@ TEST_F(PeerSelectorTest, PickUrlForIdWithZeroBytes) {
   ASSERT_TRUE(sf_.PeerShareFile(peer1, "some-file", 0));
   ASSERT_TRUE(sf_.PeerShareFile(peer2, "some-file", 0));
   // PickUrlForId() should not return an URL for a peer sharing a 0-bytes file.
-  EXPECT_EQ(ps_.PickUrlForId("some-file"), "");
+  EXPECT_EQ(ps_.PickUrlForId("some-file", 1), "");
+}
+
+TEST_F(PeerSelectorTest, PickUrlForIdWithMinimumSize) {
+  int peer = sf_.NewPeer("10.0.0.1", false, 1111);
+  ASSERT_TRUE(sf_.PeerShareFile(peer, "some-file", 999));
+
+  // The file is too small.
+  EXPECT_EQ(ps_.PickUrlForId("some-file", 1000), "");
+
+  // The file is exactly the right size.
+  EXPECT_EQ(ps_.PickUrlForId("some-file", 999),
+      "http://10.0.0.1:1111/some-file");
 }
 
 TEST_F(PeerSelectorTest, PickUrlFromTheFirstThird) {
@@ -63,11 +75,11 @@ TEST_F(PeerSelectorTest, PickUrlFromTheFirstThird) {
   ASSERT_TRUE(sf_.PeerShareFile(peer2, "some-file", 500));
   ASSERT_TRUE(sf_.PeerShareFile(peer3, "some-file", 300));
   ASSERT_TRUE(sf_.PeerShareFile(peer4, "some-file", 0));
-  EXPECT_EQ(ps_.PickUrlForId("some-file"), "http://10.0.0.1:1111/some-file");
+  EXPECT_EQ(ps_.PickUrlForId("some-file", 1), "http://10.0.0.1:1111/some-file");
 }
 
 TEST_F(PeerSelectorTest, GetUrlAndWaitWithNoPeers) {
-  EXPECT_EQ(ps_.GetUrlAndWait("some-file"), "");
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1), "");
 
   // GetUrlAndWait() should only call Lookup() if it needs to wait.
   EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
@@ -79,7 +91,7 @@ TEST_F(PeerSelectorTest, GetUrlAndWaitWithUnknownFile) {
   ASSERT_TRUE(sf_.PeerShareFile(peer1, "some-file", 1000));
   ASSERT_TRUE(sf_.PeerShareFile(peer2, "some-file", 500));
 
-  EXPECT_EQ(ps_.GetUrlAndWait("unknown-file"), "");
+  EXPECT_EQ(ps_.GetUrlAndWait("unknown-file", 1), "");
 
   // GetUrlAndWait() should only call Lookup() if it needs to wait.
   EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
@@ -110,7 +122,8 @@ TEST_F(PeerSelectorTest, GetUrlAndWaitOnBusyNetwork) {
   ASSERT_TRUE(sf_.RemoveAvailableFileOnLookup(10, "some-file"));
 
   // GetUrlAndWait should return the biggest file in this case.
-  EXPECT_EQ(ps_.GetUrlAndWait("some-file"), "http://10.0.0.1:1111/some-file");
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1),
+      "http://10.0.0.1:1111/some-file");
 
   EXPECT_EQ(sf_.GetNumLookupCalls(), 4);
   EXPECT_EQ(clock_.GetSleptTime(), 4 * 30);
@@ -138,10 +151,25 @@ TEST_F(PeerSelectorTest, GetUrlAndWaitWhenThePeerGoesAway) {
   ASSERT_TRUE(sf_.SetPeerConnectionsOnLookup(10, peer2, 0));
   ASSERT_TRUE(sf_.RemoveAvailableFileOnLookup(10, "other-file"));
 
-  EXPECT_EQ(ps_.GetUrlAndWait("some-file"), "");
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1), "");
 
   EXPECT_EQ(sf_.GetNumLookupCalls(), 5);
   EXPECT_EQ(clock_.GetSleptTime(), 5 * 30);
+}
+
+TEST_F(PeerSelectorTest, GetUrlDoesntWaitForSmallFiles) {
+  int peer = sf_.NewPeer("10.0.0.1", false, 1111);
+  ASSERT_TRUE(sf_.PeerShareFile(peer, "some-file", 500));
+
+  // After 3 Lookup()'s, peer has a bigger file, but GetUrlAndWait() shouldn't
+  // wait for it.
+  ASSERT_TRUE(sf_.RemoveAvailableFileOnLookup(3, "some-file"));
+  ASSERT_TRUE(sf_.PeerShareFileOnLookup(3, peer, "some-file", 2000));
+
+  EXPECT_EQ(ps_.GetUrlAndWait("some-file", 1000), "");
+
+  EXPECT_EQ(sf_.GetNumLookupCalls(), 0);
+  EXPECT_EQ(clock_.GetSleptTime(), 0);
 }
 
 }  // namespace client

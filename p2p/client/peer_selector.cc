@@ -50,7 +50,7 @@ struct SortPeerBySize {
   string id_;
 };
 
-string PeerSelector::PickUrlForId(const string& id) {
+string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
   vector<string> files = finder_->AvailableFiles();
 
   for (auto const& file_name : files) {
@@ -61,15 +61,16 @@ string PeerSelector::PickUrlForId(const string& id) {
         // Sort according to size (largest file size first)
         std::sort(peers.begin(), peers.end(), SortPeerBySize(file_name));
 
-        // Don't consider peers with file size 0
-        int num_nonempty_files = 0;
+        // Don't consider peers with file size lower than minimum_size.
+        int big_enough_files = 0;
         for (auto const& peer : peers) {
           map<string, size_t>::const_iterator file_size_it =
               peer->files.find(file_name);
-          if (file_size_it != peer->files.end() && file_size_it->second > 0)
-            ++num_nonempty_files;
+          if (file_size_it != peer->files.end() &&
+              file_size_it->second >= minimum_size)
+            ++big_enough_files;
         }
-        peers.resize(num_nonempty_files);
+        peers.resize(big_enough_files);
 
         // If we have any files left, pick randomly from the top 33%
         if (peers.size() > 0) {
@@ -91,10 +92,10 @@ string PeerSelector::PickUrlForId(const string& id) {
   return "";
 }
 
-string PeerSelector::GetUrlAndWait(const string& id) {
+string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
   LOG(INFO) << "Requesting URL in the LAN for ID " << id;
 
-  string url = PickUrlForId(id);
+  string url = PickUrlForId(id, minimum_size);
   int num_retries = 0;
 
   do {
@@ -126,7 +127,7 @@ string PeerSelector::GetUrlAndWait(const string& id) {
     // OK, now that we've slept for a while, the URL may not be
     // valid anymore... so we do the lookup again
     finder_->Lookup();
-    url = PickUrlForId(id);
+    url = PickUrlForId(id, minimum_size);
     num_retries++;
   } while (true);
 }
