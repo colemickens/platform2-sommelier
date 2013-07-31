@@ -47,9 +47,11 @@ class WiMaxStatus {
   string GetJsonOutput() {
     string json;
     scoped_ptr<DictionaryValue> manager_properties(GetManagerProperties());
-    base::JSONWriter::WriteWithOptions(manager_properties.get(),
-                                       base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                       &json);
+    if (manager_properties) {
+      base::JSONWriter::WriteWithOptions(manager_properties.get(),
+                                         base::JSONWriter::OPTIONS_PRETTY_PRINT,
+                                         &json);
+    }
     return json;
   }
 
