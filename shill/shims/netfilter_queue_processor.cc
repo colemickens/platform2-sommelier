@@ -19,6 +19,7 @@
 
 #include <deque>
 
+#include <base/file_util.h>
 #include <base/logging.h>
 
 using std::deque;
@@ -274,6 +275,8 @@ uint32_t NetfilterQueueProcessor::GetNetmaskForDevice(int device_index) {
   if (socket_fd < 0) {
     return INADDR_NONE;
   }
+
+  file_util::ScopedFD scoped_fd(&socket_fd);
 
   struct ifreq ifr;
   memset(&ifr, 0, sizeof(ifr));
