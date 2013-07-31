@@ -22,6 +22,7 @@
 #include "shill/error.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mock_adaptors.h"
+#include "shill/mock_cellular.h"
 #include "shill/mock_cellular_operator_info.h"
 #include "shill/mock_cellular_service.h"
 #include "shill/mock_dbus_properties_proxy.h"
@@ -42,6 +43,7 @@ using base::StringPrintf;
 using base::Unretained;
 using std::string;
 using std::vector;
+using testing::AnyNumber;
 using testing::InSequence;
 using testing::Invoke;
 using testing::InvokeWithoutArgs;
@@ -209,6 +211,14 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
           .append_bool(false);
     }
 
+    DBusPropertiesMap *mutable_active_bearer_properties() {
+      return &active_bearer_properties_;
+    }
+
+    DBusPropertiesMap *mutable_inactive_bearer_properties() {
+      return &inactive_bearer_properties_;
+    }
+
     virtual mm1::ModemModem3gppProxyInterface *CreateMM1ModemModem3gppProxy(
         const std::string &/*path*/,
         const std::string &/*service*/) {
@@ -240,37 +250,26 @@ class CellularCapabilityUniversalTest : public testing::TestWithParam<string> {
       test_->sim_proxy_.reset(new mm1::MockSimProxy());
       return sim_proxy;
     }
+
     virtual DBusPropertiesProxyInterface *CreateDBusPropertiesProxy(
         const std::string &path,
         const std::string &/*service*/) {
       MockDBusPropertiesProxy *properties_proxy =
           test_->properties_proxy_.release();
       if (path.find(kActiveBearerPathPrefix) != std::string::npos) {
-        ON_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
-            .WillByDefault(Return(active_bearer_properties_));
+        EXPECT_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(active_bearer_properties_));
       } else {
-        ON_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
-            .WillByDefault(Return(inactive_bearer_properties_));
+        EXPECT_CALL(*properties_proxy, GetAll(MM_DBUS_INTERFACE_BEARER))
+            .Times(AnyNumber())
+            .WillRepeatedly(Return(inactive_bearer_properties_));
       }
       test_->properties_proxy_.reset(new MockDBusPropertiesProxy());
       return properties_proxy;
     }
 
    private:
-    DBusPropertiesMap GetActiveBearerProperties(
-        const string &/*interface_name*/) {
-      DBusPropertiesMap properties;
-      properties[MM_BEARER_PROPERTY_CONNECTED].writer().append_bool(true);
-      return properties;
-    }
-
-    DBusPropertiesMap GetInactiveBearerProperties(
-        const string &/*interface_name*/) {
-      DBusPropertiesMap properties;
-      properties[MM_BEARER_PROPERTY_CONNECTED].writer().append_bool(false);
-      return properties;
-    }
-
     CellularCapabilityUniversalTest *test_;
     DBusPropertiesMap active_bearer_properties_;
     DBusPropertiesMap inactive_bearer_properties_;
@@ -1245,10 +1244,11 @@ TEST_F(CellularCapabilityUniversalMainTest, ScanFailure) {
 
 // Validates expected behavior of OnListBearersReply function
 TEST_F(CellularCapabilityUniversalMainTest, OnListBearersReply) {
-  // Check that bearer_path_ is set correctly when an active bearer
-  // is returned.
+  // Common resources.
   const size_t kPathCount = 3;
   DBus::Path active_paths[kPathCount], inactive_paths[kPathCount];
+  std::vector<DBus::Path> paths;
+  Error error;
   for (size_t i = 0; i < kPathCount; ++i) {
     active_paths[i] =
         DBus::Path(base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i));
@@ -1256,25 +1256,22 @@ TEST_F(CellularCapabilityUniversalMainTest, OnListBearersReply) {
         DBus::Path(base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i));
   }
 
-  std::vector<DBus::Path> paths;
+  // Check that bearer_path_ is set correctly when an active bearer
+  // is returned.
   paths.push_back(inactive_paths[0]);
   paths.push_back(inactive_paths[1]);
   paths.push_back(active_paths[2]);
   paths.push_back(inactive_paths[1]);
   paths.push_back(inactive_paths[2]);
-
-  Error error;
   capability_->OnListBearersReply(paths, error);
   EXPECT_STREQ(capability_->bearer_path_.c_str(), active_paths[2].c_str());
 
-  paths.clear();
-
   // Check that bearer_path_ is empty if no active bearers are returned.
+  paths.clear();
   paths.push_back(inactive_paths[0]);
   paths.push_back(inactive_paths[1]);
   paths.push_back(inactive_paths[2]);
   paths.push_back(inactive_paths[1]);
-
   capability_->OnListBearersReply(paths, error);
   EXPECT_TRUE(capability_->bearer_path_.empty());
 
@@ -1284,9 +1281,33 @@ TEST_F(CellularCapabilityUniversalMainTest, OnListBearersReply) {
   paths.push_back(inactive_paths[2]);
   paths.push_back(active_paths[1]);
   paths.push_back(inactive_paths[1]);
-
   EXPECT_DEATH(capability_->OnListBearersReply(paths, error),
       "Found more than one active bearer.");
+
+  // By default, Bearers created by this test fixture indicate that
+  // they use DHCP for IP configuration. Hence, we should not start
+  // PPP for them...
+  scoped_refptr<MockCellular> mock_cellular =
+      new MockCellular(&modem_info_, "", "", -1, Cellular::kTypeUniversal,
+                       "", "", "", &proxy_factory_);
+  capability_->cellular_ = mock_cellular;
+  paths.clear();
+  paths.push_back(active_paths[2]);
+  EXPECT_CALL(*mock_cellular, StartPPP(_)).Times(0);
+  capability_->OnListBearersReply(paths, error);
+
+  // ...but if we change the Bearer to PPP, then we should StartPPP.
+  DBusPropertiesMap ip4config;
+  DBusPropertiesMap &bearer_properties(
+      *proxy_factory_.mutable_active_bearer_properties());
+  ip4config[CellularCapabilityUniversal::kIpConfigPropertyMethod].writer()
+      .append_uint32(MM_BEARER_IP_METHOD_PPP);
+  bearer_properties.erase(MM_BEARER_PROPERTY_IP4CONFIG);
+  DBus::MessageIter writer =
+      bearer_properties[MM_BEARER_PROPERTY_IP4CONFIG].writer();
+  writer << ip4config;
+  EXPECT_CALL(*mock_cellular, StartPPP(_)).Times(1);
+  capability_->OnListBearersReply(paths, error);
 }
 
 // Validates expected behavior of Connect function
