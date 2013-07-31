@@ -4,20 +4,42 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# Tries to cleanly terminate a process and waits for it to exit.
-# If that fails it will kill the process.
+# Timeouts in msec
+readonly SIGTERM_TIMEOUT=2500
+readonly SIGKILL_TIMEOUT=2000
+
+# Send SIGTERM once to all processes that match regex in $1, then wait for
+# them all to terminate.  If processes matching $1 are still running after
+# SIGTERM_TIMEOUT msec they are all sent SIGKILL once.  If processes matching
+# $1 are still present after SIGKILL_TIMEOUT msec a message is logged.
 term_process() {
   local process="$1"
 
-  pkill -o "$process"
-  for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-    pgrep "$process"
+  pkill "$process"
+  local i=0
+  while [ $i -lt $SIGTERM_TIMEOUT ]; do
+    pid=$(pgrep "$process")
     if [ $? -ne 0 ] ; then
       return
     fi
     sleep .1
+    i=$((i + 100))
   done
+
+  logger -t "term_process($process)" \
+      "PIDs ["$pid"] did not terminate, sending SIGKILL"
+
   pkill -KILL "$process"
+  i=0
+  while [ $i -lt $SIGKILL_TIMEOUT ]; do
+    pid=$(pgrep "$process")
+    if [ $? -ne 0 ] ; then
+      return
+    fi
+    sleep .1
+    i=$((i + 100))
+  done
+  logger -t "term_process($process)" "PIDs ["$pid"] not dead after SIGKILL"
 }
 
 
