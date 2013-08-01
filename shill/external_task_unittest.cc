@@ -29,6 +29,7 @@ using std::vector;
 using testing::_;
 using testing::Matcher;
 using testing::MatchesRegex;
+using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -69,6 +70,26 @@ class ExternalTaskTest : public testing::Test,
 
   void set_test_rpc_task_destroyed(bool destroyed) {
     test_rpc_task_destroyed_ = destroyed;
+  }
+
+  // Defined out-of-line, due to dependency on TestRPCTask.
+  void FakeUpRunningProcess(unsigned int tag, int pid);
+
+  void ExpectStop(unsigned int tag, int pid) {
+    EXPECT_CALL(glib_, SourceRemove(tag));
+    EXPECT_CALL(process_killer_, Kill(pid, _));
+  }
+
+  void VerifyStop() {
+    if (external_task_) {
+      EXPECT_EQ(0, external_task_->child_watch_tag_);
+      EXPECT_EQ(0, external_task_->pid_);
+      EXPECT_FALSE(external_task_->rpc_task_);
+    }
+    EXPECT_TRUE(test_rpc_task_destroyed_);
+    // Make sure EXPECTations were met before the fixture's dtor.
+    Mock::VerifyAndClearExpectations(&glib_);
+    Mock::VerifyAndClearExpectations(&process_killer_);
   }
 
  protected:
@@ -113,16 +134,29 @@ TestRPCTask::~TestRPCTask() {
 
 }  // namespace
 
+void ExternalTaskTest::FakeUpRunningProcess(unsigned int tag, int pid) {
+  external_task_->child_watch_tag_ = tag;
+  external_task_->pid_ = pid;
+  external_task_->rpc_task_.reset(new TestRPCTask(&control_, this));
+}
+
 TEST_F(ExternalTaskTest, Destructor) {
   const unsigned int kTag = 123;
-  external_task_->child_watch_tag_ = kTag;
-  EXPECT_CALL(glib_, SourceRemove(kTag));
   const int kPID = 123456;
-  external_task_->pid_ = kPID;
-  EXPECT_CALL(process_killer_, Kill(kPID, _));
-  external_task_->rpc_task_.reset(new TestRPCTask(&control_, this));
+  FakeUpRunningProcess(kTag, kPID);
+  ExpectStop(kTag, kPID);
   external_task_.reset();
-  EXPECT_TRUE(test_rpc_task_destroyed_);
+  VerifyStop();
+}
+
+TEST_F(ExternalTaskTest, DestroyLater) {
+  const unsigned int kTag = 123;
+  const int kPID = 123456;
+  FakeUpRunningProcess(kTag, kPID);
+  ExpectStop(kTag, kPID);
+  external_task_.release()->DestroyLater(&dispatcher_);
+  dispatcher_.DispatchPendingEvents();
+  VerifyStop();
 }
 
 namespace {
@@ -195,18 +229,12 @@ TEST_F(ExternalTaskTest, Start) {
 
 TEST_F(ExternalTaskTest, Stop) {
   const unsigned int kTag = 123;
-  external_task_->child_watch_tag_ = kTag;
-  EXPECT_CALL(glib_, SourceRemove(kTag));
   const int kPID = 123456;
-  external_task_->pid_ = kPID;
-  EXPECT_CALL(process_killer_, Kill(kPID, _));
-  external_task_->rpc_task_.reset(new TestRPCTask(&control_, this));
+  FakeUpRunningProcess(kTag, kPID);
+  ExpectStop(kTag, kPID);
   external_task_->Stop();
-
-  EXPECT_EQ(0, external_task_->child_watch_tag_);
-  EXPECT_EQ(0, external_task_->pid_);
-  EXPECT_FALSE(external_task_->rpc_task_);
-  EXPECT_TRUE(test_rpc_task_destroyed_);
+  ASSERT_TRUE(external_task_);
+  VerifyStop();
 }
 
 TEST_F(ExternalTaskTest, StopNotStarted) {
