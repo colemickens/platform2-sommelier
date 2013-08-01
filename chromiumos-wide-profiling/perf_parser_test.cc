@@ -85,8 +85,6 @@ void CheckInjectionAndLocalization(const string& input_perf_data,
     EXPECT_EQ(expected_map, parser_map);
 
     string output_perf_data = input_perf_data + ".parse.inject.out";
-    if (input_perf_data == "perf.data.singleprocess")
-      output_perf_data = "/tmp/singleprocess.injected";
     ASSERT_TRUE(parser->WriteFile(output_perf_data));
 
     // Perf should find the same build ids.
