@@ -126,7 +126,8 @@ class OpenVPNDriverTest : public testing::Test,
     return device_->selected_service();
   }
 
-  bool InitManagementChannelOptions(vector<string> *options, Error *error) {
+  bool InitManagementChannelOptions(
+      vector<vector<string>> *options, Error *error) {
     return driver_->InitManagementChannelOptions(options, error);
   }
 
@@ -183,10 +184,13 @@ class OpenVPNDriverTest : public testing::Test,
   }
 
   // Used to assert that a flag appears in the options.
-  void ExpectInFlags(const vector<string> &options, const string &flag,
+  void ExpectInFlags(const vector<vector<string>> &options, const string &flag);
+  void ExpectInFlags(const vector<vector<string>> &options, const string &flag,
                      const string &value);
-  void ExpectInFlags(const vector<string> &options, const string &flag);
-  void ExpectNotInFlags(const vector<string> &options, const string &flag);
+  void ExpectInFlags(const vector<vector<string>> &options,
+                     const vector<string> &arguments);
+  void ExpectNotInFlags(const vector<vector<string>> &options,
+                        const string &flag);
 
   void SetupLSBRelease();
 
@@ -233,32 +237,28 @@ void OpenVPNDriverTest::GetLogin(string */*user*/, string */*password*/) {}
 void OpenVPNDriverTest::Notify(const string &/*reason*/,
                                const map<string, string> &/*dict*/) {}
 
-void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
+void OpenVPNDriverTest::ExpectInFlags(const vector<vector<string>> &options,
+                                      const string &flag) {
+  ExpectInFlags(options, vector<string> { flag });
+}
+
+void OpenVPNDriverTest::ExpectInFlags(const vector<vector<string>> &options,
                                       const string &flag,
                                       const string &value) {
-  vector<string>::const_iterator it =
-      std::find(options.begin(), options.end(), flag);
-
-  EXPECT_TRUE(it != options.end());
-  if (it != options.end())
-    return;  // Don't crash below.
-  it++;
-  EXPECT_TRUE(it != options.end());
-  if (it != options.end())
-    return;  // Don't crash below.
-  EXPECT_EQ(value, *it);
+  ExpectInFlags(options, vector<string> { flag, value });
 }
 
-void OpenVPNDriverTest::ExpectInFlags(const vector<string> &options,
-                                      const string &flag) {
-  EXPECT_TRUE(std::find(options.begin(), options.end(), flag) !=
+void OpenVPNDriverTest::ExpectInFlags(const vector<vector<string>> &options,
+                                      const vector<string> &arguments) {
+  EXPECT_TRUE(std::find(options.begin(), options.end(), arguments) !=
               options.end());
 }
 
-void OpenVPNDriverTest::ExpectNotInFlags(const vector<string> &options,
+void OpenVPNDriverTest::ExpectNotInFlags(const vector<vector<string>> &options,
                                          const string &flag) {
-  EXPECT_TRUE(std::find(options.begin(), options.end(), flag) ==
-              options.end());
+  for (const auto &option : options) {
+    EXPECT_NE(flag, option[0]);
+  }
 }
 
 void OpenVPNDriverTest::SetupLSBRelease() {
@@ -564,7 +564,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
   Error error;
-  vector<string> options;
+  vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_EQ(Error::kInvalidArguments, error.type());
   EXPECT_TRUE(options.empty());
@@ -584,12 +584,13 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
 
   Error error;
-  vector<string> options;
+  vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ("--client", options[0]);
+  EXPECT_EQ(vector<string> { "--client" }, options[0]);
   ExpectInFlags(options, "--remote", kHost);
-  ExpectInFlags(options, kRPCTaskPathVariable, RPCTaskMockAdaptor::kRpcId);
+  ExpectInFlags(options, vector<string> { "--setenv", kRPCTaskPathVariable,
+                                          RPCTaskMockAdaptor::kRpcId });
   ExpectInFlags(options, "--dev", kInterfaceName);
   ExpectInFlags(options, "--group", "openvpn");
   EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
@@ -613,16 +614,10 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
 
   Error error;
-  vector<string> options;
+  vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  vector<string>::const_iterator it =
-      std::find(options.begin(), options.end(), "--remote");
-  ASSERT_TRUE(it != options.end());
-  ASSERT_TRUE(++it != options.end());
-  EXPECT_EQ("v.com", *it);
-  ASSERT_TRUE(++it != options.end());
-  EXPECT_EQ("1234", *it);
+  ExpectInFlags(options, vector<string> { "--remote", "v.com", "1234" });
 }
 
 TEST_F(OpenVPNDriverTest, InitCAOptions) {
@@ -632,7 +627,7 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   static const char kNSSCertfile[] = "/tmp/nss-cert";
 
   Error error;
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
   ExpectInFlags(options, "--ca", OpenVPNDriver::kDefaultCACertificates);
@@ -700,7 +695,7 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
 
 TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   static const char kTestValue[] = "foo";
-  vector<string> options;
+  vector<vector<string>> options;
 
   // No key or cert, assume user/password authentication.
   driver_->InitClientAuthOptions(&options);
@@ -779,7 +774,7 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 }
 
 TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
-  vector<string> options;
+  vector<vector<string>> options;
   driver_->InitPKCS11Options(&options);
   EXPECT_TRUE(options.empty());
 
@@ -798,7 +793,7 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
 }
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
       .WillOnce(Return(false));
   Error error;
@@ -808,7 +803,7 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {
 }
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOnline) {
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
@@ -819,7 +814,7 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOnline) {
 }
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOffline) {
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_CALL(*management_server_, Start(&dispatcher_, GetSockets(), &options))
       .WillOnce(Return(true));
   EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(false));
@@ -830,12 +825,12 @@ TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsOffline) {
 }
 
 TEST_F(OpenVPNDriverTest, InitLoggingOptions) {
-  vector<string> options;
+  vector<vector<string>> options;
   bool vpn_logging = SLOG_IS_ON(VPN, 0);
   ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
   driver_->InitLoggingOptions(&options);
   ASSERT_EQ(1, options.size());
-  EXPECT_EQ("--syslog", options[0]);
+  EXPECT_EQ(vector<string> { "--syslog" }, options[0]);
   ScopeLogger::GetInstance()->EnableScopesByName("+vpn");
   options.clear();
   driver_->InitLoggingOptions(&options);
@@ -856,7 +851,7 @@ TEST_F(OpenVPNDriverTest, InitLoggingOptions) {
 }
 
 TEST_F(OpenVPNDriverTest, AppendValueOption) {
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_FALSE(
       driver_->AppendValueOption("OpenVPN.UnknownProperty", kOption, &options));
   EXPECT_TRUE(options.empty());
@@ -869,15 +864,15 @@ TEST_F(OpenVPNDriverTest, AppendValueOption) {
   SetArg(kProperty2, kValue2);
   EXPECT_TRUE(driver_->AppendValueOption(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendValueOption(kProperty2, kOption2, &options));
-  EXPECT_EQ(4, options.size());
-  EXPECT_EQ(kOption, options[0]);
-  EXPECT_EQ(kValue, options[1]);
-  EXPECT_EQ(kOption2, options[2]);
-  EXPECT_EQ(kValue2, options[3]);
+  EXPECT_EQ(2, options.size());
+  vector<string> expected_value { kOption, kValue };
+  EXPECT_EQ(expected_value, options[0]);
+  vector<string> expected_value2 { kOption2, kValue2 };
+  EXPECT_EQ(expected_value2, options[1]);
 }
 
 TEST_F(OpenVPNDriverTest, AppendFlag) {
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_FALSE(
       driver_->AppendFlag("OpenVPN.UnknownProperty", kOption, &options));
   EXPECT_TRUE(options.empty());
@@ -887,8 +882,8 @@ TEST_F(OpenVPNDriverTest, AppendFlag) {
   EXPECT_TRUE(driver_->AppendFlag(kProperty, kOption, &options));
   EXPECT_TRUE(driver_->AppendFlag(kProperty2, kOption2, &options));
   EXPECT_EQ(2, options.size());
-  EXPECT_EQ(kOption, options[0]);
-  EXPECT_EQ(kOption2, options[1]);
+  EXPECT_EQ(vector<string> { kOption }, options[0]);
+  EXPECT_EQ(vector<string> { kOption2 }, options[1]);
 }
 
 TEST_F(OpenVPNDriverTest, ClaimInterface) {

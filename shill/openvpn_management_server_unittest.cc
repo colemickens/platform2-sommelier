@@ -176,6 +176,9 @@ TEST_F(OpenVPNManagementServerTest, StartGetSockNameFail) {
 }
 
 TEST_F(OpenVPNManagementServerTest, Start) {
+  const string kStaticChallenge = "static-challenge";
+  driver_.args()->SetString(
+      flimflam::kOpenVPNStaticChallengeProperty, kStaticChallenge);
   const int kSocket = 123;
   EXPECT_CALL(sockets_, Socket(AF_INET, SOCK_STREAM, IPPROTO_TCP))
       .WillOnce(Return(kSocket));
@@ -185,13 +188,20 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_CALL(dispatcher_,
               CreateReadyHandler(kSocket, IOHandler::kModeInput, _))
       .WillOnce(ReturnNew<IOHandler>());
-  vector<string> options;
+  vector<vector<string>> options;
   EXPECT_TRUE(server_.Start(&dispatcher_, &sockets_, &options));
   EXPECT_EQ(&sockets_, server_.sockets_);
   EXPECT_EQ(kSocket, server_.socket_);
   EXPECT_TRUE(server_.ready_handler_.get());
   EXPECT_EQ(&dispatcher_, server_.dispatcher_);
-  EXPECT_FALSE(options.empty());
+  vector<vector<string>> expected_options {
+      { "--management", "127.0.0.1", "0" },
+      { "--management-client" },
+      { "--management-hold" },
+      { "--management-query-passwords" },
+      { "--static-challenge", kStaticChallenge, "1" }
+  };
+  EXPECT_EQ(expected_options, options);
 }
 
 TEST_F(OpenVPNManagementServerTest, Stop) {

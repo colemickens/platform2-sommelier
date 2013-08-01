@@ -70,15 +70,30 @@ class OpenVPNDriver : public VPNDriver,
   virtual void FailService(Service::ConnectFailure failure,
                            const std::string &error_details);
 
+  // Append zero-valued, single-valued and double-valued options to the
+  // |options| array.
+  static void AppendOption(
+      const std::string &option,
+      std::vector<std::vector<std::string>> *options);
+  static void AppendOption(
+      const std::string &option,
+      const std::string &value,
+      std::vector<std::vector<std::string>> *options);
+  static void AppendOption(
+      const std::string &option,
+      const std::string &value0,
+      const std::string &value1,
+      std::vector<std::vector<std::string>> *options);
+
   // Returns true if an option was appended.
   bool AppendValueOption(const std::string &property,
                          const std::string &option,
-                         std::vector<std::string> *options);
+                         std::vector<std::vector<std::string>> *options);
 
   // Returns true if a flag was appended.
   bool AppendFlag(const std::string &property,
                   const std::string &option,
-                  std::vector<std::string> *options);
+                  std::vector<std::vector<std::string>> *options);
 
  protected:
   // Inherited from VPNDriver. |Connect| initiates the VPN connection by
@@ -168,13 +183,15 @@ class OpenVPNDriver : public VPNDriver,
                                 std::string *name,
                                 std::string *port);
 
-  void InitOptions(std::vector<std::string> *options, Error *error);
-  bool InitCAOptions(std::vector<std::string> *options, Error *error);
-  void InitClientAuthOptions(std::vector<std::string> *options);
-  void InitPKCS11Options(std::vector<std::string> *options);
+  void InitOptions(
+      std::vector<std::vector<std::string>> *options, Error *error);
+  bool InitCAOptions(
+      std::vector<std::vector<std::string>> *options, Error *error);
+  void InitClientAuthOptions(std::vector<std::vector<std::string>> *options);
+  void InitPKCS11Options(std::vector<std::vector<std::string>> *options);
   bool InitManagementChannelOptions(
-      std::vector<std::string> *options, Error *error);
-  void InitLoggingOptions(std::vector<std::string> *options);
+      std::vector<std::vector<std::string>> *options, Error *error);
+  void InitLoggingOptions(std::vector<std::vector<std::string>> *options);
 
   void InitEnvironment(std::vector<std::string> *environment);
   bool ParseLSBRelease(std::map<std::string, std::string> *lsb_release);
@@ -191,6 +208,10 @@ class OpenVPNDriver : public VPNDriver,
                const std::string &error_details);
 
   static int GetReconnectTimeoutSeconds(ReconnectReason reason);
+
+  // Join a list of options into a single string.
+  static std::string JoinOptions(
+      const std::vector<std::vector<std::string>> &options);
 
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);

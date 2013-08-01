@@ -55,7 +55,7 @@ OpenVPNManagementServer::~OpenVPNManagementServer() {
 
 bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
                                     Sockets *sockets,
-                                    vector<string> *options) {
+                                    vector<vector<string>> *options) {
   SLOG(VPN, 2) << __func__;
   if (IsStarted()) {
     return true;
@@ -92,20 +92,18 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   dispatcher_ = dispatcher;
 
   // Append openvpn management API options.
-  options->push_back("--management");
-  options->push_back(inet_ntoa(addr.sin_addr));
-  options->push_back(IntToString(ntohs(addr.sin_port)));
-  options->push_back("--management-client");
-
-  options->push_back("--management-hold");
+  driver_->AppendOption("--management", inet_ntoa(addr.sin_addr),
+                        IntToString(ntohs(addr.sin_port)), options);
+  driver_->AppendOption("--management-client", options);
+  driver_->AppendOption("--management-hold", options);
   hold_release_ = false;
   hold_waiting_ = false;
 
-  options->push_back("--management-query-passwords");
+  driver_->AppendOption("--management-query-passwords", options);
   if (driver_->AppendValueOption(flimflam::kOpenVPNStaticChallengeProperty,
                                  "--static-challenge",
                                  options)) {
-    options->push_back("1");  // Force echo.
+    options->back().push_back("1");  // Force echo.
   }
   return true;
 }

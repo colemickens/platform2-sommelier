@@ -34,7 +34,7 @@ class OpenVPNManagementServer {
   // interface openvpn options to |options|.
   virtual bool Start(EventDispatcher *dispatcher,
                      Sockets *sockets,
-                     std::vector<std::string> *options);
+                     std::vector<std::vector<std::string>> *options);
 
   virtual void Stop();
 
