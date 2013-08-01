@@ -39,6 +39,16 @@ class CellularProxy(shill_proxy.ShillProxy):
         self.set_logging_for_test(self.TECHNOLOGY_CELLULAR)
 
 
+    def find_cellular_service_object(self):
+        """Returns the first dbus object found that is a cellular service.
+
+        @return DBus object for the first cellular service found. None if no
+                service found.
+
+        """
+        return self.find_object('Service', {'Type': self.TECHNOLOGY_CELLULAR})
+
+
     def find_cellular_device_object(self):
         """Returns the first dbus object found that is a cellular device.
 
