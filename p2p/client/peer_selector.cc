@@ -93,7 +93,8 @@ string PeerSelector::PickUrlForId(const string& id, size_t minimum_size) {
 }
 
 string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
-  LOG(INFO) << "Requesting URL in the LAN for ID " << id;
+  LOG(INFO) << "Requesting URL in the LAN for ID " << id
+            << " (minimum_size=" << minimum_size << ")";
 
   string url = PickUrlForId(id, minimum_size);
   int num_retries = 0;
