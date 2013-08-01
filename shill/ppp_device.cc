@@ -30,8 +30,8 @@ PPPDevice::~PPPDevice() {}
 void PPPDevice::UpdateIPConfigFromPPP(const map<string, string> &configuration,
                                       bool blackhole_ipv6) {
   SLOG(PPP, 2) << __func__ << " on " << link_name();
-  IPConfig::Properties properties;
-  ParseIPConfiguration(link_name(), configuration, &properties);
+  IPConfig::Properties properties =
+      ParseIPConfiguration(link_name(), configuration);
   properties.blackhole_ipv6 = blackhole_ipv6;
   UpdateIPConfig(properties);
 }
@@ -45,41 +45,42 @@ string PPPDevice::GetInterfaceName(const map<string, string> &configuration) {
 }
 
 // static
-void PPPDevice::ParseIPConfiguration(const string &link_name,
-                                     const map<string, string> &configuration,
-                                     IPConfig::Properties *properties) {
+IPConfig::Properties PPPDevice::ParseIPConfiguration(
+    const string &link_name, const map<string, string> &configuration) {
   SLOG(PPP, 2) << __func__ << " on " << link_name;
-  properties->address_family = IPAddress::kFamilyIPv4;
-  properties->subnet_prefix = IPAddress::GetMaxPrefixLength(
-      properties->address_family);
+  IPConfig::Properties properties;
+  properties.address_family = IPAddress::kFamilyIPv4;
+  properties.subnet_prefix = IPAddress::GetMaxPrefixLength(
+      properties.address_family);
   for (const auto &it : configuration)  {
     const string &key = it.first;
     const string &value = it.second;
     SLOG(PPP, 2) << "Processing: " << key << " -> " << value;
     if (key == kPPPInternalIP4Address) {
-      properties->address = value;
+      properties.address = value;
     } else if (key == kPPPExternalIP4Address) {
-      properties->peer_address = value;
+      properties.peer_address = value;
     } else if (key == kPPPGatewayAddress) {
-      properties->gateway = value;
+      properties.gateway = value;
     } else if (key == kPPPDNS1) {
-      properties->dns_servers.insert(properties->dns_servers.begin(), value);
+      properties.dns_servers.insert(properties.dns_servers.begin(), value);
     } else if (key == kPPPDNS2) {
-      properties->dns_servers.push_back(value);
+      properties.dns_servers.push_back(value);
     } else if (key == kPPPLNSAddress) {
       // This is really a L2TPIPSec property. But it's sent to us by
       // our PPP plugin.
-      properties->trusted_ip = value;
+      properties.trusted_ip = value;
     } else {
       SLOG(PPP, 2) << "Key ignored.";
     }
   }
-  if (properties->gateway.empty()) {
+  if (properties.gateway.empty()) {
     // The gateway may be unspecified, since this is a point-to-point
     // link. Set to the peer's address, so that Connection can set the
     // routing table.
-    properties->gateway = properties->peer_address;
+    properties.gateway = properties.peer_address;
   }
+  return properties;
 }
 
 }  // namespace shill

@@ -34,17 +34,25 @@ TEST(PPPDeviceTest, ParseIPConfiguration) {
   config[kPPPDNS2] = "2.2.2.2";
   config[kPPPInterfaceName] = "ppp0";
   config[kPPPLNSAddress] = "99.88.77.66";
-  config["foo"] = "bar";
-  IPConfig::Properties props;
-  PPPDevice::ParseIPConfiguration("in-test", config, &props);
+  config["foo"] = "bar";  // Unrecognized keys don't cause crash.
+  IPConfig::Properties props =
+      PPPDevice::ParseIPConfiguration("in-test", config);
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
+  EXPECT_EQ(IPAddress::GetMaxPrefixLength(IPAddress::kFamilyIPv4),
+            props.subnet_prefix);
   EXPECT_EQ("4.5.6.7", props.address);
   EXPECT_EQ("33.44.55.66", props.peer_address);
   EXPECT_EQ("192.168.1.1", props.gateway);
-  EXPECT_EQ("99.88.77.66", props.trusted_ip);
   ASSERT_EQ(2, props.dns_servers.size());
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
   EXPECT_EQ("2.2.2.2", props.dns_servers[1]);
+  EXPECT_EQ("99.88.77.66", props.trusted_ip);
+
+  // No gateway specified.
+  config.erase(kPPPGatewayAddress);
+  IPConfig::Properties props2 =
+      PPPDevice::ParseIPConfiguration("in-test", config);
+  EXPECT_EQ("33.44.55.66", props2.gateway);
 }
 
 }  // namespace shill

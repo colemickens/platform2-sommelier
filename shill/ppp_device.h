@@ -54,10 +54,9 @@ class PPPDevice : public VirtualDevice {
   FRIEND_TEST(PPPDeviceTest, GetInterfaceName);
   FRIEND_TEST(PPPDeviceTest, ParseIPConfiguration);
 
-  static void ParseIPConfiguration(
+  static IPConfig::Properties ParseIPConfiguration(
       const std::string &link_name,
-      const std::map<std::string, std::string> &configuration,
-      IPConfig::Properties *properties);
+      const std::map<std::string, std::string> &configuration);
 
   DISALLOW_COPY_AND_ASSIGN(PPPDevice);
 };
