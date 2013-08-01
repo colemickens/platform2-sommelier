@@ -30,6 +30,7 @@
 using std::string;
 using std::vector;
 using testing::_;
+using testing::AnyNumber;
 using testing::DoAll;
 using testing::Return;
 using testing::SetArgumentPointee;
@@ -204,6 +205,22 @@ TEST_F(ModemTest, CreateDeviceEarlyFailures) {
       Return(-1));
   modem_->CreateDeviceFromModemProperties(properties);
   EXPECT_FALSE(modem_->device_.get());
+
+  // The params are good, but the device is blacklisted.
+  EXPECT_CALL(*modem_, GetLinkName(_, _)).WillOnce(DoAll(
+      SetArgumentPointee<1>(string(kLinkName)),
+      Return(true)));
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(StrEq(kLinkName)))
+      .WillOnce(Return(kTestInterfaceIndex));
+  EXPECT_CALL(device_info_, GetMACAddress(kTestInterfaceIndex, _))
+      .WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+                      Return(true)));
+  EXPECT_CALL(device_info_, IsDeviceBlackListed(kLinkName))
+      .WillRepeatedly(Return(true));
+  modem_->CreateDeviceFromModemProperties(properties);
+  EXPECT_FALSE(modem_->device_.get());
+
+  // No link name: see CreateDevicePPP.
 }
 
 TEST_F(ModemTest, CreateDevicePPP) {
@@ -242,6 +259,36 @@ TEST_F(ModemTest, CreateDevicePPP) {
   // Add expectations for the eventual |modem_| destruction.
   EXPECT_CALL(*cellular, DestroyService());
   EXPECT_CALL(device_info_, DeregisterDevice(_));
+}
+
+TEST_F(ModemTest, GetDeviceParams) {
+  string mac_address;
+  int interface_index = 2;
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-1));
+  EXPECT_CALL(device_info_, GetMACAddress(_, _)).Times(AnyNumber())
+      .WillRepeatedly(Return(false));
+  EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
+  EXPECT_EQ(-1, interface_index);
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(-2));
+  EXPECT_CALL(device_info_, GetMACAddress(_, _)).Times(AnyNumber())
+      .WillRepeatedly(Return(false));
+  EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
+  EXPECT_EQ(-2, interface_index);
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(1));
+  EXPECT_CALL(device_info_, GetMACAddress(_, _)).WillOnce(Return(false));
+  EXPECT_FALSE(modem_->GetDeviceParams(&mac_address, &interface_index));
+  EXPECT_EQ(1, interface_index);
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(_)).WillOnce(Return(2));
+  EXPECT_CALL(device_info_, GetMACAddress(2, _)).
+      WillOnce(DoAll(SetArgumentPointee<1>(expected_address_),
+                     Return(true)));
+  EXPECT_TRUE(modem_->GetDeviceParams(&mac_address, &interface_index));
+  EXPECT_EQ(2, interface_index);
+  EXPECT_EQ(kAddressAsString, mac_address);
+
 }
 
 TEST_F(ModemTest, RejectPPPModem) {

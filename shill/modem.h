@@ -82,6 +82,7 @@ class Modem {
   FRIEND_TEST(ModemTest, CreateDeviceEarlyFailures);
   FRIEND_TEST(ModemTest, CreateDevicePPP);
   FRIEND_TEST(ModemTest, EarlyDeviceProperties);
+  FRIEND_TEST(ModemTest, GetDeviceParams);
   FRIEND_TEST(ModemTest, Init);
   FRIEND_TEST(ModemTest, PendingDevicePropertiesAndCreate);
 
@@ -93,7 +94,8 @@ class Modem {
 
   // Find the |mac_address| and |interface_index| for the kernel
   // network device with name |link_name|. Returns true iff both
-  // |mac_address| and |interface_index| were found.
+  // |mac_address| and |interface_index| were found. Modifies
+  // |interface_index| even on failure.
   virtual bool GetDeviceParams(std::string *mac_address, int *interface_index);
 
   virtual void OnDBusPropertiesChanged(

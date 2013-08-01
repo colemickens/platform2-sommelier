@@ -63,7 +63,7 @@ class DeviceInfo : public base::SupportsWeakPtr<DeviceInfo> {
   virtual ~DeviceInfo();
 
   void AddDeviceToBlackList(const std::string &device_name);
-  bool IsDeviceBlackListed(const std::string &device_name);
+  virtual bool IsDeviceBlackListed(const std::string &device_name);
   void Start();
   void Stop();
 
