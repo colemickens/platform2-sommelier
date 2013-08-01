@@ -22,6 +22,7 @@
 #include "shill/mock_metrics.h"
 #include "shill/mock_nss.h"
 #include "shill/mock_ppp_device.h"
+#include "shill/mock_ppp_device_factory.h"
 #include "shill/mock_vpn_service.h"
 
 using base::FilePath;
@@ -115,6 +116,10 @@ class L2TPIPSecDriverTest : public testing::Test,
     return driver_->IsConnectTimeoutStarted();
   }
 
+  bool IsPSKFileCleared(const FilePath &psk_file_path) {
+    return !file_util::PathExists(psk_file_path) && GetPSKFile().empty();
+  }
+
   // Used to assert that a flag appears in the options.
   void ExpectInFlags(const vector<string> &options, const string &flag,
                      const string &value);
@@ -125,6 +130,41 @@ class L2TPIPSecDriverTest : public testing::Test,
 
   void InvokeNotify(const string &reason, const map<string, string> &dict) {
     driver_->Notify(reason, dict);
+  }
+
+  FilePath FakeUpConnect() {
+    FilePath new_psk_file = SetupPSKFile();
+    SetService(service_);
+    StartConnectTimeout(0);
+    return new_psk_file;
+  }
+
+  void ExpectDeviceConnected(const map<string, string> &ppp_config) {
+    EXPECT_CALL(*device_, SetEnabled(true));
+    EXPECT_CALL(*device_, SelectService(static_cast<ServiceRefPtr>(service_)));
+    EXPECT_CALL(*device_, UpdateIPConfigFromPPP(ppp_config, _));
+  }
+
+  void ExpectMetricsReported() {
+    Error unused_error;
+    PropertyStore store;
+    driver_->InitPropertyStore(&store);
+    store.SetStringProperty(flimflam::kL2tpIpsecPskProperty, "x",
+                            &unused_error);
+    store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "y",
+                            &unused_error);
+    EXPECT_CALL(metrics_, SendEnumToUMA(
+        Metrics::kMetricVpnDriver,
+        Metrics::kVpnDriverL2tpIpsec,
+        Metrics::kMetricVpnDriverMax));
+    EXPECT_CALL(metrics_, SendEnumToUMA(
+        Metrics::kMetricVpnRemoteAuthenticationType,
+        Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
+        Metrics::kVpnRemoteAuthenticationTypeMax));
+    EXPECT_CALL(metrics_, SendEnumToUMA(
+        Metrics::kMetricVpnUserAuthenticationType,
+        Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
+        Metrics::kVpnUserAuthenticationTypeMax));
   }
 
   // Inherited from RPCTaskDelegate.
@@ -182,8 +222,8 @@ TEST_F(L2TPIPSecDriverTest, GetProviderType) {
 TEST_F(L2TPIPSecDriverTest, Cleanup) {
   driver_->IdleService();  // Ensure no crash.
 
+  FilePath psk_file = FakeUpConnect();
   driver_->device_ = device_;
-  driver_->service_ = service_;
   driver_->external_task_.reset(
       new MockExternalTask(&control_,
                            &glib_,
@@ -192,11 +232,8 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
   EXPECT_CALL(*device_, DropConnection());
   EXPECT_CALL(*device_, SetEnabled(false));
   EXPECT_CALL(*service_, SetFailure(Service::kFailureBadPassphrase));
-  FilePath psk_file = SetupPSKFile();
-  StartConnectTimeout(0);
   driver_->FailService(Service::kFailureBadPassphrase);  // Trigger Cleanup.
-  EXPECT_FALSE(file_util::PathExists(psk_file));
-  EXPECT_TRUE(driver_->psk_file_.empty());
+  EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_FALSE(driver_->device_);
   EXPECT_FALSE(driver_->service_);
   EXPECT_FALSE(driver_->IsConnectTimeoutStarted());
@@ -211,8 +248,7 @@ TEST_F(L2TPIPSecDriverTest, Cleanup) {
 TEST_F(L2TPIPSecDriverTest, DeletePSKFile) {
   FilePath psk_file = SetupPSKFile();
   driver_->DeletePSKFile();
-  EXPECT_FALSE(file_util::PathExists(psk_file));
-  EXPECT_TRUE(driver_->psk_file_.empty());
+  EXPECT_TRUE(IsPSKFileCleared(psk_file));
 }
 
 TEST_F(L2TPIPSecDriverTest, InitOptionsNoHost) {
@@ -426,7 +462,9 @@ TEST_F(L2TPIPSecDriverTest, SpawnL2TPIPSecVPN) {
   EXPECT_CALL(glib_, ChildWatchAdd(_, _, _));
 
   EXPECT_FALSE(driver_->SpawnL2TPIPSecVPN(&error));
+  EXPECT_FALSE(driver_->external_task_);
   EXPECT_TRUE(driver_->SpawnL2TPIPSecVPN(&error));
+  EXPECT_TRUE(driver_->external_task_);
 }
 
 TEST_F(L2TPIPSecDriverTest, Connect) {
@@ -524,41 +562,39 @@ MATCHER_P(IsIPAddress, address, "") {
 }  // namespace
 
 TEST_F(L2TPIPSecDriverTest, Notify) {
-  map<string, string> config;
-  config[kPPPInterfaceName] = kInterfaceName;
+  map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
+  MockPPPDeviceFactory *mock_ppp_device_factory =
+      MockPPPDeviceFactory::GetInstance();
+  FilePath psk_file = FakeUpConnect();
+  driver_->ppp_device_factory_ = mock_ppp_device_factory;
   EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
       .WillOnce(Return(kInterfaceIndex));
-  EXPECT_CALL(*device_, SetEnabled(true));
-  EXPECT_CALL(*device_, SelectService(static_cast<ServiceRefPtr>(service_)));
-  EXPECT_CALL(*device_, UpdateIPConfigFromPPP(config, _));
-  SetDevice(device_);
-  SetService(service_);
-  FilePath psk_file = SetupPSKFile();
-  StartConnectTimeout(0);
-
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      Metrics::kMetricVpnDriver,
-      Metrics::kVpnDriverL2tpIpsec,
-      Metrics::kMetricVpnDriverMax));
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      Metrics::kMetricVpnRemoteAuthenticationType,
-      Metrics::kVpnRemoteAuthenticationTypeL2tpIpsecPsk,
-      Metrics::kVpnRemoteAuthenticationTypeMax));
-  EXPECT_CALL(metrics_, SendEnumToUMA(
-      Metrics::kMetricVpnUserAuthenticationType,
-      Metrics::kVpnUserAuthenticationTypeL2tpIpsecUsernamePassword,
-      Metrics::kVpnUserAuthenticationTypeMax));
-
-  Error unused_error;
-  PropertyStore store;
-  driver_->InitPropertyStore(&store);
-  store.SetStringProperty(flimflam::kL2tpIpsecPskProperty, "x", &unused_error);
-  store.SetStringProperty(flimflam::kL2tpIpsecPasswordProperty, "y",
-                          &unused_error);
-
+  EXPECT_CALL(*mock_ppp_device_factory,
+              CreatePPPDevice(_, _, _, _, kInterfaceName, kInterfaceIndex))
+      .WillOnce(Return(device_));
+  ExpectDeviceConnected(config);
+  ExpectMetricsReported();
   InvokeNotify(kPPPReasonConnect, config);
-  EXPECT_FALSE(file_util::PathExists(psk_file));
-  EXPECT_TRUE(GetPSKFile().empty());
+  EXPECT_TRUE(IsPSKFileCleared(psk_file));
+  EXPECT_FALSE(IsConnectTimeoutStarted());
+}
+
+
+TEST_F(L2TPIPSecDriverTest, NotifyWithExistingDevice) {
+  map<string, string> config{{kPPPInterfaceName, kInterfaceName}};
+  MockPPPDeviceFactory *mock_ppp_device_factory =
+      MockPPPDeviceFactory::GetInstance();
+  FilePath psk_file = FakeUpConnect();
+  driver_->ppp_device_factory_ = mock_ppp_device_factory;
+  SetDevice(device_);
+  EXPECT_CALL(device_info_, GetIndex(kInterfaceName))
+      .WillOnce(Return(kInterfaceIndex));
+  EXPECT_CALL(*mock_ppp_device_factory,
+              CreatePPPDevice(_, _, _, _, _, _)).Times(0);
+  ExpectDeviceConnected(config);
+  ExpectMetricsReported();
+  InvokeNotify(kPPPReasonConnect, config);
+  EXPECT_TRUE(IsPSKFileCleared(psk_file));
   EXPECT_FALSE(IsConnectTimeoutStarted());
 }
 

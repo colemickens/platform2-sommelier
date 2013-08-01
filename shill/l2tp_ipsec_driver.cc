@@ -37,6 +37,7 @@
 #include "shill/manager.h"
 #include "shill/nss.h"
 #include "shill/ppp_device.h"
+#include "shill/ppp_device_factory.h"
 #include "shill/vpn_service.h"
 
 using base::Bind;
@@ -101,6 +102,7 @@ L2TPIPSecDriver::L2TPIPSecDriver(ControlInterface *control,
       device_info_(device_info),
       glib_(glib),
       nss_(NSS::GetInstance()),
+      ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       certificate_file_(new CertificateFile()),
       weak_ptr_factory_(this) {}
 
@@ -411,8 +413,9 @@ void L2TPIPSecDriver::Notify(
   bool blackhole_ipv6 = true;
 
   if (!device_) {
-    device_ = new PPPDevice(control_, dispatcher(), metrics_, manager(),
-                            interface_name, interface_index);
+    device_ = ppp_device_factory_->CreatePPPDevice(
+        control_, dispatcher(), metrics_, manager(), interface_name,
+        interface_index);
   }
   device_->SetEnabled(true);
   device_->SelectService(service_);

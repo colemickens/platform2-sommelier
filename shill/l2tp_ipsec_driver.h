@@ -27,6 +27,7 @@ class ExternalTask;
 class GLib;
 class Metrics;
 class NSS;
+class PPPDeviceFactory;
 
 class L2TPIPSecDriver : public VPNDriver,
                         public RPCTaskDelegate {
@@ -64,6 +65,8 @@ class L2TPIPSecDriver : public VPNDriver,
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptions);
   FRIEND_TEST(L2TPIPSecDriverTest, InitOptionsNoHost);
   FRIEND_TEST(L2TPIPSecDriverTest, InitPSKOptions);
+  FRIEND_TEST(L2TPIPSecDriverTest, Notify);
+  FRIEND_TEST(L2TPIPSecDriverTest, NotifyWithExistingDevice);
   FRIEND_TEST(L2TPIPSecDriverTest, NotifyDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnConnectionDisconnected);
   FRIEND_TEST(L2TPIPSecDriverTest, OnL2TPIPSecVPNDied);
@@ -129,6 +132,7 @@ class L2TPIPSecDriver : public VPNDriver,
   DeviceInfo *device_info_;
   GLib *glib_;
   NSS *nss_;
+  PPPDeviceFactory *ppp_device_factory_;
 
   VPNServiceRefPtr service_;
   scoped_ptr<ExternalTask> external_task_;
