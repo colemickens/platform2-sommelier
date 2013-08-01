@@ -72,6 +72,7 @@ p2p_server_unittests_LDADD = 				\
 	$(GLIB_LIBS)					\
 	-lgtest -lgtest_main -lgmock			\
 	-lattr						\
+	$(top_builddir)/common/libp2p-util.la		\
 	$(top_builddir)/common/libp2p-testutil.la	\
 	$(NULL)
 

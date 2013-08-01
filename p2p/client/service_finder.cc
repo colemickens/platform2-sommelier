@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "common/util.h"
 #include "client/service_finder.h"
 
 #include <glib.h>
@@ -62,6 +63,8 @@ class ServiceFinderAvahi : public ServiceFinder {
                                  AvahiStringList* txt,
                                  AvahiLookupResultFlags flags,
                                  void* user_data);
+
+  bool IsOwnService(const char *name);
 
   void HandleResolverEvent(const AvahiAddress* a,
                            uint16_t port,
@@ -226,6 +229,12 @@ void ServiceFinderAvahi::service_resolve_cb(AvahiServiceResolver* r,
   finder->BrowserCheckIfDone();
 }
 
+bool ServiceFinderAvahi::IsOwnService(const char *name) {
+  // Here we rely on the implementation detail that the DNS-SD name
+  // used is the D-Bus machine-id.
+  return g_strcmp0(name, p2p::util::GetDBusMachineId()) == 0;
+}
+
 void ServiceFinderAvahi::on_service_browser_changed(
     AvahiServiceBrowser* b,
     AvahiIfIndex interface,
@@ -247,6 +256,12 @@ void ServiceFinderAvahi::on_service_browser_changed(
           << " name=" << (name != NULL ? name : "(nil)") << " type=" << type
           << " domain=" << (domain != NULL ? domain : "(nil)")
           << " flags=" << flags;
+
+  // Never return results from ourselves
+  if (finder->IsOwnService(name)) {
+    VLOG(1) << "Ignoring results from ourselves.";
+    return;
+  }
 
   switch (event) {
     case AVAHI_BROWSER_FAILURE:
