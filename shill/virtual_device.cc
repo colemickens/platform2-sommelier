@@ -42,16 +42,17 @@ bool VirtualDevice::Save(StoreInterface */*storage*/) {
 
 void VirtualDevice::Start(Error *error,
                           const EnabledStateChangedCallback &/*callback*/) {
-  RTNLHandler::GetInstance()->SetInterfaceFlags(interface_index(), IFF_UP,
-                                                IFF_UP);
+  rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
+  // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
   if (error)
-    error->Reset();
+    error->Reset();  // indicate immediate completion
 }
 
 void VirtualDevice::Stop(Error *error,
                          const EnabledStateChangedCallback &/*callback*/) {
+  // TODO(quiche): Should we call OnEnabledStateChanged, like other Devices?
   if (error)
-    error->Reset();
+    error->Reset();  // indicate immediate completion
 }
 
 void VirtualDevice::UpdateIPConfig(const IPConfig::Properties &properties) {

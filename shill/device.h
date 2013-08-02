@@ -436,6 +436,7 @@ class Device : public base::RefCounted<Device> {
   friend class DeviceTest;
   friend class EthernetTest;
   friend class OpenVPNDriverTest;
+  friend class VirtualDeviceTest;
   friend class WiFiObjectTest;
 
   static const char kIPFlagTemplate[];
