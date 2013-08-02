@@ -141,6 +141,7 @@ class OpenVPNDriver : public VPNDriver,
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, VerifyPaths);
+  FRIEND_TEST(OpenVPNDriverTest, WriteConfigFile);
 
   // The map is a sorted container that allows us to iterate through the options
   // in order.
@@ -156,6 +157,8 @@ class OpenVPNDriver : public VPNDriver,
   static const char kLSBReleaseFile[];
   static const char kChromeOSReleaseName[];
   static const char kChromeOSReleaseVersion[];
+
+  static const char kDefaultOpenVPNConfigurationDirectory[];
 
   static const int kReconnectOfflineTimeoutSeconds;
   static const int kReconnectTLSErrorTimeoutSeconds;
@@ -211,7 +214,11 @@ class OpenVPNDriver : public VPNDriver,
 
   // Join a list of options into a single string.
   static std::string JoinOptions(
-      const std::vector<std::vector<std::string>> &options);
+      const std::vector<std::vector<std::string>> &options, char separator);
+
+  // Output an OpenVPN configuration.
+  bool WriteConfigFile(const std::vector<std::vector<std::string>> &options,
+                       base::FilePath *config_file);
 
   // Called when the openpvn process exits.
   static void OnOpenVPNDied(GPid pid, gint status, gpointer data);
@@ -249,6 +256,8 @@ class OpenVPNDriver : public VPNDriver,
   std::string tunnel_interface_;
   VirtualDeviceRefPtr device_;
   base::FilePath tls_auth_file_;
+  base::FilePath openvpn_config_directory_;
+  base::FilePath openvpn_config_file_;
   IPConfig::Properties ip_properties_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been

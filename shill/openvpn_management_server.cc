@@ -92,16 +92,16 @@ bool OpenVPNManagementServer::Start(EventDispatcher *dispatcher,
   dispatcher_ = dispatcher;
 
   // Append openvpn management API options.
-  driver_->AppendOption("--management", inet_ntoa(addr.sin_addr),
+  driver_->AppendOption("management", inet_ntoa(addr.sin_addr),
                         IntToString(ntohs(addr.sin_port)), options);
-  driver_->AppendOption("--management-client", options);
-  driver_->AppendOption("--management-hold", options);
+  driver_->AppendOption("management-client", options);
+  driver_->AppendOption("management-hold", options);
   hold_release_ = false;
   hold_waiting_ = false;
 
-  driver_->AppendOption("--management-query-passwords", options);
+  driver_->AppendOption("management-query-passwords", options);
   if (driver_->AppendValueOption(flimflam::kOpenVPNStaticChallengeProperty,
-                                 "--static-challenge",
+                                 "static-challenge",
                                  options)) {
     options->back().push_back("1");  // Force echo.
   }

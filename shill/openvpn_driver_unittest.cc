@@ -8,7 +8,9 @@
 
 #include <base/file_path.h>
 #include <base/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/string_util.h>
+#include <base/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
@@ -74,6 +76,9 @@ class OpenVPNDriverTest : public testing::Test,
     driver_->nss_ = &nss_;
     driver_->certificate_file_.reset(certificate_file_);  // Passes ownership.
     driver_->process_killer_ = &process_killer_;
+    temporary_directory_.CreateUniqueTempDir();
+    driver_->openvpn_config_directory_ =
+        temporary_directory_.path().Append(kOpenVPNConfigDirectory);
   }
 
   virtual ~OpenVPNDriverTest() {}
@@ -105,6 +110,7 @@ class OpenVPNDriverTest : public testing::Test,
   static const char kNetwork2[];
   static const char kInterfaceName[];
   static const int kInterfaceIndex;
+  static const char kOpenVPNConfigDirectory[];
 
   void SetArg(const string &arg, const string &value) {
     driver_->args()->SetString(arg, value);
@@ -210,6 +216,7 @@ class OpenVPNDriverTest : public testing::Test,
   MockCertificateFile *certificate_file_;  // Owned by |driver_|.
   MockNSS nss_;
   MockProcessKiller process_killer_;
+  base::ScopedTempDir temporary_directory_;
 
   // Owned by |driver_|.
   NiceMock<MockOpenVPNManagementServer> *management_server_;
@@ -217,10 +224,10 @@ class OpenVPNDriverTest : public testing::Test,
   FilePath lsb_release_file_;
 };
 
-const char OpenVPNDriverTest::kOption[] = "--openvpn-option";
+const char OpenVPNDriverTest::kOption[] = "openvpn-option";
 const char OpenVPNDriverTest::kProperty[] = "OpenVPN.SomeProperty";
 const char OpenVPNDriverTest::kValue[] = "some-property-value";
-const char OpenVPNDriverTest::kOption2[] = "--openvpn-option2";
+const char OpenVPNDriverTest::kOption2[] = "openvpn-option2";
 const char OpenVPNDriverTest::kProperty2[] = "OpenVPN.SomeProperty2";
 const char OpenVPNDriverTest::kValue2[] = "some-property-value2";
 const char OpenVPNDriverTest::kGateway1[] = "10.242.2.13";
@@ -231,6 +238,7 @@ const char OpenVPNDriverTest::kNetmask2[] = "255.255.0.0";
 const char OpenVPNDriverTest::kNetwork2[] = "192.168.0.0";
 const char OpenVPNDriverTest::kInterfaceName[] = "tun0";
 const int OpenVPNDriverTest::kInterfaceIndex = 123;
+const char OpenVPNDriverTest::kOpenVPNConfigDirectory[] = "openvpn";
 
 void OpenVPNDriverTest::GetLogin(string */*user*/, string */*password*/) {}
 
@@ -587,23 +595,23 @@ TEST_F(OpenVPNDriverTest, InitOptions) {
   vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_EQ(vector<string> { "--client" }, options[0]);
-  ExpectInFlags(options, "--remote", kHost);
-  ExpectInFlags(options, vector<string> { "--setenv", kRPCTaskPathVariable,
+  EXPECT_EQ(vector<string> { "client" }, options[0]);
+  ExpectInFlags(options, "remote", kHost);
+  ExpectInFlags(options, vector<string> { "setenv", kRPCTaskPathVariable,
                                           RPCTaskMockAdaptor::kRpcId });
-  ExpectInFlags(options, "--dev", kInterfaceName);
-  ExpectInFlags(options, "--group", "openvpn");
+  ExpectInFlags(options, "dev", kInterfaceName);
+  ExpectInFlags(options, "group", "openvpn");
   EXPECT_EQ(kInterfaceName, driver_->tunnel_interface_);
   ASSERT_FALSE(driver_->tls_auth_file_.empty());
-  ExpectInFlags(options, "--tls-auth", driver_->tls_auth_file_.value());
+  ExpectInFlags(options, "tls-auth", driver_->tls_auth_file_.value());
   string contents;
   EXPECT_TRUE(
       file_util::ReadFileToString(driver_->tls_auth_file_, &contents));
   EXPECT_EQ(kTLSAuthContents, contents);
-  ExpectInFlags(options, "--pkcs11-id", kID);
-  ExpectInFlags(options, "--ca", OpenVPNDriver::kDefaultCACertificates);
-  ExpectInFlags(options, "--syslog");
-  ExpectNotInFlags(options, "--auth-user-pass");
+  ExpectInFlags(options, "pkcs11-id", kID);
+  ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
+  ExpectInFlags(options, "syslog");
+  ExpectNotInFlags(options, "auth-user-pass");
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
@@ -617,7 +625,7 @@ TEST_F(OpenVPNDriverTest, InitOptionsHostWithPort) {
   vector<vector<string>> options;
   driver_->InitOptions(&options, &error);
   EXPECT_TRUE(error.IsSuccess());
-  ExpectInFlags(options, vector<string> { "--remote", "v.com", "1234" });
+  ExpectInFlags(options, vector<string> { "remote", "v.com", "1234" });
 }
 
 TEST_F(OpenVPNDriverTest, InitCAOptions) {
@@ -630,12 +638,12 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   vector<vector<string>> options;
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
   EXPECT_TRUE(error.IsSuccess());
-  ExpectInFlags(options, "--ca", OpenVPNDriver::kDefaultCACertificates);
+  ExpectInFlags(options, "ca", OpenVPNDriver::kDefaultCACertificates);
 
   options.clear();
   SetArg(flimflam::kOpenVPNCaCertProperty, kCaCert);
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "--ca", kCaCert);
+  ExpectInFlags(options, "ca", kCaCert);
   EXPECT_TRUE(error.IsSuccess());
 
   SetArg(flimflam::kOpenVPNCaCertNSSProperty, kCaCertNSS);
@@ -662,7 +670,7 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   error.Reset();
   options.clear();
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "--ca", kNSSCertfile);
+  ExpectInFlags(options, "ca", kNSSCertfile);
   EXPECT_TRUE(error.IsSuccess());
 
   const vector<string> kCaCertPEM{ "---PEM CONTENTS---" };
@@ -689,7 +697,7 @@ TEST_F(OpenVPNDriverTest, InitCAOptions) {
   error.Reset();
   options.clear();
   EXPECT_TRUE(driver_->InitCAOptions(&options, &error));
-  ExpectInFlags(options, "--ca", kPEMCertfile);
+  ExpectInFlags(options, "ca", kPEMCertfile);
   EXPECT_TRUE(error.IsSuccess());
 }
 
@@ -699,39 +707,39 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
 
   // No key or cert, assume user/password authentication.
   driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "--auth-user-pass");
-  ExpectNotInFlags(options, "--key");
-  ExpectNotInFlags(options, "--cert");
+  ExpectInFlags(options, "auth-user-pass");
+  ExpectNotInFlags(options, "key");
+  ExpectNotInFlags(options, "cert");
 
   // Cert available, no user/password.
   options.clear();
   SetArg(kOpenVPNCertProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
-  ExpectNotInFlags(options, "--auth-user-pass");
-  ExpectNotInFlags(options, "--key");
-  ExpectInFlags(options, "--cert", kTestValue);
+  ExpectNotInFlags(options, "auth-user-pass");
+  ExpectNotInFlags(options, "key");
+  ExpectInFlags(options, "cert", kTestValue);
 
   // Key available, no user/password.
   options.clear();
   SetArg(kOpenVPNKeyProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
-  ExpectNotInFlags(options, "--auth-user-pass");
-  ExpectInFlags(options, "--key", kTestValue);
+  ExpectNotInFlags(options, "auth-user-pass");
+  ExpectInFlags(options, "key", kTestValue);
 
   // Key available, AuthUserPass set.
   options.clear();
   SetArg(flimflam::kOpenVPNAuthUserPassProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "--auth-user-pass");
-  ExpectInFlags(options, "--key", kTestValue);
+  ExpectInFlags(options, "auth-user-pass");
+  ExpectInFlags(options, "key", kTestValue);
 
   // Key available, User set.
   options.clear();
   RemoveStringArg(flimflam::kOpenVPNAuthUserPassProperty);
   SetArg(flimflam::kOpenVPNUserProperty, "user");
   driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "--auth-user-pass");
-  ExpectInFlags(options, "--key", kTestValue);
+  ExpectInFlags(options, "auth-user-pass");
+  ExpectInFlags(options, "key", kTestValue);
 
   // Empty PKCS11 certificate id, no user/password/cert.
   options.clear();
@@ -740,37 +748,37 @@ TEST_F(OpenVPNDriverTest, InitClientAuthOptions) {
   RemoveStringArg(flimflam::kOpenVPNUserProperty);
   SetArg(flimflam::kOpenVPNClientCertIdProperty, "");
   driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "--auth-user-pass");
-  ExpectNotInFlags(options, "--key");
-  ExpectNotInFlags(options, "--cert");
-  ExpectNotInFlags(options, "--pkcs11-id");
+  ExpectInFlags(options, "auth-user-pass");
+  ExpectNotInFlags(options, "key");
+  ExpectNotInFlags(options, "cert");
+  ExpectNotInFlags(options, "pkcs11-id");
 
   // Non-empty PKCS11 certificate id, no user/password/cert.
   options.clear();
   SetArg(flimflam::kOpenVPNClientCertIdProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
-  ExpectNotInFlags(options, "--auth-user-pass");
-  ExpectNotInFlags(options, "--key");
-  ExpectNotInFlags(options, "--cert");
+  ExpectNotInFlags(options, "auth-user-pass");
+  ExpectNotInFlags(options, "key");
+  ExpectNotInFlags(options, "cert");
   // The "--pkcs11-id" option is added in InitPKCS11Options(), not here.
-  ExpectNotInFlags(options, "--pkcs11-id");
+  ExpectNotInFlags(options, "pkcs11-id");
 
   // PKCS11 certificate id available, AuthUserPass set.
   options.clear();
   SetArg(flimflam::kOpenVPNAuthUserPassProperty, kTestValue);
   driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "--auth-user-pass");
-  ExpectNotInFlags(options, "--key");
-  ExpectNotInFlags(options, "--cert");
+  ExpectInFlags(options, "auth-user-pass");
+  ExpectNotInFlags(options, "key");
+  ExpectNotInFlags(options, "cert");
 
   // PKCS11 certificate id available, User set.
   options.clear();
   RemoveStringArg(flimflam::kOpenVPNAuthUserPassProperty);
   SetArg(flimflam::kOpenVPNUserProperty, "user");
   driver_->InitClientAuthOptions(&options);
-  ExpectInFlags(options, "--auth-user-pass");
-  ExpectNotInFlags(options, "--key");
-  ExpectNotInFlags(options, "--cert");
+  ExpectInFlags(options, "auth-user-pass");
+  ExpectNotInFlags(options, "key");
+  ExpectNotInFlags(options, "cert");
 }
 
 TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
@@ -781,15 +789,15 @@ TEST_F(OpenVPNDriverTest, InitPKCS11Options) {
   static const char kID[] = "TestPKCS11ID";
   SetArg(flimflam::kOpenVPNClientCertIdProperty, kID);
   driver_->InitPKCS11Options(&options);
-  ExpectInFlags(options, "--pkcs11-id", kID);
-  ExpectInFlags(options, "--pkcs11-providers", "libchaps.so");
+  ExpectInFlags(options, "pkcs11-id", kID);
+  ExpectInFlags(options, "pkcs11-providers", "libchaps.so");
 
   static const char kProvider[] = "libpkcs11.so";
   SetArg(flimflam::kOpenVPNProviderProperty, kProvider);
   options.clear();
   driver_->InitPKCS11Options(&options);
-  ExpectInFlags(options, "--pkcs11-id", kID);
-  ExpectInFlags(options, "--pkcs11-providers", kProvider);
+  ExpectInFlags(options, "pkcs11-id", kID);
+  ExpectInFlags(options, "pkcs11-providers", kProvider);
 }
 
 TEST_F(OpenVPNDriverTest, InitManagementChannelOptionsServerFail) {
@@ -830,21 +838,21 @@ TEST_F(OpenVPNDriverTest, InitLoggingOptions) {
   ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
   driver_->InitLoggingOptions(&options);
   ASSERT_EQ(1, options.size());
-  EXPECT_EQ(vector<string> { "--syslog" }, options[0]);
+  EXPECT_EQ(vector<string> { "syslog" }, options[0]);
   ScopeLogger::GetInstance()->EnableScopesByName("+vpn");
   options.clear();
   driver_->InitLoggingOptions(&options);
-  ExpectInFlags(options, "--verb", "3");
+  ExpectInFlags(options, "verb", "3");
   ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
   SetArg("OpenVPN.Verb", "2");
   options.clear();
   driver_->InitLoggingOptions(&options);
-  ExpectInFlags(options, "--verb", "2");
+  ExpectInFlags(options, "verb", "2");
   ScopeLogger::GetInstance()->EnableScopesByName("+vpn");
   SetArg("OpenVPN.Verb", "1");
   options.clear();
   driver_->InitLoggingOptions(&options);
-  ExpectInFlags(options, "--verb", "1");
+  ExpectInFlags(options, "verb", "1");
   if (!vpn_logging) {
     ScopeLogger::GetInstance()->EnableScopesByName("-vpn");
   }
@@ -1222,6 +1230,37 @@ TEST_F(OpenVPNDriverTest, GetReconnectTimeoutSeconds) {
   EXPECT_EQ(GetReconnectTLSErrorTimeoutSeconds(),
             GetReconnectTimeoutSeconds(
                 OpenVPNDriver::kReconnectReasonTLSError));
+}
+
+TEST_F(OpenVPNDriverTest, WriteConfigFile) {
+  const char kOption0[] = "option0";
+  const char kOption1[] = "option1";
+  const char kOption1Argument0[] = "option1-argument0";
+  const char kOption2[] = "option2";
+  const char kOption2Argument0[] = "option2-argument0";
+  const char kOption2Argument1[] = "option2-argument1";
+  vector<vector<string>> options {
+      { kOption0 },
+      { kOption1, kOption1Argument0 },
+      { kOption2, kOption2Argument0, kOption2Argument1 }
+  };
+  FilePath config_directory(
+      temporary_directory_.path().Append(kOpenVPNConfigDirectory));
+  FilePath config_file;
+  EXPECT_FALSE(file_util::PathExists(config_directory));
+  EXPECT_TRUE(driver_->WriteConfigFile(options, &config_file));
+  EXPECT_TRUE(file_util::PathExists(config_directory));
+  EXPECT_TRUE(file_util::PathExists(config_file));
+  EXPECT_TRUE(file_util::ContainsPath(config_directory, config_file));
+
+  string config_contents;
+  EXPECT_TRUE(file_util::ReadFileToString(config_file, &config_contents));
+  string expected_config_contents = StringPrintf(
+      "%s\n%s %s\n%s %s %s\n",
+      kOption0,
+      kOption1, kOption1Argument0,
+      kOption2, kOption2Argument0, kOption2Argument1);
+  EXPECT_EQ(expected_config_contents, config_contents);
 }
 
 }  // namespace shill

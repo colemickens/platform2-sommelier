@@ -195,11 +195,11 @@ TEST_F(OpenVPNManagementServerTest, Start) {
   EXPECT_TRUE(server_.ready_handler_.get());
   EXPECT_EQ(&dispatcher_, server_.dispatcher_);
   vector<vector<string>> expected_options {
-      { "--management", "127.0.0.1", "0" },
-      { "--management-client" },
-      { "--management-hold" },
-      { "--management-query-passwords" },
-      { "--static-challenge", kStaticChallenge, "1" }
+      { "management", "127.0.0.1", "0" },
+      { "management-client" },
+      { "management-hold" },
+      { "management-query-passwords" },
+      { "static-challenge", kStaticChallenge, "1" }
   };
   EXPECT_EQ(expected_options, options);
 }

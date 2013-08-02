@@ -118,6 +118,12 @@ const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
 const char OpenVPNDriver::kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
 const char OpenVPNDriver::kChromeOSReleaseVersion[] =
     "CHROMEOS_RELEASE_VERSION";
+
+// Directory where OpenVPN configuration files are exported while the
+// process is running.
+const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
+    RUNDIR "/openvpn_config";
+
 const int OpenVPNDriver::kReconnectOfflineTimeoutSeconds = 2 * 60;
 const int OpenVPNDriver::kReconnectTLSErrorTimeoutSeconds = 20;
 
@@ -137,6 +143,7 @@ OpenVPNDriver::OpenVPNDriver(ControlInterface *control,
       certificate_file_(new CertificateFile()),
       process_killer_(ProcessKiller::GetInstance()),
       lsb_release_file_(kLSBReleaseFile),
+      openvpn_config_directory_(kDefaultOpenVPNConfigurationDirectory),
       pid_(0),
       child_watch_tag_(0),
       default_service_callback_tag_(0) {}
@@ -173,6 +180,10 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
   if (!tls_auth_file_.empty()) {
     file_util::Delete(tls_auth_file_, false);
     tls_auth_file_.clear();
+  }
+  if (!openvpn_config_file_.empty()) {
+    file_util::Delete(openvpn_config_file_, false);
+    openvpn_config_file_.clear();
   }
   if (default_service_callback_tag_) {
     manager()->DeregisterDefaultServiceCallback(default_service_callback_tag_);
@@ -213,12 +224,42 @@ void OpenVPNDriver::Cleanup(Service::ConnectState state,
 }
 
 // static
-string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options) {
+string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options,
+                                  char separator) {
   vector<string> option_strings;
   for (const auto &option : options) {
     option_strings.push_back(JoinString(option, ' '));
   }
-  return JoinString(option_strings, ',');
+  return JoinString(option_strings, separator);
+}
+
+bool OpenVPNDriver::WriteConfigFile(
+    const vector<vector<string>> &options,
+    FilePath *config_file) {
+  if (!file_util::DirectoryExists(openvpn_config_directory_)) {
+    if (!file_util::CreateDirectory(openvpn_config_directory_)) {
+      LOG(ERROR) << "Unable to create configuration directory  "
+                 << openvpn_config_directory_.value();
+      return false;
+    }
+    if (chmod(openvpn_config_directory_.value().c_str(), S_IRWXU)) {
+      LOG(ERROR) << "Failed to set permissions on "
+                 << openvpn_config_directory_.value();
+      file_util::Delete(openvpn_config_directory_, true);
+      return false;
+    }
+  }
+
+  string contents = JoinOptions(options, '\n');
+  contents.push_back('\n');
+  if (!file_util::CreateTemporaryFileInDir(openvpn_config_directory_,
+                                           config_file) ||
+      file_util::WriteFile(*config_file, contents.data(), contents.size()) !=
+      static_cast<int>(contents.size())) {
+    LOG(ERROR) << "Unable to setup OpenVPN config file.";
+    return false;
+  }
+  return true;
 }
 
 bool OpenVPNDriver::SpawnOpenVPN() {
@@ -230,17 +271,18 @@ bool OpenVPNDriver::SpawnOpenVPN() {
   if (error.IsFailure()) {
     return false;
   }
-  LOG(INFO) << "OpenVPN process options: " << JoinOptions(options);
+  LOG(INFO) << "OpenVPN process options: " << JoinOptions(options, ',');
+  if (!WriteConfigFile(options, &openvpn_config_file_)) {
+    return false;
+  }
 
   // TODO(quiche): This should be migrated to use ExternalTask.
   // (crbug.com/246263).
   vector<char *> process_args;
   process_args.push_back(const_cast<char *>(kOpenVPNPath));
-  for (const auto &option : options) {
-    for (const auto &argument : option) {
-       process_args.push_back(const_cast<char *>(argument.c_str()));
-    }
-  }
+  process_args.push_back(const_cast<char *>("--config"));
+  process_args.push_back(const_cast<char *>(
+      openvpn_config_file_.value().c_str()));
   process_args.push_back(NULL);
 
   vector<string> environment;
@@ -522,32 +564,32 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
         error, Error::kInvalidArguments, "VPN host not specified.");
     return;
   }
-  AppendOption("--client", options);
-  AppendOption("--tls-client", options);
+  AppendOption("client", options);
+  AppendOption("tls-client", options);
 
   string host_name, host_port;
   if (SplitPortFromHost(vpnhost, &host_name, &host_port)) {
     DCHECK(!host_name.empty());
     DCHECK(!host_port.empty());
-    AppendOption("--remote", host_name, host_port, options);
+    AppendOption("remote", host_name, host_port, options);
   } else {
-    AppendOption("--remote", vpnhost, options);
+    AppendOption("remote", vpnhost, options);
   }
 
-  AppendOption("--nobind", options);
-  AppendOption("--persist-key", options);
-  AppendOption("--persist-tun", options);
+  AppendOption("nobind", options);
+  AppendOption("persist-key", options);
+  AppendOption("persist-tun", options);
 
   CHECK(!tunnel_interface_.empty());
-  AppendOption("--dev", tunnel_interface_, options);
-  AppendOption("--dev-type", "tun", options);
+  AppendOption("dev", tunnel_interface_, options);
+  AppendOption("dev-type", "tun", options);
 
   InitLoggingOptions(options);
 
-  AppendValueOption(kVPNMTUProperty, "--mtu", options);
-  AppendValueOption(flimflam::kOpenVPNProtoProperty, "--proto", options);
-  AppendValueOption(flimflam::kOpenVPNPortProperty, "--port", options);
-  AppendValueOption(kOpenVPNTLSAuthProperty, "--tls-auth", options);
+  AppendValueOption(kVPNMTUProperty, "mtu", options);
+  AppendValueOption(flimflam::kOpenVPNProtoProperty, "proto", options);
+  AppendValueOption(flimflam::kOpenVPNPortProperty, "port", options);
+  AppendValueOption(kOpenVPNTLSAuthProperty, "tls-auth", options);
   {
     string contents =
         args()->LookupString(flimflam::kOpenVPNTLSAuthContentsProperty, "");
@@ -560,36 +602,36 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
             error, Error::kInternalError, "Unable to setup tls-auth file.");
         return;
       }
-      AppendOption("--tls-auth", tls_auth_file_.value(), options);
+      AppendOption("tls-auth", tls_auth_file_.value(), options);
     }
   }
   AppendValueOption(
-      flimflam::kOpenVPNTLSRemoteProperty, "--tls-remote", options);
-  AppendValueOption(flimflam::kOpenVPNCipherProperty, "--cipher", options);
-  AppendValueOption(flimflam::kOpenVPNAuthProperty, "--auth", options);
-  AppendFlag(flimflam::kOpenVPNAuthNoCacheProperty, "--auth-nocache", options);
+      flimflam::kOpenVPNTLSRemoteProperty, "tls-remote", options);
+  AppendValueOption(flimflam::kOpenVPNCipherProperty, "cipher", options);
+  AppendValueOption(flimflam::kOpenVPNAuthProperty, "auth", options);
+  AppendFlag(flimflam::kOpenVPNAuthNoCacheProperty, "auth-nocache", options);
   AppendValueOption(
-      flimflam::kOpenVPNAuthRetryProperty, "--auth-retry", options);
-  AppendFlag(flimflam::kOpenVPNCompLZOProperty, "--comp-lzo", options);
-  AppendFlag(flimflam::kOpenVPNCompNoAdaptProperty, "--comp-noadapt", options);
+      flimflam::kOpenVPNAuthRetryProperty, "auth-retry", options);
+  AppendFlag(flimflam::kOpenVPNCompLZOProperty, "comp-lzo", options);
+  AppendFlag(flimflam::kOpenVPNCompNoAdaptProperty, "comp-noadapt", options);
   AppendFlag(
-      flimflam::kOpenVPNPushPeerInfoProperty, "--push-peer-info", options);
-  AppendValueOption(flimflam::kOpenVPNRenegSecProperty, "--reneg-sec", options);
-  AppendValueOption(flimflam::kOpenVPNShaperProperty, "--shaper", options);
+      flimflam::kOpenVPNPushPeerInfoProperty, "push-peer-info", options);
+  AppendValueOption(flimflam::kOpenVPNRenegSecProperty, "reneg-sec", options);
+  AppendValueOption(flimflam::kOpenVPNShaperProperty, "shaper", options);
   AppendValueOption(flimflam::kOpenVPNServerPollTimeoutProperty,
-                    "--server-poll-timeout", options);
+                    "server-poll-timeout", options);
 
   if (!InitCAOptions(options, error)) {
     return;
   }
 
   // Client-side ping support.
-  AppendValueOption(kOpenVPNPingProperty, "--ping", options);
-  AppendValueOption(kOpenVPNPingExitProperty, "--ping-exit", options);
-  AppendValueOption(kOpenVPNPingRestartProperty, "--ping-restart", options);
+  AppendValueOption(kOpenVPNPingProperty, "ping", options);
+  AppendValueOption(kOpenVPNPingExitProperty, "ping-exit", options);
+  AppendValueOption(kOpenVPNPingRestartProperty, "ping-restart", options);
 
   AppendValueOption(
-      flimflam::kOpenVPNNsCertTypeProperty, "--ns-cert-type", options);
+      flimflam::kOpenVPNNsCertTypeProperty, "ns-cert-type", options);
 
   InitClientAuthOptions(options);
   InitPKCS11Options(options);
@@ -601,18 +643,18 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
     remote_cert_tls = "server";
   }
   if (remote_cert_tls != "none") {
-    AppendOption("--remote-cert-tls", remote_cert_tls, options);
+    AppendOption("remote-cert-tls", remote_cert_tls, options);
   }
 
   // This is an undocumented command line argument that works like a .cfg file
-  // entry. TODO(sleffler): Maybe roll this into --tls-auth?
+  // entry. TODO(sleffler): Maybe roll this into the "tls-auth" option?
   AppendValueOption(
-      flimflam::kOpenVPNKeyDirectionProperty, "--key-direction", options);
+      flimflam::kOpenVPNKeyDirectionProperty, "key-direction", options);
   // TODO(sleffler): Support more than one eku parameter.
   AppendValueOption(
-      flimflam::kOpenVPNRemoteCertEKUProperty, "--remote-cert-eku", options);
+      flimflam::kOpenVPNRemoteCertEKUProperty, "remote-cert-eku", options);
   AppendValueOption(
-      flimflam::kOpenVPNRemoteCertKUProperty, "--remote-cert-ku", options);
+      flimflam::kOpenVPNRemoteCertKUProperty, "remote-cert-ku", options);
 
   if (!InitManagementChannelOptions(options, error)) {
     return;
@@ -620,24 +662,24 @@ void OpenVPNDriver::InitOptions(vector<vector<string>> *options, Error *error) {
 
   // Setup openvpn-script options and RPC information required to send back
   // Layer 3 configuration.
-  AppendOption("--setenv", kRPCTaskServiceVariable,
+  AppendOption("setenv", kRPCTaskServiceVariable,
                rpc_task_->GetRpcConnectionIdentifier(), options);
-  AppendOption("--setenv", kRPCTaskServiceVariable,
+  AppendOption("setenv", kRPCTaskServiceVariable,
                rpc_task_->GetRpcConnectionIdentifier(), options);
-  AppendOption("--setenv", kRPCTaskPathVariable, rpc_task_->GetRpcIdentifier(),
+  AppendOption("setenv", kRPCTaskPathVariable, rpc_task_->GetRpcIdentifier(),
                options);
-  AppendOption("--script-security", "2", options);
-  AppendOption("--up", kOpenVPNScript, options);
-  AppendOption("--up-restart", options);
+  AppendOption("script-security", "2", options);
+  AppendOption("up", kOpenVPNScript, options);
+  AppendOption("up-restart", options);
 
   // Disable openvpn handling since we do route+ifconfig work.
-  AppendOption("--route-noexec", options);
-  AppendOption("--ifconfig-noexec", options);
+  AppendOption("route-noexec", options);
+  AppendOption("ifconfig-noexec", options);
 
   // Drop root privileges on connection and enable callback scripts to send
   // notify messages.
-  AppendOption("--user", "openvpn", options);
-  AppendOption("--group", "openvpn", options);
+  AppendOption("user", "openvpn", options);
+  AppendOption("group", "openvpn", options);
 }
 
 bool OpenVPNDriver::InitCAOptions(
@@ -660,7 +702,7 @@ bool OpenVPNDriver::InitCAOptions(
       num_ca_cert_types++;
   if (num_ca_cert_types == 0) {
     // Use default CAs if no CA certificate is provided.
-    AppendOption("--ca", kDefaultCACertificates, options);
+    AppendOption("ca", kDefaultCACertificates, options);
     return true;
   } else if (num_ca_cert_types > 1) {
     Error::PopulateAndLog(
@@ -681,7 +723,7 @@ bool OpenVPNDriver::InitCAOptions(
           "Unable to extract NSS CA certificate: " + ca_cert_nss);
       return false;
     }
-    AppendOption("--ca", certfile.value(), options);
+    AppendOption("ca", certfile.value(), options);
     return true;
   } else if (!ca_cert_pem.empty()) {
     DCHECK(ca_cert.empty() && ca_cert_nss.empty());
@@ -693,11 +735,11 @@ bool OpenVPNDriver::InitCAOptions(
           "Unable to extract PEM CA certificates.");
       return false;
     }
-    AppendOption("--ca", certfile.value(), options);
+    AppendOption("ca", certfile.value(), options);
     return true;
   }
   DCHECK(!ca_cert.empty() && ca_cert_nss.empty() && ca_cert_pem.empty());
-  AppendOption("--ca", ca_cert, options);
+  AppendOption("ca", ca_cert, options);
   return true;
 }
 
@@ -709,22 +751,22 @@ void OpenVPNDriver::InitPKCS11Options(vector<vector<string>> *options) {
     if (provider.empty()) {
       provider = kDefaultPKCS11Provider;
     }
-    AppendOption("--pkcs11-providers", provider, options);
-    AppendOption("--pkcs11-id", id, options);
+    AppendOption("pkcs11-providers", provider, options);
+    AppendOption("pkcs11-id", id, options);
   }
 }
 
 void OpenVPNDriver::InitClientAuthOptions(vector<vector<string>> *options) {
-  bool has_cert = AppendValueOption(kOpenVPNCertProperty, "--cert", options) ||
+  bool has_cert = AppendValueOption(kOpenVPNCertProperty, "cert", options) ||
       !args()->LookupString(flimflam::kOpenVPNClientCertIdProperty, "").empty();
-  bool has_key = AppendValueOption(kOpenVPNKeyProperty, "--key", options);
+  bool has_key = AppendValueOption(kOpenVPNKeyProperty, "key", options);
   // If the AuthUserPass property is set, or the User property is non-empty, or
   // there's neither a key, nor a cert available, specify user-password client
   // authentication.
   if (args()->ContainsString(flimflam::kOpenVPNAuthUserPassProperty) ||
       !args()->LookupString(flimflam::kOpenVPNUserProperty, "").empty() ||
       (!has_cert && !has_key)) {
-    AppendOption("--auth-user-pass", options);
+    AppendOption("auth-user-pass", options);
   }
 }
 
@@ -746,14 +788,14 @@ bool OpenVPNDriver::InitManagementChannelOptions(
 }
 
 void OpenVPNDriver::InitLoggingOptions(vector<vector<string>> *options) {
-  AppendOption("--syslog", options);
+  AppendOption("syslog", options);
 
   string verb = args()->LookupString(kOpenVPNVerbProperty, "");
   if (verb.empty() && SLOG_IS_ON(VPN, 0)) {
     verb = "3";
   }
   if (!verb.empty()) {
-    AppendOption("--verb", verb, options);
+    AppendOption("verb", verb, options);
   }
 }
 
