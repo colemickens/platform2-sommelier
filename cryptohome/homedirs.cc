@@ -180,7 +180,9 @@ bool HomeDirs::GetVaultKeysets(const std::string& obfuscated,
     if (file_name.find(kKeyFile, 0, strlen(kKeyFile) == std::string::npos))
       continue;
     char *end = NULL;
-    long index = strtol(file_name.substr(strlen(kKeyFile)).c_str(), &end, 10);
+    std::string index_str = file_name.substr(strlen(kKeyFile));
+    const char * index_c_str = index_str.c_str();
+    long index = strtol(index_c_str, &end, 10);
     // Ensure the entire suffix is consumed.
     if (end && *end != '\0')
       continue;
