@@ -112,9 +112,6 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
   { kOpenVPNTLSAuthProperty, 0 },
   { kOpenVPNVerbProperty, 0 },
   { kVPNMTUProperty, 0 },
-
-  // Provided only for compatibility.  crbug.com/211858
-  { flimflam::kOpenVPNMgmtEnableProperty, 0 },
 };
 
 const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
