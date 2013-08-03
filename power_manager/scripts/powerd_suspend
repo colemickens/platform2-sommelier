@@ -57,11 +57,11 @@ readonly ROOT_SPOOL_DIR=/var/spool/power_manager/root
 readonly SUSPEND_TO_RAM_TIME_FILE=${ROOT_SPOOL_DIR}/suspend-to-ram-time
 
 log_msg() {
-    logger -t "powerd_suspend[${PPID}]" -- $@
+    logger -t "powerd_suspend[$$]" -- $@
 }
 
 log_msg_from_file() {
-    logger -t "powerd_suspend[${PPID}]" -f $1
+    logger -t "powerd_suspend[$$]" -f $1
 }
 
 log_wakeup_count() {
@@ -149,7 +149,7 @@ setup_dark_resume() {
 
 # Encourage people to use powerd_dbus_suspend instead of running this
 # script directly so that e.g. suspend delays and VT locking will happen.
-if ! ps -ocommand= -p $PPID | grep -q powerd_setuid_helper; then
+if [ -z "$POWERD_SETUID_HELPER" ]; then
   echo "This script is called by powerd. Please run powerd_dbus_suspend" 1>&2
   echo "to manually exercise the full suspend path." 1>&2
   exit 1

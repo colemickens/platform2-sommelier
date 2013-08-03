@@ -67,6 +67,7 @@ void RunCommand(const char* path, const char* arg, ...) {
   // initctl commands appear to fail if the real UID isn't set correctly.
   PCHECK(setuid(0) == 0) << "setuid() failed";
   PCHECK(clearenv() == 0) << "clearenv() failed";
+  PCHECK(setenv("POWERD_SETUID_HELPER", "1", 1) == 0) << "setenv() failed";
   PCHECK(execv(path, argv) != -1) << "execv() failed";
 }
 
