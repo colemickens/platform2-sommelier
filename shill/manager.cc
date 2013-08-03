@@ -1457,6 +1457,8 @@ void Manager::ConnectToBestServicesTask() {
       // We have already started a connection for this technology.
       continue;
     }
+    if ((*it)->explicitly_disconnected())
+      continue;
     connecting_technologies.insert(technology);
     if (!(*it)->IsConnected() && !(*it)->IsConnecting()) {
       // At first blush, it may seem that using Service::AutoConnect might

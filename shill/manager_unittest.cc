@@ -3451,6 +3451,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
       .WillRepeatedly(Return(Technology::kWifi));
   EXPECT_CALL(*wifi_service0.get(), IsVisible())
       .WillRepeatedly(Return(false));
+  EXPECT_CALL(*wifi_service0.get(), explicitly_disconnected())
+      .WillRepeatedly(Return(false));
 
   scoped_refptr<MockService> wifi_service1(
       new NiceMock<MockService>(control_interface(),
@@ -3468,6 +3470,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   wifi_service1->SetSecurity(Service::kCryptoRc4, true, true);
   EXPECT_CALL(*wifi_service1.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service1.get(), explicitly_disconnected())
+      .WillRepeatedly(Return(false));
 
   scoped_refptr<MockService> wifi_service2(
       new NiceMock<MockService>(control_interface(),
@@ -3485,6 +3489,8 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   wifi_service2->SetSecurity(Service::kCryptoNone, false, false);
   EXPECT_CALL(*wifi_service2.get(), technology())
       .WillRepeatedly(Return(Technology::kWifi));
+  EXPECT_CALL(*wifi_service2.get(), explicitly_disconnected())
+      .WillRepeatedly(Return(false));
 
   manager()->RegisterService(wifi_service0);
   manager()->RegisterService(wifi_service1);
@@ -3500,16 +3506,38 @@ TEST_F(ManagerTest, ConnectToBestServices) {
                                 manager()));
 
   EXPECT_CALL(*cell_service.get(), state())
-      .WillRepeatedly(Return(Service::kStateConnected));
+      .WillRepeatedly(Return(Service::kStateIdle));
   EXPECT_CALL(*cell_service.get(), IsConnected())
-      .WillRepeatedly(Return(true));
+      .WillRepeatedly(Return(false));
   EXPECT_CALL(*cell_service.get(), IsVisible())
       .WillRepeatedly(Return(true));
-  wifi_service2->SetAutoConnect(true);
+  cell_service->SetAutoConnect(true);
   cell_service->SetConnectable(true);
   EXPECT_CALL(*cell_service.get(), technology())
       .WillRepeatedly(Return(Technology::kCellular));
+  EXPECT_CALL(*cell_service.get(), explicitly_disconnected())
+      .WillRepeatedly(Return(true));
   manager()->RegisterService(cell_service);
+
+  scoped_refptr<MockService> wimax_service(
+      new NiceMock<MockService>(control_interface(),
+                                dispatcher(),
+                                metrics(),
+                                manager()));
+
+  EXPECT_CALL(*wimax_service.get(), state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  EXPECT_CALL(*wimax_service.get(), IsConnected())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*wimax_service.get(), IsVisible())
+      .WillRepeatedly(Return(true));
+  wimax_service->SetAutoConnect(true);
+  wimax_service->SetConnectable(true);
+  EXPECT_CALL(*wimax_service.get(), technology())
+      .WillRepeatedly(Return(Technology::kWiMax));
+  EXPECT_CALL(*wimax_service.get(), explicitly_disconnected())
+      .WillRepeatedly(Return(false));
+  manager()->RegisterService(wimax_service);
 
   scoped_refptr<MockService> vpn_service(
       new NiceMock<MockService>(control_interface(),
@@ -3530,12 +3558,14 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   manager()->RegisterService(vpn_service);
 
   // The connected services should be at the top.
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cell_service));
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, wimax_service));
 
   EXPECT_CALL(*wifi_service0.get(), Connect(_, _)).Times(0);  // Not visible.
   EXPECT_CALL(*wifi_service1.get(), Connect(_, _));
   EXPECT_CALL(*wifi_service2.get(), Connect(_, _)).Times(0);  // Lower prio.
-  EXPECT_CALL(*cell_service.get(), Connect(_, _)).Times(0);  // Is connected.
+  EXPECT_CALL(*cell_service.get(), Connect(_, _))
+      .Times(0);  // Explicitly disconnected.
+  EXPECT_CALL(*wimax_service.get(), Connect(_, _)).Times(0);  // Is connected.
   EXPECT_CALL(*vpn_service.get(), Connect(_, _)).Times(0);  // Not autoconnect.
 
   manager()->ConnectToBestServices(NULL);
@@ -3544,7 +3574,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   // After this operation, since the Connect calls above are mocked and
   // no actual state changes have occurred, we should expect that the
   // service sorting order will not have changed.
-  EXPECT_TRUE(ServiceOrderIs(wifi_service2, cell_service));
+  EXPECT_TRUE(ServiceOrderIs(wifi_service2, wimax_service));
 }
 
 TEST_F(ManagerTest, VerifyWhenNotConnected) {
