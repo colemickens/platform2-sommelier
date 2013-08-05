@@ -128,6 +128,7 @@ static const Log common_logs[] = {
   { "net-diags.net.log", "/bin/cat /var/log/net-diags.net.log" },
   { "netlog", "/usr/share/userfeedback/scripts/getmsgs --last '2 hours'"
               " /var/log/net.log" },
+  { "platform_info", "/bin/cat /var/log/platform_info.txt" },
   { "power_supply_info", "/usr/bin/power_supply_info" },
   { "powerd.LATEST", "/bin/cat /var/log/power_manager/powerd.LATEST" },
   { "powerd.out", "/bin/cat /var/log/powerd.out" },
