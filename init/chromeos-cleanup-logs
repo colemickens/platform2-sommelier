@@ -132,6 +132,10 @@ metrics_client Platform.DiskUsageChronos \
 # Report overall stateful usage.
 metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
 
+NUMBER_OF_USERS=$(ls /home/user/ | wc -l)
+metrics_client -t Platform.DiskUsage.NumUserHomeDirectories \
+               $NUMBER_OF_USERS 1 50 50
+
 # Report additional metrics if we are low on free space.
 if [ "$(get_stateful_free_space_blocks)" -le \
      "$ADDITIONAL_REPORTING_THRESHOLD_BLOCKS" ] ; then
