@@ -105,6 +105,15 @@ class ShillProxy(object):
     UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 
 
+    @staticmethod
+    def str2dbus(dbus_class, value):
+        """Typecast string property values to dbus types"""
+        if isinstance(dbus_class, dbus.Boolean):
+            return dbus_class(value.lower() in ('true','1'))
+        else:
+            return dbus_class(value)
+
+
     @classmethod
     def dbus2primitive(cls, value):
         """Typecast values from dbus types to python types."""
@@ -112,7 +121,11 @@ class ShillProxy(object):
             return bool(value)
         elif isinstance(value, int):
             return int(value)
+        elif isinstance(value, dbus.UInt16):
+            return long(value)
         elif isinstance(value, dbus.UInt32):
+            return long(value)
+        elif isinstance(value, dbus.UInt64):
             return long(value)
         elif isinstance(value, float):
             return float(value)
@@ -131,6 +144,41 @@ class ShillProxy(object):
             logging.error('Failed to convert dbus object of class: %r',
                           value.__class__.__name__)
             return value
+
+
+    @staticmethod
+    def get_dbus_property(interface, property_key):
+        """get property on a dbus Interface
+
+        @param interface dbus Interface to receive new setting
+        @param property_key string name of property on interface
+        @return python typed object representing property value or None
+
+        """
+        properties = interface.GetProperties(utf8_strings=True)
+        if property_key in properties:
+            return ShillProxy.dbus2primitive(properties[property_key])
+        else:
+            return None
+
+
+    @staticmethod
+    def set_dbus_property(interface, property_key, value):
+        """set property on a dbus Interface
+
+        @param interface dbus Interface to receive new setting
+        @param property_key string name of property on interface
+        @param value string value to set for property on interface from string
+
+        """
+        properties = interface.GetProperties(utf8_strings=True)
+        if property_key not in properties:
+            raise ShillProxyError('No property %s found in %s' %
+                    (property_key, interface.object_path))
+        else:
+            dbus_class = properties[property_key].__class__
+            interface.SetProperty(property_key,
+                    ShillProxy.str2dbus(dbus_class, value))
 
 
     @classmethod
@@ -152,6 +200,7 @@ class ShillProxy(object):
             A value <= 0 will cause the method to return immediately,
             without trying to connect.
         @return a ShillProxy instance if we connected, or None otherwise
+
         """
         end_time = time.time() + timeout_seconds
         connection = None
@@ -281,7 +330,15 @@ class ShillProxy(object):
                 type_str)
 
 
+    def get_devices(self):
+        """Return the list of devices as dbus Interface objects"""
+        properties = self.manager.GetProperties(utf8_strings=True)
+        return [self.get_dbus_object(self.DBUS_TYPE_DEVICE, path)
+                for path in properties[self.MANAGER_PROPERTY_DEVICES]]
+
+
     def get_profiles(self):
+        """Return the list of profiles as dbus Interface objects"""
         properties = self.manager.GetProperties(utf8_strings=True)
         return [self.get_dbus_object(self.DBUS_TYPE_PROFILE, path)
                 for path in properties[self.MANAGER_PROPERTY_PROFILES]]
