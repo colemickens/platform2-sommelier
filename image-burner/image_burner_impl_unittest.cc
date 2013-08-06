@@ -17,16 +17,16 @@ using ::testing::AtMost;
 using ::testing::StrEq;
 
 const int kTestDataBlockSize = 8;
-char kDataBlockLength8[9] = "12345678";
-char kDataBlockLength3[4] = "abc";
-char kDataBlockLength1[2] = "@";
+const char kDataBlockLength8[] = {'1', '2', '3', '4', '5', '6', '7', 0};
+const char kDataBlockLength3[] = {'a', 'b', 0};
+const char kDataBlockLength1[] = {0};
 
 ACTION_P(SetArgPointee, value) {
   *arg0 = value;
 }
 
 ACTION_P(SetArgCharString, value) {
-  strcpy(arg0, value);
+  strncpy(arg0, value, arg1);
 }
 
 class ImageBurnerImplTest : public ::testing::Test {

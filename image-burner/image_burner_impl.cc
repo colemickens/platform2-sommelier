@@ -117,7 +117,7 @@ bool BurnerImpl::DoBurn(const char* from_path, const char* to_path,
   }
 
   if (success) {
-    scoped_ptr<char[]> buffer(new char[data_block_size_]);
+    scoped_array<char> buffer(new char[data_block_size_]);
 
     int64 total_burnt = 0;
     int64 image_size = reader_->GetSize();
