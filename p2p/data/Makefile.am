@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 upstartjobdir       = $(sysconfdir)/init
-upstartjob_DATA     = p2p.conf p2p-auto.conf
+upstartjob_DATA     = p2p.conf
 
 clean-local :
 	rm -f *~
