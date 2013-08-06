@@ -238,75 +238,6 @@ else
   ROOT="$(mktemp -d)"
 fi
 
-# Load the GPT helper functions and the image settings.
-. "${ROOT}/usr/sbin/write_gpt.sh"
-load_base_vars
-
-# Find our destination device.  If the user hasn't selected one, and the
-# disk layout doesn't declare it for us, do some historical autoprobing.
-: ${FLAGS_dst:=${DEFAULT_ROOTDEV}}
-if [ -z "$FLAGS_dst" ]; then
-  if [ "$ARCH" = "INTEL" ]; then
-    # This finds the first ATA device listed by parted.
-    SD_INFO=$(parted -l -s -m 2> /dev/null)
-    DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ ")
-    if [ -z "$DST" ]; then
-      # As a backup, install to /dev/sda
-      DST=/dev/sda
-    fi
-  else
-    DST=/dev/mmcblk0
-  fi
-else
-  DST="$FLAGS_dst"
-fi
-if [ "${DST}" = "/dev/ubi" ]; then
-  FLAGS_mtd_layout=${FLAGS_TRUE}
-fi
-
-# Check out the dst device.
-if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
-  FLAGS_skip_dst_removable=${FLAGS_TRUE}
-elif [ ! -b "${DST}" ]; then
-  echo "Error: Unable to find destination block device: ${DST}"
-  exit 1
-fi
-
-check_removable() {
-  if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
-    return
-  fi
-
-  local removable
-
-  if ! removable=$(cat /sys/block/${DST#/dev/}/removable); then
-    echo "Error: Invalid destination device (must be whole device): ${DST}"
-    exit 1
-  fi
-
-  if [ "${removable}" != "0" ]; then
-    echo "Error: Attempt to install to a removeable device: $DST"
-    exit 1
-  fi
-}
-check_removable
-
-if [ "$DST" = "$SRC" ]; then
-  echo "Error: src and dst the same: $SRC = $DST"
-  exit 1
-fi
-
-# Ask for root password to be sure.
-echo "This will install from '$SRC' to '$DST'."
-echo "This will erase all data at this destination: $DST"
-if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
-  read -p "Are you sure (y/N)? " SURE
-  if [ "$SURE" != "y" ]; then
-    echo "Ok, better safe than sorry; you answered '$SURE'."
-    exit 1
-  fi
-fi
-
 ##############################################################################
 # Helpful constants and functions.
 
@@ -512,6 +443,75 @@ else
 
   tracked_mount -o ro "$ROOTFS_IMG_LOOP" "$ROOT"
   tracked_mount -o ro "$STATEFUL_IMG_LOOP" "$ROOT"/mnt/stateful_partition
+fi
+
+# Load the GPT helper functions and the image settings.
+. "${ROOT}/usr/sbin/write_gpt.sh"
+load_base_vars
+
+# Find our destination device.  If the user hasn't selected one, and the
+# disk layout doesn't declare it for us, do some historical autoprobing.
+: ${FLAGS_dst:=${DEFAULT_ROOTDEV}}
+if [ -z "$FLAGS_dst" ]; then
+  if [ "$ARCH" = "INTEL" ]; then
+    # This finds the first ATA device listed by parted.
+    SD_INFO=$(parted -l -s -m 2> /dev/null)
+    DST=$(expr "${SD_INFO}" : ".*\(/dev/sd[^:]*\)[^;]*:ATA\ ")
+    if [ -z "$DST" ]; then
+      # As a backup, install to /dev/sda
+      DST=/dev/sda
+    fi
+  else
+    DST=/dev/mmcblk0
+  fi
+else
+  DST="$FLAGS_dst"
+fi
+if [ "${DST}" = "/dev/ubi" ]; then
+  FLAGS_mtd_layout=${FLAGS_TRUE}
+fi
+
+# Check out the dst device.
+if [ ${FLAGS_mtd_layout} -eq ${FLAGS_TRUE} ]; then
+  FLAGS_skip_dst_removable=${FLAGS_TRUE}
+elif [ ! -b "${DST}" ]; then
+  echo "Error: Unable to find destination block device: ${DST}"
+  exit 1
+fi
+
+check_removable() {
+  if [ ${FLAGS_skip_dst_removable} -eq ${FLAGS_TRUE} ]; then
+    return
+  fi
+
+  local removable
+
+  if ! removable=$(cat /sys/block/${DST#/dev/}/removable); then
+    echo "Error: Invalid destination device (must be whole device): ${DST}"
+    exit 1
+  fi
+
+  if [ "${removable}" != "0" ]; then
+    echo "Error: Attempt to install to a removeable device: $DST"
+    exit 1
+  fi
+}
+check_removable
+
+if [ "$DST" = "$SRC" ]; then
+  echo "Error: src and dst the same: $SRC = $DST"
+  exit 1
+fi
+
+# Ask for root password to be sure.
+echo "This will install from '$SRC' to '$DST'."
+echo "This will erase all data at this destination: $DST"
+if [ "${FLAGS_yes}" -eq "$FLAGS_FALSE" ]; then
+  read -p "Are you sure (y/N)? " SURE
+  if [ "$SURE" != "y" ]; then
+    echo "Ok, better safe than sorry; you answered '$SURE'."
+    exit 1
+  fi
 fi
 
 if [ -n "${FLAGS_pmbr_code}" ]; then
