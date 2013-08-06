@@ -7,6 +7,8 @@
 #endif
 
 #include "common/clock.h"
+#include "common/server_message.h"
+#include "common/struct_serializer.h"
 #include "http_server/server.h"
 #include "http_server/connection_delegate.h"
 
@@ -36,6 +38,9 @@
 using std::string;
 
 using base::FilePath;
+
+using p2p::util::P2PServerMessage;
+using p2p::util::P2PServerMessageType;
 
 namespace p2p {
 
@@ -168,7 +173,7 @@ bool Server::Start() {
   listen_source_id_ = g_io_add_watch(
       io_channel,
       static_cast<GIOCondition>(G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP),
-      static_cast<GIOFunc>(OnIOChannelActivity),
+      OnIOChannelActivity,
       this);
   CHECK(listen_source_id_ != 0);
   g_io_channel_unref(io_channel);
@@ -249,12 +254,24 @@ static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {
   return ret;
 }
 
+void Server::ReportServerMessage(P2PServerMessageType msg_type, int64_t value) {
+  P2PServerMessage msg = (P2PServerMessage) {
+    .magic = p2p::util::kP2PServerMagic,
+    .message_type = msg_type,
+    .value = value
+  };
+  LOG(INFO) << "Sending message " << ToString(msg);
+  lock_.Acquire();
+  p2p::util::StructSerializerWrite<P2PServerMessage>(STDOUT_FILENO, msg);
+  lock_.Release();
+}
+
 void Server::UpdateNumConnections(int delta_num_connections) {
   lock_.Acquire();
   num_connections_ += delta_num_connections;
-  fprintf(stdout, "num-connections: %d\n", num_connections_);
-  fflush(stdout);
+  int num_connections = num_connections_;
   lock_.Release();
+  ReportServerMessage(p2p::util::kP2PServerNumConnections, num_connections);
 }
 
 void Server::ConnectionTerminated(ConnectionDelegate* delegate) {
@@ -283,6 +300,11 @@ gboolean Server::OnIOChannelActivity(GIOChannel* source,
                                server,
                                server->max_download_rate_);
     server->UpdateNumConnections(1);
+
+    // Report P2P.Server.ClientCount every time a client connects.
+    server->ReportServerMessage(p2p::util::kP2PServerClientCount,
+                                server->num_connections_);
+
     server->thread_pool_.AddWork(delegate);
   }
 

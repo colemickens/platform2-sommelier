@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "common/server_message.h"
 #include "common/testutil.h"
 #include "server/http_server.h"
 
@@ -17,6 +18,7 @@
 #include <base/bind.h>
 #include <base/threading/simple_thread.h>
 #include <base/stringprintf.h>
+#include <metrics/metrics_library_mock.h>
 
 using testing::_;
 using testing::StrictMock;
@@ -97,14 +99,37 @@ class ClientThread : public base::SimpleThread {
 
 TEST(HttpServer, Basic) {
   FilePath testdir = SetupTestDir("http-server");
+  StrictMock<MetricsLibraryMock> metrics_lib;
 
   // Forces HttpServer to run p2p-http-server from the build
   // directory
   setenv("RUN_UNINSTALLED", "1", 1);
 
-  HttpServer* server = HttpServer::Construct(testdir, 16725);
+  HttpServer* server = HttpServer::Construct(&metrics_lib, testdir, 16725);
   server->Start();
   StrictMock<MockHttpServerListener> listener(server);
+
+  // Set the metric expectations.
+  EXPECT_CALL(metrics_lib, SendEnumToUMA(
+      "P2P.Server.RequestResult",
+      p2p::util::kP2PRequestResultResponseSent,
+      p2p::util::kNumP2PServerRequestResults))
+      .Times(kMultipleTestNumFiles);
+
+  // The server file has 2000 bytes, so is reported as 0 MB.
+  EXPECT_CALL(metrics_lib, SendToUMA(
+      "P2P.Server.ContentServedSuccessfullyMB", 0, _, _, _))
+      .Times(kMultipleTestNumFiles);
+
+  EXPECT_CALL(metrics_lib, SendToUMA(
+      "P2P.Server.RangeBeginPercentage", 0, _, _, _))
+      .Times(kMultipleTestNumFiles);
+
+  // We cant ensure that the reported download speed here is correct, but
+  // at least a download speed has to be reported.
+  EXPECT_CALL(metrics_lib, SendToUMA(
+      "P2P.Server.DownloadSpeedKBps", _, _, _, _))
+      .Times(kMultipleTestNumFiles);
 
   // Now set the expectations for the number of connections. We'll
   // climb all the way up to N and then go back to 0. So we'll
@@ -127,6 +152,8 @@ TEST(HttpServer, Basic) {
     if (n == 0 || n == kMultipleTestNumFiles)
       times = 1;
     EXPECT_CALL(listener, NumConnectionsCallback(n)).Times(times);
+    if (n > 0)
+      EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.ClientCount", n, _, _, _));
   }
 
   // Create a 1000 byte file (with random content) with an EAs

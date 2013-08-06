@@ -10,6 +10,7 @@
 #include <base/basictypes.h>
 #include <base/callback.h>
 #include <base/file_path.h>
+#include <metrics/metrics_library.h>
 
 namespace p2p {
 
@@ -42,7 +43,9 @@ class HttpServer {
   // serving files from |root_dir| on the TCP port given by |port|.
   // Note that the server will not initially be running; use the
   // Start() method to start it.
-  static HttpServer* Construct(const base::FilePath& root_dir, uint16 port);
+  static HttpServer* Construct(MetricsLibraryInterface* metrics_lib,
+                               const base::FilePath& root_dir,
+                               uint16 port);
 };
 
 }  // namespace server

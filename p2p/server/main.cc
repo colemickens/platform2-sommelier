@@ -27,6 +27,7 @@
 #include <base/command_line.h>
 #include <base/logging.h>
 #include <base/bind.h>
+#include <metrics/metrics_library.h>
 
 using std::ostream;
 using std::cout;
@@ -94,14 +95,17 @@ int main(int argc, char* argv[]) {
       exit(1);
     }
   }
+  MetricsLibrary metrics_lib;
+  metrics_lib.Init();
+
   p2p::server::HttpServer* http_server =
-      p2p::server::HttpServer::Construct(path, http_port);
+      p2p::server::HttpServer::Construct(&metrics_lib, path, http_port);
 
   p2p::server::ServicePublisher* service_publisher =
       p2p::server::ServicePublisher::Construct(http_port);
 
   p2p::server::PeerUpdateManager manager(
-      file_watcher, service_publisher, http_server);
+      file_watcher, service_publisher, http_server, &metrics_lib);
   manager.Init();
 
   loop = g_main_loop_new(NULL, FALSE);

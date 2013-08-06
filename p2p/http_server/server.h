@@ -5,6 +5,8 @@
 #ifndef P2P_HTTP_SERVER_SERVER_H__
 #define P2P_HTTP_SERVER_SERVER_H__
 
+#include "common/server_message.h"
+
 #include <string>
 #include <map>
 
@@ -57,6 +59,12 @@ class Server {
 
   // Method called in by |delegate|, in its own thread.
   void ConnectionTerminated(ConnectionDelegate* delegate);
+
+  // Sends a P2PServerMessage to the stdout. This is used to report various
+  // metrics and to report the number of current connections. This method is
+  // thread safe and is intended to be use by the ConnectionDelegates.
+  void ReportServerMessage(p2p::util::P2PServerMessageType msg_type,
+                           int64_t value);
 
  private:
   // Callback used clients connect to our listening socket.

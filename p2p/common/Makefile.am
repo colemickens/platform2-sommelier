@@ -16,16 +16,18 @@ noinst_LTLIBRARIES = libp2p-util.la
 # ------------------------------------------------------------------------
 
 libp2p_util_la_SOURCES =				\
-	util.h			util.cc			\
 	clock_interface.h				\
 	clock.h			clock.cc		\
 	constants.h					\
-	fake_clock.h					\
+	server_message.h	server_message.cc	\
+	struct_serializer.h				\
+	util.h			util.cc			\
 	$(NULL)
 
 libp2p_util_la_CXXFLAGS = 				\
 	$(LIBCHROME_CFLAGS)				\
 	$(GLIB_CFLAGS)					\
+	-D__STDC_FORMAT_MACROS=1			\
 	$(NULL)
 
 libp2p_util_la_LIBADD = 				\
@@ -39,12 +41,15 @@ if ENABLE_TESTS
 noinst_LTLIBRARIES += libp2p-testutil.la
 
 libp2p_testutil_la_SOURCES =				\
+	constants.h					\
+	fake_clock.h					\
 	testutil.h		testutil.cc		\
 	$(NULL)
 
 libp2p_testutil_la_CXXFLAGS = 				\
 	$(LIBCHROME_CFLAGS)				\
 	$(GLIB_CFLAGS)					\
+	-D__STDC_FORMAT_MACROS=1			\
 	$(NULL)
 
 endif # ENABLE_TESTS
@@ -58,12 +63,15 @@ TESTS = libp2p-unittests
 
 libp2p_unittests_SOURCES = 				\
 	testrunner.cc					\
+	server_message_unittest.cc			\
+	struct_serializer_unittest.cc			\
 	testutil_unittest.cc				\
 	$(NULL)
 
 libp2p_unittests_CXXFLAGS = 				\
 	$(LIBCHROME_CFLAGS)				\
 	$(GLIB_CFLAGS)					\
+	-D__STDC_FORMAT_MACROS=1			\
 	$(NULL)
 
 libp2p_unittests_LDADD = 				\
@@ -71,6 +79,7 @@ libp2p_unittests_LDADD = 				\
 	$(GLIB_LIBS)					\
 	-lgtest -lgtest_main -lgmock			\
 	-lgmock						\
+	libp2p-util.la					\
 	libp2p-testutil.la				\
 	$(NULL)
 
@@ -78,4 +87,3 @@ endif # ENABLE_TESTS
 
 clean-local :
 	rm -rf *~
-

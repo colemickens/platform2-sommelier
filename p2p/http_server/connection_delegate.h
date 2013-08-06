@@ -60,14 +60,17 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
   //  \r\n
   //
   // where \r\n is represents the two byte sequence 0x0d 0x0a.
-  void ParseHttpRequest();
+  // Returns the result of the served request.
+  p2p::util::P2PServerRequestResult ParseHttpRequest();
 
   // Handles a HTTP request - called by ParseHttpRequest() if the data
   // read from the other peer is a valid HTTP 1.1 request.
-  void ServiceHttpRequest(const std::string& method,
-                          const std::string& uri,
-                          const std::string& http_version,
-                          const std::map<std::string, std::string>& headers);
+  // Returns the result of the served request.
+  p2p::util::P2PServerRequestResult ServiceHttpRequest(
+      const std::string& method,
+      const std::string& uri,
+      const std::string& http_version,
+      const std::map<std::string, std::string>& headers);
 
   // Sends |num_bytes_to_send_bytes| from the file represented by the
   // file descriptor |file_fd|. Returns false if an error occurs while
@@ -86,6 +89,9 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
   // sending each chunk, if necessary. See the |max_download_rate_|
   // instance variable.
   bool SendFile(int file_fd, size_t num_bytes_to_send);
+
+  // Sends the metrics associated with the last SendFile() call.
+  void ReportSendFileMetrics(bool send_file_result);
 
   // Sends a HTTP response.
   bool SendResponse(int http_response_code,
@@ -123,6 +129,14 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
   // is no limit.
   int64_t max_download_rate_;
 
+  // The total number of bytes sent by this connection delegate. Used to
+  // report metrics.
+  size_t total_bytes_sent_;
+
+  // The total time spent to send |total_bytes_send_| during the last
+  // call to SendFile(). Used to report metrics.
+  base::TimeDelta total_time_spent_;
+
   // Maximum number of headers support in HTTP request.
   static const unsigned int kMaxHeaders = 100;
 
@@ -134,11 +148,11 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
 
   // Number of bytes to read/send at once.
   //
-  // TODO(zeuthen): verify this is a good buffer size e.g. that it's a
-  //                good tradeoff between wakeups and smooth streaming.
-  //                Many factors to consider here. This is tracked in
+  // TODO(zeuthen): Verify this is a good buffer size e.g. that it's a
+  // good tradeoff between wakeups and smooth streaming. Many factors to
+  // consider here. This is tracked in
   //
-  //                https://code.google.com/p/chromium/issues/detail?id=246325
+  // https://code.google.com/p/chromium/issues/detail?id=246325
   static const unsigned int kPayloadBufferSize = 1048576;
 
   DISALLOW_COPY_AND_ASSIGN(ConnectionDelegate);

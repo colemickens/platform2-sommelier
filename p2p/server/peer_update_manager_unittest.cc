@@ -20,6 +20,7 @@
 
 #include <base/logging.h>
 #include <base/bind.h>
+#include <metrics/metrics_library_mock.h>
 
 using testing::_;
 using testing::AtLeast;
@@ -43,12 +44,13 @@ TEST(PeerUpdateManager, NoFilesPresent) {
 
   StrictMock<MockHttpServer> server;
   StrictMock<MockServicePublisher> publisher;
+  StrictMock<MetricsLibraryMock> metrics_lib;
 
   EXPECT_CALL(server, SetNumConnectionsCallback(_)).Times(1);
   EXPECT_CALL(publisher, files()).Times(AtLeast(0));
 
   FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server);
+  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
   RunGMainLoop(2000);
@@ -64,6 +66,7 @@ TEST(PeerUpdateManager, FilesPresent) {
 
   StrictMock<MockHttpServer> server;
   StrictMock<MockServicePublisher> publisher;
+  StrictMock<MetricsLibraryMock> metrics_lib;
 
   ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
   ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
@@ -80,7 +83,7 @@ TEST(PeerUpdateManager, FilesPresent) {
   EXPECT_CALL(server, Start()).Times((1));
 
   FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server);
+  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
   RunGMainLoop(2000);
@@ -96,6 +99,7 @@ TEST(PeerUpdateManager, RemoveFile) {
 
   StrictMock<MockHttpServer> server;
   StrictMock<MockServicePublisher> publisher;
+  StrictMock<MetricsLibraryMock> metrics_lib;
 
   ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
   ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
@@ -113,9 +117,10 @@ TEST(PeerUpdateManager, RemoveFile) {
   EXPECT_CALL(server, Start()).Times((1));
 
   FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server);
+  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
+  EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.FileCount", 2, _, _, _));
   ExpectCommand(0, "rm -f %s", testdir.Append("c.p2p").value().c_str());
 
   RunGMainLoop(2000);
@@ -131,6 +136,7 @@ TEST(PeerUpdateManager, RemoveLastFile) {
 
   StrictMock<MockHttpServer> server;
   StrictMock<MockServicePublisher> publisher;
+  StrictMock<MetricsLibraryMock> metrics_lib;
 
   ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
   ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
@@ -148,8 +154,11 @@ TEST(PeerUpdateManager, RemoveLastFile) {
   EXPECT_CALL(server, Stop()).Times((1));
 
   FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server);
+  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
   manager.Init();
+
+  EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.FileCount", 1, _, _, _));
+  EXPECT_CALL(metrics_lib, SendToUMA("P2P.Server.FileCount", 0, _, _, _));
 
   ExpectCommand(0, "rm -f %s", testdir.Append("a.p2p").value().c_str());
   ExpectCommand(0, "rm -f %s", testdir.Append("b.p2p").value().c_str());
@@ -166,6 +175,7 @@ TEST(PeerUpdateManager, HttpNumConnections) {
 
   StrictMock<MockHttpServer> server;
   StrictMock<MockServicePublisher> publisher;
+  StrictMock<MetricsLibraryMock> metrics_lib;
 
   ExpectCommand(0, "touch %s", testdir.Append("a.p2p").value().c_str());
   ExpectCommand(0, "touch %s", testdir.Append("b.p2p").value().c_str());
@@ -187,7 +197,7 @@ TEST(PeerUpdateManager, HttpNumConnections) {
   EXPECT_CALL(publisher, SetNumConnections(0)).Times(1);
 
   FileWatcher* watcher = FileWatcher::Construct(testdir, ".p2p");
-  PeerUpdateManager manager(watcher, &publisher, &server);
+  PeerUpdateManager manager(watcher, &publisher, &server, &metrics_lib);
   manager.Init();
 
   server.fake().SetNumConnections(1);

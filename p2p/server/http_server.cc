@@ -7,6 +7,8 @@
 #endif
 
 #include "common/constants.h"
+#include "common/server_message.h"
+#include "common/struct_serializer.h"
 #include "server/http_server.h"
 
 #include <sys/types.h>
@@ -15,11 +17,16 @@
 #include <glib.h>
 
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 
 using std::string;
 using std::vector;
 
 using base::FilePath;
+
+using p2p::util::P2PServerMessage;
+using p2p::util::P2PServerMessageType;
+using p2p::util::StructSerializerWatcher;
 
 namespace p2p {
 
@@ -27,7 +34,9 @@ namespace server {
 
 class HttpServerExternalProcess : public HttpServer {
  public:
-  HttpServerExternalProcess(const FilePath& root_dir, uint16_t port);
+  HttpServerExternalProcess(MetricsLibraryInterface* metrics_lib,
+                            const FilePath& root_dir,
+                            uint16_t port);
   ~HttpServerExternalProcess();
 
   virtual bool Start();
@@ -46,9 +55,11 @@ class HttpServerExternalProcess : public HttpServer {
   // Used for waking up and processing stdout from the child process.
   // If the output matches lines of the form "num-connections: %d",
   // calls UpdateNumConnections() with the parsed integer.
-  static gboolean OnIOChannelActivity(GIOChannel* source,
-                                      GIOCondition condition,
-                                      gpointer user_data);
+
+  static void OnMessageReceived(const P2PServerMessage& msg, void* user_data);
+
+  // The metrics library object to report metrics to.
+  MetricsLibraryInterface* metrics_lib_;
 
   // The path to serve files from.
   FilePath root_dir_;
@@ -63,13 +74,18 @@ class HttpServerExternalProcess : public HttpServer {
   guint child_stdout_channel_source_id_;
   NumConnectionsCallback num_connections_callback_;
 
+  // A message watch for child P2PServerMessages.
+  scoped_ptr<StructSerializerWatcher<P2PServerMessage>> child_watch_;
+
   DISALLOW_COPY_AND_ASSIGN(HttpServerExternalProcess);
 };
 
 HttpServerExternalProcess::HttpServerExternalProcess(
+    MetricsLibraryInterface* metrics_lib,
     const FilePath& root_dir,
     uint16_t port)
-    : root_dir_(root_dir),
+    : metrics_lib_(metrics_lib),
+      root_dir_(root_dir),
       port_(port),
       num_connections_(0),
       pid_(0),
@@ -129,46 +145,104 @@ bool HttpServerExternalProcess::Start() {
     return false;
   }
 
-  GIOChannel* io_channel = g_io_channel_unix_new(child_stdout_fd_);
-  child_stdout_channel_source_id_ = g_io_add_watch(
-      io_channel,
-      static_cast<GIOCondition>(G_IO_IN | G_IO_PRI | G_IO_ERR | G_IO_HUP),
-      static_cast<GIOFunc>(OnIOChannelActivity),
-      this);
-  CHECK(child_stdout_channel_source_id_ != 0);
-  g_io_channel_unref(io_channel);
+  // Setup the watch class for child messages.
+  child_watch_.reset(new StructSerializerWatcher<P2PServerMessage>(
+      child_stdout_fd_, OnMessageReceived, reinterpret_cast<void*>(this)));
 
   return true;
 }
 
-gboolean HttpServerExternalProcess::OnIOChannelActivity(GIOChannel* source,
-                                                        GIOCondition condition,
-                                                        gpointer user_data) {
+void HttpServerExternalProcess::OnMessageReceived(const P2PServerMessage& msg,
+                                                  void* user_data) {
   HttpServerExternalProcess* server =
       reinterpret_cast<HttpServerExternalProcess*>(user_data);
-  gchar* str = NULL;
+  P2PServerMessageType message_type;
+  string metric;
 
-  GError* error = NULL;
-  if (g_io_channel_read_line(source,
-                             &str,
-                             NULL,  // len
-                             NULL,  // line_terminator
-                             &error) !=
-      G_IO_STATUS_NORMAL) {
-    LOG(ERROR) << "Error reading from pipe: " << error->message;
-    g_error_free(error);
-    return TRUE;  // keep source around
+  if (!p2p::util::ValidP2PServerMessageMagic(msg) ||
+      !p2p::util::ParseP2PServerMessageType(msg.message_type, &message_type)) {
+    LOG(ERROR) << "Received invalid message: " << p2p::util::ToString(msg);
+    LOG(ERROR) << "Attempting to restarting P2P service.";
+    // Stop the child and abort ourselves.
+    server->Stop();
+    exit(1);
+
+    // Just in case exit(2) returns.
+    return;
   }
 
-  int value = 0;
-  if (sscanf(str, "num-connections: %d\n", &value) == 1) {
-    server->UpdateNumConnections(value);
-  } else {
-    LOG(ERROR) << "Unrecognized status message `" << str << "'";
-  }
-  g_free(str);
+  switch (message_type) {
+    case p2p::util::kP2PServerNumConnections:
+      if (msg.value >= 0)
+        server->UpdateNumConnections(msg.value);
+      break;
 
-  return TRUE;  // keep source around
+    case p2p::util::kP2PServerRequestResult:
+      metric = "P2P.Server.RequestResult";
+      p2p::util::P2PServerRequestResult req_res;
+      if (p2p::util::ParseP2PServerRequestResult(msg.value, &req_res)) {
+        LOG(INFO) << "Uploading " << ToString(req_res)
+                  << " for metric " <<  metric;
+        server->metrics_lib_->SendEnumToUMA(metric,
+                                   req_res,
+                                   p2p::util::kNumP2PServerRequestResults);
+      } else {
+        LOG(ERROR) << "Received invalid message: " << p2p::util::ToString(msg);
+      }
+      break;
+
+    case p2p::util::kP2PServerServedSuccessfullyMB:
+      metric = "P2P.Server.ContentServedSuccessfullyMB";
+      LOG(INFO) << "Uploading " << msg.value
+                << " (count) for metric " <<  metric;
+      server->metrics_lib_->SendToUMA(
+          metric, msg.value, 0 /* min */, 1000 /* max */, 50);
+      break;
+
+    case p2p::util::kP2PServerServedInterruptedMB:
+      metric = "P2P.Server.ContentServedInterruptedMB";
+      LOG(INFO) << "Uploading " << msg.value
+                << " (count) for metric " <<  metric;
+      server->metrics_lib_->SendToUMA(
+          metric, msg.value, 0 /* min */, 1000 /* max */, 50);
+      break;
+
+    case p2p::util::kP2PServerRangeBeginPercentage:
+      metric = "P2P.Server.RangeBeginPercentage";
+      LOG(INFO) << "Uploading " << msg.value
+                << " (count) for metric " <<  metric;
+      server->metrics_lib_->SendToUMA(
+          metric, msg.value, 0 /* min */, 100 /* max */, 100);
+      break;
+
+    case p2p::util::kP2PServerDownloadSpeedKBps:
+      metric = "P2P.Server.DownloadSpeedKBps";
+      LOG(INFO) << "Uploading " << msg.value
+                << " (count) for metric " <<  metric;
+      server->metrics_lib_->SendToUMA(
+          metric, msg.value, 0 /* min */, 10000 /* max */, 100);
+      break;
+
+    case p2p::util::kP2PServerPeakDownloadSpeedKBps:
+      metric = "P2P.Server.PeakDownloadSpeedKBps";
+      LOG(INFO) << "Uploading " << msg.value
+                << " (count) for metric " <<  metric;
+      server->metrics_lib_->SendToUMA(
+          metric, msg.value, 0 /* min */, 10000 /* max */, 100);
+      break;
+
+    case p2p::util::kP2PServerClientCount:
+      metric = "P2P.Server.ClientCount";
+      LOG(INFO) << "Uploading " << msg.value
+                << " (count) for metric " <<  metric;
+      server->metrics_lib_->SendToUMA(
+          metric, msg.value, 0 /* min */, 50 /* max */, 50);
+      break;
+
+    // ParseP2PServerMessageType ensures this case is not reached.
+    case p2p::util::kNumP2PServerMessageTypes:
+      NOTREACHED();
+  }
 }
 
 void HttpServerExternalProcess::UpdateNumConnections(int num_connections) {
@@ -214,9 +288,10 @@ void HttpServerExternalProcess::SetNumConnectionsCallback(
 
 // ----------------------------------------------------------------------------
 
-HttpServer* HttpServer::Construct(const FilePath& root_dir,
+HttpServer* HttpServer::Construct(MetricsLibraryInterface* metrics_lib,
+                                  const FilePath& root_dir,
                                   uint16_t port) {
-  return new HttpServerExternalProcess(root_dir, port);
+  return new HttpServerExternalProcess(metrics_lib, root_dir, port);
 }
 
 }  // namespace server

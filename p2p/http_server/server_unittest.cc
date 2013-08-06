@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "common/constants.h"
 #include "common/util.h"
 #include "common/testutil.h"
 #include "http_server/server.h"
@@ -40,6 +41,7 @@ using base::FilePath;
 using base::Time;
 using base::TimeDelta;
 
+using p2p::constants::kBytesPerMB;
 using p2p::testutil::SetupTestDir;
 using p2p::testutil::TeardownTestDir;
 using p2p::testutil::ExpectCommand;
@@ -363,10 +365,6 @@ TEST(P2PHttpServer, Multiple) {
 }
 
 // ------------------------------------------------------------------------
-
-// NOTE: this is not kB in a MB, it's bytes in a MB. The k is for
-// constant, not kilo!
-static const int64_t kBytesPerMB = 1000000;
 
 class LimitDownloadSpeedThread : public base::SimpleThread {
  public:

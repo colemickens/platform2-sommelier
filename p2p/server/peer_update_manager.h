@@ -25,7 +25,8 @@ class PeerUpdateManager {
   // before calling any other method.
   PeerUpdateManager(FileWatcher* watcher,
                     ServicePublisher* publisher,
-                    HttpServer* http_server);
+                    HttpServer* http_server,
+                    MetricsLibraryInterface* metrics_lib);
 
   ~PeerUpdateManager();
 
@@ -42,6 +43,10 @@ class PeerUpdateManager {
 
   void OnHttpServerNumConnectionsChanged(int num_connections);
 
+  // Sends a metric with the FileCount if that value was changed since the last
+  // time this method was called.
+  void UpdateFileCountMetric();
+
   void UpdateHttpServer();
 
   void UpdateNumConnections(int num_connections);
@@ -49,7 +54,12 @@ class PeerUpdateManager {
   FileWatcher* file_watcher_;
   ServicePublisher* publisher_;
   HttpServer* http_server_;
+  MetricsLibraryInterface* metrics_lib_;
   int num_connections_;
+
+  // A copy of publisher_->files().size() the last time it was reported
+  // to libmetrics.
+  int last_num_files_;
 
   DISALLOW_COPY_AND_ASSIGN(PeerUpdateManager);
 };

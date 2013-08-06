@@ -34,6 +34,10 @@ constexpr uint16 kHttpServerDefaultPort = 16725;
 // The path of the directory for peer to peer content.
 constexpr char kP2PDir[] = "/var/cache/p2p";
 
+// Universal constants used for unit conversion.
+constexpr int64_t kBytesPerKB = 1000;
+constexpr int64_t kBytesPerMB = 1000000;
+
 }  // namespace constants
 
 }  // namespace p2p

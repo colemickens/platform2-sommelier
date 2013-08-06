@@ -6,6 +6,8 @@
 #include "config.h"
 #endif
 
+#include "common/constants.h"
+#include "common/server_message.h"
 #include "common/util.h"
 #include "http_server/connection_delegate.h"
 #include "http_server/server.h"
@@ -40,7 +42,11 @@ using std::vector;
 using base::Time;
 using base::TimeDelta;
 
+using p2p::constants::kBytesPerKB;
+using p2p::constants::kBytesPerMB;
 using p2p::common::ClockInterface;
+using p2p::util::P2PServerMessageType;
+using p2p::util::P2PServerRequestResult;
 
 namespace p2p {
 
@@ -56,7 +62,8 @@ ConnectionDelegate::ConnectionDelegate(int dirfd,
       fd_(fd),
       pretty_addr_(pretty_addr),
       server_(server),
-      max_download_rate_(max_download_rate) {
+      max_download_rate_(max_download_rate),
+      total_bytes_sent_(0) {
   CHECK(fd_ != -1);
   CHECK(server_ != NULL);
 }
@@ -112,7 +119,7 @@ static bool TrimCRLF(string* str) {
   return true;
 }
 
-void ConnectionDelegate::ParseHttpRequest() {
+P2PServerRequestResult ConnectionDelegate::ParseHttpRequest() {
   string request_line;
   map<string, string> headers;
   size_t sp1_pos, sp2_pos;
@@ -121,7 +128,7 @@ void ConnectionDelegate::ParseHttpRequest() {
   string request_http_version;
 
   if (!ReadLine(&request_line) || !TrimCRLF(&request_line))
-    return;
+    return p2p::util::kP2PRequestResultMalformed;
 
   VLOG(1) << "Request line: `" << request_line << "'";
 
@@ -129,18 +136,18 @@ void ConnectionDelegate::ParseHttpRequest() {
   if (sp1_pos == string::npos) {
     LOG(ERROR) << "Malformed request line, didn't find starting space"
                << " (request_line=`" << request_line << "')";
-    return;
+    return p2p::util::kP2PRequestResultMalformed;
   }
   sp2_pos = request_line.rfind(" ");
   if (sp2_pos == string::npos) {
     LOG(ERROR) << "Malformed request line, didn't find ending space"
                << " (request_line=`" << request_line << "')";
-    return;
+    return p2p::util::kP2PRequestResultMalformed;
   }
   if (sp2_pos == sp1_pos) {
     LOG(ERROR) << "Malformed request line, initial space is the same as "
                << "ending space (request_line=`" << request_line << "')";
-    return;
+    return p2p::util::kP2PRequestResultMalformed;
   }
   CHECK(sp2_pos > sp1_pos);
 
@@ -159,23 +166,23 @@ void ConnectionDelegate::ParseHttpRequest() {
     size_t colon_pos;
 
     if (!ReadLine(&line) || !TrimCRLF(&line))
-      return;
+      return p2p::util::kP2PRequestResultMalformed;
 
     if (line == "")
       break;
 
     // TODO(zeuthen): support header continuation. This TODO item is tracked in
-    //                https://code.google.com/p/chromium/issues/detail?id=246326
+    // https://code.google.com/p/chromium/issues/detail?id=246326
     colon_pos = line.find(": ");
     if (colon_pos == string::npos) {
       LOG(ERROR) << "Malformed HTTP header (line=`" << line << "')";
-      return;
+      return p2p::util::kP2PRequestResultMalformed;
     }
 
     string key = string(line, 0, colon_pos);
     string value = string(line, colon_pos + 2, string::npos);
 
-    // HTTP headers are case-insensitive so lower-case
+    // HTTP headers are case-insensitive so lower-case.
     std::transform(key.begin(),
                    key.end(),
                    key.begin(),
@@ -188,18 +195,20 @@ void ConnectionDelegate::ParseHttpRequest() {
     if (headers.size() == kMaxHeaders) {
       LOG(ERROR) << "Exceeded maximum (" << kMaxHeaders
                  << ") number of HTTP headers";
-      return;
+      return p2p::util::kP2PRequestResultMalformed;
     }
   }
 
   // OK, looks like a valid HTTP request. Service the client.
-  ServiceHttpRequest(
+  return ServiceHttpRequest(
       request_method, request_uri, request_http_version, headers);
 }
 
 void ConnectionDelegate::Run() {
+  P2PServerRequestResult req_res = ParseHttpRequest();
 
-  ParseHttpRequest();
+  // Report P2P.Server.RequestResult every time a HTTP request is handled.
+  server_->ReportServerMessage(p2p::util::kP2PServerRequestResult, req_res);
 
   if (shutdown(fd_, SHUT_RDWR) != 0) {
     LOG(ERROR) << "Error shutting down socket: " << strerror(errno);
@@ -370,17 +379,16 @@ static bool ParseRange(const string& range_str,
 
 bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
   ClockInterface *clock;
-  TimeDelta time_spent;
+  total_time_spent_ = TimeDelta();
   int seconds_spent_waiting = 0;
-  size_t num_total_sent = 0;
   char buf[kPayloadBufferSize];
 
   clock = server_->Clock();
 
-  num_total_sent = 0;
-  while (num_total_sent < num_bytes_to_send) {
+  total_bytes_sent_ = 0;
+  while (total_bytes_sent_ < num_bytes_to_send) {
     size_t num_to_read = std::min(sizeof buf,
-                                  num_bytes_to_send - num_total_sent);
+                                  num_bytes_to_send - total_bytes_sent_);
     size_t num_to_send_from_buf;
     size_t num_sent_from_buf;
     ssize_t num_read;
@@ -388,15 +396,15 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
     Time time_start = clock->GetMonotonicTime();
     num_read = read(file_fd, buf, num_to_read);
     if (num_read == 0) {
-      // EOF - handle this by sleeping and trying again later
+      // EOF - handle this by sleeping and trying again later.
       VLOG(1) << "Got EOF so sleeping one second";
-      // Don't include the time sleeping in time_spent.
-      time_spent += clock->GetMonotonicTime() - time_start;
+      // Don't include the time sleeping in total_time_spent_.
+      total_time_spent_ += clock->GetMonotonicTime() - time_start;
       clock->Sleep(TimeDelta::FromSeconds(1));
       time_start = clock->GetMonotonicTime();
       seconds_spent_waiting++;
 
-      // Give up if socket is no longer connected
+      // Give up if socket is no longer connected.
       if (IsStillConnected()) {
         continue;
       } else {
@@ -425,33 +433,35 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
       num_to_send_from_buf -= num_sent;
       num_sent_from_buf += num_sent;
     }
-    num_total_sent += num_sent_from_buf;
-    time_spent += clock->GetMonotonicTime() - time_start;
+    total_bytes_sent_ += num_sent_from_buf;
+    total_time_spent_ += clock->GetMonotonicTime() - time_start;
 
     // Limit download speed, if requested. Right now the speed is
     // calculated by considering the entire download session - this
     // could be improved by using e.g. a sliding window over the last
     // 30 seconds or so.
     if (max_download_rate_ != 0) {
-      int64_t bytes_allowed = max_download_rate_ * time_spent.InSecondsF();
-      if (int64_t(num_total_sent) > bytes_allowed) {
-        int64_t over_budget = num_total_sent - bytes_allowed;
+      int64_t bytes_allowed = max_download_rate_ *
+          total_time_spent_.InSecondsF();
+      if (int64_t(total_bytes_sent_) > bytes_allowed) {
+        int64_t over_budget = total_bytes_sent_ - bytes_allowed;
         int64_t usec_to_sleep = (over_budget / double(max_download_rate_)) *
           Time::kMicrosecondsPerSecond;
         TimeDelta sleep_duration = TimeDelta::FromMicroseconds(usec_to_sleep);
         clock->Sleep(sleep_duration);
-        time_spent += sleep_duration;
+        total_time_spent_ += sleep_duration;
       }
     }
   }
 
-  // If we served a file, log the time it took us
-  double total_seconds_spent = time_spent.InSecondsF() + seconds_spent_waiting;
-  if (num_total_sent > 0 && total_seconds_spent > 0) {
-    LOG(INFO) << pretty_addr_ << " - sent " << num_total_sent
+  // If we served a file, log the time it took us.
+  double total_seconds_spent = total_time_spent_.InSecondsF() +
+      seconds_spent_waiting;
+  if (total_bytes_sent_ > 0 && total_seconds_spent > 0) {
+    LOG(INFO) << pretty_addr_ << " - sent " << total_bytes_sent_
               << " bytes of response body in " << std::fixed
               << std::setprecision(3) << total_seconds_spent << " seconds"
-              << " (" << (num_total_sent / total_seconds_spent / 1e6)
+              << " (" << (total_bytes_sent_ / total_seconds_spent / 1e6)
               << " MB/s) including " << seconds_spent_waiting
               << " seconds spent waiting for content in the file.";
   }
@@ -459,7 +469,38 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
   return true;
 }
 
-void ConnectionDelegate::ServiceHttpRequest(
+void ConnectionDelegate::ReportSendFileMetrics(bool send_file_result) {
+  // Report P2P.Server.DownloadSpeedKBps with the average speed at wich the
+  // download was served at, every time a file was served, interrupted or not.
+  int average_speed_kbps = total_bytes_sent_ / total_time_spent_.InSecondsF() /
+      kBytesPerKB;
+  server_->ReportServerMessage(p2p::util::kP2PServerDownloadSpeedKBps,
+                               average_speed_kbps);
+
+  // TODO(deymo): Compute and report the P2P.Server.PeakDownloadSpeedKBps also
+  // handling better the download speed computed in this function to consider
+  // only a window of time instead of the average speed for the whole file.
+
+  // Handle the error condition.
+  if (!send_file_result) {
+    if (total_bytes_sent_ > 0) {
+      // Report P2P.Server.ContentServedInterruptedMB every time we have served
+      // part of a file but the transmission was interrupted.
+      server_->ReportServerMessage(p2p::util::kP2PServerServedInterruptedMB,
+                                   total_bytes_sent_ / kBytesPerMB);
+    }
+    return;
+  }
+
+  if (total_bytes_sent_ > 0) {
+    // Report P2P.Server.ContentServedSuccessfullyMB every time we have served
+    // a file to its end.
+    server_->ReportServerMessage(p2p::util::kP2PServerServedSuccessfullyMB,
+                                 total_bytes_sent_ / kBytesPerMB);
+  }
+}
+
+P2PServerRequestResult ConnectionDelegate::ServiceHttpRequest(
     const string& method,
     const string& uri,
     const string& version,
@@ -474,7 +515,11 @@ void ConnectionDelegate::ServiceHttpRequest(
   string file_name;
   int file_fd = -1;
   char ea_value[64] = { 0 };
+  bool send_file_result;
   ssize_t ea_size;
+  // Initialize the result in an invalid RequestResult.
+  P2PServerRequestResult req_res = p2p::util::kNumP2PServerRequestResults;
+  int range_begin_percentage = 0;
 
   // Log User-Agent, if available
   header_it = headers.find("user-agent");
@@ -484,12 +529,16 @@ void ConnectionDelegate::ServiceHttpRequest(
 
   if (!(method == "GET" || method == "POST")) {
     SendSimpleResponse(501, "Method Not Implemented");
+    // A peer should never request something different than GET or POST. Report
+    // this as a malformed request.
+    req_res = p2p::util::kP2PRequestResultMalformed;
     goto out;
   }
 
   // Ensure the URI contains exactly one '/'
   if (uri[0] != '/' || uri.find('/', 1) != string::npos) {
     SendSimpleResponse(400, "Bad Request");
+    req_res = p2p::util::kP2PRequestResultMalformed;
     goto out;
   }
 
@@ -499,6 +548,7 @@ void ConnectionDelegate::ServiceHttpRequest(
   if (uri == "/" || uri == "/index.html") {
     response_headers["Content-Type"] = "text/html; charset=utf-8";
     SendResponse(200, "OK", response_headers, GenerateIndexDotHtml());
+    req_res = p2p::util::kP2PRequestResultIndex;
     goto out;
   }
 
@@ -507,11 +557,13 @@ void ConnectionDelegate::ServiceHttpRequest(
   file_fd = openat(dirfd_, file_name.c_str(), O_RDONLY);
   if (file_fd == -1) {
     SendSimpleResponse(404, string("Error opening file: ") + strerror(errno));
+    req_res = p2p::util::kP2PRequestResultNotFound;
     goto out;
   }
 
   if (fstat(file_fd, &statbuf) != 0) {
     SendSimpleResponse(404, "Error getting information about file");
+    req_res = p2p::util::kP2PRequestResultNotFound;
     goto out;
   }
   file_size = statbuf.st_size;
@@ -545,10 +597,12 @@ void ConnectionDelegate::ServiceHttpRequest(
       if (!ParseRange(
               header_it->second, file_size, &range_first, &range_last)) {
         SendSimpleResponse(400, "Error parsing Range header");
+        req_res = p2p::util::kP2PRequestResultMalformed;
         goto out;
       }
       if (range_last >= file_size) {
         SendSimpleResponse(416, "Requested Range Not Satisfiable");
+        req_res = p2p::util::kP2PRequestResultMalformed;
         goto out;
       }
       response_code = 206;
@@ -570,22 +624,37 @@ void ConnectionDelegate::ServiceHttpRequest(
   response_headers["Content-Type"] = "application/octet-stream";
   response_headers["Content-Length"] = std::to_string(range_len);
   if (!SendResponse(response_code, response_string, response_headers, "")) {
+    req_res = p2p::util::kP2PRequestResultResponseInterrupted;
     goto out;
   }
 
   if (range_first > 0) {
     if (lseek(file_fd, (off_t) range_first, SEEK_SET) != (off_t) range_first) {
       LOG(ERROR) << "Error seeking: " << strerror(errno);
+      req_res = p2p::util::kP2PRequestResultNotFound;
       goto out;
     }
   }
 
-  if (!SendFile(file_fd, range_len))
-    goto out;
+  // From now on, we don't report a result as Malformed. Report the
+  // P2P.Server.RangeBeginPercentage at the begining of the file serving period,
+  // since it is being reported either the transmission is interrupted or nor.
+  if (file_size > 0)
+    range_begin_percentage = 100.0 * range_first / double(file_size);
+  server_->ReportServerMessage(p2p::util::kP2PServerRangeBeginPercentage,
+                               range_begin_percentage);
+
+  // Send the file and report the metrics associated with the transfer.
+  send_file_result = SendFile(file_fd, range_len);
+  ReportSendFileMetrics(send_file_result);
+
+  req_res = send_file_result ? p2p::util::kP2PRequestResultResponseSent
+      : p2p::util::kP2PRequestResultResponseInterrupted;
 
 out:
   if (file_fd != -1)
     close(file_fd);
+  return req_res;
 }
 
 bool ConnectionDelegate::IsStillConnected() {

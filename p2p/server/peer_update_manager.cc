@@ -37,10 +37,12 @@ static size_t GetFileSize(const FilePath& file_path) {
 
 PeerUpdateManager::PeerUpdateManager(FileWatcher* file_watcher,
                                      ServicePublisher* publisher,
-                                     HttpServer* http_server)
+                                     HttpServer* http_server,
+                                     MetricsLibraryInterface* metrics_lib)
     : file_watcher_(file_watcher),
       publisher_(publisher),
       http_server_(http_server),
+      metrics_lib_(metrics_lib),
       num_connections_(0) {}
 
 PeerUpdateManager::~PeerUpdateManager() {}
@@ -73,6 +75,19 @@ void PeerUpdateManager::Update(const FilePath& file) {
   }
 }
 
+void PeerUpdateManager::UpdateFileCountMetric() {
+  int num_files = publisher_->files().size();
+  if (num_files == last_num_files_)
+    return;
+  last_num_files_ = num_files;
+
+  // Report P2P.Server.FileCount every time a file is added (Publish) or
+  // removed (Unpublish).
+  string metric = "P2P.Server.FileCount";
+  LOG(INFO) << "Uploading " << metric << " (count) for metric " <<  num_files;
+  metrics_lib_->SendToUMA(metric, num_files, 0 /* min */, 50 /* max */, 50);
+}
+
 void PeerUpdateManager::UpdateHttpServer() {
   int num_files = publisher_->files().size();
   if (num_files > 0) {
@@ -103,10 +118,12 @@ void PeerUpdateManager::OnFileWatcherChanged(
   switch (event_type) {
     case FileWatcher::EventType::kFileAdded:
       Publish(file);
+      UpdateFileCountMetric();
       break;
 
     case FileWatcher::EventType::kFileRemoved:
       Unpublish(file);
+      UpdateFileCountMetric();
       break;
 
     case FileWatcher::EventType::kFileChanged:
@@ -127,6 +144,7 @@ void PeerUpdateManager::Init() {
   for (auto const& file : file_watcher_->files()) {
     Publish(file);
   }
+  last_num_files_ = publisher_->files().size();
 
   // TODO(zeuthen): Move to AddChangedCallback() for multiple
   // listeners. Or delegate pattern?

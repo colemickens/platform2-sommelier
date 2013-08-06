@@ -40,6 +40,7 @@ p2p_server_LDADD = 					\
 	$(AVAHI_CLIENT_LIBS)				\
 	$(AVAHI_GLIB_LIBS)				\
 	$(LIBCHROME_LIBS)				\
+	-lmetrics					\
 	$(top_builddir)/common/libp2p-util.la		\
 	$(NULL)
 
