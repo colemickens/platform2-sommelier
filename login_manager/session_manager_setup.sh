@@ -307,11 +307,9 @@ if use_flag_is_set egl; then
     ACCELERATED_FLAGS="--use-gl=egl"
 fi
 
-EVDA_FLAGS=
 PPAPI_OOP_FLAG=
 UPLOAD_FLAG=
 if use_flag_is_set exynos; then
-  EVDA_FLAGS="--use-exynos-vda"
   PPAPI_OOP_FLAG="--ppapi-out-of-process"
   UPLOAD_FLAG="--enable-share-group-async-texture-upload"
   # On boards with ARM NEON support, force libvpx to use the NEON-optimized
@@ -435,6 +433,5 @@ exec /sbin/session_manager --uid=${USER_ID} ${KILL_TIMEOUT_FLAG} \
             ${DMPROF_FLAGS} \
             ${PPAPI_FLASH_FLAGS} \
             ${PPAPI_OOP_FLAG} \
-            ${EVDA_FLAGS} \
             ${VMODULE_FLAG} \
             ${UPLOAD_FLAG}
