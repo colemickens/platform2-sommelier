@@ -1,3 +1,2 @@
-90 perf record -a -e cycles -c 1000003
+95 perf record -a -e cycles -c 1000003
 5 perf record -a -e cycles -g -c 4000037
-5 perf record -a -e cycles -b -c 1000003
