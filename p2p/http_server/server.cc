@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "common/clock.h"
 #include "http_server/server.h"
 #include "http_server/connection_delegate.h"
 
@@ -50,6 +51,7 @@ Server::Server(const FilePath& directory, uint16_t port)
       listen_fd_(-1),
       listen_source_id_(0),
       num_connections_(0) {
+  clock_.reset(new p2p::common::Clock);
 }
 
 Server::~Server() {
@@ -174,13 +176,17 @@ bool Server::Start() {
   return true;
 }
 
-void Server::SetMaxDownloadRate(uint64_t bytes_per_sec) {
+void Server::SetMaxDownloadRate(int64_t bytes_per_sec) {
   max_download_rate_ = bytes_per_sec;
 }
 
 uint16_t Server::Port() { return port_; }
 
 int Server::NumConnections() { return num_connections_; }
+
+p2p::common::ClockInterface* Server::Clock() {
+  return clock_.get();
+}
 
 // Returns a string with |addr| in a human-readable format.
 static string PrintAddress(struct ::sockaddr* addr, socklen_t addr_len) {

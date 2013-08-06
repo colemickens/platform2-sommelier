@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "common/util.h"
 #include "common/testutil.h"
 #include "http_server/server.h"
 
@@ -387,22 +388,22 @@ class LimitDownloadSpeedThread : public base::SimpleThread {
   DISALLOW_COPY_AND_ASSIGN(LimitDownloadSpeedThread);
 };
 
-static TimeDelta LimitDownloadSpeedDoDownload(uint16_t http_port) {
+static TimeDelta LimitDownloadSpeedDoDownload(Server *server) {
   Time begin_time, end_time;
   TimeDelta duration;
 
-  begin_time = Time::Now();
+  begin_time = server->Clock()->GetMonotonicTime();
 
   // We need to run the mainloop to accept connections, so initiate the
   // download from another thread. The client thread will quit this
   // mainloop once it's done
   GMainLoop* loop = g_main_loop_new(NULL, FALSE);
-  LimitDownloadSpeedThread client_thread(http_port, loop);
+  LimitDownloadSpeedThread client_thread(server->Port(), loop);
   client_thread.Start();
   g_main_loop_run(loop);
   g_main_loop_unref(loop);
 
-  end_time = Time::Now();
+  end_time = server->Clock()->GetMonotonicTime();
   duration = end_time - begin_time;
 
   client_thread.Join();
@@ -430,14 +431,64 @@ TEST(P2PHttpServer, LimitDownloadSpeed) {
   // Download the file without any limitation and check that it's more
   // than 50 MB/s (yes, weassume the test machine is at least _that_
   // capable).
-  duration = LimitDownloadSpeedDoDownload(server.Port());
+  duration = LimitDownloadSpeedDoDownload(&server);
   bytes_per_sec = 1000.0 * file_size / duration.InMillisecondsF();
   EXPECT_GE(bytes_per_sec, 50 * kBytesPerMB);
 
   // Now limit the speed of the HTTP server to 5 MB/s and check
   // that we're approximately in that range.
   server.SetMaxDownloadRate(5 * kBytesPerMB);
-  duration = LimitDownloadSpeedDoDownload(server.Port());
+  duration = LimitDownloadSpeedDoDownload(&server);
+  bytes_per_sec = 1000.0 * file_size / duration.InMillisecondsF();
+  EXPECT_GE(bytes_per_sec, 0.9 * 5 * kBytesPerMB);
+  EXPECT_LE(bytes_per_sec, 1.1 * 5 * kBytesPerMB);
+
+  server.Stop();
+  TeardownTestDir(testdir_path);
+}
+
+static gboolean
+OnExtendFile(gpointer user_data) {
+  const FilePath *testdir_path = reinterpret_cast<const FilePath*>(user_data);
+  int64_t file_size = 30 * kBytesPerMB;
+
+  ExpectCommand(0,
+                "dd if=/dev/zero of=%s/file.p2p bs=%d count=%d",
+                testdir_path->value().c_str(),
+                int(kBytesPerMB),
+                int(file_size / kBytesPerMB));
+
+  return FALSE; // Remove source.
+}
+
+TEST(P2PHttpServer, DisregardTimeWaitingFromTransferBudget) {
+  FilePath testdir_path = SetupTestDir("disregard-time-waiting");
+  TimeDelta duration;
+  double bytes_per_sec;
+  int64_t file_size = 30 * kBytesPerMB;
+
+  // Create the test file and set its expected size.
+  ExpectCommand(0,
+                "touch %s/file.p2p",
+                testdir_path.value().c_str());
+  ExpectCommand(0,
+                "setfattr -n user.cros-p2p-filesize -v %d %s/file.p2p",
+                int(file_size),
+                testdir_path.value().c_str());
+
+  // Bring up the HTTP server
+  Server server(testdir_path, 0);
+  EXPECT_TRUE(server.Start());
+
+  // Schedule the file to get bigger in 3 seconds
+  g_timeout_add(3000, OnExtendFile, &testdir_path);
+
+  // Limit the speed of the HTTP server to 5 MB/s and check that we're
+  // approximately in that range AFTER subtracting the three seconds
+  // we spent sleeping.
+  server.SetMaxDownloadRate(5 * kBytesPerMB);
+  duration = LimitDownloadSpeedDoDownload(&server) -
+    TimeDelta::FromSeconds(3);
   bytes_per_sec = 1000.0 * file_size / duration.InMillisecondsF();
   EXPECT_GE(bytes_per_sec, 0.9 * 5 * kBytesPerMB);
   EXPECT_LE(bytes_per_sec, 1.1 * 5 * kBytesPerMB);
@@ -449,5 +500,3 @@ TEST(P2PHttpServer, LimitDownloadSpeed) {
 }  // namespace http_server
 
 }  // namespace p2p
-
-// ------------------------------------------------------------------------

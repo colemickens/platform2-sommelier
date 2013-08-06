@@ -2,14 +2,14 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_CLIENT_CLOCK_INTERFACE_H__
-#define P2P_CLIENT_CLOCK_INTERFACE_H__
+#ifndef P2P_COMMON_CLOCK_INTERFACE_H__
+#define P2P_COMMON_CLOCK_INTERFACE_H__
 
 #include <base/time.h>
 
 namespace p2p {
 
-namespace client {
+namespace common {
 
 // TODO(deymo): Move this class to libchromeos and merge it with the one in
 // update_engine.
@@ -17,9 +17,9 @@ namespace client {
 // The clock interface allows access to some system time-related functions.
 class ClockInterface {
  public:
-  // Sleeps for |seconds| seconds. Returns zero if the time has elapsed, or
-  // the number of seconds left to sleep if the call was interrupted.
-  virtual unsigned int Sleep(unsigned int seconds) = 0;
+  // Suspends the execution of the calling thread for the time
+  // indicated by |duration|.
+  virtual void Sleep(const base::TimeDelta& duration) = 0;
 
   // Returns monotonic time since some unspecified starting point. It
   // is not increased when the system is sleeping nor is it affected
@@ -33,6 +33,6 @@ class ClockInterface {
 
 }  // namespace p2p
 
-}  // namespace client
+}  // namespace common
 
-#endif  // P2P_CLIENT_CLOCK_INTERFACE_H__
+#endif  // P2P_COMMON_CLOCK_INTERFACE_H__

@@ -30,7 +30,7 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
                      int fd,
                      const std::string& pretty_addr,
                      Server* server,
-                     uint64 max_download_rate);
+                     int64_t max_download_rate);
 
   virtual ~ConnectionDelegate();
 
@@ -121,7 +121,7 @@ class ConnectionDelegate : public base::DelegateSimpleThread::Delegate {
 
   // The maximum allowed download rate (in bytes/second) or 0 if there
   // is no limit.
-  uint64 max_download_rate_;
+  int64_t max_download_rate_;
 
   // Maximum number of headers support in HTTP request.
   static const unsigned int kMaxHeaders = 100;

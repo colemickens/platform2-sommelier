@@ -6,7 +6,7 @@
 #define P2P_CLIENT_PEER_SELECTOR_H__
 
 #include "client/service_finder.h"
-#include "client/clock.h"
+#include "common/clock.h"
 
 #include <string>
 
@@ -21,7 +21,7 @@ namespace client {
 class PeerSelector {
  public:
   // Constructs the PeerSelector with the provided interfaces.
-  PeerSelector(ServiceFinder* finder, ClockInterface* clock);
+  PeerSelector(ServiceFinder* finder, p2p::common::ClockInterface* clock);
 
   // Finds an URL for the file |id| with at least |minimum_size| bytes and
   // waits until the number of connections in the LAN has dropped below the
@@ -68,7 +68,7 @@ class PeerSelector {
   ServiceFinder* finder_;
 
   // An interface to the system clock functions, used for unit testing.
-  ClockInterface* clock_;
+  p2p::common::ClockInterface* clock_;
 
   typedef enum {
     kFound, // The resource was found.

@@ -6,9 +6,9 @@
 #include "config.h"
 #endif
 
-#include "client/clock.h"
 #include "client/peer_selector.h"
 #include "client/service_finder.h"
+#include "common/clock.h"
 #include "common/constants.h"
 #include "common/util.h"
 
@@ -111,7 +111,7 @@ int main(int argc, char* argv[]) {
   if (finder == NULL)
     return 1;
 
-  p2p::client::Clock clock;
+  p2p::common::Clock clock;
   p2p::client::PeerSelector peer_selector(finder.get(), &clock);
   // The Metrics Library interface for reporting UMA stats.
 

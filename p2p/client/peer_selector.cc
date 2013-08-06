@@ -6,9 +6,9 @@
 #include "config.h"
 #endif
 
-#include "client/clock_interface.h"
 #include "client/peer.h"
 #include "client/peer_selector.h"
+#include "common/clock_interface.h"
 #include "common/constants.h"
 
 #include <map>
@@ -27,7 +27,8 @@ namespace p2p {
 
 namespace client {
 
-PeerSelector::PeerSelector(ServiceFinder* finder, ClockInterface* clock)
+PeerSelector::PeerSelector(ServiceFinder* finder,
+                           p2p::common::ClockInterface* clock)
     : finder_(finder),
     clock_(clock),
     lookup_result_(kNumLookupResults),
@@ -158,7 +159,8 @@ string PeerSelector::GetUrlAndWait(const string& id, size_t minimum_size) {
               << constants::kMaxSimultaneousDownloadsPollTimeSeconds
               << " seconds until retrying.";
 
-    clock_->Sleep(constants::kMaxSimultaneousDownloadsPollTimeSeconds);
+    clock_->Sleep(base::TimeDelta::FromSeconds(
+        constants::kMaxSimultaneousDownloadsPollTimeSeconds));
 
     // Now that we've slept for a while, the URL may not be valid
     // anymore, so we do the lookup again.

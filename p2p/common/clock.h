@@ -2,22 +2,22 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef P2P_CLIENT_CLOCK_H__
-#define P2P_CLIENT_CLOCK_H__
+#ifndef P2P_COMMON_CLOCK_H__
+#define P2P_COMMON_CLOCK_H__
 
-#include "client/clock_interface.h"
+#include "common/clock_interface.h"
 
 #include <base/basictypes.h>
 
 namespace p2p {
 
-namespace client {
+namespace common {
 
 class Clock : public ClockInterface {
  public:
   Clock() {}
 
-  virtual unsigned int Sleep(unsigned int seconds);
+  virtual void Sleep(const base::TimeDelta& duration);
 
   virtual base::Time GetMonotonicTime();
 
@@ -27,6 +27,6 @@ class Clock : public ClockInterface {
 
 }  // namespace p2p
 
-}  // namespace client
+}  // namespace common
 
-#endif  // P2P_CLIENT_CLOCK_H__
+#endif  // P2P_COMMON_CLOCK_H__

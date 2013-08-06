@@ -12,7 +12,10 @@
 
 #include <base/command_line.h>
 #include <base/file_path.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/threading/simple_thread.h>
+
+#include "common/clock_interface.h"
 
 namespace p2p {
 
@@ -41,13 +44,16 @@ class Server {
 
   // Sets the maximum download rate. The special value 0 means there
   // is no limit. Note that this is per connection.
-  void SetMaxDownloadRate(uint64 bytes_per_sec);
+  void SetMaxDownloadRate(int64_t bytes_per_sec);
 
   // Gets the port number the server listens on.
   uint16 Port();
 
   // Gets the current number of connected clients.
   int NumConnections();
+
+  // Gets the clock used by the server.
+  p2p::common::ClockInterface* Clock();
 
   // Method called in by |delegate|, in its own thread.
   void ConnectionTerminated(ConnectionDelegate* delegate);
@@ -64,6 +70,15 @@ class Server {
   // for reporting to higher-level code.
   void UpdateNumConnections(int delta_num_connections);
 
+  // Clock used for time-keeping and sleeping.
+  //
+  // TODO(zeuthen): Make it possible to set this to a FakeClock,
+  // probably as part of resolving crbug.com/269212. When doing that,
+  // remember to make p2p::common::FakeClock thread-safe (e.g. use
+  // atomic operations) since we're going to use it from multiple
+  // threads.
+  scoped_ptr<p2p::common::ClockInterface> clock_;
+
   // Thread pool used for worker threads.
   base::DelegateSimpleThreadPool thread_pool_;
 
@@ -77,7 +92,7 @@ class Server {
   uint16 port_;
 
   // The maximum download rate of 0 if there is no limit.
-  uint64 max_download_rate_;
+  int64_t max_download_rate_;
 
   // Set to true only if the server is running.
   bool started_;

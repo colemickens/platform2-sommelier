@@ -17,12 +17,19 @@ noinst_LTLIBRARIES = libp2p-util.la
 
 libp2p_util_la_SOURCES =				\
 	util.h			util.cc			\
+	clock_interface.h				\
+	clock.h			clock.cc		\
 	constants.h					\
+	fake_clock.h					\
 	$(NULL)
 
 libp2p_util_la_CXXFLAGS = 				\
 	$(LIBCHROME_CFLAGS)				\
 	$(GLIB_CFLAGS)					\
+	$(NULL)
+
+libp2p_util_la_LIBADD = 				\
+	-lrt						\
 	$(NULL)
 
 # ------------------------------------------------------------------------

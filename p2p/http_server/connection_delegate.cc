@@ -6,6 +6,7 @@
 #include "config.h"
 #endif
 
+#include "common/util.h"
 #include "http_server/connection_delegate.h"
 #include "http_server/server.h"
 
@@ -39,6 +40,8 @@ using std::vector;
 using base::Time;
 using base::TimeDelta;
 
+using p2p::common::ClockInterface;
+
 namespace p2p {
 
 namespace http_server {
@@ -47,7 +50,7 @@ ConnectionDelegate::ConnectionDelegate(int dirfd,
                                        int fd,
                                        const string& pretty_addr,
                                        Server* server,
-                                       uint64_t max_download_rate)
+                                       int64_t max_download_rate)
     : base::DelegateSimpleThread::Delegate(),
       dirfd_(dirfd),
       fd_(fd),
@@ -366,12 +369,15 @@ static bool ParseRange(const string& range_str,
 }
 
 bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
-  Time time_start;
+  ClockInterface *clock;
+  TimeDelta time_spent;
+  int seconds_spent_waiting = 0;
   size_t num_total_sent = 0;
   char buf[kPayloadBufferSize];
 
+  clock = server_->Clock();
+
   num_total_sent = 0;
-  time_start = Time::Now();
   while (num_total_sent < num_bytes_to_send) {
     size_t num_to_read = std::min(sizeof buf,
                                   num_bytes_to_send - num_total_sent);
@@ -379,11 +385,16 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
     size_t num_sent_from_buf;
     ssize_t num_read;
 
+    Time time_start = clock->GetMonotonicTime();
     num_read = read(file_fd, buf, num_to_read);
     if (num_read == 0) {
       // EOF - handle this by sleeping and trying again later
       VLOG(1) << "Got EOF so sleeping one second";
-      sleep(1);
+      // Don't include the time sleeping in time_spent.
+      time_spent += clock->GetMonotonicTime() - time_start;
+      clock->Sleep(TimeDelta::FromSeconds(1));
+      time_start = clock->GetMonotonicTime();
+      seconds_spent_waiting++;
 
       // Give up if socket is no longer connected
       if (IsStillConnected()) {
@@ -415,31 +426,34 @@ bool ConnectionDelegate::SendFile(int file_fd, size_t num_bytes_to_send) {
       num_sent_from_buf += num_sent;
     }
     num_total_sent += num_sent_from_buf;
+    time_spent += clock->GetMonotonicTime() - time_start;
 
-    // Limit download speed, if requested
+    // Limit download speed, if requested. Right now the speed is
+    // calculated by considering the entire download session - this
+    // could be improved by using e.g. a sliding window over the last
+    // 30 seconds or so.
     if (max_download_rate_ != 0) {
-      Time time_now = Time::Now();
-      TimeDelta delta = time_now - time_start;
-      uint64_t bytes_allowed = max_download_rate_ * delta.InSecondsF();
-
-      // If we've sent more than the allowed budget for time until now,
-      // sleep until this is in the budget
-      if (num_total_sent > bytes_allowed) {
-        uint64_t over_budget = num_total_sent - bytes_allowed;
-        double seconds_to_sleep = over_budget / double(max_download_rate_);
-        g_usleep(seconds_to_sleep * G_USEC_PER_SEC);
+      int64_t bytes_allowed = max_download_rate_ * time_spent.InSecondsF();
+      if (int64_t(num_total_sent) > bytes_allowed) {
+        int64_t over_budget = num_total_sent - bytes_allowed;
+        int64_t usec_to_sleep = (over_budget / double(max_download_rate_)) *
+          Time::kMicrosecondsPerSecond;
+        TimeDelta sleep_duration = TimeDelta::FromMicroseconds(usec_to_sleep);
+        clock->Sleep(sleep_duration);
+        time_spent += sleep_duration;
       }
     }
   }
 
   // If we served a file, log the time it took us
-  if (num_total_sent > 0 && !time_start.is_null()) {
-    Time time_end = Time::Now();
-    double time_delta = (time_end - time_start).InSecondsF();
+  double total_seconds_spent = time_spent.InSecondsF() + seconds_spent_waiting;
+  if (num_total_sent > 0 && total_seconds_spent > 0) {
     LOG(INFO) << pretty_addr_ << " - sent " << num_total_sent
               << " bytes of response body in " << std::fixed
-              << std::setprecision(3) << time_delta << " seconds"
-              << " (" << (num_total_sent / time_delta / 1e6) << " MB/s)";
+              << std::setprecision(3) << total_seconds_spent << " seconds"
+              << " (" << (num_total_sent / total_seconds_spent / 1e6)
+              << " MB/s) including " << seconds_spent_waiting
+              << " seconds spent waiting for content in the file.";
   }
 
   return true;

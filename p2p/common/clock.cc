@@ -2,17 +2,24 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "client/clock.h"
+#include "common/clock.h"
 
 #include <unistd.h>
 #include <time.h>
 
 namespace p2p {
 
-namespace client {
+namespace common {
 
-unsigned int Clock::Sleep(unsigned int seconds) {
-  return sleep(seconds);
+void Clock::Sleep(const base::TimeDelta& duration) {
+  int64_t duration_usec = duration.InMicroseconds();
+  int64_t duration_sec = duration_usec / base::Time::kMicrosecondsPerSecond;
+  int64_t fractional_usec = duration_usec -
+    duration_sec * base::Time::kMicrosecondsPerSecond;
+  struct timespec req;
+  req.tv_sec = duration_sec;
+  req.tv_nsec = fractional_usec * base::Time::kNanosecondsPerMicrosecond;
+  nanosleep(&req, NULL);
 }
 
 base::Time Clock::GetMonotonicTime() {
@@ -30,4 +37,4 @@ base::Time Clock::GetMonotonicTime() {
 
 }  // namespace p2p
 
-}  // namespace client
+}  // namespace common
