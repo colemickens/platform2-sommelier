@@ -471,6 +471,18 @@ PerfReader::~PerfReader() {
     free(build_id_events_[i]);
 }
 
+// Makes |build_id| fit the perf format, by either truncating it or adding zeros
+// to the end so that it has length kBuildIDStringLength.
+void PerfReader::PerfizeBuildIDString(string* build_id) {
+  if (build_id->size() > kBuildIDStringLength) {
+    build_id->resize(kBuildIDStringLength);
+  } else {
+    while (build_id->size() < kBuildIDStringLength) {
+      build_id->push_back('0');
+    }
+  }
+}
+
 bool PerfReader::ReadFile(const string& filename) {
   std::vector<char> data;
   if (!ReadFileToData(filename, &data))
@@ -745,8 +757,14 @@ bool PerfReader::ReadEventTypes(const std::vector<char>& data) {
 bool PerfReader::ReadEventType(const std::vector<char>& data, size_t* offset) {
   CheckNoEventTypePadding();
   perf_trace_event_type type;
-  if (!ReadDataFromVector(data, sizeof(type), "event type", offset, &type))
+  memset(&type, 0, sizeof(type));
+  if (!ReadDataFromVector(data, sizeof(type.event_id), "event id",
+                          offset, &type.event_id)) {
     return false;
+  }
+  const char* event_name = reinterpret_cast<const char*>(&data[*offset]);
+  CHECK_GT(snprintf(type.name, sizeof(type.name), "%s", event_name), 0);
+  *offset += sizeof(type.name);
   event_types_.push_back(type);
   return true;
 }
@@ -877,6 +895,10 @@ bool PerfReader::ReadBuildIDMetadata(const std::vector<char>& data, u32 type,
       ByteSwap(&event->pid);
     }
     size -= event_size;
+
+    // Perf tends to use more space than necessary, so fix the size.
+    event->header.size =
+        sizeof(*event) + GetUint64AlignedStringLength(event->filename);
     build_id_events_.push_back(event);
   }
 
@@ -1075,6 +1097,7 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
     case PERF_RECORD_HEADER_EVENT_DESC:
       break;
     case PERF_RECORD_HEADER_BUILD_ID:
+      metadata_mask_ |= (1 << HEADER_BUILD_ID);
       result = ReadBuildIDMetadata(data, HEADER_BUILD_ID, offset,
                                    block.header.size);
       break;

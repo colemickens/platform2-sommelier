@@ -79,6 +79,8 @@ class PerfReader {
                  is_cross_endian_(0) {}
   ~PerfReader();
 
+  static void PerfizeBuildIDString(string* build_id);
+
   bool ReadFile(const string& filename);
   bool ReadFileData(const std::vector<char>& data);
   bool WriteFile(const string& filename);

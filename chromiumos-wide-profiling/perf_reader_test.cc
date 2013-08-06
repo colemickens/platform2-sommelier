@@ -107,6 +107,20 @@ TEST(PerfReaderTest, Test1Cycle) {
   }
 }
 
+TEST(PerfReaderTest, PerfizeBuildID) {
+  string test = "f";
+  PerfReader::PerfizeBuildIDString(&test);
+  EXPECT_EQ("f000000000000000000000000000000000000000", test);
+  PerfReader::PerfizeBuildIDString(&test);
+  EXPECT_EQ("f000000000000000000000000000000000000000", test);
+
+  test = "01234567890123456789012345678901234567890";
+  PerfReader::PerfizeBuildIDString(&test);
+  EXPECT_EQ("0123456789012345678901234567890123456789", test);
+  PerfReader::PerfizeBuildIDString(&test);
+  EXPECT_EQ("0123456789012345678901234567890123456789", test);
+}
+
 }  // namespace quipper
 
 int main(int argc, char* argv[]) {

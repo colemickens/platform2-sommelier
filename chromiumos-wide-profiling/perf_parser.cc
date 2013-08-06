@@ -146,6 +146,7 @@ bool PerfParser::InjectBuildIDs(
       continue;
 
     string build_id = filenames_to_build_ids.at(filename);
+    PerfizeBuildIDString(&build_id);
     // Changing a build id should always result in an update, never creation.
     CHECK_EQ(event, CreateOrUpdateBuildID(build_id, "", event));
     updated_filenames.insert(filename);
@@ -158,7 +159,9 @@ bool PerfParser::InjectBuildIDs(
     if (updated_filenames.find(it->first) != updated_filenames.end())
       continue;
 
-    build_id_event* event = CreateOrUpdateBuildID(it->second, it->first, NULL);
+    string build_id = it->second;
+    PerfizeBuildIDString(&build_id);
+    build_id_event* event = CreateOrUpdateBuildID(build_id, it->first, NULL);
     CHECK(event);
     build_id_events_.push_back(event);
   }
@@ -168,14 +171,26 @@ bool PerfParser::InjectBuildIDs(
 
 bool PerfParser::Localize(
     const std::map<string, string>& build_ids_to_filenames) {
+  std::map<string, string> perfized_build_ids_to_filenames;
+  std::map<string, string>::const_iterator it;
+  for (it = build_ids_to_filenames.begin();
+       it != build_ids_to_filenames.end();
+       ++it) {
+    string build_id = it->first;
+    PerfizeBuildIDString(&build_id);
+    perfized_build_ids_to_filenames[build_id] = it->second;
+  }
+
   std::map<string, string> filename_map;
   for (size_t i = 0; i < build_id_events_.size(); ++i) {
     build_id_event* event = build_id_events_[i];
     string build_id = HexToString(event->build_id, kBuildIDArraySize);
-    if (build_ids_to_filenames.find(build_id) == build_ids_to_filenames.end())
+    if (perfized_build_ids_to_filenames.find(build_id) ==
+        perfized_build_ids_to_filenames.end()) {
       continue;
+    }
 
-    string new_name = build_ids_to_filenames.at(build_id);
+    string new_name = perfized_build_ids_to_filenames.at(build_id);
     filename_map[string(event->filename)] = new_name;
     build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
     CHECK(new_event);
@@ -183,6 +198,23 @@ bool PerfParser::Localize(
   }
 
   LocalizeUsingFilenames(filename_map);
+  return true;
+}
+
+bool PerfParser::LocalizeUsingFilenames(
+    const std::map<string, string>& filename_map) {
+  LocalizeMMapFilenames(filename_map);
+  for (size_t i = 0; i < build_id_events_.size(); ++i) {
+    build_id_event* event = build_id_events_[i];
+    string old_name = event->filename;
+
+    if (filename_map.find(event->filename) != filename_map.end()) {
+      const string& new_name = filename_map.at(old_name);
+      build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
+      CHECK(new_event);
+      build_id_events_[i] = new_event;
+    }
+  }
   return true;
 }
 
@@ -479,11 +511,11 @@ void PerfParser::ResetAddressMappers() {
 }
 
 
-bool PerfParser::LocalizeUsingFilenames(
+bool PerfParser::LocalizeMMapFilenames(
     const std::map<string, string>& filename_map) {
   // Search for mmap events for which the filename needs to be updated.
-  for (size_t i = 0; i < parsed_events_.size(); ++i) {
-    event_t* event = parsed_events_[i].raw_event;
+  for (size_t i = 0; i < events_.size(); ++i) {
+    event_t* event = &events_[i].event;
     if (event->header.type != PERF_RECORD_MMAP)
       continue;
 
@@ -496,6 +528,7 @@ bool PerfParser::LocalizeUsingFilenames(
     size_t old_len = GetUint64AlignedStringLength(key);
     size_t new_len = GetUint64AlignedStringLength(new_filename);
     event->header.size += (new_len - old_len);
+    // TODO(rohinmshah): Could this overwrite the sample info?
     CHECK_GT(snprintf(event->mmap.filename, new_filename.size() + 1, "%s",
                       new_filename.c_str()),
              0);

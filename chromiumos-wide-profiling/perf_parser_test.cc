@@ -92,7 +92,7 @@ void CheckInjectionAndLocalization(const string& input_perf_data,
     ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data, &perf_build_id_map));
     EXPECT_EQ(expected_map, perf_build_id_map);
 
-    std::map<string, string> filename_localizer;
+    std::map<string, string> build_id_localizer;
     // Only localize the first half of the files which have build ids.
     for (size_t j = 0; j < filenames.size() / 2; ++j) {
       string old_filename = filenames[j];
@@ -102,11 +102,11 @@ void CheckInjectionAndLocalization(const string& input_perf_data,
 
       string new_filename = old_filename + ".local";
       filenames[j] = new_filename;
-      filename_localizer[build_id] = new_filename;
+      build_id_localizer[build_id] = new_filename;
       expected_map[new_filename] = build_id;
       expected_map.erase(old_filename);
     }
-    parser->Localize(filename_localizer);
+    parser->Localize(build_id_localizer);
 
     // Filenames should be the same.
     std::vector<string> new_filenames;
@@ -124,6 +124,40 @@ void CheckInjectionAndLocalization(const string& input_perf_data,
 
     perf_build_id_map.clear();
     ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data2, &perf_build_id_map));
+    EXPECT_EQ(expected_map, perf_build_id_map);
+
+    std::map<string, string> filename_localizer;
+    // Only localize every third filename.
+    for (size_t j = 0; j < filenames.size(); j += 3) {
+      string old_filename = filenames[j];
+      string new_filename = old_filename + ".local2";
+      filenames[j] = new_filename;
+      filename_localizer[old_filename] = new_filename;
+
+      if (expected_map.find(old_filename) != expected_map.end()) {
+        string build_id = expected_map[old_filename];
+        expected_map[new_filename] = build_id;
+        expected_map.erase(old_filename);
+      }
+    }
+    parser->LocalizeUsingFilenames(filename_localizer);
+
+    // Filenames should be the same.
+    new_filenames.clear();
+    parser->GetFilenames(&new_filenames);
+    std::sort(filenames.begin(), filenames.end());
+    EXPECT_EQ(filenames, new_filenames);
+
+    // Build ids should be updated.
+    parser_map.clear();
+    parser->GetFilenamesToBuildIDs(&parser_map);
+    EXPECT_EQ(expected_map, parser_map);
+
+    string output_perf_data3 = input_perf_data + ".parse.localize2.out";
+    ASSERT_TRUE(parser->WriteFile(output_perf_data3));
+
+    perf_build_id_map.clear();
+    ASSERT_TRUE(GetPerfBuildIDMap(output_perf_data3, &perf_build_id_map));
     EXPECT_EQ(expected_map, perf_build_id_map);
 }
 

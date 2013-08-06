@@ -108,6 +108,9 @@ class PerfParser : public PerfReader {
   // present in this parser, it is ignored.
   bool Localize(const std::map<string, string>& build_ids_to_filenames);
 
+  // Same as Localize, but joins on filenames instead of build ids.
+  bool LocalizeUsingFilenames(const std::map<string, string>& filename_map);
+
  protected:
   // Defines a type for a pid:tid pair.
   typedef std::pair<uint32, uint32> PidTid;
@@ -132,9 +135,9 @@ class PerfParser : public PerfReader {
 
   void ResetAddressMappers();
 
-  // Replaces existing filenames based on |filename_map|.  Used by Localize.
+  // Replaces existing filenames in MMAP events based on |filename_map|.
   // This method does not change |build_id_events_|.
-  bool LocalizeUsingFilenames(const std::map<string, string>& filename_map);
+  bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 
   std::vector<ParsedEvent> parsed_events_;
   std::vector<ParsedEvent*> parsed_events_sorted_by_time_;
