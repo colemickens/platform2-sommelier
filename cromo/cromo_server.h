@@ -15,7 +15,7 @@
 #include <dbus-c++/dbus.h>
 #include <metrics/metrics_library.h>
 
-#include "manager_server_glue.h"
+#include "dbus_adaptors/org.freedesktop.ModemManager.h"
 #include "hooktable.h"
 
 class ModemHandler;

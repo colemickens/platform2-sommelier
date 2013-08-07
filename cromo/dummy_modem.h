@@ -9,9 +9,9 @@
 
 #include <dbus-c++/dbus.h>
 
-#include "modem-cdma_server_glue.h"
-#include "modem_server_glue.h"
-#include "modem-simple_server_glue.h"
+#include "dbus_adaptors/org.freedesktop.ModemManager.Modem.Cdma.h"
+#include "dbus_adaptors/org.freedesktop.ModemManager.Modem.h"
+#include "dbus_adaptors/org.freedesktop.ModemManager.Modem.Simple.h"
 
 typedef std::map<std::string, DBus::Variant> PropertyMap;
 
