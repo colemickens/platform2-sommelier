@@ -38,6 +38,14 @@ int PPPGetSecret(char *username, char *password) {
   return 1;
 }
 
+void PPPOnAuthenticateStart() {
+  PPP::GetInstance()->OnAuthenticateStart();
+}
+
+void PPPOnAuthenticateDone() {
+  PPP::GetInstance()->OnAuthenticateDone();
+}
+
 void PPPOnConnect(const char *ifname) {
   PPP::GetInstance()->OnConnect(ifname);
 }

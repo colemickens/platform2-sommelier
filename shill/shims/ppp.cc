@@ -60,6 +60,24 @@ bool PPP::GetSecret(string *username, string *password) {
   return success;
 }
 
+void PPP::OnAuthenticateStart() {
+  LOG(INFO) << __func__;
+  if (CreateProxy()) {
+    map<string, string> details;
+    proxy_->Notify(kPPPReasonAuthenticating, details);
+    DestroyProxy();
+  }
+}
+
+void PPP::OnAuthenticateDone() {
+  LOG(INFO) << __func__;
+  if (CreateProxy()) {
+    map<string, string> details;
+    proxy_->Notify(kPPPReasonAuthenticated, details);
+    DestroyProxy();
+  }
+}
+
 void PPP::OnConnect(const string &ifname) {
   LOG(INFO) << __func__ << "(" << ifname << ")";
   if (!ipcp_gotoptions[0].ouraddr) {

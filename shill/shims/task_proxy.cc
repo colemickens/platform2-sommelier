@@ -21,7 +21,8 @@ TaskProxy::TaskProxy(DBus::Connection *connection,
 TaskProxy::~TaskProxy() {}
 
 void TaskProxy::Notify(const string &reason, map<string, string> &dict) {
-  LOG(INFO) << __func__ << "(" << reason << ", " << dict.size() << ")";
+  LOG(INFO) << __func__ << "(" << reason
+            << ", argcount: " << dict.size() << ")";
   try {
     proxy_.notify(reason, dict);
   } catch (const DBus::Error &e) {

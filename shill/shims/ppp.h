@@ -32,6 +32,8 @@ class PPP {
   void Init();
 
   bool GetSecret(std::string *username, std::string *password);
+  void OnAuthenticateStart();
+  void OnAuthenticateDone();
   void OnConnect(const std::string &ifname);
   void OnDisconnect();
 

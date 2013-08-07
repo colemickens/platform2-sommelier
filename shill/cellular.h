@@ -308,6 +308,9 @@ class Cellular : public Device, public RPCTaskDelegate {
   FRIEND_TEST(CellularTest, Notify);
   FRIEND_TEST(CellularTest, OnConnectionHealthCheckerResult);
   FRIEND_TEST(CellularTest, OnPPPDied);
+  FRIEND_TEST(CellularTest, PPPConnectionFailedAfterAuth);
+  FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
+  FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
   FRIEND_TEST(CellularTest, SetAllowRoaming);
   FRIEND_TEST(CellularTest, StartModemCallback);
   FRIEND_TEST(CellularTest, StartModemCallbackFail);
@@ -363,6 +366,12 @@ class Cellular : public Device, public RPCTaskDelegate {
   // Returns true, if the device state is successfully changed.
   bool DisconnectCleanup();
 
+  // Handlers for PPP events. Dispatched from Notify().
+  void OnPPPAuthenticated();
+  void OnPPPAuthenticating();
+  void OnPPPConnected(const std::map<std::string, std::string> &params);
+  void OnPPPDisconnected();
+
   base::WeakPtrFactory<Cellular> weak_ptr_factory_;
 
   State state_;
@@ -391,6 +400,7 @@ class Cellular : public Device, public RPCTaskDelegate {
 
   scoped_ptr<ExternalTask> ppp_task_;
   PPPDeviceRefPtr ppp_device_;
+  bool is_ppp_authenticating_;
 
   DISALLOW_COPY_AND_ASSIGN(Cellular);
 };

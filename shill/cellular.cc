@@ -120,7 +120,8 @@ Cellular::Cellular(ModemInfo *modem_info,
       proxy_factory_(proxy_factory),
       ppp_device_factory_(PPPDeviceFactory::GetInstance()),
       allow_roaming_(false),
-      explicit_disconnect_(false) {
+      explicit_disconnect_(false),
+      is_ppp_authenticating_(false) {
   PropertyStore *store = this->mutable_store();
   // TODO(jglasgow): kDBusConnectionProperty is deprecated.
   store->RegisterConstString(flimflam::kDBusConnectionProperty, &dbus_owner_);
@@ -378,24 +379,36 @@ void Cellular::DropConnection() {
 void Cellular::SetServiceState(Service::ConnectState state) {
   if (ppp_device_) {
     ppp_device_->SetServiceState(state);
-  } else {
+  } else if (selected_service()) {
     Device::SetServiceState(state);
+  } else if (service_) {
+    service_->SetState(state);
+  } else {
+    LOG(WARNING) << "State change with no Service.";
   }
 }
 
 void Cellular::SetServiceFailure(Service::ConnectFailure failure_state) {
   if (ppp_device_) {
     ppp_device_->SetServiceFailure(failure_state);
-  } else {
+  } else if (selected_service()) {
     Device::SetServiceFailure(failure_state);
+  } else if (service_) {
+    service_->SetFailure(failure_state);
+  } else {
+    LOG(WARNING) << "State change with no Service.";
   }
 }
 
 void Cellular::SetServiceFailureSilent(Service::ConnectFailure failure_state) {
   if (ppp_device_) {
     ppp_device_->SetServiceFailureSilent(failure_state);
-  } else {
+  } else if (selected_service()) {
     Device::SetServiceFailureSilent(failure_state);
+  } else if (service_) {
+    service_->SetFailureSilent(failure_state);
+  } else {
+    LOG(WARNING) << "State change with no Service.";
   }
 }
 
@@ -806,6 +819,7 @@ bool Cellular::DisconnectCleanup() {
 }
 
 void Cellular::StartPPP(const string &serial_device) {
+  SLOG(PPP, 2) << __func__ << " on " << serial_device;
   // Detach any SelectedService from this device. It will be grafted onto
   // the PPPDevice after PPP is up (in Cellular::Notify).
   //
@@ -838,6 +852,7 @@ void Cellular::StartPPP(const string &serial_device) {
   args.push_back("plugin");  // Goes with next arg.
   args.push_back(PPPDevice::kPluginPath);
   args.push_back(serial_device);
+  is_ppp_authenticating_ = false;
   scoped_ptr<ExternalTask> new_ppp_task(
       new ExternalTask(modem_info_->control_interface(),
                        modem_info_->glib(),
@@ -852,7 +867,7 @@ void Cellular::StartPPP(const string &serial_device) {
 
 // called by |ppp_task_|
 void Cellular::GetLogin(string *user, string *password) {
-  LOG(INFO) << __func__;
+  SLOG(PPP, 2) << __func__;
   if (!service()) {
     LOG(ERROR) << __func__ << " with no service ";
     return;
@@ -866,18 +881,34 @@ void Cellular::GetLogin(string *user, string *password) {
 // Called by |ppp_task_|.
 void Cellular::Notify(const string &reason,
                       const map<string, string> &dict) {
-  LOG(INFO) << __func__ << " " << reason << " on " << link_name();
+  SLOG(PPP, 2) << __func__ << " " << reason << " on " << link_name();
 
-  if (reason != kPPPReasonConnect) {
-    DCHECK_EQ(kPPPReasonDisconnect, reason);
-    // DestroyLater, rather than while on stack.
-    ppp_task_.release()->DestroyLater(modem_info_->dispatcher());
-    // For now, assume PPP failures are due to authentication issues.
-    SetServiceFailure(Service::kFailurePPPAuth);
-    return;
+  if (reason == kPPPReasonAuthenticating) {
+    OnPPPAuthenticating();
+  } else if (reason == kPPPReasonAuthenticated) {
+    OnPPPAuthenticated();
+  } else if (reason == kPPPReasonConnect) {
+    OnPPPConnected(dict);
+  } else if (reason == kPPPReasonDisconnect) {
+    OnPPPDisconnected();
+  } else {
+    NOTREACHED();
   }
+}
 
-  string interface_name = PPPDevice::GetInterfaceName(dict);
+void Cellular::OnPPPAuthenticated() {
+  SLOG(PPP, 2) << __func__;
+  is_ppp_authenticating_ = false;
+}
+
+void Cellular::OnPPPAuthenticating() {
+  SLOG(PPP, 2) << __func__;
+  is_ppp_authenticating_ = true;
+}
+
+void Cellular::OnPPPConnected(const map<string, string> &params) {
+  SLOG(PPP, 2) << __func__;
+  string interface_name = PPPDevice::GetInterfaceName(params);
   DeviceInfo *device_info = modem_info_->manager()->device_info();
   int interface_index = device_info->GetIndex(interface_name);
   if (interface_index < 0) {
@@ -907,7 +938,20 @@ void Cellular::Notify(const string &reason,
   const bool kBlackholeIPv6 = false;
   ppp_device_->SetEnabled(true);
   ppp_device_->SelectService(service_);
-  ppp_device_->UpdateIPConfigFromPPP(dict, kBlackholeIPv6);
+  ppp_device_->UpdateIPConfigFromPPP(params, kBlackholeIPv6);
+}
+
+void Cellular::OnPPPDisconnected() {
+  SLOG(PPP, 2) << __func__;
+  // DestroyLater, rather than while on stack.
+  ppp_task_.release()->DestroyLater(modem_info_->dispatcher());
+  if (is_ppp_authenticating_) {
+    SetServiceFailure(Service::kFailurePPPAuth);
+  } else {
+    // TODO(quiche): Don't set failure if we disconnected intentionally.
+    SetServiceFailure(Service::kFailureUnknown);
+  }
+  return;
 }
 
 void Cellular::OnPPPDied(pid_t pid, int exit) {

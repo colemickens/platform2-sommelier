@@ -14,7 +14,13 @@ static void PPPOnUp(void *data, int arg) {
 }
 
 static void PPPOnPhaseChange(void *data, int arg) {
-  if (arg == PHASE_DISCONNECT || arg == PHASE_DEAD) {
+  if (arg == PHASE_AUTHENTICATE) {
+    PPPOnAuthenticateStart();
+  } else if (arg == PHASE_NETWORK) {
+    // Either no authentication was required, or authentication has
+    // completed.
+    PPPOnAuthenticateDone();
+  } else if (arg == PHASE_DISCONNECT || arg == PHASE_DEAD) {
     PPPOnDisconnect();
   }
 }

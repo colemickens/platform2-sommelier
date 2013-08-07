@@ -328,6 +328,7 @@ class CellularTest : public testing::Test {
     device_->StartPPP("fake_serial_device");
     EXPECT_FALSE(device_->ipconfig());  // No DHCP client.
     EXPECT_FALSE(device_->selected_service());
+    EXPECT_FALSE(device_->is_ppp_authenticating_);
     EXPECT_TRUE(device_->ppp_task_);
     Mock::VerifyAndClearExpectations(&mock_glib);
   }
@@ -1119,8 +1120,16 @@ TEST_F(CellularTest, Notify) {
   // Common setup.
   MockPPPDeviceFactory *ppp_device_factory =
       MockPPPDeviceFactory::GetInstance();
+  const int kPID = 91;
   device_->ppp_device_factory_ = ppp_device_factory;
   SetMockService();
+  StartPPP(kPID);
+
+  const map<string, string> kEmptyArgs;
+  device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
+  EXPECT_TRUE(device_->is_ppp_authenticating_);
+  device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
+  EXPECT_FALSE(device_->is_ppp_authenticating_);
 
   // Normal connect.
   const string kInterfaceName("fake-device");
@@ -1179,12 +1188,56 @@ TEST_F(CellularTest, Notify) {
   EXPECT_CALL(*ppp_device2, UpdateIPConfigFromPPP(ppp_config2, false));
   device_->Notify(kPPPReasonConnect, ppp_config2);
   Mock::VerifyAndClearExpectations(&device_info_);
-  //  Mock::VerifyAndClearExpectations(ppp_device);
+  Mock::VerifyAndClearExpectations(ppp_device);
   Mock::VerifyAndClearExpectations(ppp_device2);
 
-  map<string, string> empty_ppp_config;
-  EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailurePPPAuth));
-  device_->Notify(kPPPReasonDisconnect, empty_ppp_config);
+  // Disconnect should report unknown failure, since we had a
+  // Notify(kPPPReasonAuthenticated, ...).
+  EXPECT_CALL(*ppp_device2, SetServiceFailure(Service::kFailureUnknown));
+  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  EXPECT_FALSE(device_->ppp_task_);
+}
+
+TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
+  // Test that we properly set Service state in the case where pppd
+  // disconnects before authenticating (as opposed to the Notify test,
+  // where pppd disconnects after connecting).
+  const int kPID = 52;
+  const map<string, string> kEmptyArgs;
+  MockCellularService *service = SetMockService();
+  StartPPP(kPID);
+  EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  EXPECT_FALSE(device_->ppp_task_);
+}
+
+TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
+  // Test that we properly set Service state in the case where pppd
+  // disconnects during authentication (as opposed to the Notify test,
+  // where pppd disconnects after connecting).
+  const int kPID = 52;
+  const map<string, string> kEmptyArgs;
+  MockCellularService *service = SetMockService();
+  StartPPP(kPID);
+  EXPECT_CALL(*service, SetFailure(Service::kFailurePPPAuth));
+  device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
+  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
+  EXPECT_FALSE(device_->ppp_task_);
+}
+
+TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
+  // Test that we properly set Service state in the case where pppd
+  // disconnects after authenticating, but before connecting (as
+  // opposed to the Notify test, where pppd disconnects after
+  // connecting).
+  const int kPID = 52;
+  const map<string, string> kEmptyArgs;
+  MockCellularService *service = SetMockService();
+  StartPPP(kPID);
+  EXPECT_CALL(*service, SetFailure(Service::kFailureUnknown));
+  device_->Notify(kPPPReasonAuthenticating, kEmptyArgs);
+  device_->Notify(kPPPReasonAuthenticated, kEmptyArgs);
+  device_->Notify(kPPPReasonDisconnect, kEmptyArgs);
   EXPECT_FALSE(device_->ppp_task_);
 }
 

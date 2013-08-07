@@ -23,6 +23,8 @@ static const char kPPPGatewayAddress[] = "GATEWAY_ADDRESS";
 static const char kPPPInterfaceName[] = "INTERNAL_IFNAME";
 static const char kPPPInternalIP4Address[] = "INTERNAL_IP4_ADDRESS";
 static const char kPPPLNSAddress[] = "LNS_ADDRESS";
+static const char kPPPReasonAuthenticated[] = "authenticated";
+static const char kPPPReasonAuthenticating[] = "authenticating";
 static const char kPPPReasonConnect[] = "connect";
 static const char kPPPReasonDisconnect[] = "disconnect";
 

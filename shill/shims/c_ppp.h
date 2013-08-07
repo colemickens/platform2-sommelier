@@ -12,6 +12,8 @@ extern "C" {
 void PPPInit();
 int PPPHasSecret();
 int PPPGetSecret(char *username, char *password);
+void PPPOnAuthenticateStart();
+void PPPOnAuthenticateDone();
 void PPPOnConnect(const char *ifname);
 void PPPOnDisconnect();
 void PPPOnExit(void *data, int arg);

@@ -333,11 +333,11 @@ class Device : public base::RefCounted<Device> {
   // events that happen to the device are attributed to this service.
   void SelectService(const ServiceRefPtr &service);
 
-  // Set the state of the selected service
+  // Set the state of the |selected_service_|.
   virtual void SetServiceState(Service::ConnectState state);
 
   // Set the failure of the selected service (implicitly sets the state to
-  // "failure")
+  // "failure").
   virtual void SetServiceFailure(Service::ConnectFailure failure_state);
 
   // Records the failure mode and time of the selected service, and
