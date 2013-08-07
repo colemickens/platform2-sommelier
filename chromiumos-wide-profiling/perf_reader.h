@@ -86,6 +86,22 @@ class PerfReader {
   bool WriteFile(const string& filename);
   bool RegenerateHeader();
 
+  // Stores the mapping from filenames to build ids in build_id_events_.
+  // Returns true on success.
+  // Note: If |filenames_to_build_ids| contains a mapping for a filename for
+  // which there is already a build_id_event in build_id_events_, a duplicate
+  // build_id_event will be created, and the old build_id_event will NOT be
+  // deleted.
+  bool InjectBuildIDs(const std::map<string, string>& filenames_to_build_ids);
+
+  // Replaces existing filenames with filenames from |build_ids_to_filenames|
+  // by joining on build ids.  If a build id in |build_ids_to_filenames| is not
+  // present in this parser, it is ignored.
+  bool Localize(const std::map<string, string>& build_ids_to_filenames);
+
+  // Same as Localize, but joins on filenames instead of build ids.
+  bool LocalizeUsingFilenames(const std::map<string, string>& filename_map);
+
   // Stores a list of unique filenames found in MMAP events into
   // |filenames|.  Any existing data in |filenames| will be lost.
   void GetFilenames(std::vector<string>* filenames) const;
@@ -190,6 +206,10 @@ class PerfReader {
   // Returns true if we should write the number of strings for the string
   // metadata of type |type|.
   bool NeedsNumberOfStringData(u32 type) const;
+
+  // Replaces existing filenames in MMAP events based on |filename_map|.
+  // This method does not change |build_id_events_|.
+  bool LocalizeMMapFilenames(const std::map<string, string>& filename_map);
 
   std::vector<PerfFileAttr> attrs_;
   std::vector<perf_trace_event_type> event_types_;

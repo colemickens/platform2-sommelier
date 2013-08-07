@@ -28,60 +28,6 @@ bool CompareParsedEventTimes(const quipper::ParsedEvent* e1,
   return (e1->sample_info->time < e2->sample_info->time);
 }
 
-// Creates/updates a build id event with |build_id| and |filename|.
-// Passing "" to |build_id| or |filename| will leave the corresponding field
-// unchanged (in which case |event| must be non-null).
-// If |event| is null or is not large enough, a new event will be created.
-// In this case, if |event| is non-null, it will be freed.
-// Otherwise, updates the fields of the existing event.
-// In either case, returns a pointer to the event containing the updated data,
-// or NULL in the case of a failure.
-build_id_event* CreateOrUpdateBuildID(const string& build_id,
-                                      const string& filename,
-                                      build_id_event* event) {
-  // When creating an event from scratch, build id and filename must be present.
-  if (!event && (build_id.empty() || filename.empty()))
-    return NULL;
-  size_t new_len = GetUint64AlignedStringLength(
-      filename.empty() ? event->filename : filename);
-
-  // If event is null, or we don't have enough memory, allocate more memory, and
-  // switch the new pointer with the existing pointer.
-  size_t new_size = sizeof(*event) + new_len;
-  if (!event || new_size > event->header.size) {
-    build_id_event* new_event = CallocMemoryForBuildID(new_size);
-
-    if (event) {
-      // Copy over everything except the filename and free the event.
-      // It is guaranteed that we are changing the filename - otherwise, the old
-      // size and the new size would be equal.
-      *new_event = *event;
-      free(event);
-    } else {
-      // Fill in the fields appropriately.
-      // Misc and pid fields are currently not important, so ignore them.
-      // However, perf expects a non-zero misc, so always set it to kernel.
-      new_event->header.type = HEADER_BUILD_ID;
-      new_event->header.misc = PERF_RECORD_MISC_KERNEL;
-    }
-    event = new_event;
-  }
-
-  // Here, event is the pointer to the build_id_event that we are keeping.
-  // Update the event's size, build id, and filename.
-  if (!build_id.empty() &&
-      !StringToHex(build_id, event->build_id, arraysize(event->build_id))) {
-    free(event);
-    return NULL;
-  }
-
-  if (!filename.empty())
-    CHECK_GT(snprintf(event->filename, new_len, "%s", filename.c_str()), 0);
-
-  event->header.size = new_size;
-  return event;
-}
-
 // Name of the kernel swapper process.
 const char kSwapperCommandName[] = "swapper";
 
@@ -137,89 +83,6 @@ bool PerfParser::ParseRawEvents() {
   // so they must be regenerated after a resize() of the ParsedEvent vector.
   SortParsedEvents();
 
-  return true;
-}
-
-bool PerfParser::InjectBuildIDs(
-    const std::map<string, string>& filenames_to_build_ids) {
-  metadata_mask_ |= (1 << HEADER_BUILD_ID);
-  std::set<string> updated_filenames;
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    build_id_event* event = build_id_events_[i];
-    string filename = event->filename;
-    if (filenames_to_build_ids.find(filename) == filenames_to_build_ids.end())
-      continue;
-
-    string build_id = filenames_to_build_ids.at(filename);
-    PerfizeBuildIDString(&build_id);
-    // Changing a build id should always result in an update, never creation.
-    CHECK_EQ(event, CreateOrUpdateBuildID(build_id, "", event));
-    updated_filenames.insert(filename);
-  }
-
-  std::map<string, string>::const_iterator it;
-  for (it = filenames_to_build_ids.begin();
-       it != filenames_to_build_ids.end();
-       ++it) {
-    if (updated_filenames.find(it->first) != updated_filenames.end())
-      continue;
-
-    string build_id = it->second;
-    PerfizeBuildIDString(&build_id);
-    build_id_event* event = CreateOrUpdateBuildID(build_id, it->first, NULL);
-    CHECK(event);
-    build_id_events_.push_back(event);
-  }
-
-  return true;
-}
-
-bool PerfParser::Localize(
-    const std::map<string, string>& build_ids_to_filenames) {
-  std::map<string, string> perfized_build_ids_to_filenames;
-  std::map<string, string>::const_iterator it;
-  for (it = build_ids_to_filenames.begin();
-       it != build_ids_to_filenames.end();
-       ++it) {
-    string build_id = it->first;
-    PerfizeBuildIDString(&build_id);
-    perfized_build_ids_to_filenames[build_id] = it->second;
-  }
-
-  std::map<string, string> filename_map;
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    build_id_event* event = build_id_events_[i];
-    string build_id = HexToString(event->build_id, kBuildIDArraySize);
-    if (perfized_build_ids_to_filenames.find(build_id) ==
-        perfized_build_ids_to_filenames.end()) {
-      continue;
-    }
-
-    string new_name = perfized_build_ids_to_filenames.at(build_id);
-    filename_map[string(event->filename)] = new_name;
-    build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
-    CHECK(new_event);
-    build_id_events_[i] = new_event;
-  }
-
-  LocalizeUsingFilenames(filename_map);
-  return true;
-}
-
-bool PerfParser::LocalizeUsingFilenames(
-    const std::map<string, string>& filename_map) {
-  LocalizeMMapFilenames(filename_map);
-  for (size_t i = 0; i < build_id_events_.size(); ++i) {
-    build_id_event* event = build_id_events_[i];
-    string old_name = event->filename;
-
-    if (filename_map.find(event->filename) != filename_map.end()) {
-      const string& new_name = filename_map.at(old_name);
-      build_id_event* new_event = CreateOrUpdateBuildID("", new_name, event);
-      CHECK(new_event);
-      build_id_events_[i] = new_event;
-    }
-  }
   return true;
 }
 
@@ -513,33 +376,6 @@ void PerfParser::ResetAddressMappers() {
     delete iter->second;
   process_mappers_.clear();
   child_to_parent_pid_map_.clear();
-}
-
-
-bool PerfParser::LocalizeMMapFilenames(
-    const std::map<string, string>& filename_map) {
-  // Search for mmap events for which the filename needs to be updated.
-  for (size_t i = 0; i < events_.size(); ++i) {
-    event_t* event = &events_[i].event;
-    if (event->header.type != PERF_RECORD_MMAP)
-      continue;
-
-    string key = string(event->mmap.filename);
-    if (filename_map.find(key) == filename_map.end())
-      continue;
-
-    // Copy over the new filename.
-    string new_filename = filename_map.at(key);
-    size_t old_len = GetUint64AlignedStringLength(key);
-    size_t new_len = GetUint64AlignedStringLength(new_filename);
-    event->header.size += (new_len - old_len);
-    // TODO(rohinmshah): Could this overwrite the sample info?
-    CHECK_GT(snprintf(event->mmap.filename, new_filename.size() + 1, "%s",
-                      new_filename.c_str()),
-             0);
-  }
-
-  return true;
 }
 
 }  // namespace quipper
