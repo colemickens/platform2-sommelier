@@ -26,14 +26,15 @@ void SerializeAndDeserialize(const string& input,
                              bool do_remap,
                              bool discard_unused_events) {
   quipper::PerfDataProto perf_data_proto;
+  PerfSerializer::Options options;
+  options.do_remap = do_remap;
+  options.discard_unused_events = discard_unused_events;
   PerfSerializer serializer;
-  serializer.set_do_remap(do_remap);
-  serializer.set_discard_unused_events(discard_unused_events);
+  serializer.SetOptions(options);
   EXPECT_TRUE(serializer.SerializeFromFile(input, &perf_data_proto));
 
   PerfSerializer deserializer;
-  deserializer.set_do_remap(do_remap);
-  deserializer.set_discard_unused_events(discard_unused_events);
+  deserializer.SetOptions(options);
   EXPECT_TRUE(deserializer.DeserializeToFile(perf_data_proto, output));
 
   // Check perf event stats.

@@ -66,6 +66,17 @@ class PerfParser : public PerfReader {
   PerfParser();
   ~PerfParser();
 
+  struct Options {
+    bool do_remap;
+    bool discard_unused_events;
+
+    Options() : do_remap(false),
+                discard_unused_events(false) {}
+  };
+
+  // Pass in a struct containing various options.
+  void SetOptions(const Options& options);
+
   // Gets parsed event/sample info from raw event data.
   bool ParseRawEvents();
 
@@ -77,18 +88,6 @@ class PerfParser : public PerfReader {
   // The first time this is called, it will create the sorted array.
   const std::vector<ParsedEvent*>& GetEventsSortedByTime() const {
     return parsed_events_sorted_by_time_;
-  }
-
-  bool do_remap() const {
-    return do_remap_;
-  }
-
-  void set_do_remap(bool do_remap) {
-    do_remap_ = do_remap;
-  }
-
-  void set_discard_unused_events(bool discard) {
-    discard_unused_events_ = discard;
   }
 
   const PerfEventStats& stats() const {

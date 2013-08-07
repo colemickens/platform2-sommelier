@@ -46,7 +46,9 @@ void CreateFilenameToBuildIDMap(
 
 void ReadFileAndCheckInternals(const string& input_perf_data,
                                PerfParser* parser) {
-  parser->set_do_remap(true);
+  PerfParser::Options options;
+  options.do_remap = true;
+  parser->SetOptions(options);
   ASSERT_TRUE(parser->ReadFile(input_perf_data));
   parser->ParseRawEvents();
 

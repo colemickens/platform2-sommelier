@@ -96,6 +96,11 @@ PerfParser::~PerfParser() {
   delete kernel_mapper_;
 }
 
+void PerfParser::SetOptions(const PerfParser::Options& options) {
+  do_remap_ = options.do_remap;
+  discard_unused_events_ = options.discard_unused_events;
+}
+
 bool PerfParser::ParseRawEvents() {
   ResetAddressMappers();
   parsed_events_.resize(events_.size());
