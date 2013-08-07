@@ -228,7 +228,23 @@ string OpenVPNDriver::JoinOptions(const vector<vector<string>> &options,
                                   char separator) {
   vector<string> option_strings;
   for (const auto &option : options) {
-    option_strings.push_back(JoinString(option, ' '));
+    vector<string> quoted_option;
+    for (const auto &argument : option) {
+      if (argument.find(' ') != string::npos ||
+          argument.find('\t') != string::npos ||
+          argument.find('"') != string::npos ||
+          argument.find(separator) != string::npos) {
+        string quoted_argument(argument);
+        const char separator_chars[] = { separator, '\0' };
+        ReplaceChars(argument, separator_chars, " ", &quoted_argument);
+        ReplaceChars(quoted_argument, "\\", "\\\\", &quoted_argument);
+        ReplaceChars(quoted_argument, "\"", "\\\"", &quoted_argument);
+        quoted_option.push_back("\"" + quoted_argument + "\"");
+      } else {
+        quoted_option.push_back(argument);
+      }
+    }
+    option_strings.push_back(JoinString(quoted_option, ' '));
   }
   return JoinString(option_strings, separator);
 }

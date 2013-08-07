@@ -1237,8 +1237,9 @@ TEST_F(OpenVPNDriverTest, WriteConfigFile) {
   const char kOption1[] = "option1";
   const char kOption1Argument0[] = "option1-argument0";
   const char kOption2[] = "option2";
-  const char kOption2Argument0[] = "option2-argument0";
-  const char kOption2Argument1[] = "option2-argument1";
+  const char kOption2Argument0[] = "option2-argument0\n\t\"'\\";
+  const char kOption2Argument0Transformed[] = "option2-argument0 \t\\\"'\\\\";
+  const char kOption2Argument1[] = "option2-argument1 space";
   vector<vector<string>> options {
       { kOption0 },
       { kOption1, kOption1Argument0 },
@@ -1256,10 +1257,10 @@ TEST_F(OpenVPNDriverTest, WriteConfigFile) {
   string config_contents;
   EXPECT_TRUE(file_util::ReadFileToString(config_file, &config_contents));
   string expected_config_contents = StringPrintf(
-      "%s\n%s %s\n%s %s %s\n",
+      "%s\n%s %s\n%s \"%s\" \"%s\"\n",
       kOption0,
       kOption1, kOption1Argument0,
-      kOption2, kOption2Argument0, kOption2Argument1);
+      kOption2, kOption2Argument0Transformed, kOption2Argument1);
   EXPECT_EQ(expected_config_contents, config_contents);
 }
 
