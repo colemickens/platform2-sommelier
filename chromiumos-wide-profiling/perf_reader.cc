@@ -1823,11 +1823,21 @@ bool PerfReader::LocalizeMMapFilenames(
     string new_filename = filename_map.at(key);
     size_t old_len = GetUint64AlignedStringLength(key);
     size_t new_len = GetUint64AlignedStringLength(new_filename);
-    event->header.size += (new_len - old_len);
-    // TODO(rohinmshah): Could this overwrite the sample info?
+    size_t difference = new_len - old_len;
+    size_t old_offset = GetPerfSampleDataOffset(*event);
+    size_t new_offset = old_offset + difference;
+    size_t sample_size = event->header.size - old_offset;
+    char* start_addr = reinterpret_cast<char*>(event);
+
+    // Move the perf sample data to its new location.
+    // Since source and dest could overlap, use memmove instead of memcpy.
+    memmove(&start_addr[new_offset], &start_addr[old_offset], sample_size);
+
+    // Copy over the new filename and fix the size of the event.
     CHECK_GT(snprintf(event->mmap.filename, new_filename.size() + 1, "%s",
                       new_filename.c_str()),
              0);
+    event->header.size += difference;
   }
 
   return true;
