@@ -163,7 +163,7 @@ class ShillProxy(object):
                 connection = cls()
             except dbus.exceptions.DBusException as e:
                 if e.get_dbus_name() != ShillProxy.DBUS_SERVICE_UNKNOWN:
-                    raise error.TestFail('Error connecting to shill')
+                    raise ShillProxyError('Error connecting to shill')
                 else:
                     # Wait a moment before retrying
                     time.sleep(ShillProxy.POLLING_INTERVAL_SECONDS)
