@@ -474,13 +474,7 @@ PerfReader::~PerfReader() {
 // Makes |build_id| fit the perf format, by either truncating it or adding zeros
 // to the end so that it has length kBuildIDStringLength.
 void PerfReader::PerfizeBuildIDString(string* build_id) {
-  if (build_id->size() > kBuildIDStringLength) {
-    build_id->resize(kBuildIDStringLength);
-  } else {
-    while (build_id->size() < kBuildIDStringLength) {
-      build_id->push_back('0');
-    }
-  }
+  build_id->resize(kBuildIDStringLength, '0');
 }
 
 bool PerfReader::ReadFile(const string& filename) {
