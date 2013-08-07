@@ -1651,7 +1651,8 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
   }
 
   PerfEventAndSampleInfo event_and_sample;
-  event_and_sample.event = event;
+  // Copy only the part of the event that is needed.
+  memcpy(&event_and_sample.event, &event, pe_header.size);
 
   if (ShouldWriteSampleInfoForEvent(event) &&
       !ReadPerfSampleInfo(event,
