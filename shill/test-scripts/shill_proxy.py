@@ -346,14 +346,22 @@ class ShillProxy(object):
         dbus_type, manager_property = self.OBJECT_TYPE_PROPERTY_MAP[object_type]
         manager_properties = self.manager.GetProperties(utf8_strings=True)
         for path in manager_properties[manager_property]:
-            test_object = self.get_dbus_object(dbus_type, path)
-            object_properties = test_object.GetProperties(utf8_strings=True)
-            for name, value in properties.iteritems():
-                if (name not in object_properties or
-                    self.dbus2primitive(object_properties[name]) != value):
-                    break
-            else:
-                return test_object
+            try:
+                test_object = self.get_dbus_object(dbus_type, path)
+                object_properties = test_object.GetProperties(utf8_strings=True)
+                for name, value in properties.iteritems():
+                    if (name not in object_properties or
+                        self.dbus2primitive(object_properties[name]) != value):
+                        break
+                else:
+                    return test_object
+
+            except dbus.exceptions.DBusException, e:
+                # This could happen if for instance, you're enumerating services
+                # and test_object was removed in shill between the call to get
+                # the manager properties and the call to get the service
+                # properties.  This causes failed method invocations.
+                continue
         return None
 
 
