@@ -1694,7 +1694,7 @@ TEST_F(CellularCapabilityUniversalMainTest, GetMdnForOLP) {
 
   cellular_operator.identifier_ = "vzw";
   capability_->mdn_ = "";
-  EXPECT_EQ("", capability_->GetMdnForOLP(cellular_operator));
+  EXPECT_EQ("0000000000", capability_->GetMdnForOLP(cellular_operator));
   capability_->mdn_ = "0123456789";
   EXPECT_EQ("0123456789", capability_->GetMdnForOLP(cellular_operator));
   capability_->mdn_ = "10123456789";
@@ -2131,7 +2131,7 @@ TEST_F(CellularCapabilityUniversalMainTest, IsServiceActivationRequired) {
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
   capability_->mdn_ = "";
-  EXPECT_FALSE(capability_->IsServiceActivationRequired());
+  EXPECT_TRUE(capability_->IsServiceActivationRequired());
   capability_->mdn_ = "1234567890";
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
   capability_->mdn_ = "0000000000";

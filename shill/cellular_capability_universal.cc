@@ -642,9 +642,13 @@ string CellularCapabilityUniversal::GetMdnForOLP(
     const CellularOperatorInfo::CellularOperator &cellular_operator) const {
   // TODO(benchan): This is ugly. Remove carrier specific code once we move
   // mobile activation logic to carrier-specifc extensions (crbug.com/260073).
-  if (cellular_operator.identifier() == kVzwIdentifier &&
-      mdn_.length() > kVzwMdnLength) {
-    return mdn_.substr(mdn_.length() - kVzwMdnLength);
+  if (cellular_operator.identifier() == kVzwIdentifier) {
+    if (mdn_.empty()) {
+      return string(kVzwMdnLength, '0');
+    }
+    if (mdn_.length() > kVzwMdnLength) {
+      return mdn_.substr(mdn_.length() - kVzwMdnLength);
+    }
   }
   return mdn_;
 }
@@ -1219,12 +1223,8 @@ bool CellularCapabilityUniversal::IsServiceActivationRequired() const {
   if (!olp)
     return false;
 
-  // To avoid false positives, it's safer to assume the service does not
-  // require activation if MDN is not set.
-  if (mdn_.empty())
-    return false;
-
-  // If MDN contains only zeros, the service requires activation.
+  // If the MDN is invalid (i.e. empty or contains only zeros), the service
+  // requires activation.
   return !IsMdnValid();
 }
 
