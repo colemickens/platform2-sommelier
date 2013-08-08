@@ -100,8 +100,8 @@ void CheckNoBuildIDEventPadding() {
            sizeof(event.build_id));
 }
 
-bool ShouldWriteSampleInfoForEvent(const event_t& event) {
-  switch (event.header.type) {
+bool ShouldWriteSampleInfoForEventType(uint32 type) {
+  switch (type) {
   case PERF_RECORD_SAMPLE:
   case PERF_RECORD_MMAP:
   case PERF_RECORD_FORK:
@@ -115,7 +115,7 @@ bool ShouldWriteSampleInfoForEvent(const event_t& event) {
   case PERF_RECORD_MAX:
     return false;
   default:
-    LOG(FATAL) << "Unknown event type " << event.header.type;
+    LOG(FATAL) << "Unknown event type " << type;
     return false;
   }
 }
@@ -1172,57 +1172,43 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
   size_t offset = piped_header_.size;
   bool result = true;
   metadata_mask_ = 0;
+  CheckNoEventHeaderPadding();
 
   while (offset < data.size() && result) {
-    union piped_data_block {
-      // Generic format of a piped perf data block, with header + more data.
-      struct {
-        struct perf_event_header header;
-        char more_data[];
-      };
-      // Specific types of data.
-      event_t event;
-    };
-    const union piped_data_block *block_data
-        = reinterpret_cast<const union piped_data_block*>(&data[offset]);
-    union piped_data_block block;
-
-    CheckNoEventHeaderPadding();
-
-    if (offset + sizeof(block.header) > data.size()) {
+    perf_event_header header;
+    if (offset + sizeof(header) > data.size()) {
       LOG(ERROR) << "Not enough bytes left in data to read header.  Required: "
-                 << sizeof(block.header) << " bytes.  Available: "
+                 << sizeof(header) << " bytes.  Available: "
                  << data.size() - offset << " bytes.";
       return true;
     }
 
     // Copy the header and swap bytes if necessary.
-    memcpy(&block.header, block_data, sizeof(block.header));
+    header = *reinterpret_cast<const perf_event_header*>(&data[offset]);
     if (is_cross_endian_) {
-      ByteSwap(&block.header.type);
-      ByteSwap(&block.header.misc);
-      ByteSwap(&block.header.size);
+      ByteSwap(&header.type);
+      ByteSwap(&header.misc);
+      ByteSwap(&header.size);
     }
 
-    if (data.size() < offset + block.header.size) {
+    if (data.size() < offset + header.size) {
       LOG(ERROR) << "Not enough bytes to read piped event.  Required: "
-                 << block.header.size << " bytes.  Available: "
+                 << header.size << " bytes.  Available: "
                  << data.size() - offset << " bytes.";
       return true;
     }
 
-    size_t new_offset = offset + sizeof(block.header);
-    size_t size_without_header = block.header.size - sizeof(block.header);
+    size_t new_offset = offset + sizeof(header);
+    size_t size_without_header = header.size - sizeof(header);
 
-    if (block.header.type < PERF_RECORD_MAX) {
-      // Copy the rest of the data.
-      memcpy(&block.more_data, block_data->more_data, size_without_header);
-      result = ReadPerfEventBlock(block.event);
-      offset += block.header.size;
+    if (header.type < PERF_RECORD_MAX) {
+      const event_t* event = reinterpret_cast<const event_t*>(&data[offset]);
+      result = ReadPerfEventBlock(*event);
+      offset += header.size;
       continue;
     }
 
-    switch (block.header.type) {
+    switch (header.type) {
     case PERF_RECORD_HEADER_ATTR:
       result = ReadAttrEventBlock(data, new_offset, size_without_header);
       break;
@@ -1233,8 +1219,7 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
       break;
     case PERF_RECORD_HEADER_BUILD_ID:
       metadata_mask_ |= (1 << HEADER_BUILD_ID);
-      result = ReadBuildIDMetadata(data, HEADER_BUILD_ID, offset,
-                                   block.header.size);
+      result = ReadBuildIDMetadata(data, HEADER_BUILD_ID, offset, header.size);
       break;
     case PERF_RECORD_HEADER_HOSTNAME:
       metadata_mask_ |= (1 << HEADER_HOSTNAME);
@@ -1292,11 +1277,11 @@ bool PerfReader::ReadPipedData(const std::vector<char>& data) {
                                         size_without_header);
       break;
     default:
-      LOG(WARNING) << "Event type " << block.header.type
+      LOG(WARNING) << "Event type " << header.type
                    << " is not yet supported!";
       break;
     }
-    offset += block.header.size;
+    offset += header.size;
   }
 
   if (result) {
@@ -1347,7 +1332,7 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
     event_t event = events_[i].event;
     size_t event_size = event.header.size;
     const struct perf_sample& sample_info = events_[i].sample_info;
-    if (ShouldWriteSampleInfoForEvent(event) &&
+    if (ShouldWriteSampleInfoForEventType(event.header.type) &&
         !WritePerfSampleInfo(sample_info, sample_type_, &event)) {
       return false;
     }
@@ -1645,52 +1630,67 @@ bool PerfReader::ReadAttrEventBlock(const std::vector<char>& data,
   return true;
 }
 
+// When this method is called, |event| is a reference to the bytes in the data
+// vector that contains the entire perf.data file.  As a result, we need to be
+// careful to only copy event.header.size bytes.
+// In particular, something like
+// event_t event_copy = event;
+// would be bad, because it would read past the end of the event, and possibly
+// pass the end of the data vector as well.
 bool PerfReader::ReadPerfEventBlock(const event_t& event) {
-  const perf_event_header& pe_header = event.header;
+  u16 size = event.header.size;
+  if (is_cross_endian_)
+    ByteSwap(&size);
 
-  if (pe_header.size > sizeof(event_t)) {
-    LOG(INFO) << "Data size: " << pe_header.size << " sizeof(event_t): "
+  if (size > sizeof(event_t)) {
+    LOG(INFO) << "Data size: " << size << " sizeof(event_t): "
               << sizeof(event_t);
     return false;
   }
 
   PerfEventAndSampleInfo event_and_sample;
   // Copy only the part of the event that is needed.
-  memcpy(&event_and_sample.event, &event, pe_header.size);
+  memcpy(&event_and_sample.event, &event, size);
+  event_t& event_copy = event_and_sample.event;
+  if (is_cross_endian_) {
+    ByteSwap(&event_copy.header.type);
+    ByteSwap(&event_copy.header.misc);
+    ByteSwap(&event_copy.header.size);
+  }
 
-  if (ShouldWriteSampleInfoForEvent(event) &&
-      !ReadPerfSampleInfo(event,
+  uint32 type = event_copy.header.type;
+  if (ShouldWriteSampleInfoForEventType(type) &&
+      !ReadPerfSampleInfo(event_copy,
                           sample_type_,
                           is_cross_endian_,
                           &event_and_sample.sample_info)) {
     return false;
   }
 
-  if (ShouldWriteSampleInfoForEvent(event) && is_cross_endian_) {
-    event_t& event = event_and_sample.event;
-    switch (event.header.type) {
+  if (is_cross_endian_) {
+    switch (type) {
     case PERF_RECORD_SAMPLE:
-      ByteSwap(&event.ip.ip);
-      ByteSwap(&event.ip.pid);
-      ByteSwap(&event.ip.tid);
+      ByteSwap(&event_copy.ip.ip);
+      ByteSwap(&event_copy.ip.pid);
+      ByteSwap(&event_copy.ip.tid);
       break;
     case PERF_RECORD_MMAP:
-      ByteSwap(&event.mmap.pid);
-      ByteSwap(&event.mmap.tid);
-      ByteSwap(&event.mmap.start);
-      ByteSwap(&event.mmap.len);
-      ByteSwap(&event.mmap.pgoff);
+      ByteSwap(&event_copy.mmap.pid);
+      ByteSwap(&event_copy.mmap.tid);
+      ByteSwap(&event_copy.mmap.start);
+      ByteSwap(&event_copy.mmap.len);
+      ByteSwap(&event_copy.mmap.pgoff);
       break;
     case PERF_RECORD_FORK:
     case PERF_RECORD_EXIT:
-      ByteSwap(&event.fork.pid);
-      ByteSwap(&event.fork.tid);
-      ByteSwap(&event.fork.ppid);
-      ByteSwap(&event.fork.ptid);
+      ByteSwap(&event_copy.fork.pid);
+      ByteSwap(&event_copy.fork.tid);
+      ByteSwap(&event_copy.fork.ppid);
+      ByteSwap(&event_copy.fork.ptid);
       break;
     case PERF_RECORD_COMM:
-      ByteSwap(&event.comm.pid);
-      ByteSwap(&event.comm.tid);
+      ByteSwap(&event_copy.comm.pid);
+      ByteSwap(&event_copy.comm.tid);
       break;
     case PERF_RECORD_LOST:
     case PERF_RECORD_THROTTLE:
@@ -1699,7 +1699,7 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
     case PERF_RECORD_MAX:
       break;
     default:
-      LOG(FATAL) << "Unknown event type: " << event.header.type;
+      LOG(FATAL) << "Unknown event type: " << type;
     }
   }
 
