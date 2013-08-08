@@ -69,6 +69,7 @@ const char CellularCapabilityUniversal::kOperatorCodeProperty[] =
 const char CellularCapabilityUniversal::kOperatorAccessTechnologyProperty[] =
     "access-technology";
 const char CellularCapabilityUniversal::kIpConfigPropertyMethod[] = "method";
+const char CellularCapabilityUniversal::kALT3100ModelId[] = "ALT3100";
 const char CellularCapabilityUniversal::kE362ModelId[] = "E362 WWAN";
 const int CellularCapabilityUniversal::kSetPowerStateTimeoutMilliseconds =
     20000;
@@ -728,9 +729,11 @@ void CellularCapabilityUniversal::OnServiceCreated() {
   // WORKAROUND:
   // E362 modems on Verizon network does not properly redirect when a SIM
   // runs out of credits, we need to enforce out-of-credits detection.
-  // TODO(thieule): Remove this workaround (crosbug.com/p/18619).
-  if (model_id_ == kE362ModelId)
-    cellular()->service()->set_enforce_out_of_credits_detection(true);
+  //
+  // The out-of-credits detection is also needed on ALT3100 modems until the PCO
+  // support is ready (crosbug.com/p/20461).
+  cellular()->service()->set_enforce_out_of_credits_detection(
+      ShouldDetectOutOfCredit());
 
   // Make sure that the network technology is set when the service gets
   // created, just in case.
@@ -837,7 +840,7 @@ bool CellularCapabilityUniversal::AllowRoaming() {
 }
 
 bool CellularCapabilityUniversal::ShouldDetectOutOfCredit() const {
-  return model_id_ == kE362ModelId;
+  return model_id_ == kALT3100ModelId || model_id_ == kE362ModelId;
 }
 
 void CellularCapabilityUniversal::GetProperties() {

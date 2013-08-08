@@ -2187,6 +2187,8 @@ TEST_F(CellularCapabilityUniversalMainTest, GetNetworkTechnologyStringOnE362) {
 TEST_F(CellularCapabilityUniversalMainTest, ShouldDetectOutOfCredit) {
   capability_->model_id_.clear();
   EXPECT_FALSE(capability_->ShouldDetectOutOfCredit());
+  capability_->model_id_ = CellularCapabilityUniversal::kALT3100ModelId;
+  EXPECT_TRUE(capability_->ShouldDetectOutOfCredit());
   capability_->model_id_ = CellularCapabilityUniversal::kE362ModelId;
   EXPECT_TRUE(capability_->ShouldDetectOutOfCredit());
 }

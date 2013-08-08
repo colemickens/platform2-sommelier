@@ -883,6 +883,24 @@ TEST_F(CellularTest, EnableTrafficMonitor) {
 
   device_->state_ = Cellular::kStateDisabled;
 
+  capability->model_id_ = CellularCapabilityUniversal::kALT3100ModelId;
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kOperationFailed));
+  EXPECT_FALSE(device_->traffic_monitor_enabled());
+  Mock::VerifyAndClearExpectations(this);
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  device_->StartModemCallback(Bind(&CellularTest::TestCallback,
+                                   Unretained(this)),
+                              Error(Error::kSuccess));
+  EXPECT_TRUE(device_->traffic_monitor_enabled());
+  Mock::VerifyAndClearExpectations(this);
+
+  device_->state_ = Cellular::kStateDisabled;
+  device_->traffic_monitor_enabled_ = false;
+
   capability->model_id_ = CellularCapabilityUniversal::kE362ModelId;
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   device_->StartModemCallback(Bind(&CellularTest::TestCallback,
