@@ -147,10 +147,14 @@ message PerfDataProto {
     repeated uint64 ids = 2;
   }
 
-  // Describes a perf event type.
+  // Protobuf version of the perf_event_type struct found in perf/util/event.h.
+  // Contains the name of the event (such as "cycles" or "branch-misses") and
+  // the event id (which is not unique).
   // Next tag: 4
   message PerfEventType {
-    // Event id.
+    // Event id.  This is not unique across event types.
+    // The combination of the event id and the type field in PerfEventAttr is
+    // unique across event types.
     optional uint64 id = 1;
 
     // Event name.
@@ -379,7 +383,7 @@ message PerfDataProto {
     // Process ID.
     optional uint32 pid = 2;
 
-    // Build id.
+    // Build id.  Should always contain kBuildIDArraySize bytes of data.
     optional bytes build_id = 3;
 
     // Filename.
@@ -391,13 +395,13 @@ message PerfDataProto {
     // Core siblings.
     repeated string core_siblings = 1;
 
-    // Core siblings' md5 prefix.
+    // Core siblings' md5 prefixes.
     repeated uint64 core_siblings_md5_prefix = 2;
 
     // Thread siblings.
     repeated string thread_siblings = 3;
 
-    // Thread siblings' md5 prefix.
+    // Thread siblings' md5 prefixes.
     repeated uint64 thread_siblings_md5_prefix = 4;
   }
 
