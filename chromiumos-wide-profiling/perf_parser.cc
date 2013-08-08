@@ -68,7 +68,7 @@ bool PerfParser::ParseRawEvents() {
   size_t read_index;
   for (read_index = 0; read_index < parsed_events_.size(); ++read_index) {
     const ParsedEvent& event = parsed_events_[read_index];
-    if (event.raw_event->header.type == PERF_RECORD_MMAP &&
+    if ((*event.raw_event)->header.type == PERF_RECORD_MMAP &&
         event.num_samples_in_mmap_region == 0) {
       continue;
     }
@@ -99,7 +99,7 @@ bool PerfParser::ProcessEvents() {
   memset(&stats_, 0, sizeof(stats_));
   for (unsigned int i = 0; i < parsed_events_sorted_by_time_.size(); ++i) {
     ParsedEvent& parsed_event = *parsed_events_sorted_by_time_[i];
-    event_t& event = *parsed_event.raw_event;
+    event_t& event = *(*parsed_event.raw_event);
     switch (event.header.type) {
       case PERF_RECORD_SAMPLE:
         VLOG(1) << "IP: " << std::hex << event.ip.ip;
@@ -172,12 +172,12 @@ bool PerfParser::MapSampleEvent(ParsedEvent* parsed_event) {
   } else if (pid == 0) {
     parsed_event->command = kSwapperCommandName;
   } else {  // If no command found, use the pid as command.
-    char string_buf[sizeof(parsed_event->raw_event->comm.comm)];
+    char string_buf[sizeof((*parsed_event->raw_event)->comm.comm)];
     snprintf(string_buf, arraysize(string_buf), "%u", pid);
     parsed_event->command = string_buf;
   }
 
-  struct ip_event& event = parsed_event->raw_event->ip;
+  struct ip_event& event = (*parsed_event->raw_event)->ip;
 
   // Map the event IP itself.
   string& name = parsed_event->dso_and_offset.dso_name;
@@ -275,8 +275,8 @@ bool PerfParser::MapIPAndPidAndGetNameAndOffset(uint64 ip,
       // Make sure the ID points to a valid event.
       CHECK_LE(id, parsed_events_sorted_by_time_.size());
       ParsedEvent* parsed_event = parsed_events_sorted_by_time_[id];
-      CHECK_EQ(parsed_event->raw_event->header.type, PERF_RECORD_MMAP);
-      *name = parsed_event->raw_event->mmap.filename;
+      CHECK_EQ((*parsed_event->raw_event)->header.type, PERF_RECORD_MMAP);
+      *name = (*parsed_event->raw_event)->mmap.filename;
       ++parsed_event->num_samples_in_mmap_region;
     }
     if (do_remap_)

@@ -291,6 +291,12 @@ const char* kSupportedMetadata[] = {
   NULL,
 };
 
+event_t* CallocMemoryForEvent(size_t size) {
+  event_t* event = reinterpret_cast<event_t*>(calloc(1, size));
+  CHECK(event);
+  return event;
+}
+
 build_id_event* CallocMemoryForBuildID(size_t size) {
   build_id_event* event = reinterpret_cast<build_id_event*>(calloc(1, size));
   CHECK(event);

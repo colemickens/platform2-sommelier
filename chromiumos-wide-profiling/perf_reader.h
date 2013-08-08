@@ -24,7 +24,7 @@ struct PerfFileAttr {
 
 struct PerfEventAndSampleInfo {
   struct perf_sample sample_info;
-  event_t event;
+  event_t* event;
 
   PerfEventAndSampleInfo() {
     memset(&sample_info, 0, sizeof(sample_info));

@@ -18,6 +18,8 @@ namespace quipper {
 
 extern const char* kSupportedMetadata[];
 
+event_t* CallocMemoryForEvent(size_t size);
+
 build_id_event* CallocMemoryForBuildID(size_t size);
 
 bool FileToBuffer(const string& filename, std::vector<char>* contents);

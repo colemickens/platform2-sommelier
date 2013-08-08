@@ -519,6 +519,7 @@ PerfReader::~PerfReader() {
       delete [] events_[i].sample_info.callchain;
     if (events_[i].sample_info.branch_stack)
       delete [] events_[i].sample_info.branch_stack;
+    free(events_[i].event);
   }
 
   for (size_t i = 0; i < build_id_events_.size(); ++i)
@@ -623,7 +624,7 @@ bool PerfReader::RegenerateHeader() {
   out_header_.attr_size = sizeof(attrs_[0].attr) + sizeof(perf_file_section);
   out_header_.attrs.size = out_header_.attr_size * attrs_.size();
   for (size_t i = 0; i < events_.size(); i++)
-    out_header_.data.size += events_[i].event.header.size;
+    out_header_.data.size += events_[i].event->header.size;
   out_header_.event_types.size = event_types_.size() * sizeof(event_types_[0]);
 
   u64 current_offset = 0;
@@ -749,7 +750,7 @@ void PerfReader::GetFilenames(std::vector<string>* filenames) const {
 void PerfReader::GetFilenamesAsSet(std::set<string>* filenames) const {
   filenames->clear();
   for (size_t i = 0; i < events_.size(); ++i) {
-    const event_t& event = events_[i].event;
+    const event_t& event = *events_[i].event;
     if (event.header.type == PERF_RECORD_MMAP)
       filenames->insert(event.mmap.filename);
   }
@@ -1329,7 +1330,8 @@ bool PerfReader::WriteData(std::vector<char>* data) const {
   size_t offset = out_header_.data.offset;
   for (size_t i = 0; i < events_.size(); ++i) {
     // First write to a local event object.
-    event_t event = events_[i].event;
+    event_t event;
+    memcpy(&event, events_[i].event, events_[i].event->header.size);
     size_t event_size = event.header.size;
     const struct perf_sample& sample_info = events_[i].sample_info;
     if (ShouldWriteSampleInfoForEventType(event.header.type) &&
@@ -1650,8 +1652,9 @@ bool PerfReader::ReadPerfEventBlock(const event_t& event) {
 
   PerfEventAndSampleInfo event_and_sample;
   // Copy only the part of the event that is needed.
-  memcpy(&event_and_sample.event, &event, size);
-  event_t& event_copy = event_and_sample.event;
+  event_and_sample.event = CallocMemoryForEvent(size);
+  memcpy(event_and_sample.event, &event, size);
+  event_t& event_copy = *event_and_sample.event;
   if (is_cross_endian_) {
     ByteSwap(&event_copy.header.type);
     ByteSwap(&event_copy.header.misc);
@@ -1811,7 +1814,7 @@ bool PerfReader::LocalizeMMapFilenames(
     const std::map<string, string>& filename_map) {
   // Search for mmap events for which the filename needs to be updated.
   for (size_t i = 0; i < events_.size(); ++i) {
-    event_t* event = &events_[i].event;
+    event_t* event = events_[i].event;
     if (event->header.type != PERF_RECORD_MMAP)
       continue;
 
@@ -1819,25 +1822,44 @@ bool PerfReader::LocalizeMMapFilenames(
     if (filename_map.find(key) == filename_map.end())
       continue;
 
-    // Copy over the new filename.
     string new_filename = filename_map.at(key);
     size_t old_len = GetUint64AlignedStringLength(key);
     size_t new_len = GetUint64AlignedStringLength(new_filename);
-    size_t difference = new_len - old_len;
     size_t old_offset = GetPerfSampleDataOffset(*event);
-    size_t new_offset = old_offset + difference;
     size_t sample_size = event->header.size - old_offset;
-    char* start_addr = reinterpret_cast<char*>(event);
 
-    // Move the perf sample data to its new location.
-    // Since source and dest could overlap, use memmove instead of memcpy.
-    memmove(&start_addr[new_offset], &start_addr[old_offset], sample_size);
+    int size_increase = new_len - old_len;
+    size_t new_size = event->header.size + size_increase;
+    size_t new_offset = old_offset + size_increase;
+
+    if (size_increase > 0) {
+      // Allocate memory for a new event.
+      event_t* old_event = event;
+      event = CallocMemoryForEvent(new_size);
+
+      // Copy over everything except filename and sample info.
+      memcpy(event, old_event,
+             sizeof(event->mmap) - sizeof(event->mmap.filename));
+
+      // Copy over the sample info to the correct location.
+      char* old_addr = reinterpret_cast<char*>(old_event);
+      char* new_addr = reinterpret_cast<char*>(event);
+      memcpy(new_addr + new_offset, old_addr + old_offset, sample_size);
+
+      free(old_event);
+      events_[i].event = event;
+    } else if (size_increase < 0) {
+      // Move the perf sample data to its new location.
+      // Since source and dest could overlap, use memmove instead of memcpy.
+      char* start_addr = reinterpret_cast<char*>(event);
+      memmove(start_addr + new_offset, start_addr + old_offset, sample_size);
+    }
 
     // Copy over the new filename and fix the size of the event.
     CHECK_GT(snprintf(event->mmap.filename, new_filename.size() + 1, "%s",
                       new_filename.c_str()),
              0);
-    event->header.size += difference;
+    event->header.size = new_size;
   }
 
   return true;
