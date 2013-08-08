@@ -6,7 +6,6 @@
 #define MIST_USB_INTERFACE_H_
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 struct libusb_interface;
@@ -34,11 +33,11 @@ class UsbInterface {
   // Getters for retrieving fields of the libusb_interface struct.
   int GetNumAlternateSettings() const;
 
-  // Returns a scoped pointer to a UsbInterfaceDescriptor object for the
-  // interface descriptor indexed at |index|, or null scoped pointer if the
-  // index is invalid. The returned object becomes invalid, and thus should not
-  // be held, beyond the lifetime of this object.
-  scoped_ptr<UsbInterfaceDescriptor> GetAlternateSetting(int index) const;
+  // Returns a pointer to a UsbInterfaceDescriptor object for the interface
+  // descriptor indexed at |index|, or a NULL pointer if the index is invalid.
+  // The returned object should be deleted by the caller after use and should
+  // not be held beyond the lifetime of this object.
+  UsbInterfaceDescriptor* GetAlternateSetting(int index) const;
 
  private:
   base::WeakPtr<UsbDevice> device_;

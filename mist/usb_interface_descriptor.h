@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 
 #include "mist/usb_constants.h"
@@ -48,20 +47,19 @@ class UsbInterfaceDescriptor {
   uint8 GetInterfaceProtocol() const;
   std::string GetInterfaceDescription() const;
 
-  // Returns a scoped pointer to a UsbEndpointDescriptor object for the endpoint
-  // descriptor indexed at |index|, or a null scoped pointer if |index| is
-  // invalid. The returned object becomes invalid, and thus should not be held,
-  // beyond the lifetime of this object.
-  scoped_ptr<UsbEndpointDescriptor> GetEndpointDescriptor(uint8 index) const;
+  // Returns a pointer to a UsbEndpointDescriptor object for the endpoint
+  // descriptor indexed at |index|, or a NULL pointer if |index| is invalid.
+  // The returned should be deleted by the caller after use and should not be
+  // held beyond the lifetime of this object.
+  UsbEndpointDescriptor* GetEndpointDescriptor(uint8 index) const;
 
-  // Returns a scoped pointer to a UsbEndpointDescriptor object for the first
-  // endpoint descriptor with its transfer type equal to |transfer_type| and its
-  // direction equal to |direction|, or a null scoped pointer if not matching
-  // endpoint descriptor is found. The returned object becomes invalid, and thus
-  // should not be held, beyond the lifetime of this object.
-  scoped_ptr<UsbEndpointDescriptor>
-      GetEndpointDescriptorByTransferTypeAndDirection(
-          UsbTransferType transfer_type, UsbDirection direction) const;
+  // Returns a pointer to a UsbEndpointDescriptor object for the first endpoint
+  // descriptor with its transfer type equal to |transfer_type| and its
+  // direction equal to |direction|, or a NULL pointer if not matching endpoint
+  // descriptor is found. The returned object should be deleted by the caller
+  // after use and should not be held beyond the lifetime of this object.
+  UsbEndpointDescriptor* GetEndpointDescriptorByTransferTypeAndDirection(
+      UsbTransferType transfer_type, UsbDirection direction) const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.

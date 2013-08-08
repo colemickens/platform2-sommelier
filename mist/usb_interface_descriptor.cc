@@ -7,6 +7,7 @@
 #include <libusb.h>
 
 #include <base/logging.h>
+#include <base/memory/scoped_ptr.h>
 #include <base/stringprintf.h>
 
 #include "mist/usb_device.h"
@@ -66,31 +67,30 @@ string UsbInterfaceDescriptor::GetInterfaceDescription() const {
       string();
 }
 
-scoped_ptr<UsbEndpointDescriptor> UsbInterfaceDescriptor::GetEndpointDescriptor(
+UsbEndpointDescriptor* UsbInterfaceDescriptor::GetEndpointDescriptor(
     uint8 index) const {
   if (index >= GetNumEndpoints()) {
     LOG(ERROR) << StringPrintf("Invalid endpoint index %d. "
                                "Must be less than %d.",
                                index, GetNumEndpoints());
-    return scoped_ptr<UsbEndpointDescriptor>();
+    return NULL;
   }
 
-  return scoped_ptr<UsbEndpointDescriptor>(
-      new UsbEndpointDescriptor(&interface_descriptor_->endpoint[index]));
+  return new UsbEndpointDescriptor(&interface_descriptor_->endpoint[index]);
 }
 
-scoped_ptr<UsbEndpointDescriptor>
+UsbEndpointDescriptor*
 UsbInterfaceDescriptor::GetEndpointDescriptorByTransferTypeAndDirection(
     UsbTransferType transfer_type, UsbDirection direction) const {
   for (uint8 i = 0; i < GetNumEndpoints(); ++i) {
-    scoped_ptr<UsbEndpointDescriptor> endpoint_descriptor =
-        GetEndpointDescriptor(i);
+    scoped_ptr<UsbEndpointDescriptor> endpoint_descriptor(
+        GetEndpointDescriptor(i));
     if ((endpoint_descriptor->GetTransferType() == transfer_type) &&
         (endpoint_descriptor->GetDirection() == direction)) {
-      return endpoint_descriptor.Pass();
+      return endpoint_descriptor.release();
     }
   }
-  return scoped_ptr<UsbEndpointDescriptor>();
+  return NULL;
 }
 
 string UsbInterfaceDescriptor::ToString() const {

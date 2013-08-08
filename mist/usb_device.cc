@@ -175,51 +175,47 @@ bool UsbDevice::ClearHalt(uint8 endpoint) {
   return error_.SetFromLibUsbError(static_cast<libusb_error>(result));
 }
 
-scoped_ptr<UsbConfigDescriptor> UsbDevice::GetActiveConfigDescriptor() {
+UsbConfigDescriptor* UsbDevice::GetActiveConfigDescriptor() {
   libusb_config_descriptor* config_descriptor = NULL;
 
   int result = libusb_get_active_config_descriptor(device_, &config_descriptor);
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
-    return scoped_ptr<UsbConfigDescriptor>(
-        new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true));
-  }
-  return scoped_ptr<UsbConfigDescriptor>();
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+    return new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true);
+
+  return NULL;
 }
 
-scoped_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptor(uint8 index) {
+UsbConfigDescriptor* UsbDevice::GetConfigDescriptor(uint8 index) {
   libusb_config_descriptor* config_descriptor = NULL;
 
   int result = libusb_get_config_descriptor(device_, index, &config_descriptor);
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
-    return scoped_ptr<UsbConfigDescriptor>(
-        new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true));
-  }
-  return scoped_ptr<UsbConfigDescriptor>();
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+    return new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true);
+
+  return NULL;
 }
 
-scoped_ptr<UsbConfigDescriptor> UsbDevice::GetConfigDescriptorByValue(
+UsbConfigDescriptor* UsbDevice::GetConfigDescriptorByValue(
     uint8 configuration_value) {
   libusb_config_descriptor* config_descriptor = NULL;
 
   int result = libusb_get_config_descriptor_by_value(
       device_, configuration_value, &config_descriptor);
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
-    return scoped_ptr<UsbConfigDescriptor>(
-        new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true));
-  }
-  return scoped_ptr<UsbConfigDescriptor>();
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+    return new UsbConfigDescriptor(AsWeakPtr(), config_descriptor, true);
+
+  return NULL;
 }
 
-scoped_ptr<UsbDeviceDescriptor> UsbDevice::GetDeviceDescriptor() {
+UsbDeviceDescriptor* UsbDevice::GetDeviceDescriptor() {
   if (!device_descriptor_)
     device_descriptor_.reset(new libusb_device_descriptor());
 
   int result = libusb_get_device_descriptor(device_, device_descriptor_.get());
-  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result))) {
-    return scoped_ptr<UsbDeviceDescriptor>(
-        new UsbDeviceDescriptor(AsWeakPtr(), device_descriptor_.get()));
-  }
-  return scoped_ptr<UsbDeviceDescriptor>();
+  if (error_.SetFromLibUsbError(static_cast<libusb_error>(result)))
+    return new UsbDeviceDescriptor(AsWeakPtr(), device_descriptor_.get());
+
+  return NULL;
 }
 
 string UsbDevice::GetStringDescriptorAscii(uint8 index) {

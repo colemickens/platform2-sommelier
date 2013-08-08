@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/basictypes.h>
-#include <base/memory/scoped_ptr.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
@@ -49,11 +48,11 @@ class UsbConfigDescriptor {
   uint8 GetAttributes() const;
   uint8 GetMaxPower() const;
 
-  // Returns a scoped pointer to a UsbInterface object for the USB interface
-  // indexed at |index|, or null scoped pointer if the index is invalid.
-  // The returned object becomes invalid, and thus should not be held, beyond
-  // the lifetime of this object.
-  scoped_ptr<UsbInterface> GetInterface(uint8 index) const;
+  // Returns a pointer to a UsbInterface object for the USB interface indexed at
+  // |index|, or a NULL pointer if the index is invalid. The returned object
+  // should be deleted by the caller and should not be held beyond the lifetime
+  // of this object.
+  UsbInterface* GetInterface(uint8 index) const;
 
   // Returns a string describing the properties of this object for logging
   // purpose.

@@ -69,16 +69,15 @@ uint8 UsbConfigDescriptor::GetMaxPower() const {
   return config_descriptor_->MaxPower;
 }
 
-scoped_ptr<UsbInterface> UsbConfigDescriptor::GetInterface(uint8 index) const {
+UsbInterface* UsbConfigDescriptor::GetInterface(uint8 index) const {
   if (index >= GetNumInterfaces()) {
     LOG(ERROR) << StringPrintf("Invalid interface index %d. "
                                "Must be less than %d.",
                                index, GetNumInterfaces());
-    return scoped_ptr<UsbInterface>();
+    return NULL;
   }
 
-  return scoped_ptr<UsbInterface>(
-      new UsbInterface(device_, &config_descriptor_->interface[index]));
+  return new UsbInterface(device_, &config_descriptor_->interface[index]);
 }
 
 string UsbConfigDescriptor::ToString() const {

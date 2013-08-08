@@ -76,31 +76,31 @@ class UsbDevice : public base::SupportsWeakPtr<UsbDevice> {
 
   bool ClearHalt(uint8 endpoint_address);
 
-  // Returns a scoped pointer to a UsbConfigDescriptor object for the descriptor
-  // of the currently active configuration, or null scoped pointer on error.
-  // The returned object becomes invalid, and thus should not be held, beyond
-  // the lifetime of this object.
-  scoped_ptr<UsbConfigDescriptor> GetActiveConfigDescriptor();
+  // Returns a pointer to a UsbConfigDescriptor object for the descriptor of the
+  // currently active configuration, or a NULL pointer on error. The returned
+  // object should be deleted by the caller after used and should not be held
+  // beyond the lifetime of this object.
+  UsbConfigDescriptor* GetActiveConfigDescriptor();
 
-  // Returns a scoped pointer to a UsbConfigDescriptor object for the
-  // configuration descriptor indexed at |index|, or null scoped pointer if
-  // the index is invalid. The returned object becomes invalid, and thus should
-  // not be held, beyond the lifetime of this object.
-  scoped_ptr<UsbConfigDescriptor> GetConfigDescriptor(uint8 index);
+  // Returns a pointer to a UsbConfigDescriptor object for the configuration
+  // descriptor indexed at |index|, or a NULL pointer if the index is invalid.
+  // The returned object should be deleted by the caller after use and should
+  // not be held beyond the lifetime of this object.
+  UsbConfigDescriptor* GetConfigDescriptor(uint8 index);
 
-  // Returns a scoped pointer to a UsbConfigDescriptor object for the
+  // Returns a pointer to a UsbConfigDescriptor object for the
   // configuration descriptor with configuration value |configuration_value|,
-  // or null scoped pointer if the configuration value is invalid. The returned
-  // object becomes invalid, and thus should not be held, beyond the lifetime of
-  // this object.
-  scoped_ptr<UsbConfigDescriptor> GetConfigDescriptorByValue(
+  // or a NULL pointer if the configuration value is invalid. The returned
+  // object should be deleted by the caller after use and should not be held
+  // beyond the lifetime of this object.
+  UsbConfigDescriptor* GetConfigDescriptorByValue(
       uint8 configuration_value);
 
-  // Returns a scoped pointer to a UsbDeviceDescriptor object for the descriptor
-  // of this device, or null scoped pointer on error. The returned object
-  // becomes invalid, and thus should not be held, beyond the lifetime of this
-  // object.
-  scoped_ptr<UsbDeviceDescriptor> GetDeviceDescriptor();
+  // Returns a pointer to a UsbDeviceDescriptor object for the descriptor
+  // of this device, or a NULL pointer on error. The returned object should be
+  // deleted by the caller after use and should not be held beyond the lifetime
+  // of this object.
+  UsbDeviceDescriptor* GetDeviceDescriptor();
 
   // Returns a string value, in ASCII, of string descriptor indexed at |index|,
   // or an empty string if the index is invalid.

@@ -29,17 +29,16 @@ int UsbInterface::GetNumAlternateSettings() const {
   return interface_->num_altsetting;
 }
 
-scoped_ptr<UsbInterfaceDescriptor> UsbInterface::GetAlternateSetting(
+UsbInterfaceDescriptor* UsbInterface::GetAlternateSetting(
     int index) const {
   if (index < 0 || index >= GetNumAlternateSettings()) {
     LOG(ERROR) << StringPrintf("Invalid alternate setting index %d. "
                                "Must be non-negative and less than %d.",
                                index, GetNumAlternateSettings());
-    return scoped_ptr<UsbInterfaceDescriptor>();
+    return NULL;
   }
 
-  return scoped_ptr<UsbInterfaceDescriptor>(
-      new UsbInterfaceDescriptor(device_, &interface_->altsetting[index]));
+  return new UsbInterfaceDescriptor(device_, &interface_->altsetting[index]);
 }
 
 }  // namespace mist
